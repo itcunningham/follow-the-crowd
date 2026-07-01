@@ -2,38 +2,37 @@
 
 import { useState } from "react";
 import VenueMap from "./components/VenueMap";
-
-type EventForm = {
-  eventName: string;
-  venue: string;
-  city: string;
-  eventType: string;
-  genre: string;
-  date: string;
-  capacity: string;
-  budget: string;
-};
-
-const initialForm: EventForm = {
-  eventName: "",
-  venue: "",
-  city: "",
-  eventType: "",
-  genre: "",
-  date: "",
-  capacity: "",
-  budget: "",
-};
+import { requestEventPlan } from "@/lib/client/generate-event-plan";
+import { emptyEventBrief, type EventBrief, type Venue } from "@/lib/domain/event";
 
 function scrollTo(id: string) {
   document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
 }
 
 export default function Home() {
-  const [form, setForm] = useState<EventForm>(initialForm);
+  const [form, setForm] = useState<EventBrief>(emptyEventBrief);
+  const [result, setResult] = useState("");
+  const [venues, setVenues] = useState<Venue[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  function updateField(key: keyof EventForm, value: string) {
+  function updateField(key: keyof EventBrief, value: string) {
     setForm((prev) => ({ ...prev, [key]: value }));
+  }
+
+  async function generateEventPlan() {
+    setLoading(true);
+    setResult("");
+    setVenues([]);
+
+    try {
+      const data = await requestEventPlan(form);
+      setResult(data.result);
+      setVenues(data.venues ?? []);
+    } catch {
+      setResult("Unable to generate a plan. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -243,7 +242,7 @@ export default function Home() {
                 />
                 <Field
                   label="City"
-                  placeholder="Brooklyn"
+                  placeholder="Melbourne"
                   value={form.city}
                   onChange={(v) => updateField("city", v)}
                 />
@@ -272,7 +271,7 @@ export default function Home() {
                   onChange={(v) => updateField("capacity", v)}
                 />
                 <Field
-                  label="Budget (USD)"
+                  label="Budget (AUS)"
                   placeholder="$10,000"
                   value={form.budget}
                   onChange={(v) => updateField("budget", v)}
@@ -287,16 +286,29 @@ export default function Home() {
                   </p>
                 </div>
                 <div className="h-[280px] sm:h-[320px]">
-                  <VenueMap />
+                  <VenueMap venues={venues} />
                 </div>
               </div>
 
               <button
                 type="button"
-                className="mt-8 w-full rounded-xl border border-blue-500/45 bg-blue-600/20 px-6 py-4 text-sm font-bold uppercase tracking-wide text-blue-100 shadow-[0_0_28px_rgba(59,130,246,0.22)] transition hover:border-blue-400/60 hover:bg-blue-600/30"
+                onClick={generateEventPlan}
+                disabled={loading}
+                className="mt-8 w-full rounded-xl border border-blue-500/45 bg-blue-600/20 px-6 py-4 text-sm font-bold uppercase tracking-wide text-blue-100 shadow-[0_0_28px_rgba(59,130,246,0.22)] transition hover:border-blue-400/60 hover:bg-blue-600/30 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                Generate AI Event Plan
+                {loading ? "Generating..." : "Generate AI Event Plan"}
               </button>
+
+              {result ? (
+                <div className="mt-6 rounded-xl border border-zinc-800 bg-zinc-900/80 p-6">
+                  <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500">
+                    Your event plan
+                  </p>
+                  <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed text-zinc-200">
+                    {result}
+                  </pre>
+                </div>
+              ) : null}
             </div>
           </div>
         </div>

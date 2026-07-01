@@ -1,6 +1,13 @@
 "use client";
 
-import { GoogleMap, LoadScript, Marker } from "@react-google-maps/api";
+import type { CSSProperties } from "react";
+import {
+  GoogleMap,
+  LoadScript,
+  Marker,
+  OverlayView,
+} from "@react-google-maps/api";
+import type { Venue } from "@/lib/domain/event";
 
 const mapContainerStyle = {
   width: "100%",
@@ -8,43 +15,42 @@ const mapContainerStyle = {
 };
 
 const defaultCenter = {
-  lat: 40.6782,
-  lng: -73.9442,
+  lat: -37.8136,
+  lng: 144.9631,
 };
 
-const sampleVenues = [
-  { lat: 40.7033, lng: -73.9235, label: "Warehouse district" },
-  { lat: 40.6615, lng: -73.982, label: "Basement club" },
-  { lat: 40.7188, lng: -73.957, label: "Late-night spot" },
-];
+/** Default red Google marker height from anchor (tip) to top of pin head. */
+const MARKER_HEIGHT_PX = 34;
+/** Gap between top of marker and bottom of label. */
+const LABEL_GAP_PX = 8;
 
-const darkMapStyle = [
-  { elementType: "geometry", stylers: [{ color: "#0d0d0f" }] },
-  { elementType: "labels.text.fill", stylers: [{ color: "#8b8b95" }] },
-  { elementType: "labels.text.stroke", stylers: [{ color: "#0d0d0f" }] },
-  {
-    featureType: "road",
-    elementType: "geometry",
-    stylers: [{ color: "#1a1a1f" }],
-  },
-  {
-    featureType: "road",
-    elementType: "geometry.stroke",
-    stylers: [{ color: "#2a2a32" }],
-  },
-  {
-    featureType: "water",
-    elementType: "geometry",
-    stylers: [{ color: "#0a1628" }],
-  },
-  {
-    featureType: "poi",
-    elementType: "geometry",
-    stylers: [{ color: "#141418" }],
-  },
-];
+const labelStyle: CSSProperties = {
+  backgroundColor: "#ffffff",
+  color: "#000000",
+  fontSize: "11px",
+  fontWeight: 600,
+  fontFamily: "system-ui, -apple-system, sans-serif",
+  padding: "4px 6px",
+  borderRadius: "6px",
+  lineHeight: 1.2,
+  whiteSpace: "nowrap",
+  pointerEvents: "none",
+  boxShadow: "0 1px 3px rgba(0, 0, 0, 0.28), 0 1px 2px rgba(0, 0, 0, 0.12)",
+  border: "1px solid rgba(0, 0, 0, 0.08)",
+};
 
-export default function VenueMap() {
+function getLabelOffset(width: number, height: number) {
+  return {
+    x: -(width / 2),
+    y: -(height + MARKER_HEIGHT_PX + LABEL_GAP_PX),
+  };
+}
+
+type VenueMapProps = {
+  venues: Venue[];
+};
+
+export default function VenueMap({ venues }: VenueMapProps) {
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
   if (!apiKey) {
@@ -68,15 +74,24 @@ export default function VenueMap() {
         mapContainerStyle={mapContainerStyle}
         center={defaultCenter}
         zoom={12}
-        options={{
-          styles: darkMapStyle,
-          disableDefaultUI: true,
-          zoomControl: true,
-          backgroundColor: "#070708",
-        }}
       >
-        {sampleVenues.map((venue) => (
-          <Marker key={venue.label} position={{ lat: venue.lat, lng: venue.lng }} />
+        {venues.map((venue) => (
+          <Marker
+            key={`${venue.lat}-${venue.lng}-${venue.name}`}
+            position={{ lat: venue.lat, lng: venue.lng }}
+            title={venue.name}
+          />
+        ))}
+
+        {venues.map((venue) => (
+          <OverlayView
+            key={`label-${venue.lat}-${venue.lng}-${venue.name}`}
+            position={{ lat: venue.lat, lng: venue.lng }}
+            mapPaneName={OverlayView.FLOAT_PANE}
+            getPixelPositionOffset={getLabelOffset}
+          >
+            <div style={labelStyle}>{venue.name}</div>
+          </OverlayView>
         ))}
       </GoogleMap>
     </LoadScript>

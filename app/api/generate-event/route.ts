@@ -1,41 +1,23 @@
-import OpenAI from "openai";
 import { NextResponse } from "next/server";
-
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+import type { EventBrief } from "@/lib/domain/event";
+import { createOpenAIEventPlanGenerator } from "@/lib/infrastructure/openai/generate-event-plan";
 
 export async function POST(request: Request) {
-  if (!process.env.OPENAI_API_KEY) {
+  const apiKey = process.env.OPENAI_API_KEY;
+
+  if (!apiKey) {
     return NextResponse.json(
-      { result: "Missing OPENAI_API_KEY. Add it to .env.local." },
+      { result: "Missing OPENAI_API_KEY. Add it to .env.local.", venues: [] },
       { status: 500 },
     );
   }
 
-  const { location, eventType, budget, capacity, vibe } = await request.json();
+  const brief: EventBrief = await request.json();
+  const generator = createOpenAIEventPlanGenerator(apiKey);
+  const result = await generator.generate(brief);
 
-  const completion = await openai.chat.completions.create({
-    model: "gpt-4o-mini",
-    messages: [
-      {
-        role: "system",
-        content:
-          "You are an expert event planner and crowd insight strategist for Follow The Crowd. Generate a concise, actionable event plan for any type of event — corporate, cultural, nightlife, festivals, private gatherings, and more. Include venue or space suggestions, programming ideas, budget breakdown, audience targeting, marketing tips, and a timeline. Format clearly with headings.",
-      },
-      {
-        role: "user",
-        content: `Plan an event with:
-- Location: ${location || "not specified"}
-- Event type / genre: ${eventType || "not specified"}
-- Budget: ${budget || "not specified"}
-- Expected capacity: ${capacity || "not specified"}
-- Vibe / audience feel: ${vibe || "not specified"}`,
-      },
-    ],
+  return NextResponse.json({
+    result: result.result,
+    venues: result.venues || [],
   });
-
-  const result = completion.choices[0]?.message?.content ?? "No response generated.";
-
-  return NextResponse.json({ result });
 }
