@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import AppNavigation, { MOBILE_NAV_OFFSET_CLASS } from "@/app/components/AppNavigation";
+import EventRunSheetSection from "@/app/components/EventRunSheetSection";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
 import ProfileAvatar from "@/app/components/ProfileAvatar";
 import { BookingDateField, BookingSetTimeRangeField } from "@/app/components/BookingDateTimeFields";
@@ -124,6 +125,8 @@ export default function EventDetailPage() {
       ),
   );
   const canOpenCrewChat = isOwner || hasAcceptedBooking;
+  const canViewRunSheet = canOpenCrewChat;
+  const canEditRunSheet = isOwner && isPlanner;
 
   const lineupStats = useMemo(() => getEventLineupStats(lineup), [lineup]);
 
@@ -620,6 +623,16 @@ export default function EventDetailPage() {
               </div>
             ) : null}
           </section>
+
+          {canViewRunSheet ? (
+            <EventRunSheetSection
+              eventId={event.id}
+              canEdit={canEditRunSheet}
+              lineup={lineup}
+              profiles={profiles}
+              onSaved={(message) => setSuccessMessage(message)}
+            />
+          ) : null}
 
           <section className="rounded-2xl border border-zinc-800 bg-zinc-900/80 p-4 sm:p-5">
             <div className="flex flex-wrap items-start justify-between gap-3">

@@ -6,6 +6,7 @@ import {
   BOOKING_DATE_TIME_INPUT_CLASS,
   BOOKING_FIELD_LABEL_CLASS,
   BOOKING_TIME_BUTTON_CLASS,
+  BOOKING_TIME_BUTTON_COMPACT_CLASS,
   clockPartsToWheelTime,
   combineClockAndMeridiem,
   combineSetTimeRange,
@@ -72,13 +73,13 @@ function ClockIcon() {
   );
 }
 
-function ChevronIcon() {
+function ChevronIcon({ compact = false }: { compact?: boolean }) {
   return (
     <svg
       aria-hidden="true"
       viewBox="0 0 20 20"
       fill="none"
-      className="h-4 w-4 shrink-0 text-zinc-500"
+      className={`shrink-0 text-zinc-500 ${compact ? "h-3 w-3" : "h-4 w-4"}`}
     >
       <path
         d="M7.5 8.5 10 11l2.5-2.5"
@@ -98,6 +99,9 @@ function BookingTimeControl({
   defaultWheelTime,
   onTimeChange,
   required = false,
+  showLabel = true,
+  variant = "default",
+  buttonLabel,
 }: {
   label: string;
   clock: string;
@@ -105,10 +109,18 @@ function BookingTimeControl({
   defaultWheelTime: () => WheelTimeValue;
   onTimeChange: (clock: string, meridiem: Meridiem) => void;
   required?: boolean;
+  showLabel?: boolean;
+  variant?: "default" | "compact";
+  buttonLabel?: string;
 }) {
   const [pickerOpen, setPickerOpen] = useState(false);
-  const labelText = formatTimeButtonLabel(clock, meridiem);
-  const hasValue = Boolean(combineClockAndMeridiem(clock, meridiem));
+  const isCompact = variant === "compact";
+  const resolvedLabel =
+    buttonLabel ??
+    (isCompact
+      ? combineClockAndMeridiem(clock, meridiem) || "Select"
+      : formatTimeButtonLabel(clock, meridiem));
+  const hasValue = resolvedLabel !== "Select" && resolvedLabel !== "Select time";
 
   function openPicker() {
     setPickerOpen(true);
@@ -125,19 +137,34 @@ function BookingTimeControl({
 
   return (
     <div>
-      <span className={BOOKING_FIELD_LABEL_CLASS}>{label}</span>
+      {showLabel ? <span className={BOOKING_FIELD_LABEL_CLASS}>{label}</span> : null}
       <button
         type="button"
         onClick={openPicker}
-        aria-label={`${label}, ${labelText}`}
+        aria-label={`${label}, ${resolvedLabel}`}
         aria-required={required}
-        className={BOOKING_TIME_BUTTON_CLASS}
+        className={isCompact ? BOOKING_TIME_BUTTON_COMPACT_CLASS : BOOKING_TIME_BUTTON_CLASS}
       >
-        <ClockIcon />
-        <span className={`min-w-0 flex-1 tabular-nums ${hasValue ? "text-zinc-100" : "text-zinc-500"}`}>
-          {labelText}
-        </span>
-        <ChevronIcon />
+        {isCompact ? (
+          <>
+            <span
+              className={`min-w-0 flex-1 truncate text-center tabular-nums ${hasValue ? "text-zinc-100" : "text-zinc-500"}`}
+            >
+              {resolvedLabel}
+            </span>
+            <ChevronIcon compact />
+          </>
+        ) : (
+          <>
+            <ClockIcon />
+            <span
+              className={`min-w-0 flex-1 tabular-nums ${hasValue ? "text-zinc-100" : "text-zinc-500"}`}
+            >
+              {resolvedLabel}
+            </span>
+            <ChevronIcon />
+          </>
+        )}
       </button>
 
       <BookingTimeWheelPicker
@@ -146,6 +173,88 @@ function BookingTimeControl({
         value={pickerValue}
         onCancel={() => setPickerOpen(false)}
         onDone={handleDone}
+      />
+    </div>
+  );
+}
+
+export function BookingTimeField({
+  label,
+  value,
+  onChange,
+  required = false,
+  showLabel = true,
+  defaultWheelTime = defaultStartWheelTime,
+  variant = "default",
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  required?: boolean;
+  showLabel?: boolean;
+  defaultWheelTime?: () => WheelTimeValue;
+  variant?: "default" | "compact";
+}) {
+  const userEditedRef = useRef(false);
+  const [clock, setClock] = useState("");
+  const [meridiem, setMeridiem] = useState<Meridiem>("PM");
+  const [legacyValue, setLegacyValue] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (userEditedRef.current) {
+      return;
+    }
+
+    const parsed = parseSetTimeRange(value);
+
+    if (parsed.unparsedRaw) {
+      setLegacyValue(parsed.unparsedRaw);
+      setClock("");
+      setMeridiem("PM");
+      return;
+    }
+
+    setLegacyValue(null);
+
+    if (parsed.start) {
+      setClock(extractClockDisplay(parsed.start.formatted));
+      setMeridiem(parsed.start.meridiem);
+    } else {
+      setClock("");
+      setMeridiem("PM");
+    }
+  }, [value]);
+
+  function handleTimeChange(nextClock: string, nextMeridiem: Meridiem) {
+    userEditedRef.current = true;
+    setLegacyValue(null);
+    setClock(nextClock);
+    setMeridiem(nextMeridiem);
+    onChange(combineClockAndMeridiem(nextClock, nextMeridiem));
+  }
+
+  const formattedTime = combineClockAndMeridiem(clock, meridiem);
+  const compactButtonLabel = legacyValue || formattedTime || "Select";
+
+  return (
+    <div>
+      {legacyValue && variant !== "compact" ? (
+        <p
+          className={`rounded-lg border border-zinc-800/80 bg-zinc-950/50 px-2.5 py-1.5 text-xs text-zinc-400 ${showLabel ? "mb-2" : "mb-1.5"}`}
+        >
+          Saved time: <span className="text-zinc-200">{legacyValue}</span>
+        </p>
+      ) : null}
+      <BookingTimeControl
+        label={label}
+        showLabel={showLabel}
+        clock={clock}
+        meridiem={meridiem}
+        defaultWheelTime={defaultWheelTime}
+        onTimeChange={handleTimeChange}
+        required={required}
+        variant={variant}
+        buttonLabel={variant === "compact" ? compactButtonLabel : undefined}
       />
     </div>
   );
