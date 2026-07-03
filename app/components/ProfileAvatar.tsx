@@ -1,0 +1,41 @@
+type ProfileAvatarSize = "sm" | "md" | "lg" | "xl";
+
+const sizeClasses: Record<ProfileAvatarSize, string> = {
+  sm: "h-8 w-8 text-[10px] shadow-[0_0_12px_rgba(59,130,246,0.2)]",
+  md: "h-12 w-12 text-xs shadow-[0_0_14px_rgba(59,130,246,0.22)]",
+  lg: "h-14 w-14 text-sm shadow-[0_0_14px_rgba(59,130,246,0.22)]",
+  xl: "h-28 w-28 text-2xl shadow-[0_0_20px_rgba(59,130,246,0.22)]",
+};
+
+function getInitials(name: string) {
+  return name.trim().slice(0, 2).toUpperCase() || "??";
+}
+
+export default function ProfileAvatar({
+  name,
+  avatarUrl,
+  size = "md",
+  className = "",
+}: {
+  name: string;
+  avatarUrl?: string | null;
+  size?: ProfileAvatarSize;
+  className?: string;
+}) {
+  const initials = getInitials(name);
+  const baseClasses = `flex shrink-0 items-center justify-center overflow-hidden rounded-full border border-blue-500/30 bg-blue-600/15 font-bold uppercase tracking-wide text-blue-300 ${sizeClasses[size]} ${className}`;
+
+  if (avatarUrl?.trim()) {
+    return (
+      <div className={baseClasses}>
+        <img
+          src={avatarUrl}
+          alt={`${name} profile`}
+          className="h-full w-full object-cover"
+        />
+      </div>
+    );
+  }
+
+  return <div className={baseClasses}>{initials}</div>;
+}

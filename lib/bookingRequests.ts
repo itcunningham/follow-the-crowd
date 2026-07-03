@@ -1,0 +1,464 @@
+import { supabase } from "@/lib/supabaseClient";
+import { createNotification } from "@/lib/notifications";
+import { formatRateDisplay, normalizeStoredRate } from "@/lib/bookingRate";
+import { startDm } from "@/lib/startDm";
+import { CURRENT_USER_ID } from "@/lib/user/currentUser";
+
+export type BookingRequestStatus = "pending" | "accepted" | "declined";
+
+export type BookingRequestInput = {
+  eventName: string;
+  venue: string;
+  eventDate: string;
+  setTime: string;
+  fee: string;
+  notes: string;
+};
+
+export type BookingSendFailure = {
+  recipientId: string;
+  message: string;
+};
+
+export type BookingCampaignStats = {
+  total: number;
+  pending: number;
+  accepted: number;
+  declined: number;
+};
+
+export type BookingStatusFilter = "all" | "pending" | "accepted" | "declined";
+
+export type SentBookingGroup = {
+  key: string;
+  event_name: string;
+  venue: string;
+  event_date: string;
+  set_time: string;
+  fee: string;
+  notes: string;
+  created_at: string;
+  requests: BookingRequest[];
+};
+
+export type BookingRequest = {
+  id: string;
+  created_at: string;
+  sender_id: string;
+  recipient_id: string;
+  conversation_id: string;
+  event_name: string;
+  venue: string;
+  event_date: string;
+  set_time: string;
+  fee: string;
+  notes: string;
+  status: BookingRequestStatus;
+};
+
+function formatStatusLabel(status: BookingRequestStatus): string {
+  if (status === "accepted") {
+    return "Accepted";
+  }
+
+  if (status === "declined") {
+    return "Declined";
+  }
+
+  return "Pending";
+}
+
+export function formatBookingRequestMessage(booking: BookingRequest): string {
+  const lines = [
+    "BOOKING REQUEST",
+    `Booking ID: ${booking.id}`,
+    `Event: ${booking.event_name}`,
+    `Venue: ${booking.venue}`,
+    `Date: ${booking.event_date}`,
+    `Set time: ${booking.set_time}`,
+    `Rate: ${formatRateDisplay(booking.fee)}`,
+    `Notes: ${booking.notes || "None"}`,
+    `Status: ${formatStatusLabel(booking.status)}`,
+  ];
+
+  return lines.join("\n");
+}
+
+export function parseBookingRequestMessage(text: string): {
+  bookingId: string | null;
+  eventName: string | null;
+  venue: string | null;
+  eventDate: string | null;
+  setTime: string | null;
+  fee: string | null;
+  notes: string | null;
+  status: BookingRequestStatus | null;
+} | null {
+  if (!text.trim().startsWith("BOOKING REQUEST")) {
+    return null;
+  }
+
+  const lines = text.split("\n");
+  const values: Record<string, string> = {};
+
+  for (const line of lines.slice(1)) {
+    const separatorIndex = line.indexOf(":");
+
+    if (separatorIndex === -1) {
+      continue;
+    }
+
+    const key = line.slice(0, separatorIndex).trim().toLowerCase();
+    const value = line.slice(separatorIndex + 1).trim();
+    values[key] = value;
+  }
+
+  const statusValue = values.status?.toLowerCase();
+  const status: BookingRequestStatus | null =
+    statusValue === "accepted" || statusValue === "declined" || statusValue === "pending"
+      ? statusValue
+      : null;
+
+  return {
+    bookingId: values["booking id"] ?? null,
+    eventName: values.event ?? null,
+    venue: values.venue ?? null,
+    eventDate: values.date ?? null,
+    setTime: values["set time"] ?? null,
+    fee: normalizeStoredRate(values.rate ?? values.fee ?? "") || null,
+    notes: values.notes ?? null,
+    status,
+  };
+}
+
+export function isBookingRequestMessage(text: string): boolean {
+  return text.trim().startsWith("BOOKING REQUEST");
+}
+
+export function logBookingsLoadError(error: unknown): void {
+  console.error("load bookings error:");
+
+  if (error && typeof error === "object") {
+    const supabaseError = error as {
+      message?: string;
+      code?: string;
+      details?: string;
+      hint?: string;
+    };
+
+    console.error("error.message:", supabaseError.message);
+    console.error("error.code:", supabaseError.code);
+    console.error("error.details:", supabaseError.details);
+    console.error("error.hint:", supabaseError.hint);
+    return;
+  }
+
+  console.error("error.message:", error instanceof Error ? error.message : String(error));
+  console.error("error.code:", undefined);
+  console.error("error.details:", undefined);
+  console.error("error.hint:", undefined);
+}
+
+export async function getBookingRequestsForConversation(
+  conversationId: string,
+): Promise<BookingRequest[]> {
+  const { data, error } = await supabase
+    .from("booking_requests")
+    .select("*")
+    .eq("conversation_id", conversationId)
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    throw error;
+  }
+
+  return (data ?? []) as BookingRequest[];
+}
+
+export async function sendBookingRequestToDj(
+  recipientId: string,
+  input: BookingRequestInput,
+): Promise<string> {
+  const conversationId = await startDm(CURRENT_USER_ID, recipientId);
+
+  const { data: booking, error: bookingError } = await supabase
+    .from("booking_requests")
+    .insert({
+      sender_id: CURRENT_USER_ID,
+      recipient_id: recipientId,
+      conversation_id: conversationId,
+      event_name: input.eventName.trim(),
+      venue: input.venue.trim(),
+      event_date: input.eventDate.trim(),
+      set_time: input.setTime.trim(),
+      fee: normalizeStoredRate(input.fee),
+      notes: input.notes.trim(),
+      status: "pending",
+    })
+    .select("*")
+    .single();
+
+  if (bookingError) {
+    throw bookingError;
+  }
+
+  const messageText = formatBookingRequestMessage(booking as BookingRequest);
+
+  const { error: messageError } = await supabase.from("messages").insert({
+    conversation_id: conversationId,
+    user_id: CURRENT_USER_ID,
+    text: messageText,
+  });
+
+  if (messageError) {
+    throw messageError;
+  }
+
+  await createNotification(
+    recipientId,
+    "booking_request",
+    "New booking request",
+    `${input.eventName.trim()} at ${input.venue.trim()}`,
+    `/dm/${conversationId}`,
+  );
+
+  return conversationId;
+}
+
+const BOOKING_REQUEST_FIELDS =
+  "id, created_at, sender_id, recipient_id, conversation_id, event_name, venue, event_date, set_time, fee, notes, status";
+
+export async function listSentBookingRequests(): Promise<BookingRequest[]> {
+  const { data, error } = await supabase
+    .from("booking_requests")
+    .select(BOOKING_REQUEST_FIELDS)
+    .eq("sender_id", CURRENT_USER_ID)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    logBookingsLoadError(error);
+    throw error;
+  }
+
+  return (data ?? []) as BookingRequest[];
+}
+
+export async function listReceivedBookingRequests(): Promise<BookingRequest[]> {
+  const { data, error } = await supabase
+    .from("booking_requests")
+    .select(BOOKING_REQUEST_FIELDS)
+    .eq("recipient_id", CURRENT_USER_ID)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    logBookingsLoadError(error);
+    throw error;
+  }
+
+  return (data ?? []) as BookingRequest[];
+}
+
+function getBookingGroupKey(booking: BookingRequest): string {
+  const createdMinute = booking.created_at.slice(0, 16);
+
+  return [
+    createdMinute,
+    booking.event_name,
+    booking.venue,
+    booking.event_date,
+    booking.set_time,
+    booking.fee,
+    booking.notes,
+  ].join("|");
+}
+
+export function groupSentBookingRequests(bookings: BookingRequest[]): SentBookingGroup[] {
+  const groups = new Map<string, SentBookingGroup>();
+
+  for (const booking of bookings) {
+    const key = getBookingGroupKey(booking);
+    const existing = groups.get(key);
+
+    if (existing) {
+      existing.requests.push(booking);
+      continue;
+    }
+
+    groups.set(key, {
+      key,
+      event_name: booking.event_name,
+      venue: booking.venue,
+      event_date: booking.event_date,
+      set_time: booking.set_time,
+      fee: booking.fee,
+      notes: booking.notes,
+      created_at: booking.created_at,
+      requests: [booking],
+    });
+  }
+
+  return [...groups.values()].sort(
+    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+  );
+}
+
+export function getBookingCampaignStats(group: SentBookingGroup): BookingCampaignStats {
+  return group.requests.reduce(
+    (stats, request) => {
+      stats.total += 1;
+      stats[request.status] += 1;
+      return stats;
+    },
+    { total: 0, pending: 0, accepted: 0, declined: 0 },
+  );
+}
+
+export function filterBookingGroups(
+  groups: SentBookingGroup[],
+  filter: BookingStatusFilter,
+): SentBookingGroup[] {
+  if (filter === "all") {
+    return groups;
+  }
+
+  return groups
+    .map((group) => ({
+      ...group,
+      requests: group.requests.filter((request) => request.status === filter),
+    }))
+    .filter((group) => group.requests.length > 0);
+}
+
+export function formatBookingStatusLabel(status: BookingRequestStatus): string {
+  return formatStatusLabel(status);
+}
+
+export async function sendBookingRequestsToDjs(
+  recipientIds: string[],
+  input: BookingRequestInput,
+): Promise<{
+  conversationIds: string[];
+  successes: string[];
+  failures: BookingSendFailure[];
+}> {
+  const results = await Promise.all(
+    recipientIds.map(async (recipientId) => {
+      try {
+        const conversationId = await sendBookingRequestToDj(recipientId, input);
+        return { recipientId, conversationId, error: null as string | null };
+      } catch (error) {
+        console.error(`Failed to send booking request to ${recipientId}:`, error);
+        return {
+          recipientId,
+          conversationId: null,
+          error: error instanceof Error ? error.message : "Unknown error",
+        };
+      }
+    }),
+  );
+
+  const successes: string[] = [];
+  const conversationIds: string[] = [];
+  const failures: BookingSendFailure[] = [];
+
+  for (const result of results) {
+    if (result.conversationId) {
+      successes.push(result.recipientId);
+      conversationIds.push(result.conversationId);
+      continue;
+    }
+
+    failures.push({
+      recipientId: result.recipientId,
+      message: result.error ?? "Failed to send booking request",
+    });
+  }
+
+  return { conversationIds, successes, failures };
+}
+
+export async function updateBookingRequestStatus(
+  bookingId: string,
+  status: Exclude<BookingRequestStatus, "pending">,
+): Promise<BookingRequest> {
+  const { data, error } = await supabase
+    .from("booking_requests")
+    .update({ status })
+    .eq("id", bookingId)
+    .select("*")
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  const booking = data as BookingRequest;
+
+  await createNotification(
+    booking.sender_id,
+    "booking_update",
+    status === "accepted" ? "Booking accepted" : "Booking declined",
+    `${booking.event_name} · ${formatStatusLabel(status)}`,
+    "/bookings",
+  );
+
+  return booking;
+}
+
+export function resolveBookingForMessage(
+  messageText: string,
+  bookings: BookingRequest[],
+): BookingRequest | null {
+  const parsed = parseBookingRequestMessage(messageText);
+
+  if (parsed?.bookingId) {
+    const matched = bookings.find((booking) => booking.id === parsed.bookingId);
+
+    if (matched) {
+      return matched;
+    }
+  }
+
+  if (parsed?.eventName) {
+    return (
+      bookings.find(
+        (booking) =>
+          booking.event_name === parsed.eventName &&
+          booking.venue === parsed.venue &&
+          booking.event_date === parsed.eventDate,
+      ) ?? null
+    );
+  }
+
+  return null;
+}
+
+export function mergeBookingWithMessage(
+  booking: BookingRequest | null,
+  messageText: string,
+): BookingRequest | null {
+  if (booking) {
+    return booking;
+  }
+
+  const parsed = parseBookingRequestMessage(messageText);
+
+  if (!parsed?.eventName) {
+    return null;
+  }
+
+  return {
+    id: parsed.bookingId ?? messageText,
+    created_at: new Date().toISOString(),
+    sender_id: "",
+    recipient_id: "",
+    conversation_id: "",
+    event_name: parsed.eventName,
+    venue: parsed.venue ?? "",
+    event_date: parsed.eventDate ?? "",
+    set_time: parsed.setTime ?? "",
+    fee: normalizeStoredRate(parsed.fee ?? ""),
+    notes: parsed.notes === "None" ? "" : parsed.notes ?? "",
+    status: parsed.status ?? "pending",
+  };
+}

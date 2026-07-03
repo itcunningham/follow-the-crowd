@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import AppNavigation, { MOBILE_NAV_OFFSET_CLASS } from "./components/AppNavigation";
+import OnboardingGuard from "./components/OnboardingGuard";
 import VenueMap from "./components/VenueMap";
 import { requestEventPlan } from "@/lib/client/generate-event-plan";
 import { emptyEventBrief, type EventBrief, type Venue } from "@/lib/domain/event";
@@ -36,7 +38,9 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-full bg-[#070708] font-sans text-zinc-100">
+    <OnboardingGuard>
+    <div className={`min-h-full bg-[#070708] font-sans text-zinc-100 ${MOBILE_NAV_OFFSET_CLASS}`}>
+      <AppNavigation />
       {/* Nav */}
       <header className="sticky top-0 z-50 border-b border-zinc-800/80 bg-[#070708]/85 backdrop-blur-md">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
@@ -64,13 +68,6 @@ export default function Home() {
               Platform
             </button>
           </nav>
-          <button
-            type="button"
-            onClick={() => scrollTo("create-event")}
-            className="rounded-lg border border-blue-500/40 bg-blue-600/15 px-3.5 py-2 text-sm font-semibold uppercase tracking-wide text-blue-200 shadow-[0_0_20px_rgba(59,130,246,0.2)] transition hover:border-blue-400/60 hover:bg-blue-600/25"
-          >
-            Get started
-          </button>
         </div>
       </header>
 
@@ -331,6 +328,7 @@ export default function Home() {
         </div>
       </footer>
     </div>
+    </OnboardingGuard>
   );
 }
 

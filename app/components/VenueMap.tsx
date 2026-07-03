@@ -3,9 +3,9 @@
 import type { CSSProperties } from "react";
 import {
   GoogleMap,
-  LoadScript,
   Marker,
   OverlayView,
+  useJsApiLoader,
 } from "@react-google-maps/api";
 import type { Venue } from "@/lib/domain/event";
 
@@ -51,7 +51,12 @@ type VenueMapProps = {
 };
 
 export default function VenueMap({ venues }: VenueMapProps) {
-  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? "";
+
+  const { isLoaded, loadError } = useJsApiLoader({
+    id: "google-map-script",
+    googleMapsApiKey: apiKey,
+  });
 
   if (!apiKey) {
     return (
@@ -68,32 +73,46 @@ export default function VenueMap({ venues }: VenueMapProps) {
     );
   }
 
-  return (
-    <LoadScript googleMapsApiKey={apiKey}>
-      <GoogleMap
-        mapContainerStyle={mapContainerStyle}
-        center={defaultCenter}
-        zoom={12}
-      >
-        {venues.map((venue) => (
-          <Marker
-            key={`${venue.lat}-${venue.lng}-${venue.name}`}
-            position={{ lat: venue.lat, lng: venue.lng }}
-            title={venue.name}
-          />
-        ))}
+  if (loadError) {
+    return (
+      <div className="flex h-full min-h-[280px] items-center justify-center rounded-xl border border-zinc-800 bg-zinc-900/50 px-6 text-center">
+        <p className="text-sm text-zinc-500">Unable to load Google Maps.</p>
+      </div>
+    );
+  }
 
-        {venues.map((venue) => (
-          <OverlayView
-            key={`label-${venue.lat}-${venue.lng}-${venue.name}`}
-            position={{ lat: venue.lat, lng: venue.lng }}
-            mapPaneName={OverlayView.FLOAT_PANE}
-            getPixelPositionOffset={getLabelOffset}
-          >
-            <div style={labelStyle}>{venue.name}</div>
-          </OverlayView>
-        ))}
-      </GoogleMap>
-    </LoadScript>
+  if (!isLoaded) {
+    return (
+      <div className="flex h-full min-h-[280px] items-center justify-center rounded-xl border border-zinc-800 bg-zinc-900/50">
+        <p className="text-sm text-zinc-500">Loading map...</p>
+      </div>
+    );
+  }
+
+  return (
+    <GoogleMap
+      mapContainerStyle={mapContainerStyle}
+      center={defaultCenter}
+      zoom={12}
+    >
+      {venues.map((venue) => (
+        <Marker
+          key={`${venue.lat}-${venue.lng}-${venue.name}`}
+          position={{ lat: venue.lat, lng: venue.lng }}
+          title={venue.name}
+        />
+      ))}
+
+      {venues.map((venue) => (
+        <OverlayView
+          key={`label-${venue.lat}-${venue.lng}-${venue.name}`}
+          position={{ lat: venue.lat, lng: venue.lng }}
+          mapPaneName={OverlayView.FLOAT_PANE}
+          getPixelPositionOffset={getLabelOffset}
+        >
+          <div style={labelStyle}>{venue.name}</div>
+        </OverlayView>
+      ))}
+    </GoogleMap>
   );
 }
