@@ -1,19 +1,58 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import AppNavigation, { MOBILE_NAV_OFFSET_CLASS } from "@/app/components/AppNavigation";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
 import ProfileAvatar from "@/app/components/ProfileAvatar";
+import {
+  formatGroupChatEventDate,
+  getGroupChatsLoadErrorMessage,
+  listAccessibleGroupChats,
+  type GroupChatListItem,
+} from "@/lib/groupChats";
+import { getNavBadgeCounts } from "@/lib/notifications";
 import { supabase } from "@/lib/supabaseClient";
 import { startDm } from "@/lib/startDm";
 import {
   getCurrentUserId,
+  getCurrentUserProfile,
   getUserAvatarProfilesByIds,
   type UserAvatarProfile,
 } from "@/lib/user/currentUser";
 
 const TARGET_DJ_USER_ID = "test-user";
+const NOTIFICATIONS_PATH = "/notifications";
+
+function NotificationsBellLink({ count }: { count: number }) {
+  return (
+    <Link
+      href={NOTIFICATIONS_PATH}
+      aria-label={count > 0 ? `Notifications, ${count} unread` : "Notifications"}
+      className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-zinc-800/80 bg-zinc-900/60 text-zinc-400 transition hover:border-blue-500/35 hover:text-blue-300"
+    >
+      <svg
+        aria-hidden="true"
+        viewBox="0 0 24 24"
+        className="h-4 w-4"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
+        <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
+      </svg>
+      {count > 0 ? (
+        <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full border border-blue-400/50 bg-blue-600 px-1 text-[10px] font-bold leading-none text-white shadow-[0_0_10px_rgba(59,130,246,0.45)]">
+          {count > 99 ? "99+" : count}
+        </span>
+      ) : null}
+    </Link>
+  );
+}
 
 type Message = {
   id: string;
@@ -146,8 +185,100 @@ function MessageDjButton({
   );
 }
 
+function GroupChatCard({ chat }: { chat: GroupChatListItem }) {
+  return (
+    <li>
+      <Link
+        href={chat.href}
+        className="flex w-full items-center gap-3 px-4 py-3.5 transition active:bg-blue-600/10 hover:bg-zinc-900/70 sm:px-6 sm:py-4"
+      >
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-blue-500/30 bg-blue-600/10 text-xs font-semibold uppercase tracking-wide text-blue-300">
+          GC
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start justify-between gap-3">
+            <p className="truncate text-[15px] font-semibold text-zinc-100">{chat.eventName}</p>
+            <time
+              dateTime={chat.latestMessageAt ?? chat.eventDate}
+              className="shrink-0 text-xs text-zinc-500"
+            >
+              {chat.latestMessageAt
+                ? formatInboxTimestamp(chat.latestMessageAt)
+                : formatGroupChatEventDate(chat.eventDate)}
+            </time>
+          </div>
+          <p className="mt-1 truncate text-sm text-zinc-500">
+            {chat.venue.trim() || "Venue TBC"}
+            {" · "}
+            {formatGroupChatEventDate(chat.eventDate)}
+          </p>
+          <div className="mt-1 flex items-center gap-2">
+            <span className="text-[10px] font-semibold uppercase tracking-wide text-blue-400/90">
+              Group Chat
+            </span>
+            {chat.latestPreview ? (
+              <p className="min-w-0 truncate text-sm text-zinc-500">{chat.latestPreview}</p>
+            ) : null}
+          </div>
+        </div>
+      </Link>
+    </li>
+  );
+}
+
+function DirectMessagesEmptyState({
+  startingDm,
+  startDmError,
+  onMessageDj,
+  compact = false,
+}: {
+  startingDm: boolean;
+  startDmError: string | null;
+  onMessageDj: () => void;
+  compact?: boolean;
+}) {
+  if (compact) {
+    return (
+      <div className="px-4 py-6 sm:px-6">
+        <div className="rounded-xl border border-zinc-800/80 bg-zinc-900/30 px-4 py-5 text-center">
+          <ConversationAvatar label={TARGET_DJ_USER_ID} />
+          <h3 className="mt-4 text-base font-semibold text-zinc-100">No messages yet</h3>
+          <p className="mt-2 text-sm leading-relaxed text-zinc-500">
+            Start a conversation with a DJ or promoter.
+          </p>
+          <MessageDjButton
+            disabled={startingDm}
+            onClick={onMessageDj}
+            className="mt-4 w-full max-w-xs sm:w-auto"
+          />
+          {startDmError ? <p className="mt-3 text-sm text-red-400">{startDmError}</p> : null}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col items-center justify-center px-6 py-16 text-center sm:py-24">
+      <ConversationAvatar label={TARGET_DJ_USER_ID} />
+      <h2 className="mt-5 text-lg font-semibold text-zinc-100">No messages yet</h2>
+      <p className="mt-2 max-w-sm text-sm leading-relaxed text-zinc-500">
+        Start a conversation with a DJ or promoter. Your chats will appear here.
+      </p>
+      <MessageDjButton
+        disabled={startingDm}
+        onClick={onMessageDj}
+        className="mt-6 w-full max-w-xs sm:w-auto"
+      />
+      {startDmError ? <p className="mt-3 text-sm text-red-400">{startDmError}</p> : null}
+    </div>
+  );
+}
+
 export default function DmInboxPage() {
   const router = useRouter();
+  const [groupChats, setGroupChats] = useState<GroupChatListItem[]>([]);
+  const [groupChatsLoading, setGroupChatsLoading] = useState(true);
+  const [groupChatsError, setGroupChatsError] = useState<string | null>(null);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [otherUsersByConversation, setOtherUsersByConversation] = useState<Map<string, string>>(
     new Map(),
@@ -159,6 +290,24 @@ export default function DmInboxPage() {
   const [startDmError, setStartDmError] = useState<string | null>(null);
   const [startingDm, setStartingDm] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [notificationCount, setNotificationCount] = useState(0);
+
+  const loadGroupChats = useCallback(async () => {
+    setGroupChatsLoading(true);
+    setGroupChatsError(null);
+
+    try {
+      const profile = await getCurrentUserProfile();
+      const userRole = profile?.role ?? null;
+      setGroupChats(await listAccessibleGroupChats(userRole));
+    } catch (loadError) {
+      console.error("Failed to load group chats:", loadError);
+      setGroupChats([]);
+      setGroupChatsError(getGroupChatsLoadErrorMessage(loadError));
+    } finally {
+      setGroupChatsLoading(false);
+    }
+  }, []);
 
   const loadConversations = useCallback(async () => {
     setLoading(true);
@@ -233,6 +382,39 @@ export default function DmInboxPage() {
   }, []);
 
   useEffect(() => {
+    async function loadNotificationCount() {
+      try {
+        const userId = await getCurrentUserId();
+        const profile = await getCurrentUserProfile();
+        const counts = await getNavBadgeCounts(userId, profile?.role ?? null);
+        setNotificationCount(counts.total);
+      } catch (loadError) {
+        console.error("Failed to load notification count:", loadError);
+      }
+    }
+
+    void loadNotificationCount();
+
+    function handleBadgeRefresh() {
+      void loadNotificationCount();
+    }
+
+    window.addEventListener("ftc-notifications-updated", handleBadgeRefresh);
+
+    return () => {
+      window.removeEventListener("ftc-notifications-updated", handleBadgeRefresh);
+    };
+  }, []);
+
+  useEffect(() => {
+    loadGroupChats().catch((loadError: Error) => {
+      console.error("loadGroupChats failed:", loadError.message);
+      setGroupChatsError(loadError.message);
+      setGroupChatsLoading(false);
+    });
+  }, [loadGroupChats]);
+
+  useEffect(() => {
     loadConversations().catch((loadError: Error) => {
       console.error("loadConversations failed:", loadError.message);
       setError(loadError.message);
@@ -251,7 +433,33 @@ export default function DmInboxPage() {
           table: "messages",
         },
         (payload) => {
-          const newMessage = payload.new as Message;
+          const newMessage = payload.new as Message & { event_id?: string | null };
+
+          if (newMessage.event_id) {
+            setGroupChats((prev) => {
+              const index = prev.findIndex((chat) => chat.eventId === newMessage.event_id);
+
+              if (index === -1) {
+                return prev;
+              }
+
+              const updated = [...prev];
+              const chat = updated[index];
+
+              updated[index] = {
+                ...chat,
+                latestPreview: newMessage.text.trim() || null,
+                latestMessageAt: newMessage.created_at,
+              };
+
+              return updated;
+            });
+            return;
+          }
+
+          if (!newMessage.conversation_id) {
+            return;
+          }
 
           setLastMessages((prev) => {
             const next = new Map(prev);
@@ -289,106 +497,136 @@ export default function DmInboxPage() {
     }
   }
 
+  const hasDirectMessages = conversations.length > 0;
+  const showCompactDmEmpty = !loading && !hasDirectMessages && groupChats.length > 0;
+
   return (
     <OnboardingGuard>
-    <div
-      className={`mx-auto flex min-h-[100dvh] w-full max-w-2xl flex-col bg-[#070708] font-sans text-zinc-100 ${MOBILE_NAV_OFFSET_CLASS}`}
-    >
-      <AppNavigation />
-      <header className="sticky top-0 z-10 border-b border-zinc-800/80 bg-[#070708]/95 px-4 py-4 backdrop-blur-md sm:px-6 md:top-12">
-        <div>
-          <h1 className="text-xl font-semibold text-zinc-50">Direct Messages</h1>
-          <p className="mt-0.5 text-xs text-zinc-500">{currentUserId ?? "Signed in"}</p>
+      <div
+        className={`mx-auto flex min-h-[100dvh] w-full max-w-2xl flex-col bg-[#070708] font-sans text-zinc-100 ${MOBILE_NAV_OFFSET_CLASS}`}
+      >
+        <AppNavigation />
+        <header className="sticky top-0 z-10 border-b border-zinc-800/80 bg-[#070708]/95 px-4 py-4 backdrop-blur-md sm:px-6 md:top-12">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <h1 className="text-xl font-semibold text-zinc-50">Messages</h1>
+              <p className="mt-0.5 text-xs text-zinc-500">{currentUserId ?? "Signed in"}</p>
+            </div>
+            <NotificationsBellLink count={notificationCount} />
+          </div>
+
+          {hasDirectMessages ? (
+            <div className="mt-4">
+              <MessageDjButton
+                disabled={startingDm}
+                onClick={handleMessageDj}
+                className="w-full sm:w-auto"
+              />
+              {startDmError ? (
+                <p className="mt-2 text-sm text-red-400">{startDmError}</p>
+              ) : null}
+            </div>
+          ) : null}
+        </header>
+
+        <div className="flex-1">
+          <section aria-labelledby="group-chats-heading">
+            <div className="border-b border-zinc-800/80 px-4 py-3 sm:px-6">
+              <h2 id="group-chats-heading" className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                Group Chats
+              </h2>
+            </div>
+
+            {groupChatsLoading ? (
+              <p className="px-4 py-4 text-sm text-zinc-500 sm:px-6">Loading group chats...</p>
+            ) : groupChatsError ? (
+              <p className="px-4 py-4 text-sm text-red-400 sm:px-6">{groupChatsError}</p>
+            ) : groupChats.length === 0 ? (
+              <p className="px-4 py-4 text-sm text-zinc-500 sm:px-6">No group chats yet.</p>
+            ) : (
+              <ul className="divide-y divide-zinc-800/80">
+                {groupChats.map((chat) => (
+                  <GroupChatCard key={chat.eventId} chat={chat} />
+                ))}
+              </ul>
+            )}
+          </section>
+
+          <section aria-labelledby="direct-messages-heading">
+            <div className="border-b border-zinc-800/80 px-4 py-3 sm:px-6">
+              <h2
+                id="direct-messages-heading"
+                className="text-xs font-semibold uppercase tracking-wide text-zinc-500"
+              >
+                Direct Messages
+              </h2>
+            </div>
+
+            {loading ? (
+              <p className="px-4 py-4 text-sm text-zinc-500 sm:px-6">Loading conversations...</p>
+            ) : error ? (
+              <p className="px-4 py-4 text-sm text-red-400 sm:px-6">{error}</p>
+            ) : !hasDirectMessages ? (
+              <DirectMessagesEmptyState
+                startingDm={startingDm}
+                startDmError={startDmError}
+                onMessageDj={handleMessageDj}
+                compact={showCompactDmEmpty}
+              />
+            ) : (
+              <ul className="divide-y divide-zinc-800/80">
+                {conversations.map((conversation, index) => {
+                  const id =
+                    conversation.id ||
+                    conversation.conversation_id ||
+                    `conversation-${index}`;
+                  const otherUserId = otherUsersByConversation.get(id);
+                  const otherProfile = otherUserId ? userProfiles.get(otherUserId) : undefined;
+                  const displayName =
+                    otherProfile?.display_name?.trim() ||
+                    getConversationDisplayName(conversation, id, otherUserId);
+                  const lastMessage = lastMessages.get(id);
+                  const preview = lastMessage
+                    ? `${lastMessage.user_id === currentUserId ? "You: " : ""}${lastMessage.text}`
+                    : "No messages yet";
+                  const timestamp = lastMessage?.created_at ?? conversation.created_at;
+
+                  return (
+                    <li key={id}>
+                      <button
+                        type="button"
+                        onClick={() => openConversation(id)}
+                        className="flex w-full items-center gap-3 px-4 py-3.5 text-left transition active:bg-blue-600/10 hover:bg-zinc-900/70 sm:px-6 sm:py-4"
+                      >
+                        <ConversationAvatar
+                          label={displayName}
+                          avatarUrl={otherProfile?.avatar_url}
+                        />
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center justify-between gap-3">
+                            <p className="truncate text-[15px] font-semibold text-zinc-100">
+                              {displayName}
+                            </p>
+                            {timestamp ? (
+                              <time
+                                dateTime={timestamp}
+                                className="shrink-0 text-xs text-zinc-500"
+                              >
+                                {formatInboxTimestamp(timestamp)}
+                              </time>
+                            ) : null}
+                          </div>
+                          <p className="mt-1 truncate text-sm text-zinc-500">{preview}</p>
+                        </div>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </section>
         </div>
-
-        {conversations.length > 0 ? (
-          <div className="mt-4">
-            <MessageDjButton
-              disabled={startingDm}
-              onClick={handleMessageDj}
-              className="w-full sm:w-auto"
-            />
-            {startDmError ? (
-              <p className="mt-2 text-sm text-red-400">{startDmError}</p>
-            ) : null}
-          </div>
-        ) : null}
-      </header>
-
-      <div className="flex-1">
-        {loading ? (
-          <p className="px-4 py-6 text-sm text-zinc-500">Loading conversations...</p>
-        ) : error ? (
-          <p className="px-4 py-6 text-sm text-red-400">{error}</p>
-        ) : !conversations?.length ? (
-          <div className="flex flex-col items-center justify-center px-6 py-16 text-center sm:py-24">
-            <ConversationAvatar label={TARGET_DJ_USER_ID} />
-            <h2 className="mt-5 text-lg font-semibold text-zinc-100">No messages yet</h2>
-            <p className="mt-2 max-w-sm text-sm leading-relaxed text-zinc-500">
-              Start a conversation with a DJ or promoter. Your chats will appear here.
-            </p>
-            <MessageDjButton
-              disabled={startingDm}
-              onClick={handleMessageDj}
-              className="mt-6 w-full max-w-xs sm:w-auto"
-            />
-            {startDmError ? (
-              <p className="mt-3 text-sm text-red-400">{startDmError}</p>
-            ) : null}
-          </div>
-        ) : (
-          <ul className="divide-y divide-zinc-800/80">
-            {conversations.map((conversation, index) => {
-              const id =
-                conversation.id ||
-                conversation.conversation_id ||
-                `conversation-${index}`;
-              const otherUserId = otherUsersByConversation.get(id);
-              const otherProfile = otherUserId ? userProfiles.get(otherUserId) : undefined;
-              const displayName =
-                otherProfile?.display_name?.trim() ||
-                getConversationDisplayName(conversation, id, otherUserId);
-              const lastMessage = lastMessages.get(id);
-              const preview = lastMessage
-                ? `${lastMessage.user_id === currentUserId ? "You: " : ""}${lastMessage.text}`
-                : "No messages yet";
-              const timestamp = lastMessage?.created_at ?? conversation.created_at;
-
-              return (
-                <li key={id}>
-                  <button
-                    type="button"
-                    onClick={() => openConversation(id)}
-                    className="flex w-full items-center gap-3 px-4 py-3.5 text-left transition active:bg-blue-600/10 hover:bg-zinc-900/70 sm:px-6 sm:py-4"
-                  >
-                    <ConversationAvatar
-                      label={displayName}
-                      avatarUrl={otherProfile?.avatar_url}
-                    />
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center justify-between gap-3">
-                        <p className="truncate text-[15px] font-semibold text-zinc-100">
-                          {displayName}
-                        </p>
-                        {timestamp ? (
-                          <time
-                            dateTime={timestamp}
-                            className="shrink-0 text-xs text-zinc-500"
-                          >
-                            {formatInboxTimestamp(timestamp)}
-                          </time>
-                        ) : null}
-                      </div>
-                      <p className="mt-1 truncate text-sm text-zinc-500">{preview}</p>
-                    </div>
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        )}
       </div>
-    </div>
     </OnboardingGuard>
   );
 }

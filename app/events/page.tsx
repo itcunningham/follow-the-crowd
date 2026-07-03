@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import AppNavigation, { MOBILE_NAV_OFFSET_CLASS } from "@/app/components/AppNavigation";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
+import PlannerEventsSubNav from "@/app/components/PlannerEventsSubNav";
 import { BookingDateField, BookingSetTimeRangeField } from "@/app/components/BookingDateTimeFields";
 import { BookingRateField } from "@/app/components/BookingRateField";
 import { listBookingPlans, type BookingPlan } from "@/lib/bookingPlans";
@@ -68,6 +69,7 @@ function EventStatusBadge({ status }: { status: EventStatus }) {
 
 export default function EventsPage() {
   const router = useRouter();
+  const handledCreateParamsRef = useRef<string | null>(null);
   const [role, setRole] = useState<UserRole | null>(null);
   const [loadingAccess, setLoadingAccess] = useState(true);
   const [events, setEvents] = useState<EventWithLineupStats[]>([]);
@@ -80,6 +82,7 @@ export default function EventsPage() {
   const [form, setForm] = useState<EventInput>(emptyEventForm);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [eventDateOverride, setEventDateOverride] = useState<string | null>(null);
 
   const isPlanner = canManageEvents(role);
 
@@ -120,10 +123,56 @@ export default function EventsPage() {
     loadEvents();
   }, [loadingAccess, loadEvents]);
 
-  async function openCreateFlow() {
+  useEffect(() => {
+    if (loadingAccess || !isPlanner) {
+      return;
+    }
+
+    const params = new URLSearchParams(window.location.search);
+    const createParam = params.get("create");
+    const eventDateParam = params.get("eventDate") ?? "";
+
+    if (!createParam) {
+      return;
+    }
+
+    const paramKey = `${createParam}:${eventDateParam}`;
+
+    if (handledCreateParamsRef.current === paramKey) {
+      return;
+    }
+
+    handledCreateParamsRef.current = paramKey;
+
+    if (createParam === "event") {
+      void openCreateFlow({ eventDate: eventDateParam, initialStep: "source" }).finally(() => {
+        router.replace("/events");
+      });
+      return;
+    }
+
+    if (createParam === "custom") {
+      void openCreateFlow({ eventDate: eventDateParam, initialStep: "form" }).finally(() => {
+        router.replace("/events");
+      });
+      return;
+    }
+
+    if (createParam === "plan") {
+      void openCreateFlow({ eventDate: eventDateParam, initialStep: "pick-plan" }).finally(() => {
+        router.replace("/events");
+      });
+    }
+  }, [loadingAccess, isPlanner, router]);
+
+  async function openCreateFlow(options?: { eventDate?: string; initialStep?: CreateStep }) {
     setCreateOpen(true);
-    setCreateStep("source");
-    setForm(emptyEventForm);
+    setCreateStep(options?.initialStep ?? "source");
+    setForm({
+      ...emptyEventForm,
+      eventDate: options?.eventDate ?? "",
+    });
+    setEventDateOverride(options?.eventDate ?? null);
     setSelectedPlanId(null);
     setError(null);
     setLoadingPlans(true);
@@ -148,12 +197,17 @@ export default function EventsPage() {
     setCreateStep("source");
     setForm(emptyEventForm);
     setSelectedPlanId(null);
+    setEventDateOverride(null);
     setError(null);
   }
 
   function handleSelectPlan(plan: BookingPlan) {
+    const input = eventInputFromBookingPlan(plan);
     setSelectedPlanId(plan.id);
-    setForm(eventInputFromBookingPlan(plan));
+    setForm({
+      ...input,
+      eventDate: eventDateOverride ?? input.eventDate,
+    });
     setCreateStep("form");
     setError(null);
   }
@@ -217,13 +271,16 @@ export default function EventsPage() {
             {isPlanner && !createOpen ? (
               <button
                 type="button"
-                onClick={openCreateFlow}
+                onClick={() => {
+                  void openCreateFlow();
+                }}
                 className="shrink-0 rounded-xl border border-blue-500/45 bg-blue-600/20 px-4 py-2.5 text-sm font-semibold uppercase tracking-wide text-blue-100 shadow-[0_0_20px_rgba(59,130,246,0.22)] transition hover:border-blue-400/60 hover:bg-blue-600/30"
               >
                 Create event
               </button>
             ) : null}
           </div>
+          {isPlanner ? <PlannerEventsSubNav /> : null}
         </header>
 
         <div className="px-4 py-4 sm:px-6">
@@ -259,7 +316,10 @@ export default function EventsPage() {
                   <button
                     type="button"
                     onClick={() => {
-                      setForm(emptyEventForm);
+                      setForm({
+                        ...emptyEventForm,
+                        eventDate: eventDateOverride ?? "",
+                      });
                       setSelectedPlanId(null);
                       setCreateStep("form");
                       setError(null);
@@ -409,7 +469,9 @@ export default function EventsPage() {
               {isPlanner && !createOpen ? (
                 <button
                   type="button"
-                  onClick={openCreateFlow}
+                  onClick={() => {
+                  void openCreateFlow();
+                }}
                   className="mt-6 rounded-xl border border-blue-500/45 bg-blue-600/20 px-5 py-3 text-sm font-semibold uppercase tracking-wide text-blue-100 shadow-[0_0_20px_rgba(59,130,246,0.22)] transition hover:border-blue-400/60 hover:bg-blue-600/30"
                 >
                   Create event

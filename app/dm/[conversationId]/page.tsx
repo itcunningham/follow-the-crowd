@@ -310,7 +310,7 @@ export default function DmChatPage() {
             <h1 className="truncate text-base font-semibold text-zinc-50">
               {conversationTitle}
             </h1>
-            <p className="truncate text-xs text-zinc-500">Direct message</p>
+            <p className="truncate text-xs text-zinc-500">Direct Messages</p>
           </div>
         </div>
       </header>
@@ -376,6 +376,7 @@ export default function DmChatPage() {
                       <div>
                         <BookingRequestCard
                           booking={resolvedBooking}
+                          currentUserId={currentUserId}
                           canRespond={canRespond && Boolean(resolvedBooking.id)}
                           responding={respondingBookingId === resolvedBooking.id}
                           onAccept={() =>

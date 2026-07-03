@@ -22,6 +22,8 @@ import {
   isPersistedRunSheetRowId,
   loadEventRunSheet,
   logRunSheetSaveError,
+  mapRunSheetRowsFromDb,
+  mergeAcceptedDjsIntoRunSheetRows,
   moveRunSheetRow,
   reorderRunSheetRows,
   saveEventRunSheet,
@@ -49,28 +51,6 @@ function getFixedField(key: (typeof FIXED_FIELDS)[number]["key"]) {
   }
 
   return field;
-}
-
-function mapRowsFromDb(
-  rows: Array<{
-    id: string;
-    sort_order: number;
-    artist_name: string;
-    start_time: string;
-    finish_time: string;
-    stage_area: string;
-    notes: string;
-  }>,
-): RunSheetRowInput[] {
-  return rows.map((row) => ({
-    id: row.id,
-    sort_order: row.sort_order,
-    artist_name: row.artist_name,
-    start_time: row.start_time,
-    finish_time: row.finish_time,
-    stage_area: row.stage_area,
-    notes: row.notes,
-  }));
 }
 
 const iconButtonBaseClassName =
@@ -486,6 +466,43 @@ export default function EventRunSheetSection({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const rowsRef = useRef<RunSheetRowInput[]>([]);
+
+  rowsRef.current = rows;
+
+  const syncAcceptedDjs = useCallback(
+    async (currentRows: RunSheetRowInput[]) => {
+      const { rows: mergedRows, addedCount } = mergeAcceptedDjsIntoRunSheetRows(
+        currentRows,
+        lineup,
+        profiles,
+      );
+
+      if (addedCount === 0) {
+        return mergedRows;
+      }
+
+      if (!canEdit) {
+        return mergedRows;
+      }
+
+      try {
+        // Auto-persist inserts only; existing rows are never modified by this merge.
+        const saved = await saveEventRunSheet(eventId, {
+          rows: mergedRows,
+          deletedRowIds: [],
+        });
+        return reorderRunSheetRows(mapRunSheetRowsFromDb(saved.rows));
+      } catch (autoSaveError) {
+        console.error(
+          "Accepted DJ auto-add save failed; rows stay local until Save changes:",
+          autoSaveError,
+        );
+        return mergedRows;
+      }
+    },
+    [canEdit, eventId, lineup, profiles],
+  );
 
   const loadRunSheet = useCallback(async () => {
     setLoading(true);
@@ -493,7 +510,9 @@ export default function EventRunSheetSection({
 
     try {
       const data = await loadEventRunSheet(eventId);
-      setRows(reorderRunSheetRows(mapRowsFromDb(data.rows)));
+      const loadedRows = reorderRunSheetRows(mapRunSheetRowsFromDb(data.rows));
+      const mergedRows = await syncAcceptedDjs(loadedRows);
+      setRows(mergedRows);
       setDeletedRowIds([]);
     } catch (loadError) {
       console.error("Failed to load run sheet:", loadError);
@@ -502,11 +521,32 @@ export default function EventRunSheetSection({
     } finally {
       setLoading(false);
     }
-  }, [eventId]);
+  }, [eventId, syncAcceptedDjs]);
 
   useEffect(() => {
     void loadRunSheet();
   }, [loadRunSheet]);
+
+  useEffect(() => {
+    if (loading) {
+      return;
+    }
+
+    void (async () => {
+      const { addedCount } = mergeAcceptedDjsIntoRunSheetRows(
+        rowsRef.current,
+        lineup,
+        profiles,
+      );
+
+      if (addedCount === 0) {
+        return;
+      }
+
+      const nextRows = await syncAcceptedDjs(rowsRef.current);
+      setRows(nextRows);
+    })();
+  }, [lineup, profiles, loading, syncAcceptedDjs]);
 
   function updateRow(rowId: string, patch: Partial<RunSheetRowInput>) {
     setRows((prev) => prev.map((row) => (row.id === rowId ? { ...row, ...patch } : row)));
@@ -529,39 +569,6 @@ export default function EventRunSheetSection({
     setRows((prev) => moveRunSheetRow(prev, rowId, direction));
   }
 
-  function handleAddAcceptedDjs() {
-    const acceptedBookings = lineup.filter((booking) => booking.status === "accepted");
-    const existingNames = new Set(
-      rows.map((row) => row.artist_name.trim().toLowerCase()).filter(Boolean),
-    );
-
-    const additions = acceptedBookings
-      .map((booking) => {
-        const profile = profiles.get(booking.recipient_id);
-        const name = profile?.display_name?.trim() || "DJ";
-        return name;
-      })
-      .filter((name) => {
-        const key = name.toLowerCase();
-        if (existingNames.has(key)) {
-          return false;
-        }
-
-        existingNames.add(key);
-        return true;
-      })
-      .map((name, index) => createEmptyRunSheetRow(rows.length + index, name));
-
-    if (additions.length === 0) {
-      setError("No new accepted DJs to add.");
-      return;
-    }
-
-    setRows((prev) => reorderRunSheetRows([...prev, ...additions]));
-    setError(null);
-    setSuccessMessage(null);
-  }
-
   async function handleSave() {
     setSaving(true);
     setError(null);
@@ -573,7 +580,7 @@ export default function EventRunSheetSection({
         deletedRowIds,
       });
 
-      setRows(reorderRunSheetRows(mapRowsFromDb(saved.rows)));
+      setRows(reorderRunSheetRows(mapRunSheetRowsFromDb(saved.rows)));
       setDeletedRowIds([]);
 
       const message = "Run sheet saved";
@@ -617,13 +624,6 @@ export default function EventRunSheetSection({
               className="rounded-lg border border-zinc-700 bg-zinc-900/80 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-zinc-300 transition hover:border-blue-500/35 hover:text-blue-300"
             >
               Add row
-            </button>
-            <button
-              type="button"
-              onClick={handleAddAcceptedDjs}
-              className="rounded-lg border border-zinc-700 bg-zinc-900/80 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-zinc-300 transition hover:border-blue-500/35 hover:text-blue-300"
-            >
-              Add accepted DJs
             </button>
             <button
               type="button"

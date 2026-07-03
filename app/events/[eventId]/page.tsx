@@ -7,9 +7,14 @@ import AppNavigation, { MOBILE_NAV_OFFSET_CLASS } from "@/app/components/AppNavi
 import EventRunSheetSection from "@/app/components/EventRunSheetSection";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
 import ProfileAvatar from "@/app/components/ProfileAvatar";
+import DjBookingAvailabilityBadge from "@/app/components/DjBookingAvailabilityBadge";
 import { BookingDateField, BookingSetTimeRangeField } from "@/app/components/BookingDateTimeFields";
 import { BookingRateField } from "@/app/components/BookingRateField";
 import { formatRateDisplay } from "@/lib/bookingRate";
+import {
+  getPlannerDjAvailabilityHints,
+  type DjPlannerAvailabilityHint,
+} from "@/lib/djAvailability";
 import {
   formatBookingStatusLabel,
   getEventLineupStats,
@@ -114,6 +119,9 @@ export default function EventDetailPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [loadingDjs, setLoadingDjs] = useState(false);
   const [sending, setSending] = useState(false);
+  const [djAvailabilityHints, setDjAvailabilityHints] = useState<
+    Map<string, DjPlannerAvailabilityHint>
+  >(new Map());
 
   const isOwner = Boolean(event && currentUserId && event.owner_id === currentUserId);
   const isPlanner = canManageEvents(role);
@@ -278,7 +286,18 @@ export default function EventDetailPage() {
     try {
       const bookableDjs = await listBookableDjs();
       const alreadyInvited = new Set(lineup.map((booking) => booking.recipient_id));
-      setDjs(bookableDjs.filter((dj) => !alreadyInvited.has(dj.user_id)));
+      const availableDjs = bookableDjs.filter((dj) => !alreadyInvited.has(dj.user_id));
+      setDjs(availableDjs);
+
+      if (event?.event_date?.trim()) {
+        const hints = await getPlannerDjAvailabilityHints(
+          availableDjs.map((dj) => dj.user_id),
+          event.event_date,
+        );
+        setDjAvailabilityHints(hints);
+      } else {
+        setDjAvailabilityHints(new Map());
+      }
     } catch (loadError) {
       console.error("Failed to load DJs for event bookings:", loadError);
       setError(loadError instanceof Error ? loadError.message : "Failed to load DJs");
@@ -396,7 +415,7 @@ export default function EventDetailPage() {
                   href={`/events/${event.id}/chat`}
                   className="rounded-lg border border-blue-500/35 bg-blue-600/10 px-3 py-1.5 text-center text-xs font-semibold uppercase tracking-wide text-blue-300 transition hover:border-blue-400/50 hover:bg-blue-600/20"
                 >
-                  Open crew chat
+                  Group chat
                 </Link>
                 {isOwner && isPlanner ? (
                   <>
@@ -563,6 +582,7 @@ export default function EventDetailPage() {
                   {filteredDjs.map((dj) => {
                     const selected = selectedDjIds.includes(dj.user_id);
                     const displayName = dj.display_name?.trim() || "DJ";
+                    const availabilityHint = djAvailabilityHints.get(dj.user_id);
 
                     return (
                       <li key={dj.user_id}>
@@ -580,8 +600,13 @@ export default function EventDetailPage() {
                             avatarUrl={dj.avatar_url}
                             size="sm"
                           />
-                          <div className="min-w-0">
-                            <p className="font-semibold text-zinc-50">{displayName}</p>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <p className="font-semibold text-zinc-50">{displayName}</p>
+                              {availabilityHint ? (
+                                <DjBookingAvailabilityBadge hint={availabilityHint} />
+                              ) : null}
+                            </div>
                             {dj.genre?.trim() ? (
                               <p className="text-sm text-zinc-500">{dj.genre}</p>
                             ) : null}

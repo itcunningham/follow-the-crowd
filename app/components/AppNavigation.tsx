@@ -4,37 +4,40 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { getNavBadgeCounts, type NavBadgeCounts } from "@/lib/notifications";
-import { hasDjEventInvites } from "@/lib/events";
+import { isMessagesInboxPath } from "@/lib/groupChats";
+import { isGigsAreaPath, isPlannerEventsAreaPath } from "@/lib/plannerEventsNav";
 import { supabase } from "@/lib/supabaseClient";
-import { getCurrentUserId, getCurrentUserProfile, type UserRole } from "@/lib/user/currentUser";
-const NOTIFICATIONS_PATH = "/notifications";
+import {
+  getCurrentUserId,
+  getCurrentUserProfile,
+  PROFILE_SETUP_PATH,
+  SETTINGS_PATH,
+  type UserRole,
+} from "@/lib/user/currentUser";
 
 type NavItem = {
   href: string;
   label: string;
   mobileLabel?: string;
   showIconOnMobile?: boolean;
-  showBellIcon?: boolean;
   badgeKey?: keyof NavBadgeCounts;
   isPrimary: boolean;
   isActive: (pathname: string) => boolean;
 };
 
-function getNavItems(
-  role: UserRole | null,
-  currentUserId: string | null,
-  showEventsForDj: boolean,
-): NavItem[] {
-  const eventAi: NavItem = {
+function getNavItems(role: UserRole, currentUserId: string | null): NavItem[] {
+  const home: NavItem = {
     href: "/",
-    label: "Event AI",
-    isPrimary: role === "promoter" || role === "both",
+    label: "Home",
+    mobileLabel: "Home",
+    isPrimary: true,
     isActive: (pathname) => pathname === "/",
   };
 
   const discover: NavItem = {
     href: "/discover",
     label: "Discover",
+    mobileLabel: "Discover",
     isPrimary: true,
     isActive: (pathname) => pathname === "/discover" || pathname.startsWith("/discover/"),
   };
@@ -42,100 +45,67 @@ function getNavItems(
   const events: NavItem = {
     href: "/events",
     label: "Events",
+    mobileLabel: "Events",
     isPrimary: true,
-    isActive: (pathname) => pathname === "/events" || pathname.startsWith("/events/"),
+    isActive: (pathname) => isPlannerEventsAreaPath(pathname),
   };
 
-  const bookingPlans: NavItem = {
-    href: "/booking-plans",
-    label: "Booking Plans",
-    mobileLabel: "Plans",
-    isPrimary: true,
-    isActive: (pathname) =>
-      pathname === "/booking-plans" || pathname.startsWith("/booking-plans/"),
-  };
-
-  const bookings: NavItem = {
+  const gigs: NavItem = {
     href: "/bookings",
-    label: "Bookings",
-    mobileLabel: "Book",
+    label: "Gigs",
+    mobileLabel: "Gigs",
     badgeKey: "bookings",
     isPrimary: true,
-    isActive: (pathname) => pathname === "/bookings" || pathname.startsWith("/bookings/"),
+    isActive: (pathname) => isGigsAreaPath(pathname),
   };
 
   const messages: NavItem = {
     href: "/dm",
     label: "Messages",
+    mobileLabel: "Messages",
     badgeKey: "messages",
-    isPrimary: role === "dj" || role === "both",
-    isActive: (pathname) => pathname === "/dm" || pathname.startsWith("/dm/"),
-  };
-
-  const notifications: NavItem = {
-    href: NOTIFICATIONS_PATH,
-    label: "Notifications",
-    mobileLabel: "Alerts",
-    showBellIcon: true,
-    badgeKey: "total",
     isPrimary: true,
-    isActive: (pathname) =>
-      pathname === NOTIFICATIONS_PATH || pathname.startsWith(`${NOTIFICATIONS_PATH}/`),
+    isActive: (pathname) => isMessagesInboxPath(pathname),
   };
 
-  const myProfile: NavItem = {
-    href: currentUserId ? `/profile/${currentUserId}` : "/profile/setup",
-    label: "My Profile",
+  const profile: NavItem = {
+    href: currentUserId ? `/profile/${currentUserId}` : PROFILE_SETUP_PATH,
+    label: "Profile",
     mobileLabel: "Profile",
     showIconOnMobile: true,
-    isPrimary: false,
+    isPrimary: true,
     isActive: (pathname) =>
       currentUserId
-        ? pathname === `/profile/${currentUserId}` || pathname.startsWith(`/profile/${currentUserId}/`)
-        : pathname === "/profile/setup",
+        ? pathname === `/profile/${currentUserId}` ||
+          pathname.startsWith(`/profile/${currentUserId}/`) ||
+          pathname === SETTINGS_PATH ||
+          pathname.startsWith(`${SETTINGS_PATH}/`)
+        : pathname === PROFILE_SETUP_PATH,
   };
 
   if (role === "dj") {
-    const items = [messages, discover, bookings, myProfile];
-
-    if (showEventsForDj) {
-      items.splice(2, 0, events);
-    }
-
-    return items;
+    return [discover, gigs, messages, profile];
   }
 
-  if (role === "promoter") {
-    return [eventAi, discover, events, bookingPlans, bookings, messages, notifications, myProfile];
-  }
-
-  return [eventAi, discover, events, bookingPlans, bookings, messages, notifications, myProfile];
+  return [home, discover, events, messages, profile];
 }
 
 export const MOBILE_NAV_OFFSET_CLASS = "pb-[calc(3.5rem+env(safe-area-inset-bottom))] md:pb-0";
 
-function navLinkClassName(
-  isActive: boolean,
-  variant: "desktop" | "mobile",
-  isPrimary: boolean,
-) {
+function navLinkClassName(isActive: boolean, variant: "desktop" | "mobile") {
   if (variant === "desktop") {
     if (isActive) {
-      return "relative rounded-lg px-3 py-1.5 text-sm font-semibold text-blue-300 shadow-[0_0_18px_rgba(59,130,246,0.14)] after:absolute after:inset-x-2 after:bottom-0 after:h-0.5 after:rounded-full after:bg-blue-500 after:shadow-[0_0_10px_rgba(59,130,246,0.55)]";
+      return "relative rounded-lg px-2.5 py-1.5 text-sm font-semibold text-blue-300 shadow-[0_0_18px_rgba(59,130,246,0.14)] after:absolute after:inset-x-2 after:bottom-0 after:h-0.5 after:rounded-full after:bg-blue-500 after:shadow-[0_0_10px_rgba(59,130,246,0.55)]";
     }
 
-    return isPrimary
-      ? "relative rounded-lg px-3 py-1.5 text-sm font-semibold text-zinc-300 transition hover:text-blue-400"
-      : "relative rounded-lg px-3 py-1.5 text-sm font-medium text-zinc-600 transition hover:text-blue-400";
+    return "relative rounded-lg px-2.5 py-1.5 text-sm font-semibold text-zinc-300 transition hover:text-blue-400";
   }
 
   if (isActive) {
-    return "relative flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 px-1 py-2 text-[10px] font-semibold text-blue-400";
+    return "relative flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 px-0.5 py-2 text-[10px] font-semibold text-blue-400";
   }
 
-  return isPrimary
-    ? "relative flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 px-1 py-2 text-[10px] font-semibold text-zinc-400 transition hover:text-blue-300"
-    : "relative flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 px-1 py-2 text-[10px] font-medium text-zinc-600 transition hover:text-blue-300";
+  return "relative flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 px-0.5 py-2 text-[10px] font-semibold text-zinc-400 transition hover:text-blue-300";
 }
 
 function ProfileNavIcon({ active }: { active: boolean }) {
@@ -150,25 +120,6 @@ function ProfileNavIcon({ active }: { active: boolean }) {
     >
       <circle cx="12" cy="8" r="3.5" />
       <path d="M5 19.5c1.2-3 3.4-4.5 7-4.5s5.8 1.5 7 4.5" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function BellNavIcon({ active, withDot }: { active: boolean; withDot?: boolean }) {
-  return (
-    <svg
-      aria-hidden="true"
-      viewBox="0 0 24 24"
-      className={`h-4 w-4 shrink-0 ${active ? "text-blue-400" : "text-zinc-400"}`}
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.75"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
-      <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
-      {withDot ? <circle cx="18" cy="5" r="2.5" fill="currentColor" stroke="none" /> : null}
     </svg>
   );
 }
@@ -196,33 +147,10 @@ function MobileNavBadge({ count }: { count: number }) {
   return (
     <span
       aria-label={`${count} unread`}
-      className="absolute right-1 top-1 z-10 flex h-3.5 min-w-3.5 items-center justify-center rounded-full border border-blue-400/50 bg-blue-600 px-0.5 text-[9px] font-bold leading-none text-white shadow-[0_0_10px_rgba(59,130,246,0.45)]"
+      className="absolute right-0.5 top-0.5 z-10 flex h-3.5 min-w-3.5 items-center justify-center rounded-full border border-blue-400/50 bg-blue-600 px-0.5 text-[9px] font-bold leading-none text-white shadow-[0_0_10px_rgba(59,130,246,0.45)]"
     >
       {count > 9 ? "9+" : count}
     </span>
-  );
-}
-
-function MobileNotificationsBellLink({
-  count,
-  active,
-}: {
-  count: number;
-  active: boolean;
-}) {
-  const className = active
-    ? "relative flex h-11 w-11 items-center justify-center rounded-full bg-blue-600/15 text-blue-300 shadow-[0_0_16px_rgba(59,130,246,0.15)]"
-    : "relative flex h-11 w-11 items-center justify-center rounded-full bg-[#070708]/95 text-zinc-400 shadow-[0_8px_24px_rgba(0,0,0,0.35)] transition hover:text-blue-400";
-
-  return (
-    <Link
-      href={NOTIFICATIONS_PATH}
-      aria-label={count > 0 ? `Notifications, ${count} unread` : "Notifications"}
-      className={className}
-    >
-      <BellNavIcon active={active} withDot={count > 0} />
-      <MobileNavBadge count={count} />
-    </Link>
   );
 }
 
@@ -234,55 +162,108 @@ function getBadgeCount(item: NavItem, badgeCounts: NavBadgeCounts): number {
   return badgeCounts[item.badgeKey];
 }
 
+function NavSkeleton({ variant }: { variant: "desktop" | "mobile" }) {
+  const count = variant === "desktop" ? 5 : 4;
+
+  if (variant === "desktop") {
+    return (
+      <>
+        {Array.from({ length: count }).map((_, index) => (
+          <span
+            key={index}
+            aria-hidden="true"
+            className="h-4 w-14 animate-pulse rounded-md bg-zinc-800/90"
+          />
+        ))}
+      </>
+    );
+  }
+
+  return (
+    <>
+      {Array.from({ length: count }).map((_, index) => (
+        <span
+          key={index}
+          aria-hidden="true"
+          className="mx-auto flex min-w-0 flex-1 flex-col items-center justify-center gap-1 px-0.5 py-2"
+        >
+          <span className="h-5 w-5 animate-pulse rounded-full bg-zinc-800/90" />
+          <span className="h-2 w-10 animate-pulse rounded bg-zinc-800/90" />
+        </span>
+      ))}
+    </>
+  );
+}
+
 export default function AppNavigation() {
   const pathname = usePathname();
   const [role, setRole] = useState<UserRole | null>(null);
+  const [navReady, setNavReady] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  const [showEventsForDj, setShowEventsForDj] = useState(false);
   const [badgeCounts, setBadgeCounts] = useState<NavBadgeCounts>({
     messages: 0,
     bookings: 0,
     total: 0,
   });
 
-  const loadBadgeCounts = useCallback(async () => {
+  const loadNavigation = useCallback(async () => {
     try {
       const userId = await getCurrentUserId();
-      setCurrentUserId(userId);
-
       const profile = await getCurrentUserProfile();
       const userRole = profile?.role ?? null;
-      setRole(userRole);
 
-      if (userRole === "dj") {
-        const invited = await hasDjEventInvites(userId);
-        setShowEventsForDj(invited);
-      } else {
-        setShowEventsForDj(false);
+      setCurrentUserId(userId);
+      setRole(userRole);
+      setNavReady(Boolean(userRole));
+
+      if (!userRole) {
+        return;
       }
 
       const counts = await getNavBadgeCounts(userId, userRole);
       setBadgeCounts(counts);
     } catch (error) {
-      console.error("[AppNavigation] Failed to load navigation badges:", error);
+      console.error("[AppNavigation] Failed to load navigation:", error);
     }
   }, []);
 
-  useEffect(() => {
-    loadBadgeCounts();
-
-    function handleBadgeRefresh() {
-      loadBadgeCounts();
+  const refreshBadgeCounts = useCallback(async () => {
+    if (!role) {
+      return;
     }
 
-    window.addEventListener("ftc-notifications-updated", handleBadgeRefresh);
-    window.addEventListener("ftc-role-updated", handleBadgeRefresh);
+    try {
+      const userId = await getCurrentUserId();
+      const counts = await getNavBadgeCounts(userId, role);
+      setBadgeCounts(counts);
+    } catch (error) {
+      console.error("[AppNavigation] Failed to refresh navigation badges:", error);
+    }
+  }, [role]);
+
+  useEffect(() => {
+    void loadNavigation();
+
+    function handleNavigationRefresh() {
+      void loadNavigation();
+    }
+
+    window.addEventListener("ftc-notifications-updated", handleNavigationRefresh);
+    window.addEventListener("ftc-role-updated", handleNavigationRefresh);
 
     return () => {
-      window.removeEventListener("ftc-notifications-updated", handleBadgeRefresh);
-      window.removeEventListener("ftc-role-updated", handleBadgeRefresh);
+      window.removeEventListener("ftc-notifications-updated", handleNavigationRefresh);
+      window.removeEventListener("ftc-role-updated", handleNavigationRefresh);
     };
-  }, [loadBadgeCounts, pathname]);
+  }, [loadNavigation]);
+
+  useEffect(() => {
+    if (!navReady) {
+      return;
+    }
+
+    void refreshBadgeCounts();
+  }, [pathname, navReady, refreshBadgeCounts]);
 
   useEffect(() => {
     if (!currentUserId) {
@@ -300,7 +281,7 @@ export default function AppNavigation() {
           filter: `user_id=eq.${currentUserId}`,
         },
         () => {
-          loadBadgeCounts();
+          void refreshBadgeCounts();
         },
       )
       .subscribe();
@@ -308,45 +289,38 @@ export default function AppNavigation() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [currentUserId, loadBadgeCounts]);
+  }, [currentUserId, refreshBadgeCounts]);
 
-  const navItems = getNavItems(role, currentUserId, showEventsForDj);
-  const notificationsActive =
-    pathname === NOTIFICATIONS_PATH || pathname.startsWith(`${NOTIFICATIONS_PATH}/`);
+  const navItems = navReady && role ? getNavItems(role, currentUserId) : [];
 
   return (
     <>
-      {!notificationsActive ? (
-        <div className="fixed right-3 top-3 z-50 md:hidden">
-          <MobileNotificationsBellLink count={badgeCounts.total} active={notificationsActive} />
-        </div>
-      ) : null}
-
       <nav
         aria-label="Main navigation"
         className="sticky top-0 z-40 hidden border-b border-zinc-800/80 bg-[#070708]/95 backdrop-blur-md md:block"
       >
-        <div className="mx-auto flex h-12 max-w-6xl items-center gap-1 px-4 sm:gap-2 sm:px-6">
-          {navItems.map((item) => {
-            const isActive = item.isActive(pathname);
-            const badgeCount = getBadgeCount(item, badgeCounts);
+        <div className="mx-auto flex h-12 max-w-6xl items-center justify-between gap-1 px-4 sm:px-6">
+          <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+            {!navReady ? (
+              <NavSkeleton variant="desktop" />
+            ) : (
+              navItems.map((item) => {
+                const isActive = item.isActive(pathname);
+                const badgeCount = getBadgeCount(item, badgeCounts);
 
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={navLinkClassName(isActive, "desktop", item.isPrimary)}
-              >
-                <span className="flex items-center gap-1.5">
-                  {item.showBellIcon ? (
-                    <BellNavIcon active={isActive} withDot={badgeCount > 0} />
-                  ) : null}
-                  {item.label}
-                </span>
-                <NavBadge count={badgeCount} />
-              </Link>
-            );
-          })}
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={navLinkClassName(isActive, "desktop")}
+                  >
+                    {item.label}
+                    <NavBadge count={badgeCount} />
+                  </Link>
+                );
+              })
+            )}
+          </div>
         </div>
       </nav>
 
@@ -354,26 +328,29 @@ export default function AppNavigation() {
         aria-label="Mobile navigation"
         className="fixed inset-x-0 bottom-0 z-40 border-t border-zinc-800/80 bg-[#070708]/95 backdrop-blur-md md:hidden"
       >
-        <div className="mx-auto flex max-w-2xl items-stretch px-1 pb-[env(safe-area-inset-bottom)]">
-          {navItems.map((item) => {
-            const isActive = item.isActive(pathname);
-            const mobileLabel = item.mobileLabel ?? item.label;
-            const badgeCount = getBadgeCount(item, badgeCounts);
+        <div className="mx-auto flex max-w-2xl items-stretch px-0.5 pb-[env(safe-area-inset-bottom)]">
+          {!navReady ? (
+            <NavSkeleton variant="mobile" />
+          ) : (
+            navItems.map((item) => {
+              const isActive = item.isActive(pathname);
+              const mobileLabel = item.mobileLabel ?? item.label;
+              const badgeCount = getBadgeCount(item, badgeCounts);
 
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                aria-label={item.label}
-                className={navLinkClassName(isActive, "mobile", item.isPrimary)}
-              >
-                {item.showIconOnMobile ? <ProfileNavIcon active={isActive} /> : null}
-                {item.showBellIcon ? <BellNavIcon active={isActive} withDot={badgeCount > 0} /> : null}
-                <span className="max-w-full truncate">{mobileLabel}</span>
-                <MobileNavBadge count={badgeCount} />
-              </Link>
-            );
-          })}
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  aria-label={item.label}
+                  className={navLinkClassName(isActive, "mobile")}
+                >
+                  {item.showIconOnMobile ? <ProfileNavIcon active={isActive} /> : null}
+                  <span className="max-w-full truncate">{mobileLabel}</span>
+                  <MobileNavBadge count={badgeCount} />
+                </Link>
+              );
+            })
+          )}
         </div>
       </nav>
     </>

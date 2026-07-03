@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabaseClient";
+import { parseEventDate } from "@/lib/bookingDateTime";
 import { createNotification } from "@/lib/notifications";
 import { formatRateDisplay, normalizeStoredRate } from "@/lib/bookingRate";
 import { startDm } from "@/lib/startDm";
@@ -292,6 +293,54 @@ export async function listReceivedBookingRequests(): Promise<BookingRequest[]> {
   return (data ?? []) as BookingRequest[];
 }
 
+export function resolveBookingDateKey(eventDate: string): string | null {
+  const parsed = parseEventDate(eventDate);
+  return parsed.isoDate || null;
+}
+
+export function getBookingRequestHref(booking: BookingRequest): string {
+  if (booking.event_id) {
+    return `/events/${booking.event_id}`;
+  }
+
+  return `/dm/${booking.conversation_id}`;
+}
+
+export async function listMyActiveReceivedBookings(): Promise<BookingRequest[]> {
+  const bookings = await listReceivedBookingRequests();
+
+  return bookings.filter(
+    (booking) => booking.status === "pending" || booking.status === "accepted",
+  );
+}
+
+export function groupActiveBookingsByDate(
+  bookings: BookingRequest[],
+): Map<string, BookingRequest[]> {
+  const grouped = new Map<string, BookingRequest[]>();
+
+  for (const booking of bookings) {
+    const dateKey = resolveBookingDateKey(booking.event_date);
+
+    if (!dateKey) {
+      continue;
+    }
+
+    const existing = grouped.get(dateKey) ?? [];
+    existing.push(booking);
+    grouped.set(dateKey, existing);
+  }
+
+  for (const [dateKey, dayBookings] of grouped) {
+    grouped.set(
+      dateKey,
+      dayBookings.sort((left, right) => left.event_name.localeCompare(right.event_name)),
+    );
+  }
+
+  return grouped;
+}
+
 function getBookingGroupKey(booking: BookingRequest): string {
   const createdMinute = booking.created_at.slice(0, 16);
 
@@ -365,6 +414,42 @@ export function filterBookingGroups(
 
 export function formatBookingStatusLabel(status: BookingRequestStatus): string {
   return formatStatusLabel(status);
+}
+
+export type BookingGroupChatAccess =
+  | { kind: "open"; href: string }
+  | { kind: "locked_pending" }
+  | { kind: "hidden" };
+
+export function getBookingGroupChatAccess(
+  booking: BookingRequest,
+  currentUserId: string | null,
+): BookingGroupChatAccess | null {
+  if (!booking.event_id || !currentUserId) {
+    return null;
+  }
+
+  const href = `/events/${booking.event_id}/chat`;
+  const isPlanner = booking.sender_id === currentUserId;
+  const isDj = booking.recipient_id === currentUserId;
+
+  if (isPlanner) {
+    return { kind: "open", href };
+  }
+
+  if (isDj) {
+    if (booking.status === "accepted") {
+      return { kind: "open", href };
+    }
+
+    if (booking.status === "pending") {
+      return { kind: "locked_pending" };
+    }
+
+    return { kind: "hidden" };
+  }
+
+  return null;
 }
 
 export async function sendBookingRequestsToDjs(

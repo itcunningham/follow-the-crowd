@@ -1,4 +1,6 @@
+import type { BookingRequest } from "@/lib/bookingRequests";
 import { supabase } from "@/lib/supabaseClient";
+import type { BookingRecipientProfile } from "@/lib/user/currentUser";
 import { getCurrentUserId } from "@/lib/user/currentUser";
 
 export type RunSheetRow = {
@@ -12,6 +14,7 @@ export type RunSheetRow = {
   finish_time: string;
   stage_area: string;
   notes: string;
+  custom_data?: unknown;
 };
 
 export type RunSheetRowInput = {
@@ -22,6 +25,7 @@ export type RunSheetRowInput = {
   finish_time: string;
   stage_area: string;
   notes: string;
+  booking_recipient_id?: string;
 };
 
 export type RunSheetSavePayload = {
@@ -34,7 +38,7 @@ export type EventRunSheetData = {
 };
 
 const ROW_FIELDS =
-  "id, created_at, event_id, owner_id, sort_order, artist_name, start_time, finish_time, stage_area, notes";
+  "id, created_at, event_id, owner_id, sort_order, artist_name, start_time, finish_time, stage_area, notes, custom_data";
 
 const RUN_SHEET_ROW_UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -47,6 +51,37 @@ function filterPersistedRowIds(ids: string[]): string[] {
   return ids.filter(isPersistedRunSheetRowId);
 }
 
+function buildRunSheetRowCustomData(row: RunSheetRowInput): Record<string, unknown> {
+  if (row.booking_recipient_id?.trim()) {
+    return { booking_recipient_id: row.booking_recipient_id.trim() };
+  }
+
+  return {};
+}
+
+function readBookingRecipientIdFromCustomData(customData: unknown): string | undefined {
+  if (!customData || typeof customData !== "object") {
+    return undefined;
+  }
+
+  const recipientId = (customData as { booking_recipient_id?: unknown }).booking_recipient_id;
+
+  return typeof recipientId === "string" && recipientId.trim() ? recipientId.trim() : undefined;
+}
+
+export function mapRunSheetRowsFromDb(rows: RunSheetRow[]): RunSheetRowInput[] {
+  return rows.map((row) => ({
+    id: row.id,
+    sort_order: row.sort_order,
+    artist_name: row.artist_name,
+    start_time: row.start_time,
+    finish_time: row.finish_time,
+    stage_area: row.stage_area,
+    notes: row.notes,
+    booking_recipient_id: readBookingRecipientIdFromCustomData(row.custom_data),
+  }));
+}
+
 function buildRunSheetRowFields(row: RunSheetRowInput) {
   return {
     sort_order: row.sort_order,
@@ -55,6 +90,54 @@ function buildRunSheetRowFields(row: RunSheetRowInput) {
     finish_time: row.finish_time.trim(),
     stage_area: row.stage_area.trim(),
     notes: row.notes.trim(),
+  };
+}
+
+function runSheetRowMatchesAcceptedDj(
+  row: RunSheetRowInput,
+  recipientId: string,
+  artistName: string,
+): boolean {
+  if (row.booking_recipient_id && row.booking_recipient_id === recipientId) {
+    return true;
+  }
+
+  const artistKey = artistName.trim().toLowerCase();
+  return Boolean(artistKey) && row.artist_name.trim().toLowerCase() === artistKey;
+}
+
+export function mergeAcceptedDjsIntoRunSheetRows(
+  rows: RunSheetRowInput[],
+  lineup: BookingRequest[],
+  profiles: Map<string, BookingRecipientProfile>,
+): { rows: RunSheetRowInput[]; addedCount: number } {
+  const acceptedBookings = lineup.filter((booking) => booking.status === "accepted");
+  const additions: RunSheetRowInput[] = [];
+
+  for (const booking of acceptedBookings) {
+    const profile = profiles.get(booking.recipient_id);
+    const artistName = profile?.display_name?.trim() || "DJ";
+    const existingRows = [...rows, ...additions];
+    const alreadyPresent = existingRows.some((row) =>
+      runSheetRowMatchesAcceptedDj(row, booking.recipient_id, artistName),
+    );
+
+    if (alreadyPresent) {
+      continue;
+    }
+
+    additions.push(
+      createEmptyRunSheetRow(existingRows.length, artistName, booking.recipient_id),
+    );
+  }
+
+  if (additions.length === 0) {
+    return { rows, addedCount: 0 };
+  }
+
+  return {
+    rows: reorderRunSheetRows([...rows, ...additions]),
+    addedCount: additions.length,
   };
 }
 
@@ -95,6 +178,7 @@ export async function saveEventRunSheet(
 
   for (const row of payload.rows) {
     const rowFields = buildRunSheetRowFields(row);
+    const customData = buildRunSheetRowCustomData(row);
 
     if (isPersistedRunSheetRowId(row.id)) {
       const { error } = await supabase
@@ -114,7 +198,7 @@ export async function saveEventRunSheet(
       event_id: eventId,
       owner_id: ownerId,
       ...rowFields,
-      custom_data: {},
+      custom_data: customData,
     });
 
     if (error) {
@@ -172,7 +256,11 @@ export function createTempRunSheetId(): string {
   return `temp-row-${crypto.randomUUID()}`;
 }
 
-export function createEmptyRunSheetRow(sortOrder: number, artistName = ""): RunSheetRowInput {
+export function createEmptyRunSheetRow(
+  sortOrder: number,
+  artistName = "",
+  bookingRecipientId?: string,
+): RunSheetRowInput {
   return {
     id: createTempRunSheetId(),
     sort_order: sortOrder,
@@ -181,6 +269,7 @@ export function createEmptyRunSheetRow(sortOrder: number, artistName = ""): RunS
     finish_time: "",
     stage_area: "",
     notes: "",
+    booking_recipient_id: bookingRecipientId,
   };
 }
 

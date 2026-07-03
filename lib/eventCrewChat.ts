@@ -115,7 +115,7 @@ export async function sendEventCrewChatMessage(
     getCurrentUserProfile(),
   ]);
 
-  const senderName = senderProfile?.display_name?.trim() || "Crew member";
+  const senderName = senderProfile?.display_name?.trim() || "Group member";
   const preview =
     trimmed.length > 80 ? `${trimmed.slice(0, 77)}...` : trimmed;
   const link = getEventCrewChatLink(eventId);
@@ -140,7 +140,7 @@ export function getEventCrewChatLoadErrorMessage(error: unknown): string {
     const supabaseError = error as { message?: string; code?: string };
 
     if (supabaseError.code === "42501") {
-      return "You do not have access to this event crew chat.";
+      return "You do not have access to this group chat.";
     }
 
     if (supabaseError.message) {
@@ -148,5 +148,5 @@ export function getEventCrewChatLoadErrorMessage(error: unknown): string {
     }
   }
 
-  return error instanceof Error ? error.message : "Failed to load crew chat";
+  return error instanceof Error ? error.message : "Failed to load group chat";
 }

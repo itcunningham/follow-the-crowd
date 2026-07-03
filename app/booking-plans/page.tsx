@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import AppNavigation, { MOBILE_NAV_OFFSET_CLASS } from "@/app/components/AppNavigation";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
+import PlannerEventsSubNav from "@/app/components/PlannerEventsSubNav";
 import { BookingDateField, BookingSetTimeRangeField } from "@/app/components/BookingDateTimeFields";
 import { BookingRateField } from "@/app/components/BookingRateField";
 import {
@@ -223,6 +224,7 @@ export default function BookingPlansPage() {
               </button>
             ) : null}
           </div>
+          <PlannerEventsSubNav />
         </header>
 
         <div className="px-4 py-4 sm:px-6">

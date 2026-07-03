@@ -118,8 +118,22 @@ export default function UserProfilePage() {
             <div className="flex items-center gap-2">
               <Link
                 href={SETTINGS_PATH}
-                className="rounded-lg border border-zinc-700/80 bg-zinc-900/80 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-zinc-300 transition hover:border-blue-500/40 hover:text-blue-300"
+                aria-label="Settings"
+                className="flex items-center gap-1.5 rounded-lg border border-zinc-700/80 bg-zinc-900/80 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-zinc-300 transition hover:border-blue-500/40 hover:text-blue-300"
               >
+                <svg
+                  aria-hidden="true"
+                  viewBox="0 0 24 24"
+                  className="h-3.5 w-3.5"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.75"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <circle cx="12" cy="12" r="3" />
+                  <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
+                </svg>
                 Settings
               </Link>
               <Link
@@ -203,11 +217,14 @@ function DjProfileSections({ profile }: { profile: UserProfile }) {
         <SocialLinks profile={profile} showSoundCloud showInstagram />
       </ProfileSection>
 
-      <ProfileSection title="Availability">
-        <ProfileTextContent
-          value={profile.dj_availability}
-          emptyLabel="No availability listed yet."
-        />
+      <ProfileSection title="Calendar">
+        <p className="text-sm leading-relaxed text-zinc-300">
+          Manage availability and bookings in{" "}
+          <Link href="/bookings" className="font-semibold text-blue-300 transition hover:text-blue-200">
+            Gigs
+          </Link>
+          .
+        </p>
       </ProfileSection>
 
       <ProfileSection title="Past Gigs">

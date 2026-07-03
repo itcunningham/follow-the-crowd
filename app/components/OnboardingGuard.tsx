@@ -69,7 +69,7 @@ export default function OnboardingGuard({ children }: { children: React.ReactNod
         }
 
         if (profile?.role === "dj" && pathname === "/") {
-          router.replace("/dm");
+          router.replace("/discover");
           return;
         }
 

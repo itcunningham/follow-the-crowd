@@ -69,7 +69,7 @@ export default function EventCrewChatPage() {
         setCurrentUserId(userId);
 
         if (!access.canAccess) {
-          setError("You do not have access to this event crew chat.");
+          setError("You do not have access to this group chat.");
           setMessages([]);
           setSenderProfiles(new Map());
           return;
@@ -236,7 +236,7 @@ export default function EventCrewChatPage() {
             </Link>
             <div className="min-w-0 flex-1">
               <h1 className="truncate text-base font-semibold text-zinc-50">{eventName}</h1>
-              <p className="truncate text-xs text-zinc-500">Crew chat</p>
+              <p className="truncate text-xs text-zinc-500">Group chat</p>
             </div>
           </div>
         </header>
@@ -246,7 +246,7 @@ export default function EventCrewChatPage() {
             <p className="text-sm text-zinc-500">Loading messages...</p>
           ) : messages.length === 0 ? (
             <div className="flex h-full min-h-[40vh] flex-col items-center justify-center px-6 text-center">
-              <p className="text-sm font-medium text-zinc-300">No crew messages yet</p>
+              <p className="text-sm font-medium text-zinc-300">No group messages yet</p>
               <p className="mt-1 text-sm text-zinc-500">
                 Accepted DJs and the event planner can chat here.
               </p>

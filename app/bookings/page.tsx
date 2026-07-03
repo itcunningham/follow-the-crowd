@@ -5,6 +5,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import AppNavigation, { MOBILE_NAV_OFFSET_CLASS } from "@/app/components/AppNavigation";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
+import PlannerEventsSubNav from "@/app/components/PlannerEventsSubNav";
+import DjAvailabilityManager from "@/app/components/DjAvailabilityManager";
+import DjBookingAvailabilityBadge from "@/app/components/DjBookingAvailabilityBadge";
 import ProfileAvatar from "@/app/components/ProfileAvatar";
 import { BookingDateField, BookingSetTimeRangeField } from "@/app/components/BookingDateTimeFields";
 import { BookingRateField } from "@/app/components/BookingRateField";
@@ -30,6 +33,10 @@ import {
   type BookingPlan,
 } from "@/lib/bookingPlans";
 import { formatRateDisplay } from "@/lib/bookingRate";
+import {
+  getPlannerDjAvailabilityHints,
+  type DjPlannerAvailabilityHint,
+} from "@/lib/djAvailability";
 import {
   canAccessBookings,
   getCurrentUserId,
@@ -107,6 +114,10 @@ const STATUS_FILTERS: { value: BookingStatusFilter; label: string }[] = [
 
 type BookingsSectionTab = "sent" | "received";
 
+type DjGigsFilter = Exclude<BookingStatusFilter, "all">;
+
+type DjGigsView = DjGigsFilter | "calendar";
+
 function canCreateBookings(role: UserRole | null): boolean {
   return role === "promoter" || role === "both";
 }
@@ -129,7 +140,7 @@ function getDefaultSectionTab(role: UserRole | null): BookingsSectionTab {
 
 function getBookingsSubtitle(role: UserRole | null): string {
   if (role === "dj") {
-    return "Review incoming booking requests and open private DMs.";
+    return "Manage your availability and bookings.";
   }
 
   if (role === "both") {
@@ -139,15 +150,31 @@ function getBookingsSubtitle(role: UserRole | null): string {
   return "Track DJ responses, create booking requests, and open private DMs.";
 }
 
+function getBookingsPageTitle(role: UserRole | null): string {
+  return role === "dj" ? "Gigs" : "Bookings";
+}
+
+function filterReceivedBookingsByStatus(
+  bookings: BookingRequest[],
+  filter: DjGigsFilter,
+): BookingRequest[] {
+  return bookings.filter((booking) => booking.status === filter);
+}
+
 export default function BookingsPage() {
   const router = useRouter();
   const handledPlanIdRef = useRef<string | null>(null);
+  const handledCreateParamsRef = useRef<string | null>(null);
   const [role, setRole] = useState<UserRole | null>(null);
   const [loadingAccess, setLoadingAccess] = useState(true);
   const [loadingList, setLoadingList] = useState(true);
   const [sentGroups, setSentGroups] = useState<SentBookingGroup[]>([]);
   const [receivedBookings, setReceivedBookings] = useState<BookingRequest[]>([]);
   const [sectionTab, setSectionTab] = useState<BookingsSectionTab>("sent");
+  const [djGigsView, setDjGigsView] = useState<DjGigsView>("pending");
+  const [djAvailabilityHints, setDjAvailabilityHints] = useState<
+    Map<string, DjPlannerAvailabilityHint>
+  >(new Map());
   const [recipientProfiles, setRecipientProfiles] = useState<
     Map<string, BookingRecipientProfile>
   >(new Map());
@@ -166,6 +193,7 @@ export default function BookingsPage() {
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [failureDetails, setFailureDetails] = useState<string[]>([]);
+  const [eventDateOverride, setEventDateOverride] = useState<string | null>(null);
 
   const filteredGroups = useMemo(
     () => filterBookingGroups(sentGroups, statusFilter),
@@ -192,6 +220,19 @@ export default function BookingsPage() {
       return haystack.includes(query);
     });
   }, [djs, searchQuery]);
+
+  const isDjGigsView = role === "dj";
+  const showReceivedGigsTabs =
+    role === "dj" || (role === "both" && sectionTab === "received");
+  const showUnifiedDjCalendar = showReceivedGigsTabs && djGigsView === "calendar";
+
+  const filteredReceivedBookings = useMemo(() => {
+    if (!showReceivedGigsTabs || djGigsView === "calendar") {
+      return receivedBookings;
+    }
+
+    return filterReceivedBookingsByStatus(receivedBookings, djGigsView);
+  }, [receivedBookings, djGigsView, showReceivedGigsTabs]);
 
   useEffect(() => {
     getCurrentUserProfile()
@@ -274,26 +315,88 @@ export default function BookingsPage() {
       return;
     }
 
-    const planIdParam = new URLSearchParams(window.location.search).get("planId");
+    const params = new URLSearchParams(window.location.search);
+    const planIdParam = params.get("planId");
+    const createParam = params.get("create");
+    const eventDateParam = params.get("eventDate") ?? "";
 
-    if (!planIdParam || handledPlanIdRef.current === planIdParam) {
+    const paramKey = planIdParam
+      ? `planId:${planIdParam}:${eventDateParam}`
+      : createParam
+        ? `${createParam}:${eventDateParam}`
+        : null;
+
+    if (!paramKey || handledCreateParamsRef.current === paramKey) {
       return;
     }
 
-    handledPlanIdRef.current = planIdParam;
+    handledCreateParamsRef.current = paramKey;
 
-    openCreateFlow({ planId: planIdParam }).finally(() => {
-      router.replace("/bookings");
-    });
+    if (planIdParam) {
+      handledPlanIdRef.current = planIdParam;
+      void openCreateFlow({ planId: planIdParam, eventDate: eventDateParam || undefined }).finally(
+        () => {
+          router.replace("/bookings");
+        },
+      );
+      return;
+    }
+
+    if (createParam === "booking") {
+      void openCreateFlow({ custom: true, eventDate: eventDateParam || undefined }).finally(() => {
+        router.replace("/bookings");
+      });
+      return;
+    }
+
+    if (createParam === "plan") {
+      void openCreateFlow({
+        initialStep: "pick-plan",
+        eventDate: eventDateParam || undefined,
+      }).finally(() => {
+        router.replace("/bookings");
+      });
+    }
   }, [loadingAccess, role, router]);
 
-  async function openCreateFlow(options?: { planId?: string; custom?: boolean }) {
+  useEffect(() => {
+    if (createStep !== "select-djs" || !form.eventDate.trim() || djs.length === 0) {
+      return;
+    }
+
+    let cancelled = false;
+
+    void getPlannerDjAvailabilityHints(
+      djs.map((dj) => dj.user_id),
+      form.eventDate,
+    )
+      .then((hints) => {
+        if (!cancelled) {
+          setDjAvailabilityHints(hints);
+        }
+      })
+      .catch((loadError) => {
+        console.error("Failed to load DJ availability hints:", loadError);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [createStep, form.eventDate, djs]);
+
+  async function openCreateFlow(options?: {
+    planId?: string;
+    custom?: boolean;
+    eventDate?: string;
+    initialStep?: CreateStep;
+  }) {
     setCreateOpen(true);
     setSelectedDjIds([]);
     setSearchQuery("");
     setError(null);
     setFailureDetails([]);
     setSuccessMessage(null);
+    setEventDateOverride(options?.eventDate ?? null);
     setLoadingDjs(true);
     setLoadingPlans(true);
 
@@ -312,17 +415,34 @@ export default function BookingsPage() {
           (await getBookingPlanById(options.planId));
 
         if (plan) {
-          setForm(bookingPlanToRequestInput(plan));
+          const input = bookingPlanToRequestInput(plan);
+          setForm({
+            ...input,
+            eventDate: options.eventDate?.trim() || input.eventDate,
+          });
           setSelectedPlanId(plan.id);
           setCreateStep("details");
           return;
         }
       }
 
-      if (options?.custom) {
-        setForm(emptyForm);
+      if (options?.custom || options?.initialStep === "details") {
+        setForm({
+          ...emptyForm,
+          eventDate: options?.eventDate ?? "",
+        });
         setSelectedPlanId(null);
         setCreateStep("details");
+        return;
+      }
+
+      if (options?.initialStep === "pick-plan") {
+        setForm({
+          ...emptyForm,
+          eventDate: options?.eventDate ?? "",
+        });
+        setSelectedPlanId(null);
+        setCreateStep("pick-plan");
         return;
       }
 
@@ -352,6 +472,7 @@ export default function BookingsPage() {
     setSelectedDjIds([]);
     setSearchQuery("");
     setFailureDetails([]);
+    setEventDateOverride(null);
     setError(null);
   }
 
@@ -369,7 +490,11 @@ export default function BookingsPage() {
   }
 
   function handleSelectSavedPlan(plan: BookingPlan) {
-    setForm(bookingPlanToRequestInput(plan));
+    const input = bookingPlanToRequestInput(plan);
+    setForm({
+      ...input,
+      eventDate: eventDateOverride ?? input.eventDate,
+    });
     setSelectedPlanId(plan.id);
     setError(null);
     setCreateStep("details");
@@ -467,21 +592,29 @@ export default function BookingsPage() {
         <header className="border-b border-zinc-800/80 px-4 py-4 sm:px-6 md:pt-4">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
-              <h1 className="text-xl font-semibold text-zinc-50">Bookings</h1>
+              <h1 className="text-xl font-semibold text-zinc-50">{getBookingsPageTitle(role)}</h1>
               <p className="mt-1 text-sm text-zinc-500">{getBookingsSubtitle(role)}</p>
             </div>
-            {showCreateButton && !createOpen ? (
-              <button
-                type="button"
-                onClick={() => openCreateFlow()}
-                className="shrink-0 rounded-xl border border-blue-500/45 bg-blue-600/20 px-4 py-2.5 text-sm font-semibold uppercase tracking-wide text-blue-100 shadow-[0_0_20px_rgba(59,130,246,0.22)] transition hover:border-blue-400/60 hover:bg-blue-600/30"
-              >
-                Create booking request
-              </button>
-            ) : null}
+            <div className="flex shrink-0 flex-wrap items-center gap-2">
+              {showCreateButton && !createOpen ? (
+                <button
+                  type="button"
+                  onClick={() => openCreateFlow()}
+                  className="rounded-xl border border-blue-500/45 bg-blue-600/20 px-4 py-2.5 text-sm font-semibold uppercase tracking-wide text-blue-100 shadow-[0_0_20px_rgba(59,130,246,0.22)] transition hover:border-blue-400/60 hover:bg-blue-600/30"
+                >
+                  Create booking request
+                </button>
+              ) : null}
+            </div>
           </div>
 
-          {showSentTab || showReceivedTab ? (
+          {showReceivedGigsTabs ? (
+            <DjGigsTabs
+              activeView={djGigsView}
+              bookings={receivedBookings}
+              onChange={setDjGigsView}
+            />
+          ) : showSentTab || showReceivedTab ? (
             <BookingSectionTabs
               activeTab={sectionTab}
               onChange={setSectionTab}
@@ -489,6 +622,8 @@ export default function BookingsPage() {
               showReceived={showReceivedTab}
             />
           ) : null}
+
+          {!isDjGigsView && (role === "promoter" || role === "both") ? <PlannerEventsSubNav /> : null}
         </header>
 
         <div className="px-4 py-4 sm:px-6">
@@ -719,6 +854,7 @@ export default function BookingsPage() {
                       {filteredDjs.map((dj) => {
                         const selected = selectedDjIds.includes(dj.user_id);
                         const displayName = dj.display_name ?? dj.user_id;
+                        const availabilityHint = djAvailabilityHints.get(dj.user_id);
 
                         return (
                           <li key={dj.user_id}>
@@ -746,7 +882,12 @@ export default function BookingsPage() {
                                 size="md"
                               />
                               <div className="min-w-0 flex-1">
-                                <p className="font-semibold text-zinc-100">{displayName}</p>
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <p className="font-semibold text-zinc-100">{displayName}</p>
+                                  {availabilityHint ? (
+                                    <DjBookingAvailabilityBadge hint={availabilityHint} />
+                                  ) : null}
+                                </div>
                                 <p className="text-xs text-zinc-500">
                                   {[dj.genre, dj.location].filter(Boolean).join(" · ") ||
                                     getRoleLabel(dj.role)}
@@ -836,18 +977,26 @@ export default function BookingsPage() {
             )
           ) : null}
 
-          {sectionTab === "received" && showReceivedTab ? (
+          {showUnifiedDjCalendar ? (
+            <DjAvailabilityManager description="Manage your availability and received bookings." />
+          ) : isDjGigsView || (sectionTab === "received" && showReceivedTab) ? (
             loadingList ? (
               <p className="text-sm text-zinc-500">Loading received bookings...</p>
             ) : error && !createOpen ? (
               <p className="text-sm text-red-400">{error}</p>
             ) : receivedBookings.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-zinc-800 bg-zinc-900/30 px-6 py-12 text-center">
-                <p className="text-base font-medium text-zinc-300">No bookings received yet.</p>
+                <p className="text-base font-medium text-zinc-300">
+                  {isDjGigsView ? "No gigs yet." : "No bookings received yet."}
+                </p>
               </div>
+            ) : filteredReceivedBookings.length === 0 ? (
+              <p className="rounded-xl border border-zinc-800 bg-zinc-900/40 px-4 py-6 text-center text-sm text-zinc-500">
+                No {djGigsView === "accepted" ? "confirmed" : djGigsView} gigs match this filter.
+              </p>
             ) : (
               <ul className="space-y-3">
-                {receivedBookings.map((booking) => (
+                {filteredReceivedBookings.map((booking) => (
                   <ReceivedBookingCard key={booking.id} booking={booking} />
                 ))}
               </ul>
@@ -856,6 +1005,64 @@ export default function BookingsPage() {
         </div>
       </div>
     </OnboardingGuard>
+  );
+}
+
+function DjGigsTabs({
+  activeView,
+  bookings,
+  onChange,
+}: {
+  activeView: DjGigsView;
+  bookings: BookingRequest[];
+  onChange: (view: DjGigsView) => void;
+}) {
+  const counts = useMemo(() => {
+    return bookings.reduce(
+      (stats, booking) => {
+        if (booking.status === "pending") {
+          stats.pending += 1;
+        } else if (booking.status === "accepted") {
+          stats.accepted += 1;
+        } else if (booking.status === "declined") {
+          stats.declined += 1;
+        }
+
+        return stats;
+      },
+      { pending: 0, accepted: 0, declined: 0 },
+    );
+  }, [bookings]);
+
+  const tabs: { value: DjGigsView; label: string; count?: number }[] = [
+    { value: "pending", label: "Pending", count: counts.pending },
+    { value: "accepted", label: "Confirmed", count: counts.accepted },
+    { value: "declined", label: "Declined", count: counts.declined },
+    { value: "calendar", label: "Calendar" },
+  ];
+
+  return (
+    <div className="mt-4 flex flex-wrap gap-2">
+      {tabs.map((tab) => {
+        const isActive = activeView === tab.value;
+
+        return (
+          <button
+            key={tab.value}
+            type="button"
+            onClick={() => onChange(tab.value)}
+            className={`rounded-lg px-3 py-1.5 text-xs font-semibold uppercase tracking-wide transition ${
+              isActive
+                ? "border border-blue-500/45 bg-blue-600/15 text-blue-300 shadow-[0_0_16px_rgba(59,130,246,0.12)]"
+                : "border border-zinc-800/80 bg-zinc-900/50 text-zinc-400 hover:border-blue-500/30 hover:text-blue-300"
+            }`}
+          >
+            {tab.label}
+            {tab.count && tab.count > 0 ? ` (${tab.count})` : ""}
+          </button>
+        );
+      })}
+    </div>
   );
 }
 

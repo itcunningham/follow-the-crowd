@@ -3,6 +3,7 @@
 import Link from "next/link";
 import {
   formatBookingRequestMessage,
+  getBookingGroupChatAccess,
   type BookingRequest,
   type BookingRequestStatus,
 } from "@/lib/bookingRequests";
@@ -30,17 +31,21 @@ function StatusBadge({ status }: { status: BookingRequestStatus }) {
 
 export default function BookingRequestCard({
   booking,
+  currentUserId,
   canRespond,
   responding,
   onAccept,
   onDecline,
 }: {
   booking: BookingRequest;
+  currentUserId: string | null;
   canRespond: boolean;
   responding: boolean;
   onAccept: () => void;
   onDecline: () => void;
 }) {
+  const groupChatAccess = getBookingGroupChatAccess(booking, currentUserId);
+
   return (
     <div className="w-full max-w-sm rounded-2xl border border-blue-500/45 bg-blue-600/10 p-4 shadow-[0_0_20px_rgba(59,130,246,0.15)]">
       <div className="flex items-start justify-between gap-3">
@@ -62,12 +67,34 @@ export default function BookingRequestCard({
       </dl>
 
       {booking.event_id ? (
-        <Link
-          href={`/events/${booking.event_id}`}
-          className="mt-4 inline-flex rounded-lg border border-zinc-700 bg-zinc-900/80 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-zinc-300 transition hover:border-blue-500/35 hover:text-blue-300"
-        >
-          View event
-        </Link>
+        <>
+          <Link
+            href={`/events/${booking.event_id}`}
+            className="mt-4 inline-flex rounded-lg border border-zinc-700 bg-zinc-900/80 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-zinc-300 transition hover:border-blue-500/35 hover:text-blue-300"
+          >
+            View event
+          </Link>
+
+          {groupChatAccess && groupChatAccess.kind !== "hidden" ? (
+            <div className="mt-4 rounded-xl border border-zinc-800/80 bg-zinc-950/40 p-3">
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+                Event Group Chat
+              </p>
+              {groupChatAccess.kind === "open" ? (
+                <Link
+                  href={groupChatAccess.href}
+                  className="mt-2 inline-flex rounded-lg border border-blue-500/35 bg-blue-600/10 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-blue-300 transition hover:border-blue-400/50 hover:bg-blue-600/20"
+                >
+                  Open Group Chat
+                </Link>
+              ) : (
+                <p className="mt-2 text-xs text-zinc-500">
+                  Group chat unlocks after you accept.
+                </p>
+              )}
+            </div>
+          ) : null}
+        </>
       ) : null}
 
       {canRespond && booking.status === "pending" ? (

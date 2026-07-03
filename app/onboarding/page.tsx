@@ -28,7 +28,7 @@ const ROLE_OPTIONS: {
     role: "promoter",
     title: "Promoter / Event Planner",
     description:
-      "Plan events with AI, find DJs, manage crew chats and build better nights.",
+      "Plan events with AI, find DJs, manage group chats and build better nights.",
   },
   {
     role: "both",

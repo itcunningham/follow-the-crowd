@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import AppNavigation, { MOBILE_NAV_OFFSET_CLASS } from "./components/AppNavigation";
 import OnboardingGuard from "./components/OnboardingGuard";
@@ -98,6 +99,12 @@ export default function Home() {
               >
                 Generate Event Plan
               </button>
+              <Link
+                href="/events"
+                className="w-full rounded-xl border border-blue-500/35 bg-blue-600/10 px-6 py-3.5 text-center text-sm font-bold uppercase tracking-wide text-blue-200 shadow-[0_0_20px_rgba(59,130,246,0.15)] transition hover:border-blue-400/55 hover:bg-blue-600/20 sm:w-auto"
+              >
+                Plan an event
+              </Link>
               <button
                 type="button"
                 onClick={() => scrollTo("learn-more")}
