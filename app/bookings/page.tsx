@@ -32,7 +32,7 @@ import {
 import { formatRateDisplay } from "@/lib/bookingRate";
 import {
   canAccessBookings,
-  CURRENT_USER_ID,
+  getCurrentUserId,
   getBookingRecipientProfilesByIds,
   getCurrentUserProfile,
   getRoleLabel,
@@ -213,7 +213,9 @@ export default function BookingsPage() {
     }
 
     if (canCreateBookings(role)) {
-      markNotificationsReadByType(CURRENT_USER_ID, ["booking_update"]);
+      void getCurrentUserId().then((userId) => {
+        markNotificationsReadByType(userId, ["booking_update"]);
+      });
     }
 
     async function loadBookings() {
@@ -921,6 +923,14 @@ function ReceivedBookingCard({ booking }: { booking: BookingRequest }) {
 
         <div className="flex shrink-0 items-center gap-2 sm:flex-col sm:items-end">
           <BookingStatusBadge status={booking.status} />
+          {booking.event_id ? (
+            <Link
+              href={`/events/${booking.event_id}`}
+              className="rounded-lg border border-zinc-700 bg-zinc-900/80 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-zinc-300 transition hover:border-blue-500/35 hover:text-blue-300"
+            >
+              View event
+            </Link>
+          ) : null}
           <Link
             href={`/dm/${booking.conversation_id}`}
             className="rounded-lg border border-blue-500/35 bg-blue-600/10 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-blue-300 transition hover:border-blue-400/50 hover:bg-blue-600/20"

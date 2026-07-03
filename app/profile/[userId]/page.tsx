@@ -8,7 +8,7 @@ import OnboardingGuard from "@/app/components/OnboardingGuard";
 import ProfileAvatar from "@/app/components/ProfileAvatar";
 import { startDm } from "@/lib/startDm";
 import {
-  CURRENT_USER_ID,
+  getCurrentUserId,
   DISCOVER_PATH,
   SETTINGS_PATH,
   getRoleLabel,
@@ -24,6 +24,7 @@ export default function UserProfilePage() {
   const userId = params.userId as string;
 
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [messaging, setMessaging] = useState(false);
@@ -38,7 +39,11 @@ export default function UserProfilePage() {
       setError(null);
 
       try {
-        const userProfile = await getUserProfileById(userId);
+        const [userProfile, authUserId] = await Promise.all([
+          getUserProfileById(userId),
+          getCurrentUserId(),
+        ]);
+        setCurrentUserId(authUserId);
 
         if (!userProfile?.display_name?.trim()) {
           setProfile(null);
@@ -68,7 +73,8 @@ export default function UserProfilePage() {
     setError(null);
 
     try {
-      const conversationId = await startDm(CURRENT_USER_ID, profile.user_id);
+      const currentUserId = await getCurrentUserId();
+      const conversationId = await startDm(currentUserId, profile.user_id);
       router.push(`/dm/${conversationId}`);
     } catch (messageError) {
       console.error("startDm failed from profile page:", messageError);
@@ -78,7 +84,7 @@ export default function UserProfilePage() {
   }
 
   const displayName = profile?.display_name ?? "Profile";
-  const isOwnProfile = profile?.user_id === CURRENT_USER_ID;
+  const isOwnProfile = profile?.user_id === currentUserId;
   const showDjSections = profile?.role === "dj" || profile?.role === "both";
   const showPromoterSections = profile?.role === "promoter" || profile?.role === "both";
 
@@ -108,7 +114,7 @@ export default function UserProfilePage() {
           >
             ← Discover
           </Link>
-          {userId === CURRENT_USER_ID ? (
+          {userId === currentUserId ? (
             <div className="flex items-center gap-2">
               <Link
                 href={SETTINGS_PATH}

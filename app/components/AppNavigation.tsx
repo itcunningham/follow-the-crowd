@@ -4,10 +4,9 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { getNavBadgeCounts, type NavBadgeCounts } from "@/lib/notifications";
+import { hasDjEventInvites } from "@/lib/events";
 import { supabase } from "@/lib/supabaseClient";
-import { CURRENT_USER_ID, getCurrentUserProfile, type UserRole } from "@/lib/user/currentUser";
-
-const MY_PROFILE_PATH = `/profile/${CURRENT_USER_ID}`;
+import { getCurrentUserId, getCurrentUserProfile, type UserRole } from "@/lib/user/currentUser";
 const NOTIFICATIONS_PATH = "/notifications";
 
 type NavItem = {
@@ -21,7 +20,11 @@ type NavItem = {
   isActive: (pathname: string) => boolean;
 };
 
-function getNavItems(role: UserRole | null): NavItem[] {
+function getNavItems(
+  role: UserRole | null,
+  currentUserId: string | null,
+  showEventsForDj: boolean,
+): NavItem[] {
   const eventAi: NavItem = {
     href: "/",
     label: "Event AI",
@@ -34,6 +37,13 @@ function getNavItems(role: UserRole | null): NavItem[] {
     label: "Discover",
     isPrimary: true,
     isActive: (pathname) => pathname === "/discover" || pathname.startsWith("/discover/"),
+  };
+
+  const events: NavItem = {
+    href: "/events",
+    label: "Events",
+    isPrimary: true,
+    isActive: (pathname) => pathname === "/events" || pathname.startsWith("/events/"),
   };
 
   const bookingPlans: NavItem = {
@@ -74,23 +84,32 @@ function getNavItems(role: UserRole | null): NavItem[] {
   };
 
   const myProfile: NavItem = {
-    href: MY_PROFILE_PATH,
+    href: currentUserId ? `/profile/${currentUserId}` : "/profile/setup",
     label: "My Profile",
     mobileLabel: "Profile",
     showIconOnMobile: true,
     isPrimary: false,
-    isActive: (pathname) => pathname === MY_PROFILE_PATH,
+    isActive: (pathname) =>
+      currentUserId
+        ? pathname === `/profile/${currentUserId}` || pathname.startsWith(`/profile/${currentUserId}/`)
+        : pathname === "/profile/setup",
   };
 
   if (role === "dj") {
-    return [messages, discover, bookings, myProfile];
+    const items = [messages, discover, bookings, myProfile];
+
+    if (showEventsForDj) {
+      items.splice(2, 0, events);
+    }
+
+    return items;
   }
 
   if (role === "promoter") {
-    return [eventAi, discover, bookingPlans, bookings, messages, notifications, myProfile];
+    return [eventAi, discover, events, bookingPlans, bookings, messages, notifications, myProfile];
   }
 
-  return [eventAi, discover, bookingPlans, bookings, messages, notifications, myProfile];
+  return [eventAi, discover, events, bookingPlans, bookings, messages, notifications, myProfile];
 }
 
 export const MOBILE_NAV_OFFSET_CLASS = "pb-[calc(3.5rem+env(safe-area-inset-bottom))] md:pb-0";
@@ -218,6 +237,8 @@ function getBadgeCount(item: NavItem, badgeCounts: NavBadgeCounts): number {
 export default function AppNavigation() {
   const pathname = usePathname();
   const [role, setRole] = useState<UserRole | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [showEventsForDj, setShowEventsForDj] = useState(false);
   const [badgeCounts, setBadgeCounts] = useState<NavBadgeCounts>({
     messages: 0,
     bookings: 0,
@@ -226,11 +247,21 @@ export default function AppNavigation() {
 
   const loadBadgeCounts = useCallback(async () => {
     try {
+      const userId = await getCurrentUserId();
+      setCurrentUserId(userId);
+
       const profile = await getCurrentUserProfile();
       const userRole = profile?.role ?? null;
       setRole(userRole);
 
-      const counts = await getNavBadgeCounts(CURRENT_USER_ID, userRole);
+      if (userRole === "dj") {
+        const invited = await hasDjEventInvites(userId);
+        setShowEventsForDj(invited);
+      } else {
+        setShowEventsForDj(false);
+      }
+
+      const counts = await getNavBadgeCounts(userId, userRole);
       setBadgeCounts(counts);
     } catch (error) {
       console.error("[AppNavigation] Failed to load navigation badges:", error);
@@ -254,15 +285,19 @@ export default function AppNavigation() {
   }, [loadBadgeCounts, pathname]);
 
   useEffect(() => {
+    if (!currentUserId) {
+      return;
+    }
+
     const channel = supabase
-      .channel(`nav-notifications:${CURRENT_USER_ID}`)
+      .channel(`nav-notifications:${currentUserId}`)
       .on(
         "postgres_changes",
         {
           event: "*",
           schema: "public",
           table: "notifications",
-          filter: `user_id=eq.${CURRENT_USER_ID}`,
+          filter: `user_id=eq.${currentUserId}`,
         },
         () => {
           loadBadgeCounts();
@@ -273,9 +308,9 @@ export default function AppNavigation() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [loadBadgeCounts]);
+  }, [currentUserId, loadBadgeCounts]);
 
-  const navItems = getNavItems(role);
+  const navItems = getNavItems(role, currentUserId, showEventsForDj);
   const notificationsActive =
     pathname === NOTIFICATIONS_PATH || pathname.startsWith(`${NOTIFICATIONS_PATH}/`);
 

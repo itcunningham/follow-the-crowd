@@ -2,7 +2,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { createNotification } from "@/lib/notifications";
 import { formatRateDisplay, normalizeStoredRate } from "@/lib/bookingRate";
 import { startDm } from "@/lib/startDm";
-import { CURRENT_USER_ID } from "@/lib/user/currentUser";
+import { getCurrentUserId } from "@/lib/user/currentUser";
 
 export type BookingRequestStatus = "pending" | "accepted" | "declined";
 
@@ -13,6 +13,7 @@ export type BookingRequestInput = {
   setTime: string;
   fee: string;
   notes: string;
+  eventId?: string;
 };
 
 export type BookingSendFailure = {
@@ -47,6 +48,7 @@ export type BookingRequest = {
   sender_id: string;
   recipient_id: string;
   conversation_id: string;
+  event_id: string | null;
   event_name: string;
   venue: string;
   event_date: string;
@@ -179,14 +181,16 @@ export async function sendBookingRequestToDj(
   recipientId: string,
   input: BookingRequestInput,
 ): Promise<string> {
-  const conversationId = await startDm(CURRENT_USER_ID, recipientId);
+  const currentUserId = await getCurrentUserId();
+  const conversationId = await startDm(currentUserId, recipientId);
 
   const { data: booking, error: bookingError } = await supabase
     .from("booking_requests")
     .insert({
-      sender_id: CURRENT_USER_ID,
+      sender_id: currentUserId,
       recipient_id: recipientId,
       conversation_id: conversationId,
+      event_id: input.eventId ?? null,
       event_name: input.eventName.trim(),
       venue: input.venue.trim(),
       event_date: input.eventDate.trim(),
@@ -206,7 +210,7 @@ export async function sendBookingRequestToDj(
 
   const { error: messageError } = await supabase.from("messages").insert({
     conversation_id: conversationId,
-    user_id: CURRENT_USER_ID,
+    user_id: currentUserId,
     text: messageText,
   });
 
@@ -226,13 +230,41 @@ export async function sendBookingRequestToDj(
 }
 
 const BOOKING_REQUEST_FIELDS =
-  "id, created_at, sender_id, recipient_id, conversation_id, event_name, venue, event_date, set_time, fee, notes, status";
+  "id, created_at, sender_id, recipient_id, conversation_id, event_id, event_name, venue, event_date, set_time, fee, notes, status";
 
-export async function listSentBookingRequests(): Promise<BookingRequest[]> {
+export function getEventLineupStats(bookings: BookingRequest[]): BookingCampaignStats {
+  return bookings.reduce(
+    (stats, request) => {
+      stats.total += 1;
+      stats[request.status] += 1;
+      return stats;
+    },
+    { total: 0, pending: 0, accepted: 0, declined: 0 },
+  );
+}
+
+export async function listBookingRequestsForEvent(eventId: string): Promise<BookingRequest[]> {
   const { data, error } = await supabase
     .from("booking_requests")
     .select(BOOKING_REQUEST_FIELDS)
-    .eq("sender_id", CURRENT_USER_ID)
+    .eq("event_id", eventId)
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    logBookingsLoadError(error);
+    throw error;
+  }
+
+  return (data ?? []) as BookingRequest[];
+}
+
+export async function listSentBookingRequests(): Promise<BookingRequest[]> {
+  const currentUserId = await getCurrentUserId();
+
+  const { data, error } = await supabase
+    .from("booking_requests")
+    .select(BOOKING_REQUEST_FIELDS)
+    .eq("sender_id", currentUserId)
     .order("created_at", { ascending: false });
 
   if (error) {
@@ -244,10 +276,12 @@ export async function listSentBookingRequests(): Promise<BookingRequest[]> {
 }
 
 export async function listReceivedBookingRequests(): Promise<BookingRequest[]> {
+  const currentUserId = await getCurrentUserId();
+
   const { data, error } = await supabase
     .from("booking_requests")
     .select(BOOKING_REQUEST_FIELDS)
-    .eq("recipient_id", CURRENT_USER_ID)
+    .eq("recipient_id", currentUserId)
     .order("created_at", { ascending: false });
 
   if (error) {
@@ -453,6 +487,7 @@ export function mergeBookingWithMessage(
     sender_id: "",
     recipient_id: "",
     conversation_id: "",
+    event_id: null,
     event_name: parsed.eventName,
     venue: parsed.venue ?? "",
     event_date: parsed.eventDate ?? "",

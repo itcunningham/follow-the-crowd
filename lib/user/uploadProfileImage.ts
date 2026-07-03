@@ -1,5 +1,5 @@
 import { supabase } from "@/lib/supabaseClient";
-import { CURRENT_USER_ID } from "@/lib/user/currentUser";
+import { getCurrentUserId } from "@/lib/user/currentUser";
 
 export const PROFILE_IMAGES_BUCKET = "profile-images";
 
@@ -32,7 +32,8 @@ export async function uploadProfileImage(file: File): Promise<string> {
 
   const timestamp = Date.now();
   const extension = getExtensionForMimeType(file.type);
-  const path = `${CURRENT_USER_ID}/profile-image-${timestamp}.${extension}`;
+  const userId = await getCurrentUserId();
+  const path = `${userId}/profile-image-${timestamp}.${extension}`;
 
   const { error: uploadError } = await supabase.storage
     .from(PROFILE_IMAGES_BUCKET)

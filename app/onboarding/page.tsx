@@ -4,7 +4,9 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   DISCOVER_PATH,
+  getCurrentAuthUser,
   getCurrentUserProfile,
+  LOGIN_PATH,
   needsProfileSetup,
   PROFILE_SETUP_PATH,
   saveUserRole,
@@ -42,8 +44,17 @@ export default function OnboardingPage() {
   const [checkingExisting, setCheckingExisting] = useState(true);
 
   useEffect(() => {
-    getCurrentUserProfile()
-      .then((profile) => {
+    async function checkExisting() {
+      try {
+        const authUser = await getCurrentAuthUser();
+
+        if (!authUser) {
+          router.replace(LOGIN_PATH);
+          return;
+        }
+
+        const profile = await getCurrentUserProfile();
+
         if (profile?.onboarding_complete && profile.role) {
           if (needsProfileSetup(profile)) {
             router.replace(PROFILE_SETUP_PATH);
@@ -55,11 +66,13 @@ export default function OnboardingPage() {
         }
 
         setCheckingExisting(false);
-      })
-      .catch((loadError) => {
+      } catch (loadError) {
         console.error("Failed to load user profile:", loadError);
         setCheckingExisting(false);
-      });
+      }
+    }
+
+    checkExisting();
   }, [router]);
 
   async function handleSelectRole(role: UserRole) {

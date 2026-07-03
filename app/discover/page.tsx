@@ -8,7 +8,7 @@ import OnboardingGuard from "@/app/components/OnboardingGuard";
 import ProfileAvatar from "@/app/components/ProfileAvatar";
 import { startDm } from "@/lib/startDm";
 import {
-  CURRENT_USER_ID,
+  getCurrentUserId,
   getCurrentUserProfile,
   getRoleLabel,
   listDiscoverUsers,
@@ -55,7 +55,8 @@ export default function DiscoverPage() {
     setError(null);
 
     try {
-      const conversationId = await startDm(CURRENT_USER_ID, targetUserId);
+      const currentUserId = await getCurrentUserId();
+      const conversationId = await startDm(currentUserId, targetUserId);
       router.push(`/dm/${conversationId}`);
     } catch (messageError) {
       console.error("startDm failed from /discover:", messageError);

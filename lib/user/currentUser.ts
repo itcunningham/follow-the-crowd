@@ -1,6 +1,8 @@
+import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabaseClient";
 
-export const CURRENT_USER_ID = "demo-user";
+export const LOGIN_PATH = "/login";
+export const SIGNUP_PATH = "/signup";
 export const PROFILE_SETUP_PATH = "/profile/setup";
 export const SETTINGS_PATH = "/settings";
 export const BOOKING_PLANS_PATH = "/booking-plans";
@@ -43,7 +45,7 @@ export type UserProfileInput = {
 const PROFILE_FIELDS =
   "user_id, role, onboarding_complete, display_name, bio, genre, instagram_url, soundcloud_url, location, avatar_url, dj_availability, dj_past_gigs, promoter_venues_used, promoter_upcoming_events, promoter_past_events";
 
-export function getDefaultRouteForRole(role: UserRole): string {
+export function getDefaultRouteForRole(role: UserRole | null): string {
   return role === "dj" ? "/dm" : "/";
 }
 
@@ -59,11 +61,114 @@ export function needsProfileSetup(profile: UserProfile | null): boolean {
   return !profile?.display_name?.trim();
 }
 
+function isAuthSessionMissingError(error: { name?: string; message?: string }): boolean {
+  const label = `${error.name ?? ""} ${error.message ?? ""}`;
+  return label.includes("AuthSessionMissingError") || error.message === "Auth session missing!";
+}
+
+export async function getCurrentAuthUser(): Promise<User | null> {
+  const { data, error } = await supabase.auth.getUser();
+
+  if (error) {
+    if (isAuthSessionMissingError(error)) {
+      return null;
+    }
+
+    console.error("[auth] getUser failed:", error);
+    return null;
+  }
+
+  return data.user;
+}
+
+export async function requireCurrentUser(): Promise<User> {
+  const user = await getCurrentAuthUser();
+
+  if (!user) {
+    throw new Error("Not authenticated");
+  }
+
+  return user;
+}
+
+export async function getCurrentUserId(): Promise<string> {
+  const user = await requireCurrentUser();
+  return user.id;
+}
+
+export async function signOut(): Promise<void> {
+  const { error } = await supabase.auth.signOut();
+
+  if (error) {
+    throw error;
+  }
+}
+
+export async function signInWithEmail(email: string, password: string) {
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email: email.trim(),
+    password,
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  return data;
+}
+
+export async function signUpWithEmail(email: string, password: string) {
+  const { data, error } = await supabase.auth.signUp({
+    email: email.trim(),
+    password,
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  if (data.user) {
+    await ensureUserProfileRow(data.user.id);
+  }
+
+  return data;
+}
+
+export async function ensureUserProfileRow(userId: string): Promise<void> {
+  const { error } = await supabase.from("users").upsert(
+    {
+      user_id: userId,
+      onboarding_complete: false,
+    },
+    { onConflict: "user_id", defaultToNull: false },
+  );
+
+  if (error) {
+    throw error;
+  }
+}
+
+export async function getPostAuthRedirectPath(): Promise<string> {
+  const profile = await getCurrentUserProfile();
+
+  if (needsOnboarding(profile)) {
+    return "/onboarding";
+  }
+
+  if (needsProfileSetup(profile)) {
+    return PROFILE_SETUP_PATH;
+  }
+
+  return getDefaultRouteForRole(profile?.role ?? null);
+}
+
 export async function getCurrentUserProfile(): Promise<UserProfile | null> {
+  const userId = await getCurrentUserId();
+
   const { data, error } = await supabase
     .from("users")
     .select(PROFILE_FIELDS)
-    .eq("user_id", CURRENT_USER_ID)
+    .eq("user_id", userId)
     .maybeSingle();
 
   if (error) {
@@ -88,13 +193,15 @@ export async function getUserProfileById(userId: string): Promise<UserProfile | 
 }
 
 export async function saveUserRole(role: UserRole): Promise<void> {
+  const userId = await getCurrentUserId();
+
   const { error } = await supabase.from("users").upsert(
     {
-      user_id: CURRENT_USER_ID,
+      user_id: userId,
       role,
       onboarding_complete: true,
     },
-    { onConflict: "user_id" },
+    { onConflict: "user_id", defaultToNull: false },
   );
 
   if (error) {
@@ -114,8 +221,14 @@ export async function saveUserProfile(
   input: UserProfileInput,
   options?: { avatarUrl?: string | null },
 ): Promise<void> {
-  const payload: Record<string, string> = {
-    user_id: CURRENT_USER_ID,
+  const userId = await getCurrentUserId();
+  const existing = await getCurrentUserProfile();
+
+  if (!existing?.role || !existing.onboarding_complete) {
+    throw new Error("Complete role onboarding before saving your profile.");
+  }
+
+  const updatePayload: Record<string, string> = {
     display_name: input.display_name.trim(),
     bio: input.bio.trim(),
     genre: input.genre.trim(),
@@ -130,13 +243,22 @@ export async function saveUserProfile(
   };
 
   if (options && "avatarUrl" in options) {
-    payload.avatar_url = options.avatarUrl?.trim() ?? "";
+    updatePayload.avatar_url = options.avatarUrl?.trim() ?? "";
   }
 
-  const { error } = await supabase.from("users").upsert(payload, { onConflict: "user_id" });
+  const { data, error } = await supabase
+    .from("users")
+    .update(updatePayload)
+    .eq("user_id", userId)
+    .select("user_id, role, onboarding_complete, display_name")
+    .maybeSingle();
 
   if (error) {
     throw error;
+  }
+
+  if (!data) {
+    throw new Error("Profile row not found for the current user.");
   }
 }
 
@@ -222,18 +344,40 @@ function getDiscoverPriority(currentRole: UserRole, targetRole: UserRole | null)
 }
 
 export async function listDiscoverUsers(currentRole: UserRole): Promise<UserProfile[]> {
+  const currentUserId = await getCurrentUserId();
+
   const { data, error } = await supabase.from("users").select(PROFILE_FIELDS);
 
   if (error) {
+    console.error("[discover] Failed to load users:", {
+      message: error.message,
+      code: error.code,
+      details: error.details,
+      hint: error.hint,
+    });
     throw error;
   }
 
-  const users = ((data ?? []) as UserProfile[]).filter(
+  const rows = (data ?? []) as UserProfile[];
+
+  const users = rows.filter(
     (user) =>
-      user.user_id !== CURRENT_USER_ID &&
-      user.onboarding_complete &&
+      user.user_id !== currentUserId &&
+      user.onboarding_complete === true &&
       Boolean(user.display_name?.trim()),
   );
+
+  if (rows.length > 0 && users.length === 0) {
+    console.warn(
+      "[discover] Profiles were loaded but none are discoverable yet. Check onboarding_complete, display_name, and role on other accounts.",
+      rows.map((user) => ({
+        user_id: user.user_id,
+        role: user.role,
+        onboarding_complete: user.onboarding_complete,
+        display_name: user.display_name,
+      })),
+    );
+  }
 
   return users.sort((a, b) => {
     const priorityDiff =
@@ -271,7 +415,13 @@ export function canAccessBookingPlans(role: UserRole | null): boolean {
   return role === "promoter" || role === "both";
 }
 
+export function canManageEvents(role: UserRole | null): boolean {
+  return role === "promoter" || role === "both";
+}
+
 export async function listBookableDjs(): Promise<UserProfile[]> {
+  const currentUserId = await getCurrentUserId();
+
   const { data, error } = await supabase.from("users").select(PROFILE_FIELDS);
 
   if (error) {
@@ -281,7 +431,7 @@ export async function listBookableDjs(): Promise<UserProfile[]> {
   return ((data ?? []) as UserProfile[])
     .filter(
       (user) =>
-        user.user_id !== CURRENT_USER_ID &&
+        user.user_id !== currentUserId &&
         user.onboarding_complete &&
         Boolean(user.display_name?.trim()) &&
         (user.role === "dj" || user.role === "both"),

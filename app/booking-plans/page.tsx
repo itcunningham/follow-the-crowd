@@ -17,7 +17,6 @@ import {
 import { formatRateDisplay, normalizeStoredRate } from "@/lib/bookingRate";
 import {
   canAccessBookingPlans,
-  CURRENT_USER_ID,
   getCurrentUserProfile,
   type UserRole,
 } from "@/lib/user/currentUser";
@@ -66,7 +65,7 @@ export default function BookingPlansPage() {
     setError(null);
 
     try {
-      const rows = await listBookingPlans(CURRENT_USER_ID);
+      const rows = await listBookingPlans();
       setPlans(rows);
     } catch (loadError) {
       console.error("Failed to load booking plans:", loadError);

@@ -3,13 +3,18 @@
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import {
+  getCurrentAuthUser,
   getCurrentUserProfile,
+  getPostAuthRedirectPath,
+  LOGIN_PATH,
   needsOnboarding,
   needsProfileSetup,
   PROFILE_SETUP_PATH,
+  SIGNUP_PATH,
 } from "@/lib/user/currentUser";
 
-const EXEMPT_PATHS = ["/onboarding", PROFILE_SETUP_PATH];
+const AUTH_PATHS = [LOGIN_PATH, SIGNUP_PATH];
+const SETUP_PATHS = ["/onboarding", PROFILE_SETUP_PATH];
 
 export default function OnboardingGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -21,13 +26,34 @@ export default function OnboardingGuard({ children }: { children: React.ReactNod
 
     async function checkAccess() {
       try {
+        const authUser = await getCurrentAuthUser();
+
+        if (cancelled) {
+          return;
+        }
+
+        if (AUTH_PATHS.includes(pathname)) {
+          if (authUser) {
+            router.replace(await getPostAuthRedirectPath());
+            return;
+          }
+
+          setReady(true);
+          return;
+        }
+
+        if (!authUser) {
+          router.replace(LOGIN_PATH);
+          return;
+        }
+
         const profile = await getCurrentUserProfile();
 
         if (cancelled) {
           return;
         }
 
-        if (EXEMPT_PATHS.includes(pathname)) {
+        if (SETUP_PATHS.includes(pathname)) {
           setReady(true);
           return;
         }
@@ -52,7 +78,7 @@ export default function OnboardingGuard({ children }: { children: React.ReactNod
         console.error("Onboarding check failed:", error);
 
         if (!cancelled) {
-          setReady(true);
+          router.replace(LOGIN_PATH);
         }
       }
     }

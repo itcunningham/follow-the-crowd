@@ -11,7 +11,7 @@ import {
   notifyNavigationBadgesRefresh,
   type Notification,
 } from "@/lib/notifications";
-import { CURRENT_USER_ID } from "@/lib/user/currentUser";
+import { getCurrentUserId } from "@/lib/user/currentUser";
 
 function formatNotificationTime(timestamp: string) {
   const date = new Date(timestamp);
@@ -65,6 +65,7 @@ function getNotificationTypeLabel(type: Notification["type"]) {
 
 export default function NotificationsPage() {
   const router = useRouter();
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -74,7 +75,9 @@ export default function NotificationsPage() {
     setError(null);
 
     try {
-      const rows = await getNotifications(CURRENT_USER_ID);
+      const userId = await getCurrentUserId();
+      setCurrentUserId(userId);
+      const rows = await getNotifications(userId);
       setNotifications(rows);
     } catch (loadError) {
       console.error("Failed to load notifications:", loadError);
@@ -101,15 +104,19 @@ export default function NotificationsPage() {
   }, [loadNotifications]);
 
   useEffect(() => {
+    if (!currentUserId) {
+      return;
+    }
+
     const channel = supabase
-      .channel(`notifications:${CURRENT_USER_ID}`)
+      .channel(`notifications:${currentUserId}`)
       .on(
         "postgres_changes",
         {
           event: "*",
           schema: "public",
           table: "notifications",
-          filter: `user_id=eq.${CURRENT_USER_ID}`,
+          filter: `user_id=eq.${currentUserId}`,
         },
         () => {
           loadNotifications();
@@ -121,7 +128,7 @@ export default function NotificationsPage() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [loadNotifications]);
+  }, [currentUserId, loadNotifications]);
 
   const unreadCount = notifications.filter((notification) => !notification.read).length;
 

@@ -33,13 +33,12 @@ export async function createNotification(
   body: string | null,
   link: string | null,
 ): Promise<void> {
-  const { error } = await supabase.from("notifications").insert({
-    user_id: userId,
-    type,
-    title,
-    body,
-    link,
-    read: false,
+  const { error } = await supabase.rpc("create_notification", {
+    p_user_id: userId,
+    p_type: type,
+    p_title: title,
+    p_body: body,
+    p_link: link,
   });
 
   if (error) {

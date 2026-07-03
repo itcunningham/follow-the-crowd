@@ -8,7 +8,7 @@ import ProfileAvatar from "@/app/components/ProfileAvatar";
 import { supabase } from "@/lib/supabaseClient";
 import { startDm } from "@/lib/startDm";
 import {
-  CURRENT_USER_ID,
+  getCurrentUserId,
   getUserAvatarProfilesByIds,
   type UserAvatarProfile,
 } from "@/lib/user/currentUser";
@@ -63,6 +63,7 @@ function buildLatestMessageMap(messages: Message[]) {
 function buildOtherUsersByConversation(
   members: ConversationMember[],
   conversationIds: string[],
+  currentUserId: string,
 ) {
   const otherUsers = new Map<string, string>();
 
@@ -71,7 +72,7 @@ function buildOtherUsersByConversation(
       continue;
     }
 
-    if (member.user_id !== CURRENT_USER_ID) {
+    if (member.user_id !== currentUserId) {
       otherUsers.set(member.conversation_id, member.user_id);
     }
   }
@@ -157,10 +158,14 @@ export default function DmInboxPage() {
   const [error, setError] = useState<string | null>(null);
   const [startDmError, setStartDmError] = useState<string | null>(null);
   const [startingDm, setStartingDm] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   const loadConversations = useCallback(async () => {
     setLoading(true);
     setError(null);
+
+    const userId = await getCurrentUserId();
+    setCurrentUserId(userId);
 
     const { data: allMembers, error: membersError } = await supabase
       .from("conversation_members")
@@ -174,7 +179,7 @@ export default function DmInboxPage() {
     }
 
     const members = (allMembers ?? []) as ConversationMember[];
-    const matchingMembers = members.filter((row) => row.user_id === CURRENT_USER_ID);
+    const matchingMembers = members.filter((row) => row.user_id === userId);
 
     const conversationIds = [
       ...new Set(matchingMembers.map((row) => row.conversation_id)),
@@ -189,7 +194,7 @@ export default function DmInboxPage() {
       return;
     }
 
-    const otherUsers = buildOtherUsersByConversation(members, conversationIds);
+    const otherUsers = buildOtherUsersByConversation(members, conversationIds, userId);
     setOtherUsersByConversation(otherUsers);
 
     try {
@@ -271,7 +276,8 @@ export default function DmInboxPage() {
     setStartDmError(null);
 
     try {
-      const conversationId = await startDm(CURRENT_USER_ID, TARGET_DJ_USER_ID);
+      const userId = await getCurrentUserId();
+      const conversationId = await startDm(userId, TARGET_DJ_USER_ID);
       router.push(`/dm/${conversationId}`);
     } catch (startError) {
       console.error("startDm failed:", startError);
@@ -292,7 +298,7 @@ export default function DmInboxPage() {
       <header className="sticky top-0 z-10 border-b border-zinc-800/80 bg-[#070708]/95 px-4 py-4 backdrop-blur-md sm:px-6 md:top-12">
         <div>
           <h1 className="text-xl font-semibold text-zinc-50">Direct Messages</h1>
-          <p className="mt-0.5 text-xs text-zinc-500">{CURRENT_USER_ID}</p>
+          <p className="mt-0.5 text-xs text-zinc-500">{currentUserId ?? "Signed in"}</p>
         </div>
 
         {conversations.length > 0 ? (
@@ -344,7 +350,7 @@ export default function DmInboxPage() {
                 getConversationDisplayName(conversation, id, otherUserId);
               const lastMessage = lastMessages.get(id);
               const preview = lastMessage
-                ? `${lastMessage.user_id === CURRENT_USER_ID ? "You: " : ""}${lastMessage.text}`
+                ? `${lastMessage.user_id === currentUserId ? "You: " : ""}${lastMessage.text}`
                 : "No messages yet";
               const timestamp = lastMessage?.created_at ?? conversation.created_at;
 

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import {
   formatBookingRequestMessage,
   type BookingRequest,
@@ -59,6 +60,15 @@ export default function BookingRequestCard({
         <BookingDetail label="Rate" value={formatRateDisplay(booking.fee)} />
         {booking.notes ? <BookingDetail label="Notes" value={booking.notes} /> : null}
       </dl>
+
+      {booking.event_id ? (
+        <Link
+          href={`/events/${booking.event_id}`}
+          className="mt-4 inline-flex rounded-lg border border-zinc-700 bg-zinc-900/80 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-zinc-300 transition hover:border-blue-500/35 hover:text-blue-300"
+        >
+          View event
+        </Link>
+      ) : null}
 
       {canRespond && booking.status === "pending" ? (
         <div className="mt-4 flex gap-2">

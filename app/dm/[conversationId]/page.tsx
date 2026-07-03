@@ -20,7 +20,7 @@ import {
 import { createNotification, markNotificationsReadForLink } from "@/lib/notifications";
 import { supabase } from "@/lib/supabaseClient";
 import {
-  CURRENT_USER_ID,
+  getCurrentUserId,
   getUserAvatarProfilesByIds,
   type UserAvatarProfile,
 } from "@/lib/user/currentUser";
@@ -65,6 +65,7 @@ export default function DmChatPage() {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [respondingBookingId, setRespondingBookingId] = useState<string | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -78,6 +79,9 @@ export default function DmChatPage() {
     }
 
     async function loadConversationMeta() {
+      const currentUserIdValue = await getCurrentUserId();
+      setCurrentUserId(currentUserIdValue);
+
       const { data, error: membersError } = await supabase
         .from("conversation_members")
         .select("user_id")
@@ -89,7 +93,7 @@ export default function DmChatPage() {
       }
 
       const otherMember = (data ?? []).find(
-        (member) => member.user_id !== CURRENT_USER_ID,
+        (member) => member.user_id !== currentUserIdValue,
       );
 
       const nextOtherUserId = otherMember?.user_id ?? null;
@@ -117,8 +121,12 @@ export default function DmChatPage() {
       return;
     }
 
-    markNotificationsReadForLink(CURRENT_USER_ID, `/dm/${conversationId}`);
-  }, [conversationId]);
+    if (!conversationId || !currentUserId) {
+      return;
+    }
+
+    markNotificationsReadForLink(currentUserId, `/dm/${conversationId}`);
+  }, [conversationId, currentUserId]);
 
   useEffect(() => {
     if (!conversationId) {
@@ -203,9 +211,11 @@ export default function DmChatPage() {
     setSending(true);
     setError(null);
 
+    const userId = await getCurrentUserId();
+
     const { error: insertError } = await supabase.from("messages").insert({
       conversation_id: conversationId,
-      user_id: CURRENT_USER_ID,
+      user_id: userId,
       text,
     });
 
@@ -329,7 +339,7 @@ export default function DmChatPage() {
         ) : (
           <ul className="flex flex-col gap-3 pb-2">
             {messages.map((message) => {
-              const isOwnMessage = message.user_id === CURRENT_USER_ID;
+              const isOwnMessage = currentUserId !== null && message.user_id === currentUserId;
               const bookingData = mergeBookingWithMessage(
                 resolveBookingForMessage(message.text, bookings),
                 message.text,
@@ -343,7 +353,7 @@ export default function DmChatPage() {
                   bookings.find((booking) => booking.id === bookingData.id) ?? bookingData;
                 const canRespond =
                   resolvedBooking.status === "pending" &&
-                  (resolvedBooking.recipient_id === CURRENT_USER_ID ||
+                  (resolvedBooking.recipient_id === currentUserId ||
                     (!resolvedBooking.recipient_id && !isOwnMessage));
 
                 return (

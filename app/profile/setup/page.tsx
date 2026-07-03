@@ -4,10 +4,14 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import ProfileAvatar from "@/app/components/ProfileAvatar";
 import {
-  CURRENT_USER_ID,
   DISCOVER_PATH,
+  getCurrentAuthUser,
+  getCurrentUserId,
   getCurrentUserProfile,
+  LOGIN_PATH,
   needsOnboarding,
+  needsProfileSetup,
+  PROFILE_SETUP_PATH,
   saveUserProfile,
   type UserProfileInput,
   type UserRole,
@@ -141,7 +145,8 @@ export default function ProfileSetupPage() {
       }
 
       await saveUserProfile(form, { avatarUrl });
-      router.replace(isEditing ? `/profile/${CURRENT_USER_ID}` : DISCOVER_PATH);
+      const userId = await getCurrentUserId();
+      router.replace(isEditing ? `/profile/${userId}` : DISCOVER_PATH);
     } catch (saveError) {
       console.error("Failed to save profile:", saveError);
       setError(saveError instanceof Error ? saveError.message : "Failed to save profile");
