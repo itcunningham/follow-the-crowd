@@ -56,10 +56,12 @@ export default function SignupPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
+    setSuccessMessage(null);
 
     const validationError = validateSignupForm(email, password, confirmPassword);
 
@@ -74,7 +76,7 @@ export default function SignupPage() {
       const { session } = await signUpWithEmail(email, password);
 
       if (!session) {
-        setError("Account created. Check your email to confirm, then log in.");
+        setSuccessMessage("Account created. Check your email to confirm, then log in.");
         setSubmitting(false);
         return;
       }
@@ -145,6 +147,10 @@ export default function SignupPage() {
               className="w-full rounded-xl border border-zinc-800 bg-zinc-950/80 px-3.5 py-2.5 text-sm text-zinc-100 outline-none transition focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/15"
             />
           </label>
+
+          {successMessage ? (
+            <p className="text-sm text-blue-200">{successMessage}</p>
+          ) : null}
 
           {error ? <p className="text-sm text-red-400">{error}</p> : null}
 

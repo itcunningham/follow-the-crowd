@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import AppNavigation, { MOBILE_NAV_OFFSET_CLASS } from "@/app/components/AppNavigation";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
 import PlannerEventsSubNav from "@/app/components/PlannerEventsSubNav";
+import EventDateStatusBadge from "@/app/components/EventDateStatusBadge";
 import { BookingDateField, BookingSetTimeRangeField } from "@/app/components/BookingDateTimeFields";
 import { BookingRateField } from "@/app/components/BookingRateField";
 import { listBookingPlans, type BookingPlan } from "@/lib/bookingPlans";
@@ -14,12 +15,10 @@ import {
   attachLineupStats,
   createEvent,
   eventInputFromBookingPlan,
-  formatEventStatusLabel,
   getEventsLoadErrorMessage,
   listDjInvitedEvents,
   listOwnedEvents,
   type EventInput,
-  type EventStatus,
   type EventWithLineupStats,
 } from "@/lib/events";
 import {
@@ -35,37 +34,10 @@ const emptyEventForm: EventInput = {
   setTime: "",
   rate: "",
   notes: "",
-  status: "draft",
   bookingPlanId: null,
 };
 
-const EVENT_STATUSES: { value: EventStatus; label: string }[] = [
-  { value: "draft", label: "Draft" },
-  { value: "upcoming", label: "Upcoming" },
-  { value: "completed", label: "Completed" },
-  { value: "cancelled", label: "Cancelled" },
-];
-
 type CreateStep = "source" | "pick-plan" | "form";
-
-function EventStatusBadge({ status }: { status: EventStatus }) {
-  const classes =
-    status === "upcoming"
-      ? "border-blue-500/40 bg-blue-600/15 text-blue-300"
-      : status === "completed"
-        ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300"
-        : status === "cancelled"
-          ? "border-red-500/40 bg-red-500/10 text-red-300"
-          : "border-zinc-600/50 bg-zinc-800/80 text-zinc-300";
-
-  return (
-    <span
-      className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide ${classes}`}
-    >
-      {formatEventStatusLabel(status)}
-    </span>
-  );
-}
 
 export default function EventsPage() {
   const router = useRouter();
@@ -426,22 +398,6 @@ export default function EventsPage() {
                     placeholder="Genre, vibe, travel, equipment..."
                     multiline
                   />
-                  <label className="block">
-                    <span className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-400">
-                      Event status
-                    </span>
-                    <select
-                      value={form.status}
-                      onChange={(event) => updateField("status", event.target.value as EventStatus)}
-                      className="w-full rounded-xl border border-zinc-800 bg-zinc-900/80 px-3.5 py-2.5 text-sm text-zinc-100 outline-none transition focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/15"
-                    >
-                      {EVENT_STATUSES.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
 
                   {error ? <p className="text-sm text-red-400">{error}</p> : null}
 
@@ -489,7 +445,7 @@ export default function EventsPage() {
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
                         <h3 className="text-lg font-semibold text-zinc-50">{event.name}</h3>
-                        <EventStatusBadge status={event.status} />
+                        <EventDateStatusBadge eventDate={event.event_date} />
                       </div>
                       <p className="mt-2 text-sm text-zinc-400">
                         {event.venue} · {event.event_date}

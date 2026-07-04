@@ -1,7 +1,12 @@
+import { parseEventDate } from "@/lib/bookingDateTime";
 import { supabase } from "@/lib/supabaseClient";
 import type { BookingPlan } from "@/lib/bookingPlans";
 import type { BookingRequestInput } from "@/lib/bookingRequests";
-import { getEventLineupStats, listBookingRequestsForEvent } from "@/lib/bookingRequests";
+import {
+  filterActiveBookings,
+  getActiveEventLineupStats,
+  listBookingRequestsForEvent,
+} from "@/lib/bookingRequests";
 import { normalizeStoredRate } from "@/lib/bookingRate";
 import { getCurrentUserId } from "@/lib/user/currentUser";
 
@@ -28,9 +33,10 @@ export type EventInput = {
   setTime: string;
   rate: string;
   notes: string;
-  status: EventStatus;
   bookingPlanId?: string | null;
 };
+
+export type EventDateDisplayLabel = "Upcoming" | "Today" | "Past" | "Unscheduled";
 
 export type EventLineupStats = {
   total: number;
@@ -54,9 +60,15 @@ function mapEventInputToRow(input: EventInput) {
     set_time: input.setTime.trim(),
     rate: normalizeStoredRate(input.rate),
     notes: input.notes.trim(),
-    status: input.status,
     booking_plan_id: input.bookingPlanId ?? null,
   };
+}
+
+function formatLocalDateKey(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 export function eventToRequestInput(event: Event): BookingRequestInput {
@@ -79,9 +91,57 @@ export function eventInputFromBookingPlan(plan: BookingPlan): EventInput {
     setTime: plan.set_time,
     rate: normalizeStoredRate(plan.fee),
     notes: plan.notes,
-    status: "draft",
     bookingPlanId: plan.id,
   };
+}
+
+export function getEventDateDisplayLabel(
+  eventDate: string,
+  referenceDate: Date = new Date(),
+): EventDateDisplayLabel | null {
+  const trimmed = eventDate.trim();
+
+  if (!trimmed) {
+    return "Unscheduled";
+  }
+
+  const parsed = parseEventDate(trimmed);
+
+  if (!parsed.isoDate) {
+    return "Unscheduled";
+  }
+
+  const todayKey = formatLocalDateKey(referenceDate);
+
+  if (parsed.isoDate > todayKey) {
+    return "Upcoming";
+  }
+
+  if (parsed.isoDate === todayKey) {
+    return "Today";
+  }
+
+  return "Past";
+}
+
+export function formatEventDateDisplayLabel(eventDate: string): string | null {
+  return getEventDateDisplayLabel(eventDate);
+}
+
+export function getEventDateDisplayBadgeClass(label: EventDateDisplayLabel): string {
+  if (label === "Upcoming") {
+    return "border-blue-500/40 bg-blue-600/15 text-blue-300";
+  }
+
+  if (label === "Today") {
+    return "border-violet-500/40 bg-violet-500/10 text-violet-300";
+  }
+
+  if (label === "Past") {
+    return "border-zinc-600/50 bg-zinc-800/80 text-zinc-400";
+  }
+
+  return "border-zinc-700/50 bg-zinc-900/60 text-zinc-500";
 }
 
 export function formatEventStatusLabel(status: EventStatus): string {
@@ -111,7 +171,7 @@ export async function attachLineupStats(events: Event[]): Promise<EventWithLineu
     events.map(async (event) => {
       try {
         const bookings = await listBookingRequestsForEvent(event.id);
-        statsByEventId.set(event.id, getEventLineupStats(bookings));
+        statsByEventId.set(event.id, getActiveEventLineupStats(bookings));
       } catch (error) {
         console.error(`[events] Failed to load lineup stats for ${event.id}:`, error);
         statsByEventId.set(event.id, { total: 0, pending: 0, accepted: 0, declined: 0 });
@@ -217,6 +277,7 @@ export async function createEvent(input: EventInput): Promise<Event> {
     .from("events")
     .insert({
       owner_id: userId,
+      status: "upcoming",
       ...mapEventInputToRow(input),
     })
     .select(EVENT_FIELDS)

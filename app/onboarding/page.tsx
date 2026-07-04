@@ -84,6 +84,11 @@ export default function OnboardingPage() {
       router.replace(PROFILE_SETUP_PATH);
     } catch (saveError) {
       console.error("Failed to save role:", saveError);
+
+      if (saveError && typeof saveError === "object") {
+        console.error("Role save error details:", saveError);
+      }
+
       setError(saveError instanceof Error ? saveError.message : "Failed to save role");
       setLoadingRole(null);
     }

@@ -11,19 +11,37 @@ import DjBookingAvailabilityBadge from "@/app/components/DjBookingAvailabilityBa
 import ProfileAvatar from "@/app/components/ProfileAvatar";
 import { BookingDateField, BookingSetTimeRangeField } from "@/app/components/BookingDateTimeFields";
 import { BookingRateField } from "@/app/components/BookingRateField";
+import ArchiveAllBookingRequestsButton from "@/app/components/ArchiveAllBookingRequestsButton";
+import ArchiveBookingRequestButton from "@/app/components/ArchiveBookingRequestButton";
+import CancelBookingRequestButton from "@/app/components/CancelBookingRequestButton";
 import {
-  filterBookingGroups,
+  archiveAllCancelledBookingRequests,
+  archiveBookingRequest,
+  cancelBookingRequest,
+  canCancelBookingRequest,
+  filterActiveBookingGroups,
+  filterActiveBookings,
+  filterArchivedCancelledBookings,
+  filterCancelledBookings,
+  filterHistoryCancelledBookings,
   formatBookingStatusLabel,
-  getBookingCampaignStats,
+  getActiveBookingCampaignStats,
+  getBookingMutationErrorMessage,
+  getBookingStatusBadgeClass,
   groupSentBookingRequests,
   listReceivedBookingRequests,
   listSentBookingRequests,
   logBookingsLoadError,
+  logCancelledBookingsLoadFailure,
   sendBookingRequestsToDjs,
+  sortBookingsNewestFirst,
+  unarchiveBookingRequest,
+  type ActiveBookingStatusFilter,
   type BookingRequest,
   type BookingRequestInput,
   type BookingRequestStatus,
-  type BookingStatusFilter,
+  type DjGigsViewFilter,
+  type PlannerSentBookingsView,
   type SentBookingGroup,
 } from "@/lib/bookingRequests";
 import {
@@ -105,18 +123,54 @@ function formatSentDate(timestamp: string) {
   });
 }
 
-const STATUS_FILTERS: { value: BookingStatusFilter; label: string }[] = [
+const ACTIVE_STATUS_FILTERS: { value: ActiveBookingStatusFilter; label: string }[] = [
   { value: "all", label: "All" },
   { value: "pending", label: "Pending" },
   { value: "accepted", label: "Accepted" },
   { value: "declined", label: "Declined" },
 ];
 
+const HISTORY_EMPTY_MESSAGE = "No cancelled booking requests yet.";
+const ARCHIVED_EMPTY_MESSAGE = "No archived booking requests.";
+
 type BookingsSectionTab = "sent" | "received";
 
-type DjGigsFilter = Exclude<BookingStatusFilter, "all">;
+function HistoryIcon({ className = "h-3.5 w-3.5" }: { className?: string }) {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 7v5l3 2" />
+    </svg>
+  );
+}
 
-type DjGigsView = DjGigsFilter | "calendar";
+function ArchiveTabIcon({ className = "h-3.5 w-3.5" }: { className?: string }) {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M3 7h18" />
+      <path d="M5 7l1 12h12l1-12" />
+      <path d="M9 7V5h6v2" />
+    </svg>
+  );
+}
 
 function canCreateBookings(role: UserRole | null): boolean {
   return role === "promoter" || role === "both";
@@ -154,11 +208,19 @@ function getBookingsPageTitle(role: UserRole | null): string {
   return role === "dj" ? "Gigs" : "Bookings";
 }
 
-function filterReceivedBookingsByStatus(
+function filterReceivedBookingsByView(
   bookings: BookingRequest[],
-  filter: DjGigsFilter,
+  view: DjGigsViewFilter,
 ): BookingRequest[] {
-  return bookings.filter((booking) => booking.status === filter);
+  if (view === "calendar") {
+    return bookings;
+  }
+
+  if (view === "history") {
+    return sortBookingsNewestFirst(filterCancelledBookings(bookings));
+  }
+
+  return bookings.filter((booking) => booking.status === view);
 }
 
 export default function BookingsPage() {
@@ -169,16 +231,18 @@ export default function BookingsPage() {
   const [loadingAccess, setLoadingAccess] = useState(true);
   const [loadingList, setLoadingList] = useState(true);
   const [sentGroups, setSentGroups] = useState<SentBookingGroup[]>([]);
+  const [sentBookings, setSentBookings] = useState<BookingRequest[]>([]);
   const [receivedBookings, setReceivedBookings] = useState<BookingRequest[]>([]);
   const [sectionTab, setSectionTab] = useState<BookingsSectionTab>("sent");
-  const [djGigsView, setDjGigsView] = useState<DjGigsView>("pending");
+  const [plannerSentView, setPlannerSentView] = useState<PlannerSentBookingsView>("active");
+  const [djGigsView, setDjGigsView] = useState<DjGigsViewFilter>("pending");
   const [djAvailabilityHints, setDjAvailabilityHints] = useState<
     Map<string, DjPlannerAvailabilityHint>
   >(new Map());
   const [recipientProfiles, setRecipientProfiles] = useState<
     Map<string, BookingRecipientProfile>
   >(new Map());
-  const [statusFilter, setStatusFilter] = useState<BookingStatusFilter>("all");
+  const [statusFilter, setStatusFilter] = useState<ActiveBookingStatusFilter>("all");
   const [createOpen, setCreateOpen] = useState(false);
   const [createStep, setCreateStep] = useState<CreateStep>("source");
   const [form, setForm] = useState<BookingRequestInput>(emptyForm);
@@ -194,10 +258,25 @@ export default function BookingsPage() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [failureDetails, setFailureDetails] = useState<string[]>([]);
   const [eventDateOverride, setEventDateOverride] = useState<string | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [cancellingBookingId, setCancellingBookingId] = useState<string | null>(null);
+  const [archivingBookingId, setArchivingBookingId] = useState<string | null>(null);
+  const [archivingAllHistory, setArchivingAllHistory] = useState(false);
+  const [restoringBookingId, setRestoringBookingId] = useState<string | null>(null);
 
-  const filteredGroups = useMemo(
-    () => filterBookingGroups(sentGroups, statusFilter),
+  const activeSentGroups = useMemo(
+    () => filterActiveBookingGroups(sentGroups, statusFilter),
     [sentGroups, statusFilter],
+  );
+
+  const historySentBookings = useMemo(
+    () => filterHistoryCancelledBookings(sentBookings),
+    [sentBookings],
+  );
+
+  const archivedSentBookings = useMemo(
+    () => filterArchivedCancelledBookings(sentBookings),
+    [sentBookings],
   );
 
   const filteredDjs = useMemo(() => {
@@ -226,12 +305,17 @@ export default function BookingsPage() {
     role === "dj" || (role === "both" && sectionTab === "received");
   const showUnifiedDjCalendar = showReceivedGigsTabs && djGigsView === "calendar";
 
+  const activeReceivedBookings = useMemo(
+    () => filterActiveBookings(receivedBookings),
+    [receivedBookings],
+  );
+
   const filteredReceivedBookings = useMemo(() => {
     if (!showReceivedGigsTabs || djGigsView === "calendar") {
       return receivedBookings;
     }
 
-    return filterReceivedBookingsByStatus(receivedBookings, djGigsView);
+    return filterReceivedBookingsByView(receivedBookings, djGigsView);
   }, [receivedBookings, djGigsView, showReceivedGigsTabs]);
 
   useEffect(() => {
@@ -255,8 +339,11 @@ export default function BookingsPage() {
 
     if (canCreateBookings(role)) {
       void getCurrentUserId().then((userId) => {
+        setCurrentUserId(userId);
         markNotificationsReadByType(userId, ["booking_update"]);
       });
+    } else {
+      void getCurrentUserId().then(setCurrentUserId);
     }
 
     async function loadBookings() {
@@ -273,6 +360,7 @@ export default function BookingsPage() {
         ]);
 
         if (showSent) {
+          setSentBookings(sentResult);
           const groups = groupSentBookingRequests(sentResult);
           setSentGroups(groups);
 
@@ -290,6 +378,7 @@ export default function BookingsPage() {
             setRecipientProfiles(new Map());
           }
         } else {
+          setSentBookings([]);
           setSentGroups([]);
           setRecipientProfiles(new Map());
         }
@@ -298,6 +387,7 @@ export default function BookingsPage() {
       } catch (loadError) {
         logBookingsLoadError(loadError);
         console.error("Failed to load bookings:", loadError);
+        setSentBookings([]);
         setSentGroups([]);
         setReceivedBookings([]);
         setRecipientProfiles(new Map());
@@ -308,7 +398,7 @@ export default function BookingsPage() {
     }
 
     loadBookings();
-  }, [loadingAccess, role, successMessage]);
+  }, [loadingAccess, role]);
 
   useEffect(() => {
     if (loadingAccess || !canCreateBookings(role)) {
@@ -547,6 +637,7 @@ export default function BookingsPage() {
       const successText = `Sent booking request to ${successes.length} DJ${successes.length === 1 ? "" : "s"}.`;
       setSuccessMessage(successText);
       closeCreateFlow();
+      await reloadPlannerSentBookings();
 
       if (failures.length > 0) {
         setFailureDetails(
@@ -562,6 +653,107 @@ export default function BookingsPage() {
       setError(sendError instanceof Error ? sendError.message : "Failed to send booking requests");
     } finally {
       setSending(false);
+    }
+  }
+
+  async function reloadPlannerSentBookings(): Promise<BookingRequest[]> {
+    const sentResult = await listSentBookingRequests();
+    setSentBookings(sentResult);
+    setSentGroups(groupSentBookingRequests(sentResult));
+    return sentResult;
+  }
+
+  async function handleCancelBooking(bookingId: string) {
+    setCancellingBookingId(bookingId);
+    setError(null);
+
+    try {
+      const updatedBooking = await cancelBookingRequest(bookingId);
+      const sentResult = await reloadPlannerSentBookings();
+      logCancelledBookingsLoadFailure("planner history reload", sentResult, updatedBooking.id);
+
+      setSuccessMessage("Booking request cancelled.");
+    } catch (cancelError) {
+      console.error("Failed to cancel booking request:", cancelError);
+      setError(getBookingMutationErrorMessage(cancelError));
+    } finally {
+      setCancellingBookingId(null);
+    }
+  }
+
+  async function handleArchiveBooking(bookingId: string) {
+    setArchivingBookingId(bookingId);
+    setError(null);
+    setFailureDetails([]);
+
+    try {
+      await archiveBookingRequest(bookingId);
+      await reloadPlannerSentBookings();
+      setPlannerSentView("history");
+      setSuccessMessage("Booking request archived.");
+    } catch (archiveError) {
+      console.error("Failed to archive booking request:", archiveError);
+      setError(getBookingMutationErrorMessage(archiveError));
+    } finally {
+      setArchivingBookingId(null);
+    }
+  }
+
+  async function handleArchiveAllHistory() {
+    const bookingIds = historySentBookings.map((booking) => booking.id);
+
+    if (bookingIds.length === 0) {
+      return;
+    }
+
+    setArchivingAllHistory(true);
+    setError(null);
+    setFailureDetails([]);
+    setSuccessMessage(null);
+
+    try {
+      const { successes, failures } = await archiveAllCancelledBookingRequests(bookingIds);
+
+      await reloadPlannerSentBookings();
+      setPlannerSentView("history");
+
+      if (successes.length > 0) {
+        setSuccessMessage(
+          `Archived ${successes.length} booking request${successes.length === 1 ? "" : "s"}.`,
+        );
+      }
+
+      if (failures.length > 0) {
+        setError(
+          failures.length === bookingIds.length
+            ? "Failed to archive booking requests."
+            : `${failures.length} booking request${failures.length === 1 ? "" : "s"} could not be archived.`,
+        );
+        setFailureDetails(
+          failures.map((failure) => `${failure.bookingId}: ${failure.message}`),
+        );
+      }
+    } catch (archiveError) {
+      console.error("Failed to archive all booking requests:", archiveError);
+      setError(getBookingMutationErrorMessage(archiveError));
+    } finally {
+      setArchivingAllHistory(false);
+    }
+  }
+
+  async function handleRestoreBooking(bookingId: string) {
+    setRestoringBookingId(bookingId);
+    setError(null);
+
+    try {
+      await unarchiveBookingRequest(bookingId);
+      await reloadPlannerSentBookings();
+      setSuccessMessage("Booking request restored to History.");
+    } catch (restoreError) {
+      console.error("Failed to restore booking request:", restoreError);
+      setError(getBookingMutationErrorMessage(restoreError));
+    } finally {
+      setRestoringBookingId(null);
     }
   }
 
@@ -611,7 +803,8 @@ export default function BookingsPage() {
           {showReceivedGigsTabs ? (
             <DjGigsTabs
               activeView={djGigsView}
-              bookings={receivedBookings}
+              bookings={activeReceivedBookings}
+              cancelledCount={filterCancelledBookings(receivedBookings).length}
               onChange={setDjGigsView}
             />
           ) : showSentTab || showReceivedTab ? (
@@ -950,28 +1143,126 @@ export default function BookingsPage() {
               </div>
             ) : (
               <>
-                <BookingStatusTabs
-                  activeFilter={statusFilter}
-                  groups={sentGroups}
-                  onChange={setStatusFilter}
+                <PlannerSentViewTabs
+                  activeView={plannerSentView}
+                  historyCount={historySentBookings.length}
+                  archivedCount={archivedSentBookings.length}
+                  onChange={(view) => {
+                    setPlannerSentView(view);
+                    if (view === "active") {
+                      setStatusFilter("all");
+                      return;
+                    }
+
+                    void reloadPlannerSentBookings().catch((loadError) => {
+                      logBookingsLoadError(loadError);
+                      console.error(`Failed to reload planner ${view} bookings:`, loadError);
+                    });
+                  }}
                 />
 
-                {filteredGroups.length === 0 ? (
-                  <p className="mt-4 rounded-xl border border-zinc-800 bg-zinc-900/40 px-4 py-6 text-center text-sm text-zinc-500">
-                    No {statusFilter === "all" ? "" : `${statusFilter} `}booking responses match this
-                    filter.
-                  </p>
+                {plannerSentView === "history" ? (
+                  historySentBookings.length === 0 ? (
+                    <p className="mt-4 rounded-xl border border-zinc-800/80 bg-zinc-950/40 px-4 py-8 text-center text-sm text-zinc-500">
+                      {HISTORY_EMPTY_MESSAGE}
+                    </p>
+                  ) : (
+                    <>
+                      <div className="mt-4 flex justify-end">
+                        <ArchiveAllBookingRequestsButton
+                          count={historySentBookings.length}
+                          loading={archivingAllHistory}
+                          disabled={Boolean(archivingBookingId)}
+                          onConfirm={handleArchiveAllHistory}
+                        />
+                      </div>
+                      <ul className="mt-3 space-y-3">
+                      {historySentBookings.map((booking) => {
+                        const profile = recipientProfiles.get(booking.recipient_id);
+                        const name = profile?.display_name ?? booking.recipient_id;
+
+                        return (
+                          <BookingHistoryCard
+                            key={booking.id}
+                            booking={booking}
+                            subtitle={name}
+                            avatarName={name}
+                            avatarUrl={profile?.avatar_url}
+                            action={
+                              <ArchiveBookingRequestButton
+                                disabled={archivingAllHistory}
+                                loading={archivingBookingId === booking.id}
+                                onConfirm={() => handleArchiveBooking(booking.id)}
+                              />
+                            }
+                          />
+                        );
+                      })}
+                      </ul>
+                    </>
+                  )
+                ) : plannerSentView === "archived" ? (
+                  archivedSentBookings.length === 0 ? (
+                    <p className="mt-4 rounded-xl border border-zinc-800/80 bg-zinc-950/40 px-4 py-8 text-center text-sm text-zinc-500">
+                      {ARCHIVED_EMPTY_MESSAGE}
+                    </p>
+                  ) : (
+                    <ul className="mt-4 space-y-3">
+                      {archivedSentBookings.map((booking) => {
+                        const profile = recipientProfiles.get(booking.recipient_id);
+                        const name = profile?.display_name ?? booking.recipient_id;
+
+                        return (
+                          <BookingHistoryCard
+                            key={booking.id}
+                            booking={booking}
+                            subtitle={name}
+                            avatarName={name}
+                            avatarUrl={profile?.avatar_url}
+                            action={
+                              <button
+                                type="button"
+                                disabled={restoringBookingId === booking.id}
+                                onClick={() => void handleRestoreBooking(booking.id)}
+                                className="rounded-lg border border-zinc-700/80 bg-zinc-950/60 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-zinc-400 transition hover:border-blue-500/30 hover:text-blue-300 disabled:cursor-not-allowed disabled:opacity-50"
+                              >
+                                {restoringBookingId === booking.id ? "Restoring..." : "Restore"}
+                              </button>
+                            }
+                          />
+                        );
+                      })}
+                    </ul>
+                  )
                 ) : (
-                  <ul className="mt-4 space-y-4">
-                    {filteredGroups.map((group) => (
-                      <BookingCampaignCard
-                        key={group.key}
-                        group={group}
-                        fullGroup={sentGroups.find((item) => item.key === group.key) ?? group}
-                        recipientProfiles={recipientProfiles}
-                      />
-                    ))}
-                  </ul>
+                  <>
+                    <BookingStatusTabs
+                      activeFilter={statusFilter}
+                      groups={sentGroups}
+                      onChange={setStatusFilter}
+                    />
+
+                    {activeSentGroups.length === 0 ? (
+                      <p className="mt-4 rounded-xl border border-zinc-800 bg-zinc-900/40 px-4 py-6 text-center text-sm text-zinc-500">
+                        No {statusFilter === "all" ? "active " : `${statusFilter} `}booking responses
+                        match this filter.
+                      </p>
+                    ) : (
+                      <ul className="mt-4 space-y-4">
+                        {activeSentGroups.map((group) => (
+                          <BookingCampaignCard
+                            key={group.key}
+                            group={group}
+                            fullGroup={sentGroups.find((item) => item.key === group.key) ?? group}
+                            recipientProfiles={recipientProfiles}
+                            currentUserId={currentUserId}
+                            cancellingBookingId={cancellingBookingId}
+                            onCancelBooking={handleCancelBooking}
+                          />
+                        ))}
+                      </ul>
+                    )}
+                  </>
                 )}
               </>
             )
@@ -991,14 +1282,20 @@ export default function BookingsPage() {
                 </p>
               </div>
             ) : filteredReceivedBookings.length === 0 ? (
-              <p className="rounded-xl border border-zinc-800 bg-zinc-900/40 px-4 py-6 text-center text-sm text-zinc-500">
-                No {djGigsView === "accepted" ? "confirmed" : djGigsView} gigs match this filter.
+              <p className="rounded-xl border border-zinc-800 bg-zinc-900/40 px-4 py-8 text-center text-sm text-zinc-500">
+                {djGigsView === "history"
+                  ? HISTORY_EMPTY_MESSAGE
+                  : `No ${djGigsView === "accepted" ? "confirmed" : djGigsView} gigs match this filter.`}
               </p>
             ) : (
               <ul className="space-y-3">
-                {filteredReceivedBookings.map((booking) => (
-                  <ReceivedBookingCard key={booking.id} booking={booking} />
-                ))}
+                {filteredReceivedBookings.map((booking) =>
+                  djGigsView === "history" ? (
+                    <BookingHistoryCard key={booking.id} booking={booking} muted />
+                  ) : (
+                    <ReceivedBookingCard key={booking.id} booking={booking} />
+                  ),
+                )}
               </ul>
             )
           ) : null}
@@ -1011,11 +1308,13 @@ export default function BookingsPage() {
 function DjGigsTabs({
   activeView,
   bookings,
+  cancelledCount,
   onChange,
 }: {
-  activeView: DjGigsView;
+  activeView: DjGigsViewFilter;
   bookings: BookingRequest[];
-  onChange: (view: DjGigsView) => void;
+  cancelledCount: number;
+  onChange: (view: DjGigsViewFilter) => void;
 }) {
   const counts = useMemo(() => {
     return bookings.reduce(
@@ -1034,10 +1333,11 @@ function DjGigsTabs({
     );
   }, [bookings]);
 
-  const tabs: { value: DjGigsView; label: string; count?: number }[] = [
+  const tabs: { value: DjGigsViewFilter; label: string; count?: number; icon?: "history" }[] = [
     { value: "pending", label: "Pending", count: counts.pending },
     { value: "accepted", label: "Confirmed", count: counts.accepted },
     { value: "declined", label: "Declined", count: counts.declined },
+    { value: "history", label: "History", count: cancelledCount, icon: "history" },
     { value: "calendar", label: "Calendar" },
   ];
 
@@ -1051,12 +1351,62 @@ function DjGigsTabs({
             key={tab.value}
             type="button"
             onClick={() => onChange(tab.value)}
-            className={`rounded-lg px-3 py-1.5 text-xs font-semibold uppercase tracking-wide transition ${
+            className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold uppercase tracking-wide transition ${
               isActive
                 ? "border border-blue-500/45 bg-blue-600/15 text-blue-300 shadow-[0_0_16px_rgba(59,130,246,0.12)]"
                 : "border border-zinc-800/80 bg-zinc-900/50 text-zinc-400 hover:border-blue-500/30 hover:text-blue-300"
             }`}
           >
+            {tab.icon === "history" ? <HistoryIcon /> : null}
+            {tab.label}
+            {tab.count && tab.count > 0 ? ` (${tab.count})` : ""}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function PlannerSentViewTabs({
+  activeView,
+  historyCount,
+  archivedCount,
+  onChange,
+}: {
+  activeView: PlannerSentBookingsView;
+  historyCount: number;
+  archivedCount: number;
+  onChange: (view: PlannerSentBookingsView) => void;
+}) {
+  const tabs: {
+    value: PlannerSentBookingsView;
+    label: string;
+    count?: number;
+    icon?: "history" | "archived";
+  }[] = [
+    { value: "active", label: "Active" },
+    { value: "history", label: "History", count: historyCount, icon: "history" },
+    { value: "archived", label: "Archived", count: archivedCount, icon: "archived" },
+  ];
+
+  return (
+    <div className="flex flex-wrap gap-2">
+      {tabs.map((tab) => {
+        const isActive = activeView === tab.value;
+
+        return (
+          <button
+            key={tab.value}
+            type="button"
+            onClick={() => onChange(tab.value)}
+            className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold uppercase tracking-wide transition ${
+              isActive
+                ? "border border-blue-500/45 bg-blue-600/15 text-blue-300 shadow-[0_0_16px_rgba(59,130,246,0.12)]"
+                : "border border-zinc-800/80 bg-zinc-900/50 text-zinc-400 hover:border-blue-500/30 hover:text-blue-300"
+            }`}
+          >
+            {tab.icon === "history" ? <HistoryIcon /> : null}
+            {tab.icon === "archived" ? <ArchiveTabIcon /> : null}
             {tab.label}
             {tab.count && tab.count > 0 ? ` (${tab.count})` : ""}
           </button>
@@ -1150,19 +1500,81 @@ function ReceivedBookingCard({ booking }: { booking: BookingRequest }) {
   );
 }
 
+function BookingHistoryCard({
+  booking,
+  muted = true,
+  subtitle,
+  avatarName,
+  avatarUrl,
+  action,
+}: {
+  booking: BookingRequest;
+  muted?: boolean;
+  subtitle?: string;
+  avatarName?: string;
+  avatarUrl?: string | null;
+  action?: React.ReactNode;
+}) {
+  const cardClass = muted
+    ? "rounded-2xl border border-zinc-800/70 bg-zinc-950/45 p-4 sm:p-5"
+    : "rounded-2xl border border-zinc-800 bg-zinc-900/80 p-4 sm:p-5";
+  const titleClass = muted ? "text-zinc-400" : "text-zinc-50";
+  const detailClass = muted ? "text-zinc-500" : "text-zinc-200";
+
+  return (
+    <li className={cardClass}>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex min-w-0 flex-1 gap-3">
+          {avatarName ? (
+            <ProfileAvatar name={avatarName} avatarUrl={avatarUrl} size="sm" className="mt-0.5" />
+          ) : null}
+          <div className="min-w-0 flex-1">
+            <h3 className={`text-base font-semibold ${titleClass}`}>{booking.event_name}</h3>
+            {subtitle ? <p className="mt-1 text-xs text-zinc-500">{subtitle}</p> : null}
+            <dl className={`mt-3 grid gap-2 text-sm sm:grid-cols-2 ${detailClass}`}>
+              <CampaignDetail label="Venue" value={booking.venue} />
+              <CampaignDetail label="Date" value={booking.event_date} />
+              <CampaignDetail label="Rate" value={formatRateDisplay(booking.fee)} />
+            </dl>
+          </div>
+        </div>
+
+        <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 sm:flex-col sm:items-end">
+          <BookingStatusBadge status={booking.status} />
+          {action}
+          {booking.event_id ? (
+            <Link
+              href={`/events/${booking.event_id}`}
+              className="rounded-lg border border-zinc-800 bg-zinc-950/60 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-zinc-500 transition hover:border-zinc-700 hover:text-zinc-300"
+            >
+              View event
+            </Link>
+          ) : null}
+          <Link
+            href={`/dm/${booking.conversation_id}`}
+            className="rounded-lg border border-zinc-800 bg-zinc-950/60 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-zinc-500 transition hover:border-zinc-700 hover:text-zinc-300"
+          >
+            Open DM
+          </Link>
+        </div>
+      </div>
+    </li>
+  );
+}
+
 function BookingStatusTabs({
   activeFilter,
   groups,
   onChange,
 }: {
-  activeFilter: BookingStatusFilter;
+  activeFilter: ActiveBookingStatusFilter;
   groups: SentBookingGroup[];
-  onChange: (filter: BookingStatusFilter) => void;
+  onChange: (filter: ActiveBookingStatusFilter) => void;
 }) {
   const totals = useMemo(() => {
     return groups.reduce(
       (stats, group) => {
-        const campaignStats = getBookingCampaignStats(group);
+        const campaignStats = getActiveBookingCampaignStats(group);
         stats.total += campaignStats.total;
         stats.pending += campaignStats.pending;
         stats.accepted += campaignStats.accepted;
@@ -1173,7 +1585,7 @@ function BookingStatusTabs({
     );
   }, [groups]);
 
-  function getTabCount(filter: BookingStatusFilter): number {
+  function getTabCount(filter: ActiveBookingStatusFilter): number {
     if (filter === "all") {
       return totals.total;
     }
@@ -1182,9 +1594,9 @@ function BookingStatusTabs({
   }
 
   return (
-    <div className="rounded-2xl border border-zinc-800 bg-zinc-900/50 p-2">
+    <div className="mt-4 rounded-2xl border border-zinc-800 bg-zinc-900/50 p-2">
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-        {STATUS_FILTERS.map((tab) => {
+        {ACTIVE_STATUS_FILTERS.map((tab) => {
           const isActive = activeFilter === tab.value;
 
           return (
@@ -1220,12 +1632,18 @@ function BookingCampaignCard({
   group,
   fullGroup,
   recipientProfiles,
+  currentUserId,
+  cancellingBookingId,
+  onCancelBooking,
 }: {
   group: SentBookingGroup;
   fullGroup: SentBookingGroup;
   recipientProfiles: Map<string, BookingRecipientProfile>;
+  currentUserId: string | null;
+  cancellingBookingId: string | null;
+  onCancelBooking: (bookingId: string) => void | Promise<void>;
 }) {
-  const campaignStats = getBookingCampaignStats(fullGroup);
+  const campaignStats = getActiveBookingCampaignStats(fullGroup);
 
   return (
     <li className="rounded-2xl border border-zinc-800 bg-zinc-900/80 p-4 sm:p-5">
@@ -1280,8 +1698,14 @@ function BookingCampaignCard({
                   <p className="truncate text-xs text-zinc-500">{subtitle}</p>
                 </div>
               </div>
-              <div className="flex items-center gap-2 sm:shrink-0">
+              <div className="flex flex-wrap items-center gap-2 sm:shrink-0">
                 <BookingStatusBadge status={request.status} />
+                {canCancelBookingRequest(request, currentUserId) ? (
+                  <CancelBookingRequestButton
+                    loading={cancellingBookingId === request.id}
+                    onConfirm={() => onCancelBooking(request.id)}
+                  />
+                ) : null}
                 <Link
                   href={`/dm/${request.conversation_id}`}
                   className="rounded-lg border border-blue-500/35 bg-blue-600/10 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-blue-300 transition hover:border-blue-400/50 hover:bg-blue-600/20"
@@ -1320,6 +1744,8 @@ function CampaignStat({
       ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
       : tone === "declined"
         ? "border-red-500/30 bg-red-500/10 text-red-300"
+        : tone === "cancelled"
+          ? "border-zinc-700/80 bg-zinc-950/50 text-zinc-400"
         : tone === "pending"
           ? "border-blue-500/30 bg-blue-600/10 text-blue-300"
           : "border-zinc-700/80 bg-zinc-950/50 text-zinc-300";
@@ -1333,16 +1759,9 @@ function CampaignStat({
 }
 
 function BookingStatusBadge({ status }: { status: BookingRequestStatus }) {
-  const classes =
-    status === "accepted"
-      ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300"
-      : status === "declined"
-        ? "border-red-500/40 bg-red-500/10 text-red-300"
-        : "border-blue-500/40 bg-blue-600/15 text-blue-300";
-
   return (
     <span
-      className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide ${classes}`}
+      className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide ${getBookingStatusBadgeClass(status)}`}
     >
       {formatBookingStatusLabel(status)}
     </span>

@@ -10,6 +10,8 @@ import BookingRequestCard, {
 import OnboardingGuard from "@/app/components/OnboardingGuard";
 import ProfileAvatar from "@/app/components/ProfileAvatar";
 import {
+  cancelBookingRequest,
+  getBookingMutationErrorMessage,
   getBookingRequestsForConversation,
   isBookingRequestMessage,
   mergeBookingWithMessage,
@@ -65,6 +67,7 @@ export default function DmChatPage() {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [respondingBookingId, setRespondingBookingId] = useState<string | null>(null);
+  const [cancellingBookingId, setCancellingBookingId] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -278,6 +281,37 @@ export default function DmChatPage() {
     }
   }
 
+  async function handleBookingCancel(booking: BookingRequest, message: Message) {
+    if (respondingBookingId || cancellingBookingId) {
+      return;
+    }
+
+    setCancellingBookingId(booking.id);
+    setError(null);
+
+    try {
+      const updatedBooking = await cancelBookingRequest(booking.id);
+      const updatedMessageText = buildUpdatedBookingMessage(updatedBooking, "cancelled");
+
+      setBookings((prev) =>
+        prev.map((item) => (item.id === updatedBooking.id ? updatedBooking : item)),
+      );
+
+      setMessages((prev) =>
+        prev.map((item) =>
+          item.id === message.id ? { ...item, text: updatedMessageText } : item,
+        ),
+      );
+
+      await supabase.from("messages").update({ text: updatedMessageText }).eq("id", message.id);
+    } catch (cancelError) {
+      console.error("Failed to cancel booking request:", cancelError);
+      setError(getBookingMutationErrorMessage(cancelError));
+    } finally {
+      setCancellingBookingId(null);
+    }
+  }
+
   function handleKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
     if (event.key === "Enter") {
       event.preventDefault();
@@ -379,12 +413,14 @@ export default function DmChatPage() {
                           currentUserId={currentUserId}
                           canRespond={canRespond && Boolean(resolvedBooking.id)}
                           responding={respondingBookingId === resolvedBooking.id}
+                          cancelling={cancellingBookingId === resolvedBooking.id}
                           onAccept={() =>
                             handleBookingResponse(resolvedBooking, message, "accepted")
                           }
                           onDecline={() =>
                             handleBookingResponse(resolvedBooking, message, "declined")
                           }
+                          onCancel={() => handleBookingCancel(resolvedBooking, message)}
                         />
                         <time
                           dateTime={message.created_at}

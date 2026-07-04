@@ -2,6 +2,7 @@ export const PLANNER_EVENTS_SUB_NAV = [
   { href: "/events", label: "Events" },
   { href: "/booking-plans", label: "Booking Plans" },
   { href: "/calendar", label: "Calendar" },
+  { href: "/bookings", label: "Bookings" },
 ] as const;
 
 export function isPlannerEventsAreaPath(pathname: string): boolean {

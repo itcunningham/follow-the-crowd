@@ -7,10 +7,10 @@ import {
 } from "@/lib/bookingRequests";
 import { parseEventDate, parseSetTimeRange, SET_TIME_RANGE_JOINER } from "@/lib/bookingDateTime";
 import {
-  formatEventStatusLabel,
+  getEventDateDisplayLabel,
   listOwnedEvents,
   type Event,
-  type EventStatus,
+  type EventDateDisplayLabel,
 } from "@/lib/events";
 import type { UserRole } from "@/lib/user/currentUser";
 
@@ -91,6 +91,10 @@ export function getCalendarStatusBadgeClass(kind: CalendarStatusKind): string {
     return "border-red-500/40 bg-red-500/10 text-red-300";
   }
 
+  if (kind === "cancelled") {
+    return "border-zinc-600/50 bg-zinc-800/80 text-zinc-400";
+  }
+
   if (kind === "event_draft") {
     return "border-zinc-600/50 bg-zinc-800/80 text-zinc-300";
   }
@@ -117,6 +121,10 @@ export function getCalendarStatusGlowClass(kind: CalendarStatusKind): string {
 
   if (kind === "declined") {
     return "shadow-[0_0_10px_rgba(239,68,68,0.22)]";
+  }
+
+  if (kind === "cancelled") {
+    return "shadow-[0_0_10px_rgba(161,161,170,0.18)]";
   }
 
   if (kind === "event_draft") {
@@ -159,8 +167,16 @@ export function getCalendarWeekRows(monthStart: Date): (Date | null)[][] {
   return weeks;
 }
 
-function mapEventStatusKind(status: EventStatus): CalendarStatusKind {
-  return `event_${status}` as CalendarStatusKind;
+function mapEventDateDisplayKind(label: EventDateDisplayLabel): CalendarStatusKind {
+  if (label === "Upcoming" || label === "Today") {
+    return "event_upcoming";
+  }
+
+  if (label === "Past") {
+    return "event_completed";
+  }
+
+  return "event_draft";
 }
 
 function mapEventToCalendarItem(event: Event): CalendarItem | null {
@@ -170,14 +186,16 @@ function mapEventToCalendarItem(event: Event): CalendarItem | null {
     return null;
   }
 
+  const displayLabel = getEventDateDisplayLabel(event.event_date) ?? "Unscheduled";
+
   return {
     id: `event-${event.id}`,
     type: "event",
     dateKey,
     title: event.name.trim() || "Untitled event",
     timeLabel: formatCalendarTimeLabel(event.set_time),
-    statusLabel: formatEventStatusLabel(event.status),
-    statusKind: mapEventStatusKind(event.status),
+    statusLabel: displayLabel,
+    statusKind: mapEventDateDisplayKind(displayLabel),
     href: `/events/${event.id}`,
     typeLabel: getCalendarTypeLabel("event"),
   };
@@ -228,6 +246,10 @@ export async function loadCalendarItems(role: UserRole | null): Promise<Calendar
     }
 
     for (const booking of sentBookings) {
+      if (booking.status === "cancelled") {
+        continue;
+      }
+
       const item = mapBookingToCalendarItem(booking, "sent_booking");
 
       if (item) {
@@ -240,6 +262,10 @@ export async function loadCalendarItems(role: UserRole | null): Promise<Calendar
     const receivedBookings = await listReceivedBookingRequests();
 
     for (const booking of receivedBookings) {
+      if (booking.status === "cancelled") {
+        continue;
+      }
+
       const item = mapBookingToCalendarItem(booking, "received_booking");
 
       if (item) {
@@ -274,6 +300,10 @@ export async function loadPlannerCalendarItems(): Promise<CalendarItem[]> {
   }
 
   for (const booking of sentBookings) {
+    if (booking.status === "cancelled") {
+      continue;
+    }
+
     const item = mapBookingToCalendarItem(booking, "sent_booking");
 
     if (item) {

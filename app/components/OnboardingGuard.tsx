@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import {
+  ensureAuthenticatedUserProfileRow,
   getCurrentAuthUser,
   getCurrentUserProfile,
   getPostAuthRedirectPath,
@@ -47,6 +48,7 @@ export default function OnboardingGuard({ children }: { children: React.ReactNod
           return;
         }
 
+        await ensureAuthenticatedUserProfileRow();
         const profile = await getCurrentUserProfile();
 
         if (cancelled) {

@@ -127,28 +127,85 @@ export async function signUpWithEmail(email: string, password: string) {
     throw error;
   }
 
-  if (data.user) {
+  if (data.session && data.user) {
     await ensureUserProfileRow(data.user.id);
   }
 
   return data;
 }
 
+export async function ensureAuthenticatedUserProfileRow(): Promise<void> {
+  const authUser = await getCurrentAuthUser();
+
+  if (!authUser) {
+    return;
+  }
+
+  await ensureUserProfileRow(authUser.id);
+}
+
 export async function ensureUserProfileRow(userId: string): Promise<void> {
-  const { error } = await supabase.from("users").upsert(
-    {
-      user_id: userId,
-      onboarding_complete: false,
-    },
-    { onConflict: "user_id", defaultToNull: false },
-  );
+  const authUser = await getCurrentAuthUser();
+
+  if (!authUser) {
+    console.error("[users] Skipping profile row creation without authenticated session", {
+      requestedUserId: userId,
+    });
+    return;
+  }
+
+  if (authUser.id !== userId) {
+    console.error("[users] Skipping profile row creation for mismatched auth user", {
+      requestedUserId: userId,
+      authenticatedUserId: authUser.id,
+    });
+    return;
+  }
+
+  const { data: existing, error: selectError } = await supabase
+    .from("users")
+    .select("user_id")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (selectError) {
+    console.error("[users] Failed to check for existing profile row:", {
+      userId,
+      message: selectError.message,
+      code: selectError.code,
+      details: selectError.details,
+      hint: selectError.hint,
+    });
+    throw selectError;
+  }
+
+  if (existing) {
+    return;
+  }
+
+  const { error } = await supabase.from("users").insert({
+    user_id: userId,
+    onboarding_complete: false,
+  });
 
   if (error) {
+    if (error.code === "23505") {
+      return;
+    }
+
+    console.error("[users] Failed to create profile row:", {
+      userId,
+      message: error.message,
+      code: error.code,
+      details: error.details,
+      hint: error.hint,
+    });
     throw error;
   }
 }
 
 export async function getPostAuthRedirectPath(): Promise<string> {
+  await ensureAuthenticatedUserProfileRow();
   const profile = await getCurrentUserProfile();
 
   if (needsOnboarding(profile)) {
@@ -195,17 +252,39 @@ export async function getUserProfileById(userId: string): Promise<UserProfile | 
 export async function saveUserRole(role: UserRole): Promise<void> {
   const userId = await getCurrentUserId();
 
-  const { error } = await supabase.from("users").upsert(
-    {
-      user_id: userId,
-      role,
-      onboarding_complete: true,
-    },
-    { onConflict: "user_id", defaultToNull: false },
-  );
+  const { data, error } = await supabase
+    .from("users")
+    .upsert(
+      {
+        user_id: userId,
+        role,
+        onboarding_complete: true,
+      },
+      { onConflict: "user_id", defaultToNull: false },
+    )
+    .select("user_id, role, onboarding_complete")
+    .maybeSingle();
 
   if (error) {
+    console.error("[users] Failed to save role during onboarding:", {
+      userId,
+      role,
+      message: error.message,
+      code: error.code,
+      details: error.details,
+      hint: error.hint,
+    });
     throw error;
+  }
+
+  if (!data?.role || !data.onboarding_complete) {
+    console.error("[users] Role save did not persist expected onboarding state:", {
+      userId,
+      role,
+      savedRole: data?.role ?? null,
+      onboarding_complete: data?.onboarding_complete ?? null,
+    });
+    throw new Error("Failed to save your role. Please try again.");
   }
 
   notifyRoleUpdated();
@@ -254,11 +333,27 @@ export async function saveUserProfile(
     .maybeSingle();
 
   if (error) {
+    console.error("[users] Failed to save profile:", {
+      userId,
+      message: error.message,
+      code: error.code,
+      details: error.details,
+      hint: error.hint,
+    });
     throw error;
   }
 
   if (!data) {
+    console.error("[users] Profile update matched no row for current user:", { userId });
     throw new Error("Profile row not found for the current user.");
+  }
+
+  if (!data.display_name?.trim()) {
+    console.error("[users] Profile save did not persist display name:", {
+      userId,
+      display_name: data.display_name,
+    });
+    throw new Error("Failed to save your profile. Please try again.");
   }
 }
 

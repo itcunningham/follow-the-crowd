@@ -21,7 +21,7 @@ function getActiveHref(pathname: string): string {
   }
 
   if (pathname === "/bookings" || pathname.startsWith("/bookings/")) {
-    return "/events";
+    return "/bookings";
   }
 
   return "/events";

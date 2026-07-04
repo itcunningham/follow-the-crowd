@@ -5,7 +5,7 @@ import { formatRateDisplay, normalizeStoredRate } from "@/lib/bookingRate";
 import { startDm } from "@/lib/startDm";
 import { getCurrentUserId } from "@/lib/user/currentUser";
 
-export type BookingRequestStatus = "pending" | "accepted" | "declined";
+export type BookingRequestStatus = "pending" | "accepted" | "declined" | "cancelled";
 
 export type BookingRequestInput = {
   eventName: string;
@@ -27,9 +27,16 @@ export type BookingCampaignStats = {
   pending: number;
   accepted: number;
   declined: number;
+  cancelled: number;
 };
 
-export type BookingStatusFilter = "all" | "pending" | "accepted" | "declined";
+export type BookingStatusFilter = "all" | "pending" | "accepted" | "declined" | "cancelled";
+
+export type ActiveBookingStatusFilter = "all" | "pending" | "accepted" | "declined";
+
+export type PlannerSentBookingsView = "active" | "history" | "archived";
+
+export type DjGigsViewFilter = "pending" | "accepted" | "declined" | "history" | "calendar";
 
 export type SentBookingGroup = {
   key: string;
@@ -57,6 +64,8 @@ export type BookingRequest = {
   fee: string;
   notes: string;
   status: BookingRequestStatus;
+  archived_at: string | null;
+  lineup_hidden_at: string | null;
 };
 
 function formatStatusLabel(status: BookingRequestStatus): string {
@@ -68,7 +77,200 @@ function formatStatusLabel(status: BookingRequestStatus): string {
     return "Declined";
   }
 
+  if (status === "cancelled") {
+    return "Cancelled";
+  }
+
   return "Pending";
+}
+
+export function canCancelBookingRequest(
+  booking: BookingRequest,
+  currentUserId: string | null,
+): boolean {
+  return (
+    Boolean(currentUserId) &&
+    booking.sender_id === currentUserId &&
+    booking.status === "pending"
+  );
+}
+
+export function getBookingStatusBadgeClass(status: BookingRequestStatus): string {
+  if (status === "accepted") {
+    return "border-emerald-500/40 bg-emerald-500/10 text-emerald-300";
+  }
+
+  if (status === "declined") {
+    return "border-red-500/40 bg-red-500/10 text-red-300";
+  }
+
+  if (status === "cancelled") {
+    return "border-zinc-600/50 bg-zinc-800/80 text-zinc-400";
+  }
+
+  return "border-blue-500/40 bg-blue-600/15 text-blue-300";
+}
+
+export function isActiveBookingStatus(status: BookingRequestStatus): boolean {
+  return status !== "cancelled";
+}
+
+export function filterActiveBookings(bookings: BookingRequest[]): BookingRequest[] {
+  return bookings.filter((booking) => isActiveBookingStatus(booking.status));
+}
+
+export function filterVisibleEventLineupBookings(bookings: BookingRequest[]): BookingRequest[] {
+  return bookings.filter(
+    (booking) => booking.status !== "declined" || !booking.lineup_hidden_at,
+  );
+}
+
+export function filterCancelledBookings(bookings: BookingRequest[]): BookingRequest[] {
+  return bookings.filter((booking) => booking.status === "cancelled");
+}
+
+export function isArchivedBooking(booking: BookingRequest): boolean {
+  return Boolean(booking.archived_at);
+}
+
+export function filterHistoryCancelledBookings(bookings: BookingRequest[]): BookingRequest[] {
+  return sortBookingsNewestFirst(
+    bookings.filter((booking) => booking.status === "cancelled" && !booking.archived_at),
+  );
+}
+
+export function filterArchivedCancelledBookings(bookings: BookingRequest[]): BookingRequest[] {
+  return sortBookingsNewestFirst(
+    bookings.filter((booking) => booking.status === "cancelled" && Boolean(booking.archived_at)),
+  );
+}
+
+function normalizeBookingRequestStatus(value: unknown): BookingRequestStatus {
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+
+    if (
+      normalized === "accepted" ||
+      normalized === "declined" ||
+      normalized === "cancelled" ||
+      normalized === "pending"
+    ) {
+      return normalized;
+    }
+  }
+
+  return "pending";
+}
+
+export function normalizeBookingRequest(row: unknown): BookingRequest | null {
+  if (typeof row === "string") {
+    try {
+      return normalizeBookingRequest(JSON.parse(row) as unknown);
+    } catch (parseError) {
+      console.error("[bookings] Failed to parse booking request JSON:", row, parseError);
+      return null;
+    }
+  }
+
+  if (!row || typeof row !== "object") {
+    return null;
+  }
+
+  const record = row as Record<string, unknown>;
+  const id = typeof record.id === "string" ? record.id : null;
+
+  if (!id) {
+    return null;
+  }
+
+  return {
+    id,
+    created_at:
+      typeof record.created_at === "string" ? record.created_at : new Date().toISOString(),
+    sender_id: typeof record.sender_id === "string" ? record.sender_id : "",
+    recipient_id: typeof record.recipient_id === "string" ? record.recipient_id : "",
+    conversation_id: typeof record.conversation_id === "string" ? record.conversation_id : "",
+    event_id: typeof record.event_id === "string" ? record.event_id : null,
+    event_name: typeof record.event_name === "string" ? record.event_name : "",
+    venue: typeof record.venue === "string" ? record.venue : "",
+    event_date: typeof record.event_date === "string" ? record.event_date : "",
+    set_time: typeof record.set_time === "string" ? record.set_time : "",
+    fee: typeof record.fee === "string" ? record.fee : "",
+    notes: typeof record.notes === "string" ? record.notes : "",
+    status: normalizeBookingRequestStatus(record.status),
+    archived_at: typeof record.archived_at === "string" ? record.archived_at : null,
+    lineup_hidden_at:
+      typeof record.lineup_hidden_at === "string" ? record.lineup_hidden_at : null,
+  };
+}
+
+export function mapBookingRequestRows(rows: unknown[] | null | undefined): BookingRequest[] {
+  return (rows ?? [])
+    .map(normalizeBookingRequest)
+    .filter((booking): booking is BookingRequest => booking !== null);
+}
+
+export function logCancelledBookingsLoadFailure(
+  context: string,
+  bookings: BookingRequest[],
+  expectedBookingId?: string,
+): void {
+  const cancelled = filterCancelledBookings(bookings);
+
+  if (expectedBookingId && !cancelled.some((booking) => booking.id === expectedBookingId)) {
+    console.error(`[bookings] Cancelled booking failed to load (${context}):`, {
+      expectedBookingId,
+      cancelledCount: cancelled.length,
+      bookingStatuses: bookings.map((booking) => ({
+        id: booking.id,
+        status: booking.status,
+      })),
+    });
+  }
+}
+
+export function sortBookingsNewestFirst(bookings: BookingRequest[]): BookingRequest[] {
+  return [...bookings].sort(
+    (left, right) => new Date(right.created_at).getTime() - new Date(left.created_at).getTime(),
+  );
+}
+
+export function getCancelledBookingsFromGroups(groups: SentBookingGroup[]): BookingRequest[] {
+  return sortBookingsNewestFirst(filterCancelledBookings(getAllBookingsFromGroups(groups)));
+}
+
+export function getAllBookingsFromGroups(groups: SentBookingGroup[]): BookingRequest[] {
+  return groups.flatMap((group) => group.requests);
+}
+
+export function filterActiveBookingGroups(
+  groups: SentBookingGroup[],
+  filter: ActiveBookingStatusFilter,
+): SentBookingGroup[] {
+  const activeGroups = groups
+    .map((group) => ({
+      ...group,
+      requests: group.requests.filter((request) => isActiveBookingStatus(request.status)),
+    }))
+    .filter((group) => group.requests.length > 0);
+
+  if (filter === "all") {
+    return activeGroups;
+  }
+
+  return activeGroups
+    .map((group) => ({
+      ...group,
+      requests: group.requests.filter((request) => request.status === filter),
+    }))
+    .filter((group) => group.requests.length > 0);
+}
+
+export function getActiveBookingCampaignStats(group: SentBookingGroup): BookingCampaignStats {
+  return getBookingCampaignStats({
+    ...group,
+    requests: group.requests.filter((request) => isActiveBookingStatus(request.status)),
+  });
 }
 
 export function formatBookingRequestMessage(booking: BookingRequest): string {
@@ -118,7 +320,10 @@ export function parseBookingRequestMessage(text: string): {
 
   const statusValue = values.status?.toLowerCase();
   const status: BookingRequestStatus | null =
-    statusValue === "accepted" || statusValue === "declined" || statusValue === "pending"
+    statusValue === "accepted" ||
+    statusValue === "declined" ||
+    statusValue === "pending" ||
+    statusValue === "cancelled"
       ? statusValue
       : null;
 
@@ -162,6 +367,57 @@ export function logBookingsLoadError(error: unknown): void {
   console.error("error.hint:", undefined);
 }
 
+export function getBookingMutationErrorMessage(error: unknown): string {
+  if (error && typeof error === "object") {
+    const supabaseError = error as {
+      message?: string;
+      code?: string;
+      details?: string;
+    };
+
+    if (
+      supabaseError.code === "PGRST202" ||
+      supabaseError.code === "42883" ||
+      supabaseError.message?.includes("cancel_booking_request")
+    ) {
+      return "Booking cancellation is not set up yet. Run scripts/setupBookingCancellation.sql in Supabase.";
+    }
+
+    if (
+      supabaseError.message?.includes("archive_booking_request") ||
+      supabaseError.message?.includes("unarchive_booking_request")
+    ) {
+      return "Booking archiving is not set up yet. Run scripts/setupBookingRequestArchiving.sql in Supabase.";
+    }
+
+    if (supabaseError.code === "PGRST116") {
+      return "Could not cancel this booking request. It may no longer be pending, or cancellation permissions are not set up. Run scripts/setupBookingCancellation.sql in Supabase.";
+    }
+
+    if (supabaseError.code === "23514") {
+      return "Cancelled status is not enabled yet. Run scripts/setupBookingCancellation.sql in Supabase.";
+    }
+
+    if (supabaseError.code === "42501") {
+      return "You do not have permission to cancel this booking request. Run scripts/setupBookingCancellation.sql in Supabase.";
+    }
+
+    if (supabaseError.message) {
+      return supabaseError.message;
+    }
+
+    if (supabaseError.details) {
+      return supabaseError.details;
+    }
+  }
+
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
+  return "Failed to update booking request";
+}
+
 export async function getBookingRequestsForConversation(
   conversationId: string,
 ): Promise<BookingRequest[]> {
@@ -175,7 +431,7 @@ export async function getBookingRequestsForConversation(
     throw error;
   }
 
-  return (data ?? []) as BookingRequest[];
+  return mapBookingRequestRows(data);
 }
 
 export async function sendBookingRequestToDj(
@@ -231,17 +487,37 @@ export async function sendBookingRequestToDj(
 }
 
 const BOOKING_REQUEST_FIELDS =
-  "id, created_at, sender_id, recipient_id, conversation_id, event_id, event_name, venue, event_date, set_time, fee, notes, status";
+  "id, created_at, sender_id, recipient_id, conversation_id, event_id, event_name, venue, event_date, set_time, fee, notes, status, archived_at, lineup_hidden_at";
 
 export function getEventLineupStats(bookings: BookingRequest[]): BookingCampaignStats {
   return bookings.reduce(
     (stats, request) => {
+      if (request.status === "cancelled") {
+        stats.cancelled += 1;
+        return stats;
+      }
+
       stats.total += 1;
       stats[request.status] += 1;
       return stats;
     },
-    { total: 0, pending: 0, accepted: 0, declined: 0 },
+    { total: 0, pending: 0, accepted: 0, declined: 0, cancelled: 0 },
   );
+}
+
+export function getActiveEventLineupStats(
+  bookings: BookingRequest[],
+): Pick<BookingCampaignStats, "total" | "pending" | "accepted" | "declined"> {
+  const stats = getEventLineupStats(
+    filterActiveBookings(filterVisibleEventLineupBookings(bookings)),
+  );
+
+  return {
+    total: stats.total,
+    pending: stats.pending,
+    accepted: stats.accepted,
+    declined: stats.declined,
+  };
 }
 
 export async function listBookingRequestsForEvent(eventId: string): Promise<BookingRequest[]> {
@@ -256,7 +532,7 @@ export async function listBookingRequestsForEvent(eventId: string): Promise<Book
     throw error;
   }
 
-  return (data ?? []) as BookingRequest[];
+  return mapBookingRequestRows(data);
 }
 
 export async function listSentBookingRequests(): Promise<BookingRequest[]> {
@@ -273,7 +549,7 @@ export async function listSentBookingRequests(): Promise<BookingRequest[]> {
     throw error;
   }
 
-  return (data ?? []) as BookingRequest[];
+  return mapBookingRequestRows(data);
 }
 
 export async function listReceivedBookingRequests(): Promise<BookingRequest[]> {
@@ -290,7 +566,7 @@ export async function listReceivedBookingRequests(): Promise<BookingRequest[]> {
     throw error;
   }
 
-  return (data ?? []) as BookingRequest[];
+  return mapBookingRequestRows(data);
 }
 
 export function resolveBookingDateKey(eventDate: string): string | null {
@@ -392,7 +668,7 @@ export function getBookingCampaignStats(group: SentBookingGroup): BookingCampaig
       stats[request.status] += 1;
       return stats;
     },
-    { total: 0, pending: 0, accepted: 0, declined: 0 },
+    { total: 0, pending: 0, accepted: 0, declined: 0, cancelled: 0 },
   );
 }
 
@@ -446,7 +722,9 @@ export function getBookingGroupChatAccess(
       return { kind: "locked_pending" };
     }
 
-    return { kind: "hidden" };
+    if (booking.status === "cancelled" || booking.status === "declined") {
+      return { kind: "hidden" };
+    }
   }
 
   return null;
@@ -496,9 +774,191 @@ export async function sendBookingRequestsToDjs(
   return { conversationIds, successes, failures };
 }
 
+export async function cancelBookingRequest(bookingId: string): Promise<BookingRequest> {
+  const { data, error } = await supabase.rpc("cancel_booking_request", {
+    p_booking_id: bookingId,
+  });
+
+  if (error) {
+    logBookingsLoadError(error);
+    throw new Error(getBookingMutationErrorMessage(error));
+  }
+
+  if (!data) {
+    throw new Error(
+      "Could not cancel this booking request. Run scripts/setupBookingCancellation.sql in Supabase.",
+    );
+  }
+
+  const booking = normalizeBookingRequest(data);
+
+  if (!booking) {
+    console.error("[bookings] cancel_booking_request returned invalid payload:", data);
+    throw new Error("Cancelled booking could not be parsed.");
+  }
+
+  if (booking.status !== "cancelled") {
+    console.error("[bookings] cancel_booking_request returned unexpected status:", booking);
+    throw new Error("Cancelled booking status was not returned correctly.");
+  }
+
+  await createNotification(
+    booking.recipient_id,
+    "booking_update",
+    "Booking request cancelled",
+    `${booking.event_name} at ${booking.venue}`,
+    `/dm/${booking.conversation_id}`,
+  );
+
+  return booking;
+}
+
+async function mutateArchivedBookingRequest(
+  rpcName: "archive_booking_request" | "unarchive_booking_request",
+  bookingId: string,
+  setupScript: string,
+): Promise<BookingRequest> {
+  const { data, error } = await supabase.rpc(rpcName, {
+    p_booking_id: bookingId,
+  });
+
+  if (error) {
+    logBookingsLoadError(error);
+    throw new Error(getBookingMutationErrorMessage(error));
+  }
+
+  if (!data) {
+    throw new Error(`Could not update archived booking. Run ${setupScript} in Supabase.`);
+  }
+
+  const booking = normalizeBookingRequest(data);
+
+  if (!booking) {
+    console.error(`[bookings] ${rpcName} returned invalid payload:`, data);
+    throw new Error("Archived booking could not be parsed.");
+  }
+
+  if (booking.status !== "cancelled") {
+    console.error(`[bookings] ${rpcName} returned unexpected status:`, booking);
+    throw new Error("Archived booking status was not returned correctly.");
+  }
+
+  return booking;
+}
+
+export async function archiveBookingRequest(bookingId: string): Promise<BookingRequest> {
+  const booking = await mutateArchivedBookingRequest(
+    "archive_booking_request",
+    bookingId,
+    "scripts/setupBookingRequestArchiving.sql",
+  );
+
+  if (!booking.archived_at) {
+    console.error("[bookings] archive_booking_request did not set archived_at:", booking);
+    throw new Error("Archived booking timestamp was not returned correctly.");
+  }
+
+  return booking;
+}
+
+export type BookingArchiveFailure = {
+  bookingId: string;
+  message: string;
+};
+
+export async function archiveAllCancelledBookingRequests(
+  bookingIds: string[],
+): Promise<{
+  successes: string[];
+  failures: BookingArchiveFailure[];
+}> {
+  const results = await Promise.all(
+    bookingIds.map(async (bookingId) => {
+      try {
+        await archiveBookingRequest(bookingId);
+        return { bookingId, error: null as string | null };
+      } catch (error) {
+        console.error(`Failed to archive booking request ${bookingId}:`, error);
+        return {
+          bookingId,
+          error: error instanceof Error ? error.message : "Failed to archive booking request",
+        };
+      }
+    }),
+  );
+
+  const successes: string[] = [];
+  const failures: BookingArchiveFailure[] = [];
+
+  for (const result of results) {
+    if (result.error) {
+      failures.push({ bookingId: result.bookingId, message: result.error });
+      continue;
+    }
+
+    successes.push(result.bookingId);
+  }
+
+  return { successes, failures };
+}
+
+export async function unarchiveBookingRequest(bookingId: string): Promise<BookingRequest> {
+  const booking = await mutateArchivedBookingRequest(
+    "unarchive_booking_request",
+    bookingId,
+    "scripts/setupBookingRequestArchiving.sql",
+  );
+
+  if (booking.archived_at) {
+    console.error("[bookings] unarchive_booking_request still has archived_at:", booking);
+    throw new Error("Restored booking still appears archived.");
+  }
+
+  return booking;
+}
+
+export async function hideDeclinedBookingFromLineup(bookingId: string): Promise<BookingRequest> {
+  const { data, error } = await supabase.rpc("hide_declined_booking_from_lineup", {
+    p_booking_id: bookingId,
+  });
+
+  if (error) {
+    logBookingsLoadError(error);
+    throw new Error(getBookingMutationErrorMessage(error));
+  }
+
+  if (!data) {
+    throw new Error(
+      "Could not hide booking from lineup. Run scripts/setupBookingLineupHide.sql in Supabase.",
+    );
+  }
+
+  const booking = normalizeBookingRequest(data);
+
+  if (!booking) {
+    console.error("[bookings] hide_declined_booking_from_lineup returned invalid payload:", data);
+    throw new Error("Hidden booking could not be parsed.");
+  }
+
+  if (booking.status !== "declined") {
+    console.error("[bookings] hide_declined_booking_from_lineup returned unexpected status:", booking);
+    throw new Error("Hidden booking status was not returned correctly.");
+  }
+
+  if (!booking.lineup_hidden_at) {
+    console.error(
+      "[bookings] hide_declined_booking_from_lineup did not set lineup_hidden_at:",
+      booking,
+    );
+    throw new Error("Hidden booking timestamp was not returned correctly.");
+  }
+
+  return booking;
+}
+
 export async function updateBookingRequestStatus(
   bookingId: string,
-  status: Exclude<BookingRequestStatus, "pending">,
+  status: "accepted" | "declined",
 ): Promise<BookingRequest> {
   const { data, error } = await supabase
     .from("booking_requests")
@@ -580,5 +1040,7 @@ export function mergeBookingWithMessage(
     fee: normalizeStoredRate(parsed.fee ?? ""),
     notes: parsed.notes === "None" ? "" : parsed.notes ?? "",
     status: parsed.status ?? "pending",
+    archived_at: null,
+    lineup_hidden_at: null,
   };
 }

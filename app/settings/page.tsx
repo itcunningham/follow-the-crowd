@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import AppNavigation, { MOBILE_NAV_OFFSET_CLASS } from "@/app/components/AppNavigation";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
 import {
+  getCurrentAuthUser,
   getCurrentUserId,
   getCurrentUserProfile,
   getRoleLabel,
@@ -40,6 +41,7 @@ const ACCOUNT_TYPE_OPTIONS: {
 export default function SettingsPage() {
   const router = useRouter();
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [accountEmail, setAccountEmail] = useState<string | null>(null);
   const [currentRole, setCurrentRole] = useState<UserRole | null>(null);
   const [loading, setLoading] = useState(true);
   const [savingRole, setSavingRole] = useState<UserRole | null>(null);
@@ -50,9 +52,10 @@ export default function SettingsPage() {
   const myProfilePath = currentUserId ? `/profile/${currentUserId}` : "/profile/setup";
 
   useEffect(() => {
-    Promise.all([getCurrentUserId(), getCurrentUserProfile()])
-      .then(([userId, profile]) => {
+    Promise.all([getCurrentAuthUser(), getCurrentUserId(), getCurrentUserProfile()])
+      .then(([authUser, userId, profile]) => {
         setCurrentUserId(userId);
+        setAccountEmail(authUser?.email?.trim() || null);
         setCurrentRole(profile?.role ?? null);
       })
       .catch((loadError) => {
@@ -124,6 +127,18 @@ export default function SettingsPage() {
             <p className="text-sm text-zinc-500">Loading settings...</p>
           ) : (
             <>
+              <section className="rounded-2xl border border-zinc-800 bg-zinc-900/80 p-4 sm:p-5">
+                <h2 className="text-xs font-semibold uppercase tracking-wide text-blue-400">
+                  Account
+                </h2>
+                <p className="mt-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500">
+                  Signed in as
+                </p>
+                <p className="mt-1 break-all text-sm font-medium text-zinc-200">
+                  {accountEmail ?? "Email unavailable"}
+                </p>
+              </section>
+
               <section className="rounded-2xl border border-zinc-800 bg-zinc-900/80 p-4 sm:p-5">
                 <h2 className="text-xs font-semibold uppercase tracking-wide text-blue-400">
                   Account type

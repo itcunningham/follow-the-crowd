@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import AppNavigation, { MOBILE_NAV_OFFSET_CLASS } from "@/app/components/AppNavigation";
+import EventDateStatusBadge from "@/app/components/EventDateStatusBadge";
 import EventRunSheetSection from "@/app/components/EventRunSheetSection";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
 import ProfileAvatar from "@/app/components/ProfileAvatar";
@@ -15,24 +16,31 @@ import {
   getPlannerDjAvailabilityHints,
   type DjPlannerAvailabilityHint,
 } from "@/lib/djAvailability";
+import CancelBookingRequestButton from "@/app/components/CancelBookingRequestButton";
+import HideDeclinedBookingButton from "@/app/components/HideDeclinedBookingButton";
 import {
+  cancelBookingRequest,
+  canCancelBookingRequest,
+  filterActiveBookings,
+  filterVisibleEventLineupBookings,
   formatBookingStatusLabel,
-  getEventLineupStats,
+  getActiveEventLineupStats,
+  getBookingMutationErrorMessage,
+  getBookingStatusBadgeClass,
+  hideDeclinedBookingFromLineup,
   listBookingRequestsForEvent,
   sendBookingRequestsToDjs,
+  type ActiveBookingStatusFilter,
   type BookingRequest,
   type BookingRequestStatus,
-  type BookingStatusFilter,
 } from "@/lib/bookingRequests";
 import {
   eventToRequestInput,
-  formatEventStatusLabel,
   getEventById,
   getEventsLoadErrorMessage,
   updateEvent,
   type Event,
   type EventInput,
-  type EventStatus,
 } from "@/lib/events";
 import {
   canManageEvents,
@@ -45,50 +53,17 @@ import {
   type UserRole,
 } from "@/lib/user/currentUser";
 
-const STATUS_FILTERS: { value: BookingStatusFilter; label: string }[] = [
+const STATUS_FILTERS: { value: ActiveBookingStatusFilter; label: string }[] = [
   { value: "all", label: "All" },
   { value: "pending", label: "Pending" },
   { value: "accepted", label: "Accepted" },
   { value: "declined", label: "Declined" },
 ];
 
-const EVENT_STATUSES: { value: EventStatus; label: string }[] = [
-  { value: "draft", label: "Draft" },
-  { value: "upcoming", label: "Upcoming" },
-  { value: "completed", label: "Completed" },
-  { value: "cancelled", label: "Cancelled" },
-];
-
-function EventStatusBadge({ status }: { status: EventStatus }) {
-  const classes =
-    status === "upcoming"
-      ? "border-blue-500/40 bg-blue-600/15 text-blue-300"
-      : status === "completed"
-        ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300"
-        : status === "cancelled"
-          ? "border-red-500/40 bg-red-500/10 text-red-300"
-          : "border-zinc-600/50 bg-zinc-800/80 text-zinc-300";
-
-  return (
-    <span
-      className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide ${classes}`}
-    >
-      {formatEventStatusLabel(status)}
-    </span>
-  );
-}
-
 function BookingStatusBadge({ status }: { status: BookingRequestStatus }) {
-  const classes =
-    status === "accepted"
-      ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300"
-      : status === "declined"
-        ? "border-red-500/40 bg-red-500/10 text-red-300"
-        : "border-blue-500/40 bg-blue-600/15 text-blue-300";
-
   return (
     <span
-      className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide ${classes}`}
+      className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide ${getBookingStatusBadgeClass(status)}`}
     >
       {formatBookingStatusLabel(status)}
     </span>
@@ -105,7 +80,7 @@ export default function EventDetailPage() {
   const [event, setEvent] = useState<Event | null>(null);
   const [lineup, setLineup] = useState<BookingRequest[]>([]);
   const [profiles, setProfiles] = useState<Map<string, BookingRecipientProfile>>(new Map());
-  const [lineupFilter, setLineupFilter] = useState<BookingStatusFilter>("all");
+  const [lineupFilter, setLineupFilter] = useState<ActiveBookingStatusFilter>("all");
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
@@ -119,6 +94,8 @@ export default function EventDetailPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [loadingDjs, setLoadingDjs] = useState(false);
   const [sending, setSending] = useState(false);
+  const [cancellingBookingId, setCancellingBookingId] = useState<string | null>(null);
+  const [hidingBookingId, setHidingBookingId] = useState<string | null>(null);
   const [djAvailabilityHints, setDjAvailabilityHints] = useState<
     Map<string, DjPlannerAvailabilityHint>
   >(new Map());
@@ -136,15 +113,17 @@ export default function EventDetailPage() {
   const canViewRunSheet = canOpenCrewChat;
   const canEditRunSheet = isOwner && isPlanner;
 
-  const lineupStats = useMemo(() => getEventLineupStats(lineup), [lineup]);
+  const visibleLineup = useMemo(() => filterVisibleEventLineupBookings(lineup), [lineup]);
+  const activeLineup = useMemo(() => filterActiveBookings(visibleLineup), [visibleLineup]);
+  const lineupStats = useMemo(() => getActiveEventLineupStats(lineup), [lineup]);
 
   const filteredLineup = useMemo(() => {
     if (lineupFilter === "all") {
-      return lineup;
+      return activeLineup;
     }
 
-    return lineup.filter((booking) => booking.status === lineupFilter);
-  }, [lineup, lineupFilter]);
+    return activeLineup.filter((booking) => booking.status === lineupFilter);
+  }, [activeLineup, lineupFilter]);
 
   const filteredDjs = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
@@ -203,6 +182,29 @@ export default function EventDetailPage() {
     }
   }, [eventId]);
 
+  const reloadEventLineup = useCallback(async () => {
+    if (!eventId) {
+      return;
+    }
+
+    try {
+      const bookings = await listBookingRequestsForEvent(eventId);
+      setLineup(bookings);
+
+      const recipientIds = bookings.map((booking) => booking.recipient_id);
+
+      if (recipientIds.length > 0) {
+        const profileMap = await getBookingRecipientProfilesByIds(recipientIds);
+        setProfiles(profileMap);
+      } else {
+        setProfiles(new Map());
+      }
+    } catch (loadError) {
+      console.error("Failed to reload event lineup:", loadError);
+      setError(getEventsLoadErrorMessage(loadError));
+    }
+  }, [eventId]);
+
   useEffect(() => {
     Promise.all([getCurrentUserProfile(), getCurrentUserId()])
       .then(([profile, userId]) => {
@@ -230,7 +232,6 @@ export default function EventDetailPage() {
       setTime: event.set_time,
       rate: event.rate,
       notes: event.notes,
-      status: event.status,
       bookingPlanId: event.booking_plan_id,
     });
     setEditOpen(true);
@@ -361,6 +362,38 @@ export default function EventDetailPage() {
     }
   }
 
+  async function handleCancelBooking(bookingId: string) {
+    setCancellingBookingId(bookingId);
+    setError(null);
+
+    try {
+      await cancelBookingRequest(bookingId);
+      await reloadEventLineup();
+      setSuccessMessage("Booking request cancelled.");
+    } catch (cancelError) {
+      console.error("Failed to cancel booking request:", cancelError);
+      setError(getBookingMutationErrorMessage(cancelError));
+    } finally {
+      setCancellingBookingId(null);
+    }
+  }
+
+  async function handleHideFromLineup(bookingId: string) {
+    setHidingBookingId(bookingId);
+    setError(null);
+
+    try {
+      await hideDeclinedBookingFromLineup(bookingId);
+      await reloadEventLineup();
+      setSuccessMessage("Declined booking hidden from lineup.");
+    } catch (hideError) {
+      console.error("Failed to hide declined booking from lineup:", hideError);
+      setError(getBookingMutationErrorMessage(hideError));
+    } finally {
+      setHidingBookingId(null);
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex min-h-[100dvh] items-center justify-center bg-[#070708] text-sm text-zinc-500">
@@ -405,7 +438,7 @@ export default function EventDetailPage() {
               </Link>
               <div className="mt-2 flex flex-wrap items-center gap-2">
                 <h1 className="text-xl font-semibold text-zinc-50">{event.name}</h1>
-                <EventStatusBadge status={event.status} />
+                <EventDateStatusBadge eventDate={event.event_date} />
               </div>
             </div>
 
@@ -509,26 +542,6 @@ export default function EventDetailPage() {
                   onChange={(value) => setEditForm((prev) => (prev ? { ...prev, notes: value } : prev))}
                   multiline
                 />
-                <label className="block">
-                  <span className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-400">
-                    Event status
-                  </span>
-                  <select
-                    value={editForm.status}
-                    onChange={(event) =>
-                      setEditForm((prev) =>
-                        prev ? { ...prev, status: event.target.value as EventStatus } : prev,
-                      )
-                    }
-                    className="w-full rounded-xl border border-zinc-800 bg-zinc-900/80 px-3.5 py-2.5 text-sm text-zinc-100 outline-none transition focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/15"
-                  >
-                    {EVENT_STATUSES.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
 
                 <button
                   type="submit"
@@ -708,12 +721,27 @@ export default function EventDetailPage() {
                 {filteredLineup.map((booking) => {
                   const profile = profiles.get(booking.recipient_id);
                   const displayName = profile?.display_name?.trim() || "DJ";
+                  const canHideFromLineup =
+                    isOwner &&
+                    isPlanner &&
+                    booking.status === "declined" &&
+                    !booking.lineup_hidden_at;
 
                   return (
                     <li
                       key={booking.id}
-                      className="flex flex-col gap-3 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4 sm:flex-row sm:items-center sm:justify-between"
+                      className={`relative flex flex-col gap-3 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4 sm:flex-row sm:items-center sm:justify-between ${
+                        canHideFromLineup ? "pr-12 sm:pr-14" : ""
+                      }`}
                     >
+                      {canHideFromLineup ? (
+                        <HideDeclinedBookingButton
+                          className="absolute right-3 top-3"
+                          loading={hidingBookingId === booking.id}
+                          disabled={Boolean(hidingBookingId) && hidingBookingId !== booking.id}
+                          onConfirm={() => handleHideFromLineup(booking.id)}
+                        />
+                      ) : null}
                       <div className="flex min-w-0 items-center gap-3">
                         <ProfileAvatar
                           name={displayName}
@@ -731,12 +759,20 @@ export default function EventDetailPage() {
                         </div>
                       </div>
 
-                      <Link
-                        href={`/dm/${booking.conversation_id}`}
-                        className="shrink-0 rounded-lg border border-zinc-700 bg-zinc-900/80 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-zinc-300 transition hover:border-blue-500/35 hover:text-blue-300"
-                      >
-                        Open DM
-                      </Link>
+                      <div className="flex flex-col items-stretch gap-2 sm:shrink-0 sm:items-end">
+                        {isOwner && canCancelBookingRequest(booking, currentUserId) ? (
+                          <CancelBookingRequestButton
+                            loading={cancellingBookingId === booking.id}
+                            onConfirm={() => handleCancelBooking(booking.id)}
+                          />
+                        ) : null}
+                        <Link
+                          href={`/dm/${booking.conversation_id}`}
+                          className="shrink-0 rounded-lg border border-zinc-700 bg-zinc-900/80 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-zinc-300 transition hover:border-blue-500/35 hover:text-blue-300"
+                        >
+                          Open DM
+                        </Link>
+                      </div>
                     </li>
                   );
                 })}

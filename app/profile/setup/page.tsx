@@ -8,10 +8,10 @@ import {
   getCurrentAuthUser,
   getCurrentUserId,
   getCurrentUserProfile,
+  getDefaultRouteForRole,
   LOGIN_PATH,
   needsOnboarding,
   needsProfileSetup,
-  PROFILE_SETUP_PATH,
   saveUserProfile,
   type UserProfileInput,
   type UserRole,
@@ -145,10 +145,37 @@ export default function ProfileSetupPage() {
       }
 
       await saveUserProfile(form, { avatarUrl });
+      const profile = await getCurrentUserProfile();
+
+      if (needsOnboarding(profile)) {
+        console.error("[profile/setup] Profile still needs onboarding after save:", profile);
+        setError("Your role did not save correctly. Please choose your role again.");
+        setSaving(false);
+        router.replace("/onboarding");
+        return;
+      }
+
+      if (needsProfileSetup(profile)) {
+        console.error("[profile/setup] Display name missing after save:", profile);
+        setError("Failed to save your profile. Please try again.");
+        setSaving(false);
+        return;
+      }
+
       const userId = await getCurrentUserId();
-      router.replace(isEditing ? `/profile/${userId}` : DISCOVER_PATH);
+      const destination = isEditing
+        ? `/profile/${userId}`
+        : profile?.role === "dj"
+          ? DISCOVER_PATH
+          : getDefaultRouteForRole(profile?.role ?? null);
+      router.replace(destination);
     } catch (saveError) {
       console.error("Failed to save profile:", saveError);
+
+      if (saveError && typeof saveError === "object") {
+        console.error("Profile save error details:", saveError);
+      }
+
       setError(saveError instanceof Error ? saveError.message : "Failed to save profile");
       setSaving(false);
     }
