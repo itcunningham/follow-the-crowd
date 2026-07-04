@@ -14,11 +14,59 @@ export const DM_FILE_TYPES = new Set([
   ...DM_IMAGE_TYPES,
   "application/pdf",
   "text/plain",
+  "text/csv",
+  "application/csv",
   "application/zip",
   "application/x-zip-compressed",
   "application/msword",
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "audio/mpeg",
+  "audio/mp3",
+  "audio/wav",
+  "audio/x-wav",
+  "audio/wave",
 ]);
+
+export const DM_SUPPORTED_FILE_EXTENSIONS = [
+  ".pdf",
+  ".txt",
+  ".doc",
+  ".docx",
+  ".csv",
+  ".zip",
+  ".mp3",
+  ".wav",
+  ".jpg",
+  ".jpeg",
+  ".png",
+  ".webp",
+] as const;
+
+export const DM_PHOTO_INPUT_ACCEPT =
+  "image/jpeg,image/png,image/webp,image/gif,.jpg,.jpeg,.png,.webp,.gif";
+
+export const DM_FILE_INPUT_ACCEPT = [
+  ...DM_SUPPORTED_FILE_EXTENSIONS,
+  "application/pdf",
+  "text/plain",
+  "text/csv",
+  "application/csv",
+  "application/zip",
+  "application/x-zip-compressed",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "audio/mpeg",
+  "audio/mp3",
+  "audio/wav",
+  "audio/x-wav",
+  "audio/wave",
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+].join(",");
+
+export const DM_UNSUPPORTED_FILE_TYPE_MESSAGE =
+  "This file type isn't supported. You can send PDF, TXT, DOC, DOCX, CSV, ZIP, MP3, WAV, JPG, PNG, or WEBP.";
 
 export const DM_MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 export const DM_MAX_FILE_BYTES = 25 * 1024 * 1024;
@@ -44,6 +92,69 @@ export function isDmImageAttachment(fileType: string): boolean {
 
 export function isAllowedDmAttachmentType(fileType: string): boolean {
   return DM_FILE_TYPES.has(fileType);
+}
+
+function getFileExtension(fileName: string): string | null {
+  const parts = fileName.toLowerCase().split(".");
+
+  if (parts.length < 2) {
+    return null;
+  }
+
+  return `.${parts.pop()}`;
+}
+
+const EXTENSION_TO_MIME: Record<string, string> = {
+  ".pdf": "application/pdf",
+  ".txt": "text/plain",
+  ".doc": "application/msword",
+  ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  ".csv": "text/csv",
+  ".zip": "application/zip",
+  ".mp3": "audio/mpeg",
+  ".wav": "audio/wav",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".png": "image/png",
+  ".webp": "image/webp",
+  ".gif": "image/gif",
+};
+
+export function resolveDmAttachmentMimeType(file: File): string | null {
+  const normalizedType = file.type.trim().toLowerCase();
+
+  if (normalizedType && isAllowedDmAttachmentType(normalizedType)) {
+    return normalizedType;
+  }
+
+  const extension = getFileExtension(file.name);
+
+  if (!extension) {
+    return null;
+  }
+
+  return EXTENSION_TO_MIME[extension] ?? null;
+}
+
+export function validateDmAttachmentFile(
+  file: File,
+): { ok: true; mimeType: string } | { ok: false; error: string } {
+  const mimeType = resolveDmAttachmentMimeType(file);
+
+  if (!mimeType) {
+    return { ok: false, error: DM_UNSUPPORTED_FILE_TYPE_MESSAGE };
+  }
+
+  const maxBytes = getDmAttachmentMaxBytes(mimeType);
+
+  if (file.size > maxBytes) {
+    return {
+      ok: false,
+      error: `File is too large (max ${formatDmAttachmentSize(maxBytes)})`,
+    };
+  }
+
+  return { ok: true, mimeType };
 }
 
 export function getDmAttachmentMaxBytes(fileType: string): number {
@@ -102,6 +213,18 @@ function getExtensionForFile(file: File): string {
     return "pdf";
   }
 
+  if (file.type === "text/csv" || file.type === "application/csv") {
+    return "csv";
+  }
+
+  if (file.type === "audio/mpeg" || file.type === "audio/mp3") {
+    return "mp3";
+  }
+
+  if (file.type === "audio/wav" || file.type === "audio/x-wav" || file.type === "audio/wave") {
+    return "wav";
+  }
+
   return "bin";
 }
 
@@ -109,15 +232,14 @@ export async function uploadDmAttachmentFile(
   conversationId: string,
   file: File,
 ): Promise<{ fileUrl: string; fileName: string; fileType: string; fileSize: number }> {
-  if (!isAllowedDmAttachmentType(file.type)) {
-    throw new Error("Unsupported file type");
+  const validation = validateDmAttachmentFile(file);
+
+  if (!validation.ok) {
+    throw new Error(validation.error);
   }
 
-  const maxBytes = getDmAttachmentMaxBytes(file.type);
-
-  if (file.size > maxBytes) {
-    throw new Error(`File is too large (max ${formatDmAttachmentSize(maxBytes)})`);
-  }
+  const mimeType = validation.mimeType;
+  const maxBytes = getDmAttachmentMaxBytes(mimeType);
 
   const userId = await getCurrentUserId();
   const timestamp = Date.now();
@@ -130,7 +252,7 @@ export async function uploadDmAttachmentFile(
     .upload(path, file, {
       cacheControl: "3600",
       upsert: false,
-      contentType: file.type,
+      contentType: mimeType,
     });
 
   if (uploadError) {
@@ -142,7 +264,7 @@ export async function uploadDmAttachmentFile(
   return {
     fileUrl: data.publicUrl,
     fileName: file.name.trim() || `${safeName}.${extension}`,
-    fileType: file.type,
+    fileType: mimeType,
     fileSize: file.size,
   };
 }

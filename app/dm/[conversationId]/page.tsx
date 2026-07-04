@@ -868,6 +868,7 @@ export default function DmChatPage() {
         onSend={sendMessage}
         onPhotoSelected={(file) => void sendAttachment(file)}
         onFileSelected={(file) => void sendAttachment(file)}
+        onAttachmentError={setError}
         sending={sending}
         uploading={uploading}
       />

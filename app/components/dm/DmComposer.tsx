@@ -1,6 +1,11 @@
 "use client";
 
 import { useRef, useState } from "react";
+import {
+  DM_FILE_INPUT_ACCEPT,
+  DM_PHOTO_INPUT_ACCEPT,
+  validateDmAttachmentFile,
+} from "@/lib/dmAttachments";
 import { DM_COMPOSER_EMOJIS } from "@/lib/dmReactions";
 
 function IconButton({
@@ -36,6 +41,7 @@ export default function DmComposer({
   onSend,
   onPhotoSelected,
   onFileSelected,
+  onAttachmentError,
   sending,
   uploading,
 }: {
@@ -44,6 +50,7 @@ export default function DmComposer({
   onSend: () => void;
   onPhotoSelected: (file: File) => void;
   onFileSelected: (file: File) => void;
+  onAttachmentError?: (message: string) => void;
   sending: boolean;
   uploading: boolean;
 }) {
@@ -62,6 +69,17 @@ export default function DmComposer({
   function appendEmoji(emoji: string) {
     onChange(`${value}${emoji}`);
     setEmojiOpen(false);
+  }
+
+  function handleAttachmentSelected(file: File, onSelected: (file: File) => void) {
+    const validation = validateDmAttachmentFile(file);
+
+    if (!validation.ok) {
+      onAttachmentError?.(validation.error);
+      return;
+    }
+
+    onSelected(file);
   }
 
   return (
@@ -97,7 +115,7 @@ export default function DmComposer({
         </IconButton>
 
         <IconButton
-          label="Attach file"
+          label="Attach file (PDF, DOC, CSV, ZIP, MP3, WAV, and more)"
           disabled={busy}
           onClick={() => fileInputRef.current?.click()}
         >
@@ -149,28 +167,28 @@ export default function DmComposer({
       <input
         ref={photoInputRef}
         type="file"
-        accept="image/jpeg,image/png,image/webp,image/gif"
+        accept={DM_PHOTO_INPUT_ACCEPT}
         className="hidden"
         onChange={(event) => {
           const file = event.target.files?.[0];
           event.target.value = "";
 
           if (file) {
-            onPhotoSelected(file);
+            handleAttachmentSelected(file, onPhotoSelected);
           }
         }}
       />
       <input
         ref={fileInputRef}
         type="file"
-        accept=".pdf,.txt,.zip,.doc,.docx,application/pdf,text/plain,application/zip"
+        accept={DM_FILE_INPUT_ACCEPT}
         className="hidden"
         onChange={(event) => {
           const file = event.target.files?.[0];
           event.target.value = "";
 
           if (file) {
-            onFileSelected(file);
+            handleAttachmentSelected(file, onFileSelected);
           }
         }}
       />

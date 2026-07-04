@@ -39,12 +39,14 @@ export default function DmMessageAttachmentView({
         target="_blank"
         rel="noopener noreferrer"
         className="block overflow-hidden rounded-2xl border border-zinc-800/80 bg-zinc-950/40"
+        onContextMenu={(event) => event.preventDefault()}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={attachment.file_url}
           alt={attachment.file_name}
-          className="max-h-72 w-full max-w-[min(100%,18rem)] object-cover"
+          draggable={false}
+          className="max-h-72 w-full max-w-[min(100%,18rem)] object-cover select-none [-webkit-touch-callout:none]"
           loading="lazy"
         />
       </a>
