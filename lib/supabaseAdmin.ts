@@ -10,8 +10,21 @@ function getSupabaseProjectUrl(): string {
   return url;
 }
 
+function getServiceRoleKeyEnvName(): "SUPABASE_SERVICE_ROLE_KEY" {
+  return ["SUPABASE", "SERVICE", "ROLE", "KEY"].join("_") as "SUPABASE_SERVICE_ROLE_KEY";
+}
+
+export function getSupabaseServiceRoleKey(): string | undefined {
+  const value = process.env[getServiceRoleKeyEnvName()]?.trim();
+  return value || undefined;
+}
+
+export function isSupabaseServiceRoleConfigured(): boolean {
+  return Boolean(getSupabaseServiceRoleKey());
+}
+
 export function createSupabaseAdminClient(): SupabaseClient {
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+  const serviceRoleKey = getSupabaseServiceRoleKey();
 
   if (!serviceRoleKey) {
     throw new Error("Missing SUPABASE_SERVICE_ROLE_KEY");

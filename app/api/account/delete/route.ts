@@ -3,7 +3,11 @@ import { createClient } from "@supabase/supabase-js";
 import {
   createSupabaseAdminClient,
   extractPublicStoragePath,
+  isSupabaseServiceRoleConfigured,
 } from "@/lib/supabaseAdmin";
+
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 
 function getSupabaseAnonKey(): string {
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
@@ -70,7 +74,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
-    if (!process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()) {
+    console.log(
+      "[account delete] service role configured",
+      isSupabaseServiceRoleConfigured(),
+    );
+
+    if (!isSupabaseServiceRoleConfigured()) {
       return NextResponse.json(
         { error: "Account deletion is not configured on the server." },
         { status: 500 },
