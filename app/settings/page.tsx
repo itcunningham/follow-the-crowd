@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import AppNavigation, { MOBILE_NAV_OFFSET_CLASS } from "@/app/components/AppNavigation";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
+import DeleteAccountSection from "@/app/components/settings/DeleteAccountSection";
 import {
   getCurrentAuthUser,
   getCurrentUserId,
@@ -217,6 +218,8 @@ export default function SettingsPage() {
                   {signingOut ? "Signing out..." : "Log out"}
                 </button>
               </section>
+
+              <DeleteAccountSection onError={setError} />
 
               {error ? <p className="text-sm text-red-400">{error}</p> : null}
             </>
