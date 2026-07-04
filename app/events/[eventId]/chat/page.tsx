@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import AppNavigation, { MOBILE_NAV_OFFSET_CLASS } from "@/app/components/AppNavigation";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
 import ProfileAvatar from "@/app/components/ProfileAvatar";
 import {
   getEventCrewChatAccess,
+  getEventCrewChatBackHref,
   getEventCrewChatLink,
   getEventCrewChatLoadErrorMessage,
   listEventCrewChatMessages,
@@ -37,7 +38,9 @@ function getSenderLabel(profile: UserAvatarProfile | undefined, userId: string) 
 export default function EventCrewChatPage() {
   const params = useParams<{ eventId: string }>();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const eventId = params.eventId;
+  const backHref = getEventCrewChatBackHref(eventId, searchParams.get("from"));
 
   const [messages, setMessages] = useState<EventCrewChatMessage[]>([]);
   const [senderProfiles, setSenderProfiles] = useState<Map<string, UserAvatarProfile>>(
@@ -207,10 +210,10 @@ export default function EventCrewChatPage() {
             <p className="text-sm text-red-400">{error}</p>
             <button
               type="button"
-              onClick={() => router.push(`/events/${eventId}`)}
+              onClick={() => router.push(backHref)}
               className="mt-4 text-sm font-semibold text-blue-300"
             >
-              Back to event
+              {searchParams.get("from") === "dm" ? "Back to messages" : "Back to event"}
             </button>
           </div>
         </div>
@@ -228,8 +231,8 @@ export default function EventCrewChatPage() {
         <header className="sticky top-0 z-10 shrink-0 border-b border-zinc-800/80 bg-[#070708]/95 px-3 py-3 backdrop-blur-md sm:px-4 md:top-12">
           <div className="flex items-center gap-3">
             <Link
-              href={`/events/${eventId}`}
-              aria-label="Back to event"
+              href={backHref}
+              aria-label={searchParams.get("from") === "dm" ? "Back to messages" : "Back to event"}
               className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-zinc-800 text-lg text-zinc-300 transition hover:border-blue-500/40 hover:text-blue-300"
             >
               ←

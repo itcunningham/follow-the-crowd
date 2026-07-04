@@ -159,7 +159,7 @@ export async function listAccessibleGroupChats(
         eventName: event.name.trim() || "Untitled event",
         venue: event.venue,
         eventDate: event.event_date,
-        href: getEventCrewChatLink(event.id),
+        href: getEventCrewChatLink(event.id, { from: "dm" }),
       });
     }
   }
@@ -204,7 +204,7 @@ export async function listAccessibleGroupChats(
           eventName: (event.name as string).trim() || "Untitled event",
           venue: event.venue as string,
           eventDate: event.event_date as string,
-          href: getEventCrewChatLink(event.id),
+          href: getEventCrewChatLink(event.id, { from: "dm" }),
         });
       }
     }

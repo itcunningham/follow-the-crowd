@@ -22,8 +22,28 @@ export type EventCrewChatAccess = {
 
 const EVENT_CREW_MESSAGE_FIELDS = "id, event_id, user_id, text, created_at";
 
-export function getEventCrewChatLink(eventId: string): string {
-  return `/events/${eventId}/chat`;
+export function getEventCrewChatLink(
+  eventId: string,
+  options?: { from?: string },
+): string {
+  const base = `/events/${eventId}/chat`;
+
+  if (options?.from) {
+    return `${base}?from=${encodeURIComponent(options.from)}`;
+  }
+
+  return base;
+}
+
+export function getEventCrewChatBackHref(
+  eventId: string,
+  from: string | null | undefined,
+): string {
+  if (from === "dm") {
+    return "/dm";
+  }
+
+  return `/events/${eventId}`;
 }
 
 export async function getEventCrewChatAccess(eventId: string): Promise<EventCrewChatAccess> {
