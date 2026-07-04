@@ -1,5 +1,6 @@
 "use client";
 
+import FtcDatePicker from "@/app/components/FtcDatePicker";
 import { useEffect, useRef, useState } from "react";
 import { BookingTimeWheelPicker } from "@/app/components/BookingTimeWheelPicker";
 import {
@@ -42,12 +43,11 @@ export function BookingDateField({
           Saved date: <span className="text-zinc-200">{parsed.legacyValue}</span>
         </p>
       ) : null}
-      <input
-        type="date"
-        value={parsed.isoDate}
-        onChange={(event) => onChange(event.target.value)}
+      <FtcDatePicker
+        value={value}
+        onChange={onChange}
         required={required && !parsed.legacyValue}
-        className={BOOKING_DATE_TIME_INPUT_CLASS}
+        ariaLabel={label}
       />
     </label>
   );

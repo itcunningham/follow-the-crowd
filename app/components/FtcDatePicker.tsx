@@ -1,0 +1,269 @@
+"use client";
+
+import { useEffect, useId, useState } from "react";
+import { createPortal } from "react-dom";
+import CalendarMonthNav from "@/app/components/CalendarMonthNav";
+import {
+  BOOKING_DATE_TIME_INPUT_CLASS,
+  parseEventDate,
+} from "@/lib/bookingDateTime";
+import {
+  getCalendarWeekRows,
+  getMonthStart,
+  isSameDay,
+  toDateKey,
+  WEEKDAY_LABELS,
+} from "@/lib/calendar";
+import { formatAvailabilityDateLabel } from "@/lib/djAvailability";
+
+function getMonthStartFromValue(value: string): Date {
+  const parsed = parseEventDate(value);
+
+  if (parsed.isoDate) {
+    const [year, month] = parsed.isoDate.split("-").map(Number);
+    return new Date(year, month - 1, 1);
+  }
+
+  return getMonthStart(new Date());
+}
+
+function formatPickerButtonLabel(value: string): string {
+  const parsed = parseEventDate(value);
+
+  if (parsed.isoDate) {
+    return formatAvailabilityDateLabel(parsed.isoDate);
+  }
+
+  return "Select date";
+}
+
+function CalendarIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 20 20"
+      fill="none"
+      className="h-4 w-4 shrink-0 text-blue-400/90"
+    >
+      <rect x="3" y="4.5" width="14" height="12.5" rx="2" stroke="currentColor" strokeWidth="1.5" />
+      <path d="M3 8.5h14" stroke="currentColor" strokeWidth="1.5" />
+      <path d="M7 3v3M13 3v3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function ChevronIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 20 20"
+      fill="none"
+      className="h-4 w-4 shrink-0 text-zinc-500"
+    >
+      <path
+        d="M7.5 8.5 10 11l2.5-2.5"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+export default function FtcDatePicker({
+  value,
+  onChange,
+  required = false,
+  disabled = false,
+  ariaLabel = "Event date",
+  className = BOOKING_DATE_TIME_INPUT_CLASS,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  required?: boolean;
+  disabled?: boolean;
+  ariaLabel?: string;
+  className?: string;
+}) {
+  const pickerId = useId();
+  const parsed = parseEventDate(value);
+  const [open, setOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  const [monthStart, setMonthStart] = useState(() => getMonthStartFromValue(value));
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    setMonthStart(getMonthStartFromValue(value));
+  }, [open, value]);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setOpen(false);
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [open]);
+
+  const selectedDate = parsed.isoDate
+    ? (() => {
+        const [year, month, day] = parsed.isoDate.split("-").map(Number);
+        return new Date(year, month - 1, day);
+      })()
+    : null;
+  const today = new Date();
+  const calendarWeeks = getCalendarWeekRows(monthStart);
+  const buttonLabel = formatPickerButtonLabel(value);
+  const hasValue = Boolean(parsed.isoDate);
+
+  function handleSelectDay(day: Date) {
+    onChange(toDateKey(day));
+    setOpen(false);
+  }
+
+  function openPicker() {
+    if (disabled) {
+      return;
+    }
+
+    setOpen(true);
+  }
+
+  const picker = open ? (
+    <div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/70 p-0 sm:items-center sm:p-4">
+      <button
+        type="button"
+        aria-label="Close date picker"
+        className="absolute inset-0"
+        onClick={() => setOpen(false)}
+      />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={`${pickerId}-title`}
+        className="relative w-full max-w-sm overflow-hidden rounded-t-3xl border border-zinc-800 bg-[#0a0a0c] shadow-[0_0_40px_rgba(59,130,246,0.15)] sm:rounded-3xl"
+      >
+        <div className="flex items-center justify-between border-b border-zinc-800/80 px-4 py-3">
+          <button
+            type="button"
+            onClick={() => setOpen(false)}
+            className="rounded-lg px-2 py-1 text-sm font-medium text-zinc-400 transition hover:text-zinc-200"
+          >
+            Cancel
+          </button>
+          <h2 id={`${pickerId}-title`} className="text-sm font-semibold text-zinc-100">
+            Select date
+          </h2>
+          <span className="w-[3.75rem]" aria-hidden="true" />
+        </div>
+
+        <div className="px-4 py-4">
+          <CalendarMonthNav monthStart={monthStart} onMonthStartChange={setMonthStart} />
+
+          <div className="mt-4 rounded-2xl border border-zinc-800 bg-zinc-950/40">
+            <div className="grid grid-cols-7 border-b border-zinc-800/80 bg-zinc-950/60">
+              {WEEKDAY_LABELS.map((label) => (
+                <div
+                  key={label}
+                  className="px-1 py-2 text-center text-[10px] font-semibold uppercase tracking-wide text-zinc-500"
+                >
+                  {label}
+                </div>
+              ))}
+            </div>
+
+            <div className="grid grid-cols-7 gap-1.5 p-2">
+              {calendarWeeks.flatMap((week, weekIndex) =>
+                week.map((day, dayIndex) => {
+                  if (!day) {
+                    return (
+                      <div
+                        key={`empty-${weekIndex}-${dayIndex}`}
+                        aria-hidden="true"
+                        className="h-9"
+                      />
+                    );
+                  }
+
+                  const isSelected = selectedDate ? isSameDay(day, selectedDate) : false;
+                  const isToday = isSameDay(day, today);
+
+                  return (
+                    <button
+                      key={toDateKey(day)}
+                      type="button"
+                      onClick={() => handleSelectDay(day)}
+                      aria-label={day.toLocaleDateString(undefined, {
+                        weekday: "long",
+                        month: "long",
+                        day: "numeric",
+                        year: "numeric",
+                      })}
+                      aria-pressed={isSelected}
+                      className={`flex h-9 items-center justify-center rounded-lg border text-sm transition ${
+                        isSelected
+                          ? "border-blue-500/50 bg-blue-600/20 text-blue-100 shadow-[0_0_12px_rgba(59,130,246,0.22)]"
+                          : isToday
+                            ? "border-zinc-700/80 bg-zinc-900/80 text-zinc-100 hover:border-blue-500/35 hover:bg-blue-600/10"
+                            : "border-transparent text-zinc-300 hover:border-zinc-700 hover:bg-zinc-900/70"
+                      }`}
+                    >
+                      {day.getDate()}
+                    </button>
+                  );
+                }),
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  ) : null;
+
+  return (
+    <>
+      <input
+        type="text"
+        value={parsed.isoDate}
+        readOnly
+        required={required && !parsed.legacyValue}
+        tabIndex={-1}
+        aria-hidden="true"
+        className="pointer-events-none absolute h-0 w-0 opacity-0"
+      />
+      <button
+        type="button"
+        onClick={openPicker}
+        disabled={disabled}
+        aria-label={`${ariaLabel}, ${buttonLabel}`}
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        className={`${className} flex items-center gap-2.5 text-left disabled:cursor-not-allowed disabled:opacity-50`}
+      >
+        <CalendarIcon />
+        <span className={`min-w-0 flex-1 ${hasValue ? "text-zinc-100" : "text-zinc-500"}`}>
+          {buttonLabel}
+        </span>
+        <ChevronIcon />
+      </button>
+      {mounted && picker ? createPortal(picker, document.body) : null}
+    </>
+  );
+}

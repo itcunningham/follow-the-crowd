@@ -17,6 +17,7 @@ import {
 } from "@/lib/bookingDateTime";
 import {
   createEmptyRunSheetRow,
+  ensureRunSheetRowsForAcceptedBookings,
   getRunSheetLoadErrorMessage,
   getRunSheetSaveErrorMessage,
   isPersistedRunSheetRowId,
@@ -466,39 +467,37 @@ export default function EventRunSheetSection({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const rowsRef = useRef<RunSheetRowInput[]>([]);
-
-  rowsRef.current = rows;
+  const syncInFlightRef = useRef(false);
 
   const syncAcceptedDjs = useCallback(
     async (currentRows: RunSheetRowInput[]) => {
-      const { rows: mergedRows, addedCount } = mergeAcceptedDjsIntoRunSheetRows(
-        currentRows,
-        lineup,
-        profiles,
-      );
+      if (syncInFlightRef.current) {
+        return currentRows;
+      }
+
+      const { addedCount } = mergeAcceptedDjsIntoRunSheetRows(currentRows, lineup, profiles);
 
       if (addedCount === 0) {
-        return mergedRows;
+        return currentRows;
       }
 
       if (!canEdit) {
-        return mergedRows;
+        return mergeAcceptedDjsIntoRunSheetRows(currentRows, lineup, profiles).rows;
       }
 
+      syncInFlightRef.current = true;
+
       try {
-        // Auto-persist inserts only; existing rows are never modified by this merge.
-        const saved = await saveEventRunSheet(eventId, {
-          rows: mergedRows,
-          deletedRowIds: [],
-        });
+        const saved = await ensureRunSheetRowsForAcceptedBookings(eventId, lineup, profiles);
         return reorderRunSheetRows(mapRunSheetRowsFromDb(saved.rows));
       } catch (autoSaveError) {
         console.error(
           "Accepted DJ auto-add save failed; rows stay local until Save changes:",
           autoSaveError,
         );
-        return mergedRows;
+        return mergeAcceptedDjsIntoRunSheetRows(currentRows, lineup, profiles).rows;
+      } finally {
+        syncInFlightRef.current = false;
       }
     },
     [canEdit, eventId, lineup, profiles],
@@ -526,27 +525,6 @@ export default function EventRunSheetSection({
   useEffect(() => {
     void loadRunSheet();
   }, [loadRunSheet]);
-
-  useEffect(() => {
-    if (loading) {
-      return;
-    }
-
-    void (async () => {
-      const { addedCount } = mergeAcceptedDjsIntoRunSheetRows(
-        rowsRef.current,
-        lineup,
-        profiles,
-      );
-
-      if (addedCount === 0) {
-        return;
-      }
-
-      const nextRows = await syncAcceptedDjs(rowsRef.current);
-      setRows(nextRows);
-    })();
-  }, [lineup, profiles, loading, syncAcceptedDjs]);
 
   function updateRow(rowId: string, patch: Partial<RunSheetRowInput>) {
     setRows((prev) => prev.map((row) => (row.id === rowId ? { ...row, ...patch } : row)));

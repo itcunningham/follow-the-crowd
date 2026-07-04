@@ -343,6 +343,273 @@ export function isBookingRequestMessage(text: string): boolean {
   return text.trim().startsWith("BOOKING REQUEST");
 }
 
+export const CANCELLED_BOOKING_DM_SYSTEM_MESSAGE =
+  "Booking request cancelled by planner.";
+
+export function shouldShowCancelledBookingDmSystemMessage(
+  liveBooking: BookingRequest | null | undefined,
+  messageText?: string,
+): boolean {
+  if (normalizeBookingRequestStatus(liveBooking?.status) === "cancelled") {
+    return true;
+  }
+
+  if (messageText) {
+    const parsed = parseBookingRequestMessage(messageText);
+    if (parsed?.status === "cancelled") {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+export type DmCancelledBookingMatchContext = {
+  cancelledBookingIds: Set<string>;
+  cancelledBookings: BookingRequest[];
+};
+
+export type DmBookingCardVisibility = {
+  hideCard: boolean;
+  parsedEventName: string | null;
+  parsedEventDate: string | null;
+  parsedRate: string | null;
+  matchedBookingId: string | null;
+  matchedBookingStatus: BookingRequestStatus | null;
+};
+
+function dmBookingMessageFieldMatch(
+  parsed: NonNullable<ReturnType<typeof parseBookingRequestMessage>>,
+  booking: BookingRequest,
+): boolean {
+  if (!parsed.eventName || booking.event_name !== parsed.eventName) {
+    return false;
+  }
+
+  if (parsed.eventDate && booking.event_date !== parsed.eventDate) {
+    return false;
+  }
+
+  if (parsed.setTime && booking.set_time !== parsed.setTime) {
+    return false;
+  }
+
+  if (parsed.fee && normalizeStoredRate(booking.fee) !== normalizeStoredRate(parsed.fee)) {
+    return false;
+  }
+
+  if (parsed.venue && booking.venue !== parsed.venue) {
+    return false;
+  }
+
+  return true;
+}
+
+function scoreDmBookingFieldMatch(
+  parsed: NonNullable<ReturnType<typeof parseBookingRequestMessage>>,
+  booking: BookingRequest,
+): number {
+  let score = 0;
+
+  if (parsed.eventDate && booking.event_date === parsed.eventDate) {
+    score += 1;
+  }
+
+  if (parsed.setTime && booking.set_time === parsed.setTime) {
+    score += 1;
+  }
+
+  if (parsed.fee && normalizeStoredRate(booking.fee) === normalizeStoredRate(parsed.fee)) {
+    score += 1;
+  }
+
+  if (parsed.venue && booking.venue === parsed.venue) {
+    score += 1;
+  }
+
+  return score;
+}
+
+export function buildDmCancelledBookingMatchContext(
+  bookings: BookingRequest[],
+  conversationId: string,
+): DmCancelledBookingMatchContext {
+  const cancelledBookings = bookings.filter(
+    (booking) =>
+      (!booking.conversation_id || booking.conversation_id === conversationId) &&
+      normalizeBookingRequestStatus(booking.status) === "cancelled",
+  );
+
+  return {
+    cancelledBookingIds: new Set(cancelledBookings.map((booking) => booking.id)),
+    cancelledBookings,
+  };
+}
+
+export function findCancelledBookingMatchForDmMessage(
+  messageText: string,
+  bookings: BookingRequest[],
+  conversationId: string,
+): BookingRequest | null {
+  if (!isBookingRequestMessage(messageText)) {
+    return null;
+  }
+
+  const parsed = parseBookingRequestMessage(messageText);
+
+  if (!parsed) {
+    return null;
+  }
+
+  const { cancelledBookingIds, cancelledBookings } = buildDmCancelledBookingMatchContext(
+    bookings,
+    conversationId,
+  );
+
+  if (parsed.bookingId && cancelledBookingIds.has(parsed.bookingId)) {
+    return cancelledBookings.find((booking) => booking.id === parsed.bookingId) ?? null;
+  }
+
+  const fieldMatches = cancelledBookings.filter((booking) =>
+    dmBookingMessageFieldMatch(parsed, booking),
+  );
+
+  if (fieldMatches.length === 0) {
+    return null;
+  }
+
+  if (fieldMatches.length === 1) {
+    return fieldMatches[0];
+  }
+
+  return [...fieldMatches].sort((left, right) => {
+    const scoreDiff =
+      scoreDmBookingFieldMatch(parsed, right) - scoreDmBookingFieldMatch(parsed, left);
+
+    if (scoreDiff !== 0) {
+      return scoreDiff;
+    }
+
+    return new Date(right.created_at).getTime() - new Date(left.created_at).getTime();
+  })[0];
+}
+
+export function evaluateDmBookingCardVisibility(
+  messageText: string,
+  bookings: BookingRequest[],
+  conversationId: string,
+): DmBookingCardVisibility {
+  const parsed = parseBookingRequestMessage(messageText);
+  const cancelledMatch = findCancelledBookingMatchForDmMessage(
+    messageText,
+    bookings,
+    conversationId,
+  );
+  const liveBooking = resolveLiveBookingForDmMessage(messageText, bookings, conversationId);
+  const matchedBooking = cancelledMatch ?? liveBooking;
+  const hideCard =
+    Boolean(cancelledMatch) ||
+    shouldShowCancelledBookingDmSystemMessage(liveBooking, messageText);
+
+  return {
+    hideCard,
+    parsedEventName: parsed?.eventName ?? null,
+    parsedEventDate: parsed?.eventDate ?? null,
+    parsedRate: parsed?.fee ?? null,
+    matchedBookingId: matchedBooking?.id ?? parsed?.bookingId ?? null,
+    matchedBookingStatus: matchedBooking
+      ? normalizeBookingRequestStatus(matchedBooking.status)
+      : parsed?.status ?? null,
+  };
+}
+
+export function resolveLiveBookingForDmMessage(
+  messageText: string,
+  bookings: BookingRequest[],
+  conversationId: string,
+): BookingRequest | null {
+  if (!isBookingRequestMessage(messageText)) {
+    return null;
+  }
+
+  const parsed = parseBookingRequestMessage(messageText);
+
+  if (!parsed) {
+    return null;
+  }
+
+  const conversationBookings = bookings.filter(
+    (booking) => !booking.conversation_id || booking.conversation_id === conversationId,
+  );
+
+  if (parsed.bookingId) {
+    const byId = conversationBookings.find((booking) => booking.id === parsed.bookingId);
+
+    if (byId) {
+      console.log("[dm booking] resolved by id", {
+        parsedBookingId: parsed.bookingId,
+        liveBookingId: byId.id,
+        status: byId.status,
+      });
+      return byId;
+    }
+  }
+
+  const fieldMatches = conversationBookings.filter((booking) =>
+    dmBookingMessageFieldMatch(parsed, booking),
+  );
+
+  if (fieldMatches.length === 1) {
+    console.log("[dm booking] resolved by fields", {
+      parsedBookingId: parsed.bookingId,
+      liveBookingId: fieldMatches[0].id,
+      status: fieldMatches[0].status,
+    });
+    return fieldMatches[0];
+  }
+
+  if (fieldMatches.length > 1) {
+    const cancelledMatch = fieldMatches.find(
+      (booking) => normalizeBookingRequestStatus(booking.status) === "cancelled",
+    );
+
+    if (cancelledMatch) {
+      console.log("[dm booking] resolved cancelled duplicate", {
+        parsedBookingId: parsed.bookingId,
+        liveBookingId: cancelledMatch.id,
+        status: cancelledMatch.status,
+      });
+      return cancelledMatch;
+    }
+
+    const bestMatch = [...fieldMatches].sort((left, right) => {
+      const scoreDiff =
+        scoreDmBookingFieldMatch(parsed, right) - scoreDmBookingFieldMatch(parsed, left);
+
+      if (scoreDiff !== 0) {
+        return scoreDiff;
+      }
+
+      return new Date(right.created_at).getTime() - new Date(left.created_at).getTime();
+    })[0];
+
+    console.log("[dm booking] resolved best duplicate", {
+      parsedBookingId: parsed.bookingId,
+      liveBookingId: bestMatch.id,
+      status: bestMatch.status,
+    });
+    return bestMatch;
+  }
+
+  console.log("[dm booking] unresolved live booking", {
+    parsedBookingId: parsed.bookingId,
+    parsedStatus: parsed.status,
+    conversationBookingCount: conversationBookings.length,
+  });
+
+  return null;
+}
+
 export function logBookingsLoadError(error: unknown): void {
   console.error("load bookings error:");
 
@@ -423,7 +690,7 @@ export async function getBookingRequestsForConversation(
 ): Promise<BookingRequest[]> {
   const { data, error } = await supabase
     .from("booking_requests")
-    .select("*")
+    .select(BOOKING_REQUEST_FIELDS)
     .eq("conversation_id", conversationId)
     .order("created_at", { ascending: true });
 
@@ -730,16 +997,139 @@ export function getBookingGroupChatAccess(
   return null;
 }
 
+export type EventBookingDuplicateStatus =
+  | "already_invited"
+  | "already_booked"
+  | "already_declined";
+
+export const ALL_SELECTED_DJS_ALREADY_HAVE_EVENT_REQUEST_MESSAGE =
+  "No new DJs to send to. Everyone selected already has a request for this event.";
+
+export function getEventBookingDuplicateLabel(status: EventBookingDuplicateStatus): string {
+  switch (status) {
+    case "already_invited":
+      return "Already invited";
+    case "already_booked":
+      return "Already booked";
+    case "already_declined":
+      return "Already declined";
+  }
+}
+
+export function getEventBookingDuplicateBadgeClass(status: EventBookingDuplicateStatus): string {
+  switch (status) {
+    case "already_invited":
+      return "border-blue-500/40 bg-blue-600/15 text-blue-300";
+    case "already_booked":
+      return "border-emerald-500/40 bg-emerald-500/10 text-emerald-300";
+    case "already_declined":
+      return "border-zinc-600/50 bg-zinc-800/80 text-zinc-400";
+  }
+}
+
+export function getEventBookingDuplicateStatusForRecipient(
+  bookings: BookingRequest[],
+  recipientId: string,
+): EventBookingDuplicateStatus | null {
+  const recipientBookings = bookings.filter((booking) => booking.recipient_id === recipientId);
+
+  if (recipientBookings.length === 0) {
+    return null;
+  }
+
+  if (recipientBookings.some((booking) => booking.status === "accepted")) {
+    return "already_booked";
+  }
+
+  if (recipientBookings.some((booking) => booking.status === "pending")) {
+    return "already_invited";
+  }
+
+  if (recipientBookings.some((booking) => booking.status === "declined")) {
+    return "already_declined";
+  }
+
+  return null;
+}
+
+export function buildEventBookingDuplicateMap(
+  bookings: BookingRequest[],
+): Map<string, EventBookingDuplicateStatus> {
+  const duplicateMap = new Map<string, EventBookingDuplicateStatus>();
+  const recipientIds = new Set(bookings.map((booking) => booking.recipient_id));
+
+  for (const recipientId of recipientIds) {
+    const status = getEventBookingDuplicateStatusForRecipient(bookings, recipientId);
+
+    if (status) {
+      duplicateMap.set(recipientId, status);
+    }
+  }
+
+  return duplicateMap;
+}
+
+export function filterSendableRecipientIdsForEvent(
+  recipientIds: string[],
+  bookings: BookingRequest[],
+): {
+  sendableIds: string[];
+  skippedIds: string[];
+} {
+  const sendableIds: string[] = [];
+  const skippedIds: string[] = [];
+
+  for (const recipientId of recipientIds) {
+    if (getEventBookingDuplicateStatusForRecipient(bookings, recipientId)) {
+      skippedIds.push(recipientId);
+      continue;
+    }
+
+    sendableIds.push(recipientId);
+  }
+
+  return { sendableIds, skippedIds };
+}
+
+export function buildBookingSendResultMessage(
+  successCount: number,
+  skippedDuplicateCount: number,
+): string {
+  const base = `Sent booking request to ${successCount} DJ${successCount === 1 ? "" : "s"}.`;
+
+  if (skippedDuplicateCount === 0) {
+    return base;
+  }
+
+  return `${base} Skipped ${skippedDuplicateCount} DJ${skippedDuplicateCount === 1 ? "" : "s"} who already have a request for this event.`;
+}
+
 export async function sendBookingRequestsToDjs(
   recipientIds: string[],
   input: BookingRequestInput,
+  options?: {
+    existingEventBookings?: BookingRequest[];
+  },
 ): Promise<{
   conversationIds: string[];
   successes: string[];
   failures: BookingSendFailure[];
+  skippedDuplicateRecipientIds: string[];
 }> {
+  let targetRecipientIds = recipientIds;
+  let skippedDuplicateRecipientIds: string[] = [];
+
+  if (input.eventId && options?.existingEventBookings) {
+    const filtered = filterSendableRecipientIdsForEvent(
+      recipientIds,
+      options.existingEventBookings,
+    );
+    targetRecipientIds = filtered.sendableIds;
+    skippedDuplicateRecipientIds = filtered.skippedIds;
+  }
+
   const results = await Promise.all(
-    recipientIds.map(async (recipientId) => {
+    targetRecipientIds.map(async (recipientId) => {
       try {
         const conversationId = await sendBookingRequestToDj(recipientId, input);
         return { recipientId, conversationId, error: null as string | null };
@@ -771,7 +1161,7 @@ export async function sendBookingRequestsToDjs(
     });
   }
 
-  return { conversationIds, successes, failures };
+  return { conversationIds, successes, failures, skippedDuplicateRecipientIds };
 }
 
 export async function cancelBookingRequest(bookingId: string): Promise<BookingRequest> {
@@ -1015,9 +1405,17 @@ export function resolveBookingForMessage(
 export function mergeBookingWithMessage(
   booking: BookingRequest | null,
   messageText: string,
+  bookings: BookingRequest[] = [],
+  conversationId = "",
 ): BookingRequest | null {
-  if (booking) {
-    return booking;
+  const liveBooking =
+    booking ??
+    (conversationId
+      ? resolveLiveBookingForDmMessage(messageText, bookings, conversationId)
+      : null);
+
+  if (liveBooking) {
+    return liveBooking;
   }
 
   const parsed = parseBookingRequestMessage(messageText);
@@ -1026,12 +1424,30 @@ export function mergeBookingWithMessage(
     return null;
   }
 
+  if (parsed.bookingId) {
+    const byId = bookings.find((item) => item.id === parsed.bookingId);
+
+    if (byId) {
+      return byId;
+    }
+  }
+
+  const cancelledMatch = findCancelledBookingMatchForDmMessage(
+    messageText,
+    bookings,
+    conversationId,
+  );
+
+  if (cancelledMatch) {
+    return cancelledMatch;
+  }
+
   return {
     id: parsed.bookingId ?? messageText,
     created_at: new Date().toISOString(),
     sender_id: "",
     recipient_id: "",
-    conversation_id: "",
+    conversation_id: conversationId,
     event_id: null,
     event_name: parsed.eventName,
     venue: parsed.venue ?? "",
@@ -1039,7 +1455,7 @@ export function mergeBookingWithMessage(
     set_time: parsed.setTime ?? "",
     fee: normalizeStoredRate(parsed.fee ?? ""),
     notes: parsed.notes === "None" ? "" : parsed.notes ?? "",
-    status: parsed.status ?? "pending",
+    status: normalizeBookingRequestStatus(parsed.status ?? "pending"),
     archived_at: null,
     lineup_hidden_at: null,
   };

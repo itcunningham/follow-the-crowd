@@ -14,6 +14,7 @@ export type RunSheetRow = {
   finish_time: string;
   stage_area: string;
   notes: string;
+  booking_request_id?: string | null;
   custom_data?: unknown;
 };
 
@@ -25,6 +26,7 @@ export type RunSheetRowInput = {
   finish_time: string;
   stage_area: string;
   notes: string;
+  booking_request_id?: string;
   booking_recipient_id?: string;
 };
 
@@ -38,7 +40,7 @@ export type EventRunSheetData = {
 };
 
 const ROW_FIELDS =
-  "id, created_at, event_id, owner_id, sort_order, artist_name, start_time, finish_time, stage_area, notes, custom_data";
+  "id, created_at, event_id, owner_id, sort_order, artist_name, start_time, finish_time, stage_area, notes, booking_request_id, custom_data";
 
 const RUN_SHEET_ROW_UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -52,11 +54,17 @@ function filterPersistedRowIds(ids: string[]): string[] {
 }
 
 function buildRunSheetRowCustomData(row: RunSheetRowInput): Record<string, unknown> {
+  const customData: Record<string, unknown> = {};
+
   if (row.booking_recipient_id?.trim()) {
-    return { booking_recipient_id: row.booking_recipient_id.trim() };
+    customData.booking_recipient_id = row.booking_recipient_id.trim();
   }
 
-  return {};
+  if (row.booking_request_id?.trim()) {
+    customData.booking_request_id = row.booking_request_id.trim();
+  }
+
+  return customData;
 }
 
 function readBookingRecipientIdFromCustomData(customData: unknown): string | undefined {
@@ -69,6 +77,24 @@ function readBookingRecipientIdFromCustomData(customData: unknown): string | und
   return typeof recipientId === "string" && recipientId.trim() ? recipientId.trim() : undefined;
 }
 
+function readBookingRequestIdFromRow(
+  row: Pick<RunSheetRow, "booking_request_id" | "custom_data">,
+): string | undefined {
+  if (typeof row.booking_request_id === "string" && row.booking_request_id.trim()) {
+    return row.booking_request_id.trim();
+  }
+
+  if (!row.custom_data || typeof row.custom_data !== "object") {
+    return undefined;
+  }
+
+  const bookingRequestId = (row.custom_data as { booking_request_id?: unknown }).booking_request_id;
+
+  return typeof bookingRequestId === "string" && bookingRequestId.trim()
+    ? bookingRequestId.trim()
+    : undefined;
+}
+
 export function mapRunSheetRowsFromDb(rows: RunSheetRow[]): RunSheetRowInput[] {
   return rows.map((row) => ({
     id: row.id,
@@ -78,6 +104,7 @@ export function mapRunSheetRowsFromDb(rows: RunSheetRow[]): RunSheetRowInput[] {
     finish_time: row.finish_time,
     stage_area: row.stage_area,
     notes: row.notes,
+    booking_request_id: readBookingRequestIdFromRow(row),
     booking_recipient_id: readBookingRecipientIdFromCustomData(row.custom_data),
   }));
 }
@@ -93,17 +120,41 @@ function buildRunSheetRowFields(row: RunSheetRowInput) {
   };
 }
 
-function runSheetRowMatchesAcceptedDj(
+function runSheetRowMatchesAcceptedBooking(
   row: RunSheetRowInput,
-  recipientId: string,
+  booking: BookingRequest,
   artistName: string,
 ): boolean {
-  if (row.booking_recipient_id && row.booking_recipient_id === recipientId) {
+  if (row.booking_request_id && row.booking_request_id === booking.id) {
+    return true;
+  }
+
+  if (row.booking_recipient_id && row.booking_recipient_id === booking.recipient_id) {
     return true;
   }
 
   const artistKey = artistName.trim().toLowerCase();
   return Boolean(artistKey) && row.artist_name.trim().toLowerCase() === artistKey;
+}
+
+async function runSheetRowExistsForBooking(
+  eventId: string,
+  bookingRequestId: string,
+  recipientId: string,
+): Promise<boolean> {
+  const { count, error } = await supabase
+    .from("event_run_sheet_rows")
+    .select("id", { count: "exact", head: true })
+    .eq("event_id", eventId)
+    .or(
+      `booking_request_id.eq.${bookingRequestId},custom_data->>booking_recipient_id.eq.${recipientId}`,
+    );
+
+  if (error) {
+    throw error;
+  }
+
+  return (count ?? 0) > 0;
 }
 
 export function mergeAcceptedDjsIntoRunSheetRows(
@@ -119,7 +170,7 @@ export function mergeAcceptedDjsIntoRunSheetRows(
     const artistName = profile?.display_name?.trim() || "DJ";
     const existingRows = [...rows, ...additions];
     const alreadyPresent = existingRows.some((row) =>
-      runSheetRowMatchesAcceptedDj(row, booking.recipient_id, artistName),
+      runSheetRowMatchesAcceptedBooking(row, booking, artistName),
     );
 
     if (alreadyPresent) {
@@ -127,7 +178,7 @@ export function mergeAcceptedDjsIntoRunSheetRows(
     }
 
     additions.push(
-      createEmptyRunSheetRow(existingRows.length, artistName, booking.recipient_id),
+      createEmptyRunSheetRow(existingRows.length, artistName, booking.recipient_id, booking.id),
     );
   }
 
@@ -197,11 +248,73 @@ export async function saveEventRunSheet(
     const { error } = await supabase.from("event_run_sheet_rows").insert({
       event_id: eventId,
       owner_id: ownerId,
+      booking_request_id: row.booking_request_id ?? null,
       ...rowFields,
       custom_data: customData,
     });
 
     if (error) {
+      if (error.code === "23505" && row.booking_request_id) {
+        continue;
+      }
+
+      throw error;
+    }
+  }
+
+  return loadEventRunSheet(eventId);
+}
+
+export async function ensureRunSheetRowsForAcceptedBookings(
+  eventId: string,
+  lineup: BookingRequest[],
+  profiles: Map<string, BookingRecipientProfile>,
+): Promise<EventRunSheetData> {
+  const existing = await loadEventRunSheet(eventId);
+  const existingInputs = mapRunSheetRowsFromDb(existing.rows);
+  const { rows: mergedRows, addedCount } = mergeAcceptedDjsIntoRunSheetRows(
+    existingInputs,
+    lineup,
+    profiles,
+  );
+
+  if (addedCount === 0) {
+    return existing;
+  }
+
+  const ownerId = await getCurrentUserId();
+  const newRows = mergedRows.filter((row) => !isPersistedRunSheetRowId(row.id));
+
+  for (const row of newRows) {
+    if (!row.booking_request_id || !row.booking_recipient_id) {
+      continue;
+    }
+
+    const alreadyExists = await runSheetRowExistsForBooking(
+      eventId,
+      row.booking_request_id,
+      row.booking_recipient_id,
+    );
+
+    if (alreadyExists) {
+      continue;
+    }
+
+    const rowFields = buildRunSheetRowFields(row);
+    const customData = buildRunSheetRowCustomData(row);
+    const { error } = await supabase.from("event_run_sheet_rows").insert({
+      event_id: eventId,
+      owner_id: ownerId,
+      booking_request_id: row.booking_request_id,
+      ...rowFields,
+      custom_data: customData,
+    });
+
+    if (error) {
+      if (error.code === "23505") {
+        continue;
+      }
+
       throw error;
     }
   }
@@ -260,6 +373,7 @@ export function createEmptyRunSheetRow(
   sortOrder: number,
   artistName = "",
   bookingRecipientId?: string,
+  bookingRequestId?: string,
 ): RunSheetRowInput {
   return {
     id: createTempRunSheetId(),
@@ -270,6 +384,7 @@ export function createEmptyRunSheetRow(
     stage_area: "",
     notes: "",
     booking_recipient_id: bookingRecipientId,
+    booking_request_id: bookingRequestId,
   };
 }
 

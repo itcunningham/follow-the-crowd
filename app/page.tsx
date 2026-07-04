@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import AppNavigation, { MOBILE_NAV_OFFSET_CLASS } from "./components/AppNavigation";
+import FtcDatePicker from "./components/FtcDatePicker";
 import OnboardingGuard from "./components/OnboardingGuard";
 import VenueMap from "./components/VenueMap";
 import { requestEventPlan } from "@/lib/client/generate-event-plan";
@@ -262,12 +263,16 @@ export default function Home() {
                   value={form.genre}
                   onChange={(v) => updateField("genre", v)}
                 />
-                <Field
-                  label="Date"
-                  type="date"
-                  value={form.date}
-                  onChange={(v) => updateField("date", v)}
-                />
+                <label className="block">
+                  <span className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-400">
+                    Date
+                  </span>
+                  <FtcDatePicker
+                    value={form.date}
+                    onChange={(value) => updateField("date", value)}
+                    ariaLabel="Event date"
+                  />
+                </label>
                 <Field
                   label="Expected Capacity"
                   placeholder="500"

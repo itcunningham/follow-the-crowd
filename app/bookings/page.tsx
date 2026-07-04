@@ -17,6 +17,9 @@ import CancelBookingRequestButton from "@/app/components/CancelBookingRequestBut
 import {
   archiveAllCancelledBookingRequests,
   archiveBookingRequest,
+  ALL_SELECTED_DJS_ALREADY_HAVE_EVENT_REQUEST_MESSAGE,
+  buildBookingSendResultMessage,
+  buildEventBookingDuplicateMap,
   cancelBookingRequest,
   canCancelBookingRequest,
   filterActiveBookingGroups,
@@ -24,6 +27,7 @@ import {
   filterArchivedCancelledBookings,
   filterCancelledBookings,
   filterHistoryCancelledBookings,
+  filterSendableRecipientIdsForEvent,
   formatBookingStatusLabel,
   getActiveBookingCampaignStats,
   getBookingMutationErrorMessage,
@@ -33,6 +37,7 @@ import {
   listSentBookingRequests,
   logBookingsLoadError,
   logCancelledBookingsLoadFailure,
+  listBookingRequestsForEvent,
   sendBookingRequestsToDjs,
   sortBookingsNewestFirst,
   unarchiveBookingRequest,
@@ -51,8 +56,11 @@ import {
   type BookingPlan,
 } from "@/lib/bookingPlans";
 import { formatRateDisplay } from "@/lib/bookingRate";
+import EventBookingDuplicateBadge from "@/app/components/EventBookingDuplicateBadge";
+import UnavailableDjBookingConfirmModal from "@/app/components/UnavailableDjBookingConfirmModal";
 import {
   getPlannerDjAvailabilityHints,
+  getUnavailableDjBookingWarnings,
   type DjPlannerAvailabilityHint,
 } from "@/lib/djAvailability";
 import {
@@ -263,6 +271,8 @@ export default function BookingsPage() {
   const [archivingBookingId, setArchivingBookingId] = useState<string | null>(null);
   const [archivingAllHistory, setArchivingAllHistory] = useState(false);
   const [restoringBookingId, setRestoringBookingId] = useState<string | null>(null);
+  const [unavailableConfirmOpen, setUnavailableConfirmOpen] = useState(false);
+  const [eventBookings, setEventBookings] = useState<BookingRequest[]>([]);
 
   const activeSentGroups = useMemo(
     () => filterActiveBookingGroups(sentGroups, statusFilter),
@@ -299,6 +309,40 @@ export default function BookingsPage() {
       return haystack.includes(query);
     });
   }, [djs, searchQuery]);
+
+  const eventBookingDuplicates = useMemo(
+    () => (form.eventId ? buildEventBookingDuplicateMap(eventBookings) : new Map()),
+    [form.eventId, eventBookings],
+  );
+
+  const sendableSelectedDjIds = useMemo(() => {
+    if (!form.eventId) {
+      return selectedDjIds;
+    }
+
+    return filterSendableRecipientIdsForEvent(selectedDjIds, eventBookings).sendableIds;
+  }, [form.eventId, selectedDjIds, eventBookings]);
+
+  const unavailableDjWarnings = useMemo(
+    () => getUnavailableDjBookingWarnings(sendableSelectedDjIds, djs, djAvailabilityHints),
+    [sendableSelectedDjIds, djs, djAvailabilityHints],
+  );
+
+  const allSelectedAreDuplicates =
+    Boolean(form.eventId) &&
+    selectedDjIds.length > 0 &&
+    sendableSelectedDjIds.length === 0;
+
+  useEffect(() => {
+    if (!form.eventId) {
+      return;
+    }
+
+    setSelectedDjIds((prev) => {
+      const next = prev.filter((userId) => !eventBookingDuplicates.has(userId));
+      return next.length === prev.length ? prev : next;
+    });
+  }, [eventBookingDuplicates, form.eventId]);
 
   const isDjGigsView = role === "dj";
   const showReceivedGigsTabs =
@@ -474,6 +518,32 @@ export default function BookingsPage() {
     };
   }, [createStep, form.eventDate, djs]);
 
+  useEffect(() => {
+    if (createStep !== "select-djs" || !form.eventId?.trim()) {
+      setEventBookings([]);
+      return;
+    }
+
+    let cancelled = false;
+
+    void listBookingRequestsForEvent(form.eventId)
+      .then((bookings) => {
+        if (!cancelled) {
+          setEventBookings(bookings);
+        }
+      })
+      .catch((loadError) => {
+        console.error("Failed to load event bookings for duplicate check:", loadError);
+        if (!cancelled) {
+          setEventBookings([]);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [createStep, form.eventId]);
+
   async function openCreateFlow(options?: {
     planId?: string;
     custom?: boolean;
@@ -564,6 +634,8 @@ export default function BookingsPage() {
     setFailureDetails([]);
     setEventDateOverride(null);
     setError(null);
+    setUnavailableConfirmOpen(false);
+    setEventBookings([]);
   }
 
   function updateField<Key extends keyof BookingRequestInput>(
@@ -574,6 +646,10 @@ export default function BookingsPage() {
   }
 
   function toggleDjSelection(userId: string) {
+    if (form.eventId && eventBookingDuplicates.has(userId)) {
+      return;
+    }
+
     setSelectedDjIds((prev) =>
       prev.includes(userId) ? prev.filter((id) => id !== userId) : [...prev, userId],
     );
@@ -608,10 +684,59 @@ export default function BookingsPage() {
     setCreateStep("select-djs");
   }
 
-  async function handleSendBookingRequests() {
-    if (selectedDjIds.length === 0) {
+  function requestSendBookingRequests() {
+    const duplicateSource = form.eventId ? eventBookings : [];
+    const { sendableIds, skippedIds } = form.eventId
+      ? filterSendableRecipientIdsForEvent(selectedDjIds, duplicateSource)
+      : { sendableIds: selectedDjIds, skippedIds: [] as string[] };
+
+    if (skippedIds.length > 0) {
+      setSelectedDjIds(sendableIds);
+    }
+
+    if (sendableIds.length === 0) {
+      if (form.eventId) {
+        setError(ALL_SELECTED_DJS_ALREADY_HAVE_EVENT_REQUEST_MESSAGE);
+        return;
+      }
+
       setError("Select at least one DJ.");
       return;
+    }
+
+    if (
+      getUnavailableDjBookingWarnings(sendableIds, djs, djAvailabilityHints).length > 0
+    ) {
+      setUnavailableConfirmOpen(true);
+      return;
+    }
+
+    void executeSendBookingRequests(sendableIds, skippedIds.length);
+  }
+
+  async function executeSendBookingRequests(
+    recipientIds: string[] = sendableSelectedDjIds,
+    skippedDuplicateCount = 0,
+  ) {
+    const duplicateSource = form.eventId ? eventBookings : [];
+    const { sendableIds, skippedIds } = form.eventId
+      ? filterSendableRecipientIdsForEvent(recipientIds, duplicateSource)
+      : { sendableIds: recipientIds, skippedIds: [] as string[] };
+    const totalSkippedDuplicates = skippedDuplicateCount + skippedIds.length;
+
+    if (sendableIds.length === 0) {
+      if (form.eventId) {
+        setError(ALL_SELECTED_DJS_ALREADY_HAVE_EVENT_REQUEST_MESSAGE);
+        setSelectedDjIds([]);
+        return;
+      }
+
+      setError("Select at least one DJ.");
+      return;
+    }
+
+    if (skippedIds.length > 0) {
+      setSelectedDjIds(sendableIds);
     }
 
     setSending(true);
@@ -620,9 +745,18 @@ export default function BookingsPage() {
     setSuccessMessage(null);
 
     try {
-      const { successes, failures } = await sendBookingRequestsToDjs(selectedDjIds, form);
+      const { successes, failures, skippedDuplicateRecipientIds } =
+        await sendBookingRequestsToDjs(sendableIds, form, {
+          existingEventBookings: form.eventId ? duplicateSource : undefined,
+        });
+      const skippedCount = totalSkippedDuplicates + skippedDuplicateRecipientIds.length;
 
       if (successes.length === 0) {
+        if (skippedCount > 0) {
+          setError(ALL_SELECTED_DJS_ALREADY_HAVE_EVENT_REQUEST_MESSAGE);
+          return;
+        }
+
         setError("Failed to send booking requests. Please try again.");
         setFailureDetails(
           failures.map((failure) => {
@@ -634,8 +768,8 @@ export default function BookingsPage() {
         return;
       }
 
-      const successText = `Sent booking request to ${successes.length} DJ${successes.length === 1 ? "" : "s"}.`;
-      setSuccessMessage(successText);
+      setSuccessMessage(buildBookingSendResultMessage(successes.length, skippedCount));
+      setUnavailableConfirmOpen(false);
       closeCreateFlow();
       await reloadPlannerSentBookings();
 
@@ -1035,7 +1169,8 @@ export default function BookingsPage() {
                   </label>
 
                   <p className="text-sm text-zinc-500">
-                    {selectedDjIds.length} DJ{selectedDjIds.length === 1 ? "" : "s"} selected
+                    {sendableSelectedDjIds.length} DJ
+                    {sendableSelectedDjIds.length === 1 ? "" : "s"} selected
                   </p>
 
                   {loadingDjs ? (
@@ -1048,16 +1183,21 @@ export default function BookingsPage() {
                         const selected = selectedDjIds.includes(dj.user_id);
                         const displayName = dj.display_name ?? dj.user_id;
                         const availabilityHint = djAvailabilityHints.get(dj.user_id);
+                        const duplicateStatus = eventBookingDuplicates.get(dj.user_id);
+                        const isDuplicateBlocked = Boolean(duplicateStatus);
 
                         return (
                           <li key={dj.user_id}>
                             <button
                               type="button"
                               onClick={() => toggleDjSelection(dj.user_id)}
+                              disabled={isDuplicateBlocked}
                               className={`flex w-full items-center gap-3 rounded-xl border p-3 text-left transition ${
-                                selected
-                                  ? "border-blue-500/50 bg-blue-600/10"
-                                  : "border-zinc-800 bg-zinc-900/70 hover:border-blue-500/30"
+                                isDuplicateBlocked
+                                  ? "cursor-not-allowed border-zinc-800/80 bg-zinc-950/20 opacity-70"
+                                  : selected
+                                    ? "border-blue-500/50 bg-blue-600/10"
+                                    : "border-zinc-800 bg-zinc-900/70 hover:border-blue-500/30"
                               }`}
                             >
                               <span
@@ -1077,6 +1217,9 @@ export default function BookingsPage() {
                               <div className="min-w-0 flex-1">
                                 <div className="flex flex-wrap items-center gap-2">
                                   <p className="font-semibold text-zinc-100">{displayName}</p>
+                                  {duplicateStatus ? (
+                                    <EventBookingDuplicateBadge status={duplicateStatus} />
+                                  ) : null}
                                   {availabilityHint ? (
                                     <DjBookingAvailabilityBadge hint={availabilityHint} />
                                   ) : null}
@@ -1095,6 +1238,12 @@ export default function BookingsPage() {
 
                   {error ? <p className="text-sm text-red-400">{error}</p> : null}
 
+                  {allSelectedAreDuplicates ? (
+                    <p className="text-xs text-zinc-500">
+                      Selected DJs already have a request for this event.
+                    </p>
+                  ) : null}
+
                   <div className="flex flex-col gap-3 sm:flex-row">
                     <button
                       type="button"
@@ -1109,13 +1258,15 @@ export default function BookingsPage() {
                     </button>
                     <button
                       type="button"
-                      onClick={handleSendBookingRequests}
-                      disabled={sending || selectedDjIds.length === 0}
+                      onClick={requestSendBookingRequests}
+                      disabled={sending || sendableSelectedDjIds.length === 0}
                       className="flex-1 rounded-xl border border-blue-500/45 bg-blue-600/20 px-4 py-3 text-sm font-semibold uppercase tracking-wide text-blue-100 shadow-[0_0_20px_rgba(59,130,246,0.22)] transition hover:border-blue-400/60 hover:bg-blue-600/30 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       {sending
                         ? "Sending..."
-                        : `Send to ${selectedDjIds.length} DJ${selectedDjIds.length === 1 ? "" : "s"}`}
+                        : allSelectedAreDuplicates
+                          ? "No new DJs to send"
+                          : `Send to ${sendableSelectedDjIds.length} DJ${sendableSelectedDjIds.length === 1 ? "" : "s"}`}
                     </button>
                   </div>
                 </div>
@@ -1301,6 +1452,19 @@ export default function BookingsPage() {
           ) : null}
         </div>
       </div>
+
+      <UnavailableDjBookingConfirmModal
+        open={unavailableConfirmOpen}
+        loading={sending}
+        eventDate={form.eventDate}
+        unavailableDjs={unavailableDjWarnings}
+        onBack={() => {
+          if (!sending) {
+            setUnavailableConfirmOpen(false);
+          }
+        }}
+        onConfirm={executeSendBookingRequests}
+      />
     </OnboardingGuard>
   );
 }

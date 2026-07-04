@@ -1,13 +1,16 @@
 import { parseEventDate } from "@/lib/bookingDateTime";
-import { supabase } from "@/lib/supabaseClient";
 import type { BookingPlan } from "@/lib/bookingPlans";
-import type { BookingRequestInput } from "@/lib/bookingRequests";
 import {
   filterActiveBookings,
   getActiveEventLineupStats,
   listBookingRequestsForEvent,
+  mapBookingRequestRows,
+  type BookingRequest,
+  type BookingRequestInput,
 } from "@/lib/bookingRequests";
 import { normalizeStoredRate } from "@/lib/bookingRate";
+import { createNotification } from "@/lib/notifications";
+import { supabase } from "@/lib/supabaseClient";
 import { getCurrentUserId } from "@/lib/user/currentUser";
 
 export type EventStatus = "draft" | "upcoming" | "completed" | "cancelled";
@@ -142,6 +145,14 @@ export function getEventDateDisplayBadgeClass(label: EventDateDisplayLabel): str
   }
 
   return "border-zinc-700/50 bg-zinc-900/60 text-zinc-500";
+}
+
+export function isEventCancelled(event: Pick<Event, "status">): boolean {
+  return event.status === "cancelled";
+}
+
+export function getEventCancelledBadgeClass(): string {
+  return "border-red-500/40 bg-red-500/10 text-red-300";
 }
 
 export function formatEventStatusLabel(status: EventStatus): string {
@@ -306,6 +317,125 @@ export async function updateEvent(eventId: string, input: EventInput): Promise<E
   }
 
   return data as Event;
+}
+
+export async function eventHasBookingRequests(eventId: string): Promise<boolean> {
+  const { count, error } = await supabase
+    .from("booking_requests")
+    .select("id", { count: "exact", head: true })
+    .eq("event_id", eventId);
+
+  if (error) {
+    throw error;
+  }
+
+  return (count ?? 0) > 0;
+}
+
+export async function deleteEmptyEvent(eventId: string): Promise<void> {
+  const { error } = await supabase.rpc("delete_empty_event", {
+    p_event_id: eventId,
+  });
+
+  if (error) {
+    console.error("[events] delete_empty_event failed:", {
+      eventId,
+      message: error.message,
+      code: error.code,
+      details: error.details,
+      hint: error.hint,
+    });
+    throw error;
+  }
+}
+
+export type CancelEventResult = {
+  event: Event;
+  cancelledBookings: BookingRequest[];
+};
+
+function parseCancelEventRpcResult(data: unknown): CancelEventResult {
+  if (!data || typeof data !== "object") {
+    throw new Error("Could not cancel event. Run scripts/setupEventLifecycle.sql in Supabase.");
+  }
+
+  const payload = data as Record<string, unknown>;
+
+  if (payload.event && typeof payload.event === "object") {
+    const event = payload.event as Event;
+    const cancelledBookings = mapBookingRequestRows(
+      Array.isArray(payload.cancelled_bookings) ? payload.cancelled_bookings : [],
+    );
+
+    if (event.status !== "cancelled") {
+      console.error("[events] cancel_event returned unexpected status:", event);
+      throw new Error("Event status was not updated to cancelled.");
+    }
+
+    return { event, cancelledBookings };
+  }
+
+  const legacyEvent = data as Event;
+
+  if (legacyEvent.status !== "cancelled") {
+    console.error("[events] cancel_event returned unexpected status:", legacyEvent);
+    throw new Error("Event status was not updated to cancelled.");
+  }
+
+  return {
+    event: legacyEvent,
+    cancelledBookings: [],
+  };
+}
+
+async function notifyCancelledBookingsFromEventCancellation(
+  cancelledBookings: BookingRequest[],
+): Promise<void> {
+  await Promise.all(
+    cancelledBookings.map(async (booking) => {
+      if (!booking.recipient_id || !booking.conversation_id) {
+        return;
+      }
+
+      try {
+        await createNotification(
+          booking.recipient_id,
+          "booking_update",
+          "Booking request cancelled",
+          `${booking.event_name} at ${booking.venue}`,
+          `/dm/${booking.conversation_id}`,
+        );
+      } catch (notificationError) {
+        console.error(
+          "[events] Failed to notify DJ of event cancellation:",
+          booking.id,
+          notificationError,
+        );
+      }
+    }),
+  );
+}
+
+export async function cancelEvent(eventId: string): Promise<CancelEventResult> {
+  const { data, error } = await supabase.rpc("cancel_event", {
+    p_event_id: eventId,
+  });
+
+  if (error) {
+    console.error("[events] cancel_event failed:", {
+      eventId,
+      message: error.message,
+      code: error.code,
+      details: error.details,
+      hint: error.hint,
+    });
+    throw error;
+  }
+
+  const result = parseCancelEventRpcResult(data);
+  await notifyCancelledBookingsFromEventCancellation(result.cancelledBookings);
+
+  return result;
 }
 
 export function getEventsLoadErrorMessage(error: unknown): string {

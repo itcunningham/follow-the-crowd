@@ -407,3 +407,25 @@ export async function getPlannerDjAvailabilityHints(
 
   return hints;
 }
+
+export type UnavailableDjBookingWarning = {
+  userId: string;
+  displayName: string;
+};
+
+export function getUnavailableDjBookingWarnings(
+  selectedDjIds: string[],
+  djProfiles: ReadonlyArray<{ user_id: string; display_name?: string | null }>,
+  availabilityHints: ReadonlyMap<string, DjPlannerAvailabilityHint>,
+): UnavailableDjBookingWarning[] {
+  return selectedDjIds
+    .filter((userId) => availabilityHints.get(userId)?.status === "unavailable")
+    .map((userId) => {
+      const profile = djProfiles.find((dj) => dj.user_id === userId);
+
+      return {
+        userId,
+        displayName: profile?.display_name?.trim() || "DJ",
+      };
+    });
+}

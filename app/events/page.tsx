@@ -2,11 +2,11 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import AppNavigation, { MOBILE_NAV_OFFSET_CLASS } from "@/app/components/AppNavigation";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
-import PlannerEventsSubNav from "@/app/components/PlannerEventsSubNav";
 import EventDateStatusBadge from "@/app/components/EventDateStatusBadge";
+import PlannerEventsSubNav from "@/app/components/PlannerEventsSubNav";
 import { BookingDateField, BookingSetTimeRangeField } from "@/app/components/BookingDateTimeFields";
 import { BookingRateField } from "@/app/components/BookingRateField";
 import { listBookingPlans, type BookingPlan } from "@/lib/bookingPlans";
@@ -16,6 +16,7 @@ import {
   createEvent,
   eventInputFromBookingPlan,
   getEventsLoadErrorMessage,
+  isEventCancelled,
   listDjInvitedEvents,
   listOwnedEvents,
   type EventInput,
@@ -39,6 +40,8 @@ const emptyEventForm: EventInput = {
 
 type CreateStep = "source" | "pick-plan" | "form";
 
+type EventsListView = "active" | "cancelled";
+
 export default function EventsPage() {
   const router = useRouter();
   const handledCreateParamsRef = useRef<string | null>(null);
@@ -55,8 +58,17 @@ export default function EventsPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [eventDateOverride, setEventDateOverride] = useState<string | null>(null);
+  const [listView, setListView] = useState<EventsListView>("active");
 
   const isPlanner = canManageEvents(role);
+
+  const filteredEvents = useMemo(() => {
+    if (listView === "cancelled") {
+      return events.filter((event) => isEventCancelled(event));
+    }
+
+    return events.filter((event) => !isEventCancelled(event));
+  }, [events, listView]);
 
   const loadEvents = useCallback(async () => {
     setLoadingEvents(true);
@@ -417,12 +429,18 @@ export default function EventsPage() {
             <p className="text-sm text-zinc-500">Loading events...</p>
           ) : error && events.length === 0 ? (
             <p className="text-sm text-red-400">{error}</p>
-          ) : events.length === 0 ? (
+          ) : filteredEvents.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-zinc-800 bg-zinc-900/30 px-6 py-12 text-center">
               <p className="text-base font-medium text-zinc-300">
-                {isPlanner ? "No events yet. Create your first event." : "No event invitations yet."}
+                {events.length === 0
+                  ? isPlanner
+                    ? "No events yet. Create your first event."
+                    : "No event invitations yet."
+                  : listView === "cancelled"
+                    ? "No cancelled events."
+                    : "No active events."}
               </p>
-              {isPlanner && !createOpen ? (
+              {isPlanner && events.length === 0 && !createOpen ? (
                 <button
                   type="button"
                   onClick={() => {
@@ -435,22 +453,61 @@ export default function EventsPage() {
               ) : null}
             </div>
           ) : (
+            <>
+              {isPlanner ? (
+                <div className="mb-4 flex flex-wrap gap-2">
+                  {(
+                    [
+                      { value: "active", label: "Active" },
+                      { value: "cancelled", label: "Cancelled" },
+                    ] as const
+                  ).map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => setListView(option.value)}
+                      className={`rounded-full border px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide transition ${
+                        listView === option.value
+                          ? "border-blue-500/50 bg-blue-600/15 text-blue-300"
+                          : "border-zinc-700 bg-zinc-900/80 text-zinc-400 hover:border-blue-500/30 hover:text-blue-300"
+                      }`}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
             <ul className="space-y-3">
-              {events.map((event) => (
+              {filteredEvents.map((event) => {
+                const cancelled = isEventCancelled(event);
+
+                return (
                 <li
                   key={event.id}
-                  className="rounded-2xl border border-zinc-800 bg-zinc-900/80 p-4 sm:p-5"
+                  className={`rounded-2xl border p-4 sm:p-5 ${
+                    cancelled
+                      ? "border-zinc-800/60 bg-zinc-900/40 opacity-80"
+                      : "border-zinc-800 bg-zinc-900/80"
+                  }`}
                 >
                   <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
-                        <h3 className="text-lg font-semibold text-zinc-50">{event.name}</h3>
-                        <EventDateStatusBadge eventDate={event.event_date} />
+                        <h3
+                          className={`text-lg font-semibold ${
+                            cancelled ? "text-zinc-400" : "text-zinc-50"
+                          }`}
+                        >
+                          {event.name}
+                        </h3>
+                        <EventDateStatusBadge eventDate={event.event_date} status={event.status} />
                       </div>
-                      <p className="mt-2 text-sm text-zinc-400">
+                      <p className={`mt-2 text-sm ${cancelled ? "text-zinc-500" : "text-zinc-400"}`}>
                         {event.venue} · {event.event_date}
                       </p>
-                      <p className="mt-1 text-sm text-zinc-500">{event.set_time}</p>
+                      <p className={`mt-1 text-sm ${cancelled ? "text-zinc-600" : "text-zinc-500"}`}>
+                        {event.set_time}
+                      </p>
                       {isPlanner ? (
                         <div className="mt-3 flex flex-wrap gap-2 text-[11px] font-semibold uppercase tracking-wide">
                           <LineupStat label="Invited" value={event.lineupStats.total} />
@@ -469,8 +526,10 @@ export default function EventsPage() {
                     </Link>
                   </div>
                 </li>
-              ))}
+                );
+              })}
             </ul>
+            </>
           )}
         </div>
       </div>

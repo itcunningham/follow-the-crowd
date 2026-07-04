@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import AppNavigation, { MOBILE_NAV_OFFSET_CLASS } from "@/app/components/AppNavigation";
 import BookingRequestCard, {
@@ -10,12 +10,14 @@ import BookingRequestCard, {
 import OnboardingGuard from "@/app/components/OnboardingGuard";
 import ProfileAvatar from "@/app/components/ProfileAvatar";
 import {
+  buildDmCancelledBookingMatchContext,
   cancelBookingRequest,
+  CANCELLED_BOOKING_DM_SYSTEM_MESSAGE,
+  evaluateDmBookingCardVisibility,
   getBookingMutationErrorMessage,
   getBookingRequestsForConversation,
   isBookingRequestMessage,
   mergeBookingWithMessage,
-  resolveBookingForMessage,
   updateBookingRequestStatus,
   type BookingRequest,
 } from "@/lib/bookingRequests";
@@ -75,6 +77,10 @@ export default function DmChatPage() {
 
   const conversationTitle = getConversationTitle(otherUserProfile, otherUserId);
   const otherUserLabel = otherUserProfile?.display_name?.trim() || otherUserId || "DM";
+  const cancelledBookingContext = useMemo(
+    () => buildDmCancelledBookingMatchContext(bookings, conversationId),
+    [bookings, conversationId],
+  );
 
   useEffect(() => {
     if (!conversationId) {
@@ -131,6 +137,26 @@ export default function DmChatPage() {
     markNotificationsReadForLink(currentUserId, `/dm/${conversationId}`);
   }, [conversationId, currentUserId]);
 
+  async function reloadConversationBookings() {
+    if (!conversationId) {
+      return;
+    }
+
+    try {
+      const nextBookings = await getBookingRequestsForConversation(conversationId);
+      setBookings(nextBookings);
+      console.log("[dm booking] reloaded conversation bookings", {
+        conversationId,
+        bookingCount: nextBookings.length,
+        cancelledBookingIds: nextBookings
+          .filter((booking) => booking.status?.toLowerCase() === "cancelled")
+          .map((booking) => booking.id),
+      });
+    } catch (bookingError) {
+      console.error("Failed to load booking requests:", bookingError);
+    }
+  }
+
   useEffect(() => {
     if (!conversationId) {
       return;
@@ -160,10 +186,43 @@ export default function DmChatPage() {
 
       setMessages((messagesResult.data as Message[]) ?? []);
       setBookings(bookingsResult);
+      console.log("[dm booking] loaded conversation bookings", {
+        conversationId,
+        bookingCount: bookingsResult.length,
+        cancelledBookingIds: bookingsResult
+          .filter((booking) => booking.status?.toLowerCase() === "cancelled")
+          .map((booking) => booking.id),
+      });
       setLoading(false);
     }
 
     loadConversationData();
+  }, [conversationId]);
+
+  useEffect(() => {
+    if (!conversationId) {
+      return;
+    }
+
+    const channel = supabase
+      .channel(`dm-bookings:${conversationId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "booking_requests",
+          filter: `conversation_id=eq.${conversationId}`,
+        },
+        () => {
+          void reloadConversationBookings();
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [conversationId]);
 
   useEffect(() => {
@@ -304,6 +363,7 @@ export default function DmChatPage() {
       );
 
       await supabase.from("messages").update({ text: updatedMessageText }).eq("id", message.id);
+      await reloadConversationBookings();
     } catch (cancelError) {
       console.error("Failed to cancel booking request:", cancelError);
       setError(getBookingMutationErrorMessage(cancelError));
@@ -375,16 +435,53 @@ export default function DmChatPage() {
             {messages.map((message) => {
               const isOwnMessage = currentUserId !== null && message.user_id === currentUserId;
               const bookingData = mergeBookingWithMessage(
-                resolveBookingForMessage(message.text, bookings),
+                null,
                 message.text,
+                bookings,
+                conversationId,
               );
               const isBookingMessage = Boolean(
                 bookingData && isBookingRequestMessage(message.text),
               );
 
               if (isBookingMessage && bookingData) {
+                const cardVisibility = evaluateDmBookingCardVisibility(
+                  message.text,
+                  bookings,
+                  conversationId,
+                );
                 const resolvedBooking =
                   bookings.find((booking) => booking.id === bookingData.id) ?? bookingData;
+
+                console.log("[dm booking] card decision", {
+                  messageId: message.id,
+                  parsedEventName: cardVisibility.parsedEventName,
+                  parsedEventDate: cardVisibility.parsedEventDate,
+                  parsedRate: cardVisibility.parsedRate,
+                  matchedBookingId: cardVisibility.matchedBookingId,
+                  matchedBookingStatus: cardVisibility.matchedBookingStatus,
+                  cancelledBookingIds: [...cancelledBookingContext.cancelledBookingIds],
+                  cardHidden: cardVisibility.hideCard,
+                });
+
+                if (cardVisibility.hideCard) {
+                  return (
+                    <li key={message.id} className="flex justify-center">
+                      <div className="max-w-sm px-3 py-1 text-center">
+                        <p className="rounded-full border border-zinc-800/80 bg-zinc-950/50 px-3 py-1.5 text-xs text-zinc-500">
+                          {CANCELLED_BOOKING_DM_SYSTEM_MESSAGE}
+                        </p>
+                        <time
+                          dateTime={message.created_at}
+                          className="mt-1 block text-[10px] text-zinc-600"
+                        >
+                          {formatMessageTime(message.created_at)}
+                        </time>
+                      </div>
+                    </li>
+                  );
+                }
+
                 const canRespond =
                   resolvedBooking.status === "pending" &&
                   (resolvedBooking.recipient_id === currentUserId ||

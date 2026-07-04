@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import AppNavigation, { MOBILE_NAV_OFFSET_CLASS } from "@/app/components/AppNavigation";
+import EventDeleteCancelButton from "@/app/components/EventDeleteCancelButton";
 import EventDateStatusBadge from "@/app/components/EventDateStatusBadge";
 import EventRunSheetSection from "@/app/components/EventRunSheetSection";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
@@ -12,8 +13,11 @@ import DjBookingAvailabilityBadge from "@/app/components/DjBookingAvailabilityBa
 import { BookingDateField, BookingSetTimeRangeField } from "@/app/components/BookingDateTimeFields";
 import { BookingRateField } from "@/app/components/BookingRateField";
 import { formatRateDisplay } from "@/lib/bookingRate";
+import EventBookingDuplicateBadge from "@/app/components/EventBookingDuplicateBadge";
+import UnavailableDjBookingConfirmModal from "@/app/components/UnavailableDjBookingConfirmModal";
 import {
   getPlannerDjAvailabilityHints,
+  getUnavailableDjBookingWarnings,
   type DjPlannerAvailabilityHint,
 } from "@/lib/djAvailability";
 import CancelBookingRequestButton from "@/app/components/CancelBookingRequestButton";
@@ -21,7 +25,11 @@ import HideDeclinedBookingButton from "@/app/components/HideDeclinedBookingButto
 import {
   cancelBookingRequest,
   canCancelBookingRequest,
+  ALL_SELECTED_DJS_ALREADY_HAVE_EVENT_REQUEST_MESSAGE,
+  buildBookingSendResultMessage,
+  buildEventBookingDuplicateMap,
   filterActiveBookings,
+  filterSendableRecipientIdsForEvent,
   filterVisibleEventLineupBookings,
   formatBookingStatusLabel,
   getActiveEventLineupStats,
@@ -35,9 +43,12 @@ import {
   type BookingRequestStatus,
 } from "@/lib/bookingRequests";
 import {
+  cancelEvent,
+  deleteEmptyEvent,
   eventToRequestInput,
   getEventById,
   getEventsLoadErrorMessage,
+  isEventCancelled,
   updateEvent,
   type Event,
   type EventInput,
@@ -72,6 +83,7 @@ function BookingStatusBadge({ status }: { status: BookingRequestStatus }) {
 
 export default function EventDetailPage() {
   const params = useParams<{ eventId: string }>();
+  const router = useRouter();
   const eventId = params.eventId;
 
   const [role, setRole] = useState<UserRole | null>(null);
@@ -96,6 +108,9 @@ export default function EventDetailPage() {
   const [sending, setSending] = useState(false);
   const [cancellingBookingId, setCancellingBookingId] = useState<string | null>(null);
   const [hidingBookingId, setHidingBookingId] = useState<string | null>(null);
+  const [deletingEvent, setDeletingEvent] = useState(false);
+  const [cancellingEvent, setCancellingEvent] = useState(false);
+  const [unavailableConfirmOpen, setUnavailableConfirmOpen] = useState(false);
   const [djAvailabilityHints, setDjAvailabilityHints] = useState<
     Map<string, DjPlannerAvailabilityHint>
   >(new Map());
@@ -112,6 +127,9 @@ export default function EventDetailPage() {
   const canOpenCrewChat = isOwner || hasAcceptedBooking;
   const canViewRunSheet = canOpenCrewChat;
   const canEditRunSheet = isOwner && isPlanner;
+  const eventIsCancelled = event ? isEventCancelled(event) : false;
+  const hasLinkedBookings = lineup.length > 0;
+  const canManageEventLifecycle = isOwner && isPlanner && !eventIsCancelled;
 
   const visibleLineup = useMemo(() => filterVisibleEventLineupBookings(lineup), [lineup]);
   const activeLineup = useMemo(() => filterActiveBookings(visibleLineup), [visibleLineup]);
@@ -138,6 +156,30 @@ export default function EventDetailPage() {
       return name.includes(query) || genre.includes(query);
     });
   }, [djs, searchQuery]);
+
+  const eventBookingDuplicates = useMemo(
+    () => buildEventBookingDuplicateMap(lineup),
+    [lineup],
+  );
+
+  const sendableSelectedDjIds = useMemo(
+    () => filterSendableRecipientIdsForEvent(selectedDjIds, lineup).sendableIds,
+    [selectedDjIds, lineup],
+  );
+
+  const unavailableDjWarnings = useMemo(
+    () => getUnavailableDjBookingWarnings(sendableSelectedDjIds, djs, djAvailabilityHints),
+    [sendableSelectedDjIds, djs, djAvailabilityHints],
+  );
+
+  const allSelectedAreDuplicates =
+    selectedDjIds.length > 0 && sendableSelectedDjIds.length === 0;
+
+  const sendButtonLabel = sending
+    ? "Sending..."
+    : sendableSelectedDjIds.length === 0
+      ? "No new DJs to send"
+      : `Send to ${sendableSelectedDjIds.length} DJ${sendableSelectedDjIds.length === 1 ? "" : "s"}`;
 
   const loadEventData = useCallback(async () => {
     if (!eventId) {
@@ -273,7 +315,7 @@ export default function EventDetailPage() {
   }
 
   async function openSendBookings() {
-    if (!event) {
+    if (!event || eventIsCancelled) {
       return;
     }
 
@@ -286,13 +328,11 @@ export default function EventDetailPage() {
 
     try {
       const bookableDjs = await listBookableDjs();
-      const alreadyInvited = new Set(lineup.map((booking) => booking.recipient_id));
-      const availableDjs = bookableDjs.filter((dj) => !alreadyInvited.has(dj.user_id));
-      setDjs(availableDjs);
+      setDjs(bookableDjs);
 
       if (event?.event_date?.trim()) {
         const hints = await getPlannerDjAvailabilityHints(
-          availableDjs.map((dj) => dj.user_id),
+          bookableDjs.map((dj) => dj.user_id),
           event.event_date,
         );
         setDjAvailabilityHints(hints);
@@ -315,6 +355,7 @@ export default function EventDetailPage() {
     setSendOpen(false);
     setSelectedDjIds([]);
     setSearchQuery("");
+    setUnavailableConfirmOpen(false);
   }
 
   function toggleDjSelection(userId: string) {
@@ -323,14 +364,57 @@ export default function EventDetailPage() {
     );
   }
 
-  async function handleSendBookings() {
+  function requestSendBookings() {
     if (!event) {
       return;
     }
 
-    if (selectedDjIds.length === 0) {
-      setError("Select at least one DJ.");
+    const { sendableIds, skippedIds } = filterSendableRecipientIdsForEvent(
+      selectedDjIds,
+      lineup,
+    );
+
+    if (skippedIds.length > 0) {
+      setSelectedDjIds(sendableIds);
+    }
+
+    if (sendableIds.length === 0) {
+      setError(ALL_SELECTED_DJS_ALREADY_HAVE_EVENT_REQUEST_MESSAGE);
       return;
+    }
+
+    if (
+      getUnavailableDjBookingWarnings(sendableIds, djs, djAvailabilityHints).length > 0
+    ) {
+      setUnavailableConfirmOpen(true);
+      return;
+    }
+
+    void executeSendBookings(sendableIds, skippedIds.length);
+  }
+
+  async function executeSendBookings(
+    recipientIds: string[] = sendableSelectedDjIds,
+    skippedDuplicateCount = 0,
+  ) {
+    if (!event) {
+      return;
+    }
+
+    const { sendableIds, skippedIds } = filterSendableRecipientIdsForEvent(
+      recipientIds,
+      lineup,
+    );
+    const totalSkippedDuplicates = skippedDuplicateCount + skippedIds.length;
+
+    if (sendableIds.length === 0) {
+      setError(ALL_SELECTED_DJS_ALREADY_HAVE_EVENT_REQUEST_MESSAGE);
+      setSelectedDjIds([]);
+      return;
+    }
+
+    if (skippedIds.length > 0) {
+      setSelectedDjIds(sendableIds);
     }
 
     setSending(true);
@@ -338,16 +422,24 @@ export default function EventDetailPage() {
 
     try {
       const input = eventToRequestInput(event);
-      const { successes, failures } = await sendBookingRequestsToDjs(selectedDjIds, input);
+      const { successes, failures, skippedDuplicateRecipientIds } =
+        await sendBookingRequestsToDjs(sendableIds, input, {
+          existingEventBookings: lineup,
+        });
+      const skippedCount = totalSkippedDuplicates + skippedDuplicateRecipientIds.length;
 
       if (successes.length === 0) {
+        if (skippedCount > 0) {
+          setError(ALL_SELECTED_DJS_ALREADY_HAVE_EVENT_REQUEST_MESSAGE);
+          return;
+        }
+
         setError("Failed to send booking requests. Please try again.");
         return;
       }
 
-      setSuccessMessage(
-        `Sent booking request to ${successes.length} DJ${successes.length === 1 ? "" : "s"}.`,
-      );
+      setSuccessMessage(buildBookingSendResultMessage(successes.length, skippedCount));
+      setUnavailableConfirmOpen(false);
       closeSendBookings();
       await loadEventData();
 
@@ -391,6 +483,42 @@ export default function EventDetailPage() {
       setError(getBookingMutationErrorMessage(hideError));
     } finally {
       setHidingBookingId(null);
+    }
+  }
+
+  async function handleDeleteEvent() {
+    if (!event) {
+      return;
+    }
+
+    setDeletingEvent(true);
+    setError(null);
+
+    try {
+      await deleteEmptyEvent(event.id);
+      router.replace("/events");
+    } catch (deleteError) {
+      console.error("Failed to delete event:", deleteError);
+      setError(getEventsLoadErrorMessage(deleteError));
+      setDeletingEvent(false);
+    }
+  }
+
+  async function handleCancelEvent() {
+    if (!event) {
+      return;
+    }
+
+    setCancellingEvent(true);
+    setError(null);
+
+    try {
+      await cancelEvent(event.id);
+      router.replace("/events");
+    } catch (cancelError) {
+      console.error("Failed to cancel event:", cancelError);
+      setError(getEventsLoadErrorMessage(cancelError));
+      setCancellingEvent(false);
     }
   }
 
@@ -438,18 +566,20 @@ export default function EventDetailPage() {
               </Link>
               <div className="mt-2 flex flex-wrap items-center gap-2">
                 <h1 className="text-xl font-semibold text-zinc-50">{event.name}</h1>
-                <EventDateStatusBadge eventDate={event.event_date} />
+                <EventDateStatusBadge eventDate={event.event_date} status={event.status} />
               </div>
             </div>
 
-            {canOpenCrewChat ? (
+            {canOpenCrewChat || (isOwner && isPlanner) ? (
               <div className="flex shrink-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
-                <Link
-                  href={`/events/${event.id}/chat`}
-                  className="rounded-lg border border-blue-500/35 bg-blue-600/10 px-3 py-1.5 text-center text-xs font-semibold uppercase tracking-wide text-blue-300 transition hover:border-blue-400/50 hover:bg-blue-600/20"
-                >
-                  Group chat
-                </Link>
+                {canOpenCrewChat ? (
+                  <Link
+                    href={`/events/${event.id}/chat`}
+                    className="rounded-lg border border-blue-500/35 bg-blue-600/10 px-3 py-1.5 text-center text-xs font-semibold uppercase tracking-wide text-blue-300 transition hover:border-blue-400/50 hover:bg-blue-600/20"
+                  >
+                    Group chat
+                  </Link>
+                ) : null}
                 {isOwner && isPlanner ? (
                   <>
                     <button
@@ -459,13 +589,25 @@ export default function EventDetailPage() {
                     >
                       Edit event
                     </button>
-                    <button
-                      type="button"
-                      onClick={openSendBookings}
-                      className="rounded-lg border border-blue-500/35 bg-blue-600/10 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-blue-300 transition hover:border-blue-400/50 hover:bg-blue-600/20"
-                    >
-                      Send booking requests
-                    </button>
+                    {!eventIsCancelled ? (
+                      <button
+                        type="button"
+                        onClick={openSendBookings}
+                        className="rounded-lg border border-blue-500/35 bg-blue-600/10 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-blue-300 transition hover:border-blue-400/50 hover:bg-blue-600/20"
+                      >
+                        Send booking requests
+                      </button>
+                    ) : null}
+                    {canManageEventLifecycle ? (
+                      <EventDeleteCancelButton
+                        mode={hasLinkedBookings ? "cancel" : "delete"}
+                        loading={hasLinkedBookings ? cancellingEvent : deletingEvent}
+                        disabled={deletingEvent || cancellingEvent}
+                        onConfirm={
+                          hasLinkedBookings ? handleCancelEvent : handleDeleteEvent
+                        }
+                      />
+                    ) : null}
                   </>
                 ) : null}
               </div>
@@ -554,7 +696,7 @@ export default function EventDetailPage() {
             </section>
           ) : null}
 
-          {sendOpen && isOwner ? (
+          {sendOpen && isOwner && !eventIsCancelled ? (
             <section className="mb-6 rounded-2xl border border-zinc-800 bg-zinc-900/50 p-4 sm:p-5">
               <div className="mb-4 flex items-center justify-between gap-3">
                 <div>
@@ -596,6 +738,8 @@ export default function EventDetailPage() {
                     const selected = selectedDjIds.includes(dj.user_id);
                     const displayName = dj.display_name?.trim() || "DJ";
                     const availabilityHint = djAvailabilityHints.get(dj.user_id);
+                    const duplicateStatus = eventBookingDuplicates.get(dj.user_id);
+                    const isDuplicateBlocked = Boolean(duplicateStatus);
 
                     return (
                       <li key={dj.user_id}>
@@ -605,7 +749,9 @@ export default function EventDetailPage() {
                           className={`flex w-full items-center gap-3 rounded-xl border px-3 py-3 text-left transition ${
                             selected
                               ? "border-blue-500/50 bg-blue-600/10"
-                              : "border-zinc-800 bg-zinc-950/40 hover:border-blue-500/30"
+                              : isDuplicateBlocked
+                                ? "border-zinc-800/80 bg-zinc-950/20 hover:border-zinc-700"
+                                : "border-zinc-800 bg-zinc-950/40 hover:border-blue-500/30"
                           }`}
                         >
                           <ProfileAvatar
@@ -616,6 +762,9 @@ export default function EventDetailPage() {
                           <div className="min-w-0 flex-1">
                             <div className="flex flex-wrap items-center gap-2">
                               <p className="font-semibold text-zinc-50">{displayName}</p>
+                              {duplicateStatus ? (
+                                <EventBookingDuplicateBadge status={duplicateStatus} />
+                              ) : null}
                               {availabilityHint ? (
                                 <DjBookingAvailabilityBadge hint={availabilityHint} />
                               ) : null}
@@ -631,15 +780,19 @@ export default function EventDetailPage() {
                 </ul>
               )}
 
+              {allSelectedAreDuplicates ? (
+                <p className="mt-4 text-xs text-zinc-500">
+                  Selected DJs already have a request for this event.
+                </p>
+              ) : null}
+
               <button
                 type="button"
-                onClick={handleSendBookings}
-                disabled={sending || selectedDjIds.length === 0}
+                onClick={requestSendBookings}
+                disabled={sending || sendableSelectedDjIds.length === 0}
                 className="mt-4 w-full rounded-xl border border-blue-500/45 bg-blue-600/20 px-5 py-3 text-sm font-semibold uppercase tracking-wide text-blue-100 shadow-[0_0_20px_rgba(59,130,246,0.22)] transition hover:border-blue-400/60 hover:bg-blue-600/30 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {sending
-                  ? "Sending..."
-                  : `Send to ${selectedDjIds.length} DJ${selectedDjIds.length === 1 ? "" : "s"}`}
+                {sendButtonLabel}
               </button>
             </section>
           ) : null}
@@ -781,6 +934,19 @@ export default function EventDetailPage() {
           </section>
         </div>
       </div>
+
+      <UnavailableDjBookingConfirmModal
+        open={unavailableConfirmOpen}
+        loading={sending}
+        eventDate={event?.event_date ?? ""}
+        unavailableDjs={unavailableDjWarnings}
+        onBack={() => {
+          if (!sending) {
+            setUnavailableConfirmOpen(false);
+          }
+        }}
+        onConfirm={executeSendBookings}
+      />
     </OnboardingGuard>
   );
 }

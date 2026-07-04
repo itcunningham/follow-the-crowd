@@ -52,42 +52,29 @@ export default function BookingRequestCard({
 }) {
   const groupChatAccess = getBookingGroupChatAccess(booking, currentUserId);
   const showCancel = canCancelBookingRequest(booking, currentUserId) && onCancel;
-  const isCancelled = booking.status === "cancelled";
+
+  if (booking.status?.toLowerCase() === "cancelled") {
+    return null;
+  }
 
   return (
-    <div
-      className={
-        isCancelled
-          ? "w-full max-w-sm rounded-2xl border border-zinc-800/70 bg-zinc-950/45 p-4"
-          : "w-full max-w-sm rounded-2xl border border-blue-500/45 bg-blue-600/10 p-4 shadow-[0_0_20px_rgba(59,130,246,0.15)]"
-      }
-    >
+    <div className="w-full max-w-sm rounded-2xl border border-blue-500/45 bg-blue-600/10 p-4 shadow-[0_0_20px_rgba(59,130,246,0.15)]">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p
-            className={`text-[11px] font-semibold uppercase tracking-[0.16em] ${
-              isCancelled ? "text-zinc-500" : "text-blue-400"
-            }`}
-          >
+          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-blue-400">
             Booking request
           </p>
-          <h3
-            className={`mt-1 text-base font-semibold ${isCancelled ? "text-zinc-400" : "text-zinc-50"}`}
-          >
-            {booking.event_name}
-          </h3>
+          <h3 className="mt-1 text-base font-semibold text-zinc-50">{booking.event_name}</h3>
         </div>
         <StatusBadge status={booking.status} />
       </div>
 
-      <dl className={`mt-4 space-y-2 text-sm ${isCancelled ? "text-zinc-500" : ""}`}>
-        <BookingDetail label="Venue" value={booking.venue} muted={isCancelled} />
-        <BookingDetail label="Date" value={booking.event_date} muted={isCancelled} />
-        <BookingDetail label="Set time" value={booking.set_time} muted={isCancelled} />
-        <BookingDetail label="Rate" value={formatRateDisplay(booking.fee)} muted={isCancelled} />
-        {booking.notes ? (
-          <BookingDetail label="Notes" value={booking.notes} muted={isCancelled} />
-        ) : null}
+      <dl className="mt-4 space-y-2 text-sm">
+        <BookingDetail label="Venue" value={booking.venue} />
+        <BookingDetail label="Date" value={booking.event_date} />
+        <BookingDetail label="Set time" value={booking.set_time} />
+        <BookingDetail label="Rate" value={formatRateDisplay(booking.fee)} />
+        {booking.notes ? <BookingDetail label="Notes" value={booking.notes} /> : null}
       </dl>
 
       {booking.event_id ? (

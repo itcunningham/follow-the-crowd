@@ -186,6 +186,20 @@ function mapEventToCalendarItem(event: Event): CalendarItem | null {
     return null;
   }
 
+  if (event.status === "cancelled") {
+    return {
+      id: `event-${event.id}`,
+      type: "event",
+      dateKey,
+      title: event.name.trim() || "Untitled event",
+      timeLabel: formatCalendarTimeLabel(event.set_time),
+      statusLabel: "Cancelled",
+      statusKind: "event_cancelled",
+      href: `/events/${event.id}`,
+      typeLabel: getCalendarTypeLabel("event"),
+    };
+  }
+
   const displayLabel = getEventDateDisplayLabel(event.event_date) ?? "Unscheduled";
 
   return {

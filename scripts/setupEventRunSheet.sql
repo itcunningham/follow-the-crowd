@@ -68,11 +68,19 @@ create table if not exists public.event_run_sheet_rows (
   finish_time text not null default '',
   stage_area text not null default '',
   notes text not null default '',
+  booking_request_id uuid references public.booking_requests (id) on delete set null,
   custom_data jsonb not null default '{}'::jsonb
 );
 
 create index if not exists event_run_sheet_rows_event_id_idx
   on public.event_run_sheet_rows (event_id);
+
+create index if not exists event_run_sheet_rows_booking_request_id_idx
+  on public.event_run_sheet_rows (booking_request_id);
+
+create unique index if not exists event_run_sheet_rows_event_booking_request_uidx
+  on public.event_run_sheet_rows (event_id, booking_request_id)
+  where booking_request_id is not null;
 
 -- ---------------------------------------------------------------------------
 -- Grants
