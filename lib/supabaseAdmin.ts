@@ -1,4 +1,7 @@
+import { env as processEnv } from "node:process";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+
+const SERVICE_ROLE_KEY_NAME = "SUPABASE_SERVICE_ROLE_KEY";
 
 function getSupabaseProjectUrl(): string {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
@@ -10,43 +13,38 @@ function getSupabaseProjectUrl(): string {
   return url;
 }
 
-function getServiceRoleKeyEnvName(): "SUPABASE_SERVICE_ROLE_KEY" {
-  return ["SUPABASE", "SERVICE", "ROLE", "KEY"].join("_") as "SUPABASE_SERVICE_ROLE_KEY";
-}
+export function getSupabaseServiceRoleKey(): string | undefined {
+  const value = processEnv[SERVICE_ROLE_KEY_NAME];
 
-function readProcessEnv(name: string): string | undefined {
-  const env = globalThis.process?.env;
-
-  if (!env) {
+  if (typeof value !== "string") {
     return undefined;
   }
 
-  const value = env[name];
-  return typeof value === "string" && value.trim() ? value.trim() : undefined;
-}
-
-export function getSupabaseServiceRoleKey(): string | undefined {
-  return readProcessEnv(getServiceRoleKeyEnvName());
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
 }
 
 export function isSupabaseServiceRoleConfigured(): boolean {
-  return Boolean(getSupabaseServiceRoleKey());
+  return getSupabaseServiceRoleKey() !== undefined;
 }
 
 export function getServiceRoleEnvDebugInfo(): {
   keyInProcessEnv: boolean;
   keyInObjectKeys: boolean;
   configured: boolean;
+  trimmedLength: number;
   supabaseEnvKeyNames: string[];
 } {
-  const env = globalThis.process?.env ?? {};
-  const keyName = getServiceRoleKeyEnvName();
+  const rawValue = processEnv[SERVICE_ROLE_KEY_NAME];
+  const trimmedLength =
+    typeof rawValue === "string" ? rawValue.trim().length : 0;
 
   return {
-    keyInProcessEnv: Object.prototype.hasOwnProperty.call(env, keyName),
-    keyInObjectKeys: Object.keys(env).includes(keyName),
+    keyInProcessEnv: Object.prototype.hasOwnProperty.call(processEnv, SERVICE_ROLE_KEY_NAME),
+    keyInObjectKeys: Object.keys(processEnv).includes(SERVICE_ROLE_KEY_NAME),
     configured: isSupabaseServiceRoleConfigured(),
-    supabaseEnvKeyNames: Object.keys(env).filter((name) => name.startsWith("SUPABASE")),
+    trimmedLength,
+    supabaseEnvKeyNames: Object.keys(processEnv).filter((name) => name.startsWith("SUPABASE")),
   };
 }
 

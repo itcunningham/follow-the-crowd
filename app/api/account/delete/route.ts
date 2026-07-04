@@ -96,6 +96,7 @@ export async function POST(request: Request) {
           debug: {
             keyInProcessEnv: envDebug.keyInProcessEnv,
             keyInObjectKeys: envDebug.keyInObjectKeys,
+            trimmedLength: envDebug.trimmedLength,
             supabaseEnvKeyNames: envDebug.supabaseEnvKeyNames,
           },
         },
