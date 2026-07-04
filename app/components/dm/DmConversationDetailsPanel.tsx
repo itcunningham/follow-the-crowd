@@ -2,11 +2,14 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import DmReportFormModal from "@/app/components/dm/DmReportFormModal";
 import ProfileAvatar from "@/app/components/ProfileAvatar";
+import { submitDmUserReport, type DmReportReason } from "@/lib/userReports";
 import { getRoleLabel, getUserProfileById, type UserProfile } from "@/lib/user/currentUser";
 
 export default function DmConversationDetailsPanel({
   open,
+  conversationId,
   otherUserId,
   otherUserName,
   otherUserAvatarUrl,
@@ -17,6 +20,7 @@ export default function DmConversationDetailsPanel({
   onUnblock,
 }: {
   open: boolean;
+  conversationId: string;
   otherUserId: string;
   otherUserName: string;
   otherUserAvatarUrl?: string | null;
@@ -28,10 +32,13 @@ export default function DmConversationDetailsPanel({
 }) {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
+  const [reportSubmitting, setReportSubmitting] = useState(false);
 
   useEffect(() => {
     if (!open) {
       setConfirmOpen(false);
+      setReportOpen(false);
       return;
     }
 
@@ -66,7 +73,7 @@ export default function DmConversationDetailsPanel({
     }
 
     function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape" && !busy && !confirmOpen) {
+      if (event.key === "Escape" && !busy && !confirmOpen && !reportOpen) {
         onClose();
       }
     }
@@ -76,7 +83,7 @@ export default function DmConversationDetailsPanel({
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [open, busy, confirmOpen, onClose]);
+  }, [open, busy, confirmOpen, reportOpen, onClose]);
 
   if (!open) {
     return null;
@@ -89,12 +96,27 @@ export default function DmConversationDetailsPanel({
     setConfirmOpen(false);
   }
 
+  async function handleSubmitUserReport(input: { reason: DmReportReason; note: string }) {
+    setReportSubmitting(true);
+
+    try {
+      await submitDmUserReport({
+        conversationId,
+        reportedUserId: otherUserId,
+        reason: input.reason,
+        note: input.note,
+      });
+    } finally {
+      setReportSubmitting(false);
+    }
+  }
+
   return (
     <>
       <div
         className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-0 sm:items-center sm:p-4"
         onClick={() => {
-          if (!busy && !confirmOpen) {
+          if (!busy && !confirmOpen && !reportOpen) {
             onClose();
           }
         }}
@@ -143,6 +165,15 @@ export default function DmConversationDetailsPanel({
               >
                 View profile
               </Link>
+
+              <button
+                type="button"
+                disabled={busy || reportSubmitting}
+                onClick={() => setReportOpen(true)}
+                className="flex min-h-[44px] w-full items-center justify-center rounded-xl border border-zinc-800 bg-zinc-900/60 px-4 py-3 text-sm font-semibold text-zinc-200 transition hover:border-zinc-700 disabled:opacity-50"
+              >
+                Report user
+              </button>
 
               {blockedByMe ? (
                 <button
@@ -212,6 +243,16 @@ export default function DmConversationDetailsPanel({
           </div>
         </div>
       ) : null}
+
+      <DmReportFormModal
+        open={reportOpen}
+        title={`Report ${otherUserName}`}
+        description="Tell us what happened. Reporting does not block this user or delete messages."
+        reportType="user"
+        busy={reportSubmitting}
+        onClose={() => setReportOpen(false)}
+        onSubmit={handleSubmitUserReport}
+      />
     </>
   );
 }

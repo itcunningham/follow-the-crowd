@@ -22,6 +22,7 @@ export default function DmTextMessageBubble({
   onToggleReaction,
   onOpenReactionPicker,
   onCloseReactionPicker,
+  onReportMessage,
   formatTime,
   isHighlighted = false,
 }: {
@@ -39,6 +40,7 @@ export default function DmTextMessageBubble({
   onToggleReaction: (emoji: string) => void;
   onOpenReactionPicker: () => void;
   onCloseReactionPicker: () => void;
+  onReportMessage?: () => void;
   formatTime: (timestamp: string) => string;
   isHighlighted?: boolean;
 }) {
@@ -122,6 +124,19 @@ export default function DmTextMessageBubble({
             onOpenPicker={onOpenReactionPicker}
             onClosePicker={onCloseReactionPicker}
           />
+
+          {!isOwnMessage && onReportMessage ? (
+            <button
+              type="button"
+              aria-label="Report message"
+              onClick={onReportMessage}
+              className={`mt-1 rounded-full border border-transparent px-2 py-0.5 text-[11px] text-zinc-500 transition hover:border-zinc-700 hover:bg-zinc-900/70 hover:text-zinc-300 ${
+                hasAttachments ? "opacity-100" : "opacity-0 group-hover/message:opacity-100"
+              }`}
+            >
+              Report
+            </button>
+          ) : null}
         </div>
       </div>
     </li>

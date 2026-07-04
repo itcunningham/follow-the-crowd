@@ -10,6 +10,7 @@ import BookingRequestCard, {
 import ChatNewMessagesPill from "@/app/components/dm/ChatNewMessagesPill";
 import DmConversationDetailsPanel from "@/app/components/dm/DmConversationDetailsPanel";
 import DmComposer from "@/app/components/dm/DmComposer";
+import DmReportFormModal from "@/app/components/dm/DmReportFormModal";
 import DmTextMessageBubble from "@/app/components/dm/DmTextMessageBubble";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
 import ProfileAvatar from "@/app/components/ProfileAvatar";
@@ -53,6 +54,7 @@ import {
   unblockDmUser,
   type DmBlockStatus,
 } from "@/lib/userBlocks";
+import { submitDmMessageReport, type DmReportReason } from "@/lib/userReports";
 import {
   getCurrentUserId,
   getUserAvatarProfilesByIds,
@@ -117,6 +119,11 @@ export default function DmChatPage() {
   });
   const [blockActionLoading, setBlockActionLoading] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const [reportMessageTarget, setReportMessageTarget] = useState<{
+    messageId: string;
+    reportedUserId: string;
+  } | null>(null);
+  const [reportMessageSubmitting, setReportMessageSubmitting] = useState(false);
   const lastMessage = messages.length > 0 ? messages[messages.length - 1] : null;
   const {
     scrollRef,
@@ -777,6 +784,26 @@ export default function DmChatPage() {
     }
   }
 
+  async function handleSubmitMessageReport(input: { reason: DmReportReason; note: string }) {
+    if (!reportMessageTarget || !conversationId) {
+      return;
+    }
+
+    setReportMessageSubmitting(true);
+
+    try {
+      await submitDmMessageReport({
+        conversationId,
+        messageId: reportMessageTarget.messageId,
+        reportedUserId: reportMessageTarget.reportedUserId,
+        reason: input.reason,
+        note: input.note,
+      });
+    } finally {
+      setReportMessageSubmitting(false);
+    }
+  }
+
   return (
     <OnboardingGuard>
     <div className="fixed inset-0 flex flex-col overflow-hidden bg-[#070708] font-sans text-zinc-100">
@@ -835,6 +862,7 @@ export default function DmChatPage() {
       {otherUserId ? (
         <DmConversationDetailsPanel
           open={detailsOpen}
+          conversationId={conversationId}
           otherUserId={otherUserId}
           otherUserName={otherUserLabel}
           otherUserAvatarUrl={otherUserProfile?.avatar_url}
@@ -845,6 +873,16 @@ export default function DmChatPage() {
           onUnblock={handleUnblockUser}
         />
       ) : null}
+
+      <DmReportFormModal
+        open={reportMessageTarget !== null}
+        title="Report message"
+        description="Tell us what happened. Reporting does not block this user or delete the message."
+        reportType="message"
+        busy={reportMessageSubmitting}
+        onClose={() => setReportMessageTarget(null)}
+        onSubmit={handleSubmitMessageReport}
+      />
 
       <div
         ref={scrollRef}
@@ -1013,6 +1051,15 @@ export default function DmChatPage() {
                     setReactionPickerMessageId((current) =>
                       current === message.id ? null : current,
                     )
+                  }
+                  onReportMessage={
+                    !isOwnMessage
+                      ? () =>
+                          setReportMessageTarget({
+                            messageId: message.id,
+                            reportedUserId: message.user_id,
+                          })
+                      : undefined
                   }
                   formatTime={formatMessageTime}
                   isHighlighted={isMessageHighlighted(message.id)}
