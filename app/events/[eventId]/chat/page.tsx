@@ -241,6 +241,14 @@ export default function EventCrewChatPage() {
               <h1 className="truncate text-base font-semibold text-zinc-50">{eventName}</h1>
               <p className="truncate text-xs text-zinc-500">Group chat</p>
             </div>
+            {searchParams.get("from") === "dm" ? (
+              <Link
+                href={`/events/${eventId}`}
+                className="shrink-0 rounded-full border border-zinc-700 bg-zinc-900/70 px-3 py-2 text-xs font-semibold text-zinc-100 transition hover:border-blue-500/40 hover:text-blue-300"
+              >
+                Event Details
+              </Link>
+            ) : null}
           </div>
         </header>
 
