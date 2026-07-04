@@ -48,11 +48,18 @@ export function isSupabaseServiceRoleConfigured(): boolean {
   return getSupabaseServiceRoleKey() !== undefined;
 }
 
+function getEnvTrimmedLength(name: string): number {
+  const value = processEnv[name];
+  return typeof value === "string" ? value.trim().length : 0;
+}
+
 export function getServiceRoleEnvDebugInfo(): {
   keyInProcessEnv: boolean;
   keyInObjectKeys: boolean;
   configured: boolean;
   trimmedLength: number;
+  secretKeyExists: boolean;
+  secretKeyTrimmedLength: number;
   selectedKeyName: SupabaseAdminKeyName | null;
   supabaseEnvKeyNames: string[];
 } {
@@ -66,6 +73,8 @@ export function getServiceRoleEnvDebugInfo(): {
     keyInObjectKeys: Object.keys(processEnv).includes(SERVICE_ROLE_KEY_NAME),
     configured: isSupabaseServiceRoleConfigured(),
     trimmedLength,
+    secretKeyExists: Object.prototype.hasOwnProperty.call(processEnv, SECRET_KEY_NAME),
+    secretKeyTrimmedLength: getEnvTrimmedLength(SECRET_KEY_NAME),
     selectedKeyName,
     supabaseEnvKeyNames: Object.keys(processEnv).filter((name) => name.startsWith("SUPABASE")),
   };

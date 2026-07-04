@@ -68,6 +68,8 @@ export async function POST(request: Request) {
     );
     console.log("[account delete] service role configured", envDebug.configured);
     console.log("[account delete] selected key name", envDebug.selectedKeyName);
+    console.log("[account delete] secret key exists", envDebug.secretKeyExists);
+    console.log("[account delete] secret key trimmed length", envDebug.secretKeyTrimmedLength);
     console.log("[account delete] supabase env key names", envDebug.supabaseEnvKeyNames);
 
     const body = (await request.json()) as { confirmation?: string };
@@ -98,6 +100,8 @@ export async function POST(request: Request) {
             keyInProcessEnv: envDebug.keyInProcessEnv,
             keyInObjectKeys: envDebug.keyInObjectKeys,
             trimmedLength: envDebug.trimmedLength,
+            secretKeyExists: envDebug.secretKeyExists,
+            secretKeyTrimmedLength: envDebug.secretKeyTrimmedLength,
             selectedKeyName: envDebug.selectedKeyName,
             supabaseEnvKeyNames: envDebug.supabaseEnvKeyNames,
           },
