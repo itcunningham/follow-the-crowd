@@ -7,12 +7,29 @@ import AppNavigation, { MOBILE_NAV_OFFSET_CLASS } from "@/app/components/AppNavi
 import OnboardingGuard from "@/app/components/OnboardingGuard";
 import ProfileAvatar from "@/app/components/ProfileAvatar";
 import {
+  applyInboxGroupMessage,
+  extractGroupChatTargetId,
   formatGroupChatEventDate,
   getGroupChatsLoadErrorMessage,
   listAccessibleGroupChats,
+  logGroupRenderedRowIds,
+  mergeLoadedGroupChatsWithLiveActivity,
+  sortGroupChatsByLatestActivity,
   type GroupChatListItem,
 } from "@/lib/groupChats";
+import {
+  applyDmInboxRealtimeMessage,
+  buildDmInboxRows,
+  detectInboxRealtimeMessageType,
+  logInboxRenderOrder,
+  type DmInboxRow,
+} from "@/lib/dmInbox";
 import { getNavBadgeCounts } from "@/lib/notifications";
+import {
+  getUnreadConversationIds,
+  getUnreadEventChatIds,
+  type LatestChatMessage,
+} from "@/lib/messageReads";
 import { supabase } from "@/lib/supabaseClient";
 import { startDm } from "@/lib/startDm";
 import {
@@ -60,6 +77,7 @@ type Message = {
   user_id: string;
   text: string;
   created_at: string;
+  event_id?: string | null;
 };
 
 type ConversationMember = {
@@ -87,18 +105,6 @@ function normalizeConversations(data: unknown): Conversation[] {
   return [];
 }
 
-function buildLatestMessageMap(messages: Message[]) {
-  const latestByConversation = new Map<string, Message>();
-
-  for (const message of messages) {
-    if (!latestByConversation.has(message.conversation_id)) {
-      latestByConversation.set(message.conversation_id, message);
-    }
-  }
-
-  return latestByConversation;
-}
-
 function buildOtherUsersByConversation(
   members: ConversationMember[],
   conversationIds: string[],
@@ -120,12 +126,11 @@ function buildOtherUsersByConversation(
 }
 
 function getConversationDisplayName(
-  conversation: Conversation,
-  conversationId: string,
+  row: DmInboxRow,
   otherUserId?: string,
 ) {
-  if (conversation.name?.trim()) {
-    return conversation.name.trim();
+  if (row.name?.trim()) {
+    return row.name.trim();
   }
 
   if (otherUserId) {
@@ -185,27 +190,51 @@ function MessageDjButton({
   );
 }
 
-function GroupChatCard({ chat }: { chat: GroupChatListItem }) {
+function getUnreadInboxRowClass(isUnread: boolean) {
+  return isUnread
+    ? "border-l-2 border-blue-500/55 bg-blue-500/[0.06] shadow-[inset_0_0_20px_rgba(59,130,246,0.07)]"
+    : "";
+}
+
+function UnreadInboxIndicator() {
+  return (
+    <span
+      aria-label="Unread"
+      className="h-2.5 w-2.5 shrink-0 rounded-full bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.55)]"
+    />
+  );
+}
+
+function GroupChatCard({ chat, isUnread }: { chat: GroupChatListItem; isUnread: boolean }) {
   return (
     <li>
       <Link
         href={chat.href}
-        className="flex w-full items-center gap-3 px-4 py-3.5 transition active:bg-blue-600/10 hover:bg-zinc-900/70 sm:px-6 sm:py-4"
+        className={`flex w-full items-center gap-3 px-4 py-3.5 transition active:bg-blue-600/10 hover:bg-zinc-900/70 sm:px-6 sm:py-4 ${getUnreadInboxRowClass(isUnread)}`}
       >
         <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-blue-500/30 bg-blue-600/10 text-xs font-semibold uppercase tracking-wide text-blue-300">
           GC
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-3">
-            <p className="truncate text-[15px] font-semibold text-zinc-100">{chat.eventName}</p>
-            <time
-              dateTime={chat.latestMessageAt ?? chat.eventDate}
-              className="shrink-0 text-xs text-zinc-500"
+            <p
+              className={`truncate text-[15px] ${
+                isUnread ? "font-bold text-zinc-50" : "font-semibold text-zinc-100"
+              }`}
             >
-              {chat.latestMessageAt
-                ? formatInboxTimestamp(chat.latestMessageAt)
-                : formatGroupChatEventDate(chat.eventDate)}
-            </time>
+              {chat.eventName}
+            </p>
+            <div className="flex shrink-0 items-center gap-2">
+              {isUnread ? <UnreadInboxIndicator /> : null}
+              <time
+                dateTime={chat.latestActivityAt ?? chat.eventDate}
+                className={`text-xs ${isUnread ? "font-medium text-blue-300/80" : "text-zinc-500"}`}
+              >
+                {chat.latestActivityAt
+                  ? formatInboxTimestamp(chat.latestActivityAt)
+                  : formatGroupChatEventDate(chat.eventDate)}
+              </time>
+            </div>
           </div>
           <p className="mt-1 truncate text-sm text-zinc-500">
             {chat.venue.trim() || "Venue TBC"}
@@ -217,7 +246,13 @@ function GroupChatCard({ chat }: { chat: GroupChatListItem }) {
               Group Chat
             </span>
             {chat.latestPreview ? (
-              <p className="min-w-0 truncate text-sm text-zinc-500">{chat.latestPreview}</p>
+              <p
+                className={`min-w-0 truncate text-sm ${
+                  isUnread ? "font-medium text-zinc-300" : "text-zinc-500"
+                }`}
+              >
+                {chat.latestPreview}
+              </p>
             ) : null}
           </div>
         </div>
@@ -279,11 +314,10 @@ export default function DmInboxPage() {
   const [groupChats, setGroupChats] = useState<GroupChatListItem[]>([]);
   const [groupChatsLoading, setGroupChatsLoading] = useState(true);
   const [groupChatsError, setGroupChatsError] = useState<string | null>(null);
-  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [dmInboxRows, setDmInboxRows] = useState<DmInboxRow[]>([]);
   const [otherUsersByConversation, setOtherUsersByConversation] = useState<Map<string, string>>(
     new Map(),
   );
-  const [lastMessages, setLastMessages] = useState<Map<string, Message>>(new Map());
   const [userProfiles, setUserProfiles] = useState<Map<string, UserAvatarProfile>>(new Map());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -291,6 +325,10 @@ export default function DmInboxPage() {
   const [startingDm, setStartingDm] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [notificationCount, setNotificationCount] = useState(0);
+  const [unreadConversationIds, setUnreadConversationIds] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const [unreadEventChatIds, setUnreadEventChatIds] = useState<Set<string>>(() => new Set());
 
   const loadGroupChats = useCallback(async () => {
     setGroupChatsLoading(true);
@@ -299,7 +337,14 @@ export default function DmInboxPage() {
     try {
       const profile = await getCurrentUserProfile();
       const userRole = profile?.role ?? null;
-      setGroupChats(await listAccessibleGroupChats(userRole));
+      const loaded = await listAccessibleGroupChats(userRole);
+      setGroupChats((previous) => {
+        if (previous.length === 0) {
+          return loaded;
+        }
+
+        return mergeLoadedGroupChatsWithLiveActivity(previous, loaded);
+      });
     } catch (loadError) {
       console.error("Failed to load group chats:", loadError);
       setGroupChats([]);
@@ -335,9 +380,8 @@ export default function DmInboxPage() {
     ];
 
     if (conversationIds.length === 0) {
-      setConversations([]);
+      setDmInboxRows([]);
       setOtherUsersByConversation(new Map());
-      setLastMessages(new Map());
       setUserProfiles(new Map());
       setLoading(false);
       return;
@@ -365,9 +409,6 @@ export default function DmInboxPage() {
 
     const conversationRows = normalizeConversations(response.data);
 
-    setConversations(conversationRows);
-    setLoading(false);
-
     const messagesResponse = await supabase
       .from("messages")
       .select("*")
@@ -376,10 +417,81 @@ export default function DmInboxPage() {
 
     if (messagesResponse.error) {
       console.error("messages response error", messagesResponse.error);
+      setDmInboxRows(buildDmInboxRows(conversationRows, []));
     } else {
-      setLastMessages(buildLatestMessageMap((messagesResponse.data ?? []) as Message[]));
+      setDmInboxRows(
+        buildDmInboxRows(conversationRows, (messagesResponse.data ?? []) as Message[]),
+      );
     }
+
+    setLoading(false);
   }, []);
+
+  const refreshUnreadState = useCallback(async () => {
+    if (!currentUserId) {
+      setUnreadConversationIds(new Set());
+      setUnreadEventChatIds(new Set());
+      return;
+    }
+
+    const latestConversationMessages = new Map<string, LatestChatMessage>();
+
+    for (const row of dmInboxRows) {
+      if (row.latestActivityAt && row.latestMessageUserId) {
+        latestConversationMessages.set(row.conversationId, {
+          user_id: row.latestMessageUserId,
+          created_at: row.latestActivityAt,
+        });
+      }
+    }
+
+    const latestEventMessages = new Map<string, LatestChatMessage>();
+
+    for (const chat of groupChats) {
+      if (chat.latestActivityAt && chat.latestMessageUserId) {
+        latestEventMessages.set(chat.eventId, {
+          user_id: chat.latestMessageUserId,
+          created_at: chat.latestActivityAt,
+        });
+      }
+    }
+
+    try {
+      const [conversationUnread, eventUnread] = await Promise.all([
+        getUnreadConversationIds(
+          dmInboxRows.map((row) => row.conversationId),
+          latestConversationMessages,
+          currentUserId,
+        ),
+        getUnreadEventChatIds(
+          groupChats.map((chat) => chat.eventId),
+          latestEventMessages,
+          currentUserId,
+        ),
+      ]);
+
+      setUnreadConversationIds(conversationUnread);
+      setUnreadEventChatIds(eventUnread);
+    } catch (readError) {
+      console.error("Failed to load message read state:", readError);
+    }
+  }, [currentUserId, dmInboxRows, groupChats]);
+
+  useEffect(() => {
+    void refreshUnreadState();
+  }, [refreshUnreadState]);
+
+  useEffect(() => {
+    function handleReadsUpdated() {
+      void refreshUnreadState();
+    }
+
+    window.addEventListener("ftc-message-reads-updated", handleReadsUpdated);
+
+    return () => {
+      window.removeEventListener("ftc-message-reads-updated", handleReadsUpdated);
+    };
+  }, [refreshUnreadState]);
 
   useEffect(() => {
     async function loadNotificationCount() {
@@ -433,39 +545,88 @@ export default function DmInboxPage() {
           table: "messages",
         },
         (payload) => {
-          const newMessage = payload.new as Message & { event_id?: string | null };
+          const newMessage = payload.new as Message;
+          const groupTargetId = extractGroupChatTargetId(newMessage);
 
-          if (newMessage.event_id) {
-            setGroupChats((prev) => {
-              const index = prev.findIndex((chat) => chat.eventId === newMessage.event_id);
+          if (groupTargetId) {
+            console.log("[Group realtime raw]", payload.new);
+            console.log("[Group realtime target id]", groupTargetId);
 
-              if (index === -1) {
-                return prev;
-              }
+            setGroupChats((previous) => {
+              const result = applyInboxGroupMessage(previous, groupTargetId, {
+                id: newMessage.id,
+                text: newMessage.text,
+                created_at: newMessage.created_at,
+                user_id: newMessage.user_id,
+                event_id: newMessage.event_id,
+              });
 
-              const updated = [...prev];
-              const chat = updated[index];
+              console.log(
+                "[Group rendered row ids]",
+                result.rows.map((chat) => ({
+                  eventId: chat.eventId,
+                  latestActivityAt: chat.latestActivityAt,
+                })),
+              );
 
-              updated[index] = {
-                ...chat,
-                latestPreview: newMessage.text.trim() || null,
-                latestMessageAt: newMessage.created_at,
-              };
-
-              return updated;
+              return [...result.rows];
             });
+
+            if (currentUserId && newMessage.user_id !== currentUserId) {
+              setUnreadEventChatIds((previous) => {
+                const next = new Set(previous);
+                next.add(groupTargetId);
+                return next;
+              });
+            }
+
             return;
           }
 
-          if (!newMessage.conversation_id) {
+          const messageType = detectInboxRealtimeMessageType(newMessage);
+
+          console.log("[Inbox realtime raw] new message payload", payload.new);
+          console.log("[Inbox realtime raw] detected type", messageType);
+
+          if (messageType !== "dm") {
+            console.log("[Inbox realtime] ignored message with unknown routing", newMessage);
             return;
           }
 
-          setLastMessages((prev) => {
-            const next = new Map(prev);
-            next.set(newMessage.conversation_id, newMessage);
-            return next;
+          const targetId = newMessage.conversation_id;
+
+          console.log("[Inbox realtime] DM message received", {
+            targetId,
+            messageId: newMessage.id,
+            created_at: newMessage.created_at,
           });
+
+          setDmInboxRows((previous) => {
+            const beforeIds = previous.map((row) => row.conversationId);
+            const result = applyDmInboxRealtimeMessage(previous, newMessage);
+
+            console.log("[Inbox realtime] DM matched", result.matched, {
+              targetId,
+              beforeIds,
+              afterIds: result.rows.map((row) => row.conversationId),
+            });
+
+            return result.rows;
+          });
+
+          if (currentUserId && newMessage.user_id !== currentUserId) {
+            setUnreadConversationIds((previous) => {
+              const next = new Set(previous);
+              next.add(targetId);
+              return next;
+            });
+          } else if (currentUserId && newMessage.user_id === currentUserId) {
+            setUnreadConversationIds((previous) => {
+              const next = new Set(previous);
+              next.delete(targetId);
+              return next;
+            });
+          }
         },
       )
       .subscribe();
@@ -473,7 +634,7 @@ export default function DmInboxPage() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [currentUserId]);
 
   function openConversation(conversationId: string) {
     router.push(`/dm/${conversationId}`);
@@ -497,8 +658,22 @@ export default function DmInboxPage() {
     }
   }
 
-  const hasDirectMessages = conversations.length > 0;
+  const hasDirectMessages = dmInboxRows.length > 0;
   const showCompactDmEmpty = !loading && !hasDirectMessages && groupChats.length > 0;
+
+  const renderedGroupChats = sortGroupChatsByLatestActivity(groupChats);
+
+  useEffect(() => {
+    logGroupRenderedRowIds(sortGroupChatsByLatestActivity(groupChats));
+  }, [groupChats]);
+
+  logInboxRenderOrder(
+    "DM",
+    dmInboxRows.map((row) => ({
+      id: row.conversationId,
+      latestActivityAt: row.latestActivityAt,
+    })),
+  );
 
   return (
     <OnboardingGuard>
@@ -541,12 +716,16 @@ export default function DmInboxPage() {
               <p className="px-4 py-4 text-sm text-zinc-500 sm:px-6">Loading group chats...</p>
             ) : groupChatsError ? (
               <p className="px-4 py-4 text-sm text-red-400 sm:px-6">{groupChatsError}</p>
-            ) : groupChats.length === 0 ? (
+            ) : renderedGroupChats.length === 0 ? (
               <p className="px-4 py-4 text-sm text-zinc-500 sm:px-6">No group chats yet.</p>
             ) : (
               <ul className="divide-y divide-zinc-800/80">
-                {groupChats.map((chat) => (
-                  <GroupChatCard key={chat.eventId} chat={chat} />
+                {renderedGroupChats.map((chat) => (
+                  <GroupChatCard
+                    key={chat.eventId}
+                    chat={chat}
+                    isUnread={unreadEventChatIds.has(chat.eventId)}
+                  />
                 ))}
               </ul>
             )}
@@ -575,28 +754,22 @@ export default function DmInboxPage() {
               />
             ) : (
               <ul className="divide-y divide-zinc-800/80">
-                {conversations.map((conversation, index) => {
-                  const id =
-                    conversation.id ||
-                    conversation.conversation_id ||
-                    `conversation-${index}`;
-                  const otherUserId = otherUsersByConversation.get(id);
+                {dmInboxRows.map((row) => {
+                  const otherUserId = otherUsersByConversation.get(row.conversationId);
                   const otherProfile = otherUserId ? userProfiles.get(otherUserId) : undefined;
-                  const displayName =
-                    otherProfile?.display_name?.trim() ||
-                    getConversationDisplayName(conversation, id, otherUserId);
-                  const lastMessage = lastMessages.get(id);
-                  const preview = lastMessage
-                    ? `${lastMessage.user_id === currentUserId ? "You: " : ""}${lastMessage.text}`
+                  const displayName = getConversationDisplayName(row, otherUserId);
+                  const preview = row.latestPreview
+                    ? `${row.latestMessageUserId === currentUserId ? "You: " : ""}${row.latestPreview}`
                     : "No messages yet";
-                  const timestamp = lastMessage?.created_at ?? conversation.created_at;
+                  const timestamp = row.latestActivityAt ?? row.conversationCreatedAt;
+                  const isUnread = unreadConversationIds.has(row.conversationId);
 
                   return (
-                    <li key={id}>
+                    <li key={row.conversationId}>
                       <button
                         type="button"
-                        onClick={() => openConversation(id)}
-                        className="flex w-full items-center gap-3 px-4 py-3.5 text-left transition active:bg-blue-600/10 hover:bg-zinc-900/70 sm:px-6 sm:py-4"
+                        onClick={() => openConversation(row.conversationId)}
+                        className={`flex w-full items-center gap-3 px-4 py-3.5 text-left transition active:bg-blue-600/10 hover:bg-zinc-900/70 sm:px-6 sm:py-4 ${getUnreadInboxRowClass(isUnread)}`}
                       >
                         <ConversationAvatar
                           label={displayName}
@@ -604,19 +777,34 @@ export default function DmInboxPage() {
                         />
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center justify-between gap-3">
-                            <p className="truncate text-[15px] font-semibold text-zinc-100">
+                            <p
+                              className={`truncate text-[15px] ${
+                                isUnread ? "font-bold text-zinc-50" : "font-semibold text-zinc-100"
+                              }`}
+                            >
                               {displayName}
                             </p>
-                            {timestamp ? (
-                              <time
-                                dateTime={timestamp}
-                                className="shrink-0 text-xs text-zinc-500"
-                              >
-                                {formatInboxTimestamp(timestamp)}
-                              </time>
-                            ) : null}
+                            <div className="flex shrink-0 items-center gap-2">
+                              {isUnread ? <UnreadInboxIndicator /> : null}
+                              {timestamp ? (
+                                <time
+                                  dateTime={timestamp}
+                                  className={`text-xs ${
+                                    isUnread ? "font-medium text-blue-300/80" : "text-zinc-500"
+                                  }`}
+                                >
+                                  {formatInboxTimestamp(timestamp)}
+                                </time>
+                              ) : null}
+                            </div>
                           </div>
-                          <p className="mt-1 truncate text-sm text-zinc-500">{preview}</p>
+                          <p
+                            className={`mt-1 truncate text-sm ${
+                              isUnread ? "font-medium text-zinc-300" : "text-zinc-500"
+                            }`}
+                          >
+                            {preview}
+                          </p>
                         </div>
                       </button>
                     </li>

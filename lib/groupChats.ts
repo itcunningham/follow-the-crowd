@@ -1,4 +1,9 @@
 import { getEventCrewChatLink } from "@/lib/eventCrewChat";
+import {
+  getInboxActivityTimestamp,
+  logInboxRenderOrder,
+  normalizeInboxId,
+} from "@/lib/dmInbox";
 import { listOwnedEvents } from "@/lib/events";
 import { supabase } from "@/lib/supabaseClient";
 import { getCurrentUserId, type UserRole } from "@/lib/user/currentUser";
@@ -11,15 +16,76 @@ export type GroupChatListItem = {
   href: string;
   latestPreview: string | null;
   latestMessageAt: string | null;
+  latestMessageUserId: string | null;
+  latestActivityAt: string | null;
 };
 
-type GroupChatListItemBase = Omit<GroupChatListItem, "latestPreview" | "latestMessageAt">;
+type GroupChatListItemBase = Omit<
+  GroupChatListItem,
+  "latestPreview" | "latestMessageAt" | "latestMessageUserId" | "latestActivityAt"
+>;
 
 export type GroupChatPreview = {
   text: string;
   createdAt: string;
   userId: string;
 };
+
+export type GroupChatRealtimeMessage = {
+  id: string;
+  text: string;
+  created_at?: string | null;
+  user_id: string;
+  event_id?: string | null;
+  group_chat_id?: string | null;
+  chat_id?: string | null;
+};
+
+export function extractGroupChatTargetId(
+  message: Pick<
+    GroupChatRealtimeMessage,
+    "event_id" | "group_chat_id" | "chat_id"
+  >,
+): string | null {
+  for (const candidate of [message.event_id, message.group_chat_id, message.chat_id]) {
+    if (candidate === null || candidate === undefined) {
+      continue;
+    }
+
+    const normalized = String(candidate).trim();
+
+    if (normalized) {
+      return normalized;
+    }
+  }
+
+  return null;
+}
+
+export function logGroupRenderedRowIds(groupChats: GroupChatListItem[]) {
+  console.log(
+    "[Group rendered row ids]",
+    groupChats.map((chat) => ({
+      eventId: chat.eventId,
+      latestActivityAt: chat.latestActivityAt,
+    })),
+  );
+}
+
+function withGroupActivityFields(
+  item: GroupChatListItemBase,
+  preview: GroupChatPreview | undefined,
+): GroupChatListItem {
+  const latestActivityAt = preview?.createdAt ?? null;
+
+  return {
+    ...item,
+    latestPreview: preview?.text.trim() ? preview.text.trim() : null,
+    latestMessageAt: latestActivityAt,
+    latestMessageUserId: preview?.userId ?? null,
+    latestActivityAt,
+  };
+}
 
 export async function loadLatestGroupChatPreviews(
   eventIds: string[],
@@ -42,12 +108,13 @@ export async function loadLatestGroupChatPreviews(
 
   for (const row of data ?? []) {
     const eventId = row.event_id as string | null;
+    const normalizedEventId = normalizeInboxId(eventId);
 
-    if (!eventId || previews.has(eventId)) {
+    if (!normalizedEventId || previews.has(normalizedEventId)) {
       continue;
     }
 
-    previews.set(eventId, {
+    previews.set(normalizedEventId, {
       text: (row.text as string) ?? "",
       createdAt: row.created_at as string,
       userId: row.user_id as string,
@@ -72,15 +139,9 @@ async function attachLatestGroupChatPreviews(
     console.error("[groupChats] Failed to load latest group chat previews:", previewError);
   }
 
-  return items.map((item) => {
-    const preview = previews.get(item.eventId);
-
-    return {
-      ...item,
-      latestPreview: preview?.text.trim() ? preview.text.trim() : null,
-      latestMessageAt: preview?.createdAt ?? null,
-    };
-  });
+  return items.map((item) =>
+    withGroupActivityFields(item, previews.get(normalizeInboxId(item.eventId))),
+  );
 }
 
 export async function listAccessibleGroupChats(
@@ -149,17 +210,119 @@ export async function listAccessibleGroupChats(
     }
   }
 
-  const sorted = [...byEventId.values()].sort((left, right) => {
-    const dateCompare = left.eventDate.localeCompare(right.eventDate);
+  return sortGroupChatsByLatestActivity(
+    await attachLatestGroupChatPreviews([...byEventId.values()]),
+  );
+}
 
-    if (dateCompare !== 0) {
-      return dateCompare;
+export function mergeLoadedGroupChatsWithLiveActivity(
+  live: GroupChatListItem[],
+  loaded: GroupChatListItem[],
+): GroupChatListItem[] {
+  if (live.length === 0) {
+    return sortGroupChatsByLatestActivity(loaded);
+  }
+
+  const liveByEventId = new Map(
+    live.map((chat) => [normalizeInboxId(chat.eventId), chat]),
+  );
+
+  const merged = loaded.map((chat) => {
+    const liveChat = liveByEventId.get(normalizeInboxId(chat.eventId));
+
+    if (!liveChat?.latestActivityAt) {
+      return chat;
+    }
+
+    const liveTime = getInboxActivityTimestamp(liveChat.latestActivityAt, null);
+    const loadedTime = getInboxActivityTimestamp(chat.latestActivityAt, null);
+
+    if (liveTime <= loadedTime) {
+      return chat;
+    }
+
+    return {
+      ...chat,
+      latestPreview: liveChat.latestPreview,
+      latestMessageAt: liveChat.latestMessageAt,
+      latestMessageUserId: liveChat.latestMessageUserId,
+      latestActivityAt: liveChat.latestActivityAt,
+    };
+  });
+
+  return sortGroupChatsByLatestActivity(merged);
+}
+
+export function applyInboxGroupMessage(
+  groupChats: GroupChatListItem[],
+  targetEventId: string,
+  newMessage: GroupChatRealtimeMessage,
+): { rows: GroupChatListItem[]; matched: boolean } {
+  const normalizedTargetId = normalizeInboxId(String(targetEventId).trim());
+  const latestActivityAt =
+    newMessage.created_at?.trim() || new Date().toISOString();
+  let matched = false;
+
+  const updated = groupChats.map((chat) => {
+    if (normalizeInboxId(chat.eventId) !== normalizedTargetId) {
+      return chat;
+    }
+
+    matched = true;
+
+    return {
+      ...chat,
+      latestPreview: newMessage.text.trim() || null,
+      latestMessageAt: latestActivityAt,
+      latestMessageUserId: newMessage.user_id,
+      latestActivityAt,
+    };
+  });
+
+  console.log("[Group matched", matched);
+
+  if (!matched) {
+    return { rows: groupChats, matched: false };
+  }
+
+  const beforeIds = groupChats.map((chat) => chat.eventId);
+  const sorted = sortGroupChatsByLatestActivity(updated);
+  const afterIds = sorted.map((chat) => chat.eventId);
+
+  console.log("[Group sort before]", beforeIds);
+  console.log("[Group sort after]", afterIds, {
+    targetEventId: String(targetEventId).trim(),
+    messageId: newMessage.id,
+    latestActivityAt,
+  });
+
+  return { rows: [...sorted], matched: true };
+}
+
+export function sortGroupChatsByLatestActivity(
+  chats: GroupChatListItem[],
+): GroupChatListItem[] {
+  return [...chats].sort((left, right) => {
+    const leftHasActivity = Boolean(left.latestActivityAt?.trim());
+    const rightHasActivity = Boolean(right.latestActivityAt?.trim());
+
+    if (leftHasActivity !== rightHasActivity) {
+      return leftHasActivity ? -1 : 1;
+    }
+
+    const leftTime = leftHasActivity
+      ? getInboxActivityTimestamp(left.latestActivityAt, null)
+      : getInboxActivityTimestamp(null, left.eventDate);
+    const rightTime = rightHasActivity
+      ? getInboxActivityTimestamp(right.latestActivityAt, null)
+      : getInboxActivityTimestamp(null, right.eventDate);
+
+    if (rightTime !== leftTime) {
+      return rightTime - leftTime;
     }
 
     return left.eventName.localeCompare(right.eventName);
   });
-
-  return attachLatestGroupChatPreviews(sorted);
 }
 
 export function formatGroupChatEventDate(value: string): string {
@@ -199,3 +362,5 @@ export function isGroupChatPath(pathname: string): boolean {
 export function isMessagesInboxPath(pathname: string): boolean {
   return pathname === "/dm" || pathname.startsWith("/dm/") || isGroupChatPath(pathname);
 }
+
+export { logInboxRenderOrder };
