@@ -8,6 +8,7 @@ import BookingRequestCard, {
   buildUpdatedBookingMessage,
 } from "@/app/components/BookingRequestCard";
 import ChatNewMessagesPill from "@/app/components/dm/ChatNewMessagesPill";
+import DmChatHeaderMenu from "@/app/components/dm/DmChatHeaderMenu";
 import DmComposer from "@/app/components/dm/DmComposer";
 import DmTextMessageBubble from "@/app/components/dm/DmTextMessageBubble";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
@@ -44,6 +45,14 @@ import { supabase } from "@/lib/supabaseClient";
 import { useChatScroll, tagChatMessageForScroll } from "@/lib/useChatScroll";
 import { getChatNewMessageHighlightClass, logChatHighlightRender } from "@/lib/chatNewMessageHighlight";
 import { useChatNewMessageHighlight } from "@/lib/useChatNewMessageHighlight";
+import {
+  blockDmUser,
+  getDmBlockBannerMessage,
+  getDmBlockSendErrorMessage,
+  getDmBlockStatus,
+  unblockDmUser,
+  type DmBlockStatus,
+} from "@/lib/userBlocks";
 import {
   getCurrentUserId,
   getUserAvatarProfilesByIds,
@@ -101,6 +110,12 @@ export default function DmChatPage() {
   const [cancellingBookingId, setCancellingBookingId] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [blockStatus, setBlockStatus] = useState<DmBlockStatus>({
+    blockedByMe: false,
+    blockedMe: false,
+    isBlocked: false,
+  });
+  const [blockActionLoading, setBlockActionLoading] = useState(false);
   const lastMessage = messages.length > 0 ? messages[messages.length - 1] : null;
   const {
     scrollRef,
@@ -121,6 +136,10 @@ export default function DmChatPage() {
 
   const conversationTitle = getConversationTitle(otherUserProfile, otherUserId);
   const otherUserLabel = otherUserProfile?.display_name?.trim() || otherUserId || "DM";
+  const blockBannerMessage = useMemo(
+    () => getDmBlockBannerMessage(blockStatus, otherUserLabel),
+    [blockStatus, otherUserLabel],
+  );
   const cancelledBookingContext = useMemo(
     () => buildDmCancelledBookingMatchContext(bookings, conversationId),
     [bookings, conversationId],
@@ -177,6 +196,61 @@ export default function DmChatPage() {
 
     loadConversationMeta();
   }, [conversationId]);
+
+  useEffect(() => {
+    if (!otherUserId || !currentUserId) {
+      setBlockStatus({
+        blockedByMe: false,
+        blockedMe: false,
+        isBlocked: false,
+      });
+      return;
+    }
+
+    async function refreshBlockStatus() {
+      try {
+        const status = await getDmBlockStatus(otherUserId);
+        setBlockStatus(status);
+      } catch (blockError) {
+        console.error("Failed to load block status:", blockError);
+      }
+    }
+
+    void refreshBlockStatus();
+
+    const channel = supabase
+      .channel(`dm-blocks:${conversationId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "user_blocks",
+        },
+        (payload) => {
+          const row = (payload.new ?? payload.old) as
+            | { blocker_id?: string; blocked_id?: string }
+            | null;
+
+          if (!row?.blocker_id || !row?.blocked_id) {
+            return;
+          }
+
+          const involvesPair =
+            (row.blocker_id === currentUserId && row.blocked_id === otherUserId) ||
+            (row.blocker_id === otherUserId && row.blocked_id === currentUserId);
+
+          if (involvesPair) {
+            void refreshBlockStatus();
+          }
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [conversationId, currentUserId, otherUserId]);
 
   useEffect(() => {
     if (!conversationId) {
@@ -451,6 +525,13 @@ export default function DmChatPage() {
       return;
     }
 
+    const blockSendError = getDmBlockSendErrorMessage(blockStatus);
+
+    if (blockSendError) {
+      setError(blockSendError);
+      return;
+    }
+
     setSending(true);
     setError(null);
     markUserSentMessage();
@@ -486,6 +567,13 @@ export default function DmChatPage() {
 
   async function sendAttachment(file: File) {
     if (!conversationId || uploading || sending) {
+      return;
+    }
+
+    const blockSendError = getDmBlockSendErrorMessage(blockStatus);
+
+    if (blockSendError) {
+      setError(blockSendError);
       return;
     }
 
@@ -642,6 +730,52 @@ export default function DmChatPage() {
     }
   }
 
+  async function handleBlockUser() {
+    if (!otherUserId || blockActionLoading) {
+      return;
+    }
+
+    setBlockActionLoading(true);
+    setError(null);
+
+    try {
+      await blockDmUser(otherUserId);
+      setBlockStatus({
+        blockedByMe: true,
+        blockedMe: false,
+        isBlocked: true,
+      });
+    } catch (blockError) {
+      console.error("Failed to block user:", blockError);
+      setError(blockError instanceof Error ? blockError.message : "Failed to block user");
+    } finally {
+      setBlockActionLoading(false);
+    }
+  }
+
+  async function handleUnblockUser() {
+    if (!otherUserId || blockActionLoading) {
+      return;
+    }
+
+    setBlockActionLoading(true);
+    setError(null);
+
+    try {
+      await unblockDmUser(otherUserId);
+      setBlockStatus({
+        blockedByMe: false,
+        blockedMe: false,
+        isBlocked: false,
+      });
+    } catch (unblockError) {
+      console.error("Failed to unblock user:", unblockError);
+      setError(unblockError instanceof Error ? unblockError.message : "Failed to unblock user");
+    } finally {
+      setBlockActionLoading(false);
+    }
+  }
+
   return (
     <OnboardingGuard>
     <div className="fixed inset-0 flex flex-col overflow-hidden bg-[#070708] font-sans text-zinc-100">
@@ -670,6 +804,15 @@ export default function DmChatPage() {
             </h1>
             <p className="truncate text-xs text-zinc-500">Direct Messages</p>
           </div>
+          {otherUserId ? (
+            <DmChatHeaderMenu
+              otherUserName={otherUserLabel}
+              blockedByMe={blockStatus.blockedByMe}
+              busy={blockActionLoading}
+              onBlock={handleBlockUser}
+              onUnblock={handleUnblockUser}
+            />
+          ) : null}
         </div>
       </header>
 
@@ -862,16 +1005,22 @@ export default function DmChatPage() {
         />
       ) : null}
 
-      <DmComposer
-        value={input}
-        onChange={setInput}
-        onSend={sendMessage}
-        onPhotoSelected={(file) => void sendAttachment(file)}
-        onFileSelected={(file) => void sendAttachment(file)}
-        onAttachmentError={setError}
-        sending={sending}
-        uploading={uploading}
-      />
+      {blockStatus.isBlocked && blockBannerMessage ? (
+        <div className="shrink-0 border-t border-zinc-800/80 bg-[#070708] px-4 py-4 sm:px-6">
+          <p className="text-center text-sm text-zinc-400">{blockBannerMessage}</p>
+        </div>
+      ) : (
+        <DmComposer
+          value={input}
+          onChange={setInput}
+          onSend={sendMessage}
+          onPhotoSelected={(file) => void sendAttachment(file)}
+          onFileSelected={(file) => void sendAttachment(file)}
+          onAttachmentError={setError}
+          sending={sending}
+          uploading={uploading}
+        />
+      )}
       </div>
       </div>
     </div>
