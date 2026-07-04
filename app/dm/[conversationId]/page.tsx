@@ -8,7 +8,7 @@ import BookingRequestCard, {
   buildUpdatedBookingMessage,
 } from "@/app/components/BookingRequestCard";
 import ChatNewMessagesPill from "@/app/components/dm/ChatNewMessagesPill";
-import DmChatHeaderMenu from "@/app/components/dm/DmChatHeaderMenu";
+import DmConversationDetailsPanel from "@/app/components/dm/DmConversationDetailsPanel";
 import DmComposer from "@/app/components/dm/DmComposer";
 import DmTextMessageBubble from "@/app/components/dm/DmTextMessageBubble";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
@@ -116,6 +116,7 @@ export default function DmChatPage() {
     isBlocked: false,
   });
   const [blockActionLoading, setBlockActionLoading] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const lastMessage = messages.length > 0 ? messages[messages.length - 1] : null;
   const {
     scrollRef,
@@ -792,29 +793,58 @@ export default function DmChatPage() {
           >
             ←
           </Link>
-          <ProfileAvatar
-            name={otherUserLabel}
-            avatarUrl={otherUserProfile?.avatar_url}
-            size="md"
-            className="h-10 w-10 text-xs"
-          />
-          <div className="min-w-0 flex-1">
-            <h1 className="truncate text-base font-semibold text-zinc-50">
-              {conversationTitle}
-            </h1>
-            <p className="truncate text-xs text-zinc-500">Direct Messages</p>
-          </div>
           {otherUserId ? (
-            <DmChatHeaderMenu
-              otherUserName={otherUserLabel}
-              blockedByMe={blockStatus.blockedByMe}
-              busy={blockActionLoading}
-              onBlock={handleBlockUser}
-              onUnblock={handleUnblockUser}
-            />
-          ) : null}
+            <button
+              type="button"
+              aria-label={`Open conversation details for ${conversationTitle}`}
+              onClick={() => setDetailsOpen(true)}
+              className="flex min-w-0 flex-1 items-center gap-3 rounded-2xl px-1 py-1 text-left transition hover:bg-zinc-900/50"
+            >
+              <ProfileAvatar
+                name={otherUserLabel}
+                avatarUrl={otherUserProfile?.avatar_url}
+                size="md"
+                className="h-10 w-10 text-xs"
+              />
+              <div className="min-w-0 flex-1">
+                <h1 className="truncate text-base font-semibold text-zinc-50">
+                  {conversationTitle}
+                </h1>
+                <p className="truncate text-xs text-zinc-500">Direct Messages</p>
+              </div>
+            </button>
+          ) : (
+            <>
+              <ProfileAvatar
+                name={otherUserLabel}
+                avatarUrl={otherUserProfile?.avatar_url}
+                size="md"
+                className="h-10 w-10 text-xs"
+              />
+              <div className="min-w-0 flex-1">
+                <h1 className="truncate text-base font-semibold text-zinc-50">
+                  {conversationTitle}
+                </h1>
+                <p className="truncate text-xs text-zinc-500">Direct Messages</p>
+              </div>
+            </>
+          )}
         </div>
       </header>
+
+      {otherUserId ? (
+        <DmConversationDetailsPanel
+          open={detailsOpen}
+          otherUserId={otherUserId}
+          otherUserName={otherUserLabel}
+          otherUserAvatarUrl={otherUserProfile?.avatar_url}
+          blockedByMe={blockStatus.blockedByMe}
+          busy={blockActionLoading}
+          onClose={() => setDetailsOpen(false)}
+          onBlock={handleBlockUser}
+          onUnblock={handleUnblockUser}
+        />
+      ) : null}
 
       <div
         ref={scrollRef}
