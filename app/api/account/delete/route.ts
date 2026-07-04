@@ -1,8 +1,9 @@
-import { NextResponse } from "next/server";
+import { NextResponse, connection } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import {
   createSupabaseAdminClient,
   extractPublicStoragePath,
+  getServiceRoleEnvDebugInfo,
   isSupabaseServiceRoleConfigured,
 } from "@/lib/supabaseAdmin";
 
@@ -55,7 +56,19 @@ async function removeUserStorageObjects(userId: string) {
 }
 
 export async function POST(request: Request) {
+  console.log("[account delete] route hit");
+
   try {
+    await connection();
+
+    const envDebug = getServiceRoleEnvDebugInfo();
+    console.log(
+      "[account delete] env keys include service role",
+      envDebug.keyInObjectKeys,
+    );
+    console.log("[account delete] service role configured", envDebug.configured);
+    console.log("[account delete] supabase env key names", envDebug.supabaseEnvKeyNames);
+
     const body = (await request.json()) as { confirmation?: string };
 
     if (body.confirmation !== "DELETE") {
@@ -74,14 +87,18 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
-    console.log(
-      "[account delete] service role configured",
-      isSupabaseServiceRoleConfigured(),
-    );
-
     if (!isSupabaseServiceRoleConfigured()) {
       return NextResponse.json(
-        { error: "Account deletion is not configured on the server." },
+        {
+          error:
+            "Account deletion is not configured on the server. (ACCOUNT_DELETE_SERVICE_ROLE_MISSING)",
+          code: "ACCOUNT_DELETE_SERVICE_ROLE_MISSING",
+          debug: {
+            keyInProcessEnv: envDebug.keyInProcessEnv,
+            keyInObjectKeys: envDebug.keyInObjectKeys,
+            supabaseEnvKeyNames: envDebug.supabaseEnvKeyNames,
+          },
+        },
         { status: 500 },
       );
     }
