@@ -1,5 +1,6 @@
 import { NextResponse, connection } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { removeUserStorageObjects } from "@/lib/accountDeletionStorage";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -67,6 +68,10 @@ export async function POST(request: Request) {
     if (authError || !authData.user) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
+
+    const userId = authData.user.id;
+
+    await removeUserStorageObjects(userClient, userId);
 
     const { error: deleteDataError } = await userClient.rpc("delete_account_data");
 

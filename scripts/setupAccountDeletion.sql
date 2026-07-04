@@ -1,7 +1,8 @@
 -- Follow The Crowd — secure account deletion helpers
 -- Run in Supabase SQL Editor after users, bookings, events, and messaging exist.
 -- Idempotent: safe to re-run.
--- Auth user and storage removal are handled inside delete_account_data().
+-- Auth user removal is handled inside delete_account_data().
+-- Storage files are removed via the Storage API before this RPC runs.
 
 -- ---------------------------------------------------------------------------
 -- Profile soft-delete marker
@@ -192,14 +193,6 @@ begin
   end if;
 
   perform public.cleanup_account_deletion_dependencies();
-
-  delete from storage.objects
-  where bucket_id = 'profile-images'
-    and name like v_user_id || '/%';
-
-  delete from storage.objects
-  where bucket_id = 'dm-attachments'
-    and split_part(name, '/', 2) = v_user_id;
 
   delete from public.dj_availability
   where user_id = v_user_id;
