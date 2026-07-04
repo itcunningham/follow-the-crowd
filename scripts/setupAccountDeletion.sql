@@ -15,7 +15,7 @@ create index if not exists users_deleted_at_idx
   where deleted_at is not null;
 
 -- ---------------------------------------------------------------------------
--- Pre-flight blockers
+-- Pre-deletion warnings (informational only — deletion is not blocked)
 -- ---------------------------------------------------------------------------
 
 create or replace function public.check_account_deletion_blockers()
@@ -27,61 +27,150 @@ set search_path = public
 as $$
 declare
   v_user_id text := public.auth_user_id();
-  v_reasons text[] := array[]::text[];
+  v_warnings text[] := array[]::text[];
+  v_pending_count integer := 0;
+  v_accepted_count integer := 0;
+  v_owned_event_count integer := 0;
 begin
   if v_user_id is null then
     raise exception 'Not authenticated';
   end if;
 
-  if exists (
-    select 1
-    from public.booking_requests br
-    where br.status = 'pending'
-      and (
-        br.sender_id = v_user_id
-        or br.recipient_id = v_user_id
+  select count(*)::integer
+  into v_pending_count
+  from public.booking_requests br
+  where br.status = 'pending'
+    and (
+      br.sender_id = v_user_id
+      or br.recipient_id = v_user_id
+    );
+
+  if v_pending_count > 0 then
+    v_warnings := array_append(
+      v_warnings,
+      format(
+        '%s pending booking request%s will be cancelled automatically.',
+        v_pending_count,
+        case when v_pending_count = 1 then '' else 's' end
       )
-  ) then
-    v_reasons := array_append(
-      v_reasons,
-      'You have pending booking requests. Cancel or resolve them first.'
     );
   end if;
 
-  if exists (
-    select 1
-    from public.booking_requests br
-    join public.events e
-      on e.id = br.event_id
-    where br.status = 'accepted'
-      and (
-        br.sender_id = v_user_id
-        or br.recipient_id = v_user_id
+  select count(*)::integer
+  into v_accepted_count
+  from public.booking_requests br
+  join public.events e
+    on e.id = br.event_id
+  where br.status = 'accepted'
+    and (
+      br.sender_id = v_user_id
+      or br.recipient_id = v_user_id
+    )
+    and e.status in ('draft', 'upcoming');
+
+  if v_accepted_count > 0 then
+    v_warnings := array_append(
+      v_warnings,
+      format(
+        '%s accepted booking%s on upcoming events will be cancelled automatically.',
+        v_accepted_count,
+        case when v_accepted_count = 1 then '' else 's' end
       )
-      and e.status in ('draft', 'upcoming')
-  ) then
-    v_reasons := array_append(
-      v_reasons,
-      'You have accepted bookings on upcoming events. Cancel those events or bookings first.'
     );
   end if;
 
-  if exists (
-    select 1
-    from public.events e
-    where e.owner_id = v_user_id
-      and e.status in ('draft', 'upcoming')
-  ) then
-    v_reasons := array_append(
-      v_reasons,
-      'You still own draft or upcoming events. Cancel or delete them first.'
+  select count(*)::integer
+  into v_owned_event_count
+  from public.events e
+  where e.owner_id = v_user_id
+    and e.status in ('draft', 'upcoming');
+
+  if v_owned_event_count > 0 then
+    v_warnings := array_append(
+      v_warnings,
+      format(
+        '%s draft or upcoming event%s you own will be cancelled or removed automatically.',
+        v_owned_event_count,
+        case when v_owned_event_count = 1 then '' else 's' end
+      )
     );
   end if;
 
   return jsonb_build_object(
-    'blocked', coalesce(array_length(v_reasons, 1), 0) > 0,
-    'reasons', to_jsonb(coalesce(v_reasons, array[]::text[]))
+    'blocked', false,
+    'reasons', to_jsonb(coalesce(v_warnings, array[]::text[]))
   );
+end;
+$$;
+
+-- ---------------------------------------------------------------------------
+-- Cancel/remove bookings and events before anonymising the account
+-- ---------------------------------------------------------------------------
+
+create or replace function public.cleanup_account_deletion_dependencies()
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_user_id text := public.auth_user_id();
+begin
+  if v_user_id is null then
+    raise exception 'Not authenticated';
+  end if;
+
+  -- Soft-cancel owned draft/upcoming events that still have booking requests.
+  update public.events
+  set status = 'cancelled'
+  where owner_id = v_user_id
+    and status in ('draft', 'upcoming')
+    and exists (
+      select 1
+      from public.booking_requests br
+      where br.event_id = events.id
+    );
+
+  -- Cancel all active bookings on those now-cancelled owned events.
+  update public.booking_requests br
+  set status = 'cancelled'
+  from public.events e
+  where br.event_id = e.id
+    and e.owner_id = v_user_id
+    and e.status = 'cancelled'
+    and br.status in ('pending', 'accepted');
+
+  -- Remove owned draft/upcoming events with no booking history.
+  delete from public.events
+  where owner_id = v_user_id
+    and status in ('draft', 'upcoming')
+    and not exists (
+      select 1
+      from public.booking_requests br
+      where br.event_id = events.id
+    );
+
+  -- Cancel remaining pending booking requests involving the user.
+  update public.booking_requests
+  set status = 'cancelled'
+  where status = 'pending'
+    and (
+      sender_id = v_user_id
+      or recipient_id = v_user_id
+    );
+
+  -- Cancel accepted bookings on other users' draft/upcoming events.
+  update public.booking_requests br
+  set status = 'cancelled'
+  from public.events e
+  where br.event_id = e.id
+    and br.status = 'accepted'
+    and (
+      br.sender_id = v_user_id
+      or br.recipient_id = v_user_id
+    )
+    and e.owner_id <> v_user_id
+    and e.status in ('draft', 'upcoming');
 end;
 $$;
 
@@ -97,17 +186,12 @@ set search_path = public
 as $$
 declare
   v_user_id text := public.auth_user_id();
-  v_blockers jsonb;
 begin
   if v_user_id is null then
     raise exception 'Not authenticated';
   end if;
 
-  v_blockers := public.check_account_deletion_blockers();
-
-  if coalesce((v_blockers->>'blocked')::boolean, false) then
-    raise exception 'Account deletion blocked';
-  end if;
+  perform public.cleanup_account_deletion_dependencies();
 
   delete from public.dj_availability
   where user_id = v_user_id;
@@ -176,6 +260,7 @@ end;
 $$;
 
 revoke all on function public.check_account_deletion_blockers() from public;
+revoke all on function public.cleanup_account_deletion_dependencies() from public;
 revoke all on function public.delete_account_data() from public;
 grant execute on function public.check_account_deletion_blockers() to authenticated;
 grant execute on function public.delete_account_data() to authenticated;

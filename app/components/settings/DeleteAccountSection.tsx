@@ -13,8 +13,8 @@ export default function DeleteAccountSection({
 }: {
   onError: (message: string | null) => void;
 }) {
-  const [blockers, setBlockers] = useState<AccountDeletionBlockers | null>(null);
-  const [loadingBlockers, setLoadingBlockers] = useState(true);
+  const [warnings, setWarnings] = useState<AccountDeletionBlockers | null>(null);
+  const [loadingWarnings, setLoadingWarnings] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [confirmation, setConfirmation] = useState("");
   const [deleting, setDeleting] = useState(false);
@@ -23,29 +23,29 @@ export default function DeleteAccountSection({
   useEffect(() => {
     let cancelled = false;
 
-    async function loadBlockers() {
-      setLoadingBlockers(true);
+    async function loadWarnings() {
+      setLoadingWarnings(true);
 
       try {
-        const nextBlockers = await checkAccountDeletionBlockers();
+        const nextWarnings = await checkAccountDeletionBlockers();
 
         if (!cancelled) {
-          setBlockers(nextBlockers);
+          setWarnings(nextWarnings);
         }
       } catch (loadError) {
-        console.error("Failed to load account deletion blockers:", loadError);
+        console.error("Failed to load account deletion warnings:", loadError);
 
         if (!cancelled) {
-          setBlockers({ blocked: false, reasons: [] });
+          setWarnings({ blocked: false, reasons: [] });
         }
       } finally {
         if (!cancelled) {
-          setLoadingBlockers(false);
+          setLoadingWarnings(false);
         }
       }
     }
 
-    void loadBlockers();
+    void loadWarnings();
 
     return () => {
       cancelled = true;
@@ -71,7 +71,7 @@ export default function DeleteAccountSection({
 
   async function handleDeleteAccount() {
     if (confirmation !== "DELETE") {
-      setModalError('Type DELETE exactly to confirm.');
+      setModalError("Type DELETE exactly to confirm.");
       return;
     }
 
@@ -93,6 +93,8 @@ export default function DeleteAccountSection({
     }
   }
 
+  const warningItems = warnings?.reasons ?? [];
+
   return (
     <>
       <section className="rounded-2xl border border-red-500/30 bg-red-950/10 p-4 sm:p-5">
@@ -102,21 +104,22 @@ export default function DeleteAccountSection({
         <p className="mt-2 text-sm leading-relaxed text-zinc-400">
           Permanently delete your Follow The Crowd account and personal app data. This
           removes your profile, signs you out, deletes attachments you uploaded, and
-          cannot be undone. Messages you sent may remain in conversations as
+          cannot be undone. Pending bookings and draft or upcoming events you own will be
+          cancelled automatically. Messages you sent may remain in conversations as
           &quot;Deleted User&quot; so other users&apos; chats and booking history stay
           intact.
         </p>
 
-        {loadingBlockers ? (
+        {loadingWarnings ? (
           <p className="mt-4 text-sm text-zinc-500">Checking account status...</p>
-        ) : blockers?.blocked ? (
+        ) : warningItems.length > 0 ? (
           <div className="mt-4 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3">
             <p className="text-sm font-medium text-amber-100">
-              Resolve these items before deleting your account:
+              The following will be cancelled automatically when you delete your account:
             </p>
             <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-amber-100/90">
-              {blockers.reasons.map((reason) => (
-                <li key={reason}>{reason}</li>
+              {warningItems.map((warning) => (
+                <li key={warning}>{warning}</li>
               ))}
             </ul>
           </div>
@@ -124,7 +127,7 @@ export default function DeleteAccountSection({
 
         <button
           type="button"
-          disabled={loadingBlockers || Boolean(blockers?.blocked) || deleting}
+          disabled={loadingWarnings || deleting}
           onClick={openModal}
           className="mt-4 rounded-xl border border-red-500/45 bg-red-600/15 px-4 py-3 text-sm font-semibold uppercase tracking-wide text-red-200 transition hover:border-red-400/60 hover:bg-red-600/25 disabled:cursor-not-allowed disabled:opacity-50"
         >
@@ -149,10 +152,20 @@ export default function DeleteAccountSection({
             </h3>
             <p className="mt-2 text-sm leading-relaxed text-zinc-400">
               This permanently removes your account, profile, attachments you uploaded,
-              notifications, blocks, and your side of personal app data. Messages you sent
-              may remain as &quot;Deleted User&quot;. Booking records and other
-              users&apos; events are not silently deleted. This cannot be undone.
+              notifications, blocks, and your side of personal app data. Pending booking
+              requests and accepted bookings on upcoming events involving you will be
+              cancelled. Draft or upcoming events you own will be cancelled or removed.
+              Other users&apos; completed history is preserved. Messages you sent may
+              remain as &quot;Deleted User&quot;. This cannot be undone.
             </p>
+
+            {warningItems.length > 0 ? (
+              <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-amber-100/90">
+                {warningItems.map((warning) => (
+                  <li key={`modal-${warning}`}>{warning}</li>
+                ))}
+              </ul>
+            ) : null}
 
             <label className="mt-4 block">
               <span className="mb-2 block text-xs font-semibold uppercase tracking-wide text-zinc-500">

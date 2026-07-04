@@ -99,24 +99,6 @@ export async function POST(request: Request) {
 
     const userId = authData.user.id;
 
-    const { data: blockers, error: blockersError } = await userClient.rpc(
-      "check_account_deletion_blockers",
-    );
-
-    if (blockersError) {
-      return NextResponse.json({ error: blockersError.message }, { status: 400 });
-    }
-
-    if (Boolean(blockers?.blocked)) {
-      return NextResponse.json(
-        {
-          error: "Account deletion is blocked until active bookings and events are resolved.",
-          reasons: blockers?.reasons ?? [],
-        },
-        { status: 409 },
-      );
-    }
-
     await removeUserStorageObjects(userId);
 
     const { error: deleteDataError } = await userClient.rpc("delete_account_data");
