@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import {
+  ACCOUNT_DELETION_FAILED_MESSAGE,
   checkAccountDeletionBlockers,
   deleteAccount,
   type AccountDeletionBlockers,
@@ -86,7 +87,7 @@ export default function DeleteAccountSection({
     } catch (deleteError) {
       console.error("Failed to delete account:", deleteError);
       const message =
-        deleteError instanceof Error ? deleteError.message : "Failed to delete account";
+        deleteError instanceof Error ? deleteError.message : ACCOUNT_DELETION_FAILED_MESSAGE;
       setModalError(message);
       onError(message);
       setDeleting(false);

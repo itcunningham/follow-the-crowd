@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { ACCOUNT_DELETION_FAILED_MESSAGE } from "@/lib/accountDeletion";
 
 function extractPublicStoragePath(fileUrl: string, bucket: string): string | null {
   const marker = `/storage/v1/object/public/${bucket}/`;
@@ -20,7 +21,7 @@ export async function removeUserStorageObjects(
     .list(userId);
 
   if (profileListError) {
-    throw new Error(`Failed to list profile images: ${profileListError.message}`);
+    throw new Error(ACCOUNT_DELETION_FAILED_MESSAGE);
   }
 
   if (profileFiles?.length) {
@@ -29,7 +30,7 @@ export async function removeUserStorageObjects(
       .remove(profileFiles.map((file) => `${userId}/${file.name}`));
 
     if (profileRemoveError) {
-      throw new Error(`Failed to delete profile images: ${profileRemoveError.message}`);
+      throw new Error(ACCOUNT_DELETION_FAILED_MESSAGE);
     }
   }
 
@@ -39,7 +40,7 @@ export async function removeUserStorageObjects(
     .eq("uploader_id", userId);
 
   if (attachmentsError) {
-    throw new Error(`Failed to list message attachments: ${attachmentsError.message}`);
+    throw new Error(ACCOUNT_DELETION_FAILED_MESSAGE);
   }
 
   const attachmentPaths = (attachments ?? [])
@@ -52,7 +53,7 @@ export async function removeUserStorageObjects(
       .remove(attachmentPaths);
 
     if (attachmentRemoveError) {
-      throw new Error(`Failed to delete message attachments: ${attachmentRemoveError.message}`);
+      throw new Error(ACCOUNT_DELETION_FAILED_MESSAGE);
     }
   }
 }

@@ -1,5 +1,8 @@
 import { supabase } from "@/lib/supabaseClient";
 
+export const ACCOUNT_DELETION_FAILED_MESSAGE =
+  "We couldn't delete your account. Please try again.";
+
 export type AccountDeletionBlockers = {
   blocked: boolean;
   reasons: string[];
@@ -55,6 +58,6 @@ export async function deleteAccount(confirmation: string): Promise<void> {
   const payload = (await response.json().catch(() => null)) as { error?: string } | null;
 
   if (!response.ok) {
-    throw new Error(payload?.error || "Failed to delete account");
+    throw new Error(payload?.error || ACCOUNT_DELETION_FAILED_MESSAGE);
   }
 }

@@ -1,5 +1,6 @@
 import { NextResponse, connection } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { ACCOUNT_DELETION_FAILED_MESSAGE } from "@/lib/accountDeletion";
 import { removeUserStorageObjects } from "@/lib/accountDeletionStorage";
 
 export const dynamic = "force-dynamic";
@@ -26,8 +27,6 @@ function getSupabaseProjectUrl(): string {
 }
 
 export async function POST(request: Request) {
-  console.log("[account delete] route hit", true);
-
   try {
     await connection();
 
@@ -46,7 +45,10 @@ export async function POST(request: Request) {
       : null;
 
     if (!accessToken) {
-      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+      return NextResponse.json(
+        { error: "You need to sign in again before deleting your account." },
+        { status: 401 },
+      );
     }
 
     const supabaseUrl = getSupabaseProjectUrl();
@@ -66,7 +68,10 @@ export async function POST(request: Request) {
     const { data: authData, error: authError } = await userClient.auth.getUser(accessToken);
 
     if (authError || !authData.user) {
-      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+      return NextResponse.json(
+        { error: "You need to sign in again before deleting your account." },
+        { status: 401 },
+      );
     }
 
     const userId = authData.user.id;
@@ -76,20 +81,11 @@ export async function POST(request: Request) {
     const { error: deleteDataError } = await userClient.rpc("delete_account_data");
 
     if (deleteDataError) {
-      console.error("[account delete] delete_account_data failed:", deleteDataError.message);
-      return NextResponse.json({ error: deleteDataError.message }, { status: 409 });
+      return NextResponse.json({ error: ACCOUNT_DELETION_FAILED_MESSAGE }, { status: 409 });
     }
 
     return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error("Account deletion failed:", error);
-
-    return NextResponse.json(
-      {
-        error:
-          error instanceof Error ? error.message : "Failed to delete account",
-      },
-      { status: 500 },
-    );
+  } catch {
+    return NextResponse.json({ error: ACCOUNT_DELETION_FAILED_MESSAGE }, { status: 500 });
   }
 }
