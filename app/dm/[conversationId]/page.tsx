@@ -1,12 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import AppNavigation, { MOBILE_NAV_OFFSET_CLASS } from "@/app/components/AppNavigation";
 import BookingRequestCard, {
   buildUpdatedBookingMessage,
 } from "@/app/components/BookingRequestCard";
+import ChatNewMessagesPill from "@/app/components/dm/ChatNewMessagesPill";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
 import ProfileAvatar from "@/app/components/ProfileAvatar";
 import {
@@ -22,7 +23,11 @@ import {
   type BookingRequest,
 } from "@/lib/bookingRequests";
 import { createNotification, markNotificationsReadForLink } from "@/lib/notifications";
+import { markConversationRead } from "@/lib/messageReads";
 import { supabase } from "@/lib/supabaseClient";
+import { useChatScroll, tagChatMessageForScroll } from "@/lib/useChatScroll";
+import { getChatNewMessageHighlightClass, logChatHighlightRender } from "@/lib/chatNewMessageHighlight";
+import { useChatNewMessageHighlight } from "@/lib/useChatNewMessageHighlight";
 import {
   getCurrentUserId,
   getUserAvatarProfilesByIds,
@@ -35,6 +40,9 @@ type Message = {
   user_id: string;
   text: string;
   created_at: string;
+  _clientScrollMeta?: {
+    isFromCurrentUser: boolean;
+  };
 };
 
 function formatMessageTime(timestamp: string) {
@@ -72,8 +80,23 @@ export default function DmChatPage() {
   const [cancellingBookingId, setCancellingBookingId] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const lastMessage = messages.length > 0 ? messages[messages.length - 1] : null;
+  const {
+    scrollRef,
+    bottomRef,
+    showNewMessagesPill,
+    newMessagesPillCount,
+    scrollToBottomSmooth,
+    markUserSentMessage,
+    captureScrollBeforeIncomingInsert,
+  } = useChatScroll({
+    loading,
+    messageCount: messages.length,
+    lastMessageSenderId: lastMessage?.user_id ?? null,
+    lastMessageIsFromCurrentUser: lastMessage?._clientScrollMeta?.isFromCurrentUser ?? null,
+    currentUserId,
+  });
+  const { addHighlightedMessageId, isMessageHighlighted } = useChatNewMessageHighlight();
 
   const conversationTitle = getConversationTitle(otherUserProfile, otherUserId);
   const otherUserLabel = otherUserProfile?.display_name?.trim() || otherUserId || "DM";
@@ -81,6 +104,7 @@ export default function DmChatPage() {
     () => buildDmCancelledBookingMatchContext(bookings, conversationId),
     [bookings, conversationId],
   );
+  const reversedMessages = useMemo(() => [...messages].reverse(), [messages]);
 
   useEffect(() => {
     if (!conversationId) {
@@ -135,6 +159,7 @@ export default function DmChatPage() {
     }
 
     markNotificationsReadForLink(currentUserId, `/dm/${conversationId}`);
+    void markConversationRead(conversationId);
   }, [conversationId, currentUserId]);
 
   async function reloadConversationBookings() {
@@ -166,6 +191,8 @@ export default function DmChatPage() {
       setLoading(true);
       setError(null);
 
+      const userId = await getCurrentUserId();
+
       const [messagesResult, bookingsResult] = await Promise.all([
         supabase
           .from("messages")
@@ -184,7 +211,11 @@ export default function DmChatPage() {
         return;
       }
 
-      setMessages((messagesResult.data as Message[]) ?? []);
+      setMessages(
+        ((messagesResult.data as Message[]) ?? []).map((message) =>
+          tagChatMessageForScroll(message, userId),
+        ),
+      );
       setBookings(bookingsResult);
       console.log("[dm booking] loaded conversation bookings", {
         conversationId,
@@ -242,14 +273,24 @@ export default function DmChatPage() {
         },
         (payload) => {
           const newMessage = payload.new as Message;
+          const taggedMessage = tagChatMessageForScroll(newMessage, currentUserId);
+
+          captureScrollBeforeIncomingInsert(taggedMessage._clientScrollMeta.isFromCurrentUser);
 
           setMessages((prev) => {
             if (prev.some((message) => message.id === newMessage.id)) {
               return prev;
             }
 
-            return [...prev, newMessage];
+            return [...prev, taggedMessage];
           });
+
+          addHighlightedMessageId(
+            newMessage.id,
+            taggedMessage._clientScrollMeta.isFromCurrentUser,
+          );
+
+          void markConversationRead(conversationId);
         },
       )
       .subscribe();
@@ -257,11 +298,7 @@ export default function DmChatPage() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [conversationId]);
-
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [conversationId, currentUserId, captureScrollBeforeIncomingInsert, addHighlightedMessageId]);
 
   async function sendMessage() {
     const text = input.trim();
@@ -272,6 +309,7 @@ export default function DmChatPage() {
 
     setSending(true);
     setError(null);
+    markUserSentMessage();
 
     const userId = await getCurrentUserId();
 
@@ -299,6 +337,7 @@ export default function DmChatPage() {
 
     setInput("");
     setSending(false);
+    void markConversationRead(conversationId);
   }
 
   async function handleBookingResponse(
@@ -381,11 +420,12 @@ export default function DmChatPage() {
 
   return (
     <OnboardingGuard>
-    <div
-      className={`mx-auto flex h-[100dvh] w-full max-w-2xl flex-col bg-[#070708] font-sans text-zinc-100 ${MOBILE_NAV_OFFSET_CLASS}`}
-    >
+    <div className="fixed inset-0 flex flex-col overflow-hidden bg-[#070708] font-sans text-zinc-100">
       <AppNavigation />
-      <header className="sticky top-0 z-10 shrink-0 border-b border-zinc-800/80 bg-[#070708]/95 px-3 py-3 backdrop-blur-md sm:px-4 md:top-12">
+      <div
+        className={`mx-auto flex min-h-0 w-full max-w-2xl flex-1 flex-col overflow-hidden ${MOBILE_NAV_OFFSET_CLASS}`}
+      >
+      <header className="z-10 shrink-0 border-b border-zinc-800/80 bg-[#070708]/95 px-3 py-3 backdrop-blur-md sm:px-4">
         <div className="flex items-center gap-3">
           <Link
             href="/dm"
@@ -410,13 +450,17 @@ export default function DmChatPage() {
       </header>
 
       <div
-        ref={messagesContainerRef}
-        className="flex-1 overflow-y-auto px-3 py-4 sm:px-4"
+        ref={scrollRef}
+        className="flex min-h-0 flex-1 flex-col-reverse overflow-y-auto overscroll-contain [overflow-anchor:none] px-3 py-4 sm:px-4"
       >
+        <div ref={bottomRef} data-chat-bottom aria-hidden="true" className="h-px shrink-0" />
         {loading ? (
           <p className="text-sm text-zinc-500">Loading messages...</p>
         ) : messages.length === 0 ? (
-          <div className="flex h-full min-h-[40vh] flex-col items-center justify-center px-6 text-center">
+          <div
+            data-chat-content-root
+            className="flex flex-col items-center justify-center px-6 py-16 text-center"
+          >
             <ProfileAvatar
               name={otherUserLabel}
               avatarUrl={otherUserProfile?.avatar_url}
@@ -431,8 +475,11 @@ export default function DmChatPage() {
             </p>
           </div>
         ) : (
-          <ul className="flex flex-col gap-3 pb-2">
-            {messages.map((message) => {
+          <ul
+            data-chat-content-root
+            className="flex flex-col-reverse gap-3 pb-2"
+          >
+            {reversedMessages.map((message) => {
               const isOwnMessage = currentUserId !== null && message.user_id === currentUserId;
               const bookingData = mergeBookingWithMessage(
                 null,
@@ -465,10 +512,19 @@ export default function DmChatPage() {
                 });
 
                 if (cardVisibility.hideCard) {
+                  const highlighted = isMessageHighlighted(message.id);
+                  logChatHighlightRender(message.id, highlighted);
+
                   return (
-                    <li key={message.id} className="flex justify-center">
+                    <li
+                      key={message.id}
+                      data-chat-message-id={message.id}
+                      className="flex justify-center"
+                    >
                       <div className="max-w-sm px-3 py-1 text-center">
-                        <p className="rounded-full border border-zinc-800/80 bg-zinc-950/50 px-3 py-1.5 text-xs text-zinc-500">
+                        <p
+                          className={`rounded-full border border-zinc-800/80 bg-zinc-950/50 px-3 py-1.5 text-xs text-zinc-500 ${getChatNewMessageHighlightClass(highlighted)}`}
+                        >
                           {CANCELLED_BOOKING_DM_SYSTEM_MESSAGE}
                         </p>
                         <time
@@ -486,10 +542,13 @@ export default function DmChatPage() {
                   resolvedBooking.status === "pending" &&
                   (resolvedBooking.recipient_id === currentUserId ||
                     (!resolvedBooking.recipient_id && !isOwnMessage));
+                const highlighted = isMessageHighlighted(message.id);
+                logChatHighlightRender(message.id, highlighted);
 
                 return (
                   <li
                     key={message.id}
+                    data-chat-message-id={message.id}
                     className={`flex ${isOwnMessage ? "justify-end" : "justify-start"}`}
                   >
                     <div
@@ -505,7 +564,10 @@ export default function DmChatPage() {
                         />
                       ) : null}
                       <div>
-                        <BookingRequestCard
+                        <div
+                          className={`rounded-2xl ${getChatNewMessageHighlightClass(highlighted)}`}
+                        >
+                          <BookingRequestCard
                           booking={resolvedBooking}
                           currentUserId={currentUserId}
                           canRespond={canRespond && Boolean(resolvedBooking.id)}
@@ -519,6 +581,7 @@ export default function DmChatPage() {
                           }
                           onCancel={() => handleBookingCancel(resolvedBooking, message)}
                         />
+                        </div>
                         <time
                           dateTime={message.created_at}
                           className={`mt-1 block text-[10px] text-zinc-500 ${
@@ -533,9 +596,13 @@ export default function DmChatPage() {
                 );
               }
 
+              const highlighted = isMessageHighlighted(message.id);
+              logChatHighlightRender(message.id, highlighted);
+
               return (
                 <li
                   key={message.id}
+                  data-chat-message-id={message.id}
                   className={`flex ${isOwnMessage ? "justify-end" : "justify-start"}`}
                 >
                   <div
@@ -550,20 +617,22 @@ export default function DmChatPage() {
                         size="sm"
                       />
                     ) : null}
-                    <div
-                      className={`rounded-3xl px-4 py-2.5 ${
-                        isOwnMessage
-                          ? "rounded-br-md border border-blue-500/40 bg-blue-600/20 text-blue-50 shadow-[0_0_16px_rgba(59,130,246,0.15)]"
-                          : "rounded-bl-md border border-zinc-800 bg-zinc-900 text-zinc-100"
-                      }`}
-                    >
-                      <p className="text-[15px] leading-relaxed">{message.text}</p>
-                      <time
-                        dateTime={message.created_at}
-                        className="mt-1 block text-[10px] text-zinc-500"
+                    <div className={`relative rounded-3xl ${getChatNewMessageHighlightClass(highlighted)}`}>
+                      <div
+                        className={`rounded-3xl px-4 py-2.5 ${
+                          isOwnMessage
+                            ? "rounded-br-md border border-blue-500/40 bg-blue-600/20 text-blue-50 shadow-[0_0_16px_rgba(59,130,246,0.15)]"
+                            : "rounded-bl-md border border-zinc-800 bg-zinc-900 text-zinc-100"
+                        }`}
                       >
-                        {formatMessageTime(message.created_at)}
-                      </time>
+                        <p className="text-[15px] leading-relaxed">{message.text}</p>
+                        <time
+                          dateTime={message.created_at}
+                          className="mt-1 block text-[10px] text-zinc-500"
+                        >
+                          {formatMessageTime(message.created_at)}
+                        </time>
+                      </div>
                     </div>
                   </div>
                 </li>
@@ -571,14 +640,21 @@ export default function DmChatPage() {
             })}
           </ul>
         )}
-        <div ref={messagesEndRef} />
       </div>
 
+      <div className="relative shrink-0">
       {error ? (
         <p className="px-4 pb-2 text-sm text-red-400">{error}</p>
       ) : null}
 
-      <div className="sticky bottom-0 border-t border-zinc-800/80 bg-[#070708] px-3 py-3 sm:px-4 sm:py-4">
+      {showNewMessagesPill ? (
+        <ChatNewMessagesPill
+          count={newMessagesPillCount}
+          onClick={scrollToBottomSmooth}
+        />
+      ) : null}
+
+      <div className="border-t border-zinc-800/80 bg-[#070708] px-3 py-3 sm:px-4 sm:py-4">
         <div className="flex items-end gap-2 sm:gap-3">
           <input
             type="text"
@@ -598,6 +674,8 @@ export default function DmChatPage() {
           </button>
         </div>
       </div>
+      </div>
+    </div>
     </div>
     </OnboardingGuard>
   );

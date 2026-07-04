@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import AppNavigation, { MOBILE_NAV_OFFSET_CLASS } from "@/app/components/AppNavigation";
+import ChatNewMessagesPill from "@/app/components/dm/ChatNewMessagesPill";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
 import ProfileAvatar from "@/app/components/ProfileAvatar";
 import {
@@ -16,7 +17,11 @@ import {
   type EventCrewChatMessage,
 } from "@/lib/eventCrewChat";
 import { markNotificationsReadForLink } from "@/lib/notifications";
+import { markEventChatRead } from "@/lib/messageReads";
 import { supabase } from "@/lib/supabaseClient";
+import { useChatScroll, tagChatMessageForScroll } from "@/lib/useChatScroll";
+import { getChatNewMessageHighlightClass, logChatHighlightRender } from "@/lib/chatNewMessageHighlight";
+import { useChatNewMessageHighlight } from "@/lib/useChatNewMessageHighlight";
 import {
   getCurrentUserId,
   getUserAvatarProfilesByIds,
@@ -42,7 +47,13 @@ export default function EventCrewChatPage() {
   const eventId = params.eventId;
   const backHref = getEventCrewChatBackHref(eventId, searchParams.get("from"));
 
-  const [messages, setMessages] = useState<EventCrewChatMessage[]>([]);
+  type EventCrewChatMessageWithScrollMeta = EventCrewChatMessage & {
+    _clientScrollMeta?: {
+      isFromCurrentUser: boolean;
+    };
+  };
+
+  const [messages, setMessages] = useState<EventCrewChatMessageWithScrollMeta[]>([]);
   const [senderProfiles, setSenderProfiles] = useState<Map<string, UserAvatarProfile>>(
     new Map(),
   );
@@ -52,7 +63,24 @@ export default function EventCrewChatPage() {
   const [sending, setSending] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const lastMessage = messages.length > 0 ? messages[messages.length - 1] : null;
+  const reversedMessages = useMemo(() => [...messages].reverse(), [messages]);
+  const {
+    scrollRef,
+    bottomRef,
+    showNewMessagesPill,
+    newMessagesPillCount,
+    scrollToBottomSmooth,
+    markUserSentMessage,
+    captureScrollBeforeIncomingInsert,
+  } = useChatScroll({
+    loading,
+    messageCount: messages.length,
+    lastMessageSenderId: lastMessage?.user_id ?? null,
+    lastMessageIsFromCurrentUser: lastMessage?._clientScrollMeta?.isFromCurrentUser ?? null,
+    currentUserId,
+  });
+  const { addHighlightedMessageId, isMessageHighlighted } = useChatNewMessageHighlight();
 
   useEffect(() => {
     if (!eventId) {
@@ -82,9 +110,10 @@ export default function EventCrewChatPage() {
 
         const chatLink = getEventCrewChatLink(eventId);
         await markNotificationsReadForLink(userId, chatLink);
+        await markEventChatRead(eventId);
 
         const rows = await listEventCrewChatMessages(eventId);
-        setMessages(rows);
+        setMessages(rows.map((message) => tagChatMessageForScroll(message, userId)));
 
         const senderIds = [...new Set(rows.map((message) => message.user_id))];
 
@@ -124,14 +153,24 @@ export default function EventCrewChatPage() {
         },
         async (payload) => {
           const newMessage = payload.new as EventCrewChatMessage;
+          const taggedMessage = tagChatMessageForScroll(newMessage, currentUserId);
+
+          captureScrollBeforeIncomingInsert(taggedMessage._clientScrollMeta.isFromCurrentUser);
 
           setMessages((prev) => {
             if (prev.some((message) => message.id === newMessage.id)) {
               return prev;
             }
 
-            return [...prev, newMessage];
+            return [...prev, taggedMessage];
           });
+
+          addHighlightedMessageId(
+            newMessage.id,
+            taggedMessage._clientScrollMeta.isFromCurrentUser,
+          );
+
+          void markEventChatRead(eventId);
 
           setSenderProfiles((prev) => {
             if (prev.has(newMessage.user_id)) {
@@ -163,11 +202,7 @@ export default function EventCrewChatPage() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [eventId]);
-
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [eventId, currentUserId, captureScrollBeforeIncomingInsert, addHighlightedMessageId]);
 
   async function sendMessage() {
     const text = input.trim();
@@ -178,10 +213,12 @@ export default function EventCrewChatPage() {
 
     setSending(true);
     setError(null);
+    markUserSentMessage();
 
     try {
       await sendEventCrewChatMessage(eventId, text, eventName);
       setInput("");
+      await markEventChatRead(eventId);
     } catch (sendError) {
       console.error("Failed to send crew chat message:", sendError);
       setError(
@@ -223,121 +260,143 @@ export default function EventCrewChatPage() {
 
   return (
     <OnboardingGuard>
-      <div
-        className={`mx-auto flex h-[100dvh] w-full max-w-2xl flex-col bg-[#070708] font-sans text-zinc-100 ${MOBILE_NAV_OFFSET_CLASS}`}
-      >
+      <div className="fixed inset-0 flex flex-col overflow-hidden bg-[#070708] font-sans text-zinc-100">
         <AppNavigation />
 
-        <header className="sticky top-0 z-10 shrink-0 border-b border-zinc-800/80 bg-[#070708]/95 px-3 py-3 backdrop-blur-md sm:px-4 md:top-12">
-          <div className="flex items-center gap-3">
-            <Link
-              href={backHref}
-              aria-label={searchParams.get("from") === "dm" ? "Back to messages" : "Back to event"}
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-zinc-800 text-lg text-zinc-300 transition hover:border-blue-500/40 hover:text-blue-300"
-            >
-              ←
-            </Link>
-            <div className="min-w-0 flex-1">
-              <h1 className="truncate text-base font-semibold text-zinc-50">{eventName}</h1>
-              <p className="truncate text-xs text-zinc-500">Group chat</p>
-            </div>
-            {searchParams.get("from") === "dm" ? (
+        <div
+          className={`mx-auto flex min-h-0 w-full max-w-2xl flex-1 flex-col overflow-hidden ${MOBILE_NAV_OFFSET_CLASS}`}
+        >
+          <header className="z-10 shrink-0 border-b border-zinc-800/80 bg-[#070708]/95 px-3 py-3 backdrop-blur-md sm:px-4">
+            <div className="flex items-center gap-3">
               <Link
-                href={`/events/${eventId}`}
-                className="shrink-0 rounded-full border border-zinc-700 bg-zinc-900/70 px-3 py-2 text-xs font-semibold text-zinc-100 transition hover:border-blue-500/40 hover:text-blue-300"
+                href={backHref}
+                aria-label={searchParams.get("from") === "dm" ? "Back to messages" : "Back to event"}
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-zinc-800 text-lg text-zinc-300 transition hover:border-blue-500/40 hover:text-blue-300"
               >
-                Event Details
+                ←
               </Link>
-            ) : null}
-          </div>
-        </header>
-
-        <div className="flex-1 overflow-y-auto px-3 py-4 sm:px-4">
-          {loading ? (
-            <p className="text-sm text-zinc-500">Loading messages...</p>
-          ) : messages.length === 0 ? (
-            <div className="flex h-full min-h-[40vh] flex-col items-center justify-center px-6 text-center">
-              <p className="text-sm font-medium text-zinc-300">No group messages yet</p>
-              <p className="mt-1 text-sm text-zinc-500">
-                Accepted DJs and the event planner can chat here.
-              </p>
+              <div className="min-w-0 flex-1">
+                <h1 className="truncate text-base font-semibold text-zinc-50">{eventName}</h1>
+                <p className="truncate text-xs text-zinc-500">Group chat</p>
+              </div>
+              {searchParams.get("from") === "dm" ? (
+                <Link
+                  href={`/events/${eventId}`}
+                  className="shrink-0 rounded-full border border-zinc-700 bg-zinc-900/70 px-3 py-2 text-xs font-semibold text-zinc-100 transition hover:border-blue-500/40 hover:text-blue-300"
+                >
+                  Event Details
+                </Link>
+              ) : null}
             </div>
-          ) : (
-            <ul className="flex flex-col gap-3 pb-2">
-              {messages.map((message) => {
-                const isOwnMessage =
-                  currentUserId !== null && message.user_id === currentUserId;
-                const profile = senderProfiles.get(message.user_id);
-                const senderLabel = getSenderLabel(profile, message.user_id);
+          </header>
 
-                return (
-                  <li
-                    key={message.id}
-                    className={`flex ${isOwnMessage ? "justify-end" : "justify-start"}`}
-                  >
-                    <div
-                      className={`flex max-w-[85%] items-end gap-2 sm:max-w-[75%] ${
-                        isOwnMessage ? "flex-row-reverse" : "flex-row"
-                      }`}
+          <div
+            ref={scrollRef}
+            className="flex min-h-0 flex-1 flex-col-reverse overflow-y-auto overscroll-contain [overflow-anchor:none] px-3 py-4 sm:px-4"
+          >
+            <div ref={bottomRef} data-chat-bottom aria-hidden="true" className="h-px shrink-0" />
+            {loading ? (
+              <p className="text-sm text-zinc-500">Loading messages...</p>
+            ) : messages.length === 0 ? (
+              <div
+                data-chat-content-root
+                className="flex flex-col items-center justify-center px-6 py-16 text-center"
+              >
+                <p className="text-sm font-medium text-zinc-300">No group messages yet</p>
+                <p className="mt-1 text-sm text-zinc-500">
+                  Accepted DJs and the event planner can chat here.
+                </p>
+              </div>
+            ) : (
+              <ul data-chat-content-root className="flex flex-col-reverse gap-3 pb-2">
+                {reversedMessages.map((message) => {
+                  const isOwnMessage =
+                    currentUserId !== null && message.user_id === currentUserId;
+                  const profile = senderProfiles.get(message.user_id);
+                  const senderLabel = getSenderLabel(profile, message.user_id);
+                  const highlighted = isMessageHighlighted(message.id);
+                  logChatHighlightRender(message.id, highlighted);
+
+                  return (
+                    <li
+                      key={message.id}
+                      data-chat-message-id={message.id}
+                      className={`flex ${isOwnMessage ? "justify-end" : "justify-start"}`}
                     >
-                      {!isOwnMessage ? (
-                        <ProfileAvatar
-                          name={senderLabel}
-                          avatarUrl={profile?.avatar_url}
-                          size="sm"
-                        />
-                      ) : null}
-                      <div>
+                      <div
+                        className={`flex max-w-[85%] items-end gap-2 sm:max-w-[75%] ${
+                          isOwnMessage ? "flex-row-reverse" : "flex-row"
+                        }`}
+                      >
                         {!isOwnMessage ? (
-                          <p className="mb-1 text-[11px] font-semibold text-zinc-400">
-                            {senderLabel}
-                          </p>
+                          <ProfileAvatar
+                            name={senderLabel}
+                            avatarUrl={profile?.avatar_url}
+                            size="sm"
+                          />
                         ) : null}
-                        <div
-                          className={`rounded-3xl px-4 py-2.5 ${
-                            isOwnMessage
-                              ? "rounded-br-md border border-blue-500/40 bg-blue-600/20 text-blue-50 shadow-[0_0_16px_rgba(59,130,246,0.15)]"
-                              : "rounded-bl-md border border-zinc-800 bg-zinc-900 text-zinc-100"
-                          }`}
-                        >
-                          <p className="text-[15px] leading-relaxed">{message.text}</p>
-                          <time
-                            dateTime={message.created_at}
-                            className="mt-1 block text-[10px] text-zinc-500"
-                          >
-                            {formatMessageTime(message.created_at)}
-                          </time>
+                        <div>
+                          {!isOwnMessage ? (
+                            <p className="mb-1 text-[11px] font-semibold text-zinc-400">
+                              {senderLabel}
+                            </p>
+                          ) : null}
+                          <div className={`relative rounded-3xl ${getChatNewMessageHighlightClass(highlighted)}`}>
+                            <div
+                              className={`rounded-3xl px-4 py-2.5 ${
+                                isOwnMessage
+                                  ? "rounded-br-md border border-blue-500/40 bg-blue-600/20 text-blue-50 shadow-[0_0_16px_rgba(59,130,246,0.15)]"
+                                  : "rounded-bl-md border border-zinc-800 bg-zinc-900 text-zinc-100"
+                              }`}
+                            >
+                              <p className="text-[15px] leading-relaxed">{message.text}</p>
+                              <time
+                                dateTime={message.created_at}
+                                className="mt-1 block text-[10px] text-zinc-500"
+                              >
+                                {formatMessageTime(message.created_at)}
+                              </time>
+                            </div>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-          <div ref={messagesEndRef} />
-        </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
 
-        {error ? <p className="px-4 pb-2 text-sm text-red-400">{error}</p> : null}
+          <div className="relative shrink-0">
+            {error ? <p className="px-4 pb-2 text-sm text-red-400">{error}</p> : null}
 
-        <div className="sticky bottom-0 border-t border-zinc-800/80 bg-[#070708] px-3 py-3 sm:px-4 sm:py-4">
-          <div className="flex items-end gap-2 sm:gap-3">
-            <input
-              type="text"
-              value={input}
-              onChange={(event) => setInput(event.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Message..."
-              className="min-h-[44px] flex-1 rounded-full border border-zinc-800 bg-zinc-900/80 px-4 py-2.5 text-sm text-zinc-100 outline-none transition placeholder:text-zinc-600 focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/15"
-            />
-            <button
-              type="button"
-              onClick={() => void sendMessage()}
-              disabled={sending || !input.trim()}
-              className="min-h-[44px] shrink-0 rounded-full border border-blue-500/45 bg-blue-600/20 px-5 py-2.5 text-sm font-semibold uppercase tracking-wide text-blue-100 shadow-[0_0_20px_rgba(59,130,246,0.22)] transition hover:border-blue-400/60 hover:bg-blue-600/30 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {sending ? "..." : "Send"}
-            </button>
+            {showNewMessagesPill ? (
+              <ChatNewMessagesPill
+                count={newMessagesPillCount}
+                onClick={scrollToBottomSmooth}
+              />
+            ) : null}
+
+            <div className="border-t border-zinc-800/80 bg-[#070708] px-3 py-3 sm:px-4 sm:py-4">
+              <div className="flex items-end gap-2 sm:gap-3">
+                <input
+                  type="text"
+                  value={input}
+                  onChange={(event) => setInput(event.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder="Message..."
+                  className="min-h-[44px] flex-1 rounded-full border border-zinc-800 bg-zinc-900/80 px-4 py-2.5 text-sm text-zinc-100 outline-none transition placeholder:text-zinc-600 focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/15"
+                />
+                <button
+                  type="button"
+                  onClick={() => void sendMessage()}
+                  disabled={sending || !input.trim()}
+                  className="min-h-[44px] shrink-0 rounded-full border border-blue-500/45 bg-blue-600/20 px-5 py-2.5 text-sm font-semibold uppercase tracking-wide text-blue-100 shadow-[0_0_20px_rgba(59,130,246,0.22)] transition hover:border-blue-400/60 hover:bg-blue-600/30 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {sending ? "..." : "Send"}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
