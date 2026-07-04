@@ -42,6 +42,61 @@ import {
 const TARGET_DJ_USER_ID = "test-user";
 const NOTIFICATIONS_PATH = "/notifications";
 
+type InboxTab = "dm" | "group";
+
+function InboxTabButton({
+  active,
+  label,
+  unreadCount,
+  onClick,
+}: {
+  active: boolean;
+  label: string;
+  unreadCount: number;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      role="tab"
+      aria-selected={active}
+      onClick={onClick}
+      className={`relative flex flex-1 items-center justify-center gap-2 border-b-2 px-3 py-3 text-sm font-semibold transition ${
+        active
+          ? "border-blue-500 text-zinc-50"
+          : "border-transparent text-zinc-500 hover:text-zinc-300"
+      }`}
+    >
+      {label}
+      {unreadCount > 0 ? (
+        <span
+          className={`flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] font-bold leading-none ${
+            active
+              ? "bg-blue-600 text-white shadow-[0_0_10px_rgba(59,130,246,0.45)]"
+              : "border border-blue-500/35 bg-blue-600/15 text-blue-300"
+          }`}
+        >
+          {unreadCount > 99 ? "99+" : unreadCount}
+        </span>
+      ) : null}
+    </button>
+  );
+}
+
+function GroupChatsEmptyState() {
+  return (
+    <div className="flex flex-col items-center justify-center px-6 py-16 text-center sm:py-24">
+      <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-blue-500/30 bg-blue-600/10 text-xs font-semibold uppercase tracking-wide text-blue-300">
+        GC
+      </div>
+      <h2 className="mt-5 text-lg font-semibold text-zinc-100">No group chats yet</h2>
+      <p className="mt-2 max-w-sm text-sm leading-relaxed text-zinc-500">
+        Group chats appear here when you create events or accept bookings.
+      </p>
+    </div>
+  );
+}
+
 function NotificationsBellLink({ count }: { count: number }) {
   return (
     <Link
@@ -329,6 +384,7 @@ export default function DmInboxPage() {
     () => new Set(),
   );
   const [unreadEventChatIds, setUnreadEventChatIds] = useState<Set<string>>(() => new Set());
+  const [activeTab, setActiveTab] = useState<InboxTab>("dm");
 
   const loadGroupChats = useCallback(async () => {
     setGroupChatsLoading(true);
@@ -659,9 +715,9 @@ export default function DmInboxPage() {
   }
 
   const hasDirectMessages = dmInboxRows.length > 0;
-  const showCompactDmEmpty = !loading && !hasDirectMessages && groupChats.length > 0;
-
   const renderedGroupChats = sortGroupChatsByLatestActivity(groupChats);
+  const dmUnreadCount = unreadConversationIds.size;
+  const groupUnreadCount = unreadEventChatIds.size;
 
   useEffect(() => {
     logGroupRenderedRowIds(sortGroupChatsByLatestActivity(groupChats));
@@ -690,7 +746,7 @@ export default function DmInboxPage() {
             <NotificationsBellLink count={notificationCount} />
           </div>
 
-          {hasDirectMessages ? (
+          {activeTab === "dm" && hasDirectMessages ? (
             <div className="mt-4">
               <MessageDjButton
                 disabled={startingDm}
@@ -702,117 +758,124 @@ export default function DmInboxPage() {
               ) : null}
             </div>
           ) : null}
+
+          <div
+            className="mt-4 flex border-b border-zinc-800/80"
+            role="tablist"
+            aria-label="Message categories"
+          >
+            <InboxTabButton
+              active={activeTab === "dm"}
+              label="Direct Messages"
+              unreadCount={dmUnreadCount}
+              onClick={() => setActiveTab("dm")}
+            />
+            <InboxTabButton
+              active={activeTab === "group"}
+              label="Group Chats"
+              unreadCount={groupUnreadCount}
+              onClick={() => setActiveTab("group")}
+            />
+          </div>
         </header>
 
         <div className="flex-1">
-          <section aria-labelledby="group-chats-heading">
-            <div className="border-b border-zinc-800/80 px-4 py-3 sm:px-6">
-              <h2 id="group-chats-heading" className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                Group Chats
-              </h2>
-            </div>
+          {activeTab === "group" ? (
+            <section aria-label="Group Chats">
+              {groupChatsLoading ? (
+                <p className="px-4 py-4 text-sm text-zinc-500 sm:px-6">Loading group chats...</p>
+              ) : groupChatsError ? (
+                <p className="px-4 py-4 text-sm text-red-400 sm:px-6">{groupChatsError}</p>
+              ) : renderedGroupChats.length === 0 ? (
+                <GroupChatsEmptyState />
+              ) : (
+                <ul className="divide-y divide-zinc-800/80">
+                  {renderedGroupChats.map((chat) => (
+                    <GroupChatCard
+                      key={chat.eventId}
+                      chat={chat}
+                      isUnread={unreadEventChatIds.has(chat.eventId)}
+                    />
+                  ))}
+                </ul>
+              )}
+            </section>
+          ) : null}
 
-            {groupChatsLoading ? (
-              <p className="px-4 py-4 text-sm text-zinc-500 sm:px-6">Loading group chats...</p>
-            ) : groupChatsError ? (
-              <p className="px-4 py-4 text-sm text-red-400 sm:px-6">{groupChatsError}</p>
-            ) : renderedGroupChats.length === 0 ? (
-              <p className="px-4 py-4 text-sm text-zinc-500 sm:px-6">No group chats yet.</p>
-            ) : (
-              <ul className="divide-y divide-zinc-800/80">
-                {renderedGroupChats.map((chat) => (
-                  <GroupChatCard
-                    key={chat.eventId}
-                    chat={chat}
-                    isUnread={unreadEventChatIds.has(chat.eventId)}
-                  />
-                ))}
-              </ul>
-            )}
-          </section>
+          {activeTab === "dm" ? (
+            <section aria-label="Direct Messages">
+              {loading ? (
+                <p className="px-4 py-4 text-sm text-zinc-500 sm:px-6">Loading conversations...</p>
+              ) : error ? (
+                <p className="px-4 py-4 text-sm text-red-400 sm:px-6">{error}</p>
+              ) : !hasDirectMessages ? (
+                <DirectMessagesEmptyState
+                  startingDm={startingDm}
+                  startDmError={startDmError}
+                  onMessageDj={handleMessageDj}
+                />
+              ) : (
+                <ul className="divide-y divide-zinc-800/80">
+                  {dmInboxRows.map((row) => {
+                    const otherUserId = otherUsersByConversation.get(row.conversationId);
+                    const otherProfile = otherUserId ? userProfiles.get(otherUserId) : undefined;
+                    const displayName = getConversationDisplayName(row, otherUserId);
+                    const preview = row.latestPreview
+                      ? `${row.latestMessageUserId === currentUserId ? "You: " : ""}${row.latestPreview}`
+                      : "No messages yet";
+                    const timestamp = row.latestActivityAt ?? row.conversationCreatedAt;
+                    const isUnread = unreadConversationIds.has(row.conversationId);
 
-          <section aria-labelledby="direct-messages-heading">
-            <div className="border-b border-zinc-800/80 px-4 py-3 sm:px-6">
-              <h2
-                id="direct-messages-heading"
-                className="text-xs font-semibold uppercase tracking-wide text-zinc-500"
-              >
-                Direct Messages
-              </h2>
-            </div>
-
-            {loading ? (
-              <p className="px-4 py-4 text-sm text-zinc-500 sm:px-6">Loading conversations...</p>
-            ) : error ? (
-              <p className="px-4 py-4 text-sm text-red-400 sm:px-6">{error}</p>
-            ) : !hasDirectMessages ? (
-              <DirectMessagesEmptyState
-                startingDm={startingDm}
-                startDmError={startDmError}
-                onMessageDj={handleMessageDj}
-                compact={showCompactDmEmpty}
-              />
-            ) : (
-              <ul className="divide-y divide-zinc-800/80">
-                {dmInboxRows.map((row) => {
-                  const otherUserId = otherUsersByConversation.get(row.conversationId);
-                  const otherProfile = otherUserId ? userProfiles.get(otherUserId) : undefined;
-                  const displayName = getConversationDisplayName(row, otherUserId);
-                  const preview = row.latestPreview
-                    ? `${row.latestMessageUserId === currentUserId ? "You: " : ""}${row.latestPreview}`
-                    : "No messages yet";
-                  const timestamp = row.latestActivityAt ?? row.conversationCreatedAt;
-                  const isUnread = unreadConversationIds.has(row.conversationId);
-
-                  return (
-                    <li key={row.conversationId}>
-                      <button
-                        type="button"
-                        onClick={() => openConversation(row.conversationId)}
-                        className={`flex w-full items-center gap-3 px-4 py-3.5 text-left transition active:bg-blue-600/10 hover:bg-zinc-900/70 sm:px-6 sm:py-4 ${getUnreadInboxRowClass(isUnread)}`}
-                      >
-                        <ConversationAvatar
-                          label={displayName}
-                          avatarUrl={otherProfile?.avatar_url}
-                        />
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center justify-between gap-3">
+                    return (
+                      <li key={row.conversationId}>
+                        <button
+                          type="button"
+                          onClick={() => openConversation(row.conversationId)}
+                          className={`flex w-full items-center gap-3 px-4 py-3.5 text-left transition active:bg-blue-600/10 hover:bg-zinc-900/70 sm:px-6 sm:py-4 ${getUnreadInboxRowClass(isUnread)}`}
+                        >
+                          <ConversationAvatar
+                            label={displayName}
+                            avatarUrl={otherProfile?.avatar_url}
+                          />
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center justify-between gap-3">
+                              <p
+                                className={`truncate text-[15px] ${
+                                  isUnread ? "font-bold text-zinc-50" : "font-semibold text-zinc-100"
+                                }`}
+                              >
+                                {displayName}
+                              </p>
+                              <div className="flex shrink-0 items-center gap-2">
+                                {isUnread ? <UnreadInboxIndicator /> : null}
+                                {timestamp ? (
+                                  <time
+                                    dateTime={timestamp}
+                                    className={`text-xs ${
+                                      isUnread ? "font-medium text-blue-300/80" : "text-zinc-500"
+                                    }`}
+                                  >
+                                    {formatInboxTimestamp(timestamp)}
+                                  </time>
+                                ) : null}
+                              </div>
+                            </div>
                             <p
-                              className={`truncate text-[15px] ${
-                                isUnread ? "font-bold text-zinc-50" : "font-semibold text-zinc-100"
+                              className={`mt-1 truncate text-sm ${
+                                isUnread ? "font-medium text-zinc-300" : "text-zinc-500"
                               }`}
                             >
-                              {displayName}
+                              {preview}
                             </p>
-                            <div className="flex shrink-0 items-center gap-2">
-                              {isUnread ? <UnreadInboxIndicator /> : null}
-                              {timestamp ? (
-                                <time
-                                  dateTime={timestamp}
-                                  className={`text-xs ${
-                                    isUnread ? "font-medium text-blue-300/80" : "text-zinc-500"
-                                  }`}
-                                >
-                                  {formatInboxTimestamp(timestamp)}
-                                </time>
-                              ) : null}
-                            </div>
                           </div>
-                          <p
-                            className={`mt-1 truncate text-sm ${
-                              isUnread ? "font-medium text-zinc-300" : "text-zinc-500"
-                            }`}
-                          >
-                            {preview}
-                          </p>
-                        </div>
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </section>
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </section>
+          ) : null}
         </div>
       </div>
     </OnboardingGuard>
