@@ -3,8 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import {
   createSupabaseAdminClient,
   extractPublicStoragePath,
-  getServiceRoleEnvDebugInfo,
-  isSupabaseServiceRoleConfigured,
+  readSupabaseSecretKeyAtRuntime,
 } from "@/lib/supabaseAdmin";
 
 export const dynamic = "force-dynamic";
@@ -30,8 +29,8 @@ function getSupabaseProjectUrl(): string {
   return url;
 }
 
-async function removeUserStorageObjects(userId: string) {
-  const admin = createSupabaseAdminClient();
+async function removeUserStorageObjects(userId: string, supabaseSecretKey: string) {
+  const admin = createSupabaseAdminClient(supabaseSecretKey);
 
   const { data: profileFiles } = await admin.storage.from("profile-images").list(userId);
 
@@ -56,21 +55,15 @@ async function removeUserStorageObjects(userId: string) {
 }
 
 export async function POST(request: Request) {
-  console.log("[account delete] route hit");
-
   try {
     await connection();
 
-    const envDebug = getServiceRoleEnvDebugInfo();
-    console.log(
-      "[account delete] env keys include service role",
-      envDebug.keyInObjectKeys,
-    );
-    console.log("[account delete] service role configured", envDebug.configured);
-    console.log("[account delete] selected key name", envDebug.selectedKeyName);
-    console.log("[account delete] secret key exists", envDebug.secretKeyExists);
-    console.log("[account delete] secret key trimmed length", envDebug.secretKeyTrimmedLength);
-    console.log("[account delete] supabase env key names", envDebug.supabaseEnvKeyNames);
+    const { secretKey, debug } = readSupabaseSecretKeyAtRuntime();
+
+    console.log("[account delete] route hit", debug.routeHit);
+    console.log("[account delete] secret key exists", debug.secretKeyExists);
+    console.log("[account delete] secret key trimmed length", debug.secretKeyTrimmedLength);
+    console.log("[account delete] selected key name", debug.selectedKeyName);
 
     const body = (await request.json()) as { confirmation?: string };
 
@@ -90,21 +83,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
-    if (!isSupabaseServiceRoleConfigured()) {
+    if (!secretKey) {
       return NextResponse.json(
         {
           error:
-            "Account deletion is not configured on the server. Set SUPABASE_SERVICE_ROLE_KEY or SUPABASE_SECRET_KEY. (ACCOUNT_DELETE_SERVICE_ROLE_MISSING)",
+            "Account deletion is not configured on the server. (ACCOUNT_DELETE_SERVICE_ROLE_MISSING)",
           code: "ACCOUNT_DELETE_SERVICE_ROLE_MISSING",
-          debug: {
-            keyInProcessEnv: envDebug.keyInProcessEnv,
-            keyInObjectKeys: envDebug.keyInObjectKeys,
-            trimmedLength: envDebug.trimmedLength,
-            secretKeyExists: envDebug.secretKeyExists,
-            secretKeyTrimmedLength: envDebug.secretKeyTrimmedLength,
-            selectedKeyName: envDebug.selectedKeyName,
-            supabaseEnvKeyNames: envDebug.supabaseEnvKeyNames,
-          },
+          debug,
         },
         { status: 500 },
       );
@@ -132,7 +117,7 @@ export async function POST(request: Request) {
 
     const userId = authData.user.id;
 
-    await removeUserStorageObjects(userId);
+    await removeUserStorageObjects(userId, secretKey);
 
     const { error: deleteDataError } = await userClient.rpc("delete_account_data");
 
@@ -140,7 +125,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: deleteDataError.message }, { status: 409 });
     }
 
-    const admin = createSupabaseAdminClient();
+    const admin = createSupabaseAdminClient(secretKey);
     const { error: deleteAuthError } = await admin.auth.admin.deleteUser(userId);
 
     if (deleteAuthError) {
