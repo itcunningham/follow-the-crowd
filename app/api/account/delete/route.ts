@@ -1,10 +1,5 @@
 import { NextResponse, connection } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import {
-  createSupabaseAdminClient,
-  extractPublicStoragePath,
-  readSupabaseSecretKeyAtRuntime,
-} from "@/lib/supabaseAdmin";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -29,41 +24,11 @@ function getSupabaseProjectUrl(): string {
   return url;
 }
 
-async function removeUserStorageObjects(userId: string, supabaseSecretKey: string) {
-  const admin = createSupabaseAdminClient(supabaseSecretKey);
-
-  const { data: profileFiles } = await admin.storage.from("profile-images").list(userId);
-
-  if (profileFiles?.length) {
-    await admin.storage
-      .from("profile-images")
-      .remove(profileFiles.map((file) => `${userId}/${file.name}`));
-  }
-
-  const { data: attachments } = await admin
-    .from("message_attachments")
-    .select("file_url")
-    .eq("uploader_id", userId);
-
-  const attachmentPaths = (attachments ?? [])
-    .map((attachment) => extractPublicStoragePath(attachment.file_url, "dm-attachments"))
-    .filter((path): path is string => Boolean(path));
-
-  if (attachmentPaths.length > 0) {
-    await admin.storage.from("dm-attachments").remove(attachmentPaths);
-  }
-}
-
 export async function POST(request: Request) {
+  console.log("[account delete] route hit", true);
+
   try {
     await connection();
-
-    const { secretKey, debug } = readSupabaseSecretKeyAtRuntime();
-
-    console.log("[account delete] route hit", debug.routeHit);
-    console.log("[account delete] secret key exists", debug.secretKeyExists);
-    console.log("[account delete] secret key trimmed length", debug.secretKeyTrimmedLength);
-    console.log("[account delete] selected key name", debug.selectedKeyName);
 
     const body = (await request.json()) as { confirmation?: string };
 
@@ -81,18 +46,6 @@ export async function POST(request: Request) {
 
     if (!accessToken) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
-    }
-
-    if (!secretKey) {
-      return NextResponse.json(
-        {
-          error:
-            "Account deletion is not configured on the server. (ACCOUNT_DELETE_SERVICE_ROLE_MISSING)",
-          code: "ACCOUNT_DELETE_SERVICE_ROLE_MISSING",
-          debug,
-        },
-        { status: 500 },
-      );
     }
 
     const supabaseUrl = getSupabaseProjectUrl();
@@ -115,24 +68,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
-    const userId = authData.user.id;
-
-    await removeUserStorageObjects(userId, secretKey);
-
     const { error: deleteDataError } = await userClient.rpc("delete_account_data");
 
     if (deleteDataError) {
+      console.error("[account delete] delete_account_data failed:", deleteDataError.message);
       return NextResponse.json({ error: deleteDataError.message }, { status: 409 });
-    }
-
-    const admin = createSupabaseAdminClient(secretKey);
-    const { error: deleteAuthError } = await admin.auth.admin.deleteUser(userId);
-
-    if (deleteAuthError) {
-      return NextResponse.json(
-        { error: "Account data was removed, but auth deletion failed. Contact support." },
-        { status: 500 },
-      );
     }
 
     return NextResponse.json({ success: true });

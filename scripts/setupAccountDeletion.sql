@@ -1,7 +1,7 @@
 -- Follow The Crowd — secure account deletion helpers
 -- Run in Supabase SQL Editor after users, bookings, events, and messaging exist.
 -- Idempotent: safe to re-run.
--- Auth user removal is handled server-side with the Supabase service role key.
+-- Auth user and storage removal are handled inside delete_account_data().
 
 -- ---------------------------------------------------------------------------
 -- Profile soft-delete marker
@@ -193,6 +193,14 @@ begin
 
   perform public.cleanup_account_deletion_dependencies();
 
+  delete from storage.objects
+  where bucket_id = 'profile-images'
+    and name like v_user_id || '/%';
+
+  delete from storage.objects
+  where bucket_id = 'dm-attachments'
+    and split_part(name, '/', 2) = v_user_id;
+
   delete from public.dj_availability
   where user_id = v_user_id;
 
@@ -256,6 +264,9 @@ begin
       onboarding_complete = excluded.onboarding_complete,
       deleted_at = excluded.deleted_at;
   end if;
+
+  delete from auth.users
+  where id = v_user_id::uuid;
 end;
 $$;
 
