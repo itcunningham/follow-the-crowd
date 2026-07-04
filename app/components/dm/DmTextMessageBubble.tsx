@@ -113,6 +113,7 @@ export default function DmTextMessageBubble({
             showPicker={showReactionPicker}
             reacting={reacting}
             prominentActions={hasAttachments}
+            isOwnMessage={isOwnMessage}
             onToggleReaction={onToggleReaction}
             onOpenPicker={onOpenReactionPicker}
             onClosePicker={onCloseReactionPicker}
