@@ -8,6 +8,8 @@ import BookingRequestCard, {
   buildUpdatedBookingMessage,
 } from "@/app/components/BookingRequestCard";
 import ChatNewMessagesPill from "@/app/components/dm/ChatNewMessagesPill";
+import DmComposer from "@/app/components/dm/DmComposer";
+import DmTextMessageBubble from "@/app/components/dm/DmTextMessageBubble";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
 import ProfileAvatar from "@/app/components/ProfileAvatar";
 import {
@@ -22,6 +24,20 @@ import {
   updateBookingRequestStatus,
   type BookingRequest,
 } from "@/lib/bookingRequests";
+import {
+  getDmAttachmentNotificationBody,
+  groupDmAttachmentsByMessageId,
+  listDmAttachmentsForConversation,
+  sendDmMessageWithAttachment,
+  type DmMessageAttachment,
+} from "@/lib/dmAttachments";
+import {
+  groupDmReactionsByMessageId,
+  listDmReactionsForConversation,
+  toggleDmMessageReaction,
+  upsertDmReactionInList,
+  type DmMessageReaction,
+} from "@/lib/dmReactions";
 import { createNotification, markNotificationsReadForLink } from "@/lib/notifications";
 import { markConversationRead } from "@/lib/messageReads";
 import { supabase } from "@/lib/supabaseClient";
@@ -70,12 +86,17 @@ export default function DmChatPage() {
   const conversationId = params.conversationId as string;
 
   const [messages, setMessages] = useState<Message[]>([]);
+  const [attachments, setAttachments] = useState<DmMessageAttachment[]>([]);
+  const [reactions, setReactions] = useState<DmMessageReaction[]>([]);
   const [bookings, setBookings] = useState<BookingRequest[]>([]);
   const [otherUserId, setOtherUserId] = useState<string | null>(null);
   const [otherUserProfile, setOtherUserProfile] = useState<UserAvatarProfile | null>(null);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [reactingMessageId, setReactingMessageId] = useState<string | null>(null);
+  const [reactionPickerMessageId, setReactionPickerMessageId] = useState<string | null>(null);
   const [respondingBookingId, setRespondingBookingId] = useState<string | null>(null);
   const [cancellingBookingId, setCancellingBookingId] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -103,6 +124,14 @@ export default function DmChatPage() {
   const cancelledBookingContext = useMemo(
     () => buildDmCancelledBookingMatchContext(bookings, conversationId),
     [bookings, conversationId],
+  );
+  const attachmentsByMessageId = useMemo(
+    () => groupDmAttachmentsByMessageId(attachments),
+    [attachments],
+  );
+  const reactionsByMessageId = useMemo(
+    () => groupDmReactionsByMessageId(reactions),
+    [reactions],
   );
   const reversedMessages = useMemo(() => [...messages].reverse(), [messages]);
 
@@ -191,9 +220,7 @@ export default function DmChatPage() {
       setLoading(true);
       setError(null);
 
-      const userId = await getCurrentUserId();
-
-      const [messagesResult, bookingsResult] = await Promise.all([
+      const [messagesResult, bookingsResult, attachmentsResult, reactionsResult] = await Promise.all([
         supabase
           .from("messages")
           .select("*")
@@ -203,6 +230,14 @@ export default function DmChatPage() {
           console.error("Failed to load booking requests:", bookingError);
           return [] as BookingRequest[];
         }),
+        listDmAttachmentsForConversation(conversationId).catch((attachmentError) => {
+          console.error("Failed to load message attachments:", attachmentError);
+          return [] as DmMessageAttachment[];
+        }),
+        listDmReactionsForConversation(conversationId).catch((reactionError) => {
+          console.error("Failed to load message reactions:", reactionError);
+          return [] as DmMessageReaction[];
+        }),
       ]);
 
       if (messagesResult.error) {
@@ -211,12 +246,16 @@ export default function DmChatPage() {
         return;
       }
 
+      const userId = await getCurrentUserId();
+
       setMessages(
         ((messagesResult.data as Message[]) ?? []).map((message) =>
           tagChatMessageForScroll(message, userId),
         ),
       );
       setBookings(bookingsResult);
+      setAttachments(attachmentsResult);
+      setReactions(reactionsResult);
       console.log("[dm booking] loaded conversation bookings", {
         conversationId,
         bookingCount: bookingsResult.length,
@@ -247,6 +286,111 @@ export default function DmChatPage() {
         },
         () => {
           void reloadConversationBookings();
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [conversationId]);
+
+  useEffect(() => {
+    if (!conversationId) {
+      return;
+    }
+
+    const channel = supabase
+      .channel(`dm-attachments:${conversationId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "message_attachments",
+          filter: `conversation_id=eq.${conversationId}`,
+        },
+        (payload) => {
+          const nextAttachment = payload.new as DmMessageAttachment;
+
+          setAttachments((prev) => {
+            if (prev.some((attachment) => attachment.id === nextAttachment.id)) {
+              return prev;
+            }
+
+            return [...prev, nextAttachment];
+          });
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [conversationId]);
+
+  useEffect(() => {
+    if (!conversationId) {
+      return;
+    }
+
+    function upsertReaction(nextReaction: DmMessageReaction) {
+      setReactions((prev) => {
+        const withoutExisting = prev.filter(
+          (reaction) =>
+            !(
+              reaction.message_id === nextReaction.message_id &&
+              reaction.user_id === nextReaction.user_id
+            ),
+        );
+
+        return [...withoutExisting, nextReaction];
+      });
+    }
+
+    const channel = supabase
+      .channel(`dm-reactions:${conversationId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "message_reactions",
+        },
+        (payload) => {
+          upsertReaction(payload.new as DmMessageReaction);
+        },
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "message_reactions",
+        },
+        (payload) => {
+          upsertReaction(payload.new as DmMessageReaction);
+        },
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "DELETE",
+          schema: "public",
+          table: "message_reactions",
+        },
+        (payload) => {
+          const deleted = payload.old as DmMessageReaction;
+
+          setReactions((prev) =>
+            prev.filter(
+              (reaction) =>
+                !(
+                  reaction.message_id === deleted.message_id &&
+                  reaction.user_id === deleted.user_id
+                ),
+            ),
+          );
         },
       )
       .subscribe();
@@ -303,7 +447,7 @@ export default function DmChatPage() {
   async function sendMessage() {
     const text = input.trim();
 
-    if (!text || !conversationId || sending) {
+    if (!text || !conversationId || sending || uploading) {
       return;
     }
 
@@ -338,6 +482,93 @@ export default function DmChatPage() {
     setInput("");
     setSending(false);
     void markConversationRead(conversationId);
+  }
+
+  async function sendAttachment(file: File) {
+    if (!conversationId || uploading || sending) {
+      return;
+    }
+
+    setUploading(true);
+    setError(null);
+    markUserSentMessage();
+
+    try {
+      const caption = input.trim();
+      const { messageId, attachment } = await sendDmMessageWithAttachment({
+        conversationId,
+        text: caption,
+        file,
+      });
+
+      const userId = await getCurrentUserId();
+      const optimisticMessage: Message = tagChatMessageForScroll(
+        {
+          id: messageId,
+          conversation_id: conversationId,
+          user_id: userId,
+          text: caption,
+          created_at: new Date().toISOString(),
+        },
+        userId,
+      );
+
+      setMessages((prev) => {
+        if (prev.some((message) => message.id === messageId)) {
+          return prev;
+        }
+
+        return [...prev, optimisticMessage];
+      });
+
+      setAttachments((prev) => {
+        if (prev.some((item) => item.id === attachment.id)) {
+          return prev;
+        }
+
+        return [...prev, attachment];
+      });
+
+      if (otherUserId) {
+        await createNotification(
+          otherUserId,
+          "message",
+          "New message",
+          caption || getDmAttachmentNotificationBody(attachment),
+          `/dm/${conversationId}`,
+        );
+      }
+
+      setInput("");
+    } catch (uploadError) {
+      console.error("Failed to send attachment:", uploadError);
+      setError(uploadError instanceof Error ? uploadError.message : "Failed to send attachment");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  async function handleToggleReaction(messageId: string, emoji: string) {
+    if (!currentUserId || reactingMessageId) {
+      return;
+    }
+
+    setReactingMessageId(messageId);
+    setError(null);
+
+    try {
+      const nextReaction = await toggleDmMessageReaction(messageId, emoji);
+
+      setReactions((prev) =>
+        upsertDmReactionInList(prev, nextReaction, messageId, currentUserId),
+      );
+      setReactionPickerMessageId(null);
+    } catch (reactionError) {
+      console.error("Failed to toggle reaction:", reactionError);
+      setError(reactionError instanceof Error ? reactionError.message : "Failed to update reaction");
+    } finally {
+      setReactingMessageId(null);
+    }
   }
 
   async function handleBookingResponse(
@@ -408,13 +639,6 @@ export default function DmChatPage() {
       setError(getBookingMutationErrorMessage(cancelError));
     } finally {
       setCancellingBookingId(null);
-    }
-  }
-
-  function handleKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
-    if (event.key === "Enter") {
-      event.preventDefault();
-      sendMessage();
     }
   }
 
@@ -568,19 +792,19 @@ export default function DmChatPage() {
                           className={`rounded-2xl ${getChatNewMessageHighlightClass(highlighted)}`}
                         >
                           <BookingRequestCard
-                          booking={resolvedBooking}
-                          currentUserId={currentUserId}
-                          canRespond={canRespond && Boolean(resolvedBooking.id)}
-                          responding={respondingBookingId === resolvedBooking.id}
-                          cancelling={cancellingBookingId === resolvedBooking.id}
-                          onAccept={() =>
-                            handleBookingResponse(resolvedBooking, message, "accepted")
-                          }
-                          onDecline={() =>
-                            handleBookingResponse(resolvedBooking, message, "declined")
-                          }
-                          onCancel={() => handleBookingCancel(resolvedBooking, message)}
-                        />
+                            booking={resolvedBooking}
+                            currentUserId={currentUserId}
+                            canRespond={canRespond && Boolean(resolvedBooking.id)}
+                            responding={respondingBookingId === resolvedBooking.id}
+                            cancelling={cancellingBookingId === resolvedBooking.id}
+                            onAccept={() =>
+                              handleBookingResponse(resolvedBooking, message, "accepted")
+                            }
+                            onDecline={() =>
+                              handleBookingResponse(resolvedBooking, message, "declined")
+                            }
+                            onCancel={() => handleBookingCancel(resolvedBooking, message)}
+                          />
                         </div>
                         <time
                           dateTime={message.created_at}
@@ -596,48 +820,32 @@ export default function DmChatPage() {
                 );
               }
 
-              const highlighted = isMessageHighlighted(message.id);
-              logChatHighlightRender(message.id, highlighted);
-
               return (
-                <li
+                <DmTextMessageBubble
                   key={message.id}
-                  data-chat-message-id={message.id}
-                  className={`flex ${isOwnMessage ? "justify-end" : "justify-start"}`}
-                >
-                  <div
-                    className={`flex max-w-[85%] items-end gap-2 sm:max-w-[75%] ${
-                      isOwnMessage ? "flex-row-reverse" : "flex-row"
-                    }`}
-                  >
-                    {!isOwnMessage ? (
-                      <ProfileAvatar
-                        name={otherUserLabel}
-                        avatarUrl={otherUserProfile?.avatar_url}
-                        size="sm"
-                      />
-                    ) : null}
-                    <div className={`relative rounded-3xl ${getChatNewMessageHighlightClass(highlighted)}`}>
-                      <div
-                        className={`rounded-3xl px-4 py-2.5 ${
-                          isOwnMessage
-                            ? "rounded-br-md border border-blue-500/40 bg-blue-600/20 text-blue-50 shadow-[0_0_16px_rgba(59,130,246,0.15)]"
-                            : "rounded-bl-md border border-zinc-800 bg-zinc-900 text-zinc-100"
-                        }`}
-                      >
-                        <p className="text-[15px] leading-relaxed">{message.text}</p>
-                        <time
-                          dateTime={message.created_at}
-                          className="mt-1 block text-[10px] text-zinc-500"
-                        >
-                          {formatMessageTime(message.created_at)}
-                        </time>
-                      </div>
-                    </div>
-                  </div>
-                </li>
-              );
-            })}
+                  messageId={message.id}
+                  text={message.text}
+                  createdAt={message.created_at}
+                  isOwnMessage={isOwnMessage}
+                  otherUserLabel={otherUserLabel}
+                  otherUserAvatarUrl={otherUserProfile?.avatar_url}
+                  attachments={attachmentsByMessageId.get(message.id) ?? []}
+                  reactions={reactionsByMessageId.get(message.id) ?? []}
+                  currentUserId={currentUserId}
+                  showReactionPicker={reactionPickerMessageId === message.id}
+                  reacting={reactingMessageId === message.id}
+                  onToggleReaction={(emoji) => void handleToggleReaction(message.id, emoji)}
+                  onOpenReactionPicker={() => setReactionPickerMessageId(message.id)}
+                  onCloseReactionPicker={() =>
+                    setReactionPickerMessageId((current) =>
+                      current === message.id ? null : current,
+                    )
+                  }
+                  formatTime={formatMessageTime}
+                  isHighlighted={isMessageHighlighted(message.id)}
+                />
+                );
+              })}
           </ul>
         )}
       </div>
@@ -654,28 +862,17 @@ export default function DmChatPage() {
         />
       ) : null}
 
-      <div className="border-t border-zinc-800/80 bg-[#070708] px-3 py-3 sm:px-4 sm:py-4">
-        <div className="flex items-end gap-2 sm:gap-3">
-          <input
-            type="text"
-            value={input}
-            onChange={(event) => setInput(event.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Message..."
-            className="min-h-[44px] flex-1 rounded-full border border-zinc-800 bg-zinc-900/80 px-4 py-2.5 text-sm text-zinc-100 outline-none transition placeholder:text-zinc-600 focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/15"
-          />
-          <button
-            type="button"
-            onClick={sendMessage}
-            disabled={sending || !input.trim()}
-            className="min-h-[44px] shrink-0 rounded-full border border-blue-500/45 bg-blue-600/20 px-5 py-2.5 text-sm font-semibold uppercase tracking-wide text-blue-100 shadow-[0_0_20px_rgba(59,130,246,0.22)] transition hover:border-blue-400/60 hover:bg-blue-600/30 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {sending ? "..." : "Send"}
-          </button>
-        </div>
+      <DmComposer
+        value={input}
+        onChange={setInput}
+        onSend={sendMessage}
+        onPhotoSelected={(file) => void sendAttachment(file)}
+        onFileSelected={(file) => void sendAttachment(file)}
+        sending={sending}
+        uploading={uploading}
+      />
       </div>
       </div>
-    </div>
     </div>
     </OnboardingGuard>
   );
