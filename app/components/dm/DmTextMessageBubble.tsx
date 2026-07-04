@@ -100,7 +100,11 @@ export default function DmTextMessageBubble({
               ) : null}
               <time
                 dateTime={createdAt}
-                className={`mt-1 block text-[10px] ${isOwnMessage ? "text-blue-200/70" : "text-zinc-500"}`}
+                className={`mt-1 block w-full text-[10px] ${
+                  isOwnMessage
+                    ? "text-right text-blue-200/70"
+                    : "text-left text-zinc-500"
+                } ${hasAttachments && !hasText ? "px-1 pb-0.5" : ""}`}
               >
                 {formatTime(createdAt)}
               </time>
