@@ -24,23 +24,30 @@ const EVENT_CREW_MESSAGE_FIELDS = "id, event_id, user_id, text, created_at";
 
 export function getEventCrewChatLink(
   eventId: string,
-  options?: { from?: string },
+  options?: { from?: string; tab?: string },
 ): string {
   const base = `/events/${eventId}/chat`;
+  const params = new URLSearchParams();
 
   if (options?.from) {
-    return `${base}?from=${encodeURIComponent(options.from)}`;
+    params.set("from", options.from);
   }
 
-  return base;
+  if (options?.tab) {
+    params.set("tab", options.tab);
+  }
+
+  const query = params.toString();
+  return query ? `${base}?${query}` : base;
 }
 
 export function getEventCrewChatBackHref(
   eventId: string,
   from: string | null | undefined,
+  tab?: string | null,
 ): string {
   if (from === "dm") {
-    return "/dm";
+    return tab === "group" ? "/dm?tab=group" : "/dm";
   }
 
   return `/events/${eventId}`;

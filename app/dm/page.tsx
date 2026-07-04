@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useCallback, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import AppNavigation, { MOBILE_NAV_OFFSET_CLASS } from "@/app/components/AppNavigation";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
 import ProfileAvatar from "@/app/components/ProfileAvatar";
@@ -43,6 +43,10 @@ const TARGET_DJ_USER_ID = "test-user";
 const NOTIFICATIONS_PATH = "/notifications";
 
 type InboxTab = "dm" | "group";
+
+function parseInboxTab(tab: string | null): InboxTab {
+  return tab === "group" ? "group" : "dm";
+}
 
 function InboxTabButton({
   active,
@@ -365,7 +369,27 @@ function DirectMessagesEmptyState({
 }
 
 export default function DmInboxPage() {
+  return (
+    <Suspense
+      fallback={
+        <OnboardingGuard>
+          <div
+            className={`mx-auto flex min-h-[100dvh] w-full max-w-2xl flex-col bg-[#070708] font-sans text-zinc-100 ${MOBILE_NAV_OFFSET_CLASS}`}
+          >
+            <AppNavigation />
+            <p className="px-4 py-4 text-sm text-zinc-500 sm:px-6">Loading messages...</p>
+          </div>
+        </OnboardingGuard>
+      }
+    >
+      <DmInboxPageContent />
+    </Suspense>
+  );
+}
+
+function DmInboxPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [groupChats, setGroupChats] = useState<GroupChatListItem[]>([]);
   const [groupChatsLoading, setGroupChatsLoading] = useState(true);
   const [groupChatsError, setGroupChatsError] = useState<string | null>(null);
@@ -384,7 +408,21 @@ export default function DmInboxPage() {
     () => new Set(),
   );
   const [unreadEventChatIds, setUnreadEventChatIds] = useState<Set<string>>(() => new Set());
-  const [activeTab, setActiveTab] = useState<InboxTab>("dm");
+  const [activeTab, setActiveTab] = useState<InboxTab>(() =>
+    parseInboxTab(searchParams.get("tab")),
+  );
+
+  const selectInboxTab = useCallback(
+    (tab: InboxTab) => {
+      setActiveTab(tab);
+      router.replace(tab === "group" ? "/dm?tab=group" : "/dm", { scroll: false });
+    },
+    [router],
+  );
+
+  useEffect(() => {
+    setActiveTab(parseInboxTab(searchParams.get("tab")));
+  }, [searchParams]);
 
   const loadGroupChats = useCallback(async () => {
     setGroupChatsLoading(true);
@@ -768,13 +806,13 @@ export default function DmInboxPage() {
               active={activeTab === "dm"}
               label="Direct Messages"
               unreadCount={dmUnreadCount}
-              onClick={() => setActiveTab("dm")}
+              onClick={() => selectInboxTab("dm")}
             />
             <InboxTabButton
               active={activeTab === "group"}
               label="Group Chats"
               unreadCount={groupUnreadCount}
-              onClick={() => setActiveTab("group")}
+              onClick={() => selectInboxTab("group")}
             />
           </div>
         </header>

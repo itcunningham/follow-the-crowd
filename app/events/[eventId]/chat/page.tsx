@@ -45,7 +45,11 @@ export default function EventCrewChatPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const eventId = params.eventId;
-  const backHref = getEventCrewChatBackHref(eventId, searchParams.get("from"));
+  const backHref = getEventCrewChatBackHref(
+    eventId,
+    searchParams.get("from"),
+    searchParams.get("tab"),
+  );
 
   type EventCrewChatMessageWithScrollMeta = EventCrewChatMessage & {
     _clientScrollMeta?: {
