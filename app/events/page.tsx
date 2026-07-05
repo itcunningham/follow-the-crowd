@@ -10,7 +10,6 @@ import PlannerEventsSubNav from "@/app/components/PlannerEventsSubNav";
 import {
   PlannerBackLink,
   PlannerEmptyState,
-  PlannerFilterPills,
   PlannerFormCard,
   PlannerFormField,
   PlannerInlineError,
@@ -48,7 +47,6 @@ import {
 import {
   buildEventDetailHref,
   buildEventsListHref,
-  eventsListTabFromView,
   eventsListViewFromTab,
   parseEventsListTab,
   type EventsListView,
@@ -111,28 +109,11 @@ function EventsPageContent() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [eventDateOverride, setEventDateOverride] = useState<string | null>(null);
-  const urlTab = parseEventsListTab(searchParams.get("tab"));
-  const [listView, setListView] = useState<EventsListView>(() => eventsListViewFromTab(urlTab));
+  const tabParam = searchParams.get("tab");
+  const listTab = parseEventsListTab(tabParam);
+  const listView = eventsListViewFromTab(listTab);
 
   const isPlanner = canManageEvents(role);
-  const activeListTab = eventsListTabFromView(listView);
-
-  useEffect(() => {
-    const tab = parseEventsListTab(searchParams.get("tab"));
-    console.log("[events nav] current tab", tab);
-    setListView(eventsListViewFromTab(tab));
-  }, [searchParams]);
-
-  function handleListViewChange(nextView: EventsListView) {
-    if (nextView === listView) {
-      return;
-    }
-
-    const nextTab = eventsListTabFromView(nextView);
-    console.log("[events nav] current tab", nextTab);
-    setListView(nextView);
-    router.push(buildEventsListHref(nextTab), { scroll: false });
-  }
 
   const filteredEvents = useMemo(() => {
     if (listView === "cancelled") {
@@ -503,42 +484,59 @@ function EventsPageContent() {
             <p className="text-sm text-ftc-text-muted">Loading events...</p>
           ) : error && events.length === 0 ? (
             <PlannerInlineError message={error} />
-          ) : events.length === 0 ? (
-            <PlannerEmptyState
-              title={
-                isPlanner
-                  ? "No events yet. Create your first event."
-                  : "No event invitations yet."
-              }
-              action={
-                isPlanner && !createOpen ? (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      void openCreateFlow();
-                    }}
-                    className="ftc-btn-primary px-5 py-3 text-sm uppercase tracking-wide"
-                  >
-                    Create event
-                  </button>
-                ) : undefined
-              }
-            />
           ) : (
             <>
-              <div className="mb-4">
-                <PlannerFilterPills
-                  options={
+              {!createOpen ? (
+                <div className="mb-4 flex flex-wrap gap-2">
+                  {(
                     [
-                      { value: "active", label: isPlanner ? "Active" : "Upcoming" },
-                      { value: "cancelled", label: "History" },
+                      { view: "active" as const, label: isPlanner ? "Active" : "Upcoming" },
+                      { view: "cancelled" as const, label: "History" },
                     ] as const
+                  ).map((option) => {
+                    const href = buildEventsListHref(
+                      option.view === "cancelled" ? "history" : "active",
+                    );
+                    const isActive = listView === option.view;
+
+                    return (
+                      <Link
+                        key={option.view}
+                        href={href}
+                        scroll={false}
+                        className={`ftc-filter-pill ${isActive ? "ftc-filter-pill-active" : ""}`}
+                      >
+                        {option.label}
+                      </Link>
+                    );
+                  })}
+                </div>
+              ) : null}
+
+              {events.length === 0 ? (
+                <PlannerEmptyState
+                  title={
+                    listView === "cancelled"
+                      ? "No cancelled events."
+                      : isPlanner
+                        ? "No events yet. Create your first event."
+                        : "No event invitations yet."
                   }
-                  value={listView}
-                  onChange={handleListViewChange}
+                  action={
+                    isPlanner && !createOpen && listView === "active" ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          void openCreateFlow();
+                        }}
+                        className="ftc-btn-primary px-5 py-3 text-sm uppercase tracking-wide"
+                      >
+                        Create event
+                      </button>
+                    ) : undefined
+                  }
                 />
-              </div>
-              {filteredEvents.length === 0 ? (
+              ) : filteredEvents.length === 0 ? (
                 <PlannerEmptyState
                   title={
                     listView === "cancelled"
@@ -550,15 +548,12 @@ function EventsPageContent() {
             <ul className="space-y-3">
               {filteredEvents.map((event) => {
                 const cancelled = isEventCancelled(event);
-                const eventHref = buildEventDetailHref(event.id, activeListTab);
+                const eventHref = buildEventDetailHref(event.id, listTab);
 
                 return (
                 <li key={event.id}>
                   <Link
                     href={eventHref}
-                    onClick={() => {
-                      console.log("[events nav] event href", eventHref);
-                    }}
                     className={`ftc-card block p-4 transition hover:border-ftc-border-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ftc-primary/35 sm:p-5 ${
                       cancelled ? "ftc-event-card-cancelled" : ""
                     }`}
