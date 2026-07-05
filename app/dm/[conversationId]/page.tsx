@@ -16,6 +16,7 @@ import OnboardingGuard from "@/app/components/OnboardingGuard";
 import ProfileAvatar from "@/app/components/ProfileAvatar";
 import {
   buildDmCancelledBookingMatchContext,
+  cancelAcceptedBookingRequest,
   cancelBookingRequest,
   CANCELLED_BOOKING_DM_SYSTEM_MESSAGE,
   evaluateDmBookingCardVisibility,
@@ -65,7 +66,9 @@ import {
 import { submitDmMessageReport, type DmReportReason } from "@/lib/userReports";
 import {
   getCurrentUserId,
+  getBookingRecipientProfilesByIds,
   getUserAvatarProfilesByIds,
+  type BookingRecipientProfile,
   type UserAvatarProfile,
 } from "@/lib/user/currentUser";
 
@@ -156,6 +159,24 @@ export default function DmChatPage() {
 
   const conversationTitle = getConversationTitle(otherUserProfile, otherUserId);
   const otherUserLabel = otherUserProfile?.display_name?.trim() || otherUserId || "DM";
+  const bookingProfiles = useMemo(() => {
+    if (!otherUserId || !otherUserProfile) {
+      return new Map<string, BookingRecipientProfile>();
+    }
+
+    return new Map<string, BookingRecipientProfile>([
+      [
+        otherUserId,
+        {
+          user_id: otherUserId,
+          display_name: otherUserProfile.display_name,
+          avatar_url: otherUserProfile.avatar_url,
+          genre: null,
+          role: "dj",
+        },
+      ],
+    ]);
+  }, [otherUserId, otherUserProfile]);
   const blockBannerMessage = useMemo(
     () => getDmBlockBannerMessage(blockStatus, otherUserLabel),
     [blockStatus, otherUserLabel],
@@ -896,6 +917,45 @@ export default function DmChatPage() {
     }
   }
 
+  async function handleCancelAcceptedBooking(
+    booking: BookingRequest,
+    message: Message,
+    reason: string,
+  ) {
+    if (respondingBookingId || cancellingBookingId) {
+      return;
+    }
+
+    setCancellingBookingId(booking.id);
+    setError(null);
+
+    try {
+      const profileMap = await getBookingRecipientProfilesByIds([booking.recipient_id]);
+      const djDisplayName =
+        profileMap.get(booking.recipient_id)?.display_name?.trim() || "DJ";
+      const updatedBooking = await cancelAcceptedBookingRequest(booking, reason, djDisplayName);
+      const updatedMessageText = buildUpdatedBookingMessage(updatedBooking, "cancelled");
+
+      setBookings((prev) =>
+        prev.map((item) => (item.id === updatedBooking.id ? updatedBooking : item)),
+      );
+
+      setMessages((prev) =>
+        prev.map((item) =>
+          item.id === message.id ? { ...item, text: updatedMessageText } : item,
+        ),
+      );
+
+      await supabase.from("messages").update({ text: updatedMessageText }).eq("id", message.id);
+      await reloadConversationBookings();
+    } catch (cancelError) {
+      console.error("Failed to cancel accepted booking:", cancelError);
+      setError(getBookingMutationErrorMessage(cancelError));
+    } finally {
+      setCancellingBookingId(null);
+    }
+  }
+
   async function handleBlockUser() {
     if (!otherUserId || blockActionLoading) {
       return;
@@ -1182,6 +1242,7 @@ export default function DmChatPage() {
                             canRespond={canRespond && Boolean(resolvedBooking.id)}
                             responding={respondingBookingId === resolvedBooking.id}
                             cancelling={cancellingBookingId === resolvedBooking.id}
+                            profiles={bookingProfiles}
                             coverImageUrl={
                               resolvedBooking.event_id
                                 ? eventArtworkById.get(resolvedBooking.event_id)?.coverImageUrl
@@ -1199,6 +1260,9 @@ export default function DmChatPage() {
                               handleBookingResponse(resolvedBooking, message, "declined")
                             }
                             onCancel={() => handleBookingCancel(resolvedBooking, message)}
+                            onCancelAccepted={(reason) =>
+                              handleCancelAcceptedBooking(resolvedBooking, message, reason)
+                            }
                           />
                         </div>
                         <time

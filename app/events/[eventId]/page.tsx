@@ -49,10 +49,15 @@ import {
 } from "@/lib/djAvailability";
 import BookingStatusBadge from "@/app/components/booking/BookingStatusBadge";
 import CancelBookingRequestButton from "@/app/components/CancelBookingRequestButton";
+import CancelAcceptedBookingButton from "@/app/components/booking/CancelAcceptedBookingButton";
 import HideDeclinedBookingButton from "@/app/components/HideDeclinedBookingButton";
 import {
   cancelBookingRequest,
+  cancelAcceptedBookingRequest,
   canCancelBookingRequest,
+  getAcceptedBookingCancellationRole,
+  resolveBookingCancellationReasonLabel,
+  resolveBookingCancelledByLabel,
   ALL_SELECTED_DJS_ALREADY_HAVE_EVENT_REQUEST_MESSAGE,
   buildBookingSendResultMessage,
   buildEventBookingDuplicateMap,
@@ -173,12 +178,14 @@ export default function EventDetailPage() {
   const lineupStats = useMemo(() => getActiveEventLineupStats(lineup), [lineup]);
 
   const filteredLineup = useMemo(() => {
+    const base = lineupFilter === "all" ? visibleLineup : activeLineup;
+
     if (lineupFilter === "all") {
-      return activeLineup;
+      return base;
     }
 
-    return activeLineup.filter((booking) => booking.status === lineupFilter);
-  }, [activeLineup, lineupFilter]);
+    return base.filter((booking) => booking.status === lineupFilter);
+  }, [activeLineup, lineupFilter, visibleLineup]);
 
   const filteredDjs = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
@@ -602,6 +609,28 @@ export default function EventDetailPage() {
     }
   }
 
+  async function handleCancelAcceptedBooking(booking: BookingRequest, reason: string) {
+    setCancellingBookingId(booking.id);
+    setError(null);
+
+    try {
+      const profile = profiles.get(booking.recipient_id);
+      const djDisplayName = profile?.display_name?.trim() || "DJ";
+      await cancelAcceptedBookingRequest(booking, reason, djDisplayName);
+      await reloadEventLineup();
+      setSuccessMessage(
+        booking.sender_id === currentUserId
+          ? "Booking cancelled."
+          : "You withdrew from this event.",
+      );
+    } catch (cancelError) {
+      console.error("Failed to cancel accepted booking:", cancelError);
+      setError(getBookingMutationErrorMessage(cancelError));
+    } finally {
+      setCancellingBookingId(null);
+    }
+  }
+
   async function handleHideFromLineup(bookingId: string) {
     setHidingBookingId(bookingId);
     setError(null);
@@ -657,9 +686,9 @@ export default function EventDetailPage() {
   const viewerBooking = useMemo(
     () =>
       currentUserId
-        ? activeLineup.find((booking) => booking.recipient_id === currentUserId) ?? null
+        ? visibleLineup.find((booking) => booking.recipient_id === currentUserId) ?? null
         : null,
-    [activeLineup, currentUserId],
+    [visibleLineup, currentUserId],
   );
 
   const showStickyActions = !editOpen && !sendOpen;
@@ -988,15 +1017,38 @@ export default function EventDetailPage() {
                     Set time {viewerBooking.set_time || "TBC"}
                     {viewerBooking.fee ? ` · ${formatRateDisplay(viewerBooking.fee)}` : ""}
                   </p>
+                  {viewerBooking.status === "cancelled" ? (
+                    <>
+                      {resolveBookingCancelledByLabel(viewerBooking, profiles) ? (
+                        <p className="mt-2 text-sm text-ftc-text-muted">
+                          Cancelled by {resolveBookingCancelledByLabel(viewerBooking, profiles)}
+                        </p>
+                      ) : null}
+                      {resolveBookingCancellationReasonLabel(viewerBooking) ? (
+                        <p className="text-sm text-ftc-text-muted">
+                          Reason: {resolveBookingCancellationReasonLabel(viewerBooking)}
+                        </p>
+                      ) : null}
+                    </>
+                  ) : null}
                 </div>
-                {viewerBooking.conversation_id ? (
-                  <Link
-                    href={`/dm/${viewerBooking.conversation_id}`}
-                    className="ftc-btn-secondary px-4 py-2.5 text-xs uppercase tracking-wide"
-                  >
-                    Open DM
-                  </Link>
-                ) : null}
+                <div className="flex flex-col items-stretch gap-2 sm:items-end">
+                  {getAcceptedBookingCancellationRole(viewerBooking, currentUserId) === "dj" ? (
+                    <CancelAcceptedBookingButton
+                      role="dj"
+                      loading={cancellingBookingId === viewerBooking.id}
+                      onConfirm={(reason) => handleCancelAcceptedBooking(viewerBooking, reason)}
+                    />
+                  ) : null}
+                  {viewerBooking.conversation_id ? (
+                    <Link
+                      href={`/dm/${viewerBooking.conversation_id}`}
+                      className="ftc-btn-secondary px-4 py-2.5 text-xs uppercase tracking-wide"
+                    >
+                      Open DM
+                    </Link>
+                  ) : null}
+                </div>
               </div>
             </section>
           ) : null}
@@ -1033,6 +1085,12 @@ export default function EventDetailPage() {
                   {filteredLineup.map((booking) => {
                     const profile = profiles.get(booking.recipient_id);
                     const displayName = profile?.display_name?.trim() || "DJ";
+                    const cancelledByLabel = resolveBookingCancelledByLabel(booking, profiles);
+                    const cancellationReasonLabel = resolveBookingCancellationReasonLabel(booking);
+                    const acceptedCancellationRole = getAcceptedBookingCancellationRole(
+                      booking,
+                      currentUserId,
+                    );
                     const canHideFromLineup =
                       isOwner &&
                       isPlanner &&
@@ -1068,6 +1126,16 @@ export default function EventDetailPage() {
                             <div className="mt-2">
                               <BookingStatusBadge status={booking.status} />
                             </div>
+                            {cancelledByLabel ? (
+                              <p className="mt-2 text-xs text-ftc-text-muted">
+                                Cancelled by {cancelledByLabel}
+                              </p>
+                            ) : null}
+                            {cancellationReasonLabel ? (
+                              <p className="text-xs text-ftc-text-muted">
+                                Reason: {cancellationReasonLabel}
+                              </p>
+                            ) : null}
                           </div>
                         </div>
 
@@ -1076,6 +1144,13 @@ export default function EventDetailPage() {
                             <CancelBookingRequestButton
                               loading={cancellingBookingId === booking.id}
                               onConfirm={() => handleCancelBooking(booking.id)}
+                            />
+                          ) : null}
+                          {acceptedCancellationRole === "planner" ? (
+                            <CancelAcceptedBookingButton
+                              role="planner"
+                              loading={cancellingBookingId === booking.id}
+                              onConfirm={(reason) => handleCancelAcceptedBooking(booking, reason)}
                             />
                           ) : null}
                           <Link

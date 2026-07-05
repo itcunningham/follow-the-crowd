@@ -20,6 +20,7 @@ Update this file after major features ship.
 - Edit with confirmation when booking-impacting fields change + group chat update message
 - Run sheet is the single planner view for assigned DJs (avatar, name, stage, set time, notes)
 - Run sheet rows are created automatically when a DJ accepts; no manual add/delete rows
+- Accepted bookings can be cancelled by planner or withdrawn by DJ with reason + group chat update
 - Event detail no longer has a separate Lineup section (run sheet replaces it for crew)
 - Booking cards in DMs show **live** event fields from `events` table when `event_id` set
 

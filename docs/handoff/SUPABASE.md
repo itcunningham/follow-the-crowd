@@ -8,6 +8,7 @@ Isaac runs these manually in **Supabase SQL Editor**. Cursor creates/updates fil
 |-----------------|--------|
 | Events table missing | `scripts/setupEvents.sql` |
 | Booking requests | `scripts/setupBookingRequests.sql` |
+| Accepted booking cancellation | `scripts/setupAcceptedBookingCancellation.sql` |
 | Event cover image column | `scripts/setupEventCoverImage.sql` |
 | Event covers storage | `scripts/setupEventCoversStorage.sql` |
 | Event fallback colour column | `scripts/setupEventFallbackColour.sql` |

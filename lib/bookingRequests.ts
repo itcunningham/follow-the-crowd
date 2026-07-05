@@ -10,7 +10,8 @@ import {
   FTC_STATUS_SUCCESS,
   FTC_STATUS_WARNING,
 } from "@/lib/ftcFlatStatus";
-import { getCurrentUserId } from "@/lib/user/currentUser";
+import { getCurrentUserId, type BookingRecipientProfile } from "@/lib/user/currentUser";
+import { postBookingCancellationGroupChatUpdate } from "@/lib/events/bookingCancellation";
 
 export type BookingRequestStatus = "pending" | "accepted" | "declined" | "cancelled";
 
@@ -73,7 +74,26 @@ export type BookingRequest = {
   status: BookingRequestStatus;
   archived_at: string | null;
   lineup_hidden_at: string | null;
+  cancelled_at: string | null;
+  cancelled_by: string | null;
+  cancellation_reason: string | null;
 };
+
+export type AcceptedBookingCancellationRole = "planner" | "dj";
+
+export const PLANNER_CANCELLATION_REASONS = [
+  "Lineup change",
+  "Event changes",
+  "Booking made in error",
+  "Other",
+] as const;
+
+export const DJ_WITHDRAWAL_REASONS = [
+  "Unavailable",
+  "Illness",
+  "Scheduling conflict",
+  "Other",
+] as const;
 
 function formatStatusLabel(status: BookingRequestStatus): string {
   if (status === "accepted") {
@@ -89,6 +109,64 @@ function formatStatusLabel(status: BookingRequestStatus): string {
   }
 
   return "Pending";
+}
+
+export function getAcceptedBookingCancellationRole(
+  booking: BookingRequest,
+  currentUserId: string | null,
+): AcceptedBookingCancellationRole | null {
+  if (!currentUserId || booking.status !== "accepted") {
+    return null;
+  }
+
+  if (booking.sender_id === currentUserId) {
+    return "planner";
+  }
+
+  if (booking.recipient_id === currentUserId) {
+    return "dj";
+  }
+
+  return null;
+}
+
+export function formatPublicCancellationReason(reason: string): string {
+  const trimmed = reason.trim();
+
+  if (trimmed === "Illness") {
+    return "Unavailable";
+  }
+
+  return trimmed;
+}
+
+export function resolveBookingCancellationReasonLabel(
+  booking: BookingRequest,
+): string | null {
+  if (booking.status !== "cancelled" || !booking.cancellation_reason?.trim()) {
+    return null;
+  }
+
+  return formatPublicCancellationReason(booking.cancellation_reason);
+}
+
+export function resolveBookingCancelledByLabel(
+  booking: BookingRequest,
+  profiles: Map<string, BookingRecipientProfile>,
+): string | null {
+  if (booking.status !== "cancelled" || !booking.cancelled_by?.trim()) {
+    return null;
+  }
+
+  if (booking.cancelled_by === booking.sender_id) {
+    return "Planner";
+  }
+
+  if (booking.cancelled_by === booking.recipient_id) {
+    return profiles.get(booking.recipient_id)?.display_name?.trim() || "DJ";
+  }
+
+  return profiles.get(booking.cancelled_by)?.display_name?.trim() || "Member";
 }
 
 export function canCancelBookingRequest(
@@ -208,6 +286,10 @@ export function normalizeBookingRequest(row: unknown): BookingRequest | null {
     archived_at: typeof record.archived_at === "string" ? record.archived_at : null,
     lineup_hidden_at:
       typeof record.lineup_hidden_at === "string" ? record.lineup_hidden_at : null,
+    cancelled_at: typeof record.cancelled_at === "string" ? record.cancelled_at : null,
+    cancelled_by: typeof record.cancelled_by === "string" ? record.cancelled_by : null,
+    cancellation_reason:
+      typeof record.cancellation_reason === "string" ? record.cancellation_reason : null,
   };
 }
 
@@ -292,6 +374,16 @@ export function formatBookingRequestMessage(booking: BookingRequest): string {
     `Notes: ${booking.notes || "None"}`,
     `Status: ${formatStatusLabel(booking.status)}`,
   ];
+
+  if (booking.status === "cancelled") {
+    if (booking.cancelled_by) {
+      lines.push(`Cancelled by: ${booking.cancelled_by}`);
+    }
+
+    if (booking.cancellation_reason?.trim()) {
+      lines.push(`Cancellation reason: ${booking.cancellation_reason.trim()}`);
+    }
+  }
 
   return lines.join("\n");
 }
@@ -515,8 +607,7 @@ export function evaluateDmBookingCardVisibility(
   const liveBooking = resolveLiveBookingForDmMessage(messageText, bookings, conversationId);
   const matchedBooking = cancelledMatch ?? liveBooking;
   const hideCard =
-    Boolean(cancelledMatch) ||
-    shouldShowCancelledBookingDmSystemMessage(liveBooking, messageText);
+    !matchedBooking && shouldShowCancelledBookingDmSystemMessage(liveBooking, messageText);
 
   return {
     hideCard,
@@ -765,7 +856,7 @@ export async function sendBookingRequestToDj(
 }
 
 const BOOKING_REQUEST_FIELDS =
-  "id, created_at, sender_id, recipient_id, conversation_id, event_id, event_name, venue, event_date, set_time, fee, notes, status, archived_at, lineup_hidden_at";
+  "id, created_at, sender_id, recipient_id, conversation_id, event_id, event_name, venue, event_date, set_time, fee, notes, status, archived_at, lineup_hidden_at, cancelled_at, cancelled_by, cancellation_reason";
 
 export function getEventLineupStats(bookings: BookingRequest[]): BookingCampaignStats {
   return bookings.reduce(
@@ -1175,9 +1266,14 @@ export async function sendBookingRequestsToDjs(
   return { conversationIds, successes, failures, skippedDuplicateRecipientIds };
 }
 
-export async function cancelBookingRequest(bookingId: string): Promise<BookingRequest> {
+export async function cancelBookingRequest(
+  bookingId: string,
+  options?: { reason?: string; previousStatus?: BookingRequestStatus },
+): Promise<BookingRequest> {
+  const trimmedReason = options?.reason?.trim() || null;
   const { data, error } = await supabase.rpc("cancel_booking_request", {
     p_booking_id: bookingId,
+    p_cancellation_reason: trimmedReason,
   });
 
   if (error) {
@@ -1187,7 +1283,7 @@ export async function cancelBookingRequest(bookingId: string): Promise<BookingRe
 
   if (!data) {
     throw new Error(
-      "Could not cancel this booking request. Run scripts/setupBookingCancellation.sql in Supabase.",
+      "Could not cancel this booking request. Run scripts/setupAcceptedBookingCancellation.sql in Supabase.",
     );
   }
 
@@ -1203,15 +1299,44 @@ export async function cancelBookingRequest(bookingId: string): Promise<BookingRe
     throw new Error("Cancelled booking status was not returned correctly.");
   }
 
+  const notifyUserId =
+    booking.cancelled_by === booking.recipient_id
+      ? booking.sender_id
+      : booking.recipient_id;
+  const wasAccepted = options?.previousStatus === "accepted";
+  const notificationTitle = wasAccepted
+    ? booking.cancelled_by === booking.recipient_id
+      ? "DJ withdrew from event"
+      : "Booking cancelled"
+    : "Booking request cancelled";
+  const notificationBody = `${booking.event_name} at ${booking.venue}`;
+
   await createNotification(
-    booking.recipient_id,
+    notifyUserId,
     "booking_update",
-    "Booking request cancelled",
-    `${booking.event_name} at ${booking.venue}`,
+    notificationTitle,
+    notificationBody,
     `/dm/${booking.conversation_id}`,
   );
 
   return booking;
+}
+
+export async function cancelAcceptedBookingRequest(
+  booking: BookingRequest,
+  reason: string,
+  djDisplayName: string,
+): Promise<BookingRequest> {
+  const cancelledBooking = await cancelBookingRequest(booking.id, {
+    reason,
+    previousStatus: "accepted",
+  });
+
+  if (cancelledBooking.event_id) {
+    await postBookingCancellationGroupChatUpdate(cancelledBooking, djDisplayName);
+  }
+
+  return cancelledBooking;
 }
 
 async function mutateArchivedBookingRequest(
@@ -1469,5 +1594,8 @@ export function mergeBookingWithMessage(
     status: normalizeBookingRequestStatus(parsed.status ?? "pending"),
     archived_at: null,
     lineup_hidden_at: null,
+    cancelled_at: null,
+    cancelled_by: null,
+    cancellation_reason: null,
   };
 }

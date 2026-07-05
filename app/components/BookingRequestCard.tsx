@@ -3,16 +3,21 @@
 import Link from "next/link";
 import BookingDetailGrid, { BookingDetailItem } from "@/app/components/booking/BookingDetailGrid";
 import BookingStatusBadge from "@/app/components/booking/BookingStatusBadge";
+import CancelAcceptedBookingButton from "@/app/components/booking/CancelAcceptedBookingButton";
 import { EventCoverImageContextThumb } from "@/app/components/events/EventCoverImageDisplay";
 import CancelBookingRequestButton from "@/app/components/CancelBookingRequestButton";
 import {
   canCancelBookingRequest,
   formatBookingRequestMessage,
+  getAcceptedBookingCancellationRole,
   getBookingGroupChatAccess,
+  resolveBookingCancellationReasonLabel,
+  resolveBookingCancelledByLabel,
   type BookingRequest,
   type BookingRequestStatus,
 } from "@/lib/bookingRequests";
 import { formatRateDisplay } from "@/lib/bookingRate";
+import type { BookingRecipientProfile } from "@/lib/user/currentUser";
 
 export default function BookingRequestCard({
   booking,
@@ -22,9 +27,11 @@ export default function BookingRequestCard({
   cancelling,
   coverImageUrl,
   fallbackColour,
+  profiles = new Map(),
   onAccept,
   onDecline,
   onCancel,
+  onCancelAccepted,
 }: {
   booking: BookingRequest;
   currentUserId: string | null;
@@ -33,16 +40,19 @@ export default function BookingRequestCard({
   cancelling?: boolean;
   coverImageUrl?: string | null;
   fallbackColour?: string | null;
+  profiles?: Map<string, BookingRecipientProfile>;
   onAccept: () => void;
   onDecline: () => void;
   onCancel?: () => void | Promise<void>;
+  onCancelAccepted?: (reason: string) => void | Promise<void>;
 }) {
   const groupChatAccess = getBookingGroupChatAccess(booking, currentUserId);
-  const showCancel = canCancelBookingRequest(booking, currentUserId) && onCancel;
-
-  if (booking.status?.toLowerCase() === "cancelled") {
-    return null;
-  }
+  const showPendingCancel = canCancelBookingRequest(booking, currentUserId) && onCancel;
+  const acceptedCancellationRole = getAcceptedBookingCancellationRole(booking, currentUserId);
+  const showAcceptedCancel = acceptedCancellationRole && onCancelAccepted;
+  const cancelledByLabel = resolveBookingCancelledByLabel(booking, profiles);
+  const cancellationReasonLabel = resolveBookingCancellationReasonLabel(booking);
+  const isCancelled = booking.status === "cancelled";
 
   return (
     <div className="w-full max-w-sm rounded-2xl border border-ftc-border-subtle bg-ftc-surface p-4">
@@ -70,10 +80,16 @@ export default function BookingRequestCard({
           <BookingDetailItem label="Set time" value={booking.set_time} />
           <BookingDetailItem label="Rate" value={formatRateDisplay(booking.fee)} />
           {booking.notes ? <BookingDetailItem label="Notes" value={booking.notes} /> : null}
+          {cancelledByLabel ? (
+            <BookingDetailItem label="Cancelled by" value={cancelledByLabel} />
+          ) : null}
+          {cancellationReasonLabel ? (
+            <BookingDetailItem label="Reason" value={cancellationReasonLabel} />
+          ) : null}
         </BookingDetailGrid>
       </div>
 
-      {booking.event_id ? (
+      {booking.event_id && !isCancelled ? (
         <>
           <Link
             href={`/events/${booking.event_id}`}
@@ -125,11 +141,21 @@ export default function BookingRequestCard({
         </div>
       ) : null}
 
-      {showCancel ? (
+      {showPendingCancel ? (
         <div className="mt-4">
           <CancelBookingRequestButton
             loading={Boolean(cancelling)}
             onConfirm={onCancel}
+          />
+        </div>
+      ) : null}
+
+      {showAcceptedCancel ? (
+        <div className="mt-4">
+          <CancelAcceptedBookingButton
+            role={acceptedCancellationRole}
+            loading={Boolean(cancelling)}
+            onConfirm={onCancelAccepted}
           />
         </div>
       ) : null}
