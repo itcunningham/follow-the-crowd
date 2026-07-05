@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import AppNavigation, { MOBILE_NAV_OFFSET_CLASS } from "@/app/components/AppNavigation";
@@ -9,7 +10,6 @@ import MessagesInboxRow, {
   MessagesGroupInboxRow,
 } from "@/app/components/dm/MessagesInboxRow";
 import MessagesInboxSearchBar from "@/app/components/dm/MessagesInboxSearchBar";
-import ProfileAvatar from "@/app/components/ProfileAvatar";
 import {
   applyInboxGroupMessage,
   extractGroupChatTargetId,
@@ -34,15 +34,13 @@ import {
   type LatestChatMessage,
 } from "@/lib/messageReads";
 import { supabase } from "@/lib/supabaseClient";
-import { startDm } from "@/lib/startDm";
 import {
+  DISCOVER_PATH,
   getCurrentUserId,
   getCurrentUserProfile,
   getUserAvatarProfilesByIds,
   type UserAvatarProfile,
 } from "@/lib/user/currentUser";
-
-const TARGET_DJ_USER_ID = "test-user";
 
 type InboxTab = "dm" | "group";
 
@@ -173,63 +171,36 @@ function getConversationDisplayName(
   return "Direct message";
 }
 
-function ConversationAvatar({
-  label,
-  avatarUrl,
-}: {
-  label: string;
-  avatarUrl?: string | null;
-}) {
-  return <ProfileAvatar name={label} avatarUrl={avatarUrl} size="lg" className="h-12 w-12" />;
-}
-
-function MessageDjButton({
-  disabled,
-  onClick,
-  className = "",
-}: {
-  disabled: boolean;
-  onClick: () => void;
-  className?: string;
-}) {
+function DirectMessagesEmptyIcon() {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      className={`ftc-btn-primary px-5 py-3 text-sm uppercase tracking-wide disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
-    >
-      {disabled ? "Opening..." : "Message DJ"}
-    </button>
+    <div className="flex h-12 w-12 items-center justify-center rounded-2xl border-0 bg-ftc-primary text-xs font-semibold uppercase tracking-wide text-ftc-bg">
+      DM
+    </div>
   );
 }
 
-function DirectMessagesEmptyState({
-  startingDm,
-  startDmError,
-  onMessageDj,
-  compact = false,
-}: {
-  startingDm: boolean;
-  startDmError: string | null;
-  onMessageDj: () => void;
-  compact?: boolean;
-}) {
+function BrowseDiscoverButton({ className = "" }: { className?: string }) {
+  return (
+    <Link
+      href={DISCOVER_PATH}
+      className={`ftc-btn-primary inline-flex px-5 py-3 text-sm uppercase tracking-wide ${className}`}
+    >
+      Browse Discover
+    </Link>
+  );
+}
+
+function DirectMessagesEmptyState({ compact = false }: { compact?: boolean }) {
   if (compact) {
     return (
       <div className="px-4 py-6 sm:px-6">
         <div className="rounded-xl border border-ftc-border bg-ftc-surface/30 px-4 py-5 text-center">
-          <ConversationAvatar label={TARGET_DJ_USER_ID} />
+          <DirectMessagesEmptyIcon />
           <h3 className="mt-4 text-base font-semibold text-ftc-text">No messages yet</h3>
           <p className="mt-2 text-sm leading-relaxed text-ftc-text-muted">
-            Start a conversation with a DJ or promoter.
+            Find a DJ or promoter on Discover to start a conversation.
           </p>
-          <MessageDjButton
-            disabled={startingDm}
-            onClick={onMessageDj}
-            className="mt-4 w-full max-w-xs sm:w-auto"
-          />
-          {startDmError ? <p className="mt-3 text-sm text-red-400">{startDmError}</p> : null}
+          <BrowseDiscoverButton className="mt-4 w-full max-w-xs sm:w-auto" />
         </div>
       </div>
     );
@@ -237,17 +208,12 @@ function DirectMessagesEmptyState({
 
   return (
     <div className="flex flex-col items-center justify-center px-6 py-16 text-center sm:py-24">
-      <ConversationAvatar label={TARGET_DJ_USER_ID} />
+      <DirectMessagesEmptyIcon />
       <h2 className="mt-5 text-lg font-semibold text-ftc-text">No messages yet</h2>
       <p className="mt-2 max-w-sm text-sm leading-relaxed text-ftc-text-muted">
-        Start a conversation with a DJ or promoter. Your chats will appear here.
+        Find a DJ or promoter on Discover to start a conversation. Your chats will appear here.
       </p>
-      <MessageDjButton
-        disabled={startingDm}
-        onClick={onMessageDj}
-        className="mt-6 w-full max-w-xs sm:w-auto"
-      />
-      {startDmError ? <p className="mt-3 text-sm text-red-400">{startDmError}</p> : null}
+      <BrowseDiscoverButton className="mt-6 w-full max-w-xs sm:w-auto" />
     </div>
   );
 }
@@ -284,8 +250,6 @@ function DmInboxPageContent() {
   const [userProfiles, setUserProfiles] = useState<Map<string, UserAvatarProfile>>(new Map());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [startDmError, setStartDmError] = useState<string | null>(null);
-  const [startingDm, setStartingDm] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [unreadConversationIds, setUnreadConversationIds] = useState<Set<string>>(
@@ -593,24 +557,6 @@ function DmInboxPageContent() {
     router.push(`/dm/${conversationId}`);
   }
 
-  async function handleMessageDj() {
-    setStartingDm(true);
-    setStartDmError(null);
-
-    try {
-      const userId = await getCurrentUserId();
-      const conversationId = await startDm(userId, TARGET_DJ_USER_ID);
-      router.push(`/dm/${conversationId}`);
-    } catch (startError) {
-      console.error("startDm failed:", startError);
-      setStartDmError(
-        startError instanceof Error ? startError.message : "Failed to start DM",
-      );
-    } finally {
-      setStartingDm(false);
-    }
-  }
-
   const hasDirectMessages = dmInboxRows.length > 0;
   const renderedGroupChats = sortGroupChatsByLatestActivity(groupChats);
   const dmUnreadCount = unreadConversationIds.size;
@@ -666,12 +612,8 @@ function DmInboxPageContent() {
         <header className="sticky top-0 z-10 border-b border-ftc-border-subtle bg-ftc-bg/95 px-4 py-3 backdrop-blur-md sm:px-6 md:top-12">
           <div className="flex items-center justify-between gap-3">
             <h1 className="text-xl font-bold tracking-tight text-ftc-text">Messages</h1>
-            <MessagesInboxComposeButton disabled={startingDm} onClick={handleMessageDj} />
+            <MessagesInboxComposeButton onClick={() => router.push(DISCOVER_PATH)} />
           </div>
-
-          {startDmError ? (
-            <p className="mt-2 text-sm text-red-400">{startDmError}</p>
-          ) : null}
 
           <div className="mt-3">
             <MessagesInboxSearchBar value={searchQuery} onChange={setSearchQuery} />
@@ -749,11 +691,7 @@ function DmInboxPageContent() {
               ) : error ? (
                 <p className="py-2 text-sm text-red-400">{error}</p>
               ) : !hasDirectMessages ? (
-                <DirectMessagesEmptyState
-                  startingDm={startingDm}
-                  startDmError={startDmError}
-                  onMessageDj={handleMessageDj}
-                />
+                <DirectMessagesEmptyState />
               ) : filteredDmRows.length === 0 ? (
                 <p className="py-8 text-center text-sm text-ftc-text-muted">
                   No conversations match your search.

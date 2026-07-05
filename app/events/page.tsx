@@ -399,19 +399,15 @@ export default function EventsPage() {
             <p className="text-sm text-ftc-text-muted">Loading events...</p>
           ) : error && events.length === 0 ? (
             <PlannerInlineError message={error} />
-          ) : filteredEvents.length === 0 ? (
+          ) : events.length === 0 ? (
             <PlannerEmptyState
               title={
-                events.length === 0
-                  ? isPlanner
-                    ? "No events yet. Create your first event."
-                    : "No event invitations yet."
-                  : listView === "cancelled"
-                    ? "No cancelled events."
-                    : "No active events."
+                isPlanner
+                  ? "No events yet. Create your first event."
+                  : "No event invitations yet."
               }
               action={
-                isPlanner && events.length === 0 && !createOpen ? (
+                isPlanner && !createOpen ? (
                   <button
                     type="button"
                     onClick={() => {
@@ -440,6 +436,15 @@ export default function EventsPage() {
                   />
                 </div>
               ) : null}
+              {filteredEvents.length === 0 ? (
+                <PlannerEmptyState
+                  title={
+                    listView === "cancelled"
+                      ? "No cancelled events."
+                      : "No active events."
+                  }
+                />
+              ) : (
             <ul className="space-y-3">
               {filteredEvents.map((event) => {
                 const cancelled = isEventCancelled(event);
@@ -488,6 +493,7 @@ export default function EventsPage() {
                 );
               })}
             </ul>
+              )}
             </>
           )}
         </div>

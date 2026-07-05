@@ -672,6 +672,10 @@ export function getBookingMutationErrorMessage(error: unknown): string {
       return "Cancelled status is not enabled yet. Run scripts/setupBookingCancellation.sql in Supabase.";
     }
 
+    if (supabaseError.code === "23505") {
+      return "This DJ already has an active booking request for this event.";
+    }
+
     if (supabaseError.code === "42501") {
       return "You do not have permission to cancel this booking request. Run scripts/setupBookingCancellation.sql in Supabase.";
     }
