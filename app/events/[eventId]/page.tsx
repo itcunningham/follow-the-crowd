@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import AppNavigation, { MOBILE_NAV_OFFSET_CLASS } from "@/app/components/AppNavigation";
 import EventDeleteCancelButton from "@/app/components/EventDeleteCancelButton";
@@ -28,6 +28,11 @@ import ProfileAvatar from "@/app/components/ProfileAvatar";
 import DjBookingAvailabilityBadge from "@/app/components/DjBookingAvailabilityBadge";
 import { BookingDateField, BookingSetTimeRangeField } from "@/app/components/BookingDateTimeFields";
 import { BookingRateField } from "@/app/components/BookingRateField";
+import EventCoverImageField, {
+  emptyEventCoverImageFieldState,
+  type EventCoverImageFieldState,
+} from "@/app/components/events/EventCoverImageField";
+import { EventCoverImageContextThumb } from "@/app/components/events/EventCoverImageDisplay";
 import { formatRateDisplay } from "@/lib/bookingRate";
 import EventBookingDuplicateBadge from "@/app/components/EventBookingDuplicateBadge";
 import UnavailableDjBookingConfirmModal from "@/app/components/UnavailableDjBookingConfirmModal";
@@ -65,9 +70,15 @@ import {
   getEventsLoadErrorMessage,
   isEventCancelled,
   updateEvent,
+  updateEventCoverImageUrl,
   type Event,
   type EventInput,
 } from "@/lib/events";
+import {
+  deleteEventCoverStorageObject,
+  getEventCoverUploadErrorMessage,
+  uploadEventCoverImage,
+} from "@/lib/events/eventCoverImage";
 import {
   canManageEvents,
   getBookingRecipientProfilesByIds,
@@ -89,6 +100,7 @@ const STATUS_FILTERS: { value: ActiveBookingStatusFilter; label: string }[] = [
 export default function EventDetailPage() {
   const params = useParams<{ eventId: string }>();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const eventId = params.eventId;
 
   const [role, setRole] = useState<UserRole | null>(null);
@@ -103,6 +115,11 @@ export default function EventDetailPage() {
 
   const [editOpen, setEditOpen] = useState(false);
   const [editForm, setEditForm] = useState<EventInput | null>(null);
+  const [editCoverField, setEditCoverField] = useState<EventCoverImageFieldState>(
+    emptyEventCoverImageFieldState,
+  );
+  const [editCoverPreviewUrl, setEditCoverPreviewUrl] = useState<string | null>(null);
+  const [editCoverError, setEditCoverError] = useState<string | null>(null);
   const [savingEdit, setSavingEdit] = useState(false);
 
   const [sendOpen, setSendOpen] = useState(false);
@@ -267,6 +284,15 @@ export default function EventDetailPage() {
     loadEventData();
   }, [loadEventData]);
 
+  function resetEditCoverState() {
+    setEditCoverField(emptyEventCoverImageFieldState);
+    if (editCoverPreviewUrl?.startsWith("blob:")) {
+      URL.revokeObjectURL(editCoverPreviewUrl);
+    }
+    setEditCoverPreviewUrl(null);
+    setEditCoverError(null);
+  }
+
   function openEditForm() {
     if (!event) {
       return;
@@ -281,8 +307,30 @@ export default function EventDetailPage() {
       notes: event.notes,
       bookingPlanId: event.booking_plan_id,
     });
+    resetEditCoverState();
     setEditOpen(true);
     setError(null);
+  }
+
+  async function applyEditCoverChanges(previousCoverUrl: string | null): Promise<string | null> {
+    if (!event) {
+      return previousCoverUrl;
+    }
+
+    if (editCoverField.removeExisting) {
+      await updateEventCoverImageUrl(event.id, null);
+      await deleteEventCoverStorageObject(previousCoverUrl);
+      return null;
+    }
+
+    if (editCoverField.file) {
+      const nextCoverUrl = await uploadEventCoverImage(event.id, editCoverField.file);
+      await updateEventCoverImageUrl(event.id, nextCoverUrl);
+      await deleteEventCoverStorageObject(previousCoverUrl);
+      return nextCoverUrl;
+    }
+
+    return previousCoverUrl;
   }
 
   async function handleSaveEdit(formEvent: React.FormEvent<HTMLFormElement>) {
@@ -306,10 +354,27 @@ export default function EventDetailPage() {
     setError(null);
 
     try {
+      const previousCoverUrl = event.cover_image_url;
       const updated = await updateEvent(event.id, editForm);
-      setEvent(updated);
+      let nextCoverUrl = previousCoverUrl;
+
+      try {
+        nextCoverUrl = await applyEditCoverChanges(previousCoverUrl);
+      } catch (coverError) {
+        console.error("Failed to update event cover image:", coverError);
+        setEvent(updated);
+        setEditOpen(false);
+        setEditForm(null);
+        resetEditCoverState();
+        setError(getEventCoverUploadErrorMessage(coverError));
+        setSuccessMessage("Event details saved, but the cover image could not be updated.");
+        return;
+      }
+
+      setEvent({ ...updated, cover_image_url: nextCoverUrl });
       setEditOpen(false);
       setEditForm(null);
+      resetEditCoverState();
       setSuccessMessage("Event updated");
     } catch (saveError) {
       console.error("Failed to update event:", saveError);
@@ -500,7 +565,7 @@ export default function EventDetailPage() {
     setError(null);
 
     try {
-      await deleteEmptyEvent(event.id);
+      await deleteEmptyEvent(event.id, event.cover_image_url);
       router.replace("/events");
     } catch (deleteError) {
       console.error("Failed to delete event:", deleteError);
@@ -582,6 +647,7 @@ export default function EventDetailPage() {
         <div className="relative">
           <EventDetailHero
             eventName={event.name}
+            coverImageUrl={event.cover_image_url}
             statusBadge={<EventDateStatusBadge eventDate={event.event_date} status={event.status} />}
           />
 
@@ -616,6 +682,12 @@ export default function EventDetailPage() {
         </div>
 
         <div className={`px-4 sm:px-6 ${showBottomBar ? "pb-28" : "pb-6"} pt-5`}>
+          {searchParams.get("coverUpload") === "failed" ? (
+            <p className="mb-4 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated px-4 py-3 text-sm text-ftc-text-secondary">
+              Event saved, but the cover image could not be uploaded. Open Edit event to try again.
+            </p>
+          ) : null}
+
           {successMessage ? (
             <p className="mb-4 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated px-4 py-3 text-sm text-ftc-text-secondary">
               {successMessage}
@@ -661,6 +733,7 @@ export default function EventDetailPage() {
                 if (savingEdit) return;
                 setEditOpen(false);
                 setEditForm(null);
+                resetEditCoverState();
               }}
               cancelDisabled={savingEdit}
             >
@@ -676,6 +749,17 @@ export default function EventDetailPage() {
                   value={editForm.venue}
                   onChange={(value) => setEditForm((prev) => (prev ? { ...prev, venue: value } : prev))}
                   required
+                />
+                <EventCoverImageField
+                  eventName={editForm.name || event.name}
+                  currentCoverUrl={event.cover_image_url}
+                  value={editCoverField}
+                  previewUrl={editCoverPreviewUrl}
+                  onChange={setEditCoverField}
+                  onPreviewUrlChange={setEditCoverPreviewUrl}
+                  onValidationError={setEditCoverError}
+                  error={editCoverError}
+                  disabled={savingEdit}
                 />
                 <BookingDateField
                   label="Event date"
@@ -716,10 +800,18 @@ export default function EventDetailPage() {
 
           {sendOpen && isOwner && !eventIsCancelled ? (
             <PlannerFormCard title="Send bookings" onCancel={closeSendBookings} cancelDisabled={sending}>
-              <p className="text-sm text-ftc-text-secondary">
-                Event details will be prefilled from this event. Each DJ receives a private booking
-                request DM.
-              </p>
+              <div className="flex items-start gap-3">
+                {event.cover_image_url?.trim() ? (
+                  <EventCoverImageContextThumb
+                    coverImageUrl={event.cover_image_url.trim()}
+                    eventName={event.name}
+                  />
+                ) : null}
+                <p className="min-w-0 text-sm text-ftc-text-secondary">
+                  Event details will be prefilled from this event. Each DJ receives a private booking
+                  request DM.
+                </p>
+              </div>
 
               <input
                 type="search"

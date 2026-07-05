@@ -11,6 +11,7 @@ import {
 import { normalizeStoredRate } from "@/lib/bookingRate";
 import { createNotification } from "@/lib/notifications";
 import { supabase } from "@/lib/supabaseClient";
+import { deleteEventCoverStorageObject } from "@/lib/events/eventCoverImage";
 import {
   FTC_STATUS_DANGER,
   FTC_STATUS_MUTED,
@@ -32,6 +33,7 @@ export type Event = {
   rate: string;
   notes: string;
   status: EventStatus;
+  cover_image_url: string | null;
 };
 
 export type EventInput = {
@@ -58,7 +60,7 @@ export type EventWithLineupStats = Event & {
 };
 
 const EVENT_FIELDS =
-  "id, created_at, owner_id, booking_plan_id, name, venue, event_date, set_time, rate, notes, status";
+  "id, created_at, owner_id, booking_plan_id, name, venue, event_date, set_time, rate, notes, status, cover_image_url";
 
 function mapEventInputToRow(input: EventInput) {
   return {
@@ -337,7 +339,62 @@ export async function eventHasBookingRequests(eventId: string): Promise<boolean>
   return (count ?? 0) > 0;
 }
 
-export async function deleteEmptyEvent(eventId: string): Promise<void> {
+export async function updateEventCoverImageUrl(
+  eventId: string,
+  coverImageUrl: string | null,
+): Promise<Event> {
+  const userId = await getCurrentUserId();
+
+  const { data, error } = await supabase
+    .from("events")
+    .update({ cover_image_url: coverImageUrl })
+    .eq("id", eventId)
+    .eq("owner_id", userId)
+    .select(EVENT_FIELDS)
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  return data as Event;
+}
+
+export async function getEventCoverUrlsByIds(
+  eventIds: string[],
+): Promise<Map<string, string>> {
+  const uniqueIds = [...new Set(eventIds.filter(Boolean))];
+
+  if (uniqueIds.length === 0) {
+    return new Map();
+  }
+
+  const { data, error } = await supabase
+    .from("events")
+    .select("id, cover_image_url")
+    .in("id", uniqueIds);
+
+  if (error) {
+    throw error;
+  }
+
+  const coverUrls = new Map<string, string>();
+
+  for (const row of data ?? []) {
+    const coverImageUrl = (row as { id: string; cover_image_url: string | null }).cover_image_url;
+
+    if (coverImageUrl?.trim()) {
+      coverUrls.set(row.id, coverImageUrl.trim());
+    }
+  }
+
+  return coverUrls;
+}
+
+export async function deleteEmptyEvent(
+  eventId: string,
+  coverImageUrl?: string | null,
+): Promise<void> {
   const { error } = await supabase.rpc("delete_empty_event", {
     p_event_id: eventId,
   });
@@ -352,6 +409,8 @@ export async function deleteEmptyEvent(eventId: string): Promise<void> {
     });
     throw error;
   }
+
+  await deleteEventCoverStorageObject(coverImageUrl);
 }
 
 export type CancelEventResult = {

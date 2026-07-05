@@ -3,6 +3,7 @@
 import Link from "next/link";
 import BookingDetailGrid, { BookingDetailItem } from "@/app/components/booking/BookingDetailGrid";
 import BookingStatusBadge from "@/app/components/booking/BookingStatusBadge";
+import { EventCoverImageContextThumb } from "@/app/components/events/EventCoverImageDisplay";
 import CancelBookingRequestButton from "@/app/components/CancelBookingRequestButton";
 import {
   canCancelBookingRequest,
@@ -19,6 +20,7 @@ export default function BookingRequestCard({
   canRespond,
   responding,
   cancelling,
+  coverImageUrl,
   onAccept,
   onDecline,
   onCancel,
@@ -28,6 +30,7 @@ export default function BookingRequestCard({
   canRespond: boolean;
   responding: boolean;
   cancelling?: boolean;
+  coverImageUrl?: string | null;
   onAccept: () => void;
   onDecline: () => void;
   onCancel?: () => void | Promise<void>;
@@ -41,7 +44,13 @@ export default function BookingRequestCard({
 
   return (
     <div className="w-full max-w-sm rounded-2xl border border-ftc-border-subtle bg-ftc-surface p-4">
-      <div className="flex min-w-0 items-start justify-between gap-3">
+      <div className="flex min-w-0 items-start gap-3">
+        {coverImageUrl?.trim() ? (
+          <EventCoverImageContextThumb
+            coverImageUrl={coverImageUrl.trim()}
+            eventName={booking.event_name}
+          />
+        ) : null}
         <div className="min-w-0 flex-1">
           <p className="text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted">
             Booking request

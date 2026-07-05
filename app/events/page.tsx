@@ -20,6 +20,11 @@ import {
 } from "@/app/components/planner/PlannerUi";
 import { BookingDateField, BookingSetTimeRangeField } from "@/app/components/BookingDateTimeFields";
 import { BookingRateField } from "@/app/components/BookingRateField";
+import EventCoverImageField, {
+  emptyEventCoverImageFieldState,
+  type EventCoverImageFieldState,
+} from "@/app/components/events/EventCoverImageField";
+import { EventCoverImageListThumb } from "@/app/components/events/EventCoverImageDisplay";
 import { listBookingPlans, type BookingPlan } from "@/lib/bookingPlans";
 import { formatRateDisplay } from "@/lib/bookingRate";
 import {
@@ -30,9 +35,14 @@ import {
   isEventCancelled,
   listDjInvitedEvents,
   listOwnedEvents,
+  updateEventCoverImageUrl,
   type EventInput,
   type EventWithLineupStats,
 } from "@/lib/events";
+import {
+  getEventCoverUploadErrorMessage,
+  uploadEventCoverImage,
+} from "@/lib/events/eventCoverImage";
 import {
   canManageEvents,
   getCurrentUserProfile,
@@ -66,6 +76,11 @@ export default function EventsPage() {
   const [loadingPlans, setLoadingPlans] = useState(false);
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
   const [form, setForm] = useState<EventInput>(emptyEventForm);
+  const [coverField, setCoverField] = useState<EventCoverImageFieldState>(
+    emptyEventCoverImageFieldState,
+  );
+  const [coverPreviewUrl, setCoverPreviewUrl] = useState<string | null>(null);
+  const [coverError, setCoverError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [eventDateOverride, setEventDateOverride] = useState<string | null>(null);
@@ -170,6 +185,9 @@ export default function EventsPage() {
     setEventDateOverride(options?.eventDate ?? null);
     setSelectedPlanId(null);
     setError(null);
+    setCoverField(emptyEventCoverImageFieldState);
+    setCoverPreviewUrl(null);
+    setCoverError(null);
     setLoadingPlans(true);
 
     try {
@@ -194,6 +212,12 @@ export default function EventsPage() {
     setSelectedPlanId(null);
     setEventDateOverride(null);
     setError(null);
+    setCoverField(emptyEventCoverImageFieldState);
+    if (coverPreviewUrl?.startsWith("blob:")) {
+      URL.revokeObjectURL(coverPreviewUrl);
+    }
+    setCoverPreviewUrl(null);
+    setCoverError(null);
   }
 
   function handleSelectPlan(plan: BookingPlan) {
@@ -229,6 +253,18 @@ export default function EventsPage() {
 
     try {
       const created = await createEvent(form);
+
+      if (coverField.file) {
+        try {
+          const coverUrl = await uploadEventCoverImage(created.id, coverField.file);
+          await updateEventCoverImageUrl(created.id, coverUrl);
+        } catch (uploadError) {
+          console.error("Failed to upload event cover image:", uploadError);
+          router.push(`/events/${created.id}?coverUpload=failed`);
+          return;
+        }
+      }
+
       router.push(`/events/${created.id}`);
     } catch (saveError) {
       console.error("Failed to create event:", saveError);
@@ -358,6 +394,17 @@ export default function EventsPage() {
                     placeholder="The Warehouse, Melbourne"
                     required
                   />
+                  <EventCoverImageField
+                    eventName={form.name || "Event"}
+                    currentCoverUrl={null}
+                    value={coverField}
+                    previewUrl={coverPreviewUrl}
+                    onChange={setCoverField}
+                    onPreviewUrlChange={setCoverPreviewUrl}
+                    onValidationError={setCoverError}
+                    error={coverError}
+                    disabled={saving}
+                  />
                   <BookingDateField
                     label="Event date"
                     value={form.eventDate}
@@ -455,7 +502,14 @@ export default function EventsPage() {
                   className={`ftc-card p-4 sm:p-5 ${cancelled ? "ftc-event-card-cancelled" : ""}`}
                 >
                   <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                    <div className="min-w-0">
+                    <div className="flex min-w-0 gap-4">
+                      {event.cover_image_url?.trim() ? (
+                        <EventCoverImageListThumb
+                          coverImageUrl={event.cover_image_url.trim()}
+                          eventName={event.name}
+                        />
+                      ) : null}
+                      <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
                         <h3
                           className={`text-lg font-semibold ${
@@ -480,6 +534,7 @@ export default function EventsPage() {
                           <PlannerStatChip label="Declined" value={event.lineupStats.declined} />
                         </div>
                       ) : null}
+                    </div>
                     </div>
 
                     <Link

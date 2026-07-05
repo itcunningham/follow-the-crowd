@@ -41,6 +41,7 @@ import {
   type DmMessageReaction,
 } from "@/lib/dmReactions";
 import { createNotification, markNotificationsReadForLink } from "@/lib/notifications";
+import { getEventCoverUrlsByIds } from "@/lib/events";
 import {
   getLatestOwnDmMessageId,
   isMessageSeenByReader,
@@ -106,6 +107,7 @@ export default function DmChatPage() {
   const [attachments, setAttachments] = useState<DmMessageAttachment[]>([]);
   const [reactions, setReactions] = useState<DmMessageReaction[]>([]);
   const [bookings, setBookings] = useState<BookingRequest[]>([]);
+  const [eventCoverUrls, setEventCoverUrls] = useState<Map<string, string>>(new Map());
   const [otherUserId, setOtherUserId] = useState<string | null>(null);
   const [otherUserProfile, setOtherUserProfile] = useState<UserAvatarProfile | null>(null);
   const [input, setInput] = useState("");
@@ -396,6 +398,20 @@ export default function DmChatPage() {
     });
   }, [conversationId, currentUserId, latestConversationMessageCreatedAt, loading]);
 
+  const syncEventCoverUrls = useCallback(async (nextBookings: BookingRequest[]) => {
+    const eventIds = nextBookings
+      .map((booking) => booking.event_id)
+      .filter((eventId): eventId is string => Boolean(eventId));
+
+    try {
+      const coverUrls = await getEventCoverUrlsByIds(eventIds);
+      setEventCoverUrls(coverUrls);
+    } catch (coverError) {
+      console.error("Failed to load event cover URLs:", coverError);
+      setEventCoverUrls(new Map());
+    }
+  }, []);
+
   async function reloadConversationBookings() {
     if (!conversationId) {
       return;
@@ -404,6 +420,7 @@ export default function DmChatPage() {
     try {
       const nextBookings = await getBookingRequestsForConversation(conversationId);
       setBookings(nextBookings);
+      await syncEventCoverUrls(nextBookings);
       console.log("[dm booking] reloaded conversation bookings", {
         conversationId,
         bookingCount: nextBookings.length,
@@ -461,6 +478,7 @@ export default function DmChatPage() {
       setBookings(bookingsResult);
       setAttachments(attachmentsResult);
       setReactions(reactionsResult);
+      await syncEventCoverUrls(bookingsResult);
       console.log("[dm booking] loaded conversation bookings", {
         conversationId,
         bookingCount: bookingsResult.length,
@@ -1155,6 +1173,11 @@ export default function DmChatPage() {
                             canRespond={canRespond && Boolean(resolvedBooking.id)}
                             responding={respondingBookingId === resolvedBooking.id}
                             cancelling={cancellingBookingId === resolvedBooking.id}
+                            coverImageUrl={
+                              resolvedBooking.event_id
+                                ? eventCoverUrls.get(resolvedBooking.event_id)
+                                : undefined
+                            }
                             onAccept={() =>
                               handleBookingResponse(resolvedBooking, message, "accepted")
                             }

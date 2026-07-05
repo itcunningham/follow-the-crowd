@@ -77,6 +77,7 @@ export default function EventCrewChatPage() {
   const [eventVenue, setEventVenue] = useState("");
   const [eventDate, setEventDate] = useState("");
   const [eventStatus, setEventStatus] = useState<EventStatus | null>(null);
+  const [coverImageUrl, setCoverImageUrl] = useState<string | null>(null);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
@@ -129,6 +130,7 @@ export default function EventCrewChatPage() {
         setEventVenue(access.eventVenue ?? "");
         setEventDate(access.eventDate ?? "");
         setEventStatus(access.eventStatus);
+        setCoverImageUrl(access.coverImageUrl);
 
         const chatLink = getEventCrewChatLink(eventId);
         await markNotificationsReadForLink(userId, chatLink);
@@ -327,6 +329,7 @@ export default function EventCrewChatPage() {
               venue={eventVenue}
               eventDate={eventDate}
               status={eventStatus}
+              coverImageUrl={coverImageUrl}
             />
           ) : null}
 

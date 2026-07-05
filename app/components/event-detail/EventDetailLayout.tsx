@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { getEventCoverImageAlt } from "@/lib/events/eventCoverImage";
 import { formatGroupChatEventDate } from "@/lib/groupChats";
 import { parseEventDate } from "@/lib/bookingDateTime";
 import { formatRateDisplay, normalizeStoredRate } from "@/lib/bookingRate";
@@ -124,21 +125,37 @@ export function EventDetailOverlayButton({
 
 export function EventDetailHero({
   eventName,
+  coverImageUrl,
   statusBadge,
 }: {
   eventName: string;
+  coverImageUrl?: string | null;
   statusBadge?: React.ReactNode;
 }) {
   const initial = eventName.trim().charAt(0).toUpperCase() || "E";
+  const trimmedCoverUrl = coverImageUrl?.trim() || null;
 
   return (
-    <div className="relative aspect-[4/3] max-h-[320px] w-full overflow-hidden bg-ftc-bg-elevated sm:aspect-[16/10]">
-      <div className="absolute inset-0 bg-gradient-to-b from-ftc-surface-raised via-ftc-bg-elevated to-ftc-bg" />
-      <div className="absolute inset-0 flex items-center justify-center">
-        <span className="text-6xl font-bold uppercase tracking-wider text-ftc-border-strong/80 sm:text-7xl">
-          {initial}
-        </span>
-      </div>
+    <div className="relative aspect-video max-h-[320px] w-full overflow-hidden bg-ftc-bg-elevated">
+      {trimmedCoverUrl ? (
+        <>
+          <img
+            src={trimmedCoverUrl}
+            alt={getEventCoverImageAlt(eventName)}
+            className="absolute inset-0 h-full w-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-b from-[#0a0e14]/85 via-[#0a0e14]/35 to-transparent" />
+        </>
+      ) : (
+        <>
+          <div className="absolute inset-0 bg-gradient-to-b from-ftc-surface-raised via-ftc-bg-elevated to-ftc-bg" />
+          <div className="absolute inset-0 flex items-center justify-center">
+            <span className="text-6xl font-bold uppercase tracking-wider text-ftc-border-strong/80 sm:text-7xl">
+              {initial}
+            </span>
+          </div>
+        </>
+      )}
       <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-ftc-bg to-transparent" />
       {statusBadge ? (
         <div className="absolute bottom-4 left-4">{statusBadge}</div>
