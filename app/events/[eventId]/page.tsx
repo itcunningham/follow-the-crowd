@@ -33,6 +33,7 @@ import EventCoverImageField, {
   type EventCoverImageFieldState,
 } from "@/app/components/events/EventCoverImageField";
 import EventFallbackColourField from "@/app/components/events/EventFallbackColourField";
+import EventEditConfirmDialog from "@/app/components/events/EventEditConfirmDialog";
 import { EventCoverImageContextThumb } from "@/app/components/events/EventCoverImageDisplay";
 import {
   isEventFallbackColourKey,
@@ -85,6 +86,10 @@ import {
   uploadEventCoverImage,
 } from "@/lib/events/eventCoverImage";
 import {
+  hasBookingImpactingEventChanges,
+  shouldConfirmEventEditSave,
+} from "@/lib/events/eventEditConfirmation";
+import {
   canManageEvents,
   getBookingRecipientProfilesByIds,
   getCurrentUserId,
@@ -125,6 +130,7 @@ export default function EventDetailPage() {
   );
   const [editCoverPreviewUrl, setEditCoverPreviewUrl] = useState<string | null>(null);
   const [editCoverError, setEditCoverError] = useState<string | null>(null);
+  const [editConfirmOpen, setEditConfirmOpen] = useState(false);
   const [savingEdit, setSavingEdit] = useState(false);
 
   const [sendOpen, setSendOpen] = useState(false);
@@ -341,22 +347,12 @@ export default function EventDetailPage() {
     return previousCoverUrl;
   }
 
-  async function handleSaveEdit(formEvent: React.FormEvent<HTMLFormElement>) {
-    formEvent.preventDefault();
-
+  async function performSaveEdit() {
     if (!event || !editForm) {
       return;
     }
 
-    if (
-      !editForm.name.trim() ||
-      !editForm.venue.trim() ||
-      !editForm.eventDate.trim() ||
-      !editForm.setTime.trim()
-    ) {
-      setError("Please fill in event name, venue, date, and set time.");
-      return;
-    }
+    const bookingImpactingChanged = hasBookingImpactingEventChanges(event, editForm);
 
     setSavingEdit(true);
     setError(null);
@@ -374,6 +370,7 @@ export default function EventDetailPage() {
         setEditOpen(false);
         setEditForm(null);
         resetEditCoverState();
+        setEditConfirmOpen(false);
         setError(getEventCoverUploadErrorMessage(coverError));
         setSuccessMessage("Event details saved, but the flyer could not be updated.");
         return;
@@ -383,13 +380,46 @@ export default function EventDetailPage() {
       setEditOpen(false);
       setEditForm(null);
       resetEditCoverState();
-      setSuccessMessage("Event updated");
+      setEditConfirmOpen(false);
+      setSuccessMessage(
+        bookingImpactingChanged &&
+          lineup.some(
+            (booking) => booking.status === "pending" || booking.status === "accepted",
+          )
+          ? "Event updated. Remember to let affected DJs know."
+          : "Event updated",
+      );
     } catch (saveError) {
       console.error("Failed to update event:", saveError);
       setError(saveError instanceof Error ? saveError.message : "Failed to update event");
     } finally {
       setSavingEdit(false);
     }
+  }
+
+  async function handleSaveEdit(formEvent: React.FormEvent<HTMLFormElement>) {
+    formEvent.preventDefault();
+
+    if (!event || !editForm) {
+      return;
+    }
+
+    if (
+      !editForm.name.trim() ||
+      !editForm.venue.trim() ||
+      !editForm.eventDate.trim() ||
+      !editForm.setTime.trim()
+    ) {
+      setError("Please fill in event name, venue, date, and set time.");
+      return;
+    }
+
+    if (shouldConfirmEventEditSave(event, editForm, lineup)) {
+      setEditConfirmOpen(true);
+      return;
+    }
+
+    await performSaveEdit();
   }
 
   async function openSendBookings() {
@@ -1103,6 +1133,19 @@ export default function EventDetailPage() {
           }
         }}
         onConfirm={executeSendBookings}
+      />
+
+      <EventEditConfirmDialog
+        open={editConfirmOpen}
+        loading={savingEdit}
+        onCancel={() => {
+          if (!savingEdit) {
+            setEditConfirmOpen(false);
+          }
+        }}
+        onConfirm={() => {
+          void performSaveEdit();
+        }}
       />
     </OnboardingGuard>
   );

@@ -512,52 +512,63 @@ export default function EventsPage() {
                 const cancelled = isEventCancelled(event);
 
                 return (
-                <li
-                  key={event.id}
-                  className={`ftc-card p-4 sm:p-5 ${cancelled ? "ftc-event-card-cancelled" : ""}`}
-                >
-                  <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                    <div className="flex min-w-0 gap-4">
+                <li key={event.id}>
+                  <Link
+                    href={`/events/${event.id}`}
+                    className={`ftc-card block p-4 transition hover:border-ftc-border-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ftc-primary/35 sm:p-5 ${
+                      cancelled ? "ftc-event-card-cancelled" : ""
+                    }`}
+                  >
+                    <div className="flex items-start gap-4">
                       <EventCoverImageListThumb
                         eventName={event.name}
                         coverImageUrl={event.cover_image_url}
                         fallbackColour={event.fallback_colour}
                       />
-                      <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <h3
-                          className={`text-lg font-semibold ${
-                            cancelled ? "text-ftc-text-secondary" : "text-ftc-text"
-                          }`}
-                        >
-                          {event.name}
-                        </h3>
-                        <EventDateStatusBadge eventDate={event.event_date} status={event.status} />
-                      </div>
-                      <p className={`mt-2 text-sm ${cancelled ? "text-ftc-text-muted" : "text-ftc-text-secondary"}`}>
-                        {event.venue} · {event.event_date}
-                      </p>
-                      <p className={`mt-1 text-sm ${cancelled ? "text-ftc-text-muted" : "text-ftc-text-muted"}`}>
-                        {event.set_time}
-                      </p>
-                      {isPlanner ? (
-                        <div className="mt-3 flex flex-wrap gap-2">
-                          <PlannerStatChip label="Invited" value={event.lineupStats.total} />
-                          <PlannerStatChip label="Pending" value={event.lineupStats.pending} />
-                          <PlannerStatChip label="Accepted" value={event.lineupStats.accepted} />
-                          <PlannerStatChip label="Declined" value={event.lineupStats.declined} />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h3
+                            className={`text-lg font-semibold ${
+                              cancelled ? "text-ftc-text-secondary" : "text-ftc-text"
+                            }`}
+                          >
+                            {event.name}
+                          </h3>
+                          <EventDateStatusBadge eventDate={event.event_date} status={event.status} />
                         </div>
-                      ) : null}
+                        <p className={`mt-2 text-sm ${cancelled ? "text-ftc-text-muted" : "text-ftc-text-secondary"}`}>
+                          {event.venue} · {event.event_date}
+                        </p>
+                        <p className={`mt-1 text-sm ${cancelled ? "text-ftc-text-muted" : "text-ftc-text-muted"}`}>
+                          {event.set_time}
+                        </p>
+                        {isPlanner ? (
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            <PlannerStatChip label="Invited" value={event.lineupStats.total} />
+                            <PlannerStatChip label="Pending" value={event.lineupStats.pending} />
+                            <PlannerStatChip label="Accepted" value={event.lineupStats.accepted} />
+                            <PlannerStatChip label="Declined" value={event.lineupStats.declined} />
+                          </div>
+                        ) : null}
+                      </div>
+                      <span
+                        aria-hidden="true"
+                        className="mt-1 shrink-0 text-ftc-text-muted"
+                      >
+                        <svg
+                          viewBox="0 0 24 24"
+                          className="h-5 w-5"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="1.75"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <path d="M9 6l6 6-6 6" />
+                        </svg>
+                      </span>
                     </div>
-                    </div>
-
-                    <Link
-                      href={`/events/${event.id}`}
-                      className="shrink-0 ftc-btn-primary px-3 py-1.5 text-xs uppercase tracking-wide"
-                    >
-                      Open event
-                    </Link>
-                  </div>
+                  </Link>
                 </li>
                 );
               })}
