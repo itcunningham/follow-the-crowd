@@ -12,6 +12,7 @@ import MessagesInboxRow, {
 import MessagesInboxSearchBar from "@/app/components/dm/MessagesInboxSearchBar";
 import {
   applyInboxGroupMessage,
+  dedupeGroupChatsByEventId,
   extractGroupChatTargetId,
   formatGroupChatEventDate,
   getGroupChatsLoadErrorMessage,
@@ -579,7 +580,9 @@ function DmInboxPageContent() {
   }
 
   const hasDirectMessages = dmInboxRows.length > 0;
-  const renderedGroupChats = sortGroupChatsByLatestActivity(groupChats);
+  const renderedGroupChats = sortGroupChatsByLatestActivity(
+    dedupeGroupChatsByEventId(groupChats),
+  );
   const dmUnreadCount = unreadConversationIds.size;
   const groupUnreadCount = unreadEventChatIds.size;
   const normalizedSearch = searchQuery.trim().toLowerCase();

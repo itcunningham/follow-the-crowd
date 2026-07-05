@@ -64,6 +64,54 @@ export function extractGroupChatTargetId(
   return null;
 }
 
+function mergeGroupChatRows(
+  left: GroupChatListItem,
+  right: GroupChatListItem,
+): GroupChatListItem {
+  const leftTime = getInboxActivityTimestamp(left.latestActivityAt, left.eventDate);
+  const rightTime = getInboxActivityTimestamp(right.latestActivityAt, right.eventDate);
+  const [primary, secondary] = rightTime >= leftTime ? [right, left] : [left, right];
+
+  return {
+    eventId: primary.eventId || secondary.eventId,
+    eventName: primary.eventName || secondary.eventName,
+    venue: primary.venue || secondary.venue,
+    eventDate: primary.eventDate || secondary.eventDate,
+    coverImageUrl: primary.coverImageUrl ?? secondary.coverImageUrl,
+    fallbackColour: primary.fallbackColour ?? secondary.fallbackColour,
+    href: primary.href || secondary.href,
+    latestPreview: primary.latestPreview ?? secondary.latestPreview,
+    latestMessageAt: primary.latestMessageAt ?? secondary.latestMessageAt,
+    latestMessageUserId: primary.latestMessageUserId ?? secondary.latestMessageUserId,
+    latestActivityAt: primary.latestActivityAt ?? secondary.latestActivityAt,
+  };
+}
+
+export function dedupeGroupChatsByEventId(
+  chats: GroupChatListItem[],
+): GroupChatListItem[] {
+  const byEventId = new Map<string, GroupChatListItem>();
+
+  for (const chat of chats) {
+    const key = normalizeInboxId(chat.eventId);
+
+    if (!key) {
+      continue;
+    }
+
+    const existing = byEventId.get(key);
+
+    if (!existing) {
+      byEventId.set(key, chat);
+      continue;
+    }
+
+    byEventId.set(key, mergeGroupChatRows(existing, chat));
+  }
+
+  return [...byEventId.values()];
+}
+
 export function logGroupRenderedRowIds(groupChats: GroupChatListItem[]) {
   console.log(
     "[Group rendered row ids]",
@@ -156,7 +204,13 @@ export async function listAccessibleGroupChats(
     const events = await listOwnedEvents();
 
     for (const event of events) {
-      byEventId.set(event.id, {
+      const eventKey = normalizeInboxId(event.id);
+
+      if (!eventKey) {
+        continue;
+      }
+
+      byEventId.set(eventKey, {
         eventId: event.id,
         eventName: event.name.trim() || "Untitled event",
         venue: event.venue,
@@ -199,12 +253,14 @@ export async function listAccessibleGroupChats(
       }
 
       for (const event of events ?? []) {
-        if (byEventId.has(event.id)) {
+        const eventKey = normalizeInboxId(event.id as string);
+
+        if (!eventKey || byEventId.has(eventKey)) {
           continue;
         }
 
-        byEventId.set(event.id, {
-          eventId: event.id,
+        byEventId.set(eventKey, {
+          eventId: event.id as string,
           eventName: (event.name as string).trim() || "Untitled event",
           venue: event.venue as string,
           eventDate: event.event_date as string,
@@ -212,14 +268,16 @@ export async function listAccessibleGroupChats(
             ((event as { cover_image_url?: string | null }).cover_image_url?.trim()) || null,
           fallbackColour:
             ((event as { fallback_colour?: string | null }).fallback_colour?.trim()) || null,
-          href: getEventCrewChatLink(event.id, { from: "dm", tab: "group" }),
+          href: getEventCrewChatLink(event.id as string, { from: "dm", tab: "group" }),
         });
       }
     }
   }
 
   return sortGroupChatsByLatestActivity(
-    await attachLatestGroupChatPreviews([...byEventId.values()]),
+    dedupeGroupChatsByEventId(
+      await attachLatestGroupChatPreviews([...byEventId.values()]),
+    ),
   );
 }
 
@@ -258,7 +316,7 @@ export function mergeLoadedGroupChatsWithLiveActivity(
     };
   });
 
-  return sortGroupChatsByLatestActivity(merged);
+  return sortGroupChatsByLatestActivity(dedupeGroupChatsByEventId(merged));
 }
 
 export function applyInboxGroupMessage(
@@ -294,8 +352,8 @@ export function applyInboxGroupMessage(
   }
 
   const beforeIds = groupChats.map((chat) => chat.eventId);
-  const sorted = sortGroupChatsByLatestActivity(updated);
-  const afterIds = sorted.map((chat) => chat.eventId);
+  const rows = sortGroupChatsByLatestActivity(dedupeGroupChatsByEventId(updated));
+  const afterIds = rows.map((chat) => chat.eventId);
 
   console.log("[Group sort before]", beforeIds);
   console.log("[Group sort after]", afterIds, {
@@ -304,7 +362,7 @@ export function applyInboxGroupMessage(
     latestActivityAt,
   });
 
-  return { rows: [...sorted], matched: true };
+  return { rows, matched: true };
 }
 
 export function sortGroupChatsByLatestActivity(
