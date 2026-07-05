@@ -1,6 +1,6 @@
 import { supabase } from "@/lib/supabaseClient";
 import { createNotification } from "@/lib/notifications";
-import { getEventById } from "@/lib/events";
+import { getEventById, type EventStatus } from "@/lib/events";
 import {
   getCurrentUserId,
   getCurrentUserProfile,
@@ -18,6 +18,9 @@ export type EventCrewChatAccess = {
   canAccess: boolean;
   isOwner: boolean;
   eventName: string | null;
+  eventVenue: string | null;
+  eventDate: string | null;
+  eventStatus: EventStatus | null;
 };
 
 const EVENT_CREW_MESSAGE_FIELDS = "id, event_id, user_id, text, created_at";
@@ -58,13 +61,27 @@ export async function getEventCrewChatAccess(eventId: string): Promise<EventCrew
   const event = await getEventById(eventId);
 
   if (!event) {
-    return { canAccess: false, isOwner: false, eventName: null };
+    return {
+      canAccess: false,
+      isOwner: false,
+      eventName: null,
+      eventVenue: null,
+      eventDate: null,
+      eventStatus: null,
+    };
   }
+
+  const eventContext = {
+    eventName: event.name,
+    eventVenue: event.venue,
+    eventDate: event.event_date,
+    eventStatus: event.status,
+  };
 
   const isOwner = event.owner_id === userId;
 
   if (isOwner) {
-    return { canAccess: true, isOwner: true, eventName: event.name };
+    return { canAccess: true, isOwner: true, ...eventContext };
   }
 
   const { data, error } = await supabase
@@ -77,13 +94,13 @@ export async function getEventCrewChatAccess(eventId: string): Promise<EventCrew
 
   if (error) {
     console.error("[eventCrewChat] Failed to check accepted booking access:", error);
-    return { canAccess: false, isOwner: false, eventName: event.name };
+    return { canAccess: false, isOwner: false, ...eventContext };
   }
 
   return {
     canAccess: Boolean(data),
     isOwner: false,
-    eventName: event.name,
+    ...eventContext,
   };
 }
 

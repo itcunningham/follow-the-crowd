@@ -5,8 +5,10 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import AppNavigation, { MOBILE_NAV_OFFSET_CLASS } from "@/app/components/AppNavigation";
 import ChatNewMessagesPill from "@/app/components/dm/ChatNewMessagesPill";
+import GroupChatComposer from "@/app/components/group-chat/GroupChatComposer";
+import GroupChatEventContextCard from "@/app/components/group-chat/GroupChatEventContextCard";
+import GroupChatMessageBubble from "@/app/components/group-chat/GroupChatMessageBubble";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
-import ProfileAvatar from "@/app/components/ProfileAvatar";
 import {
   getEventCrewChatAccess,
   getEventCrewChatBackHref,
@@ -16,11 +18,12 @@ import {
   sendEventCrewChatMessage,
   type EventCrewChatMessage,
 } from "@/lib/eventCrewChat";
+import type { EventStatus } from "@/lib/events";
 import { markNotificationsReadForLink } from "@/lib/notifications";
 import { markEventChatRead } from "@/lib/messageReads";
 import { supabase } from "@/lib/supabaseClient";
 import { useChatScroll, tagChatMessageForScroll } from "@/lib/useChatScroll";
-import { getChatNewMessageHighlightClass, logChatHighlightRender } from "@/lib/chatNewMessageHighlight";
+import { logChatHighlightRender } from "@/lib/chatNewMessageHighlight";
 import { useChatNewMessageHighlight } from "@/lib/useChatNewMessageHighlight";
 import {
   getCurrentUserId,
@@ -40,11 +43,20 @@ function getSenderLabel(profile: UserAvatarProfile | undefined, userId: string) 
   return profile?.display_name?.trim() || userId.slice(0, 8);
 }
 
+function GroupChatHeaderIcon() {
+  return (
+    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated text-[10px] font-bold uppercase tracking-wide text-ftc-primary">
+      GC
+    </div>
+  );
+}
+
 export default function EventCrewChatPage() {
   const params = useParams<{ eventId: string }>();
   const router = useRouter();
   const searchParams = useSearchParams();
   const eventId = params.eventId;
+  const openedFromMessages = searchParams.get("from") === "dm";
   const backHref = getEventCrewChatBackHref(
     eventId,
     searchParams.get("from"),
@@ -62,6 +74,9 @@ export default function EventCrewChatPage() {
     new Map(),
   );
   const [eventName, setEventName] = useState("Event");
+  const [eventVenue, setEventVenue] = useState("");
+  const [eventDate, setEventDate] = useState("");
+  const [eventStatus, setEventStatus] = useState<EventStatus | null>(null);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
@@ -111,6 +126,9 @@ export default function EventCrewChatPage() {
         }
 
         setEventName(access.eventName ?? "Event");
+        setEventVenue(access.eventVenue ?? "");
+        setEventDate(access.eventDate ?? "");
+        setEventStatus(access.eventStatus);
 
         const chatLink = getEventCrewChatLink(eventId);
         await markNotificationsReadForLink(userId, chatLink);
@@ -233,13 +251,6 @@ export default function EventCrewChatPage() {
     }
   }
 
-  function handleKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
-    if (event.key === "Enter") {
-      event.preventDefault();
-      void sendMessage();
-    }
-  }
-
   if (error && !loading && messages.length === 0 && error.includes("access")) {
     return (
       <OnboardingGuard>
@@ -254,7 +265,7 @@ export default function EventCrewChatPage() {
               onClick={() => router.push(backHref)}
               className="mt-4 text-sm font-semibold text-ftc-primary"
             >
-              {searchParams.get("from") === "dm" ? "Back to messages" : "Back to event"}
+              {openedFromMessages ? "Back to messages" : "Back to event"}
             </button>
           </div>
         </div>
@@ -270,29 +281,54 @@ export default function EventCrewChatPage() {
         <div
           className={`mx-auto flex min-h-0 w-full max-w-2xl flex-1 flex-col overflow-hidden ${MOBILE_NAV_OFFSET_CLASS}`}
         >
-          <header className="z-10 shrink-0 border-b border-ftc-border bg-ftc-bg/95 px-3 py-3 backdrop-blur-md sm:px-4">
-            <div className="flex items-center gap-3">
+          <header className="z-10 shrink-0 border-b border-ftc-border-subtle bg-ftc-bg/95 px-3 py-2.5 backdrop-blur-md sm:px-4">
+            <div className="flex items-center gap-2">
               <Link
                 href={backHref}
-                aria-label={searchParams.get("from") === "dm" ? "Back to messages" : "Back to event"}
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-ftc-border text-lg text-ftc-text-secondary transition hover:border-ftc-primary/35 hover:text-ftc-primary"
+                aria-label={openedFromMessages ? "Back to messages" : "Back to event"}
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-ftc-border-subtle bg-ftc-surface text-ftc-text-secondary transition hover:border-ftc-border-strong hover:text-ftc-text"
               >
-                ←
+                <svg
+                  aria-hidden="true"
+                  viewBox="0 0 24 24"
+                  className="h-5 w-5"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M15 18l-6-6 6-6" />
+                </svg>
               </Link>
-              <div className="min-w-0 flex-1">
-                <h1 className="truncate text-base font-semibold text-ftc-text">{eventName}</h1>
-                <p className="truncate text-xs text-ftc-text-muted">Group chat</p>
+
+              <div className="flex min-w-0 flex-1 items-center gap-3">
+                <GroupChatHeaderIcon />
+                <div className="min-w-0 flex-1">
+                  <h1 className="truncate text-base font-semibold text-ftc-text">{eventName}</h1>
+                  <p className="truncate text-xs text-ftc-text-muted">Group chat</p>
+                </div>
               </div>
-              {searchParams.get("from") === "dm" ? (
+
+              {openedFromMessages ? (
                 <Link
                   href={`/events/${eventId}`}
-                  className="shrink-0 rounded-full border border-ftc-border-strong bg-ftc-surface/70 px-3 py-2 text-xs font-semibold text-ftc-text transition hover:border-ftc-primary/35 hover:text-ftc-primary"
+                  className="shrink-0 rounded-xl border border-ftc-border-subtle bg-ftc-surface px-3 py-2 text-xs font-semibold text-ftc-text transition hover:border-ftc-border-strong"
                 >
                   Event Details
                 </Link>
               ) : null}
             </div>
           </header>
+
+          {!loading && !error?.includes("access") ? (
+            <GroupChatEventContextCard
+              eventName={eventName}
+              venue={eventVenue}
+              eventDate={eventDate}
+              status={eventStatus}
+            />
+          ) : null}
 
           <div
             ref={scrollRef}
@@ -306,7 +342,10 @@ export default function EventCrewChatPage() {
                 data-chat-content-root
                 className="flex flex-col items-center justify-center px-6 py-16 text-center"
               >
-                <p className="text-sm font-medium text-ftc-text-secondary">No group messages yet</p>
+                <GroupChatHeaderIcon />
+                <p className="mt-4 text-sm font-medium text-ftc-text-secondary">
+                  No group messages yet
+                </p>
                 <p className="mt-1 text-sm text-ftc-text-muted">
                   Accepted DJs and the event planner can chat here.
                 </p>
@@ -322,51 +361,17 @@ export default function EventCrewChatPage() {
                   logChatHighlightRender(message.id, highlighted);
 
                   return (
-                    <li
+                    <GroupChatMessageBubble
                       key={message.id}
-                      data-chat-message-id={message.id}
-                      className={`flex ${isOwnMessage ? "justify-end" : "justify-start"}`}
-                    >
-                      <div
-                        className={`flex max-w-[85%] items-end gap-2 sm:max-w-[75%] ${
-                          isOwnMessage ? "flex-row-reverse" : "flex-row"
-                        }`}
-                      >
-                        {!isOwnMessage ? (
-                          <ProfileAvatar
-                            name={senderLabel}
-                            avatarUrl={profile?.avatar_url}
-                            size="sm"
-                          />
-                        ) : null}
-                        <div>
-                          {!isOwnMessage ? (
-                            <p className="mb-1 text-[11px] font-semibold text-ftc-primary">
-                              {senderLabel}
-                            </p>
-                          ) : null}
-                          <div className={`relative overflow-hidden ${getChatNewMessageHighlightClass(highlighted)}`}>
-                            <div
-                              className={
-                                isOwnMessage
-                                  ? "ftc-bubble-own px-4 py-2.5"
-                                  : "ftc-bubble-other px-4 py-2.5"
-                              }
-                            >
-                              <p className="text-[15px] leading-relaxed">{message.text}</p>
-                              <time
-                                dateTime={message.created_at}
-                                className={`mt-1 block text-[10px] ${
-                                  isOwnMessage ? "text-ftc-bg/70" : "text-ftc-text-muted"
-                                }`}
-                              >
-                                {formatMessageTime(message.created_at)}
-                              </time>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </li>
+                      messageId={message.id}
+                      text={message.text}
+                      createdAt={message.created_at}
+                      isOwnMessage={isOwnMessage}
+                      senderLabel={senderLabel}
+                      senderAvatarUrl={profile?.avatar_url}
+                      formatTime={formatMessageTime}
+                      isHighlighted={highlighted}
+                    />
                   );
                 })}
               </ul>
@@ -374,7 +379,9 @@ export default function EventCrewChatPage() {
           </div>
 
           <div className="relative shrink-0">
-            {error ? <p className="px-4 pb-2 text-sm text-red-400">{error}</p> : null}
+            {error && !error.includes("access") ? (
+              <p className="px-4 pb-2 text-sm text-red-400">{error}</p>
+            ) : null}
 
             {showNewMessagesPill ? (
               <ChatNewMessagesPill
@@ -383,38 +390,12 @@ export default function EventCrewChatPage() {
               />
             ) : null}
 
-            <div className="border-t border-ftc-border bg-ftc-bg px-3 py-3 sm:px-4 sm:py-4">
-              <div className="flex items-end gap-2 sm:gap-3">
-                <input
-                  type="text"
-                  value={input}
-                  onChange={(event) => setInput(event.target.value)}
-                  onKeyDown={handleKeyDown}
-                  placeholder="Message..."
-                  className="ftc-input min-h-[44px] flex-1 rounded-full px-4 py-2.5"
-                />
-                <button
-                  type="button"
-                  onClick={() => void sendMessage()}
-                  disabled={sending || !input.trim()}
-                  aria-label="Send message"
-                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-ftc-primary text-ftc-bg transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {sending ? (
-                    <span className="text-xs font-bold">…</span>
-                  ) : (
-                    <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" className="h-5 w-5">
-                      <path
-                        d="m4 12 16-8-4 8 4 8-16-8 4-2-4-2Z"
-                        stroke="currentColor"
-                        strokeWidth="1.75"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                  )}
-                </button>
-              </div>
-            </div>
+            <GroupChatComposer
+              value={input}
+              onChange={setInput}
+              onSend={() => void sendMessage()}
+              sending={sending}
+            />
           </div>
         </div>
       </div>
