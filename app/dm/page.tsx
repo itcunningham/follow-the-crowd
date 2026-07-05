@@ -26,11 +26,13 @@ import {
   buildDmInboxRows,
   detectInboxRealtimeMessageType,
   logInboxRenderOrder,
+  normalizeInboxId,
   type DmInboxRow,
 } from "@/lib/dmInbox";
 import {
   getUnreadConversationIds,
   getUnreadEventChatIds,
+  isOwnChatMessage,
   type LatestChatMessage,
 } from "@/lib/messageReads";
 import { supabase } from "@/lib/supabaseClient";
@@ -86,6 +88,19 @@ function InboxTabButton({
       ) : null}
     </button>
   );
+}
+
+function removeUnreadEventChatId(previous: Set<string>, eventId: string): Set<string> {
+  const normalizedTargetId = normalizeInboxId(eventId);
+  const next = new Set(previous);
+
+  for (const existingId of previous) {
+    if (normalizeInboxId(existingId) === normalizedTargetId) {
+      next.delete(existingId);
+    }
+  }
+
+  return next;
 }
 
 function GroupChatsEmptyState() {
@@ -489,12 +504,18 @@ function DmInboxPageContent() {
               return [...result.rows];
             });
 
-            if (currentUserId && newMessage.user_id !== currentUserId) {
-              setUnreadEventChatIds((previous) => {
-                const next = new Set(previous);
-                next.add(groupTargetId);
-                return next;
-              });
+            if (currentUserId) {
+              if (isOwnChatMessage(newMessage.user_id, currentUserId)) {
+                setUnreadEventChatIds((previous) =>
+                  removeUnreadEventChatId(previous, groupTargetId),
+                );
+              } else {
+                setUnreadEventChatIds((previous) => {
+                  const next = new Set(previous);
+                  next.add(groupTargetId);
+                  return next;
+                });
+              }
             }
 
             return;

@@ -21,7 +21,7 @@ export function isChatUnread(
     return false;
   }
 
-  if (latestMessage.user_id === currentUserId) {
+  if (isOwnChatMessage(latestMessage.user_id, currentUserId)) {
     return false;
   }
 
@@ -30,6 +30,17 @@ export function isChatUnread(
   }
 
   return new Date(latestMessage.created_at).getTime() > new Date(lastReadAt).getTime();
+}
+
+export function isOwnChatMessage(
+  messageUserId: string | null | undefined,
+  currentUserId: string | null | undefined,
+): boolean {
+  if (!messageUserId?.trim() || !currentUserId?.trim()) {
+    return false;
+  }
+
+  return messageUserId.trim() === currentUserId.trim();
 }
 
 export async function loadMessageReadsForUser(userId: string): Promise<MessageReadRow[]> {

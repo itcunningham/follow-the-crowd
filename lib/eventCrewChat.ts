@@ -1,5 +1,6 @@
 import { supabase } from "@/lib/supabaseClient";
 import { createNotification } from "@/lib/notifications";
+import { markEventChatRead } from "@/lib/messageReads";
 import { getEventById, type EventStatus } from "@/lib/events";
 import {
   getCurrentUserId,
@@ -159,6 +160,8 @@ export async function sendEventCrewChatMessage(
   if (insertError) {
     throw insertError;
   }
+
+  await markEventChatRead(eventId);
 
   const [participants, senderProfile] = await Promise.all([
     getEventCrewParticipantIds(eventId),
