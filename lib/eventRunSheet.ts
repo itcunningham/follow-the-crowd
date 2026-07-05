@@ -35,6 +35,13 @@ export type RunSheetSavePayload = {
   deletedRowIds: string[];
 };
 
+export type RunSheetRowDjDisplay = {
+  displayName: string;
+  avatarUrl?: string | null;
+  profileId?: string;
+  isAssigned: boolean;
+};
+
 export type EventRunSheetData = {
   rows: RunSheetRow[];
 };
@@ -93,6 +100,68 @@ function readBookingRequestIdFromRow(
   return typeof bookingRequestId === "string" && bookingRequestId.trim()
     ? bookingRequestId.trim()
     : undefined;
+}
+
+export function resolveRunSheetRowDjDisplay(
+  row: RunSheetRowInput,
+  lineup: BookingRequest[],
+  profiles: Map<string, BookingRecipientProfile>,
+): RunSheetRowDjDisplay {
+  let recipientId = row.booking_recipient_id?.trim();
+
+  if (!recipientId && row.booking_request_id?.trim()) {
+    const booking = lineup.find((item) => item.id === row.booking_request_id?.trim());
+    recipientId = booking?.recipient_id;
+  }
+
+  if (recipientId) {
+    const profile = profiles.get(recipientId);
+
+    return {
+      displayName: profile?.display_name?.trim() || row.artist_name.trim() || "DJ",
+      avatarUrl: profile?.avatar_url,
+      profileId: recipientId,
+      isAssigned: true,
+    };
+  }
+
+  const legacyName = row.artist_name.trim();
+
+  if (legacyName) {
+    return {
+      displayName: legacyName,
+      isAssigned: false,
+    };
+  }
+
+  return {
+    displayName: "",
+    isAssigned: false,
+  };
+}
+
+export function getAssignableAcceptedBookingsForRow(
+  lineup: BookingRequest[],
+  rows: RunSheetRowInput[],
+  rowId: string,
+): BookingRequest[] {
+  const assignedRecipientIds = new Set(
+    rows
+      .filter((row) => row.id !== rowId && row.booking_recipient_id?.trim())
+      .map((row) => row.booking_recipient_id!.trim()),
+  );
+  const assignedBookingIds = new Set(
+    rows
+      .filter((row) => row.id !== rowId && row.booking_request_id?.trim())
+      .map((row) => row.booking_request_id!.trim()),
+  );
+
+  return lineup.filter(
+    (booking) =>
+      booking.status === "accepted" &&
+      !assignedRecipientIds.has(booking.recipient_id) &&
+      !assignedBookingIds.has(booking.id),
+  );
 }
 
 export function mapRunSheetRowsFromDb(rows: RunSheetRow[]): RunSheetRowInput[] {
@@ -234,7 +303,11 @@ export async function saveEventRunSheet(
     if (isPersistedRunSheetRowId(row.id)) {
       const { error } = await supabase
         .from("event_run_sheet_rows")
-        .update(rowFields)
+        .update({
+          ...rowFields,
+          booking_request_id: row.booking_request_id?.trim() || null,
+          custom_data: buildRunSheetRowCustomData(row),
+        })
         .eq("id", row.id)
         .eq("event_id", eventId);
 

@@ -18,6 +18,8 @@ Update this file after major features ship.
 - Flat solid artwork tiles (no glow)
 - Event list: whole card links to detail (no Open Event button)
 - Edit with confirmation when booking-impacting fields change + group chat update message
+- Run sheet is the single planner view for assigned DJs (avatar, name, stage, set time, notes)
+- Event detail no longer has a separate Lineup section (run sheet replaces it for crew)
 - Booking cards in DMs show **live** event fields from `events` table when `event_id` set
 
 ## Group chat
@@ -34,6 +36,7 @@ See `SUPABASE.md`. If a feature fails with missing column/table, run the matchin
 
 ## Recent commits (reference)
 
+- Unify lineup into run sheet
 - Flat event artwork colours
 - Remove duplicate group chat event card
 - Deduplicate group chat inbox rows

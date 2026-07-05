@@ -1,7 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { BookingDualTimeWheelPicker } from "@/app/components/BookingTimeWheelPicker";
+import ProfileAvatar from "@/app/components/ProfileAvatar";
 import type { BookingRequest } from "@/lib/bookingRequests";
 import {
   clockPartsToWheelTime,
@@ -18,6 +20,7 @@ import {
 import {
   createEmptyRunSheetRow,
   ensureRunSheetRowsForAcceptedBookings,
+  getAssignableAcceptedBookingsForRow,
   getRunSheetLoadErrorMessage,
   getRunSheetSaveErrorMessage,
   isPersistedRunSheetRowId,
@@ -27,21 +30,21 @@ import {
   mergeAcceptedDjsIntoRunSheetRows,
   moveRunSheetRow,
   reorderRunSheetRows,
+  resolveRunSheetRowDjDisplay,
   saveEventRunSheet,
   type RunSheetRowInput,
 } from "@/lib/eventRunSheet";
 import type { BookingRecipientProfile } from "@/lib/user/currentUser";
 
 const FIXED_FIELDS = [
-  { key: "artist_name" as const, label: "Artist / DJ" },
   { key: "stage_area" as const, label: "Stage / Area" },
   { key: "notes" as const, label: "Notes" },
 ];
 
+const RUN_SHEET_STAGE_COLUMN_CLASS = "w-[16%] min-w-[8rem]";
+const RUN_SHEET_DJ_COLUMN_CLASS = "w-[18%] min-w-[10rem]";
 const RUN_SHEET_SET_TIME_BUTTON_CLASS =
   "ftc-field-trigger inline-flex w-full min-h-[2.25rem] items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium sm:min-h-[2rem] lg:max-w-[11rem]";
-
-const RUN_SHEET_EQUAL_TEXT_COLUMN_CLASS = "w-[14%] min-w-[9rem]";
 const RUN_SHEET_NOTES_COLUMN_CLASS = "w-[28%] min-w-[10rem]";
 
 function getFixedField(key: (typeof FIXED_FIELDS)[number]["key"]) {
@@ -385,11 +388,126 @@ function RunSheetReadOnlyText({
   );
 }
 
+function RunSheetDjIdentity({
+  row,
+  lineup,
+  profiles,
+  readOnlyTextClassName,
+}: {
+  row: RunSheetRowInput;
+  lineup: BookingRequest[];
+  profiles: Map<string, BookingRecipientProfile>;
+  readOnlyTextClassName: string;
+}) {
+  const dj = resolveRunSheetRowDjDisplay(row, lineup, profiles);
+
+  if (!dj.displayName) {
+    return (
+      <div className={`${readOnlyTextClassName} flex min-h-[2.25rem] items-center text-ftc-text-muted`}>
+        Unassigned
+      </div>
+    );
+  }
+
+  const identity = (
+    <>
+      <ProfileAvatar name={dj.displayName} avatarUrl={dj.avatarUrl} size="sm" />
+      <span className="min-w-0 truncate font-medium text-ftc-text">{dj.displayName}</span>
+    </>
+  );
+
+  if (dj.profileId) {
+    return (
+      <Link
+        href={`/profile/${dj.profileId}`}
+        className="flex min-h-[2.25rem] items-center gap-2 rounded-lg border border-transparent px-1 py-0.5 transition hover:border-ftc-border-subtle"
+      >
+        {identity}
+      </Link>
+    );
+  }
+
+  return <div className="flex min-h-[2.25rem] items-center gap-2 px-1 py-0.5">{identity}</div>;
+}
+
+function RunSheetDjField({
+  row,
+  rows,
+  lineup,
+  profiles,
+  canEdit,
+  readOnlyTextClassName,
+  onAssign,
+}: {
+  row: RunSheetRowInput;
+  rows: RunSheetRowInput[];
+  lineup: BookingRequest[];
+  profiles: Map<string, BookingRecipientProfile>;
+  canEdit: boolean;
+  readOnlyTextClassName: string;
+  onAssign: (rowId: string, bookingId: string) => void;
+}) {
+  const dj = resolveRunSheetRowDjDisplay(row, lineup, profiles);
+
+  if (!canEdit) {
+    return (
+      <RunSheetDjIdentity
+        row={row}
+        lineup={lineup}
+        profiles={profiles}
+        readOnlyTextClassName={readOnlyTextClassName}
+      />
+    );
+  }
+
+  if (dj.isAssigned) {
+    return (
+      <RunSheetDjIdentity
+        row={row}
+        lineup={lineup}
+        profiles={profiles}
+        readOnlyTextClassName={readOnlyTextClassName}
+      />
+    );
+  }
+
+  const assignableBookings = getAssignableAcceptedBookingsForRow(lineup, rows, row.id!);
+  const selectedBookingId = row.booking_request_id?.trim() ?? "";
+
+  if (assignableBookings.length === 0) {
+    return (
+      <div className={`${readOnlyTextClassName} flex min-h-[2.25rem] items-center text-ftc-text-muted`}>
+        No accepted DJs
+      </div>
+    );
+  }
+
+  return (
+    <select
+      value={selectedBookingId}
+      onChange={(event) => onAssign(row.id!, event.target.value)}
+      aria-label="Assign DJ"
+      className="ftc-field-trigger w-full min-h-[2.25rem] rounded-lg px-2 py-1.5 text-xs text-ftc-text [color-scheme:dark]"
+    >
+      <option value="">Assign DJ</option>
+      {assignableBookings.map((booking) => {
+        const profile = profiles.get(booking.recipient_id);
+        const displayName = profile?.display_name?.trim() || "DJ";
+
+        return (
+          <option key={booking.id} value={booking.id}>
+            {displayName}
+          </option>
+        );
+      })}
+    </select>
+  );
+}
+
 function renderRunSheetFieldInput({
   field,
   row,
   canEdit,
-  artistTextareaClassName,
   stageAreaTextareaClassName,
   notesTextareaClassName,
   readOnlyTextClassName,
@@ -398,7 +516,6 @@ function renderRunSheetFieldInput({
   field: (typeof FIXED_FIELDS)[number];
   row: RunSheetRowInput;
   canEdit: boolean;
-  artistTextareaClassName: string;
   stageAreaTextareaClassName: string;
   notesTextareaClassName: string;
   readOnlyTextClassName: string;
@@ -437,15 +554,7 @@ function renderRunSheetFieldInput({
     );
   }
 
-  return (
-    <RunSheetAutoGrowTextarea
-      value={row[field.key]}
-      onChange={(value) => updateRow(row.id!, { [field.key]: value })}
-      className={artistTextareaClassName}
-      minRows={1}
-      expandWhenWrapped
-    />
-  );
+  return null;
 }
 
 export default function EventRunSheetSection({
@@ -547,6 +656,31 @@ export default function EventRunSheetSection({
     setRows((prev) => moveRunSheetRow(prev, rowId, direction));
   }
 
+  function handleAssignDj(rowId: string, bookingId: string) {
+    if (!bookingId) {
+      updateRow(rowId, {
+        booking_request_id: "",
+        booking_recipient_id: "",
+        artist_name: "",
+      });
+      return;
+    }
+
+    const booking = lineup.find((item) => item.id === bookingId);
+
+    if (!booking || booking.status !== "accepted") {
+      return;
+    }
+
+    const profile = profiles.get(booking.recipient_id);
+    updateRow(rowId, {
+      booking_request_id: booking.id,
+      booking_recipient_id: booking.recipient_id,
+      artist_name: profile?.display_name?.trim() || "DJ",
+    });
+    setSuccessMessage(null);
+  }
+
   async function handleSave() {
     setSaving(true);
     setError(null);
@@ -575,7 +709,6 @@ export default function EventRunSheetSection({
   const runSheetTextareaBaseClassName =
     "ftc-textarea w-full resize-none overflow-x-hidden overflow-y-hidden rounded-lg px-2.5 py-1.5 text-sm break-words";
 
-  const artistTextareaClassName = `${runSheetTextareaBaseClassName} min-h-[2.25rem] leading-normal`;
   const stageAreaTextareaClassName = `${runSheetTextareaBaseClassName} min-h-[2.25rem] leading-normal`;
   const notesTextareaClassName = `${runSheetTextareaBaseClassName} min-h-[3.25rem] leading-relaxed`;
 
@@ -640,14 +773,14 @@ export default function EventRunSheetSection({
               <thead>
                 <tr>
                   <th
-                    className={`${RUN_SHEET_EQUAL_TEXT_COLUMN_CLASS} border-b border-ftc-border px-2 py-2 text-left text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted`}
-                  >
-                    {getFixedField("artist_name").label}
-                  </th>
-                  <th
-                    className={`${RUN_SHEET_EQUAL_TEXT_COLUMN_CLASS} border-b border-ftc-border px-2 py-2 text-left text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted`}
+                    className={`${RUN_SHEET_STAGE_COLUMN_CLASS} border-b border-ftc-border px-2 py-2 text-left text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted`}
                   >
                     {getFixedField("stage_area").label}
+                  </th>
+                  <th
+                    className={`${RUN_SHEET_DJ_COLUMN_CLASS} border-b border-ftc-border px-2 py-2 text-left text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted`}
+                  >
+                    DJ
                   </th>
                   <th className="w-[11rem] border-b border-ftc-border px-2 py-2 text-left text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted">
                     Set Time
@@ -667,29 +800,27 @@ export default function EventRunSheetSection({
               <tbody>
                 {rows.map((row, rowIndex) => (
                   <tr key={row.id} className="align-top">
-                    <td className={`${RUN_SHEET_EQUAL_TEXT_COLUMN_CLASS} border-b border-ftc-border/70 px-2 py-2 align-top`}>
+                    <td className={`${RUN_SHEET_STAGE_COLUMN_CLASS} border-b border-ftc-border/70 px-2 py-2 align-top`}>
                       {renderRunSheetFieldInput({
-                        field: getFixedField("artist_name"),
+                        field: getFixedField("stage_area"),
                         row,
                         canEdit,
-                        artistTextareaClassName,
                         stageAreaTextareaClassName,
                         notesTextareaClassName,
                         readOnlyTextClassName,
                         updateRow,
                       })}
                     </td>
-                    <td className={`${RUN_SHEET_EQUAL_TEXT_COLUMN_CLASS} border-b border-ftc-border/70 px-2 py-2 align-top`}>
-                      {renderRunSheetFieldInput({
-                        field: getFixedField("stage_area"),
-                        row,
-                        canEdit,
-                        artistTextareaClassName,
-                        stageAreaTextareaClassName,
-                        notesTextareaClassName,
-                        readOnlyTextClassName,
-                        updateRow,
-                      })}
+                    <td className={`${RUN_SHEET_DJ_COLUMN_CLASS} border-b border-ftc-border/70 px-2 py-2 align-top`}>
+                      <RunSheetDjField
+                        row={row}
+                        rows={rows}
+                        lineup={lineup}
+                        profiles={profiles}
+                        canEdit={canEdit}
+                        readOnlyTextClassName={readOnlyTextClassName}
+                        onAssign={handleAssignDj}
+                      />
                     </td>
                     <td className="whitespace-nowrap border-b border-ftc-border/70 px-2 py-2 align-top">
                       <RunSheetSetTimeField
@@ -707,7 +838,6 @@ export default function EventRunSheetSection({
                         field: getFixedField("notes"),
                         row,
                         canEdit,
-                        artistTextareaClassName,
                         stageAreaTextareaClassName,
                         notesTextareaClassName,
                         readOnlyTextClassName,
@@ -765,27 +895,35 @@ export default function EventRunSheetSection({
                 </div>
 
                 <div className="grid gap-3">
-                  {(["artist_name", "stage_area"] as const).map((fieldKey) => {
-                    const field = getFixedField(fieldKey);
+                  <label className="block">
+                    <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted">
+                      DJ
+                    </span>
+                    <RunSheetDjField
+                      row={row}
+                      rows={rows}
+                      lineup={lineup}
+                      profiles={profiles}
+                      canEdit={canEdit}
+                      readOnlyTextClassName={readOnlyTextClassName}
+                      onAssign={handleAssignDj}
+                    />
+                  </label>
 
-                    return (
-                      <label key={field.key} className="block">
-                        <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted">
-                          {field.label}
-                        </span>
-                        {renderRunSheetFieldInput({
-                          field,
-                          row,
-                          canEdit,
-                          artistTextareaClassName,
-                          stageAreaTextareaClassName,
-                          notesTextareaClassName,
-                          readOnlyTextClassName,
-                          updateRow,
-                        })}
-                      </label>
-                    );
-                  })}
+                  <label className="block">
+                    <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted">
+                      {getFixedField("stage_area").label}
+                    </span>
+                    {renderRunSheetFieldInput({
+                      field: getFixedField("stage_area"),
+                      row,
+                      canEdit,
+                      stageAreaTextareaClassName,
+                      notesTextareaClassName,
+                      readOnlyTextClassName,
+                      updateRow,
+                    })}
+                  </label>
 
                   <label className="block">
                     <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted">
@@ -810,7 +948,6 @@ export default function EventRunSheetSection({
                       field: getFixedField("notes"),
                       row,
                       canEdit,
-                      artistTextareaClassName,
                       stageAreaTextareaClassName,
                       notesTextareaClassName,
                       readOnlyTextClassName,

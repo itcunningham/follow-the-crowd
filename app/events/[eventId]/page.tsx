@@ -11,7 +11,6 @@ import EventDetailBottomBar, {
   EventDetailPrimaryAction,
   EventDetailSecondaryAction,
 } from "@/app/components/event-detail/EventDetailBottomBar";
-import EventDetailLineupList from "@/app/components/event-detail/EventDetailLineupList";
 import EventDetailMetaList, {
   EventDetailEditButton,
   EventDetailHero,
@@ -663,11 +662,6 @@ export default function EventDetailPage() {
     [activeLineup, currentUserId],
   );
 
-  const acceptedLineup = useMemo(
-    () => activeLineup.filter((booking) => booking.status === "accepted"),
-    [activeLineup],
-  );
-
   const showStickyActions = !editOpen && !sendOpen;
   const showOwnerSendAction = isOwner && isPlanner && !eventIsCancelled;
   const showBottomBar =
@@ -983,24 +977,6 @@ export default function EventDetailPage() {
               />
             </div>
           ) : null}
-
-          <section className="mt-8">
-            <h2 className="text-lg font-bold text-ftc-text">Lineup</h2>
-            {acceptedLineup.length === 0 ? (
-              <PlannerEmptyPanel
-                className="mt-4"
-                message={
-                  isOwner
-                    ? "No confirmed artists yet. Send booking requests to build your lineup."
-                    : "Lineup will appear here once artists are confirmed."
-                }
-              />
-            ) : (
-              <div className="mt-4">
-                <EventDetailLineupList bookings={acceptedLineup} profiles={profiles} />
-              </div>
-            )}
-          </section>
 
           {!isOwner && viewerBooking ? (
             <section className="mt-8 ftc-card p-4 sm:p-5">
