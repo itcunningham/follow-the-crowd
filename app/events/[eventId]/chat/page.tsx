@@ -6,7 +6,6 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import AppNavigation, { MOBILE_NAV_OFFSET_CLASS } from "@/app/components/AppNavigation";
 import ChatNewMessagesPill from "@/app/components/dm/ChatNewMessagesPill";
 import GroupChatComposer from "@/app/components/group-chat/GroupChatComposer";
-import GroupChatEventContextCard from "@/app/components/group-chat/GroupChatEventContextCard";
 import GroupChatMessageBubble from "@/app/components/group-chat/GroupChatMessageBubble";
 import EventArtworkTile from "@/app/components/events/EventArtworkTile";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
@@ -19,7 +18,6 @@ import {
   sendEventCrewChatMessage,
   type EventCrewChatMessage,
 } from "@/lib/eventCrewChat";
-import type { EventStatus } from "@/lib/events";
 import { markNotificationsReadForLink } from "@/lib/notifications";
 import { markEventChatRead } from "@/lib/messageReads";
 import { supabase } from "@/lib/supabaseClient";
@@ -86,9 +84,6 @@ export default function EventCrewChatPage() {
     new Map(),
   );
   const [eventName, setEventName] = useState("Event");
-  const [eventVenue, setEventVenue] = useState("");
-  const [eventDate, setEventDate] = useState("");
-  const [eventStatus, setEventStatus] = useState<EventStatus | null>(null);
   const [coverImageUrl, setCoverImageUrl] = useState<string | null>(null);
   const [fallbackColour, setFallbackColour] = useState<string | null>(null);
   const [input, setInput] = useState("");
@@ -140,9 +135,6 @@ export default function EventCrewChatPage() {
         }
 
         setEventName(access.eventName ?? "Event");
-        setEventVenue(access.eventVenue ?? "");
-        setEventDate(access.eventDate ?? "");
-        setEventStatus(access.eventStatus);
         setCoverImageUrl(access.coverImageUrl);
         setFallbackColour(access.fallbackColour);
 
@@ -340,17 +332,6 @@ export default function EventCrewChatPage() {
               ) : null}
             </div>
           </header>
-
-          {!loading && !error?.includes("access") ? (
-            <GroupChatEventContextCard
-              eventName={eventName}
-              venue={eventVenue}
-              eventDate={eventDate}
-              status={eventStatus}
-              coverImageUrl={coverImageUrl}
-              fallbackColour={fallbackColour}
-            />
-          ) : null}
 
           <div
             ref={scrollRef}
