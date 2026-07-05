@@ -1,20 +1,54 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import AppNavigation, { MOBILE_NAV_OFFSET_CLASS } from "@/app/components/AppNavigation";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
-import ProfileAvatar from "@/app/components/ProfileAvatar";
+import NotificationsBellLink from "@/app/components/NotificationsBellLink";
+import DiscoverFeaturedProfileCard from "@/app/components/discover/DiscoverFeaturedProfileCard";
+import DiscoverGenreChips, {
+  type DiscoverGenreFilter,
+} from "@/app/components/discover/DiscoverGenreChips";
+import DiscoverProfileListRow from "@/app/components/discover/DiscoverProfileListRow";
+import DiscoverSearchBar from "@/app/components/discover/DiscoverSearchBar";
+import DiscoverSectionHeader from "@/app/components/discover/DiscoverSectionHeader";
+import { getNavBadgeCounts } from "@/lib/notifications";
 import { startDm } from "@/lib/startDm";
 import {
   getCurrentUserId,
   getCurrentUserProfile,
-  getRoleLabel,
   listDiscoverUsers,
   type UserProfile,
-  type UserRole,
 } from "@/lib/user/currentUser";
+
+function matchesGenreFilter(user: UserProfile, filter: DiscoverGenreFilter): boolean {
+  if (filter === "All") {
+    return true;
+  }
+
+  const genre = user.genre?.trim().toLowerCase() ?? "";
+  return genre.includes(filter.toLowerCase());
+}
+
+function matchesSearchQuery(user: UserProfile, query: string): boolean {
+  const normalized = query.trim().toLowerCase();
+
+  if (!normalized) {
+    return true;
+  }
+
+  const haystack = [
+    user.display_name,
+    user.bio,
+    user.genre,
+    user.location,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+  return haystack.includes(normalized);
+}
 
 export default function DiscoverPage() {
   const router = useRouter();
@@ -22,6 +56,9 @@ export default function DiscoverPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [messagingUserId, setMessagingUserId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [genreFilter, setGenreFilter] = useState<DiscoverGenreFilter>("All");
+  const [notificationCount, setNotificationCount] = useState(0);
 
   useEffect(() => {
     async function loadDiscoverUsers() {
@@ -39,6 +76,10 @@ export default function DiscoverPage() {
 
         const discoverUsers = await listDiscoverUsers(profile.role);
         setUsers(discoverUsers);
+
+        const userId = await getCurrentUserId();
+        const counts = await getNavBadgeCounts(userId, profile.role);
+        setNotificationCount(counts.total);
       } catch (loadError) {
         console.error("Failed to load discover users:", loadError);
         setError(loadError instanceof Error ? loadError.message : "Failed to load users");
@@ -47,8 +88,19 @@ export default function DiscoverPage() {
       }
     }
 
-    loadDiscoverUsers();
+    void loadDiscoverUsers();
   }, []);
+
+  const filteredUsers = useMemo(
+    () =>
+      users.filter(
+        (user) => matchesSearchQuery(user, searchQuery) && matchesGenreFilter(user, genreFilter),
+      ),
+    [users, searchQuery, genreFilter],
+  );
+
+  const featuredUser = filteredUsers[0] ?? null;
+  const upcomingUsers = filteredUsers.slice(1);
 
   async function handleMessageUser(targetUserId: string) {
     setMessagingUserId(targetUserId);
@@ -71,100 +123,82 @@ export default function DiscoverPage() {
         className={`mx-auto min-h-[100dvh] w-full max-w-2xl bg-ftc-bg font-sans text-ftc-text ${MOBILE_NAV_OFFSET_CLASS}`}
       >
         <AppNavigation />
-        <header className="ftc-page-header px-4 py-4 sm:px-6 md:pt-4">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-ftc-text-muted">
-            Melbourne
-          </p>
-          <h1 className="mt-1 text-2xl font-bold text-ftc-text">Discover</h1>
-          <p className="mt-1 text-sm text-ftc-text-muted">
-            Browse DJs and promoters in the scene. Message anyone or send bulk booking requests
-            from Bookings.
-          </p>
+
+        <header className="px-4 pb-2 pt-4 sm:px-6 md:pt-4">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-ftc-text-muted">
+                Melbourne
+              </p>
+              <h1 className="mt-1 text-[2rem] font-bold leading-none tracking-tight text-ftc-text sm:text-[2.125rem]">
+                Discover
+              </h1>
+            </div>
+
+            <div className="flex shrink-0 items-center gap-2 pt-1">
+              <button
+                type="button"
+                aria-label="Filters"
+                className="flex h-10 w-10 items-center justify-center rounded-xl border border-ftc-border-subtle bg-ftc-surface text-ftc-text-secondary transition hover:border-ftc-border-strong hover:text-ftc-text"
+              >
+                <svg
+                  aria-hidden="true"
+                  viewBox="0 0 24 24"
+                  className="h-[18px] w-[18px]"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.75"
+                  strokeLinecap="round"
+                >
+                  <path d="M4 7h16" />
+                  <path d="M7 12h10" />
+                  <path d="M10 17h4" />
+                </svg>
+              </button>
+              <NotificationsBellLink count={notificationCount} />
+            </div>
+          </div>
         </header>
 
-        <div className="px-4 py-4 sm:px-6">
+        <div className="space-y-5 px-4 pb-6 pt-3 sm:px-6">
+          <DiscoverSearchBar value={searchQuery} onChange={setSearchQuery} />
+          <DiscoverGenreChips active={genreFilter} onChange={setGenreFilter} />
+
           {loading ? (
-            <p className="text-sm text-ftc-text-muted">Loading people...</p>
+            <p className="pt-2 text-sm text-ftc-text-muted">Loading...</p>
           ) : error ? (
-            <p className="text-sm text-red-400">{error}</p>
-          ) : users.length === 0 ? (
-            <p className="text-sm text-ftc-text-muted">No profiles to discover yet.</p>
+            <p className="pt-2 text-sm text-red-400">{error}</p>
+          ) : filteredUsers.length === 0 ? (
+            <p className="pt-2 text-sm text-ftc-text-muted">
+              {users.length === 0 ? "No profiles to discover yet." : "No matches for this search."}
+            </p>
           ) : (
-            <ul className="space-y-4">
-              {users.map((user) => (
-                <DiscoverCard
-                  key={user.user_id}
-                  user={user}
-                  messaging={messagingUserId === user.user_id}
-                  onMessage={() => handleMessageUser(user.user_id)}
-                />
-              ))}
-            </ul>
+            <>
+              <section aria-label="This Week">
+                <DiscoverSectionHeader title="This Week" />
+                {featuredUser ? (
+                  <DiscoverFeaturedProfileCard
+                    user={featuredUser}
+                    messaging={messagingUserId === featuredUser.user_id}
+                    onMessage={() => handleMessageUser(featuredUser.user_id)}
+                  />
+                ) : null}
+              </section>
+
+              {upcomingUsers.length > 0 ? (
+                <section aria-label="Upcoming">
+                  <DiscoverSectionHeader title="Upcoming" />
+                  <ul className="space-y-2.5">
+                    {upcomingUsers.map((user) => (
+                      <DiscoverProfileListRow key={user.user_id} user={user} />
+                    ))}
+                  </ul>
+                </section>
+              ) : null}
+            </>
           )}
         </div>
       </div>
     </OnboardingGuard>
-  );
-}
-
-function DiscoverCard({
-  user,
-  messaging,
-  onMessage,
-}: {
-  user: UserProfile;
-  messaging: boolean;
-  onMessage: () => void;
-}) {
-  const displayName = user.display_name ?? "Unknown";
-  const bioPreview = user.bio?.trim() || "No bio yet.";
-
-  return (
-    <li className="ftc-card overflow-hidden transition hover:border-ftc-primary/25">
-      <Link href={`/profile/${user.user_id}`} className="block p-4 sm:p-5">
-        <div className="flex items-start gap-3">
-          <ProfileAvatar name={displayName} avatarUrl={user.avatar_url} size="md" />
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <h2 className="text-base font-semibold text-ftc-text">{displayName}</h2>
-              <RoleBadge role={user.role} />
-            </div>
-            <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-ftc-text-muted">
-              {user.genre ? <span>{user.genre}</span> : null}
-              {user.location ? <span>{user.location}</span> : null}
-            </div>
-            <p className="mt-3 line-clamp-2 text-sm leading-relaxed text-ftc-text-secondary">
-              {bioPreview}
-            </p>
-            <div className="mt-3 flex flex-wrap gap-3 text-xs">
-              {user.instagram_url ? (
-                <span className="font-medium text-ftc-primary">Instagram</span>
-              ) : null}
-              {user.soundcloud_url ? (
-                <span className="font-medium text-ftc-primary">SoundCloud</span>
-              ) : null}
-            </div>
-          </div>
-        </div>
-      </Link>
-      <div className="border-t border-ftc-border-subtle px-4 py-3 sm:px-5">
-        <button
-          type="button"
-          onClick={onMessage}
-          disabled={messaging}
-          className="ftc-btn-primary px-4 py-2 text-sm uppercase tracking-wide disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {messaging ? "Opening..." : "Message"}
-        </button>
-      </div>
-    </li>
-  );
-}
-
-function RoleBadge({ role }: { role: UserRole | null }) {
-  return (
-    <span className="rounded-full border border-ftc-primary/25 bg-ftc-primary/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-ftc-primary">
-      {getRoleLabel(role)}
-    </span>
   );
 }

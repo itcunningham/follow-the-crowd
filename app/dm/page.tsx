@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Suspense, useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import AppNavigation, { MOBILE_NAV_OFFSET_CLASS } from "@/app/components/AppNavigation";
+import NotificationsBellLink from "@/app/components/NotificationsBellLink";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
 import ProfileAvatar from "@/app/components/ProfileAvatar";
 import {
@@ -40,7 +41,6 @@ import {
 } from "@/lib/user/currentUser";
 
 const TARGET_DJ_USER_ID = "test-user";
-const NOTIFICATIONS_PATH = "/notifications";
 
 type InboxTab = "dm" | "group";
 
@@ -101,35 +101,6 @@ function GroupChatsEmptyState() {
         Group chats appear here when you create events or accept bookings.
       </p>
     </div>
-  );
-}
-
-function NotificationsBellLink({ count }: { count: number }) {
-  return (
-    <Link
-      href={NOTIFICATIONS_PATH}
-      aria-label={count > 0 ? `Notifications, ${count} unread` : "Notifications"}
-      className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-ftc-border bg-ftc-surface/60 text-ftc-text-secondary transition hover:border-ftc-primary/30 hover:text-ftc-primary"
-    >
-      <svg
-        aria-hidden="true"
-        viewBox="0 0 24 24"
-        className="h-4 w-4"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.75"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
-        <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
-      </svg>
-      {count > 0 ? (
-        <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full border border-ftc-primary/40 bg-ftc-primary-dim px-1 text-[10px] font-bold leading-none text-white">
-          {count > 99 ? "99+" : count}
-        </span>
-      ) : null}
-    </Link>
   );
 }
 
