@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import {
   WHEEL_HOURS,
@@ -14,6 +14,69 @@ const ITEM_HEIGHT = 44;
 const VISIBLE_ROWS = 5;
 const WHEEL_HEIGHT = ITEM_HEIGHT * VISIBLE_ROWS;
 const WHEEL_PADDING = (WHEEL_HEIGHT - ITEM_HEIGHT) / 2;
+
+const TIME_PICKER_OVERLAY_CLASS =
+  "fixed inset-0 z-[100] flex items-end justify-center bg-[#0a0e14]/88 p-0 sm:items-center sm:p-4";
+
+const TIME_PICKER_DIALOG_CLASS =
+  "relative max-h-[90dvh] w-full max-w-sm overflow-hidden overflow-y-auto rounded-t-3xl border border-ftc-border-subtle bg-ftc-surface pb-[env(safe-area-inset-bottom)] shadow-ftc-lg sm:rounded-3xl sm:pb-0";
+
+const TIME_PICKER_HEADER_CLASS =
+  "flex items-center justify-between border-b border-ftc-border-subtle bg-ftc-surface px-4 py-3";
+
+const TIME_PICKER_CANCEL_CLASS =
+  "min-h-10 rounded-lg px-3 py-2 text-sm font-medium text-ftc-text-secondary transition hover:bg-ftc-bg-elevated hover:text-ftc-text";
+
+const TIME_PICKER_DONE_CLASS =
+  "min-h-10 rounded-lg px-3 py-2 text-sm font-semibold text-ftc-primary transition hover:bg-[var(--ftc-color-primary-subtle)] hover:text-ftc-primary-dim";
+
+const TIME_PICKER_WHEEL_AREA_CLASS = "relative bg-ftc-bg px-2 py-4";
+
+const TIME_PICKER_SELECTION_BAND_CLASS =
+  "pointer-events-none absolute inset-x-3 top-1/2 z-10 h-11 -translate-y-1/2 rounded-xl border border-[var(--ftc-color-primary-border)] bg-[var(--ftc-color-primary-subtle)]";
+
+const TIME_PICKER_FADE_TOP_CLASS =
+  "pointer-events-none absolute inset-x-0 top-0 z-20 h-16 bg-gradient-to-b from-ftc-bg via-ftc-bg/80 to-transparent";
+
+const TIME_PICKER_FADE_BOTTOM_CLASS =
+  "pointer-events-none absolute inset-x-0 bottom-0 z-20 h-16 bg-gradient-to-t from-ftc-bg via-ftc-bg/80 to-transparent";
+
+function TimePickerHeader({
+  title,
+  titleId,
+  onCancel,
+  onDone,
+}: {
+  title: string;
+  titleId: string;
+  onCancel: () => void;
+  onDone: () => void;
+}) {
+  return (
+    <div className={TIME_PICKER_HEADER_CLASS}>
+      <button type="button" onClick={onCancel} className={TIME_PICKER_CANCEL_CLASS}>
+        Cancel
+      </button>
+      <h2 id={titleId} className="text-sm font-semibold text-ftc-text">
+        {title}
+      </h2>
+      <button type="button" onClick={onDone} className={TIME_PICKER_DONE_CLASS}>
+        Done
+      </button>
+    </div>
+  );
+}
+
+function TimePickerWheelArea({ children }: { children: ReactNode }) {
+  return (
+    <div className={TIME_PICKER_WHEEL_AREA_CLASS}>
+      <div aria-hidden="true" className={TIME_PICKER_SELECTION_BAND_CLASS} />
+      <div aria-hidden="true" className={TIME_PICKER_FADE_TOP_CLASS} />
+      <div aria-hidden="true" className={TIME_PICKER_FADE_BOTTOM_CLASS} />
+      <div className="relative z-0 flex items-stretch">{children}</div>
+    </div>
+  );
+}
 
 function WheelColumn<T extends string | number>({
   label,
@@ -96,8 +159,10 @@ function WheelColumn<T extends string | number>({
           return (
             <div
               key={String(item)}
-              className={`flex h-11 shrink-0 snap-center items-center justify-center text-base transition-colors ${
-                isSelected ? "font-semibold text-ftc-text" : "text-ftc-text-muted"
+              className={`flex h-11 shrink-0 snap-center items-center justify-center text-base tabular-nums transition-colors ${
+                isSelected
+                  ? "font-semibold text-ftc-primary"
+                  : "font-normal text-ftc-text-secondary"
               }`}
               style={{ scrollSnapAlign: "center" }}
             >
@@ -164,7 +229,7 @@ export function BookingTimeWheelPicker({
   }
 
   return createPortal(
-    <div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/70 p-0 sm:items-center sm:p-4">
+    <div className={TIME_PICKER_OVERLAY_CLASS}>
       <button
         type="button"
         aria-label="Close time picker"
@@ -175,46 +240,16 @@ export function BookingTimeWheelPicker({
         role="dialog"
         aria-modal="true"
         aria-labelledby="booking-time-picker-title"
-        className="relative max-h-[90dvh] w-full max-w-sm overflow-hidden overflow-y-auto rounded-t-3xl border border-ftc-border bg-ftc-bg-elevated pb-[env(safe-area-inset-bottom)] shadow-ftc-lg sm:rounded-3xl sm:pb-0"
+        className={TIME_PICKER_DIALOG_CLASS}
       >
-        <div className="flex items-center justify-between border-b border-ftc-border px-4 py-3">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="rounded-lg px-2 py-1 text-sm font-medium text-ftc-text-secondary transition hover:text-ftc-text"
-          >
-            Cancel
-          </button>
-          <h2
-            id="booking-time-picker-title"
-            className="text-sm font-semibold text-ftc-text"
-          >
-            {title}
-          </h2>
-          <button
-            type="button"
-            onClick={() => onDone(draft)}
-            className="rounded-lg px-2 py-1 text-sm font-semibold text-ftc-primary transition hover:text-ftc-primary"
-          >
-            Done
-          </button>
-        </div>
+        <TimePickerHeader
+          title={title}
+          titleId="booking-time-picker-title"
+          onCancel={onCancel}
+          onDone={() => onDone(draft)}
+        />
 
-        <div className="relative px-2 py-4">
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-x-4 top-1/2 z-10 h-11 -translate-y-1/2 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated"
-          />
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-x-0 top-0 z-20 h-16 bg-gradient-to-b from-ftc-bg-elevated to-transparent"
-          />
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-x-0 bottom-0 z-20 h-16 bg-gradient-to-t from-ftc-bg-elevated to-transparent"
-          />
-
-          <div className="relative z-0 flex items-stretch">
+        <TimePickerWheelArea>
             <WheelColumn
               label="Hour"
               items={WHEEL_HOURS}
@@ -236,8 +271,7 @@ export function BookingTimeWheelPicker({
               onChange={(meridiem) => setDraft((prev) => ({ ...prev, meridiem }))}
               formatItem={(meridiem) => meridiem}
             />
-          </div>
-        </div>
+        </TimePickerWheelArea>
       </div>
     </div>,
     document.body,
@@ -314,7 +348,7 @@ export function BookingDualTimeWheelPicker({
   }
 
   return createPortal(
-    <div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/70 p-0 sm:items-center sm:p-4">
+    <div className={TIME_PICKER_OVERLAY_CLASS}>
       <button
         type="button"
         aria-label="Close set time picker"
@@ -325,32 +359,16 @@ export function BookingDualTimeWheelPicker({
         role="dialog"
         aria-modal="true"
         aria-labelledby="booking-dual-time-picker-title"
-        className="relative max-h-[90dvh] w-full max-w-sm overflow-hidden overflow-y-auto rounded-t-3xl border border-ftc-border bg-ftc-bg-elevated pb-[env(safe-area-inset-bottom)] shadow-ftc-lg sm:rounded-3xl sm:pb-0"
+        className={TIME_PICKER_DIALOG_CLASS}
       >
-        <div className="flex items-center justify-between border-b border-ftc-border px-4 py-3">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="rounded-lg px-2 py-1 text-sm font-medium text-ftc-text-secondary transition hover:text-ftc-text"
-          >
-            Cancel
-          </button>
-          <h2
-            id="booking-dual-time-picker-title"
-            className="text-sm font-semibold text-ftc-text"
-          >
-            Set Time
-          </h2>
-          <button
-            type="button"
-            onClick={() => onDone(startDraft, finishDraft)}
-            className="rounded-lg px-2 py-1 text-sm font-semibold text-ftc-primary transition hover:text-ftc-primary"
-          >
-            Done
-          </button>
-        </div>
+        <TimePickerHeader
+          title="Set Time"
+          titleId="booking-dual-time-picker-title"
+          onCancel={onCancel}
+          onDone={() => onDone(startDraft, finishDraft)}
+        />
 
-        <div className="flex border-b border-ftc-border p-1">
+        <div className="flex border-b border-ftc-border-subtle bg-ftc-surface p-1.5">
           {(
             [
               { id: "start" as const, label: "Start Time" },
@@ -367,7 +385,7 @@ export function BookingDualTimeWheelPicker({
                 className={`flex-1 rounded-lg px-3 py-2 text-xs font-semibold uppercase tracking-wide transition ${
                   isActive
                     ? "bg-ftc-primary text-ftc-bg"
-                    : "text-ftc-text-muted hover:text-ftc-text-secondary"
+                    : "text-ftc-text-secondary hover:bg-ftc-bg-elevated hover:text-ftc-text"
                 }`}
               >
                 {tab.label}
@@ -376,21 +394,7 @@ export function BookingDualTimeWheelPicker({
           })}
         </div>
 
-        <div className="relative px-2 py-4">
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-x-4 top-1/2 z-10 h-11 -translate-y-1/2 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated"
-          />
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-x-0 top-0 z-20 h-16 bg-gradient-to-b from-ftc-bg-elevated to-transparent"
-          />
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-x-0 bottom-0 z-20 h-16 bg-gradient-to-t from-ftc-bg-elevated to-transparent"
-          />
-
-          <div className="relative z-0 flex items-stretch">
+        <TimePickerWheelArea>
             <WheelColumn
               label="Hour"
               items={WHEEL_HOURS}
@@ -412,8 +416,7 @@ export function BookingDualTimeWheelPicker({
               onChange={(meridiem) => setDraft({ ...draft, meridiem })}
               formatItem={(meridiem) => meridiem}
             />
-          </div>
-        </div>
+        </TimePickerWheelArea>
       </div>
     </div>,
     document.body,
