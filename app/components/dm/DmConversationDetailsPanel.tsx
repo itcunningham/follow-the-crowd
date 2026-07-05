@@ -125,11 +125,11 @@ export default function DmConversationDetailsPanel({
           role="dialog"
           aria-modal="true"
           aria-labelledby="dm-details-title"
-          className="flex max-h-[90dvh] w-full max-w-lg flex-col overflow-hidden rounded-t-3xl border border-zinc-800/80 bg-[#070708] pb-[env(safe-area-inset-bottom)] shadow-[0_24px_64px_rgba(0,0,0,0.55)] sm:rounded-3xl sm:pb-0"
+          className="flex max-h-[90dvh] w-full max-w-lg flex-col overflow-hidden rounded-t-3xl border border-ftc-border bg-ftc-bg pb-[env(safe-area-inset-bottom)] shadow-ftc-card sm:rounded-3xl sm:pb-0"
           onClick={(event) => event.stopPropagation()}
         >
-          <div className="flex items-center justify-between border-b border-zinc-800/80 px-4 py-3 sm:px-5">
-            <h2 id="dm-details-title" className="text-sm font-semibold uppercase tracking-wide text-zinc-400">
+          <div className="flex items-center justify-between border-b border-ftc-border px-4 py-3 sm:px-5">
+            <h2 id="dm-details-title" className="text-sm font-semibold uppercase tracking-wide text-ftc-text-secondary">
               Conversation details
             </h2>
             <button
@@ -137,7 +137,7 @@ export default function DmConversationDetailsPanel({
               aria-label="Close conversation details"
               disabled={busy}
               onClick={onClose}
-              className="flex h-9 w-9 items-center justify-center rounded-full border border-zinc-800 text-zinc-400 transition hover:border-zinc-700 hover:text-zinc-200 disabled:opacity-50"
+              className="flex h-9 w-9 items-center justify-center rounded-full border border-ftc-border text-ftc-text-secondary transition hover:border-ftc-border-strong hover:text-ftc-text disabled:opacity-50"
             >
               ✕
             </button>
@@ -151,9 +151,9 @@ export default function DmConversationDetailsPanel({
                 size="lg"
                 className="h-20 w-20 text-lg"
               />
-              <p className="mt-4 text-lg font-semibold text-zinc-50">{otherUserName}</p>
+              <p className="mt-4 text-lg font-semibold text-ftc-text">{otherUserName}</p>
               {roleLabel ? (
-                <p className="mt-1 text-sm text-zinc-500">{roleLabel}</p>
+                <p className="mt-1 text-sm text-ftc-text-muted">{roleLabel}</p>
               ) : null}
             </div>
 
@@ -161,7 +161,7 @@ export default function DmConversationDetailsPanel({
               <Link
                 href={`/profile/${otherUserId}`}
                 onClick={onClose}
-                className="flex min-h-[44px] items-center justify-center rounded-xl border border-zinc-800 bg-zinc-900/60 px-4 py-3 text-sm font-semibold text-zinc-100 transition hover:border-blue-500/35 hover:text-blue-200"
+                className="flex min-h-[44px] items-center justify-center rounded-xl border border-ftc-border bg-ftc-surface/60 px-4 py-3 text-sm font-semibold text-ftc-text transition hover:border-ftc-primary/30 hover:text-ftc-primary/90"
               >
                 View profile
               </Link>
@@ -170,7 +170,7 @@ export default function DmConversationDetailsPanel({
                 type="button"
                 disabled={busy || reportSubmitting}
                 onClick={() => setReportOpen(true)}
-                className="flex min-h-[44px] w-full items-center justify-center rounded-xl border border-zinc-800 bg-zinc-900/60 px-4 py-3 text-sm font-semibold text-zinc-200 transition hover:border-zinc-700 disabled:opacity-50"
+                className="flex min-h-[44px] w-full items-center justify-center rounded-xl border border-ftc-border bg-ftc-surface/60 px-4 py-3 text-sm font-semibold text-ftc-text transition hover:border-ftc-border-strong disabled:opacity-50"
               >
                 Report user
               </button>
@@ -180,7 +180,7 @@ export default function DmConversationDetailsPanel({
                   type="button"
                   disabled={busy}
                   onClick={() => void onUnblock()}
-                  className="flex min-h-[44px] w-full items-center justify-center rounded-xl border border-zinc-800 bg-zinc-900/60 px-4 py-3 text-sm font-semibold text-zinc-200 transition hover:border-zinc-700 disabled:opacity-50"
+                  className="flex min-h-[44px] w-full items-center justify-center rounded-xl border border-ftc-border bg-ftc-surface/60 px-4 py-3 text-sm font-semibold text-ftc-text transition hover:border-ftc-border-strong disabled:opacity-50"
                 >
                   {busy ? "Unblocking..." : "Unblock user"}
                 </button>
@@ -212,13 +212,13 @@ export default function DmConversationDetailsPanel({
             role="dialog"
             aria-modal="true"
             aria-labelledby="block-user-title"
-            className="max-h-[90dvh] w-full max-w-md overflow-y-auto overscroll-contain rounded-t-2xl border border-zinc-700/80 bg-zinc-950 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-[0_24px_64px_rgba(0,0,0,0.55)] sm:rounded-2xl sm:p-5"
+            className="max-h-[90dvh] w-full max-w-md overflow-y-auto overscroll-contain rounded-t-2xl border border-ftc-border-strong bg-ftc-bg-elevated p-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-ftc-card sm:rounded-2xl sm:p-5"
             onClick={(event) => event.stopPropagation()}
           >
-            <h3 id="block-user-title" className="text-base font-semibold text-zinc-50">
+            <h3 id="block-user-title" className="text-base font-semibold text-ftc-text">
               Block {otherUserName}?
             </h3>
-            <p className="mt-2 text-sm leading-relaxed text-zinc-400">
+            <p className="mt-2 text-sm leading-relaxed text-ftc-text-secondary">
               They will no longer be able to message you.
             </p>
 
@@ -227,7 +227,7 @@ export default function DmConversationDetailsPanel({
                 type="button"
                 disabled={busy}
                 onClick={() => setConfirmOpen(false)}
-                className="rounded-xl border border-zinc-700 bg-zinc-900/80 px-4 py-2.5 text-sm font-semibold uppercase tracking-wide text-zinc-300 transition hover:border-zinc-600 disabled:opacity-50"
+                className="rounded-xl border border-ftc-border-strong bg-ftc-surface/80 px-4 py-2.5 text-sm font-semibold uppercase tracking-wide text-ftc-text-secondary transition hover:border-ftc-border-strong disabled:opacity-50"
               >
                 Cancel
               </button>

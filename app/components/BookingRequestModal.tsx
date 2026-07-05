@@ -73,19 +73,19 @@ export default function BookingRequestModal({
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 p-4 sm:items-center">
       <div
-        className="max-h-[90dvh] w-full max-w-lg overflow-y-auto rounded-2xl border border-zinc-800 bg-[#070708] shadow-[0_0_40px_rgba(59,130,246,0.12)]"
+        className="max-h-[90dvh] w-full max-w-lg overflow-y-auto rounded-2xl border border-ftc-border bg-ftc-bg shadow-ftc-glow-lg"
         role="dialog"
         aria-modal="true"
         aria-labelledby="booking-request-title"
       >
-        <div className="border-b border-zinc-800/80 px-5 py-4">
-          <h2 id="booking-request-title" className="text-lg font-semibold text-zinc-50">
+        <div className="border-b border-ftc-border px-5 py-4">
+          <h2 id="booking-request-title" className="text-lg font-semibold text-ftc-text">
             Send booking request
           </h2>
-          <p className="mt-1 text-sm text-zinc-500">
+          <p className="mt-1 text-sm text-ftc-text-muted">
             Sending to {selectedDjs.length} DJ{selectedDjs.length === 1 ? "" : "s"}: {djNames}
           </p>
-          <p className="mt-2 text-xs text-zinc-600">
+          <p className="mt-2 text-xs text-ftc-text-muted">
             Each DJ will receive a separate private message.
           </p>
         </div>
@@ -136,14 +136,14 @@ export default function BookingRequestModal({
               type="button"
               onClick={onClose}
               disabled={submitting}
-              className="rounded-xl border border-zinc-700 bg-zinc-900/80 px-4 py-3 text-sm font-semibold uppercase tracking-wide text-zinc-300 transition hover:border-zinc-600 disabled:cursor-not-allowed disabled:opacity-50"
+              className="rounded-xl border border-ftc-border-strong bg-ftc-surface/80 px-4 py-3 text-sm font-semibold uppercase tracking-wide text-ftc-text-secondary transition hover:border-ftc-border-strong disabled:cursor-not-allowed disabled:opacity-50"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={submitting}
-              className="flex-1 rounded-xl border border-blue-500/45 bg-blue-600/20 px-4 py-3 text-sm font-semibold uppercase tracking-wide text-blue-100 shadow-[0_0_20px_rgba(59,130,246,0.22)] transition hover:border-blue-400/60 hover:bg-blue-600/30 disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex-1 rounded-xl border border-ftc-primary/40 bg-ftc-primary/10 px-4 py-3 text-sm font-semibold uppercase tracking-wide text-ftc-primary/80 shadow-ftc-glow transition hover:border-ftc-primary/50 hover:bg-ftc-primary/15 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {submitting ? "Sending..." : "Send booking request"}
             </button>
@@ -171,7 +171,7 @@ function BookingField({
 }) {
   return (
     <label className="block">
-      <span className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-400">
+      <span className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.14em] text-ftc-text-secondary">
         {label}
       </span>
       {multiline ? (
@@ -180,7 +180,7 @@ function BookingField({
           onChange={(event) => onChange(event.target.value)}
           placeholder={placeholder}
           rows={3}
-          className="w-full rounded-xl border border-zinc-800 bg-zinc-900/80 px-3.5 py-2.5 text-sm text-zinc-100 outline-none transition placeholder:text-zinc-600 focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/15"
+          className="w-full rounded-xl border border-ftc-border bg-ftc-surface/80 px-3.5 py-2.5 text-sm text-ftc-text outline-none transition placeholder:text-ftc-text-muted focus:border-ftc-primary/45 focus:ring-2 focus:ring-ftc-primary/15"
         />
       ) : (
         <input
@@ -189,7 +189,7 @@ function BookingField({
           onChange={(event) => onChange(event.target.value)}
           placeholder={placeholder}
           required={required}
-          className="w-full rounded-xl border border-zinc-800 bg-zinc-900/80 px-3.5 py-2.5 text-sm text-zinc-100 outline-none transition placeholder:text-zinc-600 focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/15"
+          className="w-full rounded-xl border border-ftc-border bg-ftc-surface/80 px-3.5 py-2.5 text-sm text-ftc-text outline-none transition placeholder:text-ftc-text-muted focus:border-ftc-primary/45 focus:ring-2 focus:ring-ftc-primary/15"
         />
       )}
     </label>

@@ -62,13 +62,13 @@ export default function VenueMap({ venues }: VenueMapProps) {
 
   if (!apiKey) {
     return (
-      <div className="flex h-full min-h-[280px] items-center justify-center rounded-xl border border-dashed border-zinc-700 bg-zinc-900/50 px-6 text-center">
-        <p className="text-sm leading-relaxed text-zinc-500">
+      <div className="flex h-full min-h-[280px] items-center justify-center rounded-xl border border-dashed border-ftc-border-strong bg-ftc-surface/50 px-6 text-center">
+        <p className="text-sm leading-relaxed text-ftc-text-muted">
           Add{" "}
-          <code className="font-mono text-blue-400">
+          <code className="font-mono text-ftc-primary">
             NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
           </code>{" "}
-          to <code className="font-mono text-zinc-400">.env.local</code> to
+          to <code className="font-mono text-ftc-text-secondary">.env.local</code> to
           load the venue map.
         </p>
       </div>
@@ -77,16 +77,16 @@ export default function VenueMap({ venues }: VenueMapProps) {
 
   if (loadError) {
     return (
-      <div className="flex h-full min-h-[280px] items-center justify-center rounded-xl border border-zinc-800 bg-zinc-900/50 px-6 text-center">
-        <p className="text-sm text-zinc-500">Unable to load Google Maps.</p>
+      <div className="flex h-full min-h-[280px] items-center justify-center rounded-xl border border-ftc-border bg-ftc-surface/50 px-6 text-center">
+        <p className="text-sm text-ftc-text-muted">Unable to load Google Maps.</p>
       </div>
     );
   }
 
   if (!isLoaded) {
     return (
-      <div className="flex h-full min-h-[280px] items-center justify-center rounded-xl border border-zinc-800 bg-zinc-900/50">
-        <p className="text-sm text-zinc-500">Loading map...</p>
+      <div className="flex h-full min-h-[280px] items-center justify-center rounded-xl border border-ftc-border bg-ftc-surface/50">
+        <p className="text-sm text-ftc-text-muted">Loading map...</p>
       </div>
     );
   }

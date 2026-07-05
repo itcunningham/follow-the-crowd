@@ -95,17 +95,17 @@ export const MOBILE_NAV_OFFSET_CLASS = "pb-[calc(3.5rem+env(safe-area-inset-bott
 function navLinkClassName(isActive: boolean, variant: "desktop" | "mobile") {
   if (variant === "desktop") {
     if (isActive) {
-      return "relative rounded-lg px-2.5 py-1.5 text-sm font-semibold text-blue-300 shadow-[0_0_18px_rgba(59,130,246,0.14)] after:absolute after:inset-x-2 after:bottom-0 after:h-0.5 after:rounded-full after:bg-blue-500 after:shadow-[0_0_10px_rgba(59,130,246,0.55)]";
+      return "relative rounded-lg px-2.5 py-1.5 text-sm font-semibold text-ftc-primary shadow-ftc-glow after:absolute after:inset-x-2 after:bottom-0 after:h-0.5 after:rounded-full after:bg-ftc-primary after:shadow-ftc-glow";
     }
 
-    return "relative rounded-lg px-2.5 py-1.5 text-sm font-semibold text-zinc-300 transition hover:text-blue-400";
+    return "relative rounded-lg px-2.5 py-1.5 text-sm font-semibold text-ftc-text-secondary transition hover:text-ftc-primary";
   }
 
   if (isActive) {
-    return "relative flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 px-0.5 py-2 text-[10px] font-semibold text-blue-400";
+    return "relative flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 px-0.5 py-2 text-[10px] font-semibold text-ftc-primary";
   }
 
-  return "relative flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 px-0.5 py-2 text-[10px] font-semibold text-zinc-400 transition hover:text-blue-300";
+  return "relative flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 px-0.5 py-2 text-[10px] font-semibold text-ftc-text-secondary transition hover:text-ftc-primary";
 }
 
 function ProfileNavIcon({ active }: { active: boolean }) {
@@ -113,7 +113,7 @@ function ProfileNavIcon({ active }: { active: boolean }) {
     <svg
       aria-hidden="true"
       viewBox="0 0 24 24"
-      className={`h-5 w-5 ${active ? "text-blue-400" : "text-zinc-500"}`}
+      className={`h-5 w-5 ${active ? "text-ftc-primary" : "text-ftc-text-muted"}`}
       fill="none"
       stroke="currentColor"
       strokeWidth="1.75"
@@ -132,7 +132,7 @@ function NavBadge({ count }: { count: number }) {
   return (
     <span
       aria-label={`${count} unread`}
-      className="absolute right-0 top-0 z-10 flex h-4 min-w-4 translate-x-1/3 items-center justify-center rounded-full border border-blue-400/50 bg-blue-600 px-1 text-[10px] font-bold leading-none text-white shadow-[0_0_10px_rgba(59,130,246,0.45)]"
+      className="absolute right-0 top-0 z-10 flex h-4 min-w-4 translate-x-1/3 items-center justify-center rounded-full border border-ftc-primary/40 bg-ftc-primary-dim px-1 text-[10px] font-bold leading-none text-white shadow-ftc-glow"
     >
       {count > 99 ? "99+" : count}
     </span>
@@ -147,7 +147,7 @@ function MobileNavBadge({ count }: { count: number }) {
   return (
     <span
       aria-label={`${count} unread`}
-      className="absolute right-0.5 top-0.5 z-10 flex h-3.5 min-w-3.5 items-center justify-center rounded-full border border-blue-400/50 bg-blue-600 px-0.5 text-[9px] font-bold leading-none text-white shadow-[0_0_10px_rgba(59,130,246,0.45)]"
+      className="absolute right-0.5 top-0.5 z-10 flex h-3.5 min-w-3.5 items-center justify-center rounded-full border border-ftc-primary/40 bg-ftc-primary-dim px-0.5 text-[9px] font-bold leading-none text-white shadow-ftc-glow"
     >
       {count > 9 ? "9+" : count}
     </span>
@@ -172,7 +172,7 @@ function NavSkeleton({ variant }: { variant: "desktop" | "mobile" }) {
           <span
             key={index}
             aria-hidden="true"
-            className="h-4 w-14 animate-pulse rounded-md bg-zinc-800/90"
+            className="h-4 w-14 animate-pulse rounded-md bg-ftc-surface-raised/90"
           />
         ))}
       </>
@@ -187,8 +187,8 @@ function NavSkeleton({ variant }: { variant: "desktop" | "mobile" }) {
           aria-hidden="true"
           className="mx-auto flex min-w-0 flex-1 flex-col items-center justify-center gap-1 px-0.5 py-2"
         >
-          <span className="h-5 w-5 animate-pulse rounded-full bg-zinc-800/90" />
-          <span className="h-2 w-10 animate-pulse rounded bg-zinc-800/90" />
+          <span className="h-5 w-5 animate-pulse rounded-full bg-ftc-surface-raised/90" />
+          <span className="h-2 w-10 animate-pulse rounded bg-ftc-surface-raised/90" />
         </span>
       ))}
     </>
@@ -297,7 +297,7 @@ export default function AppNavigation() {
     <>
       <nav
         aria-label="Main navigation"
-        className="sticky top-0 z-40 hidden border-b border-zinc-800/80 bg-[#070708]/95 backdrop-blur-md md:block"
+        className="ftc-nav-bar sticky top-0 z-40 hidden border-b md:block"
       >
         <div className="mx-auto flex h-12 max-w-6xl items-center justify-between gap-1 px-4 sm:px-6">
           <div className="flex min-w-0 items-center gap-2 sm:gap-3">
@@ -326,7 +326,7 @@ export default function AppNavigation() {
 
       <nav
         aria-label="Mobile navigation"
-        className="fixed inset-x-0 bottom-0 z-40 border-t border-zinc-800/80 bg-[#070708]/95 backdrop-blur-md md:hidden"
+        className="ftc-nav-bar fixed inset-x-0 bottom-0 z-40 border-t md:hidden"
       >
         <div className="mx-auto flex max-w-2xl items-stretch px-0.5 pb-[env(safe-area-inset-bottom)]">
           {!navReady ? (

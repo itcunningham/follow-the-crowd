@@ -162,13 +162,13 @@ export default function NotificationsPage() {
   return (
     <OnboardingGuard>
       <div
-        className={`mx-auto flex min-h-[100dvh] w-full max-w-2xl flex-col bg-[#070708] font-sans text-zinc-100 ${MOBILE_NAV_OFFSET_CLASS}`}
+        className={`mx-auto flex min-h-[100dvh] w-full max-w-2xl flex-col bg-ftc-bg font-sans text-ftc-text ${MOBILE_NAV_OFFSET_CLASS}`}
       >
         <AppNavigation />
-        <header className="sticky top-0 z-10 border-b border-zinc-800/80 bg-[#070708]/95 px-4 py-4 backdrop-blur-md sm:px-6 md:top-12">
+        <header className="sticky top-0 z-10 border-b border-ftc-border bg-ftc-bg/95 px-4 py-4 backdrop-blur-md sm:px-6 md:top-12">
           <div>
-            <h1 className="text-xl font-semibold text-zinc-50">Notifications</h1>
-            <p className="mt-0.5 text-xs text-zinc-500">
+            <h1 className="text-xl font-semibold text-ftc-text">Notifications</h1>
+            <p className="mt-0.5 text-xs text-ftc-text-muted">
               {unreadCount > 0
                 ? `${unreadCount} unread`
                 : "Messages, booking requests, and updates"}
@@ -178,16 +178,16 @@ export default function NotificationsPage() {
 
         <div className="flex-1">
           {loading ? (
-            <p className="px-4 py-6 text-sm text-zinc-500 sm:px-6">Loading notifications...</p>
+            <p className="px-4 py-6 text-sm text-ftc-text-muted sm:px-6">Loading notifications...</p>
           ) : error ? (
             <p className="px-4 py-6 text-sm text-red-400 sm:px-6">{error}</p>
           ) : notifications.length === 0 ? (
             <div className="flex flex-col items-center justify-center px-6 py-20 text-center">
-              <div className="flex h-14 w-14 items-center justify-center rounded-full border border-zinc-800 bg-zinc-900/80">
+              <div className="flex h-14 w-14 items-center justify-center rounded-full border border-ftc-border bg-ftc-surface/80">
                 <svg
                   aria-hidden="true"
                   viewBox="0 0 24 24"
-                  className="h-6 w-6 text-zinc-500"
+                  className="h-6 w-6 text-ftc-text-muted"
                   fill="none"
                   stroke="currentColor"
                   strokeWidth="1.75"
@@ -200,13 +200,13 @@ export default function NotificationsPage() {
                   <path d="M10 18a2 2 0 0 0 4 0" strokeLinecap="round" />
                 </svg>
               </div>
-              <p className="mt-4 text-base font-semibold text-zinc-200">You&apos;re all caught up.</p>
-              <p className="mt-2 max-w-xs text-sm text-zinc-500">
+              <p className="mt-4 text-base font-semibold text-ftc-text">You&apos;re all caught up.</p>
+              <p className="mt-2 max-w-xs text-sm text-ftc-text-muted">
                 New messages and booking updates will appear here.
               </p>
             </div>
           ) : (
-            <ul className="divide-y divide-zinc-800/80">
+            <ul className="divide-y divide-ftc-border">
               {notifications.map((notification) => {
                 const isUnread = !notification.read;
 
@@ -218,15 +218,15 @@ export default function NotificationsPage() {
                       disabled={openingId === notification.id}
                       className={`flex w-full items-start gap-3 px-4 py-4 text-left transition sm:px-6 ${
                         isUnread
-                          ? "bg-blue-600/10 hover:bg-blue-600/15"
-                          : "hover:bg-zinc-900/70"
+                          ? "bg-ftc-primary/10 hover:bg-ftc-primary/10"
+                          : "hover:bg-ftc-surface/70"
                       } disabled:cursor-wait disabled:opacity-70`}
                     >
                       <div className="mt-1.5 shrink-0">
                         {isUnread ? (
                           <span
                             aria-hidden="true"
-                            className="block h-2.5 w-2.5 rounded-full bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.55)]"
+                            className="block h-2.5 w-2.5 rounded-full bg-ftc-primary shadow-ftc-glow"
                           />
                         ) : (
                           <span aria-hidden="true" className="block h-2.5 w-2.5 rounded-full bg-transparent" />
@@ -238,25 +238,25 @@ export default function NotificationsPage() {
                           <div className="min-w-0">
                             <p
                               className={`truncate text-[15px] ${
-                                isUnread ? "font-semibold text-zinc-50" : "font-medium text-zinc-200"
+                                isUnread ? "font-semibold text-ftc-text" : "font-medium text-ftc-text"
                               }`}
                             >
                               {notification.title}
                             </p>
-                            <p className="mt-0.5 text-[11px] font-medium uppercase tracking-wide text-blue-400/80">
+                            <p className="mt-0.5 text-[11px] font-medium uppercase tracking-wide text-ftc-primary/80">
                               {getNotificationTypeLabel(notification.type)}
                             </p>
                           </div>
                           <time
                             dateTime={notification.created_at}
-                            className="shrink-0 text-xs text-zinc-500"
+                            className="shrink-0 text-xs text-ftc-text-muted"
                           >
                             {formatNotificationTime(notification.created_at)}
                           </time>
                         </div>
 
                         {notification.body ? (
-                          <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-zinc-400">
+                          <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-ftc-text-secondary">
                             {notification.body}
                           </p>
                         ) : null}

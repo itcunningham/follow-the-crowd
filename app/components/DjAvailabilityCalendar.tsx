@@ -33,24 +33,25 @@ import {
 } from "@/lib/djAvailability";
 
 
-const PERSONAL_STATUS_OPTIONS: { value: DjAvailabilityStatus; label: string }[] = [
-  { value: "available", label: "Open" },
-  { value: "tentative", label: "Maybe" },
-  { value: "unavailable", label: "Unavailable" },
+const AVAILABILITY_STATUS_VALUES: readonly DjAvailabilityStatus[] = [
+  "available",
+  "tentative",
+  "unavailable",
 ];
 
-const BULK_STATUS_OPTIONS: { value: DjAvailabilityStatus; label: string }[] = [
-  { value: "available", label: "Open" },
-  { value: "tentative", label: "Maybe" },
-  { value: "unavailable", label: "Unavailable" },
-];
+const PERSONAL_STATUS_OPTIONS = AVAILABILITY_STATUS_VALUES.map((value) => ({
+  value,
+  label: formatDjAvailabilityStatusLabel(value),
+}));
+
+const BULK_STATUS_OPTIONS = PERSONAL_STATUS_OPTIONS;
 
 type PendingBulkChoice =
   | { type: "status"; status: DjAvailabilityStatus }
   | { type: "clear" };
 
 function getBulkActionLabel(status: DjAvailabilityStatus): string {
-  return BULK_STATUS_OPTIONS.find((option) => option.value === status)?.label ?? status;
+  return formatDjAvailabilityStatusLabel(status);
 }
 
 function getDisplayedMonthDates(monthStart: Date): Date[] {
@@ -92,10 +93,10 @@ function getCalendarCellAvailabilityColorClass(status: DjAvailabilityStatus): st
 
 function getCalendarCellBookingColorClass(status: "pending" | "accepted"): string {
   if (status === "pending") {
-    return "border-blue-400/60 bg-blue-500/30";
+    return "border-ftc-primary/50 bg-ftc-primary/30";
   }
 
-  return "border-purple-400/60 bg-purple-500/30";
+  return "border-ftc-primary-dim/50 bg-ftc-primary/15";
 }
 
 function getCalendarCellAvailabilityGlowClass(status: DjAvailabilityStatus): string {
@@ -111,7 +112,7 @@ function getCalendarCellAvailabilityGlowClass(status: DjAvailabilityStatus): str
 
 function getCalendarCellBookingGlowClass(status: "pending" | "accepted"): string {
   if (status === "pending") {
-    return "shadow-[0_0_10px_rgba(59,130,246,0.35)]";
+    return "shadow-ftc-glow";
   }
 
   return "shadow-[0_0_10px_rgba(168,85,247,0.35)]";
@@ -127,16 +128,16 @@ function DayBookingsPopover({ dateKey, bookings, onClose }: DayBookingsPopoverPr
   return (
     <div
       data-calendar-overlay=""
-      className="absolute left-0 right-0 top-full z-30 mt-1 rounded-xl border border-zinc-700/80 bg-zinc-950 p-2 shadow-[0_12px_40px_rgba(0,0,0,0.45)]"
+      className="absolute left-0 right-0 top-full z-30 mt-1 rounded-xl border border-ftc-border-strong bg-ftc-bg-elevated p-2 shadow-[0_12px_40px_rgba(0,0,0,0.45)]"
     >
       <div className="mb-2 flex items-center justify-between gap-2 px-1">
-        <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+        <p className="text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted">
           {bookings.length} booking requests
         </p>
         <button
           type="button"
           onClick={onClose}
-          className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500 transition hover:text-zinc-300"
+          className="text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted transition hover:text-ftc-text-secondary"
         >
           Close
         </button>
@@ -147,10 +148,10 @@ function DayBookingsPopover({ dateKey, bookings, onClose }: DayBookingsPopoverPr
             <Link
               href={getBookingRequestHref(booking)}
               onClick={onClose}
-              className="block rounded-lg border border-zinc-800/80 bg-zinc-900/80 px-2.5 py-2 transition hover:border-blue-500/35 hover:bg-zinc-900"
+              className="block rounded-lg border border-ftc-border bg-ftc-surface/80 px-2.5 py-2 transition hover:border-ftc-primary/30 hover:bg-ftc-surface"
             >
               <div className="flex items-center justify-between gap-2">
-                <p className="truncate text-xs font-semibold text-zinc-100">
+                <p className="truncate text-xs font-semibold text-ftc-text">
                   {booking.event_name.trim() || "Booking request"}
                 </p>
                 <span
@@ -160,7 +161,7 @@ function DayBookingsPopover({ dateKey, bookings, onClose }: DayBookingsPopoverPr
                 </span>
               </div>
               {booking.set_time.trim() ? (
-                <p className="mt-0.5 truncate text-[11px] text-zinc-500">
+                <p className="mt-0.5 truncate text-[11px] text-ftc-text-muted">
                   {formatCalendarTimeLabel(booking.set_time)}
                 </p>
               ) : null}
@@ -192,12 +193,12 @@ function AvailabilityLegend() {
     },
     {
       label: "Pending Request",
-      className: "border-blue-500/40 bg-blue-500/10 text-blue-300",
-      glow: "shadow-[0_0_10px_rgba(59,130,246,0.22)]",
+      className: "border-ftc-primary/35 bg-ftc-primary/10 text-ftc-primary",
+      glow: "shadow-ftc-glow",
     },
     {
       label: "Booked",
-      className: "border-purple-500/40 bg-purple-500/10 text-purple-300",
+      className: "border-ftc-primary-dim/35 bg-ftc-primary/10 text-ftc-primary-dim",
       glow: "shadow-[0_0_10px_rgba(168,85,247,0.22)]",
     },
   ];
@@ -272,12 +273,12 @@ function QuickSelectMenu({
         aria-expanded={open}
         aria-haspopup="menu"
         onClick={onToggle}
-        className="rounded-lg border border-zinc-700/90 bg-zinc-900/80 px-2.5 py-1.5 text-[11px] font-semibold text-zinc-300 transition hover:border-zinc-600 hover:text-zinc-100"
+        className="rounded-lg border border-ftc-border-strong/90 bg-ftc-surface/80 px-2.5 py-1.5 text-[11px] font-semibold text-ftc-text-secondary transition hover:border-ftc-border-strong hover:text-ftc-text"
       >
         Quick select
       </button>
       {open ? (
-        <div className="absolute right-0 top-full z-40 mt-1.5 w-[11.5rem] rounded-lg border border-zinc-700/80 bg-zinc-950 p-1 shadow-[0_12px_40px_rgba(0,0,0,0.45)]">
+        <div className="absolute right-0 top-full z-40 mt-1.5 w-[11.5rem] rounded-lg border border-ftc-border-strong bg-ftc-bg-elevated p-1 shadow-[0_12px_40px_rgba(0,0,0,0.45)]">
           {[
             { label: "All Fridays this month", action: onSelectFridays },
             { label: "All Saturdays this month", action: onSelectSaturdays },
@@ -291,7 +292,7 @@ function QuickSelectMenu({
                 option.action();
                 onClose();
               }}
-              className="block w-full rounded-md px-2 py-1.5 text-left text-[11px] font-medium text-zinc-200 transition hover:bg-zinc-900/90"
+              className="block w-full rounded-md px-2 py-1.5 text-left text-[11px] font-medium text-ftc-text transition hover:bg-ftc-surface/90"
             >
               {option.label}
             </button>
@@ -322,7 +323,7 @@ function BulkActionBar({
   onCancel: () => void;
 }) {
   const outlineButtonClass =
-    "rounded-lg border border-zinc-700/90 bg-zinc-900/80 px-2.5 py-1.5 text-[11px] font-semibold text-zinc-300 transition hover:border-zinc-600 hover:text-zinc-100 disabled:opacity-50";
+    "rounded-lg border border-ftc-border-strong/90 bg-ftc-surface/80 px-2.5 py-1.5 text-[11px] font-semibold text-ftc-text-secondary transition hover:border-ftc-border-strong hover:text-ftc-text disabled:opacity-50";
   const pendingLabel =
     pendingChoice?.type === "clear"
       ? "Clear"
@@ -331,9 +332,9 @@ function BulkActionBar({
         : null;
 
   return (
-    <div className="sticky bottom-0 z-30 mt-3 rounded-xl border border-zinc-700/80 bg-zinc-950/95 p-2 shadow-[0_-8px_32px_rgba(0,0,0,0.35)] backdrop-blur-sm">
+    <div className="sticky bottom-0 z-30 mt-3 rounded-xl border border-ftc-border-strong bg-ftc-bg-elevated/95 p-2 shadow-[0_-8px_32px_rgba(0,0,0,0.35)] backdrop-blur-sm">
       <div className="flex flex-wrap items-center gap-2">
-        <p className="text-[11px] font-semibold text-zinc-300">
+        <p className="text-[11px] font-semibold text-ftc-text-secondary">
           {selectedCount === 0
             ? "Tap dates to select them"
             : pendingLabel
@@ -352,7 +353,7 @@ function BulkActionBar({
                 disabled={saving || selectedCount === 0}
                 onClick={() => onChooseStatus(option.value)}
                 className={`${outlineButtonClass} ${
-                  isActive ? "border-blue-500/40 bg-blue-600/20 text-blue-200" : ""
+                  isActive ? "border-ftc-primary/35 bg-ftc-primary/10 text-ftc-primary/90" : ""
                 }`}
               >
                 {option.label}
@@ -375,7 +376,7 @@ function BulkActionBar({
             type="button"
             disabled={saving || selectedCount === 0 || !pendingChoice}
             onClick={onConfirm}
-            className="rounded-lg bg-blue-600 px-2.5 py-1.5 text-[11px] font-semibold text-white shadow-[0_0_16px_rgba(37,99,235,0.35)] transition hover:bg-blue-500 disabled:opacity-50"
+            className="rounded-lg bg-ftc-primary-dim px-2.5 py-1.5 text-[11px] font-semibold text-white shadow-ftc-glow transition hover:bg-ftc-primary disabled:opacity-50"
           >
             {saving ? "Saving..." : "Confirm"}
           </button>
@@ -383,7 +384,7 @@ function BulkActionBar({
             type="button"
             disabled={saving}
             onClick={onCancel}
-            className="rounded-lg border border-zinc-700/90 bg-zinc-900/80 px-2.5 py-1.5 text-[11px] font-semibold text-zinc-400 transition hover:border-zinc-600 hover:text-zinc-200 disabled:opacity-50"
+            className="rounded-lg border border-ftc-border-strong/90 bg-ftc-surface/80 px-2.5 py-1.5 text-[11px] font-semibold text-ftc-text-secondary transition hover:border-ftc-border-strong hover:text-ftc-text disabled:opacity-50"
           >
             Cancel
           </button>
@@ -468,18 +469,18 @@ function DjAvailabilityDayCell({
       aria-label={multiSelectMode ? `Select ${dateKey}` : undefined}
       onClick={multiSelectMode ? handleCellClick : undefined}
       onKeyDown={multiSelectMode ? handleCellKeyDown : undefined}
-      className={`relative min-h-[6.5rem] rounded-lg border bg-zinc-950/20 p-1.5 transition sm:min-h-[7.5rem] sm:p-2 ${
+      className={`relative min-h-[6.5rem] rounded-lg border bg-ftc-bg-elevated/20 p-1.5 transition sm:min-h-[7.5rem] sm:p-2 ${
         multiSelectMode
           ? isSelected
-            ? "cursor-pointer border-blue-500/50 ring-1 ring-blue-500/30"
-            : "cursor-pointer border-zinc-800/70 hover:border-blue-500/30"
+            ? "cursor-pointer border-ftc-primary/45 ring-1 ring-ftc-primary/30"
+            : "cursor-pointer border-ftc-border/70 hover:border-ftc-primary/25"
           : menuOpen
-            ? "border-blue-500/40 ring-1 ring-blue-500/20"
-            : "border-zinc-800/70 hover:border-zinc-700/90"
+            ? "border-ftc-primary/35 ring-1 ring-ftc-primary/20"
+            : "border-ftc-border/70 hover:border-ftc-border-strong/90"
       }`}
     >
       {multiSelectMode && isSelected ? (
-        <span className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-full bg-blue-600 text-white shadow-[0_0_10px_rgba(37,99,235,0.45)]">
+        <span className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-full bg-ftc-primary-dim text-white shadow-ftc-glow">
           <svg aria-hidden="true" viewBox="0 0 24 24" className="h-2.5 w-2.5" fill="none" stroke="currentColor" strokeWidth="3">
             <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
@@ -488,7 +489,7 @@ function DjAvailabilityDayCell({
       <div className="flex items-start justify-between gap-1">
         <span
           className={`inline-flex h-6 min-w-6 items-center justify-center rounded-full text-xs font-semibold ${
-            isToday ? "bg-blue-600/20 text-blue-300" : "text-zinc-200"
+            isToday ? "bg-ftc-primary/10 text-ftc-primary" : "text-ftc-text"
           }`}
         >
           {date.getDate()}
@@ -501,7 +502,7 @@ function DjAvailabilityDayCell({
               aria-label={`Availability options for ${dateKey}`}
               aria-expanded={menuOpen}
               onClick={onToggleMenu}
-              className="flex h-6 w-6 items-center justify-center rounded-md text-zinc-500 transition hover:bg-zinc-900/80 hover:text-zinc-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500/80"
+              className="flex h-6 w-6 items-center justify-center rounded-md text-ftc-text-muted transition hover:bg-ftc-surface/80 hover:text-ftc-text focus:outline-none focus-visible:ring-2 focus-visible:ring-ftc-border-strong"
             >
               <svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor">
                 <circle cx="5" cy="12" r="1.75" />
@@ -512,7 +513,7 @@ function DjAvailabilityDayCell({
             {menuOpen ? (
               <div
                 data-calendar-overlay=""
-                className={`absolute top-6 z-50 w-[7.25rem] rounded-lg border border-zinc-700/70 bg-zinc-950/95 p-0.5 shadow-[0_8px_24px_rgba(0,0,0,0.4)] backdrop-blur-sm ${getAvailabilityMenuPositionClass(weekdayIndex)}`}
+                className={`absolute top-6 z-50 w-[7.25rem] rounded-lg border border-ftc-border-strong/70 bg-ftc-bg-elevated/95 p-0.5 shadow-[0_8px_24px_rgba(0,0,0,0.4)] backdrop-blur-sm ${getAvailabilityMenuPositionClass(weekdayIndex)}`}
               >
                 {PERSONAL_STATUS_OPTIONS.map((option) => (
                   <button
@@ -520,17 +521,17 @@ function DjAvailabilityDayCell({
                     type="button"
                     disabled={savingDate}
                     onClick={() => onSetPersonalStatus(option.value)}
-                    className="block w-full rounded-md px-2 py-1.5 text-left text-[11px] font-medium text-zinc-200 transition hover:bg-zinc-900/90 disabled:opacity-50"
+                    className="block w-full rounded-md px-2 py-1.5 text-left text-[11px] font-medium text-ftc-text transition hover:bg-ftc-surface/90 disabled:opacity-50"
                   >
                     {option.label}
                   </button>
                 ))}
-                <div className="my-0.5 border-t border-zinc-800/80" />
+                <div className="my-0.5 border-t border-ftc-border" />
                 <button
                   type="button"
                   disabled={savingDate || !personalEntry}
                   onClick={onClearPersonalStatus}
-                  className="block w-full rounded-md px-2 py-1.5 text-left text-[11px] font-medium text-zinc-500 transition hover:bg-zinc-900/90 hover:text-red-300 disabled:opacity-40"
+                  className="block w-full rounded-md px-2 py-1.5 text-left text-[11px] font-medium text-ftc-text-muted transition hover:bg-ftc-surface/90 hover:text-red-300 disabled:opacity-40"
                 >
                   Clear
                 </button>
@@ -592,11 +593,11 @@ function DjAvailabilityDayCell({
               <span className="block truncate text-[9px] font-semibold uppercase tracking-wide sm:text-[10px]">
                 Booked
               </span>
-              <span className="block truncate text-[9px] normal-case tracking-normal text-purple-100/90 sm:text-[10px]">
+              <span className="block truncate text-[9px] normal-case tracking-normal text-ftc-primary/90 sm:text-[10px]">
                 {booking.event_name.trim() || "Confirmed gig"}
               </span>
               {booking.set_time.trim() ? (
-                <span className="block truncate text-[9px] normal-case tracking-normal text-purple-200/70 sm:text-[10px]">
+                <span className="block truncate text-[9px] normal-case tracking-normal text-ftc-primary/70 sm:text-[10px]">
                   {formatCalendarTimeLabel(booking.set_time)}
                 </span>
               ) : null}
@@ -899,18 +900,18 @@ export default function DjAvailabilityCalendar({
 
   return (
     <div className="space-y-4">
-      <section className="rounded-2xl border border-zinc-800 bg-zinc-900/50 p-4 sm:p-5">
+      <section className="rounded-2xl border border-ftc-border bg-ftc-surface/50 p-4 sm:p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h2 className="text-base font-semibold text-zinc-50">Calendar</h2>
-            <p className="mt-1 text-sm text-zinc-500">{description}</p>
+            <h2 className="text-base font-semibold text-ftc-text">Calendar</h2>
+            <p className="mt-1 text-sm text-ftc-text-muted">{description}</p>
           </div>
           <div className="flex items-center gap-2">
             {!multiSelectMode ? (
               <button
                 type="button"
                 onClick={enterMultiSelectMode}
-                className="rounded-lg border border-zinc-700/90 bg-zinc-900/80 px-2.5 py-1.5 text-[11px] font-semibold text-zinc-300 transition hover:border-blue-500/35 hover:text-blue-200"
+                className="rounded-lg border border-ftc-border-strong/90 bg-ftc-surface/80 px-2.5 py-1.5 text-[11px] font-semibold text-ftc-text-secondary transition hover:border-ftc-primary/30 hover:text-ftc-primary/90"
               >
                 Select dates
               </button>
@@ -940,7 +941,7 @@ export default function DjAvailabilityCalendar({
         <div className="relative mt-4">
           {toastMessage ? (
             <p className="pointer-events-none absolute inset-x-0 -top-1 z-10 flex justify-center">
-              <span className="rounded-full border border-blue-500/30 bg-blue-600/10 px-3 py-1 text-[11px] font-medium text-blue-200">
+              <span className="rounded-full border border-ftc-primary/25 bg-ftc-primary/10 px-3 py-1 text-[11px] font-medium text-ftc-primary/90">
                 {toastMessage}
               </span>
             </p>
@@ -971,15 +972,15 @@ export default function DjAvailabilityCalendar({
         </div>
 
         {loading ? (
-          <p className="mt-6 text-sm text-zinc-500">Loading calendar...</p>
+          <p className="mt-6 text-sm text-ftc-text-muted">Loading calendar...</p>
         ) : (
           <>
-            <div className={`mt-4 rounded-2xl border border-zinc-800 bg-zinc-950/40 ${multiSelectMode ? "pb-1" : ""}`}>
-              <div className="grid grid-cols-7 border-b border-zinc-800/80 bg-zinc-950/60">
+            <div className={`mt-4 rounded-2xl border border-ftc-border bg-ftc-bg-elevated/40 ${multiSelectMode ? "pb-1" : ""}`}>
+              <div className="grid grid-cols-7 border-b border-ftc-border bg-ftc-bg-elevated/60">
                 {WEEKDAY_LABELS.map((label) => (
                   <div
                     key={label}
-                    className="px-1 py-2 text-center text-[10px] font-semibold uppercase tracking-wide text-zinc-500 sm:px-2"
+                    className="px-1 py-2 text-center text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted sm:px-2"
                   >
                     {label}
                   </div>
@@ -1049,7 +1050,7 @@ export default function DjAvailabilityCalendar({
           </>
         )}
 
-        <p className="mt-3 text-xs text-zinc-500">
+        <p className="mt-3 text-xs text-ftc-text-muted">
           Use the menu on each date to set personal availability. Booking badges open the linked
           event or DM.
         </p>

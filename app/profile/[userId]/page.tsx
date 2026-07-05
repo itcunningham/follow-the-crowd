@@ -103,14 +103,14 @@ export default function UserProfilePage() {
   return (
     <OnboardingGuard>
       <div
-        className={`mx-auto min-h-[100dvh] w-full max-w-2xl bg-[#070708] font-sans text-zinc-100 ${MOBILE_NAV_OFFSET_CLASS}`}
+        className={`mx-auto min-h-[100dvh] w-full max-w-2xl bg-ftc-bg font-sans text-ftc-text ${MOBILE_NAV_OFFSET_CLASS}`}
       >
         <AppNavigation />
 
-        <header className="flex items-center justify-between border-b border-zinc-800/80 px-4 py-3 sm:px-6 md:pt-4">
+        <header className="flex items-center justify-between border-b border-ftc-border px-4 py-3 sm:px-6 md:pt-4">
           <Link
             href={DISCOVER_PATH}
-            className="inline-block text-xs font-semibold uppercase tracking-wide text-zinc-500 transition hover:text-blue-400"
+            className="inline-block text-xs font-semibold uppercase tracking-wide text-ftc-text-muted transition hover:text-ftc-primary"
           >
             ← Discover
           </Link>
@@ -119,7 +119,7 @@ export default function UserProfilePage() {
               <Link
                 href={SETTINGS_PATH}
                 aria-label="Settings"
-                className="flex items-center gap-1.5 rounded-lg border border-zinc-700/80 bg-zinc-900/80 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-zinc-300 transition hover:border-blue-500/40 hover:text-blue-300"
+                className="flex items-center gap-1.5 rounded-lg border border-ftc-border-strong bg-ftc-surface/80 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-ftc-text-secondary transition hover:border-ftc-primary/35 hover:text-ftc-primary"
               >
                 <svg
                   aria-hidden="true"
@@ -138,7 +138,7 @@ export default function UserProfilePage() {
               </Link>
               <Link
                 href={PROFILE_SETUP_PATH}
-                className="rounded-lg border border-zinc-700/80 bg-zinc-900/80 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-zinc-300 transition hover:border-blue-500/40 hover:text-blue-300"
+                className="rounded-lg border border-ftc-border-strong bg-ftc-surface/80 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-ftc-text-secondary transition hover:border-ftc-primary/35 hover:text-ftc-primary"
               >
                 Edit profile
               </Link>
@@ -148,7 +148,7 @@ export default function UserProfilePage() {
 
         <div className="px-4 py-8 sm:px-6">
           {loading ? (
-            <p className="text-sm text-zinc-500">Loading profile...</p>
+            <p className="text-sm text-ftc-text-muted">Loading profile...</p>
           ) : error && !profile ? (
             <p className="text-sm text-red-400">{error}</p>
           ) : profile ? (
@@ -161,14 +161,14 @@ export default function UserProfilePage() {
                   className="mx-auto"
                 />
 
-                <h1 className="mt-5 text-2xl font-semibold text-zinc-50">{displayName}</h1>
+                <h1 className="mt-5 text-2xl font-semibold text-ftc-text">{displayName}</h1>
 
                 <div className="mt-3 flex justify-center">
                   <RoleBadge role={profile.role} />
                 </div>
 
                 {profile.location ? (
-                  <p className="mt-3 text-sm text-zinc-500">{profile.location}</p>
+                  <p className="mt-3 text-sm text-ftc-text-muted">{profile.location}</p>
                 ) : null}
               </div>
 
@@ -202,13 +202,13 @@ function DjProfileSections({ profile }: { profile: UserProfile }) {
       ) : null}
 
       <ProfileSection title="Genres">
-        <p className="text-sm leading-relaxed text-zinc-300">
+        <p className="text-sm leading-relaxed text-ftc-text-secondary">
           {profile.genre?.trim() || "No genres listed yet."}
         </p>
       </ProfileSection>
 
       <ProfileSection title="Bio">
-        <p className="text-sm leading-relaxed text-zinc-300">
+        <p className="text-sm leading-relaxed text-ftc-text-secondary">
           {profile.bio?.trim() || "No bio yet."}
         </p>
       </ProfileSection>
@@ -218,9 +218,9 @@ function DjProfileSections({ profile }: { profile: UserProfile }) {
       </ProfileSection>
 
       <ProfileSection title="Calendar">
-        <p className="text-sm leading-relaxed text-zinc-300">
+        <p className="text-sm leading-relaxed text-ftc-text-secondary">
           Manage availability and bookings in{" "}
-          <Link href="/bookings" className="font-semibold text-blue-300 transition hover:text-blue-200">
+          <Link href="/bookings" className="font-semibold text-ftc-primary transition hover:text-ftc-primary/90">
             Gigs
           </Link>
           .
@@ -242,13 +242,13 @@ function PromoterProfileSections({ profile }: { profile: UserProfile }) {
       ) : null}
 
       <ProfileSection title="Event Style / Genre">
-        <p className="text-sm leading-relaxed text-zinc-300">
+        <p className="text-sm leading-relaxed text-ftc-text-secondary">
           {profile.genre?.trim() || "No event style listed yet."}
         </p>
       </ProfileSection>
 
       <ProfileSection title="Bio">
-        <p className="text-sm leading-relaxed text-zinc-300">
+        <p className="text-sm leading-relaxed text-ftc-text-secondary">
           {profile.bio?.trim() || "No bio yet."}
         </p>
       </ProfileSection>
@@ -283,7 +283,7 @@ function PromoterProfileSections({ profile }: { profile: UserProfile }) {
 
 function SectionHeading({ title }: { title: string }) {
   return (
-    <h2 className="border-b border-zinc-800/80 pb-2 text-sm font-semibold uppercase tracking-wide text-zinc-400">
+    <h2 className="border-b border-ftc-border pb-2 text-sm font-semibold uppercase tracking-wide text-ftc-text-secondary">
       {title}
     </h2>
   );
@@ -291,8 +291,8 @@ function SectionHeading({ title }: { title: string }) {
 
 function ProfileSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="rounded-2xl border border-zinc-800 bg-zinc-900/80 p-4 sm:p-5">
-      <h3 className="text-xs font-semibold uppercase tracking-wide text-blue-400">{title}</h3>
+    <section className="rounded-2xl border border-ftc-border bg-ftc-surface/80 p-4 sm:p-5">
+      <h3 className="text-xs font-semibold uppercase tracking-wide text-ftc-primary">{title}</h3>
       <div className="mt-3">{children}</div>
     </section>
   );
@@ -308,10 +308,10 @@ function ProfileTextContent({
   const text = value?.trim();
 
   if (!text) {
-    return <p className="text-sm text-zinc-500">{emptyLabel}</p>;
+    return <p className="text-sm text-ftc-text-muted">{emptyLabel}</p>;
   }
 
-  return <p className="whitespace-pre-wrap text-sm leading-relaxed text-zinc-300">{text}</p>;
+  return <p className="whitespace-pre-wrap text-sm leading-relaxed text-ftc-text-secondary">{text}</p>;
 }
 
 function SocialLinks({
@@ -334,7 +334,7 @@ function SocialLinks({
   }
 
   if (links.length === 0) {
-    return <p className="text-sm text-zinc-500">No links added yet.</p>;
+    return <p className="text-sm text-ftc-text-muted">No links added yet.</p>;
   }
 
   return (
@@ -345,7 +345,7 @@ function SocialLinks({
           href={link.href}
           target="_blank"
           rel="noreferrer"
-          className="rounded-lg border border-blue-500/30 bg-blue-600/10 px-3 py-2 text-sm font-medium text-blue-300 transition hover:border-blue-400/50 hover:bg-blue-600/20 hover:text-blue-200"
+          className="rounded-lg border border-ftc-primary/25 bg-ftc-primary/10 px-3 py-2 text-sm font-medium text-ftc-primary transition hover:border-ftc-primary/40 hover:bg-ftc-primary/12 hover:text-ftc-primary/90"
         >
           {link.label}
         </a>
@@ -368,7 +368,7 @@ function MessageButton({
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className="w-full rounded-xl border border-blue-500/45 bg-blue-600/20 px-5 py-3 text-sm font-semibold uppercase tracking-wide text-blue-100 shadow-[0_0_20px_rgba(59,130,246,0.22)] transition hover:border-blue-400/60 hover:bg-blue-600/30 disabled:cursor-not-allowed disabled:opacity-50"
+      className="w-full rounded-xl border border-ftc-primary/40 bg-ftc-primary/10 px-5 py-3 text-sm font-semibold uppercase tracking-wide text-ftc-primary/80 shadow-ftc-glow transition hover:border-ftc-primary/50 hover:bg-ftc-primary/15 disabled:cursor-not-allowed disabled:opacity-50"
     >
       {label}
     </button>
@@ -377,7 +377,7 @@ function MessageButton({
 
 function RoleBadge({ role }: { role: UserRole | null }) {
   return (
-    <span className="rounded-full border border-blue-500/30 bg-blue-600/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-blue-300">
+    <span className="rounded-full border border-ftc-primary/25 bg-ftc-primary/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-ftc-primary">
       {getRoleLabel(role)}
     </span>
   );

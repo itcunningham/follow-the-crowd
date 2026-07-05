@@ -133,18 +133,18 @@ export function formatEventDateDisplayLabel(eventDate: string): string | null {
 
 export function getEventDateDisplayBadgeClass(label: EventDateDisplayLabel): string {
   if (label === "Upcoming") {
-    return "border-blue-500/40 bg-blue-600/15 text-blue-300";
+    return "border-ftc-primary/35 bg-ftc-primary/10 text-ftc-primary";
   }
 
   if (label === "Today") {
-    return "border-violet-500/40 bg-violet-500/10 text-violet-300";
+    return "border-ftc-primary-dim/35 bg-ftc-primary/10 text-ftc-primary-dim";
   }
 
   if (label === "Past") {
-    return "border-zinc-600/50 bg-zinc-800/80 text-zinc-400";
+    return "border-ftc-border-strong bg-ftc-surface-raised/80 text-ftc-text-secondary";
   }
 
-  return "border-zinc-700/50 bg-zinc-900/60 text-zinc-500";
+  return "border-ftc-border-strong/50 bg-ftc-surface/60 text-ftc-text-muted";
 }
 
 export function isEventCancelled(event: Pick<Event, "status">): boolean {

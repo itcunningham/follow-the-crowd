@@ -244,7 +244,7 @@ export default function EventCrewChatPage() {
     return (
       <OnboardingGuard>
         <div
-          className={`mx-auto min-h-[100dvh] w-full max-w-2xl bg-[#070708] font-sans text-zinc-100 ${MOBILE_NAV_OFFSET_CLASS}`}
+          className={`mx-auto min-h-[100dvh] w-full max-w-2xl bg-ftc-bg font-sans text-ftc-text ${MOBILE_NAV_OFFSET_CLASS}`}
         >
           <AppNavigation />
           <div className="px-4 py-8 sm:px-6">
@@ -252,7 +252,7 @@ export default function EventCrewChatPage() {
             <button
               type="button"
               onClick={() => router.push(backHref)}
-              className="mt-4 text-sm font-semibold text-blue-300"
+              className="mt-4 text-sm font-semibold text-ftc-primary"
             >
               {searchParams.get("from") === "dm" ? "Back to messages" : "Back to event"}
             </button>
@@ -264,29 +264,29 @@ export default function EventCrewChatPage() {
 
   return (
     <OnboardingGuard>
-      <div className="fixed inset-0 flex flex-col overflow-hidden bg-[#070708] font-sans text-zinc-100">
+      <div className="fixed inset-0 flex flex-col overflow-hidden bg-ftc-bg font-sans text-ftc-text">
         <AppNavigation />
 
         <div
           className={`mx-auto flex min-h-0 w-full max-w-2xl flex-1 flex-col overflow-hidden ${MOBILE_NAV_OFFSET_CLASS}`}
         >
-          <header className="z-10 shrink-0 border-b border-zinc-800/80 bg-[#070708]/95 px-3 py-3 backdrop-blur-md sm:px-4">
+          <header className="z-10 shrink-0 border-b border-ftc-border bg-ftc-bg/95 px-3 py-3 backdrop-blur-md sm:px-4">
             <div className="flex items-center gap-3">
               <Link
                 href={backHref}
                 aria-label={searchParams.get("from") === "dm" ? "Back to messages" : "Back to event"}
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-zinc-800 text-lg text-zinc-300 transition hover:border-blue-500/40 hover:text-blue-300"
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-ftc-border text-lg text-ftc-text-secondary transition hover:border-ftc-primary/35 hover:text-ftc-primary"
               >
                 ←
               </Link>
               <div className="min-w-0 flex-1">
-                <h1 className="truncate text-base font-semibold text-zinc-50">{eventName}</h1>
-                <p className="truncate text-xs text-zinc-500">Group chat</p>
+                <h1 className="truncate text-base font-semibold text-ftc-text">{eventName}</h1>
+                <p className="truncate text-xs text-ftc-text-muted">Group chat</p>
               </div>
               {searchParams.get("from") === "dm" ? (
                 <Link
                   href={`/events/${eventId}`}
-                  className="shrink-0 rounded-full border border-zinc-700 bg-zinc-900/70 px-3 py-2 text-xs font-semibold text-zinc-100 transition hover:border-blue-500/40 hover:text-blue-300"
+                  className="shrink-0 rounded-full border border-ftc-border-strong bg-ftc-surface/70 px-3 py-2 text-xs font-semibold text-ftc-text transition hover:border-ftc-primary/35 hover:text-ftc-primary"
                 >
                   Event Details
                 </Link>
@@ -300,14 +300,14 @@ export default function EventCrewChatPage() {
           >
             <div ref={bottomRef} data-chat-bottom aria-hidden="true" className="h-px shrink-0" />
             {loading ? (
-              <p className="text-sm text-zinc-500">Loading messages...</p>
+              <p className="text-sm text-ftc-text-muted">Loading messages...</p>
             ) : messages.length === 0 ? (
               <div
                 data-chat-content-root
                 className="flex flex-col items-center justify-center px-6 py-16 text-center"
               >
-                <p className="text-sm font-medium text-zinc-300">No group messages yet</p>
-                <p className="mt-1 text-sm text-zinc-500">
+                <p className="text-sm font-medium text-ftc-text-secondary">No group messages yet</p>
+                <p className="mt-1 text-sm text-ftc-text-muted">
                   Accepted DJs and the event planner can chat here.
                 </p>
               </div>
@@ -341,7 +341,7 @@ export default function EventCrewChatPage() {
                         ) : null}
                         <div>
                           {!isOwnMessage ? (
-                            <p className="mb-1 text-[11px] font-semibold text-zinc-400">
+                            <p className="mb-1 text-[11px] font-semibold text-ftc-text-secondary">
                               {senderLabel}
                             </p>
                           ) : null}
@@ -349,14 +349,14 @@ export default function EventCrewChatPage() {
                             <div
                               className={`rounded-3xl px-4 py-2.5 ${
                                 isOwnMessage
-                                  ? "rounded-br-md border border-blue-500/40 bg-blue-600/20 text-blue-50 shadow-[0_0_16px_rgba(59,130,246,0.15)]"
-                                  : "rounded-bl-md border border-zinc-800 bg-zinc-900 text-zinc-100"
+                                  ? "rounded-br-md border border-ftc-primary/35 bg-ftc-primary/10 text-ftc-text shadow-ftc-glow"
+                                  : "rounded-bl-md border border-ftc-border bg-ftc-surface text-ftc-text"
                               }`}
                             >
                               <p className="text-[15px] leading-relaxed">{message.text}</p>
                               <time
                                 dateTime={message.created_at}
-                                className="mt-1 block text-[10px] text-zinc-500"
+                                className="mt-1 block text-[10px] text-ftc-text-muted"
                               >
                                 {formatMessageTime(message.created_at)}
                               </time>
@@ -381,7 +381,7 @@ export default function EventCrewChatPage() {
               />
             ) : null}
 
-            <div className="border-t border-zinc-800/80 bg-[#070708] px-3 py-3 sm:px-4 sm:py-4">
+            <div className="border-t border-ftc-border bg-ftc-bg px-3 py-3 sm:px-4 sm:py-4">
               <div className="flex items-end gap-2 sm:gap-3">
                 <input
                   type="text"
@@ -389,13 +389,13 @@ export default function EventCrewChatPage() {
                   onChange={(event) => setInput(event.target.value)}
                   onKeyDown={handleKeyDown}
                   placeholder="Message..."
-                  className="min-h-[44px] flex-1 rounded-full border border-zinc-800 bg-zinc-900/80 px-4 py-2.5 text-sm text-zinc-100 outline-none transition placeholder:text-zinc-600 focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/15"
+                  className="min-h-[44px] flex-1 rounded-full border border-ftc-border bg-ftc-surface/80 px-4 py-2.5 text-sm text-ftc-text outline-none transition placeholder:text-ftc-text-muted focus:border-ftc-primary/45 focus:ring-2 focus:ring-ftc-primary/15"
                 />
                 <button
                   type="button"
                   onClick={() => void sendMessage()}
                   disabled={sending || !input.trim()}
-                  className="min-h-[44px] shrink-0 rounded-full border border-blue-500/45 bg-blue-600/20 px-5 py-2.5 text-sm font-semibold uppercase tracking-wide text-blue-100 shadow-[0_0_20px_rgba(59,130,246,0.22)] transition hover:border-blue-400/60 hover:bg-blue-600/30 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="min-h-[44px] shrink-0 rounded-full border border-ftc-primary/40 bg-ftc-primary/10 px-5 py-2.5 text-sm font-semibold uppercase tracking-wide text-ftc-primary/80 shadow-ftc-glow transition hover:border-ftc-primary/50 hover:bg-ftc-primary/15 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {sending ? "..." : "Send"}
                 </button>

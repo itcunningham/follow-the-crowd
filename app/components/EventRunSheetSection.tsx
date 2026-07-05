@@ -39,7 +39,7 @@ const FIXED_FIELDS = [
 ];
 
 const RUN_SHEET_SET_TIME_BUTTON_CLASS =
-  "inline-flex w-full min-h-[2.25rem] items-center gap-1 rounded-full border border-zinc-800/90 bg-[#121214] px-2.5 py-1 text-xs font-medium text-zinc-100 outline-none transition hover:border-blue-500/35 focus:border-blue-500/45 focus:ring-1 focus:ring-blue-500/20 sm:min-h-[2rem] lg:max-w-[11rem]";
+  "inline-flex w-full min-h-[2.25rem] items-center gap-1 rounded-full border border-ftc-border/90 bg-ftc-bg-elevated px-2.5 py-1 text-xs font-medium text-ftc-text outline-none transition hover:border-ftc-primary/30 focus:border-ftc-primary/40 focus:ring-1 focus:ring-ftc-primary/20 sm:min-h-[2rem] lg:max-w-[11rem]";
 
 const RUN_SHEET_EQUAL_TEXT_COLUMN_CLASS = "w-[14%] min-w-[9rem]";
 const RUN_SHEET_NOTES_COLUMN_CLASS = "w-[28%] min-w-[10rem]";
@@ -75,7 +75,7 @@ function RowMoveButton({
       disabled={disabled}
       aria-label={label}
       title={label}
-      className={`${iconButtonBaseClassName} border-zinc-700/80 bg-zinc-950/80 text-zinc-400 hover:border-blue-500/40 hover:text-blue-300`}
+      className={`${iconButtonBaseClassName} border-ftc-border-strong bg-ftc-bg-elevated/80 text-ftc-text-secondary hover:border-ftc-primary/35 hover:text-ftc-primary`}
     >
       <svg
         aria-hidden="true"
@@ -271,7 +271,7 @@ function RunSheetSetTimeField({
         className={RUN_SHEET_SET_TIME_BUTTON_CLASS}
       >
         <span
-          className={`min-w-0 flex-1 truncate text-center tabular-nums ${hasValue ? "text-zinc-100" : "text-zinc-500"}`}
+          className={`min-w-0 flex-1 truncate text-center tabular-nums ${hasValue ? "text-ftc-text" : "text-ftc-text-muted"}`}
         >
           {displayValue}
         </span>
@@ -279,7 +279,7 @@ function RunSheetSetTimeField({
           aria-hidden="true"
           viewBox="0 0 20 20"
           fill="none"
-          className="h-3 w-3 shrink-0 text-zinc-500"
+          className="h-3 w-3 shrink-0 text-ftc-text-muted"
         >
           <path
             d="M7.5 8.5 10 11l2.5-2.5"
@@ -573,24 +573,24 @@ export default function EventRunSheetSection({
   }
 
   const runSheetTextareaBaseClassName =
-    "w-full resize-none overflow-x-hidden overflow-y-hidden rounded-lg border border-zinc-800 bg-zinc-950/60 px-2.5 py-1.5 text-sm text-zinc-100 outline-none transition placeholder:text-zinc-600 focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/15 break-words";
+    "w-full resize-none overflow-x-hidden overflow-y-hidden rounded-lg border border-ftc-border bg-ftc-bg-elevated/60 px-2.5 py-1.5 text-sm text-ftc-text outline-none transition placeholder:text-ftc-text-muted focus:border-ftc-primary/45 focus:ring-2 focus:ring-ftc-primary/15 break-words";
 
   const artistTextareaClassName = `${runSheetTextareaBaseClassName} min-h-[2.25rem] leading-normal`;
   const stageAreaTextareaClassName = `${runSheetTextareaBaseClassName} min-h-[2.25rem] leading-normal`;
   const notesTextareaClassName = `${runSheetTextareaBaseClassName} min-h-[3.25rem] leading-relaxed`;
 
   const readOnlyTextClassName =
-    "rounded-lg border border-zinc-800/80 bg-zinc-950/30 px-2.5 py-1.5 text-sm leading-relaxed text-zinc-200 whitespace-pre-wrap break-words";
+    "rounded-lg border border-ftc-border bg-ftc-bg-elevated/30 px-2.5 py-1.5 text-sm leading-relaxed text-ftc-text whitespace-pre-wrap break-words";
 
   return (
-    <section className="mb-6 rounded-2xl border border-zinc-800 bg-zinc-900/80 p-4 sm:p-5">
+    <section className="mb-6 rounded-2xl border border-ftc-border bg-ftc-surface/80 p-4 sm:p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-blue-400">
+          <h2 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-ftc-primary">
             Run Sheet
           </h2>
           {!canEdit ? (
-            <p className="mt-1 text-xs text-zinc-500">Read-only view for accepted crew.</p>
+            <p className="mt-1 text-xs text-ftc-text-muted">Read-only view for accepted crew.</p>
           ) : null}
         </div>
 
@@ -599,7 +599,7 @@ export default function EventRunSheetSection({
             <button
               type="button"
               onClick={handleAddRow}
-              className="rounded-lg border border-zinc-700 bg-zinc-900/80 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-zinc-300 transition hover:border-blue-500/35 hover:text-blue-300"
+              className="rounded-lg border border-ftc-border-strong bg-ftc-surface/80 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-ftc-text-secondary transition hover:border-ftc-primary/30 hover:text-ftc-primary"
             >
               Add row
             </button>
@@ -607,7 +607,7 @@ export default function EventRunSheetSection({
               type="button"
               onClick={handleSave}
               disabled={saving}
-              className="rounded-lg border border-blue-500/35 bg-blue-600/10 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-blue-300 transition hover:border-blue-400/50 hover:bg-blue-600/20 disabled:cursor-not-allowed disabled:opacity-50"
+              className="rounded-lg border border-ftc-primary/30 bg-ftc-primary/10 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-ftc-primary transition hover:border-ftc-primary/40 hover:bg-ftc-primary/12 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {saving ? "Saving..." : "Save changes"}
             </button>
@@ -616,7 +616,7 @@ export default function EventRunSheetSection({
       </div>
 
       {successMessage ? (
-        <p className="mt-4 rounded-xl border border-blue-500/30 bg-blue-600/10 px-4 py-3 text-sm text-blue-200">
+        <p className="mt-4 rounded-xl border border-ftc-primary/25 bg-ftc-primary/10 px-4 py-3 text-sm text-ftc-primary/90">
           {successMessage}
         </p>
       ) : null}
@@ -628,10 +628,10 @@ export default function EventRunSheetSection({
       ) : null}
 
       {loading ? (
-        <p className="mt-6 text-sm text-zinc-500">Loading run sheet...</p>
+        <p className="mt-6 text-sm text-ftc-text-muted">Loading run sheet...</p>
       ) : rows.length === 0 ? (
-        <div className="mt-6 rounded-xl border border-dashed border-zinc-800 bg-zinc-950/40 px-4 py-8 text-center">
-          <p className="text-sm text-zinc-400">No run sheet rows yet. Add your first DJ set.</p>
+        <div className="mt-6 rounded-xl border border-dashed border-ftc-border bg-ftc-bg-elevated/40 px-4 py-8 text-center">
+          <p className="text-sm text-ftc-text-secondary">No run sheet rows yet. Add your first DJ set.</p>
         </div>
       ) : (
         <>
@@ -640,25 +640,25 @@ export default function EventRunSheetSection({
               <thead>
                 <tr>
                   <th
-                    className={`${RUN_SHEET_EQUAL_TEXT_COLUMN_CLASS} border-b border-zinc-800 px-2 py-2 text-left text-[10px] font-semibold uppercase tracking-wide text-zinc-500`}
+                    className={`${RUN_SHEET_EQUAL_TEXT_COLUMN_CLASS} border-b border-ftc-border px-2 py-2 text-left text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted`}
                   >
                     {getFixedField("artist_name").label}
                   </th>
                   <th
-                    className={`${RUN_SHEET_EQUAL_TEXT_COLUMN_CLASS} border-b border-zinc-800 px-2 py-2 text-left text-[10px] font-semibold uppercase tracking-wide text-zinc-500`}
+                    className={`${RUN_SHEET_EQUAL_TEXT_COLUMN_CLASS} border-b border-ftc-border px-2 py-2 text-left text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted`}
                   >
                     {getFixedField("stage_area").label}
                   </th>
-                  <th className="w-[11rem] border-b border-zinc-800 px-2 py-2 text-left text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+                  <th className="w-[11rem] border-b border-ftc-border px-2 py-2 text-left text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted">
                     Set Time
                   </th>
                   <th
-                    className={`${RUN_SHEET_NOTES_COLUMN_CLASS} border-b border-zinc-800 px-2 py-2 text-left text-[10px] font-semibold uppercase tracking-wide text-zinc-500`}
+                    className={`${RUN_SHEET_NOTES_COLUMN_CLASS} border-b border-ftc-border px-2 py-2 text-left text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted`}
                   >
                     {getFixedField("notes").label}
                   </th>
                   {canEdit ? (
-                    <th className="w-[1%] whitespace-nowrap border-b border-zinc-800 px-2 py-2 text-left text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+                    <th className="w-[1%] whitespace-nowrap border-b border-ftc-border px-2 py-2 text-left text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted">
                       <span className="sr-only">Row actions</span>
                     </th>
                   ) : null}
@@ -667,7 +667,7 @@ export default function EventRunSheetSection({
               <tbody>
                 {rows.map((row, rowIndex) => (
                   <tr key={row.id} className="align-top">
-                    <td className={`${RUN_SHEET_EQUAL_TEXT_COLUMN_CLASS} border-b border-zinc-800/70 px-2 py-2 align-top`}>
+                    <td className={`${RUN_SHEET_EQUAL_TEXT_COLUMN_CLASS} border-b border-ftc-border/70 px-2 py-2 align-top`}>
                       {renderRunSheetFieldInput({
                         field: getFixedField("artist_name"),
                         row,
@@ -679,7 +679,7 @@ export default function EventRunSheetSection({
                         updateRow,
                       })}
                     </td>
-                    <td className={`${RUN_SHEET_EQUAL_TEXT_COLUMN_CLASS} border-b border-zinc-800/70 px-2 py-2 align-top`}>
+                    <td className={`${RUN_SHEET_EQUAL_TEXT_COLUMN_CLASS} border-b border-ftc-border/70 px-2 py-2 align-top`}>
                       {renderRunSheetFieldInput({
                         field: getFixedField("stage_area"),
                         row,
@@ -691,7 +691,7 @@ export default function EventRunSheetSection({
                         updateRow,
                       })}
                     </td>
-                    <td className="whitespace-nowrap border-b border-zinc-800/70 px-2 py-2 align-top">
+                    <td className="whitespace-nowrap border-b border-ftc-border/70 px-2 py-2 align-top">
                       <RunSheetSetTimeField
                         startTime={row.start_time}
                         finishTime={row.finish_time}
@@ -702,7 +702,7 @@ export default function EventRunSheetSection({
                         readOnlyTextClassName={readOnlyTextClassName}
                       />
                     </td>
-                    <td className={`${RUN_SHEET_NOTES_COLUMN_CLASS} border-b border-zinc-800/70 px-2 py-2 align-top`}>
+                    <td className={`${RUN_SHEET_NOTES_COLUMN_CLASS} border-b border-ftc-border/70 px-2 py-2 align-top`}>
                       {renderRunSheetFieldInput({
                         field: getFixedField("notes"),
                         row,
@@ -715,7 +715,7 @@ export default function EventRunSheetSection({
                       })}
                     </td>
                     {canEdit ? (
-                      <td className="w-[1%] whitespace-nowrap border-b border-zinc-800/70 px-2 py-2 align-top">
+                      <td className="w-[1%] whitespace-nowrap border-b border-ftc-border/70 px-2 py-2 align-top">
                         <div className="flex items-center gap-1">
                           <RowMoveButton
                             direction="up"
@@ -741,10 +741,10 @@ export default function EventRunSheetSection({
             {rows.map((row, index) => (
               <div
                 key={row.id}
-                className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4"
+                className="rounded-xl border border-ftc-border bg-ftc-bg-elevated/40 p-4"
               >
                 <div className="mb-3 flex items-center justify-between gap-2">
-                  <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-ftc-text-muted">
                     Set {index + 1}
                   </p>
                   {canEdit ? (
@@ -770,7 +770,7 @@ export default function EventRunSheetSection({
 
                     return (
                       <label key={field.key} className="block">
-                        <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+                        <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted">
                           {field.label}
                         </span>
                         {renderRunSheetFieldInput({
@@ -788,7 +788,7 @@ export default function EventRunSheetSection({
                   })}
 
                   <label className="block">
-                    <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+                    <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted">
                       Set Time
                     </span>
                     <RunSheetSetTimeField
@@ -803,7 +803,7 @@ export default function EventRunSheetSection({
                   </label>
 
                   <label className="block">
-                    <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+                    <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted">
                       {getFixedField("notes").label}
                     </span>
                     {renderRunSheetFieldInput({

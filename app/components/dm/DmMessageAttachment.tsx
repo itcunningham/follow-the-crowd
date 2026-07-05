@@ -12,7 +12,7 @@ function FileIcon() {
       aria-hidden="true"
       viewBox="0 0 24 24"
       fill="none"
-      className="h-5 w-5 shrink-0 text-blue-300"
+      className="h-5 w-5 shrink-0 text-ftc-primary"
     >
       <path
         d="M8 3h6l4 4v14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z"
@@ -38,7 +38,7 @@ export default function DmMessageAttachmentView({
         href={attachment.file_url}
         target="_blank"
         rel="noopener noreferrer"
-        className="block max-w-full overflow-hidden rounded-2xl border border-zinc-800/80 bg-zinc-950/40"
+        className="block max-w-full overflow-hidden rounded-2xl border border-ftc-border bg-ftc-bg-elevated/40"
         onContextMenu={(event) => event.preventDefault()}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -59,22 +59,22 @@ export default function DmMessageAttachmentView({
       target="_blank"
       rel="noopener noreferrer"
       download={attachment.file_name}
-      className={`flex max-w-full items-center gap-3 rounded-2xl border px-3 py-2.5 transition hover:border-blue-500/35 ${
+      className={`flex max-w-full items-center gap-3 rounded-2xl border px-3 py-2.5 transition hover:border-ftc-primary/30 ${
         isOwnMessage
-          ? "border-blue-500/25 bg-blue-950/20"
-          : "border-zinc-800 bg-zinc-950/50 hover:bg-zinc-900/70"
+          ? "border-ftc-primary/20 bg-ftc-primary/8"
+          : "border-ftc-border bg-ftc-bg-elevated/50 hover:bg-ftc-surface/70"
       }`}
     >
-      <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-zinc-800 bg-zinc-900/80">
+      <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-ftc-border bg-ftc-surface/80">
         <FileIcon />
       </div>
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium text-zinc-100">{attachment.file_name}</p>
-        <p className="text-[11px] text-zinc-500">
+        <p className="truncate text-sm font-medium text-ftc-text">{attachment.file_name}</p>
+        <p className="text-[11px] text-ftc-text-muted">
           {formatDmAttachmentSize(attachment.file_size) || "Attachment"}
         </p>
       </div>
-      <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wide text-blue-300">
+      <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wide text-ftc-primary">
         Open
       </span>
     </a>

@@ -28,7 +28,7 @@ export default function ArchiveAllBookingRequestsButton({
         type="button"
         disabled={disabled || loading || count === 0}
         onClick={() => setOpen(true)}
-        className={`rounded-lg border border-zinc-700/80 bg-zinc-950/60 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-zinc-400 transition hover:border-zinc-600 hover:text-zinc-200 disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
+        className={`rounded-lg border border-ftc-border-strong bg-ftc-bg-elevated/60 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-ftc-text-secondary transition hover:border-ftc-border-strong hover:text-ftc-text disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
       >
         {loading ? "Archiving..." : "Archive all"}
       </button>
@@ -46,13 +46,13 @@ export default function ArchiveAllBookingRequestsButton({
             role="dialog"
             aria-modal="true"
             aria-labelledby="archive-all-booking-requests-title"
-            className="w-full max-w-md rounded-2xl border border-zinc-700/80 bg-zinc-950 p-4 shadow-[0_24px_64px_rgba(0,0,0,0.55)] sm:p-5"
+            className="w-full max-w-md rounded-2xl border border-ftc-border-strong bg-ftc-bg-elevated p-4 shadow-ftc-card sm:p-5"
             onClick={(event) => event.stopPropagation()}
           >
-            <h2 id="archive-all-booking-requests-title" className="text-base font-semibold text-zinc-50">
+            <h2 id="archive-all-booking-requests-title" className="text-base font-semibold text-ftc-text">
               Archive all cancelled requests?
             </h2>
-            <p className="mt-2 text-sm leading-relaxed text-zinc-400">
+            <p className="mt-2 text-sm leading-relaxed text-ftc-text-secondary">
               This will move all cancelled requests from History to Archived. You can restore them
               later.
             </p>
@@ -62,7 +62,7 @@ export default function ArchiveAllBookingRequestsButton({
                 type="button"
                 disabled={loading}
                 onClick={() => setOpen(false)}
-                className="rounded-xl border border-zinc-700 bg-zinc-900/80 px-4 py-2.5 text-sm font-semibold uppercase tracking-wide text-zinc-300 transition hover:border-zinc-600 disabled:opacity-50"
+                className="rounded-xl border border-ftc-border-strong bg-ftc-surface/80 px-4 py-2.5 text-sm font-semibold uppercase tracking-wide text-ftc-text-secondary transition hover:border-ftc-border-strong disabled:opacity-50"
               >
                 Cancel
               </button>
@@ -70,7 +70,7 @@ export default function ArchiveAllBookingRequestsButton({
                 type="button"
                 disabled={loading}
                 onClick={() => void handleConfirm()}
-                className="rounded-xl border border-zinc-600/50 bg-zinc-800/80 px-4 py-2.5 text-sm font-semibold uppercase tracking-wide text-zinc-200 transition hover:border-zinc-500 hover:bg-zinc-800 disabled:opacity-50"
+                className="rounded-xl border border-ftc-border-strong bg-ftc-surface-raised/80 px-4 py-2.5 text-sm font-semibold uppercase tracking-wide text-ftc-text transition hover:border-ftc-border-strong hover:bg-ftc-surface-raised disabled:opacity-50"
               >
                 {loading ? "Archiving..." : "Archive all"}
               </button>

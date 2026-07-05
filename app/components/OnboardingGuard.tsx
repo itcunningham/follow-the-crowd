@@ -95,7 +95,7 @@ export default function OnboardingGuard({ children }: { children: React.ReactNod
 
   if (!ready) {
     return (
-      <div className="flex min-h-[50vh] items-center justify-center bg-[#070708] text-sm text-zinc-500">
+      <div className="flex min-h-[50vh] items-center justify-center bg-ftc-bg text-sm text-ftc-text-muted">
         Loading...
       </div>
     );

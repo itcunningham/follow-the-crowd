@@ -1,7 +1,7 @@
 export const CHAT_NEW_MESSAGE_HIGHLIGHT_DURATION_MS = 2500;
 
 export const CHAT_NEW_MESSAGE_HIGHLIGHT_CLASS =
-  "chat-new-message-highlight ring-1 ring-blue-400/60 bg-blue-500/10 shadow-[0_0_20px_rgba(59,130,246,0.25)]";
+  "chat-new-message-highlight ring-1 ring-ftc-primary/45 bg-ftc-primary/10 shadow-ftc-glow";
 
 export function getChatNewMessageHighlightClass(isHighlighted: boolean) {
   return isHighlighted ? CHAT_NEW_MESSAGE_HIGHLIGHT_CLASS : "";

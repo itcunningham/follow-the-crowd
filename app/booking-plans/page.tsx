@@ -189,7 +189,7 @@ export default function BookingPlansPage() {
 
   if (loadingAccess) {
     return (
-      <div className="flex min-h-[100dvh] items-center justify-center bg-[#070708] text-sm text-zinc-500">
+      <div className="flex min-h-[100dvh] items-center justify-center bg-ftc-bg text-sm text-ftc-text-muted">
         Loading...
       </div>
     );
@@ -202,15 +202,15 @@ export default function BookingPlansPage() {
   return (
     <OnboardingGuard>
       <div
-        className={`mx-auto min-h-[100dvh] w-full max-w-2xl bg-[#070708] font-sans text-zinc-100 ${MOBILE_NAV_OFFSET_CLASS}`}
+        className={`mx-auto min-h-[100dvh] w-full max-w-2xl bg-ftc-bg font-sans text-ftc-text ${MOBILE_NAV_OFFSET_CLASS}`}
       >
         <AppNavigation />
 
-        <header className="border-b border-zinc-800/80 px-4 py-4 sm:px-6 md:pt-4">
+        <header className="border-b border-ftc-border px-4 py-4 sm:px-6 md:pt-4">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <h1 className="text-xl font-semibold text-zinc-50">Booking Plans</h1>
-              <p className="mt-1 text-sm text-zinc-500">
+              <h1 className="text-xl font-semibold text-ftc-text">Booking Plans</h1>
+              <p className="mt-1 text-sm text-ftc-text-muted">
                 Save booking details once and reuse them when contacting DJs.
               </p>
             </div>
@@ -218,7 +218,7 @@ export default function BookingPlansPage() {
               <button
                 type="button"
                 onClick={openCreateForm}
-                className="shrink-0 rounded-xl border border-blue-500/45 bg-blue-600/20 px-4 py-2.5 text-sm font-semibold uppercase tracking-wide text-blue-100 shadow-[0_0_20px_rgba(59,130,246,0.22)] transition hover:border-blue-400/60 hover:bg-blue-600/30"
+                className="shrink-0 rounded-xl border border-ftc-primary/40 bg-ftc-primary/10 px-4 py-2.5 text-sm font-semibold uppercase tracking-wide text-ftc-primary/80 shadow-ftc-glow transition hover:border-ftc-primary/50 hover:bg-ftc-primary/15"
               >
                 Create booking plan
               </button>
@@ -229,22 +229,22 @@ export default function BookingPlansPage() {
 
         <div className="px-4 py-4 sm:px-6">
           {successMessage ? (
-            <p className="mb-4 rounded-xl border border-blue-500/30 bg-blue-600/10 px-4 py-3 text-sm text-blue-200">
+            <p className="mb-4 rounded-xl border border-ftc-primary/25 bg-ftc-primary/10 px-4 py-3 text-sm text-ftc-primary/90">
               {successMessage}
             </p>
           ) : null}
 
           {formOpen ? (
-            <section className="mb-6 rounded-2xl border border-zinc-800 bg-zinc-900/50 p-4 sm:p-5">
+            <section className="mb-6 rounded-2xl border border-ftc-border bg-ftc-surface/50 p-4 sm:p-5">
               <div className="mb-4 flex items-center justify-between gap-3">
-                <h2 className="text-lg font-semibold text-zinc-50">
+                <h2 className="text-lg font-semibold text-ftc-text">
                   {editingPlanId ? "Edit booking plan" : "Create booking plan"}
                 </h2>
                 <button
                   type="button"
                   onClick={closeForm}
                   disabled={saving}
-                  className="text-xs font-semibold uppercase tracking-wide text-zinc-500 transition hover:text-zinc-300 disabled:opacity-50"
+                  className="text-xs font-semibold uppercase tracking-wide text-ftc-text-muted transition hover:text-ftc-text-secondary disabled:opacity-50"
                 >
                   Cancel
                 </button>
@@ -301,7 +301,7 @@ export default function BookingPlansPage() {
                 <button
                   type="submit"
                   disabled={saving}
-                  className="rounded-xl border border-blue-500/45 bg-blue-600/20 px-5 py-3 text-sm font-semibold uppercase tracking-wide text-blue-100 shadow-[0_0_20px_rgba(59,130,246,0.22)] transition hover:border-blue-400/60 hover:bg-blue-600/30 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="rounded-xl border border-ftc-primary/40 bg-ftc-primary/10 px-5 py-3 text-sm font-semibold uppercase tracking-wide text-ftc-primary/80 shadow-ftc-glow transition hover:border-ftc-primary/50 hover:bg-ftc-primary/15 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {saving ? "Saving..." : editingPlanId ? "Save changes" : "Save booking plan"}
                 </button>
@@ -310,20 +310,20 @@ export default function BookingPlansPage() {
           ) : null}
 
           {loadingPlans ? (
-            <p className="text-sm text-zinc-500">Loading booking plans...</p>
+            <p className="text-sm text-ftc-text-muted">Loading booking plans...</p>
           ) : error && plans.length === 0 ? (
             <p className="text-sm text-red-400">{error}</p>
           ) : plans.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-zinc-800 bg-zinc-900/30 px-6 py-12 text-center">
-              <p className="text-base font-medium text-zinc-300">No saved booking plans yet.</p>
-              <p className="mt-2 text-sm text-zinc-500">
+            <div className="rounded-2xl border border-dashed border-ftc-border bg-ftc-surface/30 px-6 py-12 text-center">
+              <p className="text-base font-medium text-ftc-text-secondary">No saved booking plans yet.</p>
+              <p className="mt-2 text-sm text-ftc-text-muted">
                 Create a plan to reuse event details when booking DJs.
               </p>
               {!formOpen ? (
                 <button
                   type="button"
                   onClick={openCreateForm}
-                  className="mt-6 rounded-xl border border-blue-500/45 bg-blue-600/20 px-5 py-3 text-sm font-semibold uppercase tracking-wide text-blue-100 shadow-[0_0_20px_rgba(59,130,246,0.22)] transition hover:border-blue-400/60 hover:bg-blue-600/30"
+                  className="mt-6 rounded-xl border border-ftc-primary/40 bg-ftc-primary/10 px-5 py-3 text-sm font-semibold uppercase tracking-wide text-ftc-primary/80 shadow-ftc-glow transition hover:border-ftc-primary/50 hover:bg-ftc-primary/15"
                 >
                   Create booking plan
                 </button>
@@ -334,14 +334,14 @@ export default function BookingPlansPage() {
               {plans.map((plan) => (
                 <li
                   key={plan.id}
-                  className="rounded-2xl border border-zinc-800 bg-zinc-900/80 p-4 sm:p-5"
+                  className="rounded-2xl border border-ftc-border bg-ftc-surface/80 p-4 sm:p-5"
                 >
                   <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                     <div className="min-w-0">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-blue-400">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-ftc-primary">
                         Saved Booking Plan
                       </p>
-                      <h3 className="mt-1 text-lg font-semibold text-zinc-50">{plan.name}</h3>
+                      <h3 className="mt-1 text-lg font-semibold text-ftc-text">{plan.name}</h3>
                       <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
                         <PlanDetail label="Event" value={plan.event_name} />
                         <PlanDetail label="Venue" value={plan.venue} />
@@ -350,7 +350,7 @@ export default function BookingPlansPage() {
                         <PlanDetail label="Rate" value={formatRateDisplay(plan.fee)} />
                       </dl>
                       {plan.notes?.trim() ? (
-                        <p className="mt-3 text-sm leading-relaxed text-zinc-400">{plan.notes}</p>
+                        <p className="mt-3 text-sm leading-relaxed text-ftc-text-secondary">{plan.notes}</p>
                       ) : null}
                     </div>
 
@@ -358,14 +358,14 @@ export default function BookingPlansPage() {
                       <button
                         type="button"
                         onClick={() => openEditForm(plan)}
-                        className="rounded-lg border border-zinc-700 bg-zinc-900/80 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-zinc-300 transition hover:border-blue-500/35 hover:text-blue-300"
+                        className="rounded-lg border border-ftc-border-strong bg-ftc-surface/80 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-ftc-text-secondary transition hover:border-ftc-primary/30 hover:text-ftc-primary"
                       >
                         Edit
                       </button>
                       <button
                         type="button"
                         onClick={() => handleUseForBooking(plan.id)}
-                        className="rounded-lg border border-blue-500/35 bg-blue-600/10 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-blue-300 transition hover:border-blue-400/50 hover:bg-blue-600/20"
+                        className="rounded-lg border border-ftc-primary/30 bg-ftc-primary/10 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-ftc-primary transition hover:border-ftc-primary/40 hover:bg-ftc-primary/12"
                       >
                         Use for booking
                       </button>
@@ -384,8 +384,8 @@ export default function BookingPlansPage() {
 function PlanDetail({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <dt className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">{label}</dt>
-      <dd className="mt-0.5 text-zinc-200">{value}</dd>
+      <dt className="text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted">{label}</dt>
+      <dd className="mt-0.5 text-ftc-text">{value}</dd>
     </div>
   );
 }
@@ -407,7 +407,7 @@ function PlanField({
 }) {
   return (
     <label className="block">
-      <span className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-400">
+      <span className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.14em] text-ftc-text-secondary">
         {label}
       </span>
       {multiline ? (
@@ -416,7 +416,7 @@ function PlanField({
           onChange={(event) => onChange(event.target.value)}
           placeholder={placeholder}
           rows={3}
-          className="w-full rounded-xl border border-zinc-800 bg-zinc-900/80 px-3.5 py-2.5 text-sm text-zinc-100 outline-none transition placeholder:text-zinc-600 focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/15"
+          className="w-full rounded-xl border border-ftc-border bg-ftc-surface/80 px-3.5 py-2.5 text-sm text-ftc-text outline-none transition placeholder:text-ftc-text-muted focus:border-ftc-primary/45 focus:ring-2 focus:ring-ftc-primary/15"
         />
       ) : (
         <input
@@ -425,7 +425,7 @@ function PlanField({
           onChange={(event) => onChange(event.target.value)}
           placeholder={placeholder}
           required={required}
-          className="w-full rounded-xl border border-zinc-800 bg-zinc-900/80 px-3.5 py-2.5 text-sm text-zinc-100 outline-none transition placeholder:text-zinc-600 focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/15"
+          className="w-full rounded-xl border border-ftc-border bg-ftc-surface/80 px-3.5 py-2.5 text-sm text-ftc-text outline-none transition placeholder:text-ftc-text-muted focus:border-ftc-primary/45 focus:ring-2 focus:ring-ftc-primary/15"
         />
       )}
     </label>

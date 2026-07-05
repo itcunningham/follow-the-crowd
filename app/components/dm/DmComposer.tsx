@@ -28,7 +28,7 @@ function IconButton({
       title={label}
       disabled={disabled}
       onClick={onClick}
-      className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-zinc-800 bg-zinc-900/70 text-zinc-300 transition hover:border-blue-500/35 hover:text-blue-200 disabled:cursor-not-allowed disabled:opacity-40 ${className}`}
+      className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-ftc-border bg-ftc-surface/70 text-ftc-text-secondary transition hover:border-ftc-primary/30 hover:text-ftc-primary/90 disabled:cursor-not-allowed disabled:opacity-40 ${className}`}
     >
       {children}
     </button>
@@ -115,7 +115,7 @@ export default function DmComposer({
         label="Add emoji"
         disabled={busy}
         onClick={() => setEmojiOpen((open) => !open)}
-        className={emojiOpen ? "border-blue-500/35 text-blue-200" : ""}
+        className={emojiOpen ? "border-ftc-primary/30 text-ftc-primary/90" : ""}
       >
         <span className="text-lg leading-none">😊</span>
       </IconButton>
@@ -123,16 +123,16 @@ export default function DmComposer({
   );
 
   return (
-    <div className="shrink-0 border-t border-zinc-800/80 bg-[#070708] px-3 py-3 sm:px-4 sm:py-4">
+    <div className="shrink-0 border-t border-ftc-border bg-ftc-bg px-3 py-3 sm:px-4 sm:py-4">
       {emojiOpen ? (
-        <div className="mb-2 rounded-2xl border border-zinc-800 bg-zinc-950/90 p-2">
+        <div className="mb-2 rounded-2xl border border-ftc-border bg-ftc-bg-elevated/90 p-2">
           <div className="grid grid-cols-6 gap-1 sm:grid-cols-8">
             {DM_COMPOSER_EMOJIS.map((emoji) => (
               <button
                 key={emoji}
                 type="button"
                 onClick={() => appendEmoji(emoji)}
-                className="flex h-9 items-center justify-center rounded-lg text-lg transition hover:bg-zinc-900"
+                className="flex h-9 items-center justify-center rounded-lg text-lg transition hover:bg-ftc-surface"
               >
                 {emoji}
               </button>
@@ -150,14 +150,14 @@ export default function DmComposer({
             onKeyDown={handleKeyDown}
             placeholder="Message..."
             disabled={busy}
-            className="min-h-[44px] min-w-0 flex-1 rounded-full border border-zinc-800 bg-zinc-900/80 px-4 py-2.5 text-sm text-zinc-100 outline-none transition placeholder:text-zinc-600 focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/15 disabled:opacity-50"
+            className="min-h-[44px] min-w-0 flex-1 rounded-full border border-ftc-border bg-ftc-surface/80 px-4 py-2.5 text-sm text-ftc-text outline-none transition placeholder:text-ftc-text-muted focus:border-ftc-primary/45 focus:ring-2 focus:ring-ftc-primary/15 disabled:opacity-50"
           />
 
           <button
             type="button"
             onClick={onSend}
             disabled={busy || !value.trim()}
-            className="min-h-[44px] shrink-0 rounded-full border border-blue-500/45 bg-blue-600/20 px-4 py-2.5 text-sm font-semibold uppercase tracking-wide text-blue-100 shadow-[0_0_20px_rgba(59,130,246,0.22)] transition hover:border-blue-400/60 hover:bg-blue-600/30 disabled:cursor-not-allowed disabled:opacity-50"
+            className="min-h-[44px] shrink-0 rounded-full border border-ftc-primary/40 bg-ftc-primary/10 px-4 py-2.5 text-sm font-semibold uppercase tracking-wide text-ftc-primary/80 shadow-ftc-glow transition hover:border-ftc-primary/50 hover:bg-ftc-primary/15 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {busy ? "..." : "Send"}
           </button>
@@ -176,14 +176,14 @@ export default function DmComposer({
           onKeyDown={handleKeyDown}
           placeholder="Message..."
           disabled={busy}
-          className="min-h-[44px] min-w-0 flex-1 rounded-full border border-zinc-800 bg-zinc-900/80 px-4 py-2.5 text-sm text-zinc-100 outline-none transition placeholder:text-zinc-600 focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/15 disabled:opacity-50"
+          className="min-h-[44px] min-w-0 flex-1 rounded-full border border-ftc-border bg-ftc-surface/80 px-4 py-2.5 text-sm text-ftc-text outline-none transition placeholder:text-ftc-text-muted focus:border-ftc-primary/45 focus:ring-2 focus:ring-ftc-primary/15 disabled:opacity-50"
         />
 
         <button
           type="button"
           onClick={onSend}
           disabled={busy || !value.trim()}
-          className="min-h-[44px] shrink-0 rounded-full border border-blue-500/45 bg-blue-600/20 px-5 py-2.5 text-sm font-semibold uppercase tracking-wide text-blue-100 shadow-[0_0_20px_rgba(59,130,246,0.22)] transition hover:border-blue-400/60 hover:bg-blue-600/30 disabled:cursor-not-allowed disabled:opacity-50"
+          className="min-h-[44px] shrink-0 rounded-full border border-ftc-primary/40 bg-ftc-primary/10 px-5 py-2.5 text-sm font-semibold uppercase tracking-wide text-ftc-primary/80 shadow-ftc-glow transition hover:border-ftc-primary/50 hover:bg-ftc-primary/15 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {busy ? "..." : "Send"}
         </button>

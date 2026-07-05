@@ -69,8 +69,8 @@ function InboxTabButton({
       onClick={onClick}
       className={`relative flex min-w-0 flex-1 items-center justify-center gap-1.5 border-b-2 px-2 py-3 text-sm font-semibold transition sm:gap-2 sm:px-3 ${
         active
-          ? "border-blue-500 text-zinc-50"
-          : "border-transparent text-zinc-500 hover:text-zinc-300"
+          ? "border-ftc-primary text-ftc-text"
+          : "border-transparent text-ftc-text-muted hover:text-ftc-text-secondary"
       }`}
     >
       <span className="min-w-0 truncate">
@@ -81,8 +81,8 @@ function InboxTabButton({
         <span
           className={`flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] font-bold leading-none ${
             active
-              ? "bg-blue-600 text-white shadow-[0_0_10px_rgba(59,130,246,0.45)]"
-              : "border border-blue-500/35 bg-blue-600/15 text-blue-300"
+              ? "bg-ftc-primary-dim text-white shadow-ftc-glow"
+              : "border border-ftc-primary/30 bg-ftc-primary/10 text-ftc-primary"
           }`}
         >
           {unreadCount > 99 ? "99+" : unreadCount}
@@ -95,11 +95,11 @@ function InboxTabButton({
 function GroupChatsEmptyState() {
   return (
     <div className="flex flex-col items-center justify-center px-6 py-16 text-center sm:py-24">
-      <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-blue-500/30 bg-blue-600/10 text-xs font-semibold uppercase tracking-wide text-blue-300">
+      <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-ftc-primary/25 bg-ftc-primary/10 text-xs font-semibold uppercase tracking-wide text-ftc-primary">
         GC
       </div>
-      <h2 className="mt-5 text-lg font-semibold text-zinc-100">No group chats yet</h2>
-      <p className="mt-2 max-w-sm text-sm leading-relaxed text-zinc-500">
+      <h2 className="mt-5 text-lg font-semibold text-ftc-text">No group chats yet</h2>
+      <p className="mt-2 max-w-sm text-sm leading-relaxed text-ftc-text-muted">
         Group chats appear here when you create events or accept bookings.
       </p>
     </div>
@@ -111,7 +111,7 @@ function NotificationsBellLink({ count }: { count: number }) {
     <Link
       href={NOTIFICATIONS_PATH}
       aria-label={count > 0 ? `Notifications, ${count} unread` : "Notifications"}
-      className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-zinc-800/80 bg-zinc-900/60 text-zinc-400 transition hover:border-blue-500/35 hover:text-blue-300"
+      className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-ftc-border bg-ftc-surface/60 text-ftc-text-secondary transition hover:border-ftc-primary/30 hover:text-ftc-primary"
     >
       <svg
         aria-hidden="true"
@@ -127,7 +127,7 @@ function NotificationsBellLink({ count }: { count: number }) {
         <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
       </svg>
       {count > 0 ? (
-        <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full border border-blue-400/50 bg-blue-600 px-1 text-[10px] font-bold leading-none text-white shadow-[0_0_10px_rgba(59,130,246,0.45)]">
+        <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full border border-ftc-primary/40 bg-ftc-primary-dim px-1 text-[10px] font-bold leading-none text-white shadow-ftc-glow">
           {count > 99 ? "99+" : count}
         </span>
       ) : null}
@@ -247,7 +247,7 @@ function MessageDjButton({
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className={`rounded-xl border border-blue-500/45 bg-blue-600/20 px-5 py-3 text-sm font-semibold uppercase tracking-wide text-blue-100 shadow-[0_0_20px_rgba(59,130,246,0.22)] transition hover:border-blue-400/60 hover:bg-blue-600/30 disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
+      className={`rounded-xl border border-ftc-primary/40 bg-ftc-primary/10 px-5 py-3 text-sm font-semibold uppercase tracking-wide text-ftc-primary/80 shadow-ftc-glow transition hover:border-ftc-primary/50 hover:bg-ftc-primary/15 disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
     >
       {disabled ? "Opening..." : "Message DJ"}
     </button>
@@ -256,7 +256,7 @@ function MessageDjButton({
 
 function getUnreadInboxRowClass(isUnread: boolean) {
   return isUnread
-    ? "border-l-2 border-blue-500/55 bg-blue-500/[0.06] shadow-[inset_0_0_20px_rgba(59,130,246,0.07)]"
+    ? "border-l-2 border-ftc-primary/55 bg-ftc-primary/[0.06] shadow-[inset_0_0_20px_rgba(111,228,255,0.07)]"
     : "";
 }
 
@@ -264,7 +264,7 @@ function UnreadInboxIndicator() {
   return (
     <span
       aria-label="Unread"
-      className="h-2.5 w-2.5 shrink-0 rounded-full bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.55)]"
+      className="h-2.5 w-2.5 shrink-0 rounded-full bg-ftc-primary shadow-ftc-glow"
     />
   );
 }
@@ -274,16 +274,16 @@ function GroupChatCard({ chat, isUnread }: { chat: GroupChatListItem; isUnread: 
     <li>
       <Link
         href={chat.href}
-        className={`flex w-full items-center gap-3 px-4 py-3.5 transition active:bg-blue-600/10 hover:bg-zinc-900/70 sm:px-6 sm:py-4 ${getUnreadInboxRowClass(isUnread)}`}
+        className={`flex w-full items-center gap-3 px-4 py-3.5 transition active:bg-ftc-primary/10 hover:bg-ftc-surface/70 sm:px-6 sm:py-4 ${getUnreadInboxRowClass(isUnread)}`}
       >
-        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-blue-500/30 bg-blue-600/10 text-xs font-semibold uppercase tracking-wide text-blue-300">
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-ftc-primary/25 bg-ftc-primary/10 text-xs font-semibold uppercase tracking-wide text-ftc-primary">
           GC
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-3">
             <p
               className={`truncate text-[15px] ${
-                isUnread ? "font-bold text-zinc-50" : "font-semibold text-zinc-100"
+                isUnread ? "font-bold text-ftc-text" : "font-semibold text-ftc-text"
               }`}
             >
               {chat.eventName}
@@ -292,7 +292,7 @@ function GroupChatCard({ chat, isUnread }: { chat: GroupChatListItem; isUnread: 
               {isUnread ? <UnreadInboxIndicator /> : null}
               <time
                 dateTime={chat.latestActivityAt ?? chat.eventDate}
-                className={`text-xs ${isUnread ? "font-medium text-blue-300/80" : "text-zinc-500"}`}
+                className={`text-xs ${isUnread ? "font-medium text-ftc-primary/80" : "text-ftc-text-muted"}`}
               >
                 {chat.latestActivityAt
                   ? formatInboxTimestamp(chat.latestActivityAt)
@@ -300,19 +300,19 @@ function GroupChatCard({ chat, isUnread }: { chat: GroupChatListItem; isUnread: 
               </time>
             </div>
           </div>
-          <p className="mt-1 truncate text-sm text-zinc-500">
+          <p className="mt-1 truncate text-sm text-ftc-text-muted">
             {chat.venue.trim() || "Venue TBC"}
             {" · "}
             {formatGroupChatEventDate(chat.eventDate)}
           </p>
           <div className="mt-1 flex items-center gap-2">
-            <span className="text-[10px] font-semibold uppercase tracking-wide text-blue-400/90">
+            <span className="text-[10px] font-semibold uppercase tracking-wide text-ftc-primary/90">
               Group Chat
             </span>
             {chat.latestPreview ? (
               <p
                 className={`min-w-0 truncate text-sm ${
-                  isUnread ? "font-medium text-zinc-300" : "text-zinc-500"
+                  isUnread ? "font-medium text-ftc-text-secondary" : "text-ftc-text-muted"
                 }`}
               >
                 {chat.latestPreview}
@@ -339,10 +339,10 @@ function DirectMessagesEmptyState({
   if (compact) {
     return (
       <div className="px-4 py-6 sm:px-6">
-        <div className="rounded-xl border border-zinc-800/80 bg-zinc-900/30 px-4 py-5 text-center">
+        <div className="rounded-xl border border-ftc-border bg-ftc-surface/30 px-4 py-5 text-center">
           <ConversationAvatar label={TARGET_DJ_USER_ID} />
-          <h3 className="mt-4 text-base font-semibold text-zinc-100">No messages yet</h3>
-          <p className="mt-2 text-sm leading-relaxed text-zinc-500">
+          <h3 className="mt-4 text-base font-semibold text-ftc-text">No messages yet</h3>
+          <p className="mt-2 text-sm leading-relaxed text-ftc-text-muted">
             Start a conversation with a DJ or promoter.
           </p>
           <MessageDjButton
@@ -359,8 +359,8 @@ function DirectMessagesEmptyState({
   return (
     <div className="flex flex-col items-center justify-center px-6 py-16 text-center sm:py-24">
       <ConversationAvatar label={TARGET_DJ_USER_ID} />
-      <h2 className="mt-5 text-lg font-semibold text-zinc-100">No messages yet</h2>
-      <p className="mt-2 max-w-sm text-sm leading-relaxed text-zinc-500">
+      <h2 className="mt-5 text-lg font-semibold text-ftc-text">No messages yet</h2>
+      <p className="mt-2 max-w-sm text-sm leading-relaxed text-ftc-text-muted">
         Start a conversation with a DJ or promoter. Your chats will appear here.
       </p>
       <MessageDjButton
@@ -379,10 +379,10 @@ export default function DmInboxPage() {
       fallback={
         <OnboardingGuard>
           <div
-            className={`mx-auto flex min-h-[100dvh] w-full max-w-2xl flex-col bg-[#070708] font-sans text-zinc-100 ${MOBILE_NAV_OFFSET_CLASS}`}
+            className={`mx-auto flex min-h-[100dvh] w-full max-w-2xl flex-col bg-ftc-bg font-sans text-ftc-text ${MOBILE_NAV_OFFSET_CLASS}`}
           >
             <AppNavigation />
-            <p className="px-4 py-4 text-sm text-zinc-500 sm:px-6">Loading messages...</p>
+            <p className="px-4 py-4 text-sm text-ftc-text-muted sm:px-6">Loading messages...</p>
           </div>
         </OnboardingGuard>
       }
@@ -777,14 +777,14 @@ function DmInboxPageContent() {
   return (
     <OnboardingGuard>
       <div
-        className={`mx-auto flex min-h-[100dvh] w-full max-w-2xl flex-col bg-[#070708] font-sans text-zinc-100 ${MOBILE_NAV_OFFSET_CLASS}`}
+        className={`mx-auto flex min-h-[100dvh] w-full max-w-2xl flex-col bg-ftc-bg font-sans text-ftc-text ${MOBILE_NAV_OFFSET_CLASS}`}
       >
         <AppNavigation />
-        <header className="sticky top-0 z-10 border-b border-zinc-800/80 bg-[#070708]/95 px-4 py-4 backdrop-blur-md sm:px-6 md:top-12">
+        <header className="sticky top-0 z-10 border-b border-ftc-border bg-ftc-bg/95 px-4 py-4 backdrop-blur-md sm:px-6 md:top-12">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
-              <h1 className="text-xl font-semibold text-zinc-50">Messages</h1>
-              <p className="mt-0.5 text-xs text-zinc-500">{currentUserId ?? "Signed in"}</p>
+              <h1 className="text-xl font-semibold text-ftc-text">Messages</h1>
+              <p className="mt-0.5 text-xs text-ftc-text-muted">{currentUserId ?? "Signed in"}</p>
             </div>
             <NotificationsBellLink count={notificationCount} />
           </div>
@@ -803,7 +803,7 @@ function DmInboxPageContent() {
           ) : null}
 
           <div
-            className="mt-4 flex border-b border-zinc-800/80"
+            className="mt-4 flex border-b border-ftc-border"
             role="tablist"
             aria-label="Message categories"
           >
@@ -828,13 +828,13 @@ function DmInboxPageContent() {
           {activeTab === "group" ? (
             <section aria-label="Group Chats">
               {groupChatsLoading ? (
-                <p className="px-4 py-4 text-sm text-zinc-500 sm:px-6">Loading group chats...</p>
+                <p className="px-4 py-4 text-sm text-ftc-text-muted sm:px-6">Loading group chats...</p>
               ) : groupChatsError ? (
                 <p className="px-4 py-4 text-sm text-red-400 sm:px-6">{groupChatsError}</p>
               ) : renderedGroupChats.length === 0 ? (
                 <GroupChatsEmptyState />
               ) : (
-                <ul className="divide-y divide-zinc-800/80">
+                <ul className="divide-y divide-ftc-border">
                   {renderedGroupChats.map((chat) => (
                     <GroupChatCard
                       key={chat.eventId}
@@ -850,7 +850,7 @@ function DmInboxPageContent() {
           {activeTab === "dm" ? (
             <section aria-label="Direct Messages">
               {loading ? (
-                <p className="px-4 py-4 text-sm text-zinc-500 sm:px-6">Loading conversations...</p>
+                <p className="px-4 py-4 text-sm text-ftc-text-muted sm:px-6">Loading conversations...</p>
               ) : error ? (
                 <p className="px-4 py-4 text-sm text-red-400 sm:px-6">{error}</p>
               ) : !hasDirectMessages ? (
@@ -860,7 +860,7 @@ function DmInboxPageContent() {
                   onMessageDj={handleMessageDj}
                 />
               ) : (
-                <ul className="divide-y divide-zinc-800/80">
+                <ul className="divide-y divide-ftc-border">
                   {dmInboxRows.map((row) => {
                     const otherUserId = otherUsersByConversation.get(row.conversationId);
                     const otherProfile = otherUserId ? userProfiles.get(otherUserId) : undefined;
@@ -876,7 +876,7 @@ function DmInboxPageContent() {
                         <button
                           type="button"
                           onClick={() => openConversation(row.conversationId)}
-                          className={`flex w-full items-center gap-3 px-4 py-3.5 text-left transition active:bg-blue-600/10 hover:bg-zinc-900/70 sm:px-6 sm:py-4 ${getUnreadInboxRowClass(isUnread)}`}
+                          className={`flex w-full items-center gap-3 px-4 py-3.5 text-left transition active:bg-ftc-primary/10 hover:bg-ftc-surface/70 sm:px-6 sm:py-4 ${getUnreadInboxRowClass(isUnread)}`}
                         >
                           <ConversationAvatar
                             label={displayName}
@@ -886,7 +886,7 @@ function DmInboxPageContent() {
                             <div className="flex items-center justify-between gap-3">
                               <p
                                 className={`truncate text-[15px] ${
-                                  isUnread ? "font-bold text-zinc-50" : "font-semibold text-zinc-100"
+                                  isUnread ? "font-bold text-ftc-text" : "font-semibold text-ftc-text"
                                 }`}
                               >
                                 {displayName}
@@ -897,7 +897,7 @@ function DmInboxPageContent() {
                                   <time
                                     dateTime={timestamp}
                                     className={`text-xs ${
-                                      isUnread ? "font-medium text-blue-300/80" : "text-zinc-500"
+                                      isUnread ? "font-medium text-ftc-primary/80" : "text-ftc-text-muted"
                                     }`}
                                   >
                                     {formatInboxTimestamp(timestamp)}
@@ -907,7 +907,7 @@ function DmInboxPageContent() {
                             </div>
                             <p
                               className={`mt-1 truncate text-sm ${
-                                isUnread ? "font-medium text-zinc-300" : "text-zinc-500"
+                                isUnread ? "font-medium text-ftc-text-secondary" : "text-ftc-text-muted"
                               }`}
                             >
                               {preview}

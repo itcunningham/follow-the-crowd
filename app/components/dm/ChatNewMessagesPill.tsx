@@ -18,10 +18,10 @@ export default function ChatNewMessagesPill({
         type="button"
         onClick={onClick}
         aria-label={`Scroll to ${text.toLowerCase()}`}
-        className="pointer-events-auto inline-flex items-center gap-1 rounded-full border border-zinc-700/90 bg-[#101012]/95 px-3.5 py-1.5 text-[11px] font-semibold tracking-wide text-zinc-100 shadow-[0_6px_24px_rgba(0,0,0,0.45)] backdrop-blur-md transition hover:border-blue-500/35 hover:bg-zinc-900/95 active:scale-[0.98]"
+        className="pointer-events-auto inline-flex items-center gap-1 rounded-full border border-ftc-border-strong/90 bg-[#101012]/95 px-3.5 py-1.5 text-[11px] font-semibold tracking-wide text-ftc-text shadow-[0_6px_24px_rgba(0,0,0,0.45)] backdrop-blur-md transition hover:border-ftc-primary/30 hover:bg-ftc-surface/95 active:scale-[0.98]"
       >
         <span>{text}</span>
-        <span className="text-blue-400" aria-hidden="true">
+        <span className="text-ftc-primary" aria-hidden="true">
           ↓
         </span>
       </button>

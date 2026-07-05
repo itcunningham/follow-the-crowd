@@ -102,7 +102,7 @@ export default function DeleteAccountSection({
         <h2 className="text-xs font-semibold uppercase tracking-wide text-red-300">
           Danger zone
         </h2>
-        <p className="mt-2 text-sm leading-relaxed text-zinc-400">
+        <p className="mt-2 text-sm leading-relaxed text-ftc-text-secondary">
           Permanently delete your Follow The Crowd account and personal app data. This
           removes your profile, signs you out, deletes attachments you uploaded, and
           cannot be undone. Pending bookings and draft or upcoming events you own will be
@@ -112,7 +112,7 @@ export default function DeleteAccountSection({
         </p>
 
         {loadingWarnings ? (
-          <p className="mt-4 text-sm text-zinc-500">Checking account status...</p>
+          <p className="mt-4 text-sm text-ftc-text-muted">Checking account status...</p>
         ) : warningItems.length > 0 ? (
           <div className="mt-4 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3">
             <p className="text-sm font-medium text-amber-100">
@@ -145,13 +145,13 @@ export default function DeleteAccountSection({
           role="dialog"
           aria-modal="true"
           aria-labelledby="delete-account-title"
-          className="max-h-[90dvh] w-full max-w-md overflow-y-auto overscroll-contain rounded-t-2xl border border-red-500/30 bg-zinc-950 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-[0_24px_64px_rgba(0,0,0,0.55)] sm:rounded-2xl sm:p-5"
+          className="max-h-[90dvh] w-full max-w-md overflow-y-auto overscroll-contain rounded-t-2xl border border-red-500/30 bg-ftc-bg-elevated p-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-ftc-card sm:rounded-2xl sm:p-5"
           onClick={(event) => event.stopPropagation()}
         >
-            <h3 id="delete-account-title" className="text-base font-semibold text-zinc-50">
+            <h3 id="delete-account-title" className="text-base font-semibold text-ftc-text">
               Delete your account permanently?
             </h3>
-            <p className="mt-2 text-sm leading-relaxed text-zinc-400">
+            <p className="mt-2 text-sm leading-relaxed text-ftc-text-secondary">
               This permanently removes your account, profile, attachments you uploaded,
               notifications, blocks, and your side of personal app data. Pending booking
               requests and accepted bookings on upcoming events involving you will be
@@ -169,7 +169,7 @@ export default function DeleteAccountSection({
             ) : null}
 
             <label className="mt-4 block">
-              <span className="mb-2 block text-xs font-semibold uppercase tracking-wide text-zinc-500">
+              <span className="mb-2 block text-xs font-semibold uppercase tracking-wide text-ftc-text-muted">
                 Type DELETE to confirm
               </span>
               <input
@@ -179,7 +179,7 @@ export default function DeleteAccountSection({
                 autoComplete="off"
                 spellCheck={false}
                 disabled={deleting}
-                className="w-full rounded-xl border border-zinc-800 bg-zinc-900/70 px-3 py-2.5 text-sm text-zinc-100 outline-none transition placeholder:text-zinc-600 focus:border-red-500/40 disabled:opacity-50"
+                className="w-full rounded-xl border border-ftc-border bg-ftc-surface/70 px-3 py-2.5 text-sm text-ftc-text outline-none transition placeholder:text-ftc-text-muted focus:border-red-500/40 disabled:opacity-50"
                 placeholder="DELETE"
               />
             </label>
@@ -191,7 +191,7 @@ export default function DeleteAccountSection({
                 type="button"
                 disabled={deleting}
                 onClick={closeModal}
-                className="rounded-xl border border-zinc-700 bg-zinc-900/80 px-4 py-2.5 text-sm font-semibold uppercase tracking-wide text-zinc-300 transition hover:border-zinc-600 disabled:opacity-50"
+                className="rounded-xl border border-ftc-border-strong bg-ftc-surface/80 px-4 py-2.5 text-sm font-semibold uppercase tracking-wide text-ftc-text-secondary transition hover:border-ftc-border-strong disabled:opacity-50"
               >
                 Cancel
               </button>

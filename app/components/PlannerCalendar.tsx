@@ -85,11 +85,11 @@ function PlannerCalendarDayCell({
       aria-label={`Plan ${date.toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" })}`}
       onClick={() => onSelectDate(date)}
       onKeyDown={handleCellKeyDown}
-      className="relative min-h-[6.5rem] cursor-pointer rounded-lg border border-zinc-800/70 bg-zinc-950/20 p-1.5 transition hover:border-zinc-700/90 sm:min-h-[7.5rem] sm:p-2"
+      className="relative min-h-[6.5rem] cursor-pointer rounded-lg border border-ftc-border/70 bg-ftc-bg-elevated/20 p-1.5 transition hover:border-ftc-border-strong/90 sm:min-h-[7.5rem] sm:p-2"
     >
       <span
         className={`inline-flex h-6 min-w-6 items-center justify-center rounded-full text-xs font-semibold ${
-          isToday ? "bg-blue-600/20 text-blue-300" : "text-zinc-200"
+          isToday ? "bg-ftc-primary/10 text-ftc-primary" : "text-ftc-text"
         }`}
       >
         {date.getDate()}
@@ -182,10 +182,10 @@ export default function PlannerCalendar({
   }
 
   return (
-    <section className="rounded-2xl border border-zinc-800 bg-zinc-900/50 p-4 sm:p-5">
+    <section className="rounded-2xl border border-ftc-border bg-ftc-surface/50 p-4 sm:p-5">
       <div>
-        <h1 className="text-base font-semibold text-zinc-50">Calendar</h1>
-        <p className="mt-1 text-sm text-zinc-500">{description}</p>
+        <h1 className="text-base font-semibold text-ftc-text">Calendar</h1>
+        <p className="mt-1 text-sm text-ftc-text-muted">{description}</p>
       </div>
 
       {error ? (
@@ -206,15 +206,15 @@ export default function PlannerCalendar({
       </div>
 
       {loading ? (
-        <p className="mt-6 text-sm text-zinc-500">Loading calendar...</p>
+        <p className="mt-6 text-sm text-ftc-text-muted">Loading calendar...</p>
       ) : (
         <>
-          <div className="mt-4 rounded-2xl border border-zinc-800 bg-zinc-950/40">
-            <div className="grid grid-cols-7 border-b border-zinc-800/80 bg-zinc-950/60">
+          <div className="mt-4 rounded-2xl border border-ftc-border bg-ftc-bg-elevated/40">
+            <div className="grid grid-cols-7 border-b border-ftc-border bg-ftc-bg-elevated/60">
               {WEEKDAY_LABELS.map((label) => (
                 <div
                   key={label}
-                  className="px-1 py-2 text-center text-[10px] font-semibold uppercase tracking-wide text-zinc-500 sm:px-2"
+                  className="px-1 py-2 text-center text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted sm:px-2"
                 >
                   {label}
                 </div>
@@ -250,7 +250,7 @@ export default function PlannerCalendar({
           </div>
 
           {monthItems.length === 0 ? (
-            <p className="mt-4 text-center text-sm text-zinc-500">
+            <p className="mt-4 text-center text-sm text-ftc-text-muted">
               No bookings or events this month yet.
             </p>
           ) : null}

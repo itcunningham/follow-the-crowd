@@ -30,12 +30,12 @@ export default function CalendarPage() {
 
   return (
     <OnboardingGuard>
-      <div className={`min-h-[100dvh] bg-[#070708] text-zinc-100 ${MOBILE_NAV_OFFSET_CLASS}`}>
+      <div className={`min-h-[100dvh] bg-ftc-bg text-ftc-text ${MOBILE_NAV_OFFSET_CLASS}`}>
         <AppNavigation />
 
         <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
-          <div className="mb-6 border-b border-zinc-800/80 pb-4">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-blue-400">
+          <div className="mb-6 border-b border-ftc-border pb-4">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-ftc-primary">
               Calendar
             </p>
             {role === "promoter" || role === "both" ? (
@@ -46,7 +46,7 @@ export default function CalendarPage() {
           </div>
 
           {loadingRole ? (
-            <p className="text-sm text-zinc-500">Loading calendar...</p>
+            <p className="text-sm text-ftc-text-muted">Loading calendar...</p>
           ) : role === "both" ? (
             <>
               <CalendarViewTabs activeTab={bothCalendarTab} onChange={setBothCalendarTab} />
@@ -61,7 +61,7 @@ export default function CalendarPage() {
           ) : role === "dj" ? (
             <DjAvailabilityCalendar description="Manage your availability and bookings." />
           ) : (
-            <p className="text-sm text-zinc-500">Calendar is not available for this account.</p>
+            <p className="text-sm text-ftc-text-muted">Calendar is not available for this account.</p>
           )}
         </main>
       </div>

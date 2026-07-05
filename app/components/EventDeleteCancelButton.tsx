@@ -81,20 +81,20 @@ export default function EventDeleteCancelButton({
             role="dialog"
             aria-modal="true"
             aria-labelledby={`event-${mode}-title`}
-            className="w-full max-w-md rounded-2xl border border-zinc-700/80 bg-zinc-950 p-4 shadow-[0_24px_64px_rgba(0,0,0,0.55)] sm:p-5"
+            className="w-full max-w-md rounded-2xl border border-ftc-border-strong bg-ftc-bg-elevated p-4 shadow-ftc-card sm:p-5"
             onClick={(event) => event.stopPropagation()}
           >
-            <h2 id={`event-${mode}-title`} className="text-base font-semibold text-zinc-50">
+            <h2 id={`event-${mode}-title`} className="text-base font-semibold text-ftc-text">
               {copy.title}
             </h2>
-            <p className="mt-2 text-sm leading-relaxed text-zinc-400">{copy.body}</p>
+            <p className="mt-2 text-sm leading-relaxed text-ftc-text-secondary">{copy.body}</p>
 
             <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-end">
               <button
                 type="button"
                 disabled={loading}
                 onClick={() => setOpen(false)}
-                className="rounded-xl border border-zinc-700 bg-zinc-900/80 px-4 py-2.5 text-sm font-semibold uppercase tracking-wide text-zinc-300 transition hover:border-zinc-600 disabled:opacity-50"
+                className="rounded-xl border border-ftc-border-strong bg-ftc-surface/80 px-4 py-2.5 text-sm font-semibold uppercase tracking-wide text-ftc-text-secondary transition hover:border-ftc-border-strong disabled:opacity-50"
               >
                 {copy.keepLabel}
               </button>

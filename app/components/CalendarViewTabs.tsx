@@ -23,10 +23,8 @@ export default function CalendarViewTabs({ activeTab, onChange }: CalendarViewTa
             key={tab.value}
             type="button"
             onClick={() => onChange(tab.value)}
-            className={`rounded-lg px-3 py-1.5 text-xs font-semibold uppercase tracking-wide transition ${
-              isActive
-                ? "border border-blue-500/45 bg-blue-600/15 text-blue-300 shadow-[0_0_16px_rgba(59,130,246,0.12)]"
-                : "border border-zinc-800/80 bg-zinc-900/50 text-zinc-400 hover:border-blue-500/30 hover:text-blue-300"
+            className={`rounded-lg border px-3 py-1.5 text-xs font-semibold uppercase tracking-wide transition ${
+              isActive ? "ftc-tab-active" : "ftc-tab-inactive"
             }`}
           >
             {tab.label}

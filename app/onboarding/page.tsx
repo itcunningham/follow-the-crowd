@@ -96,20 +96,20 @@ export default function OnboardingPage() {
 
   if (checkingExisting) {
     return (
-      <div className="flex min-h-[100dvh] items-center justify-center bg-[#070708] text-sm text-zinc-500">
+      <div className="flex min-h-[100dvh] items-center justify-center bg-ftc-bg text-sm text-ftc-text-muted">
         Loading...
       </div>
     );
   }
 
   return (
-    <div className="min-h-[100dvh] bg-[#070708] px-4 pb-[max(2.5rem,env(safe-area-inset-bottom))] pt-[max(2.5rem,env(safe-area-inset-top))] font-sans text-zinc-100 sm:px-6 sm:py-10">
+    <div className="min-h-[100dvh] bg-ftc-bg px-4 pb-[max(2.5rem,env(safe-area-inset-bottom))] pt-[max(2.5rem,env(safe-area-inset-top))] font-sans text-ftc-text sm:px-6 sm:py-10">
       <div className="mx-auto w-full max-w-2xl">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-blue-400">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-ftc-primary">
           Welcome
         </p>
-        <h1 className="mt-3 text-3xl font-bold text-zinc-50 sm:text-4xl">Choose your role</h1>
-        <p className="mt-3 max-w-xl text-sm leading-relaxed text-zinc-400 sm:text-base">
+        <h1 className="mt-3 text-3xl font-bold text-ftc-text sm:text-4xl">Choose your role</h1>
+        <p className="mt-3 max-w-xl text-sm leading-relaxed text-ftc-text-secondary sm:text-base">
           This helps tailor Follow The Crowd to how you work in the scene.
         </p>
 
@@ -123,14 +123,14 @@ export default function OnboardingPage() {
                 type="button"
                 disabled={loadingRole !== null}
                 onClick={() => handleSelectRole(option.role)}
-                className="w-full rounded-2xl border border-zinc-800 bg-zinc-900/80 px-5 py-5 text-left transition hover:border-blue-500/40 hover:bg-blue-600/10 hover:shadow-[0_0_24px_rgba(59,130,246,0.12)] focus-visible:border-blue-500/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/15 disabled:cursor-not-allowed disabled:opacity-60"
+                className="w-full rounded-2xl border border-ftc-border bg-ftc-surface/80 px-5 py-5 text-left transition hover:border-ftc-primary/35 hover:bg-ftc-primary/10 hover:shadow-ftc-glow focus-visible:border-ftc-primary/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ftc-primary/15 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                <p className="text-lg font-semibold text-zinc-50">{option.title}</p>
-                <p className="mt-2 text-sm leading-relaxed text-zinc-400">
+                <p className="text-lg font-semibold text-ftc-text">{option.title}</p>
+                <p className="mt-2 text-sm leading-relaxed text-ftc-text-secondary">
                   {option.description}
                 </p>
                 {isLoading ? (
-                  <p className="mt-3 text-xs font-medium uppercase tracking-wide text-blue-400">
+                  <p className="mt-3 text-xs font-medium uppercase tracking-wide text-ftc-primary">
                     Saving...
                   </p>
                 ) : null}

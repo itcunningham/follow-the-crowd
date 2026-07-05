@@ -44,13 +44,13 @@ export default function CancelBookingRequestButton({
             role="dialog"
             aria-modal="true"
             aria-labelledby="cancel-booking-request-title"
-            className="max-h-[90dvh] w-full max-w-md overflow-y-auto overscroll-contain rounded-t-2xl border border-zinc-700/80 bg-zinc-950 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-[0_24px_64px_rgba(0,0,0,0.55)] sm:rounded-2xl sm:p-5"
+            className="max-h-[90dvh] w-full max-w-md overflow-y-auto overscroll-contain rounded-t-2xl border border-ftc-border-strong bg-ftc-bg-elevated p-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-ftc-card sm:rounded-2xl sm:p-5"
             onClick={(event) => event.stopPropagation()}
           >
-            <h2 id="cancel-booking-request-title" className="text-base font-semibold text-zinc-50">
+            <h2 id="cancel-booking-request-title" className="text-base font-semibold text-ftc-text">
               Cancel this booking request?
             </h2>
-            <p className="mt-2 text-sm leading-relaxed text-zinc-400">
+            <p className="mt-2 text-sm leading-relaxed text-ftc-text-secondary">
               The DJ will no longer be able to accept it.
             </p>
 
@@ -59,7 +59,7 @@ export default function CancelBookingRequestButton({
                 type="button"
                 disabled={loading}
                 onClick={() => setOpen(false)}
-                className="rounded-xl border border-zinc-700 bg-zinc-900/80 px-4 py-2.5 text-sm font-semibold uppercase tracking-wide text-zinc-300 transition hover:border-zinc-600 disabled:opacity-50"
+                className="rounded-xl border border-ftc-border-strong bg-ftc-surface/80 px-4 py-2.5 text-sm font-semibold uppercase tracking-wide text-ftc-text-secondary transition hover:border-ftc-border-strong disabled:opacity-50"
               >
                 Keep request
               </button>

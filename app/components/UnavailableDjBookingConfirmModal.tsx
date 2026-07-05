@@ -38,26 +38,26 @@ export default function UnavailableDjBookingConfirmModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="unavailable-dj-booking-title"
-        className="max-h-[90dvh] w-full max-w-md overflow-y-auto overscroll-contain rounded-t-2xl border border-zinc-700/80 bg-zinc-950 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-[0_24px_64px_rgba(0,0,0,0.55)] sm:rounded-2xl sm:p-5"
+        className="max-h-[90dvh] w-full max-w-md overflow-y-auto overscroll-contain rounded-t-2xl border border-ftc-border-strong bg-ftc-bg-elevated p-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-ftc-card sm:rounded-2xl sm:p-5"
         onClick={(event) => event.stopPropagation()}
       >
-        <h2 id="unavailable-dj-booking-title" className="text-base font-semibold text-zinc-50">
+        <h2 id="unavailable-dj-booking-title" className="text-base font-semibold text-ftc-text">
           {isSingle ? "DJ marked unavailable" : "DJs marked unavailable"}
         </h2>
 
         {isSingle ? (
-          <p className="mt-2 text-sm leading-relaxed text-zinc-400">
+          <p className="mt-2 text-sm leading-relaxed text-ftc-text-secondary">
             {singleDj.displayName} has marked {formattedDate} as unavailable. They may already have
             another commitment.
           </p>
         ) : (
           <div className="mt-2 space-y-3">
-            <p className="text-sm leading-relaxed text-zinc-400">
+            <p className="text-sm leading-relaxed text-ftc-text-secondary">
               The following DJs marked this date unavailable:
             </p>
-            <ul className="space-y-1.5 rounded-xl border border-zinc-800/80 bg-zinc-900/40 px-3 py-2.5">
+            <ul className="space-y-1.5 rounded-xl border border-ftc-border bg-ftc-surface/40 px-3 py-2.5">
               {unavailableDjs.map((dj) => (
-                <li key={dj.userId} className="text-sm text-zinc-200">
+                <li key={dj.userId} className="text-sm text-ftc-text">
                   {dj.displayName}
                 </li>
               ))}
@@ -65,7 +65,7 @@ export default function UnavailableDjBookingConfirmModal({
           </div>
         )}
 
-        <p className="mt-3 text-xs leading-relaxed text-zinc-500">
+        <p className="mt-3 text-xs leading-relaxed text-ftc-text-muted">
           You can still send a request if you want to discuss it.
         </p>
 
@@ -74,7 +74,7 @@ export default function UnavailableDjBookingConfirmModal({
             type="button"
             disabled={loading}
             onClick={onBack}
-            className="rounded-xl border border-zinc-700 bg-zinc-900/80 px-4 py-2.5 text-sm font-semibold uppercase tracking-wide text-zinc-300 transition hover:border-zinc-600 disabled:opacity-50"
+            className="rounded-xl border border-ftc-border-strong bg-ftc-surface/80 px-4 py-2.5 text-sm font-semibold uppercase tracking-wide text-ftc-text-secondary transition hover:border-ftc-border-strong disabled:opacity-50"
           >
             Back
           </button>

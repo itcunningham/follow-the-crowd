@@ -39,8 +39,8 @@ export function BookingDateField({
     <label className="block">
       <span className={BOOKING_FIELD_LABEL_CLASS}>{label}</span>
       {parsed.legacyValue ? (
-        <p className="mb-2 rounded-lg border border-zinc-800/80 bg-zinc-950/50 px-3 py-2 text-xs text-zinc-400">
-          Saved date: <span className="text-zinc-200">{parsed.legacyValue}</span>
+        <p className="mb-2 rounded-lg border border-ftc-border bg-ftc-bg-elevated/50 px-3 py-2 text-xs text-ftc-text-secondary">
+          Saved date: <span className="text-ftc-text">{parsed.legacyValue}</span>
         </p>
       ) : null}
       <FtcDatePicker
@@ -59,7 +59,7 @@ function ClockIcon() {
       aria-hidden="true"
       viewBox="0 0 20 20"
       fill="none"
-      className="h-4 w-4 shrink-0 text-blue-400/90"
+      className="h-4 w-4 shrink-0 text-ftc-primary/90"
     >
       <circle cx="10" cy="10" r="7" stroke="currentColor" strokeWidth="1.5" />
       <path
@@ -79,7 +79,7 @@ function ChevronIcon({ compact = false }: { compact?: boolean }) {
       aria-hidden="true"
       viewBox="0 0 20 20"
       fill="none"
-      className={`shrink-0 text-zinc-500 ${compact ? "h-3 w-3" : "h-4 w-4"}`}
+      className={`shrink-0 text-ftc-text-muted ${compact ? "h-3 w-3" : "h-4 w-4"}`}
     >
       <path
         d="M7.5 8.5 10 11l2.5-2.5"
@@ -148,7 +148,7 @@ function BookingTimeControl({
         {isCompact ? (
           <>
             <span
-              className={`min-w-0 flex-1 truncate text-center tabular-nums ${hasValue ? "text-zinc-100" : "text-zinc-500"}`}
+              className={`min-w-0 flex-1 truncate text-center tabular-nums ${hasValue ? "text-ftc-text" : "text-ftc-text-muted"}`}
             >
               {resolvedLabel}
             </span>
@@ -158,7 +158,7 @@ function BookingTimeControl({
           <>
             <ClockIcon />
             <span
-              className={`min-w-0 flex-1 tabular-nums ${hasValue ? "text-zinc-100" : "text-zinc-500"}`}
+              className={`min-w-0 flex-1 tabular-nums ${hasValue ? "text-ftc-text" : "text-ftc-text-muted"}`}
             >
               {resolvedLabel}
             </span>
@@ -240,9 +240,9 @@ export function BookingTimeField({
     <div>
       {legacyValue && variant !== "compact" ? (
         <p
-          className={`rounded-lg border border-zinc-800/80 bg-zinc-950/50 px-2.5 py-1.5 text-xs text-zinc-400 ${showLabel ? "mb-2" : "mb-1.5"}`}
+          className={`rounded-lg border border-ftc-border bg-ftc-bg-elevated/50 px-2.5 py-1.5 text-xs text-ftc-text-secondary ${showLabel ? "mb-2" : "mb-1.5"}`}
         >
-          Saved time: <span className="text-zinc-200">{legacyValue}</span>
+          Saved time: <span className="text-ftc-text">{legacyValue}</span>
         </p>
       ) : null}
       <BookingTimeControl

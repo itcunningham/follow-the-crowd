@@ -183,28 +183,28 @@ export default function ProfileSetupPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-[100dvh] items-center justify-center bg-[#070708] text-sm text-zinc-500">
+      <div className="flex min-h-[100dvh] items-center justify-center bg-ftc-bg text-sm text-ftc-text-muted">
         Loading...
       </div>
     );
   }
 
   return (
-    <div className="min-h-[100dvh] bg-[#070708] px-4 pb-[max(2.5rem,env(safe-area-inset-bottom))] pt-[max(2.5rem,env(safe-area-inset-top))] font-sans text-zinc-100 sm:px-6 sm:py-10">
+    <div className="min-h-[100dvh] bg-ftc-bg px-4 pb-[max(2.5rem,env(safe-area-inset-bottom))] pt-[max(2.5rem,env(safe-area-inset-top))] font-sans text-ftc-text sm:px-6 sm:py-10">
       <div className="mx-auto w-full max-w-2xl">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-blue-400">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-ftc-primary">
           Profile
         </p>
-        <h1 className="mt-3 text-3xl font-bold text-zinc-50 sm:text-4xl">
+        <h1 className="mt-3 text-3xl font-bold text-ftc-text sm:text-4xl">
           {isEditing ? "Edit your profile" : "Set up your profile"}
         </h1>
-        <p className="mt-3 max-w-xl text-sm leading-relaxed text-zinc-400 sm:text-base">
+        <p className="mt-3 max-w-xl text-sm leading-relaxed text-ftc-text-secondary sm:text-base">
           Add a few details so other DJs and promoters can find and message you.
         </p>
 
         <form onSubmit={handleSubmit} className="mt-8 space-y-6">
-          <div className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-4 sm:p-5">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-400">
+          <div className="rounded-2xl border border-ftc-border bg-ftc-surface/40 p-4 sm:p-5">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-ftc-text-secondary">
               Profile photo
             </p>
             <div className="mt-4 flex flex-col items-center gap-4 sm:flex-row sm:items-center">
@@ -214,7 +214,7 @@ export default function ProfileSetupPage() {
                 size="xl"
               />
               <div className="text-center sm:text-left">
-                <label className="inline-block cursor-pointer rounded-xl border border-blue-500/45 bg-blue-600/20 px-4 py-2.5 text-sm font-semibold uppercase tracking-wide text-blue-100 shadow-[0_0_20px_rgba(59,130,246,0.22)] transition hover:border-blue-400/60 hover:bg-blue-600/30">
+                <label className="inline-block cursor-pointer rounded-xl border border-ftc-primary/40 bg-ftc-primary/10 px-4 py-2.5 text-sm font-semibold uppercase tracking-wide text-ftc-primary/80 shadow-ftc-glow transition hover:border-ftc-primary/50 hover:bg-ftc-primary/15">
                   Choose photo
                   <input
                     type="file"
@@ -223,7 +223,7 @@ export default function ProfileSetupPage() {
                     className="hidden"
                   />
                 </label>
-                <p className="mt-2 text-xs text-zinc-500">JPG, PNG, or WebP</p>
+                <p className="mt-2 text-xs text-ftc-text-muted">JPG, PNG, or WebP</p>
               </div>
             </div>
             {uploadError ? <p className="mt-3 text-sm text-red-400">{uploadError}</p> : null}
@@ -273,8 +273,8 @@ export default function ProfileSetupPage() {
           </div>
 
           {showDjFields ? (
-            <fieldset className="space-y-4 rounded-2xl border border-zinc-800 bg-zinc-900/40 p-4 sm:p-5">
-              <legend className="px-1 text-xs font-semibold uppercase tracking-wide text-blue-400">
+            <fieldset className="space-y-4 rounded-2xl border border-ftc-border bg-ftc-surface/40 p-4 sm:p-5">
+              <legend className="px-1 text-xs font-semibold uppercase tracking-wide text-ftc-primary">
                 DJ / Artist
               </legend>
               <ProfileField
@@ -295,8 +295,8 @@ export default function ProfileSetupPage() {
           ) : null}
 
           {showPromoterFields ? (
-            <fieldset className="space-y-4 rounded-2xl border border-zinc-800 bg-zinc-900/40 p-4 sm:p-5">
-              <legend className="px-1 text-xs font-semibold uppercase tracking-wide text-blue-400">
+            <fieldset className="space-y-4 rounded-2xl border border-ftc-border bg-ftc-surface/40 p-4 sm:p-5">
+              <legend className="px-1 text-xs font-semibold uppercase tracking-wide text-ftc-primary">
                 Promoter
               </legend>
               <ProfileField
@@ -328,7 +328,7 @@ export default function ProfileSetupPage() {
           <button
             type="submit"
             disabled={saving}
-            className="w-full rounded-xl border border-blue-500/45 bg-blue-600/20 px-5 py-3 text-sm font-semibold uppercase tracking-wide text-blue-100 shadow-[0_0_20px_rgba(59,130,246,0.22)] transition hover:border-blue-400/60 hover:bg-blue-600/30 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+            className="w-full rounded-xl border border-ftc-primary/40 bg-ftc-primary/10 px-5 py-3 text-sm font-semibold uppercase tracking-wide text-ftc-primary/80 shadow-ftc-glow transition hover:border-ftc-primary/50 hover:bg-ftc-primary/15 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
           >
             {saving ? "Saving..." : isEditing ? "Save changes" : "Save profile"}
           </button>
@@ -355,7 +355,7 @@ function ProfileField({
 }) {
   return (
     <label className="block">
-      <span className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-400">
+      <span className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.14em] text-ftc-text-secondary">
         {label}
       </span>
       {multiline ? (
@@ -364,7 +364,7 @@ function ProfileField({
           onChange={(event) => onChange(event.target.value)}
           placeholder={placeholder}
           rows={4}
-          className="w-full rounded-xl border border-zinc-800 bg-zinc-900/80 px-3.5 py-2.5 text-sm text-zinc-100 outline-none transition placeholder:text-zinc-600 focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/15"
+          className="w-full rounded-xl border border-ftc-border bg-ftc-surface/80 px-3.5 py-2.5 text-sm text-ftc-text outline-none transition placeholder:text-ftc-text-muted focus:border-ftc-primary/45 focus:ring-2 focus:ring-ftc-primary/15"
         />
       ) : (
         <input
@@ -373,7 +373,7 @@ function ProfileField({
           onChange={(event) => onChange(event.target.value)}
           placeholder={placeholder}
           required={required}
-          className="w-full rounded-xl border border-zinc-800 bg-zinc-900/80 px-3.5 py-2.5 text-sm text-zinc-100 outline-none transition placeholder:text-zinc-600 focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/15"
+          className="w-full rounded-xl border border-ftc-border bg-ftc-surface/80 px-3.5 py-2.5 text-sm text-ftc-text outline-none transition placeholder:text-ftc-text-muted focus:border-ftc-primary/45 focus:ring-2 focus:ring-ftc-primary/15"
         />
       )}
     </label>

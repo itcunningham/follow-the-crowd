@@ -85,7 +85,7 @@ export function getDjPlannerAvailabilityLabel(status: DjPlannerAvailabilityStatu
 export function getDjPlannerAvailabilityBadgeClass(status: DjPlannerAvailabilityStatus): string {
   switch (status) {
     case "already_booked":
-      return "border-purple-500/40 bg-purple-500/10 text-purple-300";
+      return "border-ftc-primary-dim/35 bg-ftc-primary/10 text-ftc-primary-dim";
     case "available":
       return "border-emerald-500/40 bg-emerald-500/10 text-emerald-300";
     case "unavailable":
@@ -93,7 +93,7 @@ export function getDjPlannerAvailabilityBadgeClass(status: DjPlannerAvailability
     case "tentative":
       return "border-amber-500/40 bg-amber-500/10 text-amber-300";
     case "unknown":
-      return "border-zinc-600/50 bg-zinc-800/80 text-zinc-400";
+      return "border-ftc-border-strong bg-ftc-surface-raised/80 text-ftc-text-secondary";
   }
 }
 
@@ -172,10 +172,10 @@ export function groupAvailabilityEntriesByDate(
 
 export function getDjBookingStatusBadgeClass(status: "pending" | "accepted"): string {
   if (status === "pending") {
-    return "border-blue-500/40 bg-blue-500/10 text-blue-300";
+    return "border-ftc-primary/35 bg-ftc-primary/10 text-ftc-primary";
   }
 
-  return "border-purple-500/40 bg-purple-500/10 text-purple-300";
+  return "border-ftc-primary-dim/35 bg-ftc-primary/10 text-ftc-primary-dim";
 }
 
 export async function saveMyAvailability(input: {

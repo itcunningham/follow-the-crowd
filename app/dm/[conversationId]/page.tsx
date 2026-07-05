@@ -943,17 +943,17 @@ export default function DmChatPage() {
 
   return (
     <OnboardingGuard>
-    <div className="fixed inset-0 flex flex-col overflow-hidden bg-[#070708] font-sans text-zinc-100">
+    <div className="fixed inset-0 flex flex-col overflow-hidden bg-ftc-bg font-sans text-ftc-text">
       <AppNavigation />
       <div
         className={`mx-auto flex min-h-0 w-full max-w-2xl flex-1 flex-col overflow-hidden ${MOBILE_NAV_OFFSET_CLASS}`}
       >
-      <header className="z-10 shrink-0 border-b border-zinc-800/80 bg-[#070708]/95 px-3 py-3 backdrop-blur-md sm:px-4">
+      <header className="z-10 shrink-0 border-b border-ftc-border bg-ftc-bg/95 px-3 py-3 backdrop-blur-md sm:px-4">
         <div className="flex items-center gap-3">
           <Link
             href="/dm"
             aria-label="Back to inbox"
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-zinc-800 text-lg text-zinc-300 transition hover:border-blue-500/40 hover:text-blue-300"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-ftc-border text-lg text-ftc-text-secondary transition hover:border-ftc-primary/35 hover:text-ftc-primary"
           >
             ←
           </Link>
@@ -962,7 +962,7 @@ export default function DmChatPage() {
               type="button"
               aria-label={`Open conversation details for ${conversationTitle}`}
               onClick={() => setDetailsOpen(true)}
-              className="flex min-w-0 flex-1 items-center gap-3 rounded-2xl px-1 py-1 text-left transition hover:bg-zinc-900/50"
+              className="flex min-w-0 flex-1 items-center gap-3 rounded-2xl px-1 py-1 text-left transition hover:bg-ftc-surface/50"
             >
               <ProfileAvatar
                 name={otherUserLabel}
@@ -971,10 +971,10 @@ export default function DmChatPage() {
                 className="h-10 w-10 text-xs"
               />
               <div className="min-w-0 flex-1">
-                <h1 className="truncate text-base font-semibold text-zinc-50">
+                <h1 className="truncate text-base font-semibold text-ftc-text">
                   {conversationTitle}
                 </h1>
-                <p className="truncate text-xs text-zinc-500">Direct Messages</p>
+                <p className="truncate text-xs text-ftc-text-muted">Direct Messages</p>
               </div>
             </button>
           ) : (
@@ -986,10 +986,10 @@ export default function DmChatPage() {
                 className="h-10 w-10 text-xs"
               />
               <div className="min-w-0 flex-1">
-                <h1 className="truncate text-base font-semibold text-zinc-50">
+                <h1 className="truncate text-base font-semibold text-ftc-text">
                   {conversationTitle}
                 </h1>
-                <p className="truncate text-xs text-zinc-500">Direct Messages</p>
+                <p className="truncate text-xs text-ftc-text-muted">Direct Messages</p>
               </div>
             </>
           )}
@@ -1027,7 +1027,7 @@ export default function DmChatPage() {
       >
         <div ref={bottomRef} data-chat-bottom aria-hidden="true" className="h-px shrink-0" />
         {loading ? (
-          <p className="text-sm text-zinc-500">Loading messages...</p>
+          <p className="text-sm text-ftc-text-muted">Loading messages...</p>
         ) : messages.length === 0 ? (
           <div
             data-chat-content-root
@@ -1039,10 +1039,10 @@ export default function DmChatPage() {
               size="md"
               className="h-10 w-10 text-xs"
             />
-            <p className="mt-4 text-sm font-medium text-zinc-300">
+            <p className="mt-4 text-sm font-medium text-ftc-text-secondary">
               No messages yet
             </p>
-            <p className="mt-1 text-sm text-zinc-500">
+            <p className="mt-1 text-sm text-ftc-text-muted">
               Say hi to start the conversation.
             </p>
           </div>
@@ -1095,13 +1095,13 @@ export default function DmChatPage() {
                     >
                       <div className="max-w-sm px-3 py-1 text-center">
                         <p
-                          className={`rounded-full border border-zinc-800/80 bg-zinc-950/50 px-3 py-1.5 text-xs text-zinc-500 ${getChatNewMessageHighlightClass(highlighted)}`}
+                          className={`rounded-full border border-ftc-border bg-ftc-bg-elevated/50 px-3 py-1.5 text-xs text-ftc-text-muted ${getChatNewMessageHighlightClass(highlighted)}`}
                         >
                           {CANCELLED_BOOKING_DM_SYSTEM_MESSAGE}
                         </p>
                         <time
                           dateTime={message.created_at}
-                          className="mt-1 block text-[10px] text-zinc-600"
+                          className="mt-1 block text-[10px] text-ftc-text-muted"
                         >
                           {formatMessageTime(message.created_at)}
                         </time>
@@ -1156,7 +1156,7 @@ export default function DmChatPage() {
                         </div>
                         <time
                           dateTime={message.created_at}
-                          className={`mt-1 block text-[10px] text-zinc-500 ${
+                          className={`mt-1 block text-[10px] text-ftc-text-muted ${
                             isOwnMessage ? "text-right" : "text-left"
                           }`}
                         >
@@ -1164,7 +1164,7 @@ export default function DmChatPage() {
                         </time>
                         {isOwnMessage &&
                         shouldShowSeenOnMessage(message.id, message.created_at) ? (
-                          <p className="mt-0.5 text-right text-[11px] font-medium text-zinc-500">
+                          <p className="mt-0.5 text-right text-[11px] font-medium text-ftc-text-muted">
                             Seen
                           </p>
                         ) : null}
@@ -1227,8 +1227,8 @@ export default function DmChatPage() {
       ) : null}
 
       {blockStatus.isBlocked && blockBannerMessage ? (
-        <div className="shrink-0 border-t border-zinc-800/80 bg-[#070708] px-4 py-4 sm:px-6">
-          <p className="text-center text-sm text-zinc-400">{blockBannerMessage}</p>
+        <div className="shrink-0 border-t border-ftc-border bg-ftc-bg px-4 py-4 sm:px-6">
+          <p className="text-center text-sm text-ftc-text-secondary">{blockBannerMessage}</p>
         </div>
       ) : (
         <DmComposer

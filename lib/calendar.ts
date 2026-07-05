@@ -92,15 +92,15 @@ export function getCalendarStatusBadgeClass(kind: CalendarStatusKind): string {
   }
 
   if (kind === "cancelled") {
-    return "border-zinc-600/50 bg-zinc-800/80 text-zinc-400";
+    return "border-ftc-border-strong bg-ftc-surface-raised/80 text-ftc-text-secondary";
   }
 
   if (kind === "event_draft") {
-    return "border-zinc-600/50 bg-zinc-800/80 text-zinc-300";
+    return "border-ftc-border-strong bg-ftc-surface-raised/80 text-ftc-text-secondary";
   }
 
   if (kind === "event_upcoming") {
-    return "border-blue-500/40 bg-blue-600/15 text-blue-300";
+    return "border-ftc-primary/35 bg-ftc-primary/10 text-ftc-primary";
   }
 
   if (kind === "event_completed") {
@@ -132,7 +132,7 @@ export function getCalendarStatusGlowClass(kind: CalendarStatusKind): string {
   }
 
   if (kind === "event_upcoming") {
-    return "shadow-[0_0_10px_rgba(59,130,246,0.22)]";
+    return "shadow-ftc-glow";
   }
 
   if (kind === "event_completed") {

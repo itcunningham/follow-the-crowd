@@ -229,7 +229,7 @@ export default function EventsPage() {
 
   if (loadingAccess) {
     return (
-      <div className="flex min-h-[100dvh] items-center justify-center bg-[#070708] text-sm text-zinc-500">
+      <div className="flex min-h-[100dvh] items-center justify-center bg-ftc-bg text-sm text-ftc-text-muted">
         Loading...
       </div>
     );
@@ -238,15 +238,15 @@ export default function EventsPage() {
   return (
     <OnboardingGuard>
       <div
-        className={`mx-auto min-h-[100dvh] w-full max-w-2xl bg-[#070708] font-sans text-zinc-100 ${MOBILE_NAV_OFFSET_CLASS}`}
+        className={`mx-auto min-h-[100dvh] w-full max-w-2xl bg-ftc-bg font-sans text-ftc-text ${MOBILE_NAV_OFFSET_CLASS}`}
       >
         <AppNavigation />
 
-        <header className="border-b border-zinc-800/80 px-4 py-4 sm:px-6 md:pt-4">
+        <header className="border-b border-ftc-border px-4 py-4 sm:px-6 md:pt-4">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <h1 className="text-xl font-semibold text-zinc-50">Events</h1>
-              <p className="mt-1 text-sm text-zinc-500">
+              <h1 className="text-xl font-semibold text-ftc-text">Events</h1>
+              <p className="mt-1 text-sm text-ftc-text-muted">
                 {isPlanner
                   ? "Manage your upcoming events, lineup and bookings."
                   : "Events you have been invited to book."}
@@ -258,7 +258,7 @@ export default function EventsPage() {
                 onClick={() => {
                   void openCreateFlow();
                 }}
-                className="shrink-0 rounded-xl border border-blue-500/45 bg-blue-600/20 px-4 py-2.5 text-sm font-semibold uppercase tracking-wide text-blue-100 shadow-[0_0_20px_rgba(59,130,246,0.22)] transition hover:border-blue-400/60 hover:bg-blue-600/30"
+                className="shrink-0 rounded-xl border border-ftc-primary/40 bg-ftc-primary/10 px-4 py-2.5 text-sm font-semibold uppercase tracking-wide text-ftc-primary/80 shadow-ftc-glow transition hover:border-ftc-primary/50 hover:bg-ftc-primary/15"
               >
                 Create event
               </button>
@@ -269,14 +269,14 @@ export default function EventsPage() {
 
         <div className="px-4 py-4 sm:px-6">
           {createOpen && isPlanner ? (
-            <section className="mb-6 rounded-2xl border border-zinc-800 bg-zinc-900/50 p-4 sm:p-5">
+            <section className="mb-6 rounded-2xl border border-ftc-border bg-ftc-surface/50 p-4 sm:p-5">
               <div className="mb-4 flex items-center justify-between gap-3">
-                <h2 className="text-lg font-semibold text-zinc-50">Create event</h2>
+                <h2 className="text-lg font-semibold text-ftc-text">Create event</h2>
                 <button
                   type="button"
                   onClick={closeCreateFlow}
                   disabled={saving}
-                  className="text-xs font-semibold uppercase tracking-wide text-zinc-500 transition hover:text-zinc-300 disabled:opacity-50"
+                  className="text-xs font-semibold uppercase tracking-wide text-ftc-text-muted transition hover:text-ftc-text-secondary disabled:opacity-50"
                 >
                   Cancel
                 </button>
@@ -290,10 +290,10 @@ export default function EventsPage() {
                       setError(null);
                       setCreateStep("pick-plan");
                     }}
-                    className="w-full rounded-2xl border border-zinc-800 bg-zinc-950/40 px-4 py-4 text-left transition hover:border-blue-500/40 hover:bg-blue-600/10"
+                    className="w-full rounded-2xl border border-ftc-border bg-ftc-bg-elevated/40 px-4 py-4 text-left transition hover:border-ftc-primary/35 hover:bg-ftc-primary/10"
                   >
-                    <p className="text-base font-semibold text-zinc-50">Create from a saved booking plan</p>
-                    <p className="mt-2 text-sm text-zinc-400">
+                    <p className="text-base font-semibold text-ftc-text">Create from a saved booking plan</p>
+                    <p className="mt-2 text-sm text-ftc-text-secondary">
                       Prefill event details from a plan, then edit before saving.
                     </p>
                   </button>
@@ -308,10 +308,10 @@ export default function EventsPage() {
                       setCreateStep("form");
                       setError(null);
                     }}
-                    className="w-full rounded-2xl border border-zinc-800 bg-zinc-950/40 px-4 py-4 text-left transition hover:border-blue-500/40 hover:bg-blue-600/10"
+                    className="w-full rounded-2xl border border-ftc-border bg-ftc-bg-elevated/40 px-4 py-4 text-left transition hover:border-ftc-primary/35 hover:bg-ftc-primary/10"
                   >
-                    <p className="text-base font-semibold text-zinc-50">Create custom event</p>
-                    <p className="mt-2 text-sm text-zinc-400">Enter fresh event details from scratch.</p>
+                    <p className="text-base font-semibold text-ftc-text">Create custom event</p>
+                    <p className="mt-2 text-sm text-ftc-text-secondary">Enter fresh event details from scratch.</p>
                   </button>
                   {error ? <p className="text-sm text-red-400">{error}</p> : null}
                 </div>
@@ -322,19 +322,19 @@ export default function EventsPage() {
                   <button
                     type="button"
                     onClick={() => setCreateStep("source")}
-                    className="text-xs font-semibold uppercase tracking-wide text-zinc-500 transition hover:text-zinc-300"
+                    className="text-xs font-semibold uppercase tracking-wide text-ftc-text-muted transition hover:text-ftc-text-secondary"
                   >
                     ← Back
                   </button>
 
                   {loadingPlans ? (
-                    <p className="text-sm text-zinc-500">Loading saved plans...</p>
+                    <p className="text-sm text-ftc-text-muted">Loading saved plans...</p>
                   ) : bookingPlans.length === 0 ? (
-                    <div className="rounded-xl border border-dashed border-zinc-800 bg-zinc-950/40 px-4 py-6 text-center">
-                      <p className="text-sm text-zinc-400">No saved booking plans yet.</p>
+                    <div className="rounded-xl border border-dashed border-ftc-border bg-ftc-bg-elevated/40 px-4 py-6 text-center">
+                      <p className="text-sm text-ftc-text-secondary">No saved booking plans yet.</p>
                       <Link
                         href="/booking-plans"
-                        className="mt-3 inline-block text-sm font-semibold text-blue-300 transition hover:text-blue-200"
+                        className="mt-3 inline-block text-sm font-semibold text-ftc-primary transition hover:text-ftc-primary/90"
                       >
                         Create a booking plan
                       </Link>
@@ -348,12 +348,12 @@ export default function EventsPage() {
                             onClick={() => handleSelectPlan(plan)}
                             className={`w-full rounded-xl border px-4 py-4 text-left transition ${
                               selectedPlanId === plan.id
-                                ? "border-blue-500/50 bg-blue-600/10"
-                                : "border-zinc-800 bg-zinc-950/40 hover:border-blue-500/30 hover:bg-blue-600/10"
+                                ? "border-ftc-primary/45 bg-ftc-primary/10"
+                                : "border-ftc-border bg-ftc-bg-elevated/40 hover:border-ftc-primary/25 hover:bg-ftc-primary/10"
                             }`}
                           >
-                            <p className="font-semibold text-zinc-50">{plan.name}</p>
-                            <p className="mt-1 text-sm text-zinc-400">
+                            <p className="font-semibold text-ftc-text">{plan.name}</p>
+                            <p className="mt-1 text-sm text-ftc-text-secondary">
                               {plan.event_name} · {plan.venue} · {plan.event_date}
                             </p>
                           </button>
@@ -369,7 +369,7 @@ export default function EventsPage() {
                   <button
                     type="button"
                     onClick={() => setCreateStep(selectedPlanId ? "pick-plan" : "source")}
-                    className="text-xs font-semibold uppercase tracking-wide text-zinc-500 transition hover:text-zinc-300"
+                    className="text-xs font-semibold uppercase tracking-wide text-ftc-text-muted transition hover:text-ftc-text-secondary"
                   >
                     ← Back
                   </button>
@@ -416,7 +416,7 @@ export default function EventsPage() {
                   <button
                     type="submit"
                     disabled={saving}
-                    className="rounded-xl border border-blue-500/45 bg-blue-600/20 px-5 py-3 text-sm font-semibold uppercase tracking-wide text-blue-100 shadow-[0_0_20px_rgba(59,130,246,0.22)] transition hover:border-blue-400/60 hover:bg-blue-600/30 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="rounded-xl border border-ftc-primary/40 bg-ftc-primary/10 px-5 py-3 text-sm font-semibold uppercase tracking-wide text-ftc-primary/80 shadow-ftc-glow transition hover:border-ftc-primary/50 hover:bg-ftc-primary/15 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {saving ? "Saving..." : "Save event"}
                   </button>
@@ -426,12 +426,12 @@ export default function EventsPage() {
           ) : null}
 
           {loadingEvents ? (
-            <p className="text-sm text-zinc-500">Loading events...</p>
+            <p className="text-sm text-ftc-text-muted">Loading events...</p>
           ) : error && events.length === 0 ? (
             <p className="text-sm text-red-400">{error}</p>
           ) : filteredEvents.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-zinc-800 bg-zinc-900/30 px-6 py-12 text-center">
-              <p className="text-base font-medium text-zinc-300">
+            <div className="rounded-2xl border border-dashed border-ftc-border bg-ftc-surface/30 px-6 py-12 text-center">
+              <p className="text-base font-medium text-ftc-text-secondary">
                 {events.length === 0
                   ? isPlanner
                     ? "No events yet. Create your first event."
@@ -446,7 +446,7 @@ export default function EventsPage() {
                   onClick={() => {
                   void openCreateFlow();
                 }}
-                  className="mt-6 rounded-xl border border-blue-500/45 bg-blue-600/20 px-5 py-3 text-sm font-semibold uppercase tracking-wide text-blue-100 shadow-[0_0_20px_rgba(59,130,246,0.22)] transition hover:border-blue-400/60 hover:bg-blue-600/30"
+                  className="mt-6 rounded-xl border border-ftc-primary/40 bg-ftc-primary/10 px-5 py-3 text-sm font-semibold uppercase tracking-wide text-ftc-primary/80 shadow-ftc-glow transition hover:border-ftc-primary/50 hover:bg-ftc-primary/15"
                 >
                   Create event
                 </button>
@@ -468,8 +468,8 @@ export default function EventsPage() {
                       onClick={() => setListView(option.value)}
                       className={`rounded-full border px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide transition ${
                         listView === option.value
-                          ? "border-blue-500/50 bg-blue-600/15 text-blue-300"
-                          : "border-zinc-700 bg-zinc-900/80 text-zinc-400 hover:border-blue-500/30 hover:text-blue-300"
+                          ? "border-ftc-primary/45 bg-ftc-primary/10 text-ftc-primary"
+                          : "border-ftc-border-strong bg-ftc-surface/80 text-ftc-text-secondary hover:border-ftc-primary/25 hover:text-ftc-primary"
                       }`}
                     >
                       {option.label}
@@ -486,8 +486,8 @@ export default function EventsPage() {
                   key={event.id}
                   className={`rounded-2xl border p-4 sm:p-5 ${
                     cancelled
-                      ? "border-zinc-800/60 bg-zinc-900/40 opacity-80"
-                      : "border-zinc-800 bg-zinc-900/80"
+                      ? "border-ftc-border/60 bg-ftc-surface/40 opacity-80"
+                      : "border-ftc-border bg-ftc-surface/80"
                   }`}
                 >
                   <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -495,17 +495,17 @@ export default function EventsPage() {
                       <div className="flex flex-wrap items-center gap-2">
                         <h3
                           className={`text-lg font-semibold ${
-                            cancelled ? "text-zinc-400" : "text-zinc-50"
+                            cancelled ? "text-ftc-text-secondary" : "text-ftc-text"
                           }`}
                         >
                           {event.name}
                         </h3>
                         <EventDateStatusBadge eventDate={event.event_date} status={event.status} />
                       </div>
-                      <p className={`mt-2 text-sm ${cancelled ? "text-zinc-500" : "text-zinc-400"}`}>
+                      <p className={`mt-2 text-sm ${cancelled ? "text-ftc-text-muted" : "text-ftc-text-secondary"}`}>
                         {event.venue} · {event.event_date}
                       </p>
-                      <p className={`mt-1 text-sm ${cancelled ? "text-zinc-600" : "text-zinc-500"}`}>
+                      <p className={`mt-1 text-sm ${cancelled ? "text-ftc-text-muted" : "text-ftc-text-muted"}`}>
                         {event.set_time}
                       </p>
                       {isPlanner ? (
@@ -520,7 +520,7 @@ export default function EventsPage() {
 
                     <Link
                       href={`/events/${event.id}`}
-                      className="shrink-0 rounded-lg border border-blue-500/35 bg-blue-600/10 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-blue-300 transition hover:border-blue-400/50 hover:bg-blue-600/20"
+                      className="shrink-0 rounded-lg border border-ftc-primary/30 bg-ftc-primary/10 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-ftc-primary transition hover:border-ftc-primary/40 hover:bg-ftc-primary/12"
                     >
                       Open event
                     </Link>
@@ -539,8 +539,8 @@ export default function EventsPage() {
 
 function LineupStat({ label, value }: { label: string; value: number }) {
   return (
-    <span className="rounded-full border border-zinc-700 bg-zinc-900/80 px-2.5 py-1 text-zinc-400">
-      {label}: <span className="text-zinc-200">{value}</span>
+    <span className="rounded-full border border-ftc-border-strong bg-ftc-surface/80 px-2.5 py-1 text-ftc-text-secondary">
+      {label}: <span className="text-ftc-text">{value}</span>
     </span>
   );
 }
@@ -562,7 +562,7 @@ function EventField({
 }) {
   return (
     <label className="block">
-      <span className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-400">
+      <span className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.14em] text-ftc-text-secondary">
         {label}
       </span>
       {multiline ? (
@@ -571,7 +571,7 @@ function EventField({
           onChange={(event) => onChange(event.target.value)}
           placeholder={placeholder}
           rows={3}
-          className="w-full rounded-xl border border-zinc-800 bg-zinc-900/80 px-3.5 py-2.5 text-sm text-zinc-100 outline-none transition placeholder:text-zinc-600 focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/15"
+          className="w-full rounded-xl border border-ftc-border bg-ftc-surface/80 px-3.5 py-2.5 text-sm text-ftc-text outline-none transition placeholder:text-ftc-text-muted focus:border-ftc-primary/45 focus:ring-2 focus:ring-ftc-primary/15"
         />
       ) : (
         <input
@@ -580,7 +580,7 @@ function EventField({
           onChange={(event) => onChange(event.target.value)}
           placeholder={placeholder}
           required={required}
-          className="w-full rounded-xl border border-zinc-800 bg-zinc-900/80 px-3.5 py-2.5 text-sm text-zinc-100 outline-none transition placeholder:text-zinc-600 focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/15"
+          className="w-full rounded-xl border border-ftc-border bg-ftc-surface/80 px-3.5 py-2.5 text-sm text-ftc-text outline-none transition placeholder:text-ftc-text-muted focus:border-ftc-primary/45 focus:ring-2 focus:ring-ftc-primary/15"
         />
       )}
     </label>

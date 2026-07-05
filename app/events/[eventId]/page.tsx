@@ -524,7 +524,7 @@ export default function EventDetailPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-[100dvh] items-center justify-center bg-[#070708] text-sm text-zinc-500">
+      <div className="flex min-h-[100dvh] items-center justify-center bg-ftc-bg text-sm text-ftc-text-muted">
         Loading...
       </div>
     );
@@ -534,12 +534,12 @@ export default function EventDetailPage() {
     return (
       <OnboardingGuard>
         <div
-          className={`mx-auto min-h-[100dvh] w-full max-w-2xl bg-[#070708] font-sans text-zinc-100 ${MOBILE_NAV_OFFSET_CLASS}`}
+          className={`mx-auto min-h-[100dvh] w-full max-w-2xl bg-ftc-bg font-sans text-ftc-text ${MOBILE_NAV_OFFSET_CLASS}`}
         >
           <AppNavigation />
           <div className="px-4 py-8 sm:px-6">
             <p className="text-sm text-red-400">{error ?? "Event not found."}</p>
-            <Link href="/events" className="mt-4 inline-block text-sm font-semibold text-blue-300">
+            <Link href="/events" className="mt-4 inline-block text-sm font-semibold text-ftc-primary">
               Back to events
             </Link>
           </div>
@@ -551,21 +551,21 @@ export default function EventDetailPage() {
   return (
     <OnboardingGuard>
       <div
-        className={`mx-auto min-h-[100dvh] w-full max-w-2xl bg-[#070708] font-sans text-zinc-100 ${MOBILE_NAV_OFFSET_CLASS}`}
+        className={`mx-auto min-h-[100dvh] w-full max-w-2xl bg-ftc-bg font-sans text-ftc-text ${MOBILE_NAV_OFFSET_CLASS}`}
       >
         <AppNavigation />
 
-        <header className="border-b border-zinc-800/80 px-4 py-4 sm:px-6 md:pt-4">
+        <header className="border-b border-ftc-border px-4 py-4 sm:px-6 md:pt-4">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0">
               <Link
                 href="/events"
-                className="text-xs font-semibold uppercase tracking-wide text-zinc-500 transition hover:text-zinc-300"
+                className="text-xs font-semibold uppercase tracking-wide text-ftc-text-muted transition hover:text-ftc-text-secondary"
               >
                 ← Events
               </Link>
               <div className="mt-2 flex flex-wrap items-center gap-2">
-                <h1 className="text-xl font-semibold text-zinc-50">{event.name}</h1>
+                <h1 className="text-xl font-semibold text-ftc-text">{event.name}</h1>
                 <EventDateStatusBadge eventDate={event.event_date} status={event.status} />
               </div>
             </div>
@@ -575,7 +575,7 @@ export default function EventDetailPage() {
                 {canOpenCrewChat ? (
                   <Link
                     href={`/events/${event.id}/chat`}
-                    className="rounded-lg border border-blue-500/35 bg-blue-600/10 px-3 py-1.5 text-center text-xs font-semibold uppercase tracking-wide text-blue-300 transition hover:border-blue-400/50 hover:bg-blue-600/20"
+                    className="rounded-lg border border-ftc-primary/30 bg-ftc-primary/10 px-3 py-1.5 text-center text-xs font-semibold uppercase tracking-wide text-ftc-primary transition hover:border-ftc-primary/40 hover:bg-ftc-primary/12"
                   >
                     Group chat
                   </Link>
@@ -585,7 +585,7 @@ export default function EventDetailPage() {
                     <button
                       type="button"
                       onClick={openEditForm}
-                      className="rounded-lg border border-zinc-700 bg-zinc-900/80 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-zinc-300 transition hover:border-blue-500/35 hover:text-blue-300"
+                      className="rounded-lg border border-ftc-border-strong bg-ftc-surface/80 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-ftc-text-secondary transition hover:border-ftc-primary/30 hover:text-ftc-primary"
                     >
                       Edit event
                     </button>
@@ -593,7 +593,7 @@ export default function EventDetailPage() {
                       <button
                         type="button"
                         onClick={openSendBookings}
-                        className="rounded-lg border border-blue-500/35 bg-blue-600/10 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-blue-300 transition hover:border-blue-400/50 hover:bg-blue-600/20"
+                        className="rounded-lg border border-ftc-primary/30 bg-ftc-primary/10 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-ftc-primary transition hover:border-ftc-primary/40 hover:bg-ftc-primary/12"
                       >
                         Send booking requests
                       </button>
@@ -617,7 +617,7 @@ export default function EventDetailPage() {
 
         <div className="px-4 py-4 sm:px-6">
           {successMessage ? (
-            <p className="mb-4 rounded-xl border border-blue-500/30 bg-blue-600/10 px-4 py-3 text-sm text-blue-200">
+            <p className="mb-4 rounded-xl border border-ftc-primary/25 bg-ftc-primary/10 px-4 py-3 text-sm text-ftc-primary/90">
               {successMessage}
             </p>
           ) : null}
@@ -629,9 +629,9 @@ export default function EventDetailPage() {
           ) : null}
 
           {editOpen && editForm && isOwner ? (
-            <section className="mb-6 rounded-2xl border border-zinc-800 bg-zinc-900/50 p-4 sm:p-5">
+            <section className="mb-6 rounded-2xl border border-ftc-border bg-ftc-surface/50 p-4 sm:p-5">
               <div className="mb-4 flex items-center justify-between gap-3">
-                <h2 className="text-lg font-semibold text-zinc-50">Edit event</h2>
+                <h2 className="text-lg font-semibold text-ftc-text">Edit event</h2>
                 <button
                   type="button"
                   onClick={() => {
@@ -640,7 +640,7 @@ export default function EventDetailPage() {
                     setEditForm(null);
                   }}
                   disabled={savingEdit}
-                  className="text-xs font-semibold uppercase tracking-wide text-zinc-500 transition hover:text-zinc-300 disabled:opacity-50"
+                  className="text-xs font-semibold uppercase tracking-wide text-ftc-text-muted transition hover:text-ftc-text-secondary disabled:opacity-50"
                 >
                   Cancel
                 </button>
@@ -688,7 +688,7 @@ export default function EventDetailPage() {
                 <button
                   type="submit"
                   disabled={savingEdit}
-                  className="rounded-xl border border-blue-500/45 bg-blue-600/20 px-5 py-3 text-sm font-semibold uppercase tracking-wide text-blue-100 shadow-[0_0_20px_rgba(59,130,246,0.22)] transition hover:border-blue-400/60 hover:bg-blue-600/30 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="rounded-xl border border-ftc-primary/40 bg-ftc-primary/10 px-5 py-3 text-sm font-semibold uppercase tracking-wide text-ftc-primary/80 shadow-ftc-glow transition hover:border-ftc-primary/50 hover:bg-ftc-primary/15 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {savingEdit ? "Saving..." : "Save changes"}
                 </button>
@@ -697,25 +697,25 @@ export default function EventDetailPage() {
           ) : null}
 
           {sendOpen && isOwner && !eventIsCancelled ? (
-            <section className="mb-6 rounded-2xl border border-zinc-800 bg-zinc-900/50 p-4 sm:p-5">
+            <section className="mb-6 rounded-2xl border border-ftc-border bg-ftc-surface/50 p-4 sm:p-5">
               <div className="mb-4 flex items-center justify-between gap-3">
                 <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-blue-400">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-ftc-primary">
                     Send bookings
                   </p>
-                  <h2 className="mt-1 text-lg font-semibold text-zinc-50">Select DJs</h2>
+                  <h2 className="mt-1 text-lg font-semibold text-ftc-text">Select DJs</h2>
                 </div>
                 <button
                   type="button"
                   onClick={closeSendBookings}
                   disabled={sending}
-                  className="text-xs font-semibold uppercase tracking-wide text-zinc-500 transition hover:text-zinc-300 disabled:opacity-50"
+                  className="text-xs font-semibold uppercase tracking-wide text-ftc-text-muted transition hover:text-ftc-text-secondary disabled:opacity-50"
                 >
                   Cancel
                 </button>
               </div>
 
-              <p className="mb-4 text-sm text-zinc-400">
+              <p className="mb-4 text-sm text-ftc-text-secondary">
                 Event details will be prefilled from this event. Each DJ receives a private booking
                 request DM.
               </p>
@@ -725,13 +725,13 @@ export default function EventDetailPage() {
                 value={searchQuery}
                 onChange={(event) => setSearchQuery(event.target.value)}
                 placeholder="Search DJs by name or genre"
-                className="mb-4 w-full rounded-xl border border-zinc-800 bg-zinc-900/80 px-3.5 py-2.5 text-sm text-zinc-100 outline-none transition placeholder:text-zinc-600 focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/15"
+                className="mb-4 w-full rounded-xl border border-ftc-border bg-ftc-surface/80 px-3.5 py-2.5 text-sm text-ftc-text outline-none transition placeholder:text-ftc-text-muted focus:border-ftc-primary/45 focus:ring-2 focus:ring-ftc-primary/15"
               />
 
               {loadingDjs ? (
-                <p className="text-sm text-zinc-500">Loading DJs...</p>
+                <p className="text-sm text-ftc-text-muted">Loading DJs...</p>
               ) : filteredDjs.length === 0 ? (
-                <p className="text-sm text-zinc-400">No available DJs to invite.</p>
+                <p className="text-sm text-ftc-text-secondary">No available DJs to invite.</p>
               ) : (
                 <ul className="max-h-80 space-y-2 overflow-y-auto">
                   {filteredDjs.map((dj) => {
@@ -748,10 +748,10 @@ export default function EventDetailPage() {
                           onClick={() => toggleDjSelection(dj.user_id)}
                           className={`flex w-full items-center gap-3 rounded-xl border px-3 py-3 text-left transition ${
                             selected
-                              ? "border-blue-500/50 bg-blue-600/10"
+                              ? "border-ftc-primary/45 bg-ftc-primary/10"
                               : isDuplicateBlocked
-                                ? "border-zinc-800/80 bg-zinc-950/20 hover:border-zinc-700"
-                                : "border-zinc-800 bg-zinc-950/40 hover:border-blue-500/30"
+                                ? "border-ftc-border bg-ftc-bg-elevated/20 hover:border-ftc-border-strong"
+                                : "border-ftc-border bg-ftc-bg-elevated/40 hover:border-ftc-primary/25"
                           }`}
                         >
                           <ProfileAvatar
@@ -761,7 +761,7 @@ export default function EventDetailPage() {
                           />
                           <div className="min-w-0 flex-1">
                             <div className="flex flex-wrap items-center gap-2">
-                              <p className="font-semibold text-zinc-50">{displayName}</p>
+                              <p className="font-semibold text-ftc-text">{displayName}</p>
                               {duplicateStatus ? (
                                 <EventBookingDuplicateBadge status={duplicateStatus} />
                               ) : null}
@@ -770,7 +770,7 @@ export default function EventDetailPage() {
                               ) : null}
                             </div>
                             {dj.genre?.trim() ? (
-                              <p className="text-sm text-zinc-500">{dj.genre}</p>
+                              <p className="text-sm text-ftc-text-muted">{dj.genre}</p>
                             ) : null}
                           </div>
                         </button>
@@ -781,7 +781,7 @@ export default function EventDetailPage() {
               )}
 
               {allSelectedAreDuplicates ? (
-                <p className="mt-4 text-xs text-zinc-500">
+                <p className="mt-4 text-xs text-ftc-text-muted">
                   Selected DJs already have a request for this event.
                 </p>
               ) : null}
@@ -790,15 +790,15 @@ export default function EventDetailPage() {
                 type="button"
                 onClick={requestSendBookings}
                 disabled={sending || sendableSelectedDjIds.length === 0}
-                className="mt-4 w-full rounded-xl border border-blue-500/45 bg-blue-600/20 px-5 py-3 text-sm font-semibold uppercase tracking-wide text-blue-100 shadow-[0_0_20px_rgba(59,130,246,0.22)] transition hover:border-blue-400/60 hover:bg-blue-600/30 disabled:cursor-not-allowed disabled:opacity-50"
+                className="mt-4 w-full rounded-xl border border-ftc-primary/40 bg-ftc-primary/10 px-5 py-3 text-sm font-semibold uppercase tracking-wide text-ftc-primary/80 shadow-ftc-glow transition hover:border-ftc-primary/50 hover:bg-ftc-primary/15 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {sendButtonLabel}
               </button>
             </section>
           ) : null}
 
-          <section className="mb-6 rounded-2xl border border-zinc-800 bg-zinc-900/80 p-4 sm:p-5">
-            <h2 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-blue-400">
+          <section className="mb-6 rounded-2xl border border-ftc-border bg-ftc-surface/80 p-4 sm:p-5">
+            <h2 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-ftc-primary">
               Event details
             </h2>
             <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
@@ -809,8 +809,8 @@ export default function EventDetailPage() {
             </dl>
             {event.notes?.trim() ? (
               <div className="mt-4">
-                <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">Notes</p>
-                <p className="mt-1 text-sm leading-relaxed text-zinc-300">{event.notes}</p>
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted">Notes</p>
+                <p className="mt-1 text-sm leading-relaxed text-ftc-text-secondary">{event.notes}</p>
               </div>
             ) : null}
           </section>
@@ -825,10 +825,10 @@ export default function EventDetailPage() {
             />
           ) : null}
 
-          <section className="rounded-2xl border border-zinc-800 bg-zinc-900/80 p-4 sm:p-5">
+          <section className="rounded-2xl border border-ftc-border bg-ftc-surface/80 p-4 sm:p-5">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <h2 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-blue-400">
+                <h2 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-ftc-primary">
                   {isOwner ? "Lineup / Bookings" : "Your booking"}
                 </h2>
                 {isOwner ? (
@@ -851,8 +851,8 @@ export default function EventDetailPage() {
                     onClick={() => setLineupFilter(filter.value)}
                     className={`rounded-full border px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide transition ${
                       lineupFilter === filter.value
-                        ? "border-blue-500/50 bg-blue-600/15 text-blue-300"
-                        : "border-zinc-700 bg-zinc-900/80 text-zinc-400 hover:border-blue-500/30 hover:text-blue-300"
+                        ? "border-ftc-primary/45 bg-ftc-primary/10 text-ftc-primary"
+                        : "border-ftc-border-strong bg-ftc-surface/80 text-ftc-text-secondary hover:border-ftc-primary/25 hover:text-ftc-primary"
                     }`}
                   >
                     {filter.label}
@@ -862,8 +862,8 @@ export default function EventDetailPage() {
             ) : null}
 
             {filteredLineup.length === 0 ? (
-              <div className="mt-6 rounded-xl border border-dashed border-zinc-800 bg-zinc-950/40 px-4 py-8 text-center">
-                <p className="text-sm text-zinc-400">
+              <div className="mt-6 rounded-xl border border-dashed border-ftc-border bg-ftc-bg-elevated/40 px-4 py-8 text-center">
+                <p className="text-sm text-ftc-text-secondary">
                   {isOwner
                     ? "No DJs invited yet. Send booking requests to build your lineup."
                     : "No booking linked to this event yet."}
@@ -883,7 +883,7 @@ export default function EventDetailPage() {
                   return (
                     <li
                       key={booking.id}
-                      className={`relative flex flex-col gap-3 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4 sm:flex-row sm:items-center sm:justify-between ${
+                      className={`relative flex flex-col gap-3 rounded-xl border border-ftc-border bg-ftc-bg-elevated/40 p-4 sm:flex-row sm:items-center sm:justify-between ${
                         canHideFromLineup ? "pr-12 sm:pr-14" : ""
                       }`}
                     >
@@ -902,9 +902,9 @@ export default function EventDetailPage() {
                           size="md"
                         />
                         <div className="min-w-0">
-                          <p className="font-semibold text-zinc-50">{displayName}</p>
+                          <p className="font-semibold text-ftc-text">{displayName}</p>
                           {profile?.genre?.trim() ? (
-                            <p className="text-sm text-zinc-500">{profile.genre}</p>
+                            <p className="text-sm text-ftc-text-muted">{profile.genre}</p>
                           ) : null}
                           <div className="mt-2">
                             <BookingStatusBadge status={booking.status} />
@@ -921,7 +921,7 @@ export default function EventDetailPage() {
                         ) : null}
                         <Link
                           href={`/dm/${booking.conversation_id}`}
-                          className="shrink-0 rounded-lg border border-zinc-700 bg-zinc-900/80 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-zinc-300 transition hover:border-blue-500/35 hover:text-blue-300"
+                          className="shrink-0 rounded-lg border border-ftc-border-strong bg-ftc-surface/80 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-ftc-text-secondary transition hover:border-ftc-primary/30 hover:text-ftc-primary"
                         >
                           Open DM
                         </Link>
@@ -954,16 +954,16 @@ export default function EventDetailPage() {
 function DetailItem({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <dt className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">{label}</dt>
-      <dd className="mt-0.5 text-zinc-200">{value}</dd>
+      <dt className="text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted">{label}</dt>
+      <dd className="mt-0.5 text-ftc-text">{value}</dd>
     </div>
   );
 }
 
 function LineupStat({ label, value }: { label: string; value: number }) {
   return (
-    <span className="rounded-full border border-zinc-700 bg-zinc-900/80 px-2.5 py-1 text-zinc-400">
-      {label}: <span className="text-zinc-200">{value}</span>
+    <span className="rounded-full border border-ftc-border-strong bg-ftc-surface/80 px-2.5 py-1 text-ftc-text-secondary">
+      {label}: <span className="text-ftc-text">{value}</span>
     </span>
   );
 }
@@ -983,7 +983,7 @@ function EventField({
 }) {
   return (
     <label className="block">
-      <span className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-400">
+      <span className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.14em] text-ftc-text-secondary">
         {label}
       </span>
       {multiline ? (
@@ -991,7 +991,7 @@ function EventField({
           value={value}
           onChange={(event) => onChange(event.target.value)}
           rows={3}
-          className="w-full rounded-xl border border-zinc-800 bg-zinc-900/80 px-3.5 py-2.5 text-sm text-zinc-100 outline-none transition placeholder:text-zinc-600 focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/15"
+          className="w-full rounded-xl border border-ftc-border bg-ftc-surface/80 px-3.5 py-2.5 text-sm text-ftc-text outline-none transition placeholder:text-ftc-text-muted focus:border-ftc-primary/45 focus:ring-2 focus:ring-ftc-primary/15"
         />
       ) : (
         <input
@@ -999,7 +999,7 @@ function EventField({
           value={value}
           onChange={(event) => onChange(event.target.value)}
           required={required}
-          className="w-full rounded-xl border border-zinc-800 bg-zinc-900/80 px-3.5 py-2.5 text-sm text-zinc-100 outline-none transition placeholder:text-zinc-600 focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/15"
+          className="w-full rounded-xl border border-ftc-border bg-ftc-surface/80 px-3.5 py-2.5 text-sm text-ftc-text outline-none transition placeholder:text-ftc-text-muted focus:border-ftc-primary/45 focus:ring-2 focus:ring-ftc-primary/15"
         />
       )}
     </label>

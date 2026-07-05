@@ -45,11 +45,11 @@ export default function CalendarMonthYearPicker({
 
   const pickerButtonClass = (isSelected: boolean) =>
     isSelected
-      ? "border border-blue-500/50 bg-blue-600/25 text-blue-100 shadow-[0_0_12px_rgba(59,130,246,0.2)]"
-      : "border border-zinc-800/80 bg-zinc-900/50 text-zinc-300 hover:border-blue-500/30 hover:text-blue-200";
+      ? "border border-ftc-primary/45 bg-ftc-primary/12 text-ftc-primary/80 shadow-ftc-glow"
+      : "border border-ftc-border bg-ftc-surface/50 text-ftc-text-secondary hover:border-ftc-primary/25 hover:text-ftc-primary/90";
 
   const footerOutlineButtonClass =
-    "inline-flex h-9 items-center justify-center rounded-lg border border-zinc-700/90 bg-zinc-900/80 px-3 text-xs font-semibold text-zinc-300 transition hover:border-zinc-600 hover:bg-zinc-900 hover:text-zinc-100";
+    "inline-flex h-9 items-center justify-center rounded-lg border border-ftc-border-strong/90 bg-ftc-surface/80 px-3 text-xs font-semibold text-ftc-text-secondary transition hover:border-ftc-border-strong hover:bg-ftc-surface hover:text-ftc-text";
 
   function handleSelectToday() {
     const today = new Date();
@@ -58,8 +58,8 @@ export default function CalendarMonthYearPicker({
   }
 
   return (
-    <div className="w-[min(calc(100vw-2rem),17rem)] rounded-xl border border-zinc-700/80 bg-zinc-950 p-2.5 shadow-[0_16px_48px_rgba(0,0,0,0.45)]">
-      <p className="text-xs font-semibold text-zinc-100">Select month</p>
+    <div className="w-[min(calc(100vw-2rem),17rem)] rounded-xl border border-ftc-border-strong bg-ftc-bg-elevated p-2.5 shadow-[0_16px_48px_rgba(0,0,0,0.45)]">
+      <p className="text-xs font-semibold text-ftc-text">Select month</p>
 
       <div className="mt-2.5 grid grid-cols-4 gap-1">
         {monthLabels.map((label, index) => {
@@ -80,7 +80,7 @@ export default function CalendarMonthYearPicker({
         })}
       </div>
 
-      <p className="mt-2.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">Year</p>
+      <p className="mt-2.5 text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted">Year</p>
       <div className="mt-1.5 grid grid-cols-3 gap-1">
         {years.map((year) => {
           const isSelected = year === draftYear;
@@ -113,7 +113,7 @@ export default function CalendarMonthYearPicker({
           type="button"
           aria-label="Confirm month and year selection"
           onClick={() => onConfirm(draftMonth, draftYear)}
-          className="inline-flex h-9 items-center justify-center rounded-lg bg-blue-600 px-3 text-xs font-semibold text-white shadow-[0_0_16px_rgba(37,99,235,0.35)] transition hover:bg-blue-500"
+          className="inline-flex h-9 items-center justify-center rounded-lg bg-ftc-primary-dim px-3 text-xs font-semibold text-white shadow-ftc-glow transition hover:bg-ftc-primary"
         >
           Confirm
         </button>

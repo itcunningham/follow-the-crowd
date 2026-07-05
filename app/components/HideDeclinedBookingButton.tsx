@@ -94,7 +94,7 @@ export default function HideDeclinedBookingButton({
         aria-label="Hide from lineup"
         disabled={disabled || loading}
         onClick={handleOpen}
-        className={`inline-flex h-7 w-7 items-center justify-center rounded-lg border border-zinc-700/80 bg-zinc-950/60 text-zinc-500 transition hover:border-zinc-600 hover:text-zinc-300 disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
+        className={`inline-flex h-7 w-7 items-center justify-center rounded-lg border border-ftc-border-strong bg-ftc-bg-elevated/60 text-ftc-text-muted transition hover:border-ftc-border-strong hover:text-ftc-text-secondary disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
       >
         <CloseIcon />
       </button>
@@ -108,13 +108,13 @@ export default function HideDeclinedBookingButton({
             role="dialog"
             aria-modal="true"
             aria-labelledby="hide-declined-booking-title"
-            className="w-full max-w-md rounded-2xl border border-zinc-700/80 bg-zinc-950 p-4 shadow-[0_24px_64px_rgba(0,0,0,0.55)] sm:p-5"
+            className="w-full max-w-md rounded-2xl border border-ftc-border-strong bg-ftc-bg-elevated p-4 shadow-ftc-card sm:p-5"
             onClick={(event) => event.stopPropagation()}
           >
-            <h2 id="hide-declined-booking-title" className="text-base font-semibold text-zinc-50">
+            <h2 id="hide-declined-booking-title" className="text-base font-semibold text-ftc-text">
               Hide declined booking?
             </h2>
-            <p className="mt-2 text-sm leading-relaxed text-zinc-400">
+            <p className="mt-2 text-sm leading-relaxed text-ftc-text-secondary">
               This will remove it from the event lineup view, but keep the booking record in history
               and DMs.
             </p>
@@ -125,9 +125,9 @@ export default function HideDeclinedBookingButton({
                 checked={dontShowAgain}
                 disabled={loading}
                 onChange={(event) => setDontShowAgain(event.target.checked)}
-                className="mt-0.5 h-4 w-4 rounded border-zinc-600 bg-zinc-900 text-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                className="mt-0.5 h-4 w-4 rounded border-ftc-border-strong bg-ftc-surface text-ftc-text0 focus:ring-2 focus:ring-ftc-primary/20"
               />
-              <span className="text-sm text-zinc-400">Don&apos;t show me this again</span>
+              <span className="text-sm text-ftc-text-secondary">Don&apos;t show me this again</span>
             </label>
 
             <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-end">
@@ -135,7 +135,7 @@ export default function HideDeclinedBookingButton({
                 type="button"
                 disabled={loading}
                 onClick={handleCancel}
-                className="rounded-xl border border-zinc-700 bg-zinc-900/80 px-4 py-2.5 text-sm font-semibold uppercase tracking-wide text-zinc-300 transition hover:border-zinc-600 disabled:opacity-50"
+                className="rounded-xl border border-ftc-border-strong bg-ftc-surface/80 px-4 py-2.5 text-sm font-semibold uppercase tracking-wide text-ftc-text-secondary transition hover:border-ftc-border-strong disabled:opacity-50"
               >
                 Cancel
               </button>
@@ -143,7 +143,7 @@ export default function HideDeclinedBookingButton({
                 type="button"
                 disabled={loading}
                 onClick={() => void handleConfirm()}
-                className="rounded-xl border border-zinc-600/50 bg-zinc-800/80 px-4 py-2.5 text-sm font-semibold uppercase tracking-wide text-zinc-200 transition hover:border-zinc-500 hover:bg-zinc-800 disabled:opacity-50"
+                className="rounded-xl border border-ftc-border-strong bg-ftc-surface-raised/80 px-4 py-2.5 text-sm font-semibold uppercase tracking-wide text-ftc-text transition hover:border-ftc-border-strong hover:bg-ftc-surface-raised disabled:opacity-50"
               >
                 {loading ? "Hiding..." : "Hide"}
               </button>

@@ -82,8 +82,8 @@ export default function DmTextMessageBubble({
             <div
               className={`overflow-hidden rounded-3xl ${
                 isOwnMessage
-                  ? "rounded-br-md border border-blue-500/40 bg-blue-600/20 text-blue-50 shadow-[0_0_16px_rgba(59,130,246,0.15)]"
-                  : "rounded-bl-md border border-zinc-800 bg-zinc-900 text-zinc-100"
+                  ? "rounded-br-md border border-ftc-primary/35 bg-ftc-primary/10 text-ftc-text shadow-ftc-glow"
+                  : "rounded-bl-md border border-ftc-border bg-ftc-surface text-ftc-text"
               } ${hasAttachments && !hasText ? "p-1" : "px-4 py-2.5"}`}
             >
               {hasAttachments ? (
@@ -106,8 +106,8 @@ export default function DmTextMessageBubble({
                 dateTime={createdAt}
                 className={`mt-1 block w-full text-[10px] ${
                   isOwnMessage
-                    ? "text-right text-blue-200/70"
-                    : "text-left text-zinc-500"
+                    ? "text-right text-ftc-primary/90/70"
+                    : "text-left text-ftc-text-muted"
                 } ${hasAttachments && !hasText ? "px-1 pb-0.5" : ""}`}
               >
                 {formatTime(createdAt)}
@@ -128,7 +128,7 @@ export default function DmTextMessageBubble({
           />
 
           {isOwnMessage && showSeen ? (
-            <p className="mt-0.5 self-end text-right text-[11px] font-medium text-zinc-500">
+            <p className="mt-0.5 self-end text-right text-[11px] font-medium text-ftc-text-muted">
               Seen
             </p>
           ) : null}
@@ -138,7 +138,7 @@ export default function DmTextMessageBubble({
               type="button"
               aria-label="Report message"
               onClick={onReportMessage}
-              className={`mt-1 rounded-full border border-transparent px-2 py-0.5 text-[11px] text-zinc-500 transition hover:border-zinc-700 hover:bg-zinc-900/70 hover:text-zinc-300 ${
+              className={`mt-1 rounded-full border border-transparent px-2 py-0.5 text-[11px] text-ftc-text-muted transition hover:border-ftc-border-strong hover:bg-ftc-surface/70 hover:text-ftc-text-secondary ${
                 hasAttachments ? "opacity-100" : "opacity-0 group-hover/message:opacity-100"
               }`}
             >

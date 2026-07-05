@@ -67,7 +67,7 @@ export default function CalendarMonthNav({
         type="button"
         aria-label="Previous month"
         onClick={() => navigateMonth(-1)}
-        className="flex h-9 w-9 items-center justify-center rounded-lg border border-zinc-800/80 bg-zinc-950/60 text-zinc-400 transition hover:border-blue-500/35 hover:text-blue-300"
+        className="flex h-9 w-9 items-center justify-center rounded-lg border border-ftc-border bg-ftc-bg-elevated/60 text-ftc-text-secondary transition hover:border-ftc-primary/30 hover:text-ftc-primary"
       >
         <svg
           aria-hidden="true"
@@ -89,7 +89,7 @@ export default function CalendarMonthNav({
           aria-expanded={monthYearPickerOpen}
           aria-haspopup="dialog"
           onClick={() => setMonthYearPickerOpen((open) => !open)}
-          className="min-w-[9.5rem] rounded-lg px-3 py-2 text-sm font-semibold text-zinc-100 transition hover:text-blue-200 sm:min-w-[11rem]"
+          className="min-w-[9.5rem] rounded-lg px-3 py-2 text-sm font-semibold text-ftc-text transition hover:text-ftc-primary/90 sm:min-w-[11rem]"
         >
           {formatCalendarMonthLabel(monthStart)}
         </button>
@@ -113,7 +113,7 @@ export default function CalendarMonthNav({
         type="button"
         aria-label="Next month"
         onClick={() => navigateMonth(1)}
-        className="flex h-9 w-9 items-center justify-center rounded-lg border border-zinc-800/80 bg-zinc-950/60 text-zinc-400 transition hover:border-blue-500/35 hover:text-blue-300"
+        className="flex h-9 w-9 items-center justify-center rounded-lg border border-ftc-border bg-ftc-bg-elevated/60 text-ftc-text-secondary transition hover:border-ftc-primary/30 hover:text-ftc-primary"
       >
         <svg
           aria-hidden="true"

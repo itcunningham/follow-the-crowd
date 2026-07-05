@@ -97,7 +97,7 @@ function WheelColumn<T extends string | number>({
             <div
               key={String(item)}
               className={`flex h-11 shrink-0 snap-center items-center justify-center text-base transition-colors ${
-                isSelected ? "font-semibold text-zinc-50" : "text-zinc-500"
+                isSelected ? "font-semibold text-ftc-text" : "text-ftc-text-muted"
               }`}
               style={{ scrollSnapAlign: "center" }}
             >
@@ -175,26 +175,26 @@ export function BookingTimeWheelPicker({
         role="dialog"
         aria-modal="true"
         aria-labelledby="booking-time-picker-title"
-        className="relative max-h-[90dvh] w-full max-w-sm overflow-hidden overflow-y-auto rounded-t-3xl border border-zinc-800 bg-[#0a0a0c] pb-[env(safe-area-inset-bottom)] shadow-[0_0_40px_rgba(59,130,246,0.15)] sm:rounded-3xl sm:pb-0"
+        className="relative max-h-[90dvh] w-full max-w-sm overflow-hidden overflow-y-auto rounded-t-3xl border border-ftc-border bg-ftc-bg-elevated pb-[env(safe-area-inset-bottom)] shadow-ftc-glow-lg sm:rounded-3xl sm:pb-0"
       >
-        <div className="flex items-center justify-between border-b border-zinc-800/80 px-4 py-3">
+        <div className="flex items-center justify-between border-b border-ftc-border px-4 py-3">
           <button
             type="button"
             onClick={onCancel}
-            className="rounded-lg px-2 py-1 text-sm font-medium text-zinc-400 transition hover:text-zinc-200"
+            className="rounded-lg px-2 py-1 text-sm font-medium text-ftc-text-secondary transition hover:text-ftc-text"
           >
             Cancel
           </button>
           <h2
             id="booking-time-picker-title"
-            className="text-sm font-semibold text-zinc-100"
+            className="text-sm font-semibold text-ftc-text"
           >
             {title}
           </h2>
           <button
             type="button"
             onClick={() => onDone(draft)}
-            className="rounded-lg px-2 py-1 text-sm font-semibold text-blue-400 transition hover:text-blue-300"
+            className="rounded-lg px-2 py-1 text-sm font-semibold text-ftc-primary transition hover:text-ftc-primary"
           >
             Done
           </button>
@@ -203,15 +203,15 @@ export function BookingTimeWheelPicker({
         <div className="relative px-2 py-4">
           <div
             aria-hidden="true"
-            className="pointer-events-none absolute inset-x-4 top-1/2 z-10 h-11 -translate-y-1/2 rounded-xl border border-blue-500/25 bg-blue-500/10"
+            className="pointer-events-none absolute inset-x-4 top-1/2 z-10 h-11 -translate-y-1/2 rounded-xl border border-ftc-primary/20 bg-ftc-primary/10"
           />
           <div
             aria-hidden="true"
-            className="pointer-events-none absolute inset-x-0 top-0 z-20 h-16 bg-gradient-to-b from-[#0a0a0c] to-transparent"
+            className="pointer-events-none absolute inset-x-0 top-0 z-20 h-16 bg-gradient-to-b from-ftc-bg-elevated to-transparent"
           />
           <div
             aria-hidden="true"
-            className="pointer-events-none absolute inset-x-0 bottom-0 z-20 h-16 bg-gradient-to-t from-[#0a0a0c] to-transparent"
+            className="pointer-events-none absolute inset-x-0 bottom-0 z-20 h-16 bg-gradient-to-t from-ftc-bg-elevated to-transparent"
           />
 
           <div className="relative z-0 flex items-stretch">
@@ -325,32 +325,32 @@ export function BookingDualTimeWheelPicker({
         role="dialog"
         aria-modal="true"
         aria-labelledby="booking-dual-time-picker-title"
-        className="relative max-h-[90dvh] w-full max-w-sm overflow-hidden overflow-y-auto rounded-t-3xl border border-zinc-800 bg-[#0a0a0c] pb-[env(safe-area-inset-bottom)] shadow-[0_0_40px_rgba(59,130,246,0.15)] sm:rounded-3xl sm:pb-0"
+        className="relative max-h-[90dvh] w-full max-w-sm overflow-hidden overflow-y-auto rounded-t-3xl border border-ftc-border bg-ftc-bg-elevated pb-[env(safe-area-inset-bottom)] shadow-ftc-glow-lg sm:rounded-3xl sm:pb-0"
       >
-        <div className="flex items-center justify-between border-b border-zinc-800/80 px-4 py-3">
+        <div className="flex items-center justify-between border-b border-ftc-border px-4 py-3">
           <button
             type="button"
             onClick={onCancel}
-            className="rounded-lg px-2 py-1 text-sm font-medium text-zinc-400 transition hover:text-zinc-200"
+            className="rounded-lg px-2 py-1 text-sm font-medium text-ftc-text-secondary transition hover:text-ftc-text"
           >
             Cancel
           </button>
           <h2
             id="booking-dual-time-picker-title"
-            className="text-sm font-semibold text-zinc-100"
+            className="text-sm font-semibold text-ftc-text"
           >
             Set Time
           </h2>
           <button
             type="button"
             onClick={() => onDone(startDraft, finishDraft)}
-            className="rounded-lg px-2 py-1 text-sm font-semibold text-blue-400 transition hover:text-blue-300"
+            className="rounded-lg px-2 py-1 text-sm font-semibold text-ftc-primary transition hover:text-ftc-primary"
           >
             Done
           </button>
         </div>
 
-        <div className="flex border-b border-zinc-800/80 p-1">
+        <div className="flex border-b border-ftc-border p-1">
           {(
             [
               { id: "start" as const, label: "Start Time" },
@@ -366,8 +366,8 @@ export function BookingDualTimeWheelPicker({
                 onClick={() => setActiveTab(tab.id)}
                 className={`flex-1 rounded-lg px-3 py-2 text-xs font-semibold uppercase tracking-wide transition ${
                   isActive
-                    ? "bg-blue-600/15 text-blue-300"
-                    : "text-zinc-500 hover:text-zinc-300"
+                    ? "bg-ftc-primary/10 text-ftc-primary"
+                    : "text-ftc-text-muted hover:text-ftc-text-secondary"
                 }`}
               >
                 {tab.label}
@@ -379,15 +379,15 @@ export function BookingDualTimeWheelPicker({
         <div className="relative px-2 py-4">
           <div
             aria-hidden="true"
-            className="pointer-events-none absolute inset-x-4 top-1/2 z-10 h-11 -translate-y-1/2 rounded-xl border border-blue-500/25 bg-blue-500/10"
+            className="pointer-events-none absolute inset-x-4 top-1/2 z-10 h-11 -translate-y-1/2 rounded-xl border border-ftc-primary/20 bg-ftc-primary/10"
           />
           <div
             aria-hidden="true"
-            className="pointer-events-none absolute inset-x-0 top-0 z-20 h-16 bg-gradient-to-b from-[#0a0a0c] to-transparent"
+            className="pointer-events-none absolute inset-x-0 top-0 z-20 h-16 bg-gradient-to-b from-ftc-bg-elevated to-transparent"
           />
           <div
             aria-hidden="true"
-            className="pointer-events-none absolute inset-x-0 bottom-0 z-20 h-16 bg-gradient-to-t from-[#0a0a0c] to-transparent"
+            className="pointer-events-none absolute inset-x-0 bottom-0 z-20 h-16 bg-gradient-to-t from-ftc-bg-elevated to-transparent"
           />
 
           <div className="relative z-0 flex items-stretch">

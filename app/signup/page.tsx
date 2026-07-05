@@ -95,17 +95,17 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="flex min-h-[100dvh] items-start justify-center bg-[#070708] px-4 pb-10 pt-[max(2.5rem,env(safe-area-inset-top))] font-sans text-zinc-100 sm:items-center sm:py-10">
-      <div className="w-full max-w-md rounded-2xl border border-zinc-800 bg-zinc-900/80 p-6 shadow-[0_0_40px_rgba(59,130,246,0.12)] sm:p-8">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-blue-400">
+    <div className="flex min-h-[100dvh] items-start justify-center bg-ftc-bg px-4 pb-10 pt-[max(2.5rem,env(safe-area-inset-top))] font-sans text-ftc-text sm:items-center sm:py-10">
+      <div className="w-full max-w-md rounded-2xl border border-ftc-border bg-ftc-surface/80 p-6 shadow-ftc-glow-lg sm:p-8">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-ftc-primary">
           Follow The Crowd
         </p>
-        <h1 className="mt-3 text-2xl font-bold text-zinc-50">Create account</h1>
-        <p className="mt-2 text-sm text-zinc-400">Join Follow The Crowd with email and password.</p>
+        <h1 className="mt-3 text-2xl font-bold text-ftc-text">Create account</h1>
+        <p className="mt-2 text-sm text-ftc-text-secondary">Join Follow The Crowd with email and password.</p>
 
         <form onSubmit={handleSubmit} className="mt-8 space-y-4">
           <label className="block">
-            <span className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-400">
+            <span className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.14em] text-ftc-text-secondary">
               Email
             </span>
             <input
@@ -114,12 +114,12 @@ export default function SignupPage() {
               onChange={(event) => setEmail(event.target.value)}
               autoComplete="email"
               required
-              className="w-full rounded-xl border border-zinc-800 bg-zinc-950/80 px-3.5 py-2.5 text-sm text-zinc-100 outline-none transition focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/15"
+              className="w-full rounded-xl border border-ftc-border bg-ftc-bg-elevated/80 px-3.5 py-2.5 text-sm text-ftc-text outline-none transition focus:border-ftc-primary/45 focus:ring-2 focus:ring-ftc-primary/15"
             />
           </label>
 
           <label className="block">
-            <span className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-400">
+            <span className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.14em] text-ftc-text-secondary">
               Password
             </span>
             <input
@@ -129,12 +129,12 @@ export default function SignupPage() {
               autoComplete="new-password"
               required
               minLength={6}
-              className="w-full rounded-xl border border-zinc-800 bg-zinc-950/80 px-3.5 py-2.5 text-sm text-zinc-100 outline-none transition focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/15"
+              className="w-full rounded-xl border border-ftc-border bg-ftc-bg-elevated/80 px-3.5 py-2.5 text-sm text-ftc-text outline-none transition focus:border-ftc-primary/45 focus:ring-2 focus:ring-ftc-primary/15"
             />
           </label>
 
           <label className="block">
-            <span className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-400">
+            <span className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.14em] text-ftc-text-secondary">
               Confirm password
             </span>
             <input
@@ -144,12 +144,12 @@ export default function SignupPage() {
               autoComplete="new-password"
               required
               minLength={6}
-              className="w-full rounded-xl border border-zinc-800 bg-zinc-950/80 px-3.5 py-2.5 text-sm text-zinc-100 outline-none transition focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/15"
+              className="w-full rounded-xl border border-ftc-border bg-ftc-bg-elevated/80 px-3.5 py-2.5 text-sm text-ftc-text outline-none transition focus:border-ftc-primary/45 focus:ring-2 focus:ring-ftc-primary/15"
             />
           </label>
 
           {successMessage ? (
-            <p className="text-sm text-blue-200">{successMessage}</p>
+            <p className="text-sm text-ftc-primary/90">{successMessage}</p>
           ) : null}
 
           {error ? <p className="text-sm text-red-400">{error}</p> : null}
@@ -157,15 +157,15 @@ export default function SignupPage() {
           <button
             type="submit"
             disabled={submitting}
-            className="w-full rounded-xl border border-blue-500/45 bg-blue-600/20 px-4 py-3 text-sm font-semibold uppercase tracking-wide text-blue-100 shadow-[0_0_20px_rgba(59,130,246,0.22)] transition hover:border-blue-400/60 hover:bg-blue-600/30 disabled:cursor-not-allowed disabled:opacity-50"
+            className="w-full rounded-xl border border-ftc-primary/40 bg-ftc-primary/10 px-4 py-3 text-sm font-semibold uppercase tracking-wide text-ftc-primary/80 shadow-ftc-glow transition hover:border-ftc-primary/50 hover:bg-ftc-primary/15 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {submitting ? "Creating account..." : "Sign up"}
           </button>
         </form>
 
-        <p className="mt-6 text-center text-sm text-zinc-500">
+        <p className="mt-6 text-center text-sm text-ftc-text-muted">
           Already have an account?{" "}
-          <Link href={LOGIN_PATH} className="font-semibold text-blue-300 transition hover:text-blue-200">
+          <Link href={LOGIN_PATH} className="font-semibold text-ftc-primary transition hover:text-ftc-primary/90">
             Log in
           </Link>
         </p>

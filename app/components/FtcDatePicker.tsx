@@ -43,7 +43,7 @@ function CalendarIcon() {
       aria-hidden="true"
       viewBox="0 0 20 20"
       fill="none"
-      className="h-4 w-4 shrink-0 text-blue-400/90"
+      className="h-4 w-4 shrink-0 text-ftc-primary/90"
     >
       <rect x="3" y="4.5" width="14" height="12.5" rx="2" stroke="currentColor" strokeWidth="1.5" />
       <path d="M3 8.5h14" stroke="currentColor" strokeWidth="1.5" />
@@ -58,7 +58,7 @@ function ChevronIcon() {
       aria-hidden="true"
       viewBox="0 0 20 20"
       fill="none"
-      className="h-4 w-4 shrink-0 text-zinc-500"
+      className="h-4 w-4 shrink-0 text-ftc-text-muted"
     >
       <path
         d="M7.5 8.5 10 11l2.5-2.5"
@@ -158,17 +158,17 @@ export default function FtcDatePicker({
         role="dialog"
         aria-modal="true"
         aria-labelledby={`${pickerId}-title`}
-        className="relative max-h-[90dvh] w-full max-w-sm overflow-hidden overflow-y-auto rounded-t-3xl border border-zinc-800 bg-[#0a0a0c] pb-[env(safe-area-inset-bottom)] shadow-[0_0_40px_rgba(59,130,246,0.15)] sm:rounded-3xl sm:pb-0"
+        className="relative max-h-[90dvh] w-full max-w-sm overflow-hidden overflow-y-auto rounded-t-3xl border border-ftc-border bg-ftc-bg-elevated pb-[env(safe-area-inset-bottom)] shadow-ftc-glow-lg sm:rounded-3xl sm:pb-0"
       >
-        <div className="flex items-center justify-between border-b border-zinc-800/80 px-4 py-3">
+        <div className="flex items-center justify-between border-b border-ftc-border px-4 py-3">
           <button
             type="button"
             onClick={() => setOpen(false)}
-            className="rounded-lg px-2 py-1 text-sm font-medium text-zinc-400 transition hover:text-zinc-200"
+            className="rounded-lg px-2 py-1 text-sm font-medium text-ftc-text-secondary transition hover:text-ftc-text"
           >
             Cancel
           </button>
-          <h2 id={`${pickerId}-title`} className="text-sm font-semibold text-zinc-100">
+          <h2 id={`${pickerId}-title`} className="text-sm font-semibold text-ftc-text">
             Select date
           </h2>
           <span className="w-[3.75rem]" aria-hidden="true" />
@@ -177,12 +177,12 @@ export default function FtcDatePicker({
         <div className="px-4 py-4">
           <CalendarMonthNav monthStart={monthStart} onMonthStartChange={setMonthStart} />
 
-          <div className="mt-4 rounded-2xl border border-zinc-800 bg-zinc-950/40">
-            <div className="grid grid-cols-7 border-b border-zinc-800/80 bg-zinc-950/60">
+          <div className="mt-4 rounded-2xl border border-ftc-border bg-ftc-bg-elevated/40">
+            <div className="grid grid-cols-7 border-b border-ftc-border bg-ftc-bg-elevated/60">
               {WEEKDAY_LABELS.map((label) => (
                 <div
                   key={label}
-                  className="px-1 py-2 text-center text-[10px] font-semibold uppercase tracking-wide text-zinc-500"
+                  className="px-1 py-2 text-center text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted"
                 >
                   {label}
                 </div>
@@ -219,10 +219,10 @@ export default function FtcDatePicker({
                       aria-pressed={isSelected}
                       className={`flex h-9 items-center justify-center rounded-lg border text-sm transition ${
                         isSelected
-                          ? "border-blue-500/50 bg-blue-600/20 text-blue-100 shadow-[0_0_12px_rgba(59,130,246,0.22)]"
+                          ? "border-ftc-primary/45 bg-ftc-primary/10 text-ftc-primary/80 shadow-ftc-glow"
                           : isToday
-                            ? "border-zinc-700/80 bg-zinc-900/80 text-zinc-100 hover:border-blue-500/35 hover:bg-blue-600/10"
-                            : "border-transparent text-zinc-300 hover:border-zinc-700 hover:bg-zinc-900/70"
+                            ? "border-ftc-border-strong bg-ftc-surface/80 text-ftc-text hover:border-ftc-primary/30 hover:bg-ftc-primary/10"
+                            : "border-transparent text-ftc-text-secondary hover:border-ftc-border-strong hover:bg-ftc-surface/70"
                       }`}
                     >
                       {day.getDate()}
@@ -258,7 +258,7 @@ export default function FtcDatePicker({
         className={`${className} flex items-center gap-2.5 text-left disabled:cursor-not-allowed disabled:opacity-50`}
       >
         <CalendarIcon />
-        <span className={`min-w-0 flex-1 ${hasValue ? "text-zinc-100" : "text-zinc-500"}`}>
+        <span className={`min-w-0 flex-1 ${hasValue ? "text-ftc-text" : "text-ftc-text-muted"}`}>
           {buttonLabel}
         </span>
         <ChevronIcon />

@@ -106,47 +106,47 @@ export default function SettingsPage() {
   return (
     <OnboardingGuard>
       <div
-        className={`mx-auto min-h-[100dvh] w-full max-w-2xl bg-[#070708] font-sans text-zinc-100 ${MOBILE_NAV_OFFSET_CLASS}`}
+        className={`mx-auto min-h-[100dvh] w-full max-w-2xl bg-ftc-bg font-sans text-ftc-text ${MOBILE_NAV_OFFSET_CLASS}`}
       >
         <AppNavigation />
 
-        <header className="border-b border-zinc-800/80 px-4 py-4 sm:px-6 md:pt-4">
+        <header className="border-b border-ftc-border px-4 py-4 sm:px-6 md:pt-4">
           <Link
             href={myProfilePath}
-            className="inline-block text-xs font-semibold uppercase tracking-wide text-zinc-500 transition hover:text-blue-400"
+            className="inline-block text-xs font-semibold uppercase tracking-wide text-ftc-text-muted transition hover:text-ftc-primary"
           >
             ← My Profile
           </Link>
-          <h1 className="mt-3 text-xl font-semibold text-zinc-50">Settings</h1>
-          <p className="mt-1 text-sm text-zinc-500">
+          <h1 className="mt-3 text-xl font-semibold text-ftc-text">Settings</h1>
+          <p className="mt-1 text-sm text-ftc-text-muted">
             Manage your Follow The Crowd account preferences.
           </p>
         </header>
 
         <div className="space-y-4 px-4 py-6 sm:px-6">
           {loading ? (
-            <p className="text-sm text-zinc-500">Loading settings...</p>
+            <p className="text-sm text-ftc-text-muted">Loading settings...</p>
           ) : (
             <>
-              <section className="rounded-2xl border border-zinc-800 bg-zinc-900/80 p-4 sm:p-5">
-                <h2 className="text-xs font-semibold uppercase tracking-wide text-blue-400">
+              <section className="rounded-2xl border border-ftc-border bg-ftc-surface/80 p-4 sm:p-5">
+                <h2 className="text-xs font-semibold uppercase tracking-wide text-ftc-primary">
                   Account
                 </h2>
-                <p className="mt-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500">
+                <p className="mt-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-ftc-text-muted">
                   Signed in as
                 </p>
-                <p className="mt-1 break-all text-sm font-medium text-zinc-200">
+                <p className="mt-1 break-all text-sm font-medium text-ftc-text">
                   {accountEmail ?? "Email unavailable"}
                 </p>
               </section>
 
-              <section className="rounded-2xl border border-zinc-800 bg-zinc-900/80 p-4 sm:p-5">
-                <h2 className="text-xs font-semibold uppercase tracking-wide text-blue-400">
+              <section className="rounded-2xl border border-ftc-border bg-ftc-surface/80 p-4 sm:p-5">
+                <h2 className="text-xs font-semibold uppercase tracking-wide text-ftc-primary">
                   Account type
                 </h2>
-                <p className="mt-2 text-sm text-zinc-500">
+                <p className="mt-2 text-sm text-ftc-text-muted">
                   Current type:{" "}
-                  <span className="font-medium text-zinc-300">{getRoleLabel(currentRole)}</span>
+                  <span className="font-medium text-ftc-text-secondary">{getRoleLabel(currentRole)}</span>
                 </p>
 
                 <div className="mt-4 space-y-3">
@@ -162,31 +162,31 @@ export default function SettingsPage() {
                         onClick={() => handleSelectRole(option.role)}
                         className={`w-full rounded-2xl border px-4 py-4 text-left transition disabled:cursor-not-allowed disabled:opacity-60 sm:px-5 sm:py-5 ${
                           isSelected
-                            ? "border-blue-500/50 bg-blue-600/15 shadow-[0_0_24px_rgba(59,130,246,0.14)]"
-                            : "border-zinc-800 bg-zinc-950/40 hover:border-blue-500/30 hover:bg-blue-600/10"
+                            ? "border-ftc-primary/45 bg-ftc-primary/10 shadow-ftc-glow"
+                            : "border-ftc-border bg-ftc-bg-elevated/40 hover:border-ftc-primary/25 hover:bg-ftc-primary/10"
                         }`}
                       >
                         <div className="flex items-start justify-between gap-3">
                           <div>
                             <p
                               className={`text-base font-semibold sm:text-lg ${
-                                isSelected ? "text-blue-100" : "text-zinc-50"
+                                isSelected ? "text-ftc-primary/80" : "text-ftc-text"
                               }`}
                             >
                               {option.title}
                             </p>
-                            <p className="mt-2 text-sm leading-relaxed text-zinc-400">
+                            <p className="mt-2 text-sm leading-relaxed text-ftc-text-secondary">
                               {option.description}
                             </p>
                           </div>
                           {isSelected ? (
-                            <span className="shrink-0 rounded-full border border-blue-500/40 bg-blue-600/20 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-blue-300">
+                            <span className="shrink-0 rounded-full border border-ftc-primary/35 bg-ftc-primary/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-ftc-primary">
                               Selected
                             </span>
                           ) : null}
                         </div>
                         {isSaving ? (
-                          <p className="mt-3 text-xs font-medium uppercase tracking-wide text-blue-400">
+                          <p className="mt-3 text-xs font-medium uppercase tracking-wide text-ftc-primary">
                             Updating...
                           </p>
                         ) : null}
@@ -196,24 +196,24 @@ export default function SettingsPage() {
                 </div>
 
                 {successMessage ? (
-                  <p className="mt-4 rounded-xl border border-blue-500/30 bg-blue-600/10 px-4 py-3 text-sm text-blue-200">
+                  <p className="mt-4 rounded-xl border border-ftc-primary/25 bg-ftc-primary/10 px-4 py-3 text-sm text-ftc-primary/90">
                     {successMessage}
                   </p>
                 ) : null}
               </section>
 
-              <section className="rounded-2xl border border-zinc-800 bg-zinc-900/80 p-4 sm:p-5">
-                <h2 className="text-xs font-semibold uppercase tracking-wide text-blue-400">
+              <section className="rounded-2xl border border-ftc-border bg-ftc-surface/80 p-4 sm:p-5">
+                <h2 className="text-xs font-semibold uppercase tracking-wide text-ftc-primary">
                   Session
                 </h2>
-                <p className="mt-2 text-sm text-zinc-500">
+                <p className="mt-2 text-sm text-ftc-text-muted">
                   Sign out of Follow The Crowd on this device.
                 </p>
                 <button
                   type="button"
                   onClick={handleSignOut}
                   disabled={signingOut}
-                  className="mt-4 rounded-xl border border-zinc-700 bg-zinc-950/60 px-4 py-3 text-sm font-semibold uppercase tracking-wide text-zinc-300 transition hover:border-red-500/40 hover:text-red-300 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="mt-4 rounded-xl border border-ftc-border-strong bg-ftc-bg-elevated/60 px-4 py-3 text-sm font-semibold uppercase tracking-wide text-ftc-text-secondary transition hover:border-red-500/40 hover:text-red-300 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {signingOut ? "Signing out..." : "Log out"}
                 </button>

@@ -105,10 +105,10 @@ export function getBookingStatusBadgeClass(status: BookingRequestStatus): string
   }
 
   if (status === "cancelled") {
-    return "border-zinc-600/50 bg-zinc-800/80 text-zinc-400";
+    return "border-ftc-border-strong bg-ftc-surface-raised/80 text-ftc-text-secondary";
   }
 
-  return "border-blue-500/40 bg-blue-600/15 text-blue-300";
+  return "border-ftc-primary/35 bg-ftc-primary/10 text-ftc-primary";
 }
 
 export function isActiveBookingStatus(status: BookingRequestStatus): boolean {
@@ -1019,11 +1019,11 @@ export function getEventBookingDuplicateLabel(status: EventBookingDuplicateStatu
 export function getEventBookingDuplicateBadgeClass(status: EventBookingDuplicateStatus): string {
   switch (status) {
     case "already_invited":
-      return "border-blue-500/40 bg-blue-600/15 text-blue-300";
+      return "border-ftc-primary/35 bg-ftc-primary/10 text-ftc-primary";
     case "already_booked":
       return "border-emerald-500/40 bg-emerald-500/10 text-emerald-300";
     case "already_declined":
-      return "border-zinc-600/50 bg-zinc-800/80 text-zinc-400";
+      return "border-ftc-border-strong bg-ftc-surface-raised/80 text-ftc-text-secondary";
   }
 }
 

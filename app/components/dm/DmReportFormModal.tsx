@@ -71,13 +71,13 @@ export default function DmReportFormModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="dm-report-title"
-        className="max-h-[90dvh] w-full max-w-md overflow-y-auto overscroll-contain rounded-t-2xl border border-zinc-700/80 bg-zinc-950 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-[0_24px_64px_rgba(0,0,0,0.55)] sm:rounded-2xl sm:p-5"
+        className="max-h-[90dvh] w-full max-w-md overflow-y-auto overscroll-contain rounded-t-2xl border border-ftc-border-strong bg-ftc-bg-elevated p-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-ftc-card sm:rounded-2xl sm:p-5"
         onClick={(event) => event.stopPropagation()}
       >
-        <h2 id="dm-report-title" className="text-base font-semibold text-zinc-50">
+        <h2 id="dm-report-title" className="text-base font-semibold text-ftc-text">
           {title}
         </h2>
-        <p className="mt-2 text-sm leading-relaxed text-zinc-400">{description}</p>
+        <p className="mt-2 text-sm leading-relaxed text-ftc-text-secondary">{description}</p>
 
         {successMessage ? (
           <>
@@ -88,7 +88,7 @@ export default function DmReportFormModal({
               <button
                 type="button"
                 onClick={handleClose}
-                className="rounded-xl border border-zinc-700 bg-zinc-900/80 px-4 py-2.5 text-sm font-semibold uppercase tracking-wide text-zinc-300 transition hover:border-zinc-600"
+                className="rounded-xl border border-ftc-border-strong bg-ftc-surface/80 px-4 py-2.5 text-sm font-semibold uppercase tracking-wide text-ftc-text-secondary transition hover:border-ftc-border-strong"
               >
                 Done
               </button>
@@ -103,8 +103,8 @@ export default function DmReportFormModal({
                   key={option.value}
                   className={`flex cursor-pointer items-center gap-3 rounded-xl border px-3 py-2.5 text-sm transition ${
                     reason === option.value
-                      ? "border-blue-500/40 bg-blue-600/10 text-zinc-100"
-                      : "border-zinc-800 bg-zinc-900/40 text-zinc-300 hover:border-zinc-700"
+                      ? "border-ftc-primary/35 bg-ftc-primary/10 text-ftc-text"
+                      : "border-ftc-border bg-ftc-surface/40 text-ftc-text-secondary hover:border-ftc-border-strong"
                   }`}
                 >
                   <input
@@ -113,7 +113,7 @@ export default function DmReportFormModal({
                     value={option.value}
                     checked={reason === option.value}
                     onChange={() => setReason(option.value)}
-                    className="accent-blue-500"
+                    className="accent-ftc-primary"
                   />
                   {option.label}
                 </label>
@@ -121,7 +121,7 @@ export default function DmReportFormModal({
             </fieldset>
 
             <label className="mt-4 block">
-              <span className="mb-2 block text-xs font-semibold uppercase tracking-wide text-zinc-500">
+              <span className="mb-2 block text-xs font-semibold uppercase tracking-wide text-ftc-text-muted">
                 Optional note
               </span>
               <textarea
@@ -130,7 +130,7 @@ export default function DmReportFormModal({
                 rows={3}
                 maxLength={500}
                 placeholder="Add any helpful details..."
-                className="w-full resize-none rounded-xl border border-zinc-800 bg-zinc-900/70 px-3 py-2.5 text-sm text-zinc-100 outline-none transition placeholder:text-zinc-600 focus:border-blue-500/40"
+                className="w-full resize-none rounded-xl border border-ftc-border bg-ftc-surface/70 px-3 py-2.5 text-sm text-ftc-text outline-none transition placeholder:text-ftc-text-muted focus:border-ftc-primary/35"
               />
             </label>
 
@@ -143,7 +143,7 @@ export default function DmReportFormModal({
                 type="button"
                 disabled={busy}
                 onClick={handleClose}
-                className="rounded-xl border border-zinc-700 bg-zinc-900/80 px-4 py-2.5 text-sm font-semibold uppercase tracking-wide text-zinc-300 transition hover:border-zinc-600 disabled:opacity-50"
+                className="rounded-xl border border-ftc-border-strong bg-ftc-surface/80 px-4 py-2.5 text-sm font-semibold uppercase tracking-wide text-ftc-text-secondary transition hover:border-ftc-border-strong disabled:opacity-50"
               >
                 Cancel
               </button>

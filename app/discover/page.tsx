@@ -68,12 +68,12 @@ export default function DiscoverPage() {
   return (
     <OnboardingGuard>
       <div
-        className={`mx-auto min-h-[100dvh] w-full max-w-2xl bg-[#070708] font-sans text-zinc-100 ${MOBILE_NAV_OFFSET_CLASS}`}
+        className={`mx-auto min-h-[100dvh] w-full max-w-2xl bg-ftc-bg font-sans text-ftc-text ${MOBILE_NAV_OFFSET_CLASS}`}
       >
         <AppNavigation />
-        <header className="border-b border-zinc-800/80 px-4 py-4 sm:px-6 md:pt-4">
-          <h1 className="text-xl font-semibold text-zinc-50">Discover</h1>
-          <p className="mt-1 text-sm text-zinc-500">
+        <header className="border-b border-ftc-border px-4 py-4 sm:px-6 md:pt-4">
+          <h1 className="text-xl font-semibold text-ftc-text">Discover</h1>
+          <p className="mt-1 text-sm text-ftc-text-muted">
             Browse DJs and promoters in the scene. Message anyone or send bulk booking requests
             from Bookings.
           </p>
@@ -81,11 +81,11 @@ export default function DiscoverPage() {
 
         <div className="px-4 py-4 sm:px-6">
           {loading ? (
-            <p className="text-sm text-zinc-500">Loading people...</p>
+            <p className="text-sm text-ftc-text-muted">Loading people...</p>
           ) : error ? (
             <p className="text-sm text-red-400">{error}</p>
           ) : users.length === 0 ? (
-            <p className="text-sm text-zinc-500">No profiles to discover yet.</p>
+            <p className="text-sm text-ftc-text-muted">No profiles to discover yet.</p>
           ) : (
             <ul className="space-y-4">
               {users.map((user) => (
@@ -117,39 +117,39 @@ function DiscoverCard({
   const bioPreview = user.bio?.trim() || "No bio yet.";
 
   return (
-    <li className="overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900/80 transition hover:border-blue-500/30 hover:shadow-[0_0_20px_rgba(59,130,246,0.08)]">
+    <li className="overflow-hidden rounded-2xl border border-ftc-border bg-ftc-surface/80 transition hover:border-ftc-primary/25 hover:shadow-ftc-glow">
       <Link href={`/profile/${user.user_id}`} className="block p-4 sm:p-5">
         <div className="flex items-start gap-3">
           <ProfileAvatar name={displayName} avatarUrl={user.avatar_url} size="md" />
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              <h2 className="text-base font-semibold text-zinc-100">{displayName}</h2>
+              <h2 className="text-base font-semibold text-ftc-text">{displayName}</h2>
               <RoleBadge role={user.role} />
             </div>
-            <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-zinc-500">
+            <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-ftc-text-muted">
               {user.genre ? <span>{user.genre}</span> : null}
               {user.location ? <span>{user.location}</span> : null}
             </div>
-            <p className="mt-3 line-clamp-2 text-sm leading-relaxed text-zinc-400">
+            <p className="mt-3 line-clamp-2 text-sm leading-relaxed text-ftc-text-secondary">
               {bioPreview}
             </p>
             <div className="mt-3 flex flex-wrap gap-3 text-xs">
               {user.instagram_url ? (
-                <span className="font-medium text-blue-400">Instagram</span>
+                <span className="font-medium text-ftc-primary">Instagram</span>
               ) : null}
               {user.soundcloud_url ? (
-                <span className="font-medium text-blue-400">SoundCloud</span>
+                <span className="font-medium text-ftc-primary">SoundCloud</span>
               ) : null}
             </div>
           </div>
         </div>
       </Link>
-      <div className="border-t border-zinc-800/80 px-4 py-3 sm:px-5">
+      <div className="border-t border-ftc-border px-4 py-3 sm:px-5">
         <button
           type="button"
           onClick={onMessage}
           disabled={messaging}
-          className="rounded-xl border border-blue-500/45 bg-blue-600/20 px-4 py-2 text-sm font-semibold uppercase tracking-wide text-blue-100 shadow-[0_0_20px_rgba(59,130,246,0.22)] transition hover:border-blue-400/60 hover:bg-blue-600/30 disabled:cursor-not-allowed disabled:opacity-50"
+          className="rounded-xl border border-ftc-primary/40 bg-ftc-primary/10 px-4 py-2 text-sm font-semibold uppercase tracking-wide text-ftc-primary/80 shadow-ftc-glow transition hover:border-ftc-primary/50 hover:bg-ftc-primary/15 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {messaging ? "Opening..." : "Message"}
         </button>
@@ -160,7 +160,7 @@ function DiscoverCard({
 
 function RoleBadge({ role }: { role: UserRole | null }) {
   return (
-    <span className="rounded-full border border-blue-500/30 bg-blue-600/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-blue-300">
+    <span className="rounded-full border border-ftc-primary/25 bg-ftc-primary/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-ftc-primary">
       {getRoleLabel(role)}
     </span>
   );

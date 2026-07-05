@@ -4,7 +4,7 @@ import { BOOKING_FIELD_LABEL_CLASS } from "@/lib/bookingDateTime";
 import { MAX_RATE_DIGITS, sanitizeRateDigits } from "@/lib/bookingRate";
 
 export const BOOKING_RATE_INPUT_CLASS =
-  "flex w-full items-center rounded-xl border border-zinc-800 bg-zinc-900/80 text-sm text-zinc-100 outline-none transition focus-within:border-blue-500/50 focus-within:ring-2 focus-within:ring-blue-500/15";
+  "flex w-full items-center rounded-xl border border-ftc-border bg-ftc-surface/80 text-sm text-ftc-text outline-none transition focus-within:border-ftc-primary/45 focus-within:ring-2 focus-within:ring-ftc-primary/15";
 
 export function BookingRateField({
   label = "Rate",
@@ -43,7 +43,7 @@ export function BookingRateField({
     <label className="block">
       <span className={BOOKING_FIELD_LABEL_CLASS}>{label}</span>
       <div className={BOOKING_RATE_INPUT_CLASS}>
-        <span className="shrink-0 pl-3.5 tabular-nums text-zinc-100">$</span>
+        <span className="shrink-0 pl-3.5 tabular-nums text-ftc-text">$</span>
         <input
           type="text"
           inputMode="numeric"
@@ -55,7 +55,7 @@ export function BookingRateField({
           required={required && !digits}
           aria-label={label}
           autoComplete="off"
-          className="min-w-0 flex-1 bg-transparent py-2.5 pr-3.5 tabular-nums text-zinc-100 outline-none"
+          className="min-w-0 flex-1 bg-transparent py-2.5 pr-3.5 tabular-nums text-ftc-text outline-none"
         />
       </div>
     </label>
