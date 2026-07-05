@@ -41,7 +41,13 @@ import {
   type DmMessageReaction,
 } from "@/lib/dmReactions";
 import { createNotification, markNotificationsReadForLink } from "@/lib/notifications";
-import { markConversationRead } from "@/lib/messageReads";
+import {
+  getLatestOwnDmMessageId,
+  isMessageSeenByReader,
+  loadDmParticipantLastReadAt,
+  markConversationRead,
+  shouldShowDmReadReceipts,
+} from "@/lib/messageReads";
 import { supabase } from "@/lib/supabaseClient";
 import { useChatScroll, tagChatMessageForScroll } from "@/lib/useChatScroll";
 import { getChatNewMessageHighlightClass, logChatHighlightRender } from "@/lib/chatNewMessageHighlight";
@@ -124,6 +130,7 @@ export default function DmChatPage() {
     reportedUserId: string;
   } | null>(null);
   const [reportMessageSubmitting, setReportMessageSubmitting] = useState(false);
+  const [otherUserLastReadAt, setOtherUserLastReadAt] = useState<string | null>(null);
   const lastMessage = messages.length > 0 ? messages[messages.length - 1] : null;
   const {
     scrollRef,
@@ -161,6 +168,33 @@ export default function DmChatPage() {
     [reactions],
   );
   const reversedMessages = useMemo(() => [...messages].reverse(), [messages]);
+  const canShowReadReceipts = shouldShowDmReadReceipts({
+    isBlocked: blockStatus.isBlocked,
+    otherUserDisplayName: otherUserProfile?.display_name,
+  });
+  const latestOwnMessageIdForReceipt = useMemo(() => {
+    if (!currentUserId || !canShowReadReceipts) {
+      return null;
+    }
+
+    return getLatestOwnDmMessageId(messages, currentUserId, (message) => {
+      const messageAttachments = attachmentsByMessageId.get(message.id) ?? [];
+      const hasAttachments = messageAttachments.length > 0;
+      const hasText = message.text.trim().length > 0;
+      const isBookingMessage = isBookingRequestMessage(message.text);
+
+      return hasText || hasAttachments || isBookingMessage;
+    });
+  }, [attachmentsByMessageId, canShowReadReceipts, currentUserId, messages]);
+  const shouldShowSeenOnMessage = useMemo(() => {
+    return (messageId: string, messageCreatedAt: string) => {
+      if (!canShowReadReceipts || messageId !== latestOwnMessageIdForReceipt) {
+        return false;
+      }
+
+      return isMessageSeenByReader(messageCreatedAt, otherUserLastReadAt);
+    };
+  }, [canShowReadReceipts, latestOwnMessageIdForReceipt, otherUserLastReadAt]);
 
   useEffect(() => {
     if (!conversationId) {
@@ -259,6 +293,56 @@ export default function DmChatPage() {
       supabase.removeChannel(channel);
     };
   }, [conversationId, currentUserId, otherUserId]);
+
+  useEffect(() => {
+    if (!conversationId || !otherUserId) {
+      setOtherUserLastReadAt(null);
+      return;
+    }
+
+    const participantUserId = otherUserId;
+
+    async function refreshParticipantReadState() {
+      try {
+        const lastReadAt = await loadDmParticipantLastReadAt(conversationId, participantUserId);
+        setOtherUserLastReadAt(lastReadAt);
+      } catch (readStateError) {
+        console.error("Failed to load participant read state:", readStateError);
+        setOtherUserLastReadAt(null);
+      }
+    }
+
+    void refreshParticipantReadState();
+
+    const channel = supabase
+      .channel(`dm-read-receipts:${conversationId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "message_reads",
+          filter: `conversation_id=eq.${conversationId}`,
+        },
+        (payload) => {
+          const row = (payload.new ?? payload.old) as
+            | { user_id?: string; last_read_at?: string }
+            | null;
+
+          if (row?.user_id === participantUserId && row.last_read_at) {
+            setOtherUserLastReadAt(row.last_read_at);
+            return;
+          }
+
+          void refreshParticipantReadState();
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [conversationId, otherUserId]);
 
   useEffect(() => {
     if (!conversationId) {
@@ -636,6 +720,7 @@ export default function DmChatPage() {
       }
 
       setInput("");
+      void markConversationRead(conversationId);
     } catch (uploadError) {
       console.error("Failed to send attachment:", uploadError);
       setError(uploadError instanceof Error ? uploadError.message : "Failed to send attachment");
@@ -1025,6 +1110,12 @@ export default function DmChatPage() {
                         >
                           {formatMessageTime(message.created_at)}
                         </time>
+                        {isOwnMessage &&
+                        shouldShowSeenOnMessage(message.id, message.created_at) ? (
+                          <p className="mt-0.5 text-right text-[11px] font-medium text-zinc-500">
+                            Seen
+                          </p>
+                        ) : null}
                       </div>
                     </div>
                   </li>
@@ -1063,6 +1154,7 @@ export default function DmChatPage() {
                   }
                   formatTime={formatMessageTime}
                   isHighlighted={isMessageHighlighted(message.id)}
+                  showSeen={shouldShowSeenOnMessage(message.id, message.created_at)}
                 />
                 );
               })}

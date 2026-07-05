@@ -25,6 +25,7 @@ export default function DmTextMessageBubble({
   onReportMessage,
   formatTime,
   isHighlighted = false,
+  showSeen = false,
 }: {
   messageId: string;
   text: string;
@@ -43,6 +44,7 @@ export default function DmTextMessageBubble({
   onReportMessage?: () => void;
   formatTime: (timestamp: string) => string;
   isHighlighted?: boolean;
+  showSeen?: boolean;
 }) {
   const trimmedText = text.trim();
   const hasAttachments = attachments.length > 0;
@@ -124,6 +126,10 @@ export default function DmTextMessageBubble({
             onOpenPicker={onOpenReactionPicker}
             onClosePicker={onCloseReactionPicker}
           />
+
+          {isOwnMessage && showSeen ? (
+            <p className="mt-0.5 pr-0.5 text-[11px] font-medium text-zinc-500">Seen</p>
+          ) : null}
 
           {!isOwnMessage && onReportMessage ? (
             <button

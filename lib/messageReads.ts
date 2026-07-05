@@ -177,6 +177,69 @@ export async function markEventChatRead(eventId: string) {
   }
 }
 
+export function isMessageSeenByReader(
+  messageCreatedAt: string,
+  readerLastReadAt: string | null | undefined,
+): boolean {
+  if (!readerLastReadAt) {
+    return false;
+  }
+
+  return new Date(readerLastReadAt).getTime() >= new Date(messageCreatedAt).getTime();
+}
+
+export function shouldShowDmReadReceipts(options: {
+  isBlocked: boolean;
+  otherUserDisplayName: string | null | undefined;
+}): boolean {
+  if (options.isBlocked) {
+    return false;
+  }
+
+  return options.otherUserDisplayName?.trim() !== "Deleted User";
+}
+
+export function getLatestOwnDmMessageId(
+  messages: Array<{ id: string; user_id: string; text: string }>,
+  currentUserId: string,
+  isEligibleOwnMessage: (message: { id: string; user_id: string; text: string }) => boolean,
+): string | null {
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    const message = messages[index];
+
+    if (message.user_id !== currentUserId) {
+      continue;
+    }
+
+    if (!isEligibleOwnMessage(message)) {
+      continue;
+    }
+
+    return message.id;
+  }
+
+  return null;
+}
+
+export async function loadDmParticipantLastReadAt(
+  conversationId: string,
+  participantUserId: string,
+): Promise<string | null> {
+  const { data, error } = await supabase
+    .from("message_reads")
+    .select("last_read_at")
+    .eq("conversation_id", conversationId)
+    .eq("user_id", participantUserId)
+    .is("event_id", null)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  return data?.last_read_at ?? null;
+}
+
 export function getMessageReadsLoadErrorMessage(error: unknown): string {
   if (error && typeof error === "object") {
     const supabaseError = error as { message?: string };
