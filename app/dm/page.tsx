@@ -67,10 +67,8 @@ function InboxTabButton({
       role="tab"
       aria-selected={active}
       onClick={onClick}
-      className={`relative flex min-w-0 flex-1 items-center justify-center gap-1.5 border-b-2 px-2 py-3 text-sm font-semibold transition sm:gap-2 sm:px-3 ${
-        active
-          ? "border-ftc-primary text-ftc-text"
-          : "border-transparent text-ftc-text-muted hover:text-ftc-text-secondary"
+      className={`relative flex min-w-0 flex-1 items-center justify-center gap-1.5 px-3 py-2 text-sm transition sm:gap-2 sm:px-4 ${
+        active ? "ftc-tab-pill-active" : "ftc-tab-pill-inactive"
       }`}
     >
       <span className="min-w-0 truncate">
@@ -247,7 +245,7 @@ function MessageDjButton({
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className={`rounded-xl border border-ftc-primary/40 bg-ftc-primary/10 px-5 py-3 text-sm font-semibold uppercase tracking-wide text-ftc-primary/80 shadow-ftc-glow transition hover:border-ftc-primary/50 hover:bg-ftc-primary/15 disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
+      className={`ftc-btn-primary px-5 py-3 text-sm uppercase tracking-wide disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
     >
       {disabled ? "Opening..." : "Message DJ"}
     </button>
@@ -780,10 +778,10 @@ function DmInboxPageContent() {
         className={`mx-auto flex min-h-[100dvh] w-full max-w-2xl flex-col bg-ftc-bg font-sans text-ftc-text ${MOBILE_NAV_OFFSET_CLASS}`}
       >
         <AppNavigation />
-        <header className="sticky top-0 z-10 border-b border-ftc-border bg-ftc-bg/95 px-4 py-4 backdrop-blur-md sm:px-6 md:top-12">
+        <header className="sticky top-0 z-10 border-b border-ftc-border-subtle bg-ftc-bg/95 px-4 py-4 backdrop-blur-md sm:px-6 md:top-12">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
-              <h1 className="text-xl font-semibold text-ftc-text">Messages</h1>
+              <h1 className="text-2xl font-bold text-ftc-text">Messages</h1>
               <p className="mt-0.5 text-xs text-ftc-text-muted">{currentUserId ?? "Signed in"}</p>
             </div>
             <NotificationsBellLink count={notificationCount} />
@@ -803,7 +801,7 @@ function DmInboxPageContent() {
           ) : null}
 
           <div
-            className="mt-4 flex border-b border-ftc-border"
+            className="ftc-tab-pill mt-4"
             role="tablist"
             aria-label="Message categories"
           >

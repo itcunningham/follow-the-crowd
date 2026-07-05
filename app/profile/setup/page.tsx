@@ -214,7 +214,7 @@ export default function ProfileSetupPage() {
                 size="xl"
               />
               <div className="text-center sm:text-left">
-                <label className="inline-block cursor-pointer rounded-xl border border-ftc-primary/40 bg-ftc-primary/10 px-4 py-2.5 text-sm font-semibold uppercase tracking-wide text-ftc-primary/80 shadow-ftc-glow transition hover:border-ftc-primary/50 hover:bg-ftc-primary/15">
+                <label className="inline-block cursor-pointer ftc-btn-primary px-4 py-2.5 text-sm uppercase tracking-wide">
                   Choose photo
                   <input
                     type="file"
@@ -328,7 +328,7 @@ export default function ProfileSetupPage() {
           <button
             type="submit"
             disabled={saving}
-            className="w-full rounded-xl border border-ftc-primary/40 bg-ftc-primary/10 px-5 py-3 text-sm font-semibold uppercase tracking-wide text-ftc-primary/80 shadow-ftc-glow transition hover:border-ftc-primary/50 hover:bg-ftc-primary/15 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+            className="w-full ftc-btn-primary px-5 py-3 text-sm uppercase tracking-wide disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
           >
             {saving ? "Saving..." : isEditing ? "Save changes" : "Save profile"}
           </button>
@@ -364,7 +364,7 @@ function ProfileField({
           onChange={(event) => onChange(event.target.value)}
           placeholder={placeholder}
           rows={4}
-          className="w-full rounded-xl border border-ftc-border bg-ftc-surface/80 px-3.5 py-2.5 text-sm text-ftc-text outline-none transition placeholder:text-ftc-text-muted focus:border-ftc-primary/45 focus:ring-2 focus:ring-ftc-primary/15"
+          className="ftc-input px-3.5 py-2.5"
         />
       ) : (
         <input
@@ -373,7 +373,7 @@ function ProfileField({
           onChange={(event) => onChange(event.target.value)}
           placeholder={placeholder}
           required={required}
-          className="w-full rounded-xl border border-ftc-border bg-ftc-surface/80 px-3.5 py-2.5 text-sm text-ftc-text outline-none transition placeholder:text-ftc-text-muted focus:border-ftc-primary/45 focus:ring-2 focus:ring-ftc-primary/15"
+          className="ftc-input px-3.5 py-2.5"
         />
       )}
     </label>

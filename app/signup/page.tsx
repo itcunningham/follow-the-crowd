@@ -96,7 +96,7 @@ export default function SignupPage() {
 
   return (
     <div className="flex min-h-[100dvh] items-start justify-center bg-ftc-bg px-4 pb-10 pt-[max(2.5rem,env(safe-area-inset-top))] font-sans text-ftc-text sm:items-center sm:py-10">
-      <div className="w-full max-w-md rounded-2xl border border-ftc-border bg-ftc-surface/80 p-6 shadow-ftc-glow-lg sm:p-8">
+      <div className="ftc-card-raised w-full max-w-md p-6 sm:p-8">
         <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-ftc-primary">
           Follow The Crowd
         </p>
@@ -114,7 +114,7 @@ export default function SignupPage() {
               onChange={(event) => setEmail(event.target.value)}
               autoComplete="email"
               required
-              className="w-full rounded-xl border border-ftc-border bg-ftc-bg-elevated/80 px-3.5 py-2.5 text-sm text-ftc-text outline-none transition focus:border-ftc-primary/45 focus:ring-2 focus:ring-ftc-primary/15"
+              className="ftc-input px-3.5 py-2.5"
             />
           </label>
 
@@ -129,7 +129,7 @@ export default function SignupPage() {
               autoComplete="new-password"
               required
               minLength={6}
-              className="w-full rounded-xl border border-ftc-border bg-ftc-bg-elevated/80 px-3.5 py-2.5 text-sm text-ftc-text outline-none transition focus:border-ftc-primary/45 focus:ring-2 focus:ring-ftc-primary/15"
+              className="ftc-input px-3.5 py-2.5"
             />
           </label>
 
@@ -144,7 +144,7 @@ export default function SignupPage() {
               autoComplete="new-password"
               required
               minLength={6}
-              className="w-full rounded-xl border border-ftc-border bg-ftc-bg-elevated/80 px-3.5 py-2.5 text-sm text-ftc-text outline-none transition focus:border-ftc-primary/45 focus:ring-2 focus:ring-ftc-primary/15"
+              className="ftc-input px-3.5 py-2.5"
             />
           </label>
 
@@ -157,7 +157,7 @@ export default function SignupPage() {
           <button
             type="submit"
             disabled={submitting}
-            className="w-full rounded-xl border border-ftc-primary/40 bg-ftc-primary/10 px-4 py-3 text-sm font-semibold uppercase tracking-wide text-ftc-primary/80 shadow-ftc-glow transition hover:border-ftc-primary/50 hover:bg-ftc-primary/15 disabled:cursor-not-allowed disabled:opacity-50"
+            className="w-full ftc-btn-primary w-full px-4 py-3 text-sm uppercase tracking-wide disabled:cursor-not-allowed disabled:opacity-50"
           >
             {submitting ? "Creating account..." : "Sign up"}
           </button>

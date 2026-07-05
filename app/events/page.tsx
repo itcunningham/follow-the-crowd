@@ -258,7 +258,7 @@ export default function EventsPage() {
                 onClick={() => {
                   void openCreateFlow();
                 }}
-                className="shrink-0 rounded-xl border border-ftc-primary/40 bg-ftc-primary/10 px-4 py-2.5 text-sm font-semibold uppercase tracking-wide text-ftc-primary/80 shadow-ftc-glow transition hover:border-ftc-primary/50 hover:bg-ftc-primary/15"
+                className="shrink-0 ftc-btn-primary px-4 py-2.5 text-sm uppercase tracking-wide"
               >
                 Create event
               </button>
@@ -269,7 +269,7 @@ export default function EventsPage() {
 
         <div className="px-4 py-4 sm:px-6">
           {createOpen && isPlanner ? (
-            <section className="mb-6 rounded-2xl border border-ftc-border bg-ftc-surface/50 p-4 sm:p-5">
+            <section className="mb-6 ftc-card p-4 sm:p-5">
               <div className="mb-4 flex items-center justify-between gap-3">
                 <h2 className="text-lg font-semibold text-ftc-text">Create event</h2>
                 <button
@@ -416,7 +416,7 @@ export default function EventsPage() {
                   <button
                     type="submit"
                     disabled={saving}
-                    className="rounded-xl border border-ftc-primary/40 bg-ftc-primary/10 px-5 py-3 text-sm font-semibold uppercase tracking-wide text-ftc-primary/80 shadow-ftc-glow transition hover:border-ftc-primary/50 hover:bg-ftc-primary/15 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="ftc-btn-primary px-5 py-3 text-sm uppercase tracking-wide disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {saving ? "Saving..." : "Save event"}
                   </button>
@@ -446,7 +446,7 @@ export default function EventsPage() {
                   onClick={() => {
                   void openCreateFlow();
                 }}
-                  className="mt-6 rounded-xl border border-ftc-primary/40 bg-ftc-primary/10 px-5 py-3 text-sm font-semibold uppercase tracking-wide text-ftc-primary/80 shadow-ftc-glow transition hover:border-ftc-primary/50 hover:bg-ftc-primary/15"
+                  className="mt-6 ftc-btn-primary px-5 py-3 text-sm uppercase tracking-wide disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   Create event
                 </button>
@@ -520,7 +520,7 @@ export default function EventsPage() {
 
                     <Link
                       href={`/events/${event.id}`}
-                      className="shrink-0 rounded-lg border border-ftc-primary/30 bg-ftc-primary/10 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-ftc-primary transition hover:border-ftc-primary/40 hover:bg-ftc-primary/12"
+                      className="shrink-0 ftc-btn-primary px-3 py-1.5 text-xs uppercase tracking-wide"
                     >
                       Open event
                     </Link>
@@ -571,7 +571,7 @@ function EventField({
           onChange={(event) => onChange(event.target.value)}
           placeholder={placeholder}
           rows={3}
-          className="w-full rounded-xl border border-ftc-border bg-ftc-surface/80 px-3.5 py-2.5 text-sm text-ftc-text outline-none transition placeholder:text-ftc-text-muted focus:border-ftc-primary/45 focus:ring-2 focus:ring-ftc-primary/15"
+          className="ftc-input px-3.5 py-2.5"
         />
       ) : (
         <input
@@ -580,7 +580,7 @@ function EventField({
           onChange={(event) => onChange(event.target.value)}
           placeholder={placeholder}
           required={required}
-          className="w-full rounded-xl border border-ftc-border bg-ftc-surface/80 px-3.5 py-2.5 text-sm text-ftc-text outline-none transition placeholder:text-ftc-text-muted focus:border-ftc-primary/45 focus:ring-2 focus:ring-ftc-primary/15"
+          className="ftc-input px-3.5 py-2.5"
         />
       )}
     </label>

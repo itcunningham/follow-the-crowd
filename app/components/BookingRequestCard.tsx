@@ -58,7 +58,7 @@ export default function BookingRequestCard({
   }
 
   return (
-    <div className="w-full max-w-sm rounded-2xl border border-ftc-primary/40 bg-ftc-primary/10 p-4 shadow-ftc-glow">
+    <div className="ftc-card w-full max-w-sm p-4">
       <div className="flex min-w-0 items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
           <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-ftc-primary">
@@ -89,14 +89,14 @@ export default function BookingRequestCard({
           </Link>
 
           {groupChatAccess && groupChatAccess.kind !== "hidden" ? (
-            <div className="mt-4 rounded-xl border border-ftc-border bg-ftc-bg-elevated/40 p-3">
+            <div className="mt-4 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated p-3">
               <p className="text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted">
                 Event Group Chat
               </p>
               {groupChatAccess.kind === "open" ? (
                 <Link
                   href={groupChatAccess.href}
-                  className="mt-2 inline-flex rounded-lg border border-ftc-primary/30 bg-ftc-primary/10 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-ftc-primary transition hover:border-ftc-primary/40 hover:bg-ftc-primary/12"
+                  className="mt-2 inline-flex ftc-btn-primary px-3 py-1.5 text-xs uppercase tracking-wide"
                 >
                   Open Group Chat
                 </Link>
@@ -124,7 +124,7 @@ export default function BookingRequestCard({
             type="button"
             onClick={onAccept}
             disabled={responding || cancelling}
-            className="flex-1 rounded-xl border border-ftc-primary/40 bg-ftc-primary/10 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-ftc-primary/80 transition hover:border-ftc-primary/50 hover:bg-ftc-primary/15 disabled:cursor-not-allowed disabled:opacity-50"
+            className="ftc-btn-primary flex-1 px-3 py-2 text-xs uppercase tracking-wide disabled:cursor-not-allowed disabled:opacity-50"
           >
             Accept
           </button>

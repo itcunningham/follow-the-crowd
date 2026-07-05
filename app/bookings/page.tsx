@@ -926,7 +926,7 @@ export default function BookingsPage() {
                 <button
                   type="button"
                   onClick={() => openCreateFlow()}
-                  className="rounded-xl border border-ftc-primary/40 bg-ftc-primary/10 px-4 py-2.5 text-sm font-semibold uppercase tracking-wide text-ftc-primary/80 shadow-ftc-glow transition hover:border-ftc-primary/50 hover:bg-ftc-primary/15"
+                  className="ftc-btn-primary px-4 py-2.5 text-sm uppercase tracking-wide"
                 >
                   Create booking request
                 </button>
@@ -972,7 +972,7 @@ export default function BookingsPage() {
           ) : null}
 
           {createOpen && showCreateButton ? (
-            <section className="mb-6 rounded-2xl border border-ftc-border bg-ftc-surface/50 p-4 sm:p-5">
+            <section className="mb-6 ftc-card p-4 sm:p-5">
               <div className="mb-4 flex items-center justify-between gap-3">
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-ftc-primary">
@@ -1129,7 +1129,7 @@ export default function BookingsPage() {
 
                   <button
                     type="submit"
-                    className="rounded-xl border border-ftc-primary/40 bg-ftc-primary/10 px-5 py-3 text-sm font-semibold uppercase tracking-wide text-ftc-primary/80 shadow-ftc-glow transition hover:border-ftc-primary/50 hover:bg-ftc-primary/15"
+                    className="ftc-btn-primary px-5 py-3 text-sm uppercase tracking-wide disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     Continue to DJ selection
                   </button>
@@ -1164,7 +1164,7 @@ export default function BookingsPage() {
                       value={searchQuery}
                       onChange={(event) => setSearchQuery(event.target.value)}
                       placeholder="Search by name or genre..."
-                      className="w-full rounded-xl border border-ftc-border bg-ftc-surface/80 px-3.5 py-2.5 text-sm text-ftc-text outline-none transition placeholder:text-ftc-text-muted focus:border-ftc-primary/45 focus:ring-2 focus:ring-ftc-primary/15"
+                      className="ftc-input px-3.5 py-2.5"
                     />
                   </label>
 
@@ -1260,7 +1260,7 @@ export default function BookingsPage() {
                       type="button"
                       onClick={requestSendBookingRequests}
                       disabled={sending || sendableSelectedDjIds.length === 0}
-                      className="flex-1 rounded-xl border border-ftc-primary/40 bg-ftc-primary/10 px-4 py-3 text-sm font-semibold uppercase tracking-wide text-ftc-primary/80 shadow-ftc-glow transition hover:border-ftc-primary/50 hover:bg-ftc-primary/15 disabled:cursor-not-allowed disabled:opacity-50"
+                      className="flex-1 ftc-btn-primary w-full px-4 py-3 text-sm uppercase tracking-wide disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       {sending
                         ? "Sending..."
@@ -1286,7 +1286,7 @@ export default function BookingsPage() {
                   <button
                     type="button"
                     onClick={() => openCreateFlow()}
-                    className="mt-6 rounded-xl border border-ftc-primary/40 bg-ftc-primary/10 px-5 py-3 text-sm font-semibold uppercase tracking-wide text-ftc-primary/80 shadow-ftc-glow transition hover:border-ftc-primary/50 hover:bg-ftc-primary/15"
+                    className="mt-6 ftc-btn-primary px-5 py-3 text-sm uppercase tracking-wide disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     Create booking request
                   </button>
@@ -1517,7 +1517,7 @@ function DjGigsTabs({
             onClick={() => onChange(tab.value)}
             className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold uppercase tracking-wide transition ${
               isActive
-                ? "border border-ftc-primary/40 bg-ftc-primary/10 text-ftc-primary shadow-ftc-glow"
+                ? "bg-ftc-primary text-ftc-bg shadow-ftc-glow"
                 : "border border-ftc-border bg-ftc-surface/50 text-ftc-text-secondary hover:border-ftc-primary/25 hover:text-ftc-primary"
             }`}
           >
@@ -1565,7 +1565,7 @@ function PlannerSentViewTabs({
             onClick={() => onChange(tab.value)}
             className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold uppercase tracking-wide transition ${
               isActive
-                ? "border border-ftc-primary/40 bg-ftc-primary/10 text-ftc-primary shadow-ftc-glow"
+                ? "bg-ftc-primary text-ftc-bg shadow-ftc-glow"
                 : "border border-ftc-border bg-ftc-surface/50 text-ftc-text-secondary hover:border-ftc-primary/25 hover:text-ftc-primary"
             }`}
           >
@@ -1631,7 +1631,7 @@ function BookingSectionTabs({
 
 function ReceivedBookingCard({ booking }: { booking: BookingRequest }) {
   return (
-    <li className="rounded-2xl border border-ftc-border bg-ftc-surface/80 p-4 sm:p-5">
+    <li className="ftc-card p-4 sm:p-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0 flex-1">
           <h3 className="text-base font-semibold text-ftc-text">{booking.event_name}</h3>
@@ -1654,7 +1654,7 @@ function ReceivedBookingCard({ booking }: { booking: BookingRequest }) {
           ) : null}
           <Link
             href={`/dm/${booking.conversation_id}`}
-            className="rounded-lg border border-ftc-primary/30 bg-ftc-primary/10 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-ftc-primary transition hover:border-ftc-primary/40 hover:bg-ftc-primary/12"
+            className="ftc-btn-primary px-3 py-1.5 text-xs uppercase tracking-wide"
           >
             Open DM
           </Link>
@@ -1681,7 +1681,7 @@ function BookingHistoryCard({
 }) {
   const cardClass = muted
     ? "rounded-2xl border border-ftc-border/70 bg-ftc-bg-elevated/45 p-4 sm:p-5"
-    : "rounded-2xl border border-ftc-border bg-ftc-surface/80 p-4 sm:p-5";
+    : "ftc-card p-4 sm:p-5";
   const titleClass = muted ? "text-ftc-text-secondary" : "text-ftc-text";
   const detailClass = muted ? "text-ftc-text-muted" : "text-ftc-text";
 
@@ -1758,7 +1758,7 @@ function BookingStatusTabs({
   }
 
   return (
-    <div className="mt-4 rounded-2xl border border-ftc-border bg-ftc-surface/50 p-2">
+    <div className="mt-4 ftc-card p-2">
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         {ACTIVE_STATUS_FILTERS.map((tab) => {
           const isActive = activeFilter === tab.value;
@@ -1770,7 +1770,7 @@ function BookingStatusTabs({
               onClick={() => onChange(tab.value)}
               className={`rounded-xl px-3 py-2.5 text-left transition ${
                 isActive
-                  ? "border border-ftc-primary/40 bg-ftc-primary/10 shadow-ftc-glow"
+                  ? "bg-ftc-primary text-ftc-bg shadow-ftc-glow"
                   : "border border-transparent bg-ftc-bg-elevated/40 hover:border-ftc-border-strong hover:bg-ftc-surface/80"
               }`}
             >
@@ -1810,7 +1810,7 @@ function BookingCampaignCard({
   const campaignStats = getActiveBookingCampaignStats(fullGroup);
 
   return (
-    <li className="rounded-2xl border border-ftc-border bg-ftc-surface/80 p-4 sm:p-5">
+    <li className="ftc-card p-4 sm:p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-ftc-primary">
@@ -1872,7 +1872,7 @@ function BookingCampaignCard({
                 ) : null}
                 <Link
                   href={`/dm/${request.conversation_id}`}
-                  className="rounded-lg border border-ftc-primary/30 bg-ftc-primary/10 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-ftc-primary transition hover:border-ftc-primary/40 hover:bg-ftc-primary/12"
+                  className="ftc-btn-primary px-3 py-1.5 text-xs uppercase tracking-wide"
                 >
                   Open DM
                 </Link>
@@ -1958,7 +1958,7 @@ function BookingField({
           onChange={(event) => onChange(event.target.value)}
           placeholder={placeholder}
           rows={3}
-          className="w-full rounded-xl border border-ftc-border bg-ftc-surface/80 px-3.5 py-2.5 text-sm text-ftc-text outline-none transition placeholder:text-ftc-text-muted focus:border-ftc-primary/45 focus:ring-2 focus:ring-ftc-primary/15"
+          className="ftc-input px-3.5 py-2.5"
         />
       ) : (
         <input
@@ -1967,7 +1967,7 @@ function BookingField({
           onChange={(event) => onChange(event.target.value)}
           placeholder={placeholder}
           required={required}
-          className="w-full rounded-xl border border-ftc-border bg-ftc-surface/80 px-3.5 py-2.5 text-sm text-ftc-text outline-none transition placeholder:text-ftc-text-muted focus:border-ftc-primary/45 focus:ring-2 focus:ring-ftc-primary/15"
+          className="ftc-input px-3.5 py-2.5"
         />
       )}
     </label>

@@ -182,7 +182,7 @@ export default function PlannerCalendar({
   }
 
   return (
-    <section className="rounded-2xl border border-ftc-border bg-ftc-surface/50 p-4 sm:p-5">
+    <section className="ftc-card p-4 sm:p-5">
       <div>
         <h1 className="text-base font-semibold text-ftc-text">Calendar</h1>
         <p className="mt-1 text-sm text-ftc-text-muted">{description}</p>

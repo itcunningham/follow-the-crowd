@@ -50,7 +50,7 @@ export default function PlannerEventsSubNav() {
             href={tab.href}
             className={`rounded-lg px-3 py-1.5 text-xs font-semibold uppercase tracking-wide transition ${
               isActive
-                ? "border border-ftc-primary/40 bg-ftc-primary/10 text-ftc-primary shadow-ftc-glow"
+                ? "bg-ftc-primary text-ftc-bg shadow-ftc-glow"
                 : "border border-ftc-border bg-ftc-surface/50 text-ftc-text-secondary hover:border-ftc-primary/25 hover:text-ftc-primary"
             }`}
           >

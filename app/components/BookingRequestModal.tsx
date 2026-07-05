@@ -143,7 +143,7 @@ export default function BookingRequestModal({
             <button
               type="submit"
               disabled={submitting}
-              className="flex-1 rounded-xl border border-ftc-primary/40 bg-ftc-primary/10 px-4 py-3 text-sm font-semibold uppercase tracking-wide text-ftc-primary/80 shadow-ftc-glow transition hover:border-ftc-primary/50 hover:bg-ftc-primary/15 disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex-1 ftc-btn-primary w-full px-4 py-3 text-sm uppercase tracking-wide disabled:cursor-not-allowed disabled:opacity-50"
             >
               {submitting ? "Sending..." : "Send booking request"}
             </button>
@@ -180,7 +180,7 @@ function BookingField({
           onChange={(event) => onChange(event.target.value)}
           placeholder={placeholder}
           rows={3}
-          className="w-full rounded-xl border border-ftc-border bg-ftc-surface/80 px-3.5 py-2.5 text-sm text-ftc-text outline-none transition placeholder:text-ftc-text-muted focus:border-ftc-primary/45 focus:ring-2 focus:ring-ftc-primary/15"
+          className="ftc-input px-3.5 py-2.5"
         />
       ) : (
         <input
@@ -189,7 +189,7 @@ function BookingField({
           onChange={(event) => onChange(event.target.value)}
           placeholder={placeholder}
           required={required}
-          className="w-full rounded-xl border border-ftc-border bg-ftc-surface/80 px-3.5 py-2.5 text-sm text-ftc-text outline-none transition placeholder:text-ftc-text-muted focus:border-ftc-primary/45 focus:ring-2 focus:ring-ftc-primary/15"
+          className="ftc-input px-3.5 py-2.5"
         />
       )}
     </label>

@@ -128,7 +128,7 @@ export default function SettingsPage() {
             <p className="text-sm text-ftc-text-muted">Loading settings...</p>
           ) : (
             <>
-              <section className="rounded-2xl border border-ftc-border bg-ftc-surface/80 p-4 sm:p-5">
+              <section className="ftc-card p-4 sm:p-5">
                 <h2 className="text-xs font-semibold uppercase tracking-wide text-ftc-primary">
                   Account
                 </h2>
@@ -140,7 +140,7 @@ export default function SettingsPage() {
                 </p>
               </section>
 
-              <section className="rounded-2xl border border-ftc-border bg-ftc-surface/80 p-4 sm:p-5">
+              <section className="ftc-card p-4 sm:p-5">
                 <h2 className="text-xs font-semibold uppercase tracking-wide text-ftc-primary">
                   Account type
                 </h2>
@@ -202,7 +202,7 @@ export default function SettingsPage() {
                 ) : null}
               </section>
 
-              <section className="rounded-2xl border border-ftc-border bg-ftc-surface/80 p-4 sm:p-5">
+              <section className="ftc-card p-4 sm:p-5">
                 <h2 className="text-xs font-semibold uppercase tracking-wide text-ftc-primary">
                   Session
                 </h2>

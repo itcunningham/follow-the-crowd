@@ -341,22 +341,24 @@ export default function EventCrewChatPage() {
                         ) : null}
                         <div>
                           {!isOwnMessage ? (
-                            <p className="mb-1 text-[11px] font-semibold text-ftc-text-secondary">
+                            <p className="mb-1 text-[11px] font-semibold text-ftc-primary">
                               {senderLabel}
                             </p>
                           ) : null}
-                          <div className={`relative rounded-3xl ${getChatNewMessageHighlightClass(highlighted)}`}>
+                          <div className={`relative overflow-hidden ${getChatNewMessageHighlightClass(highlighted)}`}>
                             <div
-                              className={`rounded-3xl px-4 py-2.5 ${
+                              className={
                                 isOwnMessage
-                                  ? "rounded-br-md border border-ftc-primary/35 bg-ftc-primary/10 text-ftc-text shadow-ftc-glow"
-                                  : "rounded-bl-md border border-ftc-border bg-ftc-surface text-ftc-text"
-                              }`}
+                                  ? "ftc-bubble-own px-4 py-2.5"
+                                  : "ftc-bubble-other px-4 py-2.5"
+                              }
                             >
                               <p className="text-[15px] leading-relaxed">{message.text}</p>
                               <time
                                 dateTime={message.created_at}
-                                className="mt-1 block text-[10px] text-ftc-text-muted"
+                                className={`mt-1 block text-[10px] ${
+                                  isOwnMessage ? "text-ftc-bg/70" : "text-ftc-text-muted"
+                                }`}
                               >
                                 {formatMessageTime(message.created_at)}
                               </time>
@@ -389,15 +391,27 @@ export default function EventCrewChatPage() {
                   onChange={(event) => setInput(event.target.value)}
                   onKeyDown={handleKeyDown}
                   placeholder="Message..."
-                  className="min-h-[44px] flex-1 rounded-full border border-ftc-border bg-ftc-surface/80 px-4 py-2.5 text-sm text-ftc-text outline-none transition placeholder:text-ftc-text-muted focus:border-ftc-primary/45 focus:ring-2 focus:ring-ftc-primary/15"
+                  className="ftc-input min-h-[44px] flex-1 rounded-full px-4 py-2.5"
                 />
                 <button
                   type="button"
                   onClick={() => void sendMessage()}
                   disabled={sending || !input.trim()}
-                  className="min-h-[44px] shrink-0 rounded-full border border-ftc-primary/40 bg-ftc-primary/10 px-5 py-2.5 text-sm font-semibold uppercase tracking-wide text-ftc-primary/80 shadow-ftc-glow transition hover:border-ftc-primary/50 hover:bg-ftc-primary/15 disabled:cursor-not-allowed disabled:opacity-50"
+                  aria-label="Send message"
+                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-ftc-primary text-ftc-bg shadow-ftc-glow transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  {sending ? "..." : "Send"}
+                  {sending ? (
+                    <span className="text-xs font-bold">…</span>
+                  ) : (
+                    <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" className="h-5 w-5">
+                      <path
+                        d="m4 12 16-8-4 8 4 8-16-8 4-2-4-2Z"
+                        stroke="currentColor"
+                        strokeWidth="1.75"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  )}
                 </button>
               </div>
             </div>

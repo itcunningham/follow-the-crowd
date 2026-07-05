@@ -71,8 +71,11 @@ export default function DiscoverPage() {
         className={`mx-auto min-h-[100dvh] w-full max-w-2xl bg-ftc-bg font-sans text-ftc-text ${MOBILE_NAV_OFFSET_CLASS}`}
       >
         <AppNavigation />
-        <header className="border-b border-ftc-border px-4 py-4 sm:px-6 md:pt-4">
-          <h1 className="text-xl font-semibold text-ftc-text">Discover</h1>
+        <header className="ftc-page-header px-4 py-4 sm:px-6 md:pt-4">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-ftc-text-muted">
+            Melbourne
+          </p>
+          <h1 className="mt-1 text-2xl font-bold text-ftc-text">Discover</h1>
           <p className="mt-1 text-sm text-ftc-text-muted">
             Browse DJs and promoters in the scene. Message anyone or send bulk booking requests
             from Bookings.
@@ -117,7 +120,7 @@ function DiscoverCard({
   const bioPreview = user.bio?.trim() || "No bio yet.";
 
   return (
-    <li className="overflow-hidden rounded-2xl border border-ftc-border bg-ftc-surface/80 transition hover:border-ftc-primary/25 hover:shadow-ftc-glow">
+    <li className="ftc-card overflow-hidden transition hover:border-ftc-primary/25 hover:shadow-ftc-glow">
       <Link href={`/profile/${user.user_id}`} className="block p-4 sm:p-5">
         <div className="flex items-start gap-3">
           <ProfileAvatar name={displayName} avatarUrl={user.avatar_url} size="md" />
@@ -144,12 +147,12 @@ function DiscoverCard({
           </div>
         </div>
       </Link>
-      <div className="border-t border-ftc-border px-4 py-3 sm:px-5">
+      <div className="border-t border-ftc-border-subtle px-4 py-3 sm:px-5">
         <button
           type="button"
           onClick={onMessage}
           disabled={messaging}
-          className="rounded-xl border border-ftc-primary/40 bg-ftc-primary/10 px-4 py-2 text-sm font-semibold uppercase tracking-wide text-ftc-primary/80 shadow-ftc-glow transition hover:border-ftc-primary/50 hover:bg-ftc-primary/15 disabled:cursor-not-allowed disabled:opacity-50"
+          className="ftc-btn-primary px-4 py-2 text-sm uppercase tracking-wide disabled:cursor-not-allowed disabled:opacity-50"
         >
           {messaging ? "Opening..." : "Message"}
         </button>

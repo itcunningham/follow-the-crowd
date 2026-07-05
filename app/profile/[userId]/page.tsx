@@ -291,7 +291,7 @@ function SectionHeading({ title }: { title: string }) {
 
 function ProfileSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="rounded-2xl border border-ftc-border bg-ftc-surface/80 p-4 sm:p-5">
+    <section className="ftc-card p-4 sm:p-5">
       <h3 className="text-xs font-semibold uppercase tracking-wide text-ftc-primary">{title}</h3>
       <div className="mt-3">{children}</div>
     </section>
@@ -368,7 +368,7 @@ function MessageButton({
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className="w-full rounded-xl border border-ftc-primary/40 bg-ftc-primary/10 px-5 py-3 text-sm font-semibold uppercase tracking-wide text-ftc-primary/80 shadow-ftc-glow transition hover:border-ftc-primary/50 hover:bg-ftc-primary/15 disabled:cursor-not-allowed disabled:opacity-50"
+      className="w-full ftc-btn-primary px-5 py-3 text-sm uppercase tracking-wide disabled:cursor-not-allowed disabled:opacity-50"
     >
       {label}
     </button>

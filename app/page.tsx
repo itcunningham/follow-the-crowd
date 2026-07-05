@@ -303,7 +303,7 @@ export default function Home() {
                 type="button"
                 onClick={generateEventPlan}
                 disabled={loading}
-                className="mt-8 w-full rounded-xl border border-ftc-primary/40 bg-ftc-primary/10 px-6 py-4 text-sm font-bold uppercase tracking-wide text-ftc-primary/80 shadow-ftc-glow transition hover:border-ftc-primary/50 hover:bg-ftc-primary/15 disabled:cursor-not-allowed disabled:opacity-60"
+                className="ftc-btn-primary mt-8 w-full px-6 py-4 text-sm font-bold uppercase tracking-wide disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {loading ? "Generating..." : "Generate AI Event Plan"}
               </button>
@@ -369,7 +369,7 @@ function Field({
         value={value}
         placeholder={placeholder}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full rounded-xl border border-ftc-border bg-ftc-surface/80 px-3.5 py-2.5 text-sm text-ftc-text outline-none transition placeholder:text-ftc-text-muted focus:border-ftc-primary/45 focus:ring-2 focus:ring-ftc-primary/15"
+        className="ftc-input px-3.5 py-2.5"
       />
     </label>
   );

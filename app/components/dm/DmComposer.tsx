@@ -35,6 +35,19 @@ function IconButton({
   );
 }
 
+function SendIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" className="h-5 w-5">
+      <path
+        d="m4 12 16-8-4 8 4 8-16-8 4-2-4-2Z"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 export default function DmComposer({
   value,
   onChange,
@@ -150,16 +163,17 @@ export default function DmComposer({
             onKeyDown={handleKeyDown}
             placeholder="Message..."
             disabled={busy}
-            className="min-h-[44px] min-w-0 flex-1 rounded-full border border-ftc-border bg-ftc-surface/80 px-4 py-2.5 text-sm text-ftc-text outline-none transition placeholder:text-ftc-text-muted focus:border-ftc-primary/45 focus:ring-2 focus:ring-ftc-primary/15 disabled:opacity-50"
+            className="ftc-input min-h-[44px] rounded-full px-4 py-2.5 disabled:opacity-50"
           />
 
           <button
             type="button"
             onClick={onSend}
             disabled={busy || !value.trim()}
-            className="min-h-[44px] shrink-0 rounded-full border border-ftc-primary/40 bg-ftc-primary/10 px-4 py-2.5 text-sm font-semibold uppercase tracking-wide text-ftc-primary/80 shadow-ftc-glow transition hover:border-ftc-primary/50 hover:bg-ftc-primary/15 disabled:cursor-not-allowed disabled:opacity-50"
+            aria-label="Send message"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-ftc-primary text-ftc-bg shadow-ftc-glow transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {busy ? "..." : "Send"}
+            {busy ? <span className="text-xs font-bold">…</span> : <SendIcon />}
           </button>
         </div>
 
@@ -176,16 +190,17 @@ export default function DmComposer({
           onKeyDown={handleKeyDown}
           placeholder="Message..."
           disabled={busy}
-          className="min-h-[44px] min-w-0 flex-1 rounded-full border border-ftc-border bg-ftc-surface/80 px-4 py-2.5 text-sm text-ftc-text outline-none transition placeholder:text-ftc-text-muted focus:border-ftc-primary/45 focus:ring-2 focus:ring-ftc-primary/15 disabled:opacity-50"
+          className="ftc-input min-h-[44px] min-w-0 flex-1 rounded-full px-4 py-2.5 disabled:opacity-50"
         />
 
         <button
           type="button"
           onClick={onSend}
           disabled={busy || !value.trim()}
-          className="min-h-[44px] shrink-0 rounded-full border border-ftc-primary/40 bg-ftc-primary/10 px-5 py-2.5 text-sm font-semibold uppercase tracking-wide text-ftc-primary/80 shadow-ftc-glow transition hover:border-ftc-primary/50 hover:bg-ftc-primary/15 disabled:cursor-not-allowed disabled:opacity-50"
+          aria-label="Send message"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-ftc-primary text-ftc-bg shadow-ftc-glow transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {busy ? "..." : "Send"}
+          {busy ? <span className="text-xs font-bold">…</span> : <SendIcon />}
         </button>
       </div>
 

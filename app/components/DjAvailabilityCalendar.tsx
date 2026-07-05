@@ -900,7 +900,7 @@ export default function DjAvailabilityCalendar({
 
   return (
     <div className="space-y-4">
-      <section className="rounded-2xl border border-ftc-border bg-ftc-surface/50 p-4 sm:p-5">
+      <section className="ftc-card p-4 sm:p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <h2 className="text-base font-semibold text-ftc-text">Calendar</h2>

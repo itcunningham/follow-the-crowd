@@ -80,11 +80,11 @@ export default function DmTextMessageBubble({
         <div className={`min-w-0 ${isOwnMessage ? "items-end" : "items-start"} flex flex-col`}>
           <div className={`relative rounded-3xl ${highlightClass}`}>
             <div
-              className={`overflow-hidden rounded-3xl ${
+              className={`overflow-hidden ${
                 isOwnMessage
-                  ? "rounded-br-md border border-ftc-primary/35 bg-ftc-primary/10 text-ftc-text shadow-ftc-glow"
-                  : "rounded-bl-md border border-ftc-border bg-ftc-surface text-ftc-text"
-              } ${hasAttachments && !hasText ? "p-1" : "px-4 py-2.5"}`}
+                  ? `ftc-bubble-own ${hasAttachments && !hasText ? "p-1" : "px-4 py-2.5"}`
+                  : `ftc-bubble-other ${hasAttachments && !hasText ? "p-1" : "px-4 py-2.5"}`
+              }`}
             >
               {hasAttachments ? (
                 <div className={`space-y-2 ${hasText ? "mb-2" : ""}`}>
@@ -106,7 +106,7 @@ export default function DmTextMessageBubble({
                 dateTime={createdAt}
                 className={`mt-1 block w-full text-[10px] ${
                   isOwnMessage
-                    ? "text-right text-ftc-primary/90/70"
+                    ? "text-right text-ftc-bg/70"
                     : "text-left text-ftc-text-muted"
                 } ${hasAttachments && !hasText ? "px-1 pb-0.5" : ""}`}
               >
@@ -128,9 +128,7 @@ export default function DmTextMessageBubble({
           />
 
           {isOwnMessage && showSeen ? (
-            <p className="mt-0.5 self-end text-right text-[11px] font-medium text-ftc-text-muted">
-              Seen
-            </p>
+            <p className="ftc-seen-label mt-0.5 self-end text-right">Seen</p>
           ) : null}
 
           {!isOwnMessage && onReportMessage ? (

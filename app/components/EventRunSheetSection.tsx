@@ -583,7 +583,7 @@ export default function EventRunSheetSection({
     "rounded-lg border border-ftc-border bg-ftc-bg-elevated/30 px-2.5 py-1.5 text-sm leading-relaxed text-ftc-text whitespace-pre-wrap break-words";
 
   return (
-    <section className="mb-6 rounded-2xl border border-ftc-border bg-ftc-surface/80 p-4 sm:p-5">
+    <section className="mb-6 ftc-card p-4 sm:p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-ftc-primary">
@@ -607,7 +607,7 @@ export default function EventRunSheetSection({
               type="button"
               onClick={handleSave}
               disabled={saving}
-              className="rounded-lg border border-ftc-primary/30 bg-ftc-primary/10 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-ftc-primary transition hover:border-ftc-primary/40 hover:bg-ftc-primary/12 disabled:cursor-not-allowed disabled:opacity-50"
+              className="ftc-btn-primary px-3 py-1.5 text-xs uppercase tracking-wide disabled:cursor-not-allowed disabled:opacity-50"
             >
               {saving ? "Saving..." : "Save changes"}
             </button>
