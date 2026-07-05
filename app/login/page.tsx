@@ -33,7 +33,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-[100dvh] items-center justify-center bg-[#070708] px-4 py-10 font-sans text-zinc-100">
+    <div className="flex min-h-[100dvh] items-start justify-center bg-[#070708] px-4 pb-10 pt-[max(2.5rem,env(safe-area-inset-top))] font-sans text-zinc-100 sm:items-center sm:py-10">
       <div className="w-full max-w-md rounded-2xl border border-zinc-800 bg-zinc-900/80 p-6 shadow-[0_0_40px_rgba(59,130,246,0.12)] sm:p-8">
         <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-blue-400">
           Follow The Crowd

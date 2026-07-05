@@ -125,7 +125,7 @@ export default function DmConversationDetailsPanel({
           role="dialog"
           aria-modal="true"
           aria-labelledby="dm-details-title"
-          className="flex max-h-[90dvh] w-full max-w-lg flex-col overflow-hidden rounded-t-3xl border border-zinc-800/80 bg-[#070708] shadow-[0_24px_64px_rgba(0,0,0,0.55)] sm:rounded-3xl"
+          className="flex max-h-[90dvh] w-full max-w-lg flex-col overflow-hidden rounded-t-3xl border border-zinc-800/80 bg-[#070708] pb-[env(safe-area-inset-bottom)] shadow-[0_24px_64px_rgba(0,0,0,0.55)] sm:rounded-3xl sm:pb-0"
           onClick={(event) => event.stopPropagation()}
         >
           <div className="flex items-center justify-between border-b border-zinc-800/80 px-4 py-3 sm:px-5">
@@ -212,7 +212,7 @@ export default function DmConversationDetailsPanel({
             role="dialog"
             aria-modal="true"
             aria-labelledby="block-user-title"
-            className="w-full max-w-md rounded-2xl border border-zinc-700/80 bg-zinc-950 p-4 shadow-[0_24px_64px_rgba(0,0,0,0.55)] sm:p-5"
+            className="max-h-[90dvh] w-full max-w-md overflow-y-auto overscroll-contain rounded-t-2xl border border-zinc-700/80 bg-zinc-950 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-[0_24px_64px_rgba(0,0,0,0.55)] sm:rounded-2xl sm:p-5"
             onClick={(event) => event.stopPropagation()}
           >
             <h3 id="block-user-title" className="text-base font-semibold text-zinc-50">

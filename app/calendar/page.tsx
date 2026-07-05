@@ -30,7 +30,7 @@ export default function CalendarPage() {
 
   return (
     <OnboardingGuard>
-      <div className={`min-h-screen bg-[#070708] text-zinc-100 ${MOBILE_NAV_OFFSET_CLASS}`}>
+      <div className={`min-h-[100dvh] bg-[#070708] text-zinc-100 ${MOBILE_NAV_OFFSET_CLASS}`}>
         <AppNavigation />
 
         <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">

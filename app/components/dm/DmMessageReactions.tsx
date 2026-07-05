@@ -30,8 +30,11 @@ export default function DmMessageReactions({
   const showIdleReactButton = summaries.length === 0 && !showPicker;
   const columnAlignmentClass = isOwnMessage ? "items-end" : "items-start";
   const pickerPositionClass = isOwnMessage
-    ? "right-full top-1/2 mr-2 -translate-y-1/2"
-    : "left-full top-1/2 ml-2 -translate-y-1/2";
+    ? "bottom-full right-0 mb-2 max-sm:left-1/2 max-sm:right-auto max-sm:-translate-x-1/2 sm:top-1/2 sm:right-full sm:mr-2 sm:mb-0 sm:-translate-y-1/2 sm:translate-x-0"
+    : "bottom-full left-0 mb-2 max-sm:left-1/2 max-sm:-translate-x-1/2 sm:top-1/2 sm:left-full sm:ml-2 sm:mb-0 sm:-translate-y-1/2 sm:translate-x-0";
+  const idleReactVisibilityClass = prominentActions
+    ? "opacity-100"
+    : "opacity-100 sm:opacity-0 sm:group-hover/message:opacity-100";
 
   return (
     <div className={`mt-1 flex max-w-full flex-col gap-1 ${columnAlignmentClass}`}>
@@ -69,9 +72,7 @@ export default function DmMessageReactions({
             type="button"
             aria-label="Add reaction"
             onClick={onOpenPicker}
-            className={`rounded-full border border-transparent px-2 py-0.5 text-[11px] text-zinc-500 transition hover:border-zinc-700 hover:bg-zinc-900/70 hover:text-zinc-300 ${
-              prominentActions ? "opacity-100" : "opacity-0 group-hover/message:opacity-100"
-            }`}
+            className={`rounded-full border border-transparent px-2 py-0.5 text-[11px] text-zinc-500 transition hover:border-zinc-700 hover:bg-zinc-900/70 hover:text-zinc-300 ${idleReactVisibilityClass}`}
           >
             React
           </button>
@@ -92,7 +93,7 @@ export default function DmMessageReactions({
             <button
               type="button"
               aria-label="Close reaction picker"
-              className="fixed inset-0 z-40"
+              className="fixed inset-0 z-[55]"
               onClick={onClosePicker}
             />
             <div className={`${PICKER_CLASS} ${pickerPositionClass}`}>

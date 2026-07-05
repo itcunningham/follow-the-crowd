@@ -51,11 +51,13 @@ function parseInboxTab(tab: string | null): InboxTab {
 function InboxTabButton({
   active,
   label,
+  mobileLabel,
   unreadCount,
   onClick,
 }: {
   active: boolean;
   label: string;
+  mobileLabel?: string;
   unreadCount: number;
   onClick: () => void;
 }) {
@@ -65,13 +67,16 @@ function InboxTabButton({
       role="tab"
       aria-selected={active}
       onClick={onClick}
-      className={`relative flex flex-1 items-center justify-center gap-2 border-b-2 px-3 py-3 text-sm font-semibold transition ${
+      className={`relative flex min-w-0 flex-1 items-center justify-center gap-1.5 border-b-2 px-2 py-3 text-sm font-semibold transition sm:gap-2 sm:px-3 ${
         active
           ? "border-blue-500 text-zinc-50"
           : "border-transparent text-zinc-500 hover:text-zinc-300"
       }`}
     >
-      {label}
+      <span className="min-w-0 truncate">
+        <span className="sm:hidden">{mobileLabel ?? label}</span>
+        <span className="hidden sm:inline">{label}</span>
+      </span>
       {unreadCount > 0 ? (
         <span
           className={`flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] font-bold leading-none ${
@@ -805,12 +810,14 @@ function DmInboxPageContent() {
             <InboxTabButton
               active={activeTab === "dm"}
               label="Direct Messages"
+              mobileLabel="DMs"
               unreadCount={dmUnreadCount}
               onClick={() => selectInboxTab("dm")}
             />
             <InboxTabButton
               active={activeTab === "group"}
               label="Group Chats"
+              mobileLabel="Groups"
               unreadCount={groupUnreadCount}
               onClick={() => selectInboxTab("group")}
             />

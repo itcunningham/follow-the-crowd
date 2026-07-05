@@ -128,7 +128,9 @@ export default function DmTextMessageBubble({
           />
 
           {isOwnMessage && showSeen ? (
-            <p className="mt-0.5 pr-0.5 text-[11px] font-medium text-zinc-500">Seen</p>
+            <p className="mt-0.5 self-end text-right text-[11px] font-medium text-zinc-500">
+              Seen
+            </p>
           ) : null}
 
           {!isOwnMessage && onReportMessage ? (

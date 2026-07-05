@@ -45,7 +45,7 @@ export default function Home() {
       <AppNavigation />
       {/* Nav */}
       <header className="sticky top-0 z-50 border-b border-zinc-800/80 bg-[#070708]/85 backdrop-blur-md">
-        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
+        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
           <div className="flex items-center gap-2.5">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-blue-500/30 bg-zinc-900 text-xs font-bold tracking-wider text-blue-300 shadow-[0_0_18px_rgba(59,130,246,0.3)]">
               FTC
@@ -80,7 +80,7 @@ export default function Home() {
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_50%_40%_at_10%_60%,rgba(37,99,235,0.06),transparent)]" />
         <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_110%)]" />
 
-        <div className="relative mx-auto max-w-6xl px-6 pb-24 pt-20 sm:pb-32 sm:pt-28">
+        <div className="relative mx-auto max-w-6xl px-4 pb-24 pt-20 sm:px-6 sm:pb-32 sm:pt-28">
           <div className="mx-auto max-w-3xl text-center">
             <p className="mb-6 inline-flex items-center rounded-full border border-zinc-700/80 bg-zinc-900/80 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-blue-400 shadow-[0_0_24px_rgba(59,130,246,0.15)]">
               Crowd intel for Promoters
@@ -123,7 +123,7 @@ export default function Home() {
                 <span className="h-2.5 w-2.5 rounded-full bg-blue-500/70 shadow-[0_0_8px_rgba(59,130,246,0.7)]" />
                 <span className="h-2.5 w-2.5 rounded-full bg-sky-400/70 shadow-[0_0_8px_rgba(56,189,248,0.6)]" />
                 <span className="h-2.5 w-2.5 rounded-full bg-blue-400/60 shadow-[0_0_8px_rgba(96,165,250,0.5)]" />
-                <span className="ml-3 font-mono text-xs text-zinc-500">
+                <span className="ml-3 min-w-0 truncate font-mono text-xs text-zinc-500">
                   followthecrowd.app / backroom
                 </span>
               </div>

@@ -190,7 +190,7 @@ export default function ProfileSetupPage() {
   }
 
   return (
-    <div className="min-h-[100dvh] bg-[#070708] px-4 py-10 font-sans text-zinc-100 sm:px-6">
+    <div className="min-h-[100dvh] bg-[#070708] px-4 pb-[max(2.5rem,env(safe-area-inset-bottom))] pt-[max(2.5rem,env(safe-area-inset-top))] font-sans text-zinc-100 sm:px-6 sm:py-10">
       <div className="mx-auto w-full max-w-2xl">
         <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-blue-400">
           Profile

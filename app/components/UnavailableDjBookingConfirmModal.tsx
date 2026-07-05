@@ -38,7 +38,7 @@ export default function UnavailableDjBookingConfirmModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="unavailable-dj-booking-title"
-        className="w-full max-w-md rounded-2xl border border-zinc-700/80 bg-zinc-950 p-4 shadow-[0_24px_64px_rgba(0,0,0,0.55)] sm:p-5"
+        className="max-h-[90dvh] w-full max-w-md overflow-y-auto overscroll-contain rounded-t-2xl border border-zinc-700/80 bg-zinc-950 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-[0_24px_64px_rgba(0,0,0,0.55)] sm:rounded-2xl sm:p-5"
         onClick={(event) => event.stopPropagation()}
       >
         <h2 id="unavailable-dj-booking-title" className="text-base font-semibold text-zinc-50">

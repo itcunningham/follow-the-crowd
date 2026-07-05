@@ -175,7 +175,7 @@ export function BookingTimeWheelPicker({
         role="dialog"
         aria-modal="true"
         aria-labelledby="booking-time-picker-title"
-        className="relative w-full max-w-sm overflow-hidden rounded-t-3xl border border-zinc-800 bg-[#0a0a0c] shadow-[0_0_40px_rgba(59,130,246,0.15)] sm:rounded-3xl"
+        className="relative max-h-[90dvh] w-full max-w-sm overflow-hidden overflow-y-auto rounded-t-3xl border border-zinc-800 bg-[#0a0a0c] pb-[env(safe-area-inset-bottom)] shadow-[0_0_40px_rgba(59,130,246,0.15)] sm:rounded-3xl sm:pb-0"
       >
         <div className="flex items-center justify-between border-b border-zinc-800/80 px-4 py-3">
           <button
@@ -325,7 +325,7 @@ export function BookingDualTimeWheelPicker({
         role="dialog"
         aria-modal="true"
         aria-labelledby="booking-dual-time-picker-title"
-        className="relative w-full max-w-sm overflow-hidden rounded-t-3xl border border-zinc-800 bg-[#0a0a0c] shadow-[0_0_40px_rgba(59,130,246,0.15)] sm:rounded-3xl"
+        className="relative max-h-[90dvh] w-full max-w-sm overflow-hidden overflow-y-auto rounded-t-3xl border border-zinc-800 bg-[#0a0a0c] pb-[env(safe-area-inset-bottom)] shadow-[0_0_40px_rgba(59,130,246,0.15)] sm:rounded-3xl sm:pb-0"
       >
         <div className="flex items-center justify-between border-b border-zinc-800/80 px-4 py-3">
           <button

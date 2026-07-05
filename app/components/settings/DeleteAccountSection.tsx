@@ -141,13 +141,13 @@ export default function DeleteAccountSection({
           className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-4 sm:items-center"
           onClick={closeModal}
         >
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="delete-account-title"
-            className="w-full max-w-md rounded-2xl border border-red-500/30 bg-zinc-950 p-4 shadow-[0_24px_64px_rgba(0,0,0,0.55)] sm:p-5"
-            onClick={(event) => event.stopPropagation()}
-          >
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="delete-account-title"
+          className="max-h-[90dvh] w-full max-w-md overflow-y-auto overscroll-contain rounded-t-2xl border border-red-500/30 bg-zinc-950 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-[0_24px_64px_rgba(0,0,0,0.55)] sm:rounded-2xl sm:p-5"
+          onClick={(event) => event.stopPropagation()}
+        >
             <h3 id="delete-account-title" className="text-base font-semibold text-zinc-50">
               Delete your account permanently?
             </h3>

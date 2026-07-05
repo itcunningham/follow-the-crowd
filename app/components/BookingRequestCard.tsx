@@ -24,7 +24,7 @@ function StatusBadge({ status }: { status: BookingRequestStatus }) {
 
   return (
     <span
-      className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide ${getBookingStatusBadgeClass(status)}`}
+      className={`shrink-0 rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide ${getBookingStatusBadgeClass(status)}`}
     >
       {label}
     </span>
@@ -59,12 +59,14 @@ export default function BookingRequestCard({
 
   return (
     <div className="w-full max-w-sm rounded-2xl border border-blue-500/45 bg-blue-600/10 p-4 shadow-[0_0_20px_rgba(59,130,246,0.15)]">
-      <div className="flex items-start justify-between gap-3">
-        <div>
+      <div className="flex min-w-0 items-start justify-between gap-2">
+        <div className="min-w-0 flex-1">
           <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-blue-400">
             Booking request
           </p>
-          <h3 className="mt-1 text-base font-semibold text-zinc-50">{booking.event_name}</h3>
+          <h3 className="mt-1 truncate text-base font-semibold text-zinc-50">
+            {booking.event_name}
+          </h3>
         </div>
         <StatusBadge status={booking.status} />
       </div>
@@ -153,7 +155,7 @@ function BookingDetail({
   return (
     <div>
       <dt className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">{label}</dt>
-      <dd className={`mt-0.5 ${muted ? "text-zinc-500" : "text-zinc-200"}`}>{value}</dd>
+      <dd className={`mt-0.5 break-words ${muted ? "text-zinc-500" : "text-zinc-200"}`}>{value}</dd>
     </div>
   );
 }
