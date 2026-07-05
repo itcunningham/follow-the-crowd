@@ -140,27 +140,23 @@ export function resolveRunSheetRowDjDisplay(
   };
 }
 
-export function getAssignableAcceptedBookingsForRow(
-  lineup: BookingRequest[],
+export function filterRunSheetRowsToAcceptedBookings(
   rows: RunSheetRowInput[],
-  rowId: string,
-): BookingRequest[] {
-  const assignedRecipientIds = new Set(
-    rows
-      .filter((row) => row.id !== rowId && row.booking_recipient_id?.trim())
-      .map((row) => row.booking_recipient_id!.trim()),
-  );
-  const assignedBookingIds = new Set(
-    rows
-      .filter((row) => row.id !== rowId && row.booking_request_id?.trim())
-      .map((row) => row.booking_request_id!.trim()),
-  );
+  lineup: BookingRequest[],
+  profiles: Map<string, BookingRecipientProfile>,
+): RunSheetRowInput[] {
+  const acceptedBookings = lineup.filter((booking) => booking.status === "accepted");
 
-  return lineup.filter(
-    (booking) =>
-      booking.status === "accepted" &&
-      !assignedRecipientIds.has(booking.recipient_id) &&
-      !assignedBookingIds.has(booking.id),
+  if (acceptedBookings.length === 0) {
+    return [];
+  }
+
+  return rows.filter((row) =>
+    acceptedBookings.some((booking) => {
+      const profile = profiles.get(booking.recipient_id);
+      const artistName = profile?.display_name?.trim() || "DJ";
+      return runSheetRowMatchesAcceptedBooking(row, booking, artistName);
+    }),
   );
 }
 

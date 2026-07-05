@@ -18,12 +18,10 @@ import {
   type WheelTimeValue,
 } from "@/lib/bookingDateTime";
 import {
-  createEmptyRunSheetRow,
   ensureRunSheetRowsForAcceptedBookings,
-  getAssignableAcceptedBookingsForRow,
+  filterRunSheetRowsToAcceptedBookings,
   getRunSheetLoadErrorMessage,
   getRunSheetSaveErrorMessage,
-  isPersistedRunSheetRowId,
   loadEventRunSheet,
   logRunSheetSaveError,
   mapRunSheetRowsFromDb,
@@ -95,30 +93,6 @@ function RowMoveButton({
         ) : (
           <path d="M12 5v14M5 12l7 7 7-7" />
         )}
-      </svg>
-    </button>
-  );
-}
-
-function RowRemoveButton({ onClick }: { onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-label="Remove row"
-      title="Remove row"
-      className={`${iconButtonBaseClassName} border-0 bg-[var(--ftc-color-danger)] text-ftc-bg hover:opacity-90`}
-    >
-      <svg
-        aria-hidden="true"
-        viewBox="0 0 24 24"
-        className="h-4 w-4"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-      >
-        <path d="M6 6l12 12M18 6 6 18" />
       </svg>
     </button>
   );
@@ -404,7 +378,7 @@ function RunSheetDjIdentity({
   if (!dj.displayName) {
     return (
       <div className={`${readOnlyTextClassName} flex min-h-[2.25rem] items-center text-ftc-text-muted`}>
-        Unassigned
+        —
       </div>
     );
   }
@@ -428,80 +402,6 @@ function RunSheetDjIdentity({
   }
 
   return <div className="flex min-h-[2.25rem] items-center gap-2 px-1 py-0.5">{identity}</div>;
-}
-
-function RunSheetDjField({
-  row,
-  rows,
-  lineup,
-  profiles,
-  canEdit,
-  readOnlyTextClassName,
-  onAssign,
-}: {
-  row: RunSheetRowInput;
-  rows: RunSheetRowInput[];
-  lineup: BookingRequest[];
-  profiles: Map<string, BookingRecipientProfile>;
-  canEdit: boolean;
-  readOnlyTextClassName: string;
-  onAssign: (rowId: string, bookingId: string) => void;
-}) {
-  const dj = resolveRunSheetRowDjDisplay(row, lineup, profiles);
-
-  if (!canEdit) {
-    return (
-      <RunSheetDjIdentity
-        row={row}
-        lineup={lineup}
-        profiles={profiles}
-        readOnlyTextClassName={readOnlyTextClassName}
-      />
-    );
-  }
-
-  if (dj.isAssigned) {
-    return (
-      <RunSheetDjIdentity
-        row={row}
-        lineup={lineup}
-        profiles={profiles}
-        readOnlyTextClassName={readOnlyTextClassName}
-      />
-    );
-  }
-
-  const assignableBookings = getAssignableAcceptedBookingsForRow(lineup, rows, row.id!);
-  const selectedBookingId = row.booking_request_id?.trim() ?? "";
-
-  if (assignableBookings.length === 0) {
-    return (
-      <div className={`${readOnlyTextClassName} flex min-h-[2.25rem] items-center text-ftc-text-muted`}>
-        No accepted DJs
-      </div>
-    );
-  }
-
-  return (
-    <select
-      value={selectedBookingId}
-      onChange={(event) => onAssign(row.id!, event.target.value)}
-      aria-label="Assign DJ"
-      className="ftc-field-trigger w-full min-h-[2.25rem] rounded-lg px-2 py-1.5 text-xs text-ftc-text [color-scheme:dark]"
-    >
-      <option value="">Assign DJ</option>
-      {assignableBookings.map((booking) => {
-        const profile = profiles.get(booking.recipient_id);
-        const displayName = profile?.display_name?.trim() || "DJ";
-
-        return (
-          <option key={booking.id} value={booking.id}>
-            {displayName}
-          </option>
-        );
-      })}
-    </select>
-  );
 }
 
 function renderRunSheetFieldInput({
@@ -571,7 +471,6 @@ export default function EventRunSheetSection({
   onSaved?: (message: string) => void;
 }) {
   const [rows, setRows] = useState<RunSheetRowInput[]>([]);
-  const [deletedRowIds, setDeletedRowIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -581,30 +480,42 @@ export default function EventRunSheetSection({
   const syncAcceptedDjs = useCallback(
     async (currentRows: RunSheetRowInput[]) => {
       if (syncInFlightRef.current) {
-        return currentRows;
+        return filterRunSheetRowsToAcceptedBookings(currentRows, lineup, profiles);
       }
 
       const { addedCount } = mergeAcceptedDjsIntoRunSheetRows(currentRows, lineup, profiles);
 
       if (addedCount === 0) {
-        return currentRows;
+        return filterRunSheetRowsToAcceptedBookings(currentRows, lineup, profiles);
       }
 
       if (!canEdit) {
-        return mergeAcceptedDjsIntoRunSheetRows(currentRows, lineup, profiles).rows;
+        return filterRunSheetRowsToAcceptedBookings(
+          mergeAcceptedDjsIntoRunSheetRows(currentRows, lineup, profiles).rows,
+          lineup,
+          profiles,
+        );
       }
 
       syncInFlightRef.current = true;
 
       try {
         const saved = await ensureRunSheetRowsForAcceptedBookings(eventId, lineup, profiles);
-        return reorderRunSheetRows(mapRunSheetRowsFromDb(saved.rows));
+        return filterRunSheetRowsToAcceptedBookings(
+          reorderRunSheetRows(mapRunSheetRowsFromDb(saved.rows)),
+          lineup,
+          profiles,
+        );
       } catch (autoSaveError) {
         console.error(
           "Accepted DJ auto-add save failed; rows stay local until Save changes:",
           autoSaveError,
         );
-        return mergeAcceptedDjsIntoRunSheetRows(currentRows, lineup, profiles).rows;
+        return filterRunSheetRowsToAcceptedBookings(
+          mergeAcceptedDjsIntoRunSheetRows(currentRows, lineup, profiles).rows,
+          lineup,
+          profiles,
+        );
       } finally {
         syncInFlightRef.current = false;
       }
@@ -621,7 +532,6 @@ export default function EventRunSheetSection({
       const loadedRows = reorderRunSheetRows(mapRunSheetRowsFromDb(data.rows));
       const mergedRows = await syncAcceptedDjs(loadedRows);
       setRows(mergedRows);
-      setDeletedRowIds([]);
     } catch (loadError) {
       console.error("Failed to load run sheet:", loadError);
       setRows([]);
@@ -639,46 +549,8 @@ export default function EventRunSheetSection({
     setRows((prev) => prev.map((row) => (row.id === rowId ? { ...row, ...patch } : row)));
   }
 
-  function handleAddRow() {
-    setRows((prev) => reorderRunSheetRows([...prev, createEmptyRunSheetRow(prev.length)]));
-    setSuccessMessage(null);
-  }
-
-  function handleRemoveRow(rowId: string) {
-    setRows((prev) => reorderRunSheetRows(prev.filter((row) => row.id !== rowId)));
-
-    if (isPersistedRunSheetRowId(rowId)) {
-      setDeletedRowIds((prev) => [...prev, rowId]);
-    }
-  }
-
   function handleMoveRow(rowId: string, direction: "up" | "down") {
     setRows((prev) => moveRunSheetRow(prev, rowId, direction));
-  }
-
-  function handleAssignDj(rowId: string, bookingId: string) {
-    if (!bookingId) {
-      updateRow(rowId, {
-        booking_request_id: "",
-        booking_recipient_id: "",
-        artist_name: "",
-      });
-      return;
-    }
-
-    const booking = lineup.find((item) => item.id === bookingId);
-
-    if (!booking || booking.status !== "accepted") {
-      return;
-    }
-
-    const profile = profiles.get(booking.recipient_id);
-    updateRow(rowId, {
-      booking_request_id: booking.id,
-      booking_recipient_id: booking.recipient_id,
-      artist_name: profile?.display_name?.trim() || "DJ",
-    });
-    setSuccessMessage(null);
   }
 
   async function handleSave() {
@@ -689,11 +561,16 @@ export default function EventRunSheetSection({
     try {
       const saved = await saveEventRunSheet(eventId, {
         rows: reorderRunSheetRows(rows),
-        deletedRowIds,
+        deletedRowIds: [],
       });
 
-      setRows(reorderRunSheetRows(mapRunSheetRowsFromDb(saved.rows)));
-      setDeletedRowIds([]);
+      setRows(
+        filterRunSheetRowsToAcceptedBookings(
+          reorderRunSheetRows(mapRunSheetRowsFromDb(saved.rows)),
+          lineup,
+          profiles,
+        ),
+      );
 
       const message = "Run sheet saved";
       setSuccessMessage(message);
@@ -727,15 +604,8 @@ export default function EventRunSheetSection({
           ) : null}
         </div>
 
-        {canEdit ? (
+        {canEdit && rows.length > 0 ? (
           <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={handleAddRow}
-              className="ftc-btn-secondary px-3 py-1.5 text-xs uppercase tracking-wide"
-            >
-              Add row
-            </button>
             <button
               type="button"
               onClick={handleSave}
@@ -764,7 +634,9 @@ export default function EventRunSheetSection({
         <p className="mt-6 text-sm text-ftc-text-muted">Loading run sheet...</p>
       ) : rows.length === 0 ? (
         <div className="ftc-card-empty mt-6 px-4 py-8 text-center">
-          <p className="text-sm text-ftc-text-secondary">No run sheet rows yet. Add your first DJ set.</p>
+          <p className="text-sm text-ftc-text-secondary">
+            Accepted DJs will appear here once they confirm their booking.
+          </p>
         </div>
       ) : (
         <>
@@ -801,14 +673,11 @@ export default function EventRunSheetSection({
                 {rows.map((row, rowIndex) => (
                   <tr key={row.id} className="align-top">
                     <td className={`${RUN_SHEET_DJ_COLUMN_CLASS} border-b border-ftc-border/70 px-2 py-2 align-top`}>
-                      <RunSheetDjField
+                      <RunSheetDjIdentity
                         row={row}
-                        rows={rows}
                         lineup={lineup}
                         profiles={profiles}
-                        canEdit={canEdit}
                         readOnlyTextClassName={readOnlyTextClassName}
-                        onAssign={handleAssignDj}
                       />
                     </td>
                     <td className={`${RUN_SHEET_STAGE_COLUMN_CLASS} border-b border-ftc-border/70 px-2 py-2 align-top`}>
@@ -857,7 +726,6 @@ export default function EventRunSheetSection({
                             onClick={() => handleMoveRow(row.id!, "down")}
                             disabled={rowIndex === rows.length - 1}
                           />
-                          <RowRemoveButton onClick={() => handleRemoveRow(row.id!)} />
                         </div>
                       </td>
                     ) : null}
@@ -889,7 +757,6 @@ export default function EventRunSheetSection({
                         onClick={() => handleMoveRow(row.id!, "down")}
                         disabled={index === rows.length - 1}
                       />
-                      <RowRemoveButton onClick={() => handleRemoveRow(row.id!)} />
                     </div>
                   ) : null}
                 </div>
@@ -899,14 +766,11 @@ export default function EventRunSheetSection({
                     <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted">
                       DJ
                     </span>
-                    <RunSheetDjField
+                    <RunSheetDjIdentity
                       row={row}
-                      rows={rows}
                       lineup={lineup}
                       profiles={profiles}
-                      canEdit={canEdit}
                       readOnlyTextClassName={readOnlyTextClassName}
-                      onAssign={handleAssignDj}
                     />
                   </label>
 
