@@ -115,12 +115,27 @@ export async function getUnreadEventChatIds(
   return unread;
 }
 
-async function upsertMessageRead(values: {
-  conversation_id?: string;
-  event_id?: string;
-}) {
+export function resolveMarkReadTimestamp(readThroughCreatedAt?: string | null): string {
+  const nowMs = Date.now();
+  const readThroughMs = readThroughCreatedAt
+    ? new Date(readThroughCreatedAt).getTime()
+    : Number.NEGATIVE_INFINITY;
+
+  if (!Number.isFinite(readThroughMs)) {
+    return new Date(nowMs).toISOString();
+  }
+
+  return new Date(Math.max(nowMs, readThroughMs)).toISOString();
+}
+
+async function upsertMessageRead(
+  values: {
+    conversation_id?: string;
+    event_id?: string;
+  },
+  lastReadAt: string,
+) {
   const userId = await getCurrentUserId();
-  const now = new Date().toISOString();
 
   let query = supabase.from("message_reads").select("id").eq("user_id", userId);
 
@@ -139,7 +154,7 @@ async function upsertMessageRead(values: {
   if (existing?.id) {
     const { error: updateError } = await supabase
       .from("message_reads")
-      .update({ last_read_at: now })
+      .update({ last_read_at: lastReadAt })
       .eq("id", existing.id);
 
     if (updateError) {
@@ -153,7 +168,7 @@ async function upsertMessageRead(values: {
     user_id: userId,
     conversation_id: values.conversation_id ?? null,
     event_id: values.event_id ?? null,
-    last_read_at: now,
+    last_read_at: lastReadAt,
   });
 
   if (insertError) {
@@ -161,8 +176,32 @@ async function upsertMessageRead(values: {
   }
 }
 
-export async function markConversationRead(conversationId: string) {
-  await upsertMessageRead({ conversation_id: conversationId });
+export async function markConversationRead(
+  conversationId: string,
+  options?: { readThroughCreatedAt?: string | null },
+) {
+  const userId = await getCurrentUserId();
+  const lastReadAt = resolveMarkReadTimestamp(options?.readThroughCreatedAt);
+
+  console.log("[reads] current user id", userId);
+  console.log("[reads] conversation id", conversationId);
+
+  try {
+    await upsertMessageRead({ conversation_id: conversationId }, lastReadAt);
+    console.log("[reads] mark read result", {
+      conversationId,
+      userId,
+      lastReadAt,
+      readThroughCreatedAt: options?.readThroughCreatedAt ?? null,
+    });
+  } catch (error) {
+    console.log("[reads] mark read result", {
+      conversationId,
+      userId,
+      error: getMessageReadsLoadErrorMessage(error),
+    });
+    throw error;
+  }
 
   if (typeof window !== "undefined") {
     window.dispatchEvent(new CustomEvent("ftc-message-reads-updated"));
@@ -170,7 +209,7 @@ export async function markConversationRead(conversationId: string) {
 }
 
 export async function markEventChatRead(eventId: string) {
-  await upsertMessageRead({ event_id: eventId });
+  await upsertMessageRead({ event_id: eventId }, resolveMarkReadTimestamp());
 
   if (typeof window !== "undefined") {
     window.dispatchEvent(new CustomEvent("ftc-message-reads-updated"));
@@ -234,10 +273,18 @@ export async function loadDmParticipantLastReadAt(
     .maybeSingle();
 
   if (error) {
+    console.log("[reads] other participant id", participantUserId);
+    console.log("[reads] loaded other last_read_at", null);
+    console.log("[reads] loaded other last_read_at error", getMessageReadsLoadErrorMessage(error));
     throw error;
   }
 
-  return data?.last_read_at ?? null;
+  const lastReadAt = data?.last_read_at ?? null;
+
+  console.log("[reads] other participant id", participantUserId);
+  console.log("[reads] loaded other last_read_at", lastReadAt);
+
+  return lastReadAt;
 }
 
 export function getMessageReadsLoadErrorMessage(error: unknown): string {

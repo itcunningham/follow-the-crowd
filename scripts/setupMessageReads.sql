@@ -80,3 +80,17 @@ create policy "message_reads_delete_own"
   for delete
   to anon, authenticated
   using (user_id = auth.uid()::text);
+
+-- Enable Realtime updates for read receipts (no-op if already added).
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_publication_tables
+    where pubname = 'supabase_realtime'
+      and schemaname = 'public'
+      and tablename = 'message_reads'
+  ) then
+    alter publication supabase_realtime add table public.message_reads;
+  end if;
+end $$;

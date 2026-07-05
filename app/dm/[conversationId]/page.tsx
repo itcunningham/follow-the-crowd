@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import AppNavigation, { MOBILE_NAV_OFFSET_CLASS } from "@/app/components/AppNavigation";
 import BookingRequestCard, {
@@ -195,6 +195,22 @@ export default function DmChatPage() {
       return isMessageSeenByReader(messageCreatedAt, otherUserLastReadAt);
     };
   }, [canShowReadReceipts, latestOwnMessageIdForReceipt, otherUserLastReadAt]);
+  const refreshParticipantReadState = useCallback(async () => {
+    if (!conversationId || !otherUserId) {
+      setOtherUserLastReadAt(null);
+      return;
+    }
+
+    try {
+      const lastReadAt = await loadDmParticipantLastReadAt(conversationId, otherUserId);
+      setOtherUserLastReadAt(lastReadAt);
+    } catch (readStateError) {
+      console.error("Failed to load participant read state:", readStateError);
+      setOtherUserLastReadAt(null);
+    }
+  }, [conversationId, otherUserId]);
+  const latestConversationMessageCreatedAt =
+    messages.length > 0 ? messages[messages.length - 1].created_at : null;
 
   useEffect(() => {
     if (!conversationId) {
@@ -300,18 +316,6 @@ export default function DmChatPage() {
       return;
     }
 
-    const participantUserId = otherUserId;
-
-    async function refreshParticipantReadState() {
-      try {
-        const lastReadAt = await loadDmParticipantLastReadAt(conversationId, participantUserId);
-        setOtherUserLastReadAt(lastReadAt);
-      } catch (readStateError) {
-        console.error("Failed to load participant read state:", readStateError);
-        setOtherUserLastReadAt(null);
-      }
-    }
-
     void refreshParticipantReadState();
 
     const channel = supabase
@@ -324,38 +328,73 @@ export default function DmChatPage() {
           table: "message_reads",
           filter: `conversation_id=eq.${conversationId}`,
         },
-        (payload) => {
-          const row = (payload.new ?? payload.old) as
-            | { user_id?: string; last_read_at?: string }
-            | null;
-
-          if (row?.user_id === participantUserId && row.last_read_at) {
-            setOtherUserLastReadAt(row.last_read_at);
-            return;
-          }
-
+        () => {
           void refreshParticipantReadState();
         },
       )
       .subscribe();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [conversationId, otherUserId]);
+    const pollIntervalId = window.setInterval(() => {
+      void refreshParticipantReadState();
+    }, 5000);
 
-  useEffect(() => {
-    if (!conversationId) {
-      return;
+    function handleRefreshReadReceipts() {
+      void refreshParticipantReadState();
     }
 
+    window.addEventListener("focus", handleRefreshReadReceipts);
+    window.addEventListener("visibilitychange", handleRefreshReadReceipts);
+
+    return () => {
+      supabase.removeChannel(channel);
+      window.clearInterval(pollIntervalId);
+      window.removeEventListener("focus", handleRefreshReadReceipts);
+      window.removeEventListener("visibilitychange", handleRefreshReadReceipts);
+    };
+  }, [conversationId, otherUserId, refreshParticipantReadState]);
+
+  useEffect(() => {
     if (!conversationId || !currentUserId) {
       return;
     }
 
+    const latestOwnMessage = latestOwnMessageIdForReceipt
+      ? messages.find((message) => message.id === latestOwnMessageIdForReceipt) ?? null
+      : null;
+    const shouldShowSeen = latestOwnMessage
+      ? shouldShowSeenOnMessage(latestOwnMessage.id, latestOwnMessage.created_at)
+      : false;
+
+    console.log("[reads] current user id", currentUserId);
+    console.log("[reads] conversation id", conversationId);
+    console.log("[reads] other participant id", otherUserId);
+    console.log("[reads] loaded other last_read_at", otherUserLastReadAt);
+    console.log(
+      "[reads] latest own message id/date",
+      latestOwnMessage?.id ?? null,
+      latestOwnMessage?.created_at ?? null,
+    );
+    console.log("[reads] should show seen", shouldShowSeen);
+  }, [
+    conversationId,
+    currentUserId,
+    latestOwnMessageIdForReceipt,
+    messages,
+    otherUserId,
+    otherUserLastReadAt,
+    shouldShowSeenOnMessage,
+  ]);
+
+  useEffect(() => {
+    if (!conversationId || !currentUserId || loading) {
+      return;
+    }
+
     markNotificationsReadForLink(currentUserId, `/dm/${conversationId}`);
-    void markConversationRead(conversationId);
-  }, [conversationId, currentUserId]);
+    void markConversationRead(conversationId, {
+      readThroughCreatedAt: latestConversationMessageCreatedAt,
+    });
+  }, [conversationId, currentUserId, latestConversationMessageCreatedAt, loading]);
 
   async function reloadConversationBookings() {
     if (!conversationId) {
@@ -600,7 +639,10 @@ export default function DmChatPage() {
             taggedMessage._clientScrollMeta.isFromCurrentUser,
           );
 
-          void markConversationRead(conversationId);
+          void markConversationRead(conversationId, {
+            readThroughCreatedAt: newMessage.created_at,
+          });
+          void refreshParticipantReadState();
         },
       )
       .subscribe();
@@ -608,7 +650,13 @@ export default function DmChatPage() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [conversationId, currentUserId, captureScrollBeforeIncomingInsert, addHighlightedMessageId]);
+  }, [
+    conversationId,
+    currentUserId,
+    captureScrollBeforeIncomingInsert,
+    addHighlightedMessageId,
+    refreshParticipantReadState,
+  ]);
 
   async function sendMessage() {
     const text = input.trim();
@@ -654,7 +702,9 @@ export default function DmChatPage() {
 
     setInput("");
     setSending(false);
-    void markConversationRead(conversationId);
+    void markConversationRead(conversationId, {
+      readThroughCreatedAt: latestConversationMessageCreatedAt,
+    });
   }
 
   async function sendAttachment(file: File) {
@@ -720,7 +770,9 @@ export default function DmChatPage() {
       }
 
       setInput("");
-      void markConversationRead(conversationId);
+      void markConversationRead(conversationId, {
+        readThroughCreatedAt: optimisticMessage.created_at,
+      });
     } catch (uploadError) {
       console.error("Failed to send attachment:", uploadError);
       setError(uploadError instanceof Error ? uploadError.message : "Failed to send attachment");
