@@ -599,7 +599,7 @@ export default function EventRunSheetSection({
             <button
               type="button"
               onClick={handleAddRow}
-              className="rounded-lg border border-ftc-border-strong bg-ftc-surface/80 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-ftc-text-secondary transition hover:border-ftc-primary/30 hover:text-ftc-primary"
+              className="ftc-btn-secondary px-3 py-1.5 text-xs uppercase tracking-wide"
             >
               Add row
             </button>
@@ -630,7 +630,7 @@ export default function EventRunSheetSection({
       {loading ? (
         <p className="mt-6 text-sm text-ftc-text-muted">Loading run sheet...</p>
       ) : rows.length === 0 ? (
-        <div className="mt-6 rounded-xl border border-dashed border-ftc-border bg-ftc-bg-elevated/40 px-4 py-8 text-center">
+        <div className="ftc-card-empty mt-6 px-4 py-8 text-center">
           <p className="text-sm text-ftc-text-secondary">No run sheet rows yet. Add your first DJ set.</p>
         </div>
       ) : (
@@ -741,7 +741,7 @@ export default function EventRunSheetSection({
             {rows.map((row, index) => (
               <div
                 key={row.id}
-                className="rounded-xl border border-ftc-border bg-ftc-bg-elevated/40 p-4"
+                className="ftc-card p-4"
               >
                 <div className="mb-3 flex items-center justify-between gap-2">
                   <p className="text-[11px] font-semibold uppercase tracking-wide text-ftc-text-muted">

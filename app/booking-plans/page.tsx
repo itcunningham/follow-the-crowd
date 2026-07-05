@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 import AppNavigation, { MOBILE_NAV_OFFSET_CLASS } from "@/app/components/AppNavigation";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
 import PlannerEventsSubNav from "@/app/components/PlannerEventsSubNav";
+import { PlannerFormCard, PlannerFormField, PlannerInlineError } from "@/app/components/planner/PlannerUi";
 import { BookingDateField, BookingSetTimeRangeField } from "@/app/components/BookingDateTimeFields";
 import { BookingRateField } from "@/app/components/BookingRateField";
 import {
@@ -235,37 +236,27 @@ export default function BookingPlansPage() {
           ) : null}
 
           {formOpen ? (
-            <section className="ftc-card mb-6 p-4 sm:p-5">
-              <div className="mb-4 flex items-center justify-between gap-3">
-                <h2 className="text-lg font-semibold text-ftc-text">
-                  {editingPlanId ? "Edit booking plan" : "Create booking plan"}
-                </h2>
-                <button
-                  type="button"
-                  onClick={closeForm}
-                  disabled={saving}
-                  className="text-xs font-semibold uppercase tracking-wide text-ftc-text-muted transition hover:text-ftc-text-secondary disabled:opacity-50"
-                >
-                  Cancel
-                </button>
-              </div>
-
+            <PlannerFormCard
+              title={editingPlanId ? "Edit booking plan" : "Create booking plan"}
+              onCancel={closeForm}
+              cancelDisabled={saving}
+            >
               <form onSubmit={handleSavePlan} className="space-y-4">
-                <PlanField
+                <PlannerFormField
                   label="Plan name"
                   value={form.name}
                   onChange={(value) => updateField("name", value)}
                   placeholder="Synergy Vol. 001 — Main Room"
                   required
                 />
-                <PlanField
+                <PlannerFormField
                   label="Event name"
                   value={form.eventName}
                   onChange={(value) => updateField("eventName", value)}
                   placeholder="Warehouse Sessions"
                   required
                 />
-                <PlanField
+                <PlannerFormField
                   label="Venue"
                   value={form.venue}
                   onChange={(value) => updateField("venue", value)}
@@ -288,7 +279,7 @@ export default function BookingPlansPage() {
                   onChange={(value) => updateField("fee", value)}
                   required
                 />
-                <PlanField
+                <PlannerFormField
                   label="Notes"
                   value={form.notes}
                   onChange={(value) => updateField("notes", value)}
@@ -296,7 +287,7 @@ export default function BookingPlansPage() {
                   multiline
                 />
 
-                {error ? <p className="text-sm text-red-400">{error}</p> : null}
+                {error ? <PlannerInlineError message={error} /> : null}
 
                 <button
                   type="submit"
@@ -306,13 +297,13 @@ export default function BookingPlansPage() {
                   {saving ? "Saving..." : editingPlanId ? "Save changes" : "Save booking plan"}
                 </button>
               </form>
-            </section>
+            </PlannerFormCard>
           ) : null}
 
           {loadingPlans ? (
             <p className="text-sm text-ftc-text-muted">Loading booking plans...</p>
           ) : error && plans.length === 0 ? (
-            <p className="text-sm text-red-400">{error}</p>
+            <PlannerInlineError message={error} />
           ) : plans.length === 0 ? (
             <div className="ftc-card-empty px-6 py-12 text-center">
               <p className="text-base font-medium text-ftc-text-secondary">No saved booking plans yet.</p>
@@ -384,45 +375,5 @@ function PlanDetail({ label, value }: { label: string; value: string }) {
       <dt className="text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted">{label}</dt>
       <dd className="mt-0.5 text-ftc-text">{value}</dd>
     </div>
-  );
-}
-
-function PlanField({
-  label,
-  value,
-  onChange,
-  placeholder,
-  required = false,
-  multiline = false,
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  placeholder: string;
-  required?: boolean;
-  multiline?: boolean;
-}) {
-  return (
-    <label className="block">
-      <span className="ftc-label">{label}</span>
-      {multiline ? (
-        <textarea
-          value={value}
-          onChange={(event) => onChange(event.target.value)}
-          placeholder={placeholder}
-          rows={3}
-          className="ftc-input px-3.5 py-2.5"
-        />
-      ) : (
-        <input
-          type="text"
-          value={value}
-          onChange={(event) => onChange(event.target.value)}
-          placeholder={placeholder}
-          required={required}
-          className="ftc-input px-3.5 py-2.5"
-        />
-      )}
-    </label>
   );
 }

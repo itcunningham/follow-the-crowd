@@ -16,7 +16,7 @@ export default function EventDateStatusBadge({
   if (status && isEventCancelled({ status })) {
     return (
       <span
-        className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide ${getEventCancelledBadgeClass()}`}
+        className={`rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide ${getEventCancelledBadgeClass()}`}
       >
         Cancelled
       </span>
@@ -31,7 +31,7 @@ export default function EventDateStatusBadge({
 
   return (
     <span
-      className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide ${getEventDateDisplayBadgeClass(label)}`}
+      className={`rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide ${getEventDateDisplayBadgeClass(label)}`}
     >
       {label}
     </span>

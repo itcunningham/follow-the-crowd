@@ -7,6 +7,17 @@ import AppNavigation, { MOBILE_NAV_OFFSET_CLASS } from "@/app/components/AppNavi
 import OnboardingGuard from "@/app/components/OnboardingGuard";
 import EventDateStatusBadge from "@/app/components/EventDateStatusBadge";
 import PlannerEventsSubNav from "@/app/components/PlannerEventsSubNav";
+import {
+  PlannerBackLink,
+  PlannerEmptyState,
+  PlannerFilterPills,
+  PlannerFormCard,
+  PlannerFormField,
+  PlannerInlineError,
+  PlannerLinkAction,
+  PlannerOptionCard,
+  PlannerStatChip,
+} from "@/app/components/planner/PlannerUi";
 import { BookingDateField, BookingSetTimeRangeField } from "@/app/components/BookingDateTimeFields";
 import { BookingRateField } from "@/app/components/BookingRateField";
 import { listBookingPlans, type BookingPlan } from "@/lib/bookingPlans";
@@ -242,7 +253,7 @@ export default function EventsPage() {
       >
         <AppNavigation />
 
-        <header className="border-b border-ftc-border px-4 py-4 sm:px-6 md:pt-4">
+        <header className="ftc-page-header px-4 py-4 sm:px-6 md:pt-4">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <h1 className="text-xl font-semibold text-ftc-text">Events</h1>
@@ -269,36 +280,20 @@ export default function EventsPage() {
 
         <div className="px-4 py-4 sm:px-6">
           {createOpen && isPlanner ? (
-            <section className="mb-6 ftc-card p-4 sm:p-5">
-              <div className="mb-4 flex items-center justify-between gap-3">
-                <h2 className="text-lg font-semibold text-ftc-text">Create event</h2>
-                <button
-                  type="button"
-                  onClick={closeCreateFlow}
-                  disabled={saving}
-                  className="text-xs font-semibold uppercase tracking-wide text-ftc-text-muted transition hover:text-ftc-text-secondary disabled:opacity-50"
-                >
-                  Cancel
-                </button>
-              </div>
-
+            <PlannerFormCard title="Create event" onCancel={closeCreateFlow} cancelDisabled={saving}>
               {createStep === "source" ? (
                 <div className="space-y-3">
-                  <button
-                    type="button"
+                  <PlannerOptionCard
+                    title="Create from a saved booking plan"
+                    description="Prefill event details from a plan, then edit before saving."
                     onClick={() => {
                       setError(null);
                       setCreateStep("pick-plan");
                     }}
-                    className="w-full rounded-2xl border border-ftc-border bg-ftc-bg-elevated/40 px-4 py-4 text-left transition hover:border-ftc-border-strong hover:bg-ftc-bg-elevated"
-                  >
-                    <p className="text-base font-semibold text-ftc-text">Create from a saved booking plan</p>
-                    <p className="mt-2 text-sm text-ftc-text-secondary">
-                      Prefill event details from a plan, then edit before saving.
-                    </p>
-                  </button>
-                  <button
-                    type="button"
+                  />
+                  <PlannerOptionCard
+                    title="Create custom event"
+                    description="Enter fresh event details from scratch."
                     onClick={() => {
                       setForm({
                         ...emptyEventForm,
@@ -308,55 +303,34 @@ export default function EventsPage() {
                       setCreateStep("form");
                       setError(null);
                     }}
-                    className="w-full rounded-2xl border border-ftc-border bg-ftc-bg-elevated/40 px-4 py-4 text-left transition hover:border-ftc-border-strong hover:bg-ftc-bg-elevated"
-                  >
-                    <p className="text-base font-semibold text-ftc-text">Create custom event</p>
-                    <p className="mt-2 text-sm text-ftc-text-secondary">Enter fresh event details from scratch.</p>
-                  </button>
-                  {error ? <p className="text-sm text-red-400">{error}</p> : null}
+                  />
+                  {error ? <PlannerInlineError message={error} /> : null}
                 </div>
               ) : null}
 
               {createStep === "pick-plan" ? (
                 <div className="space-y-4">
-                  <button
-                    type="button"
-                    onClick={() => setCreateStep("source")}
-                    className="text-xs font-semibold uppercase tracking-wide text-ftc-text-muted transition hover:text-ftc-text-secondary"
-                  >
-                    ← Back
-                  </button>
+                  <PlannerBackLink onClick={() => setCreateStep("source")} />
 
                   {loadingPlans ? (
                     <p className="text-sm text-ftc-text-muted">Loading saved plans...</p>
                   ) : bookingPlans.length === 0 ? (
-                    <div className="rounded-xl border border-dashed border-ftc-border bg-ftc-bg-elevated/40 px-4 py-6 text-center">
+                    <div className="ftc-card-empty px-4 py-8 text-center">
                       <p className="text-sm text-ftc-text-secondary">No saved booking plans yet.</p>
-                      <Link
-                        href="/booking-plans"
-                        className="mt-3 inline-block text-sm font-semibold text-ftc-primary transition hover:text-ftc-primary/90"
-                      >
+                      <PlannerLinkAction href="/booking-plans" className="mt-3">
                         Create a booking plan
-                      </Link>
+                      </PlannerLinkAction>
                     </div>
                   ) : (
                     <ul className="space-y-3">
                       {bookingPlans.map((plan) => (
                         <li key={plan.id}>
-                          <button
-                            type="button"
+                          <PlannerOptionCard
+                            title={plan.name}
+                            description={`${plan.event_name} · ${plan.venue} · ${plan.event_date}`}
+                            selected={selectedPlanId === plan.id}
                             onClick={() => handleSelectPlan(plan)}
-                            className={`w-full rounded-xl border px-4 py-4 text-left transition ${
-                              selectedPlanId === plan.id
-                                ? "border-ftc-primary bg-ftc-bg-elevated"
-                                : "border-ftc-border bg-ftc-bg-elevated/40 hover:border-ftc-border-strong hover:bg-ftc-bg-elevated"
-                            }`}
-                          >
-                            <p className="font-semibold text-ftc-text">{plan.name}</p>
-                            <p className="mt-1 text-sm text-ftc-text-secondary">
-                              {plan.event_name} · {plan.venue} · {plan.event_date}
-                            </p>
-                          </button>
+                          />
                         </li>
                       ))}
                     </ul>
@@ -366,22 +340,18 @@ export default function EventsPage() {
 
               {createStep === "form" ? (
                 <form onSubmit={handleSaveEvent} className="space-y-4">
-                  <button
-                    type="button"
+                  <PlannerBackLink
                     onClick={() => setCreateStep(selectedPlanId ? "pick-plan" : "source")}
-                    className="text-xs font-semibold uppercase tracking-wide text-ftc-text-muted transition hover:text-ftc-text-secondary"
-                  >
-                    ← Back
-                  </button>
+                  />
 
-                  <EventField
+                  <PlannerFormField
                     label="Event name"
                     value={form.name}
                     onChange={(value) => updateField("name", value)}
                     placeholder="Warehouse Sessions"
                     required
                   />
-                  <EventField
+                  <PlannerFormField
                     label="Venue"
                     value={form.venue}
                     onChange={(value) => updateField("venue", value)}
@@ -403,7 +373,7 @@ export default function EventsPage() {
                     value={form.rate}
                     onChange={(value) => updateField("rate", value)}
                   />
-                  <EventField
+                  <PlannerFormField
                     label="Notes"
                     value={form.notes}
                     onChange={(value) => updateField("notes", value)}
@@ -411,7 +381,7 @@ export default function EventsPage() {
                     multiline
                   />
 
-                  {error ? <p className="text-sm text-red-400">{error}</p> : null}
+                  {error ? <PlannerInlineError message={error} /> : null}
 
                   <button
                     type="submit"
@@ -422,59 +392,52 @@ export default function EventsPage() {
                   </button>
                 </form>
               ) : null}
-            </section>
+            </PlannerFormCard>
           ) : null}
 
           {loadingEvents ? (
             <p className="text-sm text-ftc-text-muted">Loading events...</p>
           ) : error && events.length === 0 ? (
-            <p className="text-sm text-red-400">{error}</p>
+            <PlannerInlineError message={error} />
           ) : filteredEvents.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-ftc-border bg-ftc-surface/30 px-6 py-12 text-center">
-              <p className="text-base font-medium text-ftc-text-secondary">
-                {events.length === 0
+            <PlannerEmptyState
+              title={
+                events.length === 0
                   ? isPlanner
                     ? "No events yet. Create your first event."
                     : "No event invitations yet."
                   : listView === "cancelled"
                     ? "No cancelled events."
-                    : "No active events."}
-              </p>
-              {isPlanner && events.length === 0 && !createOpen ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                  void openCreateFlow();
-                }}
-                  className="mt-6 ftc-btn-primary px-5 py-3 text-sm uppercase tracking-wide disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  Create event
-                </button>
-              ) : null}
-            </div>
+                    : "No active events."
+              }
+              action={
+                isPlanner && events.length === 0 && !createOpen ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void openCreateFlow();
+                    }}
+                    className="ftc-btn-primary px-5 py-3 text-sm uppercase tracking-wide"
+                  >
+                    Create event
+                  </button>
+                ) : undefined
+              }
+            />
           ) : (
             <>
               {isPlanner ? (
-                <div className="mb-4 flex flex-wrap gap-2">
-                  {(
-                    [
-                      { value: "active", label: "Active" },
-                      { value: "cancelled", label: "Cancelled" },
-                    ] as const
-                  ).map((option) => (
-                    <button
-                      key={option.value}
-                      type="button"
-                      onClick={() => setListView(option.value)}
-                      className={`rounded-full border px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide transition ${
-                        listView === option.value
-                          ? "border-0 bg-ftc-primary text-ftc-bg"
-                          : "border border-ftc-border-strong bg-ftc-surface/80 text-ftc-text-secondary hover:border-ftc-border-strong hover:text-ftc-text"
-                      }`}
-                    >
-                      {option.label}
-                    </button>
-                  ))}
+                <div className="mb-4">
+                  <PlannerFilterPills
+                    options={
+                      [
+                        { value: "active", label: "Active" },
+                        { value: "cancelled", label: "Cancelled" },
+                      ] as const
+                    }
+                    value={listView}
+                    onChange={setListView}
+                  />
                 </div>
               ) : null}
             <ul className="space-y-3">
@@ -484,11 +447,7 @@ export default function EventsPage() {
                 return (
                 <li
                   key={event.id}
-                  className={`rounded-2xl border p-4 sm:p-5 ${
-                    cancelled
-                      ? "border-ftc-border/60 bg-ftc-surface/40 opacity-80"
-                      : "border-ftc-border bg-ftc-surface/80"
-                  }`}
+                  className={`ftc-card p-4 sm:p-5 ${cancelled ? "ftc-event-card-cancelled" : ""}`}
                 >
                   <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                     <div className="min-w-0">
@@ -509,11 +468,11 @@ export default function EventsPage() {
                         {event.set_time}
                       </p>
                       {isPlanner ? (
-                        <div className="mt-3 flex flex-wrap gap-2 text-[11px] font-semibold uppercase tracking-wide">
-                          <LineupStat label="Invited" value={event.lineupStats.total} />
-                          <LineupStat label="Pending" value={event.lineupStats.pending} />
-                          <LineupStat label="Accepted" value={event.lineupStats.accepted} />
-                          <LineupStat label="Declined" value={event.lineupStats.declined} />
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          <PlannerStatChip label="Invited" value={event.lineupStats.total} />
+                          <PlannerStatChip label="Pending" value={event.lineupStats.pending} />
+                          <PlannerStatChip label="Accepted" value={event.lineupStats.accepted} />
+                          <PlannerStatChip label="Declined" value={event.lineupStats.declined} />
                         </div>
                       ) : null}
                     </div>
@@ -534,55 +493,5 @@ export default function EventsPage() {
         </div>
       </div>
     </OnboardingGuard>
-  );
-}
-
-function LineupStat({ label, value }: { label: string; value: number }) {
-  return (
-    <span className="rounded-full border border-ftc-border-strong bg-ftc-surface/80 px-2.5 py-1 text-ftc-text-secondary">
-      {label}: <span className="text-ftc-text">{value}</span>
-    </span>
-  );
-}
-
-function EventField({
-  label,
-  value,
-  onChange,
-  placeholder,
-  required = false,
-  multiline = false,
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  placeholder: string;
-  required?: boolean;
-  multiline?: boolean;
-}) {
-  return (
-    <label className="block">
-      <span className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.14em] text-ftc-text-secondary">
-        {label}
-      </span>
-      {multiline ? (
-        <textarea
-          value={value}
-          onChange={(event) => onChange(event.target.value)}
-          placeholder={placeholder}
-          rows={3}
-          className="ftc-input px-3.5 py-2.5"
-        />
-      ) : (
-        <input
-          type="text"
-          value={value}
-          onChange={(event) => onChange(event.target.value)}
-          placeholder={placeholder}
-          required={required}
-          className="ftc-input px-3.5 py-2.5"
-        />
-      )}
-    </label>
   );
 }

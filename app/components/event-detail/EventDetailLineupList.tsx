@@ -30,7 +30,7 @@ export default function EventDetailLineupList({
           <li key={booking.id}>
             <Link
               href={`/profile/${booking.recipient_id}`}
-              className="flex items-center gap-3 rounded-2xl border border-ftc-border-subtle bg-ftc-surface px-3 py-3 transition hover:border-ftc-border-strong"
+              className="flex items-center gap-3 rounded-xl border border-ftc-border-subtle bg-ftc-surface px-3 py-3 transition hover:border-ftc-border-strong"
             >
               <ProfileAvatar name={displayName} avatarUrl={profile?.avatar_url} size="md" />
               <div className="min-w-0 flex-1">

@@ -105,7 +105,7 @@ export function EventDetailOverlayButton({
   children: React.ReactNode;
 }) {
   const className =
-    "flex h-10 w-10 items-center justify-center rounded-xl border border-ftc-border-subtle bg-ftc-bg/80 text-ftc-text backdrop-blur-sm transition hover:border-ftc-border-strong hover:text-ftc-primary";
+    "flex h-10 w-10 items-center justify-center rounded-xl border border-ftc-border-subtle bg-ftc-bg/80 text-ftc-text backdrop-blur-sm transition hover:border-ftc-border-strong hover:bg-ftc-bg-elevated";
 
   if (href) {
     return (

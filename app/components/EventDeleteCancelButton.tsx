@@ -81,7 +81,7 @@ export default function EventDeleteCancelButton({
             role="dialog"
             aria-modal="true"
             aria-labelledby={`event-${mode}-title`}
-            className="w-full max-w-md rounded-2xl border border-ftc-border-strong bg-ftc-bg-elevated p-4 shadow-ftc-card sm:p-5"
+            className="ftc-modal w-full max-w-md rounded-2xl p-4 sm:p-5"
             onClick={(event) => event.stopPropagation()}
           >
             <h2 id={`event-${mode}-title`} className="text-base font-semibold text-ftc-text">
@@ -94,7 +94,7 @@ export default function EventDeleteCancelButton({
                 type="button"
                 disabled={loading}
                 onClick={() => setOpen(false)}
-                className="rounded-xl border border-ftc-border-strong bg-ftc-surface/80 px-4 py-2.5 text-sm font-semibold uppercase tracking-wide text-ftc-text-secondary transition hover:border-ftc-border-strong disabled:opacity-50"
+                className="ftc-btn-secondary px-4 py-2.5 text-sm uppercase tracking-wide disabled:opacity-50"
               >
                 {copy.keepLabel}
               </button>

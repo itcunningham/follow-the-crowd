@@ -418,6 +418,115 @@ html {
 }
 
 /* -------------------------------------------------------------------------- */
+/* Planner — forms, lists, filters                                             */
+/* -------------------------------------------------------------------------- */
+
+.ftc-planner-section-label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ftc-color-primary);
+}
+
+.ftc-form-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.ftc-form-cancel-link,
+.ftc-form-back-link {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ftc-color-text-muted);
+  transition: color 0.15s ease;
+}
+
+.ftc-form-cancel-link:hover:not(:disabled),
+.ftc-form-back-link:hover {
+  color: var(--ftc-color-text-secondary);
+}
+
+.ftc-option-card {
+  width: 100%;
+  border-radius: var(--ftc-radius-xl);
+  border: 1px solid var(--ftc-color-border-subtle);
+  background: var(--ftc-color-bg-surface);
+  padding: 1rem;
+  text-align: left;
+  transition:
+    border-color 0.15s ease,
+    background-color 0.15s ease;
+}
+
+@media (hover: hover) {
+  .ftc-option-card:hover:not(:disabled) {
+    border-color: var(--ftc-color-border-strong);
+    background: var(--ftc-color-bg-elevated);
+  }
+}
+
+.ftc-option-card-selected {
+  border-color: var(--ftc-color-primary);
+  background: var(--ftc-color-bg-elevated);
+}
+
+.ftc-filter-pill {
+  border-radius: 9999px;
+  border: 1px solid var(--ftc-color-border-subtle);
+  background: var(--ftc-color-bg-surface);
+  padding: 0.375rem 0.75rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ftc-color-text-secondary);
+  transition:
+    border-color 0.15s ease,
+    background-color 0.15s ease,
+    color 0.15s ease;
+}
+
+@media (hover: hover) {
+  .ftc-filter-pill:hover:not(.ftc-filter-pill-active) {
+    border-color: var(--ftc-color-border-strong);
+    color: var(--ftc-color-text-primary);
+  }
+}
+
+.ftc-filter-pill-active {
+  border: 0;
+  background: var(--ftc-color-primary);
+  color: var(--ftc-color-text-inverse);
+}
+
+.ftc-stat-chip {
+  border-radius: 9999px;
+  border: 1px solid var(--ftc-color-border-subtle);
+  background: var(--ftc-color-bg-input);
+  padding: 0.25rem 0.625rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ftc-color-text-secondary);
+}
+
+.ftc-inline-error {
+  font-size: 0.875rem;
+  color: var(--ftc-color-danger);
+}
+
+.ftc-event-card-cancelled {
+  opacity: 0.82;
+}
+
+/* -------------------------------------------------------------------------- */
 /* Tabs & chips                                                                */
 /* -------------------------------------------------------------------------- */
 

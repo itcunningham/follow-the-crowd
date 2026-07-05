@@ -17,6 +17,13 @@ import EventDetailMetaList, {
   EventDetailOverlayButton,
 } from "@/app/components/event-detail/EventDetailLayout";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
+import {
+  PlannerEmptyPanel,
+  PlannerFilterPills,
+  PlannerFormCard,
+  PlannerFormField,
+  PlannerStatChip,
+} from "@/app/components/planner/PlannerUi";
 import ProfileAvatar from "@/app/components/ProfileAvatar";
 import DjBookingAvailabilityBadge from "@/app/components/DjBookingAvailabilityBadge";
 import { BookingDateField, BookingSetTimeRangeField } from "@/app/components/BookingDateTimeFields";
@@ -648,31 +655,23 @@ export default function EventDetailPage() {
           ) : null}
 
           {editOpen && editForm && isOwner ? (
-            <section className="mb-6 ftc-card p-4 sm:p-5">
-              <div className="mb-4 flex items-center justify-between gap-3">
-                <h2 className="text-lg font-semibold text-ftc-text">Edit event</h2>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (savingEdit) return;
-                    setEditOpen(false);
-                    setEditForm(null);
-                  }}
-                  disabled={savingEdit}
-                  className="text-xs font-semibold uppercase tracking-wide text-ftc-text-muted transition hover:text-ftc-text-secondary disabled:opacity-50"
-                >
-                  Cancel
-                </button>
-              </div>
-
+            <PlannerFormCard
+              title="Edit event"
+              onCancel={() => {
+                if (savingEdit) return;
+                setEditOpen(false);
+                setEditForm(null);
+              }}
+              cancelDisabled={savingEdit}
+            >
               <form onSubmit={handleSaveEdit} className="space-y-4">
-                <EventField
+                <PlannerFormField
                   label="Event name"
                   value={editForm.name}
                   onChange={(value) => setEditForm((prev) => (prev ? { ...prev, name: value } : prev))}
                   required
                 />
-                <EventField
+                <PlannerFormField
                   label="Venue"
                   value={editForm.venue}
                   onChange={(value) => setEditForm((prev) => (prev ? { ...prev, venue: value } : prev))}
@@ -697,7 +696,7 @@ export default function EventDetailPage() {
                   value={editForm.rate}
                   onChange={(value) => setEditForm((prev) => (prev ? { ...prev, rate: value } : prev))}
                 />
-                <EventField
+                <PlannerFormField
                   label="Notes"
                   value={editForm.notes}
                   onChange={(value) => setEditForm((prev) => (prev ? { ...prev, notes: value } : prev))}
@@ -712,29 +711,12 @@ export default function EventDetailPage() {
                   {savingEdit ? "Saving..." : "Save changes"}
                 </button>
               </form>
-            </section>
+            </PlannerFormCard>
           ) : null}
 
           {sendOpen && isOwner && !eventIsCancelled ? (
-            <section className="mb-6 ftc-card p-4 sm:p-5">
-              <div className="mb-4 flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-ftc-text-muted">
-                    Send bookings
-                  </p>
-                  <h2 className="mt-1 text-lg font-semibold text-ftc-text">Select DJs</h2>
-                </div>
-                <button
-                  type="button"
-                  onClick={closeSendBookings}
-                  disabled={sending}
-                  className="text-xs font-semibold uppercase tracking-wide text-ftc-text-muted transition hover:text-ftc-text-secondary disabled:opacity-50"
-                >
-                  Cancel
-                </button>
-              </div>
-
-              <p className="mb-4 text-sm text-ftc-text-secondary">
+            <PlannerFormCard title="Send bookings" onCancel={closeSendBookings} cancelDisabled={sending}>
+              <p className="text-sm text-ftc-text-secondary">
                 Event details will be prefilled from this event. Each DJ receives a private booking
                 request DM.
               </p>
@@ -744,13 +726,13 @@ export default function EventDetailPage() {
                 value={searchQuery}
                 onChange={(event) => setSearchQuery(event.target.value)}
                 placeholder="Search DJs by name or genre"
-                className="mb-4 ftc-input px-3.5 py-2.5"
+                className="mb-4 mt-4 ftc-input px-3.5 py-2.5"
               />
 
               {loadingDjs ? (
                 <p className="text-sm text-ftc-text-muted">Loading DJs...</p>
               ) : filteredDjs.length === 0 ? (
-                <p className="text-sm text-ftc-text-secondary">No available DJs to invite.</p>
+                <PlannerEmptyPanel message="No available DJs to invite." />
               ) : (
                 <ul className="max-h-80 space-y-2 overflow-y-auto">
                   {filteredDjs.map((dj) => {
@@ -764,15 +746,25 @@ export default function EventDetailPage() {
                       <li key={dj.user_id}>
                         <button
                           type="button"
+                          disabled={isDuplicateBlocked}
                           onClick={() => toggleDjSelection(dj.user_id)}
-                          className={`flex w-full items-center gap-3 rounded-xl border px-3 py-3 text-left transition ${
+                          className={`ftc-option-card flex items-center gap-3 px-3 py-3 disabled:cursor-not-allowed ${
                             selected
-                              ? "border-ftc-border-subtle bg-ftc-bg-elevated"
+                              ? "ftc-option-card-selected"
                               : isDuplicateBlocked
-                                ? "border-ftc-border-subtle bg-ftc-bg-elevated/60 opacity-70"
-                                : "border-ftc-border-subtle bg-ftc-surface hover:border-ftc-border-strong"
+                                ? "opacity-70"
+                                : ""
                           }`}
                         >
+                          <span
+                            className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border ${
+                              selected
+                                ? "border-0 bg-ftc-primary text-ftc-bg"
+                                : "border-ftc-border-subtle bg-ftc-bg-input text-transparent"
+                            }`}
+                          >
+                            ✓
+                          </span>
                           <ProfileAvatar
                             name={displayName}
                             avatarUrl={dj.avatar_url}
@@ -813,7 +805,7 @@ export default function EventDetailPage() {
               >
                 {sendButtonLabel}
               </button>
-            </section>
+            </PlannerFormCard>
           ) : null}
 
           {canViewRunSheet ? (
@@ -831,13 +823,14 @@ export default function EventDetailPage() {
           <section className="mt-8">
             <h2 className="text-lg font-bold text-ftc-text">Lineup</h2>
             {acceptedLineup.length === 0 ? (
-              <div className="mt-4 rounded-2xl border border-dashed border-ftc-border-subtle bg-ftc-bg-elevated/40 px-4 py-8 text-center">
-                <p className="text-sm text-ftc-text-secondary">
-                  {isOwner
+              <PlannerEmptyPanel
+                className="mt-4"
+                message={
+                  isOwner
                     ? "No confirmed artists yet. Send booking requests to build your lineup."
-                    : "Lineup will appear here once artists are confirmed."}
-                </p>
-              </div>
+                    : "Lineup will appear here once artists are confirmed."
+                }
+              />
             ) : (
               <div className="mt-4">
                 <EventDetailLineupList bookings={acceptedLineup} profiles={profiles} />
@@ -873,38 +866,28 @@ export default function EventDetailPage() {
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <h2 className="text-lg font-bold text-ftc-text">Bookings</h2>
-                  <div className="mt-3 flex flex-wrap gap-2 text-[11px] font-semibold uppercase tracking-wide">
-                    <LineupStat label="Invited" value={lineupStats.total} />
-                    <LineupStat label="Pending" value={lineupStats.pending} />
-                    <LineupStat label="Accepted" value={lineupStats.accepted} />
-                    <LineupStat label="Declined" value={lineupStats.declined} />
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <PlannerStatChip label="Invited" value={lineupStats.total} />
+                    <PlannerStatChip label="Pending" value={lineupStats.pending} />
+                    <PlannerStatChip label="Accepted" value={lineupStats.accepted} />
+                    <PlannerStatChip label="Declined" value={lineupStats.declined} />
                   </div>
                 </div>
               </div>
 
-              <div className="mt-4 flex flex-wrap gap-2">
-                {STATUS_FILTERS.map((filter) => (
-                  <button
-                    key={filter.value}
-                    type="button"
-                    onClick={() => setLineupFilter(filter.value)}
-                    className={`rounded-full px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide transition ${
-                      lineupFilter === filter.value
-                        ? "bg-ftc-primary text-ftc-bg"
-                        : "border border-ftc-border-subtle bg-ftc-surface text-ftc-text-secondary hover:border-ftc-border-strong"
-                    }`}
-                  >
-                    {filter.label}
-                  </button>
-                ))}
+              <div className="mt-4">
+                <PlannerFilterPills
+                  options={STATUS_FILTERS}
+                  value={lineupFilter}
+                  onChange={setLineupFilter}
+                />
               </div>
 
               {filteredLineup.length === 0 ? (
-                <div className="mt-6 rounded-xl border border-dashed border-ftc-border-subtle bg-ftc-bg-elevated/40 px-4 py-8 text-center">
-                  <p className="text-sm text-ftc-text-secondary">
-                    No DJs invited yet. Send booking requests to build your lineup.
-                  </p>
-                </div>
+                <PlannerEmptyPanel
+                  className="mt-6"
+                  message="No DJs invited yet. Send booking requests to build your lineup."
+                />
               ) : (
                 <ul className="mt-4 space-y-3">
                   {filteredLineup.map((booking) => {
@@ -919,7 +902,7 @@ export default function EventDetailPage() {
                     return (
                       <li
                         key={booking.id}
-                        className={`relative flex flex-col gap-3 rounded-2xl border border-ftc-border-subtle bg-ftc-bg-elevated p-4 sm:flex-row sm:items-center sm:justify-between ${
+                        className={`ftc-card relative flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between ${
                           canHideFromLineup ? "pr-12 sm:pr-14" : ""
                         }`}
                       >
@@ -1010,51 +993,5 @@ export default function EventDetailPage() {
         onConfirm={executeSendBookings}
       />
     </OnboardingGuard>
-  );
-}
-
-function LineupStat({ label, value }: { label: string; value: number }) {
-  return (
-    <span className="rounded-full border border-ftc-border-strong bg-ftc-surface/80 px-2.5 py-1 text-ftc-text-secondary">
-      {label}: <span className="text-ftc-text">{value}</span>
-    </span>
-  );
-}
-
-function EventField({
-  label,
-  value,
-  onChange,
-  required = false,
-  multiline = false,
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  required?: boolean;
-  multiline?: boolean;
-}) {
-  return (
-    <label className="block">
-      <span className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.14em] text-ftc-text-secondary">
-        {label}
-      </span>
-      {multiline ? (
-        <textarea
-          value={value}
-          onChange={(event) => onChange(event.target.value)}
-          rows={3}
-          className="ftc-input px-3.5 py-2.5"
-        />
-      ) : (
-        <input
-          type="text"
-          value={value}
-          onChange={(event) => onChange(event.target.value)}
-          required={required}
-          className="ftc-input px-3.5 py-2.5"
-        />
-      )}
-    </label>
   );
 }

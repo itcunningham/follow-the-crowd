@@ -49,9 +49,7 @@ export default function PlannerEventsSubNav() {
             key={tab.href}
             href={tab.href}
             className={`rounded-lg px-3 py-1.5 text-xs font-semibold uppercase tracking-wide transition ${
-              isActive
-                ? "bg-ftc-primary text-ftc-bg"
-                : "border border-ftc-border bg-ftc-surface/50 text-ftc-text-secondary hover:border-ftc-border-strong hover:text-ftc-text"
+              isActive ? "ftc-filter-pill ftc-filter-pill-active" : "ftc-filter-pill"
             }`}
           >
             {tab.label}
