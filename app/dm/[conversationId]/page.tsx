@@ -948,51 +948,61 @@ export default function DmChatPage() {
       <div
         className={`mx-auto flex min-h-0 w-full max-w-2xl flex-1 flex-col overflow-hidden ${MOBILE_NAV_OFFSET_CLASS}`}
       >
-      <header className="z-10 shrink-0 border-b border-ftc-border bg-ftc-bg/95 px-3 py-3 backdrop-blur-md sm:px-4">
-        <div className="flex items-center gap-3">
+      <header className="z-10 shrink-0 border-b border-ftc-border-subtle bg-ftc-bg/95 px-3 py-2.5 backdrop-blur-md sm:px-4">
+        <div className="flex items-center gap-2">
           <Link
             href="/dm"
             aria-label="Back to inbox"
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-ftc-border text-lg text-ftc-text-secondary transition hover:border-ftc-primary/35 hover:text-ftc-primary"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-ftc-border-subtle bg-ftc-surface text-ftc-text-secondary transition hover:border-ftc-border-strong hover:text-ftc-text"
           >
-            ←
+            <svg
+              aria-hidden="true"
+              viewBox="0 0 24 24"
+              className="h-5 w-5"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M15 18l-6-6 6-6" />
+            </svg>
           </Link>
+
+          <div className="flex min-w-0 flex-1 items-center gap-3">
+            <ProfileAvatar
+              name={otherUserLabel}
+              avatarUrl={otherUserProfile?.avatar_url}
+              size="md"
+              className="h-10 w-10 text-xs"
+            />
+            <div className="min-w-0 flex-1">
+              <h1 className="truncate text-base font-semibold text-ftc-text">
+                {conversationTitle}
+              </h1>
+              <p className="truncate text-xs text-ftc-text-muted">Direct message</p>
+            </div>
+          </div>
+
           {otherUserId ? (
             <button
               type="button"
               aria-label={`Open conversation details for ${conversationTitle}`}
               onClick={() => setDetailsOpen(true)}
-              className="flex min-w-0 flex-1 items-center gap-3 rounded-2xl px-1 py-1 text-left transition hover:bg-ftc-surface/50"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-ftc-border-subtle bg-ftc-surface text-ftc-text-secondary transition hover:border-ftc-border-strong hover:text-ftc-text"
             >
-              <ProfileAvatar
-                name={otherUserLabel}
-                avatarUrl={otherUserProfile?.avatar_url}
-                size="md"
-                className="h-10 w-10 text-xs"
-              />
-              <div className="min-w-0 flex-1">
-                <h1 className="truncate text-base font-semibold text-ftc-text">
-                  {conversationTitle}
-                </h1>
-                <p className="truncate text-xs text-ftc-text-muted">Direct Messages</p>
-              </div>
+              <svg
+                aria-hidden="true"
+                viewBox="0 0 24 24"
+                className="h-5 w-5"
+                fill="currentColor"
+              >
+                <circle cx="5" cy="12" r="1.5" />
+                <circle cx="12" cy="12" r="1.5" />
+                <circle cx="19" cy="12" r="1.5" />
+              </svg>
             </button>
-          ) : (
-            <>
-              <ProfileAvatar
-                name={otherUserLabel}
-                avatarUrl={otherUserProfile?.avatar_url}
-                size="md"
-                className="h-10 w-10 text-xs"
-              />
-              <div className="min-w-0 flex-1">
-                <h1 className="truncate text-base font-semibold text-ftc-text">
-                  {conversationTitle}
-                </h1>
-                <p className="truncate text-xs text-ftc-text-muted">Direct Messages</p>
-              </div>
-            </>
-          )}
+          ) : null}
         </div>
       </header>
 
@@ -1164,9 +1174,7 @@ export default function DmChatPage() {
                         </time>
                         {isOwnMessage &&
                         shouldShowSeenOnMessage(message.id, message.created_at) ? (
-                          <p className="mt-0.5 text-right text-[11px] font-medium text-ftc-text-muted">
-                            Seen
-                          </p>
+                          <p className="ftc-seen-label mt-0.5 text-right">Seen</p>
                         ) : null}
                       </div>
                     </div>

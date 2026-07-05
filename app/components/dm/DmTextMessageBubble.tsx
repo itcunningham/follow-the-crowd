@@ -77,8 +77,8 @@ export default function DmTextMessageBubble({
             size="sm"
           />
         ) : null}
-        <div className={`min-w-0 ${isOwnMessage ? "items-end" : "items-start"} flex flex-col`}>
-          <div className={`relative rounded-3xl ${highlightClass}`}>
+        <div className={`flex min-w-0 flex-col ${isOwnMessage ? "items-end" : "items-start"}`}>
+          <div className={`relative max-w-full ${highlightClass}`}>
             <div
               className={`overflow-hidden ${
                 isOwnMessage
@@ -102,18 +102,17 @@ export default function DmTextMessageBubble({
                   {trimmedText}
                 </p>
               ) : null}
-              <time
-                dateTime={createdAt}
-                className={`mt-1 block w-full text-[10px] ${
-                  isOwnMessage
-                    ? "text-right text-ftc-bg/70"
-                    : "text-left text-ftc-text-muted"
-                } ${hasAttachments && !hasText ? "px-1 pb-0.5" : ""}`}
-              >
-                {formatTime(createdAt)}
-              </time>
             </div>
           </div>
+
+          <time
+            dateTime={createdAt}
+            className={`mt-1 block px-1 text-[10px] text-ftc-text-muted ${
+              isOwnMessage ? "text-right" : "text-left"
+            }`}
+          >
+            {formatTime(createdAt)}
+          </time>
 
           <DmMessageReactions
             reactions={reactions}
@@ -136,7 +135,7 @@ export default function DmTextMessageBubble({
               type="button"
               aria-label="Report message"
               onClick={onReportMessage}
-              className={`mt-1 rounded-full border border-transparent px-2 py-0.5 text-[11px] text-ftc-text-muted transition hover:border-ftc-border-strong hover:bg-ftc-surface/70 hover:text-ftc-text-secondary ${
+              className={`mt-1 rounded-full border border-transparent px-2 py-0.5 text-[11px] text-ftc-text-muted transition hover:border-ftc-border-strong hover:bg-ftc-surface hover:text-ftc-text-secondary ${
                 hasAttachments ? "opacity-100" : "opacity-0 group-hover/message:opacity-100"
               }`}
             >

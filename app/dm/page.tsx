@@ -1,11 +1,14 @@
 "use client";
 
-import Link from "next/link";
-import { Suspense, useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import AppNavigation, { MOBILE_NAV_OFFSET_CLASS } from "@/app/components/AppNavigation";
-import NotificationsBellLink from "@/app/components/NotificationsBellLink";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
+import MessagesInboxComposeButton from "@/app/components/dm/MessagesInboxComposeButton";
+import MessagesInboxRow, {
+  MessagesGroupInboxRow,
+} from "@/app/components/dm/MessagesInboxRow";
+import MessagesInboxSearchBar from "@/app/components/dm/MessagesInboxSearchBar";
 import ProfileAvatar from "@/app/components/ProfileAvatar";
 import {
   applyInboxGroupMessage,
@@ -25,7 +28,6 @@ import {
   logInboxRenderOrder,
   type DmInboxRow,
 } from "@/lib/dmInbox";
-import { getNavBadgeCounts } from "@/lib/notifications";
 import {
   getUnreadConversationIds,
   getUnreadEventChatIds,
@@ -78,9 +80,7 @@ function InboxTabButton({
       {unreadCount > 0 ? (
         <span
           className={`flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] font-bold leading-none ${
-            active
-              ? "bg-ftc-primary-dim text-white"
-              : "border border-ftc-primary/30 bg-ftc-primary/10 text-ftc-primary"
+            active ? "bg-ftc-bg text-ftc-primary" : "bg-ftc-primary text-ftc-bg"
           }`}
         >
           {unreadCount > 99 ? "99+" : unreadCount}
@@ -173,25 +173,6 @@ function getConversationDisplayName(
   return "Direct message";
 }
 
-function formatInboxTimestamp(timestamp: string) {
-  const date = new Date(timestamp);
-  const now = new Date();
-  const isToday = date.toDateString() === now.toDateString();
-
-  if (isToday) {
-    return date.toLocaleTimeString("en-AU", {
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: true,
-    });
-  }
-
-  return date.toLocaleDateString("en-AU", {
-    month: "short",
-    day: "numeric",
-  });
-}
-
 function ConversationAvatar({
   label,
   avatarUrl,
@@ -199,7 +180,7 @@ function ConversationAvatar({
   label: string;
   avatarUrl?: string | null;
 }) {
-  return <ProfileAvatar name={label} avatarUrl={avatarUrl} size="lg" />;
+  return <ProfileAvatar name={label} avatarUrl={avatarUrl} size="lg" className="h-12 w-12" />;
 }
 
 function MessageDjButton({
@@ -220,75 +201,6 @@ function MessageDjButton({
     >
       {disabled ? "Opening..." : "Message DJ"}
     </button>
-  );
-}
-
-function getUnreadInboxRowClass(isUnread: boolean) {
-  return isUnread ? "border-l-2 border-ftc-primary/40 bg-ftc-primary/[0.05]" : "";
-}
-
-function UnreadInboxIndicator() {
-  return (
-    <span
-      aria-label="Unread"
-      className="h-2.5 w-2.5 shrink-0 rounded-full bg-ftc-primary"
-    />
-  );
-}
-
-function GroupChatCard({ chat, isUnread }: { chat: GroupChatListItem; isUnread: boolean }) {
-  return (
-    <li>
-      <Link
-        href={chat.href}
-        className={`flex w-full items-center gap-3 px-4 py-3.5 transition active:bg-ftc-primary/10 hover:bg-ftc-surface/70 sm:px-6 sm:py-4 ${getUnreadInboxRowClass(isUnread)}`}
-      >
-        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-ftc-primary/25 bg-ftc-primary/10 text-xs font-semibold uppercase tracking-wide text-ftc-primary">
-          GC
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-start justify-between gap-3">
-            <p
-              className={`truncate text-[15px] ${
-                isUnread ? "font-bold text-ftc-text" : "font-semibold text-ftc-text"
-              }`}
-            >
-              {chat.eventName}
-            </p>
-            <div className="flex shrink-0 items-center gap-2">
-              {isUnread ? <UnreadInboxIndicator /> : null}
-              <time
-                dateTime={chat.latestActivityAt ?? chat.eventDate}
-                className={`text-xs ${isUnread ? "font-medium text-ftc-primary/80" : "text-ftc-text-muted"}`}
-              >
-                {chat.latestActivityAt
-                  ? formatInboxTimestamp(chat.latestActivityAt)
-                  : formatGroupChatEventDate(chat.eventDate)}
-              </time>
-            </div>
-          </div>
-          <p className="mt-1 truncate text-sm text-ftc-text-muted">
-            {chat.venue.trim() || "Venue TBC"}
-            {" · "}
-            {formatGroupChatEventDate(chat.eventDate)}
-          </p>
-          <div className="mt-1 flex items-center gap-2">
-            <span className="text-[10px] font-semibold uppercase tracking-wide text-ftc-primary/90">
-              Group Chat
-            </span>
-            {chat.latestPreview ? (
-              <p
-                className={`min-w-0 truncate text-sm ${
-                  isUnread ? "font-medium text-ftc-text-secondary" : "text-ftc-text-muted"
-                }`}
-              >
-                {chat.latestPreview}
-              </p>
-            ) : null}
-          </div>
-        </div>
-      </Link>
-    </li>
   );
 }
 
@@ -375,7 +287,7 @@ function DmInboxPageContent() {
   const [startDmError, setStartDmError] = useState<string | null>(null);
   const [startingDm, setStartingDm] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  const [notificationCount, setNotificationCount] = useState(0);
+  const [searchQuery, setSearchQuery] = useState("");
   const [unreadConversationIds, setUnreadConversationIds] = useState<Set<string>>(
     () => new Set(),
   );
@@ -560,31 +472,6 @@ function DmInboxPageContent() {
   }, [refreshUnreadState]);
 
   useEffect(() => {
-    async function loadNotificationCount() {
-      try {
-        const userId = await getCurrentUserId();
-        const profile = await getCurrentUserProfile();
-        const counts = await getNavBadgeCounts(userId, profile?.role ?? null);
-        setNotificationCount(counts.total);
-      } catch (loadError) {
-        console.error("Failed to load notification count:", loadError);
-      }
-    }
-
-    void loadNotificationCount();
-
-    function handleBadgeRefresh() {
-      void loadNotificationCount();
-    }
-
-    window.addEventListener("ftc-notifications-updated", handleBadgeRefresh);
-
-    return () => {
-      window.removeEventListener("ftc-notifications-updated", handleBadgeRefresh);
-    };
-  }, []);
-
-  useEffect(() => {
     loadGroupChats().catch((loadError: Error) => {
       console.error("loadGroupChats failed:", loadError.message);
       setGroupChatsError(loadError.message);
@@ -728,6 +615,35 @@ function DmInboxPageContent() {
   const renderedGroupChats = sortGroupChatsByLatestActivity(groupChats);
   const dmUnreadCount = unreadConversationIds.size;
   const groupUnreadCount = unreadEventChatIds.size;
+  const normalizedSearch = searchQuery.trim().toLowerCase();
+
+  const filteredDmRows = useMemo(() => {
+    if (!normalizedSearch) {
+      return dmInboxRows;
+    }
+
+    return dmInboxRows.filter((row) => {
+      const otherUserId = otherUsersByConversation.get(row.conversationId);
+      const displayName = getConversationDisplayName(row, otherUserId).toLowerCase();
+      const preview = (row.latestPreview ?? "").toLowerCase();
+
+      return displayName.includes(normalizedSearch) || preview.includes(normalizedSearch);
+    });
+  }, [dmInboxRows, normalizedSearch, otherUsersByConversation]);
+
+  const filteredGroupChats = useMemo(() => {
+    if (!normalizedSearch) {
+      return renderedGroupChats;
+    }
+
+    return renderedGroupChats.filter((chat) => {
+      const haystack = [chat.eventName, chat.venue, chat.latestPreview ?? ""]
+        .join(" ")
+        .toLowerCase();
+
+      return haystack.includes(normalizedSearch);
+    });
+  }, [renderedGroupChats, normalizedSearch]);
 
   useEffect(() => {
     logGroupRenderedRowIds(sortGroupChatsByLatestActivity(groupChats));
@@ -747,30 +663,22 @@ function DmInboxPageContent() {
         className={`mx-auto flex min-h-[100dvh] w-full max-w-2xl flex-col bg-ftc-bg font-sans text-ftc-text ${MOBILE_NAV_OFFSET_CLASS}`}
       >
         <AppNavigation />
-        <header className="sticky top-0 z-10 border-b border-ftc-border-subtle bg-ftc-bg/95 px-4 py-4 backdrop-blur-md sm:px-6 md:top-12">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0 flex-1">
-              <h1 className="text-2xl font-bold text-ftc-text">Messages</h1>
-              <p className="mt-0.5 text-xs text-ftc-text-muted">{currentUserId ?? "Signed in"}</p>
-            </div>
-            <NotificationsBellLink count={notificationCount} />
+        <header className="sticky top-0 z-10 border-b border-ftc-border-subtle bg-ftc-bg/95 px-4 py-3 backdrop-blur-md sm:px-6 md:top-12">
+          <div className="flex items-center justify-between gap-3">
+            <h1 className="text-xl font-bold tracking-tight text-ftc-text">Messages</h1>
+            <MessagesInboxComposeButton disabled={startingDm} onClick={handleMessageDj} />
           </div>
 
-          {activeTab === "dm" && hasDirectMessages ? (
-            <div className="mt-4">
-              <MessageDjButton
-                disabled={startingDm}
-                onClick={handleMessageDj}
-                className="w-full sm:w-auto"
-              />
-              {startDmError ? (
-                <p className="mt-2 text-sm text-red-400">{startDmError}</p>
-              ) : null}
-            </div>
+          {startDmError ? (
+            <p className="mt-2 text-sm text-red-400">{startDmError}</p>
           ) : null}
 
+          <div className="mt-3">
+            <MessagesInboxSearchBar value={searchQuery} onChange={setSearchQuery} />
+          </div>
+
           <div
-            className="ftc-tab-pill mt-4"
+            className="ftc-tab-pill mt-3"
             role="tablist"
             aria-label="Message categories"
           >
@@ -791,24 +699,44 @@ function DmInboxPageContent() {
           </div>
         </header>
 
-        <div className="flex-1">
+        <div className="flex-1 px-4 py-3 sm:px-6">
           {activeTab === "group" ? (
             <section aria-label="Group Chats">
               {groupChatsLoading ? (
-                <p className="px-4 py-4 text-sm text-ftc-text-muted sm:px-6">Loading group chats...</p>
+                <p className="py-2 text-sm text-ftc-text-muted">Loading group chats...</p>
               ) : groupChatsError ? (
-                <p className="px-4 py-4 text-sm text-red-400 sm:px-6">{groupChatsError}</p>
+                <p className="py-2 text-sm text-red-400">{groupChatsError}</p>
               ) : renderedGroupChats.length === 0 ? (
                 <GroupChatsEmptyState />
+              ) : filteredGroupChats.length === 0 ? (
+                <p className="py-8 text-center text-sm text-ftc-text-muted">
+                  No group chats match your search.
+                </p>
               ) : (
-                <ul className="divide-y divide-ftc-border">
-                  {renderedGroupChats.map((chat) => (
-                    <GroupChatCard
-                      key={chat.eventId}
-                      chat={chat}
-                      isUnread={unreadEventChatIds.has(chat.eventId)}
-                    />
-                  ))}
+                <ul className="flex flex-col gap-2">
+                  {filteredGroupChats.map((chat) => {
+                    const preview = chat.latestPreview
+                      ? `${chat.latestMessageUserId === currentUserId ? "You: " : ""}${chat.latestPreview}`
+                      : null;
+
+                    return (
+                      <li key={chat.eventId}>
+                        <MessagesGroupInboxRow
+                          title={chat.eventName}
+                          subtitle={`${chat.venue.trim() || "Venue TBC"} · ${formatGroupChatEventDate(chat.eventDate)}`}
+                          preview={preview}
+                          timestamp={chat.latestActivityAt ?? undefined}
+                          timestampLabel={
+                            chat.latestActivityAt
+                              ? undefined
+                              : formatGroupChatEventDate(chat.eventDate)
+                          }
+                          isUnread={unreadEventChatIds.has(chat.eventId)}
+                          href={chat.href}
+                        />
+                      </li>
+                    );
+                  })}
                 </ul>
               )}
             </section>
@@ -817,18 +745,22 @@ function DmInboxPageContent() {
           {activeTab === "dm" ? (
             <section aria-label="Direct Messages">
               {loading ? (
-                <p className="px-4 py-4 text-sm text-ftc-text-muted sm:px-6">Loading conversations...</p>
+                <p className="py-2 text-sm text-ftc-text-muted">Loading conversations...</p>
               ) : error ? (
-                <p className="px-4 py-4 text-sm text-red-400 sm:px-6">{error}</p>
+                <p className="py-2 text-sm text-red-400">{error}</p>
               ) : !hasDirectMessages ? (
                 <DirectMessagesEmptyState
                   startingDm={startingDm}
                   startDmError={startDmError}
                   onMessageDj={handleMessageDj}
                 />
+              ) : filteredDmRows.length === 0 ? (
+                <p className="py-8 text-center text-sm text-ftc-text-muted">
+                  No conversations match your search.
+                </p>
               ) : (
-                <ul className="divide-y divide-ftc-border">
-                  {dmInboxRows.map((row) => {
+                <ul className="flex flex-col gap-2">
+                  {filteredDmRows.map((row) => {
                     const otherUserId = otherUsersByConversation.get(row.conversationId);
                     const otherProfile = otherUserId ? userProfiles.get(otherUserId) : undefined;
                     const displayName = getConversationDisplayName(row, otherUserId);
@@ -836,51 +768,17 @@ function DmInboxPageContent() {
                       ? `${row.latestMessageUserId === currentUserId ? "You: " : ""}${row.latestPreview}`
                       : "No messages yet";
                     const timestamp = row.latestActivityAt ?? row.conversationCreatedAt;
-                    const isUnread = unreadConversationIds.has(row.conversationId);
 
                     return (
                       <li key={row.conversationId}>
-                        <button
-                          type="button"
+                        <MessagesInboxRow
+                          displayName={displayName}
+                          preview={preview}
+                          timestamp={timestamp}
+                          avatarUrl={otherProfile?.avatar_url}
+                          isUnread={unreadConversationIds.has(row.conversationId)}
                           onClick={() => openConversation(row.conversationId)}
-                          className={`flex w-full items-center gap-3 px-4 py-3.5 text-left transition active:bg-ftc-primary/10 hover:bg-ftc-surface/70 sm:px-6 sm:py-4 ${getUnreadInboxRowClass(isUnread)}`}
-                        >
-                          <ConversationAvatar
-                            label={displayName}
-                            avatarUrl={otherProfile?.avatar_url}
-                          />
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center justify-between gap-3">
-                              <p
-                                className={`truncate text-[15px] ${
-                                  isUnread ? "font-bold text-ftc-text" : "font-semibold text-ftc-text"
-                                }`}
-                              >
-                                {displayName}
-                              </p>
-                              <div className="flex shrink-0 items-center gap-2">
-                                {isUnread ? <UnreadInboxIndicator /> : null}
-                                {timestamp ? (
-                                  <time
-                                    dateTime={timestamp}
-                                    className={`text-xs ${
-                                      isUnread ? "font-medium text-ftc-primary/80" : "text-ftc-text-muted"
-                                    }`}
-                                  >
-                                    {formatInboxTimestamp(timestamp)}
-                                  </time>
-                                ) : null}
-                              </div>
-                            </div>
-                            <p
-                              className={`mt-1 truncate text-sm ${
-                                isUnread ? "font-medium text-ftc-text-secondary" : "text-ftc-text-muted"
-                              }`}
-                            >
-                              {preview}
-                            </p>
-                          </div>
-                        </button>
+                        />
                       </li>
                     );
                   })}

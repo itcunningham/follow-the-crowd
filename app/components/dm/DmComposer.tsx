@@ -8,7 +8,7 @@ import {
 } from "@/lib/dmAttachments";
 import { DM_COMPOSER_EMOJIS } from "@/lib/dmReactions";
 
-function IconButton({
+function ComposerIconButton({
   label,
   disabled,
   onClick,
@@ -28,7 +28,7 @@ function IconButton({
       title={label}
       disabled={disabled}
       onClick={onClick}
-      className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-ftc-border bg-ftc-surface/70 text-ftc-text-secondary transition hover:border-ftc-primary/30 hover:text-ftc-primary/90 disabled:cursor-not-allowed disabled:opacity-40 ${className}`}
+      className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-ftc-border-subtle bg-ftc-surface text-ftc-text-secondary transition hover:border-ftc-border-strong hover:text-ftc-text disabled:cursor-not-allowed disabled:opacity-40 ${className}`}
     >
       {children}
     </button>
@@ -95,50 +95,10 @@ export default function DmComposer({
     onSelected(file);
   }
 
-  const attachmentButtons = (
-    <>
-      <IconButton
-        label="Add photo"
-        disabled={busy}
-        onClick={() => photoInputRef.current?.click()}
-      >
-        <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" className="h-5 w-5">
-          <rect x="4" y="6" width="16" height="14" rx="2" stroke="currentColor" strokeWidth="1.5" />
-          <circle cx="9" cy="11" r="1.5" fill="currentColor" />
-          <path d="m9 16 3-3 2 2 3-4 3 5" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
-        </svg>
-      </IconButton>
-
-      <IconButton
-        label="Attach file (PDF, DOC, CSV, ZIP, MP3, WAV, and more)"
-        disabled={busy}
-        onClick={() => fileInputRef.current?.click()}
-      >
-        <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" className="h-5 w-5">
-          <path
-            d="M8 12.5 14.5 6a3.5 3.5 0 1 1 5 5L10 20.5a5 5 0 1 1-7-7l8.5-8.5"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-          />
-        </svg>
-      </IconButton>
-
-      <IconButton
-        label="Add emoji"
-        disabled={busy}
-        onClick={() => setEmojiOpen((open) => !open)}
-        className={emojiOpen ? "border-ftc-primary/30 text-ftc-primary/90" : ""}
-      >
-        <span className="text-lg leading-none">😊</span>
-      </IconButton>
-    </>
-  );
-
   return (
-    <div className="shrink-0 border-t border-ftc-border bg-ftc-bg px-3 py-3 sm:px-4 sm:py-4">
+    <div className="shrink-0 border-t border-ftc-border-subtle bg-ftc-bg px-3 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-4">
       {emojiOpen ? (
-        <div className="mb-2 rounded-2xl border border-ftc-border bg-ftc-bg-elevated/90 p-2">
+        <div className="mb-2 rounded-2xl border border-ftc-border-subtle bg-ftc-bg-elevated p-2">
           <div className="grid grid-cols-6 gap-1 sm:grid-cols-8">
             {DM_COMPOSER_EMOJIS.map((emoji) => (
               <button
@@ -154,8 +114,35 @@ export default function DmComposer({
         </div>
       ) : null}
 
-      <div className="flex flex-col gap-2 sm:hidden">
-        <div className="flex min-w-0 items-end gap-2">
+      <div className="flex min-w-0 items-end gap-2">
+        <ComposerIconButton
+          label="Add photo"
+          disabled={busy}
+          onClick={() => photoInputRef.current?.click()}
+        >
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" className="h-5 w-5">
+            <rect x="4" y="6" width="16" height="14" rx="2" stroke="currentColor" strokeWidth="1.5" />
+            <circle cx="9" cy="11" r="1.5" fill="currentColor" />
+            <path d="m9 16 3-3 2 2 3-4 3 5" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
+          </svg>
+        </ComposerIconButton>
+
+        <ComposerIconButton
+          label="Attach file"
+          disabled={busy}
+          onClick={() => fileInputRef.current?.click()}
+        >
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" className="h-5 w-5">
+            <path
+              d="M8 12.5 14.5 6a3.5 3.5 0 1 1 5 5L10 20.5a5 5 0 1 1-7-7l8.5-8.5"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+            />
+          </svg>
+        </ComposerIconButton>
+
+        <div className="relative min-w-0 flex-1">
           <input
             type="text"
             value={value}
@@ -163,35 +150,20 @@ export default function DmComposer({
             onKeyDown={handleKeyDown}
             placeholder="Message..."
             disabled={busy}
-            className="ftc-input min-h-[44px] rounded-full px-4 py-2.5 disabled:opacity-50"
+            className="ftc-input h-11 w-full rounded-full py-0 pl-4 pr-11 disabled:opacity-50"
           />
-
           <button
             type="button"
-            onClick={onSend}
-            disabled={busy || !value.trim()}
-            aria-label="Send message"
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-ftc-primary text-ftc-bg transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-50"
+            aria-label="Add emoji"
+            disabled={busy}
+            onClick={() => setEmojiOpen((open) => !open)}
+            className={`absolute right-1.5 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-lg transition disabled:opacity-40 ${
+              emojiOpen ? "text-ftc-primary" : "text-ftc-text-muted hover:text-ftc-text-secondary"
+            }`}
           >
-            {busy ? <span className="text-xs font-bold">…</span> : <SendIcon />}
+            😊
           </button>
         </div>
-
-        <div className="flex items-center gap-1.5">{attachmentButtons}</div>
-      </div>
-
-      <div className="hidden min-w-0 items-end gap-2 sm:flex">
-        {attachmentButtons}
-
-        <input
-          type="text"
-          value={value}
-          onChange={(event) => onChange(event.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder="Message..."
-          disabled={busy}
-          className="ftc-input min-h-[44px] min-w-0 flex-1 rounded-full px-4 py-2.5 disabled:opacity-50"
-        />
 
         <button
           type="button"
