@@ -128,6 +128,30 @@ export function EventDetailOverlayButton({
   );
 }
 
+export function EventDetailEditButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      aria-label="Edit event"
+      onClick={onClick}
+      className="flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-xl border border-ftc-border-subtle bg-ftc-bg/80 px-2.5 text-ftc-text backdrop-blur-sm transition hover:border-ftc-border-strong hover:bg-ftc-bg-elevated sm:px-3"
+    >
+      <svg
+        aria-hidden="true"
+        viewBox="0 0 24 24"
+        className="h-[18px] w-[18px]"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.75"
+      >
+        <path d="M12 20h9" />
+        <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
+      </svg>
+      <span className="hidden text-xs font-semibold uppercase tracking-wide sm:inline">Edit</span>
+    </button>
+  );
+}
+
 export function EventDetailHero({
   eventName,
   coverImageUrl,

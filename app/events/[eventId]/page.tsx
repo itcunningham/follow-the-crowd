@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import AppNavigation, { MOBILE_NAV_OFFSET_CLASS } from "@/app/components/AppNavigation";
 import EventDeleteCancelButton from "@/app/components/EventDeleteCancelButton";
 import EventDateStatusBadge from "@/app/components/EventDateStatusBadge";
@@ -13,6 +13,7 @@ import EventDetailBottomBar, {
 } from "@/app/components/event-detail/EventDetailBottomBar";
 import EventDetailLineupList from "@/app/components/event-detail/EventDetailLineupList";
 import EventDetailMetaList, {
+  EventDetailEditButton,
   EventDetailHero,
   EventDetailOverlayButton,
 } from "@/app/components/event-detail/EventDetailLayout";
@@ -132,6 +133,7 @@ export default function EventDetailPage() {
   const [editCoverError, setEditCoverError] = useState<string | null>(null);
   const [editConfirmOpen, setEditConfirmOpen] = useState(false);
   const [savingEdit, setSavingEdit] = useState(false);
+  const editFormSectionRef = useRef<HTMLElement | null>(null);
 
   const [sendOpen, setSendOpen] = useState(false);
   const [djs, setDjs] = useState<UserProfile[]>([]);
@@ -150,6 +152,7 @@ export default function EventDetailPage() {
 
   const isOwner = Boolean(event && currentUserId && event.owner_id === currentUserId);
   const isPlanner = canManageEvents(role);
+  const canEditEvent = isOwner && isPlanner;
   const hasAcceptedBooking = Boolean(
     currentUserId &&
       lineup.some(
@@ -324,6 +327,10 @@ export default function EventDetailPage() {
     resetEditCoverState();
     setEditOpen(true);
     setError(null);
+
+    requestAnimationFrame(() => {
+      editFormSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
   }
 
   async function applyEditCoverChanges(previousCoverUrl: string | null): Promise<string | null> {
@@ -701,13 +708,8 @@ export default function EventDetailPage() {
                   </svg>
                 </EventDetailOverlayButton>
               ) : null}
-              {isOwner && isPlanner ? (
-                <EventDetailOverlayButton label="Edit event" onClick={openEditForm}>
-                  <svg aria-hidden="true" viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="1.75">
-                    <path d="M12 20h9" />
-                    <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
-                  </svg>
-                </EventDetailOverlayButton>
+              {canEditEvent ? (
+                <EventDetailEditButton onClick={openEditForm} />
               ) : null}
             </div>
           </div>
@@ -765,7 +767,8 @@ export default function EventDetailPage() {
             </div>
           ) : null}
 
-          {editOpen && editForm && isOwner ? (
+          {editOpen && editForm && canEditEvent ? (
+            <section ref={editFormSectionRef} className="scroll-mt-24">
             <PlannerFormCard
               title="Edit event"
               onCancel={() => {
@@ -847,6 +850,7 @@ export default function EventDetailPage() {
                 </button>
               </form>
             </PlannerFormCard>
+            </section>
           ) : null}
 
           {sendOpen && isOwner && !eventIsCancelled ? (
