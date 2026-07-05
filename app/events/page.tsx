@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import AppNavigation, { MOBILE_NAV_OFFSET_CLASS } from "@/app/components/AppNavigation";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
 import EventDateStatusBadge from "@/app/components/EventDateStatusBadge";
@@ -46,10 +46,7 @@ import {
 } from "@/lib/events/eventCoverImage";
 import {
   buildEventDetailHref,
-  buildEventsListHref,
-  eventsListViewFromTab,
   parseEventsListTab,
-  type EventsListView,
 } from "@/lib/events/eventsListNavigation";
 import {
   canManageEvents,
@@ -86,6 +83,7 @@ export default function EventsPage() {
 
 function EventsPageContent() {
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const handledCreateParamsRef = useRef<string | null>(null);
   const [role, setRole] = useState<UserRole | null>(null);
@@ -110,18 +108,39 @@ function EventsPageContent() {
   const [error, setError] = useState<string | null>(null);
   const [eventDateOverride, setEventDateOverride] = useState<string | null>(null);
   const tabParam = searchParams.get("tab");
+  const isHistoryTab = tabParam === "history";
   const listTab = parseEventsListTab(tabParam);
-  const listView = eventsListViewFromTab(listTab);
+  const upcomingEvents = useMemo(
+    () => events.filter((event) => !isEventCancelled(event)),
+    [events],
+  );
+  const historyEvents = useMemo(
+    () => events.filter((event) => isEventCancelled(event)),
+    [events],
+  );
+  const filteredEvents = isHistoryTab ? historyEvents : upcomingEvents;
 
   const isPlanner = canManageEvents(role);
 
-  const filteredEvents = useMemo(() => {
-    if (listView === "cancelled") {
-      return events.filter((event) => isEventCancelled(event));
-    }
-
-    return events.filter((event) => !isEventCancelled(event));
-  }, [events, listView]);
+  useEffect(() => {
+    console.log("[events tab state]", {
+      pathname,
+      searchParams: searchParams.toString(),
+      tabParam,
+      derivedTab: listTab,
+      isHistoryTab,
+      upcomingCount: upcomingEvents.length,
+      historyCount: historyEvents.length,
+    });
+  }, [
+    pathname,
+    searchParams,
+    tabParam,
+    listTab,
+    isHistoryTab,
+    upcomingEvents.length,
+    historyEvents.length,
+  ]);
 
   const loadEvents = useCallback(async () => {
     setLoadingEvents(true);
@@ -488,42 +507,70 @@ function EventsPageContent() {
             <>
               {!createOpen ? (
                 <div className="mb-4 flex flex-wrap gap-2">
-                  {(
-                    [
-                      { view: "active" as const, label: isPlanner ? "Active" : "Upcoming" },
-                      { view: "cancelled" as const, label: "History" },
-                    ] as const
-                  ).map((option) => {
-                    const href = buildEventsListHref(
-                      option.view === "cancelled" ? "history" : "active",
-                    );
-                    const isActive = listView === option.view;
+                  <Link
+                    href="/events"
+                    className={`ftc-filter-pill ${!isHistoryTab ? "ftc-filter-pill-active" : ""}`}
+                    onClick={(event) => {
+                      console.log("[events tab click]", {
+                        label: isPlanner ? "Active" : "Upcoming",
+                        href: "/events",
+                        searchParams: searchParams.toString(),
+                        tabParam,
+                        derivedTab: listTab,
+                        upcomingCount: upcomingEvents.length,
+                        historyCount: historyEvents.length,
+                      });
 
-                    return (
-                      <Link
-                        key={option.view}
-                        href={href}
-                        scroll={false}
-                        className={`ftc-filter-pill ${isActive ? "ftc-filter-pill-active" : ""}`}
-                      >
-                        {option.label}
-                      </Link>
-                    );
-                  })}
+                      if (!isHistoryTab) {
+                        event.preventDefault();
+                        return;
+                      }
+
+                      event.preventDefault();
+                      router.push("/events");
+                    }}
+                  >
+                    {isPlanner ? "Active" : "Upcoming"}
+                  </Link>
+                  <Link
+                    href="/events?tab=history"
+                    className={`ftc-filter-pill ${isHistoryTab ? "ftc-filter-pill-active" : ""}`}
+                    onClick={(event) => {
+                      console.log("[events tab click]", {
+                        label: "History",
+                        href: "/events?tab=history",
+                        searchParams: searchParams.toString(),
+                        tabParam,
+                        derivedTab: listTab,
+                        upcomingCount: upcomingEvents.length,
+                        historyCount: historyEvents.length,
+                      });
+
+                      if (isHistoryTab) {
+                        event.preventDefault();
+                        return;
+                      }
+
+                      event.preventDefault();
+                      router.push("/events?tab=history");
+                    }}
+                  >
+                    History
+                  </Link>
                 </div>
               ) : null}
 
               {events.length === 0 ? (
                 <PlannerEmptyState
                   title={
-                    listView === "cancelled"
+                    isHistoryTab
                       ? "No cancelled events."
                       : isPlanner
                         ? "No events yet. Create your first event."
                         : "No event invitations yet."
                   }
                   action={
-                    isPlanner && !createOpen && listView === "active" ? (
+                    isPlanner && !createOpen && !isHistoryTab ? (
                       <button
                         type="button"
                         onClick={() => {
@@ -539,9 +586,7 @@ function EventsPageContent() {
               ) : filteredEvents.length === 0 ? (
                 <PlannerEmptyState
                   title={
-                    listView === "cancelled"
-                      ? "No cancelled events."
-                      : "No active events."
+                    isHistoryTab ? "No cancelled events." : "No active events."
                   }
                 />
               ) : (
