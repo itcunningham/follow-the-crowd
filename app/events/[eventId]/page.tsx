@@ -367,7 +367,7 @@ export default function EventDetailPage() {
         setEditForm(null);
         resetEditCoverState();
         setError(getEventCoverUploadErrorMessage(coverError));
-        setSuccessMessage("Event details saved, but the cover image could not be updated.");
+        setSuccessMessage("Event details saved, but the flyer could not be updated.");
         return;
       }
 
@@ -644,14 +644,8 @@ export default function EventDetailPage() {
       >
         <AppNavigation />
 
-        <div className="relative">
-          <EventDetailHero
-            eventName={event.name}
-            coverImageUrl={event.cover_image_url}
-            statusBadge={<EventDateStatusBadge eventDate={event.event_date} status={event.status} />}
-          />
-
-          <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-3 px-4 pb-4 pt-[max(0.75rem,env(safe-area-inset-top))] sm:px-6">
+        <div className="border-b border-ftc-border-subtle bg-ftc-bg/95 px-4 py-3 backdrop-blur-md sm:px-6">
+          <div className="flex items-start justify-between gap-3">
             <EventDetailOverlayButton href="/events" label="Back to events">
               <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.75">
                 <path d="M15 6l-6 6 6 6" strokeLinecap="round" strokeLinejoin="round" />
@@ -681,10 +675,16 @@ export default function EventDetailPage() {
           </div>
         </div>
 
+        <EventDetailHero
+          eventName={event.name}
+          coverImageUrl={event.cover_image_url}
+          statusBadge={<EventDateStatusBadge eventDate={event.event_date} status={event.status} />}
+        />
+
         <div className={`px-4 sm:px-6 ${showBottomBar ? "pb-28" : "pb-6"} pt-5`}>
           {searchParams.get("coverUpload") === "failed" ? (
             <p className="mb-4 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated px-4 py-3 text-sm text-ftc-text-secondary">
-              Event saved, but the cover image could not be uploaded. Open Edit event to try again.
+              Event saved, but the flyer could not be uploaded. Open Edit event to try again.
             </p>
           ) : null}
 

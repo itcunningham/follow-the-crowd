@@ -12,16 +12,16 @@ export function isAllowedEventCoverImageType(type: string): boolean {
 
 export function getEventCoverImageAlt(eventName: string): string {
   const trimmed = eventName.trim();
-  return trimmed ? `${trimmed} cover image` : "Event cover image";
+  return trimmed ? `${trimmed} event flyer` : "Event flyer";
 }
 
 export function validateEventCoverFile(file: File): string | null {
   if (!isAllowedEventCoverImageType(file.type)) {
-    return "Cover image must be JPEG, PNG, or WebP.";
+    return "Flyer image must be JPEG, PNG, or WebP.";
   }
 
   if (file.size > MAX_EVENT_COVER_BYTES) {
-    return "Cover image must be 5 MB or smaller.";
+    return "Flyer image must be 5 MB or smaller.";
   }
 
   return null;
@@ -95,7 +95,7 @@ export function getEventCoverUploadErrorMessage(error: unknown): string {
     }
   }
 
-  return "Cover image upload failed.";
+  return "Flyer image upload failed.";
 }
 
 export async function uploadEventCoverImage(eventId: string, file: File): Promise<string> {

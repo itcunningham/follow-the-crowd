@@ -135,31 +135,35 @@ export function EventDetailHero({
   const initial = eventName.trim().charAt(0).toUpperCase() || "E";
   const trimmedCoverUrl = coverImageUrl?.trim() || null;
 
+  if (!trimmedCoverUrl) {
+    return (
+      <div className="relative aspect-[4/3] max-h-[220px] w-full overflow-hidden bg-ftc-bg-elevated">
+        <div className="absolute inset-0 bg-gradient-to-b from-ftc-surface-raised via-ftc-bg-elevated to-ftc-bg" />
+        <div className="absolute inset-0 flex items-center justify-center">
+          <span className="text-6xl font-bold uppercase tracking-wider text-ftc-border-strong/80 sm:text-7xl">
+            {initial}
+          </span>
+        </div>
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-ftc-bg to-transparent" />
+        {statusBadge ? <div className="absolute bottom-4 left-4">{statusBadge}</div> : null}
+      </div>
+    );
+  }
+
   return (
-    <div className="relative aspect-video max-h-[320px] w-full overflow-hidden bg-ftc-bg-elevated">
-      {trimmedCoverUrl ? (
-        <>
-          <img
-            src={trimmedCoverUrl}
-            alt={getEventCoverImageAlt(eventName)}
-            className="absolute inset-0 h-full w-full object-cover"
-          />
-          <div className="absolute inset-0 bg-gradient-to-b from-[#0a0e14]/85 via-[#0a0e14]/35 to-transparent" />
-        </>
-      ) : (
-        <>
-          <div className="absolute inset-0 bg-gradient-to-b from-ftc-surface-raised via-ftc-bg-elevated to-ftc-bg" />
-          <div className="absolute inset-0 flex items-center justify-center">
-            <span className="text-6xl font-bold uppercase tracking-wider text-ftc-border-strong/80 sm:text-7xl">
-              {initial}
-            </span>
+    <div className="px-4 pb-1 pt-3 sm:px-6">
+      <div className="mx-auto flex w-full max-w-[15rem] flex-col items-center sm:max-w-[17.5rem]">
+        <div className="w-full overflow-hidden rounded-2xl border border-ftc-border-subtle bg-ftc-bg-elevated">
+          <div className="relative aspect-[3/4] w-full bg-ftc-bg">
+            <img
+              src={trimmedCoverUrl}
+              alt={getEventCoverImageAlt(eventName)}
+              className="absolute inset-0 h-full w-full object-contain p-1.5"
+            />
           </div>
-        </>
-      )}
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-ftc-bg to-transparent" />
-      {statusBadge ? (
-        <div className="absolute bottom-4 left-4">{statusBadge}</div>
-      ) : null}
+        </div>
+        {statusBadge ? <div className="mt-3">{statusBadge}</div> : null}
+      </div>
     </div>
   );
 }

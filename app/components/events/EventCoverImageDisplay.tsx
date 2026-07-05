@@ -2,7 +2,7 @@
 
 import { getEventCoverImageAlt } from "@/lib/events/eventCoverImage";
 
-export function EventCoverImageThumb({
+function EventFlyerFrame({
   coverImageUrl,
   eventName,
   className = "",
@@ -12,11 +12,15 @@ export function EventCoverImageThumb({
   className?: string;
 }) {
   return (
-    <img
-      src={coverImageUrl}
-      alt={getEventCoverImageAlt(eventName)}
-      className={`aspect-video object-cover ${className}`}
-    />
+    <div
+      className={`overflow-hidden border border-ftc-border-subtle bg-ftc-bg ${className}`}
+    >
+      <img
+        src={coverImageUrl}
+        alt={getEventCoverImageAlt(eventName)}
+        className="h-full w-full object-contain"
+      />
+    </div>
   );
 }
 
@@ -28,10 +32,10 @@ export function EventCoverImageListThumb({
   eventName: string;
 }) {
   return (
-    <EventCoverImageThumb
+    <EventFlyerFrame
       coverImageUrl={coverImageUrl}
       eventName={eventName}
-      className="h-16 w-[7.125rem] shrink-0 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated"
+      className="h-[5.5rem] w-[4.375rem] shrink-0 rounded-xl bg-ftc-bg-elevated"
     />
   );
 }
@@ -44,10 +48,10 @@ export function EventCoverImageContextThumb({
   eventName: string;
 }) {
   return (
-    <EventCoverImageThumb
+    <EventFlyerFrame
       coverImageUrl={coverImageUrl}
       eventName={eventName}
-      className="h-10 w-[4.5rem] shrink-0 rounded-lg border border-ftc-border-subtle bg-ftc-bg-elevated"
+      className="h-11 w-11 shrink-0 rounded-xl bg-ftc-bg-elevated"
     />
   );
 }

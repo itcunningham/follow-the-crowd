@@ -18,7 +18,7 @@ export const emptyEventCoverImageFieldState: EventCoverImageFieldState = {
 };
 
 export default function EventCoverImageField({
-  label = "Cover image",
+  label = "Event flyer",
   eventName,
   currentCoverUrl,
   value,
@@ -108,21 +108,23 @@ export default function EventCoverImageField({
     <div>
       <span className={BOOKING_FIELD_LABEL_CLASS}>{label}</span>
       <p className="mb-2 text-xs text-ftc-text-muted">
-        Optional landscape image. JPEG, PNG, or WebP up to 5 MB.
+        Optional. Upload a flyer or event image. Portrait 9:16 works best.
       </p>
 
       <div className="overflow-hidden rounded-xl border border-ftc-border-subtle bg-ftc-surface">
         {showPreview && previewSrc ? (
-          <div className="aspect-video w-full overflow-hidden bg-ftc-bg-elevated">
-            <img
-              src={previewSrc}
-              alt={getEventCoverImageAlt(eventName)}
-              className="h-full w-full object-cover"
-            />
+          <div className="flex justify-center bg-ftc-bg px-4 py-4">
+            <div className="aspect-[3/4] w-full max-w-[12.5rem] overflow-hidden rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated">
+              <img
+                src={previewSrc}
+                alt={getEventCoverImageAlt(eventName)}
+                className="h-full w-full object-contain"
+              />
+            </div>
           </div>
         ) : (
-          <div className="flex aspect-video w-full items-center justify-center bg-ftc-bg px-4 text-center">
-            <p className="text-sm text-ftc-text-muted">No cover image selected</p>
+          <div className="flex aspect-[3/4] max-h-52 w-full items-center justify-center bg-ftc-bg px-4 text-center">
+            <p className="text-sm text-ftc-text-muted">No flyer selected</p>
           </div>
         )}
 
