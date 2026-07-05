@@ -125,6 +125,10 @@ export default function EventDetailPage() {
     [searchParams],
   );
 
+  useEffect(() => {
+    console.log("[events nav] back href", eventsBackHref);
+  }, [eventsBackHref, searchParams]);
+
   const [role, setRole] = useState<UserRole | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);

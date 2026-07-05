@@ -118,12 +118,20 @@ function EventsPageContent() {
   const activeListTab = eventsListTabFromView(listView);
 
   useEffect(() => {
-    setListView(eventsListViewFromTab(parseEventsListTab(searchParams.get("tab"))));
+    const tab = parseEventsListTab(searchParams.get("tab"));
+    console.log("[events nav] current tab", tab);
+    setListView(eventsListViewFromTab(tab));
   }, [searchParams]);
 
   function handleListViewChange(nextView: EventsListView) {
+    if (nextView === listView) {
+      return;
+    }
+
+    const nextTab = eventsListTabFromView(nextView);
+    console.log("[events nav] current tab", nextTab);
     setListView(nextView);
-    router.replace(buildEventsListHref(eventsListTabFromView(nextView)), { scroll: false });
+    router.push(buildEventsListHref(nextTab), { scroll: false });
   }
 
   const filteredEvents = useMemo(() => {
@@ -542,11 +550,15 @@ function EventsPageContent() {
             <ul className="space-y-3">
               {filteredEvents.map((event) => {
                 const cancelled = isEventCancelled(event);
+                const eventHref = buildEventDetailHref(event.id, activeListTab);
 
                 return (
                 <li key={event.id}>
                   <Link
-                    href={buildEventDetailHref(event.id, activeListTab)}
+                    href={eventHref}
+                    onClick={() => {
+                      console.log("[events nav] event href", eventHref);
+                    }}
                     className={`ftc-card block p-4 transition hover:border-ftc-border-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ftc-primary/35 sm:p-5 ${
                       cancelled ? "ftc-event-card-cancelled" : ""
                     }`}
