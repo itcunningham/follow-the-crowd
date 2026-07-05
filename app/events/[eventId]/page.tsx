@@ -7,6 +7,15 @@ import AppNavigation, { MOBILE_NAV_OFFSET_CLASS } from "@/app/components/AppNavi
 import EventDeleteCancelButton from "@/app/components/EventDeleteCancelButton";
 import EventDateStatusBadge from "@/app/components/EventDateStatusBadge";
 import EventRunSheetSection from "@/app/components/EventRunSheetSection";
+import EventDetailBottomBar, {
+  EventDetailPrimaryAction,
+  EventDetailSecondaryAction,
+} from "@/app/components/event-detail/EventDetailBottomBar";
+import EventDetailLineupList from "@/app/components/event-detail/EventDetailLineupList";
+import EventDetailMetaList, {
+  EventDetailHero,
+  EventDetailOverlayButton,
+} from "@/app/components/event-detail/EventDetailLayout";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
 import ProfileAvatar from "@/app/components/ProfileAvatar";
 import DjBookingAvailabilityBadge from "@/app/components/DjBookingAvailabilityBadge";
@@ -522,6 +531,25 @@ export default function EventDetailPage() {
     }
   }
 
+  const viewerBooking = useMemo(
+    () =>
+      currentUserId
+        ? activeLineup.find((booking) => booking.recipient_id === currentUserId) ?? null
+        : null,
+    [activeLineup, currentUserId],
+  );
+
+  const acceptedLineup = useMemo(
+    () => activeLineup.filter((booking) => booking.status === "accepted"),
+    [activeLineup],
+  );
+
+  const showStickyActions = !editOpen && !sendOpen;
+  const showOwnerSendAction = isOwner && isPlanner && !eventIsCancelled;
+  const showBottomBar =
+    showStickyActions &&
+    (showOwnerSendAction || canOpenCrewChat || Boolean(viewerBooking?.conversation_id));
+
   if (loading) {
     return (
       <div className="flex min-h-[100dvh] items-center justify-center bg-ftc-bg text-sm text-ftc-text-muted">
@@ -555,69 +583,45 @@ export default function EventDetailPage() {
       >
         <AppNavigation />
 
-        <header className="border-b border-ftc-border px-4 py-4 sm:px-6 md:pt-4">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div className="min-w-0">
-              <Link
-                href="/events"
-                className="text-xs font-semibold uppercase tracking-wide text-ftc-text-muted transition hover:text-ftc-text-secondary"
-              >
-                ← Events
-              </Link>
-              <div className="mt-2 flex flex-wrap items-center gap-2">
-                <h1 className="text-xl font-semibold text-ftc-text">{event.name}</h1>
-                <EventDateStatusBadge eventDate={event.event_date} status={event.status} />
-              </div>
+        <div className="relative">
+          <EventDetailHero
+            eventName={event.name}
+            statusBadge={<EventDateStatusBadge eventDate={event.event_date} status={event.status} />}
+          />
+
+          <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-3 px-4 pb-4 pt-[max(0.75rem,env(safe-area-inset-top))] sm:px-6">
+            <EventDetailOverlayButton href="/events" label="Back to events">
+              <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.75">
+                <path d="M15 6l-6 6 6 6" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </EventDetailOverlayButton>
+
+            <div className="flex items-center gap-2">
+              {canOpenCrewChat ? (
+                <EventDetailOverlayButton
+                  href={`/events/${event.id}/chat`}
+                  label="Open group chat"
+                >
+                  <svg aria-hidden="true" viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="1.75">
+                    <path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 2 2 0 0 1-1.8 1.1h-3.7l-3 3v-3H8a2 2 0 0 1-2-2V8.5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2Z" />
+                  </svg>
+                </EventDetailOverlayButton>
+              ) : null}
+              {isOwner && isPlanner ? (
+                <EventDetailOverlayButton label="Edit event" onClick={openEditForm}>
+                  <svg aria-hidden="true" viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="1.75">
+                    <path d="M12 20h9" />
+                    <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
+                  </svg>
+                </EventDetailOverlayButton>
+              ) : null}
             </div>
-
-            {canOpenCrewChat || (isOwner && isPlanner) ? (
-              <div className="flex shrink-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
-                {canOpenCrewChat ? (
-                  <Link
-                    href={`/events/${event.id}/chat`}
-                    className="rounded-lg border border-ftc-primary/30 bg-ftc-primary/10 px-3 py-1.5 text-center text-xs font-semibold uppercase tracking-wide text-ftc-primary transition hover:border-ftc-primary/40 hover:bg-ftc-primary/12"
-                  >
-                    Group chat
-                  </Link>
-                ) : null}
-                {isOwner && isPlanner ? (
-                  <>
-                    <button
-                      type="button"
-                      onClick={openEditForm}
-                      className="rounded-lg border border-ftc-border-strong bg-ftc-surface/80 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-ftc-text-secondary transition hover:border-ftc-primary/30 hover:text-ftc-primary"
-                    >
-                      Edit event
-                    </button>
-                    {!eventIsCancelled ? (
-                      <button
-                        type="button"
-                        onClick={openSendBookings}
-                        className="ftc-btn-primary px-3 py-1.5 text-xs uppercase tracking-wide"
-                      >
-                        Send booking requests
-                      </button>
-                    ) : null}
-                    {canManageEventLifecycle ? (
-                      <EventDeleteCancelButton
-                        mode={hasLinkedBookings ? "cancel" : "delete"}
-                        loading={hasLinkedBookings ? cancellingEvent : deletingEvent}
-                        disabled={deletingEvent || cancellingEvent}
-                        onConfirm={
-                          hasLinkedBookings ? handleCancelEvent : handleDeleteEvent
-                        }
-                      />
-                    ) : null}
-                  </>
-                ) : null}
-              </div>
-            ) : null}
           </div>
-        </header>
+        </div>
 
-        <div className="px-4 py-4 sm:px-6">
+        <div className={`px-4 sm:px-6 ${showBottomBar ? "pb-28" : "pb-6"} pt-5`}>
           {successMessage ? (
-            <p className="mb-4 rounded-xl border border-ftc-primary/25 bg-ftc-primary/10 px-4 py-3 text-sm text-ftc-primary/90">
+            <p className="mb-4 rounded-xl border border-ftc-primary/25 bg-ftc-primary/10 px-4 py-3 text-sm text-ftc-primary">
               {successMessage}
             </p>
           ) : null}
@@ -626,6 +630,32 @@ export default function EventDetailPage() {
             <p className="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
               {error}
             </p>
+          ) : null}
+
+          <h1 className="text-[1.75rem] font-bold leading-tight tracking-tight text-ftc-text sm:text-3xl">
+            {event.name}
+          </h1>
+
+          <div className="mt-5">
+            <EventDetailMetaList event={event} />
+          </div>
+
+          {event.notes?.trim() ? (
+            <section className="mt-8">
+              <h2 className="text-lg font-bold text-ftc-text">About</h2>
+              <p className="mt-3 text-sm leading-relaxed text-ftc-text-secondary">{event.notes}</p>
+            </section>
+          ) : null}
+
+          {isOwner && isPlanner && canManageEventLifecycle ? (
+            <div className="mt-6">
+              <EventDeleteCancelButton
+                mode={hasLinkedBookings ? "cancel" : "delete"}
+                loading={hasLinkedBookings ? cancellingEvent : deletingEvent}
+                disabled={deletingEvent || cancellingEvent}
+                onConfirm={hasLinkedBookings ? handleCancelEvent : handleDeleteEvent}
+              />
+            </div>
           ) : null}
 
           {editOpen && editForm && isOwner ? (
@@ -797,142 +827,185 @@ export default function EventDetailPage() {
             </section>
           ) : null}
 
-          <section className="mb-6 ftc-card p-4 sm:p-5">
-            <h2 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-ftc-primary">
-              Event details
-            </h2>
-            <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
-              <DetailItem label="Venue" value={event.venue} />
-              <DetailItem label="Date" value={event.event_date} />
-              <DetailItem label="Set time" value={event.set_time} />
-              <DetailItem label="Rate" value={formatRateDisplay(event.rate)} />
-            </dl>
-            {event.notes?.trim() ? (
-              <div className="mt-4">
-                <p className="text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted">Notes</p>
-                <p className="mt-1 text-sm leading-relaxed text-ftc-text-secondary">{event.notes}</p>
-              </div>
-            ) : null}
-          </section>
-
           {canViewRunSheet ? (
-            <EventRunSheetSection
-              eventId={event.id}
-              canEdit={canEditRunSheet}
-              lineup={lineup}
-              profiles={profiles}
-              onSaved={(message) => setSuccessMessage(message)}
-            />
+            <div className="mt-8">
+              <EventRunSheetSection
+                eventId={event.id}
+                canEdit={canEditRunSheet}
+                lineup={lineup}
+                profiles={profiles}
+                onSaved={(message) => setSuccessMessage(message)}
+              />
+            </div>
           ) : null}
 
-          <section className="ftc-card p-4 sm:p-5">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <h2 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-ftc-primary">
-                  {isOwner ? "Lineup / Bookings" : "Your booking"}
-                </h2>
-                {isOwner ? (
+          <section className="mt-8">
+            <h2 className="text-lg font-bold text-ftc-text">Lineup</h2>
+            {acceptedLineup.length === 0 ? (
+              <div className="mt-4 rounded-2xl border border-dashed border-ftc-border-subtle bg-ftc-bg-elevated/40 px-4 py-8 text-center">
+                <p className="text-sm text-ftc-text-secondary">
+                  {isOwner
+                    ? "No confirmed artists yet. Send booking requests to build your lineup."
+                    : "Lineup will appear here once artists are confirmed."}
+                </p>
+              </div>
+            ) : (
+              <div className="mt-4">
+                <EventDetailLineupList bookings={acceptedLineup} profiles={profiles} />
+              </div>
+            )}
+          </section>
+
+          {!isOwner && viewerBooking ? (
+            <section className="mt-8 ftc-card p-4 sm:p-5">
+              <h2 className="text-lg font-bold text-ftc-text">Your booking</h2>
+              <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <BookingStatusBadge status={viewerBooking.status} />
+                  <p className="mt-2 text-sm text-ftc-text-secondary">
+                    Set time {viewerBooking.set_time || "TBC"}
+                    {viewerBooking.fee ? ` · ${formatRateDisplay(viewerBooking.fee)}` : ""}
+                  </p>
+                </div>
+                {viewerBooking.conversation_id ? (
+                  <Link
+                    href={`/dm/${viewerBooking.conversation_id}`}
+                    className="ftc-btn-secondary px-4 py-2.5 text-xs uppercase tracking-wide"
+                  >
+                    Open DM
+                  </Link>
+                ) : null}
+              </div>
+            </section>
+          ) : null}
+
+          {isOwner ? (
+            <section className="mt-8 ftc-card p-4 sm:p-5">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <h2 className="text-lg font-bold text-ftc-text">Bookings</h2>
                   <div className="mt-3 flex flex-wrap gap-2 text-[11px] font-semibold uppercase tracking-wide">
                     <LineupStat label="Invited" value={lineupStats.total} />
                     <LineupStat label="Pending" value={lineupStats.pending} />
                     <LineupStat label="Accepted" value={lineupStats.accepted} />
                     <LineupStat label="Declined" value={lineupStats.declined} />
                   </div>
-                ) : null}
+                </div>
               </div>
-            </div>
 
-            {isOwner ? (
               <div className="mt-4 flex flex-wrap gap-2">
                 {STATUS_FILTERS.map((filter) => (
                   <button
                     key={filter.value}
                     type="button"
                     onClick={() => setLineupFilter(filter.value)}
-                    className={`rounded-full border px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide transition ${
+                    className={`rounded-full px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide transition ${
                       lineupFilter === filter.value
-                        ? "border-ftc-primary/45 bg-ftc-primary/10 text-ftc-primary"
-                        : "border-ftc-border-strong bg-ftc-surface/80 text-ftc-text-secondary hover:border-ftc-primary/25 hover:text-ftc-primary"
+                        ? "bg-ftc-primary text-ftc-bg"
+                        : "border border-ftc-border-subtle bg-ftc-surface text-ftc-text-secondary hover:border-ftc-border-strong"
                     }`}
                   >
                     {filter.label}
                   </button>
                 ))}
               </div>
-            ) : null}
 
-            {filteredLineup.length === 0 ? (
-              <div className="mt-6 rounded-xl border border-dashed border-ftc-border bg-ftc-bg-elevated/40 px-4 py-8 text-center">
-                <p className="text-sm text-ftc-text-secondary">
-                  {isOwner
-                    ? "No DJs invited yet. Send booking requests to build your lineup."
-                    : "No booking linked to this event yet."}
-                </p>
-              </div>
-            ) : (
-              <ul className="mt-4 space-y-3">
-                {filteredLineup.map((booking) => {
-                  const profile = profiles.get(booking.recipient_id);
-                  const displayName = profile?.display_name?.trim() || "DJ";
-                  const canHideFromLineup =
-                    isOwner &&
-                    isPlanner &&
-                    booking.status === "declined" &&
-                    !booking.lineup_hidden_at;
+              {filteredLineup.length === 0 ? (
+                <div className="mt-6 rounded-xl border border-dashed border-ftc-border-subtle bg-ftc-bg-elevated/40 px-4 py-8 text-center">
+                  <p className="text-sm text-ftc-text-secondary">
+                    No DJs invited yet. Send booking requests to build your lineup.
+                  </p>
+                </div>
+              ) : (
+                <ul className="mt-4 space-y-3">
+                  {filteredLineup.map((booking) => {
+                    const profile = profiles.get(booking.recipient_id);
+                    const displayName = profile?.display_name?.trim() || "DJ";
+                    const canHideFromLineup =
+                      isOwner &&
+                      isPlanner &&
+                      booking.status === "declined" &&
+                      !booking.lineup_hidden_at;
 
-                  return (
-                    <li
-                      key={booking.id}
-                      className={`relative flex flex-col gap-3 rounded-xl border border-ftc-border bg-ftc-bg-elevated/40 p-4 sm:flex-row sm:items-center sm:justify-between ${
-                        canHideFromLineup ? "pr-12 sm:pr-14" : ""
-                      }`}
-                    >
-                      {canHideFromLineup ? (
-                        <HideDeclinedBookingButton
-                          className="absolute right-3 top-3"
-                          loading={hidingBookingId === booking.id}
-                          disabled={Boolean(hidingBookingId) && hidingBookingId !== booking.id}
-                          onConfirm={() => handleHideFromLineup(booking.id)}
-                        />
-                      ) : null}
-                      <div className="flex min-w-0 items-center gap-3">
-                        <ProfileAvatar
-                          name={displayName}
-                          avatarUrl={profile?.avatar_url}
-                          size="md"
-                        />
-                        <div className="min-w-0">
-                          <p className="font-semibold text-ftc-text">{displayName}</p>
-                          {profile?.genre?.trim() ? (
-                            <p className="text-sm text-ftc-text-muted">{profile.genre}</p>
-                          ) : null}
-                          <div className="mt-2">
-                            <BookingStatusBadge status={booking.status} />
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex flex-col items-stretch gap-2 sm:shrink-0 sm:items-end">
-                        {isOwner && canCancelBookingRequest(booking, currentUserId) ? (
-                          <CancelBookingRequestButton
-                            loading={cancellingBookingId === booking.id}
-                            onConfirm={() => handleCancelBooking(booking.id)}
+                    return (
+                      <li
+                        key={booking.id}
+                        className={`relative flex flex-col gap-3 rounded-2xl border border-ftc-border-subtle bg-ftc-bg-elevated p-4 sm:flex-row sm:items-center sm:justify-between ${
+                          canHideFromLineup ? "pr-12 sm:pr-14" : ""
+                        }`}
+                      >
+                        {canHideFromLineup ? (
+                          <HideDeclinedBookingButton
+                            className="absolute right-3 top-3"
+                            loading={hidingBookingId === booking.id}
+                            disabled={Boolean(hidingBookingId) && hidingBookingId !== booking.id}
+                            onConfirm={() => handleHideFromLineup(booking.id)}
                           />
                         ) : null}
-                        <Link
-                          href={`/dm/${booking.conversation_id}`}
-                          className="shrink-0 rounded-lg border border-ftc-border-strong bg-ftc-surface/80 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-ftc-text-secondary transition hover:border-ftc-primary/30 hover:text-ftc-primary"
-                        >
-                          Open DM
-                        </Link>
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </section>
+                        <div className="flex min-w-0 items-center gap-3">
+                          <ProfileAvatar
+                            name={displayName}
+                            avatarUrl={profile?.avatar_url}
+                            size="md"
+                          />
+                          <div className="min-w-0">
+                            <p className="font-semibold text-ftc-text">{displayName}</p>
+                            {profile?.genre?.trim() ? (
+                              <p className="text-sm text-ftc-text-muted">{profile.genre}</p>
+                            ) : null}
+                            <div className="mt-2">
+                              <BookingStatusBadge status={booking.status} />
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex flex-col items-stretch gap-2 sm:shrink-0 sm:items-end">
+                          {canCancelBookingRequest(booking, currentUserId) ? (
+                            <CancelBookingRequestButton
+                              loading={cancellingBookingId === booking.id}
+                              onConfirm={() => handleCancelBooking(booking.id)}
+                            />
+                          ) : null}
+                          <Link
+                            href={`/dm/${booking.conversation_id}`}
+                            className="ftc-btn-secondary px-3 py-1.5 text-xs uppercase tracking-wide"
+                          >
+                            Open DM
+                          </Link>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </section>
+          ) : null}
         </div>
+
+        {showBottomBar ? (
+          <EventDetailBottomBar>
+            {showOwnerSendAction ? (
+              <EventDetailPrimaryAction onClick={openSendBookings}>
+                Send booking requests
+              </EventDetailPrimaryAction>
+            ) : null}
+            {!showOwnerSendAction && viewerBooking?.conversation_id ? (
+              <EventDetailPrimaryAction href={`/dm/${viewerBooking.conversation_id}`}>
+                Open booking conversation
+              </EventDetailPrimaryAction>
+            ) : null}
+            {!showOwnerSendAction && !viewerBooking?.conversation_id && canOpenCrewChat ? (
+              <EventDetailPrimaryAction href={`/events/${event.id}/chat`}>
+                Group chat
+              </EventDetailPrimaryAction>
+            ) : null}
+            {(showOwnerSendAction || Boolean(viewerBooking?.conversation_id)) && canOpenCrewChat ? (
+              <EventDetailSecondaryAction href={`/events/${event.id}/chat`}>
+                Group chat
+              </EventDetailSecondaryAction>
+            ) : null}
+          </EventDetailBottomBar>
+        ) : null}
       </div>
 
       <UnavailableDjBookingConfirmModal
@@ -948,15 +1021,6 @@ export default function EventDetailPage() {
         onConfirm={executeSendBookings}
       />
     </OnboardingGuard>
-  );
-}
-
-function DetailItem({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <dt className="text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted">{label}</dt>
-      <dd className="mt-0.5 text-ftc-text">{value}</dd>
-    </div>
   );
 }
 
