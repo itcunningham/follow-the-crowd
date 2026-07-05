@@ -108,7 +108,7 @@ export function getBookingStatusBadgeClass(status: BookingRequestStatus): string
     return "border-ftc-border-strong bg-ftc-surface-raised/80 text-ftc-text-secondary";
   }
 
-  return "border-ftc-primary/35 bg-ftc-primary/10 text-ftc-primary";
+  return "border-ftc-border-subtle bg-ftc-bg-elevated text-ftc-primary";
 }
 
 export function isActiveBookingStatus(status: BookingRequestStatus): boolean {

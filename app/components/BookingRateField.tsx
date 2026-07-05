@@ -4,7 +4,7 @@ import { BOOKING_FIELD_LABEL_CLASS } from "@/lib/bookingDateTime";
 import { MAX_RATE_DIGITS, sanitizeRateDigits } from "@/lib/bookingRate";
 
 export const BOOKING_RATE_INPUT_CLASS =
-  "flex w-full items-center rounded-xl border border-ftc-border bg-ftc-surface/80 text-sm text-ftc-text outline-none transition focus-within:border-ftc-primary/45 focus-within:border-ftc-primary/45";
+  "flex w-full items-center rounded-xl border border-ftc-border-subtle bg-ftc-bg-input text-sm text-ftc-text outline-none transition focus-within:border-ftc-primary-border";
 
 export function BookingRateField({
   label = "Rate",

@@ -203,7 +203,7 @@ export function BookingTimeWheelPicker({
         <div className="relative px-2 py-4">
           <div
             aria-hidden="true"
-            className="pointer-events-none absolute inset-x-4 top-1/2 z-10 h-11 -translate-y-1/2 rounded-xl border border-ftc-primary/20 bg-ftc-primary/10"
+            className="pointer-events-none absolute inset-x-4 top-1/2 z-10 h-11 -translate-y-1/2 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated"
           />
           <div
             aria-hidden="true"
@@ -379,7 +379,7 @@ export function BookingDualTimeWheelPicker({
         <div className="relative px-2 py-4">
           <div
             aria-hidden="true"
-            className="pointer-events-none absolute inset-x-4 top-1/2 z-10 h-11 -translate-y-1/2 rounded-xl border border-ftc-primary/20 bg-ftc-primary/10"
+            className="pointer-events-none absolute inset-x-4 top-1/2 z-10 h-11 -translate-y-1/2 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated"
           />
           <div
             aria-hidden="true"

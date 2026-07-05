@@ -1,35 +1,17 @@
 "use client";
 
 import Link from "next/link";
+import BookingDetailGrid, { BookingDetailItem } from "@/app/components/booking/BookingDetailGrid";
+import BookingStatusBadge from "@/app/components/booking/BookingStatusBadge";
 import CancelBookingRequestButton from "@/app/components/CancelBookingRequestButton";
 import {
   canCancelBookingRequest,
   formatBookingRequestMessage,
   getBookingGroupChatAccess,
-  getBookingStatusBadgeClass,
   type BookingRequest,
   type BookingRequestStatus,
 } from "@/lib/bookingRequests";
 import { formatRateDisplay } from "@/lib/bookingRate";
-
-function StatusBadge({ status }: { status: BookingRequestStatus }) {
-  const label =
-    status === "accepted"
-      ? "Accepted"
-      : status === "declined"
-        ? "Declined"
-        : status === "cancelled"
-          ? "Cancelled"
-          : "Pending";
-
-  return (
-    <span
-      className={`shrink-0 rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide ${getBookingStatusBadgeClass(status)}`}
-    >
-      {label}
-    </span>
-  );
-}
 
 export default function BookingRequestCard({
   booking,
@@ -58,32 +40,34 @@ export default function BookingRequestCard({
   }
 
   return (
-    <div className="ftc-card w-full max-w-sm p-4">
-      <div className="flex min-w-0 items-start justify-between gap-2">
+    <div className="w-full max-w-sm rounded-2xl border border-ftc-border-subtle bg-ftc-surface p-4">
+      <div className="flex min-w-0 items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-ftc-primary">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted">
             Booking request
           </p>
           <h3 className="mt-1 truncate text-base font-semibold text-ftc-text">
             {booking.event_name}
           </h3>
         </div>
-        <StatusBadge status={booking.status} />
+        <BookingStatusBadge status={booking.status} />
       </div>
 
-      <dl className="mt-4 space-y-2 text-sm">
-        <BookingDetail label="Venue" value={booking.venue} />
-        <BookingDetail label="Date" value={booking.event_date} />
-        <BookingDetail label="Set time" value={booking.set_time} />
-        <BookingDetail label="Rate" value={formatRateDisplay(booking.fee)} />
-        {booking.notes ? <BookingDetail label="Notes" value={booking.notes} /> : null}
-      </dl>
+      <div className="mt-4">
+        <BookingDetailGrid>
+          <BookingDetailItem label="Venue" value={booking.venue} />
+          <BookingDetailItem label="Date" value={booking.event_date} />
+          <BookingDetailItem label="Set time" value={booking.set_time} />
+          <BookingDetailItem label="Rate" value={formatRateDisplay(booking.fee)} />
+          {booking.notes ? <BookingDetailItem label="Notes" value={booking.notes} /> : null}
+        </BookingDetailGrid>
+      </div>
 
       {booking.event_id ? (
         <>
           <Link
             href={`/events/${booking.event_id}`}
-            className="mt-4 inline-flex rounded-lg border border-ftc-border-strong bg-ftc-surface/80 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-ftc-text-secondary transition hover:border-ftc-primary/30 hover:text-ftc-primary"
+            className="mt-4 inline-flex rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated px-3 py-2 text-xs font-semibold uppercase tracking-wide text-ftc-text-secondary transition hover:border-ftc-border-strong"
           >
             View event
           </Link>
@@ -91,14 +75,14 @@ export default function BookingRequestCard({
           {groupChatAccess && groupChatAccess.kind !== "hidden" ? (
             <div className="mt-4 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated p-3">
               <p className="text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted">
-                Event Group Chat
+                Event group chat
               </p>
               {groupChatAccess.kind === "open" ? (
                 <Link
                   href={groupChatAccess.href}
                   className="mt-2 inline-flex ftc-btn-primary px-3 py-1.5 text-xs uppercase tracking-wide"
                 >
-                  Open Group Chat
+                  Open group chat
                 </Link>
               ) : (
                 <p className="mt-2 text-xs text-ftc-text-muted">
@@ -116,7 +100,7 @@ export default function BookingRequestCard({
             type="button"
             onClick={onDecline}
             disabled={responding || cancelling}
-            className="flex-1 rounded-xl border border-ftc-border-strong bg-ftc-surface/80 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-ftc-text-secondary transition hover:border-red-500/40 hover:text-red-300 disabled:cursor-not-allowed disabled:opacity-50"
+            className="flex-1 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated px-3 py-2.5 text-xs font-semibold uppercase tracking-wide text-ftc-text-secondary transition hover:border-red-500/35 hover:text-red-300 disabled:cursor-not-allowed disabled:opacity-50"
           >
             Decline
           </button>
@@ -124,7 +108,7 @@ export default function BookingRequestCard({
             type="button"
             onClick={onAccept}
             disabled={responding || cancelling}
-            className="ftc-btn-primary flex-1 px-3 py-2 text-xs uppercase tracking-wide disabled:cursor-not-allowed disabled:opacity-50"
+            className="ftc-btn-primary flex-1 px-3 py-2.5 text-xs uppercase tracking-wide disabled:cursor-not-allowed disabled:opacity-50"
           >
             Accept
           </button>
@@ -139,23 +123,6 @@ export default function BookingRequestCard({
           />
         </div>
       ) : null}
-    </div>
-  );
-}
-
-function BookingDetail({
-  label,
-  value,
-  muted = false,
-}: {
-  label: string;
-  value: string;
-  muted?: boolean;
-}) {
-  return (
-    <div>
-      <dt className="text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted">{label}</dt>
-      <dd className={`mt-0.5 break-words ${muted ? "text-ftc-text-muted" : "text-ftc-text"}`}>{value}</dd>
     </div>
   );
 }

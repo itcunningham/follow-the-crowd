@@ -342,13 +342,12 @@ export function formatTimeButtonLabel(clock: string, meridiem: Meridiem): string
 }
 
 export const BOOKING_TIME_BUTTON_CLASS =
-  "flex w-full items-center gap-2.5 rounded-xl border border-ftc-border bg-ftc-surface/80 px-3 py-2.5 text-left text-sm text-ftc-text outline-none transition hover:border-ftc-border-strong focus:border-ftc-primary/45 focus:ring-2 focus:ring-ftc-primary/15";
+  "flex w-full items-center gap-2.5 rounded-xl border border-ftc-border-subtle bg-ftc-bg-input px-3 py-2.5 text-left text-sm text-ftc-text outline-none transition hover:border-ftc-border-strong focus:border-ftc-primary-border";
 
 export const BOOKING_TIME_BUTTON_COMPACT_CLASS =
-  "inline-flex w-full min-h-[2.25rem] items-center gap-1 rounded-full border border-ftc-border/90 bg-ftc-bg-elevated px-2.5 py-1 text-xs font-medium text-ftc-text outline-none transition hover:border-ftc-primary/30 focus:border-ftc-primary/40 focus:ring-1 focus:ring-ftc-primary/20 sm:min-h-[2rem] lg:max-w-[6.25rem]";
+  "inline-flex w-full min-h-[2.25rem] items-center gap-1 rounded-full border border-ftc-border-subtle bg-ftc-bg-input px-2.5 py-1 text-xs font-medium text-ftc-text outline-none transition hover:border-ftc-border-strong focus:border-ftc-primary-border sm:min-h-[2rem] lg:max-w-[6.25rem]";
 
 export const BOOKING_DATE_TIME_INPUT_CLASS =
-  "w-full rounded-xl border border-ftc-border bg-ftc-surface/80 px-3.5 py-2.5 text-sm text-ftc-text outline-none transition focus:border-ftc-primary/45 focus:ring-2 focus:ring-ftc-primary/15 [color-scheme:dark]";
+  "w-full rounded-xl border border-ftc-border-subtle bg-ftc-bg-input px-3.5 py-2.5 text-sm text-ftc-text outline-none transition focus:border-ftc-primary-border [color-scheme:dark]";
 
-export const BOOKING_FIELD_LABEL_CLASS =
-  "mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.14em] text-ftc-text-secondary";
+export const BOOKING_FIELD_LABEL_CLASS = "ftc-label";

@@ -13,6 +13,8 @@ import { BookingDateField, BookingSetTimeRangeField } from "@/app/components/Boo
 import { BookingRateField } from "@/app/components/BookingRateField";
 import ArchiveAllBookingRequestsButton from "@/app/components/ArchiveAllBookingRequestsButton";
 import ArchiveBookingRequestButton from "@/app/components/ArchiveBookingRequestButton";
+import BookingStatusBadge from "@/app/components/booking/BookingStatusBadge";
+import { BookingDetailItem } from "@/app/components/booking/BookingDetailGrid";
 import CancelBookingRequestButton from "@/app/components/CancelBookingRequestButton";
 import {
   archiveAllCancelledBookingRequests,
@@ -28,10 +30,8 @@ import {
   filterCancelledBookings,
   filterHistoryCancelledBookings,
   filterSendableRecipientIdsForEvent,
-  formatBookingStatusLabel,
   getActiveBookingCampaignStats,
   getBookingMutationErrorMessage,
-  getBookingStatusBadgeClass,
   groupSentBookingRequests,
   listReceivedBookingRequests,
   listSentBookingRequests,
@@ -915,7 +915,7 @@ export default function BookingsPage() {
       >
         <AppNavigation />
 
-        <header className="border-b border-ftc-border px-4 py-4 sm:px-6 md:pt-4">
+        <header className="border-b border-ftc-border-subtle px-4 py-3 sm:px-6 md:pt-4">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
               <h1 className="text-xl font-semibold text-ftc-text">{getBookingsPageTitle(role)}</h1>
@@ -955,7 +955,7 @@ export default function BookingsPage() {
 
         <div className="px-4 py-4 sm:px-6">
           {successMessage ? (
-            <p className="mb-4 rounded-xl border border-ftc-primary/25 bg-ftc-primary/10 px-4 py-3 text-sm text-ftc-primary/90">
+            <p className="mb-4 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated px-4 py-3 text-sm text-ftc-text-secondary">
               {successMessage}
             </p>
           ) : null}
@@ -975,7 +975,7 @@ export default function BookingsPage() {
             <section className="mb-6 ftc-card p-4 sm:p-5">
               <div className="mb-4 flex items-center justify-between gap-3">
                 <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-ftc-primary">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-ftc-text-muted">
                     Step {createStepMeta.label}
                   </p>
                   <h2 className="mt-1 text-lg font-semibold text-ftc-text">{createStepMeta.title}</h2>
@@ -998,7 +998,7 @@ export default function BookingsPage() {
                       setError(null);
                       setCreateStep("pick-plan");
                     }}
-                    className="w-full rounded-2xl border border-ftc-border bg-ftc-bg-elevated/40 px-4 py-4 text-left transition hover:border-ftc-primary/35 hover:bg-ftc-primary/10"
+                    className="w-full rounded-2xl border border-ftc-border-subtle bg-ftc-bg-elevated px-4 py-4 text-left transition hover:border-ftc-border-strong"
                   >
                     <p className="text-base font-semibold text-ftc-text">Use a saved booking plan</p>
                     <p className="mt-2 text-sm text-ftc-text-secondary">
@@ -1008,7 +1008,7 @@ export default function BookingsPage() {
                   <button
                     type="button"
                     onClick={() => openCreateFlow({ custom: true })}
-                    className="w-full rounded-2xl border border-ftc-border bg-ftc-bg-elevated/40 px-4 py-4 text-left transition hover:border-ftc-primary/35 hover:bg-ftc-primary/10"
+                    className="w-full rounded-2xl border border-ftc-border-subtle bg-ftc-bg-elevated px-4 py-4 text-left transition hover:border-ftc-border-strong"
                   >
                     <p className="text-base font-semibold text-ftc-text">Create a custom booking request</p>
                     <p className="mt-2 text-sm text-ftc-text-secondary">
@@ -1050,8 +1050,8 @@ export default function BookingsPage() {
                             onClick={() => handleSelectSavedPlan(plan)}
                             className={`w-full rounded-xl border px-4 py-4 text-left transition ${
                               selectedPlanId === plan.id
-                                ? "border-ftc-primary/45 bg-ftc-primary/10"
-                                : "border-ftc-border bg-ftc-bg-elevated/40 hover:border-ftc-primary/25 hover:bg-ftc-primary/10"
+                                ? "border-ftc-border-subtle bg-ftc-bg-elevated"
+                                : "border-ftc-border-subtle bg-ftc-surface hover:border-ftc-border-strong"
                             }`}
                           >
                             <p className="font-semibold text-ftc-text">{plan.name}</p>
@@ -1074,7 +1074,7 @@ export default function BookingsPage() {
               {createStep === "details" ? (
                 <form onSubmit={handleContinueToDjSelection} className="space-y-4">
                   {selectedPlanId ? (
-                    <p className="rounded-xl border border-ftc-primary/20 bg-ftc-primary/10 px-3 py-2 text-xs text-ftc-primary/90">
+                    <p className="rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated px-3 py-2 text-xs text-ftc-text-secondary">
                       Prefilled from a saved booking plan. You can edit any field before sending.
                     </p>
                   ) : null}
@@ -1147,7 +1147,7 @@ export default function BookingsPage() {
                     ← Back
                   </button>
 
-                  <div className="rounded-xl border border-ftc-border bg-ftc-bg-elevated/50 p-4 text-sm text-ftc-text-secondary">
+                  <div className="rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated p-4 text-sm text-ftc-text-secondary">
                     <p className="font-medium text-ftc-text">{form.eventName}</p>
                     <p className="mt-1">
                       {form.venue} · {form.eventDate} · {form.setTime}
@@ -1196,8 +1196,8 @@ export default function BookingsPage() {
                                 isDuplicateBlocked
                                   ? "cursor-not-allowed border-ftc-border bg-ftc-bg-elevated/20 opacity-70"
                                   : selected
-                                    ? "border-ftc-primary/45 bg-ftc-primary/10"
-                                    : "border-ftc-border bg-ftc-surface/70 hover:border-ftc-primary/25"
+                                    ? "border-ftc-border-subtle bg-ftc-bg-elevated"
+                                    : "border-ftc-border-subtle bg-ftc-surface hover:border-ftc-border-strong"
                               }`}
                             >
                               <span
@@ -1515,10 +1515,10 @@ function DjGigsTabs({
             key={tab.value}
             type="button"
             onClick={() => onChange(tab.value)}
-            className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold uppercase tracking-wide transition ${
+            className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-semibold uppercase tracking-wide transition ${
               isActive
-                ? "bg-ftc-primary text-ftc-bg"
-                : "border border-ftc-border bg-ftc-surface/50 text-ftc-text-secondary hover:border-ftc-primary/25 hover:text-ftc-primary"
+                ? "border-transparent bg-ftc-primary text-ftc-bg"
+                : "border-ftc-border-subtle bg-ftc-bg-elevated text-ftc-text-secondary hover:border-ftc-border-strong"
             }`}
           >
             {tab.icon === "history" ? <HistoryIcon /> : null}
@@ -1563,10 +1563,10 @@ function PlannerSentViewTabs({
             key={tab.value}
             type="button"
             onClick={() => onChange(tab.value)}
-            className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold uppercase tracking-wide transition ${
+            className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-semibold uppercase tracking-wide transition ${
               isActive
-                ? "bg-ftc-primary text-ftc-bg"
-                : "border border-ftc-border bg-ftc-surface/50 text-ftc-text-secondary hover:border-ftc-primary/25 hover:text-ftc-primary"
+                ? "border-transparent bg-ftc-primary text-ftc-bg"
+                : "border-ftc-border-subtle bg-ftc-bg-elevated text-ftc-text-secondary hover:border-ftc-border-strong"
             }`}
           >
             {tab.icon === "history" ? <HistoryIcon /> : null}
@@ -1631,7 +1631,7 @@ function BookingSectionTabs({
 
 function ReceivedBookingCard({ booking }: { booking: BookingRequest }) {
   return (
-    <li className="ftc-card p-4 sm:p-5">
+    <li className="rounded-2xl border border-ftc-border-subtle bg-ftc-surface p-4 sm:p-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0 flex-1">
           <h3 className="text-base font-semibold text-ftc-text">{booking.event_name}</h3>
@@ -1680,8 +1680,8 @@ function BookingHistoryCard({
   action?: React.ReactNode;
 }) {
   const cardClass = muted
-    ? "rounded-2xl border border-ftc-border/70 bg-ftc-bg-elevated/45 p-4 sm:p-5"
-    : "ftc-card p-4 sm:p-5";
+    ? "rounded-2xl border border-ftc-border-subtle bg-ftc-bg-elevated/60 p-4 sm:p-5"
+    : "rounded-2xl border border-ftc-border-subtle bg-ftc-surface p-4 sm:p-5";
   const titleClass = muted ? "text-ftc-text-secondary" : "text-ftc-text";
   const detailClass = muted ? "text-ftc-text-muted" : "text-ftc-text";
 
@@ -1771,17 +1771,17 @@ function BookingStatusTabs({
               className={`rounded-xl px-3 py-2.5 text-left transition ${
                 isActive
                   ? "bg-ftc-primary text-ftc-bg"
-                  : "border border-transparent bg-ftc-bg-elevated/40 hover:border-ftc-border-strong hover:bg-ftc-surface/80"
+                  : "border border-transparent bg-ftc-bg-elevated hover:border-ftc-border-subtle hover:bg-ftc-surface"
               }`}
             >
               <span
                 className={`block text-[11px] font-semibold uppercase tracking-wide ${
-                  isActive ? "text-ftc-primary" : "text-ftc-text-muted"
+                  isActive ? "text-ftc-bg/80" : "text-ftc-text-muted"
                 }`}
               >
                 {tab.label}
               </span>
-              <span className={`mt-0.5 block text-lg font-semibold ${isActive ? "text-ftc-text" : "text-ftc-text-secondary"}`}>
+              <span className={`mt-0.5 block text-lg font-semibold ${isActive ? "text-ftc-bg" : "text-ftc-text-secondary"}`}>
                 {getTabCount(tab.value)}
               </span>
             </button>
@@ -1810,10 +1810,10 @@ function BookingCampaignCard({
   const campaignStats = getActiveBookingCampaignStats(fullGroup);
 
   return (
-    <li className="ftc-card p-4 sm:p-5">
+    <li className="rounded-2xl border border-ftc-border-subtle bg-ftc-surface p-4 sm:p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-ftc-primary">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-ftc-text-muted">
             Sent {formatSentDate(group.created_at)}
           </p>
           <h3 className="mt-1 text-lg font-semibold text-ftc-text">{group.event_name}</h3>
@@ -1824,7 +1824,7 @@ function BookingCampaignCard({
             <CampaignDetail label="Rate" value={formatRateDisplay(group.fee)} />
           </dl>
           {group.notes?.trim() ? (
-            <div className="mt-3 rounded-xl border border-ftc-border bg-ftc-bg-elevated/40 px-3 py-2.5">
+            <div className="mt-3 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated px-3 py-2.5">
               <p className="text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted">
                 Notes
               </p>
@@ -1853,7 +1853,7 @@ function BookingCampaignCard({
           return (
             <li
               key={request.id}
-              className="flex flex-col gap-3 rounded-xl border border-ftc-border bg-ftc-bg-elevated/40 px-3 py-3 sm:flex-row sm:items-center sm:justify-between"
+              className="flex flex-col gap-3 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated px-3 py-3 sm:flex-row sm:items-center sm:justify-between"
             >
               <div className="flex min-w-0 items-center gap-3">
                 <ProfileAvatar name={name} avatarUrl={profile?.avatar_url} size="sm" />
@@ -1886,12 +1886,7 @@ function BookingCampaignCard({
 }
 
 function CampaignDetail({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <dt className="text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted">{label}</dt>
-      <dd className="mt-0.5 text-ftc-text">{value}</dd>
-    </div>
-  );
+  return <BookingDetailItem label={label} value={value} />;
 }
 
 function CampaignStat({
@@ -1911,24 +1906,14 @@ function CampaignStat({
         : tone === "cancelled"
           ? "border-ftc-border-strong bg-ftc-bg-elevated/50 text-ftc-text-secondary"
         : tone === "pending"
-          ? "border-ftc-primary/25 bg-ftc-primary/10 text-ftc-primary"
-          : "border-ftc-border-strong bg-ftc-bg-elevated/50 text-ftc-text-secondary";
+          ? "border-ftc-border-subtle bg-ftc-bg-elevated text-ftc-primary"
+          : "border-ftc-border-subtle bg-ftc-bg-elevated text-ftc-text-secondary";
 
   return (
     <div className={`rounded-xl border px-3 py-2.5 ${classes}`}>
       <p className="text-[10px] font-semibold uppercase tracking-wide opacity-80">{label}</p>
       <p className="mt-0.5 text-xl font-semibold">{value}</p>
     </div>
-  );
-}
-
-function BookingStatusBadge({ status }: { status: BookingRequestStatus }) {
-  return (
-    <span
-      className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide ${getBookingStatusBadgeClass(status)}`}
-    >
-      {formatBookingStatusLabel(status)}
-    </span>
   );
 }
 
@@ -1949,9 +1934,7 @@ function BookingField({
 }) {
   return (
     <label className="block">
-      <span className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.14em] text-ftc-text-secondary">
-        {label}
-      </span>
+      <span className="ftc-label">{label}</span>
       {multiline ? (
         <textarea
           value={value}

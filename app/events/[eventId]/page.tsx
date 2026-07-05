@@ -29,6 +29,7 @@ import {
   getUnavailableDjBookingWarnings,
   type DjPlannerAvailabilityHint,
 } from "@/lib/djAvailability";
+import BookingStatusBadge from "@/app/components/booking/BookingStatusBadge";
 import CancelBookingRequestButton from "@/app/components/CancelBookingRequestButton";
 import HideDeclinedBookingButton from "@/app/components/HideDeclinedBookingButton";
 import {
@@ -40,10 +41,8 @@ import {
   filterActiveBookings,
   filterSendableRecipientIdsForEvent,
   filterVisibleEventLineupBookings,
-  formatBookingStatusLabel,
   getActiveEventLineupStats,
   getBookingMutationErrorMessage,
-  getBookingStatusBadgeClass,
   hideDeclinedBookingFromLineup,
   listBookingRequestsForEvent,
   sendBookingRequestsToDjs,
@@ -79,16 +78,6 @@ const STATUS_FILTERS: { value: ActiveBookingStatusFilter; label: string }[] = [
   { value: "accepted", label: "Accepted" },
   { value: "declined", label: "Declined" },
 ];
-
-function BookingStatusBadge({ status }: { status: BookingRequestStatus }) {
-  return (
-    <span
-      className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide ${getBookingStatusBadgeClass(status)}`}
-    >
-      {formatBookingStatusLabel(status)}
-    </span>
-  );
-}
 
 export default function EventDetailPage() {
   const params = useParams<{ eventId: string }>();
@@ -621,7 +610,7 @@ export default function EventDetailPage() {
 
         <div className={`px-4 sm:px-6 ${showBottomBar ? "pb-28" : "pb-6"} pt-5`}>
           {successMessage ? (
-            <p className="mb-4 rounded-xl border border-ftc-primary/25 bg-ftc-primary/10 px-4 py-3 text-sm text-ftc-primary">
+            <p className="mb-4 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated px-4 py-3 text-sm text-ftc-text-secondary">
               {successMessage}
             </p>
           ) : null}
@@ -730,7 +719,7 @@ export default function EventDetailPage() {
             <section className="mb-6 ftc-card p-4 sm:p-5">
               <div className="mb-4 flex items-center justify-between gap-3">
                 <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-ftc-primary">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-ftc-text-muted">
                     Send bookings
                   </p>
                   <h2 className="mt-1 text-lg font-semibold text-ftc-text">Select DJs</h2>
@@ -778,10 +767,10 @@ export default function EventDetailPage() {
                           onClick={() => toggleDjSelection(dj.user_id)}
                           className={`flex w-full items-center gap-3 rounded-xl border px-3 py-3 text-left transition ${
                             selected
-                              ? "border-ftc-primary/45 bg-ftc-primary/10"
+                              ? "border-ftc-border-subtle bg-ftc-bg-elevated"
                               : isDuplicateBlocked
-                                ? "border-ftc-border bg-ftc-bg-elevated/20 hover:border-ftc-border-strong"
-                                : "border-ftc-border bg-ftc-bg-elevated/40 hover:border-ftc-primary/25"
+                                ? "border-ftc-border-subtle bg-ftc-bg-elevated/60 opacity-70"
+                                : "border-ftc-border-subtle bg-ftc-surface hover:border-ftc-border-strong"
                           }`}
                         >
                           <ProfileAvatar

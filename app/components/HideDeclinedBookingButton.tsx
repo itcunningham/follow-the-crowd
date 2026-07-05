@@ -1,20 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-
-const SKIP_HIDE_DECLINED_BOOKING_CONFIRM_KEY = "ftc_skip_hide_declined_booking_confirm";
-
-function readSkipConfirmPreference(): boolean {
-  if (typeof window === "undefined") {
-    return false;
-  }
-
-  return window.localStorage.getItem(SKIP_HIDE_DECLINED_BOOKING_CONFIRM_KEY) === "true";
-}
-
-function saveSkipConfirmPreference(): void {
-  window.localStorage.setItem(SKIP_HIDE_DECLINED_BOOKING_CONFIRM_KEY, "true");
-}
+import BookingSheetDialog, {
+  BookingSheetPrimaryButton,
+  BookingSheetSecondaryButton,
+} from "@/app/components/booking/BookingSheetDialog";
 
 function CloseIcon({ className = "h-3.5 w-3.5" }: { className?: string }) {
   return (
@@ -94,63 +84,54 @@ export default function HideDeclinedBookingButton({
         aria-label="Hide from lineup"
         disabled={disabled || loading}
         onClick={handleOpen}
-        className={`inline-flex h-7 w-7 items-center justify-center rounded-lg border border-ftc-border-strong bg-ftc-bg-elevated/60 text-ftc-text-muted transition hover:border-ftc-border-strong hover:text-ftc-text-secondary disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
+        className={`inline-flex h-7 w-7 items-center justify-center rounded-lg border border-ftc-border-subtle bg-ftc-bg-elevated text-ftc-text-muted transition hover:border-ftc-border-strong hover:text-ftc-text-secondary disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
       >
         <CloseIcon />
       </button>
 
-      {open ? (
-        <div
-          className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-4 sm:items-center"
-          onClick={handleCancel}
-        >
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="hide-declined-booking-title"
-            className="w-full max-w-md rounded-2xl border border-ftc-border-strong bg-ftc-bg-elevated p-4 shadow-ftc-card sm:p-5"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <h2 id="hide-declined-booking-title" className="text-base font-semibold text-ftc-text">
-              Hide declined booking?
-            </h2>
-            <p className="mt-2 text-sm leading-relaxed text-ftc-text-secondary">
-              This will remove it from the event lineup view, but keep the booking record in history
-              and DMs.
-            </p>
-
-            <label className="mt-4 flex cursor-pointer items-start gap-2.5">
-              <input
-                type="checkbox"
-                checked={dontShowAgain}
-                disabled={loading}
-                onChange={(event) => setDontShowAgain(event.target.checked)}
-                className="mt-0.5 h-4 w-4 rounded border-ftc-border-strong bg-ftc-surface text-ftc-text0 focus:border-ftc-primary/40"
-              />
-              <span className="text-sm text-ftc-text-secondary">Don&apos;t show me this again</span>
-            </label>
-
-            <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-end">
-              <button
-                type="button"
-                disabled={loading}
-                onClick={handleCancel}
-                className="rounded-xl border border-ftc-border-strong bg-ftc-surface/80 px-4 py-2.5 text-sm font-semibold uppercase tracking-wide text-ftc-text-secondary transition hover:border-ftc-border-strong disabled:opacity-50"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                disabled={loading}
-                onClick={() => void handleConfirm()}
-                className="rounded-xl border border-ftc-border-strong bg-ftc-surface-raised/80 px-4 py-2.5 text-sm font-semibold uppercase tracking-wide text-ftc-text transition hover:border-ftc-border-strong hover:bg-ftc-surface-raised disabled:opacity-50"
-              >
-                {loading ? "Hiding..." : "Hide"}
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
+      <BookingSheetDialog
+        open={open}
+        title="Hide declined booking?"
+        titleId="hide-declined-booking-title"
+        description="This will remove it from the event lineup view, but keep the booking record in history and DMs."
+        loading={loading}
+        onBackdropClick={handleCancel}
+        footer={
+          <>
+            <BookingSheetSecondaryButton disabled={loading} onClick={handleCancel}>
+              Cancel
+            </BookingSheetSecondaryButton>
+            <BookingSheetPrimaryButton disabled={loading} onClick={() => void handleConfirm()}>
+              {loading ? "Hiding..." : "Hide"}
+            </BookingSheetPrimaryButton>
+          </>
+        }
+      >
+        <label className="flex cursor-pointer items-start gap-2.5">
+          <input
+            type="checkbox"
+            checked={dontShowAgain}
+            disabled={loading}
+            onChange={(event) => setDontShowAgain(event.target.checked)}
+            className="mt-0.5 h-4 w-4 rounded border-ftc-border-subtle bg-ftc-bg-input text-ftc-primary focus:border-ftc-primary-border"
+          />
+          <span className="text-sm text-ftc-text-secondary">Don&apos;t show me this again</span>
+        </label>
+      </BookingSheetDialog>
     </>
   );
+}
+
+const SKIP_HIDE_DECLINED_BOOKING_CONFIRM_KEY = "ftc_skip_hide_declined_booking_confirm";
+
+function readSkipConfirmPreference(): boolean {
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  return window.localStorage.getItem(SKIP_HIDE_DECLINED_BOOKING_CONFIRM_KEY) === "true";
+}
+
+function saveSkipConfirmPreference(): void {
+  window.localStorage.setItem(SKIP_HIDE_DECLINED_BOOKING_CONFIRM_KEY, "true");
 }

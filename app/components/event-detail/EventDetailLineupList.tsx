@@ -2,23 +2,9 @@
 
 import Link from "next/link";
 import ProfileAvatar from "@/app/components/ProfileAvatar";
-import {
-  formatBookingStatusLabel,
-  getBookingStatusBadgeClass,
-  type BookingRequest,
-  type BookingRequestStatus,
-} from "@/lib/bookingRequests";
+import BookingStatusBadge from "@/app/components/booking/BookingStatusBadge";
+import type { BookingRequest } from "@/lib/bookingRequests";
 import type { BookingRecipientProfile } from "@/lib/user/currentUser";
-
-function LineupStatusBadge({ status }: { status: BookingRequestStatus }) {
-  return (
-    <span
-      className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${getBookingStatusBadgeClass(status)}`}
-    >
-      {formatBookingStatusLabel(status)}
-    </span>
-  );
-}
 
 export default function EventDetailLineupList({
   bookings,
@@ -54,11 +40,13 @@ export default function EventDetailLineupList({
                 ) : null}
                 {showStatus ? (
                   <div className="mt-1.5">
-                    <LineupStatusBadge status={booking.status} />
+                    <BookingStatusBadge status={booking.status} />
                   </div>
                 ) : null}
               </div>
-              <p className="shrink-0 text-right text-sm font-medium text-ftc-text-secondary">{setTime}</p>
+              <p className="shrink-0 text-right text-sm font-medium text-ftc-text-secondary">
+                {setTime}
+              </p>
             </Link>
           </li>
         );

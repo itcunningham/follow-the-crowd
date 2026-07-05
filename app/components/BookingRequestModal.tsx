@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { BookingDateField, BookingSetTimeRangeField } from "@/app/components/BookingDateTimeFields";
+import BookingFormField from "@/app/components/booking/BookingFormField";
+import BookingSelectedDjsContext from "@/app/components/booking/BookingSelectedDjsContext";
 import { BookingRateField } from "@/app/components/BookingRateField";
 import type { BookingRequestInput } from "@/lib/bookingRequests";
 import type { UserProfile } from "@/lib/user/currentUser";
@@ -65,40 +67,34 @@ export default function BookingRequestModal({
     await onSubmit(form);
   }
 
-  const djNames = selectedDjs
-    .map((dj) => dj.display_name?.trim())
-    .filter(Boolean)
-    .join(", ");
-
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 p-4 sm:items-center">
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 p-0 sm:items-center sm:p-4">
       <div
-        className="max-h-[90dvh] w-full max-w-lg overflow-y-auto rounded-2xl border border-ftc-border bg-ftc-bg shadow-ftc-lg"
+        className="max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-2xl border border-ftc-border-subtle bg-ftc-surface sm:rounded-2xl"
         role="dialog"
         aria-modal="true"
         aria-labelledby="booking-request-title"
       >
-        <div className="border-b border-ftc-border px-5 py-4">
+        <div className="border-b border-ftc-border-subtle px-5 py-4">
           <h2 id="booking-request-title" className="text-lg font-semibold text-ftc-text">
             Send booking request
           </h2>
           <p className="mt-1 text-sm text-ftc-text-muted">
-            Sending to {selectedDjs.length} DJ{selectedDjs.length === 1 ? "" : "s"}: {djNames}
-          </p>
-          <p className="mt-2 text-xs text-ftc-text-muted">
-            Each DJ will receive a separate private message.
+            Share event details with selected artists.
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4 px-5 py-5">
-          <BookingField
+        <form onSubmit={handleSubmit} className="space-y-4 px-5 py-5 pb-[max(1rem,env(safe-area-inset-bottom))]">
+          <BookingSelectedDjsContext selectedDjs={selectedDjs} />
+
+          <BookingFormField
             label="Event name"
             value={form.eventName}
             onChange={(value) => updateField("eventName", value)}
             placeholder="Warehouse Sessions"
             required
           />
-          <BookingField
+          <BookingFormField
             label="Venue"
             value={form.venue}
             onChange={(value) => updateField("venue", value)}
@@ -121,7 +117,7 @@ export default function BookingRequestModal({
             onChange={(value) => updateField("fee", value)}
             required
           />
-          <BookingField
+          <BookingFormField
             label="Notes"
             value={form.notes}
             onChange={(value) => updateField("notes", value)}
@@ -136,7 +132,7 @@ export default function BookingRequestModal({
               type="button"
               onClick={onClose}
               disabled={submitting}
-              className="rounded-xl border border-ftc-border-strong bg-ftc-surface/80 px-4 py-3 text-sm font-semibold uppercase tracking-wide text-ftc-text-secondary transition hover:border-ftc-border-strong disabled:cursor-not-allowed disabled:opacity-50"
+              className="rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated px-4 py-3 text-sm font-semibold uppercase tracking-wide text-ftc-text-secondary transition hover:border-ftc-border-strong disabled:cursor-not-allowed disabled:opacity-50"
             >
               Cancel
             </button>
@@ -151,47 +147,5 @@ export default function BookingRequestModal({
         </form>
       </div>
     </div>
-  );
-}
-
-function BookingField({
-  label,
-  value,
-  onChange,
-  placeholder,
-  required = false,
-  multiline = false,
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  placeholder: string;
-  required?: boolean;
-  multiline?: boolean;
-}) {
-  return (
-    <label className="block">
-      <span className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.14em] text-ftc-text-secondary">
-        {label}
-      </span>
-      {multiline ? (
-        <textarea
-          value={value}
-          onChange={(event) => onChange(event.target.value)}
-          placeholder={placeholder}
-          rows={3}
-          className="ftc-input px-3.5 py-2.5"
-        />
-      ) : (
-        <input
-          type="text"
-          value={value}
-          onChange={(event) => onChange(event.target.value)}
-          placeholder={placeholder}
-          required={required}
-          className="ftc-input px-3.5 py-2.5"
-        />
-      )}
-    </label>
   );
 }
