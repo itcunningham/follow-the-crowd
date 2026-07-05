@@ -158,7 +158,7 @@ export default function FtcDatePicker({
         role="dialog"
         aria-modal="true"
         aria-labelledby={`${pickerId}-title`}
-        className="relative max-h-[90dvh] w-full max-w-sm overflow-hidden overflow-y-auto rounded-t-3xl border border-ftc-border bg-ftc-bg-elevated pb-[env(safe-area-inset-bottom)] shadow-ftc-glow-lg sm:rounded-3xl sm:pb-0"
+        className="relative max-h-[90dvh] w-full max-w-sm overflow-hidden overflow-y-auto rounded-t-3xl border border-ftc-border bg-ftc-bg-elevated pb-[env(safe-area-inset-bottom)] shadow-ftc-lg sm:rounded-3xl sm:pb-0"
       >
         <div className="flex items-center justify-between border-b border-ftc-border px-4 py-3">
           <button
@@ -219,7 +219,7 @@ export default function FtcDatePicker({
                       aria-pressed={isSelected}
                       className={`flex h-9 items-center justify-center rounded-lg border text-sm transition ${
                         isSelected
-                          ? "border-ftc-primary/45 bg-ftc-primary/10 text-ftc-primary/80 shadow-ftc-glow"
+                          ? "border-ftc-primary/45 bg-ftc-primary/10 text-ftc-primary/80"
                           : isToday
                             ? "border-ftc-border-strong bg-ftc-surface/80 text-ftc-text hover:border-ftc-primary/30 hover:bg-ftc-primary/10"
                             : "border-transparent text-ftc-text-secondary hover:border-ftc-border-strong hover:bg-ftc-surface/70"

@@ -39,7 +39,7 @@ const FIXED_FIELDS = [
 ];
 
 const RUN_SHEET_SET_TIME_BUTTON_CLASS =
-  "inline-flex w-full min-h-[2.25rem] items-center gap-1 rounded-full border border-ftc-border/90 bg-ftc-bg-elevated px-2.5 py-1 text-xs font-medium text-ftc-text outline-none transition hover:border-ftc-primary/30 focus:border-ftc-primary/40 focus:ring-1 focus:ring-ftc-primary/20 sm:min-h-[2rem] lg:max-w-[11rem]";
+  "inline-flex w-full min-h-[2.25rem] items-center gap-1 rounded-full border border-ftc-border/90 bg-ftc-bg-elevated px-2.5 py-1 text-xs font-medium text-ftc-text outline-none transition hover:border-ftc-primary/30 focus:border-ftc-primary/40 focus:border-ftc-primary/40 sm:min-h-[2rem] lg:max-w-[11rem]";
 
 const RUN_SHEET_EQUAL_TEXT_COLUMN_CLASS = "w-[14%] min-w-[9rem]";
 const RUN_SHEET_NOTES_COLUMN_CLASS = "w-[28%] min-w-[10rem]";
@@ -573,7 +573,7 @@ export default function EventRunSheetSection({
   }
 
   const runSheetTextareaBaseClassName =
-    "w-full resize-none overflow-x-hidden overflow-y-hidden rounded-lg border border-ftc-border bg-ftc-bg-elevated/60 px-2.5 py-1.5 text-sm text-ftc-text outline-none transition placeholder:text-ftc-text-muted focus:border-ftc-primary/45 focus:ring-2 focus:ring-ftc-primary/15 break-words";
+    "w-full resize-none overflow-x-hidden overflow-y-hidden rounded-lg border border-ftc-border bg-ftc-bg-elevated/60 px-2.5 py-1.5 text-sm text-ftc-text outline-none transition placeholder:text-ftc-text-muted focus:border-ftc-primary/45 focus:border-ftc-primary/45 break-words";
 
   const artistTextareaClassName = `${runSheetTextareaBaseClassName} min-h-[2.25rem] leading-normal`;
   const stageAreaTextareaClassName = `${runSheetTextareaBaseClassName} min-h-[2.25rem] leading-normal`;

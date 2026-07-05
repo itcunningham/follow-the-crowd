@@ -95,7 +95,7 @@ export const MOBILE_NAV_OFFSET_CLASS = "pb-[calc(3.5rem+env(safe-area-inset-bott
 function navLinkClassName(isActive: boolean, variant: "desktop" | "mobile") {
   if (variant === "desktop") {
     if (isActive) {
-      return "relative rounded-lg px-2.5 py-1.5 text-sm font-semibold text-ftc-primary shadow-ftc-glow after:absolute after:inset-x-2 after:bottom-0 after:h-0.5 after:rounded-full after:bg-ftc-primary after:shadow-ftc-glow";
+      return "relative rounded-lg px-2.5 py-1.5 text-sm font-semibold text-ftc-primary after:absolute after:inset-x-2 after:bottom-0 after:h-0.5 after:rounded-full after:bg-ftc-primary";
     }
 
     return "relative rounded-lg px-2.5 py-1.5 text-sm font-semibold text-ftc-text-secondary transition hover:text-ftc-primary";
@@ -132,7 +132,7 @@ function NavBadge({ count }: { count: number }) {
   return (
     <span
       aria-label={`${count} unread`}
-      className="absolute right-0 top-0 z-10 flex h-4 min-w-4 translate-x-1/3 items-center justify-center rounded-full border border-ftc-primary/40 bg-ftc-primary-dim px-1 text-[10px] font-bold leading-none text-white shadow-ftc-glow"
+      className="absolute right-0 top-0 z-10 flex h-4 min-w-4 translate-x-1/3 items-center justify-center rounded-full bg-ftc-primary px-1 text-[10px] font-bold leading-none text-ftc-bg"
     >
       {count > 99 ? "99+" : count}
     </span>
@@ -147,7 +147,7 @@ function MobileNavBadge({ count }: { count: number }) {
   return (
     <span
       aria-label={`${count} unread`}
-      className="absolute right-0.5 top-0.5 z-10 flex h-3.5 min-w-3.5 items-center justify-center rounded-full border border-ftc-primary/40 bg-ftc-primary-dim px-0.5 text-[9px] font-bold leading-none text-white shadow-ftc-glow"
+      className="absolute right-0.5 top-0.5 z-10 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-ftc-primary px-0.5 text-[9px] font-bold leading-none text-ftc-bg"
     >
       {count > 9 ? "9+" : count}
     </span>

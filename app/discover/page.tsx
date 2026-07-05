@@ -120,7 +120,7 @@ function DiscoverCard({
   const bioPreview = user.bio?.trim() || "No bio yet.";
 
   return (
-    <li className="ftc-card overflow-hidden transition hover:border-ftc-primary/25 hover:shadow-ftc-glow">
+    <li className="ftc-card overflow-hidden transition hover:border-ftc-primary/25">
       <Link href={`/profile/${user.user_id}`} className="block p-4 sm:p-5">
         <div className="flex items-start gap-3">
           <ProfileAvatar name={displayName} avatarUrl={user.avatar_url} size="md" />

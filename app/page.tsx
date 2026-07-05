@@ -47,7 +47,7 @@ export default function Home() {
       <header className="sticky top-0 z-50 border-b border-ftc-border bg-ftc-bg/85 backdrop-blur-md">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
           <div className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-ftc-primary/25 bg-ftc-surface text-xs font-bold tracking-wider text-ftc-primary shadow-ftc-glow">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-ftc-primary/25 bg-ftc-surface text-xs font-bold tracking-wider text-ftc-primary">
               FTC
             </div>
             <span className="text-sm font-bold uppercase tracking-[0.12em] text-ftc-text">
@@ -82,7 +82,7 @@ export default function Home() {
 
         <div className="relative mx-auto max-w-6xl px-4 pb-24 pt-20 sm:px-6 sm:pb-32 sm:pt-28">
           <div className="mx-auto max-w-3xl text-center">
-            <p className="mb-6 inline-flex items-center rounded-full border border-ftc-border-strong bg-ftc-surface/80 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-ftc-primary shadow-ftc-glow">
+            <p className="mb-6 inline-flex items-center rounded-full border border-ftc-border-strong bg-ftc-surface/80 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-ftc-primary">
               Crowd intel for Promoters
             </p>
             <h1 className="text-4xl font-bold uppercase tracking-tight text-ftc-text sm:text-6xl sm:leading-[1.05]">
@@ -96,20 +96,20 @@ export default function Home() {
               <button
                 type="button"
                 onClick={() => scrollTo("create-event")}
-                className="w-full rounded-xl border border-ftc-primary/45 bg-ftc-primary/10 px-6 py-3.5 text-sm font-bold uppercase tracking-wide text-ftc-primary/80 shadow-ftc-glow-lg transition hover:border-ftc-primary/55 hover:bg-ftc-primary/15 sm:w-auto"
+                className="w-full rounded-xl border border-ftc-primary/45 bg-ftc-primary/10 px-6 py-3.5 text-sm font-bold uppercase tracking-wide text-ftc-primary/80 transition hover:border-ftc-primary/55 hover:bg-ftc-primary/15 sm:w-auto"
               >
                 Generate Event Plan
               </button>
               <Link
                 href="/events"
-                className="w-full rounded-xl border border-ftc-primary/30 bg-ftc-primary/10 px-6 py-3.5 text-center text-sm font-bold uppercase tracking-wide text-ftc-primary/90 shadow-ftc-glow transition hover:border-ftc-primary/45 hover:bg-ftc-primary/12 sm:w-auto"
+                className="w-full rounded-xl border border-ftc-primary/30 bg-ftc-primary/10 px-6 py-3.5 text-center text-sm font-bold uppercase tracking-wide text-ftc-primary/90 transition hover:border-ftc-primary/45 hover:bg-ftc-primary/12 sm:w-auto"
               >
                 Plan an event
               </Link>
               <button
                 type="button"
                 onClick={() => scrollTo("learn-more")}
-                className="w-full rounded-xl border border-ftc-border-strong bg-ftc-surface/60 px-6 py-3.5 text-sm font-bold uppercase tracking-wide text-ftc-text-secondary shadow-sm transition hover:border-ftc-primary/35 hover:text-ftc-primary hover:shadow-ftc-glow sm:w-auto"
+                className="w-full rounded-xl border border-ftc-border-strong bg-ftc-surface/60 px-6 py-3.5 text-sm font-bold uppercase tracking-wide text-ftc-text-secondary shadow-sm transition hover:border-ftc-primary/35 hover:text-ftc-primary sm:w-auto"
               >
                 Learn More
               </button>
@@ -120,9 +120,9 @@ export default function Home() {
           <div className="mx-auto mt-16 max-w-4xl">
             <div className="overflow-hidden rounded-2xl border border-ftc-border bg-ftc-bg-elevated shadow-ftc-card">
               <div className="flex items-center gap-2 border-b border-ftc-border bg-ftc-surface/80 px-4 py-3">
-                <span className="h-2.5 w-2.5 rounded-full bg-ftc-primary/70 shadow-ftc-glow" />
-                <span className="h-2.5 w-2.5 rounded-full bg-sky-400/70 shadow-[0_0_8px_rgba(56,189,248,0.6)]" />
-                <span className="h-2.5 w-2.5 rounded-full bg-ftc-primary/70 shadow-ftc-glow" />
+                <span className="h-2.5 w-2.5 rounded-full bg-ftc-primary/70" />
+                <span className="h-2.5 w-2.5 rounded-full bg-sky-400/70" />
+                <span className="h-2.5 w-2.5 rounded-full bg-ftc-primary/70" />
                 <span className="ml-3 min-w-0 truncate font-mono text-xs text-ftc-text-muted">
                   followthecrowd.app / backroom
                 </span>
@@ -199,7 +199,7 @@ export default function Home() {
             ].map((feature) => (
               <div
                 key={feature.title}
-                className="rounded-2xl border border-ftc-border bg-ftc-bg-elevated/80 p-6 transition hover:border-ftc-primary/25 hover:shadow-ftc-glow-lg"
+                className="rounded-2xl border border-ftc-border bg-ftc-bg-elevated/80 p-6 transition hover:border-ftc-primary/25"
               >
                 <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl border border-ftc-border bg-ftc-surface text-sm font-bold text-ftc-primary">
                   ✦
@@ -288,7 +288,7 @@ export default function Home() {
                 />
               </div>
 
-              <div className="mt-6 overflow-hidden rounded-xl border border-ftc-border shadow-ftc-glow">
+              <div className="mt-6 overflow-hidden rounded-xl border border-ftc-border">
                 <div className="border-b border-ftc-border bg-ftc-surface/80 px-4 py-3">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-ftc-text-muted">
                     Venue map

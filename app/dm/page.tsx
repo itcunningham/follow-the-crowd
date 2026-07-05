@@ -79,7 +79,7 @@ function InboxTabButton({
         <span
           className={`flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] font-bold leading-none ${
             active
-              ? "bg-ftc-primary-dim text-white shadow-ftc-glow"
+              ? "bg-ftc-primary-dim text-white"
               : "border border-ftc-primary/30 bg-ftc-primary/10 text-ftc-primary"
           }`}
         >
@@ -125,7 +125,7 @@ function NotificationsBellLink({ count }: { count: number }) {
         <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
       </svg>
       {count > 0 ? (
-        <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full border border-ftc-primary/40 bg-ftc-primary-dim px-1 text-[10px] font-bold leading-none text-white shadow-ftc-glow">
+        <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full border border-ftc-primary/40 bg-ftc-primary-dim px-1 text-[10px] font-bold leading-none text-white">
           {count > 99 ? "99+" : count}
         </span>
       ) : null}
@@ -253,16 +253,14 @@ function MessageDjButton({
 }
 
 function getUnreadInboxRowClass(isUnread: boolean) {
-  return isUnread
-    ? "border-l-2 border-ftc-primary/55 bg-ftc-primary/[0.06] shadow-[inset_0_0_20px_rgba(111,228,255,0.07)]"
-    : "";
+  return isUnread ? "border-l-2 border-ftc-primary/40 bg-ftc-primary/[0.05]" : "";
 }
 
 function UnreadInboxIndicator() {
   return (
     <span
       aria-label="Unread"
-      className="h-2.5 w-2.5 shrink-0 rounded-full bg-ftc-primary shadow-ftc-glow"
+      className="h-2.5 w-2.5 shrink-0 rounded-full bg-ftc-primary"
     />
   );
 }

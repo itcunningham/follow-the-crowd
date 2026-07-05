@@ -123,7 +123,7 @@ export default function OnboardingPage() {
                 type="button"
                 disabled={loadingRole !== null}
                 onClick={() => handleSelectRole(option.role)}
-                className="w-full rounded-2xl border border-ftc-border bg-ftc-surface/80 px-5 py-5 text-left transition hover:border-ftc-primary/35 hover:bg-ftc-primary/10 hover:shadow-ftc-glow focus-visible:border-ftc-primary/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ftc-primary/15 disabled:cursor-not-allowed disabled:opacity-60"
+                className="w-full rounded-2xl border border-ftc-border bg-ftc-surface/80 px-5 py-5 text-left transition hover:border-ftc-primary/35 hover:bg-ftc-primary/10 focus-visible:border-ftc-primary/45 focus-visible:outline-none focus-visible:border-ftc-primary/45 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 <p className="text-lg font-semibold text-ftc-text">{option.title}</p>
                 <p className="mt-2 text-sm leading-relaxed text-ftc-text-secondary">

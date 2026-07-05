@@ -1517,7 +1517,7 @@ function DjGigsTabs({
             onClick={() => onChange(tab.value)}
             className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold uppercase tracking-wide transition ${
               isActive
-                ? "bg-ftc-primary text-ftc-bg shadow-ftc-glow"
+                ? "bg-ftc-primary text-ftc-bg"
                 : "border border-ftc-border bg-ftc-surface/50 text-ftc-text-secondary hover:border-ftc-primary/25 hover:text-ftc-primary"
             }`}
           >
@@ -1565,7 +1565,7 @@ function PlannerSentViewTabs({
             onClick={() => onChange(tab.value)}
             className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold uppercase tracking-wide transition ${
               isActive
-                ? "bg-ftc-primary text-ftc-bg shadow-ftc-glow"
+                ? "bg-ftc-primary text-ftc-bg"
                 : "border border-ftc-border bg-ftc-surface/50 text-ftc-text-secondary hover:border-ftc-primary/25 hover:text-ftc-primary"
             }`}
           >
@@ -1617,7 +1617,7 @@ function BookingSectionTabs({
             onClick={() => onChange(tab.value)}
             className={`relative px-1 pb-3 text-sm font-semibold transition ${
               isActive
-                ? "text-ftc-primary after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:rounded-full after:bg-ftc-primary after:shadow-ftc-glow"
+                ? "text-ftc-primary after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:rounded-full after:bg-ftc-primary"
                 : "text-ftc-text-muted hover:text-ftc-primary"
             }`}
           >
@@ -1770,7 +1770,7 @@ function BookingStatusTabs({
               onClick={() => onChange(tab.value)}
               className={`rounded-xl px-3 py-2.5 text-left transition ${
                 isActive
-                  ? "bg-ftc-primary text-ftc-bg shadow-ftc-glow"
+                  ? "bg-ftc-primary text-ftc-bg"
                   : "border border-transparent bg-ftc-bg-elevated/40 hover:border-ftc-border-strong hover:bg-ftc-surface/80"
               }`}
             >

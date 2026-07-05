@@ -162,7 +162,7 @@ export default function SettingsPage() {
                         onClick={() => handleSelectRole(option.role)}
                         className={`w-full rounded-2xl border px-4 py-4 text-left transition disabled:cursor-not-allowed disabled:opacity-60 sm:px-5 sm:py-5 ${
                           isSelected
-                            ? "border-ftc-primary/45 bg-ftc-primary/10 shadow-ftc-glow"
+                            ? "border-ftc-primary/45 bg-ftc-primary/10"
                             : "border-ftc-border bg-ftc-bg-elevated/40 hover:border-ftc-primary/25 hover:bg-ftc-primary/10"
                         }`}
                       >

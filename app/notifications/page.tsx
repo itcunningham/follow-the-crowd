@@ -226,7 +226,7 @@ export default function NotificationsPage() {
                         {isUnread ? (
                           <span
                             aria-hidden="true"
-                            className="block h-2.5 w-2.5 rounded-full bg-ftc-primary shadow-ftc-glow"
+                            className="block h-2.5 w-2.5 rounded-full bg-ftc-primary"
                           />
                         ) : (
                           <span aria-hidden="true" className="block h-2.5 w-2.5 rounded-full bg-transparent" />

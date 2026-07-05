@@ -112,7 +112,7 @@ function getCalendarCellAvailabilityGlowClass(status: DjAvailabilityStatus): str
 
 function getCalendarCellBookingGlowClass(status: "pending" | "accepted"): string {
   if (status === "pending") {
-    return "shadow-ftc-glow";
+    return "";
   }
 
   return "shadow-[0_0_10px_rgba(168,85,247,0.35)]";
@@ -194,7 +194,7 @@ function AvailabilityLegend() {
     {
       label: "Pending Request",
       className: "border-ftc-primary/35 bg-ftc-primary/10 text-ftc-primary",
-      glow: "shadow-ftc-glow",
+      glow: "",
     },
     {
       label: "Booked",
@@ -376,7 +376,7 @@ function BulkActionBar({
             type="button"
             disabled={saving || selectedCount === 0 || !pendingChoice}
             onClick={onConfirm}
-            className="rounded-lg bg-ftc-primary-dim px-2.5 py-1.5 text-[11px] font-semibold text-white shadow-ftc-glow transition hover:bg-ftc-primary disabled:opacity-50"
+            className="rounded-lg bg-ftc-primary-dim px-2.5 py-1.5 text-[11px] font-semibold text-white transition hover:bg-ftc-primary disabled:opacity-50"
           >
             {saving ? "Saving..." : "Confirm"}
           </button>
@@ -472,15 +472,15 @@ function DjAvailabilityDayCell({
       className={`relative min-h-[6.5rem] rounded-lg border bg-ftc-bg-elevated/20 p-1.5 transition sm:min-h-[7.5rem] sm:p-2 ${
         multiSelectMode
           ? isSelected
-            ? "cursor-pointer border-ftc-primary/45 ring-1 ring-ftc-primary/30"
+            ? "cursor-pointer border-ftc-primary/45"
             : "cursor-pointer border-ftc-border/70 hover:border-ftc-primary/25"
           : menuOpen
-            ? "border-ftc-primary/35 ring-1 ring-ftc-primary/20"
+            ? "border-ftc-primary/35"
             : "border-ftc-border/70 hover:border-ftc-border-strong/90"
       }`}
     >
       {multiSelectMode && isSelected ? (
-        <span className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-full bg-ftc-primary-dim text-white shadow-ftc-glow">
+        <span className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-full bg-ftc-primary-dim text-white">
           <svg aria-hidden="true" viewBox="0 0 24 24" className="h-2.5 w-2.5" fill="none" stroke="currentColor" strokeWidth="3">
             <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" />
           </svg>

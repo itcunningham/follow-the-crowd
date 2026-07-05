@@ -45,7 +45,7 @@ export default function CalendarMonthYearPicker({
 
   const pickerButtonClass = (isSelected: boolean) =>
     isSelected
-      ? "border border-ftc-primary/45 bg-ftc-primary/12 text-ftc-primary/80 shadow-ftc-glow"
+      ? "border border-ftc-primary/45 bg-ftc-primary/12 text-ftc-primary/80"
       : "border border-ftc-border bg-ftc-surface/50 text-ftc-text-secondary hover:border-ftc-primary/25 hover:text-ftc-primary/90";
 
   const footerOutlineButtonClass =
@@ -113,7 +113,7 @@ export default function CalendarMonthYearPicker({
           type="button"
           aria-label="Confirm month and year selection"
           onClick={() => onConfirm(draftMonth, draftYear)}
-          className="inline-flex h-9 items-center justify-center rounded-lg bg-ftc-primary-dim px-3 text-xs font-semibold text-white shadow-ftc-glow transition hover:bg-ftc-primary"
+          className="inline-flex h-9 items-center justify-center rounded-lg bg-ftc-primary-dim px-3 text-xs font-semibold text-white transition hover:bg-ftc-primary"
         >
           Confirm
         </button>

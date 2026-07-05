@@ -73,7 +73,7 @@ export default function BookingRequestModal({
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 p-4 sm:items-center">
       <div
-        className="max-h-[90dvh] w-full max-w-lg overflow-y-auto rounded-2xl border border-ftc-border bg-ftc-bg shadow-ftc-glow-lg"
+        className="max-h-[90dvh] w-full max-w-lg overflow-y-auto rounded-2xl border border-ftc-border bg-ftc-bg shadow-ftc-lg"
         role="dialog"
         aria-modal="true"
         aria-labelledby="booking-request-title"
