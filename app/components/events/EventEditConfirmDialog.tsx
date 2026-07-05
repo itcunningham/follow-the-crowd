@@ -32,10 +32,11 @@ export default function EventEditConfirmDialog({
         onClick={(event) => event.stopPropagation()}
       >
         <h2 id="event-edit-confirm-title" className="text-base font-semibold text-ftc-text">
-          Update event details?
+          Update event and notify group chat?
         </h2>
         <p className="mt-2 text-sm leading-relaxed text-ftc-text-secondary">
-          This event has booking requests or confirmed DJs. These changes may affect their plans.
+          This event has booking requests or confirmed DJs. A summary of these changes will be
+          posted in the event group chat.
         </p>
 
         <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-end">
@@ -53,7 +54,7 @@ export default function EventEditConfirmDialog({
             onClick={onConfirm}
             className="ftc-btn-primary px-4 py-2.5 text-sm uppercase tracking-wide disabled:opacity-50"
           >
-            {loading ? "Updating..." : "Update event"}
+            {loading ? "Updating..." : "Update and notify"}
           </button>
         </div>
       </div>

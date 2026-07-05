@@ -86,10 +86,12 @@ import {
   getEventCoverUploadErrorMessage,
   uploadEventCoverImage,
 } from "@/lib/events/eventCoverImage";
+import { shouldConfirmEventEditSave } from "@/lib/events/eventEditConfirmation";
 import {
-  hasBookingImpactingEventChanges,
-  shouldConfirmEventEditSave,
-} from "@/lib/events/eventEditConfirmation";
+  getBookingImpactingEventFieldChanges,
+  postEventGroupChatUpdate,
+  shouldPostEventGroupChatUpdate,
+} from "@/lib/events/eventGroupChatUpdate";
 import {
   canManageEvents,
   getBookingRecipientProfilesByIds,
@@ -359,7 +361,10 @@ export default function EventDetailPage() {
       return;
     }
 
-    const bookingImpactingChanged = hasBookingImpactingEventChanges(event, editForm);
+    const shouldNotifyGroupChat = shouldPostEventGroupChatUpdate(event, editForm, lineup);
+    const groupChatFieldChanges = shouldNotifyGroupChat
+      ? getBookingImpactingEventFieldChanges(event, editForm)
+      : [];
 
     setSavingEdit(true);
     setError(null);
@@ -383,17 +388,30 @@ export default function EventDetailPage() {
         return;
       }
 
+      if (shouldNotifyGroupChat && groupChatFieldChanges.length > 0) {
+        try {
+          await postEventGroupChatUpdate(updated.id, updated.name, groupChatFieldChanges);
+        } catch (groupChatError) {
+          console.error("Failed to post event group chat update:", groupChatError);
+          setEvent({ ...updated, cover_image_url: nextCoverUrl });
+          setEditOpen(false);
+          setEditForm(null);
+          resetEditCoverState();
+          setEditConfirmOpen(false);
+          setSuccessMessage("Event updated. Remember to let affected DJs know.");
+          setError("Event saved, but the group chat update could not be posted.");
+          return;
+        }
+      }
+
       setEvent({ ...updated, cover_image_url: nextCoverUrl });
       setEditOpen(false);
       setEditForm(null);
       resetEditCoverState();
       setEditConfirmOpen(false);
       setSuccessMessage(
-        bookingImpactingChanged &&
-          lineup.some(
-            (booking) => booking.status === "pending" || booking.status === "accepted",
-          )
-          ? "Event updated. Remember to let affected DJs know."
+        shouldNotifyGroupChat && groupChatFieldChanges.length > 0
+          ? "Event updated. A summary was posted in the group chat."
           : "Event updated",
       );
     } catch (saveError) {
