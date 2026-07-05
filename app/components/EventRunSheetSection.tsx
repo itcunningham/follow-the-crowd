@@ -773,14 +773,14 @@ export default function EventRunSheetSection({
               <thead>
                 <tr>
                   <th
-                    className={`${RUN_SHEET_STAGE_COLUMN_CLASS} border-b border-ftc-border px-2 py-2 text-left text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted`}
-                  >
-                    {getFixedField("stage_area").label}
-                  </th>
-                  <th
                     className={`${RUN_SHEET_DJ_COLUMN_CLASS} border-b border-ftc-border px-2 py-2 text-left text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted`}
                   >
                     DJ
+                  </th>
+                  <th
+                    className={`${RUN_SHEET_STAGE_COLUMN_CLASS} border-b border-ftc-border px-2 py-2 text-left text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted`}
+                  >
+                    {getFixedField("stage_area").label}
                   </th>
                   <th className="w-[11rem] border-b border-ftc-border px-2 py-2 text-left text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted">
                     Set Time
@@ -800,17 +800,6 @@ export default function EventRunSheetSection({
               <tbody>
                 {rows.map((row, rowIndex) => (
                   <tr key={row.id} className="align-top">
-                    <td className={`${RUN_SHEET_STAGE_COLUMN_CLASS} border-b border-ftc-border/70 px-2 py-2 align-top`}>
-                      {renderRunSheetFieldInput({
-                        field: getFixedField("stage_area"),
-                        row,
-                        canEdit,
-                        stageAreaTextareaClassName,
-                        notesTextareaClassName,
-                        readOnlyTextClassName,
-                        updateRow,
-                      })}
-                    </td>
                     <td className={`${RUN_SHEET_DJ_COLUMN_CLASS} border-b border-ftc-border/70 px-2 py-2 align-top`}>
                       <RunSheetDjField
                         row={row}
@@ -821,6 +810,17 @@ export default function EventRunSheetSection({
                         readOnlyTextClassName={readOnlyTextClassName}
                         onAssign={handleAssignDj}
                       />
+                    </td>
+                    <td className={`${RUN_SHEET_STAGE_COLUMN_CLASS} border-b border-ftc-border/70 px-2 py-2 align-top`}>
+                      {renderRunSheetFieldInput({
+                        field: getFixedField("stage_area"),
+                        row,
+                        canEdit,
+                        stageAreaTextareaClassName,
+                        notesTextareaClassName,
+                        readOnlyTextClassName,
+                        updateRow,
+                      })}
                     </td>
                     <td className="whitespace-nowrap border-b border-ftc-border/70 px-2 py-2 align-top">
                       <RunSheetSetTimeField
