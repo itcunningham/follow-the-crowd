@@ -71,7 +71,7 @@ export default function MessagesInboxRow({
       onClick={onClick}
       className={`flex w-full items-center gap-3 rounded-2xl border px-3 py-3 text-left transition sm:px-4 sm:py-3.5 ${
         isUnread
-          ? "border-ftc-primary/25 bg-ftc-primary/[0.06]"
+          ? "border-ftc-primary bg-ftc-bg-elevated"
           : "border-ftc-border-subtle bg-ftc-surface hover:border-ftc-border-strong"
       }`}
     >
@@ -138,7 +138,7 @@ export function MessagesGroupInboxRow({
       href={href}
       className={`flex w-full items-center gap-3 rounded-2xl border px-3 py-3 transition sm:px-4 sm:py-3.5 ${
         isUnread
-          ? "border-ftc-primary/25 bg-ftc-primary/[0.06]"
+          ? "border-ftc-primary bg-ftc-bg-elevated"
           : "border-ftc-border-subtle bg-ftc-surface hover:border-ftc-border-strong"
       }`}
     >

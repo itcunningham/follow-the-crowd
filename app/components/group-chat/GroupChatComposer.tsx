@@ -48,7 +48,7 @@ export default function GroupChatComposer({
           onClick={onSend}
           disabled={sending || !value.trim()}
           aria-label="Send message"
-          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-ftc-primary text-ftc-bg transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-50"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-ftc-primary text-ftc-bg transition hover:bg-ftc-primary-dim disabled:cursor-not-allowed disabled:opacity-50"
         >
           {sending ? <span className="text-xs font-bold">…</span> : <SendIcon />}
         </button>

@@ -229,7 +229,7 @@ export default function BookingPlansPage() {
 
         <div className="px-4 py-4 sm:px-6">
           {successMessage ? (
-            <p className="mb-4 rounded-xl border border-ftc-primary/25 bg-ftc-primary/10 px-4 py-3 text-sm text-ftc-primary">
+            <p className="mb-4 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated px-4 py-3 text-sm text-ftc-text-secondary">
               {successMessage}
             </p>
           ) : null}

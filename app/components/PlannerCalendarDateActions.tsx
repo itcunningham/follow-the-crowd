@@ -7,7 +7,6 @@ import {
   buildPlannerCreateEventHref,
   formatPlannerSelectedDateLabel,
   getCalendarStatusBadgeClass,
-  getCalendarStatusGlowClass,
   getPlannerCalendarBadgeLabel,
   getPlannerViewDaySubtitle,
   toDateKey,
@@ -64,7 +63,7 @@ export default function PlannerCalendarDateActions({
   const dateKey = toDateKey(date);
 
   const actionButtonClass =
-    "w-full rounded-xl border border-ftc-border bg-ftc-bg-elevated/50 px-3 py-2.5 text-left transition hover:border-ftc-primary/30 hover:bg-ftc-primary/10";
+    "w-full rounded-xl border border-ftc-border bg-ftc-bg-elevated/50 px-3 py-2.5 text-left transition hover:border-ftc-border-strong hover:bg-ftc-bg-elevated";
 
   function navigateToCreateEvent() {
     onClose();
@@ -136,7 +135,7 @@ export default function PlannerCalendarDateActions({
                     <Link
                       href={item.href}
                       onClick={onClose}
-                      className={`block rounded-xl border px-3 py-2.5 transition hover:brightness-110 ${getCalendarStatusBadgeClass(item.statusKind)} ${getCalendarStatusGlowClass(item.statusKind)}`}
+                      className={`block rounded-xl border-0 px-3 py-2.5 transition hover:opacity-90 ${getCalendarStatusBadgeClass(item.statusKind)}`}
                     >
                       <span className="block text-[10px] font-semibold uppercase tracking-wide">
                         {getPlannerCalendarBadgeLabel(item)}

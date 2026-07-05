@@ -75,7 +75,7 @@ export default function DjProfileSections({
             Manage availability and bookings in{" "}
             <Link
               href="/bookings"
-              className="font-semibold text-ftc-primary transition hover:brightness-110"
+              className="font-semibold text-ftc-primary transition hover:text-ftc-primary-dim"
             >
               Gigs
             </Link>

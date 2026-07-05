@@ -53,7 +53,7 @@ export default function DmMessageReactions({
               onClick={() => onToggleReaction(summary.emoji)}
               className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs transition disabled:opacity-50 ${
                 summary.reactedByCurrentUser
-                  ? "border-ftc-primary/35 bg-ftc-primary text-ftc-bg"
+                  ? "border-0 bg-ftc-primary text-ftc-bg"
                   : "border-ftc-border-subtle bg-ftc-bg-elevated text-ftc-text hover:border-ftc-border-strong"
               }`}
             >

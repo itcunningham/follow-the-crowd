@@ -218,7 +218,7 @@ export default function NotificationsPage() {
                       disabled={openingId === notification.id}
                       className={`flex w-full items-start gap-3 px-4 py-4 text-left transition sm:px-6 ${
                         isUnread
-                          ? "bg-ftc-primary/10 hover:bg-ftc-primary/10"
+                          ? "border-l-2 border-ftc-primary bg-ftc-bg-elevated hover:bg-ftc-bg-elevated"
                           : "hover:bg-ftc-surface/70"
                       } disabled:cursor-wait disabled:opacity-70`}
                     >
@@ -243,7 +243,7 @@ export default function NotificationsPage() {
                             >
                               {notification.title}
                             </p>
-                            <p className="mt-0.5 text-[11px] font-medium uppercase tracking-wide text-ftc-primary/80">
+                            <p className="mt-0.5 text-[11px] font-medium uppercase tracking-wide text-ftc-primary">
                               {getNotificationTypeLabel(notification.type)}
                             </p>
                           </div>

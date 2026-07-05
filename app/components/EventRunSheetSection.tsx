@@ -75,7 +75,7 @@ function RowMoveButton({
       disabled={disabled}
       aria-label={label}
       title={label}
-      className={`${iconButtonBaseClassName} border-ftc-border-strong bg-ftc-bg-elevated/80 text-ftc-text-secondary hover:border-ftc-primary/35 hover:text-ftc-primary`}
+      className={`${iconButtonBaseClassName} border-ftc-border-strong bg-ftc-bg-elevated/80 text-ftc-text-secondary hover:border-ftc-border-strong hover:bg-ftc-bg-elevated hover:text-ftc-text`}
     >
       <svg
         aria-hidden="true"
@@ -104,7 +104,7 @@ function RowRemoveButton({ onClick }: { onClick: () => void }) {
       onClick={onClick}
       aria-label="Remove row"
       title="Remove row"
-      className={`${iconButtonBaseClassName} border-red-500/35 bg-red-500/10 text-red-400 hover:border-red-400/50 hover:bg-red-500/15 hover:text-red-300`}
+      className={`${iconButtonBaseClassName} border-0 bg-[var(--ftc-color-danger)] text-ftc-bg hover:opacity-90`}
     >
       <svg
         aria-hidden="true"
@@ -573,7 +573,7 @@ export default function EventRunSheetSection({
   }
 
   const runSheetTextareaBaseClassName =
-    "w-full resize-none overflow-x-hidden overflow-y-hidden rounded-lg border border-ftc-border bg-ftc-bg-elevated/60 px-2.5 py-1.5 text-sm text-ftc-text outline-none transition placeholder:text-ftc-text-muted focus:border-ftc-primary/45 focus:border-ftc-primary/45 break-words";
+    "w-full resize-none overflow-x-hidden overflow-y-hidden rounded-lg border border-ftc-border bg-ftc-bg-elevated/60 px-2.5 py-1.5 text-sm text-ftc-text outline-none transition placeholder:text-ftc-text-muted focus:border-ftc-border-strong break-words";
 
   const artistTextareaClassName = `${runSheetTextareaBaseClassName} min-h-[2.25rem] leading-normal`;
   const stageAreaTextareaClassName = `${runSheetTextareaBaseClassName} min-h-[2.25rem] leading-normal`;
@@ -616,13 +616,13 @@ export default function EventRunSheetSection({
       </div>
 
       {successMessage ? (
-        <p className="mt-4 rounded-xl border border-ftc-primary/25 bg-ftc-primary/10 px-4 py-3 text-sm text-ftc-primary/90">
+        <p className="mt-4 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated px-4 py-3 text-sm text-ftc-text-secondary">
           {successMessage}
         </p>
       ) : null}
 
       {error ? (
-        <p className="mt-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+        <p className="mt-4 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated px-4 py-3 text-sm text-[var(--ftc-color-danger)]">
           {error}
         </p>
       ) : null}

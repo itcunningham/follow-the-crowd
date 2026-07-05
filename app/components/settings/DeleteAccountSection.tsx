@@ -98,7 +98,7 @@ export default function DeleteAccountSection({
 
   return (
     <>
-      <section className="rounded-2xl border border-red-500/30 bg-red-950/10 p-4 sm:p-5">
+      <section className="rounded-2xl border border-ftc-border-subtle bg-ftc-bg-elevated p-4 sm:p-5">
         <h2 className="text-xs font-semibold uppercase tracking-wide text-red-300">
           Danger zone
         </h2>
@@ -114,11 +114,11 @@ export default function DeleteAccountSection({
         {loadingWarnings ? (
           <p className="mt-4 text-sm text-ftc-text-muted">Checking account status...</p>
         ) : warningItems.length > 0 ? (
-          <div className="mt-4 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3">
-            <p className="text-sm font-medium text-amber-100">
+          <div className="mt-4 rounded-xl border border-0 bg-[var(--ftc-color-warning)] px-4 py-3 text-ftc-bg">
+            <p className="text-sm font-medium text-ftc-bg">
               The following will be cancelled automatically when you delete your account:
             </p>
-            <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-amber-100/90">
+            <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-ftc-bg/90">
               {warningItems.map((warning) => (
                 <li key={warning}>{warning}</li>
               ))}
@@ -130,7 +130,7 @@ export default function DeleteAccountSection({
           type="button"
           disabled={loadingWarnings || deleting}
           onClick={openModal}
-          className="mt-4 rounded-xl border border-red-500/45 bg-red-600/15 px-4 py-3 text-sm font-semibold uppercase tracking-wide text-red-200 transition hover:border-red-400/60 hover:bg-red-600/25 disabled:cursor-not-allowed disabled:opacity-50"
+          className="mt-4 rounded-xl border-0 bg-[var(--ftc-color-danger)] px-4 py-3 text-sm font-semibold uppercase tracking-wide text-ftc-bg transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
         >
           Delete account
         </button>
@@ -145,7 +145,7 @@ export default function DeleteAccountSection({
           role="dialog"
           aria-modal="true"
           aria-labelledby="delete-account-title"
-          className="max-h-[90dvh] w-full max-w-md overflow-y-auto overscroll-contain rounded-t-2xl border border-red-500/30 bg-ftc-bg-elevated p-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-ftc-card sm:rounded-2xl sm:p-5"
+          className="max-h-[90dvh] w-full max-w-md overflow-y-auto overscroll-contain rounded-t-2xl border border-ftc-border-strong bg-ftc-bg-elevated p-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-ftc-card sm:rounded-2xl sm:p-5"
           onClick={(event) => event.stopPropagation()}
         >
             <h3 id="delete-account-title" className="text-base font-semibold text-ftc-text">
@@ -179,7 +179,7 @@ export default function DeleteAccountSection({
                 autoComplete="off"
                 spellCheck={false}
                 disabled={deleting}
-                className="w-full rounded-xl border border-ftc-border bg-ftc-surface/70 px-3 py-2.5 text-sm text-ftc-text outline-none transition placeholder:text-ftc-text-muted focus:border-red-500/40 disabled:opacity-50"
+                className="w-full rounded-xl border border-ftc-border bg-ftc-surface/70 px-3 py-2.5 text-sm text-ftc-text outline-none transition placeholder:text-ftc-text-muted focus:border-ftc-border-strong disabled:opacity-50"
                 placeholder="DELETE"
               />
             </label>
@@ -199,7 +199,7 @@ export default function DeleteAccountSection({
                 type="button"
                 disabled={deleting || confirmation !== "DELETE"}
                 onClick={() => void handleDeleteAccount()}
-                className="rounded-xl border border-red-500/45 bg-red-600/15 px-4 py-2.5 text-sm font-semibold uppercase tracking-wide text-red-200 transition hover:border-red-400/60 hover:bg-red-600/25 disabled:cursor-not-allowed disabled:opacity-50"
+                className="rounded-xl border-0 bg-[var(--ftc-color-danger)] px-4 py-2.5 text-sm font-semibold uppercase tracking-wide text-ftc-bg transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {deleting ? "Deleting..." : "Delete account"}
               </button>

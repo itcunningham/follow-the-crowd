@@ -11,7 +11,7 @@ export default function EventBookingDuplicateBadge({
 }) {
   return (
     <span
-      className={`inline-flex shrink-0 rounded-full border px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${getEventBookingDuplicateBadgeClass(status)}`}
+      className={`inline-flex shrink-0 rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${getEventBookingDuplicateBadgeClass(status)}`}
     >
       {getEventBookingDuplicateLabel(status)}
     </span>

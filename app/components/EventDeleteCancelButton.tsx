@@ -63,7 +63,7 @@ export default function EventDeleteCancelButton({
         type="button"
         disabled={disabled || loading}
         onClick={() => setOpen(true)}
-        className={`rounded-lg border border-red-500/25 bg-red-500/5 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-red-300/90 transition hover:border-red-500/40 hover:bg-red-500/10 hover:text-red-200 disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
+        className={`rounded-lg border border-[var(--ftc-color-danger)] bg-ftc-surface px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-[var(--ftc-color-danger)] transition hover:border-0 hover:bg-[var(--ftc-color-danger)] hover:text-ftc-bg disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
       >
         {loading ? copy.loadingLabel : copy.buttonLabel}
       </button>
@@ -102,7 +102,7 @@ export default function EventDeleteCancelButton({
                 type="button"
                 disabled={loading}
                 onClick={() => void handleConfirm()}
-                className="rounded-xl border border-red-500/35 bg-red-500/10 px-4 py-2.5 text-sm font-semibold uppercase tracking-wide text-red-300 transition hover:border-red-500/50 hover:bg-red-500/15 disabled:opacity-50"
+                className="rounded-xl border-0 bg-[var(--ftc-color-danger)] px-4 py-2.5 text-sm font-semibold uppercase tracking-wide text-ftc-bg transition hover:opacity-90 disabled:opacity-50"
               >
                 {loading ? copy.loadingLabel : copy.actionLabel}
               </button>

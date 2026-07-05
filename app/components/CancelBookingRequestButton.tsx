@@ -30,7 +30,7 @@ export default function CancelBookingRequestButton({
         type="button"
         disabled={disabled || loading}
         onClick={() => setOpen(true)}
-        className={`rounded-xl border border-red-500/25 bg-red-500/5 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-red-300/90 transition hover:border-red-500/40 hover:bg-red-500/10 disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
+        className={`rounded-xl border border-[var(--ftc-color-danger)] bg-ftc-surface px-3 py-2 text-xs font-semibold uppercase tracking-wide text-[var(--ftc-color-danger)] transition hover:border-0 hover:bg-[var(--ftc-color-danger)] hover:text-ftc-bg disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
       >
         {loading ? "Cancelling..." : "Cancel request"}
       </button>

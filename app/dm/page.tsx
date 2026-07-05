@@ -93,7 +93,7 @@ function InboxTabButton({
 function GroupChatsEmptyState() {
   return (
     <div className="flex flex-col items-center justify-center px-6 py-16 text-center sm:py-24">
-      <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-ftc-primary/25 bg-ftc-primary/10 text-xs font-semibold uppercase tracking-wide text-ftc-primary">
+      <div className="flex h-11 w-11 items-center justify-center rounded-2xl border-0 bg-ftc-primary text-xs font-semibold uppercase tracking-wide text-ftc-bg">
         GC
       </div>
       <h2 className="mt-5 text-lg font-semibold text-ftc-text">No group chats yet</h2>

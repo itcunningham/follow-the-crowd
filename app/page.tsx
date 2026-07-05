@@ -96,20 +96,20 @@ export default function Home() {
               <button
                 type="button"
                 onClick={() => scrollTo("create-event")}
-                className="w-full rounded-xl border border-ftc-primary/45 bg-ftc-primary/10 px-6 py-3.5 text-sm font-bold uppercase tracking-wide text-ftc-primary/80 transition hover:border-ftc-primary/55 hover:bg-ftc-primary/15 sm:w-auto"
+                className="w-full rounded-xl border-0 bg-ftc-primary px-6 py-3.5 text-sm font-bold uppercase tracking-wide text-ftc-bg transition hover:bg-ftc-primary-dim sm:w-auto"
               >
                 Generate Event Plan
               </button>
               <Link
                 href="/events"
-                className="w-full rounded-xl border border-ftc-primary/30 bg-ftc-primary/10 px-6 py-3.5 text-center text-sm font-bold uppercase tracking-wide text-ftc-primary/90 transition hover:border-ftc-primary/45 hover:bg-ftc-primary/12 sm:w-auto"
+                className="w-full rounded-xl border border-ftc-border-strong bg-ftc-surface/60 px-6 py-3.5 text-center text-sm font-bold uppercase tracking-wide text-ftc-text-secondary transition hover:border-ftc-border-strong hover:bg-ftc-bg-elevated hover:text-ftc-text sm:w-auto"
               >
                 Plan an event
               </Link>
               <button
                 type="button"
                 onClick={() => scrollTo("learn-more")}
-                className="w-full rounded-xl border border-ftc-border-strong bg-ftc-surface/60 px-6 py-3.5 text-sm font-bold uppercase tracking-wide text-ftc-text-secondary shadow-sm transition hover:border-ftc-primary/35 hover:text-ftc-primary sm:w-auto"
+                className="w-full rounded-xl border border-ftc-border-strong bg-ftc-surface/60 px-6 py-3.5 text-sm font-bold uppercase tracking-wide text-ftc-text-secondary shadow-sm transition hover:border-ftc-border-strong hover:bg-ftc-bg-elevated hover:text-ftc-text sm:w-auto"
               >
                 Learn More
               </button>
@@ -199,7 +199,7 @@ export default function Home() {
             ].map((feature) => (
               <div
                 key={feature.title}
-                className="rounded-2xl border border-ftc-border bg-ftc-bg-elevated/80 p-6 transition hover:border-ftc-primary/25"
+                className="rounded-2xl border border-ftc-border bg-ftc-bg-elevated/80 p-6 transition hover:border-ftc-border-strong"
               >
                 <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl border border-ftc-border bg-ftc-surface text-sm font-bold text-ftc-primary">
                   ✦

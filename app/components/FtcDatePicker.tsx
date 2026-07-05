@@ -219,9 +219,9 @@ export default function FtcDatePicker({
                       aria-pressed={isSelected}
                       className={`flex h-9 items-center justify-center rounded-lg border text-sm transition ${
                         isSelected
-                          ? "border-ftc-primary/45 bg-ftc-primary/10 text-ftc-primary/80"
+                          ? "border-0 bg-ftc-primary text-ftc-bg"
                           : isToday
-                            ? "border-ftc-border-strong bg-ftc-surface/80 text-ftc-text hover:border-ftc-primary/30 hover:bg-ftc-primary/10"
+                            ? "border border-ftc-border-strong bg-ftc-surface/80 text-ftc-text hover:border-ftc-border-strong hover:bg-ftc-bg-elevated"
                             : "border-transparent text-ftc-text-secondary hover:border-ftc-border-strong hover:bg-ftc-surface/70"
                       }`}
                     >

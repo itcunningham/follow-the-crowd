@@ -136,11 +136,11 @@ html {
   font-size: 0.875rem;
   font-weight: 700;
   letter-spacing: 0.02em;
-  transition: filter 0.15s ease;
+  transition: background-color 0.15s ease;
 }
 
 .ftc-btn-primary:hover:not(:disabled) {
-  filter: brightness(1.05);
+  background: var(--ftc-color-primary-dim);
 }
 
 .ftc-btn-primary:disabled {
@@ -162,8 +162,8 @@ html {
 }
 
 .ftc-btn-secondary:hover:not(:disabled) {
-  border-color: var(--ftc-color-primary-border);
-  color: var(--ftc-color-primary);
+  border-color: var(--ftc-color-border-strong);
+  color: var(--ftc-color-text-primary);
 }
 
 .ftc-btn-ghost {
@@ -177,7 +177,98 @@ html {
 }
 
 .ftc-btn-ghost:hover:not(:disabled) {
-  background: var(--ftc-color-primary-subtle);
+  background: var(--ftc-color-bg-elevated);
+}
+
+/* -------------------------------------------------------------------------- */
+/* Flat solid status & icon controls                                           */
+/* -------------------------------------------------------------------------- */
+
+.ftc-status-primary {
+  border: 0;
+  background: var(--ftc-color-primary);
+  color: var(--ftc-color-text-inverse);
+}
+
+.ftc-status-success {
+  border: 0;
+  background: var(--ftc-color-success);
+  color: var(--ftc-color-text-inverse);
+}
+
+.ftc-status-warning {
+  border: 0;
+  background: var(--ftc-color-warning);
+  color: var(--ftc-color-text-inverse);
+}
+
+.ftc-status-danger {
+  border: 0;
+  background: var(--ftc-color-danger);
+  color: var(--ftc-color-text-inverse);
+}
+
+.ftc-status-neutral {
+  border: 1px solid var(--ftc-color-border-subtle);
+  background: #475569;
+  color: #f1f5f9;
+}
+
+.ftc-status-muted {
+  border: 1px solid var(--ftc-color-border-subtle);
+  background: var(--ftc-color-bg-elevated);
+  color: var(--ftc-color-text-secondary);
+}
+
+.ftc-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--ftc-radius-xl);
+  border: 1px solid var(--ftc-color-border-subtle);
+  background: var(--ftc-color-bg-surface);
+  color: var(--ftc-color-text-muted);
+  transition:
+    border-color 0.15s ease,
+    background-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.ftc-icon-btn:hover:not(:disabled) {
+  border-color: var(--ftc-color-border-strong);
+  background: var(--ftc-color-bg-elevated);
+  color: var(--ftc-color-text-primary);
+}
+
+.ftc-icon-btn:focus-visible {
+  outline: none;
+  border-color: var(--ftc-color-border-strong);
+}
+
+.ftc-icon-btn-active {
+  border: 0;
+  background: var(--ftc-color-primary);
+  color: var(--ftc-color-text-inverse);
+}
+
+.ftc-chip {
+  border-radius: 9999px;
+  border: 0;
+  background: var(--ftc-color-primary);
+  color: var(--ftc-color-text-inverse);
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.ftc-chip-muted {
+  border-radius: 9999px;
+  border: 1px solid var(--ftc-color-border-subtle);
+  background: var(--ftc-color-bg-input);
+  color: var(--ftc-color-text-secondary);
+  font-size: 0.625rem;
+  font-weight: 600;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -245,9 +336,9 @@ html {
 
 .ftc-chip {
   border-radius: 9999px;
-  border: 1px solid var(--ftc-color-primary-border);
-  background: var(--ftc-color-primary-subtle);
-  color: var(--ftc-color-primary);
+  border: 0;
+  background: var(--ftc-color-primary);
+  color: var(--ftc-color-text-inverse);
   font-size: 0.625rem;
   font-weight: 600;
   letter-spacing: 0.06em;

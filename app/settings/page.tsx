@@ -162,15 +162,15 @@ export default function SettingsPage() {
                         onClick={() => handleSelectRole(option.role)}
                         className={`w-full rounded-2xl border px-4 py-4 text-left transition disabled:cursor-not-allowed disabled:opacity-60 sm:px-5 sm:py-5 ${
                           isSelected
-                            ? "border-ftc-primary/45 bg-ftc-primary/10"
-                            : "border-ftc-border bg-ftc-bg-elevated/40 hover:border-ftc-primary/25 hover:bg-ftc-primary/10"
+                            ? "border-ftc-primary bg-ftc-bg-elevated"
+                            : "border-ftc-border bg-ftc-bg-elevated/40 hover:border-ftc-border-strong hover:bg-ftc-bg-elevated"
                         }`}
                       >
                         <div className="flex items-start justify-between gap-3">
                           <div>
                             <p
                               className={`text-base font-semibold sm:text-lg ${
-                                isSelected ? "text-ftc-primary/80" : "text-ftc-text"
+                                isSelected ? "text-ftc-primary" : "text-ftc-text"
                               }`}
                             >
                               {option.title}
@@ -180,7 +180,7 @@ export default function SettingsPage() {
                             </p>
                           </div>
                           {isSelected ? (
-                            <span className="shrink-0 rounded-full border border-ftc-primary/35 bg-ftc-primary/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-ftc-primary">
+                            <span className="shrink-0 rounded-full border-0 bg-ftc-primary px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-ftc-bg">
                               Selected
                             </span>
                           ) : null}
@@ -196,7 +196,7 @@ export default function SettingsPage() {
                 </div>
 
                 {successMessage ? (
-                  <p className="mt-4 rounded-xl border border-ftc-primary/25 bg-ftc-primary/10 px-4 py-3 text-sm text-ftc-primary/90">
+                  <p className="mt-4 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated px-4 py-3 text-sm text-ftc-text-secondary">
                     {successMessage}
                   </p>
                 ) : null}

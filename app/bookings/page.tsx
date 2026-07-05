@@ -32,6 +32,7 @@ import {
   filterSendableRecipientIdsForEvent,
   getActiveBookingCampaignStats,
   getBookingMutationErrorMessage,
+  getBookingStatusBadgeClass,
   groupSentBookingRequests,
   listReceivedBookingRequests,
   listSentBookingRequests,
@@ -961,7 +962,7 @@ export default function BookingsPage() {
           ) : null}
 
           {failureDetails.length > 0 ? (
-            <div className="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+            <div className="mb-4 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated px-4 py-3 text-sm text-[var(--ftc-color-danger)]">
               <p className="font-semibold">Some sends failed:</p>
               <ul className="mt-2 list-disc space-y-1 pl-5">
                 {failureDetails.map((detail) => (
@@ -1203,7 +1204,7 @@ export default function BookingsPage() {
                               <span
                                 className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border ${
                                   selected
-                                    ? "border-ftc-primary bg-ftc-primary/15 text-ftc-primary/80"
+                                    ? "border-0 bg-ftc-primary text-ftc-bg"
                                     : "border-ftc-border-strong bg-ftc-bg-elevated/80 text-transparent"
                                 }`}
                               >
@@ -1899,18 +1900,12 @@ function CampaignStat({
   tone: "neutral" | BookingRequestStatus;
 }) {
   const classes =
-    tone === "accepted"
-      ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
-      : tone === "declined"
-        ? "border-red-500/30 bg-red-500/10 text-red-300"
-        : tone === "cancelled"
-          ? "border-ftc-border-strong bg-ftc-bg-elevated/50 text-ftc-text-secondary"
-        : tone === "pending"
-          ? "border-ftc-border-subtle bg-ftc-bg-elevated text-ftc-primary"
-          : "border-ftc-border-subtle bg-ftc-bg-elevated text-ftc-text-secondary";
+    tone === "neutral"
+      ? "border border-ftc-border-subtle bg-ftc-bg-elevated text-ftc-text-secondary"
+      : getBookingStatusBadgeClass(tone);
 
   return (
-    <div className={`rounded-xl border px-3 py-2.5 ${classes}`}>
+    <div className={`rounded-xl px-3 py-2.5 ${classes}`}>
       <p className="text-[10px] font-semibold uppercase tracking-wide opacity-80">{label}</p>
       <p className="mt-0.5 text-xl font-semibold">{value}</p>
     </div>

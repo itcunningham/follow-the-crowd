@@ -189,7 +189,7 @@ export default function DmConversationDetailsPanel({
                   type="button"
                   disabled={busy}
                   onClick={() => setConfirmOpen(true)}
-                  className="flex min-h-[44px] w-full items-center justify-center rounded-xl border border-red-500/30 bg-red-600/10 px-4 py-3 text-sm font-semibold text-red-200 transition hover:border-red-400/45 hover:bg-red-600/15 disabled:opacity-50"
+                  className="flex min-h-[44px] w-full items-center justify-center rounded-xl border-0 bg-[var(--ftc-color-danger)] px-4 py-3 text-sm font-semibold text-ftc-bg transition hover:opacity-90 disabled:opacity-50"
                 >
                   Block user
                 </button>
@@ -235,7 +235,7 @@ export default function DmConversationDetailsPanel({
                 type="button"
                 disabled={busy}
                 onClick={() => void handleConfirmBlock()}
-                className="rounded-xl border border-red-500/45 bg-red-600/15 px-4 py-2.5 text-sm font-semibold uppercase tracking-wide text-red-200 transition hover:border-red-400/60 hover:bg-red-600/25 disabled:opacity-50"
+                className="rounded-xl border-0 bg-[var(--ftc-color-danger)] px-4 py-2.5 text-sm font-semibold uppercase tracking-wide text-ftc-bg transition hover:opacity-90 disabled:opacity-50"
               >
                 {busy ? "Blocking..." : "Block user"}
               </button>

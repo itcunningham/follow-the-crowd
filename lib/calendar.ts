@@ -12,6 +12,13 @@ import {
   type Event,
   type EventDateDisplayLabel,
 } from "@/lib/events";
+import {
+  FTC_STATUS_DANGER,
+  FTC_STATUS_MUTED,
+  FTC_STATUS_PRIMARY,
+  FTC_STATUS_SUCCESS,
+  FTC_STATUS_WARNING,
+} from "@/lib/ftcFlatStatus";
 import type { UserRole } from "@/lib/user/currentUser";
 
 export type CalendarItemType = "event" | "sent_booking" | "received_booking";
@@ -80,66 +87,34 @@ export const WEEKDAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 export function getCalendarStatusBadgeClass(kind: CalendarStatusKind): string {
   if (kind === "pending") {
-    return "border-amber-500/40 bg-amber-500/10 text-amber-300";
+    return FTC_STATUS_WARNING;
   }
 
   if (kind === "accepted") {
-    return "border-emerald-500/40 bg-emerald-500/10 text-emerald-300";
+    return FTC_STATUS_SUCCESS;
   }
 
   if (kind === "declined") {
-    return "border-red-500/40 bg-red-500/10 text-red-300";
+    return FTC_STATUS_DANGER;
   }
 
   if (kind === "cancelled") {
-    return "border-ftc-border-strong bg-ftc-surface-raised/80 text-ftc-text-secondary";
+    return FTC_STATUS_MUTED;
   }
 
   if (kind === "event_draft") {
-    return "border-ftc-border-strong bg-ftc-surface-raised/80 text-ftc-text-secondary";
+    return FTC_STATUS_MUTED;
   }
 
   if (kind === "event_upcoming") {
-    return "border-ftc-primary/35 bg-ftc-primary/10 text-ftc-primary";
+    return FTC_STATUS_PRIMARY;
   }
 
   if (kind === "event_completed") {
-    return "border-emerald-500/40 bg-emerald-500/10 text-emerald-300";
+    return FTC_STATUS_SUCCESS;
   }
 
-  return "border-red-500/40 bg-red-500/10 text-red-300";
-}
-
-export function getCalendarStatusGlowClass(kind: CalendarStatusKind): string {
-  if (kind === "pending") {
-    return "shadow-[0_0_10px_rgba(245,158,11,0.22)]";
-  }
-
-  if (kind === "accepted") {
-    return "shadow-[0_0_10px_rgba(16,185,129,0.22)]";
-  }
-
-  if (kind === "declined") {
-    return "shadow-[0_0_10px_rgba(239,68,68,0.22)]";
-  }
-
-  if (kind === "cancelled") {
-    return "shadow-[0_0_10px_rgba(161,161,170,0.18)]";
-  }
-
-  if (kind === "event_draft") {
-    return "shadow-[0_0_10px_rgba(161,161,170,0.18)]";
-  }
-
-  if (kind === "event_upcoming") {
-    return "shadow-ftc-glow";
-  }
-
-  if (kind === "event_completed") {
-    return "shadow-[0_0_10px_rgba(16,185,129,0.22)]";
-  }
-
-  return "shadow-[0_0_10px_rgba(239,68,68,0.22)]";
+  return FTC_STATUS_DANGER;
 }
 
 export function getCalendarWeekRows(monthStart: Date): (Date | null)[][] {

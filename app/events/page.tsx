@@ -290,7 +290,7 @@ export default function EventsPage() {
                       setError(null);
                       setCreateStep("pick-plan");
                     }}
-                    className="w-full rounded-2xl border border-ftc-border bg-ftc-bg-elevated/40 px-4 py-4 text-left transition hover:border-ftc-primary/35 hover:bg-ftc-primary/10"
+                    className="w-full rounded-2xl border border-ftc-border bg-ftc-bg-elevated/40 px-4 py-4 text-left transition hover:border-ftc-border-strong hover:bg-ftc-bg-elevated"
                   >
                     <p className="text-base font-semibold text-ftc-text">Create from a saved booking plan</p>
                     <p className="mt-2 text-sm text-ftc-text-secondary">
@@ -308,7 +308,7 @@ export default function EventsPage() {
                       setCreateStep("form");
                       setError(null);
                     }}
-                    className="w-full rounded-2xl border border-ftc-border bg-ftc-bg-elevated/40 px-4 py-4 text-left transition hover:border-ftc-primary/35 hover:bg-ftc-primary/10"
+                    className="w-full rounded-2xl border border-ftc-border bg-ftc-bg-elevated/40 px-4 py-4 text-left transition hover:border-ftc-border-strong hover:bg-ftc-bg-elevated"
                   >
                     <p className="text-base font-semibold text-ftc-text">Create custom event</p>
                     <p className="mt-2 text-sm text-ftc-text-secondary">Enter fresh event details from scratch.</p>
@@ -348,8 +348,8 @@ export default function EventsPage() {
                             onClick={() => handleSelectPlan(plan)}
                             className={`w-full rounded-xl border px-4 py-4 text-left transition ${
                               selectedPlanId === plan.id
-                                ? "border-ftc-primary/45 bg-ftc-primary/10"
-                                : "border-ftc-border bg-ftc-bg-elevated/40 hover:border-ftc-primary/25 hover:bg-ftc-primary/10"
+                                ? "border-ftc-primary bg-ftc-bg-elevated"
+                                : "border-ftc-border bg-ftc-bg-elevated/40 hover:border-ftc-border-strong hover:bg-ftc-bg-elevated"
                             }`}
                           >
                             <p className="font-semibold text-ftc-text">{plan.name}</p>
@@ -468,8 +468,8 @@ export default function EventsPage() {
                       onClick={() => setListView(option.value)}
                       className={`rounded-full border px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide transition ${
                         listView === option.value
-                          ? "border-ftc-primary/45 bg-ftc-primary/10 text-ftc-primary"
-                          : "border-ftc-border-strong bg-ftc-surface/80 text-ftc-text-secondary hover:border-ftc-primary/25 hover:text-ftc-primary"
+                          ? "border-0 bg-ftc-primary text-ftc-bg"
+                          : "border border-ftc-border-strong bg-ftc-surface/80 text-ftc-text-secondary hover:border-ftc-border-strong hover:text-ftc-text"
                       }`}
                     >
                       {option.label}

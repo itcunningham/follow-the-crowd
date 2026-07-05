@@ -616,7 +616,7 @@ export default function EventDetailPage() {
           ) : null}
 
           {error ? (
-            <p className="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+            <p className="mb-4 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated px-4 py-3 text-sm text-[var(--ftc-color-danger)]">
               {error}
             </p>
           ) : null}

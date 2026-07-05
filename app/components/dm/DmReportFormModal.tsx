@@ -81,7 +81,7 @@ export default function DmReportFormModal({
 
         {successMessage ? (
           <>
-            <p className="mt-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-3 text-sm text-emerald-200">
+            <p className="mt-4 rounded-xl border border-0 bg-[var(--ftc-color-success)] px-3 py-3 text-sm text-ftc-bg">
               {successMessage}
             </p>
             <div className="mt-5 flex justify-end">
@@ -103,7 +103,7 @@ export default function DmReportFormModal({
                   key={option.value}
                   className={`flex cursor-pointer items-center gap-3 rounded-xl border px-3 py-2.5 text-sm transition ${
                     reason === option.value
-                      ? "border-ftc-primary/35 bg-ftc-primary/10 text-ftc-text"
+                      ? "border-0 bg-ftc-primary text-ftc-bg"
                       : "border-ftc-border bg-ftc-surface/40 text-ftc-text-secondary hover:border-ftc-border-strong"
                   }`}
                 >
@@ -151,7 +151,7 @@ export default function DmReportFormModal({
                 type="button"
                 disabled={busy}
                 onClick={() => void handleSubmit()}
-                className="rounded-xl border border-red-500/45 bg-red-600/15 px-4 py-2.5 text-sm font-semibold uppercase tracking-wide text-red-200 transition hover:border-red-400/60 hover:bg-red-600/25 disabled:opacity-50"
+                className="rounded-xl border-0 bg-[var(--ftc-color-danger)] px-4 py-2.5 text-sm font-semibold uppercase tracking-wide text-ftc-bg transition hover:opacity-90 disabled:opacity-50"
               >
                 {busy ? "Submitting..." : "Submit report"}
               </button>

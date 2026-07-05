@@ -10,11 +10,11 @@ import {
   type BookingRequest,
 } from "@/lib/bookingRequests";
 import {
-  formatCalendarTimeLabel,
-  getCalendarWeekRows,
-  toDateKey,
-  WEEKDAY_LABELS,
-} from "@/lib/calendar";
+  getFlatAvailabilityFillClass,
+  getFlatBookingFillClass,
+  FTC_CAL_CELL,
+  FTC_STATUS_DANGER,
+} from "@/lib/ftcFlatStatus";
 import CalendarMonthNav from "@/app/components/CalendarMonthNav";
 import {
   batchClearMyAvailabilityForDates,
@@ -31,6 +31,12 @@ import {
   type DjAvailabilityEntry,
   type DjAvailabilityStatus,
 } from "@/lib/djAvailability";
+import {
+  formatCalendarTimeLabel,
+  getCalendarWeekRows,
+  toDateKey,
+  WEEKDAY_LABELS,
+} from "@/lib/calendar";
 
 
 const AVAILABILITY_STATUS_VALUES: readonly DjAvailabilityStatus[] = [
@@ -78,44 +84,29 @@ function getAvailabilityMenuPositionClass(weekdayIndex: number): string {
   return "left-1/2 -translate-x-1/2 origin-top";
 }
 
-const calendarCellColorBadgeClass = "block w-full rounded-md border py-1.5 sm:py-2";
+const calendarCellColorBadgeClass = FTC_CAL_CELL;
 
-function getCalendarCellAvailabilityColorClass(status: DjAvailabilityStatus): string {
-  switch (status) {
-    case "available":
-      return "border-emerald-400/60 bg-emerald-500/30";
-    case "unavailable":
-      return "border-red-400/60 bg-red-500/30";
-    case "tentative":
-      return "border-amber-400/60 bg-amber-500/30";
-  }
-}
+function AvailabilityLegend() {
+  const items = [
+    { label: "Available", className: getDjAvailabilityStatusBadgeClass("available") },
+    { label: "Maybe", className: getDjAvailabilityStatusBadgeClass("tentative") },
+    { label: "Unavailable", className: getDjAvailabilityStatusBadgeClass("unavailable") },
+    { label: "Pending Request", className: getDjBookingStatusBadgeClass("pending") },
+    { label: "Booked", className: getDjBookingStatusBadgeClass("accepted") },
+  ];
 
-function getCalendarCellBookingColorClass(status: "pending" | "accepted"): string {
-  if (status === "pending") {
-    return "border-ftc-primary/50 bg-ftc-primary/30";
-  }
-
-  return "border-ftc-primary-dim/50 bg-ftc-primary/15";
-}
-
-function getCalendarCellAvailabilityGlowClass(status: DjAvailabilityStatus): string {
-  switch (status) {
-    case "available":
-      return "shadow-[0_0_10px_rgba(16,185,129,0.35)]";
-    case "unavailable":
-      return "shadow-[0_0_10px_rgba(239,68,68,0.35)]";
-    case "tentative":
-      return "shadow-[0_0_10px_rgba(245,158,11,0.35)]";
-  }
-}
-
-function getCalendarCellBookingGlowClass(status: "pending" | "accepted"): string {
-  if (status === "pending") {
-    return "";
-  }
-
-  return "shadow-[0_0_10px_rgba(168,85,247,0.35)]";
+  return (
+    <div className="flex flex-wrap items-center justify-center gap-2">
+      {items.map((item) => (
+        <span
+          key={item.label}
+          className={`rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${item.className}`}
+        >
+          {item.label}
+        </span>
+      ))}
+    </div>
+  );
 }
 
 type DayBookingsPopoverProps = {
@@ -155,7 +146,7 @@ function DayBookingsPopover({ dateKey, bookings, onClose }: DayBookingsPopoverPr
                   {booking.event_name.trim() || "Booking request"}
                 </p>
                 <span
-                  className={`shrink-0 rounded-full border px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide ${getDjBookingStatusBadgeClass(booking.status === "accepted" ? "accepted" : "pending")}`}
+                  className={`shrink-0 rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide ${getDjBookingStatusBadgeClass(booking.status === "accepted" ? "accepted" : "pending")}`}
                 >
                   {booking.status === "accepted" ? "Booked" : "Pending Request"}
                 </span>
@@ -170,49 +161,6 @@ function DayBookingsPopover({ dateKey, bookings, onClose }: DayBookingsPopoverPr
         ))}
       </ul>
       <span className="sr-only">Bookings for {dateKey}</span>
-    </div>
-  );
-}
-
-function AvailabilityLegend() {
-  const items = [
-    {
-      label: "Available",
-      className: "border-emerald-500/40 bg-emerald-500/10 text-emerald-300",
-      glow: "shadow-[0_0_10px_rgba(16,185,129,0.22)]",
-    },
-    {
-      label: "Maybe",
-      className: "border-amber-500/40 bg-amber-500/10 text-amber-300",
-      glow: "shadow-[0_0_10px_rgba(245,158,11,0.22)]",
-    },
-    {
-      label: "Unavailable",
-      className: "border-red-500/40 bg-red-500/10 text-red-300",
-      glow: "shadow-[0_0_10px_rgba(239,68,68,0.22)]",
-    },
-    {
-      label: "Pending Request",
-      className: "border-ftc-primary/35 bg-ftc-primary/10 text-ftc-primary",
-      glow: "",
-    },
-    {
-      label: "Booked",
-      className: "border-ftc-primary-dim/35 bg-ftc-primary/10 text-ftc-primary-dim",
-      glow: "shadow-[0_0_10px_rgba(168,85,247,0.22)]",
-    },
-  ];
-
-  return (
-    <div className="flex flex-wrap items-center justify-center gap-2">
-      {items.map((item) => (
-        <span
-          key={item.label}
-          className={`rounded-full border px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${item.glow} ${item.className}`}
-        >
-          {item.label}
-        </span>
-      ))}
     </div>
   );
 }
@@ -353,7 +301,7 @@ function BulkActionBar({
                 disabled={saving || selectedCount === 0}
                 onClick={() => onChooseStatus(option.value)}
                 className={`${outlineButtonClass} ${
-                  isActive ? "border-ftc-primary/35 bg-ftc-primary/10 text-ftc-primary/90" : ""
+                  isActive ? getFlatAvailabilityFillClass(option.value) : ""
                 }`}
               >
                 {option.label}
@@ -365,9 +313,7 @@ function BulkActionBar({
             disabled={saving || selectedCount === 0}
             onClick={onChooseClear}
             className={`${outlineButtonClass} ${
-              pendingChoice?.type === "clear"
-                ? "border-red-500/40 bg-red-600/15 text-red-300"
-                : ""
+              pendingChoice?.type === "clear" ? FTC_STATUS_DANGER : ""
             }`}
           >
             Clear
@@ -393,7 +339,7 @@ function BulkActionBar({
       {error ? (
         <p
           role="alert"
-          className="mt-2 rounded-lg border border-red-500/30 bg-red-500/10 px-2.5 py-1.5 text-[11px] text-red-300"
+          className="mt-2 rounded-lg border border-ftc-border-subtle bg-ftc-bg-elevated px-2.5 py-1.5 text-[11px] text-[var(--ftc-color-danger)]"
         >
           {error}
         </p>
@@ -472,10 +418,10 @@ function DjAvailabilityDayCell({
       className={`relative min-h-[6.5rem] rounded-lg border bg-ftc-bg-elevated/20 p-1.5 transition sm:min-h-[7.5rem] sm:p-2 ${
         multiSelectMode
           ? isSelected
-            ? "cursor-pointer border-ftc-primary/45"
-            : "cursor-pointer border-ftc-border/70 hover:border-ftc-primary/25"
+            ? "cursor-pointer border-ftc-primary"
+            : "cursor-pointer border-ftc-border/70 hover:border-ftc-border-strong"
           : menuOpen
-            ? "border-ftc-primary/35"
+            ? "border-ftc-border-strong"
             : "border-ftc-border/70 hover:border-ftc-border-strong/90"
       }`}
     >
@@ -489,7 +435,7 @@ function DjAvailabilityDayCell({
       <div className="flex items-start justify-between gap-1">
         <span
           className={`inline-flex h-6 min-w-6 items-center justify-center rounded-full text-xs font-semibold ${
-            isToday ? "bg-ftc-primary/10 text-ftc-primary" : "text-ftc-text"
+            isToday ? "bg-ftc-primary text-ftc-bg" : "text-ftc-text"
           }`}
         >
           {date.getDate()}
@@ -502,7 +448,7 @@ function DjAvailabilityDayCell({
               aria-label={`Availability options for ${dateKey}`}
               aria-expanded={menuOpen}
               onClick={onToggleMenu}
-              className="flex h-6 w-6 items-center justify-center rounded-md text-ftc-text-muted transition hover:bg-ftc-surface/80 hover:text-ftc-text focus:outline-none focus-visible:ring-2 focus-visible:ring-ftc-border-strong"
+              className="flex h-6 w-6 items-center justify-center rounded-md border border-transparent text-ftc-text-muted transition hover:border-ftc-border-subtle hover:bg-ftc-surface/80 hover:text-ftc-text focus:outline-none focus-visible:border-ftc-border-strong"
             >
               <svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor">
                 <circle cx="5" cy="12" r="1.75" />
@@ -545,7 +491,7 @@ function DjAvailabilityDayCell({
           {personalEntry ? (
             <span
               title={formatDjAvailabilityStatusLabel(personalEntry.status)}
-              className={`${calendarCellColorBadgeClass} ${getCalendarCellAvailabilityColorClass(personalEntry.status)} ${getCalendarCellAvailabilityGlowClass(personalEntry.status)}`}
+              className={`${calendarCellColorBadgeClass} ${getFlatAvailabilityFillClass(personalEntry.status)}`}
             >
               <span className="sr-only">{formatDjAvailabilityStatusLabel(personalEntry.status)}</span>
             </span>
@@ -557,7 +503,7 @@ function DjAvailabilityDayCell({
               title="Pending Request"
               aria-label="Pending Request"
               onClick={() => onOpenBooking(pendingBookings[0])}
-              className={`${calendarCellColorBadgeClass} transition hover:brightness-110 ${getCalendarCellBookingColorClass("pending")} ${getCalendarCellBookingGlowClass("pending")}`}
+              className={`${calendarCellColorBadgeClass} transition hover:opacity-90 ${getFlatBookingFillClass("pending")}`}
             >
               <span className="sr-only">Pending Request</span>
             </button>
@@ -569,7 +515,7 @@ function DjAvailabilityDayCell({
                 title={`${pendingBookings.length} booking requests`}
                 aria-label={`${pendingBookings.length} booking requests`}
                 onClick={onToggleBookingPopover}
-                className={`${calendarCellColorBadgeClass} transition hover:brightness-110 ${getCalendarCellBookingColorClass("pending")} ${getCalendarCellBookingGlowClass("pending")}`}
+                className={`${calendarCellColorBadgeClass} transition hover:opacity-90 ${getFlatBookingFillClass("pending")}`}
               >
                 <span className="sr-only">{pendingBookings.length} booking requests</span>
               </button>
@@ -588,16 +534,16 @@ function DjAvailabilityDayCell({
               key={booking.id}
               type="button"
               onClick={() => onOpenBooking(booking)}
-              className={`block w-full rounded-md border px-1 py-1 text-left transition hover:brightness-110 ${getDjBookingStatusBadgeClass("accepted")}`}
+              className={`block w-full rounded-md border-0 px-1 py-1 text-left transition hover:opacity-90 ${getDjBookingStatusBadgeClass("accepted")}`}
             >
               <span className="block truncate text-[9px] font-semibold uppercase tracking-wide sm:text-[10px]">
                 Booked
               </span>
-              <span className="block truncate text-[9px] normal-case tracking-normal text-ftc-primary/90 sm:text-[10px]">
+              <span className="block truncate text-[9px] normal-case tracking-normal text-ftc-bg/90 sm:text-[10px]">
                 {booking.event_name.trim() || "Confirmed gig"}
               </span>
               {booking.set_time.trim() ? (
-                <span className="block truncate text-[9px] normal-case tracking-normal text-ftc-primary/70 sm:text-[10px]">
+                <span className="block truncate text-[9px] normal-case tracking-normal text-ftc-bg/75 sm:text-[10px]">
                   {formatCalendarTimeLabel(booking.set_time)}
                 </span>
               ) : null}
@@ -911,7 +857,7 @@ export default function DjAvailabilityCalendar({
               <button
                 type="button"
                 onClick={enterMultiSelectMode}
-                className="rounded-lg border border-ftc-border-strong/90 bg-ftc-surface/80 px-2.5 py-1.5 text-[11px] font-semibold text-ftc-text-secondary transition hover:border-ftc-primary/30 hover:text-ftc-primary/90"
+                className="rounded-lg border border-ftc-border-strong/90 bg-ftc-surface/80 px-2.5 py-1.5 text-[11px] font-semibold text-ftc-text-secondary transition hover:border-ftc-border-strong hover:text-ftc-text"
               >
                 Select dates
               </button>
@@ -941,7 +887,7 @@ export default function DjAvailabilityCalendar({
         <div className="relative mt-4">
           {toastMessage ? (
             <p className="pointer-events-none absolute inset-x-0 -top-1 z-10 flex justify-center">
-              <span className="rounded-full border border-ftc-primary/25 bg-ftc-primary/10 px-3 py-1 text-[11px] font-medium text-ftc-primary/90">
+              <span className="rounded-full border-0 bg-ftc-primary px-3 py-1 text-[11px] font-medium text-ftc-bg">
                 {toastMessage}
               </span>
             </p>
@@ -951,7 +897,7 @@ export default function DjAvailabilityCalendar({
               role="alert"
               className="pointer-events-none absolute inset-x-0 -top-1 z-10 flex justify-center"
             >
-              <span className="rounded-full border border-red-500/30 bg-red-500/10 px-3 py-1 text-[11px] font-medium text-red-300">
+              <span className="rounded-full border-0 bg-[var(--ftc-color-danger)] px-3 py-1 text-[11px] font-medium text-ftc-bg">
                 {error}
               </span>
             </p>

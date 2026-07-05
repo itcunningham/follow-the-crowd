@@ -366,7 +366,7 @@ export function BookingDualTimeWheelPicker({
                 onClick={() => setActiveTab(tab.id)}
                 className={`flex-1 rounded-lg px-3 py-2 text-xs font-semibold uppercase tracking-wide transition ${
                   isActive
-                    ? "bg-ftc-primary/10 text-ftc-primary"
+                    ? "bg-ftc-primary text-ftc-bg"
                     : "text-ftc-text-muted hover:text-ftc-text-secondary"
                 }`}
               >

@@ -45,8 +45,8 @@ export default function CalendarMonthYearPicker({
 
   const pickerButtonClass = (isSelected: boolean) =>
     isSelected
-      ? "border border-ftc-primary/45 bg-ftc-primary/12 text-ftc-primary/80"
-      : "border border-ftc-border bg-ftc-surface/50 text-ftc-text-secondary hover:border-ftc-primary/25 hover:text-ftc-primary/90";
+      ? "border-0 bg-ftc-primary text-ftc-bg"
+      : "border border-ftc-border bg-ftc-surface/50 text-ftc-text-secondary hover:border-ftc-border-strong hover:text-ftc-text";
 
   const footerOutlineButtonClass =
     "inline-flex h-9 items-center justify-center rounded-lg border border-ftc-border-strong/90 bg-ftc-surface/80 px-3 text-xs font-semibold text-ftc-text-secondary transition hover:border-ftc-border-strong hover:bg-ftc-surface hover:text-ftc-text";

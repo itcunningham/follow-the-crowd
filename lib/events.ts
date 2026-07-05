@@ -11,6 +11,11 @@ import {
 import { normalizeStoredRate } from "@/lib/bookingRate";
 import { createNotification } from "@/lib/notifications";
 import { supabase } from "@/lib/supabaseClient";
+import {
+  FTC_STATUS_DANGER,
+  FTC_STATUS_MUTED,
+  FTC_STATUS_PRIMARY,
+} from "@/lib/ftcFlatStatus";
 import { getCurrentUserId } from "@/lib/user/currentUser";
 
 export type EventStatus = "draft" | "upcoming" | "completed" | "cancelled";
@@ -133,18 +138,18 @@ export function formatEventDateDisplayLabel(eventDate: string): string | null {
 
 export function getEventDateDisplayBadgeClass(label: EventDateDisplayLabel): string {
   if (label === "Upcoming") {
-    return "border-ftc-primary/35 bg-ftc-primary/10 text-ftc-primary";
+    return FTC_STATUS_PRIMARY;
   }
 
   if (label === "Today") {
-    return "border-ftc-primary-dim/35 bg-ftc-primary/10 text-ftc-primary-dim";
+    return FTC_STATUS_PRIMARY;
   }
 
   if (label === "Past") {
-    return "border-ftc-border-strong bg-ftc-surface-raised/80 text-ftc-text-secondary";
+    return FTC_STATUS_MUTED;
   }
 
-  return "border-ftc-border-strong/50 bg-ftc-surface/60 text-ftc-text-muted";
+  return FTC_STATUS_MUTED;
 }
 
 export function isEventCancelled(event: Pick<Event, "status">): boolean {
@@ -152,7 +157,7 @@ export function isEventCancelled(event: Pick<Event, "status">): boolean {
 }
 
 export function getEventCancelledBadgeClass(): string {
-  return "border-red-500/40 bg-red-500/10 text-red-300";
+  return FTC_STATUS_DANGER;
 }
 
 export function formatEventStatusLabel(status: EventStatus): string {

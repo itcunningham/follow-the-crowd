@@ -8,7 +8,6 @@ import {
   filterCalendarItemsForMonth,
   getCalendarLoadErrorMessage,
   getCalendarStatusBadgeClass,
-  getCalendarStatusGlowClass,
   getCalendarWeekRows,
   getPlannerCalendarBadgeLabel,
   groupCalendarItemsByDate,
@@ -25,7 +24,7 @@ function PlannerCalendarLegend() {
       {PLANNER_CALENDAR_LEGEND_ITEMS.map((item) => (
         <span
           key={item.label}
-          className={`rounded-full border px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${getCalendarStatusGlowClass(item.kind)} ${getCalendarStatusBadgeClass(item.kind)}`}
+          className={`rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${getCalendarStatusBadgeClass(item.kind)}`}
         >
           {item.label}
         </span>
@@ -38,7 +37,7 @@ function PlannerCalendarItemBadge({ item }: { item: CalendarItem }) {
   return (
     <Link
       href={item.href}
-      className={`block w-full rounded-md border px-1 py-1 text-left transition hover:brightness-110 ${getCalendarStatusBadgeClass(item.statusKind)} ${getCalendarStatusGlowClass(item.statusKind)}`}
+      className={`block w-full rounded-md border-0 px-1 py-1 text-left transition hover:opacity-90 ${getCalendarStatusBadgeClass(item.statusKind)}`}
     >
       <span className="block truncate text-[9px] font-semibold uppercase tracking-wide sm:text-[10px]">
         {getPlannerCalendarBadgeLabel(item)}
@@ -89,7 +88,7 @@ function PlannerCalendarDayCell({
     >
       <span
         className={`inline-flex h-6 min-w-6 items-center justify-center rounded-full text-xs font-semibold ${
-          isToday ? "bg-ftc-primary/10 text-ftc-primary" : "text-ftc-text"
+          isToday ? "bg-ftc-primary text-ftc-bg" : "text-ftc-text"
         }`}
       >
         {date.getDate()}
@@ -191,7 +190,7 @@ export default function PlannerCalendar({
       {error ? (
         <p
           role="alert"
-          className="mt-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300"
+          className="mt-4 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated px-4 py-3 text-sm text-[var(--ftc-color-danger)]"
         >
           {error}
         </p>

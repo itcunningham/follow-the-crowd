@@ -1,4 +1,11 @@
 import { supabase } from "@/lib/supabaseClient";
+import {
+  FTC_STATUS_DANGER,
+  FTC_STATUS_MUTED,
+  FTC_STATUS_PRIMARY,
+  FTC_STATUS_SUCCESS,
+  FTC_STATUS_WARNING,
+} from "@/lib/ftcFlatStatus";
 import { getCurrentUserId } from "@/lib/user/currentUser";
 
 export type DjAvailabilityStatus = "available" | "unavailable" | "tentative";
@@ -85,26 +92,26 @@ export function getDjPlannerAvailabilityLabel(status: DjPlannerAvailabilityStatu
 export function getDjPlannerAvailabilityBadgeClass(status: DjPlannerAvailabilityStatus): string {
   switch (status) {
     case "already_booked":
-      return "border-ftc-primary-dim/35 bg-ftc-primary/10 text-ftc-primary-dim";
+      return FTC_STATUS_SUCCESS;
     case "available":
-      return "border-emerald-500/40 bg-emerald-500/10 text-emerald-300";
+      return FTC_STATUS_PRIMARY;
     case "unavailable":
-      return "border-red-500/40 bg-red-500/10 text-red-300";
+      return FTC_STATUS_DANGER;
     case "tentative":
-      return "border-amber-500/40 bg-amber-500/10 text-amber-300";
+      return FTC_STATUS_WARNING;
     case "unknown":
-      return "border-ftc-border-strong bg-ftc-surface-raised/80 text-ftc-text-secondary";
+      return FTC_STATUS_MUTED;
   }
 }
 
 export function getDjAvailabilityStatusBadgeClass(status: DjAvailabilityStatus): string {
   switch (status) {
     case "available":
-      return "border-emerald-500/40 bg-emerald-500/10 text-emerald-300";
+      return FTC_STATUS_PRIMARY;
     case "unavailable":
-      return "border-red-500/40 bg-red-500/10 text-red-300";
+      return FTC_STATUS_DANGER;
     case "tentative":
-      return "border-amber-500/40 bg-amber-500/10 text-amber-300";
+      return FTC_STATUS_WARNING;
   }
 }
 
@@ -172,10 +179,10 @@ export function groupAvailabilityEntriesByDate(
 
 export function getDjBookingStatusBadgeClass(status: "pending" | "accepted"): string {
   if (status === "pending") {
-    return "border-ftc-primary/35 bg-ftc-primary/10 text-ftc-primary";
+    return FTC_STATUS_WARNING;
   }
 
-  return "border-ftc-primary-dim/35 bg-ftc-primary/10 text-ftc-primary-dim";
+  return FTC_STATUS_SUCCESS;
 }
 
 export async function saveMyAvailability(input: {

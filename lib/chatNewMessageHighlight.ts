@@ -1,7 +1,7 @@
 export const CHAT_NEW_MESSAGE_HIGHLIGHT_DURATION_MS = 2500;
 
 export const CHAT_NEW_MESSAGE_HIGHLIGHT_CLASS =
-  "chat-new-message-highlight ring-1 ring-ftc-primary/45 bg-ftc-primary/10 shadow-ftc-glow";
+  "chat-new-message-highlight border-l-2 border-ftc-primary bg-ftc-bg-elevated";
 
 export function getChatNewMessageHighlightClass(isHighlighted: boolean) {
   return isHighlighted ? CHAT_NEW_MESSAGE_HIGHLIGHT_CLASS : "";

@@ -3,6 +3,13 @@ import { parseEventDate } from "@/lib/bookingDateTime";
 import { createNotification } from "@/lib/notifications";
 import { formatRateDisplay, normalizeStoredRate } from "@/lib/bookingRate";
 import { startDm } from "@/lib/startDm";
+import {
+  FTC_STATUS_DANGER,
+  FTC_STATUS_MUTED,
+  FTC_STATUS_PRIMARY,
+  FTC_STATUS_SUCCESS,
+  FTC_STATUS_WARNING,
+} from "@/lib/ftcFlatStatus";
 import { getCurrentUserId } from "@/lib/user/currentUser";
 
 export type BookingRequestStatus = "pending" | "accepted" | "declined" | "cancelled";
@@ -97,18 +104,18 @@ export function canCancelBookingRequest(
 
 export function getBookingStatusBadgeClass(status: BookingRequestStatus): string {
   if (status === "accepted") {
-    return "border-emerald-500/40 bg-emerald-500/10 text-emerald-300";
+    return FTC_STATUS_SUCCESS;
   }
 
   if (status === "declined") {
-    return "border-red-500/40 bg-red-500/10 text-red-300";
+    return FTC_STATUS_DANGER;
   }
 
   if (status === "cancelled") {
-    return "border-ftc-border-strong bg-ftc-surface-raised/80 text-ftc-text-secondary";
+    return FTC_STATUS_MUTED;
   }
 
-  return "border-ftc-border-subtle bg-ftc-bg-elevated text-ftc-primary";
+  return FTC_STATUS_WARNING;
 }
 
 export function isActiveBookingStatus(status: BookingRequestStatus): boolean {
@@ -1019,11 +1026,11 @@ export function getEventBookingDuplicateLabel(status: EventBookingDuplicateStatu
 export function getEventBookingDuplicateBadgeClass(status: EventBookingDuplicateStatus): string {
   switch (status) {
     case "already_invited":
-      return "border-ftc-primary/35 bg-ftc-primary/10 text-ftc-primary";
+      return FTC_STATUS_PRIMARY;
     case "already_booked":
-      return "border-emerald-500/40 bg-emerald-500/10 text-emerald-300";
+      return FTC_STATUS_SUCCESS;
     case "already_declined":
-      return "border-ftc-border-strong bg-ftc-surface-raised/80 text-ftc-text-secondary";
+      return FTC_STATUS_MUTED;
   }
 }
 
