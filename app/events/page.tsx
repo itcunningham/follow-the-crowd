@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import AppNavigation, { MOBILE_NAV_OFFSET_CLASS } from "@/app/components/AppNavigation";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
 import EventDateStatusBadge from "@/app/components/EventDateStatusBadge";
@@ -46,6 +46,14 @@ import {
   uploadEventCoverImage,
 } from "@/lib/events/eventCoverImage";
 import {
+  buildEventDetailHref,
+  buildEventsListHref,
+  eventsListTabFromView,
+  eventsListViewFromTab,
+  parseEventsListTab,
+  type EventsListView,
+} from "@/lib/events/eventsListNavigation";
+import {
   canManageEvents,
   getCurrentUserProfile,
   type UserRole,
@@ -64,10 +72,23 @@ const emptyEventForm: EventInput = {
 
 type CreateStep = "source" | "pick-plan" | "form";
 
-type EventsListView = "active" | "cancelled";
-
 export default function EventsPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-[100dvh] items-center justify-center bg-ftc-bg text-sm text-ftc-text-muted">
+          Loading...
+        </div>
+      }
+    >
+      <EventsPageContent />
+    </Suspense>
+  );
+}
+
+function EventsPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const handledCreateParamsRef = useRef<string | null>(null);
   const [role, setRole] = useState<UserRole | null>(null);
   const [loadingAccess, setLoadingAccess] = useState(true);
@@ -90,9 +111,20 @@ export default function EventsPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [eventDateOverride, setEventDateOverride] = useState<string | null>(null);
-  const [listView, setListView] = useState<EventsListView>("active");
+  const urlTab = parseEventsListTab(searchParams.get("tab"));
+  const [listView, setListView] = useState<EventsListView>(() => eventsListViewFromTab(urlTab));
 
   const isPlanner = canManageEvents(role);
+  const activeListTab = eventsListTabFromView(listView);
+
+  useEffect(() => {
+    setListView(eventsListViewFromTab(parseEventsListTab(searchParams.get("tab"))));
+  }, [searchParams]);
+
+  function handleListViewChange(nextView: EventsListView) {
+    setListView(nextView);
+    router.replace(buildEventsListHref(eventsListTabFromView(nextView)), { scroll: false });
+  }
 
   const filteredEvents = useMemo(() => {
     if (listView === "cancelled") {
@@ -486,20 +518,18 @@ export default function EventsPage() {
             />
           ) : (
             <>
-              {isPlanner ? (
-                <div className="mb-4">
-                  <PlannerFilterPills
-                    options={
-                      [
-                        { value: "active", label: "Active" },
-                        { value: "cancelled", label: "Cancelled" },
-                      ] as const
-                    }
-                    value={listView}
-                    onChange={setListView}
-                  />
-                </div>
-              ) : null}
+              <div className="mb-4">
+                <PlannerFilterPills
+                  options={
+                    [
+                      { value: "active", label: isPlanner ? "Active" : "Upcoming" },
+                      { value: "cancelled", label: "History" },
+                    ] as const
+                  }
+                  value={listView}
+                  onChange={handleListViewChange}
+                />
+              </div>
               {filteredEvents.length === 0 ? (
                 <PlannerEmptyState
                   title={
@@ -516,7 +546,7 @@ export default function EventsPage() {
                 return (
                 <li key={event.id}>
                   <Link
-                    href={`/events/${event.id}`}
+                    href={buildEventDetailHref(event.id, activeListTab)}
                     className={`ftc-card block p-4 transition hover:border-ftc-border-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ftc-primary/35 sm:p-5 ${
                       cancelled ? "ftc-event-card-cancelled" : ""
                     }`}
