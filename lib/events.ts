@@ -34,6 +34,7 @@ export type Event = {
   notes: string;
   status: EventStatus;
   cover_image_url: string | null;
+  fallback_colour: string | null;
 };
 
 export type EventInput = {
@@ -44,6 +45,7 @@ export type EventInput = {
   rate: string;
   notes: string;
   bookingPlanId?: string | null;
+  fallbackColour?: string | null;
 };
 
 export type EventDateDisplayLabel = "Upcoming" | "Today" | "Past" | "Unscheduled";
@@ -60,7 +62,7 @@ export type EventWithLineupStats = Event & {
 };
 
 const EVENT_FIELDS =
-  "id, created_at, owner_id, booking_plan_id, name, venue, event_date, set_time, rate, notes, status, cover_image_url";
+  "id, created_at, owner_id, booking_plan_id, name, venue, event_date, set_time, rate, notes, status, cover_image_url, fallback_colour";
 
 function mapEventInputToRow(input: EventInput) {
   return {
@@ -71,6 +73,7 @@ function mapEventInputToRow(input: EventInput) {
     rate: normalizeStoredRate(input.rate),
     notes: input.notes.trim(),
     booking_plan_id: input.bookingPlanId ?? null,
+    fallback_colour: input.fallbackColour?.trim() || null,
   };
 }
 
@@ -360,9 +363,15 @@ export async function updateEventCoverImageUrl(
   return data as Event;
 }
 
-export async function getEventCoverUrlsByIds(
+export type EventArtworkSnapshot = {
+  eventName: string;
+  coverImageUrl: string | null;
+  fallbackColour: string | null;
+};
+
+export async function getEventArtworkByIds(
   eventIds: string[],
-): Promise<Map<string, string>> {
+): Promise<Map<string, EventArtworkSnapshot>> {
   const uniqueIds = [...new Set(eventIds.filter(Boolean))];
 
   if (uniqueIds.length === 0) {
@@ -371,20 +380,42 @@ export async function getEventCoverUrlsByIds(
 
   const { data, error } = await supabase
     .from("events")
-    .select("id, cover_image_url")
+    .select("id, name, cover_image_url, fallback_colour")
     .in("id", uniqueIds);
 
   if (error) {
     throw error;
   }
 
-  const coverUrls = new Map<string, string>();
+  const artworkById = new Map<string, EventArtworkSnapshot>();
 
   for (const row of data ?? []) {
-    const coverImageUrl = (row as { id: string; cover_image_url: string | null }).cover_image_url;
+    const eventRow = row as {
+      id: string;
+      name: string;
+      cover_image_url: string | null;
+      fallback_colour: string | null;
+    };
 
-    if (coverImageUrl?.trim()) {
-      coverUrls.set(row.id, coverImageUrl.trim());
+    artworkById.set(eventRow.id, {
+      eventName: eventRow.name.trim() || "Untitled event",
+      coverImageUrl: eventRow.cover_image_url?.trim() || null,
+      fallbackColour: eventRow.fallback_colour?.trim() || null,
+    });
+  }
+
+  return artworkById;
+}
+
+export async function getEventCoverUrlsByIds(
+  eventIds: string[],
+): Promise<Map<string, string>> {
+  const artworkById = await getEventArtworkByIds(eventIds);
+  const coverUrls = new Map<string, string>();
+
+  for (const [eventId, artwork] of artworkById) {
+    if (artwork.coverImageUrl) {
+      coverUrls.set(eventId, artwork.coverImageUrl);
     }
   }
 

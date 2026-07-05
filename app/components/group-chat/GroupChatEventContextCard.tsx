@@ -11,12 +11,14 @@ export default function GroupChatEventContextCard({
   eventDate,
   status,
   coverImageUrl,
+  fallbackColour,
 }: {
   eventName: string;
   venue: string;
   eventDate: string;
   status: EventStatus | null;
   coverImageUrl?: string | null;
+  fallbackColour?: string | null;
 }) {
   const venueLabel = venue.trim() || "Venue TBC";
   const dateLabel = eventDate.trim()
@@ -27,12 +29,11 @@ export default function GroupChatEventContextCard({
     <div className="shrink-0 border-b border-ftc-border-subtle bg-ftc-bg px-3 py-3 sm:px-4">
       <div className="rounded-2xl border border-ftc-border-subtle bg-ftc-surface px-4 py-3">
         <div className="flex items-start gap-3">
-          {coverImageUrl?.trim() ? (
-            <EventCoverImageContextThumb
-              coverImageUrl={coverImageUrl.trim()}
-              eventName={eventName}
-            />
-          ) : null}
+          <EventCoverImageContextThumb
+            eventName={eventName}
+            coverImageUrl={coverImageUrl}
+            fallbackColour={fallbackColour}
+          />
           <div className="flex min-w-0 flex-1 items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-semibold text-ftc-text">{eventName}</p>

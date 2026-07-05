@@ -2,6 +2,11 @@
 
 import Link from "next/link";
 import { getEventCoverImageAlt } from "@/lib/events/eventCoverImage";
+import {
+  getEventFallbackColour,
+  getEventFallbackColourStyles,
+  getEventInitials,
+} from "@/lib/events/eventFallbackColour";
 import { formatGroupChatEventDate } from "@/lib/groupChats";
 import { parseEventDate } from "@/lib/bookingDateTime";
 import { formatRateDisplay, normalizeStoredRate } from "@/lib/bookingRate";
@@ -126,22 +131,29 @@ export function EventDetailOverlayButton({
 export function EventDetailHero({
   eventName,
   coverImageUrl,
+  fallbackColour,
   statusBadge,
 }: {
   eventName: string;
   coverImageUrl?: string | null;
+  fallbackColour?: string | null;
   statusBadge?: React.ReactNode;
 }) {
-  const initial = eventName.trim().charAt(0).toUpperCase() || "E";
   const trimmedCoverUrl = coverImageUrl?.trim() || null;
 
   if (!trimmedCoverUrl) {
+    const colourKey = getEventFallbackColour(eventName, fallbackColour);
+    const styles = getEventFallbackColourStyles(colourKey);
+    const initials = getEventInitials(eventName);
+
     return (
       <div className="relative aspect-[4/3] max-h-[220px] w-full overflow-hidden bg-ftc-bg-elevated">
-        <div className="absolute inset-0 bg-gradient-to-b from-ftc-surface-raised via-ftc-bg-elevated to-ftc-bg" />
+        <div className={`absolute inset-0 bg-gradient-to-b ${styles.heroAccentClassName}`} />
         <div className="absolute inset-0 flex items-center justify-center">
-          <span className="text-6xl font-bold uppercase tracking-wider text-ftc-border-strong/80 sm:text-7xl">
-            {initial}
+          <span
+            className={`text-5xl font-bold uppercase tracking-wider sm:text-6xl ${styles.textClassName}`}
+          >
+            {initials}
           </span>
         </div>
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-ftc-bg to-transparent" />

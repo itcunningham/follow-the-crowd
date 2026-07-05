@@ -675,6 +675,8 @@ function DmInboxPageContent() {
                           }
                           isUnread={unreadEventChatIds.has(chat.eventId)}
                           href={chat.href}
+                          coverImageUrl={chat.coverImageUrl}
+                          fallbackColour={chat.fallbackColour}
                         />
                       </li>
                     );

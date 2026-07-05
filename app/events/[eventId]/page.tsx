@@ -32,7 +32,12 @@ import EventCoverImageField, {
   emptyEventCoverImageFieldState,
   type EventCoverImageFieldState,
 } from "@/app/components/events/EventCoverImageField";
+import EventFallbackColourField from "@/app/components/events/EventFallbackColourField";
 import { EventCoverImageContextThumb } from "@/app/components/events/EventCoverImageDisplay";
+import {
+  isEventFallbackColourKey,
+  type EventFallbackColourKey,
+} from "@/lib/events/eventFallbackColour";
 import { formatRateDisplay } from "@/lib/bookingRate";
 import EventBookingDuplicateBadge from "@/app/components/EventBookingDuplicateBadge";
 import UnavailableDjBookingConfirmModal from "@/app/components/UnavailableDjBookingConfirmModal";
@@ -306,6 +311,9 @@ export default function EventDetailPage() {
       rate: event.rate,
       notes: event.notes,
       bookingPlanId: event.booking_plan_id,
+      fallbackColour: isEventFallbackColourKey(event.fallback_colour ?? "")
+        ? event.fallback_colour
+        : null,
     });
     resetEditCoverState();
     setEditOpen(true);
@@ -678,6 +686,7 @@ export default function EventDetailPage() {
         <EventDetailHero
           eventName={event.name}
           coverImageUrl={event.cover_image_url}
+          fallbackColour={event.fallback_colour}
           statusBadge={<EventDateStatusBadge eventDate={event.event_date} status={event.status} />}
         />
 
@@ -761,6 +770,18 @@ export default function EventDetailPage() {
                   error={editCoverError}
                   disabled={savingEdit}
                 />
+                <EventFallbackColourField
+                  eventName={editForm.name || event.name}
+                  value={
+                    isEventFallbackColourKey(editForm.fallbackColour ?? "")
+                      ? (editForm.fallbackColour as EventFallbackColourKey)
+                      : null
+                  }
+                  onChange={(next) =>
+                    setEditForm((prev) => (prev ? { ...prev, fallbackColour: next } : prev))
+                  }
+                  disabled={savingEdit}
+                />
                 <BookingDateField
                   label="Event date"
                   value={editForm.eventDate}
@@ -801,12 +822,11 @@ export default function EventDetailPage() {
           {sendOpen && isOwner && !eventIsCancelled ? (
             <PlannerFormCard title="Send bookings" onCancel={closeSendBookings} cancelDisabled={sending}>
               <div className="flex items-start gap-3">
-                {event.cover_image_url?.trim() ? (
-                  <EventCoverImageContextThumb
-                    coverImageUrl={event.cover_image_url.trim()}
-                    eventName={event.name}
-                  />
-                ) : null}
+                <EventCoverImageContextThumb
+                  eventName={event.name}
+                  coverImageUrl={event.cover_image_url}
+                  fallbackColour={event.fallback_colour}
+                />
                 <p className="min-w-0 text-sm text-ftc-text-secondary">
                   Event details will be prefilled from this event. Each DJ receives a private booking
                   request DM.

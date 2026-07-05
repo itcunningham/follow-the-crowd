@@ -21,6 +21,7 @@ export default function BookingRequestCard({
   responding,
   cancelling,
   coverImageUrl,
+  fallbackColour,
   onAccept,
   onDecline,
   onCancel,
@@ -31,6 +32,7 @@ export default function BookingRequestCard({
   responding: boolean;
   cancelling?: boolean;
   coverImageUrl?: string | null;
+  fallbackColour?: string | null;
   onAccept: () => void;
   onDecline: () => void;
   onCancel?: () => void | Promise<void>;
@@ -45,12 +47,11 @@ export default function BookingRequestCard({
   return (
     <div className="w-full max-w-sm rounded-2xl border border-ftc-border-subtle bg-ftc-surface p-4">
       <div className="flex min-w-0 items-start gap-3">
-        {coverImageUrl?.trim() ? (
-          <EventCoverImageContextThumb
-            coverImageUrl={coverImageUrl.trim()}
-            eventName={booking.event_name}
-          />
-        ) : null}
+        <EventCoverImageContextThumb
+          eventName={booking.event_name}
+          coverImageUrl={coverImageUrl}
+          fallbackColour={fallbackColour}
+        />
         <div className="min-w-0 flex-1">
           <p className="text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted">
             Booking request

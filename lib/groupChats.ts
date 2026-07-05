@@ -13,6 +13,8 @@ export type GroupChatListItem = {
   eventName: string;
   venue: string;
   eventDate: string;
+  coverImageUrl: string | null;
+  fallbackColour: string | null;
   href: string;
   latestPreview: string | null;
   latestMessageAt: string | null;
@@ -159,6 +161,8 @@ export async function listAccessibleGroupChats(
         eventName: event.name.trim() || "Untitled event",
         venue: event.venue,
         eventDate: event.event_date,
+        coverImageUrl: event.cover_image_url?.trim() || null,
+        fallbackColour: event.fallback_colour?.trim() || null,
         href: getEventCrewChatLink(event.id, { from: "dm", tab: "group" }),
       });
     }
@@ -187,7 +191,7 @@ export async function listAccessibleGroupChats(
     if (eventIds.length > 0) {
       const { data: events, error: eventsError } = await supabase
         .from("events")
-        .select("id, name, venue, event_date")
+        .select("id, name, venue, event_date, cover_image_url, fallback_colour")
         .in("id", eventIds);
 
       if (eventsError) {
@@ -204,6 +208,10 @@ export async function listAccessibleGroupChats(
           eventName: (event.name as string).trim() || "Untitled event",
           venue: event.venue as string,
           eventDate: event.event_date as string,
+          coverImageUrl:
+            ((event as { cover_image_url?: string | null }).cover_image_url?.trim()) || null,
+          fallbackColour:
+            ((event as { fallback_colour?: string | null }).fallback_colour?.trim()) || null,
           href: getEventCrewChatLink(event.id, { from: "dm", tab: "group" }),
         });
       }

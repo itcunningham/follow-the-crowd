@@ -8,6 +8,7 @@ import ChatNewMessagesPill from "@/app/components/dm/ChatNewMessagesPill";
 import GroupChatComposer from "@/app/components/group-chat/GroupChatComposer";
 import GroupChatEventContextCard from "@/app/components/group-chat/GroupChatEventContextCard";
 import GroupChatMessageBubble from "@/app/components/group-chat/GroupChatMessageBubble";
+import EventArtworkTile from "@/app/components/events/EventArtworkTile";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
 import {
   getEventCrewChatAccess,
@@ -43,11 +44,22 @@ function getSenderLabel(profile: UserAvatarProfile | undefined, userId: string) 
   return profile?.display_name?.trim() || userId.slice(0, 8);
 }
 
-function GroupChatHeaderIcon() {
+function GroupChatHeaderArtwork({
+  eventName,
+  coverImageUrl,
+  fallbackColour,
+}: {
+  eventName: string;
+  coverImageUrl: string | null;
+  fallbackColour: string | null;
+}) {
   return (
-    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated text-[10px] font-bold uppercase tracking-wide text-ftc-primary">
-      GC
-    </div>
+    <EventArtworkTile
+      eventName={eventName}
+      coverImageUrl={coverImageUrl}
+      fallbackColour={fallbackColour}
+      size="context"
+    />
   );
 }
 
@@ -78,6 +90,7 @@ export default function EventCrewChatPage() {
   const [eventDate, setEventDate] = useState("");
   const [eventStatus, setEventStatus] = useState<EventStatus | null>(null);
   const [coverImageUrl, setCoverImageUrl] = useState<string | null>(null);
+  const [fallbackColour, setFallbackColour] = useState<string | null>(null);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
@@ -131,6 +144,7 @@ export default function EventCrewChatPage() {
         setEventDate(access.eventDate ?? "");
         setEventStatus(access.eventStatus);
         setCoverImageUrl(access.coverImageUrl);
+        setFallbackColour(access.fallbackColour);
 
         const chatLink = getEventCrewChatLink(eventId);
         await markNotificationsReadForLink(userId, chatLink);
@@ -305,7 +319,11 @@ export default function EventCrewChatPage() {
               </Link>
 
               <div className="flex min-w-0 flex-1 items-center gap-3">
-                <GroupChatHeaderIcon />
+                <GroupChatHeaderArtwork
+                  eventName={eventName}
+                  coverImageUrl={coverImageUrl}
+                  fallbackColour={fallbackColour}
+                />
                 <div className="min-w-0 flex-1">
                   <h1 className="truncate text-base font-semibold text-ftc-text">{eventName}</h1>
                   <p className="truncate text-xs text-ftc-text-muted">Group chat</p>
@@ -330,6 +348,7 @@ export default function EventCrewChatPage() {
               eventDate={eventDate}
               status={eventStatus}
               coverImageUrl={coverImageUrl}
+              fallbackColour={fallbackColour}
             />
           ) : null}
 
@@ -345,7 +364,11 @@ export default function EventCrewChatPage() {
                 data-chat-content-root
                 className="flex flex-col items-center justify-center px-6 py-16 text-center"
               >
-                <GroupChatHeaderIcon />
+                <GroupChatHeaderArtwork
+                  eventName={eventName}
+                  coverImageUrl={coverImageUrl}
+                  fallbackColour={fallbackColour}
+                />
                 <p className="mt-4 text-sm font-medium text-ftc-text-secondary">
                   No group messages yet
                 </p>

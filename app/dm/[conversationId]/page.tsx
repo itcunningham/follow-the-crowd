@@ -41,7 +41,7 @@ import {
   type DmMessageReaction,
 } from "@/lib/dmReactions";
 import { createNotification, markNotificationsReadForLink } from "@/lib/notifications";
-import { getEventCoverUrlsByIds } from "@/lib/events";
+import { getEventArtworkByIds, type EventArtworkSnapshot } from "@/lib/events";
 import {
   getLatestOwnDmMessageId,
   isMessageSeenByReader,
@@ -107,7 +107,9 @@ export default function DmChatPage() {
   const [attachments, setAttachments] = useState<DmMessageAttachment[]>([]);
   const [reactions, setReactions] = useState<DmMessageReaction[]>([]);
   const [bookings, setBookings] = useState<BookingRequest[]>([]);
-  const [eventCoverUrls, setEventCoverUrls] = useState<Map<string, string>>(new Map());
+  const [eventArtworkById, setEventArtworkById] = useState<Map<string, EventArtworkSnapshot>>(
+    new Map(),
+  );
   const [otherUserId, setOtherUserId] = useState<string | null>(null);
   const [otherUserProfile, setOtherUserProfile] = useState<UserAvatarProfile | null>(null);
   const [input, setInput] = useState("");
@@ -398,17 +400,17 @@ export default function DmChatPage() {
     });
   }, [conversationId, currentUserId, latestConversationMessageCreatedAt, loading]);
 
-  const syncEventCoverUrls = useCallback(async (nextBookings: BookingRequest[]) => {
+  const syncEventArtwork = useCallback(async (nextBookings: BookingRequest[]) => {
     const eventIds = nextBookings
       .map((booking) => booking.event_id)
       .filter((eventId): eventId is string => Boolean(eventId));
 
     try {
-      const coverUrls = await getEventCoverUrlsByIds(eventIds);
-      setEventCoverUrls(coverUrls);
-    } catch (coverError) {
-      console.error("Failed to load event cover URLs:", coverError);
-      setEventCoverUrls(new Map());
+      const artworkById = await getEventArtworkByIds(eventIds);
+      setEventArtworkById(artworkById);
+    } catch (artworkError) {
+      console.error("Failed to load event artwork:", artworkError);
+      setEventArtworkById(new Map());
     }
   }, []);
 
@@ -420,7 +422,7 @@ export default function DmChatPage() {
     try {
       const nextBookings = await getBookingRequestsForConversation(conversationId);
       setBookings(nextBookings);
-      await syncEventCoverUrls(nextBookings);
+      await syncEventArtwork(nextBookings);
       console.log("[dm booking] reloaded conversation bookings", {
         conversationId,
         bookingCount: nextBookings.length,
@@ -478,7 +480,7 @@ export default function DmChatPage() {
       setBookings(bookingsResult);
       setAttachments(attachmentsResult);
       setReactions(reactionsResult);
-      await syncEventCoverUrls(bookingsResult);
+      await syncEventArtwork(bookingsResult);
       console.log("[dm booking] loaded conversation bookings", {
         conversationId,
         bookingCount: bookingsResult.length,
@@ -1175,7 +1177,12 @@ export default function DmChatPage() {
                             cancelling={cancellingBookingId === resolvedBooking.id}
                             coverImageUrl={
                               resolvedBooking.event_id
-                                ? eventCoverUrls.get(resolvedBooking.event_id)
+                                ? eventArtworkById.get(resolvedBooking.event_id)?.coverImageUrl
+                                : undefined
+                            }
+                            fallbackColour={
+                              resolvedBooking.event_id
+                                ? eventArtworkById.get(resolvedBooking.event_id)?.fallbackColour
                                 : undefined
                             }
                             onAccept={() =>

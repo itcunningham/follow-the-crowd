@@ -22,6 +22,7 @@ export type EventCrewChatAccess = {
   eventDate: string | null;
   eventStatus: EventStatus | null;
   coverImageUrl: string | null;
+  fallbackColour: string | null;
 };
 
 const EVENT_CREW_MESSAGE_FIELDS = "id, event_id, user_id, text, created_at";
@@ -70,6 +71,7 @@ export async function getEventCrewChatAccess(eventId: string): Promise<EventCrew
       eventDate: null,
       eventStatus: null,
       coverImageUrl: null,
+      fallbackColour: null,
     };
   }
 
@@ -79,6 +81,7 @@ export async function getEventCrewChatAccess(eventId: string): Promise<EventCrew
     eventDate: event.event_date,
     eventStatus: event.status,
     coverImageUrl: event.cover_image_url,
+    fallbackColour: event.fallback_colour,
   };
 
   const isOwner = event.owner_id === userId;

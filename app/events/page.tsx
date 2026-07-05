@@ -24,7 +24,9 @@ import EventCoverImageField, {
   emptyEventCoverImageFieldState,
   type EventCoverImageFieldState,
 } from "@/app/components/events/EventCoverImageField";
+import EventFallbackColourField from "@/app/components/events/EventFallbackColourField";
 import { EventCoverImageListThumb } from "@/app/components/events/EventCoverImageDisplay";
+import type { EventFallbackColourKey } from "@/lib/events/eventFallbackColour";
 import { listBookingPlans, type BookingPlan } from "@/lib/bookingPlans";
 import { formatRateDisplay } from "@/lib/bookingRate";
 import {
@@ -57,6 +59,7 @@ const emptyEventForm: EventInput = {
   rate: "",
   notes: "",
   bookingPlanId: null,
+  fallbackColour: null,
 };
 
 type CreateStep = "source" | "pick-plan" | "form";
@@ -81,6 +84,7 @@ export default function EventsPage() {
   );
   const [coverPreviewUrl, setCoverPreviewUrl] = useState<string | null>(null);
   const [coverError, setCoverError] = useState<string | null>(null);
+  const [fallbackColour, setFallbackColour] = useState<EventFallbackColourKey | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [eventDateOverride, setEventDateOverride] = useState<string | null>(null);
@@ -188,6 +192,7 @@ export default function EventsPage() {
     setCoverField(emptyEventCoverImageFieldState);
     setCoverPreviewUrl(null);
     setCoverError(null);
+    setFallbackColour(null);
     setLoadingPlans(true);
 
     try {
@@ -218,6 +223,7 @@ export default function EventsPage() {
     }
     setCoverPreviewUrl(null);
     setCoverError(null);
+    setFallbackColour(null);
   }
 
   function handleSelectPlan(plan: BookingPlan) {
@@ -252,7 +258,10 @@ export default function EventsPage() {
     setError(null);
 
     try {
-      const created = await createEvent(form);
+      const created = await createEvent({
+        ...form,
+        fallbackColour,
+      });
 
       if (coverField.file) {
         try {
@@ -405,6 +414,12 @@ export default function EventsPage() {
                     error={coverError}
                     disabled={saving}
                   />
+                  <EventFallbackColourField
+                    eventName={form.name || "Event"}
+                    value={fallbackColour}
+                    onChange={setFallbackColour}
+                    disabled={saving}
+                  />
                   <BookingDateField
                     label="Event date"
                     value={form.eventDate}
@@ -503,12 +518,11 @@ export default function EventsPage() {
                 >
                   <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                     <div className="flex min-w-0 gap-4">
-                      {event.cover_image_url?.trim() ? (
-                        <EventCoverImageListThumb
-                          coverImageUrl={event.cover_image_url.trim()}
-                          eventName={event.name}
-                        />
-                      ) : null}
+                      <EventCoverImageListThumb
+                        eventName={event.name}
+                        coverImageUrl={event.cover_image_url}
+                        fallbackColour={event.fallback_colour}
+                      />
                       <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
                         <h3

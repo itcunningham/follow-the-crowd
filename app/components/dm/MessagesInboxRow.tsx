@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import ProfileAvatar from "@/app/components/ProfileAvatar";
+import EventArtworkTile from "@/app/components/events/EventArtworkTile";
 
 export function formatMessagesInboxTimestamp(timestamp: string) {
   const date = new Date(timestamp);
@@ -121,6 +122,8 @@ export function MessagesGroupInboxRow({
   timestampLabel,
   isUnread,
   href,
+  coverImageUrl,
+  fallbackColour,
 }: {
   title: string;
   subtitle: string;
@@ -129,6 +132,8 @@ export function MessagesGroupInboxRow({
   timestampLabel?: string;
   isUnread: boolean;
   href: string;
+  coverImageUrl?: string | null;
+  fallbackColour?: string | null;
 }) {
   const timeLabel =
     timestampLabel ?? (timestamp ? formatMessagesInboxTimestamp(timestamp) : null);
@@ -142,9 +147,12 @@ export function MessagesGroupInboxRow({
           : "border-ftc-border-subtle bg-ftc-surface hover:border-ftc-border-strong"
       }`}
     >
-      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-ftc-border-subtle bg-ftc-bg-elevated text-[11px] font-bold uppercase tracking-wide text-ftc-primary">
-        GC
-      </div>
+      <EventArtworkTile
+        eventName={title}
+        coverImageUrl={coverImageUrl}
+        fallbackColour={fallbackColour}
+        size="inbox"
+      />
 
       <div className="min-w-0 flex-1">
         <div className="flex items-start justify-between gap-3">
