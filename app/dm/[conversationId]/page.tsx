@@ -42,6 +42,7 @@ import {
 } from "@/lib/dmReactions";
 import { createNotification, markNotificationsReadForLink } from "@/lib/notifications";
 import { getEventArtworkByIds, type EventArtworkSnapshot } from "@/lib/events";
+import { resolveEventLinkedBookingDisplay } from "@/lib/events/eventBookingDisplay";
 import {
   getLatestOwnDmMessageId,
   isMessageSeenByReader,
@@ -1099,8 +1100,14 @@ export default function DmChatPage() {
                   bookings,
                   conversationId,
                 );
-                const resolvedBooking =
+                const storedBooking =
                   bookings.find((booking) => booking.id === bookingData.id) ?? bookingData;
+                const resolvedBooking = resolveEventLinkedBookingDisplay(
+                  storedBooking,
+                  storedBooking.event_id
+                    ? eventArtworkById.get(storedBooking.event_id)
+                    : undefined,
+                );
 
                 console.log("[dm booking] card decision", {
                   messageId: message.id,
