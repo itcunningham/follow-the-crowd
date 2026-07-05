@@ -113,7 +113,7 @@ export default function HideDeclinedBookingButton({
             checked={dontShowAgain}
             disabled={loading}
             onChange={(event) => setDontShowAgain(event.target.checked)}
-            className="mt-0.5 h-4 w-4 rounded border-ftc-border-subtle bg-ftc-bg-input text-ftc-primary focus:border-ftc-primary-border"
+            className="mt-0.5 h-4 w-4 rounded ftc-checkbox"
           />
           <span className="text-sm text-ftc-text-secondary">Don&apos;t show me this again</span>
         </label>

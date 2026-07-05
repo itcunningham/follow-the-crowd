@@ -41,7 +41,7 @@ export default function GroupChatComposer({
           onKeyDown={handleKeyDown}
           placeholder="Message..."
           disabled={sending}
-          className="ftc-input h-11 min-w-0 flex-1 rounded-full py-0 px-4 disabled:opacity-50"
+          className="ftc-input h-11 min-w-0 flex-1 rounded-full py-0 px-4 disabled:cursor-not-allowed"
         />
         <button
           type="button"

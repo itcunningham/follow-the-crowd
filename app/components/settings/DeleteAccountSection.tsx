@@ -179,7 +179,7 @@ export default function DeleteAccountSection({
                 autoComplete="off"
                 spellCheck={false}
                 disabled={deleting}
-                className="w-full rounded-xl border border-ftc-border bg-ftc-surface/70 px-3 py-2.5 text-sm text-ftc-text outline-none transition placeholder:text-ftc-text-muted focus:border-ftc-border-strong disabled:opacity-50"
+                className="ftc-input px-3 py-2.5 disabled:cursor-not-allowed"
                 placeholder="DELETE"
               />
             </label>

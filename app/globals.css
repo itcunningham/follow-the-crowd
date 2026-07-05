@@ -272,26 +272,139 @@ html {
 }
 
 /* -------------------------------------------------------------------------- */
-/* Inputs                                                                      */
+/* Inputs & text fields — flat focus, no glow                                  */
 /* -------------------------------------------------------------------------- */
+
+.ftc-input,
+.ftc-textarea,
+.ftc-field-trigger {
+  border: 1px solid var(--ftc-color-border-subtle);
+  background: var(--ftc-color-bg-input);
+  color: var(--ftc-color-text-primary);
+  outline: none;
+  box-shadow: none;
+  transition:
+    border-color 0.15s ease,
+    background-color 0.15s ease,
+    color 0.15s ease;
+}
 
 .ftc-input {
   width: 100%;
   border-radius: var(--ftc-radius-lg);
-  border: 1px solid var(--ftc-color-border-subtle);
-  background: var(--ftc-color-bg-input);
-  color: var(--ftc-color-text-primary);
   font-size: 0.875rem;
-  outline: none;
-  transition: border-color 0.15s ease;
 }
 
-.ftc-input::placeholder {
+.ftc-textarea {
+  border-radius: var(--ftc-radius-lg);
+  font-size: 0.875rem;
+}
+
+.ftc-input::placeholder,
+.ftc-textarea::placeholder {
   color: var(--ftc-color-text-muted);
 }
 
-.ftc-input:focus {
-  border-color: var(--ftc-color-primary-border);
+@media (hover: hover) {
+  .ftc-input:hover:not(:disabled):not(:focus):not(:focus-visible),
+  .ftc-textarea:hover:not(:disabled):not(:focus):not(:focus-visible),
+  .ftc-field-trigger:hover:not(:disabled):not(:focus):not(:focus-visible) {
+    border-color: var(--ftc-color-border-strong);
+    background: var(--ftc-color-bg-elevated);
+  }
+}
+
+.ftc-input:focus,
+.ftc-input:focus-visible,
+.ftc-textarea:focus,
+.ftc-textarea:focus-visible,
+.ftc-field-trigger:focus,
+.ftc-field-trigger:focus-visible {
+  border-color: var(--ftc-color-primary);
+  outline: none;
+  box-shadow: none;
+}
+
+.ftc-input:disabled,
+.ftc-textarea:disabled,
+.ftc-field-trigger:disabled {
+  cursor: not-allowed;
+  border-color: var(--ftc-color-border-subtle);
+  background: var(--ftc-color-bg-surface);
+  color: var(--ftc-color-text-muted);
+}
+
+.ftc-input:disabled::placeholder,
+.ftc-textarea:disabled::placeholder {
+  color: rgb(100 116 139 / 0.55);
+}
+
+.ftc-input.ftc-input-error,
+.ftc-textarea.ftc-input-error,
+.ftc-input[aria-invalid="true"],
+.ftc-textarea[aria-invalid="true"],
+.ftc-field-trigger.ftc-input-error,
+.ftc-field-trigger[aria-invalid="true"] {
+  border-color: var(--ftc-color-danger);
+}
+
+.ftc-input.ftc-input-error:focus,
+.ftc-textarea.ftc-input-error:focus,
+.ftc-input[aria-invalid="true"]:focus,
+.ftc-textarea[aria-invalid="true"]:focus,
+.ftc-field-trigger.ftc-input-error:focus,
+.ftc-field-trigger[aria-invalid="true"]:focus,
+.ftc-field-trigger.ftc-input-error:focus-visible,
+.ftc-field-trigger[aria-invalid="true"]:focus-visible {
+  border-color: var(--ftc-color-danger);
+  box-shadow: none;
+}
+
+.ftc-input-shell {
+  border: 1px solid var(--ftc-color-border-subtle);
+  background: var(--ftc-color-bg-input);
+  outline: none;
+  box-shadow: none;
+  transition:
+    border-color 0.15s ease,
+    background-color 0.15s ease;
+}
+
+@media (hover: hover) {
+  .ftc-input-shell:hover:not(:focus-within):not(:has(:disabled)) {
+    border-color: var(--ftc-color-border-strong);
+    background: var(--ftc-color-bg-elevated);
+  }
+}
+
+.ftc-input-shell:focus-within {
+  border-color: var(--ftc-color-primary);
+  box-shadow: none;
+}
+
+.ftc-input-shell.ftc-input-error,
+.ftc-input-shell:has([aria-invalid="true"]) {
+  border-color: var(--ftc-color-danger);
+}
+
+.ftc-input-shell.ftc-input-error:focus-within,
+.ftc-input-shell:has([aria-invalid="true"]:focus) {
+  border-color: var(--ftc-color-danger);
+}
+
+.ftc-checkbox {
+  border: 1px solid var(--ftc-color-border-subtle);
+  background: var(--ftc-color-bg-input);
+  color: var(--ftc-color-primary);
+  outline: none;
+  box-shadow: none;
+}
+
+.ftc-checkbox:focus,
+.ftc-checkbox:focus-visible {
+  border-color: var(--ftc-color-primary);
+  outline: none;
+  box-shadow: none;
 }
 
 .ftc-label {

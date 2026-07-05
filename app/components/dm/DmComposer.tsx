@@ -150,7 +150,7 @@ export default function DmComposer({
             onKeyDown={handleKeyDown}
             placeholder="Message..."
             disabled={busy}
-            className="ftc-input h-11 w-full rounded-full py-0 pl-4 pr-11 disabled:opacity-50"
+            className="ftc-input h-11 w-full rounded-full py-0 pl-4 pr-11 disabled:cursor-not-allowed"
           />
           <button
             type="button"

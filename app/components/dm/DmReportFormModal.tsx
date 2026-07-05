@@ -130,7 +130,7 @@ export default function DmReportFormModal({
                 rows={3}
                 maxLength={500}
                 placeholder="Add any helpful details..."
-                className="w-full resize-none rounded-xl border border-ftc-border bg-ftc-surface/70 px-3 py-2.5 text-sm text-ftc-text outline-none transition placeholder:text-ftc-text-muted focus:border-ftc-primary/35"
+                className="ftc-textarea w-full resize-none px-3 py-2.5"
               />
             </label>
 

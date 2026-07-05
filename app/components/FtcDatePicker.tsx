@@ -255,7 +255,7 @@ export default function FtcDatePicker({
         aria-label={`${ariaLabel}, ${buttonLabel}`}
         aria-haspopup="dialog"
         aria-expanded={open}
-        className={`${className} flex items-center gap-2.5 text-left disabled:cursor-not-allowed disabled:opacity-50`}
+        className={`${className} flex items-center gap-2.5 text-left disabled:cursor-not-allowed`}
       >
         <CalendarIcon />
         <span className={`min-w-0 flex-1 ${hasValue ? "text-ftc-text" : "text-ftc-text-muted"}`}>
