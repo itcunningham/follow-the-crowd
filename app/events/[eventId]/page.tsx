@@ -121,9 +121,17 @@ export default function EventDetailPage() {
   const searchParams = useSearchParams();
   const eventId = params.eventId;
   const eventsBackHref = useMemo(
-    () => resolveEventDetailBackHref(searchParams.get("fromTab")),
+    () =>
+      resolveEventDetailBackHref(searchParams.get("fromTab"), {
+        from: searchParams.get("from"),
+        tab: searchParams.get("tab"),
+      }),
     [searchParams],
   );
+
+  function goBackToEvents() {
+    router.push(eventsBackHref);
+  }
 
   const [role, setRole] = useState<UserRole | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -719,9 +727,13 @@ export default function EventDetailPage() {
           <AppNavigation />
           <div className="px-4 py-8 sm:px-6">
             <p className="text-sm text-red-400">{error ?? "Event not found."}</p>
-            <Link href={eventsBackHref} className="mt-4 inline-block text-sm font-semibold text-ftc-primary">
+            <button
+              type="button"
+              onClick={goBackToEvents}
+              className="mt-4 inline-block text-sm font-semibold text-ftc-primary"
+            >
               Back to events
-            </Link>
+            </button>
           </div>
         </div>
       </OnboardingGuard>
@@ -737,7 +749,7 @@ export default function EventDetailPage() {
 
         <div className="border-b border-ftc-border-subtle bg-ftc-bg/95 px-4 py-3 backdrop-blur-md sm:px-6">
           <div className="flex items-start justify-between gap-3">
-            <EventDetailOverlayButton href={eventsBackHref} label="Back to events">
+            <EventDetailOverlayButton onClick={goBackToEvents} label="Back to events">
               <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.75">
                 <path d="M15 6l-6 6 6 6" strokeLinecap="round" strokeLinejoin="round" />
               </svg>

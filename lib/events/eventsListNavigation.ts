@@ -1,9 +1,23 @@
+import { buildGigsListHref, parseGigsListTab } from "@/lib/bookings/gigsListNavigation";
+
 export type EventsListTab = "active" | "history";
 
 export type EventsListView = "active" | "cancelled";
 
 export function parseEventsListTab(value: string | null | undefined): EventsListTab {
   return value === "history" ? "history" : "active";
+}
+
+export function resolveEventsListTabParam(
+  searchParamsTab: string | null | undefined,
+  initialTab?: string | null,
+  locationSearch?: string | null,
+): EventsListTab {
+  const locationTab = locationSearch
+    ? new URLSearchParams(locationSearch).get("tab")
+    : null;
+
+  return parseEventsListTab(searchParamsTab ?? locationTab ?? initialTab);
 }
 
 export function eventsListViewFromTab(tab: EventsListTab): EventsListView {
@@ -26,6 +40,16 @@ export function buildEventDetailHref(eventId: string, tab: EventsListTab = "acti
   return `/events/${eventId}`;
 }
 
-export function resolveEventDetailBackHref(fromTab: string | null | undefined): string {
+export function resolveEventDetailBackHref(
+  fromTab: string | null | undefined,
+  options?: {
+    from?: string | null;
+    tab?: string | null;
+  },
+): string {
+  if (options?.from === "bookings") {
+    return buildGigsListHref(parseGigsListTab(options.tab ?? fromTab));
+  }
+
   return buildEventsListHref(parseEventsListTab(fromTab));
 }

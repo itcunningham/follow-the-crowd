@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import AppNavigation, { MOBILE_NAV_OFFSET_CLASS } from "@/app/components/AppNavigation";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
 import PlannerEventsSubNav from "@/app/components/PlannerEventsSubNav";
@@ -76,6 +76,11 @@ import {
   type UserRole,
 } from "@/lib/user/currentUser";
 import { markNotificationsReadByType } from "@/lib/notifications";
+import {
+  buildGigsEventDetailHref,
+  buildGigsListHref,
+  resolveGigsListTabParam,
+} from "@/lib/bookings/gigsListNavigation";
 
 const emptyForm: BookingRequestInput = {
   eventName: "",
@@ -233,7 +238,22 @@ function filterReceivedBookingsByView(
 }
 
 export default function BookingsPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-[100dvh] items-center justify-center bg-ftc-bg text-sm text-ftc-text-muted">
+          Loading...
+        </div>
+      }
+    >
+      <BookingsPageContent />
+    </Suspense>
+  );
+}
+
+function BookingsPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const handledPlanIdRef = useRef<string | null>(null);
   const handledCreateParamsRef = useRef<string | null>(null);
   const [role, setRole] = useState<UserRole | null>(null);
@@ -244,7 +264,16 @@ export default function BookingsPage() {
   const [receivedBookings, setReceivedBookings] = useState<BookingRequest[]>([]);
   const [sectionTab, setSectionTab] = useState<BookingsSectionTab>("sent");
   const [plannerSentView, setPlannerSentView] = useState<PlannerSentBookingsView>("active");
-  const [djGigsView, setDjGigsView] = useState<DjGigsViewFilter>("pending");
+  const [locationRevision, setLocationRevision] = useState(0);
+  const djGigsView = useMemo(
+    () =>
+      resolveGigsListTabParam(
+        searchParams.get("tab"),
+        null,
+        typeof window === "undefined" ? null : window.location.search,
+      ),
+    [searchParams, locationRevision],
+  );
   const [djAvailabilityHints, setDjAvailabilityHints] = useState<
     Map<string, DjPlannerAvailabilityHint>
   >(new Map());
@@ -362,6 +391,15 @@ export default function BookingsPage() {
 
     return filterReceivedBookingsByView(receivedBookings, djGigsView);
   }, [receivedBookings, djGigsView, showReceivedGigsTabs]);
+
+  useEffect(() => {
+    function handlePopState() {
+      setLocationRevision((current) => current + 1);
+    }
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
 
   useEffect(() => {
     getCurrentUserProfile()
@@ -940,7 +978,6 @@ export default function BookingsPage() {
               activeView={djGigsView}
               bookings={activeReceivedBookings}
               cancelledCount={filterCancelledBookings(receivedBookings).length}
-              onChange={setDjGigsView}
             />
           ) : showSentTab || showReceivedTab ? (
             <BookingSectionTabs
@@ -1443,9 +1480,18 @@ export default function BookingsPage() {
               <ul className="space-y-3">
                 {filteredReceivedBookings.map((booking) =>
                   djGigsView === "history" ? (
-                    <BookingHistoryCard key={booking.id} booking={booking} muted />
+                    <BookingHistoryCard
+                      key={booking.id}
+                      booking={booking}
+                      gigsTab={djGigsView}
+                      muted
+                    />
                   ) : (
-                    <ReceivedBookingCard key={booking.id} booking={booking} />
+                    <ReceivedBookingCard
+                      key={booking.id}
+                      booking={booking}
+                      gigsTab={djGigsView}
+                    />
                   ),
                 )}
               </ul>
@@ -1474,13 +1520,12 @@ function DjGigsTabs({
   activeView,
   bookings,
   cancelledCount,
-  onChange,
 }: {
   activeView: DjGigsViewFilter;
   bookings: BookingRequest[];
   cancelledCount: number;
-  onChange: (view: DjGigsViewFilter) => void;
 }) {
+  const router = useRouter();
   const counts = useMemo(() => {
     return bookings.reduce(
       (stats, booking) => {
@@ -1510,12 +1555,21 @@ function DjGigsTabs({
     <div className="mt-4 flex flex-wrap gap-2">
       {tabs.map((tab) => {
         const isActive = activeView === tab.value;
+        const href = buildGigsListHref(tab.value);
 
         return (
-          <button
+          <Link
             key={tab.value}
-            type="button"
-            onClick={() => onChange(tab.value)}
+            href={href}
+            onClick={(event) => {
+              if (isActive) {
+                event.preventDefault();
+                return;
+              }
+
+              event.preventDefault();
+              router.push(href);
+            }}
             className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-semibold uppercase tracking-wide transition ${
               isActive
                 ? "border-transparent bg-ftc-primary text-ftc-bg"
@@ -1525,7 +1579,7 @@ function DjGigsTabs({
             {tab.icon === "history" ? <HistoryIcon /> : null}
             {tab.label}
             {tab.count && tab.count > 0 ? ` (${tab.count})` : ""}
-          </button>
+          </Link>
         );
       })}
     </div>
@@ -1630,7 +1684,15 @@ function BookingSectionTabs({
   );
 }
 
-function ReceivedBookingCard({ booking }: { booking: BookingRequest }) {
+function ReceivedBookingCard({
+  booking,
+  gigsTab = "pending",
+}: {
+  booking: BookingRequest;
+  gigsTab?: DjGigsViewFilter;
+}) {
+  const eventHref = booking.event_id ? buildGigsEventDetailHref(booking.event_id, gigsTab) : null;
+
   return (
     <li className="rounded-2xl border border-ftc-border-subtle bg-ftc-surface p-4 sm:p-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -1645,9 +1707,9 @@ function ReceivedBookingCard({ booking }: { booking: BookingRequest }) {
 
         <div className="flex shrink-0 items-center gap-2 sm:flex-col sm:items-end">
           <BookingStatusBadge status={booking.status} />
-          {booking.event_id ? (
+          {eventHref ? (
             <Link
-              href={`/events/${booking.event_id}`}
+              href={eventHref}
               className="rounded-lg border border-ftc-border-strong bg-ftc-surface/80 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-ftc-text-secondary transition hover:border-ftc-primary/30 hover:text-ftc-primary"
             >
               View event
@@ -1672,6 +1734,7 @@ function BookingHistoryCard({
   avatarName,
   avatarUrl,
   action,
+  gigsTab,
 }: {
   booking: BookingRequest;
   muted?: boolean;
@@ -1679,7 +1742,13 @@ function BookingHistoryCard({
   avatarName?: string;
   avatarUrl?: string | null;
   action?: React.ReactNode;
+  gigsTab?: DjGigsViewFilter;
 }) {
+  const eventHref = booking.event_id
+    ? gigsTab
+      ? buildGigsEventDetailHref(booking.event_id, gigsTab)
+      : `/events/${booking.event_id}`
+    : null;
   const cardClass = muted
     ? "rounded-2xl border border-ftc-border-subtle bg-ftc-bg-elevated/60 p-4 sm:p-5"
     : "rounded-2xl border border-ftc-border-subtle bg-ftc-surface p-4 sm:p-5";
@@ -1707,9 +1776,9 @@ function BookingHistoryCard({
         <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 sm:flex-col sm:items-end">
           <BookingStatusBadge status={booking.status} />
           {action}
-          {booking.event_id ? (
+          {eventHref ? (
             <Link
-              href={`/events/${booking.event_id}`}
+              href={eventHref}
               className="rounded-lg border border-ftc-border bg-ftc-bg-elevated/60 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-ftc-text-muted transition hover:border-ftc-border-strong hover:text-ftc-text-secondary"
             >
               View event
