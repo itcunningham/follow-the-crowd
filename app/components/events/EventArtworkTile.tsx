@@ -53,7 +53,7 @@ export default function EventArtworkTile({
   return (
     <div
       aria-hidden="true"
-      className={`flex shrink-0 items-center justify-center border bg-ftc-bg-elevated font-bold uppercase tracking-wide ${sizeClassName} ${styles.tileClassName} ${styles.textClassName} ${className}`}
+      className={`flex shrink-0 items-center justify-center border font-bold uppercase tracking-wide ${sizeClassName} ${styles.tileClassName} ${styles.textClassName} ${className}`}
     >
       {initials}
     </div>

@@ -26,7 +26,7 @@ import EventCoverImageField, {
 } from "@/app/components/events/EventCoverImageField";
 import EventFallbackColourField from "@/app/components/events/EventFallbackColourField";
 import { EventCoverImageListThumb } from "@/app/components/events/EventCoverImageDisplay";
-import type { EventFallbackColourKey } from "@/lib/events/eventFallbackColour";
+import type { EventSelectableFallbackColourKey } from "@/lib/events/eventFallbackColour";
 import { listBookingPlans, type BookingPlan } from "@/lib/bookingPlans";
 import { formatRateDisplay } from "@/lib/bookingRate";
 import {
@@ -84,7 +84,9 @@ export default function EventsPage() {
   );
   const [coverPreviewUrl, setCoverPreviewUrl] = useState<string | null>(null);
   const [coverError, setCoverError] = useState<string | null>(null);
-  const [fallbackColour, setFallbackColour] = useState<EventFallbackColourKey | null>(null);
+  const [fallbackColour, setFallbackColour] = useState<EventSelectableFallbackColourKey | null>(
+    null,
+  );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [eventDateOverride, setEventDateOverride] = useState<string | null>(null);

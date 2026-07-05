@@ -1,8 +1,5 @@
--- Idempotent migration: optional fallback colour key for event artwork tiles.
--- Run in Supabase SQL Editor after setupEvents.sql.
-
-alter table public.events
-  add column if not exists fallback_colour text;
+-- Idempotent migration: expand allowed event fallback_colour keys.
+-- Run in Supabase SQL Editor after setupEventFallbackColour.sql.
 
 alter table public.events
   drop constraint if exists events_fallback_colour_check;

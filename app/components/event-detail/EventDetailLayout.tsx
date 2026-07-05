@@ -171,8 +171,9 @@ export function EventDetailHero({
     const initials = getEventInitials(eventName);
 
     return (
-      <div className="relative aspect-[4/3] max-h-[220px] w-full overflow-hidden bg-ftc-bg-elevated">
-        <div className={`absolute inset-0 bg-gradient-to-b ${styles.heroAccentClassName}`} />
+      <div
+        className={`relative aspect-[4/3] max-h-[220px] w-full overflow-hidden border-b border-ftc-border-subtle ${styles.heroClassName}`}
+      >
         <div className="absolute inset-0 flex items-center justify-center">
           <span
             className={`text-5xl font-bold uppercase tracking-wider sm:text-6xl ${styles.textClassName}`}

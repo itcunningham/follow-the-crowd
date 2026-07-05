@@ -37,8 +37,8 @@ import EventFallbackColourField from "@/app/components/events/EventFallbackColou
 import EventEditConfirmDialog from "@/app/components/events/EventEditConfirmDialog";
 import { EventCoverImageContextThumb } from "@/app/components/events/EventCoverImageDisplay";
 import {
-  isEventFallbackColourKey,
-  type EventFallbackColourKey,
+  isSelectableEventFallbackColourKey,
+  type EventSelectableFallbackColourKey,
 } from "@/lib/events/eventFallbackColour";
 import { formatRateDisplay } from "@/lib/bookingRate";
 import EventBookingDuplicateBadge from "@/app/components/EventBookingDuplicateBadge";
@@ -322,7 +322,7 @@ export default function EventDetailPage() {
       rate: event.rate,
       notes: event.notes,
       bookingPlanId: event.booking_plan_id,
-      fallbackColour: isEventFallbackColourKey(event.fallback_colour ?? "")
+      fallbackColour: isSelectableEventFallbackColourKey(event.fallback_colour ?? "")
         ? event.fallback_colour
         : null,
     });
@@ -824,8 +824,8 @@ export default function EventDetailPage() {
                 <EventFallbackColourField
                   eventName={editForm.name || event.name}
                   value={
-                    isEventFallbackColourKey(editForm.fallbackColour ?? "")
-                      ? (editForm.fallbackColour as EventFallbackColourKey)
+                    isSelectableEventFallbackColourKey(editForm.fallbackColour ?? "")
+                      ? (editForm.fallbackColour as EventSelectableFallbackColourKey)
                       : null
                   }
                   onChange={(next) =>
