@@ -1,7 +1,7 @@
 import { supabase } from "@/lib/supabaseClient";
 import { createNotification } from "@/lib/notifications";
 import { markEventChatRead } from "@/lib/messageReads";
-import { getEventById, getEventArtworkByIds, type EventStatus } from "@/lib/events";
+import { getEventById, type EventStatus } from "@/lib/events";
 import { pickPreferredEventCoverImageUrl } from "@/lib/events/eventCoverImage";
 import {
   getCurrentUserId,
@@ -61,8 +61,7 @@ export function getEventCrewChatBackHref(
 }
 
 export async function getEventCrewChatAccess(eventId: string): Promise<EventCrewChatAccess> {
-  const userId = await getCurrentUserId();
-  const event = await getEventById(eventId);
+  const [userId, event] = await Promise.all([getCurrentUserId(), getEventById(eventId)]);
 
   if (!event) {
     return {
@@ -77,24 +76,16 @@ export async function getEventCrewChatAccess(eventId: string): Promise<EventCrew
     };
   }
 
-  const artwork = (await getEventArtworkByIds([eventId])).get(eventId);
-
   const eventContext = {
     eventName: event.name,
     eventVenue: event.venue,
     eventDate: event.event_date,
     eventStatus: event.status,
-    coverImageUrl: pickPreferredEventCoverImageUrl(
-      artwork?.coverImageUrl,
-      event.cover_image_url,
-    ),
-    fallbackColour:
-      artwork?.fallbackColour ?? (event.fallback_colour?.trim() || null),
+    coverImageUrl: pickPreferredEventCoverImageUrl(event.cover_image_url),
+    fallbackColour: event.fallback_colour?.trim() || null,
   };
 
-  const isOwner = event.owner_id === userId;
-
-  if (isOwner) {
+  if (event.owner_id === userId) {
     return { canAccess: true, isOwner: true, ...eventContext };
   }
 

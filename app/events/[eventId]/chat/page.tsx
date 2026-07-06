@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import AppNavigation, { MOBILE_NAV_OFFSET_CLASS } from "@/app/components/AppNavigation";
 import ChatNewMessagesPill from "@/app/components/dm/ChatNewMessagesPill";
@@ -12,13 +12,11 @@ import OnboardingGuard from "@/app/components/OnboardingGuard";
 import {
   getEventCrewChatAccess,
   getEventCrewChatBackHref,
-  getEventCrewChatLink,
   getEventCrewChatLoadErrorMessage,
   listEventCrewChatMessages,
   sendEventCrewChatMessage,
   type EventCrewChatMessage,
 } from "@/lib/eventCrewChat";
-import { markNotificationsReadForLink } from "@/lib/notifications";
 import { markEventChatRead } from "@/lib/messageReads";
 import {
   formatGroupChatSystemNoticeText,
@@ -45,8 +43,56 @@ function formatMessageTime(timestamp: string) {
   });
 }
 
+const GROUP_CHAT_MESSAGES_TIMEOUT_MS = 15_000;
+
+async function withGroupChatMessagesTimeout<T>(promise: Promise<T>): Promise<T> {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<T>((_, reject) => {
+        timeoutId = setTimeout(() => {
+          reject(new Error("Loading messages took too long. Please try again."));
+        }, GROUP_CHAT_MESSAGES_TIMEOUT_MS);
+      }),
+    ]);
+  } finally {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+  }
+}
+
 function getSenderLabel(profile: UserAvatarProfile | undefined, userId: string) {
   return profile?.display_name?.trim() || userId.slice(0, 8);
+}
+
+function GroupChatMessagesLoadError({
+  message,
+  onRetry,
+  retrying,
+}: {
+  message: string;
+  onRetry: () => void;
+  retrying: boolean;
+}) {
+  return (
+    <div
+      data-chat-content-root
+      className="flex flex-col items-center justify-center px-6 py-16 text-center"
+    >
+      <p className="text-sm text-red-400">{message}</p>
+      <button
+        type="button"
+        onClick={onRetry}
+        disabled={retrying}
+        className="mt-4 ftc-btn-secondary px-4 py-2 text-xs uppercase tracking-wide disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        {retrying ? "Retrying..." : "Try again"}
+      </button>
+    </div>
+  );
 }
 
 function GroupChatHeaderArtwork({
@@ -94,10 +140,15 @@ export default function EventCrewChatPage() {
   const [coverImageUrl, setCoverImageUrl] = useState<string | null>(null);
   const [fallbackColour, setFallbackColour] = useState<string | null>(null);
   const [input, setInput] = useState("");
-  const [loading, setLoading] = useState(true);
+  const [accessLoading, setAccessLoading] = useState(true);
+  const [messagesLoading, setMessagesLoading] = useState(true);
+  const [messagesError, setMessagesError] = useState<string | null>(null);
+  const [canAccessChat, setCanAccessChat] = useState(false);
   const [sending, setSending] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const messagesLoadGenerationRef = useRef(0);
+  const loading = accessLoading || messagesLoading;
   const lastMessage = messages.length > 0 ? messages[messages.length - 1] : null;
   const reversedMessages = useMemo(() => [...messages].reverse(), [messages]);
   const {
@@ -131,19 +182,104 @@ export default function EventCrewChatPage() {
 
       setCoverImageUrl(access.coverImageUrl);
       setFallbackColour(access.fallbackColour);
+      setEventName(access.eventName ?? "Event");
     } catch (refreshError) {
       console.error("Failed to refresh group chat artwork:", refreshError);
     }
   }, [eventId]);
+
+  const markGroupChatOpened = useCallback(
+    (latestMessageCreatedAt: string | null) => {
+      if (!eventId) {
+        return;
+      }
+
+      void markEventChatRead(eventId, { readThroughCreatedAt: latestMessageCreatedAt }).catch(
+        (readError) => {
+          console.error("Failed to mark group chat read:", readError);
+        },
+      );
+    },
+    [eventId],
+  );
+
+  const loadSenderProfiles = useCallback(async (rows: EventCrewChatMessage[]) => {
+    const senderIds = [...new Set(rows.map((message) => message.user_id))];
+
+    if (senderIds.length === 0) {
+      setSenderProfiles(new Map());
+      return;
+    }
+
+    try {
+      const profiles = await getUserAvatarProfilesByIds(senderIds);
+      setSenderProfiles(profiles);
+    } catch (profileError) {
+      console.error("Failed to load group chat sender profiles:", profileError);
+    }
+  }, []);
+
+  const loadMessages = useCallback(async () => {
+    if (!eventId || !canAccessChat) {
+      return;
+    }
+
+    const generation = ++messagesLoadGenerationRef.current;
+    setMessagesLoading(true);
+    setMessagesError(null);
+
+    try {
+      const userId = currentUserId ?? (await getCurrentUserId());
+
+      if (generation !== messagesLoadGenerationRef.current) {
+        return;
+      }
+
+      if (!currentUserId) {
+        setCurrentUserId(userId);
+      }
+
+      const rows = await withGroupChatMessagesTimeout(listEventCrewChatMessages(eventId));
+
+      if (generation !== messagesLoadGenerationRef.current) {
+        return;
+      }
+
+      const latestMessageCreatedAt =
+        rows.length > 0 ? rows[rows.length - 1]?.created_at ?? null : null;
+
+      setMessages(rows.map((message) => tagChatMessageForScroll(message, userId)));
+      markGroupChatOpened(latestMessageCreatedAt);
+      void loadSenderProfiles(rows);
+    } catch (loadError) {
+      if (generation !== messagesLoadGenerationRef.current) {
+        return;
+      }
+
+      console.error("Failed to load event crew chat messages:", loadError);
+      setMessagesError(getEventCrewChatLoadErrorMessage(loadError));
+    } finally {
+      if (generation === messagesLoadGenerationRef.current) {
+        setMessagesLoading(false);
+      }
+    }
+  }, [canAccessChat, currentUserId, eventId, loadSenderProfiles, markGroupChatOpened]);
 
   useEffect(() => {
     if (!eventId) {
       return;
     }
 
-    async function loadChat() {
-      setLoading(true);
+    let cancelled = false;
+
+    async function loadAccess() {
+      setAccessLoading(true);
+      setCanAccessChat(false);
       setError(null);
+      setMessages([]);
+      setSenderProfiles(new Map());
+      setMessagesError(null);
+      setMessagesLoading(true);
 
       try {
         const [userId, access] = await Promise.all([
@@ -151,52 +287,52 @@ export default function EventCrewChatPage() {
           getEventCrewChatAccess(eventId),
         ]);
 
+        if (cancelled) {
+          return;
+        }
+
         setCurrentUserId(userId);
 
         if (!access.canAccess) {
           setError("You do not have access to this group chat.");
-          setMessages([]);
-          setSenderProfiles(new Map());
+          setMessagesLoading(false);
           return;
         }
 
+        setCanAccessChat(true);
         setEventName(access.eventName ?? "Event");
         setCoverImageUrl(access.coverImageUrl);
         setFallbackColour(access.fallbackColour);
-
-        const chatLink = getEventCrewChatLink(eventId);
-        await markNotificationsReadForLink(userId, chatLink);
-        await markNotificationsReadForLink(
-          userId,
-          getEventCrewChatLink(eventId, { from: "dm", tab: "group" }),
-        );
-
-        const rows = await listEventCrewChatMessages(eventId);
-        const latestMessageCreatedAt =
-          rows.length > 0 ? rows[rows.length - 1]?.created_at ?? null : null;
-        await markEventChatRead(eventId, { readThroughCreatedAt: latestMessageCreatedAt });
-        setMessages(rows.map((message) => tagChatMessageForScroll(message, userId)));
-
-        const senderIds = [...new Set(rows.map((message) => message.user_id))];
-
-        if (senderIds.length > 0) {
-          const profiles = await getUserAvatarProfilesByIds(senderIds);
-          setSenderProfiles(profiles);
-        } else {
-          setSenderProfiles(new Map());
-        }
       } catch (loadError) {
-        console.error("Failed to load event crew chat:", loadError);
+        if (cancelled) {
+          return;
+        }
+
+        console.error("Failed to load event crew chat access:", loadError);
         setError(getEventCrewChatLoadErrorMessage(loadError));
-        setMessages([]);
-        setSenderProfiles(new Map());
+        setMessagesLoading(false);
       } finally {
-        setLoading(false);
+        if (!cancelled) {
+          setAccessLoading(false);
+        }
       }
     }
 
-    loadChat();
+    void loadAccess();
+
+    return () => {
+      cancelled = true;
+      messagesLoadGenerationRef.current += 1;
+    };
   }, [eventId]);
+
+  useEffect(() => {
+    if (!canAccessChat || accessLoading) {
+      return;
+    }
+
+    void loadMessages();
+  }, [accessLoading, canAccessChat, loadMessages]);
 
   useEffect(() => {
     function handleVisibilityChange() {
@@ -307,7 +443,7 @@ export default function EventCrewChatPage() {
     }
   }
 
-  if (error && !loading && messages.length === 0 && error.includes("access")) {
+  if (error && !accessLoading && !canAccessChat && error.includes("access")) {
     return (
       <OnboardingGuard>
         <div
@@ -386,8 +522,18 @@ export default function EventCrewChatPage() {
             className="flex min-h-0 flex-1 flex-col-reverse overflow-y-auto overscroll-contain [overflow-anchor:none] px-3 py-4 sm:px-4"
           >
             <div ref={bottomRef} data-chat-bottom aria-hidden="true" className="h-px shrink-0" />
-            {loading ? (
+            {accessLoading ? (
+              <p className="text-sm text-ftc-text-muted">Loading group chat...</p>
+            ) : messagesLoading ? (
               <p className="text-sm text-ftc-text-muted">Loading messages...</p>
+            ) : messagesError ? (
+              <GroupChatMessagesLoadError
+                message={messagesError}
+                retrying={messagesLoading}
+                onRetry={() => {
+                  void loadMessages();
+                }}
+              />
             ) : messages.length === 0 ? (
               <div
                 data-chat-content-root

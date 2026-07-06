@@ -465,6 +465,41 @@ export function getGroupChatsLoadErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : "Failed to load group chats";
 }
 
+const GROUP_CHATS_INBOX_CACHE_KEY = "ftc-group-chats-inbox-v1";
+
+export function readGroupChatsInboxCache(): GroupChatListItem[] {
+  if (typeof window === "undefined") {
+    return [];
+  }
+
+  try {
+    const raw = window.sessionStorage.getItem(GROUP_CHATS_INBOX_CACHE_KEY);
+
+    if (!raw) {
+      return [];
+    }
+
+    const parsed = JSON.parse(raw) as unknown;
+
+    return Array.isArray(parsed) ? (parsed as GroupChatListItem[]) : [];
+  } catch (cacheError) {
+    console.error("[groupChats] Failed to read inbox cache:", cacheError);
+    return [];
+  }
+}
+
+export function writeGroupChatsInboxCache(chats: GroupChatListItem[]): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    window.sessionStorage.setItem(GROUP_CHATS_INBOX_CACHE_KEY, JSON.stringify(chats));
+  } catch (cacheError) {
+    console.error("[groupChats] Failed to write inbox cache:", cacheError);
+  }
+}
+
 export function isGroupChatPath(pathname: string): boolean {
   return pathname === "/group-chats" || /^\/events\/[^/]+\/chat\/?$/.test(pathname);
 }

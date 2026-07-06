@@ -19,7 +19,9 @@ import {
   listAccessibleGroupChats,
   logGroupRenderedRowIds,
   mergeLoadedGroupChatsWithLiveActivity,
+  readGroupChatsInboxCache,
   sortGroupChatsByLatestActivity,
+  writeGroupChatsInboxCache,
   type GroupChatListItem,
 } from "@/lib/groupChats";
 import {
@@ -127,6 +129,7 @@ function GroupChatsEmptyState() {
 }
 
 const GROUP_CHATS_LOAD_TIMEOUT_MS = 15_000;
+const GROUP_CHATS_REFRESH_INTERVAL_MS = 30_000;
 
 async function withGroupChatsLoadTimeout<T>(promise: Promise<T>): Promise<T> {
   let timeoutId: ReturnType<typeof setTimeout> | undefined;
@@ -329,6 +332,8 @@ function DmInboxPageContent() {
   const groupChatsLoadGenerationRef = useRef(0);
   const groupChatsLoadInFlightRef = useRef<Promise<void> | null>(null);
   const groupChatsHasDataRef = useRef(false);
+  const groupChatsLastFetchedAtRef = useRef(0);
+  const groupChatsCacheHydratedRef = useRef(false);
 
   const selectInboxTab = useCallback(
     (tab: InboxTab) => {
@@ -342,7 +347,15 @@ function DmInboxPageContent() {
     setActiveTab(parseInboxTab(searchParams.get("tab")));
   }, [searchParams]);
 
-  const loadGroupChats = useCallback(async (options?: { forceLoading?: boolean }) => {
+  const loadGroupChats = useCallback(async (options?: { forceLoading?: boolean; soft?: boolean }) => {
+    if (
+      options?.soft &&
+      groupChatsHasDataRef.current &&
+      Date.now() - groupChatsLastFetchedAtRef.current < GROUP_CHATS_REFRESH_INTERVAL_MS
+    ) {
+      return;
+    }
+
     if (groupChatsLoadInFlightRef.current) {
       return groupChatsLoadInFlightRef.current;
     }
@@ -373,13 +386,16 @@ function DmInboxPageContent() {
         }
 
         groupChatsHasDataRef.current = loaded.length > 0;
+        groupChatsLastFetchedAtRef.current = Date.now();
 
         setGroupChats((previous) => {
-          if (previous.length === 0) {
-            return loaded;
-          }
+          const next =
+            previous.length === 0
+              ? loaded
+              : mergeLoadedGroupChatsWithLiveActivity(previous, loaded);
 
-          return mergeLoadedGroupChatsWithLiveActivity(previous, loaded);
+          writeGroupChatsInboxCache(next);
+          return next;
         });
       } catch (loadError) {
         if (generation !== groupChatsLoadGenerationRef.current) {
@@ -558,6 +574,25 @@ function DmInboxPageContent() {
   }, [refreshUnreadState]);
 
   useEffect(() => {
+    if (groupChatsCacheHydratedRef.current) {
+      return;
+    }
+
+    groupChatsCacheHydratedRef.current = true;
+
+    const cached = readGroupChatsInboxCache();
+
+    if (cached.length === 0) {
+      return;
+    }
+
+    setGroupChats(cached);
+    groupChatsHasDataRef.current = true;
+    groupChatsLastFetchedAtRef.current = Date.now();
+    setGroupChatsLoading(false);
+  }, []);
+
+  useEffect(() => {
     void loadGroupChats();
   }, [loadGroupChats]);
 
@@ -566,13 +601,13 @@ function DmInboxPageContent() {
       return;
     }
 
-    void loadGroupChats();
+    void loadGroupChats({ soft: true });
   }, [activeTab, loadGroupChats]);
 
   useEffect(() => {
     function handleVisibilityChange() {
       if (document.visibilityState === "visible" && activeTab === "group") {
-        void loadGroupChats();
+        void loadGroupChats({ soft: true });
       }
     }
 
@@ -610,6 +645,7 @@ function DmInboxPageContent() {
             console.log("[Group realtime target id]", groupTargetId);
 
             let matchedGroupChat = false;
+            let nextGroupChats: GroupChatListItem[] | null = null;
 
             setGroupChats((previous) => {
               const result = applyInboxGroupMessage(previous, groupTargetId, {
@@ -630,8 +666,17 @@ function DmInboxPageContent() {
                 })),
               );
 
-              return result.matched ? [...result.rows] : previous;
+              if (result.matched) {
+                nextGroupChats = result.rows;
+                return [...result.rows];
+              }
+
+              return previous;
             });
+
+            if (matchedGroupChat && nextGroupChats) {
+              writeGroupChatsInboxCache(nextGroupChats);
+            }
 
             if (!matchedGroupChat) {
               void loadGroupChats();
