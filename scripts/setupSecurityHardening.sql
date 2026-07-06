@@ -18,7 +18,7 @@ create policy "messages_update_conversation_member"
     and (
       user_id = public.auth_user_id()
       or (
-        left(text, 16) = 'BOOKING REQUEST'
+        starts_with(text, 'BOOKING REQUEST')
         and exists (
           select 1
           from public.booking_requests br
@@ -37,7 +37,7 @@ create policy "messages_update_conversation_member"
     and (
       user_id = public.auth_user_id()
       or (
-        left(text, 16) = 'BOOKING REQUEST'
+        starts_with(text, 'BOOKING REQUEST')
         and exists (
           select 1
           from public.booking_requests br
