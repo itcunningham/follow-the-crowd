@@ -320,6 +320,14 @@ export function hasPendingRateProposal(booking: BookingRequest): boolean {
   );
 }
 
+export function hasDeclinedRateProposal(booking: BookingRequest): boolean {
+  return (
+    booking.status === "pending" &&
+    booking.rate_mode === "open" &&
+    booking.proposed_rate_status === "declined"
+  );
+}
+
 export function canProposeBookingRate(
   booking: BookingRequest,
   currentUserId: string | null,
@@ -674,6 +682,51 @@ async function insertRateProposedDmMessageIfNeeded(
   }
 
   return { inserted: true, messageText, warning: null };
+}
+
+export const RATE_PROPOSAL_DECLINED_DM_PREFIX = "Proposal declined ·";
+
+export const RATE_PROPOSAL_DECLINED_DM_MESSAGE =
+  "Proposal declined · original offer still available";
+
+export function isRateProposalDeclinedDmMessage(text: string): boolean {
+  return text.trim().startsWith(RATE_PROPOSAL_DECLINED_DM_PREFIX);
+}
+
+async function insertRateProposalDeclinedDmMessageIfNeeded(
+  booking: BookingRequest,
+): Promise<{ inserted: boolean }> {
+  if (!booking.conversation_id) {
+    return { inserted: false };
+  }
+
+  const { data: existingRows, error: existingError } = await supabase
+    .from("messages")
+    .select("id")
+    .eq("conversation_id", booking.conversation_id)
+    .eq("user_id", booking.sender_id)
+    .eq("text", RATE_PROPOSAL_DECLINED_DM_MESSAGE)
+    .order("created_at", { ascending: false })
+    .limit(1);
+
+  if (existingError) {
+    console.error("[bookings] Failed to check proposal-declined DM duplicate:", existingError);
+  } else if (existingRows?.[0]) {
+    return { inserted: false };
+  }
+
+  const { error: insertError } = await supabase.from("messages").insert({
+    conversation_id: booking.conversation_id,
+    user_id: booking.sender_id,
+    text: RATE_PROPOSAL_DECLINED_DM_MESSAGE,
+  });
+
+  if (insertError) {
+    console.error("[bookings] Failed to insert proposal-declined DM notice:", insertError);
+    return { inserted: false };
+  }
+
+  return { inserted: true };
 }
 
 const BOOKING_PREVIEW_LABELS: Record<BookingRequestStatus, string> = {
@@ -1994,7 +2047,14 @@ export async function acceptProposedBookingRate(bookingId: string): Promise<Book
   return booking;
 }
 
-export async function declineProposedBookingRate(bookingId: string): Promise<BookingRequest> {
+export type DeclineProposedBookingRateResult = {
+  booking: BookingRequest;
+  warning: string | null;
+};
+
+export async function declineProposedBookingRate(
+  bookingId: string,
+): Promise<DeclineProposedBookingRateResult> {
   const { data, error } = await supabase.rpc("decline_proposed_booking_rate", {
     p_booking_id: bookingId,
   });
@@ -2009,15 +2069,24 @@ export async function declineProposedBookingRate(bookingId: string): Promise<Boo
     throw new Error("Declined proposal could not be parsed.");
   }
 
-  await createNotification(
-    booking.recipient_id,
-    "booking_update",
-    "Original offer kept",
-    `${booking.event_name} · ${getBookingOfferRateLabel(booking)}`,
-    booking.conversation_id ? `/dm/${booking.conversation_id}` : "/bookings",
-  );
+  await insertRateProposalDeclinedDmMessageIfNeeded(booking);
 
-  return booking;
+  let warning: string | null = null;
+
+  try {
+    await createNotification(
+      booking.recipient_id,
+      "booking_update",
+      "Original offer kept",
+      `${booking.event_name} · ${getBookingOfferRateLabel(booking)}`,
+      booking.conversation_id ? `/dm/${booking.conversation_id}` : "/bookings",
+    );
+  } catch (notificationError) {
+    warning = `Original offer was kept, but the DJ could not be notified. ${getNotificationCreateErrorMessage(notificationError)}`;
+    console.error("[bookings] booking_update notification failed after proposal decline:", notificationError);
+  }
+
+  return { booking, warning };
 }
 
 export async function updateBookingRequestStatus(

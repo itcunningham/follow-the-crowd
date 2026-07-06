@@ -2,7 +2,7 @@
 
 import CancelBookingRequestButton from "@/app/components/CancelBookingRequestButton";
 import { formatIntegerRateDisplay } from "@/lib/bookingRate";
-import { hasPendingRateProposal, type BookingRequest } from "@/lib/bookingRequests";
+import { hasDeclinedRateProposal, hasPendingRateProposal, type BookingRequest } from "@/lib/bookingRequests";
 
 export default function BookingRateProposalPanel({
   booking,
@@ -72,6 +72,19 @@ export function BookingRateProposalNotice({
   booking: BookingRequest;
   currentUserId: string | null;
 }) {
+  if (hasDeclinedRateProposal(booking) && booking.recipient_id === currentUserId) {
+    return (
+      <div className="mt-3 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated p-3">
+        <p className="text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted">
+          Rate proposal
+        </p>
+        <p className="mt-1 text-sm text-ftc-text-muted">
+          Proposal declined · original offer still available
+        </p>
+      </div>
+    );
+  }
+
   if (!hasPendingRateProposal(booking)) {
     return null;
   }

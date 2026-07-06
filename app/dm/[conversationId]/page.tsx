@@ -31,6 +31,7 @@ import {
   isBookingRateProposalSchemaError,
   isBookingRequestMessage,
   isRateProposedDmMessage,
+  isRateProposalDeclinedDmMessage,
   mergeBookingRequests,
   parseBookingRequestMessage,
   proposeBookingRate,
@@ -1086,11 +1087,16 @@ export default function DmChatPage() {
     setError(null);
 
     try {
-      const updatedBooking = await declineProposedBookingRate(booking.id);
+      const { booking: updatedBooking, warning } = await declineProposedBookingRate(booking.id);
 
       setBookings((prev) =>
         prev.map((item) => (item.id === updatedBooking.id ? updatedBooking : item)),
       );
+      await reloadConversationBookings();
+
+      if (warning) {
+        setNotice(warning);
+      }
     } catch (declineError) {
       console.error("Failed to keep original offer:", declineError);
       setError(getBookingMutationErrorMessage(declineError));
@@ -1359,7 +1365,9 @@ export default function DmChatPage() {
             {reversedMessages.map((message) => {
               const isOwnMessage = currentUserId !== null && message.user_id === currentUserId;
               const isBookingMessage = isBookingRequestMessage(message.text);
-              const isRateProposalNotice = isRateProposedDmMessage(message.text);
+              const isRateProposalNotice =
+                isRateProposedDmMessage(message.text) ||
+                isRateProposalDeclinedDmMessage(message.text);
 
               if (isRateProposalNotice) {
                 const highlighted = isMessageHighlighted(message.id);
