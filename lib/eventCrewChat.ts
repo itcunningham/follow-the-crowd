@@ -150,6 +150,7 @@ export async function sendEventCrewChatMessage(
   eventId: string,
   text: string,
   eventName: string,
+  options?: { notifyParticipants?: boolean },
 ): Promise<void> {
   const userId = await getCurrentUserId();
   const trimmed = text.trim();
@@ -169,6 +170,10 @@ export async function sendEventCrewChatMessage(
   }
 
   await markEventChatRead(eventId);
+
+  if (options?.notifyParticipants === false) {
+    return;
+  }
 
   const [participants, senderProfile] = await Promise.all([
     getEventCrewParticipantIds(eventId),

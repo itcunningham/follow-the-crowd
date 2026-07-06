@@ -11,6 +11,7 @@ export function buildBookingAcceptanceGroupChatMessage(
 export async function postBookingAcceptanceGroupChatUpdate(
   booking: BookingRequest,
   memberDisplayName: string,
+  options?: { notifyParticipants?: boolean },
 ): Promise<void> {
   if (!booking.event_id || booking.status !== "accepted") {
     return;
@@ -20,5 +21,6 @@ export async function postBookingAcceptanceGroupChatUpdate(
     booking.event_id,
     buildBookingAcceptanceGroupChatMessage(memberDisplayName),
     booking.event_name,
+    { notifyParticipants: options?.notifyParticipants },
   );
 }

@@ -621,6 +621,18 @@ export function isRateProposedDmMessage(text: string): boolean {
   return text.trim().startsWith(RATE_PROPOSED_DM_PREFIX);
 }
 
+export const BOOKING_ACCEPTED_DM_PREFIX = "Booking accepted ·";
+
+export function formatBookingAcceptedDmMessage(eventName: string): string {
+  const trimmedEventName = eventName.trim() || "Event";
+
+  return `${BOOKING_ACCEPTED_DM_PREFIX} ${trimmedEventName}`;
+}
+
+export function isBookingAcceptedDmMessage(text: string): boolean {
+  return text.trim().startsWith(BOOKING_ACCEPTED_DM_PREFIX);
+}
+
 export function formatRateProposedDmMessage(
   proposedRate: number | null | undefined,
 ): string {
@@ -682,6 +694,44 @@ async function insertRateProposedDmMessageIfNeeded(
   }
 
   return { inserted: true, messageText, warning: null };
+}
+
+async function insertBookingAcceptedDmMessageIfNeeded(
+  booking: BookingRequest,
+): Promise<{ inserted: boolean; messageText: string }> {
+  const messageText = formatBookingAcceptedDmMessage(booking.event_name);
+
+  if (!booking.conversation_id) {
+    return { inserted: false, messageText };
+  }
+
+  const { data: existingRows, error: existingError } = await supabase
+    .from("messages")
+    .select("id")
+    .eq("conversation_id", booking.conversation_id)
+    .eq("user_id", booking.recipient_id)
+    .eq("text", messageText)
+    .order("created_at", { ascending: false })
+    .limit(1);
+
+  if (existingError) {
+    console.error("[bookings] Failed to check booking-accepted DM duplicate:", existingError);
+  } else if (existingRows?.[0]) {
+    return { inserted: false, messageText };
+  }
+
+  const { error: insertError } = await supabase.from("messages").insert({
+    conversation_id: booking.conversation_id,
+    user_id: booking.recipient_id,
+    text: messageText,
+  });
+
+  if (insertError) {
+    console.error("[bookings] Failed to insert booking-accepted DM notice:", insertError);
+    return { inserted: false, messageText };
+  }
+
+  return { inserted: true, messageText };
 }
 
 export const RATE_PROPOSAL_DECLINED_DM_PREFIX = "Proposal declined ·";
@@ -2129,27 +2179,52 @@ export async function updateBookingRequestStatus(
     throw new Error("Updated booking could not be parsed.");
   }
 
+  if (status === "accepted") {
+    const dmResult = await insertBookingAcceptedDmMessageIfNeeded(booking);
+
+    if (dmResult.inserted && booking.conversation_id) {
+      try {
+        await createNotification(
+          booking.sender_id,
+          "message",
+          "New message",
+          dmResult.messageText,
+          `/dm/${booking.conversation_id}`,
+        );
+      } catch (notificationError) {
+        console.error(
+          "[bookings] message notification failed after booking acceptance:",
+          notificationError,
+        );
+      }
+    }
+
+    if (booking.event_id) {
+      try {
+        const profiles = await getUserAvatarProfilesByIds([booking.recipient_id]);
+        const djName =
+          profiles.get(booking.recipient_id)?.display_name?.trim() || "Crew member";
+        await postBookingAcceptanceGroupChatUpdate(booking, djName, {
+          notifyParticipants: false,
+        });
+      } catch (groupChatError) {
+        console.error(
+          "[bookings] Failed to post booking acceptance group chat update:",
+          groupChatError,
+        );
+      }
+    }
+
+    return booking;
+  }
+
   await createNotification(
     booking.sender_id,
     "booking_update",
-    status === "accepted" ? "Booking accepted" : "Booking declined",
+    "Booking declined",
     `${booking.event_name} · ${formatStatusLabel(status)}`,
     "/bookings",
   );
-
-  if (status === "accepted" && booking.event_id) {
-    try {
-      const profiles = await getUserAvatarProfilesByIds([booking.recipient_id]);
-      const djName =
-        profiles.get(booking.recipient_id)?.display_name?.trim() || "Crew member";
-      await postBookingAcceptanceGroupChatUpdate(booking, djName);
-    } catch (groupChatError) {
-      console.error(
-        "[bookingRequests] Failed to post booking acceptance group chat update:",
-        groupChatError,
-      );
-    }
-  }
 
   return booking;
 }

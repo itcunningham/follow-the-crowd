@@ -28,6 +28,7 @@ import {
   fetchBookingRequestsByIds,
   getBookingMutationErrorMessage,
   getBookingRequestsForConversation,
+  isBookingAcceptedDmMessage,
   isBookingRateProposalSchemaError,
   isBookingRequestMessage,
   isRateProposedDmMessage,
@@ -1367,7 +1368,8 @@ export default function DmChatPage() {
               const isBookingMessage = isBookingRequestMessage(message.text);
               const isRateProposalNotice =
                 isRateProposedDmMessage(message.text) ||
-                isRateProposalDeclinedDmMessage(message.text);
+                isRateProposalDeclinedDmMessage(message.text) ||
+                isBookingAcceptedDmMessage(message.text);
 
               if (isRateProposalNotice) {
                 const highlighted = isMessageHighlighted(message.id);
