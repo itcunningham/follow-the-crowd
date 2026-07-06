@@ -32,6 +32,9 @@ import type { BookingRecipientProfile } from "@/lib/user/currentUser";
 export default function BookingRequestCard({
   booking,
   currentUserId,
+  bookingLoaded = true,
+  bookingLoading = false,
+  bookingSource = "live",
   canRespond,
   responding,
   cancelling,
@@ -49,6 +52,9 @@ export default function BookingRequestCard({
 }: {
   booking: BookingRequest;
   currentUserId: string | null;
+  bookingLoaded?: boolean;
+  bookingLoading?: boolean;
+  bookingSource?: "live" | "display";
   canRespond: boolean;
   responding: boolean;
   cancelling?: boolean;
@@ -73,14 +79,18 @@ export default function BookingRequestCard({
   const cancellationReasonLabel = resolveBookingCancellationReasonLabel(booking);
   const isCancelled = booking.status === "cancelled";
   const isPending = booking.status === "pending";
-  const pendingProposal = hasPendingRateProposal(booking);
-  const showDjOpenOfferActions = canProposeBookingRate(booking, currentUserId);
+  const pendingProposal = bookingLoaded && hasPendingRateProposal(booking);
+  const showDjOpenOfferActions =
+    bookingLoaded && canProposeBookingRate(booking, currentUserId);
   const canReviewProposal =
+    bookingLoaded &&
     canRespondToRateProposal(booking, currentUserId) &&
     Boolean(onAcceptProposal && onKeepOriginalOffer);
   const actionDisabled = responding || cancelling || proposalLoading;
   const offerRateLabel = getBookingOfferRateLabel(booking);
   const rateDetailLabel = getBookingRateDetailLabel(booking);
+  const showOpenOfferLabel = bookingLoaded && booking.rate_mode === "open" && !pendingProposal;
+  const showActionButtons = bookingLoaded && !bookingLoading;
 
   async function handleProposeRate(rateDigits: string, note: string) {
     if (!onProposeRate) {
@@ -110,6 +120,11 @@ export default function BookingRequestCard({
           </div>
           <div className="flex shrink-0 flex-col items-end gap-1">
             <BookingStatusBadge status={booking.status} />
+            {showOpenOfferLabel ? (
+              <span className="inline-flex rounded-full border border-ftc-border-subtle bg-ftc-bg-elevated px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-ftc-primary">
+                Open to offers
+              </span>
+            ) : null}
             {pendingProposal ? (
               <span className="inline-flex rounded-full border border-ftc-border-subtle bg-ftc-bg-elevated px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-ftc-primary">
                 Rate proposed
@@ -180,7 +195,11 @@ export default function BookingRequestCard({
           </>
         ) : null}
 
-        {canRespond && isPending && !pendingProposal ? (
+        {bookingLoading ? (
+          <p className="mt-4 text-xs text-ftc-text-muted">Loading booking…</p>
+        ) : null}
+
+        {showActionButtons && canRespond && isPending && !pendingProposal ? (
           <div className="mt-4 flex flex-col gap-2">
             {showDjOpenOfferActions ? (
               <>
@@ -234,7 +253,11 @@ export default function BookingRequestCard({
           </div>
         ) : null}
 
-        {canRespond && isPending && pendingProposal && booking.recipient_id === currentUserId ? (
+        {showActionButtons &&
+        canRespond &&
+        isPending &&
+        pendingProposal &&
+        booking.recipient_id === currentUserId ? (
           <div className="mt-4">
             <button
               type="button"

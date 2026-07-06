@@ -312,49 +312,15 @@ export function canProposeBookingRate(
   );
 }
 
-export function enrichBookingForDmDisplay(
-  booking: BookingRequest,
-  messageText: string,
-  currentUserId: string | null,
-  isOwnMessage: boolean,
-): BookingRequest {
-  let next = booking;
-  const parsed = parseBookingRequestMessage(messageText);
-  const parsedRateMode = parseOfferTypeFromMessage(parsed?.offerType ?? null);
-
-  if (next.rate_mode !== "open" && parsedRateMode === "open") {
-    next = { ...next, rate_mode: "open" };
-  }
-
-  if (!next.recipient_id?.trim() && currentUserId && !isOwnMessage) {
-    next = { ...next, recipient_id: currentUserId };
-  }
-
-  if (!next.sender_id?.trim() && isOwnMessage && currentUserId) {
-    next = { ...next, sender_id: currentUserId };
-  }
-
-  return next;
-}
-
 export function canRecipientRespondToPendingBooking(
   booking: BookingRequest,
   currentUserId: string | null,
-  isOwnMessage = false,
 ): boolean {
   if (normalizeBookingRequestStatus(booking.status) !== "pending" || !booking.id?.trim()) {
     return false;
   }
 
-  if (currentUserId && booking.recipient_id === currentUserId) {
-    return true;
-  }
-
-  if (!booking.recipient_id?.trim() && !isOwnMessage) {
-    return true;
-  }
-
-  return false;
+  return Boolean(currentUserId && booking.recipient_id === currentUserId);
 }
 
 function parseOfferTypeFromMessage(value: string | null | undefined): BookingRateMode | null {
@@ -1006,26 +972,18 @@ export function getBookingMutationErrorMessage(error: unknown): string {
 export async function getBookingRequestsForConversation(
   conversationId: string,
 ): Promise<BookingRequest[]> {
-  const loadBookings = async (fields: string) => {
-    const { data, error } = await supabase
-      .from("booking_requests")
-      .select(fields)
-      .eq("conversation_id", conversationId)
-      .order("created_at", { ascending: true });
+  const { data, error } = await supabase
+    .from("booking_requests")
+    .select(BOOKING_REQUEST_FIELDS)
+    .eq("conversation_id", conversationId)
+    .order("created_at", { ascending: true });
 
-    if (error) {
-      throw error;
-    }
-
-    return mapBookingRequestRows(data);
-  };
-
-  try {
-    return await loadBookings("*");
-  } catch (primaryError) {
-    console.error("[bookings] conversation booking load failed, retrying legacy fields:", primaryError);
-    return await loadBookings(LEGACY_BOOKING_REQUEST_FIELDS);
+  if (error) {
+    logBookingsLoadError(error);
+    throw error;
   }
+
+  return mapBookingRequestRows(data);
 }
 
 export async function fetchBookingRequestsByIds(bookingIds: string[]): Promise<BookingRequest[]> {
@@ -1035,25 +993,106 @@ export async function fetchBookingRequestsByIds(bookingIds: string[]): Promise<B
     return [];
   }
 
-  const loadBookings = async (fields: string) => {
-    const { data, error } = await supabase
-      .from("booking_requests")
-      .select(fields)
-      .in("id", uniqueIds);
+  const { data, error } = await supabase
+    .from("booking_requests")
+    .select(BOOKING_REQUEST_FIELDS)
+    .in("id", uniqueIds);
 
-    if (error) {
-      throw error;
+  if (error) {
+    logBookingsLoadError(error);
+    throw error;
+  }
+
+  return mapBookingRequestRows(data);
+}
+
+export function mergeBookingRequests(
+  existing: BookingRequest[],
+  incoming: BookingRequest[],
+): BookingRequest[] {
+  const merged = new Map(existing.map((booking) => [booking.id, booking]));
+
+  for (const booking of incoming) {
+    merged.set(booking.id, booking);
+  }
+
+  return [...merged.values()].sort(
+    (left, right) => new Date(left.created_at).getTime() - new Date(right.created_at).getTime(),
+  );
+}
+
+export function extractBookingIdsFromMessages(
+  messages: Array<{ text: string }>,
+): string[] {
+  const ids = new Set<string>();
+
+  for (const message of messages) {
+    if (!isBookingRequestMessage(message.text)) {
+      continue;
     }
 
-    return mapBookingRequestRows(data);
-  };
+    const parsed = parseBookingRequestMessage(message.text);
 
-  try {
-    return await loadBookings("*");
-  } catch (primaryError) {
-    console.error("[bookings] booking id load failed, retrying legacy fields:", primaryError);
-    return await loadBookings(LEGACY_BOOKING_REQUEST_FIELDS);
+    if (parsed?.bookingId) {
+      ids.add(parsed.bookingId);
+    }
   }
+
+  return [...ids];
+}
+
+export function isBookingRateProposalSchemaError(error: unknown): boolean {
+  if (!error || typeof error !== "object") {
+    return false;
+  }
+
+  const supabaseError = error as { message?: string; code?: string };
+
+  return (
+    supabaseError.code === "42703" ||
+    supabaseError.code === "PGRST204" ||
+    Boolean(supabaseError.message?.includes("rate_mode")) ||
+    Boolean(supabaseError.message?.includes("proposed_rate"))
+  );
+}
+
+export const BOOKING_RATE_PROPOSAL_SCHEMA_RELOAD_SQL = "NOTIFY pgrst, 'reload schema';";
+
+export function buildBookingDisplayFromMessage(
+  messageText: string,
+  conversationId: string,
+): BookingRequest | null {
+  const parsed = parseBookingRequestMessage(messageText);
+
+  if (!parsed?.eventName || !parsed.bookingId) {
+    return null;
+  }
+
+  return {
+    id: parsed.bookingId,
+    created_at: new Date().toISOString(),
+    sender_id: "",
+    recipient_id: "",
+    conversation_id: conversationId,
+    event_id: null,
+    event_name: parsed.eventName,
+    venue: parsed.venue ?? "",
+    event_date: parsed.eventDate ?? "",
+    set_time: parsed.setTime ?? "",
+    fee: normalizeStoredRate(parsed.fee ?? ""),
+    notes: parsed.notes === "None" ? "" : parsed.notes ?? "",
+    status: normalizeBookingRequestStatus(parsed.status ?? "pending"),
+    archived_at: null,
+    lineup_hidden_at: null,
+    cancelled_at: null,
+    cancelled_by: null,
+    cancellation_reason: null,
+    rate_mode: "fixed",
+    proposed_rate: null,
+    proposed_rate_note: null,
+    proposed_rate_at: null,
+    proposed_rate_status: null,
+  };
 }
 
 export async function sendBookingRequestToDj(
@@ -1111,9 +1150,6 @@ export async function sendBookingRequestToDj(
 
 const BOOKING_REQUEST_FIELDS =
   "id, created_at, sender_id, recipient_id, conversation_id, event_id, event_name, venue, event_date, set_time, fee, notes, status, archived_at, lineup_hidden_at, cancelled_at, cancelled_by, cancellation_reason, rate_mode, proposed_rate, proposed_rate_note, proposed_rate_at, proposed_rate_status";
-
-const LEGACY_BOOKING_REQUEST_FIELDS =
-  "id, created_at, sender_id, recipient_id, conversation_id, event_id, event_name, venue, event_date, set_time, fee, notes, status, archived_at, lineup_hidden_at, cancelled_at, cancelled_by, cancellation_reason";
 
 export function getEventLineupStats(bookings: BookingRequest[]): BookingCampaignStats {
   return bookings.reduce(

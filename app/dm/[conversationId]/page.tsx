@@ -17,20 +17,23 @@ import ProfileAvatar from "@/app/components/ProfileAvatar";
 import {
   buildDmCancelledBookingMatchContext,
   acceptProposedBookingRate,
+  buildBookingDisplayFromMessage,
   cancelAcceptedBookingRequest,
   cancelBookingRequest,
   CANCELLED_BOOKING_DM_SYSTEM_MESSAGE,
   canRecipientRespondToPendingBooking,
   declineProposedBookingRate,
-  enrichBookingForDmDisplay,
   evaluateDmBookingCardVisibility,
+  extractBookingIdsFromMessages,
   fetchBookingRequestsByIds,
   getBookingMutationErrorMessage,
   getBookingRequestsForConversation,
+  isBookingRateProposalSchemaError,
   isBookingRequestMessage,
+  mergeBookingRequests,
+  BOOKING_RATE_PROPOSAL_SCHEMA_RELOAD_SQL,
   parseBookingRequestMessage,
   proposeBookingRate,
-  resolveBookingForDmMessage,
   updateBookingRequestStatus,
   type BookingRequest,
 } from "@/lib/bookingRequests";
@@ -111,6 +114,8 @@ export default function DmChatPage() {
   const [attachments, setAttachments] = useState<DmMessageAttachment[]>([]);
   const [reactions, setReactions] = useState<DmMessageReaction[]>([]);
   const [bookings, setBookings] = useState<BookingRequest[]>([]);
+  const [loadingBookingIds, setLoadingBookingIds] = useState<Set<string>>(new Set());
+  const [failedBookingIds, setFailedBookingIds] = useState<Set<string>>(new Set());
   const [eventArtworkById, setEventArtworkById] = useState<Map<string, EventArtworkSnapshot>>(
     new Map(),
   );
@@ -160,6 +165,10 @@ export default function DmChatPage() {
 
   const conversationTitle = getConversationTitle(otherUserProfile);
   const otherUserLabel = resolveUserDisplayName(otherUserProfile);
+  const bookingsById = useMemo(
+    () => new Map(bookings.map((booking) => [booking.id, booking])),
+    [bookings],
+  );
   const bookingProfiles = useMemo(() => {
     if (!otherUserId || !otherUserProfile) {
       return new Map<string, BookingRecipientProfile>();
@@ -443,7 +452,17 @@ export default function DmChatPage() {
     }
 
     try {
-      const nextBookings = await getBookingRequestsForConversation(conversationId);
+      let nextBookings = await getBookingRequestsForConversation(conversationId);
+      const messageBookingIds = extractBookingIdsFromMessages(messages);
+      const missingBookingIds = messageBookingIds.filter(
+        (bookingId) => !nextBookings.some((booking) => booking.id === bookingId),
+      );
+
+      if (missingBookingIds.length > 0) {
+        const fetchedById = await fetchBookingRequestsByIds(missingBookingIds);
+        nextBookings = mergeBookingRequests(nextBookings, fetchedById);
+      }
+
       setBookings(nextBookings);
       await syncEventArtwork(nextBookings);
       console.log("[dm booking] reloaded conversation bookings", {
@@ -466,18 +485,74 @@ export default function DmChatPage() {
     async function loadConversationData() {
       setLoading(true);
       setError(null);
+      setFailedBookingIds(new Set());
+      setLoadingBookingIds(new Set());
 
-      const [messagesResult, bookingsResult, attachmentsResult, reactionsResult] = await Promise.all([
-        supabase
-          .from("messages")
-          .select("*")
-          .eq("conversation_id", conversationId)
-          .order("created_at", { ascending: true }),
-        getBookingRequestsForConversation(conversationId).catch((bookingError) => {
-          console.error("Failed to load booking requests:", bookingError);
-          setError(getBookingMutationErrorMessage(bookingError));
-          return [] as BookingRequest[];
-        }),
+      const messagesResult = await supabase
+        .from("messages")
+        .select("*")
+        .eq("conversation_id", conversationId)
+        .order("created_at", { ascending: true });
+
+      if (messagesResult.error) {
+        setError(messagesResult.error.message);
+        setLoading(false);
+        return;
+      }
+
+      const loadedMessages = (messagesResult.data as Message[]) ?? [];
+      const messageBookingIds = extractBookingIdsFromMessages(loadedMessages);
+      let bookingsResult: BookingRequest[] = [];
+      let bookingLoadError: string | null = null;
+
+      try {
+        bookingsResult = await getBookingRequestsForConversation(conversationId);
+      } catch (bookingError) {
+        console.error("Failed to load conversation booking requests:", bookingError);
+        if (isBookingRateProposalSchemaError(bookingError)) {
+          bookingLoadError = `Booking rate fields are missing from the API schema. Run this in Supabase SQL Editor: ${BOOKING_RATE_PROPOSAL_SCHEMA_RELOAD_SQL}`;
+        } else {
+          bookingLoadError = getBookingMutationErrorMessage(bookingError);
+        }
+      }
+
+      const missingBookingIds = messageBookingIds.filter(
+        (bookingId) => !bookingsResult.some((booking) => booking.id === bookingId),
+      );
+
+      if (missingBookingIds.length > 0) {
+        setLoadingBookingIds(new Set(missingBookingIds));
+
+        try {
+          const fetchedById = await fetchBookingRequestsByIds(missingBookingIds);
+          bookingsResult = mergeBookingRequests(bookingsResult, fetchedById);
+          const unresolvedIds = missingBookingIds.filter(
+            (bookingId) => !fetchedById.some((booking) => booking.id === bookingId),
+          );
+
+          if (unresolvedIds.length > 0) {
+            setFailedBookingIds(new Set(unresolvedIds));
+            console.error("[dm booking] could not hydrate bookings by id:", unresolvedIds);
+          }
+        } catch (bookingError) {
+          console.error("Failed to hydrate booking requests by id:", bookingError);
+          setFailedBookingIds(new Set(missingBookingIds));
+
+          if (isBookingRateProposalSchemaError(bookingError)) {
+            bookingLoadError = `Booking rate fields are missing from the API schema. Run this in Supabase SQL Editor: ${BOOKING_RATE_PROPOSAL_SCHEMA_RELOAD_SQL}`;
+          } else if (!bookingLoadError) {
+            bookingLoadError = getBookingMutationErrorMessage(bookingError);
+          }
+        } finally {
+          setLoadingBookingIds(new Set());
+        }
+      }
+
+      if (bookingLoadError) {
+        setError(bookingLoadError);
+      }
+
+      const [attachmentsResult, reactionsResult] = await Promise.all([
         listDmAttachmentsForConversation(conversationId).catch((attachmentError) => {
           console.error("Failed to load message attachments:", attachmentError);
           return [] as DmMessageAttachment[];
@@ -488,20 +563,10 @@ export default function DmChatPage() {
         }),
       ]);
 
-      if (messagesResult.error) {
-        setError(messagesResult.error.message);
-        setLoading(false);
-        return;
-      }
-
       const userId = await getCurrentUserId();
       setCurrentUserId(userId);
 
-      setMessages(
-        ((messagesResult.data as Message[]) ?? []).map((message) =>
-          tagChatMessageForScroll(message, userId),
-        ),
-      );
+      setMessages(loadedMessages.map((message) => tagChatMessageForScroll(message, userId)));
       setBookings(bookingsResult);
       setAttachments(attachmentsResult);
       setReactions(reactionsResult);
@@ -509,6 +574,7 @@ export default function DmChatPage() {
       console.log("[dm booking] loaded conversation bookings", {
         conversationId,
         bookingCount: bookingsResult.length,
+        messageBookingIds,
         cancelledBookingIds: bookingsResult
           .filter((booking) => booking.status?.toLowerCase() === "cancelled")
           .map((booking) => booking.id),
@@ -546,65 +612,67 @@ export default function DmChatPage() {
   }, [conversationId]);
 
   useEffect(() => {
-    if (loading || !conversationId || !currentUserId) {
+    if (loading || !conversationId) {
       return;
     }
 
-    const missingIds = new Set<string>();
+    const missingIds = extractBookingIdsFromMessages(messages).filter(
+      (bookingId) =>
+        !bookingsById.has(bookingId) &&
+        !loadingBookingIds.has(bookingId) &&
+        !failedBookingIds.has(bookingId),
+    );
 
-    for (const message of messages) {
-      if (!isBookingRequestMessage(message.text)) {
-        continue;
-      }
-
-      const parsed = parseBookingRequestMessage(message.text);
-
-      if (!parsed?.bookingId) {
-        continue;
-      }
-
-      if (bookings.some((booking) => booking.id === parsed.bookingId)) {
-        continue;
-      }
-
-      missingIds.add(parsed.bookingId);
-    }
-
-    if (missingIds.size === 0) {
+    if (missingIds.length === 0) {
       return;
     }
 
     let cancelled = false;
 
+    setLoadingBookingIds((prev) => new Set([...prev, ...missingIds]));
+
     void (async () => {
       try {
-        const fetched = await fetchBookingRequestsByIds([...missingIds]);
+        const fetched = await fetchBookingRequestsByIds(missingIds);
 
-        if (cancelled || fetched.length === 0) {
+        if (cancelled) {
           return;
         }
 
-        setBookings((prev) => {
-          const merged = new Map(prev.map((booking) => [booking.id, booking]));
+        if (fetched.length > 0) {
+          setBookings((prev) => mergeBookingRequests(prev, fetched));
+        }
 
-          for (const booking of fetched) {
-            merged.set(booking.id, booking);
-          }
+        const unresolvedIds = missingIds.filter(
+          (bookingId) => !fetched.some((booking) => booking.id === bookingId),
+        );
 
-          return [...merged.values()].sort(
-            (left, right) =>
-              new Date(left.created_at).getTime() - new Date(right.created_at).getTime(),
-          );
-        });
+        if (unresolvedIds.length > 0) {
+          setFailedBookingIds((prev) => new Set([...prev, ...unresolvedIds]));
+          console.error("[dm booking] could not hydrate bookings by id:", unresolvedIds);
+        }
       } catch (fetchError) {
         console.error("[dm booking] failed to hydrate missing bookings:", fetchError);
+        if (!cancelled) {
+          setFailedBookingIds((prev) => new Set([...prev, ...missingIds]));
+        }
+      } finally {
+        if (!cancelled) {
+          setLoadingBookingIds((prev) => {
+            const next = new Set(prev);
+            for (const bookingId of missingIds) {
+              next.delete(bookingId);
+            }
+            return next;
+          });
+        }
       }
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [loading, conversationId, currentUserId, messages, bookings]);
+  }, [loading, conversationId, messages, bookingsById, loadingBookingIds, failedBookingIds]);
 
   useEffect(() => {
     if (!conversationId) {
@@ -1290,46 +1358,96 @@ export default function DmChatPage() {
           >
             {reversedMessages.map((message) => {
               const isOwnMessage = currentUserId !== null && message.user_id === currentUserId;
-              const bookingData = resolveBookingForDmMessage(
+              const isBookingMessage = isBookingRequestMessage(message.text);
+
+              if (!isBookingMessage) {
+                return (
+                  <DmTextMessageBubble
+                    key={message.id}
+                    messageId={message.id}
+                    text={message.text}
+                    createdAt={message.created_at}
+                    isOwnMessage={isOwnMessage}
+                    otherUserLabel={otherUserLabel}
+                    otherUserAvatarUrl={otherUserProfile?.avatar_url}
+                    attachments={attachmentsByMessageId.get(message.id) ?? []}
+                    reactions={reactionsByMessageId.get(message.id) ?? []}
+                    currentUserId={currentUserId}
+                    showReactionPicker={reactionPickerMessageId === message.id}
+                    reacting={reactingMessageId === message.id}
+                    onToggleReaction={(emoji) => void handleToggleReaction(message.id, emoji)}
+                    onOpenReactionPicker={() => setReactionPickerMessageId(message.id)}
+                    onCloseReactionPicker={() =>
+                      setReactionPickerMessageId((current) =>
+                        current === message.id ? null : current,
+                      )
+                    }
+                    onReportMessage={
+                      !isOwnMessage
+                        ? () =>
+                            setReportMessageTarget({
+                              messageId: message.id,
+                              reportedUserId: message.user_id,
+                            })
+                        : undefined
+                    }
+                    formatTime={formatMessageTime}
+                    isHighlighted={isMessageHighlighted(message.id)}
+                    showSeen={shouldShowSeenOnMessage(message.id, message.created_at)}
+                  />
+                );
+              }
+
+              const parsedBooking = parseBookingRequestMessage(message.text);
+              const bookingId = parsedBooking?.bookingId ?? null;
+              const liveBooking = bookingId ? bookingsById.get(bookingId) ?? null : null;
+              const displayBooking =
+                buildBookingDisplayFromMessage(message.text, conversationId) ?? liveBooking;
+              const bookingLoading = Boolean(
+                bookingId && !liveBooking && loadingBookingIds.has(bookingId),
+              );
+              const bookingLoaded = Boolean(liveBooking);
+              const bookingSource = bookingLoaded ? "live" : "display";
+              const cardBooking = liveBooking ?? displayBooking;
+
+              if (!cardBooking) {
+                return null;
+              }
+
+              const cardVisibility = evaluateDmBookingCardVisibility(
                 message.text,
                 bookings,
                 conversationId,
               );
-              const isBookingMessage = Boolean(
-                bookingData && isBookingRequestMessage(message.text),
+              const resolvedBooking = resolveEventLinkedBookingDisplay(
+                cardBooking,
+                cardBooking.event_id ? eventArtworkById.get(cardBooking.event_id) : undefined,
               );
+              const actionBooking = liveBooking
+                ? resolveEventLinkedBookingDisplay(
+                    liveBooking,
+                    liveBooking.event_id ? eventArtworkById.get(liveBooking.event_id) : undefined,
+                  )
+                : null;
 
-              if (isBookingMessage && bookingData) {
-                const cardVisibility = evaluateDmBookingCardVisibility(
-                  message.text,
-                  bookings,
-                  conversationId,
-                );
-                const storedBooking = bookingData;
-                const resolvedBooking = enrichBookingForDmDisplay(
-                  resolveEventLinkedBookingDisplay(
-                    storedBooking,
-                    storedBooking.event_id
-                      ? eventArtworkById.get(storedBooking.event_id)
-                      : undefined,
-                  ),
-                  message.text,
-                  currentUserId,
-                  isOwnMessage,
-                );
+              console.log("[dm booking] card decision", {
+                messageId: message.id,
+                bookingId,
+                bookingLoaded,
+                bookingLoading,
+                bookingSource,
+                rateMode: actionBooking?.rate_mode ?? resolvedBooking.rate_mode,
+                recipientId: actionBooking?.recipient_id ?? resolvedBooking.recipient_id,
+                parsedEventName: cardVisibility.parsedEventName,
+                parsedEventDate: cardVisibility.parsedEventDate,
+                parsedRate: cardVisibility.parsedRate,
+                matchedBookingId: cardVisibility.matchedBookingId,
+                matchedBookingStatus: cardVisibility.matchedBookingStatus,
+                cancelledBookingIds: [...cancelledBookingContext.cancelledBookingIds],
+                cardHidden: cardVisibility.hideCard,
+              });
 
-                console.log("[dm booking] card decision", {
-                  messageId: message.id,
-                  parsedEventName: cardVisibility.parsedEventName,
-                  parsedEventDate: cardVisibility.parsedEventDate,
-                  parsedRate: cardVisibility.parsedRate,
-                  matchedBookingId: cardVisibility.matchedBookingId,
-                  matchedBookingStatus: cardVisibility.matchedBookingStatus,
-                  cancelledBookingIds: [...cancelledBookingContext.cancelledBookingIds],
-                  cardHidden: cardVisibility.hideCard,
-                });
-
-                if (cardVisibility.hideCard) {
+              if (cardVisibility.hideCard) {
                   const highlighted = isMessageHighlighted(message.id);
                   logChatHighlightRender(message.id, highlighted);
 
@@ -1356,11 +1474,9 @@ export default function DmChatPage() {
                   );
                 }
 
-                const canRespond = canRecipientRespondToPendingBooking(
-                  resolvedBooking,
-                  currentUserId,
-                  isOwnMessage,
-                );
+                const canRespond = actionBooking
+                  ? canRecipientRespondToPendingBooking(actionBooking, currentUserId)
+                  : false;
                 const highlighted = isMessageHighlighted(message.id);
                 logChatHighlightRender(message.id, highlighted);
 
@@ -1389,10 +1505,19 @@ export default function DmChatPage() {
                           <BookingRequestCard
                             booking={resolvedBooking}
                             currentUserId={currentUserId}
-                            canRespond={canRespond && Boolean(resolvedBooking.id)}
-                            responding={respondingBookingId === resolvedBooking.id}
-                            cancelling={cancellingBookingId === resolvedBooking.id}
-                            proposalLoading={proposalLoadingId === resolvedBooking.id}
+                            bookingLoaded={bookingLoaded}
+                            bookingLoading={bookingLoading}
+                            bookingSource={bookingSource}
+                            canRespond={canRespond}
+                            responding={
+                              actionBooking ? respondingBookingId === actionBooking.id : false
+                            }
+                            cancelling={
+                              actionBooking ? cancellingBookingId === actionBooking.id : false
+                            }
+                            proposalLoading={
+                              actionBooking ? proposalLoadingId === actionBooking.id : false
+                            }
                             profiles={bookingProfiles}
                             coverImageUrl={
                               resolvedBooking.event_id
@@ -1404,23 +1529,40 @@ export default function DmChatPage() {
                                 ? eventArtworkById.get(resolvedBooking.event_id)?.fallbackColour
                                 : undefined
                             }
-                            onAccept={() =>
-                              handleBookingResponse(resolvedBooking, message, "accepted")
+                            onAccept={() => {
+                              if (actionBooking) {
+                                void handleBookingResponse(actionBooking, message, "accepted");
+                              }
+                            }}
+                            onDecline={() => {
+                              if (actionBooking) {
+                                void handleBookingResponse(actionBooking, message, "declined");
+                              }
+                            }}
+                            onCancel={() =>
+                              actionBooking
+                                ? handleBookingCancel(actionBooking, message)
+                                : undefined
                             }
-                            onDecline={() =>
-                              handleBookingResponse(resolvedBooking, message, "declined")
-                            }
-                            onCancel={() => handleBookingCancel(resolvedBooking, message)}
                             onCancelAccepted={(reason) =>
-                              handleCancelAcceptedBooking(resolvedBooking, message, reason)
+                              actionBooking
+                                ? handleCancelAcceptedBooking(actionBooking, message, reason)
+                                : undefined
                             }
-                            onProposeRate={(proposedRate, note) =>
-                              handleProposeRate(resolvedBooking, proposedRate, note)
+                            onProposeRate={
+                              actionBooking
+                                ? (proposedRate, note) =>
+                                    handleProposeRate(actionBooking, proposedRate, note)
+                                : undefined
                             }
                             onAcceptProposal={() =>
-                              handleAcceptProposedRate(resolvedBooking, message)
+                              actionBooking
+                                ? handleAcceptProposedRate(actionBooking, message)
+                                : undefined
                             }
-                            onKeepOriginalOffer={() => handleKeepOriginalOffer(resolvedBooking)}
+                            onKeepOriginalOffer={() =>
+                              actionBooking ? handleKeepOriginalOffer(actionBooking) : undefined
+                            }
                           />
                         </div>
                         <time
@@ -1439,44 +1581,7 @@ export default function DmChatPage() {
                     </div>
                   </li>
                 );
-              }
-
-              return (
-                <DmTextMessageBubble
-                  key={message.id}
-                  messageId={message.id}
-                  text={message.text}
-                  createdAt={message.created_at}
-                  isOwnMessage={isOwnMessage}
-                  otherUserLabel={otherUserLabel}
-                  otherUserAvatarUrl={otherUserProfile?.avatar_url}
-                  attachments={attachmentsByMessageId.get(message.id) ?? []}
-                  reactions={reactionsByMessageId.get(message.id) ?? []}
-                  currentUserId={currentUserId}
-                  showReactionPicker={reactionPickerMessageId === message.id}
-                  reacting={reactingMessageId === message.id}
-                  onToggleReaction={(emoji) => void handleToggleReaction(message.id, emoji)}
-                  onOpenReactionPicker={() => setReactionPickerMessageId(message.id)}
-                  onCloseReactionPicker={() =>
-                    setReactionPickerMessageId((current) =>
-                      current === message.id ? null : current,
-                    )
-                  }
-                  onReportMessage={
-                    !isOwnMessage
-                      ? () =>
-                          setReportMessageTarget({
-                            messageId: message.id,
-                            reportedUserId: message.user_id,
-                          })
-                      : undefined
-                  }
-                  formatTime={formatMessageTime}
-                  isHighlighted={isMessageHighlighted(message.id)}
-                  showSeen={shouldShowSeenOnMessage(message.id, message.created_at)}
-                />
-                );
-              })}
+            })}
           </ul>
         )}
       </div>
