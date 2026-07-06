@@ -20,13 +20,14 @@ import {
   cancelAcceptedBookingRequest,
   cancelBookingRequest,
   CANCELLED_BOOKING_DM_SYSTEM_MESSAGE,
+  canRecipientRespondToPendingBooking,
   declineProposedBookingRate,
   evaluateDmBookingCardVisibility,
   getBookingMutationErrorMessage,
   getBookingRequestsForConversation,
   isBookingRequestMessage,
-  mergeBookingWithMessage,
   proposeBookingRate,
+  resolveBookingForDmMessage,
   updateBookingRequestStatus,
   type BookingRequest,
 } from "@/lib/bookingRequests";
@@ -471,6 +472,7 @@ export default function DmChatPage() {
           .order("created_at", { ascending: true }),
         getBookingRequestsForConversation(conversationId).catch((bookingError) => {
           console.error("Failed to load booking requests:", bookingError);
+          setError(getBookingMutationErrorMessage(bookingError));
           return [] as BookingRequest[];
         }),
         listDmAttachmentsForConversation(conversationId).catch((attachmentError) => {
@@ -490,6 +492,7 @@ export default function DmChatPage() {
       }
 
       const userId = await getCurrentUserId();
+      setCurrentUserId(userId);
 
       setMessages(
         ((messagesResult.data as Message[]) ?? []).map((message) =>
@@ -903,6 +906,9 @@ export default function DmChatPage() {
     } catch (proposalError) {
       console.error("Failed to propose booking rate:", proposalError);
       setError(getBookingMutationErrorMessage(proposalError));
+      throw proposalError instanceof Error
+        ? proposalError
+        : new Error(getBookingMutationErrorMessage(proposalError));
     } finally {
       setProposalLoadingId(null);
     }
@@ -1220,8 +1226,7 @@ export default function DmChatPage() {
           >
             {reversedMessages.map((message) => {
               const isOwnMessage = currentUserId !== null && message.user_id === currentUserId;
-              const bookingData = mergeBookingWithMessage(
-                null,
+              const bookingData = resolveBookingForDmMessage(
                 message.text,
                 bookings,
                 conversationId,
@@ -1236,8 +1241,7 @@ export default function DmChatPage() {
                   bookings,
                   conversationId,
                 );
-                const storedBooking =
-                  bookings.find((booking) => booking.id === bookingData.id) ?? bookingData;
+                const storedBooking = bookingData;
                 const resolvedBooking = resolveEventLinkedBookingDisplay(
                   storedBooking,
                   storedBooking.event_id
@@ -1283,10 +1287,11 @@ export default function DmChatPage() {
                   );
                 }
 
-                const canRespond =
-                  resolvedBooking.status === "pending" &&
-                  (resolvedBooking.recipient_id === currentUserId ||
-                    (!resolvedBooking.recipient_id && !isOwnMessage));
+                const canRespond = canRecipientRespondToPendingBooking(
+                  resolvedBooking,
+                  currentUserId,
+                  isOwnMessage,
+                );
                 const highlighted = isMessageHighlighted(message.id);
                 logChatHighlightRender(message.id, highlighted);
 

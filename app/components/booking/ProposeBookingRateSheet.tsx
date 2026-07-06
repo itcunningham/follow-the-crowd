@@ -68,7 +68,7 @@ export default function ProposeBookingRateSheet({
             Cancel
           </BookingSheetSecondaryButton>
           <BookingSheetPrimaryButton disabled={loading} onClick={() => void handleSubmit()}>
-            {loading ? "Sending..." : "Send rate proposal"}
+            {loading ? "Sending..." : "Send proposal"}
           </BookingSheetPrimaryButton>
         </>
       }
@@ -83,7 +83,7 @@ export default function ProposeBookingRateSheet({
         <BookingFormField
           label="Note (optional)"
           value={note}
-          onChange={setNote}
+          onChange={(value) => setNote(value.slice(0, MAX_NOTE_LENGTH))}
           placeholder="Travel, set length, equipment..."
           multiline
         />

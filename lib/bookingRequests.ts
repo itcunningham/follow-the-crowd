@@ -303,8 +303,47 @@ export function canProposeBookingRate(
     booking.recipient_id === currentUserId &&
     booking.status === "pending" &&
     booking.rate_mode === "open" &&
-    !hasPendingRateProposal(booking)
+    !hasPendingRateProposal(booking) &&
+    (booking.proposed_rate_status == null || booking.proposed_rate_status === "declined")
   );
+}
+
+export function canRecipientRespondToPendingBooking(
+  booking: BookingRequest,
+  currentUserId: string | null,
+  isOwnMessage = false,
+): boolean {
+  if (normalizeBookingRequestStatus(booking.status) !== "pending" || !booking.id?.trim()) {
+    return false;
+  }
+
+  if (currentUserId && booking.recipient_id === currentUserId) {
+    return true;
+  }
+
+  if (!booking.recipient_id?.trim() && !isOwnMessage) {
+    return true;
+  }
+
+  return false;
+}
+
+function parseOfferTypeFromMessage(value: string | null | undefined): BookingRateMode | null {
+  if (!value?.trim()) {
+    return null;
+  }
+
+  const normalized = value.trim().toLowerCase();
+
+  if (normalized.includes("open")) {
+    return "open";
+  }
+
+  if (normalized.includes("fixed")) {
+    return "fixed";
+  }
+
+  return null;
 }
 
 export function canRespondToRateProposal(
@@ -471,6 +510,7 @@ export function formatBookingRequestMessage(booking: BookingRequest): string {
     `Venue: ${booking.venue}`,
     `Date: ${booking.event_date}`,
     `Set time: ${booking.set_time}`,
+    `Offer type: ${booking.rate_mode === "open" ? "Open offer" : "Fixed offer"}`,
     `Rate: ${formatRateDisplay(booking.fee)}`,
     `Notes: ${booking.notes || "None"}`,
     `Status: ${formatStatusLabel(booking.status)}`,
@@ -495,6 +535,7 @@ export function parseBookingRequestMessage(text: string): {
   venue: string | null;
   eventDate: string | null;
   setTime: string | null;
+  offerType: string | null;
   fee: string | null;
   notes: string | null;
   status: BookingRequestStatus | null;
@@ -533,6 +574,7 @@ export function parseBookingRequestMessage(text: string): {
     venue: values.venue ?? null,
     eventDate: values.date ?? null,
     setTime: values["set time"] ?? null,
+    offerType: values["offer type"] ?? null,
     fee: normalizeStoredRate(values.rate ?? values.fee ?? "") || null,
     notes: values.notes ?? null,
     status,
@@ -1772,6 +1814,28 @@ export function resolveBookingForMessage(
   return null;
 }
 
+export function resolveBookingForDmMessage(
+  messageText: string,
+  bookings: BookingRequest[],
+  conversationId: string,
+): BookingRequest | null {
+  if (!isBookingRequestMessage(messageText)) {
+    return null;
+  }
+
+  const parsed = parseBookingRequestMessage(messageText);
+
+  if (parsed?.bookingId) {
+    const fromStore = bookings.find((item) => item.id === parsed.bookingId);
+
+    if (fromStore) {
+      return fromStore;
+    }
+  }
+
+  return mergeBookingWithMessage(null, messageText, bookings, conversationId);
+}
+
 export function mergeBookingWithMessage(
   booking: BookingRequest | null,
   messageText: string,
@@ -1831,7 +1895,7 @@ export function mergeBookingWithMessage(
     cancelled_at: null,
     cancelled_by: null,
     cancellation_reason: null,
-    rate_mode: "fixed",
+    rate_mode: parseOfferTypeFromMessage(parsed.offerType) ?? "fixed",
     proposed_rate: null,
     proposed_rate_note: null,
     proposed_rate_at: null,

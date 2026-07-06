@@ -73,9 +73,8 @@ export default function BookingRequestCard({
   const cancellationReasonLabel = resolveBookingCancellationReasonLabel(booking);
   const isCancelled = booking.status === "cancelled";
   const isPending = booking.status === "pending";
-  const isOpenOffer = booking.rate_mode === "open";
   const pendingProposal = hasPendingRateProposal(booking);
-  const canPropose = canProposeBookingRate(booking, currentUserId) && Boolean(onProposeRate);
+  const showDjOpenOfferActions = canProposeBookingRate(booking, currentUserId);
   const canReviewProposal =
     canRespondToRateProposal(booking, currentUserId) &&
     Boolean(onAcceptProposal && onKeepOriginalOffer);
@@ -183,7 +182,7 @@ export default function BookingRequestCard({
 
         {canRespond && isPending && !pendingProposal ? (
           <div className="mt-4 flex flex-col gap-2">
-            {isOpenOffer ? (
+            {showDjOpenOfferActions ? (
               <>
                 <button
                   type="button"
@@ -193,7 +192,7 @@ export default function BookingRequestCard({
                 >
                   Accept offer
                 </button>
-                {canPropose ? (
+                {onProposeRate ? (
                   <button
                     type="button"
                     onClick={() => setProposeSheetOpen(true)}
