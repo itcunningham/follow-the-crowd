@@ -1670,6 +1670,9 @@ export async function sendBookingRequestsToDjs(
   input: BookingRequestInput,
   options?: {
     existingEventBookings?: BookingRequest[];
+    perRecipient?: (
+      recipientId: string,
+    ) => Partial<Pick<BookingRequestInput, "rateMode" | "fee">> | void;
   },
 ): Promise<{
   conversationIds: string[];
@@ -1692,7 +1695,15 @@ export async function sendBookingRequestsToDjs(
   const results = await Promise.all(
     targetRecipientIds.map(async (recipientId) => {
       try {
-        const { conversationId, booking } = await sendBookingRequestToDj(recipientId, input);
+        const recipientOverrides = options?.perRecipient?.(recipientId) ?? {};
+        const recipientInput: BookingRequestInput = {
+          ...input,
+          ...recipientOverrides,
+        };
+        const { conversationId, booking } = await sendBookingRequestToDj(
+          recipientId,
+          recipientInput,
+        );
         return {
           recipientId,
           conversationId,

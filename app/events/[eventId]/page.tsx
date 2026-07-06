@@ -39,7 +39,7 @@ import {
   isSelectableEventFallbackColourKey,
   type EventSelectableFallbackColourKey,
 } from "@/lib/events/eventFallbackColour";
-import { formatRateDisplay, normalizeStoredRate } from "@/lib/bookingRate";
+import { formatRateDisplay, isPositiveWholeDollarRate, normalizeStoredRate } from "@/lib/bookingRate";
 import EventBookingDuplicateBadge from "@/app/components/EventBookingDuplicateBadge";
 import UnavailableDjBookingConfirmModal from "@/app/components/UnavailableDjBookingConfirmModal";
 import {
@@ -48,7 +48,11 @@ import {
   type DjPlannerAvailabilityHint,
 } from "@/lib/djAvailability";
 import BookingStatusBadge from "@/app/components/booking/BookingStatusBadge";
-import BookingRateModeField from "@/app/components/booking/BookingRateModeField";
+import EventDjSendOfferControls, {
+  DEFAULT_DJ_SEND_OFFER,
+  formatDjSendOfferSummary,
+  type DjSendOffer,
+} from "@/app/components/booking/EventDjSendOfferControls";
 import BookingRateProposalPanel from "@/app/components/booking/BookingRateProposalPanel";
 import CancelBookingRequestButton from "@/app/components/CancelBookingRequestButton";
 import CancelAcceptedBookingButton from "@/app/components/booking/CancelAcceptedBookingButton";
@@ -74,10 +78,8 @@ import {
   hasPendingRateProposal,
   hideDeclinedBookingFromLineup,
   listBookingRequestsForEvent,
-  resolveBookingRequestRateMode,
   sendBookingRequestsToDjs,
   type ActiveBookingStatusFilter,
-  type BookingRateMode,
   type BookingRequest,
   type BookingRequestStatus,
 } from "@/lib/bookingRequests";
@@ -161,7 +163,7 @@ export default function EventDetailPage() {
   const editFormSectionRef = useRef<HTMLElement | null>(null);
 
   const [sendOpen, setSendOpen] = useState(false);
-  const [sendRateMode, setSendRateMode] = useState<BookingRateMode>("fixed");
+  const [djOffers, setDjOffers] = useState<Record<string, DjSendOffer>>({});
   const [djs, setDjs] = useState<UserProfile[]>([]);
   const [selectedDjIds, setSelectedDjIds] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -245,6 +247,29 @@ export default function EventDetailPage() {
 
   const allSelectedAreDuplicates =
     selectedDjIds.length > 0 && sendableSelectedDjIds.length === 0;
+
+  const sendOfferSummary = useMemo(() => {
+    return sendableSelectedDjIds.map((djId) => {
+      const dj = djs.find((item) => item.user_id === djId);
+      const offer = djOffers[djId] ?? DEFAULT_DJ_SEND_OFFER;
+
+      return {
+        djId,
+        name: dj?.display_name?.trim() || "DJ",
+        summary: formatDjSendOfferSummary(offer),
+      };
+    });
+  }, [sendableSelectedDjIds, djOffers, djs]);
+
+  const hasInvalidFixedOffers = useMemo(
+    () =>
+      sendableSelectedDjIds.some((djId) => {
+        const offer = djOffers[djId] ?? DEFAULT_DJ_SEND_OFFER;
+
+        return offer.rateMode === "fixed" && !isPositiveWholeDollarRate(offer.fee);
+      }),
+    [sendableSelectedDjIds, djOffers],
+  );
 
   const sendButtonLabel = sending
     ? "Sending..."
@@ -520,7 +545,7 @@ export default function EventDetailPage() {
     }
 
     setSendOpen(true);
-    setSendRateMode("fixed");
+    setDjOffers({});
     setSelectedDjIds([]);
     setSearchQuery("");
     setError(null);
@@ -554,16 +579,54 @@ export default function EventDetailPage() {
     }
 
     setSendOpen(false);
-    setSendRateMode("fixed");
+    setDjOffers({});
     setSelectedDjIds([]);
     setSearchQuery("");
     setUnavailableConfirmOpen(false);
   }
 
   function toggleDjSelection(userId: string) {
-    setSelectedDjIds((prev) =>
-      prev.includes(userId) ? prev.filter((id) => id !== userId) : [...prev, userId],
-    );
+    setSelectedDjIds((prev) => {
+      if (prev.includes(userId)) {
+        setDjOffers((offers) => {
+          const next = { ...offers };
+          delete next[userId];
+          return next;
+        });
+        return prev.filter((id) => id !== userId);
+      }
+
+      if (event) {
+        setDjOffers((offers) => ({
+          ...offers,
+          [userId]: offers[userId] ?? {
+            rateMode: "fixed",
+            fee: normalizeStoredRate(event.rate),
+          },
+        }));
+      }
+
+      return [...prev, userId];
+    });
+  }
+
+  function updateDjOffer(userId: string, offer: DjSendOffer) {
+    setDjOffers((prev) => ({ ...prev, [userId]: offer }));
+  }
+
+  function getSendValidationError(recipientIds: string[]): string | null {
+    for (const djId of recipientIds) {
+      const offer = djOffers[djId] ?? DEFAULT_DJ_SEND_OFFER;
+
+      if (offer.rateMode === "fixed" && !isPositiveWholeDollarRate(offer.fee)) {
+        const dj = djs.find((item) => item.user_id === djId);
+        const name = dj?.display_name?.trim() || "each selected DJ";
+
+        return `Enter a positive whole-dollar fixed offer for ${name}.`;
+      }
+    }
+
+    return null;
   }
 
   function requestSendBookings() {
@@ -582,6 +645,13 @@ export default function EventDetailPage() {
 
     if (sendableIds.length === 0) {
       setError(ALL_SELECTED_DJS_ALREADY_HAVE_EVENT_REQUEST_MESSAGE);
+      return;
+    }
+
+    const validationError = getSendValidationError(sendableIds);
+
+    if (validationError) {
+      setError(validationError);
       return;
     }
 
@@ -624,13 +694,17 @@ export default function EventDetailPage() {
 
     try {
       const baseInput = eventToRequestInput(event);
-      const input = {
-        ...baseInput,
-        rateMode: resolveBookingRequestRateMode({ ...baseInput, rateMode: sendRateMode }),
-      };
       const { successes, failures, skippedDuplicateRecipientIds } =
-        await sendBookingRequestsToDjs(sendableIds, input, {
+        await sendBookingRequestsToDjs(sendableIds, baseInput, {
           existingEventBookings: lineup,
+          perRecipient: (recipientId) => {
+            const offer = djOffers[recipientId] ?? DEFAULT_DJ_SEND_OFFER;
+
+            return {
+              rateMode: offer.rateMode,
+              fee: normalizeStoredRate(offer.fee),
+            };
+          },
         });
       const skippedCount = totalSkippedDuplicates + skippedDuplicateRecipientIds.length;
 
@@ -1018,8 +1092,13 @@ export default function EventDetailPage() {
                 </p>
               </div>
 
-              <div className="mt-4">
-                <BookingRateModeField value={sendRateMode} onChange={setSendRateMode} />
+              <div className="mt-4 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated p-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-ftc-text-muted">
+                  Per-DJ offers
+                </p>
+                <p className="mt-1 text-sm leading-relaxed text-ftc-text-secondary">
+                  Select DJs below, then set a fixed offer or open to offers for each one.
+                </p>
               </div>
 
               <input
@@ -1042,6 +1121,7 @@ export default function EventDetailPage() {
                     const availabilityHint = djAvailabilityHints.get(dj.user_id);
                     const duplicateStatus = eventBookingDuplicates.get(dj.user_id);
                     const isDuplicateBlocked = Boolean(duplicateStatus);
+                    const offer = djOffers[dj.user_id] ?? DEFAULT_DJ_SEND_OFFER;
 
                     return (
                       <li key={dj.user_id}>
@@ -1049,7 +1129,7 @@ export default function EventDetailPage() {
                           type="button"
                           disabled={isDuplicateBlocked}
                           onClick={() => toggleDjSelection(dj.user_id)}
-                          className={`ftc-option-card flex items-center gap-3 px-3 py-3 disabled:cursor-not-allowed ${
+                          className={`ftc-option-card flex w-full items-center gap-3 px-3 py-3 disabled:cursor-not-allowed ${
                             selected
                               ? "ftc-option-card-selected"
                               : isDuplicateBlocked
@@ -1071,7 +1151,7 @@ export default function EventDetailPage() {
                             avatarUrl={dj.avatar_url}
                             size="sm"
                           />
-                          <div className="min-w-0 flex-1">
+                          <div className="min-w-0 flex-1 text-left">
                             <div className="flex flex-wrap items-center gap-2">
                               <p className="font-semibold text-ftc-text">{displayName}</p>
                               {duplicateStatus ? (
@@ -1086,6 +1166,15 @@ export default function EventDetailPage() {
                             ) : null}
                           </div>
                         </button>
+                        {selected ? (
+                          <div className="mt-2 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated p-3">
+                            <EventDjSendOfferControls
+                              offer={offer}
+                              disabled={sending}
+                              onChange={(nextOffer) => updateDjOffer(dj.user_id, nextOffer)}
+                            />
+                          </div>
+                        ) : null}
                       </li>
                     );
                   })}
@@ -1098,23 +1187,38 @@ export default function EventDetailPage() {
                 </p>
               ) : null}
 
-              <div className="mt-4 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated p-4">
-                <p className="text-sm font-medium text-ftc-text">
-                  You are sending:{" "}
-                  {sendRateMode === "open" ? "Open to offers" : "Fixed offer"} ·{" "}
-                  {normalizeStoredRate(event.rate)
-                    ? formatRateDisplay(event.rate)
-                    : "No rate set"}
-                </p>
-                <p className="mt-2 text-xs leading-relaxed text-ftc-text-muted">
-                  DJs can propose their own rate only when Open to offers is selected.
-                </p>
-              </div>
+              {sendOfferSummary.length > 0 ? (
+                <div className="mt-4 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated p-4">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-ftc-text-muted">
+                    Send summary
+                  </p>
+                  <ul className="mt-3 space-y-2">
+                    {sendOfferSummary.map((item) => (
+                      <li
+                        key={item.djId}
+                        className="flex items-start justify-between gap-3 text-sm"
+                      >
+                        <span className="min-w-0 truncate font-medium text-ftc-text">
+                          {item.name}
+                        </span>
+                        <span className="shrink-0 text-right text-ftc-text-secondary">
+                          {item.summary}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                  {hasInvalidFixedOffers ? (
+                    <p className="mt-3 text-xs text-[var(--ftc-color-warning)]">
+                      Enter a positive whole-dollar amount for each fixed offer before sending.
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
 
               <button
                 type="button"
                 onClick={requestSendBookings}
-                disabled={sending || sendableSelectedDjIds.length === 0}
+                disabled={sending || sendableSelectedDjIds.length === 0 || hasInvalidFixedOffers}
                 className="mt-4 w-full ftc-btn-primary px-5 py-3 text-sm uppercase tracking-wide disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {sendButtonLabel}
