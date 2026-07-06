@@ -94,7 +94,11 @@ begin
         br.recipient_id = v_sender_id
         and br.sender_id = p_user_id
         and br.status = 'pending'
+        and br.rate_mode = 'open'
         and br.proposed_rate_status = 'pending'
+        and br.proposed_rate is not null
+        and br.proposed_rate > 0
+        and br.proposed_rate_at > now() - interval '10 minutes'
       )
       or (
         br.sender_id = v_sender_id

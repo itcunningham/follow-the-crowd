@@ -123,6 +123,38 @@ export async function createNotification(
   return data;
 }
 
+export function getNotificationCreateErrorMessage(error: unknown): string {
+  if (error instanceof NotificationCreateError) {
+    if (error.message.includes("Not allowed to create booking_update notification")) {
+      return "The planner could not be notified about this booking update. Run scripts/fixCreateNotification.sql in the Supabase SQL Editor, then try again.";
+    }
+
+    if (error.message.includes("Not allowed to create booking_request notification")) {
+      return "The DJ could not be notified about this booking request. Run scripts/fixCreateNotification.sql in the Supabase SQL Editor, then try again.";
+    }
+
+    return error.message;
+  }
+
+  if (error && typeof error === "object") {
+    const supabaseError = error as { message?: string };
+
+    if (supabaseError.message?.includes("Not allowed to create booking_update notification")) {
+      return "The planner could not be notified about this booking update. Run scripts/fixCreateNotification.sql in the Supabase SQL Editor, then try again.";
+    }
+
+    if (supabaseError.message) {
+      return supabaseError.message;
+    }
+  }
+
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
+  return "Failed to create notification";
+}
+
 export async function getUnreadNotifications(
   userId: string,
   types?: NotificationType[],
@@ -237,7 +269,10 @@ export async function getNavBadgeCounts(
   userId: string,
   role: UserRole | null,
 ): Promise<NavBadgeCounts> {
-  const messageTypes: NotificationType[] = ["message", "booking_request"];
+  const messageTypes: NotificationType[] =
+    role === "dj"
+      ? ["message", "booking_request"]
+      : ["message", "booking_request", "booking_update"];
   const bookingTypes: NotificationType[] = ["booking_update"];
 
   if (role !== "dj") {

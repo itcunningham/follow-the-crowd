@@ -1,6 +1,6 @@
 import { supabase } from "@/lib/supabaseClient";
 import { parseEventDate } from "@/lib/bookingDateTime";
-import { createNotification } from "@/lib/notifications";
+import { createNotification, getNotificationCreateErrorMessage } from "@/lib/notifications";
 import { formatRateDisplay, formatIntegerRateDisplay, normalizeStoredRate } from "@/lib/bookingRate";
 import { startDm } from "@/lib/startDm";
 import {
@@ -911,6 +911,16 @@ export function logBookingsLoadError(error: unknown): void {
 }
 
 export function getBookingMutationErrorMessage(error: unknown): string {
+  if (error instanceof Error && error.message.includes("planner could not be notified")) {
+    return error.message;
+  }
+
+  const notificationMessage = getNotificationCreateErrorMessage(error);
+
+  if (notificationMessage !== "Failed to create notification") {
+    return notificationMessage;
+  }
+
   if (error && typeof error === "object") {
     const supabaseError = error as {
       message?: string;
@@ -1813,13 +1823,32 @@ export async function proposeBookingRate(
     throw new Error("Proposed rate could not be parsed.");
   }
 
-  await createNotification(
-    booking.sender_id,
-    "booking_update",
-    "Rate proposed",
-    `${booking.event_name} · ${formatIntegerRateDisplay(booking.proposed_rate)}`,
-    booking.conversation_id ? `/dm/${booking.conversation_id}` : "/bookings",
-  );
+  if (process.env.NODE_ENV === "development") {
+    console.info("[bookings] proposeBookingRate notification context", {
+      bookingId: booking.id,
+      senderId: booking.sender_id,
+      recipientId: booking.recipient_id,
+      status: booking.status,
+      rateMode: booking.rate_mode,
+      proposedRate: booking.proposed_rate,
+      proposedRateStatus: booking.proposed_rate_status,
+      link: booking.conversation_id ? `/dm/${booking.conversation_id}` : "/bookings",
+    });
+  }
+
+  try {
+    await createNotification(
+      booking.sender_id,
+      "booking_update",
+      "Rate proposed",
+      `${booking.event_name} · ${formatIntegerRateDisplay(booking.proposed_rate)}`,
+      booking.conversation_id ? `/dm/${booking.conversation_id}` : "/bookings",
+    );
+  } catch (notificationError) {
+    throw new Error(
+      `Your rate was submitted, but the planner could not be notified. ${getNotificationCreateErrorMessage(notificationError)}`,
+    );
+  }
 
   return booking;
 }
