@@ -700,18 +700,39 @@ async function insertRateProposalDeclinedDmMessageIfNeeded(
     return { inserted: false };
   }
 
-  const { data: existingRows, error: existingError } = await supabase
+  const { data: latestProposedRows, error: proposedError } = await supabase
+    .from("messages")
+    .select("created_at")
+    .eq("conversation_id", booking.conversation_id)
+    .eq("user_id", booking.recipient_id)
+    .like("text", `${RATE_PROPOSED_DM_PREFIX}%`)
+    .order("created_at", { ascending: false })
+    .limit(1);
+
+  if (proposedError) {
+    console.error("[bookings] Failed to load latest rate-proposal DM notice:", proposedError);
+  }
+
+  const latestProposedAt = latestProposedRows?.[0]?.created_at;
+
+  let declineQuery = supabase
     .from("messages")
     .select("id")
     .eq("conversation_id", booking.conversation_id)
     .eq("user_id", booking.sender_id)
-    .eq("text", RATE_PROPOSAL_DECLINED_DM_MESSAGE)
+    .eq("text", RATE_PROPOSAL_DECLINED_DM_MESSAGE);
+
+  if (latestProposedAt) {
+    declineQuery = declineQuery.gte("created_at", latestProposedAt);
+  }
+
+  const { data: existingDeclines, error: existingError } = await declineQuery
     .order("created_at", { ascending: false })
     .limit(1);
 
   if (existingError) {
     console.error("[bookings] Failed to check proposal-declined DM duplicate:", existingError);
-  } else if (existingRows?.[0]) {
+  } else if (existingDeclines?.[0]) {
     return { inserted: false };
   }
 
@@ -1966,7 +1987,6 @@ export async function proposeBookingRate(
   }
 
   const warnings: string[] = [];
-  const dmLink = booking.conversation_id ? `/dm/${booking.conversation_id}` : "/bookings";
   const dmResult = await insertRateProposedDmMessageIfNeeded(booking);
 
   if (dmResult.warning) {
@@ -1987,18 +2007,6 @@ export async function proposeBookingRate(
         `Your rate was submitted, but the planner could not be notified. ${getNotificationCreateErrorMessage(notificationError)}`,
       );
     }
-  }
-
-  try {
-    await createNotification(
-      booking.sender_id,
-      "booking_update",
-      "Rate proposed",
-      `${booking.event_name} · ${formatIntegerRateDisplay(booking.proposed_rate)}`,
-      dmLink,
-    );
-  } catch (notificationError) {
-    console.error("[bookings] booking_update notification failed after rate proposal:", notificationError);
   }
 
   return {
