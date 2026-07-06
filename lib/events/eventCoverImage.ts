@@ -36,6 +36,34 @@ export function pickPreferredEventCoverImageUrl(
   return null;
 }
 
+export function assertEventCoverImagePersisted(
+  event: { cover_image_url?: string | null },
+  expectedUrl: string | null,
+): void {
+  const savedUrl = normalizeEventCoverImageUrl(event.cover_image_url);
+  const expected = normalizeEventCoverImageUrl(expectedUrl);
+
+  if (expected) {
+    if (!savedUrl) {
+      throw new Error(
+        "Flyer upload succeeded but cover_image_url was not saved on the event row.",
+      );
+    }
+
+    if (savedUrl !== expected) {
+      throw new Error(
+        "Flyer upload succeeded but cover_image_url in the database does not match the uploaded public URL.",
+      );
+    }
+
+    return;
+  }
+
+  if (savedUrl) {
+    throw new Error("Flyer removal did not clear cover_image_url on the event row.");
+  }
+}
+
 export function validateEventCoverFile(file: File): string | null {
   if (!isAllowedEventCoverImageType(file.type)) {
     return "Flyer image must be JPEG, PNG, or WebP.";
@@ -142,8 +170,13 @@ export async function uploadEventCoverImage(eventId: string, file: File): Promis
   }
 
   const { data } = supabase.storage.from(EVENT_COVERS_BUCKET).getPublicUrl(path);
+  const publicUrl = normalizeEventCoverImageUrl(data.publicUrl);
 
-  return data.publicUrl;
+  if (!publicUrl) {
+    throw new Error("Flyer uploaded to storage but no public URL was returned.");
+  }
+
+  return publicUrl;
 }
 
 export async function deleteEventCoverStorageObject(

@@ -57,25 +57,36 @@ export default function EventFallbackColourField({
   value,
   onChange,
   disabled = false,
+  flyerActive = false,
 }: {
   eventName: string;
   value: EventSelectableFallbackColourKey | null;
   onChange: (next: EventSelectableFallbackColourKey | null) => void;
   disabled?: boolean;
+  flyerActive?: boolean;
 }) {
   const previewColour = getEventFallbackColour(eventName, value);
   const autoStyles = getEventFallbackColourStyles(EVENT_AUTOMATIC_FALLBACK_COLOUR);
+  const colourSelectionDisabled = disabled || flyerActive;
 
   return (
     <div>
       <span className={BOOKING_FIELD_LABEL_CLASS}>Event colour</span>
-      <p className="mb-3 text-xs text-ftc-text-muted">Used when no flyer is uploaded.</p>
+      <p className="mb-3 text-xs text-ftc-text-muted">
+        {flyerActive
+          ? "A flyer is active. Remove it to use an event colour."
+          : "Used when no flyer is uploaded."}
+      </p>
 
-      <div className="grid grid-cols-4 gap-2 sm:grid-cols-4">
+      <div
+        className={`grid grid-cols-4 gap-2 sm:grid-cols-4 ${
+          colourSelectionDisabled ? "pointer-events-none opacity-50" : ""
+        }`}
+      >
         <SwatchButton
           label="Auto"
           selected={value === null}
-          disabled={disabled}
+          disabled={colourSelectionDisabled}
           swatchClassName={autoStyles.swatchClassName}
           onClick={() => onChange(null)}
         />
@@ -88,7 +99,7 @@ export default function EventFallbackColourField({
               key={option.key}
               label={option.label}
               selected={value === option.key}
-              disabled={disabled}
+              disabled={colourSelectionDisabled}
               swatchClassName={styles.swatchClassName}
               onClick={() => onChange(value === option.key ? null : option.key)}
             />

@@ -91,6 +91,9 @@ export default function EventsPageClient({ initialTab }: EventsPageClientProps) 
   const [fallbackColour, setFallbackColour] = useState<EventSelectableFallbackColourKey | null>(
     null,
   );
+  const createFlyerActive = Boolean(
+    coverField.file || coverPreviewUrl?.startsWith("blob:"),
+  );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [eventDateOverride, setEventDateOverride] = useState<string | null>(null);
@@ -446,6 +449,7 @@ export default function EventsPageClient({ initialTab }: EventsPageClientProps) 
                     value={fallbackColour}
                     onChange={setFallbackColour}
                     disabled={saving}
+                    flyerActive={createFlyerActive}
                   />
                   <BookingDateField
                     label="Event date"

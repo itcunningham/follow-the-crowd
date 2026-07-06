@@ -93,7 +93,7 @@ import {
   type Event,
   type EventInput,
 } from "@/lib/events";
-import { getEventCoverUploadErrorMessage } from "@/lib/events/eventCoverImage";
+import { getEventCoverUploadErrorMessage, normalizeEventCoverImageUrl } from "@/lib/events/eventCoverImage";
 import { shouldConfirmEventEditSave } from "@/lib/events/eventEditConfirmation";
 import {
   getBookingImpactingEventFieldChanges,
@@ -153,6 +153,8 @@ export default function EventDetailPage() {
     emptyEventCoverImageFieldState,
   );
   const pendingEditCoverRef = useRef<EventCoverImageFieldState>(emptyEventCoverImageFieldState);
+  const pendingCoverFileRef = useRef<File | null>(null);
+  const [confirmCoverSave, setConfirmCoverSave] = useState<EventCoverImageFieldState | null>(null);
   const [editCoverPreviewUrl, setEditCoverPreviewUrl] = useState<string | null>(null);
   const [editCoverError, setEditCoverError] = useState<string | null>(null);
   const [editConfirmOpen, setEditConfirmOpen] = useState(false);
@@ -177,6 +179,12 @@ export default function EventDetailPage() {
   >(new Map());
 
   const isOwner = Boolean(event && currentUserId && event.owner_id === currentUserId);
+  const editFlyerActive = Boolean(
+    editCoverField.file ||
+      editCoverPreviewUrl?.startsWith("blob:") ||
+      (!editCoverField.removeExisting &&
+        normalizeEventCoverImageUrl(event?.cover_image_url)),
+  );
   const isPlanner = canManageEvents(role);
   const canEditEvent = isOwner && isPlanner;
   const hasAcceptedBooking = Boolean(
@@ -326,17 +334,36 @@ export default function EventDetailPage() {
     loadEventData();
   }, [loadEventData]);
 
-  useEffect(() => {
-    pendingEditCoverRef.current = editCoverField;
-  }, [editCoverField]);
-
   function resetEditCoverState() {
     setEditCoverField(emptyEventCoverImageFieldState);
+    pendingEditCoverRef.current = emptyEventCoverImageFieldState;
+    pendingCoverFileRef.current = null;
     if (editCoverPreviewUrl?.startsWith("blob:")) {
       URL.revokeObjectURL(editCoverPreviewUrl);
     }
     setEditCoverPreviewUrl(null);
     setEditCoverError(null);
+  }
+
+  function handleEditCoverChange(next: EventCoverImageFieldState) {
+    setEditCoverField(next);
+    pendingEditCoverRef.current = next;
+  }
+
+  function handleEditCoverFileSelected(file: File | null) {
+    pendingCoverFileRef.current = file;
+  }
+
+  function resolveEditCoverChange(
+    snapshot?: EventCoverImageFieldState | null,
+  ): EventCoverImageFieldState {
+    const base = snapshot ?? confirmCoverSave ?? pendingEditCoverRef.current;
+    const file = pendingCoverFileRef.current ?? base.file;
+
+    return {
+      file,
+      removeExisting: base.removeExisting,
+    };
   }
 
   function openEditForm() {
@@ -365,12 +392,19 @@ export default function EventDetailPage() {
     });
   }
 
-  async function performSaveEdit() {
+  async function performSaveEdit(coverSnapshot?: EventCoverImageFieldState | null) {
     if (!event || !editForm) {
       return;
     }
 
-    const coverChange = pendingEditCoverRef.current;
+    const coverChange = resolveEditCoverChange(coverSnapshot);
+    const hasBlobPreview = editCoverPreviewUrl?.startsWith("blob:") ?? false;
+
+    if (hasBlobPreview && !coverChange.file) {
+      setError("Flyer selection was lost before save. Choose the image again, then save.");
+      return;
+    }
+
     const shouldNotifyGroupChat = shouldPostEventGroupChatUpdate(event, editForm, lineup);
     const groupChatFieldChanges = shouldNotifyGroupChat
       ? getBookingImpactingEventFieldChanges(event, editForm)
@@ -395,15 +429,14 @@ export default function EventDetailPage() {
         );
       } catch (coverError) {
         console.error("Failed to update event cover image:", coverError);
-        const updatedWithoutCover = await updateEvent(event.id, editForm);
-        setEvent(updatedWithoutCover);
-        setEditOpen(false);
-        setEditForm(null);
-        resetEditCoverState();
-        setEditConfirmOpen(false);
-        setError(getEventCoverUploadErrorMessage(coverError));
-        setSuccessMessage("Event details saved, but the flyer could not be updated.");
-        return;
+        const attemptedCoverUpload = Boolean(coverChange.file || coverChange.removeExisting);
+
+        if (attemptedCoverUpload) {
+          setError(getEventCoverUploadErrorMessage(coverError));
+          return;
+        }
+
+        savedEvent = await updateEvent(event.id, editForm);
       }
 
       if (shouldNotifyGroupChat && groupChatFieldChanges.length > 0) {
@@ -415,6 +448,7 @@ export default function EventDetailPage() {
           setEditOpen(false);
           setEditForm(null);
           resetEditCoverState();
+          setConfirmCoverSave(null);
           setEditConfirmOpen(false);
           setSuccessMessage("Event updated. Remember to let affected DJs know.");
           setError("Event saved, but the group chat update could not be posted.");
@@ -426,6 +460,7 @@ export default function EventDetailPage() {
       setEditOpen(false);
       setEditForm(null);
       resetEditCoverState();
+      setConfirmCoverSave(null);
       setEditConfirmOpen(false);
       setSuccessMessage(
         shouldNotifyGroupChat && groupChatFieldChanges.length > 0
@@ -457,14 +492,20 @@ export default function EventDetailPage() {
       return;
     }
 
-    pendingEditCoverRef.current = editCoverField;
+    const coverSnapshot = {
+      file: pendingCoverFileRef.current ?? editCoverField.file,
+      removeExisting: editCoverField.removeExisting,
+    };
+
+    pendingEditCoverRef.current = coverSnapshot;
+    setConfirmCoverSave(coverSnapshot);
 
     if (shouldConfirmEventEditSave(event, editForm, lineup)) {
       setEditConfirmOpen(true);
       return;
     }
 
-    await performSaveEdit();
+    await performSaveEdit(coverSnapshot);
   }
 
   async function openSendBookings() {
@@ -894,7 +935,8 @@ export default function EventDetailPage() {
                   currentCoverUrl={event.cover_image_url}
                   value={editCoverField}
                   previewUrl={editCoverPreviewUrl}
-                  onChange={setEditCoverField}
+                  onChange={handleEditCoverChange}
+                  onFileSelected={handleEditCoverFileSelected}
                   onPreviewUrlChange={setEditCoverPreviewUrl}
                   onValidationError={setEditCoverError}
                   error={editCoverError}
@@ -911,6 +953,7 @@ export default function EventDetailPage() {
                     setEditForm((prev) => (prev ? { ...prev, fallbackColour: next } : prev))
                   }
                   disabled={savingEdit}
+                  flyerActive={editFlyerActive}
                 />
                 <BookingDateField
                   label="Event date"
@@ -1294,7 +1337,7 @@ export default function EventDetailPage() {
           }
         }}
         onConfirm={() => {
-          void performSaveEdit();
+          void performSaveEdit(confirmCoverSave);
         }}
       />
     </OnboardingGuard>

@@ -25,6 +25,7 @@ export default function EventCoverImageField({
   previewUrl,
   onChange,
   onPreviewUrlChange,
+  onFileSelected,
   onValidationError,
   error,
   disabled = false,
@@ -36,6 +37,7 @@ export default function EventCoverImageField({
   previewUrl: string | null;
   onChange: (next: EventCoverImageFieldState) => void;
   onPreviewUrlChange: (next: string | null) => void;
+  onFileSelected?: (file: File | null) => void;
   onValidationError?: (message: string | null) => void;
   error?: string | null;
   disabled?: boolean;
@@ -77,6 +79,7 @@ export default function EventCoverImageField({
     if (validationError) {
       onValidationError?.(validationError);
       onChange({ file: null, removeExisting: false });
+      onFileSelected?.(null);
       onPreviewUrlChange(null);
       return;
     }
@@ -88,6 +91,7 @@ export default function EventCoverImageField({
     }
 
     onChange({ file, removeExisting: false });
+    onFileSelected?.(file);
     onPreviewUrlChange(URL.createObjectURL(file));
   }
 
@@ -101,6 +105,7 @@ export default function EventCoverImageField({
     }
 
     onChange({ file: null, removeExisting: true });
+    onFileSelected?.(null);
     onPreviewUrlChange(null);
   }
 

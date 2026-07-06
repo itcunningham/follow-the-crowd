@@ -12,6 +12,7 @@ import { normalizeStoredRate } from "@/lib/bookingRate";
 import { createNotification } from "@/lib/notifications";
 import { supabase } from "@/lib/supabaseClient";
 import {
+  assertEventCoverImagePersisted,
   deleteEventCoverStorageObject,
   normalizeEventCoverImageUrl,
   uploadEventCoverImage,
@@ -344,13 +345,17 @@ export async function updateEventWithCover(
   coverChange: EventCoverChange,
   previousCoverUrl?: string | null,
 ): Promise<Event> {
+  const normalizedPreviousCoverUrl = normalizeEventCoverImageUrl(previousCoverUrl);
+
   if (coverChange.removeExisting) {
-    await updateEventCoverImageUrl(eventId, null);
-    await deleteEventCoverStorageObject(previousCoverUrl);
+    const clearedEvent = await updateEventCoverImageUrl(eventId, null);
+    assertEventCoverImagePersisted(clearedEvent, null);
+    await deleteEventCoverStorageObject(normalizedPreviousCoverUrl);
   } else if (coverChange.file) {
-    const nextCoverUrl = await uploadEventCoverImage(eventId, coverChange.file);
-    await updateEventCoverImageUrl(eventId, nextCoverUrl);
-    await deleteEventCoverStorageObject(previousCoverUrl);
+    const uploadedPublicUrl = await uploadEventCoverImage(eventId, coverChange.file);
+    const savedCoverEvent = await updateEventCoverImageUrl(eventId, uploadedPublicUrl);
+    assertEventCoverImagePersisted(savedCoverEvent, uploadedPublicUrl);
+    await deleteEventCoverStorageObject(normalizedPreviousCoverUrl);
   }
 
   await updateEvent(eventId, input);
@@ -359,6 +364,20 @@ export async function updateEventWithCover(
 
   if (!refreshed) {
     throw new Error("Event not found after save.");
+  }
+
+  if (coverChange.file) {
+    const persistedCoverUrl = normalizeEventCoverImageUrl(refreshed.cover_image_url);
+
+    if (!persistedCoverUrl) {
+      throw new Error(
+        "Flyer upload completed but cover_image_url is still empty on the event row. Run scripts/setupEventCoverImage.sql and scripts/supabaseReloadPostgrest.sql in Supabase, then try again.",
+      );
+    }
+  }
+
+  if (coverChange.removeExisting && normalizeEventCoverImageUrl(refreshed.cover_image_url)) {
+    throw new Error("Flyer removal completed but cover_image_url is still set on the event row.");
   }
 
   return refreshed;
@@ -382,10 +401,11 @@ export async function updateEventCoverImageUrl(
   coverImageUrl: string | null,
 ): Promise<Event> {
   const userId = await getCurrentUserId();
+  const normalizedCoverImageUrl = normalizeEventCoverImageUrl(coverImageUrl);
 
   const { data, error } = await supabase
     .from("events")
-    .update({ cover_image_url: coverImageUrl })
+    .update({ cover_image_url: normalizedCoverImageUrl })
     .eq("id", eventId)
     .eq("owner_id", userId)
     .select(EVENT_FIELDS)
@@ -395,7 +415,11 @@ export async function updateEventCoverImageUrl(
     throw error;
   }
 
-  return data as Event;
+  const updatedEvent = data as Event;
+
+  assertEventCoverImagePersisted(updatedEvent, normalizedCoverImageUrl);
+
+  return updatedEvent;
 }
 
 export type EventArtworkSnapshot = {
