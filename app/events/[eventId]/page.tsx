@@ -39,7 +39,7 @@ import {
   isSelectableEventFallbackColourKey,
   type EventSelectableFallbackColourKey,
 } from "@/lib/events/eventFallbackColour";
-import { formatRateDisplay } from "@/lib/bookingRate";
+import { formatRateDisplay, normalizeStoredRate } from "@/lib/bookingRate";
 import EventBookingDuplicateBadge from "@/app/components/EventBookingDuplicateBadge";
 import UnavailableDjBookingConfirmModal from "@/app/components/UnavailableDjBookingConfirmModal";
 import {
@@ -1097,6 +1097,19 @@ export default function EventDetailPage() {
                   Selected DJs already have a request for this event.
                 </p>
               ) : null}
+
+              <div className="mt-4 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated p-4">
+                <p className="text-sm font-medium text-ftc-text">
+                  You are sending:{" "}
+                  {sendRateMode === "open" ? "Open to offers" : "Fixed offer"} ·{" "}
+                  {normalizeStoredRate(event.rate)
+                    ? formatRateDisplay(event.rate)
+                    : "No rate set"}
+                </p>
+                <p className="mt-2 text-xs leading-relaxed text-ftc-text-muted">
+                  DJs can propose their own rate only when Open to offers is selected.
+                </p>
+              </div>
 
               <button
                 type="button"
