@@ -37,6 +37,7 @@ import {
   type LatestChatMessage,
 } from "@/lib/messageReads";
 import { supabase } from "@/lib/supabaseClient";
+import { formatDmInboxMessagePreview } from "@/lib/dm/messagePreview";
 import {
   DISCOVER_PATH,
   getCurrentUserId,
@@ -44,6 +45,7 @@ import {
   getUserAvatarProfilesByIds,
   type UserAvatarProfile,
 } from "@/lib/user/currentUser";
+import { looksLikeUserId, resolveUserDisplayName } from "@/lib/user/displayName";
 
 type InboxTab = "dm" | "group";
 
@@ -174,17 +176,15 @@ function buildOtherUsersByConversation(
 
 function getConversationDisplayName(
   row: DmInboxRow,
-  otherUserId?: string,
+  otherUserProfile?: UserAvatarProfile | null,
 ) {
-  if (row.name?.trim()) {
-    return row.name.trim();
+  const conversationName = row.name?.trim();
+
+  if (conversationName && !looksLikeUserId(conversationName)) {
+    return conversationName;
   }
 
-  if (otherUserId) {
-    return `Chat with ${otherUserId}`;
-  }
-
-  return "Direct message";
+  return resolveUserDisplayName(otherUserProfile);
 }
 
 function DirectMessagesEmptyIcon() {
@@ -594,12 +594,13 @@ function DmInboxPageContent() {
 
     return dmInboxRows.filter((row) => {
       const otherUserId = otherUsersByConversation.get(row.conversationId);
-      const displayName = getConversationDisplayName(row, otherUserId).toLowerCase();
-      const preview = (row.latestPreview ?? "").toLowerCase();
+      const otherProfile = otherUserId ? userProfiles.get(otherUserId) : undefined;
+      const displayName = getConversationDisplayName(row, otherProfile).toLowerCase();
+      const preview = (formatDmInboxMessagePreview(row.latestPreview) ?? "").toLowerCase();
 
       return displayName.includes(normalizedSearch) || preview.includes(normalizedSearch);
     });
-  }, [dmInboxRows, normalizedSearch, otherUsersByConversation]);
+  }, [dmInboxRows, normalizedSearch, otherUsersByConversation, userProfiles]);
 
   const filteredGroupChats = useMemo(() => {
     if (!normalizedSearch) {
@@ -727,9 +728,10 @@ function DmInboxPageContent() {
                   {filteredDmRows.map((row) => {
                     const otherUserId = otherUsersByConversation.get(row.conversationId);
                     const otherProfile = otherUserId ? userProfiles.get(otherUserId) : undefined;
-                    const displayName = getConversationDisplayName(row, otherUserId);
-                    const preview = row.latestPreview
-                      ? `${row.latestMessageUserId === currentUserId ? "You: " : ""}${row.latestPreview}`
+                    const displayName = getConversationDisplayName(row, otherProfile);
+                    const previewText = formatDmInboxMessagePreview(row.latestPreview);
+                    const preview = previewText
+                      ? `${row.latestMessageUserId === currentUserId ? "You: " : ""}${previewText}`
                       : "No messages yet";
                     const timestamp = row.latestActivityAt ?? row.conversationCreatedAt;
 

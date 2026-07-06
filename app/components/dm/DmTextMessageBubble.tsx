@@ -4,6 +4,7 @@ import ProfileAvatar from "@/app/components/ProfileAvatar";
 import DmMessageAttachmentView from "@/app/components/dm/DmMessageAttachment";
 import DmMessageReactions from "@/app/components/dm/DmMessageReactions";
 import { getChatNewMessageHighlightClass, logChatHighlightRender } from "@/lib/chatNewMessageHighlight";
+import { formatBookingMessagePreview } from "@/lib/bookingRequests";
 import type { DmMessageAttachment } from "@/lib/dmAttachments";
 import type { DmMessageReaction } from "@/lib/dmReactions";
 
@@ -47,8 +48,9 @@ export default function DmTextMessageBubble({
   showSeen?: boolean;
 }) {
   const trimmedText = text.trim();
+  const displayText = formatBookingMessagePreview(trimmedText);
   const hasAttachments = attachments.length > 0;
-  const hasText = trimmedText.length > 0;
+  const hasText = displayText.length > 0;
 
   if (isHighlighted) {
     logChatHighlightRender(messageId, true);
@@ -99,7 +101,7 @@ export default function DmTextMessageBubble({
               ) : null}
               {hasText ? (
                 <p className="text-[15px] leading-relaxed whitespace-pre-wrap break-words">
-                  {trimmedText}
+                  {displayText}
                 </p>
               ) : null}
             </div>

@@ -71,6 +71,7 @@ import {
   type BookingRecipientProfile,
   type UserAvatarProfile,
 } from "@/lib/user/currentUser";
+import { resolveUserDisplayName } from "@/lib/user/displayName";
 
 type Message = {
   id: string;
@@ -91,16 +92,8 @@ function formatMessageTime(timestamp: string) {
   });
 }
 
-function getConversationTitle(otherUserProfile: UserAvatarProfile | null, otherUserId: string | null) {
-  if (otherUserProfile?.display_name?.trim()) {
-    return otherUserProfile.display_name.trim();
-  }
-
-  if (otherUserId) {
-    return `Chat with ${otherUserId}`;
-  }
-
-  return "Direct message";
+function getConversationTitle(otherUserProfile: UserAvatarProfile | null) {
+  return resolveUserDisplayName(otherUserProfile);
 }
 
 export default function DmChatPage() {
@@ -157,8 +150,8 @@ export default function DmChatPage() {
   });
   const { addHighlightedMessageId, isMessageHighlighted } = useChatNewMessageHighlight();
 
-  const conversationTitle = getConversationTitle(otherUserProfile, otherUserId);
-  const otherUserLabel = otherUserProfile?.display_name?.trim() || otherUserId || "DM";
+  const conversationTitle = getConversationTitle(otherUserProfile);
+  const otherUserLabel = resolveUserDisplayName(otherUserProfile);
   const bookingProfiles = useMemo(() => {
     if (!otherUserId || !otherUserProfile) {
       return new Map<string, BookingRecipientProfile>();

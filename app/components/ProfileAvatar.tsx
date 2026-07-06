@@ -1,3 +1,5 @@
+import { looksLikeUserId, resolveUserDisplayName } from "@/lib/user/displayName";
+
 type ProfileAvatarSize = "sm" | "md" | "lg" | "xl";
 
 const sizeClasses: Record<ProfileAvatarSize, string> = {
@@ -7,8 +9,16 @@ const sizeClasses: Record<ProfileAvatarSize, string> = {
   xl: "h-28 w-28 text-2xl",
 };
 
+function getSafeDisplayName(name: string) {
+  if (looksLikeUserId(name)) {
+    return "Deleted user";
+  }
+
+  return resolveUserDisplayName({ display_name: name });
+}
+
 function getInitials(name: string) {
-  return name.trim().slice(0, 2).toUpperCase() || "??";
+  return getSafeDisplayName(name).trim().slice(0, 2).toUpperCase() || "??";
 }
 
 export default function ProfileAvatar({
@@ -22,6 +32,7 @@ export default function ProfileAvatar({
   size?: ProfileAvatarSize;
   className?: string;
 }) {
+  const safeName = getSafeDisplayName(name);
   const initials = getInitials(name);
   const baseClasses = `ftc-avatar flex shrink-0 items-center justify-center overflow-hidden rounded-full font-bold uppercase tracking-wide ${sizeClasses[size]} ${className}`;
 
@@ -30,7 +41,7 @@ export default function ProfileAvatar({
       <div className={baseClasses}>
         <img
           src={avatarUrl}
-          alt={`${name} profile`}
+          alt={`${safeName} profile`}
           className="h-full w-full object-cover"
         />
       </div>

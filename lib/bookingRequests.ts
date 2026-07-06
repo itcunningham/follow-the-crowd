@@ -445,6 +445,50 @@ export function isBookingRequestMessage(text: string): boolean {
 export const CANCELLED_BOOKING_DM_SYSTEM_MESSAGE =
   "Booking request cancelled by planner.";
 
+const BOOKING_PREVIEW_LABELS: Record<BookingRequestStatus, string> = {
+  pending: "Booking request",
+  accepted: "Booking accepted",
+  declined: "Booking declined",
+  cancelled: "Booking cancelled",
+};
+
+export function formatBookingStatusPreview(
+  status: BookingRequestStatus | null | undefined,
+  eventName?: string | null,
+): string {
+  const label =
+    status && status in BOOKING_PREVIEW_LABELS
+      ? BOOKING_PREVIEW_LABELS[status]
+      : "Booking update";
+  const trimmedEventName = eventName?.trim();
+
+  return trimmedEventName ? `${label} · ${trimmedEventName}` : label;
+}
+
+export function formatBookingMessagePreview(
+  messageText: string,
+  booking?: BookingRequest | null,
+): string {
+  const trimmed = messageText.trim();
+
+  if (trimmed === CANCELLED_BOOKING_DM_SYSTEM_MESSAGE) {
+    return trimmed;
+  }
+
+  if (!isBookingRequestMessage(trimmed)) {
+    return trimmed;
+  }
+
+  const parsed = parseBookingRequestMessage(trimmed);
+  const status =
+    booking?.status != null
+      ? normalizeBookingRequestStatus(booking.status)
+      : parsed?.status ?? "pending";
+  const eventName = booking?.event_name ?? parsed?.eventName;
+
+  return formatBookingStatusPreview(status, eventName);
+}
+
 export function shouldShowCancelledBookingDmSystemMessage(
   liveBooking: BookingRequest | null | undefined,
   messageText?: string,
