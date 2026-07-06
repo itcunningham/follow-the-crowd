@@ -11,6 +11,7 @@ import DjBookingAvailabilityBadge from "@/app/components/DjBookingAvailabilityBa
 import ProfileAvatar from "@/app/components/ProfileAvatar";
 import { BookingDateField, BookingSetTimeRangeField } from "@/app/components/BookingDateTimeFields";
 import { BookingRateField } from "@/app/components/BookingRateField";
+import BookingRateModeField from "@/app/components/booking/BookingRateModeField";
 import ArchiveAllBookingRequestsButton from "@/app/components/ArchiveAllBookingRequestsButton";
 import ArchiveBookingRequestButton from "@/app/components/ArchiveBookingRequestButton";
 import BookingStatusBadge from "@/app/components/booking/BookingStatusBadge";
@@ -56,7 +57,7 @@ import {
   listBookingPlans,
   type BookingPlan,
 } from "@/lib/bookingPlans";
-import { formatRateDisplay } from "@/lib/bookingRate";
+import { formatRateDisplay, isPositiveWholeDollarRate } from "@/lib/bookingRate";
 import EventBookingDuplicateBadge from "@/app/components/EventBookingDuplicateBadge";
 import UnavailableDjBookingConfirmModal from "@/app/components/UnavailableDjBookingConfirmModal";
 import {
@@ -89,6 +90,7 @@ const emptyForm: BookingRequestInput = {
   setTime: "",
   fee: "",
   notes: "",
+  rateMode: "fixed",
 };
 
 type CreateStep = "source" | "pick-plan" | "details" | "select-djs";
@@ -712,10 +714,19 @@ function BookingsPageContent() {
       !form.eventName.trim() ||
       !form.venue.trim() ||
       !form.eventDate.trim() ||
-      !form.setTime.trim() ||
-      !form.fee.trim()
+      !form.setTime.trim()
     ) {
       setError("Please fill in all required booking details.");
+      return;
+    }
+
+    if (form.rateMode !== "open" && !form.fee.trim()) {
+      setError("Please enter a rate for fixed offers.");
+      return;
+    }
+
+    if (form.fee.trim() && !isPositiveWholeDollarRate(form.fee)) {
+      setError("Rate must be a positive whole dollar amount.");
       return;
     }
 
@@ -1150,10 +1161,15 @@ function BookingsPageContent() {
                     onChange={(value) => updateField("setTime", value)}
                     required
                   />
+                  <BookingRateModeField
+                    value={form.rateMode ?? "fixed"}
+                    onChange={(value) => updateField("rateMode", value)}
+                  />
                   <BookingRateField
                     value={form.fee}
                     onChange={(value) => updateField("fee", value)}
-                    required
+                    label={form.rateMode === "open" ? "Suggested rate (optional)" : "Rate"}
+                    required={form.rateMode !== "open"}
                   />
                   <BookingField
                     label="Notes"
@@ -1190,7 +1206,10 @@ function BookingsPageContent() {
                     <p className="mt-1">
                       {form.venue} · {form.eventDate} · {form.setTime}
                     </p>
-                    <p className="mt-1">Rate: {formatRateDisplay(form.fee)}</p>
+                    <p className="mt-1">
+                      {form.rateMode === "open" ? "Open to offers" : "Fixed offer"}
+                      {form.fee.trim() ? ` · ${formatRateDisplay(form.fee)}` : ""}
+                    </p>
                   </div>
 
                   <label className="block">

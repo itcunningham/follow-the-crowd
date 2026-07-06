@@ -1,7 +1,7 @@
 import { supabase } from "@/lib/supabaseClient";
 import { parseEventDate } from "@/lib/bookingDateTime";
 import { createNotification } from "@/lib/notifications";
-import { formatRateDisplay, normalizeStoredRate } from "@/lib/bookingRate";
+import { formatRateDisplay, formatIntegerRateDisplay, normalizeStoredRate } from "@/lib/bookingRate";
 import { startDm } from "@/lib/startDm";
 import {
   FTC_STATUS_DANGER,
@@ -15,6 +15,10 @@ import { postBookingCancellationGroupChatUpdate } from "@/lib/events/bookingCanc
 
 export type BookingRequestStatus = "pending" | "accepted" | "declined" | "cancelled";
 
+export type BookingRateMode = "fixed" | "open";
+
+export type ProposedRateStatus = "pending" | "accepted" | "declined";
+
 export type BookingRequestInput = {
   eventName: string;
   venue: string;
@@ -23,6 +27,7 @@ export type BookingRequestInput = {
   fee: string;
   notes: string;
   eventId?: string;
+  rateMode?: BookingRateMode;
 };
 
 export type BookingSendFailure = {
@@ -77,6 +82,11 @@ export type BookingRequest = {
   cancelled_at: string | null;
   cancelled_by: string | null;
   cancellation_reason: string | null;
+  rate_mode: BookingRateMode;
+  proposed_rate: number | null;
+  proposed_rate_note: string | null;
+  proposed_rate_at: string | null;
+  proposed_rate_status: ProposedRateStatus | null;
 };
 
 export type AcceptedBookingCancellationRole = "planner" | "dj";
@@ -247,6 +257,90 @@ function normalizeBookingRequestStatus(value: unknown): BookingRequestStatus {
   return "pending";
 }
 
+function normalizeBookingRateMode(value: unknown): BookingRateMode {
+  return value === "open" ? "open" : "fixed";
+}
+
+function normalizeProposedRateStatus(value: unknown): ProposedRateStatus | null {
+  if (value === "pending" || value === "accepted" || value === "declined") {
+    return value;
+  }
+
+  return null;
+}
+
+function normalizeProposedRate(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value) && value > 0) {
+    return Math.trunc(value);
+  }
+
+  if (typeof value === "string" && value.trim()) {
+    const parsed = Number.parseInt(value, 10);
+
+    if (Number.isFinite(parsed) && parsed > 0) {
+      return parsed;
+    }
+  }
+
+  return null;
+}
+
+export function hasPendingRateProposal(booking: BookingRequest): boolean {
+  return (
+    booking.status === "pending" &&
+    booking.proposed_rate_status === "pending" &&
+    booking.proposed_rate != null &&
+    booking.proposed_rate > 0
+  );
+}
+
+export function canProposeBookingRate(
+  booking: BookingRequest,
+  currentUserId: string | null,
+): boolean {
+  return (
+    Boolean(currentUserId) &&
+    booking.recipient_id === currentUserId &&
+    booking.status === "pending" &&
+    booking.rate_mode === "open" &&
+    !hasPendingRateProposal(booking)
+  );
+}
+
+export function canRespondToRateProposal(
+  booking: BookingRequest,
+  currentUserId: string | null,
+): boolean {
+  return (
+    Boolean(currentUserId) &&
+    booking.sender_id === currentUserId &&
+    booking.status === "pending" &&
+    hasPendingRateProposal(booking)
+  );
+}
+
+export function getBookingOfferRateLabel(booking: BookingRequest): string {
+  if (booking.rate_mode === "open") {
+    const formatted = formatRateDisplay(booking.fee);
+
+    return formatted === "$" ? "Open to offers" : formatted;
+  }
+
+  return formatRateDisplay(booking.fee);
+}
+
+export function getBookingRateDetailLabel(booking: BookingRequest): string {
+  if (booking.status === "accepted") {
+    return "Rate";
+  }
+
+  if (booking.rate_mode === "open") {
+    return hasPendingRateProposal(booking) ? "Offered rate" : "Suggested rate";
+  }
+
+  return "Rate";
+}
+
 export function normalizeBookingRequest(row: unknown): BookingRequest | null {
   if (typeof row === "string") {
     try {
@@ -290,6 +384,13 @@ export function normalizeBookingRequest(row: unknown): BookingRequest | null {
     cancelled_by: typeof record.cancelled_by === "string" ? record.cancelled_by : null,
     cancellation_reason:
       typeof record.cancellation_reason === "string" ? record.cancellation_reason : null,
+    rate_mode: normalizeBookingRateMode(record.rate_mode),
+    proposed_rate: normalizeProposedRate(record.proposed_rate),
+    proposed_rate_note:
+      typeof record.proposed_rate_note === "string" ? record.proposed_rate_note : null,
+    proposed_rate_at:
+      typeof record.proposed_rate_at === "string" ? record.proposed_rate_at : null,
+    proposed_rate_status: normalizeProposedRateStatus(record.proposed_rate_status),
   };
 }
 
@@ -868,6 +969,7 @@ export async function sendBookingRequestToDj(
       fee: normalizeStoredRate(input.fee),
       notes: input.notes.trim(),
       status: "pending",
+      rate_mode: input.rateMode === "open" ? "open" : "fixed",
     })
     .select("*")
     .single();
@@ -900,7 +1002,7 @@ export async function sendBookingRequestToDj(
 }
 
 const BOOKING_REQUEST_FIELDS =
-  "id, created_at, sender_id, recipient_id, conversation_id, event_id, event_name, venue, event_date, set_time, fee, notes, status, archived_at, lineup_hidden_at, cancelled_at, cancelled_by, cancellation_reason";
+  "id, created_at, sender_id, recipient_id, conversation_id, event_id, event_name, venue, event_date, set_time, fee, notes, status, archived_at, lineup_hidden_at, cancelled_at, cancelled_by, cancellation_reason, rate_mode, proposed_rate, proposed_rate_note, proposed_rate_at, proposed_rate_status";
 
 export function getEventLineupStats(bookings: BookingRequest[]): BookingCampaignStats {
   return bookings.reduce(
@@ -1526,6 +1628,90 @@ export async function hideDeclinedBookingFromLineup(bookingId: string): Promise<
   return booking;
 }
 
+export async function proposeBookingRate(
+  bookingId: string,
+  proposedRate: number,
+  note?: string,
+): Promise<BookingRequest> {
+  const { data, error } = await supabase.rpc("propose_booking_rate", {
+    p_booking_id: bookingId,
+    p_proposed_rate: proposedRate,
+    p_note: note?.trim() || null,
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  const booking = normalizeBookingRequest(data);
+
+  if (!booking) {
+    throw new Error("Proposed rate could not be parsed.");
+  }
+
+  await createNotification(
+    booking.sender_id,
+    "booking_update",
+    "Rate proposed",
+    `${booking.event_name} · ${formatIntegerRateDisplay(booking.proposed_rate)}`,
+    booking.conversation_id ? `/dm/${booking.conversation_id}` : "/bookings",
+  );
+
+  return booking;
+}
+
+export async function acceptProposedBookingRate(bookingId: string): Promise<BookingRequest> {
+  const { data, error } = await supabase.rpc("accept_proposed_booking_rate", {
+    p_booking_id: bookingId,
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  const booking = normalizeBookingRequest(data);
+
+  if (!booking) {
+    throw new Error("Accepted booking could not be parsed.");
+  }
+
+  await createNotification(
+    booking.recipient_id,
+    "booking_update",
+    "Proposed rate accepted",
+    `${booking.event_name} · ${formatRateDisplay(booking.fee)}`,
+    booking.conversation_id ? `/dm/${booking.conversation_id}` : "/bookings",
+  );
+
+  return booking;
+}
+
+export async function declineProposedBookingRate(bookingId: string): Promise<BookingRequest> {
+  const { data, error } = await supabase.rpc("decline_proposed_booking_rate", {
+    p_booking_id: bookingId,
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  const booking = normalizeBookingRequest(data);
+
+  if (!booking) {
+    throw new Error("Declined proposal could not be parsed.");
+  }
+
+  await createNotification(
+    booking.recipient_id,
+    "booking_update",
+    "Original offer kept",
+    `${booking.event_name} · ${getBookingOfferRateLabel(booking)}`,
+    booking.conversation_id ? `/dm/${booking.conversation_id}` : "/bookings",
+  );
+
+  return booking;
+}
+
 export async function updateBookingRequestStatus(
   bookingId: string,
   status: "accepted" | "declined",
@@ -1541,7 +1727,11 @@ export async function updateBookingRequestStatus(
     throw error;
   }
 
-  const booking = data as BookingRequest;
+  const booking = normalizeBookingRequest(data);
+
+  if (!booking) {
+    throw new Error("Updated booking could not be parsed.");
+  }
 
   await createNotification(
     booking.sender_id,
@@ -1641,5 +1831,10 @@ export function mergeBookingWithMessage(
     cancelled_at: null,
     cancelled_by: null,
     cancellation_reason: null,
+    rate_mode: "fixed",
+    proposed_rate: null,
+    proposed_rate_note: null,
+    proposed_rate_at: null,
+    proposed_rate_status: null,
   };
 }

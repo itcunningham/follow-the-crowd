@@ -16,14 +16,17 @@ import OnboardingGuard from "@/app/components/OnboardingGuard";
 import ProfileAvatar from "@/app/components/ProfileAvatar";
 import {
   buildDmCancelledBookingMatchContext,
+  acceptProposedBookingRate,
   cancelAcceptedBookingRequest,
   cancelBookingRequest,
   CANCELLED_BOOKING_DM_SYSTEM_MESSAGE,
+  declineProposedBookingRate,
   evaluateDmBookingCardVisibility,
   getBookingMutationErrorMessage,
   getBookingRequestsForConversation,
   isBookingRequestMessage,
   mergeBookingWithMessage,
+  proposeBookingRate,
   updateBookingRequestStatus,
   type BookingRequest,
 } from "@/lib/bookingRequests";
@@ -116,6 +119,7 @@ export default function DmChatPage() {
   const [reactingMessageId, setReactingMessageId] = useState<string | null>(null);
   const [reactionPickerMessageId, setReactionPickerMessageId] = useState<string | null>(null);
   const [respondingBookingId, setRespondingBookingId] = useState<string | null>(null);
+  const [proposalLoadingId, setProposalLoadingId] = useState<string | null>(null);
   const [cancellingBookingId, setCancellingBookingId] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -878,6 +882,85 @@ export default function DmChatPage() {
     }
   }
 
+  async function handleProposeRate(
+    booking: BookingRequest,
+    proposedRate: number,
+    note: string,
+  ) {
+    if (proposalLoadingId || respondingBookingId) {
+      return;
+    }
+
+    setProposalLoadingId(booking.id);
+    setError(null);
+
+    try {
+      const updatedBooking = await proposeBookingRate(booking.id, proposedRate, note);
+
+      setBookings((prev) =>
+        prev.map((item) => (item.id === updatedBooking.id ? updatedBooking : item)),
+      );
+    } catch (proposalError) {
+      console.error("Failed to propose booking rate:", proposalError);
+      setError(getBookingMutationErrorMessage(proposalError));
+    } finally {
+      setProposalLoadingId(null);
+    }
+  }
+
+  async function handleAcceptProposedRate(booking: BookingRequest, message: Message) {
+    if (proposalLoadingId || respondingBookingId || cancellingBookingId) {
+      return;
+    }
+
+    setProposalLoadingId(booking.id);
+    setError(null);
+
+    try {
+      const updatedBooking = await acceptProposedBookingRate(booking.id);
+      const updatedMessageText = buildUpdatedBookingMessage(updatedBooking, "accepted");
+
+      setBookings((prev) =>
+        prev.map((item) => (item.id === updatedBooking.id ? updatedBooking : item)),
+      );
+
+      setMessages((prev) =>
+        prev.map((item) =>
+          item.id === message.id ? { ...item, text: updatedMessageText } : item,
+        ),
+      );
+
+      await supabase.from("messages").update({ text: updatedMessageText }).eq("id", message.id);
+    } catch (acceptError) {
+      console.error("Failed to accept proposed rate:", acceptError);
+      setError(getBookingMutationErrorMessage(acceptError));
+    } finally {
+      setProposalLoadingId(null);
+    }
+  }
+
+  async function handleKeepOriginalOffer(booking: BookingRequest) {
+    if (proposalLoadingId || respondingBookingId || cancellingBookingId) {
+      return;
+    }
+
+    setProposalLoadingId(booking.id);
+    setError(null);
+
+    try {
+      const updatedBooking = await declineProposedBookingRate(booking.id);
+
+      setBookings((prev) =>
+        prev.map((item) => (item.id === updatedBooking.id ? updatedBooking : item)),
+      );
+    } catch (declineError) {
+      console.error("Failed to keep original offer:", declineError);
+      setError(getBookingMutationErrorMessage(declineError));
+    } finally {
+      setProposalLoadingId(null);
+    }
+  }
+
   async function handleBookingCancel(booking: BookingRequest, message: Message) {
     if (respondingBookingId || cancellingBookingId) {
       return;
@@ -1235,6 +1318,7 @@ export default function DmChatPage() {
                             canRespond={canRespond && Boolean(resolvedBooking.id)}
                             responding={respondingBookingId === resolvedBooking.id}
                             cancelling={cancellingBookingId === resolvedBooking.id}
+                            proposalLoading={proposalLoadingId === resolvedBooking.id}
                             profiles={bookingProfiles}
                             coverImageUrl={
                               resolvedBooking.event_id
@@ -1256,6 +1340,13 @@ export default function DmChatPage() {
                             onCancelAccepted={(reason) =>
                               handleCancelAcceptedBooking(resolvedBooking, message, reason)
                             }
+                            onProposeRate={(proposedRate, note) =>
+                              handleProposeRate(resolvedBooking, proposedRate, note)
+                            }
+                            onAcceptProposal={() =>
+                              handleAcceptProposedRate(resolvedBooking, message)
+                            }
+                            onKeepOriginalOffer={() => handleKeepOriginalOffer(resolvedBooking)}
                           />
                         </div>
                         <time

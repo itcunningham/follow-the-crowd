@@ -1,22 +1,32 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import BookingDetailGrid, { BookingDetailItem } from "@/app/components/booking/BookingDetailGrid";
+import BookingRateProposalPanel, {
+  BookingRateProposalNotice,
+} from "@/app/components/booking/BookingRateProposalPanel";
+import ProposeBookingRateSheet from "@/app/components/booking/ProposeBookingRateSheet";
 import BookingStatusBadge from "@/app/components/booking/BookingStatusBadge";
 import CancelAcceptedBookingButton from "@/app/components/booking/CancelAcceptedBookingButton";
 import { EventCoverImageContextThumb } from "@/app/components/events/EventCoverImageDisplay";
 import CancelBookingRequestButton from "@/app/components/CancelBookingRequestButton";
 import {
   canCancelBookingRequest,
+  canProposeBookingRate,
+  canRespondToRateProposal,
   formatBookingRequestMessage,
   getAcceptedBookingCancellationRole,
   getBookingGroupChatAccess,
+  getBookingOfferRateLabel,
+  getBookingRateDetailLabel,
+  hasPendingRateProposal,
   resolveBookingCancellationReasonLabel,
   resolveBookingCancelledByLabel,
   type BookingRequest,
   type BookingRequestStatus,
 } from "@/lib/bookingRequests";
-import { formatRateDisplay } from "@/lib/bookingRate";
+import { rateDigitsToInteger } from "@/lib/bookingRate";
 import type { BookingRecipientProfile } from "@/lib/user/currentUser";
 
 export default function BookingRequestCard({
@@ -25,6 +35,7 @@ export default function BookingRequestCard({
   canRespond,
   responding,
   cancelling,
+  proposalLoading = false,
   coverImageUrl,
   fallbackColour,
   profiles = new Map(),
@@ -32,12 +43,16 @@ export default function BookingRequestCard({
   onDecline,
   onCancel,
   onCancelAccepted,
+  onProposeRate,
+  onAcceptProposal,
+  onKeepOriginalOffer,
 }: {
   booking: BookingRequest;
   currentUserId: string | null;
   canRespond: boolean;
   responding: boolean;
   cancelling?: boolean;
+  proposalLoading?: boolean;
   coverImageUrl?: string | null;
   fallbackColour?: string | null;
   profiles?: Map<string, BookingRecipientProfile>;
@@ -45,7 +60,11 @@ export default function BookingRequestCard({
   onDecline: () => void;
   onCancel?: () => void | Promise<void>;
   onCancelAccepted?: (reason: string) => void | Promise<void>;
+  onProposeRate?: (proposedRate: number, note: string) => void | Promise<void>;
+  onAcceptProposal?: () => void | Promise<void>;
+  onKeepOriginalOffer?: () => void | Promise<void>;
 }) {
+  const [proposeSheetOpen, setProposeSheetOpen] = useState(false);
   const groupChatAccess = getBookingGroupChatAccess(booking, currentUserId);
   const showPendingCancel = canCancelBookingRequest(booking, currentUserId) && onCancel;
   const acceptedCancellationRole = getAcceptedBookingCancellationRole(booking, currentUserId);
@@ -53,113 +72,213 @@ export default function BookingRequestCard({
   const cancelledByLabel = resolveBookingCancelledByLabel(booking, profiles);
   const cancellationReasonLabel = resolveBookingCancellationReasonLabel(booking);
   const isCancelled = booking.status === "cancelled";
+  const isPending = booking.status === "pending";
+  const isOpenOffer = booking.rate_mode === "open";
+  const pendingProposal = hasPendingRateProposal(booking);
+  const canPropose = canProposeBookingRate(booking, currentUserId) && Boolean(onProposeRate);
+  const canReviewProposal =
+    canRespondToRateProposal(booking, currentUserId) &&
+    Boolean(onAcceptProposal && onKeepOriginalOffer);
+  const actionDisabled = responding || cancelling || proposalLoading;
+  const offerRateLabel = getBookingOfferRateLabel(booking);
+  const rateDetailLabel = getBookingRateDetailLabel(booking);
+
+  async function handleProposeRate(rateDigits: string, note: string) {
+    if (!onProposeRate) {
+      return;
+    }
+
+    await onProposeRate(rateDigitsToInteger(rateDigits), note);
+    setProposeSheetOpen(false);
+  }
 
   return (
-    <div className="w-full max-w-sm rounded-2xl border border-ftc-border-subtle bg-ftc-surface p-4">
-      <div className="flex min-w-0 items-start gap-3">
-        <EventCoverImageContextThumb
-          eventName={booking.event_name}
-          coverImageUrl={coverImageUrl}
-          fallbackColour={fallbackColour}
-        />
-        <div className="min-w-0 flex-1">
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted">
-            Booking request
-          </p>
-          <h3 className="mt-1 truncate text-base font-semibold text-ftc-text">
-            {booking.event_name}
-          </h3>
+    <>
+      <div className="w-full max-w-sm rounded-2xl border border-ftc-border-subtle bg-ftc-surface p-4">
+        <div className="flex min-w-0 items-start gap-3">
+          <EventCoverImageContextThumb
+            eventName={booking.event_name}
+            coverImageUrl={coverImageUrl}
+            fallbackColour={fallbackColour}
+          />
+          <div className="min-w-0 flex-1">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted">
+              Booking request
+            </p>
+            <h3 className="mt-1 truncate text-base font-semibold text-ftc-text">
+              {booking.event_name}
+            </h3>
+          </div>
+          <div className="flex shrink-0 flex-col items-end gap-1">
+            <BookingStatusBadge status={booking.status} />
+            {pendingProposal ? (
+              <span className="inline-flex rounded-full border border-ftc-border-subtle bg-ftc-bg-elevated px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-ftc-primary">
+                Rate proposed
+              </span>
+            ) : null}
+          </div>
         </div>
-        <BookingStatusBadge status={booking.status} />
-      </div>
 
-      <div className="mt-4">
-        <BookingDetailGrid>
-          <BookingDetailItem label="Venue" value={booking.venue} />
-          <BookingDetailItem label="Date" value={booking.event_date} />
-          <BookingDetailItem label="Set time" value={booking.set_time} />
-          <BookingDetailItem label="Rate" value={formatRateDisplay(booking.fee)} />
-          {booking.notes ? <BookingDetailItem label="Notes" value={booking.notes} /> : null}
-          {cancelledByLabel ? (
-            <BookingDetailItem label="Cancelled by" value={cancelledByLabel} />
-          ) : null}
-          {cancellationReasonLabel ? (
-            <BookingDetailItem label="Reason" value={cancellationReasonLabel} />
-          ) : null}
-        </BookingDetailGrid>
-      </div>
+        <div className="mt-4">
+          <BookingDetailGrid>
+            <BookingDetailItem label="Venue" value={booking.venue} />
+            <BookingDetailItem label="Date" value={booking.event_date} />
+            <BookingDetailItem label="Set time" value={booking.set_time} />
+            <BookingDetailItem label={rateDetailLabel} value={offerRateLabel} />
+            {booking.notes ? <BookingDetailItem label="Notes" value={booking.notes} /> : null}
+            {cancelledByLabel ? (
+              <BookingDetailItem label="Cancelled by" value={cancelledByLabel} />
+            ) : null}
+            {cancellationReasonLabel ? (
+              <BookingDetailItem label="Reason" value={cancellationReasonLabel} />
+            ) : null}
+          </BookingDetailGrid>
+        </div>
 
-      {booking.event_id && !isCancelled ? (
-        <>
-          <Link
-            href={`/events/${booking.event_id}`}
-            className="mt-4 inline-flex rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated px-3 py-2 text-xs font-semibold uppercase tracking-wide text-ftc-text-secondary transition hover:border-ftc-border-strong"
-          >
-            View event
-          </Link>
+        {!canReviewProposal ? (
+          <BookingRateProposalNotice booking={booking} currentUserId={currentUserId} />
+        ) : null}
 
-          {groupChatAccess && groupChatAccess.kind !== "hidden" ? (
-            <div className="mt-4 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated p-3">
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted">
-                Event group chat
-              </p>
-              {groupChatAccess.kind === "open" ? (
-                <Link
-                  href={groupChatAccess.href}
-                  className="mt-2 inline-flex ftc-btn-primary px-3 py-1.5 text-xs uppercase tracking-wide"
-                >
-                  Open group chat
-                </Link>
-              ) : (
-                <p className="mt-2 text-xs text-ftc-text-muted">
-                  Group chat unlocks after you accept.
+        {canReviewProposal ? (
+          <BookingRateProposalPanel
+            booking={booking}
+            currentUserId={currentUserId}
+            loading={actionDisabled}
+            onAcceptProposal={onAcceptProposal!}
+            onKeepOriginalOffer={onKeepOriginalOffer!}
+            onDeclineBooking={onCancel}
+          />
+        ) : null}
+
+        {booking.event_id && !isCancelled ? (
+          <>
+            <Link
+              href={`/events/${booking.event_id}`}
+              className="mt-4 inline-flex rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated px-3 py-2 text-xs font-semibold uppercase tracking-wide text-ftc-text-secondary transition hover:border-ftc-border-strong"
+            >
+              View event
+            </Link>
+
+            {groupChatAccess && groupChatAccess.kind !== "hidden" ? (
+              <div className="mt-4 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated p-3">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted">
+                  Event group chat
                 </p>
-              )}
-            </div>
-          ) : null}
-        </>
-      ) : null}
+                {groupChatAccess.kind === "open" ? (
+                  <Link
+                    href={groupChatAccess.href}
+                    className="mt-2 inline-flex ftc-btn-primary px-3 py-1.5 text-xs uppercase tracking-wide"
+                  >
+                    Open group chat
+                  </Link>
+                ) : (
+                  <p className="mt-2 text-xs text-ftc-text-muted">
+                    Group chat unlocks after you accept.
+                  </p>
+                )}
+              </div>
+            ) : null}
+          </>
+        ) : null}
 
-      {canRespond && booking.status === "pending" ? (
-        <div className="mt-4 flex gap-2">
-          <button
-            type="button"
-            onClick={onDecline}
-            disabled={responding || cancelling}
-            className="flex-1 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated px-3 py-2.5 text-xs font-semibold uppercase tracking-wide text-ftc-text-secondary transition hover:border-red-500/35 hover:text-red-300 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            Decline
-          </button>
-          <button
-            type="button"
-            onClick={onAccept}
-            disabled={responding || cancelling}
-            className="ftc-btn-primary flex-1 px-3 py-2.5 text-xs uppercase tracking-wide disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            Accept
-          </button>
-        </div>
-      ) : null}
+        {canRespond && isPending && !pendingProposal ? (
+          <div className="mt-4 flex flex-col gap-2">
+            {isOpenOffer ? (
+              <>
+                <button
+                  type="button"
+                  onClick={onAccept}
+                  disabled={actionDisabled}
+                  className="ftc-btn-primary w-full px-3 py-2.5 text-xs uppercase tracking-wide disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Accept offer
+                </button>
+                {canPropose ? (
+                  <button
+                    type="button"
+                    onClick={() => setProposeSheetOpen(true)}
+                    disabled={actionDisabled}
+                    className="w-full rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated px-3 py-2.5 text-xs font-semibold uppercase tracking-wide text-ftc-text-secondary transition hover:border-ftc-border-strong disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Propose rate
+                  </button>
+                ) : null}
+                <button
+                  type="button"
+                  onClick={onDecline}
+                  disabled={actionDisabled}
+                  className="w-full rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated px-3 py-2.5 text-xs font-semibold uppercase tracking-wide text-ftc-text-secondary transition hover:border-red-500/35 hover:text-red-300 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Decline
+                </button>
+              </>
+            ) : (
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={onDecline}
+                  disabled={actionDisabled}
+                  className="flex-1 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated px-3 py-2.5 text-xs font-semibold uppercase tracking-wide text-ftc-text-secondary transition hover:border-red-500/35 hover:text-red-300 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Decline
+                </button>
+                <button
+                  type="button"
+                  onClick={onAccept}
+                  disabled={actionDisabled}
+                  className="ftc-btn-primary flex-1 px-3 py-2.5 text-xs uppercase tracking-wide disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Accept
+                </button>
+              </div>
+            )}
+          </div>
+        ) : null}
 
-      {showPendingCancel ? (
-        <div className="mt-4">
-          <CancelBookingRequestButton
-            loading={Boolean(cancelling)}
-            onConfirm={onCancel}
-          />
-        </div>
-      ) : null}
+        {canRespond && isPending && pendingProposal && booking.recipient_id === currentUserId ? (
+          <div className="mt-4">
+            <button
+              type="button"
+              onClick={onDecline}
+              disabled={actionDisabled}
+              className="w-full rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated px-3 py-2.5 text-xs font-semibold uppercase tracking-wide text-ftc-text-secondary transition hover:border-red-500/35 hover:text-red-300 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Decline
+            </button>
+          </div>
+        ) : null}
 
-      {showAcceptedCancel ? (
-        <div className="mt-4">
-          <CancelAcceptedBookingButton
-            role={acceptedCancellationRole}
-            loading={Boolean(cancelling)}
-            onConfirm={onCancelAccepted}
-          />
-        </div>
-      ) : null}
-    </div>
+        {showPendingCancel && !canReviewProposal ? (
+          <div className="mt-4">
+            <CancelBookingRequestButton
+              loading={Boolean(cancelling)}
+              onConfirm={onCancel}
+            />
+          </div>
+        ) : null}
+
+        {showAcceptedCancel ? (
+          <div className="mt-4">
+            <CancelAcceptedBookingButton
+              role={acceptedCancellationRole}
+              loading={Boolean(cancelling)}
+              onConfirm={onCancelAccepted}
+            />
+          </div>
+        ) : null}
+      </div>
+
+      <ProposeBookingRateSheet
+        open={proposeSheetOpen}
+        loading={proposalLoading}
+        onClose={() => {
+          if (!proposalLoading) {
+            setProposeSheetOpen(false);
+          }
+        }}
+        onSubmit={handleProposeRate}
+      />
+    </>
   );
 }
 

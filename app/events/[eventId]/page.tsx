@@ -48,6 +48,8 @@ import {
   type DjPlannerAvailabilityHint,
 } from "@/lib/djAvailability";
 import BookingStatusBadge from "@/app/components/booking/BookingStatusBadge";
+import BookingRateModeField from "@/app/components/booking/BookingRateModeField";
+import BookingRateProposalPanel from "@/app/components/booking/BookingRateProposalPanel";
 import CancelBookingRequestButton from "@/app/components/CancelBookingRequestButton";
 import CancelAcceptedBookingButton from "@/app/components/booking/CancelAcceptedBookingButton";
 import HideDeclinedBookingButton from "@/app/components/HideDeclinedBookingButton";
@@ -58,18 +60,23 @@ import {
   getAcceptedBookingCancellationRole,
   resolveBookingCancellationReasonLabel,
   resolveBookingCancelledByLabel,
+  acceptProposedBookingRate,
   ALL_SELECTED_DJS_ALREADY_HAVE_EVENT_REQUEST_MESSAGE,
   buildBookingSendResultMessage,
   buildEventBookingDuplicateMap,
+  declineProposedBookingRate,
   filterActiveBookings,
   filterSendableRecipientIdsForEvent,
   filterVisibleEventLineupBookings,
   getActiveEventLineupStats,
   getBookingMutationErrorMessage,
+  getBookingOfferRateLabel,
+  hasPendingRateProposal,
   hideDeclinedBookingFromLineup,
   listBookingRequestsForEvent,
   sendBookingRequestsToDjs,
   type ActiveBookingStatusFilter,
+  type BookingRateMode,
   type BookingRequest,
   type BookingRequestStatus,
 } from "@/lib/bookingRequests";
@@ -155,12 +162,14 @@ export default function EventDetailPage() {
   const editFormSectionRef = useRef<HTMLElement | null>(null);
 
   const [sendOpen, setSendOpen] = useState(false);
+  const [sendRateMode, setSendRateMode] = useState<BookingRateMode>("fixed");
   const [djs, setDjs] = useState<UserProfile[]>([]);
   const [selectedDjIds, setSelectedDjIds] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [loadingDjs, setLoadingDjs] = useState(false);
   const [sending, setSending] = useState(false);
   const [cancellingBookingId, setCancellingBookingId] = useState<string | null>(null);
+  const [proposalLoadingId, setProposalLoadingId] = useState<string | null>(null);
   const [hidingBookingId, setHidingBookingId] = useState<string | null>(null);
   const [deletingEvent, setDeletingEvent] = useState(false);
   const [cancellingEvent, setCancellingEvent] = useState(false);
@@ -472,6 +481,7 @@ export default function EventDetailPage() {
     }
 
     setSendOpen(true);
+    setSendRateMode("fixed");
     setSelectedDjIds([]);
     setSearchQuery("");
     setError(null);
@@ -505,6 +515,7 @@ export default function EventDetailPage() {
     }
 
     setSendOpen(false);
+    setSendRateMode("fixed");
     setSelectedDjIds([]);
     setSearchQuery("");
     setUnavailableConfirmOpen(false);
@@ -573,7 +584,10 @@ export default function EventDetailPage() {
     setError(null);
 
     try {
-      const input = eventToRequestInput(event);
+      const input = {
+        ...eventToRequestInput(event),
+        rateMode: sendRateMode,
+      };
       const { successes, failures, skippedDuplicateRecipientIds } =
         await sendBookingRequestsToDjs(sendableIds, input, {
           existingEventBookings: lineup,
@@ -657,6 +671,38 @@ export default function EventDetailPage() {
       setError(getBookingMutationErrorMessage(hideError));
     } finally {
       setHidingBookingId(null);
+    }
+  }
+
+  async function handleAcceptProposedRate(booking: BookingRequest) {
+    setProposalLoadingId(booking.id);
+    setError(null);
+
+    try {
+      await acceptProposedBookingRate(booking.id);
+      await reloadEventLineup();
+      setSuccessMessage("Proposed rate accepted.");
+    } catch (acceptError) {
+      console.error("Failed to accept proposed rate:", acceptError);
+      setError(getBookingMutationErrorMessage(acceptError));
+    } finally {
+      setProposalLoadingId(null);
+    }
+  }
+
+  async function handleKeepOriginalOffer(booking: BookingRequest) {
+    setProposalLoadingId(booking.id);
+    setError(null);
+
+    try {
+      await declineProposedBookingRate(booking.id);
+      await reloadEventLineup();
+      setSuccessMessage("Original offer kept.");
+    } catch (declineError) {
+      console.error("Failed to keep original offer:", declineError);
+      setError(getBookingMutationErrorMessage(declineError));
+    } finally {
+      setProposalLoadingId(null);
     }
   }
 
@@ -925,6 +971,10 @@ export default function EventDetailPage() {
                 </p>
               </div>
 
+              <div className="mt-4">
+                <BookingRateModeField value={sendRateMode} onChange={setSendRateMode} />
+              </div>
+
               <input
                 type="search"
                 value={searchQuery}
@@ -1140,9 +1190,18 @@ export default function EventDetailPage() {
                             {profile?.genre?.trim() ? (
                               <p className="text-sm text-ftc-text-muted">{profile.genre}</p>
                             ) : null}
-                            <div className="mt-2">
+                            <div className="mt-2 flex flex-wrap items-center gap-2">
                               <BookingStatusBadge status={booking.status} />
+                              {hasPendingRateProposal(booking) ? (
+                                <span className="inline-flex rounded-full border border-ftc-border-subtle bg-ftc-bg-elevated px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-ftc-primary">
+                                  Rate proposed
+                                </span>
+                              ) : null}
                             </div>
+                            <p className="mt-2 text-xs text-ftc-text-muted">
+                              {booking.rate_mode === "open" ? "Open offer" : "Fixed offer"} ·{" "}
+                              {getBookingOfferRateLabel(booking)}
+                            </p>
                             {cancelledByLabel ? (
                               <p className="mt-2 text-xs text-ftc-text-muted">
                                 Cancelled by {cancelledByLabel}
@@ -1153,6 +1212,14 @@ export default function EventDetailPage() {
                                 Reason: {cancellationReasonLabel}
                               </p>
                             ) : null}
+                            <BookingRateProposalPanel
+                              booking={booking}
+                              currentUserId={currentUserId}
+                              loading={proposalLoadingId === booking.id}
+                              onAcceptProposal={() => handleAcceptProposedRate(booking)}
+                              onKeepOriginalOffer={() => handleKeepOriginalOffer(booking)}
+                              onDeclineBooking={() => handleCancelBooking(booking.id)}
+                            />
                           </div>
                         </div>
 

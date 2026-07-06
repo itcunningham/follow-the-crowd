@@ -5,7 +5,9 @@ import { BookingDateField, BookingSetTimeRangeField } from "@/app/components/Boo
 import BookingFormField from "@/app/components/booking/BookingFormField";
 import BookingSelectedDjsContext from "@/app/components/booking/BookingSelectedDjsContext";
 import { BookingRateField } from "@/app/components/BookingRateField";
+import BookingRateModeField from "@/app/components/booking/BookingRateModeField";
 import type { BookingRequestInput } from "@/lib/bookingRequests";
+import { isPositiveWholeDollarRate } from "@/lib/bookingRate";
 import type { UserProfile } from "@/lib/user/currentUser";
 
 const emptyForm: BookingRequestInput = {
@@ -15,6 +17,7 @@ const emptyForm: BookingRequestInput = {
   setTime: "",
   fee: "",
   notes: "",
+  rateMode: "fixed",
 };
 
 export default function BookingRequestModal({
@@ -58,9 +61,16 @@ export default function BookingRequestModal({
       !form.eventName.trim() ||
       !form.venue.trim() ||
       !form.eventDate.trim() ||
-      !form.setTime.trim() ||
-      !form.fee.trim()
+      !form.setTime.trim()
     ) {
+      return;
+    }
+
+    if (form.rateMode !== "open" && !form.fee.trim()) {
+      return;
+    }
+
+    if (form.fee.trim() && !isPositiveWholeDollarRate(form.fee)) {
       return;
     }
 
@@ -112,10 +122,15 @@ export default function BookingRequestModal({
             onChange={(value) => updateField("setTime", value)}
             required
           />
+          <BookingRateModeField
+            value={form.rateMode ?? "fixed"}
+            onChange={(value) => updateField("rateMode", value)}
+          />
           <BookingRateField
             value={form.fee}
             onChange={(value) => updateField("fee", value)}
-            required
+            label={form.rateMode === "open" ? "Suggested rate (optional)" : "Rate"}
+            required={form.rateMode !== "open"}
           />
           <BookingFormField
             label="Notes"
