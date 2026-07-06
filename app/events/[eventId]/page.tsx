@@ -1424,14 +1424,17 @@ export default function EventDetailPage() {
               </EventDetailPrimaryAction>
             ) : null}
             {!showOwnerSendAction && viewerBooking?.conversation_id ? (
-              <EventDetailPrimaryAction href={`/dm/${viewerBooking.conversation_id}`}>
+              <EventDetailPrimaryAction
+                icon="chat"
+                href={`/dm/${viewerBooking.conversation_id}`}
+              >
                 Open booking conversation
               </EventDetailPrimaryAction>
             ) : null}
             {!showOwnerSendAction && !viewerBooking?.conversation_id && canOpenCrewChat ? (
-              <EventDetailPrimaryAction href={`/events/${event.id}/chat`}>
+              <EventDetailSecondaryAction href={`/events/${event.id}/chat`}>
                 Group chat
-              </EventDetailPrimaryAction>
+              </EventDetailSecondaryAction>
             ) : null}
             {(showOwnerSendAction || Boolean(viewerBooking?.conversation_id)) && canOpenCrewChat ? (
               <EventDetailSecondaryAction href={`/events/${event.id}/chat`}>
