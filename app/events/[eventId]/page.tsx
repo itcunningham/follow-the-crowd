@@ -161,6 +161,9 @@ export default function EventDetailPage() {
   const editFormSectionRef = useRef<HTMLElement | null>(null);
 
   const [sendOpen, setSendOpen] = useState(false);
+  const sendBookingsSectionRef = useRef<HTMLElement | null>(null);
+  const djSearchInputRef = useRef<HTMLInputElement | null>(null);
+  const pendingSendSectionFocusRef = useRef(false);
   const [djOffers, setDjOffers] = useState<Record<string, DjSendOffer>>({});
   const [djs, setDjs] = useState<UserProfile[]>([]);
   const [selectedDjIds, setSelectedDjIds] = useState<string[]>([]);
@@ -542,6 +545,7 @@ export default function EventDetailPage() {
       return;
     }
 
+    pendingSendSectionFocusRef.current = true;
     setSendOpen(true);
     setDjOffers({});
     setSelectedDjIds([]);
@@ -570,6 +574,29 @@ export default function EventDetailPage() {
       setLoadingDjs(false);
     }
   }
+
+  useEffect(() => {
+    if (!sendOpen || !pendingSendSectionFocusRef.current) {
+      return;
+    }
+
+    window.requestAnimationFrame(() => {
+      sendBookingsSectionRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    });
+
+    if (loadingDjs) {
+      return;
+    }
+
+    pendingSendSectionFocusRef.current = false;
+
+    window.setTimeout(() => {
+      djSearchInputRef.current?.focus({ preventScroll: true });
+    }, 300);
+  }, [sendOpen, loadingDjs]);
 
   function closeSendBookings() {
     if (sending) {
@@ -864,9 +891,14 @@ export default function EventDetailPage() {
 
   const showStickyActions = !editOpen && !sendOpen;
   const showOwnerSendAction = isOwner && isPlanner && !eventIsCancelled;
+  const showEventGroupChatAction = showOwnerSendAction
+    ? hasLinkedBookings
+    : canOpenCrewChat;
   const showBottomBar =
     showStickyActions &&
-    (showOwnerSendAction || canOpenCrewChat || Boolean(viewerBooking?.conversation_id));
+    (showOwnerSendAction ||
+      showEventGroupChatAction ||
+      Boolean(viewerBooking?.conversation_id));
 
   if (loading) {
     return (
@@ -914,7 +946,7 @@ export default function EventDetailPage() {
             </EventDetailOverlayButton>
 
             <div className="flex items-center gap-2">
-              {canOpenCrewChat ? (
+              {showEventGroupChatAction ? (
                 <EventDetailOverlayButton
                   href={`/events/${event.id}/chat`}
                   label="Open group chat"
@@ -1073,6 +1105,11 @@ export default function EventDetailPage() {
           ) : null}
 
           {sendOpen && isOwner && !eventIsCancelled ? (
+            <section
+              ref={sendBookingsSectionRef}
+              aria-label="Send bookings"
+              className="scroll-mt-24"
+            >
             <PlannerFormCard title="Send bookings" onCancel={closeSendBookings} cancelDisabled={sending}>
               <div className="flex items-start gap-3">
                 <EventCoverImageContextThumb
@@ -1096,6 +1133,7 @@ export default function EventDetailPage() {
               </div>
 
               <input
+                ref={djSearchInputRef}
                 type="search"
                 value={searchQuery}
                 onChange={(event) => setSearchQuery(event.target.value)}
@@ -1218,6 +1256,7 @@ export default function EventDetailPage() {
                 {sendButtonLabel}
               </button>
             </PlannerFormCard>
+            </section>
           ) : null}
 
           {canViewRunSheet ? (
@@ -1431,12 +1470,13 @@ export default function EventDetailPage() {
                 Open booking conversation
               </EventDetailPrimaryAction>
             ) : null}
-            {!showOwnerSendAction && !viewerBooking?.conversation_id && canOpenCrewChat ? (
+            {!showOwnerSendAction && !viewerBooking?.conversation_id && showEventGroupChatAction ? (
               <EventDetailSecondaryAction href={`/events/${event.id}/chat`}>
                 Group chat
               </EventDetailSecondaryAction>
             ) : null}
-            {(showOwnerSendAction || Boolean(viewerBooking?.conversation_id)) && canOpenCrewChat ? (
+            {(showOwnerSendAction || Boolean(viewerBooking?.conversation_id)) &&
+            showEventGroupChatAction ? (
               <EventDetailSecondaryAction href={`/events/${event.id}/chat`}>
                 Group chat
               </EventDetailSecondaryAction>
