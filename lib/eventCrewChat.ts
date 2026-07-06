@@ -183,15 +183,23 @@ export async function sendEventCrewChatMessage(
   await Promise.all(
     participants
       .filter((participantId) => participantId !== userId)
-      .map((participantId) =>
-        createNotification(
-          participantId,
-          "message",
-          eventName,
-          `${senderName}: ${preview}`,
-          link,
-        ),
-      ),
+      .map(async (participantId) => {
+        try {
+          await createNotification(
+            participantId,
+            "message",
+            eventName,
+            `${senderName}: ${preview}`,
+            link,
+          );
+        } catch (notificationError) {
+          console.error(
+            "[eventCrewChat] Group message posted but notification failed:",
+            participantId,
+            notificationError,
+          );
+        }
+      }),
   );
 }
 

@@ -26,14 +26,71 @@ export function notifyNavigationBadgesRefresh(): void {
   }
 }
 
+const IS_DEV = process.env.NODE_ENV === "development";
+
+export type NotificationCreateContext = {
+  type: NotificationType;
+  recipientUserId: string;
+  link: string | null;
+  title: string;
+};
+
+export class NotificationCreateError extends Error {
+  readonly type: NotificationType;
+  readonly recipientUserId: string;
+  readonly link: string | null;
+  readonly code?: string;
+
+  constructor(message: string, context: Omit<NotificationCreateContext, "title"> & { code?: string }) {
+    super(message);
+    this.name = "NotificationCreateError";
+    this.type = context.type;
+    this.recipientUserId = context.recipientUserId;
+    this.link = context.link;
+    this.code = context.code;
+  }
+}
+
+function logNotificationCreateFailure(
+  error: { message?: string; code?: string; details?: string; hint?: string },
+  context: NotificationCreateContext,
+): void {
+  const payload = {
+    type: context.type,
+    recipientUserId: context.recipientUserId,
+    link: context.link,
+    title: context.title,
+    code: error.code ?? null,
+    message: error.message ?? "Unknown notification error",
+  };
+
+  if (IS_DEV) {
+    console.error("[notifications] create_notification failed:", {
+      ...payload,
+      details: error.details ?? null,
+      hint: error.hint ?? null,
+    });
+    return;
+  }
+
+  console.error("[notifications] create_notification failed:", payload);
+}
+
 export async function createNotification(
   userId: string,
   type: NotificationType,
   title: string,
   body: string | null,
   link: string | null,
-): Promise<void> {
-  const { error } = await supabase.rpc("create_notification", {
+): Promise<string> {
+  const context: NotificationCreateContext = {
+    type,
+    recipientUserId: userId,
+    link,
+    title,
+  };
+
+  const { data, error } = await supabase.rpc("create_notification", {
     p_user_id: userId,
     p_type: type,
     p_title: title,
@@ -42,11 +99,28 @@ export async function createNotification(
   });
 
   if (error) {
-    console.error("Failed to create notification:", error);
-    return;
+    logNotificationCreateFailure(error, context);
+    throw new NotificationCreateError(error.message ?? "Failed to create notification", {
+      type,
+      recipientUserId: userId,
+      link,
+      code: error.code,
+    });
+  }
+
+  if (typeof data !== "string" || !data.trim()) {
+    const missingIdMessage =
+      "create_notification completed without a notification id. Run scripts/fixCreateNotification.sql in Supabase.";
+    logNotificationCreateFailure({ message: missingIdMessage }, context);
+    throw new NotificationCreateError(missingIdMessage, {
+      type,
+      recipientUserId: userId,
+      link,
+    });
   }
 
   notifyNavigationBadgesRefresh();
+  return data;
 }
 
 export async function getUnreadNotifications(

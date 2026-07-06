@@ -847,13 +847,20 @@ export default function DmChatPage() {
     }
 
     if (otherUserId) {
-      await createNotification(
-        otherUserId,
-        "message",
-        "New message",
-        text,
-        `/dm/${conversationId}`,
-      );
+      try {
+        await createNotification(
+          otherUserId,
+          "message",
+          "New message",
+          text,
+          `/dm/${conversationId}`,
+        );
+      } catch (notificationError) {
+        console.error(
+          "[dm] Message sent but notification failed:",
+          notificationError,
+        );
+      }
     }
 
     setInput("");
