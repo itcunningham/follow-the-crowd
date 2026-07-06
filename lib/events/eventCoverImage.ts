@@ -147,6 +147,18 @@ export function getEventCoverUploadErrorMessage(error: unknown): string {
   return "Flyer image upload failed.";
 }
 
+export function wrapEventCoverSaveError(step: string, error: unknown): Error {
+  const message = getEventCoverUploadErrorMessage(error);
+
+  if (message.startsWith(`${step}:`)) {
+    return error instanceof Error ? error : new Error(message);
+  }
+
+  return new Error(`${step}: ${message}`, {
+    cause: error instanceof Error ? error : undefined,
+  });
+}
+
 export async function uploadEventCoverImage(eventId: string, file: File): Promise<string> {
   const validationError = validateEventCoverFile(file);
 

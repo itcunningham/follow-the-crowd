@@ -55,6 +55,27 @@ create policy "messages_update_conversation_member"
 -- 2. Event cover uploads must target an event owned by the caller
 -- ---------------------------------------------------------------------------
 
+create or replace function public.can_manage_event_cover_storage(p_object_name text)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select
+    auth.uid() is not null
+    and coalesce((storage.foldername(p_object_name))[1], '') = public.auth_user_id()
+    and exists (
+      select 1
+      from public.events e
+      where e.id::text = coalesce((storage.foldername(p_object_name))[2], '')
+        and e.owner_id = public.auth_user_id()
+    );
+$$;
+
+revoke all on function public.can_manage_event_cover_storage(text) from public;
+grant execute on function public.can_manage_event_cover_storage(text) to authenticated;
+
 drop policy if exists "event_covers_insert_own_folder" on storage.objects;
 drop policy if exists "event_covers_update_own_folder" on storage.objects;
 drop policy if exists "event_covers_delete_own_folder" on storage.objects;
@@ -65,14 +86,7 @@ create policy "event_covers_insert_own_folder"
   to authenticated
   with check (
     bucket_id = 'event-covers'
-    and auth.uid() is not null
-    and (storage.foldername(name))[1] = public.auth_user_id()
-    and exists (
-      select 1
-      from public.events e
-      where e.id::text = (storage.foldername(name))[2]
-        and e.owner_id = public.auth_user_id()
-    )
+    and public.can_manage_event_cover_storage(name)
   );
 
 create policy "event_covers_update_own_folder"
@@ -81,23 +95,11 @@ create policy "event_covers_update_own_folder"
   to authenticated
   using (
     bucket_id = 'event-covers'
-    and (storage.foldername(name))[1] = public.auth_user_id()
-    and exists (
-      select 1
-      from public.events e
-      where e.id::text = (storage.foldername(name))[2]
-        and e.owner_id = public.auth_user_id()
-    )
+    and public.can_manage_event_cover_storage(name)
   )
   with check (
     bucket_id = 'event-covers'
-    and (storage.foldername(name))[1] = public.auth_user_id()
-    and exists (
-      select 1
-      from public.events e
-      where e.id::text = (storage.foldername(name))[2]
-        and e.owner_id = public.auth_user_id()
-    )
+    and public.can_manage_event_cover_storage(name)
   );
 
 create policy "event_covers_delete_own_folder"
@@ -106,13 +108,7 @@ create policy "event_covers_delete_own_folder"
   to authenticated
   using (
     bucket_id = 'event-covers'
-    and (storage.foldername(name))[1] = public.auth_user_id()
-    and exists (
-      select 1
-      from public.events e
-      where e.id::text = (storage.foldername(name))[2]
-        and e.owner_id = public.auth_user_id()
-    )
+    and public.can_manage_event_cover_storage(name)
   );
 
 -- ---------------------------------------------------------------------------

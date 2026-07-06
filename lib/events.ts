@@ -16,6 +16,7 @@ import {
   deleteEventCoverStorageObject,
   normalizeEventCoverImageUrl,
   uploadEventCoverImage,
+  wrapEventCoverSaveError,
 } from "@/lib/events/eventCoverImage";
 import {
   FTC_STATUS_DANGER,
@@ -348,19 +349,44 @@ export async function updateEventWithCover(
   const normalizedPreviousCoverUrl = normalizeEventCoverImageUrl(previousCoverUrl);
 
   if (coverChange.removeExisting) {
-    const clearedEvent = await updateEventCoverImageUrl(eventId, null);
-    assertEventCoverImagePersisted(clearedEvent, null);
-    await deleteEventCoverStorageObject(normalizedPreviousCoverUrl);
+    try {
+      const clearedEvent = await updateEventCoverImageUrl(eventId, null);
+      assertEventCoverImagePersisted(clearedEvent, null);
+      await deleteEventCoverStorageObject(normalizedPreviousCoverUrl);
+    } catch (error) {
+      throw wrapEventCoverSaveError("events.update cover_image_url clear", error);
+    }
   } else if (coverChange.file) {
-    const uploadedPublicUrl = await uploadEventCoverImage(eventId, coverChange.file);
-    const savedCoverEvent = await updateEventCoverImageUrl(eventId, uploadedPublicUrl);
-    assertEventCoverImagePersisted(savedCoverEvent, uploadedPublicUrl);
-    await deleteEventCoverStorageObject(normalizedPreviousCoverUrl);
+    let uploadedPublicUrl: string;
+
+    try {
+      uploadedPublicUrl = await uploadEventCoverImage(eventId, coverChange.file);
+    } catch (error) {
+      throw wrapEventCoverSaveError("storage.objects insert event-covers", error);
+    }
+
+    try {
+      const savedCoverEvent = await updateEventCoverImageUrl(eventId, uploadedPublicUrl);
+      assertEventCoverImagePersisted(savedCoverEvent, uploadedPublicUrl);
+      await deleteEventCoverStorageObject(normalizedPreviousCoverUrl);
+    } catch (error) {
+      throw wrapEventCoverSaveError("events.update cover_image_url", error);
+    }
   }
 
-  await updateEvent(eventId, input);
+  try {
+    await updateEvent(eventId, input);
+  } catch (error) {
+    throw wrapEventCoverSaveError("events.update fields", error);
+  }
 
-  const refreshed = await getEventById(eventId);
+  let refreshed: Event | null;
+
+  try {
+    refreshed = await getEventById(eventId);
+  } catch (error) {
+    throw wrapEventCoverSaveError("events.select after save", error);
+  }
 
   if (!refreshed) {
     throw new Error("Event not found after save.");
