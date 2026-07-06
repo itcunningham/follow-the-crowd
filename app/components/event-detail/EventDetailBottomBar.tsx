@@ -4,6 +4,20 @@ import Link from "next/link";
 
 type ActionIcon = "send" | "chat";
 
+const actionCardClassName = [
+  "group relative flex min-h-[3.25rem] w-full min-w-0 flex-1 items-center gap-3 rounded-xl border border-ftc-border-subtle px-3.5 py-3 text-left transition",
+  "bg-gradient-to-br from-[#171d28] via-[#141a24] to-[#111820] shadow-[0_4px_18px_rgb(0_0_0/0.28)]",
+  "hover:-translate-y-px hover:border-ftc-border-strong hover:shadow-[0_8px_22px_rgb(0_0_0/0.34)]",
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ftc-primary/35",
+  "disabled:cursor-not-allowed disabled:opacity-50",
+].join(" ");
+
+const actionIconWrapClassName =
+  "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-ftc-border-subtle bg-ftc-bg-elevated/80 text-ftc-primary";
+
+const actionTitleClassName =
+  "min-w-0 flex-1 truncate text-sm font-semibold text-ftc-text-secondary group-hover:text-ftc-text";
+
 function ActionIconGlyph({ icon }: { icon: ActionIcon }) {
   if (icon === "send") {
     return (
@@ -63,62 +77,38 @@ function ActionChevron() {
 }
 
 function EventDetailActionCard({
-  variant,
   icon,
   href,
   onClick,
   disabled,
   children,
 }: {
-  variant: "primary" | "secondary";
   icon: ActionIcon;
   href?: string;
   onClick?: () => void;
   disabled?: boolean;
   children: React.ReactNode;
 }) {
-  const isPrimary = variant === "primary";
-
-  const className = [
-    "group relative flex min-h-[3.25rem] w-full min-w-0 flex-1 items-center gap-3 rounded-xl px-3.5 py-3 text-left transition",
-    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ftc-primary/35",
-    "disabled:cursor-not-allowed disabled:opacity-50",
-    isPrimary
-      ? "border border-ftc-primary/30 bg-gradient-to-br from-[#0d1524] via-[#111820] to-[#0a121c] shadow-[0_0_0_1px_rgb(79_209_255/0.06),0_8px_24px_rgb(0_0_0/0.38)] hover:border-ftc-primary/50 hover:shadow-[0_0_0_1px_rgb(79_209_255/0.14),0_10px_28px_rgb(0_0_0/0.42)]"
-      : "border border-ftc-border-subtle bg-gradient-to-br from-[#171d28] via-[#141a24] to-[#111820] shadow-[0_4px_18px_rgb(0_0_0/0.28)] hover:-translate-y-px hover:border-ftc-border-strong hover:shadow-[0_8px_22px_rgb(0_0_0/0.34)]",
-  ].join(" ");
-
-  const iconWrapClassName = [
-    "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border",
-    isPrimary
-      ? "border-ftc-primary/25 bg-ftc-primary/10 text-ftc-primary"
-      : "border-ftc-border-subtle bg-ftc-bg-elevated/80 text-ftc-primary",
-  ].join(" ");
-
-  const titleClassName = isPrimary
-    ? "truncate text-sm font-semibold text-ftc-text group-hover:text-ftc-primary/95"
-    : "truncate text-sm font-semibold text-ftc-text-secondary group-hover:text-ftc-text";
-
   const content = (
     <>
-      <span className={iconWrapClassName}>
+      <span className={actionIconWrapClassName}>
         <ActionIconGlyph icon={icon} />
       </span>
-      <span className={`min-w-0 flex-1 ${titleClassName}`}>{children}</span>
+      <span className={actionTitleClassName}>{children}</span>
       <ActionChevron />
     </>
   );
 
   if (href) {
     return (
-      <Link href={href} className={className}>
+      <Link href={href} className={actionCardClassName}>
         {content}
       </Link>
     );
   }
 
   return (
-    <button type="button" onClick={onClick} disabled={disabled} className={className}>
+    <button type="button" onClick={onClick} disabled={disabled} className={actionCardClassName}>
       {content}
     </button>
   );
@@ -153,7 +143,6 @@ export function EventDetailPrimaryAction({
 }) {
   return (
     <EventDetailActionCard
-      variant="primary"
       icon={icon}
       href={href}
       onClick={onClick}
@@ -174,7 +163,7 @@ export function EventDetailSecondaryAction({
   children: React.ReactNode;
 }) {
   return (
-    <EventDetailActionCard variant="secondary" icon="chat" href={href} onClick={onClick}>
+    <EventDetailActionCard icon="chat" href={href} onClick={onClick}>
       {children}
     </EventDetailActionCard>
   );
