@@ -201,6 +201,7 @@ export default function EventDetailPage() {
   const canEditRunSheet = isOwner && isPlanner;
   const eventIsCancelled = event ? isEventCancelled(event) : false;
   const hasLinkedBookings = lineup.length > 0;
+  const hasAcceptedBookings = lineup.some((booking) => booking.status === "accepted");
   const canManageEventLifecycle = isOwner && isPlanner && !eventIsCancelled;
 
   const visibleLineup = useMemo(() => filterVisibleEventLineupBookings(lineup), [lineup]);
@@ -892,7 +893,7 @@ export default function EventDetailPage() {
   const showStickyActions = !editOpen && !sendOpen;
   const showOwnerSendAction = isOwner && isPlanner && !eventIsCancelled;
   const showEventGroupChatAction = showOwnerSendAction
-    ? hasLinkedBookings
+    ? hasAcceptedBookings
     : canOpenCrewChat;
   const showBottomBar =
     showStickyActions &&
