@@ -40,6 +40,7 @@ import {
   logBookingsLoadError,
   logCancelledBookingsLoadFailure,
   listBookingRequestsForEvent,
+  resolveBookingRequestRateMode,
   sendBookingRequestsToDjs,
   sortBookingsNewestFirst,
   unarchiveBookingRequest,
@@ -797,8 +798,12 @@ function BookingsPageContent() {
     setSuccessMessage(null);
 
     try {
+      const sendInput: BookingRequestInput = {
+        ...form,
+        rateMode: resolveBookingRequestRateMode(form),
+      };
       const { successes, failures, skippedDuplicateRecipientIds } =
-        await sendBookingRequestsToDjs(sendableIds, form, {
+        await sendBookingRequestsToDjs(sendableIds, sendInput, {
           existingEventBookings: form.eventId ? duplicateSource : undefined,
         });
       const skippedCount = totalSkippedDuplicates + skippedDuplicateRecipientIds.length;

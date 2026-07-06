@@ -31,7 +31,6 @@ import {
   isBookingRateProposalSchemaError,
   isBookingRequestMessage,
   mergeBookingRequests,
-  BOOKING_RATE_PROPOSAL_SCHEMA_RELOAD_SQL,
   parseBookingRequestMessage,
   proposeBookingRate,
   updateBookingRequestStatus,
@@ -465,13 +464,6 @@ export default function DmChatPage() {
 
       setBookings(nextBookings);
       await syncEventArtwork(nextBookings);
-      console.log("[dm booking] reloaded conversation bookings", {
-        conversationId,
-        bookingCount: nextBookings.length,
-        cancelledBookingIds: nextBookings
-          .filter((booking) => booking.status?.toLowerCase() === "cancelled")
-          .map((booking) => booking.id),
-      });
     } catch (bookingError) {
       console.error("Failed to load booking requests:", bookingError);
     }
@@ -510,7 +502,7 @@ export default function DmChatPage() {
       } catch (bookingError) {
         console.error("Failed to load conversation booking requests:", bookingError);
         if (isBookingRateProposalSchemaError(bookingError)) {
-          bookingLoadError = `Booking rate fields are missing from the API schema. Run this in Supabase SQL Editor: ${BOOKING_RATE_PROPOSAL_SCHEMA_RELOAD_SQL}`;
+          bookingLoadError = `Booking rate fields are missing from the API schema. Run scripts/supabaseReloadPostgrest.sql in the Supabase SQL Editor.`;
         } else {
           bookingLoadError = getBookingMutationErrorMessage(bookingError);
         }
@@ -532,14 +524,13 @@ export default function DmChatPage() {
 
           if (unresolvedIds.length > 0) {
             setFailedBookingIds(new Set(unresolvedIds));
-            console.error("[dm booking] could not hydrate bookings by id:", unresolvedIds);
           }
         } catch (bookingError) {
           console.error("Failed to hydrate booking requests by id:", bookingError);
           setFailedBookingIds(new Set(missingBookingIds));
 
           if (isBookingRateProposalSchemaError(bookingError)) {
-            bookingLoadError = `Booking rate fields are missing from the API schema. Run this in Supabase SQL Editor: ${BOOKING_RATE_PROPOSAL_SCHEMA_RELOAD_SQL}`;
+            bookingLoadError = `Booking rate fields are missing from the API schema. Run scripts/supabaseReloadPostgrest.sql in the Supabase SQL Editor.`;
           } else if (!bookingLoadError) {
             bookingLoadError = getBookingMutationErrorMessage(bookingError);
           }
@@ -571,14 +562,6 @@ export default function DmChatPage() {
       setAttachments(attachmentsResult);
       setReactions(reactionsResult);
       await syncEventArtwork(bookingsResult);
-      console.log("[dm booking] loaded conversation bookings", {
-        conversationId,
-        bookingCount: bookingsResult.length,
-        messageBookingIds,
-        cancelledBookingIds: bookingsResult
-          .filter((booking) => booking.status?.toLowerCase() === "cancelled")
-          .map((booking) => booking.id),
-      });
       setLoading(false);
     }
 
@@ -649,10 +632,9 @@ export default function DmChatPage() {
 
         if (unresolvedIds.length > 0) {
           setFailedBookingIds((prev) => new Set([...prev, ...unresolvedIds]));
-          console.error("[dm booking] could not hydrate bookings by id:", unresolvedIds);
         }
       } catch (fetchError) {
-        console.error("[dm booking] failed to hydrate missing bookings:", fetchError);
+        console.error("Failed to hydrate missing bookings:", fetchError);
         if (!cancelled) {
           setFailedBookingIds((prev) => new Set([...prev, ...missingIds]));
         }
@@ -1429,23 +1411,6 @@ export default function DmChatPage() {
                     liveBooking.event_id ? eventArtworkById.get(liveBooking.event_id) : undefined,
                   )
                 : null;
-
-              console.log("[dm booking] card decision", {
-                messageId: message.id,
-                bookingId,
-                bookingLoaded,
-                bookingLoading,
-                bookingSource,
-                rateMode: actionBooking?.rate_mode ?? resolvedBooking.rate_mode,
-                recipientId: actionBooking?.recipient_id ?? resolvedBooking.recipient_id,
-                parsedEventName: cardVisibility.parsedEventName,
-                parsedEventDate: cardVisibility.parsedEventDate,
-                parsedRate: cardVisibility.parsedRate,
-                matchedBookingId: cardVisibility.matchedBookingId,
-                matchedBookingStatus: cardVisibility.matchedBookingStatus,
-                cancelledBookingIds: [...cancelledBookingContext.cancelledBookingIds],
-                cardHidden: cardVisibility.hideCard,
-              });
 
               if (cardVisibility.hideCard) {
                   const highlighted = isMessageHighlighted(message.id);

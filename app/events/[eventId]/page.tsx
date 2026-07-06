@@ -74,6 +74,7 @@ import {
   hasPendingRateProposal,
   hideDeclinedBookingFromLineup,
   listBookingRequestsForEvent,
+  resolveBookingRequestRateMode,
   sendBookingRequestsToDjs,
   type ActiveBookingStatusFilter,
   type BookingRateMode,
@@ -584,9 +585,10 @@ export default function EventDetailPage() {
     setError(null);
 
     try {
+      const baseInput = eventToRequestInput(event);
       const input = {
-        ...eventToRequestInput(event),
-        rateMode: sendRateMode,
+        ...baseInput,
+        rateMode: resolveBookingRequestRateMode({ ...baseInput, rateMode: sendRateMode }),
       };
       const { successes, failures, skippedDuplicateRecipientIds } =
         await sendBookingRequestsToDjs(sendableIds, input, {

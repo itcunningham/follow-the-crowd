@@ -265,6 +265,27 @@ function normalizeBookingRateMode(value: unknown): BookingRateMode {
   return "fixed";
 }
 
+export function resolveBookingRequestRateMode(input: BookingRequestInput): BookingRateMode {
+  const legacyRateMode = (input as BookingRequestInput & { rate_mode?: unknown }).rate_mode;
+
+  return normalizeBookingRateMode(input.rateMode ?? legacyRateMode);
+}
+
+const IS_DEV = process.env.NODE_ENV === "development";
+
+function assertInsertedBookingRateMode(
+  requestedRateMode: BookingRateMode,
+  booking: BookingRequest,
+): void {
+  if (!IS_DEV || booking.rate_mode === requestedRateMode) {
+    return;
+  }
+
+  throw new Error(
+    `Booking insert rate_mode mismatch: requested "${requestedRateMode}" but database returned "${booking.rate_mode}". Run scripts/supabaseReloadPostgrest.sql in the Supabase SQL Editor.`,
+  );
+}
+
 function normalizeProposedRateStatus(value: unknown): ProposedRateStatus | null {
   if (value === "pending" || value === "accepted" || value === "declined") {
     return value;
@@ -826,11 +847,6 @@ export function resolveLiveBookingForDmMessage(
     const byId = conversationBookings.find((booking) => booking.id === parsed.bookingId);
 
     if (byId) {
-      console.log("[dm booking] resolved by id", {
-        parsedBookingId: parsed.bookingId,
-        liveBookingId: byId.id,
-        status: byId.status,
-      });
       return byId;
     }
   }
@@ -840,11 +856,6 @@ export function resolveLiveBookingForDmMessage(
   );
 
   if (fieldMatches.length === 1) {
-    console.log("[dm booking] resolved by fields", {
-      parsedBookingId: parsed.bookingId,
-      liveBookingId: fieldMatches[0].id,
-      status: fieldMatches[0].status,
-    });
     return fieldMatches[0];
   }
 
@@ -854,11 +865,6 @@ export function resolveLiveBookingForDmMessage(
     );
 
     if (cancelledMatch) {
-      console.log("[dm booking] resolved cancelled duplicate", {
-        parsedBookingId: parsed.bookingId,
-        liveBookingId: cancelledMatch.id,
-        status: cancelledMatch.status,
-      });
       return cancelledMatch;
     }
 
@@ -873,19 +879,8 @@ export function resolveLiveBookingForDmMessage(
       return new Date(right.created_at).getTime() - new Date(left.created_at).getTime();
     })[0];
 
-    console.log("[dm booking] resolved best duplicate", {
-      parsedBookingId: parsed.bookingId,
-      liveBookingId: bestMatch.id,
-      status: bestMatch.status,
-    });
     return bestMatch;
   }
-
-  console.log("[dm booking] unresolved live booking", {
-    parsedBookingId: parsed.bookingId,
-    parsedStatus: parsed.status,
-    conversationBookingCount: conversationBookings.length,
-  });
 
   return null;
 }
@@ -1058,6 +1053,9 @@ export function isBookingRateProposalSchemaError(error: unknown): boolean {
 
 export const BOOKING_RATE_PROPOSAL_SCHEMA_RELOAD_SQL = "NOTIFY pgrst, 'reload schema';";
 
+const BOOKING_REQUEST_FIELDS =
+  "id, created_at, sender_id, recipient_id, conversation_id, event_id, event_name, venue, event_date, set_time, fee, notes, status, archived_at, lineup_hidden_at, cancelled_at, cancelled_by, cancellation_reason, rate_mode, proposed_rate, proposed_rate_note, proposed_rate_at, proposed_rate_status";
+
 export function buildBookingDisplayFromMessage(
   messageText: string,
   conversationId: string,
@@ -1095,37 +1093,52 @@ export function buildBookingDisplayFromMessage(
   };
 }
 
+export type BookingSendResult = {
+  conversationId: string;
+  booking: BookingRequest;
+};
+
 export async function sendBookingRequestToDj(
   recipientId: string,
   input: BookingRequestInput,
-): Promise<string> {
+): Promise<BookingSendResult> {
   const currentUserId = await getCurrentUserId();
   const conversationId = await startDm(currentUserId, recipientId);
+  const rateMode = resolveBookingRequestRateMode(input);
+  const insertPayload = {
+    sender_id: currentUserId,
+    recipient_id: recipientId,
+    conversation_id: conversationId,
+    event_id: input.eventId ?? null,
+    event_name: input.eventName.trim(),
+    venue: input.venue.trim(),
+    event_date: input.eventDate.trim(),
+    set_time: input.setTime.trim(),
+    fee: normalizeStoredRate(input.fee),
+    notes: input.notes.trim(),
+    status: "pending" as const,
+    rate_mode: rateMode,
+  };
 
-  const { data: booking, error: bookingError } = await supabase
+  const { data: bookingRow, error: bookingError } = await supabase
     .from("booking_requests")
-    .insert({
-      sender_id: currentUserId,
-      recipient_id: recipientId,
-      conversation_id: conversationId,
-      event_id: input.eventId ?? null,
-      event_name: input.eventName.trim(),
-      venue: input.venue.trim(),
-      event_date: input.eventDate.trim(),
-      set_time: input.setTime.trim(),
-      fee: normalizeStoredRate(input.fee),
-      notes: input.notes.trim(),
-      status: "pending",
-      rate_mode: normalizeBookingRateMode(input.rateMode),
-    })
-    .select("*")
+    .insert(insertPayload)
+    .select(BOOKING_REQUEST_FIELDS)
     .single();
 
   if (bookingError) {
     throw bookingError;
   }
 
-  const messageText = formatBookingRequestMessage(booking as BookingRequest);
+  const booking = normalizeBookingRequest(bookingRow);
+
+  if (!booking) {
+    throw new Error("Created booking could not be parsed.");
+  }
+
+  assertInsertedBookingRateMode(rateMode, booking);
+
+  const messageText = formatBookingRequestMessage(booking);
 
   const { error: messageError } = await supabase.from("messages").insert({
     conversation_id: conversationId,
@@ -1145,11 +1158,8 @@ export async function sendBookingRequestToDj(
     `/dm/${conversationId}`,
   );
 
-  return conversationId;
+  return { conversationId, booking };
 }
-
-const BOOKING_REQUEST_FIELDS =
-  "id, created_at, sender_id, recipient_id, conversation_id, event_id, event_name, venue, event_date, set_time, fee, notes, status, archived_at, lineup_hidden_at, cancelled_at, cancelled_by, cancellation_reason, rate_mode, proposed_rate, proposed_rate_note, proposed_rate_at, proposed_rate_status";
 
 export function getEventLineupStats(bookings: BookingRequest[]): BookingCampaignStats {
   return bookings.reduce(
@@ -1526,13 +1536,19 @@ export async function sendBookingRequestsToDjs(
   const results = await Promise.all(
     targetRecipientIds.map(async (recipientId) => {
       try {
-        const conversationId = await sendBookingRequestToDj(recipientId, input);
-        return { recipientId, conversationId, error: null as string | null };
+        const { conversationId, booking } = await sendBookingRequestToDj(recipientId, input);
+        return {
+          recipientId,
+          conversationId,
+          booking,
+          error: null as string | null,
+        };
       } catch (error) {
         console.error(`Failed to send booking request to ${recipientId}:`, error);
         return {
           recipientId,
           conversationId: null,
+          booking: null,
           error: error instanceof Error ? error.message : "Unknown error",
         };
       }
@@ -1544,7 +1560,7 @@ export async function sendBookingRequestsToDjs(
   const failures: BookingSendFailure[] = [];
 
   for (const result of results) {
-    if (result.conversationId) {
+    if (result.conversationId && result.booking) {
       successes.push(result.recipientId);
       conversationIds.push(result.conversationId);
       continue;
