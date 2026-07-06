@@ -207,6 +207,14 @@ export function getBookingStatusBadgeClass(status: BookingRequestStatus): string
   return FTC_STATUS_WARNING;
 }
 
+export function getBookingCancelledDmBadgeClass(): string {
+  return "inline-flex shrink-0 rounded-full border border-[var(--ftc-color-danger)]/35 bg-[var(--ftc-color-danger)]/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-[var(--ftc-color-danger)]";
+}
+
+export function getBookingCancelledDmCardClass(): string {
+  return "border border-[var(--ftc-color-danger)]/35 bg-[var(--ftc-color-danger)]/5";
+}
+
 export function isActiveBookingStatus(status: BookingRequestStatus): boolean {
   return status !== "cancelled";
 }
@@ -1537,6 +1545,31 @@ export async function listBookingRequestsForEvent(eventId: string): Promise<Book
   return mapBookingRequestRows(data);
 }
 
+export async function getEventIdsWithAcceptedBookings(eventIds: string[]): Promise<Set<string>> {
+  const uniqueEventIds = [...new Set(eventIds.map((eventId) => eventId.trim()).filter(Boolean))];
+
+  if (uniqueEventIds.length === 0) {
+    return new Set();
+  }
+
+  const { data, error } = await supabase
+    .from("booking_requests")
+    .select("event_id")
+    .in("event_id", uniqueEventIds)
+    .eq("status", "accepted");
+
+  if (error) {
+    logBookingsLoadError(error);
+    return new Set();
+  }
+
+  return new Set(
+    (data ?? [])
+      .map((row) => (typeof row.event_id === "string" ? row.event_id : null))
+      .filter((eventId): eventId is string => Boolean(eventId)),
+  );
+}
+
 export async function listSentBookingRequests(): Promise<BookingRequest[]> {
   const currentUserId = await getCurrentUserId();
 
@@ -1702,9 +1735,18 @@ export type BookingGroupChatAccess =
 export function getBookingGroupChatAccess(
   booking: BookingRequest,
   currentUserId: string | null,
+  options?: { eventHasAcceptedBooking?: boolean },
 ): BookingGroupChatAccess | null {
   if (!booking.event_id || !currentUserId) {
     return null;
+  }
+
+  if (booking.status === "cancelled" || booking.status === "declined") {
+    return { kind: "hidden" };
+  }
+
+  if (!options?.eventHasAcceptedBooking) {
+    return { kind: "hidden" };
   }
 
   const href = `/events/${booking.event_id}/chat`;
@@ -1722,10 +1764,6 @@ export function getBookingGroupChatAccess(
 
     if (booking.status === "pending") {
       return { kind: "locked_pending" };
-    }
-
-    if (booking.status === "cancelled" || booking.status === "declined") {
-      return { kind: "hidden" };
     }
   }
 
@@ -1968,14 +2006,6 @@ export async function cancelBookingRequest(
     notificationBody,
     `/dm/${booking.conversation_id}`,
   );
-
-  if (wasAccepted) {
-    try {
-      await insertBookingCancelledDmMessageIfNeeded(booking);
-    } catch (dmError) {
-      console.error("[bookingRequests] Failed to insert booking-cancelled DM notice:", dmError);
-    }
-  }
 
   return booking;
 }

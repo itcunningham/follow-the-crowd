@@ -28,6 +28,7 @@ import {
   fetchBookingRequestsByIds,
   getBookingMutationErrorMessage,
   getBookingRequestsForConversation,
+  getEventIdsWithAcceptedBookings,
   isBookingAcceptedDmMessage,
   isBookingCancelledDmMessage,
   isBookingRateProposalSchemaError,
@@ -121,6 +122,9 @@ export default function DmChatPage() {
   const [failedBookingIds, setFailedBookingIds] = useState<Set<string>>(new Set());
   const [eventArtworkById, setEventArtworkById] = useState<Map<string, EventArtworkSnapshot>>(
     new Map(),
+  );
+  const [eventIdsWithAcceptedBookings, setEventIdsWithAcceptedBookings] = useState<Set<string>>(
+    () => new Set(),
   );
   const [otherUserId, setOtherUserId] = useState<string | null>(null);
   const [otherUserProfile, setOtherUserProfile] = useState<UserAvatarProfile | null>(null);
@@ -255,6 +259,7 @@ export default function DmChatPage() {
 
   useEffect(() => {
     setExpandedBookingIds(new Set());
+    setEventIdsWithAcceptedBookings(new Set());
   }, [conversationId]);
 
   const setBookingExpanded = useCallback((bookingKey: string, expanded: boolean) => {
@@ -469,6 +474,20 @@ export default function DmChatPage() {
     }
   }, []);
 
+  const syncEventAcceptedBookings = useCallback(async (nextBookings: BookingRequest[]) => {
+    const eventIds = nextBookings
+      .map((booking) => booking.event_id)
+      .filter((eventId): eventId is string => Boolean(eventId));
+
+    try {
+      const acceptedEventIds = await getEventIdsWithAcceptedBookings(eventIds);
+      setEventIdsWithAcceptedBookings(acceptedEventIds);
+    } catch (acceptedBookingsError) {
+      console.error("Failed to load event accepted-booking state:", acceptedBookingsError);
+      setEventIdsWithAcceptedBookings(new Set());
+    }
+  }, []);
+
   async function reloadConversationBookings() {
     if (!conversationId) {
       return;
@@ -488,6 +507,7 @@ export default function DmChatPage() {
 
       setBookings(nextBookings);
       await syncEventArtwork(nextBookings);
+      await syncEventAcceptedBookings(nextBookings);
     } catch (bookingError) {
       console.error("Failed to load booking requests:", bookingError);
     }
@@ -586,6 +606,7 @@ export default function DmChatPage() {
       setAttachments(attachmentsResult);
       setReactions(reactionsResult);
       await syncEventArtwork(bookingsResult);
+      await syncEventAcceptedBookings(bookingsResult);
       setLoading(false);
     }
 
@@ -1573,6 +1594,11 @@ export default function DmChatPage() {
                             expanded={expandedBookingIds.has(bookingExpansionKey)}
                             onExpandedChange={(expanded) =>
                               setBookingExpanded(bookingExpansionKey, expanded)
+                            }
+                            eventHasAcceptedBooking={
+                              resolvedBooking.event_id
+                                ? eventIdsWithAcceptedBookings.has(resolvedBooking.event_id)
+                                : false
                             }
                             canRespond={canRespond}
                             responding={

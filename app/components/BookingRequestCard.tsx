@@ -19,10 +19,13 @@ import {
   getAcceptedBookingCancellationRole,
   getBookingCollapsedOfferSummary,
   getBookingCollapsedUrgentLabel,
+  getBookingCancelledDmBadgeClass,
+  getBookingCancelledDmCardClass,
   getBookingGroupChatAccess,
   getBookingOfferRateLabel,
   getBookingRateDetailLabel,
   hasPendingRateProposal,
+  formatBookingStatusLabel,
   resolveBookingCancellationReasonLabel,
   resolveBookingCancelledByLabel,
   type BookingRequest,
@@ -54,6 +57,7 @@ export default function BookingRequestCard({
   collapsible = false,
   expanded = true,
   onExpandedChange,
+  eventHasAcceptedBooking = false,
 }: {
   booking: BookingRequest;
   currentUserId: string | null;
@@ -77,9 +81,12 @@ export default function BookingRequestCard({
   collapsible?: boolean;
   expanded?: boolean;
   onExpandedChange?: (expanded: boolean) => void;
+  eventHasAcceptedBooking?: boolean;
 }) {
   const [proposeSheetOpen, setProposeSheetOpen] = useState(false);
-  const groupChatAccess = getBookingGroupChatAccess(booking, currentUserId);
+  const groupChatAccess = getBookingGroupChatAccess(booking, currentUserId, {
+    eventHasAcceptedBooking,
+  });
   const showPendingCancel = canCancelBookingRequest(booking, currentUserId) && onCancel;
   const acceptedCancellationRole = getAcceptedBookingCancellationRole(booking, currentUserId);
   const showAcceptedCancel = acceptedCancellationRole && onCancelAccepted;
@@ -126,6 +133,96 @@ export default function BookingRequestCard({
     .filter(Boolean)
     .join(" · ");
   const collapsedTitle = booking.event_name.trim() || "Booking request";
+  const cancelledCardClass = getBookingCancelledDmCardClass();
+  const cancelledBadgeClass = getBookingCancelledDmBadgeClass();
+
+  function renderChevronDown() {
+    return (
+      <svg
+        aria-hidden="true"
+        viewBox="0 0 24 24"
+        className="h-4 w-4 shrink-0 text-ftc-text-muted"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.75"
+      >
+        <path d="m6 9 6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    );
+  }
+
+  function renderChevronUp() {
+    return (
+      <svg
+        aria-hidden="true"
+        viewBox="0 0 24 24"
+        className="h-4 w-4 shrink-0 text-ftc-text-muted"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.75"
+      >
+        <path d="m18 15-6-6-6 6" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    );
+  }
+
+  function renderCancelledStatusBadge() {
+    return (
+      <span className={cancelledBadgeClass}>{formatBookingStatusLabel("cancelled")}</span>
+    );
+  }
+
+  function renderCancelledDetailsGrid() {
+    return (
+      <BookingDetailGrid>
+        <BookingDetailItem label="Venue" value={booking.venue} />
+        <BookingDetailItem label="Date" value={booking.event_date} />
+        <BookingDetailItem label="Set time" value={booking.set_time} />
+        <BookingDetailItem label={rateDetailLabel} value={offerRateLabel} />
+        {booking.notes ? <BookingDetailItem label="Notes" value={booking.notes} /> : null}
+        {cancelledByLabel ? (
+          <BookingDetailItem label="Cancelled by" value={cancelledByLabel} />
+        ) : null}
+        {cancellationReasonLabel ? (
+          <BookingDetailItem label="Reason" value={cancellationReasonLabel} />
+        ) : null}
+      </BookingDetailGrid>
+    );
+  }
+
+  if (collapsible && !expanded && isCancelled) {
+    return (
+      <button
+        type="button"
+        onClick={handleExpand}
+        className={`w-full max-w-sm rounded-2xl p-3 text-left transition ${cancelledCardClass} hover:border-[var(--ftc-color-danger)]/50`}
+      >
+        <div className="flex items-start justify-between gap-2">
+          <p className="min-w-0 flex-1 break-words text-sm font-semibold leading-snug text-ftc-text">
+            {collapsedTitle}
+          </p>
+          {renderCancelledStatusBadge()}
+        </div>
+
+        {collapsedDateVenue ? (
+          <p className="mt-2 break-words text-xs text-ftc-text-muted">{collapsedDateVenue}</p>
+        ) : null}
+
+        {cancellationReasonLabel ? (
+          <p className="mt-1 break-words text-xs text-[var(--ftc-color-danger)]/90">
+            {cancellationReasonLabel}
+          </p>
+        ) : null}
+
+        <div className="mt-3 flex items-center justify-between gap-2 border-t border-[var(--ftc-color-danger)]/20 pt-2">
+          <span className="text-xs font-semibold uppercase tracking-wide text-ftc-text-secondary">
+            View details
+          </span>
+          {renderChevronDown()}
+        </div>
+      </button>
+    );
+  }
 
   if (collapsible && !expanded) {
     return (
@@ -171,16 +268,7 @@ export default function BookingRequestCard({
             <span className="text-xs font-semibold uppercase tracking-wide text-ftc-text-secondary">
               View details
             </span>
-            <svg
-              aria-hidden="true"
-              viewBox="0 0 24 24"
-              className="h-4 w-4 shrink-0 text-ftc-text-muted"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.75"
-            >
-              <path d="m6 9 6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
+            {renderChevronDown()}
           </div>
         </button>
 
@@ -198,6 +286,62 @@ export default function BookingRequestCard({
     );
   }
 
+  if (isCancelled) {
+    return (
+      <div className={`w-full max-w-sm rounded-2xl p-4 ${cancelledCardClass}`}>
+        {collapsible ? (
+          <button
+            type="button"
+            onClick={handleCollapse}
+            className="-mx-1 -mt-1 mb-3 flex w-[calc(100%+0.5rem)] items-center justify-between gap-2 rounded-xl px-1 py-1 text-left transition hover:bg-[var(--ftc-color-danger)]/10"
+          >
+            <span className="text-xs font-semibold uppercase tracking-wide text-ftc-text-secondary">
+              Hide details
+            </span>
+            {renderChevronUp()}
+          </button>
+        ) : null}
+
+        <button
+          type="button"
+          onClick={collapsible ? handleCollapse : undefined}
+          disabled={!collapsible}
+          className={`flex min-w-0 w-full items-start gap-3 text-left ${
+            collapsible
+              ? "cursor-pointer rounded-xl transition hover:bg-[var(--ftc-color-danger)]/10"
+              : "cursor-default"
+          }`}
+        >
+          <EventCoverImageContextThumb
+            eventName={booking.event_name}
+            coverImageUrl={coverImageUrl}
+            fallbackColour={fallbackColour}
+          />
+          <div className="min-w-0 flex-1">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted">
+              Booking request
+            </p>
+            <h3 className="mt-1 break-words text-base font-semibold leading-snug text-ftc-text">
+              {booking.event_name}
+            </h3>
+          </div>
+          {renderCancelledStatusBadge()}
+        </button>
+
+        <div className="mt-4">{renderCancelledDetailsGrid()}</div>
+
+        {booking.event_id ? (
+          <Link
+            href={`/events/${booking.event_id}`}
+            className="mt-4 inline-flex rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated px-3 py-2 text-xs font-semibold uppercase tracking-wide text-ftc-text-secondary transition hover:border-ftc-border-strong"
+          >
+            View event
+          </Link>
+        ) : null}
+      </div>
+    );
+  }
+
   return (
     <>
       <div className="w-full max-w-sm rounded-2xl border border-ftc-border-subtle bg-ftc-surface p-4">
@@ -210,16 +354,7 @@ export default function BookingRequestCard({
             <span className="text-xs font-semibold uppercase tracking-wide text-ftc-text-secondary">
               Hide details
             </span>
-            <svg
-              aria-hidden="true"
-              viewBox="0 0 24 24"
-              className="h-4 w-4 shrink-0 text-ftc-text-muted"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.75"
-            >
-              <path d="m18 15-6-6-6 6" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
+            {renderChevronUp()}
           </button>
         ) : null}
 
