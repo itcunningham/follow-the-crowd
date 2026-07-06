@@ -30,12 +30,15 @@ import {
   filterSendableRecipientIdsForEvent,
   getActiveBookingCampaignStats,
   getBookingMutationErrorMessage,
+  getBookingOfferRateLabel,
   getBookingStatusBadgeClass,
   groupSentBookingRequests,
+  hasPendingRateProposal,
   listReceivedBookingRequests,
   listSentBookingRequests,
   logBookingsLoadError,
   listBookingRequestsForEvent,
+  resolveBookingCancellationReasonLabel,
   resolveBookingRequestRateMode,
   sendBookingRequestsToDjs,
   sortBookingsNewestFirst,
@@ -52,7 +55,7 @@ import {
   listBookingPlans,
   type BookingPlan,
 } from "@/lib/bookingPlans";
-import { formatRateDisplay, isPositiveWholeDollarRate } from "@/lib/bookingRate";
+import { formatIntegerRateDisplay, formatRateDisplay, isPositiveWholeDollarRate } from "@/lib/bookingRate";
 import EventBookingDuplicateBadge from "@/app/components/EventBookingDuplicateBadge";
 import UnavailableDjBookingConfirmModal from "@/app/components/UnavailableDjBookingConfirmModal";
 import {
@@ -982,7 +985,23 @@ function BookingsPageContent() {
             </div>
           </div>
 
-          {showReceivedGigsTabs ? (
+          {role === "both" && (showSentTab || showReceivedTab) ? (
+            <>
+              <BookingSectionTabs
+                activeTab={sectionTab}
+                onChange={setSectionTab}
+                showSent={showSentTab}
+                showReceived={showReceivedTab}
+              />
+              {sectionTab === "received" && showReceivedTab ? (
+                <DjGigsTabs
+                  activeView={djGigsView}
+                  bookings={activeReceivedBookings}
+                  cancelledCount={filterCancelledBookings(receivedBookings).length}
+                />
+              ) : null}
+            </>
+          ) : showReceivedGigsTabs ? (
             <DjGigsTabs
               activeView={djGigsView}
               bookings={activeReceivedBookings}
@@ -1831,6 +1850,7 @@ function BookingHistoryCard({
     : "rounded-2xl border border-ftc-border-subtle bg-ftc-surface p-4 sm:p-5";
   const titleClass = muted ? "text-ftc-text-secondary" : "text-ftc-text";
   const detailClass = muted ? "text-ftc-text-muted" : "text-ftc-text";
+  const cancellationReasonLabel = resolveBookingCancellationReasonLabel(booking);
 
   return (
     <li className={cardClass}>
@@ -1845,7 +1865,10 @@ function BookingHistoryCard({
             <dl className={`mt-3 grid gap-2 text-sm sm:grid-cols-2 ${detailClass}`}>
               <CampaignDetail label="Venue" value={booking.venue} />
               <CampaignDetail label="Date" value={booking.event_date} />
-              <CampaignDetail label="Rate" value={formatRateDisplay(booking.fee)} />
+              <CampaignDetail label="Rate" value={getBookingOfferRateLabel(booking)} />
+              {cancellationReasonLabel ? (
+                <CampaignDetail label="Reason" value={cancellationReasonLabel} />
+              ) : null}
             </dl>
           </div>
         </div>
@@ -1885,6 +1908,9 @@ function BookingCampaignCard({
   const campaignStats = getActiveBookingCampaignStats(fullGroup);
   const eventId = group.requests.find((request) => request.event_id)?.event_id ?? null;
   const eventHref = eventId ? `/events/${eventId}` : null;
+  const campaignRateLabel = group.requests[0]
+    ? getBookingOfferRateLabel(group.requests[0])
+    : formatRateDisplay(group.fee);
 
   return (
     <li className="rounded-2xl border border-ftc-border-subtle bg-ftc-surface p-4 sm:p-5">
@@ -1898,7 +1924,7 @@ function BookingCampaignCard({
             <CampaignDetail label="Venue" value={group.venue} />
             <CampaignDetail label="Event date" value={group.event_date} />
             <CampaignDetail label="Set time" value={group.set_time} />
-            <CampaignDetail label="Rate" value={formatRateDisplay(group.fee)} />
+            <CampaignDetail label="Rate" value={campaignRateLabel} />
           </dl>
           {group.notes?.trim() ? (
             <div className="mt-3 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated px-3 py-2.5">
@@ -1935,6 +1961,7 @@ function BookingCampaignCard({
               .filter(Boolean)
               .join(" · ") || "DJ / Artist";
           const requestEventHref = request.event_id ? `/events/${request.event_id}` : null;
+          const pendingRateProposal = hasPendingRateProposal(request);
 
           return (
             <li
@@ -1946,6 +1973,12 @@ function BookingCampaignCard({
                 <div className="min-w-0">
                   <p className="truncate text-sm font-semibold text-ftc-text">{name}</p>
                   <p className="truncate text-xs text-ftc-text-muted">{subtitle}</p>
+                  {pendingRateProposal ? (
+                    <p className="mt-1 text-xs font-medium text-ftc-primary">
+                      Rate proposed: {formatIntegerRateDisplay(request.proposed_rate)}
+                      <span className="font-normal text-ftc-text-muted"> · Review in DM</span>
+                    </p>
+                  ) : null}
                 </div>
               </div>
               <div className="flex flex-wrap items-center gap-2 sm:shrink-0">
