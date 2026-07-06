@@ -1,18 +1,35 @@
 import { NextResponse } from "next/server";
-import type { EventBrief } from "@/lib/domain/event";
+import { authenticateSupabaseRequest } from "@/lib/api/authenticateSupabaseRequest";
+import { parseEventBriefPayload } from "@/lib/api/validateEventBrief";
 import { createOpenAIEventPlanGenerator } from "@/lib/infrastructure/openai/generate-event-plan";
 
 export async function POST(request: Request) {
-  const apiKey = process.env.OPENAI_API_KEY;
+  const auth = await authenticateSupabaseRequest(request);
 
-  if (!apiKey) {
-    return NextResponse.json(
-      { result: "Missing OPENAI_API_KEY. Add it to .env.local.", venues: [] },
-      { status: 500 },
-    );
+  if (!auth) {
+    return NextResponse.json({ error: "Authentication required." }, { status: 401 });
   }
 
-  const brief: EventBrief = await request.json();
+  const apiKey = process.env.OPENAI_API_KEY?.trim();
+
+  if (!apiKey) {
+    return NextResponse.json({ error: "Event generation is unavailable." }, { status: 503 });
+  }
+
+  let payload: unknown;
+
+  try {
+    payload = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
+  }
+
+  const brief = parseEventBriefPayload(payload);
+
+  if (!brief) {
+    return NextResponse.json({ error: "Invalid event brief." }, { status: 400 });
+  }
+
   const generator = createOpenAIEventPlanGenerator(apiKey);
   const result = await generator.generate(brief);
 

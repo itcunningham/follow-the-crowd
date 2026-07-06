@@ -2,19 +2,10 @@ import { NextResponse, connection } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { ACCOUNT_DELETION_FAILED_MESSAGE } from "@/lib/accountDeletion";
 import { removeUserStorageObjects } from "@/lib/accountDeletionStorage";
+import { authenticateSupabaseRequest } from "@/lib/api/authenticateSupabaseRequest";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
-
-function getSupabaseAnonKey(): string {
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
-
-  if (!anonKey) {
-    throw new Error("Missing NEXT_PUBLIC_SUPABASE_ANON_KEY");
-  }
-
-  return anonKey;
-}
 
 function getSupabaseProjectUrl(): string {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
@@ -24,6 +15,16 @@ function getSupabaseProjectUrl(): string {
   }
 
   return url;
+}
+
+function getSupabaseAnonKey(): string {
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
+
+  if (!anonKey) {
+    throw new Error("Missing NEXT_PUBLIC_SUPABASE_ANON_KEY");
+  }
+
+  return anonKey;
 }
 
 export async function POST(request: Request) {
@@ -39,24 +40,19 @@ export async function POST(request: Request) {
       );
     }
 
-    const authHeader = request.headers.get("Authorization");
-    const accessToken = authHeader?.startsWith("Bearer ")
-      ? authHeader.slice("Bearer ".length)
-      : null;
+    const auth = await authenticateSupabaseRequest(request);
 
-    if (!accessToken) {
+    if (!auth) {
       return NextResponse.json(
         { error: "You need to sign in again before deleting your account." },
         { status: 401 },
       );
     }
 
-    const supabaseUrl = getSupabaseProjectUrl();
-    const anonKey = getSupabaseAnonKey();
-    const userClient = createClient(supabaseUrl, anonKey, {
+    const userClient = createClient(getSupabaseProjectUrl(), getSupabaseAnonKey(), {
       global: {
         headers: {
-          Authorization: `Bearer ${accessToken}`,
+          Authorization: `Bearer ${auth.accessToken}`,
         },
       },
       auth: {
@@ -65,18 +61,7 @@ export async function POST(request: Request) {
       },
     });
 
-    const { data: authData, error: authError } = await userClient.auth.getUser(accessToken);
-
-    if (authError || !authData.user) {
-      return NextResponse.json(
-        { error: "You need to sign in again before deleting your account." },
-        { status: 401 },
-      );
-    }
-
-    const userId = authData.user.id;
-
-    await removeUserStorageObjects(userClient, userId);
+    await removeUserStorageObjects(userClient, auth.userId);
 
     const { error: deleteDataError } = await userClient.rpc("delete_account_data");
 
