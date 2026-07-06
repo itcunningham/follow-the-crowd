@@ -11,7 +11,10 @@ import {
 import { normalizeStoredRate } from "@/lib/bookingRate";
 import { createNotification } from "@/lib/notifications";
 import { supabase } from "@/lib/supabaseClient";
-import { deleteEventCoverStorageObject } from "@/lib/events/eventCoverImage";
+import {
+  deleteEventCoverStorageObject,
+  normalizeEventCoverImageUrl,
+} from "@/lib/events/eventCoverImage";
 import {
   FTC_STATUS_DANGER,
   FTC_STATUS_MUTED,
@@ -411,7 +414,7 @@ export async function getEventArtworkByIds(
       eventDate: eventRow.event_date,
       setTime: eventRow.set_time,
       rate: eventRow.rate,
-      coverImageUrl: eventRow.cover_image_url?.trim() || null,
+      coverImageUrl: normalizeEventCoverImageUrl(eventRow.cover_image_url),
       fallbackColour: eventRow.fallback_colour?.trim() || null,
     });
   }

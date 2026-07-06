@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import AppNavigation, { MOBILE_NAV_OFFSET_CLASS } from "@/app/components/AppNavigation";
 import ChatNewMessagesPill from "@/app/components/dm/ChatNewMessagesPill";
@@ -110,6 +110,25 @@ export default function EventCrewChatPage() {
   });
   const { addHighlightedMessageId, isMessageHighlighted } = useChatNewMessageHighlight();
 
+  const refreshEventArtwork = useCallback(async () => {
+    if (!eventId) {
+      return;
+    }
+
+    try {
+      const access = await getEventCrewChatAccess(eventId);
+
+      if (!access.canAccess) {
+        return;
+      }
+
+      setCoverImageUrl(access.coverImageUrl);
+      setFallbackColour(access.fallbackColour);
+    } catch (refreshError) {
+      console.error("Failed to refresh group chat artwork:", refreshError);
+    }
+  }, [eventId]);
+
   useEffect(() => {
     if (!eventId) {
       return;
@@ -165,6 +184,20 @@ export default function EventCrewChatPage() {
 
     loadChat();
   }, [eventId]);
+
+  useEffect(() => {
+    function handleVisibilityChange() {
+      if (document.visibilityState === "visible") {
+        void refreshEventArtwork();
+      }
+    }
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [refreshEventArtwork]);
 
   useEffect(() => {
     if (!eventId) {

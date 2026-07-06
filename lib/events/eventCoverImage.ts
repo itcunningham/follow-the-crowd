@@ -15,6 +15,27 @@ export function getEventCoverImageAlt(eventName: string): string {
   return trimmed ? `${trimmed} event flyer` : "Event flyer";
 }
 
+export function normalizeEventCoverImageUrl(
+  value: string | null | undefined,
+): string | null {
+  const trimmed = value?.trim();
+  return trimmed || null;
+}
+
+export function pickPreferredEventCoverImageUrl(
+  ...candidates: (string | null | undefined)[]
+): string | null {
+  for (const candidate of candidates) {
+    const normalized = normalizeEventCoverImageUrl(candidate);
+
+    if (normalized) {
+      return normalized;
+    }
+  }
+
+  return null;
+}
+
 export function validateEventCoverFile(file: File): string | null {
   if (!isAllowedEventCoverImageType(file.type)) {
     return "Flyer image must be JPEG, PNG, or WebP.";

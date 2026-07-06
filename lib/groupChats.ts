@@ -4,7 +4,8 @@ import {
   logInboxRenderOrder,
   normalizeInboxId,
 } from "@/lib/dmInbox";
-import { listOwnedEvents } from "@/lib/events";
+import { listOwnedEvents, getEventArtworkByIds } from "@/lib/events";
+import { pickPreferredEventCoverImageUrl } from "@/lib/events/eventCoverImage";
 import { supabase } from "@/lib/supabaseClient";
 import { getCurrentUserId, type UserRole } from "@/lib/user/currentUser";
 
@@ -77,7 +78,10 @@ function mergeGroupChatRows(
     eventName: primary.eventName || secondary.eventName,
     venue: primary.venue || secondary.venue,
     eventDate: primary.eventDate || secondary.eventDate,
-    coverImageUrl: primary.coverImageUrl ?? secondary.coverImageUrl,
+    coverImageUrl: pickPreferredEventCoverImageUrl(
+      primary.coverImageUrl,
+      secondary.coverImageUrl,
+    ),
     fallbackColour: primary.fallbackColour ?? secondary.fallbackColour,
     href: primary.href || secondary.href,
     latestPreview: primary.latestPreview ?? secondary.latestPreview,
@@ -135,6 +139,44 @@ function withGroupActivityFields(
     latestMessageUserId: preview?.userId ?? null,
     latestActivityAt,
   };
+}
+
+async function enrichGroupChatItemsWithEventArtwork(
+  items: GroupChatListItem[],
+): Promise<GroupChatListItem[]> {
+  if (items.length === 0) {
+    return [];
+  }
+
+  try {
+    const artworkById = await getEventArtworkByIds(items.map((item) => item.eventId));
+
+    return items.map((item) => {
+      const artwork = artworkById.get(item.eventId);
+
+      if (!artwork) {
+        return {
+          ...item,
+          coverImageUrl: pickPreferredEventCoverImageUrl(item.coverImageUrl),
+        };
+      }
+
+      return {
+        ...item,
+        coverImageUrl: pickPreferredEventCoverImageUrl(
+          artwork.coverImageUrl,
+          item.coverImageUrl,
+        ),
+        fallbackColour: artwork.fallbackColour ?? item.fallbackColour,
+      };
+    });
+  } catch (artworkError) {
+    console.error("[groupChats] Failed to load event artwork:", artworkError);
+    return items.map((item) => ({
+      ...item,
+      coverImageUrl: pickPreferredEventCoverImageUrl(item.coverImageUrl),
+    }));
+  }
 }
 
 export async function loadLatestGroupChatPreviews(
@@ -215,7 +257,7 @@ export async function listAccessibleGroupChats(
         eventName: event.name.trim() || "Untitled event",
         venue: event.venue,
         eventDate: event.event_date,
-        coverImageUrl: event.cover_image_url?.trim() || null,
+        coverImageUrl: pickPreferredEventCoverImageUrl(event.cover_image_url),
         fallbackColour: event.fallback_colour?.trim() || null,
         href: getEventCrewChatLink(event.id, { from: "dm", tab: "group" }),
       });
@@ -264,8 +306,9 @@ export async function listAccessibleGroupChats(
           eventName: (event.name as string).trim() || "Untitled event",
           venue: event.venue as string,
           eventDate: event.event_date as string,
-          coverImageUrl:
-            ((event as { cover_image_url?: string | null }).cover_image_url?.trim()) || null,
+          coverImageUrl: pickPreferredEventCoverImageUrl(
+            (event as { cover_image_url?: string | null }).cover_image_url,
+          ),
           fallbackColour:
             ((event as { fallback_colour?: string | null }).fallback_colour?.trim()) || null,
           href: getEventCrewChatLink(event.id as string, { from: "dm", tab: "group" }),
@@ -276,7 +319,9 @@ export async function listAccessibleGroupChats(
 
   return sortGroupChatsByLatestActivity(
     dedupeGroupChatsByEventId(
-      await attachLatestGroupChatPreviews([...byEventId.values()]),
+      await enrichGroupChatItemsWithEventArtwork(
+        await attachLatestGroupChatPreviews([...byEventId.values()]),
+      ),
     ),
   );
 }
@@ -309,6 +354,11 @@ export function mergeLoadedGroupChatsWithLiveActivity(
 
     return {
       ...chat,
+      coverImageUrl: pickPreferredEventCoverImageUrl(
+        chat.coverImageUrl,
+        liveChat?.coverImageUrl,
+      ),
+      fallbackColour: chat.fallbackColour ?? liveChat?.fallbackColour ?? null,
       latestPreview: liveChat.latestPreview,
       latestMessageAt: liveChat.latestMessageAt,
       latestMessageUserId: liveChat.latestMessageUserId,

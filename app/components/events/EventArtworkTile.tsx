@@ -1,6 +1,9 @@
 "use client";
 
-import { getEventCoverImageAlt } from "@/lib/events/eventCoverImage";
+import {
+  getEventCoverImageAlt,
+  normalizeEventCoverImageUrl,
+} from "@/lib/events/eventCoverImage";
 import {
   getEventFallbackColour,
   getEventFallbackColourStyles,
@@ -29,7 +32,7 @@ export default function EventArtworkTile({
   size?: EventArtworkTileSize;
   className?: string;
 }) {
-  const trimmedCoverUrl = coverImageUrl?.trim() || null;
+  const trimmedCoverUrl = normalizeEventCoverImageUrl(coverImageUrl);
   const sizeClassName = SIZE_CLASSES[size];
 
   if (trimmedCoverUrl) {

@@ -460,6 +460,28 @@ function DmInboxPageContent() {
   }, [loadGroupChats]);
 
   useEffect(() => {
+    if (activeTab !== "group") {
+      return;
+    }
+
+    void loadGroupChats();
+  }, [activeTab, loadGroupChats]);
+
+  useEffect(() => {
+    function handleVisibilityChange() {
+      if (document.visibilityState === "visible" && activeTab === "group") {
+        void loadGroupChats();
+      }
+    }
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [activeTab, loadGroupChats]);
+
+  useEffect(() => {
     loadConversations().catch((loadError: Error) => {
       console.error("loadConversations failed:", loadError.message);
       setError(loadError.message);
