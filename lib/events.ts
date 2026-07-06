@@ -14,6 +14,7 @@ import { supabase } from "@/lib/supabaseClient";
 import {
   deleteEventCoverStorageObject,
   normalizeEventCoverImageUrl,
+  uploadEventCoverImage,
 } from "@/lib/events/eventCoverImage";
 import {
   FTC_STATUS_DANGER,
@@ -330,6 +331,37 @@ export async function updateEvent(eventId: string, input: EventInput): Promise<E
   }
 
   return data as Event;
+}
+
+export type EventCoverChange = {
+  file?: File | null;
+  removeExisting?: boolean;
+};
+
+export async function updateEventWithCover(
+  eventId: string,
+  input: EventInput,
+  coverChange: EventCoverChange,
+  previousCoverUrl?: string | null,
+): Promise<Event> {
+  if (coverChange.removeExisting) {
+    await updateEventCoverImageUrl(eventId, null);
+    await deleteEventCoverStorageObject(previousCoverUrl);
+  } else if (coverChange.file) {
+    const nextCoverUrl = await uploadEventCoverImage(eventId, coverChange.file);
+    await updateEventCoverImageUrl(eventId, nextCoverUrl);
+    await deleteEventCoverStorageObject(previousCoverUrl);
+  }
+
+  await updateEvent(eventId, input);
+
+  const refreshed = await getEventById(eventId);
+
+  if (!refreshed) {
+    throw new Error("Event not found after save.");
+  }
+
+  return refreshed;
 }
 
 export async function eventHasBookingRequests(eventId: string): Promise<boolean> {

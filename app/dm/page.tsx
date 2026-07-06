@@ -507,6 +507,8 @@ function DmInboxPageContent() {
             console.log("[Group realtime raw]", payload.new);
             console.log("[Group realtime target id]", groupTargetId);
 
+            let matchedGroupChat = false;
+
             setGroupChats((previous) => {
               const result = applyInboxGroupMessage(previous, groupTargetId, {
                 id: newMessage.id,
@@ -516,6 +518,8 @@ function DmInboxPageContent() {
                 event_id: newMessage.event_id,
               });
 
+              matchedGroupChat = result.matched;
+
               console.log(
                 "[Group rendered row ids]",
                 result.rows.map((chat) => ({
@@ -524,8 +528,12 @@ function DmInboxPageContent() {
                 })),
               );
 
-              return [...result.rows];
+              return result.matched ? [...result.rows] : previous;
             });
+
+            if (!matchedGroupChat) {
+              void loadGroupChats();
+            }
 
             if (currentUserId) {
               if (isOwnChatMessage(newMessage.user_id, currentUserId)) {
@@ -595,7 +603,7 @@ function DmInboxPageContent() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [currentUserId]);
+  }, [currentUserId, loadGroupChats]);
 
   function openConversation(conversationId: string) {
     router.push(`/dm/${conversationId}`);

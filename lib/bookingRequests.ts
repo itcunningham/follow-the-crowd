@@ -10,8 +10,9 @@ import {
   FTC_STATUS_SUCCESS,
   FTC_STATUS_WARNING,
 } from "@/lib/ftcFlatStatus";
-import { getCurrentUserId, type BookingRecipientProfile } from "@/lib/user/currentUser";
+import { getCurrentUserId, getUserAvatarProfilesByIds, type BookingRecipientProfile } from "@/lib/user/currentUser";
 import { postBookingCancellationGroupChatUpdate } from "@/lib/events/bookingCancellation";
+import { postBookingAcceptanceGroupChatUpdate } from "@/lib/events/bookingAcceptance";
 
 export type BookingRequestStatus = "pending" | "accepted" | "declined" | "cancelled";
 
@@ -1846,6 +1847,20 @@ export async function acceptProposedBookingRate(bookingId: string): Promise<Book
     booking.conversation_id ? `/dm/${booking.conversation_id}` : "/bookings",
   );
 
+  if (booking.event_id) {
+    try {
+      const profiles = await getUserAvatarProfilesByIds([booking.recipient_id]);
+      const djName =
+        profiles.get(booking.recipient_id)?.display_name?.trim() || "Crew member";
+      await postBookingAcceptanceGroupChatUpdate(booking, djName);
+    } catch (groupChatError) {
+      console.error(
+        "[bookingRequests] Failed to post booking acceptance group chat update:",
+        groupChatError,
+      );
+    }
+  }
+
   return booking;
 }
 
@@ -1903,6 +1918,20 @@ export async function updateBookingRequestStatus(
     `${booking.event_name} · ${formatStatusLabel(status)}`,
     "/bookings",
   );
+
+  if (status === "accepted" && booking.event_id) {
+    try {
+      const profiles = await getUserAvatarProfilesByIds([booking.recipient_id]);
+      const djName =
+        profiles.get(booking.recipient_id)?.display_name?.trim() || "Crew member";
+      await postBookingAcceptanceGroupChatUpdate(booking, djName);
+    } catch (groupChatError) {
+      console.error(
+        "[bookingRequests] Failed to post booking acceptance group chat update:",
+        groupChatError,
+      );
+    }
+  }
 
   return booking;
 }

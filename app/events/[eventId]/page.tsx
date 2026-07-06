@@ -89,15 +89,11 @@ import {
   getEventsLoadErrorMessage,
   isEventCancelled,
   updateEvent,
-  updateEventCoverImageUrl,
+  updateEventWithCover,
   type Event,
   type EventInput,
 } from "@/lib/events";
-import {
-  deleteEventCoverStorageObject,
-  getEventCoverUploadErrorMessage,
-  uploadEventCoverImage,
-} from "@/lib/events/eventCoverImage";
+import { getEventCoverUploadErrorMessage } from "@/lib/events/eventCoverImage";
 import { shouldConfirmEventEditSave } from "@/lib/events/eventEditConfirmation";
 import {
   getBookingImpactingEventFieldChanges,
@@ -156,6 +152,7 @@ export default function EventDetailPage() {
   const [editCoverField, setEditCoverField] = useState<EventCoverImageFieldState>(
     emptyEventCoverImageFieldState,
   );
+  const pendingEditCoverRef = useRef<EventCoverImageFieldState>(emptyEventCoverImageFieldState);
   const [editCoverPreviewUrl, setEditCoverPreviewUrl] = useState<string | null>(null);
   const [editCoverError, setEditCoverError] = useState<string | null>(null);
   const [editConfirmOpen, setEditConfirmOpen] = useState(false);
@@ -329,6 +326,10 @@ export default function EventDetailPage() {
     loadEventData();
   }, [loadEventData]);
 
+  useEffect(() => {
+    pendingEditCoverRef.current = editCoverField;
+  }, [editCoverField]);
+
   function resetEditCoverState() {
     setEditCoverField(emptyEventCoverImageFieldState);
     if (editCoverPreviewUrl?.startsWith("blob:")) {
@@ -364,32 +365,12 @@ export default function EventDetailPage() {
     });
   }
 
-  async function applyEditCoverChanges(previousCoverUrl: string | null): Promise<string | null> {
-    if (!event) {
-      return previousCoverUrl;
-    }
-
-    if (editCoverField.removeExisting) {
-      await updateEventCoverImageUrl(event.id, null);
-      await deleteEventCoverStorageObject(previousCoverUrl);
-      return null;
-    }
-
-    if (editCoverField.file) {
-      const nextCoverUrl = await uploadEventCoverImage(event.id, editCoverField.file);
-      await updateEventCoverImageUrl(event.id, nextCoverUrl);
-      await deleteEventCoverStorageObject(previousCoverUrl);
-      return nextCoverUrl;
-    }
-
-    return previousCoverUrl;
-  }
-
   async function performSaveEdit() {
     if (!event || !editForm) {
       return;
     }
 
+    const coverChange = pendingEditCoverRef.current;
     const shouldNotifyGroupChat = shouldPostEventGroupChatUpdate(event, editForm, lineup);
     const groupChatFieldChanges = shouldNotifyGroupChat
       ? getBookingImpactingEventFieldChanges(event, editForm)
@@ -400,14 +381,22 @@ export default function EventDetailPage() {
 
     try {
       const previousCoverUrl = event.cover_image_url;
-      const updated = await updateEvent(event.id, editForm);
-      let nextCoverUrl = previousCoverUrl;
+      let savedEvent: Event;
 
       try {
-        nextCoverUrl = await applyEditCoverChanges(previousCoverUrl);
+        savedEvent = await updateEventWithCover(
+          event.id,
+          editForm,
+          {
+            file: coverChange.file,
+            removeExisting: coverChange.removeExisting,
+          },
+          previousCoverUrl,
+        );
       } catch (coverError) {
         console.error("Failed to update event cover image:", coverError);
-        setEvent(updated);
+        const updatedWithoutCover = await updateEvent(event.id, editForm);
+        setEvent(updatedWithoutCover);
         setEditOpen(false);
         setEditForm(null);
         resetEditCoverState();
@@ -419,10 +408,10 @@ export default function EventDetailPage() {
 
       if (shouldNotifyGroupChat && groupChatFieldChanges.length > 0) {
         try {
-          await postEventGroupChatUpdate(updated.id, updated.name, groupChatFieldChanges);
+          await postEventGroupChatUpdate(savedEvent.id, savedEvent.name, groupChatFieldChanges);
         } catch (groupChatError) {
           console.error("Failed to post event group chat update:", groupChatError);
-          setEvent({ ...updated, cover_image_url: nextCoverUrl });
+          setEvent(savedEvent);
           setEditOpen(false);
           setEditForm(null);
           resetEditCoverState();
@@ -433,7 +422,7 @@ export default function EventDetailPage() {
         }
       }
 
-      setEvent({ ...updated, cover_image_url: nextCoverUrl });
+      setEvent(savedEvent);
       setEditOpen(false);
       setEditForm(null);
       resetEditCoverState();
@@ -467,6 +456,8 @@ export default function EventDetailPage() {
       setError("Please fill in event name, venue, date, and set time.");
       return;
     }
+
+    pendingEditCoverRef.current = editCoverField;
 
     if (shouldConfirmEventEditSave(event, editForm, lineup)) {
       setEditConfirmOpen(true);
