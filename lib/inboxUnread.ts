@@ -1,4 +1,4 @@
-import { listAccessibleGroupChats } from "@/lib/groupChats";
+import { listAccessibleGroupChatEventIds, loadLatestGroupChatPreviews } from "@/lib/groupChats";
 import {
   getUnreadConversationIds,
   getUnreadEventChatIds,
@@ -72,29 +72,31 @@ export async function getInboxUnreadCounts(
     ),
   ];
 
-  const [latestConversationMessages, groupChats] = await Promise.all([
+  const [latestConversationMessages, accessibleEventIds] = await Promise.all([
     loadLatestDmMessagesByConversation(conversationIds),
-    listAccessibleGroupChats(role),
+    listAccessibleGroupChatEventIds(role),
   ]);
 
-  const latestEventMessages = new Map<string, LatestChatMessage>();
+  let latestEventMessages = new Map<string, LatestChatMessage>();
 
-  for (const chat of groupChats) {
-    if (chat.latestActivityAt && chat.latestMessageUserId) {
-      latestEventMessages.set(chat.eventId, {
-        user_id: chat.latestMessageUserId,
-        created_at: chat.latestActivityAt,
-      });
+  if (accessibleEventIds.length > 0) {
+    try {
+      const previews = await loadLatestGroupChatPreviews(accessibleEventIds);
+
+      for (const [eventId, preview] of previews) {
+        latestEventMessages.set(eventId, {
+          user_id: preview.userId,
+          created_at: preview.createdAt,
+        });
+      }
+    } catch (previewError) {
+      console.error("[inboxUnread] Failed to load group chat previews for unread counts:", previewError);
     }
   }
 
   const [dmUnread, groupUnread] = await Promise.all([
     getUnreadConversationIds(conversationIds, latestConversationMessages, userId),
-    getUnreadEventChatIds(
-      groupChats.map((chat) => chat.eventId),
-      latestEventMessages,
-      userId,
-    ),
+    getUnreadEventChatIds(accessibleEventIds, latestEventMessages, userId),
   ]);
 
   return {

@@ -12,7 +12,7 @@ import DiscoverGenreChips, {
 import DiscoverProfileListRow from "@/app/components/discover/DiscoverProfileListRow";
 import DiscoverSearchBar from "@/app/components/discover/DiscoverSearchBar";
 import DiscoverSectionHeader from "@/app/components/discover/DiscoverSectionHeader";
-import { getNavBadgeCounts } from "@/lib/notifications";
+import { getTotalUnreadCount } from "@/lib/notifications";
 import { startDm } from "@/lib/startDm";
 import {
   getCurrentUserId,
@@ -50,6 +50,41 @@ function matchesSearchQuery(user: UserProfile, query: string): boolean {
   return haystack.includes(normalized);
 }
 
+const DISCOVER_USERS_CACHE_KEY = "ftc-discover-users-v1";
+
+function readDiscoverUsersCache(): UserProfile[] {
+  if (typeof window === "undefined") {
+    return [];
+  }
+
+  try {
+    const raw = window.sessionStorage.getItem(DISCOVER_USERS_CACHE_KEY);
+
+    if (!raw) {
+      return [];
+    }
+
+    const parsed = JSON.parse(raw) as unknown;
+
+    return Array.isArray(parsed) ? (parsed as UserProfile[]) : [];
+  } catch (cacheError) {
+    console.error("[discover] Failed to read users cache:", cacheError);
+    return [];
+  }
+}
+
+function writeDiscoverUsersCache(users: UserProfile[]): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    window.sessionStorage.setItem(DISCOVER_USERS_CACHE_KEY, JSON.stringify(users));
+  } catch (cacheError) {
+    console.error("[discover] Failed to write users cache:", cacheError);
+  }
+}
+
 export default function DiscoverPage() {
   const router = useRouter();
   const [users, setUsers] = useState<UserProfile[]>([]);
@@ -61,8 +96,18 @@ export default function DiscoverPage() {
   const [notificationCount, setNotificationCount] = useState(0);
 
   useEffect(() => {
+    const cachedUsers = readDiscoverUsersCache();
+
+    if (cachedUsers.length > 0) {
+      setUsers(cachedUsers);
+      setLoading(false);
+    }
+
     async function loadDiscoverUsers() {
-      setLoading(true);
+      if (cachedUsers.length === 0) {
+        setLoading(true);
+      }
+
       setError(null);
 
       try {
@@ -74,12 +119,17 @@ export default function DiscoverPage() {
           return;
         }
 
-        const discoverUsers = await listDiscoverUsers(profile.role);
-        setUsers(discoverUsers);
+        const [discoverUsers, userId] = await Promise.all([
+          listDiscoverUsers(profile.role),
+          getCurrentUserId(),
+        ]);
 
-        const userId = await getCurrentUserId();
-        const counts = await getNavBadgeCounts(userId, profile.role);
-        setNotificationCount(counts.total);
+        setUsers(discoverUsers);
+        writeDiscoverUsersCache(discoverUsers);
+
+        void getTotalUnreadCount(userId).then(setNotificationCount).catch((countError) => {
+          console.error("Failed to load discover notification count:", countError);
+        });
       } catch (loadError) {
         console.error("Failed to load discover users:", loadError);
         setError(loadError instanceof Error ? loadError.message : "Failed to load users");
@@ -89,6 +139,23 @@ export default function DiscoverPage() {
     }
 
     void loadDiscoverUsers();
+  }, []);
+
+  useEffect(() => {
+    function handleNotificationsUpdated() {
+      void getCurrentUserId()
+        .then((userId) => getTotalUnreadCount(userId))
+        .then(setNotificationCount)
+        .catch((countError) => {
+          console.error("Failed to refresh discover notification count:", countError);
+        });
+    }
+
+    window.addEventListener("ftc-notifications-updated", handleNotificationsUpdated);
+
+    return () => {
+      window.removeEventListener("ftc-notifications-updated", handleNotificationsUpdated);
+    };
   }, []);
 
   const filteredUsers = useMemo(

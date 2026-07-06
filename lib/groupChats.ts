@@ -320,6 +320,49 @@ export async function listAccessibleGroupChats(
   );
 }
 
+export async function listAccessibleGroupChatEventIds(
+  role: UserRole | null,
+): Promise<string[]> {
+  const userId = await getCurrentUserId();
+  const byEventId = new Set<string>();
+
+  if (role === "promoter" || role === "both") {
+    const events = await listOwnedEvents();
+
+    for (const event of events) {
+      const eventKey = normalizeInboxId(event.id);
+
+      if (eventKey) {
+        byEventId.add(event.id);
+      }
+    }
+  }
+
+  if (role === "dj" || role === "both") {
+    const { data, error } = await supabase
+      .from("booking_requests")
+      .select("event_id")
+      .eq("recipient_id", userId)
+      .eq("status", "accepted")
+      .not("event_id", "is", null);
+
+    if (error) {
+      throw error;
+    }
+
+    for (const row of data ?? []) {
+      const eventId = row.event_id as string | null;
+      const eventKey = normalizeInboxId(eventId);
+
+      if (eventKey) {
+        byEventId.add(eventId as string);
+      }
+    }
+  }
+
+  return [...byEventId];
+}
+
 export function mergeLoadedGroupChatsWithLiveActivity(
   live: GroupChatListItem[],
   loaded: GroupChatListItem[],

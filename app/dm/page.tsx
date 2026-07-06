@@ -427,16 +427,25 @@ function DmInboxPageContent() {
     }
   }, []);
 
-  const loadConversations = useCallback(async () => {
-    setLoading(true);
+  const loadConversations = useCallback(async (options?: { soft?: boolean }) => {
+    if (options?.soft && dmInboxRows.length > 0) {
+      return;
+    }
+
+    const showLoading = dmInboxRows.length === 0;
+    if (showLoading) {
+      setLoading(true);
+    }
+
     setError(null);
 
     const userId = await getCurrentUserId();
     setCurrentUserId(userId);
 
-    const { data: allMembers, error: membersError } = await supabase
+    const { data: matchingMembers, error: membersError } = await supabase
       .from("conversation_members")
-      .select("*");
+      .select("id, conversation_id, user_id")
+      .eq("user_id", userId);
 
     if (membersError) {
       console.error("conversation_members query failed:", membersError.message);
@@ -445,12 +454,8 @@ function DmInboxPageContent() {
       return;
     }
 
-    const members = (allMembers ?? []) as ConversationMember[];
-    const matchingMembers = members.filter((row) => row.user_id === userId);
-
-    const conversationIds = [
-      ...new Set(matchingMembers.map((row) => row.conversation_id)),
-    ];
+    const members = (matchingMembers ?? []) as ConversationMember[];
+    const conversationIds = [...new Set(members.map((row) => row.conversation_id))];
 
     if (conversationIds.length === 0) {
       setDmInboxRows([]);
@@ -460,33 +465,45 @@ function DmInboxPageContent() {
       return;
     }
 
-    const otherUsers = buildOtherUsersByConversation(members, conversationIds, userId);
-    setOtherUsersByConversation(otherUsers);
+    const { data: conversationMemberRows, error: conversationMembersError } = await supabase
+      .from("conversation_members")
+      .select("id, conversation_id, user_id")
+      .in("conversation_id", conversationIds);
 
-    try {
-      const profiles = await getUserAvatarProfilesByIds([...otherUsers.values()]);
-      setUserProfiles(profiles);
-    } catch (profileError) {
-      console.error("Failed to load DM user profiles:", profileError);
-      setUserProfiles(new Map());
+    if (conversationMembersError) {
+      console.error(
+        "conversation_members lookup failed:",
+        conversationMembersError.message,
+      );
+      setError(conversationMembersError.message);
+      setLoading(false);
+      return;
     }
 
-    const response = await supabase
-      .from("conversations")
-      .select("*")
-      .in("id", conversationIds);
+    const allMembers = (conversationMemberRows ?? []) as ConversationMember[];
+    const otherUsers = buildOtherUsersByConversation(allMembers, conversationIds, userId);
+    setOtherUsersByConversation(otherUsers);
+
+    const [profilesResult, response, messagesResponse] = await Promise.all([
+      getUserAvatarProfilesByIds([...otherUsers.values()]).catch((profileError) => {
+        console.error("Failed to load DM user profiles:", profileError);
+        return new Map<string, UserAvatarProfile>();
+      }),
+      supabase.from("conversations").select("*").in("id", conversationIds),
+      supabase
+        .from("messages")
+        .select("*")
+        .in("conversation_id", conversationIds)
+        .order("created_at", { ascending: false }),
+    ]);
+
+    setUserProfiles(profilesResult);
 
     if (response.error) {
       console.log("conversations error:", response.error);
     }
 
     const conversationRows = normalizeConversations(response.data);
-
-    const messagesResponse = await supabase
-      .from("messages")
-      .select("*")
-      .in("conversation_id", conversationIds)
-      .order("created_at", { ascending: false });
 
     if (messagesResponse.error) {
       console.error("messages response error", messagesResponse.error);
@@ -498,7 +515,7 @@ function DmInboxPageContent() {
     }
 
     setLoading(false);
-  }, []);
+  }, [dmInboxRows.length]);
 
   const refreshUnreadState = useCallback(async () => {
     if (!currentUserId) {
@@ -546,11 +563,13 @@ function DmInboxPageContent() {
       setUnreadConversationIds(conversationUnread);
       setUnreadEventChatIds(eventUnread);
 
-      await syncReadInboxNotifications(currentUserId, {
+      void syncReadInboxNotifications(currentUserId, {
         conversationIds: dmInboxRows.map((row) => row.conversationId),
         unreadConversationIds: conversationUnread,
         eventIds: groupChats.map((chat) => chat.eventId),
         unreadEventIds: eventUnread,
+      }).catch((syncError) => {
+        console.error("Failed to sync read inbox notifications:", syncError);
       });
     } catch (readError) {
       console.error("Failed to load message read state:", readError);
@@ -619,12 +638,16 @@ function DmInboxPageContent() {
   }, [activeTab, loadGroupChats]);
 
   useEffect(() => {
+    if (activeTab !== "dm") {
+      return;
+    }
+
     loadConversations().catch((loadError: Error) => {
       console.error("loadConversations failed:", loadError.message);
       setError(loadError.message);
       setLoading(false);
     });
-  }, [loadConversations]);
+  }, [activeTab, loadConversations]);
 
   useEffect(() => {
     const channel = supabase

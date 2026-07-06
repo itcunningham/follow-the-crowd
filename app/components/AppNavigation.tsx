@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { getNavBadgeCounts, type NavBadgeCounts } from "@/lib/notifications";
 import { isMessagesInboxPath } from "@/lib/groupChats";
@@ -91,6 +91,8 @@ function getNavItems(role: UserRole, currentUserId: string | null): NavItem[] {
 }
 
 export const MOBILE_NAV_OFFSET_CLASS = "pb-[calc(3.5rem+env(safe-area-inset-bottom))] md:pb-0";
+
+const NAV_BADGE_REFRESH_INTERVAL_MS = 20_000;
 
 function navLinkClassName(isActive: boolean, variant: "desktop" | "mobile") {
   if (variant === "desktop") {
@@ -205,11 +207,53 @@ export default function AppNavigation() {
     bookings: 0,
     total: 0,
   });
+  const badgeLastFetchedAtRef = useRef(0);
+  const badgeRefreshInFlightRef = useRef<Promise<void> | null>(null);
+
+  const refreshBadgeCounts = useCallback(async (options?: { force?: boolean }) => {
+    if (!role) {
+      return;
+    }
+
+    if (
+      !options?.force &&
+      Date.now() - badgeLastFetchedAtRef.current < NAV_BADGE_REFRESH_INTERVAL_MS
+    ) {
+      return;
+    }
+
+    if (badgeRefreshInFlightRef.current) {
+      return badgeRefreshInFlightRef.current;
+    }
+
+    const refreshPromise = (async () => {
+      try {
+        const userId = await getCurrentUserId();
+        const counts = await getNavBadgeCounts(userId, role);
+        setBadgeCounts(counts);
+        badgeLastFetchedAtRef.current = Date.now();
+      } catch (error) {
+        console.error("[AppNavigation] Failed to refresh navigation badges:", error);
+      }
+    })();
+
+    badgeRefreshInFlightRef.current = refreshPromise;
+
+    try {
+      await refreshPromise;
+    } finally {
+      if (badgeRefreshInFlightRef.current === refreshPromise) {
+        badgeRefreshInFlightRef.current = null;
+      }
+    }
+  }, [role]);
 
   const loadNavigation = useCallback(async () => {
     try {
-      const userId = await getCurrentUserId();
-      const profile = await getCurrentUserProfile();
+      const [userId, profile] = await Promise.all([
+        getCurrentUserId(),
+        getCurrentUserProfile(),
+      ]);
       const userRole = profile?.role ?? null;
 
       setCurrentUserId(userId);
@@ -220,32 +264,17 @@ export default function AppNavigation() {
         return;
       }
 
-      const counts = await getNavBadgeCounts(userId, userRole);
-      setBadgeCounts(counts);
+      await refreshBadgeCounts({ force: true });
     } catch (error) {
       console.error("[AppNavigation] Failed to load navigation:", error);
     }
-  }, []);
-
-  const refreshBadgeCounts = useCallback(async () => {
-    if (!role) {
-      return;
-    }
-
-    try {
-      const userId = await getCurrentUserId();
-      const counts = await getNavBadgeCounts(userId, role);
-      setBadgeCounts(counts);
-    } catch (error) {
-      console.error("[AppNavigation] Failed to refresh navigation badges:", error);
-    }
-  }, [role]);
+  }, [refreshBadgeCounts]);
 
   useEffect(() => {
     void loadNavigation();
 
     function handleNavigationRefresh() {
-      void loadNavigation();
+      void refreshBadgeCounts({ force: true });
     }
 
     window.addEventListener("ftc-notifications-updated", handleNavigationRefresh);
@@ -257,7 +286,7 @@ export default function AppNavigation() {
       window.removeEventListener("ftc-role-updated", handleNavigationRefresh);
       window.removeEventListener("ftc-message-reads-updated", handleNavigationRefresh);
     };
-  }, [loadNavigation]);
+  }, [loadNavigation, refreshBadgeCounts]);
 
   useEffect(() => {
     if (!navReady) {
