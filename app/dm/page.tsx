@@ -58,12 +58,14 @@ function InboxTabButton({
   label,
   mobileLabel,
   unreadCount,
+  showUnreadBadge = true,
   onClick,
 }: {
   active: boolean;
   label: string;
   mobileLabel?: string;
   unreadCount: number;
+  showUnreadBadge?: boolean;
   onClick: () => void;
 }) {
   return (
@@ -80,7 +82,7 @@ function InboxTabButton({
         <span className="sm:hidden">{mobileLabel ?? label}</span>
         <span className="hidden sm:inline">{label}</span>
       </span>
-      {unreadCount > 0 ? (
+      {showUnreadBadge && unreadCount > 0 ? (
         <span
           className={`flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] font-bold leading-none ${
             active ? "bg-ftc-bg text-ftc-primary" : "bg-ftc-primary text-ftc-bg"
@@ -684,6 +686,7 @@ function DmInboxPageContent() {
               label="Direct Messages"
               mobileLabel="DMs"
               unreadCount={dmUnreadCount}
+              showUnreadBadge={false}
               onClick={() => selectInboxTab("dm")}
             />
             <InboxTabButton

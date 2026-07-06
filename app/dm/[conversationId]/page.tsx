@@ -30,6 +30,7 @@ import {
   getBookingRequestsForConversation,
   isBookingRateProposalSchemaError,
   isBookingRequestMessage,
+  isRateProposedDmMessage,
   mergeBookingRequests,
   parseBookingRequestMessage,
   proposeBookingRate,
@@ -1358,6 +1359,34 @@ export default function DmChatPage() {
             {reversedMessages.map((message) => {
               const isOwnMessage = currentUserId !== null && message.user_id === currentUserId;
               const isBookingMessage = isBookingRequestMessage(message.text);
+              const isRateProposalNotice = isRateProposedDmMessage(message.text);
+
+              if (isRateProposalNotice) {
+                const highlighted = isMessageHighlighted(message.id);
+                logChatHighlightRender(message.id, highlighted);
+
+                return (
+                  <li
+                    key={message.id}
+                    data-chat-message-id={message.id}
+                    className="flex justify-center"
+                  >
+                    <div className="max-w-sm px-3 py-1 text-center">
+                      <p
+                        className={`rounded-full border border-ftc-border bg-ftc-bg-elevated/50 px-3 py-1.5 text-xs text-ftc-text-muted ${getChatNewMessageHighlightClass(highlighted)}`}
+                      >
+                        {message.text.trim()}
+                      </p>
+                      <time
+                        dateTime={message.created_at}
+                        className="mt-1 block text-[10px] text-ftc-text-muted"
+                      >
+                        {formatMessageTime(message.created_at)}
+                      </time>
+                    </div>
+                  </li>
+                );
+              }
 
               if (!isBookingMessage) {
                 return (

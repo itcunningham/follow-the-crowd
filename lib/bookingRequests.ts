@@ -605,21 +605,24 @@ export function isBookingRequestMessage(text: string): boolean {
 export const CANCELLED_BOOKING_DM_SYSTEM_MESSAGE =
   "Booking request cancelled by planner.";
 
+export const RATE_PROPOSED_DM_PREFIX = "Rate proposed ·";
+
 const RATE_PROPOSED_DM_DUPLICATE_WINDOW_MS = 10_000;
 
+export function isRateProposedDmMessage(text: string): boolean {
+  return text.trim().startsWith(RATE_PROPOSED_DM_PREFIX);
+}
+
 export function formatRateProposedDmMessage(
-  eventName: string,
   proposedRate: number | null | undefined,
 ): string {
-  const trimmedEventName = eventName.trim() || "Event";
-
-  return `Rate proposed · ${trimmedEventName} · ${formatIntegerRateDisplay(proposedRate)}`;
+  return `${RATE_PROPOSED_DM_PREFIX} ${formatIntegerRateDisplay(proposedRate)}`;
 }
 
 async function insertRateProposedDmMessageIfNeeded(
   booking: BookingRequest,
 ): Promise<{ inserted: boolean; messageText: string; warning: string | null }> {
-  const messageText = formatRateProposedDmMessage(booking.event_name, booking.proposed_rate);
+  const messageText = formatRateProposedDmMessage(booking.proposed_rate);
 
   if (!booking.conversation_id) {
     return {
