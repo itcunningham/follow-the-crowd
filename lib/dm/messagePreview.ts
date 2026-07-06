@@ -1,7 +1,10 @@
 import {
   formatBookingMessagePreview,
+  isBookingActivityDmMessage,
   isBookingRequestMessage,
+  parseBookingActivityBookingId,
   parseBookingRequestMessage,
+  formatBookingStatusPreview,
   type BookingRequest,
 } from "@/lib/bookingRequests";
 
@@ -17,6 +20,16 @@ export function formatDmInboxMessagePreview(
 
   if (isBookingRequestMessage(trimmed)) {
     return formatBookingMessagePreview(trimmed, findBookingForMessage(trimmed, options?.bookings));
+  }
+
+  if (isBookingActivityDmMessage(trimmed)) {
+    const activityBookingId = parseBookingActivityBookingId(trimmed);
+    const booking =
+      activityBookingId && options?.bookings?.length
+        ? options.bookings.find((item) => item.id === activityBookingId) ?? null
+        : null;
+
+    return formatBookingStatusPreview("cancelled", booking?.event_name);
   }
 
   return trimmed;

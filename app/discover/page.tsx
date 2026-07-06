@@ -176,7 +176,7 @@ export default function DiscoverPage() {
     try {
       const currentUserId = await getCurrentUserId();
       const conversationId = await startDm(currentUserId, targetUserId);
-      router.push(`/dm/${conversationId}`);
+      router.push(`/dm/${conversationId}?from=discover`);
     } catch (messageError) {
       console.error("startDm failed from /discover:", messageError);
       setError(messageError instanceof Error ? messageError.message : "Failed to start message");

@@ -73,7 +73,7 @@ export default function UserProfilePage() {
     try {
       const authUserId = await getCurrentUserId();
       const conversationId = await startDm(authUserId, profile.user_id);
-      router.push(`/dm/${conversationId}`);
+      router.push(`/dm/${conversationId}?from=discover`);
     } catch (messageError) {
       console.error("startDm failed from profile page:", messageError);
       setError(messageError instanceof Error ? messageError.message : "Failed to start message");

@@ -1,0 +1,45 @@
+export type DmThreadBackContext = {
+  from?: string | null;
+  tab?: string | null;
+};
+
+export function resolveDmThreadBackHref(context: DmThreadBackContext): string {
+  const from = context.from?.trim();
+
+  if (from === "bookings") {
+    return "/bookings";
+  }
+
+  if (from === "events") {
+    return "/events";
+  }
+
+  if (from === "discover") {
+    return "/discover";
+  }
+
+  if (context.tab === "group") {
+    return "/dm?tab=group";
+  }
+
+  return "/dm";
+}
+
+export function buildDmThreadHref(
+  conversationId: string,
+  options?: { from?: string; tab?: string },
+): string {
+  const params = new URLSearchParams();
+
+  if (options?.from?.trim()) {
+    params.set("from", options.from.trim());
+  }
+
+  if (options?.tab === "group") {
+    params.set("tab", "group");
+  }
+
+  const query = params.toString();
+
+  return query ? `/dm/${conversationId}?${query}` : `/dm/${conversationId}`;
+}

@@ -43,6 +43,7 @@ import {
   type LatestChatMessage,
 } from "@/lib/messageReads";
 import { supabase } from "@/lib/supabaseClient";
+import { buildDmThreadHref } from "@/lib/dm/threadNavigation";
 import { formatDmInboxMessagePreview } from "@/lib/dm/messagePreview";
 import {
   DISCOVER_PATH,
@@ -776,7 +777,7 @@ function DmInboxPageContent() {
   }, [currentUserId, loadGroupChats]);
 
   function openConversation(conversationId: string) {
-    router.push(`/dm/${conversationId}`);
+    router.push(buildDmThreadHref(conversationId, { from: "dm" }));
   }
 
   const hasDirectMessages = dmInboxRows.length > 0;

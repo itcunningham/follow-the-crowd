@@ -58,6 +58,7 @@ export default function BookingRequestCard({
   expanded = true,
   onExpandedChange,
   eventHasAcceptedBooking = false,
+  dmConversationId = null,
 }: {
   booking: BookingRequest;
   currentUserId: string | null;
@@ -82,6 +83,7 @@ export default function BookingRequestCard({
   expanded?: boolean;
   onExpandedChange?: (expanded: boolean) => void;
   eventHasAcceptedBooking?: boolean;
+  dmConversationId?: string | null;
 }) {
   const [proposeSheetOpen, setProposeSheetOpen] = useState(false);
   const groupChatAccess = getBookingGroupChatAccess(booking, currentUserId, {
@@ -106,6 +108,11 @@ export default function BookingRequestCard({
   const rateDetailLabel = getBookingRateDetailLabel(booking);
   const showOpenOfferLabel = bookingLoaded && booking.rate_mode === "open" && !pendingProposal;
   const showActionButtons = bookingLoaded && !bookingLoading;
+  const eventHref = booking.event_id
+    ? dmConversationId
+      ? `/events/${booking.event_id}?fromDmConversation=${encodeURIComponent(dmConversationId)}`
+      : `/events/${booking.event_id}`
+    : null;
 
   async function handleProposeRate(rateDigits: string, note: string) {
     if (!onProposeRate) {
@@ -302,16 +309,7 @@ export default function BookingRequestCard({
           </button>
         ) : null}
 
-        <button
-          type="button"
-          onClick={collapsible ? handleCollapse : undefined}
-          disabled={!collapsible}
-          className={`flex min-w-0 w-full items-start gap-3 text-left ${
-            collapsible
-              ? "cursor-pointer rounded-xl transition hover:bg-[var(--ftc-color-danger)]/10"
-              : "cursor-default"
-          }`}
-        >
+        <div className="flex min-w-0 items-start gap-3">
           <EventCoverImageContextThumb
             eventName={booking.event_name}
             coverImageUrl={coverImageUrl}
@@ -326,13 +324,13 @@ export default function BookingRequestCard({
             </h3>
           </div>
           {renderCancelledStatusBadge()}
-        </button>
+        </div>
 
         <div className="mt-4">{renderCancelledDetailsGrid()}</div>
 
         {booking.event_id ? (
           <Link
-            href={`/events/${booking.event_id}`}
+            href={eventHref!}
             className="mt-4 inline-flex rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated px-3 py-2 text-xs font-semibold uppercase tracking-wide text-ftc-text-secondary transition hover:border-ftc-border-strong"
           >
             View event
@@ -359,11 +357,7 @@ export default function BookingRequestCard({
         ) : null}
 
         {collapsible ? (
-          <button
-            type="button"
-            onClick={handleCollapse}
-            className="flex min-w-0 w-full cursor-pointer items-start gap-3 rounded-xl text-left transition hover:bg-ftc-bg-elevated/60"
-          >
+          <div className="flex min-w-0 items-start gap-3">
             <EventCoverImageContextThumb
               eventName={booking.event_name}
               coverImageUrl={coverImageUrl}
@@ -390,7 +384,7 @@ export default function BookingRequestCard({
                 </span>
               ) : null}
             </div>
-          </button>
+          </div>
         ) : (
           <div className="flex min-w-0 items-start gap-3">
             <EventCoverImageContextThumb
@@ -455,12 +449,14 @@ export default function BookingRequestCard({
 
         {booking.event_id && !isCancelled ? (
           <>
-            <Link
-              href={`/events/${booking.event_id}`}
-              className="mt-4 inline-flex rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated px-3 py-2 text-xs font-semibold uppercase tracking-wide text-ftc-text-secondary transition hover:border-ftc-border-strong"
-            >
-              View event
-            </Link>
+            {eventHref ? (
+              <Link
+                href={eventHref}
+                className="mt-4 inline-flex rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated px-3 py-2 text-xs font-semibold uppercase tracking-wide text-ftc-text-secondary transition hover:border-ftc-border-strong"
+              >
+                View event
+              </Link>
+            ) : null}
 
             {groupChatAccess && groupChatAccess.kind !== "hidden" ? (
               <div className="mt-4 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated p-3">

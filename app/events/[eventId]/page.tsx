@@ -893,6 +893,12 @@ export default function EventDetailPage() {
         : null,
     [visibleLineup, currentUserId],
   );
+  const fromDmConversation = searchParams.get("fromDmConversation");
+  const hideOpenBookingConversation = Boolean(
+    fromDmConversation &&
+      viewerBooking?.conversation_id &&
+      viewerBooking.conversation_id === fromDmConversation,
+  );
 
   const showStickyActions = !editOpen && !sendOpen;
   const showOwnerSendAction = isOwner && isPlanner && !eventIsCancelled;
@@ -903,7 +909,7 @@ export default function EventDetailPage() {
     showStickyActions &&
     (showOwnerSendAction ||
       showEventGroupChatAction ||
-      Boolean(viewerBooking?.conversation_id));
+      Boolean(viewerBooking?.conversation_id && !hideOpenBookingConversation));
 
   if (loading) {
     return (
@@ -1309,7 +1315,7 @@ export default function EventDetailPage() {
                       onConfirm={(reason) => handleCancelAcceptedBooking(viewerBooking, reason)}
                     />
                   ) : null}
-                  {viewerBooking.conversation_id ? (
+                  {viewerBooking.conversation_id && !hideOpenBookingConversation ? (
                     <Link
                       href={`/dm/${viewerBooking.conversation_id}`}
                       className="ftc-btn-secondary px-4 py-2.5 text-xs uppercase tracking-wide"
@@ -1467,10 +1473,12 @@ export default function EventDetailPage() {
                 Send booking requests
               </EventDetailPrimaryAction>
             ) : null}
-            {!showOwnerSendAction && viewerBooking?.conversation_id ? (
+            {!showOwnerSendAction &&
+            viewerBooking?.conversation_id &&
+            !hideOpenBookingConversation ? (
               <EventDetailPrimaryAction
                 icon="chat"
-                href={`/dm/${viewerBooking.conversation_id}`}
+                href={`/dm/${viewerBooking.conversation_id}?from=events`}
               >
                 Open booking conversation
               </EventDetailPrimaryAction>

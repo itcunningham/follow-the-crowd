@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import AppNavigation, { MOBILE_NAV_OFFSET_CLASS } from "@/app/components/AppNavigation";
 import BookingRequestCard, {
   buildUpdatedBookingMessage,
@@ -30,6 +30,7 @@ import {
   getBookingRequestsForConversation,
   getEventIdsWithAcceptedBookings,
   isBookingAcceptedDmMessage,
+  isBookingActivityDmMessage,
   isBookingCancelledDmMessage,
   isBookingRateProposalSchemaError,
   isBookingRequestMessage,
@@ -41,6 +42,7 @@ import {
   updateBookingRequestStatus,
   type BookingRequest,
 } from "@/lib/bookingRequests";
+import { resolveDmThreadBackHref } from "@/lib/dm/threadNavigation";
 import {
   getDmAttachmentNotificationBody,
   groupDmAttachmentsByMessageId,
@@ -112,7 +114,12 @@ function getConversationTitle(otherUserProfile: UserAvatarProfile | null) {
 
 export default function DmChatPage() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const conversationId = params.conversationId as string;
+  const backHref = resolveDmThreadBackHref({
+    from: searchParams.get("from"),
+    tab: searchParams.get("tab"),
+  });
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [attachments, setAttachments] = useState<DmMessageAttachment[]>([]);
@@ -1307,7 +1314,7 @@ export default function DmChatPage() {
       <header className="z-10 shrink-0 border-b border-ftc-border-subtle bg-ftc-bg/95 px-3 py-2.5 backdrop-blur-md sm:px-4">
         <div className="flex items-center gap-2">
           <Link
-            href="/dm"
+            href={backHref}
             aria-label="Back to inbox"
             className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-ftc-border-subtle bg-ftc-surface text-ftc-text-secondary transition hover:border-ftc-border-strong hover:text-ftc-text"
           >
@@ -1418,6 +1425,10 @@ export default function DmChatPage() {
             className="flex flex-col-reverse gap-3 pb-2"
           >
             {reversedMessages.map((message) => {
+              if (isBookingActivityDmMessage(message.text)) {
+                return null;
+              }
+
               const isOwnMessage = currentUserId !== null && message.user_id === currentUserId;
               const isBookingMessage = isBookingRequestMessage(message.text);
               const isBookingCancelledNotice = isBookingCancelledDmMessage(message.text);
@@ -1600,6 +1611,7 @@ export default function DmChatPage() {
                                 ? eventIdsWithAcceptedBookings.has(resolvedBooking.event_id)
                                 : false
                             }
+                            dmConversationId={conversationId}
                             canRespond={canRespond}
                             responding={
                               actionBooking ? respondingBookingId === actionBooking.id : false

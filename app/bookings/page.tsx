@@ -1812,7 +1812,7 @@ function ReceivedBookingCard({
             </Link>
           ) : null}
           <Link
-            href={`/dm/${booking.conversation_id}`}
+            href={`/dm/${booking.conversation_id}?from=bookings`}
             className="ftc-btn-primary px-3 py-1.5 text-xs uppercase tracking-wide"
           >
             Open DM
@@ -1885,7 +1885,7 @@ function BookingHistoryCard({
             </Link>
           ) : null}
           <Link
-            href={`/dm/${booking.conversation_id}`}
+            href={`/dm/${booking.conversation_id}?from=bookings`}
             className="rounded-lg border border-ftc-border bg-ftc-bg-elevated/60 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-ftc-text-muted transition hover:border-ftc-border-strong hover:text-ftc-text-secondary"
           >
             Open DM
@@ -1992,7 +1992,7 @@ function BookingCampaignCard({
                   </Link>
                 ) : null}
                 <Link
-                  href={`/dm/${request.conversation_id}`}
+                  href={`/dm/${request.conversation_id}?from=bookings`}
                   className="ftc-btn-primary px-3 py-1.5 text-xs uppercase tracking-wide"
                 >
                   Open DM
