@@ -1,5 +1,6 @@
 import { supabase } from "@/lib/supabaseClient";
 import type { UserRole } from "@/lib/user/currentUser";
+import { getInboxUnreadCounts } from "@/lib/inboxUnread";
 
 export type NotificationType = "message" | "booking_request" | "booking_update";
 
@@ -269,26 +270,21 @@ export async function getNavBadgeCounts(
   userId: string,
   role: UserRole | null,
 ): Promise<NavBadgeCounts> {
-  const messageTypes: NotificationType[] =
-    role === "dj"
-      ? ["message", "booking_request"]
-      : ["message", "booking_request", "booking_update"];
   const bookingTypes: NotificationType[] = ["booking_update"];
 
   if (role !== "dj") {
     bookingTypes.unshift("booking_request");
   }
 
-  const [messageNotifications, bookingNotifications, totalUnread] = await Promise.all([
-    getUnreadNotifications(userId, messageTypes),
+  const [inboxUnread, bookingNotifications] = await Promise.all([
+    getInboxUnreadCounts(userId, role),
     role === "dj" ? Promise.resolve([] as Notification[]) : getUnreadNotifications(userId, bookingTypes),
-    getTotalUnreadCount(userId),
   ]);
 
   const counts: NavBadgeCounts = {
-    messages: messageNotifications.length,
+    messages: inboxUnread.total,
     bookings: bookingNotifications.length,
-    total: totalUnread,
+    total: inboxUnread.total + bookingNotifications.length,
   };
 
   console.log("[notifications] Message badge count for", userId, counts.messages);

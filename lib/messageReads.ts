@@ -1,5 +1,7 @@
 import { supabase } from "@/lib/supabaseClient";
 import { getCurrentUserId } from "@/lib/user/currentUser";
+import { getEventCrewChatLink } from "@/lib/eventCrewChat";
+import { markNotificationsReadForLink, notifyNavigationBadgesRefresh } from "@/lib/notifications";
 
 export type MessageReadRow = {
   conversation_id: string | null;
@@ -199,6 +201,8 @@ export async function markConversationRead(
 
   try {
     await upsertMessageRead({ conversation_id: conversationId }, lastReadAt);
+    await markNotificationsReadForLink(userId, `/dm/${conversationId}`);
+    notifyNavigationBadgesRefresh();
     console.log("[reads] mark read result", {
       conversationId,
       userId,
@@ -216,14 +220,24 @@ export async function markConversationRead(
 
   if (typeof window !== "undefined") {
     window.dispatchEvent(new CustomEvent("ftc-message-reads-updated"));
+    window.dispatchEvent(new Event("ftc-notifications-updated"));
   }
 }
 
-export async function markEventChatRead(eventId: string) {
-  await upsertMessageRead({ event_id: eventId }, resolveMarkReadTimestamp());
+export async function markEventChatRead(
+  eventId: string,
+  options?: { readThroughCreatedAt?: string | null },
+) {
+  const userId = await getCurrentUserId();
+  const lastReadAt = resolveMarkReadTimestamp(options?.readThroughCreatedAt);
+
+  await upsertMessageRead({ event_id: eventId }, lastReadAt);
+  await markNotificationsReadForLink(userId, getEventCrewChatLink(eventId, { from: "dm", tab: "group" }));
+  await markNotificationsReadForLink(userId, getEventCrewChatLink(eventId));
 
   if (typeof window !== "undefined") {
     window.dispatchEvent(new CustomEvent("ftc-message-reads-updated"));
+    window.dispatchEvent(new Event("ftc-notifications-updated"));
   }
 }
 

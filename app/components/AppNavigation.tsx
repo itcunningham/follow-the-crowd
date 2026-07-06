@@ -250,10 +250,12 @@ export default function AppNavigation() {
 
     window.addEventListener("ftc-notifications-updated", handleNavigationRefresh);
     window.addEventListener("ftc-role-updated", handleNavigationRefresh);
+    window.addEventListener("ftc-message-reads-updated", handleNavigationRefresh);
 
     return () => {
       window.removeEventListener("ftc-notifications-updated", handleNavigationRefresh);
       window.removeEventListener("ftc-role-updated", handleNavigationRefresh);
+      window.removeEventListener("ftc-message-reads-updated", handleNavigationRefresh);
     };
   }, [loadNavigation]);
 

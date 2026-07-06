@@ -1,0 +1,48 @@
+export const GROUP_CHAT_BOOKING_UPDATE_PREFIX = "Booking update:";
+
+export function isGroupChatSystemUpdateMessage(text: string): boolean {
+  return text.trim().startsWith(GROUP_CHAT_BOOKING_UPDATE_PREFIX);
+}
+
+export function formatGroupChatSystemNoticeText(text: string): string {
+  const trimmed = text.trim();
+  const body = trimmed.startsWith(GROUP_CHAT_BOOKING_UPDATE_PREFIX)
+    ? trimmed.slice(GROUP_CHAT_BOOKING_UPDATE_PREFIX.length).trim()
+    : trimmed;
+
+  const acceptedMatch = body.match(/^(.+?) accepted and joined the event crew\.$/);
+
+  if (acceptedMatch) {
+    return `${acceptedMatch[1]} accepted · joined event crew`;
+  }
+
+  const withdrawnMatch = body.match(
+    /^(.+?) is no longer scheduled for this event\.\s*(?:Reason:\s*(.+))?$/,
+  );
+
+  if (withdrawnMatch) {
+    const name = withdrawnMatch[1]?.trim() || "Crew member";
+    const reason = withdrawnMatch[2]?.trim();
+
+    return reason ? `${name} withdrew · ${reason}` : `${name} withdrew`;
+  }
+
+  return body;
+}
+
+export function formatGroupChatInboxPreview(
+  messageText: string | null | undefined,
+  options?: { prefixYou?: boolean },
+): string | null {
+  const trimmed = messageText?.trim();
+
+  if (!trimmed) {
+    return null;
+  }
+
+  const preview = isGroupChatSystemUpdateMessage(trimmed)
+    ? formatGroupChatSystemNoticeText(trimmed)
+    : trimmed;
+
+  return options?.prefixYou ? `You: ${preview}` : preview;
+}

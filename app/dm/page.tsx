@@ -30,6 +30,10 @@ import {
   normalizeInboxId,
   type DmInboxRow,
 } from "@/lib/dmInbox";
+import { formatGroupChatInboxPreview } from "@/lib/groupChatSystemMessages";
+import {
+  syncReadInboxNotifications,
+} from "@/lib/inboxUnread";
 import {
   getUnreadConversationIds,
   getUnreadEventChatIds,
@@ -432,6 +436,13 @@ function DmInboxPageContent() {
 
       setUnreadConversationIds(conversationUnread);
       setUnreadEventChatIds(eventUnread);
+
+      await syncReadInboxNotifications(currentUserId, {
+        conversationIds: dmInboxRows.map((row) => row.conversationId),
+        unreadConversationIds: conversationUnread,
+        eventIds: groupChats.map((chat) => chat.eventId),
+        unreadEventIds: eventUnread,
+      });
     } catch (readError) {
       console.error("Failed to load message read state:", readError);
     }
@@ -686,7 +697,6 @@ function DmInboxPageContent() {
               label="Direct Messages"
               mobileLabel="DMs"
               unreadCount={dmUnreadCount}
-              showUnreadBadge={false}
               onClick={() => selectInboxTab("dm")}
             />
             <InboxTabButton
@@ -715,9 +725,9 @@ function DmInboxPageContent() {
               ) : (
                 <ul className="flex flex-col gap-2">
                   {filteredGroupChats.map((chat) => {
-                    const preview = chat.latestPreview
-                      ? `${chat.latestMessageUserId === currentUserId ? "You: " : ""}${chat.latestPreview}`
-                      : null;
+                    const preview = formatGroupChatInboxPreview(chat.latestPreview, {
+                      prefixYou: chat.latestMessageUserId === currentUserId,
+                    });
 
                     return (
                       <li key={chat.eventId}>

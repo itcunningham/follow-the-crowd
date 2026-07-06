@@ -20,9 +20,16 @@ import {
 } from "@/lib/eventCrewChat";
 import { markNotificationsReadForLink } from "@/lib/notifications";
 import { markEventChatRead } from "@/lib/messageReads";
+import {
+  formatGroupChatSystemNoticeText,
+  isGroupChatSystemUpdateMessage,
+} from "@/lib/groupChatSystemMessages";
 import { supabase } from "@/lib/supabaseClient";
 import { useChatScroll, tagChatMessageForScroll } from "@/lib/useChatScroll";
-import { logChatHighlightRender } from "@/lib/chatNewMessageHighlight";
+import {
+  getChatNewMessageHighlightClass,
+  logChatHighlightRender,
+} from "@/lib/chatNewMessageHighlight";
 import { useChatNewMessageHighlight } from "@/lib/useChatNewMessageHighlight";
 import {
   getCurrentUserId,
@@ -159,9 +166,15 @@ export default function EventCrewChatPage() {
 
         const chatLink = getEventCrewChatLink(eventId);
         await markNotificationsReadForLink(userId, chatLink);
-        await markEventChatRead(eventId);
+        await markNotificationsReadForLink(
+          userId,
+          getEventCrewChatLink(eventId, { from: "dm", tab: "group" }),
+        );
 
         const rows = await listEventCrewChatMessages(eventId);
+        const latestMessageCreatedAt =
+          rows.length > 0 ? rows[rows.length - 1]?.created_at ?? null : null;
+        await markEventChatRead(eventId, { readThroughCreatedAt: latestMessageCreatedAt });
         setMessages(rows.map((message) => tagChatMessageForScroll(message, userId)));
 
         const senderIds = [...new Set(rows.map((message) => message.user_id))];
@@ -233,7 +246,9 @@ export default function EventCrewChatPage() {
             taggedMessage._clientScrollMeta.isFromCurrentUser,
           );
 
-          void markEventChatRead(eventId);
+          if (taggedMessage._clientScrollMeta.isFromCurrentUser) {
+            void markEventChatRead(eventId, { readThroughCreatedAt: newMessage.created_at });
+          }
 
           setSenderProfiles((prev) => {
             if (prev.has(newMessage.user_id)) {
@@ -395,10 +410,36 @@ export default function EventCrewChatPage() {
                 {reversedMessages.map((message) => {
                   const isOwnMessage =
                     currentUserId !== null && message.user_id === currentUserId;
-                  const profile = senderProfiles.get(message.user_id);
-                  const senderLabel = getSenderLabel(profile, message.user_id);
+                  const isSystemUpdate = isGroupChatSystemUpdateMessage(message.text);
                   const highlighted = isMessageHighlighted(message.id);
                   logChatHighlightRender(message.id, highlighted);
+
+                  if (isSystemUpdate) {
+                    return (
+                      <li
+                        key={message.id}
+                        data-chat-message-id={message.id}
+                        className="flex justify-center"
+                      >
+                        <div className="max-w-sm px-3 py-1 text-center">
+                          <p
+                            className={`rounded-full border border-ftc-border bg-ftc-bg-elevated/50 px-3 py-1.5 text-xs text-ftc-text-muted ${getChatNewMessageHighlightClass(highlighted)}`}
+                          >
+                            {formatGroupChatSystemNoticeText(message.text)}
+                          </p>
+                          <time
+                            dateTime={message.created_at}
+                            className="mt-1 block text-[10px] text-ftc-text-muted"
+                          >
+                            {formatMessageTime(message.created_at)}
+                          </time>
+                        </div>
+                      </li>
+                    );
+                  }
+
+                  const profile = senderProfiles.get(message.user_id);
+                  const senderLabel = getSenderLabel(profile, message.user_id);
 
                   return (
                     <GroupChatMessageBubble
