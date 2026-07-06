@@ -617,10 +617,11 @@ function BookingsPageContent() {
 
         if (plan) {
           const input = bookingPlanToRequestInput(plan);
-          setForm({
+          setForm((prev) => ({
             ...input,
             eventDate: options.eventDate?.trim() || input.eventDate,
-          });
+            rateMode: prev.rateMode ?? "fixed",
+          }));
           setSelectedPlanId(plan.id);
           setCreateStep("details");
           return;
@@ -698,10 +699,11 @@ function BookingsPageContent() {
 
   function handleSelectSavedPlan(plan: BookingPlan) {
     const input = bookingPlanToRequestInput(plan);
-    setForm({
+    setForm((prev) => ({
       ...input,
       eventDate: eventDateOverride ?? input.eventDate,
-    });
+      rateMode: prev.rateMode ?? "fixed",
+    }));
     setSelectedPlanId(plan.id);
     setError(null);
     setCreateStep("details");

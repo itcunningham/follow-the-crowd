@@ -49,6 +49,7 @@ export function bookingPlanToRequestInput(plan: BookingPlan): BookingRequestInpu
     setTime: plan.set_time,
     fee: normalizeStoredRate(plan.fee),
     notes: plan.notes,
+    rateMode: "fixed",
   };
 }
 

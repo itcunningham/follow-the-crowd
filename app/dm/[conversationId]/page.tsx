@@ -22,10 +22,13 @@ import {
   CANCELLED_BOOKING_DM_SYSTEM_MESSAGE,
   canRecipientRespondToPendingBooking,
   declineProposedBookingRate,
+  enrichBookingForDmDisplay,
   evaluateDmBookingCardVisibility,
+  fetchBookingRequestsByIds,
   getBookingMutationErrorMessage,
   getBookingRequestsForConversation,
   isBookingRequestMessage,
+  parseBookingRequestMessage,
   proposeBookingRate,
   resolveBookingForDmMessage,
   updateBookingRequestStatus,
@@ -541,6 +544,67 @@ export default function DmChatPage() {
       supabase.removeChannel(channel);
     };
   }, [conversationId]);
+
+  useEffect(() => {
+    if (loading || !conversationId || !currentUserId) {
+      return;
+    }
+
+    const missingIds = new Set<string>();
+
+    for (const message of messages) {
+      if (!isBookingRequestMessage(message.text)) {
+        continue;
+      }
+
+      const parsed = parseBookingRequestMessage(message.text);
+
+      if (!parsed?.bookingId) {
+        continue;
+      }
+
+      if (bookings.some((booking) => booking.id === parsed.bookingId)) {
+        continue;
+      }
+
+      missingIds.add(parsed.bookingId);
+    }
+
+    if (missingIds.size === 0) {
+      return;
+    }
+
+    let cancelled = false;
+
+    void (async () => {
+      try {
+        const fetched = await fetchBookingRequestsByIds([...missingIds]);
+
+        if (cancelled || fetched.length === 0) {
+          return;
+        }
+
+        setBookings((prev) => {
+          const merged = new Map(prev.map((booking) => [booking.id, booking]));
+
+          for (const booking of fetched) {
+            merged.set(booking.id, booking);
+          }
+
+          return [...merged.values()].sort(
+            (left, right) =>
+              new Date(left.created_at).getTime() - new Date(right.created_at).getTime(),
+          );
+        });
+      } catch (fetchError) {
+        console.error("[dm booking] failed to hydrate missing bookings:", fetchError);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [loading, conversationId, currentUserId, messages, bookings]);
 
   useEffect(() => {
     if (!conversationId) {
@@ -1242,11 +1306,16 @@ export default function DmChatPage() {
                   conversationId,
                 );
                 const storedBooking = bookingData;
-                const resolvedBooking = resolveEventLinkedBookingDisplay(
-                  storedBooking,
-                  storedBooking.event_id
-                    ? eventArtworkById.get(storedBooking.event_id)
-                    : undefined,
+                const resolvedBooking = enrichBookingForDmDisplay(
+                  resolveEventLinkedBookingDisplay(
+                    storedBooking,
+                    storedBooking.event_id
+                      ? eventArtworkById.get(storedBooking.event_id)
+                      : undefined,
+                  ),
+                  message.text,
+                  currentUserId,
+                  isOwnMessage,
                 );
 
                 console.log("[dm booking] card decision", {
