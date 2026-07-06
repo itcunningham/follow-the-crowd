@@ -141,44 +141,6 @@ function withGroupActivityFields(
   };
 }
 
-async function enrichGroupChatItemsWithEventArtwork(
-  items: GroupChatListItem[],
-): Promise<GroupChatListItem[]> {
-  if (items.length === 0) {
-    return [];
-  }
-
-  try {
-    const artworkById = await getEventArtworkByIds(items.map((item) => item.eventId));
-
-    return items.map((item) => {
-      const artwork = artworkById.get(item.eventId);
-
-      if (!artwork) {
-        return {
-          ...item,
-          coverImageUrl: pickPreferredEventCoverImageUrl(item.coverImageUrl),
-        };
-      }
-
-      return {
-        ...item,
-        coverImageUrl: pickPreferredEventCoverImageUrl(
-          artwork.coverImageUrl,
-          item.coverImageUrl,
-        ),
-        fallbackColour: artwork.fallbackColour ?? item.fallbackColour,
-      };
-    });
-  } catch (artworkError) {
-    console.error("[groupChats] Failed to load event artwork:", artworkError);
-    return items.map((item) => ({
-      ...item,
-      coverImageUrl: pickPreferredEventCoverImageUrl(item.coverImageUrl),
-    }));
-  }
-}
-
 export async function loadLatestGroupChatPreviews(
   eventIds: string[],
 ): Promise<Map<string, GroupChatPreview>> {
@@ -216,24 +178,60 @@ export async function loadLatestGroupChatPreviews(
   return previews;
 }
 
-async function attachLatestGroupChatPreviews(
-  items: GroupChatListItemBase[],
+async function buildGroupChatListItems(
+  baseItems: GroupChatListItemBase[],
 ): Promise<GroupChatListItem[]> {
-  if (items.length === 0) {
+  if (baseItems.length === 0) {
     return [];
   }
 
+  const eventIds = baseItems.map((item) => item.eventId);
+  const [previewResult, artworkResult] = await Promise.allSettled([
+    loadLatestGroupChatPreviews(eventIds),
+    getEventArtworkByIds(eventIds),
+  ]);
+
   let previews = new Map<string, GroupChatPreview>();
 
-  try {
-    previews = await loadLatestGroupChatPreviews(items.map((item) => item.eventId));
-  } catch (previewError) {
-    console.error("[groupChats] Failed to load latest group chat previews:", previewError);
+  if (previewResult.status === "fulfilled") {
+    previews = previewResult.value;
+  } else {
+    console.error(
+      "[groupChats] Failed to load latest group chat previews:",
+      previewResult.reason,
+    );
   }
 
-  return items.map((item) =>
-    withGroupActivityFields(item, previews.get(normalizeInboxId(item.eventId))),
-  );
+  const artworkById =
+    artworkResult.status === "fulfilled" ? artworkResult.value : new Map();
+
+  if (artworkResult.status === "rejected") {
+    console.error("[groupChats] Failed to load event artwork:", artworkResult.reason);
+  }
+
+  return baseItems.map((item) => {
+    const withActivity = withGroupActivityFields(
+      item,
+      previews.get(normalizeInboxId(item.eventId)),
+    );
+    const artwork = artworkById.get(item.eventId);
+
+    if (!artwork) {
+      return {
+        ...withActivity,
+        coverImageUrl: pickPreferredEventCoverImageUrl(withActivity.coverImageUrl),
+      };
+    }
+
+    return {
+      ...withActivity,
+      coverImageUrl: pickPreferredEventCoverImageUrl(
+        artwork.coverImageUrl,
+        withActivity.coverImageUrl,
+      ),
+      fallbackColour: artwork.fallbackColour ?? withActivity.fallbackColour,
+    };
+  });
 }
 
 export async function listAccessibleGroupChats(
@@ -318,11 +316,7 @@ export async function listAccessibleGroupChats(
   }
 
   return sortGroupChatsByLatestActivity(
-    dedupeGroupChatsByEventId(
-      await enrichGroupChatItemsWithEventArtwork(
-        await attachLatestGroupChatPreviews([...byEventId.values()]),
-      ),
-    ),
+    dedupeGroupChatsByEventId(await buildGroupChatListItems([...byEventId.values()])),
   );
 }
 

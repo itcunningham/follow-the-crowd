@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import AppNavigation, { MOBILE_NAV_OFFSET_CLASS } from "@/app/components/AppNavigation";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
@@ -122,6 +122,51 @@ function GroupChatsEmptyState() {
       <p className="mt-2 max-w-sm text-sm leading-relaxed text-ftc-text-muted">
         Group chats appear here when you create events or accept bookings.
       </p>
+    </div>
+  );
+}
+
+const GROUP_CHATS_LOAD_TIMEOUT_MS = 15_000;
+
+async function withGroupChatsLoadTimeout<T>(promise: Promise<T>): Promise<T> {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<T>((_, reject) => {
+        timeoutId = setTimeout(() => {
+          reject(new Error("Loading group chats took too long. Please try again."));
+        }, GROUP_CHATS_LOAD_TIMEOUT_MS);
+      }),
+    ]);
+  } finally {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+  }
+}
+
+function GroupChatsLoadErrorState({
+  message,
+  onRetry,
+  retrying,
+}: {
+  message: string;
+  onRetry: () => void;
+  retrying: boolean;
+}) {
+  return (
+    <div className="rounded-xl border border-ftc-border-subtle bg-ftc-surface/40 px-4 py-5 text-center">
+      <p className="text-sm text-red-400">{message}</p>
+      <button
+        type="button"
+        onClick={onRetry}
+        disabled={retrying}
+        className="mt-3 ftc-btn-secondary px-4 py-2 text-xs uppercase tracking-wide disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        {retrying ? "Retrying..." : "Try again"}
+      </button>
     </div>
   );
 }
@@ -281,6 +326,9 @@ function DmInboxPageContent() {
   const [activeTab, setActiveTab] = useState<InboxTab>(() =>
     parseInboxTab(searchParams.get("tab")),
   );
+  const groupChatsLoadGenerationRef = useRef(0);
+  const groupChatsLoadInFlightRef = useRef<Promise<void> | null>(null);
+  const groupChatsHasDataRef = useRef(false);
 
   const selectInboxTab = useCallback(
     (tab: InboxTab) => {
@@ -294,27 +342,72 @@ function DmInboxPageContent() {
     setActiveTab(parseInboxTab(searchParams.get("tab")));
   }, [searchParams]);
 
-  const loadGroupChats = useCallback(async () => {
-    setGroupChatsLoading(true);
-    setGroupChatsError(null);
+  const loadGroupChats = useCallback(async (options?: { forceLoading?: boolean }) => {
+    if (groupChatsLoadInFlightRef.current) {
+      return groupChatsLoadInFlightRef.current;
+    }
 
-    try {
-      const profile = await getCurrentUserProfile();
-      const userRole = profile?.role ?? null;
-      const loaded = await listAccessibleGroupChats(userRole);
-      setGroupChats((previous) => {
-        if (previous.length === 0) {
-          return loaded;
+    const loadPromise = (async () => {
+      const generation = ++groupChatsLoadGenerationRef.current;
+      const showLoading = options?.forceLoading || !groupChatsHasDataRef.current;
+
+      if (showLoading) {
+        setGroupChatsLoading(true);
+      }
+
+      setGroupChatsError(null);
+
+      try {
+        const profile = await getCurrentUserProfile();
+
+        if (generation !== groupChatsLoadGenerationRef.current) {
+          return;
         }
 
-        return mergeLoadedGroupChatsWithLiveActivity(previous, loaded);
-      });
-    } catch (loadError) {
-      console.error("Failed to load group chats:", loadError);
-      setGroupChats([]);
-      setGroupChatsError(getGroupChatsLoadErrorMessage(loadError));
+        const loaded = await withGroupChatsLoadTimeout(
+          listAccessibleGroupChats(profile?.role ?? null),
+        );
+
+        if (generation !== groupChatsLoadGenerationRef.current) {
+          return;
+        }
+
+        groupChatsHasDataRef.current = loaded.length > 0;
+
+        setGroupChats((previous) => {
+          if (previous.length === 0) {
+            return loaded;
+          }
+
+          return mergeLoadedGroupChatsWithLiveActivity(previous, loaded);
+        });
+      } catch (loadError) {
+        if (generation !== groupChatsLoadGenerationRef.current) {
+          return;
+        }
+
+        console.error("Failed to load group chats:", loadError);
+
+        if (!groupChatsHasDataRef.current) {
+          setGroupChats([]);
+        }
+
+        setGroupChatsError(getGroupChatsLoadErrorMessage(loadError));
+      } finally {
+        if (generation === groupChatsLoadGenerationRef.current) {
+          setGroupChatsLoading(false);
+        }
+      }
+    })();
+
+    groupChatsLoadInFlightRef.current = loadPromise;
+
+    try {
+      await loadPromise;
     } finally {
-      setGroupChatsLoading(false);
+      if (groupChatsLoadInFlightRef.current === loadPromise) {
+        groupChatsLoadInFlightRef.current = null;
+      }
     }
   }, []);
 
@@ -465,11 +558,7 @@ function DmInboxPageContent() {
   }, [refreshUnreadState]);
 
   useEffect(() => {
-    loadGroupChats().catch((loadError: Error) => {
-      console.error("loadGroupChats failed:", loadError.message);
-      setGroupChatsError(loadError.message);
-      setGroupChatsLoading(false);
-    });
+    void loadGroupChats();
   }, [loadGroupChats]);
 
   useEffect(() => {
@@ -626,6 +715,8 @@ function DmInboxPageContent() {
   const renderedGroupChats = sortGroupChatsByLatestActivity(
     dedupeGroupChatsByEventId(groupChats),
   );
+  const hasGroupChats = renderedGroupChats.length > 0;
+  const showGroupChatsLoading = groupChatsLoading && !hasGroupChats;
   const dmUnreadCount = unreadConversationIds.size;
   const groupUnreadCount = unreadEventChatIds.size;
   const normalizedSearch = searchQuery.trim().toLowerCase();
@@ -712,44 +803,65 @@ function DmInboxPageContent() {
         <div className="flex-1 px-4 py-3 sm:px-6">
           {activeTab === "group" ? (
             <section aria-label="Group Chats">
-              {groupChatsLoading ? (
+              {showGroupChatsLoading ? (
                 <p className="py-2 text-sm text-ftc-text-muted">Loading group chats...</p>
-              ) : groupChatsError ? (
-                <p className="py-2 text-sm text-red-400">{groupChatsError}</p>
-              ) : renderedGroupChats.length === 0 ? (
+              ) : groupChatsError && !hasGroupChats ? (
+                <GroupChatsLoadErrorState
+                  message={groupChatsError}
+                  retrying={groupChatsLoading}
+                  onRetry={() => {
+                    void loadGroupChats({ forceLoading: true });
+                  }}
+                />
+              ) : !hasGroupChats ? (
                 <GroupChatsEmptyState />
-              ) : filteredGroupChats.length === 0 ? (
-                <p className="py-8 text-center text-sm text-ftc-text-muted">
-                  No group chats match your search.
-                </p>
               ) : (
-                <ul className="flex flex-col gap-2">
-                  {filteredGroupChats.map((chat) => {
-                    const preview = formatGroupChatInboxPreview(chat.latestPreview, {
-                      prefixYou: chat.latestMessageUserId === currentUserId,
-                    });
+                <>
+                  {groupChatsError ? (
+                    <div className="mb-3">
+                      <GroupChatsLoadErrorState
+                        message={groupChatsError}
+                        retrying={groupChatsLoading}
+                        onRetry={() => {
+                          void loadGroupChats({ forceLoading: false });
+                        }}
+                      />
+                    </div>
+                  ) : null}
+                  {filteredGroupChats.length === 0 ? (
+                    <p className="py-8 text-center text-sm text-ftc-text-muted">
+                      No group chats match your search.
+                    </p>
+                  ) : (
+                    <ul className="flex flex-col gap-2">
+                      {filteredGroupChats.map((chat) => {
+                        const preview = formatGroupChatInboxPreview(chat.latestPreview, {
+                          prefixYou: chat.latestMessageUserId === currentUserId,
+                        });
 
-                    return (
-                      <li key={chat.eventId}>
-                        <MessagesGroupInboxRow
-                          title={chat.eventName}
-                          subtitle={`${chat.venue.trim() || "Venue TBC"} · ${formatGroupChatEventDate(chat.eventDate)}`}
-                          preview={preview}
-                          timestamp={chat.latestActivityAt ?? undefined}
-                          timestampLabel={
-                            chat.latestActivityAt
-                              ? undefined
-                              : formatGroupChatEventDate(chat.eventDate)
-                          }
-                          isUnread={unreadEventChatIds.has(chat.eventId)}
-                          href={chat.href}
-                          coverImageUrl={chat.coverImageUrl}
-                          fallbackColour={chat.fallbackColour}
-                        />
-                      </li>
-                    );
-                  })}
-                </ul>
+                        return (
+                          <li key={chat.eventId}>
+                            <MessagesGroupInboxRow
+                              title={chat.eventName}
+                              subtitle={`${chat.venue.trim() || "Venue TBC"} · ${formatGroupChatEventDate(chat.eventDate)}`}
+                              preview={preview}
+                              timestamp={chat.latestActivityAt ?? undefined}
+                              timestampLabel={
+                                chat.latestActivityAt
+                                  ? undefined
+                                  : formatGroupChatEventDate(chat.eventDate)
+                              }
+                              isUnread={unreadEventChatIds.has(chat.eventId)}
+                              href={chat.href}
+                              coverImageUrl={chat.coverImageUrl}
+                              fallbackColour={chat.fallbackColour}
+                            />
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+                </>
               )}
             </section>
           ) : null}
