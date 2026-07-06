@@ -1224,7 +1224,7 @@ function BookingsPageContent() {
                       {form.venue} · {form.eventDate} · {form.setTime}
                     </p>
                     <p className="mt-1">
-                      {form.rateMode === "open" ? "Open to offers" : "Fixed offer"}
+                      {form.rateMode === "open" ? "Ask for rate" : "Fixed offer"}
                       {form.fee.trim() ? ` · ${formatRateDisplay(form.fee)}` : ""}
                     </p>
                   </div>

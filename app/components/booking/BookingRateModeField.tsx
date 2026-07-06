@@ -11,8 +11,8 @@ const OPTIONS: Array<{ value: BookingRateMode; title: string; description: strin
   },
   {
     value: "open",
-    title: "Open to offers",
-    description: "DJ can accept, propose their own rate, or decline.",
+    title: "Ask for rate",
+    description: "DJ sends their price before accepting.",
   },
 ];
 

@@ -387,7 +387,7 @@ export function getBookingOfferRateLabel(booking: BookingRequest): string {
   if (booking.rate_mode === "open") {
     const formatted = formatRateDisplay(booking.fee);
 
-    return formatted === "$" ? "Open to offers" : formatted;
+    return formatted === "$" ? "Ask for rate" : formatted;
   }
 
   return formatRateDisplay(booking.fee);
@@ -535,7 +535,7 @@ export function formatBookingRequestMessage(booking: BookingRequest): string {
     `Venue: ${booking.venue}`,
     `Date: ${booking.event_date}`,
     `Set time: ${booking.set_time}`,
-    `Offer type: ${booking.rate_mode === "open" ? "Open offer" : "Fixed offer"}`,
+    `Offer type: ${booking.rate_mode === "open" ? "Ask for rate" : "Fixed offer"}`,
     `Rate: ${formatRateDisplay(booking.fee)}`,
     `Notes: ${booking.notes || "None"}`,
     `Status: ${formatStatusLabel(booking.status)}`,

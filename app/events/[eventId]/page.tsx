@@ -73,7 +73,6 @@ import {
   filterVisibleEventLineupBookings,
   getActiveEventLineupStats,
   getBookingMutationErrorMessage,
-  getBookingOfferRateLabel,
   hasPendingRateProposal,
   hideDeclinedBookingFromLineup,
   listBookingRequestsForEvent,
@@ -1092,7 +1091,7 @@ export default function EventDetailPage() {
                   Per-DJ offers
                 </p>
                 <p className="mt-1 text-sm leading-relaxed text-ftc-text-secondary">
-                  Select DJs below, then set a fixed offer or open to offers for each one.
+                  Select DJs below, then set a fixed offer or ask for rate for each one.
                 </p>
               </div>
 
@@ -1358,8 +1357,13 @@ export default function EventDetailPage() {
                               ) : null}
                             </div>
                             <p className="mt-2 text-xs text-ftc-text-muted">
-                              {booking.rate_mode === "open" ? "Open offer" : "Fixed offer"} ·{" "}
-                              {getBookingOfferRateLabel(booking)}
+                              {(() => {
+                                const offerType =
+                                  booking.rate_mode === "open" ? "Ask for rate" : "Fixed offer";
+                                const amount = formatRateDisplay(booking.fee);
+
+                                return amount !== "$" ? `${offerType} · ${amount}` : offerType;
+                              })()}
                             </p>
                             {cancelledByLabel ? (
                               <p className="mt-2 text-xs text-ftc-text-muted">

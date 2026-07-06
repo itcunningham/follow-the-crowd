@@ -122,7 +122,7 @@ export default function BookingRequestCard({
             <BookingStatusBadge status={booking.status} />
             {showOpenOfferLabel ? (
               <span className="inline-flex rounded-full border border-ftc-border-subtle bg-ftc-bg-elevated px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-ftc-primary">
-                Open to offers
+                Ask for rate
               </span>
             ) : null}
             {pendingProposal ? (
