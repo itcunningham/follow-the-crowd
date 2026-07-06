@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import FtcBrandMotionLazy from "@/app/components/brand/FtcBrandMotionLazy";
 import {
   ensureAuthenticatedUserProfileRow,
   getCurrentAuthUser,
@@ -94,6 +95,14 @@ export default function OnboardingGuard({ children }: { children: React.ReactNod
   }, [pathname, router]);
 
   if (!ready) {
+    if (pathname === "/") {
+      return (
+        <div className="flex min-h-[100dvh] items-center justify-center bg-ftc-bg">
+          <FtcBrandMotionLazy variant="splash" />
+        </div>
+      );
+    }
+
     return (
       <div className="flex min-h-[50vh] items-center justify-center bg-ftc-bg text-sm text-ftc-text-muted">
         Loading...

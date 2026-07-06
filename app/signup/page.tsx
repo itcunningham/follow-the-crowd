@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import FtcBrandMotionLazy from "@/app/components/brand/FtcBrandMotionLazy";
 import { LOGIN_PATH, signUpWithEmail } from "@/lib/user/currentUser";
 
 function getSignupErrorMessage(error: unknown): string {
@@ -95,8 +96,12 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="flex min-h-[100dvh] items-start justify-center bg-ftc-bg px-4 pb-10 pt-[max(2.5rem,env(safe-area-inset-top))] font-sans text-ftc-text sm:items-center sm:py-10">
-      <div className="ftc-card-raised w-full max-w-md p-6 sm:p-8">
+    <div className="relative flex min-h-[100dvh] items-start justify-center overflow-hidden bg-ftc-bg px-4 pb-10 pt-[max(2.5rem,env(safe-area-inset-top))] font-sans text-ftc-text sm:items-center sm:py-10">
+      <div className="pointer-events-none absolute inset-x-0 top-[max(3rem,env(safe-area-inset-top))] flex justify-center sm:inset-y-0 sm:items-center sm:justify-end sm:pr-[max(1rem,calc((100vw-28rem)/2-8rem))]">
+        <FtcBrandMotionLazy variant="ambient" />
+      </div>
+
+      <div className="relative z-10 ftc-card-raised w-full max-w-md p-6 sm:p-8">
         <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-ftc-primary">
           Follow The Crowd
         </p>

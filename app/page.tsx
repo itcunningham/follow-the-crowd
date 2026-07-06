@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import AppNavigation, { MOBILE_NAV_OFFSET_CLASS } from "./components/AppNavigation";
+import FtcBrandMotionLazy from "./components/brand/FtcBrandMotionLazy";
 import FtcDatePicker from "./components/FtcDatePicker";
 import OnboardingGuard from "./components/OnboardingGuard";
 import VenueMap from "./components/VenueMap";
@@ -81,18 +82,19 @@ export default function Home() {
         <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_110%)]" />
 
         <div className="relative mx-auto max-w-6xl px-4 pb-24 pt-20 sm:px-6 sm:pb-32 sm:pt-28">
-          <div className="mx-auto max-w-3xl text-center">
+          <div className="grid items-center gap-10 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] lg:gap-12">
+            <div className="mx-auto max-w-3xl text-center lg:mx-0 lg:max-w-none lg:text-left">
             <p className="mb-6 inline-flex items-center rounded-full border border-ftc-border-strong bg-ftc-surface/80 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-ftc-primary">
               Crowd intel for Promoters
             </p>
             <h1 className="text-4xl font-bold uppercase tracking-tight text-ftc-text sm:text-6xl sm:leading-[1.05]">
               Plan Better Events with AI.
             </h1>
-            <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-ftc-text-secondary sm:text-xl">
+            <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-ftc-text-secondary sm:text-xl lg:mx-0">
               Follow The Crowd reads the room before you lock the date — venue
               intel, crowd signals, and plans built for nights that actually hit.
             </p>
-            <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
+            <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row lg:justify-start">
               <button
                 type="button"
                 onClick={() => scrollTo("create-event")}
@@ -113,6 +115,11 @@ export default function Home() {
               >
                 Learn More
               </button>
+            </div>
+            </div>
+
+            <div className="mx-auto flex w-full max-w-[280px] justify-center sm:max-w-none lg:justify-end">
+              <FtcBrandMotionLazy variant="hero" className="mx-auto lg:mr-0" />
             </div>
           </div>
 

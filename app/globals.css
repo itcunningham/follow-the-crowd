@@ -651,3 +651,134 @@ html {
     outline-color: transparent;
   }
 }
+
+/* -------------------------------------------------------------------------- */
+/* Brand motion — entry screens only                                           */
+/* -------------------------------------------------------------------------- */
+
+.ftc-brand-tiles {
+  position: relative;
+  height: 100%;
+  width: 100%;
+  transform-style: preserve-3d;
+  perspective: 900px;
+}
+
+.ftc-brand-tiles--hero {
+  transform: rotateX(10deg) rotateY(-14deg);
+}
+
+.ftc-brand-tile {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  display: flex;
+  height: 62%;
+  width: 46%;
+  flex-direction: column;
+  justify-content: space-between;
+  border-radius: 1rem;
+  border-width: 1px;
+  padding: 0.75rem;
+  box-shadow: var(--ftc-shadow-card);
+  transform-origin: center center;
+  backface-visibility: hidden;
+}
+
+.ftc-brand-tile__initials {
+  font-size: clamp(1rem, 3vw, 1.35rem);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.ftc-brand-tile__label {
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  opacity: 0.72;
+}
+
+.ftc-brand-tile--1 {
+  z-index: 1;
+  transform: translate(-78%, -42%) rotate(-10deg);
+}
+
+.ftc-brand-tile--2 {
+  z-index: 2;
+  transform: translate(-50%, -50%) rotate(4deg);
+}
+
+.ftc-brand-tile--3 {
+  z-index: 3;
+  transform: translate(-22%, -58%) rotate(12deg);
+}
+
+.ftc-brand-tiles--animate {
+  animation: ftc-brand-stack-float 14s ease-in-out infinite;
+}
+
+.ftc-brand-tiles--animate .ftc-brand-tile--1 {
+  animation: ftc-brand-tile-drift-1 16s ease-in-out infinite;
+}
+
+.ftc-brand-tiles--animate .ftc-brand-tile--2 {
+  animation: ftc-brand-tile-drift-2 12s ease-in-out infinite;
+}
+
+.ftc-brand-tiles--animate .ftc-brand-tile--3 {
+  animation: ftc-brand-tile-drift-3 18s ease-in-out infinite;
+}
+
+@keyframes ftc-brand-stack-float {
+  0%,
+  100% {
+    transform: rotateX(10deg) rotateY(-14deg) translateY(0);
+  }
+
+  50% {
+    transform: rotateX(12deg) rotateY(-10deg) translateY(-6px);
+  }
+}
+
+@keyframes ftc-brand-tile-drift-1 {
+  0%,
+  100% {
+    transform: translate(-78%, -42%) rotate(-10deg);
+  }
+
+  50% {
+    transform: translate(-80%, -44%) rotate(-8deg);
+  }
+}
+
+@keyframes ftc-brand-tile-drift-2 {
+  0%,
+  100% {
+    transform: translate(-50%, -50%) rotate(4deg);
+  }
+
+  50% {
+    transform: translate(-48%, -52%) rotate(6deg);
+  }
+}
+
+@keyframes ftc-brand-tile-drift-3 {
+  0%,
+  100% {
+    transform: translate(-22%, -58%) rotate(12deg);
+  }
+
+  50% {
+    transform: translate(-20%, -56%) rotate(10deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ftc-brand-tiles--animate,
+  .ftc-brand-tiles--animate .ftc-brand-tile--1,
+  .ftc-brand-tiles--animate .ftc-brand-tile--2,
+  .ftc-brand-tiles--animate .ftc-brand-tile--3 {
+    animation: none;
+  }
+}
