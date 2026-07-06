@@ -1848,21 +1848,36 @@ export async function cancelBookingRequest(
   return booking;
 }
 
+export type CancelAcceptedBookingRequestResult = {
+  booking: BookingRequest;
+  warning: string | null;
+};
+
 export async function cancelAcceptedBookingRequest(
   booking: BookingRequest,
   reason: string,
   djDisplayName: string,
-): Promise<BookingRequest> {
+): Promise<CancelAcceptedBookingRequestResult> {
+  let warning: string | null = null;
+
+  if (booking.event_id && booking.status === "accepted") {
+    try {
+      await postBookingCancellationGroupChatUpdate(booking, djDisplayName, reason);
+    } catch (groupChatError) {
+      console.error(
+        "[bookingRequests] Failed to post booking cancellation group chat update:",
+        groupChatError,
+      );
+      warning = `Booking was cancelled, but the group chat could not be updated. ${getBookingMutationErrorMessage(groupChatError)}`;
+    }
+  }
+
   const cancelledBooking = await cancelBookingRequest(booking.id, {
     reason,
     previousStatus: "accepted",
   });
 
-  if (cancelledBooking.event_id) {
-    await postBookingCancellationGroupChatUpdate(cancelledBooking, djDisplayName);
-  }
-
-  return cancelledBooking;
+  return { booking: cancelledBooking, warning };
 }
 
 async function mutateArchivedBookingRequest(

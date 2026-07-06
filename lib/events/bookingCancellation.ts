@@ -21,6 +21,7 @@ export function buildBookingCancellationGroupChatMessage(
 export async function postBookingCancellationGroupChatUpdate(
   booking: BookingRequest,
   djDisplayName: string,
+  cancellationReason?: string | null,
 ): Promise<void> {
   if (!booking.event_id) {
     return;
@@ -28,7 +29,7 @@ export async function postBookingCancellationGroupChatUpdate(
 
   const message = buildBookingCancellationGroupChatMessage(
     djDisplayName,
-    booking.cancellation_reason,
+    cancellationReason ?? booking.cancellation_reason,
   );
 
   await sendEventCrewChatMessage(booking.event_id, message, booking.event_name);

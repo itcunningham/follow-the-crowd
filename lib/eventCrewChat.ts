@@ -166,10 +166,19 @@ export async function sendEventCrewChatMessage(
     return;
   }
 
-  const [participants, senderProfile] = await Promise.all([
-    getEventCrewParticipantIds(eventId),
-    getCurrentUserProfile(),
-  ]);
+  let participants: string[] = [];
+
+  try {
+    participants = await getEventCrewParticipantIds(eventId);
+  } catch (participantError) {
+    console.error(
+      "[eventCrewChat] Failed to load crew participants for notifications:",
+      participantError,
+    );
+    return;
+  }
+
+  const senderProfile = await getCurrentUserProfile();
 
   const senderName = senderProfile?.display_name?.trim() || "Group member";
   const preview =

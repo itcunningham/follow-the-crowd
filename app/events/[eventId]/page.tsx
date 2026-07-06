@@ -783,13 +783,17 @@ export default function EventDetailPage() {
     try {
       const profile = profiles.get(booking.recipient_id);
       const djDisplayName = profile?.display_name?.trim() || "DJ";
-      await cancelAcceptedBookingRequest(booking, reason, djDisplayName);
+      const { warning } = await cancelAcceptedBookingRequest(
+        booking,
+        reason,
+        djDisplayName,
+      );
       await reloadEventLineup();
-      setSuccessMessage(
+      const baseMessage =
         booking.sender_id === currentUserId
           ? "Booking cancelled."
-          : "You withdrew from this event.",
-      );
+          : "You withdrew from this event.";
+      setSuccessMessage(warning ? `${baseMessage} ${warning}` : baseMessage);
     } catch (cancelError) {
       console.error("Failed to cancel accepted booking:", cancelError);
       setError(getBookingMutationErrorMessage(cancelError));

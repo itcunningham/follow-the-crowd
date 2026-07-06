@@ -1149,12 +1149,17 @@ export default function DmChatPage() {
 
     setCancellingBookingId(booking.id);
     setError(null);
+    setNotice(null);
 
     try {
       const profileMap = await getBookingRecipientProfilesByIds([booking.recipient_id]);
       const djDisplayName =
         profileMap.get(booking.recipient_id)?.display_name?.trim() || "DJ";
-      const updatedBooking = await cancelAcceptedBookingRequest(booking, reason, djDisplayName);
+      const { booking: updatedBooking, warning } = await cancelAcceptedBookingRequest(
+        booking,
+        reason,
+        djDisplayName,
+      );
       const updatedMessageText = buildUpdatedBookingMessage(updatedBooking, "cancelled");
 
       setBookings((prev) =>
@@ -1167,8 +1172,16 @@ export default function DmChatPage() {
         ),
       );
 
-      await supabase.from("messages").update({ text: updatedMessageText }).eq("id", message.id);
-      await reloadConversationBookings();
+      if (warning) {
+        setNotice(warning);
+      }
+
+      try {
+        await supabase.from("messages").update({ text: updatedMessageText }).eq("id", message.id);
+        await reloadConversationBookings();
+      } catch (followUpError) {
+        console.error("Failed to refresh booking conversation after withdrawal:", followUpError);
+      }
     } catch (cancelError) {
       console.error("Failed to cancel accepted booking:", cancelError);
       setError(getBookingMutationErrorMessage(cancelError));
