@@ -17,7 +17,6 @@ import ProfileAvatar from "@/app/components/ProfileAvatar";
 import {
   buildDmCancelledBookingMatchContext,
   acceptProposedBookingRate,
-  buildBookingDisplayFromMessage,
   cancelAcceptedBookingRequest,
   cancelBookingRequest,
   CANCELLED_BOOKING_DM_SYSTEM_MESSAGE,
@@ -37,6 +36,7 @@ import {
   isRateProposedDmMessage,
   isRateProposalDeclinedDmMessage,
   mergeBookingRequests,
+  mergeBookingWithMessage,
   parseBookingRequestMessage,
   proposeBookingRate,
   updateBookingRequestStatus,
@@ -1509,14 +1509,14 @@ export default function DmChatPage() {
               const parsedBooking = parseBookingRequestMessage(message.text);
               const bookingId = parsedBooking?.bookingId ?? null;
               const liveBooking = bookingId ? bookingsById.get(bookingId) ?? null : null;
-              const displayBooking =
-                buildBookingDisplayFromMessage(message.text, conversationId) ?? liveBooking;
+              const cardBooking =
+                liveBooking ??
+                mergeBookingWithMessage(null, message.text, bookings, conversationId);
               const bookingLoading = Boolean(
                 bookingId && !liveBooking && loadingBookingIds.has(bookingId),
               );
               const bookingLoaded = Boolean(liveBooking);
               const bookingSource = bookingLoaded ? "live" : "display";
-              const cardBooking = liveBooking ?? displayBooking;
 
               if (!cardBooking) {
                 return null;

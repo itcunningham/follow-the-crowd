@@ -2591,6 +2591,8 @@ export function mergeBookingWithMessage(
     return cancelledMatch;
   }
 
+  const parsedFee = normalizeStoredRate(parsed.fee ?? "");
+
   return {
     id: parsed.bookingId ?? messageText,
     created_at: new Date().toISOString(),
@@ -2602,7 +2604,7 @@ export function mergeBookingWithMessage(
     venue: parsed.venue ?? "",
     event_date: parsed.eventDate ?? "",
     set_time: parsed.setTime ?? "",
-    fee: normalizeStoredRate(parsed.fee ?? ""),
+    fee: parsedFee,
     notes: parsed.notes === "None" ? "" : parsed.notes ?? "",
     status: normalizeBookingRequestStatus(parsed.status ?? "pending"),
     archived_at: null,
