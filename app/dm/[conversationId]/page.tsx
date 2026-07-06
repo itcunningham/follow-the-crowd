@@ -131,6 +131,7 @@ export default function DmChatPage() {
   const [cancellingBookingId, setCancellingBookingId] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [blockStatus, setBlockStatus] = useState<DmBlockStatus>({
     blockedByMe: false,
     blockedMe: false,
@@ -1017,13 +1018,22 @@ export default function DmChatPage() {
 
     setProposalLoadingId(booking.id);
     setError(null);
+    setNotice(null);
 
     try {
-      const updatedBooking = await proposeBookingRate(booking.id, proposedRate, note);
+      const { booking: updatedBooking, warning } = await proposeBookingRate(
+        booking.id,
+        proposedRate,
+        note,
+      );
 
       setBookings((prev) =>
         prev.map((item) => (item.id === updatedBooking.id ? updatedBooking : item)),
       );
+
+      if (warning) {
+        setNotice(warning);
+      }
     } catch (proposalError) {
       console.error("Failed to propose booking rate:", proposalError);
       setError(getBookingMutationErrorMessage(proposalError));
@@ -1561,6 +1571,9 @@ export default function DmChatPage() {
       <div className="relative shrink-0">
       {error ? (
         <p className="px-4 pb-2 text-sm text-red-400">{error}</p>
+      ) : null}
+      {notice ? (
+        <p className="px-4 pb-2 text-sm text-[var(--ftc-color-warning)]">{notice}</p>
       ) : null}
 
       {showNewMessagesPill ? (

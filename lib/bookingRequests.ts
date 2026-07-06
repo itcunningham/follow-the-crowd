@@ -605,6 +605,74 @@ export function isBookingRequestMessage(text: string): boolean {
 export const CANCELLED_BOOKING_DM_SYSTEM_MESSAGE =
   "Booking request cancelled by planner.";
 
+const RATE_PROPOSED_DM_DUPLICATE_WINDOW_MS = 10_000;
+
+export function formatRateProposedDmMessage(
+  eventName: string,
+  proposedRate: number | null | undefined,
+): string {
+  const trimmedEventName = eventName.trim() || "Event";
+
+  return `Rate proposed · ${trimmedEventName} · ${formatIntegerRateDisplay(proposedRate)}`;
+}
+
+async function insertRateProposedDmMessageIfNeeded(
+  booking: BookingRequest,
+): Promise<{ inserted: boolean; messageText: string; warning: string | null }> {
+  const messageText = formatRateProposedDmMessage(booking.event_name, booking.proposed_rate);
+
+  if (!booking.conversation_id) {
+    return {
+      inserted: false,
+      messageText,
+      warning: "Your rate was submitted, but this booking has no DM thread to update.",
+    };
+  }
+
+  const proposalAtMs = booking.proposed_rate_at
+    ? new Date(booking.proposed_rate_at).getTime()
+    : null;
+
+  const { data: existingRows, error: existingError } = await supabase
+    .from("messages")
+    .select("id, created_at")
+    .eq("conversation_id", booking.conversation_id)
+    .eq("user_id", booking.recipient_id)
+    .eq("text", messageText)
+    .order("created_at", { ascending: false })
+    .limit(1);
+
+  if (existingError) {
+    console.error("[bookings] Failed to check rate-proposal DM duplicate:", existingError);
+  } else {
+    const existing = existingRows?.[0];
+
+    if (existing && proposalAtMs != null) {
+      const existingAtMs = new Date(existing.created_at).getTime();
+
+      if (Math.abs(existingAtMs - proposalAtMs) <= RATE_PROPOSED_DM_DUPLICATE_WINDOW_MS) {
+        return { inserted: false, messageText, warning: null };
+      }
+    }
+  }
+
+  const { error: insertError } = await supabase.from("messages").insert({
+    conversation_id: booking.conversation_id,
+    user_id: booking.recipient_id,
+    text: messageText,
+  });
+
+  if (insertError) {
+    return {
+      inserted: false,
+      messageText,
+      warning: `Your rate was submitted, but the DM thread could not be updated. ${insertError.message}`,
+    };
+  }
+
+  return { inserted: true, messageText, warning: null };
+}
+
 const BOOKING_PREVIEW_LABELS: Record<BookingRequestStatus, string> = {
   pending: "Booking request",
   accepted: "Booking accepted",
@@ -1802,11 +1870,16 @@ export async function hideDeclinedBookingFromLineup(bookingId: string): Promise<
   return booking;
 }
 
+export type ProposeBookingRateResult = {
+  booking: BookingRequest;
+  warning: string | null;
+};
+
 export async function proposeBookingRate(
   bookingId: string,
   proposedRate: number,
   note?: string,
-): Promise<BookingRequest> {
+): Promise<ProposeBookingRateResult> {
   const { data, error } = await supabase.rpc("propose_booking_rate", {
     p_booking_id: bookingId,
     p_proposed_rate: proposedRate,
@@ -1836,21 +1909,46 @@ export async function proposeBookingRate(
     });
   }
 
+  const warnings: string[] = [];
+  const dmLink = booking.conversation_id ? `/dm/${booking.conversation_id}` : "/bookings";
+  const dmResult = await insertRateProposedDmMessageIfNeeded(booking);
+
+  if (dmResult.warning) {
+    warnings.push(dmResult.warning);
+  }
+
+  if (dmResult.inserted && booking.conversation_id) {
+    try {
+      await createNotification(
+        booking.sender_id,
+        "message",
+        "New message",
+        dmResult.messageText,
+        `/dm/${booking.conversation_id}`,
+      );
+    } catch (notificationError) {
+      warnings.push(
+        `Your rate was submitted, but the planner could not be notified. ${getNotificationCreateErrorMessage(notificationError)}`,
+      );
+    }
+  }
+
   try {
     await createNotification(
       booking.sender_id,
       "booking_update",
       "Rate proposed",
       `${booking.event_name} · ${formatIntegerRateDisplay(booking.proposed_rate)}`,
-      booking.conversation_id ? `/dm/${booking.conversation_id}` : "/bookings",
+      dmLink,
     );
   } catch (notificationError) {
-    throw new Error(
-      `Your rate was submitted, but the planner could not be notified. ${getNotificationCreateErrorMessage(notificationError)}`,
-    );
+    console.error("[bookings] booking_update notification failed after rate proposal:", notificationError);
   }
 
-  return booking;
+  return {
+    booking,
+    warning: warnings.length > 0 ? warnings.join(" ") : null,
+  };
 }
 
 export async function acceptProposedBookingRate(bookingId: string): Promise<BookingRequest> {
