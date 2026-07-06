@@ -633,6 +633,90 @@ export function isBookingAcceptedDmMessage(text: string): boolean {
   return text.trim().startsWith(BOOKING_ACCEPTED_DM_PREFIX);
 }
 
+export const BOOKING_CANCELLED_DM_PREFIX = "Booking cancelled ·";
+
+const BOOKING_CANCELLED_DM_DUPLICATE_WINDOW_MS = 10_000;
+
+export function formatBookingCancelledDmMessage(booking: BookingRequest): string {
+  const trimmedReason = booking.cancellation_reason?.trim();
+
+  if (trimmedReason) {
+    return `${BOOKING_CANCELLED_DM_PREFIX} ${formatPublicCancellationReason(trimmedReason)}`;
+  }
+
+  const trimmedEventName = booking.event_name.trim() || "Event";
+
+  return `${BOOKING_CANCELLED_DM_PREFIX} ${trimmedEventName}`;
+}
+
+export function isBookingCancelledDmMessage(text: string): boolean {
+  return text.trim().startsWith(BOOKING_CANCELLED_DM_PREFIX);
+}
+
+async function insertBookingCancelledDmMessageIfNeeded(
+  booking: BookingRequest,
+): Promise<{ inserted: boolean; messageText: string }> {
+  const messageText = formatBookingCancelledDmMessage(booking);
+
+  if (!booking.conversation_id || !booking.cancelled_by) {
+    return { inserted: false, messageText };
+  }
+
+  const cancelledAtMs = booking.cancelled_at
+    ? new Date(booking.cancelled_at).getTime()
+    : null;
+
+  const { data: existingRows, error: existingError } = await supabase
+    .from("messages")
+    .select("id, created_at")
+    .eq("conversation_id", booking.conversation_id)
+    .eq("text", messageText)
+    .order("created_at", { ascending: false })
+    .limit(1);
+
+  if (existingError) {
+    console.error("[bookings] Failed to check booking-cancelled DM duplicate:", existingError);
+  } else if (existingRows?.[0]) {
+    return { inserted: false, messageText };
+  }
+
+  if (cancelledAtMs != null) {
+    const windowStart = new Date(cancelledAtMs - BOOKING_CANCELLED_DM_DUPLICATE_WINDOW_MS).toISOString();
+    const windowEnd = new Date(cancelledAtMs + BOOKING_CANCELLED_DM_DUPLICATE_WINDOW_MS).toISOString();
+
+    const { data: windowRows, error: windowError } = await supabase
+      .from("messages")
+      .select("id")
+      .eq("conversation_id", booking.conversation_id)
+      .like("text", `${BOOKING_CANCELLED_DM_PREFIX}%`)
+      .gte("created_at", windowStart)
+      .lte("created_at", windowEnd)
+      .limit(1);
+
+    if (windowError) {
+      console.error(
+        "[bookings] Failed to check booking-cancelled DM duplicate window:",
+        windowError,
+      );
+    } else if (windowRows?.[0]) {
+      return { inserted: false, messageText };
+    }
+  }
+
+  const { error: insertError } = await supabase.from("messages").insert({
+    conversation_id: booking.conversation_id,
+    user_id: booking.cancelled_by,
+    text: messageText,
+  });
+
+  if (insertError) {
+    console.error("[bookings] Failed to insert booking-cancelled DM notice:", insertError);
+    return { inserted: false, messageText };
+  }
+
+  return { inserted: true, messageText };
+}
+
 export function formatRateProposedDmMessage(
   proposedRate: number | null | undefined,
 ): string {
@@ -827,6 +911,10 @@ export function formatBookingMessagePreview(
   const trimmed = messageText.trim();
 
   if (trimmed === CANCELLED_BOOKING_DM_SYSTEM_MESSAGE) {
+    return trimmed;
+  }
+
+  if (isBookingCancelledDmMessage(trimmed)) {
     return trimmed;
   }
 
@@ -1844,6 +1932,14 @@ export async function cancelBookingRequest(
     notificationBody,
     `/dm/${booking.conversation_id}`,
   );
+
+  if (wasAccepted) {
+    try {
+      await insertBookingCancelledDmMessageIfNeeded(booking);
+    } catch (dmError) {
+      console.error("[bookingRequests] Failed to insert booking-cancelled DM notice:", dmError);
+    }
+  }
 
   return booking;
 }

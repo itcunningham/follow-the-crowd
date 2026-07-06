@@ -29,6 +29,7 @@ import {
   getBookingMutationErrorMessage,
   getBookingRequestsForConversation,
   isBookingAcceptedDmMessage,
+  isBookingCancelledDmMessage,
   isBookingRateProposalSchemaError,
   isBookingRequestMessage,
   isRateProposedDmMessage,
@@ -1379,14 +1380,19 @@ export default function DmChatPage() {
             {reversedMessages.map((message) => {
               const isOwnMessage = currentUserId !== null && message.user_id === currentUserId;
               const isBookingMessage = isBookingRequestMessage(message.text);
+              const isBookingCancelledNotice = isBookingCancelledDmMessage(message.text);
               const isRateProposalNotice =
                 isRateProposedDmMessage(message.text) ||
                 isRateProposalDeclinedDmMessage(message.text) ||
-                isBookingAcceptedDmMessage(message.text);
+                isBookingAcceptedDmMessage(message.text) ||
+                isBookingCancelledNotice;
 
               if (isRateProposalNotice) {
                 const highlighted = isMessageHighlighted(message.id);
                 logChatHighlightRender(message.id, highlighted);
+                const systemPillClassName = isBookingCancelledNotice
+                  ? "rounded-full border border-[var(--ftc-color-danger)]/35 bg-[var(--ftc-color-danger)]/10 px-3 py-1.5 text-xs text-[var(--ftc-color-danger)]/90"
+                  : "rounded-full border border-ftc-border bg-ftc-bg-elevated/50 px-3 py-1.5 text-xs text-ftc-text-muted";
 
                 return (
                   <li
@@ -1396,7 +1402,7 @@ export default function DmChatPage() {
                   >
                     <div className="max-w-sm px-3 py-1 text-center">
                       <p
-                        className={`rounded-full border border-ftc-border bg-ftc-bg-elevated/50 px-3 py-1.5 text-xs text-ftc-text-muted ${getChatNewMessageHighlightClass(highlighted)}`}
+                        className={`${systemPillClassName} ${getChatNewMessageHighlightClass(highlighted)}`}
                       >
                         {message.text.trim()}
                       </p>
