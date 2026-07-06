@@ -133,6 +133,7 @@ export default function DmChatPage() {
   const [respondingBookingId, setRespondingBookingId] = useState<string | null>(null);
   const [proposalLoadingId, setProposalLoadingId] = useState<string | null>(null);
   const [cancellingBookingId, setCancellingBookingId] = useState<string | null>(null);
+  const [expandedBookingIds, setExpandedBookingIds] = useState<Set<string>>(() => new Set());
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -251,6 +252,24 @@ export default function DmChatPage() {
   }, [conversationId, otherUserId]);
   const latestConversationMessageCreatedAt =
     messages.length > 0 ? messages[messages.length - 1].created_at : null;
+
+  useEffect(() => {
+    setExpandedBookingIds(new Set());
+  }, [conversationId]);
+
+  const setBookingExpanded = useCallback((bookingKey: string, expanded: boolean) => {
+    setExpandedBookingIds((previous) => {
+      const next = new Set(previous);
+
+      if (expanded) {
+        next.add(bookingKey);
+      } else {
+        next.delete(bookingKey);
+      }
+
+      return next;
+    });
+  }, []);
 
   useEffect(() => {
     if (!conversationId) {
@@ -1519,6 +1538,8 @@ export default function DmChatPage() {
                   : false;
                 const highlighted = isMessageHighlighted(message.id);
                 logChatHighlightRender(message.id, highlighted);
+                const bookingExpansionKey =
+                  resolvedBooking.id?.trim() || bookingId?.trim() || message.id;
 
                 return (
                   <li
@@ -1548,6 +1569,11 @@ export default function DmChatPage() {
                             bookingLoaded={bookingLoaded}
                             bookingLoading={bookingLoading}
                             bookingSource={bookingSource}
+                            collapsible
+                            expanded={expandedBookingIds.has(bookingExpansionKey)}
+                            onExpandedChange={(expanded) =>
+                              setBookingExpanded(bookingExpansionKey, expanded)
+                            }
                             canRespond={canRespond}
                             responding={
                               actionBooking ? respondingBookingId === actionBooking.id : false

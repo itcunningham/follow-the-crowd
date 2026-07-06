@@ -405,6 +405,42 @@ export function getBookingRateDetailLabel(booking: BookingRequest): string {
   return "Rate";
 }
 
+export function getBookingCollapsedOfferSummary(booking: BookingRequest): string {
+  if (booking.status === "accepted") {
+    return getBookingOfferRateLabel(booking);
+  }
+
+  if (booking.rate_mode === "open") {
+    return "Ask for rate";
+  }
+
+  return `Fixed offer · ${getBookingOfferRateLabel(booking)}`;
+}
+
+export function getBookingCollapsedUrgentLabel(
+  booking: BookingRequest,
+  currentUserId: string | null,
+  options?: { canRespond?: boolean; bookingLoaded?: boolean },
+): string | null {
+  if (!options?.bookingLoaded) {
+    return null;
+  }
+
+  if (canRespondToRateProposal(booking, currentUserId)) {
+    return "Rate proposed";
+  }
+
+  if (
+    options.canRespond &&
+    booking.status === "pending" &&
+    !hasPendingRateProposal(booking)
+  ) {
+    return "Action needed";
+  }
+
+  return null;
+}
+
 export function normalizeBookingRequest(row: unknown): BookingRequest | null {
   if (typeof row === "string") {
     try {

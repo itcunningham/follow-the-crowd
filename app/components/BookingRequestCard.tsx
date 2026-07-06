@@ -17,6 +17,8 @@ import {
   canRespondToRateProposal,
   formatBookingRequestMessage,
   getAcceptedBookingCancellationRole,
+  getBookingCollapsedOfferSummary,
+  getBookingCollapsedUrgentLabel,
   getBookingGroupChatAccess,
   getBookingOfferRateLabel,
   getBookingRateDetailLabel,
@@ -49,6 +51,9 @@ export default function BookingRequestCard({
   onProposeRate,
   onAcceptProposal,
   onKeepOriginalOffer,
+  collapsible = false,
+  expanded = true,
+  onExpandedChange,
 }: {
   booking: BookingRequest;
   currentUserId: string | null;
@@ -69,6 +74,9 @@ export default function BookingRequestCard({
   onProposeRate?: (proposedRate: number, note: string) => void | Promise<void>;
   onAcceptProposal?: () => void | Promise<void>;
   onKeepOriginalOffer?: () => void | Promise<void>;
+  collapsible?: boolean;
+  expanded?: boolean;
+  onExpandedChange?: (expanded: boolean) => void;
 }) {
   const [proposeSheetOpen, setProposeSheetOpen] = useState(false);
   const groupChatAccess = getBookingGroupChatAccess(booking, currentUserId);
@@ -101,37 +109,183 @@ export default function BookingRequestCard({
     setProposeSheetOpen(false);
   }
 
+  function handleCollapse() {
+    onExpandedChange?.(false);
+  }
+
+  function handleExpand() {
+    onExpandedChange?.(true);
+  }
+
+  const urgentLabel = getBookingCollapsedUrgentLabel(booking, currentUserId, {
+    canRespond,
+    bookingLoaded,
+  });
+  const collapsedOfferSummary = getBookingCollapsedOfferSummary(booking);
+  const collapsedDateVenue = [booking.event_date?.trim(), booking.venue?.trim()]
+    .filter(Boolean)
+    .join(" · ");
+  const collapsedTitle = booking.event_name.trim() || "Booking request";
+
+  if (collapsible && !expanded) {
+    return (
+      <>
+        <button
+          type="button"
+          onClick={handleExpand}
+          className="w-full max-w-sm rounded-2xl border border-ftc-border-subtle bg-ftc-surface p-3 text-left transition hover:border-ftc-border-strong active:border-ftc-border-strong"
+        >
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0 flex-1">
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted">
+                Booking request
+              </p>
+              <p className="mt-0.5 break-words text-sm font-semibold leading-snug text-ftc-text">
+                {collapsedTitle}
+              </p>
+            </div>
+            <BookingStatusBadge status={booking.status} />
+          </div>
+
+          {urgentLabel ? (
+            <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-ftc-primary">
+              {urgentLabel}
+            </p>
+          ) : null}
+
+          <p className="mt-2 break-words text-xs text-ftc-text-secondary">
+            {collapsedOfferSummary}
+          </p>
+
+          {collapsedDateVenue ? (
+            <p className="mt-1 break-words text-xs text-ftc-text-muted">{collapsedDateVenue}</p>
+          ) : null}
+
+          {cancellationReasonLabel ? (
+            <p className="mt-1 break-words text-xs text-ftc-text-muted">
+              {cancellationReasonLabel}
+            </p>
+          ) : null}
+
+          <div className="mt-3 flex items-center justify-between gap-2 border-t border-ftc-border-subtle pt-2">
+            <span className="text-xs font-semibold uppercase tracking-wide text-ftc-text-secondary">
+              View details
+            </span>
+            <svg
+              aria-hidden="true"
+              viewBox="0 0 24 24"
+              className="h-4 w-4 shrink-0 text-ftc-text-muted"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.75"
+            >
+              <path d="m6 9 6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </div>
+        </button>
+
+        <ProposeBookingRateSheet
+          open={proposeSheetOpen}
+          loading={proposalLoading}
+          onClose={() => {
+            if (!proposalLoading) {
+              setProposeSheetOpen(false);
+            }
+          }}
+          onSubmit={handleProposeRate}
+        />
+      </>
+    );
+  }
+
   return (
     <>
       <div className="w-full max-w-sm rounded-2xl border border-ftc-border-subtle bg-ftc-surface p-4">
-        <div className="flex min-w-0 items-start gap-3">
-          <EventCoverImageContextThumb
-            eventName={booking.event_name}
-            coverImageUrl={coverImageUrl}
-            fallbackColour={fallbackColour}
-          />
-          <div className="min-w-0 flex-1">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted">
-              Booking request
-            </p>
-            <h3 className="mt-1 truncate text-base font-semibold text-ftc-text">
-              {booking.event_name}
-            </h3>
+        {collapsible ? (
+          <button
+            type="button"
+            onClick={handleCollapse}
+            className="-mx-1 -mt-1 mb-3 flex w-[calc(100%+0.5rem)] items-center justify-between gap-2 rounded-xl px-1 py-1 text-left transition hover:bg-ftc-bg-elevated/60"
+          >
+            <span className="text-xs font-semibold uppercase tracking-wide text-ftc-text-secondary">
+              Hide details
+            </span>
+            <svg
+              aria-hidden="true"
+              viewBox="0 0 24 24"
+              className="h-4 w-4 shrink-0 text-ftc-text-muted"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.75"
+            >
+              <path d="m18 15-6-6-6 6" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+        ) : null}
+
+        {collapsible ? (
+          <button
+            type="button"
+            onClick={handleCollapse}
+            className="flex min-w-0 w-full cursor-pointer items-start gap-3 rounded-xl text-left transition hover:bg-ftc-bg-elevated/60"
+          >
+            <EventCoverImageContextThumb
+              eventName={booking.event_name}
+              coverImageUrl={coverImageUrl}
+              fallbackColour={fallbackColour}
+            />
+            <div className="min-w-0 flex-1">
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted">
+                Booking request
+              </p>
+              <h3 className="mt-1 break-words text-base font-semibold leading-snug text-ftc-text">
+                {booking.event_name}
+              </h3>
+            </div>
+            <div className="flex shrink-0 flex-col items-end gap-1">
+              <BookingStatusBadge status={booking.status} />
+              {showOpenOfferLabel ? (
+                <span className="inline-flex rounded-full border border-ftc-border-subtle bg-ftc-bg-elevated px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-ftc-primary">
+                  Ask for rate
+                </span>
+              ) : null}
+              {pendingProposal ? (
+                <span className="inline-flex rounded-full border border-ftc-border-subtle bg-ftc-bg-elevated px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-ftc-primary">
+                  Rate proposed
+                </span>
+              ) : null}
+            </div>
+          </button>
+        ) : (
+          <div className="flex min-w-0 items-start gap-3">
+            <EventCoverImageContextThumb
+              eventName={booking.event_name}
+              coverImageUrl={coverImageUrl}
+              fallbackColour={fallbackColour}
+            />
+            <div className="min-w-0 flex-1">
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted">
+                Booking request
+              </p>
+              <h3 className="mt-1 break-words text-base font-semibold leading-snug text-ftc-text">
+                {booking.event_name}
+              </h3>
+            </div>
+            <div className="flex shrink-0 flex-col items-end gap-1">
+              <BookingStatusBadge status={booking.status} />
+              {showOpenOfferLabel ? (
+                <span className="inline-flex rounded-full border border-ftc-border-subtle bg-ftc-bg-elevated px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-ftc-primary">
+                  Ask for rate
+                </span>
+              ) : null}
+              {pendingProposal ? (
+                <span className="inline-flex rounded-full border border-ftc-border-subtle bg-ftc-bg-elevated px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-ftc-primary">
+                  Rate proposed
+                </span>
+              ) : null}
+            </div>
           </div>
-          <div className="flex shrink-0 flex-col items-end gap-1">
-            <BookingStatusBadge status={booking.status} />
-            {showOpenOfferLabel ? (
-              <span className="inline-flex rounded-full border border-ftc-border-subtle bg-ftc-bg-elevated px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-ftc-primary">
-                Ask for rate
-              </span>
-            ) : null}
-            {pendingProposal ? (
-              <span className="inline-flex rounded-full border border-ftc-border-subtle bg-ftc-bg-elevated px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-ftc-primary">
-                Rate proposed
-              </span>
-            ) : null}
-          </div>
-        </div>
+        )}
 
         <div className="mt-4">
           <BookingDetailGrid>
