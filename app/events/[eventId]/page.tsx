@@ -152,11 +152,10 @@ export default function EventDetailPage() {
   const [editCoverField, setEditCoverField] = useState<EventCoverImageFieldState>(
     emptyEventCoverImageFieldState,
   );
-  const pendingEditCoverRef = useRef<EventCoverImageFieldState>(emptyEventCoverImageFieldState);
-  const pendingCoverFileRef = useRef<File | null>(null);
-  const [confirmCoverSave, setConfirmCoverSave] = useState<EventCoverImageFieldState | null>(null);
+  const pendingCoverSaveRef = useRef<EventCoverImageFieldState>(emptyEventCoverImageFieldState);
   const [editCoverPreviewUrl, setEditCoverPreviewUrl] = useState<string | null>(null);
   const [editCoverError, setEditCoverError] = useState<string | null>(null);
+  const [editFormError, setEditFormError] = useState<string | null>(null);
   const [editConfirmOpen, setEditConfirmOpen] = useState(false);
   const [savingEdit, setSavingEdit] = useState(false);
   const editFormSectionRef = useRef<HTMLElement | null>(null);
@@ -336,8 +335,7 @@ export default function EventDetailPage() {
 
   function resetEditCoverState() {
     setEditCoverField(emptyEventCoverImageFieldState);
-    pendingEditCoverRef.current = emptyEventCoverImageFieldState;
-    pendingCoverFileRef.current = null;
+    pendingCoverSaveRef.current = emptyEventCoverImageFieldState;
     if (editCoverPreviewUrl?.startsWith("blob:")) {
       URL.revokeObjectURL(editCoverPreviewUrl);
     }
@@ -345,25 +343,39 @@ export default function EventDetailPage() {
     setEditCoverError(null);
   }
 
+  function syncPendingCoverSave(next: EventCoverImageFieldState) {
+    pendingCoverSaveRef.current = next;
+  }
+
+  function readPendingCoverSave(): EventCoverImageFieldState {
+    return {
+      file: pendingCoverSaveRef.current.file,
+      removeExisting: pendingCoverSaveRef.current.removeExisting,
+    };
+  }
+
   function handleEditCoverChange(next: EventCoverImageFieldState) {
     setEditCoverField(next);
-    pendingEditCoverRef.current = next;
+    syncPendingCoverSave(next);
   }
 
   function handleEditCoverFileSelected(file: File | null) {
-    pendingCoverFileRef.current = file;
+    syncPendingCoverSave({
+      file,
+      removeExisting: false,
+    });
+    setEditCoverField((previous) => ({
+      file,
+      removeExisting: false,
+    }));
   }
 
-  function resolveEditCoverChange(
-    snapshot?: EventCoverImageFieldState | null,
-  ): EventCoverImageFieldState {
-    const base = snapshot ?? confirmCoverSave ?? pendingEditCoverRef.current;
-    const file = pendingCoverFileRef.current ?? base.file;
-
-    return {
-      file,
-      removeExisting: base.removeExisting,
-    };
+  function showEditFormError(message: string) {
+    setEditFormError(message);
+    setError(message);
+    requestAnimationFrame(() => {
+      editFormSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
   }
 
   function openEditForm() {
@@ -384,6 +396,7 @@ export default function EventDetailPage() {
         : null,
     });
     resetEditCoverState();
+    setEditFormError(null);
     setEditOpen(true);
     setError(null);
 
@@ -392,16 +405,8 @@ export default function EventDetailPage() {
     });
   }
 
-  async function performSaveEdit(coverSnapshot?: EventCoverImageFieldState | null) {
+  async function performSaveEdit(coverChange: EventCoverImageFieldState) {
     if (!event || !editForm) {
-      return;
-    }
-
-    const coverChange = resolveEditCoverChange(coverSnapshot);
-    const hasBlobPreview = editCoverPreviewUrl?.startsWith("blob:") ?? false;
-
-    if (hasBlobPreview && !coverChange.file) {
-      setError("Flyer selection was lost before save. Choose the image again, then save.");
       return;
     }
 
@@ -411,6 +416,7 @@ export default function EventDetailPage() {
       : [];
 
     setSavingEdit(true);
+    setEditFormError(null);
     setError(null);
 
     try {
@@ -432,7 +438,7 @@ export default function EventDetailPage() {
         const attemptedCoverUpload = Boolean(coverChange.file || coverChange.removeExisting);
 
         if (attemptedCoverUpload) {
-          setError(getEventCoverUploadErrorMessage(coverError));
+          showEditFormError(getEventCoverUploadErrorMessage(coverError));
           return;
         }
 
@@ -448,7 +454,6 @@ export default function EventDetailPage() {
           setEditOpen(false);
           setEditForm(null);
           resetEditCoverState();
-          setConfirmCoverSave(null);
           setEditConfirmOpen(false);
           setSuccessMessage("Event updated. Remember to let affected DJs know.");
           setError("Event saved, but the group chat update could not be posted.");
@@ -460,7 +465,6 @@ export default function EventDetailPage() {
       setEditOpen(false);
       setEditForm(null);
       resetEditCoverState();
-      setConfirmCoverSave(null);
       setEditConfirmOpen(false);
       setSuccessMessage(
         shouldNotifyGroupChat && groupChatFieldChanges.length > 0
@@ -469,7 +473,7 @@ export default function EventDetailPage() {
       );
     } catch (saveError) {
       console.error("Failed to update event:", saveError);
-      setError(saveError instanceof Error ? saveError.message : "Failed to update event");
+      showEditFormError(saveError instanceof Error ? saveError.message : "Failed to update event");
     } finally {
       setSavingEdit(false);
     }
@@ -488,24 +492,26 @@ export default function EventDetailPage() {
       !editForm.eventDate.trim() ||
       !editForm.setTime.trim()
     ) {
-      setError("Please fill in event name, venue, date, and set time.");
+      showEditFormError("Please fill in event name, venue, date, and set time.");
       return;
     }
 
-    const coverSnapshot = {
-      file: pendingCoverFileRef.current ?? editCoverField.file,
-      removeExisting: editCoverField.removeExisting,
-    };
+    const coverChange = readPendingCoverSave();
+    const hasBlobPreview = editCoverPreviewUrl?.startsWith("blob:") ?? false;
 
-    pendingEditCoverRef.current = coverSnapshot;
-    setConfirmCoverSave(coverSnapshot);
+    if (hasBlobPreview && !coverChange.file) {
+      showEditFormError(
+        "Flyer selection was lost before save. Choose the image again, then save.",
+      );
+      return;
+    }
 
     if (shouldConfirmEventEditSave(event, editForm, lineup)) {
       setEditConfirmOpen(true);
       return;
     }
 
-    await performSaveEdit(coverSnapshot);
+    await performSaveEdit(coverChange);
   }
 
   async function openSendBookings() {
@@ -914,6 +920,7 @@ export default function EventDetailPage() {
                 setEditOpen(false);
                 setEditForm(null);
                 resetEditCoverState();
+                setEditFormError(null);
               }}
               cancelDisabled={savingEdit}
             >
@@ -980,6 +987,10 @@ export default function EventDetailPage() {
                   onChange={(value) => setEditForm((prev) => (prev ? { ...prev, notes: value } : prev))}
                   multiline
                 />
+
+                {editFormError ? (
+                  <p className="text-sm text-[var(--ftc-color-danger)]">{editFormError}</p>
+                ) : null}
 
                 <button
                   type="submit"
@@ -1337,7 +1348,7 @@ export default function EventDetailPage() {
           }
         }}
         onConfirm={() => {
-          void performSaveEdit(confirmCoverSave);
+          void performSaveEdit(readPendingCoverSave());
         }}
       />
     </OnboardingGuard>
