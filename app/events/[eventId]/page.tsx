@@ -27,7 +27,6 @@ import {
 import ProfileAvatar from "@/app/components/ProfileAvatar";
 import DjBookingAvailabilityBadge from "@/app/components/DjBookingAvailabilityBadge";
 import { BookingDateField, BookingSetTimeRangeField } from "@/app/components/BookingDateTimeFields";
-import { BookingRateField } from "@/app/components/BookingRateField";
 import EventCoverImageField, {
   emptyEventCoverImageFieldState,
   type EventCoverImageFieldState,
@@ -601,7 +600,7 @@ export default function EventDetailPage() {
           ...offers,
           [userId]: offers[userId] ?? {
             rateMode: "fixed",
-            fee: normalizeStoredRate(event.rate),
+            fee: "",
           },
         }));
       }
@@ -1050,10 +1049,6 @@ export default function EventDetailPage() {
                     setEditForm((prev) => (prev ? { ...prev, setTime: value } : prev))
                   }
                   required
-                />
-                <BookingRateField
-                  value={editForm.rate}
-                  onChange={(value) => setEditForm((prev) => (prev ? { ...prev, rate: value } : prev))}
                 />
                 <PlannerFormField
                   label="Notes"

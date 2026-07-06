@@ -96,7 +96,7 @@ export function eventToRequestInput(event: Event): BookingRequestInput {
     venue: event.venue,
     eventDate: event.event_date,
     setTime: event.set_time,
-    fee: normalizeStoredRate(event.rate),
+    fee: "",
     notes: event.notes,
     eventId: event.id,
   };

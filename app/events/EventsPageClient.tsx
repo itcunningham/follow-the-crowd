@@ -18,7 +18,6 @@ import {
   PlannerStatChip,
 } from "@/app/components/planner/PlannerUi";
 import { BookingDateField, BookingSetTimeRangeField } from "@/app/components/BookingDateTimeFields";
-import { BookingRateField } from "@/app/components/BookingRateField";
 import EventCoverImageField, {
   emptyEventCoverImageFieldState,
   type EventCoverImageFieldState,
@@ -461,10 +460,6 @@ export default function EventsPageClient({ initialTab }: EventsPageClientProps) 
                     value={form.setTime}
                     onChange={(value) => updateField("setTime", value)}
                     required
-                  />
-                  <BookingRateField
-                    value={form.rate}
-                    onChange={(value) => updateField("rate", value)}
                   />
                   <PlannerFormField
                     label="Notes"

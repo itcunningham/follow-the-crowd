@@ -9,7 +9,6 @@ import {
 } from "@/lib/events/eventFallbackColour";
 import { formatGroupChatEventDate } from "@/lib/groupChats";
 import { parseEventDate } from "@/lib/bookingDateTime";
-import { formatRateDisplay, normalizeStoredRate } from "@/lib/bookingRate";
 import type { Event } from "@/lib/events";
 
 export function formatEventDetailDateLine(eventDate: string, setTime: string): string {
@@ -57,9 +56,6 @@ function MetaRow({
 }
 
 export default function EventDetailMetaList({ event }: { event: Event }) {
-  const rateLabel = formatRateDisplay(event.rate);
-  const hasRate = Boolean(normalizeStoredRate(event.rate));
-
   return (
     <ul className="space-y-3">
       <MetaRow
@@ -83,18 +79,6 @@ export default function EventDetailMetaList({ event }: { event: Event }) {
       >
         {event.venue}
       </MetaRow>
-
-      {hasRate ? (
-        <MetaRow
-          icon={
-            <svg aria-hidden="true" viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="1.75">
-              <path d="M12 3v18M17 8H9.5a2.5 2.5 0 0 0 0 5H14a2.5 2.5 0 0 1 0 5H7" />
-            </svg>
-          }
-        >
-          Proposed rate {rateLabel}
-        </MetaRow>
-      ) : null}
     </ul>
   );
 }
