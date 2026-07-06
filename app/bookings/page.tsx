@@ -16,15 +16,12 @@ import ArchiveAllBookingRequestsButton from "@/app/components/ArchiveAllBookingR
 import ArchiveBookingRequestButton from "@/app/components/ArchiveBookingRequestButton";
 import BookingStatusBadge from "@/app/components/booking/BookingStatusBadge";
 import { BookingDetailItem } from "@/app/components/booking/BookingDetailGrid";
-import CancelBookingRequestButton from "@/app/components/CancelBookingRequestButton";
 import {
   archiveAllCancelledBookingRequests,
   archiveBookingRequest,
   ALL_SELECTED_DJS_ALREADY_HAVE_EVENT_REQUEST_MESSAGE,
   buildBookingSendResultMessage,
   buildEventBookingDuplicateMap,
-  cancelBookingRequest,
-  canCancelBookingRequest,
   filterActiveBookingGroups,
   filterActiveBookings,
   filterArchivedCancelledBookings,
@@ -38,18 +35,15 @@ import {
   listReceivedBookingRequests,
   listSentBookingRequests,
   logBookingsLoadError,
-  logCancelledBookingsLoadFailure,
   listBookingRequestsForEvent,
   resolveBookingRequestRateMode,
   sendBookingRequestsToDjs,
   sortBookingsNewestFirst,
   unarchiveBookingRequest,
-  type ActiveBookingStatusFilter,
   type BookingRequest,
   type BookingRequestInput,
   type BookingRequestStatus,
   type DjGigsViewFilter,
-  type PlannerSentBookingsView,
   type SentBookingGroup,
 } from "@/lib/bookingRequests";
 import {
@@ -140,17 +134,16 @@ function formatSentDate(timestamp: string) {
   });
 }
 
-const ACTIVE_STATUS_FILTERS: { value: ActiveBookingStatusFilter; label: string }[] = [
-  { value: "all", label: "All" },
-  { value: "pending", label: "Pending" },
-  { value: "accepted", label: "Accepted" },
-  { value: "declined", label: "Declined" },
-];
-
-const HISTORY_EMPTY_MESSAGE = "No cancelled booking requests yet.";
+const PLANNER_PENDING_EMPTY_MESSAGE = "No pending bookings.";
+const PLANNER_CONFIRMED_EMPTY_MESSAGE = "No confirmed bookings yet.";
+const PLANNER_HISTORY_EMPTY_MESSAGE = "No booking history yet.";
+const DJ_HISTORY_EMPTY_MESSAGE = "No cancelled booking requests yet.";
+const PLANNER_DECLINED_EMPTY_MESSAGE = "No declined bookings yet.";
 const ARCHIVED_EMPTY_MESSAGE = "No archived booking requests.";
 
 type BookingsSectionTab = "sent" | "received";
+type PlannerSentPrimaryTab = "pending" | "confirmed" | "history";
+type PlannerHistorySubView = "cancelled" | "declined" | "archived";
 
 function HistoryIcon({ className = "h-3.5 w-3.5" }: { className?: string }) {
   return (
@@ -266,7 +259,9 @@ function BookingsPageContent() {
   const [sentBookings, setSentBookings] = useState<BookingRequest[]>([]);
   const [receivedBookings, setReceivedBookings] = useState<BookingRequest[]>([]);
   const [sectionTab, setSectionTab] = useState<BookingsSectionTab>("sent");
-  const [plannerSentView, setPlannerSentView] = useState<PlannerSentBookingsView>("active");
+  const [plannerSentView, setPlannerSentView] = useState<PlannerSentPrimaryTab>("pending");
+  const [plannerHistorySubView, setPlannerHistorySubView] =
+    useState<PlannerHistorySubView>("cancelled");
   const [locationRevision, setLocationRevision] = useState(0);
   const djGigsView = useMemo(
     () =>
@@ -283,7 +278,6 @@ function BookingsPageContent() {
   const [recipientProfiles, setRecipientProfiles] = useState<
     Map<string, BookingRecipientProfile>
   >(new Map());
-  const [statusFilter, setStatusFilter] = useState<ActiveBookingStatusFilter>("all");
   const [createOpen, setCreateOpen] = useState(false);
   const [createStep, setCreateStep] = useState<CreateStep>("source");
   const [form, setForm] = useState<BookingRequestInput>(emptyForm);
@@ -300,16 +294,30 @@ function BookingsPageContent() {
   const [failureDetails, setFailureDetails] = useState<string[]>([]);
   const [eventDateOverride, setEventDateOverride] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  const [cancellingBookingId, setCancellingBookingId] = useState<string | null>(null);
   const [archivingBookingId, setArchivingBookingId] = useState<string | null>(null);
   const [archivingAllHistory, setArchivingAllHistory] = useState(false);
   const [restoringBookingId, setRestoringBookingId] = useState<string | null>(null);
   const [unavailableConfirmOpen, setUnavailableConfirmOpen] = useState(false);
   const [eventBookings, setEventBookings] = useState<BookingRequest[]>([]);
 
-  const activeSentGroups = useMemo(
-    () => filterActiveBookingGroups(sentGroups, statusFilter),
-    [sentGroups, statusFilter],
+  const pendingSentGroups = useMemo(
+    () => filterActiveBookingGroups(sentGroups, "pending"),
+    [sentGroups],
+  );
+
+  const confirmedSentGroups = useMemo(
+    () => filterActiveBookingGroups(sentGroups, "accepted"),
+    [sentGroups],
+  );
+
+  const declinedSentGroups = useMemo(
+    () => filterActiveBookingGroups(sentGroups, "declined"),
+    [sentGroups],
+  );
+
+  const declinedSentCount = useMemo(
+    () => declinedSentGroups.reduce((count, group) => count + group.requests.length, 0),
+    [declinedSentGroups],
   );
 
   const historySentBookings = useMemo(
@@ -854,24 +862,6 @@ function BookingsPageContent() {
     return sentResult;
   }
 
-  async function handleCancelBooking(bookingId: string) {
-    setCancellingBookingId(bookingId);
-    setError(null);
-
-    try {
-      const updatedBooking = await cancelBookingRequest(bookingId);
-      const sentResult = await reloadPlannerSentBookings();
-      logCancelledBookingsLoadFailure("planner history reload", sentResult, updatedBooking.id);
-
-      setSuccessMessage("Booking request cancelled.");
-    } catch (cancelError) {
-      console.error("Failed to cancel booking request:", cancelError);
-      setError(getBookingMutationErrorMessage(cancelError));
-    } finally {
-      setCancellingBookingId(null);
-    }
-  }
-
   async function handleArchiveBooking(bookingId: string) {
     setArchivingBookingId(bookingId);
     setError(null);
@@ -881,6 +871,7 @@ function BookingsPageContent() {
       await archiveBookingRequest(bookingId);
       await reloadPlannerSentBookings();
       setPlannerSentView("history");
+      setPlannerHistorySubView("cancelled");
       setSuccessMessage("Booking request archived.");
     } catch (archiveError) {
       console.error("Failed to archive booking request:", archiveError);
@@ -1343,139 +1334,161 @@ function BookingsPageContent() {
               <p className="text-sm text-ftc-text-muted">Loading sent bookings...</p>
             ) : error && !createOpen ? (
               <p className="text-sm text-red-400">{error}</p>
-            ) : sentGroups.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-ftc-border bg-ftc-surface/30 px-6 py-12 text-center">
-                <p className="text-base font-medium text-ftc-text-secondary">No bookings sent yet.</p>
-                {showCreateButton && !createOpen ? (
-                  <button
-                    type="button"
-                    onClick={() => openCreateFlow()}
-                    className="mt-6 ftc-btn-primary px-5 py-3 text-sm uppercase tracking-wide disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    Create booking request
-                  </button>
-                ) : null}
-              </div>
             ) : (
               <>
-                <PlannerSentViewTabs
-                  activeView={plannerSentView}
-                  historyCount={historySentBookings.length}
-                  archivedCount={archivedSentBookings.length}
-                  onChange={(view) => {
-                    setPlannerSentView(view);
-                    if (view === "active") {
-                      setStatusFilter("all");
+                <PlannerSentStatusTabs
+                  activeTab={plannerSentView}
+                  onChange={(tab) => {
+                    if (tab === plannerSentView) {
                       return;
                     }
 
-                    void reloadPlannerSentBookings().catch((loadError) => {
-                      logBookingsLoadError(loadError);
-                      console.error(`Failed to reload planner ${view} bookings:`, loadError);
-                    });
+                    setPlannerSentView(tab);
+                    if (tab === "history") {
+                      setPlannerHistorySubView("cancelled");
+                    }
                   }}
                 />
 
-                {plannerSentView === "history" ? (
-                  historySentBookings.length === 0 ? (
+                {plannerSentView === "pending" ? (
+                  pendingSentGroups.length === 0 ? (
                     <p className="mt-4 rounded-xl border border-ftc-border bg-ftc-bg-elevated/40 px-4 py-8 text-center text-sm text-ftc-text-muted">
-                      {HISTORY_EMPTY_MESSAGE}
+                      {PLANNER_PENDING_EMPTY_MESSAGE}
                     </p>
                   ) : (
-                    <>
-                      <div className="mt-4 flex justify-end">
-                        <ArchiveAllBookingRequestsButton
-                          count={historySentBookings.length}
-                          loading={archivingAllHistory}
-                          disabled={Boolean(archivingBookingId)}
-                          onConfirm={handleArchiveAllHistory}
+                    <ul className="mt-4 space-y-4">
+                      {pendingSentGroups.map((group) => (
+                        <BookingCampaignCard
+                          key={group.key}
+                          group={group}
+                          fullGroup={sentGroups.find((item) => item.key === group.key) ?? group}
+                          recipientProfiles={recipientProfiles}
                         />
-                      </div>
-                      <ul className="mt-3 space-y-3">
-                      {historySentBookings.map((booking) => {
-                        const profile = recipientProfiles.get(booking.recipient_id);
-                        const name = profile?.display_name ?? booking.recipient_id;
-
-                        return (
-                          <BookingHistoryCard
-                            key={booking.id}
-                            booking={booking}
-                            subtitle={name}
-                            avatarName={name}
-                            avatarUrl={profile?.avatar_url}
-                            action={
-                              <ArchiveBookingRequestButton
-                                disabled={archivingAllHistory}
-                                loading={archivingBookingId === booking.id}
-                                onConfirm={() => handleArchiveBooking(booking.id)}
-                              />
-                            }
-                          />
-                        );
-                      })}
-                      </ul>
-                    </>
+                      ))}
+                    </ul>
                   )
-                ) : plannerSentView === "archived" ? (
-                  archivedSentBookings.length === 0 ? (
+                ) : plannerSentView === "confirmed" ? (
+                  confirmedSentGroups.length === 0 ? (
                     <p className="mt-4 rounded-xl border border-ftc-border bg-ftc-bg-elevated/40 px-4 py-8 text-center text-sm text-ftc-text-muted">
-                      {ARCHIVED_EMPTY_MESSAGE}
+                      {PLANNER_CONFIRMED_EMPTY_MESSAGE}
                     </p>
                   ) : (
-                    <ul className="mt-4 space-y-3">
-                      {archivedSentBookings.map((booking) => {
-                        const profile = recipientProfiles.get(booking.recipient_id);
-                        const name = profile?.display_name ?? booking.recipient_id;
-
-                        return (
-                          <BookingHistoryCard
-                            key={booking.id}
-                            booking={booking}
-                            subtitle={name}
-                            avatarName={name}
-                            avatarUrl={profile?.avatar_url}
-                            action={
-                              <button
-                                type="button"
-                                disabled={restoringBookingId === booking.id}
-                                onClick={() => void handleRestoreBooking(booking.id)}
-                                className="rounded-lg border border-ftc-border-strong bg-ftc-bg-elevated/60 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-ftc-text-secondary transition hover:border-ftc-primary/25 hover:text-ftc-primary disabled:cursor-not-allowed disabled:opacity-50"
-                              >
-                                {restoringBookingId === booking.id ? "Restoring..." : "Restore"}
-                              </button>
-                            }
-                          />
-                        );
-                      })}
+                    <ul className="mt-4 space-y-4">
+                      {confirmedSentGroups.map((group) => (
+                        <BookingCampaignCard
+                          key={group.key}
+                          group={group}
+                          fullGroup={sentGroups.find((item) => item.key === group.key) ?? group}
+                          recipientProfiles={recipientProfiles}
+                        />
+                      ))}
                     </ul>
                   )
                 ) : (
                   <>
-                    <BookingStatusTabs
-                      activeFilter={statusFilter}
-                      groups={sentGroups}
-                      onChange={setStatusFilter}
+                    <PlannerHistorySubControls
+                      activeSubView={plannerHistorySubView}
+                      declinedCount={declinedSentCount}
+                      archivedCount={archivedSentBookings.length}
+                      onChange={(subView) => {
+                        setPlannerHistorySubView(subView);
+                        if (subView === "archived") {
+                          void reloadPlannerSentBookings().catch((loadError) => {
+                            logBookingsLoadError(loadError);
+                            console.error("Failed to reload planner archived bookings:", loadError);
+                          });
+                        }
+                      }}
                     />
 
-                    {activeSentGroups.length === 0 ? (
-                      <p className="mt-4 rounded-xl border border-ftc-border bg-ftc-surface/40 px-4 py-6 text-center text-sm text-ftc-text-muted">
-                        No {statusFilter === "all" ? "active " : `${statusFilter} `}booking responses
-                        match this filter.
+                    {plannerHistorySubView === "archived" ? (
+                      archivedSentBookings.length === 0 ? (
+                        <p className="mt-4 rounded-xl border border-ftc-border bg-ftc-bg-elevated/40 px-4 py-8 text-center text-sm text-ftc-text-muted">
+                          {ARCHIVED_EMPTY_MESSAGE}
+                        </p>
+                      ) : (
+                        <ul className="mt-4 space-y-3">
+                          {archivedSentBookings.map((booking) => {
+                            const profile = recipientProfiles.get(booking.recipient_id);
+                            const name = profile?.display_name?.trim() || "DJ";
+
+                            return (
+                              <BookingHistoryCard
+                                key={booking.id}
+                                booking={booking}
+                                subtitle={name}
+                                avatarName={name}
+                                avatarUrl={profile?.avatar_url}
+                                action={
+                                  <button
+                                    type="button"
+                                    disabled={restoringBookingId === booking.id}
+                                    onClick={() => void handleRestoreBooking(booking.id)}
+                                    className="rounded-lg border border-ftc-border-strong bg-ftc-bg-elevated/60 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-ftc-text-secondary transition hover:border-ftc-primary/25 hover:text-ftc-primary disabled:cursor-not-allowed disabled:opacity-50"
+                                  >
+                                    {restoringBookingId === booking.id ? "Restoring..." : "Restore"}
+                                  </button>
+                                }
+                              />
+                            );
+                          })}
+                        </ul>
+                      )
+                    ) : plannerHistorySubView === "declined" ? (
+                      declinedSentGroups.length === 0 ? (
+                        <p className="mt-4 rounded-xl border border-ftc-border bg-ftc-bg-elevated/40 px-4 py-8 text-center text-sm text-ftc-text-muted">
+                          {PLANNER_DECLINED_EMPTY_MESSAGE}
+                        </p>
+                      ) : (
+                        <ul className="mt-4 space-y-4">
+                          {declinedSentGroups.map((group) => (
+                            <BookingCampaignCard
+                              key={group.key}
+                              group={group}
+                              fullGroup={sentGroups.find((item) => item.key === group.key) ?? group}
+                              recipientProfiles={recipientProfiles}
+                            />
+                          ))}
+                        </ul>
+                      )
+                    ) : historySentBookings.length === 0 ? (
+                      <p className="mt-4 rounded-xl border border-ftc-border bg-ftc-bg-elevated/40 px-4 py-8 text-center text-sm text-ftc-text-muted">
+                        {PLANNER_HISTORY_EMPTY_MESSAGE}
                       </p>
                     ) : (
-                      <ul className="mt-4 space-y-4">
-                        {activeSentGroups.map((group) => (
-                          <BookingCampaignCard
-                            key={group.key}
-                            group={group}
-                            fullGroup={sentGroups.find((item) => item.key === group.key) ?? group}
-                            recipientProfiles={recipientProfiles}
-                            currentUserId={currentUserId}
-                            cancellingBookingId={cancellingBookingId}
-                            onCancelBooking={handleCancelBooking}
+                      <>
+                        <div className="mt-4 flex justify-end">
+                          <ArchiveAllBookingRequestsButton
+                            count={historySentBookings.length}
+                            loading={archivingAllHistory}
+                            disabled={Boolean(archivingBookingId)}
+                            onConfirm={handleArchiveAllHistory}
                           />
-                        ))}
-                      </ul>
+                        </div>
+                        <ul className="mt-3 space-y-3">
+                          {historySentBookings.map((booking) => {
+                            const profile = recipientProfiles.get(booking.recipient_id);
+                            const name = profile?.display_name?.trim() || "DJ";
+
+                            return (
+                              <BookingHistoryCard
+                                key={booking.id}
+                                booking={booking}
+                                subtitle={name}
+                                avatarName={name}
+                                avatarUrl={profile?.avatar_url}
+                                action={
+                                  <ArchiveBookingRequestButton
+                                    disabled={archivingAllHistory}
+                                    loading={archivingBookingId === booking.id}
+                                    onConfirm={() => handleArchiveBooking(booking.id)}
+                                  />
+                                }
+                              />
+                            );
+                          })}
+                        </ul>
+                      </>
                     )}
                   </>
                 )}
@@ -1499,7 +1512,7 @@ function BookingsPageContent() {
             ) : filteredReceivedBookings.length === 0 ? (
               <p className="rounded-xl border border-ftc-border bg-ftc-surface/40 px-4 py-8 text-center text-sm text-ftc-text-muted">
                 {djGigsView === "history"
-                  ? HISTORY_EMPTY_MESSAGE
+                  ? DJ_HISTORY_EMPTY_MESSAGE
                   : `No ${djGigsView === "accepted" ? "confirmed" : djGigsView} gigs match this filter.`}
               </p>
             ) : (
@@ -1612,32 +1625,23 @@ function DjGigsTabs({
   );
 }
 
-function PlannerSentViewTabs({
-  activeView,
-  historyCount,
-  archivedCount,
+function PlannerSentStatusTabs({
+  activeTab,
   onChange,
 }: {
-  activeView: PlannerSentBookingsView;
-  historyCount: number;
-  archivedCount: number;
-  onChange: (view: PlannerSentBookingsView) => void;
+  activeTab: PlannerSentPrimaryTab;
+  onChange: (tab: PlannerSentPrimaryTab) => void;
 }) {
-  const tabs: {
-    value: PlannerSentBookingsView;
-    label: string;
-    count?: number;
-    icon?: "history" | "archived";
-  }[] = [
-    { value: "active", label: "Active" },
-    { value: "history", label: "History", count: historyCount, icon: "history" },
-    { value: "archived", label: "Archived", count: archivedCount, icon: "archived" },
+  const tabs: { value: PlannerSentPrimaryTab; label: string }[] = [
+    { value: "pending", label: "Pending" },
+    { value: "confirmed", label: "Confirmed" },
+    { value: "history", label: "History" },
   ];
 
   return (
     <div className="flex flex-wrap gap-2">
       {tabs.map((tab) => {
-        const isActive = activeView === tab.value;
+        const isActive = activeTab === tab.value;
 
         return (
           <button
@@ -1650,10 +1654,57 @@ function PlannerSentViewTabs({
                 : "border-ftc-border-subtle bg-ftc-bg-elevated text-ftc-text-secondary hover:border-ftc-border-strong"
             }`}
           >
-            {tab.icon === "history" ? <HistoryIcon /> : null}
-            {tab.icon === "archived" ? <ArchiveTabIcon /> : null}
+            {tab.value === "history" ? <HistoryIcon /> : null}
             {tab.label}
-            {tab.count && tab.count > 0 ? ` (${tab.count})` : ""}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function PlannerHistorySubControls({
+  activeSubView,
+  declinedCount,
+  archivedCount,
+  onChange,
+}: {
+  activeSubView: PlannerHistorySubView;
+  declinedCount: number;
+  archivedCount: number;
+  onChange: (subView: PlannerHistorySubView) => void;
+}) {
+  const controls: {
+    value: PlannerHistorySubView;
+    label: string;
+    count?: number;
+    icon?: "history" | "archived";
+  }[] = [
+    { value: "cancelled", label: "Cancelled", icon: "history" },
+    { value: "declined", label: "Declined", count: declinedCount },
+    { value: "archived", label: "Archived", count: archivedCount, icon: "archived" },
+  ];
+
+  return (
+    <div className="mt-4 flex flex-wrap gap-2">
+      {controls.map((control) => {
+        const isActive = activeSubView === control.value;
+
+        return (
+          <button
+            key={control.value}
+            type="button"
+            onClick={() => onChange(control.value)}
+            className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[11px] font-semibold uppercase tracking-wide transition ${
+              isActive
+                ? "border-ftc-border-strong bg-ftc-bg-elevated text-ftc-text"
+                : "border-ftc-border-subtle bg-ftc-surface/40 text-ftc-text-muted hover:border-ftc-border-strong hover:text-ftc-text-secondary"
+            }`}
+          >
+            {control.icon === "history" ? <HistoryIcon className="h-3 w-3" /> : null}
+            {control.icon === "archived" ? <ArchiveTabIcon className="h-3 w-3" /> : null}
+            {control.label}
+            {control.count && control.count > 0 ? ` (${control.count})` : ""}
           </button>
         );
       })}
@@ -1822,88 +1873,18 @@ function BookingHistoryCard({
   );
 }
 
-function BookingStatusTabs({
-  activeFilter,
-  groups,
-  onChange,
-}: {
-  activeFilter: ActiveBookingStatusFilter;
-  groups: SentBookingGroup[];
-  onChange: (filter: ActiveBookingStatusFilter) => void;
-}) {
-  const totals = useMemo(() => {
-    return groups.reduce(
-      (stats, group) => {
-        const campaignStats = getActiveBookingCampaignStats(group);
-        stats.total += campaignStats.total;
-        stats.pending += campaignStats.pending;
-        stats.accepted += campaignStats.accepted;
-        stats.declined += campaignStats.declined;
-        return stats;
-      },
-      { total: 0, pending: 0, accepted: 0, declined: 0 },
-    );
-  }, [groups]);
-
-  function getTabCount(filter: ActiveBookingStatusFilter): number {
-    if (filter === "all") {
-      return totals.total;
-    }
-
-    return totals[filter];
-  }
-
-  return (
-    <div className="mt-4 ftc-card p-2">
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-        {ACTIVE_STATUS_FILTERS.map((tab) => {
-          const isActive = activeFilter === tab.value;
-
-          return (
-            <button
-              key={tab.value}
-              type="button"
-              onClick={() => onChange(tab.value)}
-              className={`rounded-xl px-3 py-2.5 text-left transition ${
-                isActive
-                  ? "bg-ftc-primary text-ftc-bg"
-                  : "border border-transparent bg-ftc-bg-elevated hover:border-ftc-border-subtle hover:bg-ftc-surface"
-              }`}
-            >
-              <span
-                className={`block text-[11px] font-semibold uppercase tracking-wide ${
-                  isActive ? "text-ftc-bg/80" : "text-ftc-text-muted"
-                }`}
-              >
-                {tab.label}
-              </span>
-              <span className={`mt-0.5 block text-lg font-semibold ${isActive ? "text-ftc-bg" : "text-ftc-text-secondary"}`}>
-                {getTabCount(tab.value)}
-              </span>
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
 function BookingCampaignCard({
   group,
   fullGroup,
   recipientProfiles,
-  currentUserId,
-  cancellingBookingId,
-  onCancelBooking,
 }: {
   group: SentBookingGroup;
   fullGroup: SentBookingGroup;
   recipientProfiles: Map<string, BookingRecipientProfile>;
-  currentUserId: string | null;
-  cancellingBookingId: string | null;
-  onCancelBooking: (bookingId: string) => void | Promise<void>;
 }) {
   const campaignStats = getActiveBookingCampaignStats(fullGroup);
+  const eventId = group.requests.find((request) => request.event_id)?.event_id ?? null;
+  const eventHref = eventId ? `/events/${eventId}` : null;
 
   return (
     <li className="rounded-2xl border border-ftc-border-subtle bg-ftc-surface p-4 sm:p-5">
@@ -1928,23 +1909,32 @@ function BookingCampaignCard({
             </div>
           ) : null}
         </div>
+        {eventHref ? (
+          <Link
+            href={eventHref}
+            className="shrink-0 rounded-lg border border-ftc-border-strong bg-ftc-surface/80 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-ftc-text-secondary transition hover:border-ftc-primary/30 hover:text-ftc-primary"
+          >
+            View event
+          </Link>
+        ) : null}
       </div>
 
       <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
         <CampaignStat label="Total sent" value={campaignStats.total} tone="neutral" />
         <CampaignStat label="Pending" value={campaignStats.pending} tone="pending" />
-        <CampaignStat label="Accepted" value={campaignStats.accepted} tone="accepted" />
+        <CampaignStat label="Confirmed" value={campaignStats.accepted} tone="accepted" />
         <CampaignStat label="Declined" value={campaignStats.declined} tone="declined" />
       </div>
 
       <ul className="mt-4 space-y-2">
         {group.requests.map((request) => {
           const profile = recipientProfiles.get(request.recipient_id);
-          const name = profile?.display_name ?? request.recipient_id;
+          const name = profile?.display_name?.trim() || "DJ";
           const subtitle =
             [profile?.genre, profile?.role ? getRoleLabel(profile.role) : null]
               .filter(Boolean)
               .join(" · ") || "DJ / Artist";
+          const requestEventHref = request.event_id ? `/events/${request.event_id}` : null;
 
           return (
             <li
@@ -1960,11 +1950,13 @@ function BookingCampaignCard({
               </div>
               <div className="flex flex-wrap items-center gap-2 sm:shrink-0">
                 <BookingStatusBadge status={request.status} />
-                {canCancelBookingRequest(request, currentUserId) ? (
-                  <CancelBookingRequestButton
-                    loading={cancellingBookingId === request.id}
-                    onConfirm={() => onCancelBooking(request.id)}
-                  />
+                {requestEventHref ? (
+                  <Link
+                    href={requestEventHref}
+                    className="rounded-lg border border-ftc-border-strong bg-ftc-surface/80 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-ftc-text-secondary transition hover:border-ftc-primary/30 hover:text-ftc-primary"
+                  >
+                    View event
+                  </Link>
                 ) : null}
                 <Link
                   href={`/dm/${request.conversation_id}`}
