@@ -294,7 +294,11 @@ export default function EventCrewChatPage() {
         setCurrentUserId(userId);
 
         if (!access.canAccess) {
-          setError("You do not have access to this group chat.");
+          if (access.eventStatus === "cancelled") {
+            setError("This event was cancelled. Group chat is no longer available.");
+          } else {
+            setError("You do not have access to this group chat.");
+          }
           setMessagesLoading(false);
           return;
         }
@@ -443,7 +447,7 @@ export default function EventCrewChatPage() {
     }
   }
 
-  if (error && !accessLoading && !canAccessChat && error.includes("access")) {
+  if (error && !accessLoading && !canAccessChat) {
     return (
       <OnboardingGuard>
         <div

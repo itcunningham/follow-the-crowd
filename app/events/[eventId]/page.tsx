@@ -902,9 +902,9 @@ export default function EventDetailPage() {
 
   const showStickyActions = !editOpen && !sendOpen;
   const showOwnerSendAction = isOwner && isPlanner && !eventIsCancelled;
-  const showEventGroupChatAction = showOwnerSendAction
-    ? hasAcceptedBookings
-    : canOpenCrewChat;
+  const showEventGroupChatAction =
+    !eventIsCancelled &&
+    (showOwnerSendAction ? hasAcceptedBookings : canOpenCrewChat);
   const showBottomBar =
     showStickyActions &&
     (showOwnerSendAction ||

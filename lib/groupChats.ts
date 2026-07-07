@@ -4,7 +4,7 @@ import {
   logInboxRenderOrder,
   normalizeInboxId,
 } from "@/lib/dmInbox";
-import { listOwnedEvents, getEventArtworkByIds } from "@/lib/events";
+import { listOwnedEvents, getEventArtworkByIds, isEventCancelled } from "@/lib/events";
 import { pickPreferredEventCoverImageUrl } from "@/lib/events/eventCoverImage";
 import { supabase } from "@/lib/supabaseClient";
 import { getCurrentUserId, type UserRole } from "@/lib/user/currentUser";
@@ -244,6 +244,10 @@ export async function listAccessibleGroupChats(
     const events = await listOwnedEvents();
 
     for (const event of events) {
+      if (isEventCancelled(event)) {
+        continue;
+      }
+
       const eventKey = normalizeInboxId(event.id);
 
       if (!eventKey) {
@@ -285,8 +289,9 @@ export async function listAccessibleGroupChats(
     if (eventIds.length > 0) {
       const { data: events, error: eventsError } = await supabase
         .from("events")
-        .select("id, name, venue, event_date, cover_image_url, fallback_colour")
-        .in("id", eventIds);
+        .select("id, name, venue, event_date, cover_image_url, fallback_colour, status")
+        .in("id", eventIds)
+        .neq("status", "cancelled");
 
       if (eventsError) {
         throw eventsError;
@@ -330,6 +335,10 @@ export async function listAccessibleGroupChatEventIds(
     const events = await listOwnedEvents();
 
     for (const event of events) {
+      if (isEventCancelled(event)) {
+        continue;
+      }
+
       const eventKey = normalizeInboxId(event.id);
 
       if (eventKey) {
@@ -350,12 +359,31 @@ export async function listAccessibleGroupChatEventIds(
       throw error;
     }
 
-    for (const row of data ?? []) {
-      const eventId = row.event_id as string | null;
-      const eventKey = normalizeInboxId(eventId);
+    const eventIds = [
+      ...new Set(
+        (data ?? [])
+          .map((row) => row.event_id as string | null)
+          .filter((eventId): eventId is string => Boolean(eventId)),
+      ),
+    ];
 
-      if (eventKey) {
-        byEventId.add(eventId as string);
+    if (eventIds.length > 0) {
+      const { data: events, error: eventsError } = await supabase
+        .from("events")
+        .select("id")
+        .in("id", eventIds)
+        .neq("status", "cancelled");
+
+      if (eventsError) {
+        throw eventsError;
+      }
+
+      for (const event of events ?? []) {
+        const eventKey = normalizeInboxId(event.id as string);
+
+        if (eventKey) {
+          byEventId.add(event.id as string);
+        }
       }
     }
   }

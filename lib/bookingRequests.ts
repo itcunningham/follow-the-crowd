@@ -215,6 +215,28 @@ export function getBookingCancelledDmCardClass(): string {
   return "border border-[var(--ftc-color-danger)]/35 bg-[var(--ftc-color-danger)]/5";
 }
 
+export function isBookingAffectedByCancelledEvent(
+  booking: BookingRequest,
+  eventCancelled: boolean,
+): boolean {
+  if (!eventCancelled) {
+    return false;
+  }
+
+  return booking.status === "accepted" || booking.status === "pending";
+}
+
+export function getEventCancelledBookingLabel(
+  booking: BookingRequest,
+  currentUserId: string | null,
+): string {
+  if (currentUserId === booking.sender_id) {
+    return "Event cancelled";
+  }
+
+  return "Event cancelled by planner";
+}
+
 export function isActiveBookingStatus(status: BookingRequestStatus): boolean {
   return status !== "cancelled";
 }
@@ -1824,10 +1846,14 @@ export type BookingGroupChatAccess =
 export function getBookingGroupChatAccess(
   booking: BookingRequest,
   currentUserId: string | null,
-  options?: { eventHasAcceptedBooking?: boolean },
+  options?: { eventHasAcceptedBooking?: boolean; eventCancelled?: boolean },
 ): BookingGroupChatAccess | null {
   if (!booking.event_id || !currentUserId) {
     return null;
+  }
+
+  if (options?.eventCancelled) {
+    return { kind: "hidden" };
   }
 
   if (booking.status === "cancelled" || booking.status === "declined") {

@@ -58,7 +58,7 @@ import {
   type DmMessageReaction,
 } from "@/lib/dmReactions";
 import { createNotification, markNotificationsReadForLink } from "@/lib/notifications";
-import { getEventArtworkByIds, type EventArtworkSnapshot } from "@/lib/events";
+import { getEventArtworkByIds, isEventCancelled, type EventArtworkSnapshot } from "@/lib/events";
 import { resolveEventLinkedBookingDisplay } from "@/lib/events/eventBookingDisplay";
 import {
   getLatestOwnDmMessageId,
@@ -1568,6 +1568,12 @@ export default function DmChatPage() {
                 const canRespond = actionBooking
                   ? canRecipientRespondToPendingBooking(actionBooking, currentUserId)
                   : false;
+                const eventArtwork = resolvedBooking.event_id
+                  ? eventArtworkById.get(resolvedBooking.event_id)
+                  : undefined;
+                const eventCancelled = eventArtwork
+                  ? isEventCancelled({ status: eventArtwork.status })
+                  : false;
                 const highlighted = isMessageHighlighted(message.id);
                 logChatHighlightRender(message.id, highlighted);
                 const bookingExpansionKey =
@@ -1611,8 +1617,9 @@ export default function DmChatPage() {
                                 ? eventIdsWithAcceptedBookings.has(resolvedBooking.event_id)
                                 : false
                             }
+                            eventCancelled={eventCancelled}
                             dmConversationId={conversationId}
-                            canRespond={canRespond}
+                            canRespond={canRespond && !eventCancelled}
                             responding={
                               actionBooking ? respondingBookingId === actionBooking.id : false
                             }

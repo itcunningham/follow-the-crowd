@@ -1,7 +1,7 @@
 import { supabase } from "@/lib/supabaseClient";
 import { createNotification } from "@/lib/notifications";
 import { markEventChatRead } from "@/lib/messageReads";
-import { getEventById, type EventStatus } from "@/lib/events";
+import { getEventById, isEventCancelled, type EventStatus } from "@/lib/events";
 import { pickPreferredEventCoverImageUrl } from "@/lib/events/eventCoverImage";
 import {
   getCurrentUserId,
@@ -85,6 +85,10 @@ export async function getEventCrewChatAccess(eventId: string): Promise<EventCrew
     fallbackColour: event.fallback_colour?.trim() || null,
   };
 
+  if (isEventCancelled(event)) {
+    return { canAccess: false, isOwner: event.owner_id === userId, ...eventContext };
+  }
+
   if (event.owner_id === userId) {
     return { canAccess: true, isOwner: true, ...eventContext };
   }
@@ -148,6 +152,12 @@ export async function sendEventCrewChatMessage(
 
   if (!trimmed) {
     return;
+  }
+
+  const event = await getEventById(eventId);
+
+  if (!event || isEventCancelled(event)) {
+    throw new Error("This event was cancelled. Group chat is no longer available.");
   }
 
   const { error: insertError } = await supabase.from("messages").insert({

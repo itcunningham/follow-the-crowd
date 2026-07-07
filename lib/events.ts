@@ -456,6 +456,7 @@ export type EventArtworkSnapshot = {
   rate: string;
   coverImageUrl: string | null;
   fallbackColour: string | null;
+  status: EventStatus;
 };
 
 export async function getEventArtworkByIds(
@@ -469,7 +470,7 @@ export async function getEventArtworkByIds(
 
   const { data, error } = await supabase
     .from("events")
-    .select("id, name, venue, event_date, set_time, rate, cover_image_url, fallback_colour")
+    .select("id, name, venue, event_date, set_time, rate, cover_image_url, fallback_colour, status")
     .in("id", uniqueIds);
 
   if (error) {
@@ -488,6 +489,7 @@ export async function getEventArtworkByIds(
       rate: string;
       cover_image_url: string | null;
       fallback_colour: string | null;
+      status: EventStatus;
     };
 
     artworkById.set(eventRow.id, {
@@ -498,6 +500,7 @@ export async function getEventArtworkByIds(
       rate: eventRow.rate,
       coverImageUrl: normalizeEventCoverImageUrl(eventRow.cover_image_url),
       fallbackColour: eventRow.fallback_colour?.trim() || null,
+      status: eventRow.status,
     });
   }
 

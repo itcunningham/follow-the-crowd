@@ -24,7 +24,9 @@ import {
   getBookingGroupChatAccess,
   getBookingOfferRateLabel,
   getBookingRateDetailLabel,
+  getEventCancelledBookingLabel,
   hasPendingRateProposal,
+  isBookingAffectedByCancelledEvent,
   formatBookingStatusLabel,
   resolveBookingCancellationReasonLabel,
   resolveBookingCancelledByLabel,
@@ -58,6 +60,7 @@ export default function BookingRequestCard({
   expanded = true,
   onExpandedChange,
   eventHasAcceptedBooking = false,
+  eventCancelled = false,
   dmConversationId = null,
 }: {
   booking: BookingRequest;
@@ -83,18 +86,26 @@ export default function BookingRequestCard({
   expanded?: boolean;
   onExpandedChange?: (expanded: boolean) => void;
   eventHasAcceptedBooking?: boolean;
+  eventCancelled?: boolean;
   dmConversationId?: string | null;
 }) {
   const [proposeSheetOpen, setProposeSheetOpen] = useState(false);
+  const isEventCancelledBooking = isBookingAffectedByCancelledEvent(booking, eventCancelled);
+  const showAsCancelled = booking.status === "cancelled" || isEventCancelledBooking;
+  const eventCancelledLabel = isEventCancelledBooking
+    ? getEventCancelledBookingLabel(booking, currentUserId)
+    : null;
   const groupChatAccess = getBookingGroupChatAccess(booking, currentUserId, {
     eventHasAcceptedBooking,
+    eventCancelled,
   });
-  const showPendingCancel = canCancelBookingRequest(booking, currentUserId) && onCancel;
+  const showPendingCancel =
+    canCancelBookingRequest(booking, currentUserId) && onCancel && !isEventCancelledBooking;
   const acceptedCancellationRole = getAcceptedBookingCancellationRole(booking, currentUserId);
-  const showAcceptedCancel = acceptedCancellationRole && onCancelAccepted;
+  const showAcceptedCancel =
+    acceptedCancellationRole && onCancelAccepted && !isEventCancelledBooking;
   const cancelledByLabel = resolveBookingCancelledByLabel(booking, profiles);
   const cancellationReasonLabel = resolveBookingCancellationReasonLabel(booking);
-  const isCancelled = booking.status === "cancelled";
   const isPending = booking.status === "pending";
   const pendingProposal = bookingLoaded && hasPendingRateProposal(booking);
   const showDjOpenOfferActions =
@@ -173,9 +184,9 @@ export default function BookingRequestCard({
     );
   }
 
-  function renderCancelledStatusBadge() {
+  function renderCancelledStatusBadge(label = formatBookingStatusLabel("cancelled")) {
     return (
-      <span className={cancelledBadgeClass}>{formatBookingStatusLabel("cancelled")}</span>
+      <span className={cancelledBadgeClass}>{label}</span>
     );
   }
 
@@ -197,7 +208,7 @@ export default function BookingRequestCard({
     );
   }
 
-  if (collapsible && !expanded && isCancelled) {
+  if (collapsible && !expanded && showAsCancelled) {
     return (
       <button
         type="button"
@@ -208,14 +219,20 @@ export default function BookingRequestCard({
           <p className="min-w-0 flex-1 break-words text-sm font-semibold leading-snug text-ftc-text">
             {collapsedTitle}
           </p>
-          {renderCancelledStatusBadge()}
+          {renderCancelledStatusBadge(
+            eventCancelledLabel ?? formatBookingStatusLabel("cancelled"),
+          )}
         </div>
 
         {collapsedDateVenue ? (
           <p className="mt-2 break-words text-xs text-ftc-text-muted">{collapsedDateVenue}</p>
         ) : null}
 
-        {cancellationReasonLabel ? (
+        {eventCancelledLabel ? (
+          <p className="mt-1 break-words text-xs text-[var(--ftc-color-danger)]/90">
+            {eventCancelledLabel}
+          </p>
+        ) : cancellationReasonLabel ? (
           <p className="mt-1 break-words text-xs text-[var(--ftc-color-danger)]/90">
             {cancellationReasonLabel}
           </p>
@@ -293,7 +310,7 @@ export default function BookingRequestCard({
     );
   }
 
-  if (isCancelled) {
+  if (showAsCancelled) {
     return (
       <div className={`w-full max-w-sm rounded-2xl p-4 ${cancelledCardClass}`}>
         {collapsible ? (
@@ -323,8 +340,16 @@ export default function BookingRequestCard({
               {booking.event_name}
             </h3>
           </div>
-          {renderCancelledStatusBadge()}
+          {renderCancelledStatusBadge(
+            eventCancelledLabel ?? formatBookingStatusLabel("cancelled"),
+          )}
         </div>
+
+        {eventCancelledLabel ? (
+          <p className="mt-3 break-words text-sm text-[var(--ftc-color-danger)]/90">
+            {eventCancelledLabel}
+          </p>
+        ) : null}
 
         <div className="mt-4">{renderCancelledDetailsGrid()}</div>
 
@@ -447,7 +472,7 @@ export default function BookingRequestCard({
           />
         ) : null}
 
-        {booking.event_id && !isCancelled ? (
+        {booking.event_id && !showAsCancelled ? (
           <>
             {eventHref ? (
               <Link
