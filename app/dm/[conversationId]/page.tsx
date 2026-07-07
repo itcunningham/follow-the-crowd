@@ -13,6 +13,7 @@ import DmComposer from "@/app/components/dm/DmComposer";
 import DmReportFormModal from "@/app/components/dm/DmReportFormModal";
 import DmTextMessageBubble from "@/app/components/dm/DmTextMessageBubble";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
+import { ChatHeaderSkeleton, ChatMessagesSkeleton } from "@/app/components/skeleton/Skeleton";
 import ProfileAvatar from "@/app/components/ProfileAvatar";
 import {
   buildDmCancelledBookingMatchContext,
@@ -1332,6 +1333,9 @@ export default function DmChatPage() {
         className={`mx-auto flex min-h-0 w-full max-w-2xl flex-1 flex-col overflow-hidden ${MOBILE_NAV_OFFSET_CLASS}`}
       >
       <header className="z-10 shrink-0 border-b border-ftc-border-subtle bg-ftc-bg/95 px-3 py-2.5 backdrop-blur-md sm:px-4">
+        {loading ? (
+          <ChatHeaderSkeleton />
+        ) : (
         <div className="flex items-center gap-2">
           <Link
             href={backHref}
@@ -1387,6 +1391,7 @@ export default function DmChatPage() {
             </button>
           ) : null}
         </div>
+        )}
       </header>
 
       {otherUserId ? (
@@ -1420,7 +1425,7 @@ export default function DmChatPage() {
       >
         <div ref={bottomRef} data-chat-bottom aria-hidden="true" className="h-px shrink-0" />
         {loading ? (
-          <p className="text-sm text-ftc-text-muted">Loading messages...</p>
+          <ChatMessagesSkeleton />
         ) : messages.length === 0 ? (
           <div
             data-chat-content-root

@@ -782,3 +782,42 @@ html {
     animation: none;
   }
 }
+
+/* -------------------------------------------------------------------------- */
+/* Skeleton loaders                                                            */
+/* -------------------------------------------------------------------------- */
+
+.ftc-skeleton {
+  border: 1px solid var(--ftc-color-border-subtle);
+  background: var(--ftc-color-bg-elevated);
+}
+
+.ftc-skeleton-shimmer {
+  background-image: linear-gradient(
+    90deg,
+    var(--ftc-color-bg-elevated) 0%,
+    rgb(142 154 175 / 0.1) 45%,
+    rgb(142 154 175 / 0.16) 50%,
+    rgb(142 154 175 / 0.1) 55%,
+    var(--ftc-color-bg-elevated) 100%
+  );
+  background-size: 200% 100%;
+  animation: ftc-skeleton-shimmer 1.5s ease-in-out infinite;
+}
+
+@keyframes ftc-skeleton-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ftc-skeleton-shimmer {
+    animation: none;
+    background-image: none;
+  }
+}

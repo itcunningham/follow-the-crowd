@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import AppNavigation, { MOBILE_NAV_OFFSET_CLASS } from "@/app/components/AppNavigation";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
+import { DiscoverSkeleton } from "@/app/components/skeleton/Skeleton";
 import NotificationsBellLink from "@/app/components/NotificationsBellLink";
 import DiscoverFeaturedProfileCard from "@/app/components/discover/DiscoverFeaturedProfileCard";
 import DiscoverGenreChips, {
@@ -232,7 +233,7 @@ export default function DiscoverPage() {
           <DiscoverGenreChips active={genreFilter} onChange={setGenreFilter} />
 
           {loading ? (
-            <p className="pt-2 text-sm text-ftc-text-muted">Loading...</p>
+            <DiscoverSkeleton />
           ) : error ? (
             <p className="pt-2 text-sm text-red-400">{error}</p>
           ) : filteredUsers.length === 0 ? (

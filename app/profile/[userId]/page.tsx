@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import AppNavigation, { MOBILE_NAV_OFFSET_CLASS } from "@/app/components/AppNavigation";
 import DjProfileSections from "@/app/components/profile/DjProfileSections";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
+import { ProfileSkeleton } from "@/app/components/skeleton/Skeleton";
 import ProfileHero from "@/app/components/profile/ProfileHero";
 import ProfileMessageAction from "@/app/components/profile/ProfileMessageAction";
 import ProfilePageHeader from "@/app/components/profile/ProfilePageHeader";
@@ -111,7 +112,7 @@ export default function UserProfilePage() {
           className={`flex-1 px-4 py-6 sm:px-6 ${!isOwnProfile && profile ? "pb-4" : "pb-8"}`}
         >
           {loading ? (
-            <p className="text-sm text-ftc-text-muted">Loading profile...</p>
+            <ProfileSkeleton />
           ) : error && !profile ? (
             <p className="text-sm text-red-400">{error}</p>
           ) : profile ? (

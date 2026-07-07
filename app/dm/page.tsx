@@ -5,6 +5,7 @@ import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "rea
 import { useRouter, useSearchParams } from "next/navigation";
 import AppNavigation, { MOBILE_NAV_OFFSET_CLASS } from "@/app/components/AppNavigation";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
+import { InboxListSkeleton } from "@/app/components/skeleton/Skeleton";
 import MessagesInboxComposeButton from "@/app/components/dm/MessagesInboxComposeButton";
 import MessagesInboxRow, {
   MessagesGroupInboxRow,
@@ -901,7 +902,7 @@ function DmInboxPageContent() {
           {activeTab === "group" ? (
             <section aria-label="Group Chats">
               {showGroupChatsLoading ? (
-                <p className="py-2 text-sm text-ftc-text-muted">Loading group chats...</p>
+                <InboxListSkeleton variant="group" />
               ) : groupChatsError && !hasGroupChats ? (
                 <GroupChatsLoadErrorState
                   message={groupChatsError}
@@ -966,7 +967,7 @@ function DmInboxPageContent() {
           {activeTab === "dm" ? (
             <section aria-label="Direct Messages">
               {loading ? (
-                <p className="py-2 text-sm text-ftc-text-muted">Loading conversations...</p>
+                <InboxListSkeleton />
               ) : error ? (
                 <p className="py-2 text-sm text-red-400">{error}</p>
               ) : !hasDirectMessages ? (

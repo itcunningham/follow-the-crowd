@@ -9,6 +9,7 @@ import GroupChatComposer from "@/app/components/group-chat/GroupChatComposer";
 import GroupChatMessageBubble from "@/app/components/group-chat/GroupChatMessageBubble";
 import EventArtworkTile from "@/app/components/events/EventArtworkTile";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
+import { ChatHeaderSkeleton, ChatMessagesSkeleton } from "@/app/components/skeleton/Skeleton";
 import {
   getEventCrewChatAccess,
   getEventCrewChatBackHref,
@@ -482,6 +483,9 @@ export default function EventCrewChatPage() {
           className={`mx-auto flex min-h-0 w-full max-w-2xl flex-1 flex-col overflow-hidden ${MOBILE_NAV_OFFSET_CLASS}`}
         >
           <header className="z-10 shrink-0 border-b border-ftc-border-subtle bg-ftc-bg/95 px-3 py-2.5 backdrop-blur-md sm:px-4">
+            {accessLoading ? (
+              <ChatHeaderSkeleton />
+            ) : (
             <div className="flex items-center gap-2">
               <Link
                 href={backHref}
@@ -523,6 +527,7 @@ export default function EventCrewChatPage() {
                 </Link>
               ) : null}
             </div>
+            )}
           </header>
 
           <div
@@ -530,10 +535,8 @@ export default function EventCrewChatPage() {
             className="flex min-h-0 flex-1 flex-col-reverse overflow-y-auto overscroll-contain [overflow-anchor:none] px-3 py-4 sm:px-4"
           >
             <div ref={bottomRef} data-chat-bottom aria-hidden="true" className="h-px shrink-0" />
-            {accessLoading ? (
-              <p className="text-sm text-ftc-text-muted">Loading group chat...</p>
-            ) : messagesLoading ? (
-              <p className="text-sm text-ftc-text-muted">Loading messages...</p>
+            {accessLoading || messagesLoading ? (
+              <ChatMessagesSkeleton />
             ) : messagesError ? (
               <GroupChatMessagesLoadError
                 message={messagesError}
