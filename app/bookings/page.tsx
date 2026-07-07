@@ -3,6 +3,10 @@
 import Link from "next/link";
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import {
+  BookingsPageLoadingShell,
+  resolveBookingsShellVariant,
+} from "@/app/components/skeleton/Skeleton";
 import AppNavigation, { MOBILE_NAV_OFFSET_CLASS } from "@/app/components/AppNavigation";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
 import PlannerEventsSubNav from "@/app/components/PlannerEventsSubNav";
@@ -238,13 +242,7 @@ function filterReceivedBookingsByView(
 
 export default function BookingsPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="flex min-h-[100dvh] items-center justify-center bg-ftc-bg text-sm text-ftc-text-muted">
-          Loading...
-        </div>
-      }
-    >
+    <Suspense fallback={<BookingsPageLoadingShell />}>
       <BookingsPageContent />
     </Suspense>
   );
@@ -944,9 +942,9 @@ function BookingsPageContent() {
 
   if (loadingAccess) {
     return (
-      <div className="flex min-h-[100dvh] items-center justify-center bg-ftc-bg text-sm text-ftc-text-muted">
-        Loading...
-      </div>
+      <OnboardingGuard>
+        <BookingsPageLoadingShell variant={resolveBookingsShellVariant(role)} />
+      </OnboardingGuard>
     );
   }
 

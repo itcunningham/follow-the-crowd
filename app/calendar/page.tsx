@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { CalendarPageLoadingShell } from "@/app/components/skeleton/Skeleton";
 import AppNavigation, { MOBILE_NAV_OFFSET_CLASS } from "@/app/components/AppNavigation";
 import CalendarViewTabs, { type CalendarViewTab } from "@/app/components/CalendarViewTabs";
 import DjAvailabilityCalendar from "@/app/components/DjAvailabilityCalendar";
@@ -30,6 +31,11 @@ export default function CalendarPage() {
 
   return (
     <OnboardingGuard>
+      {loadingRole ? (
+        <CalendarPageLoadingShell
+          showPlannerSubNav={role === "promoter" || role === "both"}
+        />
+      ) : (
       <div className={`min-h-[100dvh] bg-ftc-bg text-ftc-text ${MOBILE_NAV_OFFSET_CLASS}`}>
         <AppNavigation />
 
@@ -45,9 +51,7 @@ export default function CalendarPage() {
             ) : null}
           </div>
 
-          {loadingRole ? (
-            <p className="text-sm text-ftc-text-muted">Loading calendar...</p>
-          ) : role === "both" ? (
+          {role === "both" ? (
             <>
               <CalendarViewTabs activeTab={bothCalendarTab} onChange={setBothCalendarTab} />
               {bothCalendarTab === "planner" ? (
@@ -65,6 +69,7 @@ export default function CalendarPage() {
           )}
         </main>
       </div>
+      )}
     </OnboardingGuard>
   );
 }

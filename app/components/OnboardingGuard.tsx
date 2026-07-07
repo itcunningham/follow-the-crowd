@@ -14,6 +14,7 @@ import {
   needsProfileSetup,
   PROFILE_SETUP_PATH,
   SIGNUP_PATH,
+  type UserProfile,
 } from "@/lib/user/currentUser";
 
 const AUTH_PATHS = [LOGIN_PATH, SIGNUP_PATH];
@@ -23,6 +24,7 @@ export default function OnboardingGuard({ children }: { children: React.ReactNod
   const router = useRouter();
   const pathname = usePathname();
   const [ready, setReady] = useState(false);
+  const [loadingProfile, setLoadingProfile] = useState<UserProfile | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -52,6 +54,7 @@ export default function OnboardingGuard({ children }: { children: React.ReactNod
 
         await ensureAuthenticatedUserProfileRow();
         const profile = await getCurrentUserProfile();
+        setLoadingProfile(profile);
 
         if (cancelled) {
           return;
@@ -104,7 +107,13 @@ export default function OnboardingGuard({ children }: { children: React.ReactNod
       );
     }
 
-    return <AppLoadingShell pathname={pathname} />;
+    return (
+      <AppLoadingShell
+        pathname={pathname}
+        role={loadingProfile?.role}
+        search={typeof window !== "undefined" ? window.location.search : ""}
+      />
+    );
   }
 
   return children;

@@ -376,7 +376,7 @@ export default function EventsPageClient({ initialTab }: EventsPageClientProps) 
   if (loadingAccess) {
     return (
       <OnboardingGuard>
-        <EventsPageLoadingShell showPlannerStats />
+        <EventsPageLoadingShell showPlannerStats={canManageEvents(role)} />
       </OnboardingGuard>
     );
   }

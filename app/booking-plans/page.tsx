@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+import { BookingPlansPageLoadingShell } from "@/app/components/skeleton/Skeleton";
 import AppNavigation, { MOBILE_NAV_OFFSET_CLASS } from "@/app/components/AppNavigation";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
 import PlannerEventsSubNav from "@/app/components/PlannerEventsSubNav";
@@ -190,9 +191,9 @@ export default function BookingPlansPage() {
 
   if (loadingAccess) {
     return (
-      <div className="flex min-h-[100dvh] items-center justify-center bg-ftc-bg text-sm text-ftc-text-muted">
-        Loading...
-      </div>
+      <OnboardingGuard>
+        <BookingPlansPageLoadingShell />
+      </OnboardingGuard>
     );
   }
 

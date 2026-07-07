@@ -291,9 +291,19 @@ function DirectMessagesEmptyState({ compact = false }: { compact?: boolean }) {
   );
 }
 
+function DmInboxLoadingFallback() {
+  const activeTab =
+    typeof window !== "undefined" &&
+    new URLSearchParams(window.location.search).get("tab") === "group"
+      ? "group"
+      : "dm";
+
+  return <MessagesInboxLoadingShell activeTab={activeTab} />;
+}
+
 export default function DmInboxPage() {
   return (
-    <Suspense fallback={<MessagesInboxLoadingShell />}>
+    <Suspense fallback={<DmInboxLoadingFallback />}>
       <DmInboxPageContent />
     </Suspense>
   );

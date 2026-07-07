@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import AppNavigation, { MOBILE_NAV_OFFSET_CLASS } from "@/app/components/AppNavigation";
+import type { UserRole } from "@/lib/user/currentUser";
 
 export function SkeletonBlock({
   className = "",
@@ -160,7 +161,7 @@ export function EventDetailSkeleton() {
   return <EventDetailLoadingShell />;
 }
 
-export function EventsPageLoadingShell({ showPlannerStats = true }: { showPlannerStats?: boolean }) {
+export function EventsPageLoadingShell({ showPlannerStats = false }: { showPlannerStats?: boolean }) {
   return (
     <div
       className={`mx-auto min-h-[100dvh] w-full max-w-2xl bg-ftc-bg font-sans text-ftc-text ${MOBILE_NAV_OFFSET_CLASS}`}
@@ -169,6 +170,7 @@ export function EventsPageLoadingShell({ showPlannerStats = true }: { showPlanne
       <header className="ftc-page-header px-4 py-4 sm:px-6 md:pt-4">
         <SkeletonBlock className="h-7 w-24" />
         <SkeletonBlock className="mt-2 h-4 w-56 max-w-full" />
+        {showPlannerStats ? <PlannerEventsSubNavSkeleton /> : null}
       </header>
       <div className="px-4 py-4 sm:px-6">
         <EventListSkeleton showPlannerStats={showPlannerStats} />
@@ -177,22 +179,225 @@ export function EventsPageLoadingShell({ showPlannerStats = true }: { showPlanne
   );
 }
 
-export function MessagesInboxLoadingShell() {
+function PlannerEventsSubNavSkeleton() {
+  return (
+    <div aria-hidden="true" className="mt-4 flex flex-wrap gap-2">
+      <SkeletonBlock className="h-8 w-[4.5rem] rounded-lg" />
+      <SkeletonBlock className="h-8 w-[6.5rem] rounded-lg" />
+      <SkeletonBlock className="h-8 w-[4.75rem] rounded-lg" />
+      <SkeletonBlock className="h-8 w-[5.25rem] rounded-lg" />
+    </div>
+  );
+}
+
+function TabPillsSkeleton({ count = 3 }: { count?: number }) {
+  return (
+    <div aria-hidden="true" className="mt-4 flex flex-wrap gap-2">
+      {Array.from({ length: count }, (_, index) => (
+        <SkeletonBlock key={index} className="h-8 w-24 rounded-xl" />
+      ))}
+    </div>
+  );
+}
+
+function SectionTabsSkeleton({ count = 2 }: { count?: number }) {
+  return (
+    <div aria-hidden="true" className="mt-4 flex gap-4 border-b border-ftc-border pb-3">
+      {Array.from({ length: count }, (_, index) => (
+        <SkeletonBlock key={index} className="h-5 w-28" />
+      ))}
+    </div>
+  );
+}
+
+export function BookingsListSkeleton({ count = 4 }: { count?: number }) {
+  return (
+    <ul aria-busy="true" aria-label="Loading bookings" className="space-y-3">
+      {Array.from({ length: count }, (_, index) => (
+        <li key={index}>
+          <SkeletonCard>
+            <div className="flex items-start justify-between gap-3">
+              <SkeletonBlock className="h-5 w-2/5 max-w-[10rem]" />
+              <SkeletonBlock className="h-6 w-16 rounded-full" />
+            </div>
+            <SkeletonBlock className="mt-3 h-4 w-3/5 max-w-[14rem]" />
+            <SkeletonBlock className="mt-2 h-4 w-1/2 max-w-[10rem]" />
+            <div className="mt-4 flex flex-wrap gap-2">
+              <SkeletonBlock className="h-9 w-24 rounded-xl" />
+              <SkeletonBlock className="h-9 w-24 rounded-xl" />
+            </div>
+          </SkeletonCard>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+export type BookingsShellVariant = "dj" | "planner" | "both" | "neutral";
+
+export function resolveBookingsShellVariant(role: UserRole | null | undefined): BookingsShellVariant {
+  if (role === "dj") {
+    return "dj";
+  }
+
+  if (role === "promoter") {
+    return "planner";
+  }
+
+  if (role === "both") {
+    return "both";
+  }
+
+  return "neutral";
+}
+
+export function BookingsPageLoadingShell({
+  variant = "neutral",
+}: {
+  variant?: BookingsShellVariant;
+}) {
+  const showPlannerSubNav = variant === "planner" || variant === "both";
+  const showSectionTabs = variant === "both";
+  const showDjGigsTabs = variant === "dj";
+  const showPlannerSentTabs = variant === "planner" || variant === "both";
+
+  return (
+    <div
+      className={`mx-auto min-h-[100dvh] w-full max-w-2xl bg-ftc-bg font-sans text-ftc-text ${MOBILE_NAV_OFFSET_CLASS}`}
+    >
+      <AppNavigation />
+      <header className="border-b border-ftc-border-subtle px-4 py-3 sm:px-6 md:pt-4">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <SkeletonBlock className="h-7 w-24" />
+            <SkeletonBlock className="mt-2 h-4 w-56 max-w-full" />
+          </div>
+          {variant !== "dj" ? (
+            <SkeletonBlock className="h-10 w-40 shrink-0 rounded-xl" />
+          ) : null}
+        </div>
+        {showSectionTabs ? <SectionTabsSkeleton count={2} /> : null}
+        {showDjGigsTabs ? <TabPillsSkeleton count={5} /> : null}
+        {showPlannerSentTabs ? <TabPillsSkeleton count={3} /> : null}
+        {variant === "neutral" ? <TabPillsSkeleton count={3} /> : null}
+        {showPlannerSubNav ? <PlannerEventsSubNavSkeleton /> : null}
+      </header>
+      <div className="px-4 py-4 sm:px-6">
+        <BookingsListSkeleton />
+      </div>
+    </div>
+  );
+}
+
+export function BookingPlansPageLoadingShell() {
+  return (
+    <div
+      className={`mx-auto min-h-[100dvh] w-full max-w-2xl bg-ftc-bg font-sans text-ftc-text ${MOBILE_NAV_OFFSET_CLASS}`}
+    >
+      <AppNavigation />
+      <header className="ftc-page-header px-4 py-4 sm:px-6 md:pt-4">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <SkeletonBlock className="h-7 w-36" />
+            <SkeletonBlock className="mt-2 h-4 w-64 max-w-full" />
+          </div>
+          <SkeletonBlock className="h-10 w-40 shrink-0 rounded-xl" />
+        </div>
+        <PlannerEventsSubNavSkeleton />
+      </header>
+      <div className="px-4 py-4 sm:px-6">
+        <BookingsListSkeleton count={3} />
+      </div>
+    </div>
+  );
+}
+
+export function CalendarPageLoadingShell({
+  showPlannerSubNav = false,
+}: {
+  showPlannerSubNav?: boolean;
+}) {
+  return (
+    <div
+      className={`min-h-[100dvh] bg-ftc-bg text-ftc-text ${MOBILE_NAV_OFFSET_CLASS}`}
+    >
+      <AppNavigation />
+      <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
+        <div className="mb-6 border-b border-ftc-border pb-4">
+          <SkeletonBlock className="h-3 w-20" />
+          {showPlannerSubNav ? (
+            <div className="mt-4">
+              <PlannerEventsSubNavSkeleton />
+            </div>
+          ) : null}
+        </div>
+        <CalendarGridSkeleton />
+      </main>
+    </div>
+  );
+}
+
+function CalendarGridSkeleton() {
+  return (
+    <div aria-busy="true" aria-label="Loading calendar" className="space-y-4">
+      <div className="flex items-center justify-between gap-3">
+        <SkeletonBlock className="h-9 w-9 rounded-lg" />
+        <SkeletonBlock className="h-5 w-36" />
+        <SkeletonBlock className="h-9 w-9 rounded-lg" />
+      </div>
+      <div className="grid grid-cols-7 gap-1.5">
+        {Array.from({ length: 35 }, (_, index) => (
+          <SkeletonBlock key={index} className="aspect-square w-full rounded-lg" />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export function NotificationsPageLoadingShell() {
+  return (
+    <div
+      className={`mx-auto flex min-h-[100dvh] w-full max-w-2xl flex-col bg-ftc-bg font-sans text-ftc-text ${MOBILE_NAV_OFFSET_CLASS}`}
+    >
+      <AppNavigation />
+      <header className="sticky top-0 z-10 border-b border-ftc-border bg-ftc-bg/95 px-4 py-4 backdrop-blur-md sm:px-6 md:top-12">
+        <SkeletonBlock className="h-7 w-36" />
+        <SkeletonBlock className="mt-2 h-3.5 w-48 max-w-full" />
+      </header>
+      <div className="flex-1 px-4 py-3 sm:px-6">
+        <InboxListSkeleton count={5} />
+      </div>
+    </div>
+  );
+}
+
+export function MessagesInboxLoadingShell({
+  activeTab = "dm",
+}: {
+  activeTab?: "dm" | "group";
+}) {
   return (
     <div
       className={`mx-auto flex min-h-[100dvh] w-full max-w-2xl flex-col bg-ftc-bg font-sans text-ftc-text ${MOBILE_NAV_OFFSET_CLASS}`}
     >
       <AppNavigation />
       <header className="sticky top-0 z-10 border-b border-ftc-border-subtle bg-ftc-bg/95 px-4 py-3 backdrop-blur-md sm:px-6 md:top-12">
-        <SkeletonBlock className="h-7 w-32" />
+        <div className="flex items-center justify-between gap-3">
+          <SkeletonBlock className="h-7 w-32" />
+          <SkeletonBlock className="h-10 w-10 shrink-0 rounded-xl" />
+        </div>
         <SkeletonBlock className="mt-3 h-10 w-full rounded-xl" />
-        <div className="mt-3 flex gap-2">
-          <SkeletonBlock className="h-9 w-24 rounded-full" />
-          <SkeletonBlock className="h-9 w-28 rounded-full" />
+        <div className="ftc-tab-pill mt-3 flex gap-1" aria-hidden="true">
+          <SkeletonBlock
+            className={`h-9 flex-1 rounded-full ${activeTab === "dm" ? "opacity-100" : "opacity-60"}`}
+          />
+          <SkeletonBlock
+            className={`h-9 flex-1 rounded-full ${activeTab === "group" ? "opacity-100" : "opacity-60"}`}
+          />
         </div>
       </header>
       <div className="flex-1 px-4 py-3 sm:px-6">
-        <InboxListSkeleton />
+        <InboxListSkeleton variant={activeTab === "group" ? "group" : "dm"} />
       </div>
     </div>
   );
@@ -269,9 +474,26 @@ export function GenericAppLoadingShell() {
   );
 }
 
-export function AppLoadingShell({ pathname }: { pathname: string }) {
+function getInboxTabFromSearch(search: string): "dm" | "group" {
+  const params = new URLSearchParams(search.startsWith("?") ? search.slice(1) : search);
+  return params.get("tab") === "group" ? "group" : "dm";
+}
+
+function showPlannerEventsChrome(role: UserRole | null | undefined): boolean {
+  return role === "promoter" || role === "both";
+}
+
+export function AppLoadingShell({
+  pathname,
+  role,
+  search = "",
+}: {
+  pathname: string;
+  role?: UserRole | null;
+  search?: string;
+}) {
   if (pathname === "/events") {
-    return <EventsPageLoadingShell />;
+    return <EventsPageLoadingShell showPlannerStats={showPlannerEventsChrome(role)} />;
   }
 
   if (/^\/events\/[^/]+\/chat\/?$/.test(pathname)) {
@@ -282,8 +504,20 @@ export function AppLoadingShell({ pathname }: { pathname: string }) {
     return <EventDetailLoadingShell />;
   }
 
+  if (pathname === "/bookings" || pathname.startsWith("/bookings/")) {
+    return <BookingsPageLoadingShell variant={resolveBookingsShellVariant(role)} />;
+  }
+
+  if (pathname === "/booking-plans" || pathname.startsWith("/booking-plans/")) {
+    return <BookingPlansPageLoadingShell />;
+  }
+
+  if (pathname === "/calendar" || pathname.startsWith("/calendar/")) {
+    return <CalendarPageLoadingShell showPlannerSubNav={showPlannerEventsChrome(role)} />;
+  }
+
   if (pathname === "/dm") {
-    return <MessagesInboxLoadingShell />;
+    return <MessagesInboxLoadingShell activeTab={getInboxTabFromSearch(search)} />;
   }
 
   if (pathname.startsWith("/dm/")) {
@@ -292,6 +526,14 @@ export function AppLoadingShell({ pathname }: { pathname: string }) {
 
   if (pathname === "/discover") {
     return <DiscoverPageLoadingShell />;
+  }
+
+  if (pathname === "/notifications" || pathname.startsWith("/notifications/")) {
+    return <NotificationsPageLoadingShell />;
+  }
+
+  if (pathname === "/settings" || pathname.startsWith("/settings/")) {
+    return <ProfilePageLoadingShell />;
   }
 
   if (pathname.startsWith("/profile/") && pathname !== "/profile/setup") {
