@@ -1,4 +1,7 @@
-import { getEventStartInPastError, parseEventDate } from "@/lib/bookingDateTime";
+import {
+  getEventDateValidationError,
+  resolveEventDateKey,
+} from "@/lib/bookingDateTime";
 import type { BookingPlan } from "@/lib/bookingPlans";
 import {
   filterActiveBookings,
@@ -129,19 +132,19 @@ export function getEventDateDisplayLabel(
     return "Unscheduled";
   }
 
-  const parsed = parseEventDate(trimmed);
+  const dateKey = resolveEventDateKey(trimmed);
 
-  if (!parsed.isoDate) {
+  if (!dateKey) {
     return "Unscheduled";
   }
 
   const todayKey = formatLocalDateKey(referenceDate);
 
-  if (parsed.isoDate > todayKey) {
+  if (dateKey > todayKey) {
     return "Upcoming";
   }
 
-  if (parsed.isoDate === todayKey) {
+  if (dateKey === todayKey) {
     return "Today";
   }
 
@@ -295,10 +298,10 @@ export async function getEventById(eventId: string): Promise<Event | null> {
 }
 
 function assertEventStartNotInPast(input: EventInput): void {
-  const pastError = getEventStartInPastError(input.eventDate, input.setTime);
+  const validationError = getEventDateValidationError(input.eventDate, input.setTime);
 
-  if (pastError) {
-    throw new Error(pastError);
+  if (validationError) {
+    throw new Error(validationError);
   }
 }
 

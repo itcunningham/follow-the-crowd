@@ -1,5 +1,6 @@
 import type { Event } from "@/lib/events";
 import { isEventCancelled } from "@/lib/events";
+import { withEventUnlockFieldsFallback } from "@/lib/events/eventQueryFields";
 import { supabase } from "@/lib/supabaseClient";
 
 export type CrewChatUnlockState = {
@@ -53,12 +54,78 @@ export async function countAcceptedCrewDjsForEvent(eventId: string): Promise<num
   return count ?? 0;
 }
 
+async function fetchEventUnlockRow(
+  eventId: string,
+): Promise<Pick<Event, "id" | "status" | "crew_chat_started_at"> | null> {
+  const data = await withEventUnlockFieldsFallback((fields) =>
+    supabase.from("events").select(fields).eq("id", eventId).maybeSingle(),
+  );
+
+  if (!data) {
+    return null;
+  }
+
+  const row = data as unknown as Record<string, unknown>;
+
+  return {
+    id: row.id as string,
+    status: row.status as Event["status"],
+    crew_chat_started_at: normalizeCrewChatStartedAt(
+      row.crew_chat_started_at as string | null | undefined,
+    ),
+  };
+}
+
 export async function getCrewChatUnlockStateForEvent(
-  event: Pick<Event, "id" | "status" | "crew_chat_started_at">,
+  eventOrId: string | Pick<Event, "id" | "status" | "crew_chat_started_at">,
 ): Promise<CrewChatUnlockState> {
-  const acceptedDjCount = await countAcceptedCrewDjsForEvent(event.id);
+  const eventId = typeof eventOrId === "string" ? eventOrId : eventOrId.id;
+  const [acceptedDjCount, unlockRow] = await Promise.all([
+    countAcceptedCrewDjsForEvent(eventId),
+    fetchEventUnlockRow(eventId),
+  ]);
+
+  const event =
+    unlockRow ??
+    (typeof eventOrId === "string"
+      ? null
+      : {
+          id: eventOrId.id,
+          status: eventOrId.status,
+          crew_chat_started_at: normalizeCrewChatStartedAt(eventOrId.crew_chat_started_at),
+        });
+
+  if (!event) {
+    return {
+      acceptedDjCount: 0,
+      crewChatStartedAt: null,
+      isUnlocked: false,
+      canPlannerStart: false,
+    };
+  }
 
   return resolveCrewChatUnlockState(event, acceptedDjCount);
+}
+
+export function logCrewChatUnlockDiagnostics(
+  eventId: string,
+  unlock: CrewChatUnlockState,
+  context: {
+    isOwner: boolean;
+    isPlanner: boolean;
+    role: string | null;
+  },
+): void {
+  console.info("[ftc:crew-chat]", {
+    eventId,
+    crewChatStartedAt: unlock.crewChatStartedAt,
+    acceptedDjCount: unlock.acceptedDjCount,
+    canPlannerStart: unlock.canPlannerStart,
+    isUnlocked: unlock.isUnlocked,
+    isOwner: context.isOwner,
+    isPlanner: context.isPlanner,
+    role: context.role,
+  });
 }
 
 export async function getCrewChatUnlockStateByEventIds(
@@ -112,7 +179,14 @@ export async function startEventCrewChat(eventId: string): Promise<Event> {
     throw error;
   }
 
-  return data as Event;
+  const row = data as unknown as Record<string, unknown>;
+
+  return {
+    ...(row as Event),
+    crew_chat_started_at: normalizeCrewChatStartedAt(
+      row.crew_chat_started_at as string | null | undefined,
+    ),
+  };
 }
 
 export async function ensureEventCrewChatAutoStarted(eventId: string): Promise<Event | null> {
@@ -124,7 +198,18 @@ export async function ensureEventCrewChatAutoStarted(eventId: string): Promise<E
     throw error;
   }
 
-  return (data as Event | null) ?? null;
+  if (!data) {
+    return null;
+  }
+
+  const row = data as unknown as Record<string, unknown>;
+
+  return {
+    ...(row as Event),
+    crew_chat_started_at: normalizeCrewChatStartedAt(
+      row.crew_chat_started_at as string | null | undefined,
+    ),
+  };
 }
 
 export async function shouldPostCrewChatLineupUpdate(

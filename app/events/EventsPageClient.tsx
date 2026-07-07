@@ -18,7 +18,7 @@ import {
   PlannerStatChip,
 } from "@/app/components/planner/PlannerUi";
 import { BookingDateField, BookingSetTimeRangeField } from "@/app/components/BookingDateTimeFields";
-import { getEventStartInPastError, getTodayDateKey } from "@/lib/bookingDateTime";
+import { getEventDateValidationError, getTodayDateKey } from "@/lib/bookingDateTime";
 import EventCoverImageField, {
   emptyEventCoverImageFieldState,
   type EventCoverImageFieldState,
@@ -336,10 +336,10 @@ export default function EventsPageClient({ initialTab }: EventsPageClientProps) 
       return;
     }
 
-    const pastStartError = getEventStartInPastError(form.eventDate, form.setTime);
+    const dateValidationError = getEventDateValidationError(form.eventDate, form.setTime);
 
-    if (pastStartError) {
-      setError(pastStartError);
+    if (dateValidationError) {
+      setError(dateValidationError);
       return;
     }
 

@@ -27,7 +27,7 @@ import {
 import ProfileAvatar from "@/app/components/ProfileAvatar";
 import DjBookingAvailabilityBadge from "@/app/components/DjBookingAvailabilityBadge";
 import { BookingDateField, BookingSetTimeRangeField } from "@/app/components/BookingDateTimeFields";
-import { getEventStartInPastError, getTodayDateKey } from "@/lib/bookingDateTime";
+import { getEventDateValidationError, getTodayDateKey } from "@/lib/bookingDateTime";
 import EventCoverImageField, {
   emptyEventCoverImageFieldState,
   type EventCoverImageFieldState,
@@ -100,6 +100,7 @@ import {
 } from "@/lib/events";
 import {
   getCrewChatUnlockStateForEvent,
+  logCrewChatUnlockDiagnostics,
   startEventCrewChat,
   type CrewChatUnlockState,
 } from "@/lib/events/crewChatUnlock";
@@ -321,7 +322,7 @@ export default function EventDetailPage() {
 
       const [bookings, unlock] = await Promise.all([
         listBookingRequestsForEvent(eventId),
-        getCrewChatUnlockStateForEvent(loadedEvent),
+        getCrewChatUnlockStateForEvent(eventId),
       ]);
       setLineup(bookings);
       setCrewChatUnlock(unlock);
@@ -359,7 +360,7 @@ export default function EventDetailPage() {
 
       if (loadedEvent) {
         setEvent(loadedEvent);
-        const unlock = await getCrewChatUnlockStateForEvent(loadedEvent);
+        const unlock = await getCrewChatUnlockStateForEvent(eventId);
         setCrewChatUnlock(unlock);
       }
 
@@ -393,6 +394,18 @@ export default function EventDetailPage() {
   useEffect(() => {
     loadEventData();
   }, [loadEventData]);
+
+  useEffect(() => {
+    if (!eventId || !crewChatUnlock || !event) {
+      return;
+    }
+
+    logCrewChatUnlockDiagnostics(eventId, crewChatUnlock, {
+      isOwner: Boolean(currentUserId && event.owner_id === currentUserId),
+      isPlanner: canManageEvents(role),
+      role,
+    });
+  }, [crewChatUnlock, currentUserId, event, eventId, role]);
 
   function resetEditCoverState() {
     setEditCoverField(emptyEventCoverImageFieldState);
@@ -429,6 +442,14 @@ export default function EventDetailPage() {
       file,
       removeExisting: false,
     }));
+  }
+
+  function validateEditFormBeforeSave(): string | null {
+    if (!editForm) {
+      return null;
+    }
+
+    return getEventDateValidationError(editForm.eventDate, editForm.setTime);
   }
 
   function showEditFormError(message: string) {
@@ -468,6 +489,14 @@ export default function EventDetailPage() {
 
   async function performSaveEdit(coverChange: EventCoverImageFieldState) {
     if (!event || !editForm) {
+      return;
+    }
+
+    const dateValidationError = validateEditFormBeforeSave();
+
+    if (dateValidationError) {
+      showEditFormError(dateValidationError);
+      setEditConfirmOpen(false);
       return;
     }
 
@@ -559,10 +588,10 @@ export default function EventDetailPage() {
       return;
     }
 
-    const pastStartError = getEventStartInPastError(editForm.eventDate, editForm.setTime);
+    const dateValidationError = validateEditFormBeforeSave();
 
-    if (pastStartError) {
-      showEditFormError(pastStartError);
+    if (dateValidationError) {
+      showEditFormError(dateValidationError);
       return;
     }
 
@@ -940,7 +969,7 @@ export default function EventDetailPage() {
     try {
       const updatedEvent = await startEventCrewChat(event.id);
       setEvent(updatedEvent);
-      const unlock = await getCrewChatUnlockStateForEvent(updatedEvent);
+      const unlock = await getCrewChatUnlockStateForEvent(event.id);
       setCrewChatUnlock(unlock);
     } catch (startError) {
       console.error("Failed to start crew chat:", startError);

@@ -40,6 +40,12 @@ export function parseEventDate(value: string): ParsedEventDate {
     return { isoDate: trimmed, legacyValue: null };
   }
 
+  const isoDatePrefix = trimmed.match(/^(\d{4}-\d{2}-\d{2})(?:[T\s].*)?$/)?.[1];
+
+  if (isoDatePrefix && isIsoDateString(isoDatePrefix)) {
+    return { isoDate: isoDatePrefix, legacyValue: null };
+  }
+
   return { isoDate: "", legacyValue: trimmed };
 }
 
@@ -355,6 +361,9 @@ export const BOOKING_FIELD_LABEL_CLASS = "ftc-label";
 export const EVENT_START_IN_PAST_ERROR =
   "Event start must be in the future. Choose a later date and time.";
 
+export const EVENT_DATE_REQUIRES_PICKER_ERROR =
+  "Choose an event date from the calendar.";
+
 export function getTodayDateKey(): string {
   const now = new Date();
   const year = now.getFullYear();
@@ -371,14 +380,41 @@ export function isDateKeyBeforeToday(isoDate: string): boolean {
   return isoDate.trim() < getTodayDateKey();
 }
 
-export function resolveEventStartDateTime(eventDate: string, setTime: string): Date | null {
-  const { isoDate } = parseEventDate(eventDate);
+export function dateKeyFromLocalDate(date: Date): string {
+  const year = date.getFullYear();
+  const month = padTimePart(date.getMonth() + 1);
+  const day = padTimePart(date.getDate());
+  return `${year}-${month}-${day}`;
+}
 
-  if (!isoDate) {
+export function resolveEventDateKey(eventDate: string): string | null {
+  const parsed = parseEventDate(eventDate);
+
+  if (parsed.isoDate) {
+    return parsed.isoDate;
+  }
+
+  if (!parsed.legacyValue) {
     return null;
   }
 
-  const [year, month, day] = isoDate.split("-").map(Number);
+  const parsedMs = Date.parse(parsed.legacyValue);
+
+  if (Number.isNaN(parsedMs)) {
+    return null;
+  }
+
+  return dateKeyFromLocalDate(new Date(parsedMs));
+}
+
+export function resolveEventStartDateTime(eventDate: string, setTime: string): Date | null {
+  const dateKey = resolveEventDateKey(eventDate);
+
+  if (!dateKey) {
+    return null;
+  }
+
+  const [year, month, day] = dateKey.split("-").map(Number);
   const parsedTime = parseSetTimeRange(setTime);
 
   if (parsedTime.start) {
@@ -389,34 +425,55 @@ export function resolveEventStartDateTime(eventDate: string, setTime: string): D
   return new Date(year, month - 1, day, 0, 0, 0, 0);
 }
 
-export function isEventStartInPast(eventDate: string, setTime: string): boolean {
-  const { isoDate, legacyValue } = parseEventDate(eventDate);
+export function getEventDateValidationError(eventDate: string, setTime: string): string | null {
+  const trimmedDate = eventDate.trim();
 
-  if (legacyValue && !isoDate) {
-    return false;
+  if (!trimmedDate) {
+    return null;
   }
 
-  if (!isoDate) {
-    return false;
+  const parsed = parseEventDate(eventDate);
+  const dateKey = resolveEventDateKey(eventDate);
+
+  if (!dateKey) {
+    return EVENT_DATE_REQUIRES_PICKER_ERROR;
   }
 
-  if (isDateKeyBeforeToday(isoDate)) {
-    return true;
+  if (parsed.legacyValue && !parsed.isoDate) {
+    if (isDateKeyBeforeToday(dateKey)) {
+      return EVENT_START_IN_PAST_ERROR;
+    }
+
+    return EVENT_DATE_REQUIRES_PICKER_ERROR;
   }
 
-  if (isoDate !== getTodayDateKey()) {
-    return false;
+  if (isDateKeyBeforeToday(dateKey)) {
+    return EVENT_START_IN_PAST_ERROR;
+  }
+
+  if (dateKey !== getTodayDateKey()) {
+    return null;
   }
 
   const startDateTime = resolveEventStartDateTime(eventDate, setTime);
 
   if (!startDateTime) {
-    return false;
+    return null;
   }
 
-  return startDateTime.getTime() < Date.now();
+  return startDateTime.getTime() < Date.now() ? EVENT_START_IN_PAST_ERROR : null;
+}
+
+export function isEventStartInPast(eventDate: string, setTime: string): boolean {
+  return getEventDateValidationError(eventDate, setTime) === EVENT_START_IN_PAST_ERROR;
 }
 
 export function getEventStartInPastError(eventDate: string, setTime: string): string | null {
-  return isEventStartInPast(eventDate, setTime) ? EVENT_START_IN_PAST_ERROR : null;
+  const error = getEventDateValidationError(eventDate, setTime);
+
+  if (error === EVENT_START_IN_PAST_ERROR || error === EVENT_DATE_REQUIRES_PICKER_ERROR) {
+    return error;
+  }
+
+  return null;
 }
