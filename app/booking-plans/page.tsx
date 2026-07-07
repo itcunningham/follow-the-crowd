@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
-import { BookingPlansPageLoadingShell } from "@/app/components/skeleton/Skeleton";
+import { BookingPlanListSkeleton, BookingPlansPageLoadingShell } from "@/app/components/skeleton/Skeleton";
 import AppNavigation, { MOBILE_NAV_OFFSET_CLASS } from "@/app/components/AppNavigation";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
 import PlannerEventsSubNav from "@/app/components/PlannerEventsSubNav";
@@ -302,7 +302,7 @@ export default function BookingPlansPage() {
           ) : null}
 
           {loadingPlans ? (
-            <p className="text-sm text-ftc-text-muted">Loading booking plans...</p>
+            <BookingPlanListSkeleton count={3} />
           ) : error && plans.length === 0 ? (
             <PlannerInlineError message={error} />
           ) : plans.length === 0 ? (

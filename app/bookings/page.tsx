@@ -4,8 +4,10 @@ import Link from "next/link";
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
+  BookingsContentSkeleton,
   BookingsPageLoadingShell,
   resolveBookingsShellVariant,
+  type BookingsContentVariant,
 } from "@/app/components/skeleton/Skeleton";
 import AppNavigation, { MOBILE_NAV_OFFSET_CLASS } from "@/app/components/AppNavigation";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
@@ -238,6 +240,25 @@ function filterReceivedBookingsByView(
   }
 
   return bookings.filter((booking) => booking.status === view);
+}
+
+function getBookingsContentVariant(
+  role: UserRole | null,
+  sectionTab: BookingsSectionTab,
+): BookingsContentVariant {
+  if (role === "dj") {
+    return "received-gigs";
+  }
+
+  if (role === "both" && sectionTab === "received") {
+    return "received-gigs";
+  }
+
+  if (role === "promoter" || role === "both") {
+    return "sent-campaigns";
+  }
+
+  return "received-gigs";
 }
 
 export default function BookingsPage() {
@@ -943,7 +964,10 @@ function BookingsPageContent() {
   if (loadingAccess) {
     return (
       <OnboardingGuard>
-        <BookingsPageLoadingShell variant={resolveBookingsShellVariant(role)} />
+        <BookingsPageLoadingShell
+          variant={resolveBookingsShellVariant(role)}
+          content={getBookingsContentVariant(role, sectionTab)}
+        />
       </OnboardingGuard>
     );
   }
@@ -1348,7 +1372,10 @@ function BookingsPageContent() {
 
           {sectionTab === "sent" && showSentTab ? (
             loadingList ? (
-              <p className="text-sm text-ftc-text-muted">Loading sent bookings...</p>
+              <BookingsContentSkeleton
+                variant={resolveBookingsShellVariant(role)}
+                content="sent-campaigns"
+              />
             ) : error && !createOpen ? (
               <p className="text-sm text-red-400">{error}</p>
             ) : (
@@ -1517,7 +1544,10 @@ function BookingsPageContent() {
             <DjAvailabilityManager description="Manage your availability and received bookings." />
           ) : isDjGigsView || (sectionTab === "received" && showReceivedTab) ? (
             loadingList ? (
-              <p className="text-sm text-ftc-text-muted">Loading received bookings...</p>
+              <BookingsContentSkeleton
+                variant={resolveBookingsShellVariant(role)}
+                content="received-gigs"
+              />
             ) : error && !createOpen ? (
               <p className="text-sm text-red-400">{error}</p>
             ) : receivedBookings.length === 0 ? (

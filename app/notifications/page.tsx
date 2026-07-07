@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { InboxListSkeleton } from "@/app/components/skeleton/Skeleton";
+import { NotificationsListSkeleton } from "@/app/components/skeleton/Skeleton";
 import AppNavigation, { MOBILE_NAV_OFFSET_CLASS } from "@/app/components/AppNavigation";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
 import { supabase } from "@/lib/supabaseClient";
@@ -179,9 +179,7 @@ export default function NotificationsPage() {
 
         <div className="flex-1">
           {loading ? (
-            <div className="px-4 py-3 sm:px-6">
-              <InboxListSkeleton count={5} />
-            </div>
+            <NotificationsListSkeleton count={5} />
           ) : error ? (
             <p className="px-4 py-6 text-sm text-red-400 sm:px-6">{error}</p>
           ) : notifications.length === 0 ? (
