@@ -8,12 +8,16 @@ type CalendarMonthNavProps = {
   monthStart: Date;
   onMonthStartChange: (date: Date) => void;
   onBeforeNavigate?: () => void;
+  disablePreviousMonth?: boolean;
+  minDate?: string;
 };
 
 export default function CalendarMonthNav({
   monthStart,
   onMonthStartChange,
   onBeforeNavigate,
+  disablePreviousMonth = false,
+  minDate,
 }: CalendarMonthNavProps) {
   const monthLabelRef = useRef<HTMLButtonElement>(null);
   const monthYearPickerRef = useRef<HTMLDivElement>(null);
@@ -57,7 +61,17 @@ export default function CalendarMonthNav({
 
   function handleConfirmMonthYear(month: number, year: number) {
     onBeforeNavigate?.();
-    onMonthStartChange(new Date(year, month, 1));
+
+    const selectedMonthStart = new Date(year, month, 1);
+
+    if (minDate) {
+      const [minYear, minMonth] = minDate.split("-").map(Number);
+      const minMonthStart = new Date(minYear, minMonth - 1, 1);
+      onMonthStartChange(selectedMonthStart < minMonthStart ? minMonthStart : selectedMonthStart);
+    } else {
+      onMonthStartChange(selectedMonthStart);
+    }
+
     setMonthYearPickerOpen(false);
   }
 
@@ -67,7 +81,8 @@ export default function CalendarMonthNav({
         type="button"
         aria-label="Previous month"
         onClick={() => navigateMonth(-1)}
-        className="flex h-9 w-9 items-center justify-center rounded-lg border border-ftc-border bg-ftc-bg-elevated/60 text-ftc-text-secondary transition hover:border-ftc-primary/30 hover:text-ftc-primary"
+        disabled={disablePreviousMonth}
+        className="flex h-9 w-9 items-center justify-center rounded-lg border border-ftc-border bg-ftc-bg-elevated/60 text-ftc-text-secondary transition hover:border-ftc-primary/30 hover:text-ftc-primary disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-ftc-border disabled:hover:text-ftc-text-secondary"
       >
         <svg
           aria-hidden="true"

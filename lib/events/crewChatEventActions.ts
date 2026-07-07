@@ -21,13 +21,16 @@ export function computeCrewChatEventActions(input: {
   const isUnlocked = unlock?.isUnlocked === true;
   const canPlannerStart = unlock?.canPlannerStart === true;
   const acceptedDjCount = unlock?.acceptedDjCount ?? 0;
+  const crewChatStartedAt = unlock?.crewChatStartedAt ?? null;
 
   const showStartCrewChatAction =
     isOwner && isPlanner && !eventIsCancelled && canPlannerStart;
 
   const showEventGroupChatAction =
+    !showStartCrewChatAction &&
     !eventIsCancelled &&
     isUnlocked &&
+    crewChatStartedAt !== null &&
     !canPlannerStart &&
     acceptedDjCount >= 1 &&
     ((isOwner && isPlanner) || hasAcceptedBooking);

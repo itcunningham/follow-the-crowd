@@ -380,6 +380,94 @@ export function isDateKeyBeforeToday(isoDate: string): boolean {
   return isoDate.trim() < getTodayDateKey();
 }
 
+export function isDateKeyBeforeMin(isoDate: string, minDate: string): boolean {
+  if (!isIsoDateString(isoDate) || !isIsoDateString(minDate)) {
+    return false;
+  }
+
+  return isoDate.trim() < minDate.trim();
+}
+
+export function resolveMinEventDateKey(minDate?: string): string {
+  return minDate?.trim() || getTodayDateKey();
+}
+
+export function resolvePickerEventDateValue(
+  eventDate: string,
+  minDate?: string,
+): string {
+  const effectiveMinDate = resolveMinEventDateKey(minDate);
+  const parsed = parseEventDate(eventDate);
+
+  if (parsed.isoDate) {
+    return isDateKeyBeforeMin(parsed.isoDate, effectiveMinDate) ? "" : parsed.isoDate;
+  }
+
+  if (parsed.legacyValue) {
+    return "";
+  }
+
+  return eventDate;
+}
+
+export function guardEventDatePickerChange(
+  nextValue: string,
+  minDate?: string,
+): string | null {
+  const parsed = parseEventDate(nextValue);
+  const isoDate = parsed.isoDate.trim();
+
+  if (!isoDate) {
+    return nextValue;
+  }
+
+  if (isDateKeyBeforeMin(isoDate, resolveMinEventDateKey(minDate))) {
+    return null;
+  }
+
+  return isoDate;
+}
+
+export function isSavedEventDateBeforeMin(
+  eventDate: string,
+  minDate?: string,
+): boolean {
+  const dateKey = resolveEventDateKey(eventDate);
+
+  if (!dateKey) {
+    return false;
+  }
+
+  return isDateKeyBeforeMin(dateKey, resolveMinEventDateKey(minDate));
+}
+
+export function savedEventDateNeedsPickerReselection(
+  eventDate: string,
+  minDate?: string,
+): boolean {
+  const parsed = parseEventDate(eventDate);
+
+  if (parsed.legacyValue) {
+    return true;
+  }
+
+  if (!parsed.isoDate) {
+    return false;
+  }
+
+  return isDateKeyBeforeMin(parsed.isoDate, resolveMinEventDateKey(minDate));
+}
+
+export function sanitizePrefilledEventDateKey(eventDate: string, minDate?: string): string {
+  const dateKey = resolveEventDateKey(eventDate);
+
+  if (!dateKey || isDateKeyBeforeMin(dateKey, resolveMinEventDateKey(minDate))) {
+    return "";
+  }
+
+  return dateKey;
+}
+
 export function dateKeyFromLocalDate(date: Date): string {
   const year = date.getFullYear();
   const month = padTimePart(date.getMonth() + 1);

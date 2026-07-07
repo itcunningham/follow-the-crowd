@@ -18,7 +18,7 @@ import {
   PlannerStatChip,
 } from "@/app/components/planner/PlannerUi";
 import { BookingDateField, BookingSetTimeRangeField } from "@/app/components/BookingDateTimeFields";
-import { getEventDateValidationError, getTodayDateKey } from "@/lib/bookingDateTime";
+import { getEventDateValidationError, getTodayDateKey, sanitizePrefilledEventDateKey } from "@/lib/bookingDateTime";
 import EventCoverImageField, {
   emptyEventCoverImageFieldState,
   type EventCoverImageFieldState,
@@ -167,6 +167,13 @@ export default function EventsPageClient({ initialTab }: EventsPageClientProps) 
     [events],
   );
   const filteredEvents = isHistoryTab ? historyEvents : upcomingEvents;
+  const createFormDateValidationError = useMemo(() => {
+    if (!createOpen || createStep !== "form") {
+      return null;
+    }
+
+    return getEventDateValidationError(form.eventDate, form.setTime);
+  }, [createOpen, createStep, form.eventDate, form.setTime]);
 
   const isPlanner = canManageEvents(role);
 
@@ -263,13 +270,14 @@ export default function EventsPageClient({ initialTab }: EventsPageClientProps) 
   }, [loadingAccess, isPlanner, router]);
 
   async function openCreateFlow(options?: { eventDate?: string; initialStep?: CreateStep }) {
+    const prefilledEventDate = sanitizePrefilledEventDateKey(options?.eventDate ?? "");
     setCreateOpen(true);
     setCreateStep(options?.initialStep ?? "source");
     setForm({
       ...emptyEventForm,
-      eventDate: options?.eventDate ?? "",
+      eventDate: prefilledEventDate,
     });
-    setEventDateOverride(options?.eventDate ?? null);
+    setEventDateOverride(prefilledEventDate || null);
     setSelectedPlanId(null);
     setError(null);
     setCoverField(emptyEventCoverImageFieldState);
@@ -531,11 +539,23 @@ export default function EventsPageClient({ initialTab }: EventsPageClientProps) 
                     multiline
                   />
 
-                  {error ? <PlannerInlineError message={error} /> : null}
+                  {createFormDateValidationError ? (
+                    <PlannerInlineError message={createFormDateValidationError} />
+                  ) : null}
+
+                  {error && error !== createFormDateValidationError ? (
+                    <PlannerInlineError message={error} />
+                  ) : null}
 
                   <button
                     type="submit"
-                    disabled={saving}
+                    disabled={saving || Boolean(createFormDateValidationError)}
+                    aria-disabled={saving || Boolean(createFormDateValidationError)}
+                    title={
+                      createFormDateValidationError
+                        ? createFormDateValidationError
+                        : undefined
+                    }
                     className="ftc-btn-primary px-5 py-3 text-sm uppercase tracking-wide disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {saving ? "Saving..." : "Save event"}

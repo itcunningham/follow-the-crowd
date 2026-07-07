@@ -7,6 +7,7 @@ import BookingSelectedDjsContext from "@/app/components/booking/BookingSelectedD
 import { BookingRateField } from "@/app/components/BookingRateField";
 import BookingRateModeField from "@/app/components/booking/BookingRateModeField";
 import type { BookingRequestInput } from "@/lib/bookingRequests";
+import { getEventDateValidationError } from "@/lib/bookingDateTime";
 import { isPositiveWholeDollarRate } from "@/lib/bookingRate";
 import type { UserProfile } from "@/lib/user/currentUser";
 
@@ -36,10 +37,13 @@ export default function BookingRequestModal({
   onSubmit: (input: BookingRequestInput) => Promise<void>;
 }) {
   const [form, setForm] = useState<BookingRequestInput>(emptyForm);
+  const [localError, setLocalError] = useState<string | null>(null);
+  const dateValidationError = getEventDateValidationError(form.eventDate, form.setTime);
 
   useEffect(() => {
     if (!open) {
       setForm(emptyForm);
+      setLocalError(null);
     }
   }, [open]);
 
@@ -74,6 +78,12 @@ export default function BookingRequestModal({
       return;
     }
 
+    if (dateValidationError) {
+      setLocalError(dateValidationError);
+      return;
+    }
+
+    setLocalError(null);
     await onSubmit(form);
   }
 
@@ -140,7 +150,11 @@ export default function BookingRequestModal({
             multiline
           />
 
-          {error ? <p className="text-sm text-red-400">{error}</p> : null}
+          {(localError || dateValidationError || error) ? (
+            <p className="text-sm text-red-400">
+              {localError ?? dateValidationError ?? error}
+            </p>
+          ) : null}
 
           <div className="flex flex-col gap-3 pt-2 sm:flex-row">
             <button
@@ -153,7 +167,7 @@ export default function BookingRequestModal({
             </button>
             <button
               type="submit"
-              disabled={submitting}
+              disabled={submitting || Boolean(dateValidationError)}
               className="flex-1 ftc-btn-primary w-full px-4 py-3 text-sm uppercase tracking-wide disabled:cursor-not-allowed disabled:opacity-50"
             >
               {submitting ? "Sending..." : "Send booking request"}

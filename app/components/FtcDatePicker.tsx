@@ -5,7 +5,12 @@ import { createPortal } from "react-dom";
 import CalendarMonthNav from "@/app/components/CalendarMonthNav";
 import {
   BOOKING_DATE_TIME_INPUT_CLASS,
+  guardEventDatePickerChange,
   parseEventDate,
+  resolveMinEventDateKey,
+  resolvePickerEventDateValue,
+  savedEventDateNeedsPickerReselection,
+  isSavedEventDateBeforeMin,
 } from "@/lib/bookingDateTime";
 import {
   getCalendarWeekRows,
@@ -16,15 +21,25 @@ import {
 } from "@/lib/calendar";
 import { formatAvailabilityDateLabel } from "@/lib/djAvailability";
 
-function getMonthStartFromValue(value: string): Date {
+function getMonthStartFromMinDate(minDate: string): Date {
+  const [year, month] = minDate.split("-").map(Number);
+  return new Date(year, month - 1, 1);
+}
+
+function clampMonthStartToMin(monthStart: Date, minDate: string): Date {
+  const minMonthStart = getMonthStartFromMinDate(minDate);
+  return monthStart < minMonthStart ? minMonthStart : monthStart;
+}
+
+function getMonthStartFromValue(value: string, minDate: string): Date {
   const parsed = parseEventDate(value);
 
   if (parsed.isoDate) {
     const [year, month] = parsed.isoDate.split("-").map(Number);
-    return new Date(year, month - 1, 1);
+    return clampMonthStartToMin(new Date(year, month - 1, 1), minDate);
   }
 
-  return getMonthStart(new Date());
+  return clampMonthStartToMin(getMonthStart(new Date()), minDate);
 }
 
 function formatPickerButtonLabel(value: string): string {
@@ -89,10 +104,14 @@ export default function FtcDatePicker({
   className?: string;
 }) {
   const pickerId = useId();
-  const parsed = parseEventDate(value);
+  const effectiveMinDate = resolveMinEventDateKey(minDate);
+  const pickerValue = resolvePickerEventDateValue(value, effectiveMinDate);
+  const parsed = parseEventDate(pickerValue);
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
-  const [monthStart, setMonthStart] = useState(() => getMonthStartFromValue(value));
+  const [monthStart, setMonthStart] = useState(() =>
+    getMonthStartFromValue(pickerValue, effectiveMinDate),
+  );
 
   useEffect(() => {
     setMounted(true);
@@ -103,8 +122,8 @@ export default function FtcDatePicker({
       return;
     }
 
-    setMonthStart(getMonthStartFromValue(value));
-  }, [open, value]);
+    setMonthStart(getMonthStartFromValue(pickerValue, effectiveMinDate));
+  }, [effectiveMinDate, open, pickerValue]);
 
   useEffect(() => {
     if (!open) {
@@ -132,15 +151,11 @@ export default function FtcDatePicker({
     : null;
   const today = new Date();
   const calendarWeeks = getCalendarWeekRows(monthStart);
-  const buttonLabel = formatPickerButtonLabel(value);
+  const buttonLabel = formatPickerButtonLabel(pickerValue);
   const hasValue = Boolean(parsed.isoDate);
 
   function isDayDisabled(day: Date): boolean {
-    if (!minDate) {
-      return false;
-    }
-
-    return toDateKey(day) < minDate;
+    return toDateKey(day) < effectiveMinDate;
   }
 
   function handleSelectDay(day: Date) {
@@ -148,9 +163,22 @@ export default function FtcDatePicker({
       return;
     }
 
-    onChange(toDateKey(day));
+    const nextValue = guardEventDatePickerChange(toDateKey(day), effectiveMinDate);
+
+    if (!nextValue) {
+      return;
+    }
+
+    onChange(nextValue);
     setOpen(false);
   }
+
+  function handleMonthStartChange(nextMonthStart: Date) {
+    setMonthStart(clampMonthStartToMin(nextMonthStart, effectiveMinDate));
+  }
+
+  const minMonthStart = getMonthStartFromMinDate(effectiveMinDate);
+  const canNavigateToPreviousMonth = monthStart > minMonthStart;
 
   function openPicker() {
     if (disabled) {
@@ -189,7 +217,12 @@ export default function FtcDatePicker({
         </div>
 
         <div className="px-4 py-4">
-          <CalendarMonthNav monthStart={monthStart} onMonthStartChange={setMonthStart} />
+          <CalendarMonthNav
+            monthStart={monthStart}
+            onMonthStartChange={handleMonthStartChange}
+            disablePreviousMonth={!canNavigateToPreviousMonth}
+            minDate={effectiveMinDate}
+          />
 
           <div className="mt-4 rounded-2xl border border-ftc-border bg-ftc-bg-elevated/40">
             <div className="grid grid-cols-7 border-b border-ftc-border bg-ftc-bg-elevated/60">
@@ -226,6 +259,7 @@ export default function FtcDatePicker({
                       type="button"
                       onClick={() => handleSelectDay(day)}
                       disabled={isDisabledDay}
+                      tabIndex={isDisabledDay ? -1 : 0}
                       aria-label={day.toLocaleDateString(undefined, {
                         weekday: "long",
                         month: "long",
@@ -236,7 +270,7 @@ export default function FtcDatePicker({
                       aria-disabled={isDisabledDay}
                       className={`flex h-9 items-center justify-center rounded-lg border text-sm transition ${
                         isDisabledDay
-                          ? "cursor-not-allowed border-transparent text-ftc-text-muted/40"
+                          ? "pointer-events-none cursor-not-allowed border-transparent text-ftc-text-muted/40"
                           : isSelected
                             ? "border-0 bg-ftc-primary text-ftc-bg"
                             : isToday
@@ -263,7 +297,7 @@ export default function FtcDatePicker({
         value={parsed.isoDate}
         readOnly
         required={required && !parsed.legacyValue}
-        min={minDate}
+        min={effectiveMinDate}
         tabIndex={-1}
         aria-hidden="true"
         className="pointer-events-none absolute h-0 w-0 opacity-0"

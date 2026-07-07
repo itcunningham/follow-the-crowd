@@ -15,8 +15,13 @@ import {
   defaultStartWheelTime,
   extractClockDisplay,
   formatTimeButtonLabel,
+  guardEventDatePickerChange,
+  isSavedEventDateBeforeMin,
   parseEventDate,
   parseSetTimeRange,
+  resolveMinEventDateKey,
+  resolvePickerEventDateValue,
+  savedEventDateNeedsPickerReselection,
   wheelTimeToClockParts,
   type Meridiem,
   type WheelTimeValue,
@@ -36,20 +41,42 @@ export function BookingDateField({
   minDate?: string;
 }) {
   const parsed = parseEventDate(value);
+  const effectiveMinDate = resolveMinEventDateKey(minDate);
+  const pickerValue = resolvePickerEventDateValue(value, effectiveMinDate);
+  const needsPickerReselection = savedEventDateNeedsPickerReselection(value, effectiveMinDate);
+  const savedDateIsPast = isSavedEventDateBeforeMin(value, effectiveMinDate);
+  const savedDateLabel = parsed.legacyValue ?? parsed.isoDate;
+
+  function handleDateChange(nextValue: string) {
+    const guarded = guardEventDatePickerChange(nextValue, effectiveMinDate);
+
+    if (guarded === null) {
+      return;
+    }
+
+    onChange(guarded);
+  }
 
   return (
     <label className="block">
       <span className={BOOKING_FIELD_LABEL_CLASS}>{label}</span>
-      {parsed.legacyValue ? (
+      {needsPickerReselection && savedDateLabel ? (
         <p className="mb-2 rounded-lg border border-ftc-border bg-ftc-bg-elevated/50 px-3 py-2 text-xs text-ftc-text-secondary">
-          Saved date: <span className="text-ftc-text">{parsed.legacyValue}</span>
+          Saved date: <span className="text-ftc-text">{savedDateLabel}</span>
+          {savedDateIsPast ? (
+            <span className="mt-1 block text-[var(--ftc-color-danger)]">
+              Choose today or a future date from the calendar.
+            </span>
+          ) : (
+            <span className="mt-1 block">Choose a date from the calendar.</span>
+          )}
         </p>
       ) : null}
       <FtcDatePicker
-        value={value}
-        onChange={onChange}
-        required={required && !parsed.legacyValue}
-        minDate={minDate}
+        value={pickerValue}
+        onChange={handleDateChange}
+        required={required && needsPickerReselection}
+        minDate={effectiveMinDate}
         ariaLabel={label}
       />
     </label>

@@ -16,6 +16,7 @@ import DjAvailabilityManager from "@/app/components/DjAvailabilityManager";
 import DjBookingAvailabilityBadge from "@/app/components/DjBookingAvailabilityBadge";
 import ProfileAvatar from "@/app/components/ProfileAvatar";
 import { BookingDateField, BookingSetTimeRangeField } from "@/app/components/BookingDateTimeFields";
+import { getEventDateValidationError } from "@/lib/bookingDateTime";
 import { BookingRateField } from "@/app/components/BookingRateField";
 import BookingRateModeField from "@/app/components/booking/BookingRateModeField";
 import ArchiveAllBookingRequestsButton from "@/app/components/ArchiveAllBookingRequestsButton";
@@ -755,6 +756,13 @@ function BookingsPageContent() {
 
     if (form.rateMode !== "open" && !form.fee.trim()) {
       setError("Please enter a rate for fixed offers.");
+      return;
+    }
+
+    const dateValidationError = getEventDateValidationError(form.eventDate, form.setTime);
+
+    if (dateValidationError) {
+      setError(dateValidationError);
       return;
     }
 

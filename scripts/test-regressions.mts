@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
 import {
   getEventDateValidationError,
+  guardEventDatePickerChange,
   isEventStartSaveBlocked,
+  resolvePickerEventDateValue,
 } from "../lib/bookingDateTime";
 import { computeCrewChatEventActions } from "../lib/events/crewChatEventActions";
 import type { CrewChatUnlockState } from "../lib/events/crewChatUnlock";
@@ -87,12 +89,40 @@ function testZeroAcceptedDjsShowsNoCrewChatAction() {
   assert.equal(actions.showEventGroupChatAction, false);
 }
 
+function testPastPickerDatesAreRejected() {
+  assert.equal(guardEventDatePickerChange("2025-01-08"), null);
+  assert.equal(resolvePickerEventDateValue("2025-01-08"), "");
+  assert.equal(guardEventDatePickerChange("2027-01-08"), "2027-01-08");
+}
+
+function testConflictingCrewChatFlagsPreferStartAction() {
+  const unlock: CrewChatUnlockState = {
+    acceptedDjCount: 1,
+    crewChatStartedAt: null,
+    isUnlocked: true,
+    canPlannerStart: true,
+  };
+
+  const actions = computeCrewChatEventActions({
+    unlock,
+    isOwner: true,
+    isPlanner: true,
+    eventIsCancelled: false,
+    hasAcceptedBooking: false,
+  });
+
+  assert.equal(actions.showStartCrewChatAction, true);
+  assert.equal(actions.showEventGroupChatAction, false);
+}
+
 function main() {
   testPastEventDatesAreBlocked();
   testFutureEventDatesAreAllowed();
+  testPastPickerDatesAreRejected();
   testOneAcceptedDjWithNullStartShowsStartAction();
   testOneAcceptedDjWithStartedAtShowsGroupChat();
   testZeroAcceptedDjsShowsNoCrewChatAction();
+  testConflictingCrewChatFlagsPreferStartAction();
   console.log("All regression checks passed.");
 }
 

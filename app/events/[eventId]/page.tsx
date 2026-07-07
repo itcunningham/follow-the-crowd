@@ -1659,7 +1659,7 @@ export default function EventDetailPage() {
                 Open booking conversation
               </EventDetailPrimaryAction>
             ) : null}
-            {showEventGroupChatAction ? (
+            {showEventGroupChatAction && !showStartCrewChatAction ? (
               <div className="flex min-w-0 flex-1 items-center gap-1">
                 <div className="min-w-0 flex-1">
                   <EventDetailSecondaryAction href={getEventCrewChatLink(event.id)}>

@@ -9,6 +9,7 @@ import OnboardingGuard from "@/app/components/OnboardingGuard";
 import PlannerEventsSubNav from "@/app/components/PlannerEventsSubNav";
 import { PlannerFormCard, PlannerFormField, PlannerInlineError } from "@/app/components/planner/PlannerUi";
 import { BookingDateField, BookingSetTimeRangeField } from "@/app/components/BookingDateTimeFields";
+import { getEventDateValidationError } from "@/lib/bookingDateTime";
 import { BookingRateField } from "@/app/components/BookingRateField";
 import {
   createBookingPlan,
@@ -160,6 +161,13 @@ export default function BookingPlansPage() {
       !form.fee.trim()
     ) {
       setError("Please fill in all required plan fields.");
+      return;
+    }
+
+    const dateValidationError = getEventDateValidationError(form.eventDate, form.setTime);
+
+    if (dateValidationError) {
+      setError(dateValidationError);
       return;
     }
 
