@@ -56,7 +56,19 @@ Every agent response must include:
 
 ---
 
-## 5. FTC product rules
+## 5. Pre-code decision ladder
+
+Before writing code, walk this ladder top to bottom and **stop at the first rung that holds**:
+
+1. **Does this need to exist?** → No: skip it.
+2. **Already in this codebase?** → Reuse it; do not duplicate.
+3. **Stdlib does it?** → Use stdlib.
+4. **Native platform feature?** → Use it.
+5. **Installed dependency?** → Use an existing package.
+6. **One line?** → One line.
+7. **Only then:** the minimum that works.
+
+## 6. FTC product rules
 
 - **MVP-first** — smallest reliable version.
 - **Mobile-first** at **390px** width.
