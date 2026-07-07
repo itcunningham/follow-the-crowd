@@ -17,7 +17,7 @@ import EventDetailMetaList, {
   EventDetailOverlayButton,
 } from "@/app/components/event-detail/EventDetailLayout";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
-import { EventDetailSkeleton } from "@/app/components/skeleton/Skeleton";
+import { EventDetailLoadingShell } from "@/app/components/skeleton/Skeleton";
 import {
   PlannerEmptyPanel,
   PlannerFilterPills,
@@ -1027,7 +1027,11 @@ export default function EventDetailPage() {
       Boolean(viewerBooking?.conversation_id && !hideOpenBookingConversation));
 
   if (loading) {
-    return <EventDetailSkeleton />;
+    return (
+      <OnboardingGuard>
+        <EventDetailLoadingShell />
+      </OnboardingGuard>
+    );
   }
 
   if (!event) {

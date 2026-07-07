@@ -5,7 +5,7 @@ import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "rea
 import { useRouter, useSearchParams } from "next/navigation";
 import AppNavigation, { MOBILE_NAV_OFFSET_CLASS } from "@/app/components/AppNavigation";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
-import { InboxListSkeleton } from "@/app/components/skeleton/Skeleton";
+import { InboxListSkeleton, MessagesInboxLoadingShell } from "@/app/components/skeleton/Skeleton";
 import MessagesInboxComposeButton from "@/app/components/dm/MessagesInboxComposeButton";
 import MessagesInboxRow, {
   MessagesGroupInboxRow,
@@ -293,18 +293,7 @@ function DirectMessagesEmptyState({ compact = false }: { compact?: boolean }) {
 
 export default function DmInboxPage() {
   return (
-    <Suspense
-      fallback={
-        <OnboardingGuard>
-          <div
-            className={`mx-auto flex min-h-[100dvh] w-full max-w-2xl flex-col bg-ftc-bg font-sans text-ftc-text ${MOBILE_NAV_OFFSET_CLASS}`}
-          >
-            <AppNavigation />
-            <p className="px-4 py-4 text-sm text-ftc-text-muted sm:px-6">Loading messages...</p>
-          </div>
-        </OnboardingGuard>
-      }
-    >
+    <Suspense fallback={<MessagesInboxLoadingShell />}>
       <DmInboxPageContent />
     </Suspense>
   );

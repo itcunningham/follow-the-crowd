@@ -25,7 +25,7 @@ import EventCoverImageField, {
 } from "@/app/components/events/EventCoverImageField";
 import EventFallbackColourField from "@/app/components/events/EventFallbackColourField";
 import { EventCoverImageListThumb } from "@/app/components/events/EventCoverImageDisplay";
-import { EventListSkeleton, SkeletonBlock } from "@/app/components/skeleton/Skeleton";
+import { EventListSkeleton, EventsPageLoadingShell } from "@/app/components/skeleton/Skeleton";
 import type { EventSelectableFallbackColourKey } from "@/lib/events/eventFallbackColour";
 import { listBookingPlans, type BookingPlan } from "@/lib/bookingPlans";
 import {
@@ -376,18 +376,7 @@ export default function EventsPageClient({ initialTab }: EventsPageClientProps) 
   if (loadingAccess) {
     return (
       <OnboardingGuard>
-        <div
-          className={`mx-auto min-h-[100dvh] w-full max-w-2xl bg-ftc-bg font-sans text-ftc-text ${MOBILE_NAV_OFFSET_CLASS}`}
-        >
-          <AppNavigation />
-          <header className="ftc-page-header px-4 py-4 sm:px-6 md:pt-4">
-            <SkeletonBlock className="h-7 w-24" />
-            <SkeletonBlock className="mt-2 h-4 w-56 max-w-full" />
-          </header>
-          <div className="px-4 py-4 sm:px-6">
-            <EventListSkeleton showPlannerStats />
-          </div>
-        </div>
+        <EventsPageLoadingShell showPlannerStats />
       </OnboardingGuard>
     );
   }

@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import EventsPageLoadingFallback from "./EventsPageLoadingFallback";
 import EventsPageClient from "./EventsPageClient";
 
 type EventsPageProps = {
@@ -17,13 +18,7 @@ export default async function EventsPage({ searchParams }: EventsPageProps) {
   const params = await searchParams;
 
   return (
-    <Suspense
-      fallback={
-        <div className="flex min-h-[100dvh] items-center justify-center bg-ftc-bg text-sm text-ftc-text-muted">
-          Loading...
-        </div>
-      }
-    >
+    <Suspense fallback={<EventsPageLoadingFallback />}>
       <EventsPageClient initialTab={readTabParam(params.tab)} />
     </Suspense>
   );

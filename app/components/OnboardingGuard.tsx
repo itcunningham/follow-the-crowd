@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import FtcBrandMotionLazy from "@/app/components/brand/FtcBrandMotionLazy";
+import { AppLoadingShell } from "@/app/components/skeleton/Skeleton";
 import {
   ensureAuthenticatedUserProfileRow,
   getCurrentAuthUser,
@@ -103,11 +104,7 @@ export default function OnboardingGuard({ children }: { children: React.ReactNod
       );
     }
 
-    return (
-      <div className="flex min-h-[50vh] items-center justify-center bg-ftc-bg text-sm text-ftc-text-muted">
-        Loading...
-      </div>
-    );
+    return <AppLoadingShell pathname={pathname} />;
   }
 
   return children;

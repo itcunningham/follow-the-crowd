@@ -1,6 +1,7 @@
+"use client";
+
 import type { ReactNode } from "react";
 import AppNavigation, { MOBILE_NAV_OFFSET_CLASS } from "@/app/components/AppNavigation";
-import OnboardingGuard from "@/app/components/OnboardingGuard";
 
 export function SkeletonBlock({
   className = "",
@@ -97,63 +98,207 @@ export function EventListSkeleton({
   );
 }
 
-export function EventDetailSkeleton() {
+export function EventDetailLoadingShell() {
   return (
-    <OnboardingGuard>
-      <div
-        aria-busy="true"
-        aria-label="Loading event"
-        className={`mx-auto min-h-[100dvh] w-full max-w-2xl bg-ftc-bg font-sans text-ftc-text ${MOBILE_NAV_OFFSET_CLASS}`}
-      >
-        <AppNavigation />
+    <div
+      aria-busy="true"
+      aria-label="Loading event"
+      className={`mx-auto min-h-[100dvh] w-full max-w-2xl bg-ftc-bg font-sans text-ftc-text ${MOBILE_NAV_OFFSET_CLASS}`}
+    >
+      <AppNavigation />
 
-        <div className="border-b border-ftc-border-subtle bg-ftc-bg/95 px-4 py-3 sm:px-6">
-          <div className="flex items-start justify-between gap-3">
+      <div className="border-b border-ftc-border-subtle bg-ftc-bg/95 px-4 py-3 sm:px-6">
+        <div className="flex items-start justify-between gap-3">
+          <SkeletonBlock className="h-10 w-10 rounded-xl" />
+          <div className="flex items-center gap-2">
             <SkeletonBlock className="h-10 w-10 rounded-xl" />
-            <div className="flex items-center gap-2">
-              <SkeletonBlock className="h-10 w-10 rounded-xl" />
-              <SkeletonBlock className="h-10 w-16 rounded-xl" />
-            </div>
+            <SkeletonBlock className="h-10 w-16 rounded-xl" />
           </div>
-        </div>
-
-        <div className="relative aspect-[4/3] max-h-[220px] w-full border-b border-ftc-border-subtle">
-          <SkeletonBlock className="h-full w-full rounded-none" rounded="rounded-none" />
-        </div>
-
-        <div className="space-y-5 px-4 pb-6 pt-5 sm:px-6">
-          <SkeletonBlock className="h-8 w-4/5 max-w-[16rem]" />
-          <div className="space-y-3">
-            <div className="flex items-start gap-3">
-              <SkeletonBlock className="h-5 w-5 shrink-0 rounded-md" />
-              <SkeletonBlock className="h-4 w-3/4 max-w-[14rem]" />
-            </div>
-            <div className="flex items-start gap-3">
-              <SkeletonBlock className="h-5 w-5 shrink-0 rounded-md" />
-              <SkeletonBlock className="h-4 w-2/3 max-w-[12rem]" />
-            </div>
-          </div>
-
-          <SkeletonCard>
-            <SkeletonBlock className="h-5 w-28" />
-            <SkeletonBlock className="mt-4 h-4 w-full max-w-[18rem]" />
-            <SkeletonBlock className="mt-2 h-4 w-2/3 max-w-[10rem]" />
-          </SkeletonCard>
-
-          <SkeletonCard>
-            <SkeletonBlock className="h-5 w-24" />
-            <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div className="space-y-2">
-                <SkeletonBlock className="h-6 w-20 rounded-full" />
-                <SkeletonBlock className="h-4 w-40" />
-              </div>
-              <SkeletonBlock className="h-9 w-24 rounded-xl" />
-            </div>
-          </SkeletonCard>
         </div>
       </div>
-    </OnboardingGuard>
+
+      <div className="relative aspect-[4/3] max-h-[220px] w-full border-b border-ftc-border-subtle">
+        <SkeletonBlock className="h-full w-full rounded-none" rounded="rounded-none" />
+      </div>
+
+      <div className="space-y-5 px-4 pb-6 pt-5 sm:px-6">
+        <SkeletonBlock className="h-8 w-4/5 max-w-[16rem]" />
+        <div className="space-y-3">
+          <div className="flex items-start gap-3">
+            <SkeletonBlock className="h-5 w-5 shrink-0 rounded-md" />
+            <SkeletonBlock className="h-4 w-3/4 max-w-[14rem]" />
+          </div>
+          <div className="flex items-start gap-3">
+            <SkeletonBlock className="h-5 w-5 shrink-0 rounded-md" />
+            <SkeletonBlock className="h-4 w-2/3 max-w-[12rem]" />
+          </div>
+        </div>
+
+        <SkeletonCard>
+          <SkeletonBlock className="h-5 w-28" />
+          <SkeletonBlock className="mt-4 h-4 w-full max-w-[18rem]" />
+          <SkeletonBlock className="mt-2 h-4 w-2/3 max-w-[10rem]" />
+        </SkeletonCard>
+
+        <SkeletonCard>
+          <SkeletonBlock className="h-5 w-24" />
+          <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="space-y-2">
+              <SkeletonBlock className="h-6 w-20 rounded-full" />
+              <SkeletonBlock className="h-4 w-40" />
+            </div>
+            <SkeletonBlock className="h-9 w-24 rounded-xl" />
+          </div>
+        </SkeletonCard>
+      </div>
+    </div>
   );
+}
+
+/** @deprecated Use EventDetailLoadingShell — guard wraps pages separately. */
+export function EventDetailSkeleton() {
+  return <EventDetailLoadingShell />;
+}
+
+export function EventsPageLoadingShell({ showPlannerStats = true }: { showPlannerStats?: boolean }) {
+  return (
+    <div
+      className={`mx-auto min-h-[100dvh] w-full max-w-2xl bg-ftc-bg font-sans text-ftc-text ${MOBILE_NAV_OFFSET_CLASS}`}
+    >
+      <AppNavigation />
+      <header className="ftc-page-header px-4 py-4 sm:px-6 md:pt-4">
+        <SkeletonBlock className="h-7 w-24" />
+        <SkeletonBlock className="mt-2 h-4 w-56 max-w-full" />
+      </header>
+      <div className="px-4 py-4 sm:px-6">
+        <EventListSkeleton showPlannerStats={showPlannerStats} />
+      </div>
+    </div>
+  );
+}
+
+export function MessagesInboxLoadingShell() {
+  return (
+    <div
+      className={`mx-auto flex min-h-[100dvh] w-full max-w-2xl flex-col bg-ftc-bg font-sans text-ftc-text ${MOBILE_NAV_OFFSET_CLASS}`}
+    >
+      <AppNavigation />
+      <header className="sticky top-0 z-10 border-b border-ftc-border-subtle bg-ftc-bg/95 px-4 py-3 backdrop-blur-md sm:px-6 md:top-12">
+        <SkeletonBlock className="h-7 w-32" />
+        <SkeletonBlock className="mt-3 h-10 w-full rounded-xl" />
+        <div className="mt-3 flex gap-2">
+          <SkeletonBlock className="h-9 w-24 rounded-full" />
+          <SkeletonBlock className="h-9 w-28 rounded-full" />
+        </div>
+      </header>
+      <div className="flex-1 px-4 py-3 sm:px-6">
+        <InboxListSkeleton />
+      </div>
+    </div>
+  );
+}
+
+export function ChatPageLoadingShell() {
+  return (
+    <div className="fixed inset-0 flex flex-col overflow-hidden bg-ftc-bg font-sans text-ftc-text">
+      <AppNavigation />
+      <div
+        className={`mx-auto flex min-h-0 w-full max-w-2xl flex-1 flex-col overflow-hidden ${MOBILE_NAV_OFFSET_CLASS}`}
+      >
+        <header className="z-10 shrink-0 border-b border-ftc-border-subtle bg-ftc-bg/95 px-3 py-2.5 backdrop-blur-md sm:px-4">
+          <ChatHeaderSkeleton />
+        </header>
+        <div className="flex min-h-0 flex-1 flex-col px-3 py-4 sm:px-4">
+          <ChatMessagesSkeleton />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function DiscoverPageLoadingShell() {
+  return (
+    <div
+      className={`mx-auto min-h-[100dvh] w-full max-w-2xl bg-ftc-bg font-sans text-ftc-text ${MOBILE_NAV_OFFSET_CLASS}`}
+    >
+      <AppNavigation />
+      <header className="px-4 pb-2 pt-4 sm:px-6 md:pt-4">
+        <SkeletonBlock className="h-3 w-20" />
+        <SkeletonBlock className="mt-2 h-8 w-32" />
+      </header>
+      <div className="space-y-5 px-4 pb-6 pt-3 sm:px-6">
+        <SkeletonBlock className="h-10 w-full rounded-xl" />
+        <DiscoverSkeleton />
+      </div>
+    </div>
+  );
+}
+
+export function ProfilePageLoadingShell() {
+  return (
+    <div
+      className={`mx-auto flex min-h-[100dvh] w-full max-w-2xl flex-col bg-ftc-bg font-sans text-ftc-text ${MOBILE_NAV_OFFSET_CLASS}`}
+    >
+      <AppNavigation />
+      <div className="border-b border-ftc-border-subtle px-4 py-3 sm:px-6">
+        <SkeletonBlock className="h-5 w-16" />
+      </div>
+      <div className="flex-1 px-4 py-6 sm:px-6">
+        <ProfileSkeleton />
+      </div>
+    </div>
+  );
+}
+
+export function GenericAppLoadingShell() {
+  return (
+    <div
+      className={`mx-auto min-h-[100dvh] w-full max-w-2xl bg-ftc-bg font-sans text-ftc-text ${MOBILE_NAV_OFFSET_CLASS}`}
+    >
+      <AppNavigation />
+      <div className="px-4 py-6 sm:px-6">
+        <SkeletonBlock className="h-6 w-28" />
+        <SkeletonBlock className="mt-2 h-4 w-44" />
+        <div className="mt-6 space-y-3">
+          <SkeletonBlock className="h-16 w-full rounded-xl" />
+          <SkeletonBlock className="h-16 w-full rounded-xl" />
+          <SkeletonBlock className="h-16 w-full rounded-xl" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function AppLoadingShell({ pathname }: { pathname: string }) {
+  if (pathname === "/events") {
+    return <EventsPageLoadingShell />;
+  }
+
+  if (/^\/events\/[^/]+\/chat\/?$/.test(pathname)) {
+    return <ChatPageLoadingShell />;
+  }
+
+  if (pathname.startsWith("/events/")) {
+    return <EventDetailLoadingShell />;
+  }
+
+  if (pathname === "/dm") {
+    return <MessagesInboxLoadingShell />;
+  }
+
+  if (pathname.startsWith("/dm/")) {
+    return <ChatPageLoadingShell />;
+  }
+
+  if (pathname === "/discover") {
+    return <DiscoverPageLoadingShell />;
+  }
+
+  if (pathname.startsWith("/profile/") && pathname !== "/profile/setup") {
+    return <ProfilePageLoadingShell />;
+  }
+
+  return <GenericAppLoadingShell />;
 }
 
 export function InboxListSkeleton({
