@@ -1193,6 +1193,7 @@ export function formatBookingStatusPreview(
 export function formatBookingMessagePreview(
   messageText: string,
   booking?: BookingRequest | null,
+  options?: { bookings?: BookingRequest[] },
 ): string {
   const trimmed = messageText.trim();
 
@@ -1218,10 +1219,19 @@ export function formatBookingMessagePreview(
     }
 
     const activityBookingId = parseBookingActivityBookingId(trimmed);
-    const resolvedBooking =
-      booking && activityBookingId && booking.id === activityBookingId ? booking : booking;
 
-    return formatBookingStatusPreview("cancelled", resolvedBooking?.event_name);
+    if (activityBookingId) {
+      const referencedBooking =
+        booking?.id === activityBookingId
+          ? booking
+          : options?.bookings?.find((item) => item.id === activityBookingId) ?? booking;
+
+      if (referencedBooking) {
+        return formatBookingStatusPreview(referencedBooking.status, referencedBooking.event_name);
+      }
+    }
+
+    return formatBookingStatusPreview("cancelled", booking?.event_name);
   }
 
   if (isBookingAcceptedDmMessage(trimmed)) {
@@ -1585,6 +1595,51 @@ export async function getBookingRequestsForConversation(
   }
 
   return mapBookingRequestRows(data);
+}
+
+export async function listBookingRequestsForConversations(
+  conversationIds: string[],
+): Promise<Map<string, BookingRequest[]>> {
+  const uniqueConversationIds = [
+    ...new Set(conversationIds.map((conversationId) => conversationId.trim()).filter(Boolean)),
+  ];
+  const bookingsByConversationId = new Map<string, BookingRequest[]>();
+
+  if (uniqueConversationIds.length === 0) {
+    return bookingsByConversationId;
+  }
+
+  const { data, error } = await supabase
+    .from("booking_requests")
+    .select(BOOKING_REQUEST_FIELDS)
+    .in("conversation_id", uniqueConversationIds)
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    logBookingsLoadError(error);
+    throw error;
+  }
+
+  for (const row of data ?? []) {
+    const conversationId =
+      typeof row.conversation_id === "string" ? row.conversation_id.trim() : "";
+
+    if (!conversationId) {
+      continue;
+    }
+
+    const booking = normalizeBookingRequest(row);
+
+    if (!booking) {
+      continue;
+    }
+
+    const existing = bookingsByConversationId.get(conversationId) ?? [];
+    existing.push(booking);
+    bookingsByConversationId.set(conversationId, existing);
+  }
+
+  return bookingsByConversationId;
 }
 
 export async function fetchBookingRequestsByIds(bookingIds: string[]): Promise<BookingRequest[]> {

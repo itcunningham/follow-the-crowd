@@ -996,6 +996,18 @@ export default function EventDetailPage() {
             </EventDetailOverlayButton>
 
             <div className="flex items-center gap-2">
+              {showStartCrewChatAction ? (
+                <EventDetailOverlayButton
+                  onClick={() => {
+                    void handleStartCrewChat();
+                  }}
+                  label="Start crew chat"
+                >
+                  <svg aria-hidden="true" viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="1.75">
+                    <path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 2 2 0 0 1-1.8 1.1h-3.7l-3 3v-3H8a2 2 0 0 1-2-2V8.5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2Z" />
+                  </svg>
+                </EventDetailOverlayButton>
+              ) : null}
               {showEventGroupChatAction ? (
                 <EventDetailOverlayButton
                   href={getEventCrewChatLink(event.id)}
@@ -1507,6 +1519,16 @@ export default function EventDetailPage() {
 
         {showBottomBar ? (
           <EventDetailBottomBar>
+            {showStartCrewChatAction ? (
+              <EventDetailPrimaryAction
+                icon="chat"
+                onClick={() => {
+                  void handleStartCrewChat();
+                }}
+              >
+                {startingCrewChat ? "Starting..." : "Start crew chat"}
+              </EventDetailPrimaryAction>
+            ) : null}
             {showOwnerSendAction ? (
               <EventDetailPrimaryAction onClick={openSendBookings}>
                 Send booking requests
@@ -1520,15 +1542,6 @@ export default function EventDetailPage() {
                 href={`/dm/${viewerBooking.conversation_id}?from=events`}
               >
                 Open booking conversation
-              </EventDetailPrimaryAction>
-            ) : null}
-            {showStartCrewChatAction ? (
-              <EventDetailPrimaryAction
-                onClick={() => {
-                  void handleStartCrewChat();
-                }}
-              >
-                {startingCrewChat ? "Starting..." : "Start crew chat"}
               </EventDetailPrimaryAction>
             ) : null}
             {!showOwnerSendAction &&

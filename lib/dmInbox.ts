@@ -1,3 +1,6 @@
+import { pickDmInboxPreviewMessage } from "@/lib/dm/messagePreview";
+import type { BookingRequest } from "@/lib/bookingRequests";
+
 export type InboxMessage = {
   id: string;
   conversation_id: string;
@@ -69,17 +72,25 @@ export function buildDmInboxRows(
     created_at?: string;
   }>,
   messages: InboxMessage[],
+  options?: {
+    bookingsByConversationId?: Map<string, BookingRequest[]>;
+  },
 ): DmInboxRow[] {
   const latestByConversation = new Map<string, InboxMessage>();
 
-  for (const message of messages) {
-    const conversationId = message.conversation_id;
+  for (const conversation of conversations) {
+    const conversationId = conversation.id || conversation.conversation_id;
 
-    if (!conversationId || latestByConversation.has(conversationId)) {
+    if (!conversationId) {
       continue;
     }
 
-    latestByConversation.set(conversationId, message);
+    const bookings = options?.bookingsByConversationId?.get(conversationId) ?? [];
+    const previewMessage = pickDmInboxPreviewMessage(messages, conversationId, bookings);
+
+    if (previewMessage) {
+      latestByConversation.set(conversationId, previewMessage);
+    }
   }
 
   const rows: DmInboxRow[] = [];
@@ -109,9 +120,23 @@ export function buildDmInboxRows(
 export function applyDmInboxRealtimeMessage(
   rows: DmInboxRow[],
   newMessage: InboxMessage,
+  options?: {
+    allMessages?: InboxMessage[];
+    bookingsByConversationId?: Map<string, BookingRequest[]>;
+  },
 ): { rows: DmInboxRow[]; matched: boolean } {
   const targetId = normalizeInboxId(newMessage.conversation_id);
   let matched = false;
+  const bookings =
+    options?.bookingsByConversationId?.get(newMessage.conversation_id) ?? [];
+  const previewMessage =
+    options?.allMessages && options.bookingsByConversationId
+      ? pickDmInboxPreviewMessage(
+          options.allMessages,
+          newMessage.conversation_id,
+          bookings,
+        )
+      : newMessage;
 
   const updated = rows.map((row) => {
     if (normalizeInboxId(row.conversationId) !== targetId) {
@@ -122,9 +147,9 @@ export function applyDmInboxRealtimeMessage(
 
     return {
       ...row,
-      latestActivityAt: newMessage.created_at,
-      latestPreview: newMessage.text,
-      latestMessageUserId: newMessage.user_id,
+      latestActivityAt: previewMessage?.created_at ?? newMessage.created_at,
+      latestPreview: previewMessage?.text ?? newMessage.text,
+      latestMessageUserId: previewMessage?.user_id ?? newMessage.user_id,
     };
   });
 

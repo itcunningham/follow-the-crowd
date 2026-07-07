@@ -1,5 +1,8 @@
+import type { InboxMessage } from "@/lib/dmInbox";
 import {
   formatBookingMessagePreview,
+  formatBookingStatusPreview,
+  formatEventCancelledInboxPreview,
   isBookingActivityDmMessage,
   isBookingAcceptedDmMessage,
   isBookingRequestMessage,
@@ -7,55 +10,77 @@ import {
   parseBookingAcceptanceActivityEventName,
   parseEventCancellationActivityEventName,
   parseBookingRequestMessage,
-  formatBookingStatusPreview,
-  formatEventCancelledInboxPreview,
   BOOKING_ACCEPTED_DM_PREFIX,
   type BookingRequest,
 } from "@/lib/bookingRequests";
 
-export function formatDmInboxMessagePreview(
-  messageText: string | null | undefined,
-  options?: { bookings?: BookingRequest[] },
-): string | null {
-  const trimmed = messageText?.trim();
-
-  if (!trimmed) {
+function resolveLiveConversationBooking(
+  bookings: BookingRequest[],
+): BookingRequest | null {
+  if (bookings.length === 0) {
     return null;
   }
 
-  if (isBookingRequestMessage(trimmed)) {
-    return formatBookingMessagePreview(trimmed, findBookingForMessage(trimmed, options?.bookings));
+  const accepted = bookings.filter((booking) => booking.status === "accepted");
+
+  if (accepted.length > 0) {
+    return accepted[accepted.length - 1] ?? null;
   }
 
-  if (isBookingActivityDmMessage(trimmed)) {
-    const eventCancelledName = parseEventCancellationActivityEventName(trimmed);
+  const pending = bookings.filter((booking) => booking.status === "pending");
 
-    if (eventCancelledName) {
-      return formatEventCancelledInboxPreview(eventCancelledName);
+  if (pending.length > 0) {
+    return pending[pending.length - 1] ?? null;
+  }
+
+  return bookings[bookings.length - 1] ?? null;
+}
+
+function isStaleBookingCancellationActivity(
+  messageText: string,
+  bookings: BookingRequest[],
+): boolean {
+  const activityBookingId = parseBookingActivityBookingId(messageText);
+
+  if (!activityBookingId) {
+    return false;
+  }
+
+  const referencedBooking = bookings.find((booking) => booking.id === activityBookingId);
+
+  if (referencedBooking) {
+    return referencedBooking.status !== "cancelled";
+  }
+
+  const liveBooking = resolveLiveConversationBooking(bookings);
+
+  return liveBooking?.status === "accepted" || liveBooking?.status === "pending";
+}
+
+export function pickDmInboxPreviewMessage(
+  messages: InboxMessage[],
+  conversationId: string,
+  bookings: BookingRequest[] = [],
+): InboxMessage | null {
+  const conversationMessages = messages
+    .filter((message) => message.conversation_id === conversationId)
+    .sort(
+      (left, right) =>
+        new Date(right.created_at).getTime() - new Date(left.created_at).getTime(),
+    );
+
+  for (const message of conversationMessages) {
+    if (
+      isBookingActivityDmMessage(message.text) &&
+      isStaleBookingCancellationActivity(message.text, bookings)
+    ) {
+      continue;
     }
 
-    const acceptedEventName = parseBookingAcceptanceActivityEventName(trimmed);
-
-    if (acceptedEventName) {
-      return formatBookingStatusPreview("accepted", acceptedEventName);
-    }
-
-    const activityBookingId = parseBookingActivityBookingId(trimmed);
-    const booking =
-      activityBookingId && options?.bookings?.length
-        ? options.bookings.find((item) => item.id === activityBookingId) ?? null
-        : null;
-
-    return formatBookingStatusPreview("cancelled", booking?.event_name);
+    return message;
   }
 
-  if (isBookingAcceptedDmMessage(trimmed)) {
-    const acceptedEventName = trimmed.slice(BOOKING_ACCEPTED_DM_PREFIX.length).trim();
-
-    return formatBookingStatusPreview("accepted", acceptedEventName);
-  }
-
-  return trimmed;
+  return conversationMessages[0] ?? null;
 }
 
 function findBookingForMessage(
@@ -90,5 +115,77 @@ function findBookingForMessage(
     );
   }
 
-  return null;
+  return resolveLiveConversationBooking(bookings);
+}
+
+function formatBookingActivityInboxPreview(
+  messageText: string,
+  bookings: BookingRequest[],
+): string {
+  const trimmed = messageText.trim();
+  const eventCancelledName = parseEventCancellationActivityEventName(trimmed);
+
+  if (eventCancelledName) {
+    return formatEventCancelledInboxPreview(eventCancelledName);
+  }
+
+  const acceptedEventName = parseBookingAcceptanceActivityEventName(trimmed);
+
+  if (acceptedEventName) {
+    return formatBookingStatusPreview("accepted", acceptedEventName);
+  }
+
+  const activityBookingId = parseBookingActivityBookingId(trimmed);
+
+  if (activityBookingId) {
+    const referencedBooking = bookings.find((booking) => booking.id === activityBookingId);
+
+    if (referencedBooking) {
+      return formatBookingStatusPreview(
+        referencedBooking.status,
+        referencedBooking.event_name,
+      );
+    }
+  }
+
+  const liveBooking = resolveLiveConversationBooking(bookings);
+
+  if (liveBooking) {
+    return formatBookingStatusPreview(liveBooking.status, liveBooking.event_name);
+  }
+
+  return formatBookingStatusPreview("cancelled");
+}
+
+export function formatDmInboxMessagePreview(
+  messageText: string | null | undefined,
+  options?: { bookings?: BookingRequest[] },
+): string | null {
+  const trimmed = messageText?.trim();
+
+  if (!trimmed) {
+    return null;
+  }
+
+  const bookings = options?.bookings ?? [];
+
+  if (isBookingRequestMessage(trimmed)) {
+    return formatBookingMessagePreview(
+      trimmed,
+      findBookingForMessage(trimmed, bookings),
+      { bookings },
+    );
+  }
+
+  if (isBookingActivityDmMessage(trimmed)) {
+    return formatBookingActivityInboxPreview(trimmed, bookings);
+  }
+
+  if (isBookingAcceptedDmMessage(trimmed)) {
+    const acceptedEventName = trimmed.slice(BOOKING_ACCEPTED_DM_PREFIX.length).trim();
+
+    return formatBookingStatusPreview("accepted", acceptedEventName);
+  }
+
+  return trimmed;
 }

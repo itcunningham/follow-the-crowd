@@ -45,6 +45,7 @@ import {
 import { supabase } from "@/lib/supabaseClient";
 import { buildDmThreadHref } from "@/lib/dm/threadNavigation";
 import { formatDmInboxMessagePreview } from "@/lib/dm/messagePreview";
+import { listBookingRequestsForConversations, type BookingRequest } from "@/lib/bookingRequests";
 import {
   DISCOVER_PATH,
   getCurrentUserId,
@@ -315,6 +316,11 @@ function DmInboxPageContent() {
   const [groupChatsLoading, setGroupChatsLoading] = useState(true);
   const [groupChatsError, setGroupChatsError] = useState<string | null>(null);
   const [dmInboxRows, setDmInboxRows] = useState<DmInboxRow[]>([]);
+  const [bookingsByConversationId, setBookingsByConversationId] = useState<
+    Map<string, BookingRequest[]>
+  >(() => new Map());
+  const inboxMessagesRef = useRef<Message[]>([]);
+  const bookingsByConversationRef = useRef<Map<string, BookingRequest[]>>(new Map());
   const [otherUsersByConversation, setOtherUsersByConversation] = useState<Map<string, string>>(
     new Map(),
   );
@@ -485,7 +491,7 @@ function DmInboxPageContent() {
     const otherUsers = buildOtherUsersByConversation(allMembers, conversationIds, userId);
     setOtherUsersByConversation(otherUsers);
 
-    const [profilesResult, response, messagesResponse] = await Promise.all([
+    const [profilesResult, response, messagesResponse, bookingsResult] = await Promise.all([
       getUserAvatarProfilesByIds([...otherUsers.values()]).catch((profileError) => {
         console.error("Failed to load DM user profiles:", profileError);
         return new Map<string, UserAvatarProfile>();
@@ -496,22 +502,32 @@ function DmInboxPageContent() {
         .select("*")
         .in("conversation_id", conversationIds)
         .order("created_at", { ascending: false }),
+      listBookingRequestsForConversations(conversationIds).catch((bookingsError) => {
+        console.error("Failed to load conversation bookings:", bookingsError);
+        return new Map<string, BookingRequest[]>();
+      }),
     ]);
 
     setUserProfiles(profilesResult);
+    setBookingsByConversationId(bookingsResult);
+    bookingsByConversationRef.current = bookingsResult;
 
     if (response.error) {
       console.log("conversations error:", response.error);
     }
 
     const conversationRows = normalizeConversations(response.data);
+    const messageRows = (messagesResponse.data ?? []) as Message[];
+    inboxMessagesRef.current = messageRows;
 
     if (messagesResponse.error) {
       console.error("messages response error", messagesResponse.error);
-      setDmInboxRows(buildDmInboxRows(conversationRows, []));
+      setDmInboxRows(buildDmInboxRows(conversationRows, [], { bookingsByConversationId: bookingsResult }));
     } else {
       setDmInboxRows(
-        buildDmInboxRows(conversationRows, (messagesResponse.data ?? []) as Message[]),
+        buildDmInboxRows(conversationRows, messageRows, {
+          bookingsByConversationId: bookingsResult,
+        }),
       );
     }
 
@@ -743,7 +759,15 @@ function DmInboxPageContent() {
 
           setDmInboxRows((previous) => {
             const beforeIds = previous.map((row) => row.conversationId);
-            const result = applyDmInboxRealtimeMessage(previous, newMessage);
+            const mergedMessages = [
+              newMessage,
+              ...inboxMessagesRef.current.filter((message) => message.id !== newMessage.id),
+            ];
+            inboxMessagesRef.current = mergedMessages;
+            const result = applyDmInboxRealtimeMessage(previous, newMessage, {
+              allMessages: mergedMessages,
+              bookingsByConversationId: bookingsByConversationRef.current,
+            });
 
             console.log("[Inbox realtime] DM matched", result.matched, {
               targetId,
@@ -799,11 +823,15 @@ function DmInboxPageContent() {
       const otherUserId = otherUsersByConversation.get(row.conversationId);
       const otherProfile = otherUserId ? userProfiles.get(otherUserId) : undefined;
       const displayName = getConversationDisplayName(row, otherProfile).toLowerCase();
-      const preview = (formatDmInboxMessagePreview(row.latestPreview) ?? "").toLowerCase();
+      const preview = (
+        formatDmInboxMessagePreview(row.latestPreview, {
+          bookings: bookingsByConversationId.get(row.conversationId) ?? [],
+        }) ?? ""
+      ).toLowerCase();
 
       return displayName.includes(normalizedSearch) || preview.includes(normalizedSearch);
     });
-  }, [dmInboxRows, normalizedSearch, otherUsersByConversation, userProfiles]);
+  }, [dmInboxRows, normalizedSearch, otherUsersByConversation, userProfiles, bookingsByConversationId]);
 
   const filteredGroupChats = useMemo(() => {
     if (!normalizedSearch) {
@@ -953,7 +981,9 @@ function DmInboxPageContent() {
                     const otherUserId = otherUsersByConversation.get(row.conversationId);
                     const otherProfile = otherUserId ? userProfiles.get(otherUserId) : undefined;
                     const displayName = getConversationDisplayName(row, otherProfile);
-                    const previewText = formatDmInboxMessagePreview(row.latestPreview);
+                    const previewText = formatDmInboxMessagePreview(row.latestPreview, {
+                      bookings: bookingsByConversationId.get(row.conversationId) ?? [],
+                    });
                     const preview = previewText
                       ? `${row.latestMessageUserId === currentUserId ? "You: " : ""}${previewText}`
                       : "No messages yet";
