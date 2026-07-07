@@ -2,6 +2,8 @@
 
 import type { ReactNode } from "react";
 import AppNavigation, { MOBILE_NAV_OFFSET_CLASS } from "@/app/components/AppNavigation";
+import MessagesInboxLayout from "@/app/components/dm/MessagesInboxLayout";
+import ProfilePageHeader from "@/app/components/profile/ProfilePageHeader";
 import type { UserRole } from "@/lib/user/currentUser";
 
 export function SkeletonBlock({
@@ -421,8 +423,15 @@ export function BookingsPageLoadingShell({
 }) {
   const showPlannerSubNav = variant === "planner" || variant === "both";
   const showSectionTabs = variant === "both";
-  const showDjGigsTabs = variant === "dj";
+  const showDjGigsTabs = variant === "dj" || variant === "neutral";
   const showCreateButton = variant === "planner" || variant === "both";
+  const pageTitle = variant === "dj" || variant === "neutral" ? "Gigs" : "Bookings";
+  const pageSubtitle =
+    variant === "dj" || variant === "neutral"
+      ? "Manage your availability and bookings."
+      : variant === "both"
+        ? "Track sent campaigns, review incoming requests, and open private DMs."
+        : "Track DJ responses, create booking requests, and open private DMs.";
 
   return (
     <div
@@ -432,20 +441,38 @@ export function BookingsPageLoadingShell({
       <header className="border-b border-ftc-border-subtle px-4 py-3 sm:px-6 md:pt-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
-            <SkeletonBlock className="h-7 w-24" />
-            <SkeletonBlock className="mt-2 h-4 w-56 max-w-full" />
+            <h1 className="text-xl font-semibold text-ftc-text">{pageTitle}</h1>
+            <p className="mt-1 text-sm text-ftc-text-muted">{pageSubtitle}</p>
           </div>
           {showCreateButton ? (
             <SkeletonBlock className="h-10 w-[11.5rem] shrink-0 rounded-xl" />
           ) : null}
         </div>
         {showSectionTabs ? <SectionTabsSkeleton count={2} /> : null}
-        {showDjGigsTabs ? <TabPillsSkeleton count={5} /> : null}
+        {showDjGigsTabs ? <GigsTabPillsSkeleton /> : null}
         {showPlannerSubNav ? <PlannerEventsSubNavSkeleton /> : null}
       </header>
       <div className="px-4 py-4 sm:px-6">
-        <BookingsContentSkeleton content={content} variant={variant} />
+        <BookingsContentSkeleton
+          content={content}
+          variant={variant === "neutral" ? "dj" : variant}
+        />
       </div>
+    </div>
+  );
+}
+
+function GigsTabPillsSkeleton() {
+  const labels = ["Pending", "Confirmed", "Declined", "History", "Calendar"];
+
+  return (
+    <div aria-hidden="true" className="mt-4 flex flex-wrap gap-2">
+      {labels.map((label, index) => (
+        <SkeletonBlock
+          key={label}
+          className={`h-[1.875rem] rounded-xl ${index === 0 ? "w-[5.5rem]" : label === "Calendar" ? "w-[5.25rem]" : "w-[5rem]"}`}
+        />
+      ))}
     </div>
   );
 }
@@ -579,29 +606,9 @@ export function MessagesInboxLoadingShell({
   activeTab?: "dm" | "group";
 }) {
   return (
-    <div
-      className={`mx-auto flex min-h-[100dvh] w-full max-w-2xl flex-col bg-ftc-bg font-sans text-ftc-text ${MOBILE_NAV_OFFSET_CLASS}`}
-    >
-      <AppNavigation />
-      <header className="sticky top-0 z-10 border-b border-ftc-border-subtle bg-ftc-bg/95 px-4 py-3 backdrop-blur-md sm:px-6 md:top-12">
-        <div className="flex items-center justify-between gap-3">
-          <SkeletonBlock className="h-7 w-32" />
-          <SkeletonBlock className="h-10 w-10 shrink-0 rounded-xl" />
-        </div>
-        <SkeletonBlock className="mt-3 h-11 w-full rounded-full" />
-        <div className="ftc-tab-pill mt-3 flex gap-1" aria-hidden="true">
-          <SkeletonBlock
-            className={`h-9 flex-1 rounded-full ${activeTab === "dm" ? "opacity-100" : "opacity-60"}`}
-          />
-          <SkeletonBlock
-            className={`h-9 flex-1 rounded-full ${activeTab === "group" ? "opacity-100" : "opacity-60"}`}
-          />
-        </div>
-      </header>
-      <div className="flex-1 px-4 py-3 sm:px-6">
-        <InboxListSkeleton variant={activeTab === "group" ? "group" : "dm"} />
-      </div>
-    </div>
+    <MessagesInboxLayout activeTab={activeTab}>
+      <InboxListSkeleton variant={activeTab === "group" ? "group" : "dm"} />
+    </MessagesInboxLayout>
   );
 }
 
@@ -671,21 +678,17 @@ export function DiscoverFeedSkeleton() {
   );
 }
 
-export function ProfilePageLoadingShell() {
+export function ProfilePageLoadingShell({
+  isOwnProfile = false,
+}: {
+  isOwnProfile?: boolean;
+}) {
   return (
     <div
       className={`mx-auto flex min-h-[100dvh] w-full max-w-2xl flex-col bg-ftc-bg font-sans text-ftc-text ${MOBILE_NAV_OFFSET_CLASS}`}
     >
       <AppNavigation />
-      <header className="sticky top-0 z-10 border-b border-ftc-border-subtle bg-ftc-bg/95 backdrop-blur-md md:top-12">
-        <div className="flex items-center justify-between gap-3 px-4 py-2.5 sm:px-6">
-          <SkeletonBlock className="h-10 w-10 shrink-0 rounded-xl" />
-          <div className="flex items-center gap-2">
-            <SkeletonBlock className="h-10 w-10 rounded-xl" />
-            <SkeletonBlock className="h-10 w-24 rounded-xl" />
-          </div>
-        </div>
-      </header>
+      <ProfilePageHeader isOwnProfile={isOwnProfile} />
       <div className="flex-1 px-4 py-6 sm:px-6">
         <ProfileSkeleton />
       </div>
@@ -721,13 +724,26 @@ function showPlannerEventsChrome(role: UserRole | null | undefined): boolean {
   return role === "promoter" || role === "both";
 }
 
+function getProfileUserIdFromPath(pathname: string): string | null {
+  const match = pathname.match(/^\/profile\/([^/]+)/);
+  const userId = match?.[1];
+
+  if (!userId || userId === "setup") {
+    return null;
+  }
+
+  return userId;
+}
+
 export function AppLoadingShell({
   pathname,
   role,
+  currentUserId = null,
   search = "",
 }: {
   pathname: string;
   role?: UserRole | null;
+  currentUserId?: string | null;
   search?: string;
 }) {
   if (pathname === "/events") {
@@ -743,7 +759,12 @@ export function AppLoadingShell({
   }
 
   if (pathname === "/bookings" || pathname.startsWith("/bookings/")) {
-    return <BookingsPageLoadingShell variant={resolveBookingsShellVariant(role)} />;
+    return (
+      <BookingsPageLoadingShell
+        variant={resolveBookingsShellVariant(role)}
+        content={role === "dj" || !role ? "received-gigs" : "auto"}
+      />
+    );
   }
 
   if (pathname === "/booking-plans" || pathname.startsWith("/booking-plans/")) {
@@ -771,11 +792,16 @@ export function AppLoadingShell({
   }
 
   if (pathname === "/settings" || pathname.startsWith("/settings/")) {
-    return <ProfilePageLoadingShell />;
+    return <ProfilePageLoadingShell isOwnProfile />;
   }
 
   if (pathname.startsWith("/profile/") && pathname !== "/profile/setup") {
-    return <ProfilePageLoadingShell />;
+    const profileUserId = getProfileUserIdFromPath(pathname);
+    return (
+      <ProfilePageLoadingShell
+        isOwnProfile={Boolean(profileUserId && currentUserId && profileUserId === currentUserId)}
+      />
+    );
   }
 
   return <GenericAppLoadingShell />;

@@ -11,6 +11,7 @@ import {
 } from "@/app/components/skeleton/Skeleton";
 import AppNavigation, { MOBILE_NAV_OFFSET_CLASS } from "@/app/components/AppNavigation";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
+import { useGuardProfile } from "@/app/components/GuardProfileContext";
 import PlannerEventsSubNav from "@/app/components/PlannerEventsSubNav";
 import DjAvailabilityManager from "@/app/components/DjAvailabilityManager";
 import DjBookingAvailabilityBadge from "@/app/components/DjBookingAvailabilityBadge";
@@ -264,7 +265,11 @@ function getBookingsContentVariant(
 
 export default function BookingsPage() {
   return (
-    <Suspense fallback={<BookingsPageLoadingShell />}>
+    <Suspense
+      fallback={
+        <BookingsPageLoadingShell variant="dj" content="received-gigs" />
+      }
+    >
       <BookingsPageContent />
     </Suspense>
   );
@@ -273,6 +278,7 @@ export default function BookingsPage() {
 function BookingsPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const guardProfile = useGuardProfile();
   const handledPlanIdRef = useRef<string | null>(null);
   const handledCreateParamsRef = useRef<string | null>(null);
   const [role, setRole] = useState<UserRole | null>(null);
@@ -408,9 +414,10 @@ function BookingsPageContent() {
     });
   }, [eventBookingDuplicates, form.eventId]);
 
-  const isDjGigsView = role === "dj";
+  const displayRole = role ?? guardProfile?.role ?? null;
+  const isDjGigsView = displayRole === "dj";
   const showReceivedGigsTabs =
-    role === "dj" || (role === "both" && sectionTab === "received");
+    displayRole === "dj" || (displayRole === "both" && sectionTab === "received");
   const showUnifiedDjCalendar = showReceivedGigsTabs && djGigsView === "calendar";
 
   const activeReceivedBookings = useMemo(
@@ -969,24 +976,13 @@ function BookingsPageContent() {
     }
   }
 
-  if (loadingAccess) {
-    return (
-      <OnboardingGuard>
-        <BookingsPageLoadingShell
-          variant={resolveBookingsShellVariant(role)}
-          content={getBookingsContentVariant(role, sectionTab)}
-        />
-      </OnboardingGuard>
-    );
-  }
-
-  if (!canAccessBookings(role)) {
+  if (!loadingAccess && !canAccessBookings(displayRole)) {
     return null;
   }
 
-  const showCreateButton = canCreateBookings(role);
-  const showSentTab = canViewSentBookings(role);
-  const showReceivedTab = canViewReceivedBookings(role);
+  const showCreateButton = canCreateBookings(displayRole);
+  const showSentTab = canViewSentBookings(displayRole);
+  const showReceivedTab = canViewReceivedBookings(displayRole);
   const createStepMeta = getCreateStepMeta(createStep);
 
   return (
@@ -999,8 +995,8 @@ function BookingsPageContent() {
         <header className="border-b border-ftc-border-subtle px-4 py-3 sm:px-6 md:pt-4">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
-              <h1 className="text-xl font-semibold text-ftc-text">{getBookingsPageTitle(role)}</h1>
-              <p className="mt-1 text-sm text-ftc-text-muted">{getBookingsSubtitle(role)}</p>
+              <h1 className="text-xl font-semibold text-ftc-text">{getBookingsPageTitle(displayRole)}</h1>
+              <p className="mt-1 text-sm text-ftc-text-muted">{getBookingsSubtitle(displayRole)}</p>
             </div>
             <div className="flex shrink-0 flex-wrap items-center gap-2">
               {showCreateButton && !createOpen ? (
@@ -1015,7 +1011,7 @@ function BookingsPageContent() {
             </div>
           </div>
 
-          {role === "both" && (showSentTab || showReceivedTab) ? (
+          {displayRole === "both" && (showSentTab || showReceivedTab) ? (
             <>
               <BookingSectionTabs
                 activeTab={sectionTab}
@@ -1046,10 +1042,19 @@ function BookingsPageContent() {
             />
           ) : null}
 
-          {!isDjGigsView && (role === "promoter" || role === "both") ? <PlannerEventsSubNav /> : null}
+          {!isDjGigsView && (displayRole === "promoter" || displayRole === "both") ? (
+            <PlannerEventsSubNav />
+          ) : null}
         </header>
 
         <div className="px-4 py-4 sm:px-6">
+          {loadingAccess ? (
+            <BookingsContentSkeleton
+              variant={resolveBookingsShellVariant(displayRole)}
+              content={getBookingsContentVariant(displayRole, sectionTab)}
+            />
+          ) : (
+            <>
           {successMessage ? (
             <p className="mb-4 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated px-4 py-3 text-sm text-ftc-text-secondary">
               {successMessage}
@@ -1381,7 +1386,7 @@ function BookingsPageContent() {
           {sectionTab === "sent" && showSentTab ? (
             loadingList ? (
               <BookingsContentSkeleton
-                variant={resolveBookingsShellVariant(role)}
+                variant={resolveBookingsShellVariant(displayRole)}
                 content="sent-campaigns"
               />
             ) : error && !createOpen ? (
@@ -1553,7 +1558,7 @@ function BookingsPageContent() {
           ) : isDjGigsView || (sectionTab === "received" && showReceivedTab) ? (
             loadingList ? (
               <BookingsContentSkeleton
-                variant={resolveBookingsShellVariant(role)}
+                variant={resolveBookingsShellVariant(displayRole)}
                 content="received-gigs"
               />
             ) : error && !createOpen ? (
@@ -1591,6 +1596,8 @@ function BookingsPageContent() {
               </ul>
             )
           ) : null}
+            </>
+          )}
         </div>
       </div>
 

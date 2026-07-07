@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import FtcBrandMotionLazy from "@/app/components/brand/FtcBrandMotionLazy";
+import { GuardProfileProvider } from "@/app/components/GuardProfileContext";
 import { AppLoadingShell } from "@/app/components/skeleton/Skeleton";
 import {
   ensureAuthenticatedUserProfileRow,
@@ -111,10 +112,13 @@ export default function OnboardingGuard({ children }: { children: React.ReactNod
       <AppLoadingShell
         pathname={pathname}
         role={loadingProfile?.role}
+        currentUserId={loadingProfile?.user_id ?? null}
         search={typeof window !== "undefined" ? window.location.search : ""}
       />
     );
   }
 
-  return children;
+  return (
+    <GuardProfileProvider profile={loadingProfile}>{children}</GuardProfileProvider>
+  );
 }

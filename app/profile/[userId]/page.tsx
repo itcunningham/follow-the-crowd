@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import AppNavigation, { MOBILE_NAV_OFFSET_CLASS } from "@/app/components/AppNavigation";
 import DjProfileSections from "@/app/components/profile/DjProfileSections";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
+import { useGuardProfile } from "@/app/components/GuardProfileContext";
 import { ProfileSkeleton } from "@/app/components/skeleton/Skeleton";
 import ProfileHero from "@/app/components/profile/ProfileHero";
 import ProfileMessageAction from "@/app/components/profile/ProfileMessageAction";
@@ -20,6 +21,7 @@ import {
 export default function UserProfilePage() {
   const params = useParams();
   const router = useRouter();
+  const guardProfile = useGuardProfile();
   const userId = params.userId as string;
 
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -83,7 +85,8 @@ export default function UserProfilePage() {
   }
 
   const displayName = profile?.display_name ?? "Profile";
-  const isOwnProfile = profile?.user_id === currentUserId;
+  const resolvedCurrentUserId = currentUserId ?? guardProfile?.user_id ?? null;
+  const isOwnProfile = Boolean(resolvedCurrentUserId && userId === resolvedCurrentUserId);
   const showDjSections = profile?.role === "dj" || profile?.role === "both";
   const showPromoterSections = profile?.role === "promoter" || profile?.role === "both";
   const showBothHeadings = profile?.role === "both";

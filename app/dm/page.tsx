@@ -3,14 +3,12 @@
 import Link from "next/link";
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import AppNavigation, { MOBILE_NAV_OFFSET_CLASS } from "@/app/components/AppNavigation";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
+import MessagesInboxLayout from "@/app/components/dm/MessagesInboxLayout";
 import { InboxListSkeleton, MessagesInboxLoadingShell } from "@/app/components/skeleton/Skeleton";
-import MessagesInboxComposeButton from "@/app/components/dm/MessagesInboxComposeButton";
 import MessagesInboxRow, {
   MessagesGroupInboxRow,
 } from "@/app/components/dm/MessagesInboxRow";
-import MessagesInboxSearchBar from "@/app/components/dm/MessagesInboxSearchBar";
 import {
   applyInboxGroupMessage,
   dedupeGroupChatsByEventId,
@@ -60,48 +58,6 @@ type InboxTab = "dm" | "group";
 
 function parseInboxTab(tab: string | null): InboxTab {
   return tab === "group" ? "group" : "dm";
-}
-
-function InboxTabButton({
-  active,
-  label,
-  mobileLabel,
-  unreadCount,
-  showUnreadBadge = true,
-  onClick,
-}: {
-  active: boolean;
-  label: string;
-  mobileLabel?: string;
-  unreadCount: number;
-  showUnreadBadge?: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      role="tab"
-      aria-selected={active}
-      onClick={onClick}
-      className={`relative flex min-w-0 flex-1 items-center justify-center gap-1.5 px-3 py-2 text-sm transition sm:gap-2 sm:px-4 ${
-        active ? "ftc-tab-pill-active" : "ftc-tab-pill-inactive"
-      }`}
-    >
-      <span className="min-w-0 truncate">
-        <span className="sm:hidden">{mobileLabel ?? label}</span>
-        <span className="hidden sm:inline">{label}</span>
-      </span>
-      {showUnreadBadge && unreadCount > 0 ? (
-        <span
-          className={`flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] font-bold leading-none ${
-            active ? "bg-ftc-bg text-ftc-primary" : "bg-ftc-primary text-ftc-bg"
-          }`}
-        >
-          {unreadCount > 99 ? "99+" : unreadCount}
-        </span>
-      ) : null}
-    </button>
-  );
 }
 
 function removeUnreadEventChatId(previous: Set<string>, eventId: string): Set<string> {
@@ -861,48 +817,20 @@ function DmInboxPageContent() {
 
   return (
     <OnboardingGuard>
-      <div
-        className={`mx-auto flex min-h-[100dvh] w-full max-w-2xl flex-col bg-ftc-bg font-sans text-ftc-text ${MOBILE_NAV_OFFSET_CLASS}`}
+      <MessagesInboxLayout
+        activeTab={activeTab}
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        onCompose={() => router.push(DISCOVER_PATH)}
+        onSelectTab={selectInboxTab}
+        dmUnreadCount={dmUnreadCount}
+        groupUnreadCount={groupUnreadCount}
       >
-        <AppNavigation />
-        <header className="sticky top-0 z-10 border-b border-ftc-border-subtle bg-ftc-bg/95 px-4 py-3 backdrop-blur-md sm:px-6 md:top-12">
-          <div className="flex items-center justify-between gap-3">
-            <h1 className="text-xl font-bold tracking-tight text-ftc-text">Messages</h1>
-            <MessagesInboxComposeButton onClick={() => router.push(DISCOVER_PATH)} />
-          </div>
-
-          <div className="mt-3">
-            <MessagesInboxSearchBar value={searchQuery} onChange={setSearchQuery} />
-          </div>
-
-          <div
-            className="ftc-tab-pill mt-3"
-            role="tablist"
-            aria-label="Message categories"
-          >
-            <InboxTabButton
-              active={activeTab === "dm"}
-              label="Direct Messages"
-              mobileLabel="DMs"
-              unreadCount={dmUnreadCount}
-              onClick={() => selectInboxTab("dm")}
-            />
-            <InboxTabButton
-              active={activeTab === "group"}
-              label="Group Chats"
-              mobileLabel="Groups"
-              unreadCount={groupUnreadCount}
-              onClick={() => selectInboxTab("group")}
-            />
-          </div>
-        </header>
-
-        <div className="flex-1 px-4 py-3 sm:px-6">
-          {activeTab === "group" ? (
-            <section aria-label="Group Chats">
-              {showGroupChatsLoading ? (
-                <InboxListSkeleton variant="group" />
-              ) : groupChatsError && !hasGroupChats ? (
+        {activeTab === "group" ? (
+          <section aria-label="Group Chats">
+            {showGroupChatsLoading ? (
+              <InboxListSkeleton variant="group" />
+            ) : groupChatsError && !hasGroupChats ? (
                 <GroupChatsLoadErrorState
                   message={groupChatsError}
                   retrying={groupChatsLoading}
@@ -963,11 +891,11 @@ function DmInboxPageContent() {
             </section>
           ) : null}
 
-          {activeTab === "dm" ? (
-            <section aria-label="Direct Messages">
-              {loading ? (
-                <InboxListSkeleton />
-              ) : error ? (
+        {activeTab === "dm" ? (
+          <section aria-label="Direct Messages">
+            {loading ? (
+              <InboxListSkeleton />
+            ) : error ? (
                 <p className="py-2 text-sm text-red-400">{error}</p>
               ) : !hasDirectMessages ? (
                 <DirectMessagesEmptyState />
@@ -1006,8 +934,7 @@ function DmInboxPageContent() {
               )}
             </section>
           ) : null}
-        </div>
-      </div>
+      </MessagesInboxLayout>
     </OnboardingGuard>
   );
 }
