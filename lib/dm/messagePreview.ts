@@ -1,12 +1,15 @@
 import {
   formatBookingMessagePreview,
   isBookingActivityDmMessage,
+  isBookingAcceptedDmMessage,
   isBookingRequestMessage,
   parseBookingActivityBookingId,
+  parseBookingAcceptanceActivityEventName,
   parseEventCancellationActivityEventName,
   parseBookingRequestMessage,
   formatBookingStatusPreview,
   formatEventCancelledInboxPreview,
+  BOOKING_ACCEPTED_DM_PREFIX,
   type BookingRequest,
 } from "@/lib/bookingRequests";
 
@@ -31,6 +34,12 @@ export function formatDmInboxMessagePreview(
       return formatEventCancelledInboxPreview(eventCancelledName);
     }
 
+    const acceptedEventName = parseBookingAcceptanceActivityEventName(trimmed);
+
+    if (acceptedEventName) {
+      return formatBookingStatusPreview("accepted", acceptedEventName);
+    }
+
     const activityBookingId = parseBookingActivityBookingId(trimmed);
     const booking =
       activityBookingId && options?.bookings?.length
@@ -38,6 +47,12 @@ export function formatDmInboxMessagePreview(
         : null;
 
     return formatBookingStatusPreview("cancelled", booking?.event_name);
+  }
+
+  if (isBookingAcceptedDmMessage(trimmed)) {
+    const acceptedEventName = trimmed.slice(BOOKING_ACCEPTED_DM_PREFIX.length).trim();
+
+    return formatBookingStatusPreview("accepted", acceptedEventName);
   }
 
   return trimmed;

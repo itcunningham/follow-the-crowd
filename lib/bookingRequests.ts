@@ -695,6 +695,19 @@ export function formatBookingAcceptedDmMessage(eventName: string): string {
   return `${BOOKING_ACCEPTED_DM_PREFIX} ${trimmedEventName}`;
 }
 
+export function formatBookingAcceptanceActivityMessage(eventName: string): string {
+  const trimmedEventName = eventName.trim() || "Event";
+
+  return `${BOOKING_ACTIVITY_DM_PREFIX} accepted · ${trimmedEventName}`;
+}
+
+export function parseBookingAcceptanceActivityEventName(text: string): string | null {
+  const trimmed = text.trim();
+  const match = trimmed.match(/^BOOKING ACTIVITY · accepted · (.+)$/i);
+
+  return match?.[1]?.trim() || null;
+}
+
 export function isBookingAcceptedDmMessage(text: string): boolean {
   return text.trim().startsWith(BOOKING_ACCEPTED_DM_PREFIX);
 }
@@ -1024,34 +1037,66 @@ async function insertBookingAcceptedDmMessageIfNeeded(
   booking: BookingRequest,
 ): Promise<{ inserted: boolean; messageText: string }> {
   const messageText = formatBookingAcceptedDmMessage(booking.event_name);
+  const activityText = formatBookingAcceptanceActivityMessage(booking.event_name);
 
   if (!booking.conversation_id) {
     return { inserted: false, messageText };
   }
 
-  const { data: existingRows, error: existingError } = await supabase
+  const { data: existingActivityRows, error: existingActivityError } = await supabase
+    .from("messages")
+    .select("id")
+    .eq("conversation_id", booking.conversation_id)
+    .eq("text", activityText)
+    .limit(1);
+
+  if (existingActivityError) {
+    console.error(
+      "[bookings] Failed to check booking-accepted activity duplicate:",
+      existingActivityError,
+    );
+  } else if (existingActivityRows?.[0]) {
+    return { inserted: false, messageText };
+  }
+
+  const { data: existingActivityPrefixRows, error: existingActivityPrefixError } = await supabase
+    .from("messages")
+    .select("id")
+    .eq("conversation_id", booking.conversation_id)
+    .like("text", `${BOOKING_ACTIVITY_DM_PREFIX} accepted ·%`)
+    .limit(1);
+
+  if (existingActivityPrefixError) {
+    console.error(
+      "[bookings] Failed to check booking-accepted activity prefix duplicate:",
+      existingActivityPrefixError,
+    );
+  } else if (existingActivityPrefixRows?.[0]) {
+    return { inserted: false, messageText };
+  }
+
+  const { data: existingLegacyRows, error: existingLegacyError } = await supabase
     .from("messages")
     .select("id")
     .eq("conversation_id", booking.conversation_id)
     .eq("user_id", booking.recipient_id)
     .eq("text", messageText)
-    .order("created_at", { ascending: false })
     .limit(1);
 
-  if (existingError) {
-    console.error("[bookings] Failed to check booking-accepted DM duplicate:", existingError);
-  } else if (existingRows?.[0]) {
+  if (existingLegacyError) {
+    console.error("[bookings] Failed to check legacy booking-accepted DM duplicate:", existingLegacyError);
+  } else if (existingLegacyRows?.[0]) {
     return { inserted: false, messageText };
   }
 
   const { error: insertError } = await supabase.from("messages").insert({
     conversation_id: booking.conversation_id,
     user_id: booking.recipient_id,
-    text: messageText,
+    text: activityText,
   });
 
   if (insertError) {
-    console.error("[bookings] Failed to insert booking-accepted DM notice:", insertError);
+    console.error("[bookings] Failed to insert booking-accepted activity DM message:", insertError);
     return { inserted: false, messageText };
   }
 
@@ -1165,11 +1210,23 @@ export function formatBookingMessagePreview(
       return formatEventCancelledInboxPreview(eventCancelledName);
     }
 
+    const acceptedEventName = parseBookingAcceptanceActivityEventName(trimmed);
+
+    if (acceptedEventName) {
+      return formatBookingStatusPreview("accepted", acceptedEventName);
+    }
+
     const activityBookingId = parseBookingActivityBookingId(trimmed);
     const resolvedBooking =
       booking && activityBookingId && booking.id === activityBookingId ? booking : booking;
 
     return formatBookingStatusPreview("cancelled", resolvedBooking?.event_name);
+  }
+
+  if (isBookingAcceptedDmMessage(trimmed)) {
+    const acceptedEventName = trimmed.slice(BOOKING_ACCEPTED_DM_PREFIX.length).trim();
+
+    return formatBookingStatusPreview("accepted", acceptedEventName || booking?.event_name);
   }
 
   if (!isBookingRequestMessage(trimmed)) {

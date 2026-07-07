@@ -1429,13 +1429,16 @@ export default function DmChatPage() {
                 return null;
               }
 
+              if (isBookingAcceptedDmMessage(message.text)) {
+                return null;
+              }
+
               const isOwnMessage = currentUserId !== null && message.user_id === currentUserId;
               const isBookingMessage = isBookingRequestMessage(message.text);
               const isBookingCancelledNotice = isBookingCancelledDmMessage(message.text);
               const isRateProposalNotice =
                 isRateProposedDmMessage(message.text) ||
                 isRateProposalDeclinedDmMessage(message.text) ||
-                isBookingAcceptedDmMessage(message.text) ||
                 isBookingCancelledNotice;
 
               if (isRateProposalNotice) {
