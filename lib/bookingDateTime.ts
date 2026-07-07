@@ -468,6 +468,10 @@ export function isEventStartInPast(eventDate: string, setTime: string): boolean 
   return getEventDateValidationError(eventDate, setTime) === EVENT_START_IN_PAST_ERROR;
 }
 
+export function isEventStartSaveBlocked(eventDate: string, setTime: string): boolean {
+  return getEventDateValidationError(eventDate, setTime) !== null;
+}
+
 export function getEventStartInPastError(eventDate: string, setTime: string): string | null {
   const error = getEventDateValidationError(eventDate, setTime);
 

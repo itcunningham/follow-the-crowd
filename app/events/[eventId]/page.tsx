@@ -137,6 +137,9 @@ const CREW_CHAT_HELP = {
   help: "opens automatically when 2 DJs accept. With 1 accepted DJ, the planner can start it manually. If all DJs leave or the event is cancelled, crew chat locks again.",
 };
 
+const DEPLOYED_COMMIT_SHA =
+  process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ?? "local";
+
 export default function EventDetailPage() {
   const params = useParams<{ eventId: string }>();
   const router = useRouter();
@@ -251,6 +254,14 @@ export default function EventDetailPage() {
       return name.includes(query) || genre.includes(query);
     });
   }, [djs, searchQuery]);
+
+  const editFormDateValidationError = useMemo(() => {
+    if (!editForm) {
+      return null;
+    }
+
+    return getEventDateValidationError(editForm.eventDate, editForm.setTime);
+  }, [editForm]);
 
   const eventBookingDuplicates = useMemo(
     () => buildEventBookingDuplicateMap(lineup),
@@ -996,12 +1007,14 @@ export default function EventDetailPage() {
 
   const showStickyActions = !editOpen && !sendOpen;
   const showOwnerSendAction = isOwner && isPlanner && !eventIsCancelled;
+  const crewChatIsUnlocked = crewChatUnlock?.isUnlocked === true;
+  const crewChatCanPlannerStart = crewChatUnlock?.canPlannerStart === true;
   const showStartCrewChatAction =
-    isOwner && isPlanner && !eventIsCancelled && Boolean(crewChatUnlock?.canPlannerStart);
+    isOwner && isPlanner && !eventIsCancelled && crewChatCanPlannerStart;
   const showEventGroupChatAction =
     !eventIsCancelled &&
-    Boolean(crewChatUnlock?.isUnlocked) &&
-    !Boolean(crewChatUnlock?.canPlannerStart) &&
+    crewChatIsUnlocked &&
+    !crewChatCanPlannerStart &&
     (crewChatUnlock?.acceptedDjCount ?? 0) >= 1 &&
     ((isOwner && isPlanner) || hasAcceptedBooking);
   const showCrewChatHelpUi = showStartCrewChatAction || showEventGroupChatAction;
@@ -1132,6 +1145,55 @@ export default function EventDetailPage() {
             <EventDetailMetaList event={event} />
           </div>
 
+          {crewChatUnlock ? (
+            <section
+              aria-label="Crew chat diagnostics"
+              className="mt-5 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated/70 px-3 py-2.5 text-[11px] leading-relaxed text-ftc-text-muted"
+            >
+              <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-ftc-text-secondary">
+                Crew chat diagnostics
+              </p>
+              <dl className="grid gap-0.5 font-mono">
+                <div>
+                  <dt className="inline">deployedCommit: </dt>
+                  <dd className="inline text-ftc-text">{DEPLOYED_COMMIT_SHA}</dd>
+                </div>
+                <div>
+                  <dt className="inline">eventId: </dt>
+                  <dd className="inline break-all text-ftc-text">{event.id}</dd>
+                </div>
+                <div>
+                  <dt className="inline">crew_chat_started_at: </dt>
+                  <dd className="inline text-ftc-text">
+                    {crewChatUnlock.crewChatStartedAt ?? "null"}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="inline">acceptedDjCount: </dt>
+                  <dd className="inline text-ftc-text">{crewChatUnlock.acceptedDjCount}</dd>
+                </div>
+                <div>
+                  <dt className="inline">canPlannerStart: </dt>
+                  <dd className="inline text-ftc-text">
+                    {String(crewChatUnlock.canPlannerStart)}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="inline">isUnlocked: </dt>
+                  <dd className="inline text-ftc-text">{String(crewChatUnlock.isUnlocked)}</dd>
+                </div>
+                <div>
+                  <dt className="inline">showStartCrewChatAction: </dt>
+                  <dd className="inline text-ftc-text">{String(showStartCrewChatAction)}</dd>
+                </div>
+                <div>
+                  <dt className="inline">showEventGroupChatAction: </dt>
+                  <dd className="inline text-ftc-text">{String(showEventGroupChatAction)}</dd>
+                </div>
+              </dl>
+            </section>
+          ) : null}
+
           {event.notes?.trim() ? (
             <section className="mt-8">
               <h2 className="text-lg font-bold text-ftc-text">About</h2>
@@ -1224,13 +1286,28 @@ export default function EventDetailPage() {
                   multiline
                 />
 
-                {editFormError ? (
+                {editFormDateValidationError ? (
+                  <p
+                    role="alert"
+                    className="rounded-lg border border-[var(--ftc-color-danger)]/35 bg-ftc-bg-elevated px-3 py-2.5 text-sm text-[var(--ftc-color-danger)]"
+                  >
+                    {editFormDateValidationError}
+                  </p>
+                ) : null}
+
+                {editFormError && editFormError !== editFormDateValidationError ? (
                   <p className="text-sm text-[var(--ftc-color-danger)]">{editFormError}</p>
                 ) : null}
 
                 <button
                   type="submit"
-                  disabled={savingEdit}
+                  disabled={savingEdit || Boolean(editFormDateValidationError)}
+                  aria-disabled={savingEdit || Boolean(editFormDateValidationError)}
+                  title={
+                    editFormDateValidationError
+                      ? editFormDateValidationError
+                      : undefined
+                  }
                   className="ftc-btn-primary px-5 py-3 text-sm uppercase tracking-wide disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {savingEdit ? "Saving..." : "Save changes"}
@@ -1636,7 +1713,7 @@ export default function EventDetailPage() {
                 Open booking conversation
               </EventDetailPrimaryAction>
             ) : null}
-            {showEventGroupChatAction ? (
+            {showEventGroupChatAction && crewChatIsUnlocked ? (
               <div className="flex min-w-0 flex-1 items-center gap-1">
                 <div className="min-w-0 flex-1">
                   <EventDetailSecondaryAction href={getEventCrewChatLink(event.id)}>
