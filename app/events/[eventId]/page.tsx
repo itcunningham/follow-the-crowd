@@ -28,7 +28,9 @@ import {
 import ProfileAvatar from "@/app/components/ProfileAvatar";
 import DjBookingAvailabilityBadge from "@/app/components/DjBookingAvailabilityBadge";
 import { BookingDateField, BookingSetTimeRangeField } from "@/app/components/BookingDateTimeFields";
+import FtcDebugPanel from "@/app/components/debug/FtcDebugPanel";
 import { getEventDateValidationError, getTodayDateKey } from "@/lib/bookingDateTime";
+import { isFtcDebugPanelEnabled } from "@/lib/debug/ftcDebugPanel";
 import EventCoverImageField, {
   emptyEventCoverImageFieldState,
   type EventCoverImageFieldState,
@@ -1006,7 +1008,17 @@ export default function EventDetailPage() {
     showEventGroupChatAction,
     showCrewChatHelpUi,
     crewChatHelpActionLabel,
+    isUnlocked: crewChatIsUnlocked,
+    canPlannerStart: crewChatCanPlannerStart,
+    acceptedDjCount: crewChatAcceptedDjCount,
   } = crewChatActions;
+  const showDebugPanel = isFtcDebugPanelEnabled(currentUserId);
+  const crewChatStartedAt = crewChatUnlock?.crewChatStartedAt ?? null;
+  const crewChatRenderComponent = showStartCrewChatAction
+    ? "EventDetailPrimaryAction(Start crew chat) + EventDetailOverlayButton(Start crew chat)"
+    : showEventGroupChatAction
+      ? "EventDetailSecondaryAction(Group chat) + EventDetailOverlayButton(Open group chat)"
+      : "none";
 
   const showStickyActions = !editOpen && !sendOpen;
   const showOwnerSendAction = isOwner && isPlanner && !eventIsCancelled;
@@ -1217,6 +1229,13 @@ export default function EventDetailPage() {
                   }
                   minDate={getTodayDateKey()}
                   required
+                  debugContext={{
+                    componentPath:
+                      "app/events/[eventId]/page.tsx > edit form > BookingDateField",
+                    setTime: editForm.setTime,
+                    saveDisabled: savingEdit || Boolean(editFormDateValidationError),
+                    saveDisabledReason: editFormDateValidationError,
+                  }}
                 />
                 <BookingSetTimeRangeField
                   value={editForm.setTime}
@@ -1613,6 +1632,24 @@ export default function EventDetailPage() {
             </section>
           ) : null}
         </div>
+
+        {showDebugPanel ? (
+          <div className="border-t border-ftc-border-subtle px-4 py-3 sm:px-6">
+            <FtcDebugPanel
+              title="Crew chat actions"
+              fields={{
+                eventId: event.id,
+                acceptedDjCount: crewChatAcceptedDjCount,
+                crew_chat_started_at: crewChatStartedAt,
+                isUnlocked: crewChatIsUnlocked,
+                canPlannerStart: crewChatCanPlannerStart,
+                showStartCrewChatAction,
+                showEventGroupChatAction,
+                renderComponent: crewChatRenderComponent,
+              }}
+            />
+          </div>
+        ) : null}
 
         {showBottomBar ? (
           <EventDetailBottomBar>

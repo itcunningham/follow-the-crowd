@@ -94,6 +94,7 @@ export default function FtcDatePicker({
   minDate,
   ariaLabel = "Event date",
   className = BOOKING_DATE_TIME_INPUT_CLASS,
+  debugSource = "app/components/FtcDatePicker.tsx",
 }: {
   value: string;
   onChange: (value: string) => void;
@@ -102,6 +103,7 @@ export default function FtcDatePicker({
   minDate?: string;
   ariaLabel?: string;
   className?: string;
+  debugSource?: string;
 }) {
   const pickerId = useId();
   const effectiveMinDate = resolveMinEventDateKey(minDate);
@@ -159,18 +161,55 @@ export default function FtcDatePicker({
   }
 
   function handleSelectDay(day: Date) {
-    if (isDayDisabled(day)) {
+    const clickedDate = toDateKey(day);
+    const blocked = isDayDisabled(day);
+
+    console.info("[ftc:date-picker]", {
+      clickedDate,
+      minDate: effectiveMinDate,
+      blocked,
+      debugSource,
+      formValue: value,
+      pickerValue,
+    });
+
+    if (blocked) {
       return;
     }
 
-    const nextValue = guardEventDatePickerChange(toDateKey(day), effectiveMinDate);
+    const nextValue = guardEventDatePickerChange(clickedDate, effectiveMinDate);
 
     if (!nextValue) {
+      console.info("[ftc:date-picker]", {
+        clickedDate,
+        minDate: effectiveMinDate,
+        blocked: true,
+        reason: "guardEventDatePickerChange rejected",
+        debugSource,
+      });
       return;
     }
 
     onChange(nextValue);
     setOpen(false);
+  }
+
+  function handleDayPointerUp(day: Date, event: React.PointerEvent<HTMLButtonElement>) {
+    const clickedDate = toDateKey(day);
+    const blocked = isDayDisabled(day);
+
+    console.info("[ftc:date-picker]", {
+      clickedDate,
+      minDate: effectiveMinDate,
+      blocked,
+      debugSource,
+      eventType: event.type,
+    });
+
+    if (blocked) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
   }
 
   function handleMonthStartChange(nextMonthStart: Date) {
@@ -257,8 +296,16 @@ export default function FtcDatePicker({
                     <button
                       key={toDateKey(day)}
                       type="button"
-                      onClick={() => handleSelectDay(day)}
-                      disabled={isDisabledDay}
+                      onPointerUp={(event) => handleDayPointerUp(day, event)}
+                      onClick={(event) => {
+                        if (isDayDisabled(day)) {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          return;
+                        }
+
+                        handleSelectDay(day);
+                      }}
                       tabIndex={isDisabledDay ? -1 : 0}
                       aria-label={day.toLocaleDateString(undefined, {
                         weekday: "long",
