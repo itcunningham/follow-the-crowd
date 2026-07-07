@@ -612,7 +612,7 @@ export default function EventRunSheetSection({
               disabled={saving}
               className="ftc-btn-primary px-3 py-1.5 text-xs uppercase tracking-wide disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {saving ? "Saving..." : "Save changes"}
+              {saving ? "Saving..." : "Save run sheet"}
             </button>
           </div>
         ) : null}

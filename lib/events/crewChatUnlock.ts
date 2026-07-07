@@ -1,6 +1,12 @@
 import type { Event } from "@/lib/events";
 import { isEventCancelled } from "@/lib/events";
-import { withEventUnlockFieldsFallback } from "@/lib/events/eventQueryFields";
+import {
+  EVENT_UNLOCK_BASE_FIELDS,
+  EVENT_UNLOCK_FIELDS,
+  isMissingCrewChatStartedAtColumnError,
+  markCrewChatStartedAtColumnMissing,
+  resetCrewChatStartedAtColumnMissingFlag,
+} from "@/lib/events/eventQueryFields";
 import { supabase } from "@/lib/supabaseClient";
 
 export type CrewChatUnlockState = {
@@ -57,23 +63,57 @@ export async function countAcceptedCrewDjsForEvent(eventId: string): Promise<num
 async function fetchEventUnlockRow(
   eventId: string,
 ): Promise<Pick<Event, "id" | "status" | "crew_chat_started_at"> | null> {
-  const data = await withEventUnlockFieldsFallback((fields) =>
-    supabase.from("events").select(fields).eq("id", eventId).maybeSingle(),
-  );
+  const first = await supabase
+    .from("events")
+    .select(EVENT_UNLOCK_FIELDS)
+    .eq("id", eventId)
+    .maybeSingle();
 
-  if (!data) {
-    return null;
+  if (!first.error) {
+    resetCrewChatStartedAtColumnMissingFlag();
+
+    if (!first.data) {
+      return null;
+    }
+
+    const row = first.data as unknown as Record<string, unknown>;
+
+    return {
+      id: row.id as string,
+      status: row.status as Event["status"],
+      crew_chat_started_at: normalizeCrewChatStartedAt(
+        row.crew_chat_started_at as string | null | undefined,
+      ),
+    };
   }
 
-  const row = data as unknown as Record<string, unknown>;
+  if (isMissingCrewChatStartedAtColumnError(first.error)) {
+    markCrewChatStartedAtColumnMissing();
 
-  return {
-    id: row.id as string,
-    status: row.status as Event["status"],
-    crew_chat_started_at: normalizeCrewChatStartedAt(
-      row.crew_chat_started_at as string | null | undefined,
-    ),
-  };
+    const second = await supabase
+      .from("events")
+      .select(EVENT_UNLOCK_BASE_FIELDS)
+      .eq("id", eventId)
+      .maybeSingle();
+
+    if (second.error) {
+      throw second.error;
+    }
+
+    if (!second.data) {
+      return null;
+    }
+
+    const row = second.data as unknown as Record<string, unknown>;
+
+    return {
+      id: row.id as string,
+      status: row.status as Event["status"],
+      crew_chat_started_at: null,
+    };
+  }
+
+  throw first.error;
 }
 
 export async function getCrewChatUnlockStateForEvent(
@@ -105,27 +145,6 @@ export async function getCrewChatUnlockStateForEvent(
   }
 
   return resolveCrewChatUnlockState(event, acceptedDjCount);
-}
-
-export function logCrewChatUnlockDiagnostics(
-  eventId: string,
-  unlock: CrewChatUnlockState,
-  context: {
-    isOwner: boolean;
-    isPlanner: boolean;
-    role: string | null;
-  },
-): void {
-  console.info("[ftc:crew-chat]", {
-    eventId,
-    crewChatStartedAt: unlock.crewChatStartedAt,
-    acceptedDjCount: unlock.acceptedDjCount,
-    canPlannerStart: unlock.canPlannerStart,
-    isUnlocked: unlock.isUnlocked,
-    isOwner: context.isOwner,
-    isPlanner: context.isPlanner,
-    role: context.role,
-  });
 }
 
 export async function getCrewChatUnlockStateByEventIds(

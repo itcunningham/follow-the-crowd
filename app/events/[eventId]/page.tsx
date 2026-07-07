@@ -101,10 +101,10 @@ import {
 } from "@/lib/events";
 import {
   getCrewChatUnlockStateForEvent,
-  logCrewChatUnlockDiagnostics,
   startEventCrewChat,
   type CrewChatUnlockState,
 } from "@/lib/events/crewChatUnlock";
+import { computeCrewChatEventActions } from "@/lib/events/crewChatEventActions";
 import { getEventCrewChatLink } from "@/lib/eventCrewChat";
 import { getEventCoverUploadErrorMessage, normalizeEventCoverImageUrl } from "@/lib/events/eventCoverImage";
 import { shouldConfirmEventEditSave } from "@/lib/events/eventEditConfirmation";
@@ -136,9 +136,6 @@ const CREW_CHAT_HELP = {
   label: "Crew chat",
   help: "opens automatically when 2 DJs accept. With 1 accepted DJ, the planner can start it manually. If all DJs leave or the event is cancelled, crew chat locks again.",
 };
-
-const DEPLOYED_COMMIT_SHA =
-  process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ?? "local";
 
 export default function EventDetailPage() {
   const params = useParams<{ eventId: string }>();
@@ -406,18 +403,6 @@ export default function EventDetailPage() {
   useEffect(() => {
     loadEventData();
   }, [loadEventData]);
-
-  useEffect(() => {
-    if (!eventId || !crewChatUnlock || !event) {
-      return;
-    }
-
-    logCrewChatUnlockDiagnostics(eventId, crewChatUnlock, {
-      isOwner: Boolean(currentUserId && event.owner_id === currentUserId),
-      isPlanner: canManageEvents(role),
-      role,
-    });
-  }, [crewChatUnlock, currentUserId, event, eventId, role]);
 
   function resetEditCoverState() {
     setEditCoverField(emptyEventCoverImageFieldState);
@@ -1005,20 +990,26 @@ export default function EventDetailPage() {
       viewerBooking.conversation_id === fromDmConversation,
   );
 
+  const crewChatActions = useMemo(
+    () =>
+      computeCrewChatEventActions({
+        unlock: crewChatUnlock,
+        isOwner,
+        isPlanner,
+        eventIsCancelled,
+        hasAcceptedBooking,
+      }),
+    [crewChatUnlock, eventIsCancelled, hasAcceptedBooking, isOwner, isPlanner],
+  );
+  const {
+    showStartCrewChatAction,
+    showEventGroupChatAction,
+    showCrewChatHelpUi,
+    crewChatHelpActionLabel,
+  } = crewChatActions;
+
   const showStickyActions = !editOpen && !sendOpen;
   const showOwnerSendAction = isOwner && isPlanner && !eventIsCancelled;
-  const crewChatIsUnlocked = crewChatUnlock?.isUnlocked === true;
-  const crewChatCanPlannerStart = crewChatUnlock?.canPlannerStart === true;
-  const showStartCrewChatAction =
-    isOwner && isPlanner && !eventIsCancelled && crewChatCanPlannerStart;
-  const showEventGroupChatAction =
-    !eventIsCancelled &&
-    crewChatIsUnlocked &&
-    !crewChatCanPlannerStart &&
-    (crewChatUnlock?.acceptedDjCount ?? 0) >= 1 &&
-    ((isOwner && isPlanner) || hasAcceptedBooking);
-  const showCrewChatHelpUi = showStartCrewChatAction || showEventGroupChatAction;
-  const crewChatHelpActionLabel = showStartCrewChatAction ? "Start crew chat" : "Group chat";
   const showBottomBar =
     showStickyActions &&
     (showOwnerSendAction ||
@@ -1149,55 +1140,6 @@ export default function EventDetailPage() {
             <EventDetailMetaList event={event} />
           </div>
 
-          {crewChatUnlock ? (
-            <section
-              aria-label="Crew chat diagnostics"
-              className="mt-5 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated/70 px-3 py-2.5 text-[11px] leading-relaxed text-ftc-text-muted"
-            >
-              <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-ftc-text-secondary">
-                Crew chat diagnostics
-              </p>
-              <dl className="grid gap-0.5 font-mono">
-                <div>
-                  <dt className="inline">deployedCommit: </dt>
-                  <dd className="inline text-ftc-text">{DEPLOYED_COMMIT_SHA}</dd>
-                </div>
-                <div>
-                  <dt className="inline">eventId: </dt>
-                  <dd className="inline break-all text-ftc-text">{event.id}</dd>
-                </div>
-                <div>
-                  <dt className="inline">crew_chat_started_at: </dt>
-                  <dd className="inline text-ftc-text">
-                    {crewChatUnlock.crewChatStartedAt ?? "null"}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="inline">acceptedDjCount: </dt>
-                  <dd className="inline text-ftc-text">{crewChatUnlock.acceptedDjCount}</dd>
-                </div>
-                <div>
-                  <dt className="inline">canPlannerStart: </dt>
-                  <dd className="inline text-ftc-text">
-                    {String(crewChatUnlock.canPlannerStart)}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="inline">isUnlocked: </dt>
-                  <dd className="inline text-ftc-text">{String(crewChatUnlock.isUnlocked)}</dd>
-                </div>
-                <div>
-                  <dt className="inline">showStartCrewChatAction: </dt>
-                  <dd className="inline text-ftc-text">{String(showStartCrewChatAction)}</dd>
-                </div>
-                <div>
-                  <dt className="inline">showEventGroupChatAction: </dt>
-                  <dd className="inline text-ftc-text">{String(showEventGroupChatAction)}</dd>
-                </div>
-              </dl>
-            </section>
-          ) : null}
-
           {event.notes?.trim() ? (
             <section className="mt-8">
               <h2 className="text-lg font-bold text-ftc-text">About</h2>
@@ -1314,7 +1256,7 @@ export default function EventDetailPage() {
                   }
                   className="ftc-btn-primary px-5 py-3 text-sm uppercase tracking-wide disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  {savingEdit ? "Saving..." : "Save changes"}
+                  {savingEdit ? "Saving event..." : "Save event changes"}
                 </button>
               </form>
             </PlannerFormCard>
@@ -1717,7 +1659,7 @@ export default function EventDetailPage() {
                 Open booking conversation
               </EventDetailPrimaryAction>
             ) : null}
-            {showEventGroupChatAction && crewChatIsUnlocked ? (
+            {showEventGroupChatAction ? (
               <div className="flex min-w-0 flex-1 items-center gap-1">
                 <div className="min-w-0 flex-1">
                   <EventDetailSecondaryAction href={getEventCrewChatLink(event.id)}>

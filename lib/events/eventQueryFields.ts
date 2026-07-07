@@ -33,6 +33,10 @@ export function markCrewChatStartedAtColumnMissing(): void {
   crewChatStartedAtColumnMissing = true;
 }
 
+export function resetCrewChatStartedAtColumnMissingFlag(): void {
+  crewChatStartedAtColumnMissing = false;
+}
+
 export function isCrewChatStartedAtColumnMissing(): boolean {
   return crewChatStartedAtColumnMissing;
 }
