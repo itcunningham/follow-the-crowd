@@ -42,6 +42,7 @@ export type Event = {
   status: EventStatus;
   cover_image_url: string | null;
   fallback_colour: string | null;
+  crew_chat_started_at: string | null;
 };
 
 export type EventInput = {
@@ -69,7 +70,7 @@ export type EventWithLineupStats = Event & {
 };
 
 const EVENT_FIELDS =
-  "id, created_at, owner_id, booking_plan_id, name, venue, event_date, set_time, rate, notes, status, cover_image_url, fallback_colour";
+  "id, created_at, owner_id, booking_plan_id, name, venue, event_date, set_time, rate, notes, status, cover_image_url, fallback_colour, crew_chat_started_at";
 
 function mapEventInputToRow(input: EventInput) {
   return {
@@ -458,6 +459,7 @@ export type EventArtworkSnapshot = {
   coverImageUrl: string | null;
   fallbackColour: string | null;
   status: EventStatus;
+  crewChatStartedAt: string | null;
 };
 
 export async function getEventArtworkByIds(
@@ -471,7 +473,7 @@ export async function getEventArtworkByIds(
 
   const { data, error } = await supabase
     .from("events")
-    .select("id, name, venue, event_date, set_time, rate, cover_image_url, fallback_colour, status")
+    .select("id, name, venue, event_date, set_time, rate, cover_image_url, fallback_colour, status, crew_chat_started_at")
     .in("id", uniqueIds);
 
   if (error) {
@@ -491,6 +493,7 @@ export async function getEventArtworkByIds(
       cover_image_url: string | null;
       fallback_colour: string | null;
       status: EventStatus;
+      crew_chat_started_at: string | null;
     };
 
     artworkById.set(eventRow.id, {
@@ -502,6 +505,7 @@ export async function getEventArtworkByIds(
       coverImageUrl: normalizeEventCoverImageUrl(eventRow.cover_image_url),
       fallbackColour: eventRow.fallback_colour?.trim() || null,
       status: eventRow.status,
+      crewChatStartedAt: eventRow.crew_chat_started_at,
     });
   }
 

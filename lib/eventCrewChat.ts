@@ -2,6 +2,10 @@ import { supabase } from "@/lib/supabaseClient";
 import { createNotification } from "@/lib/notifications";
 import { markEventChatRead } from "@/lib/messageReads";
 import { getEventById, isEventCancelled, type EventStatus } from "@/lib/events";
+import {
+  getCrewChatUnlockStateForEvent,
+  type CrewChatUnlockState,
+} from "@/lib/events/crewChatUnlock";
 import { pickPreferredEventCoverImageUrl } from "@/lib/events/eventCoverImage";
 import {
   getCurrentUserId,
@@ -18,7 +22,9 @@ export type EventCrewChatMessage = {
 
 export type EventCrewChatAccess = {
   canAccess: boolean;
+  canStartCrewChat: boolean;
   isOwner: boolean;
+  unlock: CrewChatUnlockState;
   eventName: string | null;
   eventVenue: string | null;
   eventDate: string | null;
@@ -60,37 +66,65 @@ export function getEventCrewChatBackHref(
   return `/events/${eventId}`;
 }
 
+function buildDeniedAccess(
+  event: Awaited<ReturnType<typeof getEventById>>,
+  unlock: CrewChatUnlockState,
+  isOwner: boolean,
+): EventCrewChatAccess {
+  return {
+    canAccess: false,
+    canStartCrewChat: isOwner && unlock.canPlannerStart,
+    isOwner,
+    unlock,
+    eventName: event?.name ?? null,
+    eventVenue: event?.venue ?? null,
+    eventDate: event?.event_date ?? null,
+    eventStatus: event?.status ?? null,
+    coverImageUrl: pickPreferredEventCoverImageUrl(event?.cover_image_url),
+    fallbackColour: event?.fallback_colour?.trim() || null,
+  };
+}
+
 export async function getEventCrewChatAccess(eventId: string): Promise<EventCrewChatAccess> {
   const [userId, event] = await Promise.all([getCurrentUserId(), getEventById(eventId)]);
 
   if (!event) {
-    return {
-      canAccess: false,
-      isOwner: false,
-      eventName: null,
-      eventVenue: null,
-      eventDate: null,
-      eventStatus: null,
-      coverImageUrl: null,
-      fallbackColour: null,
-    };
+    return buildDeniedAccess(
+      null,
+      {
+        acceptedDjCount: 0,
+        crewChatStartedAt: null,
+        isUnlocked: false,
+        canPlannerStart: false,
+      },
+      false,
+    );
   }
 
-  const eventContext = {
-    eventName: event.name,
-    eventVenue: event.venue,
-    eventDate: event.event_date,
-    eventStatus: event.status,
-    coverImageUrl: pickPreferredEventCoverImageUrl(event.cover_image_url),
-    fallbackColour: event.fallback_colour?.trim() || null,
-  };
+  const unlock = await getCrewChatUnlockStateForEvent(event);
+  const isOwner = event.owner_id === userId;
 
   if (isEventCancelled(event)) {
-    return { canAccess: false, isOwner: event.owner_id === userId, ...eventContext };
+    return buildDeniedAccess(event, unlock, isOwner);
   }
 
-  if (event.owner_id === userId) {
-    return { canAccess: true, isOwner: true, ...eventContext };
+  if (!unlock.isUnlocked) {
+    return buildDeniedAccess(event, unlock, isOwner);
+  }
+
+  if (isOwner) {
+    return {
+      canAccess: true,
+      canStartCrewChat: false,
+      isOwner: true,
+      unlock,
+      eventName: event.name,
+      eventVenue: event.venue,
+      eventDate: event.event_date,
+      eventStatus: event.status,
+      coverImageUrl: pickPreferredEventCoverImageUrl(event.cover_image_url),
+      fallbackColour: event.fallback_colour?.trim() || null,
+    };
   }
 
   const { data, error } = await supabase
@@ -103,13 +137,24 @@ export async function getEventCrewChatAccess(eventId: string): Promise<EventCrew
 
   if (error) {
     console.error("[eventCrewChat] Failed to check accepted booking access:", error);
-    return { canAccess: false, isOwner: false, ...eventContext };
+    return buildDeniedAccess(event, unlock, false);
+  }
+
+  if (!data) {
+    return buildDeniedAccess(event, unlock, false);
   }
 
   return {
-    canAccess: Boolean(data),
+    canAccess: true,
+    canStartCrewChat: false,
     isOwner: false,
-    ...eventContext,
+    unlock,
+    eventName: event.name,
+    eventVenue: event.venue,
+    eventDate: event.event_date,
+    eventStatus: event.status,
+    coverImageUrl: pickPreferredEventCoverImageUrl(event.cover_image_url),
+    fallbackColour: event.fallback_colour?.trim() || null,
   };
 }
 
@@ -158,6 +203,12 @@ export async function sendEventCrewChatMessage(
 
   if (!event || isEventCancelled(event)) {
     throw new Error("This event was cancelled. Group chat is no longer available.");
+  }
+
+  const unlock = await getCrewChatUnlockStateForEvent(event);
+
+  if (!unlock.isUnlocked) {
+    throw new Error("Crew chat is not available for this event yet.");
   }
 
   const { error: insertError } = await supabase.from("messages").insert({

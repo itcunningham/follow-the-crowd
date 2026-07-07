@@ -3,6 +3,8 @@ import {
   formatPublicCancellationReason,
   type BookingRequest,
 } from "@/lib/bookingRequests";
+import { getEventById } from "@/lib/events";
+import { shouldPostCrewChatLineupUpdate } from "@/lib/events/crewChatUnlock";
 
 export function buildBookingCancellationGroupChatMessage(
   djDisplayName: string,
@@ -22,8 +24,26 @@ export async function postBookingCancellationGroupChatUpdate(
   booking: BookingRequest,
   djDisplayName: string,
   cancellationReason?: string | null,
+  options?: { remainingAcceptedDjCount?: number },
 ): Promise<void> {
   if (!booking.event_id) {
+    return;
+  }
+
+  const event = await getEventById(booking.event_id);
+
+  if (!event) {
+    return;
+  }
+
+  const remainingAcceptedDjCount = options?.remainingAcceptedDjCount;
+
+  if (
+    !(await shouldPostCrewChatLineupUpdate(
+      event,
+      remainingAcceptedDjCount,
+    ))
+  ) {
     return;
   }
 

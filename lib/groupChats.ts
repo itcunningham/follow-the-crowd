@@ -5,6 +5,7 @@ import {
   normalizeInboxId,
 } from "@/lib/dmInbox";
 import { listOwnedEvents, getEventArtworkByIds, isEventCancelled } from "@/lib/events";
+import { getCrewChatUnlockStateByEventIds } from "@/lib/events/crewChatUnlock";
 import { pickPreferredEventCoverImageUrl } from "@/lib/events/eventCoverImage";
 import { supabase } from "@/lib/supabaseClient";
 import { getCurrentUserId, type UserRole } from "@/lib/user/currentUser";
@@ -234,6 +235,34 @@ async function buildGroupChatListItems(
   });
 }
 
+async function filterUnlockedGroupChatItems(
+  items: GroupChatListItemBase[],
+): Promise<GroupChatListItemBase[]> {
+  if (items.length === 0) {
+    return [];
+  }
+
+  const eventIds = items.map((item) => item.eventId);
+  const { data: events, error } = await supabase
+    .from("events")
+    .select("id, status, crew_chat_started_at")
+    .in("id", eventIds);
+
+  if (error) {
+    throw error;
+  }
+
+  const unlockByEventId = await getCrewChatUnlockStateByEventIds(
+    (events ?? []).map((event) => ({
+      id: event.id as string,
+      status: event.status as "draft" | "upcoming" | "completed" | "cancelled",
+      crew_chat_started_at: (event.crew_chat_started_at as string | null) ?? null,
+    })),
+  );
+
+  return items.filter((item) => unlockByEventId.get(item.eventId)?.isUnlocked);
+}
+
 export async function listAccessibleGroupChats(
   role: UserRole | null,
 ): Promise<GroupChatListItem[]> {
@@ -321,7 +350,11 @@ export async function listAccessibleGroupChats(
   }
 
   return sortGroupChatsByLatestActivity(
-    dedupeGroupChatsByEventId(await buildGroupChatListItems([...byEventId.values()])),
+    dedupeGroupChatsByEventId(
+      await buildGroupChatListItems(
+        await filterUnlockedGroupChatItems([...byEventId.values()]),
+      ),
+    ),
   );
 }
 
@@ -329,7 +362,7 @@ export async function listAccessibleGroupChatEventIds(
   role: UserRole | null,
 ): Promise<string[]> {
   const userId = await getCurrentUserId();
-  const byEventId = new Set<string>();
+  const byEventId = new Map<string, { id: string; status: "draft" | "upcoming" | "completed" | "cancelled"; crew_chat_started_at: string | null }>();
 
   if (role === "promoter" || role === "both") {
     const events = await listOwnedEvents();
@@ -339,11 +372,7 @@ export async function listAccessibleGroupChatEventIds(
         continue;
       }
 
-      const eventKey = normalizeInboxId(event.id);
-
-      if (eventKey) {
-        byEventId.add(event.id);
-      }
+      byEventId.set(event.id, event);
     }
   }
 
@@ -370,7 +399,7 @@ export async function listAccessibleGroupChatEventIds(
     if (eventIds.length > 0) {
       const { data: events, error: eventsError } = await supabase
         .from("events")
-        .select("id")
+        .select("id, status, crew_chat_started_at")
         .in("id", eventIds)
         .neq("status", "cancelled");
 
@@ -379,16 +408,22 @@ export async function listAccessibleGroupChatEventIds(
       }
 
       for (const event of events ?? []) {
-        const eventKey = normalizeInboxId(event.id as string);
+        const eventId = event.id as string;
 
-        if (eventKey) {
-          byEventId.add(event.id as string);
+        if (!byEventId.has(eventId)) {
+          byEventId.set(eventId, {
+            id: eventId,
+            status: event.status as "draft" | "upcoming" | "completed" | "cancelled",
+            crew_chat_started_at: (event.crew_chat_started_at as string | null) ?? null,
+          });
         }
       }
     }
   }
 
-  return [...byEventId];
+  const unlockByEventId = await getCrewChatUnlockStateByEventIds([...byEventId.values()]);
+
+  return [...byEventId.keys()].filter((eventId) => unlockByEventId.get(eventId)?.isUnlocked);
 }
 
 export function mergeLoadedGroupChatsWithLiveActivity(

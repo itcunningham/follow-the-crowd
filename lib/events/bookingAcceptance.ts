@@ -1,5 +1,10 @@
 import { sendEventCrewChatMessage } from "@/lib/eventCrewChat";
 import type { BookingRequest } from "@/lib/bookingRequests";
+import { getEventById } from "@/lib/events";
+import {
+  ensureEventCrewChatAutoStarted,
+  shouldPostCrewChatLineupUpdate,
+} from "@/lib/events/crewChatUnlock";
 
 export function buildBookingAcceptanceGroupChatMessage(
   memberDisplayName: string,
@@ -14,6 +19,20 @@ export async function postBookingAcceptanceGroupChatUpdate(
   options?: { notifyParticipants?: boolean },
 ): Promise<void> {
   if (!booking.event_id || booking.status !== "accepted") {
+    return;
+  }
+
+  const event = await getEventById(booking.event_id);
+
+  if (!event) {
+    return;
+  }
+
+  await ensureEventCrewChatAutoStarted(booking.event_id);
+
+  const refreshedEvent = (await getEventById(booking.event_id)) ?? event;
+
+  if (!(await shouldPostCrewChatLineupUpdate(refreshedEvent))) {
     return;
   }
 

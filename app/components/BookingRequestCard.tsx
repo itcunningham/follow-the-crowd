@@ -60,6 +60,7 @@ export default function BookingRequestCard({
   expanded = true,
   onExpandedChange,
   eventHasAcceptedBooking = false,
+  crewChatUnlocked = false,
   eventCancelled = false,
   dmConversationId = null,
 }: {
@@ -86,6 +87,7 @@ export default function BookingRequestCard({
   expanded?: boolean;
   onExpandedChange?: (expanded: boolean) => void;
   eventHasAcceptedBooking?: boolean;
+  crewChatUnlocked?: boolean;
   eventCancelled?: boolean;
   dmConversationId?: string | null;
 }) {
@@ -98,6 +100,7 @@ export default function BookingRequestCard({
   const groupChatAccess = getBookingGroupChatAccess(booking, currentUserId, {
     eventHasAcceptedBooking,
     eventCancelled,
+    crewChatUnlocked,
   });
   const showPendingCancel =
     canCancelBookingRequest(booking, currentUserId) && onCancel && !isEventCancelledBooking;

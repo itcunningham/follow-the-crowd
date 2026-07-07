@@ -11,6 +11,7 @@ import {
   FTC_STATUS_WARNING,
 } from "@/lib/ftcFlatStatus";
 import { getCurrentUserId, getUserAvatarProfilesByIds, type BookingRecipientProfile } from "@/lib/user/currentUser";
+import { countAcceptedCrewDjsForEvent } from "@/lib/events/crewChatUnlock";
 import { postBookingCancellationGroupChatUpdate } from "@/lib/events/bookingCancellation";
 import { postBookingAcceptanceGroupChatUpdate } from "@/lib/events/bookingAcceptance";
 
@@ -2002,13 +2003,21 @@ export type BookingGroupChatAccess =
 export function getBookingGroupChatAccess(
   booking: BookingRequest,
   currentUserId: string | null,
-  options?: { eventHasAcceptedBooking?: boolean; eventCancelled?: boolean },
+  options?: {
+    eventHasAcceptedBooking?: boolean;
+    eventCancelled?: boolean;
+    crewChatUnlocked?: boolean;
+  },
 ): BookingGroupChatAccess | null {
   if (!booking.event_id || !currentUserId) {
     return null;
   }
 
-  if (options?.eventCancelled) {
+  if (options?.eventCancelled || options?.crewChatUnlocked === false) {
+    return { kind: "hidden" };
+  }
+
+  if (options?.crewChatUnlocked !== true) {
     return { kind: "hidden" };
   }
 
@@ -2301,7 +2310,10 @@ export async function cancelAcceptedBookingRequest(
 
   if (booking.event_id && booking.status === "accepted") {
     try {
-      await postBookingCancellationGroupChatUpdate(booking, djDisplayName, reason);
+      const acceptedDjCount = await countAcceptedCrewDjsForEvent(booking.event_id);
+      await postBookingCancellationGroupChatUpdate(booking, djDisplayName, reason, {
+        remainingAcceptedDjCount: Math.max(acceptedDjCount - 1, 0),
+      });
     } catch (groupChatError) {
       console.error(
         "[bookingRequests] Failed to post booking cancellation group chat update:",

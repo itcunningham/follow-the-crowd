@@ -59,6 +59,7 @@ import {
 } from "@/lib/dmReactions";
 import { createNotification, markNotificationsReadForLink } from "@/lib/notifications";
 import { getEventArtworkByIds, isEventCancelled, type EventArtworkSnapshot } from "@/lib/events";
+import { getCrewChatUnlockStateByEventIds } from "@/lib/events/crewChatUnlock";
 import { resolveEventLinkedBookingDisplay } from "@/lib/events/eventBookingDisplay";
 import {
   getLatestOwnDmMessageId,
@@ -132,6 +133,9 @@ export default function DmChatPage() {
   );
   const [eventIdsWithAcceptedBookings, setEventIdsWithAcceptedBookings] = useState<Set<string>>(
     () => new Set(),
+  );
+  const [crewChatUnlockByEventId, setCrewChatUnlockByEventId] = useState<Map<string, boolean>>(
+    () => new Map(),
   );
   const [otherUserId, setOtherUserId] = useState<string | null>(null);
   const [otherUserProfile, setOtherUserProfile] = useState<UserAvatarProfile | null>(null);
@@ -475,9 +479,25 @@ export default function DmChatPage() {
     try {
       const artworkById = await getEventArtworkByIds(eventIds);
       setEventArtworkById(artworkById);
+
+      const unlockByEventId = await getCrewChatUnlockStateByEventIds(
+        [...artworkById.entries()].map(([id, artwork]) => ({
+          id,
+          status: artwork.status,
+          crew_chat_started_at: artwork.crewChatStartedAt,
+        })),
+      );
+      const unlocked = new Map<string, boolean>();
+
+      for (const [eventId, unlockState] of unlockByEventId) {
+        unlocked.set(eventId, unlockState.isUnlocked);
+      }
+
+      setCrewChatUnlockByEventId(unlocked);
     } catch (artworkError) {
       console.error("Failed to load event artwork:", artworkError);
       setEventArtworkById(new Map());
+      setCrewChatUnlockByEventId(new Map());
     }
   }, []);
 
@@ -1618,6 +1638,11 @@ export default function DmChatPage() {
                             eventHasAcceptedBooking={
                               resolvedBooking.event_id
                                 ? eventIdsWithAcceptedBookings.has(resolvedBooking.event_id)
+                                : false
+                            }
+                            crewChatUnlocked={
+                              resolvedBooking.event_id
+                                ? crewChatUnlockByEventId.get(resolvedBooking.event_id) ?? false
                                 : false
                             }
                             eventCancelled={eventCancelled}
