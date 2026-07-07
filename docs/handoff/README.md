@@ -21,6 +21,7 @@ Read everything in docs/handoff/ and follow it. Then: [your task]
 | `PROJECT.md` | Stack, folders, conventions |
 | `CURRENT-STATE.md` | What is already built (update after big features) |
 | `SUPABASE.md` | SQL scripts and run order |
+| `SECRETS.md` | Where credentials live (Vercel, Supabase, password manager) — no secret values |
 
 ## Keep this updated
 
