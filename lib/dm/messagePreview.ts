@@ -3,8 +3,10 @@ import {
   isBookingActivityDmMessage,
   isBookingRequestMessage,
   parseBookingActivityBookingId,
+  parseEventCancellationActivityEventName,
   parseBookingRequestMessage,
   formatBookingStatusPreview,
+  formatEventCancelledInboxPreview,
   type BookingRequest,
 } from "@/lib/bookingRequests";
 
@@ -23,6 +25,12 @@ export function formatDmInboxMessagePreview(
   }
 
   if (isBookingActivityDmMessage(trimmed)) {
+    const eventCancelledName = parseEventCancellationActivityEventName(trimmed);
+
+    if (eventCancelledName) {
+      return formatEventCancelledInboxPreview(eventCancelledName);
+    }
+
     const activityBookingId = parseBookingActivityBookingId(trimmed);
     const booking =
       activityBookingId && options?.bookings?.length

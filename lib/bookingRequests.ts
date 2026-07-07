@@ -720,6 +720,99 @@ function formatBookingCancellationActivityMessage(booking: BookingRequest): stri
   return `${BOOKING_ACTIVITY_DM_PREFIX} cancelled:${booking.id}`;
 }
 
+export function formatEventCancellationActivityMessage(eventName: string): string {
+  const trimmedEventName = eventName.trim() || "Event";
+
+  return `${BOOKING_ACTIVITY_DM_PREFIX} event-cancelled · ${trimmedEventName}`;
+}
+
+export function parseEventCancellationActivityEventName(text: string): string | null {
+  const trimmed = text.trim();
+  const match = trimmed.match(/^BOOKING ACTIVITY · event-cancelled · (.+)$/i);
+
+  return match?.[1]?.trim() || null;
+}
+
+export function formatEventCancelledInboxPreview(eventName?: string | null): string {
+  const trimmedEventName = eventName?.trim() || "Event";
+
+  return `Event cancelled · ${trimmedEventName}`;
+}
+
+function isBookingAffectedByWholeEventCancellation(booking: BookingRequest): boolean {
+  return (
+    booking.status === "accepted" ||
+    booking.status === "pending" ||
+    booking.status === "cancelled"
+  );
+}
+
+export async function insertEventCancellationActivityMessagesIfNeeded(options: {
+  eventName: string;
+  plannerUserId: string;
+  bookings: BookingRequest[];
+}): Promise<void> {
+  const messageText = formatEventCancellationActivityMessage(options.eventName);
+  const seenConversationIds = new Set<string>();
+
+  for (const booking of options.bookings) {
+    if (!booking.conversation_id || !isBookingAffectedByWholeEventCancellation(booking)) {
+      continue;
+    }
+
+    if (seenConversationIds.has(booking.conversation_id)) {
+      continue;
+    }
+
+    seenConversationIds.add(booking.conversation_id);
+
+    const { data: existingRows, error: existingError } = await supabase
+      .from("messages")
+      .select("id")
+      .eq("conversation_id", booking.conversation_id)
+      .eq("text", messageText)
+      .limit(1);
+
+    if (existingError) {
+      console.error(
+        "[bookings] Failed to check event-cancellation activity duplicate:",
+        existingError,
+      );
+      continue;
+    }
+
+    if (existingRows?.[0]) {
+      continue;
+    }
+
+    const { data: windowRows, error: windowError } = await supabase
+      .from("messages")
+      .select("id")
+      .eq("conversation_id", booking.conversation_id)
+      .like("text", `${BOOKING_ACTIVITY_DM_PREFIX} event-cancelled ·%`)
+      .limit(1);
+
+    if (windowError) {
+      console.error(
+        "[bookings] Failed to check event-cancellation activity duplicate window:",
+        windowError,
+      );
+    } else if (windowRows?.[0]) {
+      continue;
+    }
+
+    const { error: insertError } = await supabase.from("messages").insert({
+      conversation_id: booking.conversation_id,
+      user_id: options.plannerUserId,
+      text: messageText,
+    });
+
+    if (insertError) {
+      console.error("[bookings] Failed to insert event-cancellation activity DM message:", insertError);
+    }
+  }
+}
+
 async function insertBookingCancellationActivityMessageIfNeeded(
   booking: BookingRequest,
 ): Promise<void> {
@@ -1066,6 +1159,12 @@ export function formatBookingMessagePreview(
   }
 
   if (isBookingActivityDmMessage(trimmed)) {
+    const eventCancelledName = parseEventCancellationActivityEventName(trimmed);
+
+    if (eventCancelledName) {
+      return formatEventCancelledInboxPreview(eventCancelledName);
+    }
+
     const activityBookingId = parseBookingActivityBookingId(trimmed);
     const resolvedBooking =
       booking && activityBookingId && booking.id === activityBookingId ? booking : booking;

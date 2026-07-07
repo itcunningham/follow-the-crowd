@@ -3,6 +3,7 @@ import type { BookingPlan } from "@/lib/bookingPlans";
 import {
   filterActiveBookings,
   getActiveEventLineupStats,
+  insertEventCancellationActivityMessagesIfNeeded,
   listBookingRequestsForEvent,
   mapBookingRequestRows,
   type BookingRequest,
@@ -628,6 +629,18 @@ export async function cancelEvent(eventId: string): Promise<CancelEventResult> {
   }
 
   const result = parseCancelEventRpcResult(data);
+
+  try {
+    const eventBookings = await listBookingRequestsForEvent(eventId);
+    await insertEventCancellationActivityMessagesIfNeeded({
+      eventName: result.event.name,
+      plannerUserId: result.event.owner_id,
+      bookings: eventBookings,
+    });
+  } catch (activityError) {
+    console.error("[events] Failed to insert event-cancellation activity DM messages:", activityError);
+  }
+
   await notifyCancelledBookingsFromEventCancellation(result.cancelledBookings);
 
   return result;
