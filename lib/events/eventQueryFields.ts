@@ -55,13 +55,21 @@ export function selectEventUnlockFields(): string {
     : EVENT_UNLOCK_FIELDS;
 }
 
+function normalizeCrewChatStartedAtValue(
+  value: string | null | undefined,
+): string | null {
+  const trimmed = value?.trim();
+  return trimmed || null;
+}
+
 export function normalizeEventRow(row: Record<string, unknown>): Record<string, unknown> & {
   crew_chat_started_at: string | null;
 } {
   return {
     ...row,
-    crew_chat_started_at:
-      (row.crew_chat_started_at as string | null | undefined) ?? null,
+    crew_chat_started_at: normalizeCrewChatStartedAtValue(
+      row.crew_chat_started_at as string | null | undefined,
+    ),
   };
 }
 

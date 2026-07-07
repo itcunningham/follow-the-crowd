@@ -27,11 +27,13 @@ export function BookingDateField({
   value,
   onChange,
   required = false,
+  minDate,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   required?: boolean;
+  minDate?: string;
 }) {
   const parsed = parseEventDate(value);
 
@@ -47,6 +49,7 @@ export function BookingDateField({
         value={value}
         onChange={onChange}
         required={required && !parsed.legacyValue}
+        minDate={minDate}
         ariaLabel={label}
       />
     </label>

@@ -1,4 +1,4 @@
-import { parseEventDate } from "@/lib/bookingDateTime";
+import { getEventStartInPastError, parseEventDate } from "@/lib/bookingDateTime";
 import type { BookingPlan } from "@/lib/bookingPlans";
 import {
   filterActiveBookings,
@@ -294,7 +294,16 @@ export async function getEventById(eventId: string): Promise<Event | null> {
   return normalizeEventRow(data as unknown as Record<string, unknown>) as Event;
 }
 
+function assertEventStartNotInPast(input: EventInput): void {
+  const pastError = getEventStartInPastError(input.eventDate, input.setTime);
+
+  if (pastError) {
+    throw new Error(pastError);
+  }
+}
+
 export async function createEvent(input: EventInput): Promise<Event> {
+  assertEventStartNotInPast(input);
   const userId = await getCurrentUserId();
 
   const data = await withEventFieldsFallback((fields) =>
@@ -313,6 +322,7 @@ export async function createEvent(input: EventInput): Promise<Event> {
 }
 
 export async function updateEvent(eventId: string, input: EventInput): Promise<Event> {
+  assertEventStartNotInPast(input);
   const userId = await getCurrentUserId();
 
   const data = await withEventFieldsFallback((fields) =>

@@ -351,3 +351,72 @@ export const BOOKING_DATE_TIME_INPUT_CLASS =
   "ftc-field-trigger w-full rounded-xl px-3.5 py-2.5 text-sm [color-scheme:dark]";
 
 export const BOOKING_FIELD_LABEL_CLASS = "ftc-label";
+
+export const EVENT_START_IN_PAST_ERROR =
+  "Event start must be in the future. Choose a later date and time.";
+
+export function getTodayDateKey(): string {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = padTimePart(now.getMonth() + 1);
+  const day = padTimePart(now.getDate());
+  return `${year}-${month}-${day}`;
+}
+
+export function isDateKeyBeforeToday(isoDate: string): boolean {
+  if (!isIsoDateString(isoDate)) {
+    return false;
+  }
+
+  return isoDate.trim() < getTodayDateKey();
+}
+
+export function resolveEventStartDateTime(eventDate: string, setTime: string): Date | null {
+  const { isoDate } = parseEventDate(eventDate);
+
+  if (!isoDate) {
+    return null;
+  }
+
+  const [year, month, day] = isoDate.split("-").map(Number);
+  const parsedTime = parseSetTimeRange(setTime);
+
+  if (parsedTime.start) {
+    const [hour24, minute] = parsedTime.start.time24.split(":").map(Number);
+    return new Date(year, month - 1, day, hour24, minute, 0, 0);
+  }
+
+  return new Date(year, month - 1, day, 0, 0, 0, 0);
+}
+
+export function isEventStartInPast(eventDate: string, setTime: string): boolean {
+  const { isoDate, legacyValue } = parseEventDate(eventDate);
+
+  if (legacyValue && !isoDate) {
+    return false;
+  }
+
+  if (!isoDate) {
+    return false;
+  }
+
+  if (isDateKeyBeforeToday(isoDate)) {
+    return true;
+  }
+
+  if (isoDate !== getTodayDateKey()) {
+    return false;
+  }
+
+  const startDateTime = resolveEventStartDateTime(eventDate, setTime);
+
+  if (!startDateTime) {
+    return false;
+  }
+
+  return startDateTime.getTime() < Date.now();
+}
+
+export function getEventStartInPastError(eventDate: string, setTime: string): string | null {
+  return isEventStartInPast(eventDate, setTime) ? EVENT_START_IN_PAST_ERROR : null;
+}

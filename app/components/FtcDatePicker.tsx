@@ -76,6 +76,7 @@ export default function FtcDatePicker({
   onChange,
   required = false,
   disabled = false,
+  minDate,
   ariaLabel = "Event date",
   className = BOOKING_DATE_TIME_INPUT_CLASS,
 }: {
@@ -83,6 +84,7 @@ export default function FtcDatePicker({
   onChange: (value: string) => void;
   required?: boolean;
   disabled?: boolean;
+  minDate?: string;
   ariaLabel?: string;
   className?: string;
 }) {
@@ -133,7 +135,19 @@ export default function FtcDatePicker({
   const buttonLabel = formatPickerButtonLabel(value);
   const hasValue = Boolean(parsed.isoDate);
 
+  function isDayDisabled(day: Date): boolean {
+    if (!minDate) {
+      return false;
+    }
+
+    return toDateKey(day) < minDate;
+  }
+
   function handleSelectDay(day: Date) {
+    if (isDayDisabled(day)) {
+      return;
+    }
+
     onChange(toDateKey(day));
     setOpen(false);
   }
@@ -204,12 +218,14 @@ export default function FtcDatePicker({
 
                   const isSelected = selectedDate ? isSameDay(day, selectedDate) : false;
                   const isToday = isSameDay(day, today);
+                  const isDisabledDay = isDayDisabled(day);
 
                   return (
                     <button
                       key={toDateKey(day)}
                       type="button"
                       onClick={() => handleSelectDay(day)}
+                      disabled={isDisabledDay}
                       aria-label={day.toLocaleDateString(undefined, {
                         weekday: "long",
                         month: "long",
@@ -217,12 +233,15 @@ export default function FtcDatePicker({
                         year: "numeric",
                       })}
                       aria-pressed={isSelected}
+                      aria-disabled={isDisabledDay}
                       className={`flex h-9 items-center justify-center rounded-lg border text-sm transition ${
-                        isSelected
-                          ? "border-0 bg-ftc-primary text-ftc-bg"
-                          : isToday
-                            ? "border border-ftc-border-strong bg-ftc-surface/80 text-ftc-text hover:border-ftc-border-strong hover:bg-ftc-bg-elevated"
-                            : "border-transparent text-ftc-text-secondary hover:border-ftc-border-strong hover:bg-ftc-surface/70"
+                        isDisabledDay
+                          ? "cursor-not-allowed border-transparent text-ftc-text-muted/40"
+                          : isSelected
+                            ? "border-0 bg-ftc-primary text-ftc-bg"
+                            : isToday
+                              ? "border border-ftc-border-strong bg-ftc-surface/80 text-ftc-text hover:border-ftc-border-strong hover:bg-ftc-bg-elevated"
+                              : "border-transparent text-ftc-text-secondary hover:border-ftc-border-strong hover:bg-ftc-surface/70"
                       }`}
                     >
                       {day.getDate()}
@@ -244,6 +263,7 @@ export default function FtcDatePicker({
         value={parsed.isoDate}
         readOnly
         required={required && !parsed.legacyValue}
+        min={minDate}
         tabIndex={-1}
         aria-hidden="true"
         className="pointer-events-none absolute h-0 w-0 opacity-0"

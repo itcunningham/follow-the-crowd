@@ -9,11 +9,18 @@ export type CrewChatUnlockState = {
   canPlannerStart: boolean;
 };
 
+export function normalizeCrewChatStartedAt(
+  value: string | null | undefined,
+): string | null {
+  const trimmed = value?.trim();
+  return trimmed || null;
+}
+
 export function resolveCrewChatUnlockState(
   event: Pick<Event, "status" | "crew_chat_started_at">,
   acceptedDjCount: number,
 ): CrewChatUnlockState {
-  const crewChatStartedAt = event.crew_chat_started_at ?? null;
+  const crewChatStartedAt = normalizeCrewChatStartedAt(event.crew_chat_started_at);
   const isUnlocked =
     !isEventCancelled(event) &&
     acceptedDjCount >= 1 &&

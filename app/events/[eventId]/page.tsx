@@ -27,6 +27,7 @@ import {
 import ProfileAvatar from "@/app/components/ProfileAvatar";
 import DjBookingAvailabilityBadge from "@/app/components/DjBookingAvailabilityBadge";
 import { BookingDateField, BookingSetTimeRangeField } from "@/app/components/BookingDateTimeFields";
+import { getEventStartInPastError, getTodayDateKey } from "@/lib/bookingDateTime";
 import EventCoverImageField, {
   emptyEventCoverImageFieldState,
   type EventCoverImageFieldState,
@@ -98,8 +99,9 @@ import {
   type EventInput,
 } from "@/lib/events";
 import {
-  resolveCrewChatUnlockState,
+  getCrewChatUnlockStateForEvent,
   startEventCrewChat,
+  type CrewChatUnlockState,
 } from "@/lib/events/crewChatUnlock";
 import { getEventCrewChatLink } from "@/lib/eventCrewChat";
 import { getEventCoverUploadErrorMessage, normalizeEventCoverImageUrl } from "@/lib/events/eventCoverImage";
@@ -190,6 +192,7 @@ export default function EventDetailPage() {
   const [deletingEvent, setDeletingEvent] = useState(false);
   const [cancellingEvent, setCancellingEvent] = useState(false);
   const [startingCrewChat, setStartingCrewChat] = useState(false);
+  const [crewChatUnlock, setCrewChatUnlock] = useState<CrewChatUnlockState | null>(null);
   const [crewChatHelpOpen, setCrewChatHelpOpen] = useState(false);
   const [unavailableConfirmOpen, setUnavailableConfirmOpen] = useState(false);
   const [djAvailabilityHints, setDjAvailabilityHints] = useState<
@@ -216,16 +219,7 @@ export default function EventDetailPage() {
   const canViewRunSheet = canOpenCrewChat;
   const canEditRunSheet = isOwner && isPlanner;
   const eventIsCancelled = event ? isEventCancelled(event) : false;
-  const acceptedDjCount = useMemo(
-    () => lineup.filter((booking) => booking.status === "accepted").length,
-    [lineup],
-  );
-  const crewChatUnlock = useMemo(
-    () => (event ? resolveCrewChatUnlockState(event, acceptedDjCount) : null),
-    [acceptedDjCount, event],
-  );
   const hasLinkedBookings = lineup.length > 0;
-  const hasAcceptedBookings = lineup.some((booking) => booking.status === "accepted");
   const canManageEventLifecycle = isOwner && isPlanner && !eventIsCancelled;
 
   const visibleLineup = useMemo(() => filterVisibleEventLineupBookings(lineup), [lineup]);
@@ -318,14 +312,19 @@ export default function EventDetailPage() {
         setEvent(null);
         setLineup([]);
         setProfiles(new Map());
+        setCrewChatUnlock(null);
         setError("Event not found or you do not have access.");
         return;
       }
 
       setEvent(loadedEvent);
 
-      const bookings = await listBookingRequestsForEvent(eventId);
+      const [bookings, unlock] = await Promise.all([
+        listBookingRequestsForEvent(eventId),
+        getCrewChatUnlockStateForEvent(loadedEvent),
+      ]);
       setLineup(bookings);
+      setCrewChatUnlock(unlock);
 
       const recipientIds = bookings.map((booking) => booking.recipient_id);
 
@@ -340,6 +339,7 @@ export default function EventDetailPage() {
       setEvent(null);
       setLineup([]);
       setProfiles(new Map());
+      setCrewChatUnlock(null);
       setError(getEventsLoadErrorMessage(loadError));
     } finally {
       setLoading(false);
@@ -352,7 +352,17 @@ export default function EventDetailPage() {
     }
 
     try {
-      const bookings = await listBookingRequestsForEvent(eventId);
+      const [loadedEvent, bookings] = await Promise.all([
+        getEventById(eventId),
+        listBookingRequestsForEvent(eventId),
+      ]);
+
+      if (loadedEvent) {
+        setEvent(loadedEvent);
+        const unlock = await getCrewChatUnlockStateForEvent(loadedEvent);
+        setCrewChatUnlock(unlock);
+      }
+
       setLineup(bookings);
 
       const recipientIds = bookings.map((booking) => booking.recipient_id);
@@ -546,6 +556,13 @@ export default function EventDetailPage() {
       !editForm.setTime.trim()
     ) {
       showEditFormError("Please fill in event name, venue, date, and set time.");
+      return;
+    }
+
+    const pastStartError = getEventStartInPastError(editForm.eventDate, editForm.setTime);
+
+    if (pastStartError) {
+      showEditFormError(pastStartError);
       return;
     }
 
@@ -923,6 +940,8 @@ export default function EventDetailPage() {
     try {
       const updatedEvent = await startEventCrewChat(event.id);
       setEvent(updatedEvent);
+      const unlock = await getCrewChatUnlockStateForEvent(updatedEvent);
+      setCrewChatUnlock(unlock);
     } catch (startError) {
       console.error("Failed to start crew chat:", startError);
       setError(getEventsLoadErrorMessage(startError));
@@ -952,7 +971,9 @@ export default function EventDetailPage() {
   const showEventGroupChatAction =
     !eventIsCancelled &&
     Boolean(crewChatUnlock?.isUnlocked) &&
-    (isOwner || hasAcceptedBooking);
+    !Boolean(crewChatUnlock?.canPlannerStart) &&
+    (crewChatUnlock?.acceptedDjCount ?? 0) >= 1 &&
+    ((isOwner && isPlanner) || hasAcceptedBooking);
   const showCrewChatHelpUi = showStartCrewChatAction || showEventGroupChatAction;
   const crewChatHelpActionLabel = showStartCrewChatAction ? "Start crew chat" : "Group chat";
   const showBottomBar =
@@ -1019,8 +1040,7 @@ export default function EventDetailPage() {
                     <path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 2 2 0 0 1-1.8 1.1h-3.7l-3 3v-3H8a2 2 0 0 1-2-2V8.5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2Z" />
                   </svg>
                 </EventDetailOverlayButton>
-              ) : null}
-              {showEventGroupChatAction ? (
+              ) : showEventGroupChatAction ? (
                 <EventDetailOverlayButton
                   href={getEventCrewChatLink(event.id)}
                   label="Open group chat"
@@ -1161,6 +1181,7 @@ export default function EventDetailPage() {
                   onChange={(value) =>
                     setEditForm((prev) => (prev ? { ...prev, eventDate: value } : prev))
                   }
+                  minDate={getTodayDateKey()}
                   required
                 />
                 <BookingSetTimeRangeField
@@ -1589,27 +1610,7 @@ export default function EventDetailPage() {
                 Open booking conversation
               </EventDetailPrimaryAction>
             ) : null}
-            {!showOwnerSendAction &&
-            !showStartCrewChatAction &&
-            !viewerBooking?.conversation_id &&
-            showEventGroupChatAction ? (
-              <div className="flex min-w-0 flex-1 items-center gap-1">
-                <div className="min-w-0 flex-1">
-                  <EventDetailSecondaryAction href={getEventCrewChatLink(event.id)}>
-                    Group chat
-                  </EventDetailSecondaryAction>
-                </div>
-                <InlineOptionHelpButton
-                  label="Group chat"
-                  open={crewChatHelpOpen}
-                  onToggle={() => {
-                    setCrewChatHelpOpen((current) => !current);
-                  }}
-                />
-              </div>
-            ) : null}
-            {(showOwnerSendAction || Boolean(viewerBooking?.conversation_id)) &&
-            showEventGroupChatAction ? (
+            {showEventGroupChatAction ? (
               <div className="flex min-w-0 flex-1 items-center gap-1">
                 <div className="min-w-0 flex-1">
                   <EventDetailSecondaryAction href={getEventCrewChatLink(event.id)}>
