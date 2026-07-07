@@ -6,6 +6,7 @@ import {
 } from "@/lib/dmInbox";
 import { listOwnedEvents, getEventArtworkByIds, isEventCancelled } from "@/lib/events";
 import { getCrewChatUnlockStateByEventIds } from "@/lib/events/crewChatUnlock";
+import { withEventUnlockFieldsFallback } from "@/lib/events/eventQueryFields";
 import { pickPreferredEventCoverImageUrl } from "@/lib/events/eventCoverImage";
 import { supabase } from "@/lib/supabaseClient";
 import { getCurrentUserId, type UserRole } from "@/lib/user/currentUser";
@@ -243,21 +244,24 @@ async function filterUnlockedGroupChatItems(
   }
 
   const eventIds = items.map((item) => item.eventId);
-  const { data: events, error } = await supabase
-    .from("events")
-    .select("id, status, crew_chat_started_at")
-    .in("id", eventIds);
-
-  if (error) {
-    throw error;
-  }
+  const events = await withEventUnlockFieldsFallback((fields) =>
+    supabase.from("events").select(fields).in("id", eventIds),
+  );
 
   const unlockByEventId = await getCrewChatUnlockStateByEventIds(
-    (events ?? []).map((event) => ({
-      id: event.id as string,
-      status: event.status as "draft" | "upcoming" | "completed" | "cancelled",
-      crew_chat_started_at: (event.crew_chat_started_at as string | null) ?? null,
-    })),
+    ((events ?? []) as unknown[]).map((event) => {
+      const row = event as {
+        id: string;
+        status: "draft" | "upcoming" | "completed" | "cancelled";
+        crew_chat_started_at?: string | null;
+      };
+
+      return {
+        id: row.id,
+        status: row.status,
+        crew_chat_started_at: row.crew_chat_started_at ?? null,
+      };
+    }),
   );
 
   return items.filter((item) => unlockByEventId.get(item.eventId)?.isUnlocked);
@@ -397,24 +401,23 @@ export async function listAccessibleGroupChatEventIds(
     ];
 
     if (eventIds.length > 0) {
-      const { data: events, error: eventsError } = await supabase
-        .from("events")
-        .select("id, status, crew_chat_started_at")
-        .in("id", eventIds)
-        .neq("status", "cancelled");
+      const events = await withEventUnlockFieldsFallback((fields) =>
+        supabase.from("events").select(fields).in("id", eventIds).neq("status", "cancelled"),
+      );
 
-      if (eventsError) {
-        throw eventsError;
-      }
-
-      for (const event of events ?? []) {
-        const eventId = event.id as string;
+      for (const event of (events ?? []) as unknown[]) {
+        const row = event as {
+          id: string;
+          status: "draft" | "upcoming" | "completed" | "cancelled";
+          crew_chat_started_at?: string | null;
+        };
+        const eventId = row.id;
 
         if (!byEventId.has(eventId)) {
           byEventId.set(eventId, {
             id: eventId,
-            status: event.status as "draft" | "upcoming" | "completed" | "cancelled",
-            crew_chat_started_at: (event.crew_chat_started_at as string | null) ?? null,
+            status: row.status,
+            crew_chat_started_at: row.crew_chat_started_at ?? null,
           });
         }
       }

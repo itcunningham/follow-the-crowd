@@ -358,7 +358,7 @@ export default function EventsPageClient({ initialTab }: EventsPageClientProps) 
       router.push(`/events/${created.id}`);
     } catch (saveError) {
       console.error("Failed to create event:", saveError);
-      setError(saveError instanceof Error ? saveError.message : "Failed to create event");
+      setError(getEventsLoadErrorMessage(saveError));
     } finally {
       setSaving(false);
     }

@@ -17,8 +17,12 @@ create table if not exists public.events (
   set_time text not null,
   rate text not null default '',
   notes text not null default '',
-  status text not null default 'draft'
+  status text not null default 'draft',
+  crew_chat_started_at timestamptz
 );
+
+alter table public.events
+  add column if not exists crew_chat_started_at timestamptz;
 
 alter table public.events
   drop constraint if exists events_status_check;

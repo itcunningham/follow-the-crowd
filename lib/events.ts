@@ -25,6 +25,12 @@ import {
   FTC_STATUS_PRIMARY,
 } from "@/lib/ftcFlatStatus";
 import { getCurrentUserId } from "@/lib/user/currentUser";
+import {
+  normalizeEventRow,
+  normalizeEventRows,
+  withEventArtworkFieldsFallback,
+  withEventFieldsFallback,
+} from "@/lib/events/eventQueryFields";
 
 export type EventStatus = "draft" | "upcoming" | "completed" | "cancelled";
 
@@ -68,9 +74,6 @@ export type EventLineupStats = {
 export type EventWithLineupStats = Event & {
   lineupStats: EventLineupStats;
 };
-
-const EVENT_FIELDS =
-  "id, created_at, owner_id, booking_plan_id, name, venue, event_date, set_time, rate, notes, status, cover_image_url, fallback_colour, crew_chat_started_at";
 
 function mapEventInputToRow(input: EventInput) {
   return {
@@ -217,17 +220,15 @@ export async function attachLineupStats(events: Event[]): Promise<EventWithLineu
 export async function listOwnedEvents(): Promise<Event[]> {
   const userId = await getCurrentUserId();
 
-  const { data, error } = await supabase
-    .from("events")
-    .select(EVENT_FIELDS)
-    .eq("owner_id", userId)
-    .order("created_at", { ascending: false });
+  const data = await withEventFieldsFallback((fields) =>
+    supabase
+      .from("events")
+      .select(fields)
+      .eq("owner_id", userId)
+      .order("created_at", { ascending: false }),
+  );
 
-  if (error) {
-    throw error;
-  }
-
-  return (data ?? []) as Event[];
+  return normalizeEventRows((data ?? []) as unknown as Record<string, unknown>[]) as Event[];
 }
 
 export async function listDjInvitedEvents(): Promise<Event[]> {
@@ -255,17 +256,13 @@ export async function listDjInvitedEvents(): Promise<Event[]> {
     return [];
   }
 
-  const { data, error } = await supabase
-    .from("events")
-    .select(EVENT_FIELDS)
-    .in("id", eventIds)
-    .order("event_date", { ascending: true });
+  const data = await withEventFieldsFallback((fields) =>
+    supabase.from("events").select(fields).in("id", eventIds).order("event_date", {
+      ascending: true,
+    }),
+  );
 
-  if (error) {
-    throw error;
-  }
-
-  return (data ?? []) as Event[];
+  return normalizeEventRows((data ?? []) as unknown as Record<string, unknown>[]) as Event[];
 }
 
 export async function hasDjEventInvites(userId?: string): Promise<boolean> {
@@ -286,55 +283,49 @@ export async function hasDjEventInvites(userId?: string): Promise<boolean> {
 }
 
 export async function getEventById(eventId: string): Promise<Event | null> {
-  const { data, error } = await supabase
-    .from("events")
-    .select(EVENT_FIELDS)
-    .eq("id", eventId)
-    .maybeSingle();
+  const data = await withEventFieldsFallback((fields) =>
+    supabase.from("events").select(fields).eq("id", eventId).maybeSingle(),
+  );
 
-  if (error) {
-    throw error;
+  if (!data) {
+    return null;
   }
 
-  return (data as Event | null) ?? null;
+  return normalizeEventRow(data as unknown as Record<string, unknown>) as Event;
 }
 
 export async function createEvent(input: EventInput): Promise<Event> {
   const userId = await getCurrentUserId();
 
-  const { data, error } = await supabase
-    .from("events")
-    .insert({
-      owner_id: userId,
-      status: "upcoming",
-      ...mapEventInputToRow(input),
-    })
-    .select(EVENT_FIELDS)
-    .single();
+  const data = await withEventFieldsFallback((fields) =>
+    supabase
+      .from("events")
+      .insert({
+        owner_id: userId,
+        status: "upcoming",
+        ...mapEventInputToRow(input),
+      })
+      .select(fields)
+      .single(),
+  );
 
-  if (error) {
-    throw error;
-  }
-
-  return data as Event;
+  return normalizeEventRow(data as unknown as Record<string, unknown>) as Event;
 }
 
 export async function updateEvent(eventId: string, input: EventInput): Promise<Event> {
   const userId = await getCurrentUserId();
 
-  const { data, error } = await supabase
-    .from("events")
-    .update(mapEventInputToRow(input))
-    .eq("id", eventId)
-    .eq("owner_id", userId)
-    .select(EVENT_FIELDS)
-    .single();
+  const data = await withEventFieldsFallback((fields) =>
+    supabase
+      .from("events")
+      .update(mapEventInputToRow(input))
+      .eq("id", eventId)
+      .eq("owner_id", userId)
+      .select(fields)
+      .single(),
+  );
 
-  if (error) {
-    throw error;
-  }
-
-  return data as Event;
+  return normalizeEventRow(data as unknown as Record<string, unknown>) as Event;
 }
 
 export type EventCoverChange = {
@@ -431,19 +422,17 @@ export async function updateEventCoverImageUrl(
   const userId = await getCurrentUserId();
   const normalizedCoverImageUrl = normalizeEventCoverImageUrl(coverImageUrl);
 
-  const { data, error } = await supabase
-    .from("events")
-    .update({ cover_image_url: normalizedCoverImageUrl })
-    .eq("id", eventId)
-    .eq("owner_id", userId)
-    .select(EVENT_FIELDS)
-    .single();
+  const data = await withEventFieldsFallback((fields) =>
+    supabase
+      .from("events")
+      .update({ cover_image_url: normalizedCoverImageUrl })
+      .eq("id", eventId)
+      .eq("owner_id", userId)
+      .select(fields)
+      .single(),
+  );
 
-  if (error) {
-    throw error;
-  }
-
-  const updatedEvent = data as Event;
+  const updatedEvent = normalizeEventRow(data as unknown as Record<string, unknown>) as Event;
 
   assertEventCoverImagePersisted(updatedEvent, normalizedCoverImageUrl);
 
@@ -471,18 +460,13 @@ export async function getEventArtworkByIds(
     return new Map();
   }
 
-  const { data, error } = await supabase
-    .from("events")
-    .select("id, name, venue, event_date, set_time, rate, cover_image_url, fallback_colour, status, crew_chat_started_at")
-    .in("id", uniqueIds);
-
-  if (error) {
-    throw error;
-  }
+  const data = await withEventArtworkFieldsFallback((fields) =>
+    supabase.from("events").select(fields).in("id", uniqueIds),
+  );
 
   const artworkById = new Map<string, EventArtworkSnapshot>();
 
-  for (const row of data ?? []) {
+  for (const row of (data ?? []) as unknown[]) {
     const eventRow = row as {
       id: string;
       name: string;
@@ -493,7 +477,7 @@ export async function getEventArtworkByIds(
       cover_image_url: string | null;
       fallback_colour: string | null;
       status: EventStatus;
-      crew_chat_started_at: string | null;
+      crew_chat_started_at?: string | null;
     };
 
     artworkById.set(eventRow.id, {
@@ -505,7 +489,7 @@ export async function getEventArtworkByIds(
       coverImageUrl: normalizeEventCoverImageUrl(eventRow.cover_image_url),
       fallbackColour: eventRow.fallback_colour?.trim() || null,
       status: eventRow.status,
-      crewChatStartedAt: eventRow.crew_chat_started_at,
+      crewChatStartedAt: eventRow.crew_chat_started_at ?? null,
     });
   }
 
@@ -656,6 +640,13 @@ export function getEventsLoadErrorMessage(error: unknown): string {
 
     if (supabaseError.code === "42P01" || supabaseError.code === "PGRST205") {
       return "Events table is not set up yet. Run scripts/setupEvents.sql.";
+    }
+
+    if (
+      supabaseError.code === "42703" &&
+      supabaseError.message?.includes("crew_chat_started_at")
+    ) {
+      return "Database update required. Run scripts/setupEventCrewChatUnlock.sql in Supabase SQL Editor, then try again.";
     }
 
     if (supabaseError.message) {
