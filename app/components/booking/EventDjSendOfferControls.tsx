@@ -2,6 +2,10 @@
 
 import { useState } from "react";
 import { BookingRateField } from "@/app/components/BookingRateField";
+import {
+  InlineOptionHelpButton,
+  InlineOptionHelpPanel,
+} from "@/app/components/booking/InlineOptionHelp";
 import { formatRateDisplay, normalizeStoredRate } from "@/lib/bookingRate";
 import type { BookingRateMode } from "@/lib/bookingRequests";
 
@@ -92,26 +96,19 @@ export default function EventDjSendOfferControls({
               >
                 {option.label}
               </button>
-              <button
-                type="button"
+              <InlineOptionHelpButton
+                label={option.label}
+                open={openHelp === option.value}
+                onToggle={() => toggleHelp(option.value)}
                 disabled={disabled}
-                aria-label={`${option.label} help`}
-                aria-expanded={openHelp === option.value}
-                onClick={() => toggleHelp(option.value)}
-                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-ftc-border-subtle bg-ftc-bg text-xs font-semibold text-ftc-text-muted transition hover:border-ftc-border-strong hover:text-ftc-text disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                ?
-              </button>
+              />
             </div>
           );
         })}
       </div>
 
       {activeHelp ? (
-        <p className="rounded-lg border border-ftc-border-subtle bg-ftc-bg-elevated px-3 py-2 text-xs leading-relaxed text-ftc-text-muted">
-          <span className="font-semibold text-ftc-text">{activeHelp.label}. </span>
-          {activeHelp.help}
-        </p>
+        <InlineOptionHelpPanel label={activeHelp.label} help={activeHelp.help} />
       ) : null}
 
       <BookingRateField

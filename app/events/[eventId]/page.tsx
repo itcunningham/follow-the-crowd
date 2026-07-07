@@ -52,6 +52,10 @@ import EventDjSendOfferControls, {
   formatDjSendOfferSummary,
   type DjSendOffer,
 } from "@/app/components/booking/EventDjSendOfferControls";
+import {
+  InlineOptionHelpButton,
+  InlineOptionHelpPanel,
+} from "@/app/components/booking/InlineOptionHelp";
 import BookingRateProposalPanel from "@/app/components/booking/BookingRateProposalPanel";
 import CancelBookingRequestButton from "@/app/components/CancelBookingRequestButton";
 import CancelAcceptedBookingButton from "@/app/components/booking/CancelAcceptedBookingButton";
@@ -124,6 +128,11 @@ const STATUS_FILTERS: { value: ActiveBookingStatusFilter; label: string }[] = [
   { value: "declined", label: "Declined" },
 ];
 
+const CREW_CHAT_HELP = {
+  label: "Crew chat",
+  help: "opens automatically when 2 DJs accept. With 1 accepted DJ, the planner can start it manually. If all DJs leave or the event is cancelled, crew chat locks again.",
+};
+
 export default function EventDetailPage() {
   const params = useParams<{ eventId: string }>();
   const router = useRouter();
@@ -181,6 +190,7 @@ export default function EventDetailPage() {
   const [deletingEvent, setDeletingEvent] = useState(false);
   const [cancellingEvent, setCancellingEvent] = useState(false);
   const [startingCrewChat, setStartingCrewChat] = useState(false);
+  const [crewChatHelpOpen, setCrewChatHelpOpen] = useState(false);
   const [unavailableConfirmOpen, setUnavailableConfirmOpen] = useState(false);
   const [djAvailabilityHints, setDjAvailabilityHints] = useState<
     Map<string, DjPlannerAvailabilityHint>
@@ -943,6 +953,8 @@ export default function EventDetailPage() {
     !eventIsCancelled &&
     Boolean(crewChatUnlock?.isUnlocked) &&
     (isOwner || hasAcceptedBooking);
+  const showCrewChatHelpUi = showStartCrewChatAction || showEventGroupChatAction;
+  const crewChatHelpActionLabel = showStartCrewChatAction ? "Start crew chat" : "Group chat";
   const showBottomBar =
     showStickyActions &&
     (showOwnerSendAction ||
@@ -1018,12 +1030,27 @@ export default function EventDetailPage() {
                   </svg>
                 </EventDetailOverlayButton>
               ) : null}
+              {showCrewChatHelpUi ? (
+                <InlineOptionHelpButton
+                  label={crewChatHelpActionLabel}
+                  open={crewChatHelpOpen}
+                  onToggle={() => {
+                    setCrewChatHelpOpen((current) => !current);
+                  }}
+                />
+              ) : null}
               {canEditEvent ? (
                 <EventDetailEditButton onClick={openEditForm} />
               ) : null}
             </div>
           </div>
         </div>
+
+        {showCrewChatHelpUi && crewChatHelpOpen && !showBottomBar ? (
+          <div className="border-b border-ftc-border-subtle px-4 py-2 sm:px-6">
+            <InlineOptionHelpPanel label={CREW_CHAT_HELP.label} help={CREW_CHAT_HELP.help} />
+          </div>
+        ) : null}
 
         <EventDetailHero
           eventName={event.name}
@@ -1519,15 +1546,33 @@ export default function EventDetailPage() {
 
         {showBottomBar ? (
           <EventDetailBottomBar>
+            {showCrewChatHelpUi && crewChatHelpOpen ? (
+              <InlineOptionHelpPanel
+                label={CREW_CHAT_HELP.label}
+                help={CREW_CHAT_HELP.help}
+              />
+            ) : null}
             {showStartCrewChatAction ? (
-              <EventDetailPrimaryAction
-                icon="chat"
-                onClick={() => {
-                  void handleStartCrewChat();
-                }}
-              >
-                {startingCrewChat ? "Starting..." : "Start crew chat"}
-              </EventDetailPrimaryAction>
+              <div className="flex min-w-0 flex-1 items-center gap-1">
+                <div className="min-w-0 flex-1">
+                  <EventDetailPrimaryAction
+                    icon="chat"
+                    onClick={() => {
+                      void handleStartCrewChat();
+                    }}
+                  >
+                    {startingCrewChat ? "Starting..." : "Start crew chat"}
+                  </EventDetailPrimaryAction>
+                </div>
+                <InlineOptionHelpButton
+                  label="Start crew chat"
+                  open={crewChatHelpOpen}
+                  onToggle={() => {
+                    setCrewChatHelpOpen((current) => !current);
+                  }}
+                  disabled={startingCrewChat}
+                />
+              </div>
             ) : null}
             {showOwnerSendAction ? (
               <EventDetailPrimaryAction onClick={openSendBookings}>
@@ -1548,15 +1593,37 @@ export default function EventDetailPage() {
             !showStartCrewChatAction &&
             !viewerBooking?.conversation_id &&
             showEventGroupChatAction ? (
-              <EventDetailSecondaryAction href={getEventCrewChatLink(event.id)}>
-                Group chat
-              </EventDetailSecondaryAction>
+              <div className="flex min-w-0 flex-1 items-center gap-1">
+                <div className="min-w-0 flex-1">
+                  <EventDetailSecondaryAction href={getEventCrewChatLink(event.id)}>
+                    Group chat
+                  </EventDetailSecondaryAction>
+                </div>
+                <InlineOptionHelpButton
+                  label="Group chat"
+                  open={crewChatHelpOpen}
+                  onToggle={() => {
+                    setCrewChatHelpOpen((current) => !current);
+                  }}
+                />
+              </div>
             ) : null}
             {(showOwnerSendAction || Boolean(viewerBooking?.conversation_id)) &&
             showEventGroupChatAction ? (
-              <EventDetailSecondaryAction href={getEventCrewChatLink(event.id)}>
-                Group chat
-              </EventDetailSecondaryAction>
+              <div className="flex min-w-0 flex-1 items-center gap-1">
+                <div className="min-w-0 flex-1">
+                  <EventDetailSecondaryAction href={getEventCrewChatLink(event.id)}>
+                    Group chat
+                  </EventDetailSecondaryAction>
+                </div>
+                <InlineOptionHelpButton
+                  label="Group chat"
+                  open={crewChatHelpOpen}
+                  onToggle={() => {
+                    setCrewChatHelpOpen((current) => !current);
+                  }}
+                />
+              </div>
             ) : null}
           </EventDetailBottomBar>
         ) : null}
