@@ -94,7 +94,6 @@ export default function FtcDatePicker({
   minDate,
   ariaLabel = "Event date",
   className = BOOKING_DATE_TIME_INPUT_CLASS,
-  debugSource = "app/components/FtcDatePicker.tsx",
 }: {
   value: string;
   onChange: (value: string) => void;
@@ -103,7 +102,6 @@ export default function FtcDatePicker({
   minDate?: string;
   ariaLabel?: string;
   className?: string;
-  debugSource?: string;
 }) {
   const pickerId = useId();
   const effectiveMinDate = resolveMinEventDateKey(minDate);
@@ -161,32 +159,14 @@ export default function FtcDatePicker({
   }
 
   function handleSelectDay(day: Date) {
-    const clickedDate = toDateKey(day);
-    const blocked = isDayDisabled(day);
-
-    console.info("[ftc:date-picker]", {
-      clickedDate,
-      minDate: effectiveMinDate,
-      blocked,
-      debugSource,
-      formValue: value,
-      pickerValue,
-    });
-
-    if (blocked) {
+    if (isDayDisabled(day)) {
       return;
     }
 
+    const clickedDate = toDateKey(day);
     const nextValue = guardEventDatePickerChange(clickedDate, effectiveMinDate);
 
     if (!nextValue) {
-      console.info("[ftc:date-picker]", {
-        clickedDate,
-        minDate: effectiveMinDate,
-        blocked: true,
-        reason: "guardEventDatePickerChange rejected",
-        debugSource,
-      });
       return;
     }
 
@@ -195,18 +175,7 @@ export default function FtcDatePicker({
   }
 
   function handleDayPointerUp(day: Date, event: React.PointerEvent<HTMLButtonElement>) {
-    const clickedDate = toDateKey(day);
-    const blocked = isDayDisabled(day);
-
-    console.info("[ftc:date-picker]", {
-      clickedDate,
-      minDate: effectiveMinDate,
-      blocked,
-      debugSource,
-      eventType: event.type,
-    });
-
-    if (blocked) {
+    if (isDayDisabled(day)) {
       event.preventDefault();
       event.stopPropagation();
     }

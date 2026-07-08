@@ -7,7 +7,6 @@ import { getNavBadgeCounts, type NavBadgeCounts } from "@/lib/notifications";
 import { isMessagesInboxPath } from "@/lib/groupChats";
 import { isGigsAreaPath, isPlannerEventsAreaPath } from "@/lib/plannerEventsNav";
 import { supabase } from "@/lib/supabaseClient";
-import FtcDeploymentBanner from "@/app/components/debug/FtcDeploymentBanner";
 import {
   getCurrentUserId,
   getCurrentUserProfile,
@@ -327,7 +326,6 @@ export default function AppNavigation() {
 
   return (
     <>
-      <FtcDeploymentBanner />
       <nav
         aria-label="Main navigation"
         className="ftc-nav-bar sticky top-0 z-40 hidden border-b md:block"

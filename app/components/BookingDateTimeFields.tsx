@@ -14,13 +14,10 @@ import {
   defaultStartWheelTime,
   extractClockDisplay,
   formatTimeButtonLabel,
-  getEventDateValidationError,
   guardEventDatePickerChange,
-  isDateKeyBeforeMin,
   isSavedEventDateBeforeMin,
   parseEventDate,
   parseSetTimeRange,
-  resolveEventDateKey,
   resolveMinEventDateKey,
   resolvePickerEventDateValue,
   savedEventDateNeedsPickerReselection,
@@ -28,8 +25,6 @@ import {
   type Meridiem,
   type WheelTimeValue,
 } from "@/lib/bookingDateTime";
-import FtcDebugPanel from "@/app/components/debug/FtcDebugPanel";
-import { useFtcDebugPanelEnabled } from "@/app/components/debug/useFtcDebugPanelEnabled";
 
 export function BookingDateField({
   label,
@@ -37,51 +32,24 @@ export function BookingDateField({
   onChange,
   required = false,
   minDate,
-  debugContext,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   required?: boolean;
   minDate?: string;
-  debugContext?: {
-    componentPath: string;
-    setTime?: string;
-    saveDisabled?: boolean;
-    saveDisabledReason?: string | null;
-  };
 }) {
-  const showDebug = useFtcDebugPanelEnabled();
   const parsed = parseEventDate(value);
   const effectiveMinDate = resolveMinEventDateKey(minDate);
   const pickerValue = resolvePickerEventDateValue(value, effectiveMinDate);
   const needsPickerReselection = savedEventDateNeedsPickerReselection(value, effectiveMinDate);
   const savedDateIsPast = isSavedEventDateBeforeMin(value, effectiveMinDate);
   const savedDateLabel = parsed.legacyValue ?? parsed.isoDate;
-  const selectedDateKey = resolveEventDateKey(value);
-  const isPastDate =
-    selectedDateKey !== null
-      ? isDateKeyBeforeMin(selectedDateKey, effectiveMinDate)
-      : savedDateIsPast;
-  const validationError =
-    debugContext?.setTime !== undefined
-      ? getEventDateValidationError(value, debugContext.setTime)
-      : null;
-  const saveDisabledReason =
-    debugContext?.saveDisabledReason ??
-    (debugContext?.saveDisabled ? validationError ?? "save disabled" : validationError);
 
   function handleDateChange(nextValue: string) {
     const guarded = guardEventDatePickerChange(nextValue, effectiveMinDate);
 
     if (guarded === null) {
-      console.info("[ftc:date-picker]", {
-        clickedDate: nextValue,
-        minDate: effectiveMinDate,
-        blocked: true,
-        reason: "BookingDateField guard rejected",
-        debugSource: debugContext?.componentPath ?? "BookingDateField",
-      });
       return;
     }
 
@@ -109,23 +77,7 @@ export function BookingDateField({
         required={required && needsPickerReselection}
         minDate={effectiveMinDate}
         ariaLabel={label}
-        debugSource={`${debugContext?.componentPath ?? "BookingDateField"} > FtcDatePicker`}
       />
-      {showDebug ? (
-        <FtcDebugPanel
-          title="Date picker"
-          fields={{
-            componentPath:
-              debugContext?.componentPath ??
-              "app/components/BookingDateTimeFields.tsx > BookingDateField",
-            selectedDateValue: value || "empty",
-            pickerDisplayedValue: pickerValue || "empty",
-            minDate: effectiveMinDate,
-            isPastDate,
-            saveDisabledReason: saveDisabledReason ?? "none",
-          }}
-        />
-      ) : null}
     </label>
   );
 }

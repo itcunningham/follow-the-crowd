@@ -525,12 +525,6 @@ export default function EventsPageClient({ initialTab }: EventsPageClientProps) 
                     onChange={(value) => updateField("eventDate", value)}
                     minDate={getTodayDateKey()}
                     required
-                    debugContext={{
-                      componentPath: "app/events/EventsPageClient.tsx > create form > BookingDateField",
-                      setTime: form.setTime,
-                      saveDisabled: saving || Boolean(createFormDateValidationError),
-                      saveDisabledReason: createFormDateValidationError,
-                    }}
                   />
                   <BookingSetTimeRangeField
                     value={form.setTime}
