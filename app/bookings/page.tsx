@@ -1565,6 +1565,9 @@ function BookingSectionTabs({
   );
 }
 
+const GIG_CARD_CLASS_NAME =
+  "ftc-surface-row rounded-[var(--ftc-radius-xl)] p-4 sm:p-5";
+
 function ReceivedBookingCard({
   booking,
   gigsTab = "pending",
@@ -1619,14 +1622,17 @@ function ReceivedBookingCard({
   if (isConfirmed && eventHref) {
     return (
       <li>
-        <Link href={eventHref} className="ftc-lineup-booking-card block p-4 sm:p-5">
+        <Link
+          href={eventHref}
+          className={`${GIG_CARD_CLASS_NAME} block w-full focus-visible:outline-none`}
+        >
           {cardBody}
         </Link>
       </li>
     );
   }
 
-  return <li className="ftc-lineup-booking-card p-4 sm:p-5">{cardBody}</li>;
+  return <li className={GIG_CARD_CLASS_NAME}>{cardBody}</li>;
 }
 
 function BookingHistoryCard({
@@ -1654,8 +1660,8 @@ function BookingHistoryCard({
       : `/events/${booking.event_id}`
     : null;
   const cardClass = muted
-    ? "ftc-lineup-booking-card bg-ftc-bg-elevated/60 p-4 sm:p-5"
-    : "ftc-lineup-booking-card p-4 sm:p-5";
+    ? `${GIG_CARD_CLASS_NAME} bg-ftc-bg-elevated/60`
+    : GIG_CARD_CLASS_NAME;
   const titleClass = muted ? "text-ftc-text-secondary" : "text-ftc-text";
   const detailClass = muted ? "text-ftc-text-muted" : "text-ftc-text";
   const cancellationReasonLabel = resolveBookingCancellationReasonLabel(booking);
