@@ -136,12 +136,18 @@ const CREW_CHAT_HELP = {
   help: "Opens automatically when 2 DJs accept. With 1 accepted DJ, the planner can start it manually. If all DJs leave or the event is cancelled, group chat locks again.",
 };
 
+const HEADER_GROUP_CHAT_CHIP_CLASS =
+  "flex min-w-0 shrink items-center rounded-xl border border-ftc-border-subtle bg-ftc-bg/80 py-1 backdrop-blur-sm transition hover:border-ftc-border-strong hover:bg-ftc-bg-elevated focus-within:border-[var(--ftc-color-primary-border)] focus-within:bg-ftc-bg-elevated";
+
+const HEADER_GROUP_CHAT_ACTION_CLASS =
+  "flex min-h-8 min-w-0 flex-1 items-center gap-1 rounded-lg px-1 py-0.5 transition hover:text-ftc-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ftc-primary/35 active:bg-ftc-surface-raised/70 disabled:cursor-not-allowed disabled:opacity-50";
+
 function EventHeaderChatIcon() {
   return (
     <svg
       aria-hidden="true"
       viewBox="0 0 24 24"
-      className="h-4 w-4 shrink-0 text-ftc-primary"
+      className="h-4 w-4 shrink-0 text-ftc-primary transition-colors group-hover:text-ftc-primary-dim"
       fill="none"
       stroke="currentColor"
       strokeWidth="1.75"
@@ -1086,7 +1092,7 @@ export default function EventDetailPage() {
             <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
               {showCrewChatHeaderAction ? (
                 <div
-                  className={`flex min-w-0 shrink items-center rounded-xl border border-ftc-border-subtle bg-ftc-bg/80 py-1 backdrop-blur-sm ${
+                  className={`group ${HEADER_GROUP_CHAT_CHIP_CLASS} ${
                     showCrewChatHelpUi
                       ? "max-w-[10.5rem] gap-1 px-1 sm:max-w-none"
                       : "max-w-[8.5rem] px-2 sm:max-w-none"
@@ -1100,7 +1106,7 @@ export default function EventDetailPage() {
                       }}
                       disabled={startingCrewChat}
                       aria-label="Start group chat"
-                      className="flex min-h-8 min-w-0 flex-1 items-center gap-1 px-1 py-0.5 disabled:cursor-not-allowed disabled:opacity-50"
+                      className={HEADER_GROUP_CHAT_ACTION_CLASS}
                     >
                       <EventHeaderChatIcon />
                       <span className="min-w-0 truncate text-[10px] font-semibold uppercase tracking-wide text-ftc-text sm:text-xs">
@@ -1116,7 +1122,7 @@ export default function EventDetailPage() {
                     <Link
                       href={getEventCrewChatLink(event.id)}
                       aria-label="Group chat"
-                      className="flex min-h-8 min-w-0 flex-1 items-center gap-1 py-0.5"
+                      className={HEADER_GROUP_CHAT_ACTION_CLASS}
                     >
                       <EventHeaderChatIcon />
                       <span className="min-w-0 truncate text-[10px] font-semibold uppercase tracking-wide text-ftc-text sm:text-xs">

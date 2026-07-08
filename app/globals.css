@@ -339,6 +339,19 @@ html {
   color: rgb(100 116 139 / 0.55);
 }
 
+/* Prevent iOS Safari zoom on input focus — 16px minimum on mobile only */
+@media (max-width: 639px) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="hidden"]):not([type="button"]):not([type="submit"]):not([type="reset"]):not([type="range"]):not([type="color"]),
+  textarea,
+  select,
+  .ftc-input,
+  .ftc-textarea,
+  .ftc-field-trigger {
+    font-size: 1rem;
+    line-height: 1.5rem;
+  }
+}
+
 .ftc-input.ftc-input-error,
 .ftc-textarea.ftc-input-error,
 .ftc-input[aria-invalid="true"],
