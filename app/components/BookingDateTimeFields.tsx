@@ -8,18 +8,21 @@ import {
   BOOKING_TIME_BUTTON_CLASS,
   BOOKING_TIME_BUTTON_COMPACT_CLASS,
   clockPartsToWheelTime,
+  clampWheelTimeToMin,
   combineClockAndMeridiem,
   combineSetTimeRange,
   defaultFinishWheelTime,
   defaultStartWheelTime,
   extractClockDisplay,
   formatTimeButtonLabel,
+  getMinWheelTimeForEventDate,
   guardEventDatePickerChange,
   isSavedEventDateBeforeMin,
   parseEventDate,
   parseSetTimeRange,
   resolveMinEventDateKey,
   resolvePickerEventDateValue,
+  resolveWheelTimeForPicker,
   savedEventDateNeedsPickerReselection,
   wheelTimeToClockParts,
   type Meridiem,
@@ -131,6 +134,7 @@ function BookingTimeControl({
   showLabel = true,
   variant = "default",
   buttonLabel,
+  minWheelTime = null,
 }: {
   label: string;
   clock: string;
@@ -141,6 +145,7 @@ function BookingTimeControl({
   showLabel?: boolean;
   variant?: "default" | "compact";
   buttonLabel?: string;
+  minWheelTime?: WheelTimeValue | null;
 }) {
   const [pickerOpen, setPickerOpen] = useState(false);
   const isCompact = variant === "compact";
@@ -156,13 +161,16 @@ function BookingTimeControl({
   }
 
   function handleDone(value: WheelTimeValue) {
-    const parts = wheelTimeToClockParts(value);
+    const resolved = resolveWheelTimeForPicker(value, minWheelTime);
+    const parts = wheelTimeToClockParts(resolved);
     onTimeChange(parts.clock, parts.meridiem);
     setPickerOpen(false);
   }
 
-  const pickerValue =
-    clockPartsToWheelTime(clock, meridiem) ?? defaultWheelTime();
+  const pickerValue = resolveWheelTimeForPicker(
+    clockPartsToWheelTime(clock, meridiem) ?? defaultWheelTime(),
+    minWheelTime,
+  );
 
   return (
     <div>
@@ -202,6 +210,7 @@ function BookingTimeControl({
         value={pickerValue}
         onCancel={() => setPickerOpen(false)}
         onDone={handleDone}
+        minWheelTime={minWheelTime}
       />
     </div>
   );
@@ -215,6 +224,7 @@ export function BookingTimeField({
   showLabel = true,
   defaultWheelTime = defaultStartWheelTime,
   variant = "default",
+  eventDate,
 }: {
   label: string;
   value: string;
@@ -223,6 +233,7 @@ export function BookingTimeField({
   showLabel?: boolean;
   defaultWheelTime?: () => WheelTimeValue;
   variant?: "default" | "compact";
+  eventDate?: string;
 }) {
   const userEditedRef = useRef(false);
   const [clock, setClock] = useState("");
@@ -264,6 +275,7 @@ export function BookingTimeField({
 
   const formattedTime = combineClockAndMeridiem(clock, meridiem);
   const compactButtonLabel = legacyValue || formattedTime || "Select";
+  const minWheelTime = getMinWheelTimeForEventDate(eventDate ?? "");
 
   return (
     <div>
@@ -284,6 +296,7 @@ export function BookingTimeField({
         required={required}
         variant={variant}
         buttonLabel={variant === "compact" ? compactButtonLabel : undefined}
+        minWheelTime={minWheelTime}
       />
     </div>
   );
@@ -293,10 +306,12 @@ export function BookingSetTimeRangeField({
   value,
   onChange,
   required = false,
+  eventDate,
 }: {
   value: string;
   onChange: (value: string) => void;
   required?: boolean;
+  eventDate?: string;
 }) {
   const userEditedRef = useRef(false);
   const [startClock, setStartClock] = useState("");
@@ -362,6 +377,8 @@ export function BookingSetTimeRangeField({
     emitChange(startClock, startMeridiem, nextClock, nextMeridiem);
   }
 
+  const minStartWheelTime = getMinWheelTimeForEventDate(eventDate ?? "");
+
   return (
     <div className="grid gap-4 sm:grid-cols-2">
       <BookingTimeControl
@@ -371,6 +388,7 @@ export function BookingSetTimeRangeField({
         defaultWheelTime={defaultStartWheelTime}
         onTimeChange={handleStartTimeChange}
         required={required}
+        minWheelTime={minStartWheelTime}
       />
       <BookingTimeControl
         label="Finish Time"

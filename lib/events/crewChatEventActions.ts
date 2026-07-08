@@ -44,6 +44,6 @@ export function computeCrewChatEventActions(input: {
     showStartCrewChatAction,
     showEventGroupChatAction,
     showCrewChatHelpUi,
-    crewChatHelpActionLabel: showStartCrewChatAction ? "Start crew chat" : "Group chat",
+    crewChatHelpActionLabel: showStartCrewChatAction ? "Start group chat" : "Group chat",
   };
 }

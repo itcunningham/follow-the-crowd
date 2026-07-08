@@ -6,6 +6,11 @@ import {
   WHEEL_HOURS,
   WHEEL_MERIDIEMS,
   WHEEL_MINUTES,
+  clampWheelTimeToMin,
+  isWheelHourDisabled,
+  isWheelMeridiemDisabled,
+  isWheelMinuteDisabled,
+  resolveWheelTimeForPicker,
   type Meridiem,
   type WheelTimeValue,
 } from "@/lib/bookingDateTime";
@@ -78,18 +83,46 @@ function TimePickerWheelArea({ children }: { children: ReactNode }) {
   );
 }
 
+function findNearestEnabledIndex<T>(
+  target: number,
+  items: readonly T[],
+  isItemDisabled?: (item: T) => boolean,
+): number {
+  if (!isItemDisabled || !isItemDisabled(items[target])) {
+    return target;
+  }
+
+  for (let offset = 1; offset < items.length; offset += 1) {
+    const after = target + offset;
+
+    if (after < items.length && !isItemDisabled(items[after])) {
+      return after;
+    }
+
+    const before = target - offset;
+
+    if (before >= 0 && !isItemDisabled(items[before])) {
+      return before;
+    }
+  }
+
+  return target;
+}
+
 function WheelColumn<T extends string | number>({
   label,
   items,
   value,
   onChange,
   formatItem,
+  isItemDisabled,
 }: {
   label: string;
   items: readonly T[];
   value: T;
   onChange: (value: T) => void;
   formatItem: (item: T) => string;
+  isItemDisabled?: (item: T) => boolean;
 }) {
   const scrollerRef = useRef<HTMLDivElement>(null);
   const scrollTimeoutRef = useRef<number | undefined>(undefined);
@@ -135,11 +168,12 @@ function WheelColumn<T extends string | number>({
 
       const index = Math.round(scroller.scrollTop / ITEM_HEIGHT);
       const clampedIndex = Math.max(0, Math.min(items.length - 1, index));
+      const enabledIndex = findNearestEnabledIndex(clampedIndex, items, isItemDisabled);
 
-      scrollToIndex(clampedIndex, true);
+      scrollToIndex(enabledIndex, true);
 
-      if (items[clampedIndex] !== value) {
-        onChange(items[clampedIndex]);
+      if (items[enabledIndex] !== value) {
+        onChange(items[enabledIndex]);
       }
     }, 80);
   }
@@ -155,14 +189,17 @@ function WheelColumn<T extends string | number>({
         <div aria-hidden="true" style={{ height: WHEEL_PADDING }} />
         {items.map((item) => {
           const isSelected = item === value;
+          const disabled = isItemDisabled?.(item) ?? false;
 
           return (
             <div
               key={String(item)}
               className={`flex h-11 shrink-0 snap-center items-center justify-center text-base tabular-nums transition-colors ${
-                isSelected
-                  ? "font-semibold text-ftc-primary"
-                  : "font-normal text-ftc-text-secondary"
+                disabled
+                  ? "cursor-not-allowed text-ftc-text-muted/35"
+                  : isSelected
+                    ? "font-semibold text-ftc-primary"
+                    : "font-normal text-ftc-text-secondary"
               }`}
               style={{ scrollSnapAlign: "center" }}
             >
@@ -182,12 +219,14 @@ export function BookingTimeWheelPicker({
   value,
   onCancel,
   onDone,
+  minWheelTime = null,
 }: {
   open: boolean;
   title: string;
   value: WheelTimeValue;
   onCancel: () => void;
   onDone: (value: WheelTimeValue) => void;
+  minWheelTime?: WheelTimeValue | null;
 }) {
   const [draft, setDraft] = useState(value);
   const [mounted, setMounted] = useState(false);
@@ -198,9 +237,13 @@ export function BookingTimeWheelPicker({
 
   useEffect(() => {
     if (open) {
-      setDraft(value);
+      setDraft(resolveWheelTimeForPicker(value, minWheelTime));
     }
-  }, [open, value]);
+  }, [open, value, minWheelTime]);
+
+  function updateDraft(next: WheelTimeValue) {
+    setDraft(clampWheelTimeToMin(next, minWheelTime));
+  }
 
   useEffect(() => {
     if (!open) {
@@ -246,7 +289,7 @@ export function BookingTimeWheelPicker({
           title={title}
           titleId="booking-time-picker-title"
           onCancel={onCancel}
-          onDone={() => onDone(draft)}
+          onDone={() => onDone(clampWheelTimeToMin(draft, minWheelTime))}
         />
 
         <TimePickerWheelArea>
@@ -254,22 +297,37 @@ export function BookingTimeWheelPicker({
               label="Hour"
               items={WHEEL_HOURS}
               value={draft.hour}
-              onChange={(hour) => setDraft((prev) => ({ ...prev, hour }))}
+              onChange={(hour) => updateDraft({ ...draft, hour })}
               formatItem={(hour) => String(hour)}
+              isItemDisabled={
+                minWheelTime
+                  ? (hour) => isWheelHourDisabled(hour, draft.meridiem, minWheelTime)
+                  : undefined
+              }
             />
             <WheelColumn
               label="Minute"
               items={WHEEL_MINUTES}
               value={draft.minute}
-              onChange={(minute) => setDraft((prev) => ({ ...prev, minute }))}
+              onChange={(minute) => updateDraft({ ...draft, minute })}
               formatItem={(minute) => minute.toString().padStart(2, "0")}
+              isItemDisabled={
+                minWheelTime
+                  ? (minute) => isWheelMinuteDisabled(minute, draft.hour, draft.meridiem, minWheelTime)
+                  : undefined
+              }
             />
             <WheelColumn
               label="AM or PM"
               items={WHEEL_MERIDIEMS}
               value={draft.meridiem}
-              onChange={(meridiem) => setDraft((prev) => ({ ...prev, meridiem }))}
+              onChange={(meridiem) => updateDraft({ ...draft, meridiem })}
               formatItem={(meridiem) => meridiem}
+              isItemDisabled={
+                minWheelTime
+                  ? (meridiem) => isWheelMeridiemDisabled(meridiem, minWheelTime)
+                  : undefined
+              }
             />
         </TimePickerWheelArea>
       </div>

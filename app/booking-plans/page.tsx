@@ -282,6 +282,7 @@ export default function BookingPlansPage() {
                   value={form.setTime}
                   onChange={(value) => updateField("setTime", value)}
                   required
+                  eventDate={form.eventDate}
                 />
                 <BookingRateField
                   value={form.fee}

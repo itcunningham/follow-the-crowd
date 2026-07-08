@@ -4,7 +4,10 @@ import {
   getEventDateValidationError,
   guardEventDatePickerChange,
   isEventStartSaveBlocked,
+  isWheelMinuteDisabled,
+  isWheelTimeBefore,
   resolvePickerEventDateValue,
+  clampWheelTimeToMin,
 } from "../lib/bookingDateTime";
 import type { BookingRequest } from "../lib/bookingRequests";
 import { computeCrewChatEventActions } from "../lib/events/crewChatEventActions";
@@ -50,6 +53,7 @@ function testOneAcceptedDjWithNullStartShowsStartAction() {
 
   assert.equal(actions.showStartCrewChatAction, true);
   assert.equal(actions.showEventGroupChatAction, false);
+  assert.equal(actions.crewChatHelpActionLabel, "Start group chat");
 }
 
 function testOneAcceptedDjWithStartedAtShowsGroupChat() {
@@ -142,6 +146,19 @@ function testDmBookingDisplayKeepsPerDjFeeOverEmptyEventRate() {
   assert.equal(`Fixed offer · ${formatRateDisplay(resolved.fee)}`, "Fixed offer · $66");
 }
 
+function testWheelTimeBeforeMinHelpers() {
+  const min = { hour: 5, minute: 30, meridiem: "PM" as const };
+
+  assert.equal(isWheelTimeBefore({ hour: 5, minute: 29, meridiem: "PM" }, min), true);
+  assert.equal(isWheelTimeBefore({ hour: 5, minute: 30, meridiem: "PM" }, min), false);
+  assert.equal(isWheelMinuteDisabled(29, 5, "PM", min), true);
+  assert.equal(isWheelMinuteDisabled(30, 5, "PM", min), false);
+  assert.deepEqual(
+    clampWheelTimeToMin({ hour: 1, minute: 0, meridiem: "AM" }, min),
+    min,
+  );
+}
+
 function testConflictingCrewChatFlagsPreferStartAction() {
   const unlock: CrewChatUnlockState = {
     acceptedDjCount: 1,
@@ -166,6 +183,7 @@ function main() {
   testPastEventDatesAreBlocked();
   testFutureEventDatesAreAllowed();
   testPastPickerDatesAreRejected();
+  testWheelTimeBeforeMinHelpers();
   testOneAcceptedDjWithNullStartShowsStartAction();
   testOneAcceptedDjWithStartedAtShowsGroupChat();
   testZeroAcceptedDjsShowsNoCrewChatAction();

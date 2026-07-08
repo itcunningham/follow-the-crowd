@@ -343,6 +343,84 @@ export function wheelTimeToClockParts(value: WheelTimeValue): { clock: string; m
   };
 }
 
+export function compareWheelTimes(a: WheelTimeValue, b: WheelTimeValue): number {
+  const aMinutes = to24Hour(a.hour, a.meridiem) * 60 + a.minute;
+  const bMinutes = to24Hour(b.hour, b.meridiem) * 60 + b.minute;
+  return aMinutes - bMinutes;
+}
+
+export function isWheelTimeBefore(value: WheelTimeValue, min: WheelTimeValue): boolean {
+  return compareWheelTimes(value, min) < 0;
+}
+
+export function getMinWheelTimeFromNow(): WheelTimeValue {
+  const now = new Date();
+  const hour24 = now.getHours();
+  const minute = now.getMinutes();
+  const meridiem: Meridiem = hour24 >= 12 ? "PM" : "AM";
+  let hour12 = hour24 % 12;
+
+  if (hour12 === 0) {
+    hour12 = 12;
+  }
+
+  return { hour: hour12, minute, meridiem };
+}
+
+export function getMinWheelTimeForEventDate(eventDate: string): WheelTimeValue | null {
+  const dateKey = resolveEventDateKey(eventDate);
+
+  if (!dateKey || dateKey !== getTodayDateKey()) {
+    return null;
+  }
+
+  return getMinWheelTimeFromNow();
+}
+
+export function isWheelMeridiemDisabled(meridiem: Meridiem, min: WheelTimeValue): boolean {
+  const lastMinuteInMeridiem: WheelTimeValue =
+    meridiem === "AM"
+      ? { hour: 11, minute: 59, meridiem: "AM" }
+      : { hour: 11, minute: 59, meridiem: "PM" };
+
+  return isWheelTimeBefore(lastMinuteInMeridiem, min);
+}
+
+export function isWheelHourDisabled(hour: number, meridiem: Meridiem, min: WheelTimeValue): boolean {
+  if (meridiem !== min.meridiem) {
+    return isWheelMeridiemDisabled(meridiem, min);
+  }
+
+  return hour < min.hour;
+}
+
+export function isWheelMinuteDisabled(
+  minute: number,
+  hour: number,
+  meridiem: Meridiem,
+  min: WheelTimeValue,
+): boolean {
+  return isWheelTimeBefore({ hour, minute, meridiem }, min);
+}
+
+export function clampWheelTimeToMin(
+  value: WheelTimeValue,
+  min: WheelTimeValue | null | undefined,
+): WheelTimeValue {
+  if (!min || !isWheelTimeBefore(value, min)) {
+    return value;
+  }
+
+  return min;
+}
+
+export function resolveWheelTimeForPicker(
+  value: WheelTimeValue,
+  min: WheelTimeValue | null | undefined,
+): WheelTimeValue {
+  return clampWheelTimeToMin(value, min);
+}
+
 export function formatTimeButtonLabel(clock: string, meridiem: Meridiem): string {
   return combineClockAndMeridiem(clock, meridiem) || "Select time";
 }

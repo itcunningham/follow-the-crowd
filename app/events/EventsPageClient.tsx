@@ -530,6 +530,7 @@ export default function EventsPageClient({ initialTab }: EventsPageClientProps) 
                     value={form.setTime}
                     onChange={(value) => updateField("setTime", value)}
                     required
+                    eventDate={form.eventDate}
                   />
                   <PlannerFormField
                     label="Notes"

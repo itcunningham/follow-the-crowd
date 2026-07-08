@@ -55,7 +55,6 @@ import EventDjSendOfferControls, {
   type DjSendOffer,
 } from "@/app/components/booking/EventDjSendOfferControls";
 import {
-  InlineOptionHelpButton,
   InlineOptionHelpPanel,
 } from "@/app/components/booking/InlineOptionHelp";
 import BookingRateProposalPanel from "@/app/components/booking/BookingRateProposalPanel";
@@ -133,8 +132,8 @@ const STATUS_FILTERS: { value: ActiveBookingStatusFilter; label: string }[] = [
 ];
 
 const CREW_CHAT_HELP = {
-  label: "Crew chat",
-  help: "opens automatically when 2 DJs accept. With 1 accepted DJ, the planner can start it manually. If all DJs leave or the event is cancelled, crew chat locks again.",
+  label: "Group chat",
+  help: "Opens automatically when 2 DJs accept. With 1 accepted DJ, the planner can start it manually. If all DJs leave or the event is cancelled, group chat locks again.",
 };
 
 export default function EventDetailPage() {
@@ -1064,44 +1063,25 @@ export default function EventDetailPage() {
 
             <div className="flex items-center gap-2">
               {showStartCrewChatAction ? (
-                <div className="flex items-center gap-1">
-                  <EventDetailOverlayButton
-                    onClick={() => {
-                      void handleStartCrewChat();
-                    }}
-                    label="Start crew chat"
-                  >
-                    <svg aria-hidden="true" viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="1.75">
-                      <path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 2 2 0 0 1-1.8 1.1h-3.7l-3 3v-3H8a2 2 0 0 1-2-2V8.5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2Z" />
-                    </svg>
-                  </EventDetailOverlayButton>
-                  <InlineOptionHelpButton
-                    label={crewChatHelpActionLabel}
-                    open={crewChatHelpOpen}
-                    onToggle={() => {
-                      setCrewChatHelpOpen((current) => !current);
-                    }}
-                    disabled={startingCrewChat}
-                  />
-                </div>
+                <EventDetailOverlayButton
+                  onClick={() => {
+                    void handleStartCrewChat();
+                  }}
+                  label="Start group chat"
+                >
+                  <svg aria-hidden="true" viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="1.75">
+                    <path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 2 2 0 0 1-1.8 1.1h-3.7l-3 3v-3H8a2 2 0 0 1-2-2V8.5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2Z" />
+                  </svg>
+                </EventDetailOverlayButton>
               ) : showEventGroupChatAction ? (
-                <div className="flex items-center gap-1">
-                  <EventDetailOverlayButton
-                    href={getEventCrewChatLink(event.id)}
-                    label="Open group chat"
-                  >
-                    <svg aria-hidden="true" viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="1.75">
-                      <path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 2 2 0 0 1-1.8 1.1h-3.7l-3 3v-3H8a2 2 0 0 1-2-2V8.5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2Z" />
-                    </svg>
-                  </EventDetailOverlayButton>
-                  <InlineOptionHelpButton
-                    label={crewChatHelpActionLabel}
-                    open={crewChatHelpOpen}
-                    onToggle={() => {
-                      setCrewChatHelpOpen((current) => !current);
-                    }}
-                  />
-                </div>
+                <EventDetailOverlayButton
+                  href={getEventCrewChatLink(event.id)}
+                  label="Open group chat"
+                >
+                  <svg aria-hidden="true" viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="1.75">
+                    <path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 2 2 0 0 1-1.8 1.1h-3.7l-3 3v-3H8a2 2 0 0 1-2-2V8.5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2Z" />
+                  </svg>
+                </EventDetailOverlayButton>
               ) : null}
               {canEditEvent ? (
                 <EventDetailEditButton onClick={openEditForm} />
@@ -1109,12 +1089,6 @@ export default function EventDetailPage() {
             </div>
           </div>
         </div>
-
-        {showCrewChatHelpUi && crewChatHelpOpen && !showBottomBar ? (
-          <div className="border-b border-ftc-border-subtle px-4 py-2 sm:px-6">
-            <InlineOptionHelpPanel label={CREW_CHAT_HELP.label} help={CREW_CHAT_HELP.help} />
-          </div>
-        ) : null}
 
         <EventDetailHero
           eventName={event.name}
@@ -1234,6 +1208,7 @@ export default function EventDetailPage() {
                     setEditForm((prev) => (prev ? { ...prev, setTime: value } : prev))
                   }
                   required
+                  eventDate={editForm.eventDate}
                 />
                 <PlannerFormField
                   label="Notes"
@@ -1633,26 +1608,20 @@ export default function EventDetailPage() {
               />
             ) : null}
             {showStartCrewChatAction ? (
-              <div className="flex min-w-0 flex-1 items-center gap-1">
-                <div className="min-w-0 flex-1">
-                  <EventDetailPrimaryAction
-                    icon="chat"
-                    onClick={() => {
-                      void handleStartCrewChat();
-                    }}
-                  >
-                    {startingCrewChat ? "Starting..." : "Start crew chat"}
-                  </EventDetailPrimaryAction>
-                </div>
-                <InlineOptionHelpButton
-                  label={crewChatHelpActionLabel}
-                  open={crewChatHelpOpen}
-                  onToggle={() => {
-                    setCrewChatHelpOpen((current) => !current);
-                  }}
-                  disabled={startingCrewChat}
-                />
-              </div>
+              <EventDetailPrimaryAction
+                icon="chat"
+                onClick={() => {
+                  void handleStartCrewChat();
+                }}
+                helpLabel={crewChatHelpActionLabel}
+                helpOpen={crewChatHelpOpen}
+                onHelpToggle={() => {
+                  setCrewChatHelpOpen((current) => !current);
+                }}
+                helpDisabled={startingCrewChat}
+              >
+                {startingCrewChat ? "Starting..." : "Start group chat"}
+              </EventDetailPrimaryAction>
             ) : null}
             {showOwnerSendAction ? (
               <EventDetailPrimaryAction onClick={openSendBookings}>
@@ -1670,20 +1639,16 @@ export default function EventDetailPage() {
               </EventDetailPrimaryAction>
             ) : null}
             {showEventGroupChatAction && !showStartCrewChatAction ? (
-              <div className="flex min-w-0 flex-1 items-center gap-1">
-                <div className="min-w-0 flex-1">
-                  <EventDetailSecondaryAction href={getEventCrewChatLink(event.id)}>
-                    Group chat
-                  </EventDetailSecondaryAction>
-                </div>
-                <InlineOptionHelpButton
-                  label={crewChatHelpActionLabel}
-                  open={crewChatHelpOpen}
-                  onToggle={() => {
-                    setCrewChatHelpOpen((current) => !current);
-                  }}
-                />
-              </div>
+              <EventDetailSecondaryAction
+                href={getEventCrewChatLink(event.id)}
+                helpLabel={crewChatHelpActionLabel}
+                helpOpen={crewChatHelpOpen}
+                onHelpToggle={() => {
+                  setCrewChatHelpOpen((current) => !current);
+                }}
+              >
+                Group chat
+              </EventDetailSecondaryAction>
             ) : null}
           </EventDetailBottomBar>
         ) : null}

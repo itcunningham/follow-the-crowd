@@ -131,6 +131,7 @@ export default function BookingRequestModal({
             value={form.setTime}
             onChange={(value) => updateField("setTime", value)}
             required
+            eventDate={form.eventDate}
           />
           <BookingRateModeField
             value={form.rateMode ?? "fixed"}

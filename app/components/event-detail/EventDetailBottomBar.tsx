@@ -1,6 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import {
+  InlineOptionHelpButton,
+} from "@/app/components/booking/InlineOptionHelp";
 
 type ActionIcon = "send" | "chat";
 
@@ -81,12 +84,20 @@ function EventDetailActionCard({
   href,
   onClick,
   disabled,
+  helpLabel,
+  helpOpen,
+  onHelpToggle,
+  helpDisabled,
   children,
 }: {
   icon: ActionIcon;
   href?: string;
   onClick?: () => void;
   disabled?: boolean;
+  helpLabel?: string;
+  helpOpen?: boolean;
+  onHelpToggle?: () => void;
+  helpDisabled?: boolean;
   children: React.ReactNode;
 }) {
   const content = (
@@ -95,6 +106,14 @@ function EventDetailActionCard({
         <ActionIconGlyph icon={icon} />
       </span>
       <span className={actionTitleClassName}>{children}</span>
+      {helpLabel && onHelpToggle ? (
+        <InlineOptionHelpButton
+          label={helpLabel}
+          open={helpOpen ?? false}
+          onToggle={onHelpToggle}
+          disabled={helpDisabled}
+        />
+      ) : null}
       <ActionChevron />
     </>
   );
@@ -133,12 +152,20 @@ export function EventDetailPrimaryAction({
   href,
   disabled,
   icon = "send",
+  helpLabel,
+  helpOpen,
+  onHelpToggle,
+  helpDisabled,
   children,
 }: {
   onClick?: () => void;
   href?: string;
   disabled?: boolean;
   icon?: ActionIcon;
+  helpLabel?: string;
+  helpOpen?: boolean;
+  onHelpToggle?: () => void;
+  helpDisabled?: boolean;
   children: React.ReactNode;
 }) {
   return (
@@ -147,6 +174,10 @@ export function EventDetailPrimaryAction({
       href={href}
       onClick={onClick}
       disabled={disabled}
+      helpLabel={helpLabel}
+      helpOpen={helpOpen}
+      onHelpToggle={onHelpToggle}
+      helpDisabled={helpDisabled}
     >
       {children}
     </EventDetailActionCard>
@@ -156,14 +187,30 @@ export function EventDetailPrimaryAction({
 export function EventDetailSecondaryAction({
   onClick,
   href,
+  helpLabel,
+  helpOpen,
+  onHelpToggle,
+  helpDisabled,
   children,
 }: {
   onClick?: () => void;
   href?: string;
+  helpLabel?: string;
+  helpOpen?: boolean;
+  onHelpToggle?: () => void;
+  helpDisabled?: boolean;
   children: React.ReactNode;
 }) {
   return (
-    <EventDetailActionCard icon="chat" href={href} onClick={onClick}>
+    <EventDetailActionCard
+      icon="chat"
+      href={href}
+      onClick={onClick}
+      helpLabel={helpLabel}
+      helpOpen={helpOpen}
+      onHelpToggle={onHelpToggle}
+      helpDisabled={helpDisabled}
+    >
       {children}
     </EventDetailActionCard>
   );
