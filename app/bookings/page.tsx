@@ -1335,7 +1335,7 @@ function BookingsPageContent() {
                 {getGigsEmptyMessage(djGigsView)}
               </p>
             ) : (
-              <ul className="space-y-3">
+              <ul className="ftc-gigs-list space-y-3">
                 {filteredReceivedBookings.map((booking) =>
                   djGigsView === "history" ? (
                     <BookingHistoryCard
@@ -1561,7 +1561,7 @@ function BookingSectionTabs({
 }
 
 const GIG_CARD_CLASS_NAME =
-  "ftc-surface-row rounded-[var(--ftc-radius-xl)] p-3 sm:p-4";
+  "ftc-gig-card ftc-surface-row rounded-[var(--ftc-radius-xl)] p-3 sm:p-4";
 
 function GigCardHeader({
   eventName,
@@ -1613,16 +1613,18 @@ function GigCardMetaRows({
   const showRate = Boolean(rateLabel?.trim());
 
   return (
-    <div className={`mt-2 min-w-0 space-y-1 text-xs sm:text-sm ${textClass}`}>
+    <div className={`ftc-gig-card-meta mt-2 min-w-0 space-y-1 overflow-hidden text-xs sm:text-sm ${textClass}`}>
       {venueDateLine ? (
-        <p className="min-w-0 break-words">{venueDateLine}</p>
+        <p className="min-w-0 max-w-full overflow-hidden break-words">{venueDateLine}</p>
       ) : null}
-      <p className="min-w-0 break-words">{setTimeLine}</p>
+      <p className="min-w-0 max-w-full overflow-hidden break-words">{setTimeLine}</p>
       {showRate ? (
-        <p className="min-w-0 break-words">{rateLabel}</p>
+        <p className="min-w-0 max-w-full overflow-hidden break-words">{rateLabel}</p>
       ) : null}
       {extraLine ? (
-        <p className="min-w-0 break-words text-xs text-ftc-text-muted">{extraLine}</p>
+        <p className="min-w-0 max-w-full overflow-hidden break-words text-xs text-ftc-text-muted">
+          {extraLine}
+        </p>
       ) : null}
     </div>
   );
@@ -1663,7 +1665,7 @@ function ReceivedBookingCard({
   const plannerLabel = senderName ? `From ${senderName}` : undefined;
 
   const cardBody = (
-    <div className="flex min-w-0 flex-col gap-3">
+    <div className="flex min-w-0 max-w-full flex-col gap-3 overflow-hidden">
       <GigCardHeader
         eventName={booking.event_name}
         status={booking.status}
@@ -1738,7 +1740,7 @@ function BookingHistoryCard({
 
   return (
     <li className={`${cardClass} min-w-0`}>
-      <div className="flex min-w-0 flex-col gap-3">
+      <div className="flex min-w-0 max-w-full flex-col gap-3 overflow-hidden">
         <div className="flex min-w-0 gap-3">
           {avatarName ? (
             <ProfileAvatar name={avatarName} avatarUrl={avatarUrl} size="sm" className="mt-0.5" />
