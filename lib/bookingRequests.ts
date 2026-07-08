@@ -1991,6 +1991,11 @@ export async function listReceivedBookingRequests(): Promise<BookingRequest[]> {
   return mapBookingRequestRows(data);
 }
 
+export async function countPendingIncomingGigs(): Promise<number> {
+  const bookings = await listReceivedBookingRequests();
+  return countDjGigsByTab(bookings).pending;
+}
+
 export function resolveBookingDateKey(eventDate: string): string | null {
   const parsed = parseEventDate(eventDate);
   return parsed.isoDate || null;
