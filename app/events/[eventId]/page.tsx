@@ -1014,6 +1014,8 @@ export default function EventDetailPage() {
   } = crewChatActions;
   const showDebugPanel = isFtcDebugPanelEnabled(currentUserId);
   const crewChatStartedAt = crewChatUnlock?.crewChatStartedAt ?? null;
+  const lineupAcceptedDjCount = lineup.filter((booking) => booking.status === "accepted").length;
+  const eventRowCrewChatStartedAt = event?.crew_chat_started_at ?? null;
   const crewChatRenderComponent = showStartCrewChatAction
     ? "EventDetailPrimaryAction(Start crew chat) + EventDetailOverlayButton(Start crew chat)"
     : showEventGroupChatAction
@@ -1639,8 +1641,12 @@ export default function EventDetailPage() {
               title="Crew chat actions"
               fields={{
                 eventId: event.id,
-                acceptedDjCount: crewChatAcceptedDjCount,
-                crew_chat_started_at: crewChatStartedAt,
+                plannerId: event.owner_id,
+                signedInUserId: currentUserId,
+                acceptedDjCountDb: crewChatAcceptedDjCount,
+                acceptedDjCountLineup: lineupAcceptedDjCount,
+                crew_chat_started_at_unlock: crewChatStartedAt,
+                crew_chat_started_at_eventRow: eventRowCrewChatStartedAt,
                 isUnlocked: crewChatIsUnlocked,
                 canPlannerStart: crewChatCanPlannerStart,
                 showStartCrewChatAction,
