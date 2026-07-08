@@ -1011,10 +1011,10 @@ export default function EventDetailPage() {
   const showOwnerSendAction = isOwner && isPlanner && !eventIsCancelled;
   const showBottomBar =
     showStickyActions &&
-    (showOwnerSendAction ||
-      showStartCrewChatAction ||
+    (showStartCrewChatAction ||
       showEventGroupChatAction ||
       Boolean(viewerBooking?.conversation_id && !hideOpenBookingConversation));
+  const showRunSheetSendBookingsAction = showOwnerSendAction && showStickyActions;
 
   if (loading) {
     return (
@@ -1404,15 +1404,24 @@ export default function EventDetailPage() {
           ) : null}
 
           {canViewRunSheet ? (
-            <div className="mt-8">
-              <EventRunSheetSection
-                eventId={event.id}
-                canEdit={canEditRunSheet}
-                lineup={lineup}
-                profiles={profiles}
-                onSaved={(message) => setSuccessMessage(message)}
-              />
-            </div>
+            <>
+              {showRunSheetSendBookingsAction ? (
+                <div className="mt-8">
+                  <EventDetailPrimaryAction onClick={openSendBookings}>
+                    Send booking requests
+                  </EventDetailPrimaryAction>
+                </div>
+              ) : null}
+              <div className={showRunSheetSendBookingsAction ? "mt-4" : "mt-8"}>
+                <EventRunSheetSection
+                  eventId={event.id}
+                  canEdit={canEditRunSheet}
+                  lineup={lineup}
+                  profiles={profiles}
+                  onSaved={(message) => setSuccessMessage(message)}
+                />
+              </div>
+            </>
           ) : null}
 
           {!isOwner && viewerBooking ? (
@@ -1621,11 +1630,6 @@ export default function EventDetailPage() {
                 helpDisabled={startingCrewChat}
               >
                 {startingCrewChat ? "Starting..." : "Start group chat"}
-              </EventDetailPrimaryAction>
-            ) : null}
-            {showOwnerSendAction ? (
-              <EventDetailPrimaryAction onClick={openSendBookings}>
-                Send booking requests
               </EventDetailPrimaryAction>
             ) : null}
             {!showOwnerSendAction &&
