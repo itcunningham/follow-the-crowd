@@ -33,16 +33,15 @@ function SwatchButton({
       aria-pressed={selected}
       aria-label={label}
       onClick={onClick}
-      className="flex min-w-0 flex-col items-center gap-1.5 rounded-lg transition hover:bg-ftc-bg-elevated/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ftc-primary/35 disabled:cursor-not-allowed disabled:opacity-50"
+      className="ftc-event-colour-option"
     >
       <span
-        className={`flex h-10 w-full items-center justify-center rounded-xl border text-[10px] font-semibold uppercase tracking-wide transition ${
-          selected
-            ? "border-ftc-text-secondary bg-ftc-bg-elevated/30"
-            : "border-ftc-border-subtle hover:border-ftc-border-strong hover:bg-ftc-bg-elevated/50"
-        } ${swatchClassName} ${showInitial ? "text-[#e2e8f0]" : "text-white"}`}
+        className={`ftc-event-colour-swatch ${selected ? "is-selected" : ""} ${swatchClassName} ${
+          showInitial ? "text-[#e2e8f0]" : "text-white"
+        }`}
       >
-        {showInitial ? "N" : null}
+        <span className="ftc-event-colour-swatch-overlay" aria-hidden="true" />
+        {showInitial ? <span className="relative z-[1]">N</span> : null}
       </span>
       <span
         className={`text-[10px] font-medium ${

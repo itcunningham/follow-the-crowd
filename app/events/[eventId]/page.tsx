@@ -1581,12 +1581,12 @@ export default function EventDetailPage() {
                       !booking.lineup_hidden_at;
 
                     return (
-                      <li
-                        key={booking.id}
-                        className={`ftc-card ftc-card-hoverable relative flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between ${
-                          canHideFromLineup ? "pr-12 sm:pr-14" : ""
-                        }`}
-                      >
+                      <li key={booking.id}>
+                        <div
+                          className={`ftc-lineup-booking-card relative flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between ${
+                            canHideFromLineup ? "pr-12 sm:pr-14" : ""
+                          }`}
+                        >
                         {canHideFromLineup ? (
                           <HideDeclinedBookingButton
                             className="absolute right-3 top-3"
@@ -1664,6 +1664,7 @@ export default function EventDetailPage() {
                           >
                             Open DM
                           </Link>
+                        </div>
                         </div>
                       </li>
                     );
