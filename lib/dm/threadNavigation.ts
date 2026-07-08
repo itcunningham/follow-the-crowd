@@ -15,7 +15,7 @@ export function resolveDmThreadBackHref(context: DmThreadBackContext): string {
   }
 
   if (from === "discover") {
-    return "/discover";
+    return "/dm";
   }
 
   if (context.tab === "group") {

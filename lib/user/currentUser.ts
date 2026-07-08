@@ -49,6 +49,14 @@ export function getDefaultRouteForRole(role: UserRole | null): string {
   return role === "dj" ? "/dm" : "/";
 }
 
+export function getDiscoverRetiredRedirectPath(role: UserRole | null): string {
+  if (role === "dj") {
+    return "/bookings";
+  }
+
+  return getDefaultRouteForRole(role);
+}
+
 export function needsOnboarding(profile: UserProfile | null): boolean {
   if (!profile) {
     return true;

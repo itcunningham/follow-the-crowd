@@ -782,7 +782,7 @@ export function AppLoadingShell({
   }
 
   if (pathname === "/discover") {
-    return <DiscoverPageLoadingShell />;
+    return <GenericAppLoadingShell />;
   }
 
   if (pathname === "/notifications" || pathname.startsWith("/notifications/")) {
