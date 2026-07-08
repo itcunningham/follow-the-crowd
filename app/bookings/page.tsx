@@ -964,11 +964,11 @@ function BookingsPageContent() {
             </div>
           </div>
 
+          <PlannerEventsSubNav />
+
           {showGigsWorkspace ? (
             <DjGigsTabs activeView={djGigsView} bookings={receivedBookings} />
           ) : null}
-
-          <PlannerEventsSubNav />
         </header>
 
         <div className="px-4 py-4 sm:px-6">

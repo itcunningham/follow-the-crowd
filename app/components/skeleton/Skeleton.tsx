@@ -447,8 +447,8 @@ export function BookingsPageLoadingShell({
           ) : null}
         </div>
         {showSectionTabs ? <SectionTabsSkeleton count={2} /> : null}
-        {showDjGigsTabs ? <GigsTabPillsSkeleton /> : null}
         {showPlannerSubNav ? <PlannerEventsSubNavSkeleton /> : null}
+        {showDjGigsTabs ? <GigsTabPillsSkeleton /> : null}
       </header>
       <div className="px-4 py-4 sm:px-6">
         <BookingsContentSkeleton

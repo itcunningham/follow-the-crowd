@@ -646,7 +646,7 @@ export default function EventsPageClient({ initialTab }: EventsPageClientProps) 
                 <li key={event.id}>
                   <Link
                     href={eventHref}
-                    className={`ftc-events-list-card block p-4 focus-visible:outline-none sm:p-5 ${
+                    className={`ftc-surface-row block w-full rounded-[var(--ftc-radius-xl)] p-4 focus-visible:outline-none sm:p-5 ${
                       cancelled ? "ftc-event-card-cancelled" : ""
                     }`}
                   >
