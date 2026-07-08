@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import ProfileAvatar from "@/app/components/ProfileAvatar";
 import {
-  DISCOVER_PATH,
   getCurrentAuthUser,
   getCurrentUserId,
   getCurrentUserProfile,
@@ -165,9 +164,7 @@ export default function ProfileSetupPage() {
       const userId = await getCurrentUserId();
       const destination = isEditing
         ? `/profile/${userId}`
-        : profile?.role === "dj"
-          ? DISCOVER_PATH
-          : getDefaultRouteForRole(profile?.role ?? null);
+        : getDefaultRouteForRole(profile?.role ?? null);
       router.replace(destination);
     } catch (saveError) {
       console.error("Failed to save profile:", saveError);
@@ -199,7 +196,7 @@ export default function ProfileSetupPage() {
           {isEditing ? "Edit your profile" : "Set up your profile"}
         </h1>
         <p className="mt-3 max-w-xl text-sm leading-relaxed text-ftc-text-secondary sm:text-base">
-          Add a few details so other DJs and promoters can find and message you.
+          Add the details planners and DJs need for bookings, messages, and run sheets.
         </p>
 
         <form onSubmit={handleSubmit} className="mt-8 space-y-6">

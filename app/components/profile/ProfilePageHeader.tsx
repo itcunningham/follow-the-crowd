@@ -1,15 +1,21 @@
 "use client";
 
 import Link from "next/link";
-import { DISCOVER_PATH, PROFILE_SETUP_PATH, SETTINGS_PATH } from "@/lib/user/currentUser";
+import { useGuardProfile } from "@/app/components/GuardProfileContext";
+import { getDefaultRouteForRole, PROFILE_SETUP_PATH, SETTINGS_PATH } from "@/lib/user/currentUser";
 
 export default function ProfilePageHeader({ isOwnProfile }: { isOwnProfile: boolean }) {
+  const guardProfile = useGuardProfile();
+  const backHref = getDefaultRouteForRole(guardProfile?.role ?? null);
+  const backLabel =
+    guardProfile?.role === "dj" ? "Back to Messages" : "Back to Home";
+
   return (
     <header className="sticky top-0 z-10 border-b border-ftc-border-subtle bg-ftc-bg/95 backdrop-blur-md md:top-12">
       <div className="flex items-center justify-between gap-3 px-4 py-2.5 sm:px-6">
         <Link
-          href={DISCOVER_PATH}
-          aria-label="Back to Discover"
+          href={backHref}
+          aria-label={backLabel}
           className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-ftc-border-subtle bg-ftc-surface text-ftc-text-secondary transition hover:border-ftc-border-strong hover:text-ftc-text"
         >
           <svg

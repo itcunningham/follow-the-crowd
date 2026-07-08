@@ -3,9 +3,9 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  DISCOVER_PATH,
   getCurrentAuthUser,
   getCurrentUserProfile,
+  getDefaultRouteForRole,
   LOGIN_PATH,
   needsProfileSetup,
   PROFILE_SETUP_PATH,
@@ -28,7 +28,7 @@ const ROLE_OPTIONS: {
     role: "promoter",
     title: "Promoter / Event Planner",
     description:
-      "Plan events with AI, find DJs, manage group chats and build better nights.",
+      "Plan events with AI, send booking requests, manage group chats, and build better nights.",
   },
   {
     role: "both",
@@ -61,7 +61,7 @@ export default function OnboardingPage() {
             return;
           }
 
-          router.replace(DISCOVER_PATH);
+          router.replace(getDefaultRouteForRole(profile.role));
           return;
         }
 

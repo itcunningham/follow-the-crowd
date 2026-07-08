@@ -22,6 +22,7 @@ import { formatRateDisplay, normalizeStoredRate } from "@/lib/bookingRate";
 import {
   canAccessBookingPlans,
   getCurrentUserProfile,
+  getDefaultRouteForRole,
   type UserRole,
 } from "@/lib/user/currentUser";
 
@@ -87,7 +88,7 @@ export default function BookingPlansPage() {
         setRole(userRole);
 
         if (!canAccessBookingPlans(userRole)) {
-          router.replace(userRole === "dj" ? "/dm" : "/discover");
+          router.replace(getDefaultRouteForRole(userRole));
           return;
         }
 

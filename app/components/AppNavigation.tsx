@@ -34,14 +34,6 @@ function getNavItems(role: UserRole, currentUserId: string | null): NavItem[] {
     isActive: (pathname) => pathname === "/",
   };
 
-  const discover: NavItem = {
-    href: "/discover",
-    label: "Discover",
-    mobileLabel: "Discover",
-    isPrimary: true,
-    isActive: (pathname) => pathname === "/discover" || pathname.startsWith("/discover/"),
-  };
-
   const events: NavItem = {
     href: "/events",
     label: "Events",
@@ -84,10 +76,10 @@ function getNavItems(role: UserRole, currentUserId: string | null): NavItem[] {
   };
 
   if (role === "dj") {
-    return [discover, gigs, messages, profile];
+    return [gigs, messages, profile];
   }
 
-  return [home, discover, events, messages, profile];
+  return [home, events, messages, profile];
 }
 
 export const MOBILE_NAV_OFFSET_CLASS = "pb-[calc(3.5rem+env(safe-area-inset-bottom))] md:pb-0";
@@ -165,7 +157,7 @@ function getBadgeCount(item: NavItem, badgeCounts: NavBadgeCounts): number {
 }
 
 function NavSkeleton({ variant }: { variant: "desktop" | "mobile" }) {
-  const count = variant === "desktop" ? 5 : 4;
+  const count = variant === "desktop" ? 4 : 4;
 
   if (variant === "desktop") {
     return (

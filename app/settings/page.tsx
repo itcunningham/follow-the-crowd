@@ -25,12 +25,12 @@ const ACCOUNT_TYPE_OPTIONS: {
   {
     role: "dj",
     title: "DJ / Artist",
-    description: "Messages, Discover, Bookings Received, and your artist profile.",
+    description: "Messages, Gigs, and your artist profile.",
   },
   {
     role: "promoter",
     title: "Event Planner",
-    description: "Event AI, Discover, Bookings Sent, Messages, and your planner profile.",
+    description: "Events, booking requests, messages, and your planner profile.",
   },
   {
     role: "both",

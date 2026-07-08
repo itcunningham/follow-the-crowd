@@ -9,6 +9,7 @@ import {
   ensureAuthenticatedUserProfileRow,
   getCurrentAuthUser,
   getCurrentUserProfile,
+  getDefaultRouteForRole,
   getPostAuthRedirectPath,
   LOGIN_PATH,
   needsOnboarding,
@@ -77,7 +78,7 @@ export default function OnboardingGuard({ children }: { children: React.ReactNod
         }
 
         if (profile?.role === "dj" && pathname === "/") {
-          router.replace("/discover");
+          router.replace(getDefaultRouteForRole(profile.role));
           return;
         }
 

@@ -77,7 +77,9 @@ export default function MessagesInboxLayout({
       <header className="sticky top-0 z-10 border-b border-ftc-border-subtle bg-ftc-bg/95 px-4 py-3 backdrop-blur-md sm:px-6 md:top-12">
         <div className="flex items-center justify-between gap-3">
           <h1 className="text-xl font-bold tracking-tight text-ftc-text">Messages</h1>
-          <MessagesInboxComposeButton disabled={!onCompose} onClick={onCompose ?? (() => {})} />
+          {onCompose ? (
+            <MessagesInboxComposeButton onClick={onCompose} />
+          ) : null}
         </div>
 
         <div className="mt-3">

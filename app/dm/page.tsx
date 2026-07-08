@@ -46,7 +46,6 @@ import { buildDmThreadHref } from "@/lib/dm/threadNavigation";
 import { formatDmInboxMessagePreview } from "@/lib/dm/messagePreview";
 import { listBookingRequestsForConversations, type BookingRequest } from "@/lib/bookingRequests";
 import {
-  DISCOVER_PATH,
   getCurrentUserId,
   getCurrentUserProfile,
   getUserAvatarProfilesByIds,
@@ -200,22 +199,14 @@ function getConversationDisplayName(
   return resolveUserDisplayName(otherUserProfile);
 }
 
+const MVP_DM_EMPTY_MESSAGE =
+  "Ask the DJ or planner you are working with to join FTC so you can send or receive booking requests.";
+
 function DirectMessagesEmptyIcon() {
   return (
     <div className="flex h-12 w-12 items-center justify-center rounded-2xl border-0 bg-ftc-primary text-xs font-semibold uppercase tracking-wide text-ftc-bg">
       DM
     </div>
-  );
-}
-
-function BrowseDiscoverButton({ className = "" }: { className?: string }) {
-  return (
-    <Link
-      href={DISCOVER_PATH}
-      className={`ftc-btn-primary inline-flex px-5 py-3 text-sm uppercase tracking-wide ${className}`}
-    >
-      Browse Discover
-    </Link>
   );
 }
 
@@ -227,9 +218,8 @@ function DirectMessagesEmptyState({ compact = false }: { compact?: boolean }) {
           <DirectMessagesEmptyIcon />
           <h3 className="mt-4 text-base font-semibold text-ftc-text">No messages yet</h3>
           <p className="mt-2 text-sm leading-relaxed text-ftc-text-muted">
-            Find a DJ or promoter on Discover to start a conversation.
+            {MVP_DM_EMPTY_MESSAGE}
           </p>
-          <BrowseDiscoverButton className="mt-4 w-full max-w-xs sm:w-auto" />
         </div>
       </div>
     );
@@ -240,9 +230,8 @@ function DirectMessagesEmptyState({ compact = false }: { compact?: boolean }) {
       <DirectMessagesEmptyIcon />
       <h2 className="mt-5 text-lg font-semibold text-ftc-text">No messages yet</h2>
       <p className="mt-2 max-w-sm text-sm leading-relaxed text-ftc-text-muted">
-        Find a DJ or promoter on Discover to start a conversation. Your chats will appear here.
+        {MVP_DM_EMPTY_MESSAGE} Your chats will appear here.
       </p>
-      <BrowseDiscoverButton className="mt-6 w-full max-w-xs sm:w-auto" />
     </div>
   );
 }
@@ -821,7 +810,6 @@ function DmInboxPageContent() {
         activeTab={activeTab}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
-        onCompose={() => router.push(DISCOVER_PATH)}
         onSelectTab={selectInboxTab}
         dmUnreadCount={dmUnreadCount}
         groupUnreadCount={groupUnreadCount}
