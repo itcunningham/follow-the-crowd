@@ -54,6 +54,7 @@ function testOneAcceptedDjWithNullStartShowsStartAction() {
   assert.equal(actions.showStartCrewChatAction, true);
   assert.equal(actions.showEventGroupChatAction, false);
   assert.equal(actions.crewChatHelpActionLabel, "Start group chat");
+  assert.equal(actions.showCrewChatHelpUi, true);
 }
 
 function testOneAcceptedDjWithStartedAtShowsGroupChat() {
@@ -74,6 +75,7 @@ function testOneAcceptedDjWithStartedAtShowsGroupChat() {
 
   assert.equal(actions.showStartCrewChatAction, false);
   assert.equal(actions.showEventGroupChatAction, true);
+  assert.equal(actions.showCrewChatHelpUi, false);
 }
 
 function testZeroAcceptedDjsShowsNoCrewChatAction() {

@@ -1021,6 +1021,13 @@ export default function EventDetailPage() {
     showCrewChatHelpUi,
     crewChatHelpActionLabel,
   } = crewChatActions;
+  const showCrewChatHeaderAction = showStartCrewChatAction || showEventGroupChatAction;
+
+  useEffect(() => {
+    if (!showStartCrewChatAction) {
+      setCrewChatHelpOpen(false);
+    }
+  }, [showStartCrewChatAction]);
 
   const showStickyActions = !editOpen && !sendOpen;
   const showOwnerSendAction = isOwner && isPlanner && !eventIsCancelled;
@@ -1077,8 +1084,14 @@ export default function EventDetailPage() {
             </EventDetailOverlayButton>
 
             <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
-              {showCrewChatHelpUi ? (
-                <div className="flex min-w-0 max-w-[10.5rem] shrink items-center gap-1 rounded-xl border border-ftc-border-subtle bg-ftc-bg/80 px-1 py-1 backdrop-blur-sm sm:max-w-none">
+              {showCrewChatHeaderAction ? (
+                <div
+                  className={`flex min-w-0 shrink items-center rounded-xl border border-ftc-border-subtle bg-ftc-bg/80 py-1 backdrop-blur-sm ${
+                    showCrewChatHelpUi
+                      ? "max-w-[10.5rem] gap-1 px-1 sm:max-w-none"
+                      : "max-w-[8.5rem] px-2 sm:max-w-none"
+                  }`}
+                >
                   {showStartCrewChatAction ? (
                     <button
                       type="button"
@@ -1103,7 +1116,7 @@ export default function EventDetailPage() {
                     <Link
                       href={getEventCrewChatLink(event.id)}
                       aria-label="Group chat"
-                      className="flex min-h-8 min-w-0 flex-1 items-center gap-1 px-1 py-0.5"
+                      className="flex min-h-8 min-w-0 flex-1 items-center gap-1 py-0.5"
                     >
                       <EventHeaderChatIcon />
                       <span className="min-w-0 truncate text-[10px] font-semibold uppercase tracking-wide text-ftc-text sm:text-xs">
@@ -1112,14 +1125,16 @@ export default function EventDetailPage() {
                       </span>
                     </Link>
                   )}
-                  <InlineOptionHelpButton
-                    label={crewChatHelpActionLabel}
-                    open={crewChatHelpOpen}
-                    onToggle={() => {
-                      setCrewChatHelpOpen((current) => !current);
-                    }}
-                    disabled={startingCrewChat}
-                  />
+                  {showCrewChatHelpUi ? (
+                    <InlineOptionHelpButton
+                      label={crewChatHelpActionLabel}
+                      open={crewChatHelpOpen}
+                      onToggle={() => {
+                        setCrewChatHelpOpen((current) => !current);
+                      }}
+                      disabled={startingCrewChat}
+                    />
+                  ) : null}
                 </div>
               ) : null}
               {canEditEvent ? (

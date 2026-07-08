@@ -35,7 +35,7 @@ export function computeCrewChatEventActions(input: {
     acceptedDjCount >= 1 &&
     ((isOwner && isPlanner) || hasAcceptedBooking);
 
-  const showCrewChatHelpUi = showStartCrewChatAction || showEventGroupChatAction;
+  const showCrewChatHelpUi = showStartCrewChatAction;
 
   return {
     isUnlocked,
