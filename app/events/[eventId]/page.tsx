@@ -9,7 +9,6 @@ import EventDateStatusBadge from "@/app/components/EventDateStatusBadge";
 import EventRunSheetSection from "@/app/components/EventRunSheetSection";
 import EventDetailBottomBar, {
   EventDetailPrimaryAction,
-  EventDetailSecondaryAction,
 } from "@/app/components/event-detail/EventDetailBottomBar";
 import EventDetailMetaList, {
   EventDetailEditButton,
@@ -55,6 +54,7 @@ import EventDjSendOfferControls, {
   type DjSendOffer,
 } from "@/app/components/booking/EventDjSendOfferControls";
 import {
+  InlineOptionHelpButton,
   InlineOptionHelpPanel,
 } from "@/app/components/booking/InlineOptionHelp";
 import BookingRateProposalPanel from "@/app/components/booking/BookingRateProposalPanel";
@@ -135,6 +135,21 @@ const CREW_CHAT_HELP = {
   label: "Group chat",
   help: "Opens automatically when 2 DJs accept. With 1 accepted DJ, the planner can start it manually. If all DJs leave or the event is cancelled, group chat locks again.",
 };
+
+function EventHeaderChatIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      className="h-4 w-4 shrink-0 text-ftc-primary"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+    >
+      <path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 2 2 0 0 1-1.8 1.1h-3.7l-3 3v-3H8a2 2 0 0 1-2-2V8.5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2Z" />
+    </svg>
+  );
+}
 
 export default function EventDetailPage() {
   const params = useParams<{ eventId: string }>();
@@ -1009,11 +1024,11 @@ export default function EventDetailPage() {
 
   const showStickyActions = !editOpen && !sendOpen;
   const showOwnerSendAction = isOwner && isPlanner && !eventIsCancelled;
-  const showBottomBar =
+  const showDjBookingConversationAction =
     showStickyActions &&
-    (showStartCrewChatAction ||
-      showEventGroupChatAction ||
-      Boolean(viewerBooking?.conversation_id && !hideOpenBookingConversation));
+    !showOwnerSendAction &&
+    Boolean(viewerBooking?.conversation_id && !hideOpenBookingConversation);
+  const showBottomBar = showDjBookingConversationAction;
   const showRunSheetSendBookingsAction = showOwnerSendAction && showStickyActions;
 
   if (loading) {
@@ -1061,27 +1076,51 @@ export default function EventDetailPage() {
               </svg>
             </EventDetailOverlayButton>
 
-            <div className="flex items-center gap-2">
-              {showStartCrewChatAction ? (
-                <EventDetailOverlayButton
-                  onClick={() => {
-                    void handleStartCrewChat();
-                  }}
-                  label="Start group chat"
-                >
-                  <svg aria-hidden="true" viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="1.75">
-                    <path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 2 2 0 0 1-1.8 1.1h-3.7l-3 3v-3H8a2 2 0 0 1-2-2V8.5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2Z" />
-                  </svg>
-                </EventDetailOverlayButton>
-              ) : showEventGroupChatAction ? (
-                <EventDetailOverlayButton
-                  href={getEventCrewChatLink(event.id)}
-                  label="Open group chat"
-                >
-                  <svg aria-hidden="true" viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="1.75">
-                    <path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 2 2 0 0 1-1.8 1.1h-3.7l-3 3v-3H8a2 2 0 0 1-2-2V8.5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2Z" />
-                  </svg>
-                </EventDetailOverlayButton>
+            <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
+              {showCrewChatHelpUi ? (
+                <div className="flex min-w-0 max-w-[10.5rem] shrink items-center gap-1 rounded-xl border border-ftc-border-subtle bg-ftc-bg/80 px-1 py-1 backdrop-blur-sm sm:max-w-none">
+                  {showStartCrewChatAction ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        void handleStartCrewChat();
+                      }}
+                      disabled={startingCrewChat}
+                      aria-label="Start group chat"
+                      className="flex min-h-8 min-w-0 flex-1 items-center gap-1 px-1 py-0.5 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <EventHeaderChatIcon />
+                      <span className="min-w-0 truncate text-[10px] font-semibold uppercase tracking-wide text-ftc-text sm:text-xs">
+                        <span className="sm:hidden">
+                          {startingCrewChat ? "Starting" : "Start"}
+                        </span>
+                        <span className="hidden sm:inline">
+                          {startingCrewChat ? "Starting..." : "Start group chat"}
+                        </span>
+                      </span>
+                    </button>
+                  ) : (
+                    <Link
+                      href={getEventCrewChatLink(event.id)}
+                      aria-label="Group chat"
+                      className="flex min-h-8 min-w-0 flex-1 items-center gap-1 px-1 py-0.5"
+                    >
+                      <EventHeaderChatIcon />
+                      <span className="min-w-0 truncate text-[10px] font-semibold uppercase tracking-wide text-ftc-text sm:text-xs">
+                        <span className="sm:hidden">Chat</span>
+                        <span className="hidden sm:inline">Group chat</span>
+                      </span>
+                    </Link>
+                  )}
+                  <InlineOptionHelpButton
+                    label={crewChatHelpActionLabel}
+                    open={crewChatHelpOpen}
+                    onToggle={() => {
+                      setCrewChatHelpOpen((current) => !current);
+                    }}
+                    disabled={startingCrewChat}
+                  />
+                </div>
               ) : null}
               {canEditEvent ? (
                 <EventDetailEditButton onClick={openEditForm} />
@@ -1089,6 +1128,12 @@ export default function EventDetailPage() {
             </div>
           </div>
         </div>
+
+        {showCrewChatHelpUi && crewChatHelpOpen ? (
+          <div className="border-b border-ftc-border-subtle px-4 py-2 sm:px-6">
+            <InlineOptionHelpPanel label={CREW_CHAT_HELP.label} help={CREW_CHAT_HELP.help} />
+          </div>
+        ) : null}
 
         <EventDetailHero
           eventName={event.name}
@@ -1608,52 +1653,14 @@ export default function EventDetailPage() {
           ) : null}
         </div>
 
-        {showBottomBar ? (
+        {showBottomBar && viewerBooking?.conversation_id ? (
           <EventDetailBottomBar>
-            {showCrewChatHelpUi && crewChatHelpOpen ? (
-              <InlineOptionHelpPanel
-                label={CREW_CHAT_HELP.label}
-                help={CREW_CHAT_HELP.help}
-              />
-            ) : null}
-            {showStartCrewChatAction ? (
-              <EventDetailPrimaryAction
-                icon="chat"
-                onClick={() => {
-                  void handleStartCrewChat();
-                }}
-                helpLabel={crewChatHelpActionLabel}
-                helpOpen={crewChatHelpOpen}
-                onHelpToggle={() => {
-                  setCrewChatHelpOpen((current) => !current);
-                }}
-                helpDisabled={startingCrewChat}
-              >
-                {startingCrewChat ? "Starting..." : "Start group chat"}
-              </EventDetailPrimaryAction>
-            ) : null}
-            {!showOwnerSendAction &&
-            viewerBooking?.conversation_id &&
-            !hideOpenBookingConversation ? (
-              <EventDetailPrimaryAction
-                icon="chat"
-                href={`/dm/${viewerBooking.conversation_id}?from=events`}
-              >
-                Open booking conversation
-              </EventDetailPrimaryAction>
-            ) : null}
-            {showEventGroupChatAction && !showStartCrewChatAction ? (
-              <EventDetailSecondaryAction
-                href={getEventCrewChatLink(event.id)}
-                helpLabel={crewChatHelpActionLabel}
-                helpOpen={crewChatHelpOpen}
-                onHelpToggle={() => {
-                  setCrewChatHelpOpen((current) => !current);
-                }}
-              >
-                Group chat
-              </EventDetailSecondaryAction>
-            ) : null}
+            <EventDetailPrimaryAction
+              icon="chat"
+              href={`/dm/${viewerBooking.conversation_id}?from=events`}
+            >
+              Open booking conversation
+            </EventDetailPrimaryAction>
           </EventDetailBottomBar>
         ) : null}
       </div>
