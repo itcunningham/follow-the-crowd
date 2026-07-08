@@ -1,4 +1,4 @@
-import { buildGigsListHref, parseGigsListTab } from "@/lib/bookings/gigsListNavigation";
+import { buildGigsListHref, parseDjGigsListTab } from "@/lib/bookings/gigsListNavigation";
 
 export type EventsListTab = "active" | "history";
 
@@ -48,7 +48,7 @@ export function resolveEventDetailBackHref(
   },
 ): string {
   if (options?.from === "bookings") {
-    return buildGigsListHref(parseGigsListTab(options.tab ?? fromTab));
+    return buildGigsListHref(parseDjGigsListTab(options.tab ?? fromTab));
   }
 
   return buildEventsListHref(parseEventsListTab(fromTab));

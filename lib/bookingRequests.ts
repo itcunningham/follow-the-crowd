@@ -1,5 +1,5 @@
 import { supabase } from "@/lib/supabaseClient";
-import { parseEventDate } from "@/lib/bookingDateTime";
+import { isDateKeyBeforeToday, parseEventDate } from "@/lib/bookingDateTime";
 import { createNotification, getNotificationCreateErrorMessage } from "@/lib/notifications";
 import { formatRateDisplay, formatIntegerRateDisplay, normalizeStoredRate } from "@/lib/bookingRate";
 import { startDm } from "@/lib/startDm";
@@ -51,7 +51,10 @@ export type ActiveBookingStatusFilter = "all" | "pending" | "accepted" | "declin
 
 export type PlannerSentBookingsView = "active" | "history" | "archived";
 
-export type DjGigsViewFilter = "pending" | "accepted" | "declined" | "history" | "calendar";
+export type DjGigsListTab = "pending" | "accepted" | "history";
+
+/** @deprecated Legacy URL values; normalized via parseDjGigsListTab. */
+export type DjGigsViewFilter = DjGigsListTab | "declined" | "calendar";
 
 export type SentBookingGroup = {
   key: string;
@@ -254,6 +257,67 @@ export function filterVisibleEventLineupBookings(bookings: BookingRequest[]): Bo
 
 export function filterCancelledBookings(bookings: BookingRequest[]): BookingRequest[] {
   return bookings.filter((booking) => booking.status === "cancelled");
+}
+
+export function isDjGigPastAccepted(booking: BookingRequest): boolean {
+  if (booking.status !== "accepted") {
+    return false;
+  }
+
+  const dateKey = resolveBookingDateKey(booking.event_date);
+
+  return dateKey ? isDateKeyBeforeToday(dateKey) : false;
+}
+
+export function isDjGigHistoryBooking(booking: BookingRequest): boolean {
+  return (
+    booking.status === "declined" ||
+    booking.status === "cancelled" ||
+    isDjGigPastAccepted(booking)
+  );
+}
+
+export function sortGigsByEventDateAsc(bookings: BookingRequest[]): BookingRequest[] {
+  return [...bookings].sort((left, right) => {
+    const leftKey = resolveBookingDateKey(left.event_date) ?? "9999-12-31";
+    const rightKey = resolveBookingDateKey(right.event_date) ?? "9999-12-31";
+
+    if (leftKey !== rightKey) {
+      return leftKey.localeCompare(rightKey);
+    }
+
+    return left.event_name.localeCompare(right.event_name);
+  });
+}
+
+export function filterDjGigsByTab(
+  bookings: BookingRequest[],
+  tab: DjGigsListTab,
+): BookingRequest[] {
+  switch (tab) {
+    case "pending":
+      return bookings.filter((booking) => booking.status === "pending");
+    case "accepted":
+      return sortGigsByEventDateAsc(
+        bookings.filter(
+          (booking) => booking.status === "accepted" && !isDjGigPastAccepted(booking),
+        ),
+      );
+    case "history":
+      return sortBookingsNewestFirst(
+        bookings.filter((booking) => isDjGigHistoryBooking(booking)),
+      );
+  }
+}
+
+export function countDjGigsByTab(
+  bookings: BookingRequest[],
+): Record<DjGigsListTab, number> {
+  return {
+    pending: filterDjGigsByTab(bookings, "pending").length,
+    accepted: filterDjGigsByTab(bookings, "accepted").length,
+    history: filterDjGigsByTab(bookings, "history").length,
+  };
 }
 
 export function isArchivedBooking(booking: BookingRequest): boolean {

@@ -13,7 +13,6 @@ import AppNavigation, { MOBILE_NAV_OFFSET_CLASS } from "@/app/components/AppNavi
 import OnboardingGuard from "@/app/components/OnboardingGuard";
 import { useGuardProfile } from "@/app/components/GuardProfileContext";
 import PlannerEventsSubNav from "@/app/components/PlannerEventsSubNav";
-import DjAvailabilityManager from "@/app/components/DjAvailabilityManager";
 import DjBookingAvailabilityBadge from "@/app/components/DjBookingAvailabilityBadge";
 import ProfileAvatar from "@/app/components/ProfileAvatar";
 import { BookingDateField, BookingSetTimeRangeField } from "@/app/components/BookingDateTimeFields";
@@ -30,13 +29,16 @@ import {
   ALL_SELECTED_DJS_ALREADY_HAVE_EVENT_REQUEST_MESSAGE,
   buildBookingSendResultMessage,
   buildEventBookingDuplicateMap,
+  countDjGigsByTab,
   filterActiveBookingGroups,
   filterActiveBookings,
   filterArchivedCancelledBookings,
   filterCancelledBookings,
+  filterDjGigsByTab,
   filterHistoryCancelledBookings,
   filterSendableRecipientIdsForEvent,
   getActiveBookingCampaignStats,
+  getBookingCollapsedOfferSummary,
   getBookingMutationErrorMessage,
   getBookingOfferRateLabel,
   getBookingStatusBadgeClass,
@@ -54,7 +56,7 @@ import {
   type BookingRequest,
   type BookingRequestInput,
   type BookingRequestStatus,
-  type DjGigsViewFilter,
+  type DjGigsListTab,
   type SentBookingGroup,
 } from "@/lib/bookingRequests";
 import {
@@ -145,12 +147,11 @@ function formatSentDate(timestamp: string) {
   });
 }
 
-const PLANNER_PENDING_EMPTY_MESSAGE = "No pending bookings.";
-const PLANNER_CONFIRMED_EMPTY_MESSAGE = "No confirmed bookings yet.";
-const PLANNER_HISTORY_EMPTY_MESSAGE = "No booking history yet.";
-const DJ_HISTORY_EMPTY_MESSAGE = "No cancelled booking requests yet.";
-const PLANNER_DECLINED_EMPTY_MESSAGE = "No declined bookings yet.";
-const ARCHIVED_EMPTY_MESSAGE = "No archived booking requests.";
+const GIGS_INCOMING_EMPTY_MESSAGE = "No incoming gig requests.";
+const GIGS_CONFIRMED_EMPTY_MESSAGE = "No confirmed upcoming gigs.";
+const GIGS_HISTORY_EMPTY_MESSAGE = "No gig history yet.";
+const PLANNER_GIGS_EMPTY_MESSAGE =
+  "Gigs are for DJs and artists playing events. Manage your event lineups from Events.";
 
 type BookingsSectionTab = "sent" | "received";
 type PlannerSentPrimaryTab = "pending" | "confirmed" | "history";
@@ -205,59 +206,32 @@ function canViewReceivedBookings(role: UserRole | null): boolean {
   return role === "dj" || role === "both";
 }
 
-function getDefaultSectionTab(role: UserRole | null): BookingsSectionTab {
-  if (role === "dj") {
-    return "received";
-  }
-
-  return "sent";
+function canViewGigsWorkspace(role: UserRole | null): boolean {
+  return role === "dj" || role === "both";
 }
 
-function getBookingsSubtitle(role: UserRole | null): string {
-  if (role === "dj") {
-    return "Manage your availability and bookings.";
+function getGigsSubtitle(role: UserRole | null): string {
+  if (canViewGigsWorkspace(role)) {
+    return "Track incoming requests, confirmed gigs, and history.";
   }
 
-  if (role === "both") {
-    return "Track sent campaigns, review incoming requests, and open private DMs.";
-  }
-
-  return "Track DJ responses, create booking requests, and open private DMs.";
+  return "Gigs are for DJs and artists playing events.";
 }
 
-function getBookingsPageTitle(role: UserRole | null): string {
-  return role === "dj" ? "Gigs" : "Bookings";
+function getGigsEmptyMessage(tab: DjGigsListTab): string {
+  switch (tab) {
+    case "pending":
+      return GIGS_INCOMING_EMPTY_MESSAGE;
+    case "accepted":
+      return GIGS_CONFIRMED_EMPTY_MESSAGE;
+    case "history":
+      return GIGS_HISTORY_EMPTY_MESSAGE;
+  }
 }
 
-function filterReceivedBookingsByView(
-  bookings: BookingRequest[],
-  view: DjGigsViewFilter,
-): BookingRequest[] {
-  if (view === "calendar") {
-    return bookings;
-  }
-
-  if (view === "history") {
-    return sortBookingsNewestFirst(filterCancelledBookings(bookings));
-  }
-
-  return bookings.filter((booking) => booking.status === view);
-}
-
-function getBookingsContentVariant(
-  role: UserRole | null,
-  sectionTab: BookingsSectionTab,
-): BookingsContentVariant {
-  if (role === "dj") {
+function getBookingsContentVariant(role: UserRole | null): BookingsContentVariant {
+  if (canViewGigsWorkspace(role)) {
     return "received-gigs";
-  }
-
-  if (role === "both" && sectionTab === "received") {
-    return "received-gigs";
-  }
-
-  if (role === "promoter" || role === "both") {
-    return "sent-campaigns";
   }
 
   return "received-gigs";
@@ -307,6 +281,9 @@ function BookingsPageContent() {
   const [recipientProfiles, setRecipientProfiles] = useState<
     Map<string, BookingRecipientProfile>
   >(new Map());
+  const [senderProfiles, setSenderProfiles] = useState<Map<string, BookingRecipientProfile>>(
+    new Map(),
+  );
   const [createOpen, setCreateOpen] = useState(false);
   const [createStep, setCreateStep] = useState<CreateStep>("source");
   const [form, setForm] = useState<BookingRequestInput>(emptyForm);
@@ -415,23 +392,16 @@ function BookingsPageContent() {
   }, [eventBookingDuplicates, form.eventId]);
 
   const displayRole = role ?? guardProfile?.role ?? null;
-  const isDjGigsView = displayRole === "dj";
-  const showReceivedGigsTabs =
-    displayRole === "dj" || (displayRole === "both" && sectionTab === "received");
-  const showUnifiedDjCalendar = showReceivedGigsTabs && djGigsView === "calendar";
-
-  const activeReceivedBookings = useMemo(
-    () => filterActiveBookings(receivedBookings),
-    [receivedBookings],
-  );
+  const showGigsWorkspace = canViewGigsWorkspace(displayRole);
+  const showPlannerGigsEmpty = displayRole === "promoter" && !createOpen;
 
   const filteredReceivedBookings = useMemo(() => {
-    if (!showReceivedGigsTabs || djGigsView === "calendar") {
-      return receivedBookings;
+    if (!showGigsWorkspace) {
+      return [];
     }
 
-    return filterReceivedBookingsByView(receivedBookings, djGigsView);
-  }, [receivedBookings, djGigsView, showReceivedGigsTabs]);
+    return filterDjGigsByTab(receivedBookings, djGigsView);
+  }, [receivedBookings, djGigsView, showGigsWorkspace]);
 
   useEffect(() => {
     function handlePopState() {
@@ -447,7 +417,6 @@ function BookingsPageContent() {
       .then((profile) => {
         const userRole = profile?.role ?? null;
         setRole(userRole);
-        setSectionTab(getDefaultSectionTab(userRole));
         setLoadingAccess(false);
       })
       .catch((loadError) => {
@@ -475,39 +444,35 @@ function BookingsPageContent() {
       setError(null);
 
       try {
-        const showSent = canViewSentBookings(role);
-        const showReceived = canViewReceivedBookings(role);
-
-        const [sentResult, receivedResult] = await Promise.all([
-          showSent ? listSentBookingRequests() : Promise.resolve([]),
-          showReceived ? listReceivedBookingRequests() : Promise.resolve([]),
-        ]);
-
-        if (showSent) {
-          setSentBookings(sentResult);
-          const groups = groupSentBookingRequests(sentResult);
-          setSentGroups(groups);
-
-          const recipientIds = [...new Set(sentResult.map((booking) => booking.recipient_id))];
-
-          if (recipientIds.length > 0) {
-            try {
-              const profiles = await getBookingRecipientProfilesByIds(recipientIds);
-              setRecipientProfiles(profiles);
-            } catch (profileError) {
-              logBookingsLoadError(profileError);
-              console.error("Failed to load booking recipient profiles:", profileError);
-            }
-          } else {
-            setRecipientProfiles(new Map());
-          }
-        } else {
+        if (!canViewGigsWorkspace(role)) {
           setSentBookings([]);
           setSentGroups([]);
+          setReceivedBookings([]);
           setRecipientProfiles(new Map());
+          setSenderProfiles(new Map());
+          return;
         }
 
+        const receivedResult = await listReceivedBookingRequests();
         setReceivedBookings(receivedResult);
+        setSentBookings([]);
+        setSentGroups([]);
+        setRecipientProfiles(new Map());
+
+        const senderIds = [...new Set(receivedResult.map((booking) => booking.sender_id))];
+
+        if (senderIds.length > 0) {
+          try {
+            const profiles = await getBookingRecipientProfilesByIds(senderIds);
+            setSenderProfiles(profiles);
+          } catch (profileError) {
+            logBookingsLoadError(profileError);
+            console.error("Failed to load gig sender profiles:", profileError);
+            setSenderProfiles(new Map());
+          }
+        } else {
+          setSenderProfiles(new Map());
+        }
       } catch (loadError) {
         logBookingsLoadError(loadError);
         console.error("Failed to load bookings:", loadError);
@@ -515,6 +480,7 @@ function BookingsPageContent() {
         setSentGroups([]);
         setReceivedBookings([]);
         setRecipientProfiles(new Map());
+        setSenderProfiles(new Map());
         setError(getBookingsLoadErrorMessage(loadError));
       } finally {
         setLoadingList(false);
@@ -980,9 +946,7 @@ function BookingsPageContent() {
     return null;
   }
 
-  const showCreateButton = canCreateBookings(displayRole);
-  const showSentTab = canViewSentBookings(displayRole);
-  const showReceivedTab = canViewReceivedBookings(displayRole);
+  const showPlannerCreateDeepLink = canCreateBookings(displayRole) && createOpen;
   const createStepMeta = getCreateStepMeta(createStep);
 
   return (
@@ -995,63 +959,23 @@ function BookingsPageContent() {
         <header className="border-b border-ftc-border-subtle px-4 py-3 sm:px-6 md:pt-4">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
-              <h1 className="text-xl font-semibold text-ftc-text">{getBookingsPageTitle(displayRole)}</h1>
-              <p className="mt-1 text-sm text-ftc-text-muted">{getBookingsSubtitle(displayRole)}</p>
-            </div>
-            <div className="flex shrink-0 flex-wrap items-center gap-2">
-              {showCreateButton && !createOpen ? (
-                <button
-                  type="button"
-                  onClick={() => openCreateFlow()}
-                  className="ftc-btn-primary px-4 py-2.5 text-sm uppercase tracking-wide"
-                >
-                  Create booking request
-                </button>
-              ) : null}
+              <h1 className="text-xl font-semibold text-ftc-text">Gigs</h1>
+              <p className="mt-1 text-sm text-ftc-text-muted">{getGigsSubtitle(displayRole)}</p>
             </div>
           </div>
 
-          {displayRole === "both" && (showSentTab || showReceivedTab) ? (
-            <>
-              <BookingSectionTabs
-                activeTab={sectionTab}
-                onChange={setSectionTab}
-                showSent={showSentTab}
-                showReceived={showReceivedTab}
-              />
-              {sectionTab === "received" && showReceivedTab ? (
-                <DjGigsTabs
-                  activeView={djGigsView}
-                  bookings={activeReceivedBookings}
-                  cancelledCount={filterCancelledBookings(receivedBookings).length}
-                />
-              ) : null}
-            </>
-          ) : showReceivedGigsTabs ? (
-            <DjGigsTabs
-              activeView={djGigsView}
-              bookings={activeReceivedBookings}
-              cancelledCount={filterCancelledBookings(receivedBookings).length}
-            />
-          ) : showSentTab || showReceivedTab ? (
-            <BookingSectionTabs
-              activeTab={sectionTab}
-              onChange={setSectionTab}
-              showSent={showSentTab}
-              showReceived={showReceivedTab}
-            />
+          {showGigsWorkspace ? (
+            <DjGigsTabs activeView={djGigsView} bookings={receivedBookings} />
           ) : null}
 
-          {!isDjGigsView && (displayRole === "promoter" || displayRole === "both") ? (
-            <PlannerEventsSubNav />
-          ) : null}
+          <PlannerEventsSubNav />
         </header>
 
         <div className="px-4 py-4 sm:px-6">
           {loadingAccess ? (
             <BookingsContentSkeleton
               variant={resolveBookingsShellVariant(displayRole)}
-              content={getBookingsContentVariant(displayRole, sectionTab)}
+              content={getBookingsContentVariant(displayRole)}
             />
           ) : (
             <>
@@ -1072,7 +996,7 @@ function BookingsPageContent() {
             </div>
           ) : null}
 
-          {createOpen && showCreateButton ? (
+          {showPlannerCreateDeepLink ? (
             <section className="mb-6 ftc-card p-4 sm:p-5">
               <div className="mb-4 flex items-center justify-between gap-3">
                 <div>
@@ -1384,179 +1308,17 @@ function BookingsPageContent() {
             </section>
           ) : null}
 
-          {sectionTab === "sent" && showSentTab ? (
-            loadingList ? (
-              <BookingsContentSkeleton
-                variant={resolveBookingsShellVariant(displayRole)}
-                content="sent-campaigns"
-              />
-            ) : error && !createOpen ? (
-              <p className="text-sm text-red-400">{error}</p>
-            ) : (
-              <>
-                <PlannerSentStatusTabs
-                  activeTab={plannerSentView}
-                  onChange={(tab) => {
-                    if (tab === plannerSentView) {
-                      return;
-                    }
-
-                    setPlannerSentView(tab);
-                    if (tab === "history") {
-                      setPlannerHistorySubView("cancelled");
-                    }
-                  }}
-                />
-
-                {plannerSentView === "pending" ? (
-                  pendingSentGroups.length === 0 ? (
-                    <p className="mt-4 rounded-xl border border-ftc-border bg-ftc-bg-elevated/40 px-4 py-8 text-center text-sm text-ftc-text-muted">
-                      {PLANNER_PENDING_EMPTY_MESSAGE}
-                    </p>
-                  ) : (
-                    <ul className="mt-4 space-y-4">
-                      {pendingSentGroups.map((group) => (
-                        <BookingCampaignCard
-                          key={group.key}
-                          group={group}
-                          fullGroup={sentGroups.find((item) => item.key === group.key) ?? group}
-                          recipientProfiles={recipientProfiles}
-                        />
-                      ))}
-                    </ul>
-                  )
-                ) : plannerSentView === "confirmed" ? (
-                  confirmedSentGroups.length === 0 ? (
-                    <p className="mt-4 rounded-xl border border-ftc-border bg-ftc-bg-elevated/40 px-4 py-8 text-center text-sm text-ftc-text-muted">
-                      {PLANNER_CONFIRMED_EMPTY_MESSAGE}
-                    </p>
-                  ) : (
-                    <ul className="mt-4 space-y-4">
-                      {confirmedSentGroups.map((group) => (
-                        <BookingCampaignCard
-                          key={group.key}
-                          group={group}
-                          fullGroup={sentGroups.find((item) => item.key === group.key) ?? group}
-                          recipientProfiles={recipientProfiles}
-                        />
-                      ))}
-                    </ul>
-                  )
-                ) : (
-                  <>
-                    <PlannerHistorySubControls
-                      activeSubView={plannerHistorySubView}
-                      declinedCount={declinedSentCount}
-                      archivedCount={archivedSentBookings.length}
-                      onChange={(subView) => {
-                        setPlannerHistorySubView(subView);
-                        if (subView === "archived") {
-                          void reloadPlannerSentBookings().catch((loadError) => {
-                            logBookingsLoadError(loadError);
-                            console.error("Failed to reload planner archived bookings:", loadError);
-                          });
-                        }
-                      }}
-                    />
-
-                    {plannerHistorySubView === "archived" ? (
-                      archivedSentBookings.length === 0 ? (
-                        <p className="mt-4 rounded-xl border border-ftc-border bg-ftc-bg-elevated/40 px-4 py-8 text-center text-sm text-ftc-text-muted">
-                          {ARCHIVED_EMPTY_MESSAGE}
-                        </p>
-                      ) : (
-                        <ul className="mt-4 space-y-3">
-                          {archivedSentBookings.map((booking) => {
-                            const profile = recipientProfiles.get(booking.recipient_id);
-                            const name = profile?.display_name?.trim() || "DJ";
-
-                            return (
-                              <BookingHistoryCard
-                                key={booking.id}
-                                booking={booking}
-                                subtitle={name}
-                                avatarName={name}
-                                avatarUrl={profile?.avatar_url}
-                                action={
-                                  <button
-                                    type="button"
-                                    disabled={restoringBookingId === booking.id}
-                                    onClick={() => void handleRestoreBooking(booking.id)}
-                                    className="rounded-lg border border-ftc-border-strong bg-ftc-bg-elevated/60 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-ftc-text-secondary transition hover:border-ftc-primary/25 hover:text-ftc-primary disabled:cursor-not-allowed disabled:opacity-50"
-                                  >
-                                    {restoringBookingId === booking.id ? "Restoring..." : "Restore"}
-                                  </button>
-                                }
-                              />
-                            );
-                          })}
-                        </ul>
-                      )
-                    ) : plannerHistorySubView === "declined" ? (
-                      declinedSentGroups.length === 0 ? (
-                        <p className="mt-4 rounded-xl border border-ftc-border bg-ftc-bg-elevated/40 px-4 py-8 text-center text-sm text-ftc-text-muted">
-                          {PLANNER_DECLINED_EMPTY_MESSAGE}
-                        </p>
-                      ) : (
-                        <ul className="mt-4 space-y-4">
-                          {declinedSentGroups.map((group) => (
-                            <BookingCampaignCard
-                              key={group.key}
-                              group={group}
-                              fullGroup={sentGroups.find((item) => item.key === group.key) ?? group}
-                              recipientProfiles={recipientProfiles}
-                            />
-                          ))}
-                        </ul>
-                      )
-                    ) : historySentBookings.length === 0 ? (
-                      <p className="mt-4 rounded-xl border border-ftc-border bg-ftc-bg-elevated/40 px-4 py-8 text-center text-sm text-ftc-text-muted">
-                        {PLANNER_HISTORY_EMPTY_MESSAGE}
-                      </p>
-                    ) : (
-                      <>
-                        <div className="mt-4 flex justify-end">
-                          <ArchiveAllBookingRequestsButton
-                            count={historySentBookings.length}
-                            loading={archivingAllHistory}
-                            disabled={Boolean(archivingBookingId)}
-                            onConfirm={handleArchiveAllHistory}
-                          />
-                        </div>
-                        <ul className="mt-3 space-y-3">
-                          {historySentBookings.map((booking) => {
-                            const profile = recipientProfiles.get(booking.recipient_id);
-                            const name = profile?.display_name?.trim() || "DJ";
-
-                            return (
-                              <BookingHistoryCard
-                                key={booking.id}
-                                booking={booking}
-                                subtitle={name}
-                                avatarName={name}
-                                avatarUrl={profile?.avatar_url}
-                                action={
-                                  <ArchiveBookingRequestButton
-                                    disabled={archivingAllHistory}
-                                    loading={archivingBookingId === booking.id}
-                                    onConfirm={() => handleArchiveBooking(booking.id)}
-                                  />
-                                }
-                              />
-                            );
-                          })}
-                        </ul>
-                      </>
-                    )}
-                  </>
-                )}
-              </>
-            )
-          ) : null}
-
-          {showUnifiedDjCalendar ? (
-            <DjAvailabilityManager description="Manage your availability and received bookings." />
-          ) : isDjGigsView || (sectionTab === "received" && showReceivedTab) ? (
+          {showPlannerGigsEmpty ? (
+            <div className="rounded-2xl border border-dashed border-ftc-border-subtle bg-ftc-surface/30 px-6 py-12 text-center">
+              <p className="text-base font-medium text-ftc-text-secondary">{PLANNER_GIGS_EMPTY_MESSAGE}</p>
+              <Link
+                href="/events"
+                className="mt-4 inline-flex ftc-btn-secondary px-4 py-2.5 text-xs uppercase tracking-wide"
+              >
+                Go to Events
+              </Link>
+            </div>
+          ) : showGigsWorkspace ? (
             loadingList ? (
               <BookingsContentSkeleton
                 variant={resolveBookingsShellVariant(displayRole)}
@@ -1565,16 +1327,12 @@ function BookingsPageContent() {
             ) : error && !createOpen ? (
               <p className="text-sm text-red-400">{error}</p>
             ) : receivedBookings.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-ftc-border bg-ftc-surface/30 px-6 py-12 text-center">
-                <p className="text-base font-medium text-ftc-text-secondary">
-                  {isDjGigsView ? "No gigs yet." : "No bookings received yet."}
-                </p>
+              <div className="rounded-2xl border border-dashed border-ftc-border-subtle bg-ftc-surface/30 px-6 py-12 text-center">
+                <p className="text-base font-medium text-ftc-text-secondary">No gigs yet.</p>
               </div>
             ) : filteredReceivedBookings.length === 0 ? (
-              <p className="rounded-xl border border-ftc-border bg-ftc-surface/40 px-4 py-8 text-center text-sm text-ftc-text-muted">
-                {djGigsView === "history"
-                  ? DJ_HISTORY_EMPTY_MESSAGE
-                  : `No ${djGigsView === "accepted" ? "confirmed" : djGigsView} gigs match this filter.`}
+              <p className="rounded-xl border border-ftc-border-subtle bg-ftc-surface/40 px-4 py-8 text-center text-sm text-ftc-text-muted">
+                {getGigsEmptyMessage(djGigsView)}
               </p>
             ) : (
               <ul className="space-y-3">
@@ -1584,6 +1342,7 @@ function BookingsPageContent() {
                       key={booking.id}
                       booking={booking}
                       gigsTab={djGigsView}
+                      senderName={senderProfiles.get(booking.sender_id)?.display_name?.trim()}
                       muted
                     />
                   ) : (
@@ -1591,6 +1350,7 @@ function BookingsPageContent() {
                       key={booking.id}
                       booking={booking}
                       gigsTab={djGigsView}
+                      senderName={senderProfiles.get(booking.sender_id)?.display_name?.trim()}
                     />
                   ),
                 )}
@@ -1621,36 +1381,17 @@ function BookingsPageContent() {
 function DjGigsTabs({
   activeView,
   bookings,
-  cancelledCount,
 }: {
-  activeView: DjGigsViewFilter;
+  activeView: DjGigsListTab;
   bookings: BookingRequest[];
-  cancelledCount: number;
 }) {
   const router = useRouter();
-  const counts = useMemo(() => {
-    return bookings.reduce(
-      (stats, booking) => {
-        if (booking.status === "pending") {
-          stats.pending += 1;
-        } else if (booking.status === "accepted") {
-          stats.accepted += 1;
-        } else if (booking.status === "declined") {
-          stats.declined += 1;
-        }
+  const counts = useMemo(() => countDjGigsByTab(bookings), [bookings]);
 
-        return stats;
-      },
-      { pending: 0, accepted: 0, declined: 0 },
-    );
-  }, [bookings]);
-
-  const tabs: { value: DjGigsViewFilter; label: string; count?: number; icon?: "history" }[] = [
-    { value: "pending", label: "Pending", count: counts.pending },
+  const tabs: { value: DjGigsListTab; label: string; count?: number; icon?: "history" }[] = [
+    { value: "pending", label: "Incoming", count: counts.pending },
     { value: "accepted", label: "Confirmed", count: counts.accepted },
-    { value: "declined", label: "Declined", count: counts.declined },
-    { value: "history", label: "History", count: cancelledCount, icon: "history" },
-    { value: "calendar", label: "Calendar" },
+    { value: "history", label: "History", count: counts.history, icon: "history" },
   ];
 
   return (
@@ -1827,50 +1568,72 @@ function BookingSectionTabs({
 function ReceivedBookingCard({
   booking,
   gigsTab = "pending",
+  senderName,
 }: {
   booking: BookingRequest;
-  gigsTab?: DjGigsViewFilter;
+  gigsTab?: DjGigsListTab;
+  senderName?: string;
 }) {
   const eventHref = booking.event_id ? buildGigsEventDetailHref(booking.event_id, gigsTab) : null;
+  const conversationHref = `/dm/${booking.conversation_id}?from=bookings${
+    gigsTab === "pending" ? "" : `&tab=${gigsTab}`
+  }`;
+  const rateLabel = getBookingCollapsedOfferSummary(booking);
+  const isConfirmed = gigsTab === "accepted";
 
-  return (
-    <li className="rounded-2xl border border-ftc-border-subtle bg-ftc-surface p-4 sm:p-5">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0 flex-1">
-          <h3 className="text-base font-semibold text-ftc-text">{booking.event_name}</h3>
-          <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
-            <CampaignDetail label="Venue" value={booking.venue} />
-            <CampaignDetail label="Date" value={booking.event_date} />
-            <CampaignDetail label="Rate" value={formatRateDisplay(booking.fee)} />
-          </dl>
-        </div>
-
-        <div className="flex shrink-0 items-center gap-2 sm:flex-col sm:items-end">
-          <BookingStatusBadge status={booking.status} />
-          {eventHref ? (
-            <Link
-              href={eventHref}
-              className="rounded-lg border border-ftc-border-strong bg-ftc-surface/80 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-ftc-text-secondary transition hover:border-ftc-primary/30 hover:text-ftc-primary"
-            >
-              View event
-            </Link>
-          ) : null}
-          <Link
-            href={`/dm/${booking.conversation_id}?from=bookings`}
-            className="ftc-btn-primary px-3 py-1.5 text-xs uppercase tracking-wide"
-          >
-            Open DM
-          </Link>
-        </div>
+  const cardBody = (
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+      <div className="min-w-0 flex-1">
+        <h3 className="text-base font-semibold text-ftc-text">{booking.event_name}</h3>
+        {senderName ? (
+          <p className="mt-1 text-sm text-ftc-text-muted">From {senderName}</p>
+        ) : null}
+        <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
+          <CampaignDetail label="Venue" value={booking.venue} />
+          <CampaignDetail label="Date" value={booking.event_date} />
+          <CampaignDetail label="Set time" value={booking.set_time || "TBC"} />
+          <CampaignDetail label="Rate" value={rateLabel} />
+        </dl>
       </div>
-    </li>
+
+      <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 sm:flex-col sm:items-end">
+        <BookingStatusBadge status={booking.status} />
+        {!isConfirmed ? (
+          <Link
+            href={conversationHref}
+            className="ftc-btn-primary px-3 py-1.5 text-xs uppercase tracking-wide"
+            onClick={(event) => event.stopPropagation()}
+          >
+            Open conversation
+          </Link>
+        ) : null}
+        {isConfirmed && eventHref ? (
+          <span className="text-xs font-semibold uppercase tracking-wide text-ftc-text-muted">
+            View event
+          </span>
+        ) : null}
+      </div>
+    </div>
   );
+
+  if (isConfirmed && eventHref) {
+    return (
+      <li>
+        <Link href={eventHref} className="ftc-lineup-booking-card block p-4 sm:p-5">
+          {cardBody}
+        </Link>
+      </li>
+    );
+  }
+
+  return <li className="ftc-lineup-booking-card p-4 sm:p-5">{cardBody}</li>;
 }
 
 function BookingHistoryCard({
   booking,
   muted = true,
   subtitle,
+  senderName,
   avatarName,
   avatarUrl,
   action,
@@ -1879,10 +1642,11 @@ function BookingHistoryCard({
   booking: BookingRequest;
   muted?: boolean;
   subtitle?: string;
+  senderName?: string;
   avatarName?: string;
   avatarUrl?: string | null;
   action?: React.ReactNode;
-  gigsTab?: DjGigsViewFilter;
+  gigsTab?: DjGigsListTab;
 }) {
   const eventHref = booking.event_id
     ? gigsTab
@@ -1890,11 +1654,12 @@ function BookingHistoryCard({
       : `/events/${booking.event_id}`
     : null;
   const cardClass = muted
-    ? "rounded-2xl border border-ftc-border-subtle bg-ftc-bg-elevated/60 p-4 sm:p-5"
-    : "rounded-2xl border border-ftc-border-subtle bg-ftc-surface p-4 sm:p-5";
+    ? "ftc-lineup-booking-card bg-ftc-bg-elevated/60 p-4 sm:p-5"
+    : "ftc-lineup-booking-card p-4 sm:p-5";
   const titleClass = muted ? "text-ftc-text-secondary" : "text-ftc-text";
   const detailClass = muted ? "text-ftc-text-muted" : "text-ftc-text";
   const cancellationReasonLabel = resolveBookingCancellationReasonLabel(booking);
+  const plannerLabel = senderName ?? subtitle;
 
   return (
     <li className={cardClass}>
@@ -1905,10 +1670,15 @@ function BookingHistoryCard({
           ) : null}
           <div className="min-w-0 flex-1">
             <h3 className={`text-base font-semibold ${titleClass}`}>{booking.event_name}</h3>
-            {subtitle ? <p className="mt-1 text-xs text-ftc-text-muted">{subtitle}</p> : null}
+            {plannerLabel ? (
+              <p className="mt-1 text-xs text-ftc-text-muted">
+                {senderName ? `From ${senderName}` : plannerLabel}
+              </p>
+            ) : null}
             <dl className={`mt-3 grid gap-2 text-sm sm:grid-cols-2 ${detailClass}`}>
               <CampaignDetail label="Venue" value={booking.venue} />
               <CampaignDetail label="Date" value={booking.event_date} />
+              <CampaignDetail label="Set time" value={booking.set_time || "TBC"} />
               <CampaignDetail label="Rate" value={getBookingOfferRateLabel(booking)} />
               {cancellationReasonLabel ? (
                 <CampaignDetail label="Reason" value={cancellationReasonLabel} />
@@ -1923,16 +1693,16 @@ function BookingHistoryCard({
           {eventHref ? (
             <Link
               href={eventHref}
-              className="rounded-lg border border-ftc-border bg-ftc-bg-elevated/60 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-ftc-text-muted transition hover:border-ftc-border-strong hover:text-ftc-text-secondary"
+              className="rounded-lg border border-ftc-border-subtle bg-ftc-bg-elevated/60 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-ftc-text-muted transition hover:border-ftc-border-strong hover:text-ftc-text-secondary"
             >
               View event
             </Link>
           ) : null}
           <Link
-            href={`/dm/${booking.conversation_id}?from=bookings`}
-            className="rounded-lg border border-ftc-border bg-ftc-bg-elevated/60 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-ftc-text-muted transition hover:border-ftc-border-strong hover:text-ftc-text-secondary"
+            href={`/dm/${booking.conversation_id}?from=bookings${gigsTab ? `&tab=${gigsTab}` : ""}`}
+            className="rounded-lg border border-ftc-border-subtle bg-ftc-bg-elevated/60 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-ftc-text-muted transition hover:border-ftc-border-strong hover:text-ftc-text-secondary"
           >
-            Open DM
+            Open conversation
           </Link>
         </div>
       </div>

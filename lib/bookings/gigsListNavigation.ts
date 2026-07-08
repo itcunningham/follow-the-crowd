@@ -1,16 +1,18 @@
-import type { DjGigsViewFilter } from "@/lib/bookingRequests";
+import type { DjGigsListTab } from "@/lib/bookingRequests";
 
-const GIGS_LIST_TABS: DjGigsViewFilter[] = [
-  "pending",
-  "accepted",
-  "declined",
-  "history",
-  "calendar",
-];
+const GIGS_LIST_TABS: DjGigsListTab[] = ["pending", "accepted", "history"];
 
-export function parseGigsListTab(value: string | null | undefined): DjGigsViewFilter {
-  if (value && GIGS_LIST_TABS.includes(value as DjGigsViewFilter)) {
-    return value as DjGigsViewFilter;
+export function parseDjGigsListTab(value: string | null | undefined): DjGigsListTab {
+  if (value === "accepted" || value === "history") {
+    return value;
+  }
+
+  if (value === "declined") {
+    return "history";
+  }
+
+  if (value === "calendar") {
+    return "pending";
   }
 
   return "pending";
@@ -20,21 +22,21 @@ export function resolveGigsListTabParam(
   searchParamsTab: string | null | undefined,
   initialTab?: string | null,
   locationSearch?: string | null,
-): DjGigsViewFilter {
+): DjGigsListTab {
   const locationTab = locationSearch
     ? new URLSearchParams(locationSearch).get("tab")
     : null;
 
-  return parseGigsListTab(searchParamsTab ?? locationTab ?? initialTab);
+  return parseDjGigsListTab(searchParamsTab ?? locationTab ?? initialTab);
 }
 
-export function buildGigsListHref(tab: DjGigsViewFilter = "pending"): string {
+export function buildGigsListHref(tab: DjGigsListTab = "pending"): string {
   return tab === "pending" ? "/bookings" : `/bookings?tab=${tab}`;
 }
 
 export function buildGigsEventDetailHref(
   eventId: string,
-  tab: DjGigsViewFilter = "pending",
+  tab: DjGigsListTab = "pending",
 ): string {
   if (tab === "pending") {
     return `/events/${eventId}?from=bookings`;
@@ -51,5 +53,5 @@ export function resolveGigsEventDetailBackHref(
     return null;
   }
 
-  return buildGigsListHref(parseGigsListTab(tab));
+  return buildGigsListHref(parseDjGigsListTab(tab));
 }
