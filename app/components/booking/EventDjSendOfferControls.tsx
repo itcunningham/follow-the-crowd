@@ -82,7 +82,7 @@ export default function EventDjSendOfferControls({
               className={`flex min-w-0 flex-1 items-center gap-1 rounded-lg border px-1.5 py-1 transition ${
                 selected
                   ? "border-ftc-primary bg-ftc-bg-elevated"
-                  : "border-ftc-border-subtle bg-ftc-surface"
+                  : "border-ftc-border-subtle bg-ftc-surface hover:border-ftc-border-strong hover:bg-ftc-bg-elevated focus-within:border-ftc-border-strong focus-within:bg-ftc-bg-elevated active:bg-ftc-bg-surface-raised"
               }`}
             >
               <button
@@ -90,8 +90,8 @@ export default function EventDjSendOfferControls({
                 disabled={disabled}
                 aria-pressed={selected}
                 onClick={() => handleOfferTypeChange(option.value)}
-                className={`min-w-0 flex-1 px-1 py-0.5 text-left text-[11px] font-semibold uppercase tracking-wide transition disabled:cursor-not-allowed disabled:opacity-50 ${
-                  selected ? "text-ftc-text" : "text-ftc-text-muted"
+                className={`min-w-0 flex-1 rounded-md px-1 py-0.5 text-left text-[11px] font-semibold uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ftc-primary/35 disabled:cursor-not-allowed disabled:opacity-50 ${
+                  selected ? "text-ftc-text" : "text-ftc-text-muted hover:text-ftc-text-secondary"
                 }`}
               >
                 {option.label}

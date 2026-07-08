@@ -465,6 +465,19 @@ html {
   color: var(--ftc-color-text-secondary);
 }
 
+.ftc-card-hoverable {
+  transition:
+    border-color 0.15s ease,
+    background-color 0.15s ease;
+}
+
+@media (hover: hover) {
+  .ftc-card-hoverable:hover {
+    border-color: var(--ftc-color-border-strong);
+    background: var(--ftc-color-bg-elevated);
+  }
+}
+
 .ftc-option-card {
   width: 100%;
   border-radius: var(--ftc-radius-xl);
@@ -481,6 +494,15 @@ html {
   .ftc-option-card:hover:not(:disabled) {
     border-color: var(--ftc-color-border-strong);
     background: var(--ftc-color-bg-elevated);
+  }
+
+  .ftc-option-card:focus-within:not(:disabled) {
+    border-color: var(--ftc-color-border-strong);
+    background: var(--ftc-color-bg-elevated);
+  }
+
+  .ftc-option-card:active:not(:disabled) {
+    background: var(--ftc-color-bg-surface-raised);
   }
 }
 

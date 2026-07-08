@@ -1,5 +1,7 @@
 export const EVENT_AUTOMATIC_FALLBACK_COLOUR = "slate" as const;
 
+export const NEUTRAL_FALLBACK_COLOUR_LABEL = "Neutral";
+
 export const EVENT_SELECTABLE_FALLBACK_COLOUR_KEYS = [
   "blue",
   "violet",
@@ -154,7 +156,7 @@ export function getEventFallbackColourStyles(colourKey: EventFallbackColourKey):
 
 export function getEventFallbackColourLabel(colourKey: EventFallbackColourKey): string {
   if (colourKey === EVENT_AUTOMATIC_FALLBACK_COLOUR) {
-    return "Auto";
+    return NEUTRAL_FALLBACK_COLOUR_LABEL;
   }
 
   return (

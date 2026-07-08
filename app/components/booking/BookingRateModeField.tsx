@@ -36,10 +36,10 @@ export default function BookingRateModeField({
               type="button"
               aria-pressed={selected}
               onClick={() => onChange(option.value)}
-              className={`rounded-xl border px-3 py-3 text-left transition ${
+              className={`rounded-xl border px-3 py-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ftc-primary/35 ${
                 selected
                   ? "border-ftc-primary bg-ftc-bg-elevated"
-                  : "border-ftc-border-subtle bg-ftc-surface hover:border-ftc-border-strong"
+                  : "border-ftc-border-subtle bg-ftc-surface hover:border-ftc-border-strong hover:bg-ftc-bg-elevated active:bg-ftc-bg-surface-raised"
               }`}
             >
               <p className="text-sm font-semibold text-ftc-text">{option.title}</p>

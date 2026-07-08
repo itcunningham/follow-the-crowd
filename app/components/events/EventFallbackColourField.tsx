@@ -5,6 +5,7 @@ import {
   EVENT_SELECTABLE_FALLBACK_COLOUR_OPTIONS,
   getEventFallbackColour,
   getEventFallbackColourLabel,
+  NEUTRAL_FALLBACK_COLOUR_LABEL,
   getEventFallbackColourStyles,
   type EventSelectableFallbackColourKey,
 } from "@/lib/events/eventFallbackColour";
@@ -16,12 +17,14 @@ function SwatchButton({
   disabled,
   swatchClassName,
   onClick,
+  showInitial = false,
 }: {
   label: string;
   selected: boolean;
   disabled: boolean;
   swatchClassName: string;
   onClick: () => void;
+  showInitial?: boolean;
 }) {
   return (
     <button
@@ -30,16 +33,16 @@ function SwatchButton({
       aria-pressed={selected}
       aria-label={label}
       onClick={onClick}
-      className="flex min-w-0 flex-col items-center gap-1.5 disabled:cursor-not-allowed disabled:opacity-50"
+      className="flex min-w-0 flex-col items-center gap-1.5 rounded-lg transition hover:bg-ftc-bg-elevated/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ftc-primary/35 disabled:cursor-not-allowed disabled:opacity-50"
     >
       <span
         className={`flex h-10 w-full items-center justify-center rounded-xl border text-[10px] font-semibold uppercase tracking-wide transition ${
           selected
-            ? "border-ftc-text-secondary"
-            : "border-ftc-border-subtle hover:border-ftc-border-strong"
-        } ${swatchClassName} ${label === "Auto" ? "text-[#e2e8f0]" : "text-white"}`}
+            ? "border-ftc-text-secondary bg-ftc-bg-elevated/30"
+            : "border-ftc-border-subtle hover:border-ftc-border-strong hover:bg-ftc-bg-elevated/50"
+        } ${swatchClassName} ${showInitial ? "text-[#e2e8f0]" : "text-white"}`}
       >
-        {label === "Auto" ? "A" : null}
+        {showInitial ? "N" : null}
       </span>
       <span
         className={`text-[10px] font-medium ${
@@ -84,10 +87,11 @@ export default function EventFallbackColourField({
         }`}
       >
         <SwatchButton
-          label="Auto"
+          label={NEUTRAL_FALLBACK_COLOUR_LABEL}
           selected={value === null}
           disabled={colourSelectionDisabled}
           swatchClassName={autoStyles.swatchClassName}
+          showInitial
           onClick={() => onChange(null)}
         />
 

@@ -1583,7 +1583,7 @@ export default function EventDetailPage() {
                     return (
                       <li
                         key={booking.id}
-                        className={`ftc-card relative flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between ${
+                        className={`ftc-card ftc-card-hoverable relative flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between ${
                           canHideFromLineup ? "pr-12 sm:pr-14" : ""
                         }`}
                       >
