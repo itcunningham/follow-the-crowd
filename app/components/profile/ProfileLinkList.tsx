@@ -1,5 +1,7 @@
 "use client";
 
+import { getMusicLinkLabel } from "@/lib/user/profileFormUtils";
+
 function ExternalLinkIcon() {
   return (
     <svg
@@ -21,9 +23,11 @@ function ExternalLinkIcon() {
 export default function ProfileLinkList({
   instagramUrl,
   soundcloudUrl,
+  websiteUrl,
 }: {
   instagramUrl?: string | null;
   soundcloudUrl?: string | null;
+  websiteUrl?: string | null;
 }) {
   const links: { href: string; label: string }[] = [];
 
@@ -32,7 +36,12 @@ export default function ProfileLinkList({
   }
 
   if (soundcloudUrl?.trim()) {
-    links.push({ href: soundcloudUrl.trim(), label: "SoundCloud" });
+    const label = getMusicLinkLabel(soundcloudUrl.trim()) ?? "SoundCloud";
+    links.push({ href: soundcloudUrl.trim(), label });
+  }
+
+  if (websiteUrl?.trim()) {
+    links.push({ href: websiteUrl.trim(), label: "Website" });
   }
 
   if (links.length === 0) {
@@ -46,7 +55,7 @@ export default function ProfileLinkList({
           key={link.label}
           href={link.href}
           target="_blank"
-          rel="noreferrer"
+          rel="noopener noreferrer"
           className="flex items-center justify-between gap-3 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated px-3 py-2.5 text-sm font-medium text-ftc-text transition hover:border-ftc-border-strong"
         >
           <span>{link.label}</span>

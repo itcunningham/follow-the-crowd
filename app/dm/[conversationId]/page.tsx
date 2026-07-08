@@ -121,6 +121,7 @@ export default function DmChatPage() {
   const backHref = resolveDmThreadBackHref({
     from: searchParams.get("from"),
     tab: searchParams.get("tab"),
+    profileUserId: searchParams.get("profileUserId"),
   });
 
   const [messages, setMessages] = useState<Message[]>([]);

@@ -8,15 +8,16 @@ import OnboardingGuard from "@/app/components/OnboardingGuard";
 import { useGuardProfile } from "@/app/components/GuardProfileContext";
 import { ProfileSkeleton } from "@/app/components/skeleton/Skeleton";
 import ProfileHero from "@/app/components/profile/ProfileHero";
+import ProfileLinkList from "@/app/components/profile/ProfileLinkList";
 import ProfileMessageAction from "@/app/components/profile/ProfileMessageAction";
 import ProfilePageHeader from "@/app/components/profile/ProfilePageHeader";
 import PromoterProfileSections from "@/app/components/profile/PromoterProfileSections";
-import { startDm } from "@/lib/startDm";
 import {
   getCurrentUserId,
   getUserProfileById,
   type UserProfile,
 } from "@/lib/user/currentUser";
+import { startDm } from "@/lib/startDm";
 
 export default function UserProfilePage() {
   const params = useParams();
@@ -76,7 +77,7 @@ export default function UserProfilePage() {
     try {
       const authUserId = await getCurrentUserId();
       const conversationId = await startDm(authUserId, profile.user_id);
-      router.push(`/dm/${conversationId}?from=discover`);
+      router.push(`/dm/${conversationId}?from=profile&profileUserId=${profile.user_id}`);
     } catch (messageError) {
       console.error("startDm failed from profile page:", messageError);
       setError(messageError instanceof Error ? messageError.message : "Failed to start message");
@@ -122,10 +123,26 @@ export default function UserProfilePage() {
             <div className="mx-auto max-w-lg space-y-6">
               <ProfileHero
                 displayName={displayName}
+                username={profile.username}
                 avatarUrl={profile.avatar_url}
                 role={profile.role}
                 location={profile.location}
+                bio={profile.bio}
               />
+
+              {profile.instagram_url?.trim() ||
+              profile.soundcloud_url?.trim() ||
+              profile.website_url?.trim() ? (
+                <ProfileLinkList
+                  instagramUrl={profile.instagram_url}
+                  soundcloudUrl={
+                    showDjSections ? profile.soundcloud_url : null
+                  }
+                  websiteUrl={
+                    showPromoterSections ? profile.website_url : null
+                  }
+                />
+              ) : null}
 
               {showDjSections ? (
                 <DjProfileSections

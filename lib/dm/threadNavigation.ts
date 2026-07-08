@@ -1,6 +1,7 @@
 export type DmThreadBackContext = {
   from?: string | null;
   tab?: string | null;
+  profileUserId?: string | null;
 };
 
 export function resolveDmThreadBackHref(context: DmThreadBackContext): string {
@@ -15,6 +16,16 @@ export function resolveDmThreadBackHref(context: DmThreadBackContext): string {
   }
 
   if (from === "discover") {
+    return "/dm";
+  }
+
+  if (from === "profile") {
+    const profileUserId = context.profileUserId?.trim();
+
+    if (profileUserId) {
+      return `/profile/${profileUserId}`;
+    }
+
     return "/dm";
   }
 

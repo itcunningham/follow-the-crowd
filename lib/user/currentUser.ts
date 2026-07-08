@@ -1,4 +1,5 @@
 import type { User } from "@supabase/supabase-js";
+import { normalizeUsername } from "@/lib/user/profileFormUtils";
 import { supabase } from "@/lib/supabaseClient";
 
 export const LOGIN_PATH = "/login";
@@ -14,27 +15,41 @@ export type UserProfile = {
   user_id: string;
   role: UserRole | null;
   onboarding_complete: boolean;
+  full_name: string | null;
+  username: string | null;
   display_name: string | null;
   bio: string | null;
   genre: string | null;
   instagram_url: string | null;
   soundcloud_url: string | null;
+  website_url: string | null;
   location: string | null;
   avatar_url: string | null;
+  artist_name: string | null;
+  dj_booking_contact_name: string | null;
   dj_availability: string | null;
   dj_past_gigs: string | null;
+  promoter_brand_name: string | null;
+  promoter_brand_description: string | null;
   promoter_venues_used: string | null;
   promoter_upcoming_events: string | null;
   promoter_past_events: string | null;
 };
 
 export type UserProfileInput = {
+  full_name: string;
+  username: string;
   display_name: string;
   bio: string;
   genre: string;
   location: string;
   instagram_url: string;
   soundcloud_url: string;
+  website_url: string;
+  artist_name: string;
+  dj_booking_contact_name: string;
+  promoter_brand_name: string;
+  promoter_brand_description: string;
   dj_availability: string;
   dj_past_gigs: string;
   promoter_venues_used: string;
@@ -43,7 +58,7 @@ export type UserProfileInput = {
 };
 
 const PROFILE_FIELDS =
-  "user_id, role, onboarding_complete, display_name, bio, genre, instagram_url, soundcloud_url, location, avatar_url, dj_availability, dj_past_gigs, promoter_venues_used, promoter_upcoming_events, promoter_past_events";
+  "user_id, role, onboarding_complete, full_name, username, display_name, bio, genre, instagram_url, soundcloud_url, website_url, location, avatar_url, artist_name, dj_booking_contact_name, dj_availability, dj_past_gigs, promoter_brand_name, promoter_brand_description, promoter_venues_used, promoter_upcoming_events, promoter_past_events";
 
 export function getDefaultRouteForRole(role: UserRole | null): string {
   return role === "dj" ? "/dm" : "/";
@@ -304,6 +319,31 @@ export function notifyRoleUpdated(): void {
   }
 }
 
+export async function isUsernameAvailable(
+  username: string,
+  excludeUserId?: string,
+): Promise<boolean> {
+  const normalized = normalizeUsername(username);
+
+  if (!normalized) {
+    return false;
+  }
+
+  let query = supabase.from("users").select("user_id").eq("username", normalized);
+
+  if (excludeUserId) {
+    query = query.neq("user_id", excludeUserId);
+  }
+
+  const { data, error } = await query.maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  return !data;
+}
+
 export async function saveUserProfile(
   input: UserProfileInput,
   options?: { avatarUrl?: string | null },
@@ -316,12 +356,19 @@ export async function saveUserProfile(
   }
 
   const updatePayload: Record<string, string> = {
+    full_name: input.full_name.trim(),
+    username: normalizeUsername(input.username),
     display_name: input.display_name.trim(),
     bio: input.bio.trim(),
     genre: input.genre.trim(),
     location: input.location.trim(),
     instagram_url: input.instagram_url.trim(),
     soundcloud_url: input.soundcloud_url.trim(),
+    website_url: input.website_url.trim(),
+    artist_name: input.artist_name.trim(),
+    dj_booking_contact_name: input.dj_booking_contact_name.trim(),
+    promoter_brand_name: input.promoter_brand_name.trim(),
+    promoter_brand_description: input.promoter_brand_description.trim(),
     dj_availability: input.dj_availability.trim(),
     dj_past_gigs: input.dj_past_gigs.trim(),
     promoter_venues_used: input.promoter_venues_used.trim(),
@@ -348,6 +395,11 @@ export async function saveUserProfile(
       details: error.details,
       hint: error.hint,
     });
+
+    if (error.code === "23505") {
+      throw new Error("That username is already taken.");
+    }
+
     throw error;
   }
 

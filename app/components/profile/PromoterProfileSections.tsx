@@ -1,10 +1,7 @@
 "use client";
 
-import ProfileGenreTags from "@/app/components/profile/ProfileGenreTags";
-import ProfileLinkList from "@/app/components/profile/ProfileLinkList";
 import ProfileSectionCard from "@/app/components/profile/ProfileSectionCard";
 import ProfileTextBlock from "@/app/components/profile/ProfileTextBlock";
-import { parseGenreTags } from "@/app/components/profile/parseGenreTags";
 import type { UserProfile } from "@/lib/user/currentUser";
 
 export default function PromoterProfileSections({
@@ -14,15 +11,10 @@ export default function PromoterProfileSections({
   profile: UserProfile;
   showHeading: boolean;
 }) {
-  const bio = profile.bio?.trim();
-  const venues = profile.promoter_venues_used?.trim();
-  const upcoming = profile.promoter_upcoming_events?.trim();
-  const past = profile.promoter_past_events?.trim();
-  const genreTags = parseGenreTags(profile.genre);
-  const hasLinks = Boolean(profile.instagram_url?.trim());
+  const brandName = profile.promoter_brand_name?.trim();
+  const brandDescription = profile.promoter_brand_description?.trim();
 
-  const hasContent =
-    genreTags.length > 0 || bio || hasLinks || venues || upcoming || past;
+  const hasContent = brandName || brandDescription;
 
   if (!hasContent) {
     return null;
@@ -34,39 +26,15 @@ export default function PromoterProfileSections({
         <h2 className="text-sm font-semibold text-ftc-text">Promoter</h2>
       ) : null}
 
-      {genreTags.length > 0 ? (
-        <ProfileSectionCard title="Event Style">
-          <ProfileGenreTags genre={profile.genre} />
+      {brandName ? (
+        <ProfileSectionCard title="Event brand">
+          <ProfileTextBlock text={brandName} />
         </ProfileSectionCard>
       ) : null}
 
-      {bio ? (
-        <ProfileSectionCard title="Bio">
-          <ProfileTextBlock text={bio} />
-        </ProfileSectionCard>
-      ) : null}
-
-      {hasLinks ? (
-        <ProfileSectionCard title="Links">
-          <ProfileLinkList instagramUrl={profile.instagram_url} />
-        </ProfileSectionCard>
-      ) : null}
-
-      {venues ? (
-        <ProfileSectionCard title="Venues">
-          <ProfileTextBlock text={venues} />
-        </ProfileSectionCard>
-      ) : null}
-
-      {upcoming ? (
-        <ProfileSectionCard title="Upcoming Events">
-          <ProfileTextBlock text={upcoming} />
-        </ProfileSectionCard>
-      ) : null}
-
-      {past ? (
-        <ProfileSectionCard title="Past Events">
-          <ProfileTextBlock text={past} />
+      {brandDescription ? (
+        <ProfileSectionCard title="About">
+          <ProfileTextBlock text={brandDescription} />
         </ProfileSectionCard>
       ) : null}
     </div>
