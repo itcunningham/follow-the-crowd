@@ -478,7 +478,8 @@ html {
   }
 }
 
-.ftc-lineup-booking-card {
+.ftc-lineup-booking-card,
+.ftc-events-list-card {
   border-radius: var(--ftc-radius-xl);
   border: 1px solid var(--ftc-color-border-subtle);
   background: var(--ftc-color-bg-surface);
@@ -489,9 +490,16 @@ html {
 
 @media (hover: hover) {
   .ftc-lineup-booking-card:hover,
-  .ftc-lineup-booking-card:focus-within {
+  .ftc-lineup-booking-card:focus-within,
+  .ftc-events-list-card:hover,
+  .ftc-events-list-card:focus-visible {
     border-color: var(--ftc-color-text-secondary);
     background: var(--ftc-color-bg-surface-raised);
+  }
+
+  .ftc-lineup-booking-card:active,
+  .ftc-events-list-card:active {
+    background: var(--ftc-color-bg-elevated);
   }
 }
 
