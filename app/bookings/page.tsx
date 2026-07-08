@@ -1563,64 +1563,6 @@ function BookingSectionTabs({
 const GIG_CARD_CLASS_NAME =
   "ftc-surface-row rounded-[var(--ftc-radius-xl)] p-3 sm:p-4";
 
-function GigVenueIcon({ className = "h-3.5 w-3.5" }: { className?: string }) {
-  return (
-    <svg
-      aria-hidden="true"
-      viewBox="0 0 20 20"
-      fill="none"
-      className={className}
-    >
-      <path
-        d="M10 2.5c-2.4 0-4.5 2-4.5 4.6 0 3.4 4.5 8.9 4.5 8.9s4.5-5.5 4.5-8.9C14.5 4.5 12.4 2.5 10 2.5Z"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinejoin="round"
-      />
-      <circle cx="10" cy="7.1" r="1.5" stroke="currentColor" strokeWidth="1.5" />
-    </svg>
-  );
-}
-
-function GigClockIcon({ className = "h-3.5 w-3.5" }: { className?: string }) {
-  return (
-    <svg
-      aria-hidden="true"
-      viewBox="0 0 20 20"
-      fill="none"
-      className={className}
-    >
-      <circle cx="10" cy="10" r="7" stroke="currentColor" strokeWidth="1.5" />
-      <path
-        d="M10 6.5v3.5l2.5 2"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-function GigRateIcon({ className = "h-3.5 w-3.5" }: { className?: string }) {
-  return (
-    <svg
-      aria-hidden="true"
-      viewBox="0 0 20 20"
-      fill="none"
-      className={className}
-    >
-      <path
-        d="M10 3.5v13M6.5 6.5h5.8a2.3 2.3 0 0 1 0 4.6H8.2a2.3 2.3 0 0 0 0 4.6h5.8"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
 function GigCardHeader({
   eventName,
   status,
@@ -1635,8 +1577,8 @@ function GigCardHeader({
   const titleClass = muted ? "text-ftc-text-secondary" : "text-ftc-text";
 
   return (
-    <div>
-      <div className="flex items-start justify-between gap-2">
+    <div className="min-w-0">
+      <div className="flex min-w-0 items-start justify-between gap-2">
         <h3 className={`min-w-0 flex-1 text-sm font-semibold leading-snug sm:text-base ${titleClass}`}>
           {eventName}
         </h3>
@@ -1665,32 +1607,22 @@ function GigCardMetaRows({
   muted?: boolean;
 }) {
   const textClass = muted ? "text-ftc-text-muted" : "text-ftc-text-secondary";
-  const iconClass = `mt-0.5 shrink-0 ${muted ? "text-ftc-text-muted" : "text-ftc-text-muted"}`;
   const venueDateParts = [venue?.trim(), eventDate?.trim()].filter(Boolean);
   const venueDateLine = venueDateParts.join(" · ");
   const setTimeLine = setTime?.trim() || "TBC";
   const showRate = Boolean(rateLabel?.trim());
 
   return (
-    <div className={`mt-2 space-y-1 text-xs sm:text-sm ${textClass}`}>
+    <div className={`mt-2 min-w-0 space-y-1 text-xs sm:text-sm ${textClass}`}>
       {venueDateLine ? (
-        <p className="flex items-start gap-1.5 break-words">
-          <GigVenueIcon className={iconClass} />
-          <span>{venueDateLine}</span>
-        </p>
+        <p className="min-w-0 break-words">{venueDateLine}</p>
       ) : null}
-      <p className="flex items-start gap-1.5 break-words">
-        <GigClockIcon className={iconClass} />
-        <span>{setTimeLine}</span>
-      </p>
+      <p className="min-w-0 break-words">{setTimeLine}</p>
       {showRate ? (
-        <p className="flex items-start gap-1.5 break-words">
-          <GigRateIcon className={iconClass} />
-          <span>{rateLabel}</span>
-        </p>
+        <p className="min-w-0 break-words">{rateLabel}</p>
       ) : null}
       {extraLine ? (
-        <p className="break-words text-xs text-ftc-text-muted">{extraLine}</p>
+        <p className="min-w-0 break-words text-xs text-ftc-text-muted">{extraLine}</p>
       ) : null}
     </div>
   );
@@ -1731,7 +1663,7 @@ function ReceivedBookingCard({
   const plannerLabel = senderName ? `From ${senderName}` : undefined;
 
   const cardBody = (
-    <div className="flex flex-col gap-3">
+    <div className="flex min-w-0 flex-col gap-3">
       <GigCardHeader
         eventName={booking.event_name}
         status={booking.status}
@@ -1757,10 +1689,10 @@ function ReceivedBookingCard({
 
   if (isConfirmed && eventHref) {
     return (
-      <li>
+      <li className="min-w-0">
         <Link
           href={eventHref}
-          className={`${GIG_CARD_CLASS_NAME} block w-full focus-visible:outline-none`}
+          className={`${GIG_CARD_CLASS_NAME} block w-full min-w-0 focus-visible:outline-none`}
         >
           {cardBody}
         </Link>
@@ -1768,7 +1700,7 @@ function ReceivedBookingCard({
     );
   }
 
-  return <li className={GIG_CARD_CLASS_NAME}>{cardBody}</li>;
+  return <li className={`${GIG_CARD_CLASS_NAME} min-w-0`}>{cardBody}</li>;
 }
 
 function BookingHistoryCard({
@@ -1805,8 +1737,8 @@ function BookingHistoryCard({
   }`;
 
   return (
-    <li className={cardClass}>
-      <div className="flex flex-col gap-3">
+    <li className={`${cardClass} min-w-0`}>
+      <div className="flex min-w-0 flex-col gap-3">
         <div className="flex min-w-0 gap-3">
           {avatarName ? (
             <ProfileAvatar name={avatarName} avatarUrl={avatarUrl} size="sm" className="mt-0.5" />
