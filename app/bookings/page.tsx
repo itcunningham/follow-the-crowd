@@ -1561,7 +1561,157 @@ function BookingSectionTabs({
 }
 
 const GIG_CARD_CLASS_NAME =
-  "ftc-surface-row rounded-[var(--ftc-radius-xl)] p-4 sm:p-5";
+  "ftc-surface-row rounded-[var(--ftc-radius-xl)] p-3 sm:p-4";
+
+function GigVenueIcon({ className = "h-3.5 w-3.5" }: { className?: string }) {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 20 20"
+      fill="none"
+      className={className}
+    >
+      <path
+        d="M10 2.5c-2.4 0-4.5 2-4.5 4.6 0 3.4 4.5 8.9 4.5 8.9s4.5-5.5 4.5-8.9C14.5 4.5 12.4 2.5 10 2.5Z"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinejoin="round"
+      />
+      <circle cx="10" cy="7.1" r="1.5" stroke="currentColor" strokeWidth="1.5" />
+    </svg>
+  );
+}
+
+function GigClockIcon({ className = "h-3.5 w-3.5" }: { className?: string }) {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 20 20"
+      fill="none"
+      className={className}
+    >
+      <circle cx="10" cy="10" r="7" stroke="currentColor" strokeWidth="1.5" />
+      <path
+        d="M10 6.5v3.5l2.5 2"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function GigRateIcon({ className = "h-3.5 w-3.5" }: { className?: string }) {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 20 20"
+      fill="none"
+      className={className}
+    >
+      <path
+        d="M10 3.5v13M6.5 6.5h5.8a2.3 2.3 0 0 1 0 4.6H8.2a2.3 2.3 0 0 0 0 4.6h5.8"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function GigCardHeader({
+  eventName,
+  status,
+  plannerLabel,
+  muted = false,
+}: {
+  eventName: string;
+  status: BookingRequestStatus;
+  plannerLabel?: string;
+  muted?: boolean;
+}) {
+  const titleClass = muted ? "text-ftc-text-secondary" : "text-ftc-text";
+
+  return (
+    <div>
+      <div className="flex items-start justify-between gap-2">
+        <h3 className={`min-w-0 flex-1 text-sm font-semibold leading-snug sm:text-base ${titleClass}`}>
+          {eventName}
+        </h3>
+        <BookingStatusBadge status={status} />
+      </div>
+      {plannerLabel ? (
+        <p className="mt-1 text-xs text-ftc-text-muted">{plannerLabel}</p>
+      ) : null}
+    </div>
+  );
+}
+
+function GigCardMetaRows({
+  venue,
+  eventDate,
+  setTime,
+  rateLabel,
+  extraLine,
+  muted = false,
+}: {
+  venue?: string;
+  eventDate?: string;
+  setTime?: string;
+  rateLabel?: string;
+  extraLine?: string;
+  muted?: boolean;
+}) {
+  const textClass = muted ? "text-ftc-text-muted" : "text-ftc-text-secondary";
+  const iconClass = `mt-0.5 shrink-0 ${muted ? "text-ftc-text-muted" : "text-ftc-text-muted"}`;
+  const venueDateParts = [venue?.trim(), eventDate?.trim()].filter(Boolean);
+  const venueDateLine = venueDateParts.join(" · ");
+  const setTimeLine = setTime?.trim() || "TBC";
+  const showRate = Boolean(rateLabel?.trim());
+
+  return (
+    <div className={`mt-2 space-y-1 text-xs sm:text-sm ${textClass}`}>
+      {venueDateLine ? (
+        <p className="flex items-start gap-1.5 break-words">
+          <GigVenueIcon className={iconClass} />
+          <span>{venueDateLine}</span>
+        </p>
+      ) : null}
+      <p className="flex items-start gap-1.5 break-words">
+        <GigClockIcon className={iconClass} />
+        <span>{setTimeLine}</span>
+      </p>
+      {showRate ? (
+        <p className="flex items-start gap-1.5 break-words">
+          <GigRateIcon className={iconClass} />
+          <span>{rateLabel}</span>
+        </p>
+      ) : null}
+      {extraLine ? (
+        <p className="break-words text-xs text-ftc-text-muted">{extraLine}</p>
+      ) : null}
+    </div>
+  );
+}
+
+function GigCardSecondaryAction({
+  href,
+  children,
+}: {
+  href: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <Link
+      href={href}
+      className="inline-flex min-h-9 flex-1 items-center justify-center rounded-lg border border-ftc-border-subtle bg-ftc-bg-elevated/60 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-ftc-text-muted transition hover:border-ftc-border-strong hover:text-ftc-text-secondary sm:flex-none"
+    >
+      {children}
+    </Link>
+  );
+}
 
 function ReceivedBookingCard({
   booking,
@@ -1578,39 +1728,30 @@ function ReceivedBookingCard({
   }`;
   const rateLabel = getBookingCollapsedOfferSummary(booking);
   const isConfirmed = gigsTab === "accepted";
+  const plannerLabel = senderName ? `From ${senderName}` : undefined;
 
   const cardBody = (
-    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-      <div className="min-w-0 flex-1">
-        <h3 className="text-base font-semibold text-ftc-text">{booking.event_name}</h3>
-        {senderName ? (
-          <p className="mt-1 text-sm text-ftc-text-muted">From {senderName}</p>
-        ) : null}
-        <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
-          <CampaignDetail label="Venue" value={booking.venue} />
-          <CampaignDetail label="Date" value={booking.event_date} />
-          <CampaignDetail label="Set time" value={booking.set_time || "TBC"} />
-          <CampaignDetail label="Rate" value={rateLabel} />
-        </dl>
-      </div>
-
-      <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 sm:flex-col sm:items-end">
-        <BookingStatusBadge status={booking.status} />
-        {!isConfirmed ? (
-          <Link
-            href={conversationHref}
-            className="ftc-btn-primary px-3 py-1.5 text-xs uppercase tracking-wide"
-            onClick={(event) => event.stopPropagation()}
-          >
-            Open conversation
-          </Link>
-        ) : null}
-        {isConfirmed && eventHref ? (
-          <span className="text-xs font-semibold uppercase tracking-wide text-ftc-text-muted">
-            View event
-          </span>
-        ) : null}
-      </div>
+    <div className="flex flex-col gap-3">
+      <GigCardHeader
+        eventName={booking.event_name}
+        status={booking.status}
+        plannerLabel={plannerLabel}
+      />
+      <GigCardMetaRows
+        venue={booking.venue}
+        eventDate={booking.event_date}
+        setTime={booking.set_time}
+        rateLabel={rateLabel}
+      />
+      {!isConfirmed ? (
+        <Link
+          href={conversationHref}
+          className="ftc-btn-primary flex min-h-10 w-full items-center justify-center px-3 py-2 text-xs uppercase tracking-wide"
+          onClick={(event) => event.stopPropagation()}
+        >
+          Open conversation
+        </Link>
+      ) : null}
     </div>
   );
 
@@ -1657,54 +1798,43 @@ function BookingHistoryCard({
   const cardClass = muted
     ? `${GIG_CARD_CLASS_NAME} bg-ftc-bg-elevated/60`
     : GIG_CARD_CLASS_NAME;
-  const titleClass = muted ? "text-ftc-text-secondary" : "text-ftc-text";
-  const detailClass = muted ? "text-ftc-text-muted" : "text-ftc-text";
   const cancellationReasonLabel = resolveBookingCancellationReasonLabel(booking);
-  const plannerLabel = senderName ?? subtitle;
+  const plannerLabel = senderName ? `From ${senderName}` : subtitle;
+  const conversationHref = `/dm/${booking.conversation_id}?from=bookings${
+    gigsTab ? `&tab=${gigsTab}` : ""
+  }`;
 
   return (
     <li className={cardClass}>
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div className="flex min-w-0 flex-1 gap-3">
+      <div className="flex flex-col gap-3">
+        <div className="flex min-w-0 gap-3">
           {avatarName ? (
             <ProfileAvatar name={avatarName} avatarUrl={avatarUrl} size="sm" className="mt-0.5" />
           ) : null}
           <div className="min-w-0 flex-1">
-            <h3 className={`text-base font-semibold ${titleClass}`}>{booking.event_name}</h3>
-            {plannerLabel ? (
-              <p className="mt-1 text-xs text-ftc-text-muted">
-                {senderName ? `From ${senderName}` : plannerLabel}
-              </p>
-            ) : null}
-            <dl className={`mt-3 grid gap-2 text-sm sm:grid-cols-2 ${detailClass}`}>
-              <CampaignDetail label="Venue" value={booking.venue} />
-              <CampaignDetail label="Date" value={booking.event_date} />
-              <CampaignDetail label="Set time" value={booking.set_time || "TBC"} />
-              <CampaignDetail label="Rate" value={getBookingOfferRateLabel(booking)} />
-              {cancellationReasonLabel ? (
-                <CampaignDetail label="Reason" value={cancellationReasonLabel} />
-              ) : null}
-            </dl>
+            <GigCardHeader
+              eventName={booking.event_name}
+              status={booking.status}
+              plannerLabel={plannerLabel}
+              muted={muted}
+            />
+            <GigCardMetaRows
+              venue={booking.venue}
+              eventDate={booking.event_date}
+              setTime={booking.set_time}
+              rateLabel={getBookingOfferRateLabel(booking)}
+              extraLine={cancellationReasonLabel ?? undefined}
+              muted={muted}
+            />
           </div>
         </div>
 
-        <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 sm:flex-col sm:items-end">
-          <BookingStatusBadge status={booking.status} />
+        <div className="flex flex-wrap gap-2">
           {action}
           {eventHref ? (
-            <Link
-              href={eventHref}
-              className="rounded-lg border border-ftc-border-subtle bg-ftc-bg-elevated/60 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-ftc-text-muted transition hover:border-ftc-border-strong hover:text-ftc-text-secondary"
-            >
-              View event
-            </Link>
+            <GigCardSecondaryAction href={eventHref}>View event</GigCardSecondaryAction>
           ) : null}
-          <Link
-            href={`/dm/${booking.conversation_id}?from=bookings${gigsTab ? `&tab=${gigsTab}` : ""}`}
-            className="rounded-lg border border-ftc-border-subtle bg-ftc-bg-elevated/60 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-ftc-text-muted transition hover:border-ftc-border-strong hover:text-ftc-text-secondary"
-          >
-            Open conversation
-          </Link>
+          <GigCardSecondaryAction href={conversationHref}>Open conversation</GigCardSecondaryAction>
         </div>
       </div>
     </li>
