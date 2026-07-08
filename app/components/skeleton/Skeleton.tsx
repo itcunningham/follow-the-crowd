@@ -421,17 +421,15 @@ export function BookingsPageLoadingShell({
   variant?: BookingsShellVariant;
   content?: BookingsContentVariant;
 }) {
-  const showPlannerSubNav = variant === "planner" || variant === "both";
-  const showSectionTabs = variant === "both";
-  const showDjGigsTabs = variant === "dj" || variant === "neutral";
-  const showCreateButton = variant === "planner" || variant === "both";
-  const pageTitle = variant === "dj" || variant === "neutral" ? "Gigs" : "Bookings";
+  const showPlannerSubNav = true;
+  const showSectionTabs = false;
+  const showDjGigsTabs = variant === "dj" || variant === "both" || variant === "neutral";
+  const showCreateButton = false;
+  const pageTitle = "Gigs";
   const pageSubtitle =
-    variant === "dj" || variant === "neutral"
-      ? "Manage your availability and bookings."
-      : variant === "both"
-        ? "Track sent campaigns, review incoming requests, and open private DMs."
-        : "Track DJ responses, create booking requests, and open private DMs.";
+    variant === "dj" || variant === "both" || variant === "neutral"
+      ? "Track incoming requests, confirmed gigs, and history."
+      : "Gigs are for DJs and artists playing events.";
 
   return (
     <div
@@ -463,14 +461,14 @@ export function BookingsPageLoadingShell({
 }
 
 function GigsTabPillsSkeleton() {
-  const labels = ["Pending", "Confirmed", "Declined", "History", "Calendar"];
+  const labels = ["Incoming", "Confirmed", "History"];
 
   return (
     <div aria-hidden="true" className="mt-4 flex flex-wrap gap-2">
       {labels.map((label, index) => (
         <SkeletonBlock
           key={label}
-          className={`h-[1.875rem] rounded-xl ${index === 0 ? "w-[5.5rem]" : label === "Calendar" ? "w-[5.25rem]" : "w-[5rem]"}`}
+          className={`h-[1.875rem] rounded-xl ${index === 0 ? "w-[5.75rem]" : index === 1 ? "w-[5.75rem]" : "w-[5rem]"}`}
         />
       ))}
     </div>

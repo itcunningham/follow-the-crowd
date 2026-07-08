@@ -418,7 +418,7 @@ export default function EventsPageClient({ initialTab }: EventsPageClientProps) 
               </button>
             ) : null}
           </div>
-          {isPlanner ? <PlannerEventsSubNav /> : null}
+          {role ? <PlannerEventsSubNav /> : null}
         </header>
 
         <div className="px-4 py-4 sm:px-6">

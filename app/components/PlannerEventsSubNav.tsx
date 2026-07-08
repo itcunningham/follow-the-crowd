@@ -1,11 +1,14 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
+import { useGuardProfile } from "@/app/components/GuardProfileContext";
 import {
+  getEventsAreaSubNavItems,
   isPlannerEventsAreaPath,
-  PLANNER_EVENTS_SUB_NAV,
 } from "@/lib/plannerEventsNav";
+import { getCurrentUserProfile, type UserRole } from "@/lib/user/currentUser";
 
 function getActiveHref(pathname: string): string {
   if (pathname === "/events" || pathname.startsWith("/events/")) {
@@ -29,19 +32,38 @@ function getActiveHref(pathname: string): string {
 
 export default function PlannerEventsSubNav() {
   const pathname = usePathname();
+  const guardProfile = useGuardProfile();
+  const [role, setRole] = useState<UserRole | null>(guardProfile?.role ?? null);
+
+  useEffect(() => {
+    if (guardProfile?.role) {
+      setRole(guardProfile.role);
+      return;
+    }
+
+    getCurrentUserProfile()
+      .then((profile) => {
+        setRole(profile?.role ?? null);
+      })
+      .catch((loadError) => {
+        console.error("Failed to load events area sub-nav role:", loadError);
+        setRole(null);
+      });
+  }, [guardProfile?.role]);
 
   if (!isPlannerEventsAreaPath(pathname)) {
     return null;
   }
 
   const activeHref = getActiveHref(pathname);
+  const tabs = getEventsAreaSubNavItems(role);
 
   return (
     <nav
       aria-label="Events area"
       className="mt-4 flex flex-wrap gap-2"
     >
-      {PLANNER_EVENTS_SUB_NAV.map((tab) => {
+      {tabs.map((tab) => {
         const isActive = activeHref === tab.href;
 
         return (

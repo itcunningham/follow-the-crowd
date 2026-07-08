@@ -44,7 +44,7 @@ export default function CalendarPage() {
             <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-ftc-primary">
               Calendar
             </p>
-            {role === "promoter" || role === "both" ? (
+            {(role === "promoter" || role === "both" || role === "dj") ? (
               <div className="mt-4">
                 <PlannerEventsSubNav />
               </div>
