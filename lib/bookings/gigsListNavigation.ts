@@ -31,7 +31,7 @@ export function resolveGigsListTabParam(
 }
 
 export function buildGigsListHref(tab: DjGigsListTab = "pending"): string {
-  return tab === "pending" ? "/bookings" : `/bookings?tab=${tab}`;
+  return `/bookings?tab=${tab}`;
 }
 
 export function buildGigsEventDetailHref(

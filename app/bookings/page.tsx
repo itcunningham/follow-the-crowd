@@ -1385,7 +1385,6 @@ function DjGigsTabs({
   activeView: DjGigsListTab;
   bookings: BookingRequest[];
 }) {
-  const router = useRouter();
   const counts = useMemo(() => countDjGigsByTab(bookings), [bookings]);
 
   const tabs: { value: DjGigsListTab; label: string; count?: number; icon?: "history" }[] = [
@@ -1407,11 +1406,7 @@ function DjGigsTabs({
             onClick={(event) => {
               if (isActive) {
                 event.preventDefault();
-                return;
               }
-
-              event.preventDefault();
-              router.push(href);
             }}
             className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-semibold uppercase tracking-wide transition ${
               isActive
