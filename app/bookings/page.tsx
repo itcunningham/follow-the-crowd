@@ -1678,13 +1678,15 @@ function ReceivedBookingCard({
         rateLabel={rateLabel}
       />
       {!isConfirmed ? (
-        <Link
-          href={conversationHref}
-          className="ftc-btn-primary flex min-h-10 w-full items-center justify-center px-3 py-2 text-xs uppercase tracking-wide"
-          onClick={(event) => event.stopPropagation()}
-        >
-          Open conversation
-        </Link>
+        <div className="flex min-w-0 justify-end">
+          <Link
+            href={conversationHref}
+            className="ftc-btn-primary inline-flex min-h-11 shrink-0 items-center justify-center px-3 py-2 text-xs uppercase tracking-wide"
+            onClick={(event) => event.stopPropagation()}
+          >
+            Open conversation
+          </Link>
+        </div>
       ) : null}
     </div>
   );
