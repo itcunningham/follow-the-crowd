@@ -7,7 +7,6 @@ function ExternalLinkIcon() {
     <svg
       aria-hidden="true"
       viewBox="0 0 24 24"
-      className="h-3.5 w-3.5 shrink-0 text-ftc-text-muted"
       fill="none"
       stroke="currentColor"
       strokeWidth="1.75"
@@ -48,19 +47,19 @@ export default function ProfileLinkList({
   }
 
   return (
-    <div className="flex flex-wrap gap-2">
+    <nav aria-label="Profile links" className="ftc-profile-link-pills">
       {links.map((link) => (
         <a
           key={link.label}
           href={link.href}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex min-h-11 max-w-full items-center gap-1.5 rounded-full border border-ftc-border-subtle bg-ftc-bg-elevated px-2.5 py-2 text-xs font-medium text-ftc-text-secondary transition hover:border-ftc-primary hover:text-ftc-text"
+          className="ftc-profile-link-pill"
         >
           <ExternalLinkIcon />
-          <span className="truncate">{link.label}</span>
+          <span>{link.label}</span>
         </a>
       ))}
-    </div>
+    </nav>
   );
 }
