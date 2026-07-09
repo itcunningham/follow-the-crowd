@@ -52,6 +52,23 @@ export const PROFILE_GENRE_OPTIONS = [
 ] as const;
 
 export const MAX_PROFILE_GENRE_TAGS = 8;
+export const MAX_PROFILE_BIO_LENGTH = 150;
+
+export function applyBioInputLimit(currentBio: string, nextBio: string): string | null {
+  if (nextBio.length <= MAX_PROFILE_BIO_LENGTH) {
+    return nextBio;
+  }
+
+  if (currentBio.length > MAX_PROFILE_BIO_LENGTH && nextBio.length <= currentBio.length) {
+    return nextBio;
+  }
+
+  if (currentBio.length <= MAX_PROFILE_BIO_LENGTH) {
+    return nextBio.slice(0, MAX_PROFILE_BIO_LENGTH);
+  }
+
+  return null;
+}
 
 export function normalizeUsername(raw: string): string {
   return raw.trim().replace(/^@+/g, "").toLowerCase();

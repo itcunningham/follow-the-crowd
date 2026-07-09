@@ -14,6 +14,8 @@ import {
 import {
   formatPublicUsername,
   isValidUsername,
+  applyBioInputLimit,
+  MAX_PROFILE_BIO_LENGTH,
   MAX_PROFILE_GENRE_TAGS,
   normalizeExternalUrl,
   normalizeInstagramInput,
@@ -222,6 +224,16 @@ export default function EditProfileForm({
     return null;
   }
 
+  function handleBioChange(nextBio: string) {
+    const limitedBio = applyBioInputLimit(form.bio, nextBio);
+
+    if (limitedBio === null) {
+      return;
+    }
+
+    updateField("bio", limitedBio);
+  }
+
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
@@ -237,6 +249,10 @@ export default function EditProfileForm({
 
     if (usernameError) {
       nextErrors.username = usernameError;
+    }
+
+    if (form.bio.length > MAX_PROFILE_BIO_LENGTH) {
+      nextErrors.bio = "Bio must be 150 characters or fewer. Shorten your bio to save.";
     }
 
     if (needsRoleChangeAck && !roleChangeAcknowledged) {
@@ -427,9 +443,21 @@ export default function EditProfileForm({
         <ProfileFormField
           label="Bio"
           value={form.bio}
-          onChange={(value) => updateField("bio", value)}
+          onChange={handleBioChange}
           placeholder="Tell people what you do in the scene"
           multiline
+          footer={
+            <p
+              className={`text-xs ${
+                form.bio.length > MAX_PROFILE_BIO_LENGTH
+                  ? "text-red-400"
+                  : "text-ftc-text-muted"
+              }`}
+            >
+              {form.bio.length}/{MAX_PROFILE_BIO_LENGTH}
+            </p>
+          }
+          error={fieldErrors.bio}
         />
 
         <div>

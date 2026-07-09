@@ -10,6 +10,7 @@ export default function ProfileFormField({
   multiline = false,
   error,
   suffix,
+  footer,
 }: {
   label: string;
   value: string;
@@ -20,6 +21,7 @@ export default function ProfileFormField({
   multiline?: boolean;
   error?: string;
   suffix?: React.ReactNode;
+  footer?: React.ReactNode;
 }) {
   return (
     <label className="block">
@@ -47,6 +49,7 @@ export default function ProfileFormField({
           className="ftc-input px-3.5 py-2.5"
         />
       )}
+      {footer ? <div className="mt-1">{footer}</div> : null}
       {suffix ? <div className="mt-1">{suffix}</div> : null}
       {error ? <p className="mt-2 text-sm text-red-400">{error}</p> : null}
     </label>
