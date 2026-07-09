@@ -24,7 +24,8 @@ export default function RequestAccountDeletionSection({
     <section className="ftc-card p-4 sm:p-5">
       <h2 className="text-xs font-semibold uppercase tracking-wide text-ftc-primary">Support</h2>
       <p className="mt-2 text-sm text-ftc-text-muted">
-        We&apos;ll help you close your account and remove your data.
+        Send us a request and we&apos;ll review it before closing your account and handling your
+        data.
       </p>
       {mailtoHref ? (
         <a
