@@ -36,7 +36,6 @@ function profileToFormInput(profile: UserProfile): UserProfileInput {
   const displayName = profile.display_name?.trim() ?? "";
 
   return {
-    full_name: profile.full_name?.trim() ?? "",
     username: profile.username?.trim() ?? suggestUsernameFromDisplayName(displayName),
     display_name: displayName,
     bio: profile.bio?.trim() ?? "",

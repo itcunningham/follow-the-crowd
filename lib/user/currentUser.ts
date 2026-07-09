@@ -38,7 +38,6 @@ export type UserProfile = {
 };
 
 export type UserProfileInput = {
-  full_name: string;
   username: string;
   display_name: string;
   bio: string;
@@ -358,7 +357,6 @@ export async function saveUserProfile(
   }
 
   const updatePayload: Record<string, string> = {
-    full_name: input.full_name.trim() || existing?.full_name?.trim() || "",
     username: normalizeUsername(input.username),
     display_name: input.display_name.trim(),
     bio: input.bio.trim(),
