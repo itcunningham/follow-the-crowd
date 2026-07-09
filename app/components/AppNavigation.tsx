@@ -15,11 +15,12 @@ import {
   type UserRole,
 } from "@/lib/user/currentUser";
 
+type NavIconKey = "home" | "events" | "gigs" | "messages" | "profile";
+
 type NavItem = {
   href: string;
   label: string;
-  mobileLabel?: string;
-  showIconOnMobile?: boolean;
+  icon: NavIconKey;
   badgeKey?: keyof NavBadgeCounts;
   isPrimary: boolean;
   isActive: (pathname: string) => boolean;
@@ -29,7 +30,7 @@ function getNavItems(role: UserRole, currentUserId: string | null): NavItem[] {
   const home: NavItem = {
     href: "/",
     label: "Home",
-    mobileLabel: "Home",
+    icon: "home",
     isPrimary: true,
     isActive: (pathname) => pathname === "/",
   };
@@ -37,7 +38,7 @@ function getNavItems(role: UserRole, currentUserId: string | null): NavItem[] {
   const events: NavItem = {
     href: "/events",
     label: "Events",
-    mobileLabel: "Events",
+    icon: "events",
     isPrimary: true,
     isActive: (pathname) => isPlannerEventsAreaPath(pathname),
   };
@@ -45,7 +46,7 @@ function getNavItems(role: UserRole, currentUserId: string | null): NavItem[] {
   const gigs: NavItem = {
     href: "/bookings",
     label: "Gigs",
-    mobileLabel: "Gigs",
+    icon: "gigs",
     badgeKey: "bookings",
     isPrimary: true,
     isActive: (pathname) => isGigsAreaPath(pathname),
@@ -54,7 +55,7 @@ function getNavItems(role: UserRole, currentUserId: string | null): NavItem[] {
   const messages: NavItem = {
     href: "/dm",
     label: "Messages",
-    mobileLabel: "Messages",
+    icon: "messages",
     badgeKey: "messages",
     isPrimary: true,
     isActive: (pathname) => isMessagesInboxPath(pathname),
@@ -63,8 +64,7 @@ function getNavItems(role: UserRole, currentUserId: string | null): NavItem[] {
   const profile: NavItem = {
     href: currentUserId ? `/profile/${currentUserId}` : PROFILE_SETUP_PATH,
     label: "Profile",
-    mobileLabel: "Profile",
-    showIconOnMobile: true,
+    icon: "profile",
     isPrimary: true,
     isActive: (pathname) =>
       currentUserId
@@ -96,26 +96,96 @@ function navLinkClassName(isActive: boolean, variant: "desktop" | "mobile") {
   }
 
   if (isActive) {
-    return "relative flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 px-0.5 py-2 text-[10px] font-semibold text-ftc-primary";
+    return "relative flex min-h-11 min-w-11 flex-1 items-center justify-center rounded-lg text-ftc-primary after:absolute after:bottom-1.5 after:h-0.5 after:w-5 after:rounded-full after:bg-ftc-primary";
   }
 
-  return "relative flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 px-0.5 py-2 text-[10px] font-semibold text-ftc-text-secondary transition hover:text-ftc-primary";
+  return "relative flex min-h-11 min-w-11 flex-1 items-center justify-center rounded-lg text-ftc-text-muted transition hover:text-ftc-primary";
 }
 
-function ProfileNavIcon({ active }: { active: boolean }) {
-  return (
-    <svg
-      aria-hidden="true"
-      viewBox="0 0 24 24"
-      className={`h-5 w-5 ${active ? "text-ftc-primary" : "text-ftc-text-muted"}`}
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.75"
-    >
-      <circle cx="12" cy="8" r="3.5" />
-      <path d="M5 19.5c1.2-3 3.4-4.5 7-4.5s5.8 1.5 7 4.5" strokeLinecap="round" />
-    </svg>
-  );
+function NavTabIcon({ icon, active }: { icon: NavIconKey; active: boolean }) {
+  const className = `h-6 w-6 ${active ? "text-ftc-primary" : "currentColor"}`;
+
+  switch (icon) {
+    case "home":
+      return (
+        <svg
+          aria-hidden="true"
+          viewBox="0 0 24 24"
+          className={className}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.75"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="m3 10 9-7 9 7" />
+          <path d="M5 10v10h14V10" />
+        </svg>
+      );
+    case "events":
+      return (
+        <svg
+          aria-hidden="true"
+          viewBox="0 0 24 24"
+          className={className}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.75"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <rect x="3" y="4" width="18" height="18" rx="2" />
+          <path d="M16 2v4M8 2v4M3 10h18" />
+        </svg>
+      );
+    case "gigs":
+      return (
+        <svg
+          aria-hidden="true"
+          viewBox="0 0 24 24"
+          className={className}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.75"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M3 9a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v0a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z" />
+          <path d="M13 6v12" />
+        </svg>
+      );
+    case "messages":
+      return (
+        <svg
+          aria-hidden="true"
+          viewBox="0 0 24 24"
+          className={className}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.75"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 2 2 0 0 1-1.8 1.1h-3.7l-3 3v-3H8a2 2 0 0 1-2-2V8.5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2Z" />
+        </svg>
+      );
+    case "profile":
+      return (
+        <svg
+          aria-hidden="true"
+          viewBox="0 0 24 24"
+          className={className}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.75"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <circle cx="12" cy="8" r="3.5" />
+          <path d="M5 19.5c1.2-3 3.4-4.5 7-4.5s5.8 1.5 7 4.5" />
+        </svg>
+      );
+  }
 }
 
 function NavBadge({ count }: { count: number }) {
@@ -179,10 +249,9 @@ function NavSkeleton({ variant }: { variant: "desktop" | "mobile" }) {
         <span
           key={index}
           aria-hidden="true"
-          className="mx-auto flex min-w-0 flex-1 flex-col items-center justify-center gap-1 px-0.5 py-2"
+          className="mx-auto flex min-h-11 min-w-11 flex-1 items-center justify-center px-0.5"
         >
-          <span className="h-5 w-5 animate-pulse rounded-full bg-ftc-surface-raised/90" />
-          <span className="h-2 w-10 animate-pulse rounded bg-ftc-surface-raised/90" />
+          <span className="h-6 w-6 animate-pulse rounded-md bg-ftc-surface-raised/90" />
         </span>
       ))}
     </>
@@ -357,7 +426,6 @@ export default function AppNavigation() {
           ) : (
             navItems.map((item) => {
               const isActive = item.isActive(pathname);
-              const mobileLabel = item.mobileLabel ?? item.label;
               const badgeCount = getBadgeCount(item, badgeCounts);
 
               return (
@@ -365,10 +433,10 @@ export default function AppNavigation() {
                   key={item.href}
                   href={item.href}
                   aria-label={item.label}
+                  title={item.label}
                   className={navLinkClassName(isActive, "mobile")}
                 >
-                  {item.showIconOnMobile ? <ProfileNavIcon active={isActive} /> : null}
-                  <span className="max-w-full truncate">{mobileLabel}</span>
+                  <NavTabIcon icon={item.icon} active={isActive} />
                   <MobileNavBadge count={badgeCount} />
                 </Link>
               );

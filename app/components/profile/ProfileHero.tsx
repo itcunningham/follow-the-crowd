@@ -2,7 +2,6 @@
 
 import ProfileAvatar from "@/app/components/ProfileAvatar";
 import ProfileBioText from "@/app/components/profile/ProfileBioText";
-import ProfileRoleBadge from "@/app/components/profile/ProfileRoleBadge";
 import { formatProfileIdentityUsername } from "@/lib/user/profileFormUtils";
 import { type UserRole } from "@/lib/user/currentUser";
 
@@ -38,10 +37,6 @@ export default function ProfileHero({
         {profileUsername ? (
           <p className="mt-1 text-sm font-medium text-ftc-text-secondary">{displayName}</p>
         ) : null}
-
-        <div className="mt-3">
-          <ProfileRoleBadge role={role} />
-        </div>
 
         {bio?.trim() ? <ProfileBioText bio={bio} /> : null}
       </div>
