@@ -13,7 +13,7 @@ import {
 } from "@/lib/user/currentUser";
 import {
   formatPublicUsername,
-  isValidUsername,
+  getUsernameFormatError,
   applyBioInputLimit,
   MAX_PROFILE_BIO_LENGTH,
   MAX_PROFILE_GENRE_TAGS,
@@ -104,7 +104,10 @@ export default function EditProfileForm({
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<string, string>>>({});
-  const [usernameChecking, setUsernameChecking] = useState(false);
+  const [usernameLiveMessage, setUsernameLiveMessage] = useState<string | null>(null);
+  const [usernameLiveTone, setUsernameLiveTone] = useState<"muted" | "success" | "error">("muted");
+  const usernameCheckSeqRef = useRef(0);
+  const savedUsername = normalizeUsername(profile.username ?? "");
   const [roleChangeAcknowledged, setRoleChangeAcknowledged] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -151,6 +154,72 @@ export default function EditProfileForm({
       document.removeEventListener("keydown", handleEscape);
     };
   }, [photoMenuOpen]);
+
+  useEffect(() => {
+    const normalized = normalizeUsername(form.username);
+
+    if (!form.username.trim()) {
+      setUsernameLiveMessage(null);
+      return;
+    }
+
+    const formatError = getUsernameFormatError(normalized);
+
+    if (formatError) {
+      setUsernameLiveTone("error");
+      setUsernameLiveMessage(formatError);
+      return;
+    }
+
+    if (normalized === savedUsername) {
+      setUsernameLiveTone("success");
+      setUsernameLiveMessage("Available");
+      return;
+    }
+
+    setUsernameLiveTone("muted");
+    setUsernameLiveMessage("Checking…");
+
+    const checkSeq = ++usernameCheckSeqRef.current;
+    const timer = window.setTimeout(() => {
+      void (async () => {
+        try {
+          const userId = await getCurrentUserId();
+
+          if (checkSeq !== usernameCheckSeqRef.current) {
+            return;
+          }
+
+          const available = await isUsernameAvailable(normalized, userId);
+
+          if (checkSeq !== usernameCheckSeqRef.current) {
+            return;
+          }
+
+          if (available) {
+            setUsernameLiveTone("success");
+            setUsernameLiveMessage("Available");
+          } else {
+            setUsernameLiveTone("error");
+            setUsernameLiveMessage("That username is already taken");
+          }
+        } catch (checkError) {
+          console.error("Username availability check failed:", checkError);
+
+          if (checkSeq !== usernameCheckSeqRef.current) {
+            return;
+          }
+
+          setUsernameLiveTone("error");
+          setUsernameLiveMessage("Could not verify username. Try again.");
+        }
+      })();
+    }, 500);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [form.username, savedUsername]);
 
   const updateField = useCallback(
     <Key extends keyof UserProfileInput>(key: Key, value: UserProfileInput[Key]) => {
@@ -229,16 +298,15 @@ export default function EditProfileForm({
 
   async function validateUsernameField(username: string): Promise<string | null> {
     const normalized = normalizeUsername(username);
+    const formatError = getUsernameFormatError(normalized);
 
-    if (!normalized) {
-      return "Username is required.";
+    if (formatError) {
+      return formatError;
     }
 
-    if (!isValidUsername(normalized)) {
-      return "Use 3–30 lowercase letters, numbers, or underscores.";
+    if (normalized === savedUsername) {
+      return null;
     }
-
-    setUsernameChecking(true);
 
     try {
       const userId = await getCurrentUserId();
@@ -250,8 +318,6 @@ export default function EditProfileForm({
     } catch (checkError) {
       console.error("Username availability check failed:", checkError);
       return "Could not verify username. Try again.";
-    } finally {
-      setUsernameChecking(false);
     }
 
     return null;
@@ -416,7 +482,6 @@ export default function EditProfileForm({
                 </svg>
               </span>
             </button>
-            <span className="mt-2 text-[11px] font-medium text-ftc-text-muted">Change photo</span>
 
             {photoMenuOpen ? (
               <div
@@ -482,22 +547,26 @@ export default function EditProfileForm({
             type="text"
             value={form.username}
             onChange={(event) => updateField("username", event.target.value)}
-            onBlur={() => {
-              void validateUsernameField(form.username).then((usernameError) => {
-                if (usernameError) {
-                  setFieldErrors((prev) => ({ ...prev, username: usernameError }));
-                }
-              });
-            }}
             placeholder="breakerbreaker or @breakerbreaker"
             required
             className="ftc-input px-3.5 py-2.5"
           />
-          {usernameChecking ? (
-            <p className="mt-1 text-xs text-ftc-text-muted">Checking...</p>
-          ) : form.username.trim() ? (
+          {form.username.trim() ? (
             <p className="mt-1 text-xs text-ftc-text-secondary">
               {formatPublicUsername(form.username)}
+            </p>
+          ) : null}
+          {usernameLiveMessage ? (
+            <p
+              className={`mt-1 text-xs ${
+                usernameLiveTone === "success"
+                  ? "text-ftc-primary"
+                  : usernameLiveTone === "error"
+                    ? "text-red-400"
+                    : "text-ftc-text-muted"
+              }`}
+            >
+              {usernameLiveMessage}
             </p>
           ) : null}
           {fieldErrors.username ? (
@@ -667,7 +736,7 @@ export default function EditProfileForm({
 
       <button
         type="submit"
-        disabled={saving || usernameChecking}
+        disabled={saving}
         className="w-full ftc-btn-primary px-5 py-3 text-sm uppercase tracking-wide disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
       >
         {saving ? "Saving..." : isEditing ? "Save changes" : "Save profile"}

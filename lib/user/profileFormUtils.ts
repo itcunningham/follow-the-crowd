@@ -85,7 +85,51 @@ export function formatPublicUsername(username: string | null | undefined): strin
 }
 
 export function isValidUsername(username: string): boolean {
-  return /^[a-z0-9_]{3,30}$/.test(username);
+  return /^[a-z0-9_.]{3,30}$/.test(username);
+}
+
+export const RESERVED_USERNAMES = new Set([
+  "admin",
+  "support",
+  "followthecrowd",
+  "ftc",
+  "official",
+  "system",
+]);
+
+const BLOCKED_USERNAMES = new Set([
+  "faggot",
+  "fag",
+  "nigger",
+  "nigga",
+  "retard",
+  "rape",
+  "hitler",
+  "nazi",
+]);
+
+export function getUsernameFormatError(normalized: string): string | null {
+  if (!normalized) {
+    return "Username is required.";
+  }
+
+  if (!isValidUsername(normalized)) {
+    return "Use 3–30 lowercase letters, numbers, underscores, or dots.";
+  }
+
+  if (RESERVED_USERNAMES.has(normalized)) {
+    return "That username is reserved. Choose another one.";
+  }
+
+  if (BLOCKED_USERNAMES.has(normalized)) {
+    return "That username is not available.";
+  }
+
+  return null;
+}
+
+export function canCheckUsernameAvailability(normalized: string): boolean {
+  return getUsernameFormatError(normalized) === null;
 }
 
 export function suggestUsernameFromDisplayName(displayName: string): string {
