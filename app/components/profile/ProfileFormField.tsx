@@ -8,6 +8,7 @@ export default function ProfileFormField({
   placeholder,
   required = false,
   multiline = false,
+  textareaClassName,
   error,
   suffix,
   footer,
@@ -19,6 +20,7 @@ export default function ProfileFormField({
   placeholder: string;
   required?: boolean;
   multiline?: boolean;
+  textareaClassName?: string;
   error?: string;
   suffix?: React.ReactNode;
   footer?: React.ReactNode;
@@ -36,7 +38,7 @@ export default function ProfileFormField({
           onBlur={onBlur}
           placeholder={placeholder}
           rows={4}
-          className="ftc-input px-3.5 py-2.5"
+          className={`ftc-input px-3.5 py-2.5 ${textareaClassName ?? ""}`.trim()}
         />
       ) : (
         <input

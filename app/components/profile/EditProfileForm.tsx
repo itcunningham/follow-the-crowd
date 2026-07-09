@@ -446,6 +446,7 @@ export default function EditProfileForm({
           onChange={handleBioChange}
           placeholder="Tell people what you do in the scene"
           multiline
+          textareaClassName="ftc-profile-bio-textarea"
           footer={
             <p
               className={`text-xs ${

@@ -300,6 +300,15 @@ html {
   font-size: 0.875rem;
 }
 
+.ftc-profile-bio-textarea {
+  resize: none;
+  height: 6.75rem;
+  min-height: 6.75rem;
+  max-height: 6.75rem;
+  overflow-y: auto;
+  line-height: 1.625;
+}
+
 .ftc-input::placeholder,
 .ftc-textarea::placeholder {
   color: var(--ftc-color-text-muted);
