@@ -267,8 +267,21 @@ function testSoundCloudInputNormalization() {
   assert.equal(normalizeSoundCloudInput("djalpha"), "https://soundcloud.com/djalpha");
   assert.equal(normalizeSoundCloudInput("@djalpha"), "https://soundcloud.com/djalpha");
   assert.equal(
+    normalizeSoundCloudInput("https://soundcloud.com/djalpha"),
+    "https://soundcloud.com/djalpha",
+  );
+  assert.equal(
     normalizeSoundCloudInput("https://soundcloud.com/djalpha/tracks"),
     "https://soundcloud.com/djalpha",
+  );
+  assert.equal(
+    normalizeSoundCloudInput("https://on.soundcloud.com/OM9xLtVDOIqhlTyNu2"),
+    "https://on.soundcloud.com/OM9xLtVDOIqhlTyNu2",
+  );
+
+  assert.throws(
+    () => normalizeSoundCloudInput("Artist Name"),
+    /Enter a valid SoundCloud username\./,
   );
 }
 

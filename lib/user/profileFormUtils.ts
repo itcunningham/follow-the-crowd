@@ -298,6 +298,10 @@ export function normalizeTikTokInput(raw: string): string {
   return `https://www.tiktok.com/@${handle}`;
 }
 
+function isValidSoundCloudUsername(handle: string): boolean {
+  return /^[a-zA-Z0-9_-]+$/.test(handle);
+}
+
 export function normalizeSoundCloudInput(raw: string): string {
   const trimmed = raw.trim();
 
@@ -305,16 +309,40 @@ export function normalizeSoundCloudInput(raw: string): string {
     return "";
   }
 
-  if (trimmed.startsWith("http://") || trimmed.startsWith("https://") || trimmed.includes("soundcloud.com")) {
-    const parsed = tryParseUrl(trimmed.startsWith("http") ? trimmed : `https://${trimmed.replace(/^\/\//, "")}`);
+  const looksLikeUrl =
+    trimmed.startsWith("http://") ||
+    trimmed.startsWith("https://") ||
+    trimmed.includes("soundcloud.com");
+
+  if (looksLikeUrl) {
+    const parsed = tryParseUrl(
+      trimmed.startsWith("http://") || trimmed.startsWith("https://")
+        ? trimmed
+        : `https://${trimmed.replace(/^\/\//, "")}`,
+    );
 
     if (!parsed) {
       throw new Error("Enter a valid SoundCloud URL.");
     }
 
-    const host = parsed.hostname.replace(/^www\./, "").replace(/^m\./, "").toLowerCase();
+    const host = parsed.hostname.toLowerCase();
 
-    if (host !== "soundcloud.com") {
+    if (host === "on.soundcloud.com") {
+      const shortLink = new URL(
+        `${parsed.pathname}${parsed.search}${parsed.hash}`,
+        "https://on.soundcloud.com",
+      );
+
+      if (!shortLink.pathname || shortLink.pathname === "/") {
+        throw new Error("Enter a valid SoundCloud share link.");
+      }
+
+      return shortLink.toString();
+    }
+
+    const profileHost = host.replace(/^www\./, "").replace(/^m\./, "");
+
+    if (profileHost !== "soundcloud.com") {
       throw new Error("SoundCloud link must be a soundcloud.com URL.");
     }
 
@@ -329,7 +357,7 @@ export function normalizeSoundCloudInput(raw: string): string {
 
   const handle = trimmed.replace(/^@+/, "").replace(/\/.*/, "");
 
-  if (!handle) {
+  if (!handle || !isValidSoundCloudUsername(handle)) {
     throw new Error("Enter a valid SoundCloud username.");
   }
 
