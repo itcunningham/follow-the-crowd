@@ -89,6 +89,7 @@ export default function EditProfileForm({
   const [usernameLiveMessage, setUsernameLiveMessage] = useState<string | null>(null);
   const [usernameLiveTone, setUsernameLiveTone] = useState<"muted" | "success" | "error">("muted");
   const usernameCheckSeqRef = useRef(0);
+  const usernameEditedRef = useRef(false);
   const savedUsername = normalizeUsername(profile.username ?? "");
   const [roleChangeAcknowledged, setRoleChangeAcknowledged] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -160,6 +161,11 @@ export default function EditProfileForm({
       return;
     }
 
+    if (!usernameEditedRef.current) {
+      setUsernameLiveMessage(null);
+      return;
+    }
+
     const formatError = getUsernameFormatError(normalized);
 
     if (formatError) {
@@ -169,8 +175,7 @@ export default function EditProfileForm({
     }
 
     if (normalized === savedUsername) {
-      setUsernameLiveTone("success");
-      setUsernameLiveMessage("Available");
+      setUsernameLiveMessage(null);
       return;
     }
 
@@ -544,14 +549,16 @@ export default function EditProfileForm({
 
         <div className="block">
           <span className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.14em] text-ftc-text-secondary">
-            Username *
+            Username
           </span>
           <input
             type="text"
             value={form.username}
-            onChange={(event) => updateField("username", event.target.value)}
+            onChange={(event) => {
+              usernameEditedRef.current = true;
+              updateField("username", event.target.value);
+            }}
             placeholder="Username"
-            required
             className="ftc-input px-3.5 py-2.5"
           />
           {form.username.trim() ? (
@@ -582,7 +589,6 @@ export default function EditProfileForm({
           value={form.display_name}
           onChange={(value) => updateField("display_name", value)}
           placeholder="Display name"
-          required
           error={fieldErrors.display_name}
         />
 
@@ -669,7 +675,7 @@ export default function EditProfileForm({
             label="SoundCloud"
             value={form.soundcloud_url}
             onChange={(value) => updateField("soundcloud_url", value)}
-            placeholder="Username"
+            placeholder="SoundCloud"
             error={fieldErrors.soundcloud_url}
           />
         </fieldset>
@@ -699,7 +705,7 @@ export default function EditProfileForm({
           label="Instagram"
           value={form.instagram_url}
           onChange={(value) => updateField("instagram_url", value)}
-          placeholder="@username, username, or full URL"
+          placeholder="Instagram"
           error={fieldErrors.instagram_url}
         />
 
@@ -707,7 +713,7 @@ export default function EditProfileForm({
           label="TikTok"
           value={form.tiktok_url}
           onChange={(value) => updateField("tiktok_url", value)}
-          placeholder="@username, username, or full URL"
+          placeholder="TikTok"
           error={fieldErrors.tiktok_url}
         />
       </fieldset>
