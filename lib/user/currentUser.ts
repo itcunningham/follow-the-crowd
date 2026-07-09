@@ -83,7 +83,7 @@ export function needsOnboarding(profile: UserProfile | null): boolean {
 }
 
 export function needsProfileSetup(profile: UserProfile | null): boolean {
-  return !profile?.display_name?.trim();
+  return !profile?.display_name?.trim() || !profile?.username?.trim();
 }
 
 function isAuthSessionMissingError(error: { name?: string; message?: string }): boolean {
@@ -358,7 +358,7 @@ export async function saveUserProfile(
   }
 
   const updatePayload: Record<string, string> = {
-    full_name: input.full_name.trim(),
+    full_name: input.full_name.trim() || existing?.full_name?.trim() || "",
     username: normalizeUsername(input.username),
     display_name: input.display_name.trim(),
     bio: input.bio.trim(),

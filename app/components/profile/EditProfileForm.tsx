@@ -211,10 +211,6 @@ export default function EditProfileForm({
 
     const nextErrors: Partial<Record<string, string>> = {};
 
-    if (!form.full_name.trim()) {
-      nextErrors.full_name = "Name is required.";
-    }
-
     if (!form.display_name.trim()) {
       nextErrors.display_name = "Display name is required.";
     }
@@ -322,7 +318,7 @@ export default function EditProfileForm({
         </p>
         <div className="mt-4 flex flex-col items-center gap-4 sm:flex-row sm:items-center">
           <ProfileAvatar
-            name={form.display_name || form.full_name || "Profile"}
+            name={form.display_name || "Profile"}
             avatarUrl={previewUrl ?? existingAvatarUrl}
             size="xl"
           />
@@ -365,16 +361,6 @@ export default function EditProfileForm({
         <legend className="px-1 text-xs font-semibold uppercase tracking-wide text-ftc-primary">
           Basic details
         </legend>
-
-        <ProfileField
-          label="Name"
-          hint="Private. Used for account identity and bookings."
-          value={form.full_name}
-          onChange={(value) => updateField("full_name", value)}
-          placeholder="Alex Morgan"
-          required
-          error={fieldErrors.full_name}
-        />
 
         <ProfileField
           label="Username"
