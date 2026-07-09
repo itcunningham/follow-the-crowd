@@ -363,7 +363,6 @@ export default function EditProfileForm({
 
         <ProfileField
           label="Username"
-          hint="Shown publicly as @username."
           value={form.username}
           onChange={(value) => updateField("username", value)}
           onBlur={() => {
@@ -389,7 +388,6 @@ export default function EditProfileForm({
 
         <ProfileField
           label="Display name"
-          hint="Public name shown on profiles, bookings, messages, and events."
           value={form.display_name}
           onChange={(value) => updateField("display_name", value)}
           placeholder="Your scene name"
@@ -461,9 +459,6 @@ export default function EditProfileForm({
             <span className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.14em] text-ftc-text-secondary">
               Music genres / styles
             </span>
-            <p className="mb-3 text-xs text-ftc-text-muted">
-              Choose up to {MAX_PROFILE_GENRE_TAGS} tags.
-            </p>
             <div className="flex flex-wrap gap-2">
               {PROFILE_GENRE_OPTIONS.map((tag) => {
                 const selected = genreTags.includes(tag);
@@ -491,7 +486,6 @@ export default function EditProfileForm({
 
           <ProfileField
             label="SoundCloud"
-            hint="Optional music link."
             value={form.soundcloud_url}
             onChange={(value) => updateField("soundcloud_url", value)}
             placeholder="https://soundcloud.com/yourhandle"
