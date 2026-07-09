@@ -62,6 +62,24 @@ function roleNarrowsFromBoth(previousRole: UserRole | null, nextRole: UserRole):
   return previousRole === "both" && (nextRole === "dj" || nextRole === "promoter");
 }
 
+function preventImplicitEnterSubmit(event: React.KeyboardEvent<HTMLFormElement>) {
+  if (event.key !== "Enter" || event.nativeEvent.isComposing) {
+    return;
+  }
+
+  const target = event.target;
+
+  if (target instanceof HTMLTextAreaElement) {
+    return;
+  }
+
+  if (target instanceof HTMLButtonElement && target.type === "submit") {
+    return;
+  }
+
+  event.preventDefault();
+}
+
 export default function EditProfileForm({
   profile,
   isEditing,
@@ -311,7 +329,11 @@ export default function EditProfileForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="mt-8 space-y-6">
+    <form
+      onSubmit={handleSubmit}
+      onKeyDown={preventImplicitEnterSubmit}
+      className="mt-8 space-y-6"
+    >
       <div className="rounded-2xl border border-ftc-border bg-ftc-surface/40 p-4 sm:p-5">
         <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-ftc-text-secondary">
           Profile photo
