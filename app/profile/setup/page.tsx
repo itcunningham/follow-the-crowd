@@ -131,9 +131,6 @@ export default function ProfileSetupPage() {
         <h1 className="mt-3 text-3xl font-bold text-ftc-text sm:text-4xl">
           {isEditing ? "Edit profile" : "Set up your profile"}
         </h1>
-        <p className="mt-3 max-w-xl text-sm leading-relaxed text-ftc-text-secondary sm:text-base">
-          Add the details planners and DJs need for bookings, messages, and run sheets.
-        </p>
 
         {error ? <p className="mt-4 text-sm text-red-400">{error}</p> : null}
 

@@ -74,10 +74,7 @@ export default function EditProfileForm({
 }) {
   const editBaselineRef = useRef(createProfileEditBaseline(profile));
   const initialRole = profile.role ?? "dj";
-  const cameraInputRef = useRef<HTMLInputElement>(null);
-  const libraryInputRef = useRef<HTMLInputElement>(null);
-  const photoPickerRef = useRef<HTMLDivElement>(null);
-  const [photoMenuOpen, setPhotoMenuOpen] = useState(false);
+  const photoInputRef = useRef<HTMLInputElement>(null);
   const [form, setForm] = useState<UserProfileInput>(() => createProfileFormInputFromProfile(profile));
   const [role, setRole] = useState<UserRole>(initialRole);
   const [savedRole] = useState<UserRole | null>(profile.role);
@@ -107,36 +104,6 @@ export default function EditProfileForm({
       }
     };
   }, [previewUrl]);
-
-  useEffect(() => {
-    if (!photoMenuOpen) {
-      return;
-    }
-
-    function handlePointerDown(event: MouseEvent | TouchEvent) {
-      const target = event.target;
-
-      if (!(target instanceof Node) || !photoPickerRef.current?.contains(target)) {
-        setPhotoMenuOpen(false);
-      }
-    }
-
-    function handleEscape(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        setPhotoMenuOpen(false);
-      }
-    }
-
-    document.addEventListener("mousedown", handlePointerDown);
-    document.addEventListener("touchstart", handlePointerDown);
-    document.addEventListener("keydown", handleEscape);
-
-    return () => {
-      document.removeEventListener("mousedown", handlePointerDown);
-      document.removeEventListener("touchstart", handlePointerDown);
-      document.removeEventListener("keydown", handleEscape);
-    };
-  }, [photoMenuOpen]);
 
   useEffect(() => {
     if (!onDirtyChange) {
@@ -297,7 +264,6 @@ export default function EditProfileForm({
 
     setSelectedFile(file);
     setPreviewUrl(URL.createObjectURL(file));
-    setPhotoMenuOpen(false);
   }
 
   function handleRoleChange(nextRole: UserRole) {
@@ -459,85 +425,45 @@ export default function EditProfileForm({
       className="mt-6 space-y-6"
     >
       <div className="flex flex-col items-center">
-        <div ref={photoPickerRef} className="relative flex flex-col items-center">
-            <button
-              type="button"
-              aria-label="Change profile photo"
-              aria-expanded={photoMenuOpen}
-              aria-haspopup="menu"
-              onClick={() => setPhotoMenuOpen((open) => !open)}
-              className="group relative rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ftc-primary focus-visible:ring-offset-2 focus-visible:ring-offset-ftc-bg"
-            >
-              <ProfileAvatar
-                name={form.display_name || "Profile"}
-                avatarUrl={previewUrl ?? existingAvatarUrl}
-                size="xl"
-                className="h-24 w-24 sm:h-28 sm:w-28"
-              />
-              <span className="absolute bottom-0 right-0 flex h-8 w-8 items-center justify-center rounded-full border border-ftc-border-subtle bg-ftc-bg-elevated text-ftc-primary">
-                <svg
-                  aria-hidden="true"
-                  viewBox="0 0 24 24"
-                  className="h-4 w-4"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.75"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z" />
-                  <path d="M3 8V7a2 2 0 0 1 2-2h1.2a1 1 0 0 0 .98-.804l.36-1.8A1 1 0 0 1 8.52 2h7a1 1 0 0 1 .98.804l.36 1.8A1 1 0 0 0 17.8 5H19a2 2 0 0 1 2 2v1" />
-                  <path d="M3 16v1a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-1" />
-                </svg>
-              </span>
-            </button>
-
-            {photoMenuOpen ? (
-              <div
-                role="menu"
-                className="absolute top-full z-10 mt-2 w-52 overflow-hidden rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated shadow-ftc-md"
+        <div className="relative flex flex-col items-center">
+          <button
+            type="button"
+            aria-label="Change profile photo"
+            onClick={() => photoInputRef.current?.click()}
+            className="group relative rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ftc-primary focus-visible:ring-offset-2 focus-visible:ring-offset-ftc-bg"
+          >
+            <ProfileAvatar
+              name={form.display_name || "Profile"}
+              avatarUrl={previewUrl ?? existingAvatarUrl}
+              size="xl"
+              className="h-24 w-24 sm:h-28 sm:w-28"
+            />
+            <span className="absolute bottom-0 right-0 flex h-8 w-8 items-center justify-center rounded-full border border-ftc-border-subtle bg-ftc-bg-elevated text-ftc-primary">
+              <svg
+                aria-hidden="true"
+                viewBox="0 0 24 24"
+                className="h-4 w-4"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.75"
+                strokeLinecap="round"
+                strokeLinejoin="round"
               >
-                <button
-                  type="button"
-                  role="menuitem"
-                  onClick={() => {
-                    cameraInputRef.current?.click();
-                    setPhotoMenuOpen(false);
-                  }}
-                  className="flex min-h-11 w-full items-center px-3.5 text-sm text-ftc-text transition hover:bg-ftc-surface"
-                >
-                  Take photo
-                </button>
-                <button
-                  type="button"
-                  role="menuitem"
-                  onClick={() => {
-                    libraryInputRef.current?.click();
-                    setPhotoMenuOpen(false);
-                  }}
-                  className="flex min-h-11 w-full items-center border-t border-ftc-border-subtle px-3.5 text-sm text-ftc-text transition hover:bg-ftc-surface"
-                >
-                  Choose from library
-                </button>
-              </div>
-            ) : null}
+                <path d="M12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z" />
+                <path d="M3 8V7a2 2 0 0 1 2-2h1.2a1 1 0 0 0 .98-.804l.36-1.8A1 1 0 0 1 8.52 2h7a1 1 0 0 1 .98.804l.36 1.8A1 1 0 0 0 17.8 5H19a2 2 0 0 1 2 2v1" />
+                <path d="M3 16v1a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-1" />
+              </svg>
+            </span>
+          </button>
 
-            <input
-              ref={cameraInputRef}
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              capture="user"
-              onChange={handleImageSelect}
-              className="hidden"
-            />
-            <input
-              ref={libraryInputRef}
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              onChange={handleImageSelect}
-              className="hidden"
-            />
-          </div>
+          <input
+            ref={photoInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleImageSelect}
+            className="hidden"
+          />
+        </div>
         {uploadError ? (
           <p className="mt-2 text-center text-sm text-red-400">{uploadError}</p>
         ) : null}
