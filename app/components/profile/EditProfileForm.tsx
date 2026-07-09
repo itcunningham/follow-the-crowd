@@ -547,7 +547,7 @@ export default function EditProfileForm({
             type="text"
             value={form.username}
             onChange={(event) => updateField("username", event.target.value)}
-            placeholder="breakerbreaker or @breakerbreaker"
+            placeholder="Username"
             required
             className="ftc-input px-3.5 py-2.5"
           />
@@ -578,7 +578,7 @@ export default function EditProfileForm({
           label="Display name"
           value={form.display_name}
           onChange={(value) => updateField("display_name", value)}
-          placeholder="Your scene name"
+          placeholder="Display name"
           required
           error={fieldErrors.display_name}
         />
@@ -587,7 +587,7 @@ export default function EditProfileForm({
           label="Bio"
           value={form.bio}
           onChange={handleBioChange}
-          placeholder="Tell people what you do in the scene"
+          placeholder="Bio"
           multiline
           textareaClassName="ftc-profile-bio-textarea"
           footer={
@@ -705,7 +705,7 @@ export default function EditProfileForm({
             label="Event brand name"
             value={form.promoter_brand_name}
             onChange={(value) => updateField("promoter_brand_name", value)}
-            placeholder="Your event brand"
+            placeholder="Event brand name"
           />
         </fieldset>
       ) : null}
