@@ -24,6 +24,7 @@ import {
   serializeGenreTags,
   suggestUsernameFromDisplayName,
 } from "@/lib/user/profileFormUtils";
+import ProfileFormField from "@/app/components/profile/ProfileFormField";
 import { isAllowedProfileImageType, uploadProfileImage } from "@/lib/user/uploadProfileImage";
 
 const ROLE_OPTIONS: { value: UserRole; label: string }[] = [
@@ -361,32 +362,38 @@ export default function EditProfileForm({
           Basic details
         </legend>
 
-        <ProfileField
-          label="Username"
-          value={form.username}
-          onChange={(value) => updateField("username", value)}
-          onBlur={() => {
-            void validateUsernameField(form.username).then((usernameError) => {
-              if (usernameError) {
-                setFieldErrors((prev) => ({ ...prev, username: usernameError }));
-              }
-            });
-          }}
-          placeholder="breakerbreaker or @breakerbreaker"
-          required
-          error={fieldErrors.username}
-          suffix={
-            usernameChecking ? (
-              <span className="text-xs text-ftc-text-muted">Checking...</span>
-            ) : form.username.trim() ? (
-              <span className="text-xs text-ftc-text-secondary">
-                {formatPublicUsername(form.username)}
-              </span>
-            ) : null
-          }
-        />
+        <div className="block">
+          <span className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.14em] text-ftc-text-secondary">
+            Username *
+          </span>
+          <input
+            type="text"
+            value={form.username}
+            onChange={(event) => updateField("username", event.target.value)}
+            onBlur={() => {
+              void validateUsernameField(form.username).then((usernameError) => {
+                if (usernameError) {
+                  setFieldErrors((prev) => ({ ...prev, username: usernameError }));
+                }
+              });
+            }}
+            placeholder="breakerbreaker or @breakerbreaker"
+            required
+            className="ftc-input px-3.5 py-2.5"
+          />
+          {usernameChecking ? (
+            <p className="mt-1 text-xs text-ftc-text-muted">Checking...</p>
+          ) : form.username.trim() ? (
+            <p className="mt-1 text-xs text-ftc-text-secondary">
+              {formatPublicUsername(form.username)}
+            </p>
+          ) : null}
+          {fieldErrors.username ? (
+            <p className="mt-2 text-sm text-red-400">{fieldErrors.username}</p>
+          ) : null}
+        </div>
 
-        <ProfileField
+        <ProfileFormField
           label="Display name"
           value={form.display_name}
           onChange={(value) => updateField("display_name", value)}
@@ -395,7 +402,7 @@ export default function EditProfileForm({
           error={fieldErrors.display_name}
         />
 
-        <ProfileField
+        <ProfileFormField
           label="Bio"
           value={form.bio}
           onChange={(value) => updateField("bio", value)}
@@ -484,7 +491,7 @@ export default function EditProfileForm({
             ) : null}
           </div>
 
-          <ProfileField
+          <ProfileFormField
             label="SoundCloud"
             value={form.soundcloud_url}
             onChange={(value) => updateField("soundcloud_url", value)}
@@ -500,7 +507,7 @@ export default function EditProfileForm({
             Promoter details
           </legend>
 
-          <ProfileField
+          <ProfileFormField
             label="Event brand name"
             value={form.promoter_brand_name}
             onChange={(value) => updateField("promoter_brand_name", value)}
@@ -514,7 +521,7 @@ export default function EditProfileForm({
           Links
         </legend>
 
-        <ProfileField
+        <ProfileFormField
           label="Instagram"
           value={form.instagram_url}
           onChange={(value) => updateField("instagram_url", value)}
@@ -522,7 +529,7 @@ export default function EditProfileForm({
           error={fieldErrors.instagram_url}
         />
 
-        <ProfileField
+        <ProfileFormField
           label="TikTok"
           value={form.tiktok_url}
           onChange={(value) => updateField("tiktok_url", value)}
@@ -541,61 +548,5 @@ export default function EditProfileForm({
         {saving ? "Saving..." : isEditing ? "Save changes" : "Save profile"}
       </button>
     </form>
-  );
-}
-
-function ProfileField({
-  label,
-  hint,
-  value,
-  onChange,
-  onBlur,
-  placeholder,
-  required = false,
-  multiline = false,
-  error,
-  suffix,
-}: {
-  label: string;
-  hint?: string;
-  value: string;
-  onChange: (value: string) => void;
-  onBlur?: () => void;
-  placeholder: string;
-  required?: boolean;
-  multiline?: boolean;
-  error?: string;
-  suffix?: React.ReactNode;
-}) {
-  return (
-    <label className="block">
-      <span className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.14em] text-ftc-text-secondary">
-        {label}
-        {required ? " *" : ""}
-      </span>
-      {hint ? <p className="mb-2 text-xs text-ftc-text-muted">{hint}</p> : null}
-      {multiline ? (
-        <textarea
-          value={value}
-          onChange={(event) => onChange(event.target.value)}
-          onBlur={onBlur}
-          placeholder={placeholder}
-          rows={4}
-          className="ftc-input px-3.5 py-2.5"
-        />
-      ) : (
-        <input
-          type="text"
-          value={value}
-          onChange={(event) => onChange(event.target.value)}
-          onBlur={onBlur}
-          placeholder={placeholder}
-          required={required}
-          className="ftc-input px-3.5 py-2.5"
-        />
-      )}
-      {suffix ? <div className="mt-1.5">{suffix}</div> : null}
-      {error ? <p className="mt-2 text-sm text-red-400">{error}</p> : null}
-    </label>
   );
 }
