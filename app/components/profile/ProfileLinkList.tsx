@@ -1,6 +1,6 @@
 "use client";
 
-import { getMusicLinkLabel } from "@/lib/user/profileFormUtils";
+import { isSoundCloudUrl } from "@/lib/user/profileFormUtils";
 
 function ExternalLinkIcon() {
   return (
@@ -23,11 +23,9 @@ function ExternalLinkIcon() {
 export default function ProfileLinkList({
   instagramUrl,
   soundcloudUrl,
-  websiteUrl,
 }: {
   instagramUrl?: string | null;
   soundcloudUrl?: string | null;
-  websiteUrl?: string | null;
 }) {
   const links: { href: string; label: string }[] = [];
 
@@ -35,13 +33,8 @@ export default function ProfileLinkList({
     links.push({ href: instagramUrl.trim(), label: "Instagram" });
   }
 
-  if (soundcloudUrl?.trim()) {
-    const label = getMusicLinkLabel(soundcloudUrl.trim()) ?? "SoundCloud";
-    links.push({ href: soundcloudUrl.trim(), label });
-  }
-
-  if (websiteUrl?.trim()) {
-    links.push({ href: websiteUrl.trim(), label: "Website" });
+  if (isSoundCloudUrl(soundcloudUrl)) {
+    links.push({ href: soundcloudUrl!.trim(), label: "SoundCloud" });
   }
 
   if (links.length === 0) {

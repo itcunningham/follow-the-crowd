@@ -1,11 +1,25 @@
 export const PROFILE_GENRE_OPTIONS = [
   "Techno",
+  "Hypnotic Techno",
+  "Hardgroove",
+  "Groove Techno",
+  "Hard Techno",
+  "Industrial Techno",
+  "Minimal Techno",
+  "Deep Techno",
   "House",
-  "Breaks",
-  "Ambient",
-  "Drum & Bass",
+  "Deep House",
+  "Tech House",
+  "Progressive House",
   "Trance",
-  "Disco",
+  "Psytrance",
+  "Electro",
+  "Breaks",
+  "Jungle",
+  "Drum & Bass",
+  "Garage",
+  "Dubstep",
+  "Ambient",
   "Experimental",
 ] as const;
 
@@ -131,7 +145,7 @@ export function normalizeExternalUrl(
   return parsed.toString();
 }
 
-export function getMusicLinkLabel(url: string | null | undefined): "SoundCloud" | "Mixcloud" | null {
+export function getMusicLinkLabel(url: string | null | undefined): "SoundCloud" | null {
   const trimmed = url?.trim();
 
   if (!trimmed) {
@@ -141,13 +155,13 @@ export function getMusicLinkLabel(url: string | null | undefined): "SoundCloud" 
   const parsed = tryParseUrl(trimmed);
   const host = parsed?.hostname.replace(/^www\./, "").toLowerCase() ?? "";
 
-  if (host.includes("mixcloud.com")) {
-    return "Mixcloud";
-  }
-
   if (host.includes("soundcloud.com")) {
     return "SoundCloud";
   }
 
-  return "SoundCloud";
+  return null;
+}
+
+export function isSoundCloudUrl(url: string | null | undefined): boolean {
+  return getMusicLinkLabel(url) === "SoundCloud";
 }

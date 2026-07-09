@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import ProfileAvatar from "@/app/components/ProfileAvatar";
 import {
   getCurrentUserId,
@@ -70,6 +70,8 @@ export default function EditProfileForm({
   onSaved: () => void;
 }) {
   const initialRole = profile.role ?? "dj";
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const libraryInputRef = useRef<HTMLInputElement>(null);
   const [form, setForm] = useState<UserProfileInput>(() => profileToFormInput(profile));
   const [role, setRole] = useState<UserRole>(initialRole);
   const [savedRole] = useState<UserRole | null>(profile.role);
@@ -143,6 +145,7 @@ export default function EditProfileForm({
   function handleImageSelect(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     setUploadError(null);
+    event.target.value = "";
 
     if (!file) {
       return;
@@ -150,7 +153,6 @@ export default function EditProfileForm({
 
     if (!isAllowedProfileImageType(file.type)) {
       setUploadError("Please choose a JPG, PNG, or WebP image.");
-      event.target.value = "";
       return;
     }
 
@@ -208,7 +210,7 @@ export default function EditProfileForm({
     const nextErrors: Partial<Record<string, string>> = {};
 
     if (!form.full_name.trim()) {
-      nextErrors.full_name = "Full name is required.";
+      nextErrors.full_name = "Name is required.";
     }
 
     if (!form.display_name.trim()) {
@@ -228,8 +230,7 @@ export default function EditProfileForm({
     }
 
     let normalizedInstagram = "";
-    let normalizedMusicLink = "";
-    let normalizedWebsite = "";
+    let normalizedSoundCloud = "";
 
     try {
       normalizedInstagram = normalizeInstagramInput(form.instagram_url);
@@ -240,22 +241,13 @@ export default function EditProfileForm({
 
     if (showDjFields && form.soundcloud_url.trim()) {
       try {
-        normalizedMusicLink = normalizeExternalUrl(form.soundcloud_url, {
-          label: "music link",
-          allowedHosts: ["soundcloud.com", "mixcloud.com"],
+        normalizedSoundCloud = normalizeExternalUrl(form.soundcloud_url, {
+          label: "SoundCloud link",
+          allowedHosts: ["soundcloud.com"],
         });
-      } catch (musicError) {
+      } catch (soundCloudError) {
         nextErrors.soundcloud_url =
-          musicError instanceof Error ? musicError.message : "Invalid music link.";
-      }
-    }
-
-    if (showPromoterFields && form.website_url.trim()) {
-      try {
-        normalizedWebsite = normalizeExternalUrl(form.website_url, { label: "website URL" });
-      } catch (websiteError) {
-        nextErrors.website_url =
-          websiteError instanceof Error ? websiteError.message : "Invalid website URL.";
+          soundCloudError instanceof Error ? soundCloudError.message : "Invalid SoundCloud link.";
       }
     }
 
@@ -286,8 +278,7 @@ export default function EditProfileForm({
         ...form,
         genre: showDjFields ? serializeGenreTags(genreTags) : form.genre.trim(),
         instagram_url: normalizedInstagram,
-        soundcloud_url: showDjFields ? normalizedMusicLink : form.soundcloud_url.trim(),
-        website_url: showPromoterFields ? normalizedWebsite : form.website_url.trim(),
+        soundcloud_url: showDjFields ? normalizedSoundCloud : form.soundcloud_url.trim(),
       };
 
       if (role !== savedRole) {
@@ -314,13 +305,58 @@ export default function EditProfileForm({
 
   return (
     <form onSubmit={handleSubmit} className="mt-8 space-y-6">
+      <div className="rounded-2xl border border-ftc-border bg-ftc-surface/40 p-4 sm:p-5">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-ftc-text-secondary">
+          Profile photo
+        </p>
+        <div className="mt-4 flex flex-col items-center gap-4 sm:flex-row sm:items-center">
+          <ProfileAvatar
+            name={form.display_name || form.full_name || "Profile"}
+            avatarUrl={previewUrl ?? existingAvatarUrl}
+            size="xl"
+          />
+          <div className="flex w-full flex-col gap-2 sm:w-auto">
+            <button
+              type="button"
+              onClick={() => cameraInputRef.current?.click()}
+              className="ftc-btn-primary px-4 py-2.5 text-sm uppercase tracking-wide"
+            >
+              Take photo
+            </button>
+            <button
+              type="button"
+              onClick={() => libraryInputRef.current?.click()}
+              className="rounded-xl border border-ftc-border-subtle bg-ftc-bg px-4 py-2.5 text-sm font-medium text-ftc-text transition hover:border-ftc-border-strong"
+            >
+              Choose photo
+            </button>
+            <input
+              ref={cameraInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              capture="user"
+              onChange={handleImageSelect}
+              className="hidden"
+            />
+            <input
+              ref={libraryInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              onChange={handleImageSelect}
+              className="hidden"
+            />
+          </div>
+        </div>
+        {uploadError ? <p className="mt-3 text-sm text-red-400">{uploadError}</p> : null}
+      </div>
+
       <fieldset className="space-y-4 rounded-2xl border border-ftc-border bg-ftc-surface/40 p-4 sm:p-5">
         <legend className="px-1 text-xs font-semibold uppercase tracking-wide text-ftc-primary">
           Basic details
         </legend>
 
         <ProfileField
-          label="Full name / contact name"
+          label="Name"
           hint="Private. Used for account identity and bookings."
           value={form.full_name}
           onChange={(value) => updateField("full_name", value)}
@@ -331,7 +367,7 @@ export default function EditProfileForm({
 
         <ProfileField
           label="Username"
-          hint="Your public @handle. Letters, numbers, and underscores only."
+          hint="Shown publicly as @username."
           value={form.username}
           onChange={(value) => updateField("username", value)}
           onBlur={() => {
@@ -365,41 +401,8 @@ export default function EditProfileForm({
           error={fieldErrors.display_name}
         />
 
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-ftc-text-secondary">
-            Profile photo
-          </p>
-          <div className="mt-3 flex flex-col items-center gap-4 sm:flex-row sm:items-center">
-            <ProfileAvatar
-              name={form.display_name || "Profile"}
-              avatarUrl={previewUrl ?? existingAvatarUrl}
-              size="xl"
-            />
-            <div className="text-center sm:text-left">
-              <label className="inline-block cursor-pointer ftc-btn-primary px-4 py-2.5 text-sm uppercase tracking-wide">
-                Choose photo
-                <input
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp"
-                  onChange={handleImageSelect}
-                  className="hidden"
-                />
-              </label>
-              <p className="mt-2 text-xs text-ftc-text-muted">JPG, PNG, or WebP</p>
-            </div>
-          </div>
-          {uploadError ? <p className="mt-3 text-sm text-red-400">{uploadError}</p> : null}
-        </div>
-
         <ProfileField
-          label="City / location"
-          value={form.location}
-          onChange={(value) => updateField("location", value)}
-          placeholder="Melbourne"
-        />
-
-        <ProfileField
-          label="Short bio"
+          label="Bio"
           value={form.bio}
           onChange={(value) => updateField("bio", value)}
           placeholder="Tell people what you do in the scene"
@@ -458,13 +461,6 @@ export default function EditProfileForm({
             DJ / Artist details
           </legend>
 
-          <ProfileField
-            label="Artist name"
-            value={form.artist_name}
-            onChange={(value) => updateField("artist_name", value)}
-            placeholder="Your DJ or artist name"
-          />
-
           <div>
             <span className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.14em] text-ftc-text-secondary">
               Music genres / styles
@@ -498,11 +494,12 @@ export default function EditProfileForm({
           </div>
 
           <ProfileField
-            label="Booking / contact name"
-            hint="Optional if different from your artist name."
-            value={form.dj_booking_contact_name}
-            onChange={(value) => updateField("dj_booking_contact_name", value)}
-            placeholder="Booking contact"
+            label="SoundCloud"
+            hint="Optional music link."
+            value={form.soundcloud_url}
+            onChange={(value) => updateField("soundcloud_url", value)}
+            placeholder="https://soundcloud.com/yourhandle"
+            error={fieldErrors.soundcloud_url}
           />
         </fieldset>
       ) : null}
@@ -514,18 +511,10 @@ export default function EditProfileForm({
           </legend>
 
           <ProfileField
-            label="Promoter / event brand name"
+            label="Event brand name"
             value={form.promoter_brand_name}
             onChange={(value) => updateField("promoter_brand_name", value)}
             placeholder="Your event brand"
-          />
-
-          <ProfileField
-            label="Promoter / brand description"
-            value={form.promoter_brand_description}
-            onChange={(value) => updateField("promoter_brand_description", value)}
-            placeholder="What your events are about"
-            multiline
           />
         </fieldset>
       ) : null}
@@ -542,27 +531,6 @@ export default function EditProfileForm({
           placeholder="@username, username, or full URL"
           error={fieldErrors.instagram_url}
         />
-
-        {showDjFields ? (
-          <ProfileField
-            label="SoundCloud or Mixcloud"
-            hint="Optional music link."
-            value={form.soundcloud_url}
-            onChange={(value) => updateField("soundcloud_url", value)}
-            placeholder="https://soundcloud.com/yourhandle"
-            error={fieldErrors.soundcloud_url}
-          />
-        ) : null}
-
-        {showPromoterFields ? (
-          <ProfileField
-            label="Website"
-            value={form.website_url}
-            onChange={(value) => updateField("website_url", value)}
-            placeholder="https://yourevents.com"
-            error={fieldErrors.website_url}
-          />
-        ) : null}
       </fieldset>
 
       {error ? <p className="text-sm text-red-400">{error}</p> : null}

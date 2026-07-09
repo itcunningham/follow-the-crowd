@@ -3,7 +3,6 @@
 import Link from "next/link";
 import ProfileGenreTags from "@/app/components/profile/ProfileGenreTags";
 import ProfileSectionCard from "@/app/components/profile/ProfileSectionCard";
-import ProfileTextBlock from "@/app/components/profile/ProfileTextBlock";
 import { parseGenreTags } from "@/app/components/profile/parseGenreTags";
 import type { UserProfile } from "@/lib/user/currentUser";
 
@@ -16,10 +15,9 @@ export default function DjProfileSections({
   isOwnProfile: boolean;
   showHeading: boolean;
 }) {
-  const artistName = profile.artist_name?.trim();
   const genreTags = parseGenreTags(profile.genre);
 
-  const hasContent = artistName || genreTags.length > 0 || isOwnProfile;
+  const hasContent = genreTags.length > 0 || isOwnProfile;
 
   if (!hasContent) {
     return null;
@@ -29,12 +27,6 @@ export default function DjProfileSections({
     <div className="space-y-4">
       {showHeading ? (
         <h2 className="text-sm font-semibold text-ftc-text">DJ / Artist</h2>
-      ) : null}
-
-      {artistName ? (
-        <ProfileSectionCard title="Artist name">
-          <ProfileTextBlock text={artistName} />
-        </ProfileSectionCard>
       ) : null}
 
       {genreTags.length > 0 ? (

@@ -126,21 +126,13 @@ export default function UserProfilePage() {
                 username={profile.username}
                 avatarUrl={profile.avatar_url}
                 role={profile.role}
-                location={profile.location}
                 bio={profile.bio}
               />
 
-              {profile.instagram_url?.trim() ||
-              profile.soundcloud_url?.trim() ||
-              profile.website_url?.trim() ? (
+              {profile.instagram_url?.trim() || profile.soundcloud_url?.trim() ? (
                 <ProfileLinkList
                   instagramUrl={profile.instagram_url}
-                  soundcloudUrl={
-                    showDjSections ? profile.soundcloud_url : null
-                  }
-                  websiteUrl={
-                    showPromoterSections ? profile.website_url : null
-                  }
+                  soundcloudUrl={showDjSections ? profile.soundcloud_url : null}
                 />
               ) : null}
 

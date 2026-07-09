@@ -12,11 +12,8 @@ export default function PromoterProfileSections({
   showHeading: boolean;
 }) {
   const brandName = profile.promoter_brand_name?.trim();
-  const brandDescription = profile.promoter_brand_description?.trim();
 
-  const hasContent = brandName || brandDescription;
-
-  if (!hasContent) {
+  if (!brandName) {
     return null;
   }
 
@@ -26,17 +23,9 @@ export default function PromoterProfileSections({
         <h2 className="text-sm font-semibold text-ftc-text">Promoter</h2>
       ) : null}
 
-      {brandName ? (
-        <ProfileSectionCard title="Event brand">
-          <ProfileTextBlock text={brandName} />
-        </ProfileSectionCard>
-      ) : null}
-
-      {brandDescription ? (
-        <ProfileSectionCard title="About">
-          <ProfileTextBlock text={brandDescription} />
-        </ProfileSectionCard>
-      ) : null}
+      <ProfileSectionCard title="Event brand">
+        <ProfileTextBlock text={brandName} />
+      </ProfileSectionCard>
     </div>
   );
 }
