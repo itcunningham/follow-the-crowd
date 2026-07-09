@@ -129,9 +129,12 @@ export default function UserProfilePage() {
                 bio={profile.bio}
               />
 
-              {profile.instagram_url?.trim() || profile.soundcloud_url?.trim() ? (
+              {profile.instagram_url?.trim() ||
+              profile.tiktok_url?.trim() ||
+              profile.soundcloud_url?.trim() ? (
                 <ProfileLinkList
                   instagramUrl={profile.instagram_url}
+                  tiktokUrl={profile.tiktok_url}
                   soundcloudUrl={showDjSections ? profile.soundcloud_url : null}
                 />
               ) : null}

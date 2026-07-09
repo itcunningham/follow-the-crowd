@@ -21,6 +21,7 @@ export type UserProfile = {
   bio: string | null;
   genre: string | null;
   instagram_url: string | null;
+  tiktok_url: string | null;
   soundcloud_url: string | null;
   website_url: string | null;
   location: string | null;
@@ -44,6 +45,7 @@ export type UserProfileInput = {
   genre: string;
   location: string;
   instagram_url: string;
+  tiktok_url: string;
   soundcloud_url: string;
   website_url: string;
   artist_name: string;
@@ -58,7 +60,7 @@ export type UserProfileInput = {
 };
 
 const PROFILE_FIELDS =
-  "user_id, role, onboarding_complete, full_name, username, display_name, bio, genre, instagram_url, soundcloud_url, website_url, location, avatar_url, artist_name, dj_booking_contact_name, dj_availability, dj_past_gigs, promoter_brand_name, promoter_brand_description, promoter_venues_used, promoter_upcoming_events, promoter_past_events";
+  "user_id, role, onboarding_complete, full_name, username, display_name, bio, genre, instagram_url, tiktok_url, soundcloud_url, website_url, location, avatar_url, artist_name, dj_booking_contact_name, dj_availability, dj_past_gigs, promoter_brand_name, promoter_brand_description, promoter_venues_used, promoter_upcoming_events, promoter_past_events";
 
 export function getDefaultRouteForRole(role: UserRole | null): string {
   return role === "dj" ? "/dm" : "/";
@@ -363,6 +365,7 @@ export async function saveUserProfile(
     genre: input.genre.trim(),
     location: input.location.trim(),
     instagram_url: input.instagram_url.trim(),
+    tiktok_url: input.tiktok_url.trim(),
     soundcloud_url: input.soundcloud_url.trim(),
     website_url: input.website_url.trim(),
     artist_name: input.artist_name.trim(),

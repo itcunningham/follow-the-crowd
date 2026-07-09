@@ -21,9 +21,37 @@ export const PROFILE_GENRE_OPTIONS = [
   "Dubstep",
   "Ambient",
   "Experimental",
+  "Hard House",
+  "Acid Techno",
+  "Acid House",
+  "UK Hard House",
+  "Speed Garage",
+  "UK Garage",
+  "Bassline",
+  "UK Bass",
+  "Rave",
+  "Hardcore",
+  "Hard Dance",
+  "Happy Hardcore",
+  "Schranz",
+  "EBM",
+  "IDM",
+  "Downtempo",
+  "Disco",
+  "Nu-Disco",
+  "Funky House",
+  "Afro House",
+  "Melodic Techno",
+  "Melodic House",
+  "Organic House",
+  "Electronica",
+  "Leftfield",
+  "Footwork",
+  "Ghetto Tech",
+  "Baile Funk",
 ] as const;
 
-export const MAX_PROFILE_GENRE_TAGS = 5;
+export const MAX_PROFILE_GENRE_TAGS = 8;
 
 export function normalizeUsername(raw: string): string {
   return raw.trim().replace(/^@+/g, "").toLowerCase();
@@ -67,7 +95,7 @@ export function parseStoredGenreTags(genre: string | null | undefined): string[]
         .map((part) => part.trim())
         .filter(Boolean),
     ),
-  ].slice(0, MAX_PROFILE_GENRE_TAGS);
+  ];
 }
 
 export function serializeGenreTags(tags: string[]): string {
@@ -118,6 +146,50 @@ export function normalizeInstagramInput(raw: string): string {
   }
 
   return `https://instagram.com/${handle}`;
+}
+
+export function normalizeTikTokInput(raw: string): string {
+  const trimmed = raw.trim();
+
+  if (!trimmed) {
+    return "";
+  }
+
+  if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+    const parsed = tryParseUrl(trimmed);
+
+    if (!parsed) {
+      throw new Error("Enter a valid TikTok URL.");
+    }
+
+    const host = parsed.hostname.replace(/^www\./, "").toLowerCase();
+
+    if (host !== "tiktok.com") {
+      throw new Error("TikTok link must be a tiktok.com URL.");
+    }
+
+    const handleMatch = parsed.pathname.match(/^\/@([^/?#]+)/);
+
+    if (!handleMatch?.[1]) {
+      throw new Error("Enter a valid TikTok profile URL.");
+    }
+
+    return `https://www.tiktok.com/@${handleMatch[1]}`;
+  }
+
+  const handle = trimmed.replace(/^@+/, "").replace(/\/.*/, "");
+
+  if (!handle) {
+    throw new Error("Enter a valid TikTok handle.");
+  }
+
+  return `https://www.tiktok.com/@${handle}`;
+}
+
+export function formatProfileIdentityUsername(username: string | null | undefined): string | null {
+  const normalized = normalizeUsername(username ?? "");
+
+  return normalized || null;
 }
 
 export function normalizeExternalUrl(

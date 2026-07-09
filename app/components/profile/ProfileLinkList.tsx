@@ -22,15 +22,21 @@ function ExternalLinkIcon() {
 
 export default function ProfileLinkList({
   instagramUrl,
+  tiktokUrl,
   soundcloudUrl,
 }: {
   instagramUrl?: string | null;
+  tiktokUrl?: string | null;
   soundcloudUrl?: string | null;
 }) {
   const links: { href: string; label: string }[] = [];
 
   if (instagramUrl?.trim()) {
     links.push({ href: instagramUrl.trim(), label: "Instagram" });
+  }
+
+  if (tiktokUrl?.trim()) {
+    links.push({ href: tiktokUrl.trim(), label: "TikTok" });
   }
 
   if (isSoundCloudUrl(soundcloudUrl)) {

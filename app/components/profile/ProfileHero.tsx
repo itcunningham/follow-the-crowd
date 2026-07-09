@@ -2,7 +2,7 @@
 
 import ProfileAvatar from "@/app/components/ProfileAvatar";
 import ProfileRoleBadge from "@/app/components/profile/ProfileRoleBadge";
-import { formatPublicUsername } from "@/lib/user/profileFormUtils";
+import { formatProfileIdentityUsername } from "@/lib/user/profileFormUtils";
 import { type UserRole } from "@/lib/user/currentUser";
 
 export default function ProfileHero({
@@ -18,7 +18,7 @@ export default function ProfileHero({
   role: UserRole | null;
   bio?: string | null;
 }) {
-  const publicUsername = formatPublicUsername(username);
+  const profileUsername = formatProfileIdentityUsername(username);
 
   return (
     <div className="flex items-start gap-4">
@@ -31,11 +31,11 @@ export default function ProfileHero({
 
       <div className="min-w-0 flex-1 pt-1">
         <h1 className="text-2xl font-bold leading-tight text-ftc-text sm:text-[1.75rem]">
-          {displayName}
+          {profileUsername ?? displayName}
         </h1>
 
-        {publicUsername ? (
-          <p className="mt-1 text-sm font-medium text-ftc-text-secondary">{publicUsername}</p>
+        {profileUsername ? (
+          <p className="mt-1 text-sm font-medium text-ftc-text-secondary">{displayName}</p>
         ) : null}
 
         <div className="mt-3">

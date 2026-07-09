@@ -17,6 +17,7 @@ import {
   MAX_PROFILE_GENRE_TAGS,
   normalizeExternalUrl,
   normalizeInstagramInput,
+  normalizeTikTokInput,
   normalizeUsername,
   parseStoredGenreTags,
   PROFILE_GENRE_OPTIONS,
@@ -42,6 +43,7 @@ function profileToFormInput(profile: UserProfile): UserProfileInput {
     genre: profile.genre?.trim() ?? "",
     location: profile.location?.trim() ?? "",
     instagram_url: profile.instagram_url?.trim() ?? "",
+    tiktok_url: profile.tiktok_url?.trim() ?? "",
     soundcloud_url: profile.soundcloud_url?.trim() ?? "",
     website_url: profile.website_url?.trim() ?? "",
     artist_name: profile.artist_name?.trim() ?? "",
@@ -230,6 +232,7 @@ export default function EditProfileForm({
     }
 
     let normalizedInstagram = "";
+    let normalizedTikTok = "";
     let normalizedSoundCloud = "";
 
     try {
@@ -237,6 +240,13 @@ export default function EditProfileForm({
     } catch (instagramError) {
       nextErrors.instagram_url =
         instagramError instanceof Error ? instagramError.message : "Invalid Instagram link.";
+    }
+
+    try {
+      normalizedTikTok = normalizeTikTokInput(form.tiktok_url);
+    } catch (tiktokError) {
+      nextErrors.tiktok_url =
+        tiktokError instanceof Error ? tiktokError.message : "Invalid TikTok link.";
     }
 
     if (showDjFields && form.soundcloud_url.trim()) {
@@ -278,6 +288,7 @@ export default function EditProfileForm({
         ...form,
         genre: showDjFields ? serializeGenreTags(genreTags) : form.genre.trim(),
         instagram_url: normalizedInstagram,
+        tiktok_url: normalizedTikTok,
         soundcloud_url: showDjFields ? normalizedSoundCloud : form.soundcloud_url.trim(),
       };
 
@@ -530,6 +541,14 @@ export default function EditProfileForm({
           onChange={(value) => updateField("instagram_url", value)}
           placeholder="@username, username, or full URL"
           error={fieldErrors.instagram_url}
+        />
+
+        <ProfileField
+          label="TikTok"
+          value={form.tiktok_url}
+          onChange={(value) => updateField("tiktok_url", value)}
+          placeholder="@username, username, or full URL"
+          error={fieldErrors.tiktok_url}
         />
       </fieldset>
 
