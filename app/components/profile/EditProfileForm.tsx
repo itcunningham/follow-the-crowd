@@ -23,7 +23,6 @@ import {
   normalizeTikTokInput,
   normalizeUsername,
   parseStoredGenreTags,
-  PROFILE_GENRE_OPTIONS,
   serializeGenreTags,
 } from "@/lib/user/profileFormUtils";
 import {
@@ -31,6 +30,7 @@ import {
   hasUnsavedProfileEdits,
 } from "@/lib/user/profileEditDirtyState";
 import ProfileFormField from "@/app/components/profile/ProfileFormField";
+import ProfileGenrePicker from "@/app/components/profile/ProfileGenrePicker";
 import { isAllowedProfileImageType, uploadProfileImage } from "@/lib/user/uploadProfileImage";
 
 const ROLE_OPTIONS: { value: UserRole; label: string }[] = [
@@ -237,6 +237,15 @@ export default function EditProfileForm({
   function toggleGenreTag(tag: string) {
     setGenreTags((prev) => {
       if (prev.includes(tag)) {
+        setFieldErrors((errors) => {
+          if (!errors.genre) {
+            return errors;
+          }
+
+          const next = { ...errors };
+          delete next.genre;
+          return next;
+        });
         return prev.filter((item) => item !== tag);
       }
 
@@ -653,34 +662,11 @@ export default function EditProfileForm({
             DJ / Artist details
           </legend>
 
-          <div>
-            <span className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.14em] text-ftc-text-secondary">
-              Music genres / styles
-            </span>
-            <div className="flex flex-wrap gap-2">
-              {PROFILE_GENRE_OPTIONS.map((tag) => {
-                const selected = genreTags.includes(tag);
-
-                return (
-                  <button
-                    key={tag}
-                    type="button"
-                    onClick={() => toggleGenreTag(tag)}
-                    className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${
-                      selected
-                        ? "border-ftc-primary bg-ftc-bg-elevated text-ftc-text"
-                        : "border-ftc-border-subtle bg-ftc-bg text-ftc-text-secondary hover:border-ftc-border-strong"
-                    }`}
-                  >
-                    {tag}
-                  </button>
-                );
-              })}
-            </div>
-            {fieldErrors.genre ? (
-              <p className="mt-2 text-sm text-red-400">{fieldErrors.genre}</p>
-            ) : null}
-          </div>
+          <ProfileGenrePicker
+            selectedTags={genreTags}
+            onToggleTag={toggleGenreTag}
+            error={fieldErrors.genre}
+          />
 
           <ProfileFormField
             label="SoundCloud"
