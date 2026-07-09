@@ -122,6 +122,7 @@ function NavTabIcon({ icon, active }: { icon: NavIconKey; active: boolean }) {
           <path d="M5 10v10h14V10" />
         </svg>
       );
+    case "gigs":
     case "events":
       return (
         <svg
@@ -136,22 +137,6 @@ function NavTabIcon({ icon, active }: { icon: NavIconKey; active: boolean }) {
         >
           <rect x="3" y="4" width="18" height="18" rx="2" />
           <path d="M16 2v4M8 2v4M3 10h18" />
-        </svg>
-      );
-    case "gigs":
-      return (
-        <svg
-          aria-hidden="true"
-          viewBox="0 0 24 24"
-          className={className}
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.75"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <path d="M3 9a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v0a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z" />
-          <path d="M13 6v12" />
         </svg>
       );
     case "messages":
