@@ -139,6 +139,50 @@ export function canCheckUsernameAvailability(normalized: string): boolean {
   return getUsernameFormatError(normalized) === null;
 }
 
+export function createProfileFormInputFromProfile(profile: {
+  username: string | null;
+  display_name: string | null;
+  bio: string | null;
+  genre: string | null;
+  location: string | null;
+  instagram_url: string | null;
+  tiktok_url: string | null;
+  soundcloud_url: string | null;
+  website_url: string | null;
+  artist_name: string | null;
+  dj_booking_contact_name: string | null;
+  promoter_brand_name: string | null;
+  promoter_brand_description: string | null;
+  dj_availability: string | null;
+  dj_past_gigs: string | null;
+  promoter_venues_used: string | null;
+  promoter_upcoming_events: string | null;
+  promoter_past_events: string | null;
+}): import("@/lib/user/currentUser").UserProfileInput {
+  const displayName = profile.display_name?.trim() ?? "";
+
+  return {
+    username: profile.username?.trim() ?? suggestUsernameFromDisplayName(displayName),
+    display_name: displayName,
+    bio: profile.bio?.trim() ?? "",
+    genre: profile.genre?.trim() ?? "",
+    location: profile.location?.trim() ?? "",
+    instagram_url: profile.instagram_url?.trim() ?? "",
+    tiktok_url: profile.tiktok_url?.trim() ?? "",
+    soundcloud_url: profile.soundcloud_url?.trim() ?? "",
+    website_url: profile.website_url?.trim() ?? "",
+    artist_name: profile.artist_name?.trim() ?? "",
+    dj_booking_contact_name: profile.dj_booking_contact_name?.trim() ?? "",
+    promoter_brand_name: profile.promoter_brand_name?.trim() ?? "",
+    promoter_brand_description: profile.promoter_brand_description?.trim() ?? "",
+    dj_availability: profile.dj_availability?.trim() ?? "",
+    dj_past_gigs: profile.dj_past_gigs?.trim() ?? "",
+    promoter_venues_used: profile.promoter_venues_used?.trim() ?? "",
+    promoter_upcoming_events: profile.promoter_upcoming_events?.trim() ?? "",
+    promoter_past_events: profile.promoter_past_events?.trim() ?? "",
+  };
+}
+
 export function suggestUsernameFromDisplayName(displayName: string): string {
   const slug = displayName
     .trim()

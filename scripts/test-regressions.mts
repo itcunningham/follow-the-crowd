@@ -14,6 +14,7 @@ import { computeCrewChatEventActions } from "../lib/events/crewChatEventActions"
 import type { CrewChatUnlockState } from "../lib/events/crewChatUnlock";
 import { resolveEventLinkedBookingDisplay } from "../lib/events/eventBookingDisplay";
 import { getAuthRedirectUrl } from "../lib/auth/appUrl";
+import { hasUnsavedProfileEdits, createProfileEditBaseline } from "../lib/user/profileEditDirtyState";
 import { getUsernameFormatError } from "../lib/user/profileFormUtils";
 
 function testPastEventDatesAreBlocked() {
@@ -206,6 +207,61 @@ function testAuthRedirectUrlUsesLoginPath() {
   }
 }
 
+function testProfileEditDirtyDetection() {
+  const profile = {
+    user_id: "user-1",
+    role: "dj" as const,
+    onboarding_complete: true,
+    full_name: null,
+    username: "djone",
+    display_name: "DJ One",
+    bio: "Bio",
+    genre: "Techno, House",
+    instagram_url: "",
+    tiktok_url: "",
+    soundcloud_url: "",
+    website_url: "",
+    location: "",
+    avatar_url: null,
+    artist_name: "",
+    dj_booking_contact_name: "",
+    dj_availability: "",
+    dj_past_gigs: "",
+    promoter_brand_name: "",
+    promoter_brand_description: "",
+    promoter_venues_used: "",
+    promoter_upcoming_events: "",
+    promoter_past_events: "",
+  };
+
+  const baseline = createProfileEditBaseline(profile);
+
+  assert.equal(
+    hasUnsavedProfileEdits(baseline, {
+      ...baseline,
+      hasPendingPhoto: false,
+    }),
+    false,
+  );
+
+  assert.equal(
+    hasUnsavedProfileEdits(baseline, {
+      ...baseline,
+      form: { ...baseline.form, bio: "Updated bio" },
+      hasPendingPhoto: false,
+    }),
+    true,
+  );
+
+  assert.equal(
+    hasUnsavedProfileEdits(baseline, {
+      ...baseline,
+      hasPendingPhoto: true,
+    }),
+    true,
+  );
+}
+
 function main() {
   testPastEventDatesAreBlocked();
   testFutureEventDatesAreAllowed();
@@ -218,6 +274,7 @@ function main() {
   testDmBookingDisplayKeepsPerDjFeeOverEmptyEventRate();
   testUsernameBlockedTermChecks();
   testAuthRedirectUrlUsesLoginPath();
+  testProfileEditDirtyDetection();
   console.log("All regression checks passed.");
 }
 

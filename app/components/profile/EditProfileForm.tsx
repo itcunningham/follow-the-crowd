@@ -15,6 +15,7 @@ import {
   formatPublicUsername,
   getUsernameFormatError,
   applyBioInputLimit,
+  createProfileFormInputFromProfile,
   MAX_PROFILE_BIO_LENGTH,
   MAX_PROFILE_GENRE_TAGS,
   normalizeExternalUrl,
@@ -24,8 +25,11 @@ import {
   parseStoredGenreTags,
   PROFILE_GENRE_OPTIONS,
   serializeGenreTags,
-  suggestUsernameFromDisplayName,
 } from "@/lib/user/profileFormUtils";
+import {
+  createProfileEditBaseline,
+  hasUnsavedProfileEdits,
+} from "@/lib/user/profileEditDirtyState";
 import ProfileFormField from "@/app/components/profile/ProfileFormField";
 import { isAllowedProfileImageType, uploadProfileImage } from "@/lib/user/uploadProfileImage";
 
@@ -34,31 +38,6 @@ const ROLE_OPTIONS: { value: UserRole; label: string }[] = [
   { value: "promoter", label: "Event Planner" },
   { value: "both", label: "Both" },
 ];
-
-function profileToFormInput(profile: UserProfile): UserProfileInput {
-  const displayName = profile.display_name?.trim() ?? "";
-
-  return {
-    username: profile.username?.trim() ?? suggestUsernameFromDisplayName(displayName),
-    display_name: displayName,
-    bio: profile.bio?.trim() ?? "",
-    genre: profile.genre?.trim() ?? "",
-    location: profile.location?.trim() ?? "",
-    instagram_url: profile.instagram_url?.trim() ?? "",
-    tiktok_url: profile.tiktok_url?.trim() ?? "",
-    soundcloud_url: profile.soundcloud_url?.trim() ?? "",
-    website_url: profile.website_url?.trim() ?? "",
-    artist_name: profile.artist_name?.trim() ?? "",
-    dj_booking_contact_name: profile.dj_booking_contact_name?.trim() ?? "",
-    promoter_brand_name: profile.promoter_brand_name?.trim() ?? "",
-    promoter_brand_description: profile.promoter_brand_description?.trim() ?? "",
-    dj_availability: profile.dj_availability?.trim() ?? "",
-    dj_past_gigs: profile.dj_past_gigs?.trim() ?? "",
-    promoter_venues_used: profile.promoter_venues_used?.trim() ?? "",
-    promoter_upcoming_events: profile.promoter_upcoming_events?.trim() ?? "",
-    promoter_past_events: profile.promoter_past_events?.trim() ?? "",
-  };
-}
 
 function roleNarrowsFromBoth(previousRole: UserRole | null, nextRole: UserRole): boolean {
   return previousRole === "both" && (nextRole === "dj" || nextRole === "promoter");
@@ -86,17 +65,20 @@ export default function EditProfileForm({
   profile,
   isEditing,
   onSaved,
+  onDirtyChange,
 }: {
   profile: UserProfile;
   isEditing: boolean;
   onSaved: () => void;
+  onDirtyChange?: (hasUnsavedChanges: boolean) => void;
 }) {
+  const editBaselineRef = useRef(createProfileEditBaseline(profile));
   const initialRole = profile.role ?? "dj";
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const libraryInputRef = useRef<HTMLInputElement>(null);
   const photoPickerRef = useRef<HTMLDivElement>(null);
   const [photoMenuOpen, setPhotoMenuOpen] = useState(false);
-  const [form, setForm] = useState<UserProfileInput>(() => profileToFormInput(profile));
+  const [form, setForm] = useState<UserProfileInput>(() => createProfileFormInputFromProfile(profile));
   const [role, setRole] = useState<UserRole>(initialRole);
   const [savedRole] = useState<UserRole | null>(profile.role);
   const [genreTags, setGenreTags] = useState<string[]>(() => parseStoredGenreTags(profile.genre));
@@ -154,6 +136,21 @@ export default function EditProfileForm({
       document.removeEventListener("keydown", handleEscape);
     };
   }, [photoMenuOpen]);
+
+  useEffect(() => {
+    if (!onDirtyChange) {
+      return;
+    }
+
+    onDirtyChange(
+      hasUnsavedProfileEdits(editBaselineRef.current, {
+        form,
+        role,
+        genreTags,
+        hasPendingPhoto: selectedFile !== null,
+      }),
+    );
+  }, [form, role, genreTags, selectedFile, onDirtyChange]);
 
   useEffect(() => {
     const normalized = normalizeUsername(form.username);

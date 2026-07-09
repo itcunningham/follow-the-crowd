@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import EditProfileForm from "@/app/components/profile/EditProfileForm";
+import EditProfileSetupHeader from "@/app/components/profile/EditProfileSetupHeader";
 import {
   getCurrentUserId,
   getCurrentUserProfile,
@@ -10,18 +11,45 @@ import {
   needsOnboarding,
   needsProfileSetup,
   type UserProfile,
+  type UserRole,
 } from "@/lib/user/currentUser";
+
+function getProfileSetupBackHref(
+  isEditing: boolean,
+  userId: string | null,
+  role: UserRole | null,
+): string {
+  if (isEditing && userId) {
+    return `/profile/${userId}`;
+  }
+
+  return getDefaultRouteForRole(role);
+}
+
+function getProfileSetupBackLabel(isEditing: boolean, role: UserRole | null): string {
+  if (isEditing) {
+    return "Back to profile";
+  }
+
+  return role === "dj" ? "Back to Messages" : "Back to Home";
+}
 
 export default function ProfileSetupPage() {
   const router = useRouter();
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const handleDirtyChange = useCallback((dirty: boolean) => {
+    setHasUnsavedChanges(dirty);
+  }, []);
+
   useEffect(() => {
-    getCurrentUserProfile()
-      .then((loadedProfile) => {
+    Promise.all([getCurrentUserProfile(), getCurrentUserId()])
+      .then(([loadedProfile, loadedUserId]) => {
         if (needsOnboarding(loadedProfile)) {
           router.replace("/onboarding");
           return;
@@ -32,6 +60,7 @@ export default function ProfileSetupPage() {
           return;
         }
 
+        setUserId(loadedUserId);
         setIsEditing(Boolean(loadedProfile.display_name?.trim()));
         setProfile(loadedProfile);
         setLoading(false);
@@ -57,9 +86,9 @@ export default function ProfileSetupPage() {
       return;
     }
 
-    const userId = await getCurrentUserId();
+    const savedUserId = await getCurrentUserId();
     const destination = isEditing
-      ? `/profile/${userId}`
+      ? `/profile/${savedUserId}`
       : getDefaultRouteForRole(updatedProfile?.role ?? null);
     router.replace(destination);
   }
@@ -84,9 +113,18 @@ export default function ProfileSetupPage() {
     return null;
   }
 
+  const backHref = getProfileSetupBackHref(isEditing, userId, profile.role);
+  const backLabel = getProfileSetupBackLabel(isEditing, profile.role);
+
   return (
-    <div className="min-h-[100dvh] bg-ftc-bg px-4 pb-[max(2.5rem,env(safe-area-inset-bottom))] pt-[max(2.5rem,env(safe-area-inset-top))] font-sans text-ftc-text sm:px-6 sm:py-10">
+    <div className="min-h-[100dvh] bg-ftc-bg px-4 pb-[max(2.5rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))] font-sans text-ftc-text sm:px-6 sm:py-10">
       <div className="mx-auto w-full max-w-2xl">
+        <EditProfileSetupHeader
+          backHref={backHref}
+          backLabel={backLabel}
+          hasUnsavedChanges={hasUnsavedChanges}
+        />
+
         <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-ftc-primary">
           Profile
         </p>
@@ -99,7 +137,12 @@ export default function ProfileSetupPage() {
 
         {error ? <p className="mt-4 text-sm text-red-400">{error}</p> : null}
 
-        <EditProfileForm profile={profile} isEditing={isEditing} onSaved={handleSaved} />
+        <EditProfileForm
+          profile={profile}
+          isEditing={isEditing}
+          onSaved={handleSaved}
+          onDirtyChange={handleDirtyChange}
+        />
       </div>
     </div>
   );
