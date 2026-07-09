@@ -381,14 +381,10 @@ export default function EditProfileForm({
     <form
       onSubmit={handleSubmit}
       onKeyDown={preventImplicitEnterSubmit}
-      className="mt-8 space-y-6"
+      className="mt-6 space-y-6"
     >
-      <div className="rounded-2xl border border-ftc-border bg-ftc-surface/40 p-4 sm:p-5">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-ftc-text-secondary">
-          Profile photo
-        </p>
-        <div className="mt-4 flex justify-center">
-          <div ref={photoPickerRef} className="relative flex flex-col items-center">
+      <div className="flex flex-col items-center">
+        <div ref={photoPickerRef} className="relative flex flex-col items-center">
             <button
               type="button"
               aria-label="Change profile photo"
@@ -468,8 +464,9 @@ export default function EditProfileForm({
               className="hidden"
             />
           </div>
-        </div>
-        {uploadError ? <p className="mt-3 text-sm text-red-400">{uploadError}</p> : null}
+        {uploadError ? (
+          <p className="mt-2 text-center text-sm text-red-400">{uploadError}</p>
+        ) : null}
       </div>
 
       <fieldset className="space-y-4 rounded-2xl border border-ftc-border bg-ftc-surface/40 p-4 sm:p-5">
