@@ -97,18 +97,25 @@ export const RESERVED_USERNAMES = new Set([
   "system",
 ]);
 
-const BLOCKED_USERNAMES = new Set([
+const BLOCKED_USERNAME_TERMS = [
   "faggot",
   "fag",
+  "fuck",
   "nigger",
   "nigga",
   "retard",
   "rape",
   "hitler",
   "nazi",
-]);
+];
 
-export function getUsernameFormatError(normalized: string): string | null {
+function containsBlockedUsernameTerm(normalized: string): boolean {
+  return BLOCKED_USERNAME_TERMS.some((term) => normalized.includes(term));
+}
+
+export function getUsernameFormatError(raw: string): string | null {
+  const normalized = normalizeUsername(raw);
+
   if (!normalized) {
     return "Username is required.";
   }
@@ -121,7 +128,7 @@ export function getUsernameFormatError(normalized: string): string | null {
     return "That username is reserved. Choose another one.";
   }
 
-  if (BLOCKED_USERNAMES.has(normalized)) {
+  if (containsBlockedUsernameTerm(normalized)) {
     return "That username is not available.";
   }
 

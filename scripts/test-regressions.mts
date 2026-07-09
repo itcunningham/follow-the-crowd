@@ -13,6 +13,7 @@ import type { BookingRequest } from "../lib/bookingRequests";
 import { computeCrewChatEventActions } from "../lib/events/crewChatEventActions";
 import type { CrewChatUnlockState } from "../lib/events/crewChatUnlock";
 import { resolveEventLinkedBookingDisplay } from "../lib/events/eventBookingDisplay";
+import { getUsernameFormatError } from "../lib/user/profileFormUtils";
 
 function testPastEventDatesAreBlocked() {
   const cases = [
@@ -181,6 +182,14 @@ function testConflictingCrewChatFlagsPreferStartAction() {
   assert.equal(actions.showEventGroupChatAction, false);
 }
 
+function testUsernameBlockedTermChecks() {
+  const blockedMessage = "That username is not available.";
+
+  assert.equal(getUsernameFormatError("hitler"), blockedMessage);
+  assert.equal(getUsernameFormatError("breaker_breakerfuck"), blockedMessage);
+  assert.equal(getUsernameFormatError("breakerbreaker"), null);
+}
+
 function main() {
   testPastEventDatesAreBlocked();
   testFutureEventDatesAreAllowed();
@@ -191,6 +200,7 @@ function main() {
   testZeroAcceptedDjsShowsNoCrewChatAction();
   testConflictingCrewChatFlagsPreferStartAction();
   testDmBookingDisplayKeepsPerDjFeeOverEmptyEventRate();
+  testUsernameBlockedTermChecks();
   console.log("All regression checks passed.");
 }
 
