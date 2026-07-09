@@ -12,7 +12,6 @@ import {
   type UserRole,
 } from "@/lib/user/currentUser";
 import {
-  formatPublicUsername,
   getUsernameFormatError,
   applyBioInputLimit,
   createProfileFormInputFromProfile,
@@ -488,11 +487,6 @@ export default function EditProfileForm({
             placeholder="Username"
             className="ftc-input px-3.5 py-2.5"
           />
-          {form.username.trim() ? (
-            <p className="mt-1 text-xs text-ftc-text-secondary">
-              {formatPublicUsername(form.username)}
-            </p>
-          ) : null}
           {usernameLiveMessage ? (
             <p
               className={`mt-1 text-xs ${
