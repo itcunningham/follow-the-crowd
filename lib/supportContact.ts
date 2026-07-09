@@ -1,5 +1,15 @@
-/** Temporary private-beta support inbox. Replace before public launch. */
-export const FTC_BETA_SUPPORT_EMAIL = "support@followthecrowd.app";
+const SUPPORT_EMAIL_DEV_FALLBACK = "your-email@example.com";
+
+// Vercel production must set NEXT_PUBLIC_SUPPORT_EMAIL to the real private-beta inbox.
+export function getSupportEmail(): string {
+  const configuredEmail = process.env.NEXT_PUBLIC_SUPPORT_EMAIL?.trim();
+
+  if (configuredEmail) {
+    return configuredEmail;
+  }
+
+  return SUPPORT_EMAIL_DEV_FALLBACK;
+}
 
 export function buildAccountDeletionRequestMailto(options: {
   accountEmail: string;
@@ -27,5 +37,5 @@ export function buildAccountDeletionRequestMailto(options: {
     body: bodyLines.join("\n"),
   });
 
-  return `mailto:${FTC_BETA_SUPPORT_EMAIL}?${params.toString()}`;
+  return `mailto:${getSupportEmail()}?${params.toString()}`;
 }

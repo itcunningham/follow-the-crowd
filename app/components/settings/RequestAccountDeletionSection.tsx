@@ -2,7 +2,7 @@
 
 import {
   buildAccountDeletionRequestMailto,
-  FTC_BETA_SUPPORT_EMAIL,
+  getSupportEmail,
 } from "@/lib/supportContact";
 
 export default function RequestAccountDeletionSection({
@@ -36,7 +36,7 @@ export default function RequestAccountDeletionSection({
         </a>
       ) : (
         <p className="mt-4 text-sm text-ftc-text-muted">
-          Email unavailable. Contact {FTC_BETA_SUPPORT_EMAIL} to request account deletion.
+          Email unavailable. Contact {getSupportEmail()} to request account deletion.
         </p>
       )}
     </section>
