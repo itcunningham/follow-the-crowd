@@ -18,8 +18,8 @@ import {
   createProfileFormInputFromProfile,
   MAX_PROFILE_BIO_LENGTH,
   MAX_PROFILE_GENRE_TAGS,
-  normalizeExternalUrl,
   normalizeInstagramInput,
+  normalizeSoundCloudInput,
   normalizeTikTokInput,
   normalizeUsername,
   parseStoredGenreTags,
@@ -386,10 +386,7 @@ export default function EditProfileForm({
 
     if (showDjFields && form.soundcloud_url.trim()) {
       try {
-        normalizedSoundCloud = normalizeExternalUrl(form.soundcloud_url, {
-          label: "SoundCloud link",
-          allowedHosts: ["soundcloud.com"],
-        });
+        normalizedSoundCloud = normalizeSoundCloudInput(form.soundcloud_url);
       } catch (soundCloudError) {
         nextErrors.soundcloud_url =
           soundCloudError instanceof Error ? soundCloudError.message : "Invalid SoundCloud link.";
@@ -672,7 +669,7 @@ export default function EditProfileForm({
             label="SoundCloud"
             value={form.soundcloud_url}
             onChange={(value) => updateField("soundcloud_url", value)}
-            placeholder="https://soundcloud.com/yourhandle"
+            placeholder="Username"
             error={fieldErrors.soundcloud_url}
           />
         </fieldset>

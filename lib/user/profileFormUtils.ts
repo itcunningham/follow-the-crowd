@@ -298,6 +298,44 @@ export function normalizeTikTokInput(raw: string): string {
   return `https://www.tiktok.com/@${handle}`;
 }
 
+export function normalizeSoundCloudInput(raw: string): string {
+  const trimmed = raw.trim();
+
+  if (!trimmed) {
+    return "";
+  }
+
+  if (trimmed.startsWith("http://") || trimmed.startsWith("https://") || trimmed.includes("soundcloud.com")) {
+    const parsed = tryParseUrl(trimmed.startsWith("http") ? trimmed : `https://${trimmed.replace(/^\/\//, "")}`);
+
+    if (!parsed) {
+      throw new Error("Enter a valid SoundCloud URL.");
+    }
+
+    const host = parsed.hostname.replace(/^www\./, "").replace(/^m\./, "").toLowerCase();
+
+    if (host !== "soundcloud.com") {
+      throw new Error("SoundCloud link must be a soundcloud.com URL.");
+    }
+
+    const profileMatch = parsed.pathname.match(/^\/([^/?#]+)/);
+
+    if (!profileMatch?.[1]) {
+      throw new Error("Enter a valid SoundCloud profile URL.");
+    }
+
+    return `https://soundcloud.com/${profileMatch[1]}`;
+  }
+
+  const handle = trimmed.replace(/^@+/, "").replace(/\/.*/, "");
+
+  if (!handle) {
+    throw new Error("Enter a valid SoundCloud username.");
+  }
+
+  return `https://soundcloud.com/${handle}`;
+}
+
 export function formatProfileIdentityUsername(username: string | null | undefined): string | null {
   const normalized = normalizeUsername(username ?? "");
 

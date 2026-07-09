@@ -15,7 +15,7 @@ import type { CrewChatUnlockState } from "../lib/events/crewChatUnlock";
 import { resolveEventLinkedBookingDisplay } from "../lib/events/eventBookingDisplay";
 import { getAuthRedirectUrl } from "../lib/auth/appUrl";
 import { hasUnsavedProfileEdits, createProfileEditBaseline } from "../lib/user/profileEditDirtyState";
-import { getUsernameFormatError } from "../lib/user/profileFormUtils";
+import { getUsernameFormatError, normalizeSoundCloudInput } from "../lib/user/profileFormUtils";
 
 function testPastEventDatesAreBlocked() {
   const cases = [
@@ -262,6 +262,16 @@ function testProfileEditDirtyDetection() {
   );
 }
 
+function testSoundCloudInputNormalization() {
+  assert.equal(normalizeSoundCloudInput(""), "");
+  assert.equal(normalizeSoundCloudInput("djalpha"), "https://soundcloud.com/djalpha");
+  assert.equal(normalizeSoundCloudInput("@djalpha"), "https://soundcloud.com/djalpha");
+  assert.equal(
+    normalizeSoundCloudInput("https://soundcloud.com/djalpha/tracks"),
+    "https://soundcloud.com/djalpha",
+  );
+}
+
 function main() {
   testPastEventDatesAreBlocked();
   testFutureEventDatesAreAllowed();
@@ -275,6 +285,7 @@ function main() {
   testUsernameBlockedTermChecks();
   testAuthRedirectUrlUsesLoginPath();
   testProfileEditDirtyDetection();
+  testSoundCloudInputNormalization();
   console.log("All regression checks passed.");
 }
 
