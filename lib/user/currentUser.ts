@@ -128,6 +128,25 @@ export async function signOut(): Promise<void> {
   }
 }
 
+export async function requestPasswordResetEmail(email: string): Promise<void> {
+  const trimmedEmail = email.trim();
+
+  if (!trimmedEmail) {
+    throw new Error("Email is required to reset your password.");
+  }
+
+  const redirectTo =
+    typeof window !== "undefined" ? `${window.location.origin}${LOGIN_PATH}` : undefined;
+
+  const { error } = await supabase.auth.resetPasswordForEmail(trimmedEmail, {
+    redirectTo,
+  });
+
+  if (error) {
+    throw error;
+  }
+}
+
 export async function signInWithEmail(email: string, password: string) {
   const { data, error } = await supabase.auth.signInWithPassword({
     email: email.trim(),

@@ -5,50 +5,26 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import AppNavigation, { MOBILE_NAV_OFFSET_CLASS } from "@/app/components/AppNavigation";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
-import DeleteAccountSection from "@/app/components/settings/DeleteAccountSection";
+import RequestAccountDeletionSection from "@/app/components/settings/RequestAccountDeletionSection";
 import {
   getCurrentAuthUser,
   getCurrentUserId,
   getCurrentUserProfile,
-  getRoleLabel,
   LOGIN_PATH,
-  saveUserRole,
+  requestPasswordResetEmail,
   signOut,
-  type UserRole,
 } from "@/lib/user/currentUser";
-
-const ACCOUNT_TYPE_OPTIONS: {
-  role: UserRole;
-  title: string;
-  description: string;
-}[] = [
-  {
-    role: "dj",
-    title: "DJ / Artist",
-    description: "Messages, Gigs, and your artist profile.",
-  },
-  {
-    role: "promoter",
-    title: "Event Planner",
-    description: "Events, booking requests, messages, and your planner profile.",
-  },
-  {
-    role: "both",
-    title: "Both",
-    description: "Plan events and manage bookings as both a planner and artist.",
-  },
-];
 
 export default function SettingsPage() {
   const router = useRouter();
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [accountEmail, setAccountEmail] = useState<string | null>(null);
-  const [currentRole, setCurrentRole] = useState<UserRole | null>(null);
+  const [username, setUsername] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [savingRole, setSavingRole] = useState<UserRole | null>(null);
+  const [resettingPassword, setResettingPassword] = useState(false);
+  const [passwordResetMessage, setPasswordResetMessage] = useState<string | null>(null);
   const [signingOut, setSigningOut] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const myProfilePath = currentUserId ? `/profile/${currentUserId}` : "/profile/setup";
 
@@ -57,10 +33,10 @@ export default function SettingsPage() {
       .then(([authUser, userId, profile]) => {
         setCurrentUserId(userId);
         setAccountEmail(authUser?.email?.trim() || null);
-        setCurrentRole(profile?.role ?? null);
+        setUsername(profile?.username?.trim() || null);
       })
       .catch((loadError) => {
-        console.error("Failed to load settings profile:", loadError);
+        console.error("Failed to load settings:", loadError);
         setError(loadError instanceof Error ? loadError.message : "Failed to load settings");
       })
       .finally(() => {
@@ -68,24 +44,25 @@ export default function SettingsPage() {
       });
   }, []);
 
-  async function handleSelectRole(role: UserRole) {
-    if (savingRole || role === currentRole) {
+  async function handleResetPassword() {
+    if (!accountEmail || resettingPassword) {
       return;
     }
 
-    setSavingRole(role);
+    setResettingPassword(true);
     setError(null);
-    setSuccessMessage(null);
+    setPasswordResetMessage(null);
 
     try {
-      await saveUserRole(role);
-      setCurrentRole(role);
-      setSuccessMessage("Account type updated");
-    } catch (saveError) {
-      console.error("Failed to update account type:", saveError);
-      setError(saveError instanceof Error ? saveError.message : "Failed to update account type");
+      await requestPasswordResetEmail(accountEmail);
+      setPasswordResetMessage("Password reset email sent. Check your inbox.");
+    } catch (resetError) {
+      console.error("Failed to send password reset email:", resetError);
+      setError(
+        resetError instanceof Error ? resetError.message : "Failed to send password reset email",
+      );
     } finally {
-      setSavingRole(null);
+      setResettingPassword(false);
     }
   }
 
@@ -118,9 +95,7 @@ export default function SettingsPage() {
             ← My Profile
           </Link>
           <h1 className="mt-3 text-xl font-semibold text-ftc-text">Settings</h1>
-          <p className="mt-1 text-sm text-ftc-text-muted">
-            Manage your Follow The Crowd account preferences.
-          </p>
+          <p className="mt-1 text-sm text-ftc-text-muted">Account and support for private beta.</p>
         </header>
 
         <div className="space-y-4 px-4 py-6 sm:px-6">
@@ -128,98 +103,49 @@ export default function SettingsPage() {
             <p className="text-sm text-ftc-text-muted">Loading settings...</p>
           ) : (
             <>
-              <section className="ftc-card p-4 sm:p-5">
-                <h2 className="text-xs font-semibold uppercase tracking-wide text-ftc-primary">
-                  Account
-                </h2>
-                <p className="mt-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-ftc-text-muted">
-                  Signed in as
-                </p>
-                <p className="mt-1 break-all text-sm font-medium text-ftc-text">
-                  {accountEmail ?? "Email unavailable"}
-                </p>
-              </section>
-
-              <section className="ftc-card p-4 sm:p-5">
-                <h2 className="text-xs font-semibold uppercase tracking-wide text-ftc-primary">
-                  Account type
-                </h2>
-                <p className="mt-2 text-sm text-ftc-text-muted">
-                  Current type:{" "}
-                  <span className="font-medium text-ftc-text-secondary">{getRoleLabel(currentRole)}</span>
-                </p>
-
-                <div className="mt-4 space-y-3">
-                  {ACCOUNT_TYPE_OPTIONS.map((option) => {
-                    const isSelected = currentRole === option.role;
-                    const isSaving = savingRole === option.role;
-
-                    return (
-                      <button
-                        key={option.role}
-                        type="button"
-                        disabled={savingRole !== null}
-                        onClick={() => handleSelectRole(option.role)}
-                        className={`w-full rounded-2xl border px-4 py-4 text-left transition disabled:cursor-not-allowed disabled:opacity-60 sm:px-5 sm:py-5 ${
-                          isSelected
-                            ? "border-ftc-primary bg-ftc-bg-elevated"
-                            : "border-ftc-border bg-ftc-bg-elevated/40 hover:border-ftc-border-strong hover:bg-ftc-bg-elevated"
-                        }`}
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          <div>
-                            <p
-                              className={`text-base font-semibold sm:text-lg ${
-                                isSelected ? "text-ftc-primary" : "text-ftc-text"
-                              }`}
-                            >
-                              {option.title}
-                            </p>
-                            <p className="mt-2 text-sm leading-relaxed text-ftc-text-secondary">
-                              {option.description}
-                            </p>
-                          </div>
-                          {isSelected ? (
-                            <span className="shrink-0 rounded-full border-0 bg-ftc-primary px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-ftc-bg">
-                              Selected
-                            </span>
-                          ) : null}
-                        </div>
-                        {isSaving ? (
-                          <p className="mt-3 text-xs font-medium uppercase tracking-wide text-ftc-primary">
-                            Updating...
-                          </p>
-                        ) : null}
-                      </button>
-                    );
-                  })}
+              <section className="ftc-card overflow-hidden p-0">
+                <div className="border-b border-ftc-border-subtle px-4 py-3 sm:px-5">
+                  <h2 className="text-xs font-semibold uppercase tracking-wide text-ftc-primary">
+                    Account
+                  </h2>
                 </div>
 
-                {successMessage ? (
-                  <p className="mt-4 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated px-4 py-3 text-sm text-ftc-text-secondary">
-                    {successMessage}
+                <div className="border-b border-ftc-border-subtle px-4 py-4 sm:px-5">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-ftc-text-muted">
+                    Email address
                   </p>
-                ) : null}
+                  <p className="mt-1 break-all text-sm font-medium text-ftc-text">
+                    {accountEmail ?? "Email unavailable"}
+                  </p>
+                </div>
+
+                <div className="border-b border-ftc-border-subtle px-4 py-4 sm:px-5">
+                  <button
+                    type="button"
+                    onClick={() => void handleResetPassword()}
+                    disabled={!accountEmail || resettingPassword}
+                    className="rounded-xl border border-ftc-border-strong bg-ftc-bg-elevated/60 px-4 py-3 text-sm font-semibold text-ftc-text transition hover:border-ftc-border-strong hover:bg-ftc-bg-elevated disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {resettingPassword ? "Sending..." : "Reset password"}
+                  </button>
+                  {passwordResetMessage ? (
+                    <p className="mt-3 text-sm text-ftc-primary">{passwordResetMessage}</p>
+                  ) : null}
+                </div>
+
+                <div className="px-4 py-4 sm:px-5">
+                  <button
+                    type="button"
+                    onClick={() => void handleSignOut()}
+                    disabled={signingOut}
+                    className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm font-semibold text-red-300 transition hover:border-red-500/50 hover:bg-red-500/15 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {signingOut ? "Signing out..." : "Sign out"}
+                  </button>
+                </div>
               </section>
 
-              <section className="ftc-card p-4 sm:p-5">
-                <h2 className="text-xs font-semibold uppercase tracking-wide text-ftc-primary">
-                  Session
-                </h2>
-                <p className="mt-2 text-sm text-ftc-text-muted">
-                  Sign out of Follow The Crowd on this device.
-                </p>
-                <button
-                  type="button"
-                  onClick={handleSignOut}
-                  disabled={signingOut}
-                  className="mt-4 rounded-xl border border-ftc-border-strong bg-ftc-bg-elevated/60 px-4 py-3 text-sm font-semibold uppercase tracking-wide text-ftc-text-secondary transition hover:border-red-500/40 hover:text-red-300 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {signingOut ? "Signing out..." : "Log out"}
-                </button>
-              </section>
-
-              <DeleteAccountSection onError={setError} />
+              <RequestAccountDeletionSection accountEmail={accountEmail} username={username} />
 
               {error ? <p className="text-sm text-red-400">{error}</p> : null}
             </>
