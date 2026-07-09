@@ -13,6 +13,7 @@ import type { BookingRequest } from "../lib/bookingRequests";
 import { computeCrewChatEventActions } from "../lib/events/crewChatEventActions";
 import type { CrewChatUnlockState } from "../lib/events/crewChatUnlock";
 import { resolveEventLinkedBookingDisplay } from "../lib/events/eventBookingDisplay";
+import { getAuthRedirectUrl } from "../lib/auth/appUrl";
 import { getUsernameFormatError } from "../lib/user/profileFormUtils";
 
 function testPastEventDatesAreBlocked() {
@@ -190,6 +191,21 @@ function testUsernameBlockedTermChecks() {
   assert.equal(getUsernameFormatError("breakerbreaker"), null);
 }
 
+function testAuthRedirectUrlUsesLoginPath() {
+  const previousAppUrl = process.env.NEXT_PUBLIC_APP_URL;
+
+  try {
+    process.env.NEXT_PUBLIC_APP_URL = "https://follow-the-crowd.vercel.app";
+    assert.equal(getAuthRedirectUrl("/login"), "https://follow-the-crowd.vercel.app/login");
+  } finally {
+    if (previousAppUrl === undefined) {
+      delete process.env.NEXT_PUBLIC_APP_URL;
+    } else {
+      process.env.NEXT_PUBLIC_APP_URL = previousAppUrl;
+    }
+  }
+}
+
 function main() {
   testPastEventDatesAreBlocked();
   testFutureEventDatesAreAllowed();
@@ -201,6 +217,7 @@ function main() {
   testConflictingCrewChatFlagsPreferStartAction();
   testDmBookingDisplayKeepsPerDjFeeOverEmptyEventRate();
   testUsernameBlockedTermChecks();
+  testAuthRedirectUrlUsesLoginPath();
   console.log("All regression checks passed.");
 }
 

@@ -1,4 +1,5 @@
 import type { User } from "@supabase/supabase-js";
+import { getAuthRedirectUrl } from "@/lib/auth/appUrl";
 import { normalizeUsername } from "@/lib/user/profileFormUtils";
 import { supabase } from "@/lib/supabaseClient";
 
@@ -135,12 +136,17 @@ export async function requestPasswordResetEmail(email: string): Promise<void> {
     throw new Error("Email is required to reset your password.");
   }
 
-  const redirectTo =
-    typeof window !== "undefined" ? `${window.location.origin}${LOGIN_PATH}` : undefined;
-
   const { error } = await supabase.auth.resetPasswordForEmail(trimmedEmail, {
-    redirectTo,
+    redirectTo: getAuthRedirectUrl(LOGIN_PATH),
   });
+
+  if (error) {
+    throw error;
+  }
+}
+
+export async function updateAuthPassword(password: string): Promise<void> {
+  const { error } = await supabase.auth.updateUser({ password });
 
   if (error) {
     throw error;
