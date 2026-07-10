@@ -161,6 +161,10 @@ function EventsPageClientView({ initialTab }: EventsPageClientProps) {
     return () => window.removeEventListener("popstate", handlePopState);
   }, []);
 
+  useEffect(() => {
+    setLocationRevision((current) => current + 1);
+  }, [searchParams]);
+
   const listTab = useMemo(
     () =>
       resolveEventsListTabParam(
@@ -404,6 +408,10 @@ function EventsPageClientView({ initialTab }: EventsPageClientProps) {
     }
   }
 
+  function handleEventsListTabChange() {
+    setLocationRevision((current) => current + 1);
+  }
+
   return (
       <div
         className={`mx-auto min-h-[100dvh] w-full max-w-2xl bg-ftc-bg font-sans text-ftc-text ${MOBILE_NAV_OFFSET_CLASS}`}
@@ -577,7 +585,10 @@ function EventsPageClientView({ initialTab }: EventsPageClientProps) {
                 onClick={(event) => {
                   if (!isHistoryTab) {
                     event.preventDefault();
+                    return;
                   }
+
+                  handleEventsListTabChange();
                 }}
               >
                 {isPlanner ? "Active" : "Upcoming"}
@@ -588,7 +599,10 @@ function EventsPageClientView({ initialTab }: EventsPageClientProps) {
                 onClick={(event) => {
                   if (isHistoryTab) {
                     event.preventDefault();
+                    return;
                   }
+
+                  handleEventsListTabChange();
                 }}
               >
                 History

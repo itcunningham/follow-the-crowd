@@ -23,11 +23,26 @@ export function resolveGigsListTabParam(
   initialTab?: string | null,
   locationSearch?: string | null,
 ): DjGigsListTab {
-  const locationTab = locationSearch
-    ? new URLSearchParams(locationSearch).get("tab")
-    : null;
+  if (searchParamsTab != null) {
+    return parseDjGigsListTab(searchParamsTab);
+  }
 
-  return parseDjGigsListTab(searchParamsTab ?? locationTab ?? initialTab);
+  const locationTab =
+    locationSearch != null
+      ? new URLSearchParams(
+          locationSearch.startsWith("?") ? locationSearch.slice(1) : locationSearch,
+        ).get("tab")
+      : null;
+
+  if (locationTab != null) {
+    return parseDjGigsListTab(locationTab);
+  }
+
+  if (locationSearch != null) {
+    return "pending";
+  }
+
+  return parseDjGigsListTab(initialTab);
 }
 
 export function buildGigsListHref(tab: DjGigsListTab = "pending"): string {

@@ -13,11 +13,26 @@ export function resolveEventsListTabParam(
   initialTab?: string | null,
   locationSearch?: string | null,
 ): EventsListTab {
-  const locationTab = locationSearch
-    ? new URLSearchParams(locationSearch).get("tab")
-    : null;
+  if (searchParamsTab != null) {
+    return parseEventsListTab(searchParamsTab);
+  }
 
-  return parseEventsListTab(searchParamsTab ?? locationTab ?? initialTab);
+  const locationTab =
+    locationSearch != null
+      ? new URLSearchParams(
+          locationSearch.startsWith("?") ? locationSearch.slice(1) : locationSearch,
+        ).get("tab")
+      : null;
+
+  if (locationTab != null) {
+    return parseEventsListTab(locationTab);
+  }
+
+  if (locationSearch != null) {
+    return "active";
+  }
+
+  return parseEventsListTab(initialTab);
 }
 
 export function eventsListViewFromTab(tab: EventsListTab): EventsListView {
