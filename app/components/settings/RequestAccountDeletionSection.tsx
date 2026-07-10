@@ -30,7 +30,7 @@ export default function RequestAccountDeletionSection({
       {mailtoHref ? (
         <a
           href={mailtoHref}
-          className="mt-4 inline-flex min-h-11 items-center rounded-xl border border-ftc-border-strong bg-ftc-bg-elevated/60 px-4 py-3 text-sm font-semibold text-ftc-text transition hover:border-ftc-border-strong hover:bg-ftc-bg-elevated"
+          className="mt-4 inline-flex min-h-11 items-center rounded-xl border border-ftc-border-subtle bg-ftc-surface px-4 py-3 text-sm font-semibold text-ftc-text-secondary transition hover:border-ftc-border-strong hover:text-ftc-text"
         >
           Request account deletion
         </a>

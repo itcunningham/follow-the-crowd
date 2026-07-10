@@ -124,7 +124,7 @@ export default function SettingsPage() {
                     type="button"
                     onClick={() => void handleResetPassword()}
                     disabled={!accountEmail || resettingPassword}
-                    className="rounded-xl border border-ftc-border-strong bg-ftc-bg-elevated/60 px-4 py-3 text-sm font-semibold text-ftc-text transition hover:border-ftc-border-strong hover:bg-ftc-bg-elevated disabled:cursor-not-allowed disabled:opacity-50"
+                    className="rounded-xl border border-ftc-border-subtle bg-ftc-surface px-4 py-3 text-sm font-semibold text-ftc-text-secondary transition hover:border-ftc-border-strong hover:text-ftc-text disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {resettingPassword ? "Sending..." : "Reset password"}
                   </button>
