@@ -405,14 +405,7 @@ export default function EventsPageClient({ initialTab }: EventsPageClientProps) 
 
         <header className="ftc-page-header px-4 py-4 sm:px-6 md:pt-4">
           <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <h1 className="text-xl font-semibold text-ftc-text">Events</h1>
-              <p className="mt-1 text-sm text-ftc-text-muted">
-                {isPlanner
-                  ? "Manage your upcoming events, lineup and bookings."
-                  : "Events you have been invited to book."}
-              </p>
-            </div>
+            <h1 className="text-xl font-semibold text-ftc-text">Events</h1>
             {isPlanner && !createOpen ? (
               <button
                 type="button"
