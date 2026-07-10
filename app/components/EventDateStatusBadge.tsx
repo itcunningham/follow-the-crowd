@@ -8,9 +8,11 @@ import {
 
 export default function EventDateStatusBadge({
   eventDate,
+  setTime = "",
   status,
 }: {
   eventDate: string;
+  setTime?: string;
   status?: EventStatus;
 }) {
   if (status && isEventCancelled({ status })) {
@@ -23,7 +25,7 @@ export default function EventDateStatusBadge({
     );
   }
 
-  const label = getEventDateDisplayLabel(eventDate);
+  const label = getEventDateDisplayLabel(eventDate, setTime);
 
   if (!label) {
     return null;

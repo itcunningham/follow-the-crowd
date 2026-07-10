@@ -175,7 +175,7 @@ function mapEventToCalendarItem(event: Event): CalendarItem | null {
     };
   }
 
-  const displayLabel = getEventDateDisplayLabel(event.event_date) ?? "Unscheduled";
+  const displayLabel = getEventDateDisplayLabel(event.event_date, event.set_time) ?? "Unscheduled";
 
   return {
     id: `event-${event.id}`,

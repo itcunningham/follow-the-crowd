@@ -1,5 +1,6 @@
 import {
   getEventDateValidationError,
+  isPlannerEventPast,
   resolveEventDateKey,
 } from "@/lib/bookingDateTime";
 import type { BookingPlan } from "@/lib/bookingPlans";
@@ -129,6 +130,7 @@ export function eventInputFromBookingPlan(plan: BookingPlan): EventInput {
 
 export function getEventDateDisplayLabel(
   eventDate: string,
+  setTime = "",
   referenceDate: Date = new Date(),
 ): EventDateDisplayLabel | null {
   const trimmed = eventDate.trim();
@@ -143,21 +145,21 @@ export function getEventDateDisplayLabel(
     return "Unscheduled";
   }
 
+  if (isPlannerEventPast(trimmed, setTime, referenceDate)) {
+    return "Past";
+  }
+
   const todayKey = formatLocalDateKey(referenceDate);
 
   if (dateKey > todayKey) {
     return "Upcoming";
   }
 
-  if (dateKey === todayKey) {
-    return "Today";
-  }
-
-  return "Past";
+  return "Today";
 }
 
-export function formatEventDateDisplayLabel(eventDate: string): string | null {
-  return getEventDateDisplayLabel(eventDate);
+export function formatEventDateDisplayLabel(eventDate: string, setTime = ""): string | null {
+  return getEventDateDisplayLabel(eventDate, setTime);
 }
 
 export function getEventDateDisplayBadgeClass(label: EventDateDisplayLabel): string {
@@ -178,6 +180,34 @@ export function getEventDateDisplayBadgeClass(label: EventDateDisplayLabel): str
 
 export function isEventCancelled(event: Pick<Event, "status">): boolean {
   return event.status === "cancelled";
+}
+
+export function isPlannerEventActive(
+  event: Pick<Event, "event_date" | "set_time" | "status">,
+  referenceDate: Date = new Date(),
+): boolean {
+  if (isEventCancelled(event)) {
+    return false;
+  }
+
+  return !isPlannerEventPast(event.event_date, event.set_time, referenceDate);
+}
+
+export function isPlannerEventInHistoryTab(
+  event: Pick<Event, "event_date" | "set_time" | "status" | "history_hidden_at">,
+  referenceDate: Date = new Date(),
+): boolean {
+  if (isEventCancelled(event)) {
+    return !event.history_hidden_at;
+  }
+
+  return isPlannerEventPast(event.event_date, event.set_time, referenceDate);
+}
+
+export function filterPlannerHistoryTabEvents<
+  T extends Pick<Event, "event_date" | "set_time" | "status" | "history_hidden_at">,
+>(events: T[]): T[] {
+  return events.filter((event) => isPlannerEventInHistoryTab(event));
 }
 
 export function isEventVisibleInPlannerHistory(

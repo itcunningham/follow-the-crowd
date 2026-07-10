@@ -1160,7 +1160,13 @@ export default function EventDetailPage() {
           eventName={event.name}
           coverImageUrl={event.cover_image_url}
           fallbackColour={event.fallback_colour}
-          statusBadge={<EventDateStatusBadge eventDate={event.event_date} status={event.status} />}
+          statusBadge={
+            <EventDateStatusBadge
+              eventDate={event.event_date}
+              setTime={event.set_time}
+              status={event.status}
+            />
+          }
         />
 
         <div className={`px-4 sm:px-6 ${showBottomBar ? "pb-28" : "pb-6"} pt-5`}>

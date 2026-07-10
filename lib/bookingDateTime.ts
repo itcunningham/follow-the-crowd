@@ -591,6 +591,59 @@ export function resolveEventStartDateTime(eventDate: string, setTime: string): D
   return new Date(year, month - 1, day, 0, 0, 0, 0);
 }
 
+function minutesFromTime24(time24: string): number {
+  const [hour, minute] = time24.split(":").map(Number);
+  return hour * 60 + minute;
+}
+
+export function resolveEventEndDateTime(eventDate: string, setTime: string): Date | null {
+  const dateKey = resolveEventDateKey(eventDate);
+
+  if (!dateKey) {
+    return null;
+  }
+
+  const [year, month, day] = dateKey.split("-").map(Number);
+  const parsedTime = parseSetTimeRange(setTime);
+
+  if (parsedTime.finish) {
+    const [endHour, endMinute] = parsedTime.finish.time24.split(":").map(Number);
+    const endDay =
+      parsedTime.start &&
+      minutesFromTime24(parsedTime.finish.time24) <= minutesFromTime24(parsedTime.start.time24)
+        ? day + 1
+        : day;
+
+    return new Date(year, month - 1, endDay, endHour, endMinute, 0, 0);
+  }
+
+  if (parsedTime.start) {
+    return new Date(year, month - 1, day, 23, 59, 59, 999);
+  }
+
+  return new Date(year, month - 1, day, 23, 59, 59, 999);
+}
+
+export function isPlannerEventPast(
+  eventDate: string,
+  setTime: string,
+  referenceDate: Date = new Date(),
+): boolean {
+  const endDateTime = resolveEventEndDateTime(eventDate, setTime);
+
+  if (!endDateTime) {
+    const dateKey = resolveEventDateKey(eventDate);
+
+    if (!dateKey) {
+      return false;
+    }
+
+    return dateKey < dateKeyFromLocalDate(referenceDate);
+  }
+
+  return endDateTime.getTime() < referenceDate.getTime();
+}
+
 export function getEventDateValidationError(eventDate: string, setTime: string): string | null {
   const trimmedDate = eventDate.trim();
 

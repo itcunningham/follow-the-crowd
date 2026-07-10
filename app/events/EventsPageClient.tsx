@@ -41,10 +41,12 @@ import {
   attachLineupStats,
   createEvent,
   eventInputFromBookingPlan,
+  filterPlannerHistoryTabEvents,
   filterVisiblePlannerHistoryEvents,
   getEventsLoadErrorMessage,
   hideEventsFromHistory,
   isEventCancelled,
+  isPlannerEventActive,
   listDjInvitedEvents,
   listOwnedEvents,
   updateEventCoverImageUrl,
@@ -187,10 +189,6 @@ function EventsPageClientView({ initialTab }: EventsPageClientProps) {
     [searchParams, initialTab, locationRevision],
   );
   const isHistoryTab = listTab === "history";
-  const upcomingEvents = useMemo(
-    () => events.filter((event) => !isEventCancelled(event)),
-    [events],
-  );
   const createFormDateValidationError = useMemo(() => {
     if (!createOpen || createStep !== "form") {
       return null;
@@ -202,16 +200,27 @@ function EventsPageClientView({ initialTab }: EventsPageClientProps) {
   const resolvedRole = role ?? guardProfile?.role ?? null;
   const isPlanner = canManageEvents(resolvedRole);
   const roleReady = resolvedRole !== null;
+  const upcomingEvents = useMemo(
+    () =>
+      isPlanner
+        ? events.filter((event) => isPlannerEventActive(event))
+        : events.filter((event) => !isEventCancelled(event)),
+    [events, isPlanner],
+  );
   const historyEvents = useMemo(
     () =>
       isPlanner
-        ? filterVisiblePlannerHistoryEvents(events)
+        ? filterPlannerHistoryTabEvents(events)
         : events.filter((event) => isEventCancelled(event)),
+    [events, isPlanner],
+  );
+  const removableHistoryEvents = useMemo(
+    () => (isPlanner ? filterVisiblePlannerHistoryEvents(events) : []),
     [events, isPlanner],
   );
   const filteredEvents = isHistoryTab ? historyEvents : upcomingEvents;
   const historyBulkManage = useHistoryBulkManage(
-    isPlanner && isHistoryTab && eventsListReady ? historyEvents : [],
+    isPlanner && isHistoryTab && eventsListReady ? removableHistoryEvents : [],
   );
 
   const visibleFilteredEvents = useMemo(
@@ -727,7 +736,7 @@ function EventsPageClientView({ initialTab }: EventsPageClientProps) {
                 <PlannerEmptyState
                   title={
                     isHistoryTab
-                      ? "No cancelled events."
+                      ? "No past or cancelled events."
                       : isPlanner
                         ? "No events yet. Create your first event."
                         : "No event invitations yet."
@@ -749,7 +758,7 @@ function EventsPageClientView({ initialTab }: EventsPageClientProps) {
               ) : filteredEvents.length === 0 && !historyBulkManage.removing ? (
                 <PlannerEmptyState
                   title={
-                    isHistoryTab ? "No cancelled events." : "No active events."
+                    isHistoryTab ? "No past or cancelled events." : "No active events."
                   }
                 />
               ) : visibleFilteredEvents.length > 0 ? (
@@ -788,7 +797,11 @@ function EventsPageClientView({ initialTab }: EventsPageClientProps) {
                               <h3 className="text-lg font-semibold text-ftc-text-secondary">
                                 {event.name}
                               </h3>
-                              <EventDateStatusBadge eventDate={event.event_date} status={event.status} />
+                              <EventDateStatusBadge
+                                eventDate={event.event_date}
+                                setTime={event.set_time}
+                                status={event.status}
+                              />
                             </div>
                             <p className="mt-2 text-sm text-ftc-text-muted">
                               {event.venue} · {event.event_date}
@@ -830,7 +843,11 @@ function EventsPageClientView({ initialTab }: EventsPageClientProps) {
                           >
                             {event.name}
                           </h3>
-                          <EventDateStatusBadge eventDate={event.event_date} status={event.status} />
+                          <EventDateStatusBadge
+                            eventDate={event.event_date}
+                            setTime={event.set_time}
+                            status={event.status}
+                          />
                         </div>
                         <p className={`mt-2 text-sm ${cancelled ? "text-ftc-text-muted" : "text-ftc-text-secondary"}`}>
                           {event.venue} · {event.event_date}
