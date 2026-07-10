@@ -532,13 +532,7 @@ export function BookingPlansPageLoadingShell() {
     >
       <AppNavigation />
       <header className="ftc-page-header px-4 py-4 sm:px-6 md:pt-4">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <SkeletonBlock className="h-7 w-36" />
-            <SkeletonBlock className="mt-2 h-4 w-64 max-w-full" />
-          </div>
-          <SkeletonBlock className="h-10 w-40 shrink-0 rounded-xl" />
-        </div>
+        <SkeletonBlock className="h-7 w-36" />
         <PlannerEventsSubNavSkeleton />
       </header>
       <div className="px-4 py-4 sm:px-6">
