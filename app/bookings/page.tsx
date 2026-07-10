@@ -22,6 +22,7 @@ import {
   HistoryRemoveConfirmDialog,
   HistorySelectionCheckbox,
   HistorySelectionToolbar,
+  filterOutRemovingHistoryItems,
   useHistoryBulkManage,
 } from "@/app/components/history/HistoryBulkManage";
 import BookingStatusBadge from "@/app/components/booking/BookingStatusBadge";
@@ -410,6 +411,15 @@ function BookingsPageContent() {
 
   const gigsHistoryBulkManage = useHistoryBulkManage(
     showGigsWorkspace && djGigsView === "history" && gigsListReady ? djHistoryBookings : [],
+  );
+
+  const visibleReceivedBookings = useMemo(
+    () =>
+      filterOutRemovingHistoryItems(
+        filteredReceivedBookings,
+        gigsHistoryBulkManage.removingIds,
+      ),
+    [filteredReceivedBookings, gigsHistoryBulkManage.removingIds],
   );
 
   useEffect(() => {
@@ -1406,13 +1416,13 @@ function BookingsPageContent() {
               <div className="rounded-2xl border border-dashed border-ftc-border-subtle bg-ftc-surface/30 px-6 py-12 text-center">
                 <p className="text-base font-medium text-ftc-text-secondary">No gigs yet.</p>
               </div>
-            ) : filteredReceivedBookings.length === 0 ? (
+            ) : filteredReceivedBookings.length === 0 && !gigsHistoryBulkManage.removing ? (
               <p className="rounded-xl border border-ftc-border-subtle bg-ftc-surface/40 px-4 py-8 text-center text-sm text-ftc-text-muted">
                 {getGigsEmptyMessage(djGigsView)}
               </p>
-            ) : (
+            ) : visibleReceivedBookings.length > 0 ? (
               <ul className="ftc-gigs-list space-y-3">
-                {filteredReceivedBookings.map((booking) =>
+                {visibleReceivedBookings.map((booking) =>
                   djGigsView === "history" ? (
                     <BookingHistoryCard
                       key={booking.id}
@@ -1434,7 +1444,7 @@ function BookingsPageContent() {
                   ),
                 )}
               </ul>
-            )
+            ) : null
           ) : null}
         </div>
       </div>

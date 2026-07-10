@@ -6,6 +6,25 @@ import BookingSheetDialog, {
   BookingSheetSecondaryButton,
 } from "@/app/components/booking/BookingSheetDialog";
 
+export function filterOutRemovingHistoryItems<T extends { id: string }>(
+  items: T[],
+  removingIds: ReadonlySet<string>,
+): T[] {
+  if (removingIds.size === 0) {
+    return items;
+  }
+
+  return items.filter((item) => !removingIds.has(item.id));
+}
+
+function waitForNextFrame(): Promise<void> {
+  return new Promise((resolve) => {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => resolve());
+    });
+  });
+}
+
 function ManageHistoryIcon({ className = "h-4 w-4" }: { className?: string }) {
   return (
     <svg
@@ -32,6 +51,8 @@ export function useHistoryBulkManage<T extends { id: string }>(items: T[]) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmCount, setConfirmCount] = useState(0);
+  const [pendingRemoveIds, setPendingRemoveIds] = useState<string[]>([]);
+  const [removingIds, setRemovingIds] = useState<Set<string>>(() => new Set());
   const [removing, setRemoving] = useState(false);
 
   const itemIds = useMemo(() => items.map((item) => item.id), [items]);
@@ -43,6 +64,8 @@ export function useHistoryBulkManage<T extends { id: string }>(items: T[]) {
     setSelectedIds(new Set());
     setConfirmOpen(false);
     setConfirmCount(0);
+    setPendingRemoveIds([]);
+    setRemovingIds(new Set());
   }
 
   function cancelSelectionMode() {
@@ -50,6 +73,8 @@ export function useHistoryBulkManage<T extends { id: string }>(items: T[]) {
     setSelectedIds(new Set());
     setConfirmOpen(false);
     setConfirmCount(0);
+    setPendingRemoveIds([]);
+    setRemovingIds(new Set());
   }
 
   function toggleItem(id: string) {
@@ -72,7 +97,9 @@ export function useHistoryBulkManage<T extends { id: string }>(items: T[]) {
 
   function openConfirm() {
     if (selectedCount > 0) {
-      setConfirmCount(selectedCount);
+      const ids = [...selectedIds];
+      setConfirmCount(ids.length);
+      setPendingRemoveIds(ids);
       setConfirmOpen(true);
     }
   }
@@ -81,11 +108,12 @@ export function useHistoryBulkManage<T extends { id: string }>(items: T[]) {
     if (!removing) {
       setConfirmOpen(false);
       setConfirmCount(0);
+      setPendingRemoveIds([]);
     }
   }
 
   async function confirmRemove(onRemove: (ids: string[]) => Promise<void>) {
-    const ids = [...selectedIds];
+    const ids = pendingRemoveIds.length > 0 ? [...pendingRemoveIds] : [...selectedIds];
 
     if (ids.length === 0) {
       return;
@@ -93,14 +121,20 @@ export function useHistoryBulkManage<T extends { id: string }>(items: T[]) {
 
     setRemoving(true);
     setSelectedIds(new Set());
+    setRemovingIds(new Set(ids));
+    setSelectionMode(false);
 
     try {
       await onRemove(ids);
-      setSelectionMode(false);
+      setPendingRemoveIds([]);
+      await waitForNextFrame();
       setConfirmOpen(false);
       setConfirmCount(0);
-      setSelectedIds(new Set());
+      await waitForNextFrame();
+      setRemovingIds(new Set());
     } catch {
+      setRemovingIds(new Set());
+      setSelectionMode(true);
       setSelectedIds(new Set(ids));
     } finally {
       setRemoving(false);
@@ -115,6 +149,7 @@ export function useHistoryBulkManage<T extends { id: string }>(items: T[]) {
     allSelected,
     confirmOpen,
     removing,
+    removingIds,
     enterSelectionMode,
     cancelSelectionMode,
     toggleItem,

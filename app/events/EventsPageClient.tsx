@@ -32,6 +32,7 @@ import {
   HistoryRemoveConfirmDialog,
   HistorySelectionCheckbox,
   HistorySelectionToolbar,
+  filterOutRemovingHistoryItems,
   useHistoryBulkManage,
 } from "@/app/components/history/HistoryBulkManage";
 import type { EventSelectableFallbackColourKey } from "@/lib/events/eventFallbackColour";
@@ -44,7 +45,6 @@ import {
   getEventsLoadErrorMessage,
   hideEventsFromHistory,
   isEventCancelled,
-  isEventHistoryHideAvailable,
   listDjInvitedEvents,
   listOwnedEvents,
   updateEventCoverImageUrl,
@@ -211,9 +211,12 @@ function EventsPageClientView({ initialTab }: EventsPageClientProps) {
   );
   const filteredEvents = isHistoryTab ? historyEvents : upcomingEvents;
   const historyBulkManage = useHistoryBulkManage(
-    isPlanner && isHistoryTab && eventsListReady && isEventHistoryHideAvailable()
-      ? historyEvents
-      : [],
+    isPlanner && isHistoryTab && eventsListReady ? historyEvents : [],
+  );
+
+  const visibleFilteredEvents = useMemo(
+    () => filterOutRemovingHistoryItems(filteredEvents, historyBulkManage.removingIds),
+    [filteredEvents, historyBulkManage.removingIds],
   );
 
   const loadEvents = useCallback(async () => {
@@ -680,7 +683,6 @@ function EventsPageClientView({ initialTab }: EventsPageClientProps) {
               {isPlanner &&
               isHistoryTab &&
               eventsListReady &&
-              isEventHistoryHideAvailable() &&
               historyBulkManage.showManageControl &&
               !historyBulkManage.selectionMode ? (
                 <HistoryManageButton onClick={historyBulkManage.enterSelectionMode} />
@@ -744,15 +746,15 @@ function EventsPageClientView({ initialTab }: EventsPageClientProps) {
                     ) : undefined
                   }
                 />
-              ) : filteredEvents.length === 0 ? (
+              ) : filteredEvents.length === 0 && !historyBulkManage.removing ? (
                 <PlannerEmptyState
                   title={
                     isHistoryTab ? "No cancelled events." : "No active events."
                   }
                 />
-              ) : (
+              ) : visibleFilteredEvents.length > 0 ? (
             <ul className="space-y-3">
-              {filteredEvents.map((event) => {
+              {visibleFilteredEvents.map((event) => {
                 const cancelled = isEventCancelled(event);
                 const eventHref = buildEventDetailHref(event.id, listTab);
                 const isSelected = historyBulkManage.selectedIds.has(event.id);
@@ -867,7 +869,7 @@ function EventsPageClientView({ initialTab }: EventsPageClientProps) {
                 );
               })}
             </ul>
-              )}
+              ) : null}
             </>
           )}
         </div>
