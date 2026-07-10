@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import AppNavigation, { MOBILE_NAV_OFFSET_CLASS } from "@/app/components/AppNavigation";
@@ -8,13 +7,14 @@ import BookingRequestCard, {
   buildUpdatedBookingMessage,
 } from "@/app/components/BookingRequestCard";
 import DmBookingUpdateRow from "@/app/components/dm/DmBookingUpdateRow";
+import DmConversationHeader from "@/app/components/dm/DmConversationHeader";
 import ChatNewMessagesPill from "@/app/components/dm/ChatNewMessagesPill";
 import DmConversationDetailsPanel from "@/app/components/dm/DmConversationDetailsPanel";
 import DmComposer from "@/app/components/dm/DmComposer";
 import DmReportFormModal from "@/app/components/dm/DmReportFormModal";
 import DmTextMessageBubble from "@/app/components/dm/DmTextMessageBubble";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
-import { ChatHeaderSkeleton, ChatMessagesSkeleton } from "@/app/components/skeleton/Skeleton";
+import { ChatMessagesSkeleton } from "@/app/components/skeleton/Skeleton";
 import ProfileAvatar from "@/app/components/ProfileAvatar";
 import {
   buildDmCancelledBookingMatchContext,
@@ -1336,64 +1336,15 @@ export default function DmChatPage() {
         className={`mx-auto flex min-h-0 w-full max-w-2xl flex-1 flex-col overflow-hidden ${MOBILE_NAV_OFFSET_CLASS}`}
       >
       <header className="z-10 shrink-0 border-b border-ftc-border-subtle bg-ftc-bg/95 px-3 py-2.5 backdrop-blur-md sm:px-4">
-        {loading ? (
-          <ChatHeaderSkeleton />
-        ) : (
-        <div className="flex items-center gap-2">
-          <Link
-            href={backHref}
-            aria-label="Back to inbox"
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-ftc-border-subtle bg-ftc-surface text-ftc-text-secondary transition hover:border-ftc-border-strong hover:text-ftc-text"
-          >
-            <svg
-              aria-hidden="true"
-              viewBox="0 0 24 24"
-              className="h-5 w-5"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M15 18l-6-6 6-6" />
-            </svg>
-          </Link>
-
-          <div className="flex min-w-0 flex-1 items-center gap-3">
-            <ProfileAvatar
-              name={otherUserLabel}
-              avatarUrl={otherUserProfile?.avatar_url}
-              size="md"
-              className="h-10 w-10 text-xs"
-            />
-            <div className="min-w-0 flex-1">
-              <h1 className="truncate text-base font-semibold text-ftc-text">
-                {conversationTitle}
-              </h1>
-            </div>
-          </div>
-
-          {otherUserId ? (
-            <button
-              type="button"
-              aria-label={`Open conversation details for ${conversationTitle}`}
-              onClick={() => setDetailsOpen(true)}
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-ftc-border-subtle bg-ftc-surface text-ftc-text-secondary transition hover:border-ftc-border-strong hover:text-ftc-text"
-            >
-              <svg
-                aria-hidden="true"
-                viewBox="0 0 24 24"
-                className="h-5 w-5"
-                fill="currentColor"
-              >
-                <circle cx="5" cy="12" r="1.5" />
-                <circle cx="12" cy="12" r="1.5" />
-                <circle cx="19" cy="12" r="1.5" />
-              </svg>
-            </button>
-          ) : null}
-        </div>
-        )}
+        <DmConversationHeader
+          backHref={backHref}
+          loading={loading}
+          conversationTitle={conversationTitle}
+          avatarName={otherUserLabel}
+          avatarUrl={otherUserProfile?.avatar_url}
+          otherUserId={otherUserId}
+          onOpenDetails={() => setDetailsOpen(true)}
+        />
       </header>
 
       {otherUserId ? (
@@ -1624,6 +1575,7 @@ export default function DmChatPage() {
                     onExpandedChange={(expanded) =>
                       setBookingExpanded(bookingExpansionKey, expanded)
                     }
+                    useCompactDmCollapseHeader={!actionRequired && isBookingExpanded}
                     eventHasAcceptedBooking={
                       resolvedBooking.event_id
                         ? eventIdsWithAcceptedBookings.has(resolvedBooking.event_id)

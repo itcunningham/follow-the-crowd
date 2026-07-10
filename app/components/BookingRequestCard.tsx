@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import BookingDetailGrid, { BookingDetailItem } from "@/app/components/booking/BookingDetailGrid";
 import BookingRateProposalPanel, {
@@ -59,6 +59,7 @@ export default function BookingRequestCard({
   collapsible = false,
   expanded = true,
   onExpandedChange,
+  useCompactDmCollapseHeader = false,
   eventHasAcceptedBooking = false,
   crewChatUnlocked = false,
   eventCancelled = false,
@@ -86,6 +87,7 @@ export default function BookingRequestCard({
   collapsible?: boolean;
   expanded?: boolean;
   onExpandedChange?: (expanded: boolean) => void;
+  useCompactDmCollapseHeader?: boolean;
   eventHasAcceptedBooking?: boolean;
   crewChatUnlocked?: boolean;
   eventCancelled?: boolean;
@@ -211,6 +213,42 @@ export default function BookingRequestCard({
     );
   }
 
+  function renderCompactDmCollapseHeader(
+    statusBadge: ReactNode,
+    options?: { danger?: boolean },
+  ) {
+    return (
+      <button
+        type="button"
+        onClick={handleCollapse}
+        aria-expanded={true}
+        aria-label={`${collapsedTitle}, hide booking details`}
+        className={`-mx-1 -mt-1 mb-3 w-[calc(100%+0.5rem)] min-h-[44px] rounded-xl px-1 py-2 text-left transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ftc-primary ${
+          options?.danger
+            ? "hover:bg-[var(--ftc-color-danger)]/10"
+            : "hover:bg-ftc-bg-elevated/60"
+        }`}
+      >
+        <div className="flex items-start justify-between gap-2 px-1">
+          <p className="min-w-0 flex-1 break-words text-sm font-semibold leading-snug text-ftc-text">
+            {collapsedTitle}
+          </p>
+          {statusBadge}
+        </div>
+        <div
+          className={`mt-1.5 flex items-center justify-between gap-2 border-t px-1 pt-1.5 ${
+            options?.danger ? "border-[var(--ftc-color-danger)]/20" : "border-ftc-border-subtle"
+          }`}
+        >
+          <span className="text-xs font-semibold uppercase tracking-wide text-ftc-text-secondary">
+            Hide details
+          </span>
+          {renderChevronUp()}
+        </div>
+      </button>
+    );
+  }
+
   if (collapsible && !expanded && showAsCancelled) {
     return (
       <button
@@ -316,7 +354,14 @@ export default function BookingRequestCard({
   if (showAsCancelled) {
     return (
       <div className={`w-full max-w-sm rounded-2xl p-4 ${cancelledCardClass}`}>
-        {collapsible ? (
+        {collapsible && expanded && useCompactDmCollapseHeader ? (
+          renderCompactDmCollapseHeader(
+            renderCancelledStatusBadge(
+              eventCancelledLabel ?? formatBookingStatusLabel("cancelled"),
+            ),
+            { danger: true },
+          )
+        ) : collapsible ? (
           <button
             type="button"
             onClick={handleCollapse}
@@ -329,24 +374,26 @@ export default function BookingRequestCard({
           </button>
         ) : null}
 
-        <div className="flex min-w-0 items-start gap-3">
-          <EventCoverImageContextThumb
-            eventName={booking.event_name}
-            coverImageUrl={coverImageUrl}
-            fallbackColour={fallbackColour}
-          />
-          <div className="min-w-0 flex-1">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted">
-              Booking request
-            </p>
-            <h3 className="mt-1 break-words text-base font-semibold leading-snug text-ftc-text">
-              {booking.event_name}
-            </h3>
+        {!(collapsible && expanded && useCompactDmCollapseHeader) ? (
+          <div className="flex min-w-0 items-start gap-3">
+            <EventCoverImageContextThumb
+              eventName={booking.event_name}
+              coverImageUrl={coverImageUrl}
+              fallbackColour={fallbackColour}
+            />
+            <div className="min-w-0 flex-1">
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted">
+                Booking request
+              </p>
+              <h3 className="mt-1 break-words text-base font-semibold leading-snug text-ftc-text">
+                {booking.event_name}
+              </h3>
+            </div>
+            {renderCancelledStatusBadge(
+              eventCancelledLabel ?? formatBookingStatusLabel("cancelled"),
+            )}
           </div>
-          {renderCancelledStatusBadge(
-            eventCancelledLabel ?? formatBookingStatusLabel("cancelled"),
-          )}
-        </div>
+        ) : null}
 
         {eventCancelledLabel ? (
           <p className="mt-3 break-words text-sm text-[var(--ftc-color-danger)]/90">
@@ -371,7 +418,9 @@ export default function BookingRequestCard({
   return (
     <>
       <div className="w-full max-w-sm rounded-2xl border border-ftc-border-subtle bg-ftc-surface p-4">
-        {collapsible ? (
+        {collapsible && expanded && useCompactDmCollapseHeader ? (
+          renderCompactDmCollapseHeader(<BookingStatusBadge status={booking.status} />)
+        ) : collapsible ? (
           <button
             type="button"
             onClick={handleCollapse}
@@ -384,65 +433,67 @@ export default function BookingRequestCard({
           </button>
         ) : null}
 
-        {collapsible ? (
-          <div className="flex min-w-0 items-start gap-3">
-            <EventCoverImageContextThumb
-              eventName={booking.event_name}
-              coverImageUrl={coverImageUrl}
-              fallbackColour={fallbackColour}
-            />
-            <div className="min-w-0 flex-1">
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted">
-                Booking request
-              </p>
-              <h3 className="mt-1 break-words text-base font-semibold leading-snug text-ftc-text">
-                {booking.event_name}
-              </h3>
+        {!(collapsible && expanded && useCompactDmCollapseHeader) ? (
+          collapsible ? (
+            <div className="flex min-w-0 items-start gap-3">
+              <EventCoverImageContextThumb
+                eventName={booking.event_name}
+                coverImageUrl={coverImageUrl}
+                fallbackColour={fallbackColour}
+              />
+              <div className="min-w-0 flex-1">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted">
+                  Booking request
+                </p>
+                <h3 className="mt-1 break-words text-base font-semibold leading-snug text-ftc-text">
+                  {booking.event_name}
+                </h3>
+              </div>
+              <div className="flex shrink-0 flex-col items-end gap-1">
+                <BookingStatusBadge status={booking.status} />
+                {showOpenOfferLabel ? (
+                  <span className="inline-flex rounded-full border border-ftc-border-subtle bg-ftc-bg-elevated px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-ftc-primary">
+                    Ask for rate
+                  </span>
+                ) : null}
+                {pendingProposal ? (
+                  <span className="inline-flex rounded-full border border-ftc-border-subtle bg-ftc-bg-elevated px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-ftc-primary">
+                    Rate proposed
+                  </span>
+                ) : null}
+              </div>
             </div>
-            <div className="flex shrink-0 flex-col items-end gap-1">
-              <BookingStatusBadge status={booking.status} />
-              {showOpenOfferLabel ? (
-                <span className="inline-flex rounded-full border border-ftc-border-subtle bg-ftc-bg-elevated px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-ftc-primary">
-                  Ask for rate
-                </span>
-              ) : null}
-              {pendingProposal ? (
-                <span className="inline-flex rounded-full border border-ftc-border-subtle bg-ftc-bg-elevated px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-ftc-primary">
-                  Rate proposed
-                </span>
-              ) : null}
+          ) : (
+            <div className="flex min-w-0 items-start gap-3">
+              <EventCoverImageContextThumb
+                eventName={booking.event_name}
+                coverImageUrl={coverImageUrl}
+                fallbackColour={fallbackColour}
+              />
+              <div className="min-w-0 flex-1">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted">
+                  Booking request
+                </p>
+                <h3 className="mt-1 break-words text-base font-semibold leading-snug text-ftc-text">
+                  {booking.event_name}
+                </h3>
+              </div>
+              <div className="flex shrink-0 flex-col items-end gap-1">
+                <BookingStatusBadge status={booking.status} />
+                {showOpenOfferLabel ? (
+                  <span className="inline-flex rounded-full border border-ftc-border-subtle bg-ftc-bg-elevated px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-ftc-primary">
+                    Ask for rate
+                  </span>
+                ) : null}
+                {pendingProposal ? (
+                  <span className="inline-flex rounded-full border border-ftc-border-subtle bg-ftc-bg-elevated px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-ftc-primary">
+                    Rate proposed
+                  </span>
+                ) : null}
+              </div>
             </div>
-          </div>
-        ) : (
-          <div className="flex min-w-0 items-start gap-3">
-            <EventCoverImageContextThumb
-              eventName={booking.event_name}
-              coverImageUrl={coverImageUrl}
-              fallbackColour={fallbackColour}
-            />
-            <div className="min-w-0 flex-1">
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted">
-                Booking request
-              </p>
-              <h3 className="mt-1 break-words text-base font-semibold leading-snug text-ftc-text">
-                {booking.event_name}
-              </h3>
-            </div>
-            <div className="flex shrink-0 flex-col items-end gap-1">
-              <BookingStatusBadge status={booking.status} />
-              {showOpenOfferLabel ? (
-                <span className="inline-flex rounded-full border border-ftc-border-subtle bg-ftc-bg-elevated px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-ftc-primary">
-                  Ask for rate
-                </span>
-              ) : null}
-              {pendingProposal ? (
-                <span className="inline-flex rounded-full border border-ftc-border-subtle bg-ftc-bg-elevated px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-ftc-primary">
-                  Rate proposed
-                </span>
-              ) : null}
-            </div>
-          </div>
-        )}
+          )
+        ) : null}
 
         <div className="mt-4">
           <BookingDetailGrid>

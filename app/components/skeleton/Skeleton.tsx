@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import AppNavigation, { MOBILE_NAV_OFFSET_CLASS } from "@/app/components/AppNavigation";
+import DmConversationHeader from "@/app/components/dm/DmConversationHeader";
 import MessagesInboxLayout from "@/app/components/dm/MessagesInboxLayout";
 import ProfilePageHeader from "@/app/components/profile/ProfilePageHeader";
 import type { UserRole } from "@/lib/user/currentUser";
@@ -610,7 +611,7 @@ export function MessagesInboxLoadingShell({
   );
 }
 
-export function ChatPageLoadingShell() {
+export function ChatPageLoadingShell({ variant = "dm" }: { variant?: "dm" | "group" }) {
   return (
     <div className="fixed inset-0 flex flex-col overflow-hidden bg-ftc-bg font-sans text-ftc-text">
       <AppNavigation />
@@ -618,7 +619,17 @@ export function ChatPageLoadingShell() {
         className={`mx-auto flex min-h-0 w-full max-w-2xl flex-1 flex-col overflow-hidden ${MOBILE_NAV_OFFSET_CLASS}`}
       >
         <header className="z-10 shrink-0 border-b border-ftc-border-subtle bg-ftc-bg/95 px-3 py-2.5 backdrop-blur-md sm:px-4">
-          <ChatHeaderSkeleton />
+          {variant === "dm" ? (
+            <DmConversationHeader
+              backHref="/dm"
+              loading
+              conversationTitle=""
+              avatarName=""
+              otherUserId={null}
+            />
+          ) : (
+            <GroupChatHeaderSkeleton />
+          )}
         </header>
         <div className="flex min-h-0 flex-1 flex-col px-3 py-4 sm:px-4">
           <ChatMessagesSkeleton />
@@ -749,7 +760,7 @@ export function AppLoadingShell({
   }
 
   if (/^\/events\/[^/]+\/chat\/?$/.test(pathname)) {
-    return <ChatPageLoadingShell />;
+    return <ChatPageLoadingShell variant="group" />;
   }
 
   if (pathname.startsWith("/events/")) {
@@ -778,7 +789,7 @@ export function AppLoadingShell({
   }
 
   if (pathname.startsWith("/dm/")) {
-    return <ChatPageLoadingShell />;
+    return <ChatPageLoadingShell variant="dm" />;
   }
 
   if (pathname === "/discover") {
@@ -863,17 +874,43 @@ function GroupInboxRowSkeleton() {
 }
 
 export function ChatHeaderSkeleton() {
+  return <GroupChatHeaderSkeleton />;
+}
+
+function ChatBackLink({ href, label }: { href: string; label: string }) {
   return (
-    <div aria-hidden="true" className="flex items-center gap-2">
-      <SkeletonBlock className="h-10 w-10 shrink-0 rounded-xl" />
+    <a
+      href={href}
+      aria-label={label}
+      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-ftc-border-subtle bg-ftc-surface text-ftc-text-secondary"
+    >
+      <svg
+        aria-hidden="true"
+        viewBox="0 0 24 24"
+        className="h-5 w-5"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M15 18l-6-6 6-6" />
+      </svg>
+    </a>
+  );
+}
+
+function GroupChatHeaderSkeleton() {
+  return (
+    <div className="flex items-center gap-2">
+      <ChatBackLink href="/dm" label="Back to messages" />
       <div className="flex min-w-0 flex-1 items-center gap-3">
-        <SkeletonBlock className="h-10 w-10 shrink-0 rounded-full" />
+        <SkeletonBlock className="h-10 w-10 shrink-0 rounded-xl" />
         <div className="min-w-0 flex-1 space-y-2">
           <SkeletonBlock className="h-4 w-32 max-w-[40vw]" />
-          <SkeletonBlock className="h-3 w-24 max-w-[30vw]" />
+          <SkeletonBlock className="h-3 w-20 max-w-[30vw]" />
         </div>
       </div>
-      <SkeletonBlock className="h-10 w-10 shrink-0 rounded-xl" />
     </div>
   );
 }
