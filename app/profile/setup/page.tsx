@@ -31,7 +31,7 @@ function getProfileSetupBackLabel(isEditing: boolean, role: UserRole | null): st
     return "Back to profile";
   }
 
-  return role === "dj" ? "Back to Messages" : "Back to Home";
+  return role === "dj" ? "Back to Messages" : "Back to Events";
 }
 
 export default function ProfileSetupPage() {
