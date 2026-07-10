@@ -3,16 +3,22 @@
 import Link from "next/link";
 import { useGuardProfile } from "@/app/components/GuardProfileContext";
 import { readCachedNavRole } from "@/lib/navigationRoleCache";
-import { getDefaultRouteForRole, PROFILE_SETUP_PATH, SETTINGS_PATH } from "@/lib/user/currentUser";
+import { resolveProfileBackNavigation } from "@/lib/profileNavigation";
+import { PROFILE_SETUP_PATH, SETTINGS_PATH } from "@/lib/user/currentUser";
 
 const profileHeaderIconButtonClass =
   "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-ftc-border-subtle bg-ftc-surface text-ftc-text-secondary transition hover:border-ftc-border-strong hover:text-ftc-text";
 
-export default function ProfilePageHeader({ isOwnProfile }: { isOwnProfile: boolean }) {
+export default function ProfilePageHeader({
+  isOwnProfile,
+  returnTo = null,
+}: {
+  isOwnProfile: boolean;
+  returnTo?: string | null;
+}) {
   const guardProfile = useGuardProfile();
   const role = guardProfile?.role ?? readCachedNavRole();
-  const backHref = getDefaultRouteForRole(role);
-  const backLabel = role === "dj" ? "Back to Messages" : "Back to Home";
+  const { href: backHref, label: backLabel } = resolveProfileBackNavigation(returnTo, role);
 
   return (
     <header className="sticky top-0 z-10 border-b border-ftc-border-subtle bg-ftc-bg/95 backdrop-blur-md md:top-12">

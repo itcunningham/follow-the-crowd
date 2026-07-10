@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import ProfileAvatar from "@/app/components/ProfileAvatar";
+import { buildProfileHref } from "@/lib/profileNavigation";
 import { SkeletonBlock } from "@/app/components/skeleton/Skeleton";
 
 function ChatBackButton({ href, label = "Back to inbox" }: { href: string; label?: string }) {
@@ -58,6 +59,7 @@ export default function DmConversationHeader({
   avatarName,
   avatarUrl,
   otherUserId,
+  profileReturnTo,
   onOpenDetails,
 }: {
   backHref: string;
@@ -67,6 +69,7 @@ export default function DmConversationHeader({
   avatarName: string;
   avatarUrl?: string | null;
   otherUserId: string | null;
+  profileReturnTo?: string | null;
   onOpenDetails?: () => void;
 }) {
   return (
@@ -78,7 +81,7 @@ export default function DmConversationHeader({
           <SkeletonBlock className="h-10 w-10 shrink-0 rounded-full" />
         ) : otherUserId ? (
           <Link
-            href={`/profile/${otherUserId}`}
+            href={buildProfileHref(otherUserId, { returnTo: profileReturnTo })}
             aria-label={`View ${avatarName}'s profile`}
             className="shrink-0 rounded-full transition hover:ring-2 hover:ring-ftc-border-strong focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ftc-primary"
           >

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation";
 import AppNavigation, { MOBILE_NAV_OFFSET_CLASS } from "@/app/components/AppNavigation";
 import ChatNewMessagesPill from "@/app/components/dm/ChatNewMessagesPill";
 import GroupChatComposer from "@/app/components/group-chat/GroupChatComposer";
@@ -23,6 +23,7 @@ import {
   formatGroupChatSystemNoticeText,
   isGroupChatSystemUpdateMessage,
 } from "@/lib/groupChatSystemMessages";
+import { buildChatReturnTo } from "@/lib/profileNavigation";
 import { supabase } from "@/lib/supabaseClient";
 import { useChatScroll, tagChatMessageForScroll } from "@/lib/useChatScroll";
 import {
@@ -118,8 +119,13 @@ function GroupChatHeaderArtwork({
 export default function EventCrewChatPage() {
   const params = useParams<{ eventId: string }>();
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const eventId = params.eventId;
+  const chatReturnTo = useMemo(
+    () => buildChatReturnTo(pathname, searchParams.toString()),
+    [pathname, searchParams],
+  );
   const openedFromMessages = searchParams.get("from") === "dm";
   const backHref = getEventCrewChatBackHref(
     eventId,
@@ -608,6 +614,7 @@ export default function EventCrewChatPage() {
                       senderUserId={message.user_id}
                       senderLabel={senderLabel}
                       senderAvatarUrl={profile?.avatar_url}
+                      profileReturnTo={chatReturnTo}
                       formatTime={formatMessageTime}
                       isHighlighted={highlighted}
                     />

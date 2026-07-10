@@ -610,7 +610,11 @@ export function writeGroupChatsInboxCache(chats: GroupChatListItem[]): void {
 }
 
 export function isGroupChatPath(pathname: string): boolean {
-  return pathname === "/group-chats" || /^\/events\/[^/]+\/chat\/?$/.test(pathname);
+  return pathname === "/group-chats" || isEventCrewChatPath(pathname);
+}
+
+export function isEventCrewChatPath(pathname: string): boolean {
+  return /^\/events\/[^/]+\/chat\/?$/.test(pathname);
 }
 
 export function isMessagesInboxPath(pathname: string): boolean {

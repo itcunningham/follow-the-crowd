@@ -11,6 +11,7 @@ export default function GroupChatMessageBubble({
   senderUserId,
   senderLabel,
   senderAvatarUrl,
+  profileReturnTo,
   formatTime,
   isHighlighted = false,
 }: {
@@ -21,6 +22,7 @@ export default function GroupChatMessageBubble({
   senderUserId: string;
   senderLabel: string;
   senderAvatarUrl?: string | null;
+  profileReturnTo?: string | null;
   formatTime: (timestamp: string) => string;
   isHighlighted?: boolean;
 }) {
@@ -41,6 +43,7 @@ export default function GroupChatMessageBubble({
             userId={senderUserId}
             name={senderLabel}
             avatarUrl={senderAvatarUrl}
+            returnTo={profileReturnTo}
           />
         ) : null}
 

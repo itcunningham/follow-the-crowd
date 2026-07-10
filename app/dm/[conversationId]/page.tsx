@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useParams, useSearchParams } from "next/navigation";
+import { useParams, usePathname, useSearchParams } from "next/navigation";
 import AppNavigation, { MOBILE_NAV_OFFSET_CLASS } from "@/app/components/AppNavigation";
 import BookingRequestCard, {
   buildUpdatedBookingMessage,
@@ -47,6 +47,7 @@ import {
   type BookingRequest,
 } from "@/lib/bookingRequests";
 import { resolveDmThreadBackHref } from "@/lib/dm/threadNavigation";
+import { buildChatReturnTo } from "@/lib/profileNavigation";
 import {
   getDmAttachmentNotificationBody,
   groupDmAttachmentsByMessageId,
@@ -119,8 +120,13 @@ function getConversationTitle(otherUserProfile: UserAvatarProfile) {
 
 export default function DmChatPage() {
   const params = useParams();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const conversationId = params.conversationId as string;
+  const chatReturnTo = useMemo(
+    () => buildChatReturnTo(pathname, searchParams.toString()),
+    [pathname, searchParams],
+  );
   const backHref = resolveDmThreadBackHref({
     from: searchParams.get("from"),
     tab: searchParams.get("tab"),
@@ -1366,6 +1372,7 @@ export default function DmChatPage() {
           avatarName={otherUserLabel}
           avatarUrl={otherUserProfile?.avatar_url}
           otherUserId={otherUserId}
+          profileReturnTo={chatReturnTo}
           onOpenDetails={() => setDetailsOpen(true)}
         />
       </header>
@@ -1414,6 +1421,7 @@ export default function DmChatPage() {
                 avatarUrl={otherUserProfile?.avatar_url}
                 size="md"
                 className="h-10 w-10 text-xs"
+                returnTo={chatReturnTo}
               />
             ) : (
               <ProfileAvatar
@@ -1493,6 +1501,7 @@ export default function DmChatPage() {
                     otherUserId={otherUserId}
                     otherUserLabel={otherUserLabel}
                     otherUserAvatarUrl={otherUserProfile?.avatar_url}
+                    profileReturnTo={chatReturnTo}
                     attachments={attachmentsByMessageId.get(message.id) ?? []}
                     reactions={reactionsByMessageId.get(message.id) ?? []}
                     currentUserId={currentUserId}
@@ -1696,6 +1705,7 @@ export default function DmChatPage() {
                           userId={otherUserId}
                           name={otherUserLabel}
                           avatarUrl={otherUserProfile?.avatar_url}
+                          returnTo={chatReturnTo}
                         />
                       ) : null}
                       <div>

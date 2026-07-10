@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import AppNavigation, { MOBILE_NAV_OFFSET_CLASS } from "@/app/components/AppNavigation";
 import DjProfileSections from "@/app/components/profile/DjProfileSections";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
@@ -36,6 +36,8 @@ export default function UserProfilePage() {
 
 function UserProfilePageView({ userId }: { userId: string }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const profileReturnTo = searchParams.get("returnTo");
   const guardProfile = useGuardProfile();
   const [cachedNavigation] = useState(readCachedNavigation);
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -129,7 +131,7 @@ function UserProfilePageView({ userId }: { userId: string }) {
       className={`mx-auto flex min-h-[100dvh] w-full max-w-2xl flex-col bg-ftc-bg font-sans text-ftc-text ${MOBILE_NAV_OFFSET_CLASS}`}
     >
       <AppNavigation />
-      <ProfilePageHeader isOwnProfile={isOwnProfile} />
+      <ProfilePageHeader isOwnProfile={isOwnProfile} returnTo={profileReturnTo} />
 
       <div
         className={`flex-1 px-4 py-6 sm:px-6 ${!isOwnProfile && profile ? "pb-4" : "pb-8"}`}

@@ -16,6 +16,7 @@ export default function DmTextMessageBubble({
   otherUserId,
   otherUserLabel,
   otherUserAvatarUrl,
+  profileReturnTo,
   attachments,
   reactions,
   currentUserId,
@@ -36,6 +37,7 @@ export default function DmTextMessageBubble({
   otherUserId?: string | null;
   otherUserLabel: string;
   otherUserAvatarUrl?: string | null;
+  profileReturnTo?: string | null;
   attachments: DmMessageAttachment[];
   reactions: DmMessageReaction[];
   currentUserId: string | null;
@@ -79,6 +81,7 @@ export default function DmTextMessageBubble({
             userId={otherUserId}
             name={otherUserLabel}
             avatarUrl={otherUserAvatarUrl}
+            returnTo={profileReturnTo}
           />
         ) : null}
         <div className={`flex min-w-0 flex-col ${isOwnMessage ? "items-end" : "items-start"}`}>

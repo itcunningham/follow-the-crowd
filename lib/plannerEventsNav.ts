@@ -1,4 +1,5 @@
 import type { UserRole } from "@/lib/user/currentUser";
+import { isEventCrewChatPath } from "@/lib/groupChats";
 
 export type EventsAreaSubNavItem = {
   href: string;
@@ -45,6 +46,10 @@ export function getEventsAreaSubNavItems(role: UserRole | null): EventsAreaSubNa
 }
 
 export function isPlannerEventsAreaPath(pathname: string): boolean {
+  if (isEventCrewChatPath(pathname)) {
+    return false;
+  }
+
   return (
     pathname === "/events" ||
     pathname.startsWith("/events/") ||
