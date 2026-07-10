@@ -1,12 +1,16 @@
 # Supabase SQL
 
-Isaac runs these manually in **Supabase SQL Editor**. Cursor creates/updates files in `scripts/` but does not run them.
+Database changes are versioned in **`supabase/migrations/`**. See **`supabase/README.md`** for deploy steps.
+
+Isaac applies migrations with **`supabase db push`** (preferred) or by running the migration file once in the Supabase SQL Editor.
+
+Legacy one-off scripts remain in `scripts/` for bootstrapping and fixes. New feature schema should be added as timestamped migrations, not duplicate `scripts/setup*.sql` files.
 
 ## When something breaks
 
-| Error / feature | Script |
-|-----------------|--------|
-| Events table missing | `scripts/setupEvents.sql` |
+| Error / feature | Where to look |
+|-----------------|---------------|
+| Events table missing | `scripts/setupEvents.sql` (legacy bootstrap) |
 | Booking requests | `scripts/setupBookingRequests.sql` |
 | Accepted booking cancellation | `scripts/setupAcceptedBookingCancellation.sql` |
 | Event cover image column | `scripts/setupEventCoverImage.sql` |
@@ -17,6 +21,14 @@ Isaac runs these manually in **Supabase SQL Editor**. Cursor creates/updates fil
 | Message reads / unread | `scripts/setupMessageReads.sql` |
 | Duplicate booking protection | `scripts/fixEventBookingDuplicateProtection.sql` |
 | Production RLS | `scripts/setupProductionRls.sql` |
+| **Remove from history (Events)** | `supabase/migrations/20250710120000_event_history_hide.sql` |
+| **Remove from history (Gigs)** | `scripts/setupBookingRequestArchiving.sql` + `scripts/fixRecipientBookingArchive.sql` (existing archive RPC) |
+
+## Deploy order (features with migrations)
+
+1. Merge migration to `main`
+2. Run `supabase db push` (or paste the migration in SQL Editor)
+3. Deploy the Next.js app
 
 ## Rough setup order (fresh project)
 
@@ -25,12 +37,13 @@ Isaac runs these manually in **Supabase SQL Editor**. Cursor creates/updates fil
 3. `setupBookingRequests.sql`
 4. `setupProductionRls.sql`
 5. Feature scripts as you enable features (DM, notifications, group chat, covers, fallback colour, etc.)
+6. `supabase/migrations/*.sql` in timestamp order as features ship
 
 ## After running SQL
 
-- Cursor app may need `notify pgrst, 'reload schema';` (included in scripts)
+- Cursor app may need `notify pgrst, 'reload schema';` (included in migrations/scripts)
 - Re-test the feature in the app
 
 ## When Isaac asks for SQL
 
-Cursor should paste the **entire file** from `scripts/` — raw text only.
+For versioned changes, point at the file in `supabase/migrations/`. For legacy bootstrap, paste the entire file from `scripts/` — raw text only.

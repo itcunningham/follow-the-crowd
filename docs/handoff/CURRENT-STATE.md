@@ -32,9 +32,15 @@ Update this file after major features ship.
 - Planner does not get unread from own group messages
 - Group chat page: header only (duplicate context card removed)
 
-## SQL Isaac may still need to run
+## SQL / migrations Isaac may still need to run
 
-See `SUPABASE.md`. If a feature fails with missing column/table, run the matching script.
+See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before deploying features that depend on them.
+
+## History hide (2026-07-10)
+
+- Bulk **Remove from history** on Planner Events History and DJ Gigs History
+- Events: `supabase/migrations/20250710120000_event_history_hide.sql`
+- Gigs: reuses existing booking archive (`archived_at` + `archive_booking_request` RPC)
 
 ## Recent commits (reference)
 

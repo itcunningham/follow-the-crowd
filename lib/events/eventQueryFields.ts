@@ -1,7 +1,10 @@
 const CREW_CHAT_STARTED_AT_FIELD = "crew_chat_started_at";
+const HISTORY_HIDDEN_AT_FIELD = "history_hidden_at";
 
-export const EVENT_BASE_FIELDS =
-  "id, created_at, owner_id, booking_plan_id, name, venue, event_date, set_time, rate, notes, status, cover_image_url, fallback_colour, history_hidden_at";
+export const EVENT_CORE_FIELDS =
+  "id, created_at, owner_id, booking_plan_id, name, venue, event_date, set_time, rate, notes, status, cover_image_url, fallback_colour";
+
+export const EVENT_BASE_FIELDS = `${EVENT_CORE_FIELDS}, ${HISTORY_HIDDEN_AT_FIELD}`;
 
 export const EVENT_FIELDS_WITH_CREW_CHAT = `${EVENT_BASE_FIELDS}, ${CREW_CHAT_STARTED_AT_FIELD}`;
 
@@ -15,6 +18,7 @@ export const EVENT_UNLOCK_FIELDS = `id, status, ${CREW_CHAT_STARTED_AT_FIELD}`;
 export const EVENT_UNLOCK_BASE_FIELDS = "id, status";
 
 let crewChatStartedAtColumnMissing = false;
+let historyHiddenAtColumnMissing = false;
 
 export function isMissingCrewChatStartedAtColumnError(error: unknown): boolean {
   if (!error || typeof error !== "object") {
@@ -29,22 +33,66 @@ export function isMissingCrewChatStartedAtColumnError(error: unknown): boolean {
   );
 }
 
+export function isMissingHistoryHiddenAtColumnError(error: unknown): boolean {
+  if (!error || typeof error !== "object") {
+    return false;
+  }
+
+  const supabaseError = error as { code?: string; message?: string };
+
+  return (
+    supabaseError.code === "42703" &&
+    String(supabaseError.message ?? "").includes(HISTORY_HIDDEN_AT_FIELD)
+  );
+}
+
 export function markCrewChatStartedAtColumnMissing(): void {
   crewChatStartedAtColumnMissing = true;
+}
+
+export function markHistoryHiddenAtColumnMissing(): void {
+  historyHiddenAtColumnMissing = true;
 }
 
 export function resetCrewChatStartedAtColumnMissingFlag(): void {
   crewChatStartedAtColumnMissing = false;
 }
 
+export function resetHistoryHiddenAtColumnMissingFlag(): void {
+  historyHiddenAtColumnMissing = false;
+}
+
 export function isCrewChatStartedAtColumnMissing(): boolean {
   return crewChatStartedAtColumnMissing;
 }
 
+export function isHistoryHiddenAtColumnMissing(): boolean {
+  return historyHiddenAtColumnMissing;
+}
+
+export function isEventHistoryHideAvailable(): boolean {
+  return !historyHiddenAtColumnMissing;
+}
+
+function buildEventSelectFields(includeHistoryHidden: boolean, includeCrewChat: boolean): string {
+  const fields = [EVENT_CORE_FIELDS];
+
+  if (includeHistoryHidden) {
+    fields.push(HISTORY_HIDDEN_AT_FIELD);
+  }
+
+  if (includeCrewChat) {
+    fields.push(CREW_CHAT_STARTED_AT_FIELD);
+  }
+
+  return fields.join(", ");
+}
+
 export function selectEventFields(): string {
-  return crewChatStartedAtColumnMissing
-    ? EVENT_BASE_FIELDS
-    : EVENT_FIELDS_WITH_CREW_CHAT;
+  return buildEventSelectFields(
+    !historyHiddenAtColumnMissing,
+    !crewChatStartedAtColumnMissing,
+  );
 }
 
 export function selectEventArtworkFields(): string {
@@ -97,27 +145,34 @@ type PostgrestResult<T> = {
   error: PostgrestError;
 };
 
+function markMissingOptionalEventColumn(error: PostgrestError): boolean {
+  if (isMissingHistoryHiddenAtColumnError(error)) {
+    markHistoryHiddenAtColumnMissing();
+    return true;
+  }
+
+  if (isMissingCrewChatStartedAtColumnError(error)) {
+    markCrewChatStartedAtColumnMissing();
+    return true;
+  }
+
+  return false;
+}
+
 export async function withEventFieldsFallback<T>(
   query: (fields: string) => PromiseLike<PostgrestResult<T>>,
 ): Promise<T> {
-  const first = await query(selectEventFields());
+  let result = await query(selectEventFields());
 
-  if (!first.error) {
-    return first.data;
+  while (result.error && markMissingOptionalEventColumn(result.error)) {
+    result = await query(selectEventFields());
   }
 
-  if (isMissingCrewChatStartedAtColumnError(first.error)) {
-    markCrewChatStartedAtColumnMissing();
-    const second = await query(selectEventFields());
-
-    if (second.error) {
-      throw second.error;
-    }
-
-    return second.data;
+  if (result.error) {
+    throw result.error;
   }
 
-  throw first.error;
+  return result.data;
 }
 
 export async function withEventArtworkFieldsFallback<T>(

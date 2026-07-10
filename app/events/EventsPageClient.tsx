@@ -44,6 +44,7 @@ import {
   getEventsLoadErrorMessage,
   hideEventsFromHistory,
   isEventCancelled,
+  isEventHistoryHideAvailable,
   listDjInvitedEvents,
   listOwnedEvents,
   updateEventCoverImageUrl,
@@ -208,7 +209,9 @@ function EventsPageClientView({ initialTab }: EventsPageClientProps) {
     [events, isPlanner],
   );
   const filteredEvents = isHistoryTab ? historyEvents : upcomingEvents;
-  const historyBulkManage = useHistoryBulkManage(isPlanner && isHistoryTab ? historyEvents : []);
+  const historyBulkManage = useHistoryBulkManage(
+    isPlanner && isHistoryTab && isEventHistoryHideAvailable() ? historyEvents : [],
+  );
 
   const loadEvents = useCallback(async () => {
     const cachedEvents = readEventsListCache(isPlanner);
@@ -432,28 +435,37 @@ function EventsPageClientView({ initialTab }: EventsPageClientProps) {
     setError(null);
     setSuccessMessage(null);
 
-    const { successes, failures } = await hideEventsFromHistory(eventIds);
+    try {
+      const { successes, failures } = await hideEventsFromHistory(eventIds);
 
-    if (successes.length > 0) {
-      const hiddenAt = new Date().toISOString();
+      if (successes.length > 0) {
+        const hiddenAt = new Date().toISOString();
 
-      setEvents((current) => {
-        const next = current.map((event) =>
-          successes.includes(event.id) ? { ...event, history_hidden_at: hiddenAt } : event,
+        setEvents((current) => {
+          const next = current.map((event) =>
+            successes.includes(event.id) ? { ...event, history_hidden_at: hiddenAt } : event,
+          );
+          writeEventsListCache(isPlanner, next);
+          return next;
+        });
+        setSuccessMessage(
+          `${successes.length} event${successes.length === 1 ? "" : "s"} removed from history.`,
         );
-        writeEventsListCache(isPlanner, next);
-        return next;
-      });
-      setSuccessMessage(
-        `${successes.length} event${successes.length === 1 ? "" : "s"} removed from history.`,
-      );
-    }
+      }
 
-    if (failures.length > 0) {
+      if (failures.length > 0) {
+        setError(
+          failures.length === eventIds.length
+            ? "Could not remove selected events from history."
+            : `${failures.length} event${failures.length === 1 ? "" : "s"} could not be removed from history.`,
+        );
+      }
+    } catch (removeError) {
+      console.error("Failed to remove events from history:", removeError);
       setError(
-        failures.length === eventIds.length
-          ? "Could not remove selected events from history."
-          : `${failures.length} event${failures.length === 1 ? "" : "s"} could not be removed from history.`,
+        removeError instanceof Error
+          ? removeError.message
+          : "Could not remove selected events from history.",
       );
     }
   }

@@ -951,27 +951,32 @@ function BookingsPageContent() {
     setError(null);
     setSuccessMessage(null);
 
-    const { successes, failures } = await archiveAllCancelledBookingRequests(bookingIds);
+    try {
+      const { successes, failures } = await archiveAllCancelledBookingRequests(bookingIds);
 
-    if (successes.length > 0) {
-      const archivedAt = new Date().toISOString();
+      if (successes.length > 0) {
+        const archivedAt = new Date().toISOString();
 
-      setReceivedBookings((current) =>
-        current.map((booking) =>
-          successes.includes(booking.id) ? { ...booking, archived_at: archivedAt } : booking,
-        ),
-      );
-      setSuccessMessage(
-        `${successes.length} gig${successes.length === 1 ? "" : "s"} removed from history.`,
-      );
-    }
+        setReceivedBookings((current) =>
+          current.map((booking) =>
+            successes.includes(booking.id) ? { ...booking, archived_at: archivedAt } : booking,
+          ),
+        );
+        setSuccessMessage(
+          `${successes.length} gig${successes.length === 1 ? "" : "s"} removed from history.`,
+        );
+      }
 
-    if (failures.length > 0) {
-      setError(
-        failures.length === bookingIds.length
-          ? "Could not remove selected gigs from history."
-          : `${failures.length} gig${failures.length === 1 ? "" : "s"} could not be removed from history.`,
-      );
+      if (failures.length > 0) {
+        setError(
+          failures.length === bookingIds.length
+            ? "Could not remove selected gigs from history."
+            : `${failures.length} gig${failures.length === 1 ? "" : "s"} could not be removed from history.`,
+        );
+      }
+    } catch (removeError) {
+      console.error("Failed to remove gigs from history:", removeError);
+      setError(getBookingMutationErrorMessage(removeError));
     }
   }
 

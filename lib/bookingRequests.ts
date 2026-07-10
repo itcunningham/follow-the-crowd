@@ -1623,7 +1623,13 @@ export function getBookingMutationErrorMessage(error: unknown): string {
       supabaseError.message?.includes("archive_booking_request") ||
       supabaseError.message?.includes("unarchive_booking_request")
     ) {
-      return "Booking archiving is not set up yet. Run scripts/setupBookingRequestArchiving.sql in Supabase.";
+      if (process.env.NODE_ENV !== "production") {
+        console.warn(
+          "[bookings] Booking archive is unavailable. Apply scripts/setupBookingRequestArchiving.sql and scripts/fixRecipientBookingArchive.sql, or the equivalent migrations, before using Remove from history on Gigs.",
+        );
+      }
+
+      return "Remove from history is unavailable right now. Please try again later.";
     }
 
     if (supabaseError.code === "PGRST116") {

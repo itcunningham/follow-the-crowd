@@ -19,7 +19,8 @@
 |------|------|
 | `app/` | Pages and UI components |
 | `lib/` | Data access, business logic |
-| `scripts/*.sql` | Supabase migrations (Isaac runs manually) |
+| `scripts/*.sql` | Legacy Supabase bootstrap / one-off fixes (run manually) |
+| `supabase/migrations/` | Versioned database migrations (`supabase db push`) |
 | `docs/handoff/` | Session context for new chats |
 
 ## Important lib files

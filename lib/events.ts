@@ -29,11 +29,15 @@ import {
 } from "@/lib/ftcFlatStatus";
 import { getCurrentUserId } from "@/lib/user/currentUser";
 import {
+  isEventHistoryHideAvailable,
+  isMissingHistoryHiddenAtColumnError,
   normalizeEventRow,
   normalizeEventRows,
   withEventArtworkFieldsFallback,
   withEventFieldsFallback,
 } from "@/lib/events/eventQueryFields";
+
+export { isEventHistoryHideAvailable };
 
 export type EventStatus = "draft" | "upcoming" | "completed" | "cancelled";
 
@@ -665,6 +669,39 @@ export type EventHistoryHideFailure = {
   message: string;
 };
 
+function isMissingEventHistoryHideRpcError(error: unknown): boolean {
+  if (!error || typeof error !== "object") {
+    return false;
+  }
+
+  const supabaseError = error as { code?: string; message?: string };
+
+  return (
+    supabaseError.code === "PGRST202" ||
+    supabaseError.code === "42883" ||
+    String(supabaseError.message ?? "").includes("hide_events_from_history") ||
+    String(supabaseError.message ?? "").includes("hide_event_from_history")
+  );
+}
+
+export function getEventHistoryHideErrorMessage(error: unknown): string {
+  if (isMissingEventHistoryHideRpcError(error) || isMissingHistoryHiddenAtColumnError(error)) {
+    if (process.env.NODE_ENV !== "production") {
+      console.warn(
+        "[events] Event history hide is unavailable. Apply supabase/migrations/20250710120000_event_history_hide.sql before deploying this feature.",
+      );
+    }
+
+    return "Remove from history is unavailable right now. Please try again later.";
+  }
+
+  if (error instanceof Error && error.message.trim()) {
+    return error.message;
+  }
+
+  return "Could not remove selected events from history.";
+}
+
 export async function hideEventsFromHistory(
   eventIds: string[],
 ): Promise<{
@@ -680,7 +717,7 @@ export async function hideEventsFromHistory(
   });
 
   if (error) {
-    throw error;
+    throw new Error(getEventHistoryHideErrorMessage(error));
   }
 
   const updatedIds = Array.isArray((data as { updated_ids?: unknown } | null)?.updated_ids)
@@ -710,13 +747,6 @@ export function getEventsLoadErrorMessage(error: unknown): string {
 
     if (supabaseError.code === "42P01" || supabaseError.code === "PGRST205") {
       return "Events table is not set up yet. Run scripts/setupEvents.sql.";
-    }
-
-    if (
-      supabaseError.code === "42703" &&
-      supabaseError.message?.includes("history_hidden_at")
-    ) {
-      return "Database update required. Run scripts/setupHistoryHide.sql in Supabase SQL Editor, then try again.";
     }
 
     if (
