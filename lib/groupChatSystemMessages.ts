@@ -1,11 +1,26 @@
 export const GROUP_CHAT_BOOKING_UPDATE_PREFIX = "Booking update:";
 
+function isGroupChatCrewOpenedNotice(text: string): boolean {
+  return /^.+ joined the event crew\. Crew chat is now open\.$/.test(text.trim());
+}
+
 export function isGroupChatSystemUpdateMessage(text: string): boolean {
-  return text.trim().startsWith(GROUP_CHAT_BOOKING_UPDATE_PREFIX);
+  const trimmed = text.trim();
+
+  return (
+    trimmed.startsWith(GROUP_CHAT_BOOKING_UPDATE_PREFIX) || isGroupChatCrewOpenedNotice(trimmed)
+  );
 }
 
 export function formatGroupChatSystemNoticeText(text: string): string {
   const trimmed = text.trim();
+
+  const crewOpenedMatch = trimmed.match(/^(.+?) joined the event crew\. Crew chat is now open\.$/);
+
+  if (crewOpenedMatch) {
+    return `${crewOpenedMatch[1]} joined · crew chat open`;
+  }
+
   const body = trimmed.startsWith(GROUP_CHAT_BOOKING_UPDATE_PREFIX)
     ? trimmed.slice(GROUP_CHAT_BOOKING_UPDATE_PREFIX.length).trim()
     : trimmed;
