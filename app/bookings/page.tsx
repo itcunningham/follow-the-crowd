@@ -1055,7 +1055,7 @@ function BookingsPageContent() {
             </p>
           ) : null}
 
-          {djGigsView === "history" && gigsHistoryBulkManage.selectionMode ? (
+          {djGigsView === "history" && gigsHistoryBulkManage.showSelectionToolbar ? (
             <HistorySelectionToolbar
               selectedCount={gigsHistoryBulkManage.selectedCount}
               allSelected={gigsHistoryBulkManage.allSelected}
@@ -1430,7 +1430,7 @@ function BookingsPageContent() {
                       gigsTab={djGigsView}
                       senderName={senderProfiles.get(booking.sender_id)?.display_name?.trim()}
                       muted
-                      selectionMode={gigsHistoryBulkManage.selectionMode}
+                      selectionMode={gigsHistoryBulkManage.showSelectionToolbar}
                       selected={gigsHistoryBulkManage.selectedIds.has(booking.id)}
                       onToggleSelect={() => gigsHistoryBulkManage.toggleItem(booking.id)}
                     />

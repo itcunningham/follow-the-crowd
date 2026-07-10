@@ -17,14 +17,6 @@ export function filterOutRemovingHistoryItems<T extends { id: string }>(
   return items.filter((item) => !removingIds.has(item.id));
 }
 
-function waitForNextFrame(): Promise<void> {
-  return new Promise((resolve) => {
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => resolve());
-    });
-  });
-}
-
 function ManageHistoryIcon({ className = "h-4 w-4" }: { className?: string }) {
   return (
     <svg
@@ -58,17 +50,9 @@ export function useHistoryBulkManage<T extends { id: string }>(items: T[]) {
   const itemIds = useMemo(() => items.map((item) => item.id), [items]);
   const selectedCount = selectedIds.size;
   const allSelected = itemIds.length > 0 && selectedCount === itemIds.length;
+  const showSelectionToolbar = selectionMode && !confirmOpen && !removing;
 
-  function enterSelectionMode() {
-    setSelectionMode(true);
-    setSelectedIds(new Set());
-    setConfirmOpen(false);
-    setConfirmCount(0);
-    setPendingRemoveIds([]);
-    setRemovingIds(new Set());
-  }
-
-  function cancelSelectionMode() {
+  function resetSelectionState() {
     setSelectionMode(false);
     setSelectedIds(new Set());
     setConfirmOpen(false);
@@ -77,7 +61,26 @@ export function useHistoryBulkManage<T extends { id: string }>(items: T[]) {
     setRemovingIds(new Set());
   }
 
+  function enterSelectionMode() {
+    setSelectionMode(true);
+    setSelectedIds(new Set());
+    setConfirmOpen(false);
+    setConfirmCount(0);
+    setPendingRemoveIds([]);
+    setRemovingIds(new Set());
+    setRemoving(false);
+  }
+
+  function cancelSelectionMode() {
+    resetSelectionState();
+    setRemoving(false);
+  }
+
   function toggleItem(id: string) {
+    if (removing) {
+      return;
+    }
+
     setSelectedIds((current) => {
       const next = new Set(current);
 
@@ -92,27 +95,39 @@ export function useHistoryBulkManage<T extends { id: string }>(items: T[]) {
   }
 
   function selectAll() {
+    if (removing) {
+      return;
+    }
+
     setSelectedIds(new Set(itemIds));
   }
 
   function openConfirm() {
-    if (selectedCount > 0) {
-      const ids = [...selectedIds];
-      setConfirmCount(ids.length);
-      setPendingRemoveIds(ids);
-      setConfirmOpen(true);
+    if (removing || selectedCount === 0) {
+      return;
     }
+
+    const ids = [...selectedIds];
+    setConfirmCount(ids.length);
+    setPendingRemoveIds(ids);
+    setConfirmOpen(true);
   }
 
   function closeConfirm() {
-    if (!removing) {
-      setConfirmOpen(false);
-      setConfirmCount(0);
-      setPendingRemoveIds([]);
+    if (removing) {
+      return;
     }
+
+    setConfirmOpen(false);
+    setConfirmCount(0);
+    setPendingRemoveIds([]);
   }
 
   async function confirmRemove(onRemove: (ids: string[]) => Promise<void>) {
+    if (removing) {
+      return;
+    }
+
     const ids = pendingRemoveIds.length > 0 ? [...pendingRemoveIds] : [...selectedIds];
 
     if (ids.length === 0) {
@@ -120,22 +135,18 @@ export function useHistoryBulkManage<T extends { id: string }>(items: T[]) {
     }
 
     setRemoving(true);
-    setSelectedIds(new Set());
     setRemovingIds(new Set(ids));
-    setSelectionMode(false);
 
     try {
       await onRemove(ids);
-      setPendingRemoveIds([]);
-      await waitForNextFrame();
-      setConfirmOpen(false);
-      setConfirmCount(0);
-      await waitForNextFrame();
-      setRemovingIds(new Set());
+      resetSelectionState();
     } catch {
       setRemovingIds(new Set());
       setSelectionMode(true);
       setSelectedIds(new Set(ids));
+      setConfirmOpen(true);
+      setConfirmCount(ids.length);
+      setPendingRemoveIds(ids);
     } finally {
       setRemoving(false);
     }
@@ -150,6 +161,7 @@ export function useHistoryBulkManage<T extends { id: string }>(items: T[]) {
     confirmOpen,
     removing,
     removingIds,
+    showSelectionToolbar,
     enterSelectionMode,
     cancelSelectionMode,
     toggleItem,
@@ -222,7 +234,7 @@ export function HistorySelectionToolbar({
         disabled={removing || selectedCount === 0}
         className="rounded-lg border-0 bg-[var(--ftc-color-danger)] px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-ftc-bg transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
       >
-        {removing ? "Removing..." : "Remove from history"}
+        Remove from history
       </button>
     </div>
   );
@@ -241,6 +253,8 @@ export function HistoryRemoveConfirmDialog({
   onCancel: () => void;
   onConfirm: () => void;
 }) {
+  const confirmLabel = loading ? "Removing..." : "Remove from history";
+
   return (
     <BookingSheetDialog
       open={open}
@@ -254,8 +268,15 @@ export function HistoryRemoveConfirmDialog({
           <BookingSheetSecondaryButton disabled={loading} onClick={onCancel}>
             Keep items
           </BookingSheetSecondaryButton>
-          <BookingSheetDangerButton disabled={loading} onClick={onConfirm}>
-            {loading ? "Removing..." : "Remove from history"}
+          <BookingSheetDangerButton
+            disabled={loading}
+            onClick={() => {
+              if (!loading) {
+                onConfirm();
+              }
+            }}
+          >
+            {confirmLabel}
           </BookingSheetDangerButton>
         </>
       }

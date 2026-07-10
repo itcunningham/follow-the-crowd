@@ -696,7 +696,7 @@ function EventsPageClientView({ initialTab }: EventsPageClientProps) {
             </p>
           ) : null}
 
-          {isPlanner && isHistoryTab && historyBulkManage.selectionMode ? (
+          {isPlanner && isHistoryTab && historyBulkManage.showSelectionToolbar ? (
             <HistorySelectionToolbar
               selectedCount={historyBulkManage.selectedCount}
               allSelected={historyBulkManage.allSelected}
@@ -760,7 +760,7 @@ function EventsPageClientView({ initialTab }: EventsPageClientProps) {
                 const isSelected = historyBulkManage.selectedIds.has(event.id);
                 const selectionLabel = `Select ${event.name} for removal from history`;
 
-                if (historyBulkManage.selectionMode && isPlanner && isHistoryTab) {
+                if (historyBulkManage.showSelectionToolbar && isPlanner && isHistoryTab) {
                   return (
                     <li key={event.id}>
                       <button
