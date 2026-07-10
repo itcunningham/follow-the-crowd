@@ -47,6 +47,9 @@ import {
   getBookingStatusBadgeClass,
   groupSentBookingRequests,
   hasPendingRateProposal,
+  hideBookingRequestsFromHistory,
+  isBookingHistoryHideAvailable,
+  listBookingRequestHistoryHideIds,
   listReceivedBookingRequests,
   listSentBookingRequests,
   logBookingsLoadError,
@@ -257,6 +260,7 @@ function BookingsPageContent() {
   const [sentGroups, setSentGroups] = useState<SentBookingGroup[]>([]);
   const [sentBookings, setSentBookings] = useState<BookingRequest[]>([]);
   const [receivedBookings, setReceivedBookings] = useState<BookingRequest[]>([]);
+  const [hiddenBookingIds, setHiddenBookingIds] = useState<ReadonlySet<string>>(() => new Set());
   const [sectionTab, setSectionTab] = useState<BookingsSectionTab>("sent");
   const [plannerSentView, setPlannerSentView] = useState<PlannerSentPrimaryTab>("pending");
   const [plannerHistorySubView, setPlannerHistorySubView] =
@@ -323,8 +327,8 @@ function BookingsPageContent() {
   );
 
   const historySentBookings = useMemo(
-    () => filterHistoryCancelledBookings(sentBookings),
-    [sentBookings],
+    () => filterHistoryCancelledBookings(sentBookings, hiddenBookingIds),
+    [sentBookings, hiddenBookingIds],
   );
 
   const archivedSentBookings = useMemo(
@@ -396,16 +400,20 @@ function BookingsPageContent() {
       return [];
     }
 
-    return filterDjGigsByTab(receivedBookings, djGigsView);
-  }, [receivedBookings, djGigsView, showGigsWorkspace]);
+    return filterDjGigsByTab(receivedBookings, djGigsView, hiddenBookingIds);
+  }, [receivedBookings, djGigsView, showGigsWorkspace, hiddenBookingIds]);
 
   const djHistoryBookings = useMemo(
-    () => filterDjGigsByTab(receivedBookings, "history"),
-    [receivedBookings],
+    () => filterDjGigsByTab(receivedBookings, "history", hiddenBookingIds),
+    [receivedBookings, hiddenBookingIds],
   );
 
   const gigsHistoryBulkManage = useHistoryBulkManage(
-    showGigsWorkspace && djGigsView === "history" ? djHistoryBookings : [],
+    showGigsWorkspace &&
+      djGigsView === "history" &&
+      isBookingHistoryHideAvailable()
+      ? djHistoryBookings
+      : [],
   );
 
   useEffect(() => {
@@ -453,13 +461,18 @@ function BookingsPageContent() {
           setSentBookings([]);
           setSentGroups([]);
           setReceivedBookings([]);
+          setHiddenBookingIds(new Set());
           setRecipientProfiles(new Map());
           setSenderProfiles(new Map());
           return;
         }
 
-        const receivedResult = await listReceivedBookingRequests();
+        const [receivedResult, hiddenIds] = await Promise.all([
+          listReceivedBookingRequests(),
+          listBookingRequestHistoryHideIds(),
+        ]);
         setReceivedBookings(receivedResult);
+        setHiddenBookingIds(new Set(hiddenIds));
         setSentBookings([]);
         setSentGroups([]);
         setRecipientProfiles(new Map());
@@ -484,6 +497,7 @@ function BookingsPageContent() {
         setSentBookings([]);
         setSentGroups([]);
         setReceivedBookings([]);
+        setHiddenBookingIds(new Set());
         setRecipientProfiles(new Map());
         setSenderProfiles(new Map());
         setError(getBookingsLoadErrorMessage(loadError));
@@ -864,8 +878,12 @@ function BookingsPageContent() {
   }
 
   async function reloadPlannerSentBookings(): Promise<BookingRequest[]> {
-    const sentResult = await listSentBookingRequests();
+    const [sentResult, hiddenIds] = await Promise.all([
+      listSentBookingRequests(),
+      listBookingRequestHistoryHideIds(),
+    ]);
     setSentBookings(sentResult);
+    setHiddenBookingIds(new Set(hiddenIds));
     setSentGroups(groupSentBookingRequests(sentResult));
     return sentResult;
   }
@@ -952,16 +970,10 @@ function BookingsPageContent() {
     setSuccessMessage(null);
 
     try {
-      const { successes, failures } = await archiveAllCancelledBookingRequests(bookingIds);
+      const { successes, failures } = await hideBookingRequestsFromHistory(bookingIds);
 
       if (successes.length > 0) {
-        const archivedAt = new Date().toISOString();
-
-        setReceivedBookings((current) =>
-          current.map((booking) =>
-            successes.includes(booking.id) ? { ...booking, archived_at: archivedAt } : booking,
-          ),
-        );
+        setHiddenBookingIds((current) => new Set([...current, ...successes]));
         setSuccessMessage(
           `${successes.length} gig${successes.length === 1 ? "" : "s"} removed from history.`,
         );
@@ -1006,7 +1018,11 @@ function BookingsPageContent() {
 
           {showGigsWorkspace ? (
             <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
-              <DjGigsTabs activeView={djGigsView} bookings={receivedBookings} />
+              <DjGigsTabs
+                activeView={djGigsView}
+                bookings={receivedBookings}
+                hiddenBookingIds={hiddenBookingIds}
+              />
               {djGigsView === "history" &&
               !loadingList &&
               gigsHistoryBulkManage.showManageControl &&
@@ -1437,11 +1453,16 @@ function BookingsPageContent() {
 function DjGigsTabs({
   activeView,
   bookings,
+  hiddenBookingIds,
 }: {
   activeView: DjGigsListTab;
   bookings: BookingRequest[];
+  hiddenBookingIds: ReadonlySet<string>;
 }) {
-  const counts = useMemo(() => countDjGigsByTab(bookings), [bookings]);
+  const counts = useMemo(
+    () => countDjGigsByTab(bookings, hiddenBookingIds),
+    [bookings, hiddenBookingIds],
+  );
 
   const tabs: { value: DjGigsListTab; label: string; count?: number; icon?: "history" }[] = [
     { value: "pending", label: "Incoming", count: counts.pending },

@@ -22,7 +22,8 @@ Legacy one-off scripts remain in `scripts/` for bootstrapping and fixes. New fea
 | Duplicate booking protection | `scripts/fixEventBookingDuplicateProtection.sql` |
 | Production RLS | `scripts/setupProductionRls.sql` |
 | **Remove from history (Events)** | `supabase/migrations/20250710120000_event_history_hide.sql` |
-| **Remove from history (Gigs)** | `scripts/setupBookingRequestArchiving.sql` + `scripts/fixRecipientBookingArchive.sql` (existing archive RPC) |
+| **Remove from history (Gigs / planner sent bookings)** | `supabase/migrations/20250710130000_booking_request_history_hides.sql` |
+| Planner archive to Archived tab (legacy) | `scripts/setupBookingRequestArchiving.sql` — still required for `archived_at` + sender archive/unarchive |
 
 ## Deploy order (features with migrations)
 
@@ -38,6 +39,13 @@ Legacy one-off scripts remain in `scripts/` for bootstrapping and fixes. New fea
 4. `setupProductionRls.sql`
 5. Feature scripts as you enable features (DM, notifications, group chat, covers, fallback colour, etc.)
 6. `supabase/migrations/*.sql` in timestamp order as features ship
+
+## Legacy booking archive scripts
+
+| Script | Status |
+|--------|--------|
+| `scripts/setupBookingRequestArchiving.sql` | **Still required** for planner sender archive/unarchive (`archived_at`, Archived tab) |
+| `scripts/fixRecipientBookingArchive.sql` | **Legacy / superseded** for Remove from history — do not run for new deploys; migration `20250710130000` restores sender-only `archive_booking_request` and adds per-user hides |
 
 ## After running SQL
 

@@ -40,7 +40,8 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 - Bulk **Remove from history** on Planner Events History and DJ Gigs History
 - Events: `supabase/migrations/20250710120000_event_history_hide.sql`
-- Gigs: reuses existing booking archive (`archived_at` + `archive_booking_request` RPC)
+- Bookings: `supabase/migrations/20250710130000_booking_request_history_hides.sql` (per-user hides; fixes shared `archived_at` cross-user bug)
+- Planner **Archived** tab still uses sender-only `archived_at` via `setupBookingRequestArchiving.sql`
 
 ## Recent commits (reference)
 

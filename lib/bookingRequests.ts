@@ -293,6 +293,7 @@ export function sortGigsByEventDateAsc(bookings: BookingRequest[]): BookingReque
 export function filterDjGigsByTab(
   bookings: BookingRequest[],
   tab: DjGigsListTab,
+  hiddenBookingIds: ReadonlySet<string> = new Set(),
 ): BookingRequest[] {
   switch (tab) {
     case "pending":
@@ -306,7 +307,9 @@ export function filterDjGigsByTab(
     case "history":
       return sortBookingsNewestFirst(
         bookings.filter(
-          (booking) => isDjGigHistoryBooking(booking) && !isArchivedBooking(booking),
+          (booking) =>
+            isDjGigHistoryBooking(booking) &&
+            !isBookingHiddenFromUserHistory(booking.id, hiddenBookingIds),
         ),
       );
   }
@@ -314,11 +317,12 @@ export function filterDjGigsByTab(
 
 export function countDjGigsByTab(
   bookings: BookingRequest[],
+  hiddenBookingIds: ReadonlySet<string> = new Set(),
 ): Record<DjGigsListTab, number> {
   return {
-    pending: filterDjGigsByTab(bookings, "pending").length,
-    accepted: filterDjGigsByTab(bookings, "accepted").length,
-    history: filterDjGigsByTab(bookings, "history").length,
+    pending: filterDjGigsByTab(bookings, "pending", hiddenBookingIds).length,
+    accepted: filterDjGigsByTab(bookings, "accepted", hiddenBookingIds).length,
+    history: filterDjGigsByTab(bookings, "history", hiddenBookingIds).length,
   };
 }
 
@@ -326,9 +330,24 @@ export function isArchivedBooking(booking: BookingRequest): boolean {
   return Boolean(booking.archived_at);
 }
 
-export function filterHistoryCancelledBookings(bookings: BookingRequest[]): BookingRequest[] {
+export function isBookingHiddenFromUserHistory(
+  bookingId: string,
+  hiddenBookingIds: ReadonlySet<string>,
+): boolean {
+  return hiddenBookingIds.has(bookingId);
+}
+
+export function filterHistoryCancelledBookings(
+  bookings: BookingRequest[],
+  hiddenBookingIds: ReadonlySet<string> = new Set(),
+): BookingRequest[] {
   return sortBookingsNewestFirst(
-    bookings.filter((booking) => booking.status === "cancelled" && !booking.archived_at),
+    bookings.filter(
+      (booking) =>
+        booking.status === "cancelled" &&
+        !booking.archived_at &&
+        !isBookingHiddenFromUserHistory(booking.id, hiddenBookingIds),
+    ),
   );
 }
 
@@ -1625,7 +1644,32 @@ export function getBookingMutationErrorMessage(error: unknown): string {
     ) {
       if (process.env.NODE_ENV !== "production") {
         console.warn(
-          "[bookings] Booking archive is unavailable. Apply scripts/setupBookingRequestArchiving.sql and scripts/fixRecipientBookingArchive.sql, or the equivalent migrations, before using Remove from history on Gigs.",
+          "[bookings] Booking archive is unavailable. Apply scripts/setupBookingRequestArchiving.sql before using planner archive actions.",
+        );
+      }
+
+      return "Archive is unavailable right now. Please try again later.";
+    }
+
+    if (
+      supabaseError.code === "PGRST202" ||
+      supabaseError.code === "42883" ||
+      supabaseError.message?.includes("hide_booking_request_from_history") ||
+      supabaseError.message?.includes("hide_booking_requests_from_history")
+    ) {
+      if (process.env.NODE_ENV !== "production") {
+        console.warn(
+          "[bookings] Booking history hide is unavailable. Apply supabase/migrations/20250710130000_booking_request_history_hides.sql before using Remove from history.",
+        );
+      }
+
+      return "Remove from history is unavailable right now. Please try again later.";
+    }
+
+    if (supabaseError.code === "42P01" && supabaseError.message?.includes("booking_request_history_hides")) {
+      if (process.env.NODE_ENV !== "production") {
+        console.warn(
+          "[bookings] Booking history hide table is unavailable. Apply supabase/migrations/20250710130000_booking_request_history_hides.sql.",
         );
       }
 
@@ -2557,6 +2601,119 @@ export async function archiveAllCancelledBookingRequests(
     }
 
     successes.push(result.bookingId);
+  }
+
+  return { successes, failures };
+}
+
+let bookingHistoryHideAvailable = true;
+
+export function isBookingHistoryHideAvailable(): boolean {
+  return bookingHistoryHideAvailable;
+}
+
+function markBookingHistoryHideUnavailable(): void {
+  bookingHistoryHideAvailable = false;
+}
+
+function isMissingBookingHistoryHideSetupError(error: unknown): boolean {
+  if (!error || typeof error !== "object") {
+    return false;
+  }
+
+  const supabaseError = error as { code?: string; message?: string };
+
+  return (
+    supabaseError.code === "PGRST202" ||
+    supabaseError.code === "42883" ||
+    supabaseError.code === "42P01" ||
+    String(supabaseError.message ?? "").includes("booking_request_history_hides") ||
+    String(supabaseError.message ?? "").includes("hide_booking_request_from_history") ||
+    String(supabaseError.message ?? "").includes("hide_booking_requests_from_history")
+  );
+}
+
+function getBookingHistoryHideErrorMessage(error: unknown): string {
+  if (isMissingBookingHistoryHideSetupError(error)) {
+    markBookingHistoryHideUnavailable();
+    return getBookingMutationErrorMessage(error);
+  }
+
+  if (error instanceof Error && error.message.trim()) {
+    const message = error.message.trim();
+
+    if (
+      !/\.sql/i.test(message) &&
+      !/supabase\/migrations/i.test(message) &&
+      !/scripts\//i.test(message) &&
+      !/hide_booking_requests?_from_history/i.test(message)
+    ) {
+      return message;
+    }
+  }
+
+  return "Could not remove selected items from history.";
+}
+
+export async function listBookingRequestHistoryHideIds(): Promise<string[]> {
+  const { data, error } = await supabase
+    .from("booking_request_history_hides")
+    .select("booking_request_id");
+
+  if (error) {
+    if (isMissingBookingHistoryHideSetupError(error)) {
+      markBookingHistoryHideUnavailable();
+      return [];
+    }
+
+    logBookingsLoadError(error);
+    throw error;
+  }
+
+  return (data ?? [])
+    .map((row) => row.booking_request_id)
+    .filter((bookingId): bookingId is string => typeof bookingId === "string");
+}
+
+export type BookingHistoryHideFailure = {
+  bookingId: string;
+  message: string;
+};
+
+export async function hideBookingRequestsFromHistory(
+  bookingIds: string[],
+): Promise<{
+  successes: string[];
+  failures: BookingHistoryHideFailure[];
+}> {
+  if (bookingIds.length === 0) {
+    return { successes: [], failures: [] };
+  }
+
+  const { data, error } = await supabase.rpc("hide_booking_requests_from_history", {
+    p_booking_ids: bookingIds,
+  });
+
+  if (error) {
+    throw new Error(getBookingHistoryHideErrorMessage(error));
+  }
+
+  const updatedIds = Array.isArray((data as { updated_ids?: unknown } | null)?.updated_ids)
+    ? ((data as { updated_ids: unknown[] }).updated_ids.filter(
+        (value): value is string => typeof value === "string",
+      ))
+    : [];
+
+  const successes = updatedIds;
+  const failures: BookingHistoryHideFailure[] = [];
+
+  for (const bookingId of bookingIds) {
+    if (!successes.includes(bookingId)) {
+      failures.push({
+        bookingId,
+        message: "Booking could not be removed from history.",
+      });
+    }
   }
 
   return { successes, failures };

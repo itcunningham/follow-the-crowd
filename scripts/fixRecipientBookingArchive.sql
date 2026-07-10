@@ -1,4 +1,6 @@
 -- Allow DJs to archive received gigs from Gigs history.
+-- LEGACY: superseded by supabase/migrations/20250710130000_booking_request_history_hides.sql
+-- Do not run on new deploys. Recipient Remove from history uses per-user booking_request_history_hides.
 -- Run in Supabase SQL Editor after setupBookingRequestArchiving.sql.
 
 create or replace function public.archive_booking_request(p_booking_id uuid)
