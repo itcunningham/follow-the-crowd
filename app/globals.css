@@ -21,7 +21,7 @@
   --ftc-color-text-primary: #f1f5f9;
   --ftc-color-text-secondary: #8e9aaf;
   --ftc-color-text-muted: #64748b;
-  --ftc-color-text-section-label: #9eb0bf;
+  --ftc-color-text-section-label: #b0b9c3;
   --ftc-color-text-inverse: #0a0e14;
 
   --ftc-color-border-default: #1e293b;
@@ -604,7 +604,7 @@ html {
   font-weight: 600;
   letter-spacing: 0.025em;
   text-transform: uppercase;
-  color: var(--ftc-color-text-section-label);
+  color: var(--ftc-color-text-section-label) !important;
 }
 
 .ftc-event-colour-option {
