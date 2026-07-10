@@ -1,9 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import BookingSheetDialog, {
-  BookingSheetSecondaryButton,
-} from "@/app/components/booking/BookingSheetDialog";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 
 export function filterOutRemovingHistoryItems<T extends { id: string }>(
   items: T[],
@@ -246,16 +244,95 @@ function HistoryConfirmDangerButton({
   loading: boolean;
   onConfirm: () => void;
 }) {
+  const buttonClassName =
+    "inline-flex min-h-[2.75rem] w-full items-center justify-center rounded-xl border-0 bg-[var(--ftc-color-danger)] px-4 py-2.5 text-sm font-semibold uppercase tracking-wide text-ftc-bg sm:w-auto";
+
+  if (loading) {
+    return (
+      <button
+        type="button"
+        aria-busy="true"
+        tabIndex={-1}
+        className={`${buttonClassName} cursor-not-allowed`}
+      >
+        Removing...
+      </button>
+    );
+  }
+
+  return (
+    <button type="button" onClick={onConfirm} className={buttonClassName}>
+      Remove from history
+    </button>
+  );
+}
+
+function HistoryConfirmSecondaryButton({
+  loading,
+  onClick,
+  children,
+}: {
+  loading: boolean;
+  onClick: () => void;
+  children: ReactNode;
+}) {
   return (
     <button
       type="button"
-      disabled={loading}
-      aria-busy={loading}
-      onClick={onConfirm}
-      className="inline-flex min-h-[2.75rem] w-full items-center justify-center rounded-xl border-0 bg-[var(--ftc-color-danger)] px-4 py-2.5 text-sm font-semibold uppercase tracking-wide text-ftc-bg disabled:cursor-not-allowed sm:w-auto"
+      onClick={loading ? undefined : onClick}
+      aria-disabled={loading}
+      tabIndex={loading ? -1 : 0}
+      className="inline-flex min-h-[2.75rem] w-full items-center justify-center rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated px-4 py-2.5 text-sm font-semibold uppercase tracking-wide text-ftc-text-secondary disabled:cursor-not-allowed sm:w-auto"
     >
-      {loading ? "Removing..." : "Remove from history"}
+      {children}
     </button>
+  );
+}
+
+function HistoryRemoveConfirmDialogPanel({
+  count,
+  loading,
+  onCancel,
+  onConfirm,
+}: {
+  count: number;
+  loading: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-[60] flex items-end justify-center bg-black p-0 sm:items-center sm:p-4"
+      onClick={() => {
+        if (!loading) {
+          onCancel();
+        }
+      }}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="history-remove-confirm-title"
+        className="isolate max-h-[90dvh] w-full max-w-lg overflow-y-auto overscroll-contain rounded-t-2xl border border-ftc-border-subtle bg-ftc-surface sm:rounded-2xl"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="border-b border-ftc-border-subtle px-5 py-4">
+          <h2 id="history-remove-confirm-title" className="text-base font-semibold text-ftc-text">
+            Remove from history?
+          </h2>
+          <p className="mt-2 text-sm leading-relaxed text-ftc-text-secondary">
+            {`This removes ${count} selected item${count === 1 ? "" : "s"} from your History view only. It does not delete the event, booking, chat, or any records.`}
+          </p>
+        </div>
+
+        <div className="relative z-10 flex flex-col gap-2 border-t border-ftc-border-subtle bg-ftc-surface px-5 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:flex-row sm:justify-end">
+          <HistoryConfirmSecondaryButton loading={loading} onClick={onCancel}>
+            Keep items
+          </HistoryConfirmSecondaryButton>
+          <HistoryConfirmDangerButton loading={loading} onConfirm={onConfirm} />
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -272,23 +349,37 @@ export function HistoryRemoveConfirmDialog({
   onCancel: () => void;
   onConfirm: () => void;
 }) {
-  return (
-    <BookingSheetDialog
-      open={open}
-      title="Remove from history?"
-      titleId="history-remove-confirm-title"
-      description={`This removes ${count} selected item${count === 1 ? "" : "s"} from your History view only. It does not delete the event, booking, chat, or any records.`}
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [open]);
+
+  if (!open || !mounted) {
+    return null;
+  }
+
+  return createPortal(
+    <HistoryRemoveConfirmDialogPanel
+      count={count}
       loading={loading}
-      onBackdropClick={onCancel}
-      footer={
-        <>
-          <BookingSheetSecondaryButton disabled={loading} onClick={onCancel}>
-            Keep items
-          </BookingSheetSecondaryButton>
-          <HistoryConfirmDangerButton loading={loading} onConfirm={onConfirm} />
-        </>
-      }
-    />
+      onCancel={onCancel}
+      onConfirm={onConfirm}
+    />,
+    document.body,
   );
 }
 
