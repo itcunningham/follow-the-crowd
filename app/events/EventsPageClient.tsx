@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import AppNavigation, { MOBILE_NAV_OFFSET_CLASS } from "@/app/components/AppNavigation";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
+import { useGuardProfile } from "@/app/components/GuardProfileContext";
 import EventDateStatusBadge from "@/app/components/EventDateStatusBadge";
 import PlannerEventsSubNav from "@/app/components/PlannerEventsSubNav";
 import {
@@ -52,6 +53,7 @@ import {
   getCurrentUserProfile,
   type UserRole,
 } from "@/lib/user/currentUser";
+import { readCachedNavRole } from "@/lib/navigationRoleCache";
 
 const emptyEventForm: EventInput = {
   name: "",
@@ -71,21 +73,6 @@ type EventsPageClientProps = {
 };
 
 const EVENTS_LIST_CACHE_KEY = "ftc-events-list-v1";
-const NAV_ROLE_CACHE_KEY = "ftc-nav-role";
-
-function readCachedNavRole(): UserRole | null {
-  if (typeof window === "undefined") {
-    return null;
-  }
-
-  const cachedRole = sessionStorage.getItem(NAV_ROLE_CACHE_KEY);
-
-  if (cachedRole === "dj" || cachedRole === "promoter" || cachedRole === "both") {
-    return cachedRole;
-  }
-
-  return null;
-}
 
 function getEventsCacheKey(isPlanner: boolean): string {
   return `${EVENTS_LIST_CACHE_KEY}:${isPlanner ? "planner" : "dj"}`;
@@ -124,12 +111,22 @@ function writeEventsListCache(isPlanner: boolean, events: EventWithLineupStats[]
   }
 }
 
-export default function EventsPageClient({ initialTab }: EventsPageClientProps) {
+export default function EventsPageClient(props: EventsPageClientProps) {
+  return (
+    <OnboardingGuard>
+      <EventsPageClientView {...props} />
+    </OnboardingGuard>
+  );
+}
+
+function EventsPageClientView({ initialTab }: EventsPageClientProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const guardProfile = useGuardProfile();
   const handledCreateParamsRef = useRef<string | null>(null);
-  const [role, setRole] = useState<UserRole | null>(() => readCachedNavRole());
-  const [loadingAccess, setLoadingAccess] = useState(true);
+  const [role, setRole] = useState<UserRole | null>(
+    () => guardProfile?.role ?? readCachedNavRole(),
+  );
   const [events, setEvents] = useState<EventWithLineupStats[]>([]);
   const [loadingEvents, setLoadingEvents] = useState(true);
   const [createOpen, setCreateOpen] = useState(false);
@@ -190,7 +187,9 @@ export default function EventsPageClient({ initialTab }: EventsPageClientProps) 
     return getEventDateValidationError(form.eventDate, form.setTime);
   }, [createOpen, createStep, form.eventDate, form.setTime]);
 
-  const isPlanner = canManageEvents(role);
+  const resolvedRole = role ?? guardProfile?.role ?? null;
+  const isPlanner = canManageEvents(resolvedRole);
+  const roleReady = resolvedRole !== null;
 
   const loadEvents = useCallback(async () => {
     const cachedEvents = readEventsListCache(isPlanner);
@@ -223,27 +222,35 @@ export default function EventsPageClient({ initialTab }: EventsPageClientProps) 
   }, [isPlanner]);
 
   useEffect(() => {
+    if (guardProfile?.role) {
+      setRole(guardProfile.role);
+    }
+  }, [guardProfile?.role]);
+
+  useEffect(() => {
+    if (roleReady) {
+      return;
+    }
+
     getCurrentUserProfile()
       .then((profile) => {
         setRole(profile?.role ?? null);
-        setLoadingAccess(false);
       })
       .catch((loadError) => {
         console.error("Failed to load events access:", loadError);
-        setLoadingAccess(false);
       });
-  }, []);
+  }, [roleReady]);
 
   useEffect(() => {
-    if (loadingAccess) {
+    if (!roleReady) {
       return;
     }
 
     loadEvents();
-  }, [loadingAccess, loadEvents]);
+  }, [roleReady, loadEvents]);
 
   useEffect(() => {
-    if (loadingAccess || !isPlanner) {
+    if (!roleReady || !isPlanner) {
       return;
     }
 
@@ -282,7 +289,7 @@ export default function EventsPageClient({ initialTab }: EventsPageClientProps) 
         router.replace("/events");
       });
     }
-  }, [loadingAccess, isPlanner, router]);
+  }, [roleReady, isPlanner, router]);
 
   async function openCreateFlow(options?: { eventDate?: string; initialStep?: CreateStep }) {
     const prefilledEventDate = sanitizePrefilledEventDateKey(options?.eventDate ?? "");
@@ -397,7 +404,6 @@ export default function EventsPageClient({ initialTab }: EventsPageClientProps) 
   }
 
   return (
-    <OnboardingGuard>
       <div
         className={`mx-auto min-h-[100dvh] w-full max-w-2xl bg-ftc-bg font-sans text-ftc-text ${MOBILE_NAV_OFFSET_CLASS}`}
       >
@@ -418,7 +424,7 @@ export default function EventsPageClient({ initialTab }: EventsPageClientProps) 
               </button>
             ) : null}
           </div>
-          <PlannerEventsSubNav />
+          <PlannerEventsSubNav initialRole={resolvedRole} />
         </header>
 
         <div className="px-4 py-4 sm:px-6">
@@ -709,6 +715,5 @@ export default function EventsPageClient({ initialTab }: EventsPageClientProps) 
           )}
         </div>
       </div>
-    </OnboardingGuard>
   );
 }

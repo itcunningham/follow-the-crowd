@@ -11,6 +11,7 @@ import {
   getEventsAreaSubNavItems,
   isPlannerEventsAreaPath,
 } from "@/lib/plannerEventsNav";
+import { readCachedNavRole } from "@/lib/navigationRoleCache";
 import { getCurrentUserProfile, type UserRole } from "@/lib/user/currentUser";
 
 function getActiveHref(pathname: string): string {
@@ -58,10 +59,16 @@ function GigsPendingCountBadge({
   );
 }
 
-export default function PlannerEventsSubNav() {
+export default function PlannerEventsSubNav({
+  initialRole = null,
+}: {
+  initialRole?: UserRole | null;
+}) {
   const pathname = usePathname();
   const guardProfile = useGuardProfile();
-  const [role, setRole] = useState<UserRole | null>(guardProfile?.role ?? null);
+  const [role, setRole] = useState<UserRole | null>(
+    () => initialRole ?? guardProfile?.role ?? readCachedNavRole(),
+  );
   const [pendingIncomingCount, setPendingIncomingCount] = useState(0);
 
   useEffect(() => {

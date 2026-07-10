@@ -16,35 +16,10 @@ import {
 } from "@/lib/user/currentUser";
 import { useGuardProfile } from "@/app/components/GuardProfileContext";
 
-const NAV_ROLE_CACHE_KEY = "ftc-nav-role";
-const NAV_USER_CACHE_KEY = "ftc-nav-user-id";
-
-function readCachedNavigation(): { role: UserRole | null; userId: string | null } {
-  if (typeof window === "undefined") {
-    return { role: null, userId: null };
-  }
-
-  const cachedRole = sessionStorage.getItem(NAV_ROLE_CACHE_KEY);
-  const role =
-    cachedRole === "dj" || cachedRole === "promoter" || cachedRole === "both"
-      ? cachedRole
-      : null;
-  const userId = sessionStorage.getItem(NAV_USER_CACHE_KEY);
-
-  return { role, userId: userId?.trim() ? userId : null };
-}
-
-function cacheNavigation(role: UserRole, userId: string | null) {
-  if (typeof window === "undefined") {
-    return;
-  }
-
-  sessionStorage.setItem(NAV_ROLE_CACHE_KEY, role);
-
-  if (userId) {
-    sessionStorage.setItem(NAV_USER_CACHE_KEY, userId);
-  }
-}
+import {
+  cacheNavigationRole,
+  readCachedNavigation,
+} from "@/lib/navigationRoleCache";
 
 type NavIconKey = "home" | "events" | "gigs" | "messages" | "profile";
 
@@ -313,7 +288,7 @@ export default function AppNavigation() {
         return;
       }
 
-      cacheNavigation(userRole, userId);
+      cacheNavigationRole(userRole, userId);
       await refreshBadgeCounts({ force: true });
     } catch (error) {
       console.error("[AppNavigation] Failed to load navigation:", error);

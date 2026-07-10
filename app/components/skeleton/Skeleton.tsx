@@ -10,22 +10,7 @@ import MessagesInboxLayout from "@/app/components/dm/MessagesInboxLayout";
 import PlannerEventsSubNav from "@/app/components/PlannerEventsSubNav";
 import ProfilePageHeader from "@/app/components/profile/ProfilePageHeader";
 import { canManageEvents, type UserRole } from "@/lib/user/currentUser";
-
-const NAV_ROLE_CACHE_KEY = "ftc-nav-role";
-
-function readCachedNavRole(): UserRole | null {
-  if (typeof window === "undefined") {
-    return null;
-  }
-
-  const cachedRole = sessionStorage.getItem(NAV_ROLE_CACHE_KEY);
-
-  if (cachedRole === "dj" || cachedRole === "promoter" || cachedRole === "both") {
-    return cachedRole;
-  }
-
-  return null;
-}
+import { readCachedNavRole } from "@/lib/navigationRoleCache";
 
 export function SkeletonBlock({
   className = "",
@@ -201,13 +186,16 @@ export function EventDetailSkeleton() {
 }
 
 export function EventsPageLoadingShell({
-  showPlannerStats,
+  role: roleProp,
 }: {
+  /** @deprecated Pass `role` instead — derived from role when omitted. */
   showPlannerStats?: boolean;
+  role?: UserRole | null;
 }) {
   const searchParams = useSearchParams();
   const [cachedRole] = useState<UserRole | null>(() => readCachedNavRole());
-  const isPlanner = showPlannerStats ?? canManageEvents(cachedRole);
+  const role = roleProp ?? cachedRole;
+  const isPlanner = canManageEvents(role);
   const isHistoryTab = searchParams.get("tab") === "history";
 
   return (
@@ -227,7 +215,7 @@ export function EventsPageLoadingShell({
             </Link>
           ) : null}
         </div>
-        <PlannerEventsSubNav />
+        <PlannerEventsSubNav initialRole={role} />
       </header>
       <div className="px-4 py-4 sm:px-6">
         <div className="mb-4 flex flex-wrap gap-2">
@@ -811,7 +799,7 @@ export function AppLoadingShell({
   search?: string;
 }) {
   if (pathname === "/events") {
-    return <EventsPageLoadingShell showPlannerStats={showPlannerEventsChrome(role)} />;
+    return <EventsPageLoadingShell role={role ?? readCachedNavRole()} />;
   }
 
   if (/^\/events\/[^/]+\/chat\/?$/.test(pathname)) {
