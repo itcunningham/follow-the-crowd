@@ -52,6 +52,7 @@ export type Event = {
   cover_image_url: string | null;
   fallback_colour: string | null;
   crew_chat_started_at: string | null;
+  history_hidden_at: string | null;
 };
 
 export type EventInput = {
@@ -173,6 +174,18 @@ export function getEventDateDisplayBadgeClass(label: EventDateDisplayLabel): str
 
 export function isEventCancelled(event: Pick<Event, "status">): boolean {
   return event.status === "cancelled";
+}
+
+export function isEventVisibleInPlannerHistory(
+  event: Pick<Event, "status" | "history_hidden_at">,
+): boolean {
+  return isEventCancelled(event) && !event.history_hidden_at;
+}
+
+export function filterVisiblePlannerHistoryEvents<
+  T extends Pick<Event, "status" | "history_hidden_at">,
+>(events: T[]): T[] {
+  return events.filter((event) => isEventVisibleInPlannerHistory(event));
 }
 
 export function getEventCancelledBadgeClass(): string {
@@ -647,12 +660,63 @@ export async function cancelEvent(eventId: string): Promise<CancelEventResult> {
   return result;
 }
 
+export type EventHistoryHideFailure = {
+  eventId: string;
+  message: string;
+};
+
+export async function hideEventsFromHistory(
+  eventIds: string[],
+): Promise<{
+  successes: string[];
+  failures: EventHistoryHideFailure[];
+}> {
+  if (eventIds.length === 0) {
+    return { successes: [], failures: [] };
+  }
+
+  const { data, error } = await supabase.rpc("hide_events_from_history", {
+    p_event_ids: eventIds,
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  const updatedIds = Array.isArray((data as { updated_ids?: unknown } | null)?.updated_ids)
+    ? ((data as { updated_ids: unknown[] }).updated_ids.filter(
+        (value): value is string => typeof value === "string",
+      ))
+    : [];
+
+  const successes = updatedIds;
+  const failures: EventHistoryHideFailure[] = [];
+
+  for (const eventId of eventIds) {
+    if (!successes.includes(eventId)) {
+      failures.push({
+        eventId,
+        message: "Event could not be removed from history.",
+      });
+    }
+  }
+
+  return { successes, failures };
+}
+
 export function getEventsLoadErrorMessage(error: unknown): string {
   if (error && typeof error === "object") {
     const supabaseError = error as { message?: string; code?: string };
 
     if (supabaseError.code === "42P01" || supabaseError.code === "PGRST205") {
       return "Events table is not set up yet. Run scripts/setupEvents.sql.";
+    }
+
+    if (
+      supabaseError.code === "42703" &&
+      supabaseError.message?.includes("history_hidden_at")
+    ) {
+      return "Database update required. Run scripts/setupHistoryHide.sql in Supabase SQL Editor, then try again.";
     }
 
     if (

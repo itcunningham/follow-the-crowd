@@ -1,7 +1,7 @@
 const CREW_CHAT_STARTED_AT_FIELD = "crew_chat_started_at";
 
 export const EVENT_BASE_FIELDS =
-  "id, created_at, owner_id, booking_plan_id, name, venue, event_date, set_time, rate, notes, status, cover_image_url, fallback_colour";
+  "id, created_at, owner_id, booking_plan_id, name, venue, event_date, set_time, rate, notes, status, cover_image_url, fallback_colour, history_hidden_at";
 
 export const EVENT_FIELDS_WITH_CREW_CHAT = `${EVENT_BASE_FIELDS}, ${CREW_CHAT_STARTED_AT_FIELD}`;
 
@@ -68,18 +68,25 @@ function normalizeCrewChatStartedAtValue(
 
 export function normalizeEventRow(row: Record<string, unknown>): Record<string, unknown> & {
   crew_chat_started_at: string | null;
+  history_hidden_at: string | null;
 } {
+  const historyHiddenAt = row.history_hidden_at;
+
   return {
     ...row,
     crew_chat_started_at: normalizeCrewChatStartedAtValue(
       row.crew_chat_started_at as string | null | undefined,
     ),
+    history_hidden_at:
+      typeof historyHiddenAt === "string" && historyHiddenAt.trim()
+        ? historyHiddenAt
+        : null,
   };
 }
 
 export function normalizeEventRows(
   rows: Record<string, unknown>[],
-): Array<Record<string, unknown> & { crew_chat_started_at: string | null }> {
+): Array<Record<string, unknown> & { crew_chat_started_at: string | null; history_hidden_at: string | null }> {
   return rows.map((row) => normalizeEventRow(row));
 }
 

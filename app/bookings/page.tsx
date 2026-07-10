@@ -17,6 +17,13 @@ import { getEventDateValidationError } from "@/lib/bookingDateTime";
 import { BookingRateField } from "@/app/components/BookingRateField";
 import BookingRateModeField from "@/app/components/booking/BookingRateModeField";
 import ArchiveAllBookingRequestsButton from "@/app/components/ArchiveAllBookingRequestsButton";
+import {
+  HistoryManageButton,
+  HistoryRemoveConfirmDialog,
+  HistorySelectionCheckbox,
+  HistorySelectionToolbar,
+  useHistoryBulkManage,
+} from "@/app/components/history/HistoryBulkManage";
 import BookingStatusBadge from "@/app/components/booking/BookingStatusBadge";
 import { BookingDetailItem } from "@/app/components/booking/BookingDetailGrid";
 import {
@@ -391,6 +398,15 @@ function BookingsPageContent() {
 
     return filterDjGigsByTab(receivedBookings, djGigsView);
   }, [receivedBookings, djGigsView, showGigsWorkspace]);
+
+  const djHistoryBookings = useMemo(
+    () => filterDjGigsByTab(receivedBookings, "history"),
+    [receivedBookings],
+  );
+
+  const gigsHistoryBulkManage = useHistoryBulkManage(
+    showGigsWorkspace && djGigsView === "history" ? djHistoryBookings : [],
+  );
 
   useEffect(() => {
     function handlePopState() {
@@ -931,6 +947,34 @@ function BookingsPageContent() {
     }
   }
 
+  async function handleRemoveGigsFromHistory(bookingIds: string[]) {
+    setError(null);
+    setSuccessMessage(null);
+
+    const { successes, failures } = await archiveAllCancelledBookingRequests(bookingIds);
+
+    if (successes.length > 0) {
+      const archivedAt = new Date().toISOString();
+
+      setReceivedBookings((current) =>
+        current.map((booking) =>
+          successes.includes(booking.id) ? { ...booking, archived_at: archivedAt } : booking,
+        ),
+      );
+      setSuccessMessage(
+        `${successes.length} gig${successes.length === 1 ? "" : "s"} removed from history.`,
+      );
+    }
+
+    if (failures.length > 0) {
+      setError(
+        failures.length === bookingIds.length
+          ? "Could not remove selected gigs from history."
+          : `${failures.length} gig${failures.length === 1 ? "" : "s"} could not be removed from history.`,
+      );
+    }
+  }
+
   if (!loadingAccess && !canAccessBookings(displayRole)) {
     return null;
   }
@@ -956,7 +1000,14 @@ function BookingsPageContent() {
           <PlannerEventsSubNav initialRole={displayRole} />
 
           {showGigsWorkspace ? (
-            <DjGigsTabs activeView={djGigsView} bookings={receivedBookings} />
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
+              <DjGigsTabs activeView={djGigsView} bookings={receivedBookings} />
+              {djGigsView === "history" &&
+              gigsHistoryBulkManage.showManageControl &&
+              !gigsHistoryBulkManage.selectionMode ? (
+                <HistoryManageButton onClick={gigsHistoryBulkManage.enterSelectionMode} />
+              ) : null}
+            </div>
           ) : null}
         </header>
 
@@ -966,6 +1017,27 @@ function BookingsPageContent() {
               {successMessage}
             </p>
           ) : null}
+
+          {djGigsView === "history" && gigsHistoryBulkManage.selectionMode ? (
+            <HistorySelectionToolbar
+              selectedCount={gigsHistoryBulkManage.selectedCount}
+              allSelected={gigsHistoryBulkManage.allSelected}
+              removing={gigsHistoryBulkManage.removing}
+              onCancel={gigsHistoryBulkManage.cancelSelectionMode}
+              onSelectAll={gigsHistoryBulkManage.selectAll}
+              onRemove={gigsHistoryBulkManage.openConfirm}
+            />
+          ) : null}
+
+          <HistoryRemoveConfirmDialog
+            open={gigsHistoryBulkManage.confirmOpen}
+            count={gigsHistoryBulkManage.selectedCount}
+            loading={gigsHistoryBulkManage.removing}
+            onCancel={gigsHistoryBulkManage.closeConfirm}
+            onConfirm={() => {
+              void gigsHistoryBulkManage.confirmRemove(handleRemoveGigsFromHistory);
+            }}
+          />
 
           {failureDetails.length > 0 ? (
             <div className="mb-4 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated px-4 py-3 text-sm text-[var(--ftc-color-danger)]">
@@ -1321,6 +1393,9 @@ function BookingsPageContent() {
                       gigsTab={djGigsView}
                       senderName={senderProfiles.get(booking.sender_id)?.display_name?.trim()}
                       muted
+                      selectionMode={gigsHistoryBulkManage.selectionMode}
+                      selected={gigsHistoryBulkManage.selectedIds.has(booking.id)}
+                      onToggleSelect={() => gigsHistoryBulkManage.toggleItem(booking.id)}
                     />
                   ) : (
                     <ReceivedBookingCard
@@ -1369,7 +1444,7 @@ function DjGigsTabs({
   ];
 
   return (
-    <div className="mt-4 flex flex-wrap gap-2">
+    <div className="flex flex-wrap gap-2">
       {tabs.map((tab) => {
         const isActive = activeView === tab.value;
         const href = buildGigsListHref(tab.value);
@@ -1691,6 +1766,9 @@ function BookingHistoryCard({
   avatarUrl,
   action,
   gigsTab,
+  selectionMode = false,
+  selected = false,
+  onToggleSelect,
 }: {
   booking: BookingRequest;
   muted?: boolean;
@@ -1700,6 +1778,9 @@ function BookingHistoryCard({
   avatarUrl?: string | null;
   action?: React.ReactNode;
   gigsTab?: DjGigsListTab;
+  selectionMode?: boolean;
+  selected?: boolean;
+  onToggleSelect?: () => void;
 }) {
   const eventHref = booking.event_id
     ? gigsTab
@@ -1714,32 +1795,36 @@ function BookingHistoryCard({
   const conversationHref = `/dm/${booking.conversation_id}?from=bookings${
     gigsTab ? `&tab=${gigsTab}` : ""
   }`;
+  const selectionLabel = `Select ${booking.event_name} for removal from history`;
 
-  return (
-    <li className={`${cardClass} min-w-0`}>
-      <div className="flex min-w-0 max-w-full flex-col gap-3 overflow-hidden">
-        <div className="flex min-w-0 gap-3">
-          {avatarName ? (
-            <ProfileAvatar name={avatarName} avatarUrl={avatarUrl} size="sm" className="mt-0.5" />
-          ) : null}
-          <div className="min-w-0 flex-1">
-            <GigCardHeader
-              eventName={booking.event_name}
-              status={booking.status}
-              plannerLabel={plannerLabel}
-              muted={muted}
-            />
-            <GigCardMetaRows
-              venue={booking.venue}
-              eventDate={booking.event_date}
-              setTime={booking.set_time}
-              rateLabel={getBookingOfferRateLabel(booking)}
-              extraLine={cancellationReasonLabel ?? undefined}
-              muted={muted}
-            />
-          </div>
+  const cardBody = (
+    <div className="flex min-w-0 max-w-full flex-col gap-3 overflow-hidden">
+      <div className="flex min-w-0 gap-3">
+        {selectionMode ? (
+          <HistorySelectionCheckbox checked={selected} label={selectionLabel} presentational />
+        ) : null}
+        {avatarName ? (
+          <ProfileAvatar name={avatarName} avatarUrl={avatarUrl} size="sm" className="mt-0.5" />
+        ) : null}
+        <div className="min-w-0 flex-1">
+          <GigCardHeader
+            eventName={booking.event_name}
+            status={booking.status}
+            plannerLabel={plannerLabel}
+            muted={muted}
+          />
+          <GigCardMetaRows
+            venue={booking.venue}
+            eventDate={booking.event_date}
+            setTime={booking.set_time}
+            rateLabel={getBookingOfferRateLabel(booking)}
+            extraLine={cancellationReasonLabel ?? undefined}
+            muted={muted}
+          />
         </div>
+      </div>
 
+      {selectionMode ? null : (
         <div className="flex flex-wrap gap-2">
           {action}
           {eventHref ? (
@@ -1747,7 +1832,30 @@ function BookingHistoryCard({
           ) : null}
           <GigCardSecondaryAction href={conversationHref}>Open conversation</GigCardSecondaryAction>
         </div>
-      </div>
+      )}
+    </div>
+  );
+
+  if (selectionMode) {
+    return (
+      <li className={`${cardClass} min-w-0`}>
+        <button
+          type="button"
+          onClick={onToggleSelect}
+          aria-pressed={selected}
+          className={`w-full min-w-0 text-left focus-visible:outline-none ${
+            selected ? "ring-1 ring-ftc-primary/40 rounded-2xl" : ""
+          }`}
+        >
+          {cardBody}
+        </button>
+      </li>
+    );
+  }
+
+  return (
+    <li className={`${cardClass} min-w-0`}>
+      {cardBody}
     </li>
   );
 }

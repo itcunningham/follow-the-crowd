@@ -27,13 +27,22 @@ import EventCoverImageField, {
 import EventFallbackColourField from "@/app/components/events/EventFallbackColourField";
 import { EventCoverImageListThumb } from "@/app/components/events/EventCoverImageDisplay";
 import { EventListSkeleton } from "@/app/components/skeleton/Skeleton";
+import {
+  HistoryManageButton,
+  HistoryRemoveConfirmDialog,
+  HistorySelectionCheckbox,
+  HistorySelectionToolbar,
+  useHistoryBulkManage,
+} from "@/app/components/history/HistoryBulkManage";
 import type { EventSelectableFallbackColourKey } from "@/lib/events/eventFallbackColour";
 import { listBookingPlans, type BookingPlan } from "@/lib/bookingPlans";
 import {
   attachLineupStats,
   createEvent,
   eventInputFromBookingPlan,
+  filterVisiblePlannerHistoryEvents,
   getEventsLoadErrorMessage,
+  hideEventsFromHistory,
   isEventCancelled,
   listDjInvitedEvents,
   listOwnedEvents,
@@ -149,6 +158,7 @@ function EventsPageClientView({ initialTab }: EventsPageClientProps) {
   );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [eventDateOverride, setEventDateOverride] = useState<string | null>(null);
   const [locationRevision, setLocationRevision] = useState(0);
 
@@ -179,11 +189,6 @@ function EventsPageClientView({ initialTab }: EventsPageClientProps) {
     () => events.filter((event) => !isEventCancelled(event)),
     [events],
   );
-  const historyEvents = useMemo(
-    () => events.filter((event) => isEventCancelled(event)),
-    [events],
-  );
-  const filteredEvents = isHistoryTab ? historyEvents : upcomingEvents;
   const createFormDateValidationError = useMemo(() => {
     if (!createOpen || createStep !== "form") {
       return null;
@@ -195,6 +200,15 @@ function EventsPageClientView({ initialTab }: EventsPageClientProps) {
   const resolvedRole = role ?? guardProfile?.role ?? null;
   const isPlanner = canManageEvents(resolvedRole);
   const roleReady = resolvedRole !== null;
+  const historyEvents = useMemo(
+    () =>
+      isPlanner
+        ? filterVisiblePlannerHistoryEvents(events)
+        : events.filter((event) => isEventCancelled(event)),
+    [events, isPlanner],
+  );
+  const filteredEvents = isHistoryTab ? historyEvents : upcomingEvents;
+  const historyBulkManage = useHistoryBulkManage(isPlanner && isHistoryTab ? historyEvents : []);
 
   const loadEvents = useCallback(async () => {
     const cachedEvents = readEventsListCache(isPlanner);
@@ -410,6 +424,38 @@ function EventsPageClientView({ initialTab }: EventsPageClientProps) {
 
   function handleEventsListTabChange() {
     setLocationRevision((current) => current + 1);
+    historyBulkManage.cancelSelectionMode();
+    setSuccessMessage(null);
+  }
+
+  async function handleRemoveEventsFromHistory(eventIds: string[]) {
+    setError(null);
+    setSuccessMessage(null);
+
+    const { successes, failures } = await hideEventsFromHistory(eventIds);
+
+    if (successes.length > 0) {
+      const hiddenAt = new Date().toISOString();
+
+      setEvents((current) => {
+        const next = current.map((event) =>
+          successes.includes(event.id) ? { ...event, history_hidden_at: hiddenAt } : event,
+        );
+        writeEventsListCache(isPlanner, next);
+        return next;
+      });
+      setSuccessMessage(
+        `${successes.length} event${successes.length === 1 ? "" : "s"} removed from history.`,
+      );
+    }
+
+    if (failures.length > 0) {
+      setError(
+        failures.length === eventIds.length
+          ? "Could not remove selected events from history."
+          : `${failures.length} event${failures.length === 1 ? "" : "s"} could not be removed from history.`,
+      );
+    }
   }
 
   return (
@@ -578,37 +624,69 @@ function EventsPageClientView({ initialTab }: EventsPageClientProps) {
           ) : null}
 
           {!createOpen ? (
-            <div className="mb-4 flex flex-wrap gap-2">
-              <Link
-                href={buildEventsListHref("active")}
-                className={`ftc-filter-pill ${!isHistoryTab ? "ftc-filter-pill-active" : ""}`}
-                onClick={(event) => {
-                  if (!isHistoryTab) {
-                    event.preventDefault();
-                    return;
-                  }
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+              <div className="flex flex-wrap gap-2">
+                <Link
+                  href={buildEventsListHref("active")}
+                  className={`ftc-filter-pill ${!isHistoryTab ? "ftc-filter-pill-active" : ""}`}
+                  onClick={(event) => {
+                    if (!isHistoryTab) {
+                      event.preventDefault();
+                      return;
+                    }
 
-                  handleEventsListTabChange();
-                }}
-              >
-                {isPlanner ? "Active" : "Upcoming"}
-              </Link>
-              <Link
-                href={buildEventsListHref("history")}
-                className={`ftc-filter-pill ${isHistoryTab ? "ftc-filter-pill-active" : ""}`}
-                onClick={(event) => {
-                  if (isHistoryTab) {
-                    event.preventDefault();
-                    return;
-                  }
+                    handleEventsListTabChange();
+                  }}
+                >
+                  {isPlanner ? "Active" : "Upcoming"}
+                </Link>
+                <Link
+                  href={buildEventsListHref("history")}
+                  className={`ftc-filter-pill ${isHistoryTab ? "ftc-filter-pill-active" : ""}`}
+                  onClick={(event) => {
+                    if (isHistoryTab) {
+                      event.preventDefault();
+                      return;
+                    }
 
-                  handleEventsListTabChange();
-                }}
-              >
-                History
-              </Link>
+                    handleEventsListTabChange();
+                  }}
+                >
+                  History
+                </Link>
+              </div>
+              {isPlanner && isHistoryTab && historyBulkManage.showManageControl && !historyBulkManage.selectionMode ? (
+                <HistoryManageButton onClick={historyBulkManage.enterSelectionMode} />
+              ) : null}
             </div>
           ) : null}
+
+          {successMessage ? (
+            <p className="mb-4 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated px-4 py-3 text-sm text-ftc-text-secondary">
+              {successMessage}
+            </p>
+          ) : null}
+
+          {isPlanner && isHistoryTab && historyBulkManage.selectionMode ? (
+            <HistorySelectionToolbar
+              selectedCount={historyBulkManage.selectedCount}
+              allSelected={historyBulkManage.allSelected}
+              removing={historyBulkManage.removing}
+              onCancel={historyBulkManage.cancelSelectionMode}
+              onSelectAll={historyBulkManage.selectAll}
+              onRemove={historyBulkManage.openConfirm}
+            />
+          ) : null}
+
+          <HistoryRemoveConfirmDialog
+            open={historyBulkManage.confirmOpen}
+            count={historyBulkManage.selectedCount}
+            loading={historyBulkManage.removing}
+            onCancel={historyBulkManage.closeConfirm}
+            onConfirm={() => {
+              void historyBulkManage.confirmRemove(handleRemoveEventsFromHistory);
+            }}
+          />
 
           {loadingEvents ? (
             <EventListSkeleton showPlannerStats={isPlanner} showFilterPills={false} />
@@ -650,6 +728,54 @@ function EventsPageClientView({ initialTab }: EventsPageClientProps) {
               {filteredEvents.map((event) => {
                 const cancelled = isEventCancelled(event);
                 const eventHref = buildEventDetailHref(event.id, listTab);
+                const isSelected = historyBulkManage.selectedIds.has(event.id);
+                const selectionLabel = `Select ${event.name} for removal from history`;
+
+                if (historyBulkManage.selectionMode && isPlanner && isHistoryTab) {
+                  return (
+                    <li key={event.id}>
+                      <button
+                        type="button"
+                        onClick={() => historyBulkManage.toggleItem(event.id)}
+                        aria-pressed={isSelected}
+                        className={`ftc-surface-row flex w-full rounded-[var(--ftc-radius-xl)] p-4 text-left focus-visible:outline-none sm:p-5 ${
+                          cancelled ? "ftc-event-card-cancelled" : ""
+                        } ${isSelected ? "ring-1 ring-ftc-primary/40" : ""}`}
+                      >
+                        <div className="flex w-full items-start gap-4">
+                          <HistorySelectionCheckbox
+                            checked={isSelected}
+                            label={selectionLabel}
+                            presentational
+                          />
+                          <EventCoverImageListThumb
+                            eventName={event.name}
+                            coverImageUrl={event.cover_image_url}
+                            fallbackColour={event.fallback_colour}
+                          />
+                          <div className="min-w-0 flex-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <h3 className="text-lg font-semibold text-ftc-text-secondary">
+                                {event.name}
+                              </h3>
+                              <EventDateStatusBadge eventDate={event.event_date} status={event.status} />
+                            </div>
+                            <p className="mt-2 text-sm text-ftc-text-muted">
+                              {event.venue} · {event.event_date}
+                            </p>
+                            <p className="mt-1 text-sm text-ftc-text-muted">{event.set_time}</p>
+                            <div className="mt-3 flex flex-wrap gap-2">
+                              <PlannerStatChip label="Invited" value={event.lineupStats.total} />
+                              <PlannerStatChip label="Pending" value={event.lineupStats.pending} />
+                              <PlannerStatChip label="Accepted" value={event.lineupStats.accepted} />
+                              <PlannerStatChip label="Declined" value={event.lineupStats.declined} />
+                            </div>
+                          </div>
+                        </div>
+                      </button>
+                    </li>
+                  );
+                }
 
                 return (
                 <li key={event.id}>
