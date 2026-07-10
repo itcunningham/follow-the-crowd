@@ -1,6 +1,7 @@
 /** Flat solid status fills — no glow, no transparent neon borders */
 
 export const FTC_STATUS_PRIMARY = "border-0 bg-ftc-primary text-ftc-bg";
+export const FTC_STATUS_EVENT_TODAY = "border-0 bg-[#F59E0B] text-ftc-bg";
 export const FTC_STATUS_SUCCESS = "border-0 bg-[var(--ftc-color-success)] text-ftc-bg";
 export const FTC_STATUS_WARNING = "border-0 bg-[var(--ftc-color-warning)] text-ftc-bg";
 export const FTC_STATUS_DANGER = "border-0 bg-[var(--ftc-color-danger)] text-ftc-bg";

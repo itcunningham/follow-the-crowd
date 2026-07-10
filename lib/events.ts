@@ -25,6 +25,7 @@ import {
 } from "@/lib/events/eventCoverImage";
 import {
   FTC_STATUS_DANGER,
+  FTC_STATUS_EVENT_TODAY,
   FTC_STATUS_MUTED,
   FTC_STATUS_PRIMARY,
 } from "@/lib/ftcFlatStatus";
@@ -168,7 +169,7 @@ export function getEventDateDisplayBadgeClass(label: EventDateDisplayLabel): str
   }
 
   if (label === "Today") {
-    return FTC_STATUS_PRIMARY;
+    return FTC_STATUS_EVENT_TODAY;
   }
 
   if (label === "Past") {
