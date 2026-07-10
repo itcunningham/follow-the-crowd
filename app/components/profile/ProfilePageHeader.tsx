@@ -5,6 +5,9 @@ import { useGuardProfile } from "@/app/components/GuardProfileContext";
 import { readCachedNavRole } from "@/lib/navigationRoleCache";
 import { getDefaultRouteForRole, PROFILE_SETUP_PATH, SETTINGS_PATH } from "@/lib/user/currentUser";
 
+const profileHeaderIconButtonClass =
+  "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-ftc-border-subtle bg-ftc-surface text-ftc-text-secondary transition hover:border-ftc-border-strong hover:text-ftc-text";
+
 export default function ProfilePageHeader({ isOwnProfile }: { isOwnProfile: boolean }) {
   const guardProfile = useGuardProfile();
   const role = guardProfile?.role ?? readCachedNavRole();
@@ -17,7 +20,7 @@ export default function ProfilePageHeader({ isOwnProfile }: { isOwnProfile: bool
         <Link
           href={backHref}
           aria-label={backLabel}
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-ftc-border-subtle bg-ftc-surface text-ftc-text-secondary transition hover:border-ftc-border-strong hover:text-ftc-text"
+          className={profileHeaderIconButtonClass}
         >
           <svg
             aria-hidden="true"
@@ -39,7 +42,7 @@ export default function ProfilePageHeader({ isOwnProfile }: { isOwnProfile: bool
               href={SETTINGS_PATH}
               aria-label="Settings"
               title="Settings"
-              className="flex h-10 w-10 items-center justify-center rounded-xl border border-ftc-border-subtle bg-ftc-surface text-ftc-text-secondary transition hover:border-ftc-border-strong hover:text-ftc-text"
+              className={profileHeaderIconButtonClass}
             >
               <svg
                 aria-hidden="true"
@@ -57,9 +60,23 @@ export default function ProfilePageHeader({ isOwnProfile }: { isOwnProfile: bool
             </Link>
             <Link
               href={PROFILE_SETUP_PATH}
-              className="rounded-xl border border-ftc-border-subtle bg-ftc-surface px-3 py-2 text-xs font-semibold text-ftc-text transition hover:border-ftc-border-strong"
+              aria-label="Edit profile"
+              title="Edit profile"
+              className={profileHeaderIconButtonClass}
             >
-              Edit profile
+              <svg
+                aria-hidden="true"
+                viewBox="0 0 24 24"
+                className="h-4 w-4"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.75"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M12 20h9" />
+                <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 16.5-12.5z" />
+              </svg>
             </Link>
           </div>
         ) : (
