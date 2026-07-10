@@ -106,7 +106,7 @@ export default function BookingPlansPage() {
     }
 
     loadPlans();
-  }, [loadingAccess, role, loadPlans, successMessage]);
+  }, [loadingAccess, role, loadPlans]);
 
   function openCreateForm() {
     setFormOpen(true);
@@ -178,10 +178,14 @@ export default function BookingPlansPage() {
 
     try {
       if (editingPlanId) {
-        await updateBookingPlan(editingPlanId, form);
+        const updatedPlan = await updateBookingPlan(editingPlanId, form);
+        setPlans((currentPlans) =>
+          currentPlans.map((plan) => (plan.id === updatedPlan.id ? updatedPlan : plan)),
+        );
         setSuccessMessage("Booking plan updated");
       } else {
-        await createBookingPlan(form);
+        const createdPlan = await createBookingPlan(form);
+        setPlans((currentPlans) => [createdPlan, ...currentPlans]);
         setSuccessMessage("Booking plan created");
       }
 
@@ -218,7 +222,7 @@ export default function BookingPlansPage() {
         <AppNavigation />
 
         <header className="ftc-page-header px-4 py-4 sm:px-6 md:pt-4">
-          <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="flex items-center justify-between gap-3">
             <h1 className="text-xl font-semibold text-ftc-text">Booking Plans</h1>
             {plans.length > 0 && !formOpen ? (
               <button
