@@ -873,6 +873,29 @@ html {
   outline-offset: 2px;
 }
 
+/* Profile hero avatar — same cyan border hover as .ftc-profile-link-pill (Instagram). */
+.ftc-profile-hero-avatar-interactive {
+  flex-shrink: 0;
+  border-radius: 9999px;
+  border: 1px solid var(--ftc-color-border-subtle);
+  transition: border-color 0.15s ease;
+}
+
+.ftc-profile-hero-avatar-interactive .ftc-avatar {
+  border: none;
+}
+
+@media (hover: hover) {
+  .ftc-profile-hero-avatar-interactive:hover {
+    border-color: var(--ftc-color-primary);
+  }
+}
+
+.ftc-profile-hero-avatar-interactive:focus-visible {
+  outline: none;
+  border-color: var(--ftc-color-primary);
+}
+
 /* -------------------------------------------------------------------------- */
 /* Navigation                                                                  */
 /* -------------------------------------------------------------------------- */
