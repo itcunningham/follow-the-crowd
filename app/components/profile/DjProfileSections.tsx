@@ -9,11 +9,9 @@ import type { UserProfile } from "@/lib/user/currentUser";
 export default function DjProfileSections({
   profile,
   isOwnProfile,
-  showHeading,
 }: {
   profile: UserProfile;
   isOwnProfile: boolean;
-  showHeading: boolean;
 }) {
   const genreTags = parseGenreTags(profile.genre);
 
@@ -25,10 +23,6 @@ export default function DjProfileSections({
 
   return (
     <div className="space-y-4">
-      {showHeading ? (
-        <h2 className="text-sm font-semibold text-ftc-text">DJ / Artist</h2>
-      ) : null}
-
       {genreTags.length > 0 ? (
         <ProfileSectionCard title="Genres">
           <ProfileGenreTags genre={profile.genre} />

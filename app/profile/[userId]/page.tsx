@@ -112,8 +112,6 @@ function UserProfilePageView({ userId }: { userId: string }) {
   const isOwnProfile = resolveIsOwnProfilePath(userId, resolvedCurrentUserId);
   const showDjSections = profile?.role === "dj" || profile?.role === "both";
   const showPromoterSections = profile?.role === "promoter" || profile?.role === "both";
-  const showBothHeadings = profile?.role === "both";
-
   function getMessageButtonLabel(): string {
     if (profile?.role === "dj") {
       return messaging ? "Opening..." : "Message / Book DJ";
@@ -161,15 +159,11 @@ function UserProfilePageView({ userId }: { userId: string }) {
             ) : null}
 
             {showDjSections ? (
-              <DjProfileSections
-                profile={profile}
-                isOwnProfile={isOwnProfile}
-                showHeading={showBothHeadings}
-              />
+              <DjProfileSections profile={profile} isOwnProfile={isOwnProfile} />
             ) : null}
 
             {showPromoterSections ? (
-              <PromoterProfileSections profile={profile} showHeading={showBothHeadings} />
+              <PromoterProfileSections profile={profile} />
             ) : null}
 
             {error ? <p className="text-sm text-red-400">{error}</p> : null}
