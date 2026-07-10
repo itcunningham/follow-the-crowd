@@ -31,6 +31,7 @@ export function useHistoryBulkManage<T extends { id: string }>(items: T[]) {
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmCount, setConfirmCount] = useState(0);
   const [removing, setRemoving] = useState(false);
 
   const itemIds = useMemo(() => items.map((item) => item.id), [items]);
@@ -41,12 +42,14 @@ export function useHistoryBulkManage<T extends { id: string }>(items: T[]) {
     setSelectionMode(true);
     setSelectedIds(new Set());
     setConfirmOpen(false);
+    setConfirmCount(0);
   }
 
   function cancelSelectionMode() {
     setSelectionMode(false);
     setSelectedIds(new Set());
     setConfirmOpen(false);
+    setConfirmCount(0);
   }
 
   function toggleItem(id: string) {
@@ -69,6 +72,7 @@ export function useHistoryBulkManage<T extends { id: string }>(items: T[]) {
 
   function openConfirm() {
     if (selectedCount > 0) {
+      setConfirmCount(selectedCount);
       setConfirmOpen(true);
     }
   }
@@ -76,6 +80,7 @@ export function useHistoryBulkManage<T extends { id: string }>(items: T[]) {
   function closeConfirm() {
     if (!removing) {
       setConfirmOpen(false);
+      setConfirmCount(0);
     }
   }
 
@@ -87,13 +92,18 @@ export function useHistoryBulkManage<T extends { id: string }>(items: T[]) {
     }
 
     setRemoving(true);
+    setSelectedIds(new Set());
 
     try {
       await onRemove(ids);
-      cancelSelectionMode();
+      setSelectionMode(false);
+      setConfirmOpen(false);
+      setConfirmCount(0);
+      setSelectedIds(new Set());
+    } catch {
+      setSelectedIds(new Set(ids));
     } finally {
       setRemoving(false);
-      setConfirmOpen(false);
     }
   }
 
@@ -101,6 +111,7 @@ export function useHistoryBulkManage<T extends { id: string }>(items: T[]) {
     selectionMode,
     selectedIds,
     selectedCount,
+    confirmCount,
     allSelected,
     confirmOpen,
     removing,
@@ -230,7 +241,7 @@ export function HistorySelectionCheckbox({
   disabled?: boolean;
   presentational?: boolean;
 }) {
-  const className = `mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded border transition ${
+  const className = `mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded border ${
     checked
       ? "border-0 bg-ftc-primary text-ftc-bg"
       : "border-ftc-border-strong bg-ftc-bg-elevated text-transparent"

@@ -458,11 +458,16 @@ function EventsPageClientView({ initialTab }: EventsPageClientProps) {
       }
 
       if (failures.length > 0) {
-        setError(
+        const message =
           failures.length === eventIds.length
             ? "Could not remove selected events from history."
-            : `${failures.length} event${failures.length === 1 ? "" : "s"} could not be removed from history.`,
-        );
+            : `${failures.length} event${failures.length === 1 ? "" : "s"} could not be removed from history.`;
+
+        setError(message);
+
+        if (successes.length === 0) {
+          throw new Error(message);
+        }
       }
     } catch (removeError) {
       console.error("Failed to remove events from history:", removeError);
@@ -471,6 +476,7 @@ function EventsPageClientView({ initialTab }: EventsPageClientProps) {
           ? removeError.message
           : "Could not remove selected events from history.",
       );
+      throw removeError;
     }
   }
 
@@ -701,7 +707,7 @@ function EventsPageClientView({ initialTab }: EventsPageClientProps) {
 
           <HistoryRemoveConfirmDialog
             open={historyBulkManage.confirmOpen}
-            count={historyBulkManage.selectedCount}
+            count={historyBulkManage.confirmCount}
             loading={historyBulkManage.removing}
             onCancel={historyBulkManage.closeConfirm}
             onConfirm={() => {

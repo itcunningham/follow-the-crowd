@@ -978,15 +978,21 @@ function BookingsPageContent() {
       }
 
       if (failures.length > 0) {
-        setError(
+        const message =
           failures.length === bookingIds.length
             ? "Could not remove selected gigs from history."
-            : `${failures.length} gig${failures.length === 1 ? "" : "s"} could not be removed from history.`,
-        );
+            : `${failures.length} gig${failures.length === 1 ? "" : "s"} could not be removed from history.`;
+
+        setError(message);
+
+        if (successes.length === 0) {
+          throw new Error(message);
+        }
       }
     } catch (removeError) {
       console.error("Failed to remove gigs from history:", removeError);
       setError(getBookingMutationErrorMessage(removeError));
+      throw removeError;
     }
   }
 
@@ -1052,7 +1058,7 @@ function BookingsPageContent() {
 
           <HistoryRemoveConfirmDialog
             open={gigsHistoryBulkManage.confirmOpen}
-            count={gigsHistoryBulkManage.selectedCount}
+            count={gigsHistoryBulkManage.confirmCount}
             loading={gigsHistoryBulkManage.removing}
             onCancel={gigsHistoryBulkManage.closeConfirm}
             onConfirm={() => {
