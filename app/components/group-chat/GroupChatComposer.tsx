@@ -1,16 +1,9 @@
 "use client";
 
+import ChatSendIcon from "@/app/components/chat/ChatSendIcon";
+
 function SendIcon() {
-  return (
-    <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" className="h-5 w-5">
-      <path
-        d="m4 12 16-8-4 8 4 8-16-8 4-2-4-2Z"
-        stroke="currentColor"
-        strokeWidth="1.75"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
+  return <ChatSendIcon />;
 }
 
 export default function GroupChatComposer({

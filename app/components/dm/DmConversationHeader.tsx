@@ -76,6 +76,19 @@ export default function DmConversationHeader({
       <div className="flex min-w-0 flex-1 items-center gap-3">
         {loading ? (
           <SkeletonBlock className="h-10 w-10 shrink-0 rounded-full" />
+        ) : otherUserId ? (
+          <Link
+            href={`/profile/${otherUserId}`}
+            aria-label={`View ${avatarName}'s profile`}
+            className="shrink-0 rounded-full transition hover:ring-2 hover:ring-ftc-border-strong focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ftc-primary"
+          >
+            <ProfileAvatar
+              name={avatarName}
+              avatarUrl={avatarUrl}
+              size="md"
+              className="h-10 w-10 text-xs"
+            />
+          </Link>
         ) : (
           <ProfileAvatar
             name={avatarName}

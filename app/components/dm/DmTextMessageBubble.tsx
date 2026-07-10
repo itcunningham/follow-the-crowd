@@ -1,6 +1,6 @@
 "use client";
 
-import ProfileAvatar from "@/app/components/ProfileAvatar";
+import ChatProfileAvatarLink from "@/app/components/chat/ChatProfileAvatarLink";
 import DmMessageAttachmentView from "@/app/components/dm/DmMessageAttachment";
 import DmMessageReactions from "@/app/components/dm/DmMessageReactions";
 import { getChatNewMessageHighlightClass, logChatHighlightRender } from "@/lib/chatNewMessageHighlight";
@@ -13,6 +13,7 @@ export default function DmTextMessageBubble({
   text,
   createdAt,
   isOwnMessage,
+  otherUserId,
   otherUserLabel,
   otherUserAvatarUrl,
   attachments,
@@ -32,6 +33,7 @@ export default function DmTextMessageBubble({
   text: string;
   createdAt: string;
   isOwnMessage: boolean;
+  otherUserId?: string | null;
   otherUserLabel: string;
   otherUserAvatarUrl?: string | null;
   attachments: DmMessageAttachment[];
@@ -72,11 +74,11 @@ export default function DmTextMessageBubble({
           isOwnMessage ? "flex-row-reverse" : "flex-row"
         }`}
       >
-        {!isOwnMessage ? (
-          <ProfileAvatar
+        {!isOwnMessage && otherUserId ? (
+          <ChatProfileAvatarLink
+            userId={otherUserId}
             name={otherUserLabel}
             avatarUrl={otherUserAvatarUrl}
-            size="sm"
           />
         ) : null}
         <div className={`flex min-w-0 flex-col ${isOwnMessage ? "items-end" : "items-start"}`}>

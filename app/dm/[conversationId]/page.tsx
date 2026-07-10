@@ -14,6 +14,7 @@ import DmComposer from "@/app/components/dm/DmComposer";
 import DmReportFormModal from "@/app/components/dm/DmReportFormModal";
 import DmTextMessageBubble from "@/app/components/dm/DmTextMessageBubble";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
+import ChatProfileAvatarLink from "@/app/components/chat/ChatProfileAvatarLink";
 import { ChatMessagesSkeleton } from "@/app/components/skeleton/Skeleton";
 import ProfileAvatar from "@/app/components/ProfileAvatar";
 import {
@@ -1406,12 +1407,22 @@ export default function DmChatPage() {
             data-chat-content-root
             className="flex flex-col items-center justify-center px-6 py-16 text-center"
           >
-            <ProfileAvatar
-              name={otherUserLabel}
-              avatarUrl={otherUserProfile?.avatar_url}
-              size="md"
-              className="h-10 w-10 text-xs"
-            />
+            {otherUserId ? (
+              <ChatProfileAvatarLink
+                userId={otherUserId}
+                name={otherUserLabel}
+                avatarUrl={otherUserProfile?.avatar_url}
+                size="md"
+                className="h-10 w-10 text-xs"
+              />
+            ) : (
+              <ProfileAvatar
+                name={otherUserLabel}
+                avatarUrl={otherUserProfile?.avatar_url}
+                size="md"
+                className="h-10 w-10 text-xs"
+              />
+            )}
             <p className="mt-4 text-sm font-medium text-ftc-text-secondary">
               No messages yet
             </p>
@@ -1479,6 +1490,7 @@ export default function DmChatPage() {
                     text={message.text}
                     createdAt={message.created_at}
                     isOwnMessage={isOwnMessage}
+                    otherUserId={otherUserId}
                     otherUserLabel={otherUserLabel}
                     otherUserAvatarUrl={otherUserProfile?.avatar_url}
                     attachments={attachmentsByMessageId.get(message.id) ?? []}
@@ -1679,11 +1691,11 @@ export default function DmChatPage() {
                         isOwnMessage ? "flex-row-reverse" : "flex-row"
                       }`}
                     >
-                      {!isOwnMessage ? (
-                        <ProfileAvatar
+                      {!isOwnMessage && otherUserId ? (
+                        <ChatProfileAvatarLink
+                          userId={otherUserId}
                           name={otherUserLabel}
                           avatarUrl={otherUserProfile?.avatar_url}
-                          size="sm"
                         />
                       ) : null}
                       <div>
@@ -1748,7 +1760,6 @@ export default function DmChatPage() {
           onChange={setInput}
           onSend={sendMessage}
           onPhotoSelected={(file) => void sendAttachment(file)}
-          onFileSelected={(file) => void sendAttachment(file)}
           onAttachmentError={setError}
           sending={sending}
           uploading={uploading}

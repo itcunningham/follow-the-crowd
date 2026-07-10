@@ -1,6 +1,6 @@
 "use client";
 
-import ProfileAvatar from "@/app/components/ProfileAvatar";
+import ChatProfileAvatarLink from "@/app/components/chat/ChatProfileAvatarLink";
 import { getChatNewMessageHighlightClass } from "@/lib/chatNewMessageHighlight";
 
 export default function GroupChatMessageBubble({
@@ -8,6 +8,7 @@ export default function GroupChatMessageBubble({
   text,
   createdAt,
   isOwnMessage,
+  senderUserId,
   senderLabel,
   senderAvatarUrl,
   formatTime,
@@ -17,6 +18,7 @@ export default function GroupChatMessageBubble({
   text: string;
   createdAt: string;
   isOwnMessage: boolean;
+  senderUserId: string;
   senderLabel: string;
   senderAvatarUrl?: string | null;
   formatTime: (timestamp: string) => string;
@@ -35,7 +37,11 @@ export default function GroupChatMessageBubble({
         }`}
       >
         {!isOwnMessage ? (
-          <ProfileAvatar name={senderLabel} avatarUrl={senderAvatarUrl} size="sm" />
+          <ChatProfileAvatarLink
+            userId={senderUserId}
+            name={senderLabel}
+            avatarUrl={senderAvatarUrl}
+          />
         ) : null}
 
         <div className={`flex min-w-0 flex-col ${isOwnMessage ? "items-end" : "items-start"}`}>

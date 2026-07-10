@@ -1,8 +1,8 @@
 "use client";
 
 import { useRef, useState } from "react";
+import ChatSendIcon from "@/app/components/chat/ChatSendIcon";
 import {
-  DM_FILE_INPUT_ACCEPT,
   DM_PHOTO_INPUT_ACCEPT,
   validateDmAttachmentFile,
 } from "@/lib/dmAttachments";
@@ -36,16 +36,7 @@ function ComposerIconButton({
 }
 
 function SendIcon() {
-  return (
-    <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" className="h-5 w-5">
-      <path
-        d="m4 12 16-8-4 8 4 8-16-8 4-2-4-2Z"
-        stroke="currentColor"
-        strokeWidth="1.75"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
+  return <ChatSendIcon />;
 }
 
 export default function DmComposer({
@@ -53,7 +44,6 @@ export default function DmComposer({
   onChange,
   onSend,
   onPhotoSelected,
-  onFileSelected,
   onAttachmentError,
   sending,
   uploading,
@@ -62,13 +52,11 @@ export default function DmComposer({
   onChange: (value: string) => void;
   onSend: () => void;
   onPhotoSelected: (file: File) => void;
-  onFileSelected: (file: File) => void;
   onAttachmentError?: (message: string) => void;
   sending: boolean;
   uploading: boolean;
 }) {
   const photoInputRef = useRef<HTMLInputElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const [emojiOpen, setEmojiOpen] = useState(false);
   const busy = sending || uploading;
 
@@ -127,21 +115,6 @@ export default function DmComposer({
           </svg>
         </ComposerIconButton>
 
-        <ComposerIconButton
-          label="Attach file"
-          disabled={busy}
-          onClick={() => fileInputRef.current?.click()}
-        >
-          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" className="h-5 w-5">
-            <path
-              d="M8 12.5 14.5 6a3.5 3.5 0 1 1 5 5L10 20.5a5 5 0 1 1-7-7l8.5-8.5"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-            />
-          </svg>
-        </ComposerIconButton>
-
         <div className="relative min-w-0 flex-1">
           <input
             type="text"
@@ -180,6 +153,7 @@ export default function DmComposer({
         ref={photoInputRef}
         type="file"
         accept={DM_PHOTO_INPUT_ACCEPT}
+        capture="environment"
         className="hidden"
         onChange={(event) => {
           const file = event.target.files?.[0];
@@ -187,20 +161,6 @@ export default function DmComposer({
 
           if (file) {
             handleAttachmentSelected(file, onPhotoSelected);
-          }
-        }}
-      />
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept={DM_FILE_INPUT_ACCEPT}
-        className="hidden"
-        onChange={(event) => {
-          const file = event.target.files?.[0];
-          event.target.value = "";
-
-          if (file) {
-            handleAttachmentSelected(file, onFileSelected);
           }
         }}
       />

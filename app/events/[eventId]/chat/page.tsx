@@ -605,6 +605,7 @@ export default function EventCrewChatPage() {
                       text={message.text}
                       createdAt={message.created_at}
                       isOwnMessage={isOwnMessage}
+                      senderUserId={message.user_id}
                       senderLabel={senderLabel}
                       senderAvatarUrl={profile?.avatar_url}
                       formatTime={formatMessageTime}
