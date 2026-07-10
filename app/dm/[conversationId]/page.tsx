@@ -189,6 +189,7 @@ export default function DmChatPage() {
 
   const conversationTitle = getConversationTitle(otherUserProfile);
   const otherUserLabel = resolveUserDisplayName(otherUserProfile);
+  const headerProfileLoading = Boolean(otherUserId) && !otherUserProfile;
   const bookingsById = useMemo(
     () => new Map(bookings.map((booking) => [booking.id, booking])),
     [bookings],
@@ -1338,7 +1339,7 @@ export default function DmChatPage() {
       <header className="z-10 shrink-0 border-b border-ftc-border-subtle bg-ftc-bg/95 px-3 py-2.5 backdrop-blur-md sm:px-4">
         <DmConversationHeader
           backHref={backHref}
-          loading={loading}
+          loading={loading || headerProfileLoading}
           conversationTitle={conversationTitle}
           avatarName={otherUserLabel}
           avatarUrl={otherUserProfile?.avatar_url}
@@ -1557,8 +1558,8 @@ export default function DmChatPage() {
                   : false;
                 const highlighted = isMessageHighlighted(message.id);
                 logChatHighlightRender(message.id, highlighted);
-                const bookingExpansionKey =
-                  resolvedBooking.id?.trim() || bookingId?.trim() || message.id;
+                const bookingExpansionKey = message.id;
+                const highlightClassName = getChatNewMessageHighlightClass(highlighted);
                 const actionRequired = isDmBookingActionRequired(resolvedBooking, eventCancelled);
                 const isBookingExpanded = expandedBookingIds.has(bookingExpansionKey);
                 const showCompactBookingRow = !actionRequired && !isBookingExpanded;
@@ -1665,22 +1666,21 @@ export default function DmChatPage() {
                         />
                       ) : null}
                       <div>
-                        <div
-                          className={`rounded-2xl ${getChatNewMessageHighlightClass(highlighted)}`}
-                        >
-                          {showCompactBookingRow ? (
-                            <DmBookingUpdateRow
-                              booking={resolvedBooking}
-                              currentUserId={currentUserId}
-                              eventCancelled={eventCancelled}
-                              onViewDetails={() =>
-                                setBookingExpanded(bookingExpansionKey, true)
-                              }
-                            />
-                          ) : (
-                            bookingCard
-                          )}
-                        </div>
+                        {showCompactBookingRow ? (
+                          <DmBookingUpdateRow
+                            booking={resolvedBooking}
+                            currentUserId={currentUserId}
+                            eventCancelled={eventCancelled}
+                            highlightClassName={highlightClassName}
+                            onViewDetails={() =>
+                              setBookingExpanded(bookingExpansionKey, true)
+                            }
+                          />
+                        ) : (
+                          <div className={`rounded-2xl ${highlightClassName}`}>
+                            {bookingCard}
+                          </div>
+                        )}
                         <time
                           dateTime={message.created_at}
                           className={`mt-1 block text-[10px] text-ftc-text-muted ${

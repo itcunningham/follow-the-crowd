@@ -14,6 +14,37 @@ import {
   SETTINGS_PATH,
   type UserRole,
 } from "@/lib/user/currentUser";
+import { useGuardProfile } from "@/app/components/GuardProfileContext";
+
+const NAV_ROLE_CACHE_KEY = "ftc-nav-role";
+const NAV_USER_CACHE_KEY = "ftc-nav-user-id";
+
+function readCachedNavigation(): { role: UserRole | null; userId: string | null } {
+  if (typeof window === "undefined") {
+    return { role: null, userId: null };
+  }
+
+  const cachedRole = sessionStorage.getItem(NAV_ROLE_CACHE_KEY);
+  const role =
+    cachedRole === "dj" || cachedRole === "promoter" || cachedRole === "both"
+      ? cachedRole
+      : null;
+  const userId = sessionStorage.getItem(NAV_USER_CACHE_KEY);
+
+  return { role, userId: userId?.trim() ? userId : null };
+}
+
+function cacheNavigation(role: UserRole, userId: string | null) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  sessionStorage.setItem(NAV_ROLE_CACHE_KEY, role);
+
+  if (userId) {
+    sessionStorage.setItem(NAV_USER_CACHE_KEY, userId);
+  }
+}
 
 type NavIconKey = "home" | "events" | "gigs" | "messages" | "profile";
 
@@ -211,43 +242,16 @@ function getBadgeCount(item: NavItem, badgeCounts: NavBadgeCounts): number {
   return badgeCounts[item.badgeKey];
 }
 
-function NavSkeleton({ variant }: { variant: "desktop" | "mobile" }) {
-  const count = variant === "desktop" ? 4 : 4;
-
-  if (variant === "desktop") {
-    return (
-      <>
-        {Array.from({ length: count }).map((_, index) => (
-          <span
-            key={index}
-            aria-hidden="true"
-            className="h-4 w-14 animate-pulse rounded-md bg-ftc-surface-raised/90"
-          />
-        ))}
-      </>
-    );
-  }
-
-  return (
-    <>
-      {Array.from({ length: count }).map((_, index) => (
-        <span
-          key={index}
-          aria-hidden="true"
-          className="mx-auto flex min-h-11 min-w-11 flex-1 items-center justify-center px-0.5"
-        >
-          <span className="h-6 w-6 animate-pulse rounded-md bg-ftc-surface-raised/90" />
-        </span>
-      ))}
-    </>
-  );
-}
-
 export default function AppNavigation() {
   const pathname = usePathname();
-  const [role, setRole] = useState<UserRole | null>(null);
-  const [navReady, setNavReady] = useState(false);
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const guardProfile = useGuardProfile();
+  const [cachedNavigation] = useState(readCachedNavigation);
+  const [role, setRole] = useState<UserRole | null>(
+    () => guardProfile?.role ?? cachedNavigation.role,
+  );
+  const [currentUserId, setCurrentUserId] = useState<string | null>(
+    () => guardProfile?.user_id ?? cachedNavigation.userId,
+  );
   const [badgeCounts, setBadgeCounts] = useState<NavBadgeCounts>({
     messages: 0,
     bookings: 0,
@@ -304,17 +308,27 @@ export default function AppNavigation() {
 
       setCurrentUserId(userId);
       setRole(userRole);
-      setNavReady(Boolean(userRole));
 
       if (!userRole) {
         return;
       }
 
+      cacheNavigation(userRole, userId);
       await refreshBadgeCounts({ force: true });
     } catch (error) {
       console.error("[AppNavigation] Failed to load navigation:", error);
     }
   }, [refreshBadgeCounts]);
+
+  useEffect(() => {
+    if (guardProfile?.role) {
+      setRole(guardProfile.role);
+    }
+
+    if (guardProfile?.user_id) {
+      setCurrentUserId(guardProfile.user_id);
+    }
+  }, [guardProfile?.role, guardProfile?.user_id]);
 
   useEffect(() => {
     void loadNavigation();
@@ -335,12 +349,12 @@ export default function AppNavigation() {
   }, [loadNavigation, refreshBadgeCounts]);
 
   useEffect(() => {
-    if (!navReady) {
+    if (!role) {
       return;
     }
 
     void refreshBadgeCounts();
-  }, [pathname, navReady, refreshBadgeCounts]);
+  }, [pathname, role, refreshBadgeCounts]);
 
   useEffect(() => {
     if (!currentUserId) {
@@ -368,7 +382,9 @@ export default function AppNavigation() {
     };
   }, [currentUserId, refreshBadgeCounts]);
 
-  const navItems = navReady && role ? getNavItems(role, currentUserId) : [];
+  const effectiveRole = role ?? guardProfile?.role ?? cachedNavigation.role ?? "both";
+  const effectiveUserId = currentUserId ?? guardProfile?.user_id ?? cachedNavigation.userId;
+  const navItems = effectiveRole ? getNavItems(effectiveRole, effectiveUserId) : [];
 
   return (
     <>
@@ -378,25 +394,21 @@ export default function AppNavigation() {
       >
         <div className="mx-auto flex h-12 max-w-6xl items-center justify-between gap-1 px-4 sm:px-6">
           <div className="flex min-w-0 items-center gap-2 sm:gap-3">
-            {!navReady ? (
-              <NavSkeleton variant="desktop" />
-            ) : (
-              navItems.map((item) => {
-                const isActive = item.isActive(pathname);
-                const badgeCount = getBadgeCount(item, badgeCounts);
+            {navItems.map((item) => {
+              const isActive = item.isActive(pathname);
+              const badgeCount = getBadgeCount(item, badgeCounts);
 
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={navLinkClassName(isActive, "desktop")}
-                  >
-                    {item.label}
-                    <NavBadge count={badgeCount} />
-                  </Link>
-                );
-              })
-            )}
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={navLinkClassName(isActive, "desktop")}
+                >
+                  {item.label}
+                  <NavBadge count={badgeCount} />
+                </Link>
+              );
+            })}
           </div>
         </div>
       </nav>
@@ -406,27 +418,23 @@ export default function AppNavigation() {
         className="ftc-nav-bar fixed inset-x-0 bottom-0 z-40 border-t md:hidden"
       >
         <div className="mx-auto flex max-w-2xl items-stretch px-0.5 pb-[env(safe-area-inset-bottom)]">
-          {!navReady ? (
-            <NavSkeleton variant="mobile" />
-          ) : (
-            navItems.map((item) => {
-              const isActive = item.isActive(pathname);
-              const badgeCount = getBadgeCount(item, badgeCounts);
+          {navItems.map((item) => {
+            const isActive = item.isActive(pathname);
+            const badgeCount = getBadgeCount(item, badgeCounts);
 
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  aria-label={item.label}
-                  title={item.label}
-                  className={navLinkClassName(isActive, "mobile")}
-                >
-                  <NavTabIcon icon={item.icon} active={isActive} />
-                  <MobileNavBadge count={badgeCount} />
-                </Link>
-              );
-            })
-          )}
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                aria-label={item.label}
+                title={item.label}
+                className={navLinkClassName(isActive, "mobile")}
+              >
+                <NavTabIcon icon={item.icon} active={isActive} />
+                <MobileNavBadge count={badgeCount} />
+              </Link>
+            );
+          })}
         </div>
       </nav>
     </>

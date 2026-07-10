@@ -15,11 +15,13 @@ export default function DmBookingUpdateRow({
   booking,
   currentUserId,
   eventCancelled = false,
+  highlightClassName = "",
   onViewDetails,
 }: {
   booking: BookingRequest;
   currentUserId: string | null;
   eventCancelled?: boolean;
+  highlightClassName?: string;
   onViewDetails: () => void;
 }) {
   const isExplicitCancelled = booking.status === "cancelled";
@@ -49,7 +51,7 @@ export default function DmBookingUpdateRow({
       onClick={onViewDetails}
       aria-expanded={false}
       aria-label={`${title}, ${statusText}. View booking details`}
-      className={`w-full max-w-sm min-h-[44px] rounded-xl p-2.5 text-left transition hover:border-ftc-border-strong active:border-ftc-border-strong focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ftc-primary ${cardClass}`}
+      className={`relative z-10 w-full max-w-sm min-h-[44px] touch-manipulation rounded-xl p-2.5 text-left transition hover:border-ftc-border-strong active:border-ftc-border-strong focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ftc-primary ${cardClass} ${highlightClassName}`}
     >
       <div className="flex items-center justify-between gap-2">
         <p className="min-w-0 flex-1 truncate text-sm font-semibold text-ftc-text">{title}</p>
