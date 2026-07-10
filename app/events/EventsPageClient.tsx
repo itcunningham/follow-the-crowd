@@ -25,7 +25,7 @@ import EventCoverImageField, {
 } from "@/app/components/events/EventCoverImageField";
 import EventFallbackColourField from "@/app/components/events/EventFallbackColourField";
 import { EventCoverImageListThumb } from "@/app/components/events/EventCoverImageDisplay";
-import { EventListSkeleton, EventsPageLoadingShell } from "@/app/components/skeleton/Skeleton";
+import { EventListSkeleton } from "@/app/components/skeleton/Skeleton";
 import type { EventSelectableFallbackColourKey } from "@/lib/events/eventFallbackColour";
 import { listBookingPlans, type BookingPlan } from "@/lib/bookingPlans";
 import {
@@ -71,6 +71,21 @@ type EventsPageClientProps = {
 };
 
 const EVENTS_LIST_CACHE_KEY = "ftc-events-list-v1";
+const NAV_ROLE_CACHE_KEY = "ftc-nav-role";
+
+function readCachedNavRole(): UserRole | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  const cachedRole = sessionStorage.getItem(NAV_ROLE_CACHE_KEY);
+
+  if (cachedRole === "dj" || cachedRole === "promoter" || cachedRole === "both") {
+    return cachedRole;
+  }
+
+  return null;
+}
 
 function getEventsCacheKey(isPlanner: boolean): string {
   return `${EVENTS_LIST_CACHE_KEY}:${isPlanner ? "planner" : "dj"}`;
@@ -113,7 +128,7 @@ export default function EventsPageClient({ initialTab }: EventsPageClientProps) 
   const router = useRouter();
   const searchParams = useSearchParams();
   const handledCreateParamsRef = useRef<string | null>(null);
-  const [role, setRole] = useState<UserRole | null>(null);
+  const [role, setRole] = useState<UserRole | null>(() => readCachedNavRole());
   const [loadingAccess, setLoadingAccess] = useState(true);
   const [events, setEvents] = useState<EventWithLineupStats[]>([]);
   const [loadingEvents, setLoadingEvents] = useState(true);
@@ -381,14 +396,6 @@ export default function EventsPageClient({ initialTab }: EventsPageClientProps) 
     }
   }
 
-  if (loadingAccess) {
-    return (
-      <OnboardingGuard>
-        <EventsPageLoadingShell showPlannerStats={canManageEvents(role)} />
-      </OnboardingGuard>
-    );
-  }
-
   return (
     <OnboardingGuard>
       <div
@@ -418,7 +425,7 @@ export default function EventsPageClient({ initialTab }: EventsPageClientProps) 
               </button>
             ) : null}
           </div>
-          {role ? <PlannerEventsSubNav /> : null}
+          <PlannerEventsSubNav />
         </header>
 
         <div className="px-4 py-4 sm:px-6">
@@ -566,47 +573,47 @@ export default function EventsPageClient({ initialTab }: EventsPageClientProps) 
             </PlannerFormCard>
           ) : null}
 
+          {!createOpen ? (
+            <div className="mb-4 flex flex-wrap gap-2">
+              <Link
+                href="/events"
+                className={`ftc-filter-pill ${!isHistoryTab ? "ftc-filter-pill-active" : ""}`}
+                onClick={(event) => {
+                  if (!isHistoryTab) {
+                    event.preventDefault();
+                    return;
+                  }
+
+                  event.preventDefault();
+                  router.push("/events");
+                }}
+              >
+                {isPlanner ? "Active" : "Upcoming"}
+              </Link>
+              <Link
+                href="/events?tab=history"
+                className={`ftc-filter-pill ${isHistoryTab ? "ftc-filter-pill-active" : ""}`}
+                onClick={(event) => {
+                  if (isHistoryTab) {
+                    event.preventDefault();
+                    return;
+                  }
+
+                  event.preventDefault();
+                  router.push("/events?tab=history");
+                }}
+              >
+                History
+              </Link>
+            </div>
+          ) : null}
+
           {loadingEvents ? (
-            <EventListSkeleton showPlannerStats={isPlanner} />
+            <EventListSkeleton showPlannerStats={isPlanner} showFilterPills={false} />
           ) : error && events.length === 0 ? (
             <PlannerInlineError message={error} />
           ) : (
             <>
-              {!createOpen ? (
-                <div className="mb-4 flex flex-wrap gap-2">
-                  <Link
-                    href="/events"
-                    className={`ftc-filter-pill ${!isHistoryTab ? "ftc-filter-pill-active" : ""}`}
-                    onClick={(event) => {
-                      if (!isHistoryTab) {
-                        event.preventDefault();
-                        return;
-                      }
-
-                      event.preventDefault();
-                      router.push("/events");
-                    }}
-                  >
-                    {isPlanner ? "Active" : "Upcoming"}
-                  </Link>
-                  <Link
-                    href="/events?tab=history"
-                    className={`ftc-filter-pill ${isHistoryTab ? "ftc-filter-pill-active" : ""}`}
-                    onClick={(event) => {
-                      if (isHistoryTab) {
-                        event.preventDefault();
-                        return;
-                      }
-
-                      event.preventDefault();
-                      router.push("/events?tab=history");
-                    }}
-                  >
-                    History
-                  </Link>
-                </div>
-              ) : null}
-
               {events.length === 0 ? (
                 <PlannerEmptyState
                   title={

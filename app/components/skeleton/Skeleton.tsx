@@ -1,13 +1,31 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import AppNavigation, { MOBILE_NAV_OFFSET_CLASS } from "@/app/components/AppNavigation";
 import DmConversationHeader from "@/app/components/dm/DmConversationHeader";
 import MessagesInboxLayout from "@/app/components/dm/MessagesInboxLayout";
+import PlannerEventsSubNav from "@/app/components/PlannerEventsSubNav";
 import ProfilePageHeader from "@/app/components/profile/ProfilePageHeader";
-import type { UserRole } from "@/lib/user/currentUser";
+import { canManageEvents, type UserRole } from "@/lib/user/currentUser";
+
+const NAV_ROLE_CACHE_KEY = "ftc-nav-role";
+
+function readCachedNavRole(): UserRole | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  const cachedRole = sessionStorage.getItem(NAV_ROLE_CACHE_KEY);
+
+  if (cachedRole === "dj" || cachedRole === "promoter" || cachedRole === "both") {
+    return cachedRole;
+  }
+
+  return null;
+}
 
 export function SkeletonBlock({
   className = "",
@@ -182,7 +200,16 @@ export function EventDetailSkeleton() {
   return <EventDetailLoadingShell />;
 }
 
-export function EventsPageLoadingShell({ showPlannerStats = false }: { showPlannerStats?: boolean }) {
+export function EventsPageLoadingShell({
+  showPlannerStats,
+}: {
+  showPlannerStats?: boolean;
+}) {
+  const searchParams = useSearchParams();
+  const [cachedRole] = useState<UserRole | null>(() => readCachedNavRole());
+  const isPlanner = showPlannerStats ?? canManageEvents(cachedRole);
+  const isHistoryTab = searchParams.get("tab") === "history";
+
   return (
     <div
       className={`mx-auto min-h-[100dvh] w-full max-w-2xl bg-ftc-bg font-sans text-ftc-text ${MOBILE_NAV_OFFSET_CLASS}`}
@@ -191,17 +218,40 @@ export function EventsPageLoadingShell({ showPlannerStats = false }: { showPlann
       <header className="ftc-page-header px-4 py-4 sm:px-6 md:pt-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <SkeletonBlock className="h-7 w-20" />
-            <SkeletonBlock className="mt-2 h-4 w-56 max-w-full" />
+            <h1 className="text-xl font-semibold text-ftc-text">Events</h1>
+            <p className="mt-1 text-sm text-ftc-text-muted">
+              {isPlanner
+                ? "Manage your upcoming events, lineup and bookings."
+                : "Events you have been invited to book."}
+            </p>
           </div>
-          {showPlannerStats ? (
-            <SkeletonBlock className="h-10 w-[7.5rem] shrink-0 rounded-xl" />
+          {isPlanner ? (
+            <Link
+              href="/events?create=event"
+              className="shrink-0 ftc-btn-primary px-4 py-2.5 text-sm uppercase tracking-wide"
+            >
+              Create event
+            </Link>
           ) : null}
         </div>
-        {showPlannerStats ? <PlannerEventsSubNavSkeleton /> : null}
+        <PlannerEventsSubNav />
       </header>
       <div className="px-4 py-4 sm:px-6">
-        <EventListSkeleton showPlannerStats={showPlannerStats} />
+        <div className="mb-4 flex flex-wrap gap-2">
+          <Link
+            href="/events"
+            className={`ftc-filter-pill ${!isHistoryTab ? "ftc-filter-pill-active" : ""}`}
+          >
+            {isPlanner ? "Active" : "Upcoming"}
+          </Link>
+          <Link
+            href="/events?tab=history"
+            className={`ftc-filter-pill ${isHistoryTab ? "ftc-filter-pill-active" : ""}`}
+          >
+            History
+          </Link>
+        </div>
+        <EventListSkeleton showPlannerStats={isPlanner} showFilterPills={false} />
       </div>
     </div>
   );
