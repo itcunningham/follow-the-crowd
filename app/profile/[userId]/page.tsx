@@ -13,6 +13,10 @@ import ProfileMessageAction from "@/app/components/profile/ProfileMessageAction"
 import ProfilePageHeader from "@/app/components/profile/ProfilePageHeader";
 import PromoterProfileSections from "@/app/components/profile/PromoterProfileSections";
 import {
+  readCachedNavigation,
+  resolveIsOwnProfilePath,
+} from "@/lib/navigationRoleCache";
+import {
   getCurrentUserId,
   getUserProfileById,
   type UserProfile,
@@ -21,15 +25,32 @@ import { startDm } from "@/lib/startDm";
 
 export default function UserProfilePage() {
   const params = useParams();
-  const router = useRouter();
-  const guardProfile = useGuardProfile();
   const userId = params.userId as string;
 
+  return (
+    <OnboardingGuard>
+      <UserProfilePageView userId={userId} />
+    </OnboardingGuard>
+  );
+}
+
+function UserProfilePageView({ userId }: { userId: string }) {
+  const router = useRouter();
+  const guardProfile = useGuardProfile();
+  const [cachedNavigation] = useState(readCachedNavigation);
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(
+    () => guardProfile?.user_id ?? cachedNavigation.userId,
+  );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [messaging, setMessaging] = useState(false);
+
+  useEffect(() => {
+    if (guardProfile?.user_id) {
+      setCurrentUserId(guardProfile.user_id);
+    }
+  }, [guardProfile?.user_id]);
 
   useEffect(() => {
     if (!userId) {
@@ -86,8 +107,9 @@ export default function UserProfilePage() {
   }
 
   const displayName = profile?.display_name ?? "Profile";
-  const resolvedCurrentUserId = currentUserId ?? guardProfile?.user_id ?? null;
-  const isOwnProfile = Boolean(resolvedCurrentUserId && userId === resolvedCurrentUserId);
+  const resolvedCurrentUserId =
+    currentUserId ?? guardProfile?.user_id ?? cachedNavigation.userId;
+  const isOwnProfile = resolveIsOwnProfilePath(userId, resolvedCurrentUserId);
   const showDjSections = profile?.role === "dj" || profile?.role === "both";
   const showPromoterSections = profile?.role === "promoter" || profile?.role === "both";
   const showBothHeadings = profile?.role === "both";
@@ -105,65 +127,63 @@ export default function UserProfilePage() {
   }
 
   return (
-    <OnboardingGuard>
+    <div
+      className={`mx-auto flex min-h-[100dvh] w-full max-w-2xl flex-col bg-ftc-bg font-sans text-ftc-text ${MOBILE_NAV_OFFSET_CLASS}`}
+    >
+      <AppNavigation />
+      <ProfilePageHeader isOwnProfile={isOwnProfile} />
+
       <div
-        className={`mx-auto flex min-h-[100dvh] w-full max-w-2xl flex-col bg-ftc-bg font-sans text-ftc-text ${MOBILE_NAV_OFFSET_CLASS}`}
+        className={`flex-1 px-4 py-6 sm:px-6 ${!isOwnProfile && profile ? "pb-4" : "pb-8"}`}
       >
-        <AppNavigation />
-        <ProfilePageHeader isOwnProfile={isOwnProfile} />
+        {loading ? (
+          <ProfileSkeleton />
+        ) : error && !profile ? (
+          <p className="text-sm text-red-400">{error}</p>
+        ) : profile ? (
+          <div className="mx-auto max-w-lg space-y-6">
+            <ProfileHero
+              displayName={displayName}
+              username={profile.username}
+              avatarUrl={profile.avatar_url}
+              role={profile.role}
+              bio={profile.bio}
+            />
 
-        <div
-          className={`flex-1 px-4 py-6 sm:px-6 ${!isOwnProfile && profile ? "pb-4" : "pb-8"}`}
-        >
-          {loading ? (
-            <ProfileSkeleton />
-          ) : error && !profile ? (
-            <p className="text-sm text-red-400">{error}</p>
-          ) : profile ? (
-            <div className="mx-auto max-w-lg space-y-6">
-              <ProfileHero
-                displayName={displayName}
-                username={profile.username}
-                avatarUrl={profile.avatar_url}
-                role={profile.role}
-                bio={profile.bio}
+            {profile.instagram_url?.trim() ||
+            profile.tiktok_url?.trim() ||
+            profile.soundcloud_url?.trim() ? (
+              <ProfileLinkList
+                instagramUrl={profile.instagram_url}
+                tiktokUrl={profile.tiktok_url}
+                soundcloudUrl={showDjSections ? profile.soundcloud_url : null}
               />
+            ) : null}
 
-              {profile.instagram_url?.trim() ||
-              profile.tiktok_url?.trim() ||
-              profile.soundcloud_url?.trim() ? (
-                <ProfileLinkList
-                  instagramUrl={profile.instagram_url}
-                  tiktokUrl={profile.tiktok_url}
-                  soundcloudUrl={showDjSections ? profile.soundcloud_url : null}
-                />
-              ) : null}
+            {showDjSections ? (
+              <DjProfileSections
+                profile={profile}
+                isOwnProfile={isOwnProfile}
+                showHeading={showBothHeadings}
+              />
+            ) : null}
 
-              {showDjSections ? (
-                <DjProfileSections
-                  profile={profile}
-                  isOwnProfile={isOwnProfile}
-                  showHeading={showBothHeadings}
-                />
-              ) : null}
+            {showPromoterSections ? (
+              <PromoterProfileSections profile={profile} showHeading={showBothHeadings} />
+            ) : null}
 
-              {showPromoterSections ? (
-                <PromoterProfileSections profile={profile} showHeading={showBothHeadings} />
-              ) : null}
-
-              {error ? <p className="text-sm text-red-400">{error}</p> : null}
-            </div>
-          ) : null}
-        </div>
-
-        {!isOwnProfile && profile ? (
-          <ProfileMessageAction
-            label={getMessageButtonLabel()}
-            disabled={messaging}
-            onClick={handleMessage}
-          />
+            {error ? <p className="text-sm text-red-400">{error}</p> : null}
+          </div>
         ) : null}
       </div>
-    </OnboardingGuard>
+
+      {!isOwnProfile && profile ? (
+        <ProfileMessageAction
+          label={getMessageButtonLabel()}
+          disabled={messaging}
+          onClick={handleMessage}
+        />
+      ) : null}
+    </div>
   );
 }

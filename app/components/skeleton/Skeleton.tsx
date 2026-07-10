@@ -10,7 +10,7 @@ import MessagesInboxLayout from "@/app/components/dm/MessagesInboxLayout";
 import PlannerEventsSubNav from "@/app/components/PlannerEventsSubNav";
 import ProfilePageHeader from "@/app/components/profile/ProfilePageHeader";
 import { canManageEvents, type UserRole } from "@/lib/user/currentUser";
-import { readCachedNavRole } from "@/lib/navigationRoleCache";
+import { readCachedNavRole, readCachedNavigation, resolveIsOwnProfilePath } from "@/lib/navigationRoleCache";
 
 export function SkeletonBlock({
   className = "",
@@ -851,7 +851,7 @@ export function AppLoadingShell({
     const profileUserId = getProfileUserIdFromPath(pathname);
     return (
       <ProfilePageLoadingShell
-        isOwnProfile={Boolean(profileUserId && currentUserId && profileUserId === currentUserId)}
+        isOwnProfile={resolveIsOwnProfilePath(profileUserId, currentUserId)}
       />
     );
   }

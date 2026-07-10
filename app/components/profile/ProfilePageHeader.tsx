@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { useGuardProfile } from "@/app/components/GuardProfileContext";
+import { readCachedNavRole } from "@/lib/navigationRoleCache";
 import { getDefaultRouteForRole, PROFILE_SETUP_PATH, SETTINGS_PATH } from "@/lib/user/currentUser";
 
 export default function ProfilePageHeader({ isOwnProfile }: { isOwnProfile: boolean }) {
   const guardProfile = useGuardProfile();
-  const backHref = getDefaultRouteForRole(guardProfile?.role ?? null);
-  const backLabel =
-    guardProfile?.role === "dj" ? "Back to Messages" : "Back to Home";
+  const role = guardProfile?.role ?? readCachedNavRole();
+  const backHref = getDefaultRouteForRole(role);
+  const backLabel = role === "dj" ? "Back to Messages" : "Back to Home";
 
   return (
     <header className="sticky top-0 z-10 border-b border-ftc-border-subtle bg-ftc-bg/95 backdrop-blur-md md:top-12">

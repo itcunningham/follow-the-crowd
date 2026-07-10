@@ -36,3 +36,16 @@ export function cacheNavigationRole(role: UserRole, userId?: string | null): voi
     sessionStorage.setItem(NAV_USER_CACHE_KEY, userId);
   }
 }
+
+export function resolveIsOwnProfilePath(
+  profileUserId: string | null | undefined,
+  currentUserId: string | null | undefined,
+): boolean {
+  if (!profileUserId?.trim()) {
+    return false;
+  }
+
+  const resolvedUserId = currentUserId ?? readCachedNavigation().userId;
+
+  return Boolean(resolvedUserId && profileUserId === resolvedUserId);
+}
