@@ -305,7 +305,9 @@ export function filterDjGigsByTab(
       );
     case "history":
       return sortBookingsNewestFirst(
-        bookings.filter((booking) => isDjGigHistoryBooking(booking)),
+        bookings.filter(
+          (booking) => isDjGigHistoryBooking(booking) && !isArchivedBooking(booking),
+        ),
       );
   }
 }
@@ -2492,27 +2494,25 @@ async function mutateArchivedBookingRequest(
     throw new Error("Archived booking could not be parsed.");
   }
 
-  if (booking.status !== "cancelled") {
-    console.error(`[bookings] ${rpcName} returned unexpected status:`, booking);
-    throw new Error("Archived booking status was not returned correctly.");
+  if (rpcName === "archive_booking_request") {
+    if (!booking.archived_at) {
+      console.error(`[bookings] ${rpcName} did not set archived_at:`, booking);
+      throw new Error("Archived booking timestamp was not returned correctly.");
+    }
+  } else if (booking.archived_at) {
+    console.error(`[bookings] ${rpcName} still has archived_at:`, booking);
+    throw new Error("Restored booking still appears archived.");
   }
 
   return booking;
 }
 
 export async function archiveBookingRequest(bookingId: string): Promise<BookingRequest> {
-  const booking = await mutateArchivedBookingRequest(
+  return mutateArchivedBookingRequest(
     "archive_booking_request",
     bookingId,
-    "scripts/setupBookingRequestArchiving.sql",
+    "scripts/fixRecipientBookingArchive.sql",
   );
-
-  if (!booking.archived_at) {
-    console.error("[bookings] archive_booking_request did not set archived_at:", booking);
-    throw new Error("Archived booking timestamp was not returned correctly.");
-  }
-
-  return booking;
 }
 
 export type BookingArchiveFailure = {
@@ -2557,18 +2557,11 @@ export async function archiveAllCancelledBookingRequests(
 }
 
 export async function unarchiveBookingRequest(bookingId: string): Promise<BookingRequest> {
-  const booking = await mutateArchivedBookingRequest(
+  return mutateArchivedBookingRequest(
     "unarchive_booking_request",
     bookingId,
     "scripts/setupBookingRequestArchiving.sql",
   );
-
-  if (booking.archived_at) {
-    console.error("[bookings] unarchive_booking_request still has archived_at:", booking);
-    throw new Error("Restored booking still appears archived.");
-  }
-
-  return booking;
 }
 
 export async function hideDeclinedBookingFromLineup(bookingId: string): Promise<BookingRequest> {

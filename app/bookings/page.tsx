@@ -874,6 +874,24 @@ function BookingsPageContent() {
     }
   }
 
+  async function handleArchiveReceivedBooking(bookingId: string) {
+    setArchivingBookingId(bookingId);
+    setError(null);
+    setFailureDetails([]);
+
+    try {
+      await archiveBookingRequest(bookingId);
+      const receivedResult = await listReceivedBookingRequests();
+      setReceivedBookings(receivedResult);
+      setSuccessMessage("Gig removed from history.");
+    } catch (archiveError) {
+      console.error("Failed to archive received booking:", archiveError);
+      setError(getBookingMutationErrorMessage(archiveError));
+    } finally {
+      setArchivingBookingId(null);
+    }
+  }
+
   async function handleArchiveAllHistory() {
     const bookingIds = historySentBookings.map((booking) => booking.id);
 
@@ -1322,6 +1340,8 @@ function BookingsPageContent() {
                       gigsTab={djGigsView}
                       senderName={senderProfiles.get(booking.sender_id)?.display_name?.trim()}
                       muted
+                      onArchive={handleArchiveReceivedBooking}
+                      archiving={archivingBookingId === booking.id}
                     />
                   ) : (
                     <ReceivedBookingCard
@@ -1544,21 +1564,26 @@ function GigCardHeader({
   status,
   plannerLabel,
   muted = false,
+  trailingAction,
 }: {
   eventName: string;
   status: BookingRequestStatus;
   plannerLabel?: string;
   muted?: boolean;
+  trailingAction?: React.ReactNode;
 }) {
   const titleClass = muted ? "text-ftc-text-secondary" : "text-ftc-text";
 
   return (
-    <div className="min-w-0">
+    <div className="min-w-0 flex-1">
       <div className="flex min-w-0 items-start justify-between gap-2">
         <h3 className={`min-w-0 flex-1 text-sm font-semibold leading-snug sm:text-base ${titleClass}`}>
           {eventName}
         </h3>
-        <BookingStatusBadge status={status} />
+        <div className="flex shrink-0 items-center gap-2">
+          {trailingAction}
+          <BookingStatusBadge status={status} />
+        </div>
       </div>
       {plannerLabel ? (
         <p className="mt-1 text-xs text-ftc-text-muted">{plannerLabel}</p>
@@ -1692,6 +1717,8 @@ function BookingHistoryCard({
   avatarUrl,
   action,
   gigsTab,
+  onArchive,
+  archiving = false,
 }: {
   booking: BookingRequest;
   muted?: boolean;
@@ -1701,6 +1728,8 @@ function BookingHistoryCard({
   avatarUrl?: string | null;
   action?: React.ReactNode;
   gigsTab?: DjGigsListTab;
+  onArchive?: (bookingId: string) => void | Promise<void>;
+  archiving?: boolean;
 }) {
   const eventHref = booking.event_id
     ? gigsTab
@@ -1729,6 +1758,20 @@ function BookingHistoryCard({
               status={booking.status}
               plannerLabel={plannerLabel}
               muted={muted}
+              trailingAction={
+                onArchive ? (
+                  <ArchiveBookingRequestButton
+                    variant="icon"
+                    loading={archiving}
+                    onConfirm={() => onArchive(booking.id)}
+                    title="Remove gig from history?"
+                    description="This gig will be removed from your history."
+                    confirmLabel="Remove"
+                    loadingLabel="Removing..."
+                    ariaLabel={`Remove ${booking.event_name} from history`}
+                  />
+                ) : null
+              }
             />
             <GigCardMetaRows
               venue={booking.venue}

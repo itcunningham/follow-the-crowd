@@ -46,6 +46,7 @@ import {
 } from "@/lib/events/eventCoverImage";
 import {
   buildEventDetailHref,
+  buildEventsListHref,
   resolveEventsListTabParam,
 } from "@/lib/events/eventsListNavigation";
 import {
@@ -546,10 +547,6 @@ function EventsPageClientView({ initialTab }: EventsPageClientProps) {
                     multiline
                   />
 
-                  {createFormDateValidationError ? (
-                    <PlannerInlineError message={createFormDateValidationError} />
-                  ) : null}
-
                   {error && error !== createFormDateValidationError ? (
                     <PlannerInlineError message={error} />
                   ) : null}
@@ -575,31 +572,23 @@ function EventsPageClientView({ initialTab }: EventsPageClientProps) {
           {!createOpen ? (
             <div className="mb-4 flex flex-wrap gap-2">
               <Link
-                href="/events"
+                href={buildEventsListHref("active")}
                 className={`ftc-filter-pill ${!isHistoryTab ? "ftc-filter-pill-active" : ""}`}
                 onClick={(event) => {
                   if (!isHistoryTab) {
                     event.preventDefault();
-                    return;
                   }
-
-                  event.preventDefault();
-                  router.push("/events");
                 }}
               >
                 {isPlanner ? "Active" : "Upcoming"}
               </Link>
               <Link
-                href="/events?tab=history"
+                href={buildEventsListHref("history")}
                 className={`ftc-filter-pill ${isHistoryTab ? "ftc-filter-pill-active" : ""}`}
                 onClick={(event) => {
                   if (isHistoryTab) {
                     event.preventDefault();
-                    return;
                   }
-
-                  event.preventDefault();
-                  router.push("/events?tab=history");
                 }}
               >
                 History

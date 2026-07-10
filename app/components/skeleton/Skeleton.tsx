@@ -12,6 +12,7 @@ import PlannerEventsSubNav from "@/app/components/PlannerEventsSubNav";
 import ProfilePageHeader from "@/app/components/profile/ProfilePageHeader";
 import type { DjGigsListTab } from "@/lib/bookingRequests";
 import { buildGigsListHref, resolveGigsListTabParam } from "@/lib/bookings/gigsListNavigation";
+import { buildEventsListHref } from "@/lib/events/eventsListNavigation";
 import { canManageEvents, type UserRole } from "@/lib/user/currentUser";
 import { readCachedNavRole, readCachedNavigation, resolveIsOwnProfilePath } from "@/lib/navigationRoleCache";
 
@@ -223,13 +224,13 @@ export function EventsPageLoadingShell({
       <div className="px-4 py-4 sm:px-6">
         <div className="mb-4 flex flex-wrap gap-2">
           <Link
-            href="/events"
+            href={buildEventsListHref("active")}
             className={`ftc-filter-pill ${!isHistoryTab ? "ftc-filter-pill-active" : ""}`}
           >
             {isPlanner ? "Active" : "Upcoming"}
           </Link>
           <Link
-            href="/events?tab=history"
+            href={buildEventsListHref("history")}
             className={`ftc-filter-pill ${isHistoryTab ? "ftc-filter-pill-active" : ""}`}
           >
             History
