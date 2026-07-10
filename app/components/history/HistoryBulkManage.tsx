@@ -2,7 +2,6 @@
 
 import { useMemo, useState } from "react";
 import BookingSheetDialog, {
-  BookingSheetDangerButton,
   BookingSheetSecondaryButton,
 } from "@/app/components/booking/BookingSheetDialog";
 
@@ -240,6 +239,26 @@ export function HistorySelectionToolbar({
   );
 }
 
+function HistoryConfirmDangerButton({
+  loading,
+  onConfirm,
+}: {
+  loading: boolean;
+  onConfirm: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      disabled={loading}
+      aria-busy={loading}
+      onClick={onConfirm}
+      className="inline-flex min-h-[2.75rem] w-full items-center justify-center rounded-xl border-0 bg-[var(--ftc-color-danger)] px-4 py-2.5 text-sm font-semibold uppercase tracking-wide text-ftc-bg disabled:cursor-not-allowed sm:w-auto"
+    >
+      {loading ? "Removing..." : "Remove from history"}
+    </button>
+  );
+}
+
 export function HistoryRemoveConfirmDialog({
   open,
   count,
@@ -253,8 +272,6 @@ export function HistoryRemoveConfirmDialog({
   onCancel: () => void;
   onConfirm: () => void;
 }) {
-  const confirmLabel = loading ? "Removing..." : "Remove from history";
-
   return (
     <BookingSheetDialog
       open={open}
@@ -268,16 +285,7 @@ export function HistoryRemoveConfirmDialog({
           <BookingSheetSecondaryButton disabled={loading} onClick={onCancel}>
             Keep items
           </BookingSheetSecondaryButton>
-          <BookingSheetDangerButton
-            disabled={loading}
-            onClick={() => {
-              if (!loading) {
-                onConfirm();
-              }
-            }}
-          >
-            {confirmLabel}
-          </BookingSheetDangerButton>
+          <HistoryConfirmDangerButton loading={loading} onConfirm={onConfirm} />
         </>
       }
     />
