@@ -48,7 +48,6 @@ import {
   groupSentBookingRequests,
   hasPendingRateProposal,
   hideBookingRequestsFromHistory,
-  isBookingHistoryHideAvailable,
   listBookingRequestHistoryHideIds,
   listReceivedBookingRequests,
   listSentBookingRequests,
@@ -257,6 +256,7 @@ function BookingsPageContent() {
   const [role, setRole] = useState<UserRole | null>(null);
   const [loadingAccess, setLoadingAccess] = useState(true);
   const [loadingList, setLoadingList] = useState(true);
+  const [gigsListReady, setGigsListReady] = useState(false);
   const [sentGroups, setSentGroups] = useState<SentBookingGroup[]>([]);
   const [sentBookings, setSentBookings] = useState<BookingRequest[]>([]);
   const [receivedBookings, setReceivedBookings] = useState<BookingRequest[]>([]);
@@ -409,11 +409,7 @@ function BookingsPageContent() {
   );
 
   const gigsHistoryBulkManage = useHistoryBulkManage(
-    showGigsWorkspace &&
-      djGigsView === "history" &&
-      isBookingHistoryHideAvailable()
-      ? djHistoryBookings
-      : [],
+    showGigsWorkspace && djGigsView === "history" && gigsListReady ? djHistoryBookings : [],
   );
 
   useEffect(() => {
@@ -454,6 +450,7 @@ function BookingsPageContent() {
 
     async function loadBookings() {
       setLoadingList(true);
+      setGigsListReady(false);
       setError(null);
 
       try {
@@ -503,6 +500,7 @@ function BookingsPageContent() {
         setError(getBookingsLoadErrorMessage(loadError));
       } finally {
         setLoadingList(false);
+        setGigsListReady(true);
       }
     }
 
@@ -1024,6 +1022,7 @@ function BookingsPageContent() {
                 hiddenBookingIds={hiddenBookingIds}
               />
               {djGigsView === "history" &&
+              gigsListReady &&
               !loadingList &&
               gigsHistoryBulkManage.showManageControl &&
               !gigsHistoryBulkManage.selectionMode ? (

@@ -2616,6 +2616,10 @@ function markBookingHistoryHideUnavailable(): void {
   bookingHistoryHideAvailable = false;
 }
 
+function markBookingHistoryHideAvailable(): void {
+  bookingHistoryHideAvailable = true;
+}
+
 function isMissingBookingHistoryHideSetupError(error: unknown): boolean {
   if (!error || typeof error !== "object") {
     return false;
@@ -2623,13 +2627,15 @@ function isMissingBookingHistoryHideSetupError(error: unknown): boolean {
 
   const supabaseError = error as { code?: string; message?: string };
 
+  if (supabaseError.code === "42501") {
+    return false;
+  }
+
   return (
     supabaseError.code === "PGRST202" ||
     supabaseError.code === "42883" ||
     supabaseError.code === "42P01" ||
-    String(supabaseError.message ?? "").includes("booking_request_history_hides") ||
-    String(supabaseError.message ?? "").includes("hide_booking_request_from_history") ||
-    String(supabaseError.message ?? "").includes("hide_booking_requests_from_history")
+    supabaseError.code === "PGRST205"
   );
 }
 
@@ -2669,6 +2675,8 @@ export async function listBookingRequestHistoryHideIds(): Promise<string[]> {
     logBookingsLoadError(error);
     throw error;
   }
+
+  markBookingHistoryHideAvailable();
 
   return (data ?? [])
     .map((row) => row.booking_request_id)
