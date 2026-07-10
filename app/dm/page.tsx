@@ -880,7 +880,7 @@ function DmInboxPageContent() {
           ) : null}
 
         {activeTab === "dm" ? (
-          <section aria-label="Direct Messages">
+          <section aria-label="Messages">
             {loading ? (
               <InboxListSkeleton />
             ) : error ? (

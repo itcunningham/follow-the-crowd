@@ -112,7 +112,7 @@ function formatMessageTime(timestamp: string) {
   });
 }
 
-function getConversationTitle(otherUserProfile: UserAvatarProfile | null) {
+function getConversationTitle(otherUserProfile: UserAvatarProfile) {
   return resolveUserDisplayName(otherUserProfile);
 }
 
@@ -143,6 +143,7 @@ export default function DmChatPage() {
   );
   const [otherUserId, setOtherUserId] = useState<string | null>(null);
   const [otherUserProfile, setOtherUserProfile] = useState<UserAvatarProfile | null>(null);
+  const [conversationMetaLoaded, setConversationMetaLoaded] = useState(false);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
@@ -187,9 +188,10 @@ export default function DmChatPage() {
   });
   const { addHighlightedMessageId, isMessageHighlighted } = useChatNewMessageHighlight();
 
-  const conversationTitle = getConversationTitle(otherUserProfile);
-  const otherUserLabel = resolveUserDisplayName(otherUserProfile);
-  const headerProfileLoading = Boolean(otherUserId) && !otherUserProfile;
+  const conversationTitle = otherUserProfile ? getConversationTitle(otherUserProfile) : "";
+  const otherUserLabel = otherUserProfile ? resolveUserDisplayName(otherUserProfile) : "";
+  const dmHeaderLoading =
+    !conversationMetaLoaded || (otherUserId !== null && otherUserProfile === null);
   const bookingsById = useMemo(
     () => new Map(bookings.map((booking) => [booking.id, booking])),
     [bookings],
@@ -297,8 +299,15 @@ export default function DmChatPage() {
       return;
     }
 
+    let cancelled = false;
+    setConversationMetaLoaded(false);
+
     async function loadConversationMeta() {
       const currentUserIdValue = await getCurrentUserId();
+      if (cancelled) {
+        return;
+      }
+
       setCurrentUserId(currentUserIdValue);
 
       const { data, error: membersError } = await supabase
@@ -325,14 +334,26 @@ export default function DmChatPage() {
 
       try {
         const profiles = await getUserAvatarProfilesByIds([nextOtherUserId]);
-        setOtherUserProfile(profiles.get(nextOtherUserId) ?? null);
+        if (!cancelled) {
+          setOtherUserProfile(profiles.get(nextOtherUserId) ?? null);
+        }
       } catch (profileError) {
         console.error("Failed to load chat user profile:", profileError);
-        setOtherUserProfile(null);
+        if (!cancelled) {
+          setOtherUserProfile(null);
+        }
       }
     }
 
-    loadConversationMeta();
+    void loadConversationMeta().finally(() => {
+      if (!cancelled) {
+        setConversationMetaLoaded(true);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
   }, [conversationId]);
 
   useEffect(() => {
@@ -1339,7 +1360,7 @@ export default function DmChatPage() {
       <header className="z-10 shrink-0 border-b border-ftc-border-subtle bg-ftc-bg/95 px-3 py-2.5 backdrop-blur-md sm:px-4">
         <DmConversationHeader
           backHref={backHref}
-          loading={loading || headerProfileLoading}
+          loading={dmHeaderLoading}
           conversationTitle={conversationTitle}
           avatarName={otherUserLabel}
           avatarUrl={otherUserProfile?.avatar_url}

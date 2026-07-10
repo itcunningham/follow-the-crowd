@@ -92,8 +92,7 @@ export default function MessagesInboxLayout({
         <div className="ftc-tab-pill mt-3" role="tablist" aria-label="Message categories">
           <InboxTabButton
             active={activeTab === "dm"}
-            label="Direct Messages"
-            mobileLabel="DMs"
+            label="Messages"
             unreadCount={dmUnreadCount}
             onClick={onSelectTab ? () => onSelectTab("dm") : undefined}
           />

@@ -1,6 +1,8 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 import AppNavigation, { MOBILE_NAV_OFFSET_CLASS } from "@/app/components/AppNavigation";
 import DmConversationHeader from "@/app/components/dm/DmConversationHeader";
 import MessagesInboxLayout from "@/app/components/dm/MessagesInboxLayout";
@@ -604,8 +606,18 @@ export function MessagesInboxLoadingShell({
 }: {
   activeTab?: "dm" | "group";
 }) {
+  const router = useRouter();
+  const [searchQuery, setSearchQuery] = useState("");
+
   return (
-    <MessagesInboxLayout activeTab={activeTab}>
+    <MessagesInboxLayout
+      activeTab={activeTab}
+      searchQuery={searchQuery}
+      onSearchChange={setSearchQuery}
+      onSelectTab={(tab) => {
+        router.replace(tab === "group" ? "/dm?tab=group" : "/dm", { scroll: false });
+      }}
+    >
       <InboxListSkeleton variant={activeTab === "group" ? "group" : "dm"} />
     </MessagesInboxLayout>
   );
