@@ -13,7 +13,7 @@ import PlannerEventsSubNav from "@/app/components/PlannerEventsSubNav";
 import DjBookingAvailabilityBadge from "@/app/components/DjBookingAvailabilityBadge";
 import ProfileAvatar from "@/app/components/ProfileAvatar";
 import { BookingDateField, BookingSetTimeRangeField } from "@/app/components/BookingDateTimeFields";
-import { getEventDateValidationError } from "@/lib/bookingDateTime";
+import { getEventDateValidationError, formatDisplayEventDate } from "@/lib/bookingDateTime";
 import { BookingRateField } from "@/app/components/BookingRateField";
 import BookingRateModeField from "@/app/components/booking/BookingRateModeField";
 import ArchiveAllBookingRequestsButton from "@/app/components/ArchiveAllBookingRequestsButton";
@@ -1172,7 +1172,7 @@ function BookingsPageContent() {
                           >
                             <p className="font-semibold text-ftc-text">{plan.name}</p>
                             <p className="mt-1 text-sm text-ftc-text-secondary">
-                              {plan.event_name} · {plan.venue} · {plan.event_date}
+                              {plan.event_name} · {plan.venue} · {formatDisplayEventDate(plan.event_date)}
                             </p>
                             <p className="mt-1 text-sm text-ftc-text-muted">
                               {plan.set_time} · Rate {formatRateDisplay(plan.fee)}
@@ -1272,7 +1272,7 @@ function BookingsPageContent() {
                   <div className="rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated p-4 text-sm text-ftc-text-secondary">
                     <p className="font-medium text-ftc-text">{form.eventName}</p>
                     <p className="mt-1">
-                      {form.venue} · {form.eventDate} · {form.setTime}
+                      {form.venue} · {formatDisplayEventDate(form.eventDate)} · {form.setTime}
                     </p>
                     <p className="mt-1">
                       {form.rateMode === "open" ? "Ask for rate" : "Fixed offer"}
@@ -1699,7 +1699,7 @@ function GigCardMetaRows({
   muted?: boolean;
 }) {
   const textClass = muted ? "text-ftc-text-muted" : "text-ftc-text-secondary";
-  const venueDateParts = [venue?.trim(), eventDate?.trim()].filter(Boolean);
+  const venueDateParts = [venue?.trim(), eventDate?.trim() ? formatDisplayEventDate(eventDate) : ""].filter(Boolean);
   const venueDateLine = venueDateParts.join(" · ");
   const setTimeLine = setTime?.trim() || "TBC";
   const showRate = Boolean(rateLabel?.trim());
@@ -1929,7 +1929,7 @@ function BookingCampaignCard({
           <h3 className="mt-1 text-lg font-semibold text-ftc-text">{group.event_name}</h3>
           <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
             <CampaignDetail label="Venue" value={group.venue} />
-            <CampaignDetail label="Event date" value={group.event_date} />
+            <CampaignDetail label="Event date" value={formatDisplayEventDate(group.event_date)} />
             <CampaignDetail label="Set time" value={group.set_time} />
             <CampaignDetail label="Rate" value={campaignRateLabel} />
           </dl>

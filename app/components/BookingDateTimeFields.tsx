@@ -16,6 +16,7 @@ import {
   extractClockDisplay,
   formatTimeButtonLabel,
   getMinWheelTimeForEventDate,
+  formatDisplayEventDate,
   guardEventDatePickerChange,
   isSavedEventDateBeforeMin,
   parseEventDate,
@@ -47,7 +48,11 @@ export function BookingDateField({
   const pickerValue = resolvePickerEventDateValue(value, effectiveMinDate);
   const needsPickerReselection = savedEventDateNeedsPickerReselection(value, effectiveMinDate);
   const savedDateIsPast = isSavedEventDateBeforeMin(value, effectiveMinDate);
-  const savedDateLabel = parsed.legacyValue ?? parsed.isoDate;
+  const savedDateLabel = parsed.legacyValue
+    ? parsed.legacyValue
+    : parsed.isoDate
+      ? formatDisplayEventDate(parsed.isoDate)
+      : "";
 
   function handleDateChange(nextValue: string) {
     const guarded = guardEventDatePickerChange(nextValue, effectiveMinDate);

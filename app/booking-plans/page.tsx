@@ -8,7 +8,7 @@ import OnboardingGuard from "@/app/components/OnboardingGuard";
 import PlannerEventsSubNav from "@/app/components/PlannerEventsSubNav";
 import { PlannerFormCard, PlannerFormField, PlannerInlineError } from "@/app/components/planner/PlannerUi";
 import { BookingDateField, BookingSetTimeRangeField } from "@/app/components/BookingDateTimeFields";
-import { getEventDateValidationError } from "@/lib/bookingDateTime";
+import { formatDisplayEventDate, getEventDateValidationError } from "@/lib/bookingDateTime";
 import { BookingRateField } from "@/app/components/BookingRateField";
 import {
   createBookingPlan,
@@ -334,7 +334,7 @@ export default function BookingPlansPage() {
                       <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
                         <PlanDetail label="Event" value={plan.event_name} />
                         <PlanDetail label="Venue" value={plan.venue} />
-                        <PlanDetail label="Date" value={plan.event_date} />
+                        <PlanDetail label="Date" value={formatDisplayEventDate(plan.event_date)} />
                         <PlanDetail label="Set time" value={plan.set_time} />
                         <PlanDetail label="Rate" value={formatRateDisplay(plan.fee)} />
                       </dl>

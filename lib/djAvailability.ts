@@ -6,6 +6,7 @@ import {
   FTC_STATUS_SUCCESS,
   FTC_STATUS_WARNING,
 } from "@/lib/ftcFlatStatus";
+import { formatIsoDateKeyForDisplay } from "@/lib/bookingDateTime";
 import { getCurrentUserId } from "@/lib/user/currentUser";
 
 export type DjAvailabilityStatus = "available" | "unavailable" | "tentative";
@@ -66,12 +67,7 @@ export function formatAvailabilityDateLabel(value: string): string {
     return value.trim() || "Date TBC";
   }
 
-  const [year, month, day] = normalized.split("-").map(Number);
-  return new Date(year, month - 1, day).toLocaleDateString(undefined, {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-  });
+  return formatIsoDateKeyForDisplay(normalized);
 }
 
 export function formatDjAvailabilityStatusLabel(status: DjAvailabilityStatus): string {

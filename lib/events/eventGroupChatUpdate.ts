@@ -1,4 +1,5 @@
 import { formatRateDisplay, normalizeStoredRate } from "@/lib/bookingRate";
+import { formatDisplayEventDate } from "@/lib/bookingDateTime";
 import { sendEventCrewChatMessage } from "@/lib/eventCrewChat";
 import type { Event, EventInput } from "@/lib/events";
 import { shouldConfirmEventEditSave } from "@/lib/events/eventEditConfirmation";
@@ -9,6 +10,11 @@ export type BookingImpactingEventFieldChange = {
   from: string;
   to: string;
 };
+
+function displayDateValue(value: string): string {
+  const formatted = formatDisplayEventDate(value);
+  return formatted || "Not set";
+}
 
 function displayTextValue(value: string): string {
   const trimmed = value.trim();
@@ -45,8 +51,8 @@ export function getBookingImpactingEventFieldChanges(
   if (event.event_date.trim() !== input.eventDate.trim()) {
     changes.push({
       label: "Date",
-      from: displayTextValue(event.event_date),
-      to: displayTextValue(input.eventDate),
+      from: displayDateValue(event.event_date),
+      to: displayDateValue(input.eventDate),
     });
   }
 

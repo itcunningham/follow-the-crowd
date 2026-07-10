@@ -34,6 +34,7 @@ import {
   type BookingRequestStatus,
 } from "@/lib/bookingRequests";
 import { rateDigitsToInteger } from "@/lib/bookingRate";
+import { formatDisplayEventDate } from "@/lib/bookingDateTime";
 import type { BookingRecipientProfile } from "@/lib/user/currentUser";
 
 export default function BookingRequestCard({
@@ -152,7 +153,10 @@ export default function BookingRequestCard({
     bookingLoaded,
   });
   const collapsedOfferSummary = getBookingCollapsedOfferSummary(booking);
-  const collapsedDateVenue = [booking.event_date?.trim(), booking.venue?.trim()]
+  const collapsedDateVenue = [
+    booking.event_date?.trim() ? formatDisplayEventDate(booking.event_date) : "",
+    booking.venue?.trim(),
+  ]
     .filter(Boolean)
     .join(" · ");
   const collapsedTitle = booking.event_name.trim() || "Booking request";
@@ -199,7 +203,7 @@ export default function BookingRequestCard({
     return (
       <BookingDetailGrid>
         <BookingDetailItem label="Venue" value={booking.venue} />
-        <BookingDetailItem label="Date" value={booking.event_date} />
+        <BookingDetailItem label="Date" value={formatDisplayEventDate(booking.event_date)} />
         <BookingDetailItem label="Set time" value={booking.set_time} />
         <BookingDetailItem label={rateDetailLabel} value={offerRateLabel} />
         {booking.notes ? <BookingDetailItem label="Notes" value={booking.notes} /> : null}
@@ -498,7 +502,7 @@ export default function BookingRequestCard({
         <div className="mt-4">
           <BookingDetailGrid>
             <BookingDetailItem label="Venue" value={booking.venue} />
-            <BookingDetailItem label="Date" value={booking.event_date} />
+            <BookingDetailItem label="Date" value={formatDisplayEventDate(booking.event_date)} />
             <BookingDetailItem label="Set time" value={booking.set_time} />
             <BookingDetailItem label={rateDetailLabel} value={offerRateLabel} />
             {booking.notes ? <BookingDetailItem label="Notes" value={booking.notes} /> : null}

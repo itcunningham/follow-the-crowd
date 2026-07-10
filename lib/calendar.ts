@@ -5,7 +5,12 @@ import {
   type BookingRequest,
   type BookingRequestStatus,
 } from "@/lib/bookingRequests";
-import { parseEventDate, parseSetTimeRange, SET_TIME_RANGE_JOINER } from "@/lib/bookingDateTime";
+import {
+  formatIsoDateKeyForDisplay,
+  parseEventDate,
+  parseSetTimeRange,
+  SET_TIME_RANGE_JOINER,
+} from "@/lib/bookingDateTime";
 import {
   getEventDateDisplayLabel,
   listOwnedEvents,
@@ -337,11 +342,7 @@ export const PLANNER_CALENDAR_LEGEND_ITEMS = [
 ] as const;
 
 export function formatPlannerSelectedDateLabel(date: Date): string {
-  return date.toLocaleDateString(undefined, {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
+  return formatIsoDateKeyForDisplay(toDateKey(date));
 }
 
 export function buildPlannerCreateEventHref(dateKey: string): string {

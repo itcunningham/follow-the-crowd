@@ -573,6 +573,37 @@ export function resolveEventDateKey(eventDate: string): string | null {
   return dateKeyFromLocalDate(new Date(parsedMs));
 }
 
+export function formatIsoDateKeyForDisplay(dateKey: string): string {
+  if (!isIsoDateString(dateKey)) {
+    return dateKey.trim();
+  }
+
+  const [year, month, day] = dateKey.split("-");
+  return `${day}-${month}-${year}`;
+}
+
+export function formatDisplayEventDate(eventDate: string): string {
+  const trimmed = eventDate.trim();
+
+  if (!trimmed) {
+    return "";
+  }
+
+  const dateKey = resolveEventDateKey(trimmed);
+
+  if (dateKey && isIsoDateString(dateKey)) {
+    return formatIsoDateKeyForDisplay(dateKey);
+  }
+
+  const parsed = parseEventDate(trimmed);
+
+  if (parsed.legacyValue) {
+    return parsed.legacyValue;
+  }
+
+  return trimmed;
+}
+
 export function resolveEventStartDateTime(eventDate: string, setTime: string): Date | null {
   const dateKey = resolveEventDateKey(eventDate);
 

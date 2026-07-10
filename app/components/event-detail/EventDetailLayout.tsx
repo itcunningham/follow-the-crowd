@@ -7,29 +7,12 @@ import {
   getEventFallbackColourStyles,
   getEventInitials,
 } from "@/lib/events/eventFallbackColour";
-import { formatGroupChatEventDate } from "@/lib/groupChats";
-import { parseEventDate } from "@/lib/bookingDateTime";
+import { formatDisplayEventDate } from "@/lib/bookingDateTime";
 import type { Event } from "@/lib/events";
 
 export function formatEventDetailDateLine(eventDate: string, setTime: string): string {
-  const parsed = parseEventDate(eventDate);
   const trimmedTime = setTime.trim();
-
-  let datePart = eventDate.trim();
-
-  if (parsed.isoDate) {
-    const [year, month, day] = parsed.isoDate.split("-").map(Number);
-    datePart = new Date(year, month - 1, day).toLocaleDateString(undefined, {
-      weekday: "long",
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-    });
-  } else if (parsed.legacyValue) {
-    datePart = parsed.legacyValue;
-  } else if (parsed.isoDate === "" && eventDate.trim()) {
-    datePart = formatGroupChatEventDate(eventDate);
-  }
+  const datePart = formatDisplayEventDate(eventDate) || "Date TBC";
 
   if (!trimmedTime) {
     return datePart;

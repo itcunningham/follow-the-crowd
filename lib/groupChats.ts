@@ -9,6 +9,7 @@ import { getCrewChatUnlockStateByEventIds } from "@/lib/events/crewChatUnlock";
 import { withEventUnlockFieldsFallback } from "@/lib/events/eventQueryFields";
 import { pickPreferredEventCoverImageUrl } from "@/lib/events/eventCoverImage";
 import { supabase } from "@/lib/supabaseClient";
+import { formatDisplayEventDate } from "@/lib/bookingDateTime";
 import { getCurrentUserId, type UserRole } from "@/lib/user/currentUser";
 
 export type GroupChatListItem = {
@@ -545,21 +546,8 @@ export function sortGroupChatsByLatestActivity(
 }
 
 export function formatGroupChatEventDate(value: string): string {
-  const trimmed = value.trim();
-
-  if (!trimmed) {
-    return "Date TBC";
-  }
-
-  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
-    const [year, month, day] = trimmed.split("-").map(Number);
-    return new Date(year, month - 1, day).toLocaleDateString(undefined, {
-      month: "short",
-      day: "numeric",
-    });
-  }
-
-  return trimmed;
+  const formatted = formatDisplayEventDate(value);
+  return formatted || "Date TBC";
 }
 
 export function getGroupChatsLoadErrorMessage(error: unknown): string {

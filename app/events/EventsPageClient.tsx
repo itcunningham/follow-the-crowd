@@ -19,7 +19,7 @@ import {
   PlannerStatChip,
 } from "@/app/components/planner/PlannerUi";
 import { BookingDateField, BookingSetTimeRangeField } from "@/app/components/BookingDateTimeFields";
-import { getEventDateValidationError, getTodayDateKey, sanitizePrefilledEventDateKey } from "@/lib/bookingDateTime";
+import { getEventDateValidationError, getTodayDateKey, formatDisplayEventDate, sanitizePrefilledEventDateKey } from "@/lib/bookingDateTime";
 import EventCoverImageField, {
   emptyEventCoverImageFieldState,
   type EventCoverImageFieldState,
@@ -565,7 +565,7 @@ function EventsPageClientView({ initialTab }: EventsPageClientProps) {
                         <li key={plan.id}>
                           <PlannerOptionCard
                             title={plan.name}
-                            description={`${plan.event_name} · ${plan.venue} · ${plan.event_date}`}
+                            description={`${plan.event_name} · ${plan.venue} · ${formatDisplayEventDate(plan.event_date)}`}
                             selected={selectedPlanId === plan.id}
                             onClick={() => handleSelectPlan(plan)}
                           />
@@ -804,7 +804,7 @@ function EventsPageClientView({ initialTab }: EventsPageClientProps) {
                               />
                             </div>
                             <p className="mt-2 text-sm text-ftc-text-muted">
-                              {event.venue} · {event.event_date}
+                              {event.venue} · {formatDisplayEventDate(event.event_date)}
                             </p>
                             <p className="mt-1 text-sm text-ftc-text-muted">{event.set_time}</p>
                             <div className="mt-3 flex flex-wrap gap-2">
@@ -850,7 +850,7 @@ function EventsPageClientView({ initialTab }: EventsPageClientProps) {
                           />
                         </div>
                         <p className={`mt-2 text-sm ${cancelled ? "text-ftc-text-muted" : "text-ftc-text-secondary"}`}>
-                          {event.venue} · {event.event_date}
+                          {event.venue} · {formatDisplayEventDate(event.event_date)}
                         </p>
                         <p className={`mt-1 text-sm ${cancelled ? "text-ftc-text-muted" : "text-ftc-text-muted"}`}>
                           {event.set_time}
