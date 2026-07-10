@@ -158,12 +158,12 @@ function UserProfilePageView({ userId }: { userId: string }) {
               />
             ) : null}
 
-            {showDjSections ? (
-              <DjProfileSections profile={profile} isOwnProfile={isOwnProfile} />
-            ) : null}
-
             {showPromoterSections ? (
               <PromoterProfileSections profile={profile} />
+            ) : null}
+
+            {showDjSections ? (
+              <DjProfileSections profile={profile} isOwnProfile={isOwnProfile} />
             ) : null}
 
             {error ? <p className="text-sm text-red-400">{error}</p> : null}
