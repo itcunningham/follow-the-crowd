@@ -74,15 +74,15 @@ export default function MessagesInboxLayout({
       className={`mx-auto flex min-h-[100dvh] w-full max-w-2xl flex-col bg-ftc-bg font-sans text-ftc-text ${MOBILE_NAV_OFFSET_CLASS}`}
     >
       <AppNavigation />
-      <header className="sticky top-0 z-10 border-b border-ftc-border-subtle bg-ftc-bg/95 px-4 py-3 backdrop-blur-md sm:px-6 md:top-12">
-        <div className="flex items-center justify-between gap-3">
-          <h1 className="text-xl font-bold tracking-tight text-ftc-text">Messages</h1>
+      <header className="ftc-page-header px-4 py-4 sm:px-6 md:pt-4">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <h1 className="text-xl font-semibold text-ftc-text">Messages</h1>
           {onCompose ? (
             <MessagesInboxComposeButton onClick={onCompose} />
           ) : null}
         </div>
 
-        <div className="mt-3">
+        <div className="mt-4">
           <MessagesInboxSearchBar
             value={searchQuery}
             onChange={onSearchChange ?? (() => {})}

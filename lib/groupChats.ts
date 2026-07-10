@@ -618,7 +618,7 @@ export function isEventCrewChatPath(pathname: string): boolean {
 }
 
 export function isMessagesInboxPath(pathname: string): boolean {
-  return isGroupChatPath(pathname);
+  return pathname === "/dm" || pathname.startsWith("/dm/") || isGroupChatPath(pathname);
 }
 
 export { logInboxRenderOrder };
