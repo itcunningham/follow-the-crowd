@@ -1880,14 +1880,14 @@ function BookingHistoryCard({
 
   if (selectionMode) {
     return (
-      <li className={`${cardClass} min-w-0`}>
+      <li className="min-w-0">
         <button
           type="button"
           onClick={onToggleSelect}
           aria-label={selectionLabel}
           aria-pressed={selected}
-          className={`w-full min-w-0 text-left focus-visible:outline-none ${
-            selected ? "ring-1 ring-ftc-primary/40 rounded-2xl" : ""
+          className={`${cardClass} block w-full min-w-0 text-left focus-visible:outline-none ${
+            selected ? "ring-1 ring-ftc-primary/40" : ""
           }`}
         >
           {cardBody}
