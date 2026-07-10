@@ -33,14 +33,6 @@ type NavItem = {
 };
 
 function getNavItems(role: UserRole, currentUserId: string | null): NavItem[] {
-  const home: NavItem = {
-    href: "/",
-    label: "Home",
-    icon: "home",
-    isPrimary: true,
-    isActive: (pathname) => pathname === "/",
-  };
-
   const events: NavItem = {
     href: "/events",
     label: "Events",
@@ -85,7 +77,7 @@ function getNavItems(role: UserRole, currentUserId: string | null): NavItem[] {
     return [gigs, messages, profile];
   }
 
-  return [home, events, messages, profile];
+  return [events, messages, profile];
 }
 
 export const MOBILE_NAV_OFFSET_CLASS = "pb-[calc(3.5rem+env(safe-area-inset-bottom))] md:pb-0";

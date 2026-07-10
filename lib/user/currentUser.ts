@@ -63,7 +63,11 @@ const PROFILE_FIELDS =
   "user_id, role, onboarding_complete, full_name, username, display_name, bio, genre, instagram_url, tiktok_url, soundcloud_url, website_url, location, avatar_url, artist_name, dj_booking_contact_name, dj_availability, dj_past_gigs, promoter_brand_name, promoter_brand_description, promoter_venues_used, promoter_upcoming_events, promoter_past_events";
 
 export function getDefaultRouteForRole(role: UserRole | null): string {
-  return role === "dj" ? "/dm" : "/";
+  if (role === "dj") {
+    return "/dm";
+  }
+
+  return "/events";
 }
 
 export function getDiscoverRetiredRedirectPath(role: UserRole | null): string {

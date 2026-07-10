@@ -24,7 +24,7 @@ export function resolveProfileBackNavigation(
   role: UserRole | null,
 ): { href: string; label: string } {
   const fallbackHref = getDefaultRouteForRole(role);
-  const fallbackLabel = role === "dj" ? "Back to Messages" : "Back to Home";
+  const fallbackLabel = role === "dj" ? "Back to Messages" : "Back to Events";
   const trimmed = returnTo?.trim();
 
   if (!trimmed || !trimmed.startsWith("/") || trimmed.startsWith("//")) {

@@ -82,9 +82,13 @@ export default function OnboardingGuard({ children }: { children: React.ReactNod
           return;
         }
 
-        if (profile?.role === "dj" && pathname === "/") {
-          router.replace(getDefaultRouteForRole(profile.role));
-          return;
+        if (pathname === "/" && profile?.role) {
+          const defaultRoute = getDefaultRouteForRole(profile.role);
+
+          if (defaultRoute !== "/") {
+            router.replace(defaultRoute);
+            return;
+          }
         }
 
         setReady(true);
