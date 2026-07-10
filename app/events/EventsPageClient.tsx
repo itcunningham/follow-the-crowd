@@ -160,6 +160,7 @@ function EventsPageClientView({ initialTab }: EventsPageClientProps) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [eventsListReady, setEventsListReady] = useState(false);
   const [eventDateOverride, setEventDateOverride] = useState<string | null>(null);
   const [locationRevision, setLocationRevision] = useState(0);
 
@@ -210,7 +211,9 @@ function EventsPageClientView({ initialTab }: EventsPageClientProps) {
   );
   const filteredEvents = isHistoryTab ? historyEvents : upcomingEvents;
   const historyBulkManage = useHistoryBulkManage(
-    isPlanner && isHistoryTab && isEventHistoryHideAvailable() ? historyEvents : [],
+    isPlanner && isHistoryTab && eventsListReady && isEventHistoryHideAvailable()
+      ? historyEvents
+      : [],
   );
 
   const loadEvents = useCallback(async () => {
@@ -240,6 +243,7 @@ function EventsPageClientView({ initialTab }: EventsPageClientProps) {
       setError(getEventsLoadErrorMessage(loadError));
     } finally {
       setLoadingEvents(false);
+      setEventsListReady(true);
     }
   }, [isPlanner]);
 
@@ -667,7 +671,12 @@ function EventsPageClientView({ initialTab }: EventsPageClientProps) {
                   History
                 </Link>
               </div>
-              {isPlanner && isHistoryTab && historyBulkManage.showManageControl && !historyBulkManage.selectionMode ? (
+              {isPlanner &&
+              isHistoryTab &&
+              eventsListReady &&
+              isEventHistoryHideAvailable() &&
+              historyBulkManage.showManageControl &&
+              !historyBulkManage.selectionMode ? (
                 <HistoryManageButton onClick={historyBulkManage.enterSelectionMode} />
               ) : null}
             </div>
@@ -749,6 +758,7 @@ function EventsPageClientView({ initialTab }: EventsPageClientProps) {
                       <button
                         type="button"
                         onClick={() => historyBulkManage.toggleItem(event.id)}
+                        aria-label={selectionLabel}
                         aria-pressed={isSelected}
                         className={`ftc-surface-row flex w-full rounded-[var(--ftc-radius-xl)] p-4 text-left focus-visible:outline-none sm:p-5 ${
                           cancelled ? "ftc-event-card-cancelled" : ""

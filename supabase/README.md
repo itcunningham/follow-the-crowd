@@ -4,31 +4,27 @@ Versioned database changes for Follow The Crowd live in `supabase/migrations/`.
 
 Apply them to production **before** deploying app code that depends on them.
 
-## Recommended: Supabase CLI
+## Apply a migration (recommended)
 
-```bash
-# One-time: install CLI and link the project
-npm i -g supabase
-supabase login
-supabase link --project-ref <your-project-ref>
+This repo is **not** configured for Supabase CLI (`supabase/config.toml` is not checked in). Use the SQL Editor:
 
-# Apply pending migrations to the linked remote database
-supabase db push
-```
+1. Open [Supabase Dashboard](https://supabase.com/dashboard) → your FTC project → **SQL Editor**
+2. Open the migration file from `supabase/migrations/` in this repo
+3. Paste the **entire file** into the editor
+4. Run it once
+5. Confirm success (the migration ends with `notify pgrst, 'reload schema';`)
 
-`supabase db push` runs only migrations that have not been applied yet.
-
-## Manual fallback (SQL Editor)
-
-If you are not using the CLI, open the migration file in `supabase/migrations/` and run its full contents once in the Supabase SQL Editor.
-
-Use this only when CLI deploy is unavailable. The migration file in this folder is the source of truth — not duplicate copies under `scripts/`.
+Migrations are idempotent where possible (`if not exists`, `create or replace`) and safe to re-run if a step was already applied.
 
 ## Deploy order
 
 1. Merge migration to `main`
-2. Run `supabase db push` (or paste the migration in SQL Editor)
+2. Paste and run the migration in Supabase SQL Editor
 3. Deploy the Next.js app
+
+## Optional: Supabase CLI
+
+If you later add CLI config to this repo, you can use `supabase db push` instead. Until then, SQL Editor is the supported path.
 
 ## Legacy `scripts/*.sql`
 

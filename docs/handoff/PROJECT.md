@@ -20,7 +20,7 @@
 | `app/` | Pages and UI components |
 | `lib/` | Data access, business logic |
 | `scripts/*.sql` | Legacy Supabase bootstrap / one-off fixes (run manually) |
-| `supabase/migrations/` | Versioned database migrations (`supabase db push`) |
+| `supabase/migrations/` | Versioned database migrations (paste in Supabase SQL Editor) |
 | `docs/handoff/` | Session context for new chats |
 
 ## Important lib files

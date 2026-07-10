@@ -684,6 +684,19 @@ function isMissingEventHistoryHideRpcError(error: unknown): boolean {
   );
 }
 
+function isInternalDatabaseMessage(message: string): boolean {
+  return (
+    /\.sql/i.test(message) ||
+    /supabase\/migrations/i.test(message) ||
+    /scripts\//i.test(message) ||
+    /PGRST/i.test(message) ||
+    /42703/i.test(message) ||
+    /function public\./i.test(message) ||
+    /hide_events_from_history/i.test(message) ||
+    /hide_event_from_history/i.test(message)
+  );
+}
+
 export function getEventHistoryHideErrorMessage(error: unknown): string {
   if (isMissingEventHistoryHideRpcError(error) || isMissingHistoryHiddenAtColumnError(error)) {
     if (process.env.NODE_ENV !== "production") {
@@ -695,7 +708,11 @@ export function getEventHistoryHideErrorMessage(error: unknown): string {
     return "Remove from history is unavailable right now. Please try again later.";
   }
 
-  if (error instanceof Error && error.message.trim()) {
+  if (
+    error instanceof Error &&
+    error.message.trim() &&
+    !isInternalDatabaseMessage(error.message)
+  ) {
     return error.message;
   }
 

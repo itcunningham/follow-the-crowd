@@ -2,7 +2,7 @@
 
 Database changes are versioned in **`supabase/migrations/`**. See **`supabase/README.md`** for deploy steps.
 
-Isaac applies migrations with **`supabase db push`** (preferred) or by running the migration file once in the Supabase SQL Editor.
+Isaac applies migrations by pasting the migration file once in the **Supabase SQL Editor** (this repo is not configured for Supabase CLI).
 
 Legacy one-off scripts remain in `scripts/` for bootstrapping and fixes. New feature schema should be added as timestamped migrations, not duplicate `scripts/setup*.sql` files.
 
@@ -27,7 +27,7 @@ Legacy one-off scripts remain in `scripts/` for bootstrapping and fixes. New fea
 ## Deploy order (features with migrations)
 
 1. Merge migration to `main`
-2. Run `supabase db push` (or paste the migration in SQL Editor)
+2. Paste and run the migration in Supabase SQL Editor
 3. Deploy the Next.js app
 
 ## Rough setup order (fresh project)
@@ -46,4 +46,4 @@ Legacy one-off scripts remain in `scripts/` for bootstrapping and fixes. New fea
 
 ## When Isaac asks for SQL
 
-For versioned changes, point at the file in `supabase/migrations/`. For legacy bootstrap, paste the entire file from `scripts/` — raw text only.
+For versioned changes, paste the entire file from `supabase/migrations/`. For legacy bootstrap, paste the entire file from `scripts/` — raw text only.

@@ -1008,6 +1008,7 @@ function BookingsPageContent() {
             <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
               <DjGigsTabs activeView={djGigsView} bookings={receivedBookings} />
               {djGigsView === "history" &&
+              !loadingList &&
               gigsHistoryBulkManage.showManageControl &&
               !gigsHistoryBulkManage.selectionMode ? (
                 <HistoryManageButton onClick={gigsHistoryBulkManage.enterSelectionMode} />
@@ -1847,6 +1848,7 @@ function BookingHistoryCard({
         <button
           type="button"
           onClick={onToggleSelect}
+          aria-label={selectionLabel}
           aria-pressed={selected}
           className={`w-full min-w-0 text-left focus-visible:outline-none ${
             selected ? "ring-1 ring-ftc-primary/40 rounded-2xl" : ""

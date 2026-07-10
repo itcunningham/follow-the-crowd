@@ -1,5 +1,5 @@
 -- Event history hide for planner cancelled events.
--- Idempotent. Safe to run once on production.
+-- Idempotent. Safe to paste and run once in Supabase SQL Editor on production.
 -- Prerequisites: setupEvents.sql, setupProductionRls.sql
 
 alter table public.events

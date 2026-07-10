@@ -13,7 +13,7 @@
 1. Idea or bug → ChatGPT optional (shape the task)
 2. Paste task into **Cursor** (use `START-HERE-CURSOR.md` in new chats)
 3. Cursor codes + `npm run build`
-4. If the task adds a file under `supabase/migrations/`, Isaac runs **`supabase db push`** (or pastes that migration in SQL Editor) **before** deploying the app
+4. If the task adds a file under `supabase/migrations/`, Isaac pastes that migration into the **Supabase SQL Editor** and runs it once **before** deploying the app
 5. Isaac tests in browser
 6. Cursor commits/pushes when asked
 
