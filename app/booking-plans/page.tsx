@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
-import { BookingPlanListSkeleton, BookingPlansPageLoadingShell } from "@/app/components/skeleton/Skeleton";
 import AppNavigation, { MOBILE_NAV_OFFSET_CLASS } from "@/app/components/AppNavigation";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
 import PlannerEventsSubNav from "@/app/components/PlannerEventsSubNav";
@@ -25,6 +24,7 @@ import {
   getDefaultRouteForRole,
   type UserRole,
 } from "@/lib/user/currentUser";
+import { readCachedNavRole } from "@/lib/navigationRoleCache";
 
 const emptyPlanForm: BookingPlanInput = {
   name: "",
@@ -55,6 +55,8 @@ function getPlanLoadErrorMessage(error: unknown): string {
 export default function BookingPlansPage() {
   const router = useRouter();
   const [role, setRole] = useState<UserRole | null>(null);
+  const [cachedRole] = useState<UserRole | null>(() => readCachedNavRole());
+  const displayRole = role ?? cachedRole;
   const [loadingAccess, setLoadingAccess] = useState(true);
   const [plans, setPlans] = useState<BookingPlan[]>([]);
   const [loadingPlans, setLoadingPlans] = useState(true);
@@ -202,15 +204,7 @@ export default function BookingPlansPage() {
     router.push(`/bookings?planId=${planId}`);
   }
 
-  if (loadingAccess) {
-    return (
-      <OnboardingGuard>
-        <BookingPlansPageLoadingShell />
-      </OnboardingGuard>
-    );
-  }
-
-  if (!canAccessBookingPlans(role)) {
+  if (!loadingAccess && !canAccessBookingPlans(role)) {
     return null;
   }
 
@@ -234,7 +228,7 @@ export default function BookingPlansPage() {
               </button>
             ) : null}
           </div>
-          <PlannerEventsSubNav />
+          <PlannerEventsSubNav initialRole={displayRole} />
         </header>
 
         <div className="px-4 py-4 sm:px-6">
@@ -244,7 +238,7 @@ export default function BookingPlansPage() {
             </p>
           ) : null}
 
-          {formOpen ? (
+          {!loadingAccess && formOpen ? (
             <PlannerFormCard
               title={editingPlanId ? "Edit booking plan" : "Create booking plan"}
               onCancel={closeForm}
@@ -310,17 +304,15 @@ export default function BookingPlansPage() {
             </PlannerFormCard>
           ) : null}
 
-          {loadingPlans ? (
-            <BookingPlanListSkeleton count={3} />
-          ) : error && plans.length === 0 ? (
-            <PlannerInlineError message={error} />
-          ) : plans.length === 0 ? (
-            <div className="ftc-card-empty px-6 py-12 text-center">
-              <p className="text-base font-medium text-ftc-text-secondary">No saved booking plans yet.</p>
-              <p className="mt-2 text-sm text-ftc-text-muted">
-                Create a plan to reuse event details when booking DJs.
-              </p>
-              {!formOpen ? (
+          {!loadingAccess && !formOpen ? (
+            loadingPlans ? null : error && plans.length === 0 ? (
+              <PlannerInlineError message={error} />
+            ) : plans.length === 0 ? (
+              <div className="ftc-card-empty px-6 py-12 text-center">
+                <p className="text-base font-medium text-ftc-text-secondary">No saved booking plans yet.</p>
+                <p className="mt-2 text-sm text-ftc-text-muted">
+                  Create a plan to reuse event details when booking DJs.
+                </p>
                 <button
                   type="button"
                   onClick={openCreateForm}
@@ -328,9 +320,8 @@ export default function BookingPlansPage() {
                 >
                   Create booking plan
                 </button>
-              ) : null}
-            </div>
-          ) : (
+              </div>
+            ) : (
             <ul className="space-y-3">
               {plans.map((plan) => (
                 <li key={plan.id} className="ftc-card p-4 sm:p-5">
@@ -372,7 +363,8 @@ export default function BookingPlansPage() {
                 </li>
               ))}
             </ul>
-          )}
+            )
+          ) : null}
         </div>
       </div>
     </OnboardingGuard>

@@ -4,10 +4,7 @@ import Link from "next/link";
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
-  BookingsContentSkeleton,
   BookingsPageLoadingShell,
-  resolveBookingsShellVariant,
-  type BookingsContentVariant,
 } from "@/app/components/skeleton/Skeleton";
 import AppNavigation, { MOBILE_NAV_OFFSET_CLASS } from "@/app/components/AppNavigation";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
@@ -85,6 +82,7 @@ import {
   type UserRole,
 } from "@/lib/user/currentUser";
 import { markNotificationsReadByType } from "@/lib/notifications";
+import { readCachedNavRole } from "@/lib/navigationRoleCache";
 import {
   buildGigsEventDetailHref,
   buildGigsListHref,
@@ -229,19 +227,11 @@ function getGigsEmptyMessage(tab: DjGigsListTab): string {
   }
 }
 
-function getBookingsContentVariant(role: UserRole | null): BookingsContentVariant {
-  if (canViewGigsWorkspace(role)) {
-    return "received-gigs";
-  }
-
-  return "received-gigs";
-}
-
 export default function BookingsPage() {
   return (
     <Suspense
       fallback={
-        <BookingsPageLoadingShell variant="dj" content="received-gigs" />
+        <BookingsPageLoadingShell variant="dj" />
       }
     >
       <BookingsPageContent />
@@ -391,7 +381,7 @@ function BookingsPageContent() {
     });
   }, [eventBookingDuplicates, form.eventId]);
 
-  const displayRole = role ?? guardProfile?.role ?? null;
+  const displayRole = role ?? guardProfile?.role ?? readCachedNavRole();
   const showGigsWorkspace = canViewGigsWorkspace(displayRole);
   const showPlannerGigsEmpty = displayRole === "promoter" && !createOpen;
 
@@ -964,7 +954,7 @@ function BookingsPageContent() {
             </div>
           </div>
 
-          <PlannerEventsSubNav />
+          <PlannerEventsSubNav initialRole={displayRole} />
 
           {showGigsWorkspace ? (
             <DjGigsTabs activeView={djGigsView} bookings={receivedBookings} />
@@ -972,13 +962,6 @@ function BookingsPageContent() {
         </header>
 
         <div className="px-4 py-4 sm:px-6">
-          {loadingAccess ? (
-            <BookingsContentSkeleton
-              variant={resolveBookingsShellVariant(displayRole)}
-              content={getBookingsContentVariant(displayRole)}
-            />
-          ) : (
-            <>
           {successMessage ? (
             <p className="mb-4 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated px-4 py-3 text-sm text-ftc-text-secondary">
               {successMessage}
@@ -1319,12 +1302,7 @@ function BookingsPageContent() {
               </Link>
             </div>
           ) : showGigsWorkspace ? (
-            loadingList ? (
-              <BookingsContentSkeleton
-                variant={resolveBookingsShellVariant(displayRole)}
-                content="received-gigs"
-              />
-            ) : error && !createOpen ? (
+            loadingList ? null : error && !createOpen ? (
               <p className="text-sm text-red-400">{error}</p>
             ) : receivedBookings.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-ftc-border-subtle bg-ftc-surface/30 px-6 py-12 text-center">
@@ -1357,8 +1335,6 @@ function BookingsPageContent() {
               </ul>
             )
           ) : null}
-            </>
-          )}
         </div>
       </div>
 

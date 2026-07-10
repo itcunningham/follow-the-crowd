@@ -1,19 +1,21 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CalendarPageLoadingShell } from "@/app/components/skeleton/Skeleton";
 import AppNavigation, { MOBILE_NAV_OFFSET_CLASS } from "@/app/components/AppNavigation";
 import CalendarViewTabs, { type CalendarViewTab } from "@/app/components/CalendarViewTabs";
 import DjAvailabilityCalendar from "@/app/components/DjAvailabilityCalendar";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
 import PlannerCalendar from "@/app/components/PlannerCalendar";
 import PlannerEventsSubNav from "@/app/components/PlannerEventsSubNav";
+import { readCachedNavRole } from "@/lib/navigationRoleCache";
 import { getCurrentUserProfile, type UserRole } from "@/lib/user/currentUser";
 
 export default function CalendarPage() {
   const [role, setRole] = useState<UserRole | null>(null);
+  const [cachedRole] = useState<UserRole | null>(() => readCachedNavRole());
   const [loadingRole, setLoadingRole] = useState(true);
   const [bothCalendarTab, setBothCalendarTab] = useState<CalendarViewTab>("planner");
+  const displayRole = role ?? cachedRole;
 
   useEffect(() => {
     getCurrentUserProfile()
@@ -29,13 +31,11 @@ export default function CalendarPage() {
       });
   }, []);
 
+  const showEventsSubNav =
+    displayRole === "promoter" || displayRole === "both" || displayRole === "dj";
+
   return (
     <OnboardingGuard>
-      {loadingRole ? (
-        <CalendarPageLoadingShell
-          showPlannerSubNav={role === "promoter" || role === "both"}
-        />
-      ) : (
       <div className={`min-h-[100dvh] bg-ftc-bg text-ftc-text ${MOBILE_NAV_OFFSET_CLASS}`}>
         <AppNavigation />
 
@@ -44,14 +44,14 @@ export default function CalendarPage() {
             <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-ftc-primary">
               Calendar
             </p>
-            {(role === "promoter" || role === "both" || role === "dj") ? (
+            {showEventsSubNav ? (
               <div className="mt-4">
-                <PlannerEventsSubNav />
+                <PlannerEventsSubNav initialRole={displayRole} />
               </div>
             ) : null}
           </div>
 
-          {role === "both" ? (
+          {displayRole === "both" ? (
             <>
               <CalendarViewTabs activeTab={bothCalendarTab} onChange={setBothCalendarTab} />
               {bothCalendarTab === "planner" ? (
@@ -60,16 +60,15 @@ export default function CalendarPage() {
                 <DjAvailabilityCalendar description="Manage your availability and received bookings." />
               )}
             </>
-          ) : role === "promoter" ? (
+          ) : displayRole === "promoter" ? (
             <PlannerCalendar />
-          ) : role === "dj" ? (
+          ) : displayRole === "dj" ? (
             <DjAvailabilityCalendar description="Manage your availability and bookings." />
-          ) : (
+          ) : !loadingRole ? (
             <p className="text-sm text-ftc-text-muted">Calendar is not available for this account.</p>
-          )}
+          ) : null}
         </main>
       </div>
-      )}
     </OnboardingGuard>
   );
 }

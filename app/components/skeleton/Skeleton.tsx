@@ -7,8 +7,11 @@ import { useState } from "react";
 import AppNavigation, { MOBILE_NAV_OFFSET_CLASS } from "@/app/components/AppNavigation";
 import DmConversationHeader from "@/app/components/dm/DmConversationHeader";
 import MessagesInboxLayout from "@/app/components/dm/MessagesInboxLayout";
+import CalendarViewTabs, { type CalendarViewTab } from "@/app/components/CalendarViewTabs";
 import PlannerEventsSubNav from "@/app/components/PlannerEventsSubNav";
 import ProfilePageHeader from "@/app/components/profile/ProfilePageHeader";
+import type { DjGigsListTab } from "@/lib/bookingRequests";
+import { buildGigsListHref, resolveGigsListTabParam } from "@/lib/bookings/gigsListNavigation";
 import { canManageEvents, type UserRole } from "@/lib/user/currentUser";
 import { readCachedNavRole, readCachedNavigation, resolveIsOwnProfilePath } from "@/lib/navigationRoleCache";
 
@@ -448,22 +451,65 @@ export function BookingsContentSkeleton({
   return <ReceivedBookingsListSkeleton />;
 }
 
+function GigsWorkspaceTabsShell() {
+  const searchParams = useSearchParams();
+  const activeView = resolveGigsListTabParam(searchParams.get("tab"));
+  const tabs: { value: DjGigsListTab; label: string }[] = [
+    { value: "pending", label: "Incoming" },
+    { value: "accepted", label: "Confirmed" },
+    { value: "history", label: "History" },
+  ];
+
+  return (
+    <div className="mt-4 flex flex-wrap gap-2">
+      {tabs.map((tab) => {
+        const isActive = activeView === tab.value;
+
+        return (
+          <Link
+            key={tab.value}
+            href={buildGigsListHref(tab.value)}
+            className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-semibold uppercase tracking-wide transition ${
+              isActive
+                ? "border-transparent bg-ftc-primary text-ftc-bg"
+                : "border-ftc-border-subtle bg-ftc-bg-elevated text-ftc-text-secondary hover:border-ftc-border-strong"
+            }`}
+          >
+            {tab.label}
+          </Link>
+        );
+      })}
+    </div>
+  );
+}
+
+function getGigsLoadingSubtitle(role: UserRole | null): string {
+  if (role === "dj" || role === "both" || role === "promoter" || role === null) {
+    return "Track incoming requests, confirmed gigs, and history.";
+  }
+
+  return "Gigs are for DJs and artists playing events.";
+}
+
+function canShowGigsWorkspaceTabs(role: UserRole | null): boolean {
+  return role === "dj" || role === "both" || role === null;
+}
+
 export function BookingsPageLoadingShell({
   variant = "neutral",
-  content = "auto",
 }: {
   variant?: BookingsShellVariant;
+  /** @deprecated Content skeletons are no longer shown in the loading shell. */
   content?: BookingsContentVariant;
 }) {
-  const showPlannerSubNav = true;
-  const showSectionTabs = false;
-  const showDjGigsTabs = variant === "dj" || variant === "both" || variant === "neutral";
-  const showCreateButton = false;
-  const pageTitle = "Gigs";
-  const pageSubtitle =
-    variant === "dj" || variant === "both" || variant === "neutral"
-      ? "Track incoming requests, confirmed gigs, and history."
-      : "Gigs are for DJs and artists playing events.";
+  const [cachedRole] = useState<UserRole | null>(() => readCachedNavRole());
+  const role =
+    variant === "planner"
+      ? "promoter"
+      : variant === "dj" || variant === "both"
+        ? variant
+        : cachedRole;
+  const showGigsTabs = canShowGigsWorkspaceTabs(role);
 
   return (
     <div
@@ -473,23 +519,14 @@ export function BookingsPageLoadingShell({
       <header className="border-b border-ftc-border-subtle px-4 py-3 sm:px-6 md:pt-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
-            <h1 className="text-xl font-semibold text-ftc-text">{pageTitle}</h1>
-            <p className="mt-1 text-sm text-ftc-text-muted">{pageSubtitle}</p>
+            <h1 className="text-xl font-semibold text-ftc-text">Gigs</h1>
+            <p className="mt-1 text-sm text-ftc-text-muted">{getGigsLoadingSubtitle(role)}</p>
           </div>
-          {showCreateButton ? (
-            <SkeletonBlock className="h-10 w-[11.5rem] shrink-0 rounded-xl" />
-          ) : null}
         </div>
-        {showSectionTabs ? <SectionTabsSkeleton count={2} /> : null}
-        {showPlannerSubNav ? <PlannerEventsSubNavSkeleton /> : null}
-        {showDjGigsTabs ? <GigsTabPillsSkeleton /> : null}
+        <PlannerEventsSubNav initialRole={role} />
+        {showGigsTabs ? <GigsWorkspaceTabsShell /> : null}
       </header>
-      <div className="px-4 py-4 sm:px-6">
-        <BookingsContentSkeleton
-          content={content}
-          variant={variant === "neutral" ? "dj" : variant}
-        />
-      </div>
+      <div className="px-4 py-4 sm:px-6" />
     </div>
   );
 }
@@ -526,27 +563,28 @@ export function resolveBookingsShellVariant(role: UserRole | null | undefined): 
 }
 
 export function BookingPlansPageLoadingShell() {
+  const [cachedRole] = useState<UserRole | null>(() => readCachedNavRole());
+
   return (
     <div
       className={`mx-auto min-h-[100dvh] w-full max-w-2xl bg-ftc-bg font-sans text-ftc-text ${MOBILE_NAV_OFFSET_CLASS}`}
     >
       <AppNavigation />
       <header className="ftc-page-header px-4 py-4 sm:px-6 md:pt-4">
-        <SkeletonBlock className="h-7 w-36" />
-        <PlannerEventsSubNavSkeleton />
+        <h1 className="text-xl font-semibold text-ftc-text">Booking Plans</h1>
+        <PlannerEventsSubNav initialRole={cachedRole} />
       </header>
-      <div className="px-4 py-4 sm:px-6">
-        <BookingPlanListSkeleton count={3} />
-      </div>
+      <div className="px-4 py-4 sm:px-6" />
     </div>
   );
 }
 
-export function CalendarPageLoadingShell({
-  showPlannerSubNav = false,
-}: {
-  showPlannerSubNav?: boolean;
-}) {
+export function CalendarPageLoadingShell() {
+  const [cachedRole] = useState<UserRole | null>(() => readCachedNavRole());
+  const [bothCalendarTab, setBothCalendarTab] = useState<CalendarViewTab>("planner");
+  const showEventsSubNav =
+    cachedRole === "promoter" || cachedRole === "both" || cachedRole === "dj";
+
   return (
     <div
       className={`min-h-[100dvh] bg-ftc-bg text-ftc-text ${MOBILE_NAV_OFFSET_CLASS}`}
@@ -554,14 +592,18 @@ export function CalendarPageLoadingShell({
       <AppNavigation />
       <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
         <div className="mb-6 border-b border-ftc-border pb-4">
-          <SkeletonBlock className="h-3 w-20" />
-          {showPlannerSubNav ? (
+          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-ftc-primary">
+            Calendar
+          </p>
+          {showEventsSubNav ? (
             <div className="mt-4">
-              <PlannerEventsSubNavSkeleton />
+              <PlannerEventsSubNav initialRole={cachedRole} />
             </div>
           ) : null}
         </div>
-        <CalendarGridSkeleton />
+        {cachedRole === "both" ? (
+          <CalendarViewTabs activeTab={bothCalendarTab} onChange={setBothCalendarTab} />
+        ) : null}
       </main>
     </div>
   );
@@ -766,10 +808,6 @@ function getInboxTabFromSearch(search: string): "dm" | "group" {
   return params.get("tab") === "group" ? "group" : "dm";
 }
 
-function showPlannerEventsChrome(role: UserRole | null | undefined): boolean {
-  return role === "promoter" || role === "both";
-}
-
 function getProfileUserIdFromPath(pathname: string): string | null {
   const match = pathname.match(/^\/profile\/([^/]+)/);
   const userId = match?.[1];
@@ -818,7 +856,7 @@ export function AppLoadingShell({
   }
 
   if (pathname === "/calendar" || pathname.startsWith("/calendar/")) {
-    return <CalendarPageLoadingShell showPlannerSubNav={showPlannerEventsChrome(role)} />;
+    return <CalendarPageLoadingShell />;
   }
 
   if (pathname === "/dm") {
