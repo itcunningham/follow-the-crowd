@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import ChatProfileAvatarLink from "@/app/components/chat/ChatProfileAvatarLink";
 import ProfileAvatar from "@/app/components/ProfileAvatar";
-import { buildProfileHref } from "@/lib/profileNavigation";
 import { SkeletonBlock } from "@/app/components/skeleton/Skeleton";
 
 function ChatBackButton({ href, label = "Back to inbox" }: { href: string; label?: string }) {
@@ -80,18 +80,14 @@ export default function DmConversationHeader({
         {loading ? (
           <SkeletonBlock className="h-10 w-10 shrink-0 rounded-full" />
         ) : otherUserId ? (
-          <Link
-            href={buildProfileHref(otherUserId, { returnTo: profileReturnTo })}
-            aria-label={`View ${avatarName}'s profile`}
-            className="shrink-0 rounded-full transition hover:ring-2 hover:ring-ftc-border-strong focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ftc-primary"
-          >
-            <ProfileAvatar
-              name={avatarName}
-              avatarUrl={avatarUrl}
-              size="md"
-              className="h-10 w-10 text-xs"
-            />
-          </Link>
+          <ChatProfileAvatarLink
+            userId={otherUserId}
+            name={avatarName}
+            avatarUrl={avatarUrl}
+            size="md"
+            className="h-10 w-10 text-xs"
+            returnTo={profileReturnTo}
+          />
         ) : (
           <ProfileAvatar
             name={avatarName}

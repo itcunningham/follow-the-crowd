@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { BookingDualTimeWheelPicker } from "@/app/components/BookingTimeWheelPicker";
 import ProfileAvatar from "@/app/components/ProfileAvatar";
+import ChatProfileAvatarLink from "@/app/components/chat/ChatProfileAvatarLink";
 import type { BookingRequest } from "@/lib/bookingRequests";
 import {
   clockPartsToWheelTime,
@@ -392,12 +393,20 @@ function RunSheetDjIdentity({
 
   if (dj.profileId) {
     return (
-      <Link
-        href={`/profile/${dj.profileId}`}
-        className="flex min-h-[2.25rem] items-center gap-2 rounded-lg border border-transparent px-1 py-0.5 transition hover:border-ftc-border-subtle"
-      >
-        {identity}
-      </Link>
+      <div className="flex min-h-[2.25rem] items-center gap-2 px-1 py-0.5">
+        <ChatProfileAvatarLink
+          userId={dj.profileId}
+          name={dj.displayName}
+          avatarUrl={dj.avatarUrl}
+          size="sm"
+        />
+        <Link
+          href={`/profile/${dj.profileId}`}
+          className="min-w-0 truncate font-medium text-ftc-text transition hover:text-ftc-primary"
+        >
+          {dj.displayName}
+        </Link>
+      </div>
     );
   }
 

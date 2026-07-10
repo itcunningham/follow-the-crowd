@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import ProfileAvatar from "@/app/components/ProfileAvatar";
+import ProfileAvatar, { PROFILE_AVATAR_INTERACTIVE_CLASS } from "@/app/components/ProfileAvatar";
 import ProfileBioText from "@/app/components/profile/ProfileBioText";
 import { formatProfileIdentityUsername } from "@/lib/user/profileFormUtils";
 import { type UserRole } from "@/lib/user/currentUser";
@@ -54,7 +54,7 @@ export default function ProfileHero({
             onClick={() => setAvatarExpanded((expanded) => !expanded)}
             aria-label={avatarExpanded ? "Close profile photo" : "View profile photo"}
             aria-expanded={avatarExpanded}
-            className="shrink-0 rounded-full transition hover:ring-2 hover:ring-ftc-border-strong focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ftc-primary"
+            className={PROFILE_AVATAR_INTERACTIVE_CLASS}
           >
             <ProfileAvatar
               name={displayName}

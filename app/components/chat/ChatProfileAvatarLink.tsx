@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import ProfileAvatar from "@/app/components/ProfileAvatar";
+import ProfileAvatar, { PROFILE_AVATAR_INTERACTIVE_CLASS } from "@/app/components/ProfileAvatar";
 import { buildProfileHref } from "@/lib/profileNavigation";
 
 export default function ChatProfileAvatarLink({
@@ -23,7 +23,7 @@ export default function ChatProfileAvatarLink({
     <Link
       href={buildProfileHref(userId, { returnTo })}
       aria-label={`View ${name}'s profile`}
-      className="shrink-0 rounded-full transition hover:ring-2 hover:ring-ftc-border-strong focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ftc-primary"
+      className={PROFILE_AVATAR_INTERACTIVE_CLASS}
     >
       <ProfileAvatar
         name={name}

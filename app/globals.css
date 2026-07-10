@@ -856,6 +856,23 @@ html {
   color: var(--ftc-color-primary);
 }
 
+.ftc-profile-avatar-interactive {
+  flex-shrink: 0;
+  border-radius: 9999px;
+  transition: box-shadow 0.15s ease;
+}
+
+@media (hover: hover) {
+  .ftc-profile-avatar-interactive:hover {
+    box-shadow: 0 0 0 2px var(--ftc-color-border-strong);
+  }
+}
+
+.ftc-profile-avatar-interactive:focus-visible {
+  outline: 2px solid var(--ftc-color-primary);
+  outline-offset: 2px;
+}
+
 /* -------------------------------------------------------------------------- */
 /* Navigation                                                                  */
 /* -------------------------------------------------------------------------- */

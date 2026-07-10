@@ -1,5 +1,7 @@
 import { looksLikeUserId, resolveUserDisplayName } from "@/lib/user/displayName";
 
+export const PROFILE_AVATAR_INTERACTIVE_CLASS = "ftc-profile-avatar-interactive shrink-0 rounded-full transition";
+
 type ProfileAvatarSize = "sm" | "md" | "lg" | "xl";
 
 const sizeClasses: Record<ProfileAvatarSize, string> = {
