@@ -10,6 +10,7 @@ import {
   clampWheelTimeToMin,
 } from "../lib/bookingDateTime";
 import type { BookingRequest } from "../lib/bookingRequests";
+import { isDmBookingActionRequired } from "../lib/bookingRequests";
 import { computeCrewChatEventActions } from "../lib/events/crewChatEventActions";
 import type { CrewChatUnlockState } from "../lib/events/crewChatUnlock";
 import { resolveEventLinkedBookingDisplay } from "../lib/events/eventBookingDisplay";
@@ -149,6 +150,47 @@ function testDmBookingDisplayKeepsPerDjFeeOverEmptyEventRate() {
   assert.equal(resolved.fee, "66");
   assert.equal(formatRateDisplay(resolved.fee), "$66");
   assert.equal(`Fixed offer · ${formatRateDisplay(resolved.fee)}`, "Fixed offer · $66");
+}
+
+function testDmBookingActionRequiredStates() {
+  const base: BookingRequest = {
+    id: "booking-1",
+    created_at: "2026-07-06T10:00:00.000Z",
+    sender_id: "planner-1",
+    recipient_id: "dj-1",
+    conversation_id: "conversation-1",
+    event_id: "event-1",
+    event_name: "Summer party",
+    venue: "Venue",
+    event_date: "Saturday, 12 July 2026",
+    set_time: "9:00 PM",
+    fee: "500",
+    notes: "",
+    status: "pending",
+    archived_at: null,
+    lineup_hidden_at: null,
+    cancelled_at: null,
+    cancelled_by: null,
+    cancellation_reason: null,
+    rate_mode: "fixed",
+    proposed_rate: null,
+    proposed_rate_note: null,
+    proposed_rate_at: null,
+    proposed_rate_status: null,
+  };
+
+  assert.equal(isDmBookingActionRequired(base), true);
+  assert.equal(isDmBookingActionRequired({ ...base, status: "accepted" }), false);
+  assert.equal(isDmBookingActionRequired({ ...base, status: "declined" }), false);
+  assert.equal(isDmBookingActionRequired({ ...base, status: "cancelled" }), false);
+  assert.equal(
+    isDmBookingActionRequired({ ...base, status: "accepted" }, true),
+    false,
+  );
+  assert.equal(
+    isDmBookingActionRequired({ ...base, status: "pending" }, true),
+    false,
+  );
 }
 
 function testWheelTimeBeforeMinHelpers() {
@@ -295,6 +337,7 @@ function main() {
   testZeroAcceptedDjsShowsNoCrewChatAction();
   testConflictingCrewChatFlagsPreferStartAction();
   testDmBookingDisplayKeepsPerDjFeeOverEmptyEventRate();
+  testDmBookingActionRequiredStates();
   testUsernameBlockedTermChecks();
   testAuthRedirectUrlUsesLoginPath();
   testProfileEditDirtyDetection();

@@ -7,6 +7,7 @@ import AppNavigation, { MOBILE_NAV_OFFSET_CLASS } from "@/app/components/AppNavi
 import BookingRequestCard, {
   buildUpdatedBookingMessage,
 } from "@/app/components/BookingRequestCard";
+import DmBookingUpdateRow from "@/app/components/dm/DmBookingUpdateRow";
 import ChatNewMessagesPill from "@/app/components/dm/ChatNewMessagesPill";
 import DmConversationDetailsPanel from "@/app/components/dm/DmConversationDetailsPanel";
 import DmComposer from "@/app/components/dm/DmComposer";
@@ -24,6 +25,7 @@ import {
   canRecipientRespondToPendingBooking,
   declineProposedBookingRate,
   evaluateDmBookingCardVisibility,
+  isDmBookingActionRequired,
   extractBookingIdsFromMessages,
   fetchBookingRequestsByIds,
   getBookingMutationErrorMessage,
@@ -1368,7 +1370,6 @@ export default function DmChatPage() {
               <h1 className="truncate text-base font-semibold text-ftc-text">
                 {conversationTitle}
               </h1>
-              <p className="truncate text-xs text-ftc-text-muted">Direct message</p>
             </div>
           </div>
 
@@ -1607,6 +1608,91 @@ export default function DmChatPage() {
                 logChatHighlightRender(message.id, highlighted);
                 const bookingExpansionKey =
                   resolvedBooking.id?.trim() || bookingId?.trim() || message.id;
+                const actionRequired = isDmBookingActionRequired(resolvedBooking, eventCancelled);
+                const isBookingExpanded = expandedBookingIds.has(bookingExpansionKey);
+                const showCompactBookingRow = !actionRequired && !isBookingExpanded;
+
+                const bookingCard = (
+                  <BookingRequestCard
+                    booking={resolvedBooking}
+                    currentUserId={currentUserId}
+                    bookingLoaded={bookingLoaded}
+                    bookingLoading={bookingLoading}
+                    bookingSource={bookingSource}
+                    collapsible={actionRequired || isBookingExpanded}
+                    expanded={actionRequired ? isBookingExpanded : true}
+                    onExpandedChange={(expanded) =>
+                      setBookingExpanded(bookingExpansionKey, expanded)
+                    }
+                    eventHasAcceptedBooking={
+                      resolvedBooking.event_id
+                        ? eventIdsWithAcceptedBookings.has(resolvedBooking.event_id)
+                        : false
+                    }
+                    crewChatUnlocked={
+                      resolvedBooking.event_id
+                        ? crewChatUnlockByEventId.get(resolvedBooking.event_id) ?? false
+                        : false
+                    }
+                    eventCancelled={eventCancelled}
+                    dmConversationId={conversationId}
+                    canRespond={canRespond && !eventCancelled}
+                    responding={
+                      actionBooking ? respondingBookingId === actionBooking.id : false
+                    }
+                    cancelling={
+                      actionBooking ? cancellingBookingId === actionBooking.id : false
+                    }
+                    proposalLoading={
+                      actionBooking ? proposalLoadingId === actionBooking.id : false
+                    }
+                    profiles={bookingProfiles}
+                    coverImageUrl={
+                      resolvedBooking.event_id
+                        ? eventArtworkById.get(resolvedBooking.event_id)?.coverImageUrl
+                        : undefined
+                    }
+                    fallbackColour={
+                      resolvedBooking.event_id
+                        ? eventArtworkById.get(resolvedBooking.event_id)?.fallbackColour
+                        : undefined
+                    }
+                    onAccept={() => {
+                      if (actionBooking) {
+                        void handleBookingResponse(actionBooking, message, "accepted");
+                      }
+                    }}
+                    onDecline={() => {
+                      if (actionBooking) {
+                        void handleBookingResponse(actionBooking, message, "declined");
+                      }
+                    }}
+                    onCancel={() =>
+                      actionBooking
+                        ? handleBookingCancel(actionBooking, message)
+                        : undefined
+                    }
+                    onCancelAccepted={(reason) =>
+                      actionBooking
+                        ? handleCancelAcceptedBooking(actionBooking, message, reason)
+                        : undefined
+                    }
+                    onProposeRate={
+                      actionBooking
+                        ? (proposedRate, note) =>
+                            handleProposeRate(actionBooking, proposedRate, note)
+                        : undefined
+                    }
+                    onAcceptProposal={() =>
+                      actionBooking
+                        ? handleAcceptProposedRate(actionBooking, message)
+                        : undefined
+                    }
+                    onKeepOriginalOffer={() =>
+                      actionBooking ? handleKeepOriginalOffer(actionBooking) : undefined
+                    }
+                  />
+                );
 
                 return (
                   <li
@@ -1630,85 +1716,18 @@ export default function DmChatPage() {
                         <div
                           className={`rounded-2xl ${getChatNewMessageHighlightClass(highlighted)}`}
                         >
-                          <BookingRequestCard
-                            booking={resolvedBooking}
-                            currentUserId={currentUserId}
-                            bookingLoaded={bookingLoaded}
-                            bookingLoading={bookingLoading}
-                            bookingSource={bookingSource}
-                            collapsible
-                            expanded={expandedBookingIds.has(bookingExpansionKey)}
-                            onExpandedChange={(expanded) =>
-                              setBookingExpanded(bookingExpansionKey, expanded)
-                            }
-                            eventHasAcceptedBooking={
-                              resolvedBooking.event_id
-                                ? eventIdsWithAcceptedBookings.has(resolvedBooking.event_id)
-                                : false
-                            }
-                            crewChatUnlocked={
-                              resolvedBooking.event_id
-                                ? crewChatUnlockByEventId.get(resolvedBooking.event_id) ?? false
-                                : false
-                            }
-                            eventCancelled={eventCancelled}
-                            dmConversationId={conversationId}
-                            canRespond={canRespond && !eventCancelled}
-                            responding={
-                              actionBooking ? respondingBookingId === actionBooking.id : false
-                            }
-                            cancelling={
-                              actionBooking ? cancellingBookingId === actionBooking.id : false
-                            }
-                            proposalLoading={
-                              actionBooking ? proposalLoadingId === actionBooking.id : false
-                            }
-                            profiles={bookingProfiles}
-                            coverImageUrl={
-                              resolvedBooking.event_id
-                                ? eventArtworkById.get(resolvedBooking.event_id)?.coverImageUrl
-                                : undefined
-                            }
-                            fallbackColour={
-                              resolvedBooking.event_id
-                                ? eventArtworkById.get(resolvedBooking.event_id)?.fallbackColour
-                                : undefined
-                            }
-                            onAccept={() => {
-                              if (actionBooking) {
-                                void handleBookingResponse(actionBooking, message, "accepted");
+                          {showCompactBookingRow ? (
+                            <DmBookingUpdateRow
+                              booking={resolvedBooking}
+                              currentUserId={currentUserId}
+                              eventCancelled={eventCancelled}
+                              onViewDetails={() =>
+                                setBookingExpanded(bookingExpansionKey, true)
                               }
-                            }}
-                            onDecline={() => {
-                              if (actionBooking) {
-                                void handleBookingResponse(actionBooking, message, "declined");
-                              }
-                            }}
-                            onCancel={() =>
-                              actionBooking
-                                ? handleBookingCancel(actionBooking, message)
-                                : undefined
-                            }
-                            onCancelAccepted={(reason) =>
-                              actionBooking
-                                ? handleCancelAcceptedBooking(actionBooking, message, reason)
-                                : undefined
-                            }
-                            onProposeRate={
-                              actionBooking
-                                ? (proposedRate, note) =>
-                                    handleProposeRate(actionBooking, proposedRate, note)
-                                : undefined
-                            }
-                            onAcceptProposal={() =>
-                              actionBooking
-                                ? handleAcceptProposedRate(actionBooking, message)
-                                : undefined
-                            }
-                            onKeepOriginalOffer={() =>
-                              actionBooking ? handleKeepOriginalOffer(actionBooking) : undefined
-                            }
-                          />
+                            />
+                          ) : (
+                            bookingCard
+                          )}
                         </div>
                         <time
                           dateTime={message.created_at}

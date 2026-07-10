@@ -536,6 +536,18 @@ export function getBookingCollapsedUrgentLabel(
   return null;
 }
 
+/** True when a DM booking message should render the full interactive card (pending / awaiting action). */
+export function isDmBookingActionRequired(
+  booking: BookingRequest,
+  eventCancelled = false,
+): boolean {
+  if (isBookingAffectedByCancelledEvent(booking, eventCancelled)) {
+    return false;
+  }
+
+  return normalizeBookingRequestStatus(booking.status) === "pending";
+}
+
 export function normalizeBookingRequest(row: unknown): BookingRequest | null {
   if (typeof row === "string") {
     try {
