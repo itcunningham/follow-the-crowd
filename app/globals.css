@@ -21,6 +21,7 @@
   --ftc-color-text-primary: #f1f5f9;
   --ftc-color-text-secondary: #8e9aaf;
   --ftc-color-text-muted: #64748b;
+  --ftc-color-text-section-label: #9eb0bf;
   --ftc-color-text-inverse: #0a0e14;
 
   --ftc-color-border-default: #1e293b;
@@ -61,6 +62,7 @@
   --color-ftc-text: var(--ftc-color-text-primary);
   --color-ftc-text-secondary: var(--ftc-color-text-secondary);
   --color-ftc-text-muted: var(--ftc-color-text-muted);
+  --color-ftc-text-section-label: var(--ftc-color-text-section-label);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
   --radius-ftc-sm: var(--ftc-radius-sm);
@@ -595,6 +597,14 @@ html {
   max-width: 0.875rem;
   max-height: 0.875rem;
   flex-shrink: 0;
+}
+
+.ftc-profile-section-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.025em;
+  text-transform: uppercase;
+  color: var(--ftc-color-text-section-label);
 }
 
 .ftc-event-colour-option {
