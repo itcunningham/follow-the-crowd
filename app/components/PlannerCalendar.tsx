@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import CalendarMonthNav from "@/app/components/CalendarMonthNav";
 import CalendarMobileDayPickerSheet from "@/app/components/CalendarMobileDayPickerSheet";
 import PlannerCalendarDateActions from "@/app/components/PlannerCalendarDateActions";
+import PlannerCalendarMobileDateStrip from "@/app/components/PlannerCalendarMobileDateStrip";
 import {
   filterCalendarItemsForMonth,
   formatPlannerAgendaDateLabel,
@@ -13,9 +14,7 @@ import {
   getCalendarWeekRows,
   getDefaultSelectedCalendarDate,
   getPlannerCalendarBadgeLabel,
-  getWeekDatesContaining,
   groupCalendarItemsByDate,
-  isSameDay,
   isSameMonth,
   loadPlannerCalendarItems,
   PLANNER_CALENDAR_LEGEND_ITEMS,
@@ -147,6 +146,7 @@ function PlannerCalendarMobileAgenda({
   monthStart,
   selectedDate,
   onSelectDate,
+  onVisibleMonthChange,
   itemsByDate,
   isTodayDate,
   isDateInViewingMonth,
@@ -154,53 +154,23 @@ function PlannerCalendarMobileAgenda({
   monthStart: Date;
   selectedDate: Date;
   onSelectDate: (date: Date) => void;
+  onVisibleMonthChange: (monthStart: Date) => void;
   itemsByDate: Map<string, CalendarItem[]>;
   isTodayDate: (date: Date) => boolean;
   isDateInViewingMonth: (date: Date) => boolean;
 }) {
-  const weekDates = useMemo(() => getWeekDatesContaining(selectedDate), [selectedDate]);
   const selectedDateItems = itemsByDate.get(toDateKey(selectedDate)) ?? [];
 
   return (
     <div className="mt-4 md:hidden">
-      <div className="grid grid-cols-7 gap-1">
-        {weekDates.map((date, index) => {
-          const dateKey = toDateKey(date);
-          const isSelected = isSameDay(date, selectedDate);
-          const hasEvents = (itemsByDate.get(dateKey) ?? []).length > 0;
-          const inViewingMonth = isDateInViewingMonth(date);
-
-          return (
-            <button
-              key={dateKey}
-              type="button"
-              aria-pressed={isSelected}
-              aria-label={formatPlannerAgendaDateLabel(date)}
-              onClick={() => onSelectDate(date)}
-              className={`flex flex-col items-center rounded-xl border px-1 py-2 transition ${
-                isSelected
-                  ? "border-transparent bg-ftc-primary text-ftc-bg"
-                  : "border-ftc-border-subtle bg-ftc-bg-elevated text-ftc-text-secondary hover:border-ftc-border-strong"
-              } ${inViewingMonth ? "" : "opacity-60"}`}
-            >
-              <span className="text-[10px] font-semibold uppercase tracking-wide">
-                {WEEKDAY_LABELS[index]}
-              </span>
-              <span className="mt-1 text-sm font-semibold tabular-nums">{date.getDate()}</span>
-              {hasEvents ? (
-                <span
-                  aria-hidden="true"
-                  className={`mt-1 h-1.5 w-1.5 rounded-full ${
-                    isSelected ? "bg-ftc-bg" : "bg-ftc-primary"
-                  }`}
-                />
-              ) : (
-                <span aria-hidden="true" className="mt-1 h-1.5 w-1.5" />
-              )}
-            </button>
-          );
-        })}
-      </div>
+      <PlannerCalendarMobileDateStrip
+        selectedDate={selectedDate}
+        onSelectDate={onSelectDate}
+        monthStart={monthStart}
+        onVisibleMonthChange={onVisibleMonthChange}
+        itemsByDate={itemsByDate}
+        isDateInViewingMonth={isDateInViewingMonth}
+      />
 
       <div className="mt-4">
         <h2 className="text-base font-semibold text-ftc-text">
@@ -326,11 +296,21 @@ export default function PlannerCalendar({
     });
   }
 
+  function handleVisibleMonthChange(nextMonthStart: Date) {
+    setMonthStart((current) => {
+      if (isSameMonth(current, nextMonthStart)) {
+        return current;
+      }
+
+      return nextMonthStart;
+    });
+  }
+
   return (
     <section className="ftc-card p-4 sm:p-5 md:p-6">
       <div>
         <h1 className="text-base font-semibold text-ftc-text">Calendar</h1>
-        <p className="mt-1 text-sm text-ftc-text-muted">{description}</p>
+        <p className="mt-1 hidden text-sm text-ftc-text-muted md:block">{description}</p>
       </div>
 
       {error ? (
@@ -369,6 +349,7 @@ export default function PlannerCalendar({
             monthStart={monthStart}
             selectedDate={selectedDate}
             onSelectDate={setSelectedDate}
+            onVisibleMonthChange={handleVisibleMonthChange}
             itemsByDate={itemsByDate}
             isTodayDate={isTodayDate}
             isDateInViewingMonth={isDateInViewingMonth}
