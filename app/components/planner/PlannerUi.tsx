@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { applyTextInputLimit } from "@/lib/textInputLimits";
-import { applyBoundedTextareaHeight, useBoundedAutoGrowTextarea } from "@/lib/useBoundedAutoGrowTextarea";
 
 function PlannerMultilineField({
   label,
@@ -17,8 +16,6 @@ function PlannerMultilineField({
   placeholder?: string;
   maxLength?: number;
 }) {
-  const { textareaRef } = useBoundedAutoGrowTextarea({ value });
-
   function handleChange(next: string) {
     if (maxLength !== undefined) {
       const limited = applyTextInputLimit(value, next, maxLength);
@@ -38,15 +35,10 @@ function PlannerMultilineField({
     <label className="block [overflow-anchor:none]">
       <span className="ftc-label">{label}</span>
       <textarea
-        ref={textareaRef}
         value={value}
-        onChange={(event) => {
-          handleChange(event.target.value);
-          applyBoundedTextareaHeight(event.currentTarget);
-        }}
-        onInput={(event) => applyBoundedTextareaHeight(event.currentTarget)}
+        onChange={(event) => handleChange(event.target.value)}
         placeholder={placeholder}
-        rows={4}
+        rows={8}
         className="ftc-input ftc-event-notes-textarea px-3.5 py-2.5"
       />
       {maxLength !== undefined ? (

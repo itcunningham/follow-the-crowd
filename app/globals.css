@@ -314,10 +314,12 @@ html {
 .ftc-event-notes-textarea {
   resize: none !important;
   overflow-x: hidden !important;
+  overflow-y: auto !important;
   line-height: 1.5 !important;
   box-sizing: border-box !important;
-  min-height: calc(1.5em * 4 + 1.25rem + 2px) !important;
-  max-height: calc(1.5em * 8 + 1.25rem + 2px) !important;
+  height: calc(8lh + 1.25rem + 2px) !important;
+  min-height: calc(8lh + 1.25rem + 2px) !important;
+  max-height: calc(8lh + 1.25rem + 2px) !important;
 }
 
 .ftc-input::placeholder,
