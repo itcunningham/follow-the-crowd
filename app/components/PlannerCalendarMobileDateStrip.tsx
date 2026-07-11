@@ -17,7 +17,6 @@ const DATE_CHIP_SCROLL_CLASS =
   "overflow-x-auto overscroll-x-contain [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden";
 
 const SCROLL_DURATION_MS = 175;
-const SCROLL_END_DEBOUNCE_MS = 80;
 
 type PlannerCalendarMobileDateStripProps = {
   selectedDate: Date;
@@ -78,9 +77,7 @@ export default function PlannerCalendarMobileDateStrip({
 }: PlannerCalendarMobileDateStripProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const chipRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
-  const programmaticScrollRef = useRef(false);
   const scrollAnimationFrameRef = useRef(0);
-  const scrollEndTimeoutRef = useRef<number | null>(null);
   const skipNextSmoothScrollRef = useRef(false);
   const [chipWidth, setChipWidth] = useState<number | null>(null);
 
@@ -91,14 +88,6 @@ export default function PlannerCalendarMobileDateStrip({
       cancelAnimationFrame(scrollAnimationFrameRef.current);
       scrollAnimationFrameRef.current = 0;
     }
-  }, []);
-
-  const beginProgrammaticScroll = useCallback(() => {
-    programmaticScrollRef.current = true;
-  }, []);
-
-  const endProgrammaticScroll = useCallback(() => {
-    programmaticScrollRef.current = false;
   }, []);
 
   const scrollToDate = useCallback(
@@ -117,11 +106,9 @@ export default function PlannerCalendarMobileDateStrip({
       }
 
       cancelScrollAnimation();
-      beginProgrammaticScroll();
 
       if (options?.instant) {
         container.scrollLeft = targetLeft;
-        endProgrammaticScroll();
         return;
       }
 
@@ -131,61 +118,11 @@ export default function PlannerCalendarMobileDateStrip({
         SCROLL_DURATION_MS,
         () => {
           scrollAnimationFrameRef.current = 0;
-          endProgrammaticScroll();
         },
       );
     },
-    [beginProgrammaticScroll, cancelScrollAnimation, endProgrammaticScroll],
+    [cancelScrollAnimation],
   );
-
-  const findNearestDateToCenter = useCallback((): Date | null => {
-    const container = scrollRef.current;
-
-    if (!container) {
-      return null;
-    }
-
-    const containerCenter = container.scrollLeft + container.clientWidth / 2;
-    let nearestDate: Date | null = null;
-    let nearestDistance = Number.POSITIVE_INFINITY;
-
-    for (const date of monthDates) {
-      const chip = chipRefs.current.get(toDateKey(date));
-
-      if (!chip) {
-        continue;
-      }
-
-      const chipCenter = chip.offsetLeft + chip.offsetWidth / 2;
-      const distance = Math.abs(chipCenter - containerCenter);
-
-      if (distance < nearestDistance) {
-        nearestDistance = distance;
-        nearestDate = date;
-      }
-    }
-
-    return nearestDate;
-  }, [monthDates]);
-
-  const snapNearestDateToCenter = useCallback(() => {
-    if (programmaticScrollRef.current) {
-      return;
-    }
-
-    const nearestDate = findNearestDateToCenter();
-
-    if (!nearestDate) {
-      return;
-    }
-
-    if (!isSameDay(nearestDate, selectedDate)) {
-      onSelectDate(nearestDate);
-      return;
-    }
-
-    scrollToDate(nearestDate);
-  }, [findNearestDateToCenter, onSelectDate, scrollToDate, selectedDate]);
 
   useEffect(() => {
     const container = scrollRef.current;
@@ -236,53 +173,8 @@ export default function PlannerCalendarMobileDateStrip({
   }, [monthStart, selectedDate, scrollToDate]);
 
   useEffect(() => {
-    const container = scrollRef.current;
-
-    if (!container) {
-      return;
-    }
-
-    function handleScrollEnd() {
-      if (scrollEndTimeoutRef.current !== null) {
-        window.clearTimeout(scrollEndTimeoutRef.current);
-        scrollEndTimeoutRef.current = null;
-      }
-
-      snapNearestDateToCenter();
-    }
-
-    function handleScroll() {
-      if (programmaticScrollRef.current) {
-        return;
-      }
-
-      if (scrollEndTimeoutRef.current !== null) {
-        window.clearTimeout(scrollEndTimeoutRef.current);
-      }
-
-      scrollEndTimeoutRef.current = window.setTimeout(handleScrollEnd, SCROLL_END_DEBOUNCE_MS);
-    }
-
-    container.addEventListener("scroll", handleScroll, { passive: true });
-    container.addEventListener("scrollend", handleScrollEnd);
-
-    return () => {
-      container.removeEventListener("scroll", handleScroll);
-      container.removeEventListener("scrollend", handleScrollEnd);
-
-      if (scrollEndTimeoutRef.current !== null) {
-        window.clearTimeout(scrollEndTimeoutRef.current);
-      }
-    };
-  }, [snapNearestDateToCenter]);
-
-  useEffect(() => {
     return () => {
       cancelScrollAnimation();
-
-      if (scrollEndTimeoutRef.current !== null) {
-        window.clearTimeout(scrollEndTimeoutRef.current);
-      }
     };
   }, [cancelScrollAnimation]);
 
@@ -317,7 +209,14 @@ export default function PlannerCalendarMobileDateStrip({
             type="button"
             aria-pressed={isSelected}
             aria-label={`${formatPlannerAgendaDateLabel(date)}${itemCountLabel}`}
-            onClick={() => onSelectDate(date)}
+            onClick={() => {
+              if (!isSameDay(date, selectedDate)) {
+                onSelectDate(date);
+                return;
+              }
+
+              scrollToDate(date);
+            }}
             style={chipWidth ? { width: chipWidth, minWidth: chipWidth } : undefined}
             className={`flex shrink-0 flex-col items-center rounded-xl border px-1 py-2 transition ${
               chipWidth ? "" : "w-[calc((100%-1.5rem)/7)] min-w-[calc((100%-1.5rem)/7)]"
