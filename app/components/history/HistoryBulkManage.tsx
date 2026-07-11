@@ -173,16 +173,18 @@ export function useHistoryBulkManage<T extends { id: string }>(items: T[]) {
 export function HistoryManageButton({
   onClick,
   disabled = false,
+  ariaLabel = "Manage history",
 }: {
   onClick: () => void;
   disabled?: boolean;
+  ariaLabel?: string;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
       disabled={disabled}
-      aria-label="Manage history"
+      aria-label={ariaLabel}
       className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-ftc-border-subtle bg-ftc-bg-elevated text-ftc-text-muted transition hover:border-ftc-border-strong hover:text-ftc-text-secondary disabled:cursor-not-allowed disabled:opacity-50"
     >
       <ManageHistoryIcon />
@@ -197,6 +199,8 @@ export function HistorySelectionToolbar({
   onCancel,
   onSelectAll,
   onRemove,
+  removeLabel = "Remove from history",
+  removingLabel = "Removing...",
 }: {
   selectedCount: number;
   allSelected: boolean;
@@ -204,6 +208,8 @@ export function HistorySelectionToolbar({
   onCancel: () => void;
   onSelectAll: () => void;
   onRemove: () => void;
+  removeLabel?: string;
+  removingLabel?: string;
 }) {
   return (
     <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated/60 px-3 py-2.5">
@@ -229,9 +235,10 @@ export function HistorySelectionToolbar({
         type="button"
         onClick={onRemove}
         disabled={removing || selectedCount === 0}
+        aria-busy={removing}
         className="rounded-lg border-0 bg-[var(--ftc-color-danger)] px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-ftc-bg transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
       >
-        Remove from history
+        {removing ? removingLabel : removeLabel}
       </button>
     </div>
   );

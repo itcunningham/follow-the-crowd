@@ -17,7 +17,9 @@ import {
 } from "@/app/components/skeleton/Skeleton";
 import { BookingDateField, BookingSetTimeRangeField } from "@/app/components/BookingDateTimeFields";
 import {
+  HistoryManageButton,
   HistorySelectionCheckbox,
+  HistorySelectionToolbar,
   useHistoryBulkManage,
 } from "@/app/components/history/HistoryBulkManage";
 import { getEventDateValidationError } from "@/lib/bookingDateTime";
@@ -63,27 +65,6 @@ function getPlanLoadErrorMessage(error: unknown): string {
   }
 
   return error instanceof Error ? error.message : "Failed to load event plans";
-}
-
-function TrashIcon({ className = "h-4 w-4" }: { className?: string }) {
-  return (
-    <svg
-      aria-hidden="true"
-      viewBox="0 0 24 24"
-      className={className}
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M3 6h18" />
-      <path d="M8 6V4h8v2" />
-      <path d="M19 6l-1 14H6L5 6" />
-      <path d="M10 11v6" />
-      <path d="M14 11v6" />
-    </svg>
-  );
 }
 
 function EventPlanDeleteConfirmDialog({
@@ -188,41 +169,6 @@ function EventPlanDeleteConfirmDialog({
   );
 }
 
-function EventPlanSelectionBottomBar({
-  selectedCount,
-  deleting,
-  onCancel,
-  onDelete,
-}: {
-  selectedCount: number;
-  deleting: boolean;
-  onCancel: () => void;
-  onDelete: () => void;
-}) {
-  return (
-    <div className="fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-30 border-t border-ftc-border-subtle bg-ftc-bg/95 px-4 py-3 backdrop-blur-md md:bottom-0">
-      <div className="mx-auto flex w-full max-w-2xl items-center justify-between gap-3">
-        <button
-          type="button"
-          onClick={onCancel}
-          disabled={deleting}
-          className="rounded-lg border border-ftc-border-subtle bg-ftc-surface px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-ftc-text-secondary transition hover:border-ftc-border-strong disabled:opacity-50"
-        >
-          Cancel
-        </button>
-        <button
-          type="button"
-          onClick={onDelete}
-          disabled={deleting || selectedCount === 0}
-          className="rounded-lg border-0 bg-[var(--ftc-color-danger)] px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-ftc-bg transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          Delete ({selectedCount})
-        </button>
-      </div>
-    </div>
-  );
-}
-
 export default function BookingPlansPage() {
   const router = useRouter();
   const [role, setRole] = useState<UserRole | null>(null);
@@ -263,11 +209,6 @@ export default function BookingPlansPage() {
 
     return plans.filter((plan) => !planBulkManage.removingIds.has(plan.id));
   }, [plans, planBulkManage.removingIds]);
-
-  const showSelectionBottomBar =
-    planBulkManage.selectionMode &&
-    !planBulkManage.confirmOpen &&
-    planBulkManage.selectedCount > 0;
 
   const loadPlans = useCallback(async () => {
     setLoadingPlans(true);
@@ -414,15 +355,6 @@ export default function BookingPlansPage() {
     router.push(`/bookings?planId=${encodeURIComponent(planId)}`);
   }
 
-  function handleTrashClick() {
-    if (planBulkManage.selectionMode) {
-      planBulkManage.cancelSelectionMode();
-      return;
-    }
-
-    planBulkManage.enterSelectionMode();
-  }
-
   async function handleDeletePlans(ids: string[]) {
     await deleteBookingPlans(ids);
     setPlans((currentPlans) => currentPlans.filter((plan) => !ids.includes(plan.id)));
@@ -456,39 +388,28 @@ export default function BookingPlansPage() {
             !formOpen && (loadingAccess || loadingPlans || plans.length > 0) ? (
               <div className="flex items-center gap-2">
                 {!planBulkManage.selectionMode ? (
-                  <button
-                    type="button"
-                    onClick={openCreateForm}
-                    className="shrink-0 cursor-pointer ftc-btn-primary px-4 py-2.5 text-sm uppercase tracking-wide"
-                  >
-                    Create event plan
-                  </button>
-                ) : null}
-                {plans.length > 0 ? (
-                  <button
-                    type="button"
-                    onClick={handleTrashClick}
-                    aria-label={
-                      planBulkManage.selectionMode ? "Cancel selection" : "Delete event plans"
-                    }
-                    aria-pressed={planBulkManage.selectionMode}
-                    className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border transition ${
-                      planBulkManage.selectionMode
-                        ? "border-ftc-primary bg-ftc-bg-elevated text-ftc-text"
-                        : "border-ftc-border-subtle bg-ftc-bg-elevated text-ftc-text-muted hover:border-ftc-border-strong hover:text-ftc-text-secondary"
-                    }`}
-                  >
-                    <TrashIcon />
-                  </button>
+                  <>
+                    <button
+                      type="button"
+                      onClick={openCreateForm}
+                      className="shrink-0 cursor-pointer ftc-btn-primary px-4 py-2.5 text-sm uppercase tracking-wide"
+                    >
+                      Create event plan
+                    </button>
+                    {planBulkManage.showManageControl ? (
+                      <HistoryManageButton
+                        ariaLabel="Delete event plans"
+                        onClick={planBulkManage.enterSelectionMode}
+                      />
+                    ) : null}
+                  </>
                 ) : null}
               </div>
             ) : null
           }
         />
 
-        <div
-          className={`${PLANNER_WORKSPACE_CONTENT_CLASS}${showSelectionBottomBar ? " pb-24 md:pb-20" : ""}`}
-        >
+        <div className={PLANNER_WORKSPACE_CONTENT_CLASS}>
           {successMessage ? (
             <p className="mb-4 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated px-4 py-3 text-sm text-ftc-text-secondary">
               {successMessage}
@@ -564,6 +485,18 @@ export default function BookingPlansPage() {
           {!formOpen ? (
             <>
               <SavedEventPlansSectionHeading />
+              {planBulkManage.showSelectionToolbar ? (
+                <HistorySelectionToolbar
+                  selectedCount={planBulkManage.selectedCount}
+                  allSelected={planBulkManage.allSelected}
+                  removing={planBulkManage.removing}
+                  onCancel={planBulkManage.cancelSelectionMode}
+                  onSelectAll={planBulkManage.selectAll}
+                  onRemove={planBulkManage.openConfirm}
+                  removeLabel="Delete selected"
+                  removingLabel="Deleting..."
+                />
+              ) : null}
               {loadingAccess || loadingPlans ? (
                 <BookingPlanListSkeleton />
               ) : error && plans.length === 0 ? (
@@ -583,7 +516,7 @@ export default function BookingPlansPage() {
                   </button>
                 </div>
               ) : (
-                <ul className="space-y-3">
+                <ul className="space-y-2.5">
                   {visiblePlans.map((plan) => (
                     <EventPlanCard
                       key={plan.id}
@@ -599,15 +532,6 @@ export default function BookingPlansPage() {
             </>
           ) : null}
         </div>
-
-        {showSelectionBottomBar ? (
-          <EventPlanSelectionBottomBar
-            selectedCount={planBulkManage.selectedCount}
-            deleting={planBulkManage.removing}
-            onCancel={planBulkManage.cancelSelectionMode}
-            onDelete={planBulkManage.openConfirm}
-          />
-        ) : null}
 
         <EventPlanDeleteConfirmDialog
           open={planBulkManage.confirmOpen}
@@ -650,46 +574,52 @@ function EventPlanCard({
           : "ftc-card-hoverable"
       }`}
     >
-      <button
-        type="button"
-        onClick={onCardClick}
-        className="flex w-full items-start gap-3 p-4 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ftc-primary/35 active:bg-ftc-bg-elevated/60 sm:p-5"
+      <div
+        className={`flex flex-col gap-2 p-3 sm:flex-row sm:gap-3 sm:p-3.5 ${
+          selectionMode ? "sm:items-start" : "sm:items-end"
+        }`}
       >
-        {selectionMode ? (
-          <HistorySelectionCheckbox
-            checked={selected}
-            label={selectionLabel}
-            presentational
-          />
-        ) : null}
-        <span className="min-w-0 flex-1">
-          <span className="block text-lg font-semibold text-ftc-text">{plan.name}</span>
-          <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
-            <PlanDetail label="Event" value={plan.event_name} />
-            <PlanDetail label="Venue" value={plan.venue} />
-          </dl>
-          {plan.notes?.trim() ? (
-            <span className="mt-3 block text-sm leading-relaxed text-ftc-text-secondary">
-              {plan.notes}
-            </span>
+        <button
+          type="button"
+          onClick={onCardClick}
+          className="flex min-w-0 flex-1 items-start gap-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ftc-primary/35 active:bg-ftc-bg-elevated/60"
+        >
+          {selectionMode ? (
+            <HistorySelectionCheckbox
+              checked={selected}
+              label={selectionLabel}
+              presentational
+            />
           ) : null}
-        </span>
-      </button>
+          <span className="min-w-0 flex-1">
+            <span className="block text-lg font-semibold text-ftc-text">{plan.name}</span>
+            <dl className="mt-2 grid gap-1.5 text-sm sm:grid-cols-2">
+              <PlanDetail label="Event" value={plan.event_name} />
+              <PlanDetail label="Venue" value={plan.venue} />
+            </dl>
+            {plan.notes?.trim() ? (
+              <span className="mt-2 block text-sm leading-snug text-ftc-text-secondary">
+                {plan.notes}
+              </span>
+            ) : null}
+          </span>
+        </button>
 
-      {!selectionMode ? (
-        <div className="flex justify-end px-4 pb-4 sm:px-5 sm:pb-5">
-          <button
-            type="button"
-            onClick={(event) => {
-              event.stopPropagation();
-              onUseForBooking();
-            }}
-            className="ftc-btn-primary px-3 py-1.5 text-xs uppercase tracking-wide"
-          >
-            Use for booking
-          </button>
-        </div>
-      ) : null}
+        {!selectionMode ? (
+          <div className="flex justify-end sm:shrink-0">
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                onUseForBooking();
+              }}
+              className="ftc-btn-primary min-h-11 px-3 py-2 text-xs uppercase tracking-wide"
+            >
+              Use for booking
+            </button>
+          </div>
+        ) : null}
+      </div>
     </li>
   );
 }
@@ -698,7 +628,7 @@ function PlanDetail({ label, value }: { label: string; value: string }) {
   return (
     <div>
       <dt className="text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted">{label}</dt>
-      <dd className="mt-0.5 text-ftc-text">{value}</dd>
+      <dd className="mt-px text-ftc-text">{value}</dd>
     </div>
   );
 }
