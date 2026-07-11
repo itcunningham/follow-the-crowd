@@ -105,6 +105,7 @@ import {
 import {
   clearPendingBookingPlanId,
   getBookingsDeepLinkKey,
+  isPlannerBookingsCreateChromeActive,
   resolveBookingsDeepLinkIntent,
   type BookingsDeepLinkIntent,
 } from "@/lib/bookings/planDeepLink";
@@ -242,13 +243,21 @@ function getGigsEmptyMessage(tab: DjGigsListTab): string {
 
 export default function BookingsPage() {
   return (
-    <Suspense
-      fallback={
-        <BookingsPageLoadingShell variant="dj" />
-      }
-    >
+    <Suspense fallback={<BookingsPageSuspenseFallback />}>
       <BookingsPageContent />
     </Suspense>
+  );
+}
+
+function BookingsPageSuspenseFallback() {
+  const plannerBookingCreateOpen =
+    typeof window !== "undefined" &&
+    isPlannerBookingsCreateChromeActive({
+      locationSearch: window.location.search,
+    });
+
+  return (
+    <BookingsPageLoadingShell plannerBookingCreateOpen={plannerBookingCreateOpen} />
   );
 }
 
@@ -401,9 +410,10 @@ function BookingsPageContent() {
     () => resolveBookingsDeepLinkIntent(searchParams),
     [searchParams],
   );
-  const resolvedPlannerRole = role ?? readCachedNavRole();
-  const plannerCreateVisible =
-    createOpen || (deepLinkIntent != null && canCreateBookings(resolvedPlannerRole));
+  const plannerCreateVisible = isPlannerBookingsCreateChromeActive({
+    createOpen,
+    searchParams,
+  });
   const effectiveCreateStep: CreateStep =
     deepLinkIntent?.type === "plan" && createStep === "source"
       ? "details"
@@ -1129,7 +1139,7 @@ function BookingsPageContent() {
         <AppNavigation />
 
         <PlannerWorkspacePageHeader
-          title="Gigs"
+          title={plannerCreateVisible ? "Event Plans" : "Gigs"}
           initialRole={displayRole}
           activeWorkspaceHref={
             plannerCreateVisible ? EVENTS_AREA_SUB_NAV.bookingPlans.href : undefined

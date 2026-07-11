@@ -83,3 +83,30 @@ export function getBookingsDeepLinkKey(intent: BookingsDeepLinkIntent): string {
       return `create-plan:${intent.eventDate ?? ""}`;
   }
 }
+
+/** Synchronous chrome gate: planner booking-create UI (not default Gigs workspace). */
+export function isPlannerBookingsCreateChromeActive(options: {
+  createOpen?: boolean;
+  searchParams?: SearchParamsLike | null;
+  locationSearch?: string | null;
+}): boolean {
+  if (options.createOpen) {
+    return true;
+  }
+
+  if (options.searchParams && resolveBookingsDeepLinkIntent(options.searchParams)) {
+    return true;
+  }
+
+  if (options.locationSearch) {
+    const query = options.locationSearch.startsWith("?")
+      ? options.locationSearch.slice(1)
+      : options.locationSearch;
+
+    if (resolveBookingsDeepLinkIntent(new URLSearchParams(query))) {
+      return true;
+    }
+  }
+
+  return readPendingBookingPlanId() != null;
+}

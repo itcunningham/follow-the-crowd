@@ -22,10 +22,12 @@ import {
 import ProfilePageHeader from "@/app/components/profile/ProfilePageHeader";
 import type { DjGigsListTab } from "@/lib/bookingRequests";
 import { buildGigsListHref, resolveGigsListTabParam } from "@/lib/bookings/gigsListNavigation";
+import { isPlannerBookingsCreateChromeActive } from "@/lib/bookings/planDeepLink";
 import { buildEventsListHref, resolveEventDetailBackHref } from "@/lib/events/eventsListNavigation";
 import { useEventEditHeaderState } from "@/lib/events/useEventEditHeaderVisibility";
 import type { EventEditHeaderState } from "@/lib/events/useEventEditHeaderVisibility";
 import { canManageEvents, type UserRole } from "@/lib/user/currentUser";
+import { EVENTS_AREA_SUB_NAV } from "@/lib/plannerEventsNav";
 import { readCachedNavRole, readCachedNavigation, resolveIsOwnProfilePath } from "@/lib/navigationRoleCache";
 
 export function SkeletonBlock({
@@ -583,10 +585,12 @@ function canShowGigsWorkspaceTabs(role: UserRole | null): boolean {
 
 export function BookingsPageLoadingShell({
   variant = "neutral",
+  plannerBookingCreateOpen = false,
 }: {
   variant?: BookingsShellVariant;
   /** @deprecated Content skeletons are no longer shown in the loading shell. */
   content?: BookingsContentVariant;
+  plannerBookingCreateOpen?: boolean;
 }) {
   const [cachedRole] = useState<UserRole | null>(() => readCachedNavRole());
   const role =
@@ -595,12 +599,19 @@ export function BookingsPageLoadingShell({
       : variant === "dj" || variant === "both"
         ? variant
         : cachedRole;
-  const showGigsTabs = canShowGigsWorkspaceTabs(role);
+  const showGigsTabs = !plannerBookingCreateOpen && canShowGigsWorkspaceTabs(role);
+  const workspaceTitle = plannerBookingCreateOpen ? "Event Plans" : "Gigs";
 
   return (
     <div className={PLANNER_WORKSPACE_SHELL_CLASS}>
       <AppNavigation />
-      <PlannerWorkspacePageHeader title="Gigs" initialRole={role} />
+      <PlannerWorkspacePageHeader
+        title={workspaceTitle}
+        initialRole={role}
+        activeWorkspaceHref={
+          plannerBookingCreateOpen ? EVENTS_AREA_SUB_NAV.bookingPlans.href : undefined
+        }
+      />
       <div className={PLANNER_WORKSPACE_CONTENT_CLASS}>
         {showGigsTabs ? (
           <div className={PLANNER_WORKSPACE_SECONDARY_TABS_ROW_CLASS}>
@@ -944,10 +955,15 @@ export function AppLoadingShell({
   }
 
   if (pathname === "/bookings" || pathname.startsWith("/bookings/")) {
+    const plannerBookingCreateOpen = isPlannerBookingsCreateChromeActive({
+      locationSearch: search,
+    });
+
     return (
       <BookingsPageLoadingShell
         variant={resolveBookingsShellVariant(role)}
         content={role === "dj" || !role ? "received-gigs" : "auto"}
+        plannerBookingCreateOpen={plannerBookingCreateOpen}
       />
     );
   }
