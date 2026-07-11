@@ -11,7 +11,7 @@ import {
   PLANNER_WORKSPACE_SHELL_CLASS,
 } from "@/app/components/planner/PlannerWorkspaceLayout";
 import { PlannerFormCard, PlannerFormField, PlannerInlineError } from "@/app/components/planner/PlannerUi";
-import { BookingPlanListSkeleton } from "@/app/components/skeleton/Skeleton";
+import { BookingPlanListSkeleton, BookingPlansCreateButtonSkeleton } from "@/app/components/skeleton/Skeleton";
 import { BookingDateField, BookingSetTimeRangeField } from "@/app/components/BookingDateTimeFields";
 import { formatDisplayEventDate, getEventDateValidationError } from "@/lib/bookingDateTime";
 import { BookingRateField } from "@/app/components/BookingRateField";
@@ -222,7 +222,9 @@ export default function BookingPlansPage() {
           title="Booking Plans"
           initialRole={displayRole}
           actions={
-            plans.length > 0 && !formOpen ? (
+            !formOpen && (loadingAccess || loadingPlans) ? (
+              <BookingPlansCreateButtonSkeleton />
+            ) : plans.length > 0 && !formOpen ? (
               <button
                 type="button"
                 onClick={openCreateForm}

@@ -378,6 +378,15 @@ function BookingCampaignCardSkeleton() {
   );
 }
 
+export function BookingPlansCreateButtonSkeleton() {
+  return (
+    <SkeletonBlock
+      aria-hidden="true"
+      className="h-10 w-[10.75rem] shrink-0 rounded-xl"
+    />
+  );
+}
+
 export function BookingPlanListSkeleton({ count = 2 }: { count?: number }) {
   return (
     <ul aria-busy="true" aria-label="Loading booking plans" className="space-y-3">
@@ -581,7 +590,11 @@ export function BookingPlansPageLoadingShell() {
   return (
     <div className={PLANNER_WORKSPACE_SHELL_CLASS}>
       <AppNavigation />
-      <PlannerWorkspacePageHeader title="Booking Plans" initialRole={cachedRole} />
+      <PlannerWorkspacePageHeader
+        title="Booking Plans"
+        initialRole={cachedRole}
+        actions={<BookingPlansCreateButtonSkeleton />}
+      />
       <div className={PLANNER_WORKSPACE_CONTENT_CLASS}>
         <BookingPlanListSkeleton />
       </div>
