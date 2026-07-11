@@ -4,6 +4,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import {
   formatPlannerAgendaDateLabel,
   getCalendarMonthDates,
+  getPlannerCalendarLegendDotClass,
   isSameDay,
   isSameMonth,
   toDateKey,
@@ -161,7 +162,7 @@ export default function PlannerCalendarMobileDateStrip({
               <span
                 aria-hidden="true"
                 className={`mt-1 h-1.5 w-1.5 rounded-full ${
-                  isSelected ? "bg-ftc-bg" : "bg-ftc-primary"
+                  isSelected ? "bg-ftc-bg" : getPlannerCalendarLegendDotClass("event_upcoming")
                 }`}
               />
             ) : (

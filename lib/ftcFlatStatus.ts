@@ -9,9 +9,10 @@ export const FTC_STATUS_NEUTRAL = "border border-ftc-border-subtle bg-slate-600 
 export const FTC_STATUS_MUTED =
   "border border-ftc-border-subtle bg-ftc-bg-elevated text-ftc-text-secondary";
 
-export const FTC_STATUS_PLANNER_UPCOMING = "border-0 bg-[#3a4d6a] text-white";
+export const FTC_PLANNER_UPCOMING_DOT = "bg-[var(--ftc-color-planner-upcoming)]";
 
-export const FTC_PLANNER_UPCOMING_DOT = "bg-[#3a4d6a]";
+export const FTC_STATUS_PLANNER_UPCOMING =
+  "border-0 bg-[var(--ftc-color-planner-upcoming)] text-white";
 
 export const FTC_CAL_CELL = "block w-full rounded-md border-0 py-1.5 sm:py-2";
 
