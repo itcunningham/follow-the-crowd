@@ -490,29 +490,43 @@ export const PLANNER_CALENDAR_VISIBLE_LEGEND_ITEMS = PLANNER_CALENDAR_LEGEND_ITE
   (item) => item.kind !== "declined",
 );
 
-const PLANNER_CALENDAR_DATE_INDICATOR_PRIORITY: CalendarStatusKind[] = [
-  "event_today",
-  "pending",
+const PLANNER_CALENDAR_EVENT_STATUS_PRIORITY: CalendarStatusKind[] = [
   "accepted",
+  "pending",
   "event_upcoming",
-  "event_draft",
-  "event_completed",
 ];
 
-export function getPlannerCalendarDateIndicatorKind(
+const PLANNER_CALENDAR_UPCOMING_TIER_STATUS_KINDS: ReadonlySet<CalendarStatusKind> = new Set([
+  "event_upcoming",
+  "event_today",
+  "event_draft",
+  "event_completed",
+]);
+
+export function getPlannerCalendarHighestEventStatusKind(
   items: CalendarItem[],
 ): CalendarStatusKind | null {
   if (items.length === 0) {
     return null;
   }
 
-  for (const kind of PLANNER_CALENDAR_DATE_INDICATOR_PRIORITY) {
+  for (const kind of PLANNER_CALENDAR_EVENT_STATUS_PRIORITY) {
     if (items.some((item) => item.statusKind === kind)) {
       return kind;
     }
   }
 
-  return items[0]?.statusKind ?? null;
+  if (items.some((item) => PLANNER_CALENDAR_UPCOMING_TIER_STATUS_KINDS.has(item.statusKind))) {
+    return "event_upcoming";
+  }
+
+  return null;
+}
+
+export function getPlannerCalendarDateIndicatorKind(
+  items: CalendarItem[],
+): CalendarStatusKind | null {
+  return getPlannerCalendarHighestEventStatusKind(items);
 }
 
 export function getPlannerCalendarDateStripDotClass(
