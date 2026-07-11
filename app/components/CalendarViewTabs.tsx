@@ -10,7 +10,7 @@ type CalendarViewTabsProps = {
 };
 
 const TABS: { value: CalendarViewTab; label: string }[] = [
-  { value: "planner", label: "Planner Calendar" },
+  { value: "planner", label: "Event Calendar" },
   { value: "dj", label: "DJ Calendar" },
 ];
 
