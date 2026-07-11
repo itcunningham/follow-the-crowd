@@ -268,7 +268,7 @@ function PlannerCalendarMobileAgenda({
         {displayDateItems.length === 0 ? (
           isPastEmptyDate ? null : (
             <div className="rounded-xl border border-dashed border-ftc-border-subtle bg-ftc-surface/30 px-4 py-8 text-center">
-              <p className="text-sm text-ftc-text-muted">No events scheduled.</p>
+              <p className="text-sm text-ftc-text-muted">No events scheduled</p>
             </div>
           )
         ) : (
