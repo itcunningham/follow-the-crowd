@@ -110,6 +110,7 @@ import {
 import { computeCrewChatEventActions } from "@/lib/events/crewChatEventActions";
 import { getEventCrewChatLink } from "@/lib/eventCrewChat";
 import { getEventCoverUploadErrorMessage, normalizeEventCoverImageUrl } from "@/lib/events/eventCoverImage";
+import { consumeEventCreateInviteMessage } from "@/lib/events/eventCreateInviteMessages";
 import { shouldConfirmEventEditSave } from "@/lib/events/eventEditConfirmation";
 import {
   getBookingImpactingEventFieldChanges,
@@ -191,6 +192,18 @@ export default function EventDetailPage() {
   const [lineupFilter, setLineupFilter] = useState<ActiveBookingStatusFilter>("all");
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    const inviteMessage = consumeEventCreateInviteMessage();
+
+    if (inviteMessage) {
+      if (inviteMessage.includes("could not be sent")) {
+        setError(inviteMessage);
+      } else {
+        setSuccessMessage(inviteMessage);
+      }
+    }
+  }, []);
 
   const [editOpen, setEditOpen] = useState(false);
   const [editForm, setEditForm] = useState<EventInput | null>(null);

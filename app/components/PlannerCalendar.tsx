@@ -9,6 +9,7 @@ import PlannerCalendarDateActions from "@/app/components/PlannerCalendarDateActi
 import PlannerCalendarMobileDateStrip from "@/app/components/PlannerCalendarMobileDateStrip";
 import { PlannerCalendarContentSkeleton } from "@/app/components/skeleton/Skeleton";
 import { isDateKeyBeforeToday } from "@/lib/bookingDateTime";
+import { consumeEventCreateInviteMessage } from "@/lib/events/eventCreateInviteMessages";
 import { listBookingPlans } from "@/lib/bookingPlans";
 import {
   filterCalendarItemsForMonth,
@@ -304,6 +305,15 @@ export default function PlannerCalendar({
   const [actionDate, setActionDate] = useState<Date | null>(null);
   const [hasSavedEventPlans, setHasSavedEventPlans] = useState(false);
   const [selectedDate, setSelectedDate] = useState(() => initialView.selectedDate);
+  const [inviteMessage, setInviteMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    const message = consumeEventCreateInviteMessage();
+
+    if (message) {
+      setInviteMessage(message);
+    }
+  }, []);
 
   useLayoutEffect(() => {
     const nextView = resolvePlannerCalendarViewState(searchParams.get("date"));
@@ -410,6 +420,19 @@ export default function PlannerCalendar({
           className="mt-4 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated px-4 py-3 text-sm text-[var(--ftc-color-danger)] md:mt-4"
         >
           {error}
+        </p>
+      ) : null}
+
+      {inviteMessage ? (
+        <p
+          role="alert"
+          className={`mt-4 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated px-4 py-3 text-sm md:mt-4 ${
+            inviteMessage.includes("could not be sent")
+              ? "text-[var(--ftc-color-danger)]"
+              : "text-ftc-text-secondary"
+          }`}
+        >
+          {inviteMessage}
         </p>
       ) : null}
 
