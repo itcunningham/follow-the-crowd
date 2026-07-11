@@ -568,12 +568,15 @@ function EventPlanCard({
             <dl className="mt-2 grid gap-1.5 text-sm sm:grid-cols-2">
               <PlanDetail label="Event" value={plan.event_name} />
               <PlanDetail label="Venue" value={plan.venue} />
+              {plan.notes?.trim() ? (
+                <PlanDetail
+                  label="Notes"
+                  value={plan.notes.trim()}
+                  className="sm:col-span-2"
+                  clamp
+                />
+              ) : null}
             </dl>
-            {plan.notes?.trim() ? (
-              <span className="mt-2 block text-sm leading-snug text-ftc-text-secondary">
-                {plan.notes}
-              </span>
-            ) : null}
           </span>
         </button>
 
@@ -596,11 +599,25 @@ function EventPlanCard({
   );
 }
 
-function PlanDetail({ label, value }: { label: string; value: string }) {
+function PlanDetail({
+  label,
+  value,
+  className = "",
+  clamp = false,
+}: {
+  label: string;
+  value: string;
+  className?: string;
+  clamp?: boolean;
+}) {
   return (
-    <div>
+    <div className={className}>
       <dt className="text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted">{label}</dt>
-      <dd className="mt-px text-ftc-text">{value}</dd>
+      <dd
+        className={`mt-px ${clamp ? "line-clamp-2 text-ftc-text-secondary" : "text-ftc-text"}`}
+      >
+        {value}
+      </dd>
     </div>
   );
 }
