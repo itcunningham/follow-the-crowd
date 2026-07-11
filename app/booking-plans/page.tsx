@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import AppNavigation from "@/app/components/AppNavigation";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
 import {
@@ -14,6 +14,7 @@ import { PlannerFormCard, PlannerFormField, PlannerInlineError } from "@/app/com
 import { BookingPlanListSkeleton } from "@/app/components/skeleton/Skeleton";
 import { BookingDateField, BookingSetTimeRangeField } from "@/app/components/BookingDateTimeFields";
 import { formatDisplayEventDate, getEventDateValidationError } from "@/lib/bookingDateTime";
+import { getEventNotesValidationError, MAX_EVENT_NOTES_LENGTH } from "@/lib/events/eventNotes";
 import {
   createBookingPlan,
   listBookingPlans,
@@ -69,6 +70,21 @@ export default function BookingPlansPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const planFormDateValidationError = useMemo(() => {
+    if (!formOpen) {
+      return null;
+    }
+
+    return getEventDateValidationError(form.eventDate, form.setTime);
+  }, [formOpen, form.eventDate, form.setTime]);
+  const planFormNotesValidationError = useMemo(() => {
+    if (!formOpen) {
+      return null;
+    }
+
+    return getEventNotesValidationError(form.notes);
+  }, [formOpen, form.notes]);
+  const planFormValidationError = planFormDateValidationError ?? planFormNotesValidationError;
 
   const loadPlans = useCallback(async () => {
     setLoadingPlans(true);
@@ -173,6 +189,13 @@ export default function BookingPlansPage() {
 
     if (dateValidationError) {
       setError(dateValidationError);
+      return;
+    }
+
+    const notesValidationError = getEventNotesValidationError(form.notes);
+
+    if (notesValidationError) {
+      setError(notesValidationError);
       return;
     }
 
@@ -284,13 +307,18 @@ export default function BookingPlansPage() {
                   onChange={(value) => updateField("notes", value)}
                   placeholder="Notes"
                   multiline
+                  maxLength={MAX_EVENT_NOTES_LENGTH}
                 />
 
-                {error ? <PlannerInlineError message={error} /> : null}
+                {error && error !== planFormValidationError ? (
+                  <PlannerInlineError message={error} />
+                ) : null}
 
                 <button
                   type="submit"
-                  disabled={saving}
+                  disabled={saving || Boolean(planFormValidationError)}
+                  aria-disabled={saving || Boolean(planFormValidationError)}
+                  title={planFormValidationError ? planFormValidationError : undefined}
                   className="ftc-btn-primary px-5 py-3 text-sm uppercase tracking-wide disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {saving ? "Saving..." : editingPlanId ? "Save changes" : "Save event plan"}

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { applyTextInputLimit } from "@/lib/textInputLimits";
 
 export function PlannerFormField({
   label,
@@ -9,6 +10,7 @@ export function PlannerFormField({
   placeholder,
   required = false,
   multiline = false,
+  maxLength,
 }: {
   label: string;
   value: string;
@@ -16,14 +18,30 @@ export function PlannerFormField({
   placeholder?: string;
   required?: boolean;
   multiline?: boolean;
+  maxLength?: number;
 }) {
+  function handleChange(next: string) {
+    if (multiline && maxLength !== undefined) {
+      const limited = applyTextInputLimit(value, next, maxLength);
+
+      if (limited === null) {
+        return;
+      }
+
+      onChange(limited);
+      return;
+    }
+
+    onChange(next);
+  }
+
   return (
     <label className="block">
       <span className="ftc-label">{label}</span>
       {multiline ? (
         <textarea
           value={value}
-          onChange={(event) => onChange(event.target.value)}
+          onChange={(event) => handleChange(event.target.value)}
           placeholder={placeholder}
           rows={3}
           className="ftc-input px-3.5 py-2.5"
@@ -32,12 +50,21 @@ export function PlannerFormField({
         <input
           type="text"
           value={value}
-          onChange={(event) => onChange(event.target.value)}
+          onChange={(event) => handleChange(event.target.value)}
           placeholder={placeholder}
           required={required}
           className="ftc-input px-3.5 py-2.5"
         />
       )}
+      {multiline && maxLength !== undefined ? (
+        <p
+          className={`mt-1 text-right text-xs ${
+            value.length > maxLength ? "text-red-400" : "text-ftc-text-muted"
+          }`}
+        >
+          {value.length} / {maxLength}
+        </p>
+      ) : null}
     </label>
   );
 }

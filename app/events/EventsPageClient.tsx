@@ -25,6 +25,7 @@ import {
 } from "@/app/components/planner/PlannerUi";
 import { BookingDateField, BookingSetTimeRangeField } from "@/app/components/BookingDateTimeFields";
 import { getEventDateValidationError, getTodayDateKey, formatDisplayEventDate, sanitizePrefilledEventDateKey } from "@/lib/bookingDateTime";
+import { getEventNotesValidationError, MAX_EVENT_NOTES_LENGTH } from "@/lib/events/eventNotes";
 import EventCoverImageField, {
   emptyEventCoverImageFieldState,
   type EventCoverImageFieldState,
@@ -166,6 +167,16 @@ function EventsPageClientView({ initialTab }: EventsPageClientProps) {
 
     return getEventDateValidationError(form.eventDate, form.setTime);
   }, [createOpen, createStep, form.eventDate, form.setTime]);
+
+  const createFormNotesValidationError = useMemo(() => {
+    if (!createOpen || createStep !== "form") {
+      return null;
+    }
+
+    return getEventNotesValidationError(form.notes);
+  }, [createOpen, createStep, form.notes]);
+  const createFormValidationError =
+    createFormDateValidationError ?? createFormNotesValidationError;
 
   const resolvedRole = role ?? guardProfile?.role ?? null;
   const isPlanner = canManageEvents(resolvedRole);
@@ -380,6 +391,13 @@ function EventsPageClientView({ initialTab }: EventsPageClientProps) {
 
     if (dateValidationError) {
       setError(dateValidationError);
+      return;
+    }
+
+    const notesValidationError = getEventNotesValidationError(form.notes);
+
+    if (notesValidationError) {
+      setError(notesValidationError);
       return;
     }
 
@@ -602,19 +620,20 @@ function EventsPageClientView({ initialTab }: EventsPageClientProps) {
                     onChange={(value) => updateField("notes", value)}
                     placeholder="Notes"
                     multiline
+                    maxLength={MAX_EVENT_NOTES_LENGTH}
                   />
 
-                  {error && error !== createFormDateValidationError ? (
+                  {error && error !== createFormValidationError ? (
                     <PlannerInlineError message={error} />
                   ) : null}
 
                   <button
                     type="submit"
-                    disabled={saving || Boolean(createFormDateValidationError)}
-                    aria-disabled={saving || Boolean(createFormDateValidationError)}
+                    disabled={saving || Boolean(createFormValidationError)}
+                    aria-disabled={saving || Boolean(createFormValidationError)}
                     title={
-                      createFormDateValidationError
-                        ? createFormDateValidationError
+                      createFormValidationError
+                        ? createFormValidationError
                         : undefined
                     }
                     className="ftc-btn-primary px-5 py-3 text-sm uppercase tracking-wide disabled:cursor-not-allowed disabled:opacity-50"

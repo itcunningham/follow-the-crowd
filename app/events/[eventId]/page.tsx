@@ -117,6 +117,7 @@ import {
   shouldPostEventGroupChatUpdate,
 } from "@/lib/events/eventGroupChatUpdate";
 import { resolveEventDetailBackHref } from "@/lib/events/eventsListNavigation";
+import { getEventNotesValidationError, MAX_EVENT_NOTES_LENGTH } from "@/lib/events/eventNotes";
 import { useEventEditHeaderState } from "@/lib/events/useEventEditHeaderVisibility";
 import {
   canManageEvents,
@@ -292,6 +293,14 @@ export default function EventDetailPage() {
 
     return getEventDateValidationError(editForm.eventDate, editForm.setTime);
   }, [editForm]);
+  const editFormNotesValidationError = useMemo(() => {
+    if (!editForm) {
+      return null;
+    }
+
+    return getEventNotesValidationError(editForm.notes);
+  }, [editForm]);
+  const editFormValidationError = editFormDateValidationError ?? editFormNotesValidationError;
 
   const eventBookingDuplicates = useMemo(
     () => buildEventBookingDuplicateMap(lineup),
@@ -491,6 +500,12 @@ export default function EventDetailPage() {
   function validateEditFormBeforeSave(): string | null {
     if (!editForm) {
       return null;
+    }
+
+    const notesValidationError = getEventNotesValidationError(editForm.notes);
+
+    if (notesValidationError) {
+      return notesValidationError;
     }
 
     return getEventDateValidationError(editForm.eventDate, editForm.setTime);
@@ -1354,6 +1369,7 @@ export default function EventDetailPage() {
                   value={editForm.notes}
                   onChange={(value) => setEditForm((prev) => (prev ? { ...prev, notes: value } : prev))}
                   multiline
+                  maxLength={MAX_EVENT_NOTES_LENGTH}
                 />
 
                 {editFormDateValidationError ? (
@@ -1365,17 +1381,17 @@ export default function EventDetailPage() {
                   </p>
                 ) : null}
 
-                {editFormError && editFormError !== editFormDateValidationError ? (
+                {editFormError && editFormError !== editFormValidationError ? (
                   <p className="text-sm text-[var(--ftc-color-danger)]">{editFormError}</p>
                 ) : null}
 
                 <button
                   type="submit"
-                  disabled={savingEdit || Boolean(editFormDateValidationError)}
-                  aria-disabled={savingEdit || Boolean(editFormDateValidationError)}
+                  disabled={savingEdit || Boolean(editFormValidationError)}
+                  aria-disabled={savingEdit || Boolean(editFormValidationError)}
                   title={
-                    editFormDateValidationError
-                      ? editFormDateValidationError
+                    editFormValidationError
+                      ? editFormValidationError
                       : undefined
                   }
                   className="ftc-btn-primary px-5 py-3 text-sm uppercase tracking-wide disabled:cursor-not-allowed disabled:opacity-50"
