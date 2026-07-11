@@ -98,6 +98,7 @@ import {
   type UserRole,
 } from "@/lib/user/currentUser";
 import { readCachedNavRole } from "@/lib/navigationRoleCache";
+import { prepareEventsListEventNavigation } from "@/lib/navigation/prepareMobileDocumentScrollReset";
 import { readEventsListCache, writeEventsListCache } from "@/lib/events/eventsListCache";
 import { seedEventOwnerId, seedEventOwnerIdsFromEvents } from "@/lib/events/eventOwnerIdCache";
 
@@ -1231,10 +1232,14 @@ function EventsPageClientView({
 
                 return (
                 <li key={event.id}>
-                  <Link
-                    href={eventHref}
-                    onClick={() => seedEventOwnerId(event.id, event.owner_id)}
-                    className={`ftc-surface-row block w-full rounded-[var(--ftc-radius-xl)] p-4 focus-visible:outline-none sm:p-5 ${
+                  <button
+                    type="button"
+                    onClick={() => {
+                      seedEventOwnerId(event.id, event.owner_id);
+                      prepareEventsListEventNavigation();
+                      router.push(eventHref, { scroll: false });
+                    }}
+                    className={`ftc-surface-row block w-full rounded-[var(--ftc-radius-xl)] p-4 text-left focus-visible:outline-none sm:p-5 ${
                       cancelled ? "ftc-event-card-cancelled" : ""
                     }`}
                   >
@@ -1291,7 +1296,7 @@ function EventsPageClientView({
                         </svg>
                       </span>
                     </div>
-                  </Link>
+                  </button>
                 </li>
                 );
               })}

@@ -5,6 +5,7 @@ import { parseCalendarOriginFromEventDetail } from "@/lib/calendar";
 import { isMobileScrollResetViewport } from "@/lib/navigation/isMobileScrollResetViewport";
 import {
   CALENDAR_AGENDA_EVENT_NAV_STORAGE_KEY,
+  EVENTS_LIST_EVENT_NAV_STORAGE_KEY,
 } from "@/lib/navigation/prepareMobileDocumentScrollReset";
 import {
   commitCalendarOriginDocumentScrollToTop,
@@ -23,15 +24,24 @@ function isCalendarAgendaNavigationPending(): boolean {
   return sessionStorage.getItem(CALENDAR_AGENDA_EVENT_NAV_STORAGE_KEY) === "1";
 }
 
-function clearCalendarAgendaNavigationPending(): void {
+function isEventsListNavigationPending(): boolean {
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  return sessionStorage.getItem(EVENTS_LIST_EVENT_NAV_STORAGE_KEY) === "1";
+}
+
+function clearPendingMobileEventDetailNavigation(): void {
   if (typeof window === "undefined") {
     return;
   }
 
   sessionStorage.removeItem(CALENDAR_AGENDA_EVENT_NAV_STORAGE_KEY);
+  sessionStorage.removeItem(EVENTS_LIST_EVENT_NAV_STORAGE_KEY);
 }
 
-export function shouldResetCalendarOriginMobileScroll(searchParams: SearchParamsLike): boolean {
+export function shouldResetMobileEventDetailScroll(searchParams: SearchParamsLike): boolean {
   if (!isMobileScrollResetViewport()) {
     return false;
   }
@@ -40,17 +50,25 @@ export function shouldResetCalendarOriginMobileScroll(searchParams: SearchParams
     return true;
   }
 
-  return isCalendarAgendaNavigationPending();
+  if (isCalendarAgendaNavigationPending()) {
+    return true;
+  }
+
+  return isEventsListNavigationPending();
 }
 
-export function useCalendarOriginMobileScrollReset(
+export function useMobileEventDetailScrollReset(
   searchParams: SearchParamsLike,
   routeKey: string,
   contentReady: boolean,
 ): boolean {
-  const shouldReset = shouldResetCalendarOriginMobileScroll(searchParams);
+  const shouldReset = shouldResetMobileEventDetailScroll(searchParams);
   const [scrollReady, setScrollReady] = useState(() => {
     if (searchParams.get("from") === "calendar") {
+      return false;
+    }
+
+    if (typeof window !== "undefined" && isEventsListNavigationPending()) {
       return false;
     }
 
@@ -85,7 +103,7 @@ export function useCalendarOriginMobileScrollReset(
     let cancelCommit = commitCalendarOriginDocumentScrollToTop(() => {
       unfreezeRef.current?.();
       unfreezeRef.current = null;
-      clearCalendarAgendaNavigationPending();
+      clearPendingMobileEventDetailNavigation();
       setScrollReady(true);
     });
 
@@ -101,7 +119,7 @@ export function useCalendarOriginMobileScrollReset(
       cancelCommit = commitCalendarOriginDocumentScrollToTop(() => {
         unfreezeRef.current?.();
         unfreezeRef.current = null;
-        clearCalendarAgendaNavigationPending();
+        clearPendingMobileEventDetailNavigation();
         setScrollReady(true);
       });
     };
@@ -122,3 +140,9 @@ export function useCalendarOriginMobileScrollReset(
 
   return scrollReady;
 }
+
+/** @deprecated Use useMobileEventDetailScrollReset */
+export const useCalendarOriginMobileScrollReset = useMobileEventDetailScrollReset;
+
+/** @deprecated Use shouldResetMobileEventDetailScroll */
+export const shouldResetCalendarOriginMobileScroll = shouldResetMobileEventDetailScroll;

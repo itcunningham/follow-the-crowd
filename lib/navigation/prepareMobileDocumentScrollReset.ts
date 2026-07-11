@@ -1,4 +1,5 @@
 export const CALENDAR_AGENDA_EVENT_NAV_STORAGE_KEY = "ftc:calendar-agenda-event-nav";
+export const EVENTS_LIST_EVENT_NAV_STORAGE_KEY = "ftc:events-list-event-nav";
 
 export function prepareMobileDocumentScrollReset(): void {
   if (typeof window === "undefined") {
@@ -15,4 +16,9 @@ export function prepareMobileDocumentScrollReset(): void {
 export function prepareCalendarAgendaEventNavigation(): void {
   prepareMobileDocumentScrollReset();
   sessionStorage.setItem(CALENDAR_AGENDA_EVENT_NAV_STORAGE_KEY, "1");
+}
+
+export function prepareEventsListEventNavigation(): void {
+  prepareMobileDocumentScrollReset();
+  sessionStorage.setItem(EVENTS_LIST_EVENT_NAV_STORAGE_KEY, "1");
 }

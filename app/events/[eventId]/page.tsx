@@ -106,7 +106,7 @@ import {
   shouldPostEventGroupChatUpdate,
 } from "@/lib/events/eventGroupChatUpdate";
 import { resolveEventDetailBackHref } from "@/lib/events/eventsListNavigation";
-import { useCalendarOriginMobileScrollReset } from "@/lib/navigation/useCalendarOriginMobileScrollReset";
+import { useMobileEventDetailScrollReset } from "@/lib/navigation/useCalendarOriginMobileScrollReset";
 import { getEventNotesValidationError, MAX_EVENT_NOTES_LENGTH } from "@/lib/events/eventNotes";
 import { useEventEditHeaderState } from "@/lib/events/useEventEditHeaderVisibility";
 import {
@@ -222,7 +222,7 @@ export default function EventDetailPage() {
   const [crewChatHelpOpen, setCrewChatHelpOpen] = useState(false);
   const [unavailableConfirmOpen, setUnavailableConfirmOpen] = useState(false);
 
-  const mobileScrollReady = useCalendarOriginMobileScrollReset(searchParams, eventId, !loading);
+  const mobileScrollReady = useMobileEventDetailScrollReset(searchParams, eventId, !loading);
   const mobileScrollGateClass = mobileScrollReady ? "" : "invisible";
 
   const resolvedRole = role ?? guardProfile?.role ?? null;
