@@ -185,7 +185,7 @@ export function HistoryManageButton({
       onClick={onClick}
       disabled={disabled}
       aria-label={ariaLabel}
-      className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-ftc-border-subtle bg-ftc-bg-elevated text-ftc-text-muted transition hover:border-ftc-border-strong hover:text-ftc-text-secondary disabled:cursor-not-allowed disabled:opacity-50"
+      className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-ftc-border-subtle bg-ftc-bg-elevated text-ftc-text-muted transition enabled:hover:border-ftc-border-strong enabled:hover:text-ftc-text-secondary disabled:cursor-not-allowed disabled:opacity-50"
     >
       <ManageHistoryIcon />
     </button>

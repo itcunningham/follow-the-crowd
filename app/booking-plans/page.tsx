@@ -359,6 +359,11 @@ export default function BookingPlansPage() {
     return null;
   }
 
+  const showTrashButton =
+    !planBulkManage.selectionMode &&
+    (loadingAccess || loadingPlans || plans.length > 0);
+  const trashButtonDisabled = loadingAccess || loadingPlans;
+
   return (
     <OnboardingGuard>
       <div className={PLANNER_WORKSPACE_SHELL_CLASS}>
@@ -447,13 +452,11 @@ export default function BookingPlansPage() {
             <>
               <div className={PLANNER_WORKSPACE_SECONDARY_TABS_ROW_CLASS}>
                 <SavedEventPlansSectionHeading className="mb-0" />
-                {!loadingAccess &&
-                !loadingPlans &&
-                planBulkManage.showManageControl &&
-                !planBulkManage.selectionMode ? (
+                {showTrashButton ? (
                   <HistoryManageButton
                     ariaLabel="Delete event plans"
                     onClick={planBulkManage.enterSelectionMode}
+                    disabled={trashButtonDisabled}
                   />
                 ) : null}
               </div>
