@@ -1,4 +1,5 @@
 export const PENDING_BOOKING_PLAN_ID_KEY = "ftc-pending-booking-plan-id";
+export const BOOKING_PLANS_SUCCESS_MESSAGE_KEY = "ftc-booking-plans-success-message";
 
 export function stashPendingBookingPlanId(planId: string): void {
   if (typeof window === "undefined") {
@@ -23,6 +24,29 @@ export function readPendingBookingPlanId(): string | null {
 
   const value = sessionStorage.getItem(PENDING_BOOKING_PLAN_ID_KEY)?.trim();
   return value || null;
+}
+
+export function stashBookingPlansSuccessMessage(message: string): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  sessionStorage.setItem(BOOKING_PLANS_SUCCESS_MESSAGE_KEY, message);
+}
+
+export function consumeBookingPlansSuccessMessage(): string | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  const value = sessionStorage.getItem(BOOKING_PLANS_SUCCESS_MESSAGE_KEY)?.trim();
+
+  if (!value) {
+    return null;
+  }
+
+  sessionStorage.removeItem(BOOKING_PLANS_SUCCESS_MESSAGE_KEY);
+  return value;
 }
 
 type SearchParamsLike = {

@@ -38,7 +38,7 @@ import {
   type UserRole,
 } from "@/lib/user/currentUser";
 import { readCachedNavRole } from "@/lib/navigationRoleCache";
-import { stashPendingBookingPlanId } from "@/lib/bookings/planDeepLink";
+import { consumeBookingPlansSuccessMessage, stashPendingBookingPlanId } from "@/lib/bookings/planDeepLink";
 
 const emptyPlanForm: BookingPlanInput = {
   name: "",
@@ -213,6 +213,14 @@ export default function BookingPlansPage() {
       setError(getPlanLoadErrorMessage(loadError));
     } finally {
       setLoadingPlans(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    const message = consumeBookingPlansSuccessMessage();
+
+    if (message) {
+      setSuccessMessage(message);
     }
   }, []);
 

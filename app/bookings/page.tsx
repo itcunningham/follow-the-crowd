@@ -116,9 +116,11 @@ import {
 } from "@/lib/bookings/gigsListNavigation";
 import {
   clearPendingBookingPlanId,
+  consumeBookingPlansSuccessMessage,
   getBookingsDeepLinkKey,
   isPlannerBookingsCreateChromeActive,
   resolveBookingsDeepLinkIntent,
+  stashBookingPlansSuccessMessage,
   type BookingsDeepLinkIntent,
 } from "@/lib/bookings/planDeepLink";
 import { EVENTS_AREA_SUB_NAV } from "@/lib/plannerEventsNav";
@@ -925,7 +927,8 @@ function BookingsPageContent() {
     resetCreateFlowState();
   }
 
-  function finishCreateFlowAfterSend() {
+  function finishCreateFlowAfterSend(successMessage: string) {
+    const returnToEventPlans = detailsEntrySource === "event-plans-deeplink";
     const intent = resolveBookingsDeepLinkIntent(searchParams);
 
     if (intent) {
@@ -933,6 +936,14 @@ function BookingsPageContent() {
     }
 
     resetCreateFlowState({ preserveDeepLinkCompletion: true });
+
+    if (returnToEventPlans) {
+      stashBookingPlansSuccessMessage(successMessage);
+      router.replace(EVENTS_AREA_SUB_NAV.bookingPlans.href, { scroll: false });
+      return;
+    }
+
+    setSuccessMessage(successMessage);
     router.replace("/bookings", { scroll: false });
   }
 
@@ -1158,9 +1169,9 @@ function BookingsPageContent() {
         return;
       }
 
-      setSuccessMessage(buildBookingSendResultMessage(successes.length, skippedCount));
+      const message = buildBookingSendResultMessage(successes.length, skippedCount);
       setUnavailableConfirmOpen(false);
-      finishCreateFlowAfterSend();
+      finishCreateFlowAfterSend(message);
       await reloadPlannerSentBookings();
 
       if (failures.length > 0) {
