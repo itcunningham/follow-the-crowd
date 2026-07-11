@@ -1129,7 +1129,7 @@ export default function EventDetailPage() {
 
           {event.notes?.trim() ? (
             <section className="mt-8">
-              <h2 className="text-lg font-bold text-ftc-text">About</h2>
+              <h2 className="ftc-profile-section-label text-ftc-text-section-label">Notes</h2>
               <p className="mt-3 text-sm leading-relaxed text-ftc-text-secondary">{event.notes}</p>
             </section>
           ) : null}
