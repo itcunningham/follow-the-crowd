@@ -1,5 +1,3 @@
-const IOS_SCROLL_CATCH_MS = 50;
-
 export function scrollDocumentToTop(): void {
   if (typeof window === "undefined") {
     return;
@@ -19,63 +17,36 @@ export function scrollDocumentToTop(): void {
   document.body.scrollLeft = 0;
 }
 
-function isDocumentAtTop(): boolean {
-  const scrollingElementTop = document.scrollingElement?.scrollTop ?? 0;
-  return window.scrollY <= 1 && scrollingElementTop <= 1;
-}
-
-export function commitMobileDocumentScrollToTop(onSettled: () => void): () => void {
+export function runDoubleRafDocumentScrollToTop(onSettled?: () => void): () => void {
   scrollDocumentToTop();
 
   let cancelled = false;
-  let frame = 0;
-  let rafId = 0;
-  let iosCatchTimeout = 0;
-  const maxFrames = 3;
+  let rafId1 = 0;
+  let rafId2 = 0;
 
-  const settle = () => {
-    if (!cancelled) {
-      onSettled();
-    }
-  };
-
-  const runFramePass = () => {
+  rafId1 = requestAnimationFrame(() => {
     if (cancelled) {
       return;
     }
 
     scrollDocumentToTop();
-    frame += 1;
-
-    if (isDocumentAtTop() || frame >= maxFrames) {
-      if (isDocumentAtTop()) {
-        settle();
+    rafId2 = requestAnimationFrame(() => {
+      if (cancelled) {
         return;
       }
 
-      iosCatchTimeout = window.setTimeout(() => {
-        if (cancelled) {
-          return;
-        }
-
-        scrollDocumentToTop();
-        settle();
-      }, IOS_SCROLL_CATCH_MS);
-      return;
-    }
-
-    rafId = requestAnimationFrame(runFramePass);
-  };
-
-  rafId = requestAnimationFrame(runFramePass);
+      scrollDocumentToTop();
+      onSettled?.();
+    });
+  });
 
   return () => {
     cancelled = true;
-    if (rafId) {
-      cancelAnimationFrame(rafId);
+    if (rafId1) {
+      cancelAnimationFrame(rafId1);
     }
-    if (iosCatchTimeout) {
-      window.clearTimeout(iosCatchTimeout);
+    if (rafId2) {
+      cancelAnimationFrame(rafId2);
     }
   };
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import CalendarMonthNav from "@/app/components/CalendarMonthNav";
@@ -184,11 +185,19 @@ function PlannerCalendarAgendaCard({
   item: CalendarItem;
   calendarOrigin: CalendarOriginState;
 }) {
+  const router = useRouter();
+  const eventHref = resolveCalendarOriginEventHref(item.href, calendarOrigin);
+
+  const handleOpenEvent = useCallback(() => {
+    prepareMobileDocumentScrollReset();
+    router.push(eventHref, { scroll: true });
+  }, [eventHref, router]);
+
   return (
-    <Link
-      href={resolveCalendarOriginEventHref(item.href, calendarOrigin)}
-      onClick={prepareMobileDocumentScrollReset}
-      className="block rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated p-3 transition hover:border-ftc-border-strong"
+    <button
+      type="button"
+      onClick={handleOpenEvent}
+      className="block w-full rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated p-3 text-left transition hover:border-ftc-border-strong"
     >
       <div className="flex items-start gap-3">
         <span
@@ -207,7 +216,7 @@ function PlannerCalendarAgendaCard({
           ) : null}
         </div>
       </div>
-    </Link>
+    </button>
   );
 }
 
