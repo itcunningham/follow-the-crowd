@@ -644,7 +644,7 @@ export default function EventRunSheetSection({
       ) : rows.length === 0 ? (
         <div className="ftc-card-empty mt-6 px-4 py-8 text-center">
           <p className="text-sm text-ftc-text-secondary">
-            Accepted DJs will appear here once they confirm their booking.
+            Accepted DJs will appear here once they confirm their booking
           </p>
         </div>
       ) : (

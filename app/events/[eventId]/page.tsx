@@ -1481,7 +1481,7 @@ export default function EventDetailPage() {
               {filteredLineup.length === 0 ? (
                 <PlannerEmptyPanel
                   className="mt-6"
-                  message="No DJs invited yet — send booking requests to build your lineup"
+                  message="No DJs invited yet, send booking requests to build your lineup"
                 />
               ) : (
                 <ul className="mt-4 space-y-3">
