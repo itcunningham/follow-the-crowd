@@ -6,6 +6,7 @@ import {
   getCalendarMonthDates,
   getPlannerCalendarDateStripDotClass,
   getPlannerCalendarDateStripExtraCount,
+  getPlannerCalendarTodayDate,
   isSameDay,
   isSameMonth,
   toDateKey,
@@ -75,6 +76,52 @@ function animateScrollLeft(
   return frameId;
 }
 
+function getDateStripChipClassName(isSelected: boolean, isToday: boolean): string {
+  if (isSelected) {
+    return isToday
+      ? "border-2 border-ftc-bg/45 bg-ftc-primary text-ftc-bg"
+      : "border-transparent bg-ftc-primary text-ftc-bg";
+  }
+
+  if (isToday) {
+    return "border-2 border-ftc-primary/45 bg-ftc-bg-elevated text-ftc-text-secondary hover:border-ftc-primary/65";
+  }
+
+  return "border-ftc-border-subtle bg-ftc-bg-elevated text-ftc-text-secondary hover:border-ftc-border-strong";
+}
+
+function useCalendarTodayDate(): Date {
+  const [todayDate, setTodayDate] = useState(() => getPlannerCalendarTodayDate());
+
+  useEffect(() => {
+    function syncTodayDate() {
+      setTodayDate((current) => {
+        const nextToday = getPlannerCalendarTodayDate();
+        return isSameDay(current, nextToday) ? current : nextToday;
+      });
+    }
+
+    const now = new Date();
+    const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+    const midnightTimerId = window.setTimeout(syncTodayDate, tomorrow.getTime() - now.getTime());
+
+    function handleVisibilityChange() {
+      if (document.visibilityState === "visible") {
+        syncTodayDate();
+      }
+    }
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      window.clearTimeout(midnightTimerId);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [todayDate]);
+
+  return todayDate;
+}
+
 export default function PlannerCalendarMobileDateStrip({
   selectedDate,
   onSelectDate,
@@ -88,6 +135,7 @@ export default function PlannerCalendarMobileDateStrip({
   const pendingCenterFrameRef = useRef(0);
   const skipNextSmoothScrollRef = useRef(false);
   const [chipWidth, setChipWidth] = useState<number | null>(null);
+  const todayDate = useCalendarTodayDate();
 
   selectedDateRef.current = selectedDate;
 
@@ -235,6 +283,7 @@ export default function PlannerCalendarMobileDateStrip({
       {monthDates.map((date) => {
         const dateKey = toDateKey(date);
         const isSelected = isSameDay(date, selectedDate);
+        const isToday = isSameDay(date, todayDate);
         const dateItems = itemsByDate.get(dateKey) ?? [];
         const hasEvents = dateItems.length > 0;
         const extraItemCount = getPlannerCalendarDateStripExtraCount(dateItems);
@@ -267,11 +316,7 @@ export default function PlannerCalendarMobileDateStrip({
             style={chipWidth ? { width: chipWidth, minWidth: chipWidth } : undefined}
             className={`flex shrink-0 flex-col items-center rounded-xl border px-1 py-2 transition ${
               chipWidth ? "" : "w-[calc((100%-1.5rem)/7)] min-w-[calc((100%-1.5rem)/7)]"
-            } ${
-              isSelected
-                ? "border-transparent bg-ftc-primary text-ftc-bg"
-                : "border-ftc-border-subtle bg-ftc-bg-elevated text-ftc-text-secondary hover:border-ftc-border-strong"
-            }`}
+            } ${getDateStripChipClassName(isSelected, isToday)}`}
           >
             <span className="text-[10px] font-semibold uppercase tracking-wide">
               {getWeekdayLabel(date)}
