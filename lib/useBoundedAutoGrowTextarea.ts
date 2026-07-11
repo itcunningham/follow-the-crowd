@@ -10,147 +10,86 @@ type TextareaHeightBounds = {
   maxHeight: number;
 };
 
-const MIRROR_STYLE_PROPERTIES = [
-  "boxSizing",
-  "width",
-  "fontFamily",
-  "fontSize",
-  "fontWeight",
-  "fontStyle",
-  "letterSpacing",
-  "textTransform",
-  "wordSpacing",
-  "textIndent",
-  "lineHeight",
-  "paddingTop",
-  "paddingRight",
-  "paddingBottom",
-  "paddingLeft",
-  "borderTopWidth",
-  "borderRightWidth",
-  "borderBottomWidth",
-  "borderLeftWidth",
-  "borderTopStyle",
-  "borderRightStyle",
-  "borderBottomStyle",
-  "borderLeftStyle",
-] as const;
-
-function resolveLineHeight(textarea: HTMLTextAreaElement, style: CSSStyleDeclaration): number {
-  const lineHeight = parseFloat(style.lineHeight);
-
-  if (Number.isFinite(lineHeight) && lineHeight > 0) {
-    return lineHeight;
-  }
-
-  const fontSize = parseFloat(style.fontSize);
-
-  if (Number.isFinite(fontSize) && fontSize > 0) {
-    return fontSize * 1.5;
-  }
-
-  return 20;
+function buildProbeValue(rowCount: number): string {
+  return Array.from({ length: rowCount }, () => "\u00a0").join("\n");
 }
 
-function fallbackHeightBounds(
-  textarea: HTMLTextAreaElement,
-  minRows: number,
-  maxRows: number,
-): TextareaHeightBounds {
-  const style = window.getComputedStyle(textarea);
-  const lineHeight = resolveLineHeight(textarea, style);
-  const blockExtra =
-    (parseFloat(style.paddingTop) || 0) +
-    (parseFloat(style.paddingBottom) || 0) +
-    (parseFloat(style.borderTopWidth) || 0) +
-    (parseFloat(style.borderBottomWidth) || 0);
-
-  if (style.boxSizing === "border-box") {
-    return {
-      minHeight: lineHeight * minRows + blockExtra,
-      maxHeight: lineHeight * maxRows + blockExtra,
-    };
-  }
-
-  return {
-    minHeight: lineHeight * minRows,
-    maxHeight: lineHeight * maxRows,
-  };
-}
-
-function readHeightBounds(
-  textarea: HTMLTextAreaElement,
-  minRows: number,
-  maxRows: number,
-): TextareaHeightBounds {
-  const style = window.getComputedStyle(textarea);
-  const minHeight = parseFloat(style.minHeight);
-  const maxHeight = parseFloat(style.maxHeight);
-
-  if (Number.isFinite(minHeight) && Number.isFinite(maxHeight) && maxHeight > 0) {
-    return { minHeight, maxHeight };
-  }
-
-  return fallbackHeightBounds(textarea, minRows, maxRows);
-}
-
-function measureTextareaContentHeight(textarea: HTMLTextAreaElement): number {
-  const style = window.getComputedStyle(textarea);
-  const width = textarea.getBoundingClientRect().width;
+function measureTextareaScrollHeight(source: HTMLTextAreaElement, value: string): number {
+  const width = source.getBoundingClientRect().width;
 
   if (width <= 0) {
-    return textarea.scrollHeight;
+    return 0;
   }
 
-  const mirror = document.createElement("div");
+  const clone = source.cloneNode(false) as HTMLTextAreaElement;
 
-  mirror.style.position = "absolute";
-  mirror.style.top = "0";
-  mirror.style.left = "-9999px";
-  mirror.style.visibility = "hidden";
-  mirror.style.pointerEvents = "none";
-  mirror.style.overflow = "hidden";
-  mirror.style.whiteSpace = "pre-wrap";
-  mirror.style.wordWrap = "break-word";
-  mirror.style.overflowWrap = "break-word";
-  mirror.style.width = `${width}px`;
+  clone.value = value;
+  clone.style.position = "absolute";
+  clone.style.top = "-9999px";
+  clone.style.left = "0";
+  clone.style.visibility = "hidden";
+  clone.style.pointerEvents = "none";
+  clone.style.width = `${width}px`;
+  clone.style.height = "auto";
+  clone.style.minHeight = "0";
+  clone.style.maxHeight = "none";
+  clone.style.overflow = "hidden";
 
-  for (const property of MIRROR_STYLE_PROPERTIES) {
-    mirror.style[property] = style[property];
-  }
+  document.body.appendChild(clone);
+  const height = clone.scrollHeight;
+  clone.remove();
 
-  mirror.textContent = textarea.value;
+  return height;
+}
 
-  if (textarea.value.endsWith("\n")) {
-    mirror.append(document.createTextNode("\u00a0"));
-  }
-
-  document.body.appendChild(mirror);
-  const contentHeight = mirror.scrollHeight;
-  mirror.remove();
-
-  return contentHeight;
+function measureTextareaRowBounds(
+  textarea: HTMLTextAreaElement,
+  minRows: number,
+  maxRows: number,
+): TextareaHeightBounds {
+  return {
+    minHeight: measureTextareaScrollHeight(textarea, buildProbeValue(minRows)),
+    maxHeight: measureTextareaScrollHeight(textarea, buildProbeValue(maxRows)),
+  };
 }
 
 export function applyBoundedTextareaHeight(
   textarea: HTMLTextAreaElement,
+  bounds?: TextareaHeightBounds,
   minRows = DEFAULT_TEXTAREA_MIN_ROWS,
   maxRows = DEFAULT_TEXTAREA_MAX_ROWS,
 ): void {
-  const { minHeight, maxHeight } = readHeightBounds(textarea, minRows, maxRows);
-  const contentHeight = measureTextareaContentHeight(textarea);
+  const resolvedBounds = bounds ?? measureTextareaRowBounds(textarea, minRows, maxRows);
+  const { minHeight, maxHeight } = resolvedBounds;
+
+  if (maxHeight <= 0) {
+    return;
+  }
+
+  const contentHeight = measureTextareaScrollHeight(textarea, textarea.value);
+
+  if (contentHeight <= 0) {
+    return;
+  }
+
   const nextHeight = Math.min(Math.max(contentHeight, minHeight), maxHeight);
 
-  textarea.style.boxSizing = "border-box";
-  textarea.style.minHeight = `${minHeight}px`;
-  textarea.style.maxHeight = `${maxHeight}px`;
-  textarea.style.height = `${nextHeight}px`;
-  textarea.style.overflowX = "hidden";
-  textarea.style.overflowY = contentHeight > maxHeight ? "auto" : "hidden";
+  textarea.style.setProperty("box-sizing", "border-box");
+  textarea.style.setProperty("resize", "none");
+  textarea.style.setProperty("min-height", `${minHeight}px`, "important");
+  textarea.style.setProperty("max-height", `${maxHeight}px`, "important");
+  textarea.style.setProperty("height", `${nextHeight}px`, "important");
+  textarea.style.setProperty("overflow-x", "hidden");
+  textarea.style.setProperty(
+    "overflow-y",
+    contentHeight > maxHeight ? "auto" : "hidden",
+    "important",
+  );
 }
 
 export function useBoundedAutoGrowTextarea({ value }: { value: string }) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const boundsRef = useRef<TextareaHeightBounds | null>(null);
 
   const adjustHeight = useCallback(() => {
     const textarea = textareaRef.current;
@@ -159,7 +98,19 @@ export function useBoundedAutoGrowTextarea({ value }: { value: string }) {
       return;
     }
 
-    applyBoundedTextareaHeight(textarea);
+    if (textarea.getBoundingClientRect().width <= 0) {
+      return;
+    }
+
+    if (boundsRef.current === null) {
+      boundsRef.current = measureTextareaRowBounds(
+        textarea,
+        DEFAULT_TEXTAREA_MIN_ROWS,
+        DEFAULT_TEXTAREA_MAX_ROWS,
+      );
+    }
+
+    applyBoundedTextareaHeight(textarea, boundsRef.current);
   }, []);
 
   useLayoutEffect(() => {
@@ -167,14 +118,25 @@ export function useBoundedAutoGrowTextarea({ value }: { value: string }) {
   }, [value, adjustHeight]);
 
   useLayoutEffect(() => {
-    function handleResize() {
+    const textarea = textareaRef.current;
+
+    if (!textarea) {
+      return;
+    }
+
+    function invalidateBounds() {
+      boundsRef.current = null;
       adjustHeight();
     }
 
-    window.addEventListener("resize", handleResize);
+    const resizeObserver = new ResizeObserver(invalidateBounds);
+
+    resizeObserver.observe(textarea);
+    window.addEventListener("resize", invalidateBounds);
 
     return () => {
-      window.removeEventListener("resize", handleResize);
+      resizeObserver.disconnect();
+      window.removeEventListener("resize", invalidateBounds);
     };
   }, [adjustHeight]);
 
