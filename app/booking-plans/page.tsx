@@ -8,16 +8,14 @@ import OnboardingGuard from "@/app/components/OnboardingGuard";
 import {
   PlannerWorkspacePageHeader,
   PLANNER_WORKSPACE_CONTENT_CLASS,
-  PLANNER_WORKSPACE_SECONDARY_TABS_ROW_CLASS,
   PLANNER_WORKSPACE_SHELL_CLASS,
 } from "@/app/components/planner/PlannerWorkspaceLayout";
 import { PlannerFormCard, PlannerFormField, PlannerInlineError } from "@/app/components/planner/PlannerUi";
 import {
   BookingPlanListSkeleton,
-  SavedEventPlansSectionHeading,
+  SavedEventPlansSectionHeader,
 } from "@/app/components/skeleton/Skeleton";
 import {
-  HistoryManageButton,
   HistorySelectionCheckbox,
   HistorySelectionToolbar,
   useHistoryBulkManage,
@@ -359,10 +357,9 @@ export default function BookingPlansPage() {
     return null;
   }
 
-  const showTrashButton =
-    !planBulkManage.selectionMode &&
-    (loadingAccess || loadingPlans || plans.length > 0);
-  const trashButtonDisabled = loadingAccess || loadingPlans;
+  const plansLoadSettled = !loadingAccess && !loadingPlans;
+  const showTrashButton = !planBulkManage.selectionMode && (!plansLoadSettled || plans.length > 0);
+  const trashButtonDisabled = !plansLoadSettled || plans.length === 0;
 
   return (
     <OnboardingGuard>
@@ -450,16 +447,11 @@ export default function BookingPlansPage() {
 
           {!formOpen ? (
             <>
-              <div className={PLANNER_WORKSPACE_SECONDARY_TABS_ROW_CLASS}>
-                <SavedEventPlansSectionHeading className="mb-0" />
-                {showTrashButton ? (
-                  <HistoryManageButton
-                    ariaLabel="Delete event plans"
-                    onClick={planBulkManage.enterSelectionMode}
-                    disabled={trashButtonDisabled}
-                  />
-                ) : null}
-              </div>
+              <SavedEventPlansSectionHeader
+                showTrashButton={showTrashButton}
+                trashButtonDisabled={trashButtonDisabled}
+                onTrashClick={planBulkManage.enterSelectionMode}
+              />
               {planBulkManage.showSelectionToolbar ? (
                 <HistorySelectionToolbar
                   selectedCount={planBulkManage.selectedCount}

@@ -9,6 +9,9 @@ import {
   EventDetailEditHeaderSlot,
   EventDetailOverlayButton,
 } from "@/app/components/event-detail/EventDetailLayout";
+import {
+  HistoryManageButton,
+} from "@/app/components/history/HistoryBulkManage";
 import DmConversationHeader from "@/app/components/dm/DmConversationHeader";
 import MessagesInboxLayout from "@/app/components/dm/MessagesInboxLayout";
 import CalendarViewTabs, { type CalendarViewTab } from "@/app/components/CalendarViewTabs";
@@ -450,6 +453,29 @@ export function SavedEventPlansSectionHeading({ className = "mb-3" }: { classNam
   );
 }
 
+export function SavedEventPlansSectionHeader({
+  showTrashButton = true,
+  trashButtonDisabled = true,
+  onTrashClick,
+}: {
+  showTrashButton?: boolean;
+  trashButtonDisabled?: boolean;
+  onTrashClick?: () => void;
+}) {
+  return (
+    <div className={PLANNER_WORKSPACE_SECONDARY_TABS_ROW_CLASS}>
+      <SavedEventPlansSectionHeading className="mb-0" />
+      {showTrashButton ? (
+        <HistoryManageButton
+          ariaLabel="Delete event plans"
+          onClick={onTrashClick ?? (() => undefined)}
+          disabled={trashButtonDisabled || !onTrashClick}
+        />
+      ) : null}
+    </div>
+  );
+}
+
 export function BookingPlanListSkeleton({ count = 2 }: { count?: number }) {
   return (
     <ul aria-busy="true" aria-label="Loading event plans" className="space-y-3">
@@ -748,7 +774,7 @@ export function BookingPlansPageLoadingShell() {
         }
       />
       <div className={PLANNER_WORKSPACE_CONTENT_CLASS}>
-        <SavedEventPlansSectionHeading />
+        <SavedEventPlansSectionHeader />
         <BookingPlanListSkeleton />
       </div>
     </div>
