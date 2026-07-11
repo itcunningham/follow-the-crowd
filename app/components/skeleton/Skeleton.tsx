@@ -587,9 +587,12 @@ export function BookingPlansPageLoadingShell() {
         title="Booking Plans"
         initialRole={cachedRole}
         actions={
-          <span className="shrink-0 ftc-btn-primary px-4 py-2.5 text-sm uppercase tracking-wide">
+          <Link
+            href="/booking-plans"
+            className="shrink-0 ftc-btn-primary px-4 py-2.5 text-sm uppercase tracking-wide"
+          >
             Create booking plan
-          </span>
+          </Link>
         }
       />
       <div className={PLANNER_WORKSPACE_CONTENT_CLASS}>

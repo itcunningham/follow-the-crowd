@@ -226,7 +226,7 @@ export default function BookingPlansPage() {
               <button
                 type="button"
                 onClick={openCreateForm}
-                className="shrink-0 ftc-btn-primary px-4 py-2.5 text-sm uppercase tracking-wide"
+                className="shrink-0 cursor-pointer ftc-btn-primary px-4 py-2.5 text-sm uppercase tracking-wide"
               >
                 Create booking plan
               </button>
