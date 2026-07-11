@@ -1334,7 +1334,7 @@ function BookingsPageContent() {
       return false;
     }
 
-    return planPrefillPending || loadingPlans || !form.eventName.trim();
+    return planPrefillPending || loadingPlans;
   }, [
     effectiveCreateStep,
     detailsEntrySource,
@@ -1342,7 +1342,6 @@ function BookingsPageContent() {
     deepLinkIntent,
     planPrefillPending,
     loadingPlans,
-    form.eventName,
   ]);
 
   const showPlannerCreateDeepLink = plannerCreateVisible;
