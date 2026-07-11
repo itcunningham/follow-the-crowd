@@ -13,6 +13,7 @@ import { listBookingPlans } from "@/lib/bookingPlans";
 import {
   filterCalendarItemsForMonth,
   formatPlannerAgendaDateLabel,
+  formatWrittenCalendarDateLabel,
   getCalendarLoadErrorMessage,
   getPlannerCalendarLegendDotClass,
   getPlannerCalendarStatusBadgeClass,
@@ -127,7 +128,7 @@ function PlannerCalendarDayCell({
     <div
       role="button"
       tabIndex={0}
-      aria-label={`Plan ${date.toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" })}`}
+      aria-label={`Plan ${formatWrittenCalendarDateLabel(date, { includeYear: true })}`}
       onClick={() => onSelectDate(date)}
       onKeyDown={handleCellKeyDown}
       className="relative min-h-[6.5rem] cursor-pointer rounded-lg border border-ftc-border/70 bg-ftc-bg-elevated/20 p-1.5 transition hover:border-ftc-border-strong/90 md:min-h-[9.5rem] md:p-3 lg:min-h-[10.5rem]"

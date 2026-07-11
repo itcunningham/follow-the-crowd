@@ -6,7 +6,7 @@ import {
   type BookingRequestStatus,
 } from "@/lib/bookingRequests";
 import {
-  formatIsoDateKeyForDisplay,
+  formatOrdinalDay,
   parseEventDate,
   parseSetTimeRange,
   resolveEventDateKey,
@@ -463,8 +463,23 @@ export function getPlannerCalendarDateStripExtraCount(items: CalendarItem[]): nu
   return items.length - 1;
 }
 
+export function formatWrittenCalendarDateLabel(
+  date: Date,
+  options?: { includeYear?: boolean },
+): string {
+  const weekday = date.toLocaleDateString(undefined, { weekday: "long" });
+  const month = date.toLocaleDateString(undefined, { month: "long" });
+  const label = `${weekday} ${formatOrdinalDay(date.getDate())} ${month}`;
+
+  if (options?.includeYear) {
+    return `${label} ${date.getFullYear()}`;
+  }
+
+  return label;
+}
+
 export function formatPlannerSelectedDateLabel(date: Date): string {
-  return formatIsoDateKeyForDisplay(toDateKey(date));
+  return formatWrittenCalendarDateLabel(date);
 }
 
 export function buildPlannerCreateEventHref(dateKey: string): string {
@@ -628,11 +643,7 @@ export function formatCalendarMonthLabel(date: Date): string {
 }
 
 export function formatPlannerAgendaDateLabel(date: Date): string {
-  return date.toLocaleDateString(undefined, {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-  });
+  return formatWrittenCalendarDateLabel(date);
 }
 
 export function getWeekDatesContaining(date: Date): Date[] {

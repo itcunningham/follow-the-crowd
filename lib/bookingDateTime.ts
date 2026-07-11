@@ -573,6 +573,30 @@ export function resolveEventDateKey(eventDate: string): string | null {
   return dateKeyFromLocalDate(new Date(parsedMs));
 }
 
+export function getOrdinalDaySuffix(day: number): string {
+  const normalizedDay = Math.trunc(day);
+  const remainder100 = normalizedDay % 100;
+
+  if (remainder100 >= 11 && remainder100 <= 13) {
+    return "th";
+  }
+
+  switch (normalizedDay % 10) {
+    case 1:
+      return "st";
+    case 2:
+      return "nd";
+    case 3:
+      return "rd";
+    default:
+      return "th";
+  }
+}
+
+export function formatOrdinalDay(day: number): string {
+  return `${Math.trunc(day)}${getOrdinalDaySuffix(day)}`;
+}
+
 export function formatIsoDateKeyForDisplay(dateKey: string): string {
   if (!isIsoDateString(dateKey)) {
     return dateKey.trim();
