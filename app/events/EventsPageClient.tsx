@@ -179,6 +179,8 @@ function EventsPageClientView({ initialTab }: EventsPageClientProps) {
   }, [createOpen, createStep, form.notes]);
   const createFormValidationError =
     createFormDateValidationError ?? createFormNotesValidationError;
+  const isCalendarCreateFlow = createReturnHref !== null;
+  const showEventsListContent = !createOpen || !isCalendarCreateFlow;
 
   const resolvedRole = role ?? guardProfile?.role ?? null;
   const isPlanner = canManageEvents(resolvedRole);
@@ -453,6 +455,8 @@ function EventsPageClientView({ initialTab }: EventsPageClientProps) {
     setSaving(true);
     setError(null);
 
+    const calendarReturnHref = createReturnHref;
+
     try {
       const created = await createEvent({
         ...form,
@@ -474,6 +478,12 @@ function EventsPageClientView({ initialTab }: EventsPageClientProps) {
 
       setCreateReturnHref(null);
       setCreateOpen(false);
+
+      if (calendarReturnHref) {
+        router.push(calendarReturnHref);
+        return;
+      }
+
       router.push(`/events/${created.id}`);
     } catch (saveError) {
       console.error("Failed to create event:", saveError);
@@ -753,6 +763,8 @@ function EventsPageClientView({ initialTab }: EventsPageClientProps) {
             </EventsListTabRow>
           ) : null}
 
+          {showEventsListContent ? (
+            <>
           {successMessage ? (
             <p className="mb-4 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated px-4 py-3 text-sm text-ftc-text-secondary">
               {successMessage}
@@ -944,6 +956,8 @@ function EventsPageClientView({ initialTab }: EventsPageClientProps) {
               ) : null}
             </>
           )}
+            </>
+          ) : null}
         </div>
       </div>
   );
