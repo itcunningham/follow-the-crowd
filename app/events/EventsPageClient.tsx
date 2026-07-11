@@ -211,6 +211,7 @@ function EventsPageClientView({ initialTab }: EventsPageClientProps) {
   const showHistoryTrashButton =
     isPlanner &&
     isHistoryTab &&
+    !createOpen &&
     !historyBulkManage.selectionMode &&
     (!historyLoadSettled || removableHistoryEvents.length > 0);
   const historyTrashButtonDisabled =
@@ -567,6 +568,43 @@ function EventsPageClientView({ initialTab }: EventsPageClientProps) {
         />
 
         <div className={PLANNER_WORKSPACE_CONTENT_CLASS}>
+          <EventsListTabRow
+            showTrashButton={showHistoryTrashButton}
+            trashButtonDisabled={historyTrashButtonDisabled}
+            onTrashClick={historyBulkManage.enterSelectionMode}
+          >
+            <div className="flex flex-wrap gap-2">
+              <Link
+                href={buildEventsListHref("active")}
+                className={`ftc-filter-pill ${!isHistoryTab ? "ftc-filter-pill-active" : ""}`}
+                onClick={(event) => {
+                  if (!isHistoryTab) {
+                    event.preventDefault();
+                    return;
+                  }
+
+                  handleEventsListTabChange();
+                }}
+              >
+                {isPlanner ? "Active" : "Upcoming"}
+              </Link>
+              <Link
+                href={buildEventsListHref("history")}
+                className={`ftc-filter-pill ${isHistoryTab ? "ftc-filter-pill-active" : ""}`}
+                onClick={(event) => {
+                  if (isHistoryTab) {
+                    event.preventDefault();
+                    return;
+                  }
+
+                  handleEventsListTabChange();
+                }}
+              >
+                History
+              </Link>
+            </div>
+          </EventsListTabRow>
+
           {createOpen && isPlanner ? (
             <PlannerFormCard title="Create event" onCancel={closeCreateFlow} cancelDisabled={saving}>
               {createStep === "source" ? (
@@ -719,45 +757,6 @@ function EventsPageClientView({ initialTab }: EventsPageClientProps) {
                 </form>
               ) : null}
             </PlannerFormCard>
-          ) : null}
-
-          {!createOpen ? (
-            <EventsListTabRow
-              showTrashButton={showHistoryTrashButton}
-              trashButtonDisabled={historyTrashButtonDisabled}
-              onTrashClick={historyBulkManage.enterSelectionMode}
-            >
-              <div className="flex flex-wrap gap-2">
-                <Link
-                  href={buildEventsListHref("active")}
-                  className={`ftc-filter-pill ${!isHistoryTab ? "ftc-filter-pill-active" : ""}`}
-                  onClick={(event) => {
-                    if (!isHistoryTab) {
-                      event.preventDefault();
-                      return;
-                    }
-
-                    handleEventsListTabChange();
-                  }}
-                >
-                  {isPlanner ? "Active" : "Upcoming"}
-                </Link>
-                <Link
-                  href={buildEventsListHref("history")}
-                  className={`ftc-filter-pill ${isHistoryTab ? "ftc-filter-pill-active" : ""}`}
-                  onClick={(event) => {
-                    if (isHistoryTab) {
-                      event.preventDefault();
-                      return;
-                    }
-
-                    handleEventsListTabChange();
-                  }}
-                >
-                  History
-                </Link>
-              </div>
-            </EventsListTabRow>
           ) : null}
 
           {showEventsListContent ? (
