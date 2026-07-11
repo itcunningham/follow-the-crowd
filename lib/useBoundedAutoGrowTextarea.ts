@@ -5,103 +5,37 @@ import { useCallback, useLayoutEffect, useRef } from "react";
 export const DEFAULT_TEXTAREA_MIN_ROWS = 4;
 export const DEFAULT_TEXTAREA_MAX_ROWS = 8;
 
-type TextareaRowBounds = {
-  minHeight: number;
-  maxHeight: number;
-};
+function readHeightBounds(textarea: HTMLTextAreaElement): { minHeight: number; maxHeight: number } | null {
+  const style = window.getComputedStyle(textarea);
+  const minHeight = parseFloat(style.minHeight);
+  const maxHeight = parseFloat(style.maxHeight);
 
-type TextareaStyleSnapshot = {
-  value: string;
-  height: string;
-  minHeight: string;
-  maxHeight: string;
-  overflowY: string;
-  rows: number;
-};
+  if (!Number.isFinite(minHeight) || !Number.isFinite(maxHeight) || maxHeight <= 0) {
+    return null;
+  }
 
-function captureTextareaStyle(textarea: HTMLTextAreaElement): TextareaStyleSnapshot {
-  return {
-    value: textarea.value,
-    height: textarea.style.height,
-    minHeight: textarea.style.minHeight,
-    maxHeight: textarea.style.maxHeight,
-    overflowY: textarea.style.overflowY,
-    rows: textarea.rows,
-  };
+  return { minHeight, maxHeight };
 }
 
-function restoreTextareaStyle(textarea: HTMLTextAreaElement, saved: TextareaStyleSnapshot): void {
-  textarea.value = saved.value;
-  textarea.rows = saved.rows;
-  textarea.style.height = saved.height;
-  textarea.style.minHeight = saved.minHeight;
-  textarea.style.maxHeight = saved.maxHeight;
-  textarea.style.overflowY = saved.overflowY;
-}
+function applyBoundedTextareaHeight(textarea: HTMLTextAreaElement): void {
+  const bounds = readHeightBounds(textarea);
 
-function buildProbeValue(rowCount: number): string {
-  return Array.from({ length: rowCount }, () => " ").join("\n");
-}
+  if (!bounds) {
+    return;
+  }
 
-function measureHeightForRowCount(textarea: HTMLTextAreaElement, rowCount: number): number {
-  const saved = captureTextareaStyle(textarea);
+  const { minHeight, maxHeight } = bounds;
 
-  textarea.rows = 1;
-  textarea.value = buildProbeValue(rowCount);
   textarea.style.height = "auto";
-  textarea.style.minHeight = "0";
-  textarea.style.maxHeight = "none";
-  textarea.style.overflowY = "hidden";
+  const scrollHeight = textarea.scrollHeight;
+  const nextHeight = Math.min(Math.max(scrollHeight, minHeight), maxHeight);
 
-  const height = textarea.scrollHeight;
-
-  restoreTextareaStyle(textarea, saved);
-
-  return height;
-}
-
-function measureTextareaRowBounds(
-  textarea: HTMLTextAreaElement,
-  minRows: number,
-  maxRows: number,
-): TextareaRowBounds {
-  return {
-    minHeight: measureHeightForRowCount(textarea, minRows),
-    maxHeight: measureHeightForRowCount(textarea, maxRows),
-  };
-}
-
-function measureContentScrollHeight(textarea: HTMLTextAreaElement): number {
-  textarea.style.minHeight = "0";
-  textarea.style.maxHeight = "none";
-  textarea.style.overflowY = "hidden";
-  textarea.style.height = "0px";
-
-  return textarea.scrollHeight;
-}
-
-function applyBoundedTextareaHeight(textarea: HTMLTextAreaElement, bounds: TextareaRowBounds): void {
-  const scrollHeight = measureContentScrollHeight(textarea);
-  const nextHeight = Math.min(Math.max(scrollHeight, bounds.minHeight), bounds.maxHeight);
-
-  textarea.style.boxSizing = "border-box";
-  textarea.style.minHeight = `${bounds.minHeight}px`;
-  textarea.style.maxHeight = `${bounds.maxHeight}px`;
   textarea.style.height = `${nextHeight}px`;
-  textarea.style.overflowY = scrollHeight > bounds.maxHeight ? "auto" : "hidden";
+  textarea.style.overflowY = scrollHeight > maxHeight ? "auto" : "hidden";
 }
 
-export function useBoundedAutoGrowTextarea({
-  value,
-  minRows = DEFAULT_TEXTAREA_MIN_ROWS,
-  maxRows = DEFAULT_TEXTAREA_MAX_ROWS,
-}: {
-  value: string;
-  minRows?: number;
-  maxRows?: number;
-}) {
+export function useBoundedAutoGrowTextarea({ value }: { value: string }) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const boundsRef = useRef<TextareaRowBounds | null>(null);
 
   const adjustHeight = useCallback(() => {
     const textarea = textareaRef.current;
@@ -110,12 +44,8 @@ export function useBoundedAutoGrowTextarea({
       return;
     }
 
-    if (boundsRef.current === null) {
-      boundsRef.current = measureTextareaRowBounds(textarea, minRows, maxRows);
-    }
-
-    applyBoundedTextareaHeight(textarea, boundsRef.current);
-  }, [minRows, maxRows]);
+    applyBoundedTextareaHeight(textarea);
+  }, []);
 
   useLayoutEffect(() => {
     adjustHeight();
@@ -123,7 +53,6 @@ export function useBoundedAutoGrowTextarea({
 
   useLayoutEffect(() => {
     function handleResize() {
-      boundsRef.current = null;
       adjustHeight();
     }
 
