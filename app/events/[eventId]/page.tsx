@@ -58,6 +58,10 @@ import {
   InlineOptionHelpPanel,
 } from "@/app/components/booking/InlineOptionHelp";
 import BookingRateProposalPanel from "@/app/components/booking/BookingRateProposalPanel";
+import BookingSheetDialog, {
+  BookingSheetDangerButton,
+  BookingSheetSecondaryButton,
+} from "@/app/components/booking/BookingSheetDialog";
 import CancelBookingRequestButton from "@/app/components/CancelBookingRequestButton";
 import CancelAcceptedBookingButton from "@/app/components/booking/CancelAcceptedBookingButton";
 import HideDeclinedBookingButton from "@/app/components/HideDeclinedBookingButton";
@@ -201,6 +205,7 @@ export default function EventDetailPage() {
   const editFormSectionRef = useRef<HTMLElement | null>(null);
 
   const [sendOpen, setSendOpen] = useState(false);
+  const [sendDiscardConfirmOpen, setSendDiscardConfirmOpen] = useState(false);
   const sendBookingsSectionRef = useRef<HTMLDivElement | null>(null);
   const [djOffers, setDjOffers] = useState<Record<string, DjSendOffer>>({});
   const [djs, setDjs] = useState<UserProfile[]>([]);
@@ -334,6 +339,20 @@ export default function EventDetailPage() {
     : sendableSelectedDjIds.length === 0
       ? "No new DJs to send"
       : `Send to ${sendableSelectedDjIds.length} DJ${sendableSelectedDjIds.length === 1 ? "" : "s"}`;
+
+  const hasSendBookingsDraft = useMemo(() => {
+    if (selectedDjIds.length > 0) {
+      return true;
+    }
+
+    return Object.values(djOffers).some((offer) => {
+      if (offer.rateMode !== DEFAULT_DJ_SEND_OFFER.rateMode) {
+        return true;
+      }
+
+      return Boolean(normalizeStoredRate(offer.fee));
+    });
+  }, [djOffers, selectedDjIds]);
 
   const loadEventData = useCallback(async () => {
     if (!eventId) {
@@ -701,11 +720,50 @@ export default function EventDetailPage() {
     }
 
     setSendOpen(false);
+    setSendDiscardConfirmOpen(false);
     setDjOffers({});
     setSelectedDjIds([]);
     setSearchQuery("");
     setUnavailableConfirmOpen(false);
   }
+
+  function requestCloseSendBookings() {
+    if (sending) {
+      return;
+    }
+
+    if (hasSendBookingsDraft) {
+      setSendDiscardConfirmOpen(true);
+      return;
+    }
+
+    closeSendBookings();
+  }
+
+  useEffect(() => {
+    if (!sendOpen) {
+      return;
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key !== "Escape" || sending) {
+        return;
+      }
+
+      if (sendDiscardConfirmOpen) {
+        setSendDiscardConfirmOpen(false);
+        return;
+      }
+
+      requestCloseSendBookings();
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [hasSendBookingsDraft, sendDiscardConfirmOpen, sendOpen, sending]);
 
   function toggleDjSelection(userId: string) {
     setSelectedDjIds((prev) => {
@@ -1554,7 +1612,7 @@ export default function EventDetailPage() {
           className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 p-0 sm:items-center sm:p-4"
           onClick={() => {
             if (!sending) {
-              closeSendBookings();
+              requestCloseSendBookings();
             }
           }}
         >
@@ -1567,7 +1625,11 @@ export default function EventDetailPage() {
             className="max-h-[90dvh] w-full max-w-2xl overflow-y-auto overscroll-contain rounded-t-2xl border border-ftc-border-subtle bg-ftc-bg pb-[max(1rem,env(safe-area-inset-bottom))] sm:rounded-2xl sm:pb-0 focus:outline-none"
             onClick={(clickEvent) => clickEvent.stopPropagation()}
           >
-            <PlannerFormCard title="Send bookings" onCancel={closeSendBookings} cancelDisabled={sending}>
+            <PlannerFormCard
+              title="Send bookings"
+              onCancel={requestCloseSendBookings}
+              cancelDisabled={sending}
+            >
               <p className="text-sm text-ftc-text-secondary">
                 Event details will be prefilled from this event, each DJ receives a private booking
                 request DM
@@ -1699,6 +1761,23 @@ export default function EventDetailPage() {
           </div>
         </div>
       ) : null}
+
+      <BookingSheetDialog
+        open={sendDiscardConfirmOpen}
+        title="Discard booking draft?"
+        titleId="discard-send-bookings-title"
+        description="Your selected DJs and entered booking details will be lost"
+        overlayClassName="z-[60]"
+        onBackdropClick={() => setSendDiscardConfirmOpen(false)}
+        footer={
+          <>
+            <BookingSheetSecondaryButton onClick={() => setSendDiscardConfirmOpen(false)}>
+              Keep editing
+            </BookingSheetSecondaryButton>
+            <BookingSheetDangerButton onClick={closeSendBookings}>Discard</BookingSheetDangerButton>
+          </>
+        }
+      />
 
       <UnavailableDjBookingConfirmModal
         open={unavailableConfirmOpen}
