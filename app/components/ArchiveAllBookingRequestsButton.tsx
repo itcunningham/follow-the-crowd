@@ -41,7 +41,7 @@ export default function ArchiveAllBookingRequestsButton({
         open={open}
         title="Archive all cancelled requests?"
         titleId="archive-all-booking-requests-title"
-        description="This will move all cancelled requests from History to Archived. You can restore them later."
+        description="This will move all cancelled requests from History to Archived. You can restore them later"
         loading={loading}
         onBackdropClick={() => setOpen(false)}
         footer={

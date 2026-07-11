@@ -39,7 +39,7 @@ export default function CancelBookingRequestButton({
         open={open}
         title="Cancel this booking request?"
         titleId="cancel-booking-request-title"
-        description="The DJ will no longer be able to accept it."
+        description="The DJ will no longer be able to accept it"
         loading={loading}
         onBackdropClick={() => setOpen(false)}
         footer={

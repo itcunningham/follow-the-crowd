@@ -59,7 +59,7 @@ export default function ProposeBookingRateSheet({
       open={open}
       title="Propose rate"
       titleId="propose-booking-rate-title"
-      description="Send your fee for this booking. The planner can accept it or keep their original offer."
+      description="Send your fee for this booking. The planner can accept it or keep their original offer"
       loading={loading}
       onBackdropClick={onClose}
       footer={

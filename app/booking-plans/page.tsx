@@ -314,9 +314,9 @@ export default function BookingPlansPage() {
               <PlannerInlineError message={error} />
             ) : plans.length === 0 ? (
               <div className="ftc-card-empty px-6 py-12 text-center">
-                <p className="text-base font-medium text-ftc-text-secondary">No saved event plans yet.</p>
+                <p className="text-base font-medium text-ftc-text-secondary">No saved event plans yet</p>
                 <p className="mt-2 text-sm text-ftc-text-muted">
-                  Create an event plan to reuse details when booking DJs.
+                  Create an event plan to reuse details when booking DJs
                 </p>
                 <button
                   type="button"

@@ -64,7 +64,7 @@ export default function CalendarPage() {
           ) : displayRole === "dj" ? (
             <DjAvailabilityCalendar description="Manage your availability and bookings." />
           ) : !loadingRole ? (
-            <p className="text-sm text-ftc-text-muted">Calendar is not available for this account.</p>
+            <p className="text-sm text-ftc-text-muted">Calendar is not available for this account</p>
           ) : null}
         </div>
       </div>

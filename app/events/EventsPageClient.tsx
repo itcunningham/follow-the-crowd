@@ -557,7 +557,7 @@ function EventsPageClientView({ initialTab }: EventsPageClientProps) {
                     <p className="text-sm text-ftc-text-muted">Loading saved event plans...</p>
                   ) : bookingPlans.length === 0 ? (
                     <div className="ftc-card-empty px-4 py-8 text-center">
-                      <p className="text-sm text-ftc-text-secondary">No saved event plans yet.</p>
+                      <p className="text-sm text-ftc-text-secondary">No saved event plans yet</p>
                       <PlannerLinkAction href="/booking-plans" className="mt-3">
                         Create an event plan
                       </PlannerLinkAction>
@@ -589,14 +589,14 @@ function EventsPageClientView({ initialTab }: EventsPageClientProps) {
                     label="Event name"
                     value={form.name}
                     onChange={(value) => updateField("name", value)}
-                    placeholder="Warehouse Sessions"
+                    placeholder="Event name"
                     required
                   />
                   <PlannerFormField
                     label="Venue"
                     value={form.venue}
                     onChange={(value) => updateField("venue", value)}
-                    placeholder="The Warehouse, Melbourne"
+                    placeholder="Venue"
                     required
                   />
                   <EventCoverImageField
@@ -634,7 +634,7 @@ function EventsPageClientView({ initialTab }: EventsPageClientProps) {
                     label="Notes"
                     value={form.notes}
                     onChange={(value) => updateField("notes", value)}
-                    placeholder="Genre, vibe, travel, equipment..."
+                    placeholder="Notes"
                     multiline
                   />
 
@@ -741,8 +741,8 @@ function EventsPageClientView({ initialTab }: EventsPageClientProps) {
                     isHistoryTab
                       ? "No past or cancelled events."
                       : isPlanner
-                        ? "No events yet. Create your first event."
-                        : "No event invitations yet."
+                        ? "No events yet — create your first event"
+                        : "No event invitations yet"
                   }
                   action={
                     isPlanner && !createOpen && !isHistoryTab ? (

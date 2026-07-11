@@ -113,7 +113,7 @@ export default function EventCoverImageField({
     <div>
       <span className={BOOKING_FIELD_LABEL_CLASS}>{label}</span>
       <p className="mb-2 text-xs text-ftc-text-muted">
-        Optional. Upload a flyer or event image. Portrait 9:16 works best.
+        Upload event image
       </p>
 
       <div className="overflow-hidden rounded-xl border border-ftc-border-subtle bg-ftc-surface">

@@ -61,7 +61,7 @@ export default function ArchiveBookingRequestButton({
         open={open}
         title="Archive booking request?"
         titleId="archive-booking-request-title"
-        description="It will be moved to Archived and can be restored later."
+        description="It will be moved to Archived and can be restored later"
         loading={loading}
         onBackdropClick={() => setOpen(false)}
         footer={

@@ -76,8 +76,8 @@ export default function EventFallbackColourField({
       <span className={BOOKING_FIELD_LABEL_CLASS}>Event colour</span>
       <p className="mb-3 text-xs text-ftc-text-muted">
         {flyerActive
-          ? "A flyer is active. Remove it to use an event colour."
-          : "Used when no flyer is uploaded."}
+          ? "Remove the event image to choose an event colour"
+          : "Used when no event image is uploaded"}
       </p>
 
       <div

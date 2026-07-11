@@ -159,11 +159,11 @@ function formatSentDate(timestamp: string) {
   });
 }
 
-const GIGS_INCOMING_EMPTY_MESSAGE = "No incoming gig requests.";
-const GIGS_CONFIRMED_EMPTY_MESSAGE = "No confirmed upcoming gigs.";
-const GIGS_HISTORY_EMPTY_MESSAGE = "No gig history yet.";
+const GIGS_INCOMING_EMPTY_MESSAGE = "No incoming gig requests";
+const GIGS_CONFIRMED_EMPTY_MESSAGE = "No confirmed upcoming gigs";
+const GIGS_HISTORY_EMPTY_MESSAGE = "No gig history yet";
 const PLANNER_GIGS_EMPTY_MESSAGE =
-  "Gigs are for DJs and artists playing events. Manage your event lineups from Events.";
+  "Gigs are for DJs and artists playing events — manage your event lineups from Events";
 
 type BookingsSectionTab = "sent" | "received";
 type PlannerSentPrimaryTab = "pending" | "confirmed" | "history";
@@ -1103,7 +1103,7 @@ function BookingsPageContent() {
                   >
                     <p className="text-base font-semibold text-ftc-text">Use a saved event plan</p>
                     <p className="mt-2 text-sm text-ftc-text-secondary">
-                      Prefill booking details from one of your saved event plans, then edit before sending.
+                      Prefill booking details from one of your saved event plans, then edit before sending
                     </p>
                   </button>
                   <button
@@ -1113,7 +1113,7 @@ function BookingsPageContent() {
                   >
                     <p className="text-base font-semibold text-ftc-text">Create a custom booking request</p>
                     <p className="mt-2 text-sm text-ftc-text-secondary">
-                      Enter fresh booking details from scratch.
+                      Enter fresh booking details from scratch
                     </p>
                   </button>
                   {error ? <p className="text-sm text-red-400">{error}</p> : null}
@@ -1134,7 +1134,7 @@ function BookingsPageContent() {
                     <p className="text-sm text-ftc-text-muted">Loading saved event plans...</p>
                   ) : bookingPlans.length === 0 ? (
                     <div className="rounded-xl border border-dashed border-ftc-border bg-ftc-bg-elevated/40 px-4 py-6 text-center">
-                      <p className="text-sm text-ftc-text-secondary">No saved event plans yet.</p>
+                      <p className="text-sm text-ftc-text-secondary">No saved event plans yet</p>
                       <Link
                         href="/booking-plans"
                         className="mt-3 inline-block text-sm font-semibold text-ftc-primary transition hover:text-ftc-primary/90"
@@ -1176,7 +1176,7 @@ function BookingsPageContent() {
                 <form onSubmit={handleContinueToDjSelection} className="space-y-4">
                   {selectedPlanId ? (
                     <p className="rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated px-3 py-2 text-xs text-ftc-text-secondary">
-                      Prefilled from a saved event plan. You can edit any field before sending.
+                      Prefilled from a saved event plan — you can edit any field before sending
                     </p>
                   ) : null}
 
@@ -1286,7 +1286,7 @@ function BookingsPageContent() {
                   {loadingDjs ? (
                     <p className="text-sm text-ftc-text-muted">Loading DJs...</p>
                   ) : filteredDjs.length === 0 ? (
-                    <p className="text-sm text-ftc-text-muted">No DJs match your search.</p>
+                    <p className="text-sm text-ftc-text-muted">No DJs match your search</p>
                   ) : (
                     <ul className="max-h-[420px] space-y-3 overflow-y-auto pr-1">
                       {filteredDjs.map((dj) => {
@@ -1399,7 +1399,7 @@ function BookingsPageContent() {
               <p className="text-sm text-red-400">{error}</p>
             ) : receivedBookings.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-ftc-border-subtle bg-ftc-surface/30 px-6 py-12 text-center">
-                <p className="text-base font-medium text-ftc-text-secondary">No gigs yet.</p>
+                <p className="text-base font-medium text-ftc-text-secondary">No gigs yet</p>
               </div>
             ) : filteredReceivedBookings.length === 0 && !gigsHistoryBulkManage.removing ? (
               <p className="rounded-xl border border-ftc-border-subtle bg-ftc-surface/40 px-4 py-8 text-center text-sm text-ftc-text-muted">

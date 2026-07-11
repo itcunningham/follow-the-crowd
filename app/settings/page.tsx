@@ -95,7 +95,7 @@ export default function SettingsPage() {
             ← My Profile
           </Link>
           <h1 className="mt-3 text-xl font-semibold text-ftc-text">Settings</h1>
-          <p className="mt-1 text-sm text-ftc-text-muted">Account and support for private beta.</p>
+          <p className="mt-1 text-sm text-ftc-text-muted">Account and support for private beta</p>
         </header>
 
         <div className="space-y-4 px-4 py-6 sm:px-6">

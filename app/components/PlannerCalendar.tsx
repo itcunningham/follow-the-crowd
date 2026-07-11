@@ -250,7 +250,7 @@ export default function PlannerCalendar({
 
           {monthItems.length === 0 ? (
             <p className="mt-4 text-center text-sm text-ftc-text-muted">
-              No bookings or events this month yet.
+              No bookings or events this month yet
             </p>
           ) : null}
         </>

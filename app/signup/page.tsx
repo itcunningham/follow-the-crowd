@@ -106,7 +106,7 @@ export default function SignupPage() {
           Follow The Crowd
         </p>
         <h1 className="mt-3 text-2xl font-bold text-ftc-text">Create account</h1>
-        <p className="mt-2 text-sm text-ftc-text-secondary">Join Follow The Crowd with email and password.</p>
+        <p className="mt-2 text-sm text-ftc-text-secondary">Join Follow The Crowd with email and password</p>
 
         <form onSubmit={handleSubmit} className="mt-8 space-y-4">
           <label className="block">

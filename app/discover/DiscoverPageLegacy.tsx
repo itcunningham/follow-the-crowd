@@ -238,7 +238,7 @@ export default function DiscoverPageLegacy() {
             <p className="pt-2 text-sm text-red-400">{error}</p>
           ) : filteredUsers.length === 0 ? (
             <p className="pt-2 text-sm text-ftc-text-muted">
-              {users.length === 0 ? "No profiles to discover yet." : "No matches for this search."}
+              {users.length === 0 ? "No profiles to discover yet" : "No matches for this search"}
             </p>
           ) : (
             <>

@@ -93,7 +93,7 @@ export default function HideDeclinedBookingButton({
         open={open}
         title="Hide declined booking?"
         titleId="hide-declined-booking-title"
-        description="This will remove it from the event lineup view, but keep the booking record in history and DMs."
+        description="This will remove it from the event lineup view, but keep the booking record in history and DMs"
         loading={loading}
         onBackdropClick={handleCancel}
         footer={

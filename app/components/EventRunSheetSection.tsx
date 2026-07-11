@@ -609,7 +609,7 @@ export default function EventRunSheetSection({
             Run Sheet
           </h2>
           {!canEdit ? (
-            <p className="mt-1 text-xs text-ftc-text-muted">Read-only view for accepted crew.</p>
+            <p className="mt-1 text-xs text-ftc-text-muted">Read-only view for accepted crew</p>
           ) : null}
         </div>
 
