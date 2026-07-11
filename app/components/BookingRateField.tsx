@@ -11,11 +11,13 @@ export function BookingRateField({
   value,
   onChange,
   required = false,
+  placeholder = "Enter amount",
 }: {
   label?: string;
   value: string;
   onChange: (value: string) => void;
   required?: boolean;
+  placeholder?: string;
 }) {
   const digits = sanitizeRateDigits(value);
 
@@ -54,8 +56,9 @@ export function BookingRateField({
           onPaste={handlePaste}
           required={required && !digits}
           aria-label={label ?? "Rate"}
+          placeholder={placeholder}
           autoComplete="off"
-          className="min-w-0 flex-1 bg-transparent py-2.5 pr-3.5 tabular-nums text-ftc-text outline-none"
+          className="min-w-0 flex-1 bg-transparent py-2.5 pr-3.5 tabular-nums text-ftc-text outline-none placeholder:text-ftc-text-muted"
         />
       </div>
     </label>

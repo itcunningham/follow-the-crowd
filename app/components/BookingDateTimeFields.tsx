@@ -394,6 +394,9 @@ export function BookingSetTimeRangeField({
         onTimeChange={handleStartTimeChange}
         required={required}
         minWheelTime={minStartWheelTime}
+        buttonLabel={
+          combineClockAndMeridiem(startClock, startMeridiem) || "Select start time"
+        }
       />
       <BookingTimeControl
         label="Finish Time"
@@ -401,6 +404,9 @@ export function BookingSetTimeRangeField({
         meridiem={finishMeridiem}
         defaultWheelTime={defaultFinishWheelTime}
         onTimeChange={handleFinishTimeChange}
+        buttonLabel={
+          combineClockAndMeridiem(finishClock, finishMeridiem) || "Select finish time"
+        }
       />
     </div>
   );

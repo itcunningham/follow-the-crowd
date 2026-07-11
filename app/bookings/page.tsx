@@ -1287,12 +1287,6 @@ function BookingsPageContent() {
 
               {effectiveCreateStep === "details" ? (
                 <form onSubmit={handleContinueToDjSelection} className="space-y-4">
-                  {effectiveSelectedPlanId ? (
-                    <p className="rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated px-3 py-2 text-xs text-ftc-text-secondary">
-                      Prefilled from a saved event plan — you can edit any field before sending
-                    </p>
-                  ) : null}
-
                   {loadingPlans && effectiveSelectedPlanId && !form.eventName.trim() ? (
                     <p className="text-sm text-ftc-text-muted">Loading event plan...</p>
                   ) : null}
@@ -1309,14 +1303,14 @@ function BookingsPageContent() {
                     label="Event name"
                     value={form.eventName}
                     onChange={(value) => updateField("eventName", value)}
-                    placeholder="Warehouse Sessions"
+                    placeholder="Enter event name"
                     required
                   />
                   <BookingField
                     label="Venue"
                     value={form.venue}
                     onChange={(value) => updateField("venue", value)}
-                    placeholder="The Warehouse, Melbourne"
+                    placeholder="Enter venue"
                     required
                   />
                   <BookingDateField
@@ -1340,12 +1334,13 @@ function BookingsPageContent() {
                     onChange={(value) => updateField("fee", value)}
                     label={form.rateMode === "open" ? "Suggested rate (optional)" : "Rate"}
                     required={form.rateMode !== "open"}
+                    placeholder="Enter amount"
                   />
                   <BookingField
                     label="Notes"
                     value={form.notes}
                     onChange={(value) => updateField("notes", value)}
-                    placeholder="Genre, vibe, travel, equipment..."
+                    placeholder="Add notes"
                     multiline
                   />
 
