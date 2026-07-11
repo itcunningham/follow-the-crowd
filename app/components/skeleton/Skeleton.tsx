@@ -20,7 +20,6 @@ import {
   PLANNER_WORKSPACE_CONTENT_CLASS,
   PLANNER_WORKSPACE_SECONDARY_TABS_ROW_CLASS,
   PLANNER_WORKSPACE_SHELL_CLASS,
-  PLANNER_WORKSPACE_SHELL_WIDE_CLASS,
 } from "@/app/components/planner/PlannerWorkspaceLayout";
 import ProfilePageHeader from "@/app/components/profile/ProfilePageHeader";
 import type { DjGigsListTab } from "@/lib/bookingRequests";
@@ -815,7 +814,7 @@ export function CalendarPageLoadingShell() {
     cachedRole === "promoter" || cachedRole === "both" || cachedRole === "dj";
 
   return (
-    <div className={PLANNER_WORKSPACE_SHELL_WIDE_CLASS}>
+    <div className={PLANNER_WORKSPACE_SHELL_CLASS}>
       <AppNavigation />
       <PlannerWorkspacePageHeader
         title="Calendar"
