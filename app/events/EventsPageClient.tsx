@@ -637,16 +637,13 @@ function EventsPageClientView({ initialTab }: EventsPageClientProps) {
 
               {createStep === "form" ? (
                 <form onSubmit={handleSaveEvent} className="space-y-4">
-                  <PlannerBackLink
-                    onClick={() => {
-                      if (createReturnHref) {
-                        closeCreateFlow();
-                        return;
-                      }
-
-                      setCreateStep(selectedPlanId ? "pick-plan" : "source");
-                    }}
-                  />
+                  {!isCalendarCreateFlow ? (
+                    <PlannerBackLink
+                      onClick={() => {
+                        setCreateStep(selectedPlanId ? "pick-plan" : "source");
+                      }}
+                    />
+                  ) : null}
 
                   <PlannerFormField
                     label="Event name"
