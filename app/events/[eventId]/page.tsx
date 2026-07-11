@@ -106,6 +106,7 @@ import {
   shouldPostEventGroupChatUpdate,
 } from "@/lib/events/eventGroupChatUpdate";
 import { resolveEventDetailBackHref } from "@/lib/events/eventsListNavigation";
+import { useScrollPageToTop } from "@/lib/navigation/useScrollPageToTop";
 import { getEventNotesValidationError, MAX_EVENT_NOTES_LENGTH } from "@/lib/events/eventNotes";
 import { useEventEditHeaderState } from "@/lib/events/useEventEditHeaderVisibility";
 import {
@@ -220,6 +221,8 @@ export default function EventDetailPage() {
   const [crewChatUnlock, setCrewChatUnlock] = useState<CrewChatUnlockState | null>(null);
   const [crewChatHelpOpen, setCrewChatHelpOpen] = useState(false);
   const [unavailableConfirmOpen, setUnavailableConfirmOpen] = useState(false);
+
+  useScrollPageToTop(eventId, !loading);
 
   const resolvedRole = role ?? guardProfile?.role ?? null;
   const resolvedUserId = currentUserId ?? guardProfile?.user_id ?? null;
