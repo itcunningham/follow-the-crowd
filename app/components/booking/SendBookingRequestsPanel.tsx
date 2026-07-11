@@ -31,11 +31,16 @@ export default function SendBookingRequestsPanel({
   sendButtonLabelMode = "send",
 }: SendBookingRequestsPanelProps) {
   const selectedCount = draft.sendableSelectedDjIds.length;
+  const isConfirmMode = sendButtonLabelMode === "confirm";
   const sendButtonLabel = sending
-    ? "Sending..."
+    ? isConfirmMode
+      ? "Confirming..."
+      : "Sending..."
     : selectedCount === 0
-      ? "No new DJs to send"
-      : sendButtonLabelMode === "confirm"
+      ? isConfirmMode
+        ? "No new DJs to confirm"
+        : "No new DJs to send"
+      : isConfirmMode
         ? `Confirm ${selectedCount} DJ${selectedCount === 1 ? "" : "s"}`
         : `Send to ${selectedCount} DJ${selectedCount === 1 ? "" : "s"}`;
 
