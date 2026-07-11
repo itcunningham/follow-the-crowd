@@ -23,7 +23,11 @@ import {
   PlannerStatChip,
 } from "@/app/components/planner/PlannerUi";
 import { BookingDateField, BookingSetTimeRangeField } from "@/app/components/BookingDateTimeFields";
-import { getEventDateValidationError, getEventSetTimeValidationError, getTodayDateKey, formatDisplayEventDate, sanitizePrefilledEventDateKey } from "@/lib/bookingDateTime";
+import { getTodayDateKey, formatDisplayEventDate, sanitizePrefilledEventDateKey } from "@/lib/bookingDateTime";
+import {
+  getEventFormFieldErrors,
+  hasEventFormFieldErrors,
+} from "@/lib/events/eventFormFieldValidation";
 import { getEventNotesValidationError, MAX_EVENT_NOTES_LENGTH } from "@/lib/events/eventNotes";
 import EventCoverImageField, {
   emptyEventCoverImageFieldState,
@@ -205,6 +209,7 @@ function EventsPageClientView({
     coverField.file || coverPreviewUrl?.startsWith("blob:"),
   );
   const [saving, setSaving] = useState(false);
+  const [createSaveAttempted, setCreateSaveAttempted] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [eventsListReady, setEventsListReady] = useState(false);
@@ -264,37 +269,14 @@ function EventsPageClientView({
     [searchParams, initialTab, locationRevision],
   );
   const isHistoryTab = listTab === "history";
-  const createFormSetTimeValidationError = useMemo(() => {
-    if (!createOpen || createStep !== "form") {
-      return null;
+  const createFormFieldErrors = useMemo(() => {
+    if (!createOpen || createStep !== "form" || !createSaveAttempted) {
+      return {};
     }
 
-    return getEventSetTimeValidationError(form.setTime);
-  }, [createOpen, createStep, form.setTime]);
-
-  const createFormDateValidationError = useMemo(() => {
-    if (!createOpen || createStep !== "form") {
-      return null;
-    }
-
-    if (createFormSetTimeValidationError) {
-      return null;
-    }
-
-    return getEventDateValidationError(form.eventDate, form.setTime);
-  }, [createOpen, createStep, form.eventDate, form.setTime, createFormSetTimeValidationError]);
-
-  const createFormNotesValidationError = useMemo(() => {
-    if (!createOpen || createStep !== "form") {
-      return null;
-    }
-
-    return getEventNotesValidationError(form.notes);
-  }, [createOpen, createStep, form.notes]);
-  const createFormValidationError =
-    createFormSetTimeValidationError ??
-    createFormDateValidationError ??
-    createFormNotesValidationError;
+    return getEventFormFieldErrors(form);
+  }, [createOpen, createStep, createSaveAttempted, form]);
+  const createFormHasFieldErrors = hasEventFormFieldErrors(createFormFieldErrors);
   const showEventsListContent = !isCalendarCreateFlow && !createOpen;
 
   const resolvedRole = role ?? guardProfile?.role ?? null;
@@ -489,6 +471,7 @@ function EventsPageClientView({
       originDateKey ?? sanitizePrefilledEventDateKey(options?.eventDate ?? "");
     setCreateOpen(true);
     setCreateStep(options?.initialStep ?? "source");
+    setCreateSaveAttempted(false);
     setCalendarOriginDateKey(originDateKey);
     setForm({
       ...emptyEventForm,
@@ -518,6 +501,7 @@ function EventsPageClientView({
 
     setCreateOpen(false);
     setCreateStep("source");
+    setCreateSaveAttempted(false);
     setForm(emptyEventForm);
     setSelectedPlanId(null);
     setCalendarOriginDateKey(null);
@@ -691,33 +675,16 @@ function EventsPageClientView({
       return;
     }
 
-    if (
-      !form.name.trim() ||
-      !form.venue.trim() ||
-      !form.eventDate.trim()
-    ) {
-      setError("Please fill in event name, venue, date, and set time.");
+    setCreateSaveAttempted(true);
+    setError(null);
+
+    const fieldErrors = getEventFormFieldErrors(form);
+
+    if (hasEventFormFieldErrors(fieldErrors)) {
       return;
     }
 
-    const setTimeValidationError = getEventSetTimeValidationError(form.setTime);
-
-    if (setTimeValidationError) {
-      setError(setTimeValidationError);
-      return;
-    }
-
-    const dateValidationError = getEventDateValidationError(form.eventDate, form.setTime);
-
-    if (dateValidationError) {
-      setError(dateValidationError);
-      return;
-    }
-
-    const notesValidationError = getEventNotesValidationError(form.notes);
-
-    if (notesValidationError) {
-      setError(notesValidationError);
+    if (getEventNotesValidationError(form.notes)) {
       return;
     }
 
@@ -1008,6 +975,7 @@ function EventsPageClientView({
                     onChange={(value) => updateField("name", value)}
                     placeholder="Event name"
                     required
+                    error={createFormFieldErrors.name}
                   />
                   <PlannerFormField
                     label="Venue"
@@ -1015,6 +983,7 @@ function EventsPageClientView({
                     onChange={(value) => updateField("venue", value)}
                     placeholder="Venue"
                     required
+                    error={createFormFieldErrors.venue}
                   />
                   <EventCoverImageField
                     eventName={form.name || "Event"}
@@ -1040,12 +1009,15 @@ function EventsPageClientView({
                     onChange={(value) => updateField("eventDate", value)}
                     minDate={getTodayDateKey()}
                     required
+                    error={createFormFieldErrors.eventDate}
                   />
                   <BookingSetTimeRangeField
                     value={form.setTime}
                     onChange={(value) => updateField("setTime", value)}
                     required
                     eventDate={form.eventDate}
+                    startError={createFormFieldErrors.startTime}
+                    finishError={createFormFieldErrors.finishTime}
                   />
                   <PlannerFormField
                     label="Notes"
@@ -1073,23 +1045,12 @@ function EventsPageClientView({
                     />
                   )}
 
-                  {createFormValidationError ? (
-                    <PlannerInlineError message={createFormValidationError} />
-                  ) : null}
-
-                  {error && error !== createFormValidationError ? (
-                    <PlannerInlineError message={error} />
-                  ) : null}
+                  {error ? <PlannerInlineError message={error} /> : null}
 
                   <button
                     type="submit"
-                    disabled={saving || Boolean(createFormValidationError)}
-                    aria-disabled={saving || Boolean(createFormValidationError)}
-                    title={
-                      createFormValidationError
-                        ? createFormValidationError
-                        : undefined
-                    }
+                    disabled={saving || (createSaveAttempted && createFormHasFieldErrors)}
+                    aria-disabled={saving || (createSaveAttempted && createFormHasFieldErrors)}
                     className="ftc-btn-primary px-5 py-3 text-sm uppercase tracking-wide disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {saving ? "Saving..." : "Save event"}

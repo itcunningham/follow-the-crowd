@@ -437,13 +437,40 @@ export const BOOKING_DATE_TIME_INPUT_CLASS =
 export const BOOKING_FIELD_LABEL_CLASS = "ftc-label";
 
 export const EVENT_START_IN_PAST_ERROR =
-  "Event start must be in the future. Choose a later date and time.";
+  "Event start must be in the future";
 
 export const EVENT_DATE_REQUIRES_PICKER_ERROR =
-  "Choose an event date from the calendar.";
+  "Select an event date";
 
-export const EVENT_SET_TIME_REQUIRED_ERROR = "Please select a start and finish time.";
+export const EVENT_START_TIME_REQUIRED_ERROR = "Select a start time";
 
+export const EVENT_FINISH_TIME_REQUIRED_ERROR = "Select a finish time";
+
+export type EventSetTimeInlineErrors = {
+  start: string | null;
+  finish: string | null;
+};
+
+export function getEventSetTimeInlineErrors(setTime: string): EventSetTimeInlineErrors {
+  const parsed = parseSetTimeRange(setTime);
+
+  if (parsed.unparsedRaw) {
+    return {
+      start: EVENT_START_TIME_REQUIRED_ERROR,
+      finish: EVENT_FINISH_TIME_REQUIRED_ERROR,
+    };
+  }
+
+  const missingStart = !parsed.start;
+  const missingFinish = !parsed.finish;
+
+  return {
+    start: missingStart ? EVENT_START_TIME_REQUIRED_ERROR : null,
+    finish: missingFinish ? EVENT_FINISH_TIME_REQUIRED_ERROR : null,
+  };
+}
+
+/** @deprecated Prefer getEventSetTimeInlineErrors for form UI. */
 export type EventSetTimeFieldErrors = {
   message: string | null;
   startInvalid: boolean;
@@ -451,36 +478,19 @@ export type EventSetTimeFieldErrors = {
 };
 
 export function getEventSetTimeFieldErrors(setTime: string): EventSetTimeFieldErrors {
-  const parsed = parseSetTimeRange(setTime);
-
-  if (parsed.unparsedRaw) {
-    return {
-      message: EVENT_SET_TIME_REQUIRED_ERROR,
-      startInvalid: true,
-      finishInvalid: true,
-    };
-  }
-
-  const missingStart = !parsed.start;
-  const missingFinish = !parsed.finish;
-
-  if (missingStart || missingFinish) {
-    return {
-      message: EVENT_SET_TIME_REQUIRED_ERROR,
-      startInvalid: missingStart,
-      finishInvalid: missingFinish,
-    };
-  }
+  const inlineErrors = getEventSetTimeInlineErrors(setTime);
 
   return {
-    message: null,
-    startInvalid: false,
-    finishInvalid: false,
+    message: inlineErrors.start ?? inlineErrors.finish,
+    startInvalid: Boolean(inlineErrors.start),
+    finishInvalid: Boolean(inlineErrors.finish),
   };
 }
 
 export function getEventSetTimeValidationError(setTime: string): string | null {
-  return getEventSetTimeFieldErrors(setTime).message;
+  const inlineErrors = getEventSetTimeInlineErrors(setTime);
+
+  return inlineErrors.start ?? inlineErrors.finish;
 }
 
 export function getTodayDateKey(): string {

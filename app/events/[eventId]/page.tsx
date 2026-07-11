@@ -27,7 +27,11 @@ import {
 } from "@/app/components/planner/PlannerUi";
 import ProfileAvatar from "@/app/components/ProfileAvatar";
 import { BookingDateField, BookingSetTimeRangeField } from "@/app/components/BookingDateTimeFields";
-import { getEventDateValidationError, getEventSetTimeValidationError, getTodayDateKey } from "@/lib/bookingDateTime";
+import { getTodayDateKey } from "@/lib/bookingDateTime";
+import {
+  getEventFormFieldErrors,
+  hasEventFormFieldErrors,
+} from "@/lib/events/eventFormFieldValidation";
 import EventCoverImageField, {
   emptyEventCoverImageFieldState,
   type EventCoverImageFieldState,
@@ -204,6 +208,7 @@ export default function EventDetailPage() {
   const [editCoverPreviewUrl, setEditCoverPreviewUrl] = useState<string | null>(null);
   const [editCoverError, setEditCoverError] = useState<string | null>(null);
   const [editFormError, setEditFormError] = useState<string | null>(null);
+  const [editSaveAttempted, setEditSaveAttempted] = useState(false);
   const [editConfirmOpen, setEditConfirmOpen] = useState(false);
   const [savingEdit, setSavingEdit] = useState(false);
   const editFormSectionRef = useRef<HTMLElement | null>(null);
@@ -277,36 +282,14 @@ export default function EventDetailPage() {
     return base.filter((booking) => booking.status === lineupFilter);
   }, [activeLineup, lineupFilter, visibleLineup]);
 
-  const editFormSetTimeValidationError = useMemo(() => {
-    if (!editForm) {
-      return null;
+  const editFormFieldErrors = useMemo(() => {
+    if (!editForm || !editSaveAttempted) {
+      return {};
     }
 
-    return getEventSetTimeValidationError(editForm.setTime);
-  }, [editForm]);
-
-  const editFormDateValidationError = useMemo(() => {
-    if (!editForm) {
-      return null;
-    }
-
-    if (editFormSetTimeValidationError) {
-      return null;
-    }
-
-    return getEventDateValidationError(editForm.eventDate, editForm.setTime);
-  }, [editForm, editFormSetTimeValidationError]);
-  const editFormNotesValidationError = useMemo(() => {
-    if (!editForm) {
-      return null;
-    }
-
-    return getEventNotesValidationError(editForm.notes);
-  }, [editForm]);
-  const editFormValidationError =
-    editFormSetTimeValidationError ??
-    editFormDateValidationError ??
-    editFormNotesValidationError;
+    return getEventFormFieldErrors(editForm);
+  }, [editForm, editSaveAttempted]);
+  const editFormHasFieldErrors = hasEventFormFieldErrors(editFormFieldErrors);
 
   const loadEventData = useCallback(async () => {
     if (!eventId) {
@@ -442,29 +425,8 @@ export default function EventDetailPage() {
     }));
   }
 
-  function validateEditFormBeforeSave(): string | null {
-    if (!editForm) {
-      return null;
-    }
-
-    const setTimeValidationError = getEventSetTimeValidationError(editForm.setTime);
-
-    if (setTimeValidationError) {
-      return setTimeValidationError;
-    }
-
-    const notesValidationError = getEventNotesValidationError(editForm.notes);
-
-    if (notesValidationError) {
-      return notesValidationError;
-    }
-
-    return getEventDateValidationError(editForm.eventDate, editForm.setTime);
-  }
-
   function showEditFormError(message: string) {
     setEditFormError(message);
-    setError(message);
     requestAnimationFrame(() => {
       editFormSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     });
@@ -489,6 +451,7 @@ export default function EventDetailPage() {
     });
     resetEditCoverState();
     setEditFormError(null);
+    setEditSaveAttempted(false);
     setEditOpen(true);
     setError(null);
 
@@ -502,10 +465,14 @@ export default function EventDetailPage() {
       return;
     }
 
-    const dateValidationError = validateEditFormBeforeSave();
+    const fieldErrors = getEventFormFieldErrors(editForm);
 
-    if (dateValidationError) {
-      showEditFormError(dateValidationError);
+    if (hasEventFormFieldErrors(fieldErrors)) {
+      setEditConfirmOpen(false);
+      return;
+    }
+
+    if (getEventNotesValidationError(editForm.notes)) {
       setEditConfirmOpen(false);
       return;
     }
@@ -588,26 +555,16 @@ export default function EventDetailPage() {
       return;
     }
 
-    if (
-      !editForm.name.trim() ||
-      !editForm.venue.trim() ||
-      !editForm.eventDate.trim()
-    ) {
-      showEditFormError("Please fill in event name, venue, date, and set time.");
+    setEditSaveAttempted(true);
+    setEditFormError(null);
+
+    const fieldErrors = getEventFormFieldErrors(editForm);
+
+    if (hasEventFormFieldErrors(fieldErrors)) {
       return;
     }
 
-    const setTimeValidationError = getEventSetTimeValidationError(editForm.setTime);
-
-    if (setTimeValidationError) {
-      showEditFormError(setTimeValidationError);
-      return;
-    }
-
-    const dateValidationError = validateEditFormBeforeSave();
-
-    if (dateValidationError) {
-      showEditFormError(dateValidationError);
+    if (getEventNotesValidationError(editForm.notes)) {
       return;
     }
 
@@ -1180,6 +1137,7 @@ export default function EventDetailPage() {
                 if (savingEdit) return;
                 setEditOpen(false);
                 setEditForm(null);
+                setEditSaveAttempted(false);
                 resetEditCoverState();
                 setEditFormError(null);
               }}
@@ -1191,12 +1149,14 @@ export default function EventDetailPage() {
                   value={editForm.name}
                   onChange={(value) => setEditForm((prev) => (prev ? { ...prev, name: value } : prev))}
                   required
+                  error={editFormFieldErrors.name}
                 />
                 <PlannerFormField
                   label="Venue"
                   value={editForm.venue}
                   onChange={(value) => setEditForm((prev) => (prev ? { ...prev, venue: value } : prev))}
                   required
+                  error={editFormFieldErrors.venue}
                 />
                 <EventCoverImageField
                   eventName={editForm.name || event.name}
@@ -1231,6 +1191,7 @@ export default function EventDetailPage() {
                   }
                   minDate={getTodayDateKey()}
                   required
+                  error={editFormFieldErrors.eventDate}
                 />
                 <BookingSetTimeRangeField
                   value={editForm.setTime}
@@ -1239,6 +1200,8 @@ export default function EventDetailPage() {
                   }
                   required
                   eventDate={editForm.eventDate}
+                  startError={editFormFieldErrors.startTime}
+                  finishError={editFormFieldErrors.finishTime}
                 />
                 <PlannerFormField
                   label="Notes"
@@ -1248,37 +1211,14 @@ export default function EventDetailPage() {
                   maxLength={MAX_EVENT_NOTES_LENGTH}
                 />
 
-                {editFormSetTimeValidationError ? (
-                  <p
-                    role="alert"
-                    className="rounded-lg border border-[var(--ftc-color-danger)]/35 bg-ftc-bg-elevated px-3 py-2.5 text-sm text-[var(--ftc-color-danger)]"
-                  >
-                    {editFormSetTimeValidationError}
-                  </p>
-                ) : null}
-
-                {editFormDateValidationError ? (
-                  <p
-                    role="alert"
-                    className="rounded-lg border border-[var(--ftc-color-danger)]/35 bg-ftc-bg-elevated px-3 py-2.5 text-sm text-[var(--ftc-color-danger)]"
-                  >
-                    {editFormDateValidationError}
-                  </p>
-                ) : null}
-
-                {editFormError && editFormError !== editFormValidationError ? (
+                {editFormError ? (
                   <p className="text-sm text-[var(--ftc-color-danger)]">{editFormError}</p>
                 ) : null}
 
                 <button
                   type="submit"
-                  disabled={savingEdit || Boolean(editFormValidationError)}
-                  aria-disabled={savingEdit || Boolean(editFormValidationError)}
-                  title={
-                    editFormValidationError
-                      ? editFormValidationError
-                      : undefined
-                  }
+                  disabled={savingEdit || (editSaveAttempted && editFormHasFieldErrors)}
+                  aria-disabled={savingEdit || (editSaveAttempted && editFormHasFieldErrors)}
                   className="ftc-btn-primary px-5 py-3 text-sm uppercase tracking-wide disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {savingEdit ? "Saving event..." : "Save event changes"}

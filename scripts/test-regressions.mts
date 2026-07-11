@@ -43,8 +43,8 @@ function testFutureEventDatesAreAllowed() {
 }
 
 function testIncompleteSetTimeIsBlocked() {
-  assert.equal(getEventSetTimeValidationError("9:00 PM"), "Please select a start and finish time.");
-  assert.equal(getEventSetTimeValidationError(""), "Please select a start and finish time.");
+  assert.equal(getEventSetTimeValidationError("9:00 PM"), "Select a start time");
+  assert.equal(getEventSetTimeValidationError(""), "Select a start time");
   assert.equal(
     getEventSetTimeValidationError(`9:00 PM${SET_TIME_RANGE_JOINER}11:00 PM`),
     null,

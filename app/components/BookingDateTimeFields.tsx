@@ -1,6 +1,7 @@
 "use client";
 
 import FtcDatePicker from "@/app/components/FtcDatePicker";
+import { PlannerFieldError } from "@/app/components/planner/PlannerUi";
 import { useEffect, useRef, useState } from "react";
 import { BookingTimeWheelPicker } from "@/app/components/BookingTimeWheelPicker";
 import {
@@ -36,12 +37,14 @@ export function BookingDateField({
   onChange,
   required = false,
   minDate,
+  error,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   required?: boolean;
   minDate?: string;
+  error?: string | null;
 }) {
   const parsed = parseEventDate(value);
   const effectiveMinDate = resolveMinEventDateKey(minDate);
@@ -86,6 +89,7 @@ export function BookingDateField({
         minDate={effectiveMinDate}
         ariaLabel={label}
       />
+      {error ? <PlannerFieldError message={error} /> : null}
     </label>
   );
 }
@@ -140,6 +144,7 @@ function BookingTimeControl({
   variant = "default",
   buttonLabel,
   minWheelTime = null,
+  error = null,
 }: {
   label: string;
   clock: string;
@@ -151,6 +156,7 @@ function BookingTimeControl({
   variant?: "default" | "compact";
   buttonLabel?: string;
   minWheelTime?: WheelTimeValue | null;
+  error?: string | null;
 }) {
   const [pickerOpen, setPickerOpen] = useState(false);
   const isCompact = variant === "compact";
@@ -217,6 +223,7 @@ function BookingTimeControl({
         onDone={handleDone}
         minWheelTime={minWheelTime}
       />
+      {error ? <PlannerFieldError message={error} /> : null}
     </div>
   );
 }
@@ -312,11 +319,15 @@ export function BookingSetTimeRangeField({
   onChange,
   required = false,
   eventDate,
+  startError = null,
+  finishError = null,
 }: {
   value: string;
   onChange: (value: string) => void;
   required?: boolean;
   eventDate?: string;
+  startError?: string | null;
+  finishError?: string | null;
 }) {
   const userEditedRef = useRef(false);
   const [startClock, setStartClock] = useState("");
@@ -397,6 +408,7 @@ export function BookingSetTimeRangeField({
         buttonLabel={
           combineClockAndMeridiem(startClock, startMeridiem) || "Select start time"
         }
+        error={startError}
       />
       <BookingTimeControl
         label="Finish Time"
@@ -407,6 +419,7 @@ export function BookingSetTimeRangeField({
         buttonLabel={
           combineClockAndMeridiem(finishClock, finishMeridiem) || "Select finish time"
         }
+        error={finishError}
       />
     </div>
   );

@@ -8,18 +8,24 @@ import {
 } from "@/lib/events/eventNotes";
 import { useBoundedAutoGrowTextarea } from "@/lib/useBoundedAutoGrowTextarea";
 
+export function PlannerFieldError({ message }: { message: string }) {
+  return <p className="mt-1 text-xs ftc-inline-error">{message}</p>;
+}
+
 function PlannerMultilineField({
   label,
   value,
   onChange,
   placeholder,
   maxLength,
+  error,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
   maxLength?: number;
+  error?: string | null;
 }) {
   const { textareaRef } = useBoundedAutoGrowTextarea({ value });
 
@@ -69,6 +75,7 @@ function PlannerMultilineField({
           {value.length} / {maxLength}
         </p>
       ) : null}
+      {error ? <PlannerFieldError message={error} /> : null}
     </label>
   );
 }
@@ -81,6 +88,7 @@ export function PlannerFormField({
   required = false,
   multiline = false,
   maxLength,
+  error,
 }: {
   label: string;
   value: string;
@@ -89,6 +97,7 @@ export function PlannerFormField({
   required?: boolean;
   multiline?: boolean;
   maxLength?: number;
+  error?: string | null;
 }) {
   if (multiline) {
     return (
@@ -98,6 +107,7 @@ export function PlannerFormField({
         onChange={onChange}
         placeholder={placeholder}
         maxLength={maxLength}
+        error={error}
       />
     );
   }
@@ -113,6 +123,7 @@ export function PlannerFormField({
         required={required}
         className="ftc-input px-3.5 py-2.5"
       />
+      {error ? <PlannerFieldError message={error} /> : null}
     </label>
   );
 }
