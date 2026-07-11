@@ -525,16 +525,16 @@ function EventsPageClientView({ initialTab }: EventsPageClientProps) {
               {createStep === "source" ? (
                 <div className="space-y-3">
                   <PlannerOptionCard
-                    title="Create from a saved booking plan"
-                    description="Prefill event details from a plan, then edit before saving."
+                    title="Use a booking plan"
+                    description="Prefill event details from a saved booking plan, then edit before publishing"
                     onClick={() => {
                       setError(null);
                       setCreateStep("pick-plan");
                     }}
                   />
                   <PlannerOptionCard
-                    title="Create custom event"
-                    description="Enter fresh event details from scratch."
+                    title="Start from scratch"
+                    description="Create a new event with empty details"
                     onClick={() => {
                       setForm({
                         ...emptyEventForm,
