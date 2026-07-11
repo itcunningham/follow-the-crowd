@@ -936,11 +936,11 @@ function PlannerCalendarMobileAgendaSkeleton() {
         ))}
       </div>
 
-      <div className="mt-4 flex items-start justify-between gap-3">
-        <SkeletonBlock className="h-5 w-44 max-w-[50%] flex-1" />
-        <div className="flex shrink-0 items-center gap-2">
-          <SkeletonBlock className="h-8 w-[5.5rem] rounded-full" />
-          <SkeletonBlock className="h-8 w-[5.5rem] rounded-full" />
+      <div className="mt-4">
+        <SkeletonBlock className="h-5 w-44 max-w-full" />
+        <div className="mt-3 flex items-center gap-2">
+          <SkeletonBlock className="h-8 min-w-[5.5rem] flex-1 rounded-full" />
+          <SkeletonBlock className="h-8 min-w-[5.5rem] flex-1 rounded-full" />
         </div>
       </div>
 

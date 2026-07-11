@@ -237,23 +237,21 @@ function PlannerCalendarMobileAgenda({
         itemsByDate={itemsByDate}
       />
 
-      <div ref={agendaHeaderRef} className="mt-4 flex items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          <h2 className="text-base font-semibold text-ftc-text">
-            {formatPlannerAgendaDateLabel(selectedDate)}
-          </h2>
-          {isTodayDate(selectedDate) ? (
-            <p className="mt-0.5 text-xs font-semibold uppercase tracking-wide text-ftc-primary">
-              Today
-            </p>
-          ) : null}
-        </div>
+      <div ref={agendaHeaderRef} className="mt-4">
+        <h2 className="text-base font-semibold text-ftc-text">
+          {formatPlannerAgendaDateLabel(selectedDate)}
+        </h2>
+        {isTodayDate(selectedDate) ? (
+          <p className="mt-0.5 text-xs font-semibold uppercase tracking-wide text-ftc-primary">
+            Today
+          </p>
+        ) : null}
 
         {canCreateEventOnSelectedDate ? (
           <PlannerCalendarActionButtons
             dateKey={displayDateKey}
             hasSavedEventPlans={hasSavedEventPlans}
-            className="shrink-0"
+            className="mt-3"
           />
         ) : null}
       </div>

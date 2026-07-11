@@ -94,21 +94,9 @@ export default function PlannerCalendarDateActions({
         onClick={(event) => event.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0 flex-1">
-            <h2 id="planner-date-actions-title" className="text-base font-semibold text-ftc-text">
-              {dateLabel}
-            </h2>
-          </div>
-
-          {canCreateEventOnDate ? (
-            <PlannerCalendarActionButtons
-              dateKey={dateKey}
-              hasSavedEventPlans={hasSavedEventPlans}
-              className="shrink-0"
-              onCreateClick={navigateToCreateEvent}
-              onPlansClick={navigateToSavedEventPlans}
-            />
-          ) : null}
+          <h2 id="planner-date-actions-title" className="min-w-0 flex-1 text-base font-semibold text-ftc-text">
+            {dateLabel}
+          </h2>
 
           <button
             type="button"
@@ -119,6 +107,16 @@ export default function PlannerCalendarDateActions({
             Close
           </button>
         </div>
+
+        {canCreateEventOnDate ? (
+          <PlannerCalendarActionButtons
+            dateKey={dateKey}
+            hasSavedEventPlans={hasSavedEventPlans}
+            className="mt-3"
+            onCreateClick={navigateToCreateEvent}
+            onPlansClick={navigateToSavedEventPlans}
+          />
+        ) : null}
 
         {view === "actions" ? (
           <div className="mt-4 space-y-2">
