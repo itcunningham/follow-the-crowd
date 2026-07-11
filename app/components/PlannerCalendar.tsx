@@ -290,6 +290,8 @@ type PlannerCalendarProps = {
   description?: string;
 };
 
+const INVITE_MESSAGE_AUTO_DISMISS_MS = 5000;
+
 export default function PlannerCalendar({
   description = "Your events and booking activity by date.",
 }: PlannerCalendarProps) {
@@ -306,14 +308,58 @@ export default function PlannerCalendar({
   const [hasSavedEventPlans, setHasSavedEventPlans] = useState(false);
   const [selectedDate, setSelectedDate] = useState(() => initialView.selectedDate);
   const [inviteMessage, setInviteMessage] = useState<string | null>(null);
+  const inviteDismissTimerRef = useRef<number | null>(null);
+  const inviteMessageUrlDateRef = useRef<string | null>(null);
+
+  const clearInviteMessage = useCallback(() => {
+    if (inviteDismissTimerRef.current !== null) {
+      window.clearTimeout(inviteDismissTimerRef.current);
+      inviteDismissTimerRef.current = null;
+    }
+
+    inviteMessageUrlDateRef.current = null;
+    setInviteMessage(null);
+  }, []);
 
   useEffect(() => {
     const message = consumeEventCreateInviteMessage();
 
     if (message) {
       setInviteMessage(message);
+      inviteMessageUrlDateRef.current = searchParams.get("date");
     }
   }, []);
+
+  useEffect(() => {
+    if (!inviteMessage) {
+      return;
+    }
+
+    inviteDismissTimerRef.current = window.setTimeout(() => {
+      inviteDismissTimerRef.current = null;
+      inviteMessageUrlDateRef.current = null;
+      setInviteMessage(null);
+    }, INVITE_MESSAGE_AUTO_DISMISS_MS);
+
+    return () => {
+      if (inviteDismissTimerRef.current !== null) {
+        window.clearTimeout(inviteDismissTimerRef.current);
+        inviteDismissTimerRef.current = null;
+      }
+    };
+  }, [inviteMessage]);
+
+  useEffect(() => {
+    if (!inviteMessage) {
+      return;
+    }
+
+    const urlDate = searchParams.get("date");
+
+    if (inviteMessageUrlDateRef.current !== urlDate) {
+      clearInviteMessage();
+    }
+  }, [searchParams, inviteMessage, clearInviteMessage]);
 
   useLayoutEffect(() => {
     const nextView = resolvePlannerCalendarViewState(searchParams.get("date"));
@@ -396,7 +442,18 @@ export default function PlannerCalendar({
     return isSameMonth(date, monthStart);
   }
 
+  function handleSelectDate(date: Date) {
+    clearInviteMessage();
+    setSelectedDate(date);
+  }
+
+  function handleSelectActionDate(date: Date) {
+    clearInviteMessage();
+    setActionDate(date);
+  }
+
   function handleMonthStartChange(nextMonthStart: Date) {
+    clearInviteMessage();
     setMonthStart(nextMonthStart);
     setSelectedDate((current) => {
       if (isSameMonth(current, nextMonthStart)) {
@@ -451,7 +508,7 @@ export default function PlannerCalendar({
           <PlannerCalendarMobileAgenda
             monthStart={monthStart}
             selectedDate={selectedDate}
-            onSelectDate={setSelectedDate}
+            onSelectDate={handleSelectDate}
             itemsByDate={itemsByDate}
             isTodayDate={isTodayDate}
             isDateInViewingMonth={isDateInViewingMonth}
@@ -490,7 +547,7 @@ export default function PlannerCalendar({
                       date={day}
                       isToday={isTodayDate(day)}
                       items={monthItemsByDate.get(dateKey) ?? []}
-                      onSelectDate={setActionDate}
+                      onSelectDate={handleSelectActionDate}
                     />
                   );
                 }),
