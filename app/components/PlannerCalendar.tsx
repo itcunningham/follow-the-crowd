@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import CalendarMonthNav from "@/app/components/CalendarMonthNav";
 import PlannerCalendarDateActions from "@/app/components/PlannerCalendarDateActions";
 import PlannerCalendarMobileDateStrip from "@/app/components/PlannerCalendarMobileDateStrip";
+import { isDateKeyBeforeToday } from "@/lib/bookingDateTime";
 import {
   buildPlannerCreateEventHref,
   filterCalendarItemsForMonth,
@@ -193,7 +194,6 @@ function PlannerCalendarMobileAgenda({
 }) {
   const agendaHeaderRef = useRef<HTMLDivElement>(null);
   const selectedDateKey = toDateKey(selectedDate);
-  const selectedDateItems = itemsByDate.get(selectedDateKey) ?? [];
   const [displayDateKey, setDisplayDateKey] = useState(selectedDateKey);
   const [agendaVisible, setAgendaVisible] = useState(true);
 
@@ -219,6 +219,7 @@ function PlannerCalendarMobileAgenda({
   }, [selectedDateKey]);
 
   const displayDateItems = itemsByDate.get(displayDateKey) ?? [];
+  const canCreateEventOnSelectedDate = !isDateKeyBeforeToday(displayDateKey);
 
   return (
     <div className="mt-4 md:hidden">
@@ -248,12 +249,14 @@ function PlannerCalendarMobileAgenda({
         {displayDateItems.length === 0 ? (
           <div className="rounded-xl border border-dashed border-ftc-border-subtle bg-ftc-surface/30 px-4 py-8 text-center">
             <p className="text-sm text-ftc-text-muted">No events scheduled.</p>
-            <Link
-              href={buildPlannerCreateEventHref(displayDateKey)}
-              className="ftc-btn-secondary mt-3 inline-flex px-3 py-1.5 text-xs uppercase tracking-wide"
-            >
-              + Create Event
-            </Link>
+            {canCreateEventOnSelectedDate ? (
+              <Link
+                href={buildPlannerCreateEventHref(displayDateKey)}
+                className="ftc-btn-secondary mt-3 inline-flex px-3 py-1.5 text-xs uppercase tracking-wide"
+              >
+                + Create Event
+              </Link>
+            ) : null}
           </div>
         ) : (
           displayDateItems.map((item) => <PlannerCalendarAgendaCard key={item.id} item={item} />)
