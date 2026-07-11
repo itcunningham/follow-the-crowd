@@ -53,7 +53,7 @@ function PlannerMultilineField({
           requestAnimationFrame(adjustHeight);
         }}
         placeholder={placeholder}
-        rows={DEFAULT_TEXTAREA_MIN_ROWS}
+        rows={1}
         className="ftc-input resize-none overflow-x-hidden px-3.5 py-2.5"
       />
       {maxLength !== undefined ? (

@@ -10,20 +10,54 @@ type TextareaRowBounds = {
   maxHeight: number;
 };
 
-function resolveLineHeight(textarea: HTMLTextAreaElement, style: CSSStyleDeclaration): number {
-  const lineHeight = parseFloat(style.lineHeight);
+type TextareaStyleSnapshot = {
+  value: string;
+  height: string;
+  minHeight: string;
+  maxHeight: string;
+  overflowY: string;
+  rows: number;
+};
 
-  if (Number.isFinite(lineHeight) && lineHeight > 0) {
-    return lineHeight;
-  }
+function captureTextareaStyle(textarea: HTMLTextAreaElement): TextareaStyleSnapshot {
+  return {
+    value: textarea.value,
+    height: textarea.style.height,
+    minHeight: textarea.style.minHeight,
+    maxHeight: textarea.style.maxHeight,
+    overflowY: textarea.style.overflowY,
+    rows: textarea.rows,
+  };
+}
 
-  const fontSize = parseFloat(style.fontSize);
+function restoreTextareaStyle(textarea: HTMLTextAreaElement, saved: TextareaStyleSnapshot): void {
+  textarea.value = saved.value;
+  textarea.rows = saved.rows;
+  textarea.style.height = saved.height;
+  textarea.style.minHeight = saved.minHeight;
+  textarea.style.maxHeight = saved.maxHeight;
+  textarea.style.overflowY = saved.overflowY;
+}
 
-  if (Number.isFinite(fontSize) && fontSize > 0) {
-    return fontSize * 1.2;
-  }
+function buildProbeValue(rowCount: number): string {
+  return Array.from({ length: rowCount }, () => " ").join("\n");
+}
 
-  return 20;
+function measureHeightForRowCount(textarea: HTMLTextAreaElement, rowCount: number): number {
+  const saved = captureTextareaStyle(textarea);
+
+  textarea.rows = 1;
+  textarea.value = buildProbeValue(rowCount);
+  textarea.style.height = "auto";
+  textarea.style.minHeight = "0";
+  textarea.style.maxHeight = "none";
+  textarea.style.overflowY = "hidden";
+
+  const height = textarea.scrollHeight;
+
+  restoreTextareaStyle(textarea, saved);
+
+  return height;
 }
 
 function measureTextareaRowBounds(
@@ -31,36 +65,28 @@ function measureTextareaRowBounds(
   minRows: number,
   maxRows: number,
 ): TextareaRowBounds {
-  const style = window.getComputedStyle(textarea);
-  const lineHeight = resolveLineHeight(textarea, style);
-  const paddingTop = parseFloat(style.paddingTop) || 0;
-  const paddingBottom = parseFloat(style.paddingBottom) || 0;
-  const borderTop = parseFloat(style.borderTopWidth) || 0;
-  const borderBottom = parseFloat(style.borderBottomWidth) || 0;
-  const blockExtra = paddingTop + paddingBottom + borderTop + borderBottom;
-
-  if (style.boxSizing === "border-box") {
-    return {
-      minHeight: lineHeight * minRows + blockExtra,
-      maxHeight: lineHeight * maxRows + blockExtra,
-    };
-  }
-
   return {
-    minHeight: lineHeight * minRows,
-    maxHeight: lineHeight * maxRows,
+    minHeight: measureHeightForRowCount(textarea, minRows),
+    maxHeight: measureHeightForRowCount(textarea, maxRows),
   };
 }
 
-function applyBoundedTextareaHeight(textarea: HTMLTextAreaElement, bounds: TextareaRowBounds): void {
-  textarea.style.maxHeight = `${bounds.maxHeight}px`;
-  textarea.style.minHeight = `${bounds.minHeight}px`;
-  textarea.style.height = `${bounds.minHeight}px`;
+function measureContentScrollHeight(textarea: HTMLTextAreaElement): number {
+  textarea.style.minHeight = "0";
+  textarea.style.maxHeight = "none";
   textarea.style.overflowY = "hidden";
+  textarea.style.height = "0px";
 
-  const scrollHeight = textarea.scrollHeight;
+  return textarea.scrollHeight;
+}
+
+function applyBoundedTextareaHeight(textarea: HTMLTextAreaElement, bounds: TextareaRowBounds): void {
+  const scrollHeight = measureContentScrollHeight(textarea);
   const nextHeight = Math.min(Math.max(scrollHeight, bounds.minHeight), bounds.maxHeight);
 
+  textarea.style.boxSizing = "border-box";
+  textarea.style.minHeight = `${bounds.minHeight}px`;
+  textarea.style.maxHeight = `${bounds.maxHeight}px`;
   textarea.style.height = `${nextHeight}px`;
   textarea.style.overflowY = scrollHeight > bounds.maxHeight ? "auto" : "hidden";
 }
