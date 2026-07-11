@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import CalendarMonthNav from "@/app/components/CalendarMonthNav";
+import CalendarMobileDayPickerSheet from "@/app/components/CalendarMobileDayPickerSheet";
 import PlannerCalendarDateActions from "@/app/components/PlannerCalendarDateActions";
 import {
   filterCalendarItemsForMonth,
@@ -25,11 +26,11 @@ import {
 
 function PlannerCalendarLegend() {
   return (
-    <div className="flex flex-wrap items-center justify-center gap-2">
+    <div className="flex flex-wrap items-center justify-center gap-1.5 md:gap-2">
       {PLANNER_CALENDAR_LEGEND_ITEMS.map((item) => (
         <span
           key={item.label}
-          className={`rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${getCalendarStatusBadgeClass(item.kind)}`}
+          className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide md:px-2.5 md:py-0.5 ${getCalendarStatusBadgeClass(item.kind)}`}
         >
           {item.label}
         </span>
@@ -161,7 +162,7 @@ function PlannerCalendarMobileAgenda({
   const selectedDateItems = itemsByDate.get(toDateKey(selectedDate)) ?? [];
 
   return (
-    <div className="md:hidden">
+    <div className="mt-4 md:hidden">
       <div className="grid grid-cols-7 gap-1">
         {weekDates.map((date, index) => {
           const dateKey = toDateKey(date);
@@ -253,6 +254,7 @@ export default function PlannerCalendar({
     const today = new Date();
     return new Date(today.getFullYear(), today.getMonth(), today.getDate());
   });
+  const [mobileMonthPickerOpen, setMobileMonthPickerOpen] = useState(false);
 
   useEffect(() => {
     const now = new Date();
@@ -340,11 +342,22 @@ export default function PlannerCalendar({
         </p>
       ) : null}
 
-      <div className="relative mt-4">
-        <CalendarMonthNav monthStart={monthStart} onMonthStartChange={handleMonthStartChange} />
+      <div className="relative mt-4 flex items-center justify-center gap-2">
+        <div className="flex min-w-0 flex-1 justify-center">
+          <CalendarMonthNav monthStart={monthStart} onMonthStartChange={handleMonthStartChange} />
+        </div>
+        <button
+          type="button"
+          aria-haspopup="dialog"
+          aria-expanded={mobileMonthPickerOpen}
+          onClick={() => setMobileMonthPickerOpen(true)}
+          className="shrink-0 rounded-lg border border-ftc-border bg-ftc-bg-elevated/60 px-2.5 py-2 text-xs font-semibold uppercase tracking-wide text-ftc-text-secondary transition hover:border-ftc-primary/30 hover:text-ftc-primary md:hidden"
+        >
+          Month
+        </button>
       </div>
 
-      <div className="mt-3">
+      <div className="mt-1 md:mt-3">
         <PlannerCalendarLegend />
       </div>
 
@@ -413,6 +426,15 @@ export default function PlannerCalendar({
         date={actionDate}
         items={actionDate ? monthItemsByDate.get(toDateKey(actionDate)) ?? [] : []}
         onClose={() => setActionDate(null)}
+      />
+
+      <CalendarMobileDayPickerSheet
+        open={mobileMonthPickerOpen}
+        onClose={() => setMobileMonthPickerOpen(false)}
+        monthStart={monthStart}
+        onMonthStartChange={handleMonthStartChange}
+        selectedDate={selectedDate}
+        onSelectDate={setSelectedDate}
       />
     </section>
   );
