@@ -21,9 +21,10 @@ import {
   getMonthStart,
   getPlannerCalendarBadgeLabel,
   groupCalendarItemsByDate,
+  isSameDay,
   isSameMonth,
   loadPlannerCalendarItems,
-  parsePlannerCalendarDateParam,
+  resolvePlannerCalendarViewState,
   PLANNER_CALENDAR_VISIBLE_LEGEND_ITEMS,
   toDateKey,
   WEEKDAY_LABELS,
@@ -287,16 +288,9 @@ export default function PlannerCalendar({
   description = "Your events and booking activity by date.",
 }: PlannerCalendarProps) {
   const searchParams = useSearchParams();
-  const restoredDate = parsePlannerCalendarDateParam(searchParams.get("date"));
+  const initialView = resolvePlannerCalendarViewState(searchParams.get("date"));
   const [items, setItems] = useState<CalendarItem[]>([]);
-  const [monthStart, setMonthStart] = useState(() => {
-    if (restoredDate) {
-      return getMonthStart(restoredDate);
-    }
-
-    const today = new Date();
-    return new Date(today.getFullYear(), today.getMonth(), 1);
-  });
+  const [monthStart, setMonthStart] = useState(() => initialView.monthStart);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [todayParts, setTodayParts] = useState<{ year: number; month: number; day: number } | null>(
@@ -304,24 +298,17 @@ export default function PlannerCalendar({
   );
   const [actionDate, setActionDate] = useState<Date | null>(null);
   const [hasSavedEventPlans, setHasSavedEventPlans] = useState(false);
-  const [selectedDate, setSelectedDate] = useState(() => {
-    if (restoredDate) {
-      return restoredDate;
-    }
-
-    const today = new Date();
-    return new Date(today.getFullYear(), today.getMonth(), today.getDate());
-  });
+  const [selectedDate, setSelectedDate] = useState(() => initialView.selectedDate);
 
   useEffect(() => {
-    const nextRestoredDate = parsePlannerCalendarDateParam(searchParams.get("date"));
+    const nextView = resolvePlannerCalendarViewState(searchParams.get("date"));
 
-    if (!nextRestoredDate) {
-      return;
-    }
-
-    setSelectedDate(nextRestoredDate);
-    setMonthStart(getMonthStart(nextRestoredDate));
+    setSelectedDate((current) =>
+      isSameDay(current, nextView.selectedDate) ? current : nextView.selectedDate,
+    );
+    setMonthStart((current) =>
+      isSameMonth(current, nextView.monthStart) ? current : nextView.monthStart,
+    );
   }, [searchParams]);
 
   useEffect(() => {

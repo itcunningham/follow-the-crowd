@@ -502,6 +502,37 @@ export function parsePlannerCalendarDateParam(dateKey: string | null | undefined
   return new Date(year, month - 1, day);
 }
 
+export function getPlannerCalendarTodayDate(): Date {
+  const today = new Date();
+  return new Date(today.getFullYear(), today.getMonth(), today.getDate());
+}
+
+export type PlannerCalendarViewState = {
+  selectedDate: Date;
+  monthStart: Date;
+};
+
+/** Fresh /calendar visits default to today; ?date= restores Calendar-origin return context. */
+export function resolvePlannerCalendarViewState(
+  dateParam: string | null | undefined,
+): PlannerCalendarViewState {
+  const restoredDate = parsePlannerCalendarDateParam(dateParam);
+
+  if (restoredDate) {
+    return {
+      selectedDate: restoredDate,
+      monthStart: getMonthStart(restoredDate),
+    };
+  }
+
+  const todayDate = getPlannerCalendarTodayDate();
+
+  return {
+    selectedDate: todayDate,
+    monthStart: getMonthStart(todayDate),
+  };
+}
+
 export function getPlannerViewDaySubtitle(itemCount: number): string {
   if (itemCount === 0) {
     return "Nothing scheduled";
