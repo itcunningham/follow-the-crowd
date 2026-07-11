@@ -363,7 +363,7 @@ export default function PlannerCalendar({
 
   useEffect(() => {
     void loadCalendar();
-  }, [loadCalendar]);
+  }, [loadCalendar, searchParams]);
 
   const monthItems = useMemo(
     () => filterCalendarItemsForMonth(items, monthStart),

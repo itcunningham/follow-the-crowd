@@ -133,3 +133,15 @@ export function resolveEventsWorkspaceActiveHref(
     ? EVENTS_AREA_SUB_NAV.calendar.href
     : undefined;
 }
+
+export function resolveCalendarSaveReturnDateKey(
+  calendarOriginDateKey: string | null | undefined,
+  formEventDate: string,
+  isCalendarCreateFlow: boolean,
+): string | null {
+  if (!isCalendarCreateFlow) {
+    return null;
+  }
+
+  return calendarOriginDateKey ?? resolveCalendarOriginDateKey(formEventDate);
+}

@@ -88,6 +88,7 @@ import {
   isCalendarOriginEventsFlow,
   resolveCalendarCreateBootstrapState,
   resolveCalendarCreateInitialStep,
+  resolveCalendarSaveReturnDateKey,
   resolveEventsListTabParam,
   resolveEventsWorkspaceActiveHref,
 } from "@/lib/events/eventsListNavigation";
@@ -614,6 +615,7 @@ function EventsPageClientView({
       inviteNotice = buildBookingSendResultMessage(successes.length, 0);
     }
 
+    setSaving(false);
     finishCreateFlowNavigation(createdEvent.id, originDateKey, inviteNotice);
   }
 
@@ -628,6 +630,7 @@ function EventsPageClientView({
     }
 
     if (sendableIds.length === 0) {
+      setSaving(false);
       finishCreateFlowNavigation(createdEvent.id, originDateKey, null);
       return;
     }
@@ -635,8 +638,11 @@ function EventsPageClientView({
     const validationError = activeInviteDraft.getValidationError(sendableIds);
 
     if (validationError) {
-      setError(validationError);
+      const inviteNotice = `Event created, but invites could not be sent: ${validationError}`;
+      console.error("Post-create invite validation failed:", validationError);
+      setError(inviteNotice);
       setSaving(false);
+      finishCreateFlowNavigation(createdEvent.id, originDateKey, inviteNotice);
       return;
     }
 
@@ -651,11 +657,24 @@ function EventsPageClientView({
       return;
     }
 
-    await executePostCreateInvites(createdEvent, sendableIds, originDateKey);
+    try {
+      await executePostCreateInvites(createdEvent, sendableIds, originDateKey);
+    } catch (sendError) {
+      console.error("Failed to send booking requests after event create:", sendError);
+      const message =
+        sendError instanceof Error ? sendError.message : "Failed to send booking requests";
+      const inviteNotice = `Event created, but invites could not be sent: ${message}`;
+      setSaving(false);
+      finishCreateFlowNavigation(createdEvent.id, originDateKey, inviteNotice);
+    }
   }
 
   async function handleSaveEvent(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+
+    if (saving) {
+      return;
+    }
 
     if (
       !form.name.trim() ||
@@ -694,7 +713,11 @@ function EventsPageClientView({
     setSaving(true);
     setError(null);
 
-    const originDateKey = calendarOriginDateKey;
+    const originDateKey = resolveCalendarSaveReturnDateKey(
+      calendarOriginDateKey,
+      form.eventDate,
+      isCalendarCreateFlow,
+    );
 
     try {
       const created = await createEvent({
@@ -708,6 +731,7 @@ function EventsPageClientView({
           await updateEventCoverImageUrl(created.id, coverUrl);
         } catch (uploadError) {
           console.error("Failed to upload event cover image:", uploadError);
+          setSaving(false);
           setCalendarOriginDateKey(null);
           setCreateOpen(false);
           inviteDraft.resetDraft();
@@ -719,6 +743,7 @@ function EventsPageClientView({
       }
 
       if (activeInviteDraft.selectedDjIds.length === 0) {
+        setSaving(false);
         finishCreateFlowNavigation(created.id, originDateKey, null);
         return;
       }
@@ -727,7 +752,6 @@ function EventsPageClientView({
     } catch (saveError) {
       console.error("Failed to create event:", saveError);
       setError(getEventsLoadErrorMessage(saveError));
-    } finally {
       setSaving(false);
     }
   }
@@ -748,8 +772,9 @@ function EventsPageClientView({
       );
     } catch (sendError) {
       console.error("Failed to send booking requests after event create:", sendError);
-      setError(sendError instanceof Error ? sendError.message : "Failed to send booking requests");
-    } finally {
+      const message =
+        sendError instanceof Error ? sendError.message : "Failed to send booking requests";
+      setError(message);
       setSaving(false);
     }
   }
@@ -1026,6 +1051,10 @@ function EventsPageClientView({
                       listMaxHeightClass="max-h-48"
                     />
                   )}
+
+                  {createFormValidationError ? (
+                    <PlannerInlineError message={createFormValidationError} />
+                  ) : null}
 
                   {error && error !== createFormValidationError ? (
                     <PlannerInlineError message={error} />
