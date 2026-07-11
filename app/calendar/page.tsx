@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import AppNavigation from "@/app/components/AppNavigation";
 import CalendarViewTabs, { type CalendarViewTab } from "@/app/components/CalendarViewTabs";
 import DjAvailabilityCalendar from "@/app/components/DjAvailabilityCalendar";
@@ -54,13 +54,17 @@ export default function CalendarPage() {
             <>
               <CalendarViewTabs activeTab={bothCalendarTab} onChange={setBothCalendarTab} />
               {bothCalendarTab === "planner" ? (
-                <PlannerCalendar description="Your owned events and sent booking requests by date." />
+                <Suspense fallback={<p className="text-sm text-ftc-text-muted">Loading calendar...</p>}>
+                  <PlannerCalendar description="Your owned events and sent booking requests by date." />
+                </Suspense>
               ) : (
                 <DjAvailabilityCalendar description="Manage your availability and received bookings." />
               )}
             </>
           ) : displayRole === "promoter" ? (
-            <PlannerCalendar />
+            <Suspense fallback={<p className="text-sm text-ftc-text-muted">Loading calendar...</p>}>
+              <PlannerCalendar />
+            </Suspense>
           ) : displayRole === "dj" ? (
             <DjAvailabilityCalendar description="Manage your availability and bookings." />
           ) : !loadingRole ? (

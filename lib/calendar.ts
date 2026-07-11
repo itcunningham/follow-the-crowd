@@ -468,10 +468,30 @@ export function formatPlannerSelectedDateLabel(date: Date): string {
 
 export function buildPlannerCreateEventHref(dateKey: string): string {
   const params = new URLSearchParams({
-    create: "event",
+    create: "calendar",
     eventDate: dateKey,
   });
   return `/events?${params.toString()}`;
+}
+
+export function buildPlannerCalendarHref(dateKey: string): string {
+  const params = new URLSearchParams({ date: dateKey });
+  return `/calendar?${params.toString()}`;
+}
+
+export function parsePlannerCalendarDateParam(dateKey: string | null | undefined): Date | null {
+  if (!dateKey?.trim()) {
+    return null;
+  }
+
+  const parsed = parseEventDate(dateKey.trim());
+
+  if (!parsed.isoDate) {
+    return null;
+  }
+
+  const [year, month, day] = parsed.isoDate.split("-").map(Number);
+  return new Date(year, month - 1, day);
 }
 
 export function getPlannerViewDaySubtitle(itemCount: number): string {

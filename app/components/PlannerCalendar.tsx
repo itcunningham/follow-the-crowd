@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import CalendarMonthNav from "@/app/components/CalendarMonthNav";
 import PlannerCalendarDateActions from "@/app/components/PlannerCalendarDateActions";
 import PlannerCalendarMobileDateStrip from "@/app/components/PlannerCalendarMobileDateStrip";
@@ -15,10 +16,12 @@ import {
   getPlannerCalendarStatusBadgeClass,
   getCalendarWeekRows,
   getDefaultSelectedCalendarDate,
+  getMonthStart,
   getPlannerCalendarBadgeLabel,
   groupCalendarItemsByDate,
   isSameMonth,
   loadPlannerCalendarItems,
+  parsePlannerCalendarDateParam,
   PLANNER_CALENDAR_VISIBLE_LEGEND_ITEMS,
   toDateKey,
   WEEKDAY_LABELS,
@@ -279,8 +282,14 @@ type PlannerCalendarProps = {
 export default function PlannerCalendar({
   description = "Your events and booking activity by date.",
 }: PlannerCalendarProps) {
+  const searchParams = useSearchParams();
+  const restoredDate = parsePlannerCalendarDateParam(searchParams.get("date"));
   const [items, setItems] = useState<CalendarItem[]>([]);
   const [monthStart, setMonthStart] = useState(() => {
+    if (restoredDate) {
+      return getMonthStart(restoredDate);
+    }
+
     const today = new Date();
     return new Date(today.getFullYear(), today.getMonth(), 1);
   });
@@ -291,9 +300,24 @@ export default function PlannerCalendar({
   );
   const [actionDate, setActionDate] = useState<Date | null>(null);
   const [selectedDate, setSelectedDate] = useState(() => {
+    if (restoredDate) {
+      return restoredDate;
+    }
+
     const today = new Date();
     return new Date(today.getFullYear(), today.getMonth(), today.getDate());
   });
+
+  useEffect(() => {
+    const nextRestoredDate = parsePlannerCalendarDateParam(searchParams.get("date"));
+
+    if (!nextRestoredDate) {
+      return;
+    }
+
+    setSelectedDate(nextRestoredDate);
+    setMonthStart(getMonthStart(nextRestoredDate));
+  }, [searchParams]);
 
   useEffect(() => {
     const now = new Date();

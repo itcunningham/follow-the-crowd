@@ -68,6 +68,9 @@ import {
   resolveEventsListTabParam,
 } from "@/lib/events/eventsListNavigation";
 import {
+  buildPlannerCalendarHref,
+} from "@/lib/calendar";
+import {
   canManageEvents,
   getCurrentUserProfile,
   type UserRole,
@@ -133,6 +136,7 @@ function EventsPageClientView({ initialTab }: EventsPageClientProps) {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [eventsListReady, setEventsListReady] = useState(false);
   const [eventDateOverride, setEventDateOverride] = useState<string | null>(null);
+  const [createReturnHref, setCreateReturnHref] = useState<string | null>(null);
   const [locationRevision, setLocationRevision] = useState(0);
 
   useEffect(() => {
@@ -285,6 +289,7 @@ function EventsPageClientView({ initialTab }: EventsPageClientProps) {
     const eventDateParam = params.get("eventDate") ?? "";
 
     if (!createParam) {
+      handledCreateParamsRef.current = null;
       return;
     }
 
@@ -298,6 +303,19 @@ function EventsPageClientView({ initialTab }: EventsPageClientProps) {
 
     if (createParam === "event") {
       void openCreateFlow({ eventDate: eventDateParam, initialStep: "source" }).finally(() => {
+        router.replace("/events");
+      });
+      return;
+    }
+
+    if (createParam === "calendar") {
+      const sanitizedDate = sanitizePrefilledEventDateKey(eventDateParam);
+
+      void openCreateFlow({
+        eventDate: eventDateParam,
+        initialStep: "form",
+        returnHref: sanitizedDate ? buildPlannerCalendarHref(sanitizedDate) : "/calendar",
+      }).finally(() => {
         router.replace("/events");
       });
       return;
@@ -317,10 +335,15 @@ function EventsPageClientView({ initialTab }: EventsPageClientProps) {
     }
   }, [roleReady, isPlanner, router]);
 
-  async function openCreateFlow(options?: { eventDate?: string; initialStep?: CreateStep }) {
+  async function openCreateFlow(options?: {
+    eventDate?: string;
+    initialStep?: CreateStep;
+    returnHref?: string | null;
+  }) {
     const prefilledEventDate = sanitizePrefilledEventDateKey(options?.eventDate ?? "");
     setCreateOpen(true);
     setCreateStep(options?.initialStep ?? "source");
+    setCreateReturnHref(options?.returnHref ?? null);
     setForm({
       ...emptyEventForm,
       eventDate: prefilledEventDate,
@@ -350,11 +373,14 @@ function EventsPageClientView({ initialTab }: EventsPageClientProps) {
       return;
     }
 
+    const returnHref = createReturnHref;
+
     setCreateOpen(false);
     setCreateStep("source");
     setForm(emptyEventForm);
     setSelectedPlanId(null);
     setEventDateOverride(null);
+    setCreateReturnHref(null);
     setError(null);
     setCoverField(emptyEventCoverImageFieldState);
     if (coverPreviewUrl?.startsWith("blob:")) {
@@ -363,6 +389,10 @@ function EventsPageClientView({ initialTab }: EventsPageClientProps) {
     setCoverPreviewUrl(null);
     setCoverError(null);
     setFallbackColour(null);
+
+    if (returnHref) {
+      router.push(returnHref);
+    }
   }
 
   function handleSelectPlan(plan: BookingPlan) {
@@ -422,11 +452,15 @@ function EventsPageClientView({ initialTab }: EventsPageClientProps) {
           await updateEventCoverImageUrl(created.id, coverUrl);
         } catch (uploadError) {
           console.error("Failed to upload event cover image:", uploadError);
+          setCreateReturnHref(null);
+          setCreateOpen(false);
           router.push(`/events/${created.id}?coverUpload=failed`);
           return;
         }
       }
 
+      setCreateReturnHref(null);
+      setCreateOpen(false);
       router.push(`/events/${created.id}`);
     } catch (saveError) {
       console.error("Failed to create event:", saveError);
@@ -572,7 +606,14 @@ function EventsPageClientView({ initialTab }: EventsPageClientProps) {
               {createStep === "form" ? (
                 <form onSubmit={handleSaveEvent} className="space-y-4">
                   <PlannerBackLink
-                    onClick={() => setCreateStep(selectedPlanId ? "pick-plan" : "source")}
+                    onClick={() => {
+                      if (createReturnHref) {
+                        closeCreateFlow();
+                        return;
+                      }
+
+                      setCreateStep(selectedPlanId ? "pick-plan" : "source");
+                    }}
                   />
 
                   <PlannerFormField
