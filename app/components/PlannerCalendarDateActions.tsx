@@ -3,7 +3,9 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { isDateKeyBeforeToday } from "@/lib/bookingDateTime";
 import {
+  buildPlannerCreateEventFromPlansHref,
   buildPlannerCreateEventHref,
   formatPlannerSelectedDateLabel,
   getPlannerCalendarStatusBadgeClass,
@@ -16,6 +18,7 @@ import {
 type PlannerCalendarDateActionsProps = {
   date: Date | null;
   items: CalendarItem[];
+  hasSavedEventPlans: boolean;
   onClose: () => void;
 };
 
@@ -24,6 +27,7 @@ type ActionView = "actions" | "details";
 export default function PlannerCalendarDateActions({
   date,
   items,
+  hasSavedEventPlans,
   onClose,
 }: PlannerCalendarDateActionsProps) {
   const router = useRouter();
@@ -61,6 +65,7 @@ export default function PlannerCalendarDateActions({
 
   const dateLabel = formatPlannerSelectedDateLabel(date);
   const dateKey = toDateKey(date);
+  const canCreateEventOnDate = !isDateKeyBeforeToday(dateKey);
 
   const actionButtonClass =
     "w-full rounded-xl border border-ftc-border bg-ftc-bg-elevated/50 px-3 py-2.5 text-left transition hover:border-ftc-border-strong hover:bg-ftc-bg-elevated";
@@ -68,6 +73,11 @@ export default function PlannerCalendarDateActions({
   function navigateToCreateEvent() {
     onClose();
     router.push(buildPlannerCreateEventHref(dateKey));
+  }
+
+  function navigateToSavedEventPlans() {
+    onClose();
+    router.push(buildPlannerCreateEventFromPlansHref(dateKey));
   }
 
   return (
@@ -100,12 +110,26 @@ export default function PlannerCalendarDateActions({
 
         {view === "actions" ? (
           <div className="mt-4 space-y-2">
-            <button type="button" onClick={navigateToCreateEvent} className={actionButtonClass}>
-              <span className="block text-sm font-semibold text-ftc-text">Create event</span>
-              <span className="mt-0.5 block text-xs text-ftc-text-muted">
-                Set up an event for {dateLabel}
-              </span>
-            </button>
+            {canCreateEventOnDate ? (
+              <>
+                <button type="button" onClick={navigateToCreateEvent} className={actionButtonClass}>
+                  <span className="block text-sm font-semibold text-ftc-text">Create event</span>
+                  <span className="mt-0.5 block text-xs text-ftc-text-muted">
+                    Set up an event for {dateLabel}
+                  </span>
+                </button>
+
+                {hasSavedEventPlans ? (
+                  <button
+                    type="button"
+                    onClick={navigateToSavedEventPlans}
+                    className="w-full px-1 py-1 text-left text-sm font-semibold text-ftc-text-secondary transition hover:text-ftc-text"
+                  >
+                    Saved Event Plans
+                  </button>
+                ) : null}
+              </>
+            ) : null}
 
             <button type="button" onClick={() => setView("details")} className={actionButtonClass}>
               <span className="block text-sm font-semibold text-ftc-text">View day</span>

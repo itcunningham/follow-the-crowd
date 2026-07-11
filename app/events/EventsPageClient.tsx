@@ -321,6 +321,19 @@ function EventsPageClientView({ initialTab }: EventsPageClientProps) {
       return;
     }
 
+    if (createParam === "calendar-plans") {
+      const sanitizedDate = sanitizePrefilledEventDateKey(eventDateParam);
+
+      void openCreateFlow({
+        eventDate: eventDateParam,
+        initialStep: "pick-plan",
+        returnHref: sanitizedDate ? buildPlannerCalendarHref(sanitizedDate) : "/calendar",
+      }).finally(() => {
+        router.replace("/events");
+      });
+      return;
+    }
+
     if (createParam === "custom") {
       void openCreateFlow({ eventDate: eventDateParam, initialStep: "form" }).finally(() => {
         router.replace("/events");
@@ -575,7 +588,16 @@ function EventsPageClientView({ initialTab }: EventsPageClientProps) {
 
               {createStep === "pick-plan" ? (
                 <div className="space-y-4">
-                  <PlannerBackLink onClick={() => setCreateStep("source")} />
+                  <PlannerBackLink
+                    onClick={() => {
+                      if (createReturnHref) {
+                        closeCreateFlow();
+                        return;
+                      }
+
+                      setCreateStep("source");
+                    }}
+                  />
 
                   {loadingPlans ? (
                     <p className="text-sm text-ftc-text-muted">Loading saved event plans...</p>

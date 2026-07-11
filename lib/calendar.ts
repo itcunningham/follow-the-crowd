@@ -474,6 +474,14 @@ export function buildPlannerCreateEventHref(dateKey: string): string {
   return `/events?${params.toString()}`;
 }
 
+export function buildPlannerCreateEventFromPlansHref(dateKey: string): string {
+  const params = new URLSearchParams({
+    create: "calendar-plans",
+    eventDate: dateKey,
+  });
+  return `/events?${params.toString()}`;
+}
+
 export function buildPlannerCalendarHref(dateKey: string): string {
   const params = new URLSearchParams({ date: dateKey });
   return `/calendar?${params.toString()}`;

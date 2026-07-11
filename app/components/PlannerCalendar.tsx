@@ -7,8 +7,10 @@ import CalendarMonthNav from "@/app/components/CalendarMonthNav";
 import PlannerCalendarDateActions from "@/app/components/PlannerCalendarDateActions";
 import PlannerCalendarMobileDateStrip from "@/app/components/PlannerCalendarMobileDateStrip";
 import { isDateKeyBeforeToday } from "@/lib/bookingDateTime";
+import { listBookingPlans } from "@/lib/bookingPlans";
 import {
   buildPlannerCreateEventHref,
+  buildPlannerCreateEventFromPlansHref,
   filterCalendarItemsForMonth,
   formatPlannerAgendaDateLabel,
   getCalendarLoadErrorMessage,
@@ -187,6 +189,7 @@ function PlannerCalendarMobileAgenda({
   itemsByDate,
   isTodayDate,
   isDateInViewingMonth,
+  hasSavedEventPlans,
 }: {
   monthStart: Date;
   selectedDate: Date;
@@ -194,6 +197,7 @@ function PlannerCalendarMobileAgenda({
   itemsByDate: Map<string, CalendarItem[]>;
   isTodayDate: (date: Date) => boolean;
   isDateInViewingMonth: (date: Date) => boolean;
+  hasSavedEventPlans: boolean;
 }) {
   const agendaHeaderRef = useRef<HTMLDivElement>(null);
   const selectedDateKey = toDateKey(selectedDate);
@@ -253,12 +257,22 @@ function PlannerCalendarMobileAgenda({
           <div className="rounded-xl border border-dashed border-ftc-border-subtle bg-ftc-surface/30 px-4 py-8 text-center">
             <p className="text-sm text-ftc-text-muted">No events scheduled.</p>
             {canCreateEventOnSelectedDate ? (
-              <Link
-                href={buildPlannerCreateEventHref(displayDateKey)}
-                className="ftc-btn-secondary mt-3 inline-flex px-3 py-1.5 text-xs uppercase tracking-wide"
-              >
-                + Create Event
-              </Link>
+              <div className="mt-3 flex flex-col items-center gap-2.5">
+                <Link
+                  href={buildPlannerCreateEventHref(displayDateKey)}
+                  className="ftc-btn-secondary inline-flex px-3 py-1.5 text-xs uppercase tracking-wide"
+                >
+                  + Create Event
+                </Link>
+                {hasSavedEventPlans ? (
+                  <Link
+                    href={buildPlannerCreateEventFromPlansHref(displayDateKey)}
+                    className="text-sm font-semibold text-ftc-text-secondary transition hover:text-ftc-text"
+                  >
+                    Saved Event Plans
+                  </Link>
+                ) : null}
+              </div>
             ) : null}
           </div>
         ) : (
@@ -299,6 +313,7 @@ export default function PlannerCalendar({
     null,
   );
   const [actionDate, setActionDate] = useState<Date | null>(null);
+  const [hasSavedEventPlans, setHasSavedEventPlans] = useState(false);
   const [selectedDate, setSelectedDate] = useState(() => {
     if (restoredDate) {
       return restoredDate;
@@ -318,6 +333,17 @@ export default function PlannerCalendar({
     setSelectedDate(nextRestoredDate);
     setMonthStart(getMonthStart(nextRestoredDate));
   }, [searchParams]);
+
+  useEffect(() => {
+    void listBookingPlans()
+      .then((plans) => {
+        setHasSavedEventPlans(plans.length > 0);
+      })
+      .catch((loadError) => {
+        console.error("Failed to load saved event plans for calendar:", loadError);
+        setHasSavedEventPlans(false);
+      });
+  }, []);
 
   useEffect(() => {
     const now = new Date();
@@ -424,6 +450,7 @@ export default function PlannerCalendar({
             itemsByDate={itemsByDate}
             isTodayDate={isTodayDate}
             isDateInViewingMonth={isDateInViewingMonth}
+            hasSavedEventPlans={hasSavedEventPlans}
           />
 
           <div className="mt-4 hidden rounded-2xl border border-ftc-border bg-ftc-bg-elevated/40 md:block">
@@ -477,6 +504,7 @@ export default function PlannerCalendar({
       <PlannerCalendarDateActions
         date={actionDate}
         items={actionDate ? monthItemsByDate.get(toDateKey(actionDate)) ?? [] : []}
+        hasSavedEventPlans={hasSavedEventPlans}
         onClose={() => setActionDate(null)}
       />
     </section>
