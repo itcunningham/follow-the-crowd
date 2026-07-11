@@ -2,6 +2,72 @@
 
 import Link from "next/link";
 import { applyTextInputLimit } from "@/lib/textInputLimits";
+import {
+  DEFAULT_TEXTAREA_MAX_ROWS,
+  DEFAULT_TEXTAREA_MIN_ROWS,
+  useBoundedAutoGrowTextarea,
+} from "@/lib/useBoundedAutoGrowTextarea";
+
+function PlannerMultilineField({
+  label,
+  value,
+  onChange,
+  placeholder,
+  maxLength,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  maxLength?: number;
+}) {
+  const { textareaRef, adjustHeight } = useBoundedAutoGrowTextarea({
+    value,
+    minRows: DEFAULT_TEXTAREA_MIN_ROWS,
+    maxRows: DEFAULT_TEXTAREA_MAX_ROWS,
+  });
+
+  function handleChange(next: string) {
+    if (maxLength !== undefined) {
+      const limited = applyTextInputLimit(value, next, maxLength);
+
+      if (limited === null) {
+        return;
+      }
+
+      onChange(limited);
+      return;
+    }
+
+    onChange(next);
+  }
+
+  return (
+    <label className="block">
+      <span className="ftc-label">{label}</span>
+      <textarea
+        ref={textareaRef}
+        value={value}
+        onChange={(event) => {
+          handleChange(event.target.value);
+          requestAnimationFrame(adjustHeight);
+        }}
+        placeholder={placeholder}
+        rows={DEFAULT_TEXTAREA_MIN_ROWS}
+        className="ftc-input resize-none overflow-x-hidden px-3.5 py-2.5"
+      />
+      {maxLength !== undefined ? (
+        <p
+          className={`mt-1 text-right text-xs ${
+            value.length > maxLength ? "text-red-400" : "text-ftc-text-muted"
+          }`}
+        >
+          {value.length} / {maxLength}
+        </p>
+      ) : null}
+    </label>
+  );
+}
 
 export function PlannerFormField({
   label,
@@ -20,51 +86,29 @@ export function PlannerFormField({
   multiline?: boolean;
   maxLength?: number;
 }) {
-  function handleChange(next: string) {
-    if (multiline && maxLength !== undefined) {
-      const limited = applyTextInputLimit(value, next, maxLength);
-
-      if (limited === null) {
-        return;
-      }
-
-      onChange(limited);
-      return;
-    }
-
-    onChange(next);
+  if (multiline) {
+    return (
+      <PlannerMultilineField
+        label={label}
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+        maxLength={maxLength}
+      />
+    );
   }
 
   return (
     <label className="block">
       <span className="ftc-label">{label}</span>
-      {multiline ? (
-        <textarea
-          value={value}
-          onChange={(event) => handleChange(event.target.value)}
-          placeholder={placeholder}
-          rows={3}
-          className="ftc-input px-3.5 py-2.5"
-        />
-      ) : (
-        <input
-          type="text"
-          value={value}
-          onChange={(event) => handleChange(event.target.value)}
-          placeholder={placeholder}
-          required={required}
-          className="ftc-input px-3.5 py-2.5"
-        />
-      )}
-      {multiline && maxLength !== undefined ? (
-        <p
-          className={`mt-1 text-right text-xs ${
-            value.length > maxLength ? "text-red-400" : "text-ftc-text-muted"
-          }`}
-        >
-          {value.length} / {maxLength}
-        </p>
-      ) : null}
+      <input
+        type="text"
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder={placeholder}
+        required={required}
+        className="ftc-input px-3.5 py-2.5"
+      />
     </label>
   );
 }
