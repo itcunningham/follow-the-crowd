@@ -22,6 +22,7 @@ import ProfileAvatar from "@/app/components/ProfileAvatar";
 import { BookingDateField, BookingSetTimeRangeField } from "@/app/components/BookingDateTimeFields";
 import { getEventDateValidationError, formatDisplayEventDate } from "@/lib/bookingDateTime";
 import EventDjSendOfferControls, {
+  createDefaultDjSendOffer,
   DEFAULT_DJ_SEND_OFFER,
   formatDjSendOfferSummary,
   type DjSendOffer,
@@ -974,13 +975,9 @@ function BookingsPageContent() {
         return prev.filter((id) => id !== userId);
       }
 
-      const defaultFee = form.fee.trim() ? normalizeStoredRate(form.fee) : "";
       setDjOffers((offers) => ({
         ...offers,
-        [userId]: offers[userId] ?? {
-          rateMode: "fixed",
-          fee: defaultFee,
-        },
+        [userId]: offers[userId] ?? createDefaultDjSendOffer(),
       }));
 
       return [...prev, userId];
@@ -1617,7 +1614,7 @@ function BookingsPageContent() {
                         const availabilityHint = djAvailabilityHints.get(dj.user_id);
                         const duplicateStatus = eventBookingDuplicates.get(dj.user_id);
                         const isDuplicateBlocked = Boolean(duplicateStatus);
-                        const offer = djOffers[dj.user_id] ?? DEFAULT_DJ_SEND_OFFER;
+                        const offer = djOffers[dj.user_id] ?? createDefaultDjSendOffer();
 
                         return (
                           <li key={dj.user_id}>
@@ -1666,6 +1663,7 @@ function BookingsPageContent() {
                             {selected ? (
                               <div className="mt-2 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated p-3">
                                 <EventDjSendOfferControls
+                                  key={dj.user_id}
                                   offer={offer}
                                   disabled={sending}
                                   onChange={(nextOffer) => updateDjOffer(dj.user_id, nextOffer)}

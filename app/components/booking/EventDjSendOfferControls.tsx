@@ -19,6 +19,10 @@ export const DEFAULT_DJ_SEND_OFFER: DjSendOffer = {
   fee: "",
 };
 
+export function createDefaultDjSendOffer(): DjSendOffer {
+  return { rateMode: "fixed", fee: "" };
+}
+
 const OFFER_TYPE_OPTIONS = [
   {
     value: "fixed" as const,

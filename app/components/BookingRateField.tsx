@@ -8,7 +8,7 @@ import {
 } from "@/lib/bookingRate";
 
 export const BOOKING_RATE_INPUT_CLASS =
-  "ftc-input-shell flex w-full items-center rounded-xl text-sm text-ftc-text";
+  "ftc-input-shell flex w-full items-center gap-1 rounded-xl text-sm text-ftc-text";
 
 export function BookingRateField({
   label = "Rate",
