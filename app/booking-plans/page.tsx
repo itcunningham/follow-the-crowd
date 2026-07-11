@@ -1,8 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import AppNavigation from "@/app/components/AppNavigation";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
 import {
@@ -16,10 +16,15 @@ import {
   SavedEventPlansSectionHeading,
 } from "@/app/components/skeleton/Skeleton";
 import { BookingDateField, BookingSetTimeRangeField } from "@/app/components/BookingDateTimeFields";
+import {
+  HistorySelectionCheckbox,
+  useHistoryBulkManage,
+} from "@/app/components/history/HistoryBulkManage";
 import { getEventDateValidationError } from "@/lib/bookingDateTime";
 import { getEventNotesValidationError, MAX_EVENT_NOTES_LENGTH } from "@/lib/events/eventNotes";
 import {
   createBookingPlan,
+  deleteBookingPlans,
   listBookingPlans,
   updateBookingPlan,
   type BookingPlan,
@@ -60,6 +65,164 @@ function getPlanLoadErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : "Failed to load event plans";
 }
 
+function TrashIcon({ className = "h-4 w-4" }: { className?: string }) {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M3 6h18" />
+      <path d="M8 6V4h8v2" />
+      <path d="M19 6l-1 14H6L5 6" />
+      <path d="M10 11v6" />
+      <path d="M14 11v6" />
+    </svg>
+  );
+}
+
+function EventPlanDeleteConfirmDialog({
+  open,
+  count,
+  loading,
+  onCancel,
+  onConfirm,
+}: {
+  open: boolean;
+  count: number;
+  loading: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [open]);
+
+  if (!open || !mounted) {
+    return null;
+  }
+
+  const title = count === 1 ? "Delete Event Plan?" : "Delete Event Plans?";
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[60] flex items-end justify-center bg-black p-0 sm:items-center sm:p-4"
+      onClick={() => {
+        if (!loading) {
+          onCancel();
+        }
+      }}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="event-plan-delete-title"
+        className="isolate max-h-[90dvh] w-full max-w-lg overflow-y-auto overscroll-contain rounded-t-2xl border border-ftc-border-subtle bg-ftc-surface sm:rounded-2xl"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="border-b border-ftc-border-subtle px-5 py-4">
+          <h2 id="event-plan-delete-title" className="text-base font-semibold text-ftc-text">
+            {title}
+          </h2>
+          <p className="mt-2 text-sm leading-relaxed text-ftc-text-secondary">
+            These Event Plans will be permanently deleted.
+          </p>
+          <p className="mt-2 text-sm leading-relaxed text-ftc-text-secondary">
+            Existing events, bookings, booking requests and messages created from these plans will
+            NOT be affected.
+          </p>
+        </div>
+
+        <div className="relative z-10 flex flex-col gap-2 border-t border-ftc-border-subtle bg-ftc-surface px-5 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:flex-row sm:justify-end">
+          <button
+            type="button"
+            onClick={loading ? undefined : onCancel}
+            aria-disabled={loading}
+            tabIndex={loading ? -1 : 0}
+            className="inline-flex min-h-[2.75rem] w-full items-center justify-center rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated px-4 py-2.5 text-sm font-semibold uppercase tracking-wide text-ftc-text-secondary disabled:cursor-not-allowed sm:w-auto"
+          >
+            Cancel
+          </button>
+          {loading ? (
+            <button
+              type="button"
+              aria-busy="true"
+              tabIndex={-1}
+              className="inline-flex min-h-[2.75rem] w-full cursor-not-allowed items-center justify-center rounded-xl border-0 bg-[var(--ftc-color-danger)] px-4 py-2.5 text-sm font-semibold uppercase tracking-wide text-ftc-bg sm:w-auto"
+            >
+              Deleting...
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={onConfirm}
+              className="inline-flex min-h-[2.75rem] w-full items-center justify-center rounded-xl border-0 bg-[var(--ftc-color-danger)] px-4 py-2.5 text-sm font-semibold uppercase tracking-wide text-ftc-bg transition hover:opacity-90 sm:w-auto"
+            >
+              Delete
+            </button>
+          )}
+        </div>
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
+function EventPlanSelectionBottomBar({
+  selectedCount,
+  deleting,
+  onCancel,
+  onDelete,
+}: {
+  selectedCount: number;
+  deleting: boolean;
+  onCancel: () => void;
+  onDelete: () => void;
+}) {
+  return (
+    <div className="fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-30 border-t border-ftc-border-subtle bg-ftc-bg/95 px-4 py-3 backdrop-blur-md md:bottom-0">
+      <div className="mx-auto flex w-full max-w-2xl items-center justify-between gap-3">
+        <button
+          type="button"
+          onClick={onCancel}
+          disabled={deleting}
+          className="rounded-lg border border-ftc-border-subtle bg-ftc-surface px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-ftc-text-secondary transition hover:border-ftc-border-strong disabled:opacity-50"
+        >
+          Cancel
+        </button>
+        <button
+          type="button"
+          onClick={onDelete}
+          disabled={deleting || selectedCount === 0}
+          className="rounded-lg border-0 bg-[var(--ftc-color-danger)] px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-ftc-bg transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          Delete ({selectedCount})
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function BookingPlansPage() {
   const router = useRouter();
   const [role, setRole] = useState<UserRole | null>(null);
@@ -74,6 +237,9 @@ export default function BookingPlansPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  const planBulkManage = useHistoryBulkManage(plans);
+
   const planFormDateValidationError = useMemo(() => {
     if (!formOpen) {
       return null;
@@ -89,6 +255,19 @@ export default function BookingPlansPage() {
     return getEventNotesValidationError(form.notes);
   }, [formOpen, form.notes]);
   const planFormValidationError = planFormDateValidationError ?? planFormNotesValidationError;
+
+  const visiblePlans = useMemo(() => {
+    if (planBulkManage.removingIds.size === 0) {
+      return plans;
+    }
+
+    return plans.filter((plan) => !planBulkManage.removingIds.has(plan.id));
+  }, [plans, planBulkManage.removingIds]);
+
+  const showSelectionBottomBar =
+    planBulkManage.selectionMode &&
+    !planBulkManage.confirmOpen &&
+    planBulkManage.selectedCount > 0;
 
   const loadPlans = useCallback(async () => {
     setLoadingPlans(true);
@@ -134,6 +313,7 @@ export default function BookingPlansPage() {
   }, [loadingAccess, role, loadPlans]);
 
   function openCreateForm() {
+    planBulkManage.cancelSelectionMode();
     setFormOpen(true);
     setEditingPlanId(null);
     setForm(emptyPlanForm);
@@ -234,6 +414,32 @@ export default function BookingPlansPage() {
     router.push(`/bookings?planId=${encodeURIComponent(planId)}`);
   }
 
+  function handleTrashClick() {
+    if (planBulkManage.selectionMode) {
+      planBulkManage.cancelSelectionMode();
+      return;
+    }
+
+    planBulkManage.enterSelectionMode();
+  }
+
+  async function handleDeletePlans(ids: string[]) {
+    await deleteBookingPlans(ids);
+    setPlans((currentPlans) => currentPlans.filter((plan) => !ids.includes(plan.id)));
+    setSuccessMessage(
+      ids.length === 1 ? "Event plan deleted" : `${ids.length} event plans deleted`,
+    );
+  }
+
+  function handlePlanCardClick(plan: BookingPlan) {
+    if (planBulkManage.selectionMode) {
+      planBulkManage.toggleItem(plan.id);
+      return;
+    }
+
+    openEditForm(plan);
+  }
+
   if (!loadingAccess && !canAccessBookingPlans(role)) {
     return null;
   }
@@ -248,18 +454,41 @@ export default function BookingPlansPage() {
           initialRole={displayRole}
           actions={
             !formOpen && (loadingAccess || loadingPlans || plans.length > 0) ? (
-              <button
-                type="button"
-                onClick={openCreateForm}
-                className="shrink-0 cursor-pointer ftc-btn-primary px-4 py-2.5 text-sm uppercase tracking-wide"
-              >
-                Create event plan
-              </button>
+              <div className="flex items-center gap-2">
+                {!planBulkManage.selectionMode ? (
+                  <button
+                    type="button"
+                    onClick={openCreateForm}
+                    className="shrink-0 cursor-pointer ftc-btn-primary px-4 py-2.5 text-sm uppercase tracking-wide"
+                  >
+                    Create event plan
+                  </button>
+                ) : null}
+                {plans.length > 0 ? (
+                  <button
+                    type="button"
+                    onClick={handleTrashClick}
+                    aria-label={
+                      planBulkManage.selectionMode ? "Cancel selection" : "Delete event plans"
+                    }
+                    aria-pressed={planBulkManage.selectionMode}
+                    className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border transition ${
+                      planBulkManage.selectionMode
+                        ? "border-ftc-primary bg-ftc-bg-elevated text-ftc-text"
+                        : "border-ftc-border-subtle bg-ftc-bg-elevated text-ftc-text-muted hover:border-ftc-border-strong hover:text-ftc-text-secondary"
+                    }`}
+                  >
+                    <TrashIcon />
+                  </button>
+                ) : null}
+              </div>
             ) : null
           }
         />
 
-        <div className={PLANNER_WORKSPACE_CONTENT_CLASS}>
+        <div
+          className={`${PLANNER_WORKSPACE_CONTENT_CLASS}${showSelectionBottomBar ? " pb-24 md:pb-20" : ""}`}
+        >
           {successMessage ? (
             <p className="mb-4 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated px-4 py-3 text-sm text-ftc-text-secondary">
               {successMessage}
@@ -355,48 +584,113 @@ export default function BookingPlansPage() {
                 </div>
               ) : (
                 <ul className="space-y-3">
-                  {plans.map((plan) => (
-                    <li key={plan.id} className="ftc-card ftc-card-hoverable overflow-hidden">
-                      <div className="flex flex-col sm:flex-row sm:items-stretch">
-                        <button
-                          type="button"
-                          onClick={() => openEditForm(plan)}
-                          className="min-w-0 flex-1 cursor-pointer p-4 text-left transition active:bg-ftc-bg-elevated/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ftc-primary/35 sm:p-5"
-                        >
-                          <h3 className="text-lg font-semibold text-ftc-text">{plan.name}</h3>
-                          <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
-                            <PlanDetail label="Event" value={plan.event_name} />
-                            <PlanDetail label="Venue" value={plan.venue} />
-                          </dl>
-                          {plan.notes?.trim() ? (
-                            <p className="mt-3 text-sm leading-relaxed text-ftc-text-secondary">
-                              {plan.notes}
-                            </p>
-                          ) : null}
-                        </button>
-
-                        <div className="shrink-0 border-t border-ftc-border-subtle p-4 sm:flex sm:items-start sm:border-l sm:border-t-0 sm:p-5">
-                          <button
-                            type="button"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              handleUseForBooking(plan.id);
-                            }}
-                            className="ftc-btn-primary w-full px-4 py-2.5 text-xs uppercase tracking-wide sm:w-auto sm:px-3 sm:py-1.5"
-                          >
-                            Use for booking
-                          </button>
-                        </div>
-                      </div>
-                    </li>
+                  {visiblePlans.map((plan) => (
+                    <EventPlanCard
+                      key={plan.id}
+                      plan={plan}
+                      selectionMode={planBulkManage.selectionMode}
+                      selected={planBulkManage.selectedIds.has(plan.id)}
+                      onCardClick={() => handlePlanCardClick(plan)}
+                      onUseForBooking={() => handleUseForBooking(plan.id)}
+                    />
                   ))}
                 </ul>
               )}
             </>
           ) : null}
         </div>
+
+        {showSelectionBottomBar ? (
+          <EventPlanSelectionBottomBar
+            selectedCount={planBulkManage.selectedCount}
+            deleting={planBulkManage.removing}
+            onCancel={planBulkManage.cancelSelectionMode}
+            onDelete={planBulkManage.openConfirm}
+          />
+        ) : null}
+
+        <EventPlanDeleteConfirmDialog
+          open={planBulkManage.confirmOpen}
+          count={planBulkManage.confirmCount}
+          loading={planBulkManage.removing}
+          onCancel={planBulkManage.closeConfirm}
+          onConfirm={() => {
+            void planBulkManage.confirmRemove(handleDeletePlans);
+          }}
+        />
       </div>
     </OnboardingGuard>
+  );
+}
+
+function EventPlanCard({
+  plan,
+  selectionMode,
+  selected,
+  onCardClick,
+  onUseForBooking,
+}: {
+  plan: BookingPlan;
+  selectionMode: boolean;
+  selected: boolean;
+  onCardClick: () => void;
+  onUseForBooking: () => void;
+}) {
+  const selectionLabel = selected
+    ? `Deselect ${plan.name}`
+    : `Select ${plan.name}`;
+
+  return (
+    <li
+      className={`ftc-card overflow-hidden transition ${
+        selectionMode
+          ? selected
+            ? "ftc-option-card-selected"
+            : "border-ftc-border-subtle bg-ftc-surface"
+          : "ftc-card-hoverable"
+      }`}
+    >
+      <button
+        type="button"
+        onClick={onCardClick}
+        className="flex w-full items-start gap-3 p-4 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ftc-primary/35 active:bg-ftc-bg-elevated/60 sm:p-5"
+      >
+        {selectionMode ? (
+          <HistorySelectionCheckbox
+            checked={selected}
+            label={selectionLabel}
+            presentational
+          />
+        ) : null}
+        <span className="min-w-0 flex-1">
+          <span className="block text-lg font-semibold text-ftc-text">{plan.name}</span>
+          <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
+            <PlanDetail label="Event" value={plan.event_name} />
+            <PlanDetail label="Venue" value={plan.venue} />
+          </dl>
+          {plan.notes?.trim() ? (
+            <span className="mt-3 block text-sm leading-relaxed text-ftc-text-secondary">
+              {plan.notes}
+            </span>
+          ) : null}
+        </span>
+      </button>
+
+      {!selectionMode ? (
+        <div className="flex justify-end px-4 pb-4 sm:px-5 sm:pb-5">
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              onUseForBooking();
+            }}
+            className="ftc-btn-primary px-3 py-1.5 text-xs uppercase tracking-wide"
+          >
+            Use for booking
+          </button>
+        </div>
+      ) : null}
+    </li>
   );
 }
 

@@ -124,3 +124,21 @@ export async function updateBookingPlan(
 
   return data as BookingPlan;
 }
+
+export async function deleteBookingPlans(planIds: string[]): Promise<void> {
+  if (planIds.length === 0) {
+    return;
+  }
+
+  const userId = await getCurrentUserId();
+
+  const { error } = await supabase
+    .from("booking_plans")
+    .delete()
+    .in("id", planIds)
+    .eq("owner_id", userId);
+
+  if (error) {
+    throw error;
+  }
+}
