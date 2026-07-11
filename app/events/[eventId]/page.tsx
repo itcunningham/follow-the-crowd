@@ -35,7 +35,6 @@ import EventCoverImageField, {
 } from "@/app/components/events/EventCoverImageField";
 import EventFallbackColourField from "@/app/components/events/EventFallbackColourField";
 import EventEditConfirmDialog from "@/app/components/events/EventEditConfirmDialog";
-import { EventCoverImageContextThumb } from "@/app/components/events/EventCoverImageDisplay";
 import {
   isSelectableEventFallbackColourKey,
   type EventSelectableFallbackColourKey,
@@ -203,7 +202,6 @@ export default function EventDetailPage() {
 
   const [sendOpen, setSendOpen] = useState(false);
   const sendBookingsSectionRef = useRef<HTMLDivElement | null>(null);
-  const djSearchInputRef = useRef<HTMLInputElement | null>(null);
   const [djOffers, setDjOffers] = useState<Record<string, DjSendOffer>>({});
   const [djs, setDjs] = useState<UserProfile[]>([]);
   const [selectedDjIds, setSelectedDjIds] = useState<string[]>([]);
@@ -688,14 +686,14 @@ export default function EventDetailPage() {
   }, [sendOpen]);
 
   useEffect(() => {
-    if (!sendOpen || loadingDjs) {
+    if (!sendOpen) {
       return;
     }
 
-    window.setTimeout(() => {
-      djSearchInputRef.current?.focus({ preventScroll: true });
-    }, 300);
-  }, [loadingDjs, sendOpen]);
+    window.requestAnimationFrame(() => {
+      sendBookingsSectionRef.current?.focus({ preventScroll: true });
+    });
+  }, [sendOpen]);
 
   function closeSendBookings() {
     if (sending) {
@@ -1565,33 +1563,17 @@ export default function EventDetailPage() {
             role="dialog"
             aria-modal="true"
             aria-label="Send bookings"
-            className="max-h-[90dvh] w-full max-w-2xl overflow-y-auto overscroll-contain rounded-t-2xl border border-ftc-border-subtle bg-ftc-bg pb-[max(1rem,env(safe-area-inset-bottom))] sm:rounded-2xl sm:pb-0"
+            tabIndex={-1}
+            className="max-h-[90dvh] w-full max-w-2xl overflow-y-auto overscroll-contain rounded-t-2xl border border-ftc-border-subtle bg-ftc-bg pb-[max(1rem,env(safe-area-inset-bottom))] sm:rounded-2xl sm:pb-0 focus:outline-none"
             onClick={(clickEvent) => clickEvent.stopPropagation()}
           >
             <PlannerFormCard title="Send bookings" onCancel={closeSendBookings} cancelDisabled={sending}>
-              <div className="flex items-start gap-3">
-                <EventCoverImageContextThumb
-                  eventName={event.name}
-                  coverImageUrl={event.cover_image_url}
-                  fallbackColour={event.fallback_colour}
-                />
-                <p className="min-w-0 text-sm text-ftc-text-secondary">
-                  Event details will be prefilled from this event. Each DJ receives a private booking
-                  request DM.
-                </p>
-              </div>
-
-              <div className="mt-4 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated p-3">
-                <p className="text-xs font-semibold uppercase tracking-wide text-ftc-text-muted">
-                  Per-DJ offers
-                </p>
-                <p className="mt-1 text-sm leading-relaxed text-ftc-text-secondary">
-                  Select DJs below, then set a fixed offer or ask for rate for each one.
-                </p>
-              </div>
+              <p className="text-sm text-ftc-text-secondary">
+                Event details will be prefilled from this event. Each DJ receives a private booking
+                request DM
+              </p>
 
               <input
-                ref={djSearchInputRef}
                 type="search"
                 value={searchQuery}
                 onChange={(event) => setSearchQuery(event.target.value)}
