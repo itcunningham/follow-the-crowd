@@ -10,6 +10,7 @@ import PlannerCalendarMobileDateStrip from "@/app/components/PlannerCalendarMobi
 import { PlannerCalendarContentSkeleton } from "@/app/components/skeleton/Skeleton";
 import { isDateKeyBeforeToday } from "@/lib/bookingDateTime";
 import { consumeEventCreateInviteMessage } from "@/lib/events/eventCreateInviteMessages";
+import { prepareMobileDocumentScrollReset } from "@/lib/navigation/prepareMobileDocumentScrollReset";
 import { listBookingPlans } from "@/lib/bookingPlans";
 import {
   buildCalendarOriginState,
@@ -96,6 +97,7 @@ function PlannerCalendarItemBadge({
   return (
     <Link
       href={resolveCalendarOriginEventHref(item.href, calendarOrigin)}
+      onClick={prepareMobileDocumentScrollReset}
       className={`block w-full rounded-md border-0 px-1.5 py-1 text-left transition hover:opacity-90 md:px-2 md:py-1.5 ${getPlannerCalendarStatusBadgeClass(item.statusKind)}`}
     >
       <span className="block truncate text-[9px] font-semibold uppercase tracking-wide sm:text-[10px] md:text-xs">
@@ -185,6 +187,7 @@ function PlannerCalendarAgendaCard({
   return (
     <Link
       href={resolveCalendarOriginEventHref(item.href, calendarOrigin)}
+      onClick={prepareMobileDocumentScrollReset}
       className="block rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated p-3 transition hover:border-ftc-border-strong"
     >
       <div className="flex items-start gap-3">

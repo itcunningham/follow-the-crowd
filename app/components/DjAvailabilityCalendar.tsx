@@ -41,6 +41,7 @@ import {
   toDateKey,
   WEEKDAY_LABELS,
 } from "@/lib/calendar";
+import { prepareMobileDocumentScrollReset } from "@/lib/navigation/prepareMobileDocumentScrollReset";
 
 
 const AVAILABILITY_STATUS_VALUES: readonly DjAvailabilityStatus[] = [
@@ -149,7 +150,10 @@ function DayBookingsPopover({ dateKey, bookings, monthStart, onClose }: DayBooki
           <li key={booking.id}>
             <Link
               href={resolveCalendarOriginEventHref(getBookingRequestHref(booking), calendarOrigin)}
-              onClick={onClose}
+              onClick={() => {
+                prepareMobileDocumentScrollReset();
+                onClose();
+              }}
               className="block rounded-lg border border-ftc-border bg-ftc-surface/80 px-2.5 py-2 transition hover:border-ftc-primary/30 hover:bg-ftc-surface"
             >
               <div className="flex items-center justify-between gap-2">
@@ -876,6 +880,7 @@ export default function DjAvailabilityCalendar({
       monthStart,
     });
 
+    prepareMobileDocumentScrollReset();
     router.push(resolveCalendarOriginEventHref(getBookingRequestHref(booking), calendarOrigin));
   }
 

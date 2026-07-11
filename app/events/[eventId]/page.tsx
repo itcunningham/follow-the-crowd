@@ -222,7 +222,8 @@ export default function EventDetailPage() {
   const [crewChatHelpOpen, setCrewChatHelpOpen] = useState(false);
   const [unavailableConfirmOpen, setUnavailableConfirmOpen] = useState(false);
 
-  useScrollPageToTop(eventId, !loading);
+  const mobileScrollReady = useScrollPageToTop(eventId, !loading);
+  const mobileScrollGateClass = mobileScrollReady ? "" : "invisible";
 
   const resolvedRole = role ?? guardProfile?.role ?? null;
   const resolvedUserId = currentUserId ?? guardProfile?.user_id ?? null;
@@ -875,7 +876,7 @@ export default function EventDetailPage() {
 
     try {
       await deleteEmptyEvent(event.id, event.cover_image_url);
-      router.replace("/events");
+      router.replace(eventsBackHref);
     } catch (deleteError) {
       console.error("Failed to delete event:", deleteError);
       setError(getEventsLoadErrorMessage(deleteError));
@@ -893,7 +894,7 @@ export default function EventDetailPage() {
 
     try {
       await cancelEvent(event.id);
-      router.replace("/events");
+      router.replace(eventsBackHref);
     } catch (cancelError) {
       console.error("Failed to cancel event:", cancelError);
       setError(getEventsLoadErrorMessage(cancelError));
@@ -973,11 +974,13 @@ export default function EventDetailPage() {
   if (loading) {
     return (
       <OnboardingGuard>
-        <EventDetailLoadingShell
-          backHref={eventsBackHref}
-          editHeaderState={editHeaderState}
-          onEditClick={openEditForm}
-        />
+        <div className={mobileScrollGateClass}>
+          <EventDetailLoadingShell
+            backHref={eventsBackHref}
+            editHeaderState={editHeaderState}
+            onEditClick={openEditForm}
+          />
+        </div>
       </OnboardingGuard>
     );
   }
@@ -986,7 +989,7 @@ export default function EventDetailPage() {
     return (
       <OnboardingGuard>
         <div
-          className={`mx-auto min-h-[100dvh] w-full max-w-2xl bg-ftc-bg font-sans text-ftc-text ${MOBILE_NAV_OFFSET_CLASS}`}
+          className={`mx-auto min-h-[100dvh] w-full max-w-2xl bg-ftc-bg font-sans text-ftc-text ${MOBILE_NAV_OFFSET_CLASS} ${mobileScrollGateClass}`}
         >
           <AppNavigation />
           <div className="px-4 py-8 sm:px-6">
@@ -1007,7 +1010,7 @@ export default function EventDetailPage() {
   return (
     <OnboardingGuard>
       <div
-        className={`mx-auto min-h-[100dvh] w-full max-w-2xl bg-ftc-bg font-sans text-ftc-text ${MOBILE_NAV_OFFSET_CLASS}`}
+        className={`mx-auto min-h-[100dvh] w-full max-w-2xl bg-ftc-bg font-sans text-ftc-text ${MOBILE_NAV_OFFSET_CLASS} ${mobileScrollGateClass}`}
       >
         <AppNavigation />
 

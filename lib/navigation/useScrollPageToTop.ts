@@ -1,10 +1,14 @@
 "use client";
 
-import { useLayoutEffect, useRef } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { isMobileScrollResetViewport } from "@/lib/navigation/isMobileScrollResetViewport";
-import { scheduleMobileScrollPageToTop } from "@/lib/navigation/scrollPageToTop";
+import {
+  commitMobileDocumentScrollToTop,
+  scrollDocumentToTop,
+} from "@/lib/navigation/scrollPageToTop";
 
-export function useScrollPageToTop(routeKey: string, contentReady = true): void {
+export function useScrollPageToTop(routeKey: string, contentReady = true): boolean {
+  const [scrollReady, setScrollReady] = useState(() => !isMobileScrollResetViewport());
   const previousScrollRestorationRef = useRef<ScrollRestoration | null>(null);
 
   useLayoutEffect(() => {
@@ -12,21 +16,30 @@ export function useScrollPageToTop(routeKey: string, contentReady = true): void 
       return;
     }
 
+    setScrollReady(false);
     previousScrollRestorationRef.current = window.history.scrollRestoration;
     window.history.scrollRestoration = "manual";
 
-    const cancelScheduled = scheduleMobileScrollPageToTop();
+    let cancelCommit = commitMobileDocumentScrollToTop(() => {
+      setScrollReady(true);
+    });
 
     const handlePageShow = (event: PageTransitionEvent) => {
-      if (event.persisted) {
-        scheduleMobileScrollPageToTop();
+      if (!event.persisted) {
+        return;
       }
+
+      setScrollReady(false);
+      cancelCommit();
+      cancelCommit = commitMobileDocumentScrollToTop(() => {
+        setScrollReady(true);
+      });
     };
 
     window.addEventListener("pageshow", handlePageShow);
 
     return () => {
-      cancelScheduled();
+      cancelCommit();
       window.removeEventListener("pageshow", handlePageShow);
 
       if (previousScrollRestorationRef.current !== null) {
@@ -40,6 +53,13 @@ export function useScrollPageToTop(routeKey: string, contentReady = true): void 
       return;
     }
 
-    return scheduleMobileScrollPageToTop();
+    scrollDocumentToTop();
+    const rafId = requestAnimationFrame(scrollDocumentToTop);
+
+    return () => {
+      cancelAnimationFrame(rafId);
+    };
   }, [routeKey, contentReady]);
+
+  return scrollReady;
 }

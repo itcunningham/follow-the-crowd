@@ -1,4 +1,4 @@
-const MOBILE_SCROLL_RESET_DELAYS_MS = [0, 50, 100, 300] as const;
+const IOS_SCROLL_CATCH_MS = 50;
 
 export function scrollDocumentToTop(): void {
   if (typeof window === "undefined") {
@@ -19,23 +19,63 @@ export function scrollDocumentToTop(): void {
   document.body.scrollLeft = 0;
 }
 
-export function scheduleMobileScrollPageToTop(): () => void {
+function isDocumentAtTop(): boolean {
+  const scrollingElementTop = document.scrollingElement?.scrollTop ?? 0;
+  return window.scrollY <= 1 && scrollingElementTop <= 1;
+}
+
+export function commitMobileDocumentScrollToTop(onSettled: () => void): () => void {
   scrollDocumentToTop();
 
-  let rafId1 = 0;
-  let rafId2 = 0;
-  rafId1 = requestAnimationFrame(() => {
-    scrollDocumentToTop();
-    rafId2 = requestAnimationFrame(scrollDocumentToTop);
-  });
+  let cancelled = false;
+  let frame = 0;
+  let rafId = 0;
+  let iosCatchTimeout = 0;
+  const maxFrames = 3;
 
-  const timeoutIds = MOBILE_SCROLL_RESET_DELAYS_MS.map((delay) =>
-    window.setTimeout(scrollDocumentToTop, delay),
-  );
+  const settle = () => {
+    if (!cancelled) {
+      onSettled();
+    }
+  };
+
+  const runFramePass = () => {
+    if (cancelled) {
+      return;
+    }
+
+    scrollDocumentToTop();
+    frame += 1;
+
+    if (isDocumentAtTop() || frame >= maxFrames) {
+      if (isDocumentAtTop()) {
+        settle();
+        return;
+      }
+
+      iosCatchTimeout = window.setTimeout(() => {
+        if (cancelled) {
+          return;
+        }
+
+        scrollDocumentToTop();
+        settle();
+      }, IOS_SCROLL_CATCH_MS);
+      return;
+    }
+
+    rafId = requestAnimationFrame(runFramePass);
+  };
+
+  rafId = requestAnimationFrame(runFramePass);
 
   return () => {
-    if (rafId1) cancelAnimationFrame(rafId1);
-    if (rafId2) cancelAnimationFrame(rafId2);
-    timeoutIds.forEach((timeoutId) => window.clearTimeout(timeoutId));
+    cancelled = true;
+    if (rafId) {
+      cancelAnimationFrame(rafId);
+    }
+    if (iosCatchTimeout) {
+      window.clearTimeout(iosCatchTimeout);
+    }
   };
 }

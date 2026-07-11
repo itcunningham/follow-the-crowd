@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import PlannerCalendarActionButtons from "@/app/components/PlannerCalendarActionButtons";
 import { isDateKeyBeforeToday } from "@/lib/bookingDateTime";
+import { prepareMobileDocumentScrollReset } from "@/lib/navigation/prepareMobileDocumentScrollReset";
 import {
   buildPlannerCreateEventFromPlansHref,
   buildPlannerCreateEventHref,
@@ -161,7 +162,10 @@ export default function PlannerCalendarDateActions({
                   <li key={item.id}>
                     <Link
                       href={resolveCalendarOriginEventHref(item.href, calendarOrigin)}
-                      onClick={onClose}
+                      onClick={() => {
+                        prepareMobileDocumentScrollReset();
+                        onClose();
+                      }}
                       className={`block rounded-xl border-0 px-3 py-2.5 transition hover:opacity-90 ${getPlannerCalendarStatusBadgeClass(item.statusKind)}`}
                     >
                       <span className="block text-[10px] font-semibold uppercase tracking-wide">
