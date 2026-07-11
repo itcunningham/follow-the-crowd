@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import PlannerCalendarActionButtons from "@/app/components/PlannerCalendarActionButtons";
 import { isDateKeyBeforeToday } from "@/lib/bookingDateTime";
 import {
   buildPlannerCreateEventFromPlansHref,
@@ -93,16 +94,27 @@ export default function PlannerCalendarDateActions({
         onClick={(event) => event.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-3">
-          <div>
+          <div className="min-w-0 flex-1">
             <h2 id="planner-date-actions-title" className="text-base font-semibold text-ftc-text">
               {dateLabel}
             </h2>
           </div>
+
+          {canCreateEventOnDate ? (
+            <PlannerCalendarActionButtons
+              dateKey={dateKey}
+              hasSavedEventPlans={hasSavedEventPlans}
+              className="shrink-0"
+              onCreateClick={navigateToCreateEvent}
+              onPlansClick={navigateToSavedEventPlans}
+            />
+          ) : null}
+
           <button
             type="button"
             aria-label="Close"
             onClick={onClose}
-            className="rounded-lg border border-ftc-border px-2 py-1 text-xs font-semibold uppercase tracking-wide text-ftc-text-muted transition hover:border-ftc-border-strong hover:text-ftc-text-secondary"
+            className="shrink-0 rounded-lg border border-ftc-border px-2 py-1 text-xs font-semibold uppercase tracking-wide text-ftc-text-muted transition hover:border-ftc-border-strong hover:text-ftc-text-secondary"
           >
             Close
           </button>
@@ -110,27 +122,6 @@ export default function PlannerCalendarDateActions({
 
         {view === "actions" ? (
           <div className="mt-4 space-y-2">
-            {canCreateEventOnDate ? (
-              <>
-                <button type="button" onClick={navigateToCreateEvent} className={actionButtonClass}>
-                  <span className="block text-sm font-semibold text-ftc-text">Create event</span>
-                  <span className="mt-0.5 block text-xs text-ftc-text-muted">
-                    Set up an event for {dateLabel}
-                  </span>
-                </button>
-
-                {hasSavedEventPlans ? (
-                  <button
-                    type="button"
-                    onClick={navigateToSavedEventPlans}
-                    className="w-full px-1 py-1 text-left text-sm font-semibold text-ftc-text-secondary transition hover:text-ftc-text"
-                  >
-                    Saved Event Plans
-                  </button>
-                ) : null}
-              </>
-            ) : null}
-
             <button type="button" onClick={() => setView("details")} className={actionButtonClass}>
               <span className="block text-sm font-semibold text-ftc-text">View day</span>
               <span className="mt-0.5 block text-xs text-ftc-text-muted">

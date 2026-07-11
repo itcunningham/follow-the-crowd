@@ -4,14 +4,13 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import CalendarMonthNav from "@/app/components/CalendarMonthNav";
+import PlannerCalendarActionButtons from "@/app/components/PlannerCalendarActionButtons";
 import PlannerCalendarDateActions from "@/app/components/PlannerCalendarDateActions";
 import PlannerCalendarMobileDateStrip from "@/app/components/PlannerCalendarMobileDateStrip";
 import { PlannerCalendarContentSkeleton } from "@/app/components/skeleton/Skeleton";
 import { isDateKeyBeforeToday } from "@/lib/bookingDateTime";
 import { listBookingPlans } from "@/lib/bookingPlans";
 import {
-  buildPlannerCreateEventHref,
-  buildPlannerCreateEventFromPlansHref,
   filterCalendarItemsForMonth,
   formatPlannerAgendaDateLabel,
   getCalendarLoadErrorMessage,
@@ -238,14 +237,24 @@ function PlannerCalendarMobileAgenda({
         itemsByDate={itemsByDate}
       />
 
-      <div ref={agendaHeaderRef} className="mt-4">
-        <h2 className="text-base font-semibold text-ftc-text">
-          {formatPlannerAgendaDateLabel(selectedDate)}
-        </h2>
-        {isTodayDate(selectedDate) ? (
-          <p className="mt-0.5 text-xs font-semibold uppercase tracking-wide text-ftc-primary">
-            Today
-          </p>
+      <div ref={agendaHeaderRef} className="mt-4 flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <h2 className="text-base font-semibold text-ftc-text">
+            {formatPlannerAgendaDateLabel(selectedDate)}
+          </h2>
+          {isTodayDate(selectedDate) ? (
+            <p className="mt-0.5 text-xs font-semibold uppercase tracking-wide text-ftc-primary">
+              Today
+            </p>
+          ) : null}
+        </div>
+
+        {canCreateEventOnSelectedDate ? (
+          <PlannerCalendarActionButtons
+            dateKey={displayDateKey}
+            hasSavedEventPlans={hasSavedEventPlans}
+            className="shrink-0"
+          />
         ) : null}
       </div>
 
@@ -257,24 +266,6 @@ function PlannerCalendarMobileAgenda({
         {displayDateItems.length === 0 ? (
           <div className="rounded-xl border border-dashed border-ftc-border-subtle bg-ftc-surface/30 px-4 py-8 text-center">
             <p className="text-sm text-ftc-text-muted">No events scheduled.</p>
-            {canCreateEventOnSelectedDate ? (
-              <div className="mt-3 flex flex-col items-center gap-2.5">
-                <Link
-                  href={buildPlannerCreateEventHref(displayDateKey)}
-                  className="ftc-btn-secondary inline-flex px-3 py-1.5 text-xs uppercase tracking-wide"
-                >
-                  + Create Event
-                </Link>
-                {hasSavedEventPlans ? (
-                  <Link
-                    href={buildPlannerCreateEventFromPlansHref(displayDateKey)}
-                    className="text-sm font-semibold text-ftc-text-secondary transition hover:text-ftc-text"
-                  >
-                    Saved Event Plans
-                  </Link>
-                ) : null}
-              </div>
-            ) : null}
           </div>
         ) : (
           displayDateItems.map((item) => <PlannerCalendarAgendaCard key={item.id} item={item} />)
