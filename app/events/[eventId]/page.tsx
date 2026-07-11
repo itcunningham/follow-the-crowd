@@ -1284,7 +1284,7 @@ export default function EventDetailPage() {
           ) : null}
 
           {editOpen && editForm && canEditEvent ? (
-            <section ref={editFormSectionRef} className="scroll-mt-24">
+            <section ref={editFormSectionRef} className="mt-4 scroll-mt-24">
             <PlannerFormCard
               title="Edit event"
               onCancel={() => {
