@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import CalendarMonthNav from "@/app/components/CalendarMonthNav";
 import PlannerCalendarDateActions from "@/app/components/PlannerCalendarDateActions";
 import PlannerCalendarMobileDateStrip from "@/app/components/PlannerCalendarMobileDateStrip";
@@ -191,7 +191,34 @@ function PlannerCalendarMobileAgenda({
   isTodayDate: (date: Date) => boolean;
   isDateInViewingMonth: (date: Date) => boolean;
 }) {
-  const selectedDateItems = itemsByDate.get(toDateKey(selectedDate)) ?? [];
+  const agendaHeaderRef = useRef<HTMLDivElement>(null);
+  const selectedDateKey = toDateKey(selectedDate);
+  const selectedDateItems = itemsByDate.get(selectedDateKey) ?? [];
+  const [displayDateKey, setDisplayDateKey] = useState(selectedDateKey);
+  const [agendaVisible, setAgendaVisible] = useState(true);
+
+  useEffect(() => {
+    if (selectedDateKey === displayDateKey) {
+      return;
+    }
+
+    setAgendaVisible(false);
+
+    const transitionTimer = window.setTimeout(() => {
+      setDisplayDateKey(selectedDateKey);
+      setAgendaVisible(true);
+    }, 175);
+
+    return () => {
+      window.clearTimeout(transitionTimer);
+    };
+  }, [displayDateKey, selectedDateKey]);
+
+  useEffect(() => {
+    agendaHeaderRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }, [selectedDateKey]);
+
+  const displayDateItems = itemsByDate.get(displayDateKey) ?? [];
 
   return (
     <div className="mt-4 md:hidden">
@@ -202,7 +229,7 @@ function PlannerCalendarMobileAgenda({
         itemsByDate={itemsByDate}
       />
 
-      <div className="mt-4">
+      <div ref={agendaHeaderRef} className="mt-4">
         <h2 className="text-base font-semibold text-ftc-text">
           {formatPlannerAgendaDateLabel(selectedDate)}
         </h2>
@@ -213,19 +240,23 @@ function PlannerCalendarMobileAgenda({
         ) : null}
       </div>
 
-      <div className="mt-3 space-y-2">
-        {selectedDateItems.length === 0 ? (
+      <div
+        className={`mt-3 space-y-2 transition-all duration-[175ms] ease-out motion-reduce:transition-none ${
+          agendaVisible ? "translate-y-0 opacity-100" : "translate-y-1 opacity-0"
+        }`}
+      >
+        {displayDateItems.length === 0 ? (
           <div className="rounded-xl border border-dashed border-ftc-border-subtle bg-ftc-surface/30 px-4 py-8 text-center">
             <p className="text-sm text-ftc-text-muted">No events scheduled.</p>
             <Link
-              href={buildPlannerCreateEventHref(toDateKey(selectedDate))}
-              className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-ftc-primary transition hover:text-ftc-primary/90"
+              href={buildPlannerCreateEventHref(displayDateKey)}
+              className="ftc-btn-secondary mt-3 inline-flex px-3 py-1.5 text-xs uppercase tracking-wide"
             >
               + Create Event
             </Link>
           </div>
         ) : (
-          selectedDateItems.map((item) => <PlannerCalendarAgendaCard key={item.id} item={item} />)
+          displayDateItems.map((item) => <PlannerCalendarAgendaCard key={item.id} item={item} />)
         )}
       </div>
 

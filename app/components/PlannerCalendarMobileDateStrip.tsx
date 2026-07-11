@@ -16,6 +16,9 @@ import {
 const DATE_CHIP_SCROLL_CLASS =
   "overflow-x-auto overscroll-x-contain [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden";
 
+const SCROLL_DURATION_MS = 175;
+const SCROLL_END_DEBOUNCE_MS = 80;
+
 type PlannerCalendarMobileDateStripProps = {
   selectedDate: Date;
   onSelectDate: (date: Date) => void;
@@ -27,6 +30,46 @@ function getWeekdayLabel(date: Date): string {
   return WEEKDAY_LABELS[(date.getDay() + 6) % 7];
 }
 
+function getCenteredScrollLeft(container: HTMLElement, chip: HTMLElement): number {
+  const maxScrollLeft = container.scrollWidth - container.clientWidth;
+  const targetLeft = chip.offsetLeft - (container.clientWidth - chip.offsetWidth) / 2;
+  return Math.min(Math.max(0, targetLeft), maxScrollLeft);
+}
+
+function animateScrollLeft(
+  container: HTMLElement,
+  targetLeft: number,
+  duration: number,
+  onComplete?: () => void,
+): number {
+  const startLeft = container.scrollLeft;
+  const distance = targetLeft - startLeft;
+
+  if (Math.abs(distance) < 1) {
+    onComplete?.();
+    return 0;
+  }
+
+  const startTime = performance.now();
+
+  function step(currentTime: number) {
+    const elapsed = currentTime - startTime;
+    const progress = Math.min(elapsed / duration, 1);
+    const eased = 1 - (1 - progress) ** 3;
+    container.scrollLeft = startLeft + distance * eased;
+
+    if (progress < 1) {
+      frameId = requestAnimationFrame(step);
+      return;
+    }
+
+    onComplete?.();
+  }
+
+  let frameId = requestAnimationFrame(step);
+  return frameId;
+}
+
 export default function PlannerCalendarMobileDateStrip({
   selectedDate,
   onSelectDate,
@@ -36,39 +79,113 @@ export default function PlannerCalendarMobileDateStrip({
   const scrollRef = useRef<HTMLDivElement>(null);
   const chipRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
   const programmaticScrollRef = useRef(false);
-  const scrollResetTimeoutRef = useRef<number | null>(null);
+  const scrollAnimationFrameRef = useRef(0);
+  const scrollEndTimeoutRef = useRef<number | null>(null);
+  const skipNextSmoothScrollRef = useRef(false);
   const [chipWidth, setChipWidth] = useState<number | null>(null);
 
   const monthDates = useMemo(() => getCalendarMonthDates(monthStart), [monthStart]);
 
-  const scrollToDate = useCallback((date: Date, behavior: ScrollBehavior = "smooth") => {
-    const chip = chipRefs.current.get(toDateKey(date));
+  const cancelScrollAnimation = useCallback(() => {
+    if (scrollAnimationFrameRef.current) {
+      cancelAnimationFrame(scrollAnimationFrameRef.current);
+      scrollAnimationFrameRef.current = 0;
+    }
+  }, []);
+
+  const beginProgrammaticScroll = useCallback(() => {
+    programmaticScrollRef.current = true;
+  }, []);
+
+  const endProgrammaticScroll = useCallback(() => {
+    programmaticScrollRef.current = false;
+  }, []);
+
+  const scrollToDate = useCallback(
+    (date: Date, options?: { instant?: boolean }) => {
+      const chip = chipRefs.current.get(toDateKey(date));
+      const container = scrollRef.current;
+
+      if (!chip || !container) {
+        return;
+      }
+
+      const targetLeft = getCenteredScrollLeft(container, chip);
+
+      if (Math.abs(container.scrollLeft - targetLeft) < 1) {
+        return;
+      }
+
+      cancelScrollAnimation();
+      beginProgrammaticScroll();
+
+      if (options?.instant) {
+        container.scrollLeft = targetLeft;
+        endProgrammaticScroll();
+        return;
+      }
+
+      scrollAnimationFrameRef.current = animateScrollLeft(
+        container,
+        targetLeft,
+        SCROLL_DURATION_MS,
+        () => {
+          scrollAnimationFrameRef.current = 0;
+          endProgrammaticScroll();
+        },
+      );
+    },
+    [beginProgrammaticScroll, cancelScrollAnimation, endProgrammaticScroll],
+  );
+
+  const findNearestDateToCenter = useCallback((): Date | null => {
     const container = scrollRef.current;
 
-    if (!chip || !container) {
+    if (!container) {
+      return null;
+    }
+
+    const containerCenter = container.scrollLeft + container.clientWidth / 2;
+    let nearestDate: Date | null = null;
+    let nearestDistance = Number.POSITIVE_INFINITY;
+
+    for (const date of monthDates) {
+      const chip = chipRefs.current.get(toDateKey(date));
+
+      if (!chip) {
+        continue;
+      }
+
+      const chipCenter = chip.offsetLeft + chip.offsetWidth / 2;
+      const distance = Math.abs(chipCenter - containerCenter);
+
+      if (distance < nearestDistance) {
+        nearestDistance = distance;
+        nearestDate = date;
+      }
+    }
+
+    return nearestDate;
+  }, [monthDates]);
+
+  const snapNearestDateToCenter = useCallback(() => {
+    if (programmaticScrollRef.current) {
       return;
     }
 
-    programmaticScrollRef.current = true;
+    const nearestDate = findNearestDateToCenter();
 
-    if (scrollResetTimeoutRef.current !== null) {
-      window.clearTimeout(scrollResetTimeoutRef.current);
+    if (!nearestDate) {
+      return;
     }
 
-    const maxScrollLeft = container.scrollWidth - container.clientWidth;
-    const targetLeft = chip.offsetLeft - (container.clientWidth - chip.offsetWidth) / 2;
-    container.scrollTo({
-      left: Math.min(Math.max(0, targetLeft), maxScrollLeft),
-      behavior,
-    });
+    if (!isSameDay(nearestDate, selectedDate)) {
+      onSelectDate(nearestDate);
+      return;
+    }
 
-    scrollResetTimeoutRef.current = window.setTimeout(
-      () => {
-        programmaticScrollRef.current = false;
-      },
-      behavior === "smooth" ? 450 : 0,
-    );
-  }, []);
+    scrollToDate(nearestDate);
+  }, [findNearestDateToCenter, onSelectDate, scrollToDate, selectedDate]);
 
   useEffect(() => {
     const container = scrollRef.current;
@@ -101,24 +218,73 @@ export default function PlannerCalendarMobileDateStrip({
       return;
     }
 
-    scrollToDate(selectedDate, "instant");
-  }, [monthDates, monthStart, selectedDate, scrollToDate]);
+    scrollToDate(selectedDate, { instant: true });
+    skipNextSmoothScrollRef.current = true;
+  }, [monthDates, monthStart, scrollToDate]);
 
   useEffect(() => {
     if (!isSameMonth(selectedDate, monthStart)) {
       return;
     }
 
-    scrollToDate(selectedDate, "smooth");
+    if (skipNextSmoothScrollRef.current) {
+      skipNextSmoothScrollRef.current = false;
+      return;
+    }
+
+    scrollToDate(selectedDate);
   }, [monthStart, selectedDate, scrollToDate]);
 
   useEffect(() => {
+    const container = scrollRef.current;
+
+    if (!container) {
+      return;
+    }
+
+    function handleScrollEnd() {
+      if (scrollEndTimeoutRef.current !== null) {
+        window.clearTimeout(scrollEndTimeoutRef.current);
+        scrollEndTimeoutRef.current = null;
+      }
+
+      snapNearestDateToCenter();
+    }
+
+    function handleScroll() {
+      if (programmaticScrollRef.current) {
+        return;
+      }
+
+      if (scrollEndTimeoutRef.current !== null) {
+        window.clearTimeout(scrollEndTimeoutRef.current);
+      }
+
+      scrollEndTimeoutRef.current = window.setTimeout(handleScrollEnd, SCROLL_END_DEBOUNCE_MS);
+    }
+
+    container.addEventListener("scroll", handleScroll, { passive: true });
+    container.addEventListener("scrollend", handleScrollEnd);
+
     return () => {
-      if (scrollResetTimeoutRef.current !== null) {
-        window.clearTimeout(scrollResetTimeoutRef.current);
+      container.removeEventListener("scroll", handleScroll);
+      container.removeEventListener("scrollend", handleScrollEnd);
+
+      if (scrollEndTimeoutRef.current !== null) {
+        window.clearTimeout(scrollEndTimeoutRef.current);
       }
     };
-  }, []);
+  }, [snapNearestDateToCenter]);
+
+  useEffect(() => {
+    return () => {
+      cancelScrollAnimation();
+
+      if (scrollEndTimeoutRef.current !== null) {
+        window.clearTimeout(scrollEndTimeoutRef.current);
+      }
+    };
+  }, [cancelScrollAnimation]);
 
   return (
     <div
