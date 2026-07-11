@@ -803,7 +803,7 @@ function EventsPageClientView({
           return next;
         });
         setSuccessMessage(
-          `${successes.length} event${successes.length === 1 ? "" : "s"} removed from history.`,
+          `${successes.length} event${successes.length === 1 ? "" : "s"} removed from history`,
         );
       }
 
@@ -1145,7 +1145,7 @@ function EventsPageClientView({
                 <PlannerEmptyState
                   title={
                     isHistoryTab
-                      ? "No past or cancelled events."
+                      ? "No past or cancelled events"
                       : isPlanner
                         ? "No events yet — create your first event"
                         : "No event invitations yet"
@@ -1167,7 +1167,7 @@ function EventsPageClientView({
               ) : filteredEvents.length === 0 && !historyBulkManage.removing ? (
                 <PlannerEmptyState
                   title={
-                    isHistoryTab ? "No past or cancelled events." : "No active events."
+                    isHistoryTab ? "No past or cancelled events" : "No active events."
                   }
                 />
               ) : visibleFilteredEvents.length > 0 ? (
