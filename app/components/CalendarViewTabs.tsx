@@ -1,5 +1,7 @@
 "use client";
 
+import { PlannerFilterPills } from "@/app/components/planner/PlannerUi";
+
 type CalendarViewTab = "planner" | "dj";
 
 type CalendarViewTabsProps = {
@@ -14,23 +16,8 @@ const TABS: { value: CalendarViewTab; label: string }[] = [
 
 export default function CalendarViewTabs({ activeTab, onChange }: CalendarViewTabsProps) {
   return (
-    <div className="mb-4 flex flex-wrap gap-2">
-      {TABS.map((tab) => {
-        const isActive = activeTab === tab.value;
-
-        return (
-          <button
-            key={tab.value}
-            type="button"
-            onClick={() => onChange(tab.value)}
-            className={`rounded-lg border px-3 py-1.5 text-xs font-semibold uppercase tracking-wide transition ${
-              isActive ? "ftc-tab-active" : "ftc-tab-inactive"
-            }`}
-          >
-            {tab.label}
-          </button>
-        );
-      })}
+    <div className="mb-4">
+      <PlannerFilterPills options={TABS} value={activeTab} onChange={onChange} />
     </div>
   );
 }
