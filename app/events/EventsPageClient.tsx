@@ -151,7 +151,12 @@ function EventsPageClientView({
     () => calendarBootstrap?.createStep ?? "source",
   );
   const [bookingPlans, setBookingPlans] = useState<BookingPlan[]>([]);
-  const [loadingPlans, setLoadingPlans] = useState(() => Boolean(calendarBootstrap?.createOpen));
+  const [loadingPlans, setLoadingPlans] = useState(
+    () =>
+      Boolean(
+        calendarBootstrap?.createOpen && calendarBootstrap.createStep === "pick-plan",
+      ),
+  );
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
   const [form, setForm] = useState<EventInput>(() => ({
     ...emptyEventForm,
@@ -355,14 +360,6 @@ function EventsPageClientView({
     }
 
     if (createParam === "calendar" || createParam === "calendar-plans") {
-      const paramKey = `${createParam}:${eventDateParam}`;
-
-      if (handledCreateParamsRef.current === paramKey) {
-        return;
-      }
-
-      handledCreateParamsRef.current = paramKey;
-
       const finishNavigation = () => {
         router.replace("/events");
       };
@@ -396,6 +393,7 @@ function EventsPageClientView({
 
   async function loadBookingPlansForCreate() {
     setLoadingPlans(true);
+    setError(null);
 
     try {
       const plans = await listBookingPlans();
@@ -685,19 +683,29 @@ function EventsPageClientView({
 
               {createStep === "pick-plan" ? (
                 <div className="space-y-4">
-                  <PlannerBackLink
-                    onClick={() => {
-                      if (createReturnHref) {
-                        closeCreateFlow();
-                        return;
-                      }
-
-                      setCreateStep("source");
-                    }}
-                  />
+                  {!isCalendarCreateFlow ? (
+                    <PlannerBackLink
+                      onClick={() => {
+                        setCreateStep("source");
+                      }}
+                    />
+                  ) : null}
 
                   {loadingPlans ? (
                     <p className="text-sm text-ftc-text-muted">Loading saved event plans...</p>
+                  ) : error && bookingPlans.length === 0 ? (
+                    <div className="space-y-3">
+                      <PlannerInlineError message={error} />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          void loadBookingPlansForCreate();
+                        }}
+                        className="ftc-btn-secondary px-4 py-2.5 text-xs uppercase tracking-wide"
+                      >
+                        Retry
+                      </button>
+                    </div>
                   ) : bookingPlans.length === 0 ? (
                     <div className="ftc-card-empty px-4 py-8 text-center">
                       <p className="text-sm text-ftc-text-secondary">No saved event plans yet</p>
