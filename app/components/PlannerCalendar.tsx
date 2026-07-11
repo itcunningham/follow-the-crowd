@@ -292,21 +292,21 @@ export default function PlannerCalendar({
 
   return (
     <section className="ftc-card p-4 sm:p-5 md:p-6">
-      <div>
+      <div className="hidden md:block">
         <h1 className="text-base font-semibold text-ftc-text">Calendar</h1>
-        <p className="mt-1 hidden text-sm text-ftc-text-muted md:block">{description}</p>
+        <p className="mt-1 text-sm text-ftc-text-muted">{description}</p>
       </div>
 
       {error ? (
         <p
           role="alert"
-          className="mt-4 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated px-4 py-3 text-sm text-[var(--ftc-color-danger)]"
+          className="mt-4 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated px-4 py-3 text-sm text-[var(--ftc-color-danger)] md:mt-4"
         >
           {error}
         </p>
       ) : null}
 
-      <div className="relative mt-4">
+      <div className="relative mt-0 md:mt-4">
         <CalendarMonthNav monthStart={monthStart} onMonthStartChange={handleMonthStartChange} />
       </div>
 
