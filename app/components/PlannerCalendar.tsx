@@ -6,6 +6,7 @@ import CalendarMonthNav from "@/app/components/CalendarMonthNav";
 import PlannerCalendarDateActions from "@/app/components/PlannerCalendarDateActions";
 import PlannerCalendarMobileDateStrip from "@/app/components/PlannerCalendarMobileDateStrip";
 import {
+  buildPlannerCreateEventHref,
   filterCalendarItemsForMonth,
   formatPlannerAgendaDateLabel,
   getCalendarLoadErrorMessage,
@@ -30,21 +31,21 @@ function PlannerCalendarMobileLegend() {
       aria-label="Calendar legend"
       className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 md:hidden"
     >
-      {PLANNER_CALENDAR_LEGEND_ITEMS.filter((item) => item.kind !== "event_upcoming").map(
-        (item) => (
+      {PLANNER_CALENDAR_LEGEND_ITEMS.filter(
+        (item) => item.kind === "pending" || item.kind === "accepted",
+      ).map((item) => (
+        <span
+          key={item.mobileLabel}
+          role="listitem"
+          className="inline-flex items-center gap-1.5 text-xs text-ftc-text-secondary"
+        >
           <span
-            key={item.mobileLabel}
-            role="listitem"
-            className="inline-flex items-center gap-1.5 text-xs text-ftc-text-secondary"
-          >
-            <span
-              aria-hidden="true"
-              className={`h-1.5 w-1.5 shrink-0 rounded-full ${getCalendarStatusLegendDotClass(item.kind)}`}
-            />
-            {item.mobileLabel}
-          </span>
-        ),
-      )}
+            aria-hidden="true"
+            className={`h-1.5 w-1.5 shrink-0 rounded-full ${getCalendarStatusLegendDotClass(item.kind)}`}
+          />
+          {item.mobileLabel}
+        </span>
+      ))}
     </div>
   );
 }
@@ -52,7 +53,7 @@ function PlannerCalendarMobileLegend() {
 function PlannerCalendarDesktopLegend() {
   return (
     <div className="hidden flex-wrap items-center justify-center gap-2 md:flex">
-      {PLANNER_CALENDAR_LEGEND_ITEMS.map((item) => (
+      {PLANNER_CALENDAR_LEGEND_ITEMS.filter((item) => item.kind !== "declined").map((item) => (
         <span
           key={item.label}
           className={`rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${getCalendarStatusBadgeClass(item.kind)}`}
@@ -218,6 +219,12 @@ function PlannerCalendarMobileAgenda({
         {selectedDateItems.length === 0 ? (
           <div className="rounded-xl border border-dashed border-ftc-border-subtle bg-ftc-surface/30 px-4 py-8 text-center">
             <p className="text-sm text-ftc-text-muted">No events scheduled.</p>
+            <Link
+              href={buildPlannerCreateEventHref(toDateKey(selectedDate))}
+              className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-ftc-primary transition hover:text-ftc-primary/90"
+            >
+              + Create Event
+            </Link>
           </div>
         ) : (
           selectedDateItems.map((item) => <PlannerCalendarAgendaCard key={item.id} item={item} />)

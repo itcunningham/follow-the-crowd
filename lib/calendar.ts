@@ -306,6 +306,10 @@ export async function loadPlannerCalendarItems(): Promise<CalendarItem[]> {
   const items: CalendarItem[] = [];
 
   for (const event of events) {
+    if (event.status === "cancelled") {
+      continue;
+    }
+
     const item = mapEventToCalendarItem(event);
 
     if (item) {
@@ -314,7 +318,7 @@ export async function loadPlannerCalendarItems(): Promise<CalendarItem[]> {
   }
 
   for (const booking of sentBookings) {
-    if (booking.status === "cancelled") {
+    if (booking.status === "cancelled" || booking.status === "declined") {
       continue;
     }
 
