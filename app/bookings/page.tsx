@@ -102,6 +102,12 @@ import {
   buildGigsListHref,
   resolveGigsListTabParam,
 } from "@/lib/bookings/gigsListNavigation";
+import {
+  clearPendingBookingPlanId,
+  getBookingsDeepLinkKey,
+  resolveBookingsDeepLinkIntent,
+  type BookingsDeepLinkIntent,
+} from "@/lib/bookings/planDeepLink";
 
 const emptyForm: BookingRequestInput = {
   eventName: "",
@@ -249,10 +255,10 @@ function BookingsPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const guardProfile = useGuardProfile();
-  const handledPlanIdRef = useRef<string | null>(null);
-  const handledCreateParamsRef = useRef<string | null>(null);
+  const deepLinkInFlightKeyRef = useRef<string | null>(null);
+  const deepLinkCompletedKeyRef = useRef<string | null>(null);
   const [role, setRole] = useState<UserRole | null>(null);
-  const [loadingAccess, setLoadingAccess] = useState(true);
+  const [loadingAccess, setLoadingAccess] = useState(() => readCachedNavRole() == null);
   const [loadingList, setLoadingList] = useState(true);
   const [gigsListReady, setGigsListReady] = useState(false);
   const [sentGroups, setSentGroups] = useState<SentBookingGroup[]>([]);
@@ -390,8 +396,25 @@ function BookingsPageContent() {
   }, [eventBookingDuplicates, form.eventId]);
 
   const displayRole = role ?? guardProfile?.role ?? readCachedNavRole();
+  const deepLinkIntent = useMemo(
+    () => resolveBookingsDeepLinkIntent(searchParams),
+    [searchParams],
+  );
+  const resolvedPlannerRole = role ?? readCachedNavRole();
+  const plannerCreateVisible =
+    createOpen || (deepLinkIntent != null && canCreateBookings(resolvedPlannerRole));
+  const effectiveCreateStep: CreateStep =
+    deepLinkIntent?.type === "plan" && createStep === "source"
+      ? "details"
+      : deepLinkIntent?.type === "create-booking" && createStep === "source"
+        ? "details"
+        : deepLinkIntent?.type === "create-plan" && createStep === "source"
+          ? "pick-plan"
+          : createStep;
+  const effectiveSelectedPlanId =
+    selectedPlanId ?? (deepLinkIntent?.type === "plan" ? deepLinkIntent.planId : null);
   const showGigsWorkspace = canViewGigsWorkspace(displayRole);
-  const showPlannerGigsEmpty = displayRole === "promoter" && !createOpen;
+  const showPlannerGigsEmpty = displayRole === "promoter" && !plannerCreateVisible;
 
   const filteredReceivedBookings = useMemo(() => {
     if (!showGigsWorkspace) {
@@ -514,55 +537,154 @@ function BookingsPageContent() {
     loadBookings();
   }, [loadingAccess, role]);
 
-  useEffect(() => {
-    const resolvedRole = role ?? guardProfile?.role ?? readCachedNavRole();
+  async function openCreateFlowFromDeepLink(intent: BookingsDeepLinkIntent): Promise<boolean> {
+    setCreateOpen(true);
+    setSelectedDjIds([]);
+    setSearchQuery("");
+    setFailureDetails([]);
+    setSuccessMessage(null);
+    setEventDateOverride(intent.eventDate ?? null);
+    setLoadingDjs(true);
+    setLoadingPlans(true);
 
-    if (loadingAccess || !canCreateBookings(resolvedRole)) {
-      return;
+    if (intent.type === "plan") {
+      setCreateStep("details");
+      setSelectedPlanId(intent.planId);
     }
 
-    const planIdParam = searchParams.get("planId");
-    const createParam = searchParams.get("create");
-    const eventDateParam = searchParams.get("eventDate") ?? "";
+    try {
+      const [bookableDjs, plans] = await Promise.all([
+        listBookableDjs(),
+        listBookingPlans(),
+      ]);
 
-    const paramKey = planIdParam
-      ? `planId:${planIdParam}:${eventDateParam}`
-      : createParam
-        ? `${createParam}:${eventDateParam}`
-        : null;
+      setDjs(bookableDjs);
+      setBookingPlans(plans);
 
-    if (!paramKey || handledCreateParamsRef.current === paramKey) {
-      return;
-    }
+      if (intent.type === "plan") {
+        const plan =
+          plans.find((item) => item.id === intent.planId) ??
+          (await getBookingPlanById(intent.planId));
 
-    handledCreateParamsRef.current = paramKey;
+        if (!plan) {
+          setError("Could not load the selected event plan. It may have been deleted.");
+          setCreateStep("details");
+          setSelectedPlanId(intent.planId);
+          return true;
+        }
 
-    if (planIdParam) {
-      handledPlanIdRef.current = planIdParam;
-      void openCreateFlow({ planId: planIdParam, eventDate: eventDateParam || undefined }).finally(
-        () => {
-          router.replace("/bookings", { scroll: false });
-        },
+        const input = bookingPlanToRequestInput(plan);
+        setForm((prev) => ({
+          ...input,
+          eventDate: intent.eventDate?.trim() || input.eventDate,
+          rateMode: prev.rateMode ?? "fixed",
+        }));
+        setSelectedPlanId(plan.id);
+        setCreateStep("details");
+        setError(null);
+        return true;
+      }
+
+      if (intent.type === "create-booking") {
+        setForm({
+          ...emptyForm,
+          eventDate: intent.eventDate ?? "",
+        });
+        setSelectedPlanId(null);
+        setCreateStep("details");
+        setError(null);
+        return true;
+      }
+
+      setForm({
+        ...emptyForm,
+        eventDate: intent.eventDate ?? "",
+      });
+      setSelectedPlanId(null);
+      setCreateStep("pick-plan");
+      setError(null);
+      return true;
+    } catch (loadError) {
+      console.error("Failed to open bookings deep link:", loadError);
+      setError(loadError instanceof Error ? loadError.message : "Failed to start booking flow");
+      setCreateStep(
+        intent.type === "plan"
+          ? "details"
+          : intent.type === "create-plan"
+            ? "pick-plan"
+            : "source",
       );
+      return true;
+    } finally {
+      setLoadingDjs(false);
+      setLoadingPlans(false);
+    }
+  }
+
+  useEffect(() => {
+    const intent = resolveBookingsDeepLinkIntent(searchParams);
+
+    if (!intent) {
       return;
     }
 
-    if (createParam === "booking") {
-      void openCreateFlow({ custom: true, eventDate: eventDateParam || undefined }).finally(() => {
-        router.replace("/bookings", { scroll: false });
-      });
+    const resolvedRole = role ?? readCachedNavRole();
+
+    if (!canCreateBookings(resolvedRole)) {
       return;
     }
 
-    if (createParam === "plan") {
-      void openCreateFlow({
-        initialStep: "pick-plan",
-        eventDate: eventDateParam || undefined,
-      }).finally(() => {
-        router.replace("/bookings", { scroll: false });
-      });
+    if (loadingAccess && !resolvedRole) {
+      return;
     }
-  }, [loadingAccess, role, guardProfile?.role, router, searchParams]);
+
+    const deepLinkKey = getBookingsDeepLinkKey(intent);
+
+    if (deepLinkCompletedKeyRef.current === deepLinkKey) {
+      return;
+    }
+
+    if (deepLinkInFlightKeyRef.current === deepLinkKey) {
+      return;
+    }
+
+    deepLinkInFlightKeyRef.current = deepLinkKey;
+    let cancelled = false;
+
+    void openCreateFlowFromDeepLink(intent)
+      .then((opened) => {
+        if (cancelled || !opened) {
+          return;
+        }
+
+        deepLinkCompletedKeyRef.current = deepLinkKey;
+
+        if (intent.type === "plan") {
+          clearPendingBookingPlanId();
+        }
+
+        router.replace("/bookings", { scroll: false });
+      })
+      .catch((loadError) => {
+        if (cancelled) {
+          return;
+        }
+
+        console.error("Failed to process bookings deep link:", loadError);
+        setCreateOpen(true);
+        setError(loadError instanceof Error ? loadError.message : "Failed to start booking flow");
+        deepLinkCompletedKeyRef.current = deepLinkKey;
+      })
+      .finally(() => {
+        if (!cancelled && deepLinkInFlightKeyRef.current === deepLinkKey) {
+          deepLinkInFlightKeyRef.current = null;
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [searchParams, loadingAccess, role, router]);
 
   useEffect(() => {
     if (createStep !== "select-djs" || !form.eventDate.trim() || djs.length === 0) {
@@ -621,6 +743,31 @@ function BookingsPageContent() {
     eventDate?: string;
     initialStep?: CreateStep;
   }) {
+    if (options?.planId) {
+      await openCreateFlowFromDeepLink({
+        type: "plan",
+        planId: options.planId,
+        eventDate: options.eventDate,
+      });
+      return;
+    }
+
+    if (options?.custom || options?.initialStep === "details") {
+      await openCreateFlowFromDeepLink({
+        type: "create-booking",
+        eventDate: options?.eventDate,
+      });
+      return;
+    }
+
+    if (options?.initialStep === "pick-plan") {
+      await openCreateFlowFromDeepLink({
+        type: "create-plan",
+        eventDate: options?.eventDate,
+      });
+      return;
+    }
+
     setCreateOpen(true);
     setSelectedDjIds([]);
     setSearchQuery("");
@@ -631,11 +778,6 @@ function BookingsPageContent() {
     setLoadingDjs(true);
     setLoadingPlans(true);
 
-    if (options?.planId) {
-      setCreateStep("details");
-      setSelectedPlanId(options.planId);
-    }
-
     try {
       const [bookableDjs, plans] = await Promise.all([
         listBookableDjs(),
@@ -644,45 +786,6 @@ function BookingsPageContent() {
 
       setDjs(bookableDjs);
       setBookingPlans(plans);
-
-      if (options?.planId) {
-        const plan =
-          plans.find((item) => item.id === options.planId) ??
-          (await getBookingPlanById(options.planId));
-
-        if (plan) {
-          const input = bookingPlanToRequestInput(plan);
-          setForm((prev) => ({
-            ...input,
-            eventDate: options.eventDate?.trim() || input.eventDate,
-            rateMode: prev.rateMode ?? "fixed",
-          }));
-          setSelectedPlanId(plan.id);
-          setCreateStep("details");
-          return;
-        }
-      }
-
-      if (options?.custom || options?.initialStep === "details") {
-        setForm({
-          ...emptyForm,
-          eventDate: options?.eventDate ?? "",
-        });
-        setSelectedPlanId(null);
-        setCreateStep("details");
-        return;
-      }
-
-      if (options?.initialStep === "pick-plan") {
-        setForm({
-          ...emptyForm,
-          eventDate: options?.eventDate ?? "",
-        });
-        setSelectedPlanId(null);
-        setCreateStep("pick-plan");
-        return;
-      }
-
       setForm(emptyForm);
       setSelectedPlanId(null);
       setCreateStep("source");
@@ -713,6 +816,9 @@ function BookingsPageContent() {
     setError(null);
     setUnavailableConfirmOpen(false);
     setEventBookings([]);
+    clearPendingBookingPlanId();
+    deepLinkCompletedKeyRef.current = null;
+    deepLinkInFlightKeyRef.current = null;
   }
 
   function updateField<Key extends keyof BookingRequestInput>(
@@ -1013,8 +1119,8 @@ function BookingsPageContent() {
     return null;
   }
 
-  const showPlannerCreateDeepLink = canCreateBookings(displayRole) && createOpen;
-  const createStepMeta = getCreateStepMeta(createStep);
+  const showPlannerCreateDeepLink = plannerCreateVisible;
+  const createStepMeta = getCreateStepMeta(effectiveCreateStep);
 
   return (
     <OnboardingGuard>
@@ -1030,7 +1136,7 @@ function BookingsPageContent() {
             </p>
           ) : null}
 
-          {djGigsView === "history" && !createOpen && gigsHistoryBulkManage.showSelectionToolbar ? (
+          {djGigsView === "history" && !plannerCreateVisible && gigsHistoryBulkManage.showSelectionToolbar ? (
             <HistorySelectionToolbar
               selectedCount={gigsHistoryBulkManage.selectedCount}
               allSelected={gigsHistoryBulkManage.allSelected}
@@ -1081,7 +1187,7 @@ function BookingsPageContent() {
                 </button>
               </div>
 
-              {createStep === "source" ? (
+              {effectiveCreateStep === "source" ? (
                 <div className="space-y-3">
                   <button
                     type="button"
@@ -1110,7 +1216,7 @@ function BookingsPageContent() {
                 </div>
               ) : null}
 
-              {createStep === "pick-plan" ? (
+              {effectiveCreateStep === "pick-plan" ? (
                 <div className="space-y-4">
                   <button
                     type="button"
@@ -1162,12 +1268,16 @@ function BookingsPageContent() {
                 </div>
               ) : null}
 
-              {createStep === "details" ? (
+              {effectiveCreateStep === "details" ? (
                 <form onSubmit={handleContinueToDjSelection} className="space-y-4">
-                  {selectedPlanId ? (
+                  {effectiveSelectedPlanId ? (
                     <p className="rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated px-3 py-2 text-xs text-ftc-text-secondary">
                       Prefilled from a saved event plan — you can edit any field before sending
                     </p>
+                  ) : null}
+
+                  {loadingPlans && effectiveSelectedPlanId && !form.eventName.trim() ? (
+                    <p className="text-sm text-ftc-text-muted">Loading event plan...</p>
                   ) : null}
 
                   <button
@@ -1233,7 +1343,7 @@ function BookingsPageContent() {
                 </form>
               ) : null}
 
-              {createStep === "select-djs" ? (
+              {effectiveCreateStep === "select-djs" ? (
                 <div className="space-y-4">
                   <button
                     type="button"
@@ -1374,7 +1484,7 @@ function BookingsPageContent() {
             </section>
           ) : null}
 
-          {showGigsWorkspace && !createOpen ? (
+          {showGigsWorkspace && !plannerCreateVisible ? (
             <div className={PLANNER_WORKSPACE_SECONDARY_TABS_ROW_CLASS}>
               <DjGigsTabs
                 activeView={djGigsView}
@@ -1402,7 +1512,7 @@ function BookingsPageContent() {
               </Link>
             </div>
           ) : showGigsWorkspace && !createOpen ? (
-            loadingList ? null : error && !createOpen ? (
+            loadingList ? null : error && !plannerCreateVisible ? (
               <p className="text-sm text-red-400">{error}</p>
             ) : receivedBookings.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-ftc-border-subtle bg-ftc-surface/30 px-6 py-12 text-center">

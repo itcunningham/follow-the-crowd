@@ -32,6 +32,7 @@ import {
   type UserRole,
 } from "@/lib/user/currentUser";
 import { readCachedNavRole } from "@/lib/navigationRoleCache";
+import { stashPendingBookingPlanId } from "@/lib/bookings/planDeepLink";
 
 const emptyPlanForm: BookingPlanInput = {
   name: "",
@@ -229,7 +230,8 @@ export default function BookingPlansPage() {
   }
 
   function handleUseForBooking(planId: string) {
-    router.push(`/bookings?planId=${planId}`);
+    stashPendingBookingPlanId(planId);
+    router.push(`/bookings?planId=${encodeURIComponent(planId)}`);
   }
 
   if (!loadingAccess && !canAccessBookingPlans(role)) {
