@@ -1,21 +1,34 @@
 "use client";
 
 import { useLayoutEffect, useRef } from "react";
-import { scheduleScrollPageToTop } from "@/lib/navigation/scrollPageToTop";
+import { isMobileScrollResetViewport } from "@/lib/navigation/isMobileScrollResetViewport";
+import { scheduleMobileScrollPageToTop } from "@/lib/navigation/scrollPageToTop";
 
 export function useScrollPageToTop(routeKey: string, contentReady = true): void {
   const previousScrollRestorationRef = useRef<ScrollRestoration | null>(null);
 
   useLayoutEffect(() => {
-    if (typeof window === "undefined") {
+    if (!isMobileScrollResetViewport()) {
       return;
     }
 
     previousScrollRestorationRef.current = window.history.scrollRestoration;
     window.history.scrollRestoration = "manual";
-    scheduleScrollPageToTop();
+
+    const cancelScheduled = scheduleMobileScrollPageToTop();
+
+    const handlePageShow = (event: PageTransitionEvent) => {
+      if (event.persisted) {
+        scheduleMobileScrollPageToTop();
+      }
+    };
+
+    window.addEventListener("pageshow", handlePageShow);
 
     return () => {
+      cancelScheduled();
+      window.removeEventListener("pageshow", handlePageShow);
+
       if (previousScrollRestorationRef.current !== null) {
         window.history.scrollRestoration = previousScrollRestorationRef.current;
       }
@@ -23,10 +36,10 @@ export function useScrollPageToTop(routeKey: string, contentReady = true): void 
   }, [routeKey]);
 
   useLayoutEffect(() => {
-    if (!contentReady) {
+    if (!isMobileScrollResetViewport() || !contentReady) {
       return;
     }
 
-    scheduleScrollPageToTop();
+    return scheduleMobileScrollPageToTop();
   }, [routeKey, contentReady]);
 }

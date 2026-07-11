@@ -176,6 +176,7 @@ export function EventDetailHero({
 
     return (
       <div
+        data-event-detail-hero
         className={`relative aspect-[4/3] max-h-[220px] w-full overflow-hidden border-b border-ftc-border-subtle ${styles.heroClassName}`}
       >
         <div className="absolute inset-0 flex items-center justify-center">
@@ -192,7 +193,7 @@ export function EventDetailHero({
   }
 
   return (
-    <div className="px-4 pb-1 pt-3 sm:px-6">
+    <div data-event-detail-hero className="px-4 pb-1 pt-3 sm:px-6">
       <div className="mx-auto flex w-full max-w-[15rem] flex-col items-center sm:max-w-[17.5rem]">
         <div className="w-full overflow-hidden rounded-2xl border border-ftc-border-subtle bg-ftc-bg-elevated">
           <div className="relative aspect-[3/4] w-full bg-ftc-bg">
