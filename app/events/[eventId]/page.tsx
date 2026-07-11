@@ -202,9 +202,8 @@ export default function EventDetailPage() {
   const editFormSectionRef = useRef<HTMLElement | null>(null);
 
   const [sendOpen, setSendOpen] = useState(false);
-  const sendBookingsSectionRef = useRef<HTMLElement | null>(null);
+  const sendBookingsSectionRef = useRef<HTMLDivElement | null>(null);
   const djSearchInputRef = useRef<HTMLInputElement | null>(null);
-  const pendingSendSectionFocusRef = useRef(false);
   const [djOffers, setDjOffers] = useState<Record<string, DjSendOffer>>({});
   const [djs, setDjs] = useState<UserProfile[]>([]);
   const [selectedDjIds, setSelectedDjIds] = useState<string[]>([]);
@@ -646,7 +645,6 @@ export default function EventDetailPage() {
       return;
     }
 
-    pendingSendSectionFocusRef.current = true;
     setSendOpen(true);
     setDjOffers({});
     setSelectedDjIds([]);
@@ -677,27 +675,27 @@ export default function EventDetailPage() {
   }
 
   useEffect(() => {
-    if (!sendOpen || !pendingSendSectionFocusRef.current) {
+    if (!sendOpen) {
       return;
     }
 
-    window.requestAnimationFrame(() => {
-      sendBookingsSectionRef.current?.scrollIntoView({
-        behavior: "smooth",
-        block: "start",
-      });
-    });
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
 
-    if (loadingDjs) {
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [sendOpen]);
+
+  useEffect(() => {
+    if (!sendOpen || loadingDjs) {
       return;
     }
-
-    pendingSendSectionFocusRef.current = false;
 
     window.setTimeout(() => {
       djSearchInputRef.current?.focus({ preventScroll: true });
     }, 300);
-  }, [sendOpen, loadingDjs]);
+  }, [loadingDjs, sendOpen]);
 
   function closeSendBookings() {
     if (sending) {
@@ -1335,161 +1333,6 @@ export default function EventDetailPage() {
             </section>
           ) : null}
 
-          {sendOpen && isOwner && !eventIsCancelled ? (
-            <section
-              ref={sendBookingsSectionRef}
-              aria-label="Send bookings"
-              className="scroll-mt-24"
-            >
-            <PlannerFormCard title="Send bookings" onCancel={closeSendBookings} cancelDisabled={sending}>
-              <div className="flex items-start gap-3">
-                <EventCoverImageContextThumb
-                  eventName={event.name}
-                  coverImageUrl={event.cover_image_url}
-                  fallbackColour={event.fallback_colour}
-                />
-                <p className="min-w-0 text-sm text-ftc-text-secondary">
-                  Event details will be prefilled from this event. Each DJ receives a private booking
-                  request DM.
-                </p>
-              </div>
-
-              <div className="mt-4 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated p-3">
-                <p className="text-xs font-semibold uppercase tracking-wide text-ftc-text-muted">
-                  Per-DJ offers
-                </p>
-                <p className="mt-1 text-sm leading-relaxed text-ftc-text-secondary">
-                  Select DJs below, then set a fixed offer or ask for rate for each one.
-                </p>
-              </div>
-
-              <input
-                ref={djSearchInputRef}
-                type="search"
-                value={searchQuery}
-                onChange={(event) => setSearchQuery(event.target.value)}
-                placeholder="Search DJs by name or genre"
-                className="mb-4 mt-4 ftc-input px-3.5 py-2.5"
-              />
-
-              {loadingDjs ? (
-                <p className="text-sm text-ftc-text-muted">Loading DJs...</p>
-              ) : filteredDjs.length === 0 ? (
-                <PlannerEmptyPanel message="No available DJs to invite." />
-              ) : (
-                <ul className="max-h-80 space-y-2 overflow-y-auto">
-                  {filteredDjs.map((dj) => {
-                    const selected = selectedDjIds.includes(dj.user_id);
-                    const displayName = dj.display_name?.trim() || "DJ";
-                    const availabilityHint = djAvailabilityHints.get(dj.user_id);
-                    const duplicateStatus = eventBookingDuplicates.get(dj.user_id);
-                    const isDuplicateBlocked = Boolean(duplicateStatus);
-                    const offer = djOffers[dj.user_id] ?? DEFAULT_DJ_SEND_OFFER;
-
-                    return (
-                      <li key={dj.user_id}>
-                        <button
-                          type="button"
-                          disabled={isDuplicateBlocked}
-                          onClick={() => toggleDjSelection(dj.user_id)}
-                          className={`ftc-option-card flex w-full items-center gap-3 px-3 py-3 disabled:cursor-not-allowed ${
-                            selected
-                              ? "ftc-option-card-selected"
-                              : isDuplicateBlocked
-                                ? "opacity-70"
-                                : ""
-                          }`}
-                        >
-                          <span
-                            className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border ${
-                              selected
-                                ? "border-0 bg-ftc-primary text-ftc-bg"
-                                : "border-ftc-border-subtle bg-ftc-bg-input text-transparent"
-                            }`}
-                          >
-                            ✓
-                          </span>
-                          <ProfileAvatar
-                            name={displayName}
-                            avatarUrl={dj.avatar_url}
-                            size="sm"
-                          />
-                          <div className="min-w-0 flex-1 text-left">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <p className="font-semibold text-ftc-text">{displayName}</p>
-                              {duplicateStatus ? (
-                                <EventBookingDuplicateBadge status={duplicateStatus} />
-                              ) : null}
-                              {availabilityHint ? (
-                                <DjBookingAvailabilityBadge hint={availabilityHint} />
-                              ) : null}
-                            </div>
-                            {dj.genre?.trim() ? (
-                              <p className="text-sm text-ftc-text-muted">{dj.genre}</p>
-                            ) : null}
-                          </div>
-                        </button>
-                        {selected ? (
-                          <div className="mt-2 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated p-3">
-                            <EventDjSendOfferControls
-                              offer={offer}
-                              disabled={sending}
-                              onChange={(nextOffer) => updateDjOffer(dj.user_id, nextOffer)}
-                            />
-                          </div>
-                        ) : null}
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
-
-              {allSelectedAreDuplicates ? (
-                <p className="mt-4 text-xs text-ftc-text-muted">
-                  Selected DJs already have a request for this event.
-                </p>
-              ) : null}
-
-              {sendOfferSummary.length > 0 ? (
-                <div className="mt-4 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated p-4">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-ftc-text-muted">
-                    Send summary
-                  </p>
-                  <ul className="mt-3 space-y-2">
-                    {sendOfferSummary.map((item) => (
-                      <li
-                        key={item.djId}
-                        className="flex items-start justify-between gap-3 text-sm"
-                      >
-                        <span className="min-w-0 truncate font-medium text-ftc-text">
-                          {item.name}
-                        </span>
-                        <span className="shrink-0 text-right text-ftc-text-secondary">
-                          {item.summary}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                  {hasInvalidFixedOffers ? (
-                    <p className="mt-3 text-xs text-[var(--ftc-color-warning)]">
-                      Enter a positive whole-dollar amount for each fixed offer before sending.
-                    </p>
-                  ) : null}
-                </div>
-              ) : null}
-
-              <button
-                type="button"
-                onClick={requestSendBookings}
-                disabled={sending || sendableSelectedDjIds.length === 0 || hasInvalidFixedOffers}
-                className="mt-4 w-full ftc-btn-primary px-5 py-3 text-sm uppercase tracking-wide disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {sendButtonLabel}
-              </button>
-            </PlannerFormCard>
-            </section>
-          ) : null}
-
           {canViewRunSheet ? (
             <>
               {showRunSheetSendBookingsAction ? (
@@ -1707,6 +1550,173 @@ export default function EventDetailPage() {
           </EventDetailBottomBar>
         ) : null}
       </div>
+
+      {sendOpen && isOwner && !eventIsCancelled ? (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 p-0 sm:items-center sm:p-4"
+          onClick={() => {
+            if (!sending) {
+              closeSendBookings();
+            }
+          }}
+        >
+          <div
+            ref={sendBookingsSectionRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Send bookings"
+            className="max-h-[90dvh] w-full max-w-2xl overflow-y-auto overscroll-contain rounded-t-2xl border border-ftc-border-subtle bg-ftc-bg pb-[max(1rem,env(safe-area-inset-bottom))] sm:rounded-2xl sm:pb-0"
+            onClick={(clickEvent) => clickEvent.stopPropagation()}
+          >
+            <PlannerFormCard title="Send bookings" onCancel={closeSendBookings} cancelDisabled={sending}>
+              <div className="flex items-start gap-3">
+                <EventCoverImageContextThumb
+                  eventName={event.name}
+                  coverImageUrl={event.cover_image_url}
+                  fallbackColour={event.fallback_colour}
+                />
+                <p className="min-w-0 text-sm text-ftc-text-secondary">
+                  Event details will be prefilled from this event. Each DJ receives a private booking
+                  request DM.
+                </p>
+              </div>
+
+              <div className="mt-4 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated p-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-ftc-text-muted">
+                  Per-DJ offers
+                </p>
+                <p className="mt-1 text-sm leading-relaxed text-ftc-text-secondary">
+                  Select DJs below, then set a fixed offer or ask for rate for each one.
+                </p>
+              </div>
+
+              <input
+                ref={djSearchInputRef}
+                type="search"
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                placeholder="Search DJs by name or genre"
+                className="mb-4 mt-4 ftc-input px-3.5 py-2.5"
+              />
+
+              {loadingDjs ? (
+                <p className="text-sm text-ftc-text-muted">Loading DJs...</p>
+              ) : filteredDjs.length === 0 ? (
+                <PlannerEmptyPanel message="No available DJs to invite." />
+              ) : (
+                <ul className="max-h-80 space-y-2 overflow-y-auto">
+                  {filteredDjs.map((dj) => {
+                    const selected = selectedDjIds.includes(dj.user_id);
+                    const displayName = dj.display_name?.trim() || "DJ";
+                    const availabilityHint = djAvailabilityHints.get(dj.user_id);
+                    const duplicateStatus = eventBookingDuplicates.get(dj.user_id);
+                    const isDuplicateBlocked = Boolean(duplicateStatus);
+                    const offer = djOffers[dj.user_id] ?? DEFAULT_DJ_SEND_OFFER;
+
+                    return (
+                      <li key={dj.user_id}>
+                        <button
+                          type="button"
+                          disabled={isDuplicateBlocked}
+                          onClick={() => toggleDjSelection(dj.user_id)}
+                          className={`ftc-option-card flex w-full items-center gap-3 px-3 py-3 disabled:cursor-not-allowed ${
+                            selected
+                              ? "ftc-option-card-selected"
+                              : isDuplicateBlocked
+                                ? "opacity-70"
+                                : ""
+                          }`}
+                        >
+                          <span
+                            className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border ${
+                              selected
+                                ? "border-0 bg-ftc-primary text-ftc-bg"
+                                : "border-ftc-border-subtle bg-ftc-bg-input text-transparent"
+                            }`}
+                          >
+                            ✓
+                          </span>
+                          <ProfileAvatar
+                            name={displayName}
+                            avatarUrl={dj.avatar_url}
+                            size="sm"
+                          />
+                          <div className="min-w-0 flex-1 text-left">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <p className="font-semibold text-ftc-text">{displayName}</p>
+                              {duplicateStatus ? (
+                                <EventBookingDuplicateBadge status={duplicateStatus} />
+                              ) : null}
+                              {availabilityHint ? (
+                                <DjBookingAvailabilityBadge hint={availabilityHint} />
+                              ) : null}
+                            </div>
+                            {dj.genre?.trim() ? (
+                              <p className="text-sm text-ftc-text-muted">{dj.genre}</p>
+                            ) : null}
+                          </div>
+                        </button>
+                        {selected ? (
+                          <div className="mt-2 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated p-3">
+                            <EventDjSendOfferControls
+                              offer={offer}
+                              disabled={sending}
+                              onChange={(nextOffer) => updateDjOffer(dj.user_id, nextOffer)}
+                            />
+                          </div>
+                        ) : null}
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+
+              {allSelectedAreDuplicates ? (
+                <p className="mt-4 text-xs text-ftc-text-muted">
+                  Selected DJs already have a request for this event.
+                </p>
+              ) : null}
+
+              {sendOfferSummary.length > 0 ? (
+                <div className="mt-4 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated p-4">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-ftc-text-muted">
+                    Send summary
+                  </p>
+                  <ul className="mt-3 space-y-2">
+                    {sendOfferSummary.map((item) => (
+                      <li
+                        key={item.djId}
+                        className="flex items-start justify-between gap-3 text-sm"
+                      >
+                        <span className="min-w-0 truncate font-medium text-ftc-text">
+                          {item.name}
+                        </span>
+                        <span className="shrink-0 text-right text-ftc-text-secondary">
+                          {item.summary}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                  {hasInvalidFixedOffers ? (
+                    <p className="mt-3 text-xs text-[var(--ftc-color-warning)]">
+                      Enter a positive whole-dollar amount for each fixed offer before sending.
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
+
+              <button
+                type="button"
+                onClick={requestSendBookings}
+                disabled={sending || sendableSelectedDjIds.length === 0 || hasInvalidFixedOffers}
+                className="mt-4 w-full ftc-btn-primary px-5 py-3 text-sm uppercase tracking-wide disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {sendButtonLabel}
+              </button>
+            </PlannerFormCard>
+          </div>
+        </div>
+      ) : null}
 
       <UnavailableDjBookingConfirmModal
         open={unavailableConfirmOpen}

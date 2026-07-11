@@ -63,7 +63,7 @@ export default function EventDeleteCancelButton({
         type="button"
         disabled={disabled || loading}
         onClick={() => setOpen(true)}
-        className={`rounded-lg border border-[var(--ftc-color-danger)] bg-ftc-surface px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-[var(--ftc-color-danger)] transition hover:border-0 hover:bg-[var(--ftc-color-danger)] hover:text-ftc-bg disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
+        className={`rounded-lg border border-[var(--ftc-color-danger)] bg-ftc-surface px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-[var(--ftc-color-danger)] transition hover:bg-[var(--ftc-color-danger)] hover:text-ftc-bg disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
       >
         {loading ? copy.loadingLabel : copy.buttonLabel}
       </button>
