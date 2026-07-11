@@ -140,7 +140,6 @@ function BookingTimeControl({
   variant = "default",
   buttonLabel,
   minWheelTime = null,
-  invalid = false,
 }: {
   label: string;
   clock: string;
@@ -152,7 +151,6 @@ function BookingTimeControl({
   variant?: "default" | "compact";
   buttonLabel?: string;
   minWheelTime?: WheelTimeValue | null;
-  invalid?: boolean;
 }) {
   const [pickerOpen, setPickerOpen] = useState(false);
   const isCompact = variant === "compact";
@@ -187,10 +185,7 @@ function BookingTimeControl({
         onClick={openPicker}
         aria-label={`${label}, ${resolvedLabel}`}
         aria-required={required}
-        aria-invalid={invalid || undefined}
-        className={`${isCompact ? BOOKING_TIME_BUTTON_COMPACT_CLASS : BOOKING_TIME_BUTTON_CLASS}${
-          invalid ? " ftc-input-error" : ""
-        }`}
+        className={isCompact ? BOOKING_TIME_BUTTON_COMPACT_CLASS : BOOKING_TIME_BUTTON_CLASS}
       >
         {isCompact ? (
           <>
@@ -317,15 +312,11 @@ export function BookingSetTimeRangeField({
   onChange,
   required = false,
   eventDate,
-  startInvalid = false,
-  finishInvalid = false,
 }: {
   value: string;
   onChange: (value: string) => void;
   required?: boolean;
   eventDate?: string;
-  startInvalid?: boolean;
-  finishInvalid?: boolean;
 }) {
   const userEditedRef = useRef(false);
   const [startClock, setStartClock] = useState("");
@@ -402,7 +393,6 @@ export function BookingSetTimeRangeField({
         defaultWheelTime={defaultStartWheelTime}
         onTimeChange={handleStartTimeChange}
         required={required}
-        invalid={startInvalid}
         minWheelTime={minStartWheelTime}
         buttonLabel={
           combineClockAndMeridiem(startClock, startMeridiem) || "Select start time"
@@ -414,7 +404,6 @@ export function BookingSetTimeRangeField({
         meridiem={finishMeridiem}
         defaultWheelTime={defaultFinishWheelTime}
         onTimeChange={handleFinishTimeChange}
-        invalid={finishInvalid}
         buttonLabel={
           combineClockAndMeridiem(finishClock, finishMeridiem) || "Select finish time"
         }

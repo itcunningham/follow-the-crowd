@@ -27,7 +27,7 @@ import {
 } from "@/app/components/planner/PlannerUi";
 import ProfileAvatar from "@/app/components/ProfileAvatar";
 import { BookingDateField, BookingSetTimeRangeField } from "@/app/components/BookingDateTimeFields";
-import { getEventDateValidationError, getEventSetTimeFieldErrors, getEventSetTimeValidationError, getTodayDateKey } from "@/lib/bookingDateTime";
+import { getEventDateValidationError, getEventSetTimeValidationError, getTodayDateKey } from "@/lib/bookingDateTime";
 import EventCoverImageField, {
   emptyEventCoverImageFieldState,
   type EventCoverImageFieldState,
@@ -277,12 +277,12 @@ export default function EventDetailPage() {
     return base.filter((booking) => booking.status === lineupFilter);
   }, [activeLineup, lineupFilter, visibleLineup]);
 
-  const editFormSetTimeFieldErrors = useMemo(() => {
+  const editFormSetTimeValidationError = useMemo(() => {
     if (!editForm) {
-      return { message: null, startInvalid: false, finishInvalid: false };
+      return null;
     }
 
-    return getEventSetTimeFieldErrors(editForm.setTime);
+    return getEventSetTimeValidationError(editForm.setTime);
   }, [editForm]);
 
   const editFormDateValidationError = useMemo(() => {
@@ -290,12 +290,12 @@ export default function EventDetailPage() {
       return null;
     }
 
-    if (editFormSetTimeFieldErrors.message) {
+    if (editFormSetTimeValidationError) {
       return null;
     }
 
     return getEventDateValidationError(editForm.eventDate, editForm.setTime);
-  }, [editForm, editFormSetTimeFieldErrors.message]);
+  }, [editForm, editFormSetTimeValidationError]);
   const editFormNotesValidationError = useMemo(() => {
     if (!editForm) {
       return null;
@@ -304,7 +304,7 @@ export default function EventDetailPage() {
     return getEventNotesValidationError(editForm.notes);
   }, [editForm]);
   const editFormValidationError =
-    editFormSetTimeFieldErrors.message ??
+    editFormSetTimeValidationError ??
     editFormDateValidationError ??
     editFormNotesValidationError;
 
@@ -1239,8 +1239,6 @@ export default function EventDetailPage() {
                   }
                   required
                   eventDate={editForm.eventDate}
-                  startInvalid={editFormSetTimeFieldErrors.startInvalid}
-                  finishInvalid={editFormSetTimeFieldErrors.finishInvalid}
                 />
                 <PlannerFormField
                   label="Notes"
@@ -1250,12 +1248,12 @@ export default function EventDetailPage() {
                   maxLength={MAX_EVENT_NOTES_LENGTH}
                 />
 
-                {editFormSetTimeFieldErrors.message ? (
+                {editFormSetTimeValidationError ? (
                   <p
                     role="alert"
                     className="rounded-lg border border-[var(--ftc-color-danger)]/35 bg-ftc-bg-elevated px-3 py-2.5 text-sm text-[var(--ftc-color-danger)]"
                   >
-                    {editFormSetTimeFieldErrors.message}
+                    {editFormSetTimeValidationError}
                   </p>
                 ) : null}
 
