@@ -1,7 +1,11 @@
 "use client";
 
 import { BOOKING_FIELD_LABEL_CLASS } from "@/lib/bookingDateTime";
-import { MAX_RATE_DIGITS, sanitizeRateDigits } from "@/lib/bookingRate";
+import {
+  MAX_RATE_DIGITS,
+  RATE_AMOUNT_PLACEHOLDER,
+  sanitizeRateDigits,
+} from "@/lib/bookingRate";
 
 export const BOOKING_RATE_INPUT_CLASS =
   "ftc-input-shell flex w-full items-center rounded-xl text-sm text-ftc-text";
@@ -11,7 +15,7 @@ export function BookingRateField({
   value,
   onChange,
   required = false,
-  placeholder = "Enter amount",
+  placeholder = RATE_AMOUNT_PLACEHOLDER,
 }: {
   label?: string;
   value: string;

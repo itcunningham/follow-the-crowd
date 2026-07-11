@@ -1,5 +1,8 @@
 export const MAX_RATE_DIGITS = 10;
 
+/** Placeholder for empty planner/DJ rate inputs (not a stored value). */
+export const RATE_AMOUNT_PLACEHOLDER = "0";
+
 export function sanitizeRateDigits(raw: string): string {
   return raw.replace(/\D/g, "").slice(0, MAX_RATE_DIGITS);
 }

@@ -891,11 +891,7 @@ function BookingsPageContent() {
     }
   }
 
-  function closeCreateFlow() {
-    if (sending) {
-      return;
-    }
-
+  function resetCreateFlowState(options?: { preserveDeepLinkCompletion?: boolean }) {
     setCreateOpen(false);
     setCreateStep("source");
     setForm(emptyForm);
@@ -912,8 +908,31 @@ function BookingsPageContent() {
     setUnavailableConfirmOpen(false);
     setEventBookings([]);
     clearPendingBookingPlanId();
-    deepLinkCompletedKeyRef.current = null;
+
+    if (!options?.preserveDeepLinkCompletion) {
+      deepLinkCompletedKeyRef.current = null;
+    }
+
     deepLinkInFlightKeyRef.current = null;
+  }
+
+  function closeCreateFlow() {
+    if (sending) {
+      return;
+    }
+
+    resetCreateFlowState();
+  }
+
+  function finishCreateFlowAfterSend() {
+    const intent = resolveBookingsDeepLinkIntent(searchParams);
+
+    if (intent) {
+      deepLinkCompletedKeyRef.current = getBookingsDeepLinkKey(intent);
+    }
+
+    resetCreateFlowState({ preserveDeepLinkCompletion: true });
+    router.replace("/bookings", { scroll: false });
   }
 
   function handleDetailsBack() {
@@ -1144,7 +1163,7 @@ function BookingsPageContent() {
 
       setSuccessMessage(buildBookingSendResultMessage(successes.length, skippedCount));
       setUnavailableConfirmOpen(false);
-      closeCreateFlow();
+      finishCreateFlowAfterSend();
       await reloadPlannerSentBookings();
 
       if (failures.length > 0) {
