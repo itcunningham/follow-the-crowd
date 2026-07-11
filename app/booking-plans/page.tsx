@@ -16,7 +16,7 @@ import {
   SavedEventPlansSectionHeading,
 } from "@/app/components/skeleton/Skeleton";
 import { BookingDateField, BookingSetTimeRangeField } from "@/app/components/BookingDateTimeFields";
-import { formatDisplayEventDate, getEventDateValidationError } from "@/lib/bookingDateTime";
+import { getEventDateValidationError } from "@/lib/bookingDateTime";
 import { getEventNotesValidationError, MAX_EVENT_NOTES_LENGTH } from "@/lib/events/eventNotes";
 import {
   createBookingPlan,
@@ -361,8 +361,6 @@ export default function BookingPlansPage() {
                           <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
                             <PlanDetail label="Event" value={plan.event_name} />
                             <PlanDetail label="Venue" value={plan.venue} />
-                            <PlanDetail label="Date" value={formatDisplayEventDate(plan.event_date)} />
-                            <PlanDetail label="Set time" value={plan.set_time} />
                           </dl>
                           {plan.notes?.trim() ? (
                             <p className="mt-3 text-sm leading-relaxed text-ftc-text-secondary">{plan.notes}</p>
