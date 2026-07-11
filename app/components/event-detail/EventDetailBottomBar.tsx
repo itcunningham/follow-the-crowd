@@ -10,7 +10,7 @@ type ActionIcon = "send" | "chat";
 const actionCardClassName = [
   "group relative flex min-h-[3.25rem] w-full min-w-0 flex-1 items-center gap-3 rounded-xl border border-ftc-border-subtle px-3.5 py-3 text-left transition",
   "bg-gradient-to-br from-[#171d28] via-[#141a24] to-[#111820] shadow-[0_4px_18px_rgb(0_0_0/0.28)]",
-  "hover:-translate-y-px hover:border-ftc-border-strong hover:shadow-[0_8px_22px_rgb(0_0_0/0.34)]",
+  "hover:border-ftc-border-strong",
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ftc-primary/35",
   "disabled:cursor-not-allowed disabled:opacity-50",
 ].join(" ");
