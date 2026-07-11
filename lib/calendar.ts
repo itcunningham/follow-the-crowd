@@ -122,6 +122,26 @@ export function getCalendarStatusBadgeClass(kind: CalendarStatusKind): string {
   return FTC_STATUS_DANGER;
 }
 
+export function getCalendarStatusLegendDotClass(kind: CalendarStatusKind): string {
+  if (kind === "pending") {
+    return "bg-[var(--ftc-color-warning)]";
+  }
+
+  if (kind === "accepted") {
+    return "bg-[var(--ftc-color-success)]";
+  }
+
+  if (kind === "declined") {
+    return "bg-[var(--ftc-color-danger)]";
+  }
+
+  if (kind === "event_upcoming") {
+    return "bg-ftc-primary";
+  }
+
+  return "bg-ftc-text-muted";
+}
+
 export function getCalendarWeekRows(monthStart: Date): (Date | null)[][] {
   const year = monthStart.getFullYear();
   const month = monthStart.getMonth();

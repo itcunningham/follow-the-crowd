@@ -10,6 +10,7 @@ import {
   formatPlannerAgendaDateLabel,
   getCalendarLoadErrorMessage,
   getCalendarStatusBadgeClass,
+  getCalendarStatusLegendDotClass,
   getCalendarWeekRows,
   getDefaultSelectedCalendarDate,
   getPlannerCalendarBadgeLabel,
@@ -24,15 +25,26 @@ import {
 
 function PlannerCalendarMobileLegend() {
   return (
-    <div className="flex flex-wrap items-center justify-center gap-1.5 md:hidden">
-      {PLANNER_CALENDAR_LEGEND_ITEMS.map((item) => (
-        <span
-          key={item.mobileLabel}
-          className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${getCalendarStatusBadgeClass(item.kind)}`}
-        >
-          {item.mobileLabel}
-        </span>
-      ))}
+    <div
+      role="list"
+      aria-label="Calendar legend"
+      className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 md:hidden"
+    >
+      {PLANNER_CALENDAR_LEGEND_ITEMS.filter((item) => item.kind !== "event_upcoming").map(
+        (item) => (
+          <span
+            key={item.mobileLabel}
+            role="listitem"
+            className="inline-flex items-center gap-1.5 text-xs text-ftc-text-secondary"
+          >
+            <span
+              aria-hidden="true"
+              className={`h-1.5 w-1.5 shrink-0 rounded-full ${getCalendarStatusLegendDotClass(item.kind)}`}
+            />
+            {item.mobileLabel}
+          </span>
+        ),
+      )}
     </div>
   );
 }
