@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import CalendarMonthNav from "@/app/components/CalendarMonthNav";
-import CalendarMobileDayPickerSheet from "@/app/components/CalendarMobileDayPickerSheet";
 import PlannerCalendarDateActions from "@/app/components/PlannerCalendarDateActions";
 import PlannerCalendarMobileDateStrip from "@/app/components/PlannerCalendarMobileDateStrip";
 import {
@@ -146,7 +145,6 @@ function PlannerCalendarMobileAgenda({
   monthStart,
   selectedDate,
   onSelectDate,
-  onVisibleMonthChange,
   itemsByDate,
   isTodayDate,
   isDateInViewingMonth,
@@ -154,7 +152,6 @@ function PlannerCalendarMobileAgenda({
   monthStart: Date;
   selectedDate: Date;
   onSelectDate: (date: Date) => void;
-  onVisibleMonthChange: (monthStart: Date) => void;
   itemsByDate: Map<string, CalendarItem[]>;
   isTodayDate: (date: Date) => boolean;
   isDateInViewingMonth: (date: Date) => boolean;
@@ -167,9 +164,7 @@ function PlannerCalendarMobileAgenda({
         selectedDate={selectedDate}
         onSelectDate={onSelectDate}
         monthStart={monthStart}
-        onVisibleMonthChange={onVisibleMonthChange}
         itemsByDate={itemsByDate}
-        isDateInViewingMonth={isDateInViewingMonth}
       />
 
       <div className="mt-4">
@@ -224,7 +219,6 @@ export default function PlannerCalendar({
     const today = new Date();
     return new Date(today.getFullYear(), today.getMonth(), today.getDate());
   });
-  const [mobileMonthPickerOpen, setMobileMonthPickerOpen] = useState(false);
 
   useEffect(() => {
     const now = new Date();
@@ -296,16 +290,6 @@ export default function PlannerCalendar({
     });
   }
 
-  function handleVisibleMonthChange(nextMonthStart: Date) {
-    setMonthStart((current) => {
-      if (isSameMonth(current, nextMonthStart)) {
-        return current;
-      }
-
-      return nextMonthStart;
-    });
-  }
-
   return (
     <section className="ftc-card p-4 sm:p-5 md:p-6">
       <div>
@@ -322,19 +306,8 @@ export default function PlannerCalendar({
         </p>
       ) : null}
 
-      <div className="relative mt-4 flex items-center justify-center gap-2">
-        <div className="flex min-w-0 flex-1 justify-center">
-          <CalendarMonthNav monthStart={monthStart} onMonthStartChange={handleMonthStartChange} />
-        </div>
-        <button
-          type="button"
-          aria-haspopup="dialog"
-          aria-expanded={mobileMonthPickerOpen}
-          onClick={() => setMobileMonthPickerOpen(true)}
-          className="shrink-0 rounded-lg border border-ftc-border bg-ftc-bg-elevated/60 px-2.5 py-2 text-xs font-semibold uppercase tracking-wide text-ftc-text-secondary transition hover:border-ftc-primary/30 hover:text-ftc-primary md:hidden"
-        >
-          Month
-        </button>
+      <div className="relative mt-4">
+        <CalendarMonthNav monthStart={monthStart} onMonthStartChange={handleMonthStartChange} />
       </div>
 
       <div className="mt-1 md:mt-3">
@@ -349,7 +322,6 @@ export default function PlannerCalendar({
             monthStart={monthStart}
             selectedDate={selectedDate}
             onSelectDate={setSelectedDate}
-            onVisibleMonthChange={handleVisibleMonthChange}
             itemsByDate={itemsByDate}
             isTodayDate={isTodayDate}
             isDateInViewingMonth={isDateInViewingMonth}
@@ -407,15 +379,6 @@ export default function PlannerCalendar({
         date={actionDate}
         items={actionDate ? monthItemsByDate.get(toDateKey(actionDate)) ?? [] : []}
         onClose={() => setActionDate(null)}
-      />
-
-      <CalendarMobileDayPickerSheet
-        open={mobileMonthPickerOpen}
-        onClose={() => setMobileMonthPickerOpen(false)}
-        monthStart={monthStart}
-        onMonthStartChange={handleMonthStartChange}
-        selectedDate={selectedDate}
-        onSelectDate={setSelectedDate}
       />
     </section>
   );

@@ -410,19 +410,12 @@ export function getWeekDatesContaining(date: Date): Date[] {
   });
 }
 
-export function getConsecutiveCalendarDates(
-  centerDate: Date,
-  daysBefore = 180,
-  daysAfter = 180,
-): Date[] {
-  const start = new Date(centerDate.getFullYear(), centerDate.getMonth(), centerDate.getDate());
-  start.setDate(start.getDate() - daysBefore);
+export function getCalendarMonthDates(monthStart: Date): Date[] {
+  const year = monthStart.getFullYear();
+  const month = monthStart.getMonth();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
 
-  return Array.from({ length: daysBefore + daysAfter + 1 }, (_, index) => {
-    const nextDate = new Date(start);
-    nextDate.setDate(start.getDate() + index);
-    return nextDate;
-  });
+  return Array.from({ length: daysInMonth }, (_, index) => new Date(year, month, index + 1));
 }
 
 export function getDefaultSelectedCalendarDate(
