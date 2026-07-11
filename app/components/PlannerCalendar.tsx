@@ -11,7 +11,10 @@ import PlannerCalendarMobileDateStrip from "@/app/components/PlannerCalendarMobi
 import { PlannerCalendarContentSkeleton } from "@/app/components/skeleton/Skeleton";
 import { isDateKeyBeforeToday } from "@/lib/bookingDateTime";
 import { consumeEventCreateInviteMessage } from "@/lib/events/eventCreateInviteMessages";
-import { prepareMobileDocumentScrollReset } from "@/lib/navigation/prepareMobileDocumentScrollReset";
+import {
+  prepareCalendarAgendaEventNavigation,
+  prepareMobileDocumentScrollReset,
+} from "@/lib/navigation/prepareMobileDocumentScrollReset";
 import { listBookingPlans } from "@/lib/bookingPlans";
 import {
   buildCalendarOriginState,
@@ -189,8 +192,8 @@ function PlannerCalendarAgendaCard({
   const eventHref = resolveCalendarOriginEventHref(item.href, calendarOrigin);
 
   const handleOpenEvent = useCallback(() => {
-    prepareMobileDocumentScrollReset();
-    router.push(eventHref, { scroll: true });
+    prepareCalendarAgendaEventNavigation();
+    router.push(eventHref, { scroll: false });
   }, [eventHref, router]);
 
   return (
