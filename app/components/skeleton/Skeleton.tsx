@@ -5,6 +5,10 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import AppNavigation, { MOBILE_NAV_OFFSET_CLASS } from "@/app/components/AppNavigation";
+import {
+  EventDetailEditButton,
+  EventDetailOverlayButton,
+} from "@/app/components/event-detail/EventDetailLayout";
 import DmConversationHeader from "@/app/components/dm/DmConversationHeader";
 import MessagesInboxLayout from "@/app/components/dm/MessagesInboxLayout";
 import CalendarViewTabs, { type CalendarViewTab } from "@/app/components/CalendarViewTabs";
@@ -18,7 +22,7 @@ import {
 import ProfilePageHeader from "@/app/components/profile/ProfilePageHeader";
 import type { DjGigsListTab } from "@/lib/bookingRequests";
 import { buildGigsListHref, resolveGigsListTabParam } from "@/lib/bookings/gigsListNavigation";
-import { buildEventsListHref } from "@/lib/events/eventsListNavigation";
+import { buildEventsListHref, resolveEventDetailBackHref } from "@/lib/events/eventsListNavigation";
 import { canManageEvents, type UserRole } from "@/lib/user/currentUser";
 import { readCachedNavRole, readCachedNavigation, resolveIsOwnProfilePath } from "@/lib/navigationRoleCache";
 
@@ -133,25 +137,17 @@ function EventListItemSkeleton({ showPlannerStats = false }: { showPlannerStats?
   );
 }
 
-export function EventDetailLoadingShell() {
+function EventDetailBackIcon() {
   return (
-    <div
-      aria-busy="true"
-      aria-label="Loading event"
-      className={`mx-auto min-h-[100dvh] w-full max-w-2xl bg-ftc-bg font-sans text-ftc-text ${MOBILE_NAV_OFFSET_CLASS}`}
-    >
-      <AppNavigation />
+    <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.75">
+      <path d="M15 6l-6 6 6 6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
 
-      <div className="border-b border-ftc-border-subtle bg-ftc-bg/95 px-4 py-3 backdrop-blur-md sm:px-6">
-        <div className="flex items-start justify-between gap-3">
-          <SkeletonBlock className="h-10 w-10 rounded-xl" />
-          <div className="flex items-center gap-2">
-            <SkeletonBlock className="h-10 w-10 rounded-xl" />
-            <SkeletonBlock className="h-10 w-16 rounded-xl" />
-          </div>
-        </div>
-      </div>
-
+export function EventDetailContentSkeleton() {
+  return (
+    <>
       <div className="relative aspect-[4/3] max-h-[220px] w-full border-b border-ftc-border-subtle">
         <SkeletonBlock className="h-full w-full rounded-none" rounded="rounded-none" />
       </div>
@@ -186,6 +182,48 @@ export function EventDetailLoadingShell() {
           </div>
         </SkeletonCard>
       </div>
+    </>
+  );
+}
+
+export function EventDetailLoadingShell({
+  backHref,
+  onBack,
+  showEditButton = false,
+  onEditClick,
+}: {
+  backHref?: string;
+  onBack?: () => void;
+  showEditButton?: boolean;
+  onEditClick?: () => void;
+} = {}) {
+  return (
+    <div
+      aria-busy="true"
+      aria-label="Loading event"
+      className={`mx-auto min-h-[100dvh] w-full max-w-2xl bg-ftc-bg font-sans text-ftc-text ${MOBILE_NAV_OFFSET_CLASS}`}
+    >
+      <AppNavigation />
+
+      <div className="border-b border-ftc-border-subtle bg-ftc-bg/95 px-4 py-3 backdrop-blur-md sm:px-6">
+        <div className="flex items-start justify-between gap-3">
+          <EventDetailOverlayButton
+            href={backHref}
+            onClick={onBack}
+            label="Back to events"
+          >
+            <EventDetailBackIcon />
+          </EventDetailOverlayButton>
+
+          <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
+            {showEditButton && onEditClick ? (
+              <EventDetailEditButton onClick={onEditClick} />
+            ) : null}
+          </div>
+        </div>
+      </div>
+
+      <EventDetailContentSkeleton />
     </div>
   );
 }
@@ -854,8 +892,14 @@ export function AppLoadingShell({
     return <ChatPageLoadingShell variant="group" />;
   }
 
-  if (pathname.startsWith("/events/")) {
-    return <EventDetailLoadingShell />;
+  if (pathname.startsWith("/events/") && !/\/events\/[^/]+\/chat\/?$/.test(pathname)) {
+    const searchParams = new URLSearchParams(search.startsWith("?") ? search.slice(1) : search);
+    const backHref = resolveEventDetailBackHref(searchParams.get("fromTab"), {
+      from: searchParams.get("from"),
+      tab: searchParams.get("tab"),
+    });
+
+    return <EventDetailLoadingShell backHref={backHref} />;
   }
 
   if (pathname === "/bookings" || pathname.startsWith("/bookings/")) {

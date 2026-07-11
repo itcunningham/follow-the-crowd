@@ -1047,7 +1047,11 @@ export default function EventDetailPage() {
   if (loading) {
     return (
       <OnboardingGuard>
-        <EventDetailLoadingShell />
+        <EventDetailLoadingShell
+          backHref={eventsBackHref}
+          showEditButton={canEditEvent}
+          onEditClick={openEditForm}
+        />
       </OnboardingGuard>
     );
   }
