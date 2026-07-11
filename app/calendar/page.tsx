@@ -8,8 +8,8 @@ import OnboardingGuard from "@/app/components/OnboardingGuard";
 import PlannerCalendar from "@/app/components/PlannerCalendar";
 import {
   PlannerWorkspacePageHeader,
+  PLANNER_CALENDAR_SHELL_CLASS,
   PLANNER_WORKSPACE_CONTENT_CLASS,
-  PLANNER_WORKSPACE_SHELL_CLASS,
 } from "@/app/components/planner/PlannerWorkspaceLayout";
 import { readCachedNavRole } from "@/lib/navigationRoleCache";
 import { getCurrentUserProfile, type UserRole } from "@/lib/user/currentUser";
@@ -40,7 +40,7 @@ export default function CalendarPage() {
 
   return (
     <OnboardingGuard>
-      <div className={PLANNER_WORKSPACE_SHELL_CLASS}>
+      <div className={PLANNER_CALENDAR_SHELL_CLASS}>
         <AppNavigation />
 
         <PlannerWorkspacePageHeader

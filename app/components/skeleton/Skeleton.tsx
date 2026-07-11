@@ -17,6 +17,7 @@ import MessagesInboxLayout from "@/app/components/dm/MessagesInboxLayout";
 import CalendarViewTabs, { type CalendarViewTab } from "@/app/components/CalendarViewTabs";
 import {
   PlannerWorkspacePageHeader,
+  PLANNER_CALENDAR_SHELL_CLASS,
   PLANNER_WORKSPACE_CONTENT_CLASS,
   PLANNER_WORKSPACE_SECONDARY_TABS_ROW_CLASS,
   PLANNER_WORKSPACE_SHELL_CLASS,
@@ -814,7 +815,7 @@ export function CalendarPageLoadingShell() {
     cachedRole === "promoter" || cachedRole === "both" || cachedRole === "dj";
 
   return (
-    <div className={PLANNER_WORKSPACE_SHELL_CLASS}>
+    <div className={PLANNER_CALENDAR_SHELL_CLASS}>
       <AppNavigation />
       <PlannerWorkspacePageHeader
         title="Calendar"

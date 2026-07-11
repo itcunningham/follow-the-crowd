@@ -6,11 +6,16 @@ import CalendarMonthNav from "@/app/components/CalendarMonthNav";
 import PlannerCalendarDateActions from "@/app/components/PlannerCalendarDateActions";
 import {
   filterCalendarItemsForMonth,
+  formatPlannerAgendaDateLabel,
   getCalendarLoadErrorMessage,
   getCalendarStatusBadgeClass,
   getCalendarWeekRows,
+  getDefaultSelectedCalendarDate,
   getPlannerCalendarBadgeLabel,
+  getWeekDatesContaining,
   groupCalendarItemsByDate,
+  isSameDay,
+  isSameMonth,
   loadPlannerCalendarItems,
   PLANNER_CALENDAR_LEGEND_ITEMS,
   toDateKey,
@@ -37,21 +42,21 @@ function PlannerCalendarItemBadge({ item }: { item: CalendarItem }) {
   return (
     <Link
       href={item.href}
-      className={`block w-full rounded-md border-0 px-1 py-1 text-left transition hover:opacity-90 ${getCalendarStatusBadgeClass(item.statusKind)}`}
+      className={`block w-full rounded-md border-0 px-1.5 py-1 text-left transition hover:opacity-90 md:px-2 md:py-1.5 ${getCalendarStatusBadgeClass(item.statusKind)}`}
     >
-      <span className="block truncate text-[9px] font-semibold uppercase tracking-wide sm:text-[10px]">
+      <span className="block truncate text-[9px] font-semibold uppercase tracking-wide sm:text-[10px] md:text-xs">
         {getPlannerCalendarBadgeLabel(item)}
       </span>
-      <span className="block truncate text-[9px] normal-case tracking-normal opacity-90 sm:text-[10px]">
+      <span className="block truncate text-[9px] normal-case tracking-normal opacity-90 sm:text-[10px] md:text-xs">
         {item.title}
       </span>
       {item.type === "event" ? (
-        <span className="block truncate text-[9px] normal-case tracking-normal opacity-70 sm:text-[10px]">
+        <span className="block truncate text-[9px] normal-case tracking-normal opacity-70 sm:text-[10px] md:text-xs">
           {item.statusLabel}
         </span>
       ) : null}
       {item.timeLabel ? (
-        <span className="block truncate text-[9px] normal-case tracking-normal opacity-70 sm:text-[10px]">
+        <span className="block truncate text-[9px] normal-case tracking-normal opacity-70 sm:text-[10px] md:text-xs">
           {item.timeLabel}
         </span>
       ) : null}
@@ -84,10 +89,10 @@ function PlannerCalendarDayCell({
       aria-label={`Plan ${date.toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" })}`}
       onClick={() => onSelectDate(date)}
       onKeyDown={handleCellKeyDown}
-      className="relative min-h-[6.5rem] cursor-pointer rounded-lg border border-ftc-border/70 bg-ftc-bg-elevated/20 p-1.5 transition hover:border-ftc-border-strong/90 sm:min-h-[7.5rem] sm:p-2"
+      className="relative min-h-[6.5rem] cursor-pointer rounded-lg border border-ftc-border/70 bg-ftc-bg-elevated/20 p-1.5 transition hover:border-ftc-border-strong/90 md:min-h-[9.5rem] md:p-3 lg:min-h-[10.5rem]"
     >
       <span
-        className={`inline-flex h-6 min-w-6 items-center justify-center rounded-full text-xs font-semibold ${
+        className={`inline-flex h-6 min-w-6 items-center justify-center rounded-full text-xs font-semibold md:h-7 md:min-w-7 md:text-sm ${
           isToday ? "bg-ftc-primary text-ftc-bg" : "text-ftc-text"
         }`}
       >
@@ -95,7 +100,7 @@ function PlannerCalendarDayCell({
       </span>
 
       <div
-        className="mt-1 space-y-1"
+        className="mt-1 space-y-1 md:space-y-1.5"
         onClick={(event) => event.stopPropagation()}
         onKeyDown={(event) => event.stopPropagation()}
       >
@@ -103,6 +108,125 @@ function PlannerCalendarDayCell({
           <PlannerCalendarItemBadge key={item.id} item={item} />
         ))}
       </div>
+    </div>
+  );
+}
+
+function PlannerCalendarAgendaCard({ item }: { item: CalendarItem }) {
+  return (
+    <Link
+      href={item.href}
+      className="block rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated p-3 transition hover:border-ftc-border-strong"
+    >
+      <div className="flex items-start gap-3">
+        <span
+          aria-hidden="true"
+          className={`mt-1 h-10 w-1 shrink-0 rounded-full ${getCalendarStatusBadgeClass(item.statusKind)}`}
+        />
+        <div className="min-w-0 flex-1">
+          <span
+            className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${getCalendarStatusBadgeClass(item.statusKind)}`}
+          >
+            {getPlannerCalendarBadgeLabel(item)}
+          </span>
+          <p className="mt-2 truncate text-sm font-semibold text-ftc-text">{item.title}</p>
+          {item.timeLabel ? (
+            <p className="mt-1 text-sm text-ftc-text-secondary">{item.timeLabel}</p>
+          ) : null}
+          {item.type === "event" ? (
+            <p className="mt-1 text-xs text-ftc-text-muted">{item.statusLabel}</p>
+          ) : null}
+        </div>
+      </div>
+    </Link>
+  );
+}
+
+function PlannerCalendarMobileAgenda({
+  monthStart,
+  selectedDate,
+  onSelectDate,
+  itemsByDate,
+  isTodayDate,
+  isDateInViewingMonth,
+}: {
+  monthStart: Date;
+  selectedDate: Date;
+  onSelectDate: (date: Date) => void;
+  itemsByDate: Map<string, CalendarItem[]>;
+  isTodayDate: (date: Date) => boolean;
+  isDateInViewingMonth: (date: Date) => boolean;
+}) {
+  const weekDates = useMemo(() => getWeekDatesContaining(selectedDate), [selectedDate]);
+  const selectedDateItems = itemsByDate.get(toDateKey(selectedDate)) ?? [];
+
+  return (
+    <div className="md:hidden">
+      <div className="grid grid-cols-7 gap-1">
+        {weekDates.map((date, index) => {
+          const dateKey = toDateKey(date);
+          const isSelected = isSameDay(date, selectedDate);
+          const hasEvents = (itemsByDate.get(dateKey) ?? []).length > 0;
+          const inViewingMonth = isDateInViewingMonth(date);
+
+          return (
+            <button
+              key={dateKey}
+              type="button"
+              aria-pressed={isSelected}
+              aria-label={formatPlannerAgendaDateLabel(date)}
+              onClick={() => onSelectDate(date)}
+              className={`flex flex-col items-center rounded-xl border px-1 py-2 transition ${
+                isSelected
+                  ? "border-transparent bg-ftc-primary text-ftc-bg"
+                  : "border-ftc-border-subtle bg-ftc-bg-elevated text-ftc-text-secondary hover:border-ftc-border-strong"
+              } ${inViewingMonth ? "" : "opacity-60"}`}
+            >
+              <span className="text-[10px] font-semibold uppercase tracking-wide">
+                {WEEKDAY_LABELS[index]}
+              </span>
+              <span className="mt-1 text-sm font-semibold tabular-nums">{date.getDate()}</span>
+              {hasEvents ? (
+                <span
+                  aria-hidden="true"
+                  className={`mt-1 h-1.5 w-1.5 rounded-full ${
+                    isSelected ? "bg-ftc-bg" : "bg-ftc-primary"
+                  }`}
+                />
+              ) : (
+                <span aria-hidden="true" className="mt-1 h-1.5 w-1.5" />
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="mt-4">
+        <h2 className="text-base font-semibold text-ftc-text">
+          {formatPlannerAgendaDateLabel(selectedDate)}
+        </h2>
+        {isTodayDate(selectedDate) ? (
+          <p className="mt-0.5 text-xs font-semibold uppercase tracking-wide text-ftc-primary">
+            Today
+          </p>
+        ) : null}
+      </div>
+
+      <div className="mt-3 space-y-2">
+        {selectedDateItems.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-ftc-border-subtle bg-ftc-surface/30 px-4 py-8 text-center">
+            <p className="text-sm text-ftc-text-muted">No events scheduled.</p>
+          </div>
+        ) : (
+          selectedDateItems.map((item) => <PlannerCalendarAgendaCard key={item.id} item={item} />)
+        )}
+      </div>
+
+      {!isDateInViewingMonth(selectedDate) ? (
+        <p className="mt-3 text-center text-xs text-ftc-text-muted">
+          Viewing {formatPlannerAgendaDateLabel(selectedDate)} outside {monthStart.toLocaleDateString(undefined, { month: "long" })}
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -125,6 +249,10 @@ export default function PlannerCalendar({
     null,
   );
   const [actionDate, setActionDate] = useState<Date | null>(null);
+  const [selectedDate, setSelectedDate] = useState(() => {
+    const today = new Date();
+    return new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  });
 
   useEffect(() => {
     const now = new Date();
@@ -159,7 +287,8 @@ export default function PlannerCalendar({
     [items, monthStart],
   );
 
-  const itemsByDate = useMemo(() => groupCalendarItemsByDate(monthItems), [monthItems]);
+  const itemsByDate = useMemo(() => groupCalendarItemsByDate(items), [items]);
+  const monthItemsByDate = useMemo(() => groupCalendarItemsByDate(monthItems), [monthItems]);
 
   const calendarWeeks = useMemo(() => getCalendarWeekRows(monthStart), [monthStart]);
 
@@ -169,7 +298,7 @@ export default function PlannerCalendar({
     monthStart.getMonth() === todayParts.month;
 
   function isTodayDate(date: Date): boolean {
-    if (!viewingCurrentMonth || todayParts === null) {
+    if (!todayParts) {
       return false;
     }
 
@@ -180,8 +309,23 @@ export default function PlannerCalendar({
     );
   }
 
+  function isDateInViewingMonth(date: Date): boolean {
+    return isSameMonth(date, monthStart);
+  }
+
+  function handleMonthStartChange(nextMonthStart: Date) {
+    setMonthStart(nextMonthStart);
+    setSelectedDate((current) => {
+      if (isSameMonth(current, nextMonthStart)) {
+        return current;
+      }
+
+      return getDefaultSelectedCalendarDate(nextMonthStart, todayParts);
+    });
+  }
+
   return (
-    <section className="ftc-card p-4 sm:p-5">
+    <section className="ftc-card p-4 sm:p-5 md:p-6">
       <div>
         <h1 className="text-base font-semibold text-ftc-text">Calendar</h1>
         <p className="mt-1 text-sm text-ftc-text-muted">{description}</p>
@@ -197,7 +341,7 @@ export default function PlannerCalendar({
       ) : null}
 
       <div className="relative mt-4">
-        <CalendarMonthNav monthStart={monthStart} onMonthStartChange={setMonthStart} />
+        <CalendarMonthNav monthStart={monthStart} onMonthStartChange={handleMonthStartChange} />
       </div>
 
       <div className="mt-3">
@@ -208,18 +352,27 @@ export default function PlannerCalendar({
         <p className="mt-6 text-sm text-ftc-text-muted">Loading calendar...</p>
       ) : (
         <>
-          <div className="mt-4 rounded-2xl border border-ftc-border bg-ftc-bg-elevated/40">
+          <PlannerCalendarMobileAgenda
+            monthStart={monthStart}
+            selectedDate={selectedDate}
+            onSelectDate={setSelectedDate}
+            itemsByDate={itemsByDate}
+            isTodayDate={isTodayDate}
+            isDateInViewingMonth={isDateInViewingMonth}
+          />
+
+          <div className="mt-4 hidden rounded-2xl border border-ftc-border bg-ftc-bg-elevated/40 md:block">
             <div className="grid grid-cols-7 border-b border-ftc-border bg-ftc-bg-elevated/60">
               {WEEKDAY_LABELS.map((label) => (
                 <div
                   key={label}
-                  className="px-1 py-2 text-center text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted sm:px-2"
+                  className="px-2 py-2.5 text-center text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted md:px-3 md:text-xs"
                 >
                   {label}
                 </div>
               ))}
             </div>
-            <div className="grid grid-cols-7 gap-1.5 p-2 sm:gap-2 sm:p-2.5">
+            <div className="grid grid-cols-7 gap-2 p-2.5 md:gap-3 md:p-3">
               {calendarWeeks.flatMap((week, weekIndex) =>
                 week.map((day, dayIndex) => {
                   if (!day) {
@@ -239,7 +392,7 @@ export default function PlannerCalendar({
                       key={dateKey}
                       date={day}
                       isToday={isTodayDate(day)}
-                      items={itemsByDate.get(dateKey) ?? []}
+                      items={monthItemsByDate.get(dateKey) ?? []}
                       onSelectDate={setActionDate}
                     />
                   );
@@ -249,7 +402,7 @@ export default function PlannerCalendar({
           </div>
 
           {monthItems.length === 0 ? (
-            <p className="mt-4 text-center text-sm text-ftc-text-muted">
+            <p className="mt-4 hidden text-center text-sm text-ftc-text-muted md:block">
               No bookings or events this month yet
             </p>
           ) : null}
@@ -258,7 +411,7 @@ export default function PlannerCalendar({
 
       <PlannerCalendarDateActions
         date={actionDate}
-        items={actionDate ? itemsByDate.get(toDateKey(actionDate)) ?? [] : []}
+        items={actionDate ? monthItemsByDate.get(toDateKey(actionDate)) ?? [] : []}
         onClose={() => setActionDate(null)}
       />
     </section>

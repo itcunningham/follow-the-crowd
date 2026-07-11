@@ -391,6 +391,40 @@ export function formatCalendarMonthLabel(date: Date): string {
   });
 }
 
+export function formatPlannerAgendaDateLabel(date: Date): string {
+  return date.toLocaleDateString(undefined, {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  });
+}
+
+export function getWeekDatesContaining(date: Date): Date[] {
+  const weekdayIndex = (date.getDay() + 6) % 7;
+  const monday = new Date(date.getFullYear(), date.getMonth(), date.getDate() - weekdayIndex);
+
+  return Array.from({ length: 7 }, (_, index) => {
+    const nextDate = new Date(monday);
+    nextDate.setDate(monday.getDate() + index);
+    return nextDate;
+  });
+}
+
+export function getDefaultSelectedCalendarDate(
+  monthStart: Date,
+  todayParts: { year: number; month: number; day: number } | null,
+): Date {
+  if (
+    todayParts &&
+    monthStart.getFullYear() === todayParts.year &&
+    monthStart.getMonth() === todayParts.month
+  ) {
+    return new Date(todayParts.year, todayParts.month, todayParts.day);
+  }
+
+  return new Date(monthStart.getFullYear(), monthStart.getMonth(), 1);
+}
+
 export function getCalendarMonthMatrix(monthStart: Date): Date[] {
   const firstDay = getMonthStart(monthStart);
   const leadingDays = (firstDay.getDay() + 6) % 7;
