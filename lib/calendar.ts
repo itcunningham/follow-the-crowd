@@ -19,6 +19,7 @@ import {
 } from "@/lib/events/eventFallbackColour";
 import {
   getEventDateDisplayLabel,
+  isEventCancelled,
   listOwnedEvents,
   type Event,
   type EventDateDisplayLabel,
@@ -282,27 +283,22 @@ function mapEventDateDisplayKind(label: EventDateDisplayLabel): CalendarStatusKi
   return "event_draft";
 }
 
+function getCancelledEventIds(events: Event[]): Set<string> {
+  return new Set(events.filter(isEventCancelled).map((event) => event.id));
+}
+
+function isBookingLinkedToCancelledEvent(
+  booking: BookingRequest,
+  cancelledEventIds: Set<string>,
+): boolean {
+  return Boolean(booking.event_id && cancelledEventIds.has(booking.event_id));
+}
+
 function mapEventToCalendarItem(event: Event): CalendarItem | null {
   const dateKey = resolveCalendarDateKey(event.event_date);
 
-  if (!dateKey) {
+  if (!dateKey || isEventCancelled(event)) {
     return null;
-  }
-
-  if (event.status === "cancelled") {
-    return {
-      id: `event-${event.id}`,
-      type: "event",
-      dateKey,
-      title: event.name.trim() || "Untitled event",
-      timeLabel: formatCalendarTimeLabel(event.set_time),
-      statusLabel: "Cancelled",
-      statusKind: "event_cancelled",
-      href: `/events/${event.id}`,
-      typeLabel: getCalendarTypeLabel("event"),
-      startTimeSortKey: resolveCalendarItemStartTimeSortKey(event.event_date, event.set_time),
-      eventFallbackColour: event.fallback_colour?.trim() || null,
-    };
   }
 
   const displayLabel = getEventDateDisplayLabel(event.event_date, event.set_time) ?? "Unscheduled";
@@ -361,6 +357,8 @@ export async function loadCalendarItems(role: UserRole | null): Promise<Calendar
       listSentBookingRequests(),
     ]);
 
+    const cancelledEventIds = getCancelledEventIds(events);
+
     for (const event of events) {
       const item = mapEventToCalendarItem(event);
 
@@ -370,7 +368,7 @@ export async function loadCalendarItems(role: UserRole | null): Promise<Calendar
     }
 
     for (const booking of sentBookings) {
-      if (booking.status === "cancelled") {
+      if (booking.status === "cancelled" || isBookingLinkedToCancelledEvent(booking, cancelledEventIds)) {
         continue;
       }
 
@@ -413,17 +411,17 @@ export async function loadPlannerCalendarItems(): Promise<CalendarItem[]> {
     listSentBookingRequests(),
   ]);
 
+  const cancelledEventIds = getCancelledEventIds(events);
+
   const eventFallbackColourById = new Map(
-    events.map((event) => [event.id, event.fallback_colour?.trim() || null]),
+    events
+      .filter((event) => !isEventCancelled(event))
+      .map((event) => [event.id, event.fallback_colour?.trim() || null]),
   );
 
   const items: CalendarItem[] = [];
 
   for (const event of events) {
-    if (event.status === "cancelled") {
-      continue;
-    }
-
     const item = mapEventToCalendarItem(event);
 
     if (item) {
@@ -432,7 +430,11 @@ export async function loadPlannerCalendarItems(): Promise<CalendarItem[]> {
   }
 
   for (const booking of sentBookings) {
-    if (booking.status === "cancelled" || booking.status === "declined") {
+    if (
+      booking.status === "cancelled" ||
+      booking.status === "declined" ||
+      isBookingLinkedToCancelledEvent(booking, cancelledEventIds)
+    ) {
       continue;
     }
 
