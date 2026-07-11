@@ -132,6 +132,8 @@ const emptyForm: BookingRequestInput = {
 
 type CreateStep = "source" | "pick-plan" | "details" | "select-djs";
 
+type DetailsEntrySource = "event-plans-deeplink" | "pick-plan" | "create-booking-deeplink";
+
 function getCreateStepMeta(step: CreateStep): { label: string; title: string } {
   switch (step) {
     case "source":
@@ -313,6 +315,7 @@ function BookingsPageContent() {
   const [bookingPlans, setBookingPlans] = useState<BookingPlan[]>([]);
   const [loadingPlans, setLoadingPlans] = useState(false);
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
+  const [detailsEntrySource, setDetailsEntrySource] = useState<DetailsEntrySource | null>(null);
   const [djs, setDjs] = useState<UserProfile[]>([]);
   const [loadingDjs, setLoadingDjs] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -434,6 +437,17 @@ function BookingsPageContent() {
           : createStep;
   const effectiveSelectedPlanId =
     selectedPlanId ?? (deepLinkIntent?.type === "plan" ? deepLinkIntent.planId : null);
+
+  const selectedSavedPlanName = useMemo(() => {
+    if (!effectiveSelectedPlanId) {
+      return null;
+    }
+
+    const plan = bookingPlans.find((item) => item.id === effectiveSelectedPlanId);
+    const name = plan?.name?.trim();
+
+    return name || null;
+  }, [effectiveSelectedPlanId, bookingPlans]);
 
   const detailsFormDateValidationError = useMemo(() => {
     if (!createOpen || effectiveCreateStep !== "details") {
@@ -613,6 +627,7 @@ function BookingsPageContent() {
     if (intent.type === "plan") {
       setCreateStep("details");
       setSelectedPlanId(intent.planId);
+      setDetailsEntrySource("event-plans-deeplink");
     }
 
     try {
@@ -654,6 +669,7 @@ function BookingsPageContent() {
           eventDate: intent.eventDate ?? "",
         });
         setSelectedPlanId(null);
+        setDetailsEntrySource("create-booking-deeplink");
         setCreateStep("details");
         setError(null);
         return true;
@@ -872,6 +888,7 @@ function BookingsPageContent() {
     setCreateStep("source");
     setForm(emptyForm);
     setSelectedPlanId(null);
+    setDetailsEntrySource(null);
     setBookingPlans([]);
     setSelectedDjIds([]);
     setDjOffers({});
@@ -884,6 +901,23 @@ function BookingsPageContent() {
     clearPendingBookingPlanId();
     deepLinkCompletedKeyRef.current = null;
     deepLinkInFlightKeyRef.current = null;
+  }
+
+  function handleDetailsBack() {
+    setError(null);
+
+    if (detailsEntrySource === "event-plans-deeplink") {
+      closeCreateFlow();
+      router.push(EVENTS_AREA_SUB_NAV.bookingPlans.href);
+      return;
+    }
+
+    if (detailsEntrySource === "pick-plan") {
+      setCreateStep("pick-plan");
+      return;
+    }
+
+    setCreateStep("source");
   }
 
   function updateField<Key extends keyof BookingRequestInput>(
@@ -948,6 +982,7 @@ function BookingsPageContent() {
       rateMode: prev.rateMode ?? "fixed",
     }));
     setSelectedPlanId(plan.id);
+    setDetailsEntrySource("pick-plan");
     setError(null);
     setCreateStep("details");
   }
@@ -1298,21 +1333,32 @@ function BookingsPageContent() {
 
           {showPlannerCreateDeepLink ? (
             <section className="mb-6 ftc-card p-4 sm:p-5">
-              <div className="mb-4 flex items-center justify-between gap-3">
+              <div
+                className={
+                  effectiveCreateStep === "details"
+                    ? "mb-4"
+                    : "mb-4 flex items-center justify-between gap-3"
+                }
+              >
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-ftc-text-muted">
                     Step {createStepMeta.label}
                   </p>
                   <h2 className="mt-1 text-lg font-semibold text-ftc-text">{createStepMeta.title}</h2>
+                  {effectiveCreateStep === "details" && selectedSavedPlanName ? (
+                    <p className="mt-1 text-sm text-ftc-text-muted">{selectedSavedPlanName}</p>
+                  ) : null}
                 </div>
-                <button
-                  type="button"
-                  onClick={closeCreateFlow}
-                  disabled={sending}
-                  className="text-xs font-semibold uppercase tracking-wide text-ftc-text-muted transition hover:text-ftc-text-secondary disabled:opacity-50"
-                >
-                  Cancel
-                </button>
+                {effectiveCreateStep !== "details" ? (
+                  <button
+                    type="button"
+                    onClick={closeCreateFlow}
+                    disabled={sending}
+                    className="text-xs font-semibold uppercase tracking-wide text-ftc-text-muted transition hover:text-ftc-text-secondary disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                ) : null}
               </div>
 
               {effectiveCreateStep === "source" ? (
@@ -1404,7 +1450,7 @@ function BookingsPageContent() {
 
                   <button
                     type="button"
-                    onClick={() => setCreateStep("source")}
+                    onClick={handleDetailsBack}
                     className="text-xs font-semibold uppercase tracking-wide text-ftc-text-muted transition hover:text-ftc-text-secondary"
                   >
                     ← Back
