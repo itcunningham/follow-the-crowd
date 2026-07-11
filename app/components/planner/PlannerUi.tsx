@@ -1,8 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { applyTextInputLimit } from "@/lib/textInputLimits";
-import { applyBoundedTextareaHeight, useBoundedAutoGrowTextarea } from "@/lib/useBoundedAutoGrowTextarea";
+import {
+  applyEventNotesInputLimit,
+  countEventNotesLines,
+  MAX_EVENT_NOTES_LINES,
+} from "@/lib/events/eventNotes";
+import { useBoundedAutoGrowTextarea } from "@/lib/useBoundedAutoGrowTextarea";
 
 function PlannerMultilineField({
   label,
@@ -21,7 +25,7 @@ function PlannerMultilineField({
 
   function handleChange(next: string) {
     if (maxLength !== undefined) {
-      const limited = applyTextInputLimit(value, next, maxLength);
+      const limited = applyEventNotesInputLimit(value, next);
 
       if (limited === null) {
         return;
@@ -34,6 +38,16 @@ function PlannerMultilineField({
     onChange(next);
   }
 
+  function handleKeyDown(event: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (event.key !== "Enter" || event.nativeEvent.isComposing) {
+      return;
+    }
+
+    if (countEventNotesLines(value) >= MAX_EVENT_NOTES_LINES) {
+      event.preventDefault();
+    }
+  }
+
   return (
     <label className="block [overflow-anchor:none]">
       <span className="ftc-label">{label}</span>
@@ -41,7 +55,7 @@ function PlannerMultilineField({
         ref={textareaRef}
         value={value}
         onChange={(event) => handleChange(event.target.value)}
-        onInput={(event) => applyBoundedTextareaHeight(event.currentTarget)}
+        onKeyDown={handleKeyDown}
         placeholder={placeholder}
         rows={4}
         className="ftc-input ftc-event-notes-textarea px-3.5 py-2.5"

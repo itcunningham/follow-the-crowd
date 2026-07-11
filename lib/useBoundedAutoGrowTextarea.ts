@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useLayoutEffect, useRef } from "react";
+import { countEventNotesLines } from "@/lib/events/eventNotes";
 
 export const EVENT_NOTES_MIN_ROWS = 4;
 export const EVENT_NOTES_MAX_ROWS = 8;
@@ -20,37 +21,21 @@ function readHeightBounds(textarea: HTMLTextAreaElement): {
   return { minHeight, maxHeight };
 }
 
-function measureTextareaContentHeight(textarea: HTMLTextAreaElement): number {
-  const bounds = readHeightBounds(textarea);
-  const width = textarea.getBoundingClientRect().width;
+function heightForLineCount(
+  lineCount: number,
+  minHeight: number,
+  maxHeight: number,
+): number {
+  const clampedLines = Math.min(Math.max(lineCount, 1), EVENT_NOTES_MAX_ROWS);
+  const growth = (clampedLines - 1) / (EVENT_NOTES_MAX_ROWS - 1);
 
-  if (!bounds || width <= 0) {
-    return bounds?.minHeight ?? 0;
-  }
-
-  const clone = textarea.cloneNode(false) as HTMLTextAreaElement;
-  const value = textarea.value.endsWith("\n") ? `${textarea.value}\u00a0` : textarea.value;
-
-  clone.value = value;
-  clone.style.position = "absolute";
-  clone.style.top = "-9999px";
-  clone.style.left = "0";
-  clone.style.visibility = "hidden";
-  clone.style.pointerEvents = "none";
-  clone.style.width = `${width}px`;
-  clone.style.height = "auto";
-  clone.style.minHeight = "0";
-  clone.style.maxHeight = "none";
-  clone.style.overflow = "hidden";
-
-  document.body.appendChild(clone);
-  const contentHeight = clone.scrollHeight;
-  clone.remove();
-
-  return contentHeight;
+  return minHeight + growth * (maxHeight - minHeight);
 }
 
-export function applyBoundedTextareaHeight(textarea: HTMLTextAreaElement): void {
+export function applyBoundedTextareaHeight(
+  textarea: HTMLTextAreaElement,
+  value = textarea.value,
+): void {
   const bounds = readHeightBounds(textarea);
 
   if (!bounds) {
@@ -58,11 +43,11 @@ export function applyBoundedTextareaHeight(textarea: HTMLTextAreaElement): void 
   }
 
   const { minHeight, maxHeight } = bounds;
-  const contentHeight = measureTextareaContentHeight(textarea);
-  const nextHeight = Math.min(Math.max(contentHeight, minHeight), maxHeight);
+  const lineCount = countEventNotesLines(value);
+  const nextHeight = heightForLineCount(lineCount, minHeight, maxHeight);
 
   textarea.style.height = `${nextHeight}px`;
-  textarea.style.overflowY = contentHeight > maxHeight ? "auto" : "hidden";
+  textarea.style.overflowY = "hidden";
 }
 
 export function useBoundedAutoGrowTextarea({ value }: { value: string }) {
@@ -75,12 +60,12 @@ export function useBoundedAutoGrowTextarea({ value }: { value: string }) {
       return;
     }
 
-    applyBoundedTextareaHeight(textarea);
-  }, []);
+    applyBoundedTextareaHeight(textarea, value);
+  }, [value]);
 
   useLayoutEffect(() => {
     adjustHeight();
-  }, [value, adjustHeight]);
+  }, [adjustHeight]);
 
   useLayoutEffect(() => {
     const textarea = textareaRef.current;

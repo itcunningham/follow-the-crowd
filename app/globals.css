@@ -314,6 +314,7 @@ html {
 .ftc-event-notes-textarea {
   resize: none !important;
   overflow-x: hidden !important;
+  overflow-y: hidden !important;
   line-height: 1.5 !important;
   box-sizing: border-box !important;
   min-height: calc(4lh + 1.25rem + 2px) !important;
