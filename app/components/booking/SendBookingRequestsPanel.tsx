@@ -16,6 +16,7 @@ type SendBookingRequestsPanelProps = {
   introText?: string;
   embedded?: boolean;
   listMaxHeightClass?: string;
+  sendButtonLabelMode?: "send" | "confirm";
 };
 
 export default function SendBookingRequestsPanel({
@@ -27,12 +28,16 @@ export default function SendBookingRequestsPanel({
   introText,
   embedded = false,
   listMaxHeightClass = "max-h-80",
+  sendButtonLabelMode = "send",
 }: SendBookingRequestsPanelProps) {
+  const selectedCount = draft.sendableSelectedDjIds.length;
   const sendButtonLabel = sending
     ? "Sending..."
-    : draft.sendableSelectedDjIds.length === 0
+    : selectedCount === 0
       ? "No new DJs to send"
-      : `Send to ${draft.sendableSelectedDjIds.length} DJ${draft.sendableSelectedDjIds.length === 1 ? "" : "s"}`;
+      : sendButtonLabelMode === "confirm"
+        ? `Confirm ${selectedCount} DJ${selectedCount === 1 ? "" : "s"}`
+        : `Send to ${selectedCount} DJ${selectedCount === 1 ? "" : "s"}`;
 
   return (
     <div className={embedded ? "space-y-4 border-t border-ftc-border-subtle pt-4" : "space-y-4"}>

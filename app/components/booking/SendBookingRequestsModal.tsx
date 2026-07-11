@@ -20,6 +20,7 @@ type SendBookingRequestsModalProps = {
   onSend?: () => void;
   confirmDiscardOnClose?: boolean;
   title?: string;
+  sendButtonLabelMode?: "send" | "confirm";
 };
 
 export default function SendBookingRequestsModal({
@@ -33,6 +34,7 @@ export default function SendBookingRequestsModal({
   onSend,
   confirmDiscardOnClose = true,
   title = "Send bookings",
+  sendButtonLabelMode = "send",
 }: SendBookingRequestsModalProps) {
   const sectionRef = useRef<HTMLDivElement>(null);
   const [discardConfirmOpen, setDiscardConfirmOpen] = useState(false);
@@ -132,6 +134,7 @@ export default function SendBookingRequestsModal({
               showSendButton={showSendButton}
               onSend={onSend}
               introText={introText}
+              sendButtonLabelMode={sendButtonLabelMode}
             />
           </PlannerFormCard>
         </div>
