@@ -46,7 +46,44 @@ export function canShowEventEditInHeader({
   return knownOwnerId === auth.currentUserId;
 }
 
-export function useEventEditHeaderVisibility({
+export type EventEditHeaderState = "pending" | "show" | "hidden";
+
+export function resolveEventEditHeaderState({
+  role,
+  currentUserId,
+  knownOwnerId,
+}: {
+  role: UserRole | null | undefined;
+  currentUserId: string | null | undefined;
+  knownOwnerId: string | null | undefined;
+}): EventEditHeaderState {
+  if (canShowEventEditInHeader({ role, currentUserId, knownOwnerId })) {
+    return "show";
+  }
+
+  const auth = resolveEventEditAuthContext(role, currentUserId);
+
+  if (auth.role !== null && !canManageEvents(auth.role)) {
+    return "hidden";
+  }
+
+  if (
+    knownOwnerId !== undefined &&
+    auth.currentUserId &&
+    canManageEvents(auth.role) &&
+    knownOwnerId !== auth.currentUserId
+  ) {
+    return "hidden";
+  }
+
+  if (knownOwnerId === undefined || !auth.currentUserId || auth.role === null) {
+    return "pending";
+  }
+
+  return "hidden";
+}
+
+export function useEventEditHeaderState({
   eventId,
   role,
   currentUserId,
@@ -56,7 +93,7 @@ export function useEventEditHeaderVisibility({
   role: UserRole | null | undefined;
   currentUserId: string | null | undefined;
   event?: Event | null;
-}): boolean {
+}): EventEditHeaderState {
   const [fetchedOwnerId, setFetchedOwnerId] = useState<string | null | undefined>(() => {
     if (!eventId || event?.owner_id) {
       return undefined;
@@ -107,9 +144,28 @@ export function useEventEditHeaderVisibility({
 
   const knownOwnerId = event?.owner_id ?? fetchedOwnerId;
 
-  return canShowEventEditInHeader({
+  return resolveEventEditHeaderState({
     role,
     currentUserId,
     knownOwnerId,
   });
+}
+
+export function useEventEditHeaderVisibility({
+  eventId,
+  role,
+  currentUserId,
+  event,
+}: {
+  eventId: string | undefined;
+  role: UserRole | null | undefined;
+  currentUserId: string | null | undefined;
+  event?: Event | null;
+}): boolean {
+  return useEventEditHeaderState({
+    eventId,
+    role,
+    currentUserId,
+    event,
+  }) === "show";
 }

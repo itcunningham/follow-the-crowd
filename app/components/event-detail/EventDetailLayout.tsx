@@ -9,6 +9,7 @@ import {
 } from "@/lib/events/eventFallbackColour";
 import { formatDisplayEventDate } from "@/lib/bookingDateTime";
 import type { Event } from "@/lib/events";
+import type { EventEditHeaderState } from "@/lib/events/useEventEditHeaderVisibility";
 
 export function formatEventDetailDateLine(eventDate: string, setTime: string): string {
   const trimmedTime = setTime.trim();
@@ -103,20 +104,56 @@ export function EventDetailEditButton({ onClick }: { onClick: () => void }) {
       onClick={onClick}
       className="flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-xl border border-ftc-border-subtle bg-ftc-bg/80 px-2.5 text-ftc-text backdrop-blur-sm transition hover:border-ftc-border-strong hover:bg-ftc-bg-elevated sm:px-3"
     >
-      <svg
-        aria-hidden="true"
-        viewBox="0 0 24 24"
-        className="h-[18px] w-[18px]"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.75"
-      >
-        <path d="M12 20h9" />
-        <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
-      </svg>
+      <EventDetailEditButtonGlyph />
       <span className="hidden text-xs font-semibold uppercase tracking-wide sm:inline">Edit</span>
     </button>
   );
+}
+
+function EventDetailEditButtonGlyph() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      className="h-[18px] w-[18px]"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+    >
+      <path d="M12 20h9" />
+      <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
+    </svg>
+  );
+}
+
+export function EventDetailEditButtonPlaceholder() {
+  return (
+    <span
+      aria-hidden="true"
+      className="pointer-events-none invisible flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-xl border border-transparent px-2.5 sm:px-3"
+    >
+      <EventDetailEditButtonGlyph />
+      <span className="hidden text-xs font-semibold uppercase tracking-wide sm:inline">Edit</span>
+    </span>
+  );
+}
+
+export function EventDetailEditHeaderSlot({
+  state,
+  onEditClick,
+}: {
+  state: EventEditHeaderState;
+  onEditClick?: () => void;
+}) {
+  if (state === "show") {
+    return <EventDetailEditButton onClick={onEditClick ?? (() => undefined)} />;
+  }
+
+  if (state === "pending") {
+    return <EventDetailEditButtonPlaceholder />;
+  }
+
+  return null;
 }
 
 export function EventDetailHero({

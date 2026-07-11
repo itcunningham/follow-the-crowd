@@ -11,7 +11,7 @@ import EventDetailBottomBar, {
   EventDetailPrimaryAction,
 } from "@/app/components/event-detail/EventDetailBottomBar";
 import EventDetailMetaList, {
-  EventDetailEditButton,
+  EventDetailEditHeaderSlot,
   EventDetailHero,
   EventDetailOverlayButton,
 } from "@/app/components/event-detail/EventDetailLayout";
@@ -117,7 +117,7 @@ import {
   shouldPostEventGroupChatUpdate,
 } from "@/lib/events/eventGroupChatUpdate";
 import { resolveEventDetailBackHref } from "@/lib/events/eventsListNavigation";
-import { useEventEditHeaderVisibility } from "@/lib/events/useEventEditHeaderVisibility";
+import { useEventEditHeaderState } from "@/lib/events/useEventEditHeaderVisibility";
 import {
   canManageEvents,
   getBookingRecipientProfilesByIds,
@@ -237,7 +237,7 @@ export default function EventDetailPage() {
   );
   const isPlanner = canManageEvents(resolvedRole);
   const canEditEvent = isOwner && isPlanner;
-  const showEditInHeader = useEventEditHeaderVisibility({
+  const editHeaderState = useEventEditHeaderState({
     eventId,
     role: resolvedRole,
     currentUserId: resolvedUserId,
@@ -1114,7 +1114,7 @@ export default function EventDetailPage() {
       <OnboardingGuard>
         <EventDetailLoadingShell
           backHref={eventsBackHref}
-          showEditButton={showEditInHeader}
+          editHeaderState={editHeaderState}
           onEditClick={openEditForm}
         />
       </OnboardingGuard>
@@ -1212,9 +1212,7 @@ export default function EventDetailPage() {
                   ) : null}
                 </div>
               ) : null}
-              {showEditInHeader ? (
-                <EventDetailEditButton onClick={openEditForm} />
-              ) : null}
+              <EventDetailEditHeaderSlot state={editHeaderState} onEditClick={openEditForm} />
             </div>
           </div>
         </div>

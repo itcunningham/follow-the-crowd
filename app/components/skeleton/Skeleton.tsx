@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import AppNavigation, { MOBILE_NAV_OFFSET_CLASS } from "@/app/components/AppNavigation";
 import {
-  EventDetailEditButton,
+  EventDetailEditHeaderSlot,
   EventDetailOverlayButton,
 } from "@/app/components/event-detail/EventDetailLayout";
 import DmConversationHeader from "@/app/components/dm/DmConversationHeader";
@@ -23,7 +23,8 @@ import ProfilePageHeader from "@/app/components/profile/ProfilePageHeader";
 import type { DjGigsListTab } from "@/lib/bookingRequests";
 import { buildGigsListHref, resolveGigsListTabParam } from "@/lib/bookings/gigsListNavigation";
 import { buildEventsListHref, resolveEventDetailBackHref } from "@/lib/events/eventsListNavigation";
-import { useEventEditHeaderVisibility } from "@/lib/events/useEventEditHeaderVisibility";
+import { useEventEditHeaderState } from "@/lib/events/useEventEditHeaderVisibility";
+import type { EventEditHeaderState } from "@/lib/events/useEventEditHeaderVisibility";
 import { canManageEvents, type UserRole } from "@/lib/user/currentUser";
 import { readCachedNavRole, readCachedNavigation, resolveIsOwnProfilePath } from "@/lib/navigationRoleCache";
 
@@ -190,12 +191,12 @@ export function EventDetailContentSkeleton() {
 export function EventDetailLoadingShell({
   backHref,
   onBack,
-  showEditButton = false,
+  editHeaderState = "hidden",
   onEditClick,
 }: {
   backHref?: string;
   onBack?: () => void;
-  showEditButton?: boolean;
+  editHeaderState?: EventEditHeaderState;
   onEditClick?: () => void;
 } = {}) {
   return (
@@ -217,9 +218,7 @@ export function EventDetailLoadingShell({
           </EventDetailOverlayButton>
 
           <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
-            {showEditButton ? (
-              <EventDetailEditButton onClick={onEditClick ?? (() => undefined)} />
-            ) : null}
+            <EventDetailEditHeaderSlot state={editHeaderState} onEditClick={onEditClick} />
           </div>
         </div>
       </div>
@@ -240,13 +239,13 @@ function EventDetailRouteLoadingShell({
   role?: UserRole | null;
   currentUserId?: string | null;
 }) {
-  const showEditButton = useEventEditHeaderVisibility({
+  const editHeaderState = useEventEditHeaderState({
     eventId,
     role,
     currentUserId,
   });
 
-  return <EventDetailLoadingShell backHref={backHref} showEditButton={showEditButton} />;
+  return <EventDetailLoadingShell backHref={backHref} editHeaderState={editHeaderState} />;
 }
 
 /** @deprecated Use EventDetailLoadingShell — guard wraps pages separately. */
