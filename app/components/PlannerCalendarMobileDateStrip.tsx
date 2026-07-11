@@ -5,6 +5,7 @@ import {
   formatPlannerAgendaDateLabel,
   getCalendarMonthDates,
   getPlannerCalendarDateStripDotClass,
+  getPlannerCalendarDateStripExtraCount,
   isSameDay,
   isSameMonth,
   toDateKey,
@@ -130,6 +131,11 @@ export default function PlannerCalendarMobileDateStrip({
         const isSelected = isSameDay(date, selectedDate);
         const dateItems = itemsByDate.get(dateKey) ?? [];
         const hasEvents = dateItems.length > 0;
+        const extraItemCount = getPlannerCalendarDateStripExtraCount(dateItems);
+        const itemCountLabel =
+          dateItems.length > 0
+            ? `, ${dateItems.length} scheduled item${dateItems.length === 1 ? "" : "s"}`
+            : "";
 
         return (
           <button
@@ -144,7 +150,7 @@ export default function PlannerCalendarMobileDateStrip({
             }}
             type="button"
             aria-pressed={isSelected}
-            aria-label={formatPlannerAgendaDateLabel(date)}
+            aria-label={`${formatPlannerAgendaDateLabel(date)}${itemCountLabel}`}
             onClick={() => onSelectDate(date)}
             style={chipWidth ? { width: chipWidth, minWidth: chipWidth } : undefined}
             className={`flex shrink-0 flex-col items-center rounded-xl border px-1 py-2 transition ${
@@ -159,14 +165,27 @@ export default function PlannerCalendarMobileDateStrip({
               {getWeekdayLabel(date)}
             </span>
             <span className="mt-1 text-sm font-semibold tabular-nums">{date.getDate()}</span>
-            {hasEvents ? (
-              <span
-                aria-hidden="true"
-                className={`mt-1 h-1.5 w-1.5 rounded-full ${getPlannerCalendarDateStripDotClass(dateItems, isSelected)}`}
-              />
-            ) : (
-              <span aria-hidden="true" className="mt-1 h-1.5 w-1.5" />
-            )}
+            <span
+              aria-hidden="true"
+              className="mt-1 flex h-3 min-h-3 items-center justify-center gap-px"
+            >
+              {hasEvents ? (
+                <>
+                  <span
+                    className={`h-1.5 w-1.5 shrink-0 rounded-full ${getPlannerCalendarDateStripDotClass(dateItems, isSelected)}`}
+                  />
+                  {extraItemCount > 0 ? (
+                    <span
+                      className={`text-[8px] font-medium leading-none ${
+                        isSelected ? "text-ftc-bg/65" : "text-ftc-text-muted"
+                      }`}
+                    >
+                      +{extraItemCount}
+                    </span>
+                  ) : null}
+                </>
+              ) : null}
+            </span>
           </button>
         );
       })}

@@ -454,6 +454,14 @@ export function getPlannerCalendarDateStripDotClass(
   return getPlannerCalendarLegendDotClass(kind);
 }
 
+export function getPlannerCalendarDateStripExtraCount(items: CalendarItem[]): number {
+  if (items.length <= 1) {
+    return 0;
+  }
+
+  return items.length - 1;
+}
+
 export function formatPlannerSelectedDateLabel(date: Date): string {
   return formatIsoDateKeyForDisplay(toDateKey(date));
 }
