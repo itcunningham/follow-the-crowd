@@ -6,7 +6,7 @@ import { startDm } from "@/lib/startDm";
 import {
   FTC_STATUS_DANGER,
   FTC_STATUS_MUTED,
-  FTC_STATUS_PRIMARY,
+  FTC_STATUS_PENDING,
   FTC_STATUS_SUCCESS,
   FTC_STATUS_WARNING,
 } from "@/lib/ftcFlatStatus";
@@ -2260,7 +2260,7 @@ export function getEventBookingDuplicateLabel(status: EventBookingDuplicateStatu
 export function getEventBookingDuplicateBadgeClass(status: EventBookingDuplicateStatus): string {
   switch (status) {
     case "already_invited":
-      return FTC_STATUS_PRIMARY;
+      return FTC_STATUS_PENDING;
     case "already_booked":
       return FTC_STATUS_SUCCESS;
     case "already_declined":

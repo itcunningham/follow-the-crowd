@@ -1,18 +1,30 @@
 /** Flat solid status fills — no glow, no transparent neon borders */
 
 export const FTC_STATUS_PRIMARY = "border-0 bg-ftc-primary text-ftc-bg";
-export const FTC_STATUS_EVENT_TODAY = "border-0 bg-[#F59E0B] text-ftc-bg";
-export const FTC_STATUS_SUCCESS = "border-0 bg-[var(--ftc-color-success)] text-ftc-bg";
+
+/** Today — highest-priority event date status; uses FTC primary light blue */
+export const FTC_STATUS_TODAY = FTC_STATUS_PRIMARY;
+export const FTC_STATUS_TODAY_DOT = "bg-ftc-primary";
+
+/** Upcoming — muted steel navy used for future event dates */
+export const FTC_STATUS_UPCOMING =
+  "border-0 bg-[var(--ftc-color-upcoming)] text-white";
+export const FTC_STATUS_UPCOMING_DOT = "bg-[var(--ftc-color-upcoming)]";
+
+/** Pending — booking requests awaiting response */
 export const FTC_STATUS_WARNING = "border-0 bg-[var(--ftc-color-warning)] text-ftc-bg";
+export const FTC_STATUS_PENDING = FTC_STATUS_WARNING;
+export const FTC_STATUS_PENDING_DOT = "bg-[var(--ftc-color-warning)]";
+
+/** Accepted — confirmed bookings */
+export const FTC_STATUS_SUCCESS = "border-0 bg-[var(--ftc-color-success)] text-ftc-bg";
+export const FTC_STATUS_ACCEPTED = FTC_STATUS_SUCCESS;
+export const FTC_STATUS_ACCEPTED_DOT = "bg-[var(--ftc-color-success)]";
+
 export const FTC_STATUS_DANGER = "border-0 bg-[var(--ftc-color-danger)] text-ftc-bg";
 export const FTC_STATUS_NEUTRAL = "border border-ftc-border-subtle bg-slate-600 text-slate-100";
 export const FTC_STATUS_MUTED =
   "border border-ftc-border-subtle bg-ftc-bg-elevated text-ftc-text-secondary";
-
-export const FTC_PLANNER_UPCOMING_DOT = "bg-[var(--ftc-color-planner-upcoming)]";
-
-export const FTC_STATUS_PLANNER_UPCOMING =
-  "border-0 bg-[var(--ftc-color-planner-upcoming)] text-white";
 
 export const FTC_CAL_CELL = "block w-full rounded-md border-0 py-1.5 sm:py-2";
 
@@ -40,5 +52,5 @@ export function getFlatAvailabilityFillClass(
 }
 
 export function getFlatBookingFillClass(status: "pending" | "accepted"): string {
-  return status === "pending" ? FTC_STATUS_WARNING : FTC_STATUS_SUCCESS;
+  return status === "pending" ? FTC_STATUS_PENDING : FTC_STATUS_ACCEPTED;
 }

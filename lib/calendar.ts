@@ -18,13 +18,16 @@ import {
   type EventDateDisplayLabel,
 } from "@/lib/events";
 import {
-  FTC_PLANNER_UPCOMING_DOT,
+  FTC_STATUS_ACCEPTED_DOT,
   FTC_STATUS_DANGER,
   FTC_STATUS_MUTED,
-  FTC_STATUS_PLANNER_UPCOMING,
-  FTC_STATUS_PRIMARY,
-  FTC_STATUS_SUCCESS,
+  FTC_STATUS_PENDING_DOT,
+  FTC_STATUS_TODAY,
+  FTC_STATUS_TODAY_DOT,
+  FTC_STATUS_UPCOMING,
+  FTC_STATUS_UPCOMING_DOT,
   FTC_STATUS_WARNING,
+  FTC_STATUS_SUCCESS,
 } from "@/lib/ftcFlatStatus";
 import type { UserRole } from "@/lib/user/currentUser";
 
@@ -33,6 +36,7 @@ export type CalendarItemType = "event" | "sent_booking" | "received_booking";
 export type CalendarStatusKind =
   | BookingRequestStatus
   | "event_draft"
+  | "event_today"
   | "event_upcoming"
   | "event_completed"
   | "event_cancelled";
@@ -113,8 +117,12 @@ export function getCalendarStatusBadgeClass(kind: CalendarStatusKind): string {
     return FTC_STATUS_MUTED;
   }
 
+  if (kind === "event_today") {
+    return FTC_STATUS_TODAY;
+  }
+
   if (kind === "event_upcoming") {
-    return FTC_STATUS_PRIMARY;
+    return FTC_STATUS_UPCOMING;
   }
 
   if (kind === "event_completed") {
@@ -125,16 +133,24 @@ export function getCalendarStatusBadgeClass(kind: CalendarStatusKind): string {
 }
 
 export function getPlannerCalendarStatusBadgeClass(kind: CalendarStatusKind): string {
+  if (kind === "event_today") {
+    return FTC_STATUS_TODAY;
+  }
+
   if (kind === "event_upcoming" || kind === "event_draft" || kind === "event_completed") {
-    return FTC_STATUS_PLANNER_UPCOMING;
+    return FTC_STATUS_UPCOMING;
   }
 
   return getCalendarStatusBadgeClass(kind);
 }
 
 export function getPlannerCalendarLegendDotClass(kind: CalendarStatusKind): string {
+  if (kind === "event_today") {
+    return FTC_STATUS_TODAY_DOT;
+  }
+
   if (kind === "event_upcoming" || kind === "event_draft" || kind === "event_completed") {
-    return FTC_PLANNER_UPCOMING_DOT;
+    return FTC_STATUS_UPCOMING_DOT;
   }
 
   return getCalendarStatusLegendDotClass(kind);
@@ -142,19 +158,23 @@ export function getPlannerCalendarLegendDotClass(kind: CalendarStatusKind): stri
 
 export function getCalendarStatusLegendDotClass(kind: CalendarStatusKind): string {
   if (kind === "pending") {
-    return "bg-[var(--ftc-color-warning)]";
+    return FTC_STATUS_PENDING_DOT;
   }
 
   if (kind === "accepted") {
-    return "bg-[var(--ftc-color-success)]";
+    return FTC_STATUS_ACCEPTED_DOT;
   }
 
   if (kind === "declined") {
     return "bg-[var(--ftc-color-danger)]";
   }
 
+  if (kind === "event_today") {
+    return FTC_STATUS_TODAY_DOT;
+  }
+
   if (kind === "event_upcoming") {
-    return "bg-ftc-primary";
+    return FTC_STATUS_UPCOMING_DOT;
   }
 
   return "bg-ftc-text-muted";
@@ -186,7 +206,11 @@ export function getCalendarWeekRows(monthStart: Date): (Date | null)[][] {
 }
 
 function mapEventDateDisplayKind(label: EventDateDisplayLabel): CalendarStatusKind {
-  if (label === "Upcoming" || label === "Today") {
+  if (label === "Today") {
+    return "event_today";
+  }
+
+  if (label === "Upcoming") {
     return "event_upcoming";
   }
 
@@ -358,7 +382,7 @@ export async function loadPlannerCalendarItems(): Promise<CalendarItem[]> {
 
 export function getPlannerCalendarBadgeLabel(item: CalendarItem): string {
   if (item.type === "event") {
-    return "Upcoming";
+    return item.statusLabel;
   }
 
   if (item.statusKind === "pending") {

@@ -26,9 +26,9 @@ import {
 } from "@/lib/events/eventCoverImage";
 import {
   FTC_STATUS_DANGER,
-  FTC_STATUS_EVENT_TODAY,
   FTC_STATUS_MUTED,
-  FTC_STATUS_PRIMARY,
+  FTC_STATUS_TODAY,
+  FTC_STATUS_UPCOMING,
 } from "@/lib/ftcFlatStatus";
 import { getCurrentUserId } from "@/lib/user/currentUser";
 import {
@@ -166,11 +166,11 @@ export function formatEventDateDisplayLabel(eventDate: string, setTime = ""): st
 
 export function getEventDateDisplayBadgeClass(label: EventDateDisplayLabel): string {
   if (label === "Upcoming") {
-    return FTC_STATUS_PRIMARY;
+    return FTC_STATUS_UPCOMING;
   }
 
   if (label === "Today") {
-    return FTC_STATUS_EVENT_TODAY;
+    return FTC_STATUS_TODAY;
   }
 
   if (label === "Past") {
