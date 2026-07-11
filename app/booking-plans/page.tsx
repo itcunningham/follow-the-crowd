@@ -15,6 +15,7 @@ import { BookingPlanListSkeleton } from "@/app/components/skeleton/Skeleton";
 import { BookingDateField, BookingSetTimeRangeField } from "@/app/components/BookingDateTimeFields";
 import { formatDisplayEventDate, getEventDateValidationError } from "@/lib/bookingDateTime";
 import { BookingRateField } from "@/app/components/BookingRateField";
+import { normalizeStoredRate } from "@/lib/bookingRate";
 import {
   createBookingPlan,
   listBookingPlans,
@@ -22,7 +23,6 @@ import {
   type BookingPlan,
   type BookingPlanInput,
 } from "@/lib/bookingPlans";
-import { formatRateDisplay, normalizeStoredRate } from "@/lib/bookingRate";
 import {
   canAccessBookingPlans,
   getCurrentUserProfile,
@@ -327,21 +327,21 @@ export default function BookingPlansPage() {
                 </button>
               </div>
             ) : (
-              <ul className="space-y-3">
+              <div>
+                <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-ftc-primary">
+                  Saved Event Plan
+                </p>
+                <ul className="space-y-3">
                 {plans.map((plan) => (
                   <li key={plan.id} className="ftc-card p-4 sm:p-5">
                     <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                       <div className="min-w-0">
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-ftc-primary">
-                          Saved Event Plan
-                        </p>
-                        <h3 className="mt-1 text-lg font-semibold text-ftc-text">{plan.name}</h3>
+                        <h3 className="text-lg font-semibold text-ftc-text">{plan.name}</h3>
                         <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
                           <PlanDetail label="Event" value={plan.event_name} />
                           <PlanDetail label="Venue" value={plan.venue} />
                           <PlanDetail label="Date" value={formatDisplayEventDate(plan.event_date)} />
                           <PlanDetail label="Set time" value={plan.set_time} />
-                          <PlanDetail label="Rate" value={formatRateDisplay(plan.fee)} />
                         </dl>
                         {plan.notes?.trim() ? (
                           <p className="mt-3 text-sm leading-relaxed text-ftc-text-secondary">{plan.notes}</p>
@@ -368,6 +368,7 @@ export default function BookingPlansPage() {
                   </li>
                 ))}
               </ul>
+              </div>
             )
           ) : null}
         </div>
