@@ -378,6 +378,24 @@ export async function hasDjEventInvites(userId?: string): Promise<boolean> {
   return (count ?? 0) > 0;
 }
 
+export async function getEventOwnerId(eventId: string): Promise<string | null> {
+  const { data, error } = await supabase
+    .from("events")
+    .select("id, owner_id")
+    .eq("id", eventId)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  if (!data || typeof data.owner_id !== "string" || !data.owner_id.trim()) {
+    return null;
+  }
+
+  return data.owner_id;
+}
+
 export async function getEventById(eventId: string): Promise<Event | null> {
   const data = await withEventFieldsFallback((fields) =>
     supabase.from("events").select(fields).eq("id", eventId).maybeSingle(),

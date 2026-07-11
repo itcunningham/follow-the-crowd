@@ -23,7 +23,6 @@ import ProfilePageHeader from "@/app/components/profile/ProfilePageHeader";
 import type { DjGigsListTab } from "@/lib/bookingRequests";
 import { buildGigsListHref, resolveGigsListTabParam } from "@/lib/bookings/gigsListNavigation";
 import { buildEventsListHref, resolveEventDetailBackHref } from "@/lib/events/eventsListNavigation";
-import { canEditCachedEvent } from "@/lib/events/eventsListCache";
 import { canManageEvents, type UserRole } from "@/lib/user/currentUser";
 import { readCachedNavRole, readCachedNavigation, resolveIsOwnProfilePath } from "@/lib/navigationRoleCache";
 
@@ -899,18 +898,7 @@ export function AppLoadingShell({
       from: searchParams.get("from"),
       tab: searchParams.get("tab"),
     });
-    const eventId = pathname.match(/^\/events\/([^/]+)/)?.[1] ?? null;
-    const resolvedRole = role ?? readCachedNavRole();
-    const showEditButton = eventId
-      ? canEditCachedEvent(eventId, currentUserId, resolvedRole)
-      : false;
-
-    return (
-      <EventDetailLoadingShell
-        backHref={backHref}
-        showEditButton={showEditButton}
-      />
-    );
+    return <EventDetailLoadingShell backHref={backHref} />;
   }
 
   if (pathname === "/bookings" || pathname.startsWith("/bookings/")) {
