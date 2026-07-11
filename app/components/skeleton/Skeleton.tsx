@@ -258,6 +258,30 @@ export function EventDetailSkeleton() {
   return <EventDetailLoadingShell />;
 }
 
+export function EventsListTabRow({
+  children,
+  showTrashButton = false,
+  trashButtonDisabled = true,
+  onTrashClick,
+}: {
+  children: ReactNode;
+  showTrashButton?: boolean;
+  trashButtonDisabled?: boolean;
+  onTrashClick?: () => void;
+}) {
+  return (
+    <div className={PLANNER_WORKSPACE_SECONDARY_TABS_ROW_CLASS}>
+      {children}
+      {showTrashButton ? (
+        <HistoryManageButton
+          onClick={onTrashClick ?? (() => undefined)}
+          disabled={trashButtonDisabled || !onTrashClick}
+        />
+      ) : null}
+    </div>
+  );
+}
+
 export function EventsPageLoadingShell({
   role: roleProp,
 }: {
@@ -289,7 +313,10 @@ export function EventsPageLoadingShell({
         }
       />
       <div className={PLANNER_WORKSPACE_CONTENT_CLASS}>
-        <div className={PLANNER_WORKSPACE_SECONDARY_TABS_ROW_CLASS}>
+        <EventsListTabRow
+          showTrashButton={isPlanner && isHistoryTab}
+          trashButtonDisabled
+        >
           <div className="flex flex-wrap gap-2">
             <Link
               href={buildEventsListHref("active")}
@@ -304,7 +331,7 @@ export function EventsPageLoadingShell({
               History
             </Link>
           </div>
-        </div>
+        </EventsListTabRow>
         <EventListSkeleton showPlannerStats={isPlanner} showFilterPills={false} />
       </div>
     </div>

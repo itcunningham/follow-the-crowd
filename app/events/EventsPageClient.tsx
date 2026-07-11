@@ -10,7 +10,6 @@ import EventDateStatusBadge from "@/app/components/EventDateStatusBadge";
 import {
   PlannerWorkspacePageHeader,
   PLANNER_WORKSPACE_CONTENT_CLASS,
-  PLANNER_WORKSPACE_SECONDARY_TABS_ROW_CLASS,
   PLANNER_WORKSPACE_SHELL_CLASS,
 } from "@/app/components/planner/PlannerWorkspaceLayout";
 import {
@@ -32,9 +31,8 @@ import EventCoverImageField, {
 } from "@/app/components/events/EventCoverImageField";
 import EventFallbackColourField from "@/app/components/events/EventFallbackColourField";
 import { EventCoverImageListThumb } from "@/app/components/events/EventCoverImageDisplay";
-import { EventListSkeleton } from "@/app/components/skeleton/Skeleton";
+import { EventListSkeleton, EventsListTabRow } from "@/app/components/skeleton/Skeleton";
 import {
-  HistoryManageButton,
   HistoryRemoveConfirmDialog,
   HistorySelectionCheckbox,
   HistorySelectionToolbar,
@@ -201,8 +199,16 @@ function EventsPageClientView({ initialTab }: EventsPageClientProps) {
   );
   const filteredEvents = isHistoryTab ? historyEvents : upcomingEvents;
   const historyBulkManage = useHistoryBulkManage(
-    isPlanner && isHistoryTab && eventsListReady ? removableHistoryEvents : [],
+    isPlanner && isHistoryTab ? removableHistoryEvents : [],
   );
+  const historyLoadSettled = eventsListReady && !loadingEvents;
+  const showHistoryTrashButton =
+    isPlanner &&
+    isHistoryTab &&
+    !historyBulkManage.selectionMode &&
+    (!historyLoadSettled || removableHistoryEvents.length > 0);
+  const historyTrashButtonDisabled =
+    !historyLoadSettled || removableHistoryEvents.length === 0;
 
   const visibleFilteredEvents = useMemo(
     () => filterOutRemovingHistoryItems(filteredEvents, historyBulkManage.removingIds),
@@ -646,7 +652,11 @@ function EventsPageClientView({ initialTab }: EventsPageClientProps) {
           ) : null}
 
           {!createOpen ? (
-            <div className={PLANNER_WORKSPACE_SECONDARY_TABS_ROW_CLASS}>
+            <EventsListTabRow
+              showTrashButton={showHistoryTrashButton}
+              trashButtonDisabled={historyTrashButtonDisabled}
+              onTrashClick={historyBulkManage.enterSelectionMode}
+            >
               <div className="flex flex-wrap gap-2">
                 <Link
                   href={buildEventsListHref("active")}
@@ -677,14 +687,7 @@ function EventsPageClientView({ initialTab }: EventsPageClientProps) {
                   History
                 </Link>
               </div>
-              {isPlanner &&
-              isHistoryTab &&
-              eventsListReady &&
-              historyBulkManage.showManageControl &&
-              !historyBulkManage.selectionMode ? (
-                <HistoryManageButton onClick={historyBulkManage.enterSelectionMode} />
-              ) : null}
-            </div>
+            </EventsListTabRow>
           ) : null}
 
           {successMessage ? (
