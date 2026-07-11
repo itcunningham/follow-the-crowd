@@ -85,10 +85,11 @@ import {
 import {
   buildEventDetailHref,
   buildEventsListHref,
-  isCalendarOriginCreateParam,
+  isCalendarOriginEventsFlow,
   resolveCalendarCreateBootstrapState,
   resolveCalendarCreateInitialStep,
   resolveEventsListTabParam,
+  resolveEventsWorkspaceActiveHref,
 } from "@/lib/events/eventsListNavigation";
 import {
   canManageEvents,
@@ -211,8 +212,14 @@ function EventsPageClientView({
   const [locationRevision, setLocationRevision] = useState(0);
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
   const createParam = searchParams.get("create");
-  const isCalendarCreateFlow =
-    calendarOriginDateKey !== null || isCalendarOriginCreateParam(createParam);
+  const isCalendarCreateFlow = isCalendarOriginEventsFlow(
+    calendarOriginDateKey,
+    createParam,
+  );
+  const eventsWorkspaceActiveHref = resolveEventsWorkspaceActiveHref(
+    calendarOriginDateKey,
+    createParam,
+  );
 
   const inviteDraft = useSendBookingRequestsDraft({
     eventDate: form.eventDate,
@@ -805,6 +812,7 @@ function EventsPageClientView({
         <PlannerWorkspacePageHeader
           title="Events"
           initialRole={resolvedRole}
+          activeWorkspaceHref={eventsWorkspaceActiveHref}
           actions={
             isPlanner && !createOpen ? (
               <button

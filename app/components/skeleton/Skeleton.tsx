@@ -295,7 +295,11 @@ export function EventsCalendarCreateLoadingShell({
   return (
     <div className={PLANNER_WORKSPACE_SHELL_CLASS}>
       <AppNavigation />
-      <PlannerWorkspacePageHeader title="Events" initialRole={role} />
+      <PlannerWorkspacePageHeader
+        title="Events"
+        initialRole={role}
+        activeWorkspaceHref={EVENTS_AREA_SUB_NAV.calendar.href}
+      />
       <div className={PLANNER_WORKSPACE_CONTENT_CLASS}>
         <section className="mb-6 ftc-card p-4 sm:p-5">
           <div className="ftc-form-card-header">

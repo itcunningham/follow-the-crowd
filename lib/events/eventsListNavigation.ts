@@ -1,6 +1,7 @@
 import { buildGigsListHref, parseDjGigsListTab } from "@/lib/bookings/gigsListNavigation";
 import { buildPlannerCalendarHref, resolveCalendarOriginDateKey } from "@/lib/calendar";
 import { sanitizePrefilledEventDateKey } from "@/lib/bookingDateTime";
+import { EVENTS_AREA_SUB_NAV } from "@/lib/plannerEventsNav";
 
 export type EventsListTab = "active" | "history";
 
@@ -115,4 +116,20 @@ export function resolveCalendarCreateBootstrapState(
     createStep: resolveCalendarCreateInitialStep(create),
     prefilledEventDate,
   };
+}
+
+export function isCalendarOriginEventsFlow(
+  calendarOriginDateKey: string | null | undefined,
+  createParam: string | null | undefined,
+): boolean {
+  return Boolean(calendarOriginDateKey) || isCalendarOriginCreateParam(createParam);
+}
+
+export function resolveEventsWorkspaceActiveHref(
+  calendarOriginDateKey: string | null | undefined,
+  createParam: string | null | undefined,
+): string | undefined {
+  return isCalendarOriginEventsFlow(calendarOriginDateKey, createParam)
+    ? EVENTS_AREA_SUB_NAV.calendar.href
+    : undefined;
 }
