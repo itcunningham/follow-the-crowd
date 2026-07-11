@@ -356,31 +356,33 @@ export default function BookingPlansPage() {
               ) : (
                 <ul className="space-y-3">
                   {plans.map((plan) => (
-                    <li key={plan.id} className="ftc-card p-4 sm:p-5">
-                      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                        <div className="min-w-0">
+                    <li key={plan.id} className="ftc-card ftc-card-hoverable overflow-hidden">
+                      <div className="flex flex-col sm:flex-row sm:items-stretch">
+                        <button
+                          type="button"
+                          onClick={() => openEditForm(plan)}
+                          className="min-w-0 flex-1 cursor-pointer p-4 text-left transition active:bg-ftc-bg-elevated/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ftc-primary/35 sm:p-5"
+                        >
                           <h3 className="text-lg font-semibold text-ftc-text">{plan.name}</h3>
                           <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
                             <PlanDetail label="Event" value={plan.event_name} />
                             <PlanDetail label="Venue" value={plan.venue} />
                           </dl>
                           {plan.notes?.trim() ? (
-                            <p className="mt-3 text-sm leading-relaxed text-ftc-text-secondary">{plan.notes}</p>
+                            <p className="mt-3 text-sm leading-relaxed text-ftc-text-secondary">
+                              {plan.notes}
+                            </p>
                           ) : null}
-                        </div>
+                        </button>
 
-                        <div className="flex shrink-0 flex-col gap-2 sm:items-end">
+                        <div className="shrink-0 border-t border-ftc-border-subtle p-4 sm:flex sm:items-start sm:border-l sm:border-t-0 sm:p-5">
                           <button
                             type="button"
-                            onClick={() => openEditForm(plan)}
-                            className="ftc-btn-secondary px-3 py-1.5 text-xs uppercase tracking-wide"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleUseForBooking(plan.id)}
-                            className="ftc-btn-primary px-3 py-1.5 text-xs uppercase tracking-wide"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              handleUseForBooking(plan.id);
+                            }}
+                            className="ftc-btn-primary w-full px-4 py-2.5 text-xs uppercase tracking-wide sm:w-auto sm:px-3 sm:py-1.5"
                           >
                             Use for booking
                           </button>
