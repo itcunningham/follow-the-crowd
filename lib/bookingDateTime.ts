@@ -442,6 +442,47 @@ export const EVENT_START_IN_PAST_ERROR =
 export const EVENT_DATE_REQUIRES_PICKER_ERROR =
   "Choose an event date from the calendar.";
 
+export const EVENT_SET_TIME_REQUIRED_ERROR = "Please select a start and finish time.";
+
+export type EventSetTimeFieldErrors = {
+  message: string | null;
+  startInvalid: boolean;
+  finishInvalid: boolean;
+};
+
+export function getEventSetTimeFieldErrors(setTime: string): EventSetTimeFieldErrors {
+  const parsed = parseSetTimeRange(setTime);
+
+  if (parsed.unparsedRaw) {
+    return {
+      message: EVENT_SET_TIME_REQUIRED_ERROR,
+      startInvalid: true,
+      finishInvalid: true,
+    };
+  }
+
+  const missingStart = !parsed.start;
+  const missingFinish = !parsed.finish;
+
+  if (missingStart || missingFinish) {
+    return {
+      message: EVENT_SET_TIME_REQUIRED_ERROR,
+      startInvalid: missingStart,
+      finishInvalid: missingFinish,
+    };
+  }
+
+  return {
+    message: null,
+    startInvalid: false,
+    finishInvalid: false,
+  };
+}
+
+export function getEventSetTimeValidationError(setTime: string): string | null {
+  return getEventSetTimeFieldErrors(setTime).message;
+}
+
 export function getTodayDateKey(): string {
   const now = new Date();
   const year = now.getFullYear();
@@ -743,7 +784,10 @@ export function isEventStartInPast(eventDate: string, setTime: string): boolean 
 }
 
 export function isEventStartSaveBlocked(eventDate: string, setTime: string): boolean {
-  return getEventDateValidationError(eventDate, setTime) !== null;
+  return (
+    getEventSetTimeValidationError(setTime) !== null ||
+    getEventDateValidationError(eventDate, setTime) !== null
+  );
 }
 
 export function getEventStartInPastError(eventDate: string, setTime: string): string | null {

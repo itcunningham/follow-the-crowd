@@ -2,12 +2,14 @@ import assert from "node:assert/strict";
 import { formatRateDisplay } from "../lib/bookingRate";
 import {
   getEventDateValidationError,
+  getEventSetTimeValidationError,
   guardEventDatePickerChange,
   isEventStartSaveBlocked,
   isWheelMinuteDisabled,
   isWheelTimeBefore,
   resolvePickerEventDateValue,
   clampWheelTimeToMin,
+  SET_TIME_RANGE_JOINER,
 } from "../lib/bookingDateTime";
 import type { BookingRequest } from "../lib/bookingRequests";
 import { isDmBookingActionRequired } from "../lib/bookingRequests";
@@ -34,9 +36,19 @@ function testPastEventDatesAreBlocked() {
 }
 
 function testFutureEventDatesAreAllowed() {
-  const error = getEventDateValidationError("2027-01-08", "9:00 PM");
+  const setTime = `9:00 PM${SET_TIME_RANGE_JOINER}11:00 PM`;
+  const error = getEventDateValidationError("2027-01-08", setTime);
   assert.equal(error, null);
-  assert.equal(isEventStartSaveBlocked("2027-01-08", "9:00 PM"), false);
+  assert.equal(isEventStartSaveBlocked("2027-01-08", setTime), false);
+}
+
+function testIncompleteSetTimeIsBlocked() {
+  assert.equal(getEventSetTimeValidationError("9:00 PM"), "Please select a start and finish time.");
+  assert.equal(getEventSetTimeValidationError(""), "Please select a start and finish time.");
+  assert.equal(
+    getEventSetTimeValidationError(`9:00 PM${SET_TIME_RANGE_JOINER}11:00 PM`),
+    null,
+  );
 }
 
 function testOneAcceptedDjWithNullStartShowsStartAction() {
@@ -330,6 +342,7 @@ function testSoundCloudInputNormalization() {
 function main() {
   testPastEventDatesAreBlocked();
   testFutureEventDatesAreAllowed();
+  testIncompleteSetTimeIsBlocked();
   testPastPickerDatesAreRejected();
   testWheelTimeBeforeMinHelpers();
   testOneAcceptedDjWithNullStartShowsStartAction();

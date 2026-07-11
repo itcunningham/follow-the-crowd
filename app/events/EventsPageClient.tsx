@@ -23,7 +23,7 @@ import {
   PlannerStatChip,
 } from "@/app/components/planner/PlannerUi";
 import { BookingDateField, BookingSetTimeRangeField } from "@/app/components/BookingDateTimeFields";
-import { getEventDateValidationError, getTodayDateKey, formatDisplayEventDate, sanitizePrefilledEventDateKey } from "@/lib/bookingDateTime";
+import { getEventDateValidationError, getEventSetTimeFieldErrors, getEventSetTimeValidationError, getTodayDateKey, formatDisplayEventDate, sanitizePrefilledEventDateKey } from "@/lib/bookingDateTime";
 import { getEventNotesValidationError, MAX_EVENT_NOTES_LENGTH } from "@/lib/events/eventNotes";
 import EventCoverImageField, {
   emptyEventCoverImageFieldState,
@@ -264,13 +264,25 @@ function EventsPageClientView({
     [searchParams, initialTab, locationRevision],
   );
   const isHistoryTab = listTab === "history";
+  const createFormSetTimeFieldErrors = useMemo(() => {
+    if (!createOpen || createStep !== "form") {
+      return { message: null, startInvalid: false, finishInvalid: false };
+    }
+
+    return getEventSetTimeFieldErrors(form.setTime);
+  }, [createOpen, createStep, form.setTime]);
+
   const createFormDateValidationError = useMemo(() => {
     if (!createOpen || createStep !== "form") {
       return null;
     }
 
+    if (createFormSetTimeFieldErrors.message) {
+      return null;
+    }
+
     return getEventDateValidationError(form.eventDate, form.setTime);
-  }, [createOpen, createStep, form.eventDate, form.setTime]);
+  }, [createOpen, createStep, form.eventDate, form.setTime, createFormSetTimeFieldErrors.message]);
 
   const createFormNotesValidationError = useMemo(() => {
     if (!createOpen || createStep !== "form") {
@@ -280,7 +292,9 @@ function EventsPageClientView({
     return getEventNotesValidationError(form.notes);
   }, [createOpen, createStep, form.notes]);
   const createFormValidationError =
-    createFormDateValidationError ?? createFormNotesValidationError;
+    createFormSetTimeFieldErrors.message ??
+    createFormDateValidationError ??
+    createFormNotesValidationError;
   const showEventsListContent = !isCalendarCreateFlow && !createOpen;
 
   const resolvedRole = role ?? guardProfile?.role ?? null;
@@ -680,10 +694,16 @@ function EventsPageClientView({
     if (
       !form.name.trim() ||
       !form.venue.trim() ||
-      !form.eventDate.trim() ||
-      !form.setTime.trim()
+      !form.eventDate.trim()
     ) {
       setError("Please fill in event name, venue, date, and set time.");
+      return;
+    }
+
+    const setTimeValidationError = getEventSetTimeValidationError(form.setTime);
+
+    if (setTimeValidationError) {
+      setError(setTimeValidationError);
       return;
     }
 
@@ -1026,6 +1046,8 @@ function EventsPageClientView({
                     onChange={(value) => updateField("setTime", value)}
                     required
                     eventDate={form.eventDate}
+                    startInvalid={createFormSetTimeFieldErrors.startInvalid}
+                    finishInvalid={createFormSetTimeFieldErrors.finishInvalid}
                   />
                   <PlannerFormField
                     label="Notes"

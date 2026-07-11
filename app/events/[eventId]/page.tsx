@@ -27,7 +27,7 @@ import {
 } from "@/app/components/planner/PlannerUi";
 import ProfileAvatar from "@/app/components/ProfileAvatar";
 import { BookingDateField, BookingSetTimeRangeField } from "@/app/components/BookingDateTimeFields";
-import { getEventDateValidationError, getTodayDateKey } from "@/lib/bookingDateTime";
+import { getEventDateValidationError, getEventSetTimeFieldErrors, getEventSetTimeValidationError, getTodayDateKey } from "@/lib/bookingDateTime";
 import EventCoverImageField, {
   emptyEventCoverImageFieldState,
   type EventCoverImageFieldState,
@@ -277,13 +277,25 @@ export default function EventDetailPage() {
     return base.filter((booking) => booking.status === lineupFilter);
   }, [activeLineup, lineupFilter, visibleLineup]);
 
+  const editFormSetTimeFieldErrors = useMemo(() => {
+    if (!editForm) {
+      return { message: null, startInvalid: false, finishInvalid: false };
+    }
+
+    return getEventSetTimeFieldErrors(editForm.setTime);
+  }, [editForm]);
+
   const editFormDateValidationError = useMemo(() => {
     if (!editForm) {
       return null;
     }
 
+    if (editFormSetTimeFieldErrors.message) {
+      return null;
+    }
+
     return getEventDateValidationError(editForm.eventDate, editForm.setTime);
-  }, [editForm]);
+  }, [editForm, editFormSetTimeFieldErrors.message]);
   const editFormNotesValidationError = useMemo(() => {
     if (!editForm) {
       return null;
@@ -291,7 +303,10 @@ export default function EventDetailPage() {
 
     return getEventNotesValidationError(editForm.notes);
   }, [editForm]);
-  const editFormValidationError = editFormDateValidationError ?? editFormNotesValidationError;
+  const editFormValidationError =
+    editFormSetTimeFieldErrors.message ??
+    editFormDateValidationError ??
+    editFormNotesValidationError;
 
   const loadEventData = useCallback(async () => {
     if (!eventId) {
@@ -432,6 +447,12 @@ export default function EventDetailPage() {
       return null;
     }
 
+    const setTimeValidationError = getEventSetTimeValidationError(editForm.setTime);
+
+    if (setTimeValidationError) {
+      return setTimeValidationError;
+    }
+
     const notesValidationError = getEventNotesValidationError(editForm.notes);
 
     if (notesValidationError) {
@@ -570,10 +591,16 @@ export default function EventDetailPage() {
     if (
       !editForm.name.trim() ||
       !editForm.venue.trim() ||
-      !editForm.eventDate.trim() ||
-      !editForm.setTime.trim()
+      !editForm.eventDate.trim()
     ) {
       showEditFormError("Please fill in event name, venue, date, and set time.");
+      return;
+    }
+
+    const setTimeValidationError = getEventSetTimeValidationError(editForm.setTime);
+
+    if (setTimeValidationError) {
+      showEditFormError(setTimeValidationError);
       return;
     }
 
@@ -1212,6 +1239,8 @@ export default function EventDetailPage() {
                   }
                   required
                   eventDate={editForm.eventDate}
+                  startInvalid={editFormSetTimeFieldErrors.startInvalid}
+                  finishInvalid={editFormSetTimeFieldErrors.finishInvalid}
                 />
                 <PlannerFormField
                   label="Notes"
@@ -1220,6 +1249,15 @@ export default function EventDetailPage() {
                   multiline
                   maxLength={MAX_EVENT_NOTES_LENGTH}
                 />
+
+                {editFormSetTimeFieldErrors.message ? (
+                  <p
+                    role="alert"
+                    className="rounded-lg border border-[var(--ftc-color-danger)]/35 bg-ftc-bg-elevated px-3 py-2.5 text-sm text-[var(--ftc-color-danger)]"
+                  >
+                    {editFormSetTimeFieldErrors.message}
+                  </p>
+                ) : null}
 
                 {editFormDateValidationError ? (
                   <p
