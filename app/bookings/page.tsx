@@ -515,14 +515,15 @@ function BookingsPageContent() {
   }, [loadingAccess, role]);
 
   useEffect(() => {
-    if (loadingAccess || !canCreateBookings(role)) {
+    const resolvedRole = role ?? guardProfile?.role ?? readCachedNavRole();
+
+    if (loadingAccess || !canCreateBookings(resolvedRole)) {
       return;
     }
 
-    const params = new URLSearchParams(window.location.search);
-    const planIdParam = params.get("planId");
-    const createParam = params.get("create");
-    const eventDateParam = params.get("eventDate") ?? "";
+    const planIdParam = searchParams.get("planId");
+    const createParam = searchParams.get("create");
+    const eventDateParam = searchParams.get("eventDate") ?? "";
 
     const paramKey = planIdParam
       ? `planId:${planIdParam}:${eventDateParam}`
@@ -540,7 +541,7 @@ function BookingsPageContent() {
       handledPlanIdRef.current = planIdParam;
       void openCreateFlow({ planId: planIdParam, eventDate: eventDateParam || undefined }).finally(
         () => {
-          router.replace("/bookings");
+          router.replace("/bookings", { scroll: false });
         },
       );
       return;
@@ -548,7 +549,7 @@ function BookingsPageContent() {
 
     if (createParam === "booking") {
       void openCreateFlow({ custom: true, eventDate: eventDateParam || undefined }).finally(() => {
-        router.replace("/bookings");
+        router.replace("/bookings", { scroll: false });
       });
       return;
     }
@@ -558,10 +559,10 @@ function BookingsPageContent() {
         initialStep: "pick-plan",
         eventDate: eventDateParam || undefined,
       }).finally(() => {
-        router.replace("/bookings");
+        router.replace("/bookings", { scroll: false });
       });
     }
-  }, [loadingAccess, role, router]);
+  }, [loadingAccess, role, guardProfile?.role, router, searchParams]);
 
   useEffect(() => {
     if (createStep !== "select-djs" || !form.eventDate.trim() || djs.length === 0) {
@@ -629,6 +630,11 @@ function BookingsPageContent() {
     setEventDateOverride(options?.eventDate ?? null);
     setLoadingDjs(true);
     setLoadingPlans(true);
+
+    if (options?.planId) {
+      setCreateStep("details");
+      setSelectedPlanId(options.planId);
+    }
 
     try {
       const [bookableDjs, plans] = await Promise.all([
@@ -1018,29 +1024,13 @@ function BookingsPageContent() {
         <PlannerWorkspacePageHeader title="Gigs" initialRole={displayRole} />
 
         <div className={PLANNER_WORKSPACE_CONTENT_CLASS}>
-          {showGigsWorkspace ? (
-            <div className={PLANNER_WORKSPACE_SECONDARY_TABS_ROW_CLASS}>
-              <DjGigsTabs
-                activeView={djGigsView}
-                bookings={receivedBookings}
-                hiddenBookingIds={hiddenBookingIds}
-              />
-              {djGigsView === "history" &&
-              gigsListReady &&
-              !loadingList &&
-              gigsHistoryBulkManage.showManageControl &&
-              !gigsHistoryBulkManage.selectionMode ? (
-                <HistoryManageButton onClick={gigsHistoryBulkManage.enterSelectionMode} />
-              ) : null}
-            </div>
-          ) : null}
           {successMessage ? (
             <p className="mb-4 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated px-4 py-3 text-sm text-ftc-text-secondary">
               {successMessage}
             </p>
           ) : null}
 
-          {djGigsView === "history" && gigsHistoryBulkManage.showSelectionToolbar ? (
+          {djGigsView === "history" && !createOpen && gigsHistoryBulkManage.showSelectionToolbar ? (
             <HistorySelectionToolbar
               selectedCount={gigsHistoryBulkManage.selectedCount}
               allSelected={gigsHistoryBulkManage.allSelected}
@@ -1384,6 +1374,23 @@ function BookingsPageContent() {
             </section>
           ) : null}
 
+          {showGigsWorkspace && !createOpen ? (
+            <div className={PLANNER_WORKSPACE_SECONDARY_TABS_ROW_CLASS}>
+              <DjGigsTabs
+                activeView={djGigsView}
+                bookings={receivedBookings}
+                hiddenBookingIds={hiddenBookingIds}
+              />
+              {djGigsView === "history" &&
+              gigsListReady &&
+              !loadingList &&
+              gigsHistoryBulkManage.showManageControl &&
+              !gigsHistoryBulkManage.selectionMode ? (
+                <HistoryManageButton onClick={gigsHistoryBulkManage.enterSelectionMode} />
+              ) : null}
+            </div>
+          ) : null}
+
           {showPlannerGigsEmpty ? (
             <div className="rounded-2xl border border-dashed border-ftc-border-subtle bg-ftc-surface/30 px-6 py-12 text-center">
               <p className="text-base font-medium text-ftc-text-secondary">{PLANNER_GIGS_EMPTY_MESSAGE}</p>
@@ -1394,7 +1401,7 @@ function BookingsPageContent() {
                 Go to Events
               </Link>
             </div>
-          ) : showGigsWorkspace ? (
+          ) : showGigsWorkspace && !createOpen ? (
             loadingList ? null : error && !createOpen ? (
               <p className="text-sm text-red-400">{error}</p>
             ) : receivedBookings.length === 0 ? (
