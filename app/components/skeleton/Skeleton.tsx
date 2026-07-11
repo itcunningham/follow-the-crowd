@@ -23,6 +23,7 @@ import ProfilePageHeader from "@/app/components/profile/ProfilePageHeader";
 import type { DjGigsListTab } from "@/lib/bookingRequests";
 import { buildGigsListHref, resolveGigsListTabParam } from "@/lib/bookings/gigsListNavigation";
 import { buildEventsListHref, resolveEventDetailBackHref } from "@/lib/events/eventsListNavigation";
+import { useEventEditHeaderVisibility } from "@/lib/events/useEventEditHeaderVisibility";
 import { canManageEvents, type UserRole } from "@/lib/user/currentUser";
 import { readCachedNavRole, readCachedNavigation, resolveIsOwnProfilePath } from "@/lib/navigationRoleCache";
 
@@ -226,6 +227,26 @@ export function EventDetailLoadingShell({
       <EventDetailContentSkeleton />
     </div>
   );
+}
+
+function EventDetailRouteLoadingShell({
+  eventId,
+  backHref,
+  role,
+  currentUserId,
+}: {
+  eventId: string;
+  backHref: string;
+  role?: UserRole | null;
+  currentUserId?: string | null;
+}) {
+  const showEditButton = useEventEditHeaderVisibility({
+    eventId,
+    role,
+    currentUserId,
+  });
+
+  return <EventDetailLoadingShell backHref={backHref} showEditButton={showEditButton} />;
 }
 
 /** @deprecated Use EventDetailLoadingShell — guard wraps pages separately. */
@@ -893,11 +914,24 @@ export function AppLoadingShell({
   }
 
   if (pathname.startsWith("/events/") && !/\/events\/[^/]+\/chat\/?$/.test(pathname)) {
+    const eventId = pathname.match(/^\/events\/([^/]+)/)?.[1] ?? null;
     const searchParams = new URLSearchParams(search.startsWith("?") ? search.slice(1) : search);
     const backHref = resolveEventDetailBackHref(searchParams.get("fromTab"), {
       from: searchParams.get("from"),
       tab: searchParams.get("tab"),
     });
+
+    if (eventId) {
+      return (
+        <EventDetailRouteLoadingShell
+          eventId={eventId}
+          backHref={backHref}
+          role={role}
+          currentUserId={currentUserId}
+        />
+      );
+    }
+
     return <EventDetailLoadingShell backHref={backHref} />;
   }
 

@@ -15,6 +15,7 @@ import EventDetailMetaList, {
   EventDetailHero,
   EventDetailOverlayButton,
 } from "@/app/components/event-detail/EventDetailLayout";
+import { useGuardProfile } from "@/app/components/GuardProfileContext";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
 import { EventDetailLoadingShell } from "@/app/components/skeleton/Skeleton";
 import {
@@ -91,7 +92,6 @@ import {
   deleteEmptyEvent,
   eventToRequestInput,
   getEventById,
-  getEventOwnerId,
   getEventsLoadErrorMessage,
   isEventCancelled,
   updateEvent,
@@ -114,6 +114,7 @@ import {
   shouldPostEventGroupChatUpdate,
 } from "@/lib/events/eventGroupChatUpdate";
 import { resolveEventDetailBackHref } from "@/lib/events/eventsListNavigation";
+import { useEventEditHeaderVisibility } from "@/lib/events/useEventEditHeaderVisibility";
 import {
   canManageEvents,
   getBookingRecipientProfilesByIds,
@@ -176,10 +177,10 @@ export default function EventDetailPage() {
     router.push(eventsBackHref);
   }
 
+  const guardProfile = useGuardProfile();
   const [role, setRole] = useState<UserRole | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [eventOwnerId, setEventOwnerId] = useState<string | null | undefined>(undefined);
   const [event, setEvent] = useState<Event | null>(null);
   const [lineup, setLineup] = useState<BookingRequest[]>([]);
   const [profiles, setProfiles] = useState<Map<string, BookingRecipientProfile>>(new Map());
@@ -223,20 +224,23 @@ export default function EventDetailPage() {
     Map<string, DjPlannerAvailabilityHint>
   >(new Map());
 
-  const isOwner = Boolean(event && currentUserId && event.owner_id === currentUserId);
+  const resolvedRole = role ?? guardProfile?.role ?? null;
+  const resolvedUserId = currentUserId ?? guardProfile?.user_id ?? null;
+  const isOwner = Boolean(event && resolvedUserId && event.owner_id === resolvedUserId);
   const editFlyerActive = Boolean(
     editCoverField.file ||
       editCoverPreviewUrl?.startsWith("blob:") ||
       (!editCoverField.removeExisting &&
         normalizeEventCoverImageUrl(event?.cover_image_url)),
   );
-  const isPlanner = canManageEvents(role);
+  const isPlanner = canManageEvents(resolvedRole);
   const canEditEvent = isOwner && isPlanner;
-  const ownershipConfirmed =
-    eventOwnerId !== undefined && eventOwnerId !== null && eventOwnerId === currentUserId;
-  const showEditInHeader = Boolean(
-    isPlanner && currentUserId && (event ? canEditEvent : ownershipConfirmed),
-  );
+  const showEditInHeader = useEventEditHeaderVisibility({
+    eventId,
+    role: resolvedRole,
+    currentUserId: resolvedUserId,
+    event,
+  });
   const hasAcceptedBooking = Boolean(
     currentUserId &&
       lineup.some(
@@ -426,34 +430,6 @@ export default function EventDetailPage() {
         console.error("Failed to load event page access:", loadError);
       });
   }, []);
-
-  useEffect(() => {
-    if (!eventId) {
-      setEventOwnerId(null);
-      return;
-    }
-
-    let cancelled = false;
-    setEventOwnerId(undefined);
-
-    getEventOwnerId(eventId)
-      .then((ownerId) => {
-        if (!cancelled) {
-          setEventOwnerId(ownerId);
-        }
-      })
-      .catch((loadError) => {
-        console.error("Failed to load event ownership:", loadError);
-
-        if (!cancelled) {
-          setEventOwnerId(null);
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [eventId]);
 
   useEffect(() => {
     loadEventData();
