@@ -23,6 +23,7 @@ import {
   getDefaultSelectedCalendarDate,
   getMonthStart,
   getPlannerCalendarBadgeLabel,
+  getPlannerCalendarAgendaAccentClass,
   groupCalendarItemsByDate,
   isSameDay,
   isSameMonth,
@@ -189,7 +190,7 @@ function PlannerCalendarAgendaCard({
       <div className="flex items-start gap-3">
         <span
           aria-hidden="true"
-          className={`mt-1 h-10 w-1 shrink-0 rounded-full ${getPlannerCalendarStatusBadgeClass(item.statusKind)}`}
+          className={`mt-1 h-10 w-1 shrink-0 rounded-full ${getPlannerCalendarAgendaAccentClass(item.eventFallbackColour)}`}
         />
         <div className="min-w-0 flex-1">
           <span
@@ -200,9 +201,6 @@ function PlannerCalendarAgendaCard({
           <p className="mt-2 truncate text-sm font-semibold text-ftc-text">{item.title}</p>
           {item.timeLabel ? (
             <p className="mt-1 text-sm text-ftc-text-secondary">{item.timeLabel}</p>
-          ) : null}
-          {item.type === "event" ? (
-            <p className="mt-1 text-xs text-ftc-text-muted">{item.statusLabel}</p>
           ) : null}
         </div>
       </div>

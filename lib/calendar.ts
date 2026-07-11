@@ -14,6 +14,10 @@ import {
   SET_TIME_RANGE_JOINER,
 } from "@/lib/bookingDateTime";
 import {
+  getEventFallbackColourStyles,
+  isEventFallbackColourKey,
+} from "@/lib/events/eventFallbackColour";
+import {
   getEventDateDisplayLabel,
   listOwnedEvents,
   type Event,
@@ -54,6 +58,7 @@ export type CalendarItem = {
   href: string;
   typeLabel: string;
   startTimeSortKey: number;
+  eventFallbackColour: string | null;
 };
 
 export function resolveCalendarDateKey(value: string): string | null {
@@ -136,6 +141,18 @@ export function sortPlannerCalendarAgendaItems(items: CalendarItem[]): CalendarI
 
     return left.title.localeCompare(right.title, undefined, { sensitivity: "base" });
   });
+}
+
+export function getPlannerCalendarAgendaAccentClass(
+  eventFallbackColour: string | null | undefined,
+): string {
+  const trimmed = eventFallbackColour?.trim();
+
+  if (trimmed && isEventFallbackColourKey(trimmed)) {
+    return getEventFallbackColourStyles(trimmed).swatchClassName;
+  }
+
+  return getEventFallbackColourStyles("blue").swatchClassName;
 }
 
 export const WEEKDAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -284,6 +301,7 @@ function mapEventToCalendarItem(event: Event): CalendarItem | null {
       href: `/events/${event.id}`,
       typeLabel: getCalendarTypeLabel("event"),
       startTimeSortKey: resolveCalendarItemStartTimeSortKey(event.event_date, event.set_time),
+      eventFallbackColour: event.fallback_colour?.trim() || null,
     };
   }
 
@@ -300,12 +318,14 @@ function mapEventToCalendarItem(event: Event): CalendarItem | null {
     href: `/events/${event.id}`,
     typeLabel: getCalendarTypeLabel("event"),
     startTimeSortKey: resolveCalendarItemStartTimeSortKey(event.event_date, event.set_time),
+    eventFallbackColour: event.fallback_colour?.trim() || null,
   };
 }
 
 function mapBookingToCalendarItem(
   booking: BookingRequest,
   type: "sent_booking" | "received_booking",
+  eventFallbackColour: string | null = null,
 ): CalendarItem | null {
   const dateKey = resolveCalendarDateKey(booking.event_date);
 
@@ -328,6 +348,7 @@ function mapBookingToCalendarItem(
     href,
     typeLabel: getCalendarTypeLabel(type),
     startTimeSortKey: resolveCalendarItemStartTimeSortKey(booking.event_date, booking.set_time),
+    eventFallbackColour,
   };
 }
 
@@ -392,6 +413,10 @@ export async function loadPlannerCalendarItems(): Promise<CalendarItem[]> {
     listSentBookingRequests(),
   ]);
 
+  const eventFallbackColourById = new Map(
+    events.map((event) => [event.id, event.fallback_colour?.trim() || null]),
+  );
+
   const items: CalendarItem[] = [];
 
   for (const event of events) {
@@ -411,7 +436,11 @@ export async function loadPlannerCalendarItems(): Promise<CalendarItem[]> {
       continue;
     }
 
-    const item = mapBookingToCalendarItem(booking, "sent_booking");
+    const item = mapBookingToCalendarItem(
+      booking,
+      "sent_booking",
+      booking.event_id ? eventFallbackColourById.get(booking.event_id) ?? null : null,
+    );
 
     if (item) {
       items.push(item);
