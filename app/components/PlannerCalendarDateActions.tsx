@@ -67,6 +67,7 @@ export default function PlannerCalendarDateActions({
   const dateLabel = formatPlannerSelectedDateLabel(date);
   const dateKey = toDateKey(date);
   const canCreateEventOnDate = !isDateKeyBeforeToday(dateKey);
+  const isPastEmptyDate = !canCreateEventOnDate && items.length === 0;
 
   const actionButtonClass =
     "w-full rounded-xl border border-ftc-border bg-ftc-bg-elevated/50 px-3 py-2.5 text-left transition hover:border-ftc-border-strong hover:bg-ftc-bg-elevated";
@@ -119,14 +120,16 @@ export default function PlannerCalendarDateActions({
         ) : null}
 
         {view === "actions" ? (
-          <div className="mt-4 space-y-2">
-            <button type="button" onClick={() => setView("details")} className={actionButtonClass}>
-              <span className="block text-sm font-semibold text-ftc-text">View day</span>
-              <span className="mt-0.5 block text-xs text-ftc-text-muted">
-                {getPlannerViewDaySubtitle(items.length)}
-              </span>
-            </button>
-          </div>
+          isPastEmptyDate ? null : (
+            <div className="mt-4 space-y-2">
+              <button type="button" onClick={() => setView("details")} className={actionButtonClass}>
+                <span className="block text-sm font-semibold text-ftc-text">View day</span>
+                <span className="mt-0.5 block text-xs text-ftc-text-muted">
+                  {getPlannerViewDaySubtitle(items.length)}
+                </span>
+              </button>
+            </div>
+          )
         ) : (
           <div className="mt-4">
             <button
@@ -138,9 +141,11 @@ export default function PlannerCalendarDateActions({
             </button>
 
             {items.length === 0 ? (
-              <p className="mt-4 rounded-xl border border-dashed border-ftc-border bg-ftc-surface/40 px-4 py-6 text-center text-sm text-ftc-text-muted">
-                Nothing scheduled on this date.
-              </p>
+              isPastEmptyDate ? null : (
+                <p className="mt-4 rounded-xl border border-dashed border-ftc-border bg-ftc-surface/40 px-4 py-6 text-center text-sm text-ftc-text-muted">
+                  Nothing scheduled on this date.
+                </p>
+              )
             ) : (
               <ul className="mt-4 max-h-64 space-y-2 overflow-y-auto pr-1">
                 {items.map((item) => (

@@ -228,7 +228,8 @@ function PlannerCalendarMobileAgenda({
 
   const displayDateItems = itemsByDate.get(displayDateKey) ?? [];
   const canCreateEventOnSelectedDate = !isDateKeyBeforeToday(selectedDateKey);
-  const isPastSelectedDate = isDateKeyBeforeToday(selectedDateKey);
+  const isPastEmptyDate =
+    isDateKeyBeforeToday(selectedDateKey) && displayDateItems.length === 0;
 
   return (
     <div className="mt-4 md:hidden">
@@ -264,11 +265,11 @@ function PlannerCalendarMobileAgenda({
         }`}
       >
         {displayDateItems.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-ftc-border-subtle bg-ftc-surface/30 px-4 py-8 text-center">
-            <p className="text-sm text-ftc-text-muted">
-              {isPastSelectedDate ? "No events on this date." : "No events scheduled."}
-            </p>
-          </div>
+          isPastEmptyDate ? null : (
+            <div className="rounded-xl border border-dashed border-ftc-border-subtle bg-ftc-surface/30 px-4 py-8 text-center">
+              <p className="text-sm text-ftc-text-muted">No events scheduled.</p>
+            </div>
+          )
         ) : (
           displayDateItems.map((item) => <PlannerCalendarAgendaCard key={item.id} item={item} />)
         )}
