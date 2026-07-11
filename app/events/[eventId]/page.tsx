@@ -113,6 +113,7 @@ import {
   shouldPostEventGroupChatUpdate,
 } from "@/lib/events/eventGroupChatUpdate";
 import { resolveEventDetailBackHref } from "@/lib/events/eventsListNavigation";
+import { canEditCachedEvent } from "@/lib/events/eventsListCache";
 import {
   canManageEvents,
   getBookingRecipientProfilesByIds,
@@ -230,6 +231,11 @@ export default function EventDetailPage() {
   );
   const isPlanner = canManageEvents(role);
   const canEditEvent = isOwner && isPlanner;
+  const likelyCanEditDuringLoad = useMemo(
+    () => canEditCachedEvent(eventId, currentUserId, role),
+    [eventId, currentUserId, role],
+  );
+  const showEditInHeader = canEditEvent || (!event && likelyCanEditDuringLoad);
   const hasAcceptedBooking = Boolean(
     currentUserId &&
       lineup.some(
@@ -1049,7 +1055,7 @@ export default function EventDetailPage() {
       <OnboardingGuard>
         <EventDetailLoadingShell
           backHref={eventsBackHref}
-          showEditButton={canEditEvent}
+          showEditButton={showEditInHeader}
           onEditClick={openEditForm}
         />
       </OnboardingGuard>
@@ -1147,7 +1153,7 @@ export default function EventDetailPage() {
                   ) : null}
                 </div>
               ) : null}
-              {canEditEvent ? (
+              {showEditInHeader ? (
                 <EventDetailEditButton onClick={openEditForm} />
               ) : null}
             </div>
