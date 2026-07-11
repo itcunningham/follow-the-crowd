@@ -426,7 +426,7 @@ export default function PlannerCalendar({
       {inviteMessage ? (
         <p
           role="alert"
-          className={`mt-4 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated px-4 py-3 text-sm md:mt-4 ${
+          className={`mt-4 mb-5 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated px-4 py-3 text-sm md:mt-4 md:mb-6 ${
             inviteMessage.includes("could not be sent")
               ? "text-[var(--ftc-color-danger)]"
               : "text-ftc-text-secondary"

@@ -1,5 +1,13 @@
 const EVENT_CREATE_INVITE_MESSAGE_KEY = "ftc.event-create.invite-message";
 
+export function buildCalendarPostCreateBookingSuccessMessage(successCount: number): string {
+  if (successCount === 1) {
+    return "Sent booking request to 1 DJ";
+  }
+
+  return `Sent booking requests to ${successCount} DJs`;
+}
+
 export function stashEventCreateInviteMessage(message: string): void {
   if (typeof window === "undefined") {
     return;

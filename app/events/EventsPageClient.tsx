@@ -45,14 +45,14 @@ import {
   useHistoryBulkManage,
 } from "@/app/components/history/HistoryBulkManage";
 import type { EventSelectableFallbackColourKey } from "@/lib/events/eventFallbackColour";
-import { stashEventCreateInviteMessage } from "@/lib/events/eventCreateInviteMessages";
+import {
+  buildCalendarPostCreateBookingSuccessMessage,
+  stashEventCreateInviteMessage,
+} from "@/lib/events/eventCreateInviteMessages";
 import {
   formatBookingSendFailureMessage,
   sendBookingRequestsForRecipients,
 } from "@/lib/bookings/sendBookingRequestsFlow";
-import {
-  buildBookingSendResultMessage,
-} from "@/lib/bookingRequests";
 import { listBookingPlans, type BookingPlan } from "@/lib/bookingPlans";
 import {
   attachLineupStats,
@@ -612,7 +612,7 @@ function EventsPageClientView({
     if (failures.length > 0) {
       inviteNotice = formatBookingSendFailureMessage(failures, activeInviteDraft.djs);
     } else if (successes.length > 0) {
-      inviteNotice = buildBookingSendResultMessage(successes.length, 0);
+      inviteNotice = buildCalendarPostCreateBookingSuccessMessage(successes.length);
     }
 
     setSaving(false);
