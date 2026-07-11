@@ -1,12 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import AppNavigation, { MOBILE_NAV_OFFSET_CLASS } from "@/app/components/AppNavigation";
+import AppNavigation from "@/app/components/AppNavigation";
 import CalendarViewTabs, { type CalendarViewTab } from "@/app/components/CalendarViewTabs";
 import DjAvailabilityCalendar from "@/app/components/DjAvailabilityCalendar";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
 import PlannerCalendar from "@/app/components/PlannerCalendar";
-import PlannerEventsSubNav from "@/app/components/PlannerEventsSubNav";
+import {
+  PlannerWorkspacePageHeader,
+  PLANNER_WORKSPACE_CONTENT_CLASS,
+  PLANNER_WORKSPACE_SHELL_WIDE_CLASS,
+} from "@/app/components/planner/PlannerWorkspaceLayout";
 import { readCachedNavRole } from "@/lib/navigationRoleCache";
 import { getCurrentUserProfile, type UserRole } from "@/lib/user/currentUser";
 
@@ -36,21 +40,16 @@ export default function CalendarPage() {
 
   return (
     <OnboardingGuard>
-      <div className={`min-h-[100dvh] bg-ftc-bg text-ftc-text ${MOBILE_NAV_OFFSET_CLASS}`}>
+      <div className={PLANNER_WORKSPACE_SHELL_WIDE_CLASS}>
         <AppNavigation />
 
-        <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
-          <div className="mb-6 border-b border-ftc-border pb-4">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-ftc-primary">
-              Calendar
-            </p>
-            {showEventsSubNav ? (
-              <div className="mt-4">
-                <PlannerEventsSubNav initialRole={displayRole} />
-              </div>
-            ) : null}
-          </div>
+        <PlannerWorkspacePageHeader
+          title="Calendar"
+          initialRole={displayRole}
+          showWorkspaceSubNav={showEventsSubNav}
+        />
 
+        <div className={PLANNER_WORKSPACE_CONTENT_CLASS}>
           {displayRole === "both" ? (
             <>
               <CalendarViewTabs activeTab={bothCalendarTab} onChange={setBothCalendarTab} />
@@ -67,7 +66,7 @@ export default function CalendarPage() {
           ) : !loadingRole ? (
             <p className="text-sm text-ftc-text-muted">Calendar is not available for this account.</p>
           ) : null}
-        </main>
+        </div>
       </div>
     </OnboardingGuard>
   );

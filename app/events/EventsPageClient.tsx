@@ -3,11 +3,16 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import AppNavigation, { MOBILE_NAV_OFFSET_CLASS } from "@/app/components/AppNavigation";
+import AppNavigation from "@/app/components/AppNavigation";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
 import { useGuardProfile } from "@/app/components/GuardProfileContext";
 import EventDateStatusBadge from "@/app/components/EventDateStatusBadge";
-import PlannerEventsSubNav from "@/app/components/PlannerEventsSubNav";
+import {
+  PlannerWorkspacePageHeader,
+  PLANNER_WORKSPACE_CONTENT_CLASS,
+  PLANNER_WORKSPACE_SECONDARY_TABS_ROW_CLASS,
+  PLANNER_WORKSPACE_SHELL_CLASS,
+} from "@/app/components/planner/PlannerWorkspaceLayout";
 import {
   PlannerBackLink,
   PlannerEmptyState,
@@ -493,15 +498,14 @@ function EventsPageClientView({ initialTab }: EventsPageClientProps) {
   }
 
   return (
-      <div
-        className={`mx-auto min-h-[100dvh] w-full max-w-2xl bg-ftc-bg font-sans text-ftc-text ${MOBILE_NAV_OFFSET_CLASS}`}
-      >
+      <div className={PLANNER_WORKSPACE_SHELL_CLASS}>
         <AppNavigation />
 
-        <header className="ftc-page-header px-4 py-4 sm:px-6 md:pt-4">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <h1 className="text-xl font-semibold text-ftc-text">Events</h1>
-            {isPlanner && !createOpen ? (
+        <PlannerWorkspacePageHeader
+          title="Events"
+          initialRole={resolvedRole}
+          actions={
+            isPlanner && !createOpen ? (
               <button
                 type="button"
                 onClick={() => {
@@ -511,12 +515,11 @@ function EventsPageClientView({ initialTab }: EventsPageClientProps) {
               >
                 Create event
               </button>
-            ) : null}
-          </div>
-          <PlannerEventsSubNav initialRole={resolvedRole} />
-        </header>
+            ) : null
+          }
+        />
 
-        <div className="px-4 py-4 sm:px-6">
+        <div className={PLANNER_WORKSPACE_CONTENT_CLASS}>
           {createOpen && isPlanner ? (
             <PlannerFormCard title="Create event" onCancel={closeCreateFlow} cancelDisabled={saving}>
               {createStep === "source" ? (
@@ -658,7 +661,7 @@ function EventsPageClientView({ initialTab }: EventsPageClientProps) {
           ) : null}
 
           {!createOpen ? (
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+            <div className={PLANNER_WORKSPACE_SECONDARY_TABS_ROW_CLASS}>
               <div className="flex flex-wrap gap-2">
                 <Link
                   href={buildEventsListHref("active")}

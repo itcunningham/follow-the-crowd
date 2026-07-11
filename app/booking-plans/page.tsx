@@ -3,9 +3,13 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
-import AppNavigation, { MOBILE_NAV_OFFSET_CLASS } from "@/app/components/AppNavigation";
+import AppNavigation from "@/app/components/AppNavigation";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
-import PlannerEventsSubNav from "@/app/components/PlannerEventsSubNav";
+import {
+  PlannerWorkspacePageHeader,
+  PLANNER_WORKSPACE_CONTENT_CLASS,
+  PLANNER_WORKSPACE_SHELL_CLASS,
+} from "@/app/components/planner/PlannerWorkspaceLayout";
 import { PlannerFormCard, PlannerFormField, PlannerInlineError } from "@/app/components/planner/PlannerUi";
 import { BookingDateField, BookingSetTimeRangeField } from "@/app/components/BookingDateTimeFields";
 import { formatDisplayEventDate, getEventDateValidationError } from "@/lib/bookingDateTime";
@@ -210,15 +214,14 @@ export default function BookingPlansPage() {
 
   return (
     <OnboardingGuard>
-      <div
-        className={`mx-auto min-h-[100dvh] w-full max-w-2xl bg-ftc-bg font-sans text-ftc-text ${MOBILE_NAV_OFFSET_CLASS}`}
-      >
+      <div className={PLANNER_WORKSPACE_SHELL_CLASS}>
         <AppNavigation />
 
-        <header className="ftc-page-header px-4 py-4 sm:px-6 md:pt-4">
-          <div className="flex items-center justify-between gap-3">
-            <h1 className="text-xl font-semibold text-ftc-text">Booking Plans</h1>
-            {plans.length > 0 && !formOpen ? (
+        <PlannerWorkspacePageHeader
+          title="Booking Plans"
+          initialRole={displayRole}
+          actions={
+            plans.length > 0 && !formOpen ? (
               <button
                 type="button"
                 onClick={openCreateForm}
@@ -226,12 +229,11 @@ export default function BookingPlansPage() {
               >
                 Create booking plan
               </button>
-            ) : null}
-          </div>
-          <PlannerEventsSubNav initialRole={displayRole} />
-        </header>
+            ) : null
+          }
+        />
 
-        <div className="px-4 py-4 sm:px-6">
+        <div className={PLANNER_WORKSPACE_CONTENT_CLASS}>
           {successMessage ? (
             <p className="mb-4 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated px-4 py-3 text-sm text-ftc-text-secondary">
               {successMessage}

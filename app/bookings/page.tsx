@@ -6,10 +6,15 @@ import { useRouter, useSearchParams } from "next/navigation";
 import {
   BookingsPageLoadingShell,
 } from "@/app/components/skeleton/Skeleton";
-import AppNavigation, { MOBILE_NAV_OFFSET_CLASS } from "@/app/components/AppNavigation";
+import AppNavigation from "@/app/components/AppNavigation";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
 import { useGuardProfile } from "@/app/components/GuardProfileContext";
-import PlannerEventsSubNav from "@/app/components/PlannerEventsSubNav";
+import {
+  PlannerWorkspacePageHeader,
+  PLANNER_WORKSPACE_CONTENT_CLASS,
+  PLANNER_WORKSPACE_SECONDARY_TABS_ROW_CLASS,
+  PLANNER_WORKSPACE_SHELL_CLASS,
+} from "@/app/components/planner/PlannerWorkspaceLayout";
 import DjBookingAvailabilityBadge from "@/app/components/DjBookingAvailabilityBadge";
 import ProfileAvatar from "@/app/components/ProfileAvatar";
 import { BookingDateField, BookingSetTimeRangeField } from "@/app/components/BookingDateTimeFields";
@@ -215,14 +220,6 @@ function canViewReceivedBookings(role: UserRole | null): boolean {
 
 function canViewGigsWorkspace(role: UserRole | null): boolean {
   return role === "dj" || role === "both";
-}
-
-function getGigsSubtitle(role: UserRole | null): string {
-  if (canViewGigsWorkspace(role)) {
-    return "Track incoming requests, confirmed gigs, and history.";
-  }
-
-  return "Gigs are for DJs and artists playing events.";
 }
 
 function getGigsEmptyMessage(tab: DjGigsListTab): string {
@@ -1015,23 +1012,14 @@ function BookingsPageContent() {
 
   return (
     <OnboardingGuard>
-      <div
-        className={`mx-auto min-h-[100dvh] w-full max-w-2xl bg-ftc-bg font-sans text-ftc-text ${MOBILE_NAV_OFFSET_CLASS}`}
-      >
+      <div className={PLANNER_WORKSPACE_SHELL_CLASS}>
         <AppNavigation />
 
-        <header className="border-b border-ftc-border-subtle px-4 py-3 sm:px-6 md:pt-4">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div className="min-w-0 flex-1">
-              <h1 className="text-xl font-semibold text-ftc-text">Gigs</h1>
-              <p className="mt-1 text-sm text-ftc-text-muted">{getGigsSubtitle(displayRole)}</p>
-            </div>
-          </div>
+        <PlannerWorkspacePageHeader title="Gigs" initialRole={displayRole} />
 
-          <PlannerEventsSubNav initialRole={displayRole} />
-
+        <div className={PLANNER_WORKSPACE_CONTENT_CLASS}>
           {showGigsWorkspace ? (
-            <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
+            <div className={PLANNER_WORKSPACE_SECONDARY_TABS_ROW_CLASS}>
               <DjGigsTabs
                 activeView={djGigsView}
                 bookings={receivedBookings}
@@ -1046,9 +1034,6 @@ function BookingsPageContent() {
               ) : null}
             </div>
           ) : null}
-        </header>
-
-        <div className="px-4 py-4 sm:px-6">
           {successMessage ? (
             <p className="mb-4 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated px-4 py-3 text-sm text-ftc-text-secondary">
               {successMessage}

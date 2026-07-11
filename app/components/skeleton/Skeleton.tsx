@@ -8,7 +8,13 @@ import AppNavigation, { MOBILE_NAV_OFFSET_CLASS } from "@/app/components/AppNavi
 import DmConversationHeader from "@/app/components/dm/DmConversationHeader";
 import MessagesInboxLayout from "@/app/components/dm/MessagesInboxLayout";
 import CalendarViewTabs, { type CalendarViewTab } from "@/app/components/CalendarViewTabs";
-import PlannerEventsSubNav from "@/app/components/PlannerEventsSubNav";
+import {
+  PlannerWorkspacePageHeader,
+  PLANNER_WORKSPACE_CONTENT_CLASS,
+  PLANNER_WORKSPACE_SECONDARY_TABS_ROW_CLASS,
+  PLANNER_WORKSPACE_SHELL_CLASS,
+  PLANNER_WORKSPACE_SHELL_WIDE_CLASS,
+} from "@/app/components/planner/PlannerWorkspaceLayout";
 import ProfilePageHeader from "@/app/components/profile/ProfilePageHeader";
 import type { DjGigsListTab } from "@/lib/bookingRequests";
 import { buildGigsListHref, resolveGigsListTabParam } from "@/lib/bookings/gigsListNavigation";
@@ -203,26 +209,24 @@ export function EventsPageLoadingShell({
   const isHistoryTab = searchParams.get("tab") === "history";
 
   return (
-    <div
-      className={`mx-auto min-h-[100dvh] w-full max-w-2xl bg-ftc-bg font-sans text-ftc-text ${MOBILE_NAV_OFFSET_CLASS}`}
-    >
+    <div className={PLANNER_WORKSPACE_SHELL_CLASS}>
       <AppNavigation />
-      <header className="ftc-page-header px-4 py-4 sm:px-6 md:pt-4">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <h1 className="text-xl font-semibold text-ftc-text">Events</h1>
-          {isPlanner ? (
+      <PlannerWorkspacePageHeader
+        title="Events"
+        initialRole={role}
+        actions={
+          isPlanner ? (
             <Link
               href="/events?create=event"
               className="shrink-0 ftc-btn-primary px-4 py-2.5 text-sm uppercase tracking-wide"
             >
               Create event
             </Link>
-          ) : null}
-        </div>
-        <PlannerEventsSubNav initialRole={role} />
-      </header>
-      <div className="px-4 py-4 sm:px-6">
-        <div className="mb-4 flex flex-wrap gap-2">
+          ) : null
+        }
+      />
+      <div className={PLANNER_WORKSPACE_CONTENT_CLASS}>
+        <div className={PLANNER_WORKSPACE_SECONDARY_TABS_ROW_CLASS}>
           <Link
             href={buildEventsListHref("active")}
             className={`ftc-filter-pill ${!isHistoryTab ? "ftc-filter-pill-active" : ""}`}
@@ -462,7 +466,7 @@ function GigsWorkspaceTabsShell() {
   ];
 
   return (
-    <div className="mt-4 flex flex-wrap gap-2">
+    <div className="flex flex-wrap gap-2">
       {tabs.map((tab) => {
         const isActive = activeView === tab.value;
 
@@ -482,14 +486,6 @@ function GigsWorkspaceTabsShell() {
       })}
     </div>
   );
-}
-
-function getGigsLoadingSubtitle(role: UserRole | null): string {
-  if (role === "dj" || role === "both" || role === "promoter" || role === null) {
-    return "Track incoming requests, confirmed gigs, and history.";
-  }
-
-  return "Gigs are for DJs and artists playing events.";
 }
 
 function canShowGigsWorkspaceTabs(role: UserRole | null): boolean {
@@ -513,21 +509,16 @@ export function BookingsPageLoadingShell({
   const showGigsTabs = canShowGigsWorkspaceTabs(role);
 
   return (
-    <div
-      className={`mx-auto min-h-[100dvh] w-full max-w-2xl bg-ftc-bg font-sans text-ftc-text ${MOBILE_NAV_OFFSET_CLASS}`}
-    >
+    <div className={PLANNER_WORKSPACE_SHELL_CLASS}>
       <AppNavigation />
-      <header className="border-b border-ftc-border-subtle px-4 py-3 sm:px-6 md:pt-4">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="min-w-0 flex-1">
-            <h1 className="text-xl font-semibold text-ftc-text">Gigs</h1>
-            <p className="mt-1 text-sm text-ftc-text-muted">{getGigsLoadingSubtitle(role)}</p>
+      <PlannerWorkspacePageHeader title="Gigs" initialRole={role} />
+      <div className={PLANNER_WORKSPACE_CONTENT_CLASS}>
+        {showGigsTabs ? (
+          <div className={PLANNER_WORKSPACE_SECONDARY_TABS_ROW_CLASS}>
+            <GigsWorkspaceTabsShell />
           </div>
-        </div>
-        <PlannerEventsSubNav initialRole={role} />
-        {showGigsTabs ? <GigsWorkspaceTabsShell /> : null}
-      </header>
-      <div className="px-4 py-4 sm:px-6" />
+        ) : null}
+      </div>
     </div>
   );
 }
@@ -567,15 +558,10 @@ export function BookingPlansPageLoadingShell() {
   const [cachedRole] = useState<UserRole | null>(() => readCachedNavRole());
 
   return (
-    <div
-      className={`mx-auto min-h-[100dvh] w-full max-w-2xl bg-ftc-bg font-sans text-ftc-text ${MOBILE_NAV_OFFSET_CLASS}`}
-    >
+    <div className={PLANNER_WORKSPACE_SHELL_CLASS}>
       <AppNavigation />
-      <header className="ftc-page-header px-4 py-4 sm:px-6 md:pt-4">
-        <h1 className="text-xl font-semibold text-ftc-text">Booking Plans</h1>
-        <PlannerEventsSubNav initialRole={cachedRole} />
-      </header>
-      <div className="px-4 py-4 sm:px-6" />
+      <PlannerWorkspacePageHeader title="Booking Plans" initialRole={cachedRole} />
+      <div className={PLANNER_WORKSPACE_CONTENT_CLASS} />
     </div>
   );
 }
@@ -587,25 +573,18 @@ export function CalendarPageLoadingShell() {
     cachedRole === "promoter" || cachedRole === "both" || cachedRole === "dj";
 
   return (
-    <div
-      className={`min-h-[100dvh] bg-ftc-bg text-ftc-text ${MOBILE_NAV_OFFSET_CLASS}`}
-    >
+    <div className={PLANNER_WORKSPACE_SHELL_WIDE_CLASS}>
       <AppNavigation />
-      <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
-        <div className="mb-6 border-b border-ftc-border pb-4">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-ftc-primary">
-            Calendar
-          </p>
-          {showEventsSubNav ? (
-            <div className="mt-4">
-              <PlannerEventsSubNav initialRole={cachedRole} />
-            </div>
-          ) : null}
-        </div>
+      <PlannerWorkspacePageHeader
+        title="Calendar"
+        initialRole={cachedRole}
+        showWorkspaceSubNav={showEventsSubNav}
+      />
+      <div className={PLANNER_WORKSPACE_CONTENT_CLASS}>
         {cachedRole === "both" ? (
           <CalendarViewTabs activeTab={bothCalendarTab} onChange={setBothCalendarTab} />
         ) : null}
-      </main>
+      </div>
     </div>
   );
 }
