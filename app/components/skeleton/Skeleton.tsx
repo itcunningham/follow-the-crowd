@@ -378,7 +378,7 @@ function BookingCampaignCardSkeleton() {
   );
 }
 
-export function BookingPlanListSkeleton({ count = 3 }: { count?: number }) {
+export function BookingPlanListSkeleton({ count = 2 }: { count?: number }) {
   return (
     <ul aria-busy="true" aria-label="Loading booking plans" className="space-y-3">
       {Array.from({ length: count }, (_, index) => (
@@ -390,18 +390,39 @@ export function BookingPlanListSkeleton({ count = 3 }: { count?: number }) {
   );
 }
 
+function BookingPlanDetailGridSkeleton() {
+  const fields = [
+    { labelWidth: "w-10", valueWidth: "w-32" },
+    { labelWidth: "w-11", valueWidth: "w-36" },
+    { labelWidth: "w-9", valueWidth: "w-24" },
+    { labelWidth: "w-14", valueWidth: "w-28" },
+    { labelWidth: "w-9", valueWidth: "w-16" },
+  ] as const;
+
+  return (
+    <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
+      {fields.map((field, index) => (
+        <div key={index}>
+          <SkeletonBlock className={`h-2.5 ${field.labelWidth}`} rounded="rounded-sm" />
+          <SkeletonBlock className={`mt-0.5 h-4 ${field.valueWidth} max-w-full`} />
+        </div>
+      ))}
+    </dl>
+  );
+}
+
 function BookingPlanCardSkeleton() {
   return (
     <div className="ftc-card p-4 sm:p-5">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0 flex-1">
-          <SkeletonBlock className="h-3 w-28" />
+        <div className="min-w-0">
+          <SkeletonBlock className="h-[11px] w-[7.25rem]" rounded="rounded-sm" />
           <SkeletonBlock className="mt-1 h-7 w-2/5 max-w-[12rem]" />
-          <DetailGridSkeleton count={5} />
+          <BookingPlanDetailGridSkeleton />
         </div>
         <div className="flex shrink-0 flex-col gap-2 sm:items-end">
-          <SkeletonBlock className="h-8 w-16 rounded-xl" />
-          <SkeletonBlock className="h-8 w-28 rounded-xl" />
+          <SkeletonBlock className="h-[1.875rem] w-[3.25rem] rounded-xl" />
+          <SkeletonBlock className="h-[1.875rem] w-[7.75rem] rounded-xl" />
         </div>
       </div>
     </div>
@@ -561,7 +582,9 @@ export function BookingPlansPageLoadingShell() {
     <div className={PLANNER_WORKSPACE_SHELL_CLASS}>
       <AppNavigation />
       <PlannerWorkspacePageHeader title="Booking Plans" initialRole={cachedRole} />
-      <div className={PLANNER_WORKSPACE_CONTENT_CLASS} />
+      <div className={PLANNER_WORKSPACE_CONTENT_CLASS}>
+        <BookingPlanListSkeleton />
+      </div>
     </div>
   );
 }
