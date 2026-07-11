@@ -122,8 +122,8 @@ export function eventInputFromBookingPlan(plan: BookingPlan): EventInput {
   return {
     name: plan.event_name,
     venue: plan.venue,
-    eventDate: plan.event_date,
-    setTime: plan.set_time,
+    eventDate: "",
+    setTime: "",
     rate: normalizeStoredRate(plan.fee),
     notes: plan.notes,
     bookingPlanId: plan.id,

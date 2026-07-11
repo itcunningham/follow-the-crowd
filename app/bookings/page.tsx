@@ -1481,10 +1481,7 @@ function BookingsPageContent() {
                           >
                             <p className="font-semibold text-ftc-text">{plan.name}</p>
                             <p className="mt-1 text-sm text-ftc-text-secondary">
-                              {plan.event_name} · {plan.venue} · {formatDisplayEventDate(plan.event_date)}
-                            </p>
-                            <p className="mt-1 text-sm text-ftc-text-muted">
-                              {plan.set_time} · Rate {formatRateDisplay(plan.fee)}
+                              {plan.event_name} · {plan.venue}
                             </p>
                           </button>
                         </li>

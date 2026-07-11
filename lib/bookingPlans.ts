@@ -20,8 +20,6 @@ export type BookingPlanInput = {
   name: string;
   eventName: string;
   venue: string;
-  eventDate: string;
-  setTime: string;
   fee: string;
   notes: string;
 };
@@ -34,8 +32,8 @@ function mapPlanInputToRow(input: BookingPlanInput) {
     name: input.name.trim(),
     event_name: input.eventName.trim(),
     venue: input.venue.trim(),
-    event_date: input.eventDate.trim(),
-    set_time: input.setTime.trim(),
+    event_date: "",
+    set_time: "",
     fee: normalizeStoredRate(input.fee),
     notes: input.notes.trim(),
   };
@@ -45,8 +43,8 @@ export function bookingPlanToRequestInput(plan: BookingPlan): BookingRequestInpu
   return {
     eventName: plan.event_name,
     venue: plan.venue,
-    eventDate: plan.event_date,
-    setTime: plan.set_time,
+    eventDate: "",
+    setTime: "",
     fee: normalizeStoredRate(plan.fee),
     notes: plan.notes,
     rateMode: "fixed",

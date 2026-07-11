@@ -16,14 +16,12 @@ import {
   BookingPlanListSkeleton,
   SavedEventPlansSectionHeading,
 } from "@/app/components/skeleton/Skeleton";
-import { BookingDateField, BookingSetTimeRangeField } from "@/app/components/BookingDateTimeFields";
 import {
   HistoryManageButton,
   HistorySelectionCheckbox,
   HistorySelectionToolbar,
   useHistoryBulkManage,
 } from "@/app/components/history/HistoryBulkManage";
-import { getEventDateValidationError } from "@/lib/bookingDateTime";
 import { getEventNotesValidationError, MAX_EVENT_NOTES_LENGTH } from "@/lib/events/eventNotes";
 import {
   createBookingPlan,
@@ -46,8 +44,6 @@ const emptyPlanForm: BookingPlanInput = {
   name: "",
   eventName: "",
   venue: "",
-  eventDate: "",
-  setTime: "",
   fee: "",
   notes: "",
 };
@@ -187,13 +183,6 @@ export default function BookingPlansPage() {
 
   const planBulkManage = useHistoryBulkManage(plans);
 
-  const planFormDateValidationError = useMemo(() => {
-    if (!formOpen) {
-      return null;
-    }
-
-    return getEventDateValidationError(form.eventDate, form.setTime);
-  }, [formOpen, form.eventDate, form.setTime]);
   const planFormNotesValidationError = useMemo(() => {
     if (!formOpen) {
       return null;
@@ -201,7 +190,7 @@ export default function BookingPlansPage() {
 
     return getEventNotesValidationError(form.notes);
   }, [formOpen, form.notes]);
-  const planFormValidationError = planFormDateValidationError ?? planFormNotesValidationError;
+  const planFormValidationError = planFormNotesValidationError;
 
   const visiblePlans = useMemo(() => {
     if (planBulkManage.removingIds.size === 0) {
@@ -270,8 +259,6 @@ export default function BookingPlansPage() {
       name: plan.name,
       eventName: plan.event_name,
       venue: plan.venue,
-      eventDate: plan.event_date,
-      setTime: plan.set_time,
       fee: "",
       notes: plan.notes,
     });
@@ -300,21 +287,8 @@ export default function BookingPlansPage() {
   async function handleSavePlan(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (
-      !form.name.trim() ||
-      !form.eventName.trim() ||
-      !form.venue.trim() ||
-      !form.eventDate.trim() ||
-      !form.setTime.trim()
-    ) {
+    if (!form.name.trim() || !form.eventName.trim() || !form.venue.trim()) {
       setError("Please fill in all required plan fields.");
-      return;
-    }
-
-    const dateValidationError = getEventDateValidationError(form.eventDate, form.setTime);
-
-    if (dateValidationError) {
-      setError(dateValidationError);
       return;
     }
 
@@ -434,18 +408,6 @@ export default function BookingPlansPage() {
                   onChange={(value) => updateField("venue", value)}
                   placeholder="Venue"
                   required
-                />
-                <BookingDateField
-                  label="Event date"
-                  value={form.eventDate}
-                  onChange={(value) => updateField("eventDate", value)}
-                  required
-                />
-                <BookingSetTimeRangeField
-                  value={form.setTime}
-                  onChange={(value) => updateField("setTime", value)}
-                  required
-                  eventDate={form.eventDate}
                 />
                 <PlannerFormField
                   label="Notes"
