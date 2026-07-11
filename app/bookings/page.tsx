@@ -19,8 +19,13 @@ import DjBookingAvailabilityBadge from "@/app/components/DjBookingAvailabilityBa
 import ProfileAvatar from "@/app/components/ProfileAvatar";
 import { BookingDateField, BookingSetTimeRangeField } from "@/app/components/BookingDateTimeFields";
 import { getEventDateValidationError, formatDisplayEventDate } from "@/lib/bookingDateTime";
-import { BookingRateField } from "@/app/components/BookingRateField";
-import BookingRateModeField from "@/app/components/booking/BookingRateModeField";
+import EventDjSendOfferControls, {
+  DEFAULT_DJ_SEND_OFFER,
+  formatDjSendOfferSummary,
+  type DjSendOffer,
+} from "@/app/components/booking/EventDjSendOfferControls";
+import { PlannerFormField } from "@/app/components/planner/PlannerUi";
+import { getEventNotesValidationError, MAX_EVENT_NOTES_LENGTH } from "@/lib/events/eventNotes";
 import ArchiveAllBookingRequestsButton from "@/app/components/ArchiveAllBookingRequestsButton";
 import {
   HistoryManageButton,
@@ -60,7 +65,6 @@ import {
   logBookingsLoadError,
   listBookingRequestsForEvent,
   resolveBookingCancellationReasonLabel,
-  resolveBookingRequestRateMode,
   sendBookingRequestsToDjs,
   sortBookingsNewestFirst,
   unarchiveBookingRequest,
@@ -76,7 +80,12 @@ import {
   listBookingPlans,
   type BookingPlan,
 } from "@/lib/bookingPlans";
-import { formatIntegerRateDisplay, formatRateDisplay, isPositiveWholeDollarRate } from "@/lib/bookingRate";
+import {
+  formatIntegerRateDisplay,
+  formatRateDisplay,
+  isPositiveWholeDollarRate,
+  normalizeStoredRate,
+} from "@/lib/bookingRate";
 import EventBookingDuplicateBadge from "@/app/components/EventBookingDuplicateBadge";
 import UnavailableDjBookingConfirmModal from "@/app/components/UnavailableDjBookingConfirmModal";
 import {
@@ -130,7 +139,7 @@ function getCreateStepMeta(step: CreateStep): { label: string; title: string } {
     case "pick-plan":
       return { label: "Plan", title: "Choose a saved event plan" };
     case "details":
-      return { label: "1 of 2", title: "Booking details" };
+      return { label: "1 of 2", title: "Event details" };
     case "select-djs":
       return { label: "2 of 2", title: "Select DJs" };
   }
@@ -308,6 +317,7 @@ function BookingsPageContent() {
   const [loadingDjs, setLoadingDjs] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedDjIds, setSelectedDjIds] = useState<string[]>([]);
+  const [djOffers, setDjOffers] = useState<Record<string, DjSendOffer>>({});
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -424,6 +434,47 @@ function BookingsPageContent() {
           : createStep;
   const effectiveSelectedPlanId =
     selectedPlanId ?? (deepLinkIntent?.type === "plan" ? deepLinkIntent.planId : null);
+
+  const detailsFormDateValidationError = useMemo(() => {
+    if (!createOpen || effectiveCreateStep !== "details") {
+      return null;
+    }
+
+    return getEventDateValidationError(form.eventDate, form.setTime);
+  }, [createOpen, effectiveCreateStep, form.eventDate, form.setTime]);
+
+  const detailsFormNotesValidationError = useMemo(() => {
+    if (!createOpen || effectiveCreateStep !== "details") {
+      return null;
+    }
+
+    return getEventNotesValidationError(form.notes);
+  }, [createOpen, effectiveCreateStep, form.notes]);
+
+  const detailsFormValidationError =
+    detailsFormDateValidationError ?? detailsFormNotesValidationError;
+
+  const sendOfferSummary = useMemo(() => {
+    return sendableSelectedDjIds.map((djId) => {
+      const dj = djs.find((item) => item.user_id === djId);
+      const offer = djOffers[djId] ?? DEFAULT_DJ_SEND_OFFER;
+
+      return {
+        djId,
+        name: dj?.display_name?.trim() || "DJ",
+        summary: formatDjSendOfferSummary(offer),
+      };
+    });
+  }, [sendableSelectedDjIds, djOffers, djs]);
+
+  const hasInvalidFixedOffers = useMemo(
+    () =>
+      sendableSelectedDjIds.some((djId) => {
+        const offer = djOffers[djId] ?? DEFAULT_DJ_SEND_OFFER;
+        return offer.rateMode === "fixed" && !isPositiveWholeDollarRate(offer.fee);
+      }),
+    [sendableSelectedDjIds, djOffers],
+  );
   const showGigsWorkspace = canViewGigsWorkspace(displayRole);
   const showPlannerGigsEmpty = displayRole === "promoter" && !plannerCreateVisible;
 
@@ -551,6 +602,7 @@ function BookingsPageContent() {
   async function openCreateFlowFromDeepLink(intent: BookingsDeepLinkIntent): Promise<boolean> {
     setCreateOpen(true);
     setSelectedDjIds([]);
+    setDjOffers({});
     setSearchQuery("");
     setFailureDetails([]);
     setSuccessMessage(null);
@@ -781,6 +833,7 @@ function BookingsPageContent() {
 
     setCreateOpen(true);
     setSelectedDjIds([]);
+    setDjOffers({});
     setSearchQuery("");
     setError(null);
     setFailureDetails([]);
@@ -821,6 +874,7 @@ function BookingsPageContent() {
     setSelectedPlanId(null);
     setBookingPlans([]);
     setSelectedDjIds([]);
+    setDjOffers({});
     setSearchQuery("");
     setFailureDetails([]);
     setEventDateOverride(null);
@@ -844,9 +898,46 @@ function BookingsPageContent() {
       return;
     }
 
-    setSelectedDjIds((prev) =>
-      prev.includes(userId) ? prev.filter((id) => id !== userId) : [...prev, userId],
-    );
+    setSelectedDjIds((prev) => {
+      if (prev.includes(userId)) {
+        setDjOffers((offers) => {
+          const next = { ...offers };
+          delete next[userId];
+          return next;
+        });
+        return prev.filter((id) => id !== userId);
+      }
+
+      const defaultFee = form.fee.trim() ? normalizeStoredRate(form.fee) : "";
+      setDjOffers((offers) => ({
+        ...offers,
+        [userId]: offers[userId] ?? {
+          rateMode: "fixed",
+          fee: defaultFee,
+        },
+      }));
+
+      return [...prev, userId];
+    });
+  }
+
+  function updateDjOffer(userId: string, offer: DjSendOffer) {
+    setDjOffers((prev) => ({ ...prev, [userId]: offer }));
+  }
+
+  function getSendValidationError(recipientIds: string[]): string | null {
+    for (const djId of recipientIds) {
+      const offer = djOffers[djId] ?? DEFAULT_DJ_SEND_OFFER;
+
+      if (offer.rateMode === "fixed" && !isPositiveWholeDollarRate(offer.fee)) {
+        const dj = djs.find((item) => item.user_id === djId);
+        const name = dj?.display_name?.trim() || "each selected DJ";
+
+        return `Enter a positive whole-dollar fixed offer for ${name}.`;
+      }
+    }
+
+    return null;
   }
 
   function handleSelectSavedPlan(plan: BookingPlan) {
@@ -874,11 +965,6 @@ function BookingsPageContent() {
       return;
     }
 
-    if (form.rateMode !== "open" && !form.fee.trim()) {
-      setError("Please enter a rate for fixed offers.");
-      return;
-    }
-
     const dateValidationError = getEventDateValidationError(form.eventDate, form.setTime);
 
     if (dateValidationError) {
@@ -886,8 +972,10 @@ function BookingsPageContent() {
       return;
     }
 
-    if (form.fee.trim() && !isPositiveWholeDollarRate(form.fee)) {
-      setError("Rate must be a positive whole dollar amount.");
+    const notesValidationError = getEventNotesValidationError(form.notes);
+
+    if (notesValidationError) {
+      setError(notesValidationError);
       return;
     }
 
@@ -912,6 +1000,13 @@ function BookingsPageContent() {
       }
 
       setError("Select at least one DJ.");
+      return;
+    }
+
+    const validationError = getSendValidationError(sendableIds);
+
+    if (validationError) {
+      setError(validationError);
       return;
     }
 
@@ -956,14 +1051,30 @@ function BookingsPageContent() {
     setSuccessMessage(null);
 
     try {
-      const sendInput: BookingRequestInput = {
-        ...form,
-        rateMode: resolveBookingRequestRateMode(form),
-      };
       const { successes, failures, skippedDuplicateRecipientIds } =
-        await sendBookingRequestsToDjs(sendableIds, sendInput, {
-          existingEventBookings: form.eventId ? duplicateSource : undefined,
-        });
+        await sendBookingRequestsToDjs(
+          sendableIds,
+          {
+            eventName: form.eventName,
+            venue: form.venue,
+            eventDate: form.eventDate,
+            setTime: form.setTime,
+            notes: form.notes,
+            fee: "",
+            eventId: form.eventId,
+          },
+          {
+            existingEventBookings: form.eventId ? duplicateSource : undefined,
+            perRecipient: (recipientId) => {
+              const offer = djOffers[recipientId] ?? DEFAULT_DJ_SEND_OFFER;
+
+              return {
+                rateMode: offer.rateMode,
+                fee: normalizeStoredRate(offer.fee),
+              };
+            },
+          },
+        );
       const skippedCount = totalSkippedDuplicates + skippedDuplicateRecipientIds.length;
 
       if (successes.length === 0) {
@@ -1299,18 +1410,18 @@ function BookingsPageContent() {
                     ← Back
                   </button>
 
-                  <BookingField
+                  <PlannerFormField
                     label="Event name"
                     value={form.eventName}
                     onChange={(value) => updateField("eventName", value)}
-                    placeholder="Enter event name"
+                    placeholder="Event name"
                     required
                   />
-                  <BookingField
+                  <PlannerFormField
                     label="Venue"
                     value={form.venue}
                     onChange={(value) => updateField("venue", value)}
-                    placeholder="Enter venue"
+                    placeholder="Venue"
                     required
                   />
                   <BookingDateField
@@ -1325,29 +1436,24 @@ function BookingsPageContent() {
                     required
                     eventDate={form.eventDate}
                   />
-                  <BookingRateModeField
-                    value={form.rateMode ?? "fixed"}
-                    onChange={(value) => updateField("rateMode", value)}
-                  />
-                  <BookingRateField
-                    value={form.fee}
-                    onChange={(value) => updateField("fee", value)}
-                    label={form.rateMode === "open" ? "Suggested rate (optional)" : "Rate"}
-                    required={form.rateMode !== "open"}
-                    placeholder="Enter amount"
-                  />
-                  <BookingField
+                  <PlannerFormField
                     label="Notes"
                     value={form.notes}
                     onChange={(value) => updateField("notes", value)}
-                    placeholder="Add notes"
+                    placeholder="Notes"
                     multiline
+                    maxLength={MAX_EVENT_NOTES_LENGTH}
                   />
 
-                  {error ? <p className="text-sm text-red-400">{error}</p> : null}
+                  {error && error !== detailsFormValidationError ? (
+                    <p className="text-sm text-red-400">{error}</p>
+                  ) : null}
 
                   <button
                     type="submit"
+                    disabled={Boolean(detailsFormValidationError)}
+                    aria-disabled={Boolean(detailsFormValidationError)}
+                    title={detailsFormValidationError ?? undefined}
                     className="ftc-btn-primary px-5 py-3 text-sm uppercase tracking-wide disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     Continue to DJ selection
@@ -1370,10 +1476,6 @@ function BookingsPageContent() {
                     <p className="font-medium text-ftc-text">{form.eventName}</p>
                     <p className="mt-1">
                       {form.venue} · {formatDisplayEventDate(form.eventDate)} · {form.setTime}
-                    </p>
-                    <p className="mt-1">
-                      {form.rateMode === "open" ? "Ask for rate" : "Fixed offer"}
-                      {form.fee.trim() ? ` · ${formatRateDisplay(form.fee)}` : ""}
                     </p>
                   </div>
 
@@ -1407,6 +1509,7 @@ function BookingsPageContent() {
                         const availabilityHint = djAvailabilityHints.get(dj.user_id);
                         const duplicateStatus = eventBookingDuplicates.get(dj.user_id);
                         const isDuplicateBlocked = Boolean(duplicateStatus);
+                        const offer = djOffers[dj.user_id] ?? DEFAULT_DJ_SEND_OFFER;
 
                         return (
                           <li key={dj.user_id}>
@@ -1452,6 +1555,15 @@ function BookingsPageContent() {
                                 </p>
                               </div>
                             </button>
+                            {selected ? (
+                              <div className="mt-2 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated p-3">
+                                <EventDjSendOfferControls
+                                  offer={offer}
+                                  disabled={sending}
+                                  onChange={(nextOffer) => updateDjOffer(dj.user_id, nextOffer)}
+                                />
+                              </div>
+                            ) : null}
                           </li>
                         );
                       })}
@@ -1464,6 +1576,34 @@ function BookingsPageContent() {
                     <p className="text-xs text-ftc-text-muted">
                       Selected DJs already have a request for this event.
                     </p>
+                  ) : null}
+
+                  {sendOfferSummary.length > 0 ? (
+                    <div className="rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated p-4">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-ftc-text-muted">
+                        Send summary
+                      </p>
+                      <ul className="mt-3 space-y-2">
+                        {sendOfferSummary.map((item) => (
+                          <li
+                            key={item.djId}
+                            className="flex items-start justify-between gap-3 text-sm"
+                          >
+                            <span className="min-w-0 truncate font-medium text-ftc-text">
+                              {item.name}
+                            </span>
+                            <span className="shrink-0 text-right text-ftc-text-secondary">
+                              {item.summary}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                      {hasInvalidFixedOffers ? (
+                        <p className="mt-3 text-xs text-[var(--ftc-color-warning)]">
+                          Enter a positive whole-dollar amount for each fixed offer before sending
+                        </p>
+                      ) : null}
+                    </div>
                   ) : null}
 
                   <div className="flex flex-col gap-3 sm:flex-row">
@@ -1481,7 +1621,9 @@ function BookingsPageContent() {
                     <button
                       type="button"
                       onClick={requestSendBookingRequests}
-                      disabled={sending || sendableSelectedDjIds.length === 0}
+                      disabled={
+                        sending || sendableSelectedDjIds.length === 0 || hasInvalidFixedOffers
+                      }
                       className="flex-1 ftc-btn-primary w-full px-4 py-3 text-sm uppercase tracking-wide disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       {sending
@@ -2150,45 +2292,5 @@ function CampaignStat({
       <p className="text-[10px] font-semibold uppercase tracking-wide opacity-80">{label}</p>
       <p className="mt-0.5 text-xl font-semibold">{value}</p>
     </div>
-  );
-}
-
-function BookingField({
-  label,
-  value,
-  onChange,
-  placeholder,
-  required = false,
-  multiline = false,
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  placeholder: string;
-  required?: boolean;
-  multiline?: boolean;
-}) {
-  return (
-    <label className="block">
-      <span className="ftc-label">{label}</span>
-      {multiline ? (
-        <textarea
-          value={value}
-          onChange={(event) => onChange(event.target.value)}
-          placeholder={placeholder}
-          rows={3}
-          className="ftc-input px-3.5 py-2.5"
-        />
-      ) : (
-        <input
-          type="text"
-          value={value}
-          onChange={(event) => onChange(event.target.value)}
-          placeholder={placeholder}
-          required={required}
-          className="ftc-input px-3.5 py-2.5"
-        />
-      )}
-    </label>
   );
 }
