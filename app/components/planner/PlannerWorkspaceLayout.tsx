@@ -22,11 +22,13 @@ export function PlannerWorkspacePageHeader({
   initialRole,
   actions,
   showWorkspaceSubNav = true,
+  activeWorkspaceHref,
 }: {
   title: string;
   initialRole?: UserRole | null;
   actions?: React.ReactNode;
   showWorkspaceSubNav?: boolean;
+  activeWorkspaceHref?: string | null;
 }) {
   return (
     <header className={PLANNER_WORKSPACE_HEADER_CLASS}>
@@ -34,7 +36,12 @@ export function PlannerWorkspacePageHeader({
         <h1 className={PLANNER_WORKSPACE_TITLE_CLASS}>{title}</h1>
         {actions}
       </div>
-      {showWorkspaceSubNav ? <PlannerEventsSubNav initialRole={initialRole} /> : null}
+      {showWorkspaceSubNav ? (
+        <PlannerEventsSubNav
+          initialRole={initialRole}
+          activeWorkspaceHref={activeWorkspaceHref}
+        />
+      ) : null}
     </header>
   );
 }

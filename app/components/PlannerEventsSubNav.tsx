@@ -61,8 +61,11 @@ function GigsPendingCountBadge({
 
 export default function PlannerEventsSubNav({
   initialRole = null,
+  activeWorkspaceHref,
 }: {
   initialRole?: UserRole | null;
+  /** Overrides pathname-derived workspace highlight (e.g. planner booking create on /bookings). */
+  activeWorkspaceHref?: string | null;
 }) {
   const pathname = usePathname();
   const guardProfile = useGuardProfile();
@@ -117,7 +120,7 @@ export default function PlannerEventsSubNav({
     return null;
   }
 
-  const activeHref = getActiveHref(pathname);
+  const activeHref = activeWorkspaceHref ?? getActiveHref(pathname);
   const tabs = getEventsAreaSubNavItems(role);
 
   return (

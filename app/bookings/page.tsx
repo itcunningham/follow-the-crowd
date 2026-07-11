@@ -108,6 +108,7 @@ import {
   resolveBookingsDeepLinkIntent,
   type BookingsDeepLinkIntent,
 } from "@/lib/bookings/planDeepLink";
+import { EVENTS_AREA_SUB_NAV } from "@/lib/plannerEventsNav";
 
 const emptyForm: BookingRequestInput = {
   eventName: "",
@@ -1127,7 +1128,13 @@ function BookingsPageContent() {
       <div className={PLANNER_WORKSPACE_SHELL_CLASS}>
         <AppNavigation />
 
-        <PlannerWorkspacePageHeader title="Gigs" initialRole={displayRole} />
+        <PlannerWorkspacePageHeader
+          title="Gigs"
+          initialRole={displayRole}
+          activeWorkspaceHref={
+            plannerCreateVisible ? EVENTS_AREA_SUB_NAV.bookingPlans.href : undefined
+          }
+        />
 
         <div className={PLANNER_WORKSPACE_CONTENT_CLASS}>
           {successMessage ? (
