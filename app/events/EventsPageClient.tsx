@@ -31,7 +31,9 @@ import EventCoverImageField, {
 } from "@/app/components/events/EventCoverImageField";
 import EventFallbackColourField from "@/app/components/events/EventFallbackColourField";
 import SendBookingRequestsPanel from "@/app/components/booking/SendBookingRequestsPanel";
+import SendBookingRequestsModal from "@/app/components/booking/SendBookingRequestsModal";
 import { useSendBookingRequestsDraft } from "@/app/components/booking/useSendBookingRequestsDraft";
+import { EventDetailPrimaryAction } from "@/app/components/event-detail/EventDetailBottomBar";
 import UnavailableDjBookingConfirmModal from "@/app/components/UnavailableDjBookingConfirmModal";
 import { EventCoverImageListThumb } from "@/app/components/events/EventCoverImageDisplay";
 import { EventListSkeleton, EventsListTabRow } from "@/app/components/skeleton/Skeleton";
@@ -207,11 +209,28 @@ function EventsPageClientView({
     () => calendarBootstrap?.calendarOriginDateKey ?? null,
   );
   const [locationRevision, setLocationRevision] = useState(0);
+  const [inviteModalOpen, setInviteModalOpen] = useState(false);
+  const createParam = searchParams.get("create");
+  const isCalendarCreateFlow =
+    calendarOriginDateKey !== null || isCalendarOriginCreateParam(createParam);
 
   const inviteDraft = useSendBookingRequestsDraft({
     eventDate: form.eventDate,
-    enabled: createOpen && createStep === "form",
+    enabled: createOpen && createStep === "form" && !isCalendarCreateFlow,
   });
+  const queuedInviteDraft = useSendBookingRequestsDraft({
+    eventDate: form.eventDate,
+    enabled: createOpen && createStep === "form" && isCalendarCreateFlow,
+  });
+  const modalInviteDraft = useSendBookingRequestsDraft({
+    eventDate: form.eventDate,
+    enabled:
+      createOpen &&
+      createStep === "form" &&
+      isCalendarCreateFlow &&
+      inviteModalOpen,
+  });
+  const activeInviteDraft = isCalendarCreateFlow ? queuedInviteDraft : inviteDraft;
 
   useEffect(() => {
     function handlePopState() {
@@ -253,9 +272,6 @@ function EventsPageClientView({
   }, [createOpen, createStep, form.notes]);
   const createFormValidationError =
     createFormDateValidationError ?? createFormNotesValidationError;
-  const createParam = searchParams.get("create");
-  const isCalendarCreateFlow =
-    calendarOriginDateKey !== null || isCalendarOriginCreateParam(createParam);
   const showEventsListContent = !isCalendarCreateFlow && !createOpen;
 
   const resolvedRole = role ?? guardProfile?.role ?? null;
@@ -462,6 +478,9 @@ function EventsPageClientView({
     setCoverError(null);
     setFallbackColour(null);
     inviteDraft.resetDraft();
+    queuedInviteDraft.resetDraft();
+    modalInviteDraft.resetDraft();
+    setInviteModalOpen(false);
     setUnavailableConfirmOpen(false);
     setPendingPostCreateInviteSend(null);
     await loadBookingPlansForCreate();
@@ -488,6 +507,9 @@ function EventsPageClientView({
     setCoverError(null);
     setFallbackColour(null);
     inviteDraft.resetDraft();
+    queuedInviteDraft.resetDraft();
+    modalInviteDraft.resetDraft();
+    setInviteModalOpen(false);
     setUnavailableConfirmOpen(false);
     setPendingPostCreateInviteSend(null);
 
@@ -511,6 +533,35 @@ function EventsPageClientView({
     setForm((prev) => ({ ...prev, [key]: value }));
   }
 
+  function openInviteModal() {
+    modalInviteDraft.restoreDraft(queuedInviteDraft.getDraftSnapshot());
+    setInviteModalOpen(true);
+    setError(null);
+  }
+
+  function closeInviteModal() {
+    setInviteModalOpen(false);
+  }
+
+  function queueInviteDraft() {
+    const recipientIds = modalInviteDraft.selectedDjIds;
+    const validationError = modalInviteDraft.getValidationError(recipientIds);
+
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+
+    if (recipientIds.length === 0) {
+      setError("Select at least one DJ to invite.");
+      return;
+    }
+
+    queuedInviteDraft.restoreDraft(modalInviteDraft.getDraftSnapshot());
+    setError(null);
+    setInviteModalOpen(false);
+  }
+
   function finishCreateFlowNavigation(
     createdEventId: string,
     originDateKey: string | null,
@@ -519,6 +570,9 @@ function EventsPageClientView({
     setCalendarOriginDateKey(null);
     setCreateOpen(false);
     inviteDraft.resetDraft();
+    queuedInviteDraft.resetDraft();
+    modalInviteDraft.resetDraft();
+    setInviteModalOpen(false);
     setUnavailableConfirmOpen(false);
     setPendingPostCreateInviteSend(null);
 
@@ -542,13 +596,13 @@ function EventsPageClientView({
     const { successes, failures } = await sendBookingRequestsForRecipients({
       recipientIds,
       bookingInput: eventFormToRequestInput(form, createdEvent.id),
-      djOffers: inviteDraft.djOffers,
+      djOffers: activeInviteDraft.djOffers,
     });
 
     let inviteNotice: string | null = null;
 
     if (failures.length > 0) {
-      inviteNotice = formatBookingSendFailureMessage(failures, inviteDraft.djs);
+      inviteNotice = formatBookingSendFailureMessage(failures, activeInviteDraft.djs);
     } else if (successes.length > 0) {
       inviteNotice = buildBookingSendResultMessage(successes.length, 0);
     }
@@ -560,10 +614,10 @@ function EventsPageClientView({
     createdEvent: Event,
     originDateKey: string | null,
   ) {
-    const { sendableIds, skippedIds } = inviteDraft.resolveSendableRecipientIds();
+    const { sendableIds, skippedIds } = activeInviteDraft.resolveSendableRecipientIds();
 
     if (skippedIds.length > 0) {
-      inviteDraft.setSelectedDjIds(sendableIds);
+      activeInviteDraft.setSelectedDjIds(sendableIds);
     }
 
     if (sendableIds.length === 0) {
@@ -571,7 +625,7 @@ function EventsPageClientView({
       return;
     }
 
-    const validationError = inviteDraft.getValidationError(sendableIds);
+    const validationError = activeInviteDraft.getValidationError(sendableIds);
 
     if (validationError) {
       setError(validationError);
@@ -579,7 +633,7 @@ function EventsPageClientView({
       return;
     }
 
-    if (inviteDraft.unavailableDjWarnings.length > 0) {
+    if (activeInviteDraft.unavailableDjWarnings.length > 0) {
       setPendingPostCreateInviteSend({
         createdEvent,
         recipientIds: sendableIds,
@@ -620,9 +674,9 @@ function EventsPageClientView({
       return;
     }
 
-    if (inviteDraft.selectedDjIds.length > 0) {
-      const { sendableIds } = inviteDraft.resolveSendableRecipientIds();
-      const inviteValidationError = inviteDraft.getValidationError(sendableIds);
+    if (activeInviteDraft.selectedDjIds.length > 0) {
+      const { sendableIds } = activeInviteDraft.resolveSendableRecipientIds();
+      const inviteValidationError = activeInviteDraft.getValidationError(sendableIds);
 
       if (inviteValidationError) {
         setError(inviteValidationError);
@@ -650,12 +704,14 @@ function EventsPageClientView({
           setCalendarOriginDateKey(null);
           setCreateOpen(false);
           inviteDraft.resetDraft();
+          queuedInviteDraft.resetDraft();
+          modalInviteDraft.resetDraft();
           router.push(`/events/${created.id}?coverUpload=failed`);
           return;
         }
       }
 
-      if (inviteDraft.selectedDjIds.length === 0) {
+      if (activeInviteDraft.selectedDjIds.length === 0) {
         finishCreateFlowNavigation(created.id, originDateKey, null);
         return;
       }
@@ -946,12 +1002,22 @@ function EventsPageClientView({
                     maxLength={MAX_EVENT_NOTES_LENGTH}
                   />
 
-                  <SendBookingRequestsPanel
-                    draft={inviteDraft}
-                    disabled={saving}
-                    embedded
-                    listMaxHeightClass="max-h-48"
-                  />
+                  {isCalendarCreateFlow ? (
+                    <div className="border-t border-ftc-border-subtle pt-4">
+                      <EventDetailPrimaryAction onClick={openInviteModal} disabled={saving}>
+                        {queuedInviteDraft.selectedDjIds.length > 0
+                          ? `Send booking requests (${queuedInviteDraft.selectedDjIds.length} queued)`
+                          : "Send booking requests"}
+                      </EventDetailPrimaryAction>
+                    </div>
+                  ) : (
+                    <SendBookingRequestsPanel
+                      draft={inviteDraft}
+                      disabled={saving}
+                      embedded
+                      listMaxHeightClass="max-h-48"
+                    />
+                  )}
 
                   {error && error !== createFormValidationError ? (
                     <PlannerInlineError message={error} />
@@ -975,11 +1041,22 @@ function EventsPageClientView({
             </PlannerFormCard>
           ) : null}
 
+          <SendBookingRequestsModal
+            open={inviteModalOpen && isCalendarCreateFlow && createOpen && createStep === "form"}
+            draft={modalInviteDraft}
+            onClose={closeInviteModal}
+            disabled={saving}
+            showSendButton
+            onSend={queueInviteDraft}
+            confirmDiscardOnClose={false}
+            introText="Event details will be prefilled from this event, each DJ receives a private booking request DM"
+          />
+
           <UnavailableDjBookingConfirmModal
             open={unavailableConfirmOpen}
             loading={saving}
             eventDate={form.eventDate}
-            unavailableDjs={inviteDraft.unavailableDjWarnings}
+            unavailableDjs={activeInviteDraft.unavailableDjWarnings}
             onBack={() => {
               if (!saving) {
                 setUnavailableConfirmOpen(false);

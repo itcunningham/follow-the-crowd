@@ -202,6 +202,24 @@ export function useSendBookingRequestsDraft({
     setSearchQuery("");
   }
 
+  function getDraftSnapshot() {
+    return {
+      selectedDjIds,
+      djOffers,
+      searchQuery,
+    };
+  }
+
+  function restoreDraft(snapshot: {
+    selectedDjIds: string[];
+    djOffers: Record<string, DjSendOffer>;
+    searchQuery: string;
+  }) {
+    setSelectedDjIds(snapshot.selectedDjIds);
+    setDjOffers(snapshot.djOffers);
+    setSearchQuery(snapshot.searchQuery);
+  }
+
   return {
     djs,
     loadingDjs,
@@ -224,6 +242,8 @@ export function useSendBookingRequestsDraft({
     resolveSendableRecipientIds,
     getValidationError,
     resetDraft,
+    getDraftSnapshot,
+    restoreDraft,
     reloadDjs: loadDjs,
   };
 }
