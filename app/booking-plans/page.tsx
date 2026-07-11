@@ -8,6 +8,7 @@ import OnboardingGuard from "@/app/components/OnboardingGuard";
 import {
   PlannerWorkspacePageHeader,
   PLANNER_WORKSPACE_CONTENT_CLASS,
+  PLANNER_WORKSPACE_SECONDARY_TABS_ROW_CLASS,
   PLANNER_WORKSPACE_SHELL_CLASS,
 } from "@/app/components/planner/PlannerWorkspaceLayout";
 import { PlannerFormCard, PlannerFormField, PlannerInlineError } from "@/app/components/planner/PlannerUi";
@@ -386,25 +387,15 @@ export default function BookingPlansPage() {
           initialRole={displayRole}
           actions={
             !formOpen && (loadingAccess || loadingPlans || plans.length > 0) ? (
-              <div className="flex items-center gap-2">
-                {!planBulkManage.selectionMode ? (
-                  <>
-                    <button
-                      type="button"
-                      onClick={openCreateForm}
-                      className="shrink-0 cursor-pointer ftc-btn-primary px-4 py-2.5 text-sm uppercase tracking-wide"
-                    >
-                      Create event plan
-                    </button>
-                    {planBulkManage.showManageControl ? (
-                      <HistoryManageButton
-                        ariaLabel="Delete event plans"
-                        onClick={planBulkManage.enterSelectionMode}
-                      />
-                    ) : null}
-                  </>
-                ) : null}
-              </div>
+              !planBulkManage.selectionMode ? (
+                <button
+                  type="button"
+                  onClick={openCreateForm}
+                  className="shrink-0 cursor-pointer ftc-btn-primary px-4 py-2.5 text-sm uppercase tracking-wide"
+                >
+                  Create event plan
+                </button>
+              ) : null
             ) : null
           }
         />
@@ -484,7 +475,18 @@ export default function BookingPlansPage() {
 
           {!formOpen ? (
             <>
-              <SavedEventPlansSectionHeading />
+              <div className={PLANNER_WORKSPACE_SECONDARY_TABS_ROW_CLASS}>
+                <SavedEventPlansSectionHeading className="mb-0" />
+                {!loadingAccess &&
+                !loadingPlans &&
+                planBulkManage.showManageControl &&
+                !planBulkManage.selectionMode ? (
+                  <HistoryManageButton
+                    ariaLabel="Delete event plans"
+                    onClick={planBulkManage.enterSelectionMode}
+                  />
+                ) : null}
+              </div>
               {planBulkManage.showSelectionToolbar ? (
                 <HistorySelectionToolbar
                   selectedCount={planBulkManage.selectedCount}

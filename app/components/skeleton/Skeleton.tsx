@@ -440,9 +440,11 @@ function BookingCampaignCardSkeleton() {
   );
 }
 
-export function SavedEventPlansSectionHeading() {
+export function SavedEventPlansSectionHeading({ className = "mb-3" }: { className?: string }) {
   return (
-    <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-ftc-primary">
+    <p
+      className={`text-[11px] font-semibold uppercase tracking-[0.14em] text-ftc-primary ${className}`}
+    >
       Saved Event Plans
     </p>
   );
