@@ -329,7 +329,7 @@ export default function BookingPlansPage() {
             ) : (
               <div>
                 <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-ftc-primary">
-                  Saved Event Plan
+                  Saved Event Plans
                 </p>
                 <ul className="space-y-3">
                 {plans.map((plan) => (
