@@ -46,3 +46,21 @@ export function getEventNotesValidationError(notes: string): string | null {
     getTextLengthValidationError(notes, MAX_EVENT_NOTES_LENGTH)
   );
 }
+
+/** Single-line Event Plan card preview: first user-written line, with ellipsis if more lines follow. */
+export function formatEventPlanNotesPreview(notes: string): string | null {
+  const trimmed = notes.trim();
+
+  if (!trimmed) {
+    return null;
+  }
+
+  const lines = trimmed.split(/\r?\n/);
+  const firstLine = lines[0] ?? "";
+
+  if (lines.length === 1) {
+    return firstLine;
+  }
+
+  return `${firstLine}...`;
+}

@@ -22,7 +22,7 @@ import {
   HistorySelectionToolbar,
   useHistoryBulkManage,
 } from "@/app/components/history/HistoryBulkManage";
-import { getEventNotesValidationError, MAX_EVENT_NOTES_LENGTH } from "@/lib/events/eventNotes";
+import { formatEventPlanNotesPreview, getEventNotesValidationError, MAX_EVENT_NOTES_LENGTH } from "@/lib/events/eventNotes";
 import {
   createBookingPlan,
   deleteBookingPlans,
@@ -532,6 +532,8 @@ function EventPlanCard({
   onCardClick: () => void;
   onUseForBooking: () => void;
 }) {
+  const notesPreview = formatEventPlanNotesPreview(plan.notes);
+
   const selectionLabel = selected
     ? `Deselect ${plan.name}`
     : `Select ${plan.name}`;
@@ -568,12 +570,12 @@ function EventPlanCard({
             <dl className="mt-2 grid gap-1.5 text-sm sm:grid-cols-2">
               <PlanDetail label="Event" value={plan.event_name} />
               <PlanDetail label="Venue" value={plan.venue} />
-              {plan.notes?.trim() ? (
+              {notesPreview ? (
                 <PlanDetail
                   label="Notes"
-                  value={plan.notes.trim()}
+                  value={notesPreview}
                   className="sm:col-span-2"
-                  clamp
+                  truncate
                 />
               ) : null}
             </dl>
@@ -603,18 +605,18 @@ function PlanDetail({
   label,
   value,
   className = "",
-  clamp = false,
+  truncate = false,
 }: {
   label: string;
   value: string;
   className?: string;
-  clamp?: boolean;
+  truncate?: boolean;
 }) {
   return (
     <div className={className}>
       <dt className="text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted">{label}</dt>
       <dd
-        className={`mt-px ${clamp ? "line-clamp-2 text-ftc-text-secondary" : "text-ftc-text"}`}
+        className={`mt-px min-w-0 ${truncate ? "truncate text-ftc-text-secondary" : "text-ftc-text"}`}
       >
         {value}
       </dd>
