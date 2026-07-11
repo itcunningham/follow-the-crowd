@@ -335,10 +335,10 @@ export function getPlannerCalendarBadgeLabel(item: CalendarItem): string {
 }
 
 export const PLANNER_CALENDAR_LEGEND_ITEMS = [
-  { label: "Owned Event", kind: "event_upcoming" as const },
-  { label: "Sent Pending", kind: "pending" as const },
-  { label: "Sent Accepted", kind: "accepted" as const },
-  { label: "Sent Declined", kind: "declined" as const },
+  { label: "Owned Event", mobileLabel: "Owned", kind: "event_upcoming" as const },
+  { label: "Sent Pending", mobileLabel: "Pending", kind: "pending" as const },
+  { label: "Sent Accepted", mobileLabel: "Accepted", kind: "accepted" as const },
+  { label: "Sent Declined", mobileLabel: "Declined", kind: "declined" as const },
 ] as const;
 
 export function formatPlannerSelectedDateLabel(date: Date): string {

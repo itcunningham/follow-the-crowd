@@ -22,18 +22,42 @@ import {
   type CalendarItem,
 } from "@/lib/calendar";
 
-function PlannerCalendarLegend() {
+function PlannerCalendarMobileLegend() {
   return (
-    <div className="flex flex-wrap items-center justify-center gap-1.5 md:gap-2">
+    <div className="flex flex-wrap items-center justify-center gap-1.5 md:hidden">
+      {PLANNER_CALENDAR_LEGEND_ITEMS.map((item) => (
+        <span
+          key={item.mobileLabel}
+          className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${getCalendarStatusBadgeClass(item.kind)}`}
+        >
+          {item.mobileLabel}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function PlannerCalendarDesktopLegend() {
+  return (
+    <div className="hidden flex-wrap items-center justify-center gap-2 md:flex">
       {PLANNER_CALENDAR_LEGEND_ITEMS.map((item) => (
         <span
           key={item.label}
-          className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide md:px-2.5 md:py-0.5 ${getCalendarStatusBadgeClass(item.kind)}`}
+          className={`rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${getCalendarStatusBadgeClass(item.kind)}`}
         >
           {item.label}
         </span>
       ))}
     </div>
+  );
+}
+
+function PlannerCalendarLegend() {
+  return (
+    <>
+      <PlannerCalendarMobileLegend />
+      <PlannerCalendarDesktopLegend />
+    </>
   );
 }
 
