@@ -10,15 +10,15 @@ import {
   filterCalendarItemsForMonth,
   formatPlannerAgendaDateLabel,
   getCalendarLoadErrorMessage,
-  getCalendarStatusBadgeClass,
-  getCalendarStatusLegendDotClass,
+  getPlannerCalendarLegendDotClass,
+  getPlannerCalendarStatusBadgeClass,
   getCalendarWeekRows,
   getDefaultSelectedCalendarDate,
   getPlannerCalendarBadgeLabel,
   groupCalendarItemsByDate,
   isSameMonth,
   loadPlannerCalendarItems,
-  PLANNER_CALENDAR_LEGEND_ITEMS,
+  PLANNER_CALENDAR_VISIBLE_LEGEND_ITEMS,
   toDateKey,
   WEEKDAY_LABELS,
   type CalendarItem,
@@ -31,9 +31,7 @@ function PlannerCalendarMobileLegend() {
       aria-label="Calendar legend"
       className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 md:hidden"
     >
-      {PLANNER_CALENDAR_LEGEND_ITEMS.filter(
-        (item) => item.kind === "pending" || item.kind === "accepted",
-      ).map((item) => (
+      {PLANNER_CALENDAR_VISIBLE_LEGEND_ITEMS.map((item) => (
         <span
           key={item.mobileLabel}
           role="listitem"
@@ -41,7 +39,7 @@ function PlannerCalendarMobileLegend() {
         >
           <span
             aria-hidden="true"
-            className={`h-1.5 w-1.5 shrink-0 rounded-full ${getCalendarStatusLegendDotClass(item.kind)}`}
+            className={`h-1.5 w-1.5 shrink-0 rounded-full ${getPlannerCalendarLegendDotClass(item.kind)}`}
           />
           {item.mobileLabel}
         </span>
@@ -53,10 +51,10 @@ function PlannerCalendarMobileLegend() {
 function PlannerCalendarDesktopLegend() {
   return (
     <div className="hidden flex-wrap items-center justify-center gap-2 md:flex">
-      {PLANNER_CALENDAR_LEGEND_ITEMS.filter((item) => item.kind !== "declined").map((item) => (
+      {PLANNER_CALENDAR_VISIBLE_LEGEND_ITEMS.map((item) => (
         <span
           key={item.label}
-          className={`rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${getCalendarStatusBadgeClass(item.kind)}`}
+          className={`rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${getPlannerCalendarStatusBadgeClass(item.kind)}`}
         >
           {item.label}
         </span>
@@ -78,7 +76,7 @@ function PlannerCalendarItemBadge({ item }: { item: CalendarItem }) {
   return (
     <Link
       href={item.href}
-      className={`block w-full rounded-md border-0 px-1.5 py-1 text-left transition hover:opacity-90 md:px-2 md:py-1.5 ${getCalendarStatusBadgeClass(item.statusKind)}`}
+      className={`block w-full rounded-md border-0 px-1.5 py-1 text-left transition hover:opacity-90 md:px-2 md:py-1.5 ${getPlannerCalendarStatusBadgeClass(item.statusKind)}`}
     >
       <span className="block truncate text-[9px] font-semibold uppercase tracking-wide sm:text-[10px] md:text-xs">
         {getPlannerCalendarBadgeLabel(item)}
@@ -157,11 +155,11 @@ function PlannerCalendarAgendaCard({ item }: { item: CalendarItem }) {
       <div className="flex items-start gap-3">
         <span
           aria-hidden="true"
-          className={`mt-1 h-10 w-1 shrink-0 rounded-full ${getCalendarStatusBadgeClass(item.statusKind)}`}
+          className={`mt-1 h-10 w-1 shrink-0 rounded-full ${getPlannerCalendarStatusBadgeClass(item.statusKind)}`}
         />
         <div className="min-w-0 flex-1">
           <span
-            className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${getCalendarStatusBadgeClass(item.statusKind)}`}
+            className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${getPlannerCalendarStatusBadgeClass(item.statusKind)}`}
           >
             {getPlannerCalendarBadgeLabel(item)}
           </span>

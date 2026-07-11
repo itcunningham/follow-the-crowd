@@ -18,8 +18,10 @@ import {
   type EventDateDisplayLabel,
 } from "@/lib/events";
 import {
+  FTC_PLANNER_UPCOMING_DOT,
   FTC_STATUS_DANGER,
   FTC_STATUS_MUTED,
+  FTC_STATUS_PLANNER_UPCOMING,
   FTC_STATUS_PRIMARY,
   FTC_STATUS_SUCCESS,
   FTC_STATUS_WARNING,
@@ -120,6 +122,22 @@ export function getCalendarStatusBadgeClass(kind: CalendarStatusKind): string {
   }
 
   return FTC_STATUS_DANGER;
+}
+
+export function getPlannerCalendarStatusBadgeClass(kind: CalendarStatusKind): string {
+  if (kind === "event_upcoming" || kind === "event_draft" || kind === "event_completed") {
+    return FTC_STATUS_PLANNER_UPCOMING;
+  }
+
+  return getCalendarStatusBadgeClass(kind);
+}
+
+export function getPlannerCalendarLegendDotClass(kind: CalendarStatusKind): string {
+  if (kind === "event_upcoming" || kind === "event_draft" || kind === "event_completed") {
+    return FTC_PLANNER_UPCOMING_DOT;
+  }
+
+  return getCalendarStatusLegendDotClass(kind);
 }
 
 export function getCalendarStatusLegendDotClass(kind: CalendarStatusKind): string {
@@ -340,15 +358,15 @@ export async function loadPlannerCalendarItems(): Promise<CalendarItem[]> {
 
 export function getPlannerCalendarBadgeLabel(item: CalendarItem): string {
   if (item.type === "event") {
-    return "Owned Event";
+    return "Upcoming";
   }
 
   if (item.statusKind === "pending") {
-    return "Sent Pending";
+    return "Pending";
   }
 
   if (item.statusKind === "accepted") {
-    return "Sent Accepted";
+    return "Accepted";
   }
 
   if (item.statusKind === "declined") {
@@ -359,11 +377,15 @@ export function getPlannerCalendarBadgeLabel(item: CalendarItem): string {
 }
 
 export const PLANNER_CALENDAR_LEGEND_ITEMS = [
-  { label: "Owned Event", mobileLabel: "Owned", kind: "event_upcoming" as const },
-  { label: "Sent Pending", mobileLabel: "Pending", kind: "pending" as const },
-  { label: "Sent Accepted", mobileLabel: "Accepted", kind: "accepted" as const },
+  { label: "Upcoming", mobileLabel: "Upcoming", kind: "event_upcoming" as const },
+  { label: "Pending", mobileLabel: "Pending", kind: "pending" as const },
+  { label: "Accepted", mobileLabel: "Accepted", kind: "accepted" as const },
   { label: "Sent Declined", mobileLabel: "Declined", kind: "declined" as const },
 ] as const;
+
+export const PLANNER_CALENDAR_VISIBLE_LEGEND_ITEMS = PLANNER_CALENDAR_LEGEND_ITEMS.filter(
+  (item) => item.kind !== "declined",
+);
 
 export function formatPlannerSelectedDateLabel(date: Date): string {
   return formatIsoDateKeyForDisplay(toDateKey(date));
