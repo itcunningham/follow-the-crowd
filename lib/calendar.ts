@@ -10,6 +10,7 @@ import {
   parseEventDate,
   parseSetTimeRange,
   resolveEventDateKey,
+  resolveEventStartDateTime,
   SET_TIME_RANGE_JOINER,
 } from "@/lib/bookingDateTime";
 import {
@@ -52,6 +53,7 @@ export type CalendarItem = {
   statusKind: CalendarStatusKind;
   href: string;
   typeLabel: string;
+  startTimeSortKey: number;
 };
 
 export function resolveCalendarDateKey(value: string): string | null {
@@ -93,6 +95,47 @@ export function getCalendarTypeLabel(type: CalendarItemType): string {
   }
 
   return "Received booking";
+}
+
+function resolveCalendarItemStartTimeSortKey(eventDate: string, setTime: string): number {
+  const startDateTime = resolveEventStartDateTime(eventDate, setTime);
+
+  return startDateTime?.getTime() ?? Number.MAX_SAFE_INTEGER;
+}
+
+function getPlannerCalendarAgendaPriority(item: CalendarItem): number {
+  if (item.statusKind === "accepted") {
+    return 0;
+  }
+
+  if (item.statusKind === "pending") {
+    return 1;
+  }
+
+  if (item.statusKind === "event_cancelled" || item.statusKind === "cancelled") {
+    return 3;
+  }
+
+  return 2;
+}
+
+export function sortPlannerCalendarAgendaItems(items: CalendarItem[]): CalendarItem[] {
+  return [...items].sort((left, right) => {
+    const priorityDelta =
+      getPlannerCalendarAgendaPriority(left) - getPlannerCalendarAgendaPriority(right);
+
+    if (priorityDelta !== 0) {
+      return priorityDelta;
+    }
+
+    const timeDelta = left.startTimeSortKey - right.startTimeSortKey;
+
+    if (timeDelta !== 0) {
+      return timeDelta;
+    }
+
+    return left.title.localeCompare(right.title, undefined, { sensitivity: "base" });
+  });
 }
 
 export const WEEKDAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -240,6 +283,7 @@ function mapEventToCalendarItem(event: Event): CalendarItem | null {
       statusKind: "event_cancelled",
       href: `/events/${event.id}`,
       typeLabel: getCalendarTypeLabel("event"),
+      startTimeSortKey: resolveCalendarItemStartTimeSortKey(event.event_date, event.set_time),
     };
   }
 
@@ -255,6 +299,7 @@ function mapEventToCalendarItem(event: Event): CalendarItem | null {
     statusKind: mapEventDateDisplayKind(displayLabel),
     href: `/events/${event.id}`,
     typeLabel: getCalendarTypeLabel("event"),
+    startTimeSortKey: resolveCalendarItemStartTimeSortKey(event.event_date, event.set_time),
   };
 }
 
@@ -282,6 +327,7 @@ function mapBookingToCalendarItem(
     statusKind: booking.status,
     href,
     typeLabel: getCalendarTypeLabel(type),
+    startTimeSortKey: resolveCalendarItemStartTimeSortKey(booking.event_date, booking.set_time),
   };
 }
 

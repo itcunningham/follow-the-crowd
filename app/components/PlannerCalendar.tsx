@@ -29,6 +29,7 @@ import {
   loadPlannerCalendarItems,
   resolveCalendarOriginEventHref,
   resolvePlannerCalendarViewState,
+  sortPlannerCalendarAgendaItems,
   PLANNER_CALENDAR_VISIBLE_LEGEND_ITEMS,
   toDateKey,
   WEEKDAY_LABELS,
@@ -257,7 +258,10 @@ function PlannerCalendarMobileAgenda({
     agendaHeaderRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }, [selectedDateKey]);
 
-  const displayDateItems = itemsByDate.get(displayDateKey) ?? [];
+  const displayDateItems = useMemo(
+    () => sortPlannerCalendarAgendaItems(itemsByDate.get(displayDateKey) ?? []),
+    [displayDateKey, itemsByDate],
+  );
   const canCreateEventOnSelectedDate = !isDateKeyBeforeToday(selectedDateKey);
   const isPastEmptyDate =
     isDateKeyBeforeToday(selectedDateKey) && displayDateItems.length === 0;
