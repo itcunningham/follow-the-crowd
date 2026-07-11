@@ -382,7 +382,7 @@ function BookingCampaignCardSkeleton() {
 
 export function BookingPlanListSkeleton({ count = 2 }: { count?: number }) {
   return (
-    <ul aria-busy="true" aria-label="Loading booking plans" className="space-y-3">
+    <ul aria-busy="true" aria-label="Loading event plans" className="space-y-3">
       {Array.from({ length: count }, (_, index) => (
         <li key={index}>
           <BookingPlanCardSkeleton />
@@ -584,14 +584,14 @@ export function BookingPlansPageLoadingShell() {
     <div className={PLANNER_WORKSPACE_SHELL_CLASS}>
       <AppNavigation />
       <PlannerWorkspacePageHeader
-        title="Booking Plans"
+        title="Event Plans"
         initialRole={cachedRole}
         actions={
           <Link
             href="/booking-plans"
             className="shrink-0 ftc-btn-primary px-4 py-2.5 text-sm uppercase tracking-wide"
           >
-            Create booking plan
+            Create event plan
           </Link>
         }
       />

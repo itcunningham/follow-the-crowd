@@ -120,7 +120,7 @@ function getCreateStepMeta(step: CreateStep): { label: string; title: string } {
     case "source":
       return { label: "Start", title: "Create booking request" };
     case "pick-plan":
-      return { label: "Plan", title: "Choose a saved plan" };
+      return { label: "Plan", title: "Choose a saved event plan" };
     case "details":
       return { label: "1 of 2", title: "Booking details" };
     case "select-djs":
@@ -1101,9 +1101,9 @@ function BookingsPageContent() {
                     }}
                     className="w-full rounded-2xl border border-ftc-border-subtle bg-ftc-bg-elevated px-4 py-4 text-left transition hover:border-ftc-border-strong"
                   >
-                    <p className="text-base font-semibold text-ftc-text">Use a saved booking plan</p>
+                    <p className="text-base font-semibold text-ftc-text">Use a saved event plan</p>
                     <p className="mt-2 text-sm text-ftc-text-secondary">
-                      Prefill booking details from one of your saved plans, then edit before sending.
+                      Prefill booking details from one of your saved event plans, then edit before sending.
                     </p>
                   </button>
                   <button
@@ -1131,15 +1131,15 @@ function BookingsPageContent() {
                   </button>
 
                   {loadingPlans ? (
-                    <p className="text-sm text-ftc-text-muted">Loading saved plans...</p>
+                    <p className="text-sm text-ftc-text-muted">Loading saved event plans...</p>
                   ) : bookingPlans.length === 0 ? (
                     <div className="rounded-xl border border-dashed border-ftc-border bg-ftc-bg-elevated/40 px-4 py-6 text-center">
-                      <p className="text-sm text-ftc-text-secondary">No saved booking plans yet.</p>
+                      <p className="text-sm text-ftc-text-secondary">No saved event plans yet.</p>
                       <Link
                         href="/booking-plans"
                         className="mt-3 inline-block text-sm font-semibold text-ftc-primary transition hover:text-ftc-primary/90"
                       >
-                        Create a booking plan
+                        Create an event plan
                       </Link>
                     </div>
                   ) : (
@@ -1176,7 +1176,7 @@ function BookingsPageContent() {
                 <form onSubmit={handleContinueToDjSelection} className="space-y-4">
                   {selectedPlanId ? (
                     <p className="rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated px-3 py-2 text-xs text-ftc-text-secondary">
-                      Prefilled from a saved booking plan. You can edit any field before sending.
+                      Prefilled from a saved event plan. You can edit any field before sending.
                     </p>
                   ) : null}
 

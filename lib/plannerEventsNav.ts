@@ -8,7 +8,7 @@ export type EventsAreaSubNavItem = {
 
 export const EVENTS_AREA_SUB_NAV = {
   events: { href: "/events", label: "Events" },
-  bookingPlans: { href: "/booking-plans", label: "Booking Plans" },
+  bookingPlans: { href: "/booking-plans", label: "Event Plans" },
   calendar: { href: "/calendar", label: "Calendar" },
   gigs: { href: "/bookings", label: "Gigs" },
 } as const;

@@ -46,7 +46,7 @@ function getPlanLoadErrorMessage(error: unknown): string {
     const supabaseError = error as { message?: string; code?: string };
 
     if (supabaseError.code === "42P01" || supabaseError.code === "PGRST205") {
-      return "Booking plans table is not set up yet. Run scripts/setupBookingPlans.sql.";
+      return "Event plans table is not set up yet. Run scripts/setupBookingPlans.sql.";
     }
 
     if (supabaseError.message) {
@@ -54,7 +54,7 @@ function getPlanLoadErrorMessage(error: unknown): string {
     }
   }
 
-  return error instanceof Error ? error.message : "Failed to load booking plans";
+  return error instanceof Error ? error.message : "Failed to load event plans";
 }
 
 export default function BookingPlansPage() {
@@ -189,17 +189,17 @@ export default function BookingPlansPage() {
         setPlans((currentPlans) =>
           currentPlans.map((plan) => (plan.id === updatedPlan.id ? updatedPlan : plan)),
         );
-        setSuccessMessage("Booking plan updated");
+        setSuccessMessage("Event plan updated");
       } else {
         const createdPlan = await createBookingPlan(form);
         setPlans((currentPlans) => [createdPlan, ...currentPlans]);
-        setSuccessMessage("Booking plan created");
+        setSuccessMessage("Event plan created");
       }
 
       closeForm();
     } catch (saveError) {
       console.error("Failed to save booking plan:", saveError);
-      setError(saveError instanceof Error ? saveError.message : "Failed to save booking plan");
+      setError(saveError instanceof Error ? saveError.message : "Failed to save event plan");
     } finally {
       setSaving(false);
     }
@@ -219,7 +219,7 @@ export default function BookingPlansPage() {
         <AppNavigation />
 
         <PlannerWorkspacePageHeader
-          title="Booking Plans"
+          title="Event Plans"
           initialRole={displayRole}
           actions={
             !formOpen && (loadingAccess || loadingPlans || plans.length > 0) ? (
@@ -228,7 +228,7 @@ export default function BookingPlansPage() {
                 onClick={openCreateForm}
                 className="shrink-0 cursor-pointer ftc-btn-primary px-4 py-2.5 text-sm uppercase tracking-wide"
               >
-                Create booking plan
+                Create event plan
               </button>
             ) : null
           }
@@ -243,7 +243,7 @@ export default function BookingPlansPage() {
 
           {!loadingAccess && formOpen ? (
             <PlannerFormCard
-              title={editingPlanId ? "Edit booking plan" : "Create booking plan"}
+              title={editingPlanId ? "Edit event plan" : "Create event plan"}
               onCancel={closeForm}
               cancelDisabled={saving}
             >
@@ -301,7 +301,7 @@ export default function BookingPlansPage() {
                   disabled={saving}
                   className="ftc-btn-primary px-5 py-3 text-sm uppercase tracking-wide disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  {saving ? "Saving..." : editingPlanId ? "Save changes" : "Save booking plan"}
+                  {saving ? "Saving..." : editingPlanId ? "Save changes" : "Save event plan"}
                 </button>
               </form>
             </PlannerFormCard>
@@ -314,16 +314,16 @@ export default function BookingPlansPage() {
               <PlannerInlineError message={error} />
             ) : plans.length === 0 ? (
               <div className="ftc-card-empty px-6 py-12 text-center">
-                <p className="text-base font-medium text-ftc-text-secondary">No saved booking plans yet.</p>
+                <p className="text-base font-medium text-ftc-text-secondary">No saved event plans yet.</p>
                 <p className="mt-2 text-sm text-ftc-text-muted">
-                  Create a plan to reuse event details when booking DJs.
+                  Create an event plan to reuse details when booking DJs.
                 </p>
                 <button
                   type="button"
                   onClick={openCreateForm}
                   className="ftc-btn-primary mt-6 px-5 py-3 text-sm uppercase tracking-wide"
                 >
-                  Create booking plan
+                  Create event plan
                 </button>
               </div>
             ) : (
@@ -333,7 +333,7 @@ export default function BookingPlansPage() {
                     <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                       <div className="min-w-0">
                         <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-ftc-primary">
-                          Saved Booking Plan
+                          Saved Event Plan
                         </p>
                         <h3 className="mt-1 text-lg font-semibold text-ftc-text">{plan.name}</h3>
                         <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2">

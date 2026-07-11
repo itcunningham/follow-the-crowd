@@ -356,7 +356,7 @@ function EventsPageClientView({ initialTab }: EventsPageClientProps) {
       setBookingPlans(plans);
     } catch (loadError) {
       console.error("Failed to load booking plans for event create:", loadError);
-      setError(loadError instanceof Error ? loadError.message : "Failed to load booking plans");
+      setError(loadError instanceof Error ? loadError.message : "Failed to load event plans");
     } finally {
       setLoadingPlans(false);
     }
@@ -525,16 +525,16 @@ function EventsPageClientView({ initialTab }: EventsPageClientProps) {
               {createStep === "source" ? (
                 <div className="space-y-3">
                   <PlannerOptionCard
-                    title="Use a booking plan"
-                    description="Prefill event details from a saved booking plan, then edit before publishing"
+                    title="From an event plan"
+                    description="Prefill event details from a saved event plan, then edit before publishing"
                     onClick={() => {
                       setError(null);
                       setCreateStep("pick-plan");
                     }}
                   />
                   <PlannerOptionCard
-                    title="Start from scratch"
-                    description="Create a new event with empty details"
+                    title="From scratch"
+                    description="Start with an empty event"
                     onClick={() => {
                       setForm({
                         ...emptyEventForm,
@@ -554,12 +554,12 @@ function EventsPageClientView({ initialTab }: EventsPageClientProps) {
                   <PlannerBackLink onClick={() => setCreateStep("source")} />
 
                   {loadingPlans ? (
-                    <p className="text-sm text-ftc-text-muted">Loading saved plans...</p>
+                    <p className="text-sm text-ftc-text-muted">Loading saved event plans...</p>
                   ) : bookingPlans.length === 0 ? (
                     <div className="ftc-card-empty px-4 py-8 text-center">
-                      <p className="text-sm text-ftc-text-secondary">No saved booking plans yet.</p>
+                      <p className="text-sm text-ftc-text-secondary">No saved event plans yet.</p>
                       <PlannerLinkAction href="/booking-plans" className="mt-3">
-                        Create a booking plan
+                        Create an event plan
                       </PlannerLinkAction>
                     </div>
                   ) : (
