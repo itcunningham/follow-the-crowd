@@ -496,7 +496,7 @@ export function getPlannerCalendarBadgeLabel(item: CalendarItem): string {
   }
 
   if (item.statusKind === "declined") {
-    return "Sent Declined";
+    return "Declined";
   }
 
   return item.statusLabel;
@@ -507,7 +507,7 @@ export const PLANNER_CALENDAR_LEGEND_ITEMS = [
   { label: "Upcoming", mobileLabel: "Upcoming", kind: "event_upcoming" as const },
   { label: "Pending", mobileLabel: "Pending", kind: "pending" as const },
   { label: "Accepted", mobileLabel: "Accepted", kind: "accepted" as const },
-  { label: "Sent Declined", mobileLabel: "Declined", kind: "declined" as const },
+  { label: "Declined", mobileLabel: "Declined", kind: "declined" as const },
 ] as const;
 
 export const PLANNER_CALENDAR_VISIBLE_LEGEND_ITEMS = PLANNER_CALENDAR_LEGEND_ITEMS.filter(

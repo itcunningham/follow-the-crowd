@@ -28,7 +28,7 @@ export default function SendBookingRequestsPanel({
   introText,
   embedded = false,
   listMaxHeightClass = "max-h-80",
-  sendButtonLabelMode = "send",
+  sendButtonLabelMode = "confirm",
 }: SendBookingRequestsPanelProps) {
   const selectedCount = draft.sendableSelectedDjIds.length;
   const isConfirmMode = sendButtonLabelMode === "confirm";

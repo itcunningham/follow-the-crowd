@@ -277,6 +277,15 @@ function EventsPageClientView({
     return getEventFormFieldErrors(form);
   }, [createOpen, createStep, createSaveAttempted, form]);
   const createFormHasFieldErrors = hasEventFormFieldErrors(createFormFieldErrors);
+  const createFormNotesValidationError = useMemo(() => {
+    if (!createOpen || createStep !== "form" || !createSaveAttempted) {
+      return null;
+    }
+
+    return getEventNotesValidationError(form.notes);
+  }, [createOpen, createStep, createSaveAttempted, form.notes]);
+  const createFormHasValidationErrors =
+    createFormHasFieldErrors || Boolean(createFormNotesValidationError);
   const showEventsListContent = !isCalendarCreateFlow && !createOpen;
 
   const resolvedRole = role ?? guardProfile?.role ?? null;
@@ -1026,6 +1035,7 @@ function EventsPageClientView({
                     placeholder="Notes"
                     multiline
                     maxLength={MAX_EVENT_NOTES_LENGTH}
+                    error={createFormNotesValidationError}
                   />
 
                   {isCalendarCreateFlow ? (
@@ -1049,8 +1059,8 @@ function EventsPageClientView({
 
                   <button
                     type="submit"
-                    disabled={saving || (createSaveAttempted && createFormHasFieldErrors)}
-                    aria-disabled={saving || (createSaveAttempted && createFormHasFieldErrors)}
+                    disabled={saving || (createSaveAttempted && createFormHasValidationErrors)}
+                    aria-disabled={saving || (createSaveAttempted && createFormHasValidationErrors)}
                     className="ftc-btn-primary px-5 py-3 text-sm uppercase tracking-wide disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {saving ? "Saving..." : "Save event"}
@@ -1149,7 +1159,7 @@ function EventsPageClientView({
               ) : filteredEvents.length === 0 && !historyBulkManage.removing ? (
                 <PlannerEmptyState
                   title={
-                    isHistoryTab ? "No past or cancelled events" : "No active events."
+                    isHistoryTab ? "No past or cancelled events" : "No active events"
                   }
                 />
               ) : visibleFilteredEvents.length > 0 ? (

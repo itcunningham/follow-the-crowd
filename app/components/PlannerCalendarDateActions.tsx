@@ -15,6 +15,8 @@ import {
   getPlannerCalendarStatusBadgeClass,
   getPlannerCalendarBadgeLabel,
   getPlannerViewDaySubtitle,
+  getPlannerCalendarTodayDate,
+  isSameDay,
   resolveCalendarOriginEventHref,
   toDateKey,
   type CalendarItem,
@@ -72,6 +74,7 @@ export default function PlannerCalendarDateActions({
 
   const dateLabel = formatPlannerSelectedDateLabel(date);
   const dateKey = toDateKey(date);
+  const isToday = isSameDay(date, getPlannerCalendarTodayDate());
   const calendarOrigin = buildCalendarOriginState({
     calendarDate: dateKey,
     calendarView: "event",
@@ -106,9 +109,16 @@ export default function PlannerCalendarDateActions({
         onClick={(event) => event.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-3">
-          <h2 id="planner-date-actions-title" className="min-w-0 flex-1 text-base font-semibold text-ftc-text">
-            {dateLabel}
-          </h2>
+          <div className="min-w-0 flex-1">
+            <h2 id="planner-date-actions-title" className="text-base font-semibold text-ftc-text">
+              {dateLabel}
+            </h2>
+            {isToday ? (
+              <p className="mt-0.5 text-xs font-semibold uppercase tracking-wide text-ftc-primary">
+                Today
+              </p>
+            ) : null}
+          </div>
 
           <button
             type="button"
@@ -154,7 +164,7 @@ export default function PlannerCalendarDateActions({
             {items.length === 0 ? (
               isPastEmptyDate ? null : (
                 <p className="mt-4 rounded-xl border border-dashed border-ftc-border bg-ftc-surface/40 px-4 py-6 text-center text-sm text-ftc-text-muted">
-                  Nothing scheduled on this date.
+                  No events scheduled
                 </p>
               )
             ) : (
@@ -175,9 +185,6 @@ export default function PlannerCalendarDateActions({
                       <span className="mt-0.5 block truncate text-sm font-medium">
                         {formatPlannerCalendarItemHeadline(item.title, item.venue)}
                       </span>
-                      {item.type === "event" ? (
-                        <span className="mt-0.5 block text-xs opacity-80">{item.statusLabel}</span>
-                      ) : null}
                       {item.timeLabel ? (
                         <span className="mt-0.5 block text-xs opacity-70">{item.timeLabel}</span>
                       ) : null}

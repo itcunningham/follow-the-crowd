@@ -35,14 +35,14 @@ export default function PlannerCalendarActionButtons({
           onClick={onCreateClick}
           className={`${PLANNER_CALENDAR_ACTION_BUTTON_CLASS}${hasSavedEventPlans ? "" : " !flex-none"}`}
         >
-          Create Event
+          Create event
         </button>
       ) : (
         <Link
           href={createHref}
           className={`${PLANNER_CALENDAR_ACTION_BUTTON_CLASS}${hasSavedEventPlans ? "" : " !flex-none"}`}
         >
-          Create Event
+          Create event
         </Link>
       )}
 

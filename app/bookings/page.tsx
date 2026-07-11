@@ -1602,7 +1602,7 @@ function BookingsPageContent() {
                       type="text"
                       value={searchQuery}
                       onChange={(event) => setSearchQuery(event.target.value)}
-                      placeholder="Search by name or genre..."
+                      placeholder="Search DJs by name or genre"
                       className="ftc-input px-3.5 py-2.5"
                     />
                   </label>
@@ -1743,10 +1743,10 @@ function BookingsPageContent() {
                       className="flex-1 ftc-btn-primary w-full px-4 py-3 text-sm uppercase tracking-wide disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       {sending
-                        ? "Sending..."
+                        ? "Confirming..."
                         : allSelectedAreDuplicates
-                          ? "No new DJs to send"
-                          : `Send to ${sendableSelectedDjIds.length} DJ${sendableSelectedDjIds.length === 1 ? "" : "s"}`}
+                          ? "No new DJs to confirm"
+                          : `Confirm ${sendableSelectedDjIds.length} DJ${sendableSelectedDjIds.length === 1 ? "" : "s"}`}
                     </button>
                   </div>
                 </div>

@@ -105,7 +105,7 @@ export function EventDetailEditButton({ onClick }: { onClick: () => void }) {
       className="flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-xl border border-ftc-border-subtle bg-ftc-bg/80 px-2.5 text-ftc-text backdrop-blur-sm transition hover:border-ftc-border-strong hover:bg-ftc-bg-elevated sm:px-3"
     >
       <EventDetailEditButtonGlyph />
-      <span className="hidden text-xs font-semibold uppercase tracking-wide sm:inline">Edit</span>
+      <span className="text-xs font-semibold uppercase tracking-wide">Edit</span>
     </button>
   );
 }
@@ -133,7 +133,7 @@ export function EventDetailEditButtonPlaceholder() {
       className="pointer-events-none invisible flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-xl border border-transparent px-2.5 sm:px-3"
     >
       <EventDetailEditButtonGlyph />
-      <span className="hidden text-xs font-semibold uppercase tracking-wide sm:inline">Edit</span>
+      <span className="text-xs font-semibold uppercase tracking-wide">Edit</span>
     </span>
   );
 }

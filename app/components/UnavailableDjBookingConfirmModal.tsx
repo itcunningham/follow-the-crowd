@@ -42,7 +42,7 @@ export default function UnavailableDjBookingConfirmModal({
             Back
           </BookingSheetSecondaryButton>
           <BookingSheetWarningButton disabled={loading} onClick={() => void onConfirm()}>
-            {loading ? "Sending..." : isSingle ? "Send anyway" : "Send requests anyway"}
+            {loading ? "Confirming..." : isSingle ? "Confirm anyway" : "Confirm requests anyway"}
           </BookingSheetWarningButton>
         </>
       }
@@ -67,7 +67,7 @@ export default function UnavailableDjBookingConfirmModal({
         </div>
       )}
       <p className="mt-3 text-xs leading-relaxed text-ftc-text-muted">
-        You can still send a request if you want to discuss it.
+        You can still confirm a request if you want to discuss it.
       </p>
     </BookingSheetDialog>
   );

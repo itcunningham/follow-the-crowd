@@ -290,6 +290,15 @@ export default function EventDetailPage() {
     return getEventFormFieldErrors(editForm);
   }, [editForm, editSaveAttempted]);
   const editFormHasFieldErrors = hasEventFormFieldErrors(editFormFieldErrors);
+  const editFormNotesValidationError = useMemo(() => {
+    if (!editForm || !editSaveAttempted) {
+      return null;
+    }
+
+    return getEventNotesValidationError(editForm.notes);
+  }, [editForm, editSaveAttempted]);
+  const editFormHasValidationErrors =
+    editFormHasFieldErrors || Boolean(editFormNotesValidationError);
 
   const loadEventData = useCallback(async () => {
     if (!eventId) {
@@ -1027,12 +1036,7 @@ export default function EventDetailPage() {
                     >
                       <EventHeaderChatIcon />
                       <span className="min-w-0 truncate text-[10px] font-semibold uppercase tracking-wide text-ftc-text sm:text-xs">
-                        <span className="sm:hidden">
-                          {startingCrewChat ? "Starting" : "Start"}
-                        </span>
-                        <span className="hidden sm:inline">
-                          {startingCrewChat ? "Starting..." : "Start group chat"}
-                        </span>
+                        {startingCrewChat ? "Starting..." : "Start group chat"}
                       </span>
                     </button>
                   ) : (
@@ -1043,8 +1047,7 @@ export default function EventDetailPage() {
                     >
                       <EventHeaderChatIcon />
                       <span className="min-w-0 truncate text-[10px] font-semibold uppercase tracking-wide text-ftc-text sm:text-xs">
-                        <span className="sm:hidden">Chat</span>
-                        <span className="hidden sm:inline">Group chat</span>
+                        Group chat
                       </span>
                     </Link>
                   )}
@@ -1209,6 +1212,7 @@ export default function EventDetailPage() {
                   onChange={(value) => setEditForm((prev) => (prev ? { ...prev, notes: value } : prev))}
                   multiline
                   maxLength={MAX_EVENT_NOTES_LENGTH}
+                  error={editFormNotesValidationError}
                 />
 
                 {editFormError ? (
@@ -1217,8 +1221,8 @@ export default function EventDetailPage() {
 
                 <button
                   type="submit"
-                  disabled={savingEdit || (editSaveAttempted && editFormHasFieldErrors)}
-                  aria-disabled={savingEdit || (editSaveAttempted && editFormHasFieldErrors)}
+                  disabled={savingEdit || (editSaveAttempted && editFormHasValidationErrors)}
+                  aria-disabled={savingEdit || (editSaveAttempted && editFormHasValidationErrors)}
                   className="ftc-btn-primary px-5 py-3 text-sm uppercase tracking-wide disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {savingEdit ? "Saving event..." : "Save event changes"}

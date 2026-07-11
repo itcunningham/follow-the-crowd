@@ -103,24 +103,25 @@ function PlannerCalendarItemBadge({
     <Link
       href={resolveCalendarOriginEventHref(item.href, calendarOrigin)}
       onClick={prepareMobileDocumentScrollReset}
-      className={`block w-full rounded-md border-0 px-1.5 py-1 text-left transition hover:opacity-90 md:px-2 md:py-1.5 ${getPlannerCalendarStatusBadgeClass(item.statusKind)}`}
+      className={`flex w-full items-stretch gap-1 rounded-md border-0 px-1.5 py-1 text-left transition hover:opacity-90 md:gap-1.5 md:px-2 md:py-1.5 ${getPlannerCalendarStatusBadgeClass(item.statusKind)}`}
     >
-      <span className="block truncate text-[9px] font-semibold uppercase tracking-wide sm:text-[10px] md:text-xs">
-        {getPlannerCalendarBadgeLabel(item)}
-      </span>
-      <span className="block truncate text-[9px] normal-case tracking-normal opacity-90 sm:text-[10px] md:text-xs">
-        {formatPlannerCalendarItemHeadline(item.title, item.venue)}
-      </span>
-      {item.type === "event" ? (
-        <span className="block truncate text-[9px] normal-case tracking-normal opacity-70 sm:text-[10px] md:text-xs">
-          {item.statusLabel}
+      <span
+        aria-hidden="true"
+        className={`my-0.5 w-0.5 shrink-0 rounded-full ${getPlannerCalendarAgendaAccentClass(item.eventFallbackColour)}`}
+      />
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-[9px] font-semibold uppercase tracking-wide sm:text-[10px] md:text-xs">
+          {getPlannerCalendarBadgeLabel(item)}
         </span>
-      ) : null}
-      {item.timeLabel ? (
-        <span className="block truncate text-[9px] normal-case tracking-normal opacity-70 sm:text-[10px] md:text-xs">
-          {item.timeLabel}
+        <span className="block truncate text-[9px] normal-case tracking-normal opacity-90 sm:text-[10px] md:text-xs">
+          {formatPlannerCalendarItemHeadline(item.title, item.venue)}
         </span>
-      ) : null}
+        {item.timeLabel ? (
+          <span className="block truncate text-[9px] normal-case tracking-normal opacity-70 sm:text-[10px] md:text-xs">
+            {item.timeLabel}
+          </span>
+        ) : null}
+      </span>
     </Link>
   );
 }
@@ -128,12 +129,14 @@ function PlannerCalendarItemBadge({
 function PlannerCalendarDayCell({
   date,
   isToday,
+  isSelected,
   items,
   onSelectDate,
   monthStart,
 }: {
   date: Date;
   isToday: boolean;
+  isSelected: boolean;
   items: CalendarItem[];
   onSelectDate: (date: Date) => void;
   monthStart: Date;
@@ -159,7 +162,13 @@ function PlannerCalendarDayCell({
       aria-label={`Plan ${formatWrittenCalendarDateLabel(date, { includeYear: true })}`}
       onClick={() => onSelectDate(date)}
       onKeyDown={handleCellKeyDown}
-      className="relative min-h-[6.5rem] cursor-pointer rounded-lg border border-ftc-border/70 bg-ftc-bg-elevated/20 p-1.5 transition hover:border-ftc-border-strong/90 md:min-h-[9.5rem] md:p-3 lg:min-h-[10.5rem]"
+      className={`relative min-h-[6.5rem] cursor-pointer rounded-lg border p-1.5 transition md:min-h-[9.5rem] md:p-3 lg:min-h-[10.5rem] ${
+        isSelected
+          ? "border-ftc-primary bg-ftc-bg-elevated/40 ring-1 ring-ftc-primary/35"
+          : isToday
+            ? "border-ftc-primary/45 bg-ftc-bg-elevated/20 hover:border-ftc-primary/65"
+            : "border-ftc-border/70 bg-ftc-bg-elevated/20 hover:border-ftc-border-strong/90"
+      }`}
     >
       <span
         className={`inline-flex h-6 min-w-6 items-center justify-center rounded-full text-xs font-semibold md:h-7 md:min-w-7 md:text-sm ${
@@ -506,6 +515,7 @@ export default function PlannerCalendar({
 
   function handleSelectActionDate(date: Date) {
     clearInviteMessage();
+    setSelectedDate(date);
     setActionDate(date);
   }
 
@@ -603,7 +613,10 @@ export default function PlannerCalendar({
                       key={dateKey}
                       date={day}
                       isToday={isTodayDate(day)}
-                      items={monthItemsByDate.get(dateKey) ?? []}
+                      isSelected={isSameDay(day, selectedDate)}
+                      items={sortPlannerCalendarAgendaItems(
+                        monthItemsByDate.get(dateKey) ?? [],
+                      )}
                       onSelectDate={handleSelectActionDate}
                       monthStart={monthStart}
                     />
@@ -623,7 +636,13 @@ export default function PlannerCalendar({
 
       <PlannerCalendarDateActions
         date={actionDate}
-        items={actionDate ? monthItemsByDate.get(toDateKey(actionDate)) ?? [] : []}
+        items={
+          actionDate
+            ? sortPlannerCalendarAgendaItems(
+                monthItemsByDate.get(toDateKey(actionDate)) ?? [],
+              )
+            : []
+        }
         hasSavedEventPlans={hasSavedEventPlans}
         monthStart={monthStart}
         onClose={() => setActionDate(null)}
