@@ -3,10 +3,13 @@
 import { useEffect, useState } from "react";
 import type { Event } from "@/lib/events";
 import { getEventOwnerId } from "@/lib/events";
+import {
+  getCachedEventOwnerId,
+  seedEventOwnerId,
+  setCachedEventOwnerId,
+} from "@/lib/events/eventOwnerIdCache";
 import { readCachedNavigation } from "@/lib/navigationRoleCache";
 import { canManageEvents, type UserRole } from "@/lib/user/currentUser";
-
-const eventOwnerIdCache = new Map<string, string | null>();
 
 export function resolveEventEditAuthContext(
   role: UserRole | null | undefined,
@@ -83,6 +86,22 @@ export function resolveEventEditHeaderState({
   return "hidden";
 }
 
+function resolveInitialFetchedOwnerId(
+  eventId: string | undefined,
+  eventOwnerId?: string,
+): string | null | undefined {
+  if (!eventId) {
+    return null;
+  }
+
+  if (eventOwnerId) {
+    seedEventOwnerId(eventId, eventOwnerId);
+    return undefined;
+  }
+
+  return getCachedEventOwnerId(eventId);
+}
+
 export function useEventEditHeaderState({
   eventId,
   role,
@@ -94,17 +113,13 @@ export function useEventEditHeaderState({
   currentUserId: string | null | undefined;
   event?: Event | null;
 }): EventEditHeaderState {
-  const [fetchedOwnerId, setFetchedOwnerId] = useState<string | null | undefined>(() => {
-    if (!eventId || event?.owner_id) {
-      return undefined;
-    }
-
-    return eventOwnerIdCache.has(eventId) ? eventOwnerIdCache.get(eventId) : undefined;
-  });
+  const [fetchedOwnerId, setFetchedOwnerId] = useState<string | null | undefined>(() =>
+    resolveInitialFetchedOwnerId(eventId, event?.owner_id),
+  );
 
   useEffect(() => {
     if (eventId && event?.owner_id) {
-      eventOwnerIdCache.set(eventId, event.owner_id);
+      seedEventOwnerId(eventId, event.owner_id);
     }
   }, [event?.owner_id, eventId]);
 
@@ -113,8 +128,10 @@ export function useEventEditHeaderState({
       return;
     }
 
-    if (eventOwnerIdCache.has(eventId)) {
-      setFetchedOwnerId(eventOwnerIdCache.get(eventId) ?? null);
+    const cachedOwnerId = getCachedEventOwnerId(eventId);
+
+    if (cachedOwnerId !== undefined) {
+      setFetchedOwnerId(cachedOwnerId);
       return;
     }
 
@@ -123,7 +140,7 @@ export function useEventEditHeaderState({
 
     getEventOwnerId(eventId)
       .then((ownerId) => {
-        eventOwnerIdCache.set(eventId, ownerId);
+        setCachedEventOwnerId(eventId, ownerId);
 
         if (!cancelled) {
           setFetchedOwnerId(ownerId);

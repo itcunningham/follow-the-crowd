@@ -75,6 +75,7 @@ import {
 } from "@/lib/user/currentUser";
 import { readCachedNavRole } from "@/lib/navigationRoleCache";
 import { readEventsListCache, writeEventsListCache } from "@/lib/events/eventsListCache";
+import { seedEventOwnerId, seedEventOwnerIdsFromEvents } from "@/lib/events/eventOwnerIdCache";
 
 const emptyEventForm: EventInput = {
   name: "",
@@ -202,6 +203,7 @@ function EventsPageClientView({ initialTab }: EventsPageClientProps) {
 
     if (cachedEvents.length > 0) {
       setEvents(cachedEvents);
+      seedEventOwnerIdsFromEvents(cachedEvents);
       setLoadingEvents(false);
     } else {
       setLoadingEvents(true);
@@ -791,6 +793,7 @@ function EventsPageClientView({ initialTab }: EventsPageClientProps) {
                 <li key={event.id}>
                   <Link
                     href={eventHref}
+                    onClick={() => seedEventOwnerId(event.id, event.owner_id)}
                     className={`ftc-surface-row block w-full rounded-[var(--ftc-radius-xl)] p-4 focus-visible:outline-none sm:p-5 ${
                       cancelled ? "ftc-event-card-cancelled" : ""
                     }`}
