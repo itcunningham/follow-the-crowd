@@ -29,7 +29,7 @@ const COPY: Record<
     buttonLabel: "Cancel event",
     confirmLabel: "Cancel event",
     title: "Cancel event?",
-    body: "This event will be marked as cancelled. Pending booking requests will be cancelled too. Accepted, declined, messages, and history will be kept.",
+    body: "This event will be marked as cancelled. Pending booking requests will be cancelled too. Accepted, declined, messages, and history will be kept",
     keepLabel: "Keep event",
     actionLabel: "Cancel event",
     loadingLabel: "Cancelling...",

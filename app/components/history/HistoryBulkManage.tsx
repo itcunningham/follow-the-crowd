@@ -328,7 +328,7 @@ function HistoryRemoveConfirmDialogPanel({
             Remove from history?
           </h2>
           <p className="mt-2 text-sm leading-relaxed text-ftc-text-secondary">
-            {`This removes ${count} selected item${count === 1 ? "" : "s"} from your History view only. It does not delete the event, booking, chat, or any records.`}
+            {`This removes ${count} selected item${count === 1 ? "" : "s"} from your History view only. It does not delete the event, booking, chat, or any records`}
           </p>
         </div>
 
