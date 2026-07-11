@@ -2,6 +2,7 @@ import {
   getEventDateValidationError,
   isPlannerEventPast,
   resolveEventDateKey,
+  resolveEventStartDateTime,
 } from "@/lib/bookingDateTime";
 import type { BookingPlan } from "@/lib/bookingPlans";
 import {
@@ -221,6 +222,50 @@ export function filterVisiblePlannerHistoryEvents<
   T extends Pick<Event, "status" | "history_hidden_at">,
 >(events: T[]): T[] {
   return events.filter((event) => isEventVisibleInPlannerHistory(event));
+}
+
+type EventStartSortable = Pick<Event, "event_date" | "set_time" | "name">;
+
+function getEventStartSortTimestamp(event: EventStartSortable): number | null {
+  const startDateTime = resolveEventStartDateTime(event.event_date, event.set_time);
+  return startDateTime?.getTime() ?? null;
+}
+
+function compareEventsByStartTime(
+  left: EventStartSortable,
+  right: EventStartSortable,
+  direction: "asc" | "desc",
+): number {
+  const leftTimestamp = getEventStartSortTimestamp(left);
+  const rightTimestamp = getEventStartSortTimestamp(right);
+
+  if (leftTimestamp === null && rightTimestamp === null) {
+    return left.name.localeCompare(right.name);
+  }
+
+  if (leftTimestamp === null) {
+    return direction === "asc" ? 1 : -1;
+  }
+
+  if (rightTimestamp === null) {
+    return direction === "asc" ? -1 : 1;
+  }
+
+  if (leftTimestamp !== rightTimestamp) {
+    return direction === "asc"
+      ? leftTimestamp - rightTimestamp
+      : rightTimestamp - leftTimestamp;
+  }
+
+  return left.name.localeCompare(right.name);
+}
+
+export function sortEventsByStartAscending<T extends EventStartSortable>(events: T[]): T[] {
+  return [...events].sort((left, right) => compareEventsByStartTime(left, right, "asc"));
+}
+
+export function sortEventsByStartDescending<T extends EventStartSortable>(events: T[]): T[] {
+  return [...events].sort((left, right) => compareEventsByStartTime(left, right, "desc"));
 }
 
 export function getEventCancelledBadgeClass(): string {

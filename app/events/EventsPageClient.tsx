@@ -54,6 +54,8 @@ import {
   isPlannerEventActive,
   listDjInvitedEvents,
   listOwnedEvents,
+  sortEventsByStartAscending,
+  sortEventsByStartDescending,
   updateEventCoverImageUrl,
   type EventInput,
   type EventWithLineupStats,
@@ -205,20 +207,20 @@ function EventsPageClientView({ initialTab }: EventsPageClientProps) {
   const resolvedRole = role ?? guardProfile?.role ?? null;
   const isPlanner = canManageEvents(resolvedRole);
   const roleReady = resolvedRole !== null;
-  const upcomingEvents = useMemo(
-    () =>
-      isPlanner
-        ? events.filter((event) => isPlannerEventActive(event))
-        : events.filter((event) => !isEventCancelled(event)),
-    [events, isPlanner],
-  );
-  const historyEvents = useMemo(
-    () =>
-      isPlanner
-        ? filterPlannerHistoryTabEvents(events)
-        : events.filter((event) => isEventCancelled(event)),
-    [events, isPlanner],
-  );
+  const upcomingEvents = useMemo(() => {
+    const filtered = isPlanner
+      ? events.filter((event) => isPlannerEventActive(event))
+      : events.filter((event) => !isEventCancelled(event));
+
+    return sortEventsByStartAscending(filtered);
+  }, [events, isPlanner]);
+  const historyEvents = useMemo(() => {
+    const filtered = isPlanner
+      ? filterPlannerHistoryTabEvents(events)
+      : events.filter((event) => isEventCancelled(event));
+
+    return sortEventsByStartDescending(filtered);
+  }, [events, isPlanner]);
   const removableHistoryEvents = useMemo(
     () => (isPlanner ? filterVisiblePlannerHistoryEvents(events) : []),
     [events, isPlanner],
