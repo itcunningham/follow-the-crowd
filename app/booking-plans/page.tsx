@@ -14,8 +14,6 @@ import { PlannerFormCard, PlannerFormField, PlannerInlineError } from "@/app/com
 import { BookingPlanListSkeleton } from "@/app/components/skeleton/Skeleton";
 import { BookingDateField, BookingSetTimeRangeField } from "@/app/components/BookingDateTimeFields";
 import { formatDisplayEventDate, getEventDateValidationError } from "@/lib/bookingDateTime";
-import { BookingRateField } from "@/app/components/BookingRateField";
-import { normalizeStoredRate } from "@/lib/bookingRate";
 import {
   createBookingPlan,
   listBookingPlans,
@@ -132,7 +130,7 @@ export default function BookingPlansPage() {
       venue: plan.venue,
       eventDate: plan.event_date,
       setTime: plan.set_time,
-      fee: normalizeStoredRate(plan.fee),
+      fee: "",
       notes: plan.notes,
     });
     setError(null);
@@ -165,8 +163,7 @@ export default function BookingPlansPage() {
       !form.eventName.trim() ||
       !form.venue.trim() ||
       !form.eventDate.trim() ||
-      !form.setTime.trim() ||
-      !form.fee.trim()
+      !form.setTime.trim()
     ) {
       setError("Please fill in all required plan fields.");
       return;
@@ -252,21 +249,21 @@ export default function BookingPlansPage() {
                   label="Plan name"
                   value={form.name}
                   onChange={(value) => updateField("name", value)}
-                  placeholder="Synergy Vol. 001 — Main Room"
+                  placeholder="Plan name"
                   required
                 />
                 <PlannerFormField
                   label="Event name"
                   value={form.eventName}
                   onChange={(value) => updateField("eventName", value)}
-                  placeholder="Warehouse Sessions"
+                  placeholder="Event name"
                   required
                 />
                 <PlannerFormField
                   label="Venue"
                   value={form.venue}
                   onChange={(value) => updateField("venue", value)}
-                  placeholder="The Warehouse, Melbourne"
+                  placeholder="Venue"
                   required
                 />
                 <BookingDateField
@@ -281,16 +278,11 @@ export default function BookingPlansPage() {
                   required
                   eventDate={form.eventDate}
                 />
-                <BookingRateField
-                  value={form.fee}
-                  onChange={(value) => updateField("fee", value)}
-                  required
-                />
                 <PlannerFormField
                   label="Notes"
                   value={form.notes}
                   onChange={(value) => updateField("notes", value)}
-                  placeholder="Genre, vibe, travel, equipment..."
+                  placeholder="Notes"
                   multiline
                 />
 
