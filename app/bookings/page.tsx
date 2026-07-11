@@ -5,6 +5,8 @@ import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   BookingsPageLoadingShell,
+  BookingCreateEventDetailsFormSkeleton,
+  SkeletonBlock,
 } from "@/app/components/skeleton/Skeleton";
 import AppNavigation from "@/app/components/AppNavigation";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
@@ -316,6 +318,7 @@ function BookingsPageContent() {
   const [loadingPlans, setLoadingPlans] = useState(false);
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
   const [detailsEntrySource, setDetailsEntrySource] = useState<DetailsEntrySource | null>(null);
+  const [planPrefillPending, setPlanPrefillPending] = useState(false);
   const [djs, setDjs] = useState<UserProfile[]>([]);
   const [loadingDjs, setLoadingDjs] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -628,6 +631,7 @@ function BookingsPageContent() {
       setCreateStep("details");
       setSelectedPlanId(intent.planId);
       setDetailsEntrySource("event-plans-deeplink");
+      setPlanPrefillPending(true);
     }
 
     try {
@@ -648,6 +652,7 @@ function BookingsPageContent() {
           setError("Could not load the selected event plan. It may have been deleted.");
           setCreateStep("details");
           setSelectedPlanId(intent.planId);
+          setPlanPrefillPending(false);
           return true;
         }
 
@@ -659,6 +664,7 @@ function BookingsPageContent() {
         }));
         setSelectedPlanId(plan.id);
         setCreateStep("details");
+        setPlanPrefillPending(false);
         setError(null);
         return true;
       }
@@ -686,6 +692,9 @@ function BookingsPageContent() {
     } catch (loadError) {
       console.error("Failed to open bookings deep link:", loadError);
       setError(loadError instanceof Error ? loadError.message : "Failed to start booking flow");
+      if (intent.type === "plan") {
+        setPlanPrefillPending(false);
+      }
       setCreateStep(
         intent.type === "plan"
           ? "details"
@@ -751,6 +760,9 @@ function BookingsPageContent() {
 
         console.error("Failed to process bookings deep link:", loadError);
         setCreateOpen(true);
+        if (intent.type === "plan") {
+          setPlanPrefillPending(false);
+        }
         setError(loadError instanceof Error ? loadError.message : "Failed to start booking flow");
         deepLinkCompletedKeyRef.current = deepLinkKey;
       })
@@ -889,6 +901,7 @@ function BookingsPageContent() {
     setForm(emptyForm);
     setSelectedPlanId(null);
     setDetailsEntrySource(null);
+    setPlanPrefillPending(false);
     setBookingPlans([]);
     setSelectedDjIds([]);
     setDjOffers({});
@@ -1276,6 +1289,35 @@ function BookingsPageContent() {
     return null;
   }
 
+  const showDetailsPlanSkeleton = useMemo(() => {
+    if (effectiveCreateStep !== "details") {
+      return false;
+    }
+
+    if (detailsEntrySource === "pick-plan") {
+      return false;
+    }
+
+    const fromSavedPlanEntry =
+      detailsEntrySource === "event-plans-deeplink" ||
+      Boolean(effectiveSelectedPlanId) ||
+      deepLinkIntent?.type === "plan";
+
+    if (!fromSavedPlanEntry) {
+      return false;
+    }
+
+    return planPrefillPending || loadingPlans || !form.eventName.trim();
+  }, [
+    effectiveCreateStep,
+    detailsEntrySource,
+    effectiveSelectedPlanId,
+    deepLinkIntent,
+    planPrefillPending,
+    loadingPlans,
+    form.eventName,
+  ]);
+
   const showPlannerCreateDeepLink = plannerCreateVisible;
   const createStepMeta = getCreateStepMeta(effectiveCreateStep);
 
@@ -1336,20 +1378,32 @@ function BookingsPageContent() {
               <div
                 className={
                   effectiveCreateStep === "details"
-                    ? "mb-4"
+                    ? "mb-4 flex items-start justify-between gap-3"
                     : "mb-4 flex items-center justify-between gap-3"
                 }
               >
-                <div>
+                <div className="min-w-0 flex-1">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-ftc-text-muted">
                     Step {createStepMeta.label}
                   </p>
                   <h2 className="mt-1 text-lg font-semibold text-ftc-text">{createStepMeta.title}</h2>
-                  {effectiveCreateStep === "details" && selectedSavedPlanName ? (
-                    <p className="mt-1 text-sm text-ftc-text-muted">{selectedSavedPlanName}</p>
+                  {effectiveCreateStep === "details" ? (
+                    showDetailsPlanSkeleton ? (
+                      <SkeletonBlock className="mt-1 h-4 w-[10rem] max-w-full rounded-sm" />
+                    ) : selectedSavedPlanName ? (
+                      <p className="mt-1 text-sm text-ftc-text-muted">{selectedSavedPlanName}</p>
+                    ) : null
                   ) : null}
                 </div>
-                {effectiveCreateStep !== "details" ? (
+                {effectiveCreateStep === "details" ? (
+                  <button
+                    type="button"
+                    onClick={handleDetailsBack}
+                    className="shrink-0 py-1 text-xs font-semibold uppercase tracking-wide text-ftc-text-muted transition hover:text-ftc-text-secondary"
+                  >
+                    Back
+                  </button>
+                ) : (
                   <button
                     type="button"
                     onClick={closeCreateFlow}
@@ -1358,7 +1412,7 @@ function BookingsPageContent() {
                   >
                     Cancel
                   </button>
-                ) : null}
+                )}
               </div>
 
               {effectiveCreateStep === "source" ? (
@@ -1443,19 +1497,10 @@ function BookingsPageContent() {
               ) : null}
 
               {effectiveCreateStep === "details" ? (
+                showDetailsPlanSkeleton ? (
+                  <BookingCreateEventDetailsFormSkeleton />
+                ) : (
                 <form onSubmit={handleContinueToDjSelection} className="space-y-4">
-                  {loadingPlans && effectiveSelectedPlanId && !form.eventName.trim() ? (
-                    <p className="text-sm text-ftc-text-muted">Loading event plan...</p>
-                  ) : null}
-
-                  <button
-                    type="button"
-                    onClick={handleDetailsBack}
-                    className="text-xs font-semibold uppercase tracking-wide text-ftc-text-muted transition hover:text-ftc-text-secondary"
-                  >
-                    ← Back
-                  </button>
-
                   <PlannerFormField
                     label="Event name"
                     value={form.eventName}
@@ -1505,6 +1550,7 @@ function BookingsPageContent() {
                     Continue to DJ selection
                   </button>
                 </form>
+                )
               ) : null}
 
               {effectiveCreateStep === "select-djs" ? (

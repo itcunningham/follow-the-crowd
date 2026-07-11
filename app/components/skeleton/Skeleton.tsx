@@ -583,6 +583,77 @@ function canShowGigsWorkspaceTabs(role: UserRole | null): boolean {
   return role === "dj" || role === "both" || role === null;
 }
 
+export function BookingCreateEventDetailsFormSkeleton() {
+  return (
+    <div aria-hidden="true" className="space-y-4">
+      <div>
+        <SkeletonBlock className="h-[11px] w-[4.75rem] rounded-sm" />
+        <SkeletonBlock className="mt-1.5 h-[42px] w-full rounded-xl" />
+      </div>
+      <div>
+        <SkeletonBlock className="h-[11px] w-[2.75rem] rounded-sm" />
+        <SkeletonBlock className="mt-1.5 h-[42px] w-full rounded-xl" />
+      </div>
+      <div>
+        <SkeletonBlock className="h-[11px] w-[4.5rem] rounded-sm" />
+        <SkeletonBlock className="mt-1.5 h-[42px] w-full rounded-xl" />
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div>
+          <SkeletonBlock className="h-[11px] w-[4.5rem] rounded-sm" />
+          <SkeletonBlock className="mt-1.5 h-[42px] w-full rounded-xl" />
+        </div>
+        <div>
+          <SkeletonBlock className="h-[11px] w-[5.25rem] rounded-sm" />
+          <SkeletonBlock className="mt-1.5 h-[42px] w-full rounded-xl" />
+        </div>
+      </div>
+      <div>
+        <SkeletonBlock className="h-[11px] w-[2.25rem] rounded-sm" />
+        <SkeletonBlock className="mt-1.5 h-[7.5rem] w-full rounded-xl" />
+        <div className="mt-1 flex justify-end">
+          <SkeletonBlock className="h-3 w-12 rounded-sm" />
+        </div>
+      </div>
+      <SkeletonBlock className="h-[46px] w-full max-w-[15rem] rounded-xl" />
+    </div>
+  );
+}
+
+export function BookingCreateEventDetailsCardSkeleton({
+  showBackAction = false,
+  onBack,
+}: {
+  showBackAction?: boolean;
+  onBack?: () => void;
+}) {
+  return (
+    <section className="mb-6 ftc-card p-4 sm:p-5">
+      <div className="mb-4 flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-ftc-text-muted">
+            Step 1 of 2
+          </p>
+          <h2 className="mt-1 text-lg font-semibold text-ftc-text">Event details</h2>
+          <SkeletonBlock className="mt-1 h-4 w-[10rem] max-w-full rounded-sm" />
+        </div>
+        {showBackAction && onBack ? (
+          <button
+            type="button"
+            onClick={onBack}
+            className="shrink-0 py-1 text-xs font-semibold uppercase tracking-wide text-ftc-text-muted transition hover:text-ftc-text-secondary"
+          >
+            Back
+          </button>
+        ) : (
+          <SkeletonBlock className="mt-0.5 h-4 w-10 shrink-0 rounded-sm" />
+        )}
+      </div>
+      <BookingCreateEventDetailsFormSkeleton />
+    </section>
+  );
+}
+
 export function BookingsPageLoadingShell({
   variant = "neutral",
   plannerBookingCreateOpen = false,
@@ -613,7 +684,9 @@ export function BookingsPageLoadingShell({
         }
       />
       <div className={PLANNER_WORKSPACE_CONTENT_CLASS}>
-        {showGigsTabs ? (
+        {plannerBookingCreateOpen ? (
+          <BookingCreateEventDetailsCardSkeleton />
+        ) : showGigsTabs ? (
           <div className={PLANNER_WORKSPACE_SECONDARY_TABS_ROW_CLASS}>
             <GigsWorkspaceTabsShell />
           </div>
