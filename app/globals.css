@@ -314,11 +314,9 @@ html {
 .ftc-event-notes-textarea {
   resize: none !important;
   overflow-x: hidden !important;
-  overflow-y: auto !important;
   line-height: 1.5 !important;
   box-sizing: border-box !important;
-  height: calc(8lh + 1.25rem + 2px) !important;
-  min-height: calc(8lh + 1.25rem + 2px) !important;
+  min-height: calc(4lh + 1.25rem + 2px) !important;
   max-height: calc(8lh + 1.25rem + 2px) !important;
 }
 
