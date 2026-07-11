@@ -525,8 +525,8 @@ function EventsPageClientView({ initialTab }: EventsPageClientProps) {
               {createStep === "source" ? (
                 <div className="space-y-3">
                   <PlannerOptionCard
-                    title="From an event plan"
-                    description="Prefill event details from a saved event plan, then edit before publishing"
+                    title="From event plans"
+                    description="Choose one of your saved event plans"
                     onClick={() => {
                       setError(null);
                       setCreateStep("pick-plan");
@@ -534,7 +534,7 @@ function EventsPageClientView({ initialTab }: EventsPageClientProps) {
                   />
                   <PlannerOptionCard
                     title="From scratch"
-                    description="Start with an empty event"
+                    description="Start with a blank event"
                     onClick={() => {
                       setForm({
                         ...emptyEventForm,
