@@ -40,10 +40,13 @@ function PlannerMultilineField({
       <textarea
         ref={textareaRef}
         value={value}
-        onChange={(event) => handleChange(event.target.value)}
+        onChange={(event) => {
+          handleChange(event.target.value);
+          applyBoundedTextareaHeight(event.currentTarget);
+        }}
         onInput={(event) => applyBoundedTextareaHeight(event.currentTarget)}
         placeholder={placeholder}
-        rows={1}
+        rows={4}
         className="ftc-input ftc-event-notes-textarea px-3.5 py-2.5"
       />
       {maxLength !== undefined ? (
