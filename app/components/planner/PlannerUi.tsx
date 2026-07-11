@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { applyTextInputLimit } from "@/lib/textInputLimits";
-import { useBoundedAutoGrowTextarea } from "@/lib/useBoundedAutoGrowTextarea";
+import { applyBoundedTextareaHeight, useBoundedAutoGrowTextarea } from "@/lib/useBoundedAutoGrowTextarea";
 
 function PlannerMultilineField({
   label,
@@ -41,6 +41,7 @@ function PlannerMultilineField({
         ref={textareaRef}
         value={value}
         onChange={(event) => handleChange(event.target.value)}
+        onInput={(event) => applyBoundedTextareaHeight(event.currentTarget)}
         placeholder={placeholder}
         rows={1}
         className="ftc-input ftc-event-notes-textarea px-3.5 py-2.5"
