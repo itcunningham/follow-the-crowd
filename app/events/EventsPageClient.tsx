@@ -29,8 +29,10 @@ import EventCoverImageField, {
   emptyEventCoverImageFieldState,
   type EventCoverImageFieldState,
 } from "@/app/components/events/EventCoverImageField";
-import EventCreateDjInviteSection from "@/app/components/events/EventCreateDjInviteSection";
 import EventFallbackColourField from "@/app/components/events/EventFallbackColourField";
+import SendBookingRequestsPanel from "@/app/components/booking/SendBookingRequestsPanel";
+import { useSendBookingRequestsDraft } from "@/app/components/booking/useSendBookingRequestsDraft";
+import UnavailableDjBookingConfirmModal from "@/app/components/UnavailableDjBookingConfirmModal";
 import { EventCoverImageListThumb } from "@/app/components/events/EventCoverImageDisplay";
 import { EventListSkeleton, EventsListTabRow } from "@/app/components/skeleton/Skeleton";
 import {
@@ -43,14 +45,17 @@ import {
 import type { EventSelectableFallbackColourKey } from "@/lib/events/eventFallbackColour";
 import { stashEventCreateInviteMessage } from "@/lib/events/eventCreateInviteMessages";
 import {
+  formatBookingSendFailureMessage,
+  sendBookingRequestsForRecipients,
+} from "@/lib/bookings/sendBookingRequestsFlow";
+import {
   buildBookingSendResultMessage,
-  sendBookingRequestsToDjs,
-  type BookingSendFailure,
 } from "@/lib/bookingRequests";
 import { listBookingPlans, type BookingPlan } from "@/lib/bookingPlans";
 import {
   attachLineupStats,
   createEvent,
+  eventFormToRequestInput,
   eventInputFromBookingPlan,
   filterPlannerHistoryTabEvents,
   filterVisiblePlannerHistoryEvents,
@@ -63,6 +68,7 @@ import {
   sortEventsByStartAscending,
   sortEventsByStartDescending,
   updateEventCoverImageUrl,
+  type Event,
   type EventInput,
   type EventWithLineupStats,
 } from "@/lib/events";
@@ -85,7 +91,6 @@ import {
 import {
   canManageEvents,
   getCurrentUserProfile,
-  type UserProfile,
   type UserRole,
 } from "@/lib/user/currentUser";
 import { readCachedNavRole } from "@/lib/navigationRoleCache";
@@ -105,18 +110,11 @@ const emptyEventForm: EventInput = {
 
 type CreateStep = "source" | "pick-plan" | "form";
 
-function formatEventCreateInviteFailureMessage(
-  failures: BookingSendFailure[],
-  bookableDjs: UserProfile[],
-): string {
-  const lines = failures.map((failure) => {
-    const profile = bookableDjs.find((dj) => dj.user_id === failure.recipientId);
-    const name = profile?.display_name?.trim() || "DJ";
-    return `${name}: ${failure.message}`;
-  });
-
-  return `Event created, but some invites could not be sent: ${lines.join("; ")}`;
-}
+type PendingPostCreateInviteSend = {
+  createdEvent: Event;
+  recipientIds: string[];
+  originDateKey: string | null;
+};
 
 type EventsPageClientProps = {
   initialTab: string | null;
@@ -195,8 +193,9 @@ function EventsPageClientView({
   const [fallbackColour, setFallbackColour] = useState<EventSelectableFallbackColourKey | null>(
     null,
   );
-  const [inviteDjIds, setInviteDjIds] = useState<string[]>([]);
-  const [bookableDjs, setBookableDjs] = useState<UserProfile[]>([]);
+  const [unavailableConfirmOpen, setUnavailableConfirmOpen] = useState(false);
+  const [pendingPostCreateInviteSend, setPendingPostCreateInviteSend] =
+    useState<PendingPostCreateInviteSend | null>(null);
   const createFlyerActive = Boolean(
     coverField.file || coverPreviewUrl?.startsWith("blob:"),
   );
@@ -209,9 +208,10 @@ function EventsPageClientView({
   );
   const [locationRevision, setLocationRevision] = useState(0);
 
-  const handleBookableDjsLoaded = useCallback((djs: UserProfile[]) => {
-    setBookableDjs(djs);
-  }, []);
+  const inviteDraft = useSendBookingRequestsDraft({
+    eventDate: form.eventDate,
+    enabled: createOpen && createStep === "form",
+  });
 
   useEffect(() => {
     function handlePopState() {
@@ -461,8 +461,9 @@ function EventsPageClientView({
     setCoverPreviewUrl(null);
     setCoverError(null);
     setFallbackColour(null);
-    setInviteDjIds([]);
-    setBookableDjs([]);
+    inviteDraft.resetDraft();
+    setUnavailableConfirmOpen(false);
+    setPendingPostCreateInviteSend(null);
     await loadBookingPlansForCreate();
   }
 
@@ -486,8 +487,9 @@ function EventsPageClientView({
     setCoverPreviewUrl(null);
     setCoverError(null);
     setFallbackColour(null);
-    setInviteDjIds([]);
-    setBookableDjs([]);
+    inviteDraft.resetDraft();
+    setUnavailableConfirmOpen(false);
+    setPendingPostCreateInviteSend(null);
 
     if (originDateKey) {
       navigateToCalendarOrigin(originDateKey);
@@ -507,6 +509,88 @@ function EventsPageClientView({
 
   function updateField<Key extends keyof EventInput>(key: Key, value: EventInput[Key]) {
     setForm((prev) => ({ ...prev, [key]: value }));
+  }
+
+  function finishCreateFlowNavigation(
+    createdEventId: string,
+    originDateKey: string | null,
+    inviteNotice: string | null,
+  ) {
+    setCalendarOriginDateKey(null);
+    setCreateOpen(false);
+    inviteDraft.resetDraft();
+    setUnavailableConfirmOpen(false);
+    setPendingPostCreateInviteSend(null);
+
+    if (inviteNotice) {
+      stashEventCreateInviteMessage(inviteNotice);
+    }
+
+    if (originDateKey) {
+      navigateToCalendarOrigin(originDateKey);
+      return;
+    }
+
+    router.push(`/events/${createdEventId}`);
+  }
+
+  async function executePostCreateInvites(
+    createdEvent: Event,
+    recipientIds: string[],
+    originDateKey: string | null,
+  ) {
+    const { successes, failures } = await sendBookingRequestsForRecipients({
+      recipientIds,
+      bookingInput: eventFormToRequestInput(form, createdEvent.id),
+      djOffers: inviteDraft.djOffers,
+    });
+
+    let inviteNotice: string | null = null;
+
+    if (failures.length > 0) {
+      inviteNotice = formatBookingSendFailureMessage(failures, inviteDraft.djs);
+    } else if (successes.length > 0) {
+      inviteNotice = buildBookingSendResultMessage(successes.length, 0);
+    }
+
+    finishCreateFlowNavigation(createdEvent.id, originDateKey, inviteNotice);
+  }
+
+  async function requestPostCreateInvites(
+    createdEvent: Event,
+    originDateKey: string | null,
+  ) {
+    const { sendableIds, skippedIds } = inviteDraft.resolveSendableRecipientIds();
+
+    if (skippedIds.length > 0) {
+      inviteDraft.setSelectedDjIds(sendableIds);
+    }
+
+    if (sendableIds.length === 0) {
+      finishCreateFlowNavigation(createdEvent.id, originDateKey, null);
+      return;
+    }
+
+    const validationError = inviteDraft.getValidationError(sendableIds);
+
+    if (validationError) {
+      setError(validationError);
+      setSaving(false);
+      return;
+    }
+
+    if (inviteDraft.unavailableDjWarnings.length > 0) {
+      setPendingPostCreateInviteSend({
+        createdEvent,
+        recipientIds: sendableIds,
+        originDateKey,
+      });
+      setUnavailableConfirmOpen(true);
+      setSaving(false);
+      return;
+    }
+
+    await executePostCreateInvites(createdEvent, sendableIds, originDateKey);
   }
 
   async function handleSaveEvent(event: React.FormEvent<HTMLFormElement>) {
@@ -536,11 +620,20 @@ function EventsPageClientView({
       return;
     }
 
+    if (inviteDraft.selectedDjIds.length > 0) {
+      const { sendableIds } = inviteDraft.resolveSendableRecipientIds();
+      const inviteValidationError = inviteDraft.getValidationError(sendableIds);
+
+      if (inviteValidationError) {
+        setError(inviteValidationError);
+        return;
+      }
+    }
+
     setSaving(true);
     setError(null);
 
     const originDateKey = calendarOriginDateKey;
-    const pendingInviteDjIds = [...inviteDjIds];
 
     try {
       const created = await createEvent({
@@ -556,58 +649,43 @@ function EventsPageClientView({
           console.error("Failed to upload event cover image:", uploadError);
           setCalendarOriginDateKey(null);
           setCreateOpen(false);
+          inviteDraft.resetDraft();
           router.push(`/events/${created.id}?coverUpload=failed`);
           return;
         }
       }
 
-      let inviteNotice: string | null = null;
-
-      if (pendingInviteDjIds.length > 0) {
-        const { successes, failures } = await sendBookingRequestsToDjs(
-          pendingInviteDjIds,
-          {
-            eventName: form.name,
-            venue: form.venue,
-            eventDate: form.eventDate,
-            setTime: form.setTime,
-            notes: form.notes,
-            fee: "",
-            eventId: created.id,
-          },
-          {
-            perRecipient: () => ({
-              rateMode: "open",
-              fee: "",
-            }),
-          },
-        );
-
-        if (failures.length > 0) {
-          inviteNotice = formatEventCreateInviteFailureMessage(failures, bookableDjs);
-        } else if (successes.length > 0) {
-          inviteNotice = buildBookingSendResultMessage(successes.length, 0);
-        }
-      }
-
-      setCalendarOriginDateKey(null);
-      setCreateOpen(false);
-      setInviteDjIds([]);
-      setBookableDjs([]);
-
-      if (inviteNotice) {
-        stashEventCreateInviteMessage(inviteNotice);
-      }
-
-      if (originDateKey) {
-        navigateToCalendarOrigin(originDateKey);
+      if (inviteDraft.selectedDjIds.length === 0) {
+        finishCreateFlowNavigation(created.id, originDateKey, null);
         return;
       }
 
-      router.push(`/events/${created.id}`);
+      await requestPostCreateInvites(created, originDateKey);
     } catch (saveError) {
       console.error("Failed to create event:", saveError);
       setError(getEventsLoadErrorMessage(saveError));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function confirmPostCreateInvites() {
+    if (!pendingPostCreateInviteSend) {
+      return;
+    }
+
+    setSaving(true);
+    setError(null);
+
+    try {
+      await executePostCreateInvites(
+        pendingPostCreateInviteSend.createdEvent,
+        pendingPostCreateInviteSend.recipientIds,
+        pendingPostCreateInviteSend.originDateKey,
+      );
+    } catch (sendError) {
+      console.error("Failed to send booking requests after event create:", sendError);
+      setError(sendError instanceof Error ? sendError.message : "Failed to send booking requests");
     } finally {
       setSaving(false);
     }
@@ -868,11 +946,11 @@ function EventsPageClientView({
                     maxLength={MAX_EVENT_NOTES_LENGTH}
                   />
 
-                  <EventCreateDjInviteSection
-                    selectedDjIds={inviteDjIds}
-                    onSelectedDjIdsChange={setInviteDjIds}
-                    onBookableDjsLoaded={handleBookableDjsLoaded}
+                  <SendBookingRequestsPanel
+                    draft={inviteDraft}
                     disabled={saving}
+                    embedded
+                    listMaxHeightClass="max-h-48"
                   />
 
                   {error && error !== createFormValidationError ? (
@@ -896,6 +974,22 @@ function EventsPageClientView({
               ) : null}
             </PlannerFormCard>
           ) : null}
+
+          <UnavailableDjBookingConfirmModal
+            open={unavailableConfirmOpen}
+            loading={saving}
+            eventDate={form.eventDate}
+            unavailableDjs={inviteDraft.unavailableDjWarnings}
+            onBack={() => {
+              if (!saving) {
+                setUnavailableConfirmOpen(false);
+                setPendingPostCreateInviteSend(null);
+              }
+            }}
+            onConfirm={() => {
+              void confirmPostCreateInvites();
+            }}
+          />
 
           {showEventsListContent ? (
             <>

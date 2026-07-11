@@ -26,7 +26,6 @@ import {
   PlannerStatChip,
 } from "@/app/components/planner/PlannerUi";
 import ProfileAvatar from "@/app/components/ProfileAvatar";
-import DjBookingAvailabilityBadge from "@/app/components/DjBookingAvailabilityBadge";
 import { BookingDateField, BookingSetTimeRangeField } from "@/app/components/BookingDateTimeFields";
 import { getEventDateValidationError, getTodayDateKey } from "@/lib/bookingDateTime";
 import EventCoverImageField, {
@@ -39,20 +38,12 @@ import {
   isSelectableEventFallbackColourKey,
   type EventSelectableFallbackColourKey,
 } from "@/lib/events/eventFallbackColour";
-import { formatRateDisplay, isPositiveWholeDollarRate, normalizeStoredRate } from "@/lib/bookingRate";
-import EventBookingDuplicateBadge from "@/app/components/EventBookingDuplicateBadge";
+import { formatRateDisplay } from "@/lib/bookingRate";
 import UnavailableDjBookingConfirmModal from "@/app/components/UnavailableDjBookingConfirmModal";
-import {
-  getPlannerDjAvailabilityHints,
-  getUnavailableDjBookingWarnings,
-  type DjPlannerAvailabilityHint,
-} from "@/lib/djAvailability";
 import BookingStatusBadge from "@/app/components/booking/BookingStatusBadge";
-import EventDjSendOfferControls, {
-  DEFAULT_DJ_SEND_OFFER,
-  formatDjSendOfferSummary,
-  type DjSendOffer,
-} from "@/app/components/booking/EventDjSendOfferControls";
+import SendBookingRequestsPanel from "@/app/components/booking/SendBookingRequestsPanel";
+import { useSendBookingRequestsDraft } from "@/app/components/booking/useSendBookingRequestsDraft";
+import { sendBookingRequestsForRecipients } from "@/lib/bookings/sendBookingRequestsFlow";
 import {
   InlineOptionHelpButton,
   InlineOptionHelpPanel,
@@ -75,17 +66,14 @@ import {
   acceptProposedBookingRate,
   ALL_SELECTED_DJS_ALREADY_HAVE_EVENT_REQUEST_MESSAGE,
   buildBookingSendResultMessage,
-  buildEventBookingDuplicateMap,
   declineProposedBookingRate,
   filterActiveBookings,
-  filterSendableRecipientIdsForEvent,
   filterVisibleEventLineupBookings,
   getActiveEventLineupStats,
   getBookingMutationErrorMessage,
   hasPendingRateProposal,
   hideDeclinedBookingFromLineup,
   listBookingRequestsForEvent,
-  sendBookingRequestsToDjs,
   type ActiveBookingStatusFilter,
   type BookingRequest,
   type BookingRequestStatus,
@@ -125,9 +113,7 @@ import {
   getBookingRecipientProfilesByIds,
   getCurrentUserId,
   getCurrentUserProfile,
-  listBookableDjs,
   type BookingRecipientProfile,
-  type UserProfile,
   type UserRole,
 } from "@/lib/user/currentUser";
 
@@ -221,11 +207,6 @@ export default function EventDetailPage() {
   const [sendOpen, setSendOpen] = useState(false);
   const [sendDiscardConfirmOpen, setSendDiscardConfirmOpen] = useState(false);
   const sendBookingsSectionRef = useRef<HTMLDivElement | null>(null);
-  const [djOffers, setDjOffers] = useState<Record<string, DjSendOffer>>({});
-  const [djs, setDjs] = useState<UserProfile[]>([]);
-  const [selectedDjIds, setSelectedDjIds] = useState<string[]>([]);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [loadingDjs, setLoadingDjs] = useState(false);
   const [sending, setSending] = useState(false);
   const [cancellingBookingId, setCancellingBookingId] = useState<string | null>(null);
   const [proposalLoadingId, setProposalLoadingId] = useState<string | null>(null);
@@ -236,9 +217,6 @@ export default function EventDetailPage() {
   const [crewChatUnlock, setCrewChatUnlock] = useState<CrewChatUnlockState | null>(null);
   const [crewChatHelpOpen, setCrewChatHelpOpen] = useState(false);
   const [unavailableConfirmOpen, setUnavailableConfirmOpen] = useState(false);
-  const [djAvailabilityHints, setDjAvailabilityHints] = useState<
-    Map<string, DjPlannerAvailabilityHint>
-  >(new Map());
 
   const resolvedRole = role ?? guardProfile?.role ?? null;
   const resolvedUserId = currentUserId ?? guardProfile?.user_id ?? null;
@@ -271,6 +249,13 @@ export default function EventDetailPage() {
   const hasLinkedBookings = lineup.length > 0;
   const canManageEventLifecycle = isOwner && isPlanner && !eventIsCancelled;
 
+  const inviteDraft = useSendBookingRequestsDraft({
+    eventDate: event?.event_date ?? "",
+    eventId: event?.id ?? null,
+    existingBookings: lineup,
+    enabled: sendOpen && Boolean(event),
+  });
+
   const visibleLineup = useMemo(() => filterVisibleEventLineupBookings(lineup), [lineup]);
   const activeLineup = useMemo(() => filterActiveBookings(visibleLineup), [visibleLineup]);
   const lineupStats = useMemo(() => getActiveEventLineupStats(lineup), [lineup]);
@@ -284,20 +269,6 @@ export default function EventDetailPage() {
 
     return base.filter((booking) => booking.status === lineupFilter);
   }, [activeLineup, lineupFilter, visibleLineup]);
-
-  const filteredDjs = useMemo(() => {
-    const query = searchQuery.trim().toLowerCase();
-
-    if (!query) {
-      return djs;
-    }
-
-    return djs.filter((dj) => {
-      const name = dj.display_name?.toLowerCase() ?? "";
-      const genre = dj.genre?.toLowerCase() ?? "";
-      return name.includes(query) || genre.includes(query);
-    });
-  }, [djs, searchQuery]);
 
   const editFormDateValidationError = useMemo(() => {
     if (!editForm) {
@@ -314,67 +285,6 @@ export default function EventDetailPage() {
     return getEventNotesValidationError(editForm.notes);
   }, [editForm]);
   const editFormValidationError = editFormDateValidationError ?? editFormNotesValidationError;
-
-  const eventBookingDuplicates = useMemo(
-    () => buildEventBookingDuplicateMap(lineup),
-    [lineup],
-  );
-
-  const sendableSelectedDjIds = useMemo(
-    () => filterSendableRecipientIdsForEvent(selectedDjIds, lineup).sendableIds,
-    [selectedDjIds, lineup],
-  );
-
-  const unavailableDjWarnings = useMemo(
-    () => getUnavailableDjBookingWarnings(sendableSelectedDjIds, djs, djAvailabilityHints),
-    [sendableSelectedDjIds, djs, djAvailabilityHints],
-  );
-
-  const allSelectedAreDuplicates =
-    selectedDjIds.length > 0 && sendableSelectedDjIds.length === 0;
-
-  const sendOfferSummary = useMemo(() => {
-    return sendableSelectedDjIds.map((djId) => {
-      const dj = djs.find((item) => item.user_id === djId);
-      const offer = djOffers[djId] ?? DEFAULT_DJ_SEND_OFFER;
-
-      return {
-        djId,
-        name: dj?.display_name?.trim() || "DJ",
-        summary: formatDjSendOfferSummary(offer),
-      };
-    });
-  }, [sendableSelectedDjIds, djOffers, djs]);
-
-  const hasInvalidFixedOffers = useMemo(
-    () =>
-      sendableSelectedDjIds.some((djId) => {
-        const offer = djOffers[djId] ?? DEFAULT_DJ_SEND_OFFER;
-
-        return offer.rateMode === "fixed" && !isPositiveWholeDollarRate(offer.fee);
-      }),
-    [sendableSelectedDjIds, djOffers],
-  );
-
-  const sendButtonLabel = sending
-    ? "Sending..."
-    : sendableSelectedDjIds.length === 0
-      ? "No new DJs to send"
-      : `Send to ${sendableSelectedDjIds.length} DJ${sendableSelectedDjIds.length === 1 ? "" : "s"}`;
-
-  const hasSendBookingsDraft = useMemo(() => {
-    if (selectedDjIds.length > 0) {
-      return true;
-    }
-
-    return Object.values(djOffers).some((offer) => {
-      if (offer.rateMode !== DEFAULT_DJ_SEND_OFFER.rateMode) {
-        return true;
-      }
-
-      return Boolean(normalizeStoredRate(offer.fee));
-    });
-  }, [djOffers, selectedDjIds]);
 
   const loadEventData = useCallback(async () => {
     if (!eventId) {
@@ -691,32 +601,9 @@ export default function EventDetailPage() {
     }
 
     setSendOpen(true);
-    setDjOffers({});
-    setSelectedDjIds([]);
-    setSearchQuery("");
+    inviteDraft.resetDraft();
     setError(null);
     setSuccessMessage(null);
-    setLoadingDjs(true);
-
-    try {
-      const bookableDjs = await listBookableDjs();
-      setDjs(bookableDjs);
-
-      if (event?.event_date?.trim()) {
-        const hints = await getPlannerDjAvailabilityHints(
-          bookableDjs.map((dj) => dj.user_id),
-          event.event_date,
-        );
-        setDjAvailabilityHints(hints);
-      } else {
-        setDjAvailabilityHints(new Map());
-      }
-    } catch (loadError) {
-      console.error("Failed to load DJs for event bookings:", loadError);
-      setError(loadError instanceof Error ? loadError.message : "Failed to load DJs");
-    } finally {
-      setLoadingDjs(false);
-    }
   }
 
   useEffect(() => {
@@ -749,9 +636,7 @@ export default function EventDetailPage() {
 
     setSendOpen(false);
     setSendDiscardConfirmOpen(false);
-    setDjOffers({});
-    setSelectedDjIds([]);
-    setSearchQuery("");
+    inviteDraft.resetDraft();
     setUnavailableConfirmOpen(false);
   }
 
@@ -760,7 +645,7 @@ export default function EventDetailPage() {
       return;
     }
 
-    if (hasSendBookingsDraft) {
+    if (inviteDraft.hasDraft) {
       setSendDiscardConfirmOpen(true);
       return;
     }
@@ -791,64 +676,17 @@ export default function EventDetailPage() {
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [hasSendBookingsDraft, sendDiscardConfirmOpen, sendOpen, sending]);
-
-  function toggleDjSelection(userId: string) {
-    setSelectedDjIds((prev) => {
-      if (prev.includes(userId)) {
-        setDjOffers((offers) => {
-          const next = { ...offers };
-          delete next[userId];
-          return next;
-        });
-        return prev.filter((id) => id !== userId);
-      }
-
-      if (event) {
-        setDjOffers((offers) => ({
-          ...offers,
-          [userId]: offers[userId] ?? {
-            rateMode: "fixed",
-            fee: "",
-          },
-        }));
-      }
-
-      return [...prev, userId];
-    });
-  }
-
-  function updateDjOffer(userId: string, offer: DjSendOffer) {
-    setDjOffers((prev) => ({ ...prev, [userId]: offer }));
-  }
-
-  function getSendValidationError(recipientIds: string[]): string | null {
-    for (const djId of recipientIds) {
-      const offer = djOffers[djId] ?? DEFAULT_DJ_SEND_OFFER;
-
-      if (offer.rateMode === "fixed" && !isPositiveWholeDollarRate(offer.fee)) {
-        const dj = djs.find((item) => item.user_id === djId);
-        const name = dj?.display_name?.trim() || "each selected DJ";
-
-        return `Enter a positive whole-dollar fixed offer for ${name}.`;
-      }
-    }
-
-    return null;
-  }
+  }, [inviteDraft.hasDraft, sendDiscardConfirmOpen, sendOpen, sending]);
 
   function requestSendBookings() {
     if (!event) {
       return;
     }
 
-    const { sendableIds, skippedIds } = filterSendableRecipientIdsForEvent(
-      selectedDjIds,
-      lineup,
-    );
+    const { sendableIds, skippedIds } = inviteDraft.resolveSendableRecipientIds();
 
     if (skippedIds.length > 0) {
-      setSelectedDjIds(sendableIds);
+      inviteDraft.setSelectedDjIds(sendableIds);
     }
 
     if (sendableIds.length === 0) {
@@ -856,16 +694,14 @@ export default function EventDetailPage() {
       return;
     }
 
-    const validationError = getSendValidationError(sendableIds);
+    const validationError = inviteDraft.getValidationError(sendableIds);
 
     if (validationError) {
       setError(validationError);
       return;
     }
 
-    if (
-      getUnavailableDjBookingWarnings(sendableIds, djs, djAvailabilityHints).length > 0
-    ) {
+    if (inviteDraft.unavailableDjWarnings.length > 0) {
       setUnavailableConfirmOpen(true);
       return;
     }
@@ -874,45 +710,36 @@ export default function EventDetailPage() {
   }
 
   async function executeSendBookings(
-    recipientIds: string[] = sendableSelectedDjIds,
+    recipientIds: string[] = inviteDraft.sendableSelectedDjIds,
     skippedDuplicateCount = 0,
   ) {
     if (!event) {
       return;
     }
 
-    const { sendableIds, skippedIds } = filterSendableRecipientIdsForEvent(
-      recipientIds,
-      lineup,
-    );
+    const { sendableIds, skippedIds } = inviteDraft.resolveSendableRecipientIds(recipientIds);
     const totalSkippedDuplicates = skippedDuplicateCount + skippedIds.length;
 
     if (sendableIds.length === 0) {
       setError(ALL_SELECTED_DJS_ALREADY_HAVE_EVENT_REQUEST_MESSAGE);
-      setSelectedDjIds([]);
+      inviteDraft.setSelectedDjIds([]);
       return;
     }
 
     if (skippedIds.length > 0) {
-      setSelectedDjIds(sendableIds);
+      inviteDraft.setSelectedDjIds(sendableIds);
     }
 
     setSending(true);
     setError(null);
 
     try {
-      const baseInput = eventToRequestInput(event);
       const { successes, failures, skippedDuplicateRecipientIds } =
-        await sendBookingRequestsToDjs(sendableIds, baseInput, {
-          existingEventBookings: lineup,
-          perRecipient: (recipientId) => {
-            const offer = djOffers[recipientId] ?? DEFAULT_DJ_SEND_OFFER;
-
-            return {
-              rateMode: offer.rateMode,
-              fee: normalizeStoredRate(offer.fee),
-            };
-          },
+        await sendBookingRequestsForRecipients({
+          recipientIds: sendableIds,
+          bookingInput: eventToRequestInput(event),
+          existingBookings: lineup,
+          djOffers: inviteDraft.djOffers,
         });
       const skippedCount = totalSkippedDuplicates + skippedDuplicateRecipientIds.length;
 
@@ -1657,133 +1484,14 @@ export default function EventDetailPage() {
               onCancel={requestCloseSendBookings}
               cancelDisabled={sending}
             >
-              <p className="text-sm text-ftc-text-secondary">
-                Event details will be prefilled from this event, each DJ receives a private booking
-                request DM
-              </p>
-
-              <input
-                type="search"
-                value={searchQuery}
-                onChange={(event) => setSearchQuery(event.target.value)}
-                placeholder="Search DJs by name or genre"
-                className="mb-4 mt-4 ftc-input px-3.5 py-2.5"
+              <SendBookingRequestsPanel
+                draft={inviteDraft}
+                disabled={sending}
+                sending={sending}
+                showSendButton
+                onSend={requestSendBookings}
+                introText="Event details will be prefilled from this event, each DJ receives a private booking request DM"
               />
-
-              {loadingDjs ? (
-                <p className="text-sm text-ftc-text-muted">Loading DJs...</p>
-              ) : filteredDjs.length === 0 ? (
-                <PlannerEmptyPanel message="No available DJs to invite." />
-              ) : (
-                <ul className="max-h-80 space-y-2 overflow-y-auto">
-                  {filteredDjs.map((dj) => {
-                    const selected = selectedDjIds.includes(dj.user_id);
-                    const displayName = dj.display_name?.trim() || "DJ";
-                    const availabilityHint = djAvailabilityHints.get(dj.user_id);
-                    const duplicateStatus = eventBookingDuplicates.get(dj.user_id);
-                    const isDuplicateBlocked = Boolean(duplicateStatus);
-                    const offer = djOffers[dj.user_id] ?? DEFAULT_DJ_SEND_OFFER;
-
-                    return (
-                      <li key={dj.user_id}>
-                        <button
-                          type="button"
-                          disabled={isDuplicateBlocked}
-                          onClick={() => toggleDjSelection(dj.user_id)}
-                          className={`ftc-option-card flex w-full items-center gap-3 px-3 py-3 disabled:cursor-not-allowed ${
-                            selected
-                              ? "ftc-option-card-selected"
-                              : isDuplicateBlocked
-                                ? "opacity-70"
-                                : ""
-                          }`}
-                        >
-                          <span
-                            className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border ${
-                              selected
-                                ? "border-0 bg-ftc-primary text-ftc-bg"
-                                : "border-ftc-border-subtle bg-ftc-bg-input text-transparent"
-                            }`}
-                          >
-                            ✓
-                          </span>
-                          <ProfileAvatar
-                            name={displayName}
-                            avatarUrl={dj.avatar_url}
-                            size="sm"
-                          />
-                          <div className="min-w-0 flex-1 text-left">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <p className="font-semibold text-ftc-text">{displayName}</p>
-                              {duplicateStatus ? (
-                                <EventBookingDuplicateBadge status={duplicateStatus} />
-                              ) : null}
-                              {availabilityHint ? (
-                                <DjBookingAvailabilityBadge hint={availabilityHint} />
-                              ) : null}
-                            </div>
-                            {dj.genre?.trim() ? (
-                              <p className="text-sm text-ftc-text-muted">{dj.genre}</p>
-                            ) : null}
-                          </div>
-                        </button>
-                        {selected ? (
-                          <div className="mt-2 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated p-3">
-                            <EventDjSendOfferControls
-                              offer={offer}
-                              disabled={sending}
-                              onChange={(nextOffer) => updateDjOffer(dj.user_id, nextOffer)}
-                            />
-                          </div>
-                        ) : null}
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
-
-              {allSelectedAreDuplicates ? (
-                <p className="mt-4 text-xs text-ftc-text-muted">
-                  Selected DJs already have a request for this event.
-                </p>
-              ) : null}
-
-              {sendOfferSummary.length > 0 ? (
-                <div className="mt-4 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated p-4">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-ftc-text-muted">
-                    Send summary
-                  </p>
-                  <ul className="mt-3 space-y-2">
-                    {sendOfferSummary.map((item) => (
-                      <li
-                        key={item.djId}
-                        className="flex items-start justify-between gap-3 text-sm"
-                      >
-                        <span className="min-w-0 truncate font-medium text-ftc-text">
-                          {item.name}
-                        </span>
-                        <span className="shrink-0 text-right text-ftc-text-secondary">
-                          {item.summary}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                  {hasInvalidFixedOffers ? (
-                    <p className="mt-3 text-xs text-[var(--ftc-color-warning)]">
-                      Enter a positive whole-dollar amount for each fixed offer before sending
-                    </p>
-                  ) : null}
-                </div>
-              ) : null}
-
-              <button
-                type="button"
-                onClick={requestSendBookings}
-                disabled={sending || sendableSelectedDjIds.length === 0 || hasInvalidFixedOffers}
-                className="mt-4 w-full ftc-btn-primary px-5 py-3 text-sm uppercase tracking-wide disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {sendButtonLabel}
-              </button>
             </PlannerFormCard>
           </div>
         </div>
@@ -1810,7 +1518,7 @@ export default function EventDetailPage() {
         open={unavailableConfirmOpen}
         loading={sending}
         eventDate={event?.event_date ?? ""}
-        unavailableDjs={unavailableDjWarnings}
+        unavailableDjs={inviteDraft.unavailableDjWarnings}
         onBack={() => {
           if (!sending) {
             setUnavailableConfirmOpen(false);

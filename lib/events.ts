@@ -106,6 +106,21 @@ function formatLocalDateKey(date: Date): string {
   return `${year}-${month}-${day}`;
 }
 
+export function eventFormToRequestInput(
+  form: Pick<EventInput, "name" | "venue" | "eventDate" | "setTime" | "notes">,
+  eventId: string,
+): BookingRequestInput {
+  return {
+    eventName: form.name,
+    venue: form.venue,
+    eventDate: form.eventDate,
+    setTime: form.setTime,
+    fee: "",
+    notes: form.notes,
+    eventId,
+  };
+}
+
 export function eventToRequestInput(event: Event): BookingRequestInput {
   return {
     eventName: event.name,
