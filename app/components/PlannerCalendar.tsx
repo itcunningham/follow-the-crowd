@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import CalendarMonthNav from "@/app/components/CalendarMonthNav";
 import PlannerCalendarActionButtons from "@/app/components/PlannerCalendarActionButtons";
@@ -227,7 +227,8 @@ function PlannerCalendarMobileAgenda({
   }, [selectedDateKey]);
 
   const displayDateItems = itemsByDate.get(displayDateKey) ?? [];
-  const canCreateEventOnSelectedDate = !isDateKeyBeforeToday(displayDateKey);
+  const canCreateEventOnSelectedDate = !isDateKeyBeforeToday(selectedDateKey);
+  const isPastSelectedDate = isDateKeyBeforeToday(selectedDateKey);
 
   return (
     <div className="mt-4 md:hidden">
@@ -250,7 +251,7 @@ function PlannerCalendarMobileAgenda({
 
         {canCreateEventOnSelectedDate ? (
           <PlannerCalendarActionButtons
-            dateKey={displayDateKey}
+            dateKey={selectedDateKey}
             hasSavedEventPlans={hasSavedEventPlans}
             className="mt-3"
           />
@@ -264,7 +265,9 @@ function PlannerCalendarMobileAgenda({
       >
         {displayDateItems.length === 0 ? (
           <div className="rounded-xl border border-dashed border-ftc-border-subtle bg-ftc-surface/30 px-4 py-8 text-center">
-            <p className="text-sm text-ftc-text-muted">No events scheduled.</p>
+            <p className="text-sm text-ftc-text-muted">
+              {isPastSelectedDate ? "No events on this date." : "No events scheduled."}
+            </p>
           </div>
         ) : (
           displayDateItems.map((item) => <PlannerCalendarAgendaCard key={item.id} item={item} />)
@@ -300,7 +303,7 @@ export default function PlannerCalendar({
   const [hasSavedEventPlans, setHasSavedEventPlans] = useState(false);
   const [selectedDate, setSelectedDate] = useState(() => initialView.selectedDate);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const nextView = resolvePlannerCalendarViewState(searchParams.get("date"));
 
     setSelectedDate((current) =>

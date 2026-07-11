@@ -63,11 +63,15 @@ import {
   uploadEventCoverImage,
 } from "@/lib/events/eventCoverImage";
 import {
+  buildPlannerCalendarHref,
+  resolveCalendarOriginDateKey,
+  stashPlannerCalendarReturnDate,
+} from "@/lib/calendar";
+import {
   buildEventDetailHref,
   buildEventsListHref,
   isCalendarOriginCreateParam,
   resolveCalendarCreateBootstrapState,
-  resolveCalendarCreateReturnHref,
   resolveCalendarCreateInitialStep,
   resolveEventsListTabParam,
 } from "@/lib/events/eventsListNavigation";
@@ -177,11 +181,8 @@ function EventsPageClientView({
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [eventsListReady, setEventsListReady] = useState(false);
-  const [eventDateOverride, setEventDateOverride] = useState<string | null>(
-    () => calendarBootstrap?.eventDateOverride ?? null,
-  );
-  const [createReturnHref, setCreateReturnHref] = useState<string | null>(
-    () => calendarBootstrap?.createReturnHref ?? null,
+  const [calendarOriginDateKey, setCalendarOriginDateKey] = useState<string | null>(
+    () => calendarBootstrap?.calendarOriginDateKey ?? null,
   );
   const [locationRevision, setLocationRevision] = useState(0);
 
@@ -227,7 +228,7 @@ function EventsPageClientView({
     createFormDateValidationError ?? createFormNotesValidationError;
   const createParam = searchParams.get("create");
   const isCalendarCreateFlow =
-    createReturnHref !== null || isCalendarOriginCreateParam(createParam);
+    calendarOriginDateKey !== null || isCalendarOriginCreateParam(createParam);
   const showEventsListContent = !isCalendarCreateFlow && !createOpen;
 
   const resolvedRole = role ?? guardProfile?.role ?? null;
@@ -364,7 +365,7 @@ function EventsPageClientView({
         router.replace("/events");
       };
 
-      if (createReturnHref) {
+      if (calendarOriginDateKey) {
         void loadBookingPlansForCreate().finally(finishNavigation);
         return;
       }
@@ -372,7 +373,7 @@ function EventsPageClientView({
       void openCreateFlow({
         eventDate: eventDateParam,
         initialStep: resolveCalendarCreateInitialStep(createParam),
-        returnHref: resolveCalendarCreateReturnHref(eventDateParam),
+        calendarOriginDateKey: resolveCalendarOriginDateKey(eventDateParam),
       }).finally(finishNavigation);
       return;
     }
@@ -406,20 +407,27 @@ function EventsPageClientView({
     }
   }
 
+  function navigateToCalendarOrigin(dateKey: string) {
+    stashPlannerCalendarReturnDate(dateKey);
+    router.push(buildPlannerCalendarHref(dateKey));
+  }
+
   async function openCreateFlow(options?: {
     eventDate?: string;
     initialStep?: CreateStep;
-    returnHref?: string | null;
+    calendarOriginDateKey?: string | null;
   }) {
-    const prefilledEventDate = sanitizePrefilledEventDateKey(options?.eventDate ?? "");
+    const originDateKey =
+      options?.calendarOriginDateKey ?? resolveCalendarOriginDateKey(options?.eventDate);
+    const prefilledEventDate =
+      originDateKey ?? sanitizePrefilledEventDateKey(options?.eventDate ?? "");
     setCreateOpen(true);
     setCreateStep(options?.initialStep ?? "source");
-    setCreateReturnHref(options?.returnHref ?? null);
+    setCalendarOriginDateKey(originDateKey);
     setForm({
       ...emptyEventForm,
       eventDate: prefilledEventDate,
     });
-    setEventDateOverride(prefilledEventDate || null);
     setSelectedPlanId(null);
     setError(null);
     setCoverField(emptyEventCoverImageFieldState);
@@ -434,14 +442,13 @@ function EventsPageClientView({
       return;
     }
 
-    const returnHref = createReturnHref;
+    const originDateKey = calendarOriginDateKey;
 
     setCreateOpen(false);
     setCreateStep("source");
     setForm(emptyEventForm);
     setSelectedPlanId(null);
-    setEventDateOverride(null);
-    setCreateReturnHref(null);
+    setCalendarOriginDateKey(null);
     setError(null);
     setCoverField(emptyEventCoverImageFieldState);
     if (coverPreviewUrl?.startsWith("blob:")) {
@@ -451,8 +458,8 @@ function EventsPageClientView({
     setCoverError(null);
     setFallbackColour(null);
 
-    if (returnHref) {
-      router.push(returnHref);
+    if (originDateKey) {
+      navigateToCalendarOrigin(originDateKey);
     }
   }
 
@@ -461,7 +468,7 @@ function EventsPageClientView({
     setSelectedPlanId(plan.id);
     setForm({
       ...input,
-      eventDate: eventDateOverride ?? input.eventDate,
+      eventDate: calendarOriginDateKey ?? input.eventDate,
     });
     setCreateStep("form");
     setError(null);
@@ -501,7 +508,7 @@ function EventsPageClientView({
     setSaving(true);
     setError(null);
 
-    const calendarReturnHref = createReturnHref;
+    const originDateKey = calendarOriginDateKey;
 
     try {
       const created = await createEvent({
@@ -515,18 +522,18 @@ function EventsPageClientView({
           await updateEventCoverImageUrl(created.id, coverUrl);
         } catch (uploadError) {
           console.error("Failed to upload event cover image:", uploadError);
-          setCreateReturnHref(null);
+          setCalendarOriginDateKey(null);
           setCreateOpen(false);
           router.push(`/events/${created.id}?coverUpload=failed`);
           return;
         }
       }
 
-      setCreateReturnHref(null);
+      setCalendarOriginDateKey(null);
       setCreateOpen(false);
 
-      if (calendarReturnHref) {
-        router.push(calendarReturnHref);
+      if (originDateKey) {
+        navigateToCalendarOrigin(originDateKey);
         return;
       }
 
@@ -670,7 +677,7 @@ function EventsPageClientView({
                     onClick={() => {
                       setForm({
                         ...emptyEventForm,
-                        eventDate: eventDateOverride ?? "",
+                        eventDate: calendarOriginDateKey ?? "",
                       });
                       setSelectedPlanId(null);
                       setCreateStep("form");

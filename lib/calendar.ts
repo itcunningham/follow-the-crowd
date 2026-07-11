@@ -9,6 +9,7 @@ import {
   formatIsoDateKeyForDisplay,
   parseEventDate,
   parseSetTimeRange,
+  resolveEventDateKey,
   SET_TIME_RANGE_JOINER,
 } from "@/lib/bookingDateTime";
 import {
@@ -487,6 +488,50 @@ export function buildPlannerCalendarHref(dateKey: string): string {
   return `/calendar?${params.toString()}`;
 }
 
+const PLANNER_CALENDAR_RETURN_DATE_STORAGE_KEY = "ftc.planner-calendar.return-date";
+
+/** Canonical YYYY-MM-DD for Calendar-origin flows; does not apply create min-date rules. */
+export function resolveCalendarOriginDateKey(
+  eventDate: string | null | undefined,
+): string | null {
+  if (!eventDate?.trim()) {
+    return null;
+  }
+
+  return resolveEventDateKey(eventDate) ?? null;
+}
+
+export function stashPlannerCalendarReturnDate(dateKey: string): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  sessionStorage.setItem(PLANNER_CALENDAR_RETURN_DATE_STORAGE_KEY, dateKey);
+}
+
+export function clearPlannerCalendarReturnDate(): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  sessionStorage.removeItem(PLANNER_CALENDAR_RETURN_DATE_STORAGE_KEY);
+}
+
+function consumePlannerCalendarReturnDate(): string | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  const value = sessionStorage.getItem(PLANNER_CALENDAR_RETURN_DATE_STORAGE_KEY);
+
+  if (!value) {
+    return null;
+  }
+
+  sessionStorage.removeItem(PLANNER_CALENDAR_RETURN_DATE_STORAGE_KEY);
+  return value;
+}
+
 export function parsePlannerCalendarDateParam(dateKey: string | null | undefined): Date | null {
   if (!dateKey?.trim()) {
     return null;
@@ -519,9 +564,20 @@ export function resolvePlannerCalendarViewState(
   const restoredDate = parsePlannerCalendarDateParam(dateParam);
 
   if (restoredDate) {
+    clearPlannerCalendarReturnDate();
     return {
       selectedDate: restoredDate,
       monthStart: getMonthStart(restoredDate),
+    };
+  }
+
+  const stashedDateKey = consumePlannerCalendarReturnDate();
+  const stashedDate = parsePlannerCalendarDateParam(stashedDateKey);
+
+  if (stashedDate) {
+    return {
+      selectedDate: stashedDate,
+      monthStart: getMonthStart(stashedDate),
     };
   }
 
