@@ -1,4 +1,6 @@
 import { buildGigsListHref, parseDjGigsListTab } from "@/lib/bookings/gigsListNavigation";
+import { buildPlannerCalendarHref } from "@/lib/calendar";
+import { sanitizePrefilledEventDateKey } from "@/lib/bookingDateTime";
 
 export type EventsListTab = "active" | "history";
 
@@ -67,4 +69,50 @@ export function resolveEventDetailBackHref(
   }
 
   return buildEventsListHref(parseEventsListTab(fromTab));
+}
+
+export type CalendarOriginCreateParam = "calendar" | "calendar-plans";
+
+export function isCalendarOriginCreateParam(
+  create: string | null | undefined,
+): create is CalendarOriginCreateParam {
+  return create === "calendar" || create === "calendar-plans";
+}
+
+export function resolveCalendarCreateReturnHref(eventDate: string | null | undefined): string {
+  const sanitizedDate = sanitizePrefilledEventDateKey(eventDate ?? "");
+  return sanitizedDate ? buildPlannerCalendarHref(sanitizedDate) : "/calendar";
+}
+
+export function resolveCalendarCreateInitialStep(
+  create: string | null | undefined,
+): "form" | "pick-plan" {
+  return create === "calendar-plans" ? "pick-plan" : "form";
+}
+
+export type CalendarCreateBootstrapState = {
+  createOpen: true;
+  createReturnHref: string;
+  createStep: "form" | "pick-plan";
+  eventDateOverride: string | null;
+  prefilledEventDate: string;
+};
+
+export function resolveCalendarCreateBootstrapState(
+  create: string | null | undefined,
+  eventDate: string | null | undefined,
+): CalendarCreateBootstrapState | null {
+  if (!isCalendarOriginCreateParam(create)) {
+    return null;
+  }
+
+  const prefilledEventDate = sanitizePrefilledEventDateKey(eventDate ?? "");
+
+  return {
+    createOpen: true,
+    createReturnHref: resolveCalendarCreateReturnHref(eventDate),
+    createStep: resolveCalendarCreateInitialStep(create),
+    eventDateOverride: prefilledEventDate || null,
+    prefilledEventDate,
+  };
 }

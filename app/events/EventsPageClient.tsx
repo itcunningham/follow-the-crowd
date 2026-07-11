@@ -65,11 +65,12 @@ import {
 import {
   buildEventDetailHref,
   buildEventsListHref,
+  isCalendarOriginCreateParam,
+  resolveCalendarCreateBootstrapState,
+  resolveCalendarCreateReturnHref,
+  resolveCalendarCreateInitialStep,
   resolveEventsListTabParam,
 } from "@/lib/events/eventsListNavigation";
-import {
-  buildPlannerCalendarHref,
-} from "@/lib/calendar";
 import {
   canManageEvents,
   getCurrentUserProfile,
@@ -94,7 +95,33 @@ type CreateStep = "source" | "pick-plan" | "form";
 
 type EventsPageClientProps = {
   initialTab: string | null;
+  initialCreate?: string | null;
+  initialEventDate?: string | null;
 };
+
+function readCreateParamsFromLocation(): { create: string | null; eventDate: string | null } {
+  if (typeof window === "undefined") {
+    return { create: null, eventDate: null };
+  }
+
+  const params = new URLSearchParams(window.location.search);
+  return {
+    create: params.get("create"),
+    eventDate: params.get("eventDate"),
+  };
+}
+
+function getCalendarBootstrapState(
+  initialCreate?: string | null,
+  initialEventDate?: string | null,
+) {
+  const locationParams = readCreateParamsFromLocation();
+
+  return resolveCalendarCreateBootstrapState(
+    initialCreate ?? locationParams.create,
+    initialEventDate ?? locationParams.eventDate,
+  );
+}
 
 export default function EventsPageClient(props: EventsPageClientProps) {
   return (
@@ -104,7 +131,11 @@ export default function EventsPageClient(props: EventsPageClientProps) {
   );
 }
 
-function EventsPageClientView({ initialTab }: EventsPageClientProps) {
+function EventsPageClientView({
+  initialTab,
+  initialCreate,
+  initialEventDate,
+}: EventsPageClientProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const guardProfile = useGuardProfile();
@@ -114,12 +145,18 @@ function EventsPageClientView({ initialTab }: EventsPageClientProps) {
   );
   const [events, setEvents] = useState<EventWithLineupStats[]>([]);
   const [loadingEvents, setLoadingEvents] = useState(true);
-  const [createOpen, setCreateOpen] = useState(false);
-  const [createStep, setCreateStep] = useState<CreateStep>("source");
+  const calendarBootstrap = getCalendarBootstrapState(initialCreate, initialEventDate);
+  const [createOpen, setCreateOpen] = useState(() => calendarBootstrap?.createOpen ?? false);
+  const [createStep, setCreateStep] = useState<CreateStep>(
+    () => calendarBootstrap?.createStep ?? "source",
+  );
   const [bookingPlans, setBookingPlans] = useState<BookingPlan[]>([]);
-  const [loadingPlans, setLoadingPlans] = useState(false);
+  const [loadingPlans, setLoadingPlans] = useState(() => Boolean(calendarBootstrap?.createOpen));
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
-  const [form, setForm] = useState<EventInput>(emptyEventForm);
+  const [form, setForm] = useState<EventInput>(() => ({
+    ...emptyEventForm,
+    eventDate: calendarBootstrap?.prefilledEventDate ?? "",
+  }));
   const [coverField, setCoverField] = useState<EventCoverImageFieldState>(
     emptyEventCoverImageFieldState,
   );
@@ -135,8 +172,12 @@ function EventsPageClientView({ initialTab }: EventsPageClientProps) {
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [eventsListReady, setEventsListReady] = useState(false);
-  const [eventDateOverride, setEventDateOverride] = useState<string | null>(null);
-  const [createReturnHref, setCreateReturnHref] = useState<string | null>(null);
+  const [eventDateOverride, setEventDateOverride] = useState<string | null>(
+    () => calendarBootstrap?.eventDateOverride ?? null,
+  );
+  const [createReturnHref, setCreateReturnHref] = useState<string | null>(
+    () => calendarBootstrap?.createReturnHref ?? null,
+  );
   const [locationRevision, setLocationRevision] = useState(0);
 
   useEffect(() => {
@@ -179,8 +220,10 @@ function EventsPageClientView({ initialTab }: EventsPageClientProps) {
   }, [createOpen, createStep, form.notes]);
   const createFormValidationError =
     createFormDateValidationError ?? createFormNotesValidationError;
-  const isCalendarCreateFlow = createReturnHref !== null;
-  const showEventsListContent = !createOpen || !isCalendarCreateFlow;
+  const createParam = searchParams.get("create");
+  const isCalendarCreateFlow =
+    createReturnHref !== null || isCalendarOriginCreateParam(createParam);
+  const showEventsListContent = !isCalendarCreateFlow && !createOpen;
 
   const resolvedRole = role ?? guardProfile?.role ?? null;
   const isPlanner = canManageEvents(resolvedRole);
@@ -275,12 +318,12 @@ function EventsPageClientView({ initialTab }: EventsPageClientProps) {
   }, [roleReady]);
 
   useEffect(() => {
-    if (!roleReady) {
+    if (!roleReady || isCalendarCreateFlow) {
       return;
     }
 
     loadEvents();
-  }, [roleReady, loadEvents]);
+  }, [roleReady, loadEvents, isCalendarCreateFlow]);
 
   useEffect(() => {
     if (!roleReady || !isPlanner) {
@@ -311,29 +354,29 @@ function EventsPageClientView({ initialTab }: EventsPageClientProps) {
       return;
     }
 
-    if (createParam === "calendar") {
-      const sanitizedDate = sanitizePrefilledEventDateKey(eventDateParam);
+    if (createParam === "calendar" || createParam === "calendar-plans") {
+      const paramKey = `${createParam}:${eventDateParam}`;
+
+      if (handledCreateParamsRef.current === paramKey) {
+        return;
+      }
+
+      handledCreateParamsRef.current = paramKey;
+
+      const finishNavigation = () => {
+        router.replace("/events");
+      };
+
+      if (createReturnHref) {
+        void loadBookingPlansForCreate().finally(finishNavigation);
+        return;
+      }
 
       void openCreateFlow({
         eventDate: eventDateParam,
-        initialStep: "form",
-        returnHref: sanitizedDate ? buildPlannerCalendarHref(sanitizedDate) : "/calendar",
-      }).finally(() => {
-        router.replace("/events");
-      });
-      return;
-    }
-
-    if (createParam === "calendar-plans") {
-      const sanitizedDate = sanitizePrefilledEventDateKey(eventDateParam);
-
-      void openCreateFlow({
-        eventDate: eventDateParam,
-        initialStep: "pick-plan",
-        returnHref: sanitizedDate ? buildPlannerCalendarHref(sanitizedDate) : "/calendar",
-      }).finally(() => {
-        router.replace("/events");
-      });
+        initialStep: resolveCalendarCreateInitialStep(createParam),
+        returnHref: resolveCalendarCreateReturnHref(eventDateParam),
+      }).finally(finishNavigation);
       return;
     }
 
@@ -350,6 +393,20 @@ function EventsPageClientView({ initialTab }: EventsPageClientProps) {
       });
     }
   }, [roleReady, isPlanner, router]);
+
+  async function loadBookingPlansForCreate() {
+    setLoadingPlans(true);
+
+    try {
+      const plans = await listBookingPlans();
+      setBookingPlans(plans);
+    } catch (loadError) {
+      console.error("Failed to load booking plans for event create:", loadError);
+      setError(loadError instanceof Error ? loadError.message : "Failed to load event plans");
+    } finally {
+      setLoadingPlans(false);
+    }
+  }
 
   async function openCreateFlow(options?: {
     eventDate?: string;
@@ -371,17 +428,7 @@ function EventsPageClientView({ initialTab }: EventsPageClientProps) {
     setCoverPreviewUrl(null);
     setCoverError(null);
     setFallbackColour(null);
-    setLoadingPlans(true);
-
-    try {
-      const plans = await listBookingPlans();
-      setBookingPlans(plans);
-    } catch (loadError) {
-      console.error("Failed to load booking plans for event create:", loadError);
-      setError(loadError instanceof Error ? loadError.message : "Failed to load event plans");
-    } finally {
-      setLoadingPlans(false);
-    }
+    await loadBookingPlansForCreate();
   }
 
   function closeCreateFlow() {
@@ -568,42 +615,44 @@ function EventsPageClientView({ initialTab }: EventsPageClientProps) {
         />
 
         <div className={PLANNER_WORKSPACE_CONTENT_CLASS}>
-          <EventsListTabRow
-            showTrashButton={showHistoryTrashButton}
-            trashButtonDisabled={historyTrashButtonDisabled}
-            onTrashClick={historyBulkManage.enterSelectionMode}
-          >
-            <div className="flex flex-wrap gap-2">
-              <Link
-                href={buildEventsListHref("active")}
-                className={`ftc-filter-pill ${!isHistoryTab ? "ftc-filter-pill-active" : ""}`}
-                onClick={(event) => {
-                  if (!isHistoryTab) {
-                    event.preventDefault();
-                    return;
-                  }
+          {!isCalendarCreateFlow ? (
+            <EventsListTabRow
+              showTrashButton={showHistoryTrashButton}
+              trashButtonDisabled={historyTrashButtonDisabled}
+              onTrashClick={historyBulkManage.enterSelectionMode}
+            >
+              <div className="flex flex-wrap gap-2">
+                <Link
+                  href={buildEventsListHref("active")}
+                  className={`ftc-filter-pill ${!isHistoryTab ? "ftc-filter-pill-active" : ""}`}
+                  onClick={(event) => {
+                    if (!isHistoryTab) {
+                      event.preventDefault();
+                      return;
+                    }
 
-                  handleEventsListTabChange();
-                }}
-              >
-                {isPlanner ? "Active" : "Upcoming"}
-              </Link>
-              <Link
-                href={buildEventsListHref("history")}
-                className={`ftc-filter-pill ${isHistoryTab ? "ftc-filter-pill-active" : ""}`}
-                onClick={(event) => {
-                  if (isHistoryTab) {
-                    event.preventDefault();
-                    return;
-                  }
+                    handleEventsListTabChange();
+                  }}
+                >
+                  {isPlanner ? "Active" : "Upcoming"}
+                </Link>
+                <Link
+                  href={buildEventsListHref("history")}
+                  className={`ftc-filter-pill ${isHistoryTab ? "ftc-filter-pill-active" : ""}`}
+                  onClick={(event) => {
+                    if (isHistoryTab) {
+                      event.preventDefault();
+                      return;
+                    }
 
-                  handleEventsListTabChange();
-                }}
-              >
-                History
-              </Link>
-            </div>
-          </EventsListTabRow>
+                    handleEventsListTabChange();
+                  }}
+                >
+                  History
+                </Link>
+              </div>
+            </EventsListTabRow>
+          ) : null}
 
           {createOpen && isPlanner ? (
             <PlannerFormCard title="Create event" onCancel={closeCreateFlow} cancelDisabled={saving}>

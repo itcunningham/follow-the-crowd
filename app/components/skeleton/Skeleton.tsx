@@ -26,7 +26,7 @@ import ProfilePageHeader from "@/app/components/profile/ProfilePageHeader";
 import type { DjGigsListTab } from "@/lib/bookingRequests";
 import { buildGigsListHref, resolveGigsListTabParam } from "@/lib/bookings/gigsListNavigation";
 import { isPlannerBookingsCreateChromeActive } from "@/lib/bookings/planDeepLink";
-import { buildEventsListHref, resolveEventDetailBackHref } from "@/lib/events/eventsListNavigation";
+import { buildEventsListHref, isCalendarOriginCreateParam, resolveCalendarCreateInitialStep, resolveEventDetailBackHref } from "@/lib/events/eventsListNavigation";
 import { useEventEditHeaderState } from "@/lib/events/useEventEditHeaderVisibility";
 import type { EventEditHeaderState } from "@/lib/events/useEventEditHeaderVisibility";
 import { canManageEvents, type UserRole } from "@/lib/user/currentUser";
@@ -282,16 +282,62 @@ export function EventsListTabRow({
   );
 }
 
+export function EventsCalendarCreateLoadingShell({
+  createStep = "form",
+  role: roleProp,
+}: {
+  createStep?: "form" | "pick-plan";
+  role?: UserRole | null;
+}) {
+  const [cachedRole] = useState<UserRole | null>(() => readCachedNavRole());
+  const role = roleProp ?? cachedRole;
+
+  return (
+    <div className={PLANNER_WORKSPACE_SHELL_CLASS}>
+      <AppNavigation />
+      <PlannerWorkspacePageHeader title="Events" initialRole={role} />
+      <div className={PLANNER_WORKSPACE_CONTENT_CLASS}>
+        <section className="mb-6 ftc-card p-4 sm:p-5">
+          <div className="ftc-form-card-header">
+            <h2 className="text-lg font-semibold text-ftc-text">Create event</h2>
+            <span aria-hidden="true" className="ftc-form-cancel-link opacity-60">
+              Cancel
+            </span>
+          </div>
+          {createStep === "pick-plan" ? (
+            <BookingPlanListSkeleton count={2} />
+          ) : (
+            <BookingCreateEventDetailsFormSkeleton />
+          )}
+        </section>
+      </div>
+    </div>
+  );
+}
+
 export function EventsPageLoadingShell({
   role: roleProp,
+  createParam: createParamProp,
 }: {
   /** @deprecated Pass `role` instead — derived from role when omitted. */
   showPlannerStats?: boolean;
   role?: UserRole | null;
+  createParam?: string | null;
 }) {
   const searchParams = useSearchParams();
   const [cachedRole] = useState<UserRole | null>(() => readCachedNavRole());
   const role = roleProp ?? cachedRole;
+  const createParam = createParamProp ?? searchParams.get("create");
+
+  if (isCalendarOriginCreateParam(createParam)) {
+    return (
+      <EventsCalendarCreateLoadingShell
+        role={role}
+        createStep={resolveCalendarCreateInitialStep(createParam)}
+      />
+    );
+  }
+
   const isPlanner = canManageEvents(role);
   const isHistoryTab = searchParams.get("tab") === "history";
 
@@ -1251,7 +1297,14 @@ export function AppLoadingShell({
   search?: string;
 }) {
   if (pathname === "/events") {
-    return <EventsPageLoadingShell role={role ?? readCachedNavRole()} />;
+    const searchParams = new URLSearchParams(search.startsWith("?") ? search.slice(1) : search);
+
+    return (
+      <EventsPageLoadingShell
+        role={role ?? readCachedNavRole()}
+        createParam={searchParams.get("create")}
+      />
+    );
   }
 
   if (/^\/events\/[^/]+\/chat\/?$/.test(pathname)) {

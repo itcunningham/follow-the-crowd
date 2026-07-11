@@ -2,6 +2,12 @@
 
 import { EventsPageLoadingShell } from "@/app/components/skeleton/Skeleton";
 
-export default function EventsPageLoadingFallback() {
-  return <EventsPageLoadingShell />;
+type EventsPageLoadingFallbackProps = {
+  initialCreate?: string | null;
+};
+
+export default function EventsPageLoadingFallback({
+  initialCreate = null,
+}: EventsPageLoadingFallbackProps) {
+  return <EventsPageLoadingShell createParam={initialCreate} />;
 }

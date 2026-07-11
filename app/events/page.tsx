@@ -3,23 +3,39 @@ import EventsPageLoadingFallback from "./EventsPageLoadingFallback";
 import EventsPageClient from "./EventsPageClient";
 
 type EventsPageProps = {
-  searchParams: Promise<{ tab?: string | string[] }>;
+  searchParams: Promise<{
+    tab?: string | string[];
+    create?: string | string[];
+    eventDate?: string | string[];
+  }>;
 };
 
-function readTabParam(tab: string | string[] | undefined): string | null {
-  if (typeof tab === "string") {
-    return tab;
+function readStringParam(value: string | string[] | undefined): string | null {
+  if (typeof value === "string") {
+    return value;
   }
 
   return null;
 }
 
+function readTabParam(tab: string | string[] | undefined): string | null {
+  return readStringParam(tab);
+}
+
 export default async function EventsPage({ searchParams }: EventsPageProps) {
   const params = await searchParams;
+  const initialCreate = readStringParam(params.create);
+  const initialEventDate = readStringParam(params.eventDate);
 
   return (
-    <Suspense fallback={<EventsPageLoadingFallback />}>
-      <EventsPageClient initialTab={readTabParam(params.tab)} />
+    <Suspense
+      fallback={<EventsPageLoadingFallback initialCreate={initialCreate} />}
+    >
+      <EventsPageClient
+        initialTab={readTabParam(params.tab)}
+        initialCreate={initialCreate}
+        initialEventDate={initialEventDate}
+      />
     </Suspense>
   );
 }
