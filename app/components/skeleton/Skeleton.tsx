@@ -1324,6 +1324,9 @@ export function AppLoadingShell({
     const backHref = resolveEventDetailBackHref(searchParams.get("fromTab"), {
       from: searchParams.get("from"),
       tab: searchParams.get("tab"),
+      calendarDate: searchParams.get("calendarDate"),
+      calendarView: searchParams.get("calendarView"),
+      calendarMonth: searchParams.get("calendarMonth"),
     });
 
     if (eventId) {

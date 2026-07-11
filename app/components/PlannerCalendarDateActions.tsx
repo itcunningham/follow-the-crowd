@@ -8,10 +8,12 @@ import { isDateKeyBeforeToday } from "@/lib/bookingDateTime";
 import {
   buildPlannerCreateEventFromPlansHref,
   buildPlannerCreateEventHref,
+  buildCalendarOriginState,
   formatPlannerSelectedDateLabel,
   getPlannerCalendarStatusBadgeClass,
   getPlannerCalendarBadgeLabel,
   getPlannerViewDaySubtitle,
+  resolveCalendarOriginEventHref,
   toDateKey,
   type CalendarItem,
 } from "@/lib/calendar";
@@ -20,6 +22,7 @@ type PlannerCalendarDateActionsProps = {
   date: Date | null;
   items: CalendarItem[];
   hasSavedEventPlans: boolean;
+  monthStart: Date;
   onClose: () => void;
 };
 
@@ -29,6 +32,7 @@ export default function PlannerCalendarDateActions({
   date,
   items,
   hasSavedEventPlans,
+  monthStart,
   onClose,
 }: PlannerCalendarDateActionsProps) {
   const router = useRouter();
@@ -66,6 +70,11 @@ export default function PlannerCalendarDateActions({
 
   const dateLabel = formatPlannerSelectedDateLabel(date);
   const dateKey = toDateKey(date);
+  const calendarOrigin = buildCalendarOriginState({
+    calendarDate: dateKey,
+    calendarView: "event",
+    monthStart,
+  });
   const canCreateEventOnDate = !isDateKeyBeforeToday(dateKey);
   const isPastEmptyDate = !canCreateEventOnDate && items.length === 0;
 
@@ -151,7 +160,7 @@ export default function PlannerCalendarDateActions({
                 {items.map((item) => (
                   <li key={item.id}>
                     <Link
-                      href={item.href}
+                      href={resolveCalendarOriginEventHref(item.href, calendarOrigin)}
                       onClick={onClose}
                       className={`block rounded-xl border-0 px-3 py-2.5 transition hover:opacity-90 ${getPlannerCalendarStatusBadgeClass(item.statusKind)}`}
                     >

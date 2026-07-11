@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   getBookingRequestHref,
   groupActiveBookingsByDate,
@@ -33,8 +33,11 @@ import {
   type DjAvailabilityStatus,
 } from "@/lib/djAvailability";
 import {
+  buildCalendarOriginState,
   formatCalendarTimeLabel,
   getCalendarWeekRows,
+  resolveCalendarOriginEventHref,
+  resolveDjCalendarViewMonthStart,
   toDateKey,
   WEEKDAY_LABELS,
 } from "@/lib/calendar";
@@ -113,10 +116,17 @@ function AvailabilityLegend() {
 type DayBookingsPopoverProps = {
   dateKey: string;
   bookings: BookingRequest[];
+  monthStart: Date;
   onClose: () => void;
 };
 
-function DayBookingsPopover({ dateKey, bookings, onClose }: DayBookingsPopoverProps) {
+function DayBookingsPopover({ dateKey, bookings, monthStart, onClose }: DayBookingsPopoverProps) {
+  const calendarOrigin = buildCalendarOriginState({
+    calendarDate: dateKey,
+    calendarView: "dj",
+    monthStart,
+  });
+
   return (
     <div
       data-calendar-overlay=""
@@ -138,7 +148,7 @@ function DayBookingsPopover({ dateKey, bookings, onClose }: DayBookingsPopoverPr
         {bookings.map((booking) => (
           <li key={booking.id}>
             <Link
-              href={getBookingRequestHref(booking)}
+              href={resolveCalendarOriginEventHref(getBookingRequestHref(booking), calendarOrigin)}
               onClick={onClose}
               className="block rounded-lg border border-ftc-border bg-ftc-surface/80 px-2.5 py-2 transition hover:border-ftc-primary/30 hover:bg-ftc-surface"
             >
@@ -360,6 +370,7 @@ function DjAvailabilityDayCell({
   menuOpen,
   bookingPopoverOpen,
   savingDate,
+  monthStart,
   onToggleSelect,
   onToggleMenu,
   onCloseOverlays,
@@ -378,12 +389,13 @@ function DjAvailabilityDayCell({
   menuOpen: boolean;
   bookingPopoverOpen: boolean;
   savingDate: boolean;
+  monthStart: Date;
   onToggleSelect: () => void;
   onToggleMenu: () => void;
   onCloseOverlays: () => void;
   onSetPersonalStatus: (status: DjAvailabilityStatus) => void;
   onClearPersonalStatus: () => void;
-  onOpenBooking: (booking: BookingRequest) => void;
+  onOpenBooking: (booking: BookingRequest, calendarDate: string) => void;
   onToggleBookingPopover: () => void;
 }) {
   const dateKey = toDateKey(date);
@@ -503,7 +515,7 @@ function DjAvailabilityDayCell({
               type="button"
               title="Pending Request"
               aria-label="Pending Request"
-              onClick={() => onOpenBooking(pendingBookings[0])}
+              onClick={() => onOpenBooking(pendingBookings[0], dateKey)}
               className={`${calendarCellColorBadgeClass} transition hover:opacity-90 ${getFlatBookingFillClass("pending")}`}
             >
               <span className="sr-only">Pending Request</span>
@@ -524,6 +536,7 @@ function DjAvailabilityDayCell({
                 <DayBookingsPopover
                   dateKey={dateKey}
                   bookings={interactiveBookings}
+                  monthStart={monthStart}
                   onClose={onCloseOverlays}
                 />
               ) : null}
@@ -534,7 +547,7 @@ function DjAvailabilityDayCell({
             <button
               key={booking.id}
               type="button"
-              onClick={() => onOpenBooking(booking)}
+              onClick={() => onOpenBooking(booking, dateKey)}
               className={`block w-full rounded-md border-0 px-1 py-1 text-left transition hover:opacity-90 ${getDjBookingStatusBadgeClass("accepted")}`}
             >
               <span className="block truncate text-[9px] font-semibold uppercase tracking-wide sm:text-[10px]">
@@ -561,10 +574,13 @@ export default function DjAvailabilityCalendar({
   description?: string;
 }) {
   const router = useRouter();
-  const [monthStart, setMonthStart] = useState(() => {
-    const today = new Date();
-    return new Date(today.getFullYear(), today.getMonth(), 1);
-  });
+  const searchParams = useSearchParams();
+  const [monthStart, setMonthStart] = useState(() =>
+    resolveDjCalendarViewMonthStart(
+      searchParams.get("date"),
+      searchParams.get("month"),
+    ),
+  );
   const [availabilityEntries, setAvailabilityEntries] = useState<DjAvailabilityEntry[]>([]);
   const [bookings, setBookings] = useState<BookingRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -582,6 +598,17 @@ export default function DjAvailabilityCalendar({
   const [pendingBulkChoice, setPendingBulkChoice] = useState<PendingBulkChoice | null>(null);
   const [bulkActionError, setBulkActionError] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  useLayoutEffect(() => {
+    const nextMonthStart = resolveDjCalendarViewMonthStart(
+      searchParams.get("date"),
+      searchParams.get("month"),
+    );
+
+    setMonthStart((current) =>
+      current.getTime() === nextMonthStart.getTime() ? current : nextMonthStart,
+    );
+  }, [searchParams]);
 
   useEffect(() => {
     const now = new Date();
@@ -839,10 +866,17 @@ export default function DjAvailabilityCalendar({
     }
   }
 
-  function handleOpenBooking(booking: BookingRequest) {
+  function handleOpenBooking(booking: BookingRequest, calendarDate: string) {
     setOpenBookingPopoverDateKey(null);
     setOpenMenuDateKey(null);
-    router.push(getBookingRequestHref(booking));
+
+    const calendarOrigin = buildCalendarOriginState({
+      calendarDate,
+      calendarView: "dj",
+      monthStart,
+    });
+
+    router.push(resolveCalendarOriginEventHref(getBookingRequestHref(booking), calendarOrigin));
   }
 
   return (
@@ -961,6 +995,7 @@ export default function DjAvailabilityCalendar({
                         menuOpen={!multiSelectMode && openMenuDateKey === dateKey}
                         bookingPopoverOpen={!multiSelectMode && openBookingPopoverDateKey === dateKey}
                         savingDate={savingDateKey === dateKey}
+                        monthStart={monthStart}
                         onToggleSelect={() => toggleDateSelection(dateKey)}
                         onToggleMenu={() => {
                           setOpenBookingPopoverDateKey(null);

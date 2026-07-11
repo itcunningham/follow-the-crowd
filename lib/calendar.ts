@@ -503,6 +503,116 @@ export function buildPlannerCalendarHref(dateKey: string): string {
   return `/calendar?${params.toString()}`;
 }
 
+export type CalendarOriginView = "event" | "dj";
+
+export type CalendarOriginState = {
+  calendarDate: string;
+  calendarView: CalendarOriginView;
+  calendarMonth: string;
+};
+
+export function buildCalendarOriginState(options: {
+  calendarDate: string;
+  calendarView: CalendarOriginView;
+  monthStart: Date;
+}): CalendarOriginState {
+  return {
+    calendarDate: options.calendarDate,
+    calendarView: options.calendarView,
+    calendarMonth: toDateKey(options.monthStart),
+  };
+}
+
+export function resolveCalendarOriginEventHref(
+  href: string,
+  origin: CalendarOriginState,
+): string {
+  if (!href.startsWith("/events/")) {
+    return href;
+  }
+
+  const eventId = href.slice("/events/".length).split("?")[0];
+
+  if (!eventId) {
+    return href;
+  }
+
+  const params = new URLSearchParams({
+    from: "calendar",
+    calendarDate: origin.calendarDate,
+    calendarView: origin.calendarView,
+    calendarMonth: origin.calendarMonth,
+  });
+
+  return `/events/${eventId}?${params.toString()}`;
+}
+
+export function buildCalendarOriginReturnHref(origin: CalendarOriginState): string {
+  const params = new URLSearchParams({
+    date: origin.calendarDate,
+    view: origin.calendarView,
+    month: origin.calendarMonth,
+  });
+
+  return `/calendar?${params.toString()}`;
+}
+
+export function parseCalendarOriginFromEventDetail(searchParams: {
+  get: (key: string) => string | null;
+}): CalendarOriginState | null {
+  if (searchParams.get("from") !== "calendar") {
+    return null;
+  }
+
+  const calendarDate = searchParams.get("calendarDate");
+  const calendarView = searchParams.get("calendarView");
+
+  if (!calendarDate || (calendarView !== "event" && calendarView !== "dj")) {
+    return null;
+  }
+
+  const restoredDate = parsePlannerCalendarDateParam(calendarDate);
+  const calendarMonth =
+    searchParams.get("calendarMonth") ??
+    (restoredDate ? toDateKey(getMonthStart(restoredDate)) : null);
+
+  if (!calendarMonth) {
+    return null;
+  }
+
+  return {
+    calendarDate,
+    calendarView,
+    calendarMonth,
+  };
+}
+
+export function resolveDjCalendarViewMonthStart(
+  dateParam: string | null | undefined,
+  monthParam: string | null | undefined,
+): Date {
+  const restoredMonthDate = parsePlannerCalendarDateParam(monthParam);
+
+  if (restoredMonthDate) {
+    return getMonthStart(restoredMonthDate);
+  }
+
+  const restoredDate = parsePlannerCalendarDateParam(dateParam);
+
+  if (restoredDate) {
+    return getMonthStart(restoredDate);
+  }
+
+  const today = new Date();
+  return new Date(today.getFullYear(), today.getMonth(), 1);
+}
+
+export function parseCalendarPageViewTab(
+  viewParam: string | null | undefined,
+): CalendarOriginView {
+  return viewParam === "dj" ? "dj" : "event";
+}
+
 const PLANNER_CALENDAR_RETURN_DATE_STORAGE_KEY = "ftc.planner-calendar.return-date";
 
 /** Canonical YYYY-MM-DD for Calendar-origin flows; does not apply create min-date rules. */
@@ -575,14 +685,18 @@ export type PlannerCalendarViewState = {
 /** Fresh /calendar visits default to today; ?date= restores Calendar-origin return context. */
 export function resolvePlannerCalendarViewState(
   dateParam: string | null | undefined,
+  monthParam?: string | null | undefined,
 ): PlannerCalendarViewState {
   const restoredDate = parsePlannerCalendarDateParam(dateParam);
+  const restoredMonthDate = parsePlannerCalendarDateParam(monthParam);
 
   if (restoredDate) {
     clearPlannerCalendarReturnDate();
     return {
       selectedDate: restoredDate,
-      monthStart: getMonthStart(restoredDate),
+      monthStart: restoredMonthDate
+        ? getMonthStart(restoredMonthDate)
+        : getMonthStart(restoredDate),
     };
   }
 

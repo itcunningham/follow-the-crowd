@@ -12,6 +12,7 @@ import { isDateKeyBeforeToday } from "@/lib/bookingDateTime";
 import { consumeEventCreateInviteMessage } from "@/lib/events/eventCreateInviteMessages";
 import { listBookingPlans } from "@/lib/bookingPlans";
 import {
+  buildCalendarOriginState,
   filterCalendarItemsForMonth,
   formatPlannerAgendaDateLabel,
   formatWrittenCalendarDateLabel,
@@ -26,11 +27,13 @@ import {
   isSameDay,
   isSameMonth,
   loadPlannerCalendarItems,
+  resolveCalendarOriginEventHref,
   resolvePlannerCalendarViewState,
   PLANNER_CALENDAR_VISIBLE_LEGEND_ITEMS,
   toDateKey,
   WEEKDAY_LABELS,
   type CalendarItem,
+  type CalendarOriginState,
 } from "@/lib/calendar";
 
 function PlannerCalendarMobileLegend() {
@@ -81,10 +84,16 @@ function PlannerCalendarLegend() {
   );
 }
 
-function PlannerCalendarItemBadge({ item }: { item: CalendarItem }) {
+function PlannerCalendarItemBadge({
+  item,
+  calendarOrigin,
+}: {
+  item: CalendarItem;
+  calendarOrigin: CalendarOriginState;
+}) {
   return (
     <Link
-      href={item.href}
+      href={resolveCalendarOriginEventHref(item.href, calendarOrigin)}
       className={`block w-full rounded-md border-0 px-1.5 py-1 text-left transition hover:opacity-90 md:px-2 md:py-1.5 ${getPlannerCalendarStatusBadgeClass(item.statusKind)}`}
     >
       <span className="block truncate text-[9px] font-semibold uppercase tracking-wide sm:text-[10px] md:text-xs">
@@ -112,12 +121,21 @@ function PlannerCalendarDayCell({
   isToday,
   items,
   onSelectDate,
+  monthStart,
 }: {
   date: Date;
   isToday: boolean;
   items: CalendarItem[];
   onSelectDate: (date: Date) => void;
+  monthStart: Date;
 }) {
+  const dateKey = toDateKey(date);
+  const calendarOrigin = buildCalendarOriginState({
+    calendarDate: dateKey,
+    calendarView: "event",
+    monthStart,
+  });
+
   function handleCellKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
     if (event.key === "Enter" || event.key === " ") {
       event.preventDefault();
@@ -148,17 +166,23 @@ function PlannerCalendarDayCell({
         onKeyDown={(event) => event.stopPropagation()}
       >
         {items.map((item) => (
-          <PlannerCalendarItemBadge key={item.id} item={item} />
+          <PlannerCalendarItemBadge key={item.id} item={item} calendarOrigin={calendarOrigin} />
         ))}
       </div>
     </div>
   );
 }
 
-function PlannerCalendarAgendaCard({ item }: { item: CalendarItem }) {
+function PlannerCalendarAgendaCard({
+  item,
+  calendarOrigin,
+}: {
+  item: CalendarItem;
+  calendarOrigin: CalendarOriginState;
+}) {
   return (
     <Link
-      href={item.href}
+      href={resolveCalendarOriginEventHref(item.href, calendarOrigin)}
       className="block rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated p-3 transition hover:border-ftc-border-strong"
     >
       <div className="flex items-start gap-3">
@@ -204,6 +228,11 @@ function PlannerCalendarMobileAgenda({
 }) {
   const agendaHeaderRef = useRef<HTMLDivElement>(null);
   const selectedDateKey = toDateKey(selectedDate);
+  const calendarOrigin = buildCalendarOriginState({
+    calendarDate: selectedDateKey,
+    calendarView: "event",
+    monthStart,
+  });
   const [displayDateKey, setDisplayDateKey] = useState(selectedDateKey);
   const [agendaVisible, setAgendaVisible] = useState(true);
 
@@ -273,7 +302,9 @@ function PlannerCalendarMobileAgenda({
             </div>
           )
         ) : (
-          displayDateItems.map((item) => <PlannerCalendarAgendaCard key={item.id} item={item} />)
+          displayDateItems.map((item) => (
+            <PlannerCalendarAgendaCard key={item.id} item={item} calendarOrigin={calendarOrigin} />
+          ))
         )}
       </div>
 
@@ -296,7 +327,10 @@ export default function PlannerCalendar({
   description = "Your events and booking activity by date.",
 }: PlannerCalendarProps) {
   const searchParams = useSearchParams();
-  const initialView = resolvePlannerCalendarViewState(searchParams.get("date"));
+  const initialView = resolvePlannerCalendarViewState(
+    searchParams.get("date"),
+    searchParams.get("month"),
+  );
   const [items, setItems] = useState<CalendarItem[]>([]);
   const [monthStart, setMonthStart] = useState(() => initialView.monthStart);
   const [loading, setLoading] = useState(true);
@@ -362,7 +396,10 @@ export default function PlannerCalendar({
   }, [searchParams, inviteMessage, clearInviteMessage]);
 
   useLayoutEffect(() => {
-    const nextView = resolvePlannerCalendarViewState(searchParams.get("date"));
+    const nextView = resolvePlannerCalendarViewState(
+      searchParams.get("date"),
+      searchParams.get("month"),
+    );
 
     setSelectedDate((current) =>
       isSameDay(current, nextView.selectedDate) ? current : nextView.selectedDate,
@@ -548,6 +585,7 @@ export default function PlannerCalendar({
                       isToday={isTodayDate(day)}
                       items={monthItemsByDate.get(dateKey) ?? []}
                       onSelectDate={handleSelectActionDate}
+                      monthStart={monthStart}
                     />
                   );
                 }),
@@ -567,6 +605,7 @@ export default function PlannerCalendar({
         date={actionDate}
         items={actionDate ? monthItemsByDate.get(toDateKey(actionDate)) ?? [] : []}
         hasSavedEventPlans={hasSavedEventPlans}
+        monthStart={monthStart}
         onClose={() => setActionDate(null)}
       />
     </section>

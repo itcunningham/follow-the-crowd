@@ -1,5 +1,10 @@
 import { buildGigsListHref, parseDjGigsListTab } from "@/lib/bookings/gigsListNavigation";
-import { buildPlannerCalendarHref, resolveCalendarOriginDateKey } from "@/lib/calendar";
+import {
+  buildCalendarOriginReturnHref,
+  buildPlannerCalendarHref,
+  parseCalendarOriginFromEventDetail,
+  resolveCalendarOriginDateKey,
+} from "@/lib/calendar";
 import { sanitizePrefilledEventDateKey } from "@/lib/bookingDateTime";
 import { EVENTS_AREA_SUB_NAV } from "@/lib/plannerEventsNav";
 
@@ -63,8 +68,39 @@ export function resolveEventDetailBackHref(
   options?: {
     from?: string | null;
     tab?: string | null;
+    calendarDate?: string | null;
+    calendarView?: string | null;
+    calendarMonth?: string | null;
   },
 ): string {
+  if (options?.from === "calendar") {
+    const calendarOrigin = parseCalendarOriginFromEventDetail({
+      get: (key) => {
+        if (key === "from") {
+          return options.from ?? null;
+        }
+
+        if (key === "calendarDate") {
+          return options.calendarDate ?? null;
+        }
+
+        if (key === "calendarView") {
+          return options.calendarView ?? null;
+        }
+
+        if (key === "calendarMonth") {
+          return options.calendarMonth ?? null;
+        }
+
+        return null;
+      },
+    });
+
+    if (calendarOrigin) {
+      return buildCalendarOriginReturnHref(calendarOrigin);
+    }
+  }
+
   if (options?.from === "bookings") {
     return buildGigsListHref(parseDjGigsListTab(options.tab ?? fromTab));
   }
