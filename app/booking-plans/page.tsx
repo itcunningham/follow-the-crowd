@@ -226,8 +226,7 @@ export default function BookingPlansPage() {
               <button
                 type="button"
                 onClick={openCreateForm}
-                disabled={loadingAccess || loadingPlans}
-                className="ftc-btn-primary shrink-0 px-4 py-2.5 text-sm uppercase tracking-wide disabled:cursor-wait disabled:opacity-100"
+                className="shrink-0 ftc-btn-primary px-4 py-2.5 text-sm uppercase tracking-wide"
               >
                 Create booking plan
               </button>

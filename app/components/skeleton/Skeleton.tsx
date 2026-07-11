@@ -227,18 +227,20 @@ export function EventsPageLoadingShell({
       />
       <div className={PLANNER_WORKSPACE_CONTENT_CLASS}>
         <div className={PLANNER_WORKSPACE_SECONDARY_TABS_ROW_CLASS}>
-          <Link
-            href={buildEventsListHref("active")}
-            className={`ftc-filter-pill ${!isHistoryTab ? "ftc-filter-pill-active" : ""}`}
-          >
-            {isPlanner ? "Active" : "Upcoming"}
-          </Link>
-          <Link
-            href={buildEventsListHref("history")}
-            className={`ftc-filter-pill ${isHistoryTab ? "ftc-filter-pill-active" : ""}`}
-          >
-            History
-          </Link>
+          <div className="flex flex-wrap gap-2">
+            <Link
+              href={buildEventsListHref("active")}
+              className={`ftc-filter-pill ${!isHistoryTab ? "ftc-filter-pill-active" : ""}`}
+            >
+              {isPlanner ? "Active" : "Upcoming"}
+            </Link>
+            <Link
+              href={buildEventsListHref("history")}
+              className={`ftc-filter-pill ${isHistoryTab ? "ftc-filter-pill-active" : ""}`}
+            >
+              History
+            </Link>
+          </div>
         </div>
         <EventListSkeleton showPlannerStats={isPlanner} showFilterPills={false} />
       </div>
@@ -585,15 +587,9 @@ export function BookingPlansPageLoadingShell() {
         title="Booking Plans"
         initialRole={cachedRole}
         actions={
-          <button
-            type="button"
-            disabled
-            aria-hidden="true"
-            tabIndex={-1}
-            className="ftc-btn-primary shrink-0 px-4 py-2.5 text-sm uppercase tracking-wide disabled:cursor-default disabled:opacity-100"
-          >
+          <span className="shrink-0 ftc-btn-primary px-4 py-2.5 text-sm uppercase tracking-wide">
             Create booking plan
-          </button>
+          </span>
         }
       />
       <div className={PLANNER_WORKSPACE_CONTENT_CLASS}>
