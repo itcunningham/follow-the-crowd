@@ -615,7 +615,7 @@ function EventPlanCard({
                 event.stopPropagation();
                 onUseForBooking();
               }}
-              className="ftc-btn-primary min-h-11 px-2.5 py-2 text-xs uppercase tracking-wide"
+              className="ftc-btn-secondary min-h-11 px-2.5 py-2 text-xs uppercase tracking-wide"
             >
               Use plan
             </button>
