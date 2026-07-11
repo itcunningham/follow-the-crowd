@@ -11,7 +11,10 @@ import {
   PLANNER_WORKSPACE_SHELL_CLASS,
 } from "@/app/components/planner/PlannerWorkspaceLayout";
 import { PlannerFormCard, PlannerFormField, PlannerInlineError } from "@/app/components/planner/PlannerUi";
-import { BookingPlanListSkeleton } from "@/app/components/skeleton/Skeleton";
+import {
+  BookingPlanListSkeleton,
+  SavedEventPlansSectionHeading,
+} from "@/app/components/skeleton/Skeleton";
 import { BookingDateField, BookingSetTimeRangeField } from "@/app/components/BookingDateTimeFields";
 import { formatDisplayEventDate, getEventDateValidationError } from "@/lib/bookingDateTime";
 import { getEventNotesValidationError, MAX_EVENT_NOTES_LENGTH } from "@/lib/events/eventNotes";
@@ -327,69 +330,67 @@ export default function BookingPlansPage() {
             </PlannerFormCard>
           ) : null}
 
-          {!formOpen && (loadingAccess || loadingPlans) ? (
-            <BookingPlanListSkeleton />
-          ) : !loadingAccess && !formOpen ? (
-            error && plans.length === 0 ? (
-              <PlannerInlineError message={error} />
-            ) : plans.length === 0 ? (
-              <div className="ftc-card-empty px-6 py-12 text-center">
-                <p className="text-base font-medium text-ftc-text-secondary">No saved event plans yet</p>
-                <p className="mt-2 text-sm text-ftc-text-muted">
-                  Create an event plan to reuse details when booking DJs
-                </p>
-                <button
-                  type="button"
-                  onClick={openCreateForm}
-                  className="ftc-btn-primary mt-6 px-5 py-3 text-sm uppercase tracking-wide"
-                >
-                  Create event plan
-                </button>
-              </div>
-            ) : (
-              <div>
-                <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-ftc-primary">
-                  Saved Event Plans
-                </p>
+          {!formOpen ? (
+            <>
+              <SavedEventPlansSectionHeading />
+              {loadingAccess || loadingPlans ? (
+                <BookingPlanListSkeleton />
+              ) : error && plans.length === 0 ? (
+                <PlannerInlineError message={error} />
+              ) : plans.length === 0 ? (
+                <div className="ftc-card-empty px-6 py-12 text-center">
+                  <p className="text-base font-medium text-ftc-text-secondary">No saved event plans yet</p>
+                  <p className="mt-2 text-sm text-ftc-text-muted">
+                    Create an event plan to reuse details when booking DJs
+                  </p>
+                  <button
+                    type="button"
+                    onClick={openCreateForm}
+                    className="ftc-btn-primary mt-6 px-5 py-3 text-sm uppercase tracking-wide"
+                  >
+                    Create event plan
+                  </button>
+                </div>
+              ) : (
                 <ul className="space-y-3">
-                {plans.map((plan) => (
-                  <li key={plan.id} className="ftc-card p-4 sm:p-5">
-                    <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                      <div className="min-w-0">
-                        <h3 className="text-lg font-semibold text-ftc-text">{plan.name}</h3>
-                        <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
-                          <PlanDetail label="Event" value={plan.event_name} />
-                          <PlanDetail label="Venue" value={plan.venue} />
-                          <PlanDetail label="Date" value={formatDisplayEventDate(plan.event_date)} />
-                          <PlanDetail label="Set time" value={plan.set_time} />
-                        </dl>
-                        {plan.notes?.trim() ? (
-                          <p className="mt-3 text-sm leading-relaxed text-ftc-text-secondary">{plan.notes}</p>
-                        ) : null}
-                      </div>
+                  {plans.map((plan) => (
+                    <li key={plan.id} className="ftc-card p-4 sm:p-5">
+                      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                        <div className="min-w-0">
+                          <h3 className="text-lg font-semibold text-ftc-text">{plan.name}</h3>
+                          <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
+                            <PlanDetail label="Event" value={plan.event_name} />
+                            <PlanDetail label="Venue" value={plan.venue} />
+                            <PlanDetail label="Date" value={formatDisplayEventDate(plan.event_date)} />
+                            <PlanDetail label="Set time" value={plan.set_time} />
+                          </dl>
+                          {plan.notes?.trim() ? (
+                            <p className="mt-3 text-sm leading-relaxed text-ftc-text-secondary">{plan.notes}</p>
+                          ) : null}
+                        </div>
 
-                      <div className="flex shrink-0 flex-col gap-2 sm:items-end">
-                        <button
-                          type="button"
-                          onClick={() => openEditForm(plan)}
-                          className="ftc-btn-secondary px-3 py-1.5 text-xs uppercase tracking-wide"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleUseForBooking(plan.id)}
-                          className="ftc-btn-primary px-3 py-1.5 text-xs uppercase tracking-wide"
-                        >
-                          Use for booking
-                        </button>
+                        <div className="flex shrink-0 flex-col gap-2 sm:items-end">
+                          <button
+                            type="button"
+                            onClick={() => openEditForm(plan)}
+                            className="ftc-btn-secondary px-3 py-1.5 text-xs uppercase tracking-wide"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleUseForBooking(plan.id)}
+                            className="ftc-btn-primary px-3 py-1.5 text-xs uppercase tracking-wide"
+                          >
+                            Use for booking
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-              </div>
-            )
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </>
           ) : null}
         </div>
       </div>

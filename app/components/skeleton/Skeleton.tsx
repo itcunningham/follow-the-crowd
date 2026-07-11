@@ -438,6 +438,14 @@ function BookingCampaignCardSkeleton() {
   );
 }
 
+export function SavedEventPlansSectionHeading() {
+  return (
+    <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-ftc-primary">
+      Saved Event Plans
+    </p>
+  );
+}
+
 export function BookingPlanListSkeleton({ count = 2 }: { count?: number }) {
   return (
     <ul aria-busy="true" aria-label="Loading event plans" className="space-y-3">
@@ -654,6 +662,7 @@ export function BookingPlansPageLoadingShell() {
         }
       />
       <div className={PLANNER_WORKSPACE_CONTENT_CLASS}>
+        <SavedEventPlansSectionHeading />
         <BookingPlanListSkeleton />
       </div>
     </div>
