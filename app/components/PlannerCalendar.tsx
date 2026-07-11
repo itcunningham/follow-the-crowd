@@ -27,6 +27,7 @@ import {
   getCalendarWeekRows,
   getDefaultSelectedCalendarDate,
   getMonthStart,
+  formatPlannerCalendarItemHeadline,
   getPlannerCalendarBadgeLabel,
   getPlannerCalendarAgendaAccentClass,
   groupCalendarItemsByDate,
@@ -108,7 +109,7 @@ function PlannerCalendarItemBadge({
         {getPlannerCalendarBadgeLabel(item)}
       </span>
       <span className="block truncate text-[9px] normal-case tracking-normal opacity-90 sm:text-[10px] md:text-xs">
-        {item.title}
+        {formatPlannerCalendarItemHeadline(item.title, item.venue)}
       </span>
       {item.type === "event" ? (
         <span className="block truncate text-[9px] normal-case tracking-normal opacity-70 sm:text-[10px] md:text-xs">
@@ -213,7 +214,9 @@ function PlannerCalendarAgendaCard({
           >
             {getPlannerCalendarBadgeLabel(item)}
           </span>
-          <p className="mt-2 truncate text-sm font-semibold text-ftc-text">{item.title}</p>
+          <p className="mt-2 truncate text-sm font-semibold text-ftc-text">
+            {formatPlannerCalendarItemHeadline(item.title, item.venue)}
+          </p>
           {item.timeLabel ? (
             <p className="mt-1 text-sm text-ftc-text-secondary">{item.timeLabel}</p>
           ) : null}

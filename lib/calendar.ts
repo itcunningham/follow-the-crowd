@@ -53,6 +53,7 @@ export type CalendarItem = {
   type: CalendarItemType;
   dateKey: string;
   title: string;
+  venue: string | null;
   timeLabel: string | null;
   statusLabel: string;
   statusKind: CalendarStatusKind;
@@ -61,6 +62,27 @@ export type CalendarItem = {
   startTimeSortKey: number;
   eventFallbackColour: string | null;
 };
+
+export const PLANNER_CALENDAR_TITLE_VENUE_SEPARATOR = " · ";
+
+function normalizeCalendarVenue(venue: string | null | undefined): string | null {
+  const trimmed = venue?.trim();
+
+  return trimmed ? trimmed : null;
+}
+
+export function formatPlannerCalendarItemHeadline(
+  title: string,
+  venue: string | null | undefined,
+): string {
+  const trimmedVenue = normalizeCalendarVenue(venue);
+
+  if (!trimmedVenue) {
+    return title;
+  }
+
+  return `${title}${PLANNER_CALENDAR_TITLE_VENUE_SEPARATOR}${trimmedVenue}`;
+}
 
 export function resolveCalendarDateKey(value: string): string | null {
   const parsed = parseEventDate(value);
@@ -308,6 +330,7 @@ function mapEventToCalendarItem(event: Event): CalendarItem | null {
     type: "event",
     dateKey,
     title: event.name.trim() || "Untitled event",
+    venue: normalizeCalendarVenue(event.venue),
     timeLabel: formatCalendarTimeLabel(event.set_time),
     statusLabel: displayLabel,
     statusKind: mapEventDateDisplayKind(displayLabel),
@@ -338,6 +361,7 @@ function mapBookingToCalendarItem(
     type,
     dateKey,
     title: booking.event_name.trim() || "Untitled booking",
+    venue: normalizeCalendarVenue(booking.venue),
     timeLabel: formatCalendarTimeLabel(booking.set_time),
     statusLabel: formatBookingStatusLabel(booking.status),
     statusKind: booking.status,

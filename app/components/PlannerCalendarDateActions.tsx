@@ -10,6 +10,7 @@ import {
   buildPlannerCreateEventFromPlansHref,
   buildPlannerCreateEventHref,
   buildCalendarOriginState,
+  formatPlannerCalendarItemHeadline,
   formatPlannerSelectedDateLabel,
   getPlannerCalendarStatusBadgeClass,
   getPlannerCalendarBadgeLabel,
@@ -171,7 +172,9 @@ export default function PlannerCalendarDateActions({
                       <span className="block text-[10px] font-semibold uppercase tracking-wide">
                         {getPlannerCalendarBadgeLabel(item)}
                       </span>
-                      <span className="mt-0.5 block text-sm font-medium">{item.title}</span>
+                      <span className="mt-0.5 block truncate text-sm font-medium">
+                        {formatPlannerCalendarItemHeadline(item.title, item.venue)}
+                      </span>
                       {item.type === "event" ? (
                         <span className="mt-0.5 block text-xs opacity-80">{item.statusLabel}</span>
                       ) : null}
