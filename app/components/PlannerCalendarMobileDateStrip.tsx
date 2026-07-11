@@ -4,7 +4,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import {
   formatPlannerAgendaDateLabel,
   getCalendarMonthDates,
-  getPlannerCalendarLegendDotClass,
+  getPlannerCalendarDateStripDotClass,
   isSameDay,
   isSameMonth,
   toDateKey,
@@ -128,7 +128,8 @@ export default function PlannerCalendarMobileDateStrip({
       {monthDates.map((date) => {
         const dateKey = toDateKey(date);
         const isSelected = isSameDay(date, selectedDate);
-        const hasEvents = (itemsByDate.get(dateKey) ?? []).length > 0;
+        const dateItems = itemsByDate.get(dateKey) ?? [];
+        const hasEvents = dateItems.length > 0;
 
         return (
           <button
@@ -161,9 +162,7 @@ export default function PlannerCalendarMobileDateStrip({
             {hasEvents ? (
               <span
                 aria-hidden="true"
-                className={`mt-1 h-1.5 w-1.5 rounded-full ${
-                  isSelected ? "bg-ftc-bg" : getPlannerCalendarLegendDotClass("event_upcoming")
-                }`}
+                className={`mt-1 h-1.5 w-1.5 rounded-full ${getPlannerCalendarDateStripDotClass(dateItems, isSelected)}`}
               />
             ) : (
               <span aria-hidden="true" className="mt-1 h-1.5 w-1.5" />

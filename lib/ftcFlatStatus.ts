@@ -4,7 +4,7 @@ export const FTC_STATUS_PRIMARY = "border-0 bg-ftc-primary text-ftc-bg";
 
 /** Today — highest-priority event date status; uses FTC primary light blue */
 export const FTC_STATUS_TODAY = FTC_STATUS_PRIMARY;
-export const FTC_STATUS_TODAY_DOT = "bg-ftc-primary";
+export const FTC_STATUS_TODAY_DOT = "bg-[var(--ftc-color-primary)]";
 
 /** Upcoming — muted steel navy used for future event dates */
 export const FTC_STATUS_UPCOMING =

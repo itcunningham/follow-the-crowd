@@ -401,6 +401,7 @@ export function getPlannerCalendarBadgeLabel(item: CalendarItem): string {
 }
 
 export const PLANNER_CALENDAR_LEGEND_ITEMS = [
+  { label: "Today", mobileLabel: "Today", kind: "event_today" as const },
   { label: "Upcoming", mobileLabel: "Upcoming", kind: "event_upcoming" as const },
   { label: "Pending", mobileLabel: "Pending", kind: "pending" as const },
   { label: "Accepted", mobileLabel: "Accepted", kind: "accepted" as const },
@@ -410,6 +411,48 @@ export const PLANNER_CALENDAR_LEGEND_ITEMS = [
 export const PLANNER_CALENDAR_VISIBLE_LEGEND_ITEMS = PLANNER_CALENDAR_LEGEND_ITEMS.filter(
   (item) => item.kind !== "declined",
 );
+
+const PLANNER_CALENDAR_DATE_INDICATOR_PRIORITY: CalendarStatusKind[] = [
+  "event_today",
+  "pending",
+  "accepted",
+  "event_upcoming",
+  "event_draft",
+  "event_completed",
+];
+
+export function getPlannerCalendarDateIndicatorKind(
+  items: CalendarItem[],
+): CalendarStatusKind | null {
+  if (items.length === 0) {
+    return null;
+  }
+
+  for (const kind of PLANNER_CALENDAR_DATE_INDICATOR_PRIORITY) {
+    if (items.some((item) => item.statusKind === kind)) {
+      return kind;
+    }
+  }
+
+  return items[0]?.statusKind ?? null;
+}
+
+export function getPlannerCalendarDateStripDotClass(
+  items: CalendarItem[],
+  isSelected: boolean,
+): string {
+  if (isSelected) {
+    return "bg-ftc-bg";
+  }
+
+  const kind = getPlannerCalendarDateIndicatorKind(items);
+
+  if (!kind) {
+    return "";
+  }
+
+  return getPlannerCalendarLegendDotClass(kind);
+}
 
 export function formatPlannerSelectedDateLabel(date: Date): string {
   return formatIsoDateKeyForDisplay(toDateKey(date));
