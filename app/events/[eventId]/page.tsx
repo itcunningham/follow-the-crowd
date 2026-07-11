@@ -1569,7 +1569,7 @@ export default function EventDetailPage() {
           >
             <PlannerFormCard title="Send bookings" onCancel={closeSendBookings} cancelDisabled={sending}>
               <p className="text-sm text-ftc-text-secondary">
-                Event details will be prefilled from this event. Each DJ receives a private booking
+                Event details will be prefilled from this event, each DJ receives a private booking
                 request DM
               </p>
 
@@ -1681,7 +1681,7 @@ export default function EventDetailPage() {
                   </ul>
                   {hasInvalidFixedOffers ? (
                     <p className="mt-3 text-xs text-[var(--ftc-color-warning)]">
-                      Enter a positive whole-dollar amount for each fixed offer before sending.
+                      Enter a positive whole-dollar amount for each fixed offer before sending
                     </p>
                   ) : null}
                 </div>

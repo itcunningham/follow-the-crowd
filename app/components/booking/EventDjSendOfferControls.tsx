@@ -112,7 +112,7 @@ export default function EventDjSendOfferControls({
       ) : null}
 
       <BookingRateField
-        label={offer.rateMode === "open" ? "Suggested rate (optional)" : "Offer amount"}
+        label={offer.rateMode === "open" ? "Optional" : ""}
         value={offer.fee}
         onChange={(fee) => onChange({ ...offer, fee })}
         required={offer.rateMode === "fixed"}

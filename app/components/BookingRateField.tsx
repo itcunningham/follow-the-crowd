@@ -41,7 +41,7 @@ export function BookingRateField({
 
   return (
     <label className="block">
-      <span className={BOOKING_FIELD_LABEL_CLASS}>{label}</span>
+      {label ? <span className={BOOKING_FIELD_LABEL_CLASS}>{label}</span> : null}
       <div className={BOOKING_RATE_INPUT_CLASS}>
         <span className="shrink-0 pl-3.5 tabular-nums text-ftc-text">$</span>
         <input
@@ -53,7 +53,7 @@ export function BookingRateField({
           onKeyDown={handleKeyDown}
           onPaste={handlePaste}
           required={required && !digits}
-          aria-label={label}
+          aria-label={label ?? "Rate"}
           autoComplete="off"
           className="min-w-0 flex-1 bg-transparent py-2.5 pr-3.5 tabular-nums text-ftc-text outline-none"
         />
