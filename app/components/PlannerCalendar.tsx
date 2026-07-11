@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation";
 import CalendarMonthNav from "@/app/components/CalendarMonthNav";
 import PlannerCalendarDateActions from "@/app/components/PlannerCalendarDateActions";
 import PlannerCalendarMobileDateStrip from "@/app/components/PlannerCalendarMobileDateStrip";
+import { PlannerCalendarContentSkeleton } from "@/app/components/skeleton/Skeleton";
 import { isDateKeyBeforeToday } from "@/lib/bookingDateTime";
 import { listBookingPlans } from "@/lib/bookingPlans";
 import {
@@ -431,18 +432,18 @@ export default function PlannerCalendar({
         </p>
       ) : null}
 
-      <div className="relative mt-0 md:mt-4">
-        <CalendarMonthNav monthStart={monthStart} onMonthStartChange={handleMonthStartChange} />
-      </div>
-
-      <div className="mt-1 md:mt-3">
-        <PlannerCalendarLegend />
-      </div>
-
       {loading ? (
-        <p className="mt-6 text-sm text-ftc-text-muted">Loading calendar...</p>
+        <PlannerCalendarContentSkeleton />
       ) : (
-        <>
+        <div className="transition-opacity duration-200 ease-out opacity-100 motion-reduce:transition-none">
+          <div className="relative mt-0 md:mt-4">
+            <CalendarMonthNav monthStart={monthStart} onMonthStartChange={handleMonthStartChange} />
+          </div>
+
+          <div className="mt-1 md:mt-3">
+            <PlannerCalendarLegend />
+          </div>
+
           <PlannerCalendarMobileAgenda
             monthStart={monthStart}
             selectedDate={selectedDate}
@@ -498,7 +499,7 @@ export default function PlannerCalendar({
               No bookings or events this month yet
             </p>
           ) : null}
-        </>
+        </div>
       )}
 
       <PlannerCalendarDateActions

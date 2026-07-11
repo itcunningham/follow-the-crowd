@@ -16,6 +16,7 @@ import {
   FTC_STATUS_DANGER,
 } from "@/lib/ftcFlatStatus";
 import CalendarMonthNav from "@/app/components/CalendarMonthNav";
+import { DjCalendarContentSkeleton } from "@/app/components/skeleton/Skeleton";
 import {
   batchClearMyAvailabilityForDates,
   batchSaveMyAvailability,
@@ -884,43 +885,43 @@ export default function DjAvailabilityCalendar({
           </div>
         </div>
 
-        <div className="relative mt-4">
-          {toastMessage ? (
-            <p className="pointer-events-none absolute inset-x-0 -top-1 z-10 flex justify-center">
-              <span className="rounded-full border-0 bg-ftc-primary px-3 py-1 text-[11px] font-medium text-ftc-bg">
-                {toastMessage}
-              </span>
-            </p>
-          ) : null}
-          {error ? (
-            <p
-              role="alert"
-              className="pointer-events-none absolute inset-x-0 -top-1 z-10 flex justify-center"
-            >
-              <span className="rounded-full border-0 bg-[var(--ftc-color-danger)] px-3 py-1 text-[11px] font-medium text-ftc-bg">
-                {error}
-              </span>
-            </p>
-          ) : null}
-
-          <CalendarMonthNav
-            monthStart={monthStart}
-            onMonthStartChange={setMonthStart}
-            onBeforeNavigate={() => {
-              closeCalendarOverlays();
-              exitMultiSelectMode();
-            }}
-          />
-        </div>
-
-        <div className="mt-3">
-          <AvailabilityLegend />
-        </div>
-
         {loading ? (
-          <p className="mt-6 text-sm text-ftc-text-muted">Loading calendar...</p>
+          <DjCalendarContentSkeleton />
         ) : (
-          <>
+          <div className="transition-opacity duration-200 ease-out opacity-100 motion-reduce:transition-none">
+            <div className="relative mt-4">
+              {toastMessage ? (
+                <p className="pointer-events-none absolute inset-x-0 -top-1 z-10 flex justify-center">
+                  <span className="rounded-full border-0 bg-ftc-primary px-3 py-1 text-[11px] font-medium text-ftc-bg">
+                    {toastMessage}
+                  </span>
+                </p>
+              ) : null}
+              {error ? (
+                <p
+                  role="alert"
+                  className="pointer-events-none absolute inset-x-0 -top-1 z-10 flex justify-center"
+                >
+                  <span className="rounded-full border-0 bg-[var(--ftc-color-danger)] px-3 py-1 text-[11px] font-medium text-ftc-bg">
+                    {error}
+                  </span>
+                </p>
+              ) : null}
+
+              <CalendarMonthNav
+                monthStart={monthStart}
+                onMonthStartChange={setMonthStart}
+                onBeforeNavigate={() => {
+                  closeCalendarOverlays();
+                  exitMultiSelectMode();
+                }}
+              />
+            </div>
+
+            <div className="mt-3">
+              <AvailabilityLegend />
+            </div>
+
             <div className={`mt-4 rounded-2xl border border-ftc-border bg-ftc-bg-elevated/40 ${multiSelectMode ? "pb-1" : ""}`}>
               <div className="grid grid-cols-7 border-b border-ftc-border bg-ftc-bg-elevated/60">
                 {WEEKDAY_LABELS.map((label) => (
@@ -993,7 +994,7 @@ export default function DjAvailabilityCalendar({
                 onCancel={exitMultiSelectMode}
               />
             ) : null}
-          </>
+          </div>
         )}
 
         <p className="mt-3 text-xs text-ftc-text-muted">

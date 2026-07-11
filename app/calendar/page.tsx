@@ -7,6 +7,10 @@ import DjAvailabilityCalendar from "@/app/components/DjAvailabilityCalendar";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
 import PlannerCalendar from "@/app/components/PlannerCalendar";
 import {
+  DjCalendarLoadingCard,
+  PlannerCalendarLoadingCard,
+} from "@/app/components/skeleton/Skeleton";
+import {
   PlannerWorkspacePageHeader,
   PLANNER_CALENDAR_SHELL_CLASS,
   PLANNER_WORKSPACE_CONTENT_CLASS,
@@ -54,7 +58,11 @@ export default function CalendarPage() {
             <>
               <CalendarViewTabs activeTab={bothCalendarTab} onChange={setBothCalendarTab} />
               {bothCalendarTab === "planner" ? (
-                <Suspense fallback={<p className="text-sm text-ftc-text-muted">Loading calendar...</p>}>
+                <Suspense
+                  fallback={
+                    <PlannerCalendarLoadingCard description="Your owned events and sent booking requests by date." />
+                  }
+                >
                   <PlannerCalendar description="Your owned events and sent booking requests by date." />
                 </Suspense>
               ) : (
@@ -62,7 +70,7 @@ export default function CalendarPage() {
               )}
             </>
           ) : displayRole === "promoter" ? (
-            <Suspense fallback={<p className="text-sm text-ftc-text-muted">Loading calendar...</p>}>
+            <Suspense fallback={<PlannerCalendarLoadingCard />}>
               <PlannerCalendar />
             </Suspense>
           ) : displayRole === "dj" ? (

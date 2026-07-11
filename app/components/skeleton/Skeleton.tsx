@@ -824,26 +824,224 @@ export function CalendarPageLoadingShell() {
       />
       <div className={PLANNER_WORKSPACE_CONTENT_CLASS}>
         {cachedRole === "both" ? (
-          <CalendarViewTabs activeTab={bothCalendarTab} onChange={setBothCalendarTab} />
-        ) : null}
+          <>
+            <CalendarViewTabs activeTab={bothCalendarTab} onChange={setBothCalendarTab} />
+            {bothCalendarTab === "dj" ? (
+              <DjCalendarLoadingCard description="Manage your availability and received bookings." />
+            ) : (
+              <PlannerCalendarLoadingCard description="Your owned events and sent booking requests by date." />
+            )}
+          </>
+        ) : cachedRole === "dj" ? (
+          <DjCalendarLoadingCard />
+        ) : (
+          <PlannerCalendarLoadingCard />
+        )}
       </div>
     </div>
   );
 }
 
-function CalendarGridSkeleton() {
+function CalendarMonthNavSkeleton() {
   return (
-    <div aria-busy="true" aria-label="Loading calendar" className="space-y-4">
-      <div className="flex items-center justify-between gap-3">
-        <SkeletonBlock className="h-9 w-9 rounded-lg" />
-        <SkeletonBlock className="h-5 w-36" />
-        <SkeletonBlock className="h-9 w-9 rounded-lg" />
-      </div>
-      <div className="grid grid-cols-7 gap-1.5">
-        {Array.from({ length: 35 }, (_, index) => (
-          <SkeletonBlock key={index} className="aspect-square w-full rounded-lg" />
+    <div className="flex items-center justify-center gap-1 sm:gap-2">
+      <SkeletonBlock className="h-9 w-9 rounded-lg" />
+      <SkeletonBlock className="h-9 min-w-[9.5rem] rounded-lg sm:min-w-[11rem]" />
+      <SkeletonBlock className="h-9 w-9 rounded-lg" />
+    </div>
+  );
+}
+
+function PlannerCalendarLegendSkeleton() {
+  return (
+    <>
+      <div
+        aria-hidden="true"
+        className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 md:hidden"
+      >
+        {Array.from({ length: 4 }, (_, index) => (
+          <span key={index} className="inline-flex items-center gap-1.5">
+            <SkeletonBlock className="h-1.5 w-1.5 rounded-full" />
+            <SkeletonBlock className="h-3 w-14" />
+          </span>
         ))}
       </div>
+      <div
+        aria-hidden="true"
+        className="hidden flex-wrap items-center justify-center gap-2 md:flex"
+      >
+        {Array.from({ length: 4 }, (_, index) => (
+          <SkeletonBlock key={index} className="h-5 w-[4.5rem] rounded-full" />
+        ))}
+      </div>
+    </>
+  );
+}
+
+function PlannerCalendarMobileAgendaSkeleton() {
+  return (
+    <div aria-hidden="true" className="mt-4 md:hidden">
+      <div className="-mx-4 flex gap-1 px-4">
+        {Array.from({ length: 7 }, (_, index) => (
+          <SkeletonBlock
+            key={index}
+            className="h-[3.75rem] w-[calc((100%-1.5rem)/7)] min-w-[calc((100%-1.5rem)/7)] shrink-0 rounded-xl"
+          />
+        ))}
+      </div>
+
+      <div className="mt-4">
+        <SkeletonBlock className="h-5 w-44 max-w-full" />
+      </div>
+
+      <div className="mt-3 rounded-xl border border-dashed border-ftc-border-subtle bg-ftc-surface/30 px-4 py-8">
+        <SkeletonBlock className="mx-auto h-4 w-40 max-w-full" />
+        <SkeletonBlock className="mx-auto mt-3 h-8 w-32 max-w-full rounded-lg" />
+      </div>
+    </div>
+  );
+}
+
+function PlannerCalendarDesktopGridSkeleton() {
+  return (
+    <div
+      aria-hidden="true"
+      className="mt-4 hidden rounded-2xl border border-ftc-border bg-ftc-bg-elevated/40 md:block"
+    >
+      <div className="grid grid-cols-7 border-b border-ftc-border bg-ftc-bg-elevated/60">
+        {Array.from({ length: 7 }, (_, index) => (
+          <div key={index} className="px-2 py-2.5 md:px-3">
+            <SkeletonBlock className="mx-auto h-3 w-8" />
+          </div>
+        ))}
+      </div>
+      <div className="grid grid-cols-7 gap-2 p-2.5 md:gap-3 md:p-3">
+        {Array.from({ length: 35 }, (_, index) => (
+          <SkeletonBlock
+            key={index}
+            className="min-h-[6.5rem] w-full rounded-xl lg:min-h-[10.5rem]"
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export function PlannerCalendarContentSkeleton() {
+  return (
+    <div aria-busy="true" aria-label="Loading calendar" className="contents">
+      <div className="relative mt-0 md:mt-4">
+        <CalendarMonthNavSkeleton />
+      </div>
+
+      <div className="mt-1 md:mt-3">
+        <PlannerCalendarLegendSkeleton />
+      </div>
+
+      <PlannerCalendarMobileAgendaSkeleton />
+      <PlannerCalendarDesktopGridSkeleton />
+    </div>
+  );
+}
+
+function DjCalendarLegendSkeleton() {
+  return (
+    <div
+      aria-hidden="true"
+      className="flex flex-wrap items-center justify-center gap-2"
+    >
+      {Array.from({ length: 5 }, (_, index) => (
+        <SkeletonBlock key={index} className="h-5 w-[5.5rem] rounded-full" />
+      ))}
+    </div>
+  );
+}
+
+function DjCalendarGridSkeleton() {
+  return (
+    <div
+      aria-hidden="true"
+      className="mt-4 rounded-2xl border border-ftc-border bg-ftc-bg-elevated/40"
+    >
+      <div className="grid grid-cols-7 border-b border-ftc-border bg-ftc-bg-elevated/60">
+        {Array.from({ length: 7 }, (_, index) => (
+          <div key={index} className="px-1 py-2 sm:px-2">
+            <SkeletonBlock className="mx-auto h-3 w-8" />
+          </div>
+        ))}
+      </div>
+      <div className="grid grid-cols-7 gap-1.5 p-2 sm:gap-2 sm:p-2.5">
+        {Array.from({ length: 35 }, (_, index) => (
+          <SkeletonBlock
+            key={index}
+            className="min-h-[4.5rem] w-full rounded-xl sm:min-h-[5.5rem]"
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export function DjCalendarContentSkeleton() {
+  return (
+    <div aria-busy="true" aria-label="Loading calendar" className="contents">
+      <div className="relative mt-4">
+        <CalendarMonthNavSkeleton />
+      </div>
+
+      <div className="mt-3">
+        <DjCalendarLegendSkeleton />
+      </div>
+
+      <DjCalendarGridSkeleton />
+    </div>
+  );
+}
+
+export function PlannerCalendarLoadingCard({
+  description = "Your events and booking activity by date.",
+}: {
+  description?: string;
+}) {
+  return (
+    <section className="ftc-card p-4 sm:p-5 md:p-6">
+      <div className="hidden md:block">
+        <h1 className="text-base font-semibold text-ftc-text">Calendar</h1>
+        <p className="mt-1 text-sm text-ftc-text-muted">{description}</p>
+      </div>
+      <PlannerCalendarContentSkeleton />
+    </section>
+  );
+}
+
+export function DjCalendarLoadingCard({
+  description = "Manage your availability and bookings.",
+}: {
+  description?: string;
+}) {
+  return (
+    <div className="space-y-4">
+      <section className="ftc-card p-4 sm:p-5">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="text-base font-semibold text-ftc-text">Calendar</h2>
+            <p className="mt-1 text-sm text-ftc-text-muted">{description}</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <span
+              aria-hidden="true"
+              className="rounded-lg border border-ftc-border-strong/90 bg-ftc-surface/80 px-2.5 py-1.5 text-[11px] font-semibold text-ftc-text-secondary"
+            >
+              Select dates
+            </span>
+          </div>
+        </div>
+        <DjCalendarContentSkeleton />
+        <p className="mt-3 text-xs text-ftc-text-muted">
+          Use the menu on each date to set personal availability. Booking badges open the linked
+          event or DM.
+        </p>
+      </section>
     </div>
   );
 }
