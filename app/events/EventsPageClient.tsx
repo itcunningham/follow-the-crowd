@@ -3,15 +3,12 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import AppNavigation from "@/app/components/AppNavigation";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
 import { useGuardProfile } from "@/app/components/GuardProfileContext";
 import EventDateStatusBadge from "@/app/components/EventDateStatusBadge";
 import {
-  PlannerWorkspacePageHeader,
+  PlannerWorkspacePage,
   PLANNER_WORKSPACE_CONTENT_CLASS,
-  PLANNER_WORKSPACE_PAGE_SHELL_CLASS,
-  PlannerWorkspaceSecondaryControls,
 } from "@/app/components/planner/PlannerWorkspaceLayout";
 import {
   PlannerBackLink,
@@ -829,30 +826,25 @@ function EventsPageClientView({
   }
 
   return (
-      <div className={PLANNER_WORKSPACE_PAGE_SHELL_CLASS}>
-        <AppNavigation />
-
-        <PlannerWorkspacePageHeader
-          title="Events"
-          initialRole={resolvedRole}
-          activeWorkspaceHref={eventsWorkspaceActiveHref}
-          actions={
-            isPlanner && !createOpen ? (
-              <button
-                type="button"
-                onClick={() => {
-                  void openCreateFlow();
-                }}
-                className="shrink-0 ftc-btn-primary px-4 py-2.5 text-sm uppercase tracking-wide"
-              >
-                Create event
-              </button>
-            ) : null
-          }
-        />
-
-        <div className={PLANNER_WORKSPACE_CONTENT_CLASS}>
-          {!isCalendarCreateFlow ? (
+      <PlannerWorkspacePage
+        title="Events"
+        initialRole={resolvedRole}
+        activeWorkspaceHref={eventsWorkspaceActiveHref}
+        actions={
+          isPlanner && !createOpen ? (
+            <button
+              type="button"
+              onClick={() => {
+                void openCreateFlow();
+              }}
+              className="shrink-0 ftc-btn-primary px-4 py-2.5 text-sm uppercase tracking-wide"
+            >
+              Create event
+            </button>
+          ) : undefined
+        }
+        secondaryControlsSlot={
+          !isCalendarCreateFlow ? (
             <EventsListTabRow
               showTrashButton={showHistoryTrashButton}
               trashButtonDisabled={historyTrashButtonDisabled}
@@ -889,8 +881,9 @@ function EventsPageClientView({
                 </Link>
               </div>
             </EventsListTabRow>
-          ) : null}
-
+          ) : undefined
+        }
+      >
           {createOpen && isPlanner ? (
             <PlannerFormCard title="Create event" onCancel={closeCreateFlow} cancelDisabled={saving}>
               {createStep === "source" ? (
@@ -1298,7 +1291,6 @@ function EventsPageClientView({
           )}
             </>
           ) : null}
-        </div>
-      </div>
+      </PlannerWorkspacePage>
   );
 }

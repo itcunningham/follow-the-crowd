@@ -2,22 +2,16 @@
 
 import { Suspense, useEffect, useLayoutEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import AppNavigation from "@/app/components/AppNavigation";
 import CalendarViewTabs, { type CalendarViewTab } from "@/app/components/CalendarViewTabs";
 import DjAvailabilityCalendar from "@/app/components/DjAvailabilityCalendar";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
 import PlannerCalendar from "@/app/components/PlannerCalendar";
 import {
+  CalendarPageLoadingShell,
   DjCalendarLoadingCard,
   PlannerCalendarLoadingCard,
 } from "@/app/components/skeleton/Skeleton";
-import {
-  PlannerWorkspacePageHeader,
-  PLANNER_WORKSPACE_CONTENT_CLASS,
-  PLANNER_WORKSPACE_PAGE_SHELL_CLASS,
-  PlannerWorkspaceSecondaryControls,
-  PlannerWorkspaceSecondaryControlsPlaceholder,
-} from "@/app/components/planner/PlannerWorkspaceLayout";
+import { PlannerWorkspacePage } from "@/app/components/planner/PlannerWorkspaceLayout";
 import { parseCalendarPageViewTab } from "@/lib/calendar";
 import { readCachedNavRole } from "@/lib/navigationRoleCache";
 import { getCurrentUserProfile, type UserRole } from "@/lib/user/currentUser";
@@ -26,7 +20,65 @@ function resolveBothCalendarTab(viewParam: string | null): CalendarViewTab {
   return parseCalendarPageViewTab(viewParam) === "dj" ? "dj" : "planner";
 }
 
-function CalendarWorkspaceContent({
+function CalendarWorkspaceBody({
+  displayRole,
+  loadingRole,
+  bothCalendarTab,
+}: {
+  displayRole: UserRole | null;
+  loadingRole: boolean;
+  bothCalendarTab: CalendarViewTab;
+}) {
+  if (displayRole === "both") {
+    return bothCalendarTab === "planner" ? (
+      <PlannerCalendar description="Your owned events and sent booking requests by date." />
+    ) : (
+      <DjAvailabilityCalendar description="Manage your availability and received bookings." />
+    );
+  }
+
+  if (displayRole === "promoter") {
+    return <PlannerCalendar />;
+  }
+
+  if (displayRole === "dj") {
+    return <DjAvailabilityCalendar description="Manage your availability and bookings." />;
+  }
+
+  if (!loadingRole) {
+    return <p className="text-sm text-ftc-text-muted">Calendar is not available for this account</p>;
+  }
+
+  return null;
+}
+
+function CalendarWorkspaceBodyFallback({
+  displayRole,
+  bothCalendarTab,
+}: {
+  displayRole: UserRole | null;
+  bothCalendarTab: CalendarViewTab;
+}) {
+  if (displayRole === "both") {
+    return bothCalendarTab === "dj" ? (
+      <DjCalendarLoadingCard description="Manage your availability and received bookings." />
+    ) : (
+      <PlannerCalendarLoadingCard description="Your owned events and sent booking requests by date." />
+    );
+  }
+
+  if (displayRole === "promoter") {
+    return <PlannerCalendarLoadingCard />;
+  }
+
+  if (displayRole === "dj") {
+    return <DjCalendarLoadingCard />;
+  }
+
+  return null;
+}
+
+function CalendarPageContent({
   displayRole,
   loadingRole,
 }: {
@@ -43,77 +95,37 @@ function CalendarWorkspaceContent({
     setBothCalendarTab(resolveBothCalendarTab(calendarViewParam));
   }, [calendarViewParam]);
 
-  if (displayRole === "both") {
-    return (
-      <>
-        <PlannerWorkspaceSecondaryControls>
-          <CalendarViewTabs activeTab={bothCalendarTab} onChange={setBothCalendarTab} />
-        </PlannerWorkspaceSecondaryControls>
-        {bothCalendarTab === "planner" ? (
-          <PlannerCalendar description="Your owned events and sent booking requests by date." />
-        ) : (
-          <DjAvailabilityCalendar description="Manage your availability and received bookings." />
-        )}
-      </>
-    );
-  }
+  const secondaryControls =
+    displayRole === "both" ? (
+      <CalendarViewTabs activeTab={bothCalendarTab} onChange={setBothCalendarTab} />
+    ) : undefined;
 
-  if (displayRole === "promoter") {
-    return (
-      <>
-        <PlannerWorkspaceSecondaryControlsPlaceholder />
-        <PlannerCalendar />
-      </>
-    );
-  }
+  const secondaryControlsPlaceholder =
+    displayRole === "promoter" || displayRole === "dj";
 
-  if (displayRole === "dj") {
-    return (
-      <>
-        <PlannerWorkspaceSecondaryControlsPlaceholder />
-        <DjAvailabilityCalendar description="Manage your availability and bookings." />
-      </>
-    );
-  }
-
-  if (!loadingRole) {
-    return <p className="text-sm text-ftc-text-muted">Calendar is not available for this account</p>;
-  }
-
-  return null;
-}
-
-function CalendarWorkspaceFallback({ displayRole }: { displayRole: UserRole | null }) {
-  if (displayRole === "both") {
-    return (
-      <>
-        <PlannerWorkspaceSecondaryControls aria-hidden="true">
-          <div className="h-[2.375rem]" />
-        </PlannerWorkspaceSecondaryControls>
-        <PlannerCalendarLoadingCard description="Your owned events and sent booking requests by date." />
-      </>
-    );
-  }
-
-  if (displayRole === "promoter") {
-    return (
-      <>
-        <PlannerWorkspaceSecondaryControlsPlaceholder />
-        <PlannerCalendarLoadingCard />
-      </>
-    );
-  }
-
-  if (displayRole === "dj") {
-    return (
-      <>
-        <PlannerWorkspaceSecondaryControlsPlaceholder />
-        <DjCalendarLoadingCard />
-      </>
-    );
-  }
-
-  return null;
+  return (
+    <PlannerWorkspacePage
+      title="Calendar"
+      initialRole={displayRole}
+      secondaryControls={secondaryControls}
+      secondaryControlsPlaceholder={secondaryControlsPlaceholder}
+    >
+      <Suspense
+        fallback={
+          <CalendarWorkspaceBodyFallback
+            displayRole={displayRole}
+            bothCalendarTab={bothCalendarTab}
+          />
+        }
+      >
+        <CalendarWorkspaceBody
+          displayRole={displayRole}
+          loadingRole={loadingRole}
+          bothCalendarTab={bothCalendarTab}
+        />
+      </Suspense>
+    </PlannerWorkspacePage>
+  );
 }
 
 export default function CalendarPage() {
@@ -136,26 +148,11 @@ export default function CalendarPage() {
       });
   }, []);
 
-  const showEventsSubNav =
-    displayRole === "promoter" || displayRole === "both" || displayRole === "dj";
-
   return (
     <OnboardingGuard>
-      <div className={PLANNER_WORKSPACE_PAGE_SHELL_CLASS}>
-        <AppNavigation />
-
-        <PlannerWorkspacePageHeader
-          title="Calendar"
-          initialRole={displayRole}
-          showWorkspaceSubNav={showEventsSubNav}
-        />
-
-        <div className={PLANNER_WORKSPACE_CONTENT_CLASS}>
-          <Suspense fallback={<CalendarWorkspaceFallback displayRole={displayRole} />}>
-            <CalendarWorkspaceContent displayRole={displayRole} loadingRole={loadingRole} />
-          </Suspense>
-        </div>
-      </div>
+      <Suspense fallback={<CalendarPageLoadingShell />}>
+        <CalendarPageContent displayRole={displayRole} loadingRole={loadingRole} />
+      </Suspense>
     </OnboardingGuard>
   );
 }

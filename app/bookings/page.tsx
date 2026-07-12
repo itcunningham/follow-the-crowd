@@ -16,6 +16,7 @@ import {
   PLANNER_WORKSPACE_CONTENT_CLASS,
   PLANNER_WORKSPACE_PAGE_SHELL_CLASS,
   PLANNER_WORKSPACE_SECONDARY_CONTROLS_CLASS,
+  PlannerWorkspaceSecondaryControlsPlaceholder,
 } from "@/app/components/planner/PlannerWorkspaceLayout";
 import DjBookingAvailabilityBadge from "@/app/components/DjBookingAvailabilityBadge";
 import ProfileAvatar from "@/app/components/ProfileAvatar";
@@ -1361,6 +1362,25 @@ function BookingsPageContent() {
         />
 
         <div className={PLANNER_WORKSPACE_CONTENT_CLASS}>
+          {showGigsWorkspace && !plannerCreateVisible ? (
+            <div className={PLANNER_WORKSPACE_SECONDARY_CONTROLS_CLASS}>
+              <DjGigsTabs
+                activeView={djGigsView}
+                bookings={receivedBookings}
+                hiddenBookingIds={hiddenBookingIds}
+              />
+              {djGigsView === "history" &&
+              gigsListReady &&
+              !loadingList &&
+              gigsHistoryBulkManage.showManageControl &&
+              !gigsHistoryBulkManage.selectionMode ? (
+                <HistoryManageButton onClick={gigsHistoryBulkManage.enterSelectionMode} />
+              ) : null}
+            </div>
+          ) : showGigsWorkspace ? (
+            <PlannerWorkspaceSecondaryControlsPlaceholder />
+          ) : null}
+
           {successMessage ? (
             <p className="mb-4 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated px-4 py-3 text-sm text-ftc-text-secondary">
               {successMessage}
@@ -1754,23 +1774,6 @@ function BookingsPageContent() {
             </section>
           ) : null}
 
-          {showGigsWorkspace && !plannerCreateVisible ? (
-            <div className={PLANNER_WORKSPACE_SECONDARY_CONTROLS_CLASS}>
-              <DjGigsTabs
-                activeView={djGigsView}
-                bookings={receivedBookings}
-                hiddenBookingIds={hiddenBookingIds}
-              />
-              {djGigsView === "history" &&
-              gigsListReady &&
-              !loadingList &&
-              gigsHistoryBulkManage.showManageControl &&
-              !gigsHistoryBulkManage.selectionMode ? (
-                <HistoryManageButton onClick={gigsHistoryBulkManage.enterSelectionMode} />
-              ) : null}
-            </div>
-          ) : null}
-
           {showPlannerGigsEmpty ? (
             <div className="rounded-2xl border border-dashed border-ftc-border-subtle bg-ftc-surface/30 px-6 py-12 text-center">
               <p className="text-base font-medium text-ftc-text-secondary">{PLANNER_GIGS_EMPTY_MESSAGE}</p>
@@ -1872,11 +1875,7 @@ function DjGigsTabs({
                 event.preventDefault();
               }
             }}
-            className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-semibold uppercase tracking-wide transition ${
-              isActive
-                ? "border-transparent bg-ftc-primary text-ftc-bg"
-                : "border-ftc-border-subtle bg-ftc-bg-elevated text-ftc-text-secondary hover:border-ftc-border-strong"
-            }`}
+            className={`inline-flex items-center gap-1.5 ftc-filter-pill ${isActive ? "ftc-filter-pill-active" : ""}`}
           >
             {tab.icon === "history" ? <HistoryIcon /> : null}
             {tab.label}
@@ -1911,11 +1910,7 @@ function PlannerSentStatusTabs({
             key={tab.value}
             type="button"
             onClick={() => onChange(tab.value)}
-            className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-semibold uppercase tracking-wide transition ${
-              isActive
-                ? "border-transparent bg-ftc-primary text-ftc-bg"
-                : "border-ftc-border-subtle bg-ftc-bg-elevated text-ftc-text-secondary hover:border-ftc-border-strong"
-            }`}
+            className={`inline-flex items-center gap-1.5 ftc-filter-pill ${isActive ? "ftc-filter-pill-active" : ""}`}
           >
             {tab.value === "history" ? <HistoryIcon /> : null}
             {tab.label}

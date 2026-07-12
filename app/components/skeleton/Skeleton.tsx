@@ -16,6 +16,7 @@ import DmConversationHeader from "@/app/components/dm/DmConversationHeader";
 import MessagesInboxLayout from "@/app/components/dm/MessagesInboxLayout";
 import CalendarViewTabs, { type CalendarViewTab } from "@/app/components/CalendarViewTabs";
 import {
+  PlannerWorkspacePage,
   PlannerWorkspacePageHeader,
   PlannerWorkspaceSecondaryControls,
   PlannerWorkspaceSecondaryControlsPlaceholder,
@@ -862,42 +863,30 @@ export function BookingPlansPageLoadingShell() {
 export function CalendarPageLoadingShell() {
   const [cachedRole] = useState<UserRole | null>(() => readCachedNavRole());
   const [bothCalendarTab, setBothCalendarTab] = useState<CalendarViewTab>("planner");
-  const showEventsSubNav =
-    cachedRole === "promoter" || cachedRole === "both" || cachedRole === "dj";
 
   return (
-    <div className={PLANNER_WORKSPACE_PAGE_SHELL_CLASS}>
-      <AppNavigation />
-      <PlannerWorkspacePageHeader
-        title="Calendar"
-        initialRole={cachedRole}
-        showWorkspaceSubNav={showEventsSubNav}
-      />
-      <div className={PLANNER_WORKSPACE_CONTENT_CLASS}>
-        {cachedRole === "both" ? (
-          <>
-            <PlannerWorkspaceSecondaryControls>
-              <CalendarViewTabs activeTab={bothCalendarTab} onChange={setBothCalendarTab} />
-            </PlannerWorkspaceSecondaryControls>
-            {bothCalendarTab === "dj" ? (
-              <DjCalendarLoadingCard description="Manage your availability and received bookings." />
-            ) : (
-              <PlannerCalendarLoadingCard description="Your owned events and sent booking requests by date." />
-            )}
-          </>
-        ) : cachedRole === "dj" ? (
-          <>
-            <PlannerWorkspaceSecondaryControlsPlaceholder />
-            <DjCalendarLoadingCard />
-          </>
+    <PlannerWorkspacePage
+      title="Calendar"
+      initialRole={cachedRole}
+      secondaryControls={
+        cachedRole === "both" ? (
+          <CalendarViewTabs activeTab={bothCalendarTab} onChange={setBothCalendarTab} />
+        ) : undefined
+      }
+      secondaryControlsPlaceholder={cachedRole === "promoter" || cachedRole === "dj"}
+    >
+      {cachedRole === "both" ? (
+        bothCalendarTab === "dj" ? (
+          <DjCalendarLoadingCard description="Manage your availability and received bookings." />
         ) : (
-          <>
-            <PlannerWorkspaceSecondaryControlsPlaceholder />
-            <PlannerCalendarLoadingCard />
-          </>
-        )}
-      </div>
-    </div>
+          <PlannerCalendarLoadingCard description="Your owned events and sent booking requests by date." />
+        )
+      ) : cachedRole === "dj" ? (
+        <DjCalendarLoadingCard />
+      ) : (
+        <PlannerCalendarLoadingCard />
+      )}
+    </PlannerWorkspacePage>
   );
 }
 

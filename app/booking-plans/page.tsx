@@ -3,13 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import AppNavigation from "@/app/components/AppNavigation";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
-import {
-  PlannerWorkspacePageHeader,
-  PLANNER_WORKSPACE_CONTENT_CLASS,
-  PLANNER_WORKSPACE_PAGE_SHELL_CLASS,
-} from "@/app/components/planner/PlannerWorkspaceLayout";
+import { PlannerWorkspacePage } from "@/app/components/planner/PlannerWorkspaceLayout";
 import { PlannerFormCard, PlannerFormField, PlannerInlineError } from "@/app/components/planner/PlannerUi";
 import {
   BookingPlanListSkeleton,
@@ -363,26 +358,31 @@ export default function BookingPlansPage() {
 
   return (
     <OnboardingGuard>
-      <div className={PLANNER_WORKSPACE_PAGE_SHELL_CLASS}>
-        <AppNavigation />
-
-        <PlannerWorkspacePageHeader
-          title="Event Plans"
-          initialRole={displayRole}
-          actions={
-            !formOpen && !planBulkManage.selectionMode ? (
-              <button
-                type="button"
-                onClick={openCreateForm}
-                className="shrink-0 cursor-pointer ftc-btn-primary px-4 py-2.5 text-sm uppercase tracking-wide"
-              >
-                Create event plan
-              </button>
-            ) : null
-          }
-        />
-
-        <div className={PLANNER_WORKSPACE_CONTENT_CLASS}>
+      <PlannerWorkspacePage
+        title="Event Plans"
+        initialRole={displayRole}
+        actions={
+          !formOpen && !planBulkManage.selectionMode ? (
+            <button
+              type="button"
+              onClick={openCreateForm}
+              className="shrink-0 cursor-pointer ftc-btn-primary px-4 py-2.5 text-sm uppercase tracking-wide"
+            >
+              Create event plan
+            </button>
+          ) : undefined
+        }
+        secondaryControlsSlot={
+          !formOpen ? (
+            <SavedEventPlansSectionHeader
+              showTrashButton={showTrashButton}
+              trashButtonDisabled={trashButtonDisabled}
+              onTrashClick={planBulkManage.enterSelectionMode}
+            />
+          ) : undefined
+        }
+        secondaryControlsPlaceholder={formOpen}
+      >
           {successMessage ? (
             <p className="mb-4 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated px-4 py-3 text-sm text-ftc-text-secondary">
               {successMessage}
@@ -445,11 +445,6 @@ export default function BookingPlansPage() {
 
           {!formOpen ? (
             <>
-              <SavedEventPlansSectionHeader
-                showTrashButton={showTrashButton}
-                trashButtonDisabled={trashButtonDisabled}
-                onTrashClick={planBulkManage.enterSelectionMode}
-              />
               {planBulkManage.showSelectionToolbar ? (
                 <HistorySelectionToolbar
                   selectedCount={planBulkManage.selectedCount}
@@ -496,7 +491,6 @@ export default function BookingPlansPage() {
               )}
             </>
           ) : null}
-        </div>
 
         <EventPlanDeleteConfirmDialog
           open={planBulkManage.confirmOpen}
@@ -507,7 +501,7 @@ export default function BookingPlansPage() {
             void planBulkManage.confirmRemove(handleDeletePlans);
           }}
         />
-      </div>
+      </PlannerWorkspacePage>
     </OnboardingGuard>
   );
 }
