@@ -5,10 +5,11 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import {
   APP_PAGE_PROFILE_CONTENT_CLASS,
   APP_PAGE_PROFILE_GRID_CLASS,
+  APP_PAGE_PROFILE_IDENTITY_STACK_CLASS,
   APP_PAGE_PROFILE_PRIMARY_COLUMN_CLASS,
   APP_PAGE_PROFILE_SECONDARY_COLUMN_CLASS,
   AppPageBody,
-  AppPageShell,
+  AppProfilePageShell,
 } from "@/app/components/layout/AppPageLayout";
 import DjProfileSections from "@/app/components/profile/DjProfileSections";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
@@ -134,7 +135,7 @@ function UserProfilePageView({ userId }: { userId: string }) {
   }
 
   return (
-    <AppPageShell>
+    <AppProfilePageShell>
       <ProfilePageHeader isOwnProfile={isOwnProfile} returnTo={profileReturnTo} />
 
       <AppPageBody className={`py-6 ${!isOwnProfile && profile ? "pb-4" : "pb-8"}`}>
@@ -146,23 +147,25 @@ function UserProfilePageView({ userId }: { userId: string }) {
           <div className={APP_PAGE_PROFILE_CONTENT_CLASS}>
             <div className={APP_PAGE_PROFILE_GRID_CLASS}>
               <div className={APP_PAGE_PROFILE_PRIMARY_COLUMN_CLASS}>
-                <ProfileHero
-                  displayName={displayName}
-                  username={profile.username}
-                  avatarUrl={profile.avatar_url}
-                  role={profile.role}
-                  bio={profile.bio}
-                />
-
-                {profile.instagram_url?.trim() ||
-                profile.tiktok_url?.trim() ||
-                profile.soundcloud_url?.trim() ? (
-                  <ProfileLinkList
-                    instagramUrl={profile.instagram_url}
-                    tiktokUrl={profile.tiktok_url}
-                    soundcloudUrl={showDjSections ? profile.soundcloud_url : null}
+                <div className={APP_PAGE_PROFILE_IDENTITY_STACK_CLASS}>
+                  <ProfileHero
+                    displayName={displayName}
+                    username={profile.username}
+                    avatarUrl={profile.avatar_url}
+                    role={profile.role}
+                    bio={profile.bio}
                   />
-                ) : null}
+
+                  {profile.instagram_url?.trim() ||
+                  profile.tiktok_url?.trim() ||
+                  profile.soundcloud_url?.trim() ? (
+                    <ProfileLinkList
+                      instagramUrl={profile.instagram_url}
+                      tiktokUrl={profile.tiktok_url}
+                      soundcloudUrl={showDjSections ? profile.soundcloud_url : null}
+                    />
+                  ) : null}
+                </div>
               </div>
 
               <div className={APP_PAGE_PROFILE_SECONDARY_COLUMN_CLASS}>
@@ -188,6 +191,6 @@ function UserProfilePageView({ userId }: { userId: string }) {
           onClick={handleMessage}
         />
       ) : null}
-    </AppPageShell>
+    </AppProfilePageShell>
   );
 }

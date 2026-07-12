@@ -27,11 +27,12 @@ import {
 import {
   APP_PAGE_PROFILE_CONTENT_CLASS,
   APP_PAGE_PROFILE_GRID_CLASS,
+  APP_PAGE_PROFILE_IDENTITY_STACK_CLASS,
   APP_PAGE_PROFILE_PRIMARY_COLUMN_CLASS,
   APP_PAGE_PROFILE_SECONDARY_COLUMN_CLASS,
   APP_DM_CHAT_COLUMN_CLASS,
   AppPageBody,
-  AppPageShell,
+  AppProfilePageShell,
 } from "@/app/components/layout/AppPageLayout";
 import ProfilePageHeader from "@/app/components/profile/ProfilePageHeader";
 import type { DjGigsListTab } from "@/lib/bookingRequests";
@@ -1245,12 +1246,12 @@ export function ProfilePageLoadingShell({
   isOwnProfile?: boolean;
 }) {
   return (
-    <AppPageShell>
+    <AppProfilePageShell>
       <ProfilePageHeader isOwnProfile={isOwnProfile} />
       <AppPageBody className="py-6">
         <ProfileSkeleton />
       </AppPageBody>
-    </AppPageShell>
+    </AppProfilePageShell>
   );
 }
 
@@ -1569,12 +1570,18 @@ export function ProfileSkeleton() {
       className={`${APP_PAGE_PROFILE_CONTENT_CLASS} ${APP_PAGE_PROFILE_GRID_CLASS}`}
     >
       <div className={APP_PAGE_PROFILE_PRIMARY_COLUMN_CLASS}>
-        <div className="flex items-start gap-4">
-          <SkeletonBlock className="h-20 w-20 shrink-0 rounded-full sm:h-24 sm:w-24" />
-          <div className="min-w-0 flex-1 pt-1">
-            <SkeletonBlock className="h-8 w-2/3 max-w-[12rem]" />
-            <SkeletonBlock className="mt-3 h-6 w-20 rounded-full" />
-            <SkeletonBlock className="mt-3 h-4 w-1/2 max-w-[10rem]" />
+        <div className={APP_PAGE_PROFILE_IDENTITY_STACK_CLASS}>
+          <div className="flex items-start gap-4">
+            <SkeletonBlock className="h-20 w-20 shrink-0 rounded-full sm:h-24 sm:w-24" />
+            <div className="min-w-0 flex-1 pt-1">
+              <SkeletonBlock className="h-8 w-2/3 max-w-[12rem]" />
+              <SkeletonBlock className="mt-3 h-6 w-20 rounded-full" />
+              <SkeletonBlock className="mt-3 h-4 w-1/2 max-w-[10rem]" />
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <SkeletonBlock className="h-11 w-28 rounded-full" />
+            <SkeletonBlock className="h-11 w-24 rounded-full" />
           </div>
         </div>
       </div>

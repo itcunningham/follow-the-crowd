@@ -73,12 +73,14 @@ export default function ProfileHero({
         )}
 
         <div className="min-w-0 flex-1 pt-1">
-          <h1 className="text-2xl font-bold leading-tight text-ftc-text sm:text-[1.75rem]">
+          <h1 className="break-words text-2xl font-bold leading-tight text-ftc-text [overflow-wrap:anywhere] sm:text-[1.75rem]">
             {profileUsername ?? displayName}
           </h1>
 
           {profileUsername ? (
-            <p className="mt-1 text-sm font-medium text-ftc-text-secondary">{displayName}</p>
+            <p className="mt-1 break-words text-sm font-medium text-ftc-text-secondary [overflow-wrap:anywhere]">
+              {displayName}
+            </p>
           ) : null}
 
           {bio?.trim() ? <ProfileBioText bio={bio} /> : null}
