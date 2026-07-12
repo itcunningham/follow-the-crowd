@@ -29,6 +29,7 @@ import {
   APP_PAGE_PROFILE_GRID_CLASS,
   APP_PAGE_PROFILE_PRIMARY_COLUMN_CLASS,
   APP_PAGE_PROFILE_SECONDARY_COLUMN_CLASS,
+  APP_DM_CHAT_COLUMN_CLASS,
   AppPageBody,
   AppPageShell,
 } from "@/app/components/layout/AppPageLayout";
@@ -1160,12 +1161,15 @@ export function MessagesInboxLoadingShell({
 }
 
 export function ChatPageLoadingShell({ variant = "dm" }: { variant?: "dm" | "group" }) {
+  const chatColumnClass =
+    variant === "dm"
+      ? APP_DM_CHAT_COLUMN_CLASS
+      : "mx-auto flex min-h-0 w-full max-w-2xl flex-1 flex-col overflow-hidden";
+
   return (
     <div className="fixed inset-0 flex flex-col overflow-hidden bg-ftc-bg font-sans text-ftc-text">
       <AppNavigation />
-      <div
-        className={`mx-auto flex min-h-0 w-full max-w-2xl flex-1 flex-col overflow-hidden ${MOBILE_NAV_OFFSET_CLASS}`}
-      >
+      <div className={`${chatColumnClass} ${MOBILE_NAV_OFFSET_CLASS}`}>
         <header className="z-10 shrink-0 border-b border-ftc-border-subtle bg-ftc-bg/95 px-3 py-2.5 backdrop-blur-md sm:px-4">
           {variant === "dm" ? (
             <DmConversationHeader

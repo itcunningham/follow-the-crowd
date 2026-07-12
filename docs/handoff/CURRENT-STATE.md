@@ -70,6 +70,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 - Desktop nav width aligned to page shell (`md:max-w-5xl`); `scrollbar-gutter: stable` on `<html>`
 - **Navigation badges:** shared `NavBadgeProvider` with session/memory cache — Messages and Gigs counts hydrate immediately on tab switches; invisible badge slot reserved on first load until counts arrive
 - **Messages & Profile desktop:** shared `AppPageLayout` shell (`md:max-w-5xl`) aligned with Events workspace; inbox desktop card surface; profile two-column desktop grid
+- **DM conversation desktop:** chat column widened to `52rem` (~832px) at `lg+`, centered; mobile/tablet unchanged at `max-w-2xl`
 
 ## SQL / migrations Isaac may still need to run
 
@@ -85,6 +86,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `e6082d6` — Polish messages and profile desktop layouts
 - `8a24031` — Stabilise navigation notification badges
 - `78a2b5b` — Remove calendar intro copy
 - `d98f218` — Fix calendar day highlight clearing on panel close
