@@ -16,6 +16,7 @@
 4. If the task adds a file under `supabase/migrations/`, Isaac pastes that migration into the **Supabase SQL Editor** and runs it once **before** deploying the app
 5. Isaac tests in browser
 6. Cursor commits/pushes when asked
+7. **Cursor updates `docs/handoff/`** (see `HANDOFF-UPDATE.md`) before closing the task
 
 ## What Cursor should never assume
 
@@ -28,4 +29,4 @@
 
 Always point Cursor at `docs/handoff/` first.
 
-After shipping something large, update `CURRENT-STATE.md`.
+After shipping something (any completed task), update handoff per `HANDOFF-UPDATE.md` — not only `CURRENT-STATE.md` when scope warrants it.

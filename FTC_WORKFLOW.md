@@ -37,8 +37,9 @@ Working agreement for agents and humans building Follow The Crowd (FTC).
 1. **Reviewer** identifies risks and gives a short recommendation.
 2. **QA** writes a short test checklist.
 3. **Builder** implements one approved task, runs `npm run build`, commits, pushes.
-4. **QA** tests the deployed/local result.
-5. **Only then** start the next feature.
+4. **Builder** updates `docs/handoff/` per `docs/handoff/HANDOFF-UPDATE.md`.
+5. **QA** tests the deployed/local result.
+6. **Only then** start the next feature.
 
 ---
 
@@ -53,6 +54,7 @@ Every agent response must include:
 | **What was not changed** | Scope deliberately left alone |
 | **Risks or blockers** | Security, data, UX, or process concerns |
 | **Next action** | Who does what next (Reviewer / QA / Builder) |
+| **Handoff updated** | Which `docs/handoff/` files were updated (Builder, when task completes) |
 
 ---
 

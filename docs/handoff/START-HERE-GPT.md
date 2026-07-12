@@ -27,9 +27,9 @@ Legacy folder name **eventos** still appears in some docs — same project.
 | **ChatGPT (you)** | Planning, specs, QA checklists, bug write-ups, Cursor prompt drafting, SQL sanity-check. **No repo access.** |
 | **Cursor Agent** | Reads `docs/handoff/`, implements code, runs `npm run build`, commits/pushes when asked. |
 
-**Typical flow:** Idea → ChatGPT optional → paste task into Cursor → Cursor builds → Isaac runs new SQL if any → Isaac tests → Cursor commits/pushes.
+**Typical flow:** Idea → ChatGPT optional → paste task into Cursor → Cursor builds → **Cursor updates `docs/handoff/`** → Isaac runs new SQL if any → Isaac tests → Cursor commits/pushes when asked.
 
-Also see repo root **`FTC_WORKFLOW.md`** for Builder / Reviewer / QA roles on larger tasks.
+Also see repo root **`FTC_WORKFLOW.md`** for Builder / Reviewer / QA roles on larger tasks. Handoff checklist: **`docs/handoff/HANDOFF-UPDATE.md`**.
 
 ---
 
@@ -169,13 +169,14 @@ npm run build
 | Event form validation | `lib/events/eventFormFieldValidation.ts`, `lib/bookingDateTime.ts` |
 | Notes limits | `lib/events/eventNotes.ts` |
 | Group chat | `lib/groupChats.ts`, `lib/eventCrewChat.ts` |
-| Planner UI primitives | `app/components/planner/PlannerUi.tsx` |
+| Planner UI / workspace shell | `app/components/planner/PlannerUi.tsx`, `PlannerWorkspaceLayout.tsx` |
 | Events list | `app/events/EventsPageClient.tsx` |
 | Event detail | `app/events/[eventId]/page.tsx` |
 | Calendar UI | `app/components/PlannerCalendar.tsx`, `PlannerCalendarMobileDateStrip.tsx` |
 | Send bookings UI | `app/components/booking/SendBookingRequestsPanel.tsx` |
 | Booking cards | `app/components/BookingRequestCard.tsx` |
 | History bulk actions | `app/components/history/HistoryBulkManage.tsx` |
+| Onboarding / perf | `app/components/OnboardingGuard.tsx`, `lib/user/currentUser.ts` |
 | Event artwork | `app/components/events/EventArtworkTile.tsx`, `EventFallbackColourField.tsx` |
 
 ---
@@ -197,19 +198,19 @@ npm run build
 
 ---
 
-## Recent shipped work (2026-07-11 — reference)
+## Recent shipped work (2026-07-12 — reference)
 
+- Desktop workspace alignment: shared `PlannerWorkspacePage` shell across Events / Event Plans / Calendar / Gigs
+- Faster page loads: optimistic auth, profile cache, no full loading shell on every tab switch
 - Calendar date-strip dot priority (Accepted > Pending > Upcoming)
 - Venue on calendar event cards (`Event · Venue`)
-- Desktop/mobile planner UX parity (wording, validation, calendar grid accents, today/selected styling)
+- Desktop/mobile planner UX parity (wording, validation, calendar grid accents)
 - Inline event form validation; required start + finish times
 - Calendar-origin create flow + Confirm DJ wording
 - Cancelled events hidden from calendar
-- Today highlight on date strip; scroll fixes for calendar → event detail navigation
-- Notes heading rename; confirmation dialog punctuation cleanup
 - History bulk remove from Events and Gigs
 
-Latest commit on `main` when this was updated: check `git log -1` in repo.
+Latest commit on `main`: check `git log -1` in repo.
 
 ---
 
@@ -231,9 +232,10 @@ Format as **one clear instruction block** Isaac can paste into Cursor. Include:
 2. Specific goal and scope boundaries ("do not change X")
 3. Files to inspect first (if known)
 4. Whether to `npm run build`, commit, push, confirm Vercel
+5. **After completion:** Cursor updates `docs/handoff/` per `HANDOFF-UPDATE.md`
 
 **Example ending:**  
-`Run npm run build, fix issues, commit with a clear message, push to main, confirm Vercel deploy. Return: files changed, commit hash, deploy status.`
+`Run npm run build, fix issues, commit with a clear message, push to main, confirm Vercel deploy. Update docs/handoff/. Return: files changed, commit hash, deploy status, handoff files updated.`
 
 ---
 
@@ -241,7 +243,8 @@ Format as **one clear instruction block** Isaac can paste into Cursor. Include:
 
 | File | Purpose |
 |------|---------|
-| `docs/handoff/CURRENT-STATE.md` | Feature inventory (updated after big ships) |
+| `docs/handoff/HANDOFF-UPDATE.md` | **Mandatory checklist when a job completes** |
+| `docs/handoff/CURRENT-STATE.md` | Feature inventory (updated after every ship) |
 | `docs/handoff/PROJECT.md` | Folders, stack, build |
 | `docs/handoff/HOW-WE-WORK.md` | Roles and flow |
 | `docs/handoff/USER-PREFERENCES.md` | Isaac's working style |

@@ -1,0 +1,17 @@
+---
+description: Update docs/handoff/ when a completed task ships code or behaviour changes
+alwaysApply: true
+---
+
+# Handoff docs on task completion
+
+When you **finish a Builder task** (code shipped, build green, commit/push done or Isaac confirmed complete):
+
+1. Read `docs/handoff/HANDOFF-UPDATE.md`.
+2. Update **`docs/handoff/CURRENT-STATE.md`** at minimum (`last updated` date, feature bullets, recent commits).
+3. Update other handoff files from that checklist when the task touched product scope, routes, SQL, or workflow.
+4. In your final reply, include **Handoff updated:** with the file paths you changed.
+
+Skip only if the turn was Q&A/review with no repo changes, or Isaac said not to update.
+
+Do not add secrets to handoff files.

@@ -63,7 +63,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 
 ## Desktop workspace & performance (2026-07-12)
 
-- **Shared planner shell:** `PlannerWorkspacePage` in `app/components/planner/PlannerWorkspaceLayout.tsx` — Events, Event Plans, Calendar, Gigs share title row, primary tabs, divider, secondary controls baseline on desktop (`md:max-w-5xl`)
+- **Shared planner shell:** `PlannerWorkspacePage` in `app/components/planner/PlannerWorkspaceLayout.tsx` — Events, Event Plans, Calendar, Gigs share title row (heading derived from active workspace href via `resolvePlannerWorkspaceTitle`), primary tabs, divider, secondary controls baseline on desktop (`md:max-w-5xl`)
 - **Desktop consistency tokens:** shared primary surface (`PLANNER_WORKSPACE_PRIMARY_SURFACE_CLASS`), list spacing (`PLANNER_WORKSPACE_LIST_CLASS`), title-row baseline alignment; Calendar reference shell — no duplicate in-card titles on desktop; loading skeletons match loaded layout
 - **Calendar day selection:** desktop grid highlight tied to open day panel (`actionDate`); closing the panel clears the outline instantly (no transition fade) and blurs focus; Today styling unchanged
 - **Page load speed:** optimistic auth in `OnboardingGuard` (cached session renders immediately); profile + nav role persisted to localStorage (userId-scoped) and seeded at module load; profile fetch starts immediately when session exists; auth guard runs profile fetch in parallel with session check; events list + group inbox caches survive hard refresh via localStorage; profile cache + deduped fetches in `lib/user/currentUser.ts`; nav skips redundant profile load when guard profile exists
@@ -86,18 +86,13 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
-- `fbd1bbb` — fix messages badge first load timing (localStorage + early messages prefetch)
-- `913efc4` — fix gigs badge hydration timing (runtime snapshot + sync cache read)
-- `832a4cf` — Remove trailing period from group chats empty state
-- `8a24031` — Stabilise navigation notification badges
-- `78a2b5b` — Remove calendar intro copy
-- `d98f218` — Fix calendar day highlight clearing on panel close
-- `d961180` — Polish desktop planner workspace consistency
-- `1943163` — Speed up page loads (optimistic auth + profile caching)
-- `daf08a2` — Fix desktop workspace alignment drift (shared shell)
-- `feb2eba` — Align desktop events workspace layouts
-- `2e0648c` — Update ChatGPT and handoff docs
-- `8e324f7` — Desktop/mobile planner UX parity
-- `3f1ce61` — Venue on calendar event cards
-- `41787b5` — Calendar date-strip dot priority
-- `12b3ffa` — Inline event form validation
+- `93de0c2` — match planner heading to active workspace
+- `0444eac` — speed up authenticated app cold start
+- `9d1a5c7` — fix messages badge sync hydration like gigs tab
+- `fbd1bbb` — fix messages badge first load timing
+- `913efc4` — fix gigs badge hydration timing
+- `78a2b5b` — remove calendar intro copy
+- `d961180` — polish desktop planner workspace consistency
+- `1943163` — speed up page loads (optimistic auth + profile caching)
+- `daf08a2` — fix desktop workspace alignment drift
+- `8e324f7` — desktop/mobile planner UX parity

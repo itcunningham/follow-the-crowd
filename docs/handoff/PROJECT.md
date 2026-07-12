@@ -23,7 +23,7 @@
 | `lib/` | Data access, business logic |
 | `scripts/*.sql` | Legacy Supabase bootstrap / one-off fixes (run manually) |
 | `supabase/migrations/` | Versioned database migrations (paste in Supabase SQL Editor) |
-| `docs/handoff/` | Session context for new chats (Cursor + ChatGPT) |
+| `docs/handoff/` | Session context — **update on every completed job** (`HANDOFF-UPDATE.md`) |
 | `FTC_WORKFLOW.md` | Builder / Reviewer / QA working agreement |
 
 ## Planner routes

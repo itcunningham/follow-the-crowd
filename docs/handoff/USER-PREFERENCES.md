@@ -28,4 +28,6 @@
 
 ## Handoff docs
 
-- Cursor may update `docs/handoff/CURRENT-STATE.md` when shipping a meaningful feature (no need to ask each time).
+- **Every completed task:** update `docs/handoff/` per `HANDOFF-UPDATE.md` (minimum: `CURRENT-STATE.md`, date, recent commits).
+- Include **Handoff updated:** file list in the final summary.
+- Cursor may update other handoff files when product, SQL, routes, or workflow changed.
