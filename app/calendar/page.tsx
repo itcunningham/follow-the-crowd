@@ -117,7 +117,6 @@ export default function CalendarPage() {
   return (
     <OnboardingGuard>
       <PlannerWorkspacePage
-        title="Calendar"
         initialRole={displayRole}
         secondaryControls={secondaryControls}
         secondaryControlsPlaceholder={secondaryControlsPlaceholder}

@@ -324,7 +324,6 @@ export function EventsCalendarCreateLoadingShell({
 
   return (
     <PlannerWorkspacePage
-      title="Events"
       initialRole={role}
       activeWorkspaceHref={EVENTS_AREA_SUB_NAV.calendar.href}
       secondaryControlsPlaceholder
@@ -374,7 +373,6 @@ export function EventsPageLoadingShell({
 
   return (
     <PlannerWorkspacePage
-      title="Events"
       initialRole={role}
       actions={
         isPlanner ? (
@@ -794,11 +792,9 @@ export function BookingsPageLoadingShell({
         ? variant
         : cachedRole;
   const showGigsTabs = !plannerBookingCreateOpen && canShowGigsWorkspaceTabs(role);
-  const workspaceTitle = plannerBookingCreateOpen ? "Event Plans" : "Gigs";
 
   return (
     <PlannerWorkspacePage
-      title={workspaceTitle}
       initialRole={role}
       activeWorkspaceHref={
         plannerBookingCreateOpen ? EVENTS_AREA_SUB_NAV.bookingPlans.href : undefined
@@ -853,7 +849,6 @@ export function BookingPlansPageLoadingShell() {
 
   return (
     <PlannerWorkspacePage
-      title="Event Plans"
       initialRole={cachedRole}
       actions={
         <Link
@@ -876,7 +871,6 @@ export function CalendarPageLoadingShell() {
 
   return (
     <PlannerWorkspacePage
-      title="Calendar"
       initialRole={cachedRole}
       secondaryControls={
         cachedRole === "both" ? (

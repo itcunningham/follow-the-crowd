@@ -825,7 +825,6 @@ function EventsPageClientView({
 
   return (
       <PlannerWorkspacePage
-        title="Events"
         initialRole={resolvedRole}
         activeWorkspaceHref={eventsWorkspaceActiveHref}
         actions={

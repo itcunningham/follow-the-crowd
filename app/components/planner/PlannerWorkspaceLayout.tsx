@@ -1,9 +1,12 @@
 "use client";
 
 import "@/lib/navigationBadgePrefetch";
+import { useMemo } from "react";
+import { usePathname } from "next/navigation";
 import PlannerEventsSubNav from "@/app/components/PlannerEventsSubNav";
 import { MOBILE_NAV_OFFSET_CLASS } from "@/app/components/AppNavigation";
 import AppNavigation from "@/app/components/AppNavigation";
+import { resolvePlannerWorkspaceTitle } from "@/lib/plannerEventsNav";
 import type { UserRole } from "@/lib/user/currentUser";
 
 export const PLANNER_WORKSPACE_SHELL_CLASS = `mx-auto min-h-[100dvh] w-full max-w-2xl bg-ftc-bg font-sans text-ftc-text ${MOBILE_NAV_OFFSET_CLASS}`;
@@ -131,7 +134,7 @@ export function PlannerWorkspacePageHeader({
 }
 
 type PlannerWorkspacePageProps = {
-  title: string;
+  title?: string;
   initialRole?: UserRole | null;
   activeWorkspaceHref?: string | null;
   actions?: React.ReactNode;
@@ -170,7 +173,7 @@ function renderSecondaryBand({
 
 /** Shared Events-area page shell: nav, title row, primary tabs, divider, secondary controls, content. */
 export function PlannerWorkspacePage({
-  title,
+  title: titleProp,
   initialRole,
   activeWorkspaceHref,
   actions,
@@ -179,6 +182,16 @@ export function PlannerWorkspacePage({
   secondaryControlsPlaceholder = false,
   children,
 }: PlannerWorkspacePageProps) {
+  const pathname = usePathname();
+  const title = useMemo(
+    () =>
+      titleProp ??
+      resolvePlannerWorkspaceTitle({
+        pathname,
+        activeWorkspaceHref,
+      }),
+    [activeWorkspaceHref, pathname, titleProp],
+  );
   const secondaryBand = renderSecondaryBand({
     secondaryControlsSlot,
     secondaryControls,

@@ -14,6 +14,7 @@ import {
 import {
   canViewGigsSubNav,
   EVENTS_AREA_SUB_NAV,
+  getActiveWorkspaceHref,
   getEventsAreaSubNavItems,
   isPlannerEventsAreaPath,
 } from "@/lib/plannerEventsNav";
@@ -21,23 +22,7 @@ import { readCachedNavigation } from "@/lib/navigationRoleCache";
 import { getCurrentUserProfile, type UserRole } from "@/lib/user/currentUser";
 
 function getActiveHref(pathname: string): string {
-  if (pathname === "/events" || pathname.startsWith("/events/")) {
-    return "/events";
-  }
-
-  if (pathname === "/booking-plans" || pathname.startsWith("/booking-plans/")) {
-    return "/booking-plans";
-  }
-
-  if (pathname === "/calendar" || pathname.startsWith("/calendar/")) {
-    return "/calendar";
-  }
-
-  if (pathname === "/bookings" || pathname.startsWith("/bookings/")) {
-    return "/bookings";
-  }
-
-  return "/events";
+  return getActiveWorkspaceHref(pathname);
 }
 
 function GigsPendingCountBadge({

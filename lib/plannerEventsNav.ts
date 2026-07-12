@@ -45,6 +45,50 @@ export function getEventsAreaSubNavItems(role: UserRole | null): EventsAreaSubNa
   return items;
 }
 
+export function getActiveWorkspaceHref(pathname: string): string {
+  if (pathname === "/events" || pathname.startsWith("/events/")) {
+    return EVENTS_AREA_SUB_NAV.events.href;
+  }
+
+  if (pathname === "/booking-plans" || pathname.startsWith("/booking-plans/")) {
+    return EVENTS_AREA_SUB_NAV.bookingPlans.href;
+  }
+
+  if (pathname === "/calendar" || pathname.startsWith("/calendar/")) {
+    return EVENTS_AREA_SUB_NAV.calendar.href;
+  }
+
+  if (pathname === "/bookings" || pathname.startsWith("/bookings/")) {
+    return EVENTS_AREA_SUB_NAV.gigs.href;
+  }
+
+  return EVENTS_AREA_SUB_NAV.events.href;
+}
+
+export function getPlannerWorkspaceTitle(workspaceHref: string): string {
+  switch (workspaceHref) {
+    case EVENTS_AREA_SUB_NAV.events.href:
+      return EVENTS_AREA_SUB_NAV.events.label;
+    case EVENTS_AREA_SUB_NAV.bookingPlans.href:
+      return EVENTS_AREA_SUB_NAV.bookingPlans.label;
+    case EVENTS_AREA_SUB_NAV.calendar.href:
+      return EVENTS_AREA_SUB_NAV.calendar.label;
+    case EVENTS_AREA_SUB_NAV.gigs.href:
+      return EVENTS_AREA_SUB_NAV.gigs.label;
+    default:
+      return EVENTS_AREA_SUB_NAV.events.label;
+  }
+}
+
+export function resolvePlannerWorkspaceTitle(options: {
+  pathname: string;
+  activeWorkspaceHref?: string | null;
+}): string {
+  const href = options.activeWorkspaceHref?.trim() || getActiveWorkspaceHref(options.pathname);
+
+  return getPlannerWorkspaceTitle(href);
+}
+
 export function isPlannerEventsAreaPath(pathname: string): boolean {
   if (isEventCrewChatPath(pathname)) {
     return false;

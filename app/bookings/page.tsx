@@ -1357,7 +1357,6 @@ function BookingsPageContent() {
   return (
     <OnboardingGuard>
       <PlannerWorkspacePage
-        title={plannerCreateVisible ? "Event Plans" : "Gigs"}
         initialRole={displayRole}
         activeWorkspaceHref={
           plannerCreateVisible ? EVENTS_AREA_SUB_NAV.bookingPlans.href : undefined

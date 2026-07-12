@@ -377,7 +377,6 @@ export default function BookingPlansPage() {
   return (
     <OnboardingGuard>
       <PlannerWorkspacePage
-        title="Event Plans"
         initialRole={displayRole}
         actions={
           !formOpen && !planBulkManage.selectionMode ? (
