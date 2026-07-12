@@ -8,7 +8,7 @@ import OnboardingGuard from "@/app/components/OnboardingGuard";
 import {
   PlannerWorkspacePageHeader,
   PLANNER_WORKSPACE_CONTENT_CLASS,
-  PLANNER_WORKSPACE_SHELL_CLASS,
+  PLANNER_WORKSPACE_PAGE_SHELL_CLASS,
 } from "@/app/components/planner/PlannerWorkspaceLayout";
 import { PlannerFormCard, PlannerFormField, PlannerInlineError } from "@/app/components/planner/PlannerUi";
 import {
@@ -363,23 +363,21 @@ export default function BookingPlansPage() {
 
   return (
     <OnboardingGuard>
-      <div className={PLANNER_WORKSPACE_SHELL_CLASS}>
+      <div className={PLANNER_WORKSPACE_PAGE_SHELL_CLASS}>
         <AppNavigation />
 
         <PlannerWorkspacePageHeader
           title="Event Plans"
           initialRole={displayRole}
           actions={
-            !formOpen && (loadingAccess || loadingPlans || plans.length > 0) ? (
-              !planBulkManage.selectionMode ? (
-                <button
-                  type="button"
-                  onClick={openCreateForm}
-                  className="shrink-0 cursor-pointer ftc-btn-primary px-4 py-2.5 text-sm uppercase tracking-wide"
-                >
-                  Create event plan
-                </button>
-              ) : null
+            !formOpen && !planBulkManage.selectionMode ? (
+              <button
+                type="button"
+                onClick={openCreateForm}
+                className="shrink-0 cursor-pointer ftc-btn-primary px-4 py-2.5 text-sm uppercase tracking-wide"
+              >
+                Create event plan
+              </button>
             ) : null
           }
         />

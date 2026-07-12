@@ -13,8 +13,10 @@ import {
 } from "@/app/components/skeleton/Skeleton";
 import {
   PlannerWorkspacePageHeader,
-  PLANNER_CALENDAR_SHELL_CLASS,
   PLANNER_WORKSPACE_CONTENT_CLASS,
+  PLANNER_WORKSPACE_PAGE_SHELL_CLASS,
+  PlannerWorkspaceSecondaryControls,
+  PlannerWorkspaceSecondaryControlsPlaceholder,
 } from "@/app/components/planner/PlannerWorkspaceLayout";
 import { parseCalendarPageViewTab } from "@/lib/calendar";
 import { readCachedNavRole } from "@/lib/navigationRoleCache";
@@ -44,7 +46,9 @@ function CalendarWorkspaceContent({
   if (displayRole === "both") {
     return (
       <>
-        <CalendarViewTabs activeTab={bothCalendarTab} onChange={setBothCalendarTab} />
+        <PlannerWorkspaceSecondaryControls>
+          <CalendarViewTabs activeTab={bothCalendarTab} onChange={setBothCalendarTab} />
+        </PlannerWorkspaceSecondaryControls>
         {bothCalendarTab === "planner" ? (
           <PlannerCalendar description="Your owned events and sent booking requests by date." />
         ) : (
@@ -55,11 +59,21 @@ function CalendarWorkspaceContent({
   }
 
   if (displayRole === "promoter") {
-    return <PlannerCalendar />;
+    return (
+      <>
+        <PlannerWorkspaceSecondaryControlsPlaceholder />
+        <PlannerCalendar />
+      </>
+    );
   }
 
   if (displayRole === "dj") {
-    return <DjAvailabilityCalendar description="Manage your availability and bookings." />;
+    return (
+      <>
+        <PlannerWorkspaceSecondaryControlsPlaceholder />
+        <DjAvailabilityCalendar description="Manage your availability and bookings." />
+      </>
+    );
   }
 
   if (!loadingRole) {
@@ -73,18 +87,30 @@ function CalendarWorkspaceFallback({ displayRole }: { displayRole: UserRole | nu
   if (displayRole === "both") {
     return (
       <>
-        <div className="mb-4 h-10" aria-hidden="true" />
+        <PlannerWorkspaceSecondaryControls aria-hidden="true">
+          <div className="h-[2.375rem]" />
+        </PlannerWorkspaceSecondaryControls>
         <PlannerCalendarLoadingCard description="Your owned events and sent booking requests by date." />
       </>
     );
   }
 
   if (displayRole === "promoter") {
-    return <PlannerCalendarLoadingCard />;
+    return (
+      <>
+        <PlannerWorkspaceSecondaryControlsPlaceholder />
+        <PlannerCalendarLoadingCard />
+      </>
+    );
   }
 
   if (displayRole === "dj") {
-    return <DjCalendarLoadingCard />;
+    return (
+      <>
+        <PlannerWorkspaceSecondaryControlsPlaceholder />
+        <DjCalendarLoadingCard />
+      </>
+    );
   }
 
   return null;
@@ -115,7 +141,7 @@ export default function CalendarPage() {
 
   return (
     <OnboardingGuard>
-      <div className={PLANNER_CALENDAR_SHELL_CLASS}>
+      <div className={PLANNER_WORKSPACE_PAGE_SHELL_CLASS}>
         <AppNavigation />
 
         <PlannerWorkspacePageHeader

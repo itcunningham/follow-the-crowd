@@ -17,10 +17,11 @@ import MessagesInboxLayout from "@/app/components/dm/MessagesInboxLayout";
 import CalendarViewTabs, { type CalendarViewTab } from "@/app/components/CalendarViewTabs";
 import {
   PlannerWorkspacePageHeader,
-  PLANNER_CALENDAR_SHELL_CLASS,
+  PlannerWorkspaceSecondaryControls,
+  PlannerWorkspaceSecondaryControlsPlaceholder,
   PLANNER_WORKSPACE_CONTENT_CLASS,
-  PLANNER_WORKSPACE_SECONDARY_TABS_ROW_CLASS,
-  PLANNER_WORKSPACE_SHELL_CLASS,
+  PLANNER_WORKSPACE_PAGE_SHELL_CLASS,
+  PLANNER_WORKSPACE_SECONDARY_CONTROLS_CLASS,
 } from "@/app/components/planner/PlannerWorkspaceLayout";
 import ProfilePageHeader from "@/app/components/profile/ProfilePageHeader";
 import type { DjGigsListTab } from "@/lib/bookingRequests";
@@ -270,7 +271,7 @@ export function EventsListTabRow({
   onTrashClick?: () => void;
 }) {
   return (
-    <div className={PLANNER_WORKSPACE_SECONDARY_TABS_ROW_CLASS}>
+    <div className={PLANNER_WORKSPACE_SECONDARY_CONTROLS_CLASS}>
       {children}
       {showTrashButton ? (
         <HistoryManageButton
@@ -293,7 +294,7 @@ export function EventsCalendarCreateLoadingShell({
   const role = roleProp ?? cachedRole;
 
   return (
-    <div className={PLANNER_WORKSPACE_SHELL_CLASS}>
+    <div className={PLANNER_WORKSPACE_PAGE_SHELL_CLASS}>
       <AppNavigation />
       <PlannerWorkspacePageHeader
         title="Events"
@@ -346,7 +347,7 @@ export function EventsPageLoadingShell({
   const isHistoryTab = searchParams.get("tab") === "history";
 
   return (
-    <div className={PLANNER_WORKSPACE_SHELL_CLASS}>
+    <div className={PLANNER_WORKSPACE_PAGE_SHELL_CLASS}>
       <AppNavigation />
       <PlannerWorkspacePageHeader
         title="Events"
@@ -540,7 +541,7 @@ export function SavedEventPlansSectionHeader({
   onTrashClick?: () => void;
 }) {
   return (
-    <div className={PLANNER_WORKSPACE_SECONDARY_TABS_ROW_CLASS}>
+    <div className={PLANNER_WORKSPACE_SECONDARY_CONTROLS_CLASS}>
       <SavedEventPlansSectionHeading className="mb-0" />
       {showTrashButton ? (
         <HistoryManageButton
@@ -779,7 +780,7 @@ export function BookingsPageLoadingShell({
   const workspaceTitle = plannerBookingCreateOpen ? "Event Plans" : "Gigs";
 
   return (
-    <div className={PLANNER_WORKSPACE_SHELL_CLASS}>
+    <div className={PLANNER_WORKSPACE_PAGE_SHELL_CLASS}>
       <AppNavigation />
       <PlannerWorkspacePageHeader
         title={workspaceTitle}
@@ -792,7 +793,7 @@ export function BookingsPageLoadingShell({
         {plannerBookingCreateOpen ? (
           <BookingCreateEventDetailsCardSkeleton />
         ) : showGigsTabs ? (
-          <div className={PLANNER_WORKSPACE_SECONDARY_TABS_ROW_CLASS}>
+          <div className={PLANNER_WORKSPACE_SECONDARY_CONTROLS_CLASS}>
             <GigsWorkspaceTabsShell />
           </div>
         ) : null}
@@ -836,7 +837,7 @@ export function BookingPlansPageLoadingShell() {
   const [cachedRole] = useState<UserRole | null>(() => readCachedNavRole());
 
   return (
-    <div className={PLANNER_WORKSPACE_SHELL_CLASS}>
+    <div className={PLANNER_WORKSPACE_PAGE_SHELL_CLASS}>
       <AppNavigation />
       <PlannerWorkspacePageHeader
         title="Event Plans"
@@ -865,7 +866,7 @@ export function CalendarPageLoadingShell() {
     cachedRole === "promoter" || cachedRole === "both" || cachedRole === "dj";
 
   return (
-    <div className={PLANNER_CALENDAR_SHELL_CLASS}>
+    <div className={PLANNER_WORKSPACE_PAGE_SHELL_CLASS}>
       <AppNavigation />
       <PlannerWorkspacePageHeader
         title="Calendar"
@@ -875,7 +876,9 @@ export function CalendarPageLoadingShell() {
       <div className={PLANNER_WORKSPACE_CONTENT_CLASS}>
         {cachedRole === "both" ? (
           <>
-            <CalendarViewTabs activeTab={bothCalendarTab} onChange={setBothCalendarTab} />
+            <PlannerWorkspaceSecondaryControls>
+              <CalendarViewTabs activeTab={bothCalendarTab} onChange={setBothCalendarTab} />
+            </PlannerWorkspaceSecondaryControls>
             {bothCalendarTab === "dj" ? (
               <DjCalendarLoadingCard description="Manage your availability and received bookings." />
             ) : (
@@ -883,9 +886,15 @@ export function CalendarPageLoadingShell() {
             )}
           </>
         ) : cachedRole === "dj" ? (
-          <DjCalendarLoadingCard />
+          <>
+            <PlannerWorkspaceSecondaryControlsPlaceholder />
+            <DjCalendarLoadingCard />
+          </>
         ) : (
-          <PlannerCalendarLoadingCard />
+          <>
+            <PlannerWorkspaceSecondaryControlsPlaceholder />
+            <PlannerCalendarLoadingCard />
+          </>
         )}
       </div>
     </div>

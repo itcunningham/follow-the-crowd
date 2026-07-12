@@ -10,7 +10,8 @@ import EventDateStatusBadge from "@/app/components/EventDateStatusBadge";
 import {
   PlannerWorkspacePageHeader,
   PLANNER_WORKSPACE_CONTENT_CLASS,
-  PLANNER_WORKSPACE_SHELL_CLASS,
+  PLANNER_WORKSPACE_PAGE_SHELL_CLASS,
+  PlannerWorkspaceSecondaryControls,
 } from "@/app/components/planner/PlannerWorkspaceLayout";
 import {
   PlannerBackLink,
@@ -828,7 +829,7 @@ function EventsPageClientView({
   }
 
   return (
-      <div className={PLANNER_WORKSPACE_SHELL_CLASS}>
+      <div className={PLANNER_WORKSPACE_PAGE_SHELL_CLASS}>
         <AppNavigation />
 
         <PlannerWorkspacePageHeader

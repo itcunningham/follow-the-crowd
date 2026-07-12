@@ -126,7 +126,7 @@ export default function PlannerEventsSubNav({
   return (
     <nav
       aria-label="Events area"
-      className="mt-4 flex flex-wrap gap-2"
+      className="flex flex-wrap gap-2"
     >
       {tabs.map((tab) => {
         const isActive = activeHref === tab.href;

@@ -14,8 +14,8 @@ import { useGuardProfile } from "@/app/components/GuardProfileContext";
 import {
   PlannerWorkspacePageHeader,
   PLANNER_WORKSPACE_CONTENT_CLASS,
-  PLANNER_WORKSPACE_SECONDARY_TABS_ROW_CLASS,
-  PLANNER_WORKSPACE_SHELL_CLASS,
+  PLANNER_WORKSPACE_PAGE_SHELL_CLASS,
+  PLANNER_WORKSPACE_SECONDARY_CONTROLS_CLASS,
 } from "@/app/components/planner/PlannerWorkspaceLayout";
 import DjBookingAvailabilityBadge from "@/app/components/DjBookingAvailabilityBadge";
 import ProfileAvatar from "@/app/components/ProfileAvatar";
@@ -1349,7 +1349,7 @@ function BookingsPageContent() {
 
   return (
     <OnboardingGuard>
-      <div className={PLANNER_WORKSPACE_SHELL_CLASS}>
+      <div className={PLANNER_WORKSPACE_PAGE_SHELL_CLASS}>
         <AppNavigation />
 
         <PlannerWorkspacePageHeader
@@ -1755,7 +1755,7 @@ function BookingsPageContent() {
           ) : null}
 
           {showGigsWorkspace && !plannerCreateVisible ? (
-            <div className={PLANNER_WORKSPACE_SECONDARY_TABS_ROW_CLASS}>
+            <div className={PLANNER_WORKSPACE_SECONDARY_CONTROLS_CLASS}>
               <DjGigsTabs
                 activeView={djGigsView}
                 bookings={receivedBookings}

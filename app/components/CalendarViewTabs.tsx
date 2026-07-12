@@ -15,11 +15,7 @@ const TABS: { value: CalendarViewTab; label: string }[] = [
 ];
 
 export default function CalendarViewTabs({ activeTab, onChange }: CalendarViewTabsProps) {
-  return (
-    <div className="mb-4">
-      <PlannerFilterPills options={TABS} value={activeTab} onChange={onChange} />
-    </div>
-  );
+  return <PlannerFilterPills options={TABS} value={activeTab} onChange={onChange} />;
 }
 
 export type { CalendarViewTab };
