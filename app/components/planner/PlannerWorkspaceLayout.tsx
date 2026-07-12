@@ -21,10 +21,10 @@ export const PLANNER_WORKSPACE_HEADER_CLASS = `ftc-page-header ${PLANNER_WORKSPA
 export const PLANNER_WORKSPACE_TITLE_CLASS = "text-xl font-semibold leading-tight text-ftc-text";
 
 export const PLANNER_WORKSPACE_TITLE_ROW_CLASS =
-  "flex flex-wrap items-start justify-between gap-3 md:min-h-[2.75rem]";
+  "flex flex-wrap items-start justify-between gap-3 md:min-h-[2.75rem] md:items-center";
 
 export const PLANNER_WORKSPACE_TITLE_ACTIONS_CLASS =
-  "flex shrink-0 items-start justify-end md:min-h-[2.625rem] md:min-w-[11.75rem]";
+  "flex shrink-0 items-start justify-end md:min-h-[2.625rem] md:min-w-[11.75rem] md:items-center";
 
 export const PLANNER_WORKSPACE_SUBNAV_SLOT_CLASS = "mt-4 md:min-h-[2.375rem]";
 
@@ -39,6 +39,15 @@ export const PLANNER_WORKSPACE_SECONDARY_CONTROLS_CLASS =
   "mb-4 flex flex-wrap items-center justify-between gap-2 md:min-h-[2.375rem]";
 
 export const PLANNER_WORKSPACE_SECONDARY_BAND_CLASS = "pt-4";
+
+/** Primary desktop workspace surface (Calendar reference card shell). */
+export const PLANNER_WORKSPACE_PRIMARY_SURFACE_CLASS = "ftc-card p-4 sm:p-5 md:p-6";
+
+/** Shared vertical gap for list-style workspace content. */
+export const PLANNER_WORKSPACE_LIST_CLASS = "space-y-3";
+
+export const PLANNER_WORKSPACE_SUCCESS_BANNER_CLASS =
+  "mb-4 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated px-4 py-3 text-sm text-ftc-text-secondary";
 
 /** @deprecated Use PLANNER_WORKSPACE_SECONDARY_CONTROLS_CLASS */
 export const PLANNER_WORKSPACE_SECONDARY_TABS_ROW_CLASS = PLANNER_WORKSPACE_SECONDARY_CONTROLS_CLASS;

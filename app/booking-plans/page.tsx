@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
 import { useGuardProfile } from "@/app/components/GuardProfileContext";
-import { PlannerWorkspacePage } from "@/app/components/planner/PlannerWorkspaceLayout";
+import { PlannerWorkspacePage, PLANNER_WORKSPACE_LIST_CLASS } from "@/app/components/planner/PlannerWorkspaceLayout";
 import { PlannerFormCard, PlannerFormField, PlannerInlineError } from "@/app/components/planner/PlannerUi";
 import {
   BookingPlanListSkeleton,
@@ -494,7 +494,7 @@ export default function BookingPlansPage() {
                   </button>
                 </div>
               ) : (
-                <ul className="space-y-2.5">
+                <ul className={PLANNER_WORKSPACE_LIST_CLASS}>
                   {visiblePlans.map((plan) => (
                     <EventPlanCard
                       key={plan.id}

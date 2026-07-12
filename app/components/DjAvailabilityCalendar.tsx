@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { PLANNER_WORKSPACE_PRIMARY_SURFACE_CLASS } from "@/app/components/planner/PlannerWorkspaceLayout";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
@@ -885,14 +886,12 @@ export default function DjAvailabilityCalendar({
   }
 
   return (
-    <div className="space-y-4">
-      <section className="ftc-card p-4 sm:p-5">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <h2 className="text-base font-semibold text-ftc-text">Calendar</h2>
-            <p className="mt-1 text-sm text-ftc-text-muted">{description}</p>
-          </div>
-          <div className="flex items-center gap-2">
+    <section className={PLANNER_WORKSPACE_PRIMARY_SURFACE_CLASS}>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="hidden min-w-0 flex-1 md:block">
+          <p className="text-sm text-ftc-text-muted">{description}</p>
+        </div>
+        <div className="ml-auto flex items-center gap-2">
             {!multiSelectMode ? (
               <button
                 type="button"
@@ -1042,6 +1041,5 @@ export default function DjAvailabilityCalendar({
           event or DM.
         </p>
       </section>
-    </div>
   );
 }

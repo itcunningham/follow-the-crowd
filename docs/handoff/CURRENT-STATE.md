@@ -1,6 +1,6 @@
 # Current state (last updated: 2026-07-12)
 
-Update this file after major features ship.
+Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 
 ## Core product
 
@@ -60,6 +60,13 @@ Update this file after major features ship.
 - No trailing periods on several confirmation dialogs and empty states
 - Desktop planner UX brought into parity with mobile (wording, validation, calendar cards, today/selected styling) without copying mobile layout
 
+## Desktop workspace & performance (2026-07-12)
+
+- **Shared planner shell:** `PlannerWorkspacePage` in `app/components/planner/PlannerWorkspaceLayout.tsx` — Events, Event Plans, Calendar, Gigs share title row, primary tabs, divider, secondary controls baseline on desktop (`md:max-w-5xl`)
+- **Desktop consistency tokens:** shared primary surface (`PLANNER_WORKSPACE_PRIMARY_SURFACE_CLASS`), list spacing (`PLANNER_WORKSPACE_LIST_CLASS`), title-row baseline alignment; Calendar reference shell — no duplicate in-card titles on desktop; loading skeletons match loaded layout
+- **Page load speed:** optimistic auth in `OnboardingGuard` (cached session renders immediately); profile cache + deduped fetches in `lib/user/currentUser.ts`; nav skips redundant profile load when guard profile exists
+- Desktop nav width aligned to page shell (`md:max-w-5xl`); `scrollbar-gutter: stable` on `<html>`
+
 ## SQL / migrations Isaac may still need to run
 
 See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before deploying features that depend on them.
@@ -74,11 +81,11 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `1943163` — Speed up page loads (optimistic auth + profile caching)
+- `daf08a2` — Fix desktop workspace alignment drift (shared shell)
+- `feb2eba` — Align desktop events workspace layouts
+- `2e0648c` — Update ChatGPT and handoff docs
 - `8e324f7` — Desktop/mobile planner UX parity
 - `3f1ce61` — Venue on calendar event cards
 - `41787b5` — Calendar date-strip dot priority
 - `12b3ffa` — Inline event form validation
-- `1b5e3ec` — Required start + finish times
-- `1ef73fa` — Hide cancelled events from calendar
-- `fd271e5` — Confirmation dialog punctuation
-- `6687093` — Notes heading rename

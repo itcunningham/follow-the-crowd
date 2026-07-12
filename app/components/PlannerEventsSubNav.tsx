@@ -140,9 +140,7 @@ export default function PlannerEventsSubNav({
           <Link
             key={tab.href}
             href={tab.href}
-            className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold uppercase tracking-wide transition ${
-              isActive ? "ftc-filter-pill ftc-filter-pill-active" : "ftc-filter-pill"
-            }`}
+            className={`inline-flex items-center gap-1.5 ftc-filter-pill ${isActive ? "ftc-filter-pill-active" : ""}`}
           >
             {tab.label}
             {showPendingBadge ? (

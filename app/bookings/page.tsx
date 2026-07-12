@@ -24,7 +24,7 @@ import EventDjSendOfferControls, {
   formatDjSendOfferSummary,
   type DjSendOffer,
 } from "@/app/components/booking/EventDjSendOfferControls";
-import { PlannerFormField } from "@/app/components/planner/PlannerUi";
+import { PlannerEmptyState, PlannerFormField } from "@/app/components/planner/PlannerUi";
 import { getEventNotesValidationError, MAX_EVENT_NOTES_LENGTH } from "@/lib/events/eventNotes";
 import ArchiveAllBookingRequestsButton from "@/app/components/ArchiveAllBookingRequestsButton";
 import {
@@ -1779,22 +1779,22 @@ function BookingsPageContent() {
           ) : null}
 
           {showPlannerGigsEmpty ? (
-            <div className="rounded-2xl border border-dashed border-ftc-border-subtle bg-ftc-surface/30 px-6 py-12 text-center">
-              <p className="text-base font-medium text-ftc-text-secondary">{PLANNER_GIGS_EMPTY_MESSAGE}</p>
-              <Link
-                href="/events"
-                className="mt-4 inline-flex ftc-btn-secondary px-4 py-2.5 text-xs uppercase tracking-wide"
-              >
-                Go to Events
-              </Link>
-            </div>
+            <PlannerEmptyState
+              title={PLANNER_GIGS_EMPTY_MESSAGE}
+              action={
+                <Link
+                  href="/events"
+                  className="inline-flex ftc-btn-secondary px-4 py-2.5 text-xs uppercase tracking-wide"
+                >
+                  Go to Events
+                </Link>
+              }
+            />
           ) : showGigsWorkspace && !createOpen ? (
             loadingList ? null : error && !plannerCreateVisible ? (
               <p className="text-sm text-red-400">{error}</p>
             ) : receivedBookings.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-ftc-border-subtle bg-ftc-surface/30 px-6 py-12 text-center">
-                <p className="text-base font-medium text-ftc-text-secondary">No gigs yet</p>
-              </div>
+              <PlannerEmptyState title="No gigs yet" />
             ) : filteredReceivedBookings.length === 0 && !gigsHistoryBulkManage.removing ? (
               <p className="rounded-xl border border-ftc-border-subtle bg-ftc-surface/40 px-4 py-8 text-center text-sm text-ftc-text-muted">
                 {getGigsEmptyMessage(djGigsView)}

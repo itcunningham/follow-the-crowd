@@ -8,6 +8,7 @@ import CalendarMonthNav from "@/app/components/CalendarMonthNav";
 import PlannerCalendarActionButtons from "@/app/components/PlannerCalendarActionButtons";
 import PlannerCalendarDateActions from "@/app/components/PlannerCalendarDateActions";
 import PlannerCalendarMobileDateStrip from "@/app/components/PlannerCalendarMobileDateStrip";
+import { PLANNER_WORKSPACE_PRIMARY_SURFACE_CLASS } from "@/app/components/planner/PlannerWorkspaceLayout";
 import { PlannerCalendarContentSkeleton } from "@/app/components/skeleton/Skeleton";
 import { isDateKeyBeforeToday } from "@/lib/bookingDateTime";
 import { consumeEventCreateInviteMessage } from "@/lib/events/eventCreateInviteMessages";
@@ -532,10 +533,9 @@ export default function PlannerCalendar({
   }
 
   return (
-    <section className="ftc-card p-4 sm:p-5 md:p-6">
+    <section className={PLANNER_WORKSPACE_PRIMARY_SURFACE_CLASS}>
       <div className="hidden md:block">
-        <h1 className="text-base font-semibold text-ftc-text">Calendar</h1>
-        <p className="mt-1 text-sm text-ftc-text-muted">{description}</p>
+        <p className="text-sm text-ftc-text-muted">{description}</p>
       </div>
 
       {error ? (

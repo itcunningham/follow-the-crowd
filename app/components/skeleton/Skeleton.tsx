@@ -17,13 +17,10 @@ import MessagesInboxLayout from "@/app/components/dm/MessagesInboxLayout";
 import CalendarViewTabs, { type CalendarViewTab } from "@/app/components/CalendarViewTabs";
 import {
   PlannerWorkspacePage,
-  PlannerWorkspacePageHeader,
   PlannerWorkspaceSecondaryControls,
   PlannerWorkspaceSecondaryControlsPlaceholder,
-  PLANNER_WORKSPACE_BELOW_HEADER_CLASS,
-  PLANNER_WORKSPACE_BODY_CLASS,
   PLANNER_WORKSPACE_CONTENT_CLASS,
-  PLANNER_WORKSPACE_PAGE_SHELL_CLASS,
+  PLANNER_WORKSPACE_PRIMARY_SURFACE_CLASS,
   PLANNER_WORKSPACE_SECONDARY_BAND_CLASS,
   PLANNER_WORKSPACE_SECONDARY_CONTROLS_CLASS,
 } from "@/app/components/planner/PlannerWorkspaceLayout";
@@ -317,19 +314,13 @@ export function EventsCalendarCreateLoadingShell({
   const role = roleProp ?? cachedRole;
 
   return (
-    <div className={PLANNER_WORKSPACE_PAGE_SHELL_CLASS}>
-      <AppNavigation />
-      <PlannerWorkspacePageHeader
-        title="Events"
-        initialRole={role}
-        activeWorkspaceHref={EVENTS_AREA_SUB_NAV.calendar.href}
-      />
-      <div className={PLANNER_WORKSPACE_BELOW_HEADER_CLASS}>
-        <div className={PLANNER_WORKSPACE_SECONDARY_BAND_CLASS}>
-          <PlannerWorkspaceSecondaryControlsPlaceholder />
-        </div>
-        <div className={PLANNER_WORKSPACE_BODY_CLASS}>
-          <section className="mb-6 ftc-card p-4 sm:p-5">
+    <PlannerWorkspacePage
+      title="Events"
+      initialRole={role}
+      activeWorkspaceHref={EVENTS_AREA_SUB_NAV.calendar.href}
+      secondaryControlsPlaceholder
+    >
+      <section className={PLANNER_WORKSPACE_PRIMARY_SURFACE_CLASS}>
           <div className="ftc-form-card-header">
             <h2 className="text-lg font-semibold text-ftc-text">Create event</h2>
             <span aria-hidden="true" className="ftc-form-cancel-link opacity-60">
@@ -342,9 +333,7 @@ export function EventsCalendarCreateLoadingShell({
             <BookingCreateEventDetailsFormSkeleton />
           )}
         </section>
-        </div>
-      </div>
-    </div>
+    </PlannerWorkspacePage>
   );
 }
 
@@ -1067,10 +1056,9 @@ export function PlannerCalendarLoadingCard({
   description?: string;
 }) {
   return (
-    <section className="ftc-card p-4 sm:p-5 md:p-6">
+    <section className={PLANNER_WORKSPACE_PRIMARY_SURFACE_CLASS}>
       <div className="hidden md:block">
-        <h1 className="text-base font-semibold text-ftc-text">Calendar</h1>
-        <p className="mt-1 text-sm text-ftc-text-muted">{description}</p>
+        <p className="text-sm text-ftc-text-muted">{description}</p>
       </div>
       <PlannerCalendarContentSkeleton />
     </section>
@@ -1083,29 +1071,26 @@ export function DjCalendarLoadingCard({
   description?: string;
 }) {
   return (
-    <div className="space-y-4">
-      <section className="ftc-card p-4 sm:p-5">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <h2 className="text-base font-semibold text-ftc-text">Calendar</h2>
-            <p className="mt-1 text-sm text-ftc-text-muted">{description}</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <span
-              aria-hidden="true"
-              className="rounded-lg border border-ftc-border-strong/90 bg-ftc-surface/80 px-2.5 py-1.5 text-[11px] font-semibold text-ftc-text-secondary"
-            >
-              Select dates
-            </span>
-          </div>
+    <section className={PLANNER_WORKSPACE_PRIMARY_SURFACE_CLASS}>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="hidden min-w-0 flex-1 md:block">
+          <p className="text-sm text-ftc-text-muted">{description}</p>
         </div>
-        <DjCalendarContentSkeleton />
-        <p className="mt-3 text-xs text-ftc-text-muted">
-          Use the menu on each date to set personal availability. Booking badges open the linked
-          event or DM.
-        </p>
-      </section>
-    </div>
+        <div className="ml-auto flex items-center gap-2">
+          <span
+            aria-hidden="true"
+            className="rounded-lg border border-ftc-border-strong/90 bg-ftc-surface/80 px-2.5 py-1.5 text-[11px] font-semibold text-ftc-text-secondary"
+          >
+            Select dates
+          </span>
+        </div>
+      </div>
+      <DjCalendarContentSkeleton />
+      <p className="mt-3 text-xs text-ftc-text-muted">
+        Use the menu on each date to set personal availability. Booking badges open the linked
+        event or DM.
+      </p>
+    </section>
   );
 }
 
