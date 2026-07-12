@@ -38,7 +38,7 @@ function CalendarWorkspaceBody({
 }) {
   if (displayRole === "both") {
     return bothCalendarTab === "planner" ? (
-      <PlannerCalendar description="Your owned events and sent booking requests by date." />
+      <PlannerCalendar />
     ) : (
       <DjAvailabilityCalendar description="Manage your availability and received bookings." />
     );

@@ -347,15 +347,9 @@ function PlannerCalendarMobileAgenda({
   );
 }
 
-type PlannerCalendarProps = {
-  description?: string;
-};
-
 const INVITE_MESSAGE_AUTO_DISMISS_MS = 5000;
 
-export default function PlannerCalendar({
-  description = "Your events and booking activity by date.",
-}: PlannerCalendarProps) {
+export default function PlannerCalendar() {
   const searchParams = useSearchParams();
   const initialView = resolvePlannerCalendarViewState(
     searchParams.get("date"),
@@ -543,10 +537,6 @@ export default function PlannerCalendar({
 
   return (
     <section className={PLANNER_WORKSPACE_PRIMARY_SURFACE_CLASS}>
-      <div className="hidden md:block">
-        <p className="text-sm text-ftc-text-muted">{description}</p>
-      </div>
-
       {error ? (
         <p
           role="alert"

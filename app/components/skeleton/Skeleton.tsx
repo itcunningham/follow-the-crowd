@@ -880,7 +880,7 @@ export function CalendarPageLoadingShell() {
         bothCalendarTab === "dj" ? (
           <DjCalendarLoadingCard description="Manage your availability and received bookings." />
         ) : (
-          <PlannerCalendarLoadingCard description="Your owned events and sent booking requests by date." />
+          <PlannerCalendarLoadingCard />
         )
       ) : cachedRole === "dj" ? (
         <DjCalendarLoadingCard />
@@ -1050,16 +1050,9 @@ export function DjCalendarContentSkeleton() {
   );
 }
 
-export function PlannerCalendarLoadingCard({
-  description = "Your events and booking activity by date.",
-}: {
-  description?: string;
-}) {
+export function PlannerCalendarLoadingCard() {
   return (
     <section className={PLANNER_WORKSPACE_PRIMARY_SURFACE_CLASS}>
-      <div className="hidden md:block">
-        <p className="text-sm text-ftc-text-muted">{description}</p>
-      </div>
       <PlannerCalendarContentSkeleton />
     </section>
   );

@@ -33,6 +33,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 
 - Mobile: date strip + selected-day agenda
 - Desktop: month grid + day modal (wider layout, same behaviour)
+- No intro/description copy under the page title (planner event calendar)
 - **Status dot priority per date:** Accepted (green) → Pending (amber) → Upcoming (dark blue); Today uses tile outline, not dot colour
 - **Cancelled events hidden** from calendar items, dots, and counts (History unchanged)
 - Agenda/grid ordering: booking priority then start time (`sortPlannerCalendarAgendaItems`)
@@ -82,6 +83,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `d98f218` — Fix calendar day highlight clearing on panel close
 - `86b9370` — Clear calendar day selection on close
 - `d961180` — Polish desktop planner workspace consistency
 - `1943163` — Speed up page loads (optimistic auth + profile caching)
