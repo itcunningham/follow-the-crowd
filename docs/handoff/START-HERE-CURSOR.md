@@ -1,4 +1,6 @@
-You are working on **eventos** (Follow The Crowd) — a Next.js + Supabase app for promoters and DJs.
+You are working on **Follow The Crowd (FTC)** — a Next.js + Supabase app for promoters and DJs.
+
+**Repo:** `/Users/isaaccunningham/Projects/FTC` · GitHub `itcunningham/follow-the-crowd` · branch `main`
 
 Before doing anything, read these files in order:
 1. docs/handoff/HOW-WE-WORK.md
@@ -6,6 +8,7 @@ Before doing anything, read these files in order:
 3. docs/handoff/PROJECT.md
 4. docs/handoff/CURRENT-STATE.md
 5. docs/handoff/SUPABASE.md
+6. FTC_WORKFLOW.md (for formal Builder tasks)
 
 Rules:
 - Do the work yourself. Run commands, inspect code, build, fix errors.

@@ -2,14 +2,16 @@
 
 ## Repo
 
-- **Name:** eventos (Follow The Crowd)
-- **Branch:** usually `main`
-- **Remote:** GitHub (follow-the-crowd)
+- **Product:** Follow The Crowd (FTC)
+- **Local path:** `/Users/isaaccunningham/Projects/FTC`
+- **Legacy name:** eventos (same repo)
+- **GitHub:** `itcunningham/follow-the-crowd`
+- **Branch:** `main` → Vercel production deploy on push
 
 ## Stack
 
 - Next.js 16 App Router (`app/`)
-- Supabase (Postgres, Auth, Storage, Realtime)
+- Supabase (Postgres, Auth, Storage, Realtime, RPC)
 - Tailwind + custom FTC classes in `app/globals.css`
 - TypeScript
 
@@ -21,24 +23,42 @@
 | `lib/` | Data access, business logic |
 | `scripts/*.sql` | Legacy Supabase bootstrap / one-off fixes (run manually) |
 | `supabase/migrations/` | Versioned database migrations (paste in Supabase SQL Editor) |
-| `docs/handoff/` | Session context for new chats |
+| `docs/handoff/` | Session context for new chats (Cursor + ChatGPT) |
+| `FTC_WORKFLOW.md` | Builder / Reviewer / QA working agreement |
+
+## Planner routes
+
+| Route | Purpose |
+|-------|---------|
+| `/events` | Event list (Active / History) |
+| `/booking-plans` | Saved Event Plans |
+| `/calendar` | Planner calendar |
+| `/bookings` | Gigs (DJ) + planner booking campaigns |
+
+Sub-nav: `lib/plannerEventsNav.ts`, `app/components/PlannerEventsSubNav.tsx`
 
 ## Important lib files
 
-- `lib/events.ts` — events CRUD
-- `lib/bookingRequests.ts` — booking DMs
+- `lib/events.ts` — events CRUD, history hide, lineup stats
+- `lib/bookingRequests.ts` — booking DMs, status, rate proposal RPCs
+- `lib/bookingRate.ts` — rate display/helpers
+- `lib/calendar.ts` — calendar items, sorting, status dots, headlines
+- `lib/bookingDateTime.ts` — date/time parsing, validation
+- `lib/events/eventFormFieldValidation.ts` — create/edit inline errors
+- `lib/events/eventNotes.ts` — notes length/line limits
 - `lib/groupChats.ts` — group chat inbox
-- `lib/eventCrewChat.ts` — event group chat messages
-- `lib/messageReads.ts` — unread state
-- `lib/events/eventFallbackColour.ts` — artwork tile colours
-- `lib/events/eventGroupChatUpdate.ts` — edit → group chat update message
+- `lib/bookingPlans.ts` — saved event plans
+- `lib/ftcFlatStatus.ts` — status badge/dot colour classes
 
 ## Important UI
 
-- `app/components/events/EventArtworkTile.tsx` — flyer or fallback tile everywhere
-- `app/components/events/EventFallbackColourField.tsx` — 8 colours + Auto
+- `app/events/EventsPageClient.tsx` — events list + create flow
+- `app/events/[eventId]/page.tsx` — event detail
+- `app/components/PlannerCalendar.tsx` — calendar (mobile agenda + desktop grid)
+- `app/components/booking/SendBookingRequestsPanel.tsx` — invite DJs UI
+- `app/components/BookingRequestCard.tsx` — DM booking cards
+- `app/components/events/EventArtworkTile.tsx` — flyer or fallback tile
 - `app/dm/page.tsx` — Messages inbox (DM + Group tabs)
-- `app/events/[eventId]/chat/page.tsx` — event group chat
 
 ## Event artwork
 

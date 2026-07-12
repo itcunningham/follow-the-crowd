@@ -21,6 +21,7 @@ Legacy one-off scripts remain in `scripts/` for bootstrapping and fixes. New fea
 | Message reads / unread | `scripts/setupMessageReads.sql` |
 | Duplicate booking protection | `scripts/fixEventBookingDuplicateProtection.sql` |
 | Production RLS | `scripts/setupProductionRls.sql` |
+| **Rate proposals** | `scripts/setupBookingRateProposal.sql` |
 | **Remove from history (Events)** | `supabase/migrations/20250710120000_event_history_hide.sql` |
 | **Remove from history (Gigs / planner sent bookings)** | `supabase/migrations/20250710130000_booking_request_history_hides.sql` |
 | Planner archive to Archived tab (legacy) | `scripts/setupBookingRequestArchiving.sql` — still required for `archived_at` + sender archive/unarchive |

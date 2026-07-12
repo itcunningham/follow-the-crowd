@@ -1,4 +1,4 @@
-# Current state (last updated: 2026-07-05)
+# Current state (last updated: 2026-07-12)
 
 Update this file after major features ship.
 
@@ -7,8 +7,11 @@ Update this file after major features ship.
 - Auth, signup, onboarding, roles (promoter / dj / both)
 - Discover, profiles, DM conversations
 - Booking requests via DM (pending / accepted / declined / cancelled)
-- Events: create, edit, cancel, delete, lineup, send bookings
-- Booking plans, calendar, notifications, settings, account deletion
+- Rate proposals: open offers, fixed offers, DJ counter-proposals, accept/decline RPCs
+- Events: create, edit, cancel, delete, lineup, send bookings, run sheet
+- Event Plans (`/booking-plans`), Calendar (`/calendar`), Gigs (`/bookings`)
+- Notifications, settings, account deletion
+- DJ availability calendar
 
 ## Events
 
@@ -16,13 +19,32 @@ Update this file after major features ship.
 - Portrait-friendly flyer display (not forced 16:9 crop)
 - Event colour: 8 selectable + Auto (slate neutral when Auto or legacy slate)
 - Flat solid artwork tiles (no glow)
-- Event list: whole card links to detail (no Open Event button)
+- Event list: Active + History tabs; whole card links to detail
+- **History hide:** bulk remove from History view (does not delete records)
+- **Create/edit validation:** inline field errors after Save; start + finish time both required; notes length/line limits disable save
+- **Notes** section on event detail (heading "Notes", muted section label)
 - Edit with confirmation when booking-impacting fields change + group chat update message
-- Run sheet is the single planner view for assigned DJs (avatar, name, stage, set time, notes)
-- Run sheet rows are created automatically when a DJ accepts; no manual add/delete rows
-- Accepted bookings can be cancelled by planner or withdrawn by DJ with reason + group chat update
-- Event detail no longer has a separate Lineup section (run sheet replaces it for crew)
-- Booking cards in DMs show **live** event fields from `events` table when `event_id` set
+- Run sheet: single planner view for assigned DJs; table on `lg+`, cards below
+- Run sheet rows auto-created when DJ accepts
+- Accepted bookings cancellable by planner or DJ with reason + group chat update
+- Booking cards in DMs show **live** event fields from `events` when `event_id` set
+
+## Calendar
+
+- Mobile: date strip + selected-day agenda
+- Desktop: month grid + day modal (wider layout, same behaviour)
+- **Status dot priority per date:** Accepted (green) → Pending (amber) → Upcoming (dark blue); Today uses tile outline, not dot colour
+- **Cancelled events hidden** from calendar items, dots, and counts (History unchanged)
+- Agenda/grid ordering: booking priority then start time (`sortPlannerCalendarAgendaItems`)
+- Event cards: `Event Name · Venue Name` on one truncated line; coloured event accent bar
+- Create-from-calendar: Save event + **Confirm N DJ(s)** invite flow
+- Today highlight on date strip; selected + today states on desktop grid cells
+
+## Booking / invite UX
+
+- Default send button label mode: **Confirm N DJ(s)** (`SendBookingRequestsPanel`)
+- Unavailable-DJ confirm modal uses Confirm wording
+- Calendar-origin and standard create flows aligned on copy and validation
 
 ## Group chat
 
@@ -32,27 +54,31 @@ Update this file after major features ship.
 - Planner does not get unread from own group messages
 - Group chat page: header only (duplicate context card removed)
 
+## Copy / UX polish (2026-07)
+
+- "Create event" sentence case (not "Create Event")
+- No trailing periods on several confirmation dialogs and empty states
+- Desktop planner UX brought into parity with mobile (wording, validation, calendar cards, today/selected styling) without copying mobile layout
+
 ## SQL / migrations Isaac may still need to run
 
 See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before deploying features that depend on them.
 
-## History hide (2026-07-10)
-
-- Bulk **Remove from history** on Planner Events History and DJ Gigs History
-- Events: `supabase/migrations/20250710120000_event_history_hide.sql`
-- Bookings: `supabase/migrations/20250710130000_booking_request_history_hides.sql` (per-user hides; fixes shared `archived_at` cross-user bug)
-- Planner **Archived** tab still uses sender-only `archived_at` via `setupBookingRequestArchiving.sql`
+| Feature | Script / migration |
+|---------|-------------------|
+| Event history hide | `supabase/migrations/20250710120000_event_history_hide.sql` |
+| Gig history hide (per-user) | `supabase/migrations/20250710130000_booking_request_history_hides.sql` |
+| Planner Archived tab | `scripts/setupBookingRequestArchiving.sql` (sender `archived_at`) |
+| Rate proposals | `scripts/setupBookingRateProposal.sql` |
+| Booking cancellation | `scripts/setupBookingCancellation.sql` |
 
 ## Recent commits (reference)
 
-- Unify lineup into run sheet
-- Flat event artwork colours
-- Remove duplicate group chat event card
-- Deduplicate group chat inbox rows
-- Prevent own group updates from unread count
-- Refresh event details in booking cards
-- Post event change updates to group chat
-- Add event detail edit action
-- Improve event navigation and edit confirmations
-- Add event colour fallback tiles
-- Support portrait event flyer artwork
+- `8e324f7` — Desktop/mobile planner UX parity
+- `3f1ce61` — Venue on calendar event cards
+- `41787b5` — Calendar date-strip dot priority
+- `12b3ffa` — Inline event form validation
+- `1b5e3ec` — Required start + finish times
+- `1ef73fa` — Hide cancelled events from calendar
+- `fd271e5` — Confirmation dialog punctuation
+- `6687093` — Notes heading rename
