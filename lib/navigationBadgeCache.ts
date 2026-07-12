@@ -12,6 +12,17 @@ export type NavigationBadgeCache = {
 };
 
 let memoryCache: NavigationBadgeCache | null = null;
+let runtimeGigsPendingCount: number | null = null;
+let runtimeGigsPendingIdentity: { userId: string; role: UserRole } | null = null;
+let runtimeBadgeFetchedAt = 0;
+
+export type RuntimeNavBadgeSnapshot = NavigationBadgeCache & {
+  badgesReady: boolean;
+  reserveBadgeSpace: boolean;
+  reserveGigsBadgeSpace: boolean;
+};
+
+let runtimeNavBadgeSnapshot: RuntimeNavBadgeSnapshot | null = null;
 
 function isUserRole(value: unknown): value is UserRole {
   return value === "dj" || value === "promoter" || value === "both";
@@ -88,10 +99,78 @@ export function writeNavigationBadgeCache(cache: NavigationBadgeCache): void {
 
 export function clearNavigationBadgeCache(): void {
   memoryCache = null;
+  runtimeGigsPendingCount = null;
+  runtimeGigsPendingIdentity = null;
+  runtimeBadgeFetchedAt = 0;
+  runtimeNavBadgeSnapshot = null;
 
   if (typeof window === "undefined") {
     return;
   }
 
   sessionStorage.removeItem(NAV_BADGE_CACHE_KEY);
+}
+
+export function readRuntimeNavBadgeSnapshot(
+  userId: string | null | undefined,
+  role: UserRole | null | undefined,
+): RuntimeNavBadgeSnapshot | null {
+  if (!userId || !role) {
+    return null;
+  }
+
+  if (runtimeNavBadgeSnapshot?.userId === userId && runtimeNavBadgeSnapshot.role === role) {
+    return runtimeNavBadgeSnapshot;
+  }
+
+  return null;
+}
+
+export function writeRuntimeNavBadgeSnapshot(snapshot: RuntimeNavBadgeSnapshot): void {
+  runtimeNavBadgeSnapshot = snapshot;
+  runtimeGigsPendingIdentity = { userId: snapshot.userId, role: snapshot.role };
+  runtimeGigsPendingCount = snapshot.gigsPending;
+}
+
+export function readRuntimeGigsPendingCount(
+  userId: string | null | undefined,
+  role: UserRole | null | undefined,
+): number | null {
+  if (!userId || !role) {
+    return null;
+  }
+
+  if (
+    runtimeGigsPendingIdentity?.userId === userId &&
+    runtimeGigsPendingIdentity.role === role
+  ) {
+    return runtimeGigsPendingCount;
+  }
+
+  return null;
+}
+
+export function writeRuntimeGigsPendingCount(
+  userId: string,
+  role: UserRole,
+  count: number,
+): void {
+  runtimeGigsPendingIdentity = { userId, role };
+  runtimeGigsPendingCount = Math.max(0, Math.floor(count));
+}
+
+export function readRuntimeBadgeFetchedAt(): number {
+  return runtimeBadgeFetchedAt;
+}
+
+export function writeRuntimeBadgeFetchedAt(fetchedAt: number): void {
+  runtimeBadgeFetchedAt = fetchedAt;
+}
+
+export function getCachedGigsPendingCount(
+  userId: string | null | undefined,
+  role: UserRole | null | undefined,
+): number | null {
+  const cached = readNavigationBadgeCache(userId, role);
+  return cached?.gigsPending ?? null;
 }

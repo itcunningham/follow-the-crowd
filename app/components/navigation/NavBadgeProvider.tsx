@@ -12,11 +12,19 @@ import {
 import { useGuardProfile } from "@/app/components/GuardProfileContext";
 import { loadNavigationBadgeData } from "@/lib/navigationBadges";
 import {
+  getCachedGigsPendingCount,
   readNavigationBadgeCache,
+  readRuntimeBadgeFetchedAt,
+  readRuntimeGigsPendingCount,
+  readRuntimeNavBadgeSnapshot,
   writeNavigationBadgeCache,
+  writeRuntimeBadgeFetchedAt,
+  writeRuntimeGigsPendingCount,
+  writeRuntimeNavBadgeSnapshot,
   type NavigationBadgeCache,
 } from "@/lib/navigationBadgeCache";
 import { readCachedNavigation } from "@/lib/navigationRoleCache";
+import { canViewGigsSubNav } from "@/lib/plannerEventsNav";
 import type { NavBadgeCounts } from "@/lib/notifications";
 import { supabase } from "@/lib/supabaseClient";
 import type { UserRole } from "@/lib/user/currentUser";
@@ -28,6 +36,7 @@ type NavBadgeContextValue = {
   gigsPendingCount: number;
   badgesReady: boolean;
   reserveBadgeSpace: boolean;
+  reserveGigsBadgeSpace: boolean;
 };
 
 const NavBadgeContext = createContext<NavBadgeContextValue | null>(null);
@@ -44,8 +53,56 @@ function resolveBadgeIdentity(profile: ReturnType<typeof useGuardProfile>): {
   };
 }
 
+function readRuntimeSnapshot(
+  userId: string | null,
+  role: UserRole | null,
+): NavBadgeContextValue | null {
+  const snapshot = readRuntimeNavBadgeSnapshot(userId, role);
+
+  if (!snapshot) {
+    return null;
+  }
+
+  return {
+    badgeCounts: {
+      messages: snapshot.messages,
+      bookings: snapshot.bookings,
+      total: snapshot.messages + snapshot.bookings,
+    },
+    gigsPendingCount: snapshot.gigsPending,
+    badgesReady: snapshot.badgesReady,
+    reserveBadgeSpace: snapshot.reserveBadgeSpace,
+    reserveGigsBadgeSpace: snapshot.reserveGigsBadgeSpace,
+  };
+}
+
+function writeRuntimeSnapshot(
+  userId: string,
+  role: UserRole,
+  state: NavBadgeContextValue,
+): void {
+  writeRuntimeNavBadgeSnapshot({
+    userId,
+    role,
+    messages: state.badgeCounts.messages,
+    bookings: state.badgeCounts.bookings,
+    gigsPending: state.gigsPendingCount,
+    updatedAt: Date.now(),
+    badgesReady: state.badgesReady,
+    reserveBadgeSpace: state.reserveBadgeSpace,
+    reserveGigsBadgeSpace: state.reserveGigsBadgeSpace,
+  });
+}
+
 function buildInitialState(userId: string | null, role: UserRole | null): NavBadgeContextValue {
+  const runtimeSnapshot = readRuntimeSnapshot(userId, role);
+
+  if (runtimeSnapshot) {
+    return runtimeSnapshot;
+  }
+
   const cached = readNavigationBadgeCache(userId, role);
+  const canViewGigs = canViewGigsSubNav(role);
 
   if (!cached) {
     return {
@@ -53,8 +110,11 @@ function buildInitialState(userId: string | null, role: UserRole | null): NavBad
       gigsPendingCount: 0,
       badgesReady: false,
       reserveBadgeSpace: Boolean(userId && role),
+      reserveGigsBadgeSpace: Boolean(userId && canViewGigs),
     };
   }
+
+  writeRuntimeGigsPendingCount(cached.userId, cached.role, cached.gigsPending);
 
   return {
     badgeCounts: {
@@ -65,7 +125,18 @@ function buildInitialState(userId: string | null, role: UserRole | null): NavBad
     gigsPendingCount: cached.gigsPending,
     badgesReady: true,
     reserveBadgeSpace: false,
+    reserveGigsBadgeSpace: false,
   };
+}
+
+function applyBadgeState(
+  userId: string,
+  role: UserRole,
+  nextState: NavBadgeContextValue,
+): NavBadgeContextValue {
+  writeRuntimeSnapshot(userId, role, nextState);
+  writeRuntimeGigsPendingCount(userId, role, nextState.gigsPendingCount);
+  return nextState;
 }
 
 function toCacheEntry(
@@ -89,8 +160,12 @@ export function NavBadgeProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<NavBadgeContextValue>(() =>
     buildInitialState(userId, role),
   );
-  const badgeLastFetchedAtRef = useRef(0);
+  const badgeLastFetchedAtRef = useRef(readRuntimeBadgeFetchedAt());
   const badgeRefreshInFlightRef = useRef<Promise<void> | null>(null);
+  const previousIdentityRef = useRef<{ userId: string | null; role: UserRole | null }>({
+    userId,
+    role,
+  });
 
   useEffect(() => {
     const nextIdentity = resolveBadgeIdentity(guardProfile);
@@ -103,8 +178,26 @@ export function NavBadgeProvider({ children }: { children: ReactNode }) {
   }, [guardProfile?.role, guardProfile?.user_id]);
 
   useEffect(() => {
+    const previousIdentity = previousIdentityRef.current;
+
+    if (previousIdentity.userId === userId && previousIdentity.role === role) {
+      return;
+    }
+
+    previousIdentityRef.current = { userId, role };
+
+    if (!userId || !role) {
+      setState({
+        badgeCounts: { messages: 0, bookings: 0, total: 0 },
+        gigsPendingCount: 0,
+        badgesReady: false,
+        reserveBadgeSpace: false,
+        reserveGigsBadgeSpace: false,
+      });
+      return;
+    }
+
     setState(buildInitialState(userId, role));
-    badgeLastFetchedAtRef.current = 0;
   }, [userId, role]);
 
   const refreshBadgeCounts = useCallback(
@@ -129,25 +222,33 @@ export function NavBadgeProvider({ children }: { children: ReactNode }) {
           const data = await loadNavigationBadgeData(userId, role);
 
           writeNavigationBadgeCache(toCacheEntry(userId, role, data));
-          badgeLastFetchedAtRef.current = Date.now();
+          const fetchedAt = Date.now();
+          badgeLastFetchedAtRef.current = fetchedAt;
+          writeRuntimeBadgeFetchedAt(fetchedAt);
 
-          setState({
-            badgeCounts: {
-              messages: data.messages,
-              bookings: data.bookings,
-              total: data.total,
-            },
-            gigsPendingCount: data.gigsPending,
-            badgesReady: true,
-            reserveBadgeSpace: false,
-          });
+          setState(
+            applyBadgeState(userId, role, {
+              badgeCounts: {
+                messages: data.messages,
+                bookings: data.bookings,
+                total: data.total,
+              },
+              gigsPendingCount: data.gigsPending,
+              badgesReady: true,
+              reserveBadgeSpace: false,
+              reserveGigsBadgeSpace: false,
+            }),
+          );
         } catch (error) {
           console.error("[NavBadgeProvider] Failed to refresh navigation badges:", error);
-          setState((current) => ({
-            ...current,
-            badgesReady: true,
-            reserveBadgeSpace: false,
-          }));
+          setState((current) =>
+            applyBadgeState(userId, role, {
+              ...current,
+              badgesReady: true,
+              reserveBadgeSpace: false,
+              reserveGigsBadgeSpace: false,
+            }),
+          );
         }
       })();
 
@@ -169,7 +270,9 @@ export function NavBadgeProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    const hasCachedCounts = Boolean(readNavigationBadgeCache(userId, role));
+    const hasCachedCounts =
+      Boolean(readRuntimeSnapshot(userId, role)?.badgesReady) ||
+      Boolean(readNavigationBadgeCache(userId, role));
     void refreshBadgeCounts({ force: !hasCachedCounts });
   }, [userId, role, refreshBadgeCounts]);
 
@@ -226,5 +329,21 @@ export function useNavBadges(): NavBadgeContextValue {
   }
 
   const { userId, role } = readCachedNavigation();
-  return buildInitialState(userId, role);
+  const initialState = buildInitialState(userId, role);
+  const cachedGigsPending = getCachedGigsPendingCount(userId, role);
+  const runtimeGigsPending = readRuntimeGigsPendingCount(userId, role);
+
+  if (cachedGigsPending == null && runtimeGigsPending == null) {
+    return initialState;
+  }
+
+  return {
+    ...initialState,
+    gigsPendingCount: runtimeGigsPending ?? cachedGigsPending ?? initialState.gigsPendingCount,
+    badgesReady: initialState.badgesReady || cachedGigsPending != null || runtimeGigsPending != null,
+    reserveGigsBadgeSpace:
+      initialState.reserveGigsBadgeSpace &&
+      cachedGigsPending == null &&
+      runtimeGigsPending == null,
+  };
 }

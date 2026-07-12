@@ -1,17 +1,21 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
 import { useGuardProfile } from "@/app/components/GuardProfileContext";
 import { useNavBadges } from "@/app/components/navigation/NavBadgeProvider";
+import {
+  getCachedGigsPendingCount,
+  readRuntimeGigsPendingCount,
+} from "@/lib/navigationBadgeCache";
 import {
   canViewGigsSubNav,
   EVENTS_AREA_SUB_NAV,
   getEventsAreaSubNavItems,
   isPlannerEventsAreaPath,
 } from "@/lib/plannerEventsNav";
-import { readCachedNavRole } from "@/lib/navigationRoleCache";
+import { readCachedNavigation } from "@/lib/navigationRoleCache";
 import { getCurrentUserProfile, type UserRole } from "@/lib/user/currentUser";
 
 function getActiveHref(pathname: string): string {
@@ -80,10 +84,39 @@ export default function PlannerEventsSubNav({
 }) {
   const pathname = usePathname();
   const guardProfile = useGuardProfile();
-  const { gigsPendingCount, reserveBadgeSpace } = useNavBadges();
+  const { gigsPendingCount, reserveGigsBadgeSpace } = useNavBadges();
+  const [cachedNavigation] = useState(readCachedNavigation);
   const [role, setRole] = useState<UserRole | null>(
-    () => initialRole ?? guardProfile?.role ?? readCachedNavRole(),
+    () => initialRole ?? guardProfile?.role ?? cachedNavigation.role,
   );
+
+  const resolvedRole = role ?? guardProfile?.role ?? initialRole ?? cachedNavigation.role;
+  const canViewGigs = canViewGigsSubNav(resolvedRole);
+  const resolvedUserId = guardProfile?.user_id ?? cachedNavigation.userId;
+
+  const displayGigsPendingCount = useMemo(() => {
+    if (!canViewGigs) {
+      return 0;
+    }
+
+    const runtimeCount = readRuntimeGigsPendingCount(resolvedUserId, resolvedRole);
+    if (runtimeCount != null) {
+      return runtimeCount;
+    }
+
+    const cachedCount = getCachedGigsPendingCount(resolvedUserId, resolvedRole);
+    if (cachedCount != null) {
+      return cachedCount;
+    }
+
+    return gigsPendingCount;
+  }, [canViewGigs, gigsPendingCount, resolvedRole, resolvedUserId]);
+
+  const shouldReserveGigsBadgeSpace =
+    canViewGigs &&
+    reserveGigsBadgeSpace &&
+    readRuntimeGigsPendingCount(resolvedUserId, resolvedRole) == null &&
+    getCachedGigsPendingCount(resolvedUserId, resolvedRole) == null;
 
   useEffect(() => {
     if (guardProfile?.role) {
@@ -110,7 +143,7 @@ export default function PlannerEventsSubNav({
   }
 
   const activeHref = activeWorkspaceHref ?? getActiveHref(pathname);
-  const tabs = getEventsAreaSubNavItems(role);
+  const tabs = getEventsAreaSubNavItems(resolvedRole);
 
   return (
     <nav
@@ -130,9 +163,9 @@ export default function PlannerEventsSubNav({
             {tab.label}
             {showPendingBadge ? (
               <GigsPendingCountBadge
-                count={canViewGigsSubNav(role) ? gigsPendingCount : 0}
+                count={displayGigsPendingCount}
                 isActive={isActive}
-                reserveSpace={canViewGigsSubNav(role) && reserveBadgeSpace}
+                reserveSpace={shouldReserveGigsBadgeSpace}
               />
             ) : null}
           </Link>

@@ -1,6 +1,6 @@
 import { supabase } from "@/lib/supabaseClient";
 import { isDateKeyBeforeToday, parseEventDate } from "@/lib/bookingDateTime";
-import { createNotification, getNotificationCreateErrorMessage } from "@/lib/notifications";
+import { createNotification, getNotificationCreateErrorMessage, notifyNavigationBadgesRefresh } from "@/lib/notifications";
 import { formatRateDisplay, formatIntegerRateDisplay, normalizeStoredRate } from "@/lib/bookingRate";
 import { startDm } from "@/lib/startDm";
 import {
@@ -2981,6 +2981,7 @@ export async function updateBookingRequestStatus(
       }
     }
 
+    notifyNavigationBadgesRefresh();
     return booking;
   }
 
@@ -2992,6 +2993,7 @@ export async function updateBookingRequestStatus(
     "/bookings",
   );
 
+  notifyNavigationBadgesRefresh();
   return booking;
 }
 
