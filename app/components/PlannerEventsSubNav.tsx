@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { usePathname } from "next/navigation";
 import { useGuardProfile } from "@/app/components/GuardProfileContext";
 import { useNavBadges } from "@/app/components/navigation/NavBadgeProvider";
@@ -9,6 +9,11 @@ import {
   getCachedGigsPendingCount,
   readRuntimeGigsPendingCount,
 } from "@/lib/navigationBadgeCache";
+import {
+  ensureNavigationBadgesPrefetched,
+  getNavigationBadgeCacheVersion,
+  subscribeNavigationBadgeListeners,
+} from "@/lib/navigationBadgePrefetch";
 import {
   canViewGigsSubNav,
   EVENTS_AREA_SUB_NAV,
@@ -93,6 +98,19 @@ export default function PlannerEventsSubNav({
   const resolvedRole = role ?? guardProfile?.role ?? initialRole ?? cachedNavigation.role;
   const canViewGigs = canViewGigsSubNav(resolvedRole);
   const resolvedUserId = guardProfile?.user_id ?? cachedNavigation.userId;
+  const badgeCacheVersion = useSyncExternalStore(
+    subscribeNavigationBadgeListeners,
+    getNavigationBadgeCacheVersion,
+    () => 0,
+  );
+
+  useEffect(() => {
+    if (!resolvedUserId || !resolvedRole) {
+      return;
+    }
+
+    void ensureNavigationBadgesPrefetched(resolvedUserId, resolvedRole);
+  }, [resolvedRole, resolvedUserId]);
 
   const displayGigsPendingCount = useMemo(() => {
     if (!canViewGigs) {
@@ -110,7 +128,7 @@ export default function PlannerEventsSubNav({
     }
 
     return gigsPendingCount;
-  }, [canViewGigs, gigsPendingCount, resolvedRole, resolvedUserId]);
+  }, [badgeCacheVersion, canViewGigs, gigsPendingCount, resolvedRole, resolvedUserId]);
 
   const shouldReserveGigsBadgeSpace =
     canViewGigs &&

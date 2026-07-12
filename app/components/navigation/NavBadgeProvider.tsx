@@ -12,16 +12,17 @@ import {
 import { useGuardProfile } from "@/app/components/GuardProfileContext";
 import { loadNavigationBadgeData } from "@/lib/navigationBadges";
 import {
+  ensureNavigationBadgesPrefetched,
+  subscribeNavigationBadgeListeners,
+} from "@/lib/navigationBadgePrefetch";
+import {
   getCachedGigsPendingCount,
   readNavigationBadgeCache,
   readRuntimeBadgeFetchedAt,
   readRuntimeGigsPendingCount,
   readRuntimeNavBadgeSnapshot,
-  writeNavigationBadgeCache,
-  writeRuntimeBadgeFetchedAt,
   writeRuntimeGigsPendingCount,
   writeRuntimeNavBadgeSnapshot,
-  type NavigationBadgeCache,
 } from "@/lib/navigationBadgeCache";
 import { readCachedNavigation } from "@/lib/navigationRoleCache";
 import { canViewGigsSubNav } from "@/lib/plannerEventsNav";
@@ -139,21 +140,6 @@ function applyBadgeState(
   return nextState;
 }
 
-function toCacheEntry(
-  userId: string,
-  role: UserRole,
-  data: Awaited<ReturnType<typeof loadNavigationBadgeData>>,
-): NavigationBadgeCache {
-  return {
-    userId,
-    role,
-    messages: data.messages,
-    bookings: data.bookings,
-    gigsPending: data.gigsPending,
-    updatedAt: Date.now(),
-  };
-}
-
 export function NavBadgeProvider({ children }: { children: ReactNode }) {
   const guardProfile = useGuardProfile();
   const [{ userId, role }, setIdentity] = useState(() => resolveBadgeIdentity(guardProfile));
@@ -162,10 +148,17 @@ export function NavBadgeProvider({ children }: { children: ReactNode }) {
   );
   const badgeLastFetchedAtRef = useRef(readRuntimeBadgeFetchedAt());
   const badgeRefreshInFlightRef = useRef<Promise<void> | null>(null);
+  const prefetchStartedForRef = useRef<string | null>(null);
   const previousIdentityRef = useRef<{ userId: string | null; role: UserRole | null }>({
     userId,
     role,
   });
+
+  const identityKey = userId && role ? `${userId}:${role}` : null;
+  if (identityKey && prefetchStartedForRef.current !== identityKey) {
+    prefetchStartedForRef.current = identityKey;
+    void ensureNavigationBadgesPrefetched(userId, role);
+  }
 
   useEffect(() => {
     const nextIdentity = resolveBadgeIdentity(guardProfile);
@@ -217,40 +210,33 @@ export function NavBadgeProvider({ children }: { children: ReactNode }) {
         return badgeRefreshInFlightRef.current;
       }
 
-      const refreshPromise = (async () => {
-        try {
-          const data = await loadNavigationBadgeData(userId, role);
+      const refreshPromise = ensureNavigationBadgesPrefetched(userId, role, options).then(() => {
+        const cached = readNavigationBadgeCache(userId, role);
+        const runtime = readRuntimeSnapshot(userId, role);
 
-          writeNavigationBadgeCache(toCacheEntry(userId, role, data));
-          const fetchedAt = Date.now();
-          badgeLastFetchedAtRef.current = fetchedAt;
-          writeRuntimeBadgeFetchedAt(fetchedAt);
+        if (runtime?.badgesReady) {
+          setState(runtime);
+          badgeLastFetchedAtRef.current = readRuntimeBadgeFetchedAt();
+          return;
+        }
 
+        if (cached) {
+          badgeLastFetchedAtRef.current = readRuntimeBadgeFetchedAt();
           setState(
             applyBadgeState(userId, role, {
               badgeCounts: {
-                messages: data.messages,
-                bookings: data.bookings,
-                total: data.total,
+                messages: cached.messages,
+                bookings: cached.bookings,
+                total: cached.messages + cached.bookings,
               },
-              gigsPendingCount: data.gigsPending,
-              badgesReady: true,
-              reserveBadgeSpace: false,
-              reserveGigsBadgeSpace: false,
-            }),
-          );
-        } catch (error) {
-          console.error("[NavBadgeProvider] Failed to refresh navigation badges:", error);
-          setState((current) =>
-            applyBadgeState(userId, role, {
-              ...current,
+              gigsPendingCount: cached.gigsPending,
               badgesReady: true,
               reserveBadgeSpace: false,
               reserveGigsBadgeSpace: false,
             }),
           );
         }
-      })();
+      });
 
       badgeRefreshInFlightRef.current = refreshPromise;
 
@@ -264,6 +250,20 @@ export function NavBadgeProvider({ children }: { children: ReactNode }) {
     },
     [role, userId],
   );
+
+  useEffect(() => {
+    if (!userId || !role) {
+      return;
+    }
+
+    return subscribeNavigationBadgeListeners(() => {
+      const nextState = buildInitialState(userId, role);
+      if (nextState.badgesReady) {
+        setState(nextState);
+        badgeLastFetchedAtRef.current = readRuntimeBadgeFetchedAt();
+      }
+    });
+  }, [userId, role]);
 
   useEffect(() => {
     if (!userId || !role) {

@@ -68,7 +68,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 - **Calendar day selection:** desktop grid highlight tied to open day panel (`actionDate`); closing the panel clears the outline instantly (no transition fade) and blurs focus; Today styling unchanged
 - **Page load speed:** optimistic auth in `OnboardingGuard` (cached session renders immediately); profile cache + deduped fetches in `lib/user/currentUser.ts`; nav skips redundant profile load when guard profile exists
 - Desktop nav width aligned to page shell (`md:max-w-5xl`); `scrollbar-gutter: stable` on `<html>`
-- **Navigation badges:** shared `NavBadgeProvider` with session/memory cache — Messages counts hydrate immediately on tab switches; **Gigs workspace tab badge** uses module-level runtime snapshot + sync cache read in `PlannerEventsSubNav` so count renders with tabs (no pop-in on internal navigation); invisible badge slot reserved on first hard load until real count arrives
+- **Navigation badges:** shared `NavBadgeProvider` with session/memory cache — Gigs workspace tab badge prefetches at module load (`navigationBadgePrefetch.ts`) before React effects; sub-nav subscribes via `useSyncExternalStore` for immediate paint when cache/session data exists; invisible badge slot on true first load until network count arrives
 - **Messages & Profile desktop:** shared `AppPageLayout` shell (`md:max-w-5xl`) aligned with Events workspace; inbox desktop card surface; profile two-column desktop grid
 - **DM conversation desktop:** chat column widened to `52rem` (~832px) at `lg+`, centered; mobile/tablet unchanged at `max-w-2xl`
 
@@ -86,7 +86,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
-- `fix gigs badge hydration timing` — Gigs workspace tab badge: runtime snapshot survives provider remounts; sync cache hydration in sub-nav
+- `913efc4` — fix gigs badge hydration timing (runtime snapshot + sync cache read)
 - `832a4cf` — Remove trailing period from group chats empty state
 - `8a24031` — Stabilise navigation notification badges
 - `78a2b5b` — Remove calendar intro copy

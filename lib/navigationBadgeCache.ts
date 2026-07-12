@@ -61,11 +61,11 @@ export function readNavigationBadgeCache(
   userId: string | null | undefined,
   role: UserRole | null | undefined,
 ): NavigationBadgeCache | null {
-  if (!userId || !role) {
+  if (!role) {
     return null;
   }
 
-  if (memoryCache?.userId === userId && memoryCache.role === role) {
+  if (userId && memoryCache?.userId === userId && memoryCache.role === role) {
     return memoryCache;
   }
 
@@ -79,7 +79,11 @@ export function readNavigationBadgeCache(
   }
 
   const parsed = parseNavigationBadgeCache(stored);
-  if (!parsed || parsed.userId !== userId || parsed.role !== role) {
+  if (!parsed || parsed.role !== role) {
+    return null;
+  }
+
+  if (userId && parsed.userId !== userId) {
     return null;
   }
 
