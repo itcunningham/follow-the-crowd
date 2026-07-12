@@ -1,6 +1,7 @@
 import type { User } from "@supabase/supabase-js";
 import { getAuthRedirectUrl } from "@/lib/auth/appUrl";
 import { normalizeUsername } from "@/lib/user/profileFormUtils";
+import { clearCachedNavigation } from "@/lib/navigationRoleCache";
 import { supabase } from "@/lib/supabaseClient";
 
 export const LOGIN_PATH = "/login";
@@ -95,19 +96,52 @@ function isAuthSessionMissingError(error: { name?: string; message?: string }): 
   return label.includes("AuthSessionMissingError") || error.message === "Auth session missing!";
 }
 
-export async function getCurrentAuthUser(): Promise<User | null> {
-  const { data, error } = await supabase.auth.getUser();
+let cachedProfile: UserProfile | null = null;
+let cachedProfileUserId: string | null = null;
+let profileRequest: Promise<UserProfile | null> | null = null;
+
+export function invalidateCurrentUserProfileCache(): void {
+  cachedProfile = null;
+  cachedProfileUserId = null;
+  profileRequest = null;
+}
+
+type AuthLookupOptions = {
+  /** Validates the JWT with Supabase Auth. Slower — use only when trust matters. */
+  validate?: boolean;
+};
+
+export async function getCurrentAuthUser(options?: AuthLookupOptions): Promise<User | null> {
+  if (options?.validate) {
+    const { data, error } = await supabase.auth.getUser();
+
+    if (error) {
+      if (isAuthSessionMissingError(error)) {
+        return null;
+      }
+
+      console.error("[auth] getUser failed:", error);
+      return null;
+    }
+
+    return data.user;
+  }
+
+  const {
+    data: { session },
+    error,
+  } = await supabase.auth.getSession();
 
   if (error) {
     if (isAuthSessionMissingError(error)) {
       return null;
     }
 
-    console.error("[auth] getUser failed:", error);
+    console.error("[auth] getSession failed:", error);
     return null;
   }
 
-  return data.user;
+  return session?.user ?? null;
 }
 
 export async function requireCurrentUser(): Promise<User> {
@@ -127,6 +161,9 @@ export async function getCurrentUserId(): Promise<string> {
 
 export async function signOut(): Promise<void> {
   const { error } = await supabase.auth.signOut();
+
+  invalidateCurrentUserProfileCache();
+  clearCachedNavigation();
 
   if (error) {
     throw error;
@@ -191,6 +228,12 @@ export async function ensureAuthenticatedUserProfileRow(): Promise<void> {
   const authUser = await getCurrentAuthUser();
 
   if (!authUser) {
+    return;
+  }
+
+  const existingProfile = await getCurrentUserProfile();
+
+  if (existingProfile) {
     return;
   }
 
@@ -272,20 +315,47 @@ export async function getPostAuthRedirectPath(): Promise<string> {
   return getDefaultRouteForRole(profile?.role ?? null);
 }
 
-export async function getCurrentUserProfile(): Promise<UserProfile | null> {
-  const userId = await getCurrentUserId();
+export async function getCurrentUserProfile(options?: {
+  force?: boolean;
+}): Promise<UserProfile | null> {
+  let userId: string;
 
-  const { data, error } = await supabase
-    .from("users")
-    .select(PROFILE_FIELDS)
-    .eq("user_id", userId)
-    .maybeSingle();
-
-  if (error) {
-    throw error;
+  try {
+    userId = await getCurrentUserId();
+  } catch {
+    return null;
   }
 
-  return (data as UserProfile | null) ?? null;
+  if (!options?.force && cachedProfile && cachedProfileUserId === userId) {
+    return cachedProfile;
+  }
+
+  if (!options?.force && profileRequest) {
+    return profileRequest;
+  }
+
+  profileRequest = (async () => {
+    try {
+      const { data, error } = await supabase
+        .from("users")
+        .select(PROFILE_FIELDS)
+        .eq("user_id", userId)
+        .maybeSingle();
+
+      if (error) {
+        throw error;
+      }
+
+      const profile = (data as UserProfile | null) ?? null;
+      cachedProfile = profile;
+      cachedProfileUserId = userId;
+      return profile;
+    } finally {
+      profileRequest = null;
+    }
+  })();
+
+  return profileRequest;
 }
 
 export async function getUserProfileById(userId: string): Promise<UserProfile | null> {
@@ -341,6 +411,7 @@ export async function saveUserRole(role: UserRole): Promise<void> {
   }
 
   notifyRoleUpdated();
+  invalidateCurrentUserProfileCache();
 }
 
 export function notifyRoleUpdated(): void {

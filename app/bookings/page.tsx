@@ -280,8 +280,12 @@ function BookingsPageContent() {
   const guardProfile = useGuardProfile();
   const deepLinkInFlightKeyRef = useRef<string | null>(null);
   const deepLinkCompletedKeyRef = useRef<string | null>(null);
-  const [role, setRole] = useState<UserRole | null>(null);
-  const [loadingAccess, setLoadingAccess] = useState(() => readCachedNavRole() == null);
+  const [role, setRole] = useState<UserRole | null>(
+    () => guardProfile?.role ?? readCachedNavRole(),
+  );
+  const [loadingAccess, setLoadingAccess] = useState(
+    () => !guardProfile?.role && readCachedNavRole() == null,
+  );
   const [loadingList, setLoadingList] = useState(true);
   const [gigsListReady, setGigsListReady] = useState(false);
   const [sentGroups, setSentGroups] = useState<SentBookingGroup[]>([]);
@@ -531,6 +535,12 @@ function BookingsPageContent() {
   }, []);
 
   useEffect(() => {
+    if (guardProfile?.role) {
+      setRole(guardProfile.role);
+      setLoadingAccess(false);
+      return;
+    }
+
     getCurrentUserProfile()
       .then((profile) => {
         const userRole = profile?.role ?? null;
@@ -541,7 +551,7 @@ function BookingsPageContent() {
         console.error("Failed to load bookings access:", loadError);
         setLoadingAccess(false);
       });
-  }, []);
+  }, [guardProfile?.role]);
 
   useEffect(() => {
     if (loadingAccess || !canAccessBookings(role)) {

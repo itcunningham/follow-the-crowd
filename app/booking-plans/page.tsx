@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
+import { useGuardProfile } from "@/app/components/GuardProfileContext";
 import { PlannerWorkspacePage } from "@/app/components/planner/PlannerWorkspaceLayout";
 import { PlannerFormCard, PlannerFormField, PlannerInlineError } from "@/app/components/planner/PlannerUi";
 import {
@@ -161,10 +162,15 @@ function EventPlanDeleteConfirmDialog({
 
 export default function BookingPlansPage() {
   const router = useRouter();
-  const [role, setRole] = useState<UserRole | null>(null);
+  const guardProfile = useGuardProfile();
   const [cachedRole] = useState<UserRole | null>(() => readCachedNavRole());
+  const [role, setRole] = useState<UserRole | null>(
+    () => guardProfile?.role ?? cachedRole,
+  );
   const displayRole = role ?? cachedRole;
-  const [loadingAccess, setLoadingAccess] = useState(true);
+  const [loadingAccess, setLoadingAccess] = useState(
+    () => !guardProfile?.role && !cachedRole,
+  );
   const [plans, setPlans] = useState<BookingPlan[]>([]);
   const [loadingPlans, setLoadingPlans] = useState(true);
   const [formOpen, setFormOpen] = useState(false);
@@ -218,6 +224,18 @@ export default function BookingPlansPage() {
   }, []);
 
   useEffect(() => {
+    if (guardProfile?.role) {
+      setRole(guardProfile.role);
+
+      if (!canAccessBookingPlans(guardProfile.role)) {
+        router.replace(getDefaultRouteForRole(guardProfile.role));
+        return;
+      }
+
+      setLoadingAccess(false);
+      return;
+    }
+
     getCurrentUserProfile()
       .then((profile) => {
         const userRole = profile?.role ?? null;
@@ -234,7 +252,7 @@ export default function BookingPlansPage() {
         console.error("Failed to load booking plans access:", loadError);
         setLoadingAccess(false);
       });
-  }, [router]);
+  }, [guardProfile?.role, router]);
 
   useEffect(() => {
     if (loadingAccess || !canAccessBookingPlans(role)) {

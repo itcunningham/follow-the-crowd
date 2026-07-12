@@ -281,7 +281,7 @@ export default function AppNavigation() {
       }
 
       cacheNavigationRole(userRole, userId);
-      await refreshBadgeCounts({ force: true });
+      void refreshBadgeCounts({ force: true });
     } catch (error) {
       console.error("[AppNavigation] Failed to load navigation:", error);
     }
@@ -298,7 +298,13 @@ export default function AppNavigation() {
   }, [guardProfile?.role, guardProfile?.user_id]);
 
   useEffect(() => {
-    void loadNavigation();
+    const hasGuardProfile = Boolean(guardProfile?.role && guardProfile.user_id);
+
+    if (hasGuardProfile) {
+      void refreshBadgeCounts();
+    } else {
+      void loadNavigation();
+    }
 
     function handleNavigationRefresh() {
       void refreshBadgeCounts({ force: true });
@@ -313,7 +319,7 @@ export default function AppNavigation() {
       window.removeEventListener("ftc-role-updated", handleNavigationRefresh);
       window.removeEventListener("ftc-message-reads-updated", handleNavigationRefresh);
     };
-  }, [loadNavigation, refreshBadgeCounts]);
+  }, [guardProfile?.role, guardProfile?.user_id, loadNavigation, refreshBadgeCounts]);
 
   useEffect(() => {
     if (!role) {

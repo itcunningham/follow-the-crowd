@@ -360,10 +360,9 @@ function EventsPageClientView({
   useEffect(() => {
     if (guardProfile?.role) {
       setRole(guardProfile.role);
+      return;
     }
-  }, [guardProfile?.role]);
 
-  useEffect(() => {
     if (roleReady) {
       return;
     }
@@ -375,7 +374,7 @@ function EventsPageClientView({
       .catch((loadError) => {
         console.error("Failed to load events access:", loadError);
       });
-  }, [roleReady]);
+  }, [guardProfile?.role, roleReady]);
 
   useEffect(() => {
     if (!roleReady || isCalendarCreateFlow) {

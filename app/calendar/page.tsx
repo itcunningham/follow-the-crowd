@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import CalendarViewTabs, { type CalendarViewTab } from "@/app/components/CalendarViewTabs";
 import DjAvailabilityCalendar from "@/app/components/DjAvailabilityCalendar";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
+import { useGuardProfile } from "@/app/components/GuardProfileContext";
 import PlannerCalendar from "@/app/components/PlannerCalendar";
 import {
   DjCalendarLoadingCard,
@@ -61,15 +62,24 @@ function CalendarWorkspaceBody({
 }
 
 export default function CalendarPage() {
-  const [role, setRole] = useState<UserRole | null>(null);
+  const guardProfile = useGuardProfile();
+  const [role, setRole] = useState<UserRole | null>(() => guardProfile?.role ?? null);
   const [cachedRole] = useState<UserRole | null>(() => readCachedNavRole());
-  const [loadingRole, setLoadingRole] = useState(true);
+  const [loadingRole, setLoadingRole] = useState(
+    () => !guardProfile?.role && !readCachedNavRole(),
+  );
   const [bothCalendarTab, setBothCalendarTab] = useState<CalendarViewTab>(() =>
     resolveBothCalendarTab(readCalendarViewParam()),
   );
-  const displayRole = role ?? cachedRole;
+  const displayRole = role ?? guardProfile?.role ?? cachedRole;
 
   useEffect(() => {
+    if (guardProfile?.role) {
+      setRole(guardProfile.role);
+      setLoadingRole(false);
+      return;
+    }
+
     getCurrentUserProfile()
       .then((profile) => {
         setRole(profile?.role ?? null);
@@ -81,7 +91,7 @@ export default function CalendarPage() {
       .finally(() => {
         setLoadingRole(false);
       });
-  }, []);
+  }, [guardProfile?.role]);
 
   useEffect(() => {
     const syncCalendarView = () => {

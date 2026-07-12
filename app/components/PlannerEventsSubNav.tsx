@@ -80,6 +80,10 @@ export default function PlannerEventsSubNav({
       return;
     }
 
+    if (initialRole) {
+      return;
+    }
+
     getCurrentUserProfile()
       .then((profile) => {
         setRole(profile?.role ?? null);
@@ -88,7 +92,7 @@ export default function PlannerEventsSubNav({
         console.error("Failed to load events area sub-nav role:", loadError);
         setRole(null);
       });
-  }, [guardProfile?.role]);
+  }, [guardProfile?.role, initialRole]);
 
   useEffect(() => {
     if (!canViewGigsSubNav(role)) {

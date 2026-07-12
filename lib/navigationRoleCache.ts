@@ -37,6 +37,15 @@ export function cacheNavigationRole(role: UserRole, userId?: string | null): voi
   }
 }
 
+export function clearCachedNavigation(): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  sessionStorage.removeItem(NAV_ROLE_CACHE_KEY);
+  sessionStorage.removeItem(NAV_USER_CACHE_KEY);
+}
+
 export function resolveIsOwnProfilePath(
   profileUserId: string | null | undefined,
   currentUserId: string | null | undefined,
