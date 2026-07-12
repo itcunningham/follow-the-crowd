@@ -80,7 +80,7 @@ function GroupChatsEmptyState() {
       </div>
       <h2 className="mt-5 text-lg font-semibold text-ftc-text">No group chats yet</h2>
       <p className="mt-2 max-w-sm text-sm leading-relaxed text-ftc-text-muted">
-        Group chats appear here when you create events or accept bookings.
+        Group chats appear here when you create events or accept bookings
       </p>
     </div>
   );
