@@ -1,13 +1,14 @@
 "use client";
 
 import type { ReactNode } from "react";
+import AppNavigation, { MOBILE_NAV_OFFSET_CLASS } from "@/app/components/AppNavigation";
 import {
+  APP_DM_CONTENT_WIDTH_CLASS,
   APP_PAGE_HEADER_CLASS,
   APP_PAGE_INSET_CLASS,
   APP_PAGE_TITLE_CLASS,
   APP_PAGE_TITLE_ROW_CLASS,
   AppPageDesktopSurface,
-  AppPageShell,
 } from "@/app/components/layout/AppPageLayout";
 import MessagesInboxComposeButton from "@/app/components/dm/MessagesInboxComposeButton";
 import MessagesInboxSearchBar from "@/app/components/dm/MessagesInboxSearchBar";
@@ -77,44 +78,49 @@ export default function MessagesInboxLayout({
   children: ReactNode;
 }) {
   return (
-    <AppPageShell>
-      <header className={APP_PAGE_HEADER_CLASS}>
-        <div className={APP_PAGE_TITLE_ROW_CLASS}>
-          <h1 className={APP_PAGE_TITLE_CLASS}>Messages</h1>
-          {onCompose ? (
-            <div className="flex shrink-0 items-start justify-end md:items-center">
-              <MessagesInboxComposeButton onClick={onCompose} />
-            </div>
-          ) : null}
-        </div>
+    <div
+      className={`flex min-h-[100dvh] w-full flex-col bg-ftc-bg font-sans text-ftc-text ${MOBILE_NAV_OFFSET_CLASS}`}
+    >
+      <AppNavigation />
+      <div className={`${APP_DM_CONTENT_WIDTH_CLASS} flex min-h-0 flex-1 flex-col`}>
+        <header className={APP_PAGE_HEADER_CLASS}>
+          <div className={APP_PAGE_TITLE_ROW_CLASS}>
+            <h1 className={APP_PAGE_TITLE_CLASS}>Messages</h1>
+            {onCompose ? (
+              <div className="flex shrink-0 items-start justify-end md:items-center">
+                <MessagesInboxComposeButton onClick={onCompose} />
+              </div>
+            ) : null}
+          </div>
 
-        <div className="mt-4">
-          <MessagesInboxSearchBar
-            value={searchQuery}
-            onChange={onSearchChange ?? (() => {})}
-          />
-        </div>
+          <div className="mt-4">
+            <MessagesInboxSearchBar
+              value={searchQuery}
+              onChange={onSearchChange ?? (() => {})}
+            />
+          </div>
 
-        <div className="ftc-tab-pill mt-3 md:min-h-[2.375rem]" role="tablist" aria-label="Message categories">
-          <InboxTabButton
-            active={activeTab === "dm"}
-            label="Messages"
-            unreadCount={dmUnreadCount}
-            onClick={onSelectTab ? () => onSelectTab("dm") : undefined}
-          />
-          <InboxTabButton
-            active={activeTab === "group"}
-            label="Group Chats"
-            mobileLabel="Groups"
-            unreadCount={groupUnreadCount}
-            onClick={onSelectTab ? () => onSelectTab("group") : undefined}
-          />
-        </div>
-      </header>
+          <div className="ftc-tab-pill mt-3 md:min-h-[2.375rem]" role="tablist" aria-label="Message categories">
+            <InboxTabButton
+              active={activeTab === "dm"}
+              label="Messages"
+              unreadCount={dmUnreadCount}
+              onClick={onSelectTab ? () => onSelectTab("dm") : undefined}
+            />
+            <InboxTabButton
+              active={activeTab === "group"}
+              label="Group Chats"
+              mobileLabel="Groups"
+              unreadCount={groupUnreadCount}
+              onClick={onSelectTab ? () => onSelectTab("group") : undefined}
+            />
+          </div>
+        </header>
 
-      <div className={`flex-1 ${APP_PAGE_INSET_CLASS} pb-4 pt-0`}>
-        <AppPageDesktopSurface>{children}</AppPageDesktopSurface>
+        <div className={`flex-1 ${APP_PAGE_INSET_CLASS} pb-4 pt-0`}>
+          <AppPageDesktopSurface>{children}</AppPageDesktopSurface>
+        </div>
       </div>
-    </AppPageShell>
+    </div>
   );
 }

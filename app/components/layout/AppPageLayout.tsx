@@ -68,6 +68,10 @@ export const APP_PAGE_PROFILE_PRIMARY_COLUMN_CLASS = "space-y-6";
 
 export const APP_PAGE_PROFILE_SECONDARY_COLUMN_CLASS = "space-y-4 md:pt-0";
 
+/** Shared desktop content width for DM inbox and conversation. */
+export const APP_DM_CONTENT_WIDTH_CLASS =
+  "mx-auto w-full max-w-2xl lg:max-w-[52rem]";
+
 /** Centered DM chat column — mobile/tablet stay max-w-2xl (672px); desktop ~832px (+24%). */
 export const APP_DM_CHAT_COLUMN_CLASS =
-  "mx-auto flex min-h-0 w-full max-w-2xl lg:max-w-[52rem] flex-1 flex-col overflow-hidden";
+  `${APP_DM_CONTENT_WIDTH_CLASS} flex min-h-0 flex-1 flex-col overflow-hidden`;
