@@ -1,3 +1,4 @@
+import { clearNavigationBadgeCache } from "@/lib/navigationBadgeCache";
 import type { UserRole } from "@/lib/user/currentUser";
 
 const NAV_ROLE_CACHE_KEY = "ftc-nav-role";
@@ -44,6 +45,7 @@ export function clearCachedNavigation(): void {
 
   sessionStorage.removeItem(NAV_ROLE_CACHE_KEY);
   sessionStorage.removeItem(NAV_USER_CACHE_KEY);
+  clearNavigationBadgeCache();
 }
 
 export function resolveIsOwnProfilePath(

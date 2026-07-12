@@ -68,6 +68,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 - **Calendar day selection:** desktop grid highlight tied to open day panel (`actionDate`); closing the panel clears the outline instantly (no transition fade) and blurs focus; Today styling unchanged
 - **Page load speed:** optimistic auth in `OnboardingGuard` (cached session renders immediately); profile cache + deduped fetches in `lib/user/currentUser.ts`; nav skips redundant profile load when guard profile exists
 - Desktop nav width aligned to page shell (`md:max-w-5xl`); `scrollbar-gutter: stable` on `<html>`
+- **Navigation badges:** shared `NavBadgeProvider` with session/memory cache — Messages and Gigs counts hydrate immediately on tab switches; invisible badge slot reserved on first load until counts arrive
 
 ## SQL / migrations Isaac may still need to run
 
@@ -83,8 +84,8 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `78a2b5b` — Remove calendar intro copy
 - `d98f218` — Fix calendar day highlight clearing on panel close
-- `86b9370` — Clear calendar day selection on close
 - `d961180` — Polish desktop planner workspace consistency
 - `1943163` — Speed up page loads (optimistic auth + profile caching)
 - `daf08a2` — Fix desktop workspace alignment drift (shared shell)

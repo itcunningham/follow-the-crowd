@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { useGuardProfile } from "@/app/components/GuardProfileContext";
-import { countPendingIncomingGigs } from "@/lib/bookingRequests";
+import { useNavBadges } from "@/app/components/navigation/NavBadgeProvider";
 import {
   canViewGigsSubNav,
   EVENTS_AREA_SUB_NAV,
@@ -37,12 +37,23 @@ function getActiveHref(pathname: string): string {
 function GigsPendingCountBadge({
   count,
   isActive,
+  reserveSpace,
 }: {
   count: number;
   isActive: boolean;
+  reserveSpace?: boolean;
 }) {
   if (count <= 0) {
-    return null;
+    if (!reserveSpace) {
+      return null;
+    }
+
+    return (
+      <span
+        aria-hidden="true"
+        className="inline-flex h-4 min-w-4 shrink-0 opacity-0"
+      />
+    );
   }
 
   return (
@@ -69,10 +80,10 @@ export default function PlannerEventsSubNav({
 }) {
   const pathname = usePathname();
   const guardProfile = useGuardProfile();
+  const { gigsPendingCount, reserveBadgeSpace } = useNavBadges();
   const [role, setRole] = useState<UserRole | null>(
     () => initialRole ?? guardProfile?.role ?? readCachedNavRole(),
   );
-  const [pendingIncomingCount, setPendingIncomingCount] = useState(0);
 
   useEffect(() => {
     if (guardProfile?.role) {
@@ -93,32 +104,6 @@ export default function PlannerEventsSubNav({
         setRole(null);
       });
   }, [guardProfile?.role, initialRole]);
-
-  useEffect(() => {
-    if (!canViewGigsSubNav(role)) {
-      setPendingIncomingCount(0);
-      return;
-    }
-
-    let cancelled = false;
-
-    countPendingIncomingGigs()
-      .then((count) => {
-        if (!cancelled) {
-          setPendingIncomingCount(count);
-        }
-      })
-      .catch((loadError) => {
-        console.error("Failed to load pending incoming gigs count:", loadError);
-        if (!cancelled) {
-          setPendingIncomingCount(0);
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [role, pathname]);
 
   if (!isPlannerEventsAreaPath(pathname)) {
     return null;
@@ -144,7 +129,11 @@ export default function PlannerEventsSubNav({
           >
             {tab.label}
             {showPendingBadge ? (
-              <GigsPendingCountBadge count={pendingIncomingCount} isActive={isActive} />
+              <GigsPendingCountBadge
+                count={canViewGigsSubNav(role) ? gigsPendingCount : 0}
+                isActive={isActive}
+                reserveSpace={canViewGigsSubNav(role) && reserveBadgeSpace}
+              />
             ) : null}
           </Link>
         );

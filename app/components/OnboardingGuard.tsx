@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import FtcBrandMotionLazy from "@/app/components/brand/FtcBrandMotionLazy";
 import { GuardProfileProvider } from "@/app/components/GuardProfileContext";
+import { NavBadgeProvider } from "@/app/components/navigation/NavBadgeProvider";
 import { AppLoadingShell } from "@/app/components/skeleton/Skeleton";
 import { cacheNavigationRole, readCachedNavigation } from "@/lib/navigationRoleCache";
 import {
@@ -182,16 +183,22 @@ export default function OnboardingGuard({ children }: { children: React.ReactNod
     const cached = readCachedNavigation();
 
     return (
-      <AppLoadingShell
-        pathname={pathname}
-        role={loadingProfile?.role ?? cached.role}
-        currentUserId={loadingProfile?.user_id ?? cached.userId}
-        search={typeof window !== "undefined" ? window.location.search : ""}
-      />
+      <GuardProfileProvider profile={loadingProfile}>
+        <NavBadgeProvider>
+          <AppLoadingShell
+            pathname={pathname}
+            role={loadingProfile?.role ?? cached.role}
+            currentUserId={loadingProfile?.user_id ?? cached.userId}
+            search={typeof window !== "undefined" ? window.location.search : ""}
+          />
+        </NavBadgeProvider>
+      </GuardProfileProvider>
     );
   }
 
   return (
-    <GuardProfileProvider profile={loadingProfile}>{children}</GuardProfileProvider>
+    <GuardProfileProvider profile={loadingProfile}>
+      <NavBadgeProvider>{children}</NavBadgeProvider>
+    </GuardProfileProvider>
   );
 }

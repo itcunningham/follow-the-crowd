@@ -1,12 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
-import { getNavBadgeCounts, type NavBadgeCounts } from "@/lib/notifications";
+import { useNavBadges } from "@/app/components/navigation/NavBadgeProvider";
+import type { NavBadgeCounts } from "@/lib/notifications";
 import { isMessagesInboxPath } from "@/lib/groupChats";
 import { isGigsAreaPath, isPlannerEventsAreaPath } from "@/lib/plannerEventsNav";
-import { supabase } from "@/lib/supabaseClient";
+import {
+  cacheNavigationRole,
+  readCachedNavigation,
+} from "@/lib/navigationRoleCache";
 import {
   getCurrentUserId,
   getCurrentUserProfile,
@@ -15,11 +19,6 @@ import {
   type UserRole,
 } from "@/lib/user/currentUser";
 import { useGuardProfile } from "@/app/components/GuardProfileContext";
-
-import {
-  cacheNavigationRole,
-  readCachedNavigation,
-} from "@/lib/navigationRoleCache";
 
 type NavIconKey = "home" | "events" | "gigs" | "messages" | "profile";
 
@@ -81,8 +80,6 @@ function getNavItems(role: UserRole, currentUserId: string | null): NavItem[] {
 }
 
 export const MOBILE_NAV_OFFSET_CLASS = "pb-[calc(3.5rem+env(safe-area-inset-bottom))] md:pb-0";
-
-const NAV_BADGE_REFRESH_INTERVAL_MS = 20_000;
 
 function navLinkClassName(isActive: boolean, variant: "desktop" | "mobile") {
   if (variant === "desktop") {
@@ -171,9 +168,18 @@ function NavTabIcon({ icon, active }: { icon: NavIconKey; active: boolean }) {
   }
 }
 
-function NavBadge({ count }: { count: number }) {
+function NavBadge({ count, reserveSpace }: { count: number; reserveSpace?: boolean }) {
   if (count <= 0) {
-    return null;
+    if (!reserveSpace) {
+      return null;
+    }
+
+    return (
+      <span
+        aria-hidden="true"
+        className="pointer-events-none absolute right-0 top-0 z-10 h-4 min-w-4 translate-x-1/3 opacity-0"
+      />
+    );
   }
 
   return (
@@ -186,9 +192,18 @@ function NavBadge({ count }: { count: number }) {
   );
 }
 
-function MobileNavBadge({ count }: { count: number }) {
+function MobileNavBadge({ count, reserveSpace }: { count: number; reserveSpace?: boolean }) {
   if (count <= 0) {
-    return null;
+    if (!reserveSpace) {
+      return null;
+    }
+
+    return (
+      <span
+        aria-hidden="true"
+        className="pointer-events-none absolute right-0.5 top-0.5 z-10 h-3.5 min-w-3.5 opacity-0"
+      />
+    );
   }
 
   return (
@@ -212,6 +227,7 @@ function getBadgeCount(item: NavItem, badgeCounts: NavBadgeCounts): number {
 export default function AppNavigation() {
   const pathname = usePathname();
   const guardProfile = useGuardProfile();
+  const { badgeCounts, reserveBadgeSpace } = useNavBadges();
   const [cachedNavigation] = useState(readCachedNavigation);
   const [role, setRole] = useState<UserRole | null>(
     () => guardProfile?.role ?? cachedNavigation.role,
@@ -219,51 +235,6 @@ export default function AppNavigation() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(
     () => guardProfile?.user_id ?? cachedNavigation.userId,
   );
-  const [badgeCounts, setBadgeCounts] = useState<NavBadgeCounts>({
-    messages: 0,
-    bookings: 0,
-    total: 0,
-  });
-  const badgeLastFetchedAtRef = useRef(0);
-  const badgeRefreshInFlightRef = useRef<Promise<void> | null>(null);
-
-  const refreshBadgeCounts = useCallback(async (options?: { force?: boolean }) => {
-    if (!role) {
-      return;
-    }
-
-    if (
-      !options?.force &&
-      Date.now() - badgeLastFetchedAtRef.current < NAV_BADGE_REFRESH_INTERVAL_MS
-    ) {
-      return;
-    }
-
-    if (badgeRefreshInFlightRef.current) {
-      return badgeRefreshInFlightRef.current;
-    }
-
-    const refreshPromise = (async () => {
-      try {
-        const userId = await getCurrentUserId();
-        const counts = await getNavBadgeCounts(userId, role);
-        setBadgeCounts(counts);
-        badgeLastFetchedAtRef.current = Date.now();
-      } catch (error) {
-        console.error("[AppNavigation] Failed to refresh navigation badges:", error);
-      }
-    })();
-
-    badgeRefreshInFlightRef.current = refreshPromise;
-
-    try {
-      await refreshPromise;
-    } finally {
-      if (badgeRefreshInFlightRef.current === refreshPromise) {
-        badgeRefreshInFlightRef.current = null;
-      }
-    }
-  }, [role]);
 
   const loadNavigation = useCallback(async () => {
     try {
@@ -281,11 +252,10 @@ export default function AppNavigation() {
       }
 
       cacheNavigationRole(userRole, userId);
-      void refreshBadgeCounts({ force: true });
     } catch (error) {
       console.error("[AppNavigation] Failed to load navigation:", error);
     }
-  }, [refreshBadgeCounts]);
+  }, []);
 
   useEffect(() => {
     if (guardProfile?.role) {
@@ -300,60 +270,10 @@ export default function AppNavigation() {
   useEffect(() => {
     const hasGuardProfile = Boolean(guardProfile?.role && guardProfile.user_id);
 
-    if (hasGuardProfile) {
-      void refreshBadgeCounts();
-    } else {
+    if (!hasGuardProfile) {
       void loadNavigation();
     }
-
-    function handleNavigationRefresh() {
-      void refreshBadgeCounts({ force: true });
-    }
-
-    window.addEventListener("ftc-notifications-updated", handleNavigationRefresh);
-    window.addEventListener("ftc-role-updated", handleNavigationRefresh);
-    window.addEventListener("ftc-message-reads-updated", handleNavigationRefresh);
-
-    return () => {
-      window.removeEventListener("ftc-notifications-updated", handleNavigationRefresh);
-      window.removeEventListener("ftc-role-updated", handleNavigationRefresh);
-      window.removeEventListener("ftc-message-reads-updated", handleNavigationRefresh);
-    };
-  }, [guardProfile?.role, guardProfile?.user_id, loadNavigation, refreshBadgeCounts]);
-
-  useEffect(() => {
-    if (!role) {
-      return;
-    }
-
-    void refreshBadgeCounts();
-  }, [pathname, role, refreshBadgeCounts]);
-
-  useEffect(() => {
-    if (!currentUserId) {
-      return;
-    }
-
-    const channel = supabase
-      .channel(`nav-notifications:${currentUserId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "notifications",
-          filter: `user_id=eq.${currentUserId}`,
-        },
-        () => {
-          void refreshBadgeCounts();
-        },
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [currentUserId, refreshBadgeCounts]);
+  }, [guardProfile?.role, guardProfile?.user_id, loadNavigation]);
 
   const effectiveRole = role ?? guardProfile?.role ?? cachedNavigation.role ?? "both";
   const effectiveUserId = currentUserId ?? guardProfile?.user_id ?? cachedNavigation.userId;
@@ -370,6 +290,7 @@ export default function AppNavigation() {
             {navItems.map((item) => {
               const isActive = item.isActive(pathname);
               const badgeCount = getBadgeCount(item, badgeCounts);
+              const showBadgeSlot = Boolean(item.badgeKey) && reserveBadgeSpace;
 
               return (
                 <Link
@@ -378,7 +299,7 @@ export default function AppNavigation() {
                   className={navLinkClassName(isActive, "desktop")}
                 >
                   {item.label}
-                  <NavBadge count={badgeCount} />
+                  <NavBadge count={badgeCount} reserveSpace={showBadgeSlot} />
                 </Link>
               );
             })}
@@ -394,6 +315,7 @@ export default function AppNavigation() {
           {navItems.map((item) => {
             const isActive = item.isActive(pathname);
             const badgeCount = getBadgeCount(item, badgeCounts);
+            const showBadgeSlot = Boolean(item.badgeKey) && reserveBadgeSpace;
 
             return (
               <Link
@@ -404,7 +326,7 @@ export default function AppNavigation() {
                 className={navLinkClassName(isActive, "mobile")}
               >
                 <NavTabIcon icon={item.icon} active={isActive} />
-                <MobileNavBadge count={badgeCount} />
+                <MobileNavBadge count={badgeCount} reserveSpace={showBadgeSlot} />
               </Link>
             );
           })}
