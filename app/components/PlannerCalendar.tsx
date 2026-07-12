@@ -613,7 +613,7 @@ export default function PlannerCalendar({
                       key={dateKey}
                       date={day}
                       isToday={isTodayDate(day)}
-                      isSelected={isSameDay(day, selectedDate)}
+                      isSelected={actionDate !== null && isSameDay(day, actionDate)}
                       items={sortPlannerCalendarAgendaItems(
                         monthItemsByDate.get(dateKey) ?? [],
                       )}
