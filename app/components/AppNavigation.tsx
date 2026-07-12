@@ -10,9 +10,9 @@ import { isMessagesInboxPath } from "@/lib/groupChats";
 import { isGigsAreaPath, isPlannerEventsAreaPath } from "@/lib/plannerEventsNav";
 import {
   getCachedNavMessagesCount,
-  resolveNavigationBadgeCache,
 } from "@/lib/navigationBadgeCache";
 import {
+  ensureNavMessagesPrefetched,
   getNavigationBadgeCacheVersion,
   subscribeNavigationBadgeListeners,
 } from "@/lib/navigationBadgePrefetch";
@@ -285,35 +285,37 @@ export default function AppNavigation() {
   }, [guardProfile?.role, guardProfile?.user_id, loadNavigation]);
 
   const effectiveRole = role ?? guardProfile?.role ?? cachedNavigation.role ?? "both";
-  const effectiveUserId = currentUserId ?? guardProfile?.user_id ?? cachedNavigation.userId;
-  const navItems = effectiveRole ? getNavItems(effectiveRole, effectiveUserId) : [];
+  const resolvedRole = role ?? guardProfile?.role ?? cachedNavigation.role;
+  const resolvedUserId = currentUserId ?? guardProfile?.user_id ?? cachedNavigation.userId;
+  const navItems = effectiveRole ? getNavItems(effectiveRole, resolvedUserId ?? currentUserId) : [];
   const badgeCacheVersion = useSyncExternalStore(
     subscribeNavigationBadgeListeners,
     getNavigationBadgeCacheVersion,
     () => 0,
   );
 
-  const displayBadgeCounts = useMemo(() => {
-    const cached = resolveNavigationBadgeCache(effectiveUserId, effectiveRole);
-
-    if (cached) {
-      return {
-        messages: cached.messages,
-        bookings: cached.bookings,
-        total: cached.messages + cached.bookings,
-      };
+  useEffect(() => {
+    if (!resolvedRole) {
+      return;
     }
 
-    return badgeCounts;
-  }, [badgeCacheVersion, badgeCounts, effectiveRole, effectiveUserId]);
+    void ensureNavMessagesPrefetched(resolvedUserId, resolvedRole);
+  }, [resolvedRole, resolvedUserId]);
 
-  const messagesReserveSpace = useMemo(() => {
-    if (getCachedNavMessagesCount(effectiveUserId, effectiveRole) != null) {
-      return false;
+  const displayMessagesCount = useMemo(() => {
+    const cachedCount = getCachedNavMessagesCount(resolvedUserId, resolvedRole);
+    if (cachedCount != null) {
+      return cachedCount;
     }
 
-    return reserveBadgeSpace;
-  }, [badgeCacheVersion, effectiveRole, effectiveUserId, reserveBadgeSpace]);
+    return badgeCounts.messages;
+  }, [badgeCacheVersion, badgeCounts.messages, resolvedRole, resolvedUserId]);
+
+  const hasKnownMessagesCount =
+    getCachedNavMessagesCount(resolvedUserId, resolvedRole) != null;
+
+  const shouldReserveMessagesBadgeSpace =
+    !hasKnownMessagesCount && reserveBadgeSpace;
 
   return (
     <>
@@ -325,10 +327,13 @@ export default function AppNavigation() {
           <div className="flex min-w-0 items-center gap-2 sm:gap-3">
             {navItems.map((item) => {
               const isActive = item.isActive(pathname);
-              const badgeCount = getBadgeCount(item, displayBadgeCounts);
+              const badgeCount =
+                item.badgeKey === "messages"
+                  ? displayMessagesCount
+                  : getBadgeCount(item, badgeCounts);
               const showBadgeSlot =
                 item.badgeKey === "messages"
-                  ? messagesReserveSpace
+                  ? shouldReserveMessagesBadgeSpace
                   : Boolean(item.badgeKey) && reserveBadgeSpace;
 
               return (
@@ -353,10 +358,13 @@ export default function AppNavigation() {
         <div className="mx-auto flex max-w-2xl items-stretch px-0.5 pb-[env(safe-area-inset-bottom)]">
           {navItems.map((item) => {
             const isActive = item.isActive(pathname);
-            const badgeCount = getBadgeCount(item, displayBadgeCounts);
+            const badgeCount =
+              item.badgeKey === "messages"
+                ? displayMessagesCount
+                : getBadgeCount(item, badgeCounts);
             const showBadgeSlot =
               item.badgeKey === "messages"
-                ? messagesReserveSpace
+                ? shouldReserveMessagesBadgeSpace
                 : Boolean(item.badgeKey) && reserveBadgeSpace;
 
             return (

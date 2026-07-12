@@ -3,6 +3,7 @@ import type { UserRole } from "@/lib/user/currentUser";
 const NAV_BADGE_CACHE_KEY = "ftc-nav-badge-counts";
 const NAV_BADGE_LOCAL_CACHE_KEY = "ftc-nav-badge-counts-local";
 const GIGS_PENDING_LOCAL_CACHE_KEY = "ftc-gigs-pending-count";
+const MESSAGES_UNREAD_LOCAL_CACHE_KEY = "ftc-messages-unread-count";
 
 export type NavigationBadgeCache = {
   userId: string;
@@ -20,9 +21,18 @@ type GigsPendingLocalCache = {
   updatedAt: number;
 };
 
+type MessagesUnreadLocalCache = {
+  userId: string;
+  role: UserRole;
+  count: number;
+  updatedAt: number;
+};
+
 let memoryCache: NavigationBadgeCache | null = null;
 let runtimeGigsPendingCount: number | null = null;
 let runtimeGigsPendingIdentity: { userId: string; role: UserRole } | null = null;
+let runtimeMessagesUnreadCount: number | null = null;
+let runtimeMessagesUnreadIdentity: { userId: string; role: UserRole } | null = null;
 let runtimeBadgeFetchedAt = 0;
 
 export type RuntimeNavBadgeSnapshot = NavigationBadgeCache & {
@@ -40,6 +50,31 @@ function isUserRole(value: unknown): value is UserRole {
 function parseGigsPendingLocalCache(raw: string): GigsPendingLocalCache | null {
   try {
     const parsed = JSON.parse(raw) as Partial<GigsPendingLocalCache>;
+
+    if (
+      typeof parsed.userId !== "string" ||
+      !parsed.userId.trim() ||
+      !isUserRole(parsed.role) ||
+      typeof parsed.count !== "number" ||
+      typeof parsed.updatedAt !== "number"
+    ) {
+      return null;
+    }
+
+    return {
+      userId: parsed.userId,
+      role: parsed.role,
+      count: Math.max(0, Math.floor(parsed.count)),
+      updatedAt: parsed.updatedAt,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function parseMessagesUnreadLocalCache(raw: string): MessagesUnreadLocalCache | null {
+  try {
+    const parsed = JSON.parse(raw) as Partial<MessagesUnreadLocalCache>;
 
     if (
       typeof parsed.userId !== "string" ||
@@ -142,6 +177,74 @@ export function applyPersistedGigsPendingCount(
     writeNavigationBadgeCache({
       ...existing,
       gigsPending: normalizedCount,
+      updatedAt: Date.now(),
+    });
+  }
+}
+
+export function readLocalMessagesUnreadCount(
+  userId: string | null | undefined,
+  role: UserRole | null | undefined,
+): number | null {
+  return readLocalMessagesUnreadCache(userId, role)?.count ?? null;
+}
+
+export function readLocalMessagesUnreadCache(
+  userId: string | null | undefined,
+  role: UserRole | null | undefined,
+): MessagesUnreadLocalCache | null {
+  if (!role || typeof window === "undefined") {
+    return null;
+  }
+
+  const raw = window.localStorage.getItem(MESSAGES_UNREAD_LOCAL_CACHE_KEY);
+  if (!raw) {
+    return null;
+  }
+
+  const parsed = parseMessagesUnreadLocalCache(raw);
+  if (!parsed || !matchesGigsPendingIdentity(parsed.userId, parsed.role, userId, role)) {
+    return null;
+  }
+
+  return parsed;
+}
+
+export function writeLocalMessagesUnreadCount(
+  userId: string,
+  role: UserRole,
+  count: number,
+): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.localStorage.setItem(
+    MESSAGES_UNREAD_LOCAL_CACHE_KEY,
+    JSON.stringify({
+      userId,
+      role,
+      count: Math.max(0, Math.floor(count)),
+      updatedAt: Date.now(),
+    } satisfies MessagesUnreadLocalCache),
+  );
+}
+
+export function applyPersistedMessagesUnreadCount(
+  userId: string,
+  role: UserRole,
+  count: number,
+): void {
+  const normalizedCount = Math.max(0, Math.floor(count));
+
+  writeRuntimeMessagesUnreadCount(userId, role, normalizedCount);
+  writeLocalMessagesUnreadCount(userId, role, normalizedCount);
+
+  const existing = resolveNavigationBadgeCache(userId, role);
+  if (existing) {
+    writeNavigationBadgeCache({
+      ...existing,
+      messages: normalizedCount,
       updatedAt: Date.now(),
     });
   }
@@ -255,6 +358,25 @@ export function getCachedNavMessagesCount(
   userId: string | null | undefined,
   role: UserRole | null | undefined,
 ): number | null {
+  if (!role) {
+    return null;
+  }
+
+  const runtimeCount = readRuntimeMessagesUnreadCount(userId, role);
+  if (runtimeCount != null) {
+    return runtimeCount;
+  }
+
+  const snapshot = readRuntimeNavBadgeSnapshot(userId, role);
+  if (snapshot?.badgesReady) {
+    return snapshot.messages;
+  }
+
+  const localCount = readLocalMessagesUnreadCount(userId, role);
+  if (localCount != null) {
+    return localCount;
+  }
+
   const cache = resolveNavigationBadgeCache(userId, role);
   return cache?.messages ?? null;
 }
@@ -275,6 +397,8 @@ export function clearNavigationBadgeCache(): void {
   memoryCache = null;
   runtimeGigsPendingCount = null;
   runtimeGigsPendingIdentity = null;
+  runtimeMessagesUnreadCount = null;
+  runtimeMessagesUnreadIdentity = null;
   runtimeBadgeFetchedAt = 0;
   runtimeNavBadgeSnapshot = null;
 
@@ -285,6 +409,7 @@ export function clearNavigationBadgeCache(): void {
   sessionStorage.removeItem(NAV_BADGE_CACHE_KEY);
   window.localStorage.removeItem(NAV_BADGE_LOCAL_CACHE_KEY);
   window.localStorage.removeItem(GIGS_PENDING_LOCAL_CACHE_KEY);
+  window.localStorage.removeItem(MESSAGES_UNREAD_LOCAL_CACHE_KEY);
 }
 
 export function readRuntimeNavBadgeSnapshot(
@@ -330,6 +455,30 @@ export function writeRuntimeGigsPendingCount(
 ): void {
   runtimeGigsPendingIdentity = { userId, role };
   runtimeGigsPendingCount = Math.max(0, Math.floor(count));
+}
+
+export function readRuntimeMessagesUnreadCount(
+  userId: string | null | undefined,
+  role: UserRole | null | undefined,
+): number | null {
+  if (!role || runtimeMessagesUnreadIdentity?.role !== role) {
+    return null;
+  }
+
+  if (userId && runtimeMessagesUnreadIdentity.userId !== userId) {
+    return null;
+  }
+
+  return runtimeMessagesUnreadCount;
+}
+
+export function writeRuntimeMessagesUnreadCount(
+  userId: string,
+  role: UserRole,
+  count: number,
+): void {
+  runtimeMessagesUnreadIdentity = { userId, role };
+  runtimeMessagesUnreadCount = Math.max(0, Math.floor(count));
 }
 
 export function readRuntimeBadgeFetchedAt(): number {

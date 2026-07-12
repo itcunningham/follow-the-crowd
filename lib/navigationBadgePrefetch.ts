@@ -1,8 +1,11 @@
 import { countPendingIncomingGigs } from "@/lib/bookingRequests";
 import {
   applyPersistedGigsPendingCount,
+  applyPersistedMessagesUnreadCount,
   getCachedGigsPendingCount,
+  getCachedNavMessagesCount,
   readLocalGigsPendingCache,
+  readLocalMessagesUnreadCache,
   readLocalNavigationBadgeCache,
   readNavigationBadgeCache,
   resolveNavigationBadgeCache,
@@ -10,6 +13,7 @@ import {
   writeNavigationBadgeCache,
   writeRuntimeBadgeFetchedAt,
   writeRuntimeGigsPendingCount,
+  writeRuntimeMessagesUnreadCount,
   writeRuntimeNavBadgeSnapshot,
 } from "@/lib/navigationBadgeCache";
 import { loadNavigationBadgeData } from "@/lib/navigationBadges";
@@ -65,6 +69,31 @@ function seedGigsPendingFromPersistentStorage(): void {
   }
 }
 
+function seedMessagesUnreadFromPersistentStorage(): void {
+  const { userId, role } = readCachedNavigation();
+
+  if (!role) {
+    return;
+  }
+
+  const localCache = readLocalMessagesUnreadCache(userId, role);
+  if (localCache) {
+    writeRuntimeMessagesUnreadCount(localCache.userId, localCache.role, localCache.count);
+    return;
+  }
+
+  const navLocalCache = readLocalNavigationBadgeCache(userId, role);
+  if (navLocalCache && userId) {
+    applyPersistedMessagesUnreadCount(userId, role, navLocalCache.messages);
+    return;
+  }
+
+  const cachedCount = getCachedNavMessagesCount(userId, role);
+  if (cachedCount != null && userId) {
+    applyPersistedMessagesUnreadCount(userId, role, cachedCount);
+  }
+}
+
 function seedNavigationBadgesFromPersistentStorage(): void {
   const { userId, role } = readCachedNavigation();
 
@@ -96,6 +125,7 @@ function seedNavigationBadgesFromPersistentStorage(): void {
     reserveGigsBadgeSpace: false,
   });
   writeRuntimeGigsPendingCount(cache.userId, cache.role, gigsPending);
+  writeRuntimeMessagesUnreadCount(cache.userId, cache.role, cache.messages);
   writeRuntimeBadgeFetchedAt(cache.updatedAt);
   messagesLastFetchedAt = cache.updatedAt;
 }
@@ -119,6 +149,7 @@ function applyPartialNavBadgeCounts(
   };
 
   writeNavigationBadgeCache(cache);
+  applyPersistedMessagesUnreadCount(userId, role, counts.messages);
   writeRuntimeNavBadgeSnapshot({
     ...cache,
     badgesReady: true,
@@ -148,6 +179,7 @@ function applyPrefetchedBadgeData(
 
   writeNavigationBadgeCache(cache);
   applyPersistedGigsPendingCount(userId, role, data.gigsPending);
+  applyPersistedMessagesUnreadCount(userId, role, data.messages);
   writeRuntimeNavBadgeSnapshot({
     ...cache,
     badgesReady: true,
@@ -257,14 +289,15 @@ export function ensureNavMessagesPrefetched(
   }
 
   const cached = resolveNavigationBadgeCache(resolvedUserIdHint, resolvedRole);
+  const cachedMessages = getCachedNavMessagesCount(resolvedUserIdHint, resolvedRole);
   const fetchedAt = cached?.updatedAt ?? messagesLastFetchedAt;
   const isFresh = Date.now() - fetchedAt < NAV_BADGE_REFRESH_INTERVAL_MS;
 
-  if (cached && !options?.force && isFresh) {
+  if (cachedMessages != null && !options?.force && isFresh) {
     return Promise.resolve({
-      messages: cached.messages,
-      bookings: cached.bookings,
-      total: cached.messages + cached.bookings,
+      messages: cachedMessages,
+      bookings: cached?.bookings ?? 0,
+      total: cachedMessages + (cached?.bookings ?? 0),
     });
   }
 
@@ -375,6 +408,7 @@ export function ensureNavigationBadgesPrefetched(
 
 if (typeof window !== "undefined") {
   seedGigsPendingFromPersistentStorage();
+  seedMessagesUnreadFromPersistentStorage();
   seedNavigationBadgesFromPersistentStorage();
 
   void ensureNavMessagesPrefetched();

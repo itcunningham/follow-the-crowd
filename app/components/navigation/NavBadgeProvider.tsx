@@ -109,9 +109,11 @@ function buildInitialState(userId: string | null, role: UserRole | null): NavBad
   const cached = resolveNavigationBadgeCache(userId, role);
   const canViewGigs = canViewGigsSubNav(role);
   const gigsFromStore = getCachedGigsPendingCount(userId, role);
+  const messagesFromStore = getCachedNavMessagesCount(userId, role);
   const hasIdentity = Boolean(userId && role);
+  const hasMessagesCache = messagesFromStore != null;
 
-  if (!cached) {
+  if (!cached && !hasMessagesCache) {
     return {
       badgeCounts: { messages: 0, bookings: 0, total: 0 },
       gigsPendingCount: gigsFromStore ?? 0,
@@ -121,17 +123,22 @@ function buildInitialState(userId: string | null, role: UserRole | null): NavBad
     };
   }
 
-  writeRuntimeGigsPendingCount(cached.userId, cached.role, cached.gigsPending);
+  const messagesCount = messagesFromStore ?? cached?.messages ?? 0;
+  const bookingsCount = cached?.bookings ?? 0;
+
+  if (cached) {
+    writeRuntimeGigsPendingCount(cached.userId, cached.role, cached.gigsPending);
+  }
 
   return {
     badgeCounts: {
-      messages: cached.messages,
-      bookings: cached.bookings,
-      total: cached.messages + cached.bookings,
+      messages: messagesCount,
+      bookings: bookingsCount,
+      total: messagesCount + bookingsCount,
     },
-    gigsPendingCount: gigsFromStore ?? cached.gigsPending,
-    badgesReady: true,
-    reserveBadgeSpace: false,
+    gigsPendingCount: gigsFromStore ?? cached?.gigsPending ?? 0,
+    badgesReady: hasMessagesCache,
+    reserveBadgeSpace: hasIdentity && !hasMessagesCache,
     reserveGigsBadgeSpace: Boolean(hasIdentity && canViewGigs && gigsFromStore == null),
   };
 }
@@ -282,6 +289,7 @@ export function NavBadgeProvider({ children }: { children: ReactNode }) {
 
     const hasCachedCounts =
       Boolean(readRuntimeSnapshot(userId, role)?.badgesReady) ||
+      getCachedNavMessagesCount(userId, role) != null ||
       Boolean(resolveNavigationBadgeCache(userId, role));
     void refreshBadgeCounts({ force: !hasCachedCounts });
   }, [userId, role, refreshBadgeCounts]);
