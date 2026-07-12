@@ -70,7 +70,7 @@ export default function MessagesInboxRow({
     <button
       type="button"
       onClick={onClick}
-      className={`flex w-full items-center gap-3 rounded-2xl border px-3 py-3 text-left transition sm:px-4 sm:py-3.5 ${
+      className={`flex w-full items-center gap-3 rounded-2xl border px-3 py-3 text-left transition sm:px-4 sm:py-3.5 md:px-5 ${
         isUnread
           ? "border-ftc-primary bg-ftc-bg-elevated"
           : "border-ftc-border-subtle bg-ftc-surface hover:border-ftc-border-strong"
@@ -141,7 +141,7 @@ export function MessagesGroupInboxRow({
   return (
     <Link
       href={href}
-      className={`flex w-full items-center gap-3 rounded-2xl border px-3 py-3 transition sm:px-4 sm:py-3.5 ${
+      className={`flex w-full items-center gap-3 rounded-2xl border px-3 py-3 transition sm:px-4 sm:py-3.5 md:px-5 ${
         isUnread
           ? "border-ftc-primary bg-ftc-bg-elevated"
           : "border-ftc-border-subtle bg-ftc-surface hover:border-ftc-border-strong"

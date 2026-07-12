@@ -69,6 +69,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 - **Page load speed:** optimistic auth in `OnboardingGuard` (cached session renders immediately); profile cache + deduped fetches in `lib/user/currentUser.ts`; nav skips redundant profile load when guard profile exists
 - Desktop nav width aligned to page shell (`md:max-w-5xl`); `scrollbar-gutter: stable` on `<html>`
 - **Navigation badges:** shared `NavBadgeProvider` with session/memory cache — Messages and Gigs counts hydrate immediately on tab switches; invisible badge slot reserved on first load until counts arrive
+- **Messages & Profile desktop:** shared `AppPageLayout` shell (`md:max-w-5xl`) aligned with Events workspace; inbox desktop card surface; profile two-column desktop grid
 
 ## SQL / migrations Isaac may still need to run
 
@@ -84,6 +85,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `8a24031` — Stabilise navigation notification badges
 - `78a2b5b` — Remove calendar intro copy
 - `d98f218` — Fix calendar day highlight clearing on panel close
 - `d961180` — Polish desktop planner workspace consistency

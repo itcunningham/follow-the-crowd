@@ -118,7 +118,7 @@ export default function ProfileSetupPage() {
 
   return (
     <div className="min-h-[100dvh] bg-ftc-bg px-4 pb-[max(2.5rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))] font-sans text-ftc-text sm:px-6 sm:py-10">
-      <div className="mx-auto w-full max-w-2xl">
+      <div className="mx-auto w-full max-w-2xl md:max-w-3xl">
         <EditProfileSetupHeader
           backHref={backHref}
           backLabel={backLabel}

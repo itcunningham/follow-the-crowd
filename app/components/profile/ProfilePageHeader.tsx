@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { APP_PAGE_INSET_CLASS } from "@/app/components/layout/AppPageLayout";
 import { useGuardProfile } from "@/app/components/GuardProfileContext";
 import { readCachedNavRole } from "@/lib/navigationRoleCache";
 import { resolveProfileBackNavigation } from "@/lib/profileNavigation";
@@ -22,7 +23,7 @@ export default function ProfilePageHeader({
 
   return (
     <header className="sticky top-0 z-10 border-b border-ftc-border-subtle bg-ftc-bg/95 backdrop-blur-md md:top-12">
-      <div className="flex items-center justify-between gap-3 px-4 py-2.5 sm:px-6">
+      <div className={`flex items-center justify-between gap-3 ${APP_PAGE_INSET_CLASS} py-2.5`}>
         <Link
           href={backHref}
           aria-label={backLabel}

@@ -8,7 +8,7 @@ export default function ProfileSectionCard({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-2xl border border-ftc-border-subtle bg-ftc-surface p-4 sm:p-5">
+    <section className="rounded-2xl border border-ftc-border-subtle bg-ftc-surface p-4 sm:p-5 md:p-6">
       <h2 className="ftc-profile-section-label text-ftc-text-section-label">{title}</h2>
       <div className="mt-3">{children}</div>
     </section>

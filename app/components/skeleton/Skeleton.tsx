@@ -24,6 +24,14 @@ import {
   PLANNER_WORKSPACE_SECONDARY_BAND_CLASS,
   PLANNER_WORKSPACE_SECONDARY_CONTROLS_CLASS,
 } from "@/app/components/planner/PlannerWorkspaceLayout";
+import {
+  APP_PAGE_PROFILE_CONTENT_CLASS,
+  APP_PAGE_PROFILE_GRID_CLASS,
+  APP_PAGE_PROFILE_PRIMARY_COLUMN_CLASS,
+  APP_PAGE_PROFILE_SECONDARY_COLUMN_CLASS,
+  AppPageBody,
+  AppPageShell,
+} from "@/app/components/layout/AppPageLayout";
 import ProfilePageHeader from "@/app/components/profile/ProfilePageHeader";
 import type { DjGigsListTab } from "@/lib/bookingRequests";
 import { buildGigsListHref, resolveGigsListTabParam } from "@/lib/bookings/gigsListNavigation";
@@ -1233,15 +1241,12 @@ export function ProfilePageLoadingShell({
   isOwnProfile?: boolean;
 }) {
   return (
-    <div
-      className={`mx-auto flex min-h-[100dvh] w-full max-w-2xl flex-col bg-ftc-bg font-sans text-ftc-text ${MOBILE_NAV_OFFSET_CLASS}`}
-    >
-      <AppNavigation />
+    <AppPageShell>
       <ProfilePageHeader isOwnProfile={isOwnProfile} />
-      <div className="flex-1 px-4 py-6 sm:px-6">
+      <AppPageBody className="py-6">
         <ProfileSkeleton />
-      </div>
-    </div>
+      </AppPageBody>
+    </AppPageShell>
   );
 }
 
@@ -1409,7 +1414,7 @@ export function InboxListSkeleton({
 
 function DmInboxRowSkeleton() {
   return (
-    <div className="flex w-full items-center gap-3 rounded-2xl border border-ftc-border-subtle bg-ftc-surface px-3 py-3 sm:px-4 sm:py-3.5">
+    <div className="flex w-full items-center gap-3 rounded-2xl border border-ftc-border-subtle bg-ftc-surface px-3 py-3 sm:px-4 sm:py-3.5 md:px-5">
       <SkeletonBlock className="h-12 w-12 shrink-0 rounded-full" />
       <div className="min-w-0 flex-1">
         <div className="flex items-start justify-between gap-3">
@@ -1426,7 +1431,7 @@ function DmInboxRowSkeleton() {
 
 function GroupInboxRowSkeleton() {
   return (
-    <div className="flex w-full items-center gap-3 rounded-2xl border border-ftc-border-subtle bg-ftc-surface px-3 py-3 sm:px-4 sm:py-3.5">
+    <div className="flex w-full items-center gap-3 rounded-2xl border border-ftc-border-subtle bg-ftc-surface px-3 py-3 sm:px-4 sm:py-3.5 md:px-5">
       <SkeletonBlock className="h-12 w-12 shrink-0 rounded-xl" />
       <div className="min-w-0 flex-1">
         <div className="flex items-start justify-between gap-3">
@@ -1557,19 +1562,23 @@ export function ProfileSkeleton() {
     <div
       aria-busy="true"
       aria-label="Loading profile"
-      className="mx-auto max-w-lg space-y-6"
+      className={`${APP_PAGE_PROFILE_CONTENT_CLASS} ${APP_PAGE_PROFILE_GRID_CLASS}`}
     >
-      <div className="flex items-start gap-4">
-        <SkeletonBlock className="h-20 w-20 shrink-0 rounded-full sm:h-24 sm:w-24" />
-        <div className="min-w-0 flex-1 pt-1">
-          <SkeletonBlock className="h-8 w-2/3 max-w-[12rem]" />
-          <SkeletonBlock className="mt-3 h-6 w-20 rounded-full" />
-          <SkeletonBlock className="mt-3 h-4 w-1/2 max-w-[10rem]" />
+      <div className={APP_PAGE_PROFILE_PRIMARY_COLUMN_CLASS}>
+        <div className="flex items-start gap-4">
+          <SkeletonBlock className="h-20 w-20 shrink-0 rounded-full sm:h-24 sm:w-24" />
+          <div className="min-w-0 flex-1 pt-1">
+            <SkeletonBlock className="h-8 w-2/3 max-w-[12rem]" />
+            <SkeletonBlock className="mt-3 h-6 w-20 rounded-full" />
+            <SkeletonBlock className="mt-3 h-4 w-1/2 max-w-[10rem]" />
+          </div>
         </div>
       </div>
 
-      <ProfileSectionCardSkeleton titleWidth="w-16" lines={3} />
-      <ProfileSectionCardSkeleton titleWidth="w-12" lines={2} />
+      <div className={APP_PAGE_PROFILE_SECONDARY_COLUMN_CLASS}>
+        <ProfileSectionCardSkeleton titleWidth="w-16" lines={3} />
+        <ProfileSectionCardSkeleton titleWidth="w-12" lines={2} />
+      </div>
     </div>
   );
 }
@@ -1582,7 +1591,7 @@ function ProfileSectionCardSkeleton({
   lines: number;
 }) {
   return (
-    <section className="rounded-2xl border border-ftc-border-subtle bg-ftc-surface p-4 sm:p-5">
+    <section className="rounded-2xl border border-ftc-border-subtle bg-ftc-surface p-4 sm:p-5 md:p-6">
       <SkeletonBlock className={`h-3 ${titleWidth}`} />
       <div className="mt-3 space-y-2">
         {Array.from({ length: lines }, (_, index) => (

@@ -2,7 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import AppNavigation, { MOBILE_NAV_OFFSET_CLASS } from "@/app/components/AppNavigation";
+import {
+  APP_PAGE_PROFILE_CONTENT_CLASS,
+  APP_PAGE_PROFILE_GRID_CLASS,
+  APP_PAGE_PROFILE_PRIMARY_COLUMN_CLASS,
+  APP_PAGE_PROFILE_SECONDARY_COLUMN_CLASS,
+  AppPageBody,
+  AppPageShell,
+} from "@/app/components/layout/AppPageLayout";
 import DjProfileSections from "@/app/components/profile/DjProfileSections";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
 import { useGuardProfile } from "@/app/components/GuardProfileContext";
@@ -127,51 +134,52 @@ function UserProfilePageView({ userId }: { userId: string }) {
   }
 
   return (
-    <div
-      className={`mx-auto flex min-h-[100dvh] w-full max-w-2xl flex-col bg-ftc-bg font-sans text-ftc-text ${MOBILE_NAV_OFFSET_CLASS}`}
-    >
-      <AppNavigation />
+    <AppPageShell>
       <ProfilePageHeader isOwnProfile={isOwnProfile} returnTo={profileReturnTo} />
 
-      <div
-        className={`flex-1 px-4 py-6 sm:px-6 ${!isOwnProfile && profile ? "pb-4" : "pb-8"}`}
-      >
+      <AppPageBody className={`py-6 ${!isOwnProfile && profile ? "pb-4" : "pb-8"}`}>
         {loading ? (
           <ProfileSkeleton />
         ) : error && !profile ? (
           <p className="text-sm text-red-400">{error}</p>
         ) : profile ? (
-          <div className="mx-auto max-w-lg space-y-6">
-            <ProfileHero
-              displayName={displayName}
-              username={profile.username}
-              avatarUrl={profile.avatar_url}
-              role={profile.role}
-              bio={profile.bio}
-            />
+          <div className={APP_PAGE_PROFILE_CONTENT_CLASS}>
+            <div className={APP_PAGE_PROFILE_GRID_CLASS}>
+              <div className={APP_PAGE_PROFILE_PRIMARY_COLUMN_CLASS}>
+                <ProfileHero
+                  displayName={displayName}
+                  username={profile.username}
+                  avatarUrl={profile.avatar_url}
+                  role={profile.role}
+                  bio={profile.bio}
+                />
 
-            {profile.instagram_url?.trim() ||
-            profile.tiktok_url?.trim() ||
-            profile.soundcloud_url?.trim() ? (
-              <ProfileLinkList
-                instagramUrl={profile.instagram_url}
-                tiktokUrl={profile.tiktok_url}
-                soundcloudUrl={showDjSections ? profile.soundcloud_url : null}
-              />
-            ) : null}
+                {profile.instagram_url?.trim() ||
+                profile.tiktok_url?.trim() ||
+                profile.soundcloud_url?.trim() ? (
+                  <ProfileLinkList
+                    instagramUrl={profile.instagram_url}
+                    tiktokUrl={profile.tiktok_url}
+                    soundcloudUrl={showDjSections ? profile.soundcloud_url : null}
+                  />
+                ) : null}
+              </div>
 
-            {showPromoterSections ? (
-              <PromoterProfileSections profile={profile} />
-            ) : null}
+              <div className={APP_PAGE_PROFILE_SECONDARY_COLUMN_CLASS}>
+                {showPromoterSections ? (
+                  <PromoterProfileSections profile={profile} />
+                ) : null}
 
-            {showDjSections ? (
-              <DjProfileSections profile={profile} isOwnProfile={isOwnProfile} />
-            ) : null}
+                {showDjSections ? (
+                  <DjProfileSections profile={profile} isOwnProfile={isOwnProfile} />
+                ) : null}
 
-            {error ? <p className="text-sm text-red-400">{error}</p> : null}
+                {error ? <p className="text-sm text-red-400">{error}</p> : null}
+              </div>
+            </div>
           </div>
         ) : null}
-      </div>
+      </AppPageBody>
 
       {!isOwnProfile && profile ? (
         <ProfileMessageAction
@@ -180,6 +188,6 @@ function UserProfilePageView({ userId }: { userId: string }) {
           onClick={handleMessage}
         />
       ) : null}
-    </div>
+    </AppPageShell>
   );
 }

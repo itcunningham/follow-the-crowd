@@ -1,7 +1,14 @@
 "use client";
 
 import type { ReactNode } from "react";
-import AppNavigation, { MOBILE_NAV_OFFSET_CLASS } from "@/app/components/AppNavigation";
+import {
+  APP_PAGE_HEADER_CLASS,
+  APP_PAGE_INSET_CLASS,
+  APP_PAGE_TITLE_CLASS,
+  APP_PAGE_TITLE_ROW_CLASS,
+  AppPageDesktopSurface,
+  AppPageShell,
+} from "@/app/components/layout/AppPageLayout";
 import MessagesInboxComposeButton from "@/app/components/dm/MessagesInboxComposeButton";
 import MessagesInboxSearchBar from "@/app/components/dm/MessagesInboxSearchBar";
 
@@ -70,15 +77,14 @@ export default function MessagesInboxLayout({
   children: ReactNode;
 }) {
   return (
-    <div
-      className={`mx-auto flex min-h-[100dvh] w-full max-w-2xl flex-col bg-ftc-bg font-sans text-ftc-text ${MOBILE_NAV_OFFSET_CLASS}`}
-    >
-      <AppNavigation />
-      <header className="ftc-page-header px-4 py-4 sm:px-6 md:pt-4">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <h1 className="text-xl font-semibold text-ftc-text">Messages</h1>
+    <AppPageShell>
+      <header className={APP_PAGE_HEADER_CLASS}>
+        <div className={APP_PAGE_TITLE_ROW_CLASS}>
+          <h1 className={APP_PAGE_TITLE_CLASS}>Messages</h1>
           {onCompose ? (
-            <MessagesInboxComposeButton onClick={onCompose} />
+            <div className="flex shrink-0 items-start justify-end md:items-center">
+              <MessagesInboxComposeButton onClick={onCompose} />
+            </div>
           ) : null}
         </div>
 
@@ -89,7 +95,7 @@ export default function MessagesInboxLayout({
           />
         </div>
 
-        <div className="ftc-tab-pill mt-3" role="tablist" aria-label="Message categories">
+        <div className="ftc-tab-pill mt-3 md:min-h-[2.375rem]" role="tablist" aria-label="Message categories">
           <InboxTabButton
             active={activeTab === "dm"}
             label="Messages"
@@ -106,7 +112,9 @@ export default function MessagesInboxLayout({
         </div>
       </header>
 
-      <div className="flex-1 px-4 py-3 sm:px-6">{children}</div>
-    </div>
+      <div className={`flex-1 ${APP_PAGE_INSET_CLASS} pb-4 pt-0`}>
+        <AppPageDesktopSurface>{children}</AppPageDesktopSurface>
+      </div>
+    </AppPageShell>
   );
 }
