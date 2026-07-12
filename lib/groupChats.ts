@@ -1,3 +1,4 @@
+import { readSupabaseSessionUserIdSync } from "@/lib/auth/sessionUserId";
 import { getEventCrewChatLink } from "@/lib/eventCrewChat";
 import {
   getInboxActivityTimestamp,
@@ -563,6 +564,65 @@ export function getGroupChatsLoadErrorMessage(error: unknown): string {
 }
 
 const GROUP_CHATS_INBOX_CACHE_KEY = "ftc-group-chats-inbox-v1";
+const GROUP_CHATS_INBOX_LOCAL_CACHE_KEY = "ftc-group-chats-inbox-v1-local";
+
+type GroupChatsInboxLocalCache = {
+  userId: string;
+  chats: GroupChatListItem[];
+  updatedAt: number;
+};
+
+function readLocalGroupChatsInboxCache(): GroupChatListItem[] {
+  if (typeof window === "undefined") {
+    return [];
+  }
+
+  const userId = readSupabaseSessionUserIdSync();
+  if (!userId) {
+    return [];
+  }
+
+  try {
+    const raw = window.localStorage.getItem(GROUP_CHATS_INBOX_LOCAL_CACHE_KEY);
+    if (!raw) {
+      return [];
+    }
+
+    const parsed = JSON.parse(raw) as Partial<GroupChatsInboxLocalCache>;
+    if (parsed.userId !== userId || !Array.isArray(parsed.chats)) {
+      return [];
+    }
+
+    return parsed.chats as GroupChatListItem[];
+  } catch (cacheError) {
+    console.error("[groupChats] Failed to read local inbox cache:", cacheError);
+    return [];
+  }
+}
+
+function writeLocalGroupChatsInboxCache(chats: GroupChatListItem[]): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  const userId = readSupabaseSessionUserIdSync();
+  if (!userId) {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(
+      GROUP_CHATS_INBOX_LOCAL_CACHE_KEY,
+      JSON.stringify({
+        userId,
+        chats,
+        updatedAt: Date.now(),
+      } satisfies GroupChatsInboxLocalCache),
+    );
+  } catch (cacheError) {
+    console.error("[groupChats] Failed to write local inbox cache:", cacheError);
+  }
+}
 
 export function readGroupChatsInboxCache(): GroupChatListItem[] {
   if (typeof window === "undefined") {
@@ -572,17 +632,19 @@ export function readGroupChatsInboxCache(): GroupChatListItem[] {
   try {
     const raw = window.sessionStorage.getItem(GROUP_CHATS_INBOX_CACHE_KEY);
 
-    if (!raw) {
-      return [];
+    if (raw) {
+      const parsed = JSON.parse(raw) as unknown;
+      const chats = Array.isArray(parsed) ? (parsed as GroupChatListItem[]) : [];
+
+      if (chats.length > 0) {
+        return chats;
+      }
     }
-
-    const parsed = JSON.parse(raw) as unknown;
-
-    return Array.isArray(parsed) ? (parsed as GroupChatListItem[]) : [];
   } catch (cacheError) {
     console.error("[groupChats] Failed to read inbox cache:", cacheError);
-    return [];
   }
+
+  return readLocalGroupChatsInboxCache();
 }
 
 export function writeGroupChatsInboxCache(chats: GroupChatListItem[]): void {
@@ -592,6 +654,7 @@ export function writeGroupChatsInboxCache(chats: GroupChatListItem[]): void {
 
   try {
     window.sessionStorage.setItem(GROUP_CHATS_INBOX_CACHE_KEY, JSON.stringify(chats));
+    writeLocalGroupChatsInboxCache(chats);
   } catch (cacheError) {
     console.error("[groupChats] Failed to write inbox cache:", cacheError);
   }

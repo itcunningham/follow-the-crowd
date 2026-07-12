@@ -129,12 +129,7 @@ export default function PlannerEventsSubNav({
     canViewGigs && !hasKnownGigsCount && reserveGigsBadgeSpace;
 
   useEffect(() => {
-    if (guardProfile?.role) {
-      setRole(guardProfile.role);
-      return;
-    }
-
-    if (initialRole) {
+    if (guardProfile?.role || initialRole || cachedNavigation.role) {
       return;
     }
 
@@ -146,7 +141,7 @@ export default function PlannerEventsSubNav({
         console.error("Failed to load events area sub-nav role:", loadError);
         setRole(null);
       });
-  }, [guardProfile?.role, initialRole]);
+  }, [guardProfile?.role, initialRole, cachedNavigation.role]);
 
   if (!isPlannerEventsAreaPath(pathname)) {
     return null;

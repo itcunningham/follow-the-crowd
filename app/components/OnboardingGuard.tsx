@@ -8,6 +8,7 @@ import { NavBadgeProvider } from "@/app/components/navigation/NavBadgeProvider";
 import { AppLoadingShell } from "@/app/components/skeleton/Skeleton";
 import { ensureGigsPendingPrefetched, ensureNavMessagesPrefetched, ensureNavigationBadgesPrefetched } from "@/lib/navigationBadgePrefetch";
 import { cacheNavigationRole, readCachedNavigation } from "@/lib/navigationRoleCache";
+import { readSupabaseSessionUserIdSync } from "@/lib/auth/sessionUserId";
 import {
   ensureAuthenticatedUserProfileRow,
   getCurrentAuthUser,
@@ -18,6 +19,7 @@ import {
   needsOnboarding,
   needsProfileSetup,
   PROFILE_SETUP_PATH,
+  readCachedUserProfileSync,
   SIGNUP_PATH,
   type UserProfile,
 } from "@/lib/user/currentUser";
@@ -43,6 +45,11 @@ if (cachedNavigationOnLoad.role) {
 }
 
 function buildOptimisticProfile(): UserProfile | null {
+  const cachedProfile = readCachedUserProfileSync();
+  if (cachedProfile) {
+    return cachedProfile;
+  }
+
   const { role, userId } = readCachedNavigation();
 
   if (!role || !userId) {
@@ -81,7 +88,9 @@ function canOptimisticallyRender(pathname: string): boolean {
     return false;
   }
 
-  return readCachedNavigation().role != null;
+  const { role, userId } = readCachedNavigation();
+
+  return role != null && userId != null;
 }
 
 export default function OnboardingGuard({ children }: { children: React.ReactNode }) {
@@ -95,10 +104,22 @@ export default function OnboardingGuard({ children }: { children: React.ReactNod
 
   useEffect(() => {
     let cancelled = false;
+    const canOptimistic = canOptimisticallyRender(pathname);
+
+    if (canOptimistic) {
+      sessionReadyRef.current = true;
+      setReady(true);
+    } else if (!AUTH_PATHS.includes(pathname)) {
+      sessionReadyRef.current = false;
+      setReady(false);
+    }
 
     async function checkAccess() {
       try {
-        const authUser = await getCurrentAuthUser();
+        const syncUserId = readSupabaseSessionUserIdSync();
+        const authPromise = getCurrentAuthUser();
+        const profilePromise = syncUserId ? getCurrentUserProfile() : Promise.resolve(null);
+        const authUser = await authPromise;
 
         if (cancelled) {
           return;
@@ -121,7 +142,7 @@ export default function OnboardingGuard({ children }: { children: React.ReactNod
           return;
         }
 
-        let profile = await getCurrentUserProfile();
+        let profile = await profilePromise;
 
         if (!profile) {
           await ensureAuthenticatedUserProfileRow();
@@ -176,10 +197,6 @@ export default function OnboardingGuard({ children }: { children: React.ReactNod
           router.replace(LOGIN_PATH);
         }
       }
-    }
-
-    if (!sessionReadyRef.current) {
-      setReady(false);
     }
 
     void checkAccess();

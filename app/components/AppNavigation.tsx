@@ -2,7 +2,7 @@
 
 import "@/lib/navigationBadgePrefetch";
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { usePathname } from "next/navigation";
 import { useNavBadges } from "@/app/components/navigation/NavBadgeProvider";
 import type { NavBadgeCounts } from "@/lib/notifications";
@@ -17,12 +17,9 @@ import {
   subscribeNavigationBadgeListeners,
 } from "@/lib/navigationBadgePrefetch";
 import {
-  cacheNavigationRole,
   readCachedNavigation,
 } from "@/lib/navigationRoleCache";
 import {
-  getCurrentUserId,
-  getCurrentUserProfile,
   PROFILE_SETUP_PATH,
   SETTINGS_PATH,
   type UserRole,
@@ -238,56 +235,13 @@ export default function AppNavigation() {
   const guardProfile = useGuardProfile();
   const { badgeCounts, reserveBadgeSpace } = useNavBadges();
   const [cachedNavigation] = useState(readCachedNavigation);
-  const [role, setRole] = useState<UserRole | null>(
-    () => guardProfile?.role ?? cachedNavigation.role,
-  );
-  const [currentUserId, setCurrentUserId] = useState<string | null>(
-    () => guardProfile?.user_id ?? cachedNavigation.userId,
-  );
+  const role = guardProfile?.role ?? cachedNavigation.role;
+  const currentUserId = guardProfile?.user_id ?? cachedNavigation.userId;
 
-  const loadNavigation = useCallback(async () => {
-    try {
-      const [userId, profile] = await Promise.all([
-        getCurrentUserId(),
-        getCurrentUserProfile(),
-      ]);
-      const userRole = profile?.role ?? null;
-
-      setCurrentUserId(userId);
-      setRole(userRole);
-
-      if (!userRole) {
-        return;
-      }
-
-      cacheNavigationRole(userRole, userId);
-    } catch (error) {
-      console.error("[AppNavigation] Failed to load navigation:", error);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (guardProfile?.role) {
-      setRole(guardProfile.role);
-    }
-
-    if (guardProfile?.user_id) {
-      setCurrentUserId(guardProfile.user_id);
-    }
-  }, [guardProfile?.role, guardProfile?.user_id]);
-
-  useEffect(() => {
-    const hasGuardProfile = Boolean(guardProfile?.role && guardProfile.user_id);
-
-    if (!hasGuardProfile) {
-      void loadNavigation();
-    }
-  }, [guardProfile?.role, guardProfile?.user_id, loadNavigation]);
-
-  const effectiveRole = role ?? guardProfile?.role ?? cachedNavigation.role ?? "both";
-  const resolvedRole = role ?? guardProfile?.role ?? cachedNavigation.role;
-  const resolvedUserId = currentUserId ?? guardProfile?.user_id ?? cachedNavigation.userId;
-  const navItems = effectiveRole ? getNavItems(effectiveRole, resolvedUserId ?? currentUserId) : [];
+  const effectiveRole = role ?? "both";
+  const resolvedRole = role;
+  const resolvedUserId = currentUserId;
+  const navItems = effectiveRole ? getNavItems(effectiveRole, resolvedUserId) : [];
   const badgeCacheVersion = useSyncExternalStore(
     subscribeNavigationBadgeListeners,
     getNavigationBadgeCacheVersion,

@@ -1,7 +1,8 @@
 import type { User } from "@supabase/supabase-js";
 import { getAuthRedirectUrl } from "@/lib/auth/appUrl";
+import { readSupabaseSessionUserIdSync } from "@/lib/auth/sessionUserId";
+import { cacheNavigationRole, clearCachedNavigation } from "@/lib/navigationRoleCache";
 import { normalizeUsername } from "@/lib/user/profileFormUtils";
-import { clearCachedNavigation } from "@/lib/navigationRoleCache";
 import { supabase } from "@/lib/supabaseClient";
 
 export const LOGIN_PATH = "/login";
@@ -63,6 +64,8 @@ export type UserProfileInput = {
 const PROFILE_FIELDS =
   "user_id, role, onboarding_complete, full_name, username, display_name, bio, genre, instagram_url, tiktok_url, soundcloud_url, website_url, location, avatar_url, artist_name, dj_booking_contact_name, dj_availability, dj_past_gigs, promoter_brand_name, promoter_brand_description, promoter_venues_used, promoter_upcoming_events, promoter_past_events";
 
+const PROFILE_LOCAL_CACHE_KEY = "ftc-user-profile-local";
+
 export function getDefaultRouteForRole(role: UserRole | null): string {
   if (role === "dj") {
     return "/dm";
@@ -100,10 +103,102 @@ let cachedProfile: UserProfile | null = null;
 let cachedProfileUserId: string | null = null;
 let profileRequest: Promise<UserProfile | null> | null = null;
 
+function isUserRole(value: unknown): value is UserRole {
+  return value === "dj" || value === "promoter" || value === "both";
+}
+
+function readLocalProfileCache(userId: string): UserProfile | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  const raw = window.localStorage.getItem(PROFILE_LOCAL_CACHE_KEY);
+  if (!raw) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(raw) as Partial<UserProfile>;
+
+    if (typeof parsed.user_id !== "string" || parsed.user_id !== userId) {
+      return null;
+    }
+
+    if (parsed.role != null && !isUserRole(parsed.role)) {
+      return null;
+    }
+
+    if (typeof parsed.onboarding_complete !== "boolean") {
+      return null;
+    }
+
+    return parsed as UserProfile;
+  } catch {
+    return null;
+  }
+}
+
+function writeLocalProfileCache(profile: UserProfile): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.localStorage.setItem(PROFILE_LOCAL_CACHE_KEY, JSON.stringify(profile));
+}
+
+function clearLocalProfileCache(): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.localStorage.removeItem(PROFILE_LOCAL_CACHE_KEY);
+}
+
+function applyCachedProfile(profile: UserProfile): void {
+  cachedProfile = profile;
+  cachedProfileUserId = profile.user_id;
+
+  if (profile.role) {
+    cacheNavigationRole(profile.role, profile.user_id);
+  }
+}
+
+function seedProfileFromPersistentStorage(): void {
+  const userId = readSupabaseSessionUserIdSync();
+  if (!userId) {
+    return;
+  }
+
+  const localProfile = readLocalProfileCache(userId);
+  if (localProfile) {
+    applyCachedProfile(localProfile);
+  }
+}
+
+export function readCachedUserProfileSync(): UserProfile | null {
+  if (cachedProfile) {
+    return cachedProfile;
+  }
+
+  const userId = readSupabaseSessionUserIdSync();
+  if (!userId) {
+    return null;
+  }
+
+  const localProfile = readLocalProfileCache(userId);
+  if (localProfile) {
+    applyCachedProfile(localProfile);
+    return localProfile;
+  }
+
+  return null;
+}
+
 export function invalidateCurrentUserProfileCache(): void {
   cachedProfile = null;
   cachedProfileUserId = null;
   profileRequest = null;
+  clearLocalProfileCache();
 }
 
 type AuthLookupOptions = {
@@ -155,6 +250,11 @@ export async function requireCurrentUser(): Promise<User> {
 }
 
 export async function getCurrentUserId(): Promise<string> {
+  const syncUserId = readSupabaseSessionUserIdSync();
+  if (syncUserId) {
+    return syncUserId;
+  }
+
   const user = await requireCurrentUser();
   return user.id;
 }
@@ -318,10 +418,11 @@ export async function getPostAuthRedirectPath(): Promise<string> {
 export async function getCurrentUserProfile(options?: {
   force?: boolean;
 }): Promise<UserProfile | null> {
+  const syncUserId = readSupabaseSessionUserIdSync();
   let userId: string;
 
   try {
-    userId = await getCurrentUserId();
+    userId = syncUserId ?? (await getCurrentUserId());
   } catch {
     return null;
   }
@@ -347,8 +448,15 @@ export async function getCurrentUserProfile(options?: {
       }
 
       const profile = (data as UserProfile | null) ?? null;
-      cachedProfile = profile;
-      cachedProfileUserId = userId;
+
+      if (profile) {
+        applyCachedProfile(profile);
+        writeLocalProfileCache(profile);
+      } else {
+        cachedProfile = null;
+        cachedProfileUserId = userId;
+      }
+
       return profile;
     } finally {
       profileRequest = null;
@@ -693,4 +801,12 @@ export async function listBookableDjs(): Promise<UserProfile[]> {
         (user.role === "dj" || user.role === "both"),
     )
     .sort((a, b) => (a.display_name ?? "").localeCompare(b.display_name ?? ""));
+}
+
+if (typeof window !== "undefined") {
+  seedProfileFromPersistentStorage();
+
+  if (readSupabaseSessionUserIdSync()) {
+    void getCurrentUserProfile();
+  }
 }
