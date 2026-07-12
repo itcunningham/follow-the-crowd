@@ -1,4 +1,5 @@
 import { clearNavigationBadgeCache } from "@/lib/navigationBadgeCache";
+import { readSupabaseSessionUserIdSync } from "@/lib/auth/sessionUserId";
 import type { UserRole } from "@/lib/user/currentUser";
 
 const NAV_ROLE_CACHE_KEY = "ftc-nav-role";
@@ -20,8 +21,9 @@ export function readCachedNavRole(): UserRole | null {
 
 export function readCachedNavigation(): { role: UserRole | null; userId: string | null } {
   const role = readCachedNavRole();
-  const userId =
-    typeof window === "undefined" ? null : sessionStorage.getItem(NAV_USER_CACHE_KEY);
+  const sessionUserId =
+    typeof window === "undefined" ? null : sessionStorage.getItem(NAV_USER_CACHE_KEY)?.trim() || null;
+  const userId = sessionUserId ?? readSupabaseSessionUserIdSync();
 
   return { role, userId: userId?.trim() ? userId : null };
 }

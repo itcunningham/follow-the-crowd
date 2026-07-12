@@ -5,12 +5,9 @@ import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { usePathname } from "next/navigation";
 import { useGuardProfile } from "@/app/components/GuardProfileContext";
 import { useNavBadges } from "@/app/components/navigation/NavBadgeProvider";
+import { getCachedGigsPendingCount } from "@/lib/navigationBadgeCache";
 import {
-  getCachedGigsPendingCount,
-  readRuntimeGigsPendingCount,
-} from "@/lib/navigationBadgeCache";
-import {
-  ensureNavigationBadgesPrefetched,
+  ensureGigsPendingPrefetched,
   getNavigationBadgeCacheVersion,
   subscribeNavigationBadgeListeners,
 } from "@/lib/navigationBadgePrefetch";
@@ -105,21 +102,16 @@ export default function PlannerEventsSubNav({
   );
 
   useEffect(() => {
-    if (!resolvedUserId || !resolvedRole) {
+    if (!resolvedRole || !canViewGigs) {
       return;
     }
 
-    void ensureNavigationBadgesPrefetched(resolvedUserId, resolvedRole);
-  }, [resolvedRole, resolvedUserId]);
+    void ensureGigsPendingPrefetched(resolvedRole);
+  }, [canViewGigs, resolvedRole]);
 
   const displayGigsPendingCount = useMemo(() => {
     if (!canViewGigs) {
       return 0;
-    }
-
-    const runtimeCount = readRuntimeGigsPendingCount(resolvedUserId, resolvedRole);
-    if (runtimeCount != null) {
-      return runtimeCount;
     }
 
     const cachedCount = getCachedGigsPendingCount(resolvedUserId, resolvedRole);
@@ -130,11 +122,11 @@ export default function PlannerEventsSubNav({
     return gigsPendingCount;
   }, [badgeCacheVersion, canViewGigs, gigsPendingCount, resolvedRole, resolvedUserId]);
 
+  const hasKnownGigsCount =
+    canViewGigs && getCachedGigsPendingCount(resolvedUserId, resolvedRole) != null;
+
   const shouldReserveGigsBadgeSpace =
-    canViewGigs &&
-    reserveGigsBadgeSpace &&
-    readRuntimeGigsPendingCount(resolvedUserId, resolvedRole) == null &&
-    getCachedGigsPendingCount(resolvedUserId, resolvedRole) == null;
+    canViewGigs && !hasKnownGigsCount && reserveGigsBadgeSpace;
 
   useEffect(() => {
     if (guardProfile?.role) {

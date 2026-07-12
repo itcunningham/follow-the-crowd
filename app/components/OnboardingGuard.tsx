@@ -6,7 +6,7 @@ import FtcBrandMotionLazy from "@/app/components/brand/FtcBrandMotionLazy";
 import { GuardProfileProvider } from "@/app/components/GuardProfileContext";
 import { NavBadgeProvider } from "@/app/components/navigation/NavBadgeProvider";
 import { AppLoadingShell } from "@/app/components/skeleton/Skeleton";
-import { ensureNavigationBadgesPrefetched } from "@/lib/navigationBadgePrefetch";
+import { ensureGigsPendingPrefetched, ensureNavigationBadgesPrefetched } from "@/lib/navigationBadgePrefetch";
 import { cacheNavigationRole, readCachedNavigation } from "@/lib/navigationRoleCache";
 import {
   ensureAuthenticatedUserProfileRow,
@@ -26,7 +26,11 @@ const AUTH_PATHS = [LOGIN_PATH, SIGNUP_PATH];
 const SETUP_PATHS = ["/onboarding", PROFILE_SETUP_PATH];
 
 const cachedNavigationOnLoad = readCachedNavigation();
-if (cachedNavigationOnLoad.userId && cachedNavigationOnLoad.role) {
+if (cachedNavigationOnLoad.role) {
+  if (cachedNavigationOnLoad.role === "dj" || cachedNavigationOnLoad.role === "both") {
+    void ensureGigsPendingPrefetched(cachedNavigationOnLoad.role);
+  }
+
   void ensureNavigationBadgesPrefetched(
     cachedNavigationOnLoad.userId,
     cachedNavigationOnLoad.role,

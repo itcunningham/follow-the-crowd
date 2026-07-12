@@ -1,5 +1,6 @@
 "use client";
 
+import "@/lib/navigationBadgePrefetch";
 import PlannerEventsSubNav from "@/app/components/PlannerEventsSubNav";
 import { MOBILE_NAV_OFFSET_CLASS } from "@/app/components/AppNavigation";
 import AppNavigation from "@/app/components/AppNavigation";

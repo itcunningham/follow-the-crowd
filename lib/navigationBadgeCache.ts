@@ -1,6 +1,7 @@
 import type { UserRole } from "@/lib/user/currentUser";
 
 const NAV_BADGE_CACHE_KEY = "ftc-nav-badge-counts";
+const GIGS_PENDING_LOCAL_CACHE_KEY = "ftc-gigs-pending-count";
 
 export type NavigationBadgeCache = {
   userId: string;
@@ -8,6 +9,13 @@ export type NavigationBadgeCache = {
   messages: number;
   bookings: number;
   gigsPending: number;
+  updatedAt: number;
+};
+
+type GigsPendingLocalCache = {
+  userId: string;
+  role: UserRole;
+  count: number;
   updatedAt: number;
 };
 
@@ -26,6 +34,116 @@ let runtimeNavBadgeSnapshot: RuntimeNavBadgeSnapshot | null = null;
 
 function isUserRole(value: unknown): value is UserRole {
   return value === "dj" || value === "promoter" || value === "both";
+}
+
+function parseGigsPendingLocalCache(raw: string): GigsPendingLocalCache | null {
+  try {
+    const parsed = JSON.parse(raw) as Partial<GigsPendingLocalCache>;
+
+    if (
+      typeof parsed.userId !== "string" ||
+      !parsed.userId.trim() ||
+      !isUserRole(parsed.role) ||
+      typeof parsed.count !== "number" ||
+      typeof parsed.updatedAt !== "number"
+    ) {
+      return null;
+    }
+
+    return {
+      userId: parsed.userId,
+      role: parsed.role,
+      count: Math.max(0, Math.floor(parsed.count)),
+      updatedAt: parsed.updatedAt,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function matchesGigsPendingIdentity(
+  storedUserId: string,
+  storedRole: UserRole,
+  userId: string | null | undefined,
+  role: UserRole | null | undefined,
+): boolean {
+  if (!role || storedRole !== role) {
+    return false;
+  }
+
+  if (userId && storedUserId !== userId) {
+    return false;
+  }
+
+  return true;
+}
+
+export function readLocalGigsPendingCount(
+  userId: string | null | undefined,
+  role: UserRole | null | undefined,
+): number | null {
+  return readLocalGigsPendingCache(userId, role)?.count ?? null;
+}
+
+export function readLocalGigsPendingCache(
+  userId: string | null | undefined,
+  role: UserRole | null | undefined,
+): GigsPendingLocalCache | null {
+  if (!role || typeof window === "undefined") {
+    return null;
+  }
+
+  const raw = window.localStorage.getItem(GIGS_PENDING_LOCAL_CACHE_KEY);
+  if (!raw) {
+    return null;
+  }
+
+  const parsed = parseGigsPendingLocalCache(raw);
+  if (!parsed || !matchesGigsPendingIdentity(parsed.userId, parsed.role, userId, role)) {
+    return null;
+  }
+
+  return parsed;
+}
+
+export function writeLocalGigsPendingCount(
+  userId: string,
+  role: UserRole,
+  count: number,
+): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.localStorage.setItem(
+    GIGS_PENDING_LOCAL_CACHE_KEY,
+    JSON.stringify({
+      userId,
+      role,
+      count: Math.max(0, Math.floor(count)),
+      updatedAt: Date.now(),
+    } satisfies GigsPendingLocalCache),
+  );
+}
+
+export function applyPersistedGigsPendingCount(
+  userId: string,
+  role: UserRole,
+  count: number,
+): void {
+  const normalizedCount = Math.max(0, Math.floor(count));
+
+  writeRuntimeGigsPendingCount(userId, role, normalizedCount);
+  writeLocalGigsPendingCount(userId, role, normalizedCount);
+
+  const existing = readNavigationBadgeCache(userId, role);
+  if (existing) {
+    writeNavigationBadgeCache({
+      ...existing,
+      gigsPending: normalizedCount,
+      updatedAt: Date.now(),
+    });
+  }
 }
 
 function parseNavigationBadgeCache(raw: string): NavigationBadgeCache | null {
@@ -113,21 +231,22 @@ export function clearNavigationBadgeCache(): void {
   }
 
   sessionStorage.removeItem(NAV_BADGE_CACHE_KEY);
+  window.localStorage.removeItem(GIGS_PENDING_LOCAL_CACHE_KEY);
 }
 
 export function readRuntimeNavBadgeSnapshot(
   userId: string | null | undefined,
   role: UserRole | null | undefined,
 ): RuntimeNavBadgeSnapshot | null {
-  if (!userId || !role) {
+  if (!role || runtimeNavBadgeSnapshot?.role !== role) {
     return null;
   }
 
-  if (runtimeNavBadgeSnapshot?.userId === userId && runtimeNavBadgeSnapshot.role === role) {
-    return runtimeNavBadgeSnapshot;
+  if (userId && runtimeNavBadgeSnapshot.userId !== userId) {
+    return null;
   }
 
-  return null;
+  return runtimeNavBadgeSnapshot;
 }
 
 export function writeRuntimeNavBadgeSnapshot(snapshot: RuntimeNavBadgeSnapshot): void {
@@ -140,18 +259,15 @@ export function readRuntimeGigsPendingCount(
   userId: string | null | undefined,
   role: UserRole | null | undefined,
 ): number | null {
-  if (!userId || !role) {
+  if (!role || runtimeGigsPendingIdentity?.role !== role) {
     return null;
   }
 
-  if (
-    runtimeGigsPendingIdentity?.userId === userId &&
-    runtimeGigsPendingIdentity.role === role
-  ) {
-    return runtimeGigsPendingCount;
+  if (userId && runtimeGigsPendingIdentity.userId !== userId) {
+    return null;
   }
 
-  return null;
+  return runtimeGigsPendingCount;
 }
 
 export function writeRuntimeGigsPendingCount(
@@ -175,6 +291,19 @@ export function getCachedGigsPendingCount(
   userId: string | null | undefined,
   role: UserRole | null | undefined,
 ): number | null {
-  const cached = readNavigationBadgeCache(userId, role);
-  return cached?.gigsPending ?? null;
+  if (!role) {
+    return null;
+  }
+
+  const runtimeCount = readRuntimeGigsPendingCount(userId, role);
+  if (runtimeCount != null) {
+    return runtimeCount;
+  }
+
+  const sessionCache = readNavigationBadgeCache(userId, role);
+  if (sessionCache) {
+    return sessionCache.gigsPending;
+  }
+
+  return readLocalGigsPendingCount(userId, role);
 }

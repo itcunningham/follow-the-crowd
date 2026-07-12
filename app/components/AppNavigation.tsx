@@ -1,5 +1,6 @@
 "use client";
 
+import "@/lib/navigationBadgePrefetch";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { usePathname } from "next/navigation";

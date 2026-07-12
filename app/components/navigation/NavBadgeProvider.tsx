@@ -12,6 +12,7 @@ import {
 import { useGuardProfile } from "@/app/components/GuardProfileContext";
 import { loadNavigationBadgeData } from "@/lib/navigationBadges";
 import {
+  ensureGigsPendingPrefetched,
   ensureNavigationBadgesPrefetched,
   subscribeNavigationBadgeListeners,
 } from "@/lib/navigationBadgePrefetch";
@@ -106,12 +107,14 @@ function buildInitialState(userId: string | null, role: UserRole | null): NavBad
   const canViewGigs = canViewGigsSubNav(role);
 
   if (!cached) {
+    const gigsFromStore = getCachedGigsPendingCount(userId, role);
+
     return {
       badgeCounts: { messages: 0, bookings: 0, total: 0 },
-      gigsPendingCount: 0,
-      badgesReady: false,
+      gigsPendingCount: gigsFromStore ?? 0,
+      badgesReady: gigsFromStore != null,
       reserveBadgeSpace: Boolean(userId && role),
-      reserveGigsBadgeSpace: Boolean(userId && canViewGigs),
+      reserveGigsBadgeSpace: Boolean(userId && canViewGigs && gigsFromStore == null),
     };
   }
 
@@ -157,6 +160,9 @@ export function NavBadgeProvider({ children }: { children: ReactNode }) {
   const identityKey = userId && role ? `${userId}:${role}` : null;
   if (identityKey && prefetchStartedForRef.current !== identityKey) {
     prefetchStartedForRef.current = identityKey;
+    if (canViewGigsSubNav(role)) {
+      void ensureGigsPendingPrefetched(role);
+    }
     void ensureNavigationBadgesPrefetched(userId, role);
   }
 
