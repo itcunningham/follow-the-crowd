@@ -68,7 +68,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 - **Calendar day selection:** desktop grid highlight tied to open day panel (`actionDate`); closing the panel clears the outline instantly (no transition fade) and blurs focus; Today styling unchanged
 - **Page load speed:** optimistic auth in `OnboardingGuard` (cached session renders immediately); profile cache + deduped fetches in `lib/user/currentUser.ts`; nav skips redundant profile load when guard profile exists
 - Desktop nav width aligned to page shell (`md:max-w-5xl`); `scrollbar-gutter: stable` on `<html>`
-- **Navigation badges:** shared `NavBadgeProvider` with session/memory/localStorage cache — Gigs count uses dedicated `ensureGigsPendingPrefetched()` at module load (not blocked on cached userId); last real count restored from `localStorage` synchronously on first paint; sub-nav uses `useSyncExternalStore`
+- **Navigation badges:** shared `NavBadgeProvider` with session/memory/localStorage cache — Gigs count uses dedicated `ensureGigsPendingPrefetched()` at module load; Messages count uses matching `ensureNavMessagesPrefetched()` + `ftc-nav-badge-counts-local` localStorage (userId+role scoped); both restored synchronously on first paint; main nav Messages badge uses `useSyncExternalStore` + cache read; sub-nav Gigs uses same pattern
 - **Messages & Profile desktop:** Messages inbox uses `APP_DM_CONTENT_WIDTH_CLASS`; **Profile** uses matching `AppProfilePageShell` with single-column mobile flow (identity → social → cards), centred at `lg:max-w-[52rem]`
 - **DM conversation desktop:** chat column `52rem` (~832px) at `lg+`, centered; mobile/tablet unchanged at `max-w-2xl`
 

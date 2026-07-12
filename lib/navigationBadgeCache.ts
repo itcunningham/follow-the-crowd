@@ -1,6 +1,7 @@
 import type { UserRole } from "@/lib/user/currentUser";
 
 const NAV_BADGE_CACHE_KEY = "ftc-nav-badge-counts";
+const NAV_BADGE_LOCAL_CACHE_KEY = "ftc-nav-badge-counts-local";
 const GIGS_PENDING_LOCAL_CACHE_KEY = "ftc-gigs-pending-count";
 
 export type NavigationBadgeCache = {
@@ -175,6 +176,44 @@ function parseNavigationBadgeCache(raw: string): NavigationBadgeCache | null {
   }
 }
 
+function matchesNavigationBadgeIdentity(
+  storedUserId: string,
+  storedRole: UserRole,
+  userId: string | null | undefined,
+  role: UserRole | null | undefined,
+): boolean {
+  if (!role || storedRole !== role) {
+    return false;
+  }
+
+  if (userId && storedUserId !== userId) {
+    return false;
+  }
+
+  return true;
+}
+
+export function readLocalNavigationBadgeCache(
+  userId: string | null | undefined,
+  role: UserRole | null | undefined,
+): NavigationBadgeCache | null {
+  if (!role || typeof window === "undefined") {
+    return null;
+  }
+
+  const raw = window.localStorage.getItem(NAV_BADGE_LOCAL_CACHE_KEY);
+  if (!raw) {
+    return null;
+  }
+
+  const parsed = parseNavigationBadgeCache(raw);
+  if (!parsed || !matchesNavigationBadgeIdentity(parsed.userId, parsed.role, userId, role)) {
+    return null;
+  }
+
+  return parsed;
+}
+
 export function readNavigationBadgeCache(
   userId: string | null | undefined,
   role: UserRole | null | undefined,
@@ -197,16 +236,27 @@ export function readNavigationBadgeCache(
   }
 
   const parsed = parseNavigationBadgeCache(stored);
-  if (!parsed || parsed.role !== role) {
-    return null;
-  }
-
-  if (userId && parsed.userId !== userId) {
+  if (!parsed || !matchesNavigationBadgeIdentity(parsed.userId, parsed.role, userId, role)) {
     return null;
   }
 
   memoryCache = parsed;
   return parsed;
+}
+
+export function resolveNavigationBadgeCache(
+  userId: string | null | undefined,
+  role: UserRole | null | undefined,
+): NavigationBadgeCache | null {
+  return readNavigationBadgeCache(userId, role) ?? readLocalNavigationBadgeCache(userId, role);
+}
+
+export function getCachedNavMessagesCount(
+  userId: string | null | undefined,
+  role: UserRole | null | undefined,
+): number | null {
+  const cache = resolveNavigationBadgeCache(userId, role);
+  return cache?.messages ?? null;
 }
 
 export function writeNavigationBadgeCache(cache: NavigationBadgeCache): void {
@@ -216,7 +266,9 @@ export function writeNavigationBadgeCache(cache: NavigationBadgeCache): void {
     return;
   }
 
-  sessionStorage.setItem(NAV_BADGE_CACHE_KEY, JSON.stringify(cache));
+  const serialized = JSON.stringify(cache);
+  sessionStorage.setItem(NAV_BADGE_CACHE_KEY, serialized);
+  window.localStorage.setItem(NAV_BADGE_LOCAL_CACHE_KEY, serialized);
 }
 
 export function clearNavigationBadgeCache(): void {
@@ -231,6 +283,7 @@ export function clearNavigationBadgeCache(): void {
   }
 
   sessionStorage.removeItem(NAV_BADGE_CACHE_KEY);
+  window.localStorage.removeItem(NAV_BADGE_LOCAL_CACHE_KEY);
   window.localStorage.removeItem(GIGS_PENDING_LOCAL_CACHE_KEY);
 }
 

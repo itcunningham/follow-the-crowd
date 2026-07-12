@@ -3,7 +3,9 @@ import {
   applyPersistedGigsPendingCount,
   getCachedGigsPendingCount,
   readLocalGigsPendingCache,
+  readLocalNavigationBadgeCache,
   readNavigationBadgeCache,
+  resolveNavigationBadgeCache,
   readRuntimeBadgeFetchedAt,
   writeNavigationBadgeCache,
   writeRuntimeBadgeFetchedAt,
@@ -13,6 +15,7 @@ import {
 import { loadNavigationBadgeData } from "@/lib/navigationBadges";
 import { canViewGigsSubNav } from "@/lib/plannerEventsNav";
 import { readCachedNavigation, readCachedNavRole } from "@/lib/navigationRoleCache";
+import { getNavBadgeCounts, type NavBadgeCounts } from "@/lib/notifications";
 import { getCurrentUserId, type UserRole } from "@/lib/user/currentUser";
 
 const NAV_BADGE_REFRESH_INTERVAL_MS = 20_000;
@@ -28,6 +31,9 @@ let inFlightIdentity: PrefetchIdentity | null = null;
 let gigsInFlight: Promise<number> | null = null;
 let gigsInFlightRole: UserRole | null = null;
 let gigsLastFetchedAt = 0;
+let messagesInFlight: Promise<NavBadgeCounts | null> | null = null;
+let messagesInFlightIdentity: PrefetchIdentity | null = null;
+let messagesLastFetchedAt = 0;
 let cacheVersion = 0;
 const listeners = new Set<() => void>();
 
@@ -57,6 +63,72 @@ function seedGigsPendingFromPersistentStorage(): void {
   if (cachedCount != null && userId) {
     applyPersistedGigsPendingCount(userId, role, cachedCount);
   }
+}
+
+function seedNavigationBadgesFromPersistentStorage(): void {
+  const { userId, role } = readCachedNavigation();
+
+  if (!role) {
+    return;
+  }
+
+  const localCache = readLocalNavigationBadgeCache(userId, role);
+  const sessionCache = readNavigationBadgeCache(userId, role);
+  const cache = sessionCache ?? localCache;
+
+  if (!cache) {
+    return;
+  }
+
+  if (localCache && !sessionCache) {
+    writeNavigationBadgeCache(localCache);
+  }
+
+  const canViewGigs = canViewGigsSubNav(role);
+  const gigsPending =
+    getCachedGigsPendingCount(userId, role) ?? cache.gigsPending;
+
+  writeRuntimeNavBadgeSnapshot({
+    ...cache,
+    gigsPending,
+    badgesReady: true,
+    reserveBadgeSpace: false,
+    reserveGigsBadgeSpace: false,
+  });
+  writeRuntimeGigsPendingCount(cache.userId, cache.role, gigsPending);
+  writeRuntimeBadgeFetchedAt(cache.updatedAt);
+  messagesLastFetchedAt = cache.updatedAt;
+}
+
+function applyPartialNavBadgeCounts(
+  userId: string,
+  role: UserRole,
+  counts: NavBadgeCounts,
+): void {
+  const existing = resolveNavigationBadgeCache(userId, role);
+  const gigsPending =
+    existing?.gigsPending ?? getCachedGigsPendingCount(userId, role) ?? 0;
+  const updatedAt = Date.now();
+  const cache = {
+    userId,
+    role,
+    messages: counts.messages,
+    bookings: counts.bookings,
+    gigsPending,
+    updatedAt,
+  };
+
+  writeNavigationBadgeCache(cache);
+  writeRuntimeNavBadgeSnapshot({
+    ...cache,
+    badgesReady: true,
+    reserveBadgeSpace: false,
+    reserveGigsBadgeSpace:
+      canViewGigsSubNav(role) && getCachedGigsPendingCount(userId, role) == null,
+  });
+  writeRuntimeBadgeFetchedAt(updatedAt);
+  messagesLastFetchedAt = updatedAt;
+  notifyNavigationBadgeListeners();
 }
 
 function applyPrefetchedBadgeData(
@@ -167,6 +239,81 @@ export function ensureGigsPendingPrefetched(
   return gigsInFlight;
 }
 
+export function ensureNavMessagesPrefetched(
+  userId?: string | null,
+  role?: UserRole | null,
+  options?: { force?: boolean },
+): Promise<NavBadgeCounts | null> {
+  if (typeof window === "undefined") {
+    return Promise.resolve(null);
+  }
+
+  const cachedNav = readCachedNavigation();
+  const resolvedRole = role ?? cachedNav.role;
+  const resolvedUserIdHint = userId ?? cachedNav.userId;
+
+  if (!resolvedRole) {
+    return Promise.resolve(null);
+  }
+
+  const cached = resolveNavigationBadgeCache(resolvedUserIdHint, resolvedRole);
+  const fetchedAt = cached?.updatedAt ?? messagesLastFetchedAt;
+  const isFresh = Date.now() - fetchedAt < NAV_BADGE_REFRESH_INTERVAL_MS;
+
+  if (cached && !options?.force && isFresh) {
+    return Promise.resolve({
+      messages: cached.messages,
+      bookings: cached.bookings,
+      total: cached.messages + cached.bookings,
+    });
+  }
+
+  if (
+    !options?.force &&
+    messagesInFlight &&
+    messagesInFlightIdentity &&
+    messagesInFlightIdentity.role === resolvedRole &&
+    (!resolvedUserIdHint ||
+      !messagesInFlightIdentity.userId ||
+      messagesInFlightIdentity.userId === resolvedUserIdHint)
+  ) {
+    return messagesInFlight;
+  }
+
+  messagesInFlightIdentity = {
+    userId: resolvedUserIdHint ?? "",
+    role: resolvedRole,
+  };
+  messagesInFlight = (async () => {
+    try {
+      const resolvedUserId = await resolvePrefetchUserId(resolvedUserIdHint);
+      if (!resolvedUserId) {
+        return null;
+      }
+
+      messagesInFlightIdentity = { userId: resolvedUserId, role: resolvedRole };
+      const counts = await getNavBadgeCounts(resolvedUserId, resolvedRole);
+      applyPartialNavBadgeCounts(resolvedUserId, resolvedRole, counts);
+      return counts;
+    } catch (error) {
+      console.error("[navigationBadgePrefetch] Failed to prefetch messages badge count:", error);
+      if (cached) {
+        return {
+          messages: cached.messages,
+          bookings: cached.bookings,
+          total: cached.messages + cached.bookings,
+        };
+      }
+      return null;
+    } finally {
+      messagesInFlight = null;
+      messagesInFlightIdentity = null;
+    }
+  })();
+
+  return messagesInFlight;
+}
+
 export function ensureNavigationBadgesPrefetched(
   userId?: string | null,
   role?: UserRole | null,
@@ -183,13 +330,15 @@ export function ensureNavigationBadgesPrefetched(
     void ensureGigsPendingPrefetched(resolvedRole, options);
   }
 
+  void ensureNavMessagesPrefetched(userId ?? cachedNav.userId, resolvedRole, options);
+
   return (async () => {
     const resolvedUserId = await resolvePrefetchUserId(userId ?? cachedNav.userId);
     if (!resolvedUserId || !resolvedRole) {
       return;
     }
 
-    const hasCache = Boolean(readNavigationBadgeCache(resolvedUserId, resolvedRole));
+    const hasCache = Boolean(resolveNavigationBadgeCache(resolvedUserId, resolvedRole));
     const fetchedAt = readRuntimeBadgeFetchedAt();
     const isFresh = Date.now() - fetchedAt < NAV_BADGE_REFRESH_INTERVAL_MS;
 
@@ -226,6 +375,9 @@ export function ensureNavigationBadgesPrefetched(
 
 if (typeof window !== "undefined") {
   seedGigsPendingFromPersistentStorage();
+  seedNavigationBadgesFromPersistentStorage();
+
+  void ensureNavMessagesPrefetched();
 
   const role = readCachedNavRole();
   if (canViewGigsSubNav(role)) {

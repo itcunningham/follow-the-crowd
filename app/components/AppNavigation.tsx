@@ -2,12 +2,20 @@
 
 import "@/lib/navigationBadgePrefetch";
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { usePathname } from "next/navigation";
 import { useNavBadges } from "@/app/components/navigation/NavBadgeProvider";
 import type { NavBadgeCounts } from "@/lib/notifications";
 import { isMessagesInboxPath } from "@/lib/groupChats";
 import { isGigsAreaPath, isPlannerEventsAreaPath } from "@/lib/plannerEventsNav";
+import {
+  getCachedNavMessagesCount,
+  resolveNavigationBadgeCache,
+} from "@/lib/navigationBadgeCache";
+import {
+  getNavigationBadgeCacheVersion,
+  subscribeNavigationBadgeListeners,
+} from "@/lib/navigationBadgePrefetch";
 import {
   cacheNavigationRole,
   readCachedNavigation,
@@ -279,6 +287,33 @@ export default function AppNavigation() {
   const effectiveRole = role ?? guardProfile?.role ?? cachedNavigation.role ?? "both";
   const effectiveUserId = currentUserId ?? guardProfile?.user_id ?? cachedNavigation.userId;
   const navItems = effectiveRole ? getNavItems(effectiveRole, effectiveUserId) : [];
+  const badgeCacheVersion = useSyncExternalStore(
+    subscribeNavigationBadgeListeners,
+    getNavigationBadgeCacheVersion,
+    () => 0,
+  );
+
+  const displayBadgeCounts = useMemo(() => {
+    const cached = resolveNavigationBadgeCache(effectiveUserId, effectiveRole);
+
+    if (cached) {
+      return {
+        messages: cached.messages,
+        bookings: cached.bookings,
+        total: cached.messages + cached.bookings,
+      };
+    }
+
+    return badgeCounts;
+  }, [badgeCacheVersion, badgeCounts, effectiveRole, effectiveUserId]);
+
+  const messagesReserveSpace = useMemo(() => {
+    if (getCachedNavMessagesCount(effectiveUserId, effectiveRole) != null) {
+      return false;
+    }
+
+    return reserveBadgeSpace;
+  }, [badgeCacheVersion, effectiveRole, effectiveUserId, reserveBadgeSpace]);
 
   return (
     <>
@@ -290,8 +325,11 @@ export default function AppNavigation() {
           <div className="flex min-w-0 items-center gap-2 sm:gap-3">
             {navItems.map((item) => {
               const isActive = item.isActive(pathname);
-              const badgeCount = getBadgeCount(item, badgeCounts);
-              const showBadgeSlot = Boolean(item.badgeKey) && reserveBadgeSpace;
+              const badgeCount = getBadgeCount(item, displayBadgeCounts);
+              const showBadgeSlot =
+                item.badgeKey === "messages"
+                  ? messagesReserveSpace
+                  : Boolean(item.badgeKey) && reserveBadgeSpace;
 
               return (
                 <Link
@@ -315,8 +353,11 @@ export default function AppNavigation() {
         <div className="mx-auto flex max-w-2xl items-stretch px-0.5 pb-[env(safe-area-inset-bottom)]">
           {navItems.map((item) => {
             const isActive = item.isActive(pathname);
-            const badgeCount = getBadgeCount(item, badgeCounts);
-            const showBadgeSlot = Boolean(item.badgeKey) && reserveBadgeSpace;
+            const badgeCount = getBadgeCount(item, displayBadgeCounts);
+            const showBadgeSlot =
+              item.badgeKey === "messages"
+                ? messagesReserveSpace
+                : Boolean(item.badgeKey) && reserveBadgeSpace;
 
             return (
               <Link

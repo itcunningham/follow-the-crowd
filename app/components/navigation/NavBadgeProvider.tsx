@@ -13,12 +13,15 @@ import { useGuardProfile } from "@/app/components/GuardProfileContext";
 import { loadNavigationBadgeData } from "@/lib/navigationBadges";
 import {
   ensureGigsPendingPrefetched,
+  ensureNavMessagesPrefetched,
   ensureNavigationBadgesPrefetched,
   subscribeNavigationBadgeListeners,
 } from "@/lib/navigationBadgePrefetch";
 import {
   getCachedGigsPendingCount,
+  getCachedNavMessagesCount,
   readNavigationBadgeCache,
+  resolveNavigationBadgeCache,
   readRuntimeBadgeFetchedAt,
   readRuntimeGigsPendingCount,
   readRuntimeNavBadgeSnapshot,
@@ -103,18 +106,18 @@ function buildInitialState(userId: string | null, role: UserRole | null): NavBad
     return runtimeSnapshot;
   }
 
-  const cached = readNavigationBadgeCache(userId, role);
+  const cached = resolveNavigationBadgeCache(userId, role);
   const canViewGigs = canViewGigsSubNav(role);
+  const gigsFromStore = getCachedGigsPendingCount(userId, role);
+  const hasIdentity = Boolean(userId && role);
 
   if (!cached) {
-    const gigsFromStore = getCachedGigsPendingCount(userId, role);
-
     return {
       badgeCounts: { messages: 0, bookings: 0, total: 0 },
       gigsPendingCount: gigsFromStore ?? 0,
-      badgesReady: gigsFromStore != null,
-      reserveBadgeSpace: Boolean(userId && role),
-      reserveGigsBadgeSpace: Boolean(userId && canViewGigs && gigsFromStore == null),
+      badgesReady: false,
+      reserveBadgeSpace: hasIdentity,
+      reserveGigsBadgeSpace: Boolean(hasIdentity && canViewGigs && gigsFromStore == null),
     };
   }
 
@@ -126,10 +129,10 @@ function buildInitialState(userId: string | null, role: UserRole | null): NavBad
       bookings: cached.bookings,
       total: cached.messages + cached.bookings,
     },
-    gigsPendingCount: cached.gigsPending,
+    gigsPendingCount: gigsFromStore ?? cached.gigsPending,
     badgesReady: true,
     reserveBadgeSpace: false,
-    reserveGigsBadgeSpace: false,
+    reserveGigsBadgeSpace: Boolean(hasIdentity && canViewGigs && gigsFromStore == null),
   };
 }
 
@@ -163,6 +166,7 @@ export function NavBadgeProvider({ children }: { children: ReactNode }) {
     if (canViewGigsSubNav(role)) {
       void ensureGigsPendingPrefetched(role);
     }
+    void ensureNavMessagesPrefetched(userId, role);
     void ensureNavigationBadgesPrefetched(userId, role);
   }
 
@@ -264,8 +268,8 @@ export function NavBadgeProvider({ children }: { children: ReactNode }) {
 
     return subscribeNavigationBadgeListeners(() => {
       const nextState = buildInitialState(userId, role);
+      setState(nextState);
       if (nextState.badgesReady) {
-        setState(nextState);
         badgeLastFetchedAtRef.current = readRuntimeBadgeFetchedAt();
       }
     });
@@ -278,7 +282,7 @@ export function NavBadgeProvider({ children }: { children: ReactNode }) {
 
     const hasCachedCounts =
       Boolean(readRuntimeSnapshot(userId, role)?.badgesReady) ||
-      Boolean(readNavigationBadgeCache(userId, role));
+      Boolean(resolveNavigationBadgeCache(userId, role));
     void refreshBadgeCounts({ force: !hasCachedCounts });
   }, [userId, role, refreshBadgeCounts]);
 
@@ -338,15 +342,30 @@ export function useNavBadges(): NavBadgeContextValue {
   const initialState = buildInitialState(userId, role);
   const cachedGigsPending = getCachedGigsPendingCount(userId, role);
   const runtimeGigsPending = readRuntimeGigsPendingCount(userId, role);
+  const cachedMessages = getCachedNavMessagesCount(userId, role);
 
-  if (cachedGigsPending == null && runtimeGigsPending == null) {
+  if (
+    cachedGigsPending == null &&
+    runtimeGigsPending == null &&
+    cachedMessages == null
+  ) {
     return initialState;
   }
 
+  const messagesCount = cachedMessages ?? initialState.badgeCounts.messages;
+  const bookingsCount = initialState.badgeCounts.bookings;
+
   return {
     ...initialState,
+    badgeCounts: {
+      messages: messagesCount,
+      bookings: bookingsCount,
+      total: messagesCount + bookingsCount,
+    },
     gigsPendingCount: runtimeGigsPending ?? cachedGigsPending ?? initialState.gigsPendingCount,
-    badgesReady: initialState.badgesReady || cachedGigsPending != null || runtimeGigsPending != null,
+    badgesReady: initialState.badgesReady || cachedMessages != null,
+    reserveBadgeSpace:
+      initialState.reserveBadgeSpace && cachedMessages == null,
     reserveGigsBadgeSpace:
       initialState.reserveGigsBadgeSpace &&
       cachedGigsPending == null &&
