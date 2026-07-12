@@ -64,17 +64,14 @@ export const APP_DM_CONTENT_WIDTH_CLASS =
 /** Profile page shell — same centred desktop width as DM inbox/conversation. */
 export const APP_PAGE_PROFILE_SHELL_CLASS = APP_DM_CONTENT_WIDTH_CLASS;
 
-/** Profile two-column content inside the shell. */
+/** Profile single-column stack — same hierarchy on mobile and desktop. */
 export const APP_PAGE_PROFILE_CONTENT_CLASS = "w-full";
 
-export const APP_PAGE_PROFILE_GRID_CLASS =
-  "space-y-6 md:grid md:grid-cols-[minmax(18rem,21.25rem)_minmax(0,1fr)] md:items-start md:gap-6 lg:gap-8 md:space-y-0";
+export const APP_PAGE_PROFILE_STACK_CLASS = "flex flex-col space-y-6 md:space-y-8";
 
-export const APP_PAGE_PROFILE_PRIMARY_COLUMN_CLASS = "space-y-4";
+export const APP_PAGE_PROFILE_IDENTITY_STACK_CLASS = "space-y-3 md:space-y-4";
 
-export const APP_PAGE_PROFILE_SECONDARY_COLUMN_CLASS = "space-y-4 md:min-w-0";
-
-export const APP_PAGE_PROFILE_IDENTITY_STACK_CLASS = "space-y-3";
+export const APP_PAGE_PROFILE_SECTIONS_STACK_CLASS = "space-y-4 md:space-y-5";
 
 export function AppProfilePageShell({ children }: { children: ReactNode }) {
   return (

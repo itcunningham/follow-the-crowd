@@ -4,10 +4,9 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import {
   APP_PAGE_PROFILE_CONTENT_CLASS,
-  APP_PAGE_PROFILE_GRID_CLASS,
   APP_PAGE_PROFILE_IDENTITY_STACK_CLASS,
-  APP_PAGE_PROFILE_PRIMARY_COLUMN_CLASS,
-  APP_PAGE_PROFILE_SECONDARY_COLUMN_CLASS,
+  APP_PAGE_PROFILE_SECTIONS_STACK_CLASS,
+  APP_PAGE_PROFILE_STACK_CLASS,
   AppPageBody,
   AppProfilePageShell,
 } from "@/app/components/layout/AppPageLayout";
@@ -138,47 +137,47 @@ function UserProfilePageView({ userId }: { userId: string }) {
     <AppProfilePageShell>
       <ProfilePageHeader isOwnProfile={isOwnProfile} returnTo={profileReturnTo} />
 
-      <AppPageBody className={`py-6 ${!isOwnProfile && profile ? "pb-4" : "pb-8"}`}>
+      <AppPageBody className={`py-6 md:py-8 ${!isOwnProfile && profile ? "pb-4" : "pb-8"}`}>
         {loading ? (
           <ProfileSkeleton />
         ) : error && !profile ? (
           <p className="text-sm text-red-400">{error}</p>
         ) : profile ? (
           <div className={APP_PAGE_PROFILE_CONTENT_CLASS}>
-            <div className={APP_PAGE_PROFILE_GRID_CLASS}>
-              <div className={APP_PAGE_PROFILE_PRIMARY_COLUMN_CLASS}>
-                <div className={APP_PAGE_PROFILE_IDENTITY_STACK_CLASS}>
-                  <ProfileHero
-                    displayName={displayName}
-                    username={profile.username}
-                    avatarUrl={profile.avatar_url}
-                    role={profile.role}
-                    bio={profile.bio}
-                  />
+            <div className={APP_PAGE_PROFILE_STACK_CLASS}>
+              <div className={APP_PAGE_PROFILE_IDENTITY_STACK_CLASS}>
+                <ProfileHero
+                  displayName={displayName}
+                  username={profile.username}
+                  avatarUrl={profile.avatar_url}
+                  role={profile.role}
+                  bio={profile.bio}
+                />
 
-                  {profile.instagram_url?.trim() ||
-                  profile.tiktok_url?.trim() ||
-                  profile.soundcloud_url?.trim() ? (
-                    <ProfileLinkList
-                      instagramUrl={profile.instagram_url}
-                      tiktokUrl={profile.tiktok_url}
-                      soundcloudUrl={showDjSections ? profile.soundcloud_url : null}
-                    />
+                {profile.instagram_url?.trim() ||
+                profile.tiktok_url?.trim() ||
+                profile.soundcloud_url?.trim() ? (
+                  <ProfileLinkList
+                    instagramUrl={profile.instagram_url}
+                    tiktokUrl={profile.tiktok_url}
+                    soundcloudUrl={showDjSections ? profile.soundcloud_url : null}
+                  />
+                ) : null}
+              </div>
+
+              {showPromoterSections || showDjSections ? (
+                <div className={APP_PAGE_PROFILE_SECTIONS_STACK_CLASS}>
+                  {showPromoterSections ? (
+                    <PromoterProfileSections profile={profile} />
+                  ) : null}
+
+                  {showDjSections ? (
+                    <DjProfileSections profile={profile} isOwnProfile={isOwnProfile} />
                   ) : null}
                 </div>
-              </div>
+              ) : null}
 
-              <div className={APP_PAGE_PROFILE_SECONDARY_COLUMN_CLASS}>
-                {showPromoterSections ? (
-                  <PromoterProfileSections profile={profile} />
-                ) : null}
-
-                {showDjSections ? (
-                  <DjProfileSections profile={profile} isOwnProfile={isOwnProfile} />
-                ) : null}
-
-                {error ? <p className="text-sm text-red-400">{error}</p> : null}
-              </div>
+              {error ? <p className="text-sm text-red-400">{error}</p> : null}
             </div>
           </div>
         ) : null}

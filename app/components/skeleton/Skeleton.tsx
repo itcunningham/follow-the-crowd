@@ -26,10 +26,9 @@ import {
 } from "@/app/components/planner/PlannerWorkspaceLayout";
 import {
   APP_PAGE_PROFILE_CONTENT_CLASS,
-  APP_PAGE_PROFILE_GRID_CLASS,
   APP_PAGE_PROFILE_IDENTITY_STACK_CLASS,
-  APP_PAGE_PROFILE_PRIMARY_COLUMN_CLASS,
-  APP_PAGE_PROFILE_SECONDARY_COLUMN_CLASS,
+  APP_PAGE_PROFILE_SECTIONS_STACK_CLASS,
+  APP_PAGE_PROFILE_STACK_CLASS,
   APP_DM_CHAT_COLUMN_CLASS,
   AppPageBody,
   AppProfilePageShell,
@@ -1248,7 +1247,7 @@ export function ProfilePageLoadingShell({
   return (
     <AppProfilePageShell>
       <ProfilePageHeader isOwnProfile={isOwnProfile} />
-      <AppPageBody className="py-6">
+      <AppPageBody className="py-6 md:py-8">
         <ProfileSkeleton />
       </AppPageBody>
     </AppProfilePageShell>
@@ -1567,9 +1566,9 @@ export function ProfileSkeleton() {
     <div
       aria-busy="true"
       aria-label="Loading profile"
-      className={`${APP_PAGE_PROFILE_CONTENT_CLASS} ${APP_PAGE_PROFILE_GRID_CLASS}`}
+      className={APP_PAGE_PROFILE_CONTENT_CLASS}
     >
-      <div className={APP_PAGE_PROFILE_PRIMARY_COLUMN_CLASS}>
+      <div className={APP_PAGE_PROFILE_STACK_CLASS}>
         <div className={APP_PAGE_PROFILE_IDENTITY_STACK_CLASS}>
           <div className="flex items-start gap-4">
             <SkeletonBlock className="h-20 w-20 shrink-0 rounded-full sm:h-24 sm:w-24" />
@@ -1584,11 +1583,11 @@ export function ProfileSkeleton() {
             <SkeletonBlock className="h-11 w-24 rounded-full" />
           </div>
         </div>
-      </div>
 
-      <div className={APP_PAGE_PROFILE_SECONDARY_COLUMN_CLASS}>
-        <ProfileSectionCardSkeleton titleWidth="w-16" lines={3} />
-        <ProfileSectionCardSkeleton titleWidth="w-12" lines={2} />
+        <div className={APP_PAGE_PROFILE_SECTIONS_STACK_CLASS}>
+          <ProfileSectionCardSkeleton titleWidth="w-16" lines={3} />
+          <ProfileSectionCardSkeleton titleWidth="w-12" lines={2} />
+        </div>
       </div>
     </div>
   );
