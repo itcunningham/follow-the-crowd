@@ -359,7 +359,7 @@ export default function AppNavigation() {
         aria-label="Main navigation"
         className="ftc-nav-bar sticky top-0 z-40 hidden border-b md:block"
       >
-        <div className="mx-auto flex h-12 max-w-6xl items-center justify-between gap-1 px-4 sm:px-6">
+        <div className="mx-auto flex h-12 max-w-2xl items-center justify-between gap-1 px-4 sm:px-6 md:max-w-5xl">
           <div className="flex min-w-0 items-center gap-2 sm:gap-3">
             {navItems.map((item) => {
               const isActive = item.isActive(pathname);

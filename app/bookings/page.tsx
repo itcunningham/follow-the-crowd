@@ -6,17 +6,13 @@ import { useRouter, useSearchParams } from "next/navigation";
 import {
   BookingsPageLoadingShell,
   BookingCreateEventDetailsFormSkeleton,
+  DjGigsTabRow,
   SkeletonBlock,
 } from "@/app/components/skeleton/Skeleton";
-import AppNavigation from "@/app/components/AppNavigation";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
 import { useGuardProfile } from "@/app/components/GuardProfileContext";
 import {
-  PlannerWorkspacePageHeader,
-  PLANNER_WORKSPACE_CONTENT_CLASS,
-  PLANNER_WORKSPACE_PAGE_SHELL_CLASS,
-  PLANNER_WORKSPACE_SECONDARY_CONTROLS_CLASS,
-  PlannerWorkspaceSecondaryControlsPlaceholder,
+  PlannerWorkspacePage,
 } from "@/app/components/planner/PlannerWorkspaceLayout";
 import DjBookingAvailabilityBadge from "@/app/components/DjBookingAvailabilityBadge";
 import ProfileAvatar from "@/app/components/ProfileAvatar";
@@ -1350,36 +1346,34 @@ function BookingsPageContent() {
 
   return (
     <OnboardingGuard>
-      <div className={PLANNER_WORKSPACE_PAGE_SHELL_CLASS}>
-        <AppNavigation />
-
-        <PlannerWorkspacePageHeader
-          title={plannerCreateVisible ? "Event Plans" : "Gigs"}
-          initialRole={displayRole}
-          activeWorkspaceHref={
-            plannerCreateVisible ? EVENTS_AREA_SUB_NAV.bookingPlans.href : undefined
-          }
-        />
-
-        <div className={PLANNER_WORKSPACE_CONTENT_CLASS}>
-          {showGigsWorkspace && !plannerCreateVisible ? (
-            <div className={PLANNER_WORKSPACE_SECONDARY_CONTROLS_CLASS}>
+      <PlannerWorkspacePage
+        title={plannerCreateVisible ? "Event Plans" : "Gigs"}
+        initialRole={displayRole}
+        activeWorkspaceHref={
+          plannerCreateVisible ? EVENTS_AREA_SUB_NAV.bookingPlans.href : undefined
+        }
+        secondaryControlsSlot={
+          showGigsWorkspace && !plannerCreateVisible ? (
+            <DjGigsTabRow
+              showManageButton={
+                djGigsView === "history" &&
+                gigsListReady &&
+                !loadingList &&
+                gigsHistoryBulkManage.showManageControl &&
+                !gigsHistoryBulkManage.selectionMode
+              }
+              onManageClick={gigsHistoryBulkManage.enterSelectionMode}
+            >
               <DjGigsTabs
                 activeView={djGigsView}
                 bookings={receivedBookings}
                 hiddenBookingIds={hiddenBookingIds}
               />
-              {djGigsView === "history" &&
-              gigsListReady &&
-              !loadingList &&
-              gigsHistoryBulkManage.showManageControl &&
-              !gigsHistoryBulkManage.selectionMode ? (
-                <HistoryManageButton onClick={gigsHistoryBulkManage.enterSelectionMode} />
-              ) : null}
-            </div>
-          ) : showGigsWorkspace ? (
-            <PlannerWorkspaceSecondaryControlsPlaceholder />
-          ) : null}
+            </DjGigsTabRow>
+          ) : undefined
+        }
+        secondaryControlsPlaceholder={showGigsWorkspace && plannerCreateVisible}
+      >
 
           {successMessage ? (
             <p className="mb-4 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated px-4 py-3 text-sm text-ftc-text-secondary">
@@ -1821,8 +1815,6 @@ function BookingsPageContent() {
               </ul>
             ) : null
           ) : null}
-        </div>
-      </div>
 
       <UnavailableDjBookingConfirmModal
         open={unavailableConfirmOpen}
@@ -1836,6 +1828,7 @@ function BookingsPageContent() {
         }}
         onConfirm={executeSendBookingRequests}
       />
+      </PlannerWorkspacePage>
     </OnboardingGuard>
   );
 }

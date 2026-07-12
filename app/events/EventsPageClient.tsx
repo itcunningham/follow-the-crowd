@@ -8,7 +8,6 @@ import { useGuardProfile } from "@/app/components/GuardProfileContext";
 import EventDateStatusBadge from "@/app/components/EventDateStatusBadge";
 import {
   PlannerWorkspacePage,
-  PLANNER_WORKSPACE_CONTENT_CLASS,
 } from "@/app/components/planner/PlannerWorkspaceLayout";
 import {
   PlannerBackLink,
@@ -883,6 +882,7 @@ function EventsPageClientView({
             </EventsListTabRow>
           ) : undefined
         }
+        secondaryControlsPlaceholder={isCalendarCreateFlow}
       >
           {createOpen && isPlanner ? (
             <PlannerFormCard title="Create event" onCancel={closeCreateFlow} cancelDisabled={saving}>

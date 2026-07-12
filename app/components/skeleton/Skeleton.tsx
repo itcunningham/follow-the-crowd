@@ -20,8 +20,11 @@ import {
   PlannerWorkspacePageHeader,
   PlannerWorkspaceSecondaryControls,
   PlannerWorkspaceSecondaryControlsPlaceholder,
+  PLANNER_WORKSPACE_BELOW_HEADER_CLASS,
+  PLANNER_WORKSPACE_BODY_CLASS,
   PLANNER_WORKSPACE_CONTENT_CLASS,
   PLANNER_WORKSPACE_PAGE_SHELL_CLASS,
+  PLANNER_WORKSPACE_SECONDARY_BAND_CLASS,
   PLANNER_WORKSPACE_SECONDARY_CONTROLS_CLASS,
 } from "@/app/components/planner/PlannerWorkspaceLayout";
 import ProfilePageHeader from "@/app/components/profile/ProfilePageHeader";
@@ -284,6 +287,25 @@ export function EventsListTabRow({
   );
 }
 
+export function DjGigsTabRow({
+  children,
+  showManageButton = false,
+  onManageClick,
+}: {
+  children: ReactNode;
+  showManageButton?: boolean;
+  onManageClick?: () => void;
+}) {
+  return (
+    <div className={PLANNER_WORKSPACE_SECONDARY_CONTROLS_CLASS}>
+      {children}
+      {showManageButton ? (
+        <HistoryManageButton onClick={onManageClick ?? (() => undefined)} />
+      ) : null}
+    </div>
+  );
+}
+
 export function EventsCalendarCreateLoadingShell({
   createStep = "form",
   role: roleProp,
@@ -302,8 +324,12 @@ export function EventsCalendarCreateLoadingShell({
         initialRole={role}
         activeWorkspaceHref={EVENTS_AREA_SUB_NAV.calendar.href}
       />
-      <div className={PLANNER_WORKSPACE_CONTENT_CLASS}>
-        <section className="mb-6 ftc-card p-4 sm:p-5">
+      <div className={PLANNER_WORKSPACE_BELOW_HEADER_CLASS}>
+        <div className={PLANNER_WORKSPACE_SECONDARY_BAND_CLASS}>
+          <PlannerWorkspaceSecondaryControlsPlaceholder />
+        </div>
+        <div className={PLANNER_WORKSPACE_BODY_CLASS}>
+          <section className="mb-6 ftc-card p-4 sm:p-5">
           <div className="ftc-form-card-header">
             <h2 className="text-lg font-semibold text-ftc-text">Create event</h2>
             <span aria-hidden="true" className="ftc-form-cancel-link opacity-60">
@@ -316,6 +342,7 @@ export function EventsCalendarCreateLoadingShell({
             <BookingCreateEventDetailsFormSkeleton />
           )}
         </section>
+        </div>
       </div>
     </div>
   );
@@ -348,27 +375,21 @@ export function EventsPageLoadingShell({
   const isHistoryTab = searchParams.get("tab") === "history";
 
   return (
-    <div className={PLANNER_WORKSPACE_PAGE_SHELL_CLASS}>
-      <AppNavigation />
-      <PlannerWorkspacePageHeader
-        title="Events"
-        initialRole={role}
-        actions={
-          isPlanner ? (
-            <Link
-              href="/events?create=event"
-              className="shrink-0 ftc-btn-primary px-4 py-2.5 text-sm uppercase tracking-wide"
-            >
-              Create event
-            </Link>
-          ) : null
-        }
-      />
-      <div className={PLANNER_WORKSPACE_CONTENT_CLASS}>
-        <EventsListTabRow
-          showTrashButton={isPlanner && isHistoryTab}
-          trashButtonDisabled
-        >
+    <PlannerWorkspacePage
+      title="Events"
+      initialRole={role}
+      actions={
+        isPlanner ? (
+          <Link
+            href="/events?create=event"
+            className="shrink-0 ftc-btn-primary px-4 py-2.5 text-sm uppercase tracking-wide"
+          >
+            Create event
+          </Link>
+        ) : undefined
+      }
+      secondaryControlsSlot={
+        <EventsListTabRow showTrashButton={isPlanner && isHistoryTab} trashButtonDisabled>
           <div className="flex flex-wrap gap-2">
             <Link
               href={buildEventsListHref("active")}
@@ -384,9 +405,10 @@ export function EventsPageLoadingShell({
             </Link>
           </div>
         </EventsListTabRow>
-        <EventListSkeleton showPlannerStats={isPlanner} showFilterPills={false} />
-      </div>
-    </div>
+      }
+    >
+      <EventListSkeleton showPlannerStats={isPlanner} showFilterPills={false} />
+    </PlannerWorkspacePage>
   );
 }
 
@@ -672,11 +694,7 @@ function GigsWorkspaceTabsShell() {
           <Link
             key={tab.value}
             href={buildGigsListHref(tab.value)}
-            className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-semibold uppercase tracking-wide transition ${
-              isActive
-                ? "border-transparent bg-ftc-primary text-ftc-bg"
-                : "border-ftc-border-subtle bg-ftc-bg-elevated text-ftc-text-secondary hover:border-ftc-border-strong"
-            }`}
+            className={`inline-flex items-center gap-1.5 ftc-filter-pill ${isActive ? "ftc-filter-pill-active" : ""}`}
           >
             {tab.label}
           </Link>
@@ -781,25 +799,23 @@ export function BookingsPageLoadingShell({
   const workspaceTitle = plannerBookingCreateOpen ? "Event Plans" : "Gigs";
 
   return (
-    <div className={PLANNER_WORKSPACE_PAGE_SHELL_CLASS}>
-      <AppNavigation />
-      <PlannerWorkspacePageHeader
-        title={workspaceTitle}
-        initialRole={role}
-        activeWorkspaceHref={
-          plannerBookingCreateOpen ? EVENTS_AREA_SUB_NAV.bookingPlans.href : undefined
-        }
-      />
-      <div className={PLANNER_WORKSPACE_CONTENT_CLASS}>
-        {plannerBookingCreateOpen ? (
-          <BookingCreateEventDetailsCardSkeleton />
-        ) : showGigsTabs ? (
-          <div className={PLANNER_WORKSPACE_SECONDARY_CONTROLS_CLASS}>
+    <PlannerWorkspacePage
+      title={workspaceTitle}
+      initialRole={role}
+      activeWorkspaceHref={
+        plannerBookingCreateOpen ? EVENTS_AREA_SUB_NAV.bookingPlans.href : undefined
+      }
+      secondaryControlsSlot={
+        showGigsTabs ? (
+          <DjGigsTabRow>
             <GigsWorkspaceTabsShell />
-          </div>
-        ) : null}
-      </div>
-    </div>
+          </DjGigsTabRow>
+        ) : undefined
+      }
+      secondaryControlsPlaceholder={plannerBookingCreateOpen || !showGigsTabs}
+    >
+      {plannerBookingCreateOpen ? <BookingCreateEventDetailsCardSkeleton /> : null}
+    </PlannerWorkspacePage>
   );
 }
 
@@ -838,25 +854,21 @@ export function BookingPlansPageLoadingShell() {
   const [cachedRole] = useState<UserRole | null>(() => readCachedNavRole());
 
   return (
-    <div className={PLANNER_WORKSPACE_PAGE_SHELL_CLASS}>
-      <AppNavigation />
-      <PlannerWorkspacePageHeader
-        title="Event Plans"
-        initialRole={cachedRole}
-        actions={
-          <Link
-            href="/booking-plans"
-            className="shrink-0 ftc-btn-primary px-4 py-2.5 text-sm uppercase tracking-wide"
-          >
-            Create event plan
-          </Link>
-        }
-      />
-      <div className={PLANNER_WORKSPACE_CONTENT_CLASS}>
-        <SavedEventPlansSectionHeader />
-        <BookingPlanListSkeleton />
-      </div>
-    </div>
+    <PlannerWorkspacePage
+      title="Event Plans"
+      initialRole={cachedRole}
+      actions={
+        <Link
+          href="/booking-plans"
+          className="shrink-0 ftc-btn-primary px-4 py-2.5 text-sm uppercase tracking-wide"
+        >
+          Create event plan
+        </Link>
+      }
+      secondaryControlsSlot={<SavedEventPlansSectionHeader trashButtonDisabled />}
+    >
+      <BookingPlanListSkeleton />
+    </PlannerWorkspacePage>
   );
 }
 

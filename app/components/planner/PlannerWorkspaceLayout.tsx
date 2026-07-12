@@ -14,8 +14,9 @@ export const PLANNER_WORKSPACE_PAGE_SHELL_CLASS = PLANNER_CALENDAR_SHELL_CLASS;
 
 export const PLANNER_WORKSPACE_SHELL_WIDE_CLASS = `mx-auto min-h-[100dvh] w-full max-w-6xl bg-ftc-bg font-sans text-ftc-text ${MOBILE_NAV_OFFSET_CLASS}`;
 
-export const PLANNER_WORKSPACE_HEADER_CLASS =
-  "ftc-page-header px-4 pb-4 pt-4 sm:px-6 md:pt-4";
+export const PLANNER_WORKSPACE_PAGE_INSET_CLASS = "px-4 sm:px-6";
+
+export const PLANNER_WORKSPACE_HEADER_CLASS = `ftc-page-header ${PLANNER_WORKSPACE_PAGE_INSET_CLASS} pb-4 pt-4 md:pt-4`;
 
 export const PLANNER_WORKSPACE_TITLE_CLASS = "text-xl font-semibold leading-tight text-ftc-text";
 
@@ -23,26 +24,37 @@ export const PLANNER_WORKSPACE_TITLE_ROW_CLASS =
   "flex flex-wrap items-start justify-between gap-3 md:min-h-[2.75rem]";
 
 export const PLANNER_WORKSPACE_TITLE_ACTIONS_CLASS =
-  "flex shrink-0 items-start justify-end md:min-h-[2.625rem] md:min-w-[9.5rem]";
+  "flex shrink-0 items-start justify-end md:min-h-[2.625rem] md:min-w-[11.75rem]";
 
 export const PLANNER_WORKSPACE_SUBNAV_SLOT_CLASS = "mt-4 md:min-h-[2.375rem]";
 
-export const PLANNER_WORKSPACE_CONTENT_CLASS = "px-4 py-4 sm:px-6";
+/** @deprecated Use PLANNER_WORKSPACE_PAGE_INSET_CLASS + body padding instead. */
+export const PLANNER_WORKSPACE_CONTENT_CLASS = `${PLANNER_WORKSPACE_PAGE_INSET_CLASS} pb-4 pt-4`;
+
+export const PLANNER_WORKSPACE_BELOW_HEADER_CLASS = PLANNER_WORKSPACE_PAGE_INSET_CLASS;
+
+export const PLANNER_WORKSPACE_BODY_CLASS = "pb-4";
 
 export const PLANNER_WORKSPACE_SECONDARY_CONTROLS_CLASS =
   "mb-4 flex flex-wrap items-center justify-between gap-2 md:min-h-[2.375rem]";
 
+export const PLANNER_WORKSPACE_SECONDARY_BAND_CLASS = "pt-4";
+
 /** @deprecated Use PLANNER_WORKSPACE_SECONDARY_CONTROLS_CLASS */
 export const PLANNER_WORKSPACE_SECONDARY_TABS_ROW_CLASS = PLANNER_WORKSPACE_SECONDARY_CONTROLS_CLASS;
 
-function PlannerWorkspaceTitleActions({ actions }: { actions?: React.ReactNode }) {
-  if (actions) {
-    return <div className={PLANNER_WORKSPACE_TITLE_ACTIONS_CLASS}>{actions}</div>;
-  }
+/** Matches the widest Events-area create button so title rows stay aligned. */
+const PLANNER_WORKSPACE_TITLE_ACTION_PLACEHOLDER_CLASS =
+  "pointer-events-none invisible hidden shrink-0 md:inline-flex ftc-btn-primary px-4 py-2.5 text-sm uppercase tracking-wide";
 
+function PlannerWorkspaceTitleActions({ actions }: { actions?: React.ReactNode }) {
   return (
-    <div aria-hidden="true" className={PLANNER_WORKSPACE_TITLE_ACTIONS_CLASS}>
-      <span className="pointer-events-none hidden opacity-0 md:inline-flex md:min-h-[2.625rem] md:min-w-[9rem] md:px-4 md:py-2.5" />
+    <div className={PLANNER_WORKSPACE_TITLE_ACTIONS_CLASS}>
+      {actions ?? (
+        <span aria-hidden="true" className={PLANNER_WORKSPACE_TITLE_ACTION_PLACEHOLDER_CLASS}>
+          Create event plan
+        </span>
+      )}
     </div>
   );
 }
@@ -121,6 +133,31 @@ type PlannerWorkspacePageProps = {
   children: React.ReactNode;
 };
 
+function renderSecondaryBand({
+  secondaryControlsSlot,
+  secondaryControls,
+  secondaryControlsPlaceholder,
+}: Pick<
+  PlannerWorkspacePageProps,
+  "secondaryControlsSlot" | "secondaryControls" | "secondaryControlsPlaceholder"
+>) {
+  if (secondaryControlsSlot) {
+    return secondaryControlsSlot;
+  }
+
+  if (secondaryControlsPlaceholder) {
+    return <PlannerWorkspaceSecondaryControlsPlaceholder />;
+  }
+
+  if (secondaryControls) {
+    return (
+      <PlannerWorkspaceSecondaryControls>{secondaryControls}</PlannerWorkspaceSecondaryControls>
+    );
+  }
+
+  return <PlannerWorkspaceSecondaryControlsPlaceholder />;
+}
+
 /** Shared Events-area page shell: nav, title row, primary tabs, divider, secondary controls, content. */
 export function PlannerWorkspacePage({
   title,
@@ -132,6 +169,12 @@ export function PlannerWorkspacePage({
   secondaryControlsPlaceholder = false,
   children,
 }: PlannerWorkspacePageProps) {
+  const secondaryBand = renderSecondaryBand({
+    secondaryControlsSlot,
+    secondaryControls,
+    secondaryControlsPlaceholder,
+  });
+
   return (
     <div className={PLANNER_WORKSPACE_PAGE_SHELL_CLASS}>
       <AppNavigation />
@@ -141,15 +184,9 @@ export function PlannerWorkspacePage({
         activeWorkspaceHref={activeWorkspaceHref}
         actions={actions}
       />
-      <div className={PLANNER_WORKSPACE_CONTENT_CLASS}>
-        {secondaryControlsSlot}
-        {!secondaryControlsSlot && secondaryControlsPlaceholder ? (
-          <PlannerWorkspaceSecondaryControlsPlaceholder />
-        ) : null}
-        {!secondaryControlsSlot && !secondaryControlsPlaceholder && secondaryControls ? (
-          <PlannerWorkspaceSecondaryControls>{secondaryControls}</PlannerWorkspaceSecondaryControls>
-        ) : null}
-        {children}
+      <div className={PLANNER_WORKSPACE_BELOW_HEADER_CLASS}>
+        <div className={PLANNER_WORKSPACE_SECONDARY_BAND_CLASS}>{secondaryBand}</div>
+        <div className={PLANNER_WORKSPACE_BODY_CLASS}>{children}</div>
       </div>
     </div>
   );
