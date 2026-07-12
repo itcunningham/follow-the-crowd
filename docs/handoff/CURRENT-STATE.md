@@ -68,7 +68,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 - **Calendar day selection:** desktop grid highlight tied to open day panel (`actionDate`); closing the panel clears the outline instantly (no transition fade) and blurs focus; Today styling unchanged
 - **Page load speed:** optimistic auth in `OnboardingGuard` (cached session renders immediately); profile cache + deduped fetches in `lib/user/currentUser.ts`; nav skips redundant profile load when guard profile exists
 - Desktop nav width aligned to page shell (`md:max-w-5xl`); `scrollbar-gutter: stable` on `<html>`
-- **Navigation badges:** shared `NavBadgeProvider` with session/memory cache — Gigs workspace tab badge prefetches at module load (`navigationBadgePrefetch.ts`) before React effects; sub-nav subscribes via `useSyncExternalStore` for immediate paint when cache/session data exists; invisible badge slot on true first load until network count arrives
+- **Navigation badges:** shared `NavBadgeProvider` with session/memory/localStorage cache — Gigs count uses dedicated `ensureGigsPendingPrefetched()` at module load (not blocked on cached userId); last real count restored from `localStorage` synchronously on first paint; sub-nav uses `useSyncExternalStore`
 - **Messages & Profile desktop:** shared `AppPageLayout` shell (`md:max-w-5xl`) aligned with Events workspace; inbox desktop card surface; profile two-column desktop grid
 - **DM conversation desktop:** chat column widened to `52rem` (~832px) at `lg+`, centered; mobile/tablet unchanged at `max-w-2xl`
 
