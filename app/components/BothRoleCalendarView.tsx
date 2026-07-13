@@ -2,7 +2,9 @@
 
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import CalendarMonthNav from "@/app/components/CalendarMonthNav";
+import CalendarMonthNav, {
+  GIG_CALENDAR_SECONDARY_ROW_CLASS,
+} from "@/app/components/CalendarMonthNav";
 import DjAvailabilityCalendar, {
   DjAvailabilityCalendarLegend,
 } from "@/app/components/DjAvailabilityCalendar";
@@ -162,10 +164,13 @@ export default function BothRoleCalendarView({ activeTab }: BothRoleCalendarView
             onMonthStartChange={handleMonthStartChange}
             onBeforeNavigate={activeTab === "dj" ? handleDjMonthNavBeforeNavigate : undefined}
             getMonthActivityDotClass={resolveMonthActivityDotClass}
-            reserveTrailingSpace={activeTab === "planner"}
-            trailingAction={activeTab === "dj" ? djMonthNavChrome?.trailingAction : undefined}
             overlay={activeTab === "dj" ? djMonthNavChrome?.overlay : undefined}
           />
+          {activeTab === "dj" ? (
+            <div className={GIG_CALENDAR_SECONDARY_ROW_CLASS}>
+              {djMonthNavChrome?.secondaryRowAction}
+            </div>
+          ) : null}
         </div>
 
         <div className={`mt-3 ${SHARED_LEGEND_MIN_HEIGHT_CLASS}`}>

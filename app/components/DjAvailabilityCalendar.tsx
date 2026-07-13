@@ -16,7 +16,9 @@ import {
   FTC_CAL_CELL,
   FTC_STATUS_DANGER,
 } from "@/lib/ftcFlatStatus";
-import CalendarMonthNav from "@/app/components/CalendarMonthNav";
+import CalendarMonthNav, {
+  GIG_CALENDAR_SECONDARY_ROW_CLASS,
+} from "@/app/components/CalendarMonthNav";
 import CalendarDotLegend from "@/app/components/calendar/CalendarDotLegend";
 import PlannerCalendarMobileDateStrip from "@/app/components/PlannerCalendarMobileDateStrip";
 import {
@@ -77,7 +79,7 @@ const PERSONAL_STATUS_OPTIONS = AVAILABILITY_STATUS_VALUES.map((value) => ({
 const BULK_STATUS_OPTIONS = PERSONAL_STATUS_OPTIONS;
 
 const GIG_CALENDAR_CONTROL_BUTTON_CLASS =
-  "shrink-0 rounded-lg border border-ftc-border-strong/90 bg-ftc-surface/80 px-1.5 py-1.5 text-[10px] font-semibold text-ftc-text-secondary transition hover:border-ftc-border-strong hover:text-ftc-text sm:px-2.5 sm:text-[11px]";
+  "rounded-lg border border-ftc-border-strong/90 bg-ftc-surface/80 px-2.5 py-1.5 text-[11px] font-semibold text-ftc-text-secondary transition hover:border-ftc-border-strong hover:text-ftc-text";
 
 const GIG_CALENDAR_UPDATE_PILL_CLASS =
   "inline-flex max-w-full items-center rounded-lg border-0 bg-ftc-primary px-2 py-1.5 text-[11px] font-medium text-ftc-bg transition-opacity duration-200 ease-out motion-reduce:transition-none sm:px-2.5";
@@ -136,7 +138,7 @@ function GigCalendarUpdatePill({ message, onDismiss }: GigCalendarUpdatePillProp
 
   return (
     <div
-      className="pointer-events-none absolute inset-x-0 top-0 z-0 flex h-full items-center justify-center px-[4rem] sm:px-[4.75rem]"
+      className="pointer-events-none absolute inset-x-0 top-0 z-0 flex h-full items-center justify-center px-10 sm:px-12"
       aria-hidden={!visible}
     >
       <p aria-live="polite" aria-atomic="true" className="pointer-events-none min-w-0 max-w-full">
@@ -1227,7 +1229,7 @@ export default function DjAvailabilityCalendar({
     <GigCalendarUpdatePill message={toastMessage} onDismiss={dismissToast} />
   ) : null;
 
-  const monthNavTrailingAction = !loading ? (
+  const secondaryRowAction = !loading ? (
     multiSelectMode ? (
       <QuickSelectMenu
         open={quickSelectOpen}
@@ -1261,17 +1263,11 @@ export default function DjAvailabilityCalendar({
 
     onDualModeChromeChange({
       overlay: monthNavOverlay,
-      trailingAction: monthNavTrailingAction,
+      secondaryRowAction,
     });
 
     return () => onDualModeChromeChange(null);
-  }, [
-    isDual,
-    loading,
-    monthNavOverlay,
-    monthNavTrailingAction,
-    onDualModeChromeChange,
-  ]);
+  }, [isDual, loading, monthNavOverlay, onDualModeChromeChange, secondaryRowAction]);
 
   const calendarWeeks = useMemo(() => getCalendarWeekRows(monthStart), [monthStart]);
 
@@ -1469,9 +1465,11 @@ export default function DjAvailabilityCalendar({
                 exitMultiSelectMode();
               }}
               getMonthActivityDotClass={getMonthActivityDotClass}
-              trailingAction={monthNavTrailingAction}
               overlay={monthNavOverlay}
             />
+            {secondaryRowAction ? (
+              <div className={GIG_CALENDAR_SECONDARY_ROW_CLASS}>{secondaryRowAction}</div>
+            ) : null}
           </div>
 
           <div className="mt-3">

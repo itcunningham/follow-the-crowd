@@ -4,9 +4,6 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { addMonths, formatCalendarMonthLabel } from "@/lib/calendar";
 import CalendarMonthYearPicker from "@/app/components/CalendarMonthYearPicker";
 
-export const CALENDAR_MONTH_NAV_TRAILING_COLUMN_CLASS =
-  "flex min-w-[4.25rem] shrink-0 items-center justify-end sm:min-w-[4.75rem]";
-
 type CalendarMonthNavProps = {
   monthStart: Date;
   onMonthStartChange: (date: Date) => void;
@@ -14,8 +11,6 @@ type CalendarMonthNavProps = {
   disablePreviousMonth?: boolean;
   minDate?: string;
   getMonthActivityDotClass?: (month: number, year: number) => string | null;
-  trailingAction?: ReactNode;
-  reserveTrailingSpace?: boolean;
   overlay?: ReactNode;
 };
 
@@ -26,14 +21,11 @@ export default function CalendarMonthNav({
   disablePreviousMonth = false,
   minDate,
   getMonthActivityDotClass,
-  trailingAction,
-  reserveTrailingSpace = false,
   overlay,
 }: CalendarMonthNavProps) {
   const monthLabelRef = useRef<HTMLButtonElement>(null);
   const monthYearPickerRef = useRef<HTMLDivElement>(null);
   const [monthYearPickerOpen, setMonthYearPickerOpen] = useState(false);
-  const showTrailingColumn = trailingAction != null || reserveTrailingSpace;
 
   useEffect(() => {
     if (!monthYearPickerOpen) {
@@ -90,13 +82,7 @@ export default function CalendarMonthNav({
   return (
     <div className="relative w-full">
       {overlay}
-      <div
-        className={`relative z-10 min-h-9 items-center ${
-          showTrailingColumn
-            ? "grid grid-cols-[minmax(0,1fr)_auto] gap-0.5 sm:gap-1"
-            : "flex justify-center"
-        }`}
-      >
+      <div className="relative z-10 flex min-h-9 items-center justify-center">
         <div className="flex min-w-0 items-center justify-center gap-0.5 sm:gap-1">
           <button
             type="button"
@@ -164,11 +150,10 @@ export default function CalendarMonthNav({
             </svg>
           </button>
         </div>
-
-        {showTrailingColumn ? (
-          <div className={CALENDAR_MONTH_NAV_TRAILING_COLUMN_CLASS}>{trailingAction}</div>
-        ) : null}
       </div>
     </div>
   );
 }
+
+export const GIG_CALENDAR_SECONDARY_ROW_CLASS =
+  "relative mt-1.5 flex min-h-[34px] items-center justify-end";
