@@ -1015,11 +1015,41 @@ function DjCalendarLegendSkeleton() {
   );
 }
 
-function DjCalendarGridSkeleton() {
+function DjCalendarMobileAgendaSkeleton() {
+  return (
+    <div aria-hidden="true" className="mt-4 md:hidden">
+      <div className="-mx-4 flex gap-1 px-4">
+        {Array.from({ length: 7 }, (_, index) => (
+          <SkeletonBlock
+            key={index}
+            className="h-[3.75rem] w-[calc((100%-1.5rem)/7)] min-w-[calc((100%-1.5rem)/7)] shrink-0 rounded-xl"
+          />
+        ))}
+      </div>
+
+      <div className="mt-4">
+        <SkeletonBlock className="h-5 w-44 max-w-full" />
+      </div>
+
+      <div className="mt-3 grid grid-cols-2 gap-2">
+        <SkeletonBlock className="min-h-11 rounded-xl" />
+        <SkeletonBlock className="min-h-11 rounded-xl" />
+        <SkeletonBlock className="min-h-11 rounded-xl" />
+        <SkeletonBlock className="col-span-2 min-h-11 rounded-xl" />
+      </div>
+
+      <div className="mt-4 rounded-xl border border-dashed border-ftc-border-subtle bg-ftc-surface/30 px-4 py-6">
+        <SkeletonBlock className="mx-auto h-4 w-48 max-w-full" />
+      </div>
+    </div>
+  );
+}
+
+function DjCalendarDesktopGridSkeleton() {
   return (
     <div
       aria-hidden="true"
-      className="mt-4 rounded-2xl border border-ftc-border bg-ftc-bg-elevated/40"
+      className="mt-4 hidden rounded-2xl border border-ftc-border bg-ftc-bg-elevated/40 md:block"
     >
       <div className="grid grid-cols-7 border-b border-ftc-border bg-ftc-bg-elevated/60">
         {Array.from({ length: 7 }, (_, index) => (
@@ -1032,7 +1062,7 @@ function DjCalendarGridSkeleton() {
         {Array.from({ length: 35 }, (_, index) => (
           <SkeletonBlock
             key={index}
-            className="min-h-[4.5rem] w-full rounded-xl sm:min-h-[5.5rem]"
+            className="min-h-[6.5rem] w-full rounded-lg sm:min-h-[7.5rem]"
           />
         ))}
       </div>
@@ -1051,7 +1081,8 @@ export function DjCalendarContentSkeleton() {
         <DjCalendarLegendSkeleton />
       </div>
 
-      <DjCalendarGridSkeleton />
+      <DjCalendarMobileAgendaSkeleton />
+      <DjCalendarDesktopGridSkeleton />
     </div>
   );
 }
@@ -1085,10 +1116,9 @@ export function DjCalendarLoadingCard({
         </div>
       </div>
       <DjCalendarContentSkeleton />
-      <p className="mt-3 text-xs text-ftc-text-muted">
-        Use the menu on each date to set personal availability. Booking badges open the linked
-        event or DM.
-      </p>
+      <div className="mt-3 hidden justify-center md:flex" aria-hidden="true">
+        <SkeletonBlock className="h-3 w-72 max-w-full" />
+      </div>
     </section>
   );
 }
