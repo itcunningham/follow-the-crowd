@@ -27,7 +27,7 @@ import {
   formatDjAvailabilityStatusLabel,
   getDjAvailabilityLoadErrorMessage,
   getDjAvailabilityDateStripMarker,
-  getDjAvailabilityCellFillClass,
+  getDjQuickSelectPreviewFillClass,
   getDjBookingStatusBadgeClass,
   getDjCalendarLegendDotClass,
   DJ_CALENDAR_LEGEND_ITEMS,
@@ -494,6 +494,7 @@ type DjAvailabilityMobileAgendaProps = {
   selectedDate: Date;
   multiSelectMode: boolean;
   selectedDateKeys: Set<string>;
+  pendingBulkChoice: PendingBulkChoice | null;
   availabilityByDate: Map<string, DjAvailabilityEntry>;
   bookingsByDate: Map<string, BookingRequest[]>;
   savingDateKey: string | null;
@@ -508,6 +509,7 @@ function DjAvailabilityMobileAgenda({
   selectedDate,
   multiSelectMode,
   selectedDateKeys,
+  pendingBulkChoice,
   availabilityByDate,
   bookingsByDate,
   savingDateKey,
@@ -526,15 +528,20 @@ function DjAvailabilityMobileAgenda({
         selectedDate={selectedDate}
         onSelectDate={onSelectDate}
         monthStart={monthStart}
-        getDateMarker={(dateKey, isHighlighted) =>
-          getDjAvailabilityDateStripMarker(
+        getDateMarker={(dateKey, isHighlighted) => {
+          const isBulkSelected = multiSelectMode && selectedDateKeys.has(dateKey);
+
+          return getDjAvailabilityDateStripMarker(
             dateKey,
             availabilityByDate,
             bookingsByDate,
             isHighlighted,
-            multiSelectMode && isHighlighted,
-          )
-        }
+            {
+              isSelected: isBulkSelected,
+              choice: isBulkSelected ? pendingBulkChoice : null,
+            },
+          );
+        }}
         isDateHighlighted={(date) =>
           multiSelectMode
             ? selectedDateKeys.has(toDateKey(date))
@@ -568,6 +575,7 @@ function DjAvailabilityDayCell({
   weekdayIndex,
   multiSelectMode,
   isSelected,
+  pendingBulkChoice,
   personalEntry,
   dayBookings,
   menuOpen,
@@ -587,6 +595,7 @@ function DjAvailabilityDayCell({
   weekdayIndex: number;
   multiSelectMode: boolean;
   isSelected: boolean;
+  pendingBulkChoice: PendingBulkChoice | null;
   personalEntry?: DjAvailabilityEntry;
   dayBookings: BookingRequest[];
   menuOpen: boolean;
@@ -606,6 +615,13 @@ function DjAvailabilityDayCell({
   const pendingBookings = dayBookings.filter((booking) => booking.status === "pending");
   const acceptedBookings = dayBookings.filter((booking) => booking.status === "accepted");
   const interactiveBookings = [...pendingBookings, ...acceptedBookings];
+  const isPreviewingAvailability = multiSelectMode && isSelected && pendingBulkChoice !== null;
+  const previewStatus =
+    isPreviewingAvailability && pendingBulkChoice.type === "status"
+      ? pendingBulkChoice.status
+      : null;
+  const previewClearsAvailability =
+    isPreviewingAvailability && pendingBulkChoice.type === "clear";
 
   function handleCellClick() {
     if (multiSelectMode) {
@@ -705,12 +721,17 @@ function DjAvailabilityDayCell({
       </div>
 
       <div className={`relative mt-1 space-y-1 ${multiSelectMode ? "pointer-events-none" : ""}`}>
-          {personalEntry ? (
+          {!previewClearsAvailability && previewStatus ? (
+            <span
+              title={formatDjAvailabilityStatusLabel(previewStatus)}
+              className={`${calendarCellColorBadgeClass} ${getDjQuickSelectPreviewFillClass(previewStatus)}`}
+            >
+              <span className="sr-only">{formatDjAvailabilityStatusLabel(previewStatus)}</span>
+            </span>
+          ) : !previewClearsAvailability && personalEntry ? (
             <span
               title={formatDjAvailabilityStatusLabel(personalEntry.status)}
-              className={`${calendarCellColorBadgeClass} ${getDjAvailabilityCellFillClass(personalEntry.status, {
-                isQuickSelectSelected: multiSelectMode && isSelected,
-              })}`}
+              className={`${calendarCellColorBadgeClass} ${getFlatAvailabilityFillClass(personalEntry.status)}`}
             >
               <span className="sr-only">{formatDjAvailabilityStatusLabel(personalEntry.status)}</span>
             </span>
@@ -1216,6 +1237,7 @@ export default function DjAvailabilityCalendar({
               selectedDate={selectedDate}
               multiSelectMode={multiSelectMode}
               selectedDateKeys={selectedDateKeys}
+              pendingBulkChoice={pendingBulkChoice}
               availabilityByDate={availabilityByDate}
               bookingsByDate={bookingsByDate}
               savingDateKey={savingDateKey}
@@ -1261,6 +1283,7 @@ export default function DjAvailabilityCalendar({
                         weekdayIndex={dayIndex}
                         multiSelectMode={multiSelectMode}
                         isSelected={selectedDateKeys.has(dateKey)}
+                        pendingBulkChoice={pendingBulkChoice}
                         personalEntry={availabilityByDate.get(dateKey)}
                         dayBookings={bookingsByDate.get(dateKey) ?? []}
                         menuOpen={!multiSelectMode && openMenuDateKey === dateKey}

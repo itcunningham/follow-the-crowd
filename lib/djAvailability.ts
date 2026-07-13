@@ -150,28 +150,28 @@ export function getDjCalendarLegendDotClass(kind: DjCalendarLegendKind): string 
 
 export function getDjCalendarStatusDotClass(
   kind: DjCalendarLegendKind,
-  options: {
-    isHighlighted?: boolean;
-    isQuickSelectSelected?: boolean;
-  } = {},
+  isHighlighted = false,
 ): string {
-  const { isHighlighted = false, isQuickSelectSelected = false } = options;
-
-  if (isQuickSelectSelected) {
-    const baseClass = getDjCalendarLegendDotClass(kind);
-
-    if (kind === "available") {
-      return `${baseClass} ring-1 ring-[var(--ftc-color-text-inverse)]`;
-    }
-
-    return baseClass;
-  }
-
   if (isHighlighted) {
     return "bg-ftc-bg";
   }
 
   return getDjCalendarLegendDotClass(kind);
+}
+
+export type DjAvailabilityBulkPreviewChoice =
+  | { type: "status"; status: DjAvailabilityStatus }
+  | { type: "clear" };
+
+export const DJ_QUICK_SELECT_PREVIEW_DOT_OUTLINE_CLASS =
+  "ring-1 ring-[var(--ftc-color-text-inverse)]";
+
+export function getDjQuickSelectPreviewDotClass(status: DjAvailabilityStatus): string {
+  return `${getDjCalendarLegendDotClass(status)} ${DJ_QUICK_SELECT_PREVIEW_DOT_OUTLINE_CLASS}`;
+}
+
+export function getDjQuickSelectPreviewFillClass(status: DjAvailabilityStatus): string {
+  return `${getFlatAvailabilityFillClass(status)} ${DJ_QUICK_SELECT_PREVIEW_DOT_OUTLINE_CLASS}`;
 }
 
 function getDjAvailabilityLegendKindForStatus(status: DjAvailabilityStatus): DjCalendarLegendKind {
@@ -183,34 +183,49 @@ export function getDjAvailabilityDateStripMarker(
   availabilityByDate: Map<string, DjAvailabilityEntry>,
   bookingsByDate: Map<string, BookingRequest[]>,
   isHighlighted: boolean,
-  isQuickSelectSelected = false,
+  bulkPreview?: {
+    isSelected: boolean;
+    choice: DjAvailabilityBulkPreviewChoice | null;
+  },
 ): CalendarMobileDateStripMarker | null {
   const bookings = bookingsByDate.get(dateKey) ?? [];
   const pendingBookings = bookings.filter((booking) => booking.status === "pending");
   const acceptedBookings = bookings.filter((booking) => booking.status === "accepted");
-  const availability = availabilityByDate.get(dateKey);
+  const isPreviewing =
+    bulkPreview?.isSelected === true && bulkPreview.choice !== null;
+
+  let availabilityStatus: DjAvailabilityStatus | null = null;
+
+  if (isPreviewing && bulkPreview?.choice) {
+    if (bulkPreview.choice.type === "status") {
+      availabilityStatus = bulkPreview.choice.status;
+    }
+  } else {
+    availabilityStatus = availabilityByDate.get(dateKey)?.status ?? null;
+  }
+
   const markerCount =
-    (availability ? 1 : 0) + pendingBookings.length + acceptedBookings.length;
+    (availabilityStatus ? 1 : 0) + pendingBookings.length + acceptedBookings.length;
 
   if (markerCount === 0) {
     return null;
   }
 
   let dotClassName: string;
-  const dotOptions = {
-    isHighlighted,
-    isQuickSelectSelected,
-  };
 
   if (pendingBookings.length > 0) {
-    dotClassName = getDjCalendarStatusDotClass("pending_request", dotOptions);
+    dotClassName = getDjCalendarStatusDotClass("pending_request", isHighlighted);
   } else if (acceptedBookings.length > 0) {
-    dotClassName = getDjCalendarStatusDotClass("booked", dotOptions);
-  } else if (availability) {
-    dotClassName = getDjCalendarStatusDotClass(
-      getDjAvailabilityLegendKindForStatus(availability.status),
-      dotOptions,
-    );
+    dotClassName = getDjCalendarStatusDotClass("booked", isHighlighted);
+  } else if (availabilityStatus) {
+    if (isPreviewing && bulkPreview?.choice?.type === "status") {
+      dotClassName = getDjQuickSelectPreviewDotClass(availabilityStatus);
+    } else {
+      dotClassName = getDjCalendarStatusDotClass(
+        getDjAvailabilityLegendKindForStatus(availabilityStatus),
+        isHighlighted,
+      );
+    }
   } else {
     return null;
   }
@@ -220,19 +235,6 @@ export function getDjAvailabilityDateStripMarker(
     extraCount: markerCount > 1 ? markerCount - 1 : 0,
     itemCountLabel: `, ${markerCount} item${markerCount === 1 ? "" : "s"}`,
   };
-}
-
-export function getDjAvailabilityCellFillClass(
-  status: DjAvailabilityStatus,
-  options: { isQuickSelectSelected?: boolean } = {},
-): string {
-  const fillClass = getFlatAvailabilityFillClass(status);
-
-  if (options.isQuickSelectSelected && status === "available") {
-    return `${fillClass} ring-1 ring-[var(--ftc-color-text-inverse)]`;
-  }
-
-  return fillClass;
 }
 
 export function getDjAvailabilityLoadErrorMessage(error: unknown): string {
