@@ -1102,11 +1102,11 @@ export function DjCalendarLoadingCard({
 }) {
   return (
     <section className={PLANNER_WORKSPACE_PRIMARY_SURFACE_CLASS}>
-      <div className="flex flex-wrap items-start justify-between gap-3">
+      <div className="flex items-center justify-between gap-2 sm:gap-3">
         <div className="hidden min-w-0 flex-1 md:block">
           <p className="text-sm text-ftc-text-muted">{description}</p>
         </div>
-        <div className="ml-auto flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2">
           <span
             aria-hidden="true"
             className="rounded-lg border border-ftc-border-strong/90 bg-ftc-surface/80 px-2.5 py-1.5 text-[11px] font-semibold text-ftc-text-secondary"

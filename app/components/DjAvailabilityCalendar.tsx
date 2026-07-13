@@ -70,6 +70,12 @@ const PERSONAL_STATUS_OPTIONS = AVAILABILITY_STATUS_VALUES.map((value) => ({
 
 const BULK_STATUS_OPTIONS = PERSONAL_STATUS_OPTIONS;
 
+const GIG_CALENDAR_CONTROL_BUTTON_CLASS =
+  "rounded-lg border border-ftc-border-strong/90 bg-ftc-surface/80 px-2.5 py-1.5 text-[11px] font-semibold text-ftc-text-secondary transition hover:border-ftc-border-strong hover:text-ftc-text";
+
+const GIG_CALENDAR_UPDATE_PILL_CLASS =
+  "inline-flex items-center rounded-lg border-0 bg-ftc-primary px-2.5 py-1.5 text-[11px] font-medium text-ftc-bg";
+
 type PendingBulkChoice =
   | { type: "status"; status: DjAvailabilityStatus }
   | { type: "clear" };
@@ -1170,16 +1176,23 @@ export default function DjAvailabilityCalendar({
 
   return (
     <section className={PLANNER_WORKSPACE_PRIMARY_SURFACE_CLASS}>
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="hidden min-w-0 flex-1 md:block">
-          <p className="text-sm text-ftc-text-muted">{description}</p>
+      <div className="flex items-center justify-between gap-2 sm:gap-3">
+        <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden sm:gap-3">
+          {!loading && toastMessage ? (
+            <p className="pointer-events-none shrink-0" aria-live="polite" aria-atomic="true">
+              <span className={GIG_CALENDAR_UPDATE_PILL_CLASS}>{toastMessage}</span>
+            </p>
+          ) : null}
+          <div className="hidden min-w-0 md:block">
+            <p className="truncate text-sm text-ftc-text-muted">{description}</p>
+          </div>
         </div>
-        <div className="ml-auto flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2">
             {!multiSelectMode ? (
               <button
                 type="button"
                 onClick={enterMultiSelectMode}
-                className="rounded-lg border border-ftc-border-strong/90 bg-ftc-surface/80 px-2.5 py-1.5 text-[11px] font-semibold text-ftc-text-secondary transition hover:border-ftc-border-strong hover:text-ftc-text"
+                className={GIG_CALENDAR_CONTROL_BUTTON_CLASS}
               >
                 Select dates
               </button>
@@ -1211,13 +1224,6 @@ export default function DjAvailabilityCalendar({
         ) : (
           <div className="transition-opacity duration-200 ease-out opacity-100 motion-reduce:transition-none">
             <div className="mt-4">
-              {toastMessage ? (
-                <p className="pointer-events-none mb-2 flex justify-center">
-                  <span className="rounded-full border-0 bg-ftc-primary px-3 py-1 text-[11px] font-medium text-ftc-bg">
-                    {toastMessage}
-                  </span>
-                </p>
-              ) : null}
               {error ? (
                 <p
                   role="alert"
