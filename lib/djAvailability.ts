@@ -133,6 +133,27 @@ export const DJ_CALENDAR_LEGEND_ITEMS = [
   { label: "Booked", kind: "booked" as const },
 ] as const;
 
+/** Gig Calendar date-strip dot priority (highest first). Separate from Event Calendar kinds. */
+const DJ_CALENDAR_DATE_STRIP_STATUS_PRIORITY: readonly DjCalendarLegendKind[] = [
+  "booked",
+  "pending_request",
+  "unavailable",
+  "tentative",
+  "available",
+];
+
+function getHighestPriorityDjCalendarLegendKind(
+  presentKinds: readonly DjCalendarLegendKind[],
+): DjCalendarLegendKind | null {
+  for (const kind of DJ_CALENDAR_DATE_STRIP_STATUS_PRIORITY) {
+    if (presentKinds.includes(kind)) {
+      return kind;
+    }
+  }
+
+  return null;
+}
+
 export function getDjCalendarLegendDotClass(kind: DjCalendarLegendKind): string {
   switch (kind) {
     case "available":
@@ -211,23 +232,36 @@ export function getDjAvailabilityDateStripMarker(
     return null;
   }
 
-  let dotClassName: string;
+  const presentKinds: DjCalendarLegendKind[] = [];
+
+  if (acceptedBookings.length > 0) {
+    presentKinds.push("booked");
+  }
 
   if (pendingBookings.length > 0) {
-    dotClassName = getDjCalendarStatusDotClass("pending_request", isHighlighted);
-  } else if (acceptedBookings.length > 0) {
-    dotClassName = getDjCalendarStatusDotClass("booked", isHighlighted);
-  } else if (availabilityStatus) {
-    if (isPreviewing && bulkPreview?.choice?.type === "status") {
-      dotClassName = getDjQuickSelectPreviewDotClass(availabilityStatus);
-    } else {
-      dotClassName = getDjCalendarStatusDotClass(
-        getDjAvailabilityLegendKindForStatus(availabilityStatus),
-        isHighlighted,
-      );
-    }
-  } else {
+    presentKinds.push("pending_request");
+  }
+
+  if (availabilityStatus) {
+    presentKinds.push(getDjAvailabilityLegendKindForStatus(availabilityStatus));
+  }
+
+  const highestPriorityKind = getHighestPriorityDjCalendarLegendKind(presentKinds);
+
+  if (!highestPriorityKind) {
     return null;
+  }
+
+  let dotClassName: string;
+
+  if (
+    isPreviewing &&
+    bulkPreview?.choice?.type === "status" &&
+    highestPriorityKind === getDjAvailabilityLegendKindForStatus(bulkPreview.choice.status)
+  ) {
+    dotClassName = getDjQuickSelectPreviewDotClass(bulkPreview.choice.status);
+  } else {
+    dotClassName = getDjCalendarStatusDotClass(highestPriorityKind, isHighlighted);
   }
 
   return {
