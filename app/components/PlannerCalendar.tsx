@@ -535,16 +535,19 @@ export default function PlannerCalendar({
     return isSameMonth(date, monthStart);
   }
 
-  function handleSelectDate(date: Date) {
-    clearInviteMessage();
+  const handleSelectDate = useCallback(
+    (date: Date) => {
+      clearInviteMessage();
 
-    if (isDual && sharedViewState) {
-      sharedViewState.onSelectDate(date);
-      return;
-    }
+      if (isDual && sharedViewState) {
+        sharedViewState.onSelectDate(date);
+        return;
+      }
 
-    setLocalSelectedDate(date);
-  }
+      setLocalSelectedDate(date);
+    },
+    [clearInviteMessage, isDual, sharedViewState],
+  );
 
   function handleSelectActionDate(date: Date) {
     clearInviteMessage();
@@ -585,17 +588,22 @@ export default function PlannerCalendar({
     });
   }
 
+  const dualMobileStripConfig = useMemo(
+    () => ({
+      itemsByDate,
+      isDateHighlighted: (date: Date) => isSameDay(date, selectedDate),
+      onSelectDate: handleSelectDate,
+    }),
+    [handleSelectDate, itemsByDate, selectedDate],
+  );
+
   useEffect(() => {
     if (!isDual || !onMobileStripConfigChange) {
       return;
     }
 
-    onMobileStripConfigChange({
-      itemsByDate,
-      isDateHighlighted: (date) => isSameDay(date, selectedDate),
-      onSelectDate: handleSelectDate,
-    });
-  }, [handleSelectDate, isDual, itemsByDate, onMobileStripConfigChange, selectedDate]);
+    onMobileStripConfigChange(dualMobileStripConfig);
+  }, [dualMobileStripConfig, isDual, onMobileStripConfigChange]);
 
   useEffect(() => {
     if (!isDual || !onMonthActivityDotClassChange) {

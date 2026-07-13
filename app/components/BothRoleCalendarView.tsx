@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useLayoutEffect, useMemo, useState } from "react";
+import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import CalendarMonthNav from "@/app/components/CalendarMonthNav";
 import DjAvailabilityCalendar, {
@@ -43,13 +43,11 @@ export default function BothRoleCalendarView({ activeTab }: BothRoleCalendarView
   });
   const [plannerStripConfig, setPlannerStripConfig] = useState<CalendarMobileStripConfig>({});
   const [djStripConfig, setDjStripConfig] = useState<CalendarMobileStripConfig>({});
-  const [plannerMonthActivityDotClass, setPlannerMonthActivityDotClass] = useState<
-    (month: number, year: number) => string | null
-  >(() => () => null);
-  const [djMonthActivityDotClass, setDjMonthActivityDotClass] = useState<
-    (month: number, year: number) => string | null
-  >(() => () => null);
-  const [djMonthNavHandlers, setDjMonthNavHandlers] = useState<CalendarDualModeRegistration>({});
+  const plannerMonthActivityRef = useRef<(month: number, year: number) => string | null>(
+    () => null,
+  );
+  const djMonthActivityRef = useRef<(month: number, year: number) => string | null>(() => null);
+  const djMonthNavHandlersRef = useRef<CalendarDualModeRegistration>({});
 
   useLayoutEffect(() => {
     const nextView = resolvePlannerCalendarViewState(
@@ -94,9 +92,39 @@ export default function BothRoleCalendarView({ activeTab }: BothRoleCalendarView
     [handleMonthStartChange, handleSelectDate, monthStart, selectedDate],
   );
 
+  const handlePlannerMonthActivityDotClassChange = useCallback(
+    (getter: (month: number, year: number) => string | null) => {
+      plannerMonthActivityRef.current = getter;
+    },
+    [],
+  );
+
+  const handleDjMonthActivityDotClassChange = useCallback(
+    (getter: (month: number, year: number) => string | null) => {
+      djMonthActivityRef.current = getter;
+    },
+    [],
+  );
+
+  const handleDjDualModeRegistration = useCallback((registration: CalendarDualModeRegistration) => {
+    djMonthNavHandlersRef.current = registration;
+  }, []);
+
+  const resolveMonthActivityDotClass = useCallback(
+    (month: number, year: number) => {
+      const getter =
+        activeTab === "planner" ? plannerMonthActivityRef.current : djMonthActivityRef.current;
+
+      return getter(month, year);
+    },
+    [activeTab],
+  );
+
+  const handleDjMonthNavBeforeNavigate = useCallback(() => {
+    djMonthNavHandlersRef.current.onBeforeMonthNavigate?.();
+  }, []);
+
   const activeStripConfig = activeTab === "planner" ? plannerStripConfig : djStripConfig;
-  const activeMonthActivityDotClass =
-    activeTab === "planner" ? plannerMonthActivityDotClass : djMonthActivityDotClass;
 
   return (
     <section className={`${PLANNER_WORKSPACE_PRIMARY_SURFACE_CLASS} flex flex-col`}>
@@ -106,7 +134,7 @@ export default function BothRoleCalendarView({ activeTab }: BothRoleCalendarView
           isActive
           sharedViewState={sharedViewState}
           onMobileStripConfigChange={setPlannerStripConfig}
-          onMonthActivityDotClassChange={setPlannerMonthActivityDotClass}
+          onMonthActivityDotClassChange={handlePlannerMonthActivityDotClassChange}
         />
       ) : (
         <DjAvailabilityCalendar
@@ -114,10 +142,8 @@ export default function BothRoleCalendarView({ activeTab }: BothRoleCalendarView
           isActive
           sharedViewState={sharedViewState}
           onMobileStripConfigChange={setDjStripConfig}
-          onMonthActivityDotClassChange={setDjMonthActivityDotClass}
-          onDualModeRegistration={(registration) => {
-            setDjMonthNavHandlers(registration);
-          }}
+          onMonthActivityDotClassChange={handleDjMonthActivityDotClassChange}
+          onDualModeRegistration={handleDjDualModeRegistration}
           description="Manage your availability and received bookings."
         />
       )}
@@ -127,10 +153,8 @@ export default function BothRoleCalendarView({ activeTab }: BothRoleCalendarView
           <CalendarMonthNav
             monthStart={monthStart}
             onMonthStartChange={handleMonthStartChange}
-            onBeforeNavigate={
-              activeTab === "dj" ? djMonthNavHandlers.onBeforeMonthNavigate : undefined
-            }
-            getMonthActivityDotClass={activeMonthActivityDotClass}
+            onBeforeNavigate={activeTab === "dj" ? handleDjMonthNavBeforeNavigate : undefined}
+            getMonthActivityDotClass={resolveMonthActivityDotClass}
           />
         </div>
 

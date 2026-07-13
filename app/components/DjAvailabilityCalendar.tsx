@@ -963,19 +963,19 @@ export default function DjAvailabilityCalendar({
     monthStart.getFullYear() === todayParts.year &&
     monthStart.getMonth() === todayParts.month;
 
-  function closeCalendarOverlays() {
+  const closeCalendarOverlays = useCallback(() => {
     setOpenMenuDateKey(null);
     setOpenBookingPopoverDateKey(null);
-  }
+  }, []);
 
-  function exitMultiSelectMode() {
+  const exitMultiSelectMode = useCallback(() => {
     setMultiSelectMode(false);
     setSelectedDateKeys(new Set());
     setQuickSelectOpen(false);
     setPendingBulkChoice(null);
     setBulkActionError(null);
     closeCalendarOverlays();
-  }
+  }, [closeCalendarOverlays]);
 
   function enterMultiSelectMode() {
     closeCalendarOverlays();
@@ -983,7 +983,7 @@ export default function DjAvailabilityCalendar({
     setSelectedDateKeys(new Set());
   }
 
-  function toggleDateSelection(dateKey: string) {
+  const toggleDateSelection = useCallback((dateKey: string) => {
     setSelectedDateKeys((current) => {
       const next = new Set(current);
 
@@ -995,7 +995,7 @@ export default function DjAvailabilityCalendar({
 
       return next;
     });
-  }
+  }, []);
 
   function selectDisplayedDatesMatching(predicate: (date: Date) => boolean) {
     const keys = getDisplayedMonthDates(monthStart).filter(predicate).map(toDateKey);
@@ -1126,20 +1126,23 @@ export default function DjAvailabilityCalendar({
     });
   }
 
-  function handleMobileSelectDate(date: Date) {
-    closeCalendarOverlays();
+  const handleMobileSelectDate = useCallback(
+    (date: Date) => {
+      closeCalendarOverlays();
 
-    if (multiSelectMode) {
-      toggleDateSelection(toDateKey(date));
-    }
+      if (multiSelectMode) {
+        toggleDateSelection(toDateKey(date));
+      }
 
-    if (isDual && sharedViewState) {
-      sharedViewState.onSelectDate(date);
-      return;
-    }
+      if (isDual && sharedViewState) {
+        sharedViewState.onSelectDate(date);
+        return;
+      }
 
-    setLocalSelectedDate(date);
-  }
+      setLocalSelectedDate(date);
+    },
+    [closeCalendarOverlays, isDual, multiSelectMode, sharedViewState, toggleDateSelection],
+  );
 
   const availabilityByDate = useMemo(
     () => groupAvailabilityEntriesByDate(availabilityEntries),
@@ -1157,13 +1160,9 @@ export default function DjAvailabilityCalendar({
     [monthActivityByKey],
   );
 
-  useEffect(() => {
-    if (!isDual || !onMobileStripConfigChange) {
-      return;
-    }
-
-    onMobileStripConfigChange({
-      getDateMarker: (dateKey, isHighlighted) => {
+  const dualMobileStripConfig = useMemo(
+    () => ({
+      getDateMarker: (dateKey: string, isHighlighted: boolean) => {
         const isBulkSelected = multiSelectMode && selectedDateKeys.has(dateKey);
 
         return getDjAvailabilityDateStripMarker(
@@ -1177,23 +1176,30 @@ export default function DjAvailabilityCalendar({
           },
         );
       },
-      isDateHighlighted: (date) =>
+      isDateHighlighted: (date: Date) =>
         multiSelectMode
           ? selectedDateKeys.has(toDateKey(date))
           : isSameDay(date, selectedDate),
       onSelectDate: handleMobileSelectDate,
-    });
-  }, [
-    availabilityByDate,
-    bookingsByDate,
-    handleMobileSelectDate,
-    isDual,
-    multiSelectMode,
-    onMobileStripConfigChange,
-    pendingBulkChoice,
-    selectedDate,
-    selectedDateKeys,
-  ]);
+    }),
+    [
+      availabilityByDate,
+      bookingsByDate,
+      handleMobileSelectDate,
+      multiSelectMode,
+      pendingBulkChoice,
+      selectedDate,
+      selectedDateKeys,
+    ],
+  );
+
+  useEffect(() => {
+    if (!isDual || !onMobileStripConfigChange) {
+      return;
+    }
+
+    onMobileStripConfigChange(dualMobileStripConfig);
+  }, [dualMobileStripConfig, isDual, onMobileStripConfigChange]);
 
   useEffect(() => {
     if (!isDual || !onMonthActivityDotClassChange) {
@@ -1214,7 +1220,7 @@ export default function DjAvailabilityCalendar({
         exitMultiSelectMode();
       },
     });
-  }, [isDual, onDualModeRegistration]);
+  }, [closeCalendarOverlays, exitMultiSelectMode, isDual, onDualModeRegistration]);
 
   const calendarWeeks = useMemo(() => getCalendarWeekRows(monthStart), [monthStart]);
 
