@@ -74,7 +74,73 @@ const GIG_CALENDAR_CONTROL_BUTTON_CLASS =
   "rounded-lg border border-ftc-border-strong/90 bg-ftc-surface/80 px-2.5 py-1.5 text-[11px] font-semibold text-ftc-text-secondary transition hover:border-ftc-border-strong hover:text-ftc-text";
 
 const GIG_CALENDAR_UPDATE_PILL_CLASS =
-  "inline-flex items-center rounded-lg border-0 bg-ftc-primary px-2.5 py-1.5 text-[11px] font-medium text-ftc-bg";
+  "inline-flex max-w-full items-center rounded-lg border-0 bg-ftc-primary px-2 py-1.5 text-[11px] font-medium text-ftc-bg transition-opacity duration-200 ease-out motion-reduce:transition-none sm:px-2.5";
+
+const GIG_CALENDAR_UPDATE_VISIBLE_MS = 2800;
+const GIG_CALENDAR_UPDATE_FADE_MS = 200;
+
+type GigCalendarUpdatePillProps = {
+  message: string | null;
+  onDismiss: () => void;
+};
+
+function GigCalendarUpdatePill({ message, onDismiss }: GigCalendarUpdatePillProps) {
+  const [displayMessage, setDisplayMessage] = useState<string | null>(null);
+  const [visible, setVisible] = useState(false);
+  const isShowingRef = useRef(false);
+  const fadeInRafRef = useRef(0);
+
+  useEffect(() => {
+    if (!message) {
+      return;
+    }
+
+    setDisplayMessage(message);
+
+    if (!isShowingRef.current) {
+      isShowingRef.current = true;
+      setVisible(false);
+      fadeInRafRef.current = requestAnimationFrame(() => {
+        fadeInRafRef.current = requestAnimationFrame(() => setVisible(true));
+      });
+    } else {
+      setVisible(true);
+    }
+
+    const fadeOutTimer = window.setTimeout(() => {
+      setVisible(false);
+      isShowingRef.current = false;
+    }, GIG_CALENDAR_UPDATE_VISIBLE_MS);
+
+    const dismissTimer = window.setTimeout(() => {
+      setDisplayMessage(null);
+      onDismiss();
+    }, GIG_CALENDAR_UPDATE_VISIBLE_MS + GIG_CALENDAR_UPDATE_FADE_MS);
+
+    return () => {
+      cancelAnimationFrame(fadeInRafRef.current);
+      window.clearTimeout(fadeOutTimer);
+      window.clearTimeout(dismissTimer);
+    };
+  }, [message, onDismiss]);
+
+  if (!displayMessage) {
+    return null;
+  }
+
+  return (
+    <div
+      className="pointer-events-none absolute inset-0 z-0 flex items-center justify-center px-[4.75rem] sm:px-[5.25rem]"
+      aria-hidden={!visible}
+    >
+      <p aria-live="polite" aria-atomic="true" className="min-w-0 max-w-full">
+        <span className={`${GIG_CALENDAR_UPDATE_PILL_CLASS} ${visible ? "opacity-100" : "opacity-0"}`}>
+          {displayMessage}
+        </span>
+      </p>
+    </div>
+  );
+}
 
 type PendingBulkChoice =
   | { type: "status"; status: DjAvailabilityStatus }
@@ -844,6 +910,7 @@ export default function DjAvailabilityCalendar({
   const [pendingBulkChoice, setPendingBulkChoice] = useState<PendingBulkChoice | null>(null);
   const [bulkActionError, setBulkActionError] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const dismissToast = useCallback(() => setToastMessage(null), []);
 
   useLayoutEffect(() => {
     const nextMonthStart = resolveDjCalendarViewMonthStart(
@@ -870,18 +937,6 @@ export default function DjAvailabilityCalendar({
       day: now.getDate(),
     });
   }, []);
-
-  useEffect(() => {
-    if (!toastMessage) {
-      return;
-    }
-
-    const timer = window.setTimeout(() => setToastMessage(null), 2500);
-
-    return () => {
-      window.clearTimeout(timer);
-    };
-  }, [toastMessage]);
 
   const viewingCurrentMonth =
     todayParts !== null &&
@@ -1176,18 +1231,15 @@ export default function DjAvailabilityCalendar({
 
   return (
     <section className={PLANNER_WORKSPACE_PRIMARY_SURFACE_CLASS}>
-      <div className="flex items-center justify-between gap-2 sm:gap-3">
-        <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden sm:gap-3">
-          {!loading && toastMessage ? (
-            <p className="pointer-events-none shrink-0" aria-live="polite" aria-atomic="true">
-              <span className={GIG_CALENDAR_UPDATE_PILL_CLASS}>{toastMessage}</span>
-            </p>
-          ) : null}
-          <div className="hidden min-w-0 md:block">
+      <div className="relative">
+        {!loading ? (
+          <GigCalendarUpdatePill message={toastMessage} onDismiss={dismissToast} />
+        ) : null}
+        <div className="relative z-10 flex items-center justify-between gap-2 sm:gap-3">
+          <div className="hidden min-w-0 max-w-[42%] md:block">
             <p className="truncate text-sm text-ftc-text-muted">{description}</p>
           </div>
-        </div>
-        <div className="flex shrink-0 items-center gap-2">
+          <div className="ml-auto flex shrink-0 items-center gap-2">
             {!multiSelectMode ? (
               <button
                 type="button"
@@ -1218,6 +1270,7 @@ export default function DjAvailabilityCalendar({
             )}
           </div>
         </div>
+      </div>
 
         {loading ? (
           <DjCalendarContentSkeleton />
