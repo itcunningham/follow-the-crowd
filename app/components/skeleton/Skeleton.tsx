@@ -1003,10 +1003,13 @@ function DjCalendarLegendSkeleton() {
   return (
     <div
       aria-hidden="true"
-      className="flex flex-wrap items-center justify-center gap-2"
+      className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2"
     >
       {Array.from({ length: 5 }, (_, index) => (
-        <SkeletonBlock key={index} className="h-5 w-[5.5rem] rounded-full" />
+        <span key={index} className="inline-flex items-center gap-1.5">
+          <SkeletonBlock className="h-1.5 w-1.5 rounded-full" />
+          <SkeletonBlock className={`h-3 ${index === 3 ? "w-24" : "w-14"}`} />
+        </span>
       ))}
     </div>
   );

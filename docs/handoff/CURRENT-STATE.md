@@ -46,7 +46,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 - Mobile (`< md`): horizontal date strip + selected-day panel — status buttons (Available / Maybe / Unavailable / Clear), booking list, today/selected chip styling aligned with planner event calendar strip
 - Desktop (`md+`): month grid with per-date overflow menu unchanged
 - Bulk select + quick select (Fridays / Saturdays / weekends) on all breakpoints; mobile strip toggles selection in bulk mode
-- Strip dot priority per date: Pending (amber) → Booked (green) → availability colour; existing save/load/error/toast behaviour preserved
+- **Legend + strip dots:** compact dot-and-label legend (shared `CalendarDotLegend`) — Available light blue, Maybe amber, Unavailable red, Pending Request dark blue, Booked green; date-strip dots use the same mapping with `+N` for multiple markers
 - Shared strip component: `PlannerCalendarMobileDateStrip` accepts optional `getDateMarker` for DJ markers (`getDjAvailabilityDateStripMarker`)
 
 ## Booking / invite UX

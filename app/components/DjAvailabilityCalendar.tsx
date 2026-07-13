@@ -17,6 +17,7 @@ import {
   FTC_STATUS_DANGER,
 } from "@/lib/ftcFlatStatus";
 import CalendarMonthNav from "@/app/components/CalendarMonthNav";
+import CalendarDotLegend from "@/app/components/calendar/CalendarDotLegend";
 import PlannerCalendarMobileDateStrip from "@/app/components/PlannerCalendarMobileDateStrip";
 import { DjCalendarContentSkeleton } from "@/app/components/skeleton/Skeleton";
 import {
@@ -25,9 +26,10 @@ import {
   clearMyAvailabilityForDate,
   formatDjAvailabilityStatusLabel,
   getDjAvailabilityLoadErrorMessage,
-  getDjAvailabilityStatusBadgeClass,
   getDjAvailabilityDateStripMarker,
   getDjBookingStatusBadgeClass,
+  getDjCalendarLegendDotClass,
+  DJ_CALENDAR_LEGEND_ITEMS,
   groupAvailabilityEntriesByDate,
   listMyAvailabilityEntries,
   normalizeAvailabilityDate,
@@ -100,26 +102,14 @@ function getAvailabilityMenuPositionClass(weekdayIndex: number): string {
 
 const calendarCellColorBadgeClass = FTC_CAL_CELL;
 
-function AvailabilityLegend() {
-  const items = [
-    { label: "Available", className: getDjAvailabilityStatusBadgeClass("available") },
-    { label: "Maybe", className: getDjAvailabilityStatusBadgeClass("tentative") },
-    { label: "Unavailable", className: getDjAvailabilityStatusBadgeClass("unavailable") },
-    { label: "Pending Request", className: getDjBookingStatusBadgeClass("pending") },
-    { label: "Booked", className: getDjBookingStatusBadgeClass("accepted") },
-  ];
-
+function DjAvailabilityLegend() {
   return (
-    <div className="flex flex-wrap items-center justify-center gap-2">
-      {items.map((item) => (
-        <span
-          key={item.label}
-          className={`rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${item.className}`}
-        >
-          {item.label}
-        </span>
-      ))}
-    </div>
+    <CalendarDotLegend
+      items={DJ_CALENDAR_LEGEND_ITEMS.map((item) => ({
+        label: item.label,
+        dotClassName: getDjCalendarLegendDotClass(item.kind),
+      }))}
+    />
   );
 }
 
@@ -1199,7 +1189,7 @@ export default function DjAvailabilityCalendar({
             </div>
 
             <div className="mt-3">
-              <AvailabilityLegend />
+              <DjAvailabilityLegend />
             </div>
 
             <DjAvailabilityMobileAgenda

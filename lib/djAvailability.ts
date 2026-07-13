@@ -8,6 +8,7 @@ import {
   FTC_STATUS_ACCEPTED_DOT,
   FTC_STATUS_PENDING_DOT,
   FTC_STATUS_TODAY_DOT,
+  FTC_STATUS_UPCOMING_DOT,
 } from "@/lib/ftcFlatStatus";
 import { formatIsoDateKeyForDisplay } from "@/lib/bookingDateTime";
 import { getCurrentUserId } from "@/lib/user/currentUser";
@@ -116,22 +117,49 @@ export function getDjAvailabilityStatusBadgeClass(status: DjAvailabilityStatus):
   }
 }
 
-function getDjAvailabilityDateStripDotClass(
-  status: DjAvailabilityStatus,
-  isHighlighted: boolean,
-): string {
-  if (isHighlighted) {
-    return "bg-ftc-bg";
-  }
+export type DjCalendarLegendKind =
+  | "available"
+  | "tentative"
+  | "unavailable"
+  | "pending_request"
+  | "booked";
 
-  switch (status) {
+export const DJ_CALENDAR_LEGEND_ITEMS = [
+  { label: "Available", kind: "available" as const },
+  { label: "Maybe", kind: "tentative" as const },
+  { label: "Unavailable", kind: "unavailable" as const },
+  { label: "Pending Request", kind: "pending_request" as const },
+  { label: "Booked", kind: "booked" as const },
+] as const;
+
+export function getDjCalendarLegendDotClass(kind: DjCalendarLegendKind): string {
+  switch (kind) {
     case "available":
       return FTC_STATUS_TODAY_DOT;
     case "tentative":
       return FTC_STATUS_PENDING_DOT;
     case "unavailable":
       return "bg-[var(--ftc-color-danger)]";
+    case "pending_request":
+      return FTC_STATUS_UPCOMING_DOT;
+    case "booked":
+      return FTC_STATUS_ACCEPTED_DOT;
   }
+}
+
+export function getDjCalendarStatusDotClass(
+  kind: DjCalendarLegendKind,
+  isHighlighted = false,
+): string {
+  if (isHighlighted) {
+    return "bg-ftc-bg";
+  }
+
+  return getDjCalendarLegendDotClass(kind);
+}
+
+function getDjAvailabilityLegendKindForStatus(status: DjAvailabilityStatus): DjCalendarLegendKind {
+  return status;
 }
 
 export function getDjAvailabilityDateStripMarker(
@@ -154,11 +182,14 @@ export function getDjAvailabilityDateStripMarker(
   let dotClassName: string;
 
   if (pendingBookings.length > 0) {
-    dotClassName = isHighlighted ? "bg-ftc-bg" : FTC_STATUS_PENDING_DOT;
+    dotClassName = getDjCalendarStatusDotClass("pending_request", isHighlighted);
   } else if (acceptedBookings.length > 0) {
-    dotClassName = isHighlighted ? "bg-ftc-bg" : FTC_STATUS_ACCEPTED_DOT;
+    dotClassName = getDjCalendarStatusDotClass("booked", isHighlighted);
   } else if (availability) {
-    dotClassName = getDjAvailabilityDateStripDotClass(availability.status, isHighlighted);
+    dotClassName = getDjCalendarStatusDotClass(
+      getDjAvailabilityLegendKindForStatus(availability.status),
+      isHighlighted,
+    );
   } else {
     return null;
   }
