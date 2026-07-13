@@ -10,6 +10,7 @@ type CalendarMonthNavProps = {
   onBeforeNavigate?: () => void;
   disablePreviousMonth?: boolean;
   minDate?: string;
+  getMonthActivityDotClass?: (month: number, year: number) => string | null;
 };
 
 export default function CalendarMonthNav({
@@ -18,6 +19,7 @@ export default function CalendarMonthNav({
   onBeforeNavigate,
   disablePreviousMonth = false,
   minDate,
+  getMonthActivityDotClass,
 }: CalendarMonthNavProps) {
   const monthLabelRef = useRef<HTMLButtonElement>(null);
   const monthYearPickerRef = useRef<HTMLDivElement>(null);
@@ -119,6 +121,7 @@ export default function CalendarMonthNav({
               initialYear={monthStart.getFullYear()}
               onCancel={() => setMonthYearPickerOpen(false)}
               onConfirm={handleConfirmMonthYear}
+              getMonthActivityDotClass={getMonthActivityDotClass}
             />
           </div>
         ) : null}

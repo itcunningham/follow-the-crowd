@@ -30,6 +30,8 @@ import {
   getDjQuickSelectPreviewFillClass,
   getDjBookingStatusBadgeClass,
   getDjCalendarLegendDotClass,
+  buildDjCalendarMonthActivityByKey,
+  getDjCalendarMonthActivityDotClass,
   DJ_CALENDAR_LEGEND_ITEMS,
   groupAvailabilityEntriesByDate,
   listMyAvailabilityEntries,
@@ -1116,6 +1118,15 @@ export default function DjAvailabilityCalendar({
   );
 
   const bookingsByDate = useMemo(() => groupActiveBookingsByDate(bookings), [bookings]);
+  const monthActivityByKey = useMemo(
+    () => buildDjCalendarMonthActivityByKey(availabilityByDate, bookingsByDate),
+    [availabilityByDate, bookingsByDate],
+  );
+  const getMonthActivityDotClass = useCallback(
+    (month: number, year: number) =>
+      getDjCalendarMonthActivityDotClass(monthActivityByKey, month, year),
+    [monthActivityByKey],
+  );
 
   const calendarWeeks = useMemo(() => getCalendarWeekRows(monthStart), [monthStart]);
 
@@ -1295,6 +1306,7 @@ export default function DjAvailabilityCalendar({
                   closeCalendarOverlays();
                   exitMultiSelectMode();
                 }}
+                getMonthActivityDotClass={getMonthActivityDotClass}
               />
             </div>
 

@@ -199,37 +199,22 @@ function getDjAvailabilityLegendKindForStatus(status: DjAvailabilityStatus): DjC
   return status;
 }
 
-export function getDjAvailabilityDateStripMarker(
+export function getDjCalendarLegendKindsForDate(
   dateKey: string,
   availabilityByDate: Map<string, DjAvailabilityEntry>,
   bookingsByDate: Map<string, BookingRequest[]>,
-  isHighlighted: boolean,
-  bulkPreview?: {
-    isSelected: boolean;
-    choice: DjAvailabilityBulkPreviewChoice | null;
-  },
-): CalendarMobileDateStripMarker | null {
+  availabilityStatusOverride?: DjAvailabilityStatus | null,
+): DjCalendarLegendKind[] {
   const bookings = bookingsByDate.get(dateKey) ?? [];
   const pendingBookings = bookings.filter((booking) => booking.status === "pending");
   const acceptedBookings = bookings.filter((booking) => booking.status === "accepted");
-  const isPreviewing =
-    bulkPreview?.isSelected === true && bulkPreview.choice !== null;
+  const availabilityStatus =
+    availabilityStatusOverride !== undefined
+      ? availabilityStatusOverride
+      : (availabilityByDate.get(dateKey)?.status ?? null);
 
-  let availabilityStatus: DjAvailabilityStatus | null = null;
-
-  if (isPreviewing && bulkPreview?.choice) {
-    if (bulkPreview.choice.type === "status") {
-      availabilityStatus = bulkPreview.choice.status;
-    }
-  } else {
-    availabilityStatus = availabilityByDate.get(dateKey)?.status ?? null;
-  }
-
-  const markerCount =
-    (availabilityStatus ? 1 : 0) + pendingBookings.length + acceptedBookings.length;
-
-  if (markerCount === 0) {
-    return null;
+  if (!availabilityStatus && pendingBookings.length === 0 && acceptedBookings.length === 0) {
+    return [];
   }
 
   const presentKinds: DjCalendarLegendKind[] = [];
@@ -245,6 +230,108 @@ export function getDjAvailabilityDateStripMarker(
   if (availabilityStatus) {
     presentKinds.push(getDjAvailabilityLegendKindForStatus(availabilityStatus));
   }
+
+  return presentKinds;
+}
+
+function getDjCalendarMonthKey(year: number, month: number): string {
+  return `${year}-${String(month + 1).padStart(2, "0")}`;
+}
+
+export function buildDjCalendarMonthActivityByKey(
+  availabilityByDate: Map<string, DjAvailabilityEntry>,
+  bookingsByDate: Map<string, BookingRequest[]>,
+): Map<string, DjCalendarLegendKind> {
+  const kindsByMonthKey = new Map<string, DjCalendarLegendKind[]>();
+  const dateKeys = new Set<string>([
+    ...availabilityByDate.keys(),
+    ...bookingsByDate.keys(),
+  ]);
+
+  for (const dateKey of dateKeys) {
+    const kinds = getDjCalendarLegendKindsForDate(dateKey, availabilityByDate, bookingsByDate);
+
+    if (kinds.length === 0) {
+      continue;
+    }
+
+    const monthKey = dateKey.slice(0, 7);
+
+    if (!/^\d{4}-\d{2}$/.test(monthKey)) {
+      continue;
+    }
+
+    const existingKinds = kindsByMonthKey.get(monthKey) ?? [];
+    kindsByMonthKey.set(monthKey, existingKinds.concat(kinds));
+  }
+
+  const activityByMonthKey = new Map<string, DjCalendarLegendKind>();
+
+  for (const [monthKey, kinds] of kindsByMonthKey) {
+    const highestPriorityKind = getHighestPriorityDjCalendarLegendKind(kinds);
+
+    if (highestPriorityKind) {
+      activityByMonthKey.set(monthKey, highestPriorityKind);
+    }
+  }
+
+  return activityByMonthKey;
+}
+
+export function getDjCalendarMonthActivityDotClass(
+  activityByMonthKey: ReadonlyMap<string, DjCalendarLegendKind>,
+  month: number,
+  year: number,
+): string | null {
+  const kind = activityByMonthKey.get(getDjCalendarMonthKey(year, month));
+
+  if (!kind) {
+    return null;
+  }
+
+  return getDjCalendarLegendDotClass(kind);
+}
+
+export function getDjAvailabilityDateStripMarker(
+  dateKey: string,
+  availabilityByDate: Map<string, DjAvailabilityEntry>,
+  bookingsByDate: Map<string, BookingRequest[]>,
+  isHighlighted: boolean,
+  bulkPreview?: {
+    isSelected: boolean;
+    choice: DjAvailabilityBulkPreviewChoice | null;
+  },
+): CalendarMobileDateStripMarker | null {
+  const isPreviewing =
+    bulkPreview?.isSelected === true && bulkPreview.choice !== null;
+
+  let availabilityStatusOverride: DjAvailabilityStatus | null | undefined;
+
+  if (isPreviewing && bulkPreview?.choice) {
+    availabilityStatusOverride =
+      bulkPreview.choice.type === "status" ? bulkPreview.choice.status : null;
+  }
+
+  const presentKinds = getDjCalendarLegendKindsForDate(
+    dateKey,
+    availabilityByDate,
+    bookingsByDate,
+    availabilityStatusOverride,
+  );
+
+  if (presentKinds.length === 0) {
+    return null;
+  }
+
+  const bookings = bookingsByDate.get(dateKey) ?? [];
+  const pendingBookings = bookings.filter((booking) => booking.status === "pending");
+  const acceptedBookings = bookings.filter((booking) => booking.status === "accepted");
+  const availabilityStatus =
+    availabilityStatusOverride !== undefined
+      ? availabilityStatusOverride
+      : (availabilityByDate.get(dateKey)?.status ?? null);
+  const markerCount =
+    (availabilityStatus ? 1 : 0) + pendingBookings.length + acceptedBookings.length;
 
   const highestPriorityKind = getHighestPriorityDjCalendarLegendKind(presentKinds);
 

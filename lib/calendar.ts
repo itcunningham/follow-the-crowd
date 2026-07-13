@@ -553,6 +553,54 @@ export function getPlannerCalendarDateIndicatorKind(
   return getPlannerCalendarHighestEventStatusKind(items);
 }
 
+function getPlannerCalendarMonthKey(year: number, month: number): string {
+  return `${year}-${String(month + 1).padStart(2, "0")}`;
+}
+
+export function buildPlannerCalendarMonthActivityByKey(
+  items: CalendarItem[],
+): Map<string, CalendarStatusKind> {
+  const itemsByMonthKey = new Map<string, CalendarItem[]>();
+
+  for (const item of items) {
+    const monthKey = item.dateKey.slice(0, 7);
+
+    if (!/^\d{4}-\d{2}$/.test(monthKey)) {
+      continue;
+    }
+
+    const monthItems = itemsByMonthKey.get(monthKey) ?? [];
+    monthItems.push(item);
+    itemsByMonthKey.set(monthKey, monthItems);
+  }
+
+  const activityByMonthKey = new Map<string, CalendarStatusKind>();
+
+  for (const [monthKey, monthItems] of itemsByMonthKey) {
+    const kind = getPlannerCalendarHighestEventStatusKind(monthItems);
+
+    if (kind) {
+      activityByMonthKey.set(monthKey, kind);
+    }
+  }
+
+  return activityByMonthKey;
+}
+
+export function getPlannerCalendarMonthActivityDotClass(
+  activityByMonthKey: ReadonlyMap<string, CalendarStatusKind>,
+  month: number,
+  year: number,
+): string | null {
+  const kind = activityByMonthKey.get(getPlannerCalendarMonthKey(year, month));
+
+  if (!kind) {
+    return null;
+  }
+
+  return getPlannerCalendarLegendDotClass(kind);
+}
+
 export function getPlannerCalendarDateStripDotClass(
   items: CalendarItem[],
   isSelected: boolean,

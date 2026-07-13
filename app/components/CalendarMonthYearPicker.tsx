@@ -12,6 +12,7 @@ type CalendarMonthYearPickerProps = {
   initialYear: number;
   onCancel: () => void;
   onConfirm: (month: number, year: number) => void;
+  getMonthActivityDotClass?: (month: number, year: number) => string | null;
 };
 
 export default function CalendarMonthYearPicker({
@@ -19,6 +20,7 @@ export default function CalendarMonthYearPicker({
   initialYear,
   onCancel,
   onConfirm,
+  getMonthActivityDotClass,
 }: CalendarMonthYearPickerProps) {
   const monthLabels = [
     "Jan",
@@ -64,6 +66,7 @@ export default function CalendarMonthYearPicker({
       <div className="mt-2.5 grid grid-cols-4 gap-1">
         {monthLabels.map((label, index) => {
           const isSelected = index === draftMonth;
+          const activityDotClass = getMonthActivityDotClass?.(index, draftYear) ?? null;
 
           return (
             <button
@@ -74,7 +77,17 @@ export default function CalendarMonthYearPicker({
               onClick={() => setDraftMonth(index)}
               className={`rounded-md px-1.5 py-1.5 text-[11px] font-semibold transition ${pickerButtonClass(isSelected)}`}
             >
-              {label}
+              <span className="inline-flex items-center justify-center gap-1">
+                <span>{label}</span>
+                {activityDotClass ? (
+                  <span
+                    aria-hidden="true"
+                    className={`h-1.5 w-1.5 shrink-0 rounded-full ${
+                      isSelected ? "bg-ftc-bg" : activityDotClass
+                    }`}
+                  />
+                ) : null}
+              </span>
             </button>
           );
         })}

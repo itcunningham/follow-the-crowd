@@ -32,6 +32,8 @@ import {
   getPlannerCalendarBadgeLabel,
   getPlannerCalendarAgendaAccentClass,
   groupCalendarItemsByDate,
+  buildPlannerCalendarMonthActivityByKey,
+  getPlannerCalendarMonthActivityDotClass,
   isSameDay,
   isSameMonth,
   loadPlannerCalendarItems,
@@ -479,6 +481,15 @@ export default function PlannerCalendar() {
 
   const itemsByDate = useMemo(() => groupCalendarItemsByDate(items), [items]);
   const monthItemsByDate = useMemo(() => groupCalendarItemsByDate(monthItems), [monthItems]);
+  const monthActivityByKey = useMemo(
+    () => buildPlannerCalendarMonthActivityByKey(items),
+    [items],
+  );
+  const getMonthActivityDotClass = useCallback(
+    (month: number, year: number) =>
+      getPlannerCalendarMonthActivityDotClass(monthActivityByKey, month, year),
+    [monthActivityByKey],
+  );
 
   const calendarWeeks = useMemo(() => getCalendarWeekRows(monthStart), [monthStart]);
 
@@ -564,7 +575,11 @@ export default function PlannerCalendar() {
       ) : (
         <div className="transition-opacity duration-200 ease-out opacity-100 motion-reduce:transition-none">
           <div className="relative mt-0 md:mt-4">
-            <CalendarMonthNav monthStart={monthStart} onMonthStartChange={handleMonthStartChange} />
+            <CalendarMonthNav
+              monthStart={monthStart}
+              onMonthStartChange={handleMonthStartChange}
+              getMonthActivityDotClass={getMonthActivityDotClass}
+            />
           </div>
 
           <div className="mt-1 md:mt-3">
