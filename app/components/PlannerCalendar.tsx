@@ -606,7 +606,7 @@ export default function PlannerCalendar({
   }, [getMonthActivityDotClass, isDual, onMonthActivityDotClassChange]);
 
   const toolbarBlock = (
-    <div className="relative" aria-hidden="true">
+    <div className="relative w-full shrink-0 overflow-hidden" aria-hidden="true">
       <div className="relative z-10 flex items-center justify-between gap-2 sm:gap-3">
         <div className="hidden min-w-0 max-w-[42%] md:block" />
         <div className="ml-auto flex shrink-0 items-center gap-2">
@@ -746,11 +746,11 @@ export default function PlannerCalendar({
   if (isDual) {
     return (
       <>
-        <div className={isActive ? "order-1" : "order-1 hidden"}>
+        <div className="order-1 w-full shrink-0">
           {toolbarBlock}
           {alertsBlock}
         </div>
-        <div className={isActive ? "order-3" : "order-3 hidden"}>
+        <div className="order-3 w-full shrink-0">
           {calendarBody}
           {dateActionsBlock}
         </div>

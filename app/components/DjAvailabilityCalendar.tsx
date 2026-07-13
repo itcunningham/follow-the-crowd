@@ -136,11 +136,13 @@ function GigCalendarUpdatePill({ message, onDismiss }: GigCalendarUpdatePillProp
 
   return (
     <div
-      className="pointer-events-none absolute inset-0 z-0 flex items-center justify-center px-[4.75rem] sm:px-[5.25rem]"
+      className="pointer-events-none absolute inset-x-0 top-0 z-0 flex h-full items-center justify-center px-[4.75rem] sm:px-[5.25rem]"
       aria-hidden={!visible}
     >
-      <p aria-live="polite" aria-atomic="true" className="min-w-0 max-w-full">
-        <span className={`${GIG_CALENDAR_UPDATE_PILL_CLASS} ${visible ? "opacity-100" : "opacity-0"}`}>
+      <p aria-live="polite" aria-atomic="true" className="pointer-events-none min-w-0 max-w-full">
+        <span
+          className={`pointer-events-none ${GIG_CALENDAR_UPDATE_PILL_CLASS} ${visible ? "opacity-100" : "opacity-0"}`}
+        >
           {displayMessage}
         </span>
       </p>
@@ -1384,8 +1386,7 @@ export default function DjAvailabilityCalendar({
   }
 
   const toolbarBlock = (
-    <div className="relative">
-      {!loading ? <GigCalendarUpdatePill message={toastMessage} onDismiss={dismissToast} /> : null}
+    <div className="relative w-full shrink-0 overflow-hidden">
       <div className="relative z-10 flex items-center justify-between gap-2 sm:gap-3">
         <div className="hidden min-w-0 max-w-[42%] md:block">
           <p className="truncate text-sm text-ftc-text-muted">{description}</p>
@@ -1421,6 +1422,7 @@ export default function DjAvailabilityCalendar({
           )}
         </div>
       </div>
+      {!loading ? <GigCalendarUpdatePill message={toastMessage} onDismiss={dismissToast} /> : null}
     </div>
   );
 
@@ -1565,7 +1567,7 @@ export default function DjAvailabilityCalendar({
   if (isDual) {
     return (
       <>
-        <div className={isActive ? "order-1" : "order-1 hidden"}>
+        <div className="order-1 w-full shrink-0">
           {toolbarBlock}
           {!loading && error ? (
             <p role="alert" className="pointer-events-none mt-4 flex justify-center">
@@ -1575,7 +1577,7 @@ export default function DjAvailabilityCalendar({
             </p>
           ) : null}
         </div>
-        <div className={isActive ? "order-3" : "order-3 hidden"}>
+        <div className="order-3 w-full shrink-0">
           {calendarBody}
           {desktopHintBlock}
         </div>

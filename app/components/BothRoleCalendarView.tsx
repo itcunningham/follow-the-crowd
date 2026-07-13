@@ -100,27 +100,29 @@ export default function BothRoleCalendarView({ activeTab }: BothRoleCalendarView
 
   return (
     <section className={`${PLANNER_WORKSPACE_PRIMARY_SURFACE_CLASS} flex flex-col`}>
-      <PlannerCalendar
-        variant="dual"
-        isActive={activeTab === "planner"}
-        sharedViewState={sharedViewState}
-        onMobileStripConfigChange={setPlannerStripConfig}
-        onMonthActivityDotClassChange={setPlannerMonthActivityDotClass}
-      />
+      {activeTab === "planner" ? (
+        <PlannerCalendar
+          variant="dual"
+          isActive
+          sharedViewState={sharedViewState}
+          onMobileStripConfigChange={setPlannerStripConfig}
+          onMonthActivityDotClassChange={setPlannerMonthActivityDotClass}
+        />
+      ) : (
+        <DjAvailabilityCalendar
+          variant="dual"
+          isActive
+          sharedViewState={sharedViewState}
+          onMobileStripConfigChange={setDjStripConfig}
+          onMonthActivityDotClassChange={setDjMonthActivityDotClass}
+          onDualModeRegistration={(registration) => {
+            setDjMonthNavHandlers(registration);
+          }}
+          description="Manage your availability and received bookings."
+        />
+      )}
 
-      <DjAvailabilityCalendar
-        variant="dual"
-        isActive={activeTab === "dj"}
-        sharedViewState={sharedViewState}
-        onMobileStripConfigChange={setDjStripConfig}
-        onMonthActivityDotClassChange={setDjMonthActivityDotClass}
-        onDualModeRegistration={(registration) => {
-          setDjMonthNavHandlers(registration);
-        }}
-        description="Manage your availability and received bookings."
-      />
-
-      <div className="order-2">
+      <div className="order-2 w-full shrink-0">
         <div className="relative mt-4">
           <CalendarMonthNav
             monthStart={monthStart}
