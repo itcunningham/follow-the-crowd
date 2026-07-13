@@ -125,6 +125,30 @@ function useCalendarTodayDate(): Date {
   return todayDate;
 }
 
+function getDateStripScrollCacheKey(monthStart: Date, date: Date): string {
+  return `${monthStart.getFullYear()}-${monthStart.getMonth()}:${toDateKey(date)}`;
+}
+
+const dateStripScrollPositionCache = new Map<string, number>();
+
+function readCachedDateStripScrollLeft(monthStart: Date, date: Date): number | undefined {
+  return dateStripScrollPositionCache.get(getDateStripScrollCacheKey(monthStart, date));
+}
+
+function writeCachedDateStripScrollLeft(
+  monthStart: Date,
+  date: Date,
+  scrollLeft: number,
+): void {
+  dateStripScrollPositionCache.set(getDateStripScrollCacheKey(monthStart, date), scrollLeft);
+}
+
+function measureDateStripChipWidth(container: HTMLElement): number | null {
+  const nextWidth = (container.clientWidth - 24) / 7;
+
+  return nextWidth > 0 ? nextWidth : null;
+}
+
 export default function PlannerCalendarMobileDateStrip({
   selectedDate,
   onSelectDate,
@@ -138,7 +162,9 @@ export default function PlannerCalendarMobileDateStrip({
   const selectedDateRef = useRef(selectedDate);
   const scrollAnimationFrameRef = useRef(0);
   const pendingCenterFrameRef = useRef(0);
-  const skipNextSmoothScrollRef = useRef(false);
+  const isInitialLayoutRef = useRef(true);
+  const previousSelectedDateKeyRef = useRef(toDateKey(selectedDate));
+  const previousMonthStartTimeRef = useRef(monthStart.getTime());
   const [chipWidth, setChipWidth] = useState<number | null>(null);
   const todayDate = useCalendarTodayDate();
 
@@ -199,7 +225,11 @@ export default function PlannerCalendarMobileDateStrip({
     (date: Date, options?: { instant?: boolean }) => {
       cancelPendingCenterFrames();
 
-      let attempts = 0;
+      if (scrollToDate(date, options)) {
+        return;
+      }
+
+      let attempts = 1;
 
       const tryCenter = () => {
         if (scrollToDate(date, options)) {
@@ -222,6 +252,25 @@ export default function PlannerCalendarMobileDateStrip({
     [cancelPendingCenterFrames, scrollToDate],
   );
 
+  const applyInstantDateStripPosition = useCallback(
+    (date: Date) => {
+      const container = scrollRef.current;
+
+      if (!container || !isSameMonth(date, monthStart)) {
+        return;
+      }
+
+      const cachedScrollLeft = readCachedDateStripScrollLeft(monthStart, date);
+
+      if (cachedScrollLeft !== undefined) {
+        container.scrollLeft = cachedScrollLeft;
+      }
+
+      centerDateWhenReady(date, { instant: true });
+    },
+    [centerDateWhenReady, monthStart],
+  );
+
   useEffect(() => {
     const container = scrollRef.current;
 
@@ -234,8 +283,8 @@ export default function PlannerCalendarMobileDateStrip({
         return;
       }
 
-      const nextWidth = (scrollRef.current.clientWidth - 24) / 7;
-      setChipWidth(nextWidth > 0 ? nextWidth : null);
+      const nextWidth = measureDateStripChipWidth(scrollRef.current);
+      setChipWidth(nextWidth);
     }
 
     updateChipWidth();
@@ -249,41 +298,53 @@ export default function PlannerCalendarMobileDateStrip({
   }, []);
 
   useLayoutEffect(() => {
-    const date = selectedDateRef.current;
-
-    if (!isSameMonth(date, monthStart)) {
-      return;
-    }
-
-    centerDateWhenReady(date, { instant: true });
-    skipNextSmoothScrollRef.current = true;
-  }, [monthDates, monthStart, chipWidth, centerDateWhenReady]);
+    applyInstantDateStripPosition(selectedDateRef.current);
+  }, [applyInstantDateStripPosition, chipWidth, monthDates, monthStart]);
 
   useLayoutEffect(() => {
     if (!isSameMonth(selectedDate, monthStart)) {
       return;
     }
 
-    if (skipNextSmoothScrollRef.current) {
-      skipNextSmoothScrollRef.current = false;
+    const selectedDateKey = toDateKey(selectedDate);
+    const monthStartTime = monthStart.getTime();
+    const monthChanged = monthStartTime !== previousMonthStartTimeRef.current;
+    const dateChanged = selectedDateKey !== previousSelectedDateKeyRef.current;
+
+    previousMonthStartTimeRef.current = monthStartTime;
+    previousSelectedDateKeyRef.current = selectedDateKey;
+
+    if (isInitialLayoutRef.current) {
+      isInitialLayoutRef.current = false;
+      return;
+    }
+
+    if (!dateChanged || monthChanged) {
       return;
     }
 
     centerDateWhenReady(selectedDate);
-  }, [selectedDate, monthStart, centerDateWhenReady]);
+  }, [centerDateWhenReady, monthStart, selectedDate]);
 
   useEffect(() => {
     return () => {
+      const container = scrollRef.current;
+      const date = selectedDateRef.current;
+
+      if (container && isSameMonth(date, monthStart)) {
+        writeCachedDateStripScrollLeft(monthStart, date, container.scrollLeft);
+      }
+
       cancelScrollAnimation();
       cancelPendingCenterFrames();
     };
-  }, [cancelPendingCenterFrames, cancelScrollAnimation]);
+  }, [cancelPendingCenterFrames, cancelScrollAnimation, monthStart]);
 
   return (
     <div
       ref={scrollRef}
       className={`-mx-4 flex gap-1 px-4 ${DATE_CHIP_SCROLL_CLASS}`}
-      style={{ WebkitOverflowScrolling: "touch" }}
+      style={{ WebkitOverflowScrolling: "touch", scrollBehavior: "auto" }}
     >
       {monthDates.map((date) => {
         const dateKey = toDateKey(date);
