@@ -760,6 +760,45 @@ html {
   color: var(--ftc-color-text-inverse);
 }
 
+.ftc-filter-pill.ftc-gig-availability-pill-available {
+  border: 0;
+  background: var(--ftc-color-primary);
+  color: var(--ftc-color-text-inverse);
+}
+
+.ftc-filter-pill.ftc-gig-availability-pill-tentative {
+  border: 0;
+  background: var(--ftc-color-warning);
+  color: var(--ftc-color-text-inverse);
+}
+
+.ftc-filter-pill.ftc-gig-availability-pill-unavailable {
+  border: 0;
+  background: var(--ftc-color-danger);
+  color: var(--ftc-color-text-inverse);
+}
+
+@media (hover: hover) {
+  .ftc-filter-pill.ftc-gig-availability-pill-available:hover,
+  .ftc-filter-pill.ftc-gig-availability-pill-tentative:hover,
+  .ftc-filter-pill.ftc-gig-availability-pill-unavailable:hover {
+    border: 0;
+    color: var(--ftc-color-text-inverse);
+  }
+
+  .ftc-filter-pill.ftc-gig-availability-pill-available:hover {
+    background: var(--ftc-color-primary);
+  }
+
+  .ftc-filter-pill.ftc-gig-availability-pill-tentative:hover {
+    background: var(--ftc-color-warning);
+  }
+
+  .ftc-filter-pill.ftc-gig-availability-pill-unavailable:hover {
+    background: var(--ftc-color-danger);
+  }
+}
+
 .ftc-stat-chip {
   border-radius: 9999px;
   border: 1px solid var(--ftc-color-border-subtle);

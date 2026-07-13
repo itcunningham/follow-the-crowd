@@ -178,17 +178,23 @@ function getAvailabilityMenuPositionClass(weekdayIndex: number): string {
 
 const calendarCellColorBadgeClass = FTC_CAL_CELL;
 
+const GIG_AVAILABILITY_PILL_ACTIVE_CLASS: Record<DjAvailabilityStatus, string> = {
+  available: "ftc-gig-availability-pill-available",
+  tentative: "ftc-gig-availability-pill-tentative",
+  unavailable: "ftc-gig-availability-pill-unavailable",
+};
+
 function getAvailabilityActionPillClass(
   status: DjAvailabilityStatus,
-  isActive: boolean,
+  selectedAvailabilityStatus: DjAvailabilityStatus | null,
 ): string {
-  const baseClass = "ftc-filter-pill disabled:opacity-50";
+  const isActive = selectedAvailabilityStatus === status;
 
   if (!isActive) {
-    return baseClass;
+    return "ftc-filter-pill disabled:opacity-50";
   }
 
-  return `${baseClass} ${getFlatAvailabilityFillClass(status)}`;
+  return `ftc-filter-pill ${GIG_AVAILABILITY_PILL_ACTIVE_CLASS[status]} disabled:cursor-not-allowed`;
 }
 
 function DjAvailabilityLegend() {
@@ -482,6 +488,7 @@ function DjAvailabilityMobileDayPanel({
   const acceptedBookings = dayBookings.filter((booking) => booking.status === "accepted");
   const interactiveBookings = [...pendingBookings, ...acceptedBookings];
   const canEditAvailability = !isDateKeyBeforeToday(dateKey);
+  const selectedAvailabilityStatus = personalEntry?.status ?? null;
 
   return (
     <>
@@ -499,21 +506,20 @@ function DjAvailabilityMobileDayPanel({
       {canEditAvailability ? (
         <>
           <div className="mt-3 flex flex-wrap gap-2">
-            {PERSONAL_STATUS_OPTIONS.map((option) => {
-              const isActive = personalEntry?.status === option.value;
-
-              return (
+            {PERSONAL_STATUS_OPTIONS.map((option) => (
                 <button
                   key={option.value}
                   type="button"
                   disabled={saving}
                   onClick={() => onSetPersonalStatus(option.value)}
-                  className={getAvailabilityActionPillClass(option.value, isActive)}
+                  className={getAvailabilityActionPillClass(
+                    option.value,
+                    selectedAvailabilityStatus,
+                  )}
                 >
                   {option.label}
                 </button>
-              );
-            })}
+              ))}
             <button
               type="button"
               disabled={saving || !personalEntry}
@@ -1175,14 +1181,36 @@ export default function DjAvailabilityCalendar({
       return;
     }
 
+    const normalizedDate = normalizeAvailabilityDate(dateKey);
+    const previousEntry = availabilityEntries.find(
+      (entry) => normalizeAvailabilityDate(entry.date) === normalizedDate,
+    );
+
     setSavingDateKey(dateKey);
     setError(null);
     setOpenMenuDateKey(null);
+    setAvailabilityEntries((current) => {
+      const next = current.filter(
+        (entry) => normalizeAvailabilityDate(entry.date) !== normalizedDate,
+      );
+
+      next.push({
+        ...(previousEntry ?? {
+          id: `optimistic-${normalizedDate}`,
+          created_at: new Date().toISOString(),
+          user_id: "",
+          notes: "",
+        }),
+        date: normalizedDate,
+        status,
+      });
+
+      return next;
+    });
 
     try {
       const entry = await saveMyAvailability({ date: dateKey, status });
       setAvailabilityEntries((current) => {
-        const normalizedDate = normalizeAvailabilityDate(entry.date);
         const next = current.filter(
           (existing) => normalizeAvailabilityDate(existing.date) !== normalizedDate,
         );
@@ -1192,6 +1220,17 @@ export default function DjAvailabilityCalendar({
     } catch (saveError) {
       console.error("Failed to save personal availability:", saveError);
       setError(saveError instanceof Error ? saveError.message : "Failed to save availability");
+      setAvailabilityEntries((current) => {
+        const next = current.filter(
+          (entry) => normalizeAvailabilityDate(entry.date) !== normalizedDate,
+        );
+
+        if (previousEntry) {
+          next.push(previousEntry);
+        }
+
+        return next;
+      });
     } finally {
       setSavingDateKey(null);
     }
@@ -1202,18 +1241,34 @@ export default function DjAvailabilityCalendar({
       return;
     }
 
+    const normalizedDate = normalizeAvailabilityDate(dateKey);
+    const previousEntry = availabilityEntries.find(
+      (entry) => normalizeAvailabilityDate(entry.date) === normalizedDate,
+    );
+
     setSavingDateKey(dateKey);
     setError(null);
     setOpenMenuDateKey(null);
+    setAvailabilityEntries((current) =>
+      current.filter((entry) => normalizeAvailabilityDate(entry.date) !== normalizedDate),
+    );
 
     try {
       await clearMyAvailabilityForDate(dateKey);
-      setAvailabilityEntries((current) =>
-        current.filter((entry) => normalizeAvailabilityDate(entry.date) !== dateKey),
-      );
     } catch (clearError) {
       console.error("Failed to clear personal availability:", clearError);
       setError(clearError instanceof Error ? clearError.message : "Failed to clear availability");
+      setAvailabilityEntries((current) => {
+        if (!previousEntry) {
+          return current;
+        }
+
+        const next = current.filter(
+          (entry) => normalizeAvailabilityDate(entry.date) !== normalizedDate,
+        );
+        next.push(previousEntry);
+        return next;
+      });
     } finally {
       setSavingDateKey(null);
     }
