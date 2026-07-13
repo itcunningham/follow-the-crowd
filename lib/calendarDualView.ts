@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import type { CalendarItem, CalendarMobileDateStripMarker } from "@/lib/calendar";
 
 export type CalendarMobileStripConfig = {
@@ -18,6 +19,12 @@ export type CalendarDualModeRegistration = {
   onBeforeMonthNavigate?: () => void;
 };
 
+export type CalendarDualModeChrome = {
+  overlay?: ReactNode;
+  trailingAction?: ReactNode;
+  legendAction?: ReactNode;
+};
+
 export type CalendarDualModeProps = {
   variant?: "standalone" | "dual";
   isActive?: boolean;
@@ -25,4 +32,5 @@ export type CalendarDualModeProps = {
   onMobileStripConfigChange?: (config: CalendarMobileStripConfig) => void;
   onMonthActivityDotClassChange?: (getter: (month: number, year: number) => string | null) => void;
   onDualModeRegistration?: (registration: CalendarDualModeRegistration) => void;
+  onDualModeChromeChange?: (chrome: CalendarDualModeChrome | null) => void;
 };

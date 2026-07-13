@@ -613,19 +613,6 @@ export default function PlannerCalendar({
     onMonthActivityDotClassChange(getMonthActivityDotClass);
   }, [getMonthActivityDotClass, isDual, onMonthActivityDotClassChange]);
 
-  const toolbarBlock = (
-    <div className="relative w-full shrink-0 overflow-hidden" aria-hidden="true">
-      <div className="relative z-10 flex items-center justify-between gap-2 sm:gap-3">
-        <div className="hidden min-w-0 max-w-[42%] md:block" />
-        <div className="ml-auto flex shrink-0 items-center gap-2">
-          <span className="invisible rounded-lg border border-transparent px-2.5 py-1.5 text-[11px] font-semibold">
-            Select dates
-          </span>
-        </div>
-      </div>
-    </div>
-  );
-
   const alertsBlock = (
     <>
       {error ? (
@@ -754,10 +741,7 @@ export default function PlannerCalendar({
   if (isDual) {
     return (
       <>
-        <div className="order-1 w-full shrink-0">
-          {toolbarBlock}
-          {alertsBlock}
-        </div>
+        <div className="order-1 w-full shrink-0">{alertsBlock}</div>
         <div className="order-3 w-full shrink-0">
           {calendarBody}
           {dateActionsBlock}
@@ -768,7 +752,6 @@ export default function PlannerCalendar({
 
   return (
     <section className={PLANNER_WORKSPACE_PRIMARY_SURFACE_CLASS}>
-      {toolbarBlock}
       {alertsBlock}
       {calendarBody}
       {dateActionsBlock}

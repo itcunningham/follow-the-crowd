@@ -23,7 +23,7 @@ import {
   DjCalendarBodySkeleton,
   DjCalendarContentSkeleton,
 } from "@/app/components/skeleton/Skeleton";
-import type { CalendarDualModeProps } from "@/lib/calendarDualView";
+import type { CalendarDualModeChrome, CalendarDualModeProps } from "@/lib/calendarDualView";
 import {
   batchClearMyAvailabilityForDates,
   batchSaveMyAvailability,
@@ -136,7 +136,7 @@ function GigCalendarUpdatePill({ message, onDismiss }: GigCalendarUpdatePillProp
 
   return (
     <div
-      className="pointer-events-none absolute inset-x-0 top-0 z-0 flex h-full items-center justify-center px-[4.75rem] sm:px-[5.25rem]"
+      className="pointer-events-none absolute inset-x-0 top-0 z-0 flex h-full items-center justify-center px-[4rem] sm:px-[4.75rem]"
       aria-hidden={!visible}
     >
       <p aria-live="polite" aria-atomic="true" className="pointer-events-none min-w-0 max-w-full">
@@ -893,6 +893,7 @@ export default function DjAvailabilityCalendar({
   onMobileStripConfigChange,
   onMonthActivityDotClassChange,
   onDualModeRegistration,
+  onDualModeChromeChange,
 }: CalendarDualModeProps & {
   description?: string;
 }) {
@@ -977,11 +978,11 @@ export default function DjAvailabilityCalendar({
     closeCalendarOverlays();
   }, [closeCalendarOverlays]);
 
-  function enterMultiSelectMode() {
+  const enterMultiSelectMode = useCallback(() => {
     closeCalendarOverlays();
     setMultiSelectMode(true);
     setSelectedDateKeys(new Set());
-  }
+  }, [closeCalendarOverlays]);
 
   const toggleDateSelection = useCallback((dateKey: string) => {
     setSelectedDateKeys((current) => {
@@ -1222,6 +1223,59 @@ export default function DjAvailabilityCalendar({
     });
   }, [closeCalendarOverlays, exitMultiSelectMode, isDual, onDualModeRegistration]);
 
+  const monthNavOverlay = !loading ? (
+    <GigCalendarUpdatePill message={toastMessage} onDismiss={dismissToast} />
+  ) : null;
+
+  const monthNavTrailingAction = multiSelectMode ? (
+    <QuickSelectMenu
+      open={quickSelectOpen}
+      onToggle={() => setQuickSelectOpen((open) => !open)}
+      onSelectFridays={() => selectDisplayedDatesMatching((date) => getWeekdayIndex(date) === 4)}
+      onSelectSaturdays={() => selectDisplayedDatesMatching((date) => getWeekdayIndex(date) === 5)}
+      onSelectWeekends={() =>
+        selectDisplayedDatesMatching((date) => {
+          const weekday = getWeekdayIndex(date);
+          return weekday === 4 || weekday === 5;
+        })
+      }
+      onClearSelection={() => setSelectedDateKeys(new Set())}
+      onClose={() => setQuickSelectOpen(false)}
+    />
+  ) : null;
+
+  const selectDatesLegendAction =
+    !multiSelectMode && !loading ? (
+      <button
+        type="button"
+        onClick={enterMultiSelectMode}
+        className={GIG_CALENDAR_CONTROL_BUTTON_CLASS}
+      >
+        Select dates
+      </button>
+    ) : null;
+
+  useEffect(() => {
+    if (!isDual || !onDualModeChromeChange) {
+      return;
+    }
+
+    onDualModeChromeChange({
+      overlay: monthNavOverlay,
+      trailingAction: monthNavTrailingAction,
+      legendAction: selectDatesLegendAction,
+    });
+
+    return () => onDualModeChromeChange(null);
+  }, [
+    isDual,
+    loading,
+    monthNavOverlay,
+    monthNavTrailingAction,
+    onDualModeChromeChange,
+    selectDatesLegendAction,
+  ]);
+
   const calendarWeeks = useMemo(() => getCalendarWeekRows(monthStart), [monthStart]);
 
   const loadCalendarData = useCallback(async () => {
@@ -1391,44 +1445,14 @@ export default function DjAvailabilityCalendar({
     router.push(resolveCalendarOriginEventHref(getBookingRequestHref(booking), calendarOrigin));
   }
 
-  const toolbarBlock = (
-    <div className="relative w-full shrink-0 overflow-hidden">
-      <div className="relative z-10 flex items-center justify-between gap-2 sm:gap-3">
-        <div className="hidden min-w-0 max-w-[42%] md:block">
-          <p className="truncate text-sm text-ftc-text-muted">{description}</p>
+  const calendarLegendBlock = (
+    <div className="mt-3">
+      <div className="flex items-center justify-center gap-2">
+        <div className="min-w-0 flex-1">
+          <DjAvailabilityCalendarLegend />
         </div>
-        <div className="ml-auto flex shrink-0 items-center gap-2">
-          {!multiSelectMode ? (
-            <button
-              type="button"
-              onClick={enterMultiSelectMode}
-              className={GIG_CALENDAR_CONTROL_BUTTON_CLASS}
-            >
-              Select dates
-            </button>
-          ) : (
-            <QuickSelectMenu
-              open={quickSelectOpen}
-              onToggle={() => setQuickSelectOpen((open) => !open)}
-              onSelectFridays={() =>
-                selectDisplayedDatesMatching((date) => getWeekdayIndex(date) === 4)
-              }
-              onSelectSaturdays={() =>
-                selectDisplayedDatesMatching((date) => getWeekdayIndex(date) === 5)
-              }
-              onSelectWeekends={() =>
-                selectDisplayedDatesMatching((date) => {
-                  const weekday = getWeekdayIndex(date);
-                  return weekday === 4 || weekday === 5;
-                })
-              }
-              onClearSelection={() => setSelectedDateKeys(new Set())}
-              onClose={() => setQuickSelectOpen(false)}
-            />
-          )}
-        </div>
+        {selectDatesLegendAction ? <div className="shrink-0">{selectDatesLegendAction}</div> : null}
       </div>
-      {!loading ? <GigCalendarUpdatePill message={toastMessage} onDismiss={dismissToast} /> : null}
     </div>
   );
 
@@ -1459,12 +1483,13 @@ export default function DjAvailabilityCalendar({
                 exitMultiSelectMode();
               }}
               getMonthActivityDotClass={getMonthActivityDotClass}
+              showJumpTo={!multiSelectMode}
+              trailingAction={monthNavTrailingAction}
+              overlay={monthNavOverlay}
             />
           </div>
 
-          <div className="mt-3">
-            <DjAvailabilityCalendarLegend />
-          </div>
+          {calendarLegendBlock}
         </>
       )}
 
@@ -1573,16 +1598,15 @@ export default function DjAvailabilityCalendar({
   if (isDual) {
     return (
       <>
-        <div className="order-1 w-full shrink-0">
-          {toolbarBlock}
-          {!loading && error ? (
+        {!loading && error ? (
+          <div className="order-1 w-full shrink-0">
             <p role="alert" className="pointer-events-none mt-4 flex justify-center">
               <span className="rounded-full border-0 bg-[var(--ftc-color-danger)] px-3 py-1 text-[11px] font-medium text-ftc-bg">
                 {error}
               </span>
             </p>
-          ) : null}
-        </div>
+          </div>
+        ) : null}
         <div className="order-3 w-full shrink-0">
           {calendarBody}
           {desktopHintBlock}
@@ -1593,7 +1617,13 @@ export default function DjAvailabilityCalendar({
 
   return (
     <section className={PLANNER_WORKSPACE_PRIMARY_SURFACE_CLASS}>
-      {toolbarBlock}
+      {!loading && error ? (
+        <p role="alert" className="pointer-events-none mt-4 flex justify-center">
+          <span className="rounded-full border-0 bg-[var(--ftc-color-danger)] px-3 py-1 text-[11px] font-medium text-ftc-bg">
+            {error}
+          </span>
+        </p>
+      ) : null}
       {calendarBody}
       {desktopHintBlock}
     </section>

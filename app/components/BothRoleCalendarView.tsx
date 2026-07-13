@@ -19,6 +19,7 @@ import {
 } from "@/lib/calendar";
 import type {
   CalendarDualModeRegistration,
+  CalendarDualModeChrome,
   CalendarMobileStripConfig,
   CalendarSharedViewState,
 } from "@/lib/calendarDualView";
@@ -48,6 +49,7 @@ export default function BothRoleCalendarView({ activeTab }: BothRoleCalendarView
   );
   const djMonthActivityRef = useRef<(month: number, year: number) => string | null>(() => null);
   const djMonthNavHandlersRef = useRef<CalendarDualModeRegistration>({});
+  const [djMonthNavChrome, setDjMonthNavChrome] = useState<CalendarDualModeChrome | null>(null);
 
   useLayoutEffect(() => {
     const nextView = resolvePlannerCalendarViewState(
@@ -106,6 +108,10 @@ export default function BothRoleCalendarView({ activeTab }: BothRoleCalendarView
     [],
   );
 
+  const handleDjDualModeChromeChange = useCallback((chrome: CalendarDualModeChrome | null) => {
+    setDjMonthNavChrome(chrome);
+  }, []);
+
   const handleDjDualModeRegistration = useCallback((registration: CalendarDualModeRegistration) => {
     djMonthNavHandlersRef.current = registration;
   }, []);
@@ -144,6 +150,7 @@ export default function BothRoleCalendarView({ activeTab }: BothRoleCalendarView
           onMobileStripConfigChange={setDjStripConfig}
           onMonthActivityDotClassChange={handleDjMonthActivityDotClassChange}
           onDualModeRegistration={handleDjDualModeRegistration}
+          onDualModeChromeChange={handleDjDualModeChromeChange}
           description="Manage your availability and received bookings."
         />
       )}
@@ -155,11 +162,25 @@ export default function BothRoleCalendarView({ activeTab }: BothRoleCalendarView
             onMonthStartChange={handleMonthStartChange}
             onBeforeNavigate={activeTab === "dj" ? handleDjMonthNavBeforeNavigate : undefined}
             getMonthActivityDotClass={resolveMonthActivityDotClass}
+            showJumpTo={activeTab !== "dj" || !djMonthNavChrome?.trailingAction}
+            trailingAction={activeTab === "dj" ? djMonthNavChrome?.trailingAction : undefined}
+            overlay={activeTab === "dj" ? djMonthNavChrome?.overlay : undefined}
           />
         </div>
 
         <div className={`mt-3 ${SHARED_LEGEND_MIN_HEIGHT_CLASS}`}>
-          {activeTab === "planner" ? <PlannerCalendarLegend /> : <DjAvailabilityCalendarLegend />}
+          {activeTab === "planner" ? (
+            <PlannerCalendarLegend />
+          ) : (
+            <div className="flex items-center justify-center gap-2">
+              <div className="min-w-0 flex-1">
+                <DjAvailabilityCalendarLegend />
+              </div>
+              {djMonthNavChrome?.legendAction ? (
+                <div className="shrink-0">{djMonthNavChrome.legendAction}</div>
+              ) : null}
+            </div>
+          )}
         </div>
 
         <div className="mt-4 md:hidden">

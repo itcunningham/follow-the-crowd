@@ -881,7 +881,7 @@ export function CalendarPageLoadingShell() {
     >
       {cachedRole === "both" ? (
         bothCalendarTab === "dj" ? (
-          <DjCalendarLoadingCard description="Manage your availability and received bookings." />
+          <DjCalendarLoadingCard />
         ) : (
           <PlannerCalendarLoadingCard />
         )
@@ -896,10 +896,13 @@ export function CalendarPageLoadingShell() {
 
 function CalendarMonthNavSkeleton() {
   return (
-    <div className="flex items-center justify-center gap-1 sm:gap-2">
-      <SkeletonBlock className="h-9 w-9 rounded-lg" />
-      <SkeletonBlock className="h-9 min-w-[9.5rem] rounded-lg sm:min-w-[11rem]" />
-      <SkeletonBlock className="h-9 w-9 rounded-lg" />
+    <div className="flex w-full min-h-9 items-center gap-0.5 sm:gap-1">
+      <div className="flex min-w-0 flex-1 items-center justify-center gap-0.5 sm:gap-1">
+        <SkeletonBlock className="h-9 w-9 shrink-0 rounded-lg" />
+        <SkeletonBlock className="h-9 min-w-[8.75rem] rounded-lg sm:min-w-[11rem]" />
+        <SkeletonBlock className="h-9 w-9 shrink-0 rounded-lg" />
+      </div>
+      <SkeletonBlock className="ml-0.5 h-[34px] w-[3.75rem] shrink-0 rounded-lg sm:ml-1 sm:w-[4.5rem]" />
     </div>
   );
 }
@@ -1147,42 +1150,14 @@ export function DjCalendarContentSkeleton() {
 export function PlannerCalendarLoadingCard() {
   return (
     <section className={PLANNER_WORKSPACE_PRIMARY_SURFACE_CLASS}>
-      <div className="flex items-center justify-between gap-2 sm:gap-3">
-        <div className="hidden min-w-0 flex-1 md:block" />
-        <div className="flex shrink-0 items-center gap-2">
-          <span
-            aria-hidden="true"
-            className="invisible rounded-lg border border-transparent px-2.5 py-1.5 text-[11px] font-semibold"
-          >
-            Select dates
-          </span>
-        </div>
-      </div>
       <PlannerCalendarContentSkeleton />
     </section>
   );
 }
 
-export function DjCalendarLoadingCard({
-  description = "Manage your availability and bookings.",
-}: {
-  description?: string;
-}) {
+export function DjCalendarLoadingCard() {
   return (
     <section className={PLANNER_WORKSPACE_PRIMARY_SURFACE_CLASS}>
-      <div className="flex items-center justify-between gap-2 sm:gap-3">
-        <div className="hidden min-w-0 flex-1 md:block">
-          <p className="text-sm text-ftc-text-muted">{description}</p>
-        </div>
-        <div className="flex shrink-0 items-center gap-2">
-          <span
-            aria-hidden="true"
-            className="rounded-lg border border-ftc-border-strong/90 bg-ftc-surface/80 px-2.5 py-1.5 text-[11px] font-semibold text-ftc-text-secondary"
-          >
-            Select dates
-          </span>
-        </div>
-      </div>
       <DjCalendarContentSkeleton />
       <div className="mt-3 hidden justify-center md:flex" aria-hidden="true">
         <SkeletonBlock className="h-3 w-72 max-w-full" />

@@ -230,6 +230,7 @@ export default function FtcDatePicker({
             onMonthStartChange={handleMonthStartChange}
             disablePreviousMonth={!canNavigateToPreviousMonth}
             minDate={effectiveMinDate}
+            showJumpTo={false}
           />
 
           <div className="mt-4 rounded-2xl border border-ftc-border bg-ftc-bg-elevated/40">
