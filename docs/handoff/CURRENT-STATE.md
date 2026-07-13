@@ -95,6 +95,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `744360c` — hide DJ availability controls on past dates
 - `e8c6dc8` — align DJ calendar legend and strip dots with event calendar style
 - `c2f7665` — DJ availability mobile date strip + selected-day controls
 - `86eb697` — update handoff docs and agent workflow rules
