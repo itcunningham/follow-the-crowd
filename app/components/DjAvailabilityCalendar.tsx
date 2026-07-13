@@ -529,10 +529,6 @@ function DjAvailabilityMobileDayPanel({
               Clear
             </button>
           </div>
-
-          {saving ? (
-            <p className="mt-2 text-xs font-medium text-ftc-text-muted">Saving...</p>
-          ) : null}
         </>
       ) : null}
 
@@ -1186,6 +1182,10 @@ export default function DjAvailabilityCalendar({
       (entry) => normalizeAvailabilityDate(entry.date) === normalizedDate,
     );
 
+    if (previousEntry?.status === status || savingDateKey === dateKey) {
+      return;
+    }
+
     setSavingDateKey(dateKey);
     setError(null);
     setOpenMenuDateKey(null);
@@ -1245,6 +1245,10 @@ export default function DjAvailabilityCalendar({
     const previousEntry = availabilityEntries.find(
       (entry) => normalizeAvailabilityDate(entry.date) === normalizedDate,
     );
+
+    if (!previousEntry || savingDateKey === dateKey) {
+      return;
+    }
 
     setSavingDateKey(dateKey);
     setError(null);
