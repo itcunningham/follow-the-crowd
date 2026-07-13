@@ -11,7 +11,7 @@ type CalendarViewTabsProps = {
 
 const TABS: { value: CalendarViewTab; label: string }[] = [
   { value: "planner", label: "Event Calendar" },
-  { value: "dj", label: "DJ Calendar" },
+  { value: "dj", label: "Gig Calendar" },
 ];
 
 export default function CalendarViewTabs({ activeTab, onChange }: CalendarViewTabsProps) {
