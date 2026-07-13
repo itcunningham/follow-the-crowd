@@ -22,7 +22,6 @@ export type CalendarDualModeRegistration = {
 export type CalendarDualModeChrome = {
   overlay?: ReactNode;
   trailingAction?: ReactNode;
-  legendAction?: ReactNode;
 };
 
 export type CalendarDualModeProps = {

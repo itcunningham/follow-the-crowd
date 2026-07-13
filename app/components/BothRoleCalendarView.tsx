@@ -162,7 +162,7 @@ export default function BothRoleCalendarView({ activeTab }: BothRoleCalendarView
             onMonthStartChange={handleMonthStartChange}
             onBeforeNavigate={activeTab === "dj" ? handleDjMonthNavBeforeNavigate : undefined}
             getMonthActivityDotClass={resolveMonthActivityDotClass}
-            showJumpTo={activeTab !== "dj" || !djMonthNavChrome?.trailingAction}
+            reserveTrailingSpace={activeTab === "planner"}
             trailingAction={activeTab === "dj" ? djMonthNavChrome?.trailingAction : undefined}
             overlay={activeTab === "dj" ? djMonthNavChrome?.overlay : undefined}
           />
@@ -172,14 +172,7 @@ export default function BothRoleCalendarView({ activeTab }: BothRoleCalendarView
           {activeTab === "planner" ? (
             <PlannerCalendarLegend />
           ) : (
-            <div className="flex items-center justify-center gap-2">
-              <div className="min-w-0 flex-1">
-                <DjAvailabilityCalendarLegend />
-              </div>
-              {djMonthNavChrome?.legendAction ? (
-                <div className="shrink-0">{djMonthNavChrome.legendAction}</div>
-              ) : null}
-            </div>
+            <DjAvailabilityCalendarLegend />
           )}
         </div>
 

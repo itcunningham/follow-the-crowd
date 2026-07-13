@@ -4,8 +4,8 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { addMonths, formatCalendarMonthLabel } from "@/lib/calendar";
 import CalendarMonthYearPicker from "@/app/components/CalendarMonthYearPicker";
 
-export const CALENDAR_JUMP_TO_BUTTON_CLASS =
-  "shrink-0 rounded-lg border border-ftc-border-strong/90 bg-ftc-surface/80 px-1.5 py-1.5 text-[10px] font-semibold text-ftc-text-secondary transition hover:border-ftc-border-strong hover:text-ftc-text sm:px-2.5 sm:text-[11px]";
+export const CALENDAR_MONTH_NAV_TRAILING_COLUMN_CLASS =
+  "flex min-w-[4.25rem] shrink-0 items-center justify-end sm:min-w-[4.75rem]";
 
 type CalendarMonthNavProps = {
   monthStart: Date;
@@ -14,8 +14,8 @@ type CalendarMonthNavProps = {
   disablePreviousMonth?: boolean;
   minDate?: string;
   getMonthActivityDotClass?: (month: number, year: number) => string | null;
-  showJumpTo?: boolean;
   trailingAction?: ReactNode;
+  reserveTrailingSpace?: boolean;
   overlay?: ReactNode;
 };
 
@@ -26,14 +26,14 @@ export default function CalendarMonthNav({
   disablePreviousMonth = false,
   minDate,
   getMonthActivityDotClass,
-  showJumpTo = true,
   trailingAction,
+  reserveTrailingSpace = false,
   overlay,
 }: CalendarMonthNavProps) {
   const monthLabelRef = useRef<HTMLButtonElement>(null);
-  const jumpToButtonRef = useRef<HTMLButtonElement>(null);
   const monthYearPickerRef = useRef<HTMLDivElement>(null);
   const [monthYearPickerOpen, setMonthYearPickerOpen] = useState(false);
+  const showTrailingColumn = trailingAction != null || reserveTrailingSpace;
 
   useEffect(() => {
     if (!monthYearPickerOpen) {
@@ -49,11 +49,7 @@ export default function CalendarMonthNav({
     function handlePointerDown(event: MouseEvent) {
       const target = event.target as Node;
 
-      if (
-        monthLabelRef.current?.contains(target) ||
-        jumpToButtonRef.current?.contains(target) ||
-        monthYearPickerRef.current?.contains(target)
-      ) {
+      if (monthLabelRef.current?.contains(target) || monthYearPickerRef.current?.contains(target)) {
         return;
       }
 
@@ -91,15 +87,17 @@ export default function CalendarMonthNav({
     setMonthYearPickerOpen(false);
   }
 
-  function openMonthYearPicker() {
-    setMonthYearPickerOpen(true);
-  }
-
   return (
     <div className="relative w-full">
       {overlay}
-      <div className="relative z-10 flex min-h-9 items-center gap-0.5 sm:gap-1">
-        <div className="flex min-w-0 flex-1 items-center justify-center gap-0.5 sm:gap-1">
+      <div
+        className={`relative z-10 min-h-9 items-center ${
+          showTrailingColumn
+            ? "grid grid-cols-[minmax(0,1fr)_auto] gap-0.5 sm:gap-1"
+            : "flex justify-center"
+        }`}
+      >
+        <div className="flex min-w-0 items-center justify-center gap-0.5 sm:gap-1">
           <button
             type="button"
             aria-label="Previous month"
@@ -167,22 +165,9 @@ export default function CalendarMonthNav({
           </button>
         </div>
 
-        <div className="flex shrink-0 items-center gap-1 pl-0.5 sm:pl-1">
-          {trailingAction}
-          {showJumpTo ? (
-            <button
-              ref={jumpToButtonRef}
-              type="button"
-              aria-label="Jump to month and year"
-              aria-expanded={monthYearPickerOpen}
-              aria-haspopup="dialog"
-              onClick={openMonthYearPicker}
-              className={CALENDAR_JUMP_TO_BUTTON_CLASS}
-            >
-              Jump to
-            </button>
-          ) : null}
-        </div>
+        {showTrailingColumn ? (
+          <div className={CALENDAR_MONTH_NAV_TRAILING_COLUMN_CLASS}>{trailingAction}</div>
+        ) : null}
       </div>
     </div>
   );

@@ -77,7 +77,7 @@ const PERSONAL_STATUS_OPTIONS = AVAILABILITY_STATUS_VALUES.map((value) => ({
 const BULK_STATUS_OPTIONS = PERSONAL_STATUS_OPTIONS;
 
 const GIG_CALENDAR_CONTROL_BUTTON_CLASS =
-  "rounded-lg border border-ftc-border-strong/90 bg-ftc-surface/80 px-2.5 py-1.5 text-[11px] font-semibold text-ftc-text-secondary transition hover:border-ftc-border-strong hover:text-ftc-text";
+  "shrink-0 rounded-lg border border-ftc-border-strong/90 bg-ftc-surface/80 px-1.5 py-1.5 text-[10px] font-semibold text-ftc-text-secondary transition hover:border-ftc-border-strong hover:text-ftc-text sm:px-2.5 sm:text-[11px]";
 
 const GIG_CALENDAR_UPDATE_PILL_CLASS =
   "inline-flex max-w-full items-center rounded-lg border-0 bg-ftc-primary px-2 py-1.5 text-[11px] font-medium text-ftc-bg transition-opacity duration-200 ease-out motion-reduce:transition-none sm:px-2.5";
@@ -1227,25 +1227,23 @@ export default function DjAvailabilityCalendar({
     <GigCalendarUpdatePill message={toastMessage} onDismiss={dismissToast} />
   ) : null;
 
-  const monthNavTrailingAction = multiSelectMode ? (
-    <QuickSelectMenu
-      open={quickSelectOpen}
-      onToggle={() => setQuickSelectOpen((open) => !open)}
-      onSelectFridays={() => selectDisplayedDatesMatching((date) => getWeekdayIndex(date) === 4)}
-      onSelectSaturdays={() => selectDisplayedDatesMatching((date) => getWeekdayIndex(date) === 5)}
-      onSelectWeekends={() =>
-        selectDisplayedDatesMatching((date) => {
-          const weekday = getWeekdayIndex(date);
-          return weekday === 4 || weekday === 5;
-        })
-      }
-      onClearSelection={() => setSelectedDateKeys(new Set())}
-      onClose={() => setQuickSelectOpen(false)}
-    />
-  ) : null;
-
-  const selectDatesLegendAction =
-    !multiSelectMode && !loading ? (
+  const monthNavTrailingAction = !loading ? (
+    multiSelectMode ? (
+      <QuickSelectMenu
+        open={quickSelectOpen}
+        onToggle={() => setQuickSelectOpen((open) => !open)}
+        onSelectFridays={() => selectDisplayedDatesMatching((date) => getWeekdayIndex(date) === 4)}
+        onSelectSaturdays={() => selectDisplayedDatesMatching((date) => getWeekdayIndex(date) === 5)}
+        onSelectWeekends={() =>
+          selectDisplayedDatesMatching((date) => {
+            const weekday = getWeekdayIndex(date);
+            return weekday === 4 || weekday === 5;
+          })
+        }
+        onClearSelection={() => setSelectedDateKeys(new Set())}
+        onClose={() => setQuickSelectOpen(false)}
+      />
+    ) : (
       <button
         type="button"
         onClick={enterMultiSelectMode}
@@ -1253,7 +1251,8 @@ export default function DjAvailabilityCalendar({
       >
         Select dates
       </button>
-    ) : null;
+    )
+  ) : null;
 
   useEffect(() => {
     if (!isDual || !onDualModeChromeChange) {
@@ -1263,7 +1262,6 @@ export default function DjAvailabilityCalendar({
     onDualModeChromeChange({
       overlay: monthNavOverlay,
       trailingAction: monthNavTrailingAction,
-      legendAction: selectDatesLegendAction,
     });
 
     return () => onDualModeChromeChange(null);
@@ -1273,7 +1271,6 @@ export default function DjAvailabilityCalendar({
     monthNavOverlay,
     monthNavTrailingAction,
     onDualModeChromeChange,
-    selectDatesLegendAction,
   ]);
 
   const calendarWeeks = useMemo(() => getCalendarWeekRows(monthStart), [monthStart]);
@@ -1445,17 +1442,6 @@ export default function DjAvailabilityCalendar({
     router.push(resolveCalendarOriginEventHref(getBookingRequestHref(booking), calendarOrigin));
   }
 
-  const calendarLegendBlock = (
-    <div className="mt-3">
-      <div className="flex items-center justify-center gap-2">
-        <div className="min-w-0 flex-1">
-          <DjAvailabilityCalendarLegend />
-        </div>
-        {selectDatesLegendAction ? <div className="shrink-0">{selectDatesLegendAction}</div> : null}
-      </div>
-    </div>
-  );
-
   const calendarBody = loading ? (
     isDual ? (
       <DjCalendarBodySkeleton />
@@ -1483,13 +1469,14 @@ export default function DjAvailabilityCalendar({
                 exitMultiSelectMode();
               }}
               getMonthActivityDotClass={getMonthActivityDotClass}
-              showJumpTo={!multiSelectMode}
               trailingAction={monthNavTrailingAction}
               overlay={monthNavOverlay}
             />
           </div>
 
-          {calendarLegendBlock}
+          <div className="mt-3">
+            <DjAvailabilityCalendarLegend />
+          </div>
         </>
       )}
 

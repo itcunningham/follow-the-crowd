@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import AppNavigation, { MOBILE_NAV_OFFSET_CLASS } from "@/app/components/AppNavigation";
+import { CALENDAR_MONTH_NAV_TRAILING_COLUMN_CLASS } from "@/app/components/CalendarMonthNav";
 import {
   EventDetailEditHeaderSlot,
   EventDetailOverlayButton,
@@ -894,15 +895,33 @@ export function CalendarPageLoadingShell() {
   );
 }
 
-function CalendarMonthNavSkeleton() {
+function CalendarMonthNavSkeleton({
+  trailing = "none",
+}: {
+  trailing?: "none" | "reserve" | "action";
+}) {
+  const showTrailingColumn = trailing === "reserve" || trailing === "action";
+
   return (
-    <div className="flex w-full min-h-9 items-center gap-0.5 sm:gap-1">
-      <div className="flex min-w-0 flex-1 items-center justify-center gap-0.5 sm:gap-1">
+    <div
+      className={`w-full min-h-9 items-center ${
+        showTrailingColumn
+          ? "grid grid-cols-[minmax(0,1fr)_auto] gap-0.5 sm:gap-1"
+          : "flex justify-center"
+      }`}
+    >
+      <div className="flex min-w-0 items-center justify-center gap-0.5 sm:gap-1">
         <SkeletonBlock className="h-9 w-9 shrink-0 rounded-lg" />
         <SkeletonBlock className="h-9 min-w-[8.75rem] rounded-lg sm:min-w-[11rem]" />
         <SkeletonBlock className="h-9 w-9 shrink-0 rounded-lg" />
       </div>
-      <SkeletonBlock className="ml-0.5 h-[34px] w-[3.75rem] shrink-0 rounded-lg sm:ml-1 sm:w-[4.5rem]" />
+      {showTrailingColumn ? (
+        <div className={CALENDAR_MONTH_NAV_TRAILING_COLUMN_CLASS}>
+          {trailing === "action" ? (
+            <SkeletonBlock className="h-[34px] w-full rounded-lg" />
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -1134,7 +1153,7 @@ export function DjCalendarContentSkeleton() {
   return (
     <div aria-busy="true" aria-label="Loading calendar" className="contents">
       <div className="relative mt-4">
-        <CalendarMonthNavSkeleton />
+        <CalendarMonthNavSkeleton trailing="action" />
       </div>
 
       <div className="mt-3">
