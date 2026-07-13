@@ -53,6 +53,7 @@ import {
   WEEKDAY_LABELS,
 } from "@/lib/calendar";
 import { prepareMobileDocumentScrollReset } from "@/lib/navigation/prepareMobileDocumentScrollReset";
+import { isDateKeyBeforeToday } from "@/lib/bookingDateTime";
 
 
 const AVAILABILITY_STATUS_VALUES: readonly DjAvailabilityStatus[] = [
@@ -392,6 +393,7 @@ function DjAvailabilityMobileDayPanel({
   const pendingBookings = dayBookings.filter((booking) => booking.status === "pending");
   const acceptedBookings = dayBookings.filter((booking) => booking.status === "accepted");
   const interactiveBookings = [...pendingBookings, ...acceptedBookings];
+  const canEditAvailability = !isDateKeyBeforeToday(dateKey);
   const statusButtonClass =
     "min-h-11 rounded-xl border px-3 py-2.5 text-sm font-semibold transition disabled:opacity-50";
   const defaultStatusButtonClass = `${statusButtonClass} border-ftc-border-subtle bg-ftc-bg-elevated text-ftc-text-secondary hover:border-ftc-border-strong hover:text-ftc-text`;
@@ -409,40 +411,44 @@ function DjAvailabilityMobileDayPanel({
         ) : null}
       </div>
 
-      <div className="mt-3 grid grid-cols-2 gap-2">
-        {PERSONAL_STATUS_OPTIONS.map((option) => {
-          const isActive = personalEntry?.status === option.value;
+      {canEditAvailability ? (
+        <>
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            {PERSONAL_STATUS_OPTIONS.map((option) => {
+              const isActive = personalEntry?.status === option.value;
 
-          return (
+              return (
+                <button
+                  key={option.value}
+                  type="button"
+                  disabled={saving}
+                  onClick={() => onSetPersonalStatus(option.value)}
+                  className={
+                    isActive
+                      ? `${statusButtonClass} border-transparent ${getFlatAvailabilityFillClass(option.value)}`
+                      : defaultStatusButtonClass
+                  }
+                >
+                  {option.label}
+                </button>
+              );
+            })}
             <button
-              key={option.value}
               type="button"
-              disabled={saving}
-              onClick={() => onSetPersonalStatus(option.value)}
-              className={
-                isActive
-                  ? `${statusButtonClass} border-transparent ${getFlatAvailabilityFillClass(option.value)}`
-                  : defaultStatusButtonClass
-              }
+              disabled={saving || !personalEntry}
+              onClick={onClearPersonalStatus}
+              className={`${defaultStatusButtonClass} col-span-2 ${
+                !personalEntry ? "opacity-40" : ""
+              }`}
             >
-              {option.label}
+              Clear availability
             </button>
-          );
-        })}
-        <button
-          type="button"
-          disabled={saving || !personalEntry}
-          onClick={onClearPersonalStatus}
-          className={`${defaultStatusButtonClass} col-span-2 ${
-            !personalEntry ? "opacity-40" : ""
-          }`}
-        >
-          Clear availability
-        </button>
-      </div>
+          </div>
 
-      {saving ? (
-        <p className="mt-2 text-xs font-medium text-ftc-text-muted">Saving...</p>
+          {saving ? (
+            <p className="mt-2 text-xs font-medium text-ftc-text-muted">Saving...</p>
+          ) : null}
+        </>
       ) : null}
 
       {interactiveBookings.length > 0 ? (
@@ -473,11 +479,11 @@ function DjAvailabilityMobileDayPanel({
             </li>
           ))}
         </ul>
-      ) : (
+      ) : canEditAvailability ? (
         <div className="mt-4 rounded-xl border border-dashed border-ftc-border-subtle bg-ftc-surface/30 px-4 py-6 text-center">
           <p className="text-sm text-ftc-text-muted">No booking requests on this date</p>
         </div>
-      )}
+      ) : null}
     </>
   );
 }
@@ -594,6 +600,7 @@ function DjAvailabilityDayCell({
   onToggleBookingPopover: () => void;
 }) {
   const dateKey = toDateKey(date);
+  const canEditAvailability = !isDateKeyBeforeToday(dateKey);
   const pendingBookings = dayBookings.filter((booking) => booking.status === "pending");
   const acceptedBookings = dayBookings.filter((booking) => booking.status === "accepted");
   const interactiveBookings = [...pendingBookings, ...acceptedBookings];
@@ -648,7 +655,7 @@ function DjAvailabilityDayCell({
         >
           {date.getDate()}
         </span>
-        {!multiSelectMode ? (
+        {!multiSelectMode && canEditAvailability ? (
           <div className="relative">
             <button
               type="button"
@@ -1063,6 +1070,10 @@ export default function DjAvailabilityCalendar({
   }, [openMenuDateKey, openBookingPopoverDateKey]);
 
   async function handleSetPersonalStatus(dateKey: string, status: DjAvailabilityStatus) {
+    if (isDateKeyBeforeToday(dateKey)) {
+      return;
+    }
+
     setSavingDateKey(dateKey);
     setError(null);
     setOpenMenuDateKey(null);
@@ -1086,6 +1097,10 @@ export default function DjAvailabilityCalendar({
   }
 
   async function handleClearPersonalStatus(dateKey: string) {
+    if (isDateKeyBeforeToday(dateKey)) {
+      return;
+    }
+
     setSavingDateKey(dateKey);
     setError(null);
     setOpenMenuDateKey(null);
@@ -1116,6 +1131,8 @@ export default function DjAvailabilityCalendar({
     prepareMobileDocumentScrollReset();
     router.push(resolveCalendarOriginEventHref(getBookingRequestHref(booking), calendarOrigin));
   }
+
+  const selectedDateIsPast = isDateKeyBeforeToday(toDateKey(selectedDate));
 
   return (
     <section className={PLANNER_WORKSPACE_PRIMARY_SURFACE_CLASS}>
@@ -1288,9 +1305,11 @@ export default function DjAvailabilityCalendar({
           Use the menu on each date to set personal availability. Booking badges open the linked
           event or DM.
         </p>
-        <p className="mt-3 text-xs text-ftc-text-muted md:hidden">
-          Pick a date above to set availability. Booking links open the linked event or DM.
-        </p>
+        {!selectedDateIsPast ? (
+          <p className="mt-3 text-xs text-ftc-text-muted md:hidden">
+            Pick a date above to set availability. Booking links open the linked event or DM.
+          </p>
+        ) : null}
       </section>
   );
 }

@@ -47,6 +47,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 - Desktop (`md+`): month grid with per-date overflow menu unchanged
 - Bulk select + quick select (Fridays / Saturdays / weekends) on all breakpoints; mobile strip toggles selection in bulk mode
 - **Legend + strip dots:** compact dot-and-label legend (shared `CalendarDotLegend`) — Available light blue, Maybe amber, Unavailable red, Pending Request dark blue, Booked green; date-strip dots use the same mapping with `+N` for multiple markers
+- **Past dates:** availability controls hidden (mobile panel + desktop cell menu); empty booking message and mobile helper text suppressed; historical availability badges and booking cards remain visible
 - Shared strip component: `PlannerCalendarMobileDateStrip` accepts optional `getDateMarker` for DJ markers (`getDjAvailabilityDateStripMarker`)
 
 ## Booking / invite UX
