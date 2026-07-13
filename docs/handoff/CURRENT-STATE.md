@@ -1,4 +1,4 @@
-# Current state (last updated: 2026-07-12)
+# Current state (last updated: 2026-07-13)
 
 Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 
@@ -86,6 +86,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `86eb697` — update handoff docs and agent workflow rules
 - `93de0c2` — match planner heading to active workspace
 - `0444eac` — speed up authenticated app cold start
 - `9d1a5c7` — fix messages badge sync hydration like gigs tab

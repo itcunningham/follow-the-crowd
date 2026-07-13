@@ -73,7 +73,11 @@ npm run build
 
 **Other main areas:** `/discover`, `/dm`, `/profile`, `/settings`, `/notifications`, `/group-chats`
 
-**Mobile:** bottom nav below `md`. **Desktop:** top nav. Same product behaviour; desktop keeps wider layouts (calendar grid, tables).
+**Mobile:** bottom nav below `md`. **Desktop:** top nav (`md:max-w-5xl`, aligned to page shell).
+
+**Main nav badges:** shared `NavBadgeProvider` — Messages unread count and Gigs pending count use localStorage + in-memory runtime cache, seeded at module load so badges render with the nav (no pop-in on hard refresh). Gigs sub-nav badge uses same sync pattern via `useSyncExternalStore`.
+
+**Planner workspace heading:** `PlannerWorkspacePage` derives the large page title from the active workspace tab via `resolvePlannerWorkspaceTitle()` in `lib/plannerEventsNav.ts` — Events / Event Plans / Calendar / Gigs. Calendar-origin create on `/events` shows **Calendar** when that tab is active.
 
 ---
 
@@ -144,6 +148,12 @@ npm run build
 ### Settings
 - Password reset, account deletion request
 
+### Desktop layout (2026-07-12+)
+- **Planner workspace shell:** shared `PlannerWorkspacePage` — Events, Event Plans, Calendar, Gigs at `md:max-w-5xl`
+- **Messages inbox + DM:** centred column `max-w-2xl`, widens to `52rem` at `lg+`
+- **Profile:** single-column mobile flow, centred at `lg:max-w-[52rem]`
+- **Performance:** optimistic auth in `OnboardingGuard`; profile + nav role persisted to localStorage (userId-scoped); events list + group inbox caches survive hard refresh; profile fetch starts at module load
+
 ---
 
 ## UX & copy conventions (important)
@@ -169,7 +179,11 @@ npm run build
 | Event form validation | `lib/events/eventFormFieldValidation.ts`, `lib/bookingDateTime.ts` |
 | Notes limits | `lib/events/eventNotes.ts` |
 | Group chat | `lib/groupChats.ts`, `lib/eventCrewChat.ts` |
-| Planner UI / workspace shell | `app/components/planner/PlannerUi.tsx`, `PlannerWorkspaceLayout.tsx` |
+| Planner UI / workspace shell | `app/components/planner/PlannerWorkspaceLayout.tsx`, `PlannerUi.tsx` |
+| Planner nav + workspace titles | `lib/plannerEventsNav.ts`, `app/components/PlannerEventsSubNav.tsx` |
+| Navigation badges | `app/components/navigation/NavBadgeProvider.tsx`, `lib/navigationBadgePrefetch.ts`, `lib/navigationBadgeCache.ts` |
+| Main nav | `app/components/AppNavigation.tsx` |
+| Messages inbox layout | `app/components/dm/MessagesInboxLayout.tsx` |
 | Events list | `app/events/EventsPageClient.tsx` |
 | Event detail | `app/events/[eventId]/page.tsx` |
 | Calendar UI | `app/components/PlannerCalendar.tsx`, `PlannerCalendarMobileDateStrip.tsx` |
@@ -198,19 +212,33 @@ npm run build
 
 ---
 
-## Recent shipped work (2026-07-12 — reference)
+## Recent shipped work (last updated: 2026-07-13)
 
-- Desktop workspace alignment: shared `PlannerWorkspacePage` shell across Events / Event Plans / Calendar / Gigs
-- Faster page loads: optimistic auth, profile cache, no full loading shell on every tab switch
-- Calendar date-strip dot priority (Accepted > Pending > Upcoming)
-- Venue on calendar event cards (`Event · Venue`)
-- Desktop/mobile planner UX parity (wording, validation, calendar grid accents)
-- Inline event form validation; required start + finish times
-- Calendar-origin create flow + Confirm DJ wording
-- Cancelled events hidden from calendar
-- History bulk remove from Events and Gigs
+**Latest commit on `main`:** `86eb697` — update handoff docs and agent workflow rules
 
-Latest commit on `main`: check `git log -1` in repo.
+| Commit | Summary |
+|--------|---------|
+| `86eb697` | Handoff docs + agent workflow rules (`HANDOFF-UPDATE.md`, Cursor rules) |
+| `93de0c2` | Planner page heading matches active workspace tab |
+| `0444eac` | Faster cold start — localStorage profile/role, parallel auth, events/inbox cache |
+| `9d1a5c7` | Messages badge sync hydration (mirrors Gigs pattern) |
+| `fbd1bbb` | Messages badge first-load timing fix |
+| `913efc4` | Gigs badge hydration timing fix |
+| `564642e` | Messages inbox width aligned with DM |
+| `37c445b` | Desktop profile single-column layout |
+| `d961180` | Desktop planner workspace consistency |
+| `1943163` | Optimistic auth + profile caching |
+
+**Also shipped (earlier July 2026):**
+- Shared `PlannerWorkspacePage` shell across Events / Event Plans / Calendar / Gigs
+- Calendar date-strip dot priority (Accepted > Pending > Upcoming); venue on calendar cards
+- Desktop/mobile planner UX parity; inline event form validation
+- Calendar-origin create flow + Confirm N DJ(s) wording
+- Cancelled events hidden from calendar; history bulk remove (Events + Gigs)
+- Rate proposals (open/fixed offers, DJ counter-proposals)
+- Navigation badge stabilisation (shared provider + cache)
+
+For full feature inventory see `docs/handoff/CURRENT-STATE.md`.
 
 ---
 
