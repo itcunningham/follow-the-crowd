@@ -94,7 +94,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
-- `67249f7` — DJ availability mobile date strip + selected-day controls
+- `c2f7665` — DJ availability mobile date strip + selected-day controls
 - `86eb697` — update handoff docs and agent workflow rules
 - `93de0c2` — match planner heading to active workspace
 - `0444eac` — speed up authenticated app cold start
