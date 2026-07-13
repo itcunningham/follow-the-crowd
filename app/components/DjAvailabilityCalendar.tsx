@@ -188,14 +188,7 @@ function getAvailabilityActionPillClass(
     return baseClass;
   }
 
-  switch (status) {
-    case "available":
-      return `${baseClass} border-ftc-primary/50 bg-ftc-primary/10 text-ftc-primary`;
-    case "tentative":
-      return `${baseClass} border-[color-mix(in_srgb,var(--ftc-color-warning)_55%,transparent)] bg-[color-mix(in_srgb,var(--ftc-color-warning)_12%,transparent)] text-[var(--ftc-color-warning)]`;
-    case "unavailable":
-      return `${baseClass} border-[color-mix(in_srgb,var(--ftc-color-danger)_55%,transparent)] bg-[color-mix(in_srgb,var(--ftc-color-danger)_12%,transparent)] text-[var(--ftc-color-danger)]`;
-  }
+  return `${baseClass} ${getFlatAvailabilityFillClass(status)}`;
 }
 
 function DjAvailabilityLegend() {
