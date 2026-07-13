@@ -930,6 +930,24 @@ function PlannerCalendarLegendSkeleton() {
   );
 }
 
+function PlannerCalendarMobileAgendaPanelSkeleton() {
+  return (
+    <div aria-hidden="true" className="md:hidden">
+      <div className="mt-4">
+        <SkeletonBlock className="h-5 w-44 max-w-full" />
+        <div className="mt-3 flex items-center gap-2">
+          <SkeletonBlock className="h-8 min-w-[5.5rem] flex-1 rounded-full" />
+          <SkeletonBlock className="h-8 min-w-[5.5rem] flex-1 rounded-full" />
+        </div>
+      </div>
+
+      <div className="mt-3 rounded-xl border border-dashed border-ftc-border-subtle bg-ftc-surface/30 px-4 py-8">
+        <SkeletonBlock className="mx-auto h-4 w-40 max-w-full" />
+      </div>
+    </div>
+  );
+}
+
 function PlannerCalendarMobileAgendaSkeleton() {
   return (
     <div aria-hidden="true" className="mt-4 md:hidden">
@@ -982,6 +1000,15 @@ function PlannerCalendarDesktopGridSkeleton() {
   );
 }
 
+export function PlannerCalendarBodySkeleton() {
+  return (
+    <div aria-busy="true" aria-label="Loading calendar" className="contents">
+      <PlannerCalendarMobileAgendaPanelSkeleton />
+      <PlannerCalendarDesktopGridSkeleton />
+    </div>
+  );
+}
+
 export function PlannerCalendarContentSkeleton() {
   return (
     <div aria-busy="true" aria-label="Loading calendar" className="contents">
@@ -1011,6 +1038,27 @@ function DjCalendarLegendSkeleton() {
           <SkeletonBlock className={`h-3 ${index === 3 ? "w-24" : "w-14"}`} />
         </span>
       ))}
+    </div>
+  );
+}
+
+function DjCalendarMobileAgendaPanelSkeleton() {
+  return (
+    <div aria-hidden="true" className="md:hidden">
+      <div className="mt-4">
+        <SkeletonBlock className="h-5 w-44 max-w-full" />
+      </div>
+
+      <div className="mt-3 flex flex-wrap gap-2">
+        <SkeletonBlock className="h-[1.875rem] w-[4.75rem] rounded-full" />
+        <SkeletonBlock className="h-[1.875rem] w-[3.75rem] rounded-full" />
+        <SkeletonBlock className="h-[1.875rem] w-[5.5rem] rounded-full" />
+        <SkeletonBlock className="h-[1.875rem] w-[3.25rem] rounded-full" />
+      </div>
+
+      <div className="mt-3 rounded-xl border border-dashed border-ftc-border-subtle bg-ftc-surface/30 px-4 py-6">
+        <SkeletonBlock className="mx-auto h-4 w-48 max-w-full" />
+      </div>
     </div>
   );
 }
@@ -1066,6 +1114,15 @@ function DjCalendarDesktopGridSkeleton() {
           />
         ))}
       </div>
+    </div>
+  );
+}
+
+export function DjCalendarBodySkeleton() {
+  return (
+    <div aria-busy="true" aria-label="Loading calendar" className="contents">
+      <DjCalendarMobileAgendaPanelSkeleton />
+      <DjCalendarDesktopGridSkeleton />
     </div>
   );
 }

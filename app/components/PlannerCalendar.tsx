@@ -9,7 +9,11 @@ import PlannerCalendarActionButtons from "@/app/components/PlannerCalendarAction
 import PlannerCalendarDateActions from "@/app/components/PlannerCalendarDateActions";
 import PlannerCalendarMobileDateStrip from "@/app/components/PlannerCalendarMobileDateStrip";
 import { PLANNER_WORKSPACE_PRIMARY_SURFACE_CLASS } from "@/app/components/planner/PlannerWorkspaceLayout";
-import { PlannerCalendarContentSkeleton } from "@/app/components/skeleton/Skeleton";
+import {
+  PlannerCalendarBodySkeleton,
+  PlannerCalendarContentSkeleton,
+} from "@/app/components/skeleton/Skeleton";
+import type { CalendarDualModeProps } from "@/lib/calendarDualView";
 import { isDateKeyBeforeToday } from "@/lib/bookingDateTime";
 import { consumeEventCreateInviteMessage } from "@/lib/events/eventCreateInviteMessages";
 import {
@@ -86,7 +90,7 @@ function PlannerCalendarDesktopLegend() {
   );
 }
 
-function PlannerCalendarLegend() {
+export function PlannerCalendarLegend() {
   return (
     <>
       <PlannerCalendarMobileLegend />
@@ -246,6 +250,7 @@ function PlannerCalendarMobileAgenda({
   isTodayDate,
   isDateInViewingMonth,
   hasSavedEventPlans,
+  hideDateStrip = false,
 }: {
   monthStart: Date;
   selectedDate: Date;
@@ -254,6 +259,7 @@ function PlannerCalendarMobileAgenda({
   isTodayDate: (date: Date) => boolean;
   isDateInViewingMonth: (date: Date) => boolean;
   hasSavedEventPlans: boolean;
+  hideDateStrip?: boolean;
 }) {
   const agendaHeaderRef = useRef<HTMLDivElement>(null);
   const selectedDateKey = toDateKey(selectedDate);
@@ -295,13 +301,15 @@ function PlannerCalendarMobileAgenda({
     isDateKeyBeforeToday(selectedDateKey) && displayDateItems.length === 0;
 
   return (
-    <div className="mt-4 md:hidden">
-      <PlannerCalendarMobileDateStrip
-        selectedDate={selectedDate}
-        onSelectDate={onSelectDate}
-        monthStart={monthStart}
-        itemsByDate={itemsByDate}
-      />
+    <div className={hideDateStrip ? "md:hidden" : "mt-4 md:hidden"}>
+      {hideDateStrip ? null : (
+        <PlannerCalendarMobileDateStrip
+          selectedDate={selectedDate}
+          onSelectDate={onSelectDate}
+          monthStart={monthStart}
+          itemsByDate={itemsByDate}
+        />
+      )}
 
       <div ref={agendaHeaderRef} className="mt-4">
         <h2 className="text-base font-semibold text-ftc-text">
@@ -351,14 +359,21 @@ function PlannerCalendarMobileAgenda({
 
 const INVITE_MESSAGE_AUTO_DISMISS_MS = 5000;
 
-export default function PlannerCalendar() {
+export default function PlannerCalendar({
+  variant = "standalone",
+  isActive = true,
+  sharedViewState,
+  onMobileStripConfigChange,
+  onMonthActivityDotClassChange,
+}: CalendarDualModeProps = {}) {
+  const isDual = variant === "dual";
   const searchParams = useSearchParams();
   const initialView = resolvePlannerCalendarViewState(
     searchParams.get("date"),
     searchParams.get("month"),
   );
   const [items, setItems] = useState<CalendarItem[]>([]);
-  const [monthStart, setMonthStart] = useState(() => initialView.monthStart);
+  const [localMonthStart, setLocalMonthStart] = useState(() => initialView.monthStart);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [todayParts, setTodayParts] = useState<{ year: number; month: number; day: number } | null>(
@@ -366,8 +381,10 @@ export default function PlannerCalendar() {
   );
   const [actionDate, setActionDate] = useState<Date | null>(null);
   const [hasSavedEventPlans, setHasSavedEventPlans] = useState(false);
-  const [selectedDate, setSelectedDate] = useState(() => initialView.selectedDate);
+  const [localSelectedDate, setLocalSelectedDate] = useState(() => initialView.selectedDate);
   const [inviteMessage, setInviteMessage] = useState<string | null>(null);
+  const monthStart = isDual && sharedViewState ? sharedViewState.monthStart : localMonthStart;
+  const selectedDate = isDual && sharedViewState ? sharedViewState.selectedDate : localSelectedDate;
   const inviteDismissTimerRef = useRef<number | null>(null);
   const inviteMessageUrlDateRef = useRef<string | null>(null);
 
@@ -422,18 +439,22 @@ export default function PlannerCalendar() {
   }, [searchParams, inviteMessage, clearInviteMessage]);
 
   useLayoutEffect(() => {
+    if (isDual) {
+      return;
+    }
+
     const nextView = resolvePlannerCalendarViewState(
       searchParams.get("date"),
       searchParams.get("month"),
     );
 
-    setSelectedDate((current) =>
+    setLocalSelectedDate((current) =>
       isSameDay(current, nextView.selectedDate) ? current : nextView.selectedDate,
     );
-    setMonthStart((current) =>
+    setLocalMonthStart((current) =>
       isSameMonth(current, nextView.monthStart) ? current : nextView.monthStart,
     );
-  }, [searchParams]);
+  }, [isDual, searchParams]);
 
   useEffect(() => {
     void listBookingPlans()
@@ -516,12 +537,24 @@ export default function PlannerCalendar() {
 
   function handleSelectDate(date: Date) {
     clearInviteMessage();
-    setSelectedDate(date);
+
+    if (isDual && sharedViewState) {
+      sharedViewState.onSelectDate(date);
+      return;
+    }
+
+    setLocalSelectedDate(date);
   }
 
   function handleSelectActionDate(date: Date) {
     clearInviteMessage();
-    setSelectedDate(date);
+
+    if (isDual && sharedViewState) {
+      sharedViewState.onSelectDate(date);
+    } else {
+      setLocalSelectedDate(date);
+    }
+
     setActionDate(date);
   }
 
@@ -536,8 +569,14 @@ export default function PlannerCalendar() {
 
   function handleMonthStartChange(nextMonthStart: Date) {
     clearInviteMessage();
-    setMonthStart(nextMonthStart);
-    setSelectedDate((current) => {
+
+    if (isDual && sharedViewState) {
+      sharedViewState.onMonthStartChange(nextMonthStart);
+      return;
+    }
+
+    setLocalMonthStart(nextMonthStart);
+    setLocalSelectedDate((current) => {
       if (isSameMonth(current, nextMonthStart)) {
         return current;
       }
@@ -546,19 +585,41 @@ export default function PlannerCalendar() {
     });
   }
 
-  return (
-    <section className={PLANNER_WORKSPACE_PRIMARY_SURFACE_CLASS}>
-      <div className="relative" aria-hidden="true">
-        <div className="relative z-10 flex items-center justify-between gap-2 sm:gap-3">
-          <div className="hidden min-w-0 max-w-[42%] md:block" />
-          <div className="ml-auto flex shrink-0 items-center gap-2">
-            <span className="invisible rounded-lg border border-transparent px-2.5 py-1.5 text-[11px] font-semibold">
-              Select dates
-            </span>
-          </div>
+  useEffect(() => {
+    if (!isDual || !onMobileStripConfigChange) {
+      return;
+    }
+
+    onMobileStripConfigChange({
+      itemsByDate,
+      isDateHighlighted: (date) => isSameDay(date, selectedDate),
+      onSelectDate: handleSelectDate,
+    });
+  }, [handleSelectDate, isDual, itemsByDate, onMobileStripConfigChange, selectedDate]);
+
+  useEffect(() => {
+    if (!isDual || !onMonthActivityDotClassChange) {
+      return;
+    }
+
+    onMonthActivityDotClassChange(getMonthActivityDotClass);
+  }, [getMonthActivityDotClass, isDual, onMonthActivityDotClassChange]);
+
+  const toolbarBlock = (
+    <div className="relative" aria-hidden="true">
+      <div className="relative z-10 flex items-center justify-between gap-2 sm:gap-3">
+        <div className="hidden min-w-0 max-w-[42%] md:block" />
+        <div className="ml-auto flex shrink-0 items-center gap-2">
+          <span className="invisible rounded-lg border border-transparent px-2.5 py-1.5 text-[11px] font-semibold">
+            Select dates
+          </span>
         </div>
       </div>
+    </div>
+  );
 
+  const alertsBlock = (
+    <>
       {error ? (
         <p
           role="alert"
@@ -580,11 +641,19 @@ export default function PlannerCalendar() {
           {inviteMessage}
         </p>
       ) : null}
+    </>
+  );
 
-      {loading ? (
-        <PlannerCalendarContentSkeleton />
-      ) : (
-        <div className="transition-opacity duration-200 ease-out opacity-100 motion-reduce:transition-none">
+  const calendarBody = loading ? (
+    isDual ? (
+      <PlannerCalendarBodySkeleton />
+    ) : (
+      <PlannerCalendarContentSkeleton />
+    )
+  ) : (
+    <div className="transition-opacity duration-200 ease-out opacity-100 motion-reduce:transition-none">
+      {isDual ? null : (
+        <>
           <div className="relative mt-4">
             <CalendarMonthNav
               monthStart={monthStart}
@@ -596,82 +665,105 @@ export default function PlannerCalendar() {
           <div className="mt-3">
             <PlannerCalendarLegend />
           </div>
-
-          <PlannerCalendarMobileAgenda
-            monthStart={monthStart}
-            selectedDate={selectedDate}
-            onSelectDate={handleSelectDate}
-            itemsByDate={itemsByDate}
-            isTodayDate={isTodayDate}
-            isDateInViewingMonth={isDateInViewingMonth}
-            hasSavedEventPlans={hasSavedEventPlans}
-          />
-
-          <div className="mt-4 hidden rounded-2xl border border-ftc-border bg-ftc-bg-elevated/40 md:block">
-            <div className="grid grid-cols-7 border-b border-ftc-border bg-ftc-bg-elevated/60">
-              {WEEKDAY_LABELS.map((label) => (
-                <div
-                  key={label}
-                  className="px-2 py-2.5 text-center text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted md:px-3 md:text-xs"
-                >
-                  {label}
-                </div>
-              ))}
-            </div>
-            <div className="grid grid-cols-7 gap-2 p-2.5 md:gap-3 md:p-3">
-              {calendarWeeks.flatMap((week, weekIndex) =>
-                week.map((day, dayIndex) => {
-                  if (!day) {
-                    return (
-                      <div
-                        key={`empty-${weekIndex}-${dayIndex}`}
-                        aria-hidden="true"
-                        className="min-h-0"
-                      />
-                    );
-                  }
-
-                  const dateKey = toDateKey(day);
-
-                  return (
-                    <PlannerCalendarDayCell
-                      key={dateKey}
-                      date={day}
-                      isToday={isTodayDate(day)}
-                      isSelected={actionDate !== null && isSameDay(day, actionDate)}
-                      items={sortPlannerCalendarAgendaItems(
-                        monthItemsByDate.get(dateKey) ?? [],
-                      )}
-                      onSelectDate={handleSelectActionDate}
-                      monthStart={monthStart}
-                    />
-                  );
-                }),
-              )}
-            </div>
-          </div>
-
-          {monthItems.length === 0 ? (
-            <p className="mt-4 hidden text-center text-sm text-ftc-text-muted md:block">
-              No bookings or events this month yet
-            </p>
-          ) : null}
-        </div>
+        </>
       )}
 
-      <PlannerCalendarDateActions
-        date={actionDate}
-        items={
-          actionDate
-            ? sortPlannerCalendarAgendaItems(
-                monthItemsByDate.get(toDateKey(actionDate)) ?? [],
-              )
-            : []
-        }
-        hasSavedEventPlans={hasSavedEventPlans}
+      <PlannerCalendarMobileAgenda
         monthStart={monthStart}
-        onClose={handleCloseActionDate}
+        selectedDate={selectedDate}
+        onSelectDate={handleSelectDate}
+        itemsByDate={itemsByDate}
+        isTodayDate={isTodayDate}
+        isDateInViewingMonth={isDateInViewingMonth}
+        hasSavedEventPlans={hasSavedEventPlans}
+        hideDateStrip={isDual}
       />
+
+      <div className="mt-4 hidden rounded-2xl border border-ftc-border bg-ftc-bg-elevated/40 md:block">
+        <div className="grid grid-cols-7 border-b border-ftc-border bg-ftc-bg-elevated/60">
+          {WEEKDAY_LABELS.map((label) => (
+            <div
+              key={label}
+              className="px-2 py-2.5 text-center text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted md:px-3 md:text-xs"
+            >
+              {label}
+            </div>
+          ))}
+        </div>
+        <div className="grid grid-cols-7 gap-2 p-2.5 md:gap-3 md:p-3">
+          {calendarWeeks.flatMap((week, weekIndex) =>
+            week.map((day, dayIndex) => {
+              if (!day) {
+                return (
+                  <div
+                    key={`empty-${weekIndex}-${dayIndex}`}
+                    aria-hidden="true"
+                    className="min-h-0"
+                  />
+                );
+              }
+
+              const dateKey = toDateKey(day);
+
+              return (
+                <PlannerCalendarDayCell
+                  key={dateKey}
+                  date={day}
+                  isToday={isTodayDate(day)}
+                  isSelected={actionDate !== null && isSameDay(day, actionDate)}
+                  items={sortPlannerCalendarAgendaItems(monthItemsByDate.get(dateKey) ?? [])}
+                  onSelectDate={handleSelectActionDate}
+                  monthStart={monthStart}
+                />
+              );
+            }),
+          )}
+        </div>
+      </div>
+
+      {monthItems.length === 0 ? (
+        <p className="mt-4 hidden text-center text-sm text-ftc-text-muted md:block">
+          No bookings or events this month yet
+        </p>
+      ) : null}
+    </div>
+  );
+
+  const dateActionsBlock = (
+    <PlannerCalendarDateActions
+      date={actionDate}
+      items={
+        actionDate
+          ? sortPlannerCalendarAgendaItems(monthItemsByDate.get(toDateKey(actionDate)) ?? [])
+          : []
+      }
+      hasSavedEventPlans={hasSavedEventPlans}
+      monthStart={monthStart}
+      onClose={handleCloseActionDate}
+    />
+  );
+
+  if (isDual) {
+    return (
+      <>
+        <div className={isActive ? "order-1" : "order-1 hidden"}>
+          {toolbarBlock}
+          {alertsBlock}
+        </div>
+        <div className={isActive ? "order-3" : "order-3 hidden"}>
+          {calendarBody}
+          {dateActionsBlock}
+        </div>
+      </>
+    );
+  }
+
+  return (
+    <section className={PLANNER_WORKSPACE_PRIMARY_SURFACE_CLASS}>
+      {toolbarBlock}
+      {alertsBlock}
+      {calendarBody}
+      {dateActionsBlock}
     </section>
   );
 }

@@ -19,7 +19,11 @@ import {
 import CalendarMonthNav from "@/app/components/CalendarMonthNav";
 import CalendarDotLegend from "@/app/components/calendar/CalendarDotLegend";
 import PlannerCalendarMobileDateStrip from "@/app/components/PlannerCalendarMobileDateStrip";
-import { DjCalendarContentSkeleton } from "@/app/components/skeleton/Skeleton";
+import {
+  DjCalendarBodySkeleton,
+  DjCalendarContentSkeleton,
+} from "@/app/components/skeleton/Skeleton";
+import type { CalendarDualModeProps } from "@/lib/calendarDualView";
 import {
   batchClearMyAvailabilityForDates,
   batchSaveMyAvailability,
@@ -197,7 +201,7 @@ function getAvailabilityActionPillClass(
   return `ftc-filter-pill ${GIG_AVAILABILITY_PILL_ACTIVE_CLASS[status]} disabled:cursor-not-allowed`;
 }
 
-function DjAvailabilityLegend() {
+export function DjAvailabilityCalendarLegend() {
   return (
     <CalendarDotLegend
       items={DJ_CALENDAR_LEGEND_ITEMS.map((item) => ({
@@ -582,6 +586,7 @@ type DjAvailabilityMobileAgendaProps = {
   onSelectDate: (date: Date) => void;
   onSetPersonalStatus: (dateKey: string, status: DjAvailabilityStatus) => void;
   onClearPersonalStatus: (dateKey: string) => void;
+  hideDateStrip?: boolean;
 };
 
 function DjAvailabilityMobileAgenda({
@@ -597,37 +602,40 @@ function DjAvailabilityMobileAgenda({
   onSelectDate,
   onSetPersonalStatus,
   onClearPersonalStatus,
+  hideDateStrip = false,
 }: DjAvailabilityMobileAgendaProps) {
   const selectedDateKey = toDateKey(selectedDate);
   const personalEntry = availabilityByDate.get(selectedDateKey);
   const dayBookings = bookingsByDate.get(selectedDateKey) ?? [];
 
   return (
-    <div className="mt-4 md:hidden">
-      <PlannerCalendarMobileDateStrip
-        selectedDate={selectedDate}
-        onSelectDate={onSelectDate}
-        monthStart={monthStart}
-        getDateMarker={(dateKey, isHighlighted) => {
-          const isBulkSelected = multiSelectMode && selectedDateKeys.has(dateKey);
+    <div className={hideDateStrip ? "md:hidden" : "mt-4 md:hidden"}>
+      {hideDateStrip ? null : (
+        <PlannerCalendarMobileDateStrip
+          selectedDate={selectedDate}
+          onSelectDate={onSelectDate}
+          monthStart={monthStart}
+          getDateMarker={(dateKey, isHighlighted) => {
+            const isBulkSelected = multiSelectMode && selectedDateKeys.has(dateKey);
 
-          return getDjAvailabilityDateStripMarker(
-            dateKey,
-            availabilityByDate,
-            bookingsByDate,
-            isHighlighted,
-            {
-              isSelected: isBulkSelected,
-              choice: isBulkSelected ? pendingBulkChoice : null,
-            },
-          );
-        }}
-        isDateHighlighted={(date) =>
-          multiSelectMode
-            ? selectedDateKeys.has(toDateKey(date))
-            : isSameDay(date, selectedDate)
-        }
-      />
+            return getDjAvailabilityDateStripMarker(
+              dateKey,
+              availabilityByDate,
+              bookingsByDate,
+              isHighlighted,
+              {
+                isSelected: isBulkSelected,
+                choice: isBulkSelected ? pendingBulkChoice : null,
+              },
+            );
+          }}
+          isDateHighlighted={(date) =>
+            multiSelectMode
+              ? selectedDateKeys.has(toDateKey(date))
+              : isSameDay(date, selectedDate)
+          }
+        />
+      )}
 
       {multiSelectMode ? (
         <p className="mt-4 text-center text-sm text-ftc-text-muted">
@@ -877,19 +885,28 @@ function DjAvailabilityDayCell({
 
 export default function DjAvailabilityCalendar({
   description = "Manage your availability and bookings.",
-}: {
+  variant = "standalone",
+  isActive = true,
+  sharedViewState,
+  onMobileStripConfigChange,
+  onMonthActivityDotClassChange,
+  onDualModeRegistration,
+}: CalendarDualModeProps & {
   description?: string;
 }) {
+  const isDual = variant === "dual";
   const router = useRouter();
   const searchParams = useSearchParams();
   const initialMonthStart = resolveDjCalendarViewMonthStart(
     searchParams.get("date"),
     searchParams.get("month"),
   );
-  const [monthStart, setMonthStart] = useState(() => initialMonthStart);
-  const [selectedDate, setSelectedDate] = useState(() =>
+  const [localMonthStart, setLocalMonthStart] = useState(() => initialMonthStart);
+  const [localSelectedDate, setLocalSelectedDate] = useState(() =>
     resolveDjCalendarSelectedDate(searchParams.get("date"), initialMonthStart),
   );
+  const monthStart = isDual && sharedViewState ? sharedViewState.monthStart : localMonthStart;
+  const selectedDate = isDual && sharedViewState ? sharedViewState.selectedDate : localSelectedDate;
   const [availabilityEntries, setAvailabilityEntries] = useState<DjAvailabilityEntry[]>([]);
   const [bookings, setBookings] = useState<BookingRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -910,21 +927,25 @@ export default function DjAvailabilityCalendar({
   const dismissToast = useCallback(() => setToastMessage(null), []);
 
   useLayoutEffect(() => {
+    if (isDual) {
+      return;
+    }
+
     const nextMonthStart = resolveDjCalendarViewMonthStart(
       searchParams.get("date"),
       searchParams.get("month"),
     );
 
-    setMonthStart((current) =>
+    setLocalMonthStart((current) =>
       current.getTime() === nextMonthStart.getTime() ? current : nextMonthStart,
     );
 
     const restoredDate = parsePlannerCalendarDateParam(searchParams.get("date"));
 
     if (restoredDate) {
-      setSelectedDate(restoredDate);
+      setLocalSelectedDate(restoredDate);
     }
-  }, [searchParams]);
+  }, [isDual, searchParams]);
 
   useEffect(() => {
     const now = new Date();
@@ -1087,8 +1108,14 @@ export default function DjAvailabilityCalendar({
 
   function handleMonthStartChange(nextMonthStart: Date) {
     closeCalendarOverlays();
-    setMonthStart(nextMonthStart);
-    setSelectedDate((current) => {
+
+    if (isDual && sharedViewState) {
+      sharedViewState.onMonthStartChange(nextMonthStart);
+      return;
+    }
+
+    setLocalMonthStart(nextMonthStart);
+    setLocalSelectedDate((current) => {
       if (isSameMonth(current, nextMonthStart)) {
         return current;
       }
@@ -1104,7 +1131,12 @@ export default function DjAvailabilityCalendar({
       toggleDateSelection(toDateKey(date));
     }
 
-    setSelectedDate(date);
+    if (isDual && sharedViewState) {
+      sharedViewState.onSelectDate(date);
+      return;
+    }
+
+    setLocalSelectedDate(date);
   }
 
   const availabilityByDate = useMemo(
@@ -1122,6 +1154,65 @@ export default function DjAvailabilityCalendar({
       getDjCalendarMonthActivityDotClass(monthActivityByKey, month, year),
     [monthActivityByKey],
   );
+
+  useEffect(() => {
+    if (!isDual || !onMobileStripConfigChange) {
+      return;
+    }
+
+    onMobileStripConfigChange({
+      getDateMarker: (dateKey, isHighlighted) => {
+        const isBulkSelected = multiSelectMode && selectedDateKeys.has(dateKey);
+
+        return getDjAvailabilityDateStripMarker(
+          dateKey,
+          availabilityByDate,
+          bookingsByDate,
+          isHighlighted,
+          {
+            isSelected: isBulkSelected,
+            choice: isBulkSelected ? pendingBulkChoice : null,
+          },
+        );
+      },
+      isDateHighlighted: (date) =>
+        multiSelectMode
+          ? selectedDateKeys.has(toDateKey(date))
+          : isSameDay(date, selectedDate),
+      onSelectDate: handleMobileSelectDate,
+    });
+  }, [
+    availabilityByDate,
+    bookingsByDate,
+    handleMobileSelectDate,
+    isDual,
+    multiSelectMode,
+    onMobileStripConfigChange,
+    pendingBulkChoice,
+    selectedDate,
+    selectedDateKeys,
+  ]);
+
+  useEffect(() => {
+    if (!isDual || !onMonthActivityDotClassChange) {
+      return;
+    }
+
+    onMonthActivityDotClassChange(getMonthActivityDotClass);
+  }, [getMonthActivityDotClass, isDual, onMonthActivityDotClassChange]);
+
+  useEffect(() => {
+    if (!isDual || !onDualModeRegistration) {
+      return;
+    }
+
+    onDualModeRegistration({
+      onBeforeMonthNavigate: () => {
+        closeCalendarOverlays();
+        exitMultiSelectMode();
+      },
+    });
+  }, [isDual, onDualModeRegistration]);
 
   const calendarWeeks = useMemo(() => getCalendarWeekRows(monthStart), [monthStart]);
 
@@ -1292,178 +1383,211 @@ export default function DjAvailabilityCalendar({
     router.push(resolveCalendarOriginEventHref(getBookingRequestHref(booking), calendarOrigin));
   }
 
-  return (
-    <section className={PLANNER_WORKSPACE_PRIMARY_SURFACE_CLASS}>
-      <div className="relative">
-        {!loading ? (
-          <GigCalendarUpdatePill message={toastMessage} onDismiss={dismissToast} />
-        ) : null}
-        <div className="relative z-10 flex items-center justify-between gap-2 sm:gap-3">
-          <div className="hidden min-w-0 max-w-[42%] md:block">
-            <p className="truncate text-sm text-ftc-text-muted">{description}</p>
-          </div>
-          <div className="ml-auto flex shrink-0 items-center gap-2">
-            {!multiSelectMode ? (
-              <button
-                type="button"
-                onClick={enterMultiSelectMode}
-                className={GIG_CALENDAR_CONTROL_BUTTON_CLASS}
-              >
-                Select dates
-              </button>
-            ) : (
-              <QuickSelectMenu
-                open={quickSelectOpen}
-                onToggle={() => setQuickSelectOpen((open) => !open)}
-                onSelectFridays={() =>
-                  selectDisplayedDatesMatching((date) => getWeekdayIndex(date) === 4)
-                }
-                onSelectSaturdays={() =>
-                  selectDisplayedDatesMatching((date) => getWeekdayIndex(date) === 5)
-                }
-                onSelectWeekends={() =>
-                  selectDisplayedDatesMatching((date) => {
-                    const weekday = getWeekdayIndex(date);
-                    return weekday === 4 || weekday === 5;
-                  })
-                }
-                onClearSelection={() => setSelectedDateKeys(new Set())}
-                onClose={() => setQuickSelectOpen(false)}
-              />
-            )}
-          </div>
+  const toolbarBlock = (
+    <div className="relative">
+      {!loading ? <GigCalendarUpdatePill message={toastMessage} onDismiss={dismissToast} /> : null}
+      <div className="relative z-10 flex items-center justify-between gap-2 sm:gap-3">
+        <div className="hidden min-w-0 max-w-[42%] md:block">
+          <p className="truncate text-sm text-ftc-text-muted">{description}</p>
+        </div>
+        <div className="ml-auto flex shrink-0 items-center gap-2">
+          {!multiSelectMode ? (
+            <button
+              type="button"
+              onClick={enterMultiSelectMode}
+              className={GIG_CALENDAR_CONTROL_BUTTON_CLASS}
+            >
+              Select dates
+            </button>
+          ) : (
+            <QuickSelectMenu
+              open={quickSelectOpen}
+              onToggle={() => setQuickSelectOpen((open) => !open)}
+              onSelectFridays={() =>
+                selectDisplayedDatesMatching((date) => getWeekdayIndex(date) === 4)
+              }
+              onSelectSaturdays={() =>
+                selectDisplayedDatesMatching((date) => getWeekdayIndex(date) === 5)
+              }
+              onSelectWeekends={() =>
+                selectDisplayedDatesMatching((date) => {
+                  const weekday = getWeekdayIndex(date);
+                  return weekday === 4 || weekday === 5;
+                })
+              }
+              onClearSelection={() => setSelectedDateKeys(new Set())}
+              onClose={() => setQuickSelectOpen(false)}
+            />
+          )}
         </div>
       </div>
+    </div>
+  );
 
-        {loading ? (
-          <DjCalendarContentSkeleton />
-        ) : (
-          <div className="transition-opacity duration-200 ease-out opacity-100 motion-reduce:transition-none">
-            <div className="mt-4">
-              {error ? (
-                <p
-                  role="alert"
-                  className="pointer-events-none mb-2 flex justify-center"
-                >
-                  <span className="rounded-full border-0 bg-[var(--ftc-color-danger)] px-3 py-1 text-[11px] font-medium text-ftc-bg">
-                    {error}
-                  </span>
-                </p>
-              ) : null}
-
-              <CalendarMonthNav
-                monthStart={monthStart}
-                onMonthStartChange={handleMonthStartChange}
-                onBeforeNavigate={() => {
-                  closeCalendarOverlays();
-                  exitMultiSelectMode();
-                }}
-                getMonthActivityDotClass={getMonthActivityDotClass}
-              />
-            </div>
-
-            <div className="mt-3">
-              <DjAvailabilityLegend />
-            </div>
-
-            <DjAvailabilityMobileAgenda
-              monthStart={monthStart}
-              selectedDate={selectedDate}
-              multiSelectMode={multiSelectMode}
-              selectedDateKeys={selectedDateKeys}
-              pendingBulkChoice={pendingBulkChoice}
-              availabilityByDate={availabilityByDate}
-              bookingsByDate={bookingsByDate}
-              savingDateKey={savingDateKey}
-              isTodayDate={isMobileTodayDate}
-              onSelectDate={handleMobileSelectDate}
-              onSetPersonalStatus={(dateKey, status) => void handleSetPersonalStatus(dateKey, status)}
-              onClearPersonalStatus={(dateKey) => void handleClearPersonalStatus(dateKey)}
-            />
-
-            <div
-              className={`mt-4 hidden rounded-2xl border border-ftc-border bg-ftc-bg-elevated/40 md:block ${multiSelectMode ? "pb-1" : ""}`}
-            >
-              <div className="grid grid-cols-7 border-b border-ftc-border bg-ftc-bg-elevated/60">
-                {WEEKDAY_LABELS.map((label) => (
-                  <div
-                    key={label}
-                    className="px-1 py-2 text-center text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted sm:px-2"
-                  >
-                    {label}
-                  </div>
-                ))}
-              </div>
-              <div className="grid grid-cols-7 gap-1.5 p-2 sm:gap-2 sm:p-2.5">
-                {calendarWeeks.flatMap((week, weekIndex) =>
-                  week.map((day, dayIndex) => {
-                    if (!day) {
-                      return (
-                        <div
-                          key={`empty-${weekIndex}-${dayIndex}`}
-                          aria-hidden="true"
-                          className="min-h-0"
-                        />
-                      );
-                    }
-
-                    const dateKey = toDateKey(day);
-
-                    return (
-                      <DjAvailabilityDayCell
-                        key={dateKey}
-                        date={day}
-                        isToday={isTodayDate(day)}
-                        weekdayIndex={dayIndex}
-                        multiSelectMode={multiSelectMode}
-                        isSelected={selectedDateKeys.has(dateKey)}
-                        pendingBulkChoice={pendingBulkChoice}
-                        personalEntry={availabilityByDate.get(dateKey)}
-                        dayBookings={bookingsByDate.get(dateKey) ?? []}
-                        menuOpen={!multiSelectMode && openMenuDateKey === dateKey}
-                        bookingPopoverOpen={!multiSelectMode && openBookingPopoverDateKey === dateKey}
-                        savingDate={savingDateKey === dateKey}
-                        monthStart={monthStart}
-                        onToggleSelect={() => toggleDateSelection(dateKey)}
-                        onToggleMenu={() => {
-                          setOpenBookingPopoverDateKey(null);
-                          setOpenMenuDateKey((current) => (current === dateKey ? null : dateKey));
-                        }}
-                        onCloseOverlays={closeCalendarOverlays}
-                        onSetPersonalStatus={(status) => void handleSetPersonalStatus(dateKey, status)}
-                        onClearPersonalStatus={() => void handleClearPersonalStatus(dateKey)}
-                        onOpenBooking={handleOpenBooking}
-                        onToggleBookingPopover={() => {
-                          setOpenMenuDateKey(null);
-                          setOpenBookingPopoverDateKey((current) =>
-                            current === dateKey ? null : dateKey,
-                          );
-                        }}
-                      />
-                    );
-                  }),
-                )}
-              </div>
-            </div>
-            {multiSelectMode ? (
-              <BulkActionBar
-                selectedCount={selectedDateKeys.size}
-                saving={bulkSaving}
-                pendingChoice={pendingBulkChoice}
-                error={bulkActionError}
-                onChooseStatus={chooseBulkStatus}
-                onChooseClear={chooseBulkClear}
-                onConfirm={() => void handleConfirmBulkAction()}
-                onCancel={exitMultiSelectMode}
-              />
+  const calendarBody = loading ? (
+    isDual ? (
+      <DjCalendarBodySkeleton />
+    ) : (
+      <DjCalendarContentSkeleton />
+    )
+  ) : (
+    <div className="transition-opacity duration-200 ease-out opacity-100 motion-reduce:transition-none">
+      {isDual ? null : (
+        <>
+          <div className="mt-4">
+            {error ? (
+              <p role="alert" className="pointer-events-none mb-2 flex justify-center">
+                <span className="rounded-full border-0 bg-[var(--ftc-color-danger)] px-3 py-1 text-[11px] font-medium text-ftc-bg">
+                  {error}
+                </span>
+              </p>
             ) : null}
-          </div>
-        )}
 
-        <p className="mt-3 hidden text-xs text-ftc-text-muted md:block">
-          Use the menu on each date to set personal availability. Booking badges open the linked
-          event or DM.
-        </p>
-      </section>
+            <CalendarMonthNav
+              monthStart={monthStart}
+              onMonthStartChange={handleMonthStartChange}
+              onBeforeNavigate={() => {
+                closeCalendarOverlays();
+                exitMultiSelectMode();
+              }}
+              getMonthActivityDotClass={getMonthActivityDotClass}
+            />
+          </div>
+
+          <div className="mt-3">
+            <DjAvailabilityCalendarLegend />
+          </div>
+        </>
+      )}
+
+      <DjAvailabilityMobileAgenda
+        monthStart={monthStart}
+        selectedDate={selectedDate}
+        multiSelectMode={multiSelectMode}
+        selectedDateKeys={selectedDateKeys}
+        pendingBulkChoice={pendingBulkChoice}
+        availabilityByDate={availabilityByDate}
+        bookingsByDate={bookingsByDate}
+        savingDateKey={savingDateKey}
+        isTodayDate={isMobileTodayDate}
+        onSelectDate={handleMobileSelectDate}
+        onSetPersonalStatus={(dateKey, status) => void handleSetPersonalStatus(dateKey, status)}
+        onClearPersonalStatus={(dateKey) => void handleClearPersonalStatus(dateKey)}
+        hideDateStrip={isDual}
+      />
+
+      <div
+        className={`mt-4 hidden rounded-2xl border border-ftc-border bg-ftc-bg-elevated/40 md:block ${multiSelectMode ? "pb-1" : ""}`}
+      >
+        <div className="grid grid-cols-7 border-b border-ftc-border bg-ftc-bg-elevated/60">
+          {WEEKDAY_LABELS.map((label) => (
+            <div
+              key={label}
+              className="px-1 py-2 text-center text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted sm:px-2"
+            >
+              {label}
+            </div>
+          ))}
+        </div>
+        <div className="grid grid-cols-7 gap-1.5 p-2 sm:gap-2 sm:p-2.5">
+          {calendarWeeks.flatMap((week, weekIndex) =>
+            week.map((day, dayIndex) => {
+              if (!day) {
+                return (
+                  <div
+                    key={`empty-${weekIndex}-${dayIndex}`}
+                    aria-hidden="true"
+                    className="min-h-0"
+                  />
+                );
+              }
+
+              const dateKey = toDateKey(day);
+
+              return (
+                <DjAvailabilityDayCell
+                  key={dateKey}
+                  date={day}
+                  isToday={isTodayDate(day)}
+                  weekdayIndex={dayIndex}
+                  multiSelectMode={multiSelectMode}
+                  isSelected={selectedDateKeys.has(dateKey)}
+                  pendingBulkChoice={pendingBulkChoice}
+                  personalEntry={availabilityByDate.get(dateKey)}
+                  dayBookings={bookingsByDate.get(dateKey) ?? []}
+                  menuOpen={!multiSelectMode && openMenuDateKey === dateKey}
+                  bookingPopoverOpen={!multiSelectMode && openBookingPopoverDateKey === dateKey}
+                  savingDate={savingDateKey === dateKey}
+                  monthStart={monthStart}
+                  onToggleSelect={() => toggleDateSelection(dateKey)}
+                  onToggleMenu={() => {
+                    setOpenBookingPopoverDateKey(null);
+                    setOpenMenuDateKey((current) => (current === dateKey ? null : dateKey));
+                  }}
+                  onCloseOverlays={closeCalendarOverlays}
+                  onSetPersonalStatus={(status) => void handleSetPersonalStatus(dateKey, status)}
+                  onClearPersonalStatus={() => void handleClearPersonalStatus(dateKey)}
+                  onOpenBooking={handleOpenBooking}
+                  onToggleBookingPopover={() => {
+                    setOpenMenuDateKey(null);
+                    setOpenBookingPopoverDateKey((current) =>
+                      current === dateKey ? null : dateKey,
+                    );
+                  }}
+                />
+              );
+            }),
+          )}
+        </div>
+      </div>
+      {multiSelectMode ? (
+        <BulkActionBar
+          selectedCount={selectedDateKeys.size}
+          saving={bulkSaving}
+          pendingChoice={pendingBulkChoice}
+          error={bulkActionError}
+          onChooseStatus={chooseBulkStatus}
+          onChooseClear={chooseBulkClear}
+          onConfirm={() => void handleConfirmBulkAction()}
+          onCancel={exitMultiSelectMode}
+        />
+      ) : null}
+    </div>
+  );
+
+  const desktopHintBlock = (
+    <p className="mt-3 hidden text-xs text-ftc-text-muted md:block">
+      Use the menu on each date to set personal availability. Booking badges open the linked event or
+      DM.
+    </p>
+  );
+
+  if (isDual) {
+    return (
+      <>
+        <div className={isActive ? "order-1" : "order-1 hidden"}>
+          {toolbarBlock}
+          {!loading && error ? (
+            <p role="alert" className="pointer-events-none mt-4 flex justify-center">
+              <span className="rounded-full border-0 bg-[var(--ftc-color-danger)] px-3 py-1 text-[11px] font-medium text-ftc-bg">
+                {error}
+              </span>
+            </p>
+          ) : null}
+        </div>
+        <div className={isActive ? "order-3" : "order-3 hidden"}>
+          {calendarBody}
+          {desktopHintBlock}
+        </div>
+      </>
+    );
+  }
+
+  return (
+    <section className={PLANNER_WORKSPACE_PRIMARY_SURFACE_CLASS}>
+      {toolbarBlock}
+      {calendarBody}
+      {desktopHintBlock}
+    </section>
   );
 }

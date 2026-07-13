@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import CalendarViewTabs, { type CalendarViewTab } from "@/app/components/CalendarViewTabs";
+import BothRoleCalendarView from "@/app/components/BothRoleCalendarView";
 import DjAvailabilityCalendar from "@/app/components/DjAvailabilityCalendar";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
 import { useGuardProfile } from "@/app/components/GuardProfileContext";
@@ -37,11 +38,7 @@ function CalendarWorkspaceBody({
   bothCalendarTab: CalendarViewTab;
 }) {
   if (displayRole === "both") {
-    return bothCalendarTab === "planner" ? (
-      <PlannerCalendar />
-    ) : (
-      <DjAvailabilityCalendar description="Manage your availability and received bookings." />
-    );
+    return <BothRoleCalendarView activeTab={bothCalendarTab} />;
   }
 
   if (displayRole === "promoter") {
