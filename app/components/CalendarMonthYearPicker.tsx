@@ -77,12 +77,12 @@ export default function CalendarMonthYearPicker({
               onClick={() => setDraftMonth(index)}
               className={`rounded-md px-1.5 py-1.5 text-[11px] font-semibold transition ${pickerButtonClass(isSelected)}`}
             >
-              <span className="inline-flex items-center justify-center gap-1">
+              <span className="inline-flex items-center justify-center gap-1.5 leading-none">
                 <span>{label}</span>
                 {activityDotClass ? (
                   <span
                     aria-hidden="true"
-                    className={`h-1.5 w-1.5 shrink-0 rounded-full ${
+                    className={`size-2 shrink-0 rounded-full ${
                       isSelected ? "bg-ftc-bg" : activityDotClass
                     }`}
                   />
