@@ -1132,8 +1132,6 @@ export default function DjAvailabilityCalendar({
     router.push(resolveCalendarOriginEventHref(getBookingRequestHref(booking), calendarOrigin));
   }
 
-  const selectedDateIsPast = isDateKeyBeforeToday(toDateKey(selectedDate));
-
   return (
     <section className={PLANNER_WORKSPACE_PRIMARY_SURFACE_CLASS}>
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -1305,11 +1303,6 @@ export default function DjAvailabilityCalendar({
           Use the menu on each date to set personal availability. Booking badges open the linked
           event or DM.
         </p>
-        {!selectedDateIsPast ? (
-          <p className="mt-3 text-xs text-ftc-text-muted md:hidden">
-            Pick a date above to set availability. Booking links open the linked event or DM.
-          </p>
-        ) : null}
       </section>
   );
 }
