@@ -578,6 +578,12 @@ export function getPlannerCalendarDateStripExtraCount(items: CalendarItem[]): nu
   return items.length - 1;
 }
 
+export type CalendarMobileDateStripMarker = {
+  dotClassName: string;
+  extraCount: number;
+  itemCountLabel: string;
+};
+
 export function formatWrittenCalendarDateLabel(
   date: Date,
   options?: { includeYear?: boolean },
@@ -907,6 +913,25 @@ export function getDefaultSelectedCalendarDate(
   }
 
   return new Date(monthStart.getFullYear(), monthStart.getMonth(), 1);
+}
+
+export function resolveDjCalendarSelectedDate(
+  dateParam: string | null | undefined,
+  monthStart: Date,
+): Date {
+  const restoredDate = parsePlannerCalendarDateParam(dateParam);
+
+  if (restoredDate) {
+    return restoredDate;
+  }
+
+  const todayDate = getPlannerCalendarTodayDate();
+
+  return getDefaultSelectedCalendarDate(monthStart, {
+    year: todayDate.getFullYear(),
+    month: todayDate.getMonth(),
+    day: todayDate.getDate(),
+  });
 }
 
 export function getCalendarMonthMatrix(monthStart: Date): Date[] {

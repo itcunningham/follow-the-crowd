@@ -41,6 +41,14 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 - Create-from-calendar: Save event + **Confirm N DJ(s)** invite flow
 - Today highlight on date strip; selected + today states on desktop grid cells
 
+## DJ availability calendar
+
+- Mobile (`< md`): horizontal date strip + selected-day panel — status buttons (Available / Maybe / Unavailable / Clear), booking list, today/selected chip styling aligned with planner event calendar strip
+- Desktop (`md+`): month grid with per-date overflow menu unchanged
+- Bulk select + quick select (Fridays / Saturdays / weekends) on all breakpoints; mobile strip toggles selection in bulk mode
+- Strip dot priority per date: Pending (amber) → Booked (green) → availability colour; existing save/load/error/toast behaviour preserved
+- Shared strip component: `PlannerCalendarMobileDateStrip` accepts optional `getDateMarker` for DJ markers (`getDjAvailabilityDateStripMarker`)
+
 ## Booking / invite UX
 
 - Default send button label mode: **Confirm N DJ(s)** (`SendBookingRequestsPanel`)
@@ -86,6 +94,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `67249f7` — DJ availability mobile date strip + selected-day controls
 - `86eb697` — update handoff docs and agent workflow rules
 - `93de0c2` — match planner heading to active workspace
 - `0444eac` — speed up authenticated app cold start

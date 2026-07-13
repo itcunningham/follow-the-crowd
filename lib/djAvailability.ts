@@ -5,9 +5,14 @@ import {
   FTC_STATUS_PRIMARY,
   FTC_STATUS_SUCCESS,
   FTC_STATUS_WARNING,
+  FTC_STATUS_ACCEPTED_DOT,
+  FTC_STATUS_PENDING_DOT,
+  FTC_STATUS_TODAY_DOT,
 } from "@/lib/ftcFlatStatus";
 import { formatIsoDateKeyForDisplay } from "@/lib/bookingDateTime";
 import { getCurrentUserId } from "@/lib/user/currentUser";
+import type { BookingRequest } from "@/lib/bookingRequests";
+import type { CalendarMobileDateStripMarker } from "@/lib/calendar";
 
 export type DjAvailabilityStatus = "available" | "unavailable" | "tentative";
 
@@ -109,6 +114,60 @@ export function getDjAvailabilityStatusBadgeClass(status: DjAvailabilityStatus):
     case "tentative":
       return FTC_STATUS_WARNING;
   }
+}
+
+function getDjAvailabilityDateStripDotClass(
+  status: DjAvailabilityStatus,
+  isHighlighted: boolean,
+): string {
+  if (isHighlighted) {
+    return "bg-ftc-bg";
+  }
+
+  switch (status) {
+    case "available":
+      return FTC_STATUS_TODAY_DOT;
+    case "tentative":
+      return FTC_STATUS_PENDING_DOT;
+    case "unavailable":
+      return "bg-[var(--ftc-color-danger)]";
+  }
+}
+
+export function getDjAvailabilityDateStripMarker(
+  dateKey: string,
+  availabilityByDate: Map<string, DjAvailabilityEntry>,
+  bookingsByDate: Map<string, BookingRequest[]>,
+  isHighlighted: boolean,
+): CalendarMobileDateStripMarker | null {
+  const bookings = bookingsByDate.get(dateKey) ?? [];
+  const pendingBookings = bookings.filter((booking) => booking.status === "pending");
+  const acceptedBookings = bookings.filter((booking) => booking.status === "accepted");
+  const availability = availabilityByDate.get(dateKey);
+  const markerCount =
+    (availability ? 1 : 0) + pendingBookings.length + acceptedBookings.length;
+
+  if (markerCount === 0) {
+    return null;
+  }
+
+  let dotClassName: string;
+
+  if (pendingBookings.length > 0) {
+    dotClassName = isHighlighted ? "bg-ftc-bg" : FTC_STATUS_PENDING_DOT;
+  } else if (acceptedBookings.length > 0) {
+    dotClassName = isHighlighted ? "bg-ftc-bg" : FTC_STATUS_ACCEPTED_DOT;
+  } else if (availability) {
+    dotClassName = getDjAvailabilityDateStripDotClass(availability.status, isHighlighted);
+  } else {
+    return null;
+  }
+
+  return {
+    dotClassName,
+    extraCount: markerCount > 1 ? markerCount - 1 : 0,
+    itemCountLabel: `, ${markerCount} item${markerCount === 1 ? "" : "s"}`,
+  };
 }
 
 export function getDjAvailabilityLoadErrorMessage(error: unknown): string {

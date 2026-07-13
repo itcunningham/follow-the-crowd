@@ -12,6 +12,7 @@ import {
   toDateKey,
   WEEKDAY_LABELS,
   type CalendarItem,
+  type CalendarMobileDateStripMarker,
 } from "@/lib/calendar";
 
 const DATE_CHIP_SCROLL_CLASS =
@@ -24,7 +25,9 @@ type PlannerCalendarMobileDateStripProps = {
   selectedDate: Date;
   onSelectDate: (date: Date) => void;
   monthStart: Date;
-  itemsByDate: Map<string, CalendarItem[]>;
+  itemsByDate?: Map<string, CalendarItem[]>;
+  getDateMarker?: (dateKey: string, isHighlighted: boolean) => CalendarMobileDateStripMarker | null;
+  isDateHighlighted?: (date: Date) => boolean;
 };
 
 function getWeekdayLabel(date: Date): string {
@@ -127,6 +130,8 @@ export default function PlannerCalendarMobileDateStrip({
   onSelectDate,
   monthStart,
   itemsByDate,
+  getDateMarker,
+  isDateHighlighted,
 }: PlannerCalendarMobileDateStripProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const chipRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
@@ -282,15 +287,22 @@ export default function PlannerCalendarMobileDateStrip({
     >
       {monthDates.map((date) => {
         const dateKey = toDateKey(date);
-        const isSelected = isSameDay(date, selectedDate);
+        const isHighlighted = isDateHighlighted
+          ? isDateHighlighted(date)
+          : isSameDay(date, selectedDate);
         const isToday = isSameDay(date, todayDate);
-        const dateItems = itemsByDate.get(dateKey) ?? [];
-        const hasEvents = dateItems.length > 0;
-        const extraItemCount = getPlannerCalendarDateStripExtraCount(dateItems);
-        const itemCountLabel =
-          dateItems.length > 0
-            ? `, ${dateItems.length} scheduled item${dateItems.length === 1 ? "" : "s"}`
-            : "";
+        const dateItems = itemsByDate?.get(dateKey) ?? [];
+        const marker = getDateMarker
+          ? getDateMarker(dateKey, isHighlighted)
+          : dateItems.length > 0
+            ? {
+                dotClassName: getPlannerCalendarDateStripDotClass(dateItems, isHighlighted),
+                extraCount: getPlannerCalendarDateStripExtraCount(dateItems),
+                itemCountLabel: `, ${dateItems.length} scheduled item${dateItems.length === 1 ? "" : "s"}`,
+              }
+            : null;
+        const hasMarker = marker !== null;
+        const itemCountLabel = marker?.itemCountLabel ?? "";
 
         return (
           <button
@@ -304,19 +316,16 @@ export default function PlannerCalendarMobileDateStrip({
               chipRefs.current.delete(dateKey);
             }}
             type="button"
-            aria-pressed={isSelected}
+            aria-pressed={isHighlighted}
             aria-label={`${formatPlannerAgendaDateLabel(date)}${itemCountLabel}`}
             onClick={() => {
-              if (!isSameDay(date, selectedDate)) {
-                onSelectDate(date);
-              }
-
+              onSelectDate(date);
               centerDateWhenReady(date);
             }}
             style={chipWidth ? { width: chipWidth, minWidth: chipWidth } : undefined}
             className={`flex shrink-0 flex-col items-center rounded-xl border px-1 py-2 transition ${
               chipWidth ? "" : "w-[calc((100%-1.5rem)/7)] min-w-[calc((100%-1.5rem)/7)]"
-            } ${getDateStripChipClassName(isSelected, isToday)}`}
+            } ${getDateStripChipClassName(isHighlighted, isToday)}`}
           >
             <span className="text-[10px] font-semibold uppercase tracking-wide">
               {getWeekdayLabel(date)}
@@ -326,18 +335,18 @@ export default function PlannerCalendarMobileDateStrip({
               aria-hidden="true"
               className="mt-1 flex h-3 min-h-3 items-center justify-center gap-px"
             >
-              {hasEvents ? (
+              {hasMarker && marker ? (
                 <>
                   <span
-                    className={`h-1.5 w-1.5 shrink-0 rounded-full ${getPlannerCalendarDateStripDotClass(dateItems, isSelected)}`}
+                    className={`h-1.5 w-1.5 shrink-0 rounded-full ${marker.dotClassName}`}
                   />
-                  {extraItemCount > 0 ? (
+                  {marker.extraCount > 0 ? (
                     <span
                       className={`text-[8px] font-medium leading-none ${
-                        isSelected ? "text-ftc-bg/65" : "text-ftc-text-muted"
+                        isHighlighted ? "text-ftc-bg/65" : "text-ftc-text-muted"
                       }`}
                     >
-                      +{extraItemCount}
+                      +{marker.extraCount}
                     </span>
                   ) : null}
                 </>
