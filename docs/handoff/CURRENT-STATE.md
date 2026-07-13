@@ -94,6 +94,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `e8c6dc8` — align DJ calendar legend and strip dots with event calendar style
 - `c2f7665` — DJ availability mobile date strip + selected-day controls
 - `86eb697` — update handoff docs and agent workflow rules
 - `93de0c2` — match planner heading to active workspace
