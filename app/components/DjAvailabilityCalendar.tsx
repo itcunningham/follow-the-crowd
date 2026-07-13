@@ -104,6 +104,26 @@ function getAvailabilityMenuPositionClass(weekdayIndex: number): string {
 
 const calendarCellColorBadgeClass = FTC_CAL_CELL;
 
+function getAvailabilityActionPillClass(
+  status: DjAvailabilityStatus,
+  isActive: boolean,
+): string {
+  const baseClass = "ftc-filter-pill disabled:opacity-50";
+
+  if (!isActive) {
+    return baseClass;
+  }
+
+  switch (status) {
+    case "available":
+      return `${baseClass} border-ftc-primary/50 bg-ftc-primary/10 text-ftc-primary`;
+    case "tentative":
+      return `${baseClass} border-[color-mix(in_srgb,var(--ftc-color-warning)_55%,transparent)] bg-[color-mix(in_srgb,var(--ftc-color-warning)_12%,transparent)] text-[var(--ftc-color-warning)]`;
+    case "unavailable":
+      return `${baseClass} border-[color-mix(in_srgb,var(--ftc-color-danger)_55%,transparent)] bg-[color-mix(in_srgb,var(--ftc-color-danger)_12%,transparent)] text-[var(--ftc-color-danger)]`;
+  }
+}
+
 function DjAvailabilityLegend() {
   return (
     <CalendarDotLegend
@@ -395,9 +415,6 @@ function DjAvailabilityMobileDayPanel({
   const acceptedBookings = dayBookings.filter((booking) => booking.status === "accepted");
   const interactiveBookings = [...pendingBookings, ...acceptedBookings];
   const canEditAvailability = !isDateKeyBeforeToday(dateKey);
-  const statusButtonClass =
-    "min-h-11 rounded-xl border px-3 py-2.5 text-sm font-semibold transition disabled:opacity-50";
-  const defaultStatusButtonClass = `${statusButtonClass} border-ftc-border-subtle bg-ftc-bg-elevated text-ftc-text-secondary hover:border-ftc-border-strong hover:text-ftc-text`;
 
   return (
     <>
@@ -414,7 +431,7 @@ function DjAvailabilityMobileDayPanel({
 
       {canEditAvailability ? (
         <>
-          <div className="mt-3 grid grid-cols-2 gap-2">
+          <div className="mt-3 flex flex-wrap gap-2">
             {PERSONAL_STATUS_OPTIONS.map((option) => {
               const isActive = personalEntry?.status === option.value;
 
@@ -424,11 +441,7 @@ function DjAvailabilityMobileDayPanel({
                   type="button"
                   disabled={saving}
                   onClick={() => onSetPersonalStatus(option.value)}
-                  className={
-                    isActive
-                      ? `${statusButtonClass} border-transparent ${getFlatAvailabilityFillClass(option.value)}`
-                      : defaultStatusButtonClass
-                  }
+                  className={getAvailabilityActionPillClass(option.value, isActive)}
                 >
                   {option.label}
                 </button>
@@ -438,11 +451,9 @@ function DjAvailabilityMobileDayPanel({
               type="button"
               disabled={saving || !personalEntry}
               onClick={onClearPersonalStatus}
-              className={`${defaultStatusButtonClass} col-span-2 ${
-                !personalEntry ? "opacity-40" : ""
-              }`}
+              className="ftc-filter-pill disabled:opacity-50"
             >
-              Clear availability
+              Clear
             </button>
           </div>
 
@@ -453,7 +464,7 @@ function DjAvailabilityMobileDayPanel({
       ) : null}
 
       {interactiveBookings.length > 0 ? (
-        <ul className="mt-4 space-y-2">
+        <ul className="mt-3 space-y-2">
           {interactiveBookings.map((booking) => (
             <li key={booking.id}>
               <Link
@@ -481,7 +492,7 @@ function DjAvailabilityMobileDayPanel({
           ))}
         </ul>
       ) : canEditAvailability ? (
-        <div className="mt-4 rounded-xl border border-dashed border-ftc-border-subtle bg-ftc-surface/30 px-4 py-6 text-center">
+        <div className="mt-3 rounded-xl border border-dashed border-ftc-border-subtle bg-ftc-surface/30 px-4 py-6 text-center">
           <p className="text-sm text-ftc-text-muted">No booking requests on this date</p>
         </div>
       ) : null}

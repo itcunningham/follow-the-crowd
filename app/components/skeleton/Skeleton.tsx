@@ -1031,14 +1031,14 @@ function DjCalendarMobileAgendaSkeleton() {
         <SkeletonBlock className="h-5 w-44 max-w-full" />
       </div>
 
-      <div className="mt-3 grid grid-cols-2 gap-2">
-        <SkeletonBlock className="min-h-11 rounded-xl" />
-        <SkeletonBlock className="min-h-11 rounded-xl" />
-        <SkeletonBlock className="min-h-11 rounded-xl" />
-        <SkeletonBlock className="col-span-2 min-h-11 rounded-xl" />
+      <div className="mt-3 flex flex-wrap gap-2">
+        <SkeletonBlock className="h-[1.875rem] w-[4.75rem] rounded-full" />
+        <SkeletonBlock className="h-[1.875rem] w-[3.75rem] rounded-full" />
+        <SkeletonBlock className="h-[1.875rem] w-[5.5rem] rounded-full" />
+        <SkeletonBlock className="h-[1.875rem] w-[3.25rem] rounded-full" />
       </div>
 
-      <div className="mt-4 rounded-xl border border-dashed border-ftc-border-subtle bg-ftc-surface/30 px-4 py-6">
+      <div className="mt-3 rounded-xl border border-dashed border-ftc-border-subtle bg-ftc-surface/30 px-4 py-6">
         <SkeletonBlock className="mx-auto h-4 w-48 max-w-full" />
       </div>
     </div>
