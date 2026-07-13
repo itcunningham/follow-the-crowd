@@ -9,6 +9,7 @@ import {
   FTC_STATUS_PENDING_DOT,
   FTC_STATUS_TODAY_DOT,
   FTC_STATUS_UPCOMING_DOT,
+  getFlatAvailabilityFillClass,
 } from "@/lib/ftcFlatStatus";
 import { formatIsoDateKeyForDisplay } from "@/lib/bookingDateTime";
 import { getCurrentUserId } from "@/lib/user/currentUser";
@@ -149,8 +150,23 @@ export function getDjCalendarLegendDotClass(kind: DjCalendarLegendKind): string 
 
 export function getDjCalendarStatusDotClass(
   kind: DjCalendarLegendKind,
-  isHighlighted = false,
+  options: {
+    isHighlighted?: boolean;
+    isQuickSelectSelected?: boolean;
+  } = {},
 ): string {
+  const { isHighlighted = false, isQuickSelectSelected = false } = options;
+
+  if (isQuickSelectSelected) {
+    const baseClass = getDjCalendarLegendDotClass(kind);
+
+    if (kind === "available") {
+      return `${baseClass} ring-1 ring-[var(--ftc-color-text-inverse)]`;
+    }
+
+    return baseClass;
+  }
+
   if (isHighlighted) {
     return "bg-ftc-bg";
   }
@@ -167,6 +183,7 @@ export function getDjAvailabilityDateStripMarker(
   availabilityByDate: Map<string, DjAvailabilityEntry>,
   bookingsByDate: Map<string, BookingRequest[]>,
   isHighlighted: boolean,
+  isQuickSelectSelected = false,
 ): CalendarMobileDateStripMarker | null {
   const bookings = bookingsByDate.get(dateKey) ?? [];
   const pendingBookings = bookings.filter((booking) => booking.status === "pending");
@@ -180,15 +197,19 @@ export function getDjAvailabilityDateStripMarker(
   }
 
   let dotClassName: string;
+  const dotOptions = {
+    isHighlighted,
+    isQuickSelectSelected,
+  };
 
   if (pendingBookings.length > 0) {
-    dotClassName = getDjCalendarStatusDotClass("pending_request", isHighlighted);
+    dotClassName = getDjCalendarStatusDotClass("pending_request", dotOptions);
   } else if (acceptedBookings.length > 0) {
-    dotClassName = getDjCalendarStatusDotClass("booked", isHighlighted);
+    dotClassName = getDjCalendarStatusDotClass("booked", dotOptions);
   } else if (availability) {
     dotClassName = getDjCalendarStatusDotClass(
       getDjAvailabilityLegendKindForStatus(availability.status),
-      isHighlighted,
+      dotOptions,
     );
   } else {
     return null;
@@ -199,6 +220,19 @@ export function getDjAvailabilityDateStripMarker(
     extraCount: markerCount > 1 ? markerCount - 1 : 0,
     itemCountLabel: `, ${markerCount} item${markerCount === 1 ? "" : "s"}`,
   };
+}
+
+export function getDjAvailabilityCellFillClass(
+  status: DjAvailabilityStatus,
+  options: { isQuickSelectSelected?: boolean } = {},
+): string {
+  const fillClass = getFlatAvailabilityFillClass(status);
+
+  if (options.isQuickSelectSelected && status === "available") {
+    return `${fillClass} ring-1 ring-[var(--ftc-color-text-inverse)]`;
+  }
+
+  return fillClass;
 }
 
 export function getDjAvailabilityLoadErrorMessage(error: unknown): string {

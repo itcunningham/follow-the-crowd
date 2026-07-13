@@ -27,6 +27,7 @@ import {
   formatDjAvailabilityStatusLabel,
   getDjAvailabilityLoadErrorMessage,
   getDjAvailabilityDateStripMarker,
+  getDjAvailabilityCellFillClass,
   getDjBookingStatusBadgeClass,
   getDjCalendarLegendDotClass,
   DJ_CALENDAR_LEGEND_ITEMS,
@@ -531,6 +532,7 @@ function DjAvailabilityMobileAgenda({
             availabilityByDate,
             bookingsByDate,
             isHighlighted,
+            multiSelectMode && isHighlighted,
           )
         }
         isDateHighlighted={(date) =>
@@ -706,7 +708,9 @@ function DjAvailabilityDayCell({
           {personalEntry ? (
             <span
               title={formatDjAvailabilityStatusLabel(personalEntry.status)}
-              className={`${calendarCellColorBadgeClass} ${getFlatAvailabilityFillClass(personalEntry.status)}`}
+              className={`${calendarCellColorBadgeClass} ${getDjAvailabilityCellFillClass(personalEntry.status, {
+                isQuickSelectSelected: multiSelectMode && isSelected,
+              })}`}
             >
               <span className="sr-only">{formatDjAvailabilityStatusLabel(personalEntry.status)}</span>
             </span>
