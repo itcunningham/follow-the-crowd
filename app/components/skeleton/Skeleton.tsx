@@ -985,11 +985,11 @@ function PlannerCalendarDesktopGridSkeleton() {
 export function PlannerCalendarContentSkeleton() {
   return (
     <div aria-busy="true" aria-label="Loading calendar" className="contents">
-      <div className="relative mt-0 md:mt-4">
+      <div className="relative mt-4">
         <CalendarMonthNavSkeleton />
       </div>
 
-      <div className="mt-1 md:mt-3">
+      <div className="mt-3">
         <PlannerCalendarLegendSkeleton />
       </div>
 
@@ -1090,6 +1090,17 @@ export function DjCalendarContentSkeleton() {
 export function PlannerCalendarLoadingCard() {
   return (
     <section className={PLANNER_WORKSPACE_PRIMARY_SURFACE_CLASS}>
+      <div className="flex items-center justify-between gap-2 sm:gap-3">
+        <div className="hidden min-w-0 flex-1 md:block" />
+        <div className="flex shrink-0 items-center gap-2">
+          <span
+            aria-hidden="true"
+            className="invisible rounded-lg border border-transparent px-2.5 py-1.5 text-[11px] font-semibold"
+          >
+            Select dates
+          </span>
+        </div>
+      </div>
       <PlannerCalendarContentSkeleton />
     </section>
   );

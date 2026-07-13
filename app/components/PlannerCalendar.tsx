@@ -548,6 +548,17 @@ export default function PlannerCalendar() {
 
   return (
     <section className={PLANNER_WORKSPACE_PRIMARY_SURFACE_CLASS}>
+      <div className="relative" aria-hidden="true">
+        <div className="relative z-10 flex items-center justify-between gap-2 sm:gap-3">
+          <div className="hidden min-w-0 max-w-[42%] md:block" />
+          <div className="ml-auto flex shrink-0 items-center gap-2">
+            <span className="invisible rounded-lg border border-transparent px-2.5 py-1.5 text-[11px] font-semibold">
+              Select dates
+            </span>
+          </div>
+        </div>
+      </div>
+
       {error ? (
         <p
           role="alert"
@@ -574,7 +585,7 @@ export default function PlannerCalendar() {
         <PlannerCalendarContentSkeleton />
       ) : (
         <div className="transition-opacity duration-200 ease-out opacity-100 motion-reduce:transition-none">
-          <div className="relative mt-0 md:mt-4">
+          <div className="relative mt-4">
             <CalendarMonthNav
               monthStart={monthStart}
               onMonthStartChange={handleMonthStartChange}
@@ -582,7 +593,7 @@ export default function PlannerCalendar() {
             />
           </div>
 
-          <div className="mt-1 md:mt-3">
+          <div className="mt-3">
             <PlannerCalendarLegend />
           </div>
 
