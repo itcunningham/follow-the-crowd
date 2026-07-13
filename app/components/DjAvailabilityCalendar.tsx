@@ -1210,9 +1210,9 @@ export default function DjAvailabilityCalendar({
           <DjCalendarContentSkeleton />
         ) : (
           <div className="transition-opacity duration-200 ease-out opacity-100 motion-reduce:transition-none">
-            <div className="relative mt-4">
+            <div className="mt-4">
               {toastMessage ? (
-                <p className="pointer-events-none absolute inset-x-0 -top-1 z-10 flex justify-center">
+                <p className="pointer-events-none mb-2 flex justify-center">
                   <span className="rounded-full border-0 bg-ftc-primary px-3 py-1 text-[11px] font-medium text-ftc-bg">
                     {toastMessage}
                   </span>
@@ -1221,7 +1221,7 @@ export default function DjAvailabilityCalendar({
               {error ? (
                 <p
                   role="alert"
-                  className="pointer-events-none absolute inset-x-0 -top-1 z-10 flex justify-center"
+                  className="pointer-events-none mb-2 flex justify-center"
                 >
                   <span className="rounded-full border-0 bg-[var(--ftc-color-danger)] px-3 py-1 text-[11px] font-medium text-ftc-bg">
                     {error}
