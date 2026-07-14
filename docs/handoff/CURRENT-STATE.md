@@ -103,7 +103,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
-- `b6da536` — fix Events Calendar initial mount blocking Messages nav (agenda transition settle)
+- `d90e49a` — fix Events Calendar initial mount blocking Messages nav (agenda transition settle)
 - `2adcf2c` — raise mobile nav z-index; disable agenda transition descendant pointer events while fading
 - `b29dd5a` — remove temporary Gigs calendar booking navigation diagnostics
 - `975d743` — Gigs calendar booking cards navigate on pointerup for iPhone touch
