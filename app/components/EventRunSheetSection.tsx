@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { CalendarMobileDashedEmptyState } from "@/app/components/calendar/calendarMobileUi";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { BookingDualTimeWheelPicker } from "@/app/components/BookingTimeWheelPicker";
 import ProfileAvatar from "@/app/components/ProfileAvatar";
@@ -642,10 +643,8 @@ export default function EventRunSheetSection({
       {loading ? (
         <p className="mt-6 text-sm text-ftc-text-muted">Loading run sheet...</p>
       ) : rows.length === 0 ? (
-        <div className="ftc-card-empty mt-6 px-4 py-8 text-center">
-          <p className="text-sm text-ftc-text-secondary">
-            Accepted DJs will appear here once they confirm their booking
-          </p>
+        <div className="mt-5">
+          <CalendarMobileDashedEmptyState message="Accepted DJs will appear here once they confirm their booking" />
         </div>
       ) : (
         <>

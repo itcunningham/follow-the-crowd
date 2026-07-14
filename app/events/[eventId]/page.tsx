@@ -10,11 +10,13 @@ import EventRunSheetSection from "@/app/components/EventRunSheetSection";
 import EventDetailBottomBar, {
   EventDetailPrimaryAction,
 } from "@/app/components/event-detail/EventDetailBottomBar";
-import EventDetailMetaList, {
+import {
   EventDetailEditHeaderSlot,
   EventDetailHero,
   EventDetailOverlayButton,
+  EventDetailSummary,
 } from "@/app/components/event-detail/EventDetailLayout";
+import EventLineupBookingCard from "@/app/components/event-detail/EventLineupBookingCard";
 import { useGuardProfile } from "@/app/components/GuardProfileContext";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
 import { EventDetailLoadingShell } from "@/app/components/skeleton/Skeleton";
@@ -25,7 +27,6 @@ import {
   PlannerFormField,
   PlannerStatChip,
 } from "@/app/components/planner/PlannerUi";
-import ProfileAvatar from "@/app/components/ProfileAvatar";
 import { BookingDateField, BookingSetTimeRangeField } from "@/app/components/BookingDateTimeFields";
 import { getTodayDateKey } from "@/lib/bookingDateTime";
 import {
@@ -52,18 +53,14 @@ import {
   InlineOptionHelpButton,
   InlineOptionHelpPanel,
 } from "@/app/components/booking/InlineOptionHelp";
-import BookingRateProposalPanel from "@/app/components/booking/BookingRateProposalPanel";
 import BookingSheetDialog, {
   BookingSheetDangerButton,
   BookingSheetSecondaryButton,
 } from "@/app/components/booking/BookingSheetDialog";
-import CancelBookingRequestButton from "@/app/components/CancelBookingRequestButton";
 import CancelAcceptedBookingButton from "@/app/components/booking/CancelAcceptedBookingButton";
-import HideDeclinedBookingButton from "@/app/components/HideDeclinedBookingButton";
 import {
   cancelBookingRequest,
   cancelAcceptedBookingRequest,
-  canCancelBookingRequest,
   getAcceptedBookingCancellationRole,
   resolveBookingCancellationReasonLabel,
   resolveBookingCancelledByLabel,
@@ -75,7 +72,6 @@ import {
   filterVisibleEventLineupBookings,
   getActiveEventLineupStats,
   getBookingMutationErrorMessage,
-  hasPendingRateProposal,
   hideDeclinedBookingFromLineup,
   listBookingRequestsForEvent,
   type ActiveBookingStatusFilter,
@@ -1094,6 +1090,7 @@ export default function EventDetailPage() {
               eventDate={event.event_date}
               setTime={event.set_time}
               status={event.status}
+              variant="compact"
             />
           }
         />
@@ -1117,30 +1114,19 @@ export default function EventDetailPage() {
             </p>
           ) : null}
 
-          <h1 className="text-[1.75rem] font-bold leading-tight tracking-tight text-ftc-text sm:text-3xl">
+          <h1 className="text-xl font-bold leading-tight tracking-tight text-ftc-text sm:text-2xl">
             {event.name}
           </h1>
 
-          <div className="mt-5">
-            <EventDetailMetaList event={event} />
+          <div className="mt-3">
+            <EventDetailSummary event={event} />
           </div>
 
           {event.notes?.trim() ? (
-            <section className="mt-8">
+            <section className="mt-6">
               <h2 className="ftc-profile-section-label text-ftc-text-section-label">Notes</h2>
-              <p className="mt-3 text-sm leading-relaxed text-ftc-text-secondary">{event.notes}</p>
+              <p className="mt-2 text-sm leading-relaxed text-ftc-text-secondary">{event.notes}</p>
             </section>
-          ) : null}
-
-          {isOwner && isPlanner && canManageEventLifecycle ? (
-            <div className="mt-6">
-              <EventDeleteCancelButton
-                mode={hasLinkedBookings ? "cancel" : "delete"}
-                loading={hasLinkedBookings ? cancellingEvent : deletingEvent}
-                disabled={deletingEvent || cancellingEvent}
-                onConfirm={hasLinkedBookings ? handleCancelEvent : handleDeleteEvent}
-              />
-            </div>
           ) : null}
 
           {editOpen && editForm && canEditEvent ? (
@@ -1248,7 +1234,7 @@ export default function EventDetailPage() {
               {showRunSheetSendBookingsAction ? (
                 <div className="mt-8">
                   <EventDetailPrimaryAction onClick={openSendBookings}>
-                    Send booking requests
+                    Invite DJs
                   </EventDetailPrimaryAction>
                 </div>
               ) : null}
@@ -1311,20 +1297,20 @@ export default function EventDetailPage() {
           ) : null}
 
           {isOwner ? (
-            <section className="mt-8 ftc-card p-4 sm:p-5">
+            <section className="mt-8 ftc-card p-3.5 sm:p-5">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <h2 className="text-lg font-bold text-ftc-text">Bookings</h2>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    <PlannerStatChip label="Invited" value={lineupStats.total} />
-                    <PlannerStatChip label="Pending" value={lineupStats.pending} />
-                    <PlannerStatChip label="Accepted" value={lineupStats.accepted} />
-                    <PlannerStatChip label="Declined" value={lineupStats.declined} />
+                  <h2 className="text-base font-bold text-ftc-text sm:text-lg">Bookings</h2>
+                  <div className="mt-2.5 flex flex-wrap gap-1.5">
+                    <PlannerStatChip label="Invited" value={lineupStats.total} variant="compact" />
+                    <PlannerStatChip label="Pending" value={lineupStats.pending} variant="compact" />
+                    <PlannerStatChip label="Accepted" value={lineupStats.accepted} variant="compact" />
+                    <PlannerStatChip label="Declined" value={lineupStats.declined} variant="compact" />
                   </div>
                 </div>
               </div>
 
-              <div className="mt-4">
+              <div className="mt-3">
                 <PlannerFilterPills
                   options={STATUS_FILTERS}
                   value={lineupFilter}
@@ -1334,118 +1320,55 @@ export default function EventDetailPage() {
 
               {filteredLineup.length === 0 ? (
                 <PlannerEmptyPanel
-                  className="mt-6"
+                  className="mt-5"
                   message="No DJs invited yet, send booking requests to build your lineup"
                 />
               ) : (
-                <ul className="mt-4 space-y-3">
+                <ul className="mt-3 space-y-2.5">
                   {filteredLineup.map((booking) => {
                     const profile = profiles.get(booking.recipient_id);
-                    const displayName = profile?.display_name?.trim() || "DJ";
-                    const cancelledByLabel = resolveBookingCancelledByLabel(booking, profiles);
-                    const cancellationReasonLabel = resolveBookingCancellationReasonLabel(booking);
-                    const acceptedCancellationRole = getAcceptedBookingCancellationRole(
-                      booking,
-                      currentUserId,
-                    );
-                    const canHideFromLineup =
-                      isOwner &&
-                      isPlanner &&
-                      booking.status === "declined" &&
-                      !booking.lineup_hidden_at;
 
                     return (
                       <li key={booking.id}>
-                        <div
-                          className={`ftc-lineup-booking-card relative flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between ${
-                            canHideFromLineup ? "pr-12 sm:pr-14" : ""
-                          }`}
-                        >
-                        {canHideFromLineup ? (
-                          <HideDeclinedBookingButton
-                            className="absolute right-3 top-3"
-                            loading={hidingBookingId === booking.id}
-                            disabled={Boolean(hidingBookingId) && hidingBookingId !== booking.id}
-                            onConfirm={() => handleHideFromLineup(booking.id)}
-                          />
-                        ) : null}
-                        <div className="flex min-w-0 items-center gap-3">
-                          <ProfileAvatar
-                            name={displayName}
-                            avatarUrl={profile?.avatar_url}
-                            size="md"
-                          />
-                          <div className="min-w-0">
-                            <p className="font-semibold text-ftc-text">{displayName}</p>
-                            {profile?.genre?.trim() ? (
-                              <p className="text-sm text-ftc-text-muted">{profile.genre}</p>
-                            ) : null}
-                            <div className="mt-2 flex flex-wrap items-center gap-2">
-                              <BookingStatusBadge status={booking.status} />
-                              {hasPendingRateProposal(booking) ? (
-                                <span className="inline-flex rounded-full border border-ftc-border-subtle bg-ftc-bg-elevated px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-ftc-primary">
-                                  Rate proposed
-                                </span>
-                              ) : null}
-                            </div>
-                            <p className="mt-2 text-xs text-ftc-text-muted">
-                              {(() => {
-                                const offerType =
-                                  booking.rate_mode === "open" ? "Ask for rate" : "Fixed offer";
-                                const amount = formatRateDisplay(booking.fee);
-
-                                return amount !== "$" ? `${offerType} · ${amount}` : offerType;
-                              })()}
-                            </p>
-                            {cancelledByLabel ? (
-                              <p className="mt-2 text-xs text-ftc-text-muted">
-                                Cancelled by {cancelledByLabel}
-                              </p>
-                            ) : null}
-                            {cancellationReasonLabel ? (
-                              <p className="text-xs text-ftc-text-muted">
-                                Reason: {cancellationReasonLabel}
-                              </p>
-                            ) : null}
-                            <BookingRateProposalPanel
-                              booking={booking}
-                              currentUserId={currentUserId}
-                              loading={proposalLoadingId === booking.id}
-                              onAcceptProposal={() => handleAcceptProposedRate(booking)}
-                              onKeepOriginalOffer={() => handleKeepOriginalOffer(booking)}
-                              onDeclineBooking={() => handleCancelBooking(booking.id)}
-                            />
-                          </div>
-                        </div>
-
-                        <div className="flex flex-col items-stretch gap-2 sm:shrink-0 sm:items-end">
-                          {canCancelBookingRequest(booking, currentUserId) ? (
-                            <CancelBookingRequestButton
-                              loading={cancellingBookingId === booking.id}
-                              onConfirm={() => handleCancelBooking(booking.id)}
-                            />
-                          ) : null}
-                          {acceptedCancellationRole === "planner" ? (
-                            <CancelAcceptedBookingButton
-                              role="planner"
-                              loading={cancellingBookingId === booking.id}
-                              onConfirm={(reason) => handleCancelAcceptedBooking(booking, reason)}
-                            />
-                          ) : null}
-                          <Link
-                            href={`/dm/${booking.conversation_id}`}
-                            className="ftc-btn-secondary px-3 py-1.5 text-xs uppercase tracking-wide"
-                          >
-                            Open DM
-                          </Link>
-                        </div>
-                        </div>
+                        <EventLineupBookingCard
+                          booking={booking}
+                          profile={profile}
+                          currentUserId={currentUserId}
+                          cancelledByLabel={resolveBookingCancelledByLabel(booking, profiles)}
+                          cancellationReasonLabel={resolveBookingCancellationReasonLabel(booking)}
+                          canHideFromLineup={
+                            isOwner &&
+                            isPlanner &&
+                            booking.status === "declined" &&
+                            !booking.lineup_hidden_at
+                          }
+                          hiding={hidingBookingId === booking.id}
+                          hideDisabled={Boolean(hidingBookingId) && hidingBookingId !== booking.id}
+                          cancelling={cancellingBookingId === booking.id}
+                          proposalLoading={proposalLoadingId === booking.id}
+                          onHideFromLineup={() => handleHideFromLineup(booking.id)}
+                          onCancelBooking={() => handleCancelBooking(booking.id)}
+                          onCancelAccepted={(reason) => handleCancelAcceptedBooking(booking, reason)}
+                          onAcceptProposal={() => handleAcceptProposedRate(booking)}
+                          onKeepOriginalOffer={() => handleKeepOriginalOffer(booking)}
+                        />
                       </li>
                     );
                   })}
                 </ul>
               )}
             </section>
+          ) : null}
+
+          {isOwner && isPlanner && canManageEventLifecycle ? (
+            <div className="mt-8 border-t border-ftc-border-subtle pt-6">
+              <EventDeleteCancelButton
+                mode={hasLinkedBookings ? "cancel" : "delete"}
+                loading={hasLinkedBookings ? cancellingEvent : deletingEvent}
+                disabled={deletingEvent || cancellingEvent}
+                onConfirm={hasLinkedBookings ? handleCancelEvent : handleDeleteEvent}
+              />
+            </div>
           ) : null}
         </div>
 

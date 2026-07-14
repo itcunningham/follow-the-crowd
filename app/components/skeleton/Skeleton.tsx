@@ -176,22 +176,13 @@ function EventDetailBackIcon() {
 export function EventDetailContentSkeleton() {
   return (
     <>
-      <div className="relative aspect-[4/3] max-h-[220px] w-full border-b border-ftc-border-subtle">
+      <div className="relative aspect-[4/3] max-h-[165px] w-full border-b border-ftc-border-subtle">
         <SkeletonBlock className="h-full w-full rounded-none" rounded="rounded-none" />
       </div>
 
-      <div className="space-y-5 px-4 pb-6 pt-5 sm:px-6">
-        <SkeletonBlock className="h-8 w-4/5 max-w-[16rem]" />
-        <div className="space-y-3">
-          <div className="flex items-start gap-3">
-            <SkeletonBlock className="h-5 w-5 shrink-0 rounded-md" />
-            <SkeletonBlock className="h-4 w-3/4 max-w-[14rem]" />
-          </div>
-          <div className="flex items-start gap-3">
-            <SkeletonBlock className="h-5 w-5 shrink-0 rounded-md" />
-            <SkeletonBlock className="h-4 w-2/3 max-w-[12rem]" />
-          </div>
-        </div>
+      <div className="space-y-4 px-4 pb-6 pt-4 sm:px-6">
+        <SkeletonBlock className="h-7 w-4/5 max-w-[16rem]" />
+        <SkeletonBlock className="h-[5.5rem] w-full max-w-none rounded-2xl" />
 
         <SkeletonCard>
           <SkeletonBlock className="h-5 w-28" />
