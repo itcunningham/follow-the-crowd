@@ -68,6 +68,11 @@ import {
   resolveGigsCalendarBookingNavigation,
   type CalendarOriginState,
 } from "@/lib/bookings/gigsCalendarNavigation";
+import {
+  GigsCalendarBookingNavDebugPanel,
+  inspectGigsCalendarBookingNavPointerContext,
+  publishGigsCalendarBookingNavDiagnostic,
+} from "@/lib/debug/gigsCalendarBookingNavDiagnostic";
 import { prepareCalendarAgendaEventNavigation } from "@/lib/navigation/prepareMobileDocumentScrollReset";
 import { isDateKeyBeforeToday } from "@/lib/bookingDateTime";
 
@@ -499,11 +504,77 @@ function DjCalendarBookingNavButton({
   compact?: boolean;
 }) {
   const router = useRouter();
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const pathnameBeforeRef = useRef("");
+  const [isPressed, setIsPressed] = useState(false);
   const eventName = booking.event_name.trim() || "Booking request";
   const statusLabel = booking.status === "accepted" ? "Booked" : "Pending Request";
 
+  const handlePointerDown = useCallback(
+    (event: React.PointerEvent<HTMLButtonElement>) => {
+      const button = buttonRef.current;
+      const pathnameBefore =
+        typeof window !== "undefined"
+          ? `${window.location.pathname}${window.location.search}`
+          : "";
+
+      pathnameBeforeRef.current = pathnameBefore;
+      setIsPressed(true);
+
+      const pointerContext = button
+        ? inspectGigsCalendarBookingNavPointerContext(button, event.clientX, event.clientY)
+        : {
+            topElementAtTap: "(button missing)",
+            buttonPointerEvents: "",
+            buttonZIndex: "",
+            ancestorPointerBlockers: "",
+          };
+
+      publishGigsCalendarBookingNavDiagnostic({
+        eventName,
+        bookingStatus: booking.status,
+        pointerdownReceived: true,
+        clickReceived: false,
+        bookingId: booking.id,
+        rawEventId: booking.event_id,
+        rawEventIdType: booking.event_id == null ? "null" : typeof booking.event_id,
+        resolvedHref: "",
+        navigationKind: "",
+        routerPushCalled: false,
+        pathnameBefore,
+        pathnameAfterPush: "",
+        pathname500ms: "",
+        isPressed: true,
+        ...pointerContext,
+      });
+    },
+    [booking.event_id, booking.id, booking.status, eventName],
+  );
+
+  const handlePointerUp = useCallback(() => {
+    setIsPressed(false);
+    publishGigsCalendarBookingNavDiagnostic({ isPressed: false });
+  }, []);
+
   const handleOpenBooking = useCallback(() => {
+    const pathnameBefore =
+      pathnameBeforeRef.current ||
+      (typeof window !== "undefined"
+        ? `${window.location.pathname}${window.location.search}`
+        : "");
     const navigation = resolveGigsCalendarBookingNavigation(booking, calendarOrigin);
+    const resolvedHref =
+      navigation.kind === "error" ? `(error) ${navigation.message}` : navigation.href;
+
+    publishGigsCalendarBookingNavDiagnostic({
+      clickReceived: true,
+      bookingId: booking.id,
+      rawEventId: booking.event_id,
+      rawEventIdType: booking.event_id == null ? "null" : typeof booking.event_id,
+      resolvedHref,
+      navigationKind: navigation.kind,
+      pathnameBefore,
+    });
 
     if (navigation.kind === "error") {
       onNavigationError?.(navigation.message);
@@ -513,17 +584,47 @@ function DjCalendarBookingNavButton({
     onBeforeNavigate?.();
     prepareCalendarAgendaEventNavigation();
     router.push(navigation.href, { scroll: false });
+
+    const pathnameAfterPush =
+      typeof window !== "undefined"
+        ? `${window.location.pathname}${window.location.search}`
+        : "";
+
+    publishGigsCalendarBookingNavDiagnostic({
+      routerPushCalled: true,
+      pathnameAfterPush,
+    });
+
+    window.setTimeout(() => {
+      const pathname500ms =
+        typeof window !== "undefined"
+          ? `${window.location.pathname}${window.location.search}`
+          : "";
+
+      publishGigsCalendarBookingNavDiagnostic({ pathname500ms });
+    }, 500);
   }, [booking, calendarOrigin, onBeforeNavigate, onNavigationError, router]);
 
   return (
     <button
+      ref={buttonRef}
       type="button"
+      onPointerDown={handlePointerDown}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerUp}
       onClick={handleOpenBooking}
       aria-label={`${eventName}, ${statusLabel}`}
       onContextMenu={(event) => event.preventDefault()}
-      className={`${className} touch-manipulation [-webkit-touch-callout:none] ${CALENDAR_MOBILE_INTERACTIVE_PRESS_CLASS}`}
+      className={`${className} touch-manipulation [-webkit-touch-callout:none] ${CALENDAR_MOBILE_INTERACTIVE_PRESS_CLASS} ${
+        isPressed ? "outline outline-2 outline-amber-400 outline-offset-2" : ""
+      }`}
     >
       <span className="pointer-events-none block w-full">
+        {isPressed ? (
+          <span className="mb-1 block text-[9px] font-semibold uppercase tracking-wide text-amber-300">
+            Debug tap received
+          </span>
+        ) : null}
         <span className="flex items-center justify-between gap-2">
           <span
             className={`truncate font-semibold text-ftc-text ${compact ? "text-xs" : "text-sm"}`}
@@ -1659,6 +1760,7 @@ export default function DjAvailabilityCalendar({
   if (isDual) {
     return (
       <>
+        <GigsCalendarBookingNavDebugPanel />
         {!loading && error ? (
           <div className="order-1 w-full shrink-0">
             <p role="alert" className="pointer-events-none mt-4 flex justify-center">
@@ -1678,6 +1780,7 @@ export default function DjAvailabilityCalendar({
 
   return (
     <section className={PLANNER_WORKSPACE_PRIMARY_SURFACE_CLASS}>
+      <GigsCalendarBookingNavDebugPanel />
       {!loading && error ? (
         <p role="alert" className="pointer-events-none mt-4 flex justify-center">
           <span className="rounded-full border-0 bg-[var(--ftc-color-danger)] px-3 py-1 text-[11px] font-medium text-ftc-bg">
