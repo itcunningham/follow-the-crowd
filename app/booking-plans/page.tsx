@@ -42,25 +42,6 @@ const emptyPlanForm: BookingPlanInput = {
   notes: "",
 };
 
-function formatEventVenueSummary(eventName: string, venue: string): string | null {
-  const event = eventName.trim();
-  const venueName = venue.trim();
-
-  if (event && venueName) {
-    return `${event} • ${venueName}`;
-  }
-
-  if (event) {
-    return event;
-  }
-
-  if (venueName) {
-    return venueName;
-  }
-
-  return null;
-}
-
 function getPlanLoadErrorMessage(error: unknown): string {
   if (error && typeof error === "object") {
     const supabaseError = error as { message?: string; code?: string };
@@ -556,7 +537,6 @@ function EventPlanCard({
   onUseForBooking: () => void;
 }) {
   const notesPreview = formatEventPlanNotesPreview(plan.notes);
-  const eventVenueSummary = formatEventVenueSummary(plan.event_name, plan.venue);
 
   const selectionLabel = selected
     ? `Deselect ${plan.name}`
@@ -591,14 +571,10 @@ function EventPlanCard({
           ) : null}
           <span className="min-w-0 flex-1">
             <span className="block text-lg font-semibold text-ftc-text">{plan.name}</span>
-            {eventVenueSummary ? (
-              <p className="mt-1 truncate text-sm text-ftc-text sm:hidden">{eventVenueSummary}</p>
-            ) : null}
+            <MobilePlanEventVenueRow eventName={plan.event_name} venue={plan.venue} />
             {notesPreview ? (
               <div className="mt-1.5 sm:hidden">
-                <p className="text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted">
-                  Notes
-                </p>
+                <PlanFieldLabel as="p">Notes</PlanFieldLabel>
                 <p className="truncate text-sm text-ftc-text-secondary">{notesPreview}</p>
               </div>
             ) : null}
@@ -636,6 +612,53 @@ function EventPlanCard({
   );
 }
 
+function PlanFieldLabel({
+  children,
+  as: Tag = "dt",
+}: {
+  children: React.ReactNode;
+  as?: "dt" | "p" | "span";
+}) {
+  return (
+    <Tag className="text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted">
+      {children}
+    </Tag>
+  );
+}
+
+function MobilePlanEventVenueRow({
+  eventName,
+  venue,
+}: {
+  eventName: string;
+  venue: string;
+}) {
+  const event = eventName.trim();
+  const venueName = venue.trim();
+
+  if (!event && !venueName) {
+    return null;
+  }
+
+  return (
+    <p className="mt-1 min-w-0 truncate text-sm sm:hidden">
+      {event ? (
+        <>
+          <PlanFieldLabel as="span">Event</PlanFieldLabel>{" "}
+          <span className="text-ftc-text-secondary">{event}</span>
+        </>
+      ) : null}
+      {event && venueName ? <span className="text-ftc-text-muted"> • </span> : null}
+      {venueName ? (
+        <>
+          <PlanFieldLabel as="span">Venue</PlanFieldLabel>{" "}
+          <span className="text-ftc-text-secondary">{venueName}</span>
+        </>
+      ) : null}
+    </p>
+  );
+}
+
 function PlanDetail({
   label,
   value,
@@ -649,7 +672,7 @@ function PlanDetail({
 }) {
   return (
     <div className={className}>
-      <dt className="text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted">{label}</dt>
+      <PlanFieldLabel>{label}</PlanFieldLabel>
       <dd
         className={`mt-px min-w-0 ${truncate ? "truncate text-ftc-text-secondary" : "text-ftc-text"}`}
       >
