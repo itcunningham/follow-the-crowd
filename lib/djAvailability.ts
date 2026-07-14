@@ -126,12 +126,20 @@ export type DjCalendarLegendKind =
   | "pending_request"
   | "booked";
 
-export const DJ_CALENDAR_LEGEND_ITEMS = [
+export const DJ_CALENDAR_AVAILABILITY_LEGEND_ITEMS = [
   { label: "Available", kind: "available" as const },
   { label: "Maybe", kind: "tentative" as const },
   { label: "Unavailable", kind: "unavailable" as const },
+] as const;
+
+export const DJ_CALENDAR_BOOKING_LEGEND_ITEMS = [
   { label: "Pending Request", kind: "pending_request" as const },
   { label: "Booked", kind: "booked" as const },
+] as const;
+
+export const DJ_CALENDAR_LEGEND_ITEMS = [
+  ...DJ_CALENDAR_AVAILABILITY_LEGEND_ITEMS,
+  ...DJ_CALENDAR_BOOKING_LEGEND_ITEMS,
 ] as const;
 
 /** Gig Calendar date-strip dot priority (highest first). Separate from Event Calendar kinds. */

@@ -1083,16 +1083,23 @@ export function PlannerCalendarContentSkeleton() {
 
 function DjCalendarLegendSkeleton() {
   return (
-    <div
-      aria-hidden="true"
-      className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2"
-    >
-      {Array.from({ length: 5 }, (_, index) => (
-        <span key={index} className="inline-flex items-center gap-1.5">
-          <SkeletonBlock className="h-1.5 w-1.5 rounded-full" />
-          <SkeletonBlock className={`h-3 ${index === 3 ? "w-24" : "w-14"}`} />
-        </span>
-      ))}
+    <div aria-hidden="true" className="flex flex-col items-center gap-y-2">
+      <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
+        {Array.from({ length: 3 }, (_, index) => (
+          <span key={index} className="inline-flex items-center gap-1.5">
+            <SkeletonBlock className="h-1.5 w-1.5 rounded-full" />
+            <SkeletonBlock className="h-3 w-14" />
+          </span>
+        ))}
+      </div>
+      <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
+        {Array.from({ length: 2 }, (_, index) => (
+          <span key={index} className="inline-flex items-center gap-1.5">
+            <SkeletonBlock className="h-1.5 w-1.5 rounded-full" />
+            <SkeletonBlock className={`h-3 ${index === 0 ? "w-24" : "w-14"}`} />
+          </span>
+        ))}
+      </div>
     </div>
   );
 }

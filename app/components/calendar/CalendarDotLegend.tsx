@@ -7,35 +7,61 @@ export const CALENDAR_DOT_LEGEND_CLASS =
   "flex flex-wrap items-center justify-center gap-x-4 gap-y-2";
 
 type CalendarDotLegendProps = {
-  items: readonly CalendarDotLegendItem[];
+  items?: readonly CalendarDotLegendItem[];
+  rows?: readonly (readonly CalendarDotLegendItem[])[];
   ariaLabel?: string;
   className?: string;
 };
 
-export default function CalendarDotLegend({
+function CalendarDotLegendItems({
   items,
+}: {
+  items: readonly CalendarDotLegendItem[];
+}) {
+  return items.map((item) => (
+    <span
+      key={item.label}
+      role="listitem"
+      className="inline-flex items-center gap-1.5 text-xs text-ftc-text-secondary"
+    >
+      <span
+        aria-hidden="true"
+        className={`h-1.5 w-1.5 shrink-0 rounded-full ${item.dotClassName}`}
+      />
+      {item.label}
+    </span>
+  ));
+}
+
+export default function CalendarDotLegend({
+  items = [],
+  rows,
   ariaLabel = "Calendar legend",
   className = "",
 }: CalendarDotLegendProps) {
+  if (rows && rows.length > 0) {
+    return (
+      <div
+        role="group"
+        aria-label={ariaLabel}
+        className={["flex flex-col items-center gap-y-2", className].filter(Boolean).join(" ")}
+      >
+        {rows.map((rowItems, rowIndex) => (
+          <div key={rowIndex} role="list" className={CALENDAR_DOT_LEGEND_CLASS}>
+            <CalendarDotLegendItems items={rowItems} />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
   return (
     <div
       role="list"
       aria-label={ariaLabel}
       className={[CALENDAR_DOT_LEGEND_CLASS, className].filter(Boolean).join(" ")}
     >
-      {items.map((item) => (
-        <span
-          key={item.label}
-          role="listitem"
-          className="inline-flex items-center gap-1.5 text-xs text-ftc-text-secondary"
-        >
-          <span
-            aria-hidden="true"
-            className={`h-1.5 w-1.5 shrink-0 rounded-full ${item.dotClassName}`}
-          />
-          {item.label}
-        </span>
-      ))}
+      <CalendarDotLegendItems items={items} />
     </div>
   );
 }

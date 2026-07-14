@@ -42,7 +42,8 @@ import {
   getDjCalendarLegendDotClass,
   buildDjCalendarMonthActivityByKey,
   getDjCalendarMonthActivityDotClass,
-  DJ_CALENDAR_LEGEND_ITEMS,
+  DJ_CALENDAR_AVAILABILITY_LEGEND_ITEMS,
+  DJ_CALENDAR_BOOKING_LEGEND_ITEMS,
   groupAvailabilityEntriesByDate,
   listMyAvailabilityEntries,
   normalizeAvailabilityDate,
@@ -233,12 +234,22 @@ function getAvailabilityActionPillClass(
 }
 
 export function DjAvailabilityCalendarLegend() {
+  const mapLegendRow = (
+    items:
+      | typeof DJ_CALENDAR_AVAILABILITY_LEGEND_ITEMS
+      | typeof DJ_CALENDAR_BOOKING_LEGEND_ITEMS,
+  ) =>
+    items.map((item) => ({
+      label: item.label,
+      dotClassName: getDjCalendarLegendDotClass(item.kind),
+    }));
+
   return (
     <CalendarDotLegend
-      items={DJ_CALENDAR_LEGEND_ITEMS.map((item) => ({
-        label: item.label,
-        dotClassName: getDjCalendarLegendDotClass(item.kind),
-      }))}
+      rows={[
+        mapLegendRow(DJ_CALENDAR_AVAILABILITY_LEGEND_ITEMS),
+        mapLegendRow(DJ_CALENDAR_BOOKING_LEGEND_ITEMS),
+      ]}
     />
   );
 }
