@@ -105,6 +105,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `829fb1d` — fix Gigs mobile availability pill layout shift; optimistic save with version guard
 - `c1a0437` — restore compact workspace tabs; fix iOS touch nav with location.assign
 - `d1f9dc0` — immediate workspace sub-nav feedback + route loading shells for Events/Gigs
 - `05602b5` — fix intermittent iOS calendar tab taps via PlannerFilterPills pointerup
