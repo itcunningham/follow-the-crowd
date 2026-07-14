@@ -118,6 +118,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `616708b` — Make History event details read-only
 - restore compact workflow-first event cards (64px square `EventThumbnail`; hero/edit preview unchanged)
 - `bb1d436` — unify premium event image system (16:9 hero, shared crop primitives)
 - `46fa81b` — polish Invite DJs sheet selection, hierarchy, and confirm button
