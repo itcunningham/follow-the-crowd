@@ -6,12 +6,19 @@ import {
 
 export default function EventBookingDuplicateBadge({
   status,
+  variant = "default",
 }: {
   status: EventBookingDuplicateStatus;
+  variant?: "default" | "compact";
 }) {
+  const sizeClassName =
+    variant === "compact"
+      ? "px-2 py-0.5 text-[9px] font-medium uppercase tracking-wide"
+      : "px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide";
+
   return (
     <span
-      className={`inline-flex shrink-0 rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${getEventBookingDuplicateBadgeClass(status)}`}
+      className={`inline-flex shrink-0 rounded-full ${sizeClassName} ${getEventBookingDuplicateBadgeClass(status)}`}
     >
       {getEventBookingDuplicateLabel(status)}
     </span>

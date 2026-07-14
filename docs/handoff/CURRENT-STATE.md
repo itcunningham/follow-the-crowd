@@ -92,6 +92,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 - **Events list cards (2026-07-14):** smaller list artwork (~14%), bolder title, compact status badge + booking stat chips, full-card tap target with chevron as visual cue only
 - **Event detail page (2026-07-14):** shorter hero (~25%), icon-led event summary block, compact lineup booking cards aligned with DM cards, Invite DJs action label, cancel event moved below bookings, flat action cards, dashed run sheet empty state
 - **Invite DJs sheet (2026-07-14):** full-card tap selection with avatar checkmark, icon search field, compact DJ row hierarchy, dynamic confirm button label
+- **Event detail visual consistency (2026-07-14):** shared `eventDetailUi` tokens — unified section titles (`text-base font-bold`), card padding (`p-3.5 sm:p-4`), button heights (`min-h-10`), compact status badges (9px), feedback banners, Run Sheet / Bookings / Notes / Your booking headings aligned; Invite DJs modal matches same language
 - **Calendar day selection:** desktop grid highlight tied to open day panel (`actionDate`); closing the panel clears the outline instantly (no transition fade) and blurs focus; Today styling unchanged
 - **Page load speed:** optimistic auth in `OnboardingGuard` (cached session renders immediately); profile + nav role persisted to localStorage (userId-scoped) and seeded at module load; profile fetch starts immediately when session exists; auth guard runs profile fetch in parallel with session check; events list + group inbox caches survive hard refresh via localStorage; profile cache + deduped fetches in `lib/user/currentUser.ts`; nav skips redundant profile load when guard profile exists
 - Desktop nav width aligned to page shell (`md:max-w-5xl`); `scrollbar-gutter: stable` on `<html>`
@@ -113,7 +114,8 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
-- `1543f4e` — compact mobile Gigs booking cards; Open DM button; combined time/offer row
+- `de71cb8` — unify Event Details visual tokens (sections, cards, buttons, badges)
+- `46fa81b` — polish Invite DJs sheet selection, hierarchy, and confirm button
 - `7625227` — fix invisible booking deep-link focus ring (absolute overlay, active/fading phases)
 - `c9c9373` — polish booking deep-link focus ring (full card, 2s hold + 1s fade)
 - `0018fe3` — deep-link Gigs Open conversation to matching DM booking card via bookingRequestId

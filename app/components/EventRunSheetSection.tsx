@@ -2,6 +2,13 @@
 
 import Link from "next/link";
 import { CalendarMobileDashedEmptyState } from "@/app/components/calendar/calendarMobileUi";
+import { EventDetailSectionTitle } from "@/app/components/event-detail/EventDetailLayout";
+import {
+  EVENT_DETAIL_BTN_PRIMARY,
+  EVENT_DETAIL_CARD_CLASS,
+  EVENT_DETAIL_FEEDBACK_CLASS,
+  EVENT_DETAIL_SECTION_SUBTITLE_CLASS,
+} from "@/app/components/event-detail/eventDetailUi";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { BookingDualTimeWheelPicker } from "@/app/components/BookingTimeWheelPicker";
 import ProfileAvatar from "@/app/components/ProfileAvatar";
@@ -603,14 +610,12 @@ export default function EventRunSheetSection({
     "rounded-lg border border-ftc-border bg-ftc-bg-elevated/30 px-2.5 py-1.5 text-sm leading-relaxed text-ftc-text whitespace-pre-wrap break-words";
 
   return (
-    <section className="mb-6 ftc-card p-4 sm:p-5">
+    <section className={EVENT_DETAIL_CARD_CLASS}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-ftc-primary">
-            Run Sheet
-          </h2>
+          <EventDetailSectionTitle>Run Sheet</EventDetailSectionTitle>
           {!canEdit ? (
-            <p className="mt-1 text-xs text-ftc-text-muted">Read-only view for accepted crew</p>
+            <p className={EVENT_DETAIL_SECTION_SUBTITLE_CLASS}>Read-only view for accepted crew</p>
           ) : null}
         </div>
 
@@ -620,7 +625,7 @@ export default function EventRunSheetSection({
               type="button"
               onClick={handleSave}
               disabled={saving}
-              className="ftc-btn-primary px-3 py-1.5 text-xs uppercase tracking-wide disabled:cursor-not-allowed disabled:opacity-50"
+              className={`${EVENT_DETAIL_BTN_PRIMARY} disabled:cursor-not-allowed disabled:opacity-50`}
             >
               {saving ? "Saving..." : "Save run sheet"}
             </button>
@@ -629,13 +634,13 @@ export default function EventRunSheetSection({
       </div>
 
       {successMessage ? (
-        <p className="mt-4 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated px-4 py-3 text-sm text-ftc-text-secondary">
+        <p className={`mt-4 ${EVENT_DETAIL_FEEDBACK_CLASS} mb-0 text-ftc-text-secondary`}>
           {successMessage}
         </p>
       ) : null}
 
       {error ? (
-        <p className="mt-4 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated px-4 py-3 text-sm text-[var(--ftc-color-danger)]">
+        <p className={`mt-4 ${EVENT_DETAIL_FEEDBACK_CLASS} mb-0 text-[var(--ftc-color-danger)]`}>
           {error}
         </p>
       ) : null}

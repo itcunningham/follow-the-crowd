@@ -69,8 +69,8 @@ function PlannerMultilineField({
       />
       {maxLength !== undefined ? (
         <p
-          className={`mt-1 text-right text-xs ${
-            value.length > maxLength ? "text-red-400" : "text-ftc-text-muted"
+          className={`ftc-form-notes-counter ${
+            value.length > maxLength ? "is-over-limit" : ""
           }`}
         >
           {value.length} / {maxLength}
@@ -133,17 +133,21 @@ export function PlannerFormCard({
   title,
   onCancel,
   cancelDisabled = false,
+  cardClassName,
+  titleClassName,
   children,
 }: {
   title: string;
   onCancel: () => void;
   cancelDisabled?: boolean;
+  cardClassName?: string;
+  titleClassName?: string;
   children: React.ReactNode;
 }) {
   return (
-    <section className="mb-6 ftc-card p-4 sm:p-5">
+    <section className={cardClassName ?? "mb-6 ftc-card p-4 sm:p-5"}>
       <div className="ftc-form-card-header">
-        <h2 className="text-lg font-semibold text-ftc-text">{title}</h2>
+        <h2 className={titleClassName ?? "text-lg font-semibold text-ftc-text"}>{title}</h2>
         <button
           type="button"
           onClick={onCancel}
@@ -306,7 +310,7 @@ export function PlannerStatChip({
 }) {
   const className =
     variant === "compact"
-      ? "rounded-full border border-ftc-border-subtle bg-ftc-bg-input px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-ftc-text-muted"
+      ? "rounded-full border border-ftc-border-subtle bg-ftc-bg-input px-2 py-0.5 text-[9px] font-medium uppercase tracking-wide text-ftc-text-muted"
       : "ftc-stat-chip";
 
   return (

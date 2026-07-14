@@ -5,6 +5,7 @@ import DjBookingAvailabilityBadge from "@/app/components/DjBookingAvailabilityBa
 import EventBookingDuplicateBadge from "@/app/components/EventBookingDuplicateBadge";
 import EventDjSendOfferControls from "@/app/components/booking/EventDjSendOfferControls";
 import { PlannerEmptyPanel, PlannerSectionLabel } from "@/app/components/planner/PlannerUi";
+import { EVENT_DETAIL_BTN_PRIMARY_WIDE } from "@/app/components/event-detail/eventDetailUi";
 import type { SendBookingRequestsDraft } from "@/app/components/booking/useSendBookingRequestsDraft";
 
 type SendBookingRequestsPanelProps = {
@@ -189,10 +190,10 @@ export default function SendBookingRequestsPanel({
                     {duplicateStatus || availabilityHint ? (
                       <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                         {duplicateStatus ? (
-                          <EventBookingDuplicateBadge status={duplicateStatus} />
+                          <EventBookingDuplicateBadge status={duplicateStatus} variant="compact" />
                         ) : null}
                         {availabilityHint ? (
-                          <DjBookingAvailabilityBadge hint={availabilityHint} />
+                          <DjBookingAvailabilityBadge hint={availabilityHint} variant="compact" />
                         ) : null}
                       </div>
                     ) : null}
@@ -255,7 +256,7 @@ export default function SendBookingRequestsPanel({
             sendableCount === 0 ||
             draft.hasInvalidFixedOffers
           }
-          className="w-full ftc-btn-primary px-5 py-3 text-sm uppercase tracking-wide disabled:cursor-not-allowed disabled:opacity-50"
+          className={EVENT_DETAIL_BTN_PRIMARY_WIDE}
         >
           {sendButtonLabel}
         </button>

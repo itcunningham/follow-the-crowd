@@ -8,6 +8,11 @@ import CancelBookingRequestButton from "@/app/components/CancelBookingRequestBut
 import HideDeclinedBookingButton from "@/app/components/HideDeclinedBookingButton";
 import ProfileAvatar from "@/app/components/ProfileAvatar";
 import { FtcMetaRow, FtcRateIcon } from "@/app/components/ftc/FtcCompactMeta";
+import {
+  EVENT_DETAIL_BADGE_COMPACT,
+  EVENT_DETAIL_BTN_DESTRUCTIVE,
+  EVENT_DETAIL_BTN_SECONDARY,
+} from "@/app/components/event-detail/eventDetailUi";
 import { formatRateDisplay } from "@/lib/bookingRate";
 import {
   canCancelBookingRequest,
@@ -16,9 +21,6 @@ import {
   type BookingRequest,
 } from "@/lib/bookingRequests";
 import type { BookingRecipientProfile } from "@/lib/user/currentUser";
-
-const LINEUP_ACTION_CLASS =
-  "inline-flex min-h-10 w-full items-center justify-center rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-wide transition sm:w-auto sm:min-w-[7.5rem]";
 
 function getLineupRateLine(booking: BookingRequest): string {
   const offerType = booking.rate_mode === "open" ? "Ask for rate" : "Fixed offer";
@@ -94,7 +96,9 @@ export default function EventLineupBookingCard({
             <div className="flex shrink-0 flex-col items-end gap-1">
               <BookingStatusBadge status={booking.status} variant="compact" />
               {pendingProposal ? (
-                <span className="inline-flex rounded-full border border-ftc-border-subtle bg-ftc-bg-elevated px-2 py-0.5 text-[9px] font-medium uppercase tracking-wide text-ftc-primary">
+                <span
+                  className={`${EVENT_DETAIL_BADGE_COMPACT} border border-ftc-border-subtle bg-ftc-bg-elevated text-ftc-primary`}
+                >
                   Rate proposed
                 </span>
               ) : null}
@@ -132,7 +136,7 @@ export default function EventLineupBookingCard({
           <CancelBookingRequestButton
             loading={cancelling}
             onConfirm={onCancelBooking}
-            className={`${LINEUP_ACTION_CLASS} border border-[var(--ftc-color-danger)] bg-ftc-surface text-[var(--ftc-color-danger)] hover:border-0 hover:bg-[var(--ftc-color-danger)] hover:text-ftc-bg`}
+            className={`${EVENT_DETAIL_BTN_DESTRUCTIVE} w-full sm:w-auto sm:min-w-[7.5rem]`}
           />
         ) : null}
         {acceptedCancellationRole === "planner" ? (
@@ -140,12 +144,13 @@ export default function EventLineupBookingCard({
             role="planner"
             loading={cancelling}
             onConfirm={onCancelAccepted}
+            className={`${EVENT_DETAIL_BTN_DESTRUCTIVE} w-full sm:w-auto sm:min-w-[7.5rem]`}
           />
         ) : null}
         {booking.conversation_id ? (
           <Link
             href={`/dm/${booking.conversation_id}`}
-            className={`ftc-btn-secondary ${LINEUP_ACTION_CLASS}`}
+            className={`${EVENT_DETAIL_BTN_SECONDARY} w-full sm:w-auto sm:min-w-[7.5rem]`}
           >
             Open DM
           </Link>

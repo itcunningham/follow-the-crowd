@@ -14,8 +14,21 @@ import {
   FtcMetaRow,
   FtcVenueIcon,
 } from "@/app/components/ftc/FtcCompactMeta";
+import { EVENT_DETAIL_CARD_CLASS } from "@/app/components/event-detail/eventDetailUi";
 import type { Event } from "@/lib/events";
 import type { EventEditHeaderState } from "@/lib/events/useEventEditHeaderVisibility";
+
+export function EventDetailSectionTitle({
+  children,
+  className = "",
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <h2 className={`text-base font-bold text-ftc-text ${className}`.trim()}>{children}</h2>
+  );
+}
 
 export function EventDetailSummary({ event }: { event: Event }) {
   const date = formatDisplayEventDate(event.event_date) || "Date TBC";
@@ -23,7 +36,7 @@ export function EventDetailSummary({ event }: { event: Event }) {
   const venue = event.venue?.trim() || "Venue TBC";
 
   return (
-    <div className="rounded-2xl border border-ftc-border-subtle bg-ftc-surface/40 p-3.5">
+    <div className={EVENT_DETAIL_CARD_CLASS}>
       <ul className="space-y-1.5">
         <FtcMetaRow icon={<FtcCalendarIcon />}>{date}</FtcMetaRow>
         <FtcMetaRow icon={<FtcClockIcon />}>{time}</FtcMetaRow>

@@ -14,8 +14,17 @@ import {
   EventDetailEditHeaderSlot,
   EventDetailHero,
   EventDetailOverlayButton,
+  EventDetailSectionTitle,
   EventDetailSummary,
 } from "@/app/components/event-detail/EventDetailLayout";
+import {
+  EVENT_DETAIL_BTN_DESTRUCTIVE,
+  EVENT_DETAIL_BTN_PRIMARY_WIDE,
+  EVENT_DETAIL_BTN_SECONDARY,
+  EVENT_DETAIL_CARD_CLASS,
+  EVENT_DETAIL_FEEDBACK_CLASS,
+  EVENT_DETAIL_SECTION_SPACING,
+} from "@/app/components/event-detail/eventDetailUi";
 import EventLineupBookingCard from "@/app/components/event-detail/EventLineupBookingCard";
 import { useGuardProfile } from "@/app/components/GuardProfileContext";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
@@ -1097,19 +1106,19 @@ export default function EventDetailPage() {
 
         <div className={`px-4 sm:px-6 ${showBottomBar ? "pb-28" : "pb-6"} pt-5`}>
           {searchParams.get("coverUpload") === "failed" ? (
-            <p className="mb-4 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated px-4 py-3 text-sm text-ftc-text-secondary">
+            <p className={`${EVENT_DETAIL_FEEDBACK_CLASS} text-ftc-text-secondary`}>
               Event saved, but the flyer could not be uploaded. Open Edit event to try again.
             </p>
           ) : null}
 
           {successMessage ? (
-            <p className="mb-4 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated px-4 py-3 text-sm text-ftc-text-secondary">
+            <p className={`${EVENT_DETAIL_FEEDBACK_CLASS} text-ftc-text-secondary`}>
               {successMessage}
             </p>
           ) : null}
 
           {error ? (
-            <p className="mb-4 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated px-4 py-3 text-sm text-[var(--ftc-color-danger)]">
+            <p className={`${EVENT_DETAIL_FEEDBACK_CLASS} text-[var(--ftc-color-danger)]`}>
               {error}
             </p>
           ) : null}
@@ -1123,8 +1132,8 @@ export default function EventDetailPage() {
           </div>
 
           {event.notes?.trim() ? (
-            <section className="mt-6">
-              <h2 className="ftc-profile-section-label text-ftc-text-section-label">Notes</h2>
+            <section className={EVENT_DETAIL_SECTION_SPACING}>
+              <EventDetailSectionTitle>Notes</EventDetailSectionTitle>
               <p className="mt-2 text-sm leading-relaxed text-ftc-text-secondary">{event.notes}</p>
             </section>
           ) : null}
@@ -1133,6 +1142,8 @@ export default function EventDetailPage() {
             <section ref={editFormSectionRef} className="mt-4 scroll-mt-24">
             <PlannerFormCard
               title="Edit event"
+              cardClassName={`mb-0 ${EVENT_DETAIL_CARD_CLASS}`}
+              titleClassName="text-base font-bold text-ftc-text"
               onCancel={() => {
                 if (savingEdit) return;
                 setEditOpen(false);
@@ -1220,7 +1231,7 @@ export default function EventDetailPage() {
                   type="submit"
                   disabled={savingEdit || (editSaveAttempted && editFormHasValidationErrors)}
                   aria-disabled={savingEdit || (editSaveAttempted && editFormHasValidationErrors)}
-                  className="ftc-btn-primary px-5 py-3 text-sm uppercase tracking-wide disabled:cursor-not-allowed disabled:opacity-50"
+                  className={EVENT_DETAIL_BTN_PRIMARY_WIDE}
                 >
                   {savingEdit ? "Saving event..." : "Save event changes"}
                 </button>
@@ -1251,11 +1262,11 @@ export default function EventDetailPage() {
           ) : null}
 
           {!isOwner && viewerBooking ? (
-            <section className="mt-8 ftc-card p-4 sm:p-5">
-              <h2 className="text-lg font-bold text-ftc-text">Your booking</h2>
-              <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <section className={`${EVENT_DETAIL_SECTION_SPACING} ${EVENT_DETAIL_CARD_CLASS}`}>
+              <EventDetailSectionTitle>Your booking</EventDetailSectionTitle>
+              <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <BookingStatusBadge status={viewerBooking.status} />
+                  <BookingStatusBadge status={viewerBooking.status} variant="compact" />
                   <p className="mt-2 text-sm text-ftc-text-secondary">
                     Set time {viewerBooking.set_time || "TBC"}
                     {viewerBooking.fee ? ` · ${formatRateDisplay(viewerBooking.fee)}` : ""}
@@ -1281,12 +1292,13 @@ export default function EventDetailPage() {
                       role="dj"
                       loading={cancellingBookingId === viewerBooking.id}
                       onConfirm={(reason) => handleCancelAcceptedBooking(viewerBooking, reason)}
+                      className={`${EVENT_DETAIL_BTN_DESTRUCTIVE} w-full sm:w-auto sm:min-w-[7.5rem]`}
                     />
                   ) : null}
                   {viewerBooking.conversation_id && !hideOpenBookingConversation ? (
                     <Link
                       href={`/dm/${viewerBooking.conversation_id}`}
-                      className="ftc-btn-secondary px-4 py-2.5 text-xs uppercase tracking-wide"
+                      className={`${EVENT_DETAIL_BTN_SECONDARY} w-full sm:w-auto sm:min-w-[7.5rem]`}
                     >
                       Open DM
                     </Link>
@@ -1297,10 +1309,10 @@ export default function EventDetailPage() {
           ) : null}
 
           {isOwner ? (
-            <section className="mt-8 ftc-card p-3.5 sm:p-5">
+            <section className={`${EVENT_DETAIL_SECTION_SPACING} ${EVENT_DETAIL_CARD_CLASS}`}>
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <h2 className="text-base font-bold text-ftc-text sm:text-lg">Bookings</h2>
+                  <EventDetailSectionTitle>Bookings</EventDetailSectionTitle>
                   <div className="mt-2.5 flex flex-wrap gap-1.5">
                     <PlannerStatChip label="Invited" value={lineupStats.total} variant="compact" />
                     <PlannerStatChip label="Pending" value={lineupStats.pending} variant="compact" />
@@ -1399,11 +1411,13 @@ export default function EventDetailPage() {
             aria-modal="true"
             aria-label="Send bookings"
             tabIndex={-1}
-            className="max-h-[90dvh] w-full max-w-2xl overflow-y-auto overscroll-contain rounded-t-2xl border border-ftc-border-subtle bg-ftc-bg pb-[max(1rem,env(safe-area-inset-bottom))] sm:rounded-2xl sm:pb-0 focus:outline-none"
+            className="max-h-[90dvh] w-full max-w-2xl overflow-y-auto overscroll-contain rounded-t-2xl border border-ftc-border-subtle bg-ftc-bg p-3.5 pb-[max(1rem,env(safe-area-inset-bottom))] sm:rounded-2xl sm:p-4 sm:pb-0 focus:outline-none"
             onClick={(clickEvent) => clickEvent.stopPropagation()}
           >
             <PlannerFormCard
               title="Send bookings"
+              cardClassName="mb-0 p-0 border-0 bg-transparent shadow-none"
+              titleClassName="text-base font-bold text-ftc-text"
               onCancel={requestCloseSendBookings}
               cancelDisabled={sending}
             >
