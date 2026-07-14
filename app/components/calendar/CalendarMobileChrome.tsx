@@ -25,6 +25,8 @@ type CalendarMobileChromeProps = {
   dateStrip: ReactNode;
   monthNavPrefix?: ReactNode;
   secondaryRowAction?: ReactNode;
+  /** Reserve Select Dates row height when the action is absent (Events calendar parity). */
+  reserveSecondaryRow?: boolean;
   dayStripClassName?: string;
 };
 
@@ -34,14 +36,17 @@ export default function CalendarMobileChrome({
   dateStrip,
   monthNavPrefix,
   secondaryRowAction,
+  reserveSecondaryRow = false,
   dayStripClassName = CALENDAR_MOBILE_CHROME_DAY_STRIP_CLASS,
 }: CalendarMobileChromeProps) {
+  const showSecondaryRow = reserveSecondaryRow || Boolean(secondaryRowAction);
+
   return (
     <>
       <div className={CALENDAR_MOBILE_CHROME_MONTH_NAV_CLASS}>
         {monthNavPrefix}
         <CalendarMonthNav {...monthNav} />
-        {secondaryRowAction ? (
+        {showSecondaryRow ? (
           <div className={GIG_CALENDAR_SECONDARY_ROW_CLASS}>{secondaryRowAction}</div>
         ) : null}
       </div>

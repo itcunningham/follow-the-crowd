@@ -9,7 +9,6 @@ import DjAvailabilityCalendar, {
 import PlannerCalendar, { PlannerCalendarLegend } from "@/app/components/PlannerCalendar";
 import PlannerCalendarMobileDateStrip from "@/app/components/PlannerCalendarMobileDateStrip";
 import CalendarMobileChrome, {
-  CALENDAR_MOBILE_CHROME_DAY_STRIP_CLASS,
   CALENDAR_MOBILE_CHROME_GIGS_DAY_STRIP_CLASS,
 } from "@/app/components/calendar/CalendarMobileChrome";
 import type { CalendarViewTab } from "@/app/components/CalendarViewTabs";
@@ -166,6 +165,7 @@ export default function BothRoleCalendarView({ activeTab }: BothRoleCalendarView
             getMonthActivityDotClass: resolveMonthActivityDotClass,
             overlay: activeTab === "dj" ? djMonthNavChrome?.overlay : undefined,
           }}
+          reserveSecondaryRow
           secondaryRowAction={
             activeTab === "dj"
               ? (djMonthNavChrome?.secondaryRowAction ?? (
@@ -189,11 +189,7 @@ export default function BothRoleCalendarView({ activeTab }: BothRoleCalendarView
               isDateHighlighted={activeStripConfig.isDateHighlighted}
             />
           }
-          dayStripClassName={
-            activeTab === "dj"
-              ? CALENDAR_MOBILE_CHROME_GIGS_DAY_STRIP_CLASS
-              : CALENDAR_MOBILE_CHROME_DAY_STRIP_CLASS
-          }
+          dayStripClassName={CALENDAR_MOBILE_CHROME_GIGS_DAY_STRIP_CLASS}
         />
       </div>
     </section>

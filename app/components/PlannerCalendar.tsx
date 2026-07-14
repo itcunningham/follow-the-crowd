@@ -5,7 +5,9 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import CalendarDotLegend from "@/app/components/calendar/CalendarDotLegend";
-import CalendarMobileChrome from "@/app/components/calendar/CalendarMobileChrome";
+import CalendarMobileChrome, {
+  CALENDAR_MOBILE_CHROME_GIGS_DAY_STRIP_CLASS,
+} from "@/app/components/calendar/CalendarMobileChrome";
 import {
   CALENDAR_MOBILE_INTERACTIVE_PRESS_CLASS,
   CalendarMobileDashedEmptyState,
@@ -61,13 +63,15 @@ import {
 } from "@/lib/calendar";
 
 export function PlannerCalendarMobileLegend() {
+  const bookingStatusRow = PLANNER_CALENDAR_VISIBLE_LEGEND_ITEMS.map((item) => ({
+    label: item.mobileLabel,
+    dotClassName: getPlannerCalendarLegendDotClass(item.kind),
+  }));
+
   return (
     <CalendarDotLegend
       className="md:hidden"
-      items={PLANNER_CALENDAR_VISIBLE_LEGEND_ITEMS.map((item) => ({
-        label: item.mobileLabel,
-        dotClassName: getPlannerCalendarLegendDotClass(item.kind),
-      }))}
+      rows={[[], bookingStatusRow]}
     />
   );
 }
@@ -618,6 +622,7 @@ export default function PlannerCalendar({
             onMonthStartChange: handleMonthStartChange,
             getMonthActivityDotClass: getMonthActivityDotClass,
           }}
+          reserveSecondaryRow
           legend={<PlannerCalendarLegend />}
           dateStrip={
             <PlannerCalendarMobileDateStrip
@@ -629,6 +634,7 @@ export default function PlannerCalendar({
               }
             />
           }
+          dayStripClassName={CALENDAR_MOBILE_CHROME_GIGS_DAY_STRIP_CLASS}
         />
       )}
 

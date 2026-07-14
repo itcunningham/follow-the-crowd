@@ -6,6 +6,8 @@ export type CalendarDotLegendItem = {
 export const CALENDAR_DOT_LEGEND_CLASS =
   "flex flex-wrap items-center justify-center gap-x-4 gap-y-2";
 
+export const CALENDAR_DOT_LEGEND_ROW_CLASS = `${CALENDAR_DOT_LEGEND_CLASS} min-h-[1.125rem]`;
+
 type CalendarDotLegendProps = {
   items?: readonly CalendarDotLegendItem[];
   rows?: readonly (readonly CalendarDotLegendItem[])[];
@@ -47,8 +49,13 @@ export default function CalendarDotLegend({
         className={["flex flex-col items-center gap-y-2", className].filter(Boolean).join(" ")}
       >
         {rows.map((rowItems, rowIndex) => (
-          <div key={rowIndex} role="list" className={CALENDAR_DOT_LEGEND_CLASS}>
-            <CalendarDotLegendItems items={rowItems} />
+          <div
+            key={rowIndex}
+            role={rowItems.length > 0 ? "list" : "presentation"}
+            aria-hidden={rowItems.length === 0 ? true : undefined}
+            className={CALENDAR_DOT_LEGEND_ROW_CLASS}
+          >
+            {rowItems.length > 0 ? <CalendarDotLegendItems items={rowItems} /> : null}
           </div>
         ))}
       </div>
