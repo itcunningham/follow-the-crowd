@@ -1,5 +1,6 @@
 "use client";
 
+import { useCallback, useRef } from "react";
 import Link from "next/link";
 import {
   applyEventNotesInputLimit,
@@ -194,6 +195,79 @@ export function PlannerOptionCard({
   );
 }
 
+function PlannerFilterPillButton({
+  label,
+  isActive,
+  onSelect,
+}: {
+  label: string;
+  isActive: boolean;
+  onSelect: () => void;
+}) {
+  const activatedThisGestureRef = useRef(false);
+  const activeGestureRef = useRef<{ pointerId: number; cancelled: boolean } | null>(null);
+
+  const handlePointerDown = useCallback((event: React.PointerEvent<HTMLButtonElement>) => {
+    if (!event.isPrimary) {
+      return;
+    }
+
+    activatedThisGestureRef.current = false;
+    activeGestureRef.current = {
+      pointerId: event.pointerId,
+      cancelled: false,
+    };
+  }, []);
+
+  const handlePointerUp = useCallback(
+    (event: React.PointerEvent<HTMLButtonElement>) => {
+      const gesture = activeGestureRef.current;
+
+      if (!gesture || event.pointerId !== gesture.pointerId || gesture.cancelled) {
+        return;
+      }
+
+      activeGestureRef.current = null;
+
+      if (event.pointerType === "touch") {
+        activatedThisGestureRef.current = true;
+        onSelect();
+      }
+    },
+    [onSelect],
+  );
+
+  const handlePointerCancel = useCallback((event: React.PointerEvent<HTMLButtonElement>) => {
+    const gesture = activeGestureRef.current;
+
+    if (gesture && event.pointerId === gesture.pointerId) {
+      gesture.cancelled = true;
+      activeGestureRef.current = null;
+    }
+  }, []);
+
+  const handleClick = useCallback(() => {
+    if (activatedThisGestureRef.current) {
+      return;
+    }
+
+    onSelect();
+  }, [onSelect]);
+
+  return (
+    <button
+      type="button"
+      onPointerDown={handlePointerDown}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerCancel}
+      onClick={handleClick}
+      className={`touch-manipulation ftc-filter-pill ${isActive ? "ftc-filter-pill-active" : ""}`}
+    >
+      <span className="pointer-events-none">{label}</span>
+    </button>
+  );
+}
+
 export function PlannerFilterPills<T extends string>({
   options,
   value,
@@ -209,14 +283,12 @@ export function PlannerFilterPills<T extends string>({
         const isActive = value === option.value;
 
         return (
-          <button
+          <PlannerFilterPillButton
             key={option.value}
-            type="button"
-            onClick={() => onChange(option.value)}
-            className={`ftc-filter-pill ${isActive ? "ftc-filter-pill-active" : ""}`}
-          >
-            {option.label}
-          </button>
+            label={option.label}
+            isActive={isActive}
+            onSelect={() => onChange(option.value)}
+          />
         );
       })}
     </div>
