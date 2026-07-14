@@ -100,7 +100,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
-- `66bd723` — align Events Calendar mobile layout with Gigs Calendar
+- `f0c962d` — extract shared CalendarMobileChrome for Events and Gigs calendars
 - `c32839c` — compact mobile Event Plan cards
 - `744360c` — hide DJ availability controls on past dates
 - `e8c6dc8` — align DJ calendar legend and strip dots with event calendar style
