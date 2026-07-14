@@ -760,24 +760,27 @@ export function BookingCreateEventDetailsCardSkeleton({
 }) {
   return (
     <section className="mb-6 ftc-card p-4 sm:p-5">
-      <div className="mb-4 flex items-start justify-between gap-3">
+      <div className="ftc-form-card-header items-start">
         <div className="min-w-0 flex-1">
           <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-ftc-text-muted">
             Step 1 of 2
           </p>
           <h2 className="mt-1 text-lg font-semibold text-ftc-text">Event details</h2>
-          <SkeletonBlock className="mt-1 h-4 w-[10rem] max-w-full rounded-sm" />
+          <div className="mt-3">
+            <SkeletonBlock className="h-[11px] w-[2.25rem] rounded-sm" />
+            <SkeletonBlock className="mt-1.5 h-4 w-[10rem] max-w-full rounded-sm" />
+          </div>
         </div>
         {showBackAction && onBack ? (
           <button
             type="button"
             onClick={onBack}
-            className="shrink-0 py-1 text-xs font-semibold uppercase tracking-wide text-ftc-text-muted transition hover:text-ftc-text-secondary"
+            className="ftc-form-cancel-link shrink-0 self-start"
           >
-            Back
+            Cancel
           </button>
         ) : (
-          <SkeletonBlock className="mt-0.5 h-4 w-10 shrink-0 rounded-sm" />
+          <SkeletonBlock className="mt-0.5 h-4 w-12 shrink-0 rounded-sm" />
         )}
       </div>
       <BookingCreateEventDetailsFormSkeleton />

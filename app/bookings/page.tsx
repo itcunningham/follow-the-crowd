@@ -1044,7 +1044,7 @@ function BookingsPageContent() {
       !form.eventDate.trim() ||
       !form.setTime.trim()
     ) {
-      setError("Please fill in all required booking details.");
+      setError("Please fill in all required booking details");
       return;
     }
 
@@ -1425,45 +1425,51 @@ function BookingsPageContent() {
 
           {showPlannerCreateDeepLink ? (
             <section className="mb-6 ftc-card p-4 sm:p-5">
-              <div
-                className={
-                  effectiveCreateStep === "details"
-                    ? "mb-4 flex items-start justify-between gap-3"
-                    : "mb-4 flex items-center justify-between gap-3"
-                }
-              >
-                <div className="min-w-0 flex-1">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-ftc-text-muted">
-                    Step {createStepMeta.label}
-                  </p>
-                  <h2 className="mt-1 text-lg font-semibold text-ftc-text">{createStepMeta.title}</h2>
-                  {effectiveCreateStep === "details" ? (
-                    showDetailsPlanSkeleton ? (
-                      <SkeletonBlock className="mt-1 h-4 w-[10rem] max-w-full rounded-sm" />
+              {effectiveCreateStep === "details" ? (
+                <div className="ftc-form-card-header items-start">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-ftc-text-muted">
+                      Step {createStepMeta.label}
+                    </p>
+                    <h2 className="mt-1 text-lg font-semibold text-ftc-text">{createStepMeta.title}</h2>
+                    {showDetailsPlanSkeleton ? (
+                      <div className="mt-3">
+                        <SkeletonBlock className="h-[11px] w-[2.25rem] rounded-sm" />
+                        <SkeletonBlock className="mt-1.5 h-4 w-[10rem] max-w-full rounded-sm" />
+                      </div>
                     ) : selectedSavedPlanName ? (
-                      <p className="mt-1 text-sm text-ftc-text-muted">{selectedSavedPlanName}</p>
-                    ) : null
-                  ) : null}
-                </div>
-                {effectiveCreateStep === "details" ? (
+                      <div className="mt-3">
+                        <span className="ftc-label">Plan</span>
+                        <p className="text-sm text-ftc-text-secondary">{selectedSavedPlanName}</p>
+                      </div>
+                    ) : null}
+                  </div>
                   <button
                     type="button"
                     onClick={handleDetailsBack}
-                    className="shrink-0 py-1 text-xs font-semibold uppercase tracking-wide text-ftc-text-muted transition hover:text-ftc-text-secondary"
+                    className="ftc-form-cancel-link shrink-0 self-start"
                   >
-                    Back
+                    {detailsEntrySource === "event-plans-deeplink" ? "Cancel" : "Back"}
                   </button>
-                ) : (
+                </div>
+              ) : (
+                <div className="mb-4 flex items-center justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-ftc-text-muted">
+                      Step {createStepMeta.label}
+                    </p>
+                    <h2 className="mt-1 text-lg font-semibold text-ftc-text">{createStepMeta.title}</h2>
+                  </div>
                   <button
                     type="button"
                     onClick={closeCreateFlow}
                     disabled={sending}
-                    className="text-xs font-semibold uppercase tracking-wide text-ftc-text-muted transition hover:text-ftc-text-secondary disabled:opacity-50"
+                    className="ftc-form-cancel-link disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     Cancel
                   </button>
-                )}
-              </div>
+                </div>
+              )}
 
               {effectiveCreateStep === "source" ? (
                 <div className="space-y-3">
