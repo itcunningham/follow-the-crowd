@@ -104,6 +104,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `3bbf662` — fix Gigs calendar booked items opening blank event detail on mobile
 - `9376d41` — fix Gigs mobile availability control flash on day change
 - `64cd48d` — harden Gigs calendar booking cards against iOS Safari link preview
 - `62e3578` — fix iOS Safari link preview on Gigs mobile booking cards
