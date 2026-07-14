@@ -225,14 +225,20 @@ const GIG_AVAILABILITY_PILL_ACTIVE_CLASS: Record<DjAvailabilityStatus, string> =
 function getAvailabilityActionPillClass(
   status: DjAvailabilityStatus,
   selectedAvailabilityStatus: DjAvailabilityStatus | null,
+  isSavingSelection = false,
 ): string {
   const isActive = selectedAvailabilityStatus === status;
+  const savingClass = isActive && isSavingSelection ? "opacity-90" : "";
 
   if (!isActive) {
-    return "ftc-filter-pill disabled:opacity-50";
+    return `ftc-filter-pill ${savingClass}`.trim();
   }
 
-  return `ftc-filter-pill ${GIG_AVAILABILITY_PILL_ACTIVE_CLASS[status]} disabled:cursor-not-allowed`;
+  return `ftc-filter-pill ${GIG_AVAILABILITY_PILL_ACTIVE_CLASS[status]} ${savingClass}`.trim();
+}
+
+function getAvailabilityClearPillClass(isDisabled: boolean): string {
+  return `ftc-filter-pill${isDisabled ? " opacity-50 pointer-events-none" : ""}`;
 }
 
 export function DjAvailabilityCalendarLegend() {
@@ -679,7 +685,7 @@ type DjAvailabilityMobileDayPanelProps = {
   selectedDate: Date;
   isTodayDate: boolean;
   personalEntry?: DjAvailabilityEntry;
-  saving: boolean;
+  savingSelection: boolean;
   monthStart: Date;
   onSetPersonalStatus: (status: DjAvailabilityStatus) => void;
   onClearPersonalStatus: () => void;
@@ -694,7 +700,7 @@ function DjAvailabilityMobileDayPanel({
   selectedDate,
   isTodayDate,
   personalEntry,
-  saving,
+  savingSelection,
   monthStart,
   onSetPersonalStatus,
   onClearPersonalStatus,
@@ -731,18 +737,21 @@ function DjAvailabilityMobileDayPanel({
             <button
               key={option.value}
               type="button"
-              disabled={saving}
               onClick={() => onSetPersonalStatus(option.value)}
-              className={getAvailabilityActionPillClass(option.value, selectedAvailabilityStatus)}
+              className={getAvailabilityActionPillClass(
+                option.value,
+                selectedAvailabilityStatus,
+                savingSelection,
+              )}
             >
               {option.label}
             </button>
           ))}
           <button
             type="button"
-            disabled={saving || !personalEntry}
+            disabled={!personalEntry}
             onClick={onClearPersonalStatus}
-            className="ftc-filter-pill disabled:opacity-50"
+            className={getAvailabilityClearPillClass(!personalEntry)}
           >
             Clear
           </button>
@@ -823,7 +832,7 @@ function DjAvailabilityMobileAgenda({
           selectedDate={selectedDate}
           isTodayDate={isTodayDate(selectedDate)}
           personalEntry={personalEntry}
-          saving={savingDateKey === selectedDateKey}
+          savingSelection={savingDateKey === selectedDateKey}
           monthStart={monthStart}
           onSetPersonalStatus={(status) => onSetPersonalStatus(selectedDateKey, status)}
           onClearPersonalStatus={() => onClearPersonalStatus(selectedDateKey)}
@@ -1113,6 +1122,17 @@ export default function DjAvailabilityCalendar({
   const reportBookingNavigationError = useCallback((message: string) => {
     setToastMessage(message);
   }, []);
+  const availabilitySaveVersionRef = useRef<Map<string, number>>(new Map());
+
+  function bumpAvailabilitySaveVersion(dateKey: string): number {
+    const nextVersion = (availabilitySaveVersionRef.current.get(dateKey) ?? 0) + 1;
+    availabilitySaveVersionRef.current.set(dateKey, nextVersion);
+    return nextVersion;
+  }
+
+  function isLatestAvailabilitySave(dateKey: string, version: number): boolean {
+    return availabilitySaveVersionRef.current.get(dateKey) === version;
+  }
 
   useLayoutEffect(() => {
     if (isDual) {
@@ -1503,9 +1523,11 @@ export default function DjAvailabilityCalendar({
       (entry) => normalizeAvailabilityDate(entry.date) === normalizedDate,
     );
 
-    if (previousEntry?.status === status || savingDateKey === dateKey) {
+    if (previousEntry?.status === status) {
       return;
     }
+
+    const saveVersion = bumpAvailabilitySaveVersion(dateKey);
 
     setSavingDateKey(dateKey);
     setError(null);
@@ -1531,6 +1553,11 @@ export default function DjAvailabilityCalendar({
 
     try {
       const entry = await saveMyAvailability({ date: dateKey, status });
+
+      if (!isLatestAvailabilitySave(dateKey, saveVersion)) {
+        return;
+      }
+
       setAvailabilityEntries((current) => {
         const next = current.filter(
           (existing) => normalizeAvailabilityDate(existing.date) !== normalizedDate,
@@ -1540,6 +1567,11 @@ export default function DjAvailabilityCalendar({
       });
     } catch (saveError) {
       console.error("Failed to save personal availability:", saveError);
+
+      if (!isLatestAvailabilitySave(dateKey, saveVersion)) {
+        return;
+      }
+
       setError(saveError instanceof Error ? saveError.message : "Failed to save availability");
       setAvailabilityEntries((current) => {
         const next = current.filter(
@@ -1553,7 +1585,9 @@ export default function DjAvailabilityCalendar({
         return next;
       });
     } finally {
-      setSavingDateKey(null);
+      if (isLatestAvailabilitySave(dateKey, saveVersion)) {
+        setSavingDateKey((current) => (current === dateKey ? null : current));
+      }
     }
   }
 
@@ -1567,9 +1601,11 @@ export default function DjAvailabilityCalendar({
       (entry) => normalizeAvailabilityDate(entry.date) === normalizedDate,
     );
 
-    if (!previousEntry || savingDateKey === dateKey) {
+    if (!previousEntry) {
       return;
     }
+
+    const saveVersion = bumpAvailabilitySaveVersion(dateKey);
 
     setSavingDateKey(dateKey);
     setError(null);
@@ -1580,8 +1616,17 @@ export default function DjAvailabilityCalendar({
 
     try {
       await clearMyAvailabilityForDate(dateKey);
+
+      if (!isLatestAvailabilitySave(dateKey, saveVersion)) {
+        return;
+      }
     } catch (clearError) {
       console.error("Failed to clear personal availability:", clearError);
+
+      if (!isLatestAvailabilitySave(dateKey, saveVersion)) {
+        return;
+      }
+
       setError(clearError instanceof Error ? clearError.message : "Failed to clear availability");
       setAvailabilityEntries((current) => {
         if (!previousEntry) {
@@ -1595,7 +1640,9 @@ export default function DjAvailabilityCalendar({
         return next;
       });
     } finally {
-      setSavingDateKey(null);
+      if (isLatestAvailabilitySave(dateKey, saveVersion)) {
+        setSavingDateKey((current) => (current === dateKey ? null : current));
+      }
     }
   }
 

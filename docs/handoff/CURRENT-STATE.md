@@ -48,6 +48,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 ## DJ availability calendar
 
 - Mobile (`< md`): horizontal date strip + selected-day panel — status buttons (Available / Maybe / Unavailable / Clear), booking list, today/selected chip styling aligned with planner event calendar strip
+- **Mobile availability pills (2026-07-14):** optimistic save with per-date version guard; active pills keep 1px transparent border (no layout shift on select/save); buttons stay interactive during save; subtle opacity on active pill only; rollback + inline error on failure
 - Desktop (`md+`): month grid with per-date overflow menu unchanged
 - Bulk select + quick select (Fridays / Saturdays / weekends) on all breakpoints; mobile strip toggles selection in bulk mode
 - **Legend + strip dots:** compact dot-and-label legend (shared `CalendarDotLegend`) — Gigs: two centred rows (availability, then booking status); Events mobile: reserved empty top row + booking-status row (Today, Upcoming, Pending, Accepted); desktop Events pills unchanged
