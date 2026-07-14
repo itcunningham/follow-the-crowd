@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { CALENDAR_MOBILE_INTERACTIVE_PRESS_CLASS } from "@/app/components/calendar/calendarMobileUi";
 import { addMonths, formatCalendarMonthLabel } from "@/lib/calendar";
 import CalendarMonthYearPicker from "@/app/components/CalendarMonthYearPicker";
 
@@ -83,13 +84,13 @@ export default function CalendarMonthNav({
     <div className="relative w-full">
       {overlay}
       <div className="relative z-10 flex min-h-9 items-center justify-center">
-        <div className="flex min-w-0 items-center justify-center gap-0.5 sm:gap-1">
+        <div className="flex min-w-0 items-center justify-center gap-0">
           <button
             type="button"
             aria-label="Previous month"
             onClick={() => navigateMonth(-1)}
             disabled={disablePreviousMonth}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-ftc-border bg-ftc-bg-elevated/60 text-ftc-text-secondary transition hover:border-ftc-primary/30 hover:text-ftc-primary disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-ftc-border disabled:hover:text-ftc-text-secondary"
+            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-ftc-border bg-ftc-bg-elevated/60 text-ftc-text-secondary hover:border-ftc-primary/30 hover:text-ftc-primary disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-ftc-border disabled:hover:text-ftc-text-secondary ${CALENDAR_MOBILE_INTERACTIVE_PRESS_CLASS}`}
           >
             <svg
               aria-hidden="true"
@@ -111,7 +112,7 @@ export default function CalendarMonthNav({
               aria-expanded={monthYearPickerOpen}
               aria-haspopup="dialog"
               onClick={() => setMonthYearPickerOpen((open) => !open)}
-              className="min-w-[8.75rem] truncate rounded-lg px-2 py-2 text-sm font-semibold text-ftc-text transition hover:text-ftc-primary/90 sm:min-w-[11rem] sm:px-3"
+              className="min-w-[8.75rem] truncate rounded-lg px-2 py-2 text-base font-semibold text-ftc-text transition hover:text-ftc-primary/90 sm:min-w-[11rem] sm:px-3"
             >
               {formatCalendarMonthLabel(monthStart)}
             </button>
@@ -136,7 +137,7 @@ export default function CalendarMonthNav({
             type="button"
             aria-label="Next month"
             onClick={() => navigateMonth(1)}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-ftc-border bg-ftc-bg-elevated/60 text-ftc-text-secondary transition hover:border-ftc-primary/30 hover:text-ftc-primary"
+            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-ftc-border bg-ftc-bg-elevated/60 text-ftc-text-secondary hover:border-ftc-primary/30 hover:text-ftc-primary ${CALENDAR_MOBILE_INTERACTIVE_PRESS_CLASS}`}
           >
             <svg
               aria-hidden="true"

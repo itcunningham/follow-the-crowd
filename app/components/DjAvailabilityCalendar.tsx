@@ -20,6 +20,12 @@ import CalendarDotLegend from "@/app/components/calendar/CalendarDotLegend";
 import CalendarMobileChrome, {
   CALENDAR_MOBILE_CHROME_GIGS_DAY_STRIP_CLASS,
 } from "@/app/components/calendar/CalendarMobileChrome";
+import {
+  CALENDAR_MOBILE_INTERACTIVE_PRESS_CLASS,
+  CalendarMobileDashedEmptyState,
+  CalendarMobileSelectedDayHeader,
+  useCalendarMobileAgendaTransition,
+} from "@/app/components/calendar/calendarMobileUi";
 import PlannerCalendarMobileDateStrip from "@/app/components/PlannerCalendarMobileDateStrip";
 import {
   DjCalendarBodySkeleton,
@@ -521,14 +527,10 @@ function DjAvailabilityMobileDayPanel({
   return (
     <>
       <div className="mt-4">
-        <h2 className="text-base font-semibold text-ftc-text">
-          {formatPlannerAgendaDateLabel(selectedDate)}
-        </h2>
-        {isTodayDate ? (
-          <p className="mt-0.5 text-xs font-semibold uppercase tracking-wide text-ftc-primary">
-            Today
-          </p>
-        ) : null}
+        <CalendarMobileSelectedDayHeader
+          dateLabel={formatPlannerAgendaDateLabel(selectedDate)}
+          showToday={isTodayDate}
+        />
       </div>
 
       {canEditAvailability ? (
@@ -567,7 +569,7 @@ function DjAvailabilityMobileDayPanel({
               <Link
                 href={resolveCalendarOriginEventHref(getBookingRequestHref(booking), calendarOrigin)}
                 onClick={() => prepareMobileDocumentScrollReset()}
-                className="block rounded-xl border border-ftc-border bg-ftc-surface/80 px-3 py-3 transition hover:border-ftc-primary/30 hover:bg-ftc-surface"
+                className={`block rounded-xl border border-ftc-border bg-ftc-surface/80 px-3 py-2.5 hover:border-ftc-primary/30 hover:bg-ftc-surface ${CALENDAR_MOBILE_INTERACTIVE_PRESS_CLASS}`}
               >
                 <div className="flex items-center justify-between gap-2">
                   <p className="truncate text-sm font-semibold text-ftc-text">
@@ -589,8 +591,8 @@ function DjAvailabilityMobileDayPanel({
           ))}
         </ul>
       ) : canEditAvailability ? (
-        <div className="mt-3 rounded-xl border border-dashed border-ftc-border-subtle bg-ftc-surface/30 px-4 py-6 text-center">
-          <p className="text-sm text-ftc-text-muted">No booking requests on this date</p>
+        <div className="mt-3">
+          <CalendarMobileDashedEmptyState message="No booking requests on this date" />
         </div>
       ) : null}
     </>
@@ -627,8 +629,12 @@ function DjAvailabilityMobileAgenda({
   onClearPersonalStatus,
 }: DjAvailabilityMobileAgendaProps) {
   const selectedDateKey = toDateKey(selectedDate);
-  const personalEntry = availabilityByDate.get(selectedDateKey);
-  const dayBookings = bookingsByDate.get(selectedDateKey) ?? [];
+  const { displayDateKey, transitionClassName } =
+    useCalendarMobileAgendaTransition(selectedDateKey);
+  const displayDate =
+    parsePlannerCalendarDateParam(displayDateKey) ?? selectedDate;
+  const personalEntry = availabilityByDate.get(displayDateKey);
+  const dayBookings = bookingsByDate.get(displayDateKey) ?? [];
 
   return (
     <div className="md:hidden">
@@ -637,16 +643,18 @@ function DjAvailabilityMobileAgenda({
           Tap dates on the strip to select them
         </p>
       ) : (
-        <DjAvailabilityMobileDayPanel
-          selectedDate={selectedDate}
-          isTodayDate={isTodayDate(selectedDate)}
-          personalEntry={personalEntry}
-          dayBookings={dayBookings}
-          saving={savingDateKey === selectedDateKey}
-          monthStart={monthStart}
-          onSetPersonalStatus={(status) => onSetPersonalStatus(selectedDateKey, status)}
-          onClearPersonalStatus={() => onClearPersonalStatus(selectedDateKey)}
-        />
+        <div className={transitionClassName}>
+          <DjAvailabilityMobileDayPanel
+            selectedDate={displayDate}
+            isTodayDate={isTodayDate(displayDate)}
+            personalEntry={personalEntry}
+            dayBookings={dayBookings}
+            saving={savingDateKey === displayDateKey}
+            monthStart={monthStart}
+            onSetPersonalStatus={(status) => onSetPersonalStatus(displayDateKey, status)}
+            onClearPersonalStatus={() => onClearPersonalStatus(displayDateKey)}
+          />
+        </div>
       )}
     </div>
   );

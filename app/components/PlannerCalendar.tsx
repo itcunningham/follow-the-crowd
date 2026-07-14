@@ -6,6 +6,12 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { useSearchParams } from "next/navigation";
 import CalendarDotLegend from "@/app/components/calendar/CalendarDotLegend";
 import CalendarMobileChrome from "@/app/components/calendar/CalendarMobileChrome";
+import {
+  CALENDAR_MOBILE_INTERACTIVE_PRESS_CLASS,
+  CalendarMobileDashedEmptyState,
+  CalendarMobileSelectedDayHeader,
+  useCalendarMobileAgendaTransition,
+} from "@/app/components/calendar/calendarMobileUi";
 import PlannerCalendarActionButtons from "@/app/components/PlannerCalendarActionButtons";
 import PlannerCalendarDateActions from "@/app/components/PlannerCalendarDateActions";
 import PlannerCalendarMobileDateStrip from "@/app/components/PlannerCalendarMobileDateStrip";
@@ -44,6 +50,7 @@ import {
   isSameMonth,
   loadPlannerCalendarItems,
   resolveCalendarOriginEventHref,
+  parsePlannerCalendarDateParam,
   resolvePlannerCalendarViewState,
   sortPlannerCalendarAgendaItems,
   PLANNER_CALENDAR_VISIBLE_LEGEND_ITEMS,
@@ -207,12 +214,12 @@ function PlannerCalendarAgendaCard({
     <button
       type="button"
       onClick={handleOpenEvent}
-      className="block w-full rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated p-3 text-left transition hover:border-ftc-border-strong"
+      className={`block w-full rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated px-3 py-2.5 text-left hover:border-ftc-border-strong ${CALENDAR_MOBILE_INTERACTIVE_PRESS_CLASS}`}
     >
       <div className="flex items-start gap-3">
         <span
           aria-hidden="true"
-          className={`mt-1 h-10 w-1 shrink-0 rounded-full ${getPlannerCalendarAgendaAccentClass(item.eventFallbackColour)}`}
+          className={`mt-0.5 h-8 w-1 shrink-0 rounded-full ${getPlannerCalendarAgendaAccentClass(item.eventFallbackColour)}`}
         />
         <div className="min-w-0 flex-1">
           <span
@@ -220,7 +227,7 @@ function PlannerCalendarAgendaCard({
           >
             {getPlannerCalendarBadgeLabel(item)}
           </span>
-          <p className="mt-2 truncate text-sm font-semibold text-ftc-text">
+          <p className="mt-1.5 truncate text-sm font-semibold text-ftc-text">
             {formatPlannerCalendarItemHeadline(item.title, item.venue)}
           </p>
           {item.timeLabel ? (
@@ -256,25 +263,10 @@ function PlannerCalendarMobileAgenda({
     calendarView: "event",
     monthStart,
   });
-  const [displayDateKey, setDisplayDateKey] = useState(selectedDateKey);
-  const [agendaVisible, setAgendaVisible] = useState(true);
-
-  useEffect(() => {
-    if (selectedDateKey === displayDateKey) {
-      return;
-    }
-
-    setAgendaVisible(false);
-
-    const transitionTimer = window.setTimeout(() => {
-      setDisplayDateKey(selectedDateKey);
-      setAgendaVisible(true);
-    }, 175);
-
-    return () => {
-      window.clearTimeout(transitionTimer);
-    };
-  }, [displayDateKey, selectedDateKey]);
+  const { displayDateKey, transitionClassName } =
+    useCalendarMobileAgendaTransition(selectedDateKey);
+  const displayDate =
+    parsePlannerCalendarDateParam(displayDateKey) ?? selectedDate;
 
   useEffect(() => {
     agendaHeaderRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
@@ -290,41 +282,33 @@ function PlannerCalendarMobileAgenda({
 
   return (
     <div className="md:hidden">
-      <div ref={agendaHeaderRef} className="mt-4">
-        <h2 className="text-base font-semibold text-ftc-text">
-          {formatPlannerAgendaDateLabel(selectedDate)}
-        </h2>
-        {isTodayDate(selectedDate) ? (
-          <p className="mt-0.5 text-xs font-semibold uppercase tracking-wide text-ftc-primary">
-            Today
-          </p>
-        ) : null}
-
-        {canCreateEventOnSelectedDate ? (
-          <PlannerCalendarActionButtons
-            dateKey={selectedDateKey}
-            hasSavedEventPlans={hasSavedEventPlans}
-            className="mt-3"
+      <div ref={agendaHeaderRef} className={transitionClassName}>
+        <div className="mt-4">
+          <CalendarMobileSelectedDayHeader
+            dateLabel={formatPlannerAgendaDateLabel(displayDate)}
+            showToday={isTodayDate(displayDate)}
           />
-        ) : null}
-      </div>
 
-      <div
-        className={`mt-3 space-y-2 transition-all duration-[175ms] ease-out motion-reduce:transition-none ${
-          agendaVisible ? "translate-y-0 opacity-100" : "translate-y-1 opacity-0"
-        }`}
-      >
-        {displayDateItems.length === 0 ? (
-          isPastEmptyDate ? null : (
-            <div className="rounded-xl border border-dashed border-ftc-border-subtle bg-ftc-surface/30 px-4 py-8 text-center">
-              <p className="text-sm text-ftc-text-muted">No events scheduled</p>
-            </div>
-          )
-        ) : (
-          displayDateItems.map((item) => (
-            <PlannerCalendarAgendaCard key={item.id} item={item} calendarOrigin={calendarOrigin} />
-          ))
-        )}
+          {canCreateEventOnSelectedDate ? (
+            <PlannerCalendarActionButtons
+              dateKey={displayDateKey}
+              hasSavedEventPlans={hasSavedEventPlans}
+              className="mt-3"
+            />
+          ) : null}
+        </div>
+
+        <div className="mt-3 space-y-2">
+          {displayDateItems.length === 0 ? (
+            isPastEmptyDate ? null : (
+              <CalendarMobileDashedEmptyState message="No events scheduled" />
+            )
+          ) : (
+            displayDateItems.map((item) => (
+              <PlannerCalendarAgendaCard key={item.id} item={item} calendarOrigin={calendarOrigin} />
+            ))
+          )}
+        </div>
       </div>
 
       {!isDateInViewingMonth(selectedDate) ? (

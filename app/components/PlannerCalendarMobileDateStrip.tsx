@@ -19,7 +19,7 @@ const DATE_CHIP_SCROLL_CLASS =
 
 export const CALENDAR_MOBILE_DATE_CHIP_SKELETON_HEIGHT_CLASS = "h-[3.75rem]";
 export const CALENDAR_MOBILE_DATE_CHIP_BASE_CLASS =
-  "flex shrink-0 flex-col items-center rounded-xl border px-1 py-2 transition";
+  "flex shrink-0 flex-col items-center rounded-xl border px-1 py-2 transition duration-150 ease-out motion-reduce:transition-none motion-reduce:transform-none active:scale-[0.98]";
 
 const SCROLL_DURATION_MS = 175;
 const CENTER_LAYOUT_MAX_ATTEMPTS = 6;

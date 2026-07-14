@@ -907,7 +907,7 @@ export function CalendarPageLoadingShell() {
 function CalendarMonthNavSkeleton() {
   return (
     <div className="flex w-full min-h-9 items-center justify-center">
-      <div className="flex min-w-0 items-center justify-center gap-0.5 sm:gap-1">
+      <div className="flex min-w-0 items-center justify-center gap-0">
         <SkeletonBlock className="h-9 w-9 shrink-0 rounded-lg" />
         <SkeletonBlock className="h-9 min-w-[8.75rem] rounded-lg sm:min-w-[11rem]" />
         <SkeletonBlock className="h-9 w-9 shrink-0 rounded-lg" />
@@ -1011,7 +1011,7 @@ function PlannerCalendarMobileAgendaPanelSkeleton() {
         </div>
       </div>
 
-      <div className="mt-3 rounded-xl border border-dashed border-ftc-border-subtle bg-ftc-surface/30 px-4 py-8">
+      <div className="mt-3 rounded-xl border border-dashed border-ftc-border-subtle bg-ftc-surface/30 px-4 py-6">
         <SkeletonBlock className="mx-auto h-4 w-40 max-w-full" />
       </div>
     </div>
@@ -1029,7 +1029,7 @@ function PlannerCalendarMobileAgendaSkeleton() {
         </div>
       </div>
 
-      <div className="mt-3 rounded-xl border border-dashed border-ftc-border-subtle bg-ftc-surface/30 px-4 py-8">
+      <div className="mt-3 rounded-xl border border-dashed border-ftc-border-subtle bg-ftc-surface/30 px-4 py-6">
         <SkeletonBlock className="mx-auto h-4 w-40 max-w-full" />
       </div>
     </div>
