@@ -94,6 +94,7 @@ import {
   getEventById,
   getEventsLoadErrorMessage,
   isEventCancelled,
+  isPlannerEventInHistoryTab,
   updateEvent,
   updateEventWithCover,
   type Event,
@@ -254,12 +255,16 @@ export default function EventDetailPage() {
   );
   const isPlanner = canManageEvents(resolvedRole);
   const canEditEvent = isOwner && isPlanner;
-  const editHeaderState = useEventEditHeaderState({
+  const editHeaderStateRaw = useEventEditHeaderState({
     eventId,
     role: resolvedRole,
     currentUserId: resolvedUserId,
     event,
   });
+  const fromHistoryTab = searchParams.get("fromTab") === "history";
+  const isHistoryEventDetail = Boolean(event && isPlannerEventInHistoryTab(event));
+  const editHeaderState =
+    fromHistoryTab || isHistoryEventDetail ? "hidden" : editHeaderStateRaw;
   const hasAcceptedBooking = Boolean(
     currentUserId &&
       lineup.some(
@@ -269,10 +274,11 @@ export default function EventDetailPage() {
   );
   const canOpenCrewChat = isOwner || hasAcceptedBooking;
   const canViewRunSheet = canOpenCrewChat;
-  const canEditRunSheet = isOwner && isPlanner;
+  const canEditRunSheet = isOwner && isPlanner && !isHistoryEventDetail;
   const eventIsCancelled = event ? isEventCancelled(event) : false;
   const hasLinkedBookings = lineup.length > 0;
-  const canManageEventLifecycle = isOwner && isPlanner && !eventIsCancelled;
+  const canManageEventLifecycle =
+    isOwner && isPlanner && !eventIsCancelled && !isHistoryEventDetail;
 
   const inviteDraft = useSendBookingRequestsDraft({
     eventDate: event?.event_date ?? "",
@@ -958,11 +964,13 @@ export default function EventDetailPage() {
     [crewChatUnlock, eventIsCancelled, hasAcceptedBooking, isOwner, isPlanner],
   );
   const {
-    showStartCrewChatAction,
+    showStartCrewChatAction: showStartCrewChatActionRaw,
     showEventGroupChatAction,
     showCrewChatHelpUi,
     crewChatHelpActionLabel,
   } = crewChatActions;
+  const showStartCrewChatAction =
+    showStartCrewChatActionRaw && !isHistoryEventDetail;
   const showCrewChatHeaderAction = showStartCrewChatAction || showEventGroupChatAction;
 
   useEffect(() => {
@@ -972,7 +980,8 @@ export default function EventDetailPage() {
   }, [showStartCrewChatAction]);
 
   const showStickyActions = !editOpen && !sendOpen;
-  const showOwnerSendAction = isOwner && isPlanner && !eventIsCancelled;
+  const showOwnerSendAction =
+    isOwner && isPlanner && !eventIsCancelled && !isHistoryEventDetail;
   const showDjBookingConversationAction =
     showStickyActions &&
     !showOwnerSendAction &&
@@ -1138,7 +1147,7 @@ export default function EventDetailPage() {
             </section>
           ) : null}
 
-          {editOpen && editForm && canEditEvent ? (
+          {editOpen && editForm && canEditEvent && !isHistoryEventDetail ? (
             <section ref={editFormSectionRef} className="mt-4 scroll-mt-24">
             <PlannerFormCard
               title="Edit event"
@@ -1258,6 +1267,12 @@ export default function EventDetailPage() {
                   lineup={lineup}
                   profiles={profiles}
                   onSaved={(message) => setSuccessMessage(message)}
+                  readOnlyHint={isHistoryEventDetail ? null : undefined}
+                  emptyStateMessage={
+                    isHistoryEventDetail
+                      ? "No run sheet was saved for this event"
+                      : undefined
+                  }
                 />
               </div>
             </>
@@ -1289,7 +1304,8 @@ export default function EventDetailPage() {
                   ) : null}
                 </div>
                 <div className="flex flex-col items-stretch gap-2 sm:items-end">
-                  {getAcceptedBookingCancellationRole(viewerBooking, currentUserId) === "dj" ? (
+                  {!isHistoryEventDetail &&
+                  getAcceptedBookingCancellationRole(viewerBooking, currentUserId) === "dj" ? (
                     <CancelAcceptedBookingButton
                       role="dj"
                       loading={cancellingBookingId === viewerBooking.id}
@@ -1335,7 +1351,11 @@ export default function EventDetailPage() {
               {filteredLineup.length === 0 ? (
                 <PlannerEmptyPanel
                   className="mt-5"
-                  message="No DJs invited yet, send booking requests to build your lineup"
+                  message={
+                    isHistoryEventDetail
+                      ? "No bookings for this event"
+                      : "No DJs invited yet, send booking requests to build your lineup"
+                  }
                 />
               ) : (
                 <ul className="mt-3 space-y-2.5">
@@ -1348,9 +1368,11 @@ export default function EventDetailPage() {
                           booking={booking}
                           profile={profile}
                           currentUserId={currentUserId}
+                          readOnly={isHistoryEventDetail}
                           cancelledByLabel={resolveBookingCancelledByLabel(booking, profiles)}
                           cancellationReasonLabel={resolveBookingCancellationReasonLabel(booking)}
                           canHideFromLineup={
+                            !isHistoryEventDetail &&
                             isOwner &&
                             isPlanner &&
                             booking.status === "declined" &&
@@ -1398,7 +1420,7 @@ export default function EventDetailPage() {
         ) : null}
       </div>
 
-      {sendOpen && isOwner && !eventIsCancelled ? (
+      {sendOpen && isOwner && !eventIsCancelled && !isHistoryEventDetail ? (
         <div
           className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 p-0 sm:items-center sm:p-4"
           onClick={() => {

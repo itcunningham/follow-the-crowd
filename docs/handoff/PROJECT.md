@@ -49,6 +49,8 @@ Sub-nav: `lib/plannerEventsNav.ts`, `app/components/PlannerEventsSubNav.tsx`
 - `lib/events/eventNotes.ts` — notes length/line limits
 - `lib/groupChats.ts` — group chat inbox
 - `lib/bookingPlans.ts` — saved event plans
+- `lib/design/ftcDesignSystem.ts` — exported layout/typography/button class tokens
+- `lib/design/ftcStatusBadge.ts` — shared status badge geometry
 - `lib/ftcFlatStatus.ts` — status badge/dot colour classes
 
 ## Important UI

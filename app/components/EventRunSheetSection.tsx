@@ -480,12 +480,16 @@ export default function EventRunSheetSection({
   lineup,
   profiles,
   onSaved,
+  readOnlyHint,
+  emptyStateMessage = "Accepted DJs will appear here once they confirm their booking",
 }: {
   eventId: string;
   canEdit: boolean;
   lineup: BookingRequest[];
   profiles: Map<string, BookingRecipientProfile>;
   onSaved?: (message: string) => void;
+  readOnlyHint?: string | null;
+  emptyStateMessage?: string;
 }) {
   const [rows, setRows] = useState<RunSheetRowInput[]>([]);
   const [loading, setLoading] = useState(true);
@@ -614,8 +618,10 @@ export default function EventRunSheetSection({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <EventDetailSectionTitle>Run Sheet</EventDetailSectionTitle>
-          {!canEdit ? (
-            <p className={EVENT_DETAIL_SECTION_SUBTITLE_CLASS}>Read-only view for accepted crew</p>
+          {!canEdit && readOnlyHint !== null ? (
+            <p className={EVENT_DETAIL_SECTION_SUBTITLE_CLASS}>
+              {readOnlyHint ?? "Read-only view for accepted crew"}
+            </p>
           ) : null}
         </div>
 
@@ -649,7 +655,7 @@ export default function EventRunSheetSection({
         <p className="mt-6 text-sm text-ftc-text-muted">Loading run sheet...</p>
       ) : rows.length === 0 ? (
         <div className="mt-5">
-          <CalendarMobileDashedEmptyState message="Accepted DJs will appear here once they confirm their booking" />
+          <CalendarMobileDashedEmptyState message={emptyStateMessage} />
         </div>
       ) : (
         <>

@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import BookingRateProposalPanel from "@/app/components/booking/BookingRateProposalPanel";
+import BookingRateProposalPanel, {
+  BookingRateProposalNotice,
+} from "@/app/components/booking/BookingRateProposalPanel";
 import BookingStatusBadge from "@/app/components/booking/BookingStatusBadge";
 import CancelAcceptedBookingButton from "@/app/components/booking/CancelAcceptedBookingButton";
 import CancelBookingRequestButton from "@/app/components/CancelBookingRequestButton";
@@ -33,6 +35,7 @@ export default function EventLineupBookingCard({
   booking,
   profile,
   currentUserId,
+  readOnly = false,
   cancelledByLabel,
   cancellationReasonLabel,
   canHideFromLineup,
@@ -49,6 +52,7 @@ export default function EventLineupBookingCard({
   booking: BookingRequest;
   profile?: BookingRecipientProfile;
   currentUserId: string | null;
+  readOnly?: boolean;
   cancelledByLabel?: string | null;
   cancellationReasonLabel?: string | null;
   canHideFromLineup: boolean;
@@ -120,26 +124,30 @@ export default function EventLineupBookingCard({
             </p>
           ) : null}
 
-          <BookingRateProposalPanel
-            booking={booking}
-            currentUserId={currentUserId}
-            loading={proposalLoading}
-            onAcceptProposal={onAcceptProposal}
-            onKeepOriginalOffer={onKeepOriginalOffer}
-            onDeclineBooking={onCancelBooking}
-          />
+          {readOnly ? (
+            <BookingRateProposalNotice booking={booking} currentUserId={currentUserId} />
+          ) : (
+            <BookingRateProposalPanel
+              booking={booking}
+              currentUserId={currentUserId}
+              loading={proposalLoading}
+              onAcceptProposal={onAcceptProposal}
+              onKeepOriginalOffer={onKeepOriginalOffer}
+              onDeclineBooking={onCancelBooking}
+            />
+          )}
         </div>
       </div>
 
       <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:justify-end">
-        {canCancelBookingRequest(booking, currentUserId) ? (
+        {!readOnly && canCancelBookingRequest(booking, currentUserId) ? (
           <CancelBookingRequestButton
             loading={cancelling}
             onConfirm={onCancelBooking}
             className={`${EVENT_DETAIL_BTN_DESTRUCTIVE} w-full sm:w-auto sm:min-w-[7.5rem]`}
           />
         ) : null}
-        {acceptedCancellationRole === "planner" ? (
+        {!readOnly && acceptedCancellationRole === "planner" ? (
           <CancelAcceptedBookingButton
             role="planner"
             loading={cancelling}
