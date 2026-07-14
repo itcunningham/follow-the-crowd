@@ -106,6 +106,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `c9c9373` — polish booking deep-link focus ring (full card, 2s hold + 1s fade)
 - `0018fe3` — deep-link Gigs Open conversation to matching DM booking card via bookingRequestId
 - `829fb1d` — fix Gigs mobile availability pill layout shift; optimistic save with version guard
 - `c1a0437` — restore compact workspace tabs; fix iOS touch nav with location.assign
