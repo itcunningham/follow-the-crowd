@@ -8,7 +8,10 @@ import DjAvailabilityCalendar, {
 } from "@/app/components/DjAvailabilityCalendar";
 import PlannerCalendar, { PlannerCalendarLegend } from "@/app/components/PlannerCalendar";
 import PlannerCalendarMobileDateStrip from "@/app/components/PlannerCalendarMobileDateStrip";
-import CalendarMobileChrome from "@/app/components/calendar/CalendarMobileChrome";
+import CalendarMobileChrome, {
+  CALENDAR_MOBILE_CHROME_DAY_STRIP_CLASS,
+  CALENDAR_MOBILE_CHROME_GIGS_DAY_STRIP_CLASS,
+} from "@/app/components/calendar/CalendarMobileChrome";
 import type { CalendarViewTab } from "@/app/components/CalendarViewTabs";
 import { PLANNER_WORKSPACE_PRIMARY_SURFACE_CLASS } from "@/app/components/planner/PlannerWorkspaceLayout";
 import {
@@ -185,6 +188,11 @@ export default function BothRoleCalendarView({ activeTab }: BothRoleCalendarView
               getDateMarker={activeStripConfig.getDateMarker}
               isDateHighlighted={activeStripConfig.isDateHighlighted}
             />
+          }
+          dayStripClassName={
+            activeTab === "dj"
+              ? CALENDAR_MOBILE_CHROME_GIGS_DAY_STRIP_CLASS
+              : CALENDAR_MOBILE_CHROME_DAY_STRIP_CLASS
           }
         />
       </div>

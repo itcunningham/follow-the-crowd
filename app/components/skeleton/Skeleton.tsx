@@ -10,6 +10,7 @@ import {
 } from "@/app/components/CalendarMonthNav";
 import {
   CALENDAR_MOBILE_CHROME_DAY_STRIP_CLASS,
+  CALENDAR_MOBILE_CHROME_GIGS_DAY_STRIP_CLASS,
   CALENDAR_MOBILE_CHROME_LEGEND_CLASS,
   CALENDAR_MOBILE_CHROME_MONTH_NAV_CLASS,
 } from "@/app/components/calendar/CalendarMobileChrome";
@@ -939,9 +940,11 @@ function CalendarMobileDayStripSkeleton() {
 export function CalendarMobileChromeSkeleton({
   legend,
   includeSecondaryRow = false,
+  dayStripClassName = CALENDAR_MOBILE_CHROME_DAY_STRIP_CLASS,
 }: {
   legend: ReactNode;
   includeSecondaryRow?: boolean;
+  dayStripClassName?: string;
 }) {
   return (
     <>
@@ -952,7 +955,7 @@ export function CalendarMobileChromeSkeleton({
 
       <div className={CALENDAR_MOBILE_CHROME_LEGEND_CLASS}>{legend}</div>
 
-      <div className={CALENDAR_MOBILE_CHROME_DAY_STRIP_CLASS}>
+      <div className={dayStripClassName}>
         <CalendarMobileDayStripSkeleton />
       </div>
     </>
@@ -1176,6 +1179,7 @@ export function DjCalendarContentSkeleton() {
       <CalendarMobileChromeSkeleton
         legend={<DjCalendarLegendSkeleton />}
         includeSecondaryRow
+        dayStripClassName={CALENDAR_MOBILE_CHROME_GIGS_DAY_STRIP_CLASS}
       />
 
       <DjCalendarMobileAgendaSkeleton />

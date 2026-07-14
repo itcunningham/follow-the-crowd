@@ -17,7 +17,9 @@ import {
   FTC_STATUS_DANGER,
 } from "@/lib/ftcFlatStatus";
 import CalendarDotLegend from "@/app/components/calendar/CalendarDotLegend";
-import CalendarMobileChrome from "@/app/components/calendar/CalendarMobileChrome";
+import CalendarMobileChrome, {
+  CALENDAR_MOBILE_CHROME_GIGS_DAY_STRIP_CLASS,
+} from "@/app/components/calendar/CalendarMobileChrome";
 import PlannerCalendarMobileDateStrip from "@/app/components/PlannerCalendarMobileDateStrip";
 import {
   DjCalendarBodySkeleton,
@@ -1461,6 +1463,7 @@ export default function DjAvailabilityCalendar({
           secondaryRowAction={secondaryRowAction}
           legend={<DjAvailabilityCalendarLegend />}
           dateStrip={djMobileDateStrip}
+          dayStripClassName={CALENDAR_MOBILE_CHROME_GIGS_DAY_STRIP_CLASS}
         />
       )}
 

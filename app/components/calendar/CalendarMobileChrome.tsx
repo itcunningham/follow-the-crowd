@@ -9,6 +9,7 @@ export const CALENDAR_MOBILE_CHROME_MONTH_NAV_CLASS = "relative mt-4";
 export const CALENDAR_MOBILE_CHROME_LEGEND_CLASS =
   "mt-3 min-h-[3.25rem] md:min-h-[1.75rem]";
 export const CALENDAR_MOBILE_CHROME_DAY_STRIP_CLASS = "mt-4 md:hidden";
+export const CALENDAR_MOBILE_CHROME_GIGS_DAY_STRIP_CLASS = "mt-2 md:hidden";
 
 type CalendarMonthNavConfig = {
   monthStart: Date;
@@ -24,6 +25,7 @@ type CalendarMobileChromeProps = {
   dateStrip: ReactNode;
   monthNavPrefix?: ReactNode;
   secondaryRowAction?: ReactNode;
+  dayStripClassName?: string;
 };
 
 export default function CalendarMobileChrome({
@@ -32,6 +34,7 @@ export default function CalendarMobileChrome({
   dateStrip,
   monthNavPrefix,
   secondaryRowAction,
+  dayStripClassName = CALENDAR_MOBILE_CHROME_DAY_STRIP_CLASS,
 }: CalendarMobileChromeProps) {
   return (
     <>
@@ -45,7 +48,7 @@ export default function CalendarMobileChrome({
 
       <div className={CALENDAR_MOBILE_CHROME_LEGEND_CLASS}>{legend}</div>
 
-      <div className={CALENDAR_MOBILE_CHROME_DAY_STRIP_CLASS}>{dateStrip}</div>
+      <div className={dayStripClassName}>{dateStrip}</div>
     </>
   );
 }
