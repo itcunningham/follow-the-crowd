@@ -2060,6 +2060,7 @@ function GigCardMetaRows({
   rateLabel,
   extraLine,
   muted = false,
+  mobileRateInFooter = false,
 }: {
   venue?: string;
   eventDate?: string;
@@ -2067,14 +2068,13 @@ function GigCardMetaRows({
   rateLabel?: string;
   extraLine?: string;
   muted?: boolean;
+  mobileRateInFooter?: boolean;
 }) {
   const textClass = muted ? "text-ftc-text-muted" : "text-ftc-text-secondary";
   const venueDateParts = [venue?.trim(), eventDate?.trim() ? formatDisplayEventDate(eventDate) : ""].filter(Boolean);
   const venueDateLine = venueDateParts.join(" · ");
   const setTimeLine = setTime?.trim() || "TBC";
   const showRate = Boolean(rateLabel?.trim());
-  const timeOfferParts = [setTimeLine, showRate ? rateLabel?.trim() : ""].filter(Boolean);
-  const timeOfferLine = timeOfferParts.join(" · ");
 
   return (
     <div
@@ -2084,7 +2084,10 @@ function GigCardMetaRows({
         {venueDateLine ? (
           <p className="min-w-0 max-w-full overflow-hidden break-words">{venueDateLine}</p>
         ) : null}
-        <p className="min-w-0 max-w-full overflow-hidden break-words sm:hidden">{timeOfferLine}</p>
+        <p className="min-w-0 max-w-full overflow-hidden break-words sm:hidden">{setTimeLine}</p>
+        {showRate && !mobileRateInFooter ? (
+          <p className="min-w-0 max-w-full overflow-hidden break-words sm:hidden">{rateLabel}</p>
+        ) : null}
         <p className="hidden min-w-0 max-w-full overflow-hidden break-words sm:block">{setTimeLine}</p>
         {showRate ? (
           <p className="hidden min-w-0 max-w-full overflow-hidden break-words sm:block">{rateLabel}</p>
@@ -2147,17 +2150,36 @@ function ReceivedBookingCard({
         eventDate={booking.event_date}
         setTime={booking.set_time}
         rateLabel={rateLabel}
+        mobileRateInFooter
       />
       {!isConfirmed ? (
-        <div className="flex min-w-0 justify-end pt-0.5 sm:pt-0">
-          <Link
-            href={conversationHref}
-            className="ftc-btn-primary inline-flex min-h-10 shrink-0 items-center justify-center px-2.5 py-1.5 text-[0.6875rem] uppercase tracking-wide sm:min-h-11 sm:px-3 sm:py-2 sm:text-xs"
-            onClick={(event) => event.stopPropagation()}
-          >
-            Open DM
-          </Link>
-        </div>
+        <>
+          <div className="flex min-w-0 items-center justify-between gap-2 pt-0.5 sm:hidden">
+            {rateLabel?.trim() ? (
+              <p className="min-w-0 flex-1 overflow-hidden break-words text-xs text-ftc-text-secondary">
+                {rateLabel}
+              </p>
+            ) : (
+              <span className="min-w-0 flex-1" aria-hidden="true" />
+            )}
+            <Link
+              href={conversationHref}
+              className="ftc-btn-primary inline-flex min-h-10 shrink-0 items-center justify-center px-2.5 py-1.5 text-[0.6875rem] uppercase tracking-wide"
+              onClick={(event) => event.stopPropagation()}
+            >
+              Open DM
+            </Link>
+          </div>
+          <div className="hidden min-w-0 justify-end sm:flex">
+            <Link
+              href={conversationHref}
+              className="ftc-btn-primary inline-flex min-h-11 shrink-0 items-center justify-center px-3 py-2 text-xs uppercase tracking-wide"
+              onClick={(event) => event.stopPropagation()}
+            >
+              Open DM
+            </Link>
+          </div>
+        </>
       ) : null}
     </div>
   );
