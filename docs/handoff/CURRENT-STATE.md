@@ -61,6 +61,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 - Default send button label mode: **Confirm N DJ(s)** (`SendBookingRequestsPanel`)
 - Unavailable-DJ confirm modal uses Confirm wording
 - Calendar-origin and standard create flows aligned on copy and validation
+- **Gigs mobile cards (2026-07-14):** tighter `p-2.5` padding, `gap-2` rhythm (matches Event Plans); venue/date + time/offer combined on one mobile meta row; compact **Open DM** primary button (`min-h-10`, reduced padding); desktop card layout unchanged at `sm+`
 
 ## Event Plans
 

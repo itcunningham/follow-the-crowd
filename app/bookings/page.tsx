@@ -1800,7 +1800,7 @@ function BookingsPageContent() {
                 {getGigsEmptyMessage(djGigsView)}
               </p>
             ) : visibleReceivedBookings.length > 0 ? (
-              <ul className="ftc-gigs-list space-y-3">
+              <ul className="ftc-gigs-list space-y-2.5 sm:space-y-3">
                 {visibleReceivedBookings.map((booking) =>
                   djGigsView === "history" ? (
                     <BookingHistoryCard
@@ -2023,7 +2023,7 @@ function BookingSectionTabs({
 }
 
 const GIG_CARD_CLASS_NAME =
-  "ftc-gig-card ftc-surface-row rounded-[var(--ftc-radius-xl)] p-3 sm:p-4";
+  "ftc-gig-card ftc-surface-row rounded-[var(--ftc-radius-xl)] p-2.5 sm:p-4";
 
 function GigCardHeader({
   eventName,
@@ -2040,14 +2040,14 @@ function GigCardHeader({
 
   return (
     <div className="min-w-0 flex-1">
-      <div className="flex min-w-0 items-start justify-between gap-2">
+      <div className="flex min-w-0 items-start justify-between gap-1.5 sm:gap-2">
         <h3 className={`min-w-0 flex-1 text-sm font-semibold leading-snug sm:text-base ${titleClass}`}>
           {eventName}
         </h3>
         <BookingStatusBadge status={status} />
       </div>
       {plannerLabel ? (
-        <p className="mt-1 text-xs text-ftc-text-muted">{plannerLabel}</p>
+        <p className="mt-0.5 text-xs text-ftc-text-muted sm:mt-1">{plannerLabel}</p>
       ) : null}
     </div>
   );
@@ -2073,21 +2073,28 @@ function GigCardMetaRows({
   const venueDateLine = venueDateParts.join(" · ");
   const setTimeLine = setTime?.trim() || "TBC";
   const showRate = Boolean(rateLabel?.trim());
+  const timeOfferParts = [setTimeLine, showRate ? rateLabel?.trim() : ""].filter(Boolean);
+  const timeOfferLine = timeOfferParts.join(" · ");
 
   return (
-    <div className={`ftc-gig-card-meta mt-2 min-w-0 space-y-1 overflow-hidden text-xs sm:text-sm ${textClass}`}>
-      {venueDateLine ? (
-        <p className="min-w-0 max-w-full overflow-hidden break-words">{venueDateLine}</p>
-      ) : null}
-      <p className="min-w-0 max-w-full overflow-hidden break-words">{setTimeLine}</p>
-      {showRate ? (
-        <p className="min-w-0 max-w-full overflow-hidden break-words">{rateLabel}</p>
-      ) : null}
-      {extraLine ? (
-        <p className="min-w-0 max-w-full overflow-hidden break-words text-xs text-ftc-text-muted">
-          {extraLine}
-        </p>
-      ) : null}
+    <div
+      className={`ftc-gig-card-meta mt-1.5 min-w-0 overflow-hidden text-xs sm:mt-2 sm:text-sm ${textClass}`}
+    >
+      <div className="space-y-0.5 sm:space-y-1">
+        {venueDateLine ? (
+          <p className="min-w-0 max-w-full overflow-hidden break-words">{venueDateLine}</p>
+        ) : null}
+        <p className="min-w-0 max-w-full overflow-hidden break-words sm:hidden">{timeOfferLine}</p>
+        <p className="hidden min-w-0 max-w-full overflow-hidden break-words sm:block">{setTimeLine}</p>
+        {showRate ? (
+          <p className="hidden min-w-0 max-w-full overflow-hidden break-words sm:block">{rateLabel}</p>
+        ) : null}
+        {extraLine ? (
+          <p className="min-w-0 max-w-full overflow-hidden break-words text-xs text-ftc-text-muted">
+            {extraLine}
+          </p>
+        ) : null}
+      </div>
     </div>
   );
 }
@@ -2129,7 +2136,7 @@ function ReceivedBookingCard({
   const plannerLabel = senderName ? `From ${senderName}` : undefined;
 
   const cardBody = (
-    <div className="flex min-w-0 max-w-full flex-col gap-3 overflow-hidden">
+    <div className="flex min-w-0 max-w-full flex-col gap-2 overflow-hidden sm:gap-3">
       <GigCardHeader
         eventName={booking.event_name}
         status={booking.status}
@@ -2142,13 +2149,13 @@ function ReceivedBookingCard({
         rateLabel={rateLabel}
       />
       {!isConfirmed ? (
-        <div className="flex min-w-0 justify-end">
+        <div className="flex min-w-0 justify-end pt-0.5 sm:pt-0">
           <Link
             href={conversationHref}
-            className="ftc-btn-primary inline-flex min-h-11 shrink-0 items-center justify-center px-3 py-2 text-xs uppercase tracking-wide"
+            className="ftc-btn-primary inline-flex min-h-10 shrink-0 items-center justify-center px-2.5 py-1.5 text-[0.6875rem] uppercase tracking-wide sm:min-h-11 sm:px-3 sm:py-2 sm:text-xs"
             onClick={(event) => event.stopPropagation()}
           >
-            Open conversation
+            Open DM
           </Link>
         </div>
       ) : null}
@@ -2214,7 +2221,7 @@ function BookingHistoryCard({
   const selectionLabel = `Select ${booking.event_name} for removal from history`;
 
   const cardBody = (
-    <div className="flex min-w-0 max-w-full flex-col gap-3 overflow-hidden">
+    <div className="flex min-w-0 max-w-full flex-col gap-2 overflow-hidden sm:gap-3">
       <div className="flex min-w-0 gap-3">
         {selectionMode ? (
           <HistorySelectionCheckbox checked={selected} label={selectionLabel} presentational />
@@ -2246,7 +2253,7 @@ function BookingHistoryCard({
           {eventHref ? (
             <GigCardSecondaryAction href={eventHref}>View event</GigCardSecondaryAction>
           ) : null}
-          <GigCardSecondaryAction href={conversationHref}>Open conversation</GigCardSecondaryAction>
+          <GigCardSecondaryAction href={conversationHref}>Open DM</GigCardSecondaryAction>
         </div>
       )}
     </div>
