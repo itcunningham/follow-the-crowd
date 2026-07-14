@@ -102,7 +102,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
-- `TBD` — tighten Gigs Calendar mobile legend-to-day-strip spacing
+- `8ea03ac` — tighten Gigs Calendar mobile legend-to-day-strip spacing
 - `c88189f` — fix Gigs Calendar Select dates layout shift on first load
 - `f0c962d` — extract shared CalendarMobileChrome for Events and Gigs calendars
 - `c32839c` — compact mobile Event Plan cards
