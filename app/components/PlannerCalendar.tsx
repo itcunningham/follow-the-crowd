@@ -9,7 +9,10 @@ import CalendarMobileChrome, {
   CALENDAR_MOBILE_CHROME_GIGS_DAY_STRIP_CLASS,
 } from "@/app/components/calendar/CalendarMobileChrome";
 import {
+  CALENDAR_MOBILE_AGENDA_CARD_LEADING_CLASS,
+  CALENDAR_MOBILE_AGENDA_CARD_LIST_CLASS,
   CALENDAR_MOBILE_INTERACTIVE_PRESS_CLASS,
+  CalendarMobileAgendaCard,
   CalendarMobileDashedEmptyState,
   CalendarMobileSelectedDayHeader,
   useCalendarMobileAgendaTransition,
@@ -215,31 +218,34 @@ function PlannerCalendarAgendaCard({
   }, [eventHref, router]);
 
   return (
-    <button
-      type="button"
+    <CalendarMobileAgendaCard
       onClick={handleOpenEvent}
-      className={`block w-full rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated px-3 py-2.5 text-left hover:border-ftc-border-strong ${CALENDAR_MOBILE_INTERACTIVE_PRESS_CLASS}`}
-    >
-      <div className="flex items-start gap-3">
+      shellClassName="border border-ftc-border-subtle bg-ftc-bg-elevated hover:border-ftc-border-strong"
+      className={CALENDAR_MOBILE_INTERACTIVE_PRESS_CLASS}
+      leading={
         <span
           aria-hidden="true"
-          className={`mt-0.5 h-8 w-1 shrink-0 rounded-full ${getPlannerCalendarAgendaAccentClass(item.eventFallbackColour)}`}
+          className={`${CALENDAR_MOBILE_AGENDA_CARD_LEADING_CLASS} ${getPlannerCalendarAgendaAccentClass(item.eventFallbackColour)}`}
         />
-        <div className="min-w-0 flex-1">
-          <span
-            className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${getPlannerCalendarStatusBadgeClass(item.statusKind)}`}
-          >
-            {getPlannerCalendarBadgeLabel(item)}
-          </span>
-          <p className="mt-1.5 truncate text-sm font-semibold text-ftc-text">
-            {formatPlannerCalendarItemHeadline(item.title, item.venue)}
-          </p>
-          {item.timeLabel ? (
-            <p className="mt-1 text-sm text-ftc-text-secondary">{item.timeLabel}</p>
-          ) : null}
-        </div>
-      </div>
-    </button>
+      }
+      badge={
+        <span
+          className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${getPlannerCalendarStatusBadgeClass(item.statusKind)}`}
+        >
+          {getPlannerCalendarBadgeLabel(item)}
+        </span>
+      }
+      heading={
+        <span className="truncate text-sm font-semibold text-ftc-text">
+          {formatPlannerCalendarItemHeadline(item.title, item.venue)}
+        </span>
+      }
+      time={
+        item.timeLabel ? (
+          <span className="block truncate text-sm text-ftc-text-secondary">{item.timeLabel}</span>
+        ) : undefined
+      }
+    />
   );
 }
 
@@ -302,7 +308,7 @@ function PlannerCalendarMobileAgenda({
           ) : null}
         </div>
 
-        <div className="mt-3 space-y-2">
+        <div className={CALENDAR_MOBILE_AGENDA_CARD_LIST_CLASS}>
           {displayDateItems.length === 0 ? (
             isPastEmptyDate ? null : (
               <CalendarMobileDashedEmptyState message="No events scheduled" />

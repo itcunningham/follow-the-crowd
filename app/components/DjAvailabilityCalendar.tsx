@@ -19,7 +19,9 @@ import CalendarMobileChrome, {
   CALENDAR_MOBILE_CHROME_GIGS_DAY_STRIP_CLASS,
 } from "@/app/components/calendar/CalendarMobileChrome";
 import {
+  CALENDAR_MOBILE_AGENDA_CARD_LIST_CLASS,
   CALENDAR_MOBILE_INTERACTIVE_PRESS_CLASS,
+  CalendarMobileAgendaCard,
   CalendarMobileDashedEmptyState,
   CalendarMobileSelectedDayHeader,
   useCalendarMobileAgendaTransition,
@@ -591,39 +593,64 @@ function DjCalendarBookingNavButton({
     performNavigation("click");
   }, [performNavigation]);
 
+  if (compact) {
+    return (
+      <button
+        type="button"
+        onPointerDown={handlePointerDown}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerCancel}
+        onClick={handleClick}
+        aria-label={`${eventName}, ${statusLabel}`}
+        onContextMenu={(event) => event.preventDefault()}
+        className={`${className} touch-manipulation [-webkit-touch-callout:none] ${CALENDAR_MOBILE_INTERACTIVE_PRESS_CLASS}`}
+      >
+        <span className="pointer-events-none block w-full">
+          <span className="flex items-center justify-between gap-2">
+            <span className="truncate text-xs font-semibold text-ftc-text">{eventName}</span>
+            <span
+              className={`shrink-0 rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide ${getDjBookingStatusBadgeClass(booking.status === "accepted" ? "accepted" : "pending")}`}
+            >
+              {statusLabel}
+            </span>
+          </span>
+          {booking.set_time.trim() ? (
+            <span className="mt-0.5 block truncate text-[11px] text-ftc-text-muted">
+              {formatCalendarTimeLabel(booking.set_time)}
+            </span>
+          ) : null}
+        </span>
+      </button>
+    );
+  }
+
   return (
-    <button
-      type="button"
+    <CalendarMobileAgendaCard
       onPointerDown={handlePointerDown}
       onPointerUp={handlePointerUp}
       onPointerCancel={handlePointerCancel}
       onClick={handleClick}
       aria-label={`${eventName}, ${statusLabel}`}
       onContextMenu={(event) => event.preventDefault()}
-      className={`${className} touch-manipulation [-webkit-touch-callout:none] ${CALENDAR_MOBILE_INTERACTIVE_PRESS_CLASS}`}
-    >
-      <span className="pointer-events-none block w-full">
-        <span className="flex items-center justify-between gap-2">
-          <span
-            className={`truncate font-semibold text-ftc-text ${compact ? "text-xs" : "text-sm"}`}
-          >
-            {eventName}
-          </span>
-          <span
-            className={`shrink-0 rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide ${getDjBookingStatusBadgeClass(booking.status === "accepted" ? "accepted" : "pending")}`}
-          >
-            {statusLabel}
-          </span>
+      shellClassName={className}
+      className={`touch-manipulation [-webkit-touch-callout:none] ${CALENDAR_MOBILE_INTERACTIVE_PRESS_CLASS}`}
+      reserveLeadingSpace
+      badge={
+        <span
+          className={`rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide ${getDjBookingStatusBadgeClass(booking.status === "accepted" ? "accepted" : "pending")}`}
+        >
+          {statusLabel}
         </span>
-        {booking.set_time.trim() ? (
-          <span
-            className={`mt-0.5 block truncate text-ftc-text-muted ${compact ? "text-[11px]" : "text-xs"}`}
-          >
+      }
+      heading={<span className="truncate text-sm font-semibold text-ftc-text">{eventName}</span>}
+      time={
+        booking.set_time.trim() ? (
+          <span className="block truncate text-xs text-ftc-text-muted">
             {formatCalendarTimeLabel(booking.set_time)}
           </span>
-        ) : null}
-      </span>
-    </button>
+        ) : undefined
+      }
+    />
   );
 }
 
@@ -643,7 +670,7 @@ function DjCalendarMobileBookingCard({
       booking={booking}
       calendarOrigin={calendarOrigin}
       onNavigationError={onNavigationError}
-      className="block w-full rounded-xl border border-ftc-border bg-ftc-surface/80 px-3 py-2.5 text-left hover:border-ftc-primary/30 hover:bg-ftc-surface"
+      className="border border-ftc-border bg-ftc-surface/80 hover:border-ftc-primary/30 hover:bg-ftc-surface"
     />
   );
 }
@@ -722,7 +749,7 @@ function DjAvailabilityMobileDayPanel({
 
       <div className={bookingsTransitionClassName}>
         {interactiveBookings.length > 0 ? (
-          <ul className="mt-3 space-y-2">
+          <ul className={CALENDAR_MOBILE_AGENDA_CARD_LIST_CLASS}>
             {interactiveBookings.map((booking) => (
               <li key={booking.id}>
                 <DjCalendarMobileBookingCard

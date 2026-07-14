@@ -1,5 +1,6 @@
 "use client";
 
+import type { ButtonHTMLAttributes, ReactNode } from "react";
 import { useEffect, useState } from "react";
 
 export const CALENDAR_MOBILE_INTERACTIVE_PRESS_CLASS =
@@ -20,6 +21,80 @@ export const CALENDAR_MOBILE_EMPTY_STATE_CLASS =
   "rounded-xl border border-dashed border-ftc-border-subtle bg-ftc-surface/30 px-4 py-6 text-center";
 
 export const CALENDAR_MOBILE_EMPTY_STATE_TEXT_CLASS = "text-sm text-ftc-text-muted";
+
+export const CALENDAR_MOBILE_AGENDA_CARD_LIST_CLASS = "mt-3 space-y-2";
+
+export const CALENDAR_MOBILE_AGENDA_CARD_SHELL_CLASS =
+  "block w-full min-h-[5.25rem] rounded-xl px-3 py-2.5 text-left";
+
+export const CALENDAR_MOBILE_AGENDA_CARD_BODY_CLASS =
+  "flex min-h-[3.75rem] items-start gap-3";
+
+export const CALENDAR_MOBILE_AGENDA_CARD_LEADING_CLASS =
+  "mt-0.5 h-8 w-1 shrink-0 rounded-full";
+
+export const CALENDAR_MOBILE_AGENDA_CARD_LEADING_SPACER_CLASS =
+  "mt-0.5 h-8 w-1 shrink-0 rounded-full opacity-0 pointer-events-none";
+
+export const CALENDAR_MOBILE_AGENDA_CARD_CONTENT_CLASS = "min-w-0 flex-1";
+
+export const CALENDAR_MOBILE_AGENDA_CARD_HEADER_ROW_CLASS =
+  "flex items-start justify-between gap-2";
+
+export const CALENDAR_MOBILE_AGENDA_CARD_TITLE_SLOT_CLASS = "min-w-0 flex-1";
+
+export const CALENDAR_MOBILE_AGENDA_CARD_BADGE_SLOT_CLASS = "shrink-0";
+
+export const CALENDAR_MOBILE_AGENDA_CARD_TIME_SLOT_CLASS = "mt-1";
+
+type CalendarMobileAgendaCardProps = {
+  shellClassName?: string;
+  leading?: ReactNode;
+  reserveLeadingSpace?: boolean;
+  badge: ReactNode;
+  heading: ReactNode;
+  time?: ReactNode;
+} & ButtonHTMLAttributes<HTMLButtonElement>;
+
+export function CalendarMobileAgendaCard({
+  shellClassName = "",
+  leading,
+  reserveLeadingSpace = false,
+  badge,
+  heading,
+  time,
+  className = "",
+  type = "button",
+  ...buttonProps
+}: CalendarMobileAgendaCardProps) {
+  return (
+    <button
+      type={type}
+      {...buttonProps}
+      className={[CALENDAR_MOBILE_AGENDA_CARD_SHELL_CLASS, shellClassName, className]
+        .filter(Boolean)
+        .join(" ")}
+    >
+      <span className="pointer-events-none block w-full">
+        <span className={CALENDAR_MOBILE_AGENDA_CARD_BODY_CLASS}>
+          {leading ??
+            (reserveLeadingSpace ? (
+              <span aria-hidden="true" className={CALENDAR_MOBILE_AGENDA_CARD_LEADING_SPACER_CLASS} />
+            ) : null)}
+          <span className={CALENDAR_MOBILE_AGENDA_CARD_CONTENT_CLASS}>
+            <span className={CALENDAR_MOBILE_AGENDA_CARD_HEADER_ROW_CLASS}>
+              <span className={CALENDAR_MOBILE_AGENDA_CARD_TITLE_SLOT_CLASS}>{heading}</span>
+              <span className={CALENDAR_MOBILE_AGENDA_CARD_BADGE_SLOT_CLASS}>{badge}</span>
+            </span>
+            {time ? (
+              <span className={CALENDAR_MOBILE_AGENDA_CARD_TIME_SLOT_CLASS}>{time}</span>
+            ) : null}
+          </span>
+        </span>
+      </span>
+    </button>
+  );
+}
 
 function CalendarMobileEmptyIcon() {
   return (
