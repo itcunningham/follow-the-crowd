@@ -106,6 +106,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `0018fe3` — deep-link Gigs Open conversation to matching DM booking card via bookingRequestId
 - `829fb1d` — fix Gigs mobile availability pill layout shift; optimistic save with version guard
 - `c1a0437` — restore compact workspace tabs; fix iOS touch nav with location.assign
 - `d1f9dc0` — immediate workspace sub-nav feedback + route loading shells for Events/Gigs
