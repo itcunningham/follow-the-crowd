@@ -177,7 +177,7 @@ export function EventDetailHero({
   }
 
   return (
-    <div data-event-detail-hero className="px-4 pb-2 pt-2.5 sm:px-6">
+    <div data-event-detail-hero className="-mb-2 px-4 pb-0 pt-2.5 sm:px-6">
       <EventDetailHeroImage
         src={trimmedCoverUrl}
         alt={getEventCoverImageAlt(eventName)}

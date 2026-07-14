@@ -17,7 +17,7 @@ export default function EventDetailHeroImage({
         <img src={src} alt={alt} decoding="async" className="ftc-event-detail-flyer-hero__image" />
       </div>
       {badge ? (
-        <div className="relative z-10 -mt-3 flex justify-center px-2 sm:-mt-3.5">{badge}</div>
+        <div className="relative z-10 -mt-4 flex justify-center px-2">{badge}</div>
       ) : null}
     </div>
   );
