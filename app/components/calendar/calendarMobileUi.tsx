@@ -1,7 +1,7 @@
 "use client";
 
 import type { ButtonHTMLAttributes, ReactNode } from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export const CALENDAR_MOBILE_INTERACTIVE_PRESS_CLASS =
   "active:scale-[0.98] transition duration-150 ease-out motion-reduce:transition-none motion-reduce:transform-none";
@@ -140,9 +140,19 @@ export function CalendarMobileDashedEmptyState({ message }: { message: string })
 export function useCalendarMobileAgendaTransition(selectedDateKey: string) {
   const [displayDateKey, setDisplayDateKey] = useState(selectedDateKey);
   const [visible, setVisible] = useState(true);
+  const hasCompletedInitialSettleRef = useRef(false);
 
   useEffect(() => {
     if (selectedDateKey === displayDateKey) {
+      setVisible(true);
+      hasCompletedInitialSettleRef.current = true;
+      return;
+    }
+
+    if (!hasCompletedInitialSettleRef.current) {
+      setDisplayDateKey(selectedDateKey);
+      setVisible(true);
+      hasCompletedInitialSettleRef.current = true;
       return;
     }
 
@@ -158,11 +168,19 @@ export function useCalendarMobileAgendaTransition(selectedDateKey: string) {
     };
   }, [displayDateKey, selectedDateKey]);
 
-  const transitionClassName = `${CALENDAR_MOBILE_AGENDA_TRANSITION_CLASS} ${
-    visible
-      ? "translate-y-0 opacity-100"
-      : "pointer-events-none [&_*]:pointer-events-none translate-y-1 opacity-0"
-  }`;
+  const isSettled = visible && selectedDateKey === displayDateKey;
 
-  return { displayDateKey, transitionClassName, isAgendaTransitionInteractive: visible };
+  const transitionClassName = isSettled
+    ? ""
+    : `${CALENDAR_MOBILE_AGENDA_TRANSITION_CLASS} ${
+        visible
+          ? "translate-y-0 opacity-100"
+          : "pointer-events-none [&_*]:pointer-events-none translate-y-1 opacity-0"
+      }`;
+
+  return {
+    displayDateKey,
+    transitionClassName,
+    isAgendaTransitionInteractive: isSettled,
+  };
 }
