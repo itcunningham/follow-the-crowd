@@ -28,6 +28,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 - Run sheet rows auto-created when DJ accepts
 - Accepted bookings cancellable by planner or DJ with reason + group chat update
 - Booking cards in DMs show **live** event fields from `events` when `event_id` set
+- **DM photo picker (2026-07-14):** media icon opens native OS chooser (Photo Library / Take Photo on iOS); no forced camera via `capture`
 
 ## Calendar
 
