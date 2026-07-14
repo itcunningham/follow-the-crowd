@@ -19,6 +19,94 @@ type SendBookingRequestsPanelProps = {
   sendButtonLabelMode?: "send" | "confirm";
 };
 
+function InviteDjSearchField({
+  value,
+  disabled,
+  onChange,
+}: {
+  value: string;
+  disabled: boolean;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <label className="relative block">
+      <span className="sr-only">Search DJs by name or genre</span>
+      <svg
+        aria-hidden="true"
+        viewBox="0 0 24 24"
+        className="pointer-events-none absolute left-3.5 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-ftc-text-muted"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+      >
+        <circle cx="11" cy="11" r="7" />
+        <path d="m20 20-3.5-3.5" />
+      </svg>
+      <input
+        type="search"
+        value={value}
+        disabled={disabled}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder="Search DJs by name or genre"
+        className="ftc-input h-11 w-full rounded-full py-0 pl-11 pr-4 text-[15px] placeholder:text-ftc-text-muted"
+      />
+    </label>
+  );
+}
+
+function InviteDjAvatar({
+  name,
+  avatarUrl,
+  selected,
+}: {
+  name: string;
+  avatarUrl?: string | null;
+  selected: boolean;
+}) {
+  return (
+    <div className="relative shrink-0">
+      <ProfileAvatar name={name} avatarUrl={avatarUrl} size="sm" />
+      {selected ? (
+        <span
+          aria-hidden="true"
+          className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full border-2 border-ftc-surface bg-ftc-primary text-[9px] font-bold leading-none text-ftc-bg"
+        >
+          ✓
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
+function resolveSendButtonLabel(
+  draft: SendBookingRequestsDraft,
+  sending: boolean,
+  sendButtonLabelMode: "send" | "confirm",
+): string {
+  const selectedCount = draft.selectedDjIds.length;
+  const sendableCount = draft.sendableSelectedDjIds.length;
+  const isConfirmMode = sendButtonLabelMode === "confirm";
+
+  if (sending) {
+    return isConfirmMode ? "Confirming..." : "Sending...";
+  }
+
+  if (selectedCount === 0) {
+    return "No DJs selected";
+  }
+
+  if (sendableCount === 0) {
+    return isConfirmMode ? "No new DJs to confirm" : "No new DJs to send";
+  }
+
+  if (isConfirmMode) {
+    return `Confirm ${sendableCount} DJ${sendableCount === 1 ? "" : "s"}`;
+  }
+
+  return sendableCount === 1 ? "Send invitation" : `Send ${sendableCount} invitations`;
+}
+
 export default function SendBookingRequestsPanel({
   draft,
   disabled = false,
@@ -30,19 +118,8 @@ export default function SendBookingRequestsPanel({
   listMaxHeightClass = "max-h-80",
   sendButtonLabelMode = "confirm",
 }: SendBookingRequestsPanelProps) {
-  const selectedCount = draft.sendableSelectedDjIds.length;
-  const isConfirmMode = sendButtonLabelMode === "confirm";
-  const sendButtonLabel = sending
-    ? isConfirmMode
-      ? "Confirming..."
-      : "Sending..."
-    : selectedCount === 0
-      ? isConfirmMode
-        ? "No new DJs to confirm"
-        : "No new DJs to send"
-      : isConfirmMode
-        ? `Confirm ${selectedCount} DJ${selectedCount === 1 ? "" : "s"}`
-        : `Send to ${selectedCount} DJ${selectedCount === 1 ? "" : "s"}`;
+  const sendableCount = draft.sendableSelectedDjIds.length;
+  const sendButtonLabel = resolveSendButtonLabel(draft, sending, sendButtonLabelMode);
 
   return (
     <div className={embedded ? "space-y-4 border-t border-ftc-border-subtle pt-4" : "space-y-4"}>
@@ -55,16 +132,13 @@ export default function SendBookingRequestsPanel({
           </p>
         </div>
       ) : introText ? (
-        <p className="text-sm text-ftc-text-secondary">{introText}</p>
+        <p className="text-sm leading-relaxed text-ftc-text-secondary">{introText}</p>
       ) : null}
 
-      <input
-        type="search"
+      <InviteDjSearchField
         value={draft.searchQuery}
         disabled={disabled || sending}
-        onChange={(event) => draft.setSearchQuery(event.target.value)}
-        placeholder="Search DJs by name or genre"
-        className={`ftc-input px-3.5 py-2.5 ${embedded ? "" : "mt-4"}`}
+        onChange={draft.setSearchQuery}
       />
 
       {draft.loadingDjs ? (
@@ -72,7 +146,7 @@ export default function SendBookingRequestsPanel({
       ) : draft.filteredDjs.length === 0 ? (
         <PlannerEmptyPanel message="No available DJs to invite." />
       ) : (
-        <ul className={`${listMaxHeightClass} space-y-2 overflow-y-auto`}>
+        <ul className={`${listMaxHeightClass} space-y-2.5 overflow-y-auto`}>
           {draft.filteredDjs.map((dj) => {
             const selected = draft.selectedDjIds.includes(dj.user_id);
             const displayName = dj.display_name?.trim() || "DJ";
@@ -89,42 +163,43 @@ export default function SendBookingRequestsPanel({
                 <button
                   type="button"
                   disabled={disabled || sending || isDuplicateBlocked}
+                  aria-pressed={selected}
+                  aria-label={`${selected ? "Deselect" : "Select"} ${displayName}`}
                   onClick={() => draft.toggleDjSelection(dj.user_id)}
-                  className={`ftc-option-card flex w-full items-center gap-3 px-3 py-3 disabled:cursor-not-allowed ${
+                  className={`ftc-option-card flex w-full items-start gap-3 p-2.5 transition duration-150 ease-out disabled:cursor-not-allowed motion-reduce:transition-none ${
                     selected
-                      ? "ftc-option-card-selected"
+                      ? "ftc-option-card-selected bg-[var(--ftc-color-primary-subtle)]"
                       : isDuplicateBlocked
                         ? "opacity-70"
                         : ""
                   }`}
                 >
-                  <span
-                    className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border ${
-                      selected
-                        ? "border-0 bg-ftc-primary text-ftc-bg"
-                        : "border-ftc-border-subtle bg-ftc-bg-input text-transparent"
-                    }`}
-                  >
-                    ✓
-                  </span>
-                  <ProfileAvatar name={displayName} avatarUrl={dj.avatar_url} size="sm" />
+                  <InviteDjAvatar
+                    name={displayName}
+                    avatarUrl={dj.avatar_url}
+                    selected={selected}
+                  />
                   <div className="min-w-0 flex-1 text-left">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="font-semibold text-ftc-text">{displayName}</p>
-                      {duplicateStatus ? (
-                        <EventBookingDuplicateBadge status={duplicateStatus} />
-                      ) : null}
-                      {availabilityHint ? (
-                        <DjBookingAvailabilityBadge hint={availabilityHint} />
-                      ) : null}
-                    </div>
+                    <p className="text-sm font-bold leading-snug text-ftc-text">{displayName}</p>
                     {dj.genre?.trim() ? (
-                      <p className="text-sm text-ftc-text-muted">{dj.genre}</p>
+                      <p className="mt-0.5 text-xs leading-snug text-ftc-text-muted">
+                        {dj.genre}
+                      </p>
+                    ) : null}
+                    {duplicateStatus || availabilityHint ? (
+                      <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                        {duplicateStatus ? (
+                          <EventBookingDuplicateBadge status={duplicateStatus} />
+                        ) : null}
+                        {availabilityHint ? (
+                          <DjBookingAvailabilityBadge hint={availabilityHint} />
+                        ) : null}
+                      </div>
                     ) : null}
                   </div>
                 </button>
                 {selected ? (
-                  <div className="mt-2 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated p-3">
+                  <div className="mt-2 rounded-xl bg-ftc-bg-elevated/70 p-3">
                     <EventDjSendOfferControls
                       offer={offer}
                       disabled={disabled || sending}
@@ -139,21 +214,21 @@ export default function SendBookingRequestsPanel({
       )}
 
       {draft.allSelectedAreDuplicates ? (
-        <p className="text-xs text-ftc-text-muted">
+        <p className="text-xs leading-relaxed text-ftc-text-muted">
           Selected DJs already have a request for this event.
         </p>
       ) : null}
 
       {draft.sendOfferSummary.length > 0 ? (
-        <div className="rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated p-4">
-          <p className="text-xs font-semibold uppercase tracking-wide text-ftc-text-muted">
+        <div className="rounded-xl bg-ftc-bg-elevated/70 p-3.5">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted">
             Send summary
           </p>
-          <ul className="mt-3 space-y-2">
+          <ul className="mt-2.5 space-y-2">
             {draft.sendOfferSummary.map((item) => (
               <li
                 key={item.djId}
-                className="flex items-start justify-between gap-3 text-sm"
+                className="flex items-start justify-between gap-3 text-sm leading-snug"
               >
                 <span className="min-w-0 truncate font-medium text-ftc-text">{item.name}</span>
                 <span className="shrink-0 text-right text-ftc-text-secondary">
@@ -163,7 +238,7 @@ export default function SendBookingRequestsPanel({
             ))}
           </ul>
           {draft.hasInvalidFixedOffers ? (
-            <p className="mt-3 text-xs text-[var(--ftc-color-warning)]">
+            <p className="mt-2.5 text-xs leading-relaxed text-[var(--ftc-color-warning)]">
               Enter a whole-dollar amount for each fixed offer before sending
             </p>
           ) : null}
@@ -177,7 +252,7 @@ export default function SendBookingRequestsPanel({
           disabled={
             disabled ||
             sending ||
-            draft.sendableSelectedDjIds.length === 0 ||
+            sendableCount === 0 ||
             draft.hasInvalidFixedOffers
           }
           className="w-full ftc-btn-primary px-5 py-3 text-sm uppercase tracking-wide disabled:cursor-not-allowed disabled:opacity-50"
