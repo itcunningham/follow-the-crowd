@@ -403,7 +403,7 @@ function EventsPageClientView({
   );
   const filteredEvents = isHistoryTab ? historyEvents : upcomingEvents;
   const historyBulkManage = useHistoryBulkManage(
-    isPlanner && isHistoryTab ? removableHistoryEvents : [],
+    isPlanner && isHistoryTab ? historyEvents : [],
   );
   const historyLoadSettled = eventsListReady && !loadingEvents;
   const showHistoryTrashButton =
