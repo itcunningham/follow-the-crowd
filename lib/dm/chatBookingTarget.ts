@@ -7,6 +7,10 @@ import { CHAT_MESSAGE_ID_ATTR } from "@/lib/useChatScroll";
 
 export const CHAT_BOOKING_REQUEST_ID_ATTR = "data-chat-booking-request-id";
 
+export const DM_BOOKING_FOCUS_SCROLL_ONLY = "scroll-only";
+
+export type DmBookingFocusMode = "scroll-and-highlight" | "scroll-only";
+
 const BOOKING_TARGET_SCROLL_MAX_ATTEMPTS = 12;
 const BOOKING_TARGET_SCROLL_RETRY_MS = 50;
 
@@ -18,8 +22,40 @@ export function parseDmBookingRequestIdParam(
   return trimmed ? trimmed : null;
 }
 
+export function parseDmBookingFocusMode(
+  value: string | null | undefined,
+): DmBookingFocusMode {
+  return value?.trim() === DM_BOOKING_FOCUS_SCROLL_ONLY
+    ? "scroll-only"
+    : "scroll-and-highlight";
+}
+
+export type DmBookingTarget = {
+  scrollTargetBookingRequestId: string | null;
+  highlightTargetBookingRequestId: string | null;
+  bookingFocusMode: DmBookingFocusMode;
+};
+
+export function resolveDmBookingTarget(getParam: (key: string) => string | null): DmBookingTarget {
+  const scrollTargetBookingRequestId = parseDmBookingRequestIdParam(
+    getParam("bookingRequestId"),
+  );
+  const bookingFocusMode = parseDmBookingFocusMode(getParam("bookingFocus"));
+  const highlightTargetBookingRequestId =
+    scrollTargetBookingRequestId && bookingFocusMode !== "scroll-only"
+      ? scrollTargetBookingRequestId
+      : null;
+
+  return {
+    scrollTargetBookingRequestId,
+    highlightTargetBookingRequestId,
+    bookingFocusMode,
+  };
+}
+
 type UseChatBookingTargetScrollOptions = {
-  bookingRequestId: string | null;
+  scrollTargetBookingRequestId: string | null;
+  highlightTargetBookingRequestId: string | null;
   loading: boolean;
   messages: BookingRequestMessageSource[];
   scrollRef: RefObject<HTMLDivElement | null>;
@@ -28,7 +64,8 @@ type UseChatBookingTargetScrollOptions = {
 };
 
 export function useChatBookingTargetScroll({
-  bookingRequestId,
+  scrollTargetBookingRequestId,
+  highlightTargetBookingRequestId,
   loading,
   messages,
   scrollRef,
@@ -37,10 +74,10 @@ export function useChatBookingTargetScroll({
 }: UseChatBookingTargetScrollOptions) {
   const targetMessageId = useMemo(
     () =>
-      bookingRequestId
-        ? findDmMessageIdForBookingRequest(messages, bookingRequestId)
+      scrollTargetBookingRequestId
+        ? findDmMessageIdForBookingRequest(messages, scrollTargetBookingRequestId)
         : null,
-    [bookingRequestId, messages],
+    [messages, scrollTargetBookingRequestId],
   );
   const scrollAttemptRef = useRef(0);
   const completedRef = useRef(false);
@@ -48,11 +85,11 @@ export function useChatBookingTargetScroll({
   useEffect(() => {
     scrollAttemptRef.current = 0;
     completedRef.current = false;
-    suppressAutoScrollRef.current = Boolean(bookingRequestId);
-  }, [bookingRequestId, suppressAutoScrollRef]);
+    suppressAutoScrollRef.current = Boolean(scrollTargetBookingRequestId);
+  }, [scrollTargetBookingRequestId, suppressAutoScrollRef]);
 
   useEffect(() => {
-    if (!bookingRequestId || loading || completedRef.current) {
+    if (!scrollTargetBookingRequestId || loading || completedRef.current) {
       return;
     }
 
@@ -90,7 +127,11 @@ export function useChatBookingTargetScroll({
       }
 
       messageElement.scrollIntoView({ block: "center", behavior: "auto" });
-      highlightBookingFocus(targetMessageId);
+
+      if (highlightTargetBookingRequestId) {
+        highlightBookingFocus(targetMessageId);
+      }
+
       releaseAutoScrollSuppression();
       return true;
     };
@@ -130,10 +171,11 @@ export function useChatBookingTargetScroll({
       }
     };
   }, [
-    bookingRequestId,
     highlightBookingFocus,
+    highlightTargetBookingRequestId,
     loading,
     scrollRef,
+    scrollTargetBookingRequestId,
     suppressAutoScrollRef,
     targetMessageId,
   ]);

@@ -2,6 +2,7 @@ import {
   buildCalendarOriginReturnHref,
   parseCalendarOriginFromEventDetail,
 } from "@/lib/calendar";
+import { DM_BOOKING_FOCUS_SCROLL_ONLY } from "@/lib/dm/chatBookingTarget";
 
 export type DmThreadBackContext = {
   from?: string | null;
@@ -74,7 +75,12 @@ export function resolveDmThreadBackHref(context: DmThreadBackContext): string {
 
 export function buildDmThreadHref(
   conversationId: string,
-  options?: { from?: string; tab?: string; bookingRequestId?: string },
+  options?: {
+    from?: string;
+    tab?: string;
+    bookingRequestId?: string;
+    bookingFocus?: typeof DM_BOOKING_FOCUS_SCROLL_ONLY;
+  },
 ): string {
   const params = new URLSearchParams();
 
@@ -88,6 +94,10 @@ export function buildDmThreadHref(
 
   if (options?.bookingRequestId?.trim()) {
     params.set("bookingRequestId", options.bookingRequestId.trim());
+  }
+
+  if (options?.bookingFocus === DM_BOOKING_FOCUS_SCROLL_ONLY) {
+    params.set("bookingFocus", DM_BOOKING_FOCUS_SCROLL_ONLY);
   }
 
   const query = params.toString();

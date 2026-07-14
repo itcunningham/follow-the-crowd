@@ -1,5 +1,6 @@
 import { buildGigsListHref, parseDjGigsListTab } from "@/lib/bookings/gigsListNavigation";
 import { buildDmThreadHref } from "@/lib/dm/threadNavigation";
+import { DM_BOOKING_FOCUS_SCROLL_ONLY } from "@/lib/dm/chatBookingTarget";
 import {
   buildCalendarOriginReturnHref,
   buildPlannerCalendarHref,
@@ -114,6 +115,7 @@ export function resolveEventDetailBackHref(
 
     return buildDmThreadHref(dmConversationId, {
       bookingRequestId: bookingRequestId || undefined,
+      bookingFocus: bookingRequestId ? DM_BOOKING_FOCUS_SCROLL_ONLY : undefined,
     });
   }
 

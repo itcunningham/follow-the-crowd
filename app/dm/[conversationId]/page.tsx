@@ -81,7 +81,7 @@ import { getChatNewMessageHighlightClass, logChatHighlightRender } from "@/lib/c
 import { useChatNewMessageHighlight } from "@/lib/useChatNewMessageHighlight";
 import { useChatBookingFocusHighlight } from "@/lib/useChatBookingFocusHighlight";
 import {
-  parseDmBookingRequestIdParam,
+  resolveDmBookingTarget,
   useChatBookingTargetScroll,
   CHAT_BOOKING_REQUEST_ID_ATTR,
 } from "@/lib/dm/chatBookingTarget";
@@ -143,8 +143,39 @@ export default function DmChatPage() {
     calendarView: searchParams.get("calendarView"),
     calendarMonth: searchParams.get("calendarMonth"),
   });
-  const bookingRequestId = parseDmBookingRequestIdParam(searchParams.get("bookingRequestId"));
-  const suppressAutoScrollRef = useRef(Boolean(bookingRequestId));
+  const bookingTargetRef = useRef<{
+    conversationId: string;
+    bookingRequestId: string;
+    target: ReturnType<typeof resolveDmBookingTarget>;
+  } | null>(null);
+  const currentBookingRequestId = searchParams.get("bookingRequestId")?.trim() || null;
+
+  if (bookingTargetRef.current?.conversationId !== conversationId) {
+    bookingTargetRef.current = null;
+  }
+
+  if (currentBookingRequestId) {
+    if (
+      !bookingTargetRef.current ||
+      bookingTargetRef.current.bookingRequestId !== currentBookingRequestId
+    ) {
+      bookingTargetRef.current = {
+        conversationId,
+        bookingRequestId: currentBookingRequestId,
+        target: resolveDmBookingTarget((key) => searchParams.get(key)),
+      };
+    }
+  } else {
+    bookingTargetRef.current = null;
+  }
+
+  const { scrollTargetBookingRequestId, highlightTargetBookingRequestId } =
+    bookingTargetRef.current?.target ?? {
+      scrollTargetBookingRequestId: null,
+      highlightTargetBookingRequestId: null,
+      bookingFocusMode: "scroll-and-highlight" as const,
+    };
+  const suppressAutoScrollRef = useRef(Boolean(scrollTargetBookingRequestId));
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [attachments, setAttachments] = useState<DmMessageAttachment[]>([]);
@@ -211,7 +242,8 @@ export default function DmChatPage() {
   const { highlightBookingFocus, getMessageBookingFocusPhase } = useChatBookingFocusHighlight();
 
   useChatBookingTargetScroll({
-    bookingRequestId,
+    scrollTargetBookingRequestId,
+    highlightTargetBookingRequestId,
     loading,
     messages,
     scrollRef,
