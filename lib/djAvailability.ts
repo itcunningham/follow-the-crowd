@@ -4,7 +4,7 @@ import {
   FTC_STATUS_MUTED,
   FTC_STATUS_PRIMARY,
   FTC_STATUS_SUCCESS,
-  FTC_STATUS_WARNING,
+  FTC_STATUS_PENDING,
   FTC_STATUS_ACCEPTED_DOT,
   FTC_STATUS_PENDING_DOT,
   FTC_STATUS_TODAY_DOT,
@@ -102,7 +102,7 @@ export function getDjPlannerAvailabilityBadgeClass(status: DjPlannerAvailability
     case "unavailable":
       return FTC_STATUS_DANGER;
     case "tentative":
-      return FTC_STATUS_WARNING;
+      return FTC_STATUS_UPCOMING;
     case "unknown":
       return FTC_STATUS_MUTED;
   }
@@ -115,7 +115,7 @@ export function getDjAvailabilityStatusBadgeClass(status: DjAvailabilityStatus):
     case "unavailable":
       return FTC_STATUS_DANGER;
     case "tentative":
-      return FTC_STATUS_WARNING;
+      return FTC_STATUS_UPCOMING;
   }
 }
 
@@ -160,11 +160,11 @@ export function getDjCalendarLegendDotClass(kind: DjCalendarLegendKind): string 
     case "available":
       return FTC_STATUS_TODAY_DOT;
     case "tentative":
-      return FTC_STATUS_PENDING_DOT;
+      return FTC_STATUS_UPCOMING_DOT;
     case "unavailable":
       return "bg-[var(--ftc-color-danger)]";
     case "pending_request":
-      return FTC_STATUS_UPCOMING_DOT;
+      return FTC_STATUS_PENDING_DOT;
     case "booked":
       return FTC_STATUS_ACCEPTED_DOT;
   }
@@ -423,7 +423,7 @@ export function groupAvailabilityEntriesByDate(
 
 export function getDjBookingStatusBadgeClass(status: "pending" | "accepted"): string {
   if (status === "pending") {
-    return FTC_STATUS_UPCOMING;
+    return FTC_STATUS_PENDING;
   }
 
   return FTC_STATUS_SUCCESS;

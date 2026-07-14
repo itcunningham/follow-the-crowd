@@ -768,7 +768,7 @@ html {
 
 .ftc-filter-pill.ftc-gig-availability-pill-tentative {
   border: 0;
-  background: var(--ftc-color-warning);
+  background: var(--ftc-color-upcoming);
   color: var(--ftc-color-text-inverse);
 }
 
@@ -791,7 +791,7 @@ html {
   }
 
   .ftc-filter-pill.ftc-gig-availability-pill-tentative:hover {
-    background: var(--ftc-color-warning);
+    background: var(--ftc-color-upcoming);
   }
 
   .ftc-filter-pill.ftc-gig-availability-pill-unavailable:hover {

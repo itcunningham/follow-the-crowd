@@ -45,12 +45,12 @@ export function getFlatAvailabilityFillClass(
     case "available":
       return FTC_STATUS_PRIMARY;
     case "tentative":
-      return FTC_STATUS_WARNING;
+      return FTC_STATUS_UPCOMING;
     case "unavailable":
       return FTC_STATUS_DANGER;
   }
 }
 
 export function getFlatBookingFillClass(status: "pending" | "accepted"): string {
-  return status === "pending" ? FTC_STATUS_UPCOMING : FTC_STATUS_ACCEPTED;
+  return status === "pending" ? FTC_STATUS_PENDING : FTC_STATUS_ACCEPTED;
 }
