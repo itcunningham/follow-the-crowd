@@ -104,6 +104,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `64cd48d` — harden Gigs calendar booking cards against iOS Safari link preview
 - `62e3578` — fix iOS Safari link preview on Gigs mobile booking cards
 - `12bf20a` — calendar mobile polish pass (shared motion, hierarchy, compact cards)
 - `a650ff2` — tighten Gigs Calendar legend-to-strip gap to mt-1
