@@ -142,24 +142,24 @@ function EventListItemSkeleton({ showPlannerStats = false }: { showPlannerStats?
   return (
     <div className="ftc-card block p-4 sm:p-5">
       <div className="flex items-start gap-4">
-        <SkeletonBlock className="h-[5.5rem] w-[4.375rem] shrink-0 rounded-xl" />
+        <SkeletonBlock className="h-[4.75rem] w-[3.75rem] shrink-0 rounded-xl" />
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <SkeletonBlock className="h-7 w-3/5 max-w-[12rem]" />
-            <SkeletonBlock className="h-5 w-16 rounded-full" />
+            <SkeletonBlock className="h-4 w-14 rounded-full" />
           </div>
           <SkeletonBlock className="mt-2 h-4 w-4/5 max-w-[15rem]" />
           <SkeletonBlock className="mt-1 h-4 w-1/2 max-w-[8rem]" />
           {showPlannerStats ? (
-            <div className="mt-3 flex flex-wrap gap-2">
-              <SkeletonBlock className="h-6 w-[4.75rem] rounded-full" />
-              <SkeletonBlock className="h-6 w-[4.75rem] rounded-full" />
-              <SkeletonBlock className="h-6 w-[5rem] rounded-full" />
-              <SkeletonBlock className="h-6 w-[4.75rem] rounded-full" />
+            <div className="mt-2.5 flex flex-wrap gap-1.5">
+              <SkeletonBlock className="h-5 w-[4.25rem] rounded-full" />
+              <SkeletonBlock className="h-5 w-[4.25rem] rounded-full" />
+              <SkeletonBlock className="h-5 w-[4.5rem] rounded-full" />
+              <SkeletonBlock className="h-5 w-[4.25rem] rounded-full" />
             </div>
           ) : null}
         </div>
-        <SkeletonBlock className="mt-1 h-5 w-5 shrink-0 rounded-md" />
+        <SkeletonBlock className="mt-0.5 h-4 w-4 shrink-0 rounded-md" />
       </div>
     </div>
   );

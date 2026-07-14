@@ -13,7 +13,7 @@ import {
 export type EventArtworkTileSize = "list" | "context" | "inbox" | "hero";
 
 const SIZE_CLASSES: Record<EventArtworkTileSize, string> = {
-  list: "h-[5.5rem] w-[4.375rem] rounded-xl text-sm",
+  list: "h-[4.75rem] w-[3.75rem] rounded-xl text-xs",
   context: "h-11 w-11 rounded-xl text-[10px]",
   inbox: "h-12 w-12 rounded-xl text-xs",
   hero: "h-16 w-16 rounded-2xl text-lg sm:h-20 sm:w-20 sm:text-xl",

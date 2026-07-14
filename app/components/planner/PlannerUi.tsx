@@ -295,10 +295,23 @@ export function PlannerFilterPills<T extends string>({
   );
 }
 
-export function PlannerStatChip({ label, value }: { label: string; value: number }) {
+export function PlannerStatChip({
+  label,
+  value,
+  variant = "default",
+}: {
+  label: string;
+  value: number;
+  variant?: "default" | "compact";
+}) {
+  const className =
+    variant === "compact"
+      ? "rounded-full border border-ftc-border-subtle bg-ftc-bg-input px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-ftc-text-muted"
+      : "ftc-stat-chip";
+
   return (
-    <span className="ftc-stat-chip">
-      {label}: <span className="text-ftc-text">{value}</span>
+    <span className={className}>
+      {label}: <span className={variant === "compact" ? "text-ftc-text-secondary" : "text-ftc-text"}>{value}</span>
     </span>
   );
 }

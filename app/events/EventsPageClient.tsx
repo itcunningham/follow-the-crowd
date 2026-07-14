@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
 import { useGuardProfile } from "@/app/components/GuardProfileContext";
@@ -149,6 +149,80 @@ function getCalendarBootstrapState(
   return resolveCalendarCreateBootstrapState(
     initialCreate ?? locationParams.create,
     initialEventDate ?? locationParams.eventDate,
+  );
+}
+
+function EventsListCardChevron() {
+  return (
+    <span aria-hidden="true" className="mt-0.5 shrink-0 text-ftc-text-muted">
+      <svg
+        viewBox="0 0 24 24"
+        className="h-4 w-4"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M9 6l6 6-6 6" />
+      </svg>
+    </span>
+  );
+}
+
+function EventsListCardContent({
+  event,
+  cancelled,
+  isPlanner,
+  leading,
+  showChevron = true,
+}: {
+  event: EventWithLineupStats;
+  cancelled: boolean;
+  isPlanner: boolean;
+  leading?: ReactNode;
+  showChevron?: boolean;
+}) {
+  const titleClassName = cancelled ? "text-ftc-text-secondary" : "text-ftc-text";
+  const metaClassName = cancelled ? "text-ftc-text-muted" : "text-ftc-text-secondary";
+
+  return (
+    <div className="flex items-start gap-3.5 sm:gap-4">
+      {leading}
+      <EventCoverImageListThumb
+        eventName={event.name}
+        coverImageUrl={event.cover_image_url}
+        fallbackColour={event.fallback_colour}
+      />
+      <div className="min-w-0 flex-1">
+        <div className="flex items-start justify-between gap-2">
+          <h3
+            className={`min-w-0 flex-1 text-[1.0625rem] font-bold leading-snug sm:text-lg ${titleClassName}`}
+          >
+            {event.name}
+          </h3>
+          <EventDateStatusBadge
+            eventDate={event.event_date}
+            setTime={event.set_time}
+            status={event.status}
+            variant="compact"
+          />
+        </div>
+        <p className={`mt-1.5 text-sm ${metaClassName}`}>
+          {event.venue} · {formatDisplayEventDate(event.event_date)}
+        </p>
+        <p className="mt-1 text-sm text-ftc-text-muted">{event.set_time}</p>
+        {isPlanner ? (
+          <div className="mt-2.5 flex flex-wrap gap-1.5">
+            <PlannerStatChip label="Invited" value={event.lineupStats.total} variant="compact" />
+            <PlannerStatChip label="Pending" value={event.lineupStats.pending} variant="compact" />
+            <PlannerStatChip label="Accepted" value={event.lineupStats.accepted} variant="compact" />
+            <PlannerStatChip label="Declined" value={event.lineupStats.declined} variant="compact" />
+          </div>
+        ) : null}
+      </div>
+      {showChevron ? <EventsListCardChevron /> : null}
+    </div>
   );
 }
 
@@ -1174,40 +1248,19 @@ function EventsPageClientView({
                           cancelled ? "ftc-event-card-cancelled" : ""
                         } ${isSelected ? "ring-1 ring-ftc-primary/40" : ""}`}
                       >
-                        <div className="flex w-full items-start gap-4">
-                          <HistorySelectionCheckbox
-                            checked={isSelected}
-                            label={selectionLabel}
-                            presentational
-                          />
-                          <EventCoverImageListThumb
-                            eventName={event.name}
-                            coverImageUrl={event.cover_image_url}
-                            fallbackColour={event.fallback_colour}
-                          />
-                          <div className="min-w-0 flex-1">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <h3 className="text-lg font-semibold text-ftc-text-secondary">
-                                {event.name}
-                              </h3>
-                              <EventDateStatusBadge
-                                eventDate={event.event_date}
-                                setTime={event.set_time}
-                                status={event.status}
-                              />
-                            </div>
-                            <p className="mt-2 text-sm text-ftc-text-muted">
-                              {event.venue} · {formatDisplayEventDate(event.event_date)}
-                            </p>
-                            <p className="mt-1 text-sm text-ftc-text-muted">{event.set_time}</p>
-                            <div className="mt-3 flex flex-wrap gap-2">
-                              <PlannerStatChip label="Invited" value={event.lineupStats.total} />
-                              <PlannerStatChip label="Pending" value={event.lineupStats.pending} />
-                              <PlannerStatChip label="Accepted" value={event.lineupStats.accepted} />
-                              <PlannerStatChip label="Declined" value={event.lineupStats.declined} />
-                            </div>
-                          </div>
-                        </div>
+                        <EventsListCardContent
+                          event={event}
+                          cancelled={cancelled}
+                          isPlanner={isPlanner}
+                          showChevron={false}
+                          leading={
+                            <HistorySelectionCheckbox
+                              checked={isSelected}
+                              label={selectionLabel}
+                              presentational
+                            />
+                          }
+                        />
                       </button>
                     </li>
                   );
@@ -1217,6 +1270,7 @@ function EventsPageClientView({
                 <li key={event.id}>
                   <button
                     type="button"
+                    aria-label={`View ${event.name}`}
                     onClick={() => {
                       seedEventOwnerId(event.id, event.owner_id);
                       prepareEventsListEventNavigation();
@@ -1226,59 +1280,11 @@ function EventsPageClientView({
                       cancelled ? "ftc-event-card-cancelled" : ""
                     }`}
                   >
-                    <div className="flex items-start gap-4">
-                      <EventCoverImageListThumb
-                        eventName={event.name}
-                        coverImageUrl={event.cover_image_url}
-                        fallbackColour={event.fallback_colour}
-                      />
-                      <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <h3
-                            className={`text-lg font-semibold ${
-                              cancelled ? "text-ftc-text-secondary" : "text-ftc-text"
-                            }`}
-                          >
-                            {event.name}
-                          </h3>
-                          <EventDateStatusBadge
-                            eventDate={event.event_date}
-                            setTime={event.set_time}
-                            status={event.status}
-                          />
-                        </div>
-                        <p className={`mt-2 text-sm ${cancelled ? "text-ftc-text-muted" : "text-ftc-text-secondary"}`}>
-                          {event.venue} · {formatDisplayEventDate(event.event_date)}
-                        </p>
-                        <p className={`mt-1 text-sm ${cancelled ? "text-ftc-text-muted" : "text-ftc-text-muted"}`}>
-                          {event.set_time}
-                        </p>
-                        {isPlanner ? (
-                          <div className="mt-3 flex flex-wrap gap-2">
-                            <PlannerStatChip label="Invited" value={event.lineupStats.total} />
-                            <PlannerStatChip label="Pending" value={event.lineupStats.pending} />
-                            <PlannerStatChip label="Accepted" value={event.lineupStats.accepted} />
-                            <PlannerStatChip label="Declined" value={event.lineupStats.declined} />
-                          </div>
-                        ) : null}
-                      </div>
-                      <span
-                        aria-hidden="true"
-                        className="mt-1 shrink-0 text-ftc-text-muted"
-                      >
-                        <svg
-                          viewBox="0 0 24 24"
-                          className="h-5 w-5"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="1.75"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        >
-                          <path d="M9 6l6 6-6 6" />
-                        </svg>
-                      </span>
-                    </div>
+                    <EventsListCardContent
+                      event={event}
+                      cancelled={cancelled}
+                      isPlanner={isPlanner}
+                    />
                   </button>
                 </li>
                 );
