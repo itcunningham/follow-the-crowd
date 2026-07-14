@@ -114,7 +114,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
-- `de71cb8` — unify Event Details visual tokens (sections, cards, buttons, badges)
+- `710b263` — unify Event Details visual tokens (sections, cards, buttons, badges)
 - `46fa81b` — polish Invite DJs sheet selection, hierarchy, and confirm button
 - `7625227` — fix invisible booking deep-link focus ring (absolute overlay, active/fading phases)
 - `c9c9373` — polish booking deep-link focus ring (full card, 2s hold + 1s fade)
