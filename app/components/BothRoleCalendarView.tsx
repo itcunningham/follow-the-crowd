@@ -2,14 +2,12 @@
 
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import CalendarMonthNav, {
-  GIG_CALENDAR_SECONDARY_ROW_CLASS,
-} from "@/app/components/CalendarMonthNav";
 import DjAvailabilityCalendar, {
   DjAvailabilityCalendarLegend,
 } from "@/app/components/DjAvailabilityCalendar";
 import PlannerCalendar, { PlannerCalendarLegend } from "@/app/components/PlannerCalendar";
 import PlannerCalendarMobileDateStrip from "@/app/components/PlannerCalendarMobileDateStrip";
+import CalendarMobileChrome from "@/app/components/calendar/CalendarMobileChrome";
 import type { CalendarViewTab } from "@/app/components/CalendarViewTabs";
 import { PLANNER_WORKSPACE_PRIMARY_SURFACE_CLASS } from "@/app/components/planner/PlannerWorkspaceLayout";
 import {
@@ -25,8 +23,6 @@ import type {
   CalendarMobileStripConfig,
   CalendarSharedViewState,
 } from "@/lib/calendarDualView";
-
-const SHARED_LEGEND_MIN_HEIGHT_CLASS = "min-h-[3.25rem] md:min-h-[1.75rem]";
 
 type BothRoleCalendarViewProps = {
   activeTab: CalendarViewTab;
@@ -158,39 +154,35 @@ export default function BothRoleCalendarView({ activeTab }: BothRoleCalendarView
       )}
 
       <div className="order-2 w-full shrink-0">
-        <div className="relative mt-4">
-          <CalendarMonthNav
-            monthStart={monthStart}
-            onMonthStartChange={handleMonthStartChange}
-            onBeforeNavigate={activeTab === "dj" ? handleDjMonthNavBeforeNavigate : undefined}
-            getMonthActivityDotClass={resolveMonthActivityDotClass}
-            overlay={activeTab === "dj" ? djMonthNavChrome?.overlay : undefined}
-          />
-          {activeTab === "dj" ? (
-            <div className={GIG_CALENDAR_SECONDARY_ROW_CLASS}>
-              {djMonthNavChrome?.secondaryRowAction}
-            </div>
-          ) : null}
-        </div>
-
-        <div className={`mt-3 ${SHARED_LEGEND_MIN_HEIGHT_CLASS}`}>
-          {activeTab === "planner" ? (
-            <PlannerCalendarLegend />
-          ) : (
-            <DjAvailabilityCalendarLegend />
-          )}
-        </div>
-
-        <div className="mt-4 md:hidden">
-          <PlannerCalendarMobileDateStrip
-            selectedDate={selectedDate}
-            onSelectDate={activeStripConfig.onSelectDate ?? handleSelectDate}
-            monthStart={monthStart}
-            itemsByDate={activeStripConfig.itemsByDate}
-            getDateMarker={activeStripConfig.getDateMarker}
-            isDateHighlighted={activeStripConfig.isDateHighlighted}
-          />
-        </div>
+        <CalendarMobileChrome
+          monthNav={{
+            monthStart,
+            onMonthStartChange: handleMonthStartChange,
+            onBeforeNavigate: activeTab === "dj" ? handleDjMonthNavBeforeNavigate : undefined,
+            getMonthActivityDotClass: resolveMonthActivityDotClass,
+            overlay: activeTab === "dj" ? djMonthNavChrome?.overlay : undefined,
+          }}
+          secondaryRowAction={
+            activeTab === "dj" ? djMonthNavChrome?.secondaryRowAction : undefined
+          }
+          legend={
+            activeTab === "planner" ? (
+              <PlannerCalendarLegend />
+            ) : (
+              <DjAvailabilityCalendarLegend />
+            )
+          }
+          dateStrip={
+            <PlannerCalendarMobileDateStrip
+              selectedDate={selectedDate}
+              onSelectDate={activeStripConfig.onSelectDate ?? handleSelectDate}
+              monthStart={monthStart}
+              itemsByDate={activeStripConfig.itemsByDate}
+              getDateMarker={activeStripConfig.getDateMarker}
+              isDateHighlighted={activeStripConfig.isDateHighlighted}
+            />
+          }
+        />
       </div>
     </section>
   );

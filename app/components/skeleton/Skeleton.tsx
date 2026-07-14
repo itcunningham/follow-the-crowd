@@ -9,6 +9,11 @@ import {
   GIG_CALENDAR_SECONDARY_ROW_CLASS,
 } from "@/app/components/CalendarMonthNav";
 import {
+  CALENDAR_MOBILE_CHROME_DAY_STRIP_CLASS,
+  CALENDAR_MOBILE_CHROME_LEGEND_CLASS,
+  CALENDAR_MOBILE_CHROME_MONTH_NAV_CLASS,
+} from "@/app/components/calendar/CalendarMobileChrome";
+import {
   EventDetailEditHeaderSlot,
   EventDetailOverlayButton,
 } from "@/app/components/event-detail/EventDetailLayout";
@@ -917,6 +922,42 @@ function GigCalendarSecondaryRowSkeleton() {
   );
 }
 
+function CalendarMobileDayStripSkeleton() {
+  return (
+    <div className="-mx-4 flex gap-1 px-4">
+      {Array.from({ length: 7 }, (_, index) => (
+        <SkeletonBlock
+          key={index}
+          className="h-[3.75rem] w-[calc((100%-1.5rem)/7)] min-w-[calc((100%-1.5rem)/7)] shrink-0 rounded-xl"
+        />
+      ))}
+    </div>
+  );
+}
+
+export function CalendarMobileChromeSkeleton({
+  legend,
+  includeSecondaryRow = false,
+}: {
+  legend: ReactNode;
+  includeSecondaryRow?: boolean;
+}) {
+  return (
+    <>
+      <div className={CALENDAR_MOBILE_CHROME_MONTH_NAV_CLASS}>
+        <CalendarMonthNavSkeleton />
+        {includeSecondaryRow ? <GigCalendarSecondaryRowSkeleton /> : null}
+      </div>
+
+      <div className={CALENDAR_MOBILE_CHROME_LEGEND_CLASS}>{legend}</div>
+
+      <div className={CALENDAR_MOBILE_CHROME_DAY_STRIP_CLASS}>
+        <CalendarMobileDayStripSkeleton />
+      </div>
+    </>
+  );
+}
+
 function PlannerCalendarMobileLegendSkeleton() {
   return (
     <div
@@ -975,16 +1016,7 @@ function PlannerCalendarMobileAgendaPanelSkeleton() {
 
 function PlannerCalendarMobileAgendaSkeleton() {
   return (
-    <div aria-hidden="true" className="mt-4 md:hidden">
-      <div className="-mx-4 flex gap-1 px-4">
-        {Array.from({ length: 7 }, (_, index) => (
-          <SkeletonBlock
-            key={index}
-            className="h-[3.75rem] w-[calc((100%-1.5rem)/7)] min-w-[calc((100%-1.5rem)/7)] shrink-0 rounded-xl"
-          />
-        ))}
-      </div>
-
+    <div aria-hidden="true" className="md:hidden">
       <div className="mt-4">
         <SkeletonBlock className="h-5 w-44 max-w-full" />
         <div className="mt-3 flex items-center gap-2">
@@ -1037,13 +1069,7 @@ export function PlannerCalendarBodySkeleton() {
 export function PlannerCalendarContentSkeleton() {
   return (
     <div aria-busy="true" aria-label="Loading calendar" className="contents">
-      <div className="relative mt-4">
-        <CalendarMonthNavSkeleton />
-      </div>
-
-      <div className="mt-3">
-        <PlannerCalendarLegendSkeleton />
-      </div>
+      <CalendarMobileChromeSkeleton legend={<PlannerCalendarLegendSkeleton />} />
 
       <PlannerCalendarMobileAgendaSkeleton />
       <PlannerCalendarDesktopGridSkeleton />
@@ -1090,16 +1116,7 @@ function DjCalendarMobileAgendaPanelSkeleton() {
 
 function DjCalendarMobileAgendaSkeleton() {
   return (
-    <div aria-hidden="true" className="mt-4 md:hidden">
-      <div className="-mx-4 flex gap-1 px-4">
-        {Array.from({ length: 7 }, (_, index) => (
-          <SkeletonBlock
-            key={index}
-            className="h-[3.75rem] w-[calc((100%-1.5rem)/7)] min-w-[calc((100%-1.5rem)/7)] shrink-0 rounded-xl"
-          />
-        ))}
-      </div>
-
+    <div aria-hidden="true" className="md:hidden">
       <div className="mt-4">
         <SkeletonBlock className="h-5 w-44 max-w-full" />
       </div>
@@ -1155,14 +1172,10 @@ export function DjCalendarBodySkeleton() {
 export function DjCalendarContentSkeleton() {
   return (
     <div aria-busy="true" aria-label="Loading calendar" className="contents">
-      <div className="relative mt-4">
-        <CalendarMonthNavSkeleton />
-        <GigCalendarSecondaryRowSkeleton />
-      </div>
-
-      <div className="mt-3">
-        <DjCalendarLegendSkeleton />
-      </div>
+      <CalendarMobileChromeSkeleton
+        legend={<DjCalendarLegendSkeleton />}
+        includeSecondaryRow
+      />
 
       <DjCalendarMobileAgendaSkeleton />
       <DjCalendarDesktopGridSkeleton />

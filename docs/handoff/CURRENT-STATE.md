@@ -38,7 +38,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 - **Cancelled events hidden** from calendar items, dots, and counts (History unchanged)
 - Agenda/grid ordering: booking priority then start time (`sortPlannerCalendarAgendaItems`)
 - Event cards: `Event Name · Venue Name` on one truncated line; coloured event accent bar
-- **Mobile legend placement:** status legend uses the same `mt-3` legend + `mt-4` day-strip spacing as the Gigs Calendar (`CalendarDotLegend`, `SHARED_LEGEND_MIN_HEIGHT_CLASS`); desktop badge legend unchanged below month nav
+- **Shared mobile chrome:** `CalendarMobileChrome` owns month nav, legend row, and day-strip spacing for Events and Gigs calendars (standalone + dual-mode); only legend content and optional secondary controls differ
 - Create-from-calendar: Save event + **Confirm N DJ(s)** invite flow
 - Today highlight on date strip; selected + today states on desktop grid cells
 

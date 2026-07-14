@@ -4,8 +4,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import CalendarMonthNav from "@/app/components/CalendarMonthNav";
 import CalendarDotLegend from "@/app/components/calendar/CalendarDotLegend";
+import CalendarMobileChrome from "@/app/components/calendar/CalendarMobileChrome";
 import PlannerCalendarActionButtons from "@/app/components/PlannerCalendarActionButtons";
 import PlannerCalendarDateActions from "@/app/components/PlannerCalendarDateActions";
 import PlannerCalendarMobileDateStrip from "@/app/components/PlannerCalendarMobileDateStrip";
@@ -239,7 +239,6 @@ function PlannerCalendarMobileAgenda({
   isTodayDate,
   isDateInViewingMonth,
   hasSavedEventPlans,
-  hideDateStrip = false,
 }: {
   monthStart: Date;
   selectedDate: Date;
@@ -248,7 +247,6 @@ function PlannerCalendarMobileAgenda({
   isTodayDate: (date: Date) => boolean;
   isDateInViewingMonth: (date: Date) => boolean;
   hasSavedEventPlans: boolean;
-  hideDateStrip?: boolean;
 }) {
   const agendaHeaderRef = useRef<HTMLDivElement>(null);
   const selectedDateKey = toDateKey(selectedDate);
@@ -290,16 +288,7 @@ function PlannerCalendarMobileAgenda({
     isDateKeyBeforeToday(selectedDateKey) && displayDateItems.length === 0;
 
   return (
-    <div className={hideDateStrip ? "md:hidden" : "mt-4 md:hidden"}>
-      {hideDateStrip ? null : (
-        <PlannerCalendarMobileDateStrip
-          selectedDate={selectedDate}
-          onSelectDate={onSelectDate}
-          monthStart={monthStart}
-          itemsByDate={itemsByDate}
-        />
-      )}
-
+    <div className="md:hidden">
       <div ref={agendaHeaderRef} className="mt-4">
         <h2 className="text-base font-semibold text-ftc-text">
           {formatPlannerAgendaDateLabel(selectedDate)}
@@ -637,19 +626,22 @@ export default function PlannerCalendar({
   ) : (
     <div className="transition-opacity duration-200 ease-out opacity-100 motion-reduce:transition-none">
       {isDual ? null : (
-        <>
-          <div className="relative mt-4">
-            <CalendarMonthNav
+        <CalendarMobileChrome
+          monthNav={{
+            monthStart,
+            onMonthStartChange: handleMonthStartChange,
+            getMonthActivityDotClass: getMonthActivityDotClass,
+          }}
+          legend={<PlannerCalendarLegend />}
+          dateStrip={
+            <PlannerCalendarMobileDateStrip
+              selectedDate={selectedDate}
+              onSelectDate={handleSelectDate}
               monthStart={monthStart}
-              onMonthStartChange={handleMonthStartChange}
-              getMonthActivityDotClass={getMonthActivityDotClass}
+              itemsByDate={itemsByDate}
             />
-          </div>
-
-          <div className="mt-3">
-            <PlannerCalendarLegend />
-          </div>
-        </>
+          }
+        />
       )}
 
       <PlannerCalendarMobileAgenda
@@ -660,7 +652,6 @@ export default function PlannerCalendar({
         isTodayDate={isTodayDate}
         isDateInViewingMonth={isDateInViewingMonth}
         hasSavedEventPlans={hasSavedEventPlans}
-        hideDateStrip={isDual}
       />
 
       <div className="mt-4 hidden rounded-2xl border border-ftc-border bg-ftc-bg-elevated/40 md:block">

@@ -16,10 +16,8 @@ import {
   FTC_CAL_CELL,
   FTC_STATUS_DANGER,
 } from "@/lib/ftcFlatStatus";
-import CalendarMonthNav, {
-  GIG_CALENDAR_SECONDARY_ROW_CLASS,
-} from "@/app/components/CalendarMonthNav";
 import CalendarDotLegend from "@/app/components/calendar/CalendarDotLegend";
+import CalendarMobileChrome from "@/app/components/calendar/CalendarMobileChrome";
 import PlannerCalendarMobileDateStrip from "@/app/components/PlannerCalendarMobileDateStrip";
 import {
   DjCalendarBodySkeleton,
@@ -590,7 +588,6 @@ type DjAvailabilityMobileAgendaProps = {
   onSelectDate: (date: Date) => void;
   onSetPersonalStatus: (dateKey: string, status: DjAvailabilityStatus) => void;
   onClearPersonalStatus: (dateKey: string) => void;
-  hideDateStrip?: boolean;
 };
 
 function DjAvailabilityMobileAgenda({
@@ -606,41 +603,13 @@ function DjAvailabilityMobileAgenda({
   onSelectDate,
   onSetPersonalStatus,
   onClearPersonalStatus,
-  hideDateStrip = false,
 }: DjAvailabilityMobileAgendaProps) {
   const selectedDateKey = toDateKey(selectedDate);
   const personalEntry = availabilityByDate.get(selectedDateKey);
   const dayBookings = bookingsByDate.get(selectedDateKey) ?? [];
 
   return (
-    <div className={hideDateStrip ? "md:hidden" : "mt-4 md:hidden"}>
-      {hideDateStrip ? null : (
-        <PlannerCalendarMobileDateStrip
-          selectedDate={selectedDate}
-          onSelectDate={onSelectDate}
-          monthStart={monthStart}
-          getDateMarker={(dateKey, isHighlighted) => {
-            const isBulkSelected = multiSelectMode && selectedDateKeys.has(dateKey);
-
-            return getDjAvailabilityDateStripMarker(
-              dateKey,
-              availabilityByDate,
-              bookingsByDate,
-              isHighlighted,
-              {
-                isSelected: isBulkSelected,
-                choice: isBulkSelected ? pendingBulkChoice : null,
-              },
-            );
-          }}
-          isDateHighlighted={(date) =>
-            multiSelectMode
-              ? selectedDateKeys.has(toDateKey(date))
-              : isSameDay(date, selectedDate)
-          }
-        />
-      )}
-
+    <div className="md:hidden">
       {multiSelectMode ? (
         <p className="mt-4 text-center text-sm text-ftc-text-muted">
           Tap dates on the strip to select them
@@ -1438,6 +1407,16 @@ export default function DjAvailabilityCalendar({
     router.push(resolveCalendarOriginEventHref(getBookingRequestHref(booking), calendarOrigin));
   }
 
+  const djMobileDateStrip = (
+    <PlannerCalendarMobileDateStrip
+      selectedDate={selectedDate}
+      onSelectDate={handleMobileSelectDate}
+      monthStart={monthStart}
+      getDateMarker={dualMobileStripConfig.getDateMarker}
+      isDateHighlighted={dualMobileStripConfig.isDateHighlighted}
+    />
+  );
+
   const calendarBody = loading ? (
     isDual ? (
       <DjCalendarBodySkeleton />
@@ -1447,35 +1426,30 @@ export default function DjAvailabilityCalendar({
   ) : (
     <div className="transition-opacity duration-200 ease-out opacity-100 motion-reduce:transition-none">
       {isDual ? null : (
-        <>
-          <div className="mt-4">
-            {error ? (
+        <CalendarMobileChrome
+          monthNav={{
+            monthStart,
+            onMonthStartChange: handleMonthStartChange,
+            onBeforeNavigate: () => {
+              closeCalendarOverlays();
+              exitMultiSelectMode();
+            },
+            getMonthActivityDotClass: getMonthActivityDotClass,
+            overlay: monthNavOverlay,
+          }}
+          monthNavPrefix={
+            error ? (
               <p role="alert" className="pointer-events-none mb-2 flex justify-center">
                 <span className="rounded-full border-0 bg-[var(--ftc-color-danger)] px-3 py-1 text-[11px] font-medium text-ftc-bg">
                   {error}
                 </span>
               </p>
-            ) : null}
-
-            <CalendarMonthNav
-              monthStart={monthStart}
-              onMonthStartChange={handleMonthStartChange}
-              onBeforeNavigate={() => {
-                closeCalendarOverlays();
-                exitMultiSelectMode();
-              }}
-              getMonthActivityDotClass={getMonthActivityDotClass}
-              overlay={monthNavOverlay}
-            />
-            {secondaryRowAction ? (
-              <div className={GIG_CALENDAR_SECONDARY_ROW_CLASS}>{secondaryRowAction}</div>
-            ) : null}
-          </div>
-
-          <div className="mt-3">
-            <DjAvailabilityCalendarLegend />
-          </div>
-        </>
+            ) : null
+          }
+          secondaryRowAction={secondaryRowAction}
+          legend={<DjAvailabilityCalendarLegend />}
+          dateStrip={djMobileDateStrip}
+        />
       )}
 
       <DjAvailabilityMobileAgenda
@@ -1491,7 +1465,6 @@ export default function DjAvailabilityCalendar({
         onSelectDate={handleMobileSelectDate}
         onSetPersonalStatus={(dateKey, status) => void handleSetPersonalStatus(dateKey, status)}
         onClearPersonalStatus={(dateKey) => void handleClearPersonalStatus(dateKey)}
-        hideDateStrip={isDual}
       />
 
       <div
