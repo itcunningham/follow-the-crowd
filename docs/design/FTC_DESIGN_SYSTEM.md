@@ -307,13 +307,11 @@ Shared pattern (History confirm, booking sheets, edit confirm):
 
 ---
 
-## History (archived) variant
+## History (Events tab)
 
-History list cards add `.ftc-event-card-history` (+ `--past` / `--cancelled` modifiers):
+History uses the **same list card component and layout** as Active (`EventsListCardContent`, `eventsListCardClassName`). The only per-card visual difference is the status badge (Past / Cancelled vs Upcoming / Today).
 
-- Subtle muted border/background — not washed-out opacity on whole card
-- Text stepped down via `--past` / `--cancelled` title/meta classes
-- **Cancelled badge stays full danger colour**
+Delete/archive selection mode reuses the same card shell with a leading checkbox instead of a chevron.
 
 ---
 

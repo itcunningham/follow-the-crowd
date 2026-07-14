@@ -94,7 +94,6 @@ import {
   getEventById,
   getEventsLoadErrorMessage,
   isEventCancelled,
-  isPlannerEventInHistoryTab,
   updateEvent,
   updateEventWithCover,
   type Event,
@@ -272,10 +271,6 @@ export default function EventDetailPage() {
   const canViewRunSheet = canOpenCrewChat;
   const canEditRunSheet = isOwner && isPlanner;
   const eventIsCancelled = event ? isEventCancelled(event) : false;
-  const isHistoryEventView = Boolean(
-    event &&
-      (searchParams.get("fromTab") === "history" || isPlannerEventInHistoryTab(event)),
-  );
   const hasLinkedBookings = lineup.length > 0;
   const canManageEventLifecycle = isOwner && isPlanner && !eventIsCancelled;
 
@@ -1320,9 +1315,7 @@ export default function EventDetailPage() {
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <EventDetailSectionTitle>Bookings</EventDetailSectionTitle>
-                  <div
-                    className={`flex flex-wrap gap-1.5 ${isHistoryEventView ? "mt-3" : "mt-2.5"}`}
-                  >
+                  <div className="mt-2.5 flex flex-wrap gap-1.5">
                     <PlannerStatChip label="Invited" value={lineupStats.total} variant="compact" />
                     <PlannerStatChip label="Pending" value={lineupStats.pending} variant="compact" />
                     <PlannerStatChip label="Accepted" value={lineupStats.accepted} variant="compact" />
@@ -1331,7 +1324,7 @@ export default function EventDetailPage() {
                 </div>
               </div>
 
-              <div className={isHistoryEventView ? "mt-3.5" : "mt-3"}>
+              <div className="mt-3">
                 <PlannerFilterPills
                   options={STATUS_FILTERS}
                   value={lineupFilter}
@@ -1345,7 +1338,7 @@ export default function EventDetailPage() {
                   message="No DJs invited yet, send booking requests to build your lineup"
                 />
               ) : (
-                <ul className={isHistoryEventView ? "mt-3.5 space-y-3" : "mt-3 space-y-2.5"}>
+                <ul className="mt-3 space-y-2.5">
                   {filteredLineup.map((booking) => {
                     const profile = profiles.get(booking.recipient_id);
 

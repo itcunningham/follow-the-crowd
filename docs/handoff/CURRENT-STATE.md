@@ -20,7 +20,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 - Event colour: 8 selectable + Auto (slate neutral when Auto or legacy slate)
 - Flat solid artwork tiles (no glow)
 - Event list: Active + History tabs; whole card links to detail
-- **History UX polish (2026-07-14):** archived card styling (subtle contrast, aligned Past/Cancelled badges); delete confirmation modal; tighter history event detail bookings spacing
+- **History UX (2026-07-14):** History tab uses identical list cards/layout as Active; status badge (Past/Cancelled) is the only card difference; delete confirmation modal unchanged
 - **Design system (2026-07-14):** `docs/design/FTC_DESIGN_SYSTEM.md` + `lib/design/ftcDesignSystem.ts` — shared tokens; standardised status badges, empty states, section titles, button min-heights
 - **History hide:** bulk remove from History view (does not delete records)
 - **Create/edit validation:** inline field errors after Save; start + finish time both required; notes length/line limits disable save

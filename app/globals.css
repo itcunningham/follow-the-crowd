@@ -984,37 +984,6 @@ html {
   opacity: 0.82;
 }
 
-/* Events History — archived read without changing card geometry */
-.ftc-events-history-list {
-  min-width: 0;
-}
-
-.ftc-event-card-history {
-  border-color: color-mix(in srgb, var(--ftc-color-border-subtle) 88%, transparent);
-  background: color-mix(in srgb, var(--ftc-color-bg-surface) 94%, var(--ftc-color-bg));
-}
-
-@media (hover: hover) {
-  .ftc-event-card-history:hover,
-  .ftc-event-card-history:focus-visible {
-    border-color: var(--ftc-color-border-subtle);
-    background: var(--ftc-color-bg-surface);
-  }
-}
-
-.ftc-event-card-history--past .ftc-event-card-history__title {
-  color: color-mix(in srgb, var(--ftc-color-text) 88%, var(--ftc-color-text-secondary));
-}
-
-.ftc-event-card-history--past .ftc-event-card-history__meta {
-  color: color-mix(in srgb, var(--ftc-color-text-secondary) 92%, var(--ftc-color-text-muted));
-}
-
-.ftc-event-card-history--cancelled .ftc-event-card-history__title,
-.ftc-event-card-history--cancelled .ftc-event-card-history__meta {
-  color: var(--ftc-color-text-secondary);
-}
-
 /* -------------------------------------------------------------------------- */
 /* Tabs & chips                                                                */
 /* -------------------------------------------------------------------------- */
