@@ -101,7 +101,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
-- `TBD` — fix Gigs Calendar Select dates layout shift on first load
+- `c88189f` — fix Gigs Calendar Select dates layout shift on first load
 - `f0c962d` — extract shared CalendarMobileChrome for Events and Gigs calendars
 - `c32839c` — compact mobile Event Plan cards
 - `744360c` — hide DJ availability controls on past dates
