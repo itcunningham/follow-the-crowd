@@ -24,6 +24,7 @@
 | `scripts/*.sql` | Legacy Supabase bootstrap / one-off fixes (run manually) |
 | `supabase/migrations/` | Versioned database migrations (paste in Supabase SQL Editor) |
 | `docs/handoff/` | Session context — **update on every completed job** (`HANDOFF-UPDATE.md`) |
+| `docs/design/FTC_DESIGN_SYSTEM.md` | UI spacing, typography, component rules |
 | `FTC_WORKFLOW.md` | Builder / Reviewer / QA working agreement |
 
 ## Planner routes

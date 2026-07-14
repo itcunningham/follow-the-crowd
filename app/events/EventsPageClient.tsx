@@ -1047,7 +1047,7 @@ function EventsPageClientView({
                       </button>
                     </div>
                   ) : bookingPlans.length === 0 ? (
-                    <div className="ftc-card-empty px-4 py-8 text-center">
+                    <div className="ftc-card-empty px-6 py-8 text-center">
                       <p className="text-sm text-ftc-text-secondary">No saved event plans yet</p>
                       <PlannerLinkAction href="/booking-plans" className="mt-3">
                         Create an event plan

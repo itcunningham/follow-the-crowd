@@ -3,6 +3,11 @@
 import { useCallback, useRef } from "react";
 import Link from "next/link";
 import {
+  FTC_EMPTY_STATE_PAGE_CLASS,
+  FTC_EMPTY_STATE_PANEL_CLASS,
+  FTC_PILL_ROW_GAP_CLASS,
+} from "@/lib/design/ftcDesignSystem";
+import {
   applyEventNotesInputLimit,
   countEventNotesLines,
   MAX_EVENT_NOTES_LINES,
@@ -282,7 +287,7 @@ export function PlannerFilterPills<T extends string>({
   onChange: (value: T) => void;
 }) {
   return (
-    <div className="flex flex-wrap gap-2">
+    <div className={`${FTC_PILL_ROW_GAP_CLASS}`}>
       {options.map((option) => {
         const isActive = value === option.value;
 
@@ -330,7 +335,7 @@ export function PlannerEmptyState({
   action?: React.ReactNode;
 }) {
   return (
-    <div className="ftc-card-empty px-6 py-12 text-center">
+    <div className={FTC_EMPTY_STATE_PAGE_CLASS}>
       <p className="text-base font-medium text-ftc-text-secondary">{title}</p>
       {description ? <p className="mt-2 text-sm text-ftc-text-muted">{description}</p> : null}
       {action ? <div className="mt-6">{action}</div> : null}
@@ -354,7 +359,7 @@ export function PlannerEmptyPanel({
   className?: string;
 }) {
   return (
-    <div className={`ftc-card-empty px-4 py-8 text-center ${className}`}>
+    <div className={`${FTC_EMPTY_STATE_PANEL_CLASS} ${className}`.trim()}>
       <p className="text-sm text-ftc-text-secondary">{message}</p>
     </div>
   );

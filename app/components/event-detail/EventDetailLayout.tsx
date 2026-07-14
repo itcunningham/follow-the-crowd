@@ -19,6 +19,8 @@ import { EVENT_DETAIL_CARD_CLASS } from "@/app/components/event-detail/eventDeta
 import type { Event } from "@/lib/events";
 import type { EventEditHeaderState } from "@/lib/events/useEventEditHeaderVisibility";
 
+import { FTC_SECTION_TITLE_CLASS } from "@/lib/design/ftcDesignSystem";
+
 export function EventDetailSectionTitle({
   children,
   className = "",
@@ -27,7 +29,7 @@ export function EventDetailSectionTitle({
   className?: string;
 }) {
   return (
-    <h2 className={`text-base font-bold text-ftc-text ${className}`.trim()}>{children}</h2>
+    <h2 className={`${FTC_SECTION_TITLE_CLASS} ${className}`.trim()}>{children}</h2>
   );
 }
 

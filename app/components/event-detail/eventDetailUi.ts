@@ -3,7 +3,7 @@ export const EVENT_DETAIL_SECTION_SPACING = "mt-8";
 
 export const EVENT_DETAIL_CARD_CLASS = "ftc-card p-3.5 sm:p-4";
 
-export const EVENT_DETAIL_SECTION_TITLE_CLASS = "text-base font-bold text-ftc-text";
+export const EVENT_DETAIL_SECTION_TITLE_CLASS = "ftc-section-title";
 
 export const EVENT_DETAIL_SECTION_SUBTITLE_CLASS = "mt-1 text-xs text-ftc-text-muted";
 

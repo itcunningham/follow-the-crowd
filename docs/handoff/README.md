@@ -19,6 +19,7 @@ Read everything in docs/handoff/ and follow it. Then: [your task]
 | `HOW-WE-WORK.md` | Who does what (you / Cursor / GPT) |
 | `USER-PREFERENCES.md` | How Isaac wants work done |
 | `PROJECT.md` | Stack, folders, conventions |
+| `docs/design/FTC_DESIGN_SYSTEM.md` | Spacing, typography, shared UI rules |
 | `CURRENT-STATE.md` | What is already built (update after every completed ship) |
 | `HANDOFF-UPDATE.md` | **Checklist — update handoff when a job completes** |
 | `SUPABASE.md` | SQL scripts and run order |

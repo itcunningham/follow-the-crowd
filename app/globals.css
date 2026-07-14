@@ -124,6 +124,29 @@ html {
   background: rgb(21 25 33 / 0.45);
 }
 
+.ftc-empty-state-page {
+  padding: 3rem 1.5rem;
+  text-align: center;
+}
+
+.ftc-empty-state-panel {
+  padding: 2rem 1.5rem;
+  text-align: center;
+}
+
+.ftc-section-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--ftc-color-text-primary);
+}
+
+.ftc-page-section-title {
+  font-size: 1.125rem;
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--ftc-color-text-primary);
+}
+
 /* -------------------------------------------------------------------------- */
 /* Buttons — solid light-blue, flat                                              */
 /* -------------------------------------------------------------------------- */
@@ -132,6 +155,7 @@ html {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  min-height: 2.5rem;
   border-radius: var(--ftc-radius-xl);
   border: none;
   background: var(--ftc-color-primary);
@@ -155,6 +179,7 @@ html {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  min-height: 2.5rem;
   border-radius: var(--ftc-radius-xl);
   border: 1px solid var(--ftc-color-border-strong);
   background: var(--ftc-color-bg-surface);

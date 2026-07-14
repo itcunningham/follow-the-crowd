@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { FTC_ICON_BUTTON_SM_CLASS } from "@/lib/design/ftcDesignSystem";
 
 export function filterOutRemovingHistoryItems<T extends { id: string }>(
   items: T[],
@@ -185,7 +186,7 @@ export function HistoryManageButton({
       onClick={onClick}
       disabled={disabled}
       aria-label={ariaLabel}
-      className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-ftc-border-subtle bg-ftc-bg-elevated text-ftc-text-muted transition enabled:hover:border-ftc-border-strong enabled:hover:text-ftc-text-secondary disabled:cursor-not-allowed disabled:opacity-50"
+      className={FTC_ICON_BUTTON_SM_CLASS}
     >
       <ManageHistoryIcon />
     </button>
