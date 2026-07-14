@@ -104,7 +104,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
-- `e15eb1f` — restore compact workspace tabs; fix iOS touch nav with location.assign
+- `c1a0437` — restore compact workspace tabs; fix iOS touch nav with location.assign
 - `d1f9dc0` — immediate workspace sub-nav feedback + route loading shells for Events/Gigs
 - `05602b5` — fix intermittent iOS calendar tab taps via PlannerFilterPills pointerup
 - `d90e49a` — fix Events Calendar initial mount blocking Messages nav (agenda transition settle)
