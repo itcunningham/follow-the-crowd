@@ -16,7 +16,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 ## Events
 
 - Optional event flyer upload (JPEG/PNG/WebP, 5 MB, bucket `event-covers`)
-- **Unified event cover image system (2026-07-14):** shared `EventCoverImagePrimitives` — `object-cover` centre crop, 16:9 hero on detail + edit preview, consistent thumb frames on list/context tiles; coloured fallback hero unchanged when no image
+- **Event cover images (2026-07-14):** `EventCoverImagePrimitives` — 16:9 hero on detail + edit preview (`object-cover` centre crop); **Event List** uses compact 64px square `EventThumbnail` (workflow-first; image never drives card height); context/inbox thumbs share same component
 - Event colour: 8 selectable + Auto (slate neutral when Auto or legacy slate)
 - Flat solid artwork tiles (no glow)
 - Event list: Active + History tabs; whole card links to detail
@@ -115,7 +115,8 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
-- `710b263` — unify Event Details visual tokens (sections, cards, buttons, badges)
+- restore compact workflow-first event cards (64px square `EventThumbnail`; hero/edit preview unchanged)
+- `bb1d436` — unify premium event image system (16:9 hero, shared crop primitives)
 - `46fa81b` — polish Invite DJs sheet selection, hierarchy, and confirm button
 - `7625227` — fix invisible booking deep-link focus ring (absolute overlay, active/fading phases)
 - `c9c9373` — polish booking deep-link focus ring (full card, 2s hold + 1s fade)

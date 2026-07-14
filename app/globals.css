@@ -599,9 +599,11 @@ html {
   border: 1px solid var(--ftc-color-border-subtle);
 }
 
-.ftc-event-image-frame--thumb {
-  height: 100%;
-  width: 100%;
+/* Compact square artwork — list, inbox, context chips */
+.ftc-event-thumbnail {
+  position: relative;
+  overflow: hidden;
+  flex-shrink: 0;
 }
 
 .ftc-card-hoverable {

@@ -57,8 +57,9 @@ Sub-nav: `lib/plannerEventsNav.ts`, `app/components/PlannerEventsSubNav.tsx`
 - `app/components/PlannerCalendar.tsx` — calendar (mobile agenda + desktop grid)
 - `app/components/booking/SendBookingRequestsPanel.tsx` — invite DJs UI
 - `app/components/BookingRequestCard.tsx` — DM booking cards
-- `app/components/events/EventArtworkTile.tsx` — flyer or fallback tile
-- `app/components/events/EventCoverImagePrimitives.tsx` — shared cover frame/media (hero, edit, thumb variants)
+- `app/components/events/EventArtworkTile.tsx` — re-export of `EventThumbnail` (backward compat)
+- `app/components/events/EventThumbnail.tsx` — fixed square compact artwork (list, context, inbox)
+- `app/components/events/EventCoverImagePrimitives.tsx` — shared cover frame/media (hero, edit)
 - `app/dm/page.tsx` — Messages inbox (DM + Group tabs)
 
 ## Event artwork
@@ -67,7 +68,7 @@ Sub-nav: `lib/plannerEventsNav.ts`, `app/components/PlannerEventsSubNav.tsx`
 - Fallback colour: `events.fallback_colour` — keys: blue, violet, teal, green, amber, orange, red, pink, slate
 - **Selectable in UI:** 8 colours + Auto. Slate = auto/neutral only (not a swatch).
 - Flyer always wins over colour tile.
-- Cover images: `object-cover` centre crop; 16:9 hero on event detail + edit preview; shared thumb styling on list/context tiles.
+- Cover images: `object-cover` centre crop; 16:9 hero on event detail + edit preview; compact 64px square `EventThumbnail` on list/context/inbox.
 
 ## Build
 

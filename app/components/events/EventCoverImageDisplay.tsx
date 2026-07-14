@@ -1,7 +1,7 @@
 "use client";
 
 import { normalizeEventCoverImageUrl } from "@/lib/events/eventCoverImage";
-import EventArtworkTile from "@/app/components/events/EventArtworkTile";
+import EventThumbnail from "@/app/components/events/EventThumbnail";
 
 export {
   EVENT_COVER_IMAGE_MEDIA_CLASS,
@@ -20,7 +20,7 @@ export function EventCoverImageListThumb({
   fallbackColour?: string | null;
 }) {
   return (
-    <EventArtworkTile
+    <EventThumbnail
       eventName={eventName}
       coverImageUrl={coverImageUrl}
       fallbackColour={fallbackColour}
@@ -39,7 +39,7 @@ export function EventCoverImageContextThumb({
   fallbackColour?: string | null;
 }) {
   return (
-    <EventArtworkTile
+    <EventThumbnail
       eventName={eventName}
       coverImageUrl={coverImageUrl}
       fallbackColour={fallbackColour}
@@ -53,3 +53,4 @@ export function eventCoverImageHasUrl(coverImageUrl?: string | null): boolean {
 }
 
 export { default as EventArtworkTile } from "@/app/components/events/EventArtworkTile";
+export { default as EventThumbnail } from "@/app/components/events/EventThumbnail";

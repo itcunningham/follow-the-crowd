@@ -142,7 +142,7 @@ function EventListItemSkeleton({ showPlannerStats = false }: { showPlannerStats?
   return (
     <div className="ftc-card block p-4 sm:p-5">
       <div className="flex items-start gap-4">
-        <SkeletonBlock className="h-[4.75rem] w-[3.75rem] shrink-0 rounded-xl" />
+        <SkeletonBlock className="h-16 w-16 shrink-0 rounded-xl" />
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <SkeletonBlock className="h-7 w-3/5 max-w-[12rem]" />
