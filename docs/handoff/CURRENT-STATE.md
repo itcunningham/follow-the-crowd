@@ -42,7 +42,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 - **Gigs `Select dates` row:** secondary action reserves space from first frame — disabled real button while calendar data loads; dual-mode parent falls back to same button before child chrome registers (no legend/strip shift)
 - **Gigs legend-to-strip gap (mobile):** day scroller uses `mt-1` (`CALENDAR_MOBILE_CHROME_GIGS_DAY_STRIP_CLASS`) vs Events `mt-4`; desktop unchanged (`md:hidden` on strip wrapper)
 - **Calendar mobile polish (2026-07-14):** shared `calendarMobileUi` — selected-day header, dashed empty state with muted calendar icon, agenda fade/slide transition (175ms, `motion-reduce`), `active:scale-[0.98]` press on day chips/cards/arrows; month title `text-base`; nav arrow gap `gap-0`; compact mobile agenda cards
-- **Gigs mobile booking cards:** shared `CalendarProgrammaticNavButton` — no `<a href>`, `router.push` + `prepareCalendarAgendaEventNavigation`, iOS `-webkit-touch-callout: none`, `onContextMenu` preventDefault, touch `pointerup` navigation (matches Events agenda intent; avoids Safari link preview)
+- **Gigs mobile availability controls:** header + Available/Maybe/Unavailable/Clear derive from `selectedDateKey` + `availabilityByDate` immediately; agenda fade/slide applies only to bookings/empty state below (no previous-day colour flash on day change)
 - Create-from-calendar: Save event + **Confirm N DJ(s)** invite flow
 - Today highlight on date strip; selected + today states on desktop grid cells
 
@@ -104,6 +104,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `9376d41` — fix Gigs mobile availability control flash on day change
 - `64cd48d` — harden Gigs calendar booking cards against iOS Safari link preview
 - `62e3578` — fix iOS Safari link preview on Gigs mobile booking cards
 - `12bf20a` — calendar mobile polish pass (shared motion, hierarchy, compact cards)
