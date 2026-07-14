@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   BookingsPageLoadingShell,
@@ -2039,7 +2039,7 @@ function GigCardHeader({
   const titleClass = muted ? "text-ftc-text-secondary" : "text-ftc-text";
 
   return (
-    <div className="min-w-0 flex-1">
+    <div className="min-w-0">
       <div className="flex min-w-0 items-start justify-between gap-1.5 sm:gap-2">
         <h3 className={`min-w-0 flex-1 text-sm font-semibold leading-snug sm:text-base ${titleClass}`}>
           {eventName}
@@ -2060,7 +2060,7 @@ function GigCardMetaRows({
   rateLabel,
   extraLine,
   muted = false,
-  mobileRateInFooter = false,
+  mobileFooter,
 }: {
   venue?: string;
   eventDate?: string;
@@ -2068,7 +2068,7 @@ function GigCardMetaRows({
   rateLabel?: string;
   extraLine?: string;
   muted?: boolean;
-  mobileRateInFooter?: boolean;
+  mobileFooter?: ReactNode;
 }) {
   const textClass = muted ? "text-ftc-text-muted" : "text-ftc-text-secondary";
   const venueDateParts = [venue?.trim(), eventDate?.trim() ? formatDisplayEventDate(eventDate) : ""].filter(Boolean);
@@ -2077,28 +2077,45 @@ function GigCardMetaRows({
   const showRate = Boolean(rateLabel?.trim());
 
   return (
-    <div
-      className={`ftc-gig-card-meta mt-1.5 min-w-0 overflow-hidden text-xs sm:mt-2 sm:text-sm ${textClass}`}
-    >
-      <div className="space-y-1">
-        {venueDateLine ? (
-          <p className="min-w-0 max-w-full overflow-hidden break-words">{venueDateLine}</p>
-        ) : null}
-        <p className="min-w-0 max-w-full overflow-hidden break-words sm:hidden">{setTimeLine}</p>
-        {showRate && !mobileRateInFooter ? (
-          <p className="min-w-0 max-w-full overflow-hidden break-words sm:hidden">{rateLabel}</p>
-        ) : null}
-        <p className="hidden min-w-0 max-w-full overflow-hidden break-words sm:block">{setTimeLine}</p>
-        {showRate ? (
-          <p className="hidden min-w-0 max-w-full overflow-hidden break-words sm:block">{rateLabel}</p>
-        ) : null}
-        {extraLine ? (
-          <p className="min-w-0 max-w-full overflow-hidden break-words text-xs text-ftc-text-muted">
-            {extraLine}
-          </p>
-        ) : null}
+    <>
+      <div
+        className={`ftc-gig-card-meta mt-1.5 min-w-0 overflow-hidden text-xs sm:hidden ${textClass}`}
+      >
+        <div className="space-y-1">
+          {venueDateLine ? (
+            <p className="min-w-0 max-w-full overflow-hidden break-words">{venueDateLine}</p>
+          ) : null}
+          <p className="min-w-0 max-w-full overflow-hidden break-words">{setTimeLine}</p>
+          {mobileFooter ? mobileFooter : null}
+          {!mobileFooter && showRate ? (
+            <p className="min-w-0 max-w-full overflow-hidden break-words">{rateLabel}</p>
+          ) : null}
+          {extraLine ? (
+            <p className="min-w-0 max-w-full overflow-hidden break-words text-xs text-ftc-text-muted">
+              {extraLine}
+            </p>
+          ) : null}
+        </div>
       </div>
-    </div>
+      <div
+        className={`ftc-gig-card-meta mt-1.5 hidden min-w-0 overflow-hidden text-xs sm:mt-2 sm:block sm:text-sm ${textClass}`}
+      >
+        <div className="space-y-1">
+          {venueDateLine ? (
+            <p className="min-w-0 max-w-full overflow-hidden break-words">{venueDateLine}</p>
+          ) : null}
+          <p className="min-w-0 max-w-full overflow-hidden break-words">{setTimeLine}</p>
+          {showRate ? (
+            <p className="min-w-0 max-w-full overflow-hidden break-words">{rateLabel}</p>
+          ) : null}
+          {extraLine ? (
+            <p className="min-w-0 max-w-full overflow-hidden break-words text-xs text-ftc-text-muted">
+              {extraLine}
+            </p>
+          ) : null}
+        </div>
+      </div>
+    </>
   );
 }
 
@@ -2145,44 +2162,41 @@ function ReceivedBookingCard({
         status={booking.status}
         plannerLabel={plannerLabel}
       />
-      <div className="flex min-w-0 flex-col gap-1 sm:gap-3">
-        <GigCardMetaRows
-          venue={booking.venue}
-          eventDate={booking.event_date}
-          setTime={booking.set_time}
-          rateLabel={rateLabel}
-          mobileRateInFooter
-        />
-        {!isConfirmed ? (
-          <>
-            <div className="flex min-w-0 items-center justify-between gap-2 sm:hidden">
-            {rateLabel?.trim() ? (
-              <p className="min-w-0 flex-1 overflow-hidden break-words text-xs text-ftc-text-secondary">
-                {rateLabel}
-              </p>
-            ) : (
-              <span className="min-w-0 flex-1" aria-hidden="true" />
-            )}
-            <Link
-              href={conversationHref}
-              className="ftc-btn-primary inline-flex min-h-10 shrink-0 items-center justify-center px-2.5 py-1.5 text-[0.6875rem] uppercase tracking-wide"
-              onClick={(event) => event.stopPropagation()}
-            >
-              Open DM
-            </Link>
-          </div>
-          <div className="hidden min-w-0 justify-end sm:flex">
-            <Link
-              href={conversationHref}
-              className="ftc-btn-primary inline-flex min-h-11 shrink-0 items-center justify-center px-3 py-2 text-xs uppercase tracking-wide"
-              onClick={(event) => event.stopPropagation()}
-            >
-              Open DM
-            </Link>
-          </div>
-        </>
-        ) : null}
-      </div>
+      <GigCardMetaRows
+        venue={booking.venue}
+        eventDate={booking.event_date}
+        setTime={booking.set_time}
+        rateLabel={rateLabel}
+        mobileFooter={
+          !isConfirmed ? (
+            <div className="flex min-w-0 items-start justify-between gap-2">
+              {rateLabel?.trim() ? (
+                <p className="min-w-0 flex-1 overflow-hidden break-words">{rateLabel}</p>
+              ) : (
+                <span className="min-w-0 flex-1" aria-hidden="true" />
+              )}
+              <Link
+                href={conversationHref}
+                className="ftc-btn-primary inline-flex min-h-10 shrink-0 items-center justify-center px-2.5 py-1.5 text-[0.6875rem] uppercase tracking-wide"
+                onClick={(event) => event.stopPropagation()}
+              >
+                Open DM
+              </Link>
+            </div>
+          ) : undefined
+        }
+      />
+      {!isConfirmed ? (
+        <div className="hidden min-w-0 justify-end sm:flex">
+          <Link
+            href={conversationHref}
+            className="ftc-btn-primary inline-flex min-h-11 shrink-0 items-center justify-center px-3 py-2 text-xs uppercase tracking-wide"
+            onClick={(event) => event.stopPropagation()}
+          >
+            Open DM
+          </Link>
+        </div>
+      ) : null}
     </div>
   );
 
