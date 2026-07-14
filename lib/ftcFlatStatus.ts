@@ -52,5 +52,5 @@ export function getFlatAvailabilityFillClass(
 }
 
 export function getFlatBookingFillClass(status: "pending" | "accepted"): string {
-  return status === "pending" ? FTC_STATUS_PENDING : FTC_STATUS_ACCEPTED;
+  return status === "pending" ? FTC_STATUS_UPCOMING : FTC_STATUS_ACCEPTED;
 }

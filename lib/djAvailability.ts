@@ -8,6 +8,8 @@ import {
   FTC_STATUS_ACCEPTED_DOT,
   FTC_STATUS_PENDING_DOT,
   FTC_STATUS_TODAY_DOT,
+  FTC_STATUS_UPCOMING,
+  FTC_STATUS_UPCOMING_DOT,
   getFlatAvailabilityFillClass,
 } from "@/lib/ftcFlatStatus";
 import { formatIsoDateKeyForDisplay } from "@/lib/bookingDateTime";
@@ -162,7 +164,7 @@ export function getDjCalendarLegendDotClass(kind: DjCalendarLegendKind): string 
     case "unavailable":
       return "bg-[var(--ftc-color-danger)]";
     case "pending_request":
-      return FTC_STATUS_PENDING_DOT;
+      return FTC_STATUS_UPCOMING_DOT;
     case "booked":
       return FTC_STATUS_ACCEPTED_DOT;
   }
@@ -421,7 +423,7 @@ export function groupAvailabilityEntriesByDate(
 
 export function getDjBookingStatusBadgeClass(status: "pending" | "accepted"): string {
   if (status === "pending") {
-    return FTC_STATUS_WARNING;
+    return FTC_STATUS_UPCOMING;
   }
 
   return FTC_STATUS_SUCCESS;
