@@ -1825,6 +1825,36 @@ export function extractBookingIdsFromMessages(
   return [...ids];
 }
 
+export type BookingRequestMessageSource = {
+  id: string;
+  text: string;
+};
+
+export function findDmMessageIdForBookingRequest(
+  messages: BookingRequestMessageSource[],
+  bookingRequestId: string,
+): string | null {
+  const normalizedTarget = bookingRequestId.trim();
+
+  if (!normalizedTarget) {
+    return null;
+  }
+
+  for (const message of messages) {
+    if (!isBookingRequestMessage(message.text)) {
+      continue;
+    }
+
+    const parsed = parseBookingRequestMessage(message.text);
+
+    if (parsed?.bookingId === normalizedTarget) {
+      return message.id;
+    }
+  }
+
+  return null;
+}
+
 export function isBookingRateProposalSchemaError(error: unknown): boolean {
   if (!error || typeof error !== "object") {
     return false;

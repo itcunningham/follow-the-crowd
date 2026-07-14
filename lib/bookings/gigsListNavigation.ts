@@ -60,6 +60,23 @@ export function buildGigsEventDetailHref(
   return `/events/${eventId}?from=bookings&tab=${tab}`;
 }
 
+export function buildGigsConversationHref(
+  conversationId: string,
+  bookingRequestId: string,
+  gigsTab: DjGigsListTab = "pending",
+): string {
+  const params = new URLSearchParams({
+    from: "bookings",
+    bookingRequestId,
+  });
+
+  if (gigsTab !== "pending") {
+    params.set("tab", gigsTab);
+  }
+
+  return `/dm/${conversationId}?${params.toString()}`;
+}
+
 export function resolveGigsEventDetailBackHref(
   from: string | null | undefined,
   tab: string | null | undefined,

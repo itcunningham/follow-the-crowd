@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type MutableRefObject } from "react";
 
 export const CHAT_NEAR_BOTTOM_THRESHOLD_PX = 120;
 export const CHAT_MESSAGE_ID_ATTR = "data-chat-message-id";
@@ -67,6 +67,7 @@ type UseChatScrollOptions = {
   lastMessageSenderId: string | null;
   lastMessageIsFromCurrentUser: boolean | null;
   currentUserId: string | null;
+  suppressAutoScrollRef?: MutableRefObject<boolean>;
 };
 
 export function useChatScroll({
@@ -75,6 +76,7 @@ export function useChatScroll({
   lastMessageSenderId,
   lastMessageIsFromCurrentUser,
   currentUserId,
+  suppressAutoScrollRef,
 }: UseChatScrollOptions) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -267,6 +269,10 @@ export function useChatScroll({
       pendingUserSentScrollRef.current = false;
       clearPendingScrollPreserve();
 
+      if (suppressAutoScrollRef?.current) {
+        return;
+      }
+
       console.log("[chat scroll final]", {
         senderId,
         currentUserId,
@@ -280,6 +286,10 @@ export function useChatScroll({
 
     if (isOwnMessage) {
       clearPendingScrollPreserve();
+
+      if (suppressAutoScrollRef?.current) {
+        return;
+      }
 
       console.log("[chat scroll final]", {
         senderId,
@@ -327,6 +337,7 @@ export function useChatScroll({
     isNearBottom,
     restorePreservedScrollPosition,
     scrollToBottom,
+    suppressAutoScrollRef,
   ]);
 
   return {

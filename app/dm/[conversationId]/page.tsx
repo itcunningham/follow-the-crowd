@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, usePathname, useSearchParams } from "next/navigation";
 import AppNavigation, { MOBILE_NAV_OFFSET_CLASS } from "@/app/components/AppNavigation";
 import { APP_DM_CHAT_COLUMN_CLASS } from "@/app/components/layout/AppPageLayout";
@@ -79,6 +79,11 @@ import { useChatScroll, tagChatMessageForScroll } from "@/lib/useChatScroll";
 import { getChatNewMessageHighlightClass, logChatHighlightRender } from "@/lib/chatNewMessageHighlight";
 import { useChatNewMessageHighlight } from "@/lib/useChatNewMessageHighlight";
 import {
+  parseDmBookingRequestIdParam,
+  useChatBookingTargetScroll,
+  CHAT_BOOKING_REQUEST_ID_ATTR,
+} from "@/lib/dm/chatBookingTarget";
+import {
   blockDmUser,
   getDmBlockBannerMessage,
   getDmBlockSendErrorMessage,
@@ -136,6 +141,8 @@ export default function DmChatPage() {
     calendarView: searchParams.get("calendarView"),
     calendarMonth: searchParams.get("calendarMonth"),
   });
+  const bookingRequestId = parseDmBookingRequestIdParam(searchParams.get("bookingRequestId"));
+  const suppressAutoScrollRef = useRef(Boolean(bookingRequestId));
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [attachments, setAttachments] = useState<DmMessageAttachment[]>([]);
@@ -196,8 +203,19 @@ export default function DmChatPage() {
     lastMessageSenderId: lastMessage?.user_id ?? null,
     lastMessageIsFromCurrentUser: lastMessage?._clientScrollMeta?.isFromCurrentUser ?? null,
     currentUserId,
+    suppressAutoScrollRef,
   });
-  const { addHighlightedMessageId, isMessageHighlighted } = useChatNewMessageHighlight();
+  const { addHighlightedMessageId, highlightMessageId, isMessageHighlighted } =
+    useChatNewMessageHighlight();
+
+  useChatBookingTargetScroll({
+    bookingRequestId,
+    loading,
+    messages,
+    scrollRef,
+    highlightMessageId,
+    suppressAutoScrollRef,
+  });
 
   const conversationTitle = otherUserProfile ? getConversationTitle(otherUserProfile) : "";
   const otherUserLabel = otherUserProfile ? resolveUserDisplayName(otherUserProfile) : "";
@@ -1572,6 +1590,9 @@ export default function DmChatPage() {
                     <li
                       key={message.id}
                       data-chat-message-id={message.id}
+                      {...(bookingId
+                        ? { [CHAT_BOOKING_REQUEST_ID_ATTR]: bookingId }
+                        : {})}
                       className="flex justify-center"
                     >
                       <div className="max-w-sm px-3 py-1 text-center">
@@ -1695,6 +1716,7 @@ export default function DmChatPage() {
                   <li
                     key={message.id}
                     data-chat-message-id={message.id}
+                    {...(bookingId ? { [CHAT_BOOKING_REQUEST_ID_ATTR]: bookingId } : {})}
                     className={`flex ${isOwnMessage ? "justify-end" : "justify-start"}`}
                   >
                     <div

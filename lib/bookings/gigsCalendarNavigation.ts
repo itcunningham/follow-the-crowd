@@ -110,6 +110,9 @@ export function resolveGigsCalendarBookingNavigation(
 
   return {
     kind: "dm",
-    href: resolveCalendarOriginBookingHref(`/dm/${conversationId}`, origin),
+    href: resolveCalendarOriginBookingHref(
+      `/dm/${conversationId}?bookingRequestId=${encodeURIComponent(booking.id)}`,
+      origin,
+    ),
   };
 }

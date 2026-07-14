@@ -74,7 +74,7 @@ export function resolveDmThreadBackHref(context: DmThreadBackContext): string {
 
 export function buildDmThreadHref(
   conversationId: string,
-  options?: { from?: string; tab?: string },
+  options?: { from?: string; tab?: string; bookingRequestId?: string },
 ): string {
   const params = new URLSearchParams();
 
@@ -82,8 +82,12 @@ export function buildDmThreadHref(
     params.set("from", options.from.trim());
   }
 
-  if (options?.tab === "group") {
-    params.set("tab", "group");
+  if (options?.tab?.trim()) {
+    params.set("tab", options.tab.trim());
+  }
+
+  if (options?.bookingRequestId?.trim()) {
+    params.set("bookingRequestId", options.bookingRequestId.trim());
   }
 
   const query = params.toString();

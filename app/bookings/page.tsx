@@ -107,6 +107,7 @@ import {
 import { markNotificationsReadByType } from "@/lib/notifications";
 import { readCachedNavRole } from "@/lib/navigationRoleCache";
 import {
+  buildGigsConversationHref,
   buildGigsEventDetailHref,
   buildGigsListHref,
   resolveGigsListTabParam,
@@ -2118,9 +2119,11 @@ function ReceivedBookingCard({
   senderName?: string;
 }) {
   const eventHref = booking.event_id ? buildGigsEventDetailHref(booking.event_id, gigsTab) : null;
-  const conversationHref = `/dm/${booking.conversation_id}?from=bookings${
-    gigsTab === "pending" ? "" : `&tab=${gigsTab}`
-  }`;
+  const conversationHref = buildGigsConversationHref(
+    booking.conversation_id,
+    booking.id,
+    gigsTab,
+  );
   const rateLabel = getBookingCollapsedOfferSummary(booking);
   const isConfirmed = gigsTab === "accepted";
   const plannerLabel = senderName ? `From ${senderName}` : undefined;
@@ -2203,9 +2206,11 @@ function BookingHistoryCard({
     : GIG_CARD_CLASS_NAME;
   const cancellationReasonLabel = resolveBookingCancellationReasonLabel(booking);
   const plannerLabel = senderName ? `From ${senderName}` : subtitle;
-  const conversationHref = `/dm/${booking.conversation_id}?from=bookings${
-    gigsTab ? `&tab=${gigsTab}` : ""
-  }`;
+  const conversationHref = buildGigsConversationHref(
+    booking.conversation_id,
+    booking.id,
+    gigsTab ?? "pending",
+  );
   const selectionLabel = `Select ${booking.event_name} for removal from history`;
 
   const cardBody = (
@@ -2368,7 +2373,7 @@ function BookingCampaignCard({
                   </Link>
                 ) : null}
                 <Link
-                  href={`/dm/${request.conversation_id}?from=bookings`}
+                  href={buildGigsConversationHref(request.conversation_id, request.id)}
                   className="ftc-btn-primary px-3 py-1.5 text-xs uppercase tracking-wide"
                 >
                   Open DM
