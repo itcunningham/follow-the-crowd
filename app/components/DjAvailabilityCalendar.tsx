@@ -536,31 +536,35 @@ type DjAvailabilityMobileDayPanelProps = {
   selectedDate: Date;
   isTodayDate: boolean;
   personalEntry?: DjAvailabilityEntry;
-  dayBookings: BookingRequest[];
   saving: boolean;
   monthStart: Date;
   onSetPersonalStatus: (status: DjAvailabilityStatus) => void;
   onClearPersonalStatus: () => void;
+  animatedDayBookings: BookingRequest[];
+  animatedBookingsDateKey: string;
+  bookingsTransitionClassName: string;
 };
 
 function DjAvailabilityMobileDayPanel({
   selectedDate,
   isTodayDate,
   personalEntry,
-  dayBookings,
   saving,
   monthStart,
   onSetPersonalStatus,
   onClearPersonalStatus,
+  animatedDayBookings,
+  animatedBookingsDateKey,
+  bookingsTransitionClassName,
 }: DjAvailabilityMobileDayPanelProps) {
   const dateKey = toDateKey(selectedDate);
-  const calendarOrigin = buildCalendarOriginState({
-    calendarDate: dateKey,
+  const bookingsCalendarOrigin = buildCalendarOriginState({
+    calendarDate: animatedBookingsDateKey,
     calendarView: "dj",
     monthStart,
   });
-  const pendingBookings = dayBookings.filter((booking) => booking.status === "pending");
-  const acceptedBookings = dayBookings.filter((booking) => booking.status === "accepted");
+  const pendingBookings = animatedDayBookings.filter((booking) => booking.status === "pending");
+  const acceptedBookings = animatedDayBookings.filter((booking) => booking.status === "accepted");
   const interactiveBookings = [...pendingBookings, ...acceptedBookings];
   const canEditAvailability = !isDateKeyBeforeToday(dateKey);
   const selectedAvailabilityStatus = personalEntry?.status ?? null;
@@ -575,47 +579,44 @@ function DjAvailabilityMobileDayPanel({
       </div>
 
       {canEditAvailability ? (
-        <>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {PERSONAL_STATUS_OPTIONS.map((option) => (
-                <button
-                  key={option.value}
-                  type="button"
-                  disabled={saving}
-                  onClick={() => onSetPersonalStatus(option.value)}
-                  className={getAvailabilityActionPillClass(
-                    option.value,
-                    selectedAvailabilityStatus,
-                  )}
-                >
-                  {option.label}
-                </button>
-              ))}
+        <div className="mt-3 flex flex-wrap gap-2">
+          {PERSONAL_STATUS_OPTIONS.map((option) => (
             <button
+              key={option.value}
               type="button"
-              disabled={saving || !personalEntry}
-              onClick={onClearPersonalStatus}
-              className="ftc-filter-pill disabled:opacity-50"
+              disabled={saving}
+              onClick={() => onSetPersonalStatus(option.value)}
+              className={getAvailabilityActionPillClass(option.value, selectedAvailabilityStatus)}
             >
-              Clear
+              {option.label}
             </button>
-          </div>
-        </>
-      ) : null}
-
-      {interactiveBookings.length > 0 ? (
-        <ul className="mt-3 space-y-2">
-          {interactiveBookings.map((booking) => (
-            <li key={booking.id}>
-              <DjCalendarMobileBookingCard booking={booking} calendarOrigin={calendarOrigin} />
-            </li>
           ))}
-        </ul>
-      ) : canEditAvailability ? (
-        <div className="mt-3">
-          <CalendarMobileDashedEmptyState message="No booking requests on this date" />
+          <button
+            type="button"
+            disabled={saving || !personalEntry}
+            onClick={onClearPersonalStatus}
+            className="ftc-filter-pill disabled:opacity-50"
+          >
+            Clear
+          </button>
         </div>
       ) : null}
+
+      <div className={bookingsTransitionClassName}>
+        {interactiveBookings.length > 0 ? (
+          <ul className="mt-3 space-y-2">
+            {interactiveBookings.map((booking) => (
+              <li key={booking.id}>
+                <DjCalendarMobileBookingCard booking={booking} calendarOrigin={bookingsCalendarOrigin} />
+              </li>
+            ))}
+          </ul>
+        ) : canEditAvailability ? (
+          <div className="mt-3">
+            <CalendarMobileDashedEmptyState message="No booking requests on this date" />
+          </div>
+        ) : null}
+      </div>
     </>
   );
 }
@@ -652,10 +653,8 @@ function DjAvailabilityMobileAgenda({
   const selectedDateKey = toDateKey(selectedDate);
   const { displayDateKey, transitionClassName } =
     useCalendarMobileAgendaTransition(selectedDateKey);
-  const displayDate =
-    parsePlannerCalendarDateParam(displayDateKey) ?? selectedDate;
-  const personalEntry = availabilityByDate.get(displayDateKey);
-  const dayBookings = bookingsByDate.get(displayDateKey) ?? [];
+  const personalEntry = availabilityByDate.get(selectedDateKey);
+  const animatedDayBookings = bookingsByDate.get(displayDateKey) ?? [];
 
   return (
     <div className="md:hidden">
@@ -664,18 +663,18 @@ function DjAvailabilityMobileAgenda({
           Tap dates on the strip to select them
         </p>
       ) : (
-        <div className={transitionClassName}>
-          <DjAvailabilityMobileDayPanel
-            selectedDate={displayDate}
-            isTodayDate={isTodayDate(displayDate)}
-            personalEntry={personalEntry}
-            dayBookings={dayBookings}
-            saving={savingDateKey === displayDateKey}
-            monthStart={monthStart}
-            onSetPersonalStatus={(status) => onSetPersonalStatus(displayDateKey, status)}
-            onClearPersonalStatus={() => onClearPersonalStatus(displayDateKey)}
-          />
-        </div>
+        <DjAvailabilityMobileDayPanel
+          selectedDate={selectedDate}
+          isTodayDate={isTodayDate(selectedDate)}
+          personalEntry={personalEntry}
+          saving={savingDateKey === selectedDateKey}
+          monthStart={monthStart}
+          onSetPersonalStatus={(status) => onSetPersonalStatus(selectedDateKey, status)}
+          onClearPersonalStatus={() => onClearPersonalStatus(selectedDateKey)}
+          animatedDayBookings={animatedDayBookings}
+          animatedBookingsDateKey={displayDateKey}
+          bookingsTransitionClassName={transitionClassName}
+        />
       )}
     </div>
   );
