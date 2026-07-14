@@ -164,7 +164,7 @@ export default function SendBookingRequestsPanel({
           </ul>
           {draft.hasInvalidFixedOffers ? (
             <p className="mt-3 text-xs text-[var(--ftc-color-warning)]">
-              Enter a positive whole-dollar amount for each fixed offer before sending
+              Enter a whole-dollar amount for each fixed offer before sending
             </p>
           ) : null}
         </div>

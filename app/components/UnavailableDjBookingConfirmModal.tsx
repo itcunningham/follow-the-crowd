@@ -49,8 +49,9 @@ export default function UnavailableDjBookingConfirmModal({
     >
       {isSingle ? (
         <p className="text-sm leading-relaxed text-ftc-text-secondary">
-          {singleDj.displayName} has marked {formattedDate} as unavailable. They may already have
-          another commitment.
+          {singleDj.displayName} has marked {formattedDate} as unavailable
+          <br />
+          They may already have another commitment
         </p>
       ) : (
         <div className="space-y-3">
@@ -67,7 +68,7 @@ export default function UnavailableDjBookingConfirmModal({
         </div>
       )}
       <p className="mt-3 text-xs leading-relaxed text-ftc-text-muted">
-        You can still confirm a request if you want to discuss it.
+        You can still confirm a request if you want to discuss it
       </p>
     </BookingSheetDialog>
   );
