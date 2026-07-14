@@ -975,9 +975,8 @@ function PlannerCalendarMobileAgendaPanelSkeleton() {
 
 function PlannerCalendarMobileAgendaSkeleton() {
   return (
-    <div aria-hidden="true" className="mt-3 md:hidden">
-      <PlannerCalendarMobileLegendSkeleton />
-      <div className="mt-2 -mx-4 flex gap-1 px-4">
+    <div aria-hidden="true" className="mt-4 md:hidden">
+      <div className="-mx-4 flex gap-1 px-4">
         {Array.from({ length: 7 }, (_, index) => (
           <SkeletonBlock
             key={index}
@@ -1042,8 +1041,8 @@ export function PlannerCalendarContentSkeleton() {
         <CalendarMonthNavSkeleton />
       </div>
 
-      <div className="mt-3 hidden md:block">
-        <PlannerCalendarDesktopLegendSkeleton />
+      <div className="mt-3">
+        <PlannerCalendarLegendSkeleton />
       </div>
 
       <PlannerCalendarMobileAgendaSkeleton />

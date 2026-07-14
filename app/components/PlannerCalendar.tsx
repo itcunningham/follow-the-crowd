@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import CalendarMonthNav from "@/app/components/CalendarMonthNav";
+import CalendarDotLegend from "@/app/components/calendar/CalendarDotLegend";
 import PlannerCalendarActionButtons from "@/app/components/PlannerCalendarActionButtons";
 import PlannerCalendarDateActions from "@/app/components/PlannerCalendarDateActions";
 import PlannerCalendarMobileDateStrip from "@/app/components/PlannerCalendarMobileDateStrip";
@@ -53,25 +54,13 @@ import {
 
 export function PlannerCalendarMobileLegend() {
   return (
-    <div
-      role="list"
-      aria-label="Calendar legend"
-      className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 md:hidden"
-    >
-      {PLANNER_CALENDAR_VISIBLE_LEGEND_ITEMS.map((item) => (
-        <span
-          key={item.mobileLabel}
-          role="listitem"
-          className="inline-flex items-center gap-1.5 text-xs text-ftc-text-secondary"
-        >
-          <span
-            aria-hidden="true"
-            className={`h-1.5 w-1.5 shrink-0 rounded-full ${getPlannerCalendarLegendDotClass(item.kind)}`}
-          />
-          {item.mobileLabel}
-        </span>
-      ))}
-    </div>
+    <CalendarDotLegend
+      className="md:hidden"
+      items={PLANNER_CALENDAR_VISIBLE_LEGEND_ITEMS.map((item) => ({
+        label: item.mobileLabel,
+        dotClassName: getPlannerCalendarLegendDotClass(item.kind),
+      }))}
+    />
   );
 }
 
@@ -301,19 +290,14 @@ function PlannerCalendarMobileAgenda({
     isDateKeyBeforeToday(selectedDateKey) && displayDateItems.length === 0;
 
   return (
-    <div className={hideDateStrip ? "md:hidden" : "mt-3 md:hidden"}>
+    <div className={hideDateStrip ? "md:hidden" : "mt-4 md:hidden"}>
       {hideDateStrip ? null : (
-        <>
-          <PlannerCalendarMobileLegend />
-          <div className="mt-2">
-            <PlannerCalendarMobileDateStrip
-              selectedDate={selectedDate}
-              onSelectDate={onSelectDate}
-              monthStart={monthStart}
-              itemsByDate={itemsByDate}
-            />
-          </div>
-        </>
+        <PlannerCalendarMobileDateStrip
+          selectedDate={selectedDate}
+          onSelectDate={onSelectDate}
+          monthStart={monthStart}
+          itemsByDate={itemsByDate}
+        />
       )}
 
       <div ref={agendaHeaderRef} className="mt-4">
@@ -662,8 +646,8 @@ export default function PlannerCalendar({
             />
           </div>
 
-          <div className="mt-3 hidden md:block">
-            <PlannerCalendarDesktopLegend />
+          <div className="mt-3">
+            <PlannerCalendarLegend />
           </div>
         </>
       )}
