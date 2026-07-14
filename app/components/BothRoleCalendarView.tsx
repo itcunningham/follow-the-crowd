@@ -4,6 +4,7 @@ import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import DjAvailabilityCalendar, {
   DjAvailabilityCalendarLegend,
+  GigCalendarSelectDatesButton,
 } from "@/app/components/DjAvailabilityCalendar";
 import PlannerCalendar, { PlannerCalendarLegend } from "@/app/components/PlannerCalendar";
 import PlannerCalendarMobileDateStrip from "@/app/components/PlannerCalendarMobileDateStrip";
@@ -163,7 +164,11 @@ export default function BothRoleCalendarView({ activeTab }: BothRoleCalendarView
             overlay: activeTab === "dj" ? djMonthNavChrome?.overlay : undefined,
           }}
           secondaryRowAction={
-            activeTab === "dj" ? djMonthNavChrome?.secondaryRowAction : undefined
+            activeTab === "dj"
+              ? (djMonthNavChrome?.secondaryRowAction ?? (
+                  <GigCalendarSelectDatesButton disabled />
+                ))
+              : undefined
           }
           legend={
             activeTab === "planner" ? (

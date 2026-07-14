@@ -79,6 +79,26 @@ const BULK_STATUS_OPTIONS = PERSONAL_STATUS_OPTIONS;
 const GIG_CALENDAR_CONTROL_BUTTON_CLASS =
   "rounded-lg border border-ftc-border-strong/90 bg-ftc-surface/80 px-2.5 py-1.5 text-[11px] font-semibold text-ftc-text-secondary transition hover:border-ftc-border-strong hover:text-ftc-text";
 
+export function GigCalendarSelectDatesButton({
+  disabled = false,
+  onClick,
+}: {
+  disabled?: boolean;
+  onClick?: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={disabled ? undefined : onClick}
+      disabled={disabled}
+      aria-disabled={disabled}
+      className={`${GIG_CALENDAR_CONTROL_BUTTON_CLASS} disabled:cursor-not-allowed disabled:opacity-50`}
+    >
+      Select dates
+    </button>
+  );
+}
+
 const GIG_CALENDAR_UPDATE_PILL_CLASS =
   "inline-flex max-w-full items-center rounded-lg border-0 bg-ftc-primary px-2 py-1.5 text-[11px] font-medium text-ftc-bg transition-opacity duration-200 ease-out motion-reduce:transition-none sm:px-2.5";
 
@@ -1198,32 +1218,24 @@ export default function DjAvailabilityCalendar({
     <GigCalendarUpdatePill message={toastMessage} onDismiss={dismissToast} />
   ) : null;
 
-  const secondaryRowAction = !loading ? (
-    multiSelectMode ? (
-      <QuickSelectMenu
-        open={quickSelectOpen}
-        onToggle={() => setQuickSelectOpen((open) => !open)}
-        onSelectFridays={() => selectDisplayedDatesMatching((date) => getWeekdayIndex(date) === 4)}
-        onSelectSaturdays={() => selectDisplayedDatesMatching((date) => getWeekdayIndex(date) === 5)}
-        onSelectWeekends={() =>
-          selectDisplayedDatesMatching((date) => {
-            const weekday = getWeekdayIndex(date);
-            return weekday === 4 || weekday === 5;
-          })
-        }
-        onClearSelection={() => setSelectedDateKeys(new Set())}
-        onClose={() => setQuickSelectOpen(false)}
-      />
-    ) : (
-      <button
-        type="button"
-        onClick={enterMultiSelectMode}
-        className={GIG_CALENDAR_CONTROL_BUTTON_CLASS}
-      >
-        Select dates
-      </button>
-    )
-  ) : null;
+  const secondaryRowAction = multiSelectMode ? (
+    <QuickSelectMenu
+      open={quickSelectOpen}
+      onToggle={() => setQuickSelectOpen((open) => !open)}
+      onSelectFridays={() => selectDisplayedDatesMatching((date) => getWeekdayIndex(date) === 4)}
+      onSelectSaturdays={() => selectDisplayedDatesMatching((date) => getWeekdayIndex(date) === 5)}
+      onSelectWeekends={() =>
+        selectDisplayedDatesMatching((date) => {
+          const weekday = getWeekdayIndex(date);
+          return weekday === 4 || weekday === 5;
+        })
+      }
+      onClearSelection={() => setSelectedDateKeys(new Set())}
+      onClose={() => setQuickSelectOpen(false)}
+    />
+  ) : (
+    <GigCalendarSelectDatesButton disabled={loading} onClick={enterMultiSelectMode} />
+  );
 
   useEffect(() => {
     if (!isDual || !onDualModeChromeChange) {

@@ -39,6 +39,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 - Agenda/grid ordering: booking priority then start time (`sortPlannerCalendarAgendaItems`)
 - Event cards: `Event Name · Venue Name` on one truncated line; coloured event accent bar
 - **Shared mobile chrome:** `CalendarMobileChrome` owns month nav, legend row, and day-strip spacing for Events and Gigs calendars (standalone + dual-mode); day-strip chips use content-height `PlannerCalendarMobileDateStrip` markup (no fixed live chip height; `h-[3.75rem]` skeleton-only)
+- **Gigs `Select dates` row:** secondary action reserves space from first frame — disabled real button while calendar data loads; dual-mode parent falls back to same button before child chrome registers (no legend/strip shift)
 - Create-from-calendar: Save event + **Confirm N DJ(s)** invite flow
 - Today highlight on date strip; selected + today states on desktop grid cells
 
@@ -100,6 +101,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `TBD` — fix Gigs Calendar Select dates layout shift on first load
 - `f0c962d` — extract shared CalendarMobileChrome for Events and Gigs calendars
 - `c32839c` — compact mobile Event Plan cards
 - `744360c` — hide DJ availability controls on past dates
