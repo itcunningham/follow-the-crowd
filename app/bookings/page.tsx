@@ -2080,7 +2080,7 @@ function GigCardMetaRows({
     <div
       className={`ftc-gig-card-meta mt-1.5 min-w-0 overflow-hidden text-xs sm:mt-2 sm:text-sm ${textClass}`}
     >
-      <div className="space-y-0.5 sm:space-y-1">
+      <div className="space-y-1">
         {venueDateLine ? (
           <p className="min-w-0 max-w-full overflow-hidden break-words">{venueDateLine}</p>
         ) : null}
@@ -2145,16 +2145,17 @@ function ReceivedBookingCard({
         status={booking.status}
         plannerLabel={plannerLabel}
       />
-      <GigCardMetaRows
-        venue={booking.venue}
-        eventDate={booking.event_date}
-        setTime={booking.set_time}
-        rateLabel={rateLabel}
-        mobileRateInFooter
-      />
-      {!isConfirmed ? (
-        <>
-          <div className="flex min-w-0 items-center justify-between gap-2 pt-0.5 sm:hidden">
+      <div className="flex min-w-0 flex-col gap-1 sm:gap-3">
+        <GigCardMetaRows
+          venue={booking.venue}
+          eventDate={booking.event_date}
+          setTime={booking.set_time}
+          rateLabel={rateLabel}
+          mobileRateInFooter
+        />
+        {!isConfirmed ? (
+          <>
+            <div className="flex min-w-0 items-center justify-between gap-2 sm:hidden">
             {rateLabel?.trim() ? (
               <p className="min-w-0 flex-1 overflow-hidden break-words text-xs text-ftc-text-secondary">
                 {rateLabel}
@@ -2180,7 +2181,8 @@ function ReceivedBookingCard({
             </Link>
           </div>
         </>
-      ) : null}
+        ) : null}
+      </div>
     </div>
   );
 
