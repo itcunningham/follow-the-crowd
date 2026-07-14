@@ -77,7 +77,9 @@ import {
 import { supabase } from "@/lib/supabaseClient";
 import { useChatScroll, tagChatMessageForScroll } from "@/lib/useChatScroll";
 import { getChatNewMessageHighlightClass, logChatHighlightRender } from "@/lib/chatNewMessageHighlight";
+import { getChatBookingFocusHighlightClass } from "@/lib/chatBookingFocusHighlight";
 import { useChatNewMessageHighlight } from "@/lib/useChatNewMessageHighlight";
+import { useChatBookingFocusHighlight } from "@/lib/useChatBookingFocusHighlight";
 import {
   parseDmBookingRequestIdParam,
   useChatBookingTargetScroll,
@@ -205,15 +207,15 @@ export default function DmChatPage() {
     currentUserId,
     suppressAutoScrollRef,
   });
-  const { addHighlightedMessageId, highlightMessageId, isMessageHighlighted } =
-    useChatNewMessageHighlight();
+  const { addHighlightedMessageId, isMessageHighlighted } = useChatNewMessageHighlight();
+  const { highlightBookingFocus, isBookingFocusHighlighted } = useChatBookingFocusHighlight();
 
   useChatBookingTargetScroll({
     bookingRequestId,
     loading,
     messages,
     scrollRef,
-    highlightMessageId,
+    highlightBookingFocus,
     suppressAutoScrollRef,
   });
 
@@ -1622,9 +1624,12 @@ export default function DmChatPage() {
                   ? isEventCancelled({ status: eventArtwork.status })
                   : false;
                 const highlighted = isMessageHighlighted(message.id);
-                logChatHighlightRender(message.id, highlighted);
+                const bookingFocused = isBookingFocusHighlighted(message.id);
+                logChatHighlightRender(message.id, highlighted || bookingFocused);
                 const bookingExpansionKey = message.id;
-                const highlightClassName = getChatNewMessageHighlightClass(highlighted);
+                const highlightClassName = bookingFocused
+                  ? getChatBookingFocusHighlightClass(true)
+                  : getChatNewMessageHighlightClass(highlighted);
                 const actionRequired = isDmBookingActionRequired(resolvedBooking, eventCancelled);
                 const isBookingExpanded = expandedBookingIds.has(bookingExpansionKey);
                 const showCompactBookingRow = !actionRequired && !isBookingExpanded;

@@ -8,8 +8,8 @@ export function useChatNewMessageHighlight() {
   const timeoutsRef = useRef<Map<string, number>>(new Map());
 
   const addHighlightedMessageId = useCallback(
-    (messageId: string, isFromCurrentUser = false, force = false) => {
-      const added = force || !isFromCurrentUser;
+    (messageId: string, isFromCurrentUser = false) => {
+      const added = !isFromCurrentUser;
 
       console.log("[chat highlight] received", {
         messageId,
@@ -67,7 +67,6 @@ export function useChatNewMessageHighlight() {
   return {
     addHighlightedMessageId,
     highlightIncomingMessage: addHighlightedMessageId,
-    highlightMessageId: (messageId: string) => addHighlightedMessageId(messageId, false, true),
     isMessageHighlighted,
   };
 }

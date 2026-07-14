@@ -23,7 +23,7 @@ type UseChatBookingTargetScrollOptions = {
   loading: boolean;
   messages: BookingRequestMessageSource[];
   scrollRef: RefObject<HTMLDivElement | null>;
-  highlightMessageId: (messageId: string) => void;
+  highlightBookingFocus: (messageId: string) => void;
   suppressAutoScrollRef: MutableRefObject<boolean>;
 };
 
@@ -32,7 +32,7 @@ export function useChatBookingTargetScroll({
   loading,
   messages,
   scrollRef,
-  highlightMessageId,
+  highlightBookingFocus,
   suppressAutoScrollRef,
 }: UseChatBookingTargetScrollOptions) {
   const targetMessageId = useMemo(
@@ -90,7 +90,7 @@ export function useChatBookingTargetScroll({
       }
 
       messageElement.scrollIntoView({ block: "center", behavior: "auto" });
-      highlightMessageId(targetMessageId);
+      highlightBookingFocus(targetMessageId);
       releaseAutoScrollSuppression();
       return true;
     };
@@ -131,7 +131,7 @@ export function useChatBookingTargetScroll({
     };
   }, [
     bookingRequestId,
-    highlightMessageId,
+    highlightBookingFocus,
     loading,
     scrollRef,
     suppressAutoScrollRef,
