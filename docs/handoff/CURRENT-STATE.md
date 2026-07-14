@@ -106,6 +106,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `7625227` — fix invisible booking deep-link focus ring (absolute overlay, active/fading phases)
 - `c9c9373` — polish booking deep-link focus ring (full card, 2s hold + 1s fade)
 - `0018fe3` — deep-link Gigs Open conversation to matching DM booking card via bookingRequestId
 - `829fb1d` — fix Gigs mobile availability pill layout shift; optimistic save with version guard
