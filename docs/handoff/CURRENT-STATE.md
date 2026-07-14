@@ -99,6 +99,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `c3fbca1` — restore FTC label hierarchy on mobile Event Plan cards
 - `c32839c` — compact mobile Event Plan cards
 - `744360c` — hide DJ availability controls on past dates
 - `e8c6dc8` — align DJ calendar legend and strip dots with event calendar style
