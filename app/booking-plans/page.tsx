@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
 import { useGuardProfile } from "@/app/components/GuardProfileContext";
-import { PlannerWorkspacePage, PLANNER_WORKSPACE_LIST_CLASS } from "@/app/components/planner/PlannerWorkspaceLayout";
+import { PlannerWorkspacePage } from "@/app/components/planner/PlannerWorkspaceLayout";
 import { PlannerFormCard, PlannerFormField, PlannerInlineError } from "@/app/components/planner/PlannerUi";
 import {
   BookingPlanListSkeleton,
@@ -41,6 +41,25 @@ const emptyPlanForm: BookingPlanInput = {
   fee: "",
   notes: "",
 };
+
+function formatEventVenueSummary(eventName: string, venue: string): string | null {
+  const event = eventName.trim();
+  const venueName = venue.trim();
+
+  if (event && venueName) {
+    return `${event} • ${venueName}`;
+  }
+
+  if (event) {
+    return event;
+  }
+
+  if (venueName) {
+    return venueName;
+  }
+
+  return null;
+}
 
 function getPlanLoadErrorMessage(error: unknown): string {
   if (error && typeof error === "object") {
@@ -493,7 +512,7 @@ export default function BookingPlansPage() {
                   </button>
                 </div>
               ) : (
-                <ul className={PLANNER_WORKSPACE_LIST_CLASS}>
+                <ul className="space-y-2 sm:space-y-3">
                   {visiblePlans.map((plan) => (
                     <EventPlanCard
                       key={plan.id}
@@ -537,6 +556,7 @@ function EventPlanCard({
   onUseForBooking: () => void;
 }) {
   const notesPreview = formatEventPlanNotesPreview(plan.notes);
+  const eventVenueSummary = formatEventVenueSummary(plan.event_name, plan.venue);
 
   const selectionLabel = selected
     ? `Deselect ${plan.name}`
@@ -553,8 +573,8 @@ function EventPlanCard({
       }`}
     >
       <div
-        className={`flex flex-col gap-2 p-3 sm:flex-row sm:gap-3 sm:p-3.5 ${
-          selectionMode ? "sm:items-start" : "sm:items-end"
+        className={`flex gap-2 p-2.5 sm:flex-row sm:gap-3 sm:p-3.5 ${
+          selectionMode ? "items-start sm:items-start" : "items-center sm:items-end"
         }`}
       >
         <button
@@ -571,7 +591,18 @@ function EventPlanCard({
           ) : null}
           <span className="min-w-0 flex-1">
             <span className="block text-lg font-semibold text-ftc-text">{plan.name}</span>
-            <dl className="mt-2 grid gap-1.5 text-sm sm:grid-cols-2">
+            {eventVenueSummary ? (
+              <p className="mt-1 truncate text-sm text-ftc-text sm:hidden">{eventVenueSummary}</p>
+            ) : null}
+            {notesPreview ? (
+              <div className="mt-1.5 sm:hidden">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted">
+                  Notes
+                </p>
+                <p className="truncate text-sm text-ftc-text-secondary">{notesPreview}</p>
+              </div>
+            ) : null}
+            <dl className="mt-2 hidden gap-1.5 text-sm sm:grid sm:grid-cols-2">
               <PlanDetail label="Event" value={plan.event_name} />
               <PlanDetail label="Venue" value={plan.venue} />
               {notesPreview ? (
@@ -587,7 +618,7 @@ function EventPlanCard({
         </button>
 
         {!selectionMode ? (
-          <div className="flex justify-end sm:shrink-0">
+          <div className="shrink-0 sm:flex sm:justify-end">
             <button
               type="button"
               onClick={(event) => {

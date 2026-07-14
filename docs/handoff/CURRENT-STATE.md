@@ -1,4 +1,4 @@
-# Current state (last updated: 2026-07-13)
+# Current state (last updated: 2026-07-14)
 
 Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 
@@ -56,6 +56,10 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 - Unavailable-DJ confirm modal uses Confirm wording
 - Calendar-origin and standard create flows aligned on copy and validation
 
+## Event Plans
+
+- **Mobile cards (2026-07-14):** compact layout below `sm` — title + vertically centred Use plan on one row; `Event • Venue` single truncated line; NOTES label only when notes exist; tighter card padding and list spacing; desktop grid unchanged
+
 ## Group chat
 
 - Per-event crew chat for owner + accepted DJs
@@ -95,6 +99,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `TBD` — compact mobile Event Plan cards
 - `744360c` — hide DJ availability controls on past dates
 - `e8c6dc8` — align DJ calendar legend and strip dots with event calendar style
 - `c2f7665` — DJ availability mobile date strip + selected-day controls
