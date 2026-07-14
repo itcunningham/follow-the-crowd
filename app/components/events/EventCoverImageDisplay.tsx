@@ -1,6 +1,14 @@
 "use client";
 
+import { normalizeEventCoverImageUrl } from "@/lib/events/eventCoverImage";
 import EventArtworkTile from "@/app/components/events/EventArtworkTile";
+
+export {
+  EVENT_COVER_IMAGE_MEDIA_CLASS,
+  EventCoverImageFrame,
+  EventCoverImageHeroPreview,
+  EventCoverImageMedia,
+} from "@/app/components/events/EventCoverImagePrimitives";
 
 export function EventCoverImageListThumb({
   eventName,
@@ -38,6 +46,10 @@ export function EventCoverImageContextThumb({
       size="context"
     />
   );
+}
+
+export function eventCoverImageHasUrl(coverImageUrl?: string | null): boolean {
+  return normalizeEventCoverImageUrl(coverImageUrl) !== null;
 }
 
 export { default as EventArtworkTile } from "@/app/components/events/EventArtworkTile";

@@ -91,7 +91,7 @@ npm run build
 - Create / edit / cancel / delete events
 - Fields: name, venue, date, start+finish time (**both required**), notes, optional flyer, fallback colour tile
 - **Notes** section heading (not "About"); `ftc-profile-section-label` styling
-- Optional event flyer (`event-covers` bucket); portrait-friendly display
+- Optional event flyer (`event-covers` bucket); unified cover crop — 16:9 hero on detail/edit, `object-cover` thumbs on list
 - 8 selectable fallback colours + Auto (slate = neutral only)
 - Event list: Active + History tabs (planner); whole card opens detail
 - **History:** bulk "Remove from history" (hides from UI, does not delete records)

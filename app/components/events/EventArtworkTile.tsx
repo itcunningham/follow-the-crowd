@@ -4,6 +4,7 @@ import {
   getEventCoverImageAlt,
   normalizeEventCoverImageUrl,
 } from "@/lib/events/eventCoverImage";
+import { EventCoverImageMedia } from "@/app/components/events/EventCoverImagePrimitives";
 import {
   getEventFallbackColour,
   getEventFallbackColourStyles,
@@ -38,13 +39,9 @@ export default function EventArtworkTile({
   if (trimmedCoverUrl) {
     return (
       <div
-        className={`shrink-0 overflow-hidden border border-ftc-border-subtle bg-ftc-bg-elevated ${sizeClassName} ${className}`}
+        className={`ftc-event-image-frame ftc-event-image-frame--thumb shrink-0 border border-ftc-border-subtle bg-ftc-bg-elevated ${sizeClassName} ${className}`}
       >
-        <img
-          src={trimmedCoverUrl}
-          alt={getEventCoverImageAlt(eventName)}
-          className="h-full w-full object-contain"
-        />
+        <EventCoverImageMedia src={trimmedCoverUrl} alt={getEventCoverImageAlt(eventName)} />
       </div>
     );
   }

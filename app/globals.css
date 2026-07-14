@@ -514,16 +514,13 @@ html {
 }
 
 .ftc-event-cover-panel-preview {
-  display: flex;
-  justify-content: center;
-  background: rgb(10 14 20 / 0.45);
-  padding: 1rem 1rem 1.25rem;
+  padding: 0.75rem;
+  background: var(--ftc-color-bg-input);
 }
 
 .ftc-event-cover-panel-empty {
   display: flex;
-  aspect-ratio: 3 / 4;
-  max-height: 13rem;
+  aspect-ratio: 16 / 9;
   width: 100%;
   flex-direction: column;
   align-items: center;
@@ -579,6 +576,32 @@ html {
 
 .ftc-form-notes-counter.is-over-limit {
   color: var(--ftc-color-danger);
+}
+
+/* Event cover images — shared crop and aspect frames */
+.ftc-event-image-frame {
+  position: relative;
+  overflow: hidden;
+  background: var(--ftc-color-bg-elevated);
+}
+
+.ftc-event-image-frame--hero {
+  aspect-ratio: 16 / 9;
+  width: 100%;
+  border-radius: var(--ftc-radius-xl);
+  border: 1px solid var(--ftc-color-border-subtle);
+}
+
+.ftc-event-image-frame--edit {
+  aspect-ratio: 16 / 9;
+  width: 100%;
+  border-radius: var(--ftc-radius-lg);
+  border: 1px solid var(--ftc-color-border-subtle);
+}
+
+.ftc-event-image-frame--thumb {
+  height: 100%;
+  width: 100%;
 }
 
 .ftc-card-hoverable {

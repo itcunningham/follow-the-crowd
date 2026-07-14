@@ -16,7 +16,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 ## Events
 
 - Optional event flyer upload (JPEG/PNG/WebP, 5 MB, bucket `event-covers`)
-- Portrait-friendly flyer display (not forced 16:9 crop)
+- **Unified event cover image system (2026-07-14):** shared `EventCoverImagePrimitives` — `object-cover` centre crop, 16:9 hero on detail + edit preview, consistent thumb frames on list/context tiles; coloured fallback hero unchanged when no image
 - Event colour: 8 selectable + Auto (slate neutral when Auto or legacy slate)
 - Flat solid artwork tiles (no glow)
 - Event list: Active + History tabs; whole card links to detail

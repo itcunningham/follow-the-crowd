@@ -5,6 +5,7 @@ import {
   getEventCoverImageAlt,
   validateEventCoverFile,
 } from "@/lib/events/eventCoverImage";
+import { EventCoverImageHeroPreview } from "@/app/components/events/EventCoverImagePrimitives";
 import { BOOKING_FIELD_LABEL_CLASS } from "@/lib/bookingDateTime";
 
 export type EventCoverImageFieldState = {
@@ -120,13 +121,11 @@ export default function EventCoverImageField({
       <div className="ftc-event-cover-panel">
         {showPreview && previewSrc ? (
           <div className="ftc-event-cover-panel-preview">
-            <div className="aspect-[3/4] w-full max-w-[12.5rem] overflow-hidden rounded-[var(--ftc-radius-lg)] border border-ftc-border-subtle bg-ftc-bg-elevated">
-              <img
-                src={previewSrc}
-                alt={getEventCoverImageAlt(eventName)}
-                className="h-full w-full object-contain"
-              />
-            </div>
+            <EventCoverImageHeroPreview
+              src={previewSrc}
+              alt={getEventCoverImageAlt(eventName)}
+              variant="edit"
+            />
           </div>
         ) : (
           <div className="ftc-event-cover-panel-empty">

@@ -58,6 +58,7 @@ Sub-nav: `lib/plannerEventsNav.ts`, `app/components/PlannerEventsSubNav.tsx`
 - `app/components/booking/SendBookingRequestsPanel.tsx` — invite DJs UI
 - `app/components/BookingRequestCard.tsx` — DM booking cards
 - `app/components/events/EventArtworkTile.tsx` — flyer or fallback tile
+- `app/components/events/EventCoverImagePrimitives.tsx` — shared cover frame/media (hero, edit, thumb variants)
 - `app/dm/page.tsx` — Messages inbox (DM + Group tabs)
 
 ## Event artwork
@@ -66,6 +67,7 @@ Sub-nav: `lib/plannerEventsNav.ts`, `app/components/PlannerEventsSubNav.tsx`
 - Fallback colour: `events.fallback_colour` — keys: blue, violet, teal, green, amber, orange, red, pink, slate
 - **Selectable in UI:** 8 colours + Auto. Slate = auto/neutral only (not a swatch).
 - Flyer always wins over colour tile.
+- Cover images: `object-cover` centre crop; 16:9 hero on event detail + edit preview; shared thumb styling on list/context tiles.
 
 ## Build
 
