@@ -1,12 +1,11 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef } from "react";
 import ChatSendIcon from "@/app/components/chat/ChatSendIcon";
 import {
   DM_PHOTO_INPUT_ACCEPT,
   validateDmAttachmentFile,
 } from "@/lib/dmAttachments";
-import { DM_COMPOSER_EMOJIS } from "@/lib/dmReactions";
 
 function ComposerIconButton({
   label,
@@ -57,7 +56,6 @@ export default function DmComposer({
   uploading: boolean;
 }) {
   const photoInputRef = useRef<HTMLInputElement>(null);
-  const [emojiOpen, setEmojiOpen] = useState(false);
   const busy = sending || uploading;
 
   function handleKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
@@ -65,11 +63,6 @@ export default function DmComposer({
       event.preventDefault();
       onSend();
     }
-  }
-
-  function appendEmoji(emoji: string) {
-    onChange(`${value}${emoji}`);
-    setEmojiOpen(false);
   }
 
   function handleAttachmentSelected(file: File, onSelected: (file: File) => void) {
@@ -85,23 +78,6 @@ export default function DmComposer({
 
   return (
     <div className="shrink-0 border-t border-ftc-border-subtle bg-ftc-bg px-3 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-4">
-      {emojiOpen ? (
-        <div className="mb-2 rounded-2xl border border-ftc-border-subtle bg-ftc-bg-elevated p-2">
-          <div className="grid grid-cols-6 gap-1 sm:grid-cols-8">
-            {DM_COMPOSER_EMOJIS.map((emoji) => (
-              <button
-                key={emoji}
-                type="button"
-                onClick={() => appendEmoji(emoji)}
-                className="flex h-9 items-center justify-center rounded-lg text-lg transition hover:bg-ftc-surface"
-              >
-                {emoji}
-              </button>
-            ))}
-          </div>
-        </div>
-      ) : null}
-
       <div className="flex min-w-0 items-end gap-2">
         <ComposerIconButton
           label="Add photo"
@@ -115,28 +91,15 @@ export default function DmComposer({
           </svg>
         </ComposerIconButton>
 
-        <div className="relative min-w-0 flex-1">
-          <input
-            type="text"
-            value={value}
-            onChange={(event) => onChange(event.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Message..."
-            disabled={busy}
-            className="ftc-input h-11 w-full rounded-full py-0 pl-4 pr-11 disabled:cursor-not-allowed"
-          />
-          <button
-            type="button"
-            aria-label="Add emoji"
-            disabled={busy}
-            onClick={() => setEmojiOpen((open) => !open)}
-            className={`absolute right-1.5 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-lg transition disabled:opacity-40 ${
-              emojiOpen ? "text-ftc-primary" : "text-ftc-text-muted hover:text-ftc-text-secondary"
-            }`}
-          >
-            😊
-          </button>
-        </div>
+        <input
+          type="text"
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder="Message..."
+          disabled={busy}
+          className="ftc-input h-11 min-w-0 flex-1 rounded-full px-4 py-0 disabled:cursor-not-allowed"
+        />
 
         <button
           type="button"
