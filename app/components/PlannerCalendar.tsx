@@ -315,7 +315,10 @@ function PlannerCalendarMobileAgenda({
         <div className={CALENDAR_MOBILE_AGENDA_CARD_LIST_CLASS}>
           {displayDateItems.length === 0 ? (
             isPastEmptyDate ? null : (
-              <CalendarMobileDashedEmptyState message="No events scheduled" />
+              <CalendarMobileDashedEmptyState
+                message="No events scheduled"
+                hint="Select another day or create a new event"
+              />
             )
           ) : (
             displayDateItems.map((item) => (

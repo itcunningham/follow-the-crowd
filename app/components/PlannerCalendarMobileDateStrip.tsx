@@ -128,22 +128,15 @@ function useCalendarTodayDate(): Date {
   return todayDate;
 }
 
-function getDateStripScrollCacheKey(monthStart: Date, date: Date): string {
-  return `${monthStart.getFullYear()}-${monthStart.getMonth()}:${toDateKey(date)}`;
-}
+function isSelectedChipVisibleInContainer(container: HTMLElement, chip: HTMLElement): boolean {
+  const containerRect = container.getBoundingClientRect();
+  const chipRect = chip.getBoundingClientRect();
+  const edgePadding = 2;
 
-const dateStripScrollPositionCache = new Map<string, number>();
-
-function readCachedDateStripScrollLeft(monthStart: Date, date: Date): number | undefined {
-  return dateStripScrollPositionCache.get(getDateStripScrollCacheKey(monthStart, date));
-}
-
-function writeCachedDateStripScrollLeft(
-  monthStart: Date,
-  date: Date,
-  scrollLeft: number,
-): void {
-  dateStripScrollPositionCache.set(getDateStripScrollCacheKey(monthStart, date), scrollLeft);
+  return (
+    chipRect.left >= containerRect.left - edgePadding &&
+    chipRect.right <= containerRect.right + edgePadding
+  );
 }
 
 function measureDateStripChipWidth(container: HTMLElement): number | null {
@@ -255,21 +248,30 @@ export default function PlannerCalendarMobileDateStrip({
     [cancelPendingCenterFrames, scrollToDate],
   );
 
-  const applyInstantDateStripPosition = useCallback(
-    (date: Date) => {
-      const container = scrollRef.current;
-
-      if (!container || !isSameMonth(date, monthStart)) {
+  const applySelectedDateStripPosition = useCallback(
+    (date: Date, options?: { instant?: boolean }) => {
+      if (!isSameMonth(date, monthStart)) {
         return;
       }
 
-      const cachedScrollLeft = readCachedDateStripScrollLeft(monthStart, date);
+      centerDateWhenReady(date, options);
+    },
+    [centerDateWhenReady, monthStart],
+  );
 
-      if (cachedScrollLeft !== undefined) {
-        container.scrollLeft = cachedScrollLeft;
+  const ensureSelectedDateVisible = useCallback(
+    (options?: { instant?: boolean }) => {
+      const date = selectedDateRef.current;
+      const container = scrollRef.current;
+      const chip = chipRefs.current.get(toDateKey(date));
+
+      if (!container || !chip || !isSameMonth(date, monthStart)) {
+        return;
       }
 
-      centerDateWhenReady(date, { instant: true });
+      if (!isSelectedChipVisibleInContainer(container, chip)) {
+        centerDateWhenReady(date, options);
+      }
     },
     [centerDateWhenReady, monthStart],
   );
@@ -301,8 +303,8 @@ export default function PlannerCalendarMobileDateStrip({
   }, []);
 
   useLayoutEffect(() => {
-    applyInstantDateStripPosition(selectedDateRef.current);
-  }, [applyInstantDateStripPosition, chipWidth, monthDates, monthStart]);
+    applySelectedDateStripPosition(selectedDateRef.current, { instant: true });
+  }, [applySelectedDateStripPosition, chipWidth, monthDates, monthStart]);
 
   useLayoutEffect(() => {
     if (!isSameMonth(selectedDate, monthStart)) {
@@ -313,35 +315,34 @@ export default function PlannerCalendarMobileDateStrip({
     const monthStartTime = monthStart.getTime();
     const monthChanged = monthStartTime !== previousMonthStartTimeRef.current;
     const dateChanged = selectedDateKey !== previousSelectedDateKeyRef.current;
+    const isInitial = isInitialLayoutRef.current;
 
     previousMonthStartTimeRef.current = monthStartTime;
     previousSelectedDateKeyRef.current = selectedDateKey;
+    isInitialLayoutRef.current = false;
 
-    if (isInitialLayoutRef.current) {
-      isInitialLayoutRef.current = false;
+    if (!isInitial && !dateChanged && !monthChanged) {
+      ensureSelectedDateVisible();
       return;
     }
 
-    if (!dateChanged || monthChanged) {
-      return;
-    }
-
-    centerDateWhenReady(selectedDate);
-  }, [centerDateWhenReady, monthStart, selectedDate]);
+    applySelectedDateStripPosition(
+      selectedDate,
+      isInitial || monthChanged ? { instant: true } : undefined,
+    );
+  }, [
+    applySelectedDateStripPosition,
+    ensureSelectedDateVisible,
+    monthStart,
+    selectedDate,
+  ]);
 
   useEffect(() => {
     return () => {
-      const container = scrollRef.current;
-      const date = selectedDateRef.current;
-
-      if (container && isSameMonth(date, monthStart)) {
-        writeCachedDateStripScrollLeft(monthStart, date, container.scrollLeft);
-      }
-
       cancelScrollAnimation();
       cancelPendingCenterFrames();
     };
-  }, [cancelPendingCenterFrames, cancelScrollAnimation, monthStart]);
+  }, [cancelPendingCenterFrames, cancelScrollAnimation]);
 
   return (
     <div

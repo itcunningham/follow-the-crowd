@@ -60,7 +60,7 @@ export default function CalendarMonthYearPicker({
   }
 
   return (
-    <div className="w-[min(calc(100vw-2rem),17rem)] rounded-xl border border-ftc-border-strong bg-ftc-bg-elevated p-2.5 shadow-[0_16px_48px_rgba(0,0,0,0.45)]">
+    <div className="w-[min(calc(100vw-2rem),15rem)] rounded-xl border border-ftc-border-strong bg-ftc-bg-elevated p-2.5 shadow-[0_16px_48px_rgba(0,0,0,0.45)]">
       <p className="text-xs font-semibold text-ftc-text">Select month</p>
 
       <div className="mt-2.5 grid grid-cols-4 gap-1">

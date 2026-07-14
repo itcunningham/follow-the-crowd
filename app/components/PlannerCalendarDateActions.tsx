@@ -163,9 +163,12 @@ export default function PlannerCalendarDateActions({
 
             {items.length === 0 ? (
               isPastEmptyDate ? null : (
-                <p className="mt-4 rounded-xl border border-dashed border-ftc-border bg-ftc-surface/40 px-4 py-6 text-center text-sm text-ftc-text-muted">
-                  No events scheduled
-                </p>
+                <div className="mt-4 rounded-xl border border-dashed border-ftc-border-subtle bg-ftc-surface/30 px-4 py-6 text-center">
+                  <p className="text-sm font-medium text-ftc-text-secondary">No events scheduled</p>
+                  <p className="mt-1.5 text-sm text-ftc-text-muted">
+                    Select another day or create a new event
+                  </p>
+                </div>
               )
             ) : (
               <ul className="mt-4 max-h-64 space-y-2 overflow-y-auto pr-1">

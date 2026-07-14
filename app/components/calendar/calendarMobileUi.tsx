@@ -128,11 +128,26 @@ export function CalendarMobileSelectedDayHeader({
   );
 }
 
-export function CalendarMobileDashedEmptyState({ message }: { message: string }) {
+export function CalendarMobileDashedEmptyState({
+  message,
+  hint,
+}: {
+  message: string;
+  hint?: string;
+}) {
   return (
     <div className={CALENDAR_MOBILE_EMPTY_STATE_CLASS}>
       <CalendarMobileEmptyIcon />
-      <p className={CALENDAR_MOBILE_EMPTY_STATE_TEXT_CLASS}>{message}</p>
+      <p
+        className={
+          hint
+            ? "text-sm font-medium text-ftc-text-secondary"
+            : CALENDAR_MOBILE_EMPTY_STATE_TEXT_CLASS
+        }
+      >
+        {message}
+      </p>
+      {hint ? <p className="mt-1.5 text-sm text-ftc-text-muted">{hint}</p> : null}
     </div>
   );
 }
