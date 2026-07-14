@@ -66,8 +66,12 @@ import {
   resolveDjCalendarViewMonthStart,
   toDateKey,
   WEEKDAY_LABELS,
+  type CalendarOriginState,
 } from "@/lib/calendar";
-import { prepareMobileDocumentScrollReset } from "@/lib/navigation/prepareMobileDocumentScrollReset";
+import {
+  prepareCalendarAgendaEventNavigation,
+  prepareMobileDocumentScrollReset,
+} from "@/lib/navigation/prepareMobileDocumentScrollReset";
 import { isDateKeyBeforeToday } from "@/lib/bookingDateTime";
 
 
@@ -491,6 +495,52 @@ function BulkActionBar({
   );
 }
 
+type DjCalendarMobileBookingCardProps = {
+  booking: BookingRequest;
+  calendarOrigin: CalendarOriginState;
+};
+
+function DjCalendarMobileBookingCard({
+  booking,
+  calendarOrigin,
+}: DjCalendarMobileBookingCardProps) {
+  const router = useRouter();
+  const bookingHref = resolveCalendarOriginEventHref(
+    getBookingRequestHref(booking),
+    calendarOrigin,
+  );
+  const eventName = booking.event_name.trim() || "Booking request";
+  const statusLabel = booking.status === "accepted" ? "Booked" : "Pending Request";
+
+  const handleOpenBooking = useCallback(() => {
+    prepareCalendarAgendaEventNavigation();
+    router.push(bookingHref, { scroll: false });
+  }, [bookingHref, router]);
+
+  return (
+    <button
+      type="button"
+      onClick={handleOpenBooking}
+      aria-label={`${eventName}, ${statusLabel}`}
+      className={`block w-full rounded-xl border border-ftc-border bg-ftc-surface/80 px-3 py-2.5 text-left hover:border-ftc-primary/30 hover:bg-ftc-surface ${CALENDAR_MOBILE_INTERACTIVE_PRESS_CLASS}`}
+    >
+      <div className="flex items-center justify-between gap-2">
+        <p className="truncate text-sm font-semibold text-ftc-text">{eventName}</p>
+        <span
+          className={`shrink-0 rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide ${getDjBookingStatusBadgeClass(booking.status === "accepted" ? "accepted" : "pending")}`}
+        >
+          {statusLabel}
+        </span>
+      </div>
+      {booking.set_time.trim() ? (
+        <p className="mt-0.5 truncate text-xs text-ftc-text-muted">
+          {formatCalendarTimeLabel(booking.set_time)}
+        </p>
+      ) : null}
+    </button>
+  );
+}
+
 type DjAvailabilityMobileDayPanelProps = {
   selectedDate: Date;
   isTodayDate: boolean;
@@ -566,27 +616,7 @@ function DjAvailabilityMobileDayPanel({
         <ul className="mt-3 space-y-2">
           {interactiveBookings.map((booking) => (
             <li key={booking.id}>
-              <Link
-                href={resolveCalendarOriginEventHref(getBookingRequestHref(booking), calendarOrigin)}
-                onClick={() => prepareMobileDocumentScrollReset()}
-                className={`block rounded-xl border border-ftc-border bg-ftc-surface/80 px-3 py-2.5 hover:border-ftc-primary/30 hover:bg-ftc-surface ${CALENDAR_MOBILE_INTERACTIVE_PRESS_CLASS}`}
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <p className="truncate text-sm font-semibold text-ftc-text">
-                    {booking.event_name.trim() || "Booking request"}
-                  </p>
-                  <span
-                    className={`shrink-0 rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide ${getDjBookingStatusBadgeClass(booking.status === "accepted" ? "accepted" : "pending")}`}
-                  >
-                    {booking.status === "accepted" ? "Booked" : "Pending Request"}
-                  </span>
-                </div>
-                {booking.set_time.trim() ? (
-                  <p className="mt-0.5 truncate text-xs text-ftc-text-muted">
-                    {formatCalendarTimeLabel(booking.set_time)}
-                  </p>
-                ) : null}
-              </Link>
+              <DjCalendarMobileBookingCard booking={booking} calendarOrigin={calendarOrigin} />
             </li>
           ))}
         </ul>
