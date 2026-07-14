@@ -686,6 +686,7 @@ type DjAvailabilityMobileDayPanelProps = {
   animatedDayBookings: BookingRequest[];
   animatedBookingsDateKey: string;
   bookingsTransitionClassName: string;
+  isAgendaTransitionInteractive: boolean;
   onBookingNavigationError?: (message: string) => void;
 };
 
@@ -700,6 +701,7 @@ function DjAvailabilityMobileDayPanel({
   animatedDayBookings,
   animatedBookingsDateKey,
   bookingsTransitionClassName,
+  isAgendaTransitionInteractive,
   onBookingNavigationError,
 }: DjAvailabilityMobileDayPanelProps) {
   const dateKey = toDateKey(selectedDate);
@@ -747,7 +749,10 @@ function DjAvailabilityMobileDayPanel({
         </div>
       ) : null}
 
-      <div className={bookingsTransitionClassName}>
+      <div
+        className={bookingsTransitionClassName}
+        inert={isAgendaTransitionInteractive ? undefined : true}
+      >
         {interactiveBookings.length > 0 ? (
           <ul className={CALENDAR_MOBILE_AGENDA_CARD_LIST_CLASS}>
             {interactiveBookings.map((booking) => (
@@ -802,7 +807,7 @@ function DjAvailabilityMobileAgenda({
   onBookingNavigationError,
 }: DjAvailabilityMobileAgendaProps) {
   const selectedDateKey = toDateKey(selectedDate);
-  const { displayDateKey, transitionClassName } =
+  const { displayDateKey, transitionClassName, isAgendaTransitionInteractive } =
     useCalendarMobileAgendaTransition(selectedDateKey);
   const personalEntry = availabilityByDate.get(selectedDateKey);
   const animatedDayBookings = bookingsByDate.get(displayDateKey) ?? [];
@@ -825,6 +830,7 @@ function DjAvailabilityMobileAgenda({
           animatedDayBookings={animatedDayBookings}
           animatedBookingsDateKey={displayDateKey}
           bookingsTransitionClassName={transitionClassName}
+          isAgendaTransitionInteractive={isAgendaTransitionInteractive}
           onBookingNavigationError={onBookingNavigationError}
         />
       )}

@@ -87,6 +87,8 @@ function getNavItems(role: UserRole, currentUserId: string | null): NavItem[] {
 
 export const MOBILE_NAV_OFFSET_CLASS = "pb-[calc(3.5rem+env(safe-area-inset-bottom))] md:pb-0";
 
+export const MOBILE_NAV_Z_CLASS = "z-50";
+
 function navLinkClassName(isActive: boolean, variant: "desktop" | "mobile") {
   if (variant === "desktop") {
     if (isActive) {
@@ -307,7 +309,7 @@ export default function AppNavigation() {
 
       <nav
         aria-label="Mobile navigation"
-        className="ftc-nav-bar fixed inset-x-0 bottom-0 z-40 border-t md:hidden"
+        className={`ftc-nav-bar fixed inset-x-0 bottom-0 ${MOBILE_NAV_Z_CLASS} border-t md:hidden`}
       >
         <div className="mx-auto flex max-w-2xl items-stretch px-0.5 pb-[env(safe-area-inset-bottom)]">
           {navItems.map((item) => {

@@ -273,7 +273,7 @@ function PlannerCalendarMobileAgenda({
     calendarView: "event",
     monthStart,
   });
-  const { displayDateKey, transitionClassName } =
+  const { displayDateKey, transitionClassName, isAgendaTransitionInteractive } =
     useCalendarMobileAgendaTransition(selectedDateKey);
   const displayDate =
     parsePlannerCalendarDateParam(displayDateKey) ?? selectedDate;
@@ -292,7 +292,11 @@ function PlannerCalendarMobileAgenda({
 
   return (
     <div className="md:hidden">
-      <div ref={agendaHeaderRef} className={transitionClassName}>
+      <div
+        ref={agendaHeaderRef}
+        className={transitionClassName}
+        inert={isAgendaTransitionInteractive ? undefined : true}
+      >
         <div className="mt-4">
           <CalendarMobileSelectedDayHeader
             dateLabel={formatPlannerAgendaDateLabel(displayDate)}

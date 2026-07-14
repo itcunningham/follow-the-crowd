@@ -25,7 +25,7 @@ export const CALENDAR_MOBILE_EMPTY_STATE_TEXT_CLASS = "text-sm text-ftc-text-mut
 export const CALENDAR_MOBILE_AGENDA_CARD_LIST_CLASS = "mt-3 space-y-2";
 
 export const CALENDAR_MOBILE_AGENDA_CARD_SHELL_CLASS =
-  "block w-full min-h-[5.25rem] rounded-xl px-3 py-2.5 text-left";
+  "relative z-0 block w-full min-h-[5.25rem] rounded-xl px-3 py-2.5 text-left";
 
 export const CALENDAR_MOBILE_AGENDA_CARD_BODY_CLASS =
   "flex min-h-[3.75rem] items-start gap-3";
@@ -161,8 +161,8 @@ export function useCalendarMobileAgendaTransition(selectedDateKey: string) {
   const transitionClassName = `${CALENDAR_MOBILE_AGENDA_TRANSITION_CLASS} ${
     visible
       ? "translate-y-0 opacity-100"
-      : "pointer-events-none translate-y-1 opacity-0"
+      : "pointer-events-none [&_*]:pointer-events-none translate-y-1 opacity-0"
   }`;
 
-  return { displayDateKey, transitionClassName };
+  return { displayDateKey, transitionClassName, isAgendaTransitionInteractive: visible };
 }
