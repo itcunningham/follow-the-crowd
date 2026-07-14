@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { EventCoverImageHeroPreview } from "@/app/components/events/EventCoverImagePrimitives";
+import EventDetailHeroImage from "@/app/components/event-detail/EventDetailHeroImage";
 import { getEventCoverImageAlt } from "@/lib/events/eventCoverImage";
 import {
   getEventFallbackColour,
@@ -178,11 +178,9 @@ export function EventDetailHero({
 
   return (
     <div data-event-detail-hero className="px-4 pb-1 pt-2.5 sm:px-6">
-      <EventCoverImageHeroPreview
+      <EventDetailHeroImage
         src={trimmedCoverUrl}
         alt={getEventCoverImageAlt(eventName)}
-        variant="hero"
-        fit="contain"
         badge={statusBadge}
       />
     </div>

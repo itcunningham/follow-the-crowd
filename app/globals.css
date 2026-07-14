@@ -599,6 +599,12 @@ html {
   border: 1px solid var(--ftc-color-border-subtle);
 }
 
+.ftc-event-detail-hero-image {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 /* Compact square artwork — list, inbox, context chips */
 .ftc-event-thumbnail {
   position: relative;

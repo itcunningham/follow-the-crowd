@@ -60,6 +60,7 @@ Sub-nav: `lib/plannerEventsNav.ts`, `app/components/PlannerEventsSubNav.tsx`
 - `app/components/events/EventArtworkTile.tsx` — re-export of `EventThumbnail` (backward compat)
 - `app/components/events/EventThumbnail.tsx` — fixed square compact artwork (list, context, inbox)
 - `app/components/events/EventCoverImagePrimitives.tsx` — shared cover frame/media (hero, edit)
+- `app/components/event-detail/EventDetailHeroImage.tsx` — adaptive Event Details hero (portrait column + cover/contain tiers)
 - `app/dm/page.tsx` — Messages inbox (DM + Group tabs)
 
 ## Event artwork
@@ -68,7 +69,7 @@ Sub-nav: `lib/plannerEventsNav.ts`, `app/components/PlannerEventsSubNav.tsx`
 - Fallback colour: `events.fallback_colour` — keys: blue, violet, teal, green, amber, orange, red, pink, slate
 - **Selectable in UI:** 8 colours + Auto. Slate = auto/neutral only (not a swatch).
 - Flyer always wins over colour tile.
-- Cover images: Event Details hero — full flyer visible (`object-contain` on 16:9 frame); edit preview — 16:9 `object-cover`; list/context/inbox — compact 64px square `EventThumbnail`.
+- Cover images: Event Details — adaptive hero (`EventDetailHeroImage`: portrait column 70–80% + contain, landscape/square cover); edit preview — 16:9 cover; list/context/inbox — 64px `EventThumbnail`.
 
 ## Build
 
