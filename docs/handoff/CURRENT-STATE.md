@@ -27,7 +27,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 - Run sheet: single planner view for assigned DJs; table on `lg+`, cards below
 - Run sheet rows auto-created when DJ accepts
 - Accepted bookings cancellable by planner or DJ with reason + group chat update
-- Booking cards in DMs show **live** event fields from `events` when `event_id` set
+- Booking cards in DMs show **live** event fields from `events` when `event_id` set; expanded card uses compact icon metadata rows (venue/date/time/rate), no event initials thumb, expandable notes, tighter spacing
 - **DM photo picker (2026-07-14):** media icon opens native OS chooser (Photo Library / Take Photo on iOS); no forced camera via `capture`
 - **DM composer (2026-07-14):** no in-field emoji button; users use native keyboard emoji picker; mobile send button slightly smaller (`h-10` / 40px, icon 18px) with desktop unchanged at `h-11`
 

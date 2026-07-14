@@ -2,14 +2,15 @@
 
 import { useState, type ReactNode } from "react";
 import Link from "next/link";
-import BookingDetailGrid, { BookingDetailItem } from "@/app/components/booking/BookingDetailGrid";
+import BookingCardCompactSummary, {
+  getBookingCardCompactRateLine,
+} from "@/app/components/booking/BookingCardCompactSummary";
 import BookingRateProposalPanel, {
   BookingRateProposalNotice,
 } from "@/app/components/booking/BookingRateProposalPanel";
 import ProposeBookingRateSheet from "@/app/components/booking/ProposeBookingRateSheet";
 import BookingStatusBadge from "@/app/components/booking/BookingStatusBadge";
 import CancelAcceptedBookingButton from "@/app/components/booking/CancelAcceptedBookingButton";
-import { EventCoverImageContextThumb } from "@/app/components/events/EventCoverImageDisplay";
 import CancelBookingRequestButton from "@/app/components/CancelBookingRequestButton";
 import {
   canCancelBookingRequest,
@@ -163,6 +164,59 @@ export default function BookingRequestCard({
   const collapsedTitle = booking.event_name.trim() || "Booking request";
   const cancelledCardClass = getBookingCancelledDmCardClass();
   const cancelledBadgeClass = getBookingCancelledDmBadgeClass();
+  const compactRateLine = getBookingCardCompactRateLine(
+    booking,
+    offerRateLabel,
+    rateDetailLabel,
+    pendingProposal,
+  );
+
+  function renderHeaderBadges() {
+    return (
+      <>
+        {showOpenOfferLabel ? (
+          <span className="inline-flex rounded-full border border-ftc-border-subtle bg-ftc-bg-elevated px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-ftc-primary">
+            Ask for rate
+          </span>
+        ) : null}
+        {pendingProposal ? (
+          <span className="inline-flex rounded-full border border-ftc-border-subtle bg-ftc-bg-elevated px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-ftc-primary">
+            Rate proposed
+          </span>
+        ) : null}
+      </>
+    );
+  }
+
+  function renderExpandedHeader(statusBadge: ReactNode) {
+    return (
+      <div className="flex min-w-0 items-start justify-between gap-2">
+        <div className="min-w-0 flex-1">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted">
+            Booking request
+          </p>
+          <h3 className="mt-0.5 break-words text-base font-semibold leading-snug text-ftc-text">
+            {booking.event_name}
+          </h3>
+        </div>
+        <div className="flex shrink-0 flex-col items-end gap-1">
+          {statusBadge}
+          {renderHeaderBadges()}
+        </div>
+      </div>
+    );
+  }
+
+  function renderCompactSummary() {
+    return (
+      <BookingCardCompactSummary
+        booking={booking}
+        rateLine={compactRateLine}
+        cancelledByLabel={cancelledByLabel}
+        cancellationReasonLabel={cancellationReasonLabel}
+      />
+    );
+  }
 
   function renderChevronDown() {
     return (
@@ -200,24 +254,6 @@ export default function BookingRequestCard({
     );
   }
 
-  function renderCancelledDetailsGrid() {
-    return (
-      <BookingDetailGrid>
-        <BookingDetailItem label="Venue" value={booking.venue} />
-        <BookingDetailItem label="Date" value={formatDisplayEventDate(booking.event_date)} />
-        <BookingDetailItem label="Set time" value={booking.set_time} />
-        <BookingDetailItem label={rateDetailLabel} value={offerRateLabel} />
-        {booking.notes ? <BookingDetailItem label="Notes" value={booking.notes} /> : null}
-        {cancelledByLabel ? (
-          <BookingDetailItem label="Cancelled by" value={cancelledByLabel} />
-        ) : null}
-        {cancellationReasonLabel ? (
-          <BookingDetailItem label="Reason" value={cancellationReasonLabel} />
-        ) : null}
-      </BookingDetailGrid>
-    );
-  }
-
   function renderCompactDmCollapseHeader(
     statusBadge: ReactNode,
     options?: { danger?: boolean },
@@ -228,16 +264,21 @@ export default function BookingRequestCard({
         onClick={handleCollapse}
         aria-expanded={true}
         aria-label={`${collapsedTitle}, hide booking details`}
-        className={`-mx-1 -mt-1 mb-3 w-[calc(100%+0.5rem)] min-h-[44px] rounded-xl px-1 py-2 text-left transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ftc-primary ${
+        className={`-mx-1 -mt-1 mb-2.5 w-[calc(100%+0.5rem)] min-h-[44px] rounded-xl px-1 py-2 text-left transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ftc-primary ${
           options?.danger
             ? "hover:bg-[var(--ftc-color-danger)]/10"
             : "hover:bg-ftc-bg-elevated/60"
         }`}
       >
         <div className="flex items-start justify-between gap-2 px-1">
-          <p className="min-w-0 flex-1 break-words text-sm font-semibold leading-snug text-ftc-text">
-            {collapsedTitle}
-          </p>
+          <div className="min-w-0 flex-1">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted">
+              Booking request
+            </p>
+            <p className="mt-0.5 break-words text-sm font-semibold leading-snug text-ftc-text">
+              {collapsedTitle}
+            </p>
+          </div>
           {statusBadge}
         </div>
         <div
@@ -358,7 +399,7 @@ export default function BookingRequestCard({
 
   if (showAsCancelled) {
     return (
-      <div className={`w-full max-w-sm rounded-2xl p-4 ${cancelledCardClass}`}>
+      <div className={`w-full max-w-sm rounded-2xl p-3.5 ${cancelledCardClass}`}>
         {collapsible && expanded && useCompactDmCollapseHeader ? (
           renderCompactDmCollapseHeader(
             renderCancelledStatusBadge(
@@ -380,38 +421,25 @@ export default function BookingRequestCard({
         ) : null}
 
         {!(collapsible && expanded && useCompactDmCollapseHeader) ? (
-          <div className="flex min-w-0 items-start gap-3">
-            <EventCoverImageContextThumb
-              eventName={booking.event_name}
-              coverImageUrl={coverImageUrl}
-              fallbackColour={fallbackColour}
-            />
-            <div className="min-w-0 flex-1">
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted">
-                Booking request
-              </p>
-              <h3 className="mt-1 break-words text-base font-semibold leading-snug text-ftc-text">
-                {booking.event_name}
-              </h3>
-            </div>
-            {renderCancelledStatusBadge(
+          renderExpandedHeader(
+            renderCancelledStatusBadge(
               eventCancelledLabel ?? formatBookingStatusLabel("cancelled"),
-            )}
-          </div>
+            ),
+          )
         ) : null}
 
         {eventCancelledLabel ? (
-          <p className="mt-3 break-words text-sm text-[var(--ftc-color-danger)]/90">
+          <p className="mt-2.5 break-words text-sm text-[var(--ftc-color-danger)]/90">
             {eventCancelledLabel}
           </p>
         ) : null}
 
-        <div className="mt-4">{renderCancelledDetailsGrid()}</div>
+        <div className="mt-3">{renderCompactSummary()}</div>
 
         {booking.event_id ? (
           <Link
             href={eventHref!}
-            className="mt-4 inline-flex rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated px-3 py-2 text-xs font-semibold uppercase tracking-wide text-ftc-text-secondary transition hover:border-ftc-border-strong"
+            className="mt-3 inline-flex rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated px-3 py-2 text-xs font-semibold uppercase tracking-wide text-ftc-text-secondary transition hover:border-ftc-border-strong"
           >
             View event
           </Link>
@@ -422,7 +450,7 @@ export default function BookingRequestCard({
 
   return (
     <>
-      <div className="w-full max-w-sm rounded-2xl border border-ftc-border-subtle bg-ftc-surface p-4">
+      <div className="w-full max-w-sm rounded-2xl border border-ftc-border-subtle bg-ftc-surface p-3.5">
         {collapsible && expanded && useCompactDmCollapseHeader ? (
           renderCompactDmCollapseHeader(<BookingStatusBadge status={booking.status} />)
         ) : collapsible ? (
@@ -439,82 +467,10 @@ export default function BookingRequestCard({
         ) : null}
 
         {!(collapsible && expanded && useCompactDmCollapseHeader) ? (
-          collapsible ? (
-            <div className="flex min-w-0 items-start gap-3">
-              <EventCoverImageContextThumb
-                eventName={booking.event_name}
-                coverImageUrl={coverImageUrl}
-                fallbackColour={fallbackColour}
-              />
-              <div className="min-w-0 flex-1">
-                <p className="text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted">
-                  Booking request
-                </p>
-                <h3 className="mt-1 break-words text-base font-semibold leading-snug text-ftc-text">
-                  {booking.event_name}
-                </h3>
-              </div>
-              <div className="flex shrink-0 flex-col items-end gap-1">
-                <BookingStatusBadge status={booking.status} />
-                {showOpenOfferLabel ? (
-                  <span className="inline-flex rounded-full border border-ftc-border-subtle bg-ftc-bg-elevated px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-ftc-primary">
-                    Ask for rate
-                  </span>
-                ) : null}
-                {pendingProposal ? (
-                  <span className="inline-flex rounded-full border border-ftc-border-subtle bg-ftc-bg-elevated px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-ftc-primary">
-                    Rate proposed
-                  </span>
-                ) : null}
-              </div>
-            </div>
-          ) : (
-            <div className="flex min-w-0 items-start gap-3">
-              <EventCoverImageContextThumb
-                eventName={booking.event_name}
-                coverImageUrl={coverImageUrl}
-                fallbackColour={fallbackColour}
-              />
-              <div className="min-w-0 flex-1">
-                <p className="text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted">
-                  Booking request
-                </p>
-                <h3 className="mt-1 break-words text-base font-semibold leading-snug text-ftc-text">
-                  {booking.event_name}
-                </h3>
-              </div>
-              <div className="flex shrink-0 flex-col items-end gap-1">
-                <BookingStatusBadge status={booking.status} />
-                {showOpenOfferLabel ? (
-                  <span className="inline-flex rounded-full border border-ftc-border-subtle bg-ftc-bg-elevated px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-ftc-primary">
-                    Ask for rate
-                  </span>
-                ) : null}
-                {pendingProposal ? (
-                  <span className="inline-flex rounded-full border border-ftc-border-subtle bg-ftc-bg-elevated px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-ftc-primary">
-                    Rate proposed
-                  </span>
-                ) : null}
-              </div>
-            </div>
-          )
+          renderExpandedHeader(<BookingStatusBadge status={booking.status} />)
         ) : null}
 
-        <div className="mt-4">
-          <BookingDetailGrid>
-            <BookingDetailItem label="Venue" value={booking.venue} />
-            <BookingDetailItem label="Date" value={formatDisplayEventDate(booking.event_date)} />
-            <BookingDetailItem label="Set time" value={booking.set_time} />
-            <BookingDetailItem label={rateDetailLabel} value={offerRateLabel} />
-            {booking.notes ? <BookingDetailItem label="Notes" value={booking.notes} /> : null}
-            {cancelledByLabel ? (
-              <BookingDetailItem label="Cancelled by" value={cancelledByLabel} />
-            ) : null}
-            {cancellationReasonLabel ? (
-              <BookingDetailItem label="Reason" value={cancellationReasonLabel} />
-            ) : null}
-          </BookingDetailGrid>
-        </div>
+        <div className="mt-3">{renderCompactSummary()}</div>
 
         {!canReviewProposal ? (
           <BookingRateProposalNotice booking={booking} currentUserId={currentUserId} />
