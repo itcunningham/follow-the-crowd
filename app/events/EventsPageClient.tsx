@@ -154,7 +154,7 @@ function getCalendarBootstrapState(
 
 function EventsListCardChevron() {
   return (
-    <span aria-hidden="true" className="mt-0.5 shrink-0 text-ftc-text-muted">
+    <span aria-hidden="true" className="mt-0.5 shrink-0 self-start text-ftc-text-muted">
       <svg
         viewBox="0 0 24 24"
         className="h-4 w-4"
@@ -174,17 +174,35 @@ function EventsListCardContent({
   event,
   cancelled,
   isPlanner,
+  isHistoryTab = false,
   leading,
   showChevron = true,
 }: {
   event: EventWithLineupStats;
   cancelled: boolean;
   isPlanner: boolean;
+  isHistoryTab?: boolean;
   leading?: ReactNode;
   showChevron?: boolean;
 }) {
-  const titleClassName = cancelled ? "text-ftc-text-secondary" : "text-ftc-text";
-  const metaClassName = cancelled ? "text-ftc-text-muted" : "text-ftc-text-secondary";
+  const titleClassName = isHistoryTab
+    ? "ftc-event-card-history__title"
+    : cancelled
+      ? "text-ftc-text-secondary"
+      : "text-ftc-text";
+  const metaClassName = isHistoryTab
+    ? "ftc-event-card-history__meta"
+    : cancelled
+      ? "text-ftc-text-muted"
+      : "text-ftc-text-secondary";
+  const timeClassName = isHistoryTab
+    ? "ftc-event-card-history__meta mt-0.5 text-sm"
+    : "mt-1 text-sm text-ftc-text-muted";
+  const chipsClassName = isHistoryTab ? "mt-2 flex flex-wrap gap-1.5" : "mt-2.5 flex flex-wrap gap-1.5";
+  const titleRowClassName = isHistoryTab
+    ? "flex items-start justify-between gap-2.5"
+    : "flex items-start justify-between gap-2";
+  const venueClassName = isHistoryTab ? `mt-1 text-sm ${metaClassName}` : `mt-1.5 text-sm ${metaClassName}`;
 
   return (
     <div className="flex items-start gap-3.5 sm:gap-4">
@@ -195,25 +213,33 @@ function EventsListCardContent({
         fallbackColour={event.fallback_colour}
       />
       <div className="min-w-0 flex-1">
-        <div className="flex items-start justify-between gap-2">
+        <div className={titleRowClassName}>
           <h3
             className={`min-w-0 flex-1 text-[1.0625rem] font-bold leading-snug sm:text-lg ${titleClassName}`}
           >
             {event.name}
           </h3>
-          <EventDateStatusBadge
-            eventDate={event.event_date}
-            setTime={event.set_time}
-            status={event.status}
-            variant="compact"
-          />
+          <div
+            className={
+              isHistoryTab
+                ? "ftc-event-card-history__badge flex w-[4.5rem] shrink-0 justify-end self-start"
+                : "shrink-0 self-start"
+            }
+          >
+            <EventDateStatusBadge
+              eventDate={event.event_date}
+              setTime={event.set_time}
+              status={event.status}
+              variant="compact"
+            />
+          </div>
         </div>
-        <p className={`mt-1.5 text-sm ${metaClassName}`}>
+        <p className={venueClassName}>
           {event.venue} · {formatDisplayEventDate(event.event_date)}
         </p>
-        <p className="mt-1 text-sm text-ftc-text-muted">{event.set_time}</p>
+        <p className={timeClassName}>{event.set_time}</p>
         {isPlanner ? (
-          <div className="mt-2.5 flex flex-wrap gap-1.5">
+          <div className={chipsClassName}>
             <PlannerStatChip label="Invited" value={event.lineupStats.total} variant="compact" />
             <PlannerStatChip label="Pending" value={event.lineupStats.pending} variant="compact" />
             <PlannerStatChip label="Accepted" value={event.lineupStats.accepted} variant="compact" />
@@ -224,6 +250,16 @@ function EventsListCardContent({
       {showChevron ? <EventsListCardChevron /> : null}
     </div>
   );
+}
+
+function historyEventCardClassName(cancelled: boolean, isSelected: boolean) {
+  return [
+    "ftc-surface-row ftc-event-card-history w-full rounded-[var(--ftc-radius-xl)] p-4 text-left focus-visible:outline-none sm:p-5",
+    cancelled ? "ftc-event-card-history--cancelled" : "ftc-event-card-history--past",
+    isSelected ? "ring-1 ring-ftc-primary/40" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
 }
 
 export default function EventsPageClient(props: EventsPageClientProps) {
@@ -1187,6 +1223,11 @@ function EventsPageClientView({
             open={historyBulkManage.confirmOpen}
             count={historyBulkManage.confirmCount}
             loading={historyBulkManage.removing}
+            title="Delete selected history?"
+            description="This will permanently remove the selected events from your history. This action cannot be undone."
+            cancelLabel="Cancel"
+            confirmLabel="Delete"
+            confirmLoadingLabel="Deleting..."
             onCancel={historyBulkManage.closeConfirm}
             onConfirm={() => {
               void historyBulkManage.confirmRemove(handleRemoveEventsFromHistory);
@@ -1229,7 +1270,7 @@ function EventsPageClientView({
                   }
                 />
               ) : visibleFilteredEvents.length > 0 ? (
-            <ul className="space-y-3">
+            <ul className={`space-y-3 ${isHistoryTab ? "ftc-events-history-list" : ""}`}>
               {visibleFilteredEvents.map((event) => {
                 const cancelled = isEventCancelled(event);
                 const eventHref = buildEventDetailHref(event.id, listTab);
@@ -1244,14 +1285,13 @@ function EventsPageClientView({
                         onClick={() => historyBulkManage.toggleItem(event.id)}
                         aria-label={selectionLabel}
                         aria-pressed={isSelected}
-                        className={`ftc-surface-row flex w-full rounded-[var(--ftc-radius-xl)] p-4 text-left focus-visible:outline-none sm:p-5 ${
-                          cancelled ? "ftc-event-card-cancelled" : ""
-                        } ${isSelected ? "ring-1 ring-ftc-primary/40" : ""}`}
+                        className={`flex ${historyEventCardClassName(cancelled, isSelected)}`}
                       >
                         <EventsListCardContent
                           event={event}
                           cancelled={cancelled}
                           isPlanner={isPlanner}
+                          isHistoryTab
                           showChevron={false}
                           leading={
                             <HistorySelectionCheckbox
@@ -1276,14 +1316,19 @@ function EventsPageClientView({
                       prepareEventsListEventNavigation();
                       router.push(eventHref, { scroll: false });
                     }}
-                    className={`ftc-surface-row block w-full rounded-[var(--ftc-radius-xl)] p-4 text-left focus-visible:outline-none sm:p-5 ${
-                      cancelled ? "ftc-event-card-cancelled" : ""
-                    }`}
+                    className={
+                      isHistoryTab
+                        ? `block ${historyEventCardClassName(cancelled, false)}`
+                        : `ftc-surface-row block w-full rounded-[var(--ftc-radius-xl)] p-4 text-left focus-visible:outline-none sm:p-5 ${
+                            cancelled ? "ftc-event-card-cancelled" : ""
+                          }`
+                    }
                   >
                     <EventsListCardContent
                       event={event}
                       cancelled={cancelled}
                       isPlanner={isPlanner}
+                      isHistoryTab={isHistoryTab}
                     />
                   </button>
                 </li>

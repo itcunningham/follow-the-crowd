@@ -247,9 +247,13 @@ export function HistorySelectionToolbar({
 function HistoryConfirmDangerButton({
   loading,
   onConfirm,
+  label = "Remove from history",
+  loadingLabel = "Removing...",
 }: {
   loading: boolean;
   onConfirm: () => void;
+  label?: string;
+  loadingLabel?: string;
 }) {
   const buttonClassName =
     "inline-flex min-h-[2.75rem] w-full items-center justify-center rounded-xl border-0 bg-[var(--ftc-color-danger)] px-4 py-2.5 text-sm font-semibold uppercase tracking-wide text-ftc-bg sm:w-auto";
@@ -262,14 +266,14 @@ function HistoryConfirmDangerButton({
         tabIndex={-1}
         className={`${buttonClassName} cursor-not-allowed`}
       >
-        Removing...
+        {loadingLabel}
       </button>
     );
   }
 
   return (
     <button type="button" onClick={onConfirm} className={buttonClassName}>
-      Remove from history
+      {label}
     </button>
   );
 }
@@ -299,11 +303,21 @@ function HistoryConfirmSecondaryButton({
 function HistoryRemoveConfirmDialogPanel({
   count,
   loading,
+  title,
+  description,
+  cancelLabel,
+  confirmLabel,
+  confirmLoadingLabel,
   onCancel,
   onConfirm,
 }: {
   count: number;
   loading: boolean;
+  title: string;
+  description: string;
+  cancelLabel: string;
+  confirmLabel: string;
+  confirmLoadingLabel: string;
   onCancel: () => void;
   onConfirm: () => void;
 }) {
@@ -325,18 +339,21 @@ function HistoryRemoveConfirmDialogPanel({
       >
         <div className="border-b border-ftc-border-subtle px-5 py-4">
           <h2 id="history-remove-confirm-title" className="text-base font-semibold text-ftc-text">
-            Remove from history?
+            {title}
           </h2>
-          <p className="mt-2 text-sm leading-relaxed text-ftc-text-secondary">
-            {`This removes ${count} selected item${count === 1 ? "" : "s"} from your History view only. It does not delete the event, booking, chat, or any records`}
-          </p>
+          <p className="mt-2 text-sm leading-relaxed text-ftc-text-secondary">{description}</p>
         </div>
 
         <div className="relative z-10 flex flex-col gap-2 border-t border-ftc-border-subtle bg-ftc-surface px-5 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:flex-row sm:justify-end">
           <HistoryConfirmSecondaryButton loading={loading} onClick={onCancel}>
-            Keep items
+            {cancelLabel}
           </HistoryConfirmSecondaryButton>
-          <HistoryConfirmDangerButton loading={loading} onConfirm={onConfirm} />
+          <HistoryConfirmDangerButton
+            loading={loading}
+            onConfirm={onConfirm}
+            label={confirmLabel}
+            loadingLabel={confirmLoadingLabel}
+          />
         </div>
       </div>
     </div>
@@ -347,15 +364,29 @@ export function HistoryRemoveConfirmDialog({
   open,
   count,
   loading,
+  title = "Remove from history?",
+  description,
+  cancelLabel = "Keep items",
+  confirmLabel = "Remove from history",
+  confirmLoadingLabel = "Removing...",
   onCancel,
   onConfirm,
 }: {
   open: boolean;
   count: number;
   loading: boolean;
+  title?: string;
+  description?: string;
+  cancelLabel?: string;
+  confirmLabel?: string;
+  confirmLoadingLabel?: string;
   onCancel: () => void;
   onConfirm: () => void;
 }) {
+  const resolvedDescription =
+    description ??
+    `This removes ${count} selected item${count === 1 ? "" : "s"} from your History view only. It does not delete the event, booking, chat, or any records`;
+
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -383,6 +414,11 @@ export function HistoryRemoveConfirmDialog({
     <HistoryRemoveConfirmDialogPanel
       count={count}
       loading={loading}
+      title={title}
+      description={resolvedDescription}
+      cancelLabel={cancelLabel}
+      confirmLabel={confirmLabel}
+      confirmLoadingLabel={confirmLoadingLabel}
       onCancel={onCancel}
       onConfirm={onConfirm}
     />,
