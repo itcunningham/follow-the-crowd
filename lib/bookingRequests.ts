@@ -2066,11 +2066,15 @@ export function resolveBookingDateKey(eventDate: string): string | null {
 }
 
 export function getBookingRequestHref(booking: BookingRequest): string {
-  if (booking.event_id) {
-    return `/events/${booking.event_id}`;
+  const eventId = booking.event_id?.trim();
+
+  if (eventId) {
+    return `/events/${eventId}`;
   }
 
-  return `/dm/${booking.conversation_id}`;
+  const conversationId = booking.conversation_id.trim();
+
+  return `/dm/${conversationId}`;
 }
 
 export async function listMyActiveReceivedBookings(): Promise<BookingRequest[]> {

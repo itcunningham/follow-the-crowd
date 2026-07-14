@@ -4,7 +4,6 @@ import { PLANNER_WORKSPACE_PRIMARY_SURFACE_CLASS } from "@/app/components/planne
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
-  getBookingRequestHref,
   groupActiveBookingsByDate,
   listMyActiveReceivedBookings,
   type BookingRequest,
@@ -60,13 +59,15 @@ import {
   isSameDay,
   isSameMonth,
   parsePlannerCalendarDateParam,
-  resolveCalendarOriginBookingHref,
   resolveDjCalendarSelectedDate,
   resolveDjCalendarViewMonthStart,
   toDateKey,
   WEEKDAY_LABELS,
-  type CalendarOriginState,
 } from "@/lib/calendar";
+import {
+  resolveGigsCalendarBookingNavigation,
+  type CalendarOriginState,
+} from "@/lib/bookings/gigsCalendarNavigation";
 import { prepareCalendarAgendaEventNavigation } from "@/lib/navigation/prepareMobileDocumentScrollReset";
 import { isDateKeyBeforeToday } from "@/lib/bookingDateTime";
 
@@ -247,9 +248,16 @@ type DayBookingsPopoverProps = {
   bookings: BookingRequest[];
   monthStart: Date;
   onClose: () => void;
+  onBookingNavigationError?: (message: string) => void;
 };
 
-function DayBookingsPopover({ dateKey, bookings, monthStart, onClose }: DayBookingsPopoverProps) {
+function DayBookingsPopover({
+  dateKey,
+  bookings,
+  monthStart,
+  onClose,
+  onBookingNavigationError,
+}: DayBookingsPopoverProps) {
   const calendarOrigin = buildCalendarOriginState({
     calendarDate: dateKey,
     calendarView: "dj",
@@ -280,6 +288,7 @@ function DayBookingsPopover({ dateKey, bookings, monthStart, onClose }: DayBooki
               booking={booking}
               calendarOrigin={calendarOrigin}
               onBeforeNavigate={onClose}
+              onNavigationError={onBookingNavigationError}
               compact
               className="block w-full rounded-lg border border-ftc-border bg-ftc-surface/80 px-2.5 py-2 text-left hover:border-ftc-primary/30 hover:bg-ftc-surface"
             />
@@ -478,28 +487,33 @@ function DjCalendarBookingNavButton({
   booking,
   calendarOrigin,
   onBeforeNavigate,
+  onNavigationError,
   className,
   compact = false,
 }: {
   booking: BookingRequest;
   calendarOrigin: CalendarOriginState;
   onBeforeNavigate?: () => void;
+  onNavigationError?: (message: string) => void;
   className: string;
   compact?: boolean;
 }) {
   const router = useRouter();
   const eventName = booking.event_name.trim() || "Booking request";
   const statusLabel = booking.status === "accepted" ? "Booked" : "Pending Request";
-  const bookingHref = resolveCalendarOriginBookingHref(
-    getBookingRequestHref(booking),
-    calendarOrigin,
-  );
 
   const handleOpenBooking = useCallback(() => {
+    const navigation = resolveGigsCalendarBookingNavigation(booking, calendarOrigin);
+
+    if (navigation.kind === "error") {
+      onNavigationError?.(navigation.message);
+      return;
+    }
+
     onBeforeNavigate?.();
     prepareCalendarAgendaEventNavigation();
-    router.push(bookingHref, { scroll: false });
-  }, [bookingHref, onBeforeNavigate, router]);
+    router.push(navigation.href, { scroll: false });
+  }, [booking, calendarOrigin, onBeforeNavigate, onNavigationError, router]);
 
   return (
     <button
@@ -537,16 +551,19 @@ function DjCalendarBookingNavButton({
 type DjCalendarMobileBookingCardProps = {
   booking: BookingRequest;
   calendarOrigin: CalendarOriginState;
+  onNavigationError?: (message: string) => void;
 };
 
 function DjCalendarMobileBookingCard({
   booking,
   calendarOrigin,
+  onNavigationError,
 }: DjCalendarMobileBookingCardProps) {
   return (
     <DjCalendarBookingNavButton
       booking={booking}
       calendarOrigin={calendarOrigin}
+      onNavigationError={onNavigationError}
       className="block w-full rounded-xl border border-ftc-border bg-ftc-surface/80 px-3 py-2.5 text-left hover:border-ftc-primary/30 hover:bg-ftc-surface"
     />
   );
@@ -563,6 +580,7 @@ type DjAvailabilityMobileDayPanelProps = {
   animatedDayBookings: BookingRequest[];
   animatedBookingsDateKey: string;
   bookingsTransitionClassName: string;
+  onBookingNavigationError?: (message: string) => void;
 };
 
 function DjAvailabilityMobileDayPanel({
@@ -576,6 +594,7 @@ function DjAvailabilityMobileDayPanel({
   animatedDayBookings,
   animatedBookingsDateKey,
   bookingsTransitionClassName,
+  onBookingNavigationError,
 }: DjAvailabilityMobileDayPanelProps) {
   const dateKey = toDateKey(selectedDate);
   const bookingsCalendarOrigin = buildCalendarOriginState({
@@ -627,7 +646,11 @@ function DjAvailabilityMobileDayPanel({
           <ul className="mt-3 space-y-2">
             {interactiveBookings.map((booking) => (
               <li key={booking.id}>
-                <DjCalendarMobileBookingCard booking={booking} calendarOrigin={bookingsCalendarOrigin} />
+                <DjCalendarMobileBookingCard
+                  booking={booking}
+                  calendarOrigin={bookingsCalendarOrigin}
+                  onNavigationError={onBookingNavigationError}
+                />
               </li>
             ))}
           </ul>
@@ -654,6 +677,7 @@ type DjAvailabilityMobileAgendaProps = {
   onSelectDate: (date: Date) => void;
   onSetPersonalStatus: (dateKey: string, status: DjAvailabilityStatus) => void;
   onClearPersonalStatus: (dateKey: string) => void;
+  onBookingNavigationError?: (message: string) => void;
 };
 
 function DjAvailabilityMobileAgenda({
@@ -669,6 +693,7 @@ function DjAvailabilityMobileAgenda({
   onSelectDate,
   onSetPersonalStatus,
   onClearPersonalStatus,
+  onBookingNavigationError,
 }: DjAvailabilityMobileAgendaProps) {
   const selectedDateKey = toDateKey(selectedDate);
   const { displayDateKey, transitionClassName } =
@@ -694,6 +719,7 @@ function DjAvailabilityMobileAgenda({
           animatedDayBookings={animatedDayBookings}
           animatedBookingsDateKey={displayDateKey}
           bookingsTransitionClassName={transitionClassName}
+          onBookingNavigationError={onBookingNavigationError}
         />
       )}
     </div>
@@ -720,6 +746,7 @@ function DjAvailabilityDayCell({
   onClearPersonalStatus,
   onOpenBooking,
   onToggleBookingPopover,
+  onBookingNavigationError,
 }: {
   date: Date;
   isToday: boolean;
@@ -740,6 +767,7 @@ function DjAvailabilityDayCell({
   onClearPersonalStatus: () => void;
   onOpenBooking: (booking: BookingRequest, calendarDate: string) => void;
   onToggleBookingPopover: () => void;
+  onBookingNavigationError?: (message: string) => void;
 }) {
   const dateKey = toDateKey(date);
   const canEditAvailability = !isDateKeyBeforeToday(dateKey);
@@ -896,6 +924,7 @@ function DjAvailabilityDayCell({
                   bookings={interactiveBookings}
                   monthStart={monthStart}
                   onClose={onCloseOverlays}
+                  onBookingNavigationError={onBookingNavigationError}
                 />
               ) : null}
             </div>
@@ -969,6 +998,9 @@ export default function DjAvailabilityCalendar({
   const [bulkActionError, setBulkActionError] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const dismissToast = useCallback(() => setToastMessage(null), []);
+  const reportBookingNavigationError = useCallback((message: string) => {
+    setToastMessage(message);
+  }, []);
 
   useLayoutEffect(() => {
     if (isDual) {
@@ -1464,12 +1496,15 @@ export default function DjAvailabilityCalendar({
       calendarView: "dj",
       monthStart,
     });
+    const navigation = resolveGigsCalendarBookingNavigation(booking, calendarOrigin);
+
+    if (navigation.kind === "error") {
+      reportBookingNavigationError(navigation.message);
+      return;
+    }
 
     prepareCalendarAgendaEventNavigation();
-    router.push(
-      resolveCalendarOriginBookingHref(getBookingRequestHref(booking), calendarOrigin),
-      { scroll: false },
-    );
+    router.push(navigation.href, { scroll: false });
   }
 
   const djMobileDateStrip = (
@@ -1531,6 +1566,7 @@ export default function DjAvailabilityCalendar({
         onSelectDate={handleMobileSelectDate}
         onSetPersonalStatus={(dateKey, status) => void handleSetPersonalStatus(dateKey, status)}
         onClearPersonalStatus={(dateKey) => void handleClearPersonalStatus(dateKey)}
+        onBookingNavigationError={reportBookingNavigationError}
       />
 
       <div
@@ -1585,6 +1621,7 @@ export default function DjAvailabilityCalendar({
                   onSetPersonalStatus={(status) => void handleSetPersonalStatus(dateKey, status)}
                   onClearPersonalStatus={() => void handleClearPersonalStatus(dateKey)}
                   onOpenBooking={handleOpenBooking}
+                  onBookingNavigationError={reportBookingNavigationError}
                   onToggleBookingPopover={() => {
                     setOpenMenuDateKey(null);
                     setOpenBookingPopoverDateKey((current) =>

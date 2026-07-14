@@ -17,6 +17,10 @@ import { computeCrewChatEventActions } from "../lib/events/crewChatEventActions"
 import type { CrewChatUnlockState } from "../lib/events/crewChatUnlock";
 import { resolveEventLinkedBookingDisplay } from "../lib/events/eventBookingDisplay";
 import { getAuthRedirectUrl } from "../lib/auth/appUrl";
+import {
+  resolveGigsCalendarBookingNavigation,
+  type CalendarOriginState,
+} from "../lib/bookings/gigsCalendarNavigation";
 import { hasUnsavedProfileEdits, createProfileEditBaseline } from "../lib/user/profileEditDirtyState";
 import { getUsernameFormatError, normalizeSoundCloudInput } from "../lib/user/profileFormUtils";
 
@@ -339,6 +343,66 @@ function testSoundCloudInputNormalization() {
   );
 }
 
+function testGigsCalendarBookingNavigation() {
+  const origin: CalendarOriginState = {
+    calendarDate: "2026-07-14",
+    calendarView: "dj",
+    calendarMonth: "2026-07-01",
+  };
+  const eventId = "11111111-1111-4111-8111-111111111111";
+
+  const booked = resolveGigsCalendarBookingNavigation(
+    {
+      id: "booking-1",
+      status: "accepted",
+      event_id: eventId,
+      conversation_id: "conversation-1",
+    },
+    origin,
+  );
+
+  assert.equal(booked.kind, "event");
+
+  if (booked.kind === "event") {
+    assert.equal(booked.eventId, eventId);
+    assert.equal(
+      booked.href,
+      `/events/${eventId}?from=calendar&calendarDate=2026-07-14&calendarView=dj&calendarMonth=2026-07-01`,
+    );
+  }
+
+  const pending = resolveGigsCalendarBookingNavigation(
+    {
+      id: "booking-2",
+      status: "pending",
+      event_id: null,
+      conversation_id: "conversation-2",
+    },
+    origin,
+  );
+
+  assert.equal(pending.kind, "dm");
+
+  if (pending.kind === "dm") {
+    assert.equal(
+      pending.href,
+      "/dm/conversation-2?from=calendar&calendarDate=2026-07-14&calendarView=dj&calendarMonth=2026-07-01",
+    );
+  }
+
+  const missingEvent = resolveGigsCalendarBookingNavigation(
+    {
+      id: "booking-3",
+      status: "accepted",
+      event_id: null,
+      conversation_id: "conversation-3",
+    },
+    origin,
+  );
+
+  assert.equal(missingEvent.kind, "error");
+}
+
 function main() {
   testPastEventDatesAreBlocked();
   testFutureEventDatesAreAllowed();
@@ -355,6 +419,7 @@ function main() {
   testAuthRedirectUrlUsesLoginPath();
   testProfileEditDirtyDetection();
   testSoundCloudInputNormalization();
+  testGigsCalendarBookingNavigation();
   console.log("All regression checks passed.");
 }
 

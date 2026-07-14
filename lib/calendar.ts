@@ -687,13 +687,15 @@ export function buildPlannerCalendarHref(dateKey: string): string {
   return `/calendar?${params.toString()}`;
 }
 
-export type CalendarOriginView = "event" | "dj";
-
-export type CalendarOriginState = {
-  calendarDate: string;
-  calendarView: CalendarOriginView;
-  calendarMonth: string;
-};
+export {
+  type CalendarOriginView,
+  type CalendarOriginState,
+  type GigsCalendarBookingNavigationResult,
+  resolveCalendarOriginBookingHref,
+  resolveCalendarOriginEventHref,
+  resolveGigsCalendarBookingNavigation,
+} from "@/lib/bookings/gigsCalendarNavigation";
+import type { CalendarOriginState, CalendarOriginView } from "@/lib/bookings/gigsCalendarNavigation";
 
 export function buildCalendarOriginState(options: {
   calendarDate: string;
@@ -705,58 +707,6 @@ export function buildCalendarOriginState(options: {
     calendarView: options.calendarView,
     calendarMonth: toDateKey(options.monthStart),
   };
-}
-
-export function resolveCalendarOriginEventHref(
-  href: string,
-  origin: CalendarOriginState,
-): string {
-  if (!href.startsWith("/events/")) {
-    return href;
-  }
-
-  const eventId = href.slice("/events/".length).split("?")[0];
-
-  if (!eventId) {
-    return href;
-  }
-
-  const params = new URLSearchParams({
-    from: "calendar",
-    calendarDate: origin.calendarDate,
-    calendarView: origin.calendarView,
-    calendarMonth: origin.calendarMonth,
-  });
-
-  return `/events/${eventId}?${params.toString()}`;
-}
-
-export function resolveCalendarOriginBookingHref(
-  href: string,
-  origin: CalendarOriginState,
-): string {
-  if (href.startsWith("/events/")) {
-    return resolveCalendarOriginEventHref(href, origin);
-  }
-
-  if (!href.startsWith("/dm/")) {
-    return href;
-  }
-
-  const [path, existingQuery = ""] = href.split("?");
-  const conversationId = path.slice("/dm/".length);
-
-  if (!conversationId) {
-    return href;
-  }
-
-  const params = new URLSearchParams(existingQuery);
-  params.set("from", "calendar");
-  params.set("calendarDate", origin.calendarDate);
-  params.set("calendarView", origin.calendarView);
-  params.set("calendarMonth", origin.calendarMonth);
-
-  return `/dm/${conversationId}?${params.toString()}`;
 }
 
 export function buildCalendarOriginReturnHref(origin: CalendarOriginState): string {

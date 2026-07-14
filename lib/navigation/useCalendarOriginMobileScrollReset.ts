@@ -63,17 +63,7 @@ export function useMobileEventDetailScrollReset(
   contentReady: boolean,
 ): boolean {
   const shouldReset = shouldResetMobileEventDetailScroll(searchParams);
-  const [scrollReady, setScrollReady] = useState(() => {
-    if (searchParams.get("from") === "calendar") {
-      return false;
-    }
-
-    if (typeof window !== "undefined" && isEventsListNavigationPending()) {
-      return false;
-    }
-
-    return !shouldReset;
-  });
+  const [scrollReady, setScrollReady] = useState(() => !shouldReset);
   const unfreezeRef = useRef<(() => void) | null>(null);
   const previousScrollRestorationRef = useRef<ScrollRestoration | null>(null);
 
@@ -83,7 +73,6 @@ export function useMobileEventDetailScrollReset(
       return;
     }
 
-    setScrollReady(false);
     previousScrollRestorationRef.current = window.history.scrollRestoration;
     window.history.scrollRestoration = "manual";
     unfreezeRef.current?.();
@@ -100,18 +89,18 @@ export function useMobileEventDetailScrollReset(
       };
     }
 
+    setScrollReady(true);
+
     let cancelCommit = commitCalendarOriginDocumentScrollToTop(() => {
       unfreezeRef.current?.();
       unfreezeRef.current = null;
       clearPendingMobileEventDetailNavigation();
-      setScrollReady(true);
     });
 
     const safetyTimer = window.setTimeout(() => {
       unfreezeRef.current?.();
       unfreezeRef.current = null;
       clearPendingMobileEventDetailNavigation();
-      setScrollReady(true);
     }, 750);
 
     const handlePageShow = (event: PageTransitionEvent) => {
