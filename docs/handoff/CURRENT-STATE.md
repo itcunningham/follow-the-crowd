@@ -16,7 +16,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 ## Events
 
 - Optional event flyer upload (JPEG/PNG/WebP, 5 MB, bucket `event-covers`)
-- **Event cover images (2026-07-14):** `EventCoverImagePrimitives` — 16:9 hero on detail + edit preview (`object-cover` centre crop); **Event List** uses compact 64px square `EventThumbnail` (workflow-first; image never drives card height); context/inbox thumbs share same component
+- **Event cover images (2026-07-14):** `EventCoverImagePrimitives` — Event Details hero shows full flyer (`object-contain`, centred on dark frame); edit preview stays 16:9 `object-cover`; **Event List** uses compact 64px square `EventThumbnail`
 - Event colour: 8 selectable + Auto (slate neutral when Auto or legacy slate)
 - Flat solid artwork tiles (no glow)
 - Event list: Active + History tabs; whole card links to detail

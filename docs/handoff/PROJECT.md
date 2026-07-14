@@ -68,7 +68,7 @@ Sub-nav: `lib/plannerEventsNav.ts`, `app/components/PlannerEventsSubNav.tsx`
 - Fallback colour: `events.fallback_colour` — keys: blue, violet, teal, green, amber, orange, red, pink, slate
 - **Selectable in UI:** 8 colours + Auto. Slate = auto/neutral only (not a swatch).
 - Flyer always wins over colour tile.
-- Cover images: `object-cover` centre crop; 16:9 hero on event detail + edit preview; compact 64px square `EventThumbnail` on list/context/inbox.
+- Cover images: Event Details hero — full flyer visible (`object-contain` on 16:9 frame); edit preview — 16:9 `object-cover`; list/context/inbox — compact 64px square `EventThumbnail`.
 
 ## Build
 

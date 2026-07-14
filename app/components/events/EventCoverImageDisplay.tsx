@@ -8,6 +8,7 @@ export {
   EventCoverImageFrame,
   EventCoverImageHeroPreview,
   EventCoverImageMedia,
+  type EventCoverImageFit,
 } from "@/app/components/events/EventCoverImagePrimitives";
 
 export function EventCoverImageListThumb({

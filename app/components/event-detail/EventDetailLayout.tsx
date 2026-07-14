@@ -182,6 +182,7 @@ export function EventDetailHero({
         src={trimmedCoverUrl}
         alt={getEventCoverImageAlt(eventName)}
         variant="hero"
+        fit="contain"
         badge={statusBadge}
       />
     </div>
