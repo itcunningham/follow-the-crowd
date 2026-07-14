@@ -568,24 +568,20 @@ export function SavedEventPlansSectionHeading({ className = "mb-3" }: { classNam
 }
 
 export function SavedEventPlansSectionHeader({
-  showTrashButton = true,
   trashButtonDisabled = true,
   onTrashClick,
 }: {
-  showTrashButton?: boolean;
   trashButtonDisabled?: boolean;
   onTrashClick?: () => void;
 }) {
   return (
-    <div className={PLANNER_WORKSPACE_SECONDARY_CONTROLS_CLASS}>
-      <SavedEventPlansSectionHeading className="mb-0" />
-      {showTrashButton ? (
-        <HistoryManageButton
-          ariaLabel="Delete event plans"
-          onClick={onTrashClick ?? (() => undefined)}
-          disabled={trashButtonDisabled || !onTrashClick}
-        />
-      ) : null}
+    <div className={`${EVENTS_LIST_TAB_ROW_CLASS} justify-end`}>
+      <HistoryManageButton
+        ariaLabel="Delete event plans"
+        onClick={onTrashClick ?? (() => undefined)}
+        disabled={trashButtonDisabled || !onTrashClick}
+        className={FTC_EVENTS_LIST_TAB_ACTION_CLASS}
+      />
     </div>
   );
 }
@@ -625,17 +621,14 @@ function BookingPlanDetailGridSkeleton() {
 
 function BookingPlanCardSkeleton() {
   return (
-    <div className="ftc-card p-4 sm:p-5">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0">
-          <SkeletonBlock className="h-[11px] w-[7.25rem]" rounded="rounded-sm" />
-          <SkeletonBlock className="mt-1 h-7 w-2/5 max-w-[12rem]" />
-          <BookingPlanDetailGridSkeleton />
+    <div className="ftc-card p-3 sm:p-4">
+      <div className="flex items-center gap-3 sm:gap-4">
+        <div className="min-w-0 flex-1">
+          <SkeletonBlock className="h-6 w-2/5 max-w-[12rem]" />
+          <SkeletonBlock className="mt-2 h-4 w-4/5 max-w-[16rem]" />
+          <SkeletonBlock className="mt-2 h-4 w-3/5 max-w-[14rem] sm:hidden" />
         </div>
-        <div className="flex shrink-0 flex-col gap-2 sm:items-end">
-          <SkeletonBlock className="h-[1.875rem] w-[3.25rem] rounded-xl" />
-          <SkeletonBlock className="h-[1.875rem] w-[7.75rem] rounded-xl" />
-        </div>
+        <SkeletonBlock className="h-11 w-[5.5rem] shrink-0 rounded-xl" />
       </div>
     </div>
   );

@@ -74,6 +74,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 ## Event Plans
 
 - **Mobile cards (2026-07-14):** compact layout below `sm` — title + vertically centred Use plan on one row; inline `Event` / `Venue` labels with `text-ftc-text-secondary` values and `text-ftc-text-muted` separator on one truncated line; NOTES label only when notes exist; tighter card padding and list spacing; desktop grid unchanged
+- **Event Plans polish (2026-07-14):** removed redundant “Saved Event Plans” heading; stronger title/meta hierarchy; 2-line notes preview; weighted Use plan outline button; History-matched bulk delete rows (`FTC_SURFACE_ROW_CLASS`, checkbox, toolbar)
 
 ## Group chat
 

@@ -16,7 +16,7 @@ import {
   HistorySelectionToolbar,
   useHistoryBulkManage,
 } from "@/app/components/history/HistoryBulkManage";
-import { formatEventPlanNotesPreview, getEventNotesValidationError, MAX_EVENT_NOTES_LENGTH } from "@/lib/events/eventNotes";
+import { getEventNotesValidationError, MAX_EVENT_NOTES_LENGTH } from "@/lib/events/eventNotes";
 import {
   createBookingPlan,
   deleteBookingPlans,
@@ -32,7 +32,14 @@ import {
   type UserRole,
 } from "@/lib/user/currentUser";
 import { readCachedNavRole } from "@/lib/navigationRoleCache";
-import { consumeBookingPlansSuccessMessage, stashPendingBookingPlanId } from "@/lib/bookings/planDeepLink";
+import {
+  consumeBookingPlansSuccessMessage,
+  stashPendingBookingPlanId,
+} from "@/lib/bookings/planDeepLink";
+import {
+  FTC_LIST_GAP_CLASS,
+  FTC_SURFACE_ROW_CLASS,
+} from "@/lib/design/ftcDesignSystem";
 
 const emptyPlanForm: BookingPlanInput = {
   name: "",
@@ -390,9 +397,8 @@ export default function BookingPlansPage() {
           ) : undefined
         }
         secondaryControlsSlot={
-          !formOpen ? (
+          !formOpen && showTrashButton ? (
             <SavedEventPlansSectionHeader
-              showTrashButton={showTrashButton}
               trashButtonDisabled={trashButtonDisabled}
               onTrashClick={planBulkManage.enterSelectionMode}
             />
@@ -493,12 +499,12 @@ export default function BookingPlansPage() {
                   </button>
                 </div>
               ) : (
-                <ul className="space-y-2 sm:space-y-3">
+                <ul className={FTC_LIST_GAP_CLASS}>
                   {visiblePlans.map((plan) => (
                     <EventPlanCard
                       key={plan.id}
                       plan={plan}
-                      selectionMode={planBulkManage.selectionMode}
+                      selectionMode={planBulkManage.showSelectionToolbar}
                       selected={planBulkManage.selectedIds.has(plan.id)}
                       onCardClick={() => handlePlanCardClick(plan)}
                       onUseForBooking={() => handleUseForBooking(plan.id)}
@@ -523,6 +529,19 @@ export default function BookingPlansPage() {
   );
 }
 
+function planSelectionRowClassName(isSelected: boolean) {
+  return [
+    FTC_SURFACE_ROW_CLASS,
+    "block w-full focus-visible:outline-none",
+    isSelected ? "ring-1 ring-ftc-primary/40" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
+
+const EVENT_PLAN_USE_BUTTON_CLASS =
+  "ftc-btn-secondary inline-flex min-h-11 items-center justify-center border-[1.5px] border-ftc-border-strong px-3 py-2 text-xs font-semibold uppercase tracking-wide text-ftc-text";
+
 function EventPlanCard({
   plan,
   selectionMode,
@@ -536,79 +555,98 @@ function EventPlanCard({
   onCardClick: () => void;
   onUseForBooking: () => void;
 }) {
-  const notesPreview = formatEventPlanNotesPreview(plan.notes);
-
+  const notesText = plan.notes.trim();
+  const hasNotes = notesText.length > 0;
   const selectionLabel = selected
     ? `Deselect ${plan.name}`
-    : `Select ${plan.name}`;
+    : `Select ${plan.name} for deletion`;
 
-  return (
-    <li
-      className={`ftc-card overflow-hidden transition ${
-        selectionMode
-          ? selected
-            ? "ftc-option-card-selected"
-            : "border-ftc-border-subtle bg-ftc-surface"
-          : "ftc-card-hoverable"
-      }`}
-    >
-      <div
-        className={`flex gap-2 p-2.5 sm:flex-row sm:gap-3 sm:p-3.5 ${
-          selectionMode ? "items-start sm:items-start" : "items-center sm:items-end"
-        }`}
-      >
+  if (selectionMode) {
+    return (
+      <li>
         <button
           type="button"
           onClick={onCardClick}
-          className="flex min-w-0 flex-1 items-start gap-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ftc-primary/35 active:bg-ftc-bg-elevated/60"
+          aria-label={selectionLabel}
+          aria-pressed={selected}
+          className={`flex ${planSelectionRowClassName(selected)}`}
         >
-          {selectionMode ? (
+          <div className="flex min-w-0 flex-1 items-start gap-3">
             <HistorySelectionCheckbox
               checked={selected}
               label={selectionLabel}
               presentational
             />
-          ) : null}
-          <span className="min-w-0 flex-1">
-            <span className="block text-lg font-semibold text-ftc-text">{plan.name}</span>
-            <MobilePlanEventVenueRow eventName={plan.event_name} venue={plan.venue} />
-            {notesPreview ? (
-              <div className="mt-1.5 sm:hidden">
-                <PlanFieldLabel as="p">Notes</PlanFieldLabel>
-                <p className="truncate text-sm text-ftc-text-secondary">{notesPreview}</p>
-              </div>
-            ) : null}
-            <dl className="mt-2 hidden gap-1.5 text-sm sm:grid sm:grid-cols-2">
-              <PlanDetail label="Event" value={plan.event_name} />
-              <PlanDetail label="Venue" value={plan.venue} />
-              {notesPreview ? (
-                <PlanDetail
-                  label="Notes"
-                  value={notesPreview}
-                  className="sm:col-span-2"
-                  truncate
-                />
-              ) : null}
-            </dl>
-          </span>
+            <EventPlanCardBody
+              plan={plan}
+              notesText={notesText}
+              hasNotes={hasNotes}
+            />
+          </div>
+        </button>
+      </li>
+    );
+  }
+
+  return (
+    <li className="ftc-card overflow-hidden ftc-card-hoverable">
+      <div className="flex items-center gap-3 p-3 sm:gap-4 sm:p-4">
+        <button
+          type="button"
+          onClick={onCardClick}
+          className="flex min-w-0 flex-1 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ftc-primary/35 active:bg-ftc-bg-elevated/60"
+        >
+          <EventPlanCardBody plan={plan} notesText={notesText} hasNotes={hasNotes} />
         </button>
 
-        {!selectionMode ? (
-          <div className="shrink-0 sm:flex sm:justify-end">
-            <button
-              type="button"
-              onClick={(event) => {
-                event.stopPropagation();
-                onUseForBooking();
-              }}
-              className="ftc-btn-secondary min-h-11 px-2.5 py-2 text-xs uppercase tracking-wide"
-            >
-              Use plan
-            </button>
-          </div>
-        ) : null}
+        <div className="shrink-0 self-center sm:flex sm:justify-end">
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              onUseForBooking();
+            }}
+            className={EVENT_PLAN_USE_BUTTON_CLASS}
+          >
+            Use plan
+          </button>
+        </div>
       </div>
     </li>
+  );
+}
+
+function EventPlanCardBody({
+  plan,
+  notesText,
+  hasNotes,
+}: {
+  plan: BookingPlan;
+  notesText: string;
+  hasNotes: boolean;
+}) {
+  return (
+    <span className="min-w-0 flex-1">
+      <span className="block text-[1.0625rem] font-bold leading-snug text-ftc-text sm:text-lg">
+        {plan.name}
+      </span>
+      <MobilePlanEventVenueRow eventName={plan.event_name} venue={plan.venue} />
+      {hasNotes ? (
+        <div className="mt-2 sm:hidden">
+          <PlanFieldLabel as="p">Notes</PlanFieldLabel>
+          <p className="mt-0.5 line-clamp-2 text-sm leading-snug text-ftc-text-muted">
+            {notesText}
+          </p>
+        </div>
+      ) : null}
+      <dl className="mt-2.5 hidden gap-2 text-sm sm:grid sm:grid-cols-2">
+        <PlanDetail label="Event" value={plan.event_name} />
+        <PlanDetail label="Venue" value={plan.venue} />
+        {hasNotes ? (
+          <PlanDetail label="Notes" value={notesText} className="sm:col-span-2" clampLines />
+        ) : null}
+      </dl>
+    </span>
   );
 }
 
@@ -641,18 +679,18 @@ function MobilePlanEventVenueRow({
   }
 
   return (
-    <p className="mt-1 min-w-0 truncate text-sm sm:hidden">
+    <p className="mt-1.5 min-w-0 text-sm sm:hidden">
       {event ? (
         <>
           <PlanFieldLabel as="span">Event</PlanFieldLabel>{" "}
-          <span className="text-ftc-text-secondary">{event}</span>
+          <span className="text-ftc-text">{event}</span>
         </>
       ) : null}
       {event && venueName ? <span className="text-ftc-text-muted"> • </span> : null}
       {venueName ? (
         <>
           <PlanFieldLabel as="span">Venue</PlanFieldLabel>{" "}
-          <span className="text-ftc-text-secondary">{venueName}</span>
+          <span className="text-ftc-text">{venueName}</span>
         </>
       ) : null}
     </p>
@@ -663,18 +701,22 @@ function PlanDetail({
   label,
   value,
   className = "",
-  truncate = false,
+  clampLines = false,
 }: {
   label: string;
   value: string;
   className?: string;
-  truncate?: boolean;
+  clampLines?: boolean;
 }) {
   return (
     <div className={className}>
       <PlanFieldLabel>{label}</PlanFieldLabel>
       <dd
-        className={`mt-px min-w-0 ${truncate ? "truncate text-ftc-text-secondary" : "text-ftc-text"}`}
+        className={`mt-0.5 min-w-0 ${
+          clampLines
+            ? "line-clamp-2 leading-snug text-ftc-text-muted"
+            : "text-ftc-text"
+        }`}
       >
         {value}
       </dd>
