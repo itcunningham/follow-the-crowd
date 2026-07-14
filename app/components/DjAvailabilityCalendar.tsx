@@ -23,7 +23,6 @@ import {
   CALENDAR_MOBILE_INTERACTIVE_PRESS_CLASS,
   CalendarMobileDashedEmptyState,
   CalendarMobileSelectedDayHeader,
-  CalendarProgrammaticNavButton,
   useCalendarMobileAgendaTransition,
 } from "@/app/components/calendar/calendarMobileUi";
 import PlannerCalendarMobileDateStrip from "@/app/components/PlannerCalendarMobileDateStrip";
@@ -61,7 +60,7 @@ import {
   isSameDay,
   isSameMonth,
   parsePlannerCalendarDateParam,
-  resolveCalendarOriginEventHref,
+  resolveCalendarOriginBookingHref,
   resolveDjCalendarSelectedDate,
   resolveDjCalendarViewMonthStart,
   toDateKey,
@@ -275,39 +274,17 @@ function DayBookingsPopover({ dateKey, bookings, monthStart, onClose }: DayBooki
         </button>
       </div>
       <ul className="max-h-44 space-y-1 overflow-y-auto">
-        {bookings.map((booking) => {
-          const eventName = booking.event_name.trim() || "Booking request";
-          const statusLabel =
-            booking.status === "accepted" ? "Booked" : "Pending Request";
-
-          return (
-            <li key={booking.id}>
-              <CalendarProgrammaticNavButton
-                href={resolveCalendarOriginEventHref(
-                  getBookingRequestHref(booking),
-                  calendarOrigin,
-                )}
-                ariaLabel={`${eventName}, ${statusLabel}`}
-                onBeforeNavigate={onClose}
-                className="block w-full rounded-lg border border-ftc-border bg-ftc-surface/80 px-2.5 py-2 text-left hover:border-ftc-primary/30 hover:bg-ftc-surface"
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <p className="truncate text-xs font-semibold text-ftc-text">{eventName}</p>
-                  <span
-                    className={`shrink-0 rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide ${getDjBookingStatusBadgeClass(booking.status === "accepted" ? "accepted" : "pending")}`}
-                  >
-                    {statusLabel}
-                  </span>
-                </div>
-                {booking.set_time.trim() ? (
-                  <p className="mt-0.5 truncate text-[11px] text-ftc-text-muted">
-                    {formatCalendarTimeLabel(booking.set_time)}
-                  </p>
-                ) : null}
-              </CalendarProgrammaticNavButton>
-            </li>
-          );
-        })}
+        {bookings.map((booking) => (
+          <li key={booking.id}>
+            <DjCalendarBookingNavButton
+              booking={booking}
+              calendarOrigin={calendarOrigin}
+              onBeforeNavigate={onClose}
+              compact
+              className="block w-full rounded-lg border border-ftc-border bg-ftc-surface/80 px-2.5 py-2 text-left hover:border-ftc-primary/30 hover:bg-ftc-surface"
+            />
+          </li>
+        ))}
       </ul>
       <span className="sr-only">Bookings for {dateKey}</span>
     </div>
@@ -497,6 +474,66 @@ function BulkActionBar({
   );
 }
 
+function DjCalendarBookingNavButton({
+  booking,
+  calendarOrigin,
+  onBeforeNavigate,
+  className,
+  compact = false,
+}: {
+  booking: BookingRequest;
+  calendarOrigin: CalendarOriginState;
+  onBeforeNavigate?: () => void;
+  className: string;
+  compact?: boolean;
+}) {
+  const router = useRouter();
+  const eventName = booking.event_name.trim() || "Booking request";
+  const statusLabel = booking.status === "accepted" ? "Booked" : "Pending Request";
+  const bookingHref = resolveCalendarOriginBookingHref(
+    getBookingRequestHref(booking),
+    calendarOrigin,
+  );
+
+  const handleOpenBooking = useCallback(() => {
+    onBeforeNavigate?.();
+    prepareCalendarAgendaEventNavigation();
+    router.push(bookingHref, { scroll: false });
+  }, [bookingHref, onBeforeNavigate, router]);
+
+  return (
+    <button
+      type="button"
+      onClick={handleOpenBooking}
+      aria-label={`${eventName}, ${statusLabel}`}
+      onContextMenu={(event) => event.preventDefault()}
+      className={`${className} touch-manipulation [-webkit-touch-callout:none] ${CALENDAR_MOBILE_INTERACTIVE_PRESS_CLASS}`}
+    >
+      <span className="pointer-events-none block w-full">
+        <span className="flex items-center justify-between gap-2">
+          <span
+            className={`truncate font-semibold text-ftc-text ${compact ? "text-xs" : "text-sm"}`}
+          >
+            {eventName}
+          </span>
+          <span
+            className={`shrink-0 rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide ${getDjBookingStatusBadgeClass(booking.status === "accepted" ? "accepted" : "pending")}`}
+          >
+            {statusLabel}
+          </span>
+        </span>
+        {booking.set_time.trim() ? (
+          <span
+            className={`mt-0.5 block truncate text-ftc-text-muted ${compact ? "text-[11px]" : "text-xs"}`}
+          >
+            {formatCalendarTimeLabel(booking.set_time)}
+          </span>
+        ) : null}
+      </span>
+    </button>
+  );
+}
+
 type DjCalendarMobileBookingCardProps = {
   booking: BookingRequest;
   calendarOrigin: CalendarOriginState;
@@ -506,29 +543,12 @@ function DjCalendarMobileBookingCard({
   booking,
   calendarOrigin,
 }: DjCalendarMobileBookingCardProps) {
-  const eventName = booking.event_name.trim() || "Booking request";
-  const statusLabel = booking.status === "accepted" ? "Booked" : "Pending Request";
-
   return (
-    <CalendarProgrammaticNavButton
-      href={resolveCalendarOriginEventHref(getBookingRequestHref(booking), calendarOrigin)}
-      ariaLabel={`${eventName}, ${statusLabel}`}
-      className={`block w-full rounded-xl border border-ftc-border bg-ftc-surface/80 px-3 py-2.5 text-left hover:border-ftc-primary/30 hover:bg-ftc-surface ${CALENDAR_MOBILE_INTERACTIVE_PRESS_CLASS}`}
-    >
-      <div className="flex items-center justify-between gap-2">
-        <p className="truncate text-sm font-semibold text-ftc-text">{eventName}</p>
-        <span
-          className={`shrink-0 rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide ${getDjBookingStatusBadgeClass(booking.status === "accepted" ? "accepted" : "pending")}`}
-        >
-          {statusLabel}
-        </span>
-      </div>
-      {booking.set_time.trim() ? (
-        <p className="mt-0.5 truncate text-xs text-ftc-text-muted">
-          {formatCalendarTimeLabel(booking.set_time)}
-        </p>
-      ) : null}
-    </CalendarProgrammaticNavButton>
+    <DjCalendarBookingNavButton
+      booking={booking}
+      calendarOrigin={calendarOrigin}
+      className="block w-full rounded-xl border border-ftc-border bg-ftc-surface/80 px-3 py-2.5 text-left hover:border-ftc-primary/30 hover:bg-ftc-surface"
+    />
   );
 }
 
@@ -1446,9 +1466,10 @@ export default function DjAvailabilityCalendar({
     });
 
     prepareCalendarAgendaEventNavigation();
-    router.push(resolveCalendarOriginEventHref(getBookingRequestHref(booking), calendarOrigin), {
-      scroll: false,
-    });
+    router.push(
+      resolveCalendarOriginBookingHref(getBookingRequestHref(booking), calendarOrigin),
+      { scroll: false },
+    );
   }
 
   const djMobileDateStrip = (

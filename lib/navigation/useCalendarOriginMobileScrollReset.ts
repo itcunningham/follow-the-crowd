@@ -107,6 +107,13 @@ export function useMobileEventDetailScrollReset(
       setScrollReady(true);
     });
 
+    const safetyTimer = window.setTimeout(() => {
+      unfreezeRef.current?.();
+      unfreezeRef.current = null;
+      clearPendingMobileEventDetailNavigation();
+      setScrollReady(true);
+    }, 750);
+
     const handlePageShow = (event: PageTransitionEvent) => {
       if (!event.persisted) {
         return;
@@ -128,6 +135,7 @@ export function useMobileEventDetailScrollReset(
 
     return () => {
       cancelCommit();
+      window.clearTimeout(safetyTimer);
       unfreezeRef.current?.();
       unfreezeRef.current = null;
       window.removeEventListener("pageshow", handlePageShow);

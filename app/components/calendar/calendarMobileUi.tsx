@@ -1,14 +1,9 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState, type ReactNode } from "react";
-import { prepareCalendarAgendaEventNavigation } from "@/lib/navigation/prepareMobileDocumentScrollReset";
+import { useEffect, useState } from "react";
 
 export const CALENDAR_MOBILE_INTERACTIVE_PRESS_CLASS =
   "active:scale-[0.98] transition duration-150 ease-out motion-reduce:transition-none motion-reduce:transform-none";
-
-export const CALENDAR_MOBILE_PROGRAMMATIC_NAV_TOUCH_CLASS =
-  "select-none touch-manipulation [-webkit-touch-callout:none] [&_*]:select-none";
 
 export const CALENDAR_MOBILE_AGENDA_TRANSITION_MS = 175;
 
@@ -89,48 +84,10 @@ export function useCalendarMobileAgendaTransition(selectedDateKey: string) {
   }, [displayDateKey, selectedDateKey]);
 
   const transitionClassName = `${CALENDAR_MOBILE_AGENDA_TRANSITION_CLASS} ${
-    visible ? "translate-y-0 opacity-100" : "translate-y-1 opacity-0"
+    visible
+      ? "translate-y-0 opacity-100"
+      : "pointer-events-none translate-y-1 opacity-0"
   }`;
 
   return { displayDateKey, transitionClassName };
-}
-
-type CalendarProgrammaticNavButtonProps = {
-  href: string;
-  ariaLabel: string;
-  className?: string;
-  children: ReactNode;
-  onBeforeNavigate?: () => void;
-};
-
-export function CalendarProgrammaticNavButton({
-  href,
-  ariaLabel,
-  className,
-  children,
-  onBeforeNavigate,
-}: CalendarProgrammaticNavButtonProps) {
-  const router = useRouter();
-
-  const navigate = useCallback(() => {
-    onBeforeNavigate?.();
-    prepareCalendarAgendaEventNavigation();
-    router.push(href, { scroll: false });
-  }, [href, onBeforeNavigate, router]);
-
-  const suppressContextMenu = useCallback((event: React.MouseEvent<HTMLButtonElement>) => {
-    event.preventDefault();
-  }, []);
-
-  return (
-    <button
-      type="button"
-      aria-label={ariaLabel}
-      onClick={navigate}
-      onContextMenu={suppressContextMenu}
-      className={`${CALENDAR_MOBILE_PROGRAMMATIC_NAV_TOUCH_CLASS} ${className ?? ""}`}
-    >
-      {children}
-    </button>
-  );
 }

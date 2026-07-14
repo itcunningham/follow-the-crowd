@@ -731,6 +731,34 @@ export function resolveCalendarOriginEventHref(
   return `/events/${eventId}?${params.toString()}`;
 }
 
+export function resolveCalendarOriginBookingHref(
+  href: string,
+  origin: CalendarOriginState,
+): string {
+  if (href.startsWith("/events/")) {
+    return resolveCalendarOriginEventHref(href, origin);
+  }
+
+  if (!href.startsWith("/dm/")) {
+    return href;
+  }
+
+  const [path, existingQuery = ""] = href.split("?");
+  const conversationId = path.slice("/dm/".length);
+
+  if (!conversationId) {
+    return href;
+  }
+
+  const params = new URLSearchParams(existingQuery);
+  params.set("from", "calendar");
+  params.set("calendarDate", origin.calendarDate);
+  params.set("calendarView", origin.calendarView);
+  params.set("calendarMonth", origin.calendarMonth);
+
+  return `/dm/${conversationId}?${params.toString()}`;
+}
+
 export function buildCalendarOriginReturnHref(origin: CalendarOriginState): string {
   const params = new URLSearchParams({
     date: origin.calendarDate,
