@@ -10,18 +10,21 @@ import {
   type BookingRequest,
   type BookingRequestStatus,
 } from "@/lib/bookingRequests";
+import type { BookingFocusPhase } from "@/lib/chatBookingFocusHighlight";
 
 export default function DmBookingUpdateRow({
   booking,
   currentUserId,
   eventCancelled = false,
   highlightClassName = "",
+  bookingFocusPhase = null,
   onViewDetails,
 }: {
   booking: BookingRequest;
   currentUserId: string | null;
   eventCancelled?: boolean;
   highlightClassName?: string;
+  bookingFocusPhase?: BookingFocusPhase;
   onViewDetails: () => void;
 }) {
   const isExplicitCancelled = booking.status === "cancelled";
@@ -77,6 +80,14 @@ export default function DmBookingUpdateRow({
           <path d="m9 18 6-6-6-6" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       </div>
+      {bookingFocusPhase ? (
+        <div
+          aria-hidden="true"
+          className={`pointer-events-none absolute inset-0 z-10 box-border rounded-xl border-2 border-[var(--ftc-color-primary)] transition-opacity duration-1000 ease-out ${
+            bookingFocusPhase === "active" ? "opacity-100" : "opacity-0"
+          }`}
+        />
+      ) : null}
     </button>
   );
 }

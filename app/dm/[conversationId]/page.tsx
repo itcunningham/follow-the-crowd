@@ -8,6 +8,7 @@ import BookingRequestCard, {
   buildUpdatedBookingMessage,
 } from "@/app/components/BookingRequestCard";
 import DmBookingUpdateRow from "@/app/components/dm/DmBookingUpdateRow";
+import BookingCardFocusRing from "@/app/components/dm/BookingCardFocusRing";
 import DmConversationHeader from "@/app/components/dm/DmConversationHeader";
 import ChatNewMessagesPill from "@/app/components/dm/ChatNewMessagesPill";
 import DmConversationDetailsPanel from "@/app/components/dm/DmConversationDetailsPanel";
@@ -77,7 +78,6 @@ import {
 import { supabase } from "@/lib/supabaseClient";
 import { useChatScroll, tagChatMessageForScroll } from "@/lib/useChatScroll";
 import { getChatNewMessageHighlightClass, logChatHighlightRender } from "@/lib/chatNewMessageHighlight";
-import { getChatBookingFocusHighlightClass } from "@/lib/chatBookingFocusHighlight";
 import { useChatNewMessageHighlight } from "@/lib/useChatNewMessageHighlight";
 import { useChatBookingFocusHighlight } from "@/lib/useChatBookingFocusHighlight";
 import {
@@ -208,7 +208,7 @@ export default function DmChatPage() {
     suppressAutoScrollRef,
   });
   const { addHighlightedMessageId, isMessageHighlighted } = useChatNewMessageHighlight();
-  const { highlightBookingFocus, isBookingFocusHighlighted } = useChatBookingFocusHighlight();
+  const { highlightBookingFocus, getMessageBookingFocusPhase } = useChatBookingFocusHighlight();
 
   useChatBookingTargetScroll({
     bookingRequestId,
@@ -1624,11 +1624,11 @@ export default function DmChatPage() {
                   ? isEventCancelled({ status: eventArtwork.status })
                   : false;
                 const highlighted = isMessageHighlighted(message.id);
-                const bookingFocused = isBookingFocusHighlighted(message.id);
-                logChatHighlightRender(message.id, highlighted || bookingFocused);
+                const bookingFocusPhase = getMessageBookingFocusPhase(message.id);
+                logChatHighlightRender(message.id, highlighted || Boolean(bookingFocusPhase));
                 const bookingExpansionKey = message.id;
-                const highlightClassName = bookingFocused
-                  ? getChatBookingFocusHighlightClass(true)
+                const highlightClassName = bookingFocusPhase
+                  ? ""
                   : getChatNewMessageHighlightClass(highlighted);
                 const actionRequired = isDmBookingActionRequired(resolvedBooking, eventCancelled);
                 const isBookingExpanded = expandedBookingIds.has(bookingExpansionKey);
@@ -1744,14 +1744,19 @@ export default function DmChatPage() {
                             currentUserId={currentUserId}
                             eventCancelled={eventCancelled}
                             highlightClassName={highlightClassName}
+                            bookingFocusPhase={bookingFocusPhase}
                             onViewDetails={() =>
                               setBookingExpanded(bookingExpansionKey, true)
                             }
                           />
                         ) : (
-                          <div className={`rounded-2xl ${highlightClassName}`}>
-                            {bookingCard}
-                          </div>
+                          <BookingCardFocusRing phase={bookingFocusPhase}>
+                            {highlightClassName ? (
+                              <div className={highlightClassName}>{bookingCard}</div>
+                            ) : (
+                              bookingCard
+                            )}
+                          </BookingCardFocusRing>
                         )}
                         <time
                           dateTime={message.created_at}
