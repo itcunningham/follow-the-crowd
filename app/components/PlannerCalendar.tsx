@@ -39,6 +39,7 @@ import {
   groupCalendarItemsByDate,
   buildPlannerCalendarMonthActivityByKey,
   getPlannerCalendarMonthActivityDotClass,
+  getPlannerCalendarDateStripMarker,
   isSameDay,
   isSameMonth,
   loadPlannerCalendarItems,
@@ -568,7 +569,8 @@ export default function PlannerCalendar({
 
   const dualMobileStripConfig = useMemo(
     () => ({
-      itemsByDate,
+      getDateMarker: (dateKey: string, isHighlighted: boolean) =>
+        getPlannerCalendarDateStripMarker(itemsByDate.get(dateKey) ?? [], isHighlighted),
       isDateHighlighted: (date: Date) => isSameDay(date, selectedDate),
       onSelectDate: handleSelectDate,
     }),
@@ -638,7 +640,9 @@ export default function PlannerCalendar({
               selectedDate={selectedDate}
               onSelectDate={handleSelectDate}
               monthStart={monthStart}
-              itemsByDate={itemsByDate}
+              getDateMarker={(dateKey, isHighlighted) =>
+                getPlannerCalendarDateStripMarker(itemsByDate.get(dateKey) ?? [], isHighlighted)
+              }
             />
           }
         />

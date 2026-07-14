@@ -4,8 +4,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import {
   formatPlannerAgendaDateLabel,
   getCalendarMonthDates,
-  getPlannerCalendarDateStripDotClass,
-  getPlannerCalendarDateStripExtraCount,
+  getPlannerCalendarDateStripMarker,
   getPlannerCalendarTodayDate,
   isSameDay,
   isSameMonth,
@@ -17,6 +16,9 @@ import {
 
 const DATE_CHIP_SCROLL_CLASS =
   "overflow-x-auto overscroll-x-contain [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden";
+
+export const CALENDAR_MOBILE_DATE_CHIP_HEIGHT_CLASS = "h-[3.75rem]";
+export const CALENDAR_MOBILE_DATE_CHIP_BASE_CLASS = `flex shrink-0 flex-col items-center rounded-xl border-2 px-1 py-2 transition ${CALENDAR_MOBILE_DATE_CHIP_HEIGHT_CLASS}`;
 
 const SCROLL_DURATION_MS = 175;
 const CENTER_LAYOUT_MAX_ATTEMPTS = 6;
@@ -90,7 +92,7 @@ function getDateStripChipClassName(isSelected: boolean, isToday: boolean): strin
     return "border-2 border-ftc-primary/45 bg-ftc-bg-elevated text-ftc-text-secondary hover:border-ftc-primary/65";
   }
 
-  return "border-ftc-border-subtle bg-ftc-bg-elevated text-ftc-text-secondary hover:border-ftc-border-strong";
+  return "border-2 border-ftc-border-subtle bg-ftc-bg-elevated text-ftc-text-secondary hover:border-ftc-border-strong";
 }
 
 function useCalendarTodayDate(): Date {
@@ -355,13 +357,7 @@ export default function PlannerCalendarMobileDateStrip({
         const dateItems = itemsByDate?.get(dateKey) ?? [];
         const marker = getDateMarker
           ? getDateMarker(dateKey, isHighlighted)
-          : dateItems.length > 0
-            ? {
-                dotClassName: getPlannerCalendarDateStripDotClass(dateItems, isHighlighted),
-                extraCount: getPlannerCalendarDateStripExtraCount(dateItems),
-                itemCountLabel: `, ${dateItems.length} scheduled item${dateItems.length === 1 ? "" : "s"}`,
-              }
-            : null;
+          : getPlannerCalendarDateStripMarker(dateItems, isHighlighted);
         const hasMarker = marker !== null;
         const itemCountLabel = marker?.itemCountLabel ?? "";
 
@@ -384,7 +380,7 @@ export default function PlannerCalendarMobileDateStrip({
               centerDateWhenReady(date);
             }}
             style={chipWidth ? { width: chipWidth, minWidth: chipWidth } : undefined}
-            className={`flex shrink-0 flex-col items-center rounded-xl border px-1 py-2 transition ${
+            className={`${CALENDAR_MOBILE_DATE_CHIP_BASE_CLASS} ${
               chipWidth ? "" : "w-[calc((100%-1.5rem)/7)] min-w-[calc((100%-1.5rem)/7)]"
             } ${getDateStripChipClassName(isHighlighted, isToday)}`}
           >

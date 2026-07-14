@@ -626,6 +626,21 @@ export function getPlannerCalendarDateStripExtraCount(items: CalendarItem[]): nu
   return items.length - 1;
 }
 
+export function getPlannerCalendarDateStripMarker(
+  items: CalendarItem[],
+  isHighlighted: boolean,
+): CalendarMobileDateStripMarker | null {
+  if (items.length === 0) {
+    return null;
+  }
+
+  return {
+    dotClassName: getPlannerCalendarDateStripDotClass(items, isHighlighted),
+    extraCount: getPlannerCalendarDateStripExtraCount(items),
+    itemCountLabel: `, ${items.length} scheduled item${items.length === 1 ? "" : "s"}`,
+  };
+}
+
 export type CalendarMobileDateStripMarker = {
   dotClassName: string;
   extraCount: number;

@@ -177,7 +177,6 @@ export default function BothRoleCalendarView({ activeTab }: BothRoleCalendarView
               selectedDate={selectedDate}
               onSelectDate={activeStripConfig.onSelectDate ?? handleSelectDate}
               monthStart={monthStart}
-              itemsByDate={activeStripConfig.itemsByDate}
               getDateMarker={activeStripConfig.getDateMarker}
               isDateHighlighted={activeStripConfig.isDateHighlighted}
             />

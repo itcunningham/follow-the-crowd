@@ -13,6 +13,7 @@ import {
   CALENDAR_MOBILE_CHROME_LEGEND_CLASS,
   CALENDAR_MOBILE_CHROME_MONTH_NAV_CLASS,
 } from "@/app/components/calendar/CalendarMobileChrome";
+import { CALENDAR_MOBILE_DATE_CHIP_HEIGHT_CLASS } from "@/app/components/PlannerCalendarMobileDateStrip";
 import {
   EventDetailEditHeaderSlot,
   EventDetailOverlayButton,
@@ -928,7 +929,7 @@ function CalendarMobileDayStripSkeleton() {
       {Array.from({ length: 7 }, (_, index) => (
         <SkeletonBlock
           key={index}
-          className="h-[3.75rem] w-[calc((100%-1.5rem)/7)] min-w-[calc((100%-1.5rem)/7)] shrink-0 rounded-xl"
+          className={`${CALENDAR_MOBILE_DATE_CHIP_HEIGHT_CLASS} w-[calc((100%-1.5rem)/7)] min-w-[calc((100%-1.5rem)/7)] shrink-0 rounded-xl`}
         />
       ))}
     </div>
