@@ -1,9 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { prepareCalendarAgendaEventNavigation } from "@/lib/navigation/prepareMobileDocumentScrollReset";
 
 export const CALENDAR_MOBILE_INTERACTIVE_PRESS_CLASS =
   "active:scale-[0.98] transition duration-150 ease-out motion-reduce:transition-none motion-reduce:transform-none";
+
+export const CALENDAR_MOBILE_PROGRAMMATIC_NAV_TOUCH_CLASS =
+  "select-none touch-manipulation [-webkit-touch-callout:none] [&_*]:select-none";
 
 export const CALENDAR_MOBILE_AGENDA_TRANSITION_MS = 175;
 
@@ -88,4 +93,82 @@ export function useCalendarMobileAgendaTransition(selectedDateKey: string) {
   }`;
 
   return { displayDateKey, transitionClassName };
+}
+
+type CalendarProgrammaticNavButtonProps = {
+  href: string;
+  ariaLabel: string;
+  className?: string;
+  children: ReactNode;
+  onBeforeNavigate?: () => void;
+};
+
+export function CalendarProgrammaticNavButton({
+  href,
+  ariaLabel,
+  className,
+  children,
+  onBeforeNavigate,
+}: CalendarProgrammaticNavButtonProps) {
+  const router = useRouter();
+  const navigatedRef = useRef(false);
+  const touchActivatedRef = useRef(false);
+
+  const navigate = useCallback(() => {
+    if (navigatedRef.current) {
+      return;
+    }
+
+    navigatedRef.current = true;
+    onBeforeNavigate?.();
+    prepareCalendarAgendaEventNavigation();
+    router.push(href, { scroll: false });
+
+    window.setTimeout(() => {
+      navigatedRef.current = false;
+    }, 400);
+  }, [href, onBeforeNavigate, router]);
+
+  const handlePointerUp = useCallback(
+    (event: React.PointerEvent<HTMLButtonElement>) => {
+      if (event.pointerType !== "touch") {
+        return;
+      }
+
+      event.preventDefault();
+      touchActivatedRef.current = true;
+      navigate();
+    },
+    [navigate],
+  );
+
+  const handleClick = useCallback(
+    (event: React.MouseEvent<HTMLButtonElement>) => {
+      if (touchActivatedRef.current) {
+        touchActivatedRef.current = false;
+        event.preventDefault();
+        return;
+      }
+
+      navigate();
+    },
+    [navigate],
+  );
+
+  const suppressContextMenu = useCallback((event: React.MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+  }, []);
+
+  return (
+    <button
+      type="button"
+      aria-label={ariaLabel}
+      onPointerUp={handlePointerUp}
+      onClick={handleClick}
+      onContextMenu={suppressContextMenu}
+      className={`${CALENDAR_MOBILE_PROGRAMMATIC_NAV_TOUCH_CLASS} ${className ?? ""}`}
+    >
+      {children}
+    </button>
+  );
 }
