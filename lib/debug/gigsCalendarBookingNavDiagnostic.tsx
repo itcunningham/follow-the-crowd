@@ -19,6 +19,7 @@ export type GigsCalendarBookingNavDiagnosticSnapshot = {
   resolvedHref: string;
   navigationKind: string;
   navigateFrom: string;
+  navigationMethod: string;
   routerPushCalled: boolean;
   pathnameBefore: string;
   pathnameAfterPush: string;
@@ -58,6 +59,7 @@ function createEmptySnapshot(): GigsCalendarBookingNavDiagnosticSnapshot {
     resolvedHref: "",
     navigationKind: "",
     navigateFrom: "",
+    navigationMethod: "",
     routerPushCalled: false,
     pathnameBefore: "",
     pathnameAfterPush: "",
@@ -225,6 +227,7 @@ export function GigsCalendarBookingNavDebugPanel() {
           <DiagnosticRow label="event" value={diagnostic.eventName} />
           <DiagnosticRow label="status" value={diagnostic.bookingStatus} />
           <DiagnosticRow label="nav from" value={diagnostic.navigateFrom} />
+          <DiagnosticRow label="nav method" value={diagnostic.navigationMethod} />
           <DiagnosticRow label="bookingId" value={diagnostic.bookingId} />
           <DiagnosticRow
             label="raw event_id"

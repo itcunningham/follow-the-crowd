@@ -569,6 +569,17 @@ function DjCalendarBookingNavButton({
       navigatedThisGestureRef.current = true;
       onBeforeNavigate?.();
       prepareCalendarAgendaEventNavigation();
+
+      if (navigateFrom === "pointerup") {
+        publishGigsCalendarBookingNavDiagnostic({
+          navigationMethod: "location.assign",
+          routerPushCalled: false,
+          pathnameAfterPush: navigation.href,
+        });
+        window.location.assign(navigation.href);
+        return;
+      }
+
       router.push(navigation.href, { scroll: false });
 
       const pathnameAfterPush =
@@ -577,6 +588,7 @@ function DjCalendarBookingNavButton({
           : "";
 
       publishGigsCalendarBookingNavDiagnostic({
+        navigationMethod: "router.push",
         routerPushCalled: true,
         pathnameAfterPush,
       });
@@ -642,6 +654,7 @@ function DjCalendarBookingNavButton({
         resolvedHref: "",
         navigationKind: "",
         navigateFrom: "",
+        navigationMethod: "",
         routerPushCalled: false,
         pathnameBefore,
         pathnameAfterPush: "",
