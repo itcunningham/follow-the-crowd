@@ -104,7 +104,8 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
-- `72fa4d6` — Gigs calendar touch cards use location.assign (iOS router.push fix)
+- `60e297c` — calendar-origin DMs return to Gigs Calendar instead of Messages
+- `b29dd5a` — remove temporary Gigs calendar booking navigation diagnostics
 - `975d743` — Gigs calendar booking cards navigate on pointerup for iPhone touch
 - `e220ba2` — temporary Gigs calendar booked-card tap diagnostics (removed)
 - `3bbf662` — fix Gigs calendar booked items opening blank event detail on mobile
