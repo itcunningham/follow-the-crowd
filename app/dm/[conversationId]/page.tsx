@@ -132,6 +132,9 @@ export default function DmChatPage() {
     from: searchParams.get("from"),
     tab: searchParams.get("tab"),
     profileUserId: searchParams.get("profileUserId"),
+    calendarDate: searchParams.get("calendarDate"),
+    calendarView: searchParams.get("calendarView"),
+    calendarMonth: searchParams.get("calendarMonth"),
   });
 
   const [messages, setMessages] = useState<Message[]>([]);

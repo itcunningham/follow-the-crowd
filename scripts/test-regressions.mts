@@ -17,10 +17,8 @@ import { computeCrewChatEventActions } from "../lib/events/crewChatEventActions"
 import type { CrewChatUnlockState } from "../lib/events/crewChatUnlock";
 import { resolveEventLinkedBookingDisplay } from "../lib/events/eventBookingDisplay";
 import { getAuthRedirectUrl } from "../lib/auth/appUrl";
-import {
-  resolveGigsCalendarBookingNavigation,
-  type CalendarOriginState,
-} from "../lib/bookings/gigsCalendarNavigation";
+import { resolveDmThreadBackHref } from "../lib/dm/threadNavigation";
+import { resolveGigsCalendarBookingNavigation } from "../lib/bookings/gigsCalendarNavigation";
 import { hasUnsavedProfileEdits, createProfileEditBaseline } from "../lib/user/profileEditDirtyState";
 import { getUsernameFormatError, normalizeSoundCloudInput } from "../lib/user/profileFormUtils";
 
@@ -343,8 +341,23 @@ function testSoundCloudInputNormalization() {
   );
 }
 
+function testDmThreadCalendarBackHref() {
+  assert.equal(
+    resolveDmThreadBackHref({
+      from: "calendar",
+      calendarDate: "2026-07-14",
+      calendarView: "dj",
+      calendarMonth: "2026-07-01",
+    }),
+    "/calendar?date=2026-07-14&view=dj&month=2026-07-01",
+  );
+
+  assert.equal(resolveDmThreadBackHref({ from: "dm" }), "/dm");
+  assert.equal(resolveDmThreadBackHref({}), "/dm");
+}
+
 function testGigsCalendarBookingNavigation() {
-  const origin: CalendarOriginState = {
+  const origin: import("../lib/bookings/gigsCalendarNavigation").CalendarOriginState = {
     calendarDate: "2026-07-14",
     calendarView: "dj",
     calendarMonth: "2026-07-01",
@@ -419,6 +432,7 @@ function main() {
   testAuthRedirectUrlUsesLoginPath();
   testProfileEditDirtyDetection();
   testSoundCloudInputNormalization();
+  testDmThreadCalendarBackHref();
   testGigsCalendarBookingNavigation();
   console.log("All regression checks passed.");
 }

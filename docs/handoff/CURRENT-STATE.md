@@ -42,7 +42,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 - **Gigs `Select dates` row:** secondary action reserves space from first frame — disabled real button while calendar data loads; dual-mode parent falls back to same button before child chrome registers (no legend/strip shift)
 - **Gigs legend-to-strip gap (mobile):** day scroller uses `mt-1` (`CALENDAR_MOBILE_CHROME_GIGS_DAY_STRIP_CLASS`) vs Events `mt-4`; desktop unchanged (`md:hidden` on strip wrapper)
 - **Calendar mobile polish (2026-07-14):** shared `calendarMobileUi` — selected-day header, dashed empty state with muted calendar icon, agenda fade/slide transition (175ms, `motion-reduce`), `active:scale-[0.98]` press on day chips/cards/arrows; month title `text-base`; nav arrow gap `gap-0`; compact mobile agenda cards
-- **Gigs booked-card navigation (2026-07-14):** mobile agenda cards navigate on touch `pointerup` via `window.location.assign` (iOS Safari does not commit App Router `router.push`); desktop mouse and keyboard use `router.push`; booked items validate UUID `event_id` before navigation; calendar return query params preserved on event/DM links
+- **Gigs booked-card navigation (2026-07-14):** mobile agenda cards navigate on touch `pointerup` via `window.location.assign` (iOS Safari does not commit App Router `router.push`); desktop mouse and keyboard use `router.push`; booked items validate UUID `event_id` before navigation; calendar return query params preserved on event/DM links; calendar-origin DMs return to Gigs Calendar via `buildCalendarOriginReturnHref` (not Messages)
 - Create-from-calendar: Save event + **Confirm N DJ(s)** invite flow
 - Today highlight on date strip; selected + today states on desktop grid cells
 
