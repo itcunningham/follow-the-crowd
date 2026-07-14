@@ -7,12 +7,18 @@ export type GigsCalendarBookingNavDiagnosticSnapshot = {
   eventName: string;
   bookingStatus: string;
   pointerdownReceived: boolean;
+  pointerupReceived: boolean;
+  pointercancelReceived: boolean;
+  touchstartReceived: boolean;
+  touchendReceived: boolean;
+  touchcancelReceived: boolean;
   clickReceived: boolean;
   bookingId: string;
   rawEventId: string | null;
   rawEventIdType: string;
   resolvedHref: string;
   navigationKind: string;
+  navigateFrom: string;
   routerPushCalled: boolean;
   pathnameBefore: string;
   pathnameAfterPush: string;
@@ -22,6 +28,16 @@ export type GigsCalendarBookingNavDiagnosticSnapshot = {
   buttonZIndex: string;
   ancestorPointerBlockers: string;
   isPressed: boolean;
+  buttonUnmountedBetweenDownUp: boolean;
+  buttonRerenderedBetweenDownUp: boolean;
+  renderCountAtDown: number;
+  renderCountAtUp: number;
+  mountTokenAtDown: number;
+  mountTokenAtUp: number;
+  bookingIdAtDown: string;
+  bookingIdAtUp: string;
+  gestureCancelled: boolean;
+  gestureDuplicateBlocked: boolean;
 };
 
 function createEmptySnapshot(): GigsCalendarBookingNavDiagnosticSnapshot {
@@ -30,12 +46,18 @@ function createEmptySnapshot(): GigsCalendarBookingNavDiagnosticSnapshot {
     eventName: "",
     bookingStatus: "",
     pointerdownReceived: false,
+    pointerupReceived: false,
+    pointercancelReceived: false,
+    touchstartReceived: false,
+    touchendReceived: false,
+    touchcancelReceived: false,
     clickReceived: false,
     bookingId: "",
     rawEventId: null,
     rawEventIdType: "null",
     resolvedHref: "",
     navigationKind: "",
+    navigateFrom: "",
     routerPushCalled: false,
     pathnameBefore: "",
     pathnameAfterPush: "",
@@ -45,6 +67,16 @@ function createEmptySnapshot(): GigsCalendarBookingNavDiagnosticSnapshot {
     buttonZIndex: "",
     ancestorPointerBlockers: "",
     isPressed: false,
+    buttonUnmountedBetweenDownUp: false,
+    buttonRerenderedBetweenDownUp: false,
+    renderCountAtDown: 0,
+    renderCountAtUp: 0,
+    mountTokenAtDown: 0,
+    mountTokenAtUp: 0,
+    bookingIdAtDown: "",
+    bookingIdAtUp: "",
+    gestureCancelled: false,
+    gestureDuplicateBlocked: false,
   };
 }
 
@@ -180,6 +212,11 @@ export function GigsCalendarBookingNavDebugPanel() {
         <>
           <div className="mb-2 flex flex-wrap gap-1">
             <DiagnosticFlag label="pointerdown" active={diagnostic.pointerdownReceived} />
+            <DiagnosticFlag label="pointerup" active={diagnostic.pointerupReceived} />
+            <DiagnosticFlag label="pointercancel" active={diagnostic.pointercancelReceived} />
+            <DiagnosticFlag label="touchstart" active={diagnostic.touchstartReceived} />
+            <DiagnosticFlag label="touchend" active={diagnostic.touchendReceived} />
+            <DiagnosticFlag label="touchcancel" active={diagnostic.touchcancelReceived} />
             <DiagnosticFlag label="click" active={diagnostic.clickReceived} />
             <DiagnosticFlag label="router.push" active={diagnostic.routerPushCalled} />
             <DiagnosticFlag label="pressed" active={diagnostic.isPressed} />
@@ -187,6 +224,7 @@ export function GigsCalendarBookingNavDebugPanel() {
 
           <DiagnosticRow label="event" value={diagnostic.eventName} />
           <DiagnosticRow label="status" value={diagnostic.bookingStatus} />
+          <DiagnosticRow label="nav from" value={diagnostic.navigateFrom} />
           <DiagnosticRow label="bookingId" value={diagnostic.bookingId} />
           <DiagnosticRow
             label="raw event_id"
@@ -205,6 +243,34 @@ export function GigsCalendarBookingNavDebugPanel() {
           <DiagnosticRow label="btn pe" value={diagnostic.buttonPointerEvents} />
           <DiagnosticRow label="btn z-index" value={diagnostic.buttonZIndex} />
           <DiagnosticRow label="blockers" value={diagnostic.ancestorPointerBlockers} />
+          <DiagnosticRow
+            label="unmounted d→u"
+            value={diagnostic.buttonUnmountedBetweenDownUp ? "yes" : "no"}
+          />
+          <DiagnosticRow
+            label="rerender d→u"
+            value={
+              diagnostic.buttonRerenderedBetweenDownUp
+                ? `yes (${diagnostic.renderCountAtDown}→${diagnostic.renderCountAtUp})`
+                : "no"
+            }
+          />
+          <DiagnosticRow
+            label="mount token d→u"
+            value={`${diagnostic.mountTokenAtDown}→${diagnostic.mountTokenAtUp}`}
+          />
+          <DiagnosticRow
+            label="bookingId d→u"
+            value={`${diagnostic.bookingIdAtDown || "—"}→${diagnostic.bookingIdAtUp || "—"}`}
+          />
+          <DiagnosticRow
+            label="gesture cancelled"
+            value={diagnostic.gestureCancelled ? "yes" : "no"}
+          />
+          <DiagnosticRow
+            label="dup blocked"
+            value={diagnostic.gestureDuplicateBlocked ? "yes" : "no"}
+          />
           <DiagnosticRow label="updated" value={diagnostic.updatedAt} />
         </>
       )}
