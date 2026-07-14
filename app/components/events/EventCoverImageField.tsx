@@ -17,6 +17,9 @@ export const emptyEventCoverImageFieldState: EventCoverImageFieldState = {
   removeExisting: false,
 };
 
+const EVENT_COVER_ACTION_BUTTON_CLASS =
+  "ftc-btn-secondary min-h-10 px-4 py-2 text-xs font-semibold uppercase tracking-wide disabled:cursor-not-allowed disabled:opacity-50";
+
 export default function EventCoverImageField({
   label = "Event flyer",
   eventName,
@@ -112,14 +115,12 @@ export default function EventCoverImageField({
   return (
     <div>
       <span className={BOOKING_FIELD_LABEL_CLASS}>{label}</span>
-      <p className="mb-2 text-xs text-ftc-text-muted">
-        Upload event image
-      </p>
+      <p className="ftc-form-field-hint">Upload event image</p>
 
-      <div className="overflow-hidden rounded-xl border border-ftc-border-subtle bg-ftc-surface">
+      <div className="ftc-event-cover-panel">
         {showPreview && previewSrc ? (
-          <div className="flex justify-center bg-ftc-bg px-4 py-4">
-            <div className="aspect-[3/4] w-full max-w-[12.5rem] overflow-hidden rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated">
+          <div className="ftc-event-cover-panel-preview">
+            <div className="aspect-[3/4] w-full max-w-[12.5rem] overflow-hidden rounded-[var(--ftc-radius-lg)] border border-ftc-border-subtle bg-ftc-bg-elevated">
               <img
                 src={previewSrc}
                 alt={getEventCoverImageAlt(eventName)}
@@ -128,17 +129,35 @@ export default function EventCoverImageField({
             </div>
           </div>
         ) : (
-          <div className="flex aspect-[3/4] max-h-52 w-full items-center justify-center bg-ftc-bg px-4 text-center">
+          <div className="ftc-event-cover-panel-empty">
+            <svg
+              aria-hidden="true"
+              viewBox="0 0 20 20"
+              fill="none"
+              className="h-5 w-5 text-ftc-text-muted/70"
+            >
+              <rect
+                x="3"
+                y="4.5"
+                width="14"
+                height="12.5"
+                rx="2"
+                stroke="currentColor"
+                strokeWidth="1.5"
+              />
+              <path d="M3 8.5h14" stroke="currentColor" strokeWidth="1.5" />
+              <path d="M7 3v3M13 3v3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+            </svg>
             <p className="text-sm text-ftc-text-muted">No flyer selected</p>
           </div>
         )}
 
-        <div className="flex flex-wrap gap-2 border-t border-ftc-border-subtle p-3">
+        <div className="ftc-event-cover-panel-actions">
           <button
             type="button"
             onClick={openFilePicker}
             disabled={disabled}
-            className="rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated px-4 py-2 text-sm font-semibold text-ftc-text-secondary transition hover:border-ftc-border-strong hover:text-ftc-text disabled:cursor-not-allowed disabled:opacity-50"
+            className={EVENT_COVER_ACTION_BUTTON_CLASS}
           >
             {showPreview ? "Change image" : "Choose image"}
           </button>
@@ -147,7 +166,7 @@ export default function EventCoverImageField({
               type="button"
               onClick={handleRemove}
               disabled={disabled}
-              className="rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated px-4 py-2 text-sm font-semibold text-ftc-text-secondary transition hover:border-ftc-border-strong hover:text-ftc-text disabled:cursor-not-allowed disabled:opacity-50"
+              className={EVENT_COVER_ACTION_BUTTON_CLASS}
             >
               Remove
             </button>

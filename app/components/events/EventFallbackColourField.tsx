@@ -44,7 +44,7 @@ function SwatchButton({
         {showInitial ? <span className="relative z-[1]">N</span> : null}
       </span>
       <span
-        className={`text-[10px] font-medium ${
+        className={`text-[10px] font-medium leading-tight ${
           selected ? "text-ftc-text" : "text-ftc-text-muted"
         }`}
       >
@@ -74,14 +74,14 @@ export default function EventFallbackColourField({
   return (
     <div>
       <span className={BOOKING_FIELD_LABEL_CLASS}>Event colour</span>
-      <p className="mb-3 text-xs text-ftc-text-muted">
+      <p className="ftc-form-field-hint">
         {flyerActive
           ? "Remove the event image to choose an event colour"
           : "Used when no event image is uploaded"}
       </p>
 
       <div
-        className={`grid grid-cols-4 gap-2 sm:grid-cols-4 ${
+        className={`grid grid-cols-4 gap-x-2.5 gap-y-3 sm:grid-cols-4 ${
           colourSelectionDisabled ? "pointer-events-none opacity-50" : ""
         }`}
       >
@@ -110,12 +110,12 @@ export default function EventFallbackColourField({
         })}
       </div>
 
-      <p className="mt-3 text-xs text-ftc-text-muted">
-        Preview tile colour:{" "}
-        <span className="font-semibold text-ftc-text">
+      <div className="ftc-event-colour-preview">
+        <span className="ftc-event-colour-preview-label">Preview tile colour</span>
+        <span className="ftc-event-colour-preview-value">
           {getEventFallbackColourLabel(previewColour)}
         </span>
-      </p>
+      </div>
     </div>
   );
 }

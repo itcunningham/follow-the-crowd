@@ -548,6 +548,7 @@ html {
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
+  margin-top: 1rem;
   border-radius: var(--ftc-radius-lg);
   border: 1px solid var(--ftc-color-border-subtle);
   background: var(--ftc-color-bg-input);

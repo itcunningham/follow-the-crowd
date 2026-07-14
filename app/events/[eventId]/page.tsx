@@ -1154,7 +1154,7 @@ export default function EventDetailPage() {
               }}
               cancelDisabled={savingEdit}
             >
-              <form onSubmit={handleSaveEdit} className="space-y-4">
+              <form onSubmit={handleSaveEdit} className="ftc-event-edit-form">
                 <PlannerFormField
                   label="Event name"
                   value={editForm.name}
@@ -1227,14 +1227,16 @@ export default function EventDetailPage() {
                   <p className="text-sm text-[var(--ftc-color-danger)]">{editFormError}</p>
                 ) : null}
 
-                <button
-                  type="submit"
-                  disabled={savingEdit || (editSaveAttempted && editFormHasValidationErrors)}
-                  aria-disabled={savingEdit || (editSaveAttempted && editFormHasValidationErrors)}
-                  className={EVENT_DETAIL_BTN_PRIMARY_WIDE}
-                >
-                  {savingEdit ? "Saving event..." : "Save event changes"}
-                </button>
+                <div className="pt-0.5">
+                  <button
+                    type="submit"
+                    disabled={savingEdit || (editSaveAttempted && editFormHasValidationErrors)}
+                    aria-disabled={savingEdit || (editSaveAttempted && editFormHasValidationErrors)}
+                    className={EVENT_DETAIL_BTN_PRIMARY_WIDE}
+                  >
+                    {savingEdit ? "Saving event..." : "Save event changes"}
+                  </button>
+                </div>
               </form>
             </PlannerFormCard>
             </section>

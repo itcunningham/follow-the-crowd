@@ -426,13 +426,13 @@ export function formatTimeButtonLabel(clock: string, meridiem: Meridiem): string
 }
 
 export const BOOKING_TIME_BUTTON_CLASS =
-  "ftc-field-trigger flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-sm";
+  "ftc-field-trigger flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left text-sm";
 
 export const BOOKING_TIME_BUTTON_COMPACT_CLASS =
   "ftc-field-trigger inline-flex w-full min-h-[2.25rem] items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium sm:min-h-[2rem] lg:max-w-[6.25rem]";
 
 export const BOOKING_DATE_TIME_INPUT_CLASS =
-  "ftc-field-trigger w-full rounded-xl px-3.5 py-2.5 text-sm [color-scheme:dark]";
+  "ftc-field-trigger w-full px-3.5 py-2.5 text-sm [color-scheme:dark]";
 
 export const BOOKING_FIELD_LABEL_CLASS = "ftc-label";
 

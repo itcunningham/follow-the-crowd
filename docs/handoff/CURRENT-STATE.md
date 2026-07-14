@@ -24,6 +24,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 - **Create/edit validation:** inline field errors after Save; start + finish time both required; notes length/line limits disable save
 - **Notes** section on event detail (heading "Notes", muted section label)
 - Edit with confirmation when booking-impacting fields change + group chat update message
+- **Edit event form polish (2026-07-14):** unified form control height/radius/focus; settings-panel card header; intentional flyer upload panel; aligned colour chips + preview row; subtle notes counter
 - Run sheet: single planner view for assigned DJs; table on `lg+`, cards below
 - Run sheet rows auto-created when DJ accepts
 - Accepted bookings cancellable by planner or DJ with reason + group chat update
