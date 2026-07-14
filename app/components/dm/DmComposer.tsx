@@ -34,8 +34,8 @@ function ComposerIconButton({
   );
 }
 
-function SendIcon() {
-  return <ChatSendIcon />;
+function SendIcon({ className = "h-5 w-5" }: { className?: string }) {
+  return <ChatSendIcon className={className} />;
 }
 
 export default function DmComposer({
@@ -106,9 +106,13 @@ export default function DmComposer({
           onClick={onSend}
           disabled={busy || !value.trim()}
           aria-label="Send message"
-          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-ftc-primary text-ftc-bg transition hover:bg-ftc-primary-dim disabled:cursor-not-allowed disabled:opacity-50"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-ftc-primary text-ftc-bg transition hover:bg-ftc-primary-dim disabled:cursor-not-allowed disabled:opacity-50 sm:h-11 sm:w-11"
         >
-          {busy ? <span className="text-xs font-bold">…</span> : <SendIcon />}
+          {busy ? (
+            <span className="text-xs font-bold">…</span>
+          ) : (
+            <SendIcon className="h-[1.125rem] w-[1.125rem] sm:h-5 sm:w-5" />
+          )}
         </button>
       </div>
 
