@@ -17,8 +17,9 @@ import {
 const DATE_CHIP_SCROLL_CLASS =
   "overflow-x-auto overscroll-x-contain [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden";
 
-export const CALENDAR_MOBILE_DATE_CHIP_HEIGHT_CLASS = "h-[3.75rem]";
-export const CALENDAR_MOBILE_DATE_CHIP_BASE_CLASS = `flex shrink-0 flex-col items-center rounded-xl border-2 px-1 py-2 transition ${CALENDAR_MOBILE_DATE_CHIP_HEIGHT_CLASS}`;
+export const CALENDAR_MOBILE_DATE_CHIP_SKELETON_HEIGHT_CLASS = "h-[3.75rem]";
+export const CALENDAR_MOBILE_DATE_CHIP_BASE_CLASS =
+  "flex shrink-0 flex-col items-center rounded-xl border px-1 py-2 transition";
 
 const SCROLL_DURATION_MS = 175;
 const CENTER_LAYOUT_MAX_ATTEMPTS = 6;
@@ -92,7 +93,7 @@ function getDateStripChipClassName(isSelected: boolean, isToday: boolean): strin
     return "border-2 border-ftc-primary/45 bg-ftc-bg-elevated text-ftc-text-secondary hover:border-ftc-primary/65";
   }
 
-  return "border-2 border-ftc-border-subtle bg-ftc-bg-elevated text-ftc-text-secondary hover:border-ftc-border-strong";
+  return "border-ftc-border-subtle bg-ftc-bg-elevated text-ftc-text-secondary hover:border-ftc-border-strong";
 }
 
 function useCalendarTodayDate(): Date {
