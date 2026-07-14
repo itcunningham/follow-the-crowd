@@ -1446,6 +1446,9 @@ export function AppLoadingShell({
       calendarDate: searchParams.get("calendarDate"),
       calendarView: searchParams.get("calendarView"),
       calendarMonth: searchParams.get("calendarMonth"),
+      conversationId: searchParams.get("conversationId"),
+      bookingRequestId: searchParams.get("bookingRequestId"),
+      fromDmConversation: searchParams.get("fromDmConversation"),
     });
 
     if (eventId) {

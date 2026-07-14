@@ -35,6 +35,7 @@ import {
 } from "@/lib/bookingRequests";
 import { rateDigitsToInteger } from "@/lib/bookingRate";
 import { formatDisplayEventDate } from "@/lib/bookingDateTime";
+import { buildEventDetailFromDmHref } from "@/lib/events/eventsListNavigation";
 import type { BookingRecipientProfile } from "@/lib/user/currentUser";
 
 export default function BookingRequestCard({
@@ -127,7 +128,7 @@ export default function BookingRequestCard({
   const showActionButtons = bookingLoaded && !bookingLoading;
   const eventHref = booking.event_id
     ? dmConversationId
-      ? `/events/${booking.event_id}?fromDmConversation=${encodeURIComponent(dmConversationId)}`
+      ? buildEventDetailFromDmHref(booking.event_id, dmConversationId, booking.id)
       : `/events/${booking.event_id}`
     : null;
 

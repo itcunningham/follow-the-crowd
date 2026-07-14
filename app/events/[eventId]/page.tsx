@@ -171,6 +171,9 @@ export default function EventDetailPage() {
         calendarDate: searchParams.get("calendarDate"),
         calendarView: searchParams.get("calendarView"),
         calendarMonth: searchParams.get("calendarMonth"),
+        conversationId: searchParams.get("conversationId"),
+        bookingRequestId: searchParams.get("bookingRequestId"),
+        fromDmConversation: searchParams.get("fromDmConversation"),
       }),
     [searchParams],
   );
@@ -928,11 +931,14 @@ export default function EventDetailPage() {
         : null,
     [visibleLineup, currentUserId],
   );
-  const fromDmConversation = searchParams.get("fromDmConversation");
+  const dmOriginConversationId =
+    searchParams.get("from") === "dm"
+      ? searchParams.get("conversationId")?.trim() || null
+      : searchParams.get("fromDmConversation")?.trim() || null;
   const hideOpenBookingConversation = Boolean(
-    fromDmConversation &&
+    dmOriginConversationId &&
       viewerBooking?.conversation_id &&
-      viewerBooking.conversation_id === fromDmConversation,
+      viewerBooking.conversation_id === dmOriginConversationId,
   );
 
   const crewChatActions = useMemo(

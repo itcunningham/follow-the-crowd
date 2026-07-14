@@ -1,4 +1,5 @@
 import { buildGigsListHref, parseDjGigsListTab } from "@/lib/bookings/gigsListNavigation";
+import { buildDmThreadHref } from "@/lib/dm/threadNavigation";
 import {
   buildCalendarOriginReturnHref,
   buildPlannerCalendarHref,
@@ -63,6 +64,36 @@ export function buildEventDetailHref(eventId: string, tab: EventsListTab = "acti
   return `/events/${eventId}`;
 }
 
+export function buildEventDetailFromDmHref(
+  eventId: string,
+  conversationId: string,
+  bookingRequestId: string,
+): string {
+  const params = new URLSearchParams({
+    from: "dm",
+    conversationId: conversationId.trim(),
+    bookingRequestId: bookingRequestId.trim(),
+  });
+
+  return `/events/${eventId}?${params.toString()}`;
+}
+
+function resolveDmEventDetailConversationId(options?: {
+  from?: string | null;
+  conversationId?: string | null;
+  fromDmConversation?: string | null;
+}): string | null {
+  if (options?.from?.trim() === "dm") {
+    const conversationId = options.conversationId?.trim();
+
+    return conversationId || null;
+  }
+
+  const legacyConversationId = options?.fromDmConversation?.trim();
+
+  return legacyConversationId || null;
+}
+
 export function resolveEventDetailBackHref(
   fromTab: string | null | undefined,
   options?: {
@@ -71,8 +102,21 @@ export function resolveEventDetailBackHref(
     calendarDate?: string | null;
     calendarView?: string | null;
     calendarMonth?: string | null;
+    conversationId?: string | null;
+    bookingRequestId?: string | null;
+    fromDmConversation?: string | null;
   },
 ): string {
+  const dmConversationId = resolveDmEventDetailConversationId(options);
+
+  if (dmConversationId) {
+    const bookingRequestId = options?.bookingRequestId?.trim();
+
+    return buildDmThreadHref(dmConversationId, {
+      bookingRequestId: bookingRequestId || undefined,
+    });
+  }
+
   if (options?.from === "calendar") {
     const calendarOrigin = parseCalendarOriginFromEventDetail({
       get: (key) => {
