@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { prepareCalendarAgendaEventNavigation } from "@/lib/navigation/prepareMobileDocumentScrollReset";
 
 export const CALENDAR_MOBILE_INTERACTIVE_PRESS_CLASS =
@@ -111,49 +111,12 @@ export function CalendarProgrammaticNavButton({
   onBeforeNavigate,
 }: CalendarProgrammaticNavButtonProps) {
   const router = useRouter();
-  const navigatedRef = useRef(false);
-  const touchActivatedRef = useRef(false);
 
   const navigate = useCallback(() => {
-    if (navigatedRef.current) {
-      return;
-    }
-
-    navigatedRef.current = true;
     onBeforeNavigate?.();
     prepareCalendarAgendaEventNavigation();
     router.push(href, { scroll: false });
-
-    window.setTimeout(() => {
-      navigatedRef.current = false;
-    }, 400);
   }, [href, onBeforeNavigate, router]);
-
-  const handlePointerUp = useCallback(
-    (event: React.PointerEvent<HTMLButtonElement>) => {
-      if (event.pointerType !== "touch") {
-        return;
-      }
-
-      event.preventDefault();
-      touchActivatedRef.current = true;
-      navigate();
-    },
-    [navigate],
-  );
-
-  const handleClick = useCallback(
-    (event: React.MouseEvent<HTMLButtonElement>) => {
-      if (touchActivatedRef.current) {
-        touchActivatedRef.current = false;
-        event.preventDefault();
-        return;
-      }
-
-      navigate();
-    },
-    [navigate],
-  );
 
   const suppressContextMenu = useCallback((event: React.MouseEvent<HTMLButtonElement>) => {
     event.preventDefault();
@@ -163,8 +126,7 @@ export function CalendarProgrammaticNavButton({
     <button
       type="button"
       aria-label={ariaLabel}
-      onPointerUp={handlePointerUp}
-      onClick={handleClick}
+      onClick={navigate}
       onContextMenu={suppressContextMenu}
       className={`${CALENDAR_MOBILE_PROGRAMMATIC_NAV_TOUCH_CLASS} ${className ?? ""}`}
     >
