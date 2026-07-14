@@ -917,28 +917,40 @@ function GigCalendarSecondaryRowSkeleton() {
   );
 }
 
+function PlannerCalendarMobileLegendSkeleton() {
+  return (
+    <div
+      aria-hidden="true"
+      className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 md:hidden"
+    >
+      {Array.from({ length: 4 }, (_, index) => (
+        <span key={index} className="inline-flex items-center gap-1.5">
+          <SkeletonBlock className="h-1.5 w-1.5 rounded-full" />
+          <SkeletonBlock className="h-3 w-14" />
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function PlannerCalendarDesktopLegendSkeleton() {
+  return (
+    <div
+      aria-hidden="true"
+      className="hidden flex-wrap items-center justify-center gap-2 md:flex"
+    >
+      {Array.from({ length: 4 }, (_, index) => (
+        <SkeletonBlock key={index} className="h-5 w-[4.5rem] rounded-full" />
+      ))}
+    </div>
+  );
+}
+
 function PlannerCalendarLegendSkeleton() {
   return (
     <>
-      <div
-        aria-hidden="true"
-        className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 md:hidden"
-      >
-        {Array.from({ length: 4 }, (_, index) => (
-          <span key={index} className="inline-flex items-center gap-1.5">
-            <SkeletonBlock className="h-1.5 w-1.5 rounded-full" />
-            <SkeletonBlock className="h-3 w-14" />
-          </span>
-        ))}
-      </div>
-      <div
-        aria-hidden="true"
-        className="hidden flex-wrap items-center justify-center gap-2 md:flex"
-      >
-        {Array.from({ length: 4 }, (_, index) => (
-          <SkeletonBlock key={index} className="h-5 w-[4.5rem] rounded-full" />
-        ))}
-      </div>
+      <PlannerCalendarMobileLegendSkeleton />
+      <PlannerCalendarDesktopLegendSkeleton />
     </>
   );
 }
@@ -963,8 +975,9 @@ function PlannerCalendarMobileAgendaPanelSkeleton() {
 
 function PlannerCalendarMobileAgendaSkeleton() {
   return (
-    <div aria-hidden="true" className="mt-4 md:hidden">
-      <div className="-mx-4 flex gap-1 px-4">
+    <div aria-hidden="true" className="mt-3 md:hidden">
+      <PlannerCalendarMobileLegendSkeleton />
+      <div className="mt-2 -mx-4 flex gap-1 px-4">
         {Array.from({ length: 7 }, (_, index) => (
           <SkeletonBlock
             key={index}
@@ -1029,8 +1042,8 @@ export function PlannerCalendarContentSkeleton() {
         <CalendarMonthNavSkeleton />
       </div>
 
-      <div className="mt-3">
-        <PlannerCalendarLegendSkeleton />
+      <div className="mt-3 hidden md:block">
+        <PlannerCalendarDesktopLegendSkeleton />
       </div>
 
       <PlannerCalendarMobileAgendaSkeleton />

@@ -8,7 +8,10 @@ import CalendarMonthNav, {
 import DjAvailabilityCalendar, {
   DjAvailabilityCalendarLegend,
 } from "@/app/components/DjAvailabilityCalendar";
-import PlannerCalendar, { PlannerCalendarLegend } from "@/app/components/PlannerCalendar";
+import PlannerCalendar, {
+  PlannerCalendarDesktopLegend,
+  PlannerCalendarMobileLegend,
+} from "@/app/components/PlannerCalendar";
 import PlannerCalendarMobileDateStrip from "@/app/components/PlannerCalendarMobileDateStrip";
 import type { CalendarViewTab } from "@/app/components/CalendarViewTabs";
 import { PLANNER_WORKSPACE_PRIMARY_SURFACE_CLASS } from "@/app/components/planner/PlannerWorkspaceLayout";
@@ -173,23 +176,30 @@ export default function BothRoleCalendarView({ activeTab }: BothRoleCalendarView
           ) : null}
         </div>
 
-        <div className={`mt-3 ${SHARED_LEGEND_MIN_HEIGHT_CLASS}`}>
+        <div
+          className={`mt-3 ${
+            activeTab === "dj" ? SHARED_LEGEND_MIN_HEIGHT_CLASS : "hidden md:block"
+          }`}
+        >
           {activeTab === "planner" ? (
-            <PlannerCalendarLegend />
+            <PlannerCalendarDesktopLegend />
           ) : (
             <DjAvailabilityCalendarLegend />
           )}
         </div>
 
-        <div className="mt-4 md:hidden">
-          <PlannerCalendarMobileDateStrip
-            selectedDate={selectedDate}
-            onSelectDate={activeStripConfig.onSelectDate ?? handleSelectDate}
-            monthStart={monthStart}
-            itemsByDate={activeStripConfig.itemsByDate}
-            getDateMarker={activeStripConfig.getDateMarker}
-            isDateHighlighted={activeStripConfig.isDateHighlighted}
-          />
+        <div className={activeTab === "planner" ? "mt-3 md:hidden" : "mt-4 md:hidden"}>
+          {activeTab === "planner" ? <PlannerCalendarMobileLegend /> : null}
+          <div className={activeTab === "planner" ? "mt-2" : undefined}>
+            <PlannerCalendarMobileDateStrip
+              selectedDate={selectedDate}
+              onSelectDate={activeStripConfig.onSelectDate ?? handleSelectDate}
+              monthStart={monthStart}
+              itemsByDate={activeStripConfig.itemsByDate}
+              getDateMarker={activeStripConfig.getDateMarker}
+              isDateHighlighted={activeStripConfig.isDateHighlighted}
+            />
+          </div>
         </div>
       </div>
     </section>

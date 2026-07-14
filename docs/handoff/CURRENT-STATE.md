@@ -38,6 +38,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 - **Cancelled events hidden** from calendar items, dots, and counts (History unchanged)
 - Agenda/grid ordering: booking priority then start time (`sortPlannerCalendarAgendaItems`)
 - Event cards: `Event Name · Venue Name` on one truncated line; coloured event accent bar
+- **Mobile legend placement:** status legend (Today / Upcoming / Pending / Accepted) sits directly above the day slider with `mt-2` gap; desktop badge legend unchanged below month nav
 - Create-from-calendar: Save event + **Confirm N DJ(s)** invite flow
 - Today highlight on date strip; selected + today states on desktop grid cells
 

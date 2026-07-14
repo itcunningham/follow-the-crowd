@@ -51,7 +51,7 @@ import {
   type CalendarOriginState,
 } from "@/lib/calendar";
 
-function PlannerCalendarMobileLegend() {
+export function PlannerCalendarMobileLegend() {
   return (
     <div
       role="list"
@@ -75,7 +75,7 @@ function PlannerCalendarMobileLegend() {
   );
 }
 
-function PlannerCalendarDesktopLegend() {
+export function PlannerCalendarDesktopLegend() {
   return (
     <div className="hidden flex-wrap items-center justify-center gap-2 md:flex">
       {PLANNER_CALENDAR_VISIBLE_LEGEND_ITEMS.map((item) => (
@@ -301,14 +301,19 @@ function PlannerCalendarMobileAgenda({
     isDateKeyBeforeToday(selectedDateKey) && displayDateItems.length === 0;
 
   return (
-    <div className={hideDateStrip ? "md:hidden" : "mt-4 md:hidden"}>
+    <div className={hideDateStrip ? "md:hidden" : "mt-3 md:hidden"}>
       {hideDateStrip ? null : (
-        <PlannerCalendarMobileDateStrip
-          selectedDate={selectedDate}
-          onSelectDate={onSelectDate}
-          monthStart={monthStart}
-          itemsByDate={itemsByDate}
-        />
+        <>
+          <PlannerCalendarMobileLegend />
+          <div className="mt-2">
+            <PlannerCalendarMobileDateStrip
+              selectedDate={selectedDate}
+              onSelectDate={onSelectDate}
+              monthStart={monthStart}
+              itemsByDate={itemsByDate}
+            />
+          </div>
+        </>
       )}
 
       <div ref={agendaHeaderRef} className="mt-4">
@@ -657,8 +662,8 @@ export default function PlannerCalendar({
             />
           </div>
 
-          <div className="mt-3">
-            <PlannerCalendarLegend />
+          <div className="mt-3 hidden md:block">
+            <PlannerCalendarDesktopLegend />
           </div>
         </>
       )}
