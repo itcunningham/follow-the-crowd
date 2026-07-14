@@ -18,34 +18,32 @@ export const CALENDAR_MOBILE_SELECTED_DAY_TODAY_CLASS =
   "mt-0.5 text-xs font-medium uppercase tracking-wide text-ftc-text-secondary";
 
 export const CALENDAR_MOBILE_EMPTY_STATE_CLASS =
-  "rounded-xl border border-dashed border-ftc-border-subtle bg-ftc-surface/30 px-4 py-6 text-center";
+  "flex flex-col items-center justify-center rounded-xl border border-dashed border-ftc-border-subtle bg-ftc-surface/30 px-4 py-4 text-center";
 
 export const CALENDAR_MOBILE_EMPTY_STATE_TEXT_CLASS = "text-sm text-ftc-text-muted";
 
 export const CALENDAR_MOBILE_AGENDA_CARD_LIST_CLASS = "mt-3 space-y-2";
 
 export const CALENDAR_MOBILE_AGENDA_CARD_SHELL_CLASS =
-  "relative z-0 block w-full min-h-[5.25rem] rounded-xl px-3 py-2.5 text-left";
+  "relative z-0 block w-full min-h-[4.75rem] rounded-xl px-3 py-2.5 text-left";
 
-export const CALENDAR_MOBILE_AGENDA_CARD_BODY_CLASS =
-  "flex min-h-[3.75rem] items-start gap-3";
+export const CALENDAR_MOBILE_AGENDA_CARD_BODY_CLASS = "flex items-stretch gap-3";
 
-export const CALENDAR_MOBILE_AGENDA_CARD_LEADING_CLASS =
-  "mt-0.5 h-8 w-1 shrink-0 rounded-full";
+export const CALENDAR_MOBILE_AGENDA_CARD_LEADING_CLASS = "w-1 shrink-0 self-stretch rounded-full";
 
 export const CALENDAR_MOBILE_AGENDA_CARD_LEADING_SPACER_CLASS =
-  "mt-0.5 h-8 w-1 shrink-0 rounded-full opacity-0 pointer-events-none";
+  "w-1 shrink-0 self-stretch rounded-full opacity-0 pointer-events-none";
 
-export const CALENDAR_MOBILE_AGENDA_CARD_CONTENT_CLASS = "min-w-0 flex-1";
+export const CALENDAR_MOBILE_AGENDA_CARD_CONTENT_CLASS = "min-w-0 flex-1 py-px";
 
 export const CALENDAR_MOBILE_AGENDA_CARD_HEADER_ROW_CLASS =
-  "flex items-start justify-between gap-2";
+  "flex items-center justify-between gap-2";
 
 export const CALENDAR_MOBILE_AGENDA_CARD_TITLE_SLOT_CLASS = "min-w-0 flex-1";
 
-export const CALENDAR_MOBILE_AGENDA_CARD_BADGE_SLOT_CLASS = "shrink-0";
+export const CALENDAR_MOBILE_AGENDA_CARD_BADGE_SLOT_CLASS = "shrink-0 self-center";
 
-export const CALENDAR_MOBILE_AGENDA_CARD_TIME_SLOT_CLASS = "mt-1";
+export const CALENDAR_MOBILE_AGENDA_CARD_TIME_SLOT_CLASS = "mt-1.5";
 
 type CalendarMobileAgendaCardProps = {
   shellClassName?: string;
@@ -102,7 +100,7 @@ function CalendarMobileEmptyIcon() {
       aria-hidden="true"
       viewBox="0 0 20 20"
       fill="none"
-      className="mx-auto mb-2 h-4 w-4 text-ftc-text-muted/70"
+      className="mx-auto mb-1.5 h-4 w-4 text-ftc-text-muted/70"
     >
       <rect x="3" y="4.5" width="14" height="12.5" rx="2" stroke="currentColor" strokeWidth="1.5" />
       <path d="M3 8.5h14" stroke="currentColor" strokeWidth="1.5" />

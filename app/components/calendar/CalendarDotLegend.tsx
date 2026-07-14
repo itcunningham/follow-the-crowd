@@ -4,9 +4,9 @@ export type CalendarDotLegendItem = {
 };
 
 export const CALENDAR_DOT_LEGEND_CLASS =
-  "flex flex-wrap items-center justify-center gap-x-4 gap-y-2";
+  "flex flex-wrap items-center justify-center gap-x-3 gap-y-1.5";
 
-export const CALENDAR_DOT_LEGEND_ROW_CLASS = `${CALENDAR_DOT_LEGEND_CLASS} min-h-[1.125rem]`;
+export const CALENDAR_DOT_LEGEND_ROW_CLASS = `${CALENDAR_DOT_LEGEND_CLASS} min-h-[1rem]`;
 
 type CalendarDotLegendProps = {
   items?: readonly CalendarDotLegendItem[];
@@ -46,7 +46,7 @@ export default function CalendarDotLegend({
       <div
         role="group"
         aria-label={ariaLabel}
-        className={["flex flex-col items-center gap-y-2", className].filter(Boolean).join(" ")}
+        className={["flex flex-col items-center gap-y-1.5", className].filter(Boolean).join(" ")}
       >
         {rows.map((rowItems, rowIndex) => (
           <div

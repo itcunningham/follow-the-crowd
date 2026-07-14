@@ -1282,6 +1282,32 @@ html {
 }
 
 /* -------------------------------------------------------------------------- */
+/* Calendar                                                                    */
+/* -------------------------------------------------------------------------- */
+
+@keyframes ftc-calendar-picker-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-0.25rem);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.calendar-month-picker-panel {
+  animation: ftc-calendar-picker-enter 175ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .calendar-month-picker-panel {
+    animation: none;
+  }
+}
+
+/* -------------------------------------------------------------------------- */
 /* Skeleton loaders                                                            */
 /* -------------------------------------------------------------------------- */
 

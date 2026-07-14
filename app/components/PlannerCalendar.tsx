@@ -173,17 +173,21 @@ function PlannerCalendarDayCell({
       aria-label={`Plan ${formatWrittenCalendarDateLabel(date, { includeYear: true })}`}
       onClick={() => onSelectDate(date)}
       onKeyDown={handleCellKeyDown}
-      className={`relative min-h-[6.5rem] cursor-pointer rounded-lg border p-1.5 outline-none md:min-h-[9.5rem] md:p-3 lg:min-h-[10.5rem] ${
+      className={`relative min-h-[6.5rem] cursor-pointer rounded-lg border p-1.5 outline-none transition-[border-color,background-color,box-shadow] duration-150 ease-out md:min-h-[9.5rem] md:p-3 lg:min-h-[10.5rem] ${
         isSelected
           ? "border-ftc-primary bg-ftc-bg-elevated/40 ring-1 ring-ftc-primary/35"
           : isToday
-            ? "border-ftc-primary/45 bg-ftc-bg-elevated/20 ring-0 hover:border-ftc-primary/65 focus-visible:ring-1 focus-visible:ring-ftc-border-strong"
+            ? "border-ftc-primary/30 bg-ftc-bg-elevated/20 ring-0 hover:border-ftc-primary/45 focus-visible:ring-1 focus-visible:ring-ftc-border-strong"
             : "border-ftc-border/70 bg-ftc-bg-elevated/20 ring-0 hover:border-ftc-border-strong/90 focus-visible:ring-1 focus-visible:ring-ftc-border-strong"
       }`}
     >
       <span
         className={`inline-flex h-6 min-w-6 items-center justify-center rounded-full text-xs font-semibold md:h-7 md:min-w-7 md:text-sm ${
-          isToday ? "bg-ftc-primary text-ftc-bg" : "text-ftc-text"
+          isSelected
+            ? "text-ftc-text"
+            : isToday
+              ? "text-ftc-primary"
+              : "text-ftc-text"
         }`}
       >
         {date.getDate()}

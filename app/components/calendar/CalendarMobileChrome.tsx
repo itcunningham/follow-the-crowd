@@ -7,7 +7,7 @@ import CalendarMonthNav, {
 
 export const CALENDAR_MOBILE_CHROME_MONTH_NAV_CLASS = "relative mt-4";
 export const CALENDAR_MOBILE_CHROME_LEGEND_CLASS =
-  "mt-3 min-h-[3.25rem] md:min-h-[1.75rem]";
+  "mt-3 min-h-[3rem] md:min-h-[1.75rem]";
 export const CALENDAR_MOBILE_CHROME_DAY_STRIP_CLASS = "mt-4 md:hidden";
 export const CALENDAR_MOBILE_CHROME_GIGS_DAY_STRIP_CLASS = "mt-1 md:hidden";
 

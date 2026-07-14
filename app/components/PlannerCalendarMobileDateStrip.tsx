@@ -19,7 +19,7 @@ const DATE_CHIP_SCROLL_CLASS =
 
 export const CALENDAR_MOBILE_DATE_CHIP_SKELETON_HEIGHT_CLASS = "h-[3.75rem]";
 export const CALENDAR_MOBILE_DATE_CHIP_BASE_CLASS =
-  "flex shrink-0 flex-col items-center rounded-xl border px-1 py-2 transition duration-150 ease-out motion-reduce:transition-none motion-reduce:transform-none active:scale-[0.98]";
+  "flex shrink-0 flex-col items-center rounded-xl border px-1 py-2 transition-[transform,colors,border-color,background-color] duration-150 ease-out motion-reduce:transition-none motion-reduce:transform-none active:scale-[0.98]";
 
 const SCROLL_DURATION_MS = 175;
 const CENTER_LAYOUT_MAX_ATTEMPTS = 6;
@@ -84,13 +84,11 @@ function animateScrollLeft(
 
 function getDateStripChipClassName(isSelected: boolean, isToday: boolean): string {
   if (isSelected) {
-    return isToday
-      ? "border-2 border-ftc-bg/45 bg-ftc-primary text-ftc-bg"
-      : "border-transparent bg-ftc-primary text-ftc-bg";
+    return "border-transparent bg-ftc-primary text-ftc-bg";
   }
 
   if (isToday) {
-    return "border-2 border-ftc-primary/45 bg-ftc-bg-elevated text-ftc-text-secondary hover:border-ftc-primary/65";
+    return "border-ftc-primary/30 bg-ftc-bg-elevated text-ftc-text-secondary hover:border-ftc-primary/45";
   }
 
   return "border-ftc-border-subtle bg-ftc-bg-elevated text-ftc-text-secondary hover:border-ftc-border-strong";
@@ -128,15 +126,13 @@ function useCalendarTodayDate(): Date {
   return todayDate;
 }
 
-function isSelectedChipVisibleInContainer(container: HTMLElement, chip: HTMLElement): boolean {
+function isSelectedChipCenteredInContainer(container: HTMLElement, chip: HTMLElement): boolean {
   const containerRect = container.getBoundingClientRect();
   const chipRect = chip.getBoundingClientRect();
-  const edgePadding = 2;
+  const chipCenter = chipRect.left + chipRect.width / 2;
+  const containerCenter = containerRect.left + containerRect.width / 2;
 
-  return (
-    chipRect.left >= containerRect.left - edgePadding &&
-    chipRect.right <= containerRect.right + edgePadding
-  );
+  return Math.abs(chipCenter - containerCenter) <= 6;
 }
 
 function measureDateStripChipWidth(container: HTMLElement): number | null {
@@ -269,7 +265,7 @@ export default function PlannerCalendarMobileDateStrip({
         return;
       }
 
-      if (!isSelectedChipVisibleInContainer(container, chip)) {
+      if (!isSelectedChipCenteredInContainer(container, chip)) {
         centerDateWhenReady(date, options);
       }
     },
@@ -328,7 +324,7 @@ export default function PlannerCalendarMobileDateStrip({
 
     applySelectedDateStripPosition(
       selectedDate,
-      isInitial || monthChanged ? { instant: true } : undefined,
+      isInitial ? { instant: true } : undefined,
     );
   }, [
     applySelectedDateStripPosition,

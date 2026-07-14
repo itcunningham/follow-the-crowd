@@ -112,7 +112,7 @@ export default function CalendarMonthNav({
               aria-expanded={monthYearPickerOpen}
               aria-haspopup="dialog"
               onClick={() => setMonthYearPickerOpen((open) => !open)}
-              className="min-w-[8.75rem] truncate rounded-lg px-2 py-2 text-base font-semibold text-ftc-text transition hover:text-ftc-primary/90 sm:min-w-[11rem] sm:px-3"
+              className="min-w-[8.75rem] truncate rounded-lg px-2 py-2 text-base font-semibold text-ftc-text transition duration-150 ease-out hover:text-ftc-primary/90 sm:min-w-[11rem] sm:px-3"
             >
               {formatCalendarMonthLabel(monthStart)}
             </button>

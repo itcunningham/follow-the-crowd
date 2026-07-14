@@ -50,8 +50,11 @@ export default function CalendarMonthYearPicker({
       ? "border-0 bg-ftc-primary text-ftc-bg"
       : "border border-ftc-border bg-ftc-surface/50 text-ftc-text-secondary hover:border-ftc-border-strong hover:text-ftc-text";
 
+  const pickerGridButtonClass = (isSelected: boolean) =>
+    `inline-flex h-8 w-full items-center justify-center rounded-md text-[11px] font-semibold transition-[colors,border-color,background-color] duration-150 ease-out ${pickerButtonClass(isSelected)}`;
+
   const footerOutlineButtonClass =
-    "inline-flex h-9 items-center justify-center rounded-lg border border-ftc-border-strong/90 bg-ftc-surface/80 px-3 text-xs font-semibold text-ftc-text-secondary transition hover:border-ftc-border-strong hover:bg-ftc-surface hover:text-ftc-text";
+    "inline-flex h-9 items-center justify-center rounded-lg border border-ftc-border-strong/90 bg-ftc-surface/80 px-3 text-xs font-semibold text-ftc-text-secondary transition duration-150 ease-out hover:border-ftc-border-strong hover:bg-ftc-surface hover:text-ftc-text";
 
   function handleSelectToday() {
     const today = new Date();
@@ -60,10 +63,10 @@ export default function CalendarMonthYearPicker({
   }
 
   return (
-    <div className="w-[min(calc(100vw-2rem),15rem)] rounded-xl border border-ftc-border-strong bg-ftc-bg-elevated p-2.5 shadow-[0_16px_48px_rgba(0,0,0,0.45)]">
+    <div className="calendar-month-picker-panel w-[min(calc(100vw-2rem),15rem)] rounded-xl border border-ftc-border-strong bg-ftc-bg-elevated p-2 shadow-[0_16px_48px_rgba(0,0,0,0.45)]">
       <p className="text-xs font-semibold text-ftc-text">Select month</p>
 
-      <div className="mt-2.5 grid grid-cols-4 gap-1">
+      <div className="mt-2 grid grid-cols-4 gap-1">
         {monthLabels.map((label, index) => {
           const isSelected = index === draftMonth;
           const activityDotClass = getMonthActivityDotClass?.(index, draftYear) ?? null;
@@ -75,7 +78,7 @@ export default function CalendarMonthYearPicker({
               aria-label={`Select ${label}`}
               aria-pressed={isSelected}
               onClick={() => setDraftMonth(index)}
-              className={`rounded-md px-1.5 py-1.5 text-[11px] font-semibold transition ${pickerButtonClass(isSelected)}`}
+              className={pickerGridButtonClass(isSelected)}
             >
               <span className="inline-flex items-center justify-center gap-1.5 leading-none">
                 <span>{label}</span>
@@ -93,8 +96,8 @@ export default function CalendarMonthYearPicker({
         })}
       </div>
 
-      <p className="mt-2.5 text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted">Year</p>
-      <div className="mt-1.5 grid grid-cols-3 gap-1">
+      <p className="mt-2 text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted">Year</p>
+      <div className="mt-1 grid grid-cols-3 gap-1">
         {years.map((year) => {
           const isSelected = year === draftYear;
 
@@ -105,7 +108,7 @@ export default function CalendarMonthYearPicker({
               aria-label={`Select ${year}`}
               aria-pressed={isSelected}
               onClick={() => setDraftYear(year)}
-              className={`rounded-md px-1.5 py-1.5 text-[11px] font-semibold transition ${pickerButtonClass(isSelected)}`}
+              className={pickerGridButtonClass(isSelected)}
             >
               {year}
             </button>
@@ -113,7 +116,7 @@ export default function CalendarMonthYearPicker({
         })}
       </div>
 
-      <div className="mt-2.5 flex flex-wrap items-center gap-2">
+      <div className="mt-2 flex flex-wrap items-center gap-2">
         <button
           type="button"
           aria-label="Cancel month and year selection"
@@ -126,7 +129,7 @@ export default function CalendarMonthYearPicker({
           type="button"
           aria-label="Confirm month and year selection"
           onClick={() => onConfirm(draftMonth, draftYear)}
-          className="inline-flex h-9 items-center justify-center rounded-lg bg-ftc-primary-dim px-3 text-xs font-semibold text-white transition hover:bg-ftc-primary"
+          className="inline-flex h-9 items-center justify-center rounded-lg bg-ftc-primary px-3 text-xs font-semibold text-ftc-bg transition duration-150 ease-out hover:opacity-90"
         >
           Confirm
         </button>
