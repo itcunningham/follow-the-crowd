@@ -599,10 +599,23 @@ html {
   border: 1px solid var(--ftc-color-border-subtle);
 }
 
-.ftc-event-detail-hero-image {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+/* Event Details — natural-aspect flyer hero (portrait-first) */
+.ftc-event-detail-flyer-hero {
+  overflow: hidden;
+  width: fit-content;
+  max-width: 100%;
+  border-radius: var(--ftc-radius-xl);
+  border: 1px solid var(--ftc-color-border-subtle);
+  background: var(--ftc-color-bg-elevated);
+}
+
+.ftc-event-detail-flyer-hero__image {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: min(380px, 72vh);
+  margin: 0 auto;
 }
 
 /* Compact square artwork — list, inbox, context chips */

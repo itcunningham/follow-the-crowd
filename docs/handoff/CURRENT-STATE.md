@@ -16,7 +16,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 ## Events
 
 - Optional event flyer upload (JPEG/PNG/WebP, 5 MB, bucket `event-covers`)
-- **Event cover images (2026-07-14):** Event Details hero uses adaptive `EventDetailHeroImage` — landscape 16:9 frame; portrait flyers in a centred 70–80% column (`object-contain`); landscape/square full-bleed `object-cover`; edit preview + list `EventThumbnail` unchanged
+- **Event cover images (2026-07-14):** Event Details shows a centred natural-aspect flyer hero (`EventDetailHeroImage`, max-height ~380px, dark frame); status badge overlaps flyer foot; coloured fallback header unchanged without flyer; edit preview + list `EventThumbnail` unchanged
 - Event colour: 8 selectable + Auto (slate neutral when Auto or legacy slate)
 - Flat solid artwork tiles (no glow)
 - Event list: Active + History tabs; whole card links to detail
