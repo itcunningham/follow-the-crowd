@@ -8,7 +8,6 @@ import {
   FTC_STATUS_ACCEPTED_DOT,
   FTC_STATUS_PENDING_DOT,
   FTC_STATUS_TODAY_DOT,
-  FTC_STATUS_UPCOMING_DOT,
   getFlatAvailabilityFillClass,
 } from "@/lib/ftcFlatStatus";
 import { formatIsoDateKeyForDisplay } from "@/lib/bookingDateTime";
@@ -163,7 +162,7 @@ export function getDjCalendarLegendDotClass(kind: DjCalendarLegendKind): string 
     case "unavailable":
       return "bg-[var(--ftc-color-danger)]";
     case "pending_request":
-      return FTC_STATUS_UPCOMING_DOT;
+      return FTC_STATUS_PENDING_DOT;
     case "booked":
       return FTC_STATUS_ACCEPTED_DOT;
   }
