@@ -37,6 +37,14 @@ import { useSendBookingRequestsDraft } from "@/app/components/booking/useSendBoo
 import { EventDetailPrimaryAction } from "@/app/components/event-detail/EventDetailBottomBar";
 import UnavailableDjBookingConfirmModal from "@/app/components/UnavailableDjBookingConfirmModal";
 import { EventCoverImageListThumb } from "@/app/components/events/EventCoverImageDisplay";
+import {
+  EVENTS_LIST_TAB_ROW_CLASS,
+  FTC_EVENTS_LIST_TAB_ACTION_CLASS,
+  FTC_EVENTS_LIST_TAB_ACTION_PLACEHOLDER_CLASS,
+  FTC_LIST_GAP_CLASS,
+  FTC_PILL_ROW_GAP_CLASS,
+  FTC_SURFACE_ROW_CLASS,
+} from "@/lib/design/ftcDesignSystem";
 import { EventListSkeleton, EventsListTabRow } from "@/app/components/skeleton/Skeleton";
 import {
   HistoryRemoveConfirmDialog,
@@ -230,7 +238,8 @@ function EventsListCardContent({
 
 function eventsListCardClassName(cancelled: boolean, isSelected = false) {
   return [
-    "ftc-surface-row w-full rounded-[var(--ftc-radius-xl)] p-4 text-left focus-visible:outline-none sm:p-5",
+    FTC_SURFACE_ROW_CLASS,
+    "block w-full focus-visible:outline-none",
     cancelled ? "ftc-event-card-cancelled" : "",
     isSelected ? "ring-1 ring-ftc-primary/40" : "",
   ]
@@ -932,8 +941,13 @@ function EventsPageClientView({
               showTrashButton={showHistoryTrashButton}
               trashButtonDisabled={historyTrashButtonDisabled}
               onTrashClick={historyBulkManage.enterSelectionMode}
+              reserveTrashSlot={
+                isPlanner &&
+                !historyBulkManage.selectionMode &&
+                !showHistoryTrashButton
+              }
             >
-              <div className="flex flex-wrap gap-2">
+              <div className={FTC_PILL_ROW_GAP_CLASS}>
                 <Link
                   href={buildEventsListHref("active")}
                   className={`ftc-filter-pill ${!isHistoryTab ? "ftc-filter-pill-active" : ""}`}
@@ -1246,7 +1260,7 @@ function EventsPageClientView({
                   }
                 />
               ) : visibleFilteredEvents.length > 0 ? (
-            <ul className="space-y-3">
+            <ul className={FTC_LIST_GAP_CLASS}>
               {visibleFilteredEvents.map((event) => {
                 const cancelled = isEventCancelled(event);
                 const eventHref = buildEventDetailHref(event.id, listTab);

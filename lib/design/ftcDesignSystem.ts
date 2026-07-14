@@ -51,7 +51,19 @@ export const FTC_SURFACE_ROW_CLASS =
 export const FTC_LIST_GAP_CLASS = "space-y-3";
 
 /** Filter / status pill row gap. */
-export const FTC_PILL_ROW_GAP_CLASS = "flex flex-wrap gap-2";
+export const FTC_PILL_ROW_GAP_CLASS = "flex flex-wrap items-center gap-2";
+
+/** Events list tab row — trash action matches filter pill height (30px). */
+export const FTC_EVENTS_LIST_TAB_ACTION_CLASS =
+  "inline-flex h-[1.875rem] w-[1.875rem] shrink-0 items-center justify-center rounded-lg border border-ftc-border-subtle bg-ftc-bg-elevated text-ftc-text-muted transition enabled:hover:border-ftc-border-strong enabled:hover:text-ftc-text-secondary disabled:cursor-not-allowed disabled:opacity-50";
+
+/** Invisible slot reserved on Active so History trash does not shift layout. */
+export const FTC_EVENTS_LIST_TAB_ACTION_PLACEHOLDER_CLASS =
+  "inline-flex h-[1.875rem] w-[1.875rem] shrink-0 invisible pointer-events-none";
+
+/** Events Active/History tab row — locked height on mobile and desktop. */
+export const EVENTS_LIST_TAB_ROW_CLASS =
+  "mb-4 flex min-h-[1.875rem] flex-wrap items-center justify-between gap-2 md:min-h-[2.375rem]";
 
 /** Workspace header primary action button. */
 export const FTC_BTN_WORKSPACE_PRIMARY_CLASS =

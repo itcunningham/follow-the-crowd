@@ -175,10 +175,12 @@ export function HistoryManageButton({
   onClick,
   disabled = false,
   ariaLabel = "Manage history",
+  className = FTC_ICON_BUTTON_SM_CLASS,
 }: {
   onClick: () => void;
   disabled?: boolean;
   ariaLabel?: string;
+  className?: string;
 }) {
   return (
     <button
@@ -186,7 +188,7 @@ export function HistoryManageButton({
       onClick={onClick}
       disabled={disabled}
       aria-label={ariaLabel}
-      className={FTC_ICON_BUTTON_SM_CLASS}
+      className={className}
     >
       <ManageHistoryIcon />
     </button>

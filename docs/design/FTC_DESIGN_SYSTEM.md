@@ -309,9 +309,7 @@ Shared pattern (History confirm, booking sheets, edit confirm):
 
 ## History (Events tab)
 
-History uses the **same list card component and layout** as Active (`EventsListCardContent`, `eventsListCardClassName`). The only per-card visual difference is the status badge (Past / Cancelled vs Upcoming / Today).
-
-Delete/archive selection mode reuses the same card shell with a leading checkbox instead of a chevron.
+History uses the **same list card component and layout** as Active. Tab row height is locked via `EVENTS_LIST_TAB_ROW_CLASS`; Active reserves an invisible trash slot (`FTC_EVENTS_LIST_TAB_ACTION_PLACEHOLDER_CLASS`) so the first card Y position does not shift when switching tabs.
 
 ---
 

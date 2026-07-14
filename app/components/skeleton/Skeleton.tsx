@@ -22,6 +22,12 @@ import {
 import {
   HistoryManageButton,
 } from "@/app/components/history/HistoryBulkManage";
+import {
+  EVENTS_LIST_TAB_ROW_CLASS,
+  FTC_EVENTS_LIST_TAB_ACTION_CLASS,
+  FTC_EVENTS_LIST_TAB_ACTION_PLACEHOLDER_CLASS,
+  FTC_PILL_ROW_GAP_CLASS,
+} from "@/lib/design/ftcDesignSystem";
 import DmConversationHeader from "@/app/components/dm/DmConversationHeader";
 import MessagesInboxLayout from "@/app/components/dm/MessagesInboxLayout";
 import CalendarViewTabs, { type CalendarViewTab } from "@/app/components/CalendarViewTabs";
@@ -275,20 +281,26 @@ export function EventsListTabRow({
   showTrashButton = false,
   trashButtonDisabled = true,
   onTrashClick,
+  reserveTrashSlot = false,
 }: {
   children: ReactNode;
   showTrashButton?: boolean;
   trashButtonDisabled?: boolean;
   onTrashClick?: () => void;
+  /** Keep tab row height identical when trash is hidden (Events Active tab). */
+  reserveTrashSlot?: boolean;
 }) {
   return (
-    <div className={PLANNER_WORKSPACE_SECONDARY_CONTROLS_CLASS}>
+    <div className={EVENTS_LIST_TAB_ROW_CLASS}>
       {children}
       {showTrashButton ? (
         <HistoryManageButton
           onClick={onTrashClick ?? (() => undefined)}
           disabled={trashButtonDisabled || !onTrashClick}
+          className={FTC_EVENTS_LIST_TAB_ACTION_CLASS}
         />
+      ) : reserveTrashSlot ? (
+        <span aria-hidden="true" className={FTC_EVENTS_LIST_TAB_ACTION_PLACEHOLDER_CLASS} />
       ) : null}
     </div>
   );
@@ -386,8 +398,12 @@ export function EventsPageLoadingShell({
         ) : undefined
       }
       secondaryControlsSlot={
-        <EventsListTabRow showTrashButton={isPlanner && isHistoryTab} trashButtonDisabled>
-          <div className="flex flex-wrap gap-2">
+        <EventsListTabRow
+          showTrashButton={isPlanner && isHistoryTab}
+          trashButtonDisabled
+          reserveTrashSlot={isPlanner && !isHistoryTab}
+        >
+          <div className={FTC_PILL_ROW_GAP_CLASS}>
             <Link
               href={buildEventsListHref("active")}
               className={`ftc-filter-pill ${!isHistoryTab ? "ftc-filter-pill-active" : ""}`}
