@@ -68,11 +68,6 @@ import {
   resolveGigsCalendarBookingNavigation,
   type CalendarOriginState,
 } from "@/lib/bookings/gigsCalendarNavigation";
-import {
-  GigsCalendarBookingNavDebugPanel,
-  inspectGigsCalendarBookingNavPointerContext,
-  publishGigsCalendarBookingNavDiagnostic,
-} from "@/lib/debug/gigsCalendarBookingNavDiagnostic";
 import { prepareCalendarAgendaEventNavigation } from "@/lib/navigation/prepareMobileDocumentScrollReset";
 import { isDateKeyBeforeToday } from "@/lib/bookingDateTime";
 
@@ -504,62 +499,21 @@ function DjCalendarBookingNavButton({
   compact?: boolean;
 }) {
   const router = useRouter();
-  const buttonRef = useRef<HTMLButtonElement>(null);
-  const pathnameBeforeRef = useRef("");
-  const renderCountRef = useRef(0);
-  const mountTokenRef = useRef(0);
   const navigatedThisGestureRef = useRef(false);
   const activeGestureRef = useRef<{
     pointerId: number;
     cancelled: boolean;
-    renderCountAtDown: number;
-    mountTokenAtDown: number;
-    bookingIdAtDown: string;
-    buttonConnectedAtDown: boolean;
   } | null>(null);
-  const [isPressed, setIsPressed] = useState(false);
   const eventName = booking.event_name.trim() || "Booking request";
   const statusLabel = booking.status === "accepted" ? "Booked" : "Pending Request";
-
-  renderCountRef.current += 1;
-
-  useEffect(() => {
-    mountTokenRef.current += 1;
-
-    return () => {
-      if (activeGestureRef.current && !activeGestureRef.current.cancelled) {
-        publishGigsCalendarBookingNavDiagnostic({
-          buttonUnmountedBetweenDownUp: true,
-        });
-      }
-    };
-  }, []);
 
   const performNavigation = useCallback(
     (navigateFrom: "pointerup" | "click") => {
       if (navigatedThisGestureRef.current) {
-        publishGigsCalendarBookingNavDiagnostic({ gestureDuplicateBlocked: true });
         return;
       }
 
-      const pathnameBefore =
-        pathnameBeforeRef.current ||
-        (typeof window !== "undefined"
-          ? `${window.location.pathname}${window.location.search}`
-          : "");
       const navigation = resolveGigsCalendarBookingNavigation(booking, calendarOrigin);
-      const resolvedHref =
-        navigation.kind === "error" ? `(error) ${navigation.message}` : navigation.href;
-
-      publishGigsCalendarBookingNavDiagnostic({
-        bookingId: booking.id,
-        rawEventId: booking.event_id,
-        rawEventIdType: booking.event_id == null ? "null" : typeof booking.event_id,
-        resolvedHref,
-        navigationKind: navigation.kind,
-        navigateFrom,
-        pathnameBefore,
-      });
 
       if (navigation.kind === "error") {
         onNavigationError?.(navigation.message);
@@ -571,141 +525,32 @@ function DjCalendarBookingNavButton({
       prepareCalendarAgendaEventNavigation();
 
       if (navigateFrom === "pointerup") {
-        publishGigsCalendarBookingNavDiagnostic({
-          navigationMethod: "location.assign",
-          routerPushCalled: false,
-          pathnameAfterPush: navigation.href,
-        });
         window.location.assign(navigation.href);
         return;
       }
 
       router.push(navigation.href, { scroll: false });
-
-      const pathnameAfterPush =
-        typeof window !== "undefined"
-          ? `${window.location.pathname}${window.location.search}`
-          : "";
-
-      publishGigsCalendarBookingNavDiagnostic({
-        navigationMethod: "router.push",
-        routerPushCalled: true,
-        pathnameAfterPush,
-      });
-
-      window.setTimeout(() => {
-        const pathname500ms =
-          typeof window !== "undefined"
-            ? `${window.location.pathname}${window.location.search}`
-            : "";
-
-        publishGigsCalendarBookingNavDiagnostic({ pathname500ms });
-      }, 500);
     },
     [booking, calendarOrigin, onBeforeNavigate, onNavigationError, router],
   );
 
-  const handlePointerDown = useCallback(
-    (event: React.PointerEvent<HTMLButtonElement>) => {
-      if (!event.isPrimary) {
-        return;
-      }
+  const handlePointerDown = useCallback((event: React.PointerEvent<HTMLButtonElement>) => {
+    if (!event.isPrimary) {
+      return;
+    }
 
-      const button = buttonRef.current;
-      const pathnameBefore =
-        typeof window !== "undefined"
-          ? `${window.location.pathname}${window.location.search}`
-          : "";
-
-      pathnameBeforeRef.current = pathnameBefore;
-      navigatedThisGestureRef.current = false;
-      activeGestureRef.current = {
-        pointerId: event.pointerId,
-        cancelled: false,
-        renderCountAtDown: renderCountRef.current,
-        mountTokenAtDown: mountTokenRef.current,
-        bookingIdAtDown: booking.id,
-        buttonConnectedAtDown: Boolean(button?.isConnected),
-      };
-      setIsPressed(true);
-
-      const pointerContext = button
-        ? inspectGigsCalendarBookingNavPointerContext(button, event.clientX, event.clientY)
-        : {
-            topElementAtTap: "(button missing)",
-            buttonPointerEvents: "",
-            buttonZIndex: "",
-            ancestorPointerBlockers: "",
-          };
-
-      publishGigsCalendarBookingNavDiagnostic({
-        eventName,
-        bookingStatus: booking.status,
-        pointerdownReceived: true,
-        pointerupReceived: false,
-        pointercancelReceived: false,
-        touchstartReceived: false,
-        touchendReceived: false,
-        touchcancelReceived: false,
-        clickReceived: false,
-        bookingId: booking.id,
-        rawEventId: booking.event_id,
-        rawEventIdType: booking.event_id == null ? "null" : typeof booking.event_id,
-        resolvedHref: "",
-        navigationKind: "",
-        navigateFrom: "",
-        navigationMethod: "",
-        routerPushCalled: false,
-        pathnameBefore,
-        pathnameAfterPush: "",
-        pathname500ms: "",
-        isPressed: true,
-        buttonUnmountedBetweenDownUp: false,
-        buttonRerenderedBetweenDownUp: false,
-        renderCountAtDown: renderCountRef.current,
-        renderCountAtUp: 0,
-        mountTokenAtDown: mountTokenRef.current,
-        mountTokenAtUp: 0,
-        bookingIdAtDown: booking.id,
-        bookingIdAtUp: "",
-        gestureCancelled: false,
-        gestureDuplicateBlocked: false,
-        ...pointerContext,
-      });
-    },
-    [booking.event_id, booking.id, booking.status, eventName],
-  );
+    navigatedThisGestureRef.current = false;
+    activeGestureRef.current = {
+      pointerId: event.pointerId,
+      cancelled: false,
+    };
+  }, []);
 
   const handlePointerUp = useCallback(
     (event: React.PointerEvent<HTMLButtonElement>) => {
       const gesture = activeGestureRef.current;
-      const button = buttonRef.current;
-      const renderCountAtUp = renderCountRef.current;
-      const mountTokenAtUp = mountTokenRef.current;
-      const bookingIdAtUp = booking.id;
-      const buttonUnmountedBetweenDownUp =
-        Boolean(gesture?.buttonConnectedAtDown) && !button?.isConnected;
-      const buttonRerenderedBetweenDownUp = gesture
-        ? renderCountAtUp > gesture.renderCountAtDown
-        : false;
 
-      setIsPressed(false);
-
-      publishGigsCalendarBookingNavDiagnostic({
-        pointerupReceived: true,
-        isPressed: false,
-        renderCountAtUp,
-        mountTokenAtUp,
-        bookingIdAtUp,
-        buttonUnmountedBetweenDownUp,
-        buttonRerenderedBetweenDownUp,
-      });
-
-      if (!gesture || event.pointerId !== gesture.pointerId) {
-        return;
-      }
-
-      if (gesture.cancelled) {
+      if (!gesture || event.pointerId !== gesture.pointerId || gesture.cancelled) {
         return;
       }
 
@@ -715,7 +560,7 @@ function DjCalendarBookingNavButton({
         performNavigation("pointerup");
       }
     },
-    [booking.id, performNavigation],
+    [performNavigation],
   );
 
   const handlePointerCancel = useCallback((event: React.PointerEvent<HTMLButtonElement>) => {
@@ -725,18 +570,9 @@ function DjCalendarBookingNavButton({
       gesture.cancelled = true;
       activeGestureRef.current = null;
     }
-
-    setIsPressed(false);
-    publishGigsCalendarBookingNavDiagnostic({
-      pointercancelReceived: true,
-      gestureCancelled: true,
-      isPressed: false,
-    });
   }, []);
 
   const handleClick = useCallback(() => {
-    publishGigsCalendarBookingNavDiagnostic({ clickReceived: true });
-
     if (navigatedThisGestureRef.current) {
       return;
     }
@@ -744,41 +580,18 @@ function DjCalendarBookingNavButton({
     performNavigation("click");
   }, [performNavigation]);
 
-  const handleTouchStartDiagnostic = useCallback(() => {
-    publishGigsCalendarBookingNavDiagnostic({ touchstartReceived: true });
-  }, []);
-
-  const handleTouchEndDiagnostic = useCallback(() => {
-    publishGigsCalendarBookingNavDiagnostic({ touchendReceived: true });
-  }, []);
-
-  const handleTouchCancelDiagnostic = useCallback(() => {
-    publishGigsCalendarBookingNavDiagnostic({ touchcancelReceived: true });
-  }, []);
-
   return (
     <button
-      ref={buttonRef}
       type="button"
       onPointerDown={handlePointerDown}
       onPointerUp={handlePointerUp}
       onPointerCancel={handlePointerCancel}
       onClick={handleClick}
-      onTouchStart={handleTouchStartDiagnostic}
-      onTouchEnd={handleTouchEndDiagnostic}
-      onTouchCancel={handleTouchCancelDiagnostic}
       aria-label={`${eventName}, ${statusLabel}`}
       onContextMenu={(event) => event.preventDefault()}
-      className={`${className} touch-manipulation [-webkit-touch-callout:none] ${CALENDAR_MOBILE_INTERACTIVE_PRESS_CLASS} ${
-        isPressed ? "outline outline-2 outline-amber-400 outline-offset-2" : ""
-      }`}
+      className={`${className} touch-manipulation [-webkit-touch-callout:none] ${CALENDAR_MOBILE_INTERACTIVE_PRESS_CLASS}`}
     >
       <span className="pointer-events-none block w-full">
-        {isPressed ? (
-          <span className="mb-1 block text-[9px] font-semibold uppercase tracking-wide text-amber-300">
-            Debug tap received
-          </span>
-        ) : null}
         <span className="flex items-center justify-between gap-2">
           <span
             className={`truncate font-semibold text-ftc-text ${compact ? "text-xs" : "text-sm"}`}
@@ -1914,7 +1727,6 @@ export default function DjAvailabilityCalendar({
   if (isDual) {
     return (
       <>
-        <GigsCalendarBookingNavDebugPanel />
         {!loading && error ? (
           <div className="order-1 w-full shrink-0">
             <p role="alert" className="pointer-events-none mt-4 flex justify-center">
@@ -1934,7 +1746,6 @@ export default function DjAvailabilityCalendar({
 
   return (
     <section className={PLANNER_WORKSPACE_PRIMARY_SURFACE_CLASS}>
-      <GigsCalendarBookingNavDebugPanel />
       {!loading && error ? (
         <p role="alert" className="pointer-events-none mt-4 flex justify-center">
           <span className="rounded-full border-0 bg-[var(--ftc-color-danger)] px-3 py-1 text-[11px] font-medium text-ftc-bg">
