@@ -1,8 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import PlannerWorkspaceSubNavLink from "@/app/components/planner/PlannerWorkspaceSubNavLink";
 import { useGuardProfile } from "@/app/components/GuardProfileContext";
 import { useNavBadges } from "@/app/components/navigation/NavBadgeProvider";
 import { getCachedGigsPendingCount } from "@/lib/navigationBadgeCache";
@@ -18,12 +18,13 @@ import {
   getEventsAreaSubNavItems,
   isPlannerEventsAreaPath,
 } from "@/lib/plannerEventsNav";
+import {
+  clearPendingWorkspaceHref,
+  getPendingWorkspaceHref,
+  subscribePendingWorkspaceHref,
+} from "@/lib/plannerWorkspaceNavPending";
 import { readCachedNavigation } from "@/lib/navigationRoleCache";
 import { getCurrentUserProfile, type UserRole } from "@/lib/user/currentUser";
-
-function getActiveHref(pathname: string): string {
-  return getActiveWorkspaceHref(pathname);
-}
 
 function GigsPendingCountBadge({
   count,
@@ -70,11 +71,17 @@ export default function PlannerEventsSubNav({
   activeWorkspaceHref?: string | null;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
   const guardProfile = useGuardProfile();
   const { gigsPendingCount, reserveGigsBadgeSpace } = useNavBadges();
   const [cachedNavigation] = useState(readCachedNavigation);
   const [role, setRole] = useState<UserRole | null>(
     () => initialRole ?? guardProfile?.role ?? cachedNavigation.role,
+  );
+  const pendingWorkspaceHref = useSyncExternalStore(
+    subscribePendingWorkspaceHref,
+    getPendingWorkspaceHref,
+    () => null,
   );
 
   const resolvedRole = role ?? guardProfile?.role ?? initialRole ?? cachedNavigation.role;
@@ -85,6 +92,17 @@ export default function PlannerEventsSubNav({
     getNavigationBadgeCacheVersion,
     () => 0,
   );
+
+  const tabs = useMemo(
+    () => getEventsAreaSubNavItems(resolvedRole),
+    [resolvedRole],
+  );
+
+  useEffect(() => {
+    tabs.forEach((tab) => {
+      router.prefetch(tab.href);
+    });
+  }, [router, tabs]);
 
   useEffect(() => {
     if (!resolvedRole || !canViewGigs) {
@@ -128,12 +146,20 @@ export default function PlannerEventsSubNav({
       });
   }, [guardProfile?.role, initialRole, cachedNavigation.role]);
 
+  useEffect(() => {
+    const activeHref = getActiveWorkspaceHref(pathname);
+
+    if (pendingWorkspaceHref === activeHref) {
+      clearPendingWorkspaceHref();
+    }
+  }, [pathname, pendingWorkspaceHref]);
+
   if (!isPlannerEventsAreaPath(pathname)) {
     return null;
   }
 
-  const activeHref = activeWorkspaceHref ?? getActiveHref(pathname);
-  const tabs = getEventsAreaSubNavItems(resolvedRole);
+  const pathnameActiveHref = activeWorkspaceHref ?? getActiveWorkspaceHref(pathname);
+  const displayedActiveHref = pendingWorkspaceHref ?? pathnameActiveHref;
 
   return (
     <nav
@@ -141,15 +167,11 @@ export default function PlannerEventsSubNav({
       className="flex flex-wrap gap-2"
     >
       {tabs.map((tab) => {
-        const isActive = activeHref === tab.href;
+        const isActive = displayedActiveHref === tab.href;
         const showPendingBadge = tab.href === EVENTS_AREA_SUB_NAV.gigs.href;
 
         return (
-          <Link
-            key={tab.href}
-            href={tab.href}
-            className={`inline-flex items-center gap-1.5 ftc-filter-pill ${isActive ? "ftc-filter-pill-active" : ""}`}
-          >
+          <PlannerWorkspaceSubNavLink key={tab.href} href={tab.href} isActive={isActive}>
             {tab.label}
             {showPendingBadge ? (
               <GigsPendingCountBadge
@@ -158,7 +180,7 @@ export default function PlannerEventsSubNav({
                 reserveSpace={shouldReserveGigsBadgeSpace}
               />
             ) : null}
-          </Link>
+          </PlannerWorkspaceSubNavLink>
         );
       })}
     </nav>

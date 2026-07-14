@@ -1,12 +1,16 @@
 "use client";
 
 import "@/lib/navigationBadgePrefetch";
-import { useMemo } from "react";
+import { useMemo, useSyncExternalStore } from "react";
 import { usePathname } from "next/navigation";
 import PlannerEventsSubNav from "@/app/components/PlannerEventsSubNav";
 import { MOBILE_NAV_OFFSET_CLASS } from "@/app/components/AppNavigation";
 import AppNavigation from "@/app/components/AppNavigation";
 import { resolvePlannerWorkspaceTitle } from "@/lib/plannerEventsNav";
+import {
+  getPendingWorkspaceHref,
+  subscribePendingWorkspaceHref,
+} from "@/lib/plannerWorkspaceNavPending";
 import type { UserRole } from "@/lib/user/currentUser";
 
 export const PLANNER_WORKSPACE_SHELL_CLASS = `mx-auto min-h-[100dvh] w-full max-w-2xl bg-ftc-bg font-sans text-ftc-text ${MOBILE_NAV_OFFSET_CLASS}`;
@@ -183,14 +187,19 @@ export function PlannerWorkspacePage({
   children,
 }: PlannerWorkspacePageProps) {
   const pathname = usePathname();
+  const pendingWorkspaceHref = useSyncExternalStore(
+    subscribePendingWorkspaceHref,
+    getPendingWorkspaceHref,
+    () => null,
+  );
   const title = useMemo(
     () =>
       titleProp ??
       resolvePlannerWorkspaceTitle({
         pathname,
-        activeWorkspaceHref,
+        activeWorkspaceHref: activeWorkspaceHref ?? pendingWorkspaceHref,
       }),
-    [activeWorkspaceHref, pathname, titleProp],
+    [activeWorkspaceHref, pathname, pendingWorkspaceHref, titleProp],
   );
   const secondaryBand = renderSecondaryBand({
     secondaryControlsSlot,
