@@ -18,11 +18,6 @@ import {
   getEventsAreaSubNavItems,
   isPlannerEventsAreaPath,
 } from "@/lib/plannerEventsNav";
-import {
-  clearPendingWorkspaceHref,
-  getPendingWorkspaceHref,
-  subscribePendingWorkspaceHref,
-} from "@/lib/plannerWorkspaceNavPending";
 import { readCachedNavigation } from "@/lib/navigationRoleCache";
 import { getCurrentUserProfile, type UserRole } from "@/lib/user/currentUser";
 
@@ -77,11 +72,6 @@ export default function PlannerEventsSubNav({
   const [cachedNavigation] = useState(readCachedNavigation);
   const [role, setRole] = useState<UserRole | null>(
     () => initialRole ?? guardProfile?.role ?? cachedNavigation.role,
-  );
-  const pendingWorkspaceHref = useSyncExternalStore(
-    subscribePendingWorkspaceHref,
-    getPendingWorkspaceHref,
-    () => null,
   );
 
   const resolvedRole = role ?? guardProfile?.role ?? initialRole ?? cachedNavigation.role;
@@ -146,20 +136,11 @@ export default function PlannerEventsSubNav({
       });
   }, [guardProfile?.role, initialRole, cachedNavigation.role]);
 
-  useEffect(() => {
-    const activeHref = getActiveWorkspaceHref(pathname);
-
-    if (pendingWorkspaceHref === activeHref) {
-      clearPendingWorkspaceHref();
-    }
-  }, [pathname, pendingWorkspaceHref]);
-
   if (!isPlannerEventsAreaPath(pathname)) {
     return null;
   }
 
-  const pathnameActiveHref = activeWorkspaceHref ?? getActiveWorkspaceHref(pathname);
-  const displayedActiveHref = pendingWorkspaceHref ?? pathnameActiveHref;
+  const activeHref = activeWorkspaceHref ?? getActiveWorkspaceHref(pathname);
 
   return (
     <nav
@@ -167,7 +148,7 @@ export default function PlannerEventsSubNav({
       className="flex flex-wrap gap-2"
     >
       {tabs.map((tab) => {
-        const isActive = displayedActiveHref === tab.href;
+        const isActive = activeHref === tab.href;
         const showPendingBadge = tab.href === EVENTS_AREA_SUB_NAV.gigs.href;
 
         return (
