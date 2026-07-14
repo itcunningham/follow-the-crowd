@@ -153,7 +153,6 @@ export default function DmComposer({
         ref={photoInputRef}
         type="file"
         accept={DM_PHOTO_INPUT_ACCEPT}
-        capture="environment"
         className="hidden"
         onChange={(event) => {
           const file = event.target.files?.[0];
