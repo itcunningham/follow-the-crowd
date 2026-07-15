@@ -25,7 +25,7 @@ export default function RequestAccountDeletionSection({
       <h2 className="text-xs font-semibold uppercase tracking-wide text-ftc-primary">Support</h2>
       <p className="mt-2 text-sm text-ftc-text-muted">
         Send us a request and we&apos;ll review it before closing your account and handling your
-        data.
+        data
       </p>
       {mailtoHref ? (
         <a
