@@ -136,6 +136,7 @@ export default function BookingRequestCard({
   const cancelledByLabel = resolveBookingCancelledByLabel(booking, profiles);
   const cancellationReasonLabel = resolveBookingCancellationReasonLabel(booking);
   const isPending = booking.status === "pending";
+  const isAccepted = booking.status === "accepted";
   const pendingProposal = bookingLoaded && hasPendingRateProposal(booking);
   const showDjOpenOfferActions =
     bookingLoaded && canProposeBookingRate(booking, currentUserId);
@@ -339,12 +340,31 @@ export default function BookingRequestCard({
         {booking.event_id && !showAsCancelled ? (
           <>
             {eventHref ? (
-              <Link
-                href={eventHref}
-                className="mt-4 inline-flex rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated px-3 py-2 text-xs font-semibold uppercase tracking-wide text-ftc-text-secondary transition hover:border-ftc-border-strong"
-              >
-                View event
-              </Link>
+              isAccepted ? (
+                <div className="mt-4 flex flex-col gap-2">
+                  <Link
+                    href={eventHref}
+                    className="ftc-btn-primary flex w-full items-center justify-center px-3 py-2.5 text-xs uppercase tracking-wide"
+                  >
+                    View event
+                  </Link>
+                  {showAcceptedCancel ? (
+                    <CancelAcceptedBookingButton
+                      role={acceptedCancellationRole}
+                      loading={Boolean(cancelling)}
+                      onConfirm={onCancelAccepted}
+                      className="w-full border border-ftc-border-subtle bg-ftc-bg-elevated hover:border-red-500/35 hover:bg-ftc-bg-elevated hover:text-red-300"
+                    />
+                  ) : null}
+                </div>
+              ) : (
+                <Link
+                  href={eventHref}
+                  className="mt-4 inline-flex rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated px-3 py-2 text-xs font-semibold uppercase tracking-wide text-ftc-text-secondary transition hover:border-ftc-border-strong"
+                >
+                  View event
+                </Link>
+              )
             ) : null}
 
             {groupChatAccess && groupChatAccess.kind !== "hidden" ? (
@@ -410,7 +430,7 @@ export default function BookingRequestCard({
                   type="button"
                   onClick={onDecline}
                   disabled={actionDisabled}
-                  className="flex-1 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated px-3 py-2.5 text-xs font-semibold uppercase tracking-wide text-ftc-text-secondary transition hover:border-red-500/35 hover:text-red-300 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="flex-[0.92] rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated px-3 py-2.5 text-xs font-semibold uppercase tracking-wide text-ftc-text-secondary transition hover:border-red-500/35 hover:text-red-300 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   Decline
                 </button>
@@ -418,7 +438,7 @@ export default function BookingRequestCard({
                   type="button"
                   onClick={onAccept}
                   disabled={actionDisabled}
-                  className="ftc-btn-primary flex-1 px-3 py-2.5 text-xs uppercase tracking-wide disabled:cursor-not-allowed disabled:opacity-50"
+                  className="ftc-btn-primary flex-[1.08] px-3 py-2.5 text-xs uppercase tracking-wide disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   Accept
                 </button>
@@ -453,7 +473,7 @@ export default function BookingRequestCard({
           </div>
         ) : null}
 
-        {showAcceptedCancel ? (
+        {showAcceptedCancel && !(isAccepted && booking.event_id && eventHref) ? (
           <div className="mt-4">
             <CancelAcceptedBookingButton
               role={acceptedCancellationRole}

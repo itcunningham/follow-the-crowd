@@ -9,7 +9,7 @@ import {
   FtcVenueIcon,
 } from "@/app/components/ftc/FtcCompactMeta";
 import { formatBookingCardEventDate } from "@/lib/bookingDateTime";
-import type { BookingRequest } from "@/lib/bookingRequests";
+import { getDmBookingCardOfferSummary, type BookingRequest } from "@/lib/bookingRequests";
 
 const NOTES_COLLAPSE_CHAR_THRESHOLD = 140;
 
@@ -61,19 +61,11 @@ export function getBookingCardCompactRateLine(
   rateDetailLabel: string,
   pendingProposal: boolean,
 ): string {
-  if (booking.rate_mode === "open") {
-    if (pendingProposal) {
-      return `${rateDetailLabel} · ${offerRateLabel}`;
-    }
-
-    return "Ask for rate";
+  if (booking.rate_mode === "open" && pendingProposal) {
+    return `${rateDetailLabel} · ${offerRateLabel}`;
   }
 
-  if (booking.status === "accepted") {
-    return offerRateLabel;
-  }
-
-  return `Fixed offer · ${offerRateLabel}`;
+  return getDmBookingCardOfferSummary(booking);
 }
 
 export default function BookingCardCompactSummary({
@@ -111,8 +103,8 @@ export default function BookingCardCompactSummary({
       {booking.notes?.trim() ? <BookingCardExpandableNotes notes={booking.notes} /> : null}
 
       {cancelledByLabel ? (
-        <p className="break-words text-sm leading-snug text-ftc-text-secondary">
-          <span className="text-ftc-text-muted">Cancelled by </span>
+        <p className="break-words text-sm leading-snug text-ftc-text-secondary/70">
+          <span className="text-ftc-text-muted/80">Cancelled by </span>
           {cancelledByLabel}
         </p>
       ) : null}

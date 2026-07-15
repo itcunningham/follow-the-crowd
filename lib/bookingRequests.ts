@@ -522,15 +522,22 @@ export function getBookingRateDetailLabel(booking: BookingRequest): string {
 }
 
 export function getBookingCollapsedOfferSummary(booking: BookingRequest): string {
-  if (booking.status === "accepted") {
-    return getBookingOfferRateLabel(booking);
-  }
+  return getDmBookingCardOfferSummary(booking);
+}
 
+/** Offer copy for booking cards inside Messages (collapsed + expanded). */
+export function getDmBookingCardOfferSummary(booking: BookingRequest): string {
   if (booking.rate_mode === "open") {
-    return "Ask for rate";
+    const feeLabel = getBookingOfferRateLabel(booking);
+
+    if (feeLabel === "Ask for rate") {
+      return "Open offer";
+    }
+
+    return `Open · ${feeLabel}`;
   }
 
-  return `Fixed offer · ${getBookingOfferRateLabel(booking)}`;
+  return `Fixed · ${getBookingOfferRateLabel(booking)}`;
 }
 
 /** Gigs list card copy — shorter labels; does not affect DM or other surfaces. */

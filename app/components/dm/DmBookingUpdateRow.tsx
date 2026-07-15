@@ -5,9 +5,8 @@ import {
   formatBookingStatusLabel,
   getBookingCancelledDmBadgeClass,
   getBookingCancelledDmCardClass,
-  getBookingOfferRateLabel,
+  getDmBookingCardOfferSummary,
   getEventCancelledBookingLabel,
-  getGigCardOfferSummary,
   isBookingAffectedByCancelledEvent,
   type BookingRequest,
   type BookingRequestStatus,
@@ -52,11 +51,7 @@ export default function DmBookingUpdateRow({
     : formatBookingStatusLabel(displayStatus);
   const collapsedOfferLine =
     displayStatus === "accepted" && !showAsCancelled
-      ? booking.rate_mode === "open"
-        ? getBookingOfferRateLabel(booking) === "Ask for rate"
-          ? "Open offer"
-          : `Open · ${getBookingOfferRateLabel(booking)}`
-        : getGigCardOfferSummary(booking)
+      ? getDmBookingCardOfferSummary(booking)
       : null;
   const collapsedDateLine =
     displayStatus === "accepted" && !showAsCancelled && booking.event_date?.trim()
