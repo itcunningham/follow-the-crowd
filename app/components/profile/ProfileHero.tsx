@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import ProfileAvatar from "@/app/components/ProfileAvatar";
 import ProfileBioText from "@/app/components/profile/ProfileBioText";
+import ProfilePhotoViewer from "@/app/components/profile/ProfilePhotoViewer";
 import { formatProfileIdentityUsername } from "@/lib/user/profileFormUtils";
 import { type UserRole } from "@/lib/user/currentUser";
 
@@ -23,36 +24,14 @@ export default function ProfileHero({
   const hasAvatar = Boolean(avatarUrl?.trim());
   const [avatarExpanded, setAvatarExpanded] = useState(false);
 
-  useEffect(() => {
-    if (!avatarExpanded) {
-      return;
-    }
-
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        setAvatarExpanded(false);
-      }
-    }
-
-    window.addEventListener("keydown", handleKeyDown);
-
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      window.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [avatarExpanded]);
-
   return (
     <>
       <div className="flex items-start gap-4">
         {hasAvatar ? (
           <button
             type="button"
-            onClick={() => setAvatarExpanded((expanded) => !expanded)}
-            aria-label={avatarExpanded ? "Close profile photo" : "View profile photo"}
+            onClick={() => setAvatarExpanded(true)}
+            aria-label="View profile photo"
             aria-expanded={avatarExpanded}
             className="ftc-profile-hero-avatar-interactive shrink-0"
           >
@@ -87,19 +66,13 @@ export default function ProfileHero({
         </div>
       </div>
 
-      {avatarExpanded && hasAvatar ? (
-        <button
-          type="button"
-          aria-label="Close profile photo"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-6"
-          onClick={() => setAvatarExpanded(false)}
-        >
-          <img
-            src={avatarUrl!}
-            alt={`${displayName} profile`}
-            className="h-72 w-72 max-h-[70vh] max-w-[85vw] rounded-full object-cover shadow-2xl sm:h-80 sm:w-80"
-          />
-        </button>
+      {hasAvatar ? (
+        <ProfilePhotoViewer
+          open={avatarExpanded}
+          onClose={() => setAvatarExpanded(false)}
+          imageUrl={avatarUrl!}
+          displayName={displayName}
+        />
       ) : null}
     </>
   );

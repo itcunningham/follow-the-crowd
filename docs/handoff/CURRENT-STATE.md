@@ -111,6 +111,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 - Desktop nav width aligned to page shell (`md:max-w-5xl`); `scrollbar-gutter: stable` on `<html>`
 - **Navigation badges:** shared `NavBadgeProvider` with session/memory/localStorage cache — Gigs uses `ftc-gigs-pending-count` + runtime store; Messages uses matching `ftc-messages-unread-count` + runtime store (same sync-first pattern as Gigs sub-nav); both seeded at module load; main nav Messages badge reads cache via `getCachedNavMessagesCount` + `useSyncExternalStore`
 - **Messages & Profile desktop:** Messages inbox uses `APP_DM_CONTENT_WIDTH_CLASS`; **Profile** uses matching `AppProfilePageShell` with single-column mobile flow (identity → social → cards), centred at `lg:max-w-[52rem]`
+- **Profile photo viewer (2026-07-15):** tap avatar opens fullscreen photo with 220ms fade/scale; backdrop tap or X button closes; drag on image does not dismiss; Escape key supported
 - **DM conversation desktop:** chat column `52rem` (~832px) at `lg+`, centered; mobile/tablet unchanged at `max-w-2xl`
 
 ## SQL / migrations Isaac may still need to run
@@ -127,6 +128,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `[pending]` — polish fullscreen profile photo viewer (animation, dismissal, close button)
 - `2403231` — final crew chat UI polish (header, avatars, empty state, system pills)
 - `51f81d3` — tighten crew chat header layout and anchor mobile Messages badge to icon
 - `ff324b0` — polish crew chat UI to match DM messaging quality
