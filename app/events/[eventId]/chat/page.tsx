@@ -1,23 +1,30 @@
 "use client";
 
-import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation";
 import AppNavigation, { MOBILE_NAV_OFFSET_CLASS } from "@/app/components/AppNavigation";
 import ChatNewMessagesPill from "@/app/components/dm/ChatNewMessagesPill";
 import GroupChatComposer from "@/app/components/group-chat/GroupChatComposer";
+import GroupChatEmptyState from "@/app/components/group-chat/GroupChatEmptyState";
+import GroupChatHeader from "@/app/components/group-chat/GroupChatHeader";
 import GroupChatMessageBubble from "@/app/components/group-chat/GroupChatMessageBubble";
-import EventArtworkTile from "@/app/components/events/EventArtworkTile";
+import GroupChatSystemNotice from "@/app/components/group-chat/GroupChatSystemNotice";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
 import { ChatHeaderSkeleton, ChatMessagesSkeleton } from "@/app/components/skeleton/Skeleton";
 import {
   getEventCrewChatAccess,
   getEventCrewChatBackHref,
   getEventCrewChatLoadErrorMessage,
+  getEventCrewParticipantIds,
   listEventCrewChatMessages,
   sendEventCrewChatMessage,
   type EventCrewChatMessage,
 } from "@/lib/eventCrewChat";
+import type { CrewChatUnlockState } from "@/lib/events/crewChatUnlock";
+import {
+  buildGroupChatSenderNameVisibility,
+  resolveCrewChatMemberCount,
+} from "@/lib/groupChatMessageLayout";
 import { markEventChatRead } from "@/lib/messageReads";
 import {
   formatGroupChatSystemNoticeText,
@@ -27,7 +34,6 @@ import { buildChatReturnTo } from "@/lib/profileNavigation";
 import { supabase } from "@/lib/supabaseClient";
 import { useChatScroll, tagChatMessageForScroll } from "@/lib/useChatScroll";
 import {
-  getChatNewMessageHighlightClass,
   logChatHighlightRender,
 } from "@/lib/chatNewMessageHighlight";
 import { useChatNewMessageHighlight } from "@/lib/useChatNewMessageHighlight";
@@ -97,25 +103,6 @@ function GroupChatMessagesLoadError({
   );
 }
 
-function GroupChatHeaderArtwork({
-  eventName,
-  coverImageUrl,
-  fallbackColour,
-}: {
-  eventName: string;
-  coverImageUrl: string | null;
-  fallbackColour: string | null;
-}) {
-  return (
-    <EventArtworkTile
-      eventName={eventName}
-      coverImageUrl={coverImageUrl}
-      fallbackColour={fallbackColour}
-      size="context"
-    />
-  );
-}
-
 export default function EventCrewChatPage() {
   const params = useParams<{ eventId: string }>();
   const router = useRouter();
@@ -144,8 +131,11 @@ export default function EventCrewChatPage() {
     new Map(),
   );
   const [eventName, setEventName] = useState("Event");
-  const [coverImageUrl, setCoverImageUrl] = useState<string | null>(null);
-  const [fallbackColour, setFallbackColour] = useState<string | null>(null);
+  const [crewUnlock, setCrewUnlock] = useState<CrewChatUnlockState | null>(null);
+  const [crewParticipantIds, setCrewParticipantIds] = useState<string[]>([]);
+  const [crewParticipantProfiles, setCrewParticipantProfiles] = useState<
+    Map<string, UserAvatarProfile>
+  >(new Map());
   const [input, setInput] = useState("");
   const [accessLoading, setAccessLoading] = useState(true);
   const [messagesLoading, setMessagesLoading] = useState(true);
@@ -158,6 +148,14 @@ export default function EventCrewChatPage() {
   const loading = accessLoading || messagesLoading;
   const lastMessage = messages.length > 0 ? messages[messages.length - 1] : null;
   const reversedMessages = useMemo(() => [...messages].reverse(), [messages]);
+  const senderNameVisibility = useMemo(
+    () => buildGroupChatSenderNameVisibility(messages, currentUserId),
+    [messages, currentUserId],
+  );
+  const memberCount = resolveCrewChatMemberCount(
+    crewParticipantIds.length > 0 ? crewParticipantIds.length : null,
+    crewUnlock?.acceptedDjCount ?? 0,
+  );
   const {
     scrollRef,
     bottomRef,
@@ -187,13 +185,29 @@ export default function EventCrewChatPage() {
         return;
       }
 
-      setCoverImageUrl(access.coverImageUrl);
-      setFallbackColour(access.fallbackColour);
       setEventName(access.eventName ?? "Event");
+      setCrewUnlock(access.unlock);
     } catch (refreshError) {
-      console.error("Failed to refresh group chat artwork:", refreshError);
+      console.error("Failed to refresh group chat header:", refreshError);
     }
   }, [eventId]);
+
+  const loadCrewParticipants = useCallback(async (targetEventId: string) => {
+    try {
+      const participantIds = await getEventCrewParticipantIds(targetEventId);
+      setCrewParticipantIds(participantIds);
+
+      if (participantIds.length === 0) {
+        setCrewParticipantProfiles(new Map());
+        return;
+      }
+
+      const profiles = await getUserAvatarProfilesByIds(participantIds);
+      setCrewParticipantProfiles(profiles);
+    } catch (participantError) {
+      console.error("Failed to load crew chat participants:", participantError);
+    }
+  }, []);
 
   const markGroupChatOpened = useCallback(
     (latestMessageCreatedAt: string | null) => {
@@ -316,8 +330,8 @@ export default function EventCrewChatPage() {
 
         setCanAccessChat(true);
         setEventName(access.eventName ?? "Event");
-        setCoverImageUrl(access.coverImageUrl);
-        setFallbackColour(access.fallbackColour);
+        setCrewUnlock(access.unlock);
+        void loadCrewParticipants(eventId);
       } catch (loadError) {
         if (cancelled) {
           return;
@@ -339,7 +353,7 @@ export default function EventCrewChatPage() {
       cancelled = true;
       messagesLoadGenerationRef.current += 1;
     };
-  }, [eventId]);
+  }, [eventId, loadCrewParticipants]);
 
   useEffect(() => {
     if (!canAccessChat || accessLoading) {
@@ -492,47 +506,16 @@ export default function EventCrewChatPage() {
             {accessLoading ? (
               <ChatHeaderSkeleton />
             ) : (
-            <div className="flex items-center gap-2">
-              <Link
-                href={backHref}
-                aria-label={openedFromMessages ? "Back to messages" : "Back to event"}
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-ftc-border-subtle bg-ftc-surface text-ftc-text-secondary transition hover:border-ftc-border-strong hover:text-ftc-text"
-              >
-                <svg
-                  aria-hidden="true"
-                  viewBox="0 0 24 24"
-                  className="h-5 w-5"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M15 18l-6-6 6-6" />
-                </svg>
-              </Link>
-
-              <div className="flex min-w-0 flex-1 items-center gap-3">
-                <GroupChatHeaderArtwork
-                  eventName={eventName}
-                  coverImageUrl={coverImageUrl}
-                  fallbackColour={fallbackColour}
-                />
-                <div className="min-w-0 flex-1">
-                  <h1 className="truncate text-base font-semibold text-ftc-text">{eventName}</h1>
-                  <p className="truncate text-xs text-ftc-text-muted">Group chat</p>
-                </div>
-              </div>
-
-              {openedFromMessages ? (
-                <Link
-                  href={`/events/${eventId}`}
-                  className="shrink-0 rounded-xl border border-ftc-border-subtle bg-ftc-surface px-3 py-2 text-xs font-semibold text-ftc-text transition hover:border-ftc-border-strong"
-                >
-                  Event Details
-                </Link>
-              ) : null}
-            </div>
+              <GroupChatHeader
+                backHref={backHref}
+                backLabel={openedFromMessages ? "Back to messages" : "Back to event"}
+                eventId={eventId}
+                eventName={eventName}
+                memberCount={memberCount}
+                participantIds={crewParticipantIds}
+                participantProfiles={crewParticipantProfiles}
+                showEventDetailsLink={openedFromMessages}
+              />
             )}
           </header>
 
@@ -552,22 +535,7 @@ export default function EventCrewChatPage() {
                 }}
               />
             ) : messages.length === 0 ? (
-              <div
-                data-chat-content-root
-                className="flex flex-col items-center justify-center px-6 py-16 text-center"
-              >
-                <GroupChatHeaderArtwork
-                  eventName={eventName}
-                  coverImageUrl={coverImageUrl}
-                  fallbackColour={fallbackColour}
-                />
-                <p className="mt-4 text-sm font-medium text-ftc-text-secondary">
-                  No group messages yet
-                </p>
-                <p className="mt-1 text-sm text-ftc-text-muted">
-                  Accepted DJs and the event planner can chat here.
-                </p>
-              </div>
+              <GroupChatEmptyState />
             ) : (
               <ul data-chat-content-root className="flex flex-col-reverse gap-3 pb-2">
                 {reversedMessages.map((message) => {
@@ -579,25 +547,14 @@ export default function EventCrewChatPage() {
 
                   if (isSystemUpdate) {
                     return (
-                      <li
+                      <GroupChatSystemNotice
                         key={message.id}
-                        data-chat-message-id={message.id}
-                        className="flex justify-center"
-                      >
-                        <div className="max-w-sm px-3 py-1 text-center">
-                          <p
-                            className={`rounded-full border border-ftc-border bg-ftc-bg-elevated/50 px-3 py-1.5 text-xs text-ftc-text-muted ${getChatNewMessageHighlightClass(highlighted)}`}
-                          >
-                            {formatGroupChatSystemNoticeText(message.text)}
-                          </p>
-                          <time
-                            dateTime={message.created_at}
-                            className="mt-1 block text-[10px] text-ftc-text-muted"
-                          >
-                            {formatMessageTime(message.created_at)}
-                          </time>
-                        </div>
-                      </li>
+                        messageId={message.id}
+                        text={formatGroupChatSystemNoticeText(message.text)}
+                        createdAt={message.created_at}
+                        formatTime={formatMessageTime}
+                        isHighlighted={highlighted}
+                      />
                     );
                   }
 
@@ -617,6 +574,7 @@ export default function EventCrewChatPage() {
                       profileReturnTo={chatReturnTo}
                       formatTime={formatMessageTime}
                       isHighlighted={highlighted}
+                      showSenderName={senderNameVisibility.get(message.id) ?? false}
                     />
                   );
                 })}

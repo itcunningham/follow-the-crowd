@@ -14,6 +14,7 @@ export default function GroupChatMessageBubble({
   profileReturnTo,
   formatTime,
   isHighlighted = false,
+  showSenderName = false,
 }: {
   messageId: string;
   text: string;
@@ -25,6 +26,7 @@ export default function GroupChatMessageBubble({
   profileReturnTo?: string | null;
   formatTime: (timestamp: string) => string;
   isHighlighted?: boolean;
+  showSenderName?: boolean;
 }) {
   const highlightClass = getChatNewMessageHighlightClass(isHighlighted);
 
@@ -48,7 +50,7 @@ export default function GroupChatMessageBubble({
         ) : null}
 
         <div className={`flex min-w-0 flex-col ${isOwnMessage ? "items-end" : "items-start"}`}>
-          {!isOwnMessage ? (
+          {!isOwnMessage && showSenderName ? (
             <p className="mb-1 px-1 text-[11px] font-semibold text-ftc-text-secondary">
               {senderLabel}
             </p>

@@ -18,7 +18,8 @@ export function formatGroupChatSystemNoticeText(text: string): string {
   const crewOpenedMatch = trimmed.match(/^(.+?) joined the event crew\. Crew chat is now open\.$/);
 
   if (crewOpenedMatch) {
-    return `${crewOpenedMatch[1]} joined · crew chat open`;
+    const name = crewOpenedMatch[1]?.trim() || "Someone";
+    return `${name} joined the crew`;
   }
 
   const body = trimmed.startsWith(GROUP_CHAT_BOOKING_UPDATE_PREFIX)
@@ -28,7 +29,8 @@ export function formatGroupChatSystemNoticeText(text: string): string {
   const acceptedMatch = body.match(/^(.+?) accepted and joined the event crew\.$/);
 
   if (acceptedMatch) {
-    return `${acceptedMatch[1]} accepted · joined event crew`;
+    const name = acceptedMatch[1]?.trim() || "Someone";
+    return `${name} joined the crew`;
   }
 
   const withdrawnMatch = body.match(
@@ -42,7 +44,7 @@ export function formatGroupChatSystemNoticeText(text: string): string {
     return reason ? `${name} withdrew · ${reason}` : `${name} withdrew`;
   }
 
-  return body;
+  return body.replace(/\s+/g, " ");
 }
 
 export function formatGroupChatInboxPreview(

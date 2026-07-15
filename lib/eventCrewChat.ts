@@ -174,7 +174,7 @@ export async function listEventCrewChatMessages(
   return (data ?? []) as EventCrewChatMessage[];
 }
 
-async function getEventCrewParticipantIds(eventId: string): Promise<string[]> {
+export async function getEventCrewParticipantIds(eventId: string): Promise<string[]> {
   const { data, error } = await supabase.rpc("get_event_crew_participant_ids", {
     p_event_id: eventId,
   });
