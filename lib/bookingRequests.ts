@@ -535,10 +535,6 @@ export function getBookingCollapsedOfferSummary(booking: BookingRequest): string
 
 /** Gigs list card copy — shorter labels; does not affect DM or other surfaces. */
 export function getGigCardOfferSummary(booking: BookingRequest): string {
-  if (booking.status === "accepted") {
-    return getBookingOfferRateLabel(booking);
-  }
-
   if (booking.rate_mode === "open") {
     return "Open offer";
   }
