@@ -10,6 +10,7 @@ import {
 } from "@/app/components/ftc/FtcCompactMeta";
 import { formatBookingCardEventDate } from "@/lib/bookingDateTime";
 import { getDmBookingCardOfferSummary, type BookingRequest } from "@/lib/bookingRequests";
+import { DmBookingCardStatusMessage } from "@/app/components/booking/DmBookingCardLayout";
 
 const NOTES_COLLAPSE_CHAR_THRESHOLD = 140;
 
@@ -71,11 +72,13 @@ export function getBookingCardCompactRateLine(
 export default function BookingCardCompactSummary({
   booking,
   rateLine,
+  eventStatusLabel,
   cancelledByLabel,
   cancellationReasonLabel,
 }: {
   booking: BookingRequest;
   rateLine: string;
+  eventStatusLabel?: string | null;
   cancelledByLabel?: string | null;
   cancellationReasonLabel?: string | null;
 }) {
@@ -102,18 +105,16 @@ export default function BookingCardCompactSummary({
 
       {booking.notes?.trim() ? <BookingCardExpandableNotes notes={booking.notes} /> : null}
 
+      {eventStatusLabel ? (
+        <DmBookingCardStatusMessage>{eventStatusLabel}</DmBookingCardStatusMessage>
+      ) : null}
+
       {cancelledByLabel ? (
-        <p className="break-words text-sm leading-snug text-ftc-text-secondary/70">
-          <span className="text-ftc-text-muted/80">Cancelled by </span>
-          {cancelledByLabel}
-        </p>
+        <DmBookingCardStatusMessage label="Cancelled by">{cancelledByLabel}</DmBookingCardStatusMessage>
       ) : null}
 
       {cancellationReasonLabel ? (
-        <p className="break-words text-sm leading-snug text-ftc-text-secondary">
-          <span className="text-ftc-text-muted">Reason </span>
-          {cancellationReasonLabel}
-        </p>
+        <DmBookingCardStatusMessage label="Reason">{cancellationReasonLabel}</DmBookingCardStatusMessage>
       ) : null}
     </div>
   );

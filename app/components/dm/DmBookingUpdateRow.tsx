@@ -2,10 +2,14 @@
 
 import BookingStatusBadge from "@/app/components/booking/BookingStatusBadge";
 import {
+  DM_BOOKING_CARD_SHELL_CLASS,
+  DmBookingCardCollapsedDetails,
+  DmBookingCardCollapsedHeader,
+  DmBookingCardExpandFooter,
+} from "@/app/components/booking/DmBookingCardLayout";
+import {
   formatBookingStatusLabel,
-  getBookingCancelledDmBadgeClass,
-  getBookingCancelledDmCardClass,
-  getDmBookingCardOfferSummary,
+  getBookingCollapsedOfferSummary,
   getEventCancelledBookingLabel,
   isBookingAffectedByCancelledEvent,
   type BookingRequest,
@@ -39,24 +43,15 @@ export default function DmBookingUpdateRow({
   const eventCancelledLabel = isBookingAffectedByCancelledEvent(booking, eventCancelled)
     ? getEventCancelledBookingLabel(booking, currentUserId)
     : null;
-  const statusLabel = isExplicitCancelled
-    ? "Cancelled"
-    : eventCancelledLabel ?? "Cancelled";
-  const cardClass = showAsCancelled
-    ? getBookingCancelledDmCardClass()
-    : "border border-ftc-border-subtle bg-ftc-surface";
-  const badgeOverrideClass = showAsCancelled ? getBookingCancelledDmBadgeClass() : null;
-  const statusText = badgeOverrideClass
-    ? statusLabel
-    : formatBookingStatusLabel(displayStatus);
-  const collapsedOfferLine =
-    displayStatus === "accepted" && !showAsCancelled
-      ? getDmBookingCardOfferSummary(booking)
-      : null;
-  const collapsedDateLine =
-    displayStatus === "accepted" && !showAsCancelled && booking.event_date?.trim()
-      ? formatBookingCardEventDate(booking.event_date)
-      : null;
+  const statusText = formatBookingStatusLabel(displayStatus);
+  const collapsedOfferSummary = getBookingCollapsedOfferSummary(booking);
+  const collapsedDateVenue = [
+    booking.event_date?.trim() ? formatBookingCardEventDate(booking.event_date) : "",
+    booking.venue?.trim(),
+  ]
+    .filter(Boolean)
+    .join(" · ");
+  const collapsedStatusMessage = eventCancelledLabel ?? null;
 
   return (
     <button
@@ -64,47 +59,25 @@ export default function DmBookingUpdateRow({
       onClick={onViewDetails}
       aria-expanded={false}
       aria-label={`${title}, ${statusText}. View booking details`}
-      className={`relative z-10 w-full max-w-xs min-h-[44px] touch-manipulation rounded-xl p-2.5 text-left transition hover:border-ftc-border-strong active:border-ftc-border-strong focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ftc-primary ${cardClass} ${highlightClassName}`}
+      className={`relative z-10 ${DM_BOOKING_CARD_SHELL_CLASS} min-h-[44px] touch-manipulation text-left transition hover:border-ftc-border-strong active:border-ftc-border-strong focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ftc-primary ${highlightClassName}`}
     >
-      <div className="flex items-center justify-between gap-2">
-        <p className="min-w-0 flex-1 truncate text-sm font-semibold text-ftc-text">{title}</p>
-        {badgeOverrideClass ? (
-          <span className={badgeOverrideClass}>{statusLabel}</span>
-        ) : (
-          <BookingStatusBadge status={displayStatus} />
-        )}
-      </div>
+      <DmBookingCardCollapsedHeader
+        title={title}
+        badge={<BookingStatusBadge status={displayStatus} />}
+      />
 
-      {collapsedOfferLine || collapsedDateLine ? (
-        <div className="mt-1 min-w-0">
-          {collapsedOfferLine ? (
-            <p className="truncate text-xs text-ftc-text-secondary">{collapsedOfferLine}</p>
-          ) : null}
-          {collapsedDateLine ? (
-            <p className="mt-0.5 truncate text-xs text-ftc-text-muted">{collapsedDateLine}</p>
-          ) : null}
-        </div>
-      ) : null}
+      <DmBookingCardCollapsedDetails
+        offerSummary={collapsedOfferSummary}
+        dateVenue={collapsedDateVenue || null}
+        statusMessage={collapsedStatusMessage}
+      />
 
-      <div className="mt-1.5 flex items-center justify-between gap-2 border-t border-ftc-border-subtle/80 pt-1.5">
-        <span className="text-[11px] font-semibold uppercase tracking-wide text-ftc-text-secondary">
-          View details
-        </span>
-        <svg
-          aria-hidden="true"
-          viewBox="0 0 24 24"
-          className="h-3.5 w-3.5 shrink-0 text-ftc-text-muted"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.75"
-        >
-          <path d="m9 18 6-6-6-6" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      </div>
+      <DmBookingCardExpandFooter label="View details" />
+
       {bookingFocusPhase ? (
         <div
           aria-hidden="true"
-          className={`pointer-events-none absolute inset-0 z-10 box-border rounded-xl border-2 border-[var(--ftc-color-primary)] transition-opacity duration-1000 ease-out ${
+          className={`pointer-events-none absolute inset-0 z-10 box-border rounded-2xl border-2 border-[var(--ftc-color-primary)] transition-opacity duration-1000 ease-out ${
             bookingFocusPhase === "active" ? "opacity-100" : "opacity-0"
           }`}
         />

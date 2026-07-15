@@ -13,6 +13,14 @@ import BookingStatusBadge from "@/app/components/booking/BookingStatusBadge";
 import CancelAcceptedBookingButton from "@/app/components/booking/CancelAcceptedBookingButton";
 import CancelBookingRequestButton from "@/app/components/CancelBookingRequestButton";
 import {
+  DM_BOOKING_CARD_ACTIONS_CLASS,
+  DM_BOOKING_CARD_SECONDARY_BUTTON_CLASS,
+  DM_BOOKING_CARD_SHELL_CLASS,
+  DmBookingCardCollapsedDetails,
+  DmBookingCardCollapsedHeader,
+  DmBookingCardExpandFooter,
+} from "@/app/components/booking/DmBookingCardLayout";
+import {
   canCancelBookingRequest,
   canProposeBookingRate,
   canRespondToRateProposal,
@@ -20,15 +28,12 @@ import {
   getAcceptedBookingCancellationRole,
   getBookingCollapsedOfferSummary,
   getBookingCollapsedUrgentLabel,
-  getBookingCancelledDmBadgeClass,
-  getBookingCancelledDmCardClass,
   getBookingGroupChatAccess,
   getBookingOfferRateLabel,
   getBookingRateDetailLabel,
   getEventCancelledBookingLabel,
   hasPendingRateProposal,
   isBookingAffectedByCancelledEvent,
-  formatBookingStatusLabel,
   resolveBookingCancellationReasonLabel,
   resolveBookingCancelledByLabel,
   type BookingRequest,
@@ -38,8 +43,6 @@ import { rateDigitsToInteger } from "@/lib/bookingRate";
 import { formatBookingCardEventDate } from "@/lib/bookingDateTime";
 import { buildEventDetailFromDmHref } from "@/lib/events/eventsListNavigation";
 import type { BookingRecipientProfile } from "@/lib/user/currentUser";
-
-const DM_BOOKING_CARD_MAX_WIDTH_CLASS = "max-w-xs";
 
 function BookingCardAnimatedExpand({
   open,
@@ -184,14 +187,19 @@ export default function BookingRequestCard({
     .filter(Boolean)
     .join(" · ");
   const collapsedTitle = booking.event_name.trim() || "Booking request";
-  const cancelledCardClass = getBookingCancelledDmCardClass();
-  const cancelledBadgeClass = getBookingCancelledDmBadgeClass();
+  const collapsedStatusMessage = eventCancelledLabel ?? null;
   const compactRateLine = getBookingCardCompactRateLine(
     booking,
     offerRateLabel,
     rateDetailLabel,
     pendingProposal,
   );
+
+  function renderStatusBadge() {
+    const displayStatus: BookingRequestStatus = showAsCancelled ? "cancelled" : booking.status;
+
+    return <BookingStatusBadge status={displayStatus} />;
+  }
 
   function renderHeaderBadges() {
     return (
@@ -217,9 +225,9 @@ export default function BookingRequestCard({
           <p className="text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted">
             Booking request
           </p>
-          <h3 className="mt-0.5 break-words text-base font-semibold leading-snug text-ftc-text">
+          <p className="mt-0.5 break-words text-sm font-semibold leading-snug text-ftc-text">
             {booking.event_name}
-          </h3>
+          </p>
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1">
           {statusBadge}
@@ -234,63 +242,21 @@ export default function BookingRequestCard({
       <BookingCardCompactSummary
         booking={booking}
         rateLine={compactRateLine}
+        eventStatusLabel={eventCancelledLabel}
         cancelledByLabel={cancelledByLabel}
         cancellationReasonLabel={cancellationReasonLabel}
       />
     );
   }
 
-  function renderChevronDown() {
-    return (
-      <svg
-        aria-hidden="true"
-        viewBox="0 0 24 24"
-        className="h-4 w-4 shrink-0 text-ftc-text-muted"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.75"
-      >
-        <path d="m6 9 6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-    );
-  }
-
-  function renderChevronUp() {
-    return (
-      <svg
-        aria-hidden="true"
-        viewBox="0 0 24 24"
-        className="h-4 w-4 shrink-0 text-ftc-text-muted"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.75"
-      >
-        <path d="m18 15-6-6-6 6" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-    );
-  }
-
-  function renderCancelledStatusBadge(label = formatBookingStatusLabel("cancelled")) {
-    return (
-      <span className={cancelledBadgeClass}>{label}</span>
-    );
-  }
-
-  function renderCompactDmCollapseHeader(
-    statusBadge: ReactNode,
-    options?: { danger?: boolean },
-  ) {
+  function renderCompactDmCollapseHeader(statusBadge: ReactNode) {
     return (
       <button
         type="button"
         onClick={handleCollapse}
         aria-expanded={true}
         aria-label={`${collapsedTitle}, hide booking details`}
-        className={`-mx-1 -mt-1 mb-2.5 w-[calc(100%+0.5rem)] min-h-[44px] rounded-xl px-1 py-2 text-left transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ftc-primary ${
-          options?.danger
-            ? "hover:bg-[var(--ftc-color-danger)]/10"
-            : "hover:bg-ftc-bg-elevated/60"
-        }`}
+        className="-mx-1 -mt-1 mb-2.5 w-[calc(100%+0.5rem)] min-h-[44px] rounded-xl px-1 py-2 text-left transition hover:bg-ftc-bg-elevated/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ftc-primary"
       >
         <div className="flex items-start justify-between gap-2 px-1">
           <div className="min-w-0 flex-1">
@@ -303,15 +269,8 @@ export default function BookingRequestCard({
           </div>
           {statusBadge}
         </div>
-        <div
-          className={`mt-1.5 flex items-center justify-between gap-2 border-t px-1 pt-1.5 ${
-            options?.danger ? "border-[var(--ftc-color-danger)]/20" : "border-ftc-border-subtle"
-          }`}
-        >
-          <span className="text-xs font-semibold uppercase tracking-wide text-ftc-text-secondary">
-            Hide details
-          </span>
-          {renderChevronUp()}
+        <div className="mt-1.5 border-t border-ftc-border-subtle px-1 pt-1.5">
+          <DmBookingCardExpandFooter label="Hide details" embedded />
         </div>
       </button>
     );
@@ -337,36 +296,35 @@ export default function BookingRequestCard({
           />
         ) : null}
 
+        {booking.event_id && eventHref ? (
+          isAccepted && !showAsCancelled ? (
+            <div className={DM_BOOKING_CARD_ACTIONS_CLASS}>
+              <Link
+                href={eventHref}
+                className="ftc-btn-primary flex w-full items-center justify-center px-3 py-2.5 text-xs uppercase tracking-wide"
+              >
+                View event
+              </Link>
+              {showAcceptedCancel ? (
+                <CancelAcceptedBookingButton
+                  role={acceptedCancellationRole}
+                  loading={Boolean(cancelling)}
+                  onConfirm={onCancelAccepted}
+                  className="w-full border border-ftc-border-subtle bg-ftc-bg-elevated hover:border-red-500/35 hover:bg-ftc-bg-elevated hover:text-red-300"
+                />
+              ) : null}
+            </div>
+          ) : (
+            <div className={DM_BOOKING_CARD_ACTIONS_CLASS}>
+              <Link href={eventHref} className={DM_BOOKING_CARD_SECONDARY_BUTTON_CLASS}>
+                View event
+              </Link>
+            </div>
+          )
+        ) : null}
+
         {booking.event_id && !showAsCancelled ? (
           <>
-            {eventHref ? (
-              isAccepted ? (
-                <div className="mt-4 flex flex-col gap-2">
-                  <Link
-                    href={eventHref}
-                    className="ftc-btn-primary flex w-full items-center justify-center px-3 py-2.5 text-xs uppercase tracking-wide"
-                  >
-                    View event
-                  </Link>
-                  {showAcceptedCancel ? (
-                    <CancelAcceptedBookingButton
-                      role={acceptedCancellationRole}
-                      loading={Boolean(cancelling)}
-                      onConfirm={onCancelAccepted}
-                      className="w-full border border-ftc-border-subtle bg-ftc-bg-elevated hover:border-red-500/35 hover:bg-ftc-bg-elevated hover:text-red-300"
-                    />
-                  ) : null}
-                </div>
-              ) : (
-                <Link
-                  href={eventHref}
-                  className="mt-4 inline-flex rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated px-3 py-2 text-xs font-semibold uppercase tracking-wide text-ftc-text-secondary transition hover:border-ftc-border-strong"
-                >
-                  View event
-                </Link>
-              )
-            ) : null}
-
             {groupChatAccess && groupChatAccess.kind !== "hidden" ? (
               <div className="mt-4 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated p-3">
                 <p className="text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted">
@@ -394,7 +352,7 @@ export default function BookingRequestCard({
         ) : null}
 
         {showActionButtons && canRespond && isPending && !pendingProposal ? (
-          <div className="mt-4 flex flex-col gap-2">
+          <div className={DM_BOOKING_CARD_ACTIONS_CLASS}>
             {showDjOpenOfferActions ? (
               <>
                 <button
@@ -452,7 +410,7 @@ export default function BookingRequestCard({
         isPending &&
         pendingProposal &&
         booking.recipient_id === currentUserId ? (
-          <div className="mt-4">
+          <div className={DM_BOOKING_CARD_ACTIONS_CLASS}>
             <button
               type="button"
               onClick={onDecline}
@@ -465,20 +423,22 @@ export default function BookingRequestCard({
         ) : null}
 
         {showPendingCancel && !canReviewProposal ? (
-          <div className="mt-4">
+          <div className={DM_BOOKING_CARD_ACTIONS_CLASS}>
             <CancelBookingRequestButton
               loading={Boolean(cancelling)}
               onConfirm={onCancel}
+              className="w-full"
             />
           </div>
         ) : null}
 
         {showAcceptedCancel && !(isAccepted && booking.event_id && eventHref) ? (
-          <div className="mt-4">
+          <div className={DM_BOOKING_CARD_ACTIONS_CLASS}>
             <CancelAcceptedBookingButton
               role={acceptedCancellationRole}
               loading={Boolean(cancelling)}
               onConfirm={onCancelAccepted}
+              className="w-full border border-ftc-border-subtle bg-ftc-bg-elevated hover:border-red-500/35 hover:bg-ftc-bg-elevated hover:text-red-300"
             />
           </div>
         ) : null}
@@ -486,118 +446,20 @@ export default function BookingRequestCard({
     );
   }
 
-  if (collapsible && !expanded && showAsCancelled) {
-    return (
-      <button
-        type="button"
-        onClick={handleExpand}
-        className={`w-full ${DM_BOOKING_CARD_MAX_WIDTH_CLASS} rounded-2xl p-3 text-left transition ${cancelledCardClass} hover:border-[var(--ftc-color-danger)]/50`}
-      >
-        <div className="flex items-start justify-between gap-2">
-          <p className="min-w-0 flex-1 break-words text-sm font-semibold leading-snug text-ftc-text">
-            {collapsedTitle}
-          </p>
-          {renderCancelledStatusBadge(
-            eventCancelledLabel ?? formatBookingStatusLabel("cancelled"),
-          )}
-        </div>
-
-        {collapsedDateVenue ? (
-          <p className="mt-2 break-words text-xs text-ftc-text-muted">{collapsedDateVenue}</p>
-        ) : null}
-
-        {eventCancelledLabel ? (
-          <p className="mt-1 break-words text-xs text-[var(--ftc-color-danger)]/90">
-            {eventCancelledLabel}
-          </p>
-        ) : cancellationReasonLabel ? (
-          <p className="mt-1 break-words text-xs text-[var(--ftc-color-danger)]/90">
-            {cancellationReasonLabel}
-          </p>
-        ) : null}
-
-        <div className="mt-3 flex items-center justify-between gap-2 border-t border-[var(--ftc-color-danger)]/20 pt-2">
-          <span className="text-xs font-semibold uppercase tracking-wide text-ftc-text-secondary">
-            View details
-          </span>
-          {renderChevronDown()}
-        </div>
-      </button>
-    );
-  }
-
-  if (showAsCancelled) {
-    return (
-      <div className={`w-full ${DM_BOOKING_CARD_MAX_WIDTH_CLASS} rounded-2xl p-3.5 ${cancelledCardClass}`}>
-        {collapsible && expanded && useCompactDmCollapseHeader ? (
-          renderCompactDmCollapseHeader(
-            renderCancelledStatusBadge(
-              eventCancelledLabel ?? formatBookingStatusLabel("cancelled"),
-            ),
-            { danger: true },
-          )
-        ) : collapsible ? (
-          <button
-            type="button"
-            onClick={handleCollapse}
-            className="-mx-1 -mt-1 mb-3 flex w-[calc(100%+0.5rem)] items-center justify-between gap-2 rounded-xl px-1 py-1 text-left transition hover:bg-[var(--ftc-color-danger)]/10"
-          >
-            <span className="text-xs font-semibold uppercase tracking-wide text-ftc-text-secondary">
-              Hide details
-            </span>
-            {renderChevronUp()}
-          </button>
-        ) : null}
-
-        {!(collapsible && expanded && useCompactDmCollapseHeader) ? (
-          renderExpandedHeader(
-            renderCancelledStatusBadge(
-              eventCancelledLabel ?? formatBookingStatusLabel("cancelled"),
-            ),
-          )
-        ) : null}
-
-        {eventCancelledLabel ? (
-          <p className="mt-2.5 break-words text-sm text-[var(--ftc-color-danger)]/90">
-            {eventCancelledLabel}
-          </p>
-        ) : null}
-
-        <div className="mt-3">{renderCompactSummary()}</div>
-
-        {booking.event_id ? (
-          <Link
-            href={eventHref!}
-            className="mt-3 flex w-full items-center justify-center rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated px-3 py-2 text-xs font-semibold uppercase tracking-wide text-ftc-text-secondary transition hover:border-ftc-border-strong"
-          >
-            View event
-          </Link>
-        ) : null}
-      </div>
-    );
-  }
-
-  if (collapsible && !showAsCancelled) {
+  if (collapsible) {
     return (
       <>
-        <div className={`w-full ${DM_BOOKING_CARD_MAX_WIDTH_CLASS} rounded-2xl border border-ftc-border-subtle bg-ftc-surface p-3.5`}>
+        <div className={DM_BOOKING_CARD_SHELL_CLASS}>
           {!expanded ? (
             <button
               type="button"
               onClick={handleExpand}
               className="w-full text-left transition hover:opacity-95 active:opacity-90"
             >
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0 flex-1">
-                  <p className="text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted">
-                    Booking request
-                  </p>
-                  <p className="mt-0.5 break-words text-sm font-semibold leading-snug text-ftc-text">
-                    {collapsedTitle}
-                  </p>
-                </div>
-                <BookingStatusBadge status={booking.status} />
-              </div>
+              <DmBookingCardCollapsedHeader
+                title={collapsedTitle}
+                badge={renderStatusBadge()}
+              />
 
               {urgentLabel ? (
                 <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-ftc-primary">
@@ -605,29 +467,16 @@ export default function BookingRequestCard({
                 </p>
               ) : null}
 
-              <p className="mt-2 break-words text-xs text-ftc-text-secondary">
-                {collapsedOfferSummary}
-              </p>
+              <DmBookingCardCollapsedDetails
+                offerSummary={collapsedOfferSummary}
+                dateVenue={collapsedDateVenue || null}
+                statusMessage={collapsedStatusMessage}
+              />
 
-              {collapsedDateVenue ? (
-                <p className="mt-1 break-words text-xs text-ftc-text-muted">{collapsedDateVenue}</p>
-              ) : null}
-
-              {cancellationReasonLabel ? (
-                <p className="mt-1 break-words text-xs text-ftc-text-muted">
-                  {cancellationReasonLabel}
-                </p>
-              ) : null}
-
-              <div className="mt-3 flex items-center justify-between gap-2 border-t border-ftc-border-subtle pt-2">
-                <span className="text-xs font-semibold uppercase tracking-wide text-ftc-text-secondary">
-                  View details
-                </span>
-                {renderChevronDown()}
-              </div>
+              <DmBookingCardExpandFooter label="View details" />
             </button>
           ) : useCompactDmCollapseHeader ? (
-            renderCompactDmCollapseHeader(<BookingStatusBadge status={booking.status} />)
+            renderCompactDmCollapseHeader(renderStatusBadge())
           ) : (
             <>
               <button
@@ -638,9 +487,18 @@ export default function BookingRequestCard({
                 <span className="text-xs font-semibold uppercase tracking-wide text-ftc-text-secondary">
                   Hide details
                 </span>
-                {renderChevronUp()}
+                <svg
+                  aria-hidden="true"
+                  viewBox="0 0 24 24"
+                  className="h-4 w-4 shrink-0 text-ftc-text-muted"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.75"
+                >
+                  <path d="m18 15-6-6-6 6" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
               </button>
-              {renderExpandedHeader(<BookingStatusBadge status={booking.status} />)}
+              {renderExpandedHeader(renderStatusBadge())}
             </>
           )}
 
@@ -665,8 +523,8 @@ export default function BookingRequestCard({
 
   return (
     <>
-      <div className={`w-full ${DM_BOOKING_CARD_MAX_WIDTH_CLASS} rounded-2xl border border-ftc-border-subtle bg-ftc-surface p-3.5`}>
-        {renderExpandedHeader(<BookingStatusBadge status={booking.status} />)}
+      <div className={DM_BOOKING_CARD_SHELL_CLASS}>
+        {renderExpandedHeader(renderStatusBadge())}
 
         <div className="mt-3">{renderExpandedBody()}</div>
       </div>
