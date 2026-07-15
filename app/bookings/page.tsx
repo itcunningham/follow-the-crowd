@@ -2031,10 +2031,10 @@ function BookingSectionTabs({
 const GIG_CARD_CLASS_NAME =
   "ftc-gig-card ftc-surface-row rounded-[var(--ftc-radius-xl)] p-2.5 sm:p-4";
 
-const GIG_CARD_BODY_CLASS_NAME = "flex min-w-0 max-w-full flex-col gap-1.5 overflow-hidden sm:gap-3";
+const GIG_CARD_BODY_CLASS_NAME = "flex min-w-0 max-w-full flex-col gap-1 overflow-hidden sm:gap-3";
 
 const GIG_CARD_MOBILE_OPEN_DM_CLASS =
-  "ftc-btn-primary inline-flex min-h-9 shrink-0 items-center justify-center self-end px-2.5 py-1 text-[0.6875rem] uppercase tracking-wide";
+  "ftc-btn-primary inline-flex min-h-[2.125rem] shrink-0 items-center justify-center self-end px-2.5 py-0.5 text-[0.6875rem] uppercase tracking-wide";
 
 function GigCardOfferLineFromLabel({
   rateLabel,
@@ -2097,7 +2097,7 @@ function GigCardHeader({
     <div className="min-w-0">
       <div className="flex min-w-0 items-start justify-between gap-2 sm:gap-2.5">
         <h3
-          className={`min-w-0 flex-1 text-sm font-semibold leading-snug line-clamp-2 sm:text-base ${titleClass}`}
+          className={`min-w-0 flex-1 text-sm font-bold leading-snug line-clamp-2 sm:text-base ${titleClass}`}
         >
           {eventName}
         </h3>
@@ -2106,7 +2106,7 @@ function GigCardHeader({
         </span>
       </div>
       {plannerLabel ? (
-        <p className="mt-0.5 text-[11px] font-normal leading-snug text-ftc-text-muted sm:mt-1 sm:text-xs">
+        <p className="mt-1.5 text-[11px] font-normal leading-snug text-ftc-text-muted sm:mt-1.5 sm:text-xs">
           {plannerLabel}
         </p>
       ) : null}
@@ -2137,48 +2137,41 @@ function GigCardMetaRows({
   const setTimeLine = setTime?.trim() || "TBC";
   const showRate = Boolean(rateLabel?.trim());
 
+  const offerLine = showRate ? (
+    <GigCardOfferLineFromLabel rateLabel={rateLabel!} muted={muted} />
+  ) : null;
+
+  const renderDetailsBlock = (footer?: ReactNode) => (
+    <div className="space-y-0.5">
+      {venueDateLine ? (
+        <p className="min-w-0 max-w-full overflow-hidden break-words">{venueDateLine}</p>
+      ) : null}
+      <p className="min-w-0 max-w-full overflow-hidden break-words">{setTimeLine}</p>
+      {footer ?? offerLine}
+    </div>
+  );
+
   return (
     <>
       <div
-        className={`ftc-gig-card-meta mt-1.5 min-w-0 overflow-hidden text-xs sm:hidden ${textClass}`}
+        className={`ftc-gig-card-meta mt-1 min-w-0 overflow-hidden text-xs sm:hidden ${textClass}`}
       >
-        <div className="space-y-1">
-          <div className="space-y-0.5">
-            {venueDateLine ? (
-              <p className="min-w-0 max-w-full overflow-hidden break-words">{venueDateLine}</p>
-            ) : null}
-            <p className="min-w-0 max-w-full overflow-hidden break-words">{setTimeLine}</p>
-          </div>
-          {mobileFooter ? mobileFooter : null}
-          {!mobileFooter && showRate ? (
-            <GigCardOfferLineFromLabel rateLabel={rateLabel!} muted={muted} />
-          ) : null}
-          {extraLine ? (
-            <p className="min-w-0 max-w-full overflow-hidden break-words text-xs text-ftc-text-muted">
-              {extraLine}
-            </p>
-          ) : null}
-        </div>
+        {renderDetailsBlock(mobileFooter)}
+        {extraLine ? (
+          <p className="mt-1 min-w-0 max-w-full overflow-hidden break-words text-xs text-ftc-text-muted">
+            {extraLine}
+          </p>
+        ) : null}
       </div>
       <div
-        className={`ftc-gig-card-meta mt-1.5 hidden min-w-0 overflow-hidden text-xs sm:mt-2 sm:block sm:text-sm ${textClass}`}
+        className={`ftc-gig-card-meta mt-1 hidden min-w-0 overflow-hidden text-xs sm:mt-2 sm:block sm:text-sm ${textClass}`}
       >
-        <div className="space-y-1">
-          <div className="space-y-0.5">
-            {venueDateLine ? (
-              <p className="min-w-0 max-w-full overflow-hidden break-words">{venueDateLine}</p>
-            ) : null}
-            <p className="min-w-0 max-w-full overflow-hidden break-words">{setTimeLine}</p>
-          </div>
-          {showRate ? (
-            <GigCardOfferLineFromLabel rateLabel={rateLabel!} muted={muted} />
-          ) : null}
-          {extraLine ? (
-            <p className="min-w-0 max-w-full overflow-hidden break-words text-xs text-ftc-text-muted">
-              {extraLine}
-            </p>
-          ) : null}
-        </div>
+        {renderDetailsBlock()}
+        {extraLine ? (
+          <p className="mt-1 min-w-0 max-w-full overflow-hidden break-words text-xs text-ftc-text-muted">
+            {extraLine}
+          </p>
+        ) : null}
       </div>
     </>
   );

@@ -73,7 +73,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 - Default send button label mode: **Confirm N DJ(s)** (`SendBookingRequestsPanel`)
 - Unavailable-DJ confirm modal uses Confirm wording
 - Calendar-origin and standard create flows aligned on copy and validation
-- **Gigs mobile cards (2026-07-15):** refined Incoming/Confirmed hierarchy — `line-clamp-2` titles, lighter `From …` promoter line, grouped venue/date+time block, split offer spans (muted prefix + stronger amount), badge `mt-0.5` balance, compact `min-h-9` Open DM; shared `GigCardOfferLineFromLabel`; skeleton matches column layout; desktop unchanged at `sm+`
+- **Gigs mobile cards (2026-07-15):** tightened detail stack (venue/date, time, offer in one `space-y-0.5` group); bolder title + 6px title-to-promoter gap; slightly shorter Open DM; skeleton aligned
 
 ## Event Plans
 
