@@ -4,7 +4,7 @@
 -- Each result row: check_name, expected, actual, pass (true/false).
 
 with policy_names as (
-  select tablename, policyname, roles::text as roles, cmd, qual, with_check
+  select tablename, policyname, roles, roles::text as roles_text, cmd, qual, with_check
   from pg_policies
   where schemaname = 'public'
 ),
@@ -81,13 +81,16 @@ checks as (
       where tablename = 'events' and policyname = 'events_select_owner_or_invited'
     ) then 'owner_or_invited policy' else 'missing policy' end
 
-  union all select 12, 'no broad public write on core tables', 'no public write',
+  union all select 12, 'no public or anon write policies on core tables', 'no public/anon write',
     case when exists (
       select 1 from policy_names
-      where roles like '%public%'
+      where tablename in ('messages', 'booking_requests', 'notifications', 'events', 'conversations', 'conversation_members')
         and cmd in ('INSERT', 'UPDATE', 'DELETE', 'ALL')
-        and tablename in ('messages', 'booking_requests', 'notifications', 'events', 'conversations', 'conversation_members')
-    ) then 'public write found' else 'no public write' end
+        and (
+          'public'::name = any (roles)
+          or 'anon'::name = any (roles)
+        )
+    ) then 'public/anon write found' else 'no public/anon write' end
 
   union all select 13, 'message_attachments membership policies present', 'present',
     case when exists (

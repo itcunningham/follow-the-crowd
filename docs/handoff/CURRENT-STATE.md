@@ -101,6 +101,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 
 - **`docs/qa/`** — official QA workspace: beta readiness checklist, test plan, regression checklist, bug template, release checklist
 - **Blocker-fix batch (2026-07-15):** `/bookings` hooks + redirect; crew-chat auto-start RPC auth migration; `/events/create` redirect + invalid event ID guard; production message logging removed/gated; AI generation disabled for private beta via `lib/featureFlags.ts`
+- **Security remediation (2026-07-15):** production audit 15/16 — legacy policy `allow public insert messages` on `public.messages` (`TO public`, `WITH CHECK (true)`) bypassed hardened DM/crew insert RLS; migration `20250715213000_remove_legacy_public_message_insert.sql`; audit check #12 corrected to exact `public`/`anon` role membership
 
 ### Beta blocker fixes — detail
 
@@ -111,6 +112,11 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 | 3 | `/events/create` + invalid IDs | Dynamic route treated `create` as UUID | `app/events/create/page.tsx`, `app/events/[eventId]/page.tsx`, `lib/events.ts` |
 | 4 | Message metadata logging | Debug `console.log` in realtime handlers | `app/dm/page.tsx`, `app/dm/[conversationId]/page.tsx`, `lib/chatNewMessageHighlight.ts`, `lib/notifications.ts` |
 | 5 | AI disabled for beta | Private beta scope | `lib/featureFlags.ts`, `app/api/generate-event/route.ts`, `app/page.tsx` |
+| 6 | Legacy public message INSERT | Production-only policy `allow public insert messages` not in repo; `TO public` + `WITH CHECK (true)` allowed any role to insert rows that bypassed participant/crew checks | `supabase/migrations/20250715213000_remove_legacy_public_message_insert.sql`, `scripts/setupProductionRls.sql`, `scripts/supabaseSecurityAuditChecklist.sql` |
+
+**Why removing BR-06 policy is safe:** Legitimate inserts use `messages_insert_conversation_sender` (conversation member + block check) and `messages_insert_event_crew` (crew member check), both `TO authenticated`. Dropping the legacy policy removes a permissive OR-path only; it does not drop hardened policies or revoke authenticated `INSERT` grant.
+
+**Production apply (BR-06):** Run migration in Supabase SQL Editor → rerun full `scripts/supabaseSecurityAuditChecklist.sql` (require 16/16) → test DM send + crew-chat send → then QA regression.
 
 **Builder tests:** `npm run build` — **Passed** (2026-07-15). No browser regression run in this batch — QA Agent next.
 
@@ -118,9 +124,9 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 
 **Production gates for Isaac (not verified by repo inspection alone):**
 
-1. Run `scripts/supabaseSecurityAuditChecklist.sql` in production — every row must pass (includes check #16 crew auto-start auth).
-2. Confirm hardened production RLS and crew-chat policies present; legacy wide-open bootstrap policies absent.
-3. Apply migration `20250715180000_harden_crew_chat_auto_start_auth.sql` before or with app deploy.
+1. Run `scripts/supabaseSecurityAuditChecklist.sql` in production — every row must pass (includes check #12 public/anon write + check #16 crew auto-start auth).
+2. Confirm hardened production RLS and crew-chat policies present; legacy `allow public insert messages` absent after migration.
+3. Apply migrations `20250715180000_harden_crew_chat_auto_start_auth.sql` and `20250715213000_remove_legacy_public_message_insert.sql` before or with app deploy.
 4. Review Supabase Auth: email confirmation, password policy, rate limits.
 5. Restrict Google Maps API key to approved production/preview domains.
 6. Use controlled invitations/allowlist for private beta signup (no unrestricted public signup).
@@ -155,6 +161,8 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 | Planner Archived tab | `scripts/setupBookingRequestArchiving.sql` (sender `archived_at`) |
 | Rate proposals | `scripts/setupBookingRateProposal.sql` |
 | Booking cancellation | `scripts/setupBookingCancellation.sql` |
+| Crew-chat auto-start auth | `supabase/migrations/20250715180000_harden_crew_chat_auto_start_auth.sql` |
+| Remove legacy public message INSERT | `supabase/migrations/20250715213000_remove_legacy_public_message_insert.sql` |
 
 ## Recent commits (reference)
 

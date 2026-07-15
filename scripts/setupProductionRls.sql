@@ -388,6 +388,7 @@ drop policy if exists "Allow anon select conversation_members" on public.convers
 drop policy if exists "Allow anon insert conversation_members" on public.conversation_members;
 drop policy if exists "conversations_select_member" on public.conversations;
 drop policy if exists "conversation_members_select_shared" on public.conversation_members;
+drop policy if exists "allow public insert messages" on public.messages;
 drop policy if exists "messages_select_conversation_member" on public.messages;
 drop policy if exists "messages_insert_conversation_sender" on public.messages;
 drop policy if exists "messages_update_conversation_member" on public.messages;

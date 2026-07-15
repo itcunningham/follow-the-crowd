@@ -22,6 +22,7 @@ Legacy one-off scripts remain in `scripts/` for bootstrapping and fixes. New fea
 | Duplicate booking protection | `scripts/fixEventBookingDuplicateProtection.sql` |
 | Production RLS | `scripts/setupProductionRls.sql` |
 | **Crew-chat auto-start auth** | `supabase/migrations/20250715180000_harden_crew_chat_auto_start_auth.sql` |
+| **Remove legacy public message INSERT** | `supabase/migrations/20250715213000_remove_legacy_public_message_insert.sql` |
 | **Security audit (production gate)** | `scripts/supabaseSecurityAuditChecklist.sql` |
 | **Remove from history (Events)** | `supabase/migrations/20250710120000_event_history_hide.sql` |
 | **Remove from history (Gigs / planner sent bookings)** | `supabase/migrations/20250710130000_booking_request_history_hides.sql` |
@@ -53,8 +54,9 @@ Legacy one-off scripts remain in `scripts/` for bootstrapping and fixes. New fea
 
 **Do not mark passed until run against production Supabase.**
 
-1. Run `scripts/supabaseSecurityAuditChecklist.sql` — all rows must pass (check #16: `ensure_event_crew_chat_auto_started` requires `auth_user_id()` + `is_event_crew_participant`; authenticated-only execute).
-2. Confirm hardened RLS and crew-chat policies present; no legacy `using (true)` bootstrap policies on core tables.
+1. Run `scripts/supabaseSecurityAuditChecklist.sql` — all rows must pass (check #12: no `public`/`anon` write on core tables; check #16: crew auto-start auth).
+2. Confirm hardened RLS and crew-chat policies present; no legacy `using (true)` or `allow public insert messages` on core tables.
+3. Apply pending migrations: `20250715180000_harden_crew_chat_auto_start_auth.sql`, `20250715213000_remove_legacy_public_message_insert.sql`.
 3. Review Supabase Auth: email confirmation, password policy, rate limits.
 4. Restrict Google Maps API key to approved production/preview domains.
 5. Private beta: controlled invitations or allowlist — not unrestricted public signup.

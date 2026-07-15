@@ -2,12 +2,12 @@
 
 Master gate checklist for FTC private beta. Mark each area when QA has completed testing and sign-off is ready.
 
-**Last updated:** 2026-07-15 (Beta Readiness blocker-fix batch)  
+**Last updated:** 2026-07-15 (legacy public message insert remediation)  
 **Beta target:** Private beta (planner + DJ testers)
 
 ## Beta Readiness blocker fixes (2026-07-15)
 
-Builder batch addressing QA + Security Review blockers. **Next:** QA Agent authenticated regression (Planner, DJ, Both; two browsers; iPhone Safari + production).
+Builder batch addressing QA + Security Review blockers. **Next:** Apply pending production SQL migrations, rerun full security audit (16/16), then QA Agent regression.
 
 | Fix | Root cause | Status | Builder verification | Production-only still required |
 |-----|------------|--------|----------------------|------------------------------|
@@ -16,8 +16,9 @@ Builder batch addressing QA + Security Review blockers. **Next:** QA Agent authe
 | `/events/create` + invalid IDs | `[eventId]` captured `create`; invalid UUIDs surfaced Postgres `22P02` | Partial | Redirect route + UUID guard; build passes | QA invalid/deleted IDs on production |
 | Message metadata logging | Debug `console.log` in DM inbox realtime handlers | Partial | Logs removed/gated in messaging files | QA: no payload logs in prod console |
 | AI generation disabled | Private beta excludes AI | Partial | Feature flags; marketing AI UI hidden | QA: no AI button on production home |
+| Legacy public message INSERT | Production policy `allow public insert messages` on `public.messages` (`TO public`, `WITH CHECK (true)`) | Blocked | Migration + audit check #12 fix in repo | Isaac: run migration; rerun audit 16/16; test DM + crew chat send |
 
-**Deploy order:** (1) Run `supabase/migrations/20250715180000_harden_crew_chat_auto_start_auth.sql` in production, (2) deploy Next.js, (3) run `scripts/supabaseSecurityAuditChecklist.sql` (all rows pass).
+**Deploy order:** (1) Run pending Supabase migrations in production (`20250715180000`, then `20250715213000`), (2) deploy Next.js, (3) run `scripts/supabaseSecurityAuditChecklist.sql` (all 16 rows pass), (4) test DM and crew-chat message send, (5) QA regression.
 
 ## How to use
 
@@ -35,8 +36,8 @@ Builder batch addressing QA + Security Review blockers. **Next:** QA Agent authe
 | Item | Status | Severity if failed | Owner | Notes |
 |------|--------|-------------------|-------|-------|
 | Vercel production deploy matches latest `main` | Not Started | Critical | Isaac | |
-| Supabase migrations applied (see `docs/handoff/SUPABASE.md`) | Blocked | Critical | Isaac | `20250715180000_harden_crew_chat_auto_start_auth.sql` pending production run |
-| Production security audit checklist all rows pass | Not Started | Critical | Isaac | `scripts/supabaseSecurityAuditChecklist.sql` — includes new crew auto-start check |
+| Supabase migrations applied (see `docs/handoff/SUPABASE.md`) | Blocked | Critical | Isaac | `20250715180000`, `20250715213000` pending production run |
+| Production security audit checklist all rows pass | Blocked | Critical | Isaac | Was 15/16 — check #12 failed on legacy `allow public insert messages`; fix ready, not yet applied |
 | Production RLS hardened; no legacy `using (true)` bootstrap policies | Not Started | Critical | Isaac | Repo inspection only — must verify in production |
 | Supabase Auth: email confirmation, password policy, rate limits reviewed | Not Started | High | Isaac | |
 | Google Maps API key restricted to approved production/preview domains | Not Started | High | Isaac | |
@@ -61,10 +62,10 @@ Builder batch addressing QA + Security Review blockers. **Next:** QA Agent authe
 | Calendar | Not Started | — | | |
 | Gigs | Partial | Critical | `/bookings` hooks fix — QA redirect + role regression | |
 | Booking flow | Not Started | — | | |
-| Messaging (DM) | Partial | Medium | Production payload logging removed — QA console check | |
-| Crew chat | Blocked | Critical | RPC auth migration pending production apply | |
+| Messaging (DM) | Blocked | Critical | Legacy public INSERT policy on production messages — migration pending | |
+| Crew chat | Blocked | Critical | Same legacy policy bypassed crew insert RLS; migration pending | |
 | Realtime | Partial | Medium | Inbox handler logging gated — behaviour unchanged | |
-| Permissions | Partial | High | Crew-chat RPC hardened in migration (production pending) | |
+| Permissions | Blocked | Critical | Audit 15/16 until migration applied and audit rerun | |
 | Performance | Not Started | — | | |
 | Accessibility | Not Started | — | | |
 | Edge cases | Not Started | — | | |
@@ -133,6 +134,7 @@ Password reset email + cooldown, sign out, account deletion request mailto.
 | BR-03 | High | Events | `/events/create` exposed Postgres error; invalid event IDs unsafe | Fixed in code — QA verify |
 | BR-04 | Medium | Messaging | Production console logged realtime message payloads | Fixed in code — QA verify prod console |
 | BR-05 | Medium | Marketing | AI generation visible during private beta | Disabled via feature flags — QA verify prod home |
+| BR-06 | Critical | Security | Legacy `allow public insert messages` on production (`TO public`, `WITH CHECK (true)`) | Migration ready — not Passed until audit 16/16 + DM/crew send test |
 
 ---
 

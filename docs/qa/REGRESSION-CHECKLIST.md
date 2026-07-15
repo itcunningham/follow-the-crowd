@@ -80,6 +80,9 @@ Focused smoke and regression pass for FTC. Run before each beta release or after
 | R-46 | DM inbox realtime: no message payload/content logs in production console | Partial | Medium |
 | R-47 | Marketing home: no visible AI generate button (private beta) | Partial | Medium |
 | R-48 | Manual create event via `/events?create=event` still works | Not Started | Critical |
+| R-49 | Production security audit 16/16 pass | Blocked | Critical |
+| R-50 | DM send after public-insert policy removed | Blocked | Critical |
+| R-51 | Crew-chat send after public-insert policy removed | Blocked | Critical |
 
 ---
 
@@ -87,9 +90,9 @@ Focused smoke and regression pass for FTC. Run before each beta release or after
 
 | # | Test | Status | Severity if failed |
 |---|------|--------|-------------------|
-| R-50 | Past/cancelled event detail is read-only (no Edit) | Not Started | Medium |
-| R-51 | Remove event from History → hidden from list (not deleted) | Not Started | Medium |
-| R-52 | Gigs History bulk remove works | Not Started | Low |
+| R-55 | Past/cancelled event detail is read-only (no Edit) | Not Started | Medium |
+| R-56 | Remove event from History → hidden from list (not deleted) | Not Started | Medium |
+| R-57 | Gigs History bulk remove works | Not Started | Low |
 
 ---
 
