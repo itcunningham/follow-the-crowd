@@ -555,14 +555,6 @@ export function getBookingCollapsedUrgentLabel(
     return "Rate proposed";
   }
 
-  if (
-    options.canRespond &&
-    booking.status === "pending" &&
-    !hasPendingRateProposal(booking)
-  ) {
-    return "Action needed";
-  }
-
   return null;
 }
 

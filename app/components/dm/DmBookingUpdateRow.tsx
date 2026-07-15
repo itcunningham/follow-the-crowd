@@ -12,7 +12,7 @@ import {
   type BookingRequest,
   type BookingRequestStatus,
 } from "@/lib/bookingRequests";
-import { formatDisplayEventDate } from "@/lib/bookingDateTime";
+import { formatBookingCardEventDate } from "@/lib/bookingDateTime";
 import type { BookingFocusPhase } from "@/lib/chatBookingFocusHighlight";
 
 export default function DmBookingUpdateRow({
@@ -60,7 +60,7 @@ export default function DmBookingUpdateRow({
       : null;
   const collapsedDateLine =
     displayStatus === "accepted" && !showAsCancelled && booking.event_date?.trim()
-      ? formatDisplayEventDate(booking.event_date)
+      ? formatBookingCardEventDate(booking.event_date)
       : null;
 
   return (
@@ -69,7 +69,7 @@ export default function DmBookingUpdateRow({
       onClick={onViewDetails}
       aria-expanded={false}
       aria-label={`${title}, ${statusText}. View booking details`}
-      className={`relative z-10 w-full max-w-sm min-h-[44px] touch-manipulation rounded-xl p-2.5 text-left transition hover:border-ftc-border-strong active:border-ftc-border-strong focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ftc-primary ${cardClass} ${highlightClassName}`}
+      className={`relative z-10 w-full max-w-xs min-h-[44px] touch-manipulation rounded-xl p-2.5 text-left transition hover:border-ftc-border-strong active:border-ftc-border-strong focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ftc-primary ${cardClass} ${highlightClassName}`}
     >
       <div className="flex items-center justify-between gap-2">
         <p className="min-w-0 flex-1 truncate text-sm font-semibold text-ftc-text">{title}</p>

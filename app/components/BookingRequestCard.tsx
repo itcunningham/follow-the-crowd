@@ -35,9 +35,11 @@ import {
   type BookingRequestStatus,
 } from "@/lib/bookingRequests";
 import { rateDigitsToInteger } from "@/lib/bookingRate";
-import { formatDisplayEventDate } from "@/lib/bookingDateTime";
+import { formatBookingCardEventDate } from "@/lib/bookingDateTime";
 import { buildEventDetailFromDmHref } from "@/lib/events/eventsListNavigation";
 import type { BookingRecipientProfile } from "@/lib/user/currentUser";
+
+const DM_BOOKING_CARD_MAX_WIDTH_CLASS = "max-w-xs";
 
 function BookingCardAnimatedExpand({
   open,
@@ -175,7 +177,7 @@ export default function BookingRequestCard({
   });
   const collapsedOfferSummary = getBookingCollapsedOfferSummary(booking);
   const collapsedDateVenue = [
-    booking.event_date?.trim() ? formatDisplayEventDate(booking.event_date) : "",
+    booking.event_date?.trim() ? formatBookingCardEventDate(booking.event_date) : "",
     booking.venue?.trim(),
   ]
     .filter(Boolean)
@@ -469,7 +471,7 @@ export default function BookingRequestCard({
       <button
         type="button"
         onClick={handleExpand}
-        className={`w-full max-w-sm rounded-2xl p-3 text-left transition ${cancelledCardClass} hover:border-[var(--ftc-color-danger)]/50`}
+        className={`w-full ${DM_BOOKING_CARD_MAX_WIDTH_CLASS} rounded-2xl p-3 text-left transition ${cancelledCardClass} hover:border-[var(--ftc-color-danger)]/50`}
       >
         <div className="flex items-start justify-between gap-2">
           <p className="min-w-0 flex-1 break-words text-sm font-semibold leading-snug text-ftc-text">
@@ -506,7 +508,7 @@ export default function BookingRequestCard({
 
   if (showAsCancelled) {
     return (
-      <div className={`w-full max-w-sm rounded-2xl p-3.5 ${cancelledCardClass}`}>
+      <div className={`w-full ${DM_BOOKING_CARD_MAX_WIDTH_CLASS} rounded-2xl p-3.5 ${cancelledCardClass}`}>
         {collapsible && expanded && useCompactDmCollapseHeader ? (
           renderCompactDmCollapseHeader(
             renderCancelledStatusBadge(
@@ -546,7 +548,7 @@ export default function BookingRequestCard({
         {booking.event_id ? (
           <Link
             href={eventHref!}
-            className="mt-3 inline-flex rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated px-3 py-2 text-xs font-semibold uppercase tracking-wide text-ftc-text-secondary transition hover:border-ftc-border-strong"
+            className="mt-3 flex w-full items-center justify-center rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated px-3 py-2 text-xs font-semibold uppercase tracking-wide text-ftc-text-secondary transition hover:border-ftc-border-strong"
           >
             View event
           </Link>
@@ -558,7 +560,7 @@ export default function BookingRequestCard({
   if (collapsible && !showAsCancelled) {
     return (
       <>
-        <div className="w-full max-w-sm rounded-2xl border border-ftc-border-subtle bg-ftc-surface p-3.5">
+        <div className={`w-full ${DM_BOOKING_CARD_MAX_WIDTH_CLASS} rounded-2xl border border-ftc-border-subtle bg-ftc-surface p-3.5`}>
           {!expanded ? (
             <button
               type="button"
@@ -643,7 +645,7 @@ export default function BookingRequestCard({
 
   return (
     <>
-      <div className="w-full max-w-sm rounded-2xl border border-ftc-border-subtle bg-ftc-surface p-3.5">
+      <div className={`w-full ${DM_BOOKING_CARD_MAX_WIDTH_CLASS} rounded-2xl border border-ftc-border-subtle bg-ftc-surface p-3.5`}>
         {renderExpandedHeader(<BookingStatusBadge status={booking.status} />)}
 
         <div className="mt-3">{renderExpandedBody()}</div>

@@ -8,7 +8,7 @@ import {
   FtcRateIcon,
   FtcVenueIcon,
 } from "@/app/components/ftc/FtcCompactMeta";
-import { formatDisplayEventDate } from "@/lib/bookingDateTime";
+import { formatBookingCardEventDate } from "@/lib/bookingDateTime";
 import type { BookingRequest } from "@/lib/bookingRequests";
 
 const NOTES_COLLAPSE_CHAR_THRESHOLD = 140;
@@ -89,13 +89,13 @@ export default function BookingCardCompactSummary({
 }) {
   const venue = booking.venue?.trim();
   const eventDate = booking.event_date?.trim()
-    ? formatDisplayEventDate(booking.event_date)
+    ? formatBookingCardEventDate(booking.event_date)
     : "";
   const setTime = booking.set_time?.trim() || "TBC";
 
   return (
-    <div className="space-y-2.5">
-      <ul className="space-y-2">
+    <div className="space-y-3">
+      <ul className="space-y-2.5">
         {venue ? (
           <FtcMetaRow icon={<FtcVenueIcon />}>{venue}</FtcMetaRow>
         ) : null}

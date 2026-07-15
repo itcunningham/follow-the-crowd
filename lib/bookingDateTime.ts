@@ -657,6 +657,38 @@ export function formatIsoDateKeyForDisplay(dateKey: string): string {
   return `${day}-${month}-${year}`;
 }
 
+/** Readable date for booking cards in chat (e.g. "14 Jul 2026"). */
+export function formatBookingCardEventDate(eventDate: string): string {
+  const trimmed = eventDate.trim();
+
+  if (!trimmed) {
+    return "";
+  }
+
+  const dateKey = resolveEventDateKey(trimmed);
+
+  if (dateKey && isIsoDateString(dateKey)) {
+    const [year, month, day] = dateKey.split("-").map(Number);
+    const date = new Date(year, month - 1, day);
+
+    if (!Number.isNaN(date.getTime())) {
+      return date.toLocaleDateString("en-AU", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      });
+    }
+  }
+
+  const parsed = parseEventDate(trimmed);
+
+  if (parsed.legacyValue) {
+    return parsed.legacyValue;
+  }
+
+  return trimmed;
+}
+
 export function formatDisplayEventDate(eventDate: string): string {
   const trimmed = eventDate.trim();
 
