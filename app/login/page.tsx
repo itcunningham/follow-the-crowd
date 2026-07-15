@@ -171,6 +171,7 @@ export default function LoginPage() {
                 </span>
                 <input
                   type="email"
+                  aria-label="Email"
                   value={email}
                   onChange={(event) => setEmail(event.target.value)}
                   autoComplete="email"
@@ -185,6 +186,7 @@ export default function LoginPage() {
                 </span>
                 <input
                   type="password"
+                  aria-label="Password"
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
                   autoComplete="current-password"

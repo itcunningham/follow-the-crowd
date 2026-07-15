@@ -13,6 +13,7 @@ Official QA documentation for Follow The Crowd (FTC) private beta.
 | [REGRESSION-CHECKLIST.md](./REGRESSION-CHECKLIST.md) | Focused smoke + regression pass before each release |
 | [BUG-TEMPLATE.md](./BUG-TEMPLATE.md) | Standard format for filing bugs |
 | [RELEASE-CHECKLIST.md](./RELEASE-CHECKLIST.md) | Pre-release and release-day steps |
+| [AUTHENTICATED-E2E.md](./AUTHENTICATED-E2E.md) | Playwright authenticated production harness |
 
 ## Conventions
 
@@ -42,6 +43,7 @@ Official QA documentation for Follow The Crowd (FTC) private beta.
 3. Test **mobile-first** at **390px** width, then spot-check desktop (`md+`).
 4. Use at least one **planner** account and one **DJ** account (a **both** role account is helpful).
 5. Do not assume SQL migrations are applied unless Isaac confirms.
+6. For automated authenticated production regression, see [AUTHENTICATED-E2E.md](./AUTHENTICATED-E2E.md).
 
 ## Related docs
 

@@ -7,7 +7,10 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test:regressions": "tsx scripts/test-regressions.mts"
+    "test:regressions": "tsx scripts/test-regressions.mts",
+    "qa:preflight": "tsx scripts/qa-preflight.mts",
+    "qa:e2e:install": "playwright install chromium",
+    "qa:e2e:prod": "tsx scripts/qa-preflight.mts --require-credentials && playwright test --config=playwright.config.ts"
   },
   "dependencies": {
     "@react-google-maps/api": "^2.20.8",
@@ -19,6 +22,7 @@
     "react-dom": "19.2.4"
   },
   "devDependencies": {
+    "@playwright/test": "^1.51.1",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
