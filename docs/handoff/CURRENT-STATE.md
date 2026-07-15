@@ -127,7 +127,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
-- `[pending]` — tighten crew chat header layout and anchor mobile Messages badge to icon
+- `51f81d3` — tighten crew chat header layout and anchor mobile Messages badge to icon
 - `ff324b0` — polish crew chat UI to match DM messaging quality
 - `8227cf7` — fix booking card notes not expanding when Show more is tapped
 - `90cdd58` — fix booking card timestamps being clipped in DM messages
