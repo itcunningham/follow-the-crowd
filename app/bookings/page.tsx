@@ -1888,7 +1888,7 @@ function DjGigsTabs({
           >
             {tab.icon === "history" ? <HistoryIcon /> : null}
             {tab.label}
-            {tab.count && tab.count > 0 ? ` (${tab.count})` : ""}
+            {tab.count && tab.count > 0 ? ` ${tab.count}` : ""}
           </Link>
         );
       })}
