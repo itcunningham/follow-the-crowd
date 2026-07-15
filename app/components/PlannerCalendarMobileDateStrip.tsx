@@ -6,6 +6,7 @@ import {
   getCalendarMonthDates,
   getPlannerCalendarDateStripMarker,
   getPlannerCalendarTodayDate,
+  shouldShowCalendarDateStripIndicators,
   isSameDay,
   isSameMonth,
   toDateKey,
@@ -353,9 +354,10 @@ export default function PlannerCalendarMobileDateStrip({
           : isSameDay(date, selectedDate);
         const isToday = isSameDay(date, todayDate);
         const dateItems = itemsByDate?.get(dateKey) ?? [];
-        const marker = getDateMarker
+        const rawMarker = getDateMarker
           ? getDateMarker(dateKey, isHighlighted)
           : getPlannerCalendarDateStripMarker(dateItems, isHighlighted);
+        const marker = shouldShowCalendarDateStripIndicators(dateKey) ? rawMarker : null;
         const hasMarker = marker !== null;
         const itemCountLabel = marker?.itemCountLabel ?? "";
 

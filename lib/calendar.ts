@@ -7,6 +7,7 @@ import {
 } from "@/lib/bookingRequests";
 import {
   formatOrdinalDay,
+  isDateKeyBeforeToday,
   parseEventDate,
   parseSetTimeRange,
   resolveEventDateKey,
@@ -624,6 +625,11 @@ export function getPlannerCalendarDateStripExtraCount(items: CalendarItem[]): nu
   }
 
   return items.length - 1;
+}
+
+/** Compact strip dots/counts are hidden before the user's local today; agenda stays tappable. */
+export function shouldShowCalendarDateStripIndicators(dateKey: string): boolean {
+  return !isDateKeyBeforeToday(dateKey);
 }
 
 export function getPlannerCalendarDateStripMarker(
