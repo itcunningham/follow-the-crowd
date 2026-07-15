@@ -114,7 +114,7 @@ export default function DmTextMessageBubble({
 
           <time
             dateTime={createdAt}
-            className={`mt-1 block px-1 text-[10px] text-ftc-text-muted ${
+            className={`-mt-1 block px-1 text-[10px] text-ftc-text-muted ${
               isOwnMessage ? "text-right" : "text-left"
             }`}
           >

@@ -39,6 +39,25 @@ import { formatDisplayEventDate } from "@/lib/bookingDateTime";
 import { buildEventDetailFromDmHref } from "@/lib/events/eventsListNavigation";
 import type { BookingRecipientProfile } from "@/lib/user/currentUser";
 
+function BookingCardAnimatedExpand({
+  open,
+  children,
+}: {
+  open: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <div
+      className={`grid transition-[grid-template-rows,opacity] duration-200 ease-out motion-reduce:transition-none ${
+        open ? "opacity-100" : "opacity-0"
+      }`}
+      style={{ gridTemplateRows: open ? "1fr" : "0fr" }}
+    >
+      <div className="min-h-0 overflow-hidden">{children}</div>
+    </div>
+  );
+}
+
 export default function BookingRequestCard({
   booking,
   currentUserId,
@@ -295,182 +314,10 @@ export default function BookingRequestCard({
     );
   }
 
-  if (collapsible && !expanded && showAsCancelled) {
-    return (
-      <button
-        type="button"
-        onClick={handleExpand}
-        className={`w-full max-w-sm rounded-2xl p-3 text-left transition ${cancelledCardClass} hover:border-[var(--ftc-color-danger)]/50`}
-      >
-        <div className="flex items-start justify-between gap-2">
-          <p className="min-w-0 flex-1 break-words text-sm font-semibold leading-snug text-ftc-text">
-            {collapsedTitle}
-          </p>
-          {renderCancelledStatusBadge(
-            eventCancelledLabel ?? formatBookingStatusLabel("cancelled"),
-          )}
-        </div>
-
-        {collapsedDateVenue ? (
-          <p className="mt-2 break-words text-xs text-ftc-text-muted">{collapsedDateVenue}</p>
-        ) : null}
-
-        {eventCancelledLabel ? (
-          <p className="mt-1 break-words text-xs text-[var(--ftc-color-danger)]/90">
-            {eventCancelledLabel}
-          </p>
-        ) : cancellationReasonLabel ? (
-          <p className="mt-1 break-words text-xs text-[var(--ftc-color-danger)]/90">
-            {cancellationReasonLabel}
-          </p>
-        ) : null}
-
-        <div className="mt-3 flex items-center justify-between gap-2 border-t border-[var(--ftc-color-danger)]/20 pt-2">
-          <span className="text-xs font-semibold uppercase tracking-wide text-ftc-text-secondary">
-            View details
-          </span>
-          {renderChevronDown()}
-        </div>
-      </button>
-    );
-  }
-
-  if (collapsible && !expanded) {
+  function renderExpandedBody() {
     return (
       <>
-        <button
-          type="button"
-          onClick={handleExpand}
-          className="w-full max-w-sm rounded-2xl border border-ftc-border-subtle bg-ftc-surface p-3 text-left transition hover:border-ftc-border-strong active:border-ftc-border-strong"
-        >
-          <div className="flex items-start justify-between gap-2">
-            <div className="min-w-0 flex-1">
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted">
-                Booking request
-              </p>
-              <p className="mt-0.5 break-words text-sm font-semibold leading-snug text-ftc-text">
-                {collapsedTitle}
-              </p>
-            </div>
-            <BookingStatusBadge status={booking.status} />
-          </div>
-
-          {urgentLabel ? (
-            <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-ftc-primary">
-              {urgentLabel}
-            </p>
-          ) : null}
-
-          <p className="mt-2 break-words text-xs text-ftc-text-secondary">
-            {collapsedOfferSummary}
-          </p>
-
-          {collapsedDateVenue ? (
-            <p className="mt-1 break-words text-xs text-ftc-text-muted">{collapsedDateVenue}</p>
-          ) : null}
-
-          {cancellationReasonLabel ? (
-            <p className="mt-1 break-words text-xs text-ftc-text-muted">
-              {cancellationReasonLabel}
-            </p>
-          ) : null}
-
-          <div className="mt-3 flex items-center justify-between gap-2 border-t border-ftc-border-subtle pt-2">
-            <span className="text-xs font-semibold uppercase tracking-wide text-ftc-text-secondary">
-              View details
-            </span>
-            {renderChevronDown()}
-          </div>
-        </button>
-
-        <ProposeBookingRateSheet
-          open={proposeSheetOpen}
-          loading={proposalLoading}
-          onClose={() => {
-            if (!proposalLoading) {
-              setProposeSheetOpen(false);
-            }
-          }}
-          onSubmit={handleProposeRate}
-        />
-      </>
-    );
-  }
-
-  if (showAsCancelled) {
-    return (
-      <div className={`w-full max-w-sm rounded-2xl p-3.5 ${cancelledCardClass}`}>
-        {collapsible && expanded && useCompactDmCollapseHeader ? (
-          renderCompactDmCollapseHeader(
-            renderCancelledStatusBadge(
-              eventCancelledLabel ?? formatBookingStatusLabel("cancelled"),
-            ),
-            { danger: true },
-          )
-        ) : collapsible ? (
-          <button
-            type="button"
-            onClick={handleCollapse}
-            className="-mx-1 -mt-1 mb-3 flex w-[calc(100%+0.5rem)] items-center justify-between gap-2 rounded-xl px-1 py-1 text-left transition hover:bg-[var(--ftc-color-danger)]/10"
-          >
-            <span className="text-xs font-semibold uppercase tracking-wide text-ftc-text-secondary">
-              Hide details
-            </span>
-            {renderChevronUp()}
-          </button>
-        ) : null}
-
-        {!(collapsible && expanded && useCompactDmCollapseHeader) ? (
-          renderExpandedHeader(
-            renderCancelledStatusBadge(
-              eventCancelledLabel ?? formatBookingStatusLabel("cancelled"),
-            ),
-          )
-        ) : null}
-
-        {eventCancelledLabel ? (
-          <p className="mt-2.5 break-words text-sm text-[var(--ftc-color-danger)]/90">
-            {eventCancelledLabel}
-          </p>
-        ) : null}
-
-        <div className="mt-3">{renderCompactSummary()}</div>
-
-        {booking.event_id ? (
-          <Link
-            href={eventHref!}
-            className="mt-3 inline-flex rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated px-3 py-2 text-xs font-semibold uppercase tracking-wide text-ftc-text-secondary transition hover:border-ftc-border-strong"
-          >
-            View event
-          </Link>
-        ) : null}
-      </div>
-    );
-  }
-
-  return (
-    <>
-      <div className="w-full max-w-sm rounded-2xl border border-ftc-border-subtle bg-ftc-surface p-3.5">
-        {collapsible && expanded && useCompactDmCollapseHeader ? (
-          renderCompactDmCollapseHeader(<BookingStatusBadge status={booking.status} />)
-        ) : collapsible ? (
-          <button
-            type="button"
-            onClick={handleCollapse}
-            className="-mx-1 -mt-1 mb-3 flex w-[calc(100%+0.5rem)] items-center justify-between gap-2 rounded-xl px-1 py-1 text-left transition hover:bg-ftc-bg-elevated/60"
-          >
-            <span className="text-xs font-semibold uppercase tracking-wide text-ftc-text-secondary">
-              Hide details
-            </span>
-            {renderChevronUp()}
-          </button>
-        ) : null}
-
-        {!(collapsible && expanded && useCompactDmCollapseHeader) ? (
-          renderExpandedHeader(<BookingStatusBadge status={booking.status} />)
-        ) : null}
-
-        <div className="mt-3">{renderCompactSummary()}</div>
+        {renderCompactSummary()}
 
         {!canReviewProposal ? (
           <BookingRateProposalNotice booking={booking} currentUserId={currentUserId} />
@@ -613,6 +460,193 @@ export default function BookingRequestCard({
             />
           </div>
         ) : null}
+      </>
+    );
+  }
+
+  if (collapsible && !expanded && showAsCancelled) {
+    return (
+      <button
+        type="button"
+        onClick={handleExpand}
+        className={`w-full max-w-sm rounded-2xl p-3 text-left transition ${cancelledCardClass} hover:border-[var(--ftc-color-danger)]/50`}
+      >
+        <div className="flex items-start justify-between gap-2">
+          <p className="min-w-0 flex-1 break-words text-sm font-semibold leading-snug text-ftc-text">
+            {collapsedTitle}
+          </p>
+          {renderCancelledStatusBadge(
+            eventCancelledLabel ?? formatBookingStatusLabel("cancelled"),
+          )}
+        </div>
+
+        {collapsedDateVenue ? (
+          <p className="mt-2 break-words text-xs text-ftc-text-muted">{collapsedDateVenue}</p>
+        ) : null}
+
+        {eventCancelledLabel ? (
+          <p className="mt-1 break-words text-xs text-[var(--ftc-color-danger)]/90">
+            {eventCancelledLabel}
+          </p>
+        ) : cancellationReasonLabel ? (
+          <p className="mt-1 break-words text-xs text-[var(--ftc-color-danger)]/90">
+            {cancellationReasonLabel}
+          </p>
+        ) : null}
+
+        <div className="mt-3 flex items-center justify-between gap-2 border-t border-[var(--ftc-color-danger)]/20 pt-2">
+          <span className="text-xs font-semibold uppercase tracking-wide text-ftc-text-secondary">
+            View details
+          </span>
+          {renderChevronDown()}
+        </div>
+      </button>
+    );
+  }
+
+  if (showAsCancelled) {
+    return (
+      <div className={`w-full max-w-sm rounded-2xl p-3.5 ${cancelledCardClass}`}>
+        {collapsible && expanded && useCompactDmCollapseHeader ? (
+          renderCompactDmCollapseHeader(
+            renderCancelledStatusBadge(
+              eventCancelledLabel ?? formatBookingStatusLabel("cancelled"),
+            ),
+            { danger: true },
+          )
+        ) : collapsible ? (
+          <button
+            type="button"
+            onClick={handleCollapse}
+            className="-mx-1 -mt-1 mb-3 flex w-[calc(100%+0.5rem)] items-center justify-between gap-2 rounded-xl px-1 py-1 text-left transition hover:bg-[var(--ftc-color-danger)]/10"
+          >
+            <span className="text-xs font-semibold uppercase tracking-wide text-ftc-text-secondary">
+              Hide details
+            </span>
+            {renderChevronUp()}
+          </button>
+        ) : null}
+
+        {!(collapsible && expanded && useCompactDmCollapseHeader) ? (
+          renderExpandedHeader(
+            renderCancelledStatusBadge(
+              eventCancelledLabel ?? formatBookingStatusLabel("cancelled"),
+            ),
+          )
+        ) : null}
+
+        {eventCancelledLabel ? (
+          <p className="mt-2.5 break-words text-sm text-[var(--ftc-color-danger)]/90">
+            {eventCancelledLabel}
+          </p>
+        ) : null}
+
+        <div className="mt-3">{renderCompactSummary()}</div>
+
+        {booking.event_id ? (
+          <Link
+            href={eventHref!}
+            className="mt-3 inline-flex rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated px-3 py-2 text-xs font-semibold uppercase tracking-wide text-ftc-text-secondary transition hover:border-ftc-border-strong"
+          >
+            View event
+          </Link>
+        ) : null}
+      </div>
+    );
+  }
+
+  if (collapsible && !showAsCancelled) {
+    return (
+      <>
+        <div className="w-full max-w-sm rounded-2xl border border-ftc-border-subtle bg-ftc-surface p-3.5">
+          {!expanded ? (
+            <button
+              type="button"
+              onClick={handleExpand}
+              className="w-full text-left transition hover:opacity-95 active:opacity-90"
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted">
+                    Booking request
+                  </p>
+                  <p className="mt-0.5 break-words text-sm font-semibold leading-snug text-ftc-text">
+                    {collapsedTitle}
+                  </p>
+                </div>
+                <BookingStatusBadge status={booking.status} />
+              </div>
+
+              {urgentLabel ? (
+                <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-ftc-primary">
+                  {urgentLabel}
+                </p>
+              ) : null}
+
+              <p className="mt-2 break-words text-xs text-ftc-text-secondary">
+                {collapsedOfferSummary}
+              </p>
+
+              {collapsedDateVenue ? (
+                <p className="mt-1 break-words text-xs text-ftc-text-muted">{collapsedDateVenue}</p>
+              ) : null}
+
+              {cancellationReasonLabel ? (
+                <p className="mt-1 break-words text-xs text-ftc-text-muted">
+                  {cancellationReasonLabel}
+                </p>
+              ) : null}
+
+              <div className="mt-3 flex items-center justify-between gap-2 border-t border-ftc-border-subtle pt-2">
+                <span className="text-xs font-semibold uppercase tracking-wide text-ftc-text-secondary">
+                  View details
+                </span>
+                {renderChevronDown()}
+              </div>
+            </button>
+          ) : useCompactDmCollapseHeader ? (
+            renderCompactDmCollapseHeader(<BookingStatusBadge status={booking.status} />)
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={handleCollapse}
+                className="-mx-1 -mt-1 mb-3 flex w-[calc(100%+0.5rem)] items-center justify-between gap-2 rounded-xl px-1 py-1 text-left transition hover:bg-ftc-bg-elevated/60"
+              >
+                <span className="text-xs font-semibold uppercase tracking-wide text-ftc-text-secondary">
+                  Hide details
+                </span>
+                {renderChevronUp()}
+              </button>
+              {renderExpandedHeader(<BookingStatusBadge status={booking.status} />)}
+            </>
+          )}
+
+          <BookingCardAnimatedExpand open={expanded}>
+            <div className={expanded ? "mt-3" : ""}>{renderExpandedBody()}</div>
+          </BookingCardAnimatedExpand>
+        </div>
+
+        <ProposeBookingRateSheet
+          open={proposeSheetOpen}
+          loading={proposalLoading}
+          onClose={() => {
+            if (!proposalLoading) {
+              setProposeSheetOpen(false);
+            }
+          }}
+          onSubmit={handleProposeRate}
+        />
+      </>
+    );
+  }
+
+  return (
+    <>
+      <div className="w-full max-w-sm rounded-2xl border border-ftc-border-subtle bg-ftc-surface p-3.5">
+        {renderExpandedHeader(<BookingStatusBadge status={booking.status} />)}
+
+        <div className="mt-3">{renderExpandedBody()}</div>
       </div>
 
       <ProposeBookingRateSheet

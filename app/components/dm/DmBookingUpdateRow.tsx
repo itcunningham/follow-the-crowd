@@ -5,11 +5,14 @@ import {
   formatBookingStatusLabel,
   getBookingCancelledDmBadgeClass,
   getBookingCancelledDmCardClass,
+  getBookingOfferRateLabel,
   getEventCancelledBookingLabel,
+  getGigCardOfferSummary,
   isBookingAffectedByCancelledEvent,
   type BookingRequest,
   type BookingRequestStatus,
 } from "@/lib/bookingRequests";
+import { formatDisplayEventDate } from "@/lib/bookingDateTime";
 import type { BookingFocusPhase } from "@/lib/chatBookingFocusHighlight";
 
 export default function DmBookingUpdateRow({
@@ -47,6 +50,18 @@ export default function DmBookingUpdateRow({
   const statusText = badgeOverrideClass
     ? statusLabel
     : formatBookingStatusLabel(displayStatus);
+  const collapsedOfferLine =
+    displayStatus === "accepted" && !showAsCancelled
+      ? booking.rate_mode === "open"
+        ? getBookingOfferRateLabel(booking) === "Ask for rate"
+          ? "Open offer"
+          : `Open · ${getBookingOfferRateLabel(booking)}`
+        : getGigCardOfferSummary(booking)
+      : null;
+  const collapsedDateLine =
+    displayStatus === "accepted" && !showAsCancelled && booking.event_date?.trim()
+      ? formatDisplayEventDate(booking.event_date)
+      : null;
 
   return (
     <button
@@ -64,6 +79,17 @@ export default function DmBookingUpdateRow({
           <BookingStatusBadge status={displayStatus} />
         )}
       </div>
+
+      {collapsedOfferLine || collapsedDateLine ? (
+        <div className="mt-1 min-w-0">
+          {collapsedOfferLine ? (
+            <p className="truncate text-xs text-ftc-text-secondary">{collapsedOfferLine}</p>
+          ) : null}
+          {collapsedDateLine ? (
+            <p className="mt-0.5 truncate text-xs text-ftc-text-muted">{collapsedDateLine}</p>
+          ) : null}
+        </div>
+      ) : null}
 
       <div className="mt-1.5 flex items-center justify-between gap-2 border-t border-ftc-border-subtle/80 pt-1.5">
         <span className="text-[11px] font-semibold uppercase tracking-wide text-ftc-text-secondary">

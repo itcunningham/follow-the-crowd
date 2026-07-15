@@ -106,7 +106,7 @@ export default function DmComposer({
           onClick={onSend}
           disabled={busy || !value.trim()}
           aria-label="Send message"
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-ftc-primary text-ftc-bg transition hover:bg-ftc-primary-dim disabled:cursor-not-allowed disabled:opacity-50 sm:h-11 sm:w-11"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-ftc-primary text-ftc-bg transition hover:bg-ftc-primary-dim disabled:cursor-not-allowed disabled:opacity-50 sm:h-10 sm:w-10"
         >
           {busy ? (
             <span className="text-xs font-bold">…</span>

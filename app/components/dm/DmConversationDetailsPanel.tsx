@@ -130,11 +130,11 @@ export default function DmConversationDetailsPanel({
         >
           <div className="flex items-center justify-between border-b border-ftc-border px-4 py-3 sm:px-5">
             <h2 id="dm-details-title" className="text-sm font-semibold uppercase tracking-wide text-ftc-text-secondary">
-              Conversation details
+              Profile
             </h2>
             <button
               type="button"
-              aria-label="Close conversation details"
+              aria-label="Close profile"
               disabled={busy}
               onClick={onClose}
               className="flex h-9 w-9 items-center justify-center rounded-full border border-ftc-border text-ftc-text-secondary transition hover:border-ftc-border-strong hover:text-ftc-text disabled:opacity-50"
@@ -153,7 +153,9 @@ export default function DmConversationDetailsPanel({
               />
               <p className="mt-4 text-lg font-semibold text-ftc-text">{otherUserName}</p>
               {roleLabel ? (
-                <p className="mt-1 text-sm text-ftc-text-muted">{roleLabel}</p>
+                <span className="mt-2 inline-flex rounded-full border border-ftc-border-subtle bg-ftc-bg-elevated px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted">
+                  {roleLabel}
+                </span>
               ) : null}
             </div>
 

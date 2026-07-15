@@ -38,7 +38,7 @@ function ChatDetailsMenuButton({
   return (
     <button
       type="button"
-      aria-label={`Open conversation details for ${conversationTitle}`}
+      aria-label={`Open profile for ${conversationTitle}`}
       onClick={onClick}
       className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-ftc-border-subtle bg-ftc-surface text-ftc-text-secondary transition hover:border-ftc-border-strong hover:text-ftc-text focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ftc-primary"
     >
@@ -78,14 +78,14 @@ export default function DmConversationHeader({
 
       <div className="flex min-w-0 flex-1 items-center gap-3">
         {loading ? (
-          <SkeletonBlock className="h-10 w-10 shrink-0 rounded-full" />
+          <SkeletonBlock className="h-9 w-9 shrink-0 rounded-full" />
         ) : otherUserId ? (
           <ChatProfileAvatarLink
             userId={otherUserId}
             name={avatarName}
             avatarUrl={avatarUrl}
             size="md"
-            className="h-10 w-10 text-xs"
+            className="h-9 w-9 text-xs"
             returnTo={profileReturnTo}
           />
         ) : (
@@ -93,7 +93,7 @@ export default function DmConversationHeader({
             name={avatarName}
             avatarUrl={avatarUrl}
             size="md"
-            className="h-10 w-10 text-xs"
+            className="h-9 w-9 text-xs"
           />
         )}
         <div className="min-w-0 flex-1">

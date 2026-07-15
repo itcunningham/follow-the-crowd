@@ -1535,7 +1535,7 @@ export default function DmChatPage() {
                       </p>
                       <time
                         dateTime={message.created_at}
-                        className="mt-1 block text-[10px] text-ftc-text-muted"
+                        className="-mt-1 block text-[10px] text-ftc-text-muted"
                       >
                         {formatMessageTime(message.created_at)}
                       </time>
@@ -1637,7 +1637,7 @@ export default function DmChatPage() {
                         </p>
                         <time
                           dateTime={message.created_at}
-                          className="mt-1 block text-[10px] text-ftc-text-muted"
+                          className="-mt-1 block text-[10px] text-ftc-text-muted"
                         >
                           {formatMessageTime(message.created_at)}
                         </time>
@@ -1792,7 +1792,7 @@ export default function DmChatPage() {
                         )}
                         <time
                           dateTime={message.created_at}
-                          className={`mt-1 block text-[10px] text-ftc-text-muted ${
+                          className={`-mt-1 block text-[10px] text-ftc-text-muted ${
                             isOwnMessage ? "text-right" : "text-left"
                           }`}
                         >
