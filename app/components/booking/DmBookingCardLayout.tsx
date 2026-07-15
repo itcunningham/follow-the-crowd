@@ -109,3 +109,10 @@ export function DmBookingCardExpandFooter({
 
 export const DM_BOOKING_CARD_SECONDARY_BUTTON_CLASS =
   "flex w-full items-center justify-center rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated px-3 py-2.5 text-xs font-semibold uppercase tracking-wide text-ftc-text-secondary transition hover:border-ftc-border-strong";
+
+/** Column wrapper for a booking card + its timestamp in DM messages. */
+export const DM_BOOKING_MESSAGE_COLUMN_CLASS = "flex min-w-0 flex-col";
+
+/** Timestamp spacing below every booking card — always positive, never overlapping. */
+export const DM_BOOKING_MESSAGE_TIMESTAMP_CLASS =
+  "mt-1 block text-[10px] leading-none text-ftc-text-muted";

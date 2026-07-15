@@ -53,7 +53,7 @@ function BookingCardAnimatedExpand({
 }) {
   return (
     <div
-      className={`grid transition-[grid-template-rows,opacity] duration-200 ease-out motion-reduce:transition-none ${
+      className={`grid min-h-0 transition-[grid-template-rows,opacity] duration-200 ease-out motion-reduce:transition-none ${
         open ? "opacity-100" : "opacity-0"
       }`}
       style={{ gridTemplateRows: open ? "1fr" : "0fr" }}

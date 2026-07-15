@@ -8,6 +8,10 @@ import BookingRequestCard, {
   buildUpdatedBookingMessage,
 } from "@/app/components/BookingRequestCard";
 import DmBookingUpdateRow from "@/app/components/dm/DmBookingUpdateRow";
+import {
+  DM_BOOKING_MESSAGE_COLUMN_CLASS,
+  DM_BOOKING_MESSAGE_TIMESTAMP_CLASS,
+} from "@/app/components/booking/DmBookingCardLayout";
 import BookingCardFocusRing from "@/app/components/dm/BookingCardFocusRing";
 import DmConversationHeader from "@/app/components/dm/DmConversationHeader";
 import ChatNewMessagesPill from "@/app/components/dm/ChatNewMessagesPill";
@@ -1769,7 +1773,7 @@ export default function DmChatPage() {
                           returnTo={chatReturnTo}
                         />
                       ) : null}
-                      <div>
+                      <div className={DM_BOOKING_MESSAGE_COLUMN_CLASS}>
                         {showCompactBookingRow ? (
                           <DmBookingUpdateRow
                             booking={resolvedBooking}
@@ -1792,7 +1796,7 @@ export default function DmChatPage() {
                         )}
                         <time
                           dateTime={message.created_at}
-                          className={`-mt-1.5 block text-[10px] text-ftc-text-muted ${
+                          className={`${DM_BOOKING_MESSAGE_TIMESTAMP_CLASS} ${
                             isOwnMessage ? "text-right" : "text-left"
                           }`}
                         >
