@@ -131,8 +131,6 @@ export default function EventCrewChatPage() {
     new Map(),
   );
   const [eventName, setEventName] = useState("Event");
-  const [coverImageUrl, setCoverImageUrl] = useState<string | null>(null);
-  const [fallbackColour, setFallbackColour] = useState<string | null>(null);
   const [crewUnlock, setCrewUnlock] = useState<CrewChatUnlockState | null>(null);
   const [crewParticipantIds, setCrewParticipantIds] = useState<string[]>([]);
   const [crewParticipantProfiles, setCrewParticipantProfiles] = useState<
@@ -188,8 +186,6 @@ export default function EventCrewChatPage() {
       }
 
       setEventName(access.eventName ?? "Event");
-      setCoverImageUrl(access.coverImageUrl);
-      setFallbackColour(access.fallbackColour);
       setCrewUnlock(access.unlock);
     } catch (refreshError) {
       console.error("Failed to refresh group chat header:", refreshError);
@@ -334,8 +330,6 @@ export default function EventCrewChatPage() {
 
         setCanAccessChat(true);
         setEventName(access.eventName ?? "Event");
-        setCoverImageUrl(access.coverImageUrl);
-        setFallbackColour(access.fallbackColour);
         setCrewUnlock(access.unlock);
         void loadCrewParticipants(eventId);
       } catch (loadError) {
@@ -508,7 +502,7 @@ export default function EventCrewChatPage() {
         <div
           className={`mx-auto flex min-h-0 w-full max-w-2xl flex-1 flex-col overflow-hidden ${MOBILE_NAV_OFFSET_CLASS}`}
         >
-          <header className="z-10 shrink-0 border-b border-ftc-border-subtle bg-ftc-bg/95 px-3 py-2 backdrop-blur-md sm:px-4">
+          <header className="z-10 shrink-0 overflow-visible border-b border-ftc-border-subtle bg-ftc-bg/95 px-3 py-2.5 backdrop-blur-md sm:px-4">
             {accessLoading ? (
               <ChatHeaderSkeleton />
             ) : (
@@ -517,8 +511,6 @@ export default function EventCrewChatPage() {
                 backLabel={openedFromMessages ? "Back to messages" : "Back to event"}
                 eventId={eventId}
                 eventName={eventName}
-                coverImageUrl={coverImageUrl}
-                fallbackColour={fallbackColour}
                 memberCount={memberCount}
                 participantIds={crewParticipantIds}
                 participantProfiles={crewParticipantProfiles}

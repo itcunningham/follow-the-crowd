@@ -16,13 +16,10 @@ export default function GroupChatSystemNotice({
   isHighlighted?: boolean;
 }) {
   return (
-    <li
-      data-chat-message-id={messageId}
-      className="flex justify-center"
-    >
-      <div className="max-w-sm px-3 py-1 text-center">
+    <li data-chat-message-id={messageId} className="flex justify-center py-0.5">
+      <div className="inline-flex max-w-[92%] flex-col items-center">
         <p
-          className={`rounded-full border border-ftc-border bg-ftc-bg-elevated/50 px-3 py-1.5 text-xs text-ftc-text-muted ${getChatNewMessageHighlightClass(isHighlighted)}`}
+          className={`inline-block w-fit max-w-full rounded-full border border-ftc-border bg-ftc-bg-elevated/50 px-3 py-1.5 text-center text-xs text-ftc-text-muted ${getChatNewMessageHighlightClass(isHighlighted)}`}
         >
           {text}
         </p>
