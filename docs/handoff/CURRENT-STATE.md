@@ -88,6 +88,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 - Event edit posts one update message to group chat (booking-impacting fields)
 - Planner does not get unread from own group messages
 - Group chat page: header only (duplicate context card removed)
+- **Crew chat UI polish (2026-07-15):** header shows event name + `Crew chat · N members` + overlapping participant avatars; compact centred system-message pills with friendlier display copy; sender names above first message in a sequence (DM-style); understated empty state; View event button matches DM booking cards (calendar icon + shared secondary button class); presentation-only — no messaging/realtime/DB changes
 
 ## Copy / UX polish (2026-07)
 
@@ -125,7 +126,10 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
-- `616708b` — Make History event details read-only
+- `ff324b0` — polish crew chat UI to match DM messaging quality
+- `8227cf7` — fix booking card notes not expanding when Show more is tapped
+- `90cdd58` — fix booking card timestamps being clipped in DM messages
+- `897ea69` — unify DM booking card layout across all booking states
 - restore compact workflow-first event cards (64px square `EventThumbnail`; hero/edit preview unchanged)
 - `bb1d436` — unify premium event image system (16:9 hero, shared crop primitives)
 - `46fa81b` — polish Invite DJs sheet selection, hierarchy, and confirm button
