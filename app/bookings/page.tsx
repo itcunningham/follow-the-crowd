@@ -52,9 +52,9 @@ import {
   filterHistoryCancelledBookings,
   filterSendableRecipientIdsForEvent,
   getActiveBookingCampaignStats,
-  getBookingCollapsedOfferSummary,
   getBookingMutationErrorMessage,
   getBookingOfferRateLabel,
+  getGigCardOfferSummary,
   getBookingStatusBadgeClass,
   groupSentBookingRequests,
   hasPendingRateProposal,
@@ -2029,9 +2029,11 @@ function BookingSectionTabs({
 }
 
 const GIG_CARD_CLASS_NAME =
-  "ftc-gig-card ftc-surface-row rounded-[var(--ftc-radius-xl)] p-2.5 sm:p-4";
+  "ftc-gig-card ftc-surface-row rounded-[var(--ftc-radius-xl)] py-2 px-2.5 sm:p-4";
 
 const GIG_CARD_BODY_CLASS_NAME = "flex min-w-0 max-w-full flex-col gap-1 overflow-hidden sm:gap-3";
+
+const GIG_CARD_DETAIL_OFFER_GAP_CLASS = "mt-1";
 
 const GIG_CARD_MOBILE_OPEN_DM_CLASS =
   "ftc-btn-primary inline-flex min-h-[2.125rem] shrink-0 items-center justify-center self-end px-2.5 py-0.5 text-[0.6875rem] uppercase tracking-wide";
@@ -2048,12 +2050,17 @@ function GigCardOfferLineFromLabel({
     return null;
   }
 
-  const mutedClass = "text-ftc-text-muted";
-  const amountClass = muted
-    ? "font-medium text-ftc-text-muted"
-    : "font-medium text-ftc-text-secondary";
+  const prefixClass = "text-ftc-text-muted";
+  const openOfferClass = muted ? "text-ftc-text-muted" : "font-medium text-ftc-text";
+  const amountClass = muted ? "font-medium text-ftc-text-muted" : "font-medium text-ftc-text";
   const separator = " · ";
   const separatorIndex = trimmed.indexOf(separator);
+
+  if (trimmed === "Open offer" || trimmed === "Ask for rate") {
+    return (
+      <p className={`min-w-0 max-w-full overflow-hidden break-words ${openOfferClass}`}>Open offer</p>
+    );
+  }
 
   if (separatorIndex >= 0) {
     const prefix = trimmed.slice(0, separatorIndex + separator.length);
@@ -2061,15 +2068,9 @@ function GigCardOfferLineFromLabel({
 
     return (
       <p className="min-w-0 max-w-full overflow-hidden break-words">
-        <span className={mutedClass}>{prefix}</span>
+        <span className={prefixClass}>{prefix}</span>
         <span className={amountClass}>{amount}</span>
       </p>
-    );
-  }
-
-  if (trimmed === "Ask for rate") {
-    return (
-      <p className={`min-w-0 max-w-full overflow-hidden break-words ${mutedClass}`}>{trimmed}</p>
     );
   }
 
@@ -2106,7 +2107,7 @@ function GigCardHeader({
         </span>
       </div>
       {plannerLabel ? (
-        <p className="mt-1.5 text-[11px] font-normal leading-snug text-ftc-text-muted sm:mt-1.5 sm:text-xs">
+        <p className="mt-2 text-[11px] font-normal leading-snug text-ftc-text-muted sm:mt-2 sm:text-xs">
           {plannerLabel}
         </p>
       ) : null}
@@ -2142,13 +2143,19 @@ function GigCardMetaRows({
   ) : null;
 
   const renderDetailsBlock = (footer?: ReactNode) => (
-    <div className="space-y-0.5">
-      {venueDateLine ? (
-        <p className="min-w-0 max-w-full overflow-hidden break-words">{venueDateLine}</p>
+    <>
+      <div className="space-y-0.5">
+        {venueDateLine ? (
+          <p className="min-w-0 max-w-full overflow-hidden break-words">{venueDateLine}</p>
+        ) : null}
+        <p className="min-w-0 max-w-full overflow-hidden break-words">{setTimeLine}</p>
+      </div>
+      {footer ? (
+        footer
+      ) : offerLine ? (
+        <div className={GIG_CARD_DETAIL_OFFER_GAP_CLASS}>{offerLine}</div>
       ) : null}
-      <p className="min-w-0 max-w-full overflow-hidden break-words">{setTimeLine}</p>
-      {footer ?? offerLine}
-    </div>
+    </>
   );
 
   return (
@@ -2209,7 +2216,7 @@ function ReceivedBookingCard({
     booking.id,
     gigsTab,
   );
-  const rateLabel = getBookingCollapsedOfferSummary(booking);
+  const rateLabel = getGigCardOfferSummary(booking);
   const isConfirmed = gigsTab === "accepted";
   const plannerLabel = senderName ? `From ${senderName}` : undefined;
 
@@ -2227,7 +2234,9 @@ function ReceivedBookingCard({
         rateLabel={rateLabel}
         mobileFooter={
           !isConfirmed ? (
-            <div className="flex min-w-0 items-end justify-between gap-2">
+            <div
+              className={`${GIG_CARD_DETAIL_OFFER_GAP_CLASS} flex min-w-0 items-end justify-between gap-2`}
+            >
               {rateLabel?.trim() ? (
                 <div className="min-w-0 flex-1">
                   <GigCardOfferLineFromLabel rateLabel={rateLabel} />
