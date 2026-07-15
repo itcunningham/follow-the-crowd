@@ -128,6 +128,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `[pending]` — polish Settings password reset cooldown and sign out placement
 - `850ab12` — polish fullscreen profile photo viewer (animation, dismissal, close button)
 - `2403231` — final crew chat UI polish (header, avatars, empty state, system pills)
 - `51f81d3` — tighten crew chat header layout and anchor mobile Messages badge to icon

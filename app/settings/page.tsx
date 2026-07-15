@@ -15,6 +15,8 @@ import {
   signOut,
 } from "@/lib/user/currentUser";
 
+const PASSWORD_RESET_COOLDOWN_MS = 60_000;
+
 export default function SettingsPage() {
   const router = useRouter();
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -22,6 +24,7 @@ export default function SettingsPage() {
   const [username, setUsername] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [resettingPassword, setResettingPassword] = useState(false);
+  const [passwordResetCooldown, setPasswordResetCooldown] = useState(false);
   const [passwordResetMessage, setPasswordResetMessage] = useState<string | null>(null);
   const [signingOut, setSigningOut] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -44,8 +47,20 @@ export default function SettingsPage() {
       });
   }, []);
 
+  useEffect(() => {
+    if (!passwordResetCooldown) {
+      return;
+    }
+
+    const timeout = window.setTimeout(() => {
+      setPasswordResetCooldown(false);
+    }, PASSWORD_RESET_COOLDOWN_MS);
+
+    return () => window.clearTimeout(timeout);
+  }, [passwordResetCooldown]);
+
   async function handleResetPassword() {
-    if (!accountEmail || resettingPassword) {
+    if (!accountEmail || resettingPassword || passwordResetCooldown) {
       return;
     }
 
@@ -55,7 +70,8 @@ export default function SettingsPage() {
 
     try {
       await requestPasswordResetEmail(accountEmail);
-      setPasswordResetMessage("Password reset email sent. Check your inbox.");
+      setPasswordResetMessage("Password reset email sent — check your inbox");
+      setPasswordResetCooldown(true);
     } catch (resetError) {
       console.error("Failed to send password reset email:", resetError);
       setError(
@@ -119,21 +135,25 @@ export default function SettingsPage() {
                   </p>
                 </div>
 
-                <div className="border-b border-ftc-border-subtle px-4 py-4 sm:px-5">
+                <div className="px-4 py-4 sm:px-5">
                   <button
                     type="button"
                     onClick={() => void handleResetPassword()}
-                    disabled={!accountEmail || resettingPassword}
+                    disabled={!accountEmail || resettingPassword || passwordResetCooldown}
                     className="rounded-xl border border-ftc-border-subtle bg-ftc-surface px-4 py-3 text-sm font-semibold text-ftc-text-secondary transition hover:border-ftc-border-strong hover:text-ftc-text disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    {resettingPassword ? "Sending..." : "Reset password"}
+                    {resettingPassword
+                      ? "Sending..."
+                      : passwordResetCooldown
+                        ? "Email sent"
+                        : "Reset password"}
                   </button>
                   {passwordResetMessage ? (
                     <p className="mt-3 text-sm text-ftc-primary">{passwordResetMessage}</p>
                   ) : null}
                 </div>
 
-                <div className="px-4 py-4 sm:px-5">
+                <div className="border-t border-ftc-border-subtle px-4 pb-4 pt-6 sm:px-5">
                   <button
                     type="button"
                     onClick={() => void handleSignOut()}
