@@ -287,8 +287,10 @@ export async function getNavBadgeCounts(
     total: inboxUnread.total + bookingNotifications.length,
   };
 
-  console.log("[notifications] Message badge count for", userId, counts.messages);
-  console.log("[notifications] Bookings badge count for", userId, counts.bookings);
+  if (process.env.NODE_ENV !== "production") {
+    console.log("[notifications] Message badge count for", userId, counts.messages);
+    console.log("[notifications] Bookings badge count for", userId, counts.bookings);
+  }
 
   return counts;
 }

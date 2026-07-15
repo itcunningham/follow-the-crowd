@@ -8,7 +8,9 @@ export function getChatNewMessageHighlightClass(isHighlighted: boolean) {
 }
 
 export function logChatHighlightRender(messageId: string, highlighted: boolean) {
-  if (highlighted) {
-    console.log("[chat highlight] render", { messageId, highlighted: true });
+  if (process.env.NODE_ENV === "production" || !highlighted) {
+    return;
   }
+
+  console.log("[chat highlight] render", { messageId, highlighted: true });
 }

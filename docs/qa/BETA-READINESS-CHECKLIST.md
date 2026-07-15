@@ -2,8 +2,22 @@
 
 Master gate checklist for FTC private beta. Mark each area when QA has completed testing and sign-off is ready.
 
-**Last updated:** 2026-07-15  
+**Last updated:** 2026-07-15 (Beta Readiness blocker-fix batch)  
 **Beta target:** Private beta (planner + DJ testers)
+
+## Beta Readiness blocker fixes (2026-07-15)
+
+Builder batch addressing QA + Security Review blockers. **Next:** QA Agent authenticated regression (Planner, DJ, Both; two browsers; iPhone Safari + production).
+
+| Fix | Root cause | Status | Builder verification | Production-only still required |
+|-----|------------|--------|----------------------|------------------------------|
+| `/bookings` hooks crash | `showDetailsPlanSkeleton` `useMemo` after conditional `return null` in `BookingsPageContent` | Partial | `npm run build` passes; hook order fixed | Logged-out/stale-session redirect on production |
+| Crew-chat auto-start auth | `ensure_event_crew_chat_auto_started` callable by any authenticated user | Blocked | Migration + audit check #16 in repo | Isaac: run migration in production Supabase |
+| `/events/create` + invalid IDs | `[eventId]` captured `create`; invalid UUIDs surfaced Postgres `22P02` | Partial | Redirect route + UUID guard; build passes | QA invalid/deleted IDs on production |
+| Message metadata logging | Debug `console.log` in DM inbox realtime handlers | Partial | Logs removed/gated in messaging files | QA: no payload logs in prod console |
+| AI generation disabled | Private beta excludes AI | Partial | Feature flags; marketing AI UI hidden | QA: no AI button on production home |
+
+**Deploy order:** (1) Run `supabase/migrations/20250715180000_harden_crew_chat_auto_start_auth.sql` in production, (2) deploy Next.js, (3) run `scripts/supabaseSecurityAuditChecklist.sql` (all rows pass).
 
 ## How to use
 
@@ -21,7 +35,12 @@ Master gate checklist for FTC private beta. Mark each area when QA has completed
 | Item | Status | Severity if failed | Owner | Notes |
 |------|--------|-------------------|-------|-------|
 | Vercel production deploy matches latest `main` | Not Started | Critical | Isaac | |
-| Supabase migrations applied (see `docs/handoff/SUPABASE.md`) | Not Started | Critical | Isaac | |
+| Supabase migrations applied (see `docs/handoff/SUPABASE.md`) | Blocked | Critical | Isaac | `20250715180000_harden_crew_chat_auto_start_auth.sql` pending production run |
+| Production security audit checklist all rows pass | Not Started | Critical | Isaac | `scripts/supabaseSecurityAuditChecklist.sql` — includes new crew auto-start check |
+| Production RLS hardened; no legacy `using (true)` bootstrap policies | Not Started | Critical | Isaac | Repo inspection only — must verify in production |
+| Supabase Auth: email confirmation, password policy, rate limits reviewed | Not Started | High | Isaac | |
+| Google Maps API key restricted to approved production/preview domains | Not Started | High | Isaac | |
+| Private beta signup controlled (invitations/allowlist; not open public signup) | Not Started | High | Isaac | No custom invitation system in this batch |
 | Test planner account available | Not Started | Critical | QA | |
 | Test DJ account available | Not Started | Critical | QA | |
 | Test “both” role account available (optional) | Not Started | Medium | QA | |
@@ -37,15 +56,15 @@ Master gate checklist for FTC private beta. Mark each area when QA has completed
 | Authentication | Not Started | — | | |
 | Profiles | Not Started | — | | |
 | Discover | Not Started | — | | |
-| Events | Not Started | — | | |
+| Events | Partial | High | `/events/create` redirect + invalid ID guard — QA verify | |
 | Event Plans | Not Started | — | | |
 | Calendar | Not Started | — | | |
-| Gigs | Not Started | — | | |
+| Gigs | Partial | Critical | `/bookings` hooks fix — QA redirect + role regression | |
 | Booking flow | Not Started | — | | |
-| Messaging (DM) | Not Started | — | | |
-| Crew chat | Not Started | — | | |
-| Realtime | Not Started | — | | |
-| Permissions | Not Started | — | | |
+| Messaging (DM) | Partial | Medium | Production payload logging removed — QA console check | |
+| Crew chat | Blocked | Critical | RPC auth migration pending production apply | |
+| Realtime | Partial | Medium | Inbox handler logging gated — behaviour unchanged | |
+| Permissions | Partial | High | Crew-chat RPC hardened in migration (production pending) | |
 | Performance | Not Started | — | | |
 | Accessibility | Not Started | — | | |
 | Edge cases | Not Started | — | | |
@@ -109,7 +128,11 @@ Password reset email + cooldown, sign out, account deletion request mailto.
 
 | ID | Severity | Area | Summary | Status |
 |----|----------|------|---------|--------|
-| — | — | — | No defects filed yet | — |
+| BR-01 | Critical | Gigs | `/bookings` hooks crash when logged out / stale session | Fixed in code — QA verify |
+| BR-02 | Critical | Security | `ensure_event_crew_chat_auto_started` missing caller authorization | Migration ready — production apply pending |
+| BR-03 | High | Events | `/events/create` exposed Postgres error; invalid event IDs unsafe | Fixed in code — QA verify |
+| BR-04 | Medium | Messaging | Production console logged realtime message payloads | Fixed in code — QA verify prod console |
+| BR-05 | Medium | Marketing | AI generation visible during private beta | Disabled via feature flags — QA verify prod home |
 
 ---
 

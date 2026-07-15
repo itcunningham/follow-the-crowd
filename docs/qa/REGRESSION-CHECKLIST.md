@@ -16,10 +16,15 @@ Focused smoke and regression pass for FTC. Run before each beta release or after
 | R-01 | Login with valid credentials → lands in app | Not Started | Critical |
 | R-02 | Bottom nav (mobile) or top nav (desktop) shows correct tabs for role | Not Started | Critical |
 | R-03 | `/events` list loads without error | Not Started | Critical |
-| R-04 | Open an event detail → page renders | Not Started | Critical |
+| R-04 | Open an event detail → page renders | Partial | Critical |
+| R-04a | `/events/create` redirects to `/events?create=event` | Partial | High |
+| R-04b | Invalid event ID shows safe not-found (no Postgres/SQL error text) | Partial | High |
 | R-05 | `/dm` inbox loads | Not Started | Critical |
 | R-06 | Open a DM conversation → send a text message → appears | Not Started | Critical |
-| R-07 | `/bookings` (Gigs) loads for DJ account | Not Started | Critical |
+| R-07 | `/bookings` (Gigs) loads for DJ account | Partial | Critical |
+| R-07a | Logged out → `/bookings` redirects to `/login` (no hooks crash) | Partial | Critical |
+| R-07b | Stale cached role without session → safe redirect (no fatal screen) | Partial | Critical |
+| R-07c | Planner / DJ / Both roles still reach correct Gigs experience | Not Started | Critical |
 | R-08 | Sign out from Settings → returns to login | Not Started | Critical |
 
 ---
@@ -72,6 +77,9 @@ Focused smoke and regression pass for FTC. Run before each beta release or after
 | R-43 | Crew chat: new message appears without refresh | Not Started | High |
 | R-44 | Messages unread badge on nav icon (mobile top-right) | Not Started | Medium |
 | R-45 | Group tab in Messages inbox lists crew chats | Not Started | Medium |
+| R-46 | DM inbox realtime: no message payload/content logs in production console | Partial | Medium |
+| R-47 | Marketing home: no visible AI generate button (private beta) | Partial | Medium |
+| R-48 | Manual create event via `/events?create=event` still works | Not Started | Critical |
 
 ---
 

@@ -878,6 +878,10 @@ export function getEventsLoadErrorMessage(error: unknown): string {
   if (error && typeof error === "object") {
     const supabaseError = error as { message?: string; code?: string };
 
+    if (supabaseError.code === "22P02") {
+      return "Event not found or you do not have access.";
+    }
+
     if (supabaseError.code === "42P01" || supabaseError.code === "PGRST205") {
       return "Events table is not set up yet. Run scripts/setupEvents.sql.";
     }
@@ -890,7 +894,7 @@ export function getEventsLoadErrorMessage(error: unknown): string {
     }
 
     if (supabaseError.message) {
-      return supabaseError.message;
+      return "Failed to load events.";
     }
   }
 

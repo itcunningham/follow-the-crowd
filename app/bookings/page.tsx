@@ -98,12 +98,15 @@ import {
   getCurrentUserId,
   getBookingRecipientProfilesByIds,
   getCurrentUserProfile,
+  getDefaultRouteForRole,
   getRoleLabel,
   listBookableDjs,
+  LOGIN_PATH,
   type BookingRecipientProfile,
   type UserProfile,
   type UserRole,
 } from "@/lib/user/currentUser";
+import { readSupabaseSessionUserIdSync } from "@/lib/auth/sessionUserId";
 import { markNotificationsReadByType } from "@/lib/notifications";
 import { readCachedNavRole } from "@/lib/navigationRoleCache";
 import {
@@ -526,6 +529,51 @@ function BookingsPageContent() {
     [filteredReceivedBookings, gigsHistoryBulkManage.removingIds],
   );
 
+  const showDetailsPlanSkeleton = useMemo(() => {
+    if (effectiveCreateStep !== "details") {
+      return false;
+    }
+
+    if (detailsEntrySource === "pick-plan") {
+      return false;
+    }
+
+    const fromSavedPlanEntry =
+      detailsEntrySource === "event-plans-deeplink" ||
+      Boolean(effectiveSelectedPlanId) ||
+      deepLinkIntent?.type === "plan";
+
+    if (!fromSavedPlanEntry) {
+      return false;
+    }
+
+    return planPrefillPending || loadingPlans;
+  }, [
+    effectiveCreateStep,
+    detailsEntrySource,
+    effectiveSelectedPlanId,
+    deepLinkIntent,
+    planPrefillPending,
+    loadingPlans,
+  ]);
+
+  const accessDenied = !loadingAccess && !canAccessBookings(displayRole);
+
+  useEffect(() => {
+    if (loadingAccess || canAccessBookings(displayRole)) {
+      return;
+    }
+
+    const sessionUserId = readSupabaseSessionUserIdSync();
+
+    if (!sessionUserId) {
+      router.replace(LOGIN_PATH);
+      return;
+    }
+
+    router.replace(getDefaultRouteForRole(displayRole));
+  }, [displayRole, loadingAccess, router]);
+
   useEffect(() => {
     function handlePopState() {
       setLocationRevision((current) => current + 1);
@@ -550,6 +598,7 @@ function BookingsPageContent() {
       })
       .catch((loadError) => {
         console.error("Failed to load bookings access:", loadError);
+        setRole(null);
         setLoadingAccess(false);
       });
   }, [guardProfile?.role]);
@@ -1320,40 +1369,14 @@ function BookingsPageContent() {
     }
   }
 
-  if (!loadingAccess && !canAccessBookings(displayRole)) {
-    return null;
-  }
-
-  const showDetailsPlanSkeleton = useMemo(() => {
-    if (effectiveCreateStep !== "details") {
-      return false;
-    }
-
-    if (detailsEntrySource === "pick-plan") {
-      return false;
-    }
-
-    const fromSavedPlanEntry =
-      detailsEntrySource === "event-plans-deeplink" ||
-      Boolean(effectiveSelectedPlanId) ||
-      deepLinkIntent?.type === "plan";
-
-    if (!fromSavedPlanEntry) {
-      return false;
-    }
-
-    return planPrefillPending || loadingPlans;
-  }, [
-    effectiveCreateStep,
-    detailsEntrySource,
-    effectiveSelectedPlanId,
-    deepLinkIntent,
-    planPrefillPending,
-    loadingPlans,
-  ]);
-
   const showPlannerCreateDeepLink = plannerCreateVisible;
   const createStepMeta = getCreateStepMeta(effectiveCreateStep);
+
+  if (accessDenied) {
+    return (
+      <BookingsPageLoadingShell plannerBookingCreateOpen={plannerCreateVisible} />
+    );
+  }
 
   return (
     <OnboardingGuard>

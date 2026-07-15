@@ -1,9 +1,14 @@
 import { NextResponse } from "next/server";
 import { authenticateSupabaseRequest } from "@/lib/api/authenticateSupabaseRequest";
 import { parseEventBriefPayload } from "@/lib/api/validateEventBrief";
+import { isAiEventGenerationEnabledServer } from "@/lib/featureFlags";
 import { createOpenAIEventPlanGenerator } from "@/lib/infrastructure/openai/generate-event-plan";
 
 export async function POST(request: Request) {
+  if (!isAiEventGenerationEnabledServer()) {
+    return NextResponse.json({ error: "Not available." }, { status: 404 });
+  }
+
   const auth = await authenticateSupabaseRequest(request);
 
   if (!auth) {
@@ -13,7 +18,7 @@ export async function POST(request: Request) {
   const apiKey = process.env.OPENAI_API_KEY?.trim();
 
   if (!apiKey) {
-    return NextResponse.json({ error: "Event generation is unavailable." }, { status: 503 });
+    return NextResponse.json({ error: "Not available." }, { status: 404 });
   }
 
   let payload: unknown;

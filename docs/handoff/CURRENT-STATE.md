@@ -100,6 +100,32 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 ## Beta readiness (2026-07-15)
 
 - **`docs/qa/`** — official QA workspace: beta readiness checklist, test plan, regression checklist, bug template, release checklist
+- **Blocker-fix batch (2026-07-15):** `/bookings` hooks + redirect; crew-chat auto-start RPC auth migration; `/events/create` redirect + invalid event ID guard; production message logging removed/gated; AI generation disabled for private beta via `lib/featureFlags.ts`
+
+### Beta blocker fixes — detail
+
+| # | Issue | Root cause | Files |
+|---|-------|------------|-------|
+| 1 | `/bookings` hooks crash | `useMemo` after early `return null` when access denied | `app/bookings/page.tsx` |
+| 2 | Crew-chat auto-start auth | RPC lacked participant check | `supabase/migrations/20250715180000_harden_crew_chat_auto_start_auth.sql`, `scripts/setupEventCrewChatUnlock.sql`, `scripts/supabaseSecurityAuditChecklist.sql` |
+| 3 | `/events/create` + invalid IDs | Dynamic route treated `create` as UUID | `app/events/create/page.tsx`, `app/events/[eventId]/page.tsx`, `lib/events.ts` |
+| 4 | Message metadata logging | Debug `console.log` in realtime handlers | `app/dm/page.tsx`, `app/dm/[conversationId]/page.tsx`, `lib/chatNewMessageHighlight.ts`, `lib/notifications.ts` |
+| 5 | AI disabled for beta | Private beta scope | `lib/featureFlags.ts`, `app/api/generate-event/route.ts`, `app/page.tsx` |
+
+**Builder tests:** `npm run build` — **Passed** (2026-07-15). No browser regression run in this batch — QA Agent next.
+
+**Re-enable AI after beta review:** set `NEXT_PUBLIC_FTC_AI_EVENT_GENERATION_ENABLED=true` and `FTC_AI_EVENT_GENERATION_ENABLED=true` in Vercel env; redeploy. `OPENAI_API_KEY` stays server-only.
+
+**Production gates for Isaac (not verified by repo inspection alone):**
+
+1. Run `scripts/supabaseSecurityAuditChecklist.sql` in production — every row must pass (includes check #16 crew auto-start auth).
+2. Confirm hardened production RLS and crew-chat policies present; legacy wide-open bootstrap policies absent.
+3. Apply migration `20250715180000_harden_crew_chat_auto_start_auth.sql` before or with app deploy.
+4. Review Supabase Auth: email confirmation, password policy, rate limits.
+5. Restrict Google Maps API key to approved production/preview domains.
+6. Use controlled invitations/allowlist for private beta signup (no unrestricted public signup).
+
+**Remaining risks:** Crew-chat auto-start untested in production until migration applied. `/bookings` redirect paths need QA on stale localStorage + expired session. Invalid event ID UX needs production spot-check.
 
 ## Desktop workspace & performance (2026-07-12)
 

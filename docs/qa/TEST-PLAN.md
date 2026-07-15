@@ -35,6 +35,7 @@ Prepare two accounts that can DM each other (planner sends booking to DJ).
 | AUTH-07 | Profile setup gate | Incomplete profile tries to use app | Prompted to complete profile setup | Medium | Not Started |
 | AUTH-08 | Password reset | Settings → Reset password | Success message “Password reset email sent — check your inbox”; button disabled 60s showing “Email sent” | Medium | Not Started |
 | AUTH-09 | Protected routes | Logged out → visit `/events` directly | Redirected to login | Critical | Not Started |
+| AUTH-10 | Protected `/bookings` | Logged out → visit `/bookings` | Redirected to login; no hooks crash or blank fatal screen | Critical | Partial |
 
 ---
 
@@ -85,6 +86,9 @@ Prepare two accounts that can DM each other (planner sends booking to DJ).
 | EVT-16 | Invite DJs | Event detail → Invite DJs → select DJs → Confirm | Booking requests sent; label “Confirm N DJ(s)” | Critical | Not Started |
 | EVT-17 | Lineup filters | Filter all / pending / accepted / declined | Correct subset shown | Medium | Not Started |
 | EVT-18 | Desktop event detail | Repeat EVT-05 at desktop | Layout wider; same data | Low | Not Started |
+| EVT-19 | `/events/create` redirect | Visit `/events/create` while logged in | Redirects to `/events?create=event` (canonical create flow) | High | Partial |
+| EVT-20 | Invalid event ID | Visit `/events/not-a-uuid` | Safe not-found/error UI; no Postgres/Supabase/SQL text | High | Partial |
+| EVT-21 | Deleted event ID | Visit valid UUID for deleted event | Safe not-found; no raw DB error | Medium | Not Started |
 
 ---
 
@@ -169,6 +173,7 @@ Prepare two accounts that can DM each other (planner sends booking to DJ).
 | MSG-09 | Empty conversation | New conversation edge | Sensible empty state | Low | Not Started |
 | MSG-10 | Desktop width | DM at lg+ | Wider centred column (~52rem) | Low | Not Started |
 | MSG-11 | Group tab | Messages → Group tab | Crew chats listed by event | Medium | Not Started |
+| MSG-12 | Production console privacy | Open DM inbox; receive realtime message (production) | No message payload/content/id logs in browser console | Medium | Partial |
 
 ---
 
@@ -186,6 +191,7 @@ Prepare two accounts that can DM each other (planner sends booking to DJ).
 | CREW-08 | View event button | From messages-origin chat | Compact View event button with calendar icon | Low | Not Started |
 | CREW-09 | Back navigation | Back from crew chat | Returns to event or messages as expected | Medium | Not Started |
 | CREW-10 | DJ without access | Non-crew DJ tries chat URL | Access denied message | High | Not Started |
+| CREW-11 | Auto-start authorization | DJ accepts booking on event (2+ accepted) | Crew chat auto-starts for participants only | High | Blocked |
 
 ---
 
@@ -254,6 +260,7 @@ Prepare two accounts that can DM each other (planner sends booking to DJ).
 | EDGE-08 | iOS Safari nav | Calendar/Gigs tab switch on iPhone | Tabs respond on tap | High | Not Started |
 | EDGE-09 | iOS back gesture | DM → event → back | Returns to correct conversation | Medium | Not Started |
 | EDGE-10 | Account deletion mailto | Settings → Request account deletion | Mail client opens with prefilled request | Low | Not Started |
+| EDGE-11 | AI disabled (beta) | Visit marketing home `/` | No “Generate AI Event Plan” button; manual create CTA only | Medium | Partial |
 
 ---
 

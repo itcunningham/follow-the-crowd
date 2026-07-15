@@ -522,38 +522,6 @@ export default function DmChatPage() {
   }, [conversationId, otherUserId, refreshParticipantReadState]);
 
   useEffect(() => {
-    if (!conversationId || !currentUserId) {
-      return;
-    }
-
-    const latestOwnMessage = latestOwnMessageIdForReceipt
-      ? messages.find((message) => message.id === latestOwnMessageIdForReceipt) ?? null
-      : null;
-    const shouldShowSeen = latestOwnMessage
-      ? shouldShowSeenOnMessage(latestOwnMessage.id, latestOwnMessage.created_at)
-      : false;
-
-    console.log("[reads] current user id", currentUserId);
-    console.log("[reads] conversation id", conversationId);
-    console.log("[reads] other participant id", otherUserId);
-    console.log("[reads] loaded other last_read_at", otherUserLastReadAt);
-    console.log(
-      "[reads] latest own message id/date",
-      latestOwnMessage?.id ?? null,
-      latestOwnMessage?.created_at ?? null,
-    );
-    console.log("[reads] should show seen", shouldShowSeen);
-  }, [
-    conversationId,
-    currentUserId,
-    latestOwnMessageIdForReceipt,
-    messages,
-    otherUserId,
-    otherUserLastReadAt,
-    shouldShowSeenOnMessage,
-  ]);
-
-  useEffect(() => {
     if (!conversationId || !currentUserId || loading) {
       return;
     }

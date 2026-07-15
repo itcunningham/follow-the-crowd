@@ -107,6 +107,18 @@ checks as (
     case when has_function_privilege('authenticated', 'public.are_users_dm_blocked(text, text)', 'EXECUTE')
         or has_function_privilege('authenticated', 'public.is_event_crew_participant(uuid, text)', 'EXECUTE')
       then 'still callable' else 'revoked' end
+
+  union all select 16, 'ensure_event_crew_chat_auto_started participant-only', 'participant check',
+    case when exists (
+      select 1 from pg_proc p
+      join pg_namespace n on n.oid = p.pronamespace
+      where n.nspname = 'public'
+        and p.proname = 'ensure_event_crew_chat_auto_started'
+        and pg_get_functiondef(p.oid) like '%is_event_crew_participant%'
+        and pg_get_functiondef(p.oid) like '%auth_user_id%'
+    ) and has_function_privilege('authenticated', 'public.ensure_event_crew_chat_auto_started(uuid)', 'EXECUTE')
+      and not has_function_privilege('anon', 'public.ensure_event_crew_chat_auto_started(uuid)', 'EXECUTE')
+      then 'participant check' else 'missing auth or callable by anon' end
 )
 select
   check_name,

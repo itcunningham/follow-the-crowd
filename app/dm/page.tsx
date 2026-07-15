@@ -457,7 +457,7 @@ function DmInboxPageContent() {
     setBookingsByConversationId(bookingsResult);
     bookingsByConversationRef.current = bookingsResult;
 
-    if (response.error) {
+    if (response.error && process.env.NODE_ENV !== "production") {
       console.log("conversations error:", response.error);
     }
 
@@ -626,9 +626,6 @@ function DmInboxPageContent() {
           const groupTargetId = extractGroupChatTargetId(newMessage);
 
           if (groupTargetId) {
-            console.log("[Group realtime raw]", payload.new);
-            console.log("[Group realtime target id]", groupTargetId);
-
             let matchedGroupChat = false;
             let nextGroupChats: GroupChatListItem[] | null = null;
 
@@ -643,13 +640,15 @@ function DmInboxPageContent() {
 
               matchedGroupChat = result.matched;
 
-              console.log(
-                "[Group rendered row ids]",
-                result.rows.map((chat) => ({
-                  eventId: chat.eventId,
-                  latestActivityAt: chat.latestActivityAt,
-                })),
-              );
+              if (process.env.NODE_ENV !== "production") {
+                console.log(
+                  "[Group rendered row ids]",
+                  result.rows.map((chat) => ({
+                    eventId: chat.eventId,
+                    latestActivityAt: chat.latestActivityAt,
+                  })),
+                );
+              }
 
               if (result.matched) {
                 nextGroupChats = result.rows;
@@ -686,24 +685,13 @@ function DmInboxPageContent() {
 
           const messageType = detectInboxRealtimeMessageType(newMessage);
 
-          console.log("[Inbox realtime raw] new message payload", payload.new);
-          console.log("[Inbox realtime raw] detected type", messageType);
-
           if (messageType !== "dm") {
-            console.log("[Inbox realtime] ignored message with unknown routing", newMessage);
             return;
           }
 
           const targetId = newMessage.conversation_id;
 
-          console.log("[Inbox realtime] DM message received", {
-            targetId,
-            messageId: newMessage.id,
-            created_at: newMessage.created_at,
-          });
-
           setDmInboxRows((previous) => {
-            const beforeIds = previous.map((row) => row.conversationId);
             const mergedMessages = [
               newMessage,
               ...inboxMessagesRef.current.filter((message) => message.id !== newMessage.id),
@@ -712,12 +700,6 @@ function DmInboxPageContent() {
             const result = applyDmInboxRealtimeMessage(previous, newMessage, {
               allMessages: mergedMessages,
               bookingsByConversationId: bookingsByConversationRef.current,
-            });
-
-            console.log("[Inbox realtime] DM matched", result.matched, {
-              targetId,
-              beforeIds,
-              afterIds: result.rows.map((row) => row.conversationId),
             });
 
             return result.rows;

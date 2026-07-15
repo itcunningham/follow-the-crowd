@@ -7,6 +7,7 @@ import FtcBrandMotionLazy from "./components/brand/FtcBrandMotionLazy";
 import FtcDatePicker from "./components/FtcDatePicker";
 import OnboardingGuard from "./components/OnboardingGuard";
 import VenueMap from "./components/VenueMap";
+import { isAiEventGenerationEnabled } from "@/lib/featureFlags";
 import { requestEventPlan } from "@/lib/client/generate-event-plan";
 import { emptyEventBrief, type EventBrief, type Venue } from "@/lib/domain/event";
 
@@ -15,6 +16,7 @@ function scrollTo(id: string) {
 }
 
 export default function Home() {
+  const aiGenerationEnabled = isAiEventGenerationEnabled();
   const [form, setForm] = useState<EventBrief>(emptyEventBrief);
   const [result, setResult] = useState("");
   const [venues, setVenues] = useState<Venue[]>([]);
@@ -56,13 +58,19 @@ export default function Home() {
             </span>
           </div>
           <nav className="hidden items-center gap-8 text-sm font-medium uppercase tracking-wider text-ftc-text-muted sm:flex">
-            <button
-              type="button"
-              onClick={() => scrollTo("create-event")}
-              className="transition hover:text-ftc-primary"
-            >
-              Create Event
-            </button>
+            {aiGenerationEnabled ? (
+              <button
+                type="button"
+                onClick={() => scrollTo("create-event")}
+                className="transition hover:text-ftc-primary"
+              >
+                Create Event
+              </button>
+            ) : (
+              <Link href="/events?create=event" className="transition hover:text-ftc-primary">
+                Create event
+              </Link>
+            )}
             <button
               type="button"
               onClick={() => scrollTo("learn-more")}
@@ -88,20 +96,22 @@ export default function Home() {
               Crowd intel for Promoters
             </p>
             <h1 className="text-4xl font-bold uppercase tracking-tight text-ftc-text sm:text-6xl sm:leading-[1.05]">
-              Plan Better Events with AI.
+              {aiGenerationEnabled ? "Plan Better Events with AI." : "Plan Better Events."}
             </h1>
             <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-ftc-text-secondary sm:text-xl lg:mx-0">
               Follow The Crowd reads the room before you lock the date — venue
               intel, crowd signals, and plans built for nights that actually hit.
             </p>
             <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row lg:justify-start">
-              <button
-                type="button"
-                onClick={() => scrollTo("create-event")}
-                className="w-full rounded-xl border-0 bg-ftc-primary px-6 py-3.5 text-sm font-bold uppercase tracking-wide text-ftc-bg transition hover:bg-ftc-primary-dim sm:w-auto"
-              >
-                Generate Event Plan
-              </button>
+              {aiGenerationEnabled ? (
+                <button
+                  type="button"
+                  onClick={() => scrollTo("create-event")}
+                  className="w-full rounded-xl border-0 bg-ftc-primary px-6 py-3.5 text-sm font-bold uppercase tracking-wide text-ftc-bg transition hover:bg-ftc-primary-dim sm:w-auto"
+                >
+                  Generate Event Plan
+                </button>
+              ) : null}
               <Link
                 href="/events"
                 className="w-full rounded-xl border border-ftc-border-strong bg-ftc-surface/60 px-6 py-3.5 text-center text-sm font-bold uppercase tracking-wide text-ftc-text-secondary transition hover:border-ftc-border-strong hover:bg-ftc-bg-elevated hover:text-ftc-text sm:w-auto"
@@ -231,11 +241,13 @@ export default function Home() {
               Create an Event
             </h2>
             <p className="mt-4 text-base leading-relaxed text-ftc-text-secondary">
-              Drop the details on your next night. We&apos;ll build a plan that
-              respects the culture and the budget.
+              {aiGenerationEnabled
+                ? "Drop the details on your next night. We'll build a plan that respects the culture and the budget."
+                : "Build your next night in the planner — venue, lineup, bookings, and run sheet in one workspace."}
             </p>
           </div>
 
+          {aiGenerationEnabled ? (
           <div className="mx-auto mt-12 max-w-3xl">
             <div className="rounded-2xl border border-ftc-border bg-ftc-bg-elevated p-6 shadow-ftc-card sm:p-8">
               <div className="grid gap-5 sm:grid-cols-2">
@@ -327,6 +339,16 @@ export default function Home() {
               ) : null}
             </div>
           </div>
+          ) : (
+            <div className="mx-auto mt-10 flex max-w-md justify-center">
+              <Link
+                href="/events?create=event"
+                className="ftc-btn-primary w-full px-6 py-4 text-center text-sm font-bold uppercase tracking-wide sm:w-auto"
+              >
+                Create event
+              </Link>
+            </div>
+          )}
         </div>
       </section>
 

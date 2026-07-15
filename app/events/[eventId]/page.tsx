@@ -1,8 +1,9 @@
 "use client";
 
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { looksLikeUserId } from "@/lib/user/displayName";
 import AppNavigation, { MOBILE_NAV_OFFSET_CLASS } from "@/app/components/AppNavigation";
 import EventDeleteCancelButton from "@/app/components/EventDeleteCancelButton";
 import EventDateStatusBadge from "@/app/components/EventDateStatusBadge";
@@ -169,6 +170,7 @@ export default function EventDetailPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const eventId = params.eventId;
+  const hasValidEventId = Boolean(eventId && looksLikeUserId(eventId));
   const eventsBackHref = useMemo(
     () =>
       resolveEventDetailBackHref(searchParams.get("fromTab"), {
@@ -320,7 +322,13 @@ export default function EventDetailPage() {
     editFormHasFieldErrors || Boolean(editFormNotesValidationError);
 
   const loadEventData = useCallback(async () => {
-    if (!eventId) {
+    if (!hasValidEventId) {
+      setEvent(null);
+      setLineup([]);
+      setProfiles(new Map());
+      setCrewChatUnlock(null);
+      setError("Event not found or you do not have access.");
+      setLoading(false);
       return;
     }
 
@@ -366,10 +374,10 @@ export default function EventDetailPage() {
     } finally {
       setLoading(false);
     }
-  }, [eventId]);
+  }, [eventId, hasValidEventId]);
 
   const reloadEventLineup = useCallback(async () => {
-    if (!eventId) {
+    if (!hasValidEventId) {
       return;
     }
 
@@ -399,7 +407,7 @@ export default function EventDetailPage() {
       console.error("Failed to reload event lineup:", loadError);
       setError(getEventsLoadErrorMessage(loadError));
     }
-  }, [eventId]);
+  }, [eventId, hasValidEventId]);
 
   useEffect(() => {
     Promise.all([getCurrentUserProfile(), getCurrentUserId()])
