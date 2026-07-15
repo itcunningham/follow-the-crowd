@@ -2210,12 +2210,12 @@ function GigCardHistoryAction({
 }
 
 const GIG_CARD_HISTORY_CLASS_NAME =
-  "ftc-gig-card ftc-surface-row rounded-[var(--ftc-radius-xl)] pt-2 px-2.5 pb-1.5 sm:p-4 bg-ftc-bg-elevated/60";
+  "ftc-gig-card ftc-surface-row rounded-[var(--ftc-radius-xl)] py-2 px-2.5 sm:p-4 bg-ftc-bg-elevated/60";
 
 const GIG_CARD_HISTORY_BODY_CLASS_NAME =
-  "flex min-w-0 max-w-full flex-col gap-0 overflow-hidden sm:gap-2";
+  "flex min-w-0 max-w-full flex-col gap-1.5 sm:gap-2";
 
-const GIG_CARD_HISTORY_ACTIONS_CLASS = "-mt-2 flex flex-wrap gap-2 sm:mt-0";
+const GIG_CARD_HISTORY_ACTIONS_CLASS = "flex min-w-0 flex-wrap gap-2";
 
 function ReceivedBookingCard({
   booking,
