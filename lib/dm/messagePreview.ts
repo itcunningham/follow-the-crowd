@@ -189,3 +189,19 @@ export function formatDmInboxMessagePreview(
 
   return trimmed;
 }
+
+export function isDmInboxSystemPreviewMessage(
+  messageText: string | null | undefined,
+): boolean {
+  const trimmed = messageText?.trim();
+
+  if (!trimmed) {
+    return false;
+  }
+
+  return (
+    isBookingRequestMessage(trimmed) ||
+    isBookingActivityDmMessage(trimmed) ||
+    isBookingAcceptedDmMessage(trimmed)
+  );
+}

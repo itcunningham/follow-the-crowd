@@ -31,7 +31,7 @@ import {
   normalizeInboxId,
   type DmInboxRow,
 } from "@/lib/dmInbox";
-import { formatGroupChatInboxPreview } from "@/lib/groupChatSystemMessages";
+import { formatGroupChatInboxPreview, isGroupChatSystemUpdateMessage } from "@/lib/groupChatSystemMessages";
 import {
   syncReadInboxNotifications,
 } from "@/lib/inboxUnread";
@@ -43,7 +43,7 @@ import {
 } from "@/lib/messageReads";
 import { supabase } from "@/lib/supabaseClient";
 import { buildDmThreadHref } from "@/lib/dm/threadNavigation";
-import { formatDmInboxMessagePreview } from "@/lib/dm/messagePreview";
+import { formatDmInboxMessagePreview, isDmInboxSystemPreviewMessage } from "@/lib/dm/messagePreview";
 import { listBookingRequestsForConversations, type BookingRequest } from "@/lib/bookingRequests";
 import {
   getCurrentUserId,
@@ -849,7 +849,10 @@ function DmInboxPageContent() {
                     <ul className="flex flex-col gap-2">
                       {filteredGroupChats.map((chat) => {
                         const preview = formatGroupChatInboxPreview(chat.latestPreview, {
-                          prefixYou: chat.latestMessageUserId === currentUserId,
+                          prefixYou:
+                            chat.latestMessageUserId === currentUserId &&
+                            Boolean(chat.latestPreview?.trim()) &&
+                            !isGroupChatSystemUpdateMessage(chat.latestPreview ?? ""),
                         });
 
                         return (
@@ -900,8 +903,12 @@ function DmInboxPageContent() {
                     const previewText = formatDmInboxMessagePreview(row.latestPreview, {
                       bookings: bookingsByConversationId.get(row.conversationId) ?? [],
                     });
+                    const prefixPreviewWithYou =
+                      row.latestMessageUserId === currentUserId &&
+                      Boolean(previewText) &&
+                      !isDmInboxSystemPreviewMessage(row.latestPreview);
                     const preview = previewText
-                      ? `${row.latestMessageUserId === currentUserId ? "You: " : ""}${previewText}`
+                      ? `${prefixPreviewWithYou ? "You: " : ""}${previewText}`
                       : "No messages yet";
                     const timestamp = row.latestActivityAt ?? row.conversationCreatedAt;
 

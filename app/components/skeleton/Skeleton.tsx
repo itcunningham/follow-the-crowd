@@ -1558,14 +1558,15 @@ export function InboxListSkeleton({
 function DmInboxRowSkeleton() {
   return (
     <div className="flex w-full items-center gap-3 rounded-2xl border border-ftc-border-subtle bg-ftc-surface px-3 py-2.5 sm:px-4 sm:py-3 md:px-5">
-      <SkeletonBlock className="h-12 w-12 shrink-0 rounded-full" />
-      <div className="min-w-0 flex-1">
-        <div className="flex items-start justify-between gap-3">
-          <SkeletonBlock className="h-[18px] w-2/5 max-w-[9rem]" />
-          <SkeletonBlock className="h-3 w-8 shrink-0" />
+      <SkeletonBlock className="h-12 w-12 shrink-0 self-center rounded-full" />
+      <div className="min-w-0 flex-1 self-center">
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3">
+          <SkeletonBlock className="h-4 w-2/5 max-w-[9rem]" />
+          <SkeletonBlock className="ml-auto h-3 w-8 shrink-0" />
         </div>
-        <div className="mt-2 flex items-center justify-between gap-2">
-          <SkeletonBlock className="h-4 w-4/5 max-w-[14rem]" />
+        <div className="mt-2 flex items-center gap-2">
+          <SkeletonBlock className="h-5 w-4/5 max-w-[14rem]" />
+          <span aria-hidden="true" className="h-2 w-2 shrink-0" />
         </div>
       </div>
     </div>
@@ -1575,15 +1576,16 @@ function DmInboxRowSkeleton() {
 function GroupInboxRowSkeleton() {
   return (
     <div className="flex w-full items-center gap-3 rounded-2xl border border-ftc-border-subtle bg-ftc-surface px-3 py-2.5 sm:px-4 sm:py-3 md:px-5">
-      <SkeletonBlock className="h-12 w-12 shrink-0 rounded-xl" />
-      <div className="min-w-0 flex-1">
-        <div className="flex items-start justify-between gap-3">
-          <SkeletonBlock className="h-[18px] w-2/5 max-w-[9rem]" />
-          <SkeletonBlock className="h-3 w-10 shrink-0" />
+      <SkeletonBlock className="h-12 w-12 shrink-0 self-center rounded-xl" />
+      <div className="min-w-0 flex-1 self-center">
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3">
+          <SkeletonBlock className="h-4 w-2/5 max-w-[9rem]" />
+          <SkeletonBlock className="ml-auto h-3 w-10 shrink-0" />
         </div>
-        <SkeletonBlock className="mt-2 h-4 w-3/5 max-w-[12rem]" />
-        <div className="mt-1 flex items-center justify-between gap-2">
-          <SkeletonBlock className="h-4 w-2/3 max-w-[10rem]" />
+        <SkeletonBlock className="mt-2 h-5 w-3/5 max-w-[12rem]" />
+        <div className="mt-1 flex items-center gap-2">
+          <SkeletonBlock className="h-5 w-2/3 max-w-[10rem]" />
+          <span aria-hidden="true" className="h-2 w-2 shrink-0" />
         </div>
       </div>
     </div>
