@@ -46,10 +46,15 @@ function UnreadBadge() {
   return (
     <span
       aria-label="Unread"
-      className="h-2.5 w-2.5 shrink-0 rounded-full bg-ftc-primary"
+      className="h-2 w-2 shrink-0 rounded-full bg-ftc-primary"
     />
   );
 }
+
+const INBOX_ROW_SURFACE_CLASS =
+  "flex w-full items-center gap-3 rounded-2xl border px-3 py-2.5 text-left transition sm:px-4 sm:py-3 md:px-5";
+
+const INBOX_PREVIEW_GAP_CLASS = "mt-2";
 
 export default function MessagesInboxRow({
   displayName,
@@ -70,7 +75,7 @@ export default function MessagesInboxRow({
     <button
       type="button"
       onClick={onClick}
-      className={`flex w-full items-center gap-3 rounded-2xl border px-3 py-3 text-left transition sm:px-4 sm:py-3.5 md:px-5 ${
+      className={`${INBOX_ROW_SURFACE_CLASS} ${
         isUnread
           ? "border-ftc-primary bg-ftc-bg-elevated"
           : "border-ftc-border-subtle bg-ftc-surface hover:border-ftc-border-strong"
@@ -91,7 +96,7 @@ export default function MessagesInboxRow({
             <time
               dateTime={timestamp}
               className={`shrink-0 text-xs ${
-                isUnread ? "font-semibold text-ftc-primary" : "text-ftc-text-muted"
+                isUnread ? "font-bold text-ftc-primary" : "text-ftc-text-muted"
               }`}
             >
               {formatMessagesInboxTimestamp(timestamp)}
@@ -99,10 +104,12 @@ export default function MessagesInboxRow({
           ) : null}
         </div>
 
-        <div className="mt-1 flex items-end justify-between gap-2">
+        <div className={`${INBOX_PREVIEW_GAP_CLASS} flex items-center justify-between gap-2`}>
           <p
             className={`min-w-0 truncate text-sm ${
-              isUnread ? "font-medium text-ftc-text-secondary" : "text-ftc-text-muted"
+              isUnread
+                ? "font-medium text-ftc-text-secondary"
+                : "text-ftc-text-secondary/85"
             }`}
           >
             {preview}
@@ -141,7 +148,7 @@ export function MessagesGroupInboxRow({
   return (
     <Link
       href={href}
-      className={`flex w-full items-center gap-3 rounded-2xl border px-3 py-3 transition sm:px-4 sm:py-3.5 md:px-5 ${
+      className={`${INBOX_ROW_SURFACE_CLASS} ${
         isUnread
           ? "border-ftc-primary bg-ftc-bg-elevated"
           : "border-ftc-border-subtle bg-ftc-surface hover:border-ftc-border-strong"
@@ -167,7 +174,7 @@ export function MessagesGroupInboxRow({
             <time
               dateTime={timestamp ?? timestampLabel}
               className={`shrink-0 text-xs ${
-                isUnread ? "font-semibold text-ftc-primary" : "text-ftc-text-muted"
+                isUnread ? "font-bold text-ftc-primary" : "text-ftc-text-muted"
               }`}
             >
               {timeLabel}
@@ -175,13 +182,17 @@ export function MessagesGroupInboxRow({
           ) : null}
         </div>
 
-        <p className="mt-1 truncate text-sm text-ftc-text-muted">{subtitle}</p>
+        <p className={`${INBOX_PREVIEW_GAP_CLASS} truncate text-sm text-ftc-text-secondary/85`}>
+          {subtitle}
+        </p>
 
-        <div className="mt-1 flex items-end justify-between gap-2">
+        <div className="mt-1 flex items-center justify-between gap-2">
           {preview ? (
             <p
               className={`min-w-0 truncate text-sm ${
-                isUnread ? "font-medium text-ftc-text-secondary" : "text-ftc-text-muted"
+                isUnread
+                  ? "font-medium text-ftc-text-secondary"
+                  : "text-ftc-text-secondary/85"
               }`}
             >
               {preview}
