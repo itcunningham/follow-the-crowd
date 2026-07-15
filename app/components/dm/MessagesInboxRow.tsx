@@ -70,7 +70,7 @@ const INBOX_PREVIEW_TEXT_CLASS = (isUnread: boolean) =>
     isUnread ? "font-medium text-ftc-text-secondary" : "text-ftc-text-secondary/95"
   }`;
 
-const INBOX_TEXT_BLOCK_CLASS = "min-w-0 flex-1 self-center pt-0.5";
+const INBOX_TEXT_BLOCK_CLASS = "min-w-0 flex-1 self-center pt-[3px]";
 
 function InboxUnreadIndicator({ isUnread }: { isUnread: boolean }) {
   return isUnread ? (
@@ -135,7 +135,7 @@ export default function MessagesInboxRow({
       </div>
 
       <div className={INBOX_TEXT_BLOCK_CLASS}>
-        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3">
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-3">
           <p className={INBOX_TITLE_CLASS(isUnread)}>{displayName}</p>
           {timestamp ? (
             <InboxTimestamp dateTime={timestamp} isUnread={isUnread}>
@@ -199,7 +199,7 @@ export function MessagesGroupInboxRow({
       </div>
 
       <div className={INBOX_TEXT_BLOCK_CLASS}>
-        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3">
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-3">
           <p className={INBOX_TITLE_CLASS(isUnread)}>{title}</p>
           {timeLabel ? (
             <InboxTimestamp dateTime={timeDateTime} isUnread={isUnread}>

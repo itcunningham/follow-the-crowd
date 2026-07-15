@@ -846,7 +846,7 @@ function DmInboxPageContent() {
                       No group chats match your search.
                     </p>
                   ) : (
-                    <ul className="flex flex-col gap-2">
+                    <ul className="flex flex-col gap-2 pt-3.5">
                       {filteredGroupChats.map((chat) => {
                         const preview = formatGroupChatInboxPreview(chat.latestPreview, {
                           prefixYou:
@@ -895,7 +895,7 @@ function DmInboxPageContent() {
                   No conversations match your search.
                 </p>
               ) : (
-                <ul className="flex flex-col gap-2">
+                <ul className="flex flex-col gap-2 pt-3.5">
                   {filteredDmRows.map((row) => {
                     const otherUserId = otherUsersByConversation.get(row.conversationId);
                     const otherProfile = otherUserId ? userProfiles.get(otherUserId) : undefined;
