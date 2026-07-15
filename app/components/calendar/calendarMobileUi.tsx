@@ -14,8 +14,11 @@ export const CALENDAR_MOBILE_AGENDA_TRANSITION_CLASS =
 export const CALENDAR_MOBILE_SELECTED_DAY_HEADING_CLASS =
   "text-base font-semibold text-ftc-text";
 
+export const CALENDAR_MOBILE_SELECTED_DAY_STATUS_ROW_CLASS =
+  "mt-0.5 flex h-4 items-center";
+
 export const CALENDAR_MOBILE_SELECTED_DAY_TODAY_CLASS =
-  "mt-0.5 text-xs font-medium uppercase tracking-wide text-ftc-text-secondary";
+  "text-xs font-medium uppercase tracking-wide text-ftc-text-secondary";
 
 export const CALENDAR_MOBILE_EMPTY_STATE_CLASS =
   "flex flex-col items-center justify-center rounded-xl border border-dashed border-ftc-border-subtle bg-ftc-surface/30 px-4 py-4 text-center";
@@ -119,9 +122,14 @@ export function CalendarMobileSelectedDayHeader({
   return (
     <>
       <h2 className={CALENDAR_MOBILE_SELECTED_DAY_HEADING_CLASS}>{dateLabel}</h2>
-      {showToday ? (
-        <p className={CALENDAR_MOBILE_SELECTED_DAY_TODAY_CLASS}>Today</p>
-      ) : null}
+      <p
+        className={`${CALENDAR_MOBILE_SELECTED_DAY_STATUS_ROW_CLASS} ${CALENDAR_MOBILE_SELECTED_DAY_TODAY_CLASS} ${
+          showToday ? "" : "invisible"
+        }`}
+        aria-hidden={showToday ? undefined : true}
+      >
+        Today
+      </p>
     </>
   );
 }

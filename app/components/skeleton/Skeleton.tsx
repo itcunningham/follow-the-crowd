@@ -14,6 +14,7 @@ import {
   CALENDAR_MOBILE_CHROME_LEGEND_CLASS,
   CALENDAR_MOBILE_CHROME_MONTH_NAV_CLASS,
 } from "@/app/components/calendar/CalendarMobileChrome";
+import { CALENDAR_MOBILE_SELECTED_DAY_STATUS_ROW_CLASS } from "@/app/components/calendar/calendarMobileUi";
 import { CALENDAR_MOBILE_DATE_CHIP_SKELETON_HEIGHT_CLASS } from "@/app/components/PlannerCalendarMobileDateStrip";
 import {
   EventDetailEditHeaderSlot,
@@ -1008,6 +1009,7 @@ function PlannerCalendarMobileAgendaPanelSkeleton() {
     <div aria-hidden="true" className="md:hidden">
       <div className="mt-4">
         <SkeletonBlock className="h-5 w-44 max-w-full" />
+        <div className={CALENDAR_MOBILE_SELECTED_DAY_STATUS_ROW_CLASS} />
         <div className="mt-3 flex items-center gap-2">
           <SkeletonBlock className="h-8 min-w-[5.5rem] flex-1 rounded-full" />
           <SkeletonBlock className="h-8 min-w-[5.5rem] flex-1 rounded-full" />
@@ -1026,6 +1028,7 @@ function PlannerCalendarMobileAgendaSkeleton() {
     <div aria-hidden="true" className="md:hidden">
       <div className="mt-4">
         <SkeletonBlock className="h-5 w-44 max-w-full" />
+        <div className={CALENDAR_MOBILE_SELECTED_DAY_STATUS_ROW_CLASS} />
         <div className="mt-3 flex items-center gap-2">
           <SkeletonBlock className="h-8 min-w-[5.5rem] flex-1 rounded-full" />
           <SkeletonBlock className="h-8 min-w-[5.5rem] flex-1 rounded-full" />
@@ -1116,6 +1119,7 @@ function DjCalendarMobileAgendaPanelSkeleton() {
     <div aria-hidden="true" className="md:hidden">
       <div className="mt-4">
         <SkeletonBlock className="h-5 w-44 max-w-full" />
+        <div className={CALENDAR_MOBILE_SELECTED_DAY_STATUS_ROW_CLASS} />
       </div>
 
       <div className="mt-3 flex flex-wrap gap-2">
@@ -1137,6 +1141,7 @@ function DjCalendarMobileAgendaSkeleton() {
     <div aria-hidden="true" className="md:hidden">
       <div className="mt-4">
         <SkeletonBlock className="h-5 w-44 max-w-full" />
+        <div className={CALENDAR_MOBILE_SELECTED_DAY_STATUS_ROW_CLASS} />
       </div>
 
       <div className="mt-3 flex flex-wrap gap-2">
