@@ -3,6 +3,7 @@
 import Link from "next/link";
 import CrewChatAvatarStack from "@/app/components/group-chat/CrewChatAvatarStack";
 import { DM_BOOKING_CARD_SECONDARY_BUTTON_CLASS } from "@/app/components/booking/DmBookingCardLayout";
+import EventArtworkTile from "@/app/components/events/EventArtworkTile";
 import { FtcCalendarIcon } from "@/app/components/ftc/FtcCompactMeta";
 import type { UserAvatarProfile } from "@/lib/user/currentUser";
 
@@ -40,6 +41,8 @@ export default function GroupChatHeader({
   backLabel,
   eventId,
   eventName,
+  coverImageUrl,
+  fallbackColour,
   memberCount,
   participantIds,
   participantProfiles,
@@ -49,6 +52,8 @@ export default function GroupChatHeader({
   backLabel: string;
   eventId: string;
   eventName: string;
+  coverImageUrl: string | null;
+  fallbackColour: string | null;
   memberCount: number;
   participantIds: string[];
   participantProfiles: Map<string, UserAvatarProfile>;
@@ -57,26 +62,40 @@ export default function GroupChatHeader({
   const memberLabel = memberCount === 1 ? "1 member" : `${memberCount} members`;
 
   return (
-    <div className="flex items-start gap-2">
+    <div className="flex items-center gap-2">
       <ChatBackButton href={backHref} label={backLabel} />
 
-      <div className="min-w-0 flex-1">
-        <h1 className="truncate text-base font-semibold text-ftc-text">{eventName}</h1>
-        <p className="mt-0.5 truncate text-xs text-ftc-text-muted">
-          Crew chat · {memberLabel}
-        </p>
-        <div className="mt-2">
-          <CrewChatAvatarStack
-            participantIds={participantIds}
-            profiles={participantProfiles}
-          />
+      <div className="flex min-w-0 flex-1 items-center gap-2.5">
+        <EventArtworkTile
+          eventName={eventName}
+          coverImageUrl={coverImageUrl}
+          fallbackColour={fallbackColour}
+          size="context"
+          className="shrink-0"
+        />
+
+        <div className="min-w-0 flex-1">
+          <h1 className="truncate text-base font-semibold leading-tight text-ftc-text">
+            {eventName}
+          </h1>
+          <div className="mt-0.5 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+            <p className="truncate text-xs leading-tight text-ftc-text-muted">
+              Crew chat • {memberLabel}
+            </p>
+            {participantIds.length > 0 ? (
+              <CrewChatAvatarStack
+                participantIds={participantIds}
+                profiles={participantProfiles}
+              />
+            ) : null}
+          </div>
         </div>
       </div>
 
       {showEventDetailsLink ? (
         <Link
           href={`/events/${eventId}`}
-          className={`${DM_BOOKING_CARD_SECONDARY_BUTTON_CLASS} shrink-0 gap-1.5 px-3 py-2 text-[11px]`}
+          className={`${DM_BOOKING_CARD_SECONDARY_BUTTON_CLASS} shrink-0 gap-1.5 self-center px-3 py-1.5 text-[11px]`}
         >
           <FtcCalendarIcon />
           View event

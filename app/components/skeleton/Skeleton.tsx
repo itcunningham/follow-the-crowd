@@ -1621,15 +1621,19 @@ function ChatBackLink({ href, label }: { href: string; label: string }) {
 
 function GroupChatHeaderSkeleton() {
   return (
-    <div className="flex items-start gap-2">
+    <div className="flex items-center gap-2">
       <ChatBackLink href="/dm" label="Back to messages" />
-      <div className="min-w-0 flex-1 space-y-2">
-        <SkeletonBlock className="h-4 w-40 max-w-[55vw]" />
-        <SkeletonBlock className="h-3 w-28 max-w-[40vw]" />
-        <div className="flex -space-x-2 pt-1">
-          <SkeletonBlock className="h-7 w-7 rounded-full" />
-          <SkeletonBlock className="h-7 w-7 rounded-full" />
-          <SkeletonBlock className="h-7 w-7 rounded-full" />
+      <div className="flex min-w-0 flex-1 items-center gap-2.5">
+        <SkeletonBlock className="h-11 w-11 shrink-0 rounded-xl" />
+        <div className="min-w-0 flex-1 space-y-1">
+          <SkeletonBlock className="h-4 w-40 max-w-[55vw]" />
+          <div className="flex items-center gap-2">
+            <SkeletonBlock className="h-3 w-28 max-w-[40vw]" />
+            <div className="flex -space-x-2">
+              <SkeletonBlock className="h-6 w-6 rounded-full" />
+              <SkeletonBlock className="h-6 w-6 rounded-full" />
+            </div>
+          </div>
         </div>
       </div>
     </div>

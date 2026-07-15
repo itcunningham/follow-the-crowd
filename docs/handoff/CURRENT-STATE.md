@@ -88,7 +88,8 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 - Event edit posts one update message to group chat (booking-impacting fields)
 - Planner does not get unread from own group messages
 - Group chat page: header only (duplicate context card removed)
-- **Crew chat UI polish (2026-07-15):** header shows event name + `Crew chat · N members` + overlapping participant avatars; compact centred system-message pills with friendlier display copy; sender names above first message in a sequence (DM-style); understated empty state; View event button matches DM booking cards (calendar icon + shared secondary button class); presentation-only — no messaging/realtime/DB changes
+- **Crew chat UI polish (2026-07-15):** header shows event artwork + name + `Crew chat • N members` with inline participant avatars; compact centred system-message pills with friendlier display copy; sender names above first message in a sequence (DM-style); understated empty state; View event button matches DM booking cards (calendar icon + shared secondary button class); presentation-only — no messaging/realtime/DB changes
+- **Messaging UI polish (2026-07-15):** crew chat header spacing tightened (artwork + title + avatars as one row); mobile Messages nav badge anchored to icon top-right (not tab edge)
 
 ## Copy / UX polish (2026-07)
 
@@ -126,6 +127,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `[pending]` — tighten crew chat header layout and anchor mobile Messages badge to icon
 - `ff324b0` — polish crew chat UI to match DM messaging quality
 - `8227cf7` — fix booking card notes not expanding when Show more is tapped
 - `90cdd58` — fix booking card timestamps being clipped in DM messages

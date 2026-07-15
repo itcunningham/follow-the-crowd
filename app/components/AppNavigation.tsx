@@ -209,7 +209,7 @@ function MobileNavBadge({ count, reserveSpace }: { count: number; reserveSpace?:
     return (
       <span
         aria-hidden="true"
-        className="pointer-events-none absolute right-0.5 top-0.5 z-10 h-3.5 min-w-3.5 opacity-0"
+        className="pointer-events-none absolute -right-1.5 -top-1.5 z-10 h-3.5 min-w-3.5 opacity-0"
       />
     );
   }
@@ -217,7 +217,7 @@ function MobileNavBadge({ count, reserveSpace }: { count: number; reserveSpace?:
   return (
     <span
       aria-label={`${count} unread`}
-      className="absolute right-0.5 top-0.5 z-10 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-ftc-primary px-0.5 text-[9px] font-bold leading-none text-ftc-bg"
+      className="absolute -right-1.5 -top-1.5 z-10 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-ftc-primary px-0.5 text-[9px] font-bold leading-none text-ftc-bg"
     >
       {count > 9 ? "9+" : count}
     </span>
@@ -331,8 +331,10 @@ export default function AppNavigation() {
                 title={item.label}
                 className={navLinkClassName(isActive, "mobile")}
               >
-                <NavTabIcon icon={item.icon} active={isActive} />
-                <MobileNavBadge count={badgeCount} reserveSpace={showBadgeSlot} />
+                <span className="relative inline-flex items-center justify-center">
+                  <NavTabIcon icon={item.icon} active={isActive} />
+                  <MobileNavBadge count={badgeCount} reserveSpace={showBadgeSlot} />
+                </span>
               </Link>
             );
           })}
