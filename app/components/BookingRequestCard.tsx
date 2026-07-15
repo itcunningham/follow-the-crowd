@@ -58,7 +58,7 @@ function BookingCardAnimatedExpand({
       }`}
       style={{ gridTemplateRows: open ? "1fr" : "0fr" }}
     >
-      <div className="min-h-0 overflow-hidden">{children}</div>
+      <div className={open ? "overflow-visible" : "min-h-0 overflow-hidden"}>{children}</div>
     </div>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import {
   FtcCalendarIcon,
   FtcClockIcon,
@@ -12,26 +12,42 @@ import { formatBookingCardEventDate } from "@/lib/bookingDateTime";
 import { getDmBookingCardOfferSummary, type BookingRequest } from "@/lib/bookingRequests";
 import { DmBookingCardStatusMessage } from "@/app/components/booking/DmBookingCardLayout";
 
-const NOTES_COLLAPSE_CHAR_THRESHOLD = 140;
-
 function BookingCardExpandableNotes({ notes }: { notes: string }) {
   const [expanded, setExpanded] = useState(false);
+  const [showToggle, setShowToggle] = useState(false);
+  const textRef = useRef<HTMLParagraphElement>(null);
   const trimmed = notes.trim();
-  const shouldCollapse =
-    trimmed.length > NOTES_COLLAPSE_CHAR_THRESHOLD || trimmed.split(/\r?\n/).length > 2;
 
-  if (!shouldCollapse) {
-    return (
-      <div className="pt-0.5">
-        <p className="text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted">
-          Notes
-        </p>
-        <p className="mt-1 break-words text-sm leading-snug text-ftc-text-secondary">
-          {trimmed}
-        </p>
-      </div>
-    );
+  useLayoutEffect(() => {
+    const el = textRef.current;
+
+    if (!el || expanded) {
+      return;
+    }
+
+    function measureOverflow() {
+      const node = textRef.current;
+
+      if (!node) {
+        return;
+      }
+
+      setShowToggle(node.scrollHeight > node.clientHeight + 1);
+    }
+
+    measureOverflow();
+    window.addEventListener("resize", measureOverflow);
+
+    return () => {
+      window.removeEventListener("resize", measureOverflow);
+    };
+  }, [trimmed, expanded]);
+
+  if (!trimmed) {
+    return null;
   }
+
+  const canToggle = showToggle || expanded;
 
   return (
     <div className="pt-0.5">
@@ -39,19 +55,22 @@ function BookingCardExpandableNotes({ notes }: { notes: string }) {
         Notes
       </p>
       <p
+        ref={textRef}
         className={`mt-1 break-words text-sm leading-snug text-ftc-text-secondary ${
-          expanded ? "" : "line-clamp-3"
+          expanded ? "block overflow-visible" : "line-clamp-3"
         }`}
       >
         {trimmed}
       </p>
-      <button
-        type="button"
-        onClick={() => setExpanded((open) => !open)}
-        className="mt-1 text-xs font-semibold text-ftc-primary transition hover:text-ftc-primary-dim"
-      >
-        {expanded ? "Show less" : "Show more"}
-      </button>
+      {canToggle ? (
+        <button
+          type="button"
+          onClick={() => setExpanded((open) => !open)}
+          className="mt-1 text-xs font-semibold text-ftc-primary transition hover:text-ftc-primary-dim"
+        >
+          {expanded ? "Show less" : "Show more"}
+        </button>
+      ) : null}
     </div>
   );
 }
