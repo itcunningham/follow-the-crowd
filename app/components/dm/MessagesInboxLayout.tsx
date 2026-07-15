@@ -117,7 +117,7 @@ export default function MessagesInboxLayout({
           </div>
         </header>
 
-        <div className={`flex-1 ${APP_PAGE_INSET_CLASS} pb-4 pt-0`}>
+        <div className={`flex-1 ${APP_PAGE_INSET_CLASS} pb-4 pt-0 [&_ul>li:first-child]:mt-3.5`}>
           <AppPageDesktopSurface>{children}</AppPageDesktopSurface>
         </div>
       </div>

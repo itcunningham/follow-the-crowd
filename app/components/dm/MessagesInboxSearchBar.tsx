@@ -27,7 +27,7 @@ export default function MessagesInboxSearchBar({
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder="Search conversations..."
-        className="ftc-input h-11 rounded-full py-0 pl-11 pr-4 text-[15px]"
+        className="ftc-input h-11 rounded-full py-0 pl-11 pr-4 text-[15px] placeholder:text-ftc-text-secondary/75"
       />
     </label>
   );

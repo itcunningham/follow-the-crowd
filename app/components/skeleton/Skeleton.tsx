@@ -1544,7 +1544,7 @@ export function InboxListSkeleton({
     <ul
       aria-busy="true"
       aria-label={variant === "group" ? "Loading group chats" : "Loading conversations"}
-      className="flex flex-col gap-2"
+      className="flex flex-col gap-2 [&>li:first-child]:mt-3.5"
     >
       {Array.from({ length: count }, (_, index) => (
         <li key={index}>

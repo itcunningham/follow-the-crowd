@@ -58,17 +58,19 @@ const INBOX_ROW_SURFACE_CLASS =
 const INBOX_PREVIEW_GAP_CLASS = "mt-2";
 
 const INBOX_TIMESTAMP_CLASS =
-  "min-w-[3.75rem] shrink-0 pt-0.5 text-right text-xs tabular-nums leading-4";
+  "min-w-[3.75rem] shrink-0 text-right text-xs tabular-nums leading-4";
 
 const INBOX_TITLE_CLASS = (isUnread: boolean) =>
-  `min-w-0 truncate pt-0.5 text-[15px] leading-4 ${
+  `min-w-0 truncate text-[15px] leading-4 tracking-normal ${
     isUnread ? "font-bold text-ftc-text" : "font-semibold text-ftc-text"
   }`;
 
 const INBOX_PREVIEW_TEXT_CLASS = (isUnread: boolean) =>
   `min-w-0 flex-1 truncate text-sm leading-5 ${
-    isUnread ? "font-medium text-ftc-text-secondary" : "text-ftc-text-secondary/90"
+    isUnread ? "font-medium text-ftc-text-secondary" : "text-ftc-text-secondary/95"
   }`;
+
+const INBOX_TEXT_BLOCK_CLASS = "min-w-0 flex-1 self-center pt-0.5";
 
 function InboxUnreadIndicator({ isUnread }: { isUnread: boolean }) {
   return isUnread ? (
@@ -132,8 +134,8 @@ export default function MessagesInboxRow({
         <ProfileAvatar name={displayName} avatarUrl={avatarUrl} size="lg" className="h-12 w-12" />
       </div>
 
-      <div className="min-w-0 flex-1 self-center">
-        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3">
+      <div className={INBOX_TEXT_BLOCK_CLASS}>
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3">
           <p className={INBOX_TITLE_CLASS(isUnread)}>{displayName}</p>
           {timestamp ? (
             <InboxTimestamp dateTime={timestamp} isUnread={isUnread}>
@@ -196,8 +198,8 @@ export function MessagesGroupInboxRow({
         />
       </div>
 
-      <div className="min-w-0 flex-1 self-center">
-        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3">
+      <div className={INBOX_TEXT_BLOCK_CLASS}>
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3">
           <p className={INBOX_TITLE_CLASS(isUnread)}>{title}</p>
           {timeLabel ? (
             <InboxTimestamp dateTime={timeDateTime} isUnread={isUnread}>
@@ -208,7 +210,7 @@ export function MessagesGroupInboxRow({
           )}
         </div>
 
-        <p className={`${INBOX_PREVIEW_GAP_CLASS} truncate text-sm leading-5 text-ftc-text-secondary/90`}>
+        <p className={`${INBOX_PREVIEW_GAP_CLASS} truncate text-sm leading-5 text-ftc-text-secondary/95`}>
           {subtitle}
         </p>
 
