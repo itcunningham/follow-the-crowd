@@ -97,6 +97,10 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 - No trailing periods on several confirmation dialogs and empty states
 - Desktop planner UX brought into parity with mobile (wording, validation, calendar cards, today/selected styling) without copying mobile layout
 
+## Beta readiness (2026-07-15)
+
+- **`docs/qa/`** — official QA workspace: beta readiness checklist, test plan, regression checklist, bug template, release checklist
+
 ## Desktop workspace & performance (2026-07-12)
 
 - **Shared planner shell:** `PlannerWorkspacePage` in `app/components/planner/PlannerWorkspaceLayout.tsx` — Events, Event Plans, Calendar, Gigs share title row (heading derived from active workspace href via `resolvePlannerWorkspaceTitle`), primary tabs, divider, secondary controls baseline on desktop (`md:max-w-5xl`)

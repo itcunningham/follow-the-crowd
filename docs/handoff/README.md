@@ -25,6 +25,12 @@ Read everything in docs/handoff/ and follow it. Then: [your task]
 | `SUPABASE.md` | SQL scripts and run order |
 | `SECRETS.md` | Where credentials live (Vercel, Supabase, password manager) — no secret values |
 
+## QA / Beta readiness
+
+| Path | Purpose |
+|------|---------|
+| `docs/qa/` | Beta readiness checklists, test plan, regression, bug template, release checklist |
+
 ## Keep this updated
 
 **Every completed job:** Cursor updates handoff docs using `HANDOFF-UPDATE.md` (at minimum `CURRENT-STATE.md` + recent commits).
