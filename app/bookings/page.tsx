@@ -2031,6 +2031,55 @@ function BookingSectionTabs({
 const GIG_CARD_CLASS_NAME =
   "ftc-gig-card ftc-surface-row rounded-[var(--ftc-radius-xl)] p-2.5 sm:p-4";
 
+const GIG_CARD_BODY_CLASS_NAME = "flex min-w-0 max-w-full flex-col gap-1.5 overflow-hidden sm:gap-3";
+
+const GIG_CARD_MOBILE_OPEN_DM_CLASS =
+  "ftc-btn-primary inline-flex min-h-9 shrink-0 items-center justify-center self-end px-2.5 py-1 text-[0.6875rem] uppercase tracking-wide";
+
+function GigCardOfferLineFromLabel({
+  rateLabel,
+  muted = false,
+}: {
+  rateLabel: string;
+  muted?: boolean;
+}) {
+  const trimmed = rateLabel.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  const mutedClass = "text-ftc-text-muted";
+  const amountClass = muted
+    ? "font-medium text-ftc-text-muted"
+    : "font-medium text-ftc-text-secondary";
+  const separator = " · ";
+  const separatorIndex = trimmed.indexOf(separator);
+
+  if (separatorIndex >= 0) {
+    const prefix = trimmed.slice(0, separatorIndex + separator.length);
+    const amount = trimmed.slice(separatorIndex + separator.length);
+
+    return (
+      <p className="min-w-0 max-w-full overflow-hidden break-words">
+        <span className={mutedClass}>{prefix}</span>
+        <span className={amountClass}>{amount}</span>
+      </p>
+    );
+  }
+
+  if (trimmed === "Ask for rate") {
+    return (
+      <p className={`min-w-0 max-w-full overflow-hidden break-words ${mutedClass}`}>{trimmed}</p>
+    );
+  }
+
+  return (
+    <p className="min-w-0 max-w-full overflow-hidden break-words">
+      <span className={amountClass}>{trimmed}</span>
+    </p>
+  );
+}
+
 function GigCardHeader({
   eventName,
   status,
@@ -2046,14 +2095,20 @@ function GigCardHeader({
 
   return (
     <div className="min-w-0">
-      <div className="flex min-w-0 items-start justify-between gap-1.5 sm:gap-2">
-        <h3 className={`min-w-0 flex-1 text-sm font-semibold leading-snug sm:text-base ${titleClass}`}>
+      <div className="flex min-w-0 items-start justify-between gap-2 sm:gap-2.5">
+        <h3
+          className={`min-w-0 flex-1 text-sm font-semibold leading-snug line-clamp-2 sm:text-base ${titleClass}`}
+        >
           {eventName}
         </h3>
-        <BookingStatusBadge status={status} />
+        <span className="mt-0.5 shrink-0">
+          <BookingStatusBadge status={status} />
+        </span>
       </div>
       {plannerLabel ? (
-        <p className="mt-0.5 text-xs text-ftc-text-muted sm:mt-1">{plannerLabel}</p>
+        <p className="mt-0.5 text-[11px] font-normal leading-snug text-ftc-text-muted sm:mt-1 sm:text-xs">
+          {plannerLabel}
+        </p>
       ) : null}
     </div>
   );
@@ -2088,13 +2143,15 @@ function GigCardMetaRows({
         className={`ftc-gig-card-meta mt-1.5 min-w-0 overflow-hidden text-xs sm:hidden ${textClass}`}
       >
         <div className="space-y-1">
-          {venueDateLine ? (
-            <p className="min-w-0 max-w-full overflow-hidden break-words">{venueDateLine}</p>
-          ) : null}
-          <p className="min-w-0 max-w-full overflow-hidden break-words">{setTimeLine}</p>
+          <div className="space-y-0.5">
+            {venueDateLine ? (
+              <p className="min-w-0 max-w-full overflow-hidden break-words">{venueDateLine}</p>
+            ) : null}
+            <p className="min-w-0 max-w-full overflow-hidden break-words">{setTimeLine}</p>
+          </div>
           {mobileFooter ? mobileFooter : null}
           {!mobileFooter && showRate ? (
-            <p className="min-w-0 max-w-full overflow-hidden break-words">{rateLabel}</p>
+            <GigCardOfferLineFromLabel rateLabel={rateLabel!} muted={muted} />
           ) : null}
           {extraLine ? (
             <p className="min-w-0 max-w-full overflow-hidden break-words text-xs text-ftc-text-muted">
@@ -2107,12 +2164,14 @@ function GigCardMetaRows({
         className={`ftc-gig-card-meta mt-1.5 hidden min-w-0 overflow-hidden text-xs sm:mt-2 sm:block sm:text-sm ${textClass}`}
       >
         <div className="space-y-1">
-          {venueDateLine ? (
-            <p className="min-w-0 max-w-full overflow-hidden break-words">{venueDateLine}</p>
-          ) : null}
-          <p className="min-w-0 max-w-full overflow-hidden break-words">{setTimeLine}</p>
+          <div className="space-y-0.5">
+            {venueDateLine ? (
+              <p className="min-w-0 max-w-full overflow-hidden break-words">{venueDateLine}</p>
+            ) : null}
+            <p className="min-w-0 max-w-full overflow-hidden break-words">{setTimeLine}</p>
+          </div>
           {showRate ? (
-            <p className="min-w-0 max-w-full overflow-hidden break-words">{rateLabel}</p>
+            <GigCardOfferLineFromLabel rateLabel={rateLabel!} muted={muted} />
           ) : null}
           {extraLine ? (
             <p className="min-w-0 max-w-full overflow-hidden break-words text-xs text-ftc-text-muted">
@@ -2162,7 +2221,7 @@ function ReceivedBookingCard({
   const plannerLabel = senderName ? `From ${senderName}` : undefined;
 
   const cardBody = (
-    <div className="flex min-w-0 max-w-full flex-col gap-2 overflow-hidden sm:gap-3">
+    <div className={GIG_CARD_BODY_CLASS_NAME}>
       <GigCardHeader
         eventName={booking.event_name}
         status={booking.status}
@@ -2175,15 +2234,17 @@ function ReceivedBookingCard({
         rateLabel={rateLabel}
         mobileFooter={
           !isConfirmed ? (
-            <div className="flex min-w-0 items-start justify-between gap-2">
+            <div className="flex min-w-0 items-end justify-between gap-2">
               {rateLabel?.trim() ? (
-                <p className="min-w-0 flex-1 overflow-hidden break-words">{rateLabel}</p>
+                <div className="min-w-0 flex-1">
+                  <GigCardOfferLineFromLabel rateLabel={rateLabel} />
+                </div>
               ) : (
                 <span className="min-w-0 flex-1" aria-hidden="true" />
               )}
               <Link
                 href={conversationHref}
-                className="ftc-btn-primary inline-flex min-h-10 shrink-0 items-center justify-center px-2.5 py-1.5 text-[0.6875rem] uppercase tracking-wide"
+                className={GIG_CARD_MOBILE_OPEN_DM_CLASS}
                 onClick={(event) => event.stopPropagation()}
               >
                 Open DM
@@ -2265,7 +2326,7 @@ function BookingHistoryCard({
   const selectionLabel = `Select ${booking.event_name} for removal from history`;
 
   const cardBody = (
-    <div className="flex min-w-0 max-w-full flex-col gap-2 overflow-hidden sm:gap-3">
+    <div className={GIG_CARD_BODY_CLASS_NAME}>
       <div className="flex min-w-0 gap-3">
         {selectionMode ? (
           <HistorySelectionCheckbox checked={selected} label={selectionLabel} presentational />

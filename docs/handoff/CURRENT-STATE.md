@@ -65,7 +65,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 - Desktop (`md+`): month grid with per-date overflow menu unchanged
 - Bulk select + quick select (Fridays / Saturdays / weekends) on all breakpoints; mobile strip toggles selection in bulk mode
 - **Legend + strip dots:** compact dot-and-label legend (shared `CalendarDotLegend`) — Gigs: two centred rows (availability, then booking status); Events mobile: reserved empty top row + booking-status row (Today, Upcoming, Pending, Accepted); desktop Events pills unchanged
-- **Past dates:** availability controls hidden (mobile panel + desktop cell menu); empty booking message and mobile helper text suppressed; historical availability badges and booking cards remain visible
+- **Past dates:** availability controls hidden (mobile panel + desktop cell menu); empty booking message and mobile helper text suppressed; historical availability badges and booking cards remain visible; mobile date-strip dots and overflow counts hidden before local today
 - Shared strip component: `PlannerCalendarMobileDateStrip` accepts optional `getDateMarker` for DJ markers (`getDjAvailabilityDateStripMarker`)
 
 ## Booking / invite UX
@@ -73,7 +73,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 - Default send button label mode: **Confirm N DJ(s)** (`SendBookingRequestsPanel`)
 - Unavailable-DJ confirm modal uses Confirm wording
 - Calendar-origin and standard create flows aligned on copy and validation
-- **Gigs mobile cards (2026-07-14):** tighter `p-2.5` padding, `gap-2` rhythm (matches Event Plans); venue/date, time, and offer on separate mobile rows with even `space-y-1` / `gap-1` between them and offer + **Open DM** on one footer row; desktop card layout unchanged at `sm+`
+- **Gigs mobile cards (2026-07-15):** refined Incoming/Confirmed hierarchy — `line-clamp-2` titles, lighter `From …` promoter line, grouped venue/date+time block, split offer spans (muted prefix + stronger amount), badge `mt-0.5` balance, compact `min-h-9` Open DM; shared `GigCardOfferLineFromLabel`; skeleton matches column layout; desktop unchanged at `sm+`
 
 ## Event Plans
 

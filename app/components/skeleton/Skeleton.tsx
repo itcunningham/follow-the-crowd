@@ -488,16 +488,24 @@ export function ReceivedBookingsListSkeleton({ count = 3 }: { count?: number }) 
 
 function ReceivedBookingCardSkeleton() {
   return (
-    <div className="rounded-2xl border border-ftc-border-subtle bg-ftc-surface p-4 sm:p-5">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0 flex-1">
-          <SkeletonBlock className="h-5 w-2/5 max-w-[10rem]" />
-          <DetailGridSkeleton count={3} />
+    <div className="ftc-gig-card ftc-surface-row rounded-[var(--ftc-radius-xl)] p-2.5 sm:p-4">
+      <div className="flex min-w-0 max-w-full flex-col gap-1.5 overflow-hidden sm:gap-3">
+        <div className="flex min-w-0 items-start justify-between gap-2">
+          <div className="min-w-0 flex-1 space-y-1">
+            <SkeletonBlock className="h-4 w-4/5 max-w-[12rem]" />
+            <SkeletonBlock className="h-3 w-2/5 max-w-[8rem]" />
+          </div>
+          <SkeletonBlock className="mt-0.5 h-5 w-16 shrink-0 rounded-full" />
         </div>
-        <div className="flex shrink-0 items-center gap-2 sm:flex-col sm:items-end">
-          <SkeletonBlock className="h-6 w-16 rounded-full" />
-          <SkeletonBlock className="h-8 w-24 rounded-lg" />
-          <SkeletonBlock className="h-8 w-24 rounded-xl" />
+        <div className="space-y-1">
+          <div className="space-y-0.5">
+            <SkeletonBlock className="h-3 w-3/5 max-w-[10rem]" />
+            <SkeletonBlock className="h-3 w-2/5 max-w-[7rem]" />
+          </div>
+          <div className="flex items-end justify-between gap-2">
+            <SkeletonBlock className="h-3 w-2/5 max-w-[8rem]" />
+            <SkeletonBlock className="h-9 w-[4.75rem] shrink-0 rounded-xl" />
+          </div>
         </div>
       </div>
     </div>
