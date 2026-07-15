@@ -2120,6 +2120,7 @@ function GigCardMetaRows({
   rateLabel,
   extraLine,
   muted = false,
+  offerMuted,
   mobileAction,
 }: {
   venue?: string;
@@ -2128,6 +2129,7 @@ function GigCardMetaRows({
   rateLabel?: string;
   extraLine?: string;
   muted?: boolean;
+  offerMuted?: boolean;
   mobileAction?: ReactNode;
 }) {
   const textClass = muted ? "text-ftc-text-muted" : "text-ftc-text-secondary";
@@ -2135,9 +2137,10 @@ function GigCardMetaRows({
   const venueDateLine = venueDateParts.join(" · ");
   const setTimeLine = setTime?.trim() || "TBC";
   const showRate = Boolean(rateLabel?.trim());
+  const resolvedOfferMuted = offerMuted ?? muted;
 
   const offerLine = showRate ? (
-    <GigCardOfferLineFromLabel rateLabel={rateLabel!} muted={muted} />
+    <GigCardOfferLineFromLabel rateLabel={rateLabel!} muted={resolvedOfferMuted} />
   ) : null;
 
   const detailsLines = (
@@ -2185,22 +2188,34 @@ function GigCardMetaRows({
   );
 }
 
-function GigCardSecondaryAction({
+function GigCardHistoryAction({
   href,
   children,
+  emphasis = "secondary",
 }: {
   href: string;
   children: React.ReactNode;
+  emphasis?: "primary" | "secondary";
 }) {
+  const className =
+    emphasis === "primary"
+      ? "inline-flex min-h-8 flex-1 items-center justify-center rounded-lg border border-ftc-border-strong bg-ftc-bg-elevated px-3 py-1 text-xs font-semibold uppercase tracking-wide text-ftc-text-secondary transition hover:text-ftc-text sm:flex-none"
+      : "inline-flex min-h-8 flex-1 items-center justify-center rounded-lg border border-ftc-border-subtle bg-ftc-bg-elevated/40 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-ftc-text-muted transition hover:border-ftc-border-strong hover:text-ftc-text-secondary sm:flex-none";
+
   return (
-    <Link
-      href={href}
-      className="inline-flex min-h-9 flex-1 items-center justify-center rounded-lg border border-ftc-border-subtle bg-ftc-bg-elevated/60 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-ftc-text-muted transition hover:border-ftc-border-strong hover:text-ftc-text-secondary sm:flex-none"
-    >
+    <Link href={href} className={className}>
       {children}
     </Link>
   );
 }
+
+const GIG_CARD_HISTORY_CLASS_NAME =
+  "ftc-gig-card ftc-surface-row rounded-[var(--ftc-radius-xl)] pt-2 px-2.5 pb-1.5 sm:p-4 bg-ftc-bg-elevated/60";
+
+const GIG_CARD_HISTORY_BODY_CLASS_NAME =
+  "flex min-w-0 max-w-full flex-col gap-0 overflow-hidden sm:gap-2";
+
+const GIG_CARD_HISTORY_ACTIONS_CLASS = "-mt-2 flex flex-wrap gap-2 sm:mt-0";
 
 function ReceivedBookingCard({
   booking,
@@ -2305,9 +2320,7 @@ function BookingHistoryCard({
       ? buildGigsEventDetailHref(booking.event_id, gigsTab)
       : `/events/${booking.event_id}`
     : null;
-  const cardClass = muted
-    ? `${GIG_CARD_CLASS_NAME} bg-ftc-bg-elevated/60`
-    : GIG_CARD_CLASS_NAME;
+  const cardClass = muted ? GIG_CARD_HISTORY_CLASS_NAME : GIG_CARD_CLASS_NAME;
   const cancellationReasonLabel = resolveBookingCancellationReasonLabel(booking);
   const plannerLabel = senderName ? `From ${senderName}` : subtitle;
   const conversationHref = buildGigsConversationHref(
@@ -2318,7 +2331,7 @@ function BookingHistoryCard({
   const selectionLabel = `Select ${booking.event_name} for removal from history`;
 
   const cardBody = (
-    <div className={GIG_CARD_BODY_CLASS_NAME}>
+    <div className={muted ? GIG_CARD_HISTORY_BODY_CLASS_NAME : GIG_CARD_BODY_CLASS_NAME}>
       <div className="flex min-w-0 gap-3">
         {selectionMode ? (
           <HistorySelectionCheckbox checked={selected} label={selectionLabel} presentational />
@@ -2337,20 +2350,25 @@ function BookingHistoryCard({
             venue={booking.venue}
             eventDate={booking.event_date}
             setTime={booking.set_time}
-            rateLabel={getBookingOfferRateLabel(booking)}
+            rateLabel={getGigCardOfferSummary(booking)}
             extraLine={cancellationReasonLabel ?? undefined}
             muted={muted}
+            offerMuted={false}
           />
         </div>
       </div>
 
       {selectionMode ? null : (
-        <div className="flex flex-wrap gap-2">
+        <div className={muted ? GIG_CARD_HISTORY_ACTIONS_CLASS : "flex flex-wrap gap-2"}>
           {action}
           {eventHref ? (
-            <GigCardSecondaryAction href={eventHref}>View event</GigCardSecondaryAction>
+            <GigCardHistoryAction href={eventHref} emphasis="primary">
+              View event
+            </GigCardHistoryAction>
           ) : null}
-          <GigCardSecondaryAction href={conversationHref}>Open DM</GigCardSecondaryAction>
+          <GigCardHistoryAction href={conversationHref} emphasis="secondary">
+            Open DM
+          </GigCardHistoryAction>
         </div>
       )}
     </div>
