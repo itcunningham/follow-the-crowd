@@ -497,12 +497,12 @@ function ReceivedBookingCardSkeleton() {
           </div>
           <SkeletonBlock className="mt-0.5 h-5 w-16 shrink-0 rounded-full" />
         </div>
-        <div className="space-y-0.5">
-          <SkeletonBlock className="h-3 w-3/5 max-w-[10rem]" />
-          <SkeletonBlock className="h-3 w-2/5 max-w-[7rem]" />
-        </div>
-        <div className="mt-1 flex items-end justify-between gap-2">
-          <SkeletonBlock className="h-3 w-2/5 max-w-[8rem]" />
+        <div className="mt-1 flex min-w-0 items-center gap-2">
+          <div className="min-w-0 flex-1 space-y-0.5">
+            <SkeletonBlock className="h-3 w-3/5 max-w-[10rem]" />
+            <SkeletonBlock className="h-3 w-2/5 max-w-[7rem]" />
+            <SkeletonBlock className="h-3 w-2/5 max-w-[8rem]" />
+          </div>
           <SkeletonBlock className="h-[2.125rem] w-[4.75rem] shrink-0 rounded-xl" />
         </div>
       </div>

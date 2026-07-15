@@ -73,7 +73,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 - Default send button label mode: **Confirm N DJ(s)** (`SendBookingRequestsPanel`)
 - Unavailable-DJ confirm modal uses Confirm wording
 - Calendar-origin and standard create flows aligned on copy and validation
-- **Gigs mobile cards (2026-07-15):** compact `py-2 px-2.5` padding; venue/time block + offer row with 4px gap; title-to-promoter `mt-2`; brighter neutral offer text; gigs-only copy (`Fixed · $111`, `Open offer`) via `getGigCardOfferSummary`
+- **Gigs mobile cards (2026-07-15):** unified venue/time/offer block (`space-y-0.5`); Open DM vertically centred beside info on Incoming mobile; compact `py-2 px-2.5` padding; gigs-only offer copy via `getGigCardOfferSummary`
 
 ## Event Plans
 

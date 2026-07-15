@@ -2033,10 +2033,8 @@ const GIG_CARD_CLASS_NAME =
 
 const GIG_CARD_BODY_CLASS_NAME = "flex min-w-0 max-w-full flex-col gap-1 overflow-hidden sm:gap-3";
 
-const GIG_CARD_DETAIL_OFFER_GAP_CLASS = "mt-1";
-
 const GIG_CARD_MOBILE_OPEN_DM_CLASS =
-  "ftc-btn-primary inline-flex min-h-[2.125rem] shrink-0 items-center justify-center self-end px-2.5 py-0.5 text-[0.6875rem] uppercase tracking-wide";
+  "ftc-btn-primary inline-flex min-h-[2.125rem] shrink-0 items-center justify-center px-2.5 py-0.5 text-[0.6875rem] uppercase tracking-wide";
 
 function GigCardOfferLineFromLabel({
   rateLabel,
@@ -2122,7 +2120,7 @@ function GigCardMetaRows({
   rateLabel,
   extraLine,
   muted = false,
-  mobileFooter,
+  mobileAction,
 }: {
   venue?: string;
   eventDate?: string;
@@ -2130,7 +2128,7 @@ function GigCardMetaRows({
   rateLabel?: string;
   extraLine?: string;
   muted?: boolean;
-  mobileFooter?: ReactNode;
+  mobileAction?: ReactNode;
 }) {
   const textClass = muted ? "text-ftc-text-muted" : "text-ftc-text-secondary";
   const venueDateParts = [venue?.trim(), eventDate?.trim() ? formatDisplayEventDate(eventDate) : ""].filter(Boolean);
@@ -2142,28 +2140,31 @@ function GigCardMetaRows({
     <GigCardOfferLineFromLabel rateLabel={rateLabel!} muted={muted} />
   ) : null;
 
-  const renderDetailsBlock = (footer?: ReactNode) => (
+  const detailsLines = (
     <>
-      <div className="space-y-0.5">
-        {venueDateLine ? (
-          <p className="min-w-0 max-w-full overflow-hidden break-words">{venueDateLine}</p>
-        ) : null}
-        <p className="min-w-0 max-w-full overflow-hidden break-words">{setTimeLine}</p>
-      </div>
-      {footer ? (
-        footer
-      ) : offerLine ? (
-        <div className={GIG_CARD_DETAIL_OFFER_GAP_CLASS}>{offerLine}</div>
+      {venueDateLine ? (
+        <p className="min-w-0 max-w-full overflow-hidden break-words">{venueDateLine}</p>
       ) : null}
+      <p className="min-w-0 max-w-full overflow-hidden break-words">{setTimeLine}</p>
+      {offerLine}
     </>
   );
+
+  const detailsBlock = <div className="space-y-0.5">{detailsLines}</div>;
 
   return (
     <>
       <div
         className={`ftc-gig-card-meta mt-1 min-w-0 overflow-hidden text-xs sm:hidden ${textClass}`}
       >
-        {renderDetailsBlock(mobileFooter)}
+        {mobileAction ? (
+          <div className="flex min-w-0 items-center gap-2">
+            <div className="min-w-0 flex-1">{detailsBlock}</div>
+            {mobileAction}
+          </div>
+        ) : (
+          detailsBlock
+        )}
         {extraLine ? (
           <p className="mt-1 min-w-0 max-w-full overflow-hidden break-words text-xs text-ftc-text-muted">
             {extraLine}
@@ -2173,7 +2174,7 @@ function GigCardMetaRows({
       <div
         className={`ftc-gig-card-meta mt-1 hidden min-w-0 overflow-hidden text-xs sm:mt-2 sm:block sm:text-sm ${textClass}`}
       >
-        {renderDetailsBlock()}
+        {detailsBlock}
         {extraLine ? (
           <p className="mt-1 min-w-0 max-w-full overflow-hidden break-words text-xs text-ftc-text-muted">
             {extraLine}
@@ -2232,26 +2233,15 @@ function ReceivedBookingCard({
         eventDate={booking.event_date}
         setTime={booking.set_time}
         rateLabel={rateLabel}
-        mobileFooter={
+        mobileAction={
           !isConfirmed ? (
-            <div
-              className={`${GIG_CARD_DETAIL_OFFER_GAP_CLASS} flex min-w-0 items-end justify-between gap-2`}
+            <Link
+              href={conversationHref}
+              className={GIG_CARD_MOBILE_OPEN_DM_CLASS}
+              onClick={(event) => event.stopPropagation()}
             >
-              {rateLabel?.trim() ? (
-                <div className="min-w-0 flex-1">
-                  <GigCardOfferLineFromLabel rateLabel={rateLabel} />
-                </div>
-              ) : (
-                <span className="min-w-0 flex-1" aria-hidden="true" />
-              )}
-              <Link
-                href={conversationHref}
-                className={GIG_CARD_MOBILE_OPEN_DM_CLASS}
-                onClick={(event) => event.stopPropagation()}
-              >
-                Open DM
-              </Link>
-            </div>
+              Open DM
+            </Link>
           ) : undefined
         }
       />
