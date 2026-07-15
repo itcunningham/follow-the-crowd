@@ -148,11 +148,13 @@ export function EventDetailHero({
   coverImageUrl,
   fallbackColour,
   statusBadge,
+  compact = false,
 }: {
   eventName: string;
   coverImageUrl?: string | null;
   fallbackColour?: string | null;
   statusBadge?: React.ReactNode;
+  compact?: boolean;
 }) {
   const trimmedCoverUrl = coverImageUrl?.trim() || null;
 
@@ -164,7 +166,9 @@ export function EventDetailHero({
     return (
       <div
         data-event-detail-hero
-        className={`relative aspect-[4/3] max-h-[165px] w-full overflow-hidden border-b border-ftc-border-subtle ${styles.heroClassName}`}
+        className={`relative aspect-[4/3] w-full overflow-hidden border-b border-ftc-border-subtle ${styles.heroClassName} ${
+          compact ? "max-h-[112px]" : "max-h-[165px]"
+        }`}
       >
         <div className="absolute inset-0 flex items-center justify-center">
           <span

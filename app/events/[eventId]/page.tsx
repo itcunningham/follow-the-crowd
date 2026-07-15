@@ -982,10 +982,14 @@ export default function EventDetailPage() {
   const showStickyActions = !editOpen && !sendOpen;
   const showOwnerSendAction =
     isOwner && isPlanner && !eventIsCancelled && !isHistoryEventDetail;
+  const showOpenDmInYourBookingSection =
+    !isOwner &&
+    Boolean(viewerBooking?.conversation_id && !hideOpenBookingConversation);
   const showDjBookingConversationAction =
     showStickyActions &&
     !showOwnerSendAction &&
-    Boolean(viewerBooking?.conversation_id && !hideOpenBookingConversation);
+    Boolean(viewerBooking?.conversation_id && !hideOpenBookingConversation) &&
+    !showOpenDmInYourBookingSection;
   const showBottomBar = showDjBookingConversationAction;
   const showRunSheetSendBookingsAction = showOwnerSendAction && showStickyActions;
 
@@ -1103,6 +1107,7 @@ export default function EventDetailPage() {
           eventName={event.name}
           coverImageUrl={event.cover_image_url}
           fallbackColour={event.fallback_colour}
+          compact={isHistoryEventDetail}
           statusBadge={
             <EventDateStatusBadge
               eventDate={event.event_date}
