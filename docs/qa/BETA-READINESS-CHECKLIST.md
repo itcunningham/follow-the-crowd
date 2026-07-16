@@ -1,31 +1,18 @@
 # Beta Readiness Checklist
 
-Master gate checklist for FTC private beta. Mark each area when QA has completed testing and sign-off is ready.
+Master gate checklist for FTC private beta.
 
-**Last updated:** 2026-07-15 (legacy public message insert remediation)  
-**Beta target:** Private beta (planner + DJ testers)
-
-## Beta Readiness blocker fixes (2026-07-15)
-
-Builder batch addressing QA + Security Review blockers. **Next:** Apply pending production SQL migrations, rerun full security audit (16/16), then QA Agent regression.
-
-| Fix | Root cause | Status | Builder verification | Production-only still required |
-|-----|------------|--------|----------------------|------------------------------|
-| `/bookings` hooks crash | `showDetailsPlanSkeleton` `useMemo` after conditional `return null` in `BookingsPageContent` | Partial | `npm run build` passes; hook order fixed | Logged-out/stale-session redirect on production |
-| Crew-chat auto-start auth | `ensure_event_crew_chat_auto_started` callable by any authenticated user | Blocked | Migration + audit check #16 in repo | Isaac: run migration in production Supabase |
-| `/events/create` + invalid IDs | `[eventId]` captured `create`; invalid UUIDs surfaced Postgres `22P02` | Partial | Redirect route + UUID guard; build passes | QA invalid/deleted IDs on production |
-| Message metadata logging | Debug `console.log` in DM inbox realtime handlers | Partial | Logs removed/gated in messaging files | QA: no payload logs in prod console |
-| AI generation disabled | Private beta excludes AI | Partial | Feature flags; marketing AI UI hidden | QA: no AI button on production home |
-| Legacy public message INSERT | Production policy `allow public insert messages` on `public.messages` (`TO public`, `WITH CHECK (true)`) | Blocked | Migration + audit check #12 fix in repo | Isaac: run migration; rerun audit 16/16; test DM + crew chat send |
-
-**Deploy order:** (1) Run pending Supabase migrations in production (`20250715180000`, then `20250715213000`), (2) deploy Next.js, (3) run `scripts/supabaseSecurityAuditChecklist.sql` (all 16 rows pass), (4) test DM and crew-chat message send, (5) QA regression.
+**Last updated:** 2026-07-16 (coached private beta GO)  
+**Beta target:** Coached private beta — 5–10 Planner/DJ pairs  
+**Go-live record:** [PRIVATE-BETA-GO-LIVE.md](./PRIVATE-BETA-GO-LIVE.md)  
+**Known issues:** [KNOWN-ISSUES.md](./KNOWN-ISSUES.md)
 
 ## How to use
 
 1. Work through [TEST-PLAN.md](./TEST-PLAN.md) for detailed cases.
-2. Run [REGRESSION-CHECKLIST.md](./REGRESSION-CHECKLIST.md) before declaring an area ready.
+2. Run [REGRESSION-CHECKLIST.md](./REGRESSION-CHECKLIST.md) before each release during beta.
 3. File failures using [BUG-TEMPLATE.md](./BUG-TEMPLATE.md).
-4. Use [RELEASE-CHECKLIST.md](./RELEASE-CHECKLIST.md) before production deploy.
+4. Use [RELEASE-CHECKLIST.md](./RELEASE-CHECKLIST.md) for release coordination.
 
 **Legend — Status:** Not Started · In Progress · Passed · Failed · Blocked
 
@@ -35,18 +22,18 @@ Builder batch addressing QA + Security Review blockers. **Next:** Apply pending 
 
 | Item | Status | Severity if failed | Owner | Notes |
 |------|--------|-------------------|-------|-------|
-| Vercel production deploy matches latest `main` | Not Started | Critical | Isaac | |
-| Supabase migrations applied (see `docs/handoff/SUPABASE.md`) | Blocked | Critical | Isaac | `20250715180000`, `20250715213000` pending production run |
-| Production security audit checklist all rows pass | Blocked | Critical | Isaac | Was 15/16 — check #12 failed on legacy `allow public insert messages`; fix ready, not yet applied |
-| Production RLS hardened; no legacy `using (true)` bootstrap policies | Not Started | Critical | Isaac | Repo inspection only — must verify in production |
-| Supabase Auth: email confirmation, password policy, rate limits reviewed | Not Started | High | Isaac | |
-| Google Maps API key restricted to approved production/preview domains | Not Started | High | Isaac | |
-| Private beta signup controlled (invitations/allowlist; not open public signup) | Not Started | High | Isaac | No custom invitation system in this batch |
-| Test planner account available | Not Started | Critical | QA | |
-| Test DJ account available | Not Started | Critical | QA | |
-| Test “both” role account available (optional) | Not Started | Medium | QA | |
-| Mobile test device or 390px emulator ready | Not Started | High | QA | |
-| iOS Safari spot-check device available | Not Started | High | QA | Touch nav quirks documented in handoff |
+| Vercel production deploy stable | Passed | Critical | Isaac | Confirmed stable at GO |
+| Supabase migrations applied | Passed | Critical | Isaac | Including crew-chat auth + legacy message INSERT remediation |
+| Production security audit 16/16 | Passed | Critical | Isaac | Confirmed 2026-07-16 |
+| Production RLS hardened | Passed | Critical | Isaac | Legacy `allow public insert messages` removed |
+| Supabase Auth: email confirmation, password policy, rate limits reviewed | Not Started | High | Isaac | Operational — confirm before broad invite |
+| Google Maps API key restricted to approved domains | Not Started | High | Isaac | Operational — confirm before broad invite |
+| Private beta signup controlled (invitations/allowlist) | Not Started | High | Isaac | Confirm approach before first tester invite |
+| Test planner account available | Passed | Critical | QA | |
+| Test DJ account available | Passed | Critical | QA | |
+| Test “both” role account (optional) | Passed | Medium | QA | |
+| Mobile test device / 390px emulator | Passed | High | QA | |
+| iPhone Safari physical smoke | Passed | High | QA | 7/7 passed |
 
 ---
 
@@ -54,74 +41,49 @@ Builder batch addressing QA + Security Review blockers. **Next:** Apply pending 
 
 | Area | Status | Highest open severity | Blockers | Sign-off |
 |------|--------|----------------------|----------|----------|
-| Authentication | Not Started | — | | |
-| Profiles | Not Started | — | | |
-| Discover | Not Started | — | | |
-| Events | Partial | High | `/events/create` redirect + invalid ID guard — QA verify | |
-| Event Plans | Not Started | — | | |
-| Calendar | Not Started | — | | |
-| Gigs | Partial | Critical | `/bookings` hooks fix — QA redirect + role regression | |
-| Booking flow | Not Started | — | | |
-| Messaging (DM) | Blocked | Critical | Legacy public INSERT policy on production messages — migration pending | |
-| Crew chat | Blocked | Critical | Same legacy policy bypassed crew insert RLS; migration pending | |
-| Realtime | Partial | Medium | Inbox handler logging gated — behaviour unchanged | |
-| Permissions | Blocked | Critical | Audit 15/16 until migration applied and audit rerun | |
-| Performance | Not Started | — | | |
-| Accessibility | Not Started | — | | |
-| Edge cases | Not Started | — | | |
-| Settings & account | Not Started | — | | |
+| Authentication | Passed | — | | QA |
+| Profiles | Passed | Low | KN-03 latency | QA |
+| Discover | Passed | — | Existing scope only | QA |
+| Events | Passed | Medium | KN-01, KN-02, KN-06 | QA |
+| Event Plans | Passed | — | | QA |
+| Calendar | Passed | — | | QA |
+| Gigs | Passed | — | | QA |
+| Booking flow | Passed | — | | QA |
+| Messaging (DM) | Passed | Medium | KN-02 back nav | QA |
+| Crew chat | Passed | Low | KN-04 | QA |
+| Realtime | Passed | — | | QA |
+| Permissions | Passed | — | | QA |
+| Performance | Passed | Low | KN-03 | QA |
+| Accessibility | Passed | — | | QA |
+| Edge cases | Passed | Low | KN-05, KN-06 | QA |
+| Settings & account | Passed | — | | QA |
 
 ---
 
-## Area summaries (what “Passed” means)
+## QA evidence at GO (2026-07-16)
 
-### Authentication
-Signup, login, logout, onboarding, role selection, and password reset work on mobile and desktop. Unauthenticated users cannot reach protected pages.
+| Gate | Result |
+|------|--------|
+| Production security audit | 16/16 passed |
+| Authenticated automated production QA | 8/8 passed |
+| Physical iPhone Safari smoke | 7/7 passed |
+| Open Critical defects | 0 |
+| Open High defects | 0 |
+| Production build | Passed |
+| Production deployment | Stable |
 
-### Profiles
-Public profiles display correctly. Own profile edit/setup saves. Avatar fullscreen viewer works. No raw user IDs shown in UI.
+---
 
-### Discover
-DJ discovery list loads. Profile links work. Appropriate empty states.
+## Resolved blocker fixes (2026-07-15)
 
-### Events
-Create, edit, cancel, delete, list (Active/History), detail view, flyer upload, validation, run sheet, invite DJs, and history hide behave as documented.
-
-### Event Plans
-Save, list, use plan to create event, bulk delete.
-
-### Calendar
-Mobile date strip + agenda; desktop grid + day panel. Dots, sorting, create-from-calendar, cancelled events hidden from calendar.
-
-### Gigs
-Incoming / Confirmed / History tabs. Booking cards, Open DM deep links, availability calendar, calendar navigation on mobile.
-
-### Booking flow
-Send requests, pending/accepted/declined/cancelled states, rate proposals (open/fixed/counter), DM booking cards, cancellation with reason.
-
-### Messaging (DM)
-Inbox, conversations, text messages, booking cards, timestamps, composer, photo attach, profile links, unread badge.
-
-### Crew chat
-Per-event crew chat for accepted DJs + planner. System messages, sender grouping, empty state, access rules.
-
-### Realtime
-New DM and crew messages appear without manual refresh. Badge counts update reasonably quickly.
-
-### Permissions
-Planner vs DJ vs both see correct nav and actions. Users cannot access others’ private data through UI.
-
-### Performance
-Cold start feels responsive. Nav badges do not pop in incorrectly. No obvious layout thrash on tab switch.
-
-### Accessibility
-Keyboard Escape closes modals where implemented. Focus visible on interactive elements. Dialogs labelled.
-
-### Edge cases
-History/read-only events, cancelled events, empty states, long text truncation, timezone/date edge cases.
-
-### Settings & account
-Password reset email + cooldown, sign out, account deletion request mailto.
+| Fix | Status |
+|-----|--------|
+| `/bookings` hooks crash | Passed — verified in production QA |
+| Crew-chat auto-start auth | Passed — migration applied; audit check #16 |
+| `/events/create` + invalid IDs | Passed — verified in production QA |
+| Message metadata logging | Passed — production console clean in QA |
+| AI generation disabled | Passed — not in beta scope |
+| Legacy public message INSERT | Passed — remediation applied; audit 16/16 |
 
 ---
 
@@ -129,12 +91,14 @@ Password reset email + cooldown, sign out, account deletion request mailto.
 
 | ID | Severity | Area | Summary | Status |
 |----|----------|------|---------|--------|
-| BR-01 | Critical | Gigs | `/bookings` hooks crash when logged out / stale session | Fixed in code — QA verify |
-| BR-02 | Critical | Security | `ensure_event_crew_chat_auto_started` missing caller authorization | Migration ready — production apply pending |
-| BR-03 | High | Events | `/events/create` exposed Postgres error; invalid event IDs unsafe | Fixed in code — QA verify |
-| BR-04 | Medium | Messaging | Production console logged realtime message payloads | Fixed in code — QA verify prod console |
-| BR-05 | Medium | Marketing | AI generation visible during private beta | Disabled via feature flags — QA verify prod home |
-| BR-06 | Critical | Security | Legacy `allow public insert messages` on production (`TO public`, `WITH CHECK (true)`) | Migration ready — not Passed until audit 16/16 + DM/crew send test |
+| KN-01 | Medium | Events | Bookings row DJ profile tap | Accepted — see KNOWN-ISSUES.md |
+| KN-02 | Medium | Navigation | Event → DM → Back lands on Messages | Accepted |
+| KN-03 | Low | Profiles | Profile tab occasional slow response | Accepted |
+| KN-04 | Low | Crew chat | View event return not always origin-preserving | Accepted |
+| KN-05 | Low | Navigation | Secondary Run Sheet/profile return paths | Accepted |
+| KN-06 | Low | Events | No sensible event name/venue character caps | Accepted |
+
+No open **Critical** or **High** defects at GO.
 
 ---
 
@@ -142,15 +106,24 @@ Password reset email + cooldown, sign out, account deletion request mailto.
 
 | Criterion | Met? |
 |-----------|------|
-| Zero **Critical** open defects | ☐ |
-| Zero **High** open defects (or accepted exceptions documented) | ☐ |
-| All product areas **Passed** or **Blocked** with accepted risk | ☐ |
-| Regression checklist **Passed** on production | ☐ |
-| Isaac sign-off | ☐ |
+| Zero **Critical** open defects | ☑ |
+| Zero **High** open defects | ☑ |
+| Core product areas **Passed** (accepted Medium/Low documented) | ☑ |
+| Production security audit **16/16** | ☑ |
+| Authenticated production QA passed | ☑ |
+| Product Owner sign-off | ☑ |
 
-**Decision:** Not Started  
-**Date:**  
-**Signed off by:**
+**Decision:** **GO** — coached private beta  
+**Date:** 2026-07-16  
+**Signed off by:** Product Owner (Isaac)
+
+---
+
+## Pre-invite operational items (not product gates)
+
+See [PRIVATE-BETA-GO-LIVE.md](./PRIVATE-BETA-GO-LIVE.md) OP-01–OP-11. Complete before first tester invite.
+
+**Pause rule:** Any new **Critical** or **High** production defect pauses tester onboarding.
 
 ---
 
@@ -158,4 +131,11 @@ Password reset email + cooldown, sign out, account deletion request mailto.
 
 | Item | Priority | Notes |
 |------|----------|-------|
-| | | |
+| KN-01 Bookings row profile tap | Medium | After beta feedback |
+| KN-02 Event → DM → Back | Medium | Origin-preserving return |
+| KN-03 Profile tab latency | Low | |
+| KN-04 Crew chat return path | Low | |
+| KN-05 Secondary return paths | Low | |
+| KN-06 Event name/venue caps | Low | |
+| AI re-enable review | Low | Post-beta only |
+| Public launch criteria | — | Separate from coached beta |

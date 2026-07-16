@@ -1,19 +1,38 @@
 # FTC Beta Readiness — QA workspace
 
-Official QA documentation for Follow The Crowd (FTC) private beta.
+Official QA documentation for Follow The Crowd (FTC) coached private beta.
 
-**Audience:** QA Reviewers, Isaac (product owner), and release coordinators. No implementation knowledge required.
+**Audience:** QA Reviewers, Isaac (product owner), and release coordinators.
+
+**Current phase:** **Coached Private Beta** (GO — 2026-07-16)
 
 ## Documents
 
 | File | Purpose |
 |------|---------|
-| [BETA-READINESS-CHECKLIST.md](./BETA-READINESS-CHECKLIST.md) | Master gate checklist — track beta readiness by product area |
+| [PRIVATE-BETA-GO-LIVE.md](./PRIVATE-BETA-GO-LIVE.md) | Go-live record, evidence, operational pre-invite checklist |
+| [KNOWN-ISSUES.md](./KNOWN-ISSUES.md) | Accepted Medium/Low issues for coached beta |
+| [BETA-READINESS-CHECKLIST.md](./BETA-READINESS-CHECKLIST.md) | Master gate checklist — product areas and GO decision |
 | [TEST-PLAN.md](./TEST-PLAN.md) | Detailed test cases with steps and expected results |
 | [REGRESSION-CHECKLIST.md](./REGRESSION-CHECKLIST.md) | Focused smoke + regression pass before each release |
 | [BUG-TEMPLATE.md](./BUG-TEMPLATE.md) | Standard format for filing bugs |
-| [RELEASE-CHECKLIST.md](./RELEASE-CHECKLIST.md) | Pre-release and release-day steps |
+| [RELEASE-CHECKLIST.md](./RELEASE-CHECKLIST.md) | Pre-release, operational, and release-day steps |
 | [AUTHENTICATED-E2E.md](./AUTHENTICATED-E2E.md) | Playwright authenticated production harness |
+
+## Beta scope (approved)
+
+- **5–10 coached Planner/DJ pairs** with existing working relationships preferred
+- Controlled invitations/access — not broad cold onboarding, not public launch
+- **Out of scope:** payments, AI generation, Discover expansion, social features, or other new product scope
+
+## Evidence at GO (2026-07-16)
+
+| Gate | Result |
+|------|--------|
+| Production security audit | 16/16 passed |
+| Authenticated automated production QA | 8/8 passed |
+| Physical iPhone Safari smoke | 7/7 passed |
+| Critical / High open defects | 0 / 0 |
 
 ## Conventions
 
@@ -39,11 +58,15 @@ Official QA documentation for Follow The Crowd (FTC) private beta.
 ## Before you test
 
 1. Read `docs/handoff/CURRENT-STATE.md` for the latest feature inventory.
-2. Confirm which Supabase migrations/scripts Isaac has applied (`docs/handoff/SUPABASE.md`).
+2. Review [KNOWN-ISSUES.md](./KNOWN-ISSUES.md) for accepted limitations.
 3. Test **mobile-first** at **390px** width, then spot-check desktop (`md+`).
 4. Use at least one **planner** account and one **DJ** account (a **both** role account is helpful).
-5. Do not assume SQL migrations are applied unless Isaac confirms.
-6. For automated authenticated production regression, see [AUTHENTICATED-E2E.md](./AUTHENTICATED-E2E.md).
+5. For automated authenticated production regression, see [AUTHENTICATED-E2E.md](./AUTHENTICATED-E2E.md).
+6. **Never commit** `.env.qa.local`, tokens, credentials, or Playwright storage states.
+
+## Pause rule
+
+Any new **Critical** or **High** production defect **pauses tester onboarding** until triaged.
 
 ## Related docs
 

@@ -1,6 +1,28 @@
-# Current state (last updated: 2026-07-15)
+# Current state (last updated: 2026-07-16)
 
 Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
+
+## Coached private beta (2026-07-16)
+
+**Decision:** **GO** — small, coached private beta (5–10 Planner/DJ pairs).
+
+| Evidence | Result |
+|----------|--------|
+| Production Supabase security audit | 16/16 passed |
+| Authenticated automated production QA | 8/8 passed |
+| Physical iPhone Safari smoke | 7/7 passed |
+| Open Critical / High defects | 0 / 0 |
+| Production build & deploy | Stable |
+
+**Docs:** `docs/qa/PRIVATE-BETA-GO-LIVE.md`, `docs/qa/KNOWN-ISSUES.md`, `docs/qa/BETA-READINESS-CHECKLIST.md`
+
+**Accepted known issues (not fixing in beta):** KN-01 Bookings row profile tap; KN-02 Event→DM→Back; KN-03 Profile tab latency; KN-04 Crew chat return; KN-05 Secondary return paths; KN-06 Event name/venue caps — see `docs/qa/KNOWN-ISSUES.md`.
+
+**Out of scope:** payments, AI generation, Discover expansion, social features, public launch.
+
+**Before first tester invite:** complete operational checklist OP-01–OP-11 in `PRIVATE-BETA-GO-LIVE.md` (tester list, invitations, feedback channel, backup, monitoring, QA data isolation).
+
+**Pause rule:** new Critical/High production defect pauses tester onboarding.
 
 ## Core product
 
@@ -97,13 +119,13 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 - No trailing periods on several confirmation dialogs and empty states
 - Desktop planner UX brought into parity with mobile (wording, validation, calendar cards, today/selected styling) without copying mobile layout
 
-## Beta readiness (2026-07-15)
+## Beta readiness (historical — resolved at GO 2026-07-16)
 
-- **`docs/qa/`** — official QA workspace: beta readiness checklist, test plan, regression checklist, bug template, release checklist
-- **Blocker-fix batch (2026-07-15):** `/bookings` hooks + redirect; crew-chat auto-start RPC auth migration; `/events/create` redirect + invalid event ID guard; production message logging removed/gated; AI generation disabled for private beta via `lib/featureFlags.ts`
-- **Security remediation (2026-07-15):** production audit 15/16 — legacy policy `allow public insert messages` on `public.messages` (`TO public`, `WITH CHECK (true)`) bypassed hardened DM/crew insert RLS; migration `20250715213000_remove_legacy_public_message_insert.sql`; audit check #12 corrected to exact `public`/`anon` role membership
+- **`docs/qa/`** — QA workspace including go-live record and known issues
+- **Blocker-fix batch (2026-07-15):** bookings hooks, crew-chat auth, event ID safety, logging, AI disabled — all verified at GO
+- **Security remediation (2026-07-15):** legacy `allow public insert messages` removed; audit 16/16 at GO
 
-### Beta blocker fixes — detail
+### Beta blocker fixes — detail (all Passed at GO)
 
 | # | Issue | Root cause | Files |
 |---|-------|------------|-------|
@@ -114,24 +136,11 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 | 5 | AI disabled for beta | Private beta scope | `lib/featureFlags.ts`, `app/api/generate-event/route.ts`, `app/page.tsx` |
 | 6 | Legacy public message INSERT | Production-only policy `allow public insert messages` not in repo; `TO public` + `WITH CHECK (true)` allowed any role to insert rows that bypassed participant/crew checks | `supabase/migrations/20250715213000_remove_legacy_public_message_insert.sql`, `scripts/setupProductionRls.sql`, `scripts/supabaseSecurityAuditChecklist.sql` |
 
-**Why removing BR-06 policy is safe:** Legitimate inserts use `messages_insert_conversation_sender` (conversation member + block check) and `messages_insert_event_crew` (crew member check), both `TO authenticated`. Dropping the legacy policy removes a permissive OR-path only; it does not drop hardened policies or revoke authenticated `INSERT` grant.
+**Production gates at GO:** Security audit 16/16; migrations applied; production QA and iPhone smoke passed.
 
-**Production apply (BR-06):** Run migration in Supabase SQL Editor → rerun full `scripts/supabaseSecurityAuditChecklist.sql` (require 16/16) → test DM send + crew-chat send → then QA regression.
+**Operational items still requiring Isaac confirmation before first invite:** tester list, controlled signup, feedback channel, support contact, Supabase backup, rollback procedure, monitoring, `QA-BETA-*` data cleanup/isolation.
 
-**Builder tests:** `npm run build` — **Passed** (2026-07-15). No browser regression run in this batch — QA Agent next.
-
-**Re-enable AI after beta review:** set `NEXT_PUBLIC_FTC_AI_EVENT_GENERATION_ENABLED=true` and `FTC_AI_EVENT_GENERATION_ENABLED=true` in Vercel env; redeploy. `OPENAI_API_KEY` stays server-only.
-
-**Production gates for Isaac (not verified by repo inspection alone):**
-
-1. Run `scripts/supabaseSecurityAuditChecklist.sql` in production — every row must pass (includes check #12 public/anon write + check #16 crew auto-start auth).
-2. Confirm hardened production RLS and crew-chat policies present; legacy `allow public insert messages` absent after migration.
-3. Apply migrations `20250715180000_harden_crew_chat_auto_start_auth.sql` and `20250715213000_remove_legacy_public_message_insert.sql` before or with app deploy.
-4. Review Supabase Auth: email confirmation, password policy, rate limits.
-5. Restrict Google Maps API key to approved production/preview domains.
-6. Use controlled invitations/allowlist for private beta signup (no unrestricted public signup).
-
-**Remaining risks:** Crew-chat auto-start untested in production until migration applied. `/bookings` redirect paths need QA on stale localStorage + expired session. Invalid event ID UX needs production spot-check.
+**Re-enable AI after beta review:** set `NEXT_PUBLIC_FTC_AI_EVENT_GENERATION_ENABLED=true` and `FTC_AI_EVENT_GENERATION_ENABLED=true` in Vercel env; redeploy.
 
 ## Desktop workspace & performance (2026-07-12)
 
