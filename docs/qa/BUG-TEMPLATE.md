@@ -10,7 +10,7 @@ Copy this template when filing a bug. Paste into GitHub Issues, Slack, or your t
 
 **Reported by:** [Name]  
 **Date:** [YYYY-MM-DD]  
-**Build / commit:** [Commit hash or “production”]  
+**App version & build:** [Copy from Settings — e.g. `FTC Private Beta 0.9.0 · Build abc1234`]  
 **Environment:** [Local / Vercel production / Preview]
 
 ---

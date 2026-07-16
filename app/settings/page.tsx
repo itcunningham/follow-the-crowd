@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import AppNavigation, { MOBILE_NAV_OFFSET_CLASS } from "@/app/components/AppNavigation";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
+import FtcAppVersionFooter from "@/app/components/settings/FtcAppVersionFooter";
 import RequestAccountDeletionSection from "@/app/components/settings/RequestAccountDeletionSection";
 import {
   getCurrentAuthUser,
@@ -170,6 +171,8 @@ export default function SettingsPage() {
               {error ? <p className="text-sm text-red-400">{error}</p> : null}
             </>
           )}
+
+          <FtcAppVersionFooter />
         </div>
       </div>
     </OnboardingGuard>

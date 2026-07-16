@@ -30,6 +30,7 @@ Read everything in docs/handoff/ and follow it. Then: [your task]
 | Path | Purpose |
 |------|---------|
 | `docs/qa/` | Beta readiness checklists, test plan, regression, bug template, release checklist |
+| `docs/qa/TESTER-ONBOARDING.md` | Coached beta tester welcome and version/bug-report instructions |
 | `docs/qa/PRIVATE-BETA-GO-LIVE.md` | Coached private beta GO record and pre-invite operational checklist |
 | `docs/qa/KNOWN-ISSUES.md` | Accepted Medium/Low issues for coached beta |
 

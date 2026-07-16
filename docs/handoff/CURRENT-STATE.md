@@ -14,7 +14,9 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 | Open Critical / High defects | 0 / 0 |
 | Production build & deploy | Stable |
 
-**Docs:** `docs/qa/PRIVATE-BETA-GO-LIVE.md`, `docs/qa/KNOWN-ISSUES.md`, `docs/qa/BETA-READINESS-CHECKLIST.md`
+**Docs:** `docs/qa/PRIVATE-BETA-GO-LIVE.md`, `docs/qa/KNOWN-ISSUES.md`, `docs/qa/BETA-READINESS-CHECKLIST.md`, `docs/qa/TESTER-ONBOARDING.md`
+
+**App version (2026-07-16):** Settings shows **`FTC Private Beta 0.9.0 · Build <short-commit>`** (local dev: `Build Local`). Version from `package.json`; build from Vercel `VERCEL_GIT_COMMIT_SHA` via `lib/ftcAppVersion.ts`. Testers include this line in bug reports.
 
 **Accepted known issues (not fixing in beta):** KN-01 Bookings row profile tap; KN-02 Event→DM→Back; KN-03 Profile tab latency; KN-04 Crew chat return; KN-05 Secondary return paths; KN-06 Event name/venue caps — see `docs/qa/KNOWN-ISSUES.md`.
 

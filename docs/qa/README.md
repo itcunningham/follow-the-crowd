@@ -10,6 +10,7 @@ Official QA documentation for Follow The Crowd (FTC) coached private beta.
 
 | File | Purpose |
 |------|---------|
+| [TESTER-ONBOARDING.md](./TESTER-ONBOARDING.md) | Coached beta tester welcome, version line, bug-report instructions |
 | [PRIVATE-BETA-GO-LIVE.md](./PRIVATE-BETA-GO-LIVE.md) | Go-live record, evidence, operational pre-invite checklist |
 | [KNOWN-ISSUES.md](./KNOWN-ISSUES.md) | Accepted Medium/Low issues for coached beta |
 | [BETA-READINESS-CHECKLIST.md](./BETA-READINESS-CHECKLIST.md) | Master gate checklist — product areas and GO decision |

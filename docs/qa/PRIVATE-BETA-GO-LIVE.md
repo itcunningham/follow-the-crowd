@@ -41,7 +41,7 @@ See [KNOWN-ISSUES.md](./KNOWN-ISSUES.md). Medium and Low items are accepted for 
 | Item | Status | Value |
 |------|--------|-------|
 | Feedback channel | **TBD** | _Isaac to confirm before first invite_ |
-| Bug-report instructions | **TBD** | Use [BUG-TEMPLATE.md](./BUG-TEMPLATE.md); share channel TBD |
+| Bug-report instructions | **TBD** | Use [BUG-TEMPLATE.md](./BUG-TEMPLATE.md) and [TESTER-ONBOARDING.md](./TESTER-ONBOARDING.md); testers must copy the version line from **Settings** |
 | Support contact | **TBD** | See `NEXT_PUBLIC_SUPPORT_EMAIL` / Isaac contact — confirm before invite |
 
 ---
@@ -96,7 +96,25 @@ Complete before the first coached tester invite:
 
 ---
 
+## App version and build identifier (2026-07-16)
+
+Testers see **`FTC Private Beta 0.9.0 · Build abc1234`** at the bottom of **Settings**.
+
+| Policy | Detail |
+|--------|--------|
+| Central version source | `package.json` → **`0.9.0`** (private beta) |
+| Build identifier | Short Vercel deploy commit (`VERCEL_GIT_COMMIT_SHA`, 7 chars) via `next.config.ts` |
+| Local fallback | **`Local`** when not built on Vercel |
+| Bug reports | Testers copy the full Settings line into [BUG-TEMPLATE.md](./BUG-TEMPLATE.md) |
+| Version bumps | Patch for bug-fix releases; document in `docs/qa/` + `CURRENT-STATE.md` |
+
+Implementation: `lib/ftcAppVersion.ts`, `app/components/settings/FtcAppVersionFooter.tsx`.
+
+---
+
 ## Related
+
+- [TESTER-ONBOARDING.md](./TESTER-ONBOARDING.md)
 
 - [BETA-READINESS-CHECKLIST.md](./BETA-READINESS-CHECKLIST.md)
 - [KNOWN-ISSUES.md](./KNOWN-ISSUES.md)
