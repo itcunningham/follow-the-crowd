@@ -11,6 +11,16 @@ export const SYNTHETIC_DISPLAY_NAMES: Record<QaRole, string> = {
 };
 
 const inviteLabelPath = (role: QaRole) => path.join(AUTH_DIR, `${role}-invite-label.txt`);
+const userIdPath = (role: QaRole) => path.join(AUTH_DIR, `${role}-user-id.txt`);
+
+export function roleForSyntheticDisplayName(displayName: string): QaRole | null {
+  for (const role of ["planner", "dj", "both"] as const) {
+    if (SYNTHETIC_DISPLAY_NAMES[role] === displayName) {
+      return role;
+    }
+  }
+  return null;
+}
 
 async function saveProfileDisplayName(page: Page, displayName: string): Promise<void> {
   await page.getByRole("textbox", { name: "Display name" }).fill(displayName);
@@ -69,6 +79,16 @@ export async function captureSyntheticInviteLabel(page: Page, role: QaRole): Pro
   const inviteLabel = await readProfileDisplayName(page);
   expect(inviteLabel).toBe(SYNTHETIC_DISPLAY_NAMES[role]);
   writeFileSync(inviteLabelPath(role), inviteLabel, { encoding: "utf8", mode: 0o600 });
+  writeFileSync(userIdPath(role), userId!, { encoding: "utf8", mode: 0o600 });
+}
+
+export function readSyntheticUserId(role: QaRole): string | null {
+  const filePath = userIdPath(role);
+  if (!existsSync(filePath)) {
+    return null;
+  }
+  const id = readFileSync(filePath, "utf8").trim();
+  return id || null;
 }
 
 export function readSyntheticInviteLabel(role: QaRole): string {
@@ -85,4 +105,7 @@ export const qaProfileCachePaths = [
   inviteLabelPath("planner"),
   inviteLabelPath("dj"),
   inviteLabelPath("both"),
+  userIdPath("planner"),
+  userIdPath("dj"),
+  userIdPath("both"),
 ] as const;

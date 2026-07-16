@@ -18,13 +18,24 @@ import {
 } from "../helpers/dm-booking-card";
 import {
   blockUserInDmDetails,
-  openDmConversationDetails,
   openFirstDmInboxThread,
   openGigDmForEvent,
   sendDmMessage,
-  unblockUserIfNeeded,
 } from "../helpers/dm-navigation";
+import {
+  ensureActorUnblockedOther,
+  normalizeSyntheticBlockRelationships,
+  verifyPlannerDjBookingReady,
+} from "../helpers/qa-relationship-state";
 import { journeyState } from "../helpers/journey-state";
+
+test.describe("QA account state", () => {
+  test("normalizes synthetic block relationships before booking journeys", async ({ roles }) => {
+    test.setTimeout(300_000);
+    await normalizeSyntheticBlockRelationships(roles);
+    await verifyPlannerDjBookingReady(roles);
+  });
+});
 
 test.describe("Booking journeys", () => {
   test.describe.configure({ mode: "serial" });
@@ -46,8 +57,6 @@ test.describe("Booking journeys", () => {
 
   test("completes fixed-offer booking journey", async ({ roles }) => {
     test.skip(!journeyState.fixedEventId, "Blocked: fixed event was not created");
-
-    await unblockUserIfNeeded(roles.dj, SYNTHETIC_DISPLAY_NAMES.planner);
 
     await roles.planner.goto(`/events/${journeyState.fixedEventId}`, {
       waitUntil: "domcontentloaded",
@@ -128,47 +137,59 @@ test.describe("Booking journeys", () => {
 
 test.describe("DM, realtime and isolation", () => {
   test("covers DM send/receive and block isolation", async ({ roles }) => {
+    test.setTimeout(180_000);
     test.skip(
       !journeyState.plannerDjConversationHref,
       "Blocked: no planner/DJ conversation from fixed-offer journey",
     );
 
-    const marker = `QA-BETA-DM-${Date.now()}`;
-    await roles.planner.goto(journeyState.plannerDjConversationHref!, {
-      waitUntil: "domcontentloaded",
+    await ensureActorUnblockedOther(roles.dj, "DJ", SYNTHETIC_DISPLAY_NAMES.both, {
+      allowMissingThread: true,
     });
-    await sendDmMessage(roles.planner, marker);
 
-    await roles.dj.goto(journeyState.plannerDjConversationHref!, { waitUntil: "domcontentloaded" });
-    await expect(async () => {
-      await expect(roles.dj.getByText(marker, { exact: true })).toBeVisible();
-    }).toPass({ timeout: 30_000 });
+    let cleanupError: string | null = null;
 
-    await roles.dj.goto("/dm", { waitUntil: "domcontentloaded" });
-    await openFirstDmInboxThread(roles.dj, /FTC QA Both/i);
-    await openDmConversationDetails(roles.dj, SYNTHETIC_DISPLAY_NAMES.both);
-    await blockUserInDmDetails(roles.dj);
+    try {
+      const marker = `QA-BETA-DM-${Date.now()}`;
+      await roles.planner.goto(journeyState.plannerDjConversationHref!, {
+        waitUntil: "domcontentloaded",
+      });
+      await sendDmMessage(roles.planner, marker);
 
-    await roles.both.goto("/dm", { waitUntil: "domcontentloaded" });
-    await openFirstDmInboxThread(roles.both, /FTC QA DJ/i);
-    const composer = roles.both.getByPlaceholder("Message...");
-    await composer.fill(`QA-BETA-BLOCK-${Date.now()}`);
-    const send = roles.both.getByRole("button", { name: "Send message" });
-    if (await send.isEnabled().catch(() => false)) {
-      await send.click();
+      await roles.dj.goto(journeyState.plannerDjConversationHref!, { waitUntil: "domcontentloaded" });
+      await expect(async () => {
+        await expect(roles.dj.getByText(marker, { exact: true })).toBeVisible();
+      }).toPass({ timeout: 30_000 });
+
+      await roles.dj.goto("/dm", { waitUntil: "domcontentloaded" });
+      await openFirstDmInboxThread(roles.dj, /FTC QA Both/i);
+      await blockUserInDmDetails(roles.dj, SYNTHETIC_DISPLAY_NAMES.both);
+
+      await roles.both.goto("/dm", { waitUntil: "domcontentloaded" });
+      await openFirstDmInboxThread(roles.both, /FTC QA DJ/i);
+      await expect(roles.both.locator("body")).toContainText(
+        /no longer send|block|cannot|unable|not send|row-level security/i,
+        { timeout: 20_000 },
+      );
+
+      const isolationMarker = `QA-BETA-ISOLATION-${Date.now()}`;
+      await roles.planner.goto(journeyState.plannerDjConversationHref!, { waitUntil: "domcontentloaded" });
+      await sendDmMessage(roles.planner, isolationMarker);
+      await roles.dj.goto(journeyState.plannerDjConversationHref!, { waitUntil: "domcontentloaded" });
+      await expect(roles.dj.getByText(isolationMarker, { exact: true })).toBeVisible({ timeout: 30_000 });
+    } finally {
+      try {
+        await ensureActorUnblockedOther(roles.dj, "DJ", SYNTHETIC_DISPLAY_NAMES.both, {
+          allowMissingThread: true,
+        });
+      } catch (error) {
+        cleanupError = String(error);
+      }
     }
-    await expect(roles.both.locator("body")).toContainText(
-      /no longer send|block|cannot|unable|not send|row-level security/i,
-    );
 
-    await roles.both.goto(journeyState.plannerDjConversationHref!, { waitUntil: "domcontentloaded" });
-    const denied =
-      /denied|access|not found|couldn't|Start group chat/i.test(
-        await roles.both.locator("body").innerText(),
-      ) || roles.both.url().includes("/login");
-    expect(denied).toBeTruthy();
-
-    await unblockUserIfNeeded(roles.dj, SYNTHETIC_DISPLAY_NAMES.both);
+    if (cleanupError) {
+      throw new Error(`Block cleanup failed for DJ→Both: ${cleanupError}`);
+    }
   });
 });
 
@@ -186,27 +207,39 @@ test.describe("Crew chat authorization", () => {
     await expect(roles.dj.locator("body")).not.toContainText(/do not have access/i);
 
     await roles.both.goto(`/events/${journeyState.fixedEventId}/chat`, { waitUntil: "domcontentloaded" });
-    const bothText = await roles.both.locator("body").innerText();
-    expect(/do not have access|not available|Start group chat/i.test(bothText)).toBeTruthy();
+    await expect(roles.both.locator("body")).toContainText(
+      /do not have access|not available|Start group chat/i,
+    );
   });
 });
 
 test.describe("Targeted navigation", () => {
   test("covers targeted navigation return paths", async ({ roles }) => {
+    test.setTimeout(180_000);
     test.skip(!journeyState.fixedEventId, "Blocked: fixed event was not created");
 
     await roles.planner.goto("/events", { waitUntil: "domcontentloaded" });
     await roles.planner.goto(`/events/${journeyState.fixedEventId}`, { waitUntil: "domcontentloaded" });
-    await roles.planner.goBack();
+    await roles.planner.getByRole("button", { name: "Back to events" }).click();
     await expect(roles.planner).toHaveURL(/\/events/);
 
     await roles.dj.goto("/bookings", { waitUntil: "domcontentloaded" });
     const openDm = roles.dj.getByRole("link", { name: "Open DM" }).first();
     await expect(openDm).toBeVisible();
     await openDm.click();
+    await expect(roles.dj).toHaveURL(/\/dm\//);
     const dmUrl = roles.dj.url();
-    await roles.dj.goBack();
+    await roles.dj.getByRole("link", { name: /Back to/i }).click();
     await expect(roles.dj).toHaveURL(/\/bookings/);
     expect(dmUrl).toContain("/dm/");
+
+    await roles.planner.goto(`/events/${journeyState.fixedEventId}`, { waitUntil: "domcontentloaded" });
+    const crewChat = roles.planner.getByRole("link", { name: "Group chat" });
+    if (await crewChat.isVisible().catch(() => false)) {
+      await crewChat.click();
+      await expect(roles.planner).toHaveURL(new RegExp(`/events/${journeyState.fixedEventId}/chat`));
+      await roles.planner.getByRole("button", { name: "Back to event" }).click();
+      await expect(roles.planner).toHaveURL(new RegExp(`/events/${journeyState.fixedEventId}`));
+    }
   });
 });

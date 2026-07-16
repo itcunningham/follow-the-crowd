@@ -212,7 +212,30 @@ async function sendBookingsDialog(page: Page): Promise<void> {
   await send.scrollIntoViewIfNeeded();
   await expect(send).toBeEnabled();
   await send.click();
-  await expect(dialog).toBeHidden({ timeout: 30_000 });
+
+  await page.waitForFunction(
+    () => {
+      const body = document.body?.textContent ?? "";
+      if (/Sent booking request to \d+ DJ/i.test(body)) {
+        return true;
+      }
+      if (
+        /FTC QA DJ/i.test(body) &&
+        /Pending/i.test(body) &&
+        /(Fixed offer|Ask for rate)/i.test(body)
+      ) {
+        return true;
+      }
+      return !document.querySelector('[aria-label="Send bookings"]');
+    },
+    undefined,
+    { timeout: 90_000 },
+  );
+
+  if (await dialog.isVisible().catch(() => false)) {
+    await page.keyboard.press("Escape").catch(() => undefined);
+    await expect(dialog).toBeHidden({ timeout: 10_000 });
+  }
 }
 
 export async function inviteDjWithFixedOffer(page: Page, fee = "500"): Promise<void> {

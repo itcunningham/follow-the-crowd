@@ -1,5 +1,9 @@
 import { expect, type Page } from "@playwright/test";
-import { SYNTHETIC_DISPLAY_NAMES } from "./qa-profiles";
+import {
+  assertNeutralBlockProfile,
+  ensureActorUnblockedOther,
+  openDmParticipantProfilePanel,
+} from "./qa-relationship-state";
 
 export async function openFirstDmInboxThread(page: Page, hint: RegExp): Promise<void> {
   await page.goto("/dm", { waitUntil: "domcontentloaded" });
@@ -63,42 +67,21 @@ export async function sendDmMessage(page: Page, text: string): Promise<void> {
 }
 
 export async function openDmConversationDetails(page: Page, conversationTitle: string): Promise<void> {
-  await page.getByRole("button", { name: `Open profile for ${conversationTitle}` }).click();
-  await expect(page.getByRole("button", { name: "Block user" })).toBeVisible({ timeout: 10_000 });
+  await openDmParticipantProfilePanel(page, conversationTitle);
 }
 
-export async function blockUserInDmDetails(page: Page): Promise<void> {
+export async function blockUserInDmDetails(page: Page, conversationTitle: string): Promise<void> {
+  await openDmParticipantProfilePanel(page, conversationTitle);
+  await assertNeutralBlockProfile(page, "Block test actor", conversationTitle);
   await page.getByRole("button", { name: "Block user", exact: true }).first().click();
   await page.getByRole("button", { name: "Block user", exact: true }).last().click();
   await expect(page.getByRole("button", { name: "Unblock user" })).toBeVisible({ timeout: 10_000 });
 }
 
-export async function unblockUserIfNeeded(page: Page, displayName: string): Promise<void> {
-  await page.goto("/dm", { waitUntil: "domcontentloaded" });
-  const row = page.getByRole("button").filter({ hasText: displayName }).first();
-  if (await row.isVisible({ timeout: 10_000 }).catch(() => false)) {
-    await row.click();
-    await openDmConversationDetails(page, displayName);
-    const unblock = page.getByRole("button", { name: "Unblock user" });
-    if (await unblock.isVisible({ timeout: 5_000 }).catch(() => false)) {
-      await unblock.click();
-      await expect(page.getByRole("button", { name: "Block user", exact: true }).first()).toBeVisible({
-        timeout: 10_000,
-      });
-    }
-    return;
-  }
-
-  if (displayName === SYNTHETIC_DISPLAY_NAMES.planner) {
-    await page.goto("/bookings", { waitUntil: "domcontentloaded" });
-    const openDm = page.getByRole("link", { name: "Open DM" }).first();
-    if (await openDm.isVisible({ timeout: 10_000 }).catch(() => false)) {
-      await openDm.click();
-      await openDmConversationDetails(page, displayName);
-      const unblock = page.getByRole("button", { name: "Unblock user" });
-      if (await unblock.isVisible({ timeout: 5_000 }).catch(() => false)) {
-        await unblock.click();
-      }
-    }
-  }
+export async function unblockUserIfNeeded(
+  page: Page,
+  displayName: string,
+  actor = "QA role",
+): Promise<void> {
+  await ensureActorUnblockedOther(page, actor, displayName, { allowMissingThread: true });
 }

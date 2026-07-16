@@ -8,12 +8,11 @@ import {
 } from "./helpers/auth-paths";
 import { loadQaCredentials } from "./helpers/credentials";
 import { loginViaProductionUi } from "./helpers/login";
-import { unblockUserIfNeeded } from "./helpers/dm-navigation";
+import { normalizeRoleOutgoingBlocks } from "./helpers/qa-relationship-state";
 import { assertRole } from "./helpers/role";
 import {
   captureSyntheticInviteLabel,
   ensureSyntheticQaProfile,
-  SYNTHETIC_DISPLAY_NAMES,
 } from "./helpers/qa-profiles";
 
 setup.describe.configure({ mode: "serial" });
@@ -25,24 +24,21 @@ setup("authenticate QA roles", async () => {
   const iphone = devices["iPhone 13"];
 
   const roles = [
-    { key: "planner" as const, path: plannerStoragePath },
-    { key: "dj" as const, path: djStoragePath },
-    { key: "both" as const, path: bothStoragePath },
+    { key: "planner" as const, path: plannerStoragePath, label: "Planner" as const },
+    { key: "dj" as const, path: djStoragePath, label: "DJ" as const },
+    { key: "both" as const, path: bothStoragePath, label: "Both" as const },
   ];
 
   try {
     for (const role of roles) {
       const context = await browser.newContext({ ...iphone });
       const page = await context.newPage();
-    const account = credentials[role.key];
-    await loginViaProductionUi(page, account.email, account.password);
-    await assertRole(page, role.key);
-    await ensureSyntheticQaProfile(page, role.key);
-    await captureSyntheticInviteLabel(page, role.key);
-    if (role.key === "dj") {
-      await unblockUserIfNeeded(page, SYNTHETIC_DISPLAY_NAMES.planner);
-      await unblockUserIfNeeded(page, SYNTHETIC_DISPLAY_NAMES.both);
-    }
+      const account = credentials[role.key];
+      await loginViaProductionUi(page, account.email, account.password);
+      await assertRole(page, role.key);
+      await ensureSyntheticQaProfile(page, role.key);
+      await captureSyntheticInviteLabel(page, role.key);
+      await normalizeRoleOutgoingBlocks(page, role.label);
       await context.storageState({ path: role.path });
       await context.close();
     }
