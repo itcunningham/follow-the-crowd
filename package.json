@@ -9,7 +9,7 @@
     "lint": "eslint",
     "test:regressions": "tsx scripts/test-regressions.mts",
     "qa:preflight": "tsx scripts/qa-preflight.mts",
-    "qa:e2e:install": "playwright install chromium",
+    "qa:e2e:install": "playwright install webkit",
     "qa:e2e:prod": "tsx scripts/qa-preflight.mts --require-credentials && playwright test --config=playwright.config.ts"
   },
   "dependencies": {

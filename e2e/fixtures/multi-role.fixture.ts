@@ -1,7 +1,8 @@
 import {
   test as base,
-  chromium,
+  devices,
   expect,
+  webkit,
   type Browser,
   type Page,
 } from "@playwright/test";
@@ -20,10 +21,20 @@ export type RolePages = {
 
 export const test = base.extend<{ roles: RolePages }>({
   roles: async ({}, use) => {
-    const browser = await chromium.launch();
-    const plannerContext = await browser.newContext({ storageState: plannerStoragePath });
-    const djContext = await browser.newContext({ storageState: djStoragePath });
-    const bothContext = await browser.newContext({ storageState: bothStoragePath });
+    const browser = await webkit.launch();
+    const iphone = devices["iPhone 13"];
+    const plannerContext = await browser.newContext({
+      storageState: plannerStoragePath,
+      ...iphone,
+    });
+    const djContext = await browser.newContext({
+      storageState: djStoragePath,
+      ...iphone,
+    });
+    const bothContext = await browser.newContext({
+      storageState: bothStoragePath,
+      ...iphone,
+    });
 
     const roles: RolePages = {
       browser,

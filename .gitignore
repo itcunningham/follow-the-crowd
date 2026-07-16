@@ -38,6 +38,7 @@ yarn-error.log*
 .env*
 !.env.example
 !.env.qa.local.example
+.qa-setup-status
 
 # vercel
 .vercel

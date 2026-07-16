@@ -9,6 +9,10 @@ import {
 import { loadQaCredentials } from "./helpers/credentials";
 import { loginViaProductionUi } from "./helpers/login";
 import { assertRole } from "./helpers/role";
+import {
+  captureSyntheticInviteLabel,
+  ensureSyntheticQaProfile,
+} from "./helpers/qa-profiles";
 
 setup.describe.configure({ mode: "serial" });
 
@@ -28,6 +32,8 @@ setup("authenticate QA roles", async ({ browser }) => {
     const account = credentials[role.key];
     await loginViaProductionUi(page, account.email, account.password);
     await assertRole(page, role.key);
+    await ensureSyntheticQaProfile(page, role.key);
+    await captureSyntheticInviteLabel(page, role.key);
     await context.storageState({ path: role.path });
     await context.close();
   }

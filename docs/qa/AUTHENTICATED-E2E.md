@@ -22,11 +22,13 @@ FTC_QA_BOTH_EMAIL=
 FTC_QA_BOTH_PASSWORD=
 ```
 
-3. Install Playwright browsers once:
+3. Install Playwright browsers once (WebKit — matches the iPhone 13 device profile in `playwright.config.ts`):
 
 ```bash
 npm run qa:e2e:install
 ```
+
+This installs **Playwright WebKit emulation**, not a physical iPhone Safari browser.
 
 ## Run authenticated production regression
 
@@ -67,8 +69,11 @@ Auth setup (`e2e/auth.setup.ts`) logs in Planner, DJ and Both through the produc
 ## Rerun a failed journey only
 
 ```bash
-npx playwright test e2e/journeys/authenticated-prod.spec.ts -g "fixed-offer"
+npx playwright test e2e/journeys/authenticated-prod.spec.ts -g "open-offer"
+npx playwright test e2e/journeys/authenticated-prod.spec.ts -g "DM, realtime"
 ```
+
+Booking journeys run serially inside their describe block. DM, crew-chat and navigation describe blocks run independently — a booking-journey failure no longer skips unrelated messaging or navigation tests.
 
 Or open the HTML report after a run:
 
