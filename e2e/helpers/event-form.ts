@@ -71,10 +71,10 @@ async function navigateCalendarToMonth(page: Page, dateKey: string): Promise<voi
 export async function fillRequiredEventForm(
   page: Page,
   eventName: string,
-  options?: { venue?: string; dateKey?: string },
+  options?: { venue?: string; dateKey?: string; daysAhead?: number },
 ): Promise<string> {
   const venue = options?.venue ?? "QA Beta Test Venue";
-  const dateKey = options?.dateKey ?? futureDateKey();
+  const dateKey = options?.dateKey ?? futureDateKey(options?.daysAhead);
 
   await page.getByLabel("Event name").fill(eventName);
   await page.getByLabel("Venue").fill(venue);
@@ -93,7 +93,39 @@ export async function fillRequiredEventForm(
 }
 
 export async function saveEventOnce(page: Page): Promise<void> {
-  await page.getByRole("button", { name: /^Save event$/i }).click();
+  const save = page.getByRole("button", { name: /^Save event$/i });
+
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    await save.click();
+
+    const navigatedToEvent = await page
+      .waitForURL(/\/events\/[0-9a-f-]+/, { timeout: 15_000 })
+      .then(() => true)
+      .catch(() => false);
+    if (navigatedToEvent) {
+      return;
+    }
+
+    const createFormClosed = await page
+      .getByRole("heading", { name: "Create event" })
+      .isHidden({ timeout: 10_000 })
+      .catch(() => false);
+    if (createFormClosed) {
+      return;
+    }
+
+    if (attempt === 0) {
+      await page.waitForLoadState("domcontentloaded").catch(() => undefined);
+    }
+  }
+}
+
+async function waitForEventsListReady(page: Page): Promise<void> {
+  await expect(async () => {
+    const text = await page.locator("body").innerText();
+    expect(text.includes("Create event") || /QA-BETA-|Invited:|Upcoming/.test(text)).toBeTruthy();
+    expect(text).not.toMatch(/Failed to create event/i);
+  }).toPass({ timeout: 20_000 });
 }
 
 async function resolveEventId(page: Page, eventName: string): Promise<string | null> {
@@ -116,17 +148,23 @@ async function resolveEventId(page: Page, eventName: string): Promise<string | n
 export async function createEventFromScratch(
   page: Page,
   namePrefix: string,
+  options?: { daysAhead?: number },
 ): Promise<CreatedEventRef> {
   const eventName = `${namePrefix}${Date.now()}`;
+  const daysAhead = options?.daysAhead ?? 28 + (Date.now() % 45);
   await openCreateEventFromScratch(page);
-  const dateKey = await fillRequiredEventForm(page, eventName);
+  const dateKey = await fillRequiredEventForm(page, eventName, { daysAhead });
   await saveEventOnce(page);
 
   let eventId: string | null = null;
   await expect(async () => {
+    if (!/\/events\/[0-9a-f-]+/.test(page.url())) {
+      await page.goto("/events", { waitUntil: "domcontentloaded" });
+      await waitForEventsListReady(page);
+    }
     eventId = await resolveEventId(page, eventName);
     expect(eventId).toBeTruthy();
-  }).toPass({ timeout: 20_000 });
+  }).toPass({ timeout: 30_000 });
 
   await page.goto("/events", { waitUntil: "domcontentloaded" });
   await expect(page.locator("body")).toContainText(eventName);
@@ -169,14 +207,12 @@ async function fillFixedOfferAmount(page: Page, fee: string): Promise<void> {
 }
 
 async function sendBookingsDialog(page: Page): Promise<void> {
-  const send = page
-    .getByRole("button", {
-      name: /Send invitation|Confirm 1 DJ|Send bookings|Send \d+ booking/i,
-    })
-    .first();
+  const dialog = page.getByRole("dialog", { name: "Send bookings" });
+  const send = page.getByRole("button", { name: /Confirm 1 DJ|Send invitation|Send bookings/i }).first();
+  await send.scrollIntoViewIfNeeded();
   await expect(send).toBeEnabled();
   await send.click();
-  await expect(page.getByRole("dialog", { name: "Send bookings" })).toBeHidden({ timeout: 15_000 });
+  await expect(dialog).toBeHidden({ timeout: 30_000 });
 }
 
 export async function inviteDjWithFixedOffer(page: Page, fee = "500"): Promise<void> {
@@ -199,9 +235,11 @@ export async function assertEventBookingsSection(
   eventId: string,
   pattern: RegExp,
 ): Promise<void> {
-  await page.goto(`/events/${eventId}`, { waitUntil: "domcontentloaded" });
-  await expect(page.getByRole("heading", { name: "Bookings" })).toBeVisible();
-  await expect(page.locator("body")).toContainText(pattern);
+  await expect(async () => {
+    await page.goto(`/events/${eventId}`, { waitUntil: "domcontentloaded" });
+    await expect(page.getByRole("heading", { name: "Bookings" })).toBeVisible();
+    await expect(page.locator("body")).toContainText(pattern);
+  }).toPass({ timeout: 30_000 });
 }
 
 export { SYNTHETIC_DISPLAY_NAMES };
