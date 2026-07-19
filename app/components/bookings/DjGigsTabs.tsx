@@ -6,7 +6,7 @@ import {
   GIGS_TAB_COUNT_SLOT_CLASS,
   GIGS_TAB_PILL_GAP_CLASS,
   GIGS_TAB_PILL_ROW_CLASS,
-  ftcFilterPillClass,
+  gigsTabPillClass,
 } from "@/lib/design/ftcDesignSystem";
 import { buildGigsListHref } from "@/lib/bookings/gigsListNavigation";
 
@@ -41,11 +41,25 @@ const GIGS_TAB_CONFIG: {
 function DjGigsTabCount({
   count,
   countsReady,
+  reserveSlot,
 }: {
   count: number;
   countsReady: boolean;
+  reserveSlot: boolean;
 }) {
   const visibleCount = countsReady && count > 0 ? ` ${count}` : "";
+
+  if (!reserveSlot) {
+    if (!visibleCount) {
+      return null;
+    }
+
+    return (
+      <span aria-hidden className="tabular-nums">
+        {visibleCount}
+      </span>
+    );
+  }
 
   return (
     <span aria-hidden={!visibleCount} className={GIGS_TAB_COUNT_SLOT_CLASS}>
@@ -72,6 +86,8 @@ export function DjGigsTabs({
         const ariaLabel =
           countsReady && count > 0 ? `${tab.label} ${count}` : tab.label;
 
+        const reserveCountSlot = tab.value !== "history" && countsReady;
+
         return (
           <Link
             key={tab.value}
@@ -83,11 +99,15 @@ export function DjGigsTabs({
                 event.preventDefault();
               }
             }}
-            className={`inline-flex items-center ${GIGS_TAB_PILL_GAP_CLASS} ${ftcFilterPillClass(isActive)}`}
+            className={`inline-flex items-center ${GIGS_TAB_PILL_GAP_CLASS} ${gigsTabPillClass(isActive)}`}
           >
             {tab.showHistoryIcon ? <HistoryIcon /> : null}
             {tab.label}
-            <DjGigsTabCount count={count} countsReady={countsReady} />
+            <DjGigsTabCount
+              count={count}
+              countsReady={countsReady}
+              reserveSlot={reserveCountSlot}
+            />
           </Link>
         );
       })}

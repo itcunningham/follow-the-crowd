@@ -908,6 +908,11 @@ html {
     color 0.15s ease;
 }
 
+/* Gigs Incoming/Confirmed/History — align with Calendar tab pill balance; ~12% narrower. */
+.ftc-filter-pill.ftc-gigs-tab-pill {
+  padding-inline: 0.625rem;
+}
+
 @media (hover: hover) {
   .ftc-filter-pill:hover:not(.ftc-filter-pill-active) {
     border-color: var(--ftc-color-border-strong);

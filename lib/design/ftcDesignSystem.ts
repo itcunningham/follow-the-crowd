@@ -60,11 +60,18 @@ export function ftcFilterPillClass(isActive: boolean): string {
   return `${FTC_FILTER_PILL_CLASS}${isActive ? " ftc-filter-pill-active" : ""}`;
 }
 
-/** Gigs workspace tab pill — content-width; gap-1.5 applied on the link in DjGigsTabs. */
-export const GIGS_TAB_PILL_GAP_CLASS = "gap-1.5";
+/** Gigs workspace tab pill — slightly narrower than default filter pills; gap on the link in DjGigsTabs. */
+export const GIGS_TAB_PILL_GAP_CLASS = "gap-1";
 
-/** Reserved width for optional Gigs tab counts (space + up to two digits). */
-export const GIGS_TAB_COUNT_SLOT_CLASS = "inline-block min-w-[2ch] tabular-nums";
+/** Modifier for Incoming/Confirmed/History pills — tighter horizontal padding, same vertical sizing. */
+export const GIGS_TAB_PILL_MODIFIER_CLASS = "ftc-gigs-tab-pill";
+
+/** Reserved width for Incoming/Confirmed counts after load (leading space + up to two digits). */
+export const GIGS_TAB_COUNT_SLOT_CLASS = "inline-block min-w-[2.5ch] tabular-nums";
+
+export function gigsTabPillClass(isActive: boolean): string {
+  return `${FTC_FILTER_PILL_CLASS} ${GIGS_TAB_PILL_MODIFIER_CLASS}${isActive ? " ftc-filter-pill-active" : ""}`;
+}
 
 /** Gigs Incoming/Confirmed/History pill group — compact cluster, no stretch. */
 export const GIGS_TAB_PILL_ROW_CLASS = "flex shrink-0 flex-nowrap items-center gap-2";
