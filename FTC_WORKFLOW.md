@@ -19,7 +19,7 @@ Working agreement for agents and humans building Follow The Crowd (FTC).
 
 ### QA
 - **Read-only** unless explicitly authorised.
-- Creates test plans and checks mobile UX at **390px** width.
+- Creates test plans and verifies **phone/desktop parity** (see §7).
 - **Never commits or pushes.**
 
 ---
@@ -78,6 +78,39 @@ Before writing code, walk this ladder top to bottom and **stop at the first rung
 - **No raw UUIDs** in UI.
 - **Do not duplicate** booking or chat logic — reuse existing components and queries.
 - **Preserve behaviour** — Supabase RLS and existing booking, DM, group chat, flyer, run-sheet, and rate-proposal flows must not regress.
+
+---
+
+## 7. Phone / desktop parity (permanent — from 2026-07-19)
+
+Every FTC change must work on **both** reference viewports:
+
+| Viewport | Width | Use |
+|--------|-------|-----|
+| **Phone** | ~**390px** | Primary design and touch behaviour |
+| **Desktop** | ~**1280px** | Layout response and pointer behaviour |
+
+**Parity means the same:** features, labels/terminology, status logic, permissions, loading/empty/error meaning, navigation destinations, booking and messaging outcomes, profile information, and accessibility semantics.
+
+**Parity does not mean** stretching the mobile UI across desktop. Responsive layout may differ when behaviour stays equivalent.
+
+### Builder requirements (every UI, loading, or navigation change)
+
+1. Verify at **~390px** and **~1280px** (or document why a viewport is N/A).
+2. Confirm **behavioural parity** — not just visual similarity.
+3. Confirm **responsive layout** is intentional (no horizontal overflow, no hidden actions on one viewport only).
+4. Reuse shared components and business logic; do not fork mobile/desktop product versions.
+5. Run targeted regression + `npm run build` before commit.
+
+Report separately: **mobile result**, **desktop result**, **intentional differences**, **unintended differences**.
+
+### QA requirements
+
+Follow `docs/qa/REGRESSION-CHECKLIST.md` on **both** viewports for any release or post-ship verification of UI/navigation/loading changes. File bugs with separate mobile/desktop notes via `docs/qa/BUG-TEMPLATE.md`.
+
+### Intentional responsive differences (not parity failures)
+
+Examples already in the product: bottom main nav on phone vs top bar on desktop; Calendar mobile day strip vs desktop month grid; workspace sub-nav horizontal scroll on phone vs wrap on desktop. Same routes, permissions, and outcomes.
 
 ---
 

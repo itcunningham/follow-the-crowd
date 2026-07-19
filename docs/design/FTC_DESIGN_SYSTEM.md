@@ -11,7 +11,7 @@ This document is the single reference for spacing, typography, and component rul
 
 ## Design principles
 
-1. **Mobile-first** — design and test at **390px** width minimum.
+1. **Mobile-first** — design and test at **390px** width minimum; also verify **~1280px** desktop parity per `FTC_WORKFLOW.md` §7.
 2. **One product** — same padding, card radius, button heights, and badge sizes everywhere.
 3. **Workflow-first** — information hierarchy over decorative imagery (compact list thumbs; flyer hero only on Event Details).
 4. **Flat & readable** — high contrast text on dark surfaces; status colours are solid fills.

@@ -2,6 +2,12 @@
 
 Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 
+## Phone / desktop parity (permanent — 2026-07-19)
+
+**Rule:** Every FTC change must work at **~390px (phone)** and **~1280px (desktop)** with the same features, permissions, status logic, navigation outcomes, and loading/empty/error meaning. Responsive layout may differ; behaviour must not. Authoritative spec: **`FTC_WORKFLOW.md` §7**. QA templates updated: `docs/qa/README.md`, `REGRESSION-CHECKLIST.md`, `BUG-TEMPLATE.md`.
+
+**Recent surfaces audited (2026-07-19, commit `6b98447`):** Events Active/History + batched lineup stats; event-detail guard; Gigs loading skeletons; event-detail → DM → Back; workspace tabs; profile identity hierarchy; owner vs public profile actions — all use shared logic/components; no confirmed phone/desktop behavioural mismatch found. Intentional layout differences only (main nav placement, Calendar mobile strip vs desktop grid, workspace sub-nav scroll/wrap).
+
 ## Coached private beta (2026-07-16)
 
 **Decision:** **GO** — small, coached private beta (5–10 Planner/DJ pairs).

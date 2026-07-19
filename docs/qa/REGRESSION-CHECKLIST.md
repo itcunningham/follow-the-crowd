@@ -2,8 +2,8 @@
 
 Focused smoke and regression pass for FTC. Run before each beta release or after significant changes.
 
-**Target time:** 45–90 minutes (mobile-first, then desktop spot-check)  
-**Viewport:** Start at **390px** width; repeat critical paths at desktop (`≥768px`).
+**Target time:** 45–90 minutes (phone, then desktop)  
+**Viewports:** **390px** (phone) and **1280px** (desktop) — both required per `FTC_WORKFLOW.md` §7.
 
 **Status:** Not Started · In Progress · Passed · Failed · Blocked
 
@@ -114,6 +114,10 @@ Focused smoke and regression pass for FTC. Run before each beta release or after
 | Date | |
 | Tester | |
 | Commit / deploy | |
+| Phone (~390px) | Not Started · Passed · Failed |
+| Desktop (~1280px) | Not Started · Passed · Failed |
+| Intentional responsive differences noted | |
+| Unintended parity failures | |
 | Overall status | Not Started |
 | Critical failures | |
 | Notes | |

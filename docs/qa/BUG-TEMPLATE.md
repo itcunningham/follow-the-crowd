@@ -38,7 +38,9 @@ Select one:
 | Field | Value |
 |-------|-------|
 | Role | Promoter / DJ / Both |
-| Viewport | Mobile (~390px) / Tablet / Desktop |
+| Phone (~390px) | Not tested / Passed / Failed |
+| Desktop (~1280px) | Not tested / Passed / Failed |
+| Also reproduced on other viewport? | Yes / No — describe |
 | Browser | e.g. Safari iOS 17, Chrome 120 |
 | Account | Test account identifier (no passwords) |
 
@@ -123,5 +125,7 @@ Select one primary area:
 
 - [ ] Original steps no longer reproduce the issue
 - [ ] Related regression cases in `REGRESSION-CHECKLIST.md` still pass
-- [ ] Mobile (390px) verified
-- [ ] Desktop spot-check (if applicable)
+- [ ] Phone (~390px) verified
+- [ ] Desktop (~1280px) verified
+- [ ] Behavioural parity confirmed per `FTC_WORKFLOW.md` §7
+- [ ] Intentional responsive differences documented (if any)

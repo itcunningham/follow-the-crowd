@@ -53,3 +53,5 @@ When in doubt, update `CURRENT-STATE.md` at minimum.
 2. Commit/push (if task requires)
 3. **Update handoff docs** (this checklist)
 4. Return summary including **Handoff updated:** list of files touched
+
+For any UI, loading, or navigation change: confirm **phone (~390px) and desktop (~1280px) parity** per `FTC_WORKFLOW.md` §7 before marking complete.

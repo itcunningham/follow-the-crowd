@@ -60,7 +60,7 @@ Official QA documentation for Follow The Crowd (FTC) coached private beta.
 
 1. Read `docs/handoff/CURRENT-STATE.md` for the latest feature inventory.
 2. Review [KNOWN-ISSUES.md](./KNOWN-ISSUES.md) for accepted limitations.
-3. Test **mobile-first** at **390px** width, then spot-check desktop (`md+`).
+3. Test **phone and desktop parity** per `FTC_WORKFLOW.md` §7 — **390px** then **~1280px**; report intentional layout differences separately from behavioural mismatches.
 4. Use at least one **planner** account and one **DJ** account (a **both** role account is helpful).
 5. For automated authenticated production regression, see [AUTHENTICATED-E2E.md](./AUTHENTICATED-E2E.md).
 6. **Never commit** `.env.qa.local`, tokens, credentials, or Playwright storage states.
@@ -71,6 +71,6 @@ Any new **Critical** or **High** production defect **pauses tester onboarding** 
 
 ## Related docs
 
-- `FTC_WORKFLOW.md` — Builder / Reviewer / QA roles
+- `FTC_WORKFLOW.md` — Builder / Reviewer / QA roles; **§7 phone/desktop parity (authoritative)**
 - `docs/handoff/` — Product context and shipped features
 - `docs/design/FTC_DESIGN_SYSTEM.md` — Visual and UX conventions
