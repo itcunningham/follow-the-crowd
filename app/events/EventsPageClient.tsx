@@ -49,7 +49,6 @@ import {
 import { EventListSkeleton, EventsListTabRow } from "@/app/components/skeleton/Skeleton";
 import {
   HistoryRemoveConfirmDialog,
-  HistorySelectionCheckbox,
   HistorySelectionToolbar,
   filterOutRemovingHistoryItems,
   useHistoryBulkManage,
@@ -1266,11 +1265,13 @@ function EventsPageClientView({
                 const cancelled = isEventCancelled(event);
                 const eventHref = buildEventDetailHref(event.id, listTab);
                 const isSelected = historyBulkManage.selectedIds.has(event.id);
-                const selectionLabel = `Select ${event.name} for removal from history`;
+                const selectionLabel = isSelected
+                  ? `Deselect ${event.name} for removal from history`
+                  : `Select ${event.name} for removal from history`;
 
                 if (historyBulkManage.showSelectionToolbar && isPlanner && isHistoryTab) {
                   return (
-                    <li key={event.id}>
+                    <li key={event.id} aria-selected={isSelected}>
                       <button
                         type="button"
                         onClick={() => historyBulkManage.toggleItem(event.id)}
@@ -1283,13 +1284,6 @@ function EventsPageClientView({
                           cancelled={cancelled}
                           isPlanner={isPlanner}
                           showChevron={false}
-                          leading={
-                            <HistorySelectionCheckbox
-                              checked={isSelected}
-                              label={selectionLabel}
-                              presentational
-                            />
-                          }
                         />
                       </button>
                     </li>

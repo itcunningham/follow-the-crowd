@@ -543,21 +543,6 @@ export default function BookingPlansPage() {
   );
 }
 
-function EventPlanSelectionIndicator({ checked }: { checked: boolean }) {
-  return (
-    <span
-      aria-hidden="true"
-      className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border ${
-        checked
-          ? "border-0 bg-ftc-primary text-ftc-bg"
-          : "border-ftc-border-strong bg-ftc-bg-elevated text-transparent"
-      }`}
-    >
-      ✓
-    </span>
-  );
-}
-
 function EventPlanCard({
   plan,
   selectionMode,
@@ -581,7 +566,10 @@ function EventPlanCard({
     : "ftc-card relative overflow-hidden ftc-card-hoverable";
 
   return (
-    <li className={cardClassName}>
+    <li
+      className={cardClassName}
+      aria-selected={selectionMode ? selected : undefined}
+    >
       {selectionMode ? (
         <button
           type="button"
@@ -624,15 +612,6 @@ function EventPlanCard({
           </div>
         )}
       </div>
-
-      {selectionMode ? (
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute top-3 right-3 z-20 sm:top-4 sm:right-4"
-        >
-          <EventPlanSelectionIndicator checked={selected} />
-        </div>
-      ) : null}
     </li>
   );
 }

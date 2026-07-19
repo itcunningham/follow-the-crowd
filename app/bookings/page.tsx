@@ -30,7 +30,6 @@ import ArchiveAllBookingRequestsButton from "@/app/components/ArchiveAllBookingR
 import {
   HistoryManageButton,
   HistoryRemoveConfirmDialog,
-  HistorySelectionCheckbox,
   HistorySelectionToolbar,
   filterOutRemovingHistoryItems,
   useHistoryBulkManage,
@@ -2380,14 +2379,13 @@ function BookingHistoryCard({
     booking.id,
     gigsTab ?? "pending",
   );
-  const selectionLabel = `Select ${booking.event_name} for removal from history`;
+  const selectionLabel = selected
+    ? `Deselect ${booking.event_name} for removal from history`
+    : `Select ${booking.event_name} for removal from history`;
 
   const cardBody = (
     <div className={muted ? GIG_CARD_HISTORY_BODY_CLASS_NAME : GIG_CARD_BODY_CLASS_NAME}>
       <div className="flex min-w-0 gap-3">
-        {selectionMode ? (
-          <HistorySelectionCheckbox checked={selected} label={selectionLabel} presentational />
-        ) : null}
         {avatarName ? (
           <ProfileAvatar name={avatarName} avatarUrl={avatarUrl} size="sm" className="mt-0.5" />
         ) : null}
@@ -2428,7 +2426,7 @@ function BookingHistoryCard({
 
   if (selectionMode) {
     return (
-      <li className="min-w-0">
+      <li className="min-w-0" aria-selected={selected}>
         <button
           type="button"
           onClick={onToggleSelect}
