@@ -7,10 +7,10 @@ import {
 } from "@/lib/bookingDateTime";
 import type { BookingPlan } from "@/lib/bookingPlans";
 import {
-  filterActiveBookings,
   getActiveEventLineupStats,
   insertEventCancellationActivityMessagesIfNeeded,
   listBookingRequestsForEvent,
+  listBookingRequestsForEventLineupStats,
   mapBookingRequestRows,
   type BookingRequest,
   type BookingRequestInput,
@@ -309,24 +309,25 @@ export async function attachLineupStats(events: Event[]): Promise<EventWithLineu
     return [];
   }
 
-  const statsByEventId = new Map<string, EventLineupStats>();
+  const emptyStats: EventLineupStats = { total: 0, pending: 0, accepted: 0, declined: 0 };
 
-  await Promise.all(
-    events.map(async (event) => {
-      try {
-        const bookings = await listBookingRequestsForEvent(event.id);
-        statsByEventId.set(event.id, getActiveEventLineupStats(bookings));
-      } catch (error) {
-        console.error(`[events] Failed to load lineup stats for ${event.id}:`, error);
-        statsByEventId.set(event.id, { total: 0, pending: 0, accepted: 0, declined: 0 });
-      }
-    }),
-  );
+  try {
+    const bookingsByEventId = await listBookingRequestsForEventLineupStats(
+      events.map((event) => event.id),
+    );
 
-  return events.map((event) => ({
-    ...event,
-    lineupStats: statsByEventId.get(event.id) ?? { total: 0, pending: 0, accepted: 0, declined: 0 },
-  }));
+    return events.map((event) => ({
+      ...event,
+      lineupStats: getActiveEventLineupStats(bookingsByEventId.get(event.id) ?? []),
+    }));
+  } catch (error) {
+    console.error("[events] Failed to load lineup stats:", error);
+
+    return events.map((event) => ({
+      ...event,
+      lineupStats: emptyStats,
+    }));
+  }
 }
 
 export async function listOwnedEvents(): Promise<Event[]> {

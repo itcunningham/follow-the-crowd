@@ -22,6 +22,7 @@ import {
   hasPendingRateProposal,
   type BookingRequest,
 } from "@/lib/bookingRequests";
+import { buildEventDetailDmThreadHref } from "@/lib/dm/threadNavigation";
 import type { BookingRecipientProfile } from "@/lib/user/currentUser";
 
 function getLineupRateLine(booking: BookingRequest): string {
@@ -35,6 +36,7 @@ export default function EventLineupBookingCard({
   booking,
   profile,
   currentUserId,
+  eventDetailId,
   readOnly = false,
   cancelledByLabel,
   cancellationReasonLabel,
@@ -52,6 +54,7 @@ export default function EventLineupBookingCard({
   booking: BookingRequest;
   profile?: BookingRecipientProfile;
   currentUserId: string | null;
+  eventDetailId?: string | null;
   readOnly?: boolean;
   cancelledByLabel?: string | null;
   cancellationReasonLabel?: string | null;
@@ -157,7 +160,11 @@ export default function EventLineupBookingCard({
         ) : null}
         {booking.conversation_id ? (
           <Link
-            href={`/dm/${booking.conversation_id}`}
+            href={
+              eventDetailId
+                ? buildEventDetailDmThreadHref(booking.conversation_id, eventDetailId)
+                : `/dm/${booking.conversation_id}`
+            }
             className={`${EVENT_DETAIL_BTN_SECONDARY} w-full sm:w-auto sm:min-w-[7.5rem]`}
           >
             Open DM

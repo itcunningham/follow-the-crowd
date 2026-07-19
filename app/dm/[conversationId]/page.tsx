@@ -143,6 +143,7 @@ export default function DmChatPage() {
     from: searchParams.get("from"),
     tab: searchParams.get("tab"),
     profileUserId: searchParams.get("profileUserId"),
+    eventId: searchParams.get("eventId"),
     calendarDate: searchParams.get("calendarDate"),
     calendarView: searchParams.get("calendarView"),
     calendarMonth: searchParams.get("calendarMonth"),

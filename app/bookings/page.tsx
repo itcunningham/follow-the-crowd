@@ -7,6 +7,7 @@ import {
   BookingsPageLoadingShell,
   BookingCreateEventDetailsFormSkeleton,
   DjGigsTabRow,
+  ReceivedBookingsListSkeleton,
   SkeletonBlock,
 } from "@/app/components/skeleton/Skeleton";
 import { DjGigsTabs } from "@/app/components/bookings/DjGigsTabs";
@@ -1858,7 +1859,9 @@ function BookingsPageContent() {
               }
             />
           ) : showGigsWorkspace && !createOpen ? (
-            loadingList ? null : error && !plannerCreateVisible ? (
+            loadingList ? (
+              <ReceivedBookingsListSkeleton />
+            ) : error && !plannerCreateVisible ? (
               <p className="text-sm text-red-400">{error}</p>
             ) : receivedBookings.length === 0 ? (
               <PlannerEmptyState title="No gigs yet" />

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { looksLikeUserId } from "@/lib/user/displayName";
+import { buildEventDetailDmThreadHref } from "@/lib/dm/threadNavigation";
 import AppNavigation, { MOBILE_NAV_OFFSET_CLASS } from "@/app/components/AppNavigation";
 import EventDeleteCancelButton from "@/app/components/EventDeleteCancelButton";
 import EventDateStatusBadge from "@/app/components/EventDateStatusBadge";
@@ -166,6 +167,14 @@ function EventHeaderChatIcon() {
 }
 
 export default function EventDetailPage() {
+  return (
+    <OnboardingGuard>
+      <EventDetailPageView />
+    </OnboardingGuard>
+  );
+}
+
+function EventDetailPageView() {
   const params = useParams<{ eventId: string }>();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -1003,45 +1012,41 @@ export default function EventDetailPage() {
 
   if (loading) {
     return (
-      <OnboardingGuard>
-        <div className={mobileScrollGateClass}>
-          <EventDetailLoadingShell
-            backHref={eventsBackHref}
-            editHeaderState={editHeaderState}
-            onEditClick={openEditForm}
-          />
-        </div>
-      </OnboardingGuard>
+      <div className={mobileScrollGateClass}>
+        <EventDetailLoadingShell
+          backHref={eventsBackHref}
+          editHeaderState={editHeaderState}
+          onEditClick={openEditForm}
+        />
+      </div>
     );
   }
 
   if (!event) {
     return (
-      <OnboardingGuard>
-        <div
-          className={`mx-auto min-h-[100dvh] w-full max-w-2xl bg-ftc-bg font-sans text-ftc-text ${MOBILE_NAV_OFFSET_CLASS} ${mobileScrollGateClass}`}
-        >
-          <AppNavigation />
-          <div className="px-4 py-8 sm:px-6">
-            <p className="text-sm text-red-400">{error ?? "Event not found."}</p>
-            <button
-              type="button"
-              onClick={goBackToEvents}
-              className="mt-4 inline-block text-sm font-semibold text-ftc-primary"
-            >
-              Back to events
-            </button>
-          </div>
+      <div
+        className={`mx-auto min-h-[100dvh] w-full max-w-2xl bg-ftc-bg font-sans text-ftc-text ${MOBILE_NAV_OFFSET_CLASS} ${mobileScrollGateClass}`}
+      >
+        <AppNavigation />
+        <div className="px-4 py-8 sm:px-6">
+          <p className="text-sm text-red-400">{error ?? "Event not found."}</p>
+          <button
+            type="button"
+            onClick={goBackToEvents}
+            className="mt-4 inline-block text-sm font-semibold text-ftc-primary"
+          >
+            Back to events
+          </button>
         </div>
-      </OnboardingGuard>
+      </div>
     );
   }
 
   return (
-    <OnboardingGuard>
-      <div
-        className={`mx-auto min-h-[100dvh] w-full max-w-2xl bg-ftc-bg font-sans text-ftc-text ${MOBILE_NAV_OFFSET_CLASS} ${mobileScrollGateClass}`}
-      >
+    <>
+    <div
+      className={`mx-auto min-h-[100dvh] w-full max-w-2xl bg-ftc-bg font-sans text-ftc-text ${MOBILE_NAV_OFFSET_CLASS} ${mobileScrollGateClass}`}
+    >
         <AppNavigation />
 
         <div className="border-b border-ftc-border-subtle bg-ftc-bg/95 px-4 py-3 backdrop-blur-md sm:px-6">
@@ -1328,7 +1333,7 @@ export default function EventDetailPage() {
                   ) : null}
                   {viewerBooking.conversation_id && !hideOpenBookingConversation ? (
                     <Link
-                      href={`/dm/${viewerBooking.conversation_id}`}
+                      href={buildEventDetailDmThreadHref(viewerBooking.conversation_id, eventId)}
                       className={`${EVENT_DETAIL_BTN_SECONDARY} w-full sm:w-auto sm:min-w-[7.5rem]`}
                     >
                       Open DM
@@ -1381,6 +1386,7 @@ export default function EventDetailPage() {
                           booking={booking}
                           profile={profile}
                           currentUserId={currentUserId}
+                          eventDetailId={eventId}
                           readOnly={isHistoryEventDetail}
                           cancelledByLabel={resolveBookingCancelledByLabel(booking, profiles)}
                           cancellationReasonLabel={resolveBookingCancellationReasonLabel(booking)}
@@ -1425,7 +1431,7 @@ export default function EventDetailPage() {
           <EventDetailBottomBar>
             <EventDetailPrimaryAction
               icon="chat"
-              href={`/dm/${viewerBooking.conversation_id}?from=events`}
+              href={buildEventDetailDmThreadHref(viewerBooking.conversation_id, eventId)}
             >
               Open booking conversation
             </EventDetailPrimaryAction>
@@ -1513,6 +1519,6 @@ export default function EventDetailPage() {
           void performSaveEdit(readPendingCoverSave());
         }}
       />
-    </OnboardingGuard>
+    </>
   );
 }

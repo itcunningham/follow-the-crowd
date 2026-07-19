@@ -46,7 +46,9 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 - Event colour: 8 selectable + Auto (slate neutral when Auto or legacy slate)
 - Flat solid artwork tiles (no glow)
 - Event list: Active + History tabs; whole card links to detail
+- **Events list load (2026-07-19):** lineup stat chips load via one batched `booking_requests` query per page fetch (minimal fields), not one query per event
 - **History UX (2026-07-14):** History tab matches Active list layout/spacing; locked tab row height + reserved trash slot prevents layout jump on tab switch
+- **Event detail (2026-07-19):** single `OnboardingGuard` wrapper; Open DM from event detail returns Back to same event via `from=event-detail&eventId=…`
 - **History event detail (2026-07-14):** past/cancelled events read-only on detail — no Edit, Invite DJs, lifecycle delete/cancel, run sheet edit, booking cancel/hide/proposal actions; Open DM and existing group chat link kept; historical empty copy for run sheet and bookings
 - **History bulk select (2026-07-14):** Select all operates on full History list (`filterPlannerHistoryTabEvents`), not cancelled-only subset
 - **Design system (2026-07-14):** `docs/design/FTC_DESIGN_SYSTEM.md` + `lib/design/ftcDesignSystem.ts` — shared tokens; standardised status badges, empty states, section titles, button min-heights
@@ -102,6 +104,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 - **Gigs History cards (2026-07-15):** `Fixed ·` / `Open offer` fee copy aligned with Incoming/Confirmed; tighter info-to-actions spacing; shorter View event (primary) + Open DM (subdued) buttons
 - **Gigs Confirmed tab (2026-07-19):** received gigs reload after booking acceptance (`ftc-notifications-updated` + tab visibility) so accepted bookings appear in Confirmed without stale client state; gig date keys use shared `resolveEventDateKey` (legacy + ISO); `?tab=confirmed` URL alias maps to Confirmed
 - **Gigs tab row (2026-07-19):** shared `DjGigsTabs` + `DjGigsTabRow` use compact content-width pills in a `shrink-0 gap-2` cluster (no `flex-1` stretch), reserved count slots, and a reserved History manage slot (`h-9 w-9`) so tabs, counts and bin match the reference layout at 390px
+- **Gigs list loading (2026-07-19):** Incoming/Confirmed/History show `ReceivedBookingsListSkeleton` while the initial gigs fetch runs (toolbar stays visible; no blank list gap); tab switches with cached data skip the skeleton
 - **Profile (2026-07-19):** removed redundant Calendar/Gigs navigation card from DJ profile — availability and bookings stay in Gigs nav only
 - **Profile header/nav (2026-07-19):** removed back button from own-profile header (top-level nav destination); mobile bottom nav Profile tab uses same touch `pointerup` routing as other tabs and resolves user id synchronously from session/cache
 - **Event Plans delete mode (2026-07-19):** trash and delete-selection toolbars share one fixed-height secondary row (`EVENT_PLANS_TOOLBAR_ROW_CLASS`) so plan cards no longer shift when entering or leaving selection mode; title-row Create button slot stays reserved on mobile; toolbar layers swap in place via absolute positioning with `embedded` selection controls (no flex-wrap growth)
@@ -186,7 +189,8 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
-- `1f3f718` — split login heading into Welcome back + Sign in to continue subtitle
+- `<pending>` — batch Events lineup stats, event detail guard, Gigs skeleton, event-detail DM back navigation
+- `414dbf5` — match Gigs filter row spacing to reference layout
 - `c255bf5` — remove trailing period from Settings support copy
 - `66cd287` — polish Settings password reset cooldown and sign out placement
 - `850ab12` — polish fullscreen profile photo viewer (animation, dismissal, close button)

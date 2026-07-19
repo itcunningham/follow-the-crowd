@@ -2023,6 +2023,48 @@ export function getActiveEventLineupStats(
   };
 }
 
+const LINEUP_STATS_BOOKING_FIELDS = "id, event_id, status, lineup_hidden_at";
+
+const LINEUP_STATS_EVENT_ID_CHUNK_SIZE = 100;
+
+export async function listBookingRequestsForEventLineupStats(
+  eventIds: string[],
+): Promise<Map<string, BookingRequest[]>> {
+  const uniqueEventIds = [...new Set(eventIds.map((eventId) => eventId.trim()).filter(Boolean))];
+  const bookingsByEventId = new Map<string, BookingRequest[]>(
+    uniqueEventIds.map((eventId) => [eventId, []]),
+  );
+
+  if (uniqueEventIds.length === 0) {
+    return bookingsByEventId;
+  }
+
+  for (let index = 0; index < uniqueEventIds.length; index += LINEUP_STATS_EVENT_ID_CHUNK_SIZE) {
+    const chunk = uniqueEventIds.slice(index, index + LINEUP_STATS_EVENT_ID_CHUNK_SIZE);
+    const { data, error } = await supabase
+      .from("booking_requests")
+      .select(LINEUP_STATS_BOOKING_FIELDS)
+      .in("event_id", chunk);
+
+    if (error) {
+      logBookingsLoadError(error);
+      throw error;
+    }
+
+    for (const booking of mapBookingRequestRows(data)) {
+      const eventId = booking.event_id?.trim();
+
+      if (!eventId || !bookingsByEventId.has(eventId)) {
+        continue;
+      }
+
+      bookingsByEventId.get(eventId)?.push(booking);
+    }
+  }
+
+  return bookingsByEventId;
+}
+
 export async function listBookingRequestsForEvent(eventId: string): Promise<BookingRequest[]> {
   const { data, error } = await supabase
     .from("booking_requests")

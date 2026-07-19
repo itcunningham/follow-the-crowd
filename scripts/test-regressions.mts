@@ -15,6 +15,7 @@ import {
 import type { BookingRequest } from "../lib/bookingRequests";
 import {
   filterDjGigsByTab,
+  getActiveEventLineupStats,
   isDmBookingActionRequired,
   isDjGigPastAccepted,
   resolveBookingDateKey,
@@ -24,7 +25,11 @@ import { computeCrewChatEventActions } from "../lib/events/crewChatEventActions"
 import type { CrewChatUnlockState } from "../lib/events/crewChatUnlock";
 import { resolveEventLinkedBookingDisplay } from "../lib/events/eventBookingDisplay";
 import { getAuthRedirectUrl } from "../lib/auth/appUrl";
-import { resolveDmThreadBackHref } from "../lib/dm/threadNavigation";
+import {
+  buildDmThreadHref,
+  buildEventDetailDmThreadHref,
+  resolveDmThreadBackHref,
+} from "../lib/dm/threadNavigation";
 import { resolveGigsCalendarBookingNavigation } from "../lib/bookings/gigsCalendarNavigation";
 import { hasUnsavedProfileEdits, createProfileEditBaseline } from "../lib/user/profileEditDirtyState";
 import { getUsernameFormatError, normalizeSoundCloudInput } from "../lib/user/profileFormUtils";
@@ -371,6 +376,80 @@ function testDmThreadCalendarBackHref() {
   assert.equal(resolveDmThreadBackHref({}), "/dm");
 }
 
+function makeLineupStatsBooking(overrides: Partial<BookingRequest>): BookingRequest {
+  return {
+    id: "booking-1",
+    created_at: "2026-01-01T00:00:00.000Z",
+    sender_id: "sender",
+    recipient_id: "recipient",
+    conversation_id: "conversation-1",
+    event_id: "11111111-1111-4111-8111-111111111111",
+    event_name: "Test Event",
+    venue: "Venue",
+    event_date: "2027-01-01",
+    set_time: "9:00 PM",
+    fee: "$500",
+    notes: "",
+    status: "pending",
+    archived_at: null,
+    lineup_hidden_at: null,
+    cancelled_at: null,
+    cancelled_by: null,
+    cancellation_reason: null,
+    rate_mode: "fixed",
+    proposed_rate: null,
+    proposed_rate_note: null,
+    proposed_rate_at: null,
+    proposed_rate_status: null,
+    ...overrides,
+  };
+}
+
+function testActiveEventLineupStatsMatchVisibleLineupRules() {
+  const stats = getActiveEventLineupStats([
+    makeLineupStatsBooking({ id: "pending", status: "pending" }),
+    makeLineupStatsBooking({ id: "accepted", status: "accepted" }),
+    makeLineupStatsBooking({ id: "declined-visible", status: "declined" }),
+    makeLineupStatsBooking({
+      id: "declined-hidden",
+      status: "declined",
+      lineup_hidden_at: "2026-01-01T00:00:00.000Z",
+    }),
+    makeLineupStatsBooking({ id: "cancelled", status: "cancelled" }),
+  ]);
+
+  assert.deepEqual(stats, {
+    total: 3,
+    pending: 1,
+    accepted: 1,
+    declined: 1,
+  });
+}
+
+function testDmThreadEventDetailBackHref() {
+  const eventId = "11111111-1111-4111-8111-111111111111";
+  const conversationId = "22222222-2222-4222-8222-222222222222";
+
+  assert.equal(
+    resolveDmThreadBackHref({ from: "event-detail", eventId }),
+    `/events/${eventId}`,
+  );
+  assert.equal(resolveDmThreadBackHref({ from: "event-detail", eventId: "not-a-uuid" }), "/events");
+  assert.equal(resolveDmThreadBackHref({ from: "bookings" }), "/bookings");
+  assert.equal(
+    buildEventDetailDmThreadHref(conversationId, eventId),
+    `/dm/${conversationId}?from=event-detail&eventId=${eventId}`,
+  );
+  assert.equal(
+    buildDmThreadHref(conversationId, { from: "dm" }),
+    `/dm/${conversationId}?from=dm`,
+  );
+  assert.equal(
+    buildDmThreadHref(conversationId, { from: "event-detail", eventId: "bad-id" }),
+    `/dm/${conversationId}?from=event-detail`,
+  );
+}
+
 function testGigsCalendarBookingNavigation() {
   const origin: import("../lib/bookings/gigsCalendarNavigation").CalendarOriginState = {
     calendarDate: "2026-07-14",
@@ -575,6 +654,8 @@ function main() {
   testProfileEditDirtyDetection();
   testSoundCloudInputNormalization();
   testDmThreadCalendarBackHref();
+  testActiveEventLineupStatsMatchVisibleLineupRules();
+  testDmThreadEventDetailBackHref();
   testGigsCalendarBookingNavigation();
   testAcceptedFutureGigAppearsInConfirmed();
   testAcceptedPastGigAppearsInHistory();

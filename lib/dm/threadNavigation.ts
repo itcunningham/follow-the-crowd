@@ -3,15 +3,27 @@ import {
   parseCalendarOriginFromEventDetail,
 } from "@/lib/calendar";
 import { DM_BOOKING_FOCUS_SCROLL_ONLY } from "@/lib/dm/chatBookingTarget";
+import { looksLikeUserId } from "@/lib/user/displayName";
 
 export type DmThreadBackContext = {
   from?: string | null;
   tab?: string | null;
   profileUserId?: string | null;
+  eventId?: string | null;
   calendarDate?: string | null;
   calendarView?: string | null;
   calendarMonth?: string | null;
 };
+
+function resolveValidatedEventDetailBackHref(eventId: string | null | undefined): string | null {
+  const trimmedEventId = eventId?.trim();
+
+  if (!trimmedEventId || !looksLikeUserId(trimmedEventId)) {
+    return null;
+  }
+
+  return `/events/${trimmedEventId}`;
+}
 
 export function resolveDmThreadBackHref(context: DmThreadBackContext): string {
   const from = context.from?.trim();
@@ -42,6 +54,10 @@ export function resolveDmThreadBackHref(context: DmThreadBackContext): string {
     if (calendarOrigin) {
       return buildCalendarOriginReturnHref(calendarOrigin);
     }
+  }
+
+  if (from === "event-detail") {
+    return resolveValidatedEventDetailBackHref(context.eventId) ?? "/events";
   }
 
   if (from === "bookings") {
@@ -78,6 +94,7 @@ export function buildDmThreadHref(
   options?: {
     from?: string;
     tab?: string;
+    eventId?: string;
     bookingRequestId?: string;
     bookingFocus?: typeof DM_BOOKING_FOCUS_SCROLL_ONLY;
   },
@@ -92,6 +109,10 @@ export function buildDmThreadHref(
     params.set("tab", options.tab.trim());
   }
 
+  if (options?.eventId?.trim() && looksLikeUserId(options.eventId)) {
+    params.set("eventId", options.eventId.trim());
+  }
+
   if (options?.bookingRequestId?.trim()) {
     params.set("bookingRequestId", options.bookingRequestId.trim());
   }
@@ -103,4 +124,14 @@ export function buildDmThreadHref(
   const query = params.toString();
 
   return query ? `/dm/${conversationId}?${query}` : `/dm/${conversationId}`;
+}
+
+export function buildEventDetailDmThreadHref(
+  conversationId: string,
+  eventId: string,
+): string {
+  return buildDmThreadHref(conversationId, {
+    from: "event-detail",
+    eventId,
+  });
 }
