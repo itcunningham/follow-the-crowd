@@ -1,4 +1,4 @@
-# Current state (last updated: 2026-07-16)
+# Current state (last updated: 2026-07-19)
 
 Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 
@@ -177,7 +177,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
-- `fdf337c` — add Beta Readiness QA documentation workspace
+- split login heading into Welcome back + Sign in to continue subtitle
 - `c255bf5` — remove trailing period from Settings support copy
 - `66cd287` — polish Settings password reset cooldown and sign out placement
 - `850ab12` — polish fullscreen profile photo viewer (animation, dismissal, close button)

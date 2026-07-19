@@ -110,12 +110,12 @@ export default function LoginPage() {
           Follow The Crowd
         </p>
         <h1 className="mt-3 text-2xl font-bold text-ftc-text">
-          {recoveryMode ? "Set a new password" : "Log in"}
+          {recoveryMode ? "Set a new password" : "Welcome back"}
         </h1>
         <p className="mt-2 text-sm text-ftc-text-secondary">
           {recoveryMode
             ? "Choose a new password for your account."
-            : "Welcome back. Sign in to continue."}
+            : "Sign in to continue"}
         </p>
 
         {checkingRecovery ? (
