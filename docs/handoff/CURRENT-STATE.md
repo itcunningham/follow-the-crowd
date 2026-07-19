@@ -189,7 +189,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
-- `<pending>` — batch Events lineup stats, event detail guard, Gigs skeleton, event-detail DM back navigation
+- `76475cd` — batch Events lineup stats, event detail guard, Gigs skeleton, event-detail DM back navigation
 - `414dbf5` — match Gigs filter row spacing to reference layout
 - `c255bf5` — remove trailing period from Settings support copy
 - `66cd287` — polish Settings password reset cooldown and sign out placement
