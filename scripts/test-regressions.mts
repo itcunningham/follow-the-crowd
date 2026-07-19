@@ -34,6 +34,7 @@ import {
   EVENT_PLAN_USE_BUTTON_WRAP_CLASS,
   GIGS_TAB_COUNT_SLOT_CLASS,
   GIGS_TAB_PILL_CLASS,
+  GIGS_LIST_TAB_ROW_CLASS,
 } from "../lib/design/ftcDesignSystem";
 
 function testPastEventDatesAreBlocked() {
@@ -548,9 +549,14 @@ function testEventPlanUseButtonKeepsStableCardLayout() {
 
 function testGigsTabRowKeepsStableCountSlots() {
   assert.match(GIGS_TAB_PILL_CLASS, /shrink-0/);
+  assert.match(GIGS_TAB_PILL_CLASS, /whitespace-nowrap/);
   assert.match(GIGS_TAB_PILL_CLASS, /ftc-filter-pill/);
+  assert.doesNotMatch(GIGS_TAB_PILL_CLASS, /flex-1/);
+  assert.doesNotMatch(GIGS_TAB_PILL_CLASS, /justify-center/);
   assert.match(GIGS_TAB_COUNT_SLOT_CLASS, /tabular-nums/);
   assert.match(GIGS_TAB_COUNT_SLOT_CLASS, /min-w-/);
+  assert.match(GIGS_LIST_TAB_ROW_CLASS, /flex-nowrap/);
+  assert.match(GIGS_LIST_TAB_ROW_CLASS, /justify-between/);
 }
 
 function main() {

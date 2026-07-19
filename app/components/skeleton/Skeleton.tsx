@@ -29,6 +29,8 @@ import {
   EVENT_PLANS_TOOLBAR_ROW_CLASS,
   FTC_EVENTS_LIST_TAB_ACTION_CLASS,
   FTC_EVENTS_LIST_TAB_ACTION_PLACEHOLDER_CLASS,
+  GIGS_LIST_TAB_ROW_CLASS,
+  GIGS_TAB_PILL_ROW_CLASS,
   FTC_PILL_ROW_GAP_CLASS,
   ftcFilterPillClass,
 } from "@/lib/design/ftcDesignSystem";
@@ -313,17 +315,24 @@ export function EventsListTabRow({
 export function DjGigsTabRow({
   children,
   showManageButton = false,
+  reserveManageSlot = false,
   onManageClick,
 }: {
   children: ReactNode;
   showManageButton?: boolean;
+  reserveManageSlot?: boolean;
   onManageClick?: () => void;
 }) {
   return (
-    <div className={PLANNER_WORKSPACE_SECONDARY_CONTROLS_CLASS}>
-      {children}
+    <div className={GIGS_LIST_TAB_ROW_CLASS}>
+      <div className={GIGS_TAB_PILL_ROW_CLASS}>{children}</div>
       {showManageButton ? (
-        <HistoryManageButton onClick={onManageClick ?? (() => undefined)} />
+        <HistoryManageButton
+          onClick={onManageClick ?? (() => undefined)}
+          className={FTC_EVENTS_LIST_TAB_ACTION_CLASS}
+        />
+      ) : reserveManageSlot ? (
+        <span aria-hidden="true" className={FTC_EVENTS_LIST_TAB_ACTION_PLACEHOLDER_CLASS} />
       ) : null}
     </div>
   );
@@ -725,7 +734,11 @@ function GigsWorkspaceTabsShell() {
   const searchParams = useSearchParams();
   const activeView = resolveGigsListTabParam(searchParams.get("tab"));
 
-  return <DjGigsTabs activeView={activeView} ready={false} />;
+  return (
+    <DjGigsTabRow reserveManageSlot={activeView === "history"}>
+      <DjGigsTabs activeView={activeView} counts={null} />
+    </DjGigsTabRow>
+  );
 }
 
 function canShowGigsWorkspaceTabs(role: UserRole | null): boolean {
@@ -831,11 +844,7 @@ export function BookingsPageLoadingShell({
         plannerBookingCreateOpen ? EVENTS_AREA_SUB_NAV.bookingPlans.href : undefined
       }
       secondaryControlsSlot={
-        showGigsTabs ? (
-          <DjGigsTabRow>
-            <GigsWorkspaceTabsShell />
-          </DjGigsTabRow>
-        ) : undefined
+        showGigsTabs ? <GigsWorkspaceTabsShell /> : undefined
       }
       secondaryControlsPlaceholder={plannerBookingCreateOpen || !showGigsTabs}
     >

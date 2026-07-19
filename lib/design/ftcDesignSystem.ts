@@ -60,13 +60,19 @@ export function ftcFilterPillClass(isActive: boolean): string {
   return `${FTC_FILTER_PILL_CLASS}${isActive ? " ftc-filter-pill-active" : ""}`;
 }
 
-/** Gigs workspace tab pill — fixed row layout with reserved count slot. */
+/** Gigs workspace tab pill — compact content-width pills in a nowrap row. */
 export const GIGS_TAB_PILL_CLASS =
-  "inline-flex shrink-0 items-center justify-center gap-1.5 ftc-filter-pill";
+  "inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap ftc-filter-pill";
 
-/** Reserved width for optional Gigs tab counts (up to two digits). */
-export const GIGS_TAB_COUNT_SLOT_CLASS =
-  "ml-1 inline-flex min-w-[1.75rem] justify-end tabular-nums";
+/** Reserved width for optional Gigs tab counts (space + up to two digits). */
+export const GIGS_TAB_COUNT_SLOT_CLASS = "inline-block min-w-[1.25rem] tabular-nums";
+
+/** Gigs Incoming/Confirmed/History pill group. */
+export const GIGS_TAB_PILL_ROW_CLASS = "flex min-w-0 flex-1 flex-nowrap items-center gap-2";
+
+/** Gigs filter row — tabs left, history manage action right, no wrap at 390px. */
+export const GIGS_LIST_TAB_ROW_CLASS =
+  "mb-4 flex min-h-[1.875rem] w-full flex-nowrap items-center justify-between gap-2 md:min-h-[2.375rem]";
 
 /** Events list tab row — trash action matches filter pill height (30px). */
 export const FTC_EVENTS_LIST_TAB_ACTION_CLASS =

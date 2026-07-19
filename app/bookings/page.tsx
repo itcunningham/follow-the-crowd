@@ -43,6 +43,7 @@ import {
   ALL_SELECTED_DJS_ALREADY_HAVE_EVENT_REQUEST_MESSAGE,
   buildBookingSendResultMessage,
   buildEventBookingDuplicateMap,
+  countDjGigsByTab,
   filterActiveBookingGroups,
   filterActiveBookings,
   filterArchivedCancelledBookings,
@@ -518,6 +519,24 @@ function BookingsPageContent() {
   const gigsHistoryBulkManage = useHistoryBulkManage(
     showGigsWorkspace && djGigsView === "history" && gigsListReady ? djHistoryBookings : [],
   );
+
+  const gigsTabCounts = useMemo(
+    () =>
+      gigsListReady
+        ? countDjGigsByTab(receivedBookings, hiddenBookingIds)
+        : null,
+    [gigsListReady, receivedBookings, hiddenBookingIds],
+  );
+
+  const isGigsHistoryTab = djGigsView === "history";
+  const showGigsManageButton =
+    isGigsHistoryTab &&
+    gigsListReady &&
+    !loadingList &&
+    gigsHistoryBulkManage.showManageControl &&
+    !gigsHistoryBulkManage.selectionMode;
+  const reserveGigsManageSlot =
+    isGigsHistoryTab && !gigsHistoryBulkManage.selectionMode && !showGigsManageButton;
 
   const visibleReceivedBookings = useMemo(
     () =>
@@ -1416,21 +1435,11 @@ function BookingsPageContent() {
         secondaryControlsSlot={
           showGigsWorkspace && !plannerCreateVisible ? (
             <DjGigsTabRow
-              showManageButton={
-                djGigsView === "history" &&
-                gigsListReady &&
-                !loadingList &&
-                gigsHistoryBulkManage.showManageControl &&
-                !gigsHistoryBulkManage.selectionMode
-              }
+              showManageButton={showGigsManageButton}
+              reserveManageSlot={reserveGigsManageSlot}
               onManageClick={gigsHistoryBulkManage.enterSelectionMode}
             >
-              <DjGigsTabs
-                activeView={djGigsView}
-                ready={gigsListReady}
-                bookings={receivedBookings}
-                hiddenBookingIds={hiddenBookingIds}
-              />
+              <DjGigsTabs activeView={djGigsView} counts={gigsTabCounts} />
             </DjGigsTabRow>
           ) : undefined
         }

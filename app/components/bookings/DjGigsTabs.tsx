@@ -1,8 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import type { BookingRequest } from "@/lib/bookingRequests";
-import { countDjGigsByTab, type DjGigsListTab } from "@/lib/bookingRequests";
+import type { DjGigsListTab } from "@/lib/bookingRequests";
 import {
   GIGS_TAB_COUNT_SLOT_CLASS,
   GIGS_TAB_PILL_CLASS,
@@ -32,49 +31,45 @@ const GIGS_TAB_CONFIG: {
   value: DjGigsListTab;
   label: string;
   showHistoryIcon?: boolean;
-  minWidthClass: string;
 }[] = [
-  { value: "pending", label: "Incoming", minWidthClass: "min-w-[7.25rem]" },
-  { value: "accepted", label: "Confirmed", minWidthClass: "min-w-[7.5rem]" },
-  {
-    value: "history",
-    label: "History",
-    showHistoryIcon: true,
-    minWidthClass: "min-w-[7rem]",
-  },
+  { value: "pending", label: "Incoming" },
+  { value: "accepted", label: "Confirmed" },
+  { value: "history", label: "History", showHistoryIcon: true },
 ];
 
-function DjGigsTabCount({ count, ready }: { count: number; ready: boolean }) {
-  const visibleCount = ready && count > 0 ? count : null;
+function DjGigsTabCount({
+  count,
+  countsReady,
+}: {
+  count: number;
+  countsReady: boolean;
+}) {
+  const visibleCount = countsReady && count > 0 ? ` ${count}` : "";
 
   return (
-    <span aria-hidden={visibleCount == null} className={GIGS_TAB_COUNT_SLOT_CLASS}>
-      {visibleCount ?? ""}
+    <span aria-hidden={!visibleCount} className={GIGS_TAB_COUNT_SLOT_CLASS}>
+      {visibleCount}
     </span>
   );
 }
 
 export function DjGigsTabs({
   activeView,
-  ready,
-  bookings = [],
-  hiddenBookingIds = new Set<string>(),
+  counts,
 }: {
   activeView: DjGigsListTab;
-  ready: boolean;
-  bookings?: BookingRequest[];
-  hiddenBookingIds?: ReadonlySet<string>;
+  counts: Record<DjGigsListTab, number> | null;
 }) {
-  const counts = ready ? countDjGigsByTab(bookings, hiddenBookingIds) : null;
+  const countsReady = counts !== null;
 
   return (
-    <div className="flex flex-wrap gap-2">
+    <>
       {GIGS_TAB_CONFIG.map((tab) => {
         const isActive = activeView === tab.value;
         const href = buildGigsListHref(tab.value);
         const count = counts?.[tab.value] ?? 0;
         const ariaLabel =
-          ready && count > 0 ? `${tab.label} ${count}` : tab.label;
+          countsReady && count > 0 ? `${tab.label} ${count}` : tab.label;
 
         return (
           <Link
@@ -87,16 +82,14 @@ export function DjGigsTabs({
                 event.preventDefault();
               }
             }}
-            className={`${GIGS_TAB_PILL_CLASS} ${tab.minWidthClass} ${ftcFilterPillClass(isActive)}`}
+            className={`${GIGS_TAB_PILL_CLASS} ${ftcFilterPillClass(isActive)}`}
           >
             {tab.showHistoryIcon ? <HistoryIcon /> : null}
-            <span className="inline-flex items-baseline">
-              <span>{tab.label}</span>
-              <DjGigsTabCount count={count} ready={ready} />
-            </span>
+            {tab.label}
+            <DjGigsTabCount count={count} countsReady={countsReady} />
           </Link>
         );
       })}
-    </div>
+    </>
   );
 }
