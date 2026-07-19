@@ -2,13 +2,10 @@
 
 import Link from "next/link";
 import type { DjGigsListTab } from "@/lib/bookingRequests";
-import { SkeletonBlock } from "@/app/components/skeleton/Skeleton";
 import {
   GIGS_TAB_COUNT_SLOT_CLASS,
   GIGS_TAB_PILL_GAP_CLASS,
   GIGS_TAB_PILL_ROW_CLASS,
-  GIGS_TAB_SKELETON_PILL_CLASS,
-  GIGS_TAB_SKELETON_PILL_WIDTHS,
   gigsTabPillClass,
 } from "@/lib/design/ftcDesignSystem";
 import { buildGigsListHref } from "@/lib/bookings/gigsListNavigation";
@@ -41,32 +38,16 @@ const GIGS_TAB_CONFIG: {
   { value: "history", label: "History", showHistoryIcon: true },
 ];
 
-export function DjGigsTabsSkeleton() {
-  return (
-    <div
-      aria-busy="true"
-      aria-label="Loading Gigs tabs"
-      className={GIGS_TAB_PILL_ROW_CLASS}
-    >
-      {GIGS_TAB_SKELETON_PILL_WIDTHS.map((widthClass) => (
-        <SkeletonBlock
-          key={widthClass}
-          rounded="rounded-full"
-          className={`${GIGS_TAB_SKELETON_PILL_CLASS} ${widthClass}`}
-        />
-      ))}
-    </div>
-  );
-}
-
 function DjGigsTabCount({
   count,
+  countsReady,
   reserveSlot,
 }: {
   count: number;
+  countsReady: boolean;
   reserveSlot: boolean;
 }) {
-  const visibleCount = count > 0 ? ` ${count}` : "";
+  const visibleCount = countsReady && count > 0 ? ` ${count}` : "";
 
   if (!reserveSlot) {
     if (!visibleCount) {
@@ -94,17 +75,17 @@ export function DjGigsTabs({
   activeView: DjGigsListTab;
   counts: Record<DjGigsListTab, number> | null;
 }) {
-  if (counts === null) {
-    return <DjGigsTabsSkeleton />;
-  }
+  const countsReady = counts !== null;
 
   return (
     <div className={GIGS_TAB_PILL_ROW_CLASS}>
       {GIGS_TAB_CONFIG.map((tab) => {
         const isActive = activeView === tab.value;
         const href = buildGigsListHref(tab.value);
-        const count = counts[tab.value];
-        const ariaLabel = count > 0 ? `${tab.label} ${count}` : tab.label;
+        const count = counts?.[tab.value] ?? 0;
+        const ariaLabel =
+          countsReady && count > 0 ? `${tab.label} ${count}` : tab.label;
+
         const reserveCountSlot = tab.value !== "history";
 
         return (
@@ -122,7 +103,11 @@ export function DjGigsTabs({
           >
             {tab.showHistoryIcon ? <HistoryIcon /> : null}
             {tab.label}
-            <DjGigsTabCount count={count} reserveSlot={reserveCountSlot} />
+            <DjGigsTabCount
+              count={count}
+              countsReady={countsReady}
+              reserveSlot={reserveCountSlot}
+            />
           </Link>
         );
       })}

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   BookingsPageLoadingShell,
@@ -521,21 +521,13 @@ function BookingsPageContent() {
     showGigsWorkspace && djGigsView === "history" && gigsListReady ? djHistoryBookings : [],
   );
 
-  const lastGigsTabCountsRef = useRef<Record<DjGigsListTab, number> | null>(null);
-
-  const gigsTabCounts = useMemo(() => {
-    if (gigsListReady) {
-      return countDjGigsByTab(receivedBookings, hiddenBookingIds);
-    }
-
-    return lastGigsTabCountsRef.current;
-  }, [gigsListReady, receivedBookings, hiddenBookingIds]);
-
-  useLayoutEffect(() => {
-    if (gigsListReady) {
-      lastGigsTabCountsRef.current = countDjGigsByTab(receivedBookings, hiddenBookingIds);
-    }
-  }, [gigsListReady, receivedBookings, hiddenBookingIds]);
+  const gigsTabCounts = useMemo(
+    () =>
+      gigsListReady
+        ? countDjGigsByTab(receivedBookings, hiddenBookingIds)
+        : null,
+    [gigsListReady, receivedBookings, hiddenBookingIds],
+  );
 
   const isGigsHistoryTab = djGigsView === "history";
   const showGigsManageButton =

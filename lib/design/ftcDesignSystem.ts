@@ -73,15 +73,6 @@ export function gigsTabPillClass(isActive: boolean): string {
   return `${FTC_FILTER_PILL_CLASS} ${GIGS_TAB_PILL_MODIFIER_CLASS}${isActive ? " ftc-filter-pill-active" : ""}`;
 }
 
-/** Skeleton pill widths — match Incoming / Confirmed / History with count slots at 390px and 1280px. */
-export const GIGS_TAB_SKELETON_PILL_CLASS = "h-[1.875rem] shrink-0 rounded-full";
-
-export const GIGS_TAB_SKELETON_PILL_WIDTHS = [
-  "w-[5.75rem]",
-  "w-[6.25rem]",
-  "w-[5.5rem]",
-] as const;
-
 /** Gigs Incoming/Confirmed/History pill group — compact cluster, no stretch. */
 export const GIGS_TAB_PILL_ROW_CLASS = "flex shrink-0 flex-nowrap items-center gap-2";
 

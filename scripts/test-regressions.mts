@@ -46,8 +46,6 @@ import {
   GIGS_TAB_COUNT_SLOT_CLASS,
   GIGS_TAB_PILL_MODIFIER_CLASS,
   GIGS_TAB_PILL_ROW_CLASS,
-  GIGS_TAB_SKELETON_PILL_CLASS,
-  GIGS_TAB_SKELETON_PILL_WIDTHS,
   GIGS_LIST_TAB_ROW_CLASS,
 } from "../lib/design/ftcDesignSystem";
 
@@ -725,13 +723,6 @@ function testGigsTabCountsDeriveFromSameBookingSnapshot() {
   assert.equal(counts.history, filterDjGigsByTab(bookings, "history", hidden).length);
 }
 
-function testGigsTabSkeletonMatchesFinalRowGeometry() {
-  assert.match(GIGS_TAB_SKELETON_PILL_CLASS, /h-\[1\.875rem\]/);
-  assert.match(GIGS_TAB_SKELETON_PILL_CLASS, /rounded-full/);
-  assert.equal(GIGS_TAB_SKELETON_PILL_WIDTHS.length, 3);
-  assert.match(GIGS_TAB_PILL_ROW_CLASS, /gap-2/);
-}
-
 function main() {
   testPastEventDatesAreBlocked();
   testFutureEventDatesAreAllowed();
@@ -762,7 +753,6 @@ function main() {
   testEventPlanUseButtonKeepsStableCardLayout();
   testGigsTabRowKeepsStableCountSlots();
   testGigsTabCountsDeriveFromSameBookingSnapshot();
-  testGigsTabSkeletonMatchesFinalRowGeometry();
   testWorkspaceSubNavLayoutIsStable();
   testWorkspaceActiveHrefIgnoresStaleOverrides();
   testProfileIdentityPresentationHierarchy();
