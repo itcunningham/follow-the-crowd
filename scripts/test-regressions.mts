@@ -37,7 +37,7 @@ import {
   PLANNER_WORKSPACE_SUBNAV_ROW_CLASS,
   PLANNER_WORKSPACE_SUBNAV_SLOT_CLASS,
 } from "../app/components/planner/PlannerWorkspaceLayout";
-import { getEventsAreaSubNavItems } from "../lib/plannerEventsNav";
+import { getEventsAreaSubNavItems, resolveActiveWorkspaceHref } from "../lib/plannerEventsNav";
 import {
   EVENT_PLAN_ACTION_RESERVE_CLASS,
   EVENT_PLAN_USE_BUTTON_CLASS,
@@ -634,6 +634,14 @@ function testWorkspaceSubNavLayoutIsStable() {
   assert.equal(getEventsAreaSubNavItems(null).map((item) => item.href).join(","), "/events,/calendar");
 }
 
+function testWorkspaceActiveHrefIgnoresStaleOverrides() {
+  assert.equal(resolveActiveWorkspaceHref("/calendar"), "/calendar");
+  assert.equal(resolveActiveWorkspaceHref("/calendar", "/events"), "/calendar");
+  assert.equal(resolveActiveWorkspaceHref("/events"), "/events");
+  assert.equal(resolveActiveWorkspaceHref("/bookings", "/booking-plans"), "/booking-plans");
+  assert.equal(resolveActiveWorkspaceHref("/bookings"), "/bookings");
+}
+
 function testEventPlanUseButtonKeepsStableCardLayout() {
   assert.match(EVENT_PLAN_USE_BUTTON_WRAP_CLASS, /shrink-0/);
   assert.match(EVENT_PLAN_USE_BUTTON_WRAP_CLASS, /self-center/);
@@ -687,6 +695,7 @@ function main() {
   testEventPlanUseButtonKeepsStableCardLayout();
   testGigsTabRowKeepsStableCountSlots();
   testWorkspaceSubNavLayoutIsStable();
+  testWorkspaceActiveHrefIgnoresStaleOverrides();
   console.log("All regression checks passed.");
 }
 

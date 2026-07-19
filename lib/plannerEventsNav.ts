@@ -80,11 +80,32 @@ export function getPlannerWorkspaceTitle(workspaceHref: string): string {
   }
 }
 
+export function resolveActiveWorkspaceHref(
+  pathname: string,
+  overrideHref?: string | null,
+): string {
+  const pathnameHref = getActiveWorkspaceHref(pathname);
+  const override = overrideHref?.trim();
+
+  if (!override || override === pathnameHref) {
+    return pathnameHref;
+  }
+
+  if (
+    pathnameHref === EVENTS_AREA_SUB_NAV.gigs.href &&
+    override === EVENTS_AREA_SUB_NAV.bookingPlans.href
+  ) {
+    return override;
+  }
+
+  return pathnameHref;
+}
+
 export function resolvePlannerWorkspaceTitle(options: {
   pathname: string;
   activeWorkspaceHref?: string | null;
 }): string {
-  const href = options.activeWorkspaceHref?.trim() || getActiveWorkspaceHref(options.pathname);
+  const href = resolveActiveWorkspaceHref(options.pathname, options.activeWorkspaceHref);
 
   return getPlannerWorkspaceTitle(href);
 }

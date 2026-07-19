@@ -73,7 +73,7 @@ export const PLANNER_WORKSPACE_SECONDARY_TABS_ROW_CLASS = PLANNER_WORKSPACE_SECO
 
 /** Matches the widest Events-area create button so title rows stay aligned. */
 const PLANNER_WORKSPACE_TITLE_ACTION_PLACEHOLDER_CLASS =
-  "pointer-events-none invisible hidden shrink-0 md:inline-flex ftc-btn-primary px-4 py-2.5 text-sm uppercase tracking-wide";
+  "pointer-events-none invisible inline-flex shrink-0 ftc-btn-primary px-4 py-2.5 text-sm uppercase tracking-wide";
 
 type WorkspaceHeaderState = {
   activeWorkspaceHref?: string | null;
@@ -192,7 +192,14 @@ export function PlannerWorkspaceRouteLayout({ children }: { children: ReactNode 
   const pathname = usePathname();
   const guardProfile = useGuardProfile();
   const [headerState, setHeaderState] = useState<WorkspaceHeaderState>({});
+  const [syncedPathname, setSyncedPathname] = useState(pathname);
   const initialRole = guardProfile?.role ?? readCachedNavRole();
+
+  if (pathname !== syncedPathname) {
+    setSyncedPathname(pathname);
+    setHeaderState({});
+  }
+
   const title = useMemo(
     () =>
       resolvePlannerWorkspaceTitle({
@@ -286,10 +293,6 @@ export function PlannerWorkspacePageContent({
       activeWorkspaceHref,
       actions,
     });
-
-    return () => {
-      headerContext.setHeaderState({});
-    };
   }, [actions, activeWorkspaceHref, headerContext]);
 
   return (

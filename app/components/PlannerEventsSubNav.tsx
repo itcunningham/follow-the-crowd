@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import PlannerWorkspaceSubNavLink from "@/app/components/planner/PlannerWorkspaceSubNavLink";
 import { useGuardProfile } from "@/app/components/GuardProfileContext";
@@ -14,9 +14,9 @@ import {
 import {
   canViewGigsSubNav,
   EVENTS_AREA_SUB_NAV,
-  getActiveWorkspaceHref,
   getEventsAreaSubNavItems,
   isPlannerEventsAreaPath,
+  resolveActiveWorkspaceHref,
 } from "@/lib/plannerEventsNav";
 import { readCachedNavigation, readCachedNavRole } from "@/lib/navigationRoleCache";
 import { getCurrentUserProfile, type UserRole } from "@/lib/user/currentUser";
@@ -73,6 +73,9 @@ export default function PlannerEventsSubNav({
   const [role, setRole] = useState<UserRole | null>(
     () => initialRole ?? guardProfile?.role ?? cachedNavigation.role,
   );
+  const lastKnownRoleRef = useRef<UserRole | null>(
+    initialRole ?? guardProfile?.role ?? cachedNavigation.role ?? readCachedNavRole(),
+  );
 
   const resolvedRole =
     role ??
@@ -80,7 +83,13 @@ export default function PlannerEventsSubNav({
     initialRole ??
     cachedNavigation.role ??
     readCachedNavRole();
-  const canViewGigs = canViewGigsSubNav(resolvedRole);
+
+  if (resolvedRole) {
+    lastKnownRoleRef.current = resolvedRole;
+  }
+
+  const tabsRole = resolvedRole ?? lastKnownRoleRef.current;
+  const canViewGigs = canViewGigsSubNav(tabsRole);
   const resolvedUserId = guardProfile?.user_id ?? cachedNavigation.userId;
   const badgeCacheVersion = useSyncExternalStore(
     subscribeNavigationBadgeListeners,
@@ -89,8 +98,8 @@ export default function PlannerEventsSubNav({
   );
 
   const tabs = useMemo(
-    () => getEventsAreaSubNavItems(resolvedRole),
-    [resolvedRole],
+    () => getEventsAreaSubNavItems(tabsRole),
+    [tabsRole],
   );
 
   useEffect(() => {
@@ -141,14 +150,32 @@ export default function PlannerEventsSubNav({
       });
   }, [guardProfile?.role, initialRole, cachedNavigation.role]);
 
-  if (!isPlannerEventsAreaPath(pathname)) {
+  const showSubNav = isPlannerEventsAreaPath(pathname);
+  const activeHref = resolveActiveWorkspaceHref(pathname, activeWorkspaceHref);
+  const navRef = useRef<HTMLElement>(null);
+
+  useLayoutEffect(() => {
+    if (!showSubNav) {
+      return;
+    }
+
+    const nav = navRef.current;
+    if (!nav) {
+      return;
+    }
+
+    const activeTab = nav.querySelector('[aria-current="page"]');
+    if (activeTab instanceof HTMLElement) {
+      activeTab.scrollIntoView({ block: "nearest", inline: "nearest" });
+    }
+  }, [activeHref, showSubNav, tabs.length]);
+
+  if (!showSubNav) {
     return null;
   }
 
-  const activeHref = activeWorkspaceHref ?? getActiveWorkspaceHref(pathname);
-
   return (
-    <nav aria-label="Events area" className="flex min-w-max flex-nowrap gap-2">
+    <nav ref={navRef} aria-label="Events area" className="flex min-w-max flex-nowrap gap-2">
       {tabs.map((tab) => {
         const isActive = activeHref === tab.href;
         const showPendingBadge = tab.href === EVENTS_AREA_SUB_NAV.gigs.href;
