@@ -51,6 +51,10 @@ export function useHistoryBulkManage<T extends { id: string }>(items: T[]) {
   const showSelectionToolbar = selectionMode && !confirmOpen && !removing;
 
   function resetSelectionState() {
+    if (typeof document !== "undefined" && document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
+
     setSelectionMode(false);
     setSelectedIds(new Set());
     setConfirmOpen(false);

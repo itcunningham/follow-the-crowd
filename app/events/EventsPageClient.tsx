@@ -236,10 +236,10 @@ function EventsListCardContent({
   );
 }
 
-function eventsListCardClassName(cancelled: boolean, isSelected = false) {
+function eventsListCardShellClassName(cancelled: boolean, isSelected = false) {
   return [
+    "relative overflow-hidden",
     FTC_SURFACE_ROW_CLASS,
-    "block w-full focus-visible:outline-none",
     cancelled ? "ftc-event-card-cancelled" : "",
     isSelected ? "ring-1 ring-ftc-primary/40" : "",
   ]
@@ -1265,50 +1265,58 @@ function EventsPageClientView({
                 const cancelled = isEventCancelled(event);
                 const eventHref = buildEventDetailHref(event.id, listTab);
                 const isSelected = historyBulkManage.selectedIds.has(event.id);
+                const isHistorySelection =
+                  historyBulkManage.showSelectionToolbar && isPlanner && isHistoryTab;
                 const selectionLabel = isSelected
                   ? `Deselect ${event.name} for removal from history`
                   : `Select ${event.name} for removal from history`;
 
-                if (historyBulkManage.showSelectionToolbar && isPlanner && isHistoryTab) {
-                  return (
-                    <li key={event.id} aria-selected={isSelected}>
+                return (
+                  <li
+                    key={event.id}
+                    className={eventsListCardShellClassName(
+                      cancelled,
+                      isHistorySelection && isSelected,
+                    )}
+                    aria-selected={isHistorySelection ? isSelected : undefined}
+                  >
+                    {isHistorySelection ? (
                       <button
                         type="button"
                         onClick={() => historyBulkManage.toggleItem(event.id)}
                         aria-label={selectionLabel}
                         aria-pressed={isSelected}
-                        className={`flex ${eventsListCardClassName(cancelled, isSelected)}`}
-                      >
+                        className="absolute inset-0 z-10 rounded-[inherit] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ftc-primary/35"
+                      />
+                    ) : null}
+                    {isHistorySelection ? (
+                      <div className="pointer-events-none">
                         <EventsListCardContent
                           event={event}
                           cancelled={cancelled}
                           isPlanner={isPlanner}
                           showChevron={false}
                         />
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        aria-label={`View ${event.name}`}
+                        onClick={() => {
+                          seedEventOwnerId(event.id, event.owner_id);
+                          prepareEventsListEventNavigation();
+                          router.push(eventHref, { scroll: false });
+                        }}
+                        className="block w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ftc-primary/35"
+                      >
+                        <EventsListCardContent
+                          event={event}
+                          cancelled={cancelled}
+                          isPlanner={isPlanner}
+                        />
                       </button>
-                    </li>
-                  );
-                }
-
-                return (
-                <li key={event.id}>
-                  <button
-                    type="button"
-                    aria-label={`View ${event.name}`}
-                    onClick={() => {
-                      seedEventOwnerId(event.id, event.owner_id);
-                      prepareEventsListEventNavigation();
-                      router.push(eventHref, { scroll: false });
-                    }}
-                    className={`block ${eventsListCardClassName(cancelled)}`}
-                  >
-                    <EventsListCardContent
-                      event={event}
-                      cancelled={cancelled}
-                      isPlanner={isPlanner}
-                    />
-                  </button>
-                </li>
+                    )}
+                  </li>
                 );
               })}
             </ul>

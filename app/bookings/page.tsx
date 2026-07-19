@@ -2261,7 +2261,7 @@ function GigCardHistoryAction({
 }
 
 const GIG_CARD_HISTORY_CLASS_NAME =
-  "ftc-gig-card ftc-surface-row rounded-[var(--ftc-radius-xl)] py-2 px-2.5 sm:p-4 bg-ftc-bg-elevated/60";
+  "ftc-gig-card ftc-surface-row relative overflow-hidden rounded-[var(--ftc-radius-xl)] py-2 px-2.5 sm:p-4 bg-ftc-bg-elevated/60";
 
 const GIG_CARD_HISTORY_BODY_CLASS_NAME =
   "flex min-w-0 max-w-full flex-col gap-1.5 sm:gap-2";
@@ -2424,26 +2424,28 @@ function BookingHistoryCard({
     </div>
   );
 
-  if (selectionMode) {
-    return (
-      <li className="min-w-0" aria-selected={selected}>
+  const cardSurfaceClassName = [
+    cardClass,
+    "min-w-0",
+    selectionMode && selected ? "ring-1 ring-ftc-primary/40" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  return (
+    <li
+      className={cardSurfaceClassName}
+      aria-selected={selectionMode ? selected : undefined}
+    >
+      {selectionMode ? (
         <button
           type="button"
           onClick={onToggleSelect}
           aria-label={selectionLabel}
           aria-pressed={selected}
-          className={`${cardClass} block w-full min-w-0 text-left focus-visible:outline-none ${
-            selected ? "ring-1 ring-ftc-primary/40" : ""
-          }`}
-        >
-          {cardBody}
-        </button>
-      </li>
-    );
-  }
-
-  return (
-    <li className={`${cardClass} min-w-0`}>
+          className="absolute inset-0 z-10 rounded-[inherit] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ftc-primary/35"
+        />
+      ) : null}
       {cardBody}
     </li>
   );
