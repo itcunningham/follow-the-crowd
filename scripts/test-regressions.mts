@@ -28,6 +28,7 @@ import { resolveDmThreadBackHref } from "../lib/dm/threadNavigation";
 import { resolveGigsCalendarBookingNavigation } from "../lib/bookings/gigsCalendarNavigation";
 import { hasUnsavedProfileEdits, createProfileEditBaseline } from "../lib/user/profileEditDirtyState";
 import { getUsernameFormatError, normalizeSoundCloudInput } from "../lib/user/profileFormUtils";
+import { EVENT_PLAN_ACTION_SLOT_CLASS } from "../lib/design/ftcDesignSystem";
 
 function testPastEventDatesAreBlocked() {
   const cases = [
@@ -52,7 +53,7 @@ function testFutureEventDatesAreAllowed() {
 }
 
 function testIncompleteSetTimeIsBlocked() {
-  assert.equal(getEventSetTimeValidationError("9:00 PM"), "Select a start time");
+  assert.equal(getEventSetTimeValidationError("9:00 PM"), "Select a finish time");
   assert.equal(getEventSetTimeValidationError(""), "Select a start time");
   assert.equal(
     getEventSetTimeValidationError(`9:00 PM${SET_TIME_RANGE_JOINER}11:00 PM`),
@@ -406,7 +407,7 @@ function testGigsCalendarBookingNavigation() {
   if (pending.kind === "dm") {
     assert.equal(
       pending.href,
-      "/dm/conversation-2?from=calendar&calendarDate=2026-07-14&calendarView=dj&calendarMonth=2026-07-01",
+      "/dm/conversation-2?bookingRequestId=booking-2&from=calendar&calendarDate=2026-07-14&calendarView=dj&calendarMonth=2026-07-01",
     );
   }
 
@@ -528,6 +529,12 @@ function testConfirmedTabAliasParsesFromUrl() {
   assert.equal(parseDjGigsListTab("accepted"), "accepted");
 }
 
+function testEventPlanActionSlotKeepsStableCardWidth() {
+  assert.match(EVENT_PLAN_ACTION_SLOT_CLASS, /h-11/);
+  assert.match(EVENT_PLAN_ACTION_SLOT_CLASS, /w-\[5\.5rem\]/);
+  assert.match(EVENT_PLAN_ACTION_SLOT_CLASS, /shrink-0/);
+}
+
 function main() {
   testPastEventDatesAreBlocked();
   testFutureEventDatesAreAllowed();
@@ -553,6 +560,7 @@ function main() {
   testTodaysFutureGigIsNotHistorical();
   testLegacyEventDatesResolveForGigTabs();
   testConfirmedTabAliasParsesFromUrl();
+  testEventPlanActionSlotKeepsStableCardWidth();
   console.log("All regression checks passed.");
 }
 

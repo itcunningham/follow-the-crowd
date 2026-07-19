@@ -76,6 +76,10 @@ export const EVENTS_LIST_TAB_ROW_CLASS =
 export const EVENT_PLANS_TOOLBAR_ROW_CLASS =
   "relative mb-4 h-[3.125rem] w-full shrink-0";
 
+/** Event Plans card action column — fixed width for Use plan / selection checkbox swap. */
+export const EVENT_PLAN_ACTION_SLOT_CLASS =
+  "flex h-11 w-[5.5rem] shrink-0 items-center justify-center self-center";
+
 /** Event Plans title action — shared sizing for live and reserved Create button. */
 export const EVENT_PLANS_CREATE_BUTTON_CLASS =
   "inline-flex shrink-0 ftc-btn-primary px-4 py-2.5 text-sm uppercase tracking-wide";

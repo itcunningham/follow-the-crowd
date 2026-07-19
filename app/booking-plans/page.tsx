@@ -12,7 +12,6 @@ import {
   SavedEventPlansSectionHeader,
 } from "@/app/components/skeleton/Skeleton";
 import {
-  HistorySelectionCheckbox,
   HistorySelectionToolbar,
   useHistoryBulkManage,
 } from "@/app/components/history/HistoryBulkManage";
@@ -38,7 +37,7 @@ import {
 } from "@/lib/bookings/planDeepLink";
 import {
   FTC_LIST_GAP_CLASS,
-  FTC_SURFACE_ROW_CLASS,
+  EVENT_PLAN_ACTION_SLOT_CLASS,
   EVENT_PLANS_CREATE_BUTTON_CLASS,
 } from "@/lib/design/ftcDesignSystem";
 
@@ -542,18 +541,23 @@ export default function BookingPlansPage() {
   );
 }
 
-function planSelectionRowClassName(isSelected: boolean) {
-  return [
-    FTC_SURFACE_ROW_CLASS,
-    "block w-full focus-visible:outline-none",
-    isSelected ? "ring-1 ring-ftc-primary/40" : "",
-  ]
-    .filter(Boolean)
-    .join(" ");
-}
-
 const EVENT_PLAN_USE_BUTTON_CLASS =
-  "ftc-btn-secondary inline-flex min-h-11 items-center justify-center border-[1.5px] border-ftc-border-strong px-3 py-2 text-xs font-semibold uppercase tracking-wide text-ftc-text";
+  "ftc-btn-secondary inline-flex min-h-11 w-full items-center justify-center border-[1.5px] border-ftc-border-strong px-3 py-2 text-xs font-semibold uppercase tracking-wide text-ftc-text";
+
+function EventPlanSelectionIndicator({ checked }: { checked: boolean }) {
+  return (
+    <span
+      aria-hidden="true"
+      className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border ${
+        checked
+          ? "border-0 bg-ftc-primary text-ftc-bg"
+          : "border-ftc-border-strong bg-ftc-bg-elevated text-transparent"
+      }`}
+    >
+      ✓
+    </span>
+  );
+}
 
 function EventPlanCard({
   plan,
@@ -573,28 +577,23 @@ function EventPlanCard({
   const selectionLabel = selected
     ? `Deselect ${plan.name}`
     : `Select ${plan.name} for deletion`;
+  const cardClassName = selectionMode
+    ? `ftc-card overflow-hidden${selected ? " ring-1 ring-ftc-primary/40" : ""}`
+    : "ftc-card overflow-hidden ftc-card-hoverable";
 
   if (selectionMode) {
     return (
-      <li>
+      <li className={cardClassName}>
         <button
           type="button"
           onClick={onCardClick}
           aria-label={selectionLabel}
           aria-pressed={selected}
-          className={`flex ${planSelectionRowClassName(selected)}`}
+          className="flex w-full items-center gap-3 p-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ftc-primary/35 sm:gap-4 sm:p-4"
         >
-          <div className="flex min-w-0 flex-1 items-start gap-3">
-            <HistorySelectionCheckbox
-              checked={selected}
-              label={selectionLabel}
-              presentational
-            />
-            <EventPlanCardBody
-              plan={plan}
-              notesText={notesText}
-              hasNotes={hasNotes}
-            />
+          <EventPlanCardBody plan={plan} notesText={notesText} hasNotes={hasNotes} />
+          <div className={EVENT_PLAN_ACTION_SLOT_CLASS}>
+            <EventPlanSelectionIndicator checked={selected} />
           </div>
         </button>
       </li>
@@ -602,7 +601,7 @@ function EventPlanCard({
   }
 
   return (
-    <li className="ftc-card overflow-hidden ftc-card-hoverable">
+    <li className={cardClassName}>
       <div className="flex items-center gap-3 p-3 sm:gap-4 sm:p-4">
         <button
           type="button"
@@ -612,7 +611,7 @@ function EventPlanCard({
           <EventPlanCardBody plan={plan} notesText={notesText} hasNotes={hasNotes} />
         </button>
 
-        <div className="shrink-0 self-center sm:flex sm:justify-end">
+        <div className={EVENT_PLAN_ACTION_SLOT_CLASS}>
           <button
             type="button"
             onClick={(event) => {
