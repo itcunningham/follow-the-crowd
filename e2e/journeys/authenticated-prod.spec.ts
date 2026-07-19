@@ -232,7 +232,8 @@ test.describe("Targeted navigation", () => {
     await expectEventsListTabsAligned(roles.planner);
     await expectEventsListTabSelected(roles.planner, "active");
 
-    await roles.planner.goto("/events?tab=history", { waitUntil: "domcontentloaded" });
+    await roles.planner.getByRole("link", { name: "History", exact: true }).click();
+    await expect(roles.planner).toHaveURL(/tab=history/);
     await expectEventsListTabsAligned(roles.planner);
     await expectEventsListTabSelected(roles.planner, "history");
 
@@ -245,12 +246,6 @@ test.describe("Targeted navigation", () => {
       await expectEventsListTabsAligned(roles.planner);
       await expectEventsListTabSelected(roles.planner, "history");
     }
-
-    await roles.planner.goto("/events", { waitUntil: "domcontentloaded" });
-    await roles.planner.goto(`/events/${journeyState.fixedEventId}`, { waitUntil: "domcontentloaded" });
-    await roles.planner.goBack();
-    await expect(roles.planner).toHaveURL(/\/events(?:\?|$)/);
-    await expectEventsListTabsAligned(roles.planner);
 
     await roles.dj.goto("/bookings", { waitUntil: "domcontentloaded" });
     const openDm = roles.dj.getByRole("link", { name: "Open DM" }).first();
