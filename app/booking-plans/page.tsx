@@ -37,7 +37,8 @@ import {
 } from "@/lib/bookings/planDeepLink";
 import {
   FTC_LIST_GAP_CLASS,
-  EVENT_PLAN_ACTION_SLOT_CLASS,
+  EVENT_PLAN_USE_BUTTON_CLASS,
+  EVENT_PLAN_USE_BUTTON_WRAP_CLASS,
   EVENT_PLANS_CREATE_BUTTON_CLASS,
 } from "@/lib/design/ftcDesignSystem";
 
@@ -541,9 +542,6 @@ export default function BookingPlansPage() {
   );
 }
 
-const EVENT_PLAN_USE_BUTTON_CLASS =
-  "ftc-btn-secondary inline-flex min-h-11 w-full items-center justify-center border-[1.5px] border-ftc-border-strong px-3 py-2 text-xs font-semibold uppercase tracking-wide text-ftc-text";
-
 function EventPlanSelectionIndicator({ checked }: { checked: boolean }) {
   return (
     <span
@@ -578,52 +576,64 @@ function EventPlanCard({
     ? `Deselect ${plan.name}`
     : `Select ${plan.name} for deletion`;
   const cardClassName = selectionMode
-    ? `ftc-card overflow-hidden${selected ? " ring-1 ring-ftc-primary/40" : ""}`
-    : "ftc-card overflow-hidden ftc-card-hoverable";
+    ? `ftc-card relative overflow-hidden${selected ? " ring-1 ring-ftc-primary/40" : ""}`
+    : "ftc-card relative overflow-hidden ftc-card-hoverable";
 
-  if (selectionMode) {
-    return (
-      <li className={cardClassName}>
+  return (
+    <li className={cardClassName}>
+      {selectionMode ? (
         <button
           type="button"
           onClick={onCardClick}
           aria-label={selectionLabel}
           aria-pressed={selected}
-          className="flex w-full items-center gap-3 p-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ftc-primary/35 sm:gap-4 sm:p-4"
-        >
-          <EventPlanCardBody plan={plan} notesText={notesText} hasNotes={hasNotes} />
-          <div className={EVENT_PLAN_ACTION_SLOT_CLASS}>
-            <EventPlanSelectionIndicator checked={selected} />
-          </div>
-        </button>
-      </li>
-    );
-  }
+          className="absolute inset-0 z-10 rounded-[inherit] text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ftc-primary/35"
+        />
+      ) : null}
 
-  return (
-    <li className={cardClassName}>
       <div className="flex items-center gap-3 p-3 sm:gap-4 sm:p-4">
-        <button
-          type="button"
-          onClick={onCardClick}
-          className="flex min-w-0 flex-1 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ftc-primary/35 active:bg-ftc-bg-elevated/60"
-        >
-          <EventPlanCardBody plan={plan} notesText={notesText} hasNotes={hasNotes} />
-        </button>
-
-        <div className={EVENT_PLAN_ACTION_SLOT_CLASS}>
+        {selectionMode ? (
+          <div className="min-w-0 flex-1 text-left">
+            <EventPlanCardBody plan={plan} notesText={notesText} hasNotes={hasNotes} />
+          </div>
+        ) : (
           <button
             type="button"
-            onClick={(event) => {
-              event.stopPropagation();
-              onUseForBooking();
-            }}
-            className={EVENT_PLAN_USE_BUTTON_CLASS}
+            onClick={onCardClick}
+            className="flex min-w-0 flex-1 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ftc-primary/35 active:bg-ftc-bg-elevated/60"
           >
-            Use plan
+            <EventPlanCardBody plan={plan} notesText={notesText} hasNotes={hasNotes} />
           </button>
+        )}
+
+        <div className={EVENT_PLAN_USE_BUTTON_WRAP_CLASS}>
+          {selectionMode ? (
+            <span aria-hidden="true" className={EVENT_PLAN_USE_BUTTON_CLASS}>
+              Use plan
+            </span>
+          ) : (
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                onUseForBooking();
+              }}
+              className={EVENT_PLAN_USE_BUTTON_CLASS}
+            >
+              Use plan
+            </button>
+          )}
         </div>
       </div>
+
+      {selectionMode ? (
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute top-3 right-3 z-20 sm:top-4 sm:right-4"
+        >
+          <EventPlanSelectionIndicator checked={selected} />
+        </div>
+      ) : null}
     </li>
   );
 }

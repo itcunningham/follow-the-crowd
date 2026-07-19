@@ -28,7 +28,10 @@ import { resolveDmThreadBackHref } from "../lib/dm/threadNavigation";
 import { resolveGigsCalendarBookingNavigation } from "../lib/bookings/gigsCalendarNavigation";
 import { hasUnsavedProfileEdits, createProfileEditBaseline } from "../lib/user/profileEditDirtyState";
 import { getUsernameFormatError, normalizeSoundCloudInput } from "../lib/user/profileFormUtils";
-import { EVENT_PLAN_ACTION_SLOT_CLASS } from "../lib/design/ftcDesignSystem";
+import {
+  EVENT_PLAN_USE_BUTTON_CLASS,
+  EVENT_PLAN_USE_BUTTON_WRAP_CLASS,
+} from "../lib/design/ftcDesignSystem";
 
 function testPastEventDatesAreBlocked() {
   const cases = [
@@ -529,10 +532,12 @@ function testConfirmedTabAliasParsesFromUrl() {
   assert.equal(parseDjGigsListTab("accepted"), "accepted");
 }
 
-function testEventPlanActionSlotKeepsStableCardWidth() {
-  assert.match(EVENT_PLAN_ACTION_SLOT_CLASS, /h-11/);
-  assert.match(EVENT_PLAN_ACTION_SLOT_CLASS, /w-\[5\.5rem\]/);
-  assert.match(EVENT_PLAN_ACTION_SLOT_CLASS, /shrink-0/);
+function testEventPlanUseButtonKeepsStableCardLayout() {
+  assert.match(EVENT_PLAN_USE_BUTTON_WRAP_CLASS, /shrink-0/);
+  assert.match(EVENT_PLAN_USE_BUTTON_WRAP_CLASS, /self-center/);
+  assert.match(EVENT_PLAN_USE_BUTTON_CLASS, /min-h-11/);
+  assert.doesNotMatch(EVENT_PLAN_USE_BUTTON_CLASS, /w-full/);
+  assert.doesNotMatch(EVENT_PLAN_USE_BUTTON_CLASS, /w-\[/);
 }
 
 function main() {
@@ -560,7 +565,7 @@ function main() {
   testTodaysFutureGigIsNotHistorical();
   testLegacyEventDatesResolveForGigTabs();
   testConfirmedTabAliasParsesFromUrl();
-  testEventPlanActionSlotKeepsStableCardWidth();
+  testEventPlanUseButtonKeepsStableCardLayout();
   console.log("All regression checks passed.");
 }
 
