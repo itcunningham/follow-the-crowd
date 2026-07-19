@@ -172,7 +172,7 @@ function UserProfilePageView({ userId }: { userId: string }) {
                   ) : null}
 
                   {showDjSections ? (
-                    <DjProfileSections profile={profile} isOwnProfile={isOwnProfile} />
+                    <DjProfileSections profile={profile} />
                   ) : null}
                 </div>
               ) : null}
