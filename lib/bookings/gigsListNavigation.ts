@@ -3,8 +3,8 @@ import type { DjGigsListTab } from "@/lib/bookingRequests";
 const GIGS_LIST_TABS: DjGigsListTab[] = ["pending", "accepted", "history"];
 
 export function parseDjGigsListTab(value: string | null | undefined): DjGigsListTab {
-  if (value === "accepted" || value === "history") {
-    return value;
+  if (value === "accepted" || value === "confirmed" || value === "history") {
+    return value === "history" ? "history" : "accepted";
   }
 
   if (value === "declined") {

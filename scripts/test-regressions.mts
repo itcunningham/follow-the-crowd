@@ -3,6 +3,7 @@ import { formatRateDisplay } from "../lib/bookingRate";
 import {
   getEventDateValidationError,
   getEventSetTimeValidationError,
+  getTodayDateKey,
   guardEventDatePickerChange,
   isEventStartSaveBlocked,
   isWheelMinuteDisabled,
@@ -12,7 +13,13 @@ import {
   SET_TIME_RANGE_JOINER,
 } from "../lib/bookingDateTime";
 import type { BookingRequest } from "../lib/bookingRequests";
-import { isDmBookingActionRequired } from "../lib/bookingRequests";
+import {
+  filterDjGigsByTab,
+  isDmBookingActionRequired,
+  isDjGigPastAccepted,
+  resolveBookingDateKey,
+} from "../lib/bookingRequests";
+import { parseDjGigsListTab } from "../lib/bookings/gigsListNavigation";
 import { computeCrewChatEventActions } from "../lib/events/crewChatEventActions";
 import type { CrewChatUnlockState } from "../lib/events/crewChatUnlock";
 import { resolveEventLinkedBookingDisplay } from "../lib/events/eventBookingDisplay";
@@ -416,6 +423,111 @@ function testGigsCalendarBookingNavigation() {
   assert.equal(missingEvent.kind, "error");
 }
 
+function makeDjGigBooking(
+  overrides: Partial<BookingRequest> & Pick<BookingRequest, "status" | "event_date">,
+): BookingRequest {
+  return {
+    id: overrides.id ?? "booking-gig-1",
+    created_at: overrides.created_at ?? "2026-07-06T10:00:00.000Z",
+    sender_id: overrides.sender_id ?? "planner-1",
+    recipient_id: overrides.recipient_id ?? "dj-1",
+    conversation_id: overrides.conversation_id ?? "conversation-1",
+    event_id: overrides.event_id ?? "event-1",
+    event_name: overrides.event_name ?? "Campaign event",
+    venue: overrides.venue ?? "Venue",
+    set_time: overrides.set_time ?? "9:00 PM",
+    fee: overrides.fee ?? "100",
+    notes: overrides.notes ?? "",
+    archived_at: overrides.archived_at ?? null,
+    lineup_hidden_at: overrides.lineup_hidden_at ?? null,
+    cancelled_at: overrides.cancelled_at ?? null,
+    cancelled_by: overrides.cancelled_by ?? null,
+    cancellation_reason: overrides.cancellation_reason ?? null,
+    rate_mode: overrides.rate_mode ?? "fixed",
+    proposed_rate: overrides.proposed_rate ?? null,
+    proposed_rate_note: overrides.proposed_rate_note ?? null,
+    proposed_rate_at: overrides.proposed_rate_at ?? null,
+    proposed_rate_status: overrides.proposed_rate_status ?? null,
+    ...overrides,
+  };
+}
+
+function testAcceptedFutureGigAppearsInConfirmed() {
+  const booking = makeDjGigBooking({
+    status: "accepted",
+    event_date: "2027-01-08",
+  });
+
+  assert.equal(filterDjGigsByTab([booking], "accepted").length, 1);
+  assert.equal(filterDjGigsByTab([booking], "history").length, 0);
+}
+
+function testAcceptedPastGigAppearsInHistory() {
+  const booking = makeDjGigBooking({
+    status: "accepted",
+    event_date: "2025-01-08",
+  });
+
+  assert.equal(filterDjGigsByTab([booking], "accepted").length, 0);
+  assert.equal(filterDjGigsByTab([booking], "history").length, 1);
+  assert.equal(isDjGigPastAccepted(booking), true);
+}
+
+function testPendingGigAppearsOnlyInIncoming() {
+  const booking = makeDjGigBooking({
+    status: "pending",
+    event_date: "2027-01-08",
+  });
+
+  assert.equal(filterDjGigsByTab([booking], "pending").length, 1);
+  assert.equal(filterDjGigsByTab([booking], "accepted").length, 0);
+  assert.equal(filterDjGigsByTab([booking], "history").length, 0);
+}
+
+function testConfirmedListUpdatesAfterAcceptance() {
+  const booking = makeDjGigBooking({
+    status: "pending",
+    event_date: "2027-01-08",
+  });
+  const bookings = [booking];
+
+  assert.equal(filterDjGigsByTab(bookings, "accepted").length, 0);
+
+  booking.status = "accepted";
+
+  assert.equal(filterDjGigsByTab(bookings, "accepted").length, 1);
+  assert.equal(filterDjGigsByTab(bookings, "pending").length, 0);
+}
+
+function testTodaysFutureGigIsNotHistorical() {
+  const today = getTodayDateKey();
+  const booking = makeDjGigBooking({
+    status: "accepted",
+    event_date: today,
+    set_time: "11:00 PM",
+  });
+
+  assert.equal(resolveBookingDateKey(booking.event_date), today);
+  assert.equal(isDjGigPastAccepted(booking), false);
+  assert.equal(filterDjGigsByTab([booking], "accepted").length, 1);
+  assert.equal(filterDjGigsByTab([booking], "history").length, 0);
+}
+
+function testLegacyEventDatesResolveForGigTabs() {
+  const booking = makeDjGigBooking({
+    status: "accepted",
+    event_date: "Saturday, 12 July 2027",
+  });
+
+  assert.equal(resolveBookingDateKey(booking.event_date), "2027-07-12");
+  assert.equal(filterDjGigsByTab([booking], "accepted").length, 1);
+}
+
+function testConfirmedTabAliasParsesFromUrl() {
+  assert.equal(parseDjGigsListTab("confirmed"), "accepted");
+  assert.equal(parseDjGigsListTab("accepted"), "accepted");
+}
+
 function main() {
   testPastEventDatesAreBlocked();
   testFutureEventDatesAreAllowed();
@@ -434,6 +546,13 @@ function main() {
   testSoundCloudInputNormalization();
   testDmThreadCalendarBackHref();
   testGigsCalendarBookingNavigation();
+  testAcceptedFutureGigAppearsInConfirmed();
+  testAcceptedPastGigAppearsInHistory();
+  testPendingGigAppearsOnlyInIncoming();
+  testConfirmedListUpdatesAfterAcceptance();
+  testTodaysFutureGigIsNotHistorical();
+  testLegacyEventDatesResolveForGigTabs();
+  testConfirmedTabAliasParsesFromUrl();
   console.log("All regression checks passed.");
 }
 

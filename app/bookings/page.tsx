@@ -617,9 +617,14 @@ function BookingsPageContent() {
       void getCurrentUserId().then(setCurrentUserId);
     }
 
-    async function loadBookings() {
-      setLoadingList(true);
-      setGigsListReady(false);
+    async function loadBookings(options?: { showLoading?: boolean }) {
+      const showLoading = options?.showLoading ?? true;
+
+      if (showLoading) {
+        setLoadingList(true);
+        setGigsListReady(false);
+      }
+
       setError(null);
 
       try {
@@ -668,12 +673,36 @@ function BookingsPageContent() {
         setSenderProfiles(new Map());
         setError(getBookingsLoadErrorMessage(loadError));
       } finally {
-        setLoadingList(false);
+        if (showLoading) {
+          setLoadingList(false);
+        }
         setGigsListReady(true);
       }
     }
 
-    loadBookings();
+    void loadBookings();
+
+    function refreshReceivedGigs() {
+      if (!canViewGigsWorkspace(role)) {
+        return;
+      }
+
+      void loadBookings({ showLoading: false });
+    }
+
+    function handleVisibilityChange() {
+      if (document.visibilityState === "visible") {
+        refreshReceivedGigs();
+      }
+    }
+
+    window.addEventListener("ftc-notifications-updated", refreshReceivedGigs);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener("ftc-notifications-updated", refreshReceivedGigs);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
   }, [loadingAccess, role]);
 
   async function openCreateFlowFromDeepLink(intent: BookingsDeepLinkIntent): Promise<boolean> {

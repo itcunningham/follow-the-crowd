@@ -1,5 +1,9 @@
 import { supabase } from "@/lib/supabaseClient";
-import { isDateKeyBeforeToday, parseEventDate } from "@/lib/bookingDateTime";
+import {
+  isDateKeyBeforeToday,
+  parseEventDate,
+  resolveEventDateKey,
+} from "@/lib/bookingDateTime";
 import { createNotification, getNotificationCreateErrorMessage, notifyNavigationBadgesRefresh } from "@/lib/notifications";
 import { formatRateDisplay, formatIntegerRateDisplay, normalizeStoredRate } from "@/lib/bookingRate";
 import { startDm } from "@/lib/startDm";
@@ -2099,8 +2103,7 @@ export async function countPendingIncomingGigs(): Promise<number> {
 }
 
 export function resolveBookingDateKey(eventDate: string): string | null {
-  const parsed = parseEventDate(eventDate);
-  return parsed.isoDate || null;
+  return resolveEventDateKey(eventDate);
 }
 
 export function getBookingRequestHref(booking: BookingRequest): string {
@@ -2921,6 +2924,7 @@ export async function acceptProposedBookingRate(bookingId: string): Promise<Book
     }
   }
 
+  notifyNavigationBadgesRefresh();
   return booking;
 }
 
