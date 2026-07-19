@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import FtcBrandMotionLazy from "@/app/components/brand/FtcBrandMotionLazy";
+import FtcAppSplashScreen from "@/app/components/brand/FtcAppSplashScreen";
 import { GuardProfileProvider } from "@/app/components/GuardProfileContext";
 import { NavBadgeProvider } from "@/app/components/navigation/NavBadgeProvider";
 import { AppLoadingShell } from "@/app/components/skeleton/Skeleton";
@@ -26,6 +26,7 @@ import {
 
 const AUTH_PATHS = [LOGIN_PATH, SIGNUP_PATH];
 const SETUP_PATHS = ["/onboarding", PROFILE_SETUP_PATH];
+const HOME_PATH = "/";
 
 const cachedNavigationOnLoad = readCachedNavigation();
 if (cachedNavigationOnLoad.role) {
@@ -84,7 +85,7 @@ function buildOptimisticProfile(): UserProfile | null {
 }
 
 function canOptimisticallyRender(pathname: string): boolean {
-  if (AUTH_PATHS.includes(pathname) || SETUP_PATHS.includes(pathname)) {
+  if (AUTH_PATHS.includes(pathname) || SETUP_PATHS.includes(pathname) || pathname === HOME_PATH) {
     return false;
   }
 
@@ -93,13 +94,26 @@ function canOptimisticallyRender(pathname: string): boolean {
   return role != null && userId != null;
 }
 
+function resolveInitialReady(pathname: string, sessionReady: boolean): boolean {
+  if (AUTH_PATHS.includes(pathname)) {
+    return true;
+  }
+
+  if (pathname === HOME_PATH) {
+    return false;
+  }
+
+  return sessionReady;
+}
+
 export default function OnboardingGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const sessionReadyRef = useRef(canOptimisticallyRender(pathname));
-  const [ready, setReady] = useState(
-    () => AUTH_PATHS.includes(pathname) || sessionReadyRef.current,
+  const [ready, setReady] = useState(() =>
+    resolveInitialReady(pathname, sessionReadyRef.current),
   );
+  const [homeSplashExiting, setHomeSplashExiting] = useState(false);
   const [loadingProfile, setLoadingProfile] = useState<UserProfile | null>(buildOptimisticProfile);
 
   useEffect(() => {
@@ -109,9 +123,13 @@ export default function OnboardingGuard({ children }: { children: React.ReactNod
     if (canOptimistic) {
       sessionReadyRef.current = true;
       setReady(true);
-    } else if (!AUTH_PATHS.includes(pathname)) {
+    } else if (!AUTH_PATHS.includes(pathname) && pathname !== HOME_PATH) {
       sessionReadyRef.current = false;
       setReady(false);
+    } else if (pathname === HOME_PATH) {
+      sessionReadyRef.current = false;
+      setReady(false);
+      setHomeSplashExiting(false);
     }
 
     async function checkAccess() {
@@ -177,10 +195,10 @@ export default function OnboardingGuard({ children }: { children: React.ReactNod
           return;
         }
 
-        if (pathname === "/" && profile?.role) {
+        if (pathname === HOME_PATH && profile?.role) {
           const defaultRoute = getDefaultRouteForRole(profile.role);
 
-          if (defaultRoute !== "/") {
+          if (defaultRoute !== HOME_PATH) {
             sessionReadyRef.current = false;
             router.replace(defaultRoute);
             return;
@@ -188,6 +206,16 @@ export default function OnboardingGuard({ children }: { children: React.ReactNod
         }
 
         sessionReadyRef.current = true;
+        if (pathname === HOME_PATH) {
+          setHomeSplashExiting(true);
+          window.setTimeout(() => {
+            if (!cancelled) {
+              setReady(true);
+            }
+          }, 280);
+          return;
+        }
+
         setReady(true);
       } catch (error) {
         console.error("Onboarding check failed:", error);
@@ -207,12 +235,8 @@ export default function OnboardingGuard({ children }: { children: React.ReactNod
   }, [pathname, router]);
 
   if (!ready) {
-    if (pathname === "/") {
-      return (
-        <div className="flex min-h-[100dvh] items-center justify-center bg-ftc-bg">
-          <FtcBrandMotionLazy variant="splash" />
-        </div>
-      );
+    if (pathname === HOME_PATH) {
+      return <FtcAppSplashScreen exiting={homeSplashExiting} />;
     }
 
     const cached = readCachedNavigation();
@@ -233,7 +257,11 @@ export default function OnboardingGuard({ children }: { children: React.ReactNod
 
   return (
     <GuardProfileProvider profile={loadingProfile}>
-      <NavBadgeProvider>{children}</NavBadgeProvider>
+      <NavBadgeProvider>
+        <div className={pathname === HOME_PATH ? "ftc-app-content-enter" : undefined}>
+          {children}
+        </div>
+      </NavBadgeProvider>
     </GuardProfileProvider>
   );
 }
