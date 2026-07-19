@@ -771,11 +771,22 @@ function testBookingsRouteMountsPersistentGigsSecondaryBand() {
     new URL("../app/components/skeleton/Skeleton.tsx", import.meta.url),
     "utf8",
   );
+  const workspaceLayoutSource = readFileSync(
+    new URL("../app/components/planner/PlannerWorkspaceLayout.tsx", import.meta.url),
+    "utf8",
+  );
+  const subNavSource = readFileSync(
+    new URL("../app/components/PlannerEventsSubNav.tsx", import.meta.url),
+    "utf8",
+  );
 
   assert.match(layoutSource, /BookingsRouteChrome/);
   assert.match(pageSource, /useSetGigsWorkspaceChromeState/);
   assert.doesNotMatch(pageSource, /secondaryControlsSlot=\{/);
   assert.match(loadingShellSource, /omitSecondaryBand/);
+  assert.match(workspaceLayoutSource, /workspaceRole/);
+  assert.match(subNavSource, /pathnameForSubNav/);
+  assert.match(subNavSource, /window\.location\.pathname/);
 }
 
 function main() {

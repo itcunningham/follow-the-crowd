@@ -66,6 +66,12 @@ export default function PlannerEventsSubNav({
   activeWorkspaceHref?: string | null;
 }) {
   const pathname = usePathname();
+  const pathnameForSubNav =
+    pathname && isPlannerEventsAreaPath(pathname)
+      ? pathname
+      : typeof window !== "undefined" && isPlannerEventsAreaPath(window.location.pathname)
+        ? window.location.pathname
+        : pathname;
   const router = useRouter();
   const guardProfile = useGuardProfile();
   const { gigsPendingCount, reserveGigsBadgeSpace } = useNavBadges();
@@ -150,8 +156,8 @@ export default function PlannerEventsSubNav({
       });
   }, [guardProfile?.role, initialRole, cachedNavigation.role]);
 
-  const showSubNav = isPlannerEventsAreaPath(pathname);
-  const activeHref = resolveActiveWorkspaceHref(pathname, activeWorkspaceHref);
+  const showSubNav = isPlannerEventsAreaPath(pathnameForSubNav);
+  const activeHref = resolveActiveWorkspaceHref(pathnameForSubNav, activeWorkspaceHref);
   const navRef = useRef<HTMLElement>(null);
 
   useLayoutEffect(() => {

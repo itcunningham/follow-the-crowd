@@ -78,6 +78,7 @@ const PLANNER_WORKSPACE_TITLE_ACTION_PLACEHOLDER_CLASS =
 type WorkspaceHeaderState = {
   activeWorkspaceHref?: string | null;
   actions?: ReactNode;
+  workspaceRole?: UserRole | null;
 };
 
 type WorkspaceHeaderContextValue = {
@@ -209,6 +210,7 @@ export function PlannerWorkspaceRouteLayout({ children }: { children: ReactNode 
     [headerState.activeWorkspaceHref, pathname],
   );
   const actions = headerState.actions ?? resolveDefaultWorkspaceActions(pathname, initialRole);
+  const workspaceRole = headerState.workspaceRole ?? initialRole;
   const headerContextValue = useMemo<WorkspaceHeaderContextValue>(
     () => ({
       setHeaderState,
@@ -222,7 +224,7 @@ export function PlannerWorkspaceRouteLayout({ children }: { children: ReactNode 
         <AppNavigation />
         <PlannerWorkspacePageHeader
           title={title}
-          initialRole={initialRole}
+          initialRole={workspaceRole}
           activeWorkspaceHref={headerState.activeWorkspaceHref}
           actions={actions}
         />
@@ -235,6 +237,7 @@ export function PlannerWorkspaceRouteLayout({ children }: { children: ReactNode 
 type PlannerWorkspacePageContentProps = {
   activeWorkspaceHref?: string | null;
   actions?: ReactNode;
+  initialRole?: UserRole | null;
   /** Pre-wrapped secondary row (e.g. EventsListTabRow with shared spacing class). */
   secondaryControlsSlot?: ReactNode;
   /** Wrapped automatically with PlannerWorkspaceSecondaryControls. */
@@ -279,6 +282,7 @@ function renderSecondaryBand({
 export function PlannerWorkspacePageContent({
   activeWorkspaceHref,
   actions,
+  initialRole,
   secondaryControlsSlot,
   secondaryControls,
   secondaryControlsPlaceholder = false,
@@ -301,8 +305,9 @@ export function PlannerWorkspacePageContent({
     headerContext.setHeaderState({
       activeWorkspaceHref,
       actions,
+      workspaceRole: initialRole,
     });
-  }, [actions, activeWorkspaceHref, headerContext]);
+  }, [actions, activeWorkspaceHref, headerContext, initialRole]);
 
   return (
     <>
@@ -348,6 +353,7 @@ export function PlannerWorkspacePage({
     <PlannerWorkspacePageContent
       activeWorkspaceHref={activeWorkspaceHref}
       actions={actions}
+      initialRole={initialRole}
       secondaryControlsSlot={secondaryControlsSlot}
       secondaryControls={secondaryControls}
       secondaryControlsPlaceholder={secondaryControlsPlaceholder}
