@@ -72,6 +72,10 @@ export const FTC_EVENTS_LIST_TAB_ACTION_PLACEHOLDER_CLASS =
 export const EVENTS_LIST_TAB_ROW_CLASS =
   "mb-4 flex min-h-[1.875rem] flex-wrap items-center justify-between gap-2 md:min-h-[2.375rem]";
 
+/** Event Plans toolbar row — locked height for trash ↔ delete-selection swap. */
+export const EVENT_PLANS_TOOLBAR_ROW_CLASS =
+  "mb-4 flex min-h-[3.125rem] w-full items-center";
+
 /** Workspace header primary action button. */
 export const FTC_BTN_WORKSPACE_PRIMARY_CLASS =
   "ftc-btn-primary shrink-0 px-4 py-2.5 text-sm uppercase tracking-wide";

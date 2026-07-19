@@ -380,6 +380,7 @@ export default function BookingPlansPage() {
   const plansLoadSettled = !loadingAccess && !loadingPlans;
   const showTrashButton = !planBulkManage.selectionMode && (!plansLoadSettled || plans.length > 0);
   const trashButtonDisabled = !plansLoadSettled || plans.length === 0;
+  const showEventPlansToolbar = !formOpen && (planBulkManage.selectionMode || showTrashButton);
 
   return (
     <OnboardingGuard>
@@ -397,10 +398,25 @@ export default function BookingPlansPage() {
           ) : undefined
         }
         secondaryControlsSlot={
-          !formOpen && showTrashButton ? (
+          showEventPlansToolbar ? (
             <SavedEventPlansSectionHeader
               trashButtonDisabled={trashButtonDisabled}
               onTrashClick={planBulkManage.enterSelectionMode}
+              selectionToolbar={
+                planBulkManage.selectionMode ? (
+                  <HistorySelectionToolbar
+                    className="mb-0 w-full"
+                    selectedCount={planBulkManage.selectedCount}
+                    allSelected={planBulkManage.allSelected}
+                    removing={planBulkManage.removing}
+                    onCancel={planBulkManage.cancelSelectionMode}
+                    onSelectAll={planBulkManage.selectAll}
+                    onRemove={planBulkManage.openConfirm}
+                    removeLabel="Delete selected"
+                    removingLabel="Deleting..."
+                  />
+                ) : undefined
+              }
             />
           ) : undefined
         }
@@ -468,18 +484,6 @@ export default function BookingPlansPage() {
 
           {!formOpen ? (
             <>
-              {planBulkManage.showSelectionToolbar ? (
-                <HistorySelectionToolbar
-                  selectedCount={planBulkManage.selectedCount}
-                  allSelected={planBulkManage.allSelected}
-                  removing={planBulkManage.removing}
-                  onCancel={planBulkManage.cancelSelectionMode}
-                  onSelectAll={planBulkManage.selectAll}
-                  onRemove={planBulkManage.openConfirm}
-                  removeLabel="Delete selected"
-                  removingLabel="Deleting..."
-                />
-              ) : null}
               {loadingAccess || loadingPlans ? (
                 <BookingPlanListSkeleton />
               ) : error && plans.length === 0 ? (

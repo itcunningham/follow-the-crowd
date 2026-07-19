@@ -204,6 +204,7 @@ export function HistorySelectionToolbar({
   onRemove,
   removeLabel = "Remove from history",
   removingLabel = "Removing...",
+  className = "",
 }: {
   selectedCount: number;
   allSelected: boolean;
@@ -213,9 +214,12 @@ export function HistorySelectionToolbar({
   onRemove: () => void;
   removeLabel?: string;
   removingLabel?: string;
+  className?: string;
 }) {
   return (
-    <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated/60 px-3 py-2.5">
+    <div
+      className={`mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated/60 px-3 py-2.5 ${className}`.trim()}
+    >
       <div className="flex flex-wrap items-center gap-2">
         <button
           type="button"

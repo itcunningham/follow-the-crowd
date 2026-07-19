@@ -25,6 +25,7 @@ import {
 } from "@/app/components/history/HistoryBulkManage";
 import {
   EVENTS_LIST_TAB_ROW_CLASS,
+  EVENT_PLANS_TOOLBAR_ROW_CLASS,
   FTC_EVENTS_LIST_TAB_ACTION_CLASS,
   FTC_EVENTS_LIST_TAB_ACTION_PLACEHOLDER_CLASS,
   FTC_PILL_ROW_GAP_CLASS,
@@ -588,18 +589,24 @@ export function SavedEventPlansSectionHeading({ className = "mb-3" }: { classNam
 export function SavedEventPlansSectionHeader({
   trashButtonDisabled = true,
   onTrashClick,
+  selectionToolbar,
 }: {
   trashButtonDisabled?: boolean;
   onTrashClick?: () => void;
+  selectionToolbar?: ReactNode;
 }) {
   return (
-    <div className={`${EVENTS_LIST_TAB_ROW_CLASS} justify-end`}>
-      <HistoryManageButton
-        ariaLabel="Delete event plans"
-        onClick={onTrashClick ?? (() => undefined)}
-        disabled={trashButtonDisabled || !onTrashClick}
-        className={FTC_EVENTS_LIST_TAB_ACTION_CLASS}
-      />
+    <div className={EVENT_PLANS_TOOLBAR_ROW_CLASS}>
+      {selectionToolbar ?? (
+        <div className="flex w-full items-center justify-end">
+          <HistoryManageButton
+            ariaLabel="Delete event plans"
+            onClick={onTrashClick ?? (() => undefined)}
+            disabled={trashButtonDisabled || !onTrashClick}
+            className={FTC_EVENTS_LIST_TAB_ACTION_CLASS}
+          />
+        </div>
+      )}
     </div>
   );
 }
