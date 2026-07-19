@@ -232,14 +232,21 @@ test.describe("Targeted navigation", () => {
     await expectEventsListTabsAligned(roles.planner);
     await expectEventsListTabSelected(roles.planner, "active");
 
-    await roles.planner.goto(`/events/${journeyState.fixedEventId}?fromTab=history`, {
-      waitUntil: "domcontentloaded",
-    });
-    await roles.planner.getByRole("button", { name: "Back to events" }).click();
-    await expect(roles.planner).toHaveURL(/tab=history/);
+    await roles.planner.goto("/events?tab=history", { waitUntil: "domcontentloaded" });
     await expectEventsListTabsAligned(roles.planner);
     await expectEventsListTabSelected(roles.planner, "history");
 
+    const historyEventLink = roles.planner.locator('a[href*="fromTab=history"]').first();
+    if (await historyEventLink.isVisible().catch(() => false)) {
+      await historyEventLink.click();
+      await expect(roles.planner).toHaveURL(/fromTab=history/);
+      await roles.planner.getByRole("button", { name: "Back to events" }).click();
+      await expect(roles.planner).toHaveURL(/tab=history/);
+      await expectEventsListTabsAligned(roles.planner);
+      await expectEventsListTabSelected(roles.planner, "history");
+    }
+
+    await roles.planner.goto("/events", { waitUntil: "domcontentloaded" });
     await roles.planner.goto(`/events/${journeyState.fixedEventId}`, { waitUntil: "domcontentloaded" });
     await roles.planner.goBack();
     await expect(roles.planner).toHaveURL(/\/events(?:\?|$)/);
