@@ -196,6 +196,9 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `28f079b` — document permanent phone/desktop parity rule (`FTC_WORKFLOW.md` §7)
+- `6b98447` — fix profile identity hierarchy (display name primary, @username secondary)
+- `7d36d55` — fix workspace tab row glitch during route transitions
 - `76475cd` — batch Events lineup stats, event detail guard, Gigs skeleton, event-detail DM back navigation
 - `414dbf5` — match Gigs filter row spacing to reference layout
 - `c255bf5` — remove trailing period from Settings support copy
