@@ -177,7 +177,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
-- split login heading into Welcome back + Sign in to continue subtitle
+- `1f3f718` — split login heading into Welcome back + Sign in to continue subtitle
 - `c255bf5` — remove trailing period from Settings support copy
 - `66cd287` — polish Settings password reset cooldown and sign out placement
 - `850ab12` — polish fullscreen profile photo viewer (animation, dismissal, close button)
