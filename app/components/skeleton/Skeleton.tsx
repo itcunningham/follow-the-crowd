@@ -30,7 +30,7 @@ import {
   FTC_EVENTS_LIST_TAB_ACTION_CLASS,
   FTC_EVENTS_LIST_TAB_ACTION_PLACEHOLDER_CLASS,
   GIGS_LIST_TAB_ROW_CLASS,
-  GIGS_TAB_PILL_ROW_CLASS,
+  GIGS_MANAGE_BUTTON_PLACEHOLDER_CLASS,
   FTC_PILL_ROW_GAP_CLASS,
   ftcFilterPillClass,
 } from "@/lib/design/ftcDesignSystem";
@@ -325,14 +325,11 @@ export function DjGigsTabRow({
 }) {
   return (
     <div className={GIGS_LIST_TAB_ROW_CLASS}>
-      <div className={GIGS_TAB_PILL_ROW_CLASS}>{children}</div>
+      {children}
       {showManageButton ? (
-        <HistoryManageButton
-          onClick={onManageClick ?? (() => undefined)}
-          className={FTC_EVENTS_LIST_TAB_ACTION_CLASS}
-        />
+        <HistoryManageButton onClick={onManageClick ?? (() => undefined)} />
       ) : reserveManageSlot ? (
-        <span aria-hidden="true" className={FTC_EVENTS_LIST_TAB_ACTION_PLACEHOLDER_CLASS} />
+        <span aria-hidden="true" className={GIGS_MANAGE_BUTTON_PLACEHOLDER_CLASS} />
       ) : null}
     </div>
   );

@@ -4,7 +4,8 @@ import Link from "next/link";
 import type { DjGigsListTab } from "@/lib/bookingRequests";
 import {
   GIGS_TAB_COUNT_SLOT_CLASS,
-  GIGS_TAB_PILL_CLASS,
+  GIGS_TAB_PILL_GAP_CLASS,
+  GIGS_TAB_PILL_ROW_CLASS,
   ftcFilterPillClass,
 } from "@/lib/design/ftcDesignSystem";
 import { buildGigsListHref } from "@/lib/bookings/gigsListNavigation";
@@ -63,7 +64,7 @@ export function DjGigsTabs({
   const countsReady = counts !== null;
 
   return (
-    <>
+    <div className={GIGS_TAB_PILL_ROW_CLASS}>
       {GIGS_TAB_CONFIG.map((tab) => {
         const isActive = activeView === tab.value;
         const href = buildGigsListHref(tab.value);
@@ -82,7 +83,7 @@ export function DjGigsTabs({
                 event.preventDefault();
               }
             }}
-            className={`${GIGS_TAB_PILL_CLASS} ${ftcFilterPillClass(isActive)}`}
+            className={`inline-flex items-center ${GIGS_TAB_PILL_GAP_CLASS} ${ftcFilterPillClass(isActive)}`}
           >
             {tab.showHistoryIcon ? <HistoryIcon /> : null}
             {tab.label}
@@ -90,6 +91,6 @@ export function DjGigsTabs({
           </Link>
         );
       })}
-    </>
+    </div>
   );
 }

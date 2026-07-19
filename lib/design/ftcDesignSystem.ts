@@ -60,19 +60,22 @@ export function ftcFilterPillClass(isActive: boolean): string {
   return `${FTC_FILTER_PILL_CLASS}${isActive ? " ftc-filter-pill-active" : ""}`;
 }
 
-/** Gigs workspace tab pill — compact content-width pills in a nowrap row. */
-export const GIGS_TAB_PILL_CLASS =
-  "inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap ftc-filter-pill";
+/** Gigs workspace tab pill — content-width; gap-1.5 applied on the link in DjGigsTabs. */
+export const GIGS_TAB_PILL_GAP_CLASS = "gap-1.5";
 
 /** Reserved width for optional Gigs tab counts (space + up to two digits). */
-export const GIGS_TAB_COUNT_SLOT_CLASS = "inline-block min-w-[1.25rem] tabular-nums";
+export const GIGS_TAB_COUNT_SLOT_CLASS = "inline-block min-w-[2ch] tabular-nums";
 
-/** Gigs Incoming/Confirmed/History pill group. */
-export const GIGS_TAB_PILL_ROW_CLASS = "flex min-w-0 flex-1 flex-nowrap items-center gap-2";
+/** Gigs Incoming/Confirmed/History pill group — compact cluster, no stretch. */
+export const GIGS_TAB_PILL_ROW_CLASS = "flex shrink-0 flex-nowrap items-center gap-2";
 
-/** Gigs filter row — tabs left, history manage action right, no wrap at 390px. */
+/** Gigs filter row — matches planner secondary controls with nowrap for 390px. */
 export const GIGS_LIST_TAB_ROW_CLASS =
-  "mb-4 flex min-h-[1.875rem] w-full flex-nowrap items-center justify-between gap-2 md:min-h-[2.375rem]";
+  "mb-4 flex min-h-[1.875rem] flex-nowrap items-center justify-between gap-2 md:min-h-[2.375rem]";
+
+/** Invisible slot reserved while History manage action is loading or empty. */
+export const GIGS_MANAGE_BUTTON_PLACEHOLDER_CLASS =
+  "inline-flex h-9 w-9 shrink-0 invisible pointer-events-none";
 
 /** Events list tab row — trash action matches filter pill height (30px). */
 export const FTC_EVENTS_LIST_TAB_ACTION_CLASS =
