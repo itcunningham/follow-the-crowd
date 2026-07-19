@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { formatRateDisplay } from "../lib/bookingRate";
 import {
   getEventDateValidationError,
@@ -21,7 +22,11 @@ import {
   isDjGigPastAccepted,
   resolveBookingDateKey,
 } from "../lib/bookingRequests";
-import { parseDjGigsListTab } from "../lib/bookings/gigsListNavigation";
+import { parseDjGigsListTab, resolveGigsListTabParam } from "../lib/bookings/gigsListNavigation";
+import {
+  defaultGigsWorkspaceChromeState,
+  gigsWorkspaceChromeStatesEqual,
+} from "../app/components/bookings/GigsWorkspaceChrome";
 import { computeCrewChatEventActions } from "../lib/events/crewChatEventActions";
 import type { CrewChatUnlockState } from "../lib/events/crewChatUnlock";
 import { resolveEventLinkedBookingDisplay } from "../lib/events/eventBookingDisplay";
@@ -723,6 +728,56 @@ function testGigsTabCountsDeriveFromSameBookingSnapshot() {
   assert.equal(counts.history, filterDjGigsByTab(bookings, "history", hidden).length);
 }
 
+function testGigsInnerTabSelectionFollowsRouteImmediately() {
+  assert.equal(resolveGigsListTabParam(null, null, ""), "pending");
+  assert.equal(resolveGigsListTabParam("accepted", null, null), "accepted");
+  assert.equal(resolveGigsListTabParam("history", null, null), "history");
+  assert.equal(resolveGigsListTabParam(null, null, "?tab=accepted"), "accepted");
+}
+
+function testGigsWorkspaceChromeStateSyncAvoidsNoOpUpdates() {
+  const counts = { pending: 2, accepted: 1, history: 0 };
+
+  assert.equal(
+    gigsWorkspaceChromeStatesEqual(defaultGigsWorkspaceChromeState, defaultGigsWorkspaceChromeState),
+    true,
+  );
+  assert.equal(
+    gigsWorkspaceChromeStatesEqual(
+      { ...defaultGigsWorkspaceChromeState, counts },
+      { ...defaultGigsWorkspaceChromeState, counts },
+    ),
+    true,
+  );
+  assert.equal(
+    gigsWorkspaceChromeStatesEqual(
+      { ...defaultGigsWorkspaceChromeState, counts },
+      { ...defaultGigsWorkspaceChromeState, counts: { ...counts, pending: 3 } },
+    ),
+    false,
+  );
+}
+
+function testBookingsRouteMountsPersistentGigsSecondaryBand() {
+  const layoutSource = readFileSync(
+    new URL("../app/(planner-workspace)/bookings/layout.tsx", import.meta.url),
+    "utf8",
+  );
+  const pageSource = readFileSync(
+    new URL("../app/(planner-workspace)/bookings/page.tsx", import.meta.url),
+    "utf8",
+  );
+  const loadingShellSource = readFileSync(
+    new URL("../app/components/skeleton/Skeleton.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(layoutSource, /BookingsRouteChrome/);
+  assert.match(pageSource, /useSetGigsWorkspaceChromeState/);
+  assert.doesNotMatch(pageSource, /secondaryControlsSlot=\{/);
+  assert.match(loadingShellSource, /omitSecondaryBand/);
+}
+
 function main() {
   testPastEventDatesAreBlocked();
   testFutureEventDatesAreAllowed();
@@ -753,6 +808,9 @@ function main() {
   testEventPlanUseButtonKeepsStableCardLayout();
   testGigsTabRowKeepsStableCountSlots();
   testGigsTabCountsDeriveFromSameBookingSnapshot();
+  testGigsInnerTabSelectionFollowsRouteImmediately();
+  testGigsWorkspaceChromeStateSyncAvoidsNoOpUpdates();
+  testBookingsRouteMountsPersistentGigsSecondaryBand();
   testWorkspaceSubNavLayoutIsStable();
   testWorkspaceActiveHrefIgnoresStaleOverrides();
   testProfileIdentityPresentationHierarchy();

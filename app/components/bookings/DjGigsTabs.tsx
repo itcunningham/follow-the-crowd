@@ -78,7 +78,7 @@ export function DjGigsTabs({
   const countsReady = counts !== null;
 
   return (
-    <div className={GIGS_TAB_PILL_ROW_CLASS}>
+    <div className={GIGS_TAB_PILL_ROW_CLASS} aria-busy={counts === null ? true : undefined}>
       {GIGS_TAB_CONFIG.map((tab) => {
         const isActive = activeView === tab.value;
         const href = buildGigsListHref(tab.value);

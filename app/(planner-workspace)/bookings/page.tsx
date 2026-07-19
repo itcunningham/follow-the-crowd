@@ -1,16 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   BookingsPageLoadingShell,
   BookingCreateEventDetailsFormSkeleton,
-  DjGigsTabRow,
   ReceivedBookingsListSkeleton,
   SkeletonBlock,
 } from "@/app/components/skeleton/Skeleton";
-import { DjGigsTabs } from "@/app/components/bookings/DjGigsTabs";
+import {
+  defaultGigsWorkspaceChromeState,
+  gigsWorkspaceChromeStatesEqual,
+  useSetGigsWorkspaceChromeState,
+} from "@/app/components/bookings/GigsWorkspaceChrome";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
 import { useGuardProfile } from "@/app/components/GuardProfileContext";
 import {
@@ -538,6 +541,32 @@ function BookingsPageContent() {
     !gigsHistoryBulkManage.selectionMode;
   const reserveGigsManageSlot =
     isGigsHistoryTab && !gigsHistoryBulkManage.selectionMode && !showGigsManageButton;
+
+  const setGigsWorkspaceChromeState = useSetGigsWorkspaceChromeState();
+  const gigsManageClickRef = useRef(gigsHistoryBulkManage.enterSelectionMode);
+  gigsManageClickRef.current = gigsHistoryBulkManage.enterSelectionMode;
+
+  useLayoutEffect(() => {
+    const nextState = !showGigsWorkspace || plannerCreateVisible
+      ? defaultGigsWorkspaceChromeState
+      : {
+          counts: gigsTabCounts,
+          showManageButton: showGigsManageButton,
+          reserveManageSlot: reserveGigsManageSlot,
+          onManageClick: gigsManageClickRef.current,
+        };
+
+    setGigsWorkspaceChromeState((previousState) =>
+      gigsWorkspaceChromeStatesEqual(previousState, nextState) ? previousState : nextState,
+    );
+  }, [
+    gigsTabCounts,
+    plannerCreateVisible,
+    reserveGigsManageSlot,
+    setGigsWorkspaceChromeState,
+    showGigsManageButton,
+    showGigsWorkspace,
+  ]);
 
   const visibleReceivedBookings = useMemo(
     () =>
@@ -1432,21 +1461,10 @@ function BookingsPageContent() {
       <PlannerWorkspacePage
         initialRole={displayRole}
         includeChrome={false}
+        omitSecondaryBand
         activeWorkspaceHref={
           plannerCreateVisible ? EVENTS_AREA_SUB_NAV.bookingPlans.href : undefined
         }
-        secondaryControlsSlot={
-          showGigsWorkspace && !plannerCreateVisible ? (
-            <DjGigsTabRow
-              showManageButton={showGigsManageButton}
-              reserveManageSlot={reserveGigsManageSlot}
-              onManageClick={gigsHistoryBulkManage.enterSelectionMode}
-            >
-              <DjGigsTabs activeView={djGigsView} counts={gigsTabCounts} />
-            </DjGigsTabRow>
-          ) : undefined
-        }
-        secondaryControlsPlaceholder={showGigsWorkspace && plannerCreateVisible}
       >
 
           {successMessage ? (
