@@ -86,7 +86,7 @@ export function DjGigsTabs({
         const ariaLabel =
           countsReady && count > 0 ? `${tab.label} ${count}` : tab.label;
 
-        const reserveCountSlot = tab.value !== "history" && countsReady;
+        const reserveCountSlot = tab.value !== "history";
 
         return (
           <Link

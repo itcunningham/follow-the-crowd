@@ -15,6 +15,7 @@ import {
 import type { BookingRequest } from "../lib/bookingRequests";
 import {
   filterDjGigsByTab,
+  countDjGigsByTab,
   getActiveEventLineupStats,
   isDmBookingActionRequired,
   isDjGigPastAccepted,
@@ -708,6 +709,20 @@ function testGigsTabRowKeepsStableCountSlots() {
   assert.doesNotMatch(GIGS_LIST_TAB_ROW_CLASS, /flex-wrap/);
 }
 
+function testGigsTabCountsDeriveFromSameBookingSnapshot() {
+  const bookings = [
+    makeDjGigBooking({ status: "pending", event_date: "Saturday, 12 July 2027" }),
+    makeDjGigBooking({ status: "accepted", event_date: "Saturday, 12 July 2027" }),
+    makeDjGigBooking({ status: "declined", event_date: "Saturday, 12 July 2027" }),
+  ];
+  const hidden = new Set<string>();
+  const counts = countDjGigsByTab(bookings, hidden);
+
+  assert.equal(counts.pending, filterDjGigsByTab(bookings, "pending", hidden).length);
+  assert.equal(counts.accepted, filterDjGigsByTab(bookings, "accepted", hidden).length);
+  assert.equal(counts.history, filterDjGigsByTab(bookings, "history", hidden).length);
+}
+
 function main() {
   testPastEventDatesAreBlocked();
   testFutureEventDatesAreAllowed();
@@ -737,6 +752,7 @@ function main() {
   testConfirmedTabAliasParsesFromUrl();
   testEventPlanUseButtonKeepsStableCardLayout();
   testGigsTabRowKeepsStableCountSlots();
+  testGigsTabCountsDeriveFromSameBookingSnapshot();
   testWorkspaceSubNavLayoutIsStable();
   testWorkspaceActiveHrefIgnoresStaleOverrides();
   testProfileIdentityPresentationHierarchy();

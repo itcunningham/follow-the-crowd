@@ -641,7 +641,6 @@ function BookingsPageContent() {
 
       if (showLoading) {
         setLoadingList(true);
-        setGigsListReady(false);
       }
 
       setError(null);
@@ -654,6 +653,7 @@ function BookingsPageContent() {
           setHiddenBookingIds(new Set());
           setRecipientProfiles(new Map());
           setSenderProfiles(new Map());
+          setGigsListReady(true);
           return;
         }
 
@@ -663,6 +663,7 @@ function BookingsPageContent() {
         ]);
         setReceivedBookings(receivedResult);
         setHiddenBookingIds(new Set(hiddenIds));
+        setGigsListReady(true);
         setSentBookings([]);
         setSentGroups([]);
         setRecipientProfiles(new Map());
@@ -691,11 +692,11 @@ function BookingsPageContent() {
         setRecipientProfiles(new Map());
         setSenderProfiles(new Map());
         setError(getBookingsLoadErrorMessage(loadError));
+        setGigsListReady(true);
       } finally {
         if (showLoading) {
           setLoadingList(false);
         }
-        setGigsListReady(true);
       }
     }
 
