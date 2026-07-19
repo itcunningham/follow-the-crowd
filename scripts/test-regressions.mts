@@ -1,5 +1,4 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
 import { formatRateDisplay } from "../lib/bookingRate";
 import {
   getEventDateValidationError,
@@ -22,7 +21,7 @@ import {
   isDjGigPastAccepted,
   resolveBookingDateKey,
 } from "../lib/bookingRequests";
-import { parseDjGigsListTab, resolveGigsListTabParam } from "../lib/bookings/gigsListNavigation";
+import { parseDjGigsListTab } from "../lib/bookings/gigsListNavigation";
 import { computeCrewChatEventActions } from "../lib/events/crewChatEventActions";
 import type { CrewChatUnlockState } from "../lib/events/crewChatUnlock";
 import { resolveEventLinkedBookingDisplay } from "../lib/events/eventBookingDisplay";
@@ -733,33 +732,6 @@ function testGigsTabSkeletonMatchesFinalRowGeometry() {
   assert.match(GIGS_TAB_PILL_ROW_CLASS, /gap-2/);
 }
 
-function testGigsInnerTabSelectionFollowsRouteImmediately() {
-  assert.equal(resolveGigsListTabParam(null, null, ""), "pending");
-  assert.equal(resolveGigsListTabParam("accepted", null, null), "accepted");
-  assert.equal(resolveGigsListTabParam("history", null, null), "history");
-  assert.equal(resolveGigsListTabParam(null, null, "?tab=accepted"), "accepted");
-}
-
-function testBookingsRouteMountsPersistentGigsSecondaryBand() {
-  const layoutSource = readFileSync(
-    new URL("../app/(planner-workspace)/bookings/layout.tsx", import.meta.url),
-    "utf8",
-  );
-  const loadingShellSource = readFileSync(
-    new URL("../app/components/skeleton/Skeleton.tsx", import.meta.url),
-    "utf8",
-  );
-  const gigsTabsSource = readFileSync(
-    new URL("../app/components/bookings/DjGigsTabs.tsx", import.meta.url),
-    "utf8",
-  );
-
-  assert.match(layoutSource, /BookingsRouteChrome/);
-  assert.match(loadingShellSource, /omitSecondaryBand/);
-  assert.doesNotMatch(gigsTabsSource, /return <DjGigsTabsSkeleton/);
-  assert.match(gigsTabsSource, /counts\?\.\[tab\.value\]/);
-}
-
 function main() {
   testPastEventDatesAreBlocked();
   testFutureEventDatesAreAllowed();
@@ -791,8 +763,6 @@ function main() {
   testGigsTabRowKeepsStableCountSlots();
   testGigsTabCountsDeriveFromSameBookingSnapshot();
   testGigsTabSkeletonMatchesFinalRowGeometry();
-  testGigsInnerTabSelectionFollowsRouteImmediately();
-  testBookingsRouteMountsPersistentGigsSecondaryBand();
   testWorkspaceSubNavLayoutIsStable();
   testWorkspaceActiveHrefIgnoresStaleOverrides();
   testProfileIdentityPresentationHierarchy();

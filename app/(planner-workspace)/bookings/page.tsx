@@ -6,10 +6,11 @@ import { useRouter, useSearchParams } from "next/navigation";
 import {
   BookingsPageLoadingShell,
   BookingCreateEventDetailsFormSkeleton,
+  DjGigsTabRow,
   ReceivedBookingsListSkeleton,
   SkeletonBlock,
 } from "@/app/components/skeleton/Skeleton";
-import { useGigsWorkspaceChromeState } from "@/app/components/bookings/GigsWorkspaceChrome";
+import { DjGigsTabs } from "@/app/components/bookings/DjGigsTabs";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
 import { useGuardProfile } from "@/app/components/GuardProfileContext";
 import {
@@ -545,35 +546,6 @@ function BookingsPageContent() {
     !gigsHistoryBulkManage.selectionMode;
   const reserveGigsManageSlot =
     isGigsHistoryTab && !gigsHistoryBulkManage.selectionMode && !showGigsManageButton;
-
-  const { setChromeState: setGigsWorkspaceChromeState } = useGigsWorkspaceChromeState();
-
-  useLayoutEffect(() => {
-    if (!showGigsWorkspace || plannerCreateVisible) {
-      setGigsWorkspaceChromeState({
-        counts: null,
-        showManageButton: false,
-        reserveManageSlot: false,
-        onManageClick: undefined,
-      });
-      return;
-    }
-
-    setGigsWorkspaceChromeState({
-      counts: gigsTabCounts,
-      showManageButton: showGigsManageButton,
-      reserveManageSlot: reserveGigsManageSlot,
-      onManageClick: gigsHistoryBulkManage.enterSelectionMode,
-    });
-  }, [
-    gigsHistoryBulkManage.enterSelectionMode,
-    gigsTabCounts,
-    plannerCreateVisible,
-    reserveGigsManageSlot,
-    setGigsWorkspaceChromeState,
-    showGigsManageButton,
-    showGigsWorkspace,
-  ]);
 
   const visibleReceivedBookings = useMemo(
     () =>
@@ -1468,10 +1440,21 @@ function BookingsPageContent() {
       <PlannerWorkspacePage
         initialRole={displayRole}
         includeChrome={false}
-        omitSecondaryBand
         activeWorkspaceHref={
           plannerCreateVisible ? EVENTS_AREA_SUB_NAV.bookingPlans.href : undefined
         }
+        secondaryControlsSlot={
+          showGigsWorkspace && !plannerCreateVisible ? (
+            <DjGigsTabRow
+              showManageButton={showGigsManageButton}
+              reserveManageSlot={reserveGigsManageSlot}
+              onManageClick={gigsHistoryBulkManage.enterSelectionMode}
+            >
+              <DjGigsTabs activeView={djGigsView} counts={gigsTabCounts} />
+            </DjGigsTabRow>
+          ) : undefined
+        }
+        secondaryControlsPlaceholder={showGigsWorkspace && plannerCreateVisible}
       >
 
           {successMessage ? (

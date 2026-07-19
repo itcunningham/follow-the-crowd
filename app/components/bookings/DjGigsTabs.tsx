@@ -94,12 +94,16 @@ export function DjGigsTabs({
   activeView: DjGigsListTab;
   counts: Record<DjGigsListTab, number> | null;
 }) {
+  if (counts === null) {
+    return <DjGigsTabsSkeleton />;
+  }
+
   return (
-    <div className={GIGS_TAB_PILL_ROW_CLASS} aria-busy={counts === null ? true : undefined}>
+    <div className={GIGS_TAB_PILL_ROW_CLASS}>
       {GIGS_TAB_CONFIG.map((tab) => {
         const isActive = activeView === tab.value;
         const href = buildGigsListHref(tab.value);
-        const count = counts?.[tab.value] ?? 0;
+        const count = counts[tab.value];
         const ariaLabel = count > 0 ? `${tab.label} ${count}` : tab.label;
         const reserveCountSlot = tab.value !== "history";
 
