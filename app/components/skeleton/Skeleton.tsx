@@ -25,6 +25,7 @@ import {
 } from "@/app/components/history/HistoryBulkManage";
 import {
   EVENTS_LIST_TAB_ROW_CLASS,
+  EVENT_PLANS_CREATE_BUTTON_CLASS,
   EVENT_PLANS_TOOLBAR_ROW_CLASS,
   FTC_EVENTS_LIST_TAB_ACTION_CLASS,
   FTC_EVENTS_LIST_TAB_ACTION_PLACEHOLDER_CLASS,
@@ -587,26 +588,39 @@ export function SavedEventPlansSectionHeading({ className = "mb-3" }: { classNam
 }
 
 export function SavedEventPlansSectionHeader({
+  selectionMode,
   trashButtonDisabled = true,
   onTrashClick,
   selectionToolbar,
 }: {
+  selectionMode: boolean;
   trashButtonDisabled?: boolean;
   onTrashClick?: () => void;
-  selectionToolbar?: ReactNode;
+  selectionToolbar: ReactNode;
 }) {
   return (
     <div className={EVENT_PLANS_TOOLBAR_ROW_CLASS}>
-      {selectionToolbar ?? (
-        <div className="flex w-full items-center justify-end">
-          <HistoryManageButton
-            ariaLabel="Delete event plans"
-            onClick={onTrashClick ?? (() => undefined)}
-            disabled={trashButtonDisabled || !onTrashClick}
-            className={FTC_EVENTS_LIST_TAB_ACTION_CLASS}
-          />
-        </div>
-      )}
+      <div
+        className={`absolute inset-0 flex items-center justify-end ${
+          selectionMode ? "invisible pointer-events-none" : ""
+        }`}
+        aria-hidden={selectionMode}
+      >
+        <HistoryManageButton
+          ariaLabel="Delete event plans"
+          onClick={onTrashClick ?? (() => undefined)}
+          disabled={trashButtonDisabled || !onTrashClick}
+          className={FTC_EVENTS_LIST_TAB_ACTION_CLASS}
+        />
+      </div>
+      <div
+        className={`absolute inset-0 flex items-center ${
+          selectionMode ? "" : "invisible pointer-events-none"
+        }`}
+        aria-hidden={!selectionMode}
+      >
+        {selectionToolbar}
+      </div>
     </div>
   );
 }
@@ -896,7 +910,13 @@ export function BookingPlansPageLoadingShell() {
           Create event plan
         </Link>
       }
-      secondaryControlsSlot={<SavedEventPlansSectionHeader trashButtonDisabled />}
+      secondaryControlsSlot={
+        <SavedEventPlansSectionHeader
+          selectionMode={false}
+          trashButtonDisabled
+          selectionToolbar={<div aria-hidden="true" className="h-full w-full" />}
+        />
+      }
     >
       <BookingPlanListSkeleton />
     </PlannerWorkspacePage>

@@ -103,7 +103,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 - **Gigs Confirmed tab (2026-07-19):** received gigs reload after booking acceptance (`ftc-notifications-updated` + tab visibility) so accepted bookings appear in Confirmed without stale client state; gig date keys use shared `resolveEventDateKey` (legacy + ISO); `?tab=confirmed` URL alias maps to Confirmed
 - **Profile (2026-07-19):** removed redundant Calendar/Gigs navigation card from DJ profile — availability and bookings stay in Gigs nav only
 - **Profile header/nav (2026-07-19):** removed back button from own-profile header (top-level nav destination); mobile bottom nav Profile tab uses same touch `pointerup` routing as other tabs and resolves user id synchronously from session/cache
-- **Event Plans delete mode (2026-07-19):** trash and delete-selection toolbars share one fixed-height secondary row (`EVENT_PLANS_TOOLBAR_ROW_CLASS`) so plan cards no longer shift when entering or leaving selection mode
+- **Event Plans delete mode (2026-07-19):** trash and delete-selection toolbars share one fixed-height secondary row (`EVENT_PLANS_TOOLBAR_ROW_CLASS`) so plan cards no longer shift when entering or leaving selection mode; title-row Create button slot stays reserved on mobile; toolbar layers swap in place via absolute positioning with `embedded` selection controls (no flex-wrap growth)
 
 ## Event Plans
 

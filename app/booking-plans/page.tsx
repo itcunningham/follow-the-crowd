@@ -39,6 +39,7 @@ import {
 import {
   FTC_LIST_GAP_CLASS,
   FTC_SURFACE_ROW_CLASS,
+  EVENT_PLANS_CREATE_BUTTON_CLASS,
 } from "@/lib/design/ftcDesignSystem";
 
 const emptyPlanForm: BookingPlanInput = {
@@ -387,35 +388,43 @@ export default function BookingPlansPage() {
       <PlannerWorkspacePage
         initialRole={displayRole}
         actions={
-          !formOpen && !planBulkManage.selectionMode ? (
-            <button
-              type="button"
-              onClick={openCreateForm}
-              className="shrink-0 cursor-pointer ftc-btn-primary px-4 py-2.5 text-sm uppercase tracking-wide"
-            >
-              Create event plan
-            </button>
+          !formOpen ? (
+            planBulkManage.selectionMode ? (
+              <span
+                aria-hidden="true"
+                className={`pointer-events-none invisible ${EVENT_PLANS_CREATE_BUTTON_CLASS}`}
+              >
+                Create event plan
+              </span>
+            ) : (
+              <button
+                type="button"
+                onClick={openCreateForm}
+                className={`cursor-pointer ${EVENT_PLANS_CREATE_BUTTON_CLASS}`}
+              >
+                Create event plan
+              </button>
+            )
           ) : undefined
         }
         secondaryControlsSlot={
           showEventPlansToolbar ? (
             <SavedEventPlansSectionHeader
+              selectionMode={planBulkManage.selectionMode}
               trashButtonDisabled={trashButtonDisabled}
               onTrashClick={planBulkManage.enterSelectionMode}
               selectionToolbar={
-                planBulkManage.selectionMode ? (
-                  <HistorySelectionToolbar
-                    className="mb-0 w-full"
-                    selectedCount={planBulkManage.selectedCount}
-                    allSelected={planBulkManage.allSelected}
-                    removing={planBulkManage.removing}
-                    onCancel={planBulkManage.cancelSelectionMode}
-                    onSelectAll={planBulkManage.selectAll}
-                    onRemove={planBulkManage.openConfirm}
-                    removeLabel="Delete selected"
-                    removingLabel="Deleting..."
-                  />
-                ) : undefined
+                <HistorySelectionToolbar
+                  embedded
+                  selectedCount={planBulkManage.selectedCount}
+                  allSelected={planBulkManage.allSelected}
+                  removing={planBulkManage.removing}
+                  onCancel={planBulkManage.cancelSelectionMode}
+                  onSelectAll={planBulkManage.selectAll}
+                  onRemove={planBulkManage.openConfirm}
+                  removeLabel="Delete selected"
+                  removingLabel="Deleting..."
+                />
               }
             />
           ) : undefined

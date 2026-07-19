@@ -205,6 +205,7 @@ export function HistorySelectionToolbar({
   removeLabel = "Remove from history",
   removingLabel = "Removing...",
   className = "",
+  embedded = false,
 }: {
   selectedCount: number;
   allSelected: boolean;
@@ -215,12 +216,18 @@ export function HistorySelectionToolbar({
   removeLabel?: string;
   removingLabel?: string;
   className?: string;
+  embedded?: boolean;
 }) {
+  const outerClassName = embedded
+    ? "mb-0 flex h-full w-full flex-nowrap items-center justify-between gap-2 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated/60 px-3"
+    : "mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated/60 px-3 py-2.5";
+  const groupClassName = embedded
+    ? "flex min-w-0 flex-nowrap items-center gap-2"
+    : "flex flex-wrap items-center gap-2";
+
   return (
-    <div
-      className={`mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated/60 px-3 py-2.5 ${className}`.trim()}
-    >
-      <div className="flex flex-wrap items-center gap-2">
+    <div className={`${outerClassName} ${className}`.trim()}>
+      <div className={groupClassName}>
         <button
           type="button"
           onClick={onCancel}
