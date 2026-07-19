@@ -240,6 +240,8 @@ type PlannerWorkspacePageContentProps = {
   /** Wrapped automatically with PlannerWorkspaceSecondaryControls. */
   secondaryControls?: ReactNode;
   secondaryControlsPlaceholder?: boolean;
+  /** When true, skip the secondary band entirely (e.g. Gigs tabs live in bookings/layout). */
+  omitSecondaryBand?: boolean;
   children: ReactNode;
 };
 
@@ -247,10 +249,15 @@ function renderSecondaryBand({
   secondaryControlsSlot,
   secondaryControls,
   secondaryControlsPlaceholder,
+  omitSecondaryBand,
 }: Pick<
   PlannerWorkspacePageContentProps,
-  "secondaryControlsSlot" | "secondaryControls" | "secondaryControlsPlaceholder"
+  "secondaryControlsSlot" | "secondaryControls" | "secondaryControlsPlaceholder" | "omitSecondaryBand"
 >) {
+  if (omitSecondaryBand) {
+    return null;
+  }
+
   if (secondaryControlsSlot) {
     return secondaryControlsSlot;
   }
@@ -275,6 +282,7 @@ export function PlannerWorkspacePageContent({
   secondaryControlsSlot,
   secondaryControls,
   secondaryControlsPlaceholder = false,
+  omitSecondaryBand = false,
   children,
 }: PlannerWorkspacePageContentProps) {
   const headerContext = useContext(WorkspaceHeaderContext);
@@ -282,6 +290,7 @@ export function PlannerWorkspacePageContent({
     secondaryControlsSlot,
     secondaryControls,
     secondaryControlsPlaceholder,
+    omitSecondaryBand,
   });
 
   useLayoutEffect(() => {
@@ -297,7 +306,9 @@ export function PlannerWorkspacePageContent({
 
   return (
     <>
-      <div className={PLANNER_WORKSPACE_SECONDARY_BAND_CLASS}>{secondaryBand}</div>
+      {secondaryBand ? (
+        <div className={PLANNER_WORKSPACE_SECONDARY_BAND_CLASS}>{secondaryBand}</div>
+      ) : null}
       <div className={PLANNER_WORKSPACE_BODY_CLASS}>{children}</div>
     </>
   );
@@ -319,6 +330,7 @@ export function PlannerWorkspacePage({
   secondaryControlsSlot,
   secondaryControls,
   secondaryControlsPlaceholder = false,
+  omitSecondaryBand = false,
   includeChrome = true,
   children,
 }: PlannerWorkspacePageProps) {
@@ -339,6 +351,7 @@ export function PlannerWorkspacePage({
       secondaryControlsSlot={secondaryControlsSlot}
       secondaryControls={secondaryControls}
       secondaryControlsPlaceholder={secondaryControlsPlaceholder}
+      omitSecondaryBand={omitSecondaryBand}
     >
       {children}
     </PlannerWorkspacePageContent>

@@ -56,8 +56,6 @@ import {
   AppProfilePageShell,
 } from "@/app/components/layout/AppPageLayout";
 import ProfilePageHeader from "@/app/components/profile/ProfilePageHeader";
-import { DjGigsTabs } from "@/app/components/bookings/DjGigsTabs";
-import { resolveGigsListTabParam } from "@/lib/bookings/gigsListNavigation";
 import { isPlannerBookingsCreateChromeActive } from "@/lib/bookings/planDeepLink";
 import { buildEventsListHref, isCalendarOriginCreateParam, resolveCalendarCreateInitialStep, resolveEventDetailBackHref, resolveEventsListTabParam } from "@/lib/events/eventsListNavigation";
 import { useEventEditHeaderState } from "@/lib/events/useEventEditHeaderVisibility";
@@ -729,21 +727,6 @@ export function BookingsContentSkeleton({
   return <ReceivedBookingsListSkeleton />;
 }
 
-function GigsWorkspaceTabsShell() {
-  const searchParams = useSearchParams();
-  const activeView = resolveGigsListTabParam(searchParams.get("tab"));
-
-  return (
-    <DjGigsTabRow reserveManageSlot={activeView === "history"}>
-      <DjGigsTabs activeView={activeView} counts={null} />
-    </DjGigsTabRow>
-  );
-}
-
-function canShowGigsWorkspaceTabs(role: UserRole | null): boolean {
-  return role === "dj" || role === "both" || role === null;
-}
-
 export function BookingCreateEventDetailsFormSkeleton() {
   return (
     <div aria-hidden="true" className="space-y-4">
@@ -834,7 +817,6 @@ export function BookingsPageLoadingShell({
       : variant === "dj" || variant === "both"
         ? variant
         : cachedRole;
-  const showGigsTabs = !plannerBookingCreateOpen && canShowGigsWorkspaceTabs(role);
 
   return (
     <PlannerWorkspacePage
@@ -842,10 +824,7 @@ export function BookingsPageLoadingShell({
       activeWorkspaceHref={
         plannerBookingCreateOpen ? EVENTS_AREA_SUB_NAV.bookingPlans.href : undefined
       }
-      secondaryControlsSlot={
-        showGigsTabs ? <GigsWorkspaceTabsShell /> : undefined
-      }
-      secondaryControlsPlaceholder={plannerBookingCreateOpen || !showGigsTabs}
+      omitSecondaryBand
       includeChrome={false}
     >
       {plannerBookingCreateOpen ? <BookingCreateEventDetailsCardSkeleton /> : null}
