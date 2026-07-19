@@ -1,13 +1,25 @@
 "use client";
 
 import "@/lib/navigationBadgePrefetch";
-import { useMemo } from "react";
+import {
+  createContext,
+  useContext,
+  useLayoutEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 import { usePathname } from "next/navigation";
+import Link from "next/link";
 import PlannerEventsSubNav from "@/app/components/PlannerEventsSubNav";
 import { MOBILE_NAV_OFFSET_CLASS } from "@/app/components/AppNavigation";
 import AppNavigation from "@/app/components/AppNavigation";
-import { resolvePlannerWorkspaceTitle } from "@/lib/plannerEventsNav";
-import type { UserRole } from "@/lib/user/currentUser";
+import {
+  resolvePlannerWorkspaceTitle,
+} from "@/lib/plannerEventsNav";
+import { readCachedNavRole } from "@/lib/navigationRoleCache";
+import { useGuardProfile } from "@/app/components/GuardProfileContext";
+import { canManageEvents, type UserRole } from "@/lib/user/currentUser";
 
 export const PLANNER_WORKSPACE_SHELL_CLASS = `mx-auto min-h-[100dvh] w-full max-w-2xl bg-ftc-bg font-sans text-ftc-text ${MOBILE_NAV_OFFSET_CLASS}`;
 
@@ -30,7 +42,10 @@ export const PLANNER_WORKSPACE_TITLE_ROW_CLASS =
 export const PLANNER_WORKSPACE_TITLE_ACTIONS_CLASS =
   "flex shrink-0 items-start justify-end md:min-h-[2.625rem] md:min-w-[11.75rem] md:items-center";
 
-export const PLANNER_WORKSPACE_SUBNAV_SLOT_CLASS = "mt-4 md:min-h-[2.375rem]";
+export const PLANNER_WORKSPACE_SUBNAV_SLOT_CLASS = "mt-4 min-h-[2.375rem] md:min-h-[2.375rem]";
+
+export const PLANNER_WORKSPACE_SUBNAV_ROW_CLASS =
+  "-mx-4 flex flex-nowrap gap-2 overflow-x-auto overscroll-x-contain px-4 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden sm:-mx-6 sm:px-6 md:mx-0 md:flex-wrap md:overflow-visible md:px-0";
 
 /** @deprecated Use PLANNER_WORKSPACE_PAGE_INSET_CLASS + body padding instead. */
 export const PLANNER_WORKSPACE_CONTENT_CLASS = `${PLANNER_WORKSPACE_PAGE_INSET_CLASS} pb-4 pt-4`;
@@ -60,7 +75,18 @@ export const PLANNER_WORKSPACE_SECONDARY_TABS_ROW_CLASS = PLANNER_WORKSPACE_SECO
 const PLANNER_WORKSPACE_TITLE_ACTION_PLACEHOLDER_CLASS =
   "pointer-events-none invisible hidden shrink-0 md:inline-flex ftc-btn-primary px-4 py-2.5 text-sm uppercase tracking-wide";
 
-function PlannerWorkspaceTitleActions({ actions }: { actions?: React.ReactNode }) {
+type WorkspaceHeaderState = {
+  activeWorkspaceHref?: string | null;
+  actions?: ReactNode;
+};
+
+type WorkspaceHeaderContextValue = {
+  setHeaderState: (state: WorkspaceHeaderState) => void;
+};
+
+const WorkspaceHeaderContext = createContext<WorkspaceHeaderContextValue | null>(null);
+
+function PlannerWorkspaceTitleActions({ actions }: { actions?: ReactNode }) {
   return (
     <div className={PLANNER_WORKSPACE_TITLE_ACTIONS_CLASS}>
       {actions ?? (
@@ -76,7 +102,7 @@ export function PlannerWorkspaceSecondaryControls({
   children,
   className = "",
 }: {
-  children: React.ReactNode;
+  children: ReactNode;
   className?: string;
 }) {
   return (
@@ -109,7 +135,7 @@ export function PlannerWorkspacePageHeader({
 }: {
   title: string;
   initialRole?: UserRole | null;
-  actions?: React.ReactNode;
+  actions?: ReactNode;
   showWorkspaceSubNav?: boolean;
   activeWorkspaceHref?: string | null;
 }) {
@@ -121,10 +147,12 @@ export function PlannerWorkspacePageHeader({
       </div>
       {showWorkspaceSubNav ? (
         <div className={PLANNER_WORKSPACE_SUBNAV_SLOT_CLASS}>
-          <PlannerEventsSubNav
-            initialRole={initialRole}
-            activeWorkspaceHref={activeWorkspaceHref}
-          />
+          <div className={PLANNER_WORKSPACE_SUBNAV_ROW_CLASS}>
+            <PlannerEventsSubNav
+              initialRole={initialRole}
+              activeWorkspaceHref={activeWorkspaceHref}
+            />
+          </div>
         </div>
       ) : (
         <div aria-hidden="true" className={PLANNER_WORKSPACE_SUBNAV_SLOT_CLASS} />
@@ -133,17 +161,79 @@ export function PlannerWorkspacePageHeader({
   );
 }
 
-type PlannerWorkspacePageProps = {
-  title?: string;
-  initialRole?: UserRole | null;
+function resolveDefaultWorkspaceActions(pathname: string, role: UserRole | null): ReactNode {
+  if (pathname === "/events" && canManageEvents(role)) {
+    return (
+      <Link
+        href="/events?create=event"
+        className="shrink-0 ftc-btn-primary px-4 py-2.5 text-sm uppercase tracking-wide"
+      >
+        Create event
+      </Link>
+    );
+  }
+
+  if (pathname === "/booking-plans" || pathname.startsWith("/booking-plans/")) {
+    return (
+      <Link
+        href="/booking-plans"
+        className="shrink-0 ftc-btn-primary px-4 py-2.5 text-sm uppercase tracking-wide"
+      >
+        Create event plan
+      </Link>
+    );
+  }
+
+  return undefined;
+}
+
+/** Persistent workspace shell: nav, title row, and primary tabs stay mounted across route transitions. */
+export function PlannerWorkspaceRouteLayout({ children }: { children: ReactNode }) {
+  const pathname = usePathname();
+  const guardProfile = useGuardProfile();
+  const [headerState, setHeaderState] = useState<WorkspaceHeaderState>({});
+  const initialRole = guardProfile?.role ?? readCachedNavRole();
+  const title = useMemo(
+    () =>
+      resolvePlannerWorkspaceTitle({
+        pathname,
+        activeWorkspaceHref: headerState.activeWorkspaceHref,
+      }),
+    [headerState.activeWorkspaceHref, pathname],
+  );
+  const actions = headerState.actions ?? resolveDefaultWorkspaceActions(pathname, initialRole);
+  const headerContextValue = useMemo<WorkspaceHeaderContextValue>(
+    () => ({
+      setHeaderState,
+    }),
+    [],
+  );
+
+  return (
+    <WorkspaceHeaderContext.Provider value={headerContextValue}>
+      <div className={PLANNER_WORKSPACE_PAGE_SHELL_CLASS}>
+        <AppNavigation />
+        <PlannerWorkspacePageHeader
+          title={title}
+          initialRole={initialRole}
+          activeWorkspaceHref={headerState.activeWorkspaceHref}
+          actions={actions}
+        />
+        <div className={PLANNER_WORKSPACE_BELOW_HEADER_CLASS}>{children}</div>
+      </div>
+    </WorkspaceHeaderContext.Provider>
+  );
+}
+
+type PlannerWorkspacePageContentProps = {
   activeWorkspaceHref?: string | null;
-  actions?: React.ReactNode;
+  actions?: ReactNode;
   /** Pre-wrapped secondary row (e.g. EventsListTabRow with shared spacing class). */
-  secondaryControlsSlot?: React.ReactNode;
+  secondaryControlsSlot?: ReactNode;
   /** Wrapped automatically with PlannerWorkspaceSecondaryControls. */
-  secondaryControls?: React.ReactNode;
+  secondaryControls?: ReactNode;
   secondaryControlsPlaceholder?: boolean;
-  children: React.ReactNode;
+  children: ReactNode;
 };
 
 function renderSecondaryBand({
@@ -151,7 +241,7 @@ function renderSecondaryBand({
   secondaryControls,
   secondaryControlsPlaceholder,
 }: Pick<
-  PlannerWorkspacePageProps,
+  PlannerWorkspacePageContentProps,
   "secondaryControlsSlot" | "secondaryControls" | "secondaryControlsPlaceholder"
 >) {
   if (secondaryControlsSlot) {
@@ -171,6 +261,52 @@ function renderSecondaryBand({
   return <PlannerWorkspaceSecondaryControlsPlaceholder />;
 }
 
+/** Workspace page body below the persistent tab row. */
+export function PlannerWorkspacePageContent({
+  activeWorkspaceHref,
+  actions,
+  secondaryControlsSlot,
+  secondaryControls,
+  secondaryControlsPlaceholder = false,
+  children,
+}: PlannerWorkspacePageContentProps) {
+  const headerContext = useContext(WorkspaceHeaderContext);
+  const secondaryBand = renderSecondaryBand({
+    secondaryControlsSlot,
+    secondaryControls,
+    secondaryControlsPlaceholder,
+  });
+
+  useLayoutEffect(() => {
+    if (!headerContext) {
+      return;
+    }
+
+    headerContext.setHeaderState({
+      activeWorkspaceHref,
+      actions,
+    });
+
+    return () => {
+      headerContext.setHeaderState({});
+    };
+  }, [actions, activeWorkspaceHref, headerContext]);
+
+  return (
+    <>
+      <div className={PLANNER_WORKSPACE_SECONDARY_BAND_CLASS}>{secondaryBand}</div>
+      <div className={PLANNER_WORKSPACE_BODY_CLASS}>{children}</div>
+    </>
+  );
+}
+
+type PlannerWorkspacePageProps = PlannerWorkspacePageContentProps & {
+  title?: string;
+  initialRole?: UserRole | null;
+  /** When false, render only page content (persistent chrome lives in PlannerWorkspaceRouteLayout). */
+  includeChrome?: boolean;
+};
+
 /** Shared Events-area page shell: nav, title row, primary tabs, divider, secondary controls, content. */
 export function PlannerWorkspacePage({
   title: titleProp,
@@ -180,6 +316,7 @@ export function PlannerWorkspacePage({
   secondaryControlsSlot,
   secondaryControls,
   secondaryControlsPlaceholder = false,
+  includeChrome = true,
   children,
 }: PlannerWorkspacePageProps) {
   const pathname = usePathname();
@@ -192,11 +329,21 @@ export function PlannerWorkspacePage({
       }),
     [activeWorkspaceHref, pathname, titleProp],
   );
-  const secondaryBand = renderSecondaryBand({
-    secondaryControlsSlot,
-    secondaryControls,
-    secondaryControlsPlaceholder,
-  });
+  const content = (
+    <PlannerWorkspacePageContent
+      activeWorkspaceHref={activeWorkspaceHref}
+      actions={actions}
+      secondaryControlsSlot={secondaryControlsSlot}
+      secondaryControls={secondaryControls}
+      secondaryControlsPlaceholder={secondaryControlsPlaceholder}
+    >
+      {children}
+    </PlannerWorkspacePageContent>
+  );
+
+  if (!includeChrome) {
+    return content;
+  }
 
   return (
     <div className={PLANNER_WORKSPACE_PAGE_SHELL_CLASS}>
@@ -207,10 +354,7 @@ export function PlannerWorkspacePage({
         activeWorkspaceHref={activeWorkspaceHref}
         actions={actions}
       />
-      <div className={PLANNER_WORKSPACE_BELOW_HEADER_CLASS}>
-        <div className={PLANNER_WORKSPACE_SECONDARY_BAND_CLASS}>{secondaryBand}</div>
-        <div className={PLANNER_WORKSPACE_BODY_CLASS}>{children}</div>
-      </div>
+      <div className={PLANNER_WORKSPACE_BELOW_HEADER_CLASS}>{content}</div>
     </div>
   );
 }

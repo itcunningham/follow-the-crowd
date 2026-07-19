@@ -1430,6 +1430,7 @@ function BookingsPageContent() {
     <OnboardingGuard>
       <PlannerWorkspacePage
         initialRole={displayRole}
+        includeChrome={false}
         activeWorkspaceHref={
           plannerCreateVisible ? EVENTS_AREA_SUB_NAV.bookingPlans.href : undefined
         }

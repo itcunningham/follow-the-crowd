@@ -350,6 +350,7 @@ export function EventsCalendarCreateLoadingShell({
       initialRole={role}
       activeWorkspaceHref={EVENTS_AREA_SUB_NAV.calendar.href}
       secondaryControlsPlaceholder
+      includeChrome={false}
     >
       <section className={PLANNER_WORKSPACE_PRIMARY_SURFACE_CLASS}>
           <div className="ftc-form-card-header">
@@ -439,6 +440,7 @@ export function EventsPageLoadingShell({
           </div>
         </EventsListTabRow>
       }
+      includeChrome={false}
     >
       <EventListSkeleton showPlannerStats={isPlanner} showFilterPills={false} />
     </PlannerWorkspacePage>
@@ -844,6 +846,7 @@ export function BookingsPageLoadingShell({
         showGigsTabs ? <GigsWorkspaceTabsShell /> : undefined
       }
       secondaryControlsPlaceholder={plannerBookingCreateOpen || !showGigsTabs}
+      includeChrome={false}
     >
       {plannerBookingCreateOpen ? <BookingCreateEventDetailsCardSkeleton /> : null}
     </PlannerWorkspacePage>
@@ -887,6 +890,7 @@ export function BookingPlansPageLoadingShell() {
           selectionToolbar={<div aria-hidden="true" className="h-full w-full" />}
         />
       }
+      includeChrome={false}
     >
       <BookingPlanListSkeleton />
     </PlannerWorkspacePage>
@@ -906,6 +910,7 @@ export function CalendarPageLoadingShell() {
         ) : undefined
       }
       secondaryControlsPlaceholder={cachedRole === "promoter" || cachedRole === "dj"}
+      includeChrome={false}
     >
       {cachedRole === "both" ? (
         bothCalendarTab === "dj" ? (

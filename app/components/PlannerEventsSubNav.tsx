@@ -18,7 +18,7 @@ import {
   getEventsAreaSubNavItems,
   isPlannerEventsAreaPath,
 } from "@/lib/plannerEventsNav";
-import { readCachedNavigation } from "@/lib/navigationRoleCache";
+import { readCachedNavigation, readCachedNavRole } from "@/lib/navigationRoleCache";
 import { getCurrentUserProfile, type UserRole } from "@/lib/user/currentUser";
 
 function GigsPendingCountBadge({
@@ -74,7 +74,12 @@ export default function PlannerEventsSubNav({
     () => initialRole ?? guardProfile?.role ?? cachedNavigation.role,
   );
 
-  const resolvedRole = role ?? guardProfile?.role ?? initialRole ?? cachedNavigation.role;
+  const resolvedRole =
+    role ??
+    guardProfile?.role ??
+    initialRole ??
+    cachedNavigation.role ??
+    readCachedNavRole();
   const canViewGigs = canViewGigsSubNav(resolvedRole);
   const resolvedUserId = guardProfile?.user_id ?? cachedNavigation.userId;
   const badgeCacheVersion = useSyncExternalStore(
@@ -143,10 +148,7 @@ export default function PlannerEventsSubNav({
   const activeHref = activeWorkspaceHref ?? getActiveWorkspaceHref(pathname);
 
   return (
-    <nav
-      aria-label="Events area"
-      className="flex flex-wrap gap-2"
-    >
+    <nav aria-label="Events area" className="flex min-w-max flex-nowrap gap-2">
       {tabs.map((tab) => {
         const isActive = activeHref === tab.href;
         const showPendingBadge = tab.href === EVENTS_AREA_SUB_NAV.gigs.href;

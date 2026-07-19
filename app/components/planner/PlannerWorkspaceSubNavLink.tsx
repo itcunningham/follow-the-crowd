@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useRef, type ReactNode } from "react";
 
 const PLANNER_WORKSPACE_SUB_NAV_HIT_CLASS =
@@ -19,17 +20,18 @@ export default function PlannerWorkspaceSubNavLink({
   isActive,
   children,
 }: PlannerWorkspaceSubNavLinkProps) {
+  const router = useRouter();
   const navigatedThisGestureRef = useRef(false);
   const activeGestureRef = useRef<{ pointerId: number; cancelled: boolean } | null>(null);
 
-  const performTouchNavigation = useCallback(() => {
+  const navigate = useCallback(() => {
     if (navigatedThisGestureRef.current || isActive) {
       return;
     }
 
     navigatedThisGestureRef.current = true;
-    window.location.assign(href);
-  }, [href, isActive]);
+    router.push(href, { scroll: false });
+  }, [href, isActive, router]);
 
   const handlePointerDown = useCallback(
     (event: React.PointerEvent<HTMLAnchorElement>) => {
@@ -62,10 +64,11 @@ export default function PlannerWorkspaceSubNavLink({
       activeGestureRef.current = null;
 
       if (event.pointerType === "touch") {
-        performTouchNavigation();
+        event.preventDefault();
+        navigate();
       }
     },
-    [isActive, performTouchNavigation],
+    [isActive, navigate],
   );
 
   const handlePointerCancel = useCallback((event: React.PointerEvent<HTMLAnchorElement>) => {

@@ -388,6 +388,7 @@ export default function BookingPlansPage() {
     <OnboardingGuard>
       <PlannerWorkspacePage
         initialRole={displayRole}
+        includeChrome={false}
         actions={
           !formOpen ? (
             planBulkManage.selectionMode ? (

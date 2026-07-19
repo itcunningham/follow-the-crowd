@@ -115,6 +115,7 @@ export default function CalendarPage() {
     <OnboardingGuard>
       <PlannerWorkspacePage
         initialRole={displayRole}
+        includeChrome={false}
         secondaryControls={secondaryControls}
         secondaryControlsPlaceholder={secondaryControlsPlaceholder}
       >

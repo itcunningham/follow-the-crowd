@@ -922,6 +922,7 @@ function EventsPageClientView({
       <PlannerWorkspacePage
         initialRole={resolvedRole}
         activeWorkspaceHref={eventsWorkspaceActiveHref}
+        includeChrome={false}
         actions={
           isPlanner && !createOpen ? (
             <button
