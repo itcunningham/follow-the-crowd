@@ -53,6 +53,13 @@ export const FTC_LIST_GAP_CLASS = "space-y-3";
 /** Filter / status pill row gap. */
 export const FTC_PILL_ROW_GAP_CLASS = "flex flex-wrap items-center gap-2";
 
+/** Shared filter pill layout — keeps active/inactive pills aligned in a row. */
+export const FTC_FILTER_PILL_CLASS = "inline-flex items-center ftc-filter-pill";
+
+export function ftcFilterPillClass(isActive: boolean): string {
+  return `${FTC_FILTER_PILL_CLASS}${isActive ? " ftc-filter-pill-active" : ""}`;
+}
+
 /** Events list tab row — trash action matches filter pill height (30px). */
 export const FTC_EVENTS_LIST_TAB_ACTION_CLASS =
   "inline-flex h-[1.875rem] w-[1.875rem] shrink-0 items-center justify-center rounded-lg border border-ftc-border-subtle bg-ftc-bg-elevated text-ftc-text-muted transition enabled:hover:border-ftc-border-strong enabled:hover:text-ftc-text-secondary disabled:cursor-not-allowed disabled:opacity-50";

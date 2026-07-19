@@ -28,6 +28,10 @@ import {
   verifyPlannerDjBookingReady,
 } from "../helpers/qa-relationship-state";
 import { journeyState } from "../helpers/journey-state";
+import {
+  expectEventsListTabSelected,
+  expectEventsListTabsAligned,
+} from "../helpers/events-list-tabs";
 
 test.describe("QA account state", () => {
   test("normalizes synthetic block relationships before booking journeys", async ({ roles }) => {
@@ -219,9 +223,27 @@ test.describe("Targeted navigation", () => {
     test.skip(!journeyState.fixedEventId, "Blocked: fixed event was not created");
 
     await roles.planner.goto("/events", { waitUntil: "domcontentloaded" });
+    await expectEventsListTabsAligned(roles.planner);
+    await expectEventsListTabSelected(roles.planner, "active");
     await roles.planner.goto(`/events/${journeyState.fixedEventId}`, { waitUntil: "domcontentloaded" });
     await roles.planner.getByRole("button", { name: "Back to events" }).click();
-    await expect(roles.planner).toHaveURL(/\/events/);
+    await expect(roles.planner).toHaveURL(/\/events(?:\?|$)/);
+    await expect(roles.planner).not.toHaveURL(/tab=history/);
+    await expectEventsListTabsAligned(roles.planner);
+    await expectEventsListTabSelected(roles.planner, "active");
+
+    await roles.planner.goto(`/events/${journeyState.fixedEventId}?fromTab=history`, {
+      waitUntil: "domcontentloaded",
+    });
+    await roles.planner.getByRole("button", { name: "Back to events" }).click();
+    await expect(roles.planner).toHaveURL(/tab=history/);
+    await expectEventsListTabsAligned(roles.planner);
+    await expectEventsListTabSelected(roles.planner, "history");
+
+    await roles.planner.goto(`/events/${journeyState.fixedEventId}`, { waitUntil: "domcontentloaded" });
+    await roles.planner.goBack();
+    await expect(roles.planner).toHaveURL(/\/events(?:\?|$)/);
+    await expectEventsListTabsAligned(roles.planner);
 
     await roles.dj.goto("/bookings", { waitUntil: "domcontentloaded" });
     const openDm = roles.dj.getByRole("link", { name: "Open DM" }).first();

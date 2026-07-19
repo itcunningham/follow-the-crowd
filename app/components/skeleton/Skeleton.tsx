@@ -28,6 +28,7 @@ import {
   FTC_EVENTS_LIST_TAB_ACTION_CLASS,
   FTC_EVENTS_LIST_TAB_ACTION_PLACEHOLDER_CLASS,
   FTC_PILL_ROW_GAP_CLASS,
+  ftcFilterPillClass,
 } from "@/lib/design/ftcDesignSystem";
 import DmConversationHeader from "@/app/components/dm/DmConversationHeader";
 import MessagesInboxLayout from "@/app/components/dm/MessagesInboxLayout";
@@ -54,7 +55,7 @@ import ProfilePageHeader from "@/app/components/profile/ProfilePageHeader";
 import type { DjGigsListTab } from "@/lib/bookingRequests";
 import { buildGigsListHref, resolveGigsListTabParam } from "@/lib/bookings/gigsListNavigation";
 import { isPlannerBookingsCreateChromeActive } from "@/lib/bookings/planDeepLink";
-import { buildEventsListHref, isCalendarOriginCreateParam, resolveCalendarCreateInitialStep, resolveEventDetailBackHref } from "@/lib/events/eventsListNavigation";
+import { buildEventsListHref, isCalendarOriginCreateParam, resolveCalendarCreateInitialStep, resolveEventDetailBackHref, resolveEventsListTabParam } from "@/lib/events/eventsListNavigation";
 import { useEventEditHeaderState } from "@/lib/events/useEventEditHeaderVisibility";
 import type { EventEditHeaderState } from "@/lib/events/useEventEditHeaderVisibility";
 import { canManageEvents, type UserRole } from "@/lib/user/currentUser";
@@ -362,14 +363,19 @@ export function EventsCalendarCreateLoadingShell({
 export function EventsPageLoadingShell({
   role: roleProp,
   createParam: createParamProp,
+  initialTab: initialTabProp,
 }: {
   /** @deprecated Pass `role` instead — derived from role when omitted. */
   showPlannerStats?: boolean;
   role?: UserRole | null;
   createParam?: string | null;
+  initialTab?: string | null;
 }) {
   const searchParams = useSearchParams();
   const [cachedRole] = useState<UserRole | null>(() => readCachedNavRole());
+  const [locationSearch] = useState(() =>
+    typeof window === "undefined" ? null : window.location.search,
+  );
   const role = roleProp ?? cachedRole;
   const createParam = createParamProp ?? searchParams.get("create");
 
@@ -383,7 +389,12 @@ export function EventsPageLoadingShell({
   }
 
   const isPlanner = canManageEvents(role);
-  const isHistoryTab = searchParams.get("tab") === "history";
+  const listTab = resolveEventsListTabParam(
+    searchParams.get("tab"),
+    initialTabProp,
+    locationSearch,
+  );
+  const isHistoryTab = listTab === "history";
 
   return (
     <PlannerWorkspacePage
@@ -407,13 +418,13 @@ export function EventsPageLoadingShell({
           <div className={FTC_PILL_ROW_GAP_CLASS}>
             <Link
               href={buildEventsListHref("active")}
-              className={`ftc-filter-pill ${!isHistoryTab ? "ftc-filter-pill-active" : ""}`}
+              className={ftcFilterPillClass(!isHistoryTab)}
             >
               {isPlanner ? "Active" : "Upcoming"}
             </Link>
             <Link
               href={buildEventsListHref("history")}
-              className={`ftc-filter-pill ${isHistoryTab ? "ftc-filter-pill-active" : ""}`}
+              className={ftcFilterPillClass(isHistoryTab)}
             >
               History
             </Link>

@@ -29,7 +29,12 @@ export default async function EventsPage({ searchParams }: EventsPageProps) {
 
   return (
     <Suspense
-      fallback={<EventsPageLoadingFallback initialCreate={initialCreate} />}
+      fallback={
+        <EventsPageLoadingFallback
+          initialCreate={initialCreate}
+          initialTab={readTabParam(params.tab)}
+        />
+      }
     >
       <EventsPageClient
         initialTab={readTabParam(params.tab)}

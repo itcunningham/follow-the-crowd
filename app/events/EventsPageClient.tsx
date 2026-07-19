@@ -44,6 +44,7 @@ import {
   FTC_LIST_GAP_CLASS,
   FTC_PILL_ROW_GAP_CLASS,
   FTC_SURFACE_ROW_CLASS,
+  ftcFilterPillClass,
 } from "@/lib/design/ftcDesignSystem";
 import { EventListSkeleton, EventsListTabRow } from "@/app/components/skeleton/Skeleton";
 import {
@@ -950,7 +951,7 @@ function EventsPageClientView({
               <div className={FTC_PILL_ROW_GAP_CLASS}>
                 <Link
                   href={buildEventsListHref("active")}
-                  className={`ftc-filter-pill ${!isHistoryTab ? "ftc-filter-pill-active" : ""}`}
+                  className={ftcFilterPillClass(!isHistoryTab)}
                   onClick={(event) => {
                     if (!isHistoryTab) {
                       event.preventDefault();
@@ -964,7 +965,7 @@ function EventsPageClientView({
                 </Link>
                 <Link
                   href={buildEventsListHref("history")}
-                  className={`ftc-filter-pill ${isHistoryTab ? "ftc-filter-pill-active" : ""}`}
+                  className={ftcFilterPillClass(isHistoryTab)}
                   onClick={(event) => {
                     if (isHistoryTab) {
                       event.preventDefault();

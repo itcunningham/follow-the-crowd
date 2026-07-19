@@ -919,7 +919,7 @@ html {
 }
 
 .ftc-filter-pill-active {
-  border: 0;
+  border: 1px solid transparent;
   background: var(--ftc-color-primary);
   color: var(--ftc-color-text-inverse);
 }
