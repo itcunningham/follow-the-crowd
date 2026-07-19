@@ -22,6 +22,10 @@ import { readCachedNavRole } from "@/lib/navigationRoleCache";
 import type { DjGigsListTab } from "@/lib/bookingRequests";
 import type { UserRole } from "@/lib/user/currentUser";
 
+export function canShowGigsWorkspaceTabs(role: UserRole | null): boolean {
+  return role === "dj" || role === "both" || role === null;
+}
+
 type GigsWorkspaceChromeState = {
   counts: Record<DjGigsListTab, number> | null;
   showManageButton: boolean;
@@ -96,81 +100,6 @@ function resolveBookingsGigsActiveView(searchParamsTab: string | null, locationS
   return resolveGigsListTabParam(searchParamsTab, null, locationSearch);
 }
 
-export function canShowGigsWorkspaceTabs(role: UserRole | null): boolean {
-  return role === "dj" || role === "both" || role === null;
-}
-
-function resolveBookingsGigsActiveViewFromWindow(): DjGigsListTab {
-  if (typeof window === "undefined") {
-    return "pending";
-  }
-
-  return resolveBookingsGigsActiveView(
-    new URLSearchParams(window.location.search).get("tab"),
-    window.location.search,
-  );
-}
-
-function GigsWorkspaceSecondaryBandBody({
-  activeView,
-  role,
-  plannerBookingCreateOpen,
-}: {
-  activeView: DjGigsListTab;
-  role: UserRole | null;
-  plannerBookingCreateOpen: boolean;
-}) {
-  const context = useContext(GigsWorkspaceChromeContext);
-  const showGigsTabs = !plannerBookingCreateOpen && canShowGigsWorkspaceTabs(role);
-  const chromeState = context?.chromeState ?? defaultChromeState;
-  const reserveManageSlot =
-    activeView === "history" &&
-    !chromeState.showManageButton &&
-    (chromeState.onManageClick == null || chromeState.reserveManageSlot);
-
-  if (!showGigsTabs) {
-    return <PlannerWorkspaceSecondaryControlsPlaceholder />;
-  }
-
-  return (
-    <GigsWorkspaceTabRow
-      activeView={activeView}
-      counts={chromeState.counts}
-      showManageButton={chromeState.showManageButton}
-      reserveManageSlot={reserveManageSlot}
-      onManageClick={chromeState.onManageClick}
-    />
-  );
-}
-
-export function GigsWorkspaceSecondaryBandFallback({
-  role: roleProp,
-  plannerBookingCreateOpen: plannerBookingCreateOpenProp,
-}: {
-  role?: UserRole | null;
-  plannerBookingCreateOpen?: boolean;
-} = {}) {
-  const [activeView] = useState(resolveBookingsGigsActiveViewFromWindow);
-  const role = roleProp ?? readCachedNavRole();
-  const plannerBookingCreateOpen =
-    plannerBookingCreateOpenProp ??
-    (typeof window === "undefined"
-      ? false
-      : isPlannerBookingsCreateChromeActive({
-          locationSearch: window.location.search,
-        }));
-
-  return (
-    <div className={PLANNER_WORKSPACE_SECONDARY_BAND_CLASS}>
-      <GigsWorkspaceSecondaryBandBody
-        activeView={activeView}
-        role={role}
-        plannerBookingCreateOpen={plannerBookingCreateOpen}
-      />
-    </div>
-  );
-}
-
 export function GigsWorkspaceSecondaryBand({
   role: roleProp,
   plannerBookingCreateOpen: plannerBookingCreateOpenProp,
@@ -179,6 +108,7 @@ export function GigsWorkspaceSecondaryBand({
   plannerBookingCreateOpen?: boolean;
 } = {}) {
   const searchParams = useSearchParams();
+  const context = useContext(GigsWorkspaceChromeContext);
   const role = roleProp ?? readCachedNavRole();
   const plannerBookingCreateOpen =
     plannerBookingCreateOpenProp ??
@@ -190,17 +120,33 @@ export function GigsWorkspaceSecondaryBand({
             : ""
           : window.location.search,
     });
+  const showGigsTabs = !plannerBookingCreateOpen && canShowGigsWorkspaceTabs(role);
   const activeView = resolveBookingsGigsActiveView(
     searchParams.get("tab"),
     typeof window === "undefined" ? null : window.location.search,
   );
+  const chromeState = context?.chromeState ?? defaultChromeState;
+  const reserveManageSlot =
+    activeView === "history" &&
+    !chromeState.showManageButton &&
+    (chromeState.onManageClick == null || chromeState.reserveManageSlot);
+
+  if (!showGigsTabs) {
+    return (
+      <div className={PLANNER_WORKSPACE_SECONDARY_BAND_CLASS}>
+        <PlannerWorkspaceSecondaryControlsPlaceholder />
+      </div>
+    );
+  }
 
   return (
     <div className={PLANNER_WORKSPACE_SECONDARY_BAND_CLASS}>
-      <GigsWorkspaceSecondaryBandBody
+      <GigsWorkspaceTabRow
         activeView={activeView}
-        role={role}
-        plannerBookingCreateOpen={plannerBookingCreateOpen}
+        counts={chromeState.counts}
+        showManageButton={chromeState.showManageButton}
+        reserveManageSlot={reserveManageSlot}
+        onManageClick={chromeState.onManageClick}
       />
     </div>
   );
