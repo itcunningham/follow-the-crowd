@@ -2,46 +2,18 @@
 
 import Link from "next/link";
 import { APP_PAGE_INSET_CLASS } from "@/app/components/layout/AppPageLayout";
-import { useGuardProfile } from "@/app/components/GuardProfileContext";
-import { readCachedNavRole } from "@/lib/navigationRoleCache";
-import { resolveProfileBackNavigation } from "@/lib/profileNavigation";
 import { PROFILE_SETUP_PATH, SETTINGS_PATH } from "@/lib/user/currentUser";
 
 const profileHeaderIconButtonClass =
   "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-ftc-border-subtle bg-ftc-surface text-ftc-text-secondary transition hover:border-ftc-border-strong hover:text-ftc-text";
 
-export default function ProfilePageHeader({
-  isOwnProfile,
-  returnTo = null,
-}: {
-  isOwnProfile: boolean;
-  returnTo?: string | null;
-}) {
-  const guardProfile = useGuardProfile();
-  const role = guardProfile?.role ?? readCachedNavRole();
-  const { href: backHref, label: backLabel } = resolveProfileBackNavigation(returnTo, role);
-
+export default function ProfilePageHeader({ isOwnProfile }: { isOwnProfile: boolean }) {
   return (
     <header className="sticky top-0 z-10 border-b border-ftc-border-subtle bg-ftc-bg/95 backdrop-blur-md md:top-12">
       <div className={`flex items-center justify-between gap-3 ${APP_PAGE_INSET_CLASS} py-2.5`}>
-        <Link
-          href={backHref}
-          aria-label={backLabel}
-          className={profileHeaderIconButtonClass}
-        >
-          <svg
-            aria-hidden="true"
-            viewBox="0 0 24 24"
-            className="h-5 w-5"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M15 18l-6-6 6-6" />
-          </svg>
-        </Link>
+        <span className="text-xs font-medium uppercase tracking-wide text-ftc-text-muted">
+          Profile
+        </span>
 
         {isOwnProfile ? (
           <div className="flex items-center gap-2">
@@ -87,9 +59,7 @@ export default function ProfilePageHeader({
             </Link>
           </div>
         ) : (
-          <span className="text-xs font-medium uppercase tracking-wide text-ftc-text-muted">
-            Profile
-          </span>
+          <span className="h-10 w-10 shrink-0" aria-hidden="true" />
         )}
       </div>
     </header>

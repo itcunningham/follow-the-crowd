@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import {
   APP_PAGE_PROFILE_CONTENT_CLASS,
   APP_PAGE_PROFILE_IDENTITY_STACK_CLASS,
@@ -43,8 +43,6 @@ export default function UserProfilePage() {
 
 function UserProfilePageView({ userId }: { userId: string }) {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const profileReturnTo = searchParams.get("returnTo");
   const guardProfile = useGuardProfile();
   const [cachedNavigation] = useState(readCachedNavigation);
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -135,7 +133,7 @@ function UserProfilePageView({ userId }: { userId: string }) {
 
   return (
     <AppProfilePageShell>
-      <ProfilePageHeader isOwnProfile={isOwnProfile} returnTo={profileReturnTo} />
+      <ProfilePageHeader isOwnProfile={isOwnProfile} />
 
       <AppPageBody className={`py-6 md:py-8 ${!isOwnProfile && profile ? "pb-4" : "pb-8"}`}>
         {loading ? (

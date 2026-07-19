@@ -2,10 +2,11 @@
 
 import "@/lib/navigationBadgePrefetch";
 import Link from "next/link";
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
-import { usePathname } from "next/navigation";
+import { useCallback, useEffect, useMemo, useRef, useSyncExternalStore } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { useNavBadges } from "@/app/components/navigation/NavBadgeProvider";
 import type { NavBadgeCounts } from "@/lib/notifications";
+import { readSupabaseSessionUserIdSync } from "@/lib/auth/sessionUserId";
 import { isMessagesInboxPath } from "@/lib/groupChats";
 import { isGigsAreaPath, isPlannerEventsAreaPath } from "@/lib/plannerEventsNav";
 import {
@@ -232,13 +233,114 @@ function getBadgeCount(item: NavItem, badgeCounts: NavBadgeCounts): number {
   return badgeCounts[item.badgeKey];
 }
 
+function MobileNavTab({
+  href,
+  label,
+  icon,
+  isActive,
+  badgeCount,
+  showBadgeSlot,
+}: {
+  href: string;
+  label: string;
+  icon: NavIconKey;
+  isActive: boolean;
+  badgeCount: number;
+  showBadgeSlot: boolean;
+}) {
+  const router = useRouter();
+  const activatedThisGestureRef = useRef(false);
+  const activeGestureRef = useRef<{
+    pointerId: number;
+    cancelled: boolean;
+  } | null>(null);
+
+  const navigate = useCallback(() => {
+    router.push(href, { scroll: false });
+  }, [href, router]);
+
+  const handlePointerDown = useCallback((event: React.PointerEvent<HTMLAnchorElement>) => {
+    if (!event.isPrimary) {
+      return;
+    }
+
+    activatedThisGestureRef.current = false;
+    activeGestureRef.current = {
+      pointerId: event.pointerId,
+      cancelled: false,
+    };
+  }, []);
+
+  const handlePointerUp = useCallback(
+    (event: React.PointerEvent<HTMLAnchorElement>) => {
+      const gesture = activeGestureRef.current;
+
+      if (!gesture || event.pointerId !== gesture.pointerId || gesture.cancelled) {
+        return;
+      }
+
+      activeGestureRef.current = null;
+
+      if (event.pointerType === "touch") {
+        activatedThisGestureRef.current = true;
+        event.preventDefault();
+        navigate();
+      }
+    },
+    [navigate],
+  );
+
+  const handlePointerCancel = useCallback((event: React.PointerEvent<HTMLAnchorElement>) => {
+    const gesture = activeGestureRef.current;
+
+    if (gesture && event.pointerId === gesture.pointerId) {
+      gesture.cancelled = true;
+      activeGestureRef.current = null;
+    }
+  }, []);
+
+  const handleClick = useCallback(
+    (event: React.MouseEvent<HTMLAnchorElement>) => {
+      if (activatedThisGestureRef.current) {
+        event.preventDefault();
+        return;
+      }
+
+      event.preventDefault();
+      navigate();
+    },
+    [navigate],
+  );
+
+  return (
+    <Link
+      href={href}
+      prefetch
+      aria-label={label}
+      title={label}
+      aria-current={isActive ? "page" : undefined}
+      className={`${navLinkClassName(isActive, "mobile")} touch-manipulation`}
+      onPointerDown={handlePointerDown}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerCancel}
+      onClick={handleClick}
+    >
+      <span className="relative inline-flex items-center justify-center">
+        <NavTabIcon icon={icon} active={isActive} />
+        <MobileNavBadge count={badgeCount} reserveSpace={showBadgeSlot} />
+      </span>
+    </Link>
+  );
+}
+
 export default function AppNavigation() {
   const pathname = usePathname();
   const guardProfile = useGuardProfile();
   const { badgeCounts, reserveBadgeSpace } = useNavBadges();
-  const [cachedNavigation] = useState(readCachedNavigation);
+  const cachedNavigation = readCachedNavigation();
   const role = guardProfile?.role ?? cachedNavigation.role;
-  const currentUserId = guardProfile?.user_id ?? cachedNavigation.userId;
+  const currentUserId =
+    guardProfile?.user_id ?? cachedNavigation.userId ?? readSupabaseSessionUserIdSync();
 
   const effectiveRole = role ?? "both";
   const resolvedRole = role;
@@ -294,7 +396,7 @@ export default function AppNavigation() {
 
               return (
                 <Link
-                  key={item.href}
+                  key={item.icon}
                   href={item.href}
                   className={navLinkClassName(isActive, "desktop")}
                 >
@@ -324,18 +426,15 @@ export default function AppNavigation() {
                 : Boolean(item.badgeKey) && reserveBadgeSpace;
 
             return (
-              <Link
-                key={item.href}
+              <MobileNavTab
+                key={item.icon}
                 href={item.href}
-                aria-label={item.label}
-                title={item.label}
-                className={navLinkClassName(isActive, "mobile")}
-              >
-                <span className="relative inline-flex items-center justify-center">
-                  <NavTabIcon icon={item.icon} active={isActive} />
-                  <MobileNavBadge count={badgeCount} reserveSpace={showBadgeSlot} />
-                </span>
-              </Link>
+                label={item.label}
+                icon={item.icon}
+                isActive={isActive}
+                badgeCount={badgeCount}
+                showBadgeSlot={showBadgeSlot}
+              />
             );
           })}
         </div>
