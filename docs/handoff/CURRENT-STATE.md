@@ -197,6 +197,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `179724e` — fix delayed Gigs tab counts (decouple from sender profile fetch)
 - `28f079b` — document permanent phone/desktop parity rule (`FTC_WORKFLOW.md` §7)
 - `7d36d55` — fix workspace tab row glitch during route transitions
 - `76475cd` — batch Events lineup stats, event detail guard, Gigs skeleton, event-detail DM back navigation
