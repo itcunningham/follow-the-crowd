@@ -76,7 +76,11 @@ export const EVENTS_LIST_TAB_ROW_CLASS =
 export const EVENT_PLANS_TOOLBAR_ROW_CLASS =
   "relative mb-4 h-[3.125rem] w-full shrink-0";
 
-/** Event Plans card — vertically centred Use plan column; reserved in selection mode via invisible spacer. */
+/** Event Plans card — layout-only reserve matching Use plan width in delete-selection mode. */
+export const EVENT_PLAN_ACTION_RESERVE_CLASS =
+  "h-11 w-[5.5rem] shrink-0 self-center";
+
+/** Event Plans card — vertically centred Use plan column. */
 export const EVENT_PLAN_USE_BUTTON_WRAP_CLASS =
   "shrink-0 self-center sm:flex sm:justify-end";
 

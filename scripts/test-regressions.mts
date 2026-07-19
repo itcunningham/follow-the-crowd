@@ -29,6 +29,7 @@ import { resolveGigsCalendarBookingNavigation } from "../lib/bookings/gigsCalend
 import { hasUnsavedProfileEdits, createProfileEditBaseline } from "../lib/user/profileEditDirtyState";
 import { getUsernameFormatError, normalizeSoundCloudInput } from "../lib/user/profileFormUtils";
 import {
+  EVENT_PLAN_ACTION_RESERVE_CLASS,
   EVENT_PLAN_USE_BUTTON_CLASS,
   EVENT_PLAN_USE_BUTTON_WRAP_CLASS,
 } from "../lib/design/ftcDesignSystem";
@@ -538,6 +539,9 @@ function testEventPlanUseButtonKeepsStableCardLayout() {
   assert.match(EVENT_PLAN_USE_BUTTON_CLASS, /min-h-11/);
   assert.doesNotMatch(EVENT_PLAN_USE_BUTTON_CLASS, /w-full/);
   assert.doesNotMatch(EVENT_PLAN_USE_BUTTON_CLASS, /w-\[/);
+  assert.match(EVENT_PLAN_ACTION_RESERVE_CLASS, /h-11/);
+  assert.match(EVENT_PLAN_ACTION_RESERVE_CLASS, /w-\[5\.5rem\]/);
+  assert.doesNotMatch(EVENT_PLAN_ACTION_RESERVE_CLASS, /ftc-btn/);
 }
 
 function main() {

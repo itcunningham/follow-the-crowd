@@ -37,6 +37,7 @@ import {
 } from "@/lib/bookings/planDeepLink";
 import {
   FTC_LIST_GAP_CLASS,
+  EVENT_PLAN_ACTION_RESERVE_CLASS,
   EVENT_PLAN_USE_BUTTON_CLASS,
   EVENT_PLAN_USE_BUTTON_WRAP_CLASS,
   EVENT_PLANS_CREATE_BUTTON_CLASS,
@@ -606,12 +607,10 @@ function EventPlanCard({
           </button>
         )}
 
-        <div className={EVENT_PLAN_USE_BUTTON_WRAP_CLASS}>
-          {selectionMode ? (
-            <span aria-hidden="true" className={EVENT_PLAN_USE_BUTTON_CLASS}>
-              Use plan
-            </span>
-          ) : (
+        {selectionMode ? (
+          <div aria-hidden="true" className={EVENT_PLAN_ACTION_RESERVE_CLASS} />
+        ) : (
+          <div className={EVENT_PLAN_USE_BUTTON_WRAP_CLASS}>
             <button
               type="button"
               onClick={(event) => {
@@ -622,8 +621,8 @@ function EventPlanCard({
             >
               Use plan
             </button>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       {selectionMode ? (

@@ -104,7 +104,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 - **Profile (2026-07-19):** removed redundant Calendar/Gigs navigation card from DJ profile — availability and bookings stay in Gigs nav only
 - **Profile header/nav (2026-07-19):** removed back button from own-profile header (top-level nav destination); mobile bottom nav Profile tab uses same touch `pointerup` routing as other tabs and resolves user id synchronously from session/cache
 - **Event Plans delete mode (2026-07-19):** trash and delete-selection toolbars share one fixed-height secondary row (`EVENT_PLANS_TOOLBAR_ROW_CLASS`) so plan cards no longer shift when entering or leaving selection mode; title-row Create button slot stays reserved on mobile; toolbar layers swap in place via absolute positioning with `embedded` selection controls (no flex-wrap growth)
-- **Event Plans selection cards (2026-07-19):** delete-selection keeps the full-size Use plan button column via an invisible spacer (`EVENT_PLAN_USE_BUTTON_WRAP_CLASS` + `EVENT_PLAN_USE_BUTTON_CLASS`) so title and plan details never shift; compact checkbox overlays the card top-right corner (`top-3 right-3`) while the full card stays tappable
+- **Event Plans selection cards (2026-07-19):** delete-selection renders only a top-right checkbox plus a layout-only action reserve (`EVENT_PLAN_ACTION_RESERVE_CLASS`); Use plan button is not in the DOM during selection mode, so title and plan details stay fixed without a visible duplicate button
 
 ## Event Plans
 
