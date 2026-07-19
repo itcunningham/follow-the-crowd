@@ -147,8 +147,9 @@ function UserProfilePageView({ userId }: { userId: string }) {
                 <ProfileHero
                   displayName={displayName}
                   username={profile.username}
+                  artistName={profile.artist_name}
+                  promoterBrandName={profile.promoter_brand_name}
                   avatarUrl={profile.avatar_url}
-                  role={profile.role}
                   bio={profile.bio}
                 />
 

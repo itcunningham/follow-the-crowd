@@ -4,23 +4,29 @@ import { useState } from "react";
 import ProfileAvatar from "@/app/components/ProfileAvatar";
 import ProfileBioText from "@/app/components/profile/ProfileBioText";
 import ProfilePhotoViewer from "@/app/components/profile/ProfilePhotoViewer";
-import { formatProfileIdentityUsername } from "@/lib/user/profileFormUtils";
-import { type UserRole } from "@/lib/user/currentUser";
+import { resolveProfileIdentityPresentation } from "@/lib/user/profileFormUtils";
 
 export default function ProfileHero({
   displayName,
   username,
+  artistName,
+  promoterBrandName,
   avatarUrl,
-  role,
   bio,
 }: {
   displayName: string;
   username?: string | null;
+  artistName?: string | null;
+  promoterBrandName?: string | null;
   avatarUrl?: string | null;
-  role: UserRole | null;
   bio?: string | null;
 }) {
-  const profileUsername = formatProfileIdentityUsername(username);
+  const { primary, secondaryUsername } = resolveProfileIdentityPresentation({
+    display_name: displayName,
+    username,
+    artist_name: artistName,
+    promoter_brand_name: promoterBrandName,
+  });
   const hasAvatar = Boolean(avatarUrl?.trim());
   const [avatarExpanded, setAvatarExpanded] = useState(false);
 
@@ -36,7 +42,7 @@ export default function ProfileHero({
             className="ftc-profile-hero-avatar-interactive shrink-0"
           >
             <ProfileAvatar
-              name={displayName}
+              name={primary}
               avatarUrl={avatarUrl}
               size="xl"
               className="h-20 w-20 sm:h-24 sm:w-24"
@@ -44,7 +50,7 @@ export default function ProfileHero({
           </button>
         ) : (
           <ProfileAvatar
-            name={displayName}
+            name={primary}
             avatarUrl={avatarUrl}
             size="xl"
             className="h-20 w-20 shrink-0 sm:h-24 sm:w-24"
@@ -53,12 +59,12 @@ export default function ProfileHero({
 
         <div className="min-w-0 flex-1 pt-1">
           <h1 className="break-words text-2xl font-bold leading-tight text-ftc-text [overflow-wrap:anywhere] sm:text-[1.75rem]">
-            {profileUsername ?? displayName}
+            {primary}
           </h1>
 
-          {profileUsername ? (
+          {secondaryUsername ? (
             <p className="mt-1 break-words text-sm font-medium text-ftc-text-secondary [overflow-wrap:anywhere]">
-              {displayName}
+              {secondaryUsername}
             </p>
           ) : null}
 
@@ -71,7 +77,7 @@ export default function ProfileHero({
           open={avatarExpanded}
           onClose={() => setAvatarExpanded(false)}
           imageUrl={avatarUrl!}
-          displayName={displayName}
+          displayName={primary}
         />
       ) : null}
     </>

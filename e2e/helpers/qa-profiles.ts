@@ -3,6 +3,11 @@ import path from "node:path";
 import { expect, type Page } from "@playwright/test";
 import { AUTH_DIR } from "./auth-paths";
 import type { QaRole } from "./credentials";
+import {
+  isRoleLiteralUsername,
+  normalizeUsername,
+  suggestSyntheticQaUsername,
+} from "../../lib/user/profileFormUtils";
 
 export const SYNTHETIC_DISPLAY_NAMES: Record<QaRole, string> = {
   planner: "FTC QA Planner",
@@ -22,27 +27,31 @@ export function roleForSyntheticDisplayName(displayName: string): QaRole | null 
   return null;
 }
 
-async function saveProfileDisplayName(page: Page, displayName: string): Promise<void> {
+async function saveProfileDisplayName(page: Page, role: QaRole, displayName: string): Promise<void> {
   await page.getByRole("textbox", { name: "Display name" }).fill(displayName);
   const usernameField = page.getByRole("textbox", { name: "Username" });
-  if (!(await usernameField.inputValue()).trim()) {
-    await usernameField.fill(`ftcqa${Date.now().toString().slice(-6)}`);
+  const currentUsername = normalizeUsername(await usernameField.inputValue());
+  const targetUsername = suggestSyntheticQaUsername(role);
+
+  if (!currentUsername || isRoleLiteralUsername(currentUsername)) {
+    await usernameField.fill(targetUsername);
   }
   await page.getByRole("button", { name: /^Save changes$|^Save profile$/i }).click();
   await expect(page).not.toHaveURL(/\/profile\/setup/, { timeout: 20_000 });
 }
 
 async function readProfileDisplayName(page: Page): Promise<string> {
-  const heading = (await page.getByRole("heading", { level: 1 }).innerText()).trim();
-  const displayLine = await page
+  return (await page.getByRole("heading", { level: 1 }).innerText()).trim();
+}
+
+async function readProfileSecondaryUsername(page: Page): Promise<string | null> {
+  const secondary = await page
     .locator("h1 + p")
     .first()
     .textContent()
     .catch(() => null);
-  if (displayLine?.trim() && displayLine.trim() !== heading) {
-    return displayLine.trim();
-  }
-  return heading;
+
+  return secondary?.trim() ? normalizeUsername(secondary) : null;
 }
 
 export async function ensureSyntheticQaProfile(page: Page, role: QaRole): Promise<void> {
@@ -51,18 +60,21 @@ export async function ensureSyntheticQaProfile(page: Page, role: QaRole): Promis
   await expect(page).toHaveURL(/\/profile\//, { timeout: 15_000 });
 
   if (page.url().includes("/profile/setup")) {
-    await saveProfileDisplayName(page, targetName);
+    await saveProfileDisplayName(page, role, targetName);
     return;
   }
 
   const currentName = await readProfileDisplayName(page);
-  if (currentName === targetName) {
+  const secondaryUsername = await readProfileSecondaryUsername(page);
+  const needsUsernameFix = isRoleLiteralUsername(secondaryUsername);
+
+  if (currentName === targetName && !needsUsernameFix) {
     return;
   }
 
   await page.getByRole("link", { name: "Edit profile" }).click();
   await expect(page).toHaveURL(/\/profile\/setup/, { timeout: 15_000 });
-  await saveProfileDisplayName(page, targetName);
+  await saveProfileDisplayName(page, role, targetName);
 }
 
 export async function captureSyntheticInviteLabel(page: Page, role: QaRole): Promise<void> {

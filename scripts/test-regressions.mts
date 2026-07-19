@@ -32,7 +32,7 @@ import {
 } from "../lib/dm/threadNavigation";
 import { resolveGigsCalendarBookingNavigation } from "../lib/bookings/gigsCalendarNavigation";
 import { hasUnsavedProfileEdits, createProfileEditBaseline } from "../lib/user/profileEditDirtyState";
-import { getUsernameFormatError, normalizeSoundCloudInput } from "../lib/user/profileFormUtils";
+import { getUsernameFormatError, normalizeSoundCloudInput, resolveProfileIdentityPresentation } from "../lib/user/profileFormUtils";
 import {
   PLANNER_WORKSPACE_SUBNAV_ROW_CLASS,
   PLANNER_WORKSPACE_SUBNAV_SLOT_CLASS,
@@ -642,6 +642,49 @@ function testWorkspaceActiveHrefIgnoresStaleOverrides() {
   assert.equal(resolveActiveWorkspaceHref("/bookings"), "/bookings");
 }
 
+function testProfileIdentityPresentationHierarchy() {
+  assert.deepEqual(
+    resolveProfileIdentityPresentation({
+      display_name: "FTC QA DJ",
+      username: "both",
+    }),
+    { primary: "FTC QA DJ", secondaryUsername: "@both" },
+  );
+
+  assert.deepEqual(
+    resolveProfileIdentityPresentation({
+      display_name: "River Stage",
+      username: "river_stage",
+    }),
+    { primary: "River Stage", secondaryUsername: "@river_stage" },
+  );
+
+  assert.deepEqual(
+    resolveProfileIdentityPresentation({
+      display_name: "river_stage",
+      username: "river_stage",
+    }),
+    { primary: "river_stage", secondaryUsername: null },
+  );
+
+  assert.deepEqual(
+    resolveProfileIdentityPresentation({
+      display_name: null,
+      username: "ftcqa_dj",
+    }),
+    { primary: "ftcqa_dj", secondaryUsername: null },
+  );
+
+  assert.deepEqual(
+    resolveProfileIdentityPresentation({
+      display_name: null,
+      username: null,
+      artist_name: "DJ Nova",
+    }),
+    { primary: "DJ Nova", secondaryUsername: null },
+  );
+}
+
 function testEventPlanUseButtonKeepsStableCardLayout() {
   assert.match(EVENT_PLAN_USE_BUTTON_WRAP_CLASS, /shrink-0/);
   assert.match(EVENT_PLAN_USE_BUTTON_WRAP_CLASS, /self-center/);
@@ -696,6 +739,7 @@ function main() {
   testGigsTabRowKeepsStableCountSlots();
   testWorkspaceSubNavLayoutIsStable();
   testWorkspaceActiveHrefIgnoresStaleOverrides();
+  testProfileIdentityPresentationHierarchy();
   console.log("All regression checks passed.");
 }
 

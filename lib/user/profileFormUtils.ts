@@ -360,6 +360,61 @@ export function formatProfileIdentityUsername(username: string | null | undefine
   return normalized || null;
 }
 
+const ROLE_LITERAL_USERNAMES = new Set(["planner", "dj", "both", "promoter"]);
+
+function pickPublicIdentityField(value: string | null | undefined): string | null {
+  const trimmed = value?.trim();
+
+  if (!trimmed) {
+    return null;
+  }
+
+  return trimmed;
+}
+
+export type ProfileIdentityPresentation = {
+  primary: string;
+  secondaryUsername: string | null;
+};
+
+/** Public profile heading: meaningful display identity first, @username second when distinct. */
+export function resolveProfileIdentityPresentation(profile: {
+  display_name?: string | null;
+  username?: string | null;
+  artist_name?: string | null;
+  promoter_brand_name?: string | null;
+}): ProfileIdentityPresentation {
+  const primary =
+    pickPublicIdentityField(profile.display_name) ??
+    pickPublicIdentityField(profile.artist_name) ??
+    pickPublicIdentityField(profile.promoter_brand_name) ??
+    pickPublicIdentityField(formatProfileIdentityUsername(profile.username)) ??
+    "Profile";
+
+  const normalizedUsername = formatProfileIdentityUsername(profile.username);
+  const formattedUsername = normalizedUsername ? formatPublicUsername(normalizedUsername) : null;
+
+  if (
+    !formattedUsername ||
+    normalizeUsername(primary) === normalizedUsername ||
+    primary.toLowerCase() === formattedUsername.toLowerCase()
+  ) {
+    return { primary, secondaryUsername: null };
+  }
+
+  return { primary, secondaryUsername: formattedUsername };
+}
+
+export function isRoleLiteralUsername(username: string | null | undefined): boolean {
+  const normalized = formatProfileIdentityUsername(username);
+
+  return normalized ? ROLE_LITERAL_USERNAMES.has(normalized) : false;
+}
+
+export function suggestSyntheticQaUsername(role: "planner" | "dj" | "both"): string {
+  return `ftcqa_${role}`;
+}
+
 export function normalizeExternalUrl(
   raw: string,
   options?: { label?: string; allowedHosts?: string[] },
