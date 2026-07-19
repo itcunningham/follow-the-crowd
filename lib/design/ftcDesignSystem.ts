@@ -60,6 +60,14 @@ export function ftcFilterPillClass(isActive: boolean): string {
   return `${FTC_FILTER_PILL_CLASS}${isActive ? " ftc-filter-pill-active" : ""}`;
 }
 
+/** Gigs workspace tab pill — fixed row layout with reserved count slot. */
+export const GIGS_TAB_PILL_CLASS =
+  "inline-flex shrink-0 items-center justify-center gap-1.5 ftc-filter-pill";
+
+/** Reserved width for optional Gigs tab counts (up to two digits). */
+export const GIGS_TAB_COUNT_SLOT_CLASS =
+  "ml-1 inline-flex min-w-[1.75rem] justify-end tabular-nums";
+
 /** Events list tab row — trash action matches filter pill height (30px). */
 export const FTC_EVENTS_LIST_TAB_ACTION_CLASS =
   "inline-flex h-[1.875rem] w-[1.875rem] shrink-0 items-center justify-center rounded-lg border border-ftc-border-subtle bg-ftc-bg-elevated text-ftc-text-muted transition enabled:hover:border-ftc-border-strong enabled:hover:text-ftc-text-secondary disabled:cursor-not-allowed disabled:opacity-50";

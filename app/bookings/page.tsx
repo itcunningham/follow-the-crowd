@@ -9,6 +9,7 @@ import {
   DjGigsTabRow,
   SkeletonBlock,
 } from "@/app/components/skeleton/Skeleton";
+import { DjGigsTabs } from "@/app/components/bookings/DjGigsTabs";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
 import { useGuardProfile } from "@/app/components/GuardProfileContext";
 import {
@@ -42,7 +43,6 @@ import {
   ALL_SELECTED_DJS_ALREADY_HAVE_EVENT_REQUEST_MESSAGE,
   buildBookingSendResultMessage,
   buildEventBookingDuplicateMap,
-  countDjGigsByTab,
   filterActiveBookingGroups,
   filterActiveBookings,
   filterArchivedCancelledBookings,
@@ -1427,6 +1427,7 @@ function BookingsPageContent() {
             >
               <DjGigsTabs
                 activeView={djGigsView}
+                ready={gigsListReady}
                 bookings={receivedBookings}
                 hiddenBookingIds={hiddenBookingIds}
               />
@@ -1897,53 +1898,6 @@ function BookingsPageContent() {
       />
       </PlannerWorkspacePage>
     </OnboardingGuard>
-  );
-}
-
-function DjGigsTabs({
-  activeView,
-  bookings,
-  hiddenBookingIds,
-}: {
-  activeView: DjGigsListTab;
-  bookings: BookingRequest[];
-  hiddenBookingIds: ReadonlySet<string>;
-}) {
-  const counts = useMemo(
-    () => countDjGigsByTab(bookings, hiddenBookingIds),
-    [bookings, hiddenBookingIds],
-  );
-
-  const tabs: { value: DjGigsListTab; label: string; count?: number; icon?: "history" }[] = [
-    { value: "pending", label: "Incoming", count: counts.pending },
-    { value: "accepted", label: "Confirmed", count: counts.accepted },
-    { value: "history", label: "History", count: counts.history, icon: "history" },
-  ];
-
-  return (
-    <div className="flex flex-wrap gap-2">
-      {tabs.map((tab) => {
-        const isActive = activeView === tab.value;
-        const href = buildGigsListHref(tab.value);
-
-        return (
-          <Link
-            key={tab.value}
-            href={href}
-            onClick={(event) => {
-              if (isActive) {
-                event.preventDefault();
-              }
-            }}
-            className={`inline-flex items-center gap-1.5 ftc-filter-pill ${isActive ? "ftc-filter-pill-active" : ""}`}
-          >
-            {tab.icon === "history" ? <HistoryIcon /> : null}
-            {tab.label}
-            {tab.count && tab.count > 0 ? ` ${tab.count}` : ""}
-          </Link>
-        );
-      })}
-    </div>
   );
 }
 

@@ -32,6 +32,8 @@ import {
   EVENT_PLAN_ACTION_RESERVE_CLASS,
   EVENT_PLAN_USE_BUTTON_CLASS,
   EVENT_PLAN_USE_BUTTON_WRAP_CLASS,
+  GIGS_TAB_COUNT_SLOT_CLASS,
+  GIGS_TAB_PILL_CLASS,
 } from "../lib/design/ftcDesignSystem";
 
 function testPastEventDatesAreBlocked() {
@@ -544,6 +546,13 @@ function testEventPlanUseButtonKeepsStableCardLayout() {
   assert.doesNotMatch(EVENT_PLAN_ACTION_RESERVE_CLASS, /ftc-btn/);
 }
 
+function testGigsTabRowKeepsStableCountSlots() {
+  assert.match(GIGS_TAB_PILL_CLASS, /shrink-0/);
+  assert.match(GIGS_TAB_PILL_CLASS, /ftc-filter-pill/);
+  assert.match(GIGS_TAB_COUNT_SLOT_CLASS, /tabular-nums/);
+  assert.match(GIGS_TAB_COUNT_SLOT_CLASS, /min-w-/);
+}
+
 function main() {
   testPastEventDatesAreBlocked();
   testFutureEventDatesAreAllowed();
@@ -570,6 +579,7 @@ function main() {
   testLegacyEventDatesResolveForGigTabs();
   testConfirmedTabAliasParsesFromUrl();
   testEventPlanUseButtonKeepsStableCardLayout();
+  testGigsTabRowKeepsStableCountSlots();
   console.log("All regression checks passed.");
 }
 

@@ -54,8 +54,8 @@ import {
   AppProfilePageShell,
 } from "@/app/components/layout/AppPageLayout";
 import ProfilePageHeader from "@/app/components/profile/ProfilePageHeader";
-import type { DjGigsListTab } from "@/lib/bookingRequests";
-import { buildGigsListHref, resolveGigsListTabParam } from "@/lib/bookings/gigsListNavigation";
+import { DjGigsTabs } from "@/app/components/bookings/DjGigsTabs";
+import { resolveGigsListTabParam } from "@/lib/bookings/gigsListNavigation";
 import { isPlannerBookingsCreateChromeActive } from "@/lib/bookings/planDeepLink";
 import { buildEventsListHref, isCalendarOriginCreateParam, resolveCalendarCreateInitialStep, resolveEventDetailBackHref, resolveEventsListTabParam } from "@/lib/events/eventsListNavigation";
 import { useEventEditHeaderState } from "@/lib/events/useEventEditHeaderVisibility";
@@ -724,29 +724,8 @@ export function BookingsContentSkeleton({
 function GigsWorkspaceTabsShell() {
   const searchParams = useSearchParams();
   const activeView = resolveGigsListTabParam(searchParams.get("tab"));
-  const tabs: { value: DjGigsListTab; label: string }[] = [
-    { value: "pending", label: "Incoming" },
-    { value: "accepted", label: "Confirmed" },
-    { value: "history", label: "History" },
-  ];
 
-  return (
-    <div className="flex flex-wrap gap-2">
-      {tabs.map((tab) => {
-        const isActive = activeView === tab.value;
-
-        return (
-          <Link
-            key={tab.value}
-            href={buildGigsListHref(tab.value)}
-            className={`inline-flex items-center gap-1.5 ftc-filter-pill ${isActive ? "ftc-filter-pill-active" : ""}`}
-          >
-            {tab.label}
-          </Link>
-        );
-      })}
-    </div>
-  );
+  return <DjGigsTabs activeView={activeView} ready={false} />;
 }
 
 function canShowGigsWorkspaceTabs(role: UserRole | null): boolean {
@@ -862,21 +841,6 @@ export function BookingsPageLoadingShell({
     >
       {plannerBookingCreateOpen ? <BookingCreateEventDetailsCardSkeleton /> : null}
     </PlannerWorkspacePage>
-  );
-}
-
-function GigsTabPillsSkeleton() {
-  const labels = ["Incoming", "Confirmed", "History"];
-
-  return (
-    <div aria-hidden="true" className="mt-4 flex flex-wrap gap-2">
-      {labels.map((label, index) => (
-        <SkeletonBlock
-          key={label}
-          className={`h-[1.875rem] rounded-xl ${index === 0 ? "w-[5.75rem]" : index === 1 ? "w-[5.75rem]" : "w-[5rem]"}`}
-        />
-      ))}
-    </div>
   );
 }
 
