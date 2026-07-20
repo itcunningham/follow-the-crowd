@@ -240,6 +240,24 @@ export function filterVisiblePlannerHistoryEvents<
   return events.filter((event) => isEventVisibleInPlannerHistory(event));
 }
 
+/** Selected History ids that can be hidden via hide_events_from_history (cancelled, visible). */
+export function resolvePlannerHistoryHideEventIds<
+  T extends Pick<Event, "id" | "status" | "history_hidden_at">,
+>(events: T[], selectedIds: string[]): string[] {
+  if (selectedIds.length === 0) {
+    return [];
+  }
+
+  const selectedIdSet = new Set(selectedIds.map((id) => String(id)));
+
+  return events
+    .filter(
+      (event) =>
+        selectedIdSet.has(String(event.id)) && isEventVisibleInPlannerHistory(event),
+    )
+    .map((event) => String(event.id));
+}
+
 type EventStartSortable = Pick<Event, "event_date" | "set_time" | "name">;
 
 function getEventStartSortTimestamp(event: EventStartSortable): number | null {

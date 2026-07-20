@@ -25,6 +25,7 @@ import {
 import { parseDjGigsListTab, resolveGigsListTabParam } from "../lib/bookings/gigsListNavigation";
 import { resolveEventsHistoryTrashVisible } from "../lib/events/eventsListNavigation";
 import { resolveHistoryBulkSelectAllToggle } from "../app/components/history/HistoryBulkManage";
+import { resolvePlannerHistoryHideEventIds } from "../lib/events";
 import {
   defaultGigsWorkspaceChromeState,
   gigsWorkspaceChromeStatesEqual,
@@ -723,6 +724,27 @@ async function testEventsHistorySelectAllButtonInteraction() {
   await runHistorySelectAllInteractionTest();
 }
 
+async function testEventsHistoryRemoveConfirmInteraction() {
+  const { runHistoryRemoveConfirmInteractionTest, runHistoryRemoveConfirmFailureTest } =
+    await import("./test-history-remove-confirm.js");
+  await runHistoryRemoveConfirmInteractionTest();
+  await runHistoryRemoveConfirmFailureTest();
+}
+
+function testResolvePlannerHistoryHideEventIds() {
+  const events = [
+    { id: "cancelled-visible", status: "cancelled" as const, history_hidden_at: null },
+    { id: "cancelled-hidden", status: "cancelled" as const, history_hidden_at: "2026-01-01T00:00:00.000Z" },
+    { id: "past-active", status: "completed" as const, history_hidden_at: null },
+  ];
+
+  assert.deepEqual(
+    resolvePlannerHistoryHideEventIds(events, ["cancelled-visible", "past-active"]),
+    ["cancelled-visible"],
+  );
+  assert.deepEqual(resolvePlannerHistoryHideEventIds(events, ["past-active"]), []);
+}
+
 function testEventsHistoryBulkSelectAllTogglesSelection() {
   const bulkSource = readFileSync(
     new URL("../app/components/history/HistoryBulkManage.tsx", import.meta.url),
@@ -747,25 +769,15 @@ function testEventsHistoryBulkSelectAllTogglesSelection() {
   );
   assert.deepEqual(resolveHistoryBulkSelectAllToggle([], selected), selected);
 
+  assert.match(bulkSource, /pendingRemoveIdsRef/);
+  assert.match(bulkSource, /selectedIdsRef/);
+
   const eventsSource = readFileSync(
     new URL("../app/(planner-workspace)/events/EventsPageClient.tsx", import.meta.url),
     "utf8",
   );
-  assert.match(
-    eventsSource,
-    /const visibleRemovableHistoryEvents = useMemo\(\(\) => \{/,
-  );
-  assert.match(eventsSource, /return visibleFilteredEvents;/);
-  assert.match(eventsSource, /canToggleAll=\{canToggleAllHistorySelection\}/);
-  assert.match(eventsSource, /canDelete=\{canDeleteHistorySelection\}/);
-  assert.match(
-    eventsSource,
-    /visibleRemovableHistoryEvents\.map\(\(event\) => event\.id\)/,
-  );
-  assert.match(bulkSource, /canToggleAll !== undefined/);
-  assert.match(bulkSource, /canDelete !== undefined/);
-  assert.match(bulkSource, /data-testid="events-history-select-all"/);
-  assert.match(bulkSource, /function handleSelectAllClick/);
+  assert.match(eventsSource, /resolvePlannerHistoryHideEventIds\(events, eventIds\)/);
+  assert.match(eventsSource, /hideEventsFromHistory\(hideableEventIds\)/);
 }
 
 function testEventsHistorySelectionToolbarUsesDeleteLabel() {
@@ -931,6 +943,7 @@ async function main() {
   testEventPlanUseButtonKeepsStableCardLayout();
   testGigsTabRowKeepsStableCountSlots();
   testEventsHistoryBulkSelectAllTogglesSelection();
+  testResolvePlannerHistoryHideEventIds();
   testEventsHistorySelectionToolbarUsesDeleteLabel();
   testEventsHistoryTrashVisibleUsesRenderedHistoryList();
   testGigsTabCountsDeriveFromSameBookingSnapshot();
@@ -941,6 +954,7 @@ async function main() {
   testWorkspaceActiveHrefIgnoresStaleOverrides();
   testProfileIdentityPresentationHierarchy();
   await testEventsHistorySelectAllButtonInteraction();
+  await testEventsHistoryRemoveConfirmInteraction();
   console.log("All regression checks passed.");
 }
 

@@ -75,6 +75,7 @@ import {
   isPlannerEventActive,
   listDjInvitedEvents,
   listOwnedEvents,
+  resolvePlannerHistoryHideEventIds,
   sortEventsByStartAscending,
   sortEventsByStartDescending,
   updateEventCoverImageUrl,
@@ -966,15 +967,26 @@ function EventsPageClientView({
     setError(null);
     setSuccessMessage(null);
 
+    const hideableEventIds = resolvePlannerHistoryHideEventIds(events, eventIds);
+
+    if (hideableEventIds.length === 0) {
+      const message = "Could not remove selected events from history.";
+      setError(message);
+      throw new Error(message);
+    }
+
     try {
-      const { successes, failures } = await hideEventsFromHistory(eventIds);
+      const { successes, failures } = await hideEventsFromHistory(hideableEventIds);
 
       if (successes.length > 0) {
         const hiddenAt = new Date().toISOString();
+        const successIdSet = new Set(successes.map((id) => String(id)));
 
         setEvents((current) => {
           const next = current.map((event) =>
-            successes.includes(event.id) ? { ...event, history_hidden_at: hiddenAt } : event,
+            successIdSet.has(String(event.id))
+              ? { ...event, history_hidden_at: hiddenAt }
+              : event,
           );
           writeEventsListCache(isPlanner, next);
           return next;
@@ -986,7 +998,7 @@ function EventsPageClientView({
 
       if (failures.length > 0) {
         const message =
-          failures.length === eventIds.length
+          failures.length === hideableEventIds.length
             ? "Could not remove selected events from history."
             : `${failures.length} event${failures.length === 1 ? "" : "s"} could not be removed from history.`;
 
@@ -995,6 +1007,12 @@ function EventsPageClientView({
         if (successes.length === 0) {
           throw new Error(message);
         }
+      }
+
+      if (successes.length === 0) {
+        const message = "Could not remove selected events from history.";
+        setError(message);
+        throw new Error(message);
       }
     } catch (removeError) {
       console.error("Failed to remove events from history:", removeError);

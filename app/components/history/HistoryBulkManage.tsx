@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, type MouseEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { FTC_ICON_BUTTON_SM_CLASS } from "@/lib/design/ftcDesignSystem";
 
@@ -61,6 +61,10 @@ export function useHistoryBulkManage<T extends { id: string }>(items: T[]) {
   const [pendingRemoveIds, setPendingRemoveIds] = useState<string[]>([]);
   const [removingIds, setRemovingIds] = useState<Set<string>>(() => new Set());
   const [removing, setRemoving] = useState(false);
+  const selectedIdsRef = useRef(selectedIds);
+  const pendingRemoveIdsRef = useRef(pendingRemoveIds);
+  selectedIdsRef.current = selectedIds;
+  pendingRemoveIdsRef.current = pendingRemoveIds;
 
   const itemIds = useMemo(() => items.map((item) => item.id), [items]);
   const selectedCount = selectedIds.size;
@@ -77,15 +81,18 @@ export function useHistoryBulkManage<T extends { id: string }>(items: T[]) {
     setSelectedIds(new Set());
     setConfirmOpen(false);
     setConfirmCount(0);
+    pendingRemoveIdsRef.current = [];
     setPendingRemoveIds([]);
     setRemovingIds(new Set());
   }
 
   function enterSelectionMode() {
     setSelectionMode(true);
+    selectedIdsRef.current = new Set();
     setSelectedIds(new Set());
     setConfirmOpen(false);
     setConfirmCount(0);
+    pendingRemoveIdsRef.current = [];
     setPendingRemoveIds([]);
     setRemovingIds(new Set());
     setRemoving(false);
@@ -110,6 +117,7 @@ export function useHistoryBulkManage<T extends { id: string }>(items: T[]) {
         next.add(id);
       }
 
+      selectedIdsRef.current = next;
       return next;
     });
   }
@@ -142,19 +150,29 @@ export function useHistoryBulkManage<T extends { id: string }>(items: T[]) {
         return;
       }
 
-      setSelectedIds((current) => resolveHistoryBulkSelectAllToggle(ids, current));
+      setSelectedIds((current) => {
+        const next = resolveHistoryBulkSelectAllToggle(ids, current);
+        selectedIdsRef.current = next;
+        return next;
+      });
     },
     [removing],
   );
 
   function openConfirm() {
-    if (removing || selectedCount === 0) {
+    if (removing) {
       return;
     }
 
-    const ids = [...selectedIds];
-    setConfirmCount(ids.length);
+    const ids = [...selectedIdsRef.current].map((id) => String(id));
+
+    if (ids.length === 0) {
+      return;
+    }
+
+    pendingRemoveIdsRef.current = ids;
     setPendingRemoveIds(ids);
+    setConfirmCount(ids.length);
     setConfirmOpen(true);
   }
 
@@ -165,6 +183,7 @@ export function useHistoryBulkManage<T extends { id: string }>(items: T[]) {
 
     setConfirmOpen(false);
     setConfirmCount(0);
+    pendingRemoveIdsRef.current = [];
     setPendingRemoveIds([]);
   }
 
@@ -173,7 +192,10 @@ export function useHistoryBulkManage<T extends { id: string }>(items: T[]) {
       return;
     }
 
-    const ids = pendingRemoveIds.length > 0 ? [...pendingRemoveIds] : [...selectedIds];
+    const ids =
+      pendingRemoveIdsRef.current.length > 0
+        ? [...pendingRemoveIdsRef.current]
+        : [...selectedIdsRef.current].map((id) => String(id));
 
     if (ids.length === 0) {
       return;
@@ -189,9 +211,10 @@ export function useHistoryBulkManage<T extends { id: string }>(items: T[]) {
       setRemovingIds(new Set());
       setSelectionMode(true);
       setSelectedIds(new Set(ids));
+      pendingRemoveIdsRef.current = ids;
+      setPendingRemoveIds(ids);
       setConfirmOpen(true);
       setConfirmCount(ids.length);
-      setPendingRemoveIds(ids);
     } finally {
       setRemoving(false);
     }
@@ -446,7 +469,12 @@ function HistoryConfirmDangerButton({
   }
 
   return (
-    <button type="button" onClick={onConfirm} className={buttonClassName}>
+    <button
+      type="button"
+      data-testid="history-remove-confirm-delete"
+      onClick={onConfirm}
+      className={buttonClassName}
+    >
       {label}
     </button>
   );
