@@ -458,18 +458,22 @@ function EventsPageClientView({
     () => filterOutRemovingHistoryItems(filteredEvents, historyBulkManage.removingIds),
     [filteredEvents, historyBulkManage.removingIds],
   );
-  const visibleRemovableHistoryEventIds = useMemo(() => {
+  const visibleRemovableHistoryEvents = useMemo(() => {
     if (!isPlanner || !isHistoryTab) {
       return [];
     }
 
-    return filterVisiblePlannerHistoryEvents(visibleFilteredEvents).map((event) => event.id);
+    return visibleFilteredEvents;
   }, [visibleFilteredEvents, isPlanner, isHistoryTab]);
+  const canToggleAllHistorySelection = visibleRemovableHistoryEvents.length > 0;
+  const canDeleteHistorySelection = historyBulkManage.selectedCount > 0;
   const allVisibleRemovableHistorySelected = useMemo(
     () =>
-      visibleRemovableHistoryEventIds.length > 0 &&
-      visibleRemovableHistoryEventIds.every((id) => historyBulkManage.selectedIds.has(id)),
-    [visibleRemovableHistoryEventIds, historyBulkManage.selectedIds],
+      visibleRemovableHistoryEvents.length > 0 &&
+      visibleRemovableHistoryEvents.every((event) =>
+        historyBulkManage.selectedIds.has(event.id),
+      ),
+    [visibleRemovableHistoryEvents, historyBulkManage.selectedIds],
   );
   const historyLoadSettled = eventsListReady && !loadingEvents;
   const visibleHistoryEventCount = isHistoryTab ? visibleFilteredEvents.length : 0;
@@ -1043,10 +1047,13 @@ function EventsPageClientView({
                   removing={historyBulkManage.removing}
                   onCancel={historyBulkManage.cancelSelectionMode}
                   onSelectAll={() => {
-                    historyBulkManage.toggleSelectAllForIds(visibleRemovableHistoryEventIds);
+                    historyBulkManage.toggleSelectAllForIds(
+                      visibleRemovableHistoryEvents.map((event) => event.id),
+                    );
                   }}
                   onRemove={historyBulkManage.openConfirm}
-                  selectableCount={visibleRemovableHistoryEventIds.length}
+                  canToggleAll={canToggleAllHistorySelection}
+                  canDelete={canDeleteHistorySelection}
                   removeLabel="Delete"
                   selectAllLabel="ALL"
                   cancelVariant="backIcon"

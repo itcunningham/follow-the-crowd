@@ -292,6 +292,8 @@ export function HistorySelectionToolbar({
   cancelVariant = "label",
   selectAllToggle = false,
   centeredSelectAll = false,
+  canToggleAll,
+  canDelete,
   selectableCount,
   className = "",
   embedded = false,
@@ -308,6 +310,11 @@ export function HistorySelectionToolbar({
   cancelVariant?: "label" | "backIcon";
   selectAllToggle?: boolean;
   centeredSelectAll?: boolean;
+  /** When set, ALL uses disabled={!canToggleAll} (Events History). */
+  canToggleAll?: boolean;
+  /** When set, Delete uses disabled={!canDelete} (plus removing). */
+  canDelete?: boolean;
+  /** @deprecated Prefer canToggleAll for Events History ALL enablement. */
   selectableCount?: number;
   className?: string;
   embedded?: boolean;
@@ -319,9 +326,13 @@ export function HistorySelectionToolbar({
     ? "flex min-w-0 flex-nowrap items-center gap-2"
     : "flex flex-wrap items-center gap-2";
   const selectAllDisabled =
-    removing ||
-    (!selectAllToggle && allSelected) ||
-    (selectAllToggle && selectableCount !== undefined && selectableCount === 0);
+    canToggleAll !== undefined
+      ? !canToggleAll
+      : removing ||
+        (!selectAllToggle && allSelected) ||
+        (selectAllToggle && selectableCount !== undefined && selectableCount === 0);
+  const deleteDisabled =
+    canDelete !== undefined ? removing || !canDelete : removing || selectedCount === 0;
 
   function handleSelectAllClick(event: MouseEvent<HTMLButtonElement>) {
     event.stopPropagation();
@@ -374,8 +385,9 @@ export function HistorySelectionToolbar({
   const deleteControl = (
     <button
       type="button"
+      data-testid="events-history-delete"
       onClick={onRemove}
-      disabled={removing || selectedCount === 0}
+      disabled={deleteDisabled}
       aria-busy={removing}
       className={historySelectionDeleteButtonClass(embedded)}
     >

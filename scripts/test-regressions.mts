@@ -753,9 +753,17 @@ function testEventsHistoryBulkSelectAllTogglesSelection() {
   );
   assert.match(
     eventsSource,
-    /filterVisiblePlannerHistoryEvents\(visibleFilteredEvents\)\.map\(\(event\) => event\.id\)/,
+    /const visibleRemovableHistoryEvents = useMemo\(\(\) => \{/,
   );
-  assert.match(eventsSource, /toggleSelectAllForIds\(visibleRemovableHistoryEventIds\)/);
+  assert.match(eventsSource, /return visibleFilteredEvents;/);
+  assert.match(eventsSource, /canToggleAll=\{canToggleAllHistorySelection\}/);
+  assert.match(eventsSource, /canDelete=\{canDeleteHistorySelection\}/);
+  assert.match(
+    eventsSource,
+    /visibleRemovableHistoryEvents\.map\(\(event\) => event\.id\)/,
+  );
+  assert.match(bulkSource, /canToggleAll !== undefined/);
+  assert.match(bulkSource, /canDelete !== undefined/);
   assert.match(bulkSource, /data-testid="events-history-select-all"/);
   assert.match(bulkSource, /function handleSelectAllClick/);
 }
@@ -767,7 +775,8 @@ function testEventsHistorySelectionToolbarUsesDeleteLabel() {
   );
   assert.match(source, /removeLabel="Delete"/);
   assert.match(source, /selectAllLabel="ALL"/);
-  assert.match(source, /toggleSelectAllForIds\(visibleRemovableHistoryEventIds\)/);
+  assert.match(source, /canToggleAll=\{canToggleAllHistorySelection\}/);
+  assert.match(source, /canDelete=\{canDeleteHistorySelection\}/);
   assert.match(source, /selectAllToggle/);
   assert.match(source, /centeredSelectAll/);
   assert.match(source, /cancelVariant="backIcon"/);

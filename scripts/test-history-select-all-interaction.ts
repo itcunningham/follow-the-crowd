@@ -9,7 +9,7 @@ import {
   resolveHistoryBulkSelectAllToggle,
 } from "../app/components/history/HistoryBulkManage";
 
-const visibleHistoryIds = ["event-a", "event-b"];
+const visibleHistoryIds = ["event-a", "event-b", "event-c"];
 
 function HistorySelectAllHarness({
   onSelectAllInvoked,
@@ -20,6 +20,8 @@ function HistorySelectAllHarness({
   const allSelected =
     visibleHistoryIds.length > 0 &&
     visibleHistoryIds.every((id) => selectedIds.has(id));
+  const canToggleAll = visibleHistoryIds.length > 0;
+  const canDelete = selectedIds.size > 0;
 
   return React.createElement(
     React.Fragment,
@@ -40,7 +42,8 @@ function HistorySelectAllHarness({
         );
       },
       onRemove: () => undefined,
-      selectableCount: visibleHistoryIds.length,
+      canToggleAll,
+      canDelete,
       selectAllLabel: "ALL",
       removeLabel: "Delete",
     }),
@@ -78,27 +81,38 @@ export async function runHistorySelectAllInteractionTest() {
       );
     });
 
-    const button = container.querySelector(
+    const allButton = container.querySelector(
       '[data-testid="events-history-select-all"]',
     ) as HTMLButtonElement | null;
-    assert.ok(button, "ALL button should render");
-    assert.equal(button.type, "button");
-    assert.equal(button.disabled, false);
+    const deleteButton = container.querySelector(
+      '[data-testid="events-history-delete"]',
+    ) as HTMLButtonElement | null;
+    assert.ok(allButton, "ALL button should render");
+    assert.ok(deleteButton, "Delete button should render");
+    assert.equal(allButton.type, "button");
+    assert.equal(allButton.disabled, false, "ALL enabled with visible cards and no selection");
+    assert.equal(deleteButton.disabled, true, "Delete disabled with no selection");
 
     await act(async () => {
-      button.click();
+      allButton.click();
     });
 
     assert.equal(invokeCount, 1, "ALL click should invoke handler once");
-    const outputAfterSelect = container.querySelector('[data-testid="selected-ids"]');
-    assert.equal(outputAfterSelect?.textContent, "event-a,event-b");
+    assert.equal(
+      container.querySelector('[data-testid="selected-ids"]')?.textContent,
+      "event-a,event-b,event-c",
+    );
+    assert.equal(deleteButton.disabled, false, "Delete enabled after ALL selects every card");
+    assert.equal(allButton.disabled, false, "ALL stays enabled after selecting all");
 
     await act(async () => {
-      button.click();
+      allButton.click();
     });
 
     assert.equal(invokeCount, 2, "second ALL click should invoke handler once");
     assert.equal(container.querySelector('[data-testid="selected-ids"]')?.textContent, "");
+    assert.equal(deleteButton.disabled, true, "Delete disabled after ALL clears selection");
+    assert.equal(allButton.disabled, false, "ALL stays enabled with visible cards");
   } finally {
     await act(async () => {
       root?.unmount();
