@@ -47,7 +47,8 @@ export function useHistoryBulkManage<T extends { id: string }>(items: T[]) {
 
   const itemIds = useMemo(() => items.map((item) => item.id), [items]);
   const selectedCount = selectedIds.size;
-  const allSelected = itemIds.length > 0 && selectedCount === itemIds.length;
+  const allSelected =
+    itemIds.length > 0 && itemIds.every((id) => selectedIds.has(id));
   const showSelectionToolbar = selectionMode && !confirmOpen && !removing;
 
   function resetSelectionState() {
@@ -98,6 +99,19 @@ export function useHistoryBulkManage<T extends { id: string }>(items: T[]) {
 
   function selectAll() {
     if (removing) {
+      return;
+    }
+
+    setSelectedIds(new Set(itemIds));
+  }
+
+  function toggleSelectAll() {
+    if (removing) {
+      return;
+    }
+
+    if (itemIds.length > 0 && itemIds.every((id) => selectedIds.has(id))) {
+      setSelectedIds(new Set());
       return;
     }
 
@@ -168,6 +182,7 @@ export function useHistoryBulkManage<T extends { id: string }>(items: T[]) {
     cancelSelectionMode,
     toggleItem,
     selectAll,
+    toggleSelectAll,
     openConfirm,
     closeConfirm,
     confirmRemove,
@@ -228,6 +243,8 @@ export function HistorySelectionToolbar({
   removingLabel = "Removing...",
   selectAllLabel = "Select all",
   cancelVariant = "label",
+  selectAllToggle = false,
+  centeredSelectAll = false,
   className = "",
   embedded = false,
 }: {
@@ -241,57 +258,88 @@ export function HistorySelectionToolbar({
   removingLabel?: string;
   selectAllLabel?: string;
   cancelVariant?: "label" | "backIcon";
+  selectAllToggle?: boolean;
+  centeredSelectAll?: boolean;
   className?: string;
   embedded?: boolean;
 }) {
   const outerClassName = embedded
-    ? "mb-0 flex h-full w-full flex-nowrap items-center justify-between gap-2 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated/60 px-3"
+    ? "mb-0 flex h-full w-full flex-nowrap items-center gap-2 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated/60 px-3"
     : "mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated/60 px-3 py-2.5";
   const groupClassName = embedded
     ? "flex min-w-0 flex-nowrap items-center gap-2"
     : "flex flex-wrap items-center gap-2";
+  const selectAllDisabled = removing || (!selectAllToggle && allSelected);
+  const selectAllAriaLabel = allSelected
+    ? "Unselect all history events"
+    : "Select all history events";
+
+  const backControl =
+    cancelVariant === "backIcon" ? (
+      <button
+        type="button"
+        onClick={onCancel}
+        disabled={removing}
+        aria-label="Exit selection mode"
+        className={`${HISTORY_SELECTION_NEUTRAL_BUTTON_CLASS} px-2.5`}
+      >
+        <HistorySelectionBackIcon />
+      </button>
+    ) : (
+      <button
+        type="button"
+        onClick={onCancel}
+        disabled={removing}
+        className={`${HISTORY_SELECTION_NEUTRAL_BUTTON_CLASS} px-3 disabled:opacity-50`}
+      >
+        Cancel
+      </button>
+    );
+
+  const selectAllControl = (
+    <button
+      type="button"
+      onClick={onSelectAll}
+      disabled={selectAllDisabled}
+      aria-pressed={selectAllToggle ? allSelected : undefined}
+      aria-label={selectAllToggle ? selectAllAriaLabel : undefined}
+      className={`${HISTORY_SELECTION_NEUTRAL_BUTTON_CLASS} px-3`}
+    >
+      {selectAllLabel}
+    </button>
+  );
+
+  const deleteControl = (
+    <button
+      type="button"
+      onClick={onRemove}
+      disabled={removing || selectedCount === 0}
+      aria-busy={removing}
+      className="shrink-0 rounded-lg border-0 bg-[var(--ftc-color-danger)] px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-ftc-bg transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+    >
+      {removing ? removingLabel : removeLabel}
+    </button>
+  );
+
+  if (embedded && centeredSelectAll && cancelVariant === "backIcon") {
+    return (
+      <div className={`${outerClassName} ${className}`.trim()}>
+        <div className="grid w-full min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2">
+          <div className="flex shrink-0 items-center justify-start">{backControl}</div>
+          <div className="flex min-w-0 items-center justify-center">{selectAllControl}</div>
+          <div className="flex shrink-0 items-center justify-end">{deleteControl}</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={`${outerClassName} ${className}`.trim()}>
       <div className={groupClassName}>
-        {cancelVariant === "backIcon" ? (
-          <button
-            type="button"
-            onClick={onCancel}
-            disabled={removing}
-            aria-label="Exit selection mode"
-            className={`${HISTORY_SELECTION_NEUTRAL_BUTTON_CLASS} px-2.5`}
-          >
-            <HistorySelectionBackIcon />
-          </button>
-        ) : (
-          <button
-            type="button"
-            onClick={onCancel}
-            disabled={removing}
-            className={`${HISTORY_SELECTION_NEUTRAL_BUTTON_CLASS} px-3 disabled:opacity-50`}
-          >
-            Cancel
-          </button>
-        )}
-        <button
-          type="button"
-          onClick={onSelectAll}
-          disabled={removing || allSelected}
-          className={`${HISTORY_SELECTION_NEUTRAL_BUTTON_CLASS} px-3`}
-        >
-          {selectAllLabel}
-        </button>
+        {backControl}
+        {selectAllControl}
       </div>
-      <button
-        type="button"
-        onClick={onRemove}
-        disabled={removing || selectedCount === 0}
-        aria-busy={removing}
-        className="rounded-lg border-0 bg-[var(--ftc-color-danger)] px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-ftc-bg transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        {removing ? removingLabel : removeLabel}
-      </button>
+      {deleteControl}
     </div>
   );
 }

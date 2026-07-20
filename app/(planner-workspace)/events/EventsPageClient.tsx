@@ -68,6 +68,7 @@ import {
   eventFormToRequestInput,
   eventInputFromBookingPlan,
   filterPlannerHistoryTabEvents,
+  filterVisiblePlannerHistoryEvents,
   getEventsLoadErrorMessage,
   hideEventsFromHistory,
   isEventCancelled,
@@ -432,8 +433,15 @@ function EventsPageClientView({
     return sortEventsByStartDescending(filtered);
   }, [events, isPlanner]);
   const filteredEvents = isHistoryTab ? historyEvents : upcomingEvents;
+  const visibleRemovableHistoryEvents = useMemo(
+    () =>
+      isPlanner && isHistoryTab
+        ? filterVisiblePlannerHistoryEvents(historyEvents)
+        : [],
+    [historyEvents, isPlanner, isHistoryTab],
+  );
   const historyBulkManage = useHistoryBulkManage(
-    isPlanner && isHistoryTab ? historyEvents : [],
+    isPlanner && isHistoryTab ? visibleRemovableHistoryEvents : [],
   );
   const visibleFilteredEvents = useMemo(
     () => filterOutRemovingHistoryItems(filteredEvents, historyBulkManage.removingIds),
@@ -1010,11 +1018,13 @@ function EventsPageClientView({
                   allSelected={historyBulkManage.allSelected}
                   removing={historyBulkManage.removing}
                   onCancel={historyBulkManage.cancelSelectionMode}
-                  onSelectAll={historyBulkManage.selectAll}
+                  onSelectAll={historyBulkManage.toggleSelectAll}
                   onRemove={historyBulkManage.openConfirm}
                   removeLabel="Delete"
                   selectAllLabel="ALL"
                   cancelVariant="backIcon"
+                  selectAllToggle
+                  centeredSelectAll
                 />
               }
             >

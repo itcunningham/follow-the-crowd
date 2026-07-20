@@ -715,6 +715,15 @@ function testGigsTabRowKeepsStableCountSlots() {
   assert.doesNotMatch(GIGS_LIST_TAB_ROW_CLASS, /flex-wrap/);
 }
 
+function testEventsHistoryBulkSelectAllTogglesSelection() {
+  const source = readFileSync(
+    new URL("../app/components/history/HistoryBulkManage.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(source, /function toggleSelectAll\(\)/);
+  assert.match(source, /itemIds\.every\(\(id\) => selectedIds\.has\(id\)\)/);
+}
+
 function testEventsHistorySelectionToolbarUsesDeleteLabel() {
   const source = readFileSync(
     new URL("../app/(planner-workspace)/events/EventsPageClient.tsx", import.meta.url),
@@ -722,6 +731,9 @@ function testEventsHistorySelectionToolbarUsesDeleteLabel() {
   );
   assert.match(source, /removeLabel="Delete"/);
   assert.match(source, /selectAllLabel="ALL"/);
+  assert.match(source, /onSelectAll=\{historyBulkManage\.toggleSelectAll\}/);
+  assert.match(source, /selectAllToggle/);
+  assert.match(source, /centeredSelectAll/);
   assert.match(source, /cancelVariant="backIcon"/);
 }
 
@@ -873,6 +885,7 @@ function main() {
   testConfirmedTabAliasParsesFromUrl();
   testEventPlanUseButtonKeepsStableCardLayout();
   testGigsTabRowKeepsStableCountSlots();
+  testEventsHistoryBulkSelectAllTogglesSelection();
   testEventsHistorySelectionToolbarUsesDeleteLabel();
   testEventsHistoryTrashVisibleUsesRenderedHistoryList();
   testGigsTabCountsDeriveFromSameBookingSnapshot();
