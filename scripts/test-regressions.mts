@@ -721,6 +721,7 @@ function testEventsHistorySelectionToolbarUsesDeleteLabel() {
     "utf8",
   );
   assert.match(source, /removeLabel="Delete"/);
+  assert.match(source, /selectAllLabel="ALL"/);
   assert.match(source, /cancelVariant="backIcon"/);
 }
 

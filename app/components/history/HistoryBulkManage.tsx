@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { EventDetailOverlayButton } from "@/app/components/event-detail/EventDetailLayout";
 import { FTC_ICON_BUTTON_SM_CLASS } from "@/lib/design/ftcDesignSystem";
 
 export function filterOutRemovingHistoryItems<T extends { id: string }>(
@@ -205,7 +204,7 @@ function HistorySelectionBackIcon() {
     <svg
       aria-hidden="true"
       viewBox="0 0 24 24"
-      className="h-5 w-5"
+      className="h-4 w-4"
       fill="none"
       stroke="currentColor"
       strokeWidth="1.75"
@@ -214,6 +213,9 @@ function HistorySelectionBackIcon() {
     </svg>
   );
 }
+
+const HISTORY_SELECTION_NEUTRAL_BUTTON_CLASS =
+  "inline-flex shrink-0 items-center justify-center rounded-lg border border-ftc-border-subtle bg-ftc-surface py-1.5 text-xs font-semibold uppercase tracking-wide text-ftc-text-secondary transition hover:border-ftc-border-strong disabled:cursor-not-allowed disabled:opacity-50";
 
 export function HistorySelectionToolbar({
   selectedCount,
@@ -224,6 +226,7 @@ export function HistorySelectionToolbar({
   onRemove,
   removeLabel = "Remove from history",
   removingLabel = "Removing...",
+  selectAllLabel = "Select all",
   cancelVariant = "label",
   className = "",
   embedded = false,
@@ -236,6 +239,7 @@ export function HistorySelectionToolbar({
   onRemove: () => void;
   removeLabel?: string;
   removingLabel?: string;
+  selectAllLabel?: string;
   cancelVariant?: "label" | "backIcon";
   className?: string;
   embedded?: boolean;
@@ -251,19 +255,21 @@ export function HistorySelectionToolbar({
     <div className={`${outerClassName} ${className}`.trim()}>
       <div className={groupClassName}>
         {cancelVariant === "backIcon" ? (
-          <EventDetailOverlayButton
+          <button
+            type="button"
             onClick={onCancel}
             disabled={removing}
-            label="Exit selection mode"
+            aria-label="Exit selection mode"
+            className={`${HISTORY_SELECTION_NEUTRAL_BUTTON_CLASS} px-2.5`}
           >
             <HistorySelectionBackIcon />
-          </EventDetailOverlayButton>
+          </button>
         ) : (
           <button
             type="button"
             onClick={onCancel}
             disabled={removing}
-            className="rounded-lg border border-ftc-border-subtle bg-ftc-surface px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-ftc-text-secondary transition hover:border-ftc-border-strong disabled:opacity-50"
+            className={`${HISTORY_SELECTION_NEUTRAL_BUTTON_CLASS} px-3 disabled:opacity-50`}
           >
             Cancel
           </button>
@@ -272,9 +278,9 @@ export function HistorySelectionToolbar({
           type="button"
           onClick={onSelectAll}
           disabled={removing || allSelected}
-          className="rounded-lg border border-ftc-border-subtle bg-ftc-surface px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-ftc-text-secondary transition hover:border-ftc-border-strong disabled:cursor-not-allowed disabled:opacity-50"
+          className={`${HISTORY_SELECTION_NEUTRAL_BUTTON_CLASS} px-3`}
         >
-          Select all
+          {selectAllLabel}
         </button>
       </div>
       <button
