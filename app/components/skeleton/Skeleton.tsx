@@ -151,27 +151,27 @@ export function EventListSkeleton({
 function EventListItemSkeleton({ showPlannerStats = false }: { showPlannerStats?: boolean }) {
   return (
     <div className="ftc-gig-card ftc-surface-row block rounded-[var(--ftc-radius-xl)] py-2 px-2.5 sm:p-4">
-      <div className="flex min-w-0 items-start gap-2.5 sm:gap-3">
+      <div className="flex min-w-0 items-stretch gap-2 sm:gap-2.5">
         <SkeletonBlock className="h-16 w-16 shrink-0 rounded-xl" />
-        <div className="flex min-w-0 flex-1 flex-col gap-1 sm:gap-2.5">
-          <div className="flex min-w-0 items-start justify-between gap-2">
-            <SkeletonBlock className="h-5 w-3/5 max-w-[12rem] sm:h-6" />
-            <SkeletonBlock className="h-4 w-14 shrink-0 rounded-full" />
-          </div>
-          <div className="mt-1 space-y-0.5 sm:mt-2">
+        <div className="flex min-w-0 flex-1 items-stretch gap-1.5 sm:gap-2">
+          <div className="flex min-w-0 flex-1 flex-col gap-1 sm:gap-2">
+            <SkeletonBlock className="h-5 w-full max-w-[12rem] sm:h-6" />
             <SkeletonBlock className="h-3.5 w-4/5 max-w-[15rem] sm:h-4" />
             <SkeletonBlock className="h-3.5 w-1/2 max-w-[8rem] sm:h-4" />
+            {showPlannerStats ? (
+              <div className="flex flex-wrap gap-1.5 pt-0.5 sm:pt-1">
+                <SkeletonBlock className="h-5 w-[4.25rem] rounded-full" />
+                <SkeletonBlock className="h-5 w-[4.25rem] rounded-full" />
+                <SkeletonBlock className="h-5 w-[4.5rem] rounded-full" />
+                <SkeletonBlock className="h-5 w-[4.25rem] rounded-full" />
+              </div>
+            ) : null}
           </div>
-          {showPlannerStats ? (
-            <div className="mt-1 flex flex-wrap gap-1.5 sm:mt-2">
-              <SkeletonBlock className="h-5 w-[4.25rem] rounded-full" />
-              <SkeletonBlock className="h-5 w-[4.25rem] rounded-full" />
-              <SkeletonBlock className="h-5 w-[4.5rem] rounded-full" />
-              <SkeletonBlock className="h-5 w-[4.25rem] rounded-full" />
-            </div>
-          ) : null}
+          <div className="flex shrink-0 flex-col items-end justify-between self-stretch">
+            <SkeletonBlock className="h-4 w-14 rounded-full" />
+            <SkeletonBlock className="h-4 w-4 rounded-md" />
+          </div>
         </div>
-        <SkeletonBlock className="mt-0.5 h-4 w-4 shrink-0 rounded-md" />
       </div>
     </div>
   );

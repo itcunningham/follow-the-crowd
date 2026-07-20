@@ -161,7 +161,7 @@ function getCalendarBootstrapState(
 
 function EventsListCardChevron() {
   return (
-    <span aria-hidden="true" className="mt-0.5 shrink-0 self-start text-ftc-text-muted">
+    <span aria-hidden="true" className="shrink-0 text-ftc-text-muted">
       <svg
         viewBox="0 0 24 24"
         className="h-4 w-4"
@@ -180,13 +180,21 @@ function EventsListCardChevron() {
 const EVENT_LIST_CARD_SHELL_CLASS =
   "ftc-gig-card ftc-surface-row rounded-[var(--ftc-radius-xl)] py-2 px-2.5 sm:p-4";
 
-const EVENT_LIST_CARD_CONTENT_CLASS = "flex min-w-0 items-start gap-2.5 sm:gap-3";
+const EVENT_LIST_CARD_CONTENT_CLASS = "flex min-w-0 items-stretch gap-2 sm:gap-2.5";
+
+const EVENT_LIST_CARD_MAIN_CLASS = "flex min-w-0 flex-1 items-stretch gap-1.5 sm:gap-2";
 
 const EVENT_LIST_CARD_BODY_CLASS =
-  "flex min-w-0 flex-1 flex-col gap-1 overflow-hidden sm:gap-2.5";
+  "flex min-w-0 flex-1 flex-col gap-1 overflow-hidden sm:gap-2";
 
-const EVENT_LIST_CARD_META_CLASS =
-  "ftc-gig-card-meta mt-1 min-w-0 overflow-hidden text-xs text-ftc-text-secondary sm:mt-2 sm:text-sm";
+const EVENT_LIST_CARD_META_LINE_CLASS =
+  "ftc-gig-card-meta min-w-0 overflow-hidden text-xs sm:text-sm";
+
+const EVENT_LIST_CARD_RAIL_CLASS =
+  "flex shrink-0 flex-col items-end justify-between self-stretch";
+
+const EVENT_LIST_CARD_SUMMARY_CLASS =
+  "flex min-w-0 flex-wrap gap-1.5 pt-0.5 sm:pt-1";
 
 function EventsListCardContent({
   event,
@@ -215,44 +223,48 @@ function EventsListCardContent({
         coverImageUrl={event.cover_image_url}
         fallbackColour={event.fallback_colour}
       />
-      <div className={EVENT_LIST_CARD_BODY_CLASS}>
-        <div className="min-w-0">
-          <div className="flex min-w-0 items-start justify-between gap-2 sm:gap-2.5">
-            <h3
-              className={`min-w-0 flex-1 text-sm font-bold leading-snug line-clamp-2 sm:text-base ${titleClassName}`}
+      <div className={EVENT_LIST_CARD_MAIN_CLASS}>
+        <div className={EVENT_LIST_CARD_BODY_CLASS}>
+          <h3
+            className={`min-w-0 text-sm font-bold leading-snug line-clamp-2 sm:text-base ${titleClassName}`}
+          >
+            {event.name}
+          </h3>
+          {venueDateLine ? (
+            <p
+              className={`${EVENT_LIST_CARD_META_LINE_CLASS} min-w-0 max-w-full overflow-hidden break-words ${metaClassName}`}
             >
-              {event.name}
-            </h3>
-            <span className="mt-0.5 shrink-0">
-              <EventDateStatusBadge
-                eventDate={event.event_date}
-                setTime={event.set_time}
-                status={event.status}
-                variant="compact"
-              />
-            </span>
-          </div>
-        </div>
-        <div className={`${EVENT_LIST_CARD_META_CLASS} ${metaClassName}`}>
-          <div className="space-y-0.5">
-            {venueDateLine ? (
-              <p className="min-w-0 max-w-full overflow-hidden break-words">{venueDateLine}</p>
-            ) : null}
-            <p className="min-w-0 max-w-full overflow-hidden break-words text-ftc-text-muted">
-              {event.set_time}
+              {venueDateLine}
             </p>
-          </div>
+          ) : null}
+          <p
+            className={`${EVENT_LIST_CARD_META_LINE_CLASS} min-w-0 max-w-full overflow-hidden break-words text-ftc-text-muted`}
+          >
+            {event.set_time}
+          </p>
+          {isPlanner ? (
+            <div className={EVENT_LIST_CARD_SUMMARY_CLASS}>
+              <PlannerStatChip label="Invited" value={event.lineupStats.total} variant="compact" />
+              <PlannerStatChip label="Pending" value={event.lineupStats.pending} variant="compact" />
+              <PlannerStatChip label="Accepted" value={event.lineupStats.accepted} variant="compact" />
+              <PlannerStatChip label="Declined" value={event.lineupStats.declined} variant="compact" />
+            </div>
+          ) : null}
         </div>
-        {isPlanner ? (
-          <div className="mt-1 flex min-w-0 flex-wrap gap-1.5 sm:mt-2">
-            <PlannerStatChip label="Invited" value={event.lineupStats.total} variant="compact" />
-            <PlannerStatChip label="Pending" value={event.lineupStats.pending} variant="compact" />
-            <PlannerStatChip label="Accepted" value={event.lineupStats.accepted} variant="compact" />
-            <PlannerStatChip label="Declined" value={event.lineupStats.declined} variant="compact" />
-          </div>
-        ) : null}
+        <div
+          className={
+            showChevron ? EVENT_LIST_CARD_RAIL_CLASS : "flex shrink-0 flex-col items-end self-stretch"
+          }
+        >
+          <EventDateStatusBadge
+            eventDate={event.event_date}
+            setTime={event.set_time}
+            status={event.status}
+            variant="compact"
+          />
+          {showChevron ? <EventsListCardChevron /> : null}
+        </div>
       </div>
-      {showChevron ? <EventsListCardChevron /> : null}
     </div>
   );
 }
@@ -1282,7 +1294,7 @@ function EventsPageClientView({
                   }
                 />
               ) : visibleFilteredEvents.length > 0 ? (
-            <ul className={FTC_LIST_GAP_CLASS}>
+            <ul className={`ftc-gigs-list ${FTC_LIST_GAP_CLASS}`}>
               {visibleFilteredEvents.map((event) => {
                 const cancelled = isEventCancelled(event);
                 const eventHref = buildEventDetailHref(event.id, listTab);
