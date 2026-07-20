@@ -180,25 +180,15 @@ function EventsListCardChevron() {
 const EVENT_LIST_CARD_SHELL_CLASS =
   "ftc-gig-card ftc-surface-row rounded-[var(--ftc-radius-xl)] py-2 px-2.5 sm:p-4";
 
-/** Artwork + text stack; booking summary spans full card width below. */
-const EVENT_LIST_CARD_GRID_CLASS =
-  "grid min-w-0 grid-cols-[4rem_minmax(0,1fr)] items-start gap-x-2 gap-y-1 sm:gap-x-2.5 sm:gap-y-2";
+const EVENT_LIST_CARD_ROW_CLASS = "flex min-w-0 items-start gap-2 sm:gap-2.5";
 
-const EVENT_LIST_CARD_ARTWORK_CELL_CLASS = "col-start-1 row-start-1 self-start";
-
-const EVENT_LIST_CARD_HEADER_CELL_CLASS = "col-start-2 row-start-1 min-w-0";
-
-const EVENT_LIST_CARD_SCHEDULE_CELL_CLASS =
-  "col-start-2 row-start-2 flex min-w-0 flex-col gap-1 sm:gap-1.5";
+const EVENT_LIST_CARD_BODY_CLASS =
+  "flex min-w-0 flex-1 flex-col gap-1 overflow-hidden sm:gap-3";
 
 const EVENT_LIST_CARD_META_LINE_CLASS =
   "ftc-gig-card-meta min-w-0 overflow-hidden text-xs sm:text-sm";
 
-const EVENT_LIST_CARD_SUMMARY_PANEL_CLASS =
-  "col-span-2 min-w-0 rounded-lg border border-ftc-border-subtle bg-ftc-bg-elevated/40 px-2 py-1.5";
-
-const EVENT_LIST_CARD_SUMMARY_CHIPS_CLASS =
-  "grid grid-cols-2 gap-1.5 sm:flex sm:flex-wrap sm:gap-1.5";
+const EVENT_LIST_CARD_SUMMARY_CLASS = "flex min-w-0 flex-wrap gap-1.5";
 
 function EventsListCardContent({
   event,
@@ -220,62 +210,49 @@ function EventsListCardContent({
     .join(" · ");
 
   return (
-    <div className={EVENT_LIST_CARD_GRID_CLASS}>
-      <div className={`${EVENT_LIST_CARD_ARTWORK_CELL_CLASS} row-span-2`}>
-        {leading}
-        <EventCoverImageListThumb
-          eventName={event.name}
-          coverImageUrl={event.cover_image_url}
-          fallbackColour={event.fallback_colour}
-        />
-      </div>
-
-      <div className={EVENT_LIST_CARD_HEADER_CELL_CLASS}>
+    <div className={EVENT_LIST_CARD_ROW_CLASS}>
+      {leading}
+      <EventCoverImageListThumb
+        eventName={event.name}
+        coverImageUrl={event.cover_image_url}
+        fallbackColour={event.fallback_colour}
+      />
+      <div className={EVENT_LIST_CARD_BODY_CLASS}>
         <div className="flex min-w-0 items-start justify-between gap-2 sm:gap-2.5">
           <h3
             className={`min-w-0 flex-1 text-sm font-bold leading-snug line-clamp-2 sm:text-base ${titleClassName}`}
           >
             {event.name}
           </h3>
-          <div className="flex shrink-0 items-start gap-1 sm:gap-1.5">
-            <span className="mt-0.5 shrink-0">
-              <EventDateStatusBadge
-                eventDate={event.event_date}
-                setTime={event.set_time}
-                status={event.status}
-                variant="compact"
-              />
-            </span>
-            {showChevron ? <EventsListCardChevron /> : null}
+          {showChevron ? <EventsListCardChevron /> : null}
+        </div>
+        <div className={`${EVENT_LIST_CARD_META_LINE_CLASS} ${metaClassName}`}>
+          <div className="space-y-0.5">
+            {venueDateLine ? (
+              <p className="min-w-0 max-w-full overflow-hidden break-words">{venueDateLine}</p>
+            ) : null}
+            <p className="min-w-0 max-w-full overflow-hidden break-words text-ftc-text-muted">
+              {event.set_time}
+            </p>
           </div>
         </div>
-      </div>
-
-      <div className={EVENT_LIST_CARD_SCHEDULE_CELL_CLASS}>
-        {venueDateLine ? (
-          <p
-            className={`${EVENT_LIST_CARD_META_LINE_CLASS} min-w-0 max-w-full overflow-hidden break-words ${metaClassName}`}
-          >
-            {venueDateLine}
-          </p>
-        ) : null}
-        <p
-          className={`${EVENT_LIST_CARD_META_LINE_CLASS} min-w-0 max-w-full overflow-hidden break-words text-ftc-text-muted`}
-        >
-          {event.set_time}
-        </p>
-      </div>
-
-      {isPlanner ? (
-        <div className={EVENT_LIST_CARD_SUMMARY_PANEL_CLASS}>
-          <div className={EVENT_LIST_CARD_SUMMARY_CHIPS_CLASS}>
+        <div className="shrink-0 self-start">
+          <EventDateStatusBadge
+            eventDate={event.event_date}
+            setTime={event.set_time}
+            status={event.status}
+            variant="compact"
+          />
+        </div>
+        {isPlanner ? (
+          <div className={EVENT_LIST_CARD_SUMMARY_CLASS}>
             <PlannerStatChip label="Invited" value={event.lineupStats.total} variant="compact" />
             <PlannerStatChip label="Pending" value={event.lineupStats.pending} variant="compact" />
             <PlannerStatChip label="Accepted" value={event.lineupStats.accepted} variant="compact" />
             <PlannerStatChip label="Declined" value={event.lineupStats.declined} variant="compact" />
           </div>
-        </div>
-      ) : null}
+        ) : null}
+      </div>
     </div>
   );
 }
