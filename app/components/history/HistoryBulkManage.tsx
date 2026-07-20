@@ -230,7 +230,24 @@ function HistorySelectionBackIcon() {
 }
 
 const HISTORY_SELECTION_NEUTRAL_BUTTON_CLASS =
-  "inline-flex shrink-0 items-center justify-center rounded-lg border border-ftc-border-subtle bg-ftc-surface py-1.5 text-xs font-semibold uppercase tracking-wide text-ftc-text-secondary transition hover:border-ftc-border-strong disabled:cursor-not-allowed disabled:opacity-50";
+  "inline-flex shrink-0 items-center justify-center rounded-lg border border-ftc-border-subtle bg-ftc-surface text-xs font-semibold uppercase tracking-wide text-ftc-text-secondary transition hover:border-ftc-border-strong disabled:cursor-not-allowed disabled:opacity-50";
+
+const HISTORY_SELECTION_DELETE_BUTTON_CLASS =
+  "shrink-0 rounded-lg border-0 bg-[var(--ftc-color-danger)] px-3 text-xs font-semibold uppercase tracking-wide text-ftc-bg transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50";
+
+const HISTORY_SELECTION_EMBEDDED_CONTROL_HEIGHT_CLASS = "h-[1.625rem] py-0 leading-none";
+
+function historySelectionNeutralButtonClass(embedded: boolean) {
+  return embedded
+    ? `${HISTORY_SELECTION_NEUTRAL_BUTTON_CLASS} ${HISTORY_SELECTION_EMBEDDED_CONTROL_HEIGHT_CLASS}`
+    : `${HISTORY_SELECTION_NEUTRAL_BUTTON_CLASS} py-1.5`;
+}
+
+function historySelectionDeleteButtonClass(embedded: boolean) {
+  return embedded
+    ? `${HISTORY_SELECTION_DELETE_BUTTON_CLASS} ${HISTORY_SELECTION_EMBEDDED_CONTROL_HEIGHT_CLASS}`
+    : `${HISTORY_SELECTION_DELETE_BUTTON_CLASS} py-1.5`;
+}
 
 export function HistorySelectionToolbar({
   selectedCount,
@@ -281,7 +298,7 @@ export function HistorySelectionToolbar({
         onClick={onCancel}
         disabled={removing}
         aria-label="Exit selection mode"
-        className={`${HISTORY_SELECTION_NEUTRAL_BUTTON_CLASS} px-2.5`}
+        className={`${historySelectionNeutralButtonClass(embedded)} px-2.5`}
       >
         <HistorySelectionBackIcon />
       </button>
@@ -290,7 +307,7 @@ export function HistorySelectionToolbar({
         type="button"
         onClick={onCancel}
         disabled={removing}
-        className={`${HISTORY_SELECTION_NEUTRAL_BUTTON_CLASS} px-3 disabled:opacity-50`}
+        className={`${historySelectionNeutralButtonClass(embedded)} px-3 disabled:opacity-50`}
       >
         Cancel
       </button>
@@ -303,7 +320,7 @@ export function HistorySelectionToolbar({
       disabled={selectAllDisabled}
       aria-pressed={selectAllToggle ? allSelected : undefined}
       aria-label={selectAllToggle ? selectAllAriaLabel : undefined}
-      className={`${HISTORY_SELECTION_NEUTRAL_BUTTON_CLASS} px-3`}
+      className={`${historySelectionNeutralButtonClass(embedded)} px-3`}
     >
       {selectAllLabel}
     </button>
@@ -315,7 +332,7 @@ export function HistorySelectionToolbar({
       onClick={onRemove}
       disabled={removing || selectedCount === 0}
       aria-busy={removing}
-      className="shrink-0 rounded-lg border-0 bg-[var(--ftc-color-danger)] px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-ftc-bg transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+      className={historySelectionDeleteButtonClass(embedded)}
     >
       {removing ? removingLabel : removeLabel}
     </button>
