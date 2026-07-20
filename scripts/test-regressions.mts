@@ -715,6 +715,14 @@ function testGigsTabRowKeepsStableCountSlots() {
   assert.doesNotMatch(GIGS_LIST_TAB_ROW_CLASS, /flex-wrap/);
 }
 
+function testEventsHistorySelectionToolbarUsesDeleteLabel() {
+  const source = readFileSync(
+    new URL("../app/(planner-workspace)/events/EventsPageClient.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(source, /removeLabel="Delete"/);
+}
+
 function testEventsHistoryTrashVisibleUsesRenderedHistoryList() {
   const base = {
     isPlanner: true,
@@ -863,6 +871,7 @@ function main() {
   testConfirmedTabAliasParsesFromUrl();
   testEventPlanUseButtonKeepsStableCardLayout();
   testGigsTabRowKeepsStableCountSlots();
+  testEventsHistorySelectionToolbarUsesDeleteLabel();
   testEventsHistoryTrashVisibleUsesRenderedHistoryList();
   testGigsTabCountsDeriveFromSameBookingSnapshot();
   testGigsInnerTabSelectionFollowsRouteImmediately();
