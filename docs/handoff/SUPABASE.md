@@ -24,7 +24,7 @@ Legacy one-off scripts remain in `scripts/` for bootstrapping and fixes. New fea
 | **Crew-chat auto-start auth** | `supabase/migrations/20250715180000_harden_crew_chat_auto_start_auth.sql` |
 | **Remove legacy public message INSERT** | `supabase/migrations/20250715213000_remove_legacy_public_message_insert.sql` |
 | **Security audit (production gate)** | `scripts/supabaseSecurityAuditChecklist.sql` |
-| **Remove from history (Events)** | `supabase/migrations/20250710120000_event_history_hide.sql` then **`20250720120000_event_history_hide_past.sql`** (past History rows) |
+| **Remove from history (Events)** | `supabase/migrations/20250710120000_event_history_hide.sql` (column + RPC). App bulk hide uses **owner RLS `events` update** on `history_hidden_at`. Optional: **`20250720120000_event_history_hide_past.sql`** to align RPC with past History rows. |
 | **Remove from history (Gigs / planner sent bookings)** | `supabase/migrations/20250710130000_booking_request_history_hides.sql` |
 | Planner archive to Archived tab (legacy) | `scripts/setupBookingRequestArchiving.sql` — still required for `archived_at` + sender archive/unarchive |
 

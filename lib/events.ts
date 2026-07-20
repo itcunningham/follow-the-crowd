@@ -863,14 +863,38 @@ function normalizeHistoryHideEventId(value: unknown): string {
   return String(value).trim().toLowerCase();
 }
 
-function parseHideEventsFromHistoryUpdatedIds(data: unknown): string[] {
-  const rawUpdated = (data as { updated_ids?: unknown } | null)?.updated_ids;
+function logHistoryHideDiagnostic(
+  phase: string,
+  details: Record<string, unknown>,
+): void {
+  console.error(`[events] history hide ${phase}`, {
+    target: "events.history_hidden_at",
+    idType: "event_id",
+    ...details,
+  });
+}
 
-  if (!Array.isArray(rawUpdated)) {
-    return [];
+function logSupabaseMutationError(context: string, error: unknown): void {
+  if (!error || typeof error !== "object") {
+    logHistoryHideDiagnostic(context, { error });
+    return;
   }
 
-  return rawUpdated.map((value) => String(value));
+  const supabaseError = error as {
+    code?: string;
+    message?: string;
+    details?: string;
+    hint?: string;
+    status?: number;
+  };
+
+  logHistoryHideDiagnostic(context, {
+    supabaseCode: supabaseError.code ?? null,
+    supabaseMessage: supabaseError.message ?? null,
+    supabaseDetails: supabaseError.details ?? null,
+    supabaseHint: supabaseError.hint ?? null,
+    httpStatus: supabaseError.status ?? null,
+  });
 }
 
 export async function hideEventsFromHistory(
@@ -883,29 +907,52 @@ export async function hideEventsFromHistory(
     return { successes: [], failures: [] };
   }
 
-  const { data, error } = await supabase.rpc("hide_events_from_history", {
-    p_event_ids: eventIds,
+  let ownerId: string;
+
+  try {
+    ownerId = await getCurrentUserId();
+  } catch (authError) {
+    logHistoryHideDiagnostic("auth_missing", {
+      selectedCount: eventIds.length,
+      selectedEventIds: eventIds,
+    });
+    throw authError;
+  }
+
+  logHistoryHideDiagnostic("request", {
+    authenticatedUserIdPresent: Boolean(ownerId),
+    selectedCount: eventIds.length,
+    selectedEventIds: eventIds,
+    operation: "events.update(history_hidden_at)",
   });
 
-  if (error) {
-    if (process.env.NODE_ENV !== "production") {
-      console.error("[events] hide_events_from_history RPC error:", error);
-    }
+  const hiddenAt = new Date().toISOString();
+  const { data, error } = await supabase
+    .from("events")
+    .update({ history_hidden_at: hiddenAt })
+    .eq("owner_id", ownerId)
+    .in("id", eventIds)
+    .is("history_hidden_at", null)
+    .select("id");
 
+  if (error) {
+    logSupabaseMutationError("update_failed", error);
     throw new Error(getEventHistoryHideErrorMessage(error));
   }
 
-  const updatedIds = parseHideEventsFromHistoryUpdatedIds(data);
-  const updatedIdSet = new Set(updatedIds.map((id) => normalizeHistoryHideEventId(id)));
+  const updatedRows = (data ?? []) as Array<{ id?: unknown }>;
+  const updatedIdSet = new Set(
+    updatedRows
+      .map((row) => row.id)
+      .filter((id): id is string => typeof id === "string")
+      .map((id) => normalizeHistoryHideEventId(id)),
+  );
 
-  if (
-    process.env.NODE_ENV !== "production" &&
-    eventIds.length > 0 &&
-    updatedIdSet.size === 0
-  ) {
-    console.error("[events] hide_events_from_history returned no updated_ids:", {
-      data,
-      eventIds,
+  if (eventIds.length > 0 && updatedIdSet.size === 0) {
+    logHistoryHideDiagnostic("zero_rows_updated", {
+      selectedEventIds: eventIds,
+      note:
+        "Owner-scoped update matched no rows (wrong ids, already hidden, or not owner). Production hide_events_from_history RPC only hides cancelled rows until 20250720120000_event_history_hide_past.sql is applied.",
     });
   }
 

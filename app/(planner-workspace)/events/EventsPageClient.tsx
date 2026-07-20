@@ -986,6 +986,12 @@ function EventsPageClientView({
     const hideableEventIds = resolvePlannerHistoryHideEventIds(eventsRef.current, eventIds);
 
     if (hideableEventIds.length === 0) {
+      console.error("[events] history hide skipped: no hideable event ids", {
+        idType: "event_id",
+        target: "events.history_hidden_at",
+        selectedEventIds: eventIds,
+        selectedCount: eventIds.length,
+      });
       const message = "Could not remove selected events from history.";
       setError(message);
       throw new Error(message);

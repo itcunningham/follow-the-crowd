@@ -798,6 +798,13 @@ function testEventsHistoryBulkSelectAllTogglesSelection() {
   assert.match(eventsSource, /errorMessage=\{error\}/);
   assert.match(eventsSource, /confirmHistoryRemove/);
   assert.match(eventsSource, /hideEventsFromHistory\(hideableEventIds\)/);
+
+  const eventsLibSource = readFileSync(
+    new URL("../lib/events.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(eventsLibSource, /\.update\(\{ history_hidden_at: hiddenAt \}\)/);
+  assert.match(eventsLibSource, /\.eq\("owner_id", ownerId\)/);
 }
 
 function testEventsHistorySelectionToolbarUsesDeleteLabel() {
