@@ -160,9 +160,11 @@ function getCalendarBootstrapState(
   );
 }
 
+const EVENT_LIST_CARD_CHEVRON_SLOT_CLASS = "mt-0.5 h-4 w-4 shrink-0";
+
 function EventsListCardChevron() {
   return (
-    <span aria-hidden="true" className="mt-0.5 shrink-0 text-ftc-text-muted">
+    <span aria-hidden="true" className={`${EVENT_LIST_CARD_CHEVRON_SLOT_CLASS} text-ftc-text-muted`}>
       <svg
         viewBox="0 0 24 24"
         className="h-4 w-4"
@@ -175,6 +177,20 @@ function EventsListCardChevron() {
         <path d="M9 6l6 6-6 6" />
       </svg>
     </span>
+  );
+}
+
+/** Keeps status pill aligned with Active cards when the chevron is hidden (History). */
+function EventsListCardChevronSlot({ showChevron }: { showChevron: boolean }) {
+  if (showChevron) {
+    return <EventsListCardChevron />;
+  }
+
+  return (
+    <span
+      aria-hidden="true"
+      className={`${EVENT_LIST_CARD_CHEVRON_SLOT_CLASS} invisible pointer-events-none`}
+    />
   );
 }
 
@@ -239,7 +255,7 @@ function EventsListCardContent({
                   variant="compact"
                 />
               </span>
-              {showChevron ? <EventsListCardChevron /> : null}
+              <EventsListCardChevronSlot showChevron={showChevron} />
             </div>
           </div>
         </div>
