@@ -150,21 +150,23 @@ export function EventListSkeleton({
 
 function EventListItemSkeleton({ showPlannerStats = false }: { showPlannerStats?: boolean }) {
   return (
-    <div className="ftc-gig-card ftc-surface-row block rounded-[var(--ftc-radius-xl)] py-2 px-2.5 sm:p-4">
-      <div className="flex min-w-0 items-start gap-2 sm:gap-2.5">
-        <SkeletonBlock className="h-16 w-16 shrink-0 rounded-xl" />
-        <div className="flex min-w-0 flex-1 flex-col gap-1 sm:gap-3">
-          <div className="flex min-w-0 items-start justify-between gap-2">
-            <SkeletonBlock className="h-5 min-w-0 flex-1 max-w-[12rem] sm:h-6" />
-            <SkeletonBlock className="mt-0.5 h-4 w-4 shrink-0 rounded-md" />
+    <div className="ftc-gig-card ftc-surface-row block rounded-[var(--ftc-radius-xl)] py-2 px-2.5 text-left sm:p-4">
+      <div className="flex min-w-0 max-w-full items-start gap-2 text-left sm:gap-2.5">
+        <SkeletonBlock className="h-16 w-16 shrink-0 self-start rounded-xl" />
+        <div className="flex min-w-0 max-w-full flex-1 flex-col gap-1 text-left sm:gap-3">
+          <div className="flex min-w-0 items-start justify-between gap-2 sm:gap-2.5">
+            <SkeletonBlock className="h-5 min-w-0 flex-1 max-w-[12rem] text-left sm:h-6" />
+            <div className="flex shrink-0 items-start gap-1">
+              <SkeletonBlock className="mt-0.5 h-4 w-14 rounded-full" />
+              <SkeletonBlock className="mt-0.5 h-4 w-4 rounded-md" />
+            </div>
           </div>
-          <div className="space-y-0.5">
+          <div className="mt-1 space-y-0.5 text-left sm:mt-2">
             <SkeletonBlock className="h-3.5 w-4/5 max-w-[15rem] sm:h-4" />
             <SkeletonBlock className="h-3.5 w-1/2 max-w-[8rem] sm:h-4" />
           </div>
-          <SkeletonBlock className="h-4 w-14 rounded-full" />
           {showPlannerStats ? (
-            <div className="flex flex-wrap gap-1.5">
+            <div className="flex flex-wrap justify-start gap-1.5">
               <SkeletonBlock className="h-5 w-[4.25rem] rounded-full" />
               <SkeletonBlock className="h-5 w-[4.25rem] rounded-full" />
               <SkeletonBlock className="h-5 w-[4.5rem] rounded-full" />

@@ -180,15 +180,17 @@ function EventsListCardChevron() {
 const EVENT_LIST_CARD_SHELL_CLASS =
   "ftc-gig-card ftc-surface-row rounded-[var(--ftc-radius-xl)] py-2 px-2.5 sm:p-4";
 
-const EVENT_LIST_CARD_ROW_CLASS = "flex min-w-0 items-start gap-2 sm:gap-2.5";
+/** Two columns: fixed artwork | flexible text stack (matches GIG_CARD_BODY rhythm). */
+const EVENT_LIST_CARD_ROW_CLASS =
+  "flex min-w-0 max-w-full items-start gap-2 text-left sm:gap-2.5";
+
+const EVENT_LIST_CARD_ARTWORK_CLASS = "shrink-0 self-start";
 
 const EVENT_LIST_CARD_BODY_CLASS =
-  "flex min-w-0 flex-1 flex-col gap-1 overflow-hidden sm:gap-3";
+  "flex min-w-0 max-w-full flex-1 flex-col gap-1 overflow-hidden text-left sm:gap-3";
 
-const EVENT_LIST_CARD_META_LINE_CLASS =
-  "ftc-gig-card-meta min-w-0 overflow-hidden text-xs sm:text-sm";
-
-const EVENT_LIST_CARD_SUMMARY_CLASS = "flex min-w-0 flex-wrap gap-1.5";
+const EVENT_LIST_CARD_SUMMARY_CLASS =
+  "flex min-w-0 flex-wrap justify-start gap-1.5 text-left";
 
 function EventsListCardContent({
   event,
@@ -212,37 +214,47 @@ function EventsListCardContent({
   return (
     <div className={EVENT_LIST_CARD_ROW_CLASS}>
       {leading}
-      <EventCoverImageListThumb
-        eventName={event.name}
-        coverImageUrl={event.cover_image_url}
-        fallbackColour={event.fallback_colour}
-      />
+      <div className={EVENT_LIST_CARD_ARTWORK_CLASS}>
+        <EventCoverImageListThumb
+          eventName={event.name}
+          coverImageUrl={event.cover_image_url}
+          fallbackColour={event.fallback_colour}
+        />
+      </div>
       <div className={EVENT_LIST_CARD_BODY_CLASS}>
-        <div className="flex min-w-0 items-start justify-between gap-2 sm:gap-2.5">
-          <h3
-            className={`min-w-0 flex-1 text-sm font-bold leading-snug line-clamp-2 sm:text-base ${titleClassName}`}
-          >
-            {event.name}
-          </h3>
-          {showChevron ? <EventsListCardChevron /> : null}
+        <div className="min-w-0 w-full text-left">
+          <div className="flex min-w-0 items-start justify-between gap-2 sm:gap-2.5">
+            <h3
+              className={`min-w-0 flex-1 text-left text-sm font-bold leading-snug line-clamp-2 sm:text-base ${titleClassName}`}
+            >
+              {event.name}
+            </h3>
+            <div className="flex shrink-0 items-start gap-1 sm:gap-1.5">
+              <span className="mt-0.5 shrink-0">
+                <EventDateStatusBadge
+                  eventDate={event.event_date}
+                  setTime={event.set_time}
+                  status={event.status}
+                  variant="compact"
+                />
+              </span>
+              {showChevron ? <EventsListCardChevron /> : null}
+            </div>
+          </div>
         </div>
-        <div className={`${EVENT_LIST_CARD_META_LINE_CLASS} ${metaClassName}`}>
-          <div className="space-y-0.5">
+        <div
+          className={`ftc-gig-card-meta mt-1 min-w-0 overflow-hidden text-left text-xs sm:mt-2 sm:text-sm ${metaClassName}`}
+        >
+          <div className="space-y-0.5 text-left">
             {venueDateLine ? (
-              <p className="min-w-0 max-w-full overflow-hidden break-words">{venueDateLine}</p>
+              <p className="min-w-0 max-w-full overflow-hidden break-words text-left">
+                {venueDateLine}
+              </p>
             ) : null}
-            <p className="min-w-0 max-w-full overflow-hidden break-words text-ftc-text-muted">
+            <p className="min-w-0 max-w-full overflow-hidden break-words text-left text-ftc-text-muted">
               {event.set_time}
             </p>
           </div>
-        </div>
-        <div className="shrink-0 self-start">
-          <EventDateStatusBadge
-            eventDate={event.event_date}
-            setTime={event.set_time}
-            status={event.status}
-            variant="compact"
-          />
         </div>
         {isPlanner ? (
           <div className={EVENT_LIST_CARD_SUMMARY_CLASS}>
@@ -1329,7 +1341,7 @@ function EventsPageClientView({
                           prepareEventsListEventNavigation();
                           router.push(eventHref, { scroll: false });
                         }}
-                        className="block w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ftc-primary/35"
+                        className="block w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ftc-primary/35"
                       >
                         <EventsListCardContent
                           event={event}
