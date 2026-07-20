@@ -151,27 +151,29 @@ export function EventListSkeleton({
 function EventListItemSkeleton({ showPlannerStats = false }: { showPlannerStats?: boolean }) {
   return (
     <div className="ftc-gig-card ftc-surface-row block rounded-[var(--ftc-radius-xl)] py-2 px-2.5 sm:p-4">
-      <div className="flex min-w-0 items-stretch gap-2 sm:gap-2.5">
-        <SkeletonBlock className="h-16 w-16 shrink-0 rounded-xl" />
-        <div className="flex min-w-0 flex-1 items-stretch gap-1.5 sm:gap-2">
-          <div className="flex min-w-0 flex-1 flex-col gap-1 sm:gap-2">
-            <SkeletonBlock className="h-5 w-full max-w-[12rem] sm:h-6" />
-            <SkeletonBlock className="h-3.5 w-4/5 max-w-[15rem] sm:h-4" />
-            <SkeletonBlock className="h-3.5 w-1/2 max-w-[8rem] sm:h-4" />
-            {showPlannerStats ? (
-              <div className="flex flex-wrap gap-1.5 pt-0.5 sm:pt-1">
-                <SkeletonBlock className="h-5 w-[4.25rem] rounded-full" />
-                <SkeletonBlock className="h-5 w-[4.25rem] rounded-full" />
-                <SkeletonBlock className="h-5 w-[4.5rem] rounded-full" />
-                <SkeletonBlock className="h-5 w-[4.25rem] rounded-full" />
-              </div>
-            ) : null}
-          </div>
-          <div className="flex shrink-0 flex-col items-end justify-between self-stretch">
+      <div className="grid min-w-0 grid-cols-[4rem_minmax(0,1fr)] items-start gap-x-2 gap-y-1 sm:gap-x-2.5 sm:gap-y-2">
+        <SkeletonBlock className="col-start-1 row-span-2 h-16 w-16 shrink-0 rounded-xl" />
+        <div className="col-start-2 row-start-1 flex min-w-0 items-start justify-between gap-2">
+          <SkeletonBlock className="h-5 min-w-0 flex-1 max-w-[12rem] sm:h-6" />
+          <div className="flex shrink-0 items-start gap-1">
             <SkeletonBlock className="h-4 w-14 rounded-full" />
-            <SkeletonBlock className="h-4 w-4 rounded-md" />
+            <SkeletonBlock className="mt-0.5 h-4 w-4 rounded-md" />
           </div>
         </div>
+        <div className="col-start-2 row-start-2 flex min-w-0 flex-col gap-1 sm:gap-1.5">
+          <SkeletonBlock className="h-3.5 w-4/5 max-w-[15rem] sm:h-4" />
+          <SkeletonBlock className="h-3.5 w-1/2 max-w-[8rem] sm:h-4" />
+        </div>
+        {showPlannerStats ? (
+          <div className="col-span-2 min-w-0 rounded-lg border border-ftc-border-subtle bg-ftc-bg-elevated/40 px-2 py-1.5">
+            <div className="grid grid-cols-2 gap-1.5 sm:flex sm:flex-wrap sm:gap-1.5">
+              <SkeletonBlock className="h-5 w-full rounded-full sm:w-[4.25rem]" />
+              <SkeletonBlock className="h-5 w-full rounded-full sm:w-[4.25rem]" />
+              <SkeletonBlock className="h-5 w-full rounded-full sm:w-[4.5rem]" />
+              <SkeletonBlock className="h-5 w-full rounded-full sm:w-[4.25rem]" />
+            </div>
+          </div>
+        ) : null}
       </div>
     </div>
   );
