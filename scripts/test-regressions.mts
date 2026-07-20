@@ -776,7 +776,9 @@ function testEventsHistoryBulkSelectAllTogglesSelection() {
     new URL("../app/(planner-workspace)/events/EventsPageClient.tsx", import.meta.url),
     "utf8",
   );
-  assert.match(eventsSource, /resolvePlannerHistoryHideEventIds\(events, eventIds\)/);
+  assert.match(eventsSource, /resolvePlannerHistoryHideEventIds\(eventsRef\.current, eventIds\)/);
+  assert.match(eventsSource, /errorMessage=\{error\}/);
+  assert.match(eventsSource, /confirmHistoryRemove/);
   assert.match(eventsSource, /hideEventsFromHistory\(hideableEventIds\)/);
 }
 

@@ -198,6 +198,7 @@ export function useHistoryBulkManage<T extends { id: string }>(items: T[]) {
         : [...selectedIdsRef.current].map((id) => String(id));
 
     if (ids.length === 0) {
+      await onRemove([]);
       return;
     }
 
@@ -455,12 +456,22 @@ function HistoryConfirmDangerButton({
   const buttonClassName =
     "inline-flex min-h-[2.75rem] w-full items-center justify-center rounded-xl border-0 bg-[var(--ftc-color-danger)] px-4 py-2.5 text-sm font-semibold uppercase tracking-wide text-ftc-bg sm:w-auto";
 
+  function handleClick(event: MouseEvent<HTMLButtonElement>) {
+    event.stopPropagation();
+    if (loading) {
+      return;
+    }
+
+    onConfirm();
+  }
+
   if (loading) {
     return (
       <button
         type="button"
         aria-busy="true"
         tabIndex={-1}
+        disabled
         className={`${buttonClassName} cursor-not-allowed`}
       >
         {loadingLabel}
@@ -472,7 +483,7 @@ function HistoryConfirmDangerButton({
     <button
       type="button"
       data-testid="history-remove-confirm-delete"
-      onClick={onConfirm}
+      onClick={handleClick}
       className={buttonClassName}
     >
       {label}
@@ -510,6 +521,7 @@ function HistoryRemoveConfirmDialogPanel({
   cancelLabel,
   confirmLabel,
   confirmLoadingLabel,
+  errorMessage = null,
   onCancel,
   onConfirm,
 }: {
@@ -520,6 +532,7 @@ function HistoryRemoveConfirmDialogPanel({
   cancelLabel: string;
   confirmLabel: string;
   confirmLoadingLabel: string;
+  errorMessage?: string | null;
   onCancel: () => void;
   onConfirm: () => void;
 }) {
@@ -544,6 +557,11 @@ function HistoryRemoveConfirmDialogPanel({
             {title}
           </h2>
           <p className="mt-2 text-sm leading-relaxed text-ftc-text-secondary">{description}</p>
+          {errorMessage ? (
+            <p className="ftc-inline-error mt-3" role="alert">
+              {errorMessage}
+            </p>
+          ) : null}
         </div>
 
         <div className="relative z-10 flex flex-col gap-2 border-t border-ftc-border-subtle bg-ftc-surface px-5 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:flex-row sm:justify-end">
@@ -571,6 +589,7 @@ export function HistoryRemoveConfirmDialog({
   cancelLabel = "Keep items",
   confirmLabel = "Remove from history",
   confirmLoadingLabel = "Removing...",
+  errorMessage = null,
   onCancel,
   onConfirm,
 }: {
@@ -582,6 +601,7 @@ export function HistoryRemoveConfirmDialog({
   cancelLabel?: string;
   confirmLabel?: string;
   confirmLoadingLabel?: string;
+  errorMessage?: string | null;
   onCancel: () => void;
   onConfirm: () => void;
 }) {
@@ -621,6 +641,7 @@ export function HistoryRemoveConfirmDialog({
       cancelLabel={cancelLabel}
       confirmLabel={confirmLabel}
       confirmLoadingLabel={confirmLoadingLabel}
+      errorMessage={errorMessage}
       onCancel={onCancel}
       onConfirm={onConfirm}
     />,

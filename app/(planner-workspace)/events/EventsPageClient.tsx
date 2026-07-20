@@ -319,6 +319,8 @@ function EventsPageClientView({
     () => guardProfile?.role ?? readCachedNavRole(),
   );
   const [events, setEvents] = useState<EventWithLineupStats[]>([]);
+  const eventsRef = useRef(events);
+  eventsRef.current = events;
   const [loadingEvents, setLoadingEvents] = useState(true);
   const calendarBootstrap = getCalendarBootstrapState(initialCreate, initialEventDate);
   const [createOpen, setCreateOpen] = useState(() => calendarBootstrap?.createOpen ?? false);
@@ -963,11 +965,25 @@ function EventsPageClientView({
     setSuccessMessage(null);
   }
 
+  function openHistoryRemoveConfirm() {
+    setError(null);
+    historyBulkManage.openConfirm();
+  }
+
+  function closeHistoryRemoveConfirm() {
+    setError(null);
+    historyBulkManage.closeConfirm();
+  }
+
+  function confirmHistoryRemove() {
+    void historyBulkManage.confirmRemove(handleRemoveEventsFromHistory);
+  }
+
   async function handleRemoveEventsFromHistory(eventIds: string[]) {
     setError(null);
     setSuccessMessage(null);
 
-    const hideableEventIds = resolvePlannerHistoryHideEventIds(events, eventIds);
+    const hideableEventIds = resolvePlannerHistoryHideEventIds(eventsRef.current, eventIds);
 
     if (hideableEventIds.length === 0) {
       const message = "Could not remove selected events from history.";
@@ -1069,7 +1085,7 @@ function EventsPageClientView({
                       visibleRemovableHistoryEvents.map((event) => event.id),
                     );
                   }}
-                  onRemove={historyBulkManage.openConfirm}
+                  onRemove={openHistoryRemoveConfirm}
                   canToggleAll={canToggleAllHistorySelection}
                   canDelete={canDeleteHistorySelection}
                   removeLabel="Delete"
@@ -1334,10 +1350,9 @@ function EventsPageClientView({
             cancelLabel="Cancel"
             confirmLabel="Delete"
             confirmLoadingLabel="Deleting..."
-            onCancel={historyBulkManage.closeConfirm}
-            onConfirm={() => {
-              void historyBulkManage.confirmRemove(handleRemoveEventsFromHistory);
-            }}
+            errorMessage={error}
+            onCancel={closeHistoryRemoveConfirm}
+            onConfirm={confirmHistoryRemove}
           />
 
           {loadingEvents ? (
