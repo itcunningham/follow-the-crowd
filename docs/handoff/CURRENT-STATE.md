@@ -199,6 +199,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `9a685ce` — fix events history bulk removal failure (RLS update vs stale RPC)
 - `2091463` — fix history delete database failure (past History hide + aligned hideable IDs)
 - `28f079b` — document permanent phone/desktop parity rule (`FTC_WORKFLOW.md` §7)
 - `7d36d55` — fix workspace tab row glitch during route transitions
