@@ -1377,6 +1377,7 @@ function EventsPageClientView({
                           event={event}
                           cancelled={cancelled}
                           isPlanner={isPlanner}
+                          showChevron={!isHistoryTab}
                         />
                       </button>
                     )}
