@@ -432,15 +432,15 @@ function EventsPageClientView({
     return sortEventsByStartDescending(filtered);
   }, [events, isPlanner]);
   const removableHistoryEvents = useMemo(
-    () => (isPlanner ? filterVisiblePlannerHistoryEvents(events) : []),
-    [events, isPlanner],
+    () => (isPlanner ? filterVisiblePlannerHistoryEvents(historyEvents) : []),
+    [historyEvents, isPlanner],
   );
   const filteredEvents = isHistoryTab ? historyEvents : upcomingEvents;
   const historyBulkManage = useHistoryBulkManage(
     isPlanner && isHistoryTab ? historyEvents : [],
   );
   const historyLoadSettled = eventsListReady && !loadingEvents;
-  const showHistoryTrashButton =
+  const historyTrashVisible =
     isPlanner &&
     isHistoryTab &&
     !createOpen &&
@@ -448,6 +448,8 @@ function EventsPageClientView({
     (!historyLoadSettled || removableHistoryEvents.length > 0);
   const historyTrashButtonDisabled =
     !historyLoadSettled || removableHistoryEvents.length === 0;
+  const historyTabRowSelectionMode =
+    isPlanner && isHistoryTab && historyBulkManage.showSelectionToolbar;
 
   useEffect(() => {
     if (!successMessage) {
@@ -992,19 +994,17 @@ function EventsPageClientView({
         secondaryControlsSlot={
           !isCalendarCreateFlow ? (
             <EventsListTabRow
-              showTrashButton={showHistoryTrashButton}
+              showTrashButton={historyTrashVisible}
               trashButtonDisabled={historyTrashButtonDisabled}
               onTrashClick={historyBulkManage.enterSelectionMode}
               reserveTrashSlot={
                 isPlanner &&
                 !historyBulkManage.selectionMode &&
-                !showHistoryTrashButton
+                !historyTrashVisible
               }
               feedbackMessage={isHistoryTab ? successMessage : null}
               feedbackFading={historyFeedbackFading}
-              selectionMode={
-                isPlanner && isHistoryTab && historyBulkManage.showSelectionToolbar
-              }
+              selectionMode={historyTabRowSelectionMode}
               selectionToolbar={
                 <HistorySelectionToolbar
                   embedded

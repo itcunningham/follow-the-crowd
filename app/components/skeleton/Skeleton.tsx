@@ -307,37 +307,42 @@ export function EventsListTabRow({
   selectionMode?: boolean;
   selectionToolbar?: ReactNode;
 }) {
+  const showRightTrash = !selectionMode && showTrashButton;
+  const showRightPlaceholder = !selectionMode && !showTrashButton && reserveTrashSlot;
+
   return (
     <div className={EVENTS_LIST_TAB_ROW_CLASS}>
       <div className="flex shrink-0 items-center">{children}</div>
-      <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
-        {selectionMode ? (
-          <div className="flex min-h-0 min-w-0 flex-1 items-center">{selectionToolbar}</div>
-        ) : (
-          <>
-            <div className="min-w-0 flex-1 overflow-hidden" aria-live="polite">
-              {feedbackMessage ? (
-                <p
-                  className={`${EVENTS_LIST_TAB_FEEDBACK_CLASS} ${
-                    feedbackFading ? "opacity-0" : "opacity-100"
-                  }`}
-                >
-                  {feedbackMessage}
-                </p>
-              ) : null}
-            </div>
-            {showTrashButton ? (
+      {selectionMode ? (
+        <div className="flex min-h-0 min-w-0 flex-1 items-center overflow-hidden">
+          {selectionToolbar}
+        </div>
+      ) : (
+        <>
+          <div className="min-w-0 flex-1 overflow-hidden" aria-live="polite">
+            {feedbackMessage ? (
+              <p
+                className={`${EVENTS_LIST_TAB_FEEDBACK_CLASS} ${
+                  feedbackFading ? "opacity-0" : "opacity-100"
+                }`}
+              >
+                {feedbackMessage}
+              </p>
+            ) : null}
+          </div>
+          <div className="flex w-[1.875rem] shrink-0 items-center justify-end">
+            {showRightTrash ? (
               <HistoryManageButton
                 onClick={onTrashClick ?? (() => undefined)}
                 disabled={trashButtonDisabled || !onTrashClick}
                 className={FTC_EVENTS_LIST_TAB_ACTION_CLASS}
               />
-            ) : reserveTrashSlot ? (
+            ) : showRightPlaceholder ? (
               <span aria-hidden="true" className={FTC_EVENTS_LIST_TAB_ACTION_PLACEHOLDER_CLASS} />
             ) : null}
-          </>
-        )}
-      </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
