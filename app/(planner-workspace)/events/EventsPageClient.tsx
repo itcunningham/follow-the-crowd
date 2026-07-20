@@ -337,6 +337,7 @@ function EventsPageClientView({
   const [createSaveAttempted, setCreateSaveAttempted] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [historyFeedbackFading, setHistoryFeedbackFading] = useState(false);
   const [eventsListReady, setEventsListReady] = useState(false);
   const [calendarOriginDateKey, setCalendarOriginDateKey] = useState<string | null>(
     () => calendarBootstrap?.calendarOriginDateKey ?? null,
@@ -447,6 +448,25 @@ function EventsPageClientView({
     (!historyLoadSettled || removableHistoryEvents.length > 0);
   const historyTrashButtonDisabled =
     !historyLoadSettled || removableHistoryEvents.length === 0;
+
+  useEffect(() => {
+    if (!successMessage) {
+      setHistoryFeedbackFading(false);
+      return;
+    }
+
+    setHistoryFeedbackFading(false);
+    const fadeTimer = window.setTimeout(() => setHistoryFeedbackFading(true), 2700);
+    const clearTimer = window.setTimeout(() => {
+      setSuccessMessage(null);
+      setHistoryFeedbackFading(false);
+    }, 3000);
+
+    return () => {
+      window.clearTimeout(fadeTimer);
+      window.clearTimeout(clearTimer);
+    };
+  }, [successMessage]);
 
   const visibleFilteredEvents = useMemo(
     () => filterOutRemovingHistoryItems(filteredEvents, historyBulkManage.removingIds),
@@ -980,6 +1000,22 @@ function EventsPageClientView({
                 !historyBulkManage.selectionMode &&
                 !showHistoryTrashButton
               }
+              feedbackMessage={isHistoryTab ? successMessage : null}
+              feedbackFading={historyFeedbackFading}
+              selectionMode={
+                isPlanner && isHistoryTab && historyBulkManage.showSelectionToolbar
+              }
+              selectionToolbar={
+                <HistorySelectionToolbar
+                  embedded
+                  selectedCount={historyBulkManage.selectedCount}
+                  allSelected={historyBulkManage.allSelected}
+                  removing={historyBulkManage.removing}
+                  onCancel={historyBulkManage.cancelSelectionMode}
+                  onSelectAll={historyBulkManage.selectAll}
+                  onRemove={historyBulkManage.openConfirm}
+                />
+              }
             >
               <div className={FTC_PILL_ROW_GAP_CLASS}>
                 <Link
@@ -1226,23 +1262,6 @@ function EventsPageClientView({
 
           {showEventsListContent ? (
             <>
-          {successMessage ? (
-            <p className="mb-4 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated px-4 py-3 text-sm text-ftc-text-secondary">
-              {successMessage}
-            </p>
-          ) : null}
-
-          {isPlanner && isHistoryTab && historyBulkManage.showSelectionToolbar ? (
-            <HistorySelectionToolbar
-              selectedCount={historyBulkManage.selectedCount}
-              allSelected={historyBulkManage.allSelected}
-              removing={historyBulkManage.removing}
-              onCancel={historyBulkManage.cancelSelectionMode}
-              onSelectAll={historyBulkManage.selectAll}
-              onRemove={historyBulkManage.openConfirm}
-            />
-          ) : null}
-
           <HistoryRemoveConfirmDialog
             open={historyBulkManage.confirmOpen}
             count={historyBulkManage.confirmCount}

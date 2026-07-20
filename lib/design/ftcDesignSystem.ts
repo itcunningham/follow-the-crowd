@@ -94,7 +94,11 @@ export const FTC_EVENTS_LIST_TAB_ACTION_PLACEHOLDER_CLASS =
 
 /** Events Active/History tab row — locked height on mobile and desktop. */
 export const EVENTS_LIST_TAB_ROW_CLASS =
-  "mb-4 flex min-h-[1.875rem] flex-wrap items-center justify-between gap-2 md:min-h-[2.375rem]";
+  "mb-4 flex h-[2.875rem] min-h-[2.875rem] items-center gap-2 md:h-[2.375rem] md:min-h-[2.375rem]";
+
+/** Inline history-remove feedback beside History tab (truncate, no row growth). */
+export const EVENTS_LIST_TAB_FEEDBACK_CLASS =
+  "min-w-0 truncate text-[11px] font-normal leading-none text-ftc-text-muted transition-opacity duration-300 sm:text-xs";
 
 /** Event Plans toolbar row — fixed height for trash ↔ delete-selection swap. */
 export const EVENT_PLANS_TOOLBAR_ROW_CLASS =

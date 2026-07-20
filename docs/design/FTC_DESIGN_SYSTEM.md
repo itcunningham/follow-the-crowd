@@ -309,7 +309,7 @@ Shared pattern (History confirm, booking sheets, edit confirm):
 
 ## History (Events tab)
 
-History uses the **same list card component and layout** as Active. Tab row height is locked via `EVENTS_LIST_TAB_ROW_CLASS`; Active reserves an invisible trash slot (`FTC_EVENTS_LIST_TAB_ACTION_PLACEHOLDER_CLASS`) so the first card Y position does not shift when switching tabs.
+History uses the **same list card component and layout** as Active. Tab row height is locked via `EVENTS_LIST_TAB_ROW_CLASS`; Active reserves an invisible trash slot (`FTC_EVENTS_LIST_TAB_ACTION_PLACEHOLDER_CLASS`) so the first card Y position does not shift when switching tabs. History remove confirmation uses `EVENTS_LIST_TAB_FEEDBACK_CLASS` in the tab row (truncate, auto-dismiss ~3s); bulk selection swaps into the same row via `EventsListTabRow` + embedded `HistorySelectionToolbar` (no second toolbar row above cards).
 
 ---
 

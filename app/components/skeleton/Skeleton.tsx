@@ -25,6 +25,7 @@ import {
 } from "@/app/components/history/HistoryBulkManage";
 import {
   EVENTS_LIST_TAB_ROW_CLASS,
+  EVENTS_LIST_TAB_FEEDBACK_CLASS,
   EVENT_PLANS_CREATE_BUTTON_CLASS,
   EVENT_PLANS_TOOLBAR_ROW_CLASS,
   FTC_EVENTS_LIST_TAB_ACTION_CLASS,
@@ -290,6 +291,10 @@ export function EventsListTabRow({
   trashButtonDisabled = true,
   onTrashClick,
   reserveTrashSlot = false,
+  feedbackMessage = null,
+  feedbackFading = false,
+  selectionMode = false,
+  selectionToolbar = null,
 }: {
   children: ReactNode;
   showTrashButton?: boolean;
@@ -297,19 +302,42 @@ export function EventsListTabRow({
   onTrashClick?: () => void;
   /** Keep tab row height identical when trash is hidden (Events Active tab). */
   reserveTrashSlot?: boolean;
+  feedbackMessage?: string | null;
+  feedbackFading?: boolean;
+  selectionMode?: boolean;
+  selectionToolbar?: ReactNode;
 }) {
   return (
     <div className={EVENTS_LIST_TAB_ROW_CLASS}>
-      {children}
-      {showTrashButton ? (
-        <HistoryManageButton
-          onClick={onTrashClick ?? (() => undefined)}
-          disabled={trashButtonDisabled || !onTrashClick}
-          className={FTC_EVENTS_LIST_TAB_ACTION_CLASS}
-        />
-      ) : reserveTrashSlot ? (
-        <span aria-hidden="true" className={FTC_EVENTS_LIST_TAB_ACTION_PLACEHOLDER_CLASS} />
-      ) : null}
+      <div className="flex shrink-0 items-center">{children}</div>
+      <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
+        {selectionMode ? (
+          <div className="flex min-h-0 min-w-0 flex-1 items-center">{selectionToolbar}</div>
+        ) : (
+          <>
+            <div className="min-w-0 flex-1 overflow-hidden" aria-live="polite">
+              {feedbackMessage ? (
+                <p
+                  className={`${EVENTS_LIST_TAB_FEEDBACK_CLASS} ${
+                    feedbackFading ? "opacity-0" : "opacity-100"
+                  }`}
+                >
+                  {feedbackMessage}
+                </p>
+              ) : null}
+            </div>
+            {showTrashButton ? (
+              <HistoryManageButton
+                onClick={onTrashClick ?? (() => undefined)}
+                disabled={trashButtonDisabled || !onTrashClick}
+                className={FTC_EVENTS_LIST_TAB_ACTION_CLASS}
+              />
+            ) : reserveTrashSlot ? (
+              <span aria-hidden="true" className={FTC_EVENTS_LIST_TAB_ACTION_PLACEHOLDER_CLASS} />
+            ) : null}
+          </>
+        )}
+      </div>
     </div>
   );
 }
