@@ -15,6 +15,17 @@ export function filterOutRemovingHistoryItems<T extends { id: string }>(
   return items.filter((item) => !removingIds.has(item.id));
 }
 
+/** Events History ALL — toggle select every visible removable id or clear selection. */
+export function resolveHistoryBulkSelectAllToggle(
+  selectableIds: string[],
+  selectedIds: ReadonlySet<string>,
+): Set<string> {
+  const allVisibleSelected =
+    selectableIds.length > 0 && selectableIds.every((id) => selectedIds.has(id));
+
+  return allVisibleSelected ? new Set() : new Set(selectableIds);
+}
+
 function ManageHistoryIcon({ className = "h-4 w-4" }: { className?: string }) {
   return (
     <svg
@@ -110,12 +121,21 @@ export function useHistoryBulkManage<T extends { id: string }>(items: T[]) {
       return;
     }
 
-    if (itemIds.length > 0 && itemIds.every((id) => selectedIds.has(id))) {
-      setSelectedIds(new Set());
+    setSelectedIds((current) => {
+      if (itemIds.length > 0 && itemIds.every((id) => current.has(id))) {
+        return new Set();
+      }
+
+      return new Set(itemIds);
+    });
+  }
+
+  function toggleSelectAllForIds(ids: string[]) {
+    if (removing) {
       return;
     }
 
-    setSelectedIds(new Set(itemIds));
+    setSelectedIds((current) => resolveHistoryBulkSelectAllToggle(ids, current));
   }
 
   function openConfirm() {
@@ -183,6 +203,7 @@ export function useHistoryBulkManage<T extends { id: string }>(items: T[]) {
     toggleItem,
     selectAll,
     toggleSelectAll,
+    toggleSelectAllForIds,
     openConfirm,
     closeConfirm,
     confirmRemove,
@@ -262,6 +283,7 @@ export function HistorySelectionToolbar({
   cancelVariant = "label",
   selectAllToggle = false,
   centeredSelectAll = false,
+  selectableCount,
   className = "",
   embedded = false,
 }: {
@@ -277,6 +299,7 @@ export function HistorySelectionToolbar({
   cancelVariant?: "label" | "backIcon";
   selectAllToggle?: boolean;
   centeredSelectAll?: boolean;
+  selectableCount?: number;
   className?: string;
   embedded?: boolean;
 }) {
@@ -286,7 +309,10 @@ export function HistorySelectionToolbar({
   const groupClassName = embedded
     ? "flex min-w-0 flex-nowrap items-center gap-2"
     : "flex flex-wrap items-center gap-2";
-  const selectAllDisabled = removing || (!selectAllToggle && allSelected);
+  const selectAllDisabled =
+    removing ||
+    (!selectAllToggle && allSelected) ||
+    (selectAllToggle && selectableCount === 0);
   const selectAllAriaLabel = allSelected
     ? "Unselect all history events"
     : "Select all history events";

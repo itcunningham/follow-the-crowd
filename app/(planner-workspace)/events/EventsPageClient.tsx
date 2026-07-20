@@ -449,20 +449,31 @@ function EventsPageClientView({
     return sortEventsByStartDescending(filtered);
   }, [events, isPlanner]);
   const filteredEvents = isHistoryTab ? historyEvents : upcomingEvents;
-  const visibleRemovableHistoryEvents = useMemo(
-    () =>
-      isPlanner && isHistoryTab
-        ? filterVisiblePlannerHistoryEvents(historyEvents)
-        : [],
-    [historyEvents, isPlanner, isHistoryTab],
-  );
   const historyBulkManage = useHistoryBulkManage(
-    isPlanner && isHistoryTab ? visibleRemovableHistoryEvents : [],
+    isPlanner && isHistoryTab
+      ? filterVisiblePlannerHistoryEvents(filteredEvents)
+      : [],
   );
   const visibleFilteredEvents = useMemo(
     () => filterOutRemovingHistoryItems(filteredEvents, historyBulkManage.removingIds),
     [filteredEvents, historyBulkManage.removingIds],
   );
+  const visibleRemovableHistoryEventIds = useMemo(() => {
+    if (!isPlanner || !isHistoryTab) {
+      return [];
+    }
+
+    return filterVisiblePlannerHistoryEvents(visibleFilteredEvents).map((event) => event.id);
+  }, [visibleFilteredEvents, isPlanner, isHistoryTab]);
+  const allVisibleRemovableHistorySelected = useMemo(
+    () =>
+      visibleRemovableHistoryEventIds.length > 0 &&
+      visibleRemovableHistoryEventIds.every((id) => historyBulkManage.selectedIds.has(id)),
+    [visibleRemovableHistoryEventIds, historyBulkManage.selectedIds],
+  );
+  const handleHistoryToggleSelectAll = useCallback(() => {
+    historyBulkManage.toggleSelectAllForIds(visibleRemovableHistoryEventIds);
+  }, [historyBulkManage, visibleRemovableHistoryEventIds]);
   const historyLoadSettled = eventsListReady && !loadingEvents;
   const visibleHistoryEventCount = isHistoryTab ? visibleFilteredEvents.length : 0;
   const historyTrashVisible = resolveEventsHistoryTrashVisible({
@@ -1031,11 +1042,12 @@ function EventsPageClientView({
                 <HistorySelectionToolbar
                   embedded
                   selectedCount={historyBulkManage.selectedCount}
-                  allSelected={historyBulkManage.allSelected}
+                  allSelected={allVisibleRemovableHistorySelected}
                   removing={historyBulkManage.removing}
                   onCancel={historyBulkManage.cancelSelectionMode}
-                  onSelectAll={historyBulkManage.toggleSelectAll}
+                  onSelectAll={handleHistoryToggleSelectAll}
                   onRemove={historyBulkManage.openConfirm}
+                  selectableCount={visibleRemovableHistoryEventIds.length}
                   removeLabel="Delete"
                   selectAllLabel="ALL"
                   cancelVariant="backIcon"

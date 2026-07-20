@@ -24,6 +24,7 @@ import {
 } from "../lib/bookingRequests";
 import { parseDjGigsListTab, resolveGigsListTabParam } from "../lib/bookings/gigsListNavigation";
 import { resolveEventsHistoryTrashVisible } from "../lib/events/eventsListNavigation";
+import { resolveHistoryBulkSelectAllToggle } from "../app/components/history/HistoryBulkManage";
 import {
   defaultGigsWorkspaceChromeState,
   gigsWorkspaceChromeStatesEqual,
@@ -716,12 +717,35 @@ function testGigsTabRowKeepsStableCountSlots() {
 }
 
 function testEventsHistoryBulkSelectAllTogglesSelection() {
-  const source = readFileSync(
+  const bulkSource = readFileSync(
     new URL("../app/components/history/HistoryBulkManage.tsx", import.meta.url),
     "utf8",
   );
-  assert.match(source, /function toggleSelectAll\(\)/);
-  assert.match(source, /itemIds\.every\(\(id\) => selectedIds\.has\(id\)\)/);
+  assert.match(bulkSource, /export function resolveHistoryBulkSelectAllToggle/);
+  assert.match(bulkSource, /function toggleSelectAllForIds\(ids: string\[\]\)/);
+  assert.match(bulkSource, /setSelectedIds\(\(current\) => \{/);
+
+  const selected = new Set(["a", "b"]);
+  assert.deepEqual(
+    resolveHistoryBulkSelectAllToggle(["a", "b"], selected),
+    new Set<string>(),
+  );
+  assert.deepEqual(
+    resolveHistoryBulkSelectAllToggle(["a", "b", "c"], selected),
+    new Set(["a", "b", "c"]),
+  );
+  assert.deepEqual(resolveHistoryBulkSelectAllToggle([], selected), new Set<string>());
+
+  const eventsSource = readFileSync(
+    new URL("../app/(planner-workspace)/events/EventsPageClient.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(
+    eventsSource,
+    /filterVisiblePlannerHistoryEvents\(visibleFilteredEvents\)\.map\(\(event\) => event\.id\)/,
+  );
+  assert.match(eventsSource, /onSelectAll=\{handleHistoryToggleSelectAll\}/);
+  assert.match(eventsSource, /toggleSelectAllForIds\(visibleRemovableHistoryEventIds\)/);
 }
 
 function testEventsHistorySelectionToolbarUsesDeleteLabel() {
@@ -731,7 +755,7 @@ function testEventsHistorySelectionToolbarUsesDeleteLabel() {
   );
   assert.match(source, /removeLabel="Delete"/);
   assert.match(source, /selectAllLabel="ALL"/);
-  assert.match(source, /onSelectAll=\{historyBulkManage\.toggleSelectAll\}/);
+  assert.match(source, /onSelectAll=\{handleHistoryToggleSelectAll\}/);
   assert.match(source, /selectAllToggle/);
   assert.match(source, /centeredSelectAll/);
   assert.match(source, /cancelVariant="backIcon"/);
