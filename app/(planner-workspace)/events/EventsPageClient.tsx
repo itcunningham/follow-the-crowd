@@ -471,9 +471,6 @@ function EventsPageClientView({
       visibleRemovableHistoryEventIds.every((id) => historyBulkManage.selectedIds.has(id)),
     [visibleRemovableHistoryEventIds, historyBulkManage.selectedIds],
   );
-  const handleHistoryToggleSelectAll = useCallback(() => {
-    historyBulkManage.toggleSelectAllForIds(visibleRemovableHistoryEventIds);
-  }, [historyBulkManage, visibleRemovableHistoryEventIds]);
   const historyLoadSettled = eventsListReady && !loadingEvents;
   const visibleHistoryEventCount = isHistoryTab ? visibleFilteredEvents.length : 0;
   const historyTrashVisible = resolveEventsHistoryTrashVisible({
@@ -1045,7 +1042,9 @@ function EventsPageClientView({
                   allSelected={allVisibleRemovableHistorySelected}
                   removing={historyBulkManage.removing}
                   onCancel={historyBulkManage.cancelSelectionMode}
-                  onSelectAll={handleHistoryToggleSelectAll}
+                  onSelectAll={() => {
+                    historyBulkManage.toggleSelectAllForIds(visibleRemovableHistoryEventIds);
+                  }}
                   onRemove={historyBulkManage.openConfirm}
                   selectableCount={visibleRemovableHistoryEventIds.length}
                   removeLabel="Delete"

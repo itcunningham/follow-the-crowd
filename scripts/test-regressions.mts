@@ -716,13 +716,20 @@ function testGigsTabRowKeepsStableCountSlots() {
   assert.doesNotMatch(GIGS_LIST_TAB_ROW_CLASS, /flex-wrap/);
 }
 
+async function testEventsHistorySelectAllButtonInteraction() {
+  const { runHistorySelectAllInteractionTest } = await import(
+    "./test-history-select-all-interaction.js"
+  );
+  await runHistorySelectAllInteractionTest();
+}
+
 function testEventsHistoryBulkSelectAllTogglesSelection() {
   const bulkSource = readFileSync(
     new URL("../app/components/history/HistoryBulkManage.tsx", import.meta.url),
     "utf8",
   );
   assert.match(bulkSource, /export function resolveHistoryBulkSelectAllToggle/);
-  assert.match(bulkSource, /function toggleSelectAllForIds\(ids: string\[\]\)/);
+  assert.match(bulkSource, /toggleSelectAllForIds = useCallback/);
   assert.match(bulkSource, /setSelectedIds\(\(current\) => \{/);
 
   const selected = new Set(["a", "b"]);
@@ -734,7 +741,11 @@ function testEventsHistoryBulkSelectAllTogglesSelection() {
     resolveHistoryBulkSelectAllToggle(["a", "b", "c"], selected),
     new Set(["a", "b", "c"]),
   );
-  assert.deepEqual(resolveHistoryBulkSelectAllToggle([], selected), new Set<string>());
+  assert.deepEqual(
+    resolveHistoryBulkSelectAllToggle(["a"], new Set(["a", "b", "off-screen"])),
+    new Set(["b", "off-screen"]),
+  );
+  assert.deepEqual(resolveHistoryBulkSelectAllToggle([], selected), selected);
 
   const eventsSource = readFileSync(
     new URL("../app/(planner-workspace)/events/EventsPageClient.tsx", import.meta.url),
@@ -744,8 +755,9 @@ function testEventsHistoryBulkSelectAllTogglesSelection() {
     eventsSource,
     /filterVisiblePlannerHistoryEvents\(visibleFilteredEvents\)\.map\(\(event\) => event\.id\)/,
   );
-  assert.match(eventsSource, /onSelectAll=\{handleHistoryToggleSelectAll\}/);
   assert.match(eventsSource, /toggleSelectAllForIds\(visibleRemovableHistoryEventIds\)/);
+  assert.match(bulkSource, /data-testid="events-history-select-all"/);
+  assert.match(bulkSource, /function handleSelectAllClick/);
 }
 
 function testEventsHistorySelectionToolbarUsesDeleteLabel() {
@@ -755,7 +767,7 @@ function testEventsHistorySelectionToolbarUsesDeleteLabel() {
   );
   assert.match(source, /removeLabel="Delete"/);
   assert.match(source, /selectAllLabel="ALL"/);
-  assert.match(source, /onSelectAll=\{handleHistoryToggleSelectAll\}/);
+  assert.match(source, /toggleSelectAllForIds\(visibleRemovableHistoryEventIds\)/);
   assert.match(source, /selectAllToggle/);
   assert.match(source, /centeredSelectAll/);
   assert.match(source, /cancelVariant="backIcon"/);
@@ -880,7 +892,7 @@ function testBookingsRouteMountsPersistentGigsSecondaryBand() {
   assert.match(subNavSource, /window\.location\.pathname/);
 }
 
-function main() {
+async function main() {
   testPastEventDatesAreBlocked();
   testFutureEventDatesAreAllowed();
   testIncompleteSetTimeIsBlocked();
@@ -919,7 +931,11 @@ function main() {
   testWorkspaceSubNavLayoutIsStable();
   testWorkspaceActiveHrefIgnoresStaleOverrides();
   testProfileIdentityPresentationHierarchy();
+  await testEventsHistorySelectAllButtonInteraction();
   console.log("All regression checks passed.");
 }
 
-main();
+main().catch((error) => {
+  console.error(error);
+  process.exit(1);
+});

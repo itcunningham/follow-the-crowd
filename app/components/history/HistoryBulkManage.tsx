@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useState, type MouseEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { FTC_ICON_BUTTON_SM_CLASS } from "@/lib/design/ftcDesignSystem";
 
@@ -15,15 +15,21 @@ export function filterOutRemovingHistoryItems<T extends { id: string }>(
   return items.filter((item) => !removingIds.has(item.id));
 }
 
-/** Events History ALL — toggle select every visible removable id or clear selection. */
+/** Events History ALL — toggle every visible removable id, preserving off-screen selections. */
 export function resolveHistoryBulkSelectAllToggle(
-  selectableIds: string[],
+  visibleHistoryIds: string[],
   selectedIds: ReadonlySet<string>,
 ): Set<string> {
-  const allVisibleSelected =
-    selectableIds.length > 0 && selectableIds.every((id) => selectedIds.has(id));
+  const visibleIds = visibleHistoryIds.map((id) => String(id));
+  const currentSet = new Set(Array.from(selectedIds, (id) => String(id)));
+  const areAllSelected =
+    visibleIds.length > 0 && visibleIds.every((id) => currentSet.has(id));
 
-  return allVisibleSelected ? new Set() : new Set(selectableIds);
+  if (areAllSelected) {
+    return new Set(Array.from(currentSet).filter((id) => !visibleIds.includes(id)));
+  }
+
+  return new Set([...currentSet, ...visibleIds]);
 }
 
 function ManageHistoryIcon({ className = "h-4 w-4" }: { className?: string }) {
@@ -130,13 +136,16 @@ export function useHistoryBulkManage<T extends { id: string }>(items: T[]) {
     });
   }
 
-  function toggleSelectAllForIds(ids: string[]) {
-    if (removing) {
-      return;
-    }
+  const toggleSelectAllForIds = useCallback(
+    (ids: string[]) => {
+      if (removing) {
+        return;
+      }
 
-    setSelectedIds((current) => resolveHistoryBulkSelectAllToggle(ids, current));
-  }
+      setSelectedIds((current) => resolveHistoryBulkSelectAllToggle(ids, current));
+    },
+    [removing],
+  );
 
   function openConfirm() {
     if (removing || selectedCount === 0) {
@@ -312,7 +321,16 @@ export function HistorySelectionToolbar({
   const selectAllDisabled =
     removing ||
     (!selectAllToggle && allSelected) ||
-    (selectAllToggle && selectableCount === 0);
+    (selectAllToggle && selectableCount !== undefined && selectableCount === 0);
+
+  function handleSelectAllClick(event: MouseEvent<HTMLButtonElement>) {
+    event.stopPropagation();
+    if (selectAllDisabled) {
+      return;
+    }
+
+    onSelectAll();
+  }
   const selectAllAriaLabel = allSelected
     ? "Unselect all history events"
     : "Select all history events";
@@ -342,7 +360,8 @@ export function HistorySelectionToolbar({
   const selectAllControl = (
     <button
       type="button"
-      onClick={onSelectAll}
+      data-testid="events-history-select-all"
+      onClick={handleSelectAllClick}
       disabled={selectAllDisabled}
       aria-pressed={selectAllToggle ? allSelected : undefined}
       aria-label={selectAllToggle ? selectAllAriaLabel : undefined}
