@@ -68,7 +68,6 @@ import {
   eventFormToRequestInput,
   eventInputFromBookingPlan,
   filterPlannerHistoryTabEvents,
-  filterVisiblePlannerHistoryEvents,
   getEventsLoadErrorMessage,
   hideEventsFromHistory,
   isEventCancelled,
@@ -97,6 +96,7 @@ import {
   resolveCalendarCreateBootstrapState,
   resolveCalendarCreateInitialStep,
   resolveCalendarSaveReturnDateKey,
+  resolveEventsHistoryTrashVisible,
   resolveEventsListTabParam,
   resolveEventsWorkspaceActiveHref,
 } from "@/lib/events/eventsListNavigation";
@@ -431,23 +431,26 @@ function EventsPageClientView({
 
     return sortEventsByStartDescending(filtered);
   }, [events, isPlanner]);
-  const removableHistoryEvents = useMemo(
-    () => (isPlanner ? filterVisiblePlannerHistoryEvents(historyEvents) : []),
-    [historyEvents, isPlanner],
-  );
   const filteredEvents = isHistoryTab ? historyEvents : upcomingEvents;
   const historyBulkManage = useHistoryBulkManage(
     isPlanner && isHistoryTab ? historyEvents : [],
   );
+  const visibleFilteredEvents = useMemo(
+    () => filterOutRemovingHistoryItems(filteredEvents, historyBulkManage.removingIds),
+    [filteredEvents, historyBulkManage.removingIds],
+  );
   const historyLoadSettled = eventsListReady && !loadingEvents;
-  const historyTrashVisible =
-    isPlanner &&
-    isHistoryTab &&
-    !createOpen &&
-    !historyBulkManage.selectionMode &&
-    (!historyLoadSettled || removableHistoryEvents.length > 0);
+  const visibleHistoryEventCount = isHistoryTab ? visibleFilteredEvents.length : 0;
+  const historyTrashVisible = resolveEventsHistoryTrashVisible({
+    isPlanner,
+    isHistoryTab,
+    createOpen,
+    selectionMode: historyBulkManage.selectionMode,
+    historyLoadSettled,
+    visibleHistoryEventCount,
+  });
   const historyTrashButtonDisabled =
-    !historyLoadSettled || removableHistoryEvents.length === 0;
+    !historyLoadSettled || visibleHistoryEventCount === 0;
   const historyTabRowSelectionMode =
     isPlanner && isHistoryTab && historyBulkManage.showSelectionToolbar;
 
@@ -469,11 +472,6 @@ function EventsPageClientView({
       window.clearTimeout(clearTimer);
     };
   }, [successMessage]);
-
-  const visibleFilteredEvents = useMemo(
-    () => filterOutRemovingHistoryItems(filteredEvents, historyBulkManage.removingIds),
-    [filteredEvents, historyBulkManage.removingIds],
-  );
 
   const loadEvents = useCallback(async () => {
     const cachedEvents = readEventsListCache(isPlanner);

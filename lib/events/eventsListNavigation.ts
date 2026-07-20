@@ -57,6 +57,31 @@ export function buildEventsListHref(tab: EventsListTab = "active"): string {
   return tab === "history" ? "/events?tab=history" : "/events";
 }
 
+/** Trash control on Events History — matches visible card list, not cancelled-only subsets. */
+export function resolveEventsHistoryTrashVisible({
+  isPlanner,
+  isHistoryTab,
+  createOpen,
+  selectionMode,
+  historyLoadSettled,
+  visibleHistoryEventCount,
+}: {
+  isPlanner: boolean;
+  isHistoryTab: boolean;
+  createOpen: boolean;
+  selectionMode: boolean;
+  historyLoadSettled: boolean;
+  visibleHistoryEventCount: number;
+}): boolean {
+  return (
+    isPlanner &&
+    isHistoryTab &&
+    !createOpen &&
+    !selectionMode &&
+    (!historyLoadSettled || visibleHistoryEventCount > 0)
+  );
+}
+
 export function buildEventDetailHref(eventId: string, tab: EventsListTab = "active"): string {
   if (tab === "history") {
     return `/events/${eventId}?fromTab=history`;

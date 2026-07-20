@@ -23,6 +23,7 @@ import {
   resolveBookingDateKey,
 } from "../lib/bookingRequests";
 import { parseDjGigsListTab, resolveGigsListTabParam } from "../lib/bookings/gigsListNavigation";
+import { resolveEventsHistoryTrashVisible } from "../lib/events/eventsListNavigation";
 import {
   defaultGigsWorkspaceChromeState,
   gigsWorkspaceChromeStatesEqual,
@@ -714,6 +715,50 @@ function testGigsTabRowKeepsStableCountSlots() {
   assert.doesNotMatch(GIGS_LIST_TAB_ROW_CLASS, /flex-wrap/);
 }
 
+function testEventsHistoryTrashVisibleUsesRenderedHistoryList() {
+  const base = {
+    isPlanner: true,
+    isHistoryTab: true,
+    createOpen: false,
+    selectionMode: false,
+    historyLoadSettled: true,
+  } as const;
+
+  assert.equal(
+    resolveEventsHistoryTrashVisible({ ...base, visibleHistoryEventCount: 3 }),
+    true,
+    "History with visible cards shows trash",
+  );
+  assert.equal(
+    resolveEventsHistoryTrashVisible({ ...base, visibleHistoryEventCount: 0 }),
+    false,
+    "empty History hides trash",
+  );
+  assert.equal(
+    resolveEventsHistoryTrashVisible({ ...base, visibleHistoryEventCount: 3, selectionMode: true }),
+    false,
+    "selection mode hides trash",
+  );
+  assert.equal(
+    resolveEventsHistoryTrashVisible({
+      ...base,
+      visibleHistoryEventCount: 3,
+      isHistoryTab: false,
+    }),
+    false,
+    "Active tab hides trash",
+  );
+  assert.equal(
+    resolveEventsHistoryTrashVisible({
+      ...base,
+      visibleHistoryEventCount: 0,
+      historyLoadSettled: false,
+    }),
+    true,
+    "unsettled History still reserves trash slot while loading",
+  );
+}
+
 function testGigsTabCountsDeriveFromSameBookingSnapshot() {
   const bookings = [
     makeDjGigBooking({ status: "pending", event_date: "Saturday, 12 July 2027" }),
@@ -818,6 +863,7 @@ function main() {
   testConfirmedTabAliasParsesFromUrl();
   testEventPlanUseButtonKeepsStableCardLayout();
   testGigsTabRowKeepsStableCountSlots();
+  testEventsHistoryTrashVisibleUsesRenderedHistoryList();
   testGigsTabCountsDeriveFromSameBookingSnapshot();
   testGigsInnerTabSelectionFollowsRouteImmediately();
   testGigsWorkspaceChromeStateSyncAvoidsNoOpUpdates();
