@@ -215,8 +215,12 @@ export function isPlannerEventInHistoryTab(
   event: Pick<Event, "event_date" | "set_time" | "status" | "history_hidden_at">,
   referenceDate: Date = new Date(),
 ): boolean {
+  if (event.history_hidden_at) {
+    return false;
+  }
+
   if (isEventCancelled(event)) {
-    return !event.history_hidden_at;
+    return true;
   }
 
   return isPlannerEventPast(event.event_date, event.set_time, referenceDate);
@@ -229,20 +233,21 @@ export function filterPlannerHistoryTabEvents<
 }
 
 export function isEventVisibleInPlannerHistory(
-  event: Pick<Event, "status" | "history_hidden_at">,
+  event: Pick<Event, "event_date" | "set_time" | "status" | "history_hidden_at">,
+  referenceDate: Date = new Date(),
 ): boolean {
-  return isEventCancelled(event) && !event.history_hidden_at;
+  return isPlannerEventInHistoryTab(event, referenceDate);
 }
 
 export function filterVisiblePlannerHistoryEvents<
-  T extends Pick<Event, "status" | "history_hidden_at">,
->(events: T[]): T[] {
-  return events.filter((event) => isEventVisibleInPlannerHistory(event));
+  T extends Pick<Event, "event_date" | "set_time" | "status" | "history_hidden_at">,
+>(events: T[], referenceDate: Date = new Date()): T[] {
+  return events.filter((event) => isEventVisibleInPlannerHistory(event, referenceDate));
 }
 
-/** Selected History ids that can be hidden via hide_events_from_history (cancelled, visible). */
+/** Selected History ids that can be hidden via hide_events_from_history (owner History tab rows). */
 export function resolvePlannerHistoryHideEventIds<
-  T extends Pick<Event, "id" | "status" | "history_hidden_at">,
+  T extends Pick<Event, "id" | "event_date" | "set_time" | "status" | "history_hidden_at">,
 >(events: T[], selectedIds: string[]): string[] {
   if (selectedIds.length === 0) {
     return [];
@@ -854,6 +859,20 @@ export function getEventHistoryHideErrorMessage(error: unknown): string {
   return "Could not remove selected events from history.";
 }
 
+function normalizeHistoryHideEventId(value: unknown): string {
+  return String(value).trim().toLowerCase();
+}
+
+function parseHideEventsFromHistoryUpdatedIds(data: unknown): string[] {
+  const rawUpdated = (data as { updated_ids?: unknown } | null)?.updated_ids;
+
+  if (!Array.isArray(rawUpdated)) {
+    return [];
+  }
+
+  return rawUpdated.map((value) => String(value));
+}
+
 export async function hideEventsFromHistory(
   eventIds: string[],
 ): Promise<{
@@ -869,20 +888,34 @@ export async function hideEventsFromHistory(
   });
 
   if (error) {
+    if (process.env.NODE_ENV !== "production") {
+      console.error("[events] hide_events_from_history RPC error:", error);
+    }
+
     throw new Error(getEventHistoryHideErrorMessage(error));
   }
 
-  const updatedIds = Array.isArray((data as { updated_ids?: unknown } | null)?.updated_ids)
-    ? ((data as { updated_ids: unknown[] }).updated_ids.filter(
-        (value): value is string => typeof value === "string",
-      ))
-    : [];
+  const updatedIds = parseHideEventsFromHistoryUpdatedIds(data);
+  const updatedIdSet = new Set(updatedIds.map((id) => normalizeHistoryHideEventId(id)));
 
-  const successes = updatedIds;
+  if (
+    process.env.NODE_ENV !== "production" &&
+    eventIds.length > 0 &&
+    updatedIdSet.size === 0
+  ) {
+    console.error("[events] hide_events_from_history returned no updated_ids:", {
+      data,
+      eventIds,
+    });
+  }
+
+  const successes = eventIds.filter((eventId) =>
+    updatedIdSet.has(normalizeHistoryHideEventId(eventId)),
+  );
   const failures: EventHistoryHideFailure[] = [];
 
   for (const eventId of eventIds) {
-    if (!successes.includes(eventId)) {
+    if (!updatedIdSet.has(normalizeHistoryHideEventId(eventId))) {
       failures.push({
         eventId,
         message: "Event could not be removed from history.",

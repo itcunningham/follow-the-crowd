@@ -733,16 +733,34 @@ async function testEventsHistoryRemoveConfirmInteraction() {
 
 function testResolvePlannerHistoryHideEventIds() {
   const events = [
-    { id: "cancelled-visible", status: "cancelled" as const, history_hidden_at: null },
-    { id: "cancelled-hidden", status: "cancelled" as const, history_hidden_at: "2026-01-01T00:00:00.000Z" },
-    { id: "past-active", status: "completed" as const, history_hidden_at: null },
+    {
+      id: "cancelled-visible",
+      status: "cancelled" as const,
+      history_hidden_at: null,
+      event_date: "2020-01-01",
+      set_time: "",
+    },
+    {
+      id: "cancelled-hidden",
+      status: "cancelled" as const,
+      history_hidden_at: "2026-01-01T00:00:00.000Z",
+      event_date: "2020-01-01",
+      set_time: "",
+    },
+    {
+      id: "past-active",
+      status: "completed" as const,
+      history_hidden_at: null,
+      event_date: "2020-01-01",
+      set_time: "",
+    },
   ];
 
   assert.deepEqual(
     resolvePlannerHistoryHideEventIds(events, ["cancelled-visible", "past-active"]),
-    ["cancelled-visible"],
+    ["cancelled-visible", "past-active"],
   );
-  assert.deepEqual(resolvePlannerHistoryHideEventIds(events, ["past-active"]), []);
+  assert.deepEqual(resolvePlannerHistoryHideEventIds(events, ["cancelled-hidden"]), []);
 }
 
 function testEventsHistoryBulkSelectAllTogglesSelection() {

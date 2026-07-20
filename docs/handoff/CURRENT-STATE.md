@@ -58,7 +58,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 - **History event detail (2026-07-14):** past/cancelled events read-only on detail — no Edit, Invite DJs, lifecycle delete/cancel, run sheet edit, booking cancel/hide/proposal actions; Open DM and existing group chat link kept; historical empty copy for run sheet and bookings
 - **History bulk select (2026-07-14):** Select all operates on full History list (`filterPlannerHistoryTabEvents`), not cancelled-only subset
 - **Design system (2026-07-14):** `docs/design/FTC_DESIGN_SYSTEM.md` + `lib/design/ftcDesignSystem.ts` — shared tokens; standardised status badges, empty states, section titles, button min-heights
-- **History hide:** bulk remove from History view (does not delete records)
+- **History hide:** bulk remove from History view (cancelled + past rows; sets `history_hidden_at`; does not delete records). Requires migration `20250720120000_event_history_hide_past.sql` on Supabase for past events.
 - **Create/edit validation:** inline field errors after Save; start + finish time both required; notes length/line limits disable save
 - **Notes** section on event detail (heading "Notes", muted section label)
 - Edit with confirmation when booking-impacting fields change + group chat update message
