@@ -59,14 +59,16 @@ export function EventDetailOverlayButton({
   onClick,
   label,
   children,
+  disabled = false,
 }: {
   href?: string;
   onClick?: () => void;
   label: string;
   children: React.ReactNode;
+  disabled?: boolean;
 }) {
   const className =
-    "flex h-10 w-10 items-center justify-center rounded-xl border border-ftc-border-subtle bg-ftc-bg/80 text-ftc-text transition duration-150 ease-out hover:border-ftc-border-strong hover:bg-ftc-bg-elevated motion-reduce:transition-none";
+    "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-ftc-border-subtle bg-ftc-bg/80 text-ftc-text transition duration-150 ease-out hover:border-ftc-border-strong hover:bg-ftc-bg-elevated disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transition-none";
 
   if (href) {
     return (
@@ -77,7 +79,13 @@ export function EventDetailOverlayButton({
   }
 
   return (
-    <button type="button" aria-label={label} onClick={onClick} className={className}>
+    <button
+      type="button"
+      aria-label={label}
+      onClick={onClick}
+      disabled={disabled}
+      className={className}
+    >
       {children}
     </button>
   );

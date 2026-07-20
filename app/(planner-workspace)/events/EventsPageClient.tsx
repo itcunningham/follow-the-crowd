@@ -1013,6 +1013,7 @@ function EventsPageClientView({
                   onSelectAll={historyBulkManage.selectAll}
                   onRemove={historyBulkManage.openConfirm}
                   removeLabel="Delete"
+                  cancelVariant="backIcon"
                 />
               }
             >
