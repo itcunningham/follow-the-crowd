@@ -150,18 +150,20 @@ export function EventListSkeleton({
 
 function EventListItemSkeleton({ showPlannerStats = false }: { showPlannerStats?: boolean }) {
   return (
-    <div className="ftc-card block p-4 sm:p-5">
-      <div className="flex items-start gap-4">
+    <div className="ftc-gig-card ftc-surface-row block rounded-[var(--ftc-radius-xl)] py-2 px-2.5 sm:p-4">
+      <div className="flex min-w-0 items-start gap-2.5 sm:gap-3">
         <SkeletonBlock className="h-16 w-16 shrink-0 rounded-xl" />
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <SkeletonBlock className="h-7 w-3/5 max-w-[12rem]" />
-            <SkeletonBlock className="h-4 w-14 rounded-full" />
+        <div className="flex min-w-0 flex-1 flex-col gap-1 sm:gap-2.5">
+          <div className="flex min-w-0 items-start justify-between gap-2">
+            <SkeletonBlock className="h-5 w-3/5 max-w-[12rem] sm:h-6" />
+            <SkeletonBlock className="h-4 w-14 shrink-0 rounded-full" />
           </div>
-          <SkeletonBlock className="mt-2 h-4 w-4/5 max-w-[15rem]" />
-          <SkeletonBlock className="mt-1 h-4 w-1/2 max-w-[8rem]" />
+          <div className="mt-1 space-y-0.5 sm:mt-2">
+            <SkeletonBlock className="h-3.5 w-4/5 max-w-[15rem] sm:h-4" />
+            <SkeletonBlock className="h-3.5 w-1/2 max-w-[8rem] sm:h-4" />
+          </div>
           {showPlannerStats ? (
-            <div className="mt-2.5 flex flex-wrap gap-1.5">
+            <div className="mt-1 flex flex-wrap gap-1.5 sm:mt-2">
               <SkeletonBlock className="h-5 w-[4.25rem] rounded-full" />
               <SkeletonBlock className="h-5 w-[4.25rem] rounded-full" />
               <SkeletonBlock className="h-5 w-[4.5rem] rounded-full" />

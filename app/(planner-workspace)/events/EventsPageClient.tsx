@@ -43,7 +43,6 @@ import {
   FTC_EVENTS_LIST_TAB_ACTION_PLACEHOLDER_CLASS,
   FTC_LIST_GAP_CLASS,
   FTC_PILL_ROW_GAP_CLASS,
-  FTC_SURFACE_ROW_CLASS,
   ftcFilterPillClass,
 } from "@/lib/design/ftcDesignSystem";
 import { EventListSkeleton, EventsListTabRow } from "@/app/components/skeleton/Skeleton";
@@ -178,6 +177,17 @@ function EventsListCardChevron() {
   );
 }
 
+const EVENT_LIST_CARD_SHELL_CLASS =
+  "ftc-gig-card ftc-surface-row rounded-[var(--ftc-radius-xl)] py-2 px-2.5 sm:p-4";
+
+const EVENT_LIST_CARD_CONTENT_CLASS = "flex min-w-0 items-start gap-2.5 sm:gap-3";
+
+const EVENT_LIST_CARD_BODY_CLASS =
+  "flex min-w-0 flex-1 flex-col gap-1 overflow-hidden sm:gap-2.5";
+
+const EVENT_LIST_CARD_META_CLASS =
+  "ftc-gig-card-meta mt-1 min-w-0 overflow-hidden text-xs text-ftc-text-secondary sm:mt-2 sm:text-sm";
+
 function EventsListCardContent({
   event,
   cancelled,
@@ -193,37 +203,48 @@ function EventsListCardContent({
 }) {
   const titleClassName = cancelled ? "text-ftc-text-secondary" : "text-ftc-text";
   const metaClassName = cancelled ? "text-ftc-text-muted" : "text-ftc-text-secondary";
+  const venueDateLine = [event.venue?.trim(), formatDisplayEventDate(event.event_date)]
+    .filter(Boolean)
+    .join(" · ");
 
   return (
-    <div className="flex items-start gap-3.5 sm:gap-4">
+    <div className={EVENT_LIST_CARD_CONTENT_CLASS}>
       {leading}
       <EventCoverImageListThumb
         eventName={event.name}
         coverImageUrl={event.cover_image_url}
         fallbackColour={event.fallback_colour}
       />
-      <div className="min-w-0 flex-1">
-        <div className="flex items-start justify-between gap-2">
-          <h3
-            className={`min-w-0 flex-1 text-[1.0625rem] font-bold leading-snug sm:text-lg ${titleClassName}`}
-          >
-            {event.name}
-          </h3>
-          <div className="shrink-0 self-start">
-            <EventDateStatusBadge
-              eventDate={event.event_date}
-              setTime={event.set_time}
-              status={event.status}
-              variant="compact"
-            />
+      <div className={EVENT_LIST_CARD_BODY_CLASS}>
+        <div className="min-w-0">
+          <div className="flex min-w-0 items-start justify-between gap-2 sm:gap-2.5">
+            <h3
+              className={`min-w-0 flex-1 text-sm font-bold leading-snug line-clamp-2 sm:text-base ${titleClassName}`}
+            >
+              {event.name}
+            </h3>
+            <span className="mt-0.5 shrink-0">
+              <EventDateStatusBadge
+                eventDate={event.event_date}
+                setTime={event.set_time}
+                status={event.status}
+                variant="compact"
+              />
+            </span>
           </div>
         </div>
-        <p className={`mt-1.5 text-sm ${metaClassName}`}>
-          {event.venue} · {formatDisplayEventDate(event.event_date)}
-        </p>
-        <p className="mt-1 text-sm text-ftc-text-muted">{event.set_time}</p>
+        <div className={`${EVENT_LIST_CARD_META_CLASS} ${metaClassName}`}>
+          <div className="space-y-0.5">
+            {venueDateLine ? (
+              <p className="min-w-0 max-w-full overflow-hidden break-words">{venueDateLine}</p>
+            ) : null}
+            <p className="min-w-0 max-w-full overflow-hidden break-words text-ftc-text-muted">
+              {event.set_time}
+            </p>
+          </div>
+        </div>
         {isPlanner ? (
-          <div className="mt-2.5 flex flex-wrap gap-1.5">
+          <div className="mt-1 flex min-w-0 flex-wrap gap-1.5 sm:mt-2">
             <PlannerStatChip label="Invited" value={event.lineupStats.total} variant="compact" />
             <PlannerStatChip label="Pending" value={event.lineupStats.pending} variant="compact" />
             <PlannerStatChip label="Accepted" value={event.lineupStats.accepted} variant="compact" />
@@ -238,8 +259,8 @@ function EventsListCardContent({
 
 function eventsListCardShellClassName(cancelled: boolean, isSelected = false) {
   return [
-    "relative overflow-hidden",
-    FTC_SURFACE_ROW_CLASS,
+    "relative overflow-hidden text-left",
+    EVENT_LIST_CARD_SHELL_CLASS,
     cancelled ? "ftc-event-card-cancelled" : "",
     isSelected ? "ring-1 ring-ftc-primary/40" : "",
   ]
