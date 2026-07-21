@@ -1047,15 +1047,11 @@ function EventsPageClientView({
     }
   }
 
-  return (
-      <PlannerWorkspacePage
-        initialRole={resolvedRole}
-        activeWorkspaceHref={eventsWorkspaceActiveHref}
-        includeChrome={false}
-        actions={
-          isPlanner &&
-          !createOpen &&
-          !(isHistoryTab && historyBulkManage.selectionMode) ? (
+  const workspaceHeaderActions =
+    isPlanner && !createOpen
+      ? historyTabRowSelectionMode
+        ? <></>
+        : (
             <button
               type="button"
               onClick={() => {
@@ -1065,8 +1061,15 @@ function EventsPageClientView({
             >
               Create event
             </button>
-          ) : undefined
-        }
+          )
+      : undefined;
+
+  return (
+      <PlannerWorkspacePage
+        initialRole={resolvedRole}
+        activeWorkspaceHref={eventsWorkspaceActiveHref}
+        includeChrome={false}
+        actions={workspaceHeaderActions}
         secondaryControlsSlot={
           !isCalendarCreateFlow ? (
             <EventsListTabRow

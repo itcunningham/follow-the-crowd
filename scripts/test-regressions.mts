@@ -825,6 +825,17 @@ function testEventsHistorySelectionToolbarUsesDeleteLabel() {
   assert.match(source, /cancelVariant="backIcon"/);
 }
 
+function testEventsCreateEventHiddenDuringHistorySelectionToolbar() {
+  const source = readFileSync(
+    new URL("../app/(planner-workspace)/events/EventsPageClient.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(source, /historyTabRowSelectionMode/);
+  assert.match(source, /workspaceHeaderActions/);
+  assert.match(source, /historyTabRowSelectionMode\s*\?\s*<\><\/>\s*:/);
+  assert.match(source, /actions=\{workspaceHeaderActions\}/);
+}
+
 function testEventPlansSelectionToolbarMatchesHistory() {
   const source = readFileSync(
     new URL("../app/(planner-workspace)/booking-plans/page.tsx", import.meta.url),
@@ -1039,6 +1050,7 @@ async function main() {
   testEventsHistoryBulkSelectAllTogglesSelection();
   testResolvePlannerHistoryHideEventIds();
   testEventsHistorySelectionToolbarUsesDeleteLabel();
+  testEventsCreateEventHiddenDuringHistorySelectionToolbar();
   testEventPlansSelectionToolbarMatchesHistory();
   testEventPlansSelectionToolbarRowMatchesEventsHistory();
   testEventPlansActionRowLayout();
