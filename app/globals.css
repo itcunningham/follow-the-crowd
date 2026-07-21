@@ -1106,6 +1106,16 @@ html {
   backdrop-filter: blur(16px);
 }
 
+@media (max-width: 767px) {
+  html[data-mobile-keyboard-open] .ftc-mobile-nav-bar {
+    display: none;
+  }
+
+  html[data-mobile-keyboard-open] .ftc-mobile-nav-offset {
+    padding-bottom: 0 !important;
+  }
+}
+
 /* -------------------------------------------------------------------------- */
 /* Chat highlight                                                              */
 /* -------------------------------------------------------------------------- */

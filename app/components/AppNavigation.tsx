@@ -26,6 +26,10 @@ import {
   type UserRole,
 } from "@/lib/user/currentUser";
 import { useGuardProfile } from "@/app/components/GuardProfileContext";
+import {
+  subscribeMobileSoftwareKeyboard,
+  syncMobileSoftwareKeyboardDocumentState,
+} from "@/lib/navigation/mobileSoftwareKeyboard";
 
 type NavIconKey = "home" | "events" | "gigs" | "messages" | "profile";
 
@@ -86,7 +90,8 @@ function getNavItems(role: UserRole, currentUserId: string | null): NavItem[] {
   return [events, messages, profile];
 }
 
-export const MOBILE_NAV_OFFSET_CLASS = "pb-[calc(3.5rem+env(safe-area-inset-bottom))] md:pb-0";
+export const MOBILE_NAV_OFFSET_CLASS =
+  "ftc-mobile-nav-offset pb-[calc(3.5rem+env(safe-area-inset-bottom))] md:pb-0";
 
 export const MOBILE_NAV_Z_CLASS = "z-50";
 
@@ -360,6 +365,26 @@ export default function AppNavigation() {
     void ensureNavMessagesPrefetched(resolvedUserId, resolvedRole);
   }, [resolvedRole, resolvedUserId]);
 
+  useEffect(() => {
+    let frameId = 0;
+
+    const scheduleSync = () => {
+      cancelAnimationFrame(frameId);
+      frameId = requestAnimationFrame(() => {
+        syncMobileSoftwareKeyboardDocumentState();
+      });
+    };
+
+    scheduleSync();
+    const unsubscribe = subscribeMobileSoftwareKeyboard(scheduleSync);
+
+    return () => {
+      cancelAnimationFrame(frameId);
+      unsubscribe();
+      document.documentElement.removeAttribute("data-mobile-keyboard-open");
+    };
+  }, []);
+
   const displayMessagesCount = useMemo(() => {
     const cachedCount = getCachedNavMessagesCount(resolvedUserId, resolvedRole);
     if (cachedCount != null) {
@@ -411,7 +436,7 @@ export default function AppNavigation() {
 
       <nav
         aria-label="Mobile navigation"
-        className={`ftc-nav-bar fixed inset-x-0 bottom-0 ${MOBILE_NAV_Z_CLASS} border-t md:hidden`}
+        className={`ftc-nav-bar ftc-mobile-nav-bar fixed inset-x-0 bottom-0 ${MOBILE_NAV_Z_CLASS} border-t md:hidden`}
       >
         <div className="mx-auto flex max-w-2xl items-stretch px-0.5 pb-[env(safe-area-inset-bottom)]">
           {navItems.map((item) => {

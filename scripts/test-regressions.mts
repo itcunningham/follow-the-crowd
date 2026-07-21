@@ -884,6 +884,26 @@ function testEventFallbackColourSelectionRadioBehaviour() {
   assert.doesNotMatch(source, /value === option\.key \? null : option\.key/);
 }
 
+function testMobileSoftwareKeyboardHidesBottomNavigation() {
+  const navSource = readFileSync(
+    new URL("../app/components/AppNavigation.tsx", import.meta.url),
+    "utf8",
+  );
+  const keyboardSource = readFileSync(
+    new URL("../lib/navigation/mobileSoftwareKeyboard.ts", import.meta.url),
+    "utf8",
+  );
+  const cssSource = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
+
+  assert.match(navSource, /ftc-mobile-nav-bar/);
+  assert.match(navSource, /subscribeMobileSoftwareKeyboard/);
+  assert.match(navSource, /syncMobileSoftwareKeyboardDocumentState/);
+  assert.match(keyboardSource, /window\.visualViewport/);
+  assert.match(keyboardSource, /readSoftwareKeyboardObscuredHeight/);
+  assert.match(cssSource, /html\[data-mobile-keyboard-open\] \.ftc-mobile-nav-bar/);
+  assert.match(cssSource, /html\[data-mobile-keyboard-open\] \.ftc-mobile-nav-offset/);
+}
+
 function testEventsActiveStatusPillsSingleRowLayout() {
   const source = readFileSync(
     new URL("../app/(planner-workspace)/events/EventsPageClient.tsx", import.meta.url),
@@ -1193,6 +1213,7 @@ async function main() {
   testEventsCreateFlowTabPillNavigation();
   testEventsListTabSwitchUsesClientHistoryWithoutRouterNavigation();
   testEventsCreateEventHiddenDuringHistorySelectionToolbar();
+  testMobileSoftwareKeyboardHidesBottomNavigation();
   testEventsActiveStatusPillsSingleRowLayout();
   testEventCreateFormTextFieldMaxLength();
   testEventFallbackColourSelectionRadioBehaviour();

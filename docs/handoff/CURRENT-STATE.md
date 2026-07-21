@@ -70,7 +70,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 - Accepted bookings cancellable by planner or DJ with reason + group chat update
 - Booking cards in DMs show **live** event fields from `events` when `event_id` set; expanded card uses compact icon metadata rows (venue/date/time/rate), no event initials thumb, expandable notes, tighter spacing
 - **DM photo picker (2026-07-14):** media icon opens native OS chooser (Photo Library / Take Photo on iOS); no forced camera via `capture`
-- **DM composer (2026-07-14):** no in-field emoji button; users use native keyboard emoji picker; mobile send button slightly smaller (`h-10` / 40px, icon 18px) with desktop unchanged at `h-11`
+- **Mobile bottom nav + keyboard (2026-07-21):** on viewports below `md`, when `visualViewport` shrinks with a text field focused, mobile tab bar hides (`display: none`) and `ftc-mobile-nav-offset` padding clears until the keyboard closes
 
 ## Calendar
 
