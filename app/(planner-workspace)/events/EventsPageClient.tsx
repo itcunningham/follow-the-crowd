@@ -1022,32 +1022,19 @@ function EventsPageClientView({
   ) {
     const isTargetTab = tab === "history" ? isHistoryTab : !isHistoryTab;
 
-    if (createOpen) {
-      event.preventDefault();
-
-      let href: string | null = null;
-      if (!isTargetTab) {
-        href = buildEventsListHref(tab);
-        window.history.pushState(window.history.state, "", href);
-        handleEventsListTabChange();
-      } else {
-        handleEventsListTabChange();
-      }
-
-      closeCreateFlow();
-
-      if (href) {
-        router.push(href, { scroll: false });
-      }
-      return;
-    }
-
     if (isTargetTab) {
       event.preventDefault();
       return;
     }
 
+    event.preventDefault();
+    const href = buildEventsListHref(tab);
+    window.history.pushState(window.history.state, "", href);
     handleEventsListTabChange();
+
+    if (createOpen) {
+      closeCreateFlow();
+    }
   }
 
   function openHistoryRemoveConfirm() {

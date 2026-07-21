@@ -903,23 +903,46 @@ function testEventsCreateFlowTabPillNavigation() {
     new URL("../app/(planner-workspace)/events/EventsPageClient.tsx", import.meta.url),
     "utf8",
   );
+  const tabLinkHandler =
+    source.match(/function handleEventsListTabLinkClick\([\s\S]*?\n  \}/)?.[0] ?? "";
+  assert.ok(tabLinkHandler.length > 0, "handleEventsListTabLinkClick not found");
   assert.match(source, /ftcFilterPillClass\(!createOpen && !isHistoryTab\)/);
   assert.match(source, /ftcFilterPillClass\(!createOpen && isHistoryTab\)/);
-  assert.match(source, /function handleEventsListTabLinkClick/);
+  assert.match(tabLinkHandler, /window\.history\.pushState\(window\.history\.state, "", href\)/);
   assert.match(
-    source,
-    /window\.history\.pushState\(window\.history\.state, "", href\)/,
+    tabLinkHandler,
+    /handleEventsListTabChange\(\);[\s\S]*?if \(createOpen\) \{\s*closeCreateFlow\(\);/,
   );
-  assert.match(
-    source,
-    /handleEventsListTabChange\(\);[\s\S]*?closeCreateFlow\(\);[\s\S]*?if \(href\) \{\s*router\.push\(href/,
-  );
+  assert.doesNotMatch(tabLinkHandler, /router\.(push|replace)\(/);
   assert.match(
     source,
     /resolveEventsListTabParam\(null, initialTab, window\.location\.search\)/,
   );
   assert.match(source, /handleEventsListTabLinkClick\(event, "active"\)/);
   assert.match(source, /handleEventsListTabLinkClick\(event, "history"\)/);
+}
+
+function testEventsListTabSwitchUsesClientHistoryWithoutRouterNavigation() {
+  const source = readFileSync(
+    new URL("../app/(planner-workspace)/events/EventsPageClient.tsx", import.meta.url),
+    "utf8",
+  );
+  const tabLinkHandler =
+    source.match(/function handleEventsListTabLinkClick\([\s\S]*?\n  \}/)?.[0] ?? "";
+  assert.ok(tabLinkHandler.length > 0, "handleEventsListTabLinkClick not found");
+  assert.match(
+    tabLinkHandler,
+    /event\.preventDefault\(\);\s*const href = buildEventsListHref\(tab\);\s*window\.history\.pushState/,
+  );
+  assert.doesNotMatch(tabLinkHandler, /router\.(push|replace)\(/);
+  assert.match(
+    source,
+    /useEffect\(\(\) => \{\s*if \(!roleReady \|\| isCalendarCreateFlow\)/,
+  );
+  assert.doesNotMatch(
+    source,
+    /isHistoryTab[\s\S]{0,120}loadEvents\(/,
+  );
 }
 
 function testEventsCreateEventHiddenDuringHistorySelectionToolbar() {
@@ -1151,6 +1174,7 @@ async function main() {
   testResolvePlannerHistoryHideEventIds();
   testEventsHistorySelectionToolbarUsesDeleteLabel();
   testEventsCreateFlowTabPillNavigation();
+  testEventsListTabSwitchUsesClientHistoryWithoutRouterNavigation();
   testEventsCreateEventHiddenDuringHistorySelectionToolbar();
   testEventsActiveStatusPillsSingleRowLayout();
   testEventCreateFormTextFieldMaxLength();

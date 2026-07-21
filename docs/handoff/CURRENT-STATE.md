@@ -53,6 +53,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 - Flat solid artwork tiles (no glow)
 - Event list: Active + History tabs; whole card links to detail
 - **Create event tab pills (2026-07-21):** while Create event flow is open, Active/History pills show neutral styling; tapping a tab closes create and lands on that list (URL updates synchronously before create closes — no Active/History flash); Cancel restores the tab from URL (`?tab=history` preserved)
+- **Events History tab perf (2026-07-21):** Active/History switches use `history.pushState` only (no Next `router.push`) so `EventsPageClient` stays mounted — avoids Suspense/`loading.tsx` remount and duplicate `listOwnedEvents` + lineup-stats fetch on every History click
 - **Events list load (2026-07-19):** lineup stat chips load via one batched `booking_requests` query per page fetch (minimal fields), not one query per event
 - **History UX (2026-07-14):** History tab matches Active list layout/spacing; locked tab row height + reserved trash slot prevents layout jump on tab switch
 - **Event detail (2026-07-19):** single `OnboardingGuard` wrapper; Open DM from event detail returns Back to same event via `from=event-detail&eventId=…`
