@@ -1198,7 +1198,7 @@ function EventsPageClientView({
               {createStep === "source" ? (
                 <div className="space-y-3">
                   <PlannerOptionCard
-                    title="From event plans"
+                    title="Event plans"
                     description="Choose one of your saved event plans"
                     onClick={() => {
                       setError(null);
