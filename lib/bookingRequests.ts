@@ -2423,7 +2423,7 @@ export function buildBookingSendResultMessage(
   successCount: number,
   skippedDuplicateCount: number,
 ): string {
-  const base = `Sent booking request to ${successCount} DJ${successCount === 1 ? "" : "s"}.`;
+  const base = `Sent booking request to ${successCount} DJ${successCount === 1 ? "" : "s"}`;
 
   if (skippedDuplicateCount === 0) {
     return base;
