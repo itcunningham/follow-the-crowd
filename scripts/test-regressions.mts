@@ -833,7 +833,8 @@ function testEventsActiveStatusPillsSingleRowLayout() {
   assert.match(source, /EVENT_LIST_CARD_SUMMARY_ACTIVE_SINGLE_ROW_CLASS/);
   assert.match(source, /flex-wrap items-center justify-start gap-0\.5/);
   assert.match(source, /compactActiveRow/);
-  assert.match(source, /statusPillsSingleRow=\{isPlanner && !isHistoryTab\}/);
+  assert.match(source, /eventListCardStatusPillsSingleRow = isPlanner/);
+  assert.match(source, /statusPillsSingleRow=\{eventListCardStatusPillsSingleRow\}/);
   assert.match(source, /TEMP_ACTIVE_EVENT_DOUBLE_DIGIT_PILL_COUNTS/);
   assert.match(source, /tempDoubleDigitPillCounts=\{activeEventTempDoubleDigitPillCounts\}/);
 }

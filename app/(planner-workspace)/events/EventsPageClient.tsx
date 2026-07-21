@@ -232,7 +232,7 @@ function EventsListCardContent({
   isPlanner: boolean;
   leading?: ReactNode;
   showChevron?: boolean;
-  /** Events → Active only: attempt single-row status pills (History unchanged). */
+  /** Events → Active & History: compact booking-count pill row (same layout). */
   statusPillsSingleRow?: boolean;
   /** TEMP: display 10 for each booking count on Active cards only. */
   tempDoubleDigitPillCounts?: boolean;
@@ -507,6 +507,8 @@ function EventsPageClientView({
   );
   const activeEventTempDoubleDigitPillCounts =
     TEMP_ACTIVE_EVENT_DOUBLE_DIGIT_PILL_COUNTS && isPlanner && !isHistoryTab;
+  /** Active + History: shared compact booking-count pill row (Active tab output unchanged). */
+  const eventListCardStatusPillsSingleRow = isPlanner;
   const visibleRemovableHistoryEvents = useMemo(() => {
     if (!isPlanner || !isHistoryTab) {
       return [];
@@ -1491,7 +1493,7 @@ function EventsPageClientView({
                           cancelled={cancelled}
                           isPlanner={isPlanner}
                           showChevron={false}
-                          statusPillsSingleRow={isPlanner && !isHistoryTab}
+                          statusPillsSingleRow={eventListCardStatusPillsSingleRow}
                           tempDoubleDigitPillCounts={activeEventTempDoubleDigitPillCounts}
                         />
                       </div>
@@ -1511,7 +1513,7 @@ function EventsPageClientView({
                           cancelled={cancelled}
                           isPlanner={isPlanner}
                           showChevron={!isHistoryTab}
-                          statusPillsSingleRow={isPlanner && !isHistoryTab}
+                          statusPillsSingleRow={eventListCardStatusPillsSingleRow}
                           tempDoubleDigitPillCounts={activeEventTempDoubleDigitPillCounts}
                         />
                       </button>
