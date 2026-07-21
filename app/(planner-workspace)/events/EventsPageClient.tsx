@@ -1053,7 +1053,9 @@ function EventsPageClientView({
         activeWorkspaceHref={eventsWorkspaceActiveHref}
         includeChrome={false}
         actions={
-          isPlanner && !createOpen ? (
+          isPlanner &&
+          !createOpen &&
+          !(isHistoryTab && historyBulkManage.selectionMode) ? (
             <button
               type="button"
               onClick={() => {
