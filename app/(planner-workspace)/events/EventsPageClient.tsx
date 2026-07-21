@@ -1050,7 +1050,14 @@ function EventsPageClientView({
   const workspaceHeaderActions =
     isPlanner && !createOpen
       ? historyTabRowSelectionMode
-        ? <></>
+        ? (
+            <span
+              aria-hidden="true"
+              className="pointer-events-none invisible inline-flex shrink-0 ftc-btn-primary px-4 py-2.5 text-sm uppercase tracking-wide"
+            >
+              Create event
+            </span>
+          )
         : (
             <button
               type="button"

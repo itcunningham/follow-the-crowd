@@ -832,7 +832,8 @@ function testEventsCreateEventHiddenDuringHistorySelectionToolbar() {
   );
   assert.match(source, /historyTabRowSelectionMode/);
   assert.match(source, /workspaceHeaderActions/);
-  assert.match(source, /historyTabRowSelectionMode\s*\?\s*<\><\/>\s*:/);
+  assert.match(source, /historyTabRowSelectionMode\s*\?\s*\(\s*<span/);
+  assert.match(source, /pointer-events-none invisible inline-flex shrink-0 ftc-btn-primary/);
   assert.match(source, /actions=\{workspaceHeaderActions\}/);
 }
 
