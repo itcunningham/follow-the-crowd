@@ -986,6 +986,23 @@ function testEventPlansSelectionToolbarRowMatchesEventsHistory() {
   assert.match(source, /<EventsListTabPillWidthSpacer \/>/);
 }
 
+function testEventPlansListLoadUsesCacheAndPrefetch() {
+  const pageSource = readFileSync(
+    new URL("../app/(planner-workspace)/booking-plans/page.tsx", import.meta.url),
+    "utf8",
+  );
+  const subNavSource = readFileSync(
+    new URL("../app/components/PlannerEventsSubNav.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(pageSource, /readBookingPlansListCache\(\) \?\? \[\]/);
+  assert.match(pageSource, /readBookingPlansListCache\(\) === null/);
+  assert.match(pageSource, /if \(cachedPlans\) \{\s*setPlans\(cachedPlans\);\s*setLoadingPlans\(false\)/);
+  assert.match(pageSource, /writeBookingPlansListCache\(rows\)/);
+  assert.match(pageSource, /writeBookingPlansListCache\(nextPlans\)/);
+  assert.match(subNavSource, /ensureBookingPlansListPrefetched/);
+}
+
 function testEventPlansActionRowLayout() {
   const skeletonSource = readFileSync(
     new URL("../app/components/skeleton/Skeleton.tsx", import.meta.url),
@@ -1182,6 +1199,7 @@ async function main() {
   testEventPlanPickerClearsSelectionOnFormBack();
   testEventPlansSelectionToolbarMatchesHistory();
   testEventPlansSelectionToolbarRowMatchesEventsHistory();
+  testEventPlansListLoadUsesCacheAndPrefetch();
   testEventPlansActionRowLayout();
   testEventPlansInlineFeedbackMatchesEventsHistory();
   testEventsHistoryTrashVisibleUsesRenderedHistoryList();

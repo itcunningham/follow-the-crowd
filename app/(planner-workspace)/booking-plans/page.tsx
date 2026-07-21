@@ -36,6 +36,10 @@ import {
   stashPendingBookingPlanId,
 } from "@/lib/bookings/planDeepLink";
 import {
+  readBookingPlansListCache,
+  writeBookingPlansListCache,
+} from "@/lib/bookingPlans/bookingPlansListCache";
+import {
   FTC_LIST_GAP_CLASS,
   EVENT_PLAN_ACTION_RESERVE_CLASS,
   EVENT_PLAN_USE_BUTTON_CLASS,
@@ -181,8 +185,8 @@ export default function BookingPlansPage() {
   const [loadingAccess, setLoadingAccess] = useState(
     () => !guardProfile?.role && !cachedRole,
   );
-  const [plans, setPlans] = useState<BookingPlan[]>([]);
-  const [loadingPlans, setLoadingPlans] = useState(true);
+  const [plans, setPlans] = useState<BookingPlan[]>(() => readBookingPlansListCache() ?? []);
+  const [loadingPlans, setLoadingPlans] = useState(() => readBookingPlansListCache() === null);
   const [formOpen, setFormOpen] = useState(false);
   const [editingPlanId, setEditingPlanId] = useState<string | null>(null);
   const [form, setForm] = useState<BookingPlanInput>(emptyPlanForm);
@@ -221,15 +225,28 @@ export default function BookingPlansPage() {
   );
 
   const loadPlans = useCallback(async () => {
-    setLoadingPlans(true);
+    const cachedPlans = readBookingPlansListCache();
+
+    if (cachedPlans) {
+      setPlans(cachedPlans);
+      setLoadingPlans(false);
+    } else {
+      setLoadingPlans(true);
+    }
+
     setError(null);
 
     try {
       const rows = await listBookingPlans();
       setPlans(rows);
+      writeBookingPlansListCache(rows);
     } catch (loadError) {
       console.error("Failed to load booking plans:", loadError);
-      setPlans([]);
+
+      if (!cachedPlans) {
+        setPlans([]);
+      }
+
       setError(getPlanLoadErrorMessage(loadError));
     } finally {
       setLoadingPlans(false);
@@ -346,13 +363,21 @@ export default function BookingPlansPage() {
     try {
       if (editingPlanId) {
         const updatedPlan = await updateBookingPlan(editingPlanId, form);
-        setPlans((currentPlans) =>
-          currentPlans.map((plan) => (plan.id === updatedPlan.id ? updatedPlan : plan)),
-        );
+        setPlans((currentPlans) => {
+          const nextPlans = currentPlans.map((plan) =>
+            plan.id === updatedPlan.id ? updatedPlan : plan,
+          );
+          writeBookingPlansListCache(nextPlans);
+          return nextPlans;
+        });
         setSuccessMessage("Event plan updated");
       } else {
         const createdPlan = await createBookingPlan(form);
-        setPlans((currentPlans) => [createdPlan, ...currentPlans]);
+        setPlans((currentPlans) => {
+          const nextPlans = [createdPlan, ...currentPlans];
+          writeBookingPlansListCache(nextPlans);
+          return nextPlans;
+        });
         setSuccessMessage("Event plan created");
       }
 
@@ -372,7 +397,11 @@ export default function BookingPlansPage() {
 
   async function handleDeletePlans(ids: string[]) {
     await deleteBookingPlans(ids);
-    setPlans((currentPlans) => currentPlans.filter((plan) => !ids.includes(plan.id)));
+    setPlans((currentPlans) => {
+      const nextPlans = currentPlans.filter((plan) => !ids.includes(plan.id));
+      writeBookingPlansListCache(nextPlans);
+      return nextPlans;
+    });
     setSuccessMessage(
       ids.length === 1 ? "1 event plan deleted" : `${ids.length} event plans deleted`,
     );

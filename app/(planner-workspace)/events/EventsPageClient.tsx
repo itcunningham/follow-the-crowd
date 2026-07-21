@@ -121,6 +121,7 @@ import {
 import { readCachedNavRole } from "@/lib/navigationRoleCache";
 import { prepareEventsListEventNavigation } from "@/lib/navigation/prepareMobileDocumentScrollReset";
 import { readEventsListCache, writeEventsListCache } from "@/lib/events/eventsListCache";
+import { writeBookingPlansListCache } from "@/lib/bookingPlans/bookingPlansListCache";
 import { seedEventOwnerId, seedEventOwnerIdsFromEvents } from "@/lib/events/eventOwnerIdCache";
 
 const emptyEventForm: EventInput = {
@@ -690,6 +691,7 @@ function EventsPageClientView({
     try {
       const plans = await listBookingPlans();
       setBookingPlans(plans);
+      writeBookingPlansListCache(plans);
     } catch (loadError) {
       console.error("Failed to load booking plans for event create:", loadError);
       setError(loadError instanceof Error ? loadError.message : "Failed to load event plans");

@@ -13,11 +13,13 @@ import {
 } from "@/lib/navigationBadgePrefetch";
 import {
   canViewGigsSubNav,
+  canViewBookingPlansSubNav,
   EVENTS_AREA_SUB_NAV,
   getEventsAreaSubNavItems,
   isPlannerEventsAreaPath,
   resolveActiveWorkspaceHref,
 } from "@/lib/plannerEventsNav";
+import { ensureBookingPlansListPrefetched } from "@/lib/bookingPlans/bookingPlansListPrefetch";
 import { readCachedNavigation, readCachedNavRole } from "@/lib/navigationRoleCache";
 import { getCurrentUserProfile, type UserRole } from "@/lib/user/currentUser";
 
@@ -96,6 +98,7 @@ export default function PlannerEventsSubNav({
 
   const tabsRole = resolvedRole ?? lastKnownRoleRef.current;
   const canViewGigs = canViewGigsSubNav(tabsRole);
+  const canViewBookingPlans = canViewBookingPlansSubNav(tabsRole);
   const resolvedUserId = guardProfile?.user_id ?? cachedNavigation.userId;
   const badgeCacheVersion = useSyncExternalStore(
     subscribeNavigationBadgeListeners,
@@ -121,6 +124,14 @@ export default function PlannerEventsSubNav({
 
     void ensureGigsPendingPrefetched(resolvedRole);
   }, [canViewGigs, resolvedRole]);
+
+  useEffect(() => {
+    if (!resolvedRole || !canViewBookingPlans) {
+      return;
+    }
+
+    void ensureBookingPlansListPrefetched();
+  }, [canViewBookingPlans, resolvedRole]);
 
   const displayGigsPendingCount = useMemo(() => {
     if (!canViewGigs) {
