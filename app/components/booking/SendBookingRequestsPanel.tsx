@@ -34,7 +34,7 @@ function InviteDjSearchField({
 }) {
   return (
     <label className="relative block">
-      <span className="sr-only">Search DJs by name or genre</span>
+      <span className="sr-only">Search by name or genre</span>
       <svg
         aria-hidden="true"
         viewBox="0 0 24 24"
@@ -52,7 +52,7 @@ function InviteDjSearchField({
         value={value}
         disabled={disabled}
         onChange={(event) => onChange(event.target.value)}
-        placeholder="Search DJs by name or genre"
+        placeholder="Search by name or genre"
         maxLength={MAX_BOOKING_DJ_SEARCH_QUERY_LENGTH}
         className="ftc-input h-11 w-full rounded-full py-0 pl-11 pr-4 text-[15px] placeholder:text-ftc-text-muted"
       />

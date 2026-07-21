@@ -189,7 +189,7 @@ async function openSendBookingsFromEvent(page: Page): Promise<void> {
 
 async function selectSyntheticQaDj(page: Page): Promise<void> {
   const inviteLabel = readSyntheticInviteLabel("dj");
-  const search = page.getByPlaceholder("Search DJs by name or genre");
+  const search = page.getByPlaceholder("Search by name or genre");
   await search.fill(inviteLabel);
   const escaped = inviteLabel.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const selectButton = page.getByRole("button", {
