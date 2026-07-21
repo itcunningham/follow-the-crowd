@@ -1,7 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type MouseEvent,
+  type ReactNode,
+} from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
 import { useGuardProfile } from "@/app/components/GuardProfileContext";
@@ -96,6 +104,7 @@ import {
 import {
   buildEventDetailHref,
   buildEventsListHref,
+  type EventsListTab,
   isCalendarOriginEventsFlow,
   resolveCalendarCreateBootstrapState,
   resolveCalendarCreateInitialStep,
@@ -1009,6 +1018,30 @@ function EventsPageClientView({
     setSuccessMessage(null);
   }
 
+  function handleEventsListTabLinkClick(
+    event: MouseEvent<HTMLAnchorElement>,
+    tab: EventsListTab,
+  ) {
+    const isTargetTab = tab === "history" ? isHistoryTab : !isHistoryTab;
+
+    if (createOpen) {
+      event.preventDefault();
+      closeCreateFlow();
+      if (!isTargetTab) {
+        router.push(buildEventsListHref(tab), { scroll: false });
+      }
+      handleEventsListTabChange();
+      return;
+    }
+
+    if (isTargetTab) {
+      event.preventDefault();
+      return;
+    }
+
+    handleEventsListTabChange();
+  }
+
   function openHistoryRemoveConfirm() {
     setError(null);
     historyBulkManage.openConfirm();
@@ -1161,28 +1194,18 @@ function EventsPageClientView({
               <div className={FTC_PILL_ROW_GAP_CLASS}>
                 <Link
                   href={buildEventsListHref("active")}
-                  className={ftcFilterPillClass(!isHistoryTab)}
+                  className={ftcFilterPillClass(!createOpen && !isHistoryTab)}
                   onClick={(event) => {
-                    if (!isHistoryTab) {
-                      event.preventDefault();
-                      return;
-                    }
-
-                    handleEventsListTabChange();
+                    handleEventsListTabLinkClick(event, "active");
                   }}
                 >
                   {isPlanner ? "Active" : "Upcoming"}
                 </Link>
                 <Link
                   href={buildEventsListHref("history")}
-                  className={ftcFilterPillClass(isHistoryTab)}
+                  className={ftcFilterPillClass(!createOpen && isHistoryTab)}
                   onClick={(event) => {
-                    if (isHistoryTab) {
-                      event.preventDefault();
-                      return;
-                    }
-
-                    handleEventsListTabChange();
+                    handleEventsListTabLinkClick(event, "history");
                   }}
                 >
                   History

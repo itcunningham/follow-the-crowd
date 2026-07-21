@@ -898,6 +898,22 @@ function testEventsActiveStatusPillsSingleRowLayout() {
   assert.match(source, /dimCancelledAppearance=\{eventListCardDimCancelledAppearance\}/);
 }
 
+function testEventsCreateFlowTabPillNavigation() {
+  const source = readFileSync(
+    new URL("../app/(planner-workspace)/events/EventsPageClient.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(source, /ftcFilterPillClass\(!createOpen && !isHistoryTab\)/);
+  assert.match(source, /ftcFilterPillClass\(!createOpen && isHistoryTab\)/);
+  assert.match(source, /function handleEventsListTabLinkClick/);
+  assert.match(
+    source,
+    /if \(createOpen\) \{\s*event\.preventDefault\(\);\s*closeCreateFlow\(\)/,
+  );
+  assert.match(source, /handleEventsListTabLinkClick\(event, "active"\)/);
+  assert.match(source, /handleEventsListTabLinkClick\(event, "history"\)/);
+}
+
 function testEventsCreateEventHiddenDuringHistorySelectionToolbar() {
   const source = readFileSync(
     new URL("../app/(planner-workspace)/events/EventsPageClient.tsx", import.meta.url),
@@ -1126,6 +1142,7 @@ async function main() {
   testEventsHistoryBulkSelectAllTogglesSelection();
   testResolvePlannerHistoryHideEventIds();
   testEventsHistorySelectionToolbarUsesDeleteLabel();
+  testEventsCreateFlowTabPillNavigation();
   testEventsCreateEventHiddenDuringHistorySelectionToolbar();
   testEventsActiveStatusPillsSingleRowLayout();
   testEventCreateFormTextFieldMaxLength();

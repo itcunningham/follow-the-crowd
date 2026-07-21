@@ -1,4 +1,4 @@
-# Current state (last updated: 2026-07-20)
+# Current state (last updated: 2026-07-21)
 
 Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 
@@ -52,6 +52,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 - Event colour: 8 selectable + Auto (slate neutral when Auto or legacy slate)
 - Flat solid artwork tiles (no glow)
 - Event list: Active + History tabs; whole card links to detail
+- **Create event tab pills (2026-07-21):** while Create event flow is open, Active/History pills show neutral styling; tapping a tab closes create and lands on that list; Cancel restores the tab from URL (`?tab=history` preserved)
 - **Events list load (2026-07-19):** lineup stat chips load via one batched `booking_requests` query per page fetch (minimal fields), not one query per event
 - **History UX (2026-07-14):** History tab matches Active list layout/spacing; locked tab row height + reserved trash slot prevents layout jump on tab switch
 - **Event detail (2026-07-19):** single `OnboardingGuard` wrapper; Open DM from event detail returns Back to same event via `from=event-detail&eventId=…`
