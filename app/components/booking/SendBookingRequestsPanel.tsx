@@ -129,7 +129,7 @@ export default function SendBookingRequestsPanel({
           <PlannerSectionLabel>Invite DJs (optional)</PlannerSectionLabel>
           <p className="mt-1 text-sm text-ftc-text-muted">
             {introText ??
-              "Select DJs you'd like to invite after this event is created."}
+              "Select DJs you'd like to invite after this event is created"}
           </p>
         </div>
       ) : introText ? (
