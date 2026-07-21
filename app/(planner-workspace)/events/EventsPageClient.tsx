@@ -193,7 +193,7 @@ function EventsListCardChevron() {
   );
 }
 
-/** Keeps status pill aligned with Active cards when the chevron is hidden (History). */
+/** Reserves chevron slot when showChevron is false (same alignment as visible chevron). */
 function EventsListCardChevronSlot({ showChevron }: { showChevron: boolean }) {
   if (showChevron) {
     return <EventsListCardChevron />;
@@ -1517,7 +1517,6 @@ function EventsPageClientView({
                           event={event}
                           cancelled={cancelled}
                           isPlanner={isPlanner}
-                          showChevron={false}
                           statusPillsSingleRow={eventListCardStatusPillsSingleRow}
                           dimCancelledAppearance={eventListCardDimCancelledAppearance}
                         />
@@ -1537,7 +1536,6 @@ function EventsPageClientView({
                           event={event}
                           cancelled={cancelled}
                           isPlanner={isPlanner}
-                          showChevron={!isHistoryTab}
                           statusPillsSingleRow={eventListCardStatusPillsSingleRow}
                           dimCancelledAppearance={eventListCardDimCancelledAppearance}
                         />
