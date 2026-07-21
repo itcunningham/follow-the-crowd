@@ -84,6 +84,11 @@ import {
   type EventWithLineupStats,
 } from "@/lib/events";
 import {
+  createDevEventPillRowTestCard,
+  isActiveEventPillRowTestCardEnabled,
+  isDevEventPillRowTestCardId,
+} from "@/lib/events/devEventPillRowTestCard";
+import {
   uploadEventCoverImage,
 } from "@/lib/events/eventCoverImage";
 import {
@@ -210,18 +215,25 @@ const EVENT_LIST_CARD_BODY_CLASS =
 const EVENT_LIST_CARD_SUMMARY_CLASS =
   "flex min-w-0 flex-wrap justify-start gap-1.5 text-left";
 
+/** Active tab: tighter gap; pills share one row when width allows, wrap cleanly otherwise. */
+const EVENT_LIST_CARD_SUMMARY_ACTIVE_SINGLE_ROW_CLASS =
+  "flex min-w-0 flex-wrap items-center justify-start gap-1 text-left [&>*]:shrink-0";
+
 function EventsListCardContent({
   event,
   cancelled,
   isPlanner,
   leading,
   showChevron = true,
+  statusPillsSingleRow = false,
 }: {
   event: EventWithLineupStats;
   cancelled: boolean;
   isPlanner: boolean;
   leading?: ReactNode;
   showChevron?: boolean;
+  /** Events → Active only: attempt single-row status pills (History unchanged). */
+  statusPillsSingleRow?: boolean;
 }) {
   const titleClassName = cancelled ? "text-ftc-text-secondary" : "text-ftc-text";
   const metaClassName = cancelled ? "text-ftc-text-muted" : "text-ftc-text-secondary";
@@ -275,7 +287,13 @@ function EventsListCardContent({
           </div>
         </div>
         {isPlanner ? (
-          <div className={EVENT_LIST_CARD_SUMMARY_CLASS}>
+          <div
+            className={
+              statusPillsSingleRow
+                ? EVENT_LIST_CARD_SUMMARY_ACTIVE_SINGLE_ROW_CLASS
+                : EVENT_LIST_CARD_SUMMARY_CLASS
+            }
+          >
             <PlannerStatChip label="Invited" value={event.lineupStats.total} variant="compact" />
             <PlannerStatChip label="Pending" value={event.lineupStats.pending} variant="compact" />
             <PlannerStatChip label="Accepted" value={event.lineupStats.accepted} variant="compact" />
@@ -460,6 +478,12 @@ function EventsPageClientView({
   const visibleFilteredEvents = useMemo(
     () => filterOutRemovingHistoryItems(filteredEvents, historyBulkManage.removingIds),
     [filteredEvents, historyBulkManage.removingIds],
+  );
+  const showDevEventPillRowTestCard =
+    isActiveEventPillRowTestCardEnabled() && isPlanner && !isHistoryTab && showEventsListContent;
+  const devEventPillRowTestCard = useMemo(
+    () => (showDevEventPillRowTestCard ? createDevEventPillRowTestCard("dev-local-only") : null),
+    [showDevEventPillRowTestCard],
   );
   const visibleRemovableHistoryEvents = useMemo(() => {
     if (!isPlanner || !isHistoryTab) {
@@ -1408,9 +1432,33 @@ function EventsPageClientView({
                     isHistoryTab ? "No past or cancelled events" : "No active events"
                   }
                 />
-              ) : visibleFilteredEvents.length > 0 ? (
+              ) : visibleFilteredEvents.length > 0 || devEventPillRowTestCard ? (
             <ul className={`ftc-gigs-list ${FTC_LIST_GAP_CLASS}`}>
+              {devEventPillRowTestCard ? (
+                <li
+                  key={devEventPillRowTestCard.id}
+                  data-ftc-dev-pill-row-test="true"
+                  className={eventsListCardShellClassName(false)}
+                >
+                  <div
+                    role="note"
+                    aria-label="Development-only layout test card. Not a real event."
+                    className="block w-full cursor-default text-left"
+                  >
+                    <EventsListCardContent
+                      event={devEventPillRowTestCard}
+                      cancelled={false}
+                      isPlanner={isPlanner}
+                      showChevron={false}
+                      statusPillsSingleRow
+                    />
+                  </div>
+                </li>
+              ) : null}
               {visibleFilteredEvents.map((event) => {
+                if (isDevEventPillRowTestCardId(event.id)) {
+                  return null;
+                }
                 const cancelled = isEventCancelled(event);
                 const eventHref = buildEventDetailHref(event.id, listTab);
                 const isSelected = historyBulkManage.selectedIds.has(event.id);
@@ -1445,6 +1493,7 @@ function EventsPageClientView({
                           cancelled={cancelled}
                           isPlanner={isPlanner}
                           showChevron={false}
+                          statusPillsSingleRow={isPlanner && !isHistoryTab}
                         />
                       </div>
                     ) : (
@@ -1463,6 +1512,7 @@ function EventsPageClientView({
                           cancelled={cancelled}
                           isPlanner={isPlanner}
                           showChevron={!isHistoryTab}
+                          statusPillsSingleRow={isPlanner && !isHistoryTab}
                         />
                       </button>
                     )}

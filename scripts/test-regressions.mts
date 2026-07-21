@@ -825,6 +825,16 @@ function testEventsHistorySelectionToolbarUsesDeleteLabel() {
   assert.match(source, /cancelVariant="backIcon"/);
 }
 
+function testEventsActiveStatusPillsSingleRowLayout() {
+  const source = readFileSync(
+    new URL("../app/(planner-workspace)/events/EventsPageClient.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(source, /EVENT_LIST_CARD_SUMMARY_ACTIVE_SINGLE_ROW_CLASS/);
+  assert.match(source, /statusPillsSingleRow=\{isPlanner && !isHistoryTab\}/);
+  assert.match(source, /devEventPillRowTestCard/);
+}
+
 function testEventsCreateEventHiddenDuringHistorySelectionToolbar() {
   const source = readFileSync(
     new URL("../app/(planner-workspace)/events/EventsPageClient.tsx", import.meta.url),
@@ -1052,6 +1062,7 @@ async function main() {
   testResolvePlannerHistoryHideEventIds();
   testEventsHistorySelectionToolbarUsesDeleteLabel();
   testEventsCreateEventHiddenDuringHistorySelectionToolbar();
+  testEventsActiveStatusPillsSingleRowLayout();
   testEventPlansSelectionToolbarMatchesHistory();
   testEventPlansSelectionToolbarRowMatchesEventsHistory();
   testEventPlansActionRowLayout();
