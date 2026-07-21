@@ -221,6 +221,7 @@ function EventsListCardContent({
   leading,
   showChevron = true,
   statusPillsSingleRow = false,
+  dimCancelledAppearance = true,
 }: {
   event: EventWithLineupStats;
   cancelled: boolean;
@@ -229,9 +230,12 @@ function EventsListCardContent({
   showChevron?: boolean;
   /** Events → Active & History: compact booking-count pill row (same layout). */
   statusPillsSingleRow?: boolean;
+  /** When false, title/meta use Active typography even if event is cancelled (History tab). */
+  dimCancelledAppearance?: boolean;
 }) {
-  const titleClassName = cancelled ? "text-ftc-text-secondary" : "text-ftc-text";
-  const metaClassName = cancelled ? "text-ftc-text-muted" : "text-ftc-text-secondary";
+  const applyCancelledTypography = cancelled && dimCancelledAppearance;
+  const titleClassName = applyCancelledTypography ? "text-ftc-text-secondary" : "text-ftc-text";
+  const metaClassName = applyCancelledTypography ? "text-ftc-text-muted" : "text-ftc-text-secondary";
   const venueDateLine = [event.venue?.trim(), formatDisplayEventDate(event.event_date)]
     .filter(Boolean)
     .join(" · ");
@@ -316,11 +320,16 @@ function EventsListCardContent({
   );
 }
 
-function eventsListCardShellClassName(cancelled: boolean, isSelected = false) {
+function eventsListCardShellClassName(
+  cancelled: boolean,
+  isSelected = false,
+  dimCancelledAppearance = true,
+) {
+  const applyCancelledShellStyle = cancelled && dimCancelledAppearance;
   return [
     "relative overflow-hidden text-left",
     EVENT_LIST_CARD_SHELL_CLASS,
-    cancelled ? "ftc-event-card-cancelled" : "",
+    applyCancelledShellStyle ? "ftc-event-card-cancelled" : "",
     isSelected ? "ring-1 ring-ftc-primary/40" : "",
   ]
     .filter(Boolean)
@@ -492,6 +501,8 @@ function EventsPageClientView({
   );
   /** Active + History: shared compact booking-count pill row (Active tab output unchanged). */
   const eventListCardStatusPillsSingleRow = isPlanner;
+  /** History uses Active title/meta colours; cancelled dimming is shown via status badge only. */
+  const eventListCardDimCancelledAppearance = !isHistoryTab;
   const visibleRemovableHistoryEvents = useMemo(() => {
     if (!isPlanner || !isHistoryTab) {
       return [];
@@ -1457,6 +1468,7 @@ function EventsPageClientView({
                     className={eventsListCardShellClassName(
                       cancelled,
                       isHistorySelection && isSelected,
+                      eventListCardDimCancelledAppearance,
                     )}
                     aria-selected={isHistorySelection ? isSelected : undefined}
                   >
@@ -1477,6 +1489,7 @@ function EventsPageClientView({
                           isPlanner={isPlanner}
                           showChevron={false}
                           statusPillsSingleRow={eventListCardStatusPillsSingleRow}
+                          dimCancelledAppearance={eventListCardDimCancelledAppearance}
                         />
                       </div>
                     ) : (
@@ -1496,6 +1509,7 @@ function EventsPageClientView({
                           isPlanner={isPlanner}
                           showChevron={!isHistoryTab}
                           statusPillsSingleRow={eventListCardStatusPillsSingleRow}
+                          dimCancelledAppearance={eventListCardDimCancelledAppearance}
                         />
                       </button>
                     )}

@@ -835,6 +835,8 @@ function testEventsActiveStatusPillsSingleRowLayout() {
   assert.match(source, /compactActiveRow/);
   assert.match(source, /eventListCardStatusPillsSingleRow = isPlanner/);
   assert.match(source, /statusPillsSingleRow=\{eventListCardStatusPillsSingleRow\}/);
+  assert.match(source, /eventListCardDimCancelledAppearance = !isHistoryTab/);
+  assert.match(source, /dimCancelledAppearance=\{eventListCardDimCancelledAppearance\}/);
 }
 
 function testEventsCreateEventHiddenDuringHistorySelectionToolbar() {
