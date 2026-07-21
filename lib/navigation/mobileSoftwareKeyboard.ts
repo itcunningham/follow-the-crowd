@@ -1,8 +1,12 @@
 const MOBILE_NAVIGATION_MEDIA_QUERY = "(max-width: 767px)";
-/** Visible viewport shrink that usually indicates the software keyboard on mobile. */
-const SOFTWARE_KEYBOARD_THRESHOLD_PX = 80;
+const SOFTWARE_KEYBOARD_OPEN_GAP_PX = 80;
+const SOFTWARE_KEYBOARD_DISMISSED_GAP_PX = 40;
+const FOCUS_OUT_DEFER_MS = 50;
 
 const listeners = new Set<() => void>();
+
+let mobileKeyboardSessionActive = false;
+let focusOutDeferTimer: ReturnType<typeof setTimeout> | null = null;
 
 function isMobileNavigationViewport(): boolean {
   if (typeof window === "undefined") {
@@ -38,35 +42,79 @@ function isTextEntryElement(element: Element | null): element is HTMLElement {
   );
 }
 
-function readSoftwareKeyboardObscuredHeight(): number {
+/** Height gap only — offsetTop changes while scrolling and must not toggle keyboard state. */
+function readMobileKeyboardHeightGap(): number {
   const viewport = window.visualViewport;
 
   if (!viewport) {
     return 0;
   }
 
-  return Math.max(0, window.innerHeight - viewport.height - viewport.offsetTop);
+  return Math.max(0, window.innerHeight - viewport.height);
 }
 
-/** True when mobile layout and visual viewport is obscured while a text field is focused. */
+function isSoftwareKeyboardOpenByHeightGap(): boolean {
+  return readMobileKeyboardHeightGap() >= SOFTWARE_KEYBOARD_OPEN_GAP_PX;
+}
+
+function isSoftwareKeyboardDismissedByHeightGap(): boolean {
+  return readMobileKeyboardHeightGap() < SOFTWARE_KEYBOARD_DISMISSED_GAP_PX;
+}
+
+function hasFocusedTextEntry(): boolean {
+  return isTextEntryElement(document.activeElement);
+}
+
+/**
+ * Hide mobile bottom nav while the software keyboard is open.
+ * Latches during a focused text-entry session so iOS visualViewport scroll
+ * does not reveal the nav until the keyboard is dismissed or focus leaves.
+ */
 export function isMobileSoftwareKeyboardOpen(): boolean {
   if (typeof window === "undefined") {
     return false;
   }
 
   if (!isMobileNavigationViewport()) {
+    mobileKeyboardSessionActive = false;
     return false;
   }
 
-  if (readSoftwareKeyboardObscuredHeight() < SOFTWARE_KEYBOARD_THRESHOLD_PX) {
+  if (!hasFocusedTextEntry()) {
+    mobileKeyboardSessionActive = false;
     return false;
   }
 
-  return isTextEntryElement(document.activeElement);
+  if (isSoftwareKeyboardOpenByHeightGap()) {
+    mobileKeyboardSessionActive = true;
+    return true;
+  }
+
+  if (mobileKeyboardSessionActive) {
+    if (isSoftwareKeyboardDismissedByHeightGap()) {
+      mobileKeyboardSessionActive = false;
+      return false;
+    }
+
+    return true;
+  }
+
+  return false;
 }
 
 function notifyMobileSoftwareKeyboardListeners(): void {
   listeners.forEach((listener) => listener());
+}
+
+function scheduleDeferredFocusOutCheck(): void {
+  if (focusOutDeferTimer) {
+    clearTimeout(focusOutDeferTimer);
+  }
+
+  focusOutDeferTimer = setTimeout(() => {
+    focusOutDeferTimer = null;
+    notifyMobileSoftwareKeyboardListeners();
+  }, FOCUS_OUT_DEFER_MS);
 }
 
 export function subscribeMobileSoftwareKeyboard(listener: () => void): () => void {
@@ -81,19 +129,28 @@ export function subscribeMobileSoftwareKeyboard(listener: () => void): () => voi
     notifyMobileSoftwareKeyboardListeners();
   };
 
+  const handleFocusOut = () => {
+    scheduleDeferredFocusOutCheck();
+  };
+
   viewport?.addEventListener("resize", handleChange);
   viewport?.addEventListener("scroll", handleChange);
   window.addEventListener("resize", handleChange);
   window.addEventListener("focusin", handleChange);
-  window.addEventListener("focusout", handleChange);
+  window.addEventListener("focusout", handleFocusOut);
 
   return () => {
     listeners.delete(listener);
+    if (focusOutDeferTimer) {
+      clearTimeout(focusOutDeferTimer);
+      focusOutDeferTimer = null;
+    }
     viewport?.removeEventListener("resize", handleChange);
     viewport?.removeEventListener("scroll", handleChange);
     window.removeEventListener("resize", handleChange);
     window.removeEventListener("focusin", handleChange);
-    window.removeEventListener("focusout", handleChange);
+    window.removeEventListener("focusout", handleFocusOut);
+    mobileKeyboardSessionActive = false;
   };
 }
 

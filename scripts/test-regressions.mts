@@ -898,8 +898,13 @@ function testMobileSoftwareKeyboardHidesBottomNavigation() {
   assert.match(navSource, /ftc-mobile-nav-bar/);
   assert.match(navSource, /subscribeMobileSoftwareKeyboard/);
   assert.match(navSource, /syncMobileSoftwareKeyboardDocumentState/);
-  assert.match(keyboardSource, /window\.visualViewport/);
-  assert.match(keyboardSource, /readSoftwareKeyboardObscuredHeight/);
+  assert.match(keyboardSource, /mobileKeyboardSessionActive/);
+  assert.match(keyboardSource, /readMobileKeyboardHeightGap/);
+  assert.match(keyboardSource, /window\.innerHeight - viewport\.height/);
+  assert.doesNotMatch(
+    keyboardSource,
+    /window\.innerHeight - viewport\.height - viewport\.offsetTop/,
+  );
   assert.match(cssSource, /html\[data-mobile-keyboard-open\] \.ftc-mobile-nav-bar/);
   assert.match(cssSource, /html\[data-mobile-keyboard-open\] \.ftc-mobile-nav-offset/);
 }
