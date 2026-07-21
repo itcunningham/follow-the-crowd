@@ -208,6 +208,15 @@ export default function BookingPlansPage() {
     return plans.filter((plan) => !planBulkManage.removingIds.has(plan.id));
   }, [plans, planBulkManage.removingIds]);
 
+  const canToggleAllPlanSelection = visiblePlans.length > 0;
+  const canDeletePlanSelection = planBulkManage.selectedCount > 0;
+  const allVisiblePlansSelected = useMemo(
+    () =>
+      visiblePlans.length > 0 &&
+      visiblePlans.every((plan) => planBulkManage.selectedIds.has(plan.id)),
+    [visiblePlans, planBulkManage.selectedIds],
+  );
+
   const loadPlans = useCallback(async () => {
     setLoadingPlans(true);
     setError(null);
@@ -419,13 +428,22 @@ export default function BookingPlansPage() {
                 <HistorySelectionToolbar
                   embedded
                   selectedCount={planBulkManage.selectedCount}
-                  allSelected={planBulkManage.allSelected}
+                  allSelected={allVisiblePlansSelected}
                   removing={planBulkManage.removing}
                   onCancel={planBulkManage.cancelSelectionMode}
-                  onSelectAll={planBulkManage.selectAll}
+                  onSelectAll={() => {
+                    planBulkManage.toggleSelectAllForIds(
+                      visiblePlans.map((plan) => plan.id),
+                    );
+                  }}
                   onRemove={planBulkManage.openConfirm}
-                  removeLabel="Delete selected"
-                  removingLabel="Deleting..."
+                  canToggleAll={canToggleAllPlanSelection}
+                  canDelete={canDeletePlanSelection}
+                  removeLabel="Delete"
+                  selectAllLabel="ALL"
+                  cancelVariant="backIcon"
+                  selectAllToggle
+                  centeredSelectAll
                 />
               }
             />

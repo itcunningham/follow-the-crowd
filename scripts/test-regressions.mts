@@ -821,6 +821,23 @@ function testEventsHistorySelectionToolbarUsesDeleteLabel() {
   assert.match(source, /cancelVariant="backIcon"/);
 }
 
+function testEventPlansSelectionToolbarMatchesHistory() {
+  const source = readFileSync(
+    new URL("../app/(planner-workspace)/booking-plans/page.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(source, /removeLabel="Delete"/);
+  assert.match(source, /selectAllLabel="ALL"/);
+  assert.match(source, /canToggleAll=\{canToggleAllPlanSelection\}/);
+  assert.match(source, /canDelete=\{canDeletePlanSelection\}/);
+  assert.match(source, /selectAllToggle/);
+  assert.match(source, /centeredSelectAll/);
+  assert.match(source, /cancelVariant="backIcon"/);
+  assert.match(source, /toggleSelectAllForIds/);
+  assert.doesNotMatch(source, /removeLabel="Delete selected"/);
+  assert.doesNotMatch(source, /selectAllLabel="Select all"/i);
+}
+
 function testEventsHistoryTrashVisibleUsesRenderedHistoryList() {
   const base = {
     isPlanner: true,
@@ -972,6 +989,7 @@ async function main() {
   testEventsHistoryBulkSelectAllTogglesSelection();
   testResolvePlannerHistoryHideEventIds();
   testEventsHistorySelectionToolbarUsesDeleteLabel();
+  testEventPlansSelectionToolbarMatchesHistory();
   testEventsHistoryTrashVisibleUsesRenderedHistoryList();
   testGigsTabCountsDeriveFromSameBookingSnapshot();
   testGigsInnerTabSelectionFollowsRouteImmediately();
