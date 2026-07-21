@@ -838,6 +838,22 @@ function testEventPlansSelectionToolbarMatchesHistory() {
   assert.doesNotMatch(source, /selectAllLabel="Select all"/i);
 }
 
+function testEventPlansSelectionToolbarRowMatchesEventsHistory() {
+  const source = readFileSync(
+    new URL("../app/components/skeleton/Skeleton.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(source, /function EventsListTabPillWidthSpacer/);
+  assert.match(
+    source,
+    /selectionMode[\s\S]*EVENTS_LIST_TAB_ROW_CLASS[\s\S]*EventsListTabPillWidthSpacer/,
+  );
+  assert.match(
+    source,
+    /flex min-h-0 min-w-0 flex-1 items-center overflow-hidden[\s\S]*\{selectionToolbar\}/,
+  );
+}
+
 function testEventsHistoryTrashVisibleUsesRenderedHistoryList() {
   const base = {
     isPlanner: true,
@@ -990,6 +1006,7 @@ async function main() {
   testResolvePlannerHistoryHideEventIds();
   testEventsHistorySelectionToolbarUsesDeleteLabel();
   testEventPlansSelectionToolbarMatchesHistory();
+  testEventPlansSelectionToolbarRowMatchesEventsHistory();
   testEventsHistoryTrashVisibleUsesRenderedHistoryList();
   testGigsTabCountsDeriveFromSameBookingSnapshot();
   testGigsInnerTabSelectionFollowsRouteImmediately();

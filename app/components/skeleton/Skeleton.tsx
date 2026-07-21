@@ -27,7 +27,6 @@ import {
   EVENTS_LIST_TAB_ROW_CLASS,
   EVENTS_LIST_TAB_FEEDBACK_CLASS,
   EVENT_PLANS_CREATE_BUTTON_CLASS,
-  EVENT_PLANS_TOOLBAR_ROW_CLASS,
   FTC_EVENTS_LIST_TAB_ACTION_CLASS,
   FTC_EVENTS_LIST_TAB_ACTION_PLACEHOLDER_CLASS,
   GIGS_LIST_TAB_ROW_CLASS,
@@ -630,6 +629,18 @@ export function SavedEventPlansSectionHeading({ className = "mb-3" }: { classNam
   );
 }
 
+/** Invisible Active/History pill cluster — matches Events History tab row width for selection toolbar. */
+function EventsListTabPillWidthSpacer() {
+  return (
+    <div className="pointer-events-none invisible flex shrink-0 items-center" aria-hidden="true">
+      <div className={FTC_PILL_ROW_GAP_CLASS}>
+        <span className={ftcFilterPillClass(false)}>Active</span>
+        <span className={ftcFilterPillClass(true)}>History</span>
+      </div>
+    </div>
+  );
+}
+
 export function SavedEventPlansSectionHeader({
   selectionMode,
   trashButtonDisabled = true,
@@ -641,28 +652,27 @@ export function SavedEventPlansSectionHeader({
   onTrashClick?: () => void;
   selectionToolbar: ReactNode;
 }) {
+  if (selectionMode) {
+    return (
+      <div className={EVENTS_LIST_TAB_ROW_CLASS}>
+        <EventsListTabPillWidthSpacer />
+        <div className="flex min-h-0 min-w-0 flex-1 items-center overflow-hidden">
+          {selectionToolbar}
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className={EVENT_PLANS_TOOLBAR_ROW_CLASS}>
-      <div
-        className={`absolute inset-0 flex items-center justify-end ${
-          selectionMode ? "invisible pointer-events-none" : ""
-        }`}
-        aria-hidden={selectionMode}
-      >
+    <div className={EVENTS_LIST_TAB_ROW_CLASS}>
+      <div className="min-w-0 flex-1" aria-hidden="true" />
+      <div className="flex w-[1.875rem] shrink-0 items-center justify-end">
         <HistoryManageButton
           ariaLabel="Delete event plans"
           onClick={onTrashClick ?? (() => undefined)}
           disabled={trashButtonDisabled || !onTrashClick}
           className={FTC_EVENTS_LIST_TAB_ACTION_CLASS}
         />
-      </div>
-      <div
-        className={`absolute inset-0 flex items-center ${
-          selectionMode ? "" : "invisible pointer-events-none"
-        }`}
-        aria-hidden={!selectionMode}
-      >
-        {selectionToolbar}
       </div>
     </div>
   );
