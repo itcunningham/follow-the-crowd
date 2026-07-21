@@ -835,8 +835,6 @@ function testEventsActiveStatusPillsSingleRowLayout() {
   assert.match(source, /compactActiveRow/);
   assert.match(source, /eventListCardStatusPillsSingleRow = isPlanner/);
   assert.match(source, /statusPillsSingleRow=\{eventListCardStatusPillsSingleRow\}/);
-  assert.match(source, /TEMP_ACTIVE_EVENT_DOUBLE_DIGIT_PILL_COUNTS/);
-  assert.match(source, /tempDoubleDigitPillCounts=\{activeEventTempDoubleDigitPillCounts\}/);
 }
 
 function testEventsCreateEventHiddenDuringHistorySelectionToolbar() {

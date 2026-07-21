@@ -214,10 +214,6 @@ const EVENT_LIST_CARD_SUMMARY_CLASS =
 const EVENT_LIST_CARD_SUMMARY_ACTIVE_SINGLE_ROW_CLASS =
   "flex min-w-0 flex-wrap items-center justify-start gap-0.5 text-left [&>*]:shrink-0";
 
-/** TEMP: Remove after Active double-digit pill visual QA. Display-only; does not change data. */
-const TEMP_ACTIVE_EVENT_DOUBLE_DIGIT_PILL_COUNTS = true;
-const TEMP_ACTIVE_EVENT_DOUBLE_DIGIT_PILL_COUNT = 10;
-
 function EventsListCardContent({
   event,
   cancelled,
@@ -225,7 +221,6 @@ function EventsListCardContent({
   leading,
   showChevron = true,
   statusPillsSingleRow = false,
-  tempDoubleDigitPillCounts = false,
 }: {
   event: EventWithLineupStats;
   cancelled: boolean;
@@ -234,22 +229,12 @@ function EventsListCardContent({
   showChevron?: boolean;
   /** Events → Active & History: compact booking-count pill row (same layout). */
   statusPillsSingleRow?: boolean;
-  /** TEMP: display 10 for each booking count on Active cards only. */
-  tempDoubleDigitPillCounts?: boolean;
 }) {
   const titleClassName = cancelled ? "text-ftc-text-secondary" : "text-ftc-text";
   const metaClassName = cancelled ? "text-ftc-text-muted" : "text-ftc-text-secondary";
   const venueDateLine = [event.venue?.trim(), formatDisplayEventDate(event.event_date)]
     .filter(Boolean)
     .join(" · ");
-  const lineupPillCounts = tempDoubleDigitPillCounts
-    ? {
-        total: TEMP_ACTIVE_EVENT_DOUBLE_DIGIT_PILL_COUNT,
-        pending: TEMP_ACTIVE_EVENT_DOUBLE_DIGIT_PILL_COUNT,
-        accepted: TEMP_ACTIVE_EVENT_DOUBLE_DIGIT_PILL_COUNT,
-        declined: TEMP_ACTIVE_EVENT_DOUBLE_DIGIT_PILL_COUNT,
-      }
-    : event.lineupStats;
 
   return (
     <div className={EVENT_LIST_CARD_ROW_CLASS}>
@@ -306,22 +291,22 @@ function EventsListCardContent({
           >
             <PlannerStatChip
               label="Invited"
-              value={lineupPillCounts.total}
+              value={event.lineupStats.total}
               variant={statusPillsSingleRow ? "compactActiveRow" : "compact"}
             />
             <PlannerStatChip
               label="Pending"
-              value={lineupPillCounts.pending}
+              value={event.lineupStats.pending}
               variant={statusPillsSingleRow ? "compactActiveRow" : "compact"}
             />
             <PlannerStatChip
               label="Accepted"
-              value={lineupPillCounts.accepted}
+              value={event.lineupStats.accepted}
               variant={statusPillsSingleRow ? "compactActiveRow" : "compact"}
             />
             <PlannerStatChip
               label="Declined"
-              value={lineupPillCounts.declined}
+              value={event.lineupStats.declined}
               variant={statusPillsSingleRow ? "compactActiveRow" : "compact"}
             />
           </div>
@@ -505,8 +490,6 @@ function EventsPageClientView({
     () => filterOutRemovingHistoryItems(filteredEvents, historyBulkManage.removingIds),
     [filteredEvents, historyBulkManage.removingIds],
   );
-  const activeEventTempDoubleDigitPillCounts =
-    TEMP_ACTIVE_EVENT_DOUBLE_DIGIT_PILL_COUNTS && isPlanner && !isHistoryTab;
   /** Active + History: shared compact booking-count pill row (Active tab output unchanged). */
   const eventListCardStatusPillsSingleRow = isPlanner;
   const visibleRemovableHistoryEvents = useMemo(() => {
@@ -1494,7 +1477,6 @@ function EventsPageClientView({
                           isPlanner={isPlanner}
                           showChevron={false}
                           statusPillsSingleRow={eventListCardStatusPillsSingleRow}
-                          tempDoubleDigitPillCounts={activeEventTempDoubleDigitPillCounts}
                         />
                       </div>
                     ) : (
@@ -1514,7 +1496,6 @@ function EventsPageClientView({
                           isPlanner={isPlanner}
                           showChevron={!isHistoryTab}
                           statusPillsSingleRow={eventListCardStatusPillsSingleRow}
-                          tempDoubleDigitPillCounts={activeEventTempDoubleDigitPillCounts}
                         />
                       </button>
                     )}
