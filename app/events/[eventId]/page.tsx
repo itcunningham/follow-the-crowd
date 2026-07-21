@@ -264,8 +264,9 @@ function EventDetailPageView() {
     eventId,
     Boolean(event) && !lineupLoading,
   );
-  const mobileScrollGateClass =
-    shouldApplyMobileScrollGate && Boolean(event) && !mobileScrollReady ? "invisible" : "";
+  const showEventDetailLoadingShell =
+    (loadingEvent && !event) ||
+    (shouldApplyMobileScrollGate && !mobileScrollReady);
 
   const resolvedRole = role ?? guardProfile?.role ?? null;
   const resolvedUserId = currentUserId ?? guardProfile?.user_id ?? null;
@@ -1038,22 +1039,20 @@ function EventDetailPageView() {
   const showBottomBar = showDjBookingConversationAction;
   const showRunSheetSendBookingsAction = showOwnerSendAction && showStickyActions;
 
-  if (loadingEvent && !event) {
+  if (showEventDetailLoadingShell) {
     return (
-      <div className={mobileScrollGateClass}>
-        <EventDetailLoadingShell
-          backHref={eventsBackHref}
-          editHeaderState={editHeaderState}
-          onEditClick={openEditForm}
-        />
-      </div>
+      <EventDetailLoadingShell
+        backHref={eventsBackHref}
+        editHeaderState={editHeaderState}
+        onEditClick={openEditForm}
+      />
     );
   }
 
   if (!event) {
     return (
       <div
-        className={`mx-auto min-h-[100dvh] w-full max-w-2xl bg-ftc-bg font-sans text-ftc-text ${MOBILE_NAV_OFFSET_CLASS} ${mobileScrollGateClass}`}
+        className={`mx-auto min-h-[100dvh] w-full max-w-2xl bg-ftc-bg font-sans text-ftc-text ${MOBILE_NAV_OFFSET_CLASS}`}
       >
         <AppNavigation />
         <div className="px-4 py-8 sm:px-6">
@@ -1073,7 +1072,7 @@ function EventDetailPageView() {
   return (
     <>
     <div
-      className={`mx-auto min-h-[100dvh] w-full max-w-2xl bg-ftc-bg font-sans text-ftc-text ${MOBILE_NAV_OFFSET_CLASS} ${mobileScrollGateClass}`}
+      className={`mx-auto min-h-[100dvh] w-full max-w-2xl bg-ftc-bg font-sans text-ftc-text ${MOBILE_NAV_OFFSET_CLASS}`}
     >
         <AppNavigation />
 

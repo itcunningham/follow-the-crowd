@@ -903,6 +903,12 @@ function testEventDetailLoadUsesParallelQueriesAndListCache() {
     pageSource,
     /const \[loadedEvent, bookings, unlock\] = await Promise\.all\(\[\s*getEventById\(eventId\),\s*listBookingRequestsForEvent\(eventId\),\s*getCrewChatUnlockStateForEvent\(eventId\),/,
   );
+  assert.match(pageSource, /showEventDetailLoadingShell/);
+  assert.match(
+    pageSource,
+    /\(loadingEvent && !event\) \|\|\s*\(shouldApplyMobileScrollGate && !mobileScrollReady\)/,
+  );
+  assert.doesNotMatch(pageSource, /mobileScrollGateClass/);
   assert.match(pageSource, /lineupLoading \? \(\s*<EventDetailPlannerLowerSectionsSkeleton/);
   assert.match(skeletonSource, /data-event-detail-hero/);
   assert.match(skeletonSource, /EventDetailPlannerLowerSectionsSkeleton/);
