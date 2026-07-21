@@ -9,7 +9,7 @@ import CancelAcceptedBookingButton from "@/app/components/booking/CancelAccepted
 import CancelBookingRequestButton from "@/app/components/CancelBookingRequestButton";
 import HideDeclinedBookingButton from "@/app/components/HideDeclinedBookingButton";
 import ProfileAvatar from "@/app/components/ProfileAvatar";
-import { FtcMetaRow, FtcRateIcon } from "@/app/components/ftc/FtcCompactMeta";
+import { FtcMetaTextRow } from "@/app/components/ftc/FtcCompactMeta";
 import {
   EVENT_DETAIL_BADGE_COMPACT,
   EVENT_DETAIL_BTN_DESTRUCTIVE,
@@ -113,7 +113,7 @@ export default function EventLineupBookingCard({
           </div>
 
           <ul className="mt-2 space-y-1">
-            <FtcMetaRow icon={<FtcRateIcon />}>{rateLine}</FtcMetaRow>
+            <FtcMetaTextRow>{rateLine}</FtcMetaTextRow>
           </ul>
 
           {cancelledByLabel ? (

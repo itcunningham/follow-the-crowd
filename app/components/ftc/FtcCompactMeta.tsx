@@ -19,6 +19,15 @@ export function FtcMetaRow({ icon, children }: { icon: ReactNode; children: Reac
   );
 }
 
+/** Meta line without a leading icon; text aligns with {@link FtcMetaRow} label column. */
+export function FtcMetaTextRow({ children }: { children: ReactNode }) {
+  return (
+    <li className="flex min-w-0 items-start text-sm leading-snug">
+      <span className="min-w-0 flex-1 break-words pl-6 text-ftc-text">{children}</span>
+    </li>
+  );
+}
+
 export function FtcVenueIcon() {
   return (
     <svg aria-hidden="true" viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.75">
@@ -46,10 +55,3 @@ export function FtcClockIcon() {
   );
 }
 
-export function FtcRateIcon() {
-  return (
-    <svg aria-hidden="true" viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.75">
-      <path d="M12 3v18M7 8h8.5a3.5 3.5 0 0 1 0 7H9" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
