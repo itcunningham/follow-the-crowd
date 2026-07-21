@@ -865,6 +865,17 @@ function testEventCreateFormTextFieldMaxLength() {
   assert.match(eventsSource, /maxLength=\{MAX_EVENT_VENUE_LENGTH\}/);
 }
 
+function testEventFallbackColourSelectionRadioBehaviour() {
+  const source = readFileSync(
+    new URL("../app/components/events/EventFallbackColourField.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.doesNotMatch(source, /Preview tile colour/);
+  assert.doesNotMatch(source, /ftc-event-colour-preview/);
+  assert.match(source, /onClick=\{\(\) => onChange\(option\.key\)\}/);
+  assert.doesNotMatch(source, /value === option\.key \? null : option\.key/);
+}
+
 function testEventsActiveStatusPillsSingleRowLayout() {
   const source = readFileSync(
     new URL("../app/(planner-workspace)/events/EventsPageClient.tsx", import.meta.url),
@@ -1110,6 +1121,7 @@ async function main() {
   testEventsCreateEventHiddenDuringHistorySelectionToolbar();
   testEventsActiveStatusPillsSingleRowLayout();
   testEventCreateFormTextFieldMaxLength();
+  testEventFallbackColourSelectionRadioBehaviour();
   testEventPlansSelectionToolbarMatchesHistory();
   testEventPlansSelectionToolbarRowMatchesEventsHistory();
   testEventPlansActionRowLayout();

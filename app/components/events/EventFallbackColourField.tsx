@@ -3,8 +3,6 @@
 import {
   EVENT_AUTOMATIC_FALLBACK_COLOUR,
   EVENT_SELECTABLE_FALLBACK_COLOUR_OPTIONS,
-  getEventFallbackColour,
-  getEventFallbackColourLabel,
   NEUTRAL_FALLBACK_COLOUR_LABEL,
   getEventFallbackColourStyles,
   type EventSelectableFallbackColourKey,
@@ -67,7 +65,6 @@ export default function EventFallbackColourField({
   disabled?: boolean;
   flyerActive?: boolean;
 }) {
-  const previewColour = getEventFallbackColour(eventName, value);
   const autoStyles = getEventFallbackColourStyles(EVENT_AUTOMATIC_FALLBACK_COLOUR);
   const colourSelectionDisabled = disabled || flyerActive;
 
@@ -104,17 +101,10 @@ export default function EventFallbackColourField({
               selected={value === option.key}
               disabled={colourSelectionDisabled}
               swatchClassName={styles.swatchClassName}
-              onClick={() => onChange(value === option.key ? null : option.key)}
+              onClick={() => onChange(option.key)}
             />
           );
         })}
-      </div>
-
-      <div className="ftc-event-colour-preview">
-        <span className="ftc-event-colour-preview-label">Preview tile colour</span>
-        <span className="ftc-event-colour-preview-value">
-          {getEventFallbackColourLabel(previewColour)}
-        </span>
       </div>
     </div>
   );
