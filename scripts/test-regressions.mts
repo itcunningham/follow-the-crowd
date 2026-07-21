@@ -865,6 +865,14 @@ function testEventCreateFormTextFieldMaxLength() {
   assert.match(eventsSource, /maxLength=\{MAX_EVENT_VENUE_LENGTH\}/);
 }
 
+function testEventPlanPickerClearsSelectionOnFormBack() {
+  const source = readFileSync(
+    new URL("../app/(planner-workspace)/events/EventsPageClient.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(source, /if \(selectedPlanId\) \{\s*setSelectedPlanId\(null\);\s*setCreateStep\("pick-plan"\)/);
+}
+
 function testEventFallbackColourSelectionRadioBehaviour() {
   const source = readFileSync(
     new URL("../app/components/events/EventFallbackColourField.tsx", import.meta.url),
@@ -1122,6 +1130,7 @@ async function main() {
   testEventsActiveStatusPillsSingleRowLayout();
   testEventCreateFormTextFieldMaxLength();
   testEventFallbackColourSelectionRadioBehaviour();
+  testEventPlanPickerClearsSelectionOnFormBack();
   testEventPlansSelectionToolbarMatchesHistory();
   testEventPlansSelectionToolbarRowMatchesEventsHistory();
   testEventPlansActionRowLayout();

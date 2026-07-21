@@ -1276,7 +1276,13 @@ function EventsPageClientView({
                   {!isCalendarCreateFlow ? (
                     <PlannerBackLink
                       onClick={() => {
-                        setCreateStep(selectedPlanId ? "pick-plan" : "source");
+                        if (selectedPlanId) {
+                          setSelectedPlanId(null);
+                          setCreateStep("pick-plan");
+                          return;
+                        }
+
+                        setCreateStep("source");
                       }}
                     />
                   ) : null}
