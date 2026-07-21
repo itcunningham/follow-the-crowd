@@ -864,6 +864,8 @@ function testEventPlansSelectionToolbarMatchesHistory() {
   assert.match(source, /centeredSelectAll/);
   assert.match(source, /cancelVariant="backIcon"/);
   assert.match(source, /toggleSelectAllForIds/);
+  assert.match(source, /planBulkManage\.selectionMode/);
+  assert.match(source, /pointer-events-none invisible \$\{EVENT_PLANS_CREATE_BUTTON_CLASS\}/);
   assert.doesNotMatch(source, /removeLabel="Delete selected"/);
   assert.doesNotMatch(source, /selectAllLabel="Select all"/i);
 }

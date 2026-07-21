@@ -395,23 +395,32 @@ export default function BookingPlansPage() {
   const showTrashButton = !planBulkManage.selectionMode && (!plansLoadSettled || plans.length > 0);
   const trashButtonDisabled = !plansLoadSettled || plans.length === 0;
   const showEventPlansToolbar = !formOpen;
+  const eventPlansHeaderActions =
+    !formOpen ? (
+      planBulkManage.selectionMode ? (
+        <span
+          aria-hidden="true"
+          className={`pointer-events-none invisible ${EVENT_PLANS_CREATE_BUTTON_CLASS}`}
+        >
+          Create event plan
+        </span>
+      ) : (
+        <button
+          type="button"
+          onClick={openCreateForm}
+          className={`cursor-pointer ${EVENT_PLANS_CREATE_BUTTON_CLASS}`}
+        >
+          Create event plan
+        </button>
+      )
+    ) : undefined;
 
   return (
     <OnboardingGuard>
       <PlannerWorkspacePage
         initialRole={displayRole}
         includeChrome={false}
-        actions={
-          !formOpen ? (
-            <button
-              type="button"
-              onClick={openCreateForm}
-              className={`cursor-pointer ${EVENT_PLANS_CREATE_BUTTON_CLASS}`}
-            >
-              Create event plan
-            </button>
-          ) : undefined
-        }
+        actions={eventPlansHeaderActions}
         secondaryControlsSlot={
           showEventPlansToolbar ? (
             <SavedEventPlansSectionHeader
