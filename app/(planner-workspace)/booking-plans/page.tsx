@@ -42,6 +42,7 @@ import {
   EVENT_PLAN_USE_BUTTON_WRAP_CLASS,
   EVENT_PLANS_CREATE_BUTTON_CLASS,
 } from "@/lib/design/ftcDesignSystem";
+import { useInlineTabFeedbackDismiss } from "@/lib/design/inlineTabFeedback";
 
 const emptyPlanForm: BookingPlanInput = {
   name: "",
@@ -188,6 +189,8 @@ export default function BookingPlansPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const clearSuccessMessage = useCallback(() => setSuccessMessage(null), []);
+  const successFeedbackFading = useInlineTabFeedbackDismiss(successMessage, clearSuccessMessage);
 
   const planBulkManage = useHistoryBulkManage(plans);
 
@@ -371,7 +374,7 @@ export default function BookingPlansPage() {
     await deleteBookingPlans(ids);
     setPlans((currentPlans) => currentPlans.filter((plan) => !ids.includes(plan.id)));
     setSuccessMessage(
-      ids.length === 1 ? "Event plan deleted" : `${ids.length} event plans deleted`,
+      ids.length === 1 ? "1 event plan deleted" : `${ids.length} event plans deleted`,
     );
   }
 
@@ -391,7 +394,9 @@ export default function BookingPlansPage() {
   const plansLoadSettled = !loadingAccess && !loadingPlans;
   const showTrashButton = !planBulkManage.selectionMode && (!plansLoadSettled || plans.length > 0);
   const trashButtonDisabled = !plansLoadSettled || plans.length === 0;
-  const showEventPlansToolbar = !formOpen && (planBulkManage.selectionMode || showTrashButton);
+  const showEventPlansToolbar =
+    !formOpen &&
+    (planBulkManage.selectionMode || showTrashButton || Boolean(successMessage));
 
   return (
     <OnboardingGuard>
@@ -424,6 +429,9 @@ export default function BookingPlansPage() {
               selectionMode={planBulkManage.selectionMode}
               trashButtonDisabled={trashButtonDisabled}
               onTrashClick={planBulkManage.enterSelectionMode}
+              showTrashButton={showTrashButton}
+              feedbackMessage={successMessage}
+              feedbackFading={successFeedbackFading}
               selectionToolbar={
                 <HistorySelectionToolbar
                   embedded
@@ -451,12 +459,6 @@ export default function BookingPlansPage() {
         }
         secondaryControlsPlaceholder={formOpen}
       >
-          {successMessage ? (
-            <p className="mb-4 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated px-4 py-3 text-sm text-ftc-text-secondary">
-              {successMessage}
-            </p>
-          ) : null}
-
           {!loadingAccess && formOpen ? (
             <PlannerFormCard
               title={editingPlanId ? "Edit event plan" : "Create event plan"}

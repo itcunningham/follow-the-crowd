@@ -646,11 +646,17 @@ export function SavedEventPlansSectionHeader({
   trashButtonDisabled = true,
   onTrashClick,
   selectionToolbar,
+  feedbackMessage = null,
+  feedbackFading = false,
+  showTrashButton = true,
 }: {
   selectionMode: boolean;
   trashButtonDisabled?: boolean;
   onTrashClick?: () => void;
   selectionToolbar: ReactNode;
+  feedbackMessage?: string | null;
+  feedbackFading?: boolean;
+  showTrashButton?: boolean;
 }) {
   if (selectionMode) {
     return (
@@ -665,14 +671,28 @@ export function SavedEventPlansSectionHeader({
 
   return (
     <div className={EVENTS_LIST_TAB_ROW_CLASS}>
-      <div className="min-w-0 flex-1" aria-hidden="true" />
+      <div className="min-w-0 flex-1 overflow-hidden" aria-live="polite">
+        {feedbackMessage ? (
+          <p
+            className={`${EVENTS_LIST_TAB_FEEDBACK_CLASS} ${
+              feedbackFading ? "opacity-0" : "opacity-100"
+            }`}
+          >
+            {feedbackMessage}
+          </p>
+        ) : null}
+      </div>
       <div className="flex w-[1.875rem] shrink-0 items-center justify-end">
-        <HistoryManageButton
-          ariaLabel="Delete event plans"
-          onClick={onTrashClick ?? (() => undefined)}
-          disabled={trashButtonDisabled || !onTrashClick}
-          className={FTC_EVENTS_LIST_TAB_ACTION_CLASS}
-        />
+        {showTrashButton ? (
+          <HistoryManageButton
+            ariaLabel="Delete event plans"
+            onClick={onTrashClick ?? (() => undefined)}
+            disabled={trashButtonDisabled || !onTrashClick}
+            className={FTC_EVENTS_LIST_TAB_ACTION_CLASS}
+          />
+        ) : (
+          <span aria-hidden="true" className={FTC_EVENTS_LIST_TAB_ACTION_PLACEHOLDER_CLASS} />
+        )}
       </div>
     </div>
   );

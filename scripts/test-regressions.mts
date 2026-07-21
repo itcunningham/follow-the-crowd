@@ -27,6 +27,10 @@ import { resolveEventsHistoryTrashVisible } from "../lib/events/eventsListNaviga
 import { resolveHistoryBulkSelectAllToggle } from "../app/components/history/HistoryBulkManage";
 import { resolvePlannerHistoryHideEventIds } from "../lib/events";
 import {
+  INLINE_TAB_FEEDBACK_CLEAR_MS,
+  INLINE_TAB_FEEDBACK_FADE_MS,
+} from "../lib/design/inlineTabFeedback";
+import {
   defaultGigsWorkspaceChromeState,
   gigsWorkspaceChromeStatesEqual,
 } from "../app/components/bookings/GigsWorkspaceChrome";
@@ -852,6 +856,30 @@ function testEventPlansSelectionToolbarRowMatchesEventsHistory() {
     source,
     /flex min-h-0 min-w-0 flex-1 items-center overflow-hidden[\s\S]*\{selectionToolbar\}/,
   );
+  assert.match(source, /EVENTS_LIST_TAB_FEEDBACK_CLASS/);
+  assert.match(source, /feedbackMessage/);
+}
+
+function testEventPlansInlineFeedbackMatchesEventsHistory() {
+  const plansSource = readFileSync(
+    new URL("../app/(planner-workspace)/booking-plans/page.tsx", import.meta.url),
+    "utf8",
+  );
+  const eventsSource = readFileSync(
+    new URL("../app/(planner-workspace)/events/EventsPageClient.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(plansSource, /useInlineTabFeedbackDismiss/);
+  assert.match(plansSource, /feedbackMessage=\{successMessage\}/);
+  assert.match(plansSource, /feedbackFading=\{successFeedbackFading\}/);
+  assert.doesNotMatch(
+    plansSource,
+    /rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated px-4 py-3 text-sm text-ftc-text-secondary/,
+  );
+  assert.equal(INLINE_TAB_FEEDBACK_FADE_MS, 2700);
+  assert.equal(INLINE_TAB_FEEDBACK_CLEAR_MS, 3000);
+  assert.match(eventsSource, /setTimeout\(\(\) => setHistoryFeedbackFading\(true\), 2700\)/);
+  assert.match(eventsSource, /3000\)/);
 }
 
 function testEventsHistoryTrashVisibleUsesRenderedHistoryList() {
@@ -1007,6 +1035,7 @@ async function main() {
   testEventsHistorySelectionToolbarUsesDeleteLabel();
   testEventPlansSelectionToolbarMatchesHistory();
   testEventPlansSelectionToolbarRowMatchesEventsHistory();
+  testEventPlansInlineFeedbackMatchesEventsHistory();
   testEventsHistoryTrashVisibleUsesRenderedHistoryList();
   testGigsTabCountsDeriveFromSameBookingSnapshot();
   testGigsInnerTabSelectionFollowsRouteImmediately();
