@@ -84,11 +84,6 @@ import {
   type EventWithLineupStats,
 } from "@/lib/events";
 import {
-  createDevEventPillRowTestCard,
-  isActiveEventPillRowTestCardEnabled,
-  isDevEventPillRowTestCardId,
-} from "@/lib/events/devEventPillRowTestCard";
-import {
   uploadEventCoverImage,
 } from "@/lib/events/eventCoverImage";
 import {
@@ -219,6 +214,10 @@ const EVENT_LIST_CARD_SUMMARY_CLASS =
 const EVENT_LIST_CARD_SUMMARY_ACTIVE_SINGLE_ROW_CLASS =
   "flex min-w-0 flex-wrap items-center justify-start gap-1 text-left [&>*]:shrink-0";
 
+/** TEMP: Remove after Active double-digit pill visual QA. Display-only; does not change data. */
+const TEMP_ACTIVE_EVENT_DOUBLE_DIGIT_PILL_COUNTS = true;
+const TEMP_ACTIVE_EVENT_DOUBLE_DIGIT_PILL_COUNT = 10;
+
 function EventsListCardContent({
   event,
   cancelled,
@@ -226,6 +225,7 @@ function EventsListCardContent({
   leading,
   showChevron = true,
   statusPillsSingleRow = false,
+  tempDoubleDigitPillCounts = false,
 }: {
   event: EventWithLineupStats;
   cancelled: boolean;
@@ -234,12 +234,22 @@ function EventsListCardContent({
   showChevron?: boolean;
   /** Events → Active only: attempt single-row status pills (History unchanged). */
   statusPillsSingleRow?: boolean;
+  /** TEMP: display 10 for each booking count on Active cards only. */
+  tempDoubleDigitPillCounts?: boolean;
 }) {
   const titleClassName = cancelled ? "text-ftc-text-secondary" : "text-ftc-text";
   const metaClassName = cancelled ? "text-ftc-text-muted" : "text-ftc-text-secondary";
   const venueDateLine = [event.venue?.trim(), formatDisplayEventDate(event.event_date)]
     .filter(Boolean)
     .join(" · ");
+  const lineupPillCounts = tempDoubleDigitPillCounts
+    ? {
+        total: TEMP_ACTIVE_EVENT_DOUBLE_DIGIT_PILL_COUNT,
+        pending: TEMP_ACTIVE_EVENT_DOUBLE_DIGIT_PILL_COUNT,
+        accepted: TEMP_ACTIVE_EVENT_DOUBLE_DIGIT_PILL_COUNT,
+        declined: TEMP_ACTIVE_EVENT_DOUBLE_DIGIT_PILL_COUNT,
+      }
+    : event.lineupStats;
 
   return (
     <div className={EVENT_LIST_CARD_ROW_CLASS}>
@@ -294,10 +304,10 @@ function EventsListCardContent({
                 : EVENT_LIST_CARD_SUMMARY_CLASS
             }
           >
-            <PlannerStatChip label="Invited" value={event.lineupStats.total} variant="compact" />
-            <PlannerStatChip label="Pending" value={event.lineupStats.pending} variant="compact" />
-            <PlannerStatChip label="Accepted" value={event.lineupStats.accepted} variant="compact" />
-            <PlannerStatChip label="Declined" value={event.lineupStats.declined} variant="compact" />
+            <PlannerStatChip label="Invited" value={lineupPillCounts.total} variant="compact" />
+            <PlannerStatChip label="Pending" value={lineupPillCounts.pending} variant="compact" />
+            <PlannerStatChip label="Accepted" value={lineupPillCounts.accepted} variant="compact" />
+            <PlannerStatChip label="Declined" value={lineupPillCounts.declined} variant="compact" />
           </div>
         ) : null}
       </div>
@@ -479,12 +489,8 @@ function EventsPageClientView({
     () => filterOutRemovingHistoryItems(filteredEvents, historyBulkManage.removingIds),
     [filteredEvents, historyBulkManage.removingIds],
   );
-  const showDevEventPillRowTestCard =
-    isActiveEventPillRowTestCardEnabled() && isPlanner && !isHistoryTab && showEventsListContent;
-  const devEventPillRowTestCard = useMemo(
-    () => (showDevEventPillRowTestCard ? createDevEventPillRowTestCard("dev-local-only") : null),
-    [showDevEventPillRowTestCard],
-  );
+  const activeEventTempDoubleDigitPillCounts =
+    TEMP_ACTIVE_EVENT_DOUBLE_DIGIT_PILL_COUNTS && isPlanner && !isHistoryTab;
   const visibleRemovableHistoryEvents = useMemo(() => {
     if (!isPlanner || !isHistoryTab) {
       return [];
@@ -1432,33 +1438,9 @@ function EventsPageClientView({
                     isHistoryTab ? "No past or cancelled events" : "No active events"
                   }
                 />
-              ) : visibleFilteredEvents.length > 0 || devEventPillRowTestCard ? (
+              ) : visibleFilteredEvents.length > 0 ? (
             <ul className={`ftc-gigs-list ${FTC_LIST_GAP_CLASS}`}>
-              {devEventPillRowTestCard ? (
-                <li
-                  key={devEventPillRowTestCard.id}
-                  data-ftc-dev-pill-row-test="true"
-                  className={eventsListCardShellClassName(false)}
-                >
-                  <div
-                    role="note"
-                    aria-label="Development-only layout test card. Not a real event."
-                    className="block w-full cursor-default text-left"
-                  >
-                    <EventsListCardContent
-                      event={devEventPillRowTestCard}
-                      cancelled={false}
-                      isPlanner={isPlanner}
-                      showChevron={false}
-                      statusPillsSingleRow
-                    />
-                  </div>
-                </li>
-              ) : null}
               {visibleFilteredEvents.map((event) => {
-                if (isDevEventPillRowTestCardId(event.id)) {
-                  return null;
-                }
                 const cancelled = isEventCancelled(event);
                 const eventHref = buildEventDetailHref(event.id, listTab);
                 const isSelected = historyBulkManage.selectedIds.has(event.id);
@@ -1494,6 +1476,7 @@ function EventsPageClientView({
                           isPlanner={isPlanner}
                           showChevron={false}
                           statusPillsSingleRow={isPlanner && !isHistoryTab}
+                          tempDoubleDigitPillCounts={activeEventTempDoubleDigitPillCounts}
                         />
                       </div>
                     ) : (
@@ -1513,6 +1496,7 @@ function EventsPageClientView({
                           isPlanner={isPlanner}
                           showChevron={!isHistoryTab}
                           statusPillsSingleRow={isPlanner && !isHistoryTab}
+                          tempDoubleDigitPillCounts={activeEventTempDoubleDigitPillCounts}
                         />
                       </button>
                     )}

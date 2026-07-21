@@ -832,7 +832,8 @@ function testEventsActiveStatusPillsSingleRowLayout() {
   );
   assert.match(source, /EVENT_LIST_CARD_SUMMARY_ACTIVE_SINGLE_ROW_CLASS/);
   assert.match(source, /statusPillsSingleRow=\{isPlanner && !isHistoryTab\}/);
-  assert.match(source, /devEventPillRowTestCard/);
+  assert.match(source, /TEMP_ACTIVE_EVENT_DOUBLE_DIGIT_PILL_COUNTS/);
+  assert.match(source, /tempDoubleDigitPillCounts=\{activeEventTempDoubleDigitPillCounts\}/);
 }
 
 function testEventsCreateEventHiddenDuringHistorySelectionToolbar() {
