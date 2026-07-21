@@ -454,15 +454,13 @@ function EventsPageClientView({
     setLocationRevision((current) => current + 1);
   }, [searchParams]);
 
-  const listTab = useMemo(
-    () =>
-      resolveEventsListTabParam(
-        searchParams.get("tab"),
-        initialTab,
-        typeof window === "undefined" ? null : window.location.search,
-      ),
-    [searchParams, initialTab, locationRevision],
-  );
+  const listTab = useMemo(() => {
+    if (typeof window === "undefined") {
+      return resolveEventsListTabParam(searchParams.get("tab"), initialTab, null);
+    }
+
+    return resolveEventsListTabParam(null, initialTab, window.location.search);
+  }, [searchParams, initialTab, locationRevision]);
   const isHistoryTab = listTab === "history";
   const createFormFieldErrors = useMemo(() => {
     if (!createOpen || createStep !== "form" || !createSaveAttempted) {
@@ -1026,11 +1024,21 @@ function EventsPageClientView({
 
     if (createOpen) {
       event.preventDefault();
-      closeCreateFlow();
+
+      let href: string | null = null;
       if (!isTargetTab) {
-        router.push(buildEventsListHref(tab), { scroll: false });
+        href = buildEventsListHref(tab);
+        window.history.pushState(window.history.state, "", href);
+        handleEventsListTabChange();
+      } else {
+        handleEventsListTabChange();
       }
-      handleEventsListTabChange();
+
+      closeCreateFlow();
+
+      if (href) {
+        router.push(href, { scroll: false });
+      }
       return;
     }
 

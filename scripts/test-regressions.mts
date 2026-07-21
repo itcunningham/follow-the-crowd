@@ -908,7 +908,15 @@ function testEventsCreateFlowTabPillNavigation() {
   assert.match(source, /function handleEventsListTabLinkClick/);
   assert.match(
     source,
-    /if \(createOpen\) \{\s*event\.preventDefault\(\);\s*closeCreateFlow\(\)/,
+    /window\.history\.pushState\(window\.history\.state, "", href\)/,
+  );
+  assert.match(
+    source,
+    /handleEventsListTabChange\(\);[\s\S]*?closeCreateFlow\(\);[\s\S]*?if \(href\) \{\s*router\.push\(href/,
+  );
+  assert.match(
+    source,
+    /resolveEventsListTabParam\(null, initialTab, window\.location\.search\)/,
   );
   assert.match(source, /handleEventsListTabLinkClick\(event, "active"\)/);
   assert.match(source, /handleEventsListTabLinkClick\(event, "history"\)/);
