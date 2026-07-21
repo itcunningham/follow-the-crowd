@@ -57,6 +57,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 - **Events list load (2026-07-19):** lineup stat chips load via one batched `booking_requests` query per page fetch (minimal fields), not one query per event
 - **History UX (2026-07-14):** History tab matches Active list layout/spacing; locked tab row height + reserved trash slot prevents layout jump on tab switch
 - **Event detail (2026-07-19):** single `OnboardingGuard` wrapper; Open DM from event detail returns Back to same event via `from=event-detail&eventId=…`
+- **Event detail load (2026-07-21):** parallel `getEventById` + lineup + crew-chat unlock; seed hero/title/meta from Events list cache; lower sections skeleton until lineup resolves; loading shell mirrors hero, summary meta rows, Invite DJs, Run Sheet, and Bookings geometry
 - **History event detail (2026-07-14):** past/cancelled events read-only on detail — no Edit, Invite DJs, lifecycle delete/cancel, run sheet edit, booking cancel/hide/proposal actions; Open DM and existing group chat link kept; historical empty copy for run sheet and bookings
 - **History bulk select (2026-07-14):** Select all operates on full History list (`filterPlannerHistoryTabEvents`), not cancelled-only subset
 - **Design system (2026-07-14):** `docs/design/FTC_DESIGN_SYSTEM.md` + `lib/design/ftcDesignSystem.ts` — shared tokens; standardised status badges, empty states, section titles, button min-heights

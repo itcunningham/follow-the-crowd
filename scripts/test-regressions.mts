@@ -884,6 +884,31 @@ function testEventFallbackColourSelectionRadioBehaviour() {
   assert.doesNotMatch(source, /value === option\.key \? null : option\.key/);
 }
 
+function testEventDetailLoadUsesParallelQueriesAndListCache() {
+  const pageSource = readFileSync(
+    new URL("../app/events/[eventId]/page.tsx", import.meta.url),
+    "utf8",
+  );
+  const cacheSource = readFileSync(
+    new URL("../lib/events/eventDetailCache.ts", import.meta.url),
+    "utf8",
+  );
+  const skeletonSource = readFileSync(
+    new URL("../app/components/skeleton/Skeleton.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(cacheSource, /readCachedEventSummaryById/);
+  assert.match(pageSource, /readCachedEventSummaryById/);
+  assert.match(
+    pageSource,
+    /const \[loadedEvent, bookings, unlock\] = await Promise\.all\(\[\s*getEventById\(eventId\),\s*listBookingRequestsForEvent\(eventId\),\s*getCrewChatUnlockStateForEvent\(eventId\),/,
+  );
+  assert.match(pageSource, /lineupLoading \? \(\s*<EventDetailPlannerLowerSectionsSkeleton/);
+  assert.match(skeletonSource, /data-event-detail-hero/);
+  assert.match(skeletonSource, /EventDetailPlannerLowerSectionsSkeleton/);
+  assert.match(skeletonSource, /min-h-\[3\.25rem\]/);
+}
+
 function testMobileSoftwareKeyboardHidesBottomNavigation() {
   const navSource = readFileSync(
     new URL("../app/components/AppNavigation.tsx", import.meta.url),
@@ -1218,6 +1243,7 @@ async function main() {
   testEventsCreateFlowTabPillNavigation();
   testEventsListTabSwitchUsesClientHistoryWithoutRouterNavigation();
   testEventsCreateEventHiddenDuringHistorySelectionToolbar();
+  testEventDetailLoadUsesParallelQueriesAndListCache();
   testMobileSoftwareKeyboardHidesBottomNavigation();
   testEventsActiveStatusPillsSingleRowLayout();
   testEventCreateFormTextFieldMaxLength();

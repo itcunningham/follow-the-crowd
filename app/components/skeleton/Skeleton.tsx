@@ -62,6 +62,8 @@ import { useEventEditHeaderState } from "@/lib/events/useEventEditHeaderVisibili
 import type { EventEditHeaderState } from "@/lib/events/useEventEditHeaderVisibility";
 import { canManageEvents, type UserRole } from "@/lib/user/currentUser";
 import { EVENTS_AREA_SUB_NAV } from "@/lib/plannerEventsNav";
+import { EVENT_DETAIL_CARD_CLASS } from "@/app/components/event-detail/eventDetailUi";
+import { CALENDAR_MOBILE_EMPTY_STATE_CLASS } from "@/app/components/calendar/calendarMobileUi";
 import { readCachedNavRole, readCachedNavigation, resolveIsOwnProfilePath } from "@/lib/navigationRoleCache";
 
 export function SkeletonBlock({
@@ -187,33 +189,83 @@ function EventDetailBackIcon() {
   );
 }
 
+function EventDetailMetaRowSkeleton({ lineClassName }: { lineClassName: string }) {
+  return (
+    <li className="flex min-w-0 items-start gap-2">
+      <SkeletonBlock className="mt-px h-4 w-4 shrink-0 rounded-md" rounded="rounded-md" />
+      <SkeletonBlock className={`h-4 flex-1 ${lineClassName}`} />
+    </li>
+  );
+}
+
+export function EventDetailPlannerLowerSectionsSkeleton() {
+  return (
+    <>
+      <div className="mt-8">
+        <div
+          aria-hidden="true"
+          className="flex min-h-[3.25rem] w-full items-center gap-3 rounded-xl border border-ftc-border-subtle px-3.5 py-3"
+        >
+          <SkeletonBlock className="h-9 w-9 shrink-0 rounded-lg" />
+          <SkeletonBlock className="h-4 w-28 max-w-[40%] flex-1" />
+          <SkeletonBlock className="h-4 w-4 shrink-0 rounded-md" rounded="rounded-md" />
+        </div>
+      </div>
+
+      <div className={`mt-4 ${EVENT_DETAIL_CARD_CLASS}`}>
+        <SkeletonBlock className="h-4 w-24" />
+        <div className={`mt-5 ${CALENDAR_MOBILE_EMPTY_STATE_CLASS}`}>
+          <SkeletonBlock className="mx-auto h-8 w-8 rounded-full" rounded="rounded-full" />
+          <SkeletonBlock className="mx-auto mt-3 h-4 w-48 max-w-full" />
+        </div>
+      </div>
+
+      <section className={`mt-8 ${EVENT_DETAIL_CARD_CLASS}`}>
+        <SkeletonBlock className="h-4 w-24" />
+        <div className="mt-2.5 flex flex-wrap gap-1.5">
+          <SkeletonBlock className="h-6 w-16 rounded-full" rounded="rounded-full" />
+          <SkeletonBlock className="h-6 w-16 rounded-full" rounded="rounded-full" />
+          <SkeletonBlock className="h-6 w-16 rounded-full" rounded="rounded-full" />
+          <SkeletonBlock className="h-6 w-16 rounded-full" rounded="rounded-full" />
+        </div>
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          <SkeletonBlock className="h-8 w-12 rounded-full" rounded="rounded-full" />
+          <SkeletonBlock className="h-8 w-16 rounded-full" rounded="rounded-full" />
+          <SkeletonBlock className="h-8 w-20 rounded-full" rounded="rounded-full" />
+          <SkeletonBlock className="h-8 w-16 rounded-full" rounded="rounded-full" />
+        </div>
+        <div className="mt-5 rounded-xl border border-dashed border-ftc-border-subtle bg-ftc-surface/30 px-4 py-6">
+          <SkeletonBlock className="mx-auto h-4 w-56 max-w-full" />
+        </div>
+      </section>
+    </>
+  );
+}
+
 export function EventDetailContentSkeleton() {
   return (
     <>
-      <div className="relative aspect-[4/3] max-h-[165px] w-full border-b border-ftc-border-subtle">
+      <div
+        data-event-detail-hero
+        className="relative aspect-[4/3] w-full max-h-[165px] overflow-hidden border-b border-ftc-border-subtle"
+      >
         <SkeletonBlock className="h-full w-full rounded-none" rounded="rounded-none" />
       </div>
 
-      <div className="space-y-4 px-4 pb-6 pt-4 sm:px-6">
-        <SkeletonBlock className="h-7 w-4/5 max-w-[16rem]" />
-        <SkeletonBlock className="h-[5.5rem] w-full max-w-none rounded-2xl" />
+      <div className="px-4 pb-6 pt-5 sm:px-6">
+        <SkeletonBlock className="h-8 w-4/5 max-w-[18rem] sm:h-9" />
 
-        <SkeletonCard>
-          <SkeletonBlock className="h-5 w-28" />
-          <SkeletonBlock className="mt-4 h-4 w-full max-w-[18rem]" />
-          <SkeletonBlock className="mt-2 h-4 w-2/3 max-w-[10rem]" />
-        </SkeletonCard>
-
-        <SkeletonCard>
-          <SkeletonBlock className="h-5 w-24" />
-          <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="space-y-2">
-              <SkeletonBlock className="h-6 w-20 rounded-full" />
-              <SkeletonBlock className="h-4 w-40" />
-            </div>
-            <SkeletonBlock className="h-9 w-24 rounded-xl" />
+        <div className="mt-3">
+          <div className={EVENT_DETAIL_CARD_CLASS}>
+            <ul className="space-y-1.5" aria-hidden="true">
+              <EventDetailMetaRowSkeleton lineClassName="max-w-[12rem]" />
+              <EventDetailMetaRowSkeleton lineClassName="max-w-[10rem]" />
+              <EventDetailMetaRowSkeleton lineClassName="max-w-[14rem]" />
+            </ul>
           </div>
-        </SkeletonCard>
+        </div>
+
+        <EventDetailPlannerLowerSectionsSkeleton />
       </div>
     </>
   );

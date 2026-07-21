@@ -30,7 +30,7 @@ import {
 import EventLineupBookingCard from "@/app/components/event-detail/EventLineupBookingCard";
 import { useGuardProfile } from "@/app/components/GuardProfileContext";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
-import { EventDetailLoadingShell } from "@/app/components/skeleton/Skeleton";
+import { EventDetailLoadingShell, EventDetailPlannerLowerSectionsSkeleton } from "@/app/components/skeleton/Skeleton";
 import {
   PlannerEmptyPanel,
   PlannerFilterPills,
@@ -117,6 +117,7 @@ import {
   postEventGroupChatUpdate,
   shouldPostEventGroupChatUpdate,
 } from "@/lib/events/eventGroupChatUpdate";
+import { readCachedEventSummaryById } from "@/lib/events/eventDetailCache";
 import { resolveEventDetailBackHref } from "@/lib/events/eventsListNavigation";
 import {
   shouldResetMobileEventDetailScroll,
@@ -180,6 +181,10 @@ function EventDetailPageView() {
   const searchParams = useSearchParams();
   const eventId = params.eventId;
   const hasValidEventId = Boolean(eventId && looksLikeUserId(eventId));
+  const cachedEventSummary = useMemo(
+    () => (hasValidEventId ? readCachedEventSummaryById(eventId) : null),
+    [eventId, hasValidEventId],
+  );
   const eventsBackHref = useMemo(
     () =>
       resolveEventDetailBackHref(searchParams.get("fromTab"), {
@@ -201,9 +206,12 @@ function EventDetailPageView() {
 
   const guardProfile = useGuardProfile();
   const [role, setRole] = useState<UserRole | null>(null);
+  const eventRef = useRef<Event | null>(cachedEventSummary);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [event, setEvent] = useState<Event | null>(null);
+  const [loadingEvent, setLoadingEvent] = useState(() => !cachedEventSummary);
+  const [lineupLoading, setLineupLoading] = useState(true);
+  const [event, setEvent] = useState<Event | null>(() => cachedEventSummary);
+  eventRef.current = event;
   const [lineup, setLineup] = useState<BookingRequest[]>([]);
   const [profiles, setProfiles] = useState<Map<string, BookingRecipientProfile>>(new Map());
   const [lineupFilter, setLineupFilter] = useState<ActiveBookingStatusFilter>("all");
@@ -251,9 +259,13 @@ function EventDetailPageView() {
   const [unavailableConfirmOpen, setUnavailableConfirmOpen] = useState(false);
 
   const shouldApplyMobileScrollGate = shouldResetMobileEventDetailScroll(searchParams);
-  const mobileScrollReady = useMobileEventDetailScrollReset(searchParams, eventId, !loading);
+  const mobileScrollReady = useMobileEventDetailScrollReset(
+    searchParams,
+    eventId,
+    Boolean(event) && !lineupLoading,
+  );
   const mobileScrollGateClass =
-    shouldApplyMobileScrollGate && !loading && !mobileScrollReady ? "invisible" : "";
+    shouldApplyMobileScrollGate && Boolean(event) && !mobileScrollReady ? "invisible" : "";
 
   const resolvedRole = role ?? guardProfile?.role ?? null;
   const resolvedUserId = currentUserId ?? guardProfile?.user_id ?? null;
@@ -337,15 +349,23 @@ function EventDetailPageView() {
       setProfiles(new Map());
       setCrewChatUnlock(null);
       setError("Event not found or you do not have access.");
-      setLoading(false);
+      setLoadingEvent(false);
+      setLineupLoading(false);
       return;
     }
 
-    setLoading(true);
+    if (!eventRef.current) {
+      setLoadingEvent(true);
+    }
+    setLineupLoading(true);
     setError(null);
 
     try {
-      const loadedEvent = await getEventById(eventId);
+      const [loadedEvent, bookings, unlock] = await Promise.all([
+        getEventById(eventId),
+        listBookingRequestsForEvent(eventId),
+        getCrewChatUnlockStateForEvent(eventId),
+      ]);
 
       if (!loadedEvent) {
         setEvent(null);
@@ -357,11 +377,6 @@ function EventDetailPageView() {
       }
 
       setEvent(loadedEvent);
-
-      const [bookings, unlock] = await Promise.all([
-        listBookingRequestsForEvent(eventId),
-        getCrewChatUnlockStateForEvent(eventId),
-      ]);
       setLineup(bookings);
       setCrewChatUnlock(unlock);
 
@@ -375,13 +390,16 @@ function EventDetailPageView() {
       }
     } catch (loadError) {
       console.error("Failed to load event:", loadError);
-      setEvent(null);
+      if (!eventRef.current) {
+        setEvent(null);
+      }
       setLineup([]);
       setProfiles(new Map());
       setCrewChatUnlock(null);
       setError(getEventsLoadErrorMessage(loadError));
     } finally {
-      setLoading(false);
+      setLoadingEvent(false);
+      setLineupLoading(false);
     }
   }, [eventId, hasValidEventId]);
 
@@ -428,6 +446,16 @@ function EventDetailPageView() {
         console.error("Failed to load event page access:", loadError);
       });
   }, []);
+
+  useEffect(() => {
+    const summary = hasValidEventId ? readCachedEventSummaryById(eventId) : null;
+    setEvent(summary);
+    setLoadingEvent(!summary);
+    setLineupLoading(true);
+    setLineup([]);
+    setProfiles(new Map());
+    setCrewChatUnlock(null);
+  }, [eventId, hasValidEventId]);
 
   useEffect(() => {
     loadEventData();
@@ -1010,7 +1038,7 @@ function EventDetailPageView() {
   const showBottomBar = showDjBookingConversationAction;
   const showRunSheetSendBookingsAction = showOwnerSendAction && showStickyActions;
 
-  if (loading) {
+  if (loadingEvent && !event) {
     return (
       <div className={mobileScrollGateClass}>
         <EventDetailLoadingShell
@@ -1269,6 +1297,10 @@ function EventDetailPageView() {
             </section>
           ) : null}
 
+          {lineupLoading ? (
+            <EventDetailPlannerLowerSectionsSkeleton />
+          ) : (
+            <>
           {canViewRunSheet ? (
             <>
               {showRunSheetSendBookingsAction ? (
@@ -1414,6 +1446,8 @@ function EventDetailPageView() {
               )}
             </section>
           ) : null}
+            </>
+          )}
 
           {isOwner && isPlanner && canManageEventLifecycle ? (
             <div className="mt-8 border-t border-ftc-border-subtle pt-6">
