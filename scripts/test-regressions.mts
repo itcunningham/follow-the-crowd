@@ -866,14 +866,6 @@ function testEventPlansActionRowLayout() {
   assert.match(pageSource, /const showEventPlansToolbar = !formOpen;/);
 }
 
-function testEventPlansCreateButtonHiddenInSelectionMode() {
-  const pageSource = readFileSync(
-    new URL("../app/(planner-workspace)/booking-plans/page.tsx", import.meta.url),
-    "utf8",
-  );
-  assert.match(pageSource, /planBulkManage\.selectionMode \? \(\s*<\><\/>\s*\)/);
-}
-
 function testEventPlansInlineFeedbackMatchesEventsHistory() {
   const plansSource = readFileSync(
     new URL("../app/(planner-workspace)/booking-plans/page.tsx", import.meta.url),
@@ -1050,7 +1042,6 @@ async function main() {
   testEventPlansSelectionToolbarMatchesHistory();
   testEventPlansSelectionToolbarRowMatchesEventsHistory();
   testEventPlansActionRowLayout();
-  testEventPlansCreateButtonHiddenInSelectionMode();
   testEventPlansInlineFeedbackMatchesEventsHistory();
   testEventsHistoryTrashVisibleUsesRenderedHistoryList();
   testGigsTabCountsDeriveFromSameBookingSnapshot();

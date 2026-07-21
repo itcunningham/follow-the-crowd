@@ -403,17 +403,13 @@ export default function BookingPlansPage() {
         includeChrome={false}
         actions={
           !formOpen ? (
-            planBulkManage.selectionMode ? (
-              <></>
-            ) : (
-              <button
-                type="button"
-                onClick={openCreateForm}
-                className={`cursor-pointer ${EVENT_PLANS_CREATE_BUTTON_CLASS}`}
-              >
-                Create event plan
-              </button>
-            )
+            <button
+              type="button"
+              onClick={openCreateForm}
+              className={`cursor-pointer ${EVENT_PLANS_CREATE_BUTTON_CLASS}`}
+            >
+              Create event plan
+            </button>
           ) : undefined
         }
         secondaryControlsSlot={
