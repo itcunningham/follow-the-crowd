@@ -661,20 +661,56 @@ export function SavedEventPlansSectionHeader({
   feedbackFading?: boolean;
   showTrashButton?: boolean;
 }) {
+  if (selectionMode) {
+    return (
+      <EventsListTabRow
+        showTrashButton={showTrashButton}
+        trashButtonDisabled={trashButtonDisabled}
+        onTrashClick={onTrashClick}
+        reserveTrashSlot={!showTrashButton}
+        feedbackMessage={null}
+        feedbackFading={feedbackFading}
+        selectionMode
+        selectionToolbar={selectionToolbar}
+        trashAriaLabel="Delete event plans"
+      >
+        <EventsListTabPillWidthSpacer />
+      </EventsListTabRow>
+    );
+  }
+
   return (
-    <EventsListTabRow
-      showTrashButton={showTrashButton}
-      trashButtonDisabled={trashButtonDisabled}
-      onTrashClick={onTrashClick}
-      reserveTrashSlot={!showTrashButton}
-      feedbackMessage={selectionMode ? null : feedbackMessage}
-      feedbackFading={feedbackFading}
-      selectionMode={selectionMode}
-      selectionToolbar={selectionToolbar}
-      trashAriaLabel="Delete event plans"
-    >
-      <EventsListTabPillWidthSpacer />
-    </EventsListTabRow>
+    <div className={EVENTS_LIST_TAB_ROW_CLASS}>
+      <div className="flex w-[1.875rem] shrink-0 items-center justify-start" aria-hidden="true">
+        <span className={FTC_EVENTS_LIST_TAB_ACTION_PLACEHOLDER_CLASS} />
+      </div>
+      <div
+        className="flex min-w-0 flex-1 items-center justify-center overflow-hidden"
+        aria-live="polite"
+      >
+        {feedbackMessage ? (
+          <p
+            className={`${EVENTS_LIST_TAB_FEEDBACK_CLASS} w-full text-center ${
+              feedbackFading ? "opacity-0" : "opacity-100"
+            }`}
+          >
+            {feedbackMessage}
+          </p>
+        ) : null}
+      </div>
+      <div className="flex w-[1.875rem] shrink-0 items-center justify-end">
+        {showTrashButton ? (
+          <HistoryManageButton
+            ariaLabel="Delete event plans"
+            onClick={onTrashClick ?? (() => undefined)}
+            disabled={trashButtonDisabled || !onTrashClick}
+            className={FTC_EVENTS_LIST_TAB_ACTION_CLASS}
+          />
+        ) : (
+          <span aria-hidden="true" className={FTC_EVENTS_LIST_TAB_ACTION_PLACEHOLDER_CLASS} />
+        )}
+      </div>
+    </div>
   );
 }
 

@@ -394,9 +394,7 @@ export default function BookingPlansPage() {
   const plansLoadSettled = !loadingAccess && !loadingPlans;
   const showTrashButton = !planBulkManage.selectionMode && (!plansLoadSettled || plans.length > 0);
   const trashButtonDisabled = !plansLoadSettled || plans.length === 0;
-  const showEventPlansToolbar =
-    !formOpen &&
-    (planBulkManage.selectionMode || showTrashButton || Boolean(successMessage));
+  const showEventPlansToolbar = !formOpen;
 
   return (
     <OnboardingGuard>

@@ -848,9 +848,22 @@ function testEventPlansSelectionToolbarRowMatchesEventsHistory() {
     "utf8",
   );
   assert.match(source, /export function EventsListTabPillWidthSpacer/);
-  assert.match(source, /SavedEventPlansSectionHeader[\s\S]*<EventsListTabRow/);
+  assert.match(source, /selectionMode[\s\S]*<EventsListTabRow/);
   assert.match(source, /<EventsListTabPillWidthSpacer \/>/);
-  assert.match(source, /trashAriaLabel="Delete event plans"/);
+}
+
+function testEventPlansActionRowLayout() {
+  const skeletonSource = readFileSync(
+    new URL("../app/components/skeleton/Skeleton.tsx", import.meta.url),
+    "utf8",
+  );
+  const pageSource = readFileSync(
+    new URL("../app/(planner-workspace)/booking-plans/page.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(skeletonSource, /justify-center overflow-hidden/);
+  assert.match(skeletonSource, /EVENTS_LIST_TAB_FEEDBACK_CLASS} w-full text-center/);
+  assert.match(pageSource, /const showEventPlansToolbar = !formOpen;/);
 }
 
 function testEventPlansInlineFeedbackMatchesEventsHistory() {
@@ -1028,6 +1041,7 @@ async function main() {
   testEventsHistorySelectionToolbarUsesDeleteLabel();
   testEventPlansSelectionToolbarMatchesHistory();
   testEventPlansSelectionToolbarRowMatchesEventsHistory();
+  testEventPlansActionRowLayout();
   testEventPlansInlineFeedbackMatchesEventsHistory();
   testEventsHistoryTrashVisibleUsesRenderedHistoryList();
   testGigsTabCountsDeriveFromSameBookingSnapshot();
