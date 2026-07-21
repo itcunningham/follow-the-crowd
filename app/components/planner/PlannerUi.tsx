@@ -304,6 +304,9 @@ export function PlannerFilterPills<T extends string>({
   );
 }
 
+const PLANNER_STAT_CHIP_COMPACT_CLASS =
+  "rounded-full border border-ftc-border-subtle bg-ftc-bg-input py-0.5 text-[9px] font-medium uppercase tracking-wide text-ftc-text-muted";
+
 export function PlannerStatChip({
   label,
   value,
@@ -311,16 +314,27 @@ export function PlannerStatChip({
 }: {
   label: string;
   value: number;
-  variant?: "default" | "compact";
+  variant?: "default" | "compact" | "compactActiveRow";
 }) {
   const className =
-    variant === "compact"
-      ? "rounded-full border border-ftc-border-subtle bg-ftc-bg-input px-2 py-0.5 text-[9px] font-medium uppercase tracking-wide text-ftc-text-muted"
-      : "ftc-stat-chip";
+    variant === "compactActiveRow"
+      ? `${PLANNER_STAT_CHIP_COMPACT_CLASS} px-1.5`
+      : variant === "compact"
+        ? `${PLANNER_STAT_CHIP_COMPACT_CLASS} px-2`
+        : "ftc-stat-chip";
 
   return (
     <span className={className}>
-      {label}: <span className={variant === "compact" ? "text-ftc-text-secondary" : "text-ftc-text"}>{value}</span>
+      {label}:{" "}
+      <span
+        className={
+          variant === "compact" || variant === "compactActiveRow"
+            ? "text-ftc-text-secondary"
+            : "text-ftc-text"
+        }
+      >
+        {value}
+      </span>
     </span>
   );
 }

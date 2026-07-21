@@ -210,9 +210,9 @@ const EVENT_LIST_CARD_BODY_CLASS =
 const EVENT_LIST_CARD_SUMMARY_CLASS =
   "flex min-w-0 flex-wrap justify-start gap-1.5 text-left";
 
-/** Active tab: tighter gap; pills share one row when width allows, wrap cleanly otherwise. */
+/** Active tab: tighter pill spacing; wraps when double-digit counts exceed text column width. */
 const EVENT_LIST_CARD_SUMMARY_ACTIVE_SINGLE_ROW_CLASS =
-  "flex min-w-0 flex-wrap items-center justify-start gap-1 text-left [&>*]:shrink-0";
+  "flex min-w-0 flex-wrap items-center justify-start gap-0.5 text-left [&>*]:shrink-0";
 
 /** TEMP: Remove after Active double-digit pill visual QA. Display-only; does not change data. */
 const TEMP_ACTIVE_EVENT_DOUBLE_DIGIT_PILL_COUNTS = true;
@@ -304,10 +304,26 @@ function EventsListCardContent({
                 : EVENT_LIST_CARD_SUMMARY_CLASS
             }
           >
-            <PlannerStatChip label="Invited" value={lineupPillCounts.total} variant="compact" />
-            <PlannerStatChip label="Pending" value={lineupPillCounts.pending} variant="compact" />
-            <PlannerStatChip label="Accepted" value={lineupPillCounts.accepted} variant="compact" />
-            <PlannerStatChip label="Declined" value={lineupPillCounts.declined} variant="compact" />
+            <PlannerStatChip
+              label="Invited"
+              value={lineupPillCounts.total}
+              variant={statusPillsSingleRow ? "compactActiveRow" : "compact"}
+            />
+            <PlannerStatChip
+              label="Pending"
+              value={lineupPillCounts.pending}
+              variant={statusPillsSingleRow ? "compactActiveRow" : "compact"}
+            />
+            <PlannerStatChip
+              label="Accepted"
+              value={lineupPillCounts.accepted}
+              variant={statusPillsSingleRow ? "compactActiveRow" : "compact"}
+            />
+            <PlannerStatChip
+              label="Declined"
+              value={lineupPillCounts.declined}
+              variant={statusPillsSingleRow ? "compactActiveRow" : "compact"}
+            />
           </div>
         ) : null}
       </div>
