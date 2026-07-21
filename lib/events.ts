@@ -19,6 +19,9 @@ import { normalizeStoredRate } from "@/lib/bookingRate";
 import { createNotification } from "@/lib/notifications";
 import { supabase } from "@/lib/supabaseClient";
 import {
+  assertEventFormTextFieldLimits,
+} from "@/lib/events/eventFormFieldValidation";
+import {
   assertEventCoverImagePersisted,
   deleteEventCoverStorageObject,
   normalizeEventCoverImageUrl,
@@ -463,6 +466,7 @@ function assertEventStartNotInPast(input: EventInput): void {
 }
 
 export async function createEvent(input: EventInput): Promise<Event> {
+  assertEventFormTextFieldLimits(input);
   assertEventStartNotInPast(input);
   const userId = await getCurrentUserId();
 
@@ -482,6 +486,7 @@ export async function createEvent(input: EventInput): Promise<Event> {
 }
 
 export async function updateEvent(eventId: string, input: EventInput): Promise<Event> {
+  assertEventFormTextFieldLimits(input);
   assertEventStartNotInPast(input);
   const userId = await getCurrentUserId();
 

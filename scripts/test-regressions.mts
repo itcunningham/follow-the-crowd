@@ -1,4 +1,10 @@
 import assert from "node:assert/strict";
+import {
+  assertEventFormTextFieldLimits,
+  getEventFormFieldErrors,
+  MAX_EVENT_NAME_LENGTH,
+  MAX_EVENT_VENUE_LENGTH,
+} from "../lib/events/eventFormFieldValidation";
 import { readFileSync } from "node:fs";
 import { formatRateDisplay } from "../lib/bookingRate";
 import {
@@ -825,6 +831,40 @@ function testEventsHistorySelectionToolbarUsesDeleteLabel() {
   assert.match(source, /cancelVariant="backIcon"/);
 }
 
+function testEventCreateFormTextFieldMaxLength() {
+  const longName = "a".repeat(MAX_EVENT_NAME_LENGTH + 1);
+  const errors = getEventFormFieldErrors({
+    name: longName,
+    venue: "Venue",
+    eventDate: getTodayDateKey(),
+    setTime: `18:00 ${SET_TIME_RANGE_JOINER} 19:00`,
+  });
+  assert.match(errors.name ?? "", /30 characters or fewer/);
+
+  assert.throws(
+    () =>
+      assertEventFormTextFieldLimits({
+        name: longName,
+        venue: "Venue",
+      }),
+    /30 characters or fewer/,
+  );
+
+  const panelSource = readFileSync(
+    new URL("../app/components/booking/SendBookingRequestsPanel.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(panelSource, /maxLength=\{MAX_BOOKING_DJ_SEARCH_QUERY_LENGTH\}/);
+  assert.match(panelSource, /MAX_BOOKING_DJ_SEARCH_QUERY_LENGTH = 30/);
+
+  const eventsSource = readFileSync(
+    new URL("../app/(planner-workspace)/events/EventsPageClient.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(eventsSource, /maxLength=\{MAX_EVENT_NAME_LENGTH\}/);
+  assert.match(eventsSource, /maxLength=\{MAX_EVENT_VENUE_LENGTH\}/);
+}
+
 function testEventsActiveStatusPillsSingleRowLayout() {
   const source = readFileSync(
     new URL("../app/(planner-workspace)/events/EventsPageClient.tsx", import.meta.url),
@@ -1069,6 +1109,7 @@ async function main() {
   testEventsHistorySelectionToolbarUsesDeleteLabel();
   testEventsCreateEventHiddenDuringHistorySelectionToolbar();
   testEventsActiveStatusPillsSingleRowLayout();
+  testEventCreateFormTextFieldMaxLength();
   testEventPlansSelectionToolbarMatchesHistory();
   testEventPlansSelectionToolbarRowMatchesEventsHistory();
   testEventPlansActionRowLayout();

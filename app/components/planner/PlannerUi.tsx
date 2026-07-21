@@ -127,6 +127,7 @@ export function PlannerFormField({
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
         required={required}
+        maxLength={maxLength}
         className="ftc-input px-3.5 py-2.5"
       />
       {error ? <PlannerFieldError message={error} /> : null}

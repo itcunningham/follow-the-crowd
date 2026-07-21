@@ -24,6 +24,8 @@ import { getTodayDateKey, formatDisplayEventDate, sanitizePrefilledEventDateKey 
 import {
   getEventFormFieldErrors,
   hasEventFormFieldErrors,
+  MAX_EVENT_NAME_LENGTH,
+  MAX_EVENT_VENUE_LENGTH,
 } from "@/lib/events/eventFormFieldValidation";
 import { getEventNotesValidationError, MAX_EVENT_NOTES_LENGTH } from "@/lib/events/eventNotes";
 import EventCoverImageField, {
@@ -1285,6 +1287,7 @@ function EventsPageClientView({
                     onChange={(value) => updateField("name", value)}
                     placeholder="Event name"
                     required
+                    maxLength={MAX_EVENT_NAME_LENGTH}
                     error={createFormFieldErrors.name}
                   />
                   <PlannerFormField
@@ -1293,6 +1296,7 @@ function EventsPageClientView({
                     onChange={(value) => updateField("venue", value)}
                     placeholder="Venue"
                     required
+                    maxLength={MAX_EVENT_VENUE_LENGTH}
                     error={createFormFieldErrors.venue}
                   />
                   <EventCoverImageField

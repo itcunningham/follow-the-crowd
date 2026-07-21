@@ -8,6 +8,9 @@ import { PlannerEmptyPanel, PlannerSectionLabel } from "@/app/components/planner
 import { EVENT_DETAIL_BTN_PRIMARY_WIDE } from "@/app/components/event-detail/eventDetailUi";
 import type { SendBookingRequestsDraft } from "@/app/components/booking/useSendBookingRequestsDraft";
 
+/** Create-event invite DJ search (client-only). */
+export const MAX_BOOKING_DJ_SEARCH_QUERY_LENGTH = 30;
+
 type SendBookingRequestsPanelProps = {
   draft: SendBookingRequestsDraft;
   disabled?: boolean;
@@ -50,6 +53,7 @@ function InviteDjSearchField({
         disabled={disabled}
         onChange={(event) => onChange(event.target.value)}
         placeholder="Search DJs by name or genre"
+        maxLength={MAX_BOOKING_DJ_SEARCH_QUERY_LENGTH}
         className="ftc-input h-11 w-full rounded-full py-0 pl-11 pr-4 text-[15px] placeholder:text-ftc-text-muted"
       />
     </label>

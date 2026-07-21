@@ -6,6 +6,10 @@ import {
   parseEventDate,
   resolveEventDateKey,
 } from "@/lib/bookingDateTime";
+import { getTextLengthValidationError } from "@/lib/textInputLimits";
+
+export const MAX_EVENT_NAME_LENGTH = 30;
+export const MAX_EVENT_VENUE_LENGTH = 30;
 
 export type EventFormFieldErrors = {
   name?: string;
@@ -25,10 +29,30 @@ export function getEventFormFieldErrors(input: {
 
   if (!input.name.trim()) {
     errors.name = "Enter an event name";
+  } else {
+    const nameLengthError = getTextLengthValidationError(
+      input.name,
+      MAX_EVENT_NAME_LENGTH,
+      "Event name",
+    );
+
+    if (nameLengthError) {
+      errors.name = nameLengthError;
+    }
   }
 
   if (!input.venue.trim()) {
     errors.venue = "Enter a venue";
+  } else {
+    const venueLengthError = getTextLengthValidationError(
+      input.venue,
+      MAX_EVENT_VENUE_LENGTH,
+      "Venue",
+    );
+
+    if (venueLengthError) {
+      errors.venue = venueLengthError;
+    }
   }
 
   const trimmedDate = input.eventDate.trim();
@@ -65,6 +89,28 @@ export function getEventFormFieldErrors(input: {
   }
 
   return errors;
+}
+
+export function assertEventFormTextFieldLimits(input: { name: string; venue: string }): void {
+  const nameLengthError = getTextLengthValidationError(
+    input.name,
+    MAX_EVENT_NAME_LENGTH,
+    "Event name",
+  );
+
+  if (nameLengthError) {
+    throw new Error(nameLengthError);
+  }
+
+  const venueLengthError = getTextLengthValidationError(
+    input.venue,
+    MAX_EVENT_VENUE_LENGTH,
+    "Venue",
+  );
+
+  if (venueLengthError) {
+    throw new Error(venueLengthError);
+  }
 }
 
 export function hasEventFormFieldErrors(errors: EventFormFieldErrors): boolean {
