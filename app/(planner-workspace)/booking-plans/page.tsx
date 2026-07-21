@@ -404,12 +404,7 @@ export default function BookingPlansPage() {
         actions={
           !formOpen ? (
             planBulkManage.selectionMode ? (
-              <span
-                aria-hidden="true"
-                className={`pointer-events-none invisible ${EVENT_PLANS_CREATE_BUTTON_CLASS}`}
-              >
-                Create event plan
-              </span>
+              <></>
             ) : (
               <button
                 type="button"
