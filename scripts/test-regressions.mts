@@ -847,17 +847,10 @@ function testEventPlansSelectionToolbarRowMatchesEventsHistory() {
     new URL("../app/components/skeleton/Skeleton.tsx", import.meta.url),
     "utf8",
   );
-  assert.match(source, /function EventsListTabPillWidthSpacer/);
-  assert.match(
-    source,
-    /selectionMode[\s\S]*EVENTS_LIST_TAB_ROW_CLASS[\s\S]*EventsListTabPillWidthSpacer/,
-  );
-  assert.match(
-    source,
-    /flex min-h-0 min-w-0 flex-1 items-center overflow-hidden[\s\S]*\{selectionToolbar\}/,
-  );
-  assert.match(source, /EVENTS_LIST_TAB_FEEDBACK_CLASS/);
-  assert.match(source, /feedbackMessage/);
+  assert.match(source, /export function EventsListTabPillWidthSpacer/);
+  assert.match(source, /SavedEventPlansSectionHeader[\s\S]*<EventsListTabRow/);
+  assert.match(source, /<EventsListTabPillWidthSpacer \/>/);
+  assert.match(source, /trashAriaLabel="Delete event plans"/);
 }
 
 function testEventPlansInlineFeedbackMatchesEventsHistory() {

@@ -294,6 +294,7 @@ export function EventsListTabRow({
   feedbackFading = false,
   selectionMode = false,
   selectionToolbar = null,
+  trashAriaLabel = "Manage history",
 }: {
   children: ReactNode;
   showTrashButton?: boolean;
@@ -305,6 +306,7 @@ export function EventsListTabRow({
   feedbackFading?: boolean;
   selectionMode?: boolean;
   selectionToolbar?: ReactNode;
+  trashAriaLabel?: string;
 }) {
   const showRightTrash = !selectionMode && showTrashButton;
   const showRightPlaceholder = !selectionMode && !showTrashButton && reserveTrashSlot;
@@ -332,6 +334,7 @@ export function EventsListTabRow({
           <div className="flex w-[1.875rem] shrink-0 items-center justify-end">
             {showRightTrash ? (
               <HistoryManageButton
+                ariaLabel={trashAriaLabel}
                 onClick={onTrashClick ?? (() => undefined)}
                 disabled={trashButtonDisabled || !onTrashClick}
                 className={FTC_EVENTS_LIST_TAB_ACTION_CLASS}
@@ -630,7 +633,7 @@ export function SavedEventPlansSectionHeading({ className = "mb-3" }: { classNam
 }
 
 /** Invisible Active/History pill cluster — matches Events History tab row width for selection toolbar. */
-function EventsListTabPillWidthSpacer() {
+export function EventsListTabPillWidthSpacer() {
   return (
     <div className="pointer-events-none invisible flex shrink-0 items-center" aria-hidden="true">
       <div className={FTC_PILL_ROW_GAP_CLASS}>
@@ -658,43 +661,20 @@ export function SavedEventPlansSectionHeader({
   feedbackFading?: boolean;
   showTrashButton?: boolean;
 }) {
-  if (selectionMode) {
-    return (
-      <div className={EVENTS_LIST_TAB_ROW_CLASS}>
-        <EventsListTabPillWidthSpacer />
-        <div className="flex min-h-0 min-w-0 flex-1 items-center overflow-hidden">
-          {selectionToolbar}
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className={EVENTS_LIST_TAB_ROW_CLASS}>
-      <div className="min-w-0 flex-1 overflow-hidden" aria-live="polite">
-        {feedbackMessage ? (
-          <p
-            className={`${EVENTS_LIST_TAB_FEEDBACK_CLASS} ${
-              feedbackFading ? "opacity-0" : "opacity-100"
-            }`}
-          >
-            {feedbackMessage}
-          </p>
-        ) : null}
-      </div>
-      <div className="flex w-[1.875rem] shrink-0 items-center justify-end">
-        {showTrashButton ? (
-          <HistoryManageButton
-            ariaLabel="Delete event plans"
-            onClick={onTrashClick ?? (() => undefined)}
-            disabled={trashButtonDisabled || !onTrashClick}
-            className={FTC_EVENTS_LIST_TAB_ACTION_CLASS}
-          />
-        ) : (
-          <span aria-hidden="true" className={FTC_EVENTS_LIST_TAB_ACTION_PLACEHOLDER_CLASS} />
-        )}
-      </div>
-    </div>
+    <EventsListTabRow
+      showTrashButton={showTrashButton}
+      trashButtonDisabled={trashButtonDisabled}
+      onTrashClick={onTrashClick}
+      reserveTrashSlot={!showTrashButton}
+      feedbackMessage={selectionMode ? null : feedbackMessage}
+      feedbackFading={feedbackFading}
+      selectionMode={selectionMode}
+      selectionToolbar={selectionToolbar}
+      trashAriaLabel="Delete event plans"
+    >
+      <EventsListTabPillWidthSpacer />
+    </EventsListTabRow>
   );
 }
 
