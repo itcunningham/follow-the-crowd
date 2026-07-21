@@ -19,12 +19,10 @@ export function FtcMetaRow({ icon, children }: { icon: ReactNode; children: Reac
   );
 }
 
-/** Meta line without a leading icon; text aligns with {@link FtcMetaRow} label column. */
+/** Meta line without a leading icon; text aligns with primary content in the same column (e.g. genre). */
 export function FtcMetaTextRow({ children }: { children: ReactNode }) {
   return (
-    <li className="flex min-w-0 items-start text-sm leading-snug">
-      <span className="min-w-0 flex-1 break-words pl-6 text-ftc-text">{children}</span>
-    </li>
+    <li className="min-w-0 break-words text-sm leading-snug text-ftc-text">{children}</li>
   );
 }
 
