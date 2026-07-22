@@ -1835,6 +1835,8 @@ function testCompactCalendarEventVenueTitleTruncates() {
   assert.doesNotMatch(mobileUiSource, /CALENDAR_MOBILE_AGENDA_CARD_TITLE_EVENT_CLASS/);
   assert.doesNotMatch(mobileUiSource, /formatCompactCalendarEventVenueTitle/);
   assert.match(mobileUiSource, /overflow-hidden text-ellipsis whitespace-nowrap/);
+  assert.match(mobileUiSource, /CALENDAR_MOBILE_AGENDA_CARD_TITLE_CLASS[\s\S]*w-full max-w-full min-w-0/);
+  assert.match(mobileUiSource, /CALENDAR_MOBILE_AGENDA_CARD_TITLE_SLOT_CLASS[\s\S]*min-w-0 w-0 flex-1/);
   assert.match(mobileUiSource, /CALENDAR_MOBILE_AGENDA_CARD_BADGE_SLOT_CLASS[\s\S]*basis-\[5\.75rem\]/);
   assert.match(compactTitleSource, /formatPlannerCalendarItemHeadline/);
   assert.match(compactTitleSource, /doesFullCalendarTitleFit/);

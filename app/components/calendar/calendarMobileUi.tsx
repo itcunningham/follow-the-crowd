@@ -47,11 +47,11 @@ export const CALENDAR_MOBILE_AGENDA_CARD_CONTENT_CLASS = "min-w-0 flex-1 py-px";
 export const CALENDAR_MOBILE_AGENDA_CARD_HEADER_ROW_CLASS =
   "flex min-w-0 items-center justify-between gap-2 overflow-hidden";
 
-export const CALENDAR_MOBILE_AGENDA_CARD_TITLE_SLOT_CLASS = "min-w-0 flex-1 overflow-hidden";
+export const CALENDAR_MOBILE_AGENDA_CARD_TITLE_SLOT_CLASS = "min-w-0 w-0 flex-1 overflow-hidden";
 
 /** Single left-aligned title line; CSS ellipsis when the chosen string overflows. */
 export const CALENDAR_MOBILE_AGENDA_CARD_TITLE_CLASS =
-  "block min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-sm font-semibold text-ftc-text";
+  "block w-full max-w-full min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-sm font-semibold text-ftc-text";
 
 export const CALENDAR_MOBILE_AGENDA_CARD_BADGE_SLOT_CLASS =
   "flex shrink-0 basis-[5.75rem] justify-end self-center";

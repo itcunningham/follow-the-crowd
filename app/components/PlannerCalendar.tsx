@@ -133,7 +133,7 @@ function PlannerCalendarItemBadge({
         <CompactCalendarEventVenueTitle
           eventName={item.title}
           venue={item.venue}
-          className="block min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-[9px] font-semibold normal-case tracking-normal opacity-90 sm:text-[10px] md:text-xs"
+          className="block w-full max-w-full min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-[9px] font-semibold normal-case tracking-normal opacity-90 sm:text-[10px] md:text-xs"
         />
         {item.timeLabel ? (
           <span className="block truncate text-[9px] normal-case tracking-normal opacity-70 sm:text-[10px] md:text-xs">
