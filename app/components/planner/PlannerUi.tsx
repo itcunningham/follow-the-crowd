@@ -217,20 +217,32 @@ function PlannerFilterPillButton({
   const activatedThisGestureRef = useRef(false);
   const activeGestureRef = useRef<{ pointerId: number; cancelled: boolean } | null>(null);
 
-  const handlePointerDown = useCallback((event: React.PointerEvent<HTMLButtonElement>) => {
-    if (!event.isPrimary) {
-      return;
-    }
+  const handlePointerDown = useCallback(
+    (event: React.PointerEvent<HTMLButtonElement>) => {
+      if (isActive) {
+        event.preventDefault();
+        return;
+      }
 
-    activatedThisGestureRef.current = false;
-    activeGestureRef.current = {
-      pointerId: event.pointerId,
-      cancelled: false,
-    };
-  }, []);
+      if (!event.isPrimary) {
+        return;
+      }
+
+      activatedThisGestureRef.current = false;
+      activeGestureRef.current = {
+        pointerId: event.pointerId,
+        cancelled: false,
+      };
+    },
+    [isActive],
+  );
 
   const handlePointerUp = useCallback(
     (event: React.PointerEvent<HTMLButtonElement>) => {
+      if (isActive) {
+        return;
+      }
+
       const gesture = activeGestureRef.current;
 
       if (!gesture || event.pointerId !== gesture.pointerId || gesture.cancelled) {
@@ -240,11 +252,12 @@ function PlannerFilterPillButton({
       activeGestureRef.current = null;
 
       if (event.pointerType === "touch") {
+        event.preventDefault();
         activatedThisGestureRef.current = true;
         onSelect();
       }
     },
-    [onSelect],
+    [isActive, onSelect],
   );
 
   const handlePointerCancel = useCallback((event: React.PointerEvent<HTMLButtonElement>) => {
@@ -257,12 +270,12 @@ function PlannerFilterPillButton({
   }, []);
 
   const handleClick = useCallback(() => {
-    if (activatedThisGestureRef.current) {
+    if (isActive || activatedThisGestureRef.current) {
       return;
     }
 
     onSelect();
-  }, [onSelect]);
+  }, [isActive, onSelect]);
 
   return (
     <button

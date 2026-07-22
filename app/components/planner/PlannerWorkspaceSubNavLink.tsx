@@ -35,7 +35,12 @@ export default function PlannerWorkspaceSubNavLink({
 
   const handlePointerDown = useCallback(
     (event: React.PointerEvent<HTMLAnchorElement>) => {
-      if (!event.isPrimary || isActive) {
+      if (isActive) {
+        event.preventDefault();
+        return;
+      }
+
+      if (!event.isPrimary) {
         return;
       }
 
@@ -82,7 +87,12 @@ export default function PlannerWorkspaceSubNavLink({
 
   const handleClick = useCallback(
     (event: React.MouseEvent<HTMLAnchorElement>) => {
-      if (isActive || navigatedThisGestureRef.current) {
+      if (isActive) {
+        event.preventDefault();
+        return;
+      }
+
+      if (navigatedThisGestureRef.current) {
         event.preventDefault();
       }
     },

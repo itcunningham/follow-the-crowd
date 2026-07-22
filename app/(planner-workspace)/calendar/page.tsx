@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import CalendarViewTabs, { type CalendarViewTab } from "@/app/components/CalendarViewTabs";
 import BothRoleCalendarView from "@/app/components/BothRoleCalendarView";
 import DjAvailabilityCalendar from "@/app/components/DjAvailabilityCalendar";
@@ -68,7 +68,30 @@ export default function CalendarPage() {
   const [bothCalendarTab, setBothCalendarTab] = useState<CalendarViewTab>(() =>
     resolveBothCalendarTab(readCalendarViewParam()),
   );
+  const pendingCalendarViewScrollYRef = useRef<number | null>(null);
   const displayRole = role ?? guardProfile?.role ?? cachedRole;
+
+  const handleBothCalendarTabChange = useCallback(
+    (tab: CalendarViewTab) => {
+      if (tab === bothCalendarTab) {
+        return;
+      }
+
+      pendingCalendarViewScrollYRef.current = window.scrollY;
+      setBothCalendarTab(tab);
+    },
+    [bothCalendarTab],
+  );
+
+  useLayoutEffect(() => {
+    if (pendingCalendarViewScrollYRef.current === null) {
+      return;
+    }
+
+    const scrollY = pendingCalendarViewScrollYRef.current;
+    pendingCalendarViewScrollYRef.current = null;
+    window.scrollTo(0, scrollY);
+  }, [bothCalendarTab]);
 
   useEffect(() => {
     if (guardProfile?.role) {
@@ -105,7 +128,7 @@ export default function CalendarPage() {
 
   const secondaryControls =
     displayRole === "both" ? (
-      <CalendarViewTabs activeTab={bothCalendarTab} onChange={setBothCalendarTab} />
+      <CalendarViewTabs activeTab={bothCalendarTab} onChange={handleBothCalendarTabChange} />
     ) : undefined;
 
   const secondaryControlsPlaceholder =

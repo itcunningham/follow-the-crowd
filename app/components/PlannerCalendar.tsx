@@ -287,7 +287,16 @@ function PlannerCalendarMobileAgenda({
   const displayDate =
     parsePlannerCalendarDateParam(displayDateKey) ?? selectedDate;
 
+  const previousSelectedDateKeyRef = useRef<string | null>(null);
+
   useEffect(() => {
+    const previous = previousSelectedDateKeyRef.current;
+    previousSelectedDateKeyRef.current = selectedDateKey;
+
+    if (previous === null || previous === selectedDateKey) {
+      return;
+    }
+
     agendaHeaderRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }, [selectedDateKey]);
 

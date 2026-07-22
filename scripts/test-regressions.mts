@@ -1085,6 +1085,8 @@ function testCalendarLoadUsesCacheAndPrefetch() {
   );
   assert.match(plannerCalendarSource, /writePlannerCalendarItemsCache\(nextItems\)/);
   assert.doesNotMatch(plannerCalendarSource, /\[loadCalendar, searchParams\]/);
+  assert.match(plannerCalendarSource, /previousSelectedDateKeyRef/);
+  assert.match(plannerCalendarSource, /previous === null \|\| previous === selectedDateKey/);
   assert.match(plannerCalendarSource, /readBookingPlansListCache\(\)/);
 
   assert.match(djCalendarSource, /readDjGigsCalendarCache\(\)/);
@@ -1099,6 +1101,21 @@ function testCalendarLoadUsesCacheAndPrefetch() {
 
   assert.match(subNavSource, /ensurePlannerCalendarItemsPrefetched/);
   assert.match(subNavSource, /ensureDjGigsCalendarPrefetched/);
+}
+
+function testCalendarScrollStabilityOnTabSwitch() {
+  const calendarPageSource = readFileSync(
+    new URL("../app/(planner-workspace)/calendar/page.tsx", import.meta.url),
+    "utf8",
+  );
+  const subNavLinkSource = readFileSync(
+    new URL("../app/components/planner/PlannerWorkspaceSubNavLink.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(calendarPageSource, /pendingCalendarViewScrollYRef/);
+  assert.match(calendarPageSource, /window\.scrollTo\(0, scrollY\)/);
+  assert.match(subNavLinkSource, /if \(isActive\) \{\s*event\.preventDefault\(\)/);
 }
 
 function testEventPlansActionRowLayout() {
@@ -1301,6 +1318,7 @@ async function main() {
   testEventPlansSelectionToolbarRowMatchesEventsHistory();
   testEventPlansListLoadUsesCacheAndPrefetch();
   testCalendarLoadUsesCacheAndPrefetch();
+  testCalendarScrollStabilityOnTabSwitch();
   testEventPlansActionRowLayout();
   testEventPlansInlineFeedbackMatchesEventsHistory();
   testEventsHistoryTrashVisibleUsesRenderedHistoryList();
