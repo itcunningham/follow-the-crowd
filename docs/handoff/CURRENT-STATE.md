@@ -211,7 +211,8 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
-- `f927644` — fix events loading chrome layout shift
+- `<pending>` — fix events route regression
+- `f927644` — fix events loading chrome layout shift (reverted in next commit — TDZ circular import)
 - `eb70e53` — stabilise events active history filters during loading
 
 - `ed846e5` — fix persistent workspace tab label glitch
