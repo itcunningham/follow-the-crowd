@@ -65,7 +65,7 @@ import {
   PLANNER_WORKSPACE_SUBNAV_ROW_CLASS,
   PLANNER_WORKSPACE_SUBNAV_SLOT_CLASS,
 } from "../app/components/planner/PlannerWorkspaceLayout";
-import { getEventsAreaSubNavItems, resolveActiveWorkspaceHref, buildWorkspaceSubNavDestinationHref, EVENTS_AREA_SUB_NAV, isCalendarWorkspacePath, mergeWorkspaceNavRole } from "../lib/plannerEventsNav";
+import { getEventsAreaSubNavItems, resolveActiveWorkspaceHref, buildWorkspaceSubNavDestinationHref, EVENTS_AREA_SUB_NAV, isCalendarWorkspacePath, mergeWorkspaceNavRole, WORKSPACE_SUB_NAV_TABS, isWorkspaceSubNavTabVisible } from "../lib/plannerEventsNav";
 import {
   EVENT_PLAN_ACTION_RESERVE_CLASS,
   EVENT_PLAN_USE_BUTTON_CLASS,
@@ -834,8 +834,9 @@ function testWorkspaceSubNavLayoutIsStable() {
     "utf8",
   );
   assert.doesNotMatch(subNavSource, /scrollIntoView/);
-  assert.match(subNavSource, /mergeWorkspaceNavRole/);
-  assert.match(subNavSource, /key=\{tab\.href\}/);
+  assert.match(subNavSource, /WORKSPACE_SUB_NAV_TABS\.map/);
+  assert.match(subNavSource, /key=\{tab\.id\}/);
+  assert.match(subNavSource, /isWorkspaceSubNavTabVisible/);
   assert.match(subNavSource, /reserveSpace/);
   assert.match(layoutSource, /resetHeaderStateForPathnameChange/);
   assert.match(layoutSource, /mergeWorkspaceHeaderState/);
@@ -856,20 +857,25 @@ function testWorkspaceSubNavLayoutIsStable() {
 }
 
 function testWorkspaceNavRoleDoesNotDropEventPlansTab() {
+  assert.equal(
+    WORKSPACE_SUB_NAV_TABS.map((tab) => tab.label).join("|"),
+    "Events|Event Plans|Calendar|Gigs",
+  );
+  assert.equal(WORKSPACE_SUB_NAV_TABS.map((tab) => tab.id).join(","), "events,bookingPlans,calendar,gigs");
+  assert.equal(
+    WORKSPACE_SUB_NAV_TABS.filter((tab) => isWorkspaceSubNavTabVisible(tab.id, null))
+      .map((tab) => tab.label)
+      .join("|"),
+    "Events|Event Plans|Calendar|Gigs",
+  );
+  assert.equal(WORKSPACE_SUB_NAV_TABS[1].label, "Event Plans");
+  assert.equal(WORKSPACE_SUB_NAV_TABS[2].label, "Calendar");
   assert.equal(mergeWorkspaceNavRole("dj", "both"), "both");
   assert.equal(mergeWorkspaceNavRole("both", "dj"), "both");
   assert.equal(mergeWorkspaceNavRole("dj", null), "dj");
   assert.equal(
     getEventsAreaSubNavItems(mergeWorkspaceNavRole("dj", "both")).map((item) => item.label).join("|"),
     "Events|Event Plans|Calendar|Gigs",
-  );
-  assert.equal(
-    EVENTS_AREA_SUB_NAV.bookingPlans.label,
-    "Event Plans",
-  );
-  assert.equal(
-    EVENTS_AREA_SUB_NAV.calendar.label,
-    "Calendar",
   );
 }
 

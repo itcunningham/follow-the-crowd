@@ -14,6 +14,49 @@ export const EVENTS_AREA_SUB_NAV = {
   gigs: { href: "/bookings", label: "Gigs" },
 } as const;
 
+export type WorkspaceSubNavTabId = keyof typeof EVENTS_AREA_SUB_NAV;
+
+export type WorkspaceSubNavTab = {
+  id: WorkspaceSubNavTabId;
+  href: string;
+  label: string;
+};
+
+/** Immutable canonical workspace row — fixed order, labels, and ids for every render. */
+export const WORKSPACE_SUB_NAV_TABS: readonly WorkspaceSubNavTab[] = [
+  { id: "events", href: EVENTS_AREA_SUB_NAV.events.href, label: EVENTS_AREA_SUB_NAV.events.label },
+  {
+    id: "bookingPlans",
+    href: EVENTS_AREA_SUB_NAV.bookingPlans.href,
+    label: EVENTS_AREA_SUB_NAV.bookingPlans.label,
+  },
+  {
+    id: "calendar",
+    href: EVENTS_AREA_SUB_NAV.calendar.href,
+    label: EVENTS_AREA_SUB_NAV.calendar.label,
+  },
+  { id: "gigs", href: EVENTS_AREA_SUB_NAV.gigs.href, label: EVENTS_AREA_SUB_NAV.gigs.label },
+];
+
+export function isWorkspaceSubNavTabVisible(
+  tabId: WorkspaceSubNavTabId,
+  role: UserRole | null,
+): boolean {
+  if (role === null) {
+    return true;
+  }
+
+  if (tabId === "bookingPlans") {
+    return canViewBookingPlansSubNav(role);
+  }
+
+  if (tabId === "gigs") {
+    return canViewGigsSubNav(role);
+  }
+
+  return true;
+}
+
 /** @deprecated Use getEventsAreaSubNavItems(role) for role-aware tabs. */
 export const PLANNER_EVENTS_SUB_NAV: EventsAreaSubNavItem[] = [
   EVENTS_AREA_SUB_NAV.events,

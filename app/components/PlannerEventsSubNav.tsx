@@ -14,11 +14,11 @@ import {
 import {
   canViewGigsSubNav,
   canViewBookingPlansSubNav,
-  EVENTS_AREA_SUB_NAV,
-  getEventsAreaSubNavItems,
   isPlannerEventsAreaPath,
+  isWorkspaceSubNavTabVisible,
   mergeWorkspaceNavRole,
   resolveActiveWorkspaceHref,
+  WORKSPACE_SUB_NAV_TABS,
 } from "@/lib/plannerEventsNav";
 import { ensureBookingPlansListPrefetched } from "@/lib/bookingPlans/bookingPlansListPrefetch";
 import { ensureDjGigsCalendarPrefetched } from "@/lib/djGigsCalendarPrefetch";
@@ -114,8 +114,9 @@ export default function PlannerEventsSubNav({
     lastKnownRoleRef.current = tabsRole;
   }
 
-  const canViewGigs = canViewGigsSubNav(tabsRole);
-  const canViewBookingPlans = canViewBookingPlansSubNav(tabsRole);
+  const roleForTabVisibility = tabsRole ?? lastKnownRoleRef.current;
+  const canViewGigs = canViewGigsSubNav(roleForTabVisibility);
+  const canViewBookingPlans = canViewBookingPlansSubNav(roleForTabVisibility);
   const resolvedUserId = guardProfile?.user_id ?? cachedNavigation.userId;
   const badgeCacheVersion = useSyncExternalStore(
     subscribeNavigationBadgeListeners,
@@ -123,16 +124,13 @@ export default function PlannerEventsSubNav({
     () => 0,
   );
 
-  const tabs = useMemo(
-    () => getEventsAreaSubNavItems(tabsRole),
-    [tabsRole],
-  );
-
   useEffect(() => {
-    tabs.forEach((tab) => {
-      router.prefetch(tab.href);
+    WORKSPACE_SUB_NAV_TABS.forEach((tab) => {
+      if (isWorkspaceSubNavTabVisible(tab.id, roleForTabVisibility)) {
+        router.prefetch(tab.href);
+      }
     });
-  }, [router, tabs]);
+  }, [roleForTabVisibility, router]);
 
   useEffect(() => {
     if (!resolvedRole || !canViewGigs) {
@@ -201,13 +199,17 @@ export default function PlannerEventsSubNav({
 
   return (
     <nav aria-label="Events area" className="flex min-w-max shrink-0 flex-nowrap gap-2">
-      {tabs.map((tab) => {
+      {WORKSPACE_SUB_NAV_TABS.map((tab) => {
+        if (!isWorkspaceSubNavTabVisible(tab.id, roleForTabVisibility)) {
+          return null;
+        }
+
         const isActive = activeHref === tab.href;
-        const showPendingBadge = tab.href === EVENTS_AREA_SUB_NAV.gigs.href;
+        const showPendingBadge = tab.id === "gigs";
 
         return (
           <PlannerWorkspaceSubNavLink
-            key={tab.href}
+            key={tab.id}
             href={tab.href}
             isActive={isActive}
             interceptNavigate={interceptWorkspaceTabNavigation ?? undefined}
