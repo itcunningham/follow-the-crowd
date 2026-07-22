@@ -1203,7 +1203,7 @@ function testEventsCreateFlowTabPillNavigation() {
   assert.ok(tabLinkHandler.length > 0, "handleEventsListTabLinkClick not found");
   assert.match(controlsSource, /eventsListTabPillClass\(!createOpen && !isHistoryTab\)/);
   assert.match(controlsSource, /eventsListTabPillClass\(!createOpen && isHistoryTab\)/);
-  assert.doesNotMatch(source, /<EventsListTabControls/);
+  assert.match(source, /<EventsListTabControls/);
   assert.match(tabLinkHandler, /createOpen && !isCalendarCreateFlow/);
   assert.match(
     tabLinkHandler,
@@ -1215,7 +1215,7 @@ function testEventsCreateFlowTabPillNavigation() {
     source,
     /resolveEventsListTabParam\(null, initialTab, window\.location\.search\)/,
   );
-  assert.match(source, /handleEventsListTabLinkClick,/);
+  assert.match(source, /onTabLinkClick=\{handleEventsListTabLinkClick\}/);
 }
 
 function testEventsListTabSwitchUsesClientHistoryWithoutRouterNavigation() {
@@ -1251,7 +1251,7 @@ function testEventsCreateEventHiddenDuringHistorySelectionToolbar() {
   assert.match(source, /hideEventsHeaderCreateForCalendarFlow/);
   assert.match(source, /isCalendarCreateFlow && \(createOpen \|\| pathname === "\/events"\)/);
   assert.match(source, /EVENTS_HEADER_CREATE_EVENT_PLACEHOLDER/);
-  assert.match(source, /workspaceHeaderActions,/);
+  assert.match(source, /actions=\{workspaceHeaderActions\}/);
 }
 
 function testEventPlansSelectionToolbarMatchesHistory() {
@@ -1458,10 +1458,6 @@ function testEventsHistoryTrashVisibleUsesRenderedHistoryList() {
 }
 
 function testEventsListTabControlsMatchLoadingShellAndLoadedPage() {
-  const routeShellSource = readFileSync(
-    new URL("../app/(planner-workspace)/events/EventsWorkspaceRouteShell.tsx", import.meta.url),
-    "utf8",
-  );
   const clientSource = readFileSync(
     new URL("../app/(planner-workspace)/events/EventsPageClient.tsx", import.meta.url),
     "utf8",
@@ -1470,11 +1466,8 @@ function testEventsListTabControlsMatchLoadingShellAndLoadedPage() {
     new URL("../app/components/events/EventsListTabControls.tsx", import.meta.url),
     "utf8",
   );
-  assert.match(routeShellSource, /<EventsListTabControls/);
-  assert.match(routeShellSource, /loadingShell=\{pageBridge \? !pageBridge\.eventsListReady : true\}/);
-  assert.match(clientSource, /setPageBridge\(/);
-  assert.match(clientSource, /eventsListReady/);
-  assert.doesNotMatch(clientSource, /<EventsListTabControls/);
+  assert.match(clientSource, /<EventsListTabControls/);
+  assert.match(clientSource, /loadingShell=\{!eventsListReady\}/);
   assert.match(controlsSource, /FTC_EVENTS_LIST_TAB_PILL_ROW_CLASS/);
   assert.match(controlsSource, /eventsListTabPillClass/);
 
@@ -1554,29 +1547,6 @@ function testEventsRouteLoadingIsListAreaOnly() {
     appLoadingSource,
     /pathname === "\/events"[\s\S]*EventsPageLoadingShell[\s\S]*EventsListTabControls/,
   );
-}
-
-function testEventsWorkspaceChromeMountsInRouteLayout() {
-  const layoutSource = readFileSync(
-    new URL("../app/(planner-workspace)/events/layout.tsx", import.meta.url),
-    "utf8",
-  );
-  const routeShellSource = readFileSync(
-    new URL("../app/(planner-workspace)/events/EventsWorkspaceRouteShell.tsx", import.meta.url),
-    "utf8",
-  );
-  const clientSource = readFileSync(
-    new URL("../app/(planner-workspace)/events/EventsPageClient.tsx", import.meta.url),
-    "utf8",
-  );
-
-  assert.match(layoutSource, /EventsWorkspaceRouteShell/);
-  assert.match(routeShellSource, /PlannerWorkspacePageContent/);
-  assert.match(routeShellSource, /EventsWorkspaceCreateEventAction/);
-  assert.match(routeShellSource, /canManageEvents\(displayRole\)/);
-  assert.match(routeShellSource, /mergeWorkspaceNavRole/);
-  assert.doesNotMatch(clientSource, /PlannerWorkspacePage/);
-  assert.doesNotMatch(clientSource, /OnboardingGuard/);
 }
 
 function testGigsTabCountsDeriveFromSameBookingSnapshot() {
@@ -1815,7 +1785,6 @@ async function main() {
   testEventsHistoryTrashVisibleUsesRenderedHistoryList();
   testEventsListTabControlsMatchLoadingShellAndLoadedPage();
   testEventsRouteLoadingIsListAreaOnly();
-  testEventsWorkspaceChromeMountsInRouteLayout();
   testGigsTabCountsDeriveFromSameBookingSnapshot();
   testGigsInnerTabSelectionFollowsRouteImmediately();
   testWorkspaceGigsTabOpensIncomingWithoutEventsQuery();

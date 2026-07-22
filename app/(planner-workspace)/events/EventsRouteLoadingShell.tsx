@@ -15,7 +15,7 @@ function readRouteSearchParams(): { create: string | null; tab: string | null } 
   };
 }
 
-/** Next.js route loading slot — list skeleton only; chrome mounts once in events layout. */
+/** Next.js route loading slot — list skeleton only; chrome mounts once in EventsPageClient. */
 export default function EventsRouteLoadingShell() {
   const [routeParams] = useState(readRouteSearchParams);
 
