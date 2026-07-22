@@ -2,7 +2,7 @@
 
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
-import { formatPlannerCalendarItemHeadline } from "@/lib/calendar";
+import { PLANNER_CALENDAR_TITLE_VENUE_SEPARATOR } from "@/lib/calendar";
 
 export const CALENDAR_MOBILE_INTERACTIVE_PRESS_CLASS =
   "active:scale-[0.98] transition duration-150 ease-out motion-reduce:transition-none motion-reduce:transform-none";
@@ -45,9 +45,19 @@ export const CALENDAR_MOBILE_AGENDA_CARD_HEADER_ROW_CLASS =
 
 export const CALENDAR_MOBILE_AGENDA_CARD_TITLE_SLOT_CLASS = "min-w-0 flex-1 overflow-hidden";
 
-/** Single-line Event · Venue headline; full string truncated by CSS in the title slot. */
-export const CALENDAR_MOBILE_AGENDA_CARD_TITLE_CLASS =
-  "block min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-sm font-semibold text-ftc-text";
+/** Flex row: event name ellipsizes before the venue suffix (avoids "Title · …" from one-node ellipsis). */
+export const CALENDAR_MOBILE_AGENDA_CARD_TITLE_ROW_CLASS =
+  "flex min-w-0 w-full items-baseline overflow-hidden";
+
+export const CALENDAR_MOBILE_AGENDA_CARD_TITLE_SEGMENT_CLASS =
+  "overflow-hidden text-ellipsis whitespace-nowrap text-sm font-semibold text-ftc-text";
+
+/** Event-only titles (e.g. Gigs calendar booking name). */
+export const CALENDAR_MOBILE_AGENDA_CARD_TITLE_CLASS = `block min-w-0 ${CALENDAR_MOBILE_AGENDA_CARD_TITLE_SEGMENT_CLASS}`;
+
+export const CALENDAR_MOBILE_AGENDA_CARD_TITLE_EVENT_CLASS = "min-w-0 flex-1 shrink basis-0";
+
+export const CALENDAR_MOBILE_AGENDA_CARD_TITLE_VENUE_CLASS = "min-w-0 max-w-[55%] shrink";
 
 export const CALENDAR_MOBILE_AGENDA_CARD_BADGE_SLOT_CLASS =
   "flex shrink-0 basis-[5.75rem] justify-end self-center";
@@ -57,15 +67,32 @@ export const CALENDAR_MOBILE_AGENDA_CARD_TIME_SLOT_CLASS = "mt-1.5";
 export function CompactCalendarEventVenueTitle({
   eventName,
   venue,
-  className = CALENDAR_MOBILE_AGENDA_CARD_TITLE_CLASS,
+  className,
 }: {
   eventName: string;
   venue?: string | null;
+  /** Typography classes for title segments (defaults to agenda card segment styles). */
   className?: string;
 }) {
+  const title = eventName.trim() || "Untitled event";
+  const trimmedVenue = venue?.trim() || null;
+  const segmentClass = className ?? CALENDAR_MOBILE_AGENDA_CARD_TITLE_SEGMENT_CLASS;
+
+  if (!trimmedVenue) {
+    return <span className={`${segmentClass} block min-w-0`}>{title}</span>;
+  }
+
   return (
-    <span className={className}>
-      {formatPlannerCalendarItemHeadline(eventName, venue)}
+    <span className={CALENDAR_MOBILE_AGENDA_CARD_TITLE_ROW_CLASS}>
+      <span
+        className={`${CALENDAR_MOBILE_AGENDA_CARD_TITLE_EVENT_CLASS} ${segmentClass}`}
+      >
+        {title}
+      </span>
+      <span className={`${CALENDAR_MOBILE_AGENDA_CARD_TITLE_VENUE_CLASS} ${segmentClass}`}>
+        {PLANNER_CALENDAR_TITLE_VENUE_SEPARATOR}
+        {trimmedVenue}
+      </span>
     </span>
   );
 }
