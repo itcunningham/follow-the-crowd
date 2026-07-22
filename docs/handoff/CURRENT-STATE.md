@@ -211,6 +211,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `<pending>` — fix events loading chrome layout shift
 - `eb70e53` — stabilise events active history filters during loading
 
 - `ed846e5` — fix persistent workspace tab label glitch
