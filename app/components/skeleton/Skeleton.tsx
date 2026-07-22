@@ -1492,11 +1492,21 @@ export function AppLoadingShell({
 }) {
   if (pathname === "/events") {
     const searchParams = new URLSearchParams(search.startsWith("?") ? search.slice(1) : search);
+    const createParam = searchParams.get("create");
+
+    if (isCalendarOriginCreateParam(createParam)) {
+      return (
+        <EventsPageLoadingShell
+          role={role ?? readCachedNavRole()}
+          createParam={createParam}
+        />
+      );
+    }
 
     return (
-      <EventsPageLoadingShell
-        role={role ?? readCachedNavRole()}
-        createParam={searchParams.get("create")}
+      <EventListSkeleton
+        showPlannerStats={canManageEvents(role ?? readCachedNavRole())}
+        showFilterPills={false}
       />
     );
   }

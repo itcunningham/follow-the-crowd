@@ -1192,6 +1192,7 @@ function EventsPageClientView({
               onTrashClick={historyBulkManage.enterSelectionMode}
               historyLoadSettled={historyLoadSettled}
               visibleHistoryEventCount={visibleHistoryEventCount}
+              loadingShell={!eventsListReady}
               selectionToolbar={
                 <HistorySelectionToolbar
                   embedded

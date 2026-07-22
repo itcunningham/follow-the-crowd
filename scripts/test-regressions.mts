@@ -1458,10 +1458,6 @@ function testEventsHistoryTrashVisibleUsesRenderedHistoryList() {
 }
 
 function testEventsListTabControlsMatchLoadingShellAndLoadedPage() {
-  const skeletonSource = readFileSync(
-    new URL("../app/components/skeleton/Skeleton.tsx", import.meta.url),
-    "utf8",
-  );
   const clientSource = readFileSync(
     new URL("../app/(planner-workspace)/events/EventsPageClient.tsx", import.meta.url),
     "utf8",
@@ -1470,9 +1466,8 @@ function testEventsListTabControlsMatchLoadingShellAndLoadedPage() {
     new URL("../app/components/events/EventsListTabControls.tsx", import.meta.url),
     "utf8",
   );
-  assert.match(skeletonSource, /<EventsListTabControls[\s\S]*loadingShell/);
   assert.match(clientSource, /<EventsListTabControls/);
-  assert.match(skeletonSource, /EventsWorkspaceCreateEventAction disabled/);
+  assert.match(clientSource, /loadingShell=\{!eventsListReady\}/);
   assert.match(controlsSource, /FTC_EVENTS_LIST_TAB_PILL_ROW_CLASS/);
   assert.match(controlsSource, /eventsListTabPillClass/);
 
@@ -1513,6 +1508,45 @@ function testEventsListTabControlsMatchLoadingShellAndLoadedPage() {
     visibleHistoryEventCount: 0,
   });
   assert.deepEqual(loadingHistory, loadedHistoryBeforeFetch);
+}
+
+function testEventsRouteLoadingIsListAreaOnly() {
+  const loadingSource = readFileSync(
+    new URL("../app/(planner-workspace)/events/loading.tsx", import.meta.url),
+    "utf8",
+  );
+  const routeShellSource = readFileSync(
+    new URL("../app/(planner-workspace)/events/EventsRouteLoadingShell.tsx", import.meta.url),
+    "utf8",
+  );
+  const listAreaSource = readFileSync(
+    new URL("../app/components/events/EventsListAreaLoading.tsx", import.meta.url),
+    "utf8",
+  );
+  const pageSource = readFileSync(
+    new URL("../app/(planner-workspace)/events/page.tsx", import.meta.url),
+    "utf8",
+  );
+  const appLoadingSource = readFileSync(
+    new URL("../app/components/skeleton/Skeleton.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(loadingSource, /EventsRouteLoadingShell/);
+  assert.match(routeShellSource, /EventsListAreaLoading/);
+  assert.doesNotMatch(routeShellSource, /EventsPageLoadingShell/);
+  assert.match(listAreaSource, /EventListSkeleton showPlannerStats/);
+  assert.match(listAreaSource, /isCalendarOriginCreateParam/);
+  assert.doesNotMatch(pageSource, /Suspense/);
+  assert.doesNotMatch(pageSource, /EventsPageLoadingFallback/);
+  assert.match(
+    appLoadingSource,
+    /pathname === "\/events"[\s\S]*EventListSkeleton[\s\S]*showFilterPills=\{false\}/,
+  );
+  assert.doesNotMatch(
+    appLoadingSource,
+    /pathname === "\/events"[\s\S]*EventsPageLoadingShell[\s\S]*EventsListTabControls/,
+  );
 }
 
 function testGigsTabCountsDeriveFromSameBookingSnapshot() {
@@ -1750,6 +1784,7 @@ async function main() {
   testEventPlansInlineFeedbackMatchesEventsHistory();
   testEventsHistoryTrashVisibleUsesRenderedHistoryList();
   testEventsListTabControlsMatchLoadingShellAndLoadedPage();
+  testEventsRouteLoadingIsListAreaOnly();
   testGigsTabCountsDeriveFromSameBookingSnapshot();
   testGigsInnerTabSelectionFollowsRouteImmediately();
   testWorkspaceGigsTabOpensIncomingWithoutEventsQuery();

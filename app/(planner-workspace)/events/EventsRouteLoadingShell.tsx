@@ -1,8 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { EventsPageLoadingShell } from "@/app/components/skeleton/Skeleton";
-import { readCachedNavRole } from "@/lib/navigationRoleCache";
+import EventsListAreaLoading from "@/app/components/events/EventsListAreaLoading";
 
 function readRouteSearchParams(): { create: string | null; tab: string | null } {
   if (typeof window === "undefined") {
@@ -16,14 +15,14 @@ function readRouteSearchParams(): { create: string | null; tab: string | null } 
   };
 }
 
+/** Next.js route loading slot — list skeleton only; chrome mounts once in EventsPageClient. */
 export default function EventsRouteLoadingShell() {
   const [routeParams] = useState(readRouteSearchParams);
 
   return (
-    <EventsPageLoadingShell
+    <EventsListAreaLoading
       createParam={routeParams.create}
       initialTab={routeParams.tab}
-      role={readCachedNavRole()}
     />
   );
 }
