@@ -32,7 +32,7 @@ export const PLANNER_WORKSPACE_SHELL_WIDE_CLASS = `mx-auto min-h-[100dvh] w-full
 
 export const PLANNER_WORKSPACE_PAGE_INSET_CLASS = "px-4 sm:px-6";
 
-export const PLANNER_WORKSPACE_HEADER_CLASS = `ftc-page-header ${PLANNER_WORKSPACE_PAGE_INSET_CLASS} pb-4 pt-4 md:pt-4`;
+export const PLANNER_WORKSPACE_HEADER_CLASS = `ftc-page-header relative z-20 bg-ftc-bg ${PLANNER_WORKSPACE_PAGE_INSET_CLASS} pb-4 pt-4 md:pt-4`;
 
 export const PLANNER_WORKSPACE_TITLE_CLASS = "text-xl font-semibold leading-tight text-ftc-text";
 
