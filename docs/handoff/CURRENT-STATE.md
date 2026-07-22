@@ -211,7 +211,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
-- `<pending>` — fix persistent workspace tab label glitch
+- `ed846e5` — fix persistent workspace tab label glitch
 - `411f680` — fix workspace tab label swap during navigation
 - `8fb0e89` — stabilise workspace navigation layout
 - `71bfd47` — Fix Gigs Calendar intercepting workspace navigation
