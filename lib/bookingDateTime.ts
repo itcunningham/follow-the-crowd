@@ -318,24 +318,13 @@ export function resolveEventDateKeyForEventTime(eventDate: string): string | nul
   return resolveEventDateKey(eventDate);
 }
 
-export function defaultEventStartWheelTime(eventDate: string): WheelTimeValue {
-  const dateKey = resolveEventDateKeyForEventTime(eventDate);
-
-  if (dateKey === getTodayDateKey()) {
-    return getMinWheelTimeFromNow();
-  }
-
-  return defaultStartWheelTime();
+/** Empty event create/edit wheels open at current local time (not 9:00 PM / 1:00 AM). */
+export function defaultEventStartWheelTime(_eventDate?: string): WheelTimeValue {
+  return getMinWheelTimeFromNow();
 }
 
-export function defaultEventFinishWheelTime(eventDate: string): WheelTimeValue {
-  const dateKey = resolveEventDateKeyForEventTime(eventDate);
-
-  if (dateKey === getTodayDateKey()) {
-    return getMinWheelTimeFromNow();
-  }
-
-  return defaultFinishWheelTime();
+export function defaultEventFinishWheelTime(_eventDate?: string): WheelTimeValue {
+  return getMinWheelTimeFromNow();
 }
 
 export function applyEventDateFieldChange(
@@ -417,6 +406,21 @@ export function getMinWheelTimeForEventDate(eventDate: string): WheelTimeValue |
   }
 
   return getMinWheelTimeFromNow();
+}
+
+export function resolveEventTimePickerOpenValue(
+  clock: string,
+  meridiem: Meridiem,
+  minWheelTime: WheelTimeValue | null | undefined,
+  emptyDefault: () => WheelTimeValue = defaultEventStartWheelTime,
+): WheelTimeValue {
+  const selectedWheelTime = clockPartsToWheelTime(clock, meridiem);
+
+  if (selectedWheelTime) {
+    return selectedWheelTime;
+  }
+
+  return resolveWheelTimeForPicker(emptyDefault(), minWheelTime);
 }
 
 export function isWheelMeridiemDisabled(meridiem: Meridiem, min: WheelTimeValue): boolean {

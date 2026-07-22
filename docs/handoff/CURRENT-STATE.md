@@ -63,7 +63,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 - **Design system (2026-07-14):** `docs/design/FTC_DESIGN_SYSTEM.md` + `lib/design/ftcDesignSystem.ts` — shared tokens; standardised status badges, empty states, section titles, button min-heights
 - **History hide:** bulk remove from History view sets `history_hidden_at` on owned `events` rows via authenticated RLS update (does not delete records). Optional RPC hardening: `20250720120000_event_history_hide_past.sql` (not yet applied on production as of 2026-07-20 — legacy RPC only hid `cancelled`).
 - **Create/edit validation:** inline field errors after Save; start + finish time both required; notes length/line limits disable save
-- **Event create/edit time pickers (2026-07-22):** shared `BookingSetTimeRangeField` uses `defaultEventStartWheelTime` / `defaultEventFinishWheelTime` + today past-time floor; Events → Create → From scratch clears partial set times on date change and re-syncs wheel state so today opens at current local time (not stale 9:00 PM)
+- **Event create/edit time pickers (2026-07-22):** empty start/finish wheels open at current local time via `defaultEventStartWheelTime` / `resolveEventTimePickerOpenValue`; past-time floor only when event date is today; Events create form (`createStep === "form"`) uses shared `BookingSetTimeRangeField` for From scratch and Event plan paths
 - **Notes** section on event detail (heading "Notes", muted section label)
 - Edit with confirmation when booking-impacting fields change + group chat update message
 - **Edit event form polish (2026-07-14):** unified form control height/radius/focus; settings-panel card header; intentional flyer upload panel; aligned colour chips + preview row; subtle notes counter

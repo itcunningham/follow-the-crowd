@@ -26,6 +26,7 @@ import {
   parseSetTimeRange,
   resolveMinEventDateKey,
   resolvePickerEventDateValue,
+  resolveEventTimePickerOpenValue,
   resolveWheelTimeForPicker,
   savedEventDateNeedsPickerReselection,
   wheelTimeToClockParts,
@@ -180,15 +181,12 @@ function BookingTimeControl({
     setPickerOpen(false);
   }
 
-  const pickerValue = (() => {
-    const selectedWheelTime = clockPartsToWheelTime(clock, meridiem);
-
-    if (selectedWheelTime) {
-      return selectedWheelTime;
-    }
-
-    return resolveWheelTimeForPicker(defaultWheelTime(), minWheelTime);
-  })();
+  const pickerValue = resolveEventTimePickerOpenValue(
+    clock,
+    meridiem,
+    minWheelTime,
+    defaultWheelTime,
+  );
 
   return (
     <div>

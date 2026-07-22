@@ -19,9 +19,12 @@ import {
   clampWheelTimeToMin,
   defaultEventFinishWheelTime,
   defaultEventStartWheelTime,
+  defaultFinishWheelTime,
   defaultStartWheelTime,
   applyEventDateFieldChange,
+  getMinWheelTimeForEventDate,
   getMinWheelTimeFromNow,
+  resolveEventTimePickerOpenValue,
   SET_TIME_RANGE_JOINER,
 } from "../lib/bookingDateTime";
 import type { BookingRequest } from "../lib/bookingRequests";
@@ -276,7 +279,42 @@ function testEventTimePickerDefaultsForToday() {
 
   assert.deepEqual(defaultEventStartWheelTime(todayKey), nowDefault);
   assert.deepEqual(defaultEventFinishWheelTime(todayKey), nowDefault);
-  assert.deepEqual(defaultEventStartWheelTime("2028-06-15"), defaultStartWheelTime());
+  assert.deepEqual(defaultEventStartWheelTime(""), nowDefault);
+  assert.deepEqual(defaultEventFinishWheelTime("2028-06-15"), nowDefault);
+  assert.notDeepEqual(defaultEventStartWheelTime(""), defaultStartWheelTime());
+  assert.notDeepEqual(defaultEventFinishWheelTime(""), defaultFinishWheelTime());
+}
+
+function testResolveEventTimePickerOpenValueUsesConfirmedSelection() {
+  const todayKey = getTodayDateKey();
+  const nowDefault = getMinWheelTimeFromNow();
+  const min = getMinWheelTimeForEventDate(todayKey);
+  const confirmed = { hour: 8, minute: 15, meridiem: "PM" as const };
+
+  assert.deepEqual(
+    resolveEventTimePickerOpenValue("", "PM", null, defaultEventStartWheelTime),
+    nowDefault,
+  );
+  assert.deepEqual(
+    resolveEventTimePickerOpenValue("8:15", "PM", min, defaultEventStartWheelTime),
+    confirmed,
+  );
+  assert.deepEqual(
+    resolveEventTimePickerOpenValue("8:15", "PM", null, defaultEventStartWheelTime),
+    confirmed,
+  );
+}
+
+function testEventsCreateFormTimePickerWiring() {
+  const source = readFileSync(
+    new URL("../app/(planner-workspace)/events/EventsPageClient.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(source, /createStep === "form"/);
+  assert.match(source, /<BookingSetTimeRangeField[\s\S]*eventDate=\{form\.eventDate\}/);
+  assert.match(source, /eventInputFromBookingPlan\(plan\)/);
+  assert.match(source, /title="From scratch"/);
 }
 
 function testApplyEventDateFieldChangeClearsPartialSetTime() {
@@ -1393,6 +1431,8 @@ async function main() {
   testPastPickerDatesAreRejected();
   testWheelTimeBeforeMinHelpers();
   testEventTimePickerDefaultsForToday();
+  testResolveEventTimePickerOpenValueUsesConfirmedSelection();
+  testEventsCreateFormTimePickerWiring();
   testApplyEventDateFieldChangeClearsPartialSetTime();
   testOneAcceptedDjWithNullStartShowsStartAction();
   testOneAcceptedDjWithStartedAtShowsGroupChat();
