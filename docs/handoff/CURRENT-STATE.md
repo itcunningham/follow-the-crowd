@@ -210,7 +210,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
-- `6937b8d` — fix workspace navigation from gigs calendar
+- `6c601e6` — fix workspace navigation from gigs calendar
 - `75100cb` — Standardise event time validation with overnight support
 - `f292825` — fix gigs default tab on workspace navigation
 - `4f1a520` — open gigs on incoming from workspace navigation
