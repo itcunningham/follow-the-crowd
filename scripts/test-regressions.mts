@@ -1088,8 +1088,7 @@ function testCalendarLoadUsesCacheAndPrefetch() {
   );
   assert.match(plannerCalendarSource, /writePlannerCalendarItemsCache\(nextItems\)/);
   assert.doesNotMatch(plannerCalendarSource, /\[loadCalendar, searchParams\]/);
-  assert.match(plannerCalendarSource, /previousSelectedDateKeyRef/);
-  assert.match(plannerCalendarSource, /previous === null \|\| previous === selectedDateKey/);
+  assert.doesNotMatch(plannerCalendarSource, /scrollIntoView/);
   assert.match(plannerCalendarSource, /readBookingPlansListCache\(\)/);
 
   assert.match(djCalendarSource, /readDjGigsCalendarCache\(\)/);

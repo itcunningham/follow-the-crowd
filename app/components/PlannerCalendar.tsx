@@ -275,7 +275,6 @@ function PlannerCalendarMobileAgenda({
   isDateInViewingMonth: (date: Date) => boolean;
   hasSavedEventPlans: boolean;
 }) {
-  const agendaHeaderRef = useRef<HTMLDivElement>(null);
   const selectedDateKey = toDateKey(selectedDate);
   const calendarOrigin = buildCalendarOriginState({
     calendarDate: selectedDateKey,
@@ -286,19 +285,6 @@ function PlannerCalendarMobileAgenda({
     useCalendarMobileAgendaTransition(selectedDateKey);
   const displayDate =
     parsePlannerCalendarDateParam(displayDateKey) ?? selectedDate;
-
-  const previousSelectedDateKeyRef = useRef<string | null>(null);
-
-  useEffect(() => {
-    const previous = previousSelectedDateKeyRef.current;
-    previousSelectedDateKeyRef.current = selectedDateKey;
-
-    if (previous === null || previous === selectedDateKey) {
-      return;
-    }
-
-    agendaHeaderRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-  }, [selectedDateKey]);
 
   const displayDateItems = useMemo(
     () => sortPlannerCalendarAgendaItems(itemsByDate.get(displayDateKey) ?? []),
@@ -311,7 +297,6 @@ function PlannerCalendarMobileAgenda({
   return (
     <div className="md:hidden">
       <div
-        ref={agendaHeaderRef}
         className={transitionClassName}
         inert={isAgendaTransitionInteractive ? undefined : true}
       >
