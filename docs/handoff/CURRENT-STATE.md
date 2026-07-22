@@ -204,6 +204,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `bc48393` — fix calendar workspace tab navigation (remove dual-tab `display:contents`; header z-index)
 - `6a33797` — restore calendar layouts after performance optimisation (dual-tab `contents` wrappers preserve flex order)
 - `3d4eab2` — improve events and gigs calendar performance (item/availability caches, prefetch, dual-tab keep-mounted, stop URL-only refetch)
 - `9a685ce` — fix events history bulk removal failure (RLS update vs stale RPC)
