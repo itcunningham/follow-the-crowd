@@ -2,7 +2,7 @@
 
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
-import { formatPlannerCalendarItemHeadline } from "@/lib/calendar";
+import { formatCompactCalendarEventVenueTitle } from "@/lib/calendar";
 
 export const CALENDAR_MOBILE_INTERACTIVE_PRESS_CLASS =
   "active:scale-[0.98] transition duration-150 ease-out motion-reduce:transition-none motion-reduce:transform-none";
@@ -65,7 +65,7 @@ export function CompactCalendarEventVenueTitle({
 }) {
   return (
     <span className={className}>
-      {formatPlannerCalendarItemHeadline(eventName, venue)}
+      {formatCompactCalendarEventVenueTitle(eventName, venue)}
     </span>
   );
 }
