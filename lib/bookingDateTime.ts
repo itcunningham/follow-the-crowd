@@ -80,6 +80,11 @@ function parseSingleTimePart(token: string): ParsedTimePart | null {
   };
 }
 
+function minutesFromTime24(time24: string): number {
+  const [hour, minute] = time24.split(":").map(Number);
+  return hour * 60 + minute;
+}
+
 export function parseSetTimeRange(value: string): ParsedSetTimeRange {
   const trimmed = value.trim();
 
@@ -338,11 +343,37 @@ export function applyEventDateFieldChange(
 
   const parsed = parseSetTimeRange(setTime);
 
-  if (parsed.start && parsed.finish && !parsed.unparsedRaw) {
-    return setTime;
+  if (!parsed.start || !parsed.finish || parsed.unparsedRaw) {
+    return "";
   }
 
-  return "";
+  if (isEventStartSaveBlocked(nextEventDate, setTime)) {
+    return "";
+  }
+
+  return setTime;
+}
+
+/** When start changes, drop finish if the range is no longer valid (FTC clears invalid finish). */
+export function applyEventSetTimeStartChange(
+  eventDate: string,
+  startFormatted: string,
+  finishFormatted: string,
+): string {
+  const start = startFormatted.trim();
+  const finish = finishFormatted.trim();
+
+  if (!finish) {
+    return combineSetTimeRange(start, "");
+  }
+
+  const combined = combineSetTimeRange(start, finish);
+
+  if (getEventSetTimeRangeError(eventDate, combined)) {
+    return combineSetTimeRange(start, "");
+  }
+
+  return combined;
 }
 
 export function wheelTimeToFormatted(value: WheelTimeValue): string {
@@ -492,6 +523,12 @@ export const EVENT_START_TIME_REQUIRED_ERROR = "Select a start time";
 
 export const EVENT_FINISH_TIME_REQUIRED_ERROR = "Select a finish time";
 
+export const EVENT_FINISH_NOT_AFTER_START_ERROR = "Finish time must be after start time";
+
+export const EVENT_DURATION_MAX_EXCEEDED_ERROR = "Event duration cannot exceed 24 hours";
+
+const MAX_EVENT_DURATION_MS = 24 * 60 * 60 * 1000;
+
 export type EventSetTimeInlineErrors = {
   start: string | null;
   finish: string | null;
@@ -516,6 +553,79 @@ export function getEventSetTimeInlineErrors(setTime: string): EventSetTimeInline
   };
 }
 
+export function isOvernightFinishAllowed(
+  start: ParsedTimePart,
+  finish: ParsedTimePart,
+): boolean {
+  const startMinutes = minutesFromTime24(start.time24);
+  const finishMinutes = minutesFromTime24(finish.time24);
+
+  if (finishMinutes > startMinutes) {
+    return false;
+  }
+
+  return start.meridiem === "PM" && finish.meridiem === "AM";
+}
+
+export function getEventSetTimeRangeError(eventDate: string, setTime: string): string | null {
+  const parsed = parseSetTimeRange(setTime);
+
+  if (!parsed.start || !parsed.finish || parsed.unparsedRaw) {
+    return null;
+  }
+
+  const dateKey = resolveEventDateKey(eventDate);
+
+  if (!dateKey) {
+    return null;
+  }
+
+  const startDateTime = resolveEventStartDateTime(eventDate, setTime);
+  const endDateTime = resolveEventEndDateTime(eventDate, setTime);
+
+  if (!startDateTime || !endDateTime) {
+    return EVENT_FINISH_NOT_AFTER_START_ERROR;
+  }
+
+  const durationMs = endDateTime.getTime() - startDateTime.getTime();
+
+  if (durationMs <= 0) {
+    return EVENT_FINISH_NOT_AFTER_START_ERROR;
+  }
+
+  if (durationMs > MAX_EVENT_DURATION_MS) {
+    return EVENT_DURATION_MAX_EXCEEDED_ERROR;
+  }
+
+  return null;
+}
+
+/** Shared create/edit set-time validation (required fields, range, today start). */
+export function getEventSetTimeValidationErrors(
+  eventDate: string,
+  setTime: string,
+): EventSetTimeInlineErrors {
+  const requiredErrors = getEventSetTimeInlineErrors(setTime);
+
+  if (requiredErrors.start || requiredErrors.finish) {
+    return requiredErrors;
+  }
+
+  const rangeError = getEventSetTimeRangeError(eventDate, setTime);
+
+  if (rangeError) {
+    return { start: null, finish: rangeError };
+  }
+
+  const scheduleError = getEventDateValidationError(eventDate, setTime);
+
+  if (scheduleError === EVENT_START_IN_PAST_ERROR) {
+    return { start: scheduleError, finish: null };
+  }
+
+  return { start: null, finish: null };
+}
+
 /** @deprecated Prefer getEventSetTimeInlineErrors for form UI. */
 export type EventSetTimeFieldErrors = {
   message: string | null;
@@ -533,8 +643,11 @@ export function getEventSetTimeFieldErrors(setTime: string): EventSetTimeFieldEr
   };
 }
 
-export function getEventSetTimeValidationError(setTime: string): string | null {
-  const inlineErrors = getEventSetTimeInlineErrors(setTime);
+export function getEventSetTimeValidationError(
+  eventDate: string,
+  setTime: string,
+): string | null {
+  const inlineErrors = getEventSetTimeValidationErrors(eventDate, setTime);
 
   return inlineErrors.start ?? inlineErrors.finish;
 }
@@ -775,11 +888,6 @@ export function resolveEventStartDateTime(eventDate: string, setTime: string): D
   return new Date(year, month - 1, day, 0, 0, 0, 0);
 }
 
-function minutesFromTime24(time24: string): number {
-  const [hour, minute] = time24.split(":").map(Number);
-  return hour * 60 + minute;
-}
-
 export function resolveEventEndDateTime(eventDate: string, setTime: string): Date | null {
   const dateKey = resolveEventDateKey(eventDate);
 
@@ -792,11 +900,22 @@ export function resolveEventEndDateTime(eventDate: string, setTime: string): Dat
 
   if (parsedTime.finish) {
     const [endHour, endMinute] = parsedTime.finish.time24.split(":").map(Number);
-    const endDay =
-      parsedTime.start &&
-      minutesFromTime24(parsedTime.finish.time24) <= minutesFromTime24(parsedTime.start.time24)
-        ? day + 1
-        : day;
+
+    if (!parsedTime.start) {
+      return new Date(year, month - 1, day, endHour, endMinute, 0, 0);
+    }
+
+    const startMinutes = minutesFromTime24(parsedTime.start.time24);
+    const finishMinutes = minutesFromTime24(parsedTime.finish.time24);
+    let endDay = day;
+
+    if (finishMinutes > startMinutes) {
+      endDay = day;
+    } else if (isOvernightFinishAllowed(parsedTime.start, parsedTime.finish)) {
+      endDay = day + 1;
+    } else {
+      return null;
+    }
 
     return new Date(year, month - 1, endDay, endHour, endMinute, 0, 0);
   }
@@ -872,10 +991,15 @@ export function isEventStartInPast(eventDate: string, setTime: string): boolean 
 }
 
 export function isEventStartSaveBlocked(eventDate: string, setTime: string): boolean {
-  return (
-    getEventSetTimeValidationError(setTime) !== null ||
-    getEventDateValidationError(eventDate, setTime) !== null
-  );
+  const setTimeErrors = getEventSetTimeValidationErrors(eventDate, setTime);
+
+  if (setTimeErrors.start || setTimeErrors.finish) {
+    return true;
+  }
+
+  const dateError = getEventDateValidationError(eventDate, setTime);
+
+  return dateError === EVENT_DATE_REQUIRES_PICKER_ERROR;
 }
 
 export function getEventStartInPastError(eventDate: string, setTime: string): string | null {

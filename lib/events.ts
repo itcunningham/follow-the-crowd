@@ -1,6 +1,6 @@
 import {
   getEventDateValidationError,
-  getEventSetTimeValidationError,
+  getEventSetTimeValidationErrors,
   isPlannerEventPast,
   resolveEventDateKey,
   resolveEventStartDateTime,
@@ -452,10 +452,14 @@ export async function getEventById(eventId: string): Promise<Event | null> {
 }
 
 function assertEventStartNotInPast(input: EventInput): void {
-  const setTimeValidationError = getEventSetTimeValidationError(input.setTime);
+  const setTimeErrors = getEventSetTimeValidationErrors(input.eventDate, input.setTime);
 
-  if (setTimeValidationError) {
-    throw new Error(setTimeValidationError);
+  if (setTimeErrors.start) {
+    throw new Error(setTimeErrors.start);
+  }
+
+  if (setTimeErrors.finish) {
+    throw new Error(setTimeErrors.finish);
   }
 
   const validationError = getEventDateValidationError(input.eventDate, input.setTime);

@@ -1,8 +1,7 @@
 import {
   EVENT_DATE_REQUIRES_PICKER_ERROR,
-  EVENT_START_IN_PAST_ERROR,
   getEventDateValidationError,
-  getEventSetTimeInlineErrors,
+  getEventSetTimeValidationErrors,
   parseEventDate,
   resolveEventDateKey,
 } from "@/lib/bookingDateTime";
@@ -68,7 +67,7 @@ export function getEventFormFieldErrors(input: {
     }
   }
 
-  const setTimeErrors = getEventSetTimeInlineErrors(input.setTime);
+  const setTimeErrors = getEventSetTimeValidationErrors(input.eventDate, input.setTime);
 
   if (setTimeErrors.start) {
     errors.startTime = setTimeErrors.start;
@@ -83,8 +82,6 @@ export function getEventFormFieldErrors(input: {
 
     if (scheduleError === EVENT_DATE_REQUIRES_PICKER_ERROR) {
       errors.eventDate = "Select an event date";
-    } else if (scheduleError === EVENT_START_IN_PAST_ERROR) {
-      errors.startTime = scheduleError;
     }
   }
 

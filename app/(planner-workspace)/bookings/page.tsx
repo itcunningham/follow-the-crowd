@@ -22,7 +22,13 @@ import {
 import DjBookingAvailabilityBadge from "@/app/components/DjBookingAvailabilityBadge";
 import ProfileAvatar from "@/app/components/ProfileAvatar";
 import { BookingDateField, BookingSetTimeRangeField } from "@/app/components/BookingDateTimeFields";
-import { getEventDateValidationError, formatDisplayEventDate } from "@/lib/bookingDateTime";
+import {
+  applyEventDateFieldChange,
+  formatDisplayEventDate,
+  getEventDateValidationError,
+  getEventSetTimeValidationError,
+  isEventStartSaveBlocked,
+} from "@/lib/bookingDateTime";
 import EventDjSendOfferControls, {
   createDefaultDjSendOffer,
   DEFAULT_DJ_SEND_OFFER,
@@ -472,7 +478,10 @@ function BookingsPageContent() {
       return null;
     }
 
-    return getEventDateValidationError(form.eventDate, form.setTime);
+    return (
+      getEventSetTimeValidationError(form.eventDate, form.setTime) ??
+      getEventDateValidationError(form.eventDate, form.setTime)
+    );
   }, [createOpen, effectiveCreateStep, form.eventDate, form.setTime]);
 
   const detailsFormNotesValidationError = useMemo(() => {
@@ -1129,7 +1138,17 @@ function BookingsPageContent() {
     key: Key,
     value: BookingRequestInput[Key],
   ) {
-    setForm((prev) => ({ ...prev, [key]: value }));
+    setForm((prev) => {
+      if (key === "eventDate" && typeof value === "string") {
+        return {
+          ...prev,
+          eventDate: value,
+          setTime: applyEventDateFieldChange(prev.eventDate, value, prev.setTime),
+        };
+      }
+
+      return { ...prev, [key]: value };
+    });
   }
 
   function toggleDjSelection(userId: string) {
@@ -1201,10 +1220,12 @@ function BookingsPageContent() {
       return;
     }
 
-    const dateValidationError = getEventDateValidationError(form.eventDate, form.setTime);
-
-    if (dateValidationError) {
-      setError(dateValidationError);
+    if (isEventStartSaveBlocked(form.eventDate, form.setTime)) {
+      setError(
+        getEventSetTimeValidationError(form.eventDate, form.setTime) ??
+          getEventDateValidationError(form.eventDate, form.setTime) ??
+          "Please fill in all required booking details",
+      );
       return;
     }
 

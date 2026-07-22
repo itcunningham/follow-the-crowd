@@ -7,7 +7,12 @@ import BookingSelectedDjsContext from "@/app/components/booking/BookingSelectedD
 import { BookingRateField } from "@/app/components/BookingRateField";
 import BookingRateModeField from "@/app/components/booking/BookingRateModeField";
 import type { BookingRequestInput } from "@/lib/bookingRequests";
-import { getEventDateValidationError } from "@/lib/bookingDateTime";
+import {
+  applyEventDateFieldChange,
+  getEventDateValidationError,
+  getEventSetTimeValidationError,
+  isEventStartSaveBlocked,
+} from "@/lib/bookingDateTime";
 import { isPositiveWholeDollarRate } from "@/lib/bookingRate";
 import type { UserProfile } from "@/lib/user/currentUser";
 
@@ -38,7 +43,10 @@ export default function BookingRequestModal({
 }) {
   const [form, setForm] = useState<BookingRequestInput>(emptyForm);
   const [localError, setLocalError] = useState<string | null>(null);
-  const dateValidationError = getEventDateValidationError(form.eventDate, form.setTime);
+  const scheduleBlocked = isEventStartSaveBlocked(form.eventDate, form.setTime);
+  const scheduleValidationError =
+    getEventSetTimeValidationError(form.eventDate, form.setTime) ??
+    getEventDateValidationError(form.eventDate, form.setTime);
 
   useEffect(() => {
     if (!open) {
@@ -55,7 +63,17 @@ export default function BookingRequestModal({
     key: Key,
     value: BookingRequestInput[Key],
   ) {
-    setForm((prev) => ({ ...prev, [key]: value }));
+    setForm((prev) => {
+      if (key === "eventDate" && typeof value === "string") {
+        return {
+          ...prev,
+          eventDate: value,
+          setTime: applyEventDateFieldChange(prev.eventDate, value, prev.setTime),
+        };
+      }
+
+      return { ...prev, [key]: value };
+    });
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -78,8 +96,11 @@ export default function BookingRequestModal({
       return;
     }
 
-    if (dateValidationError) {
-      setLocalError(dateValidationError);
+    if (isEventStartSaveBlocked(form.eventDate, form.setTime)) {
+      setLocalError(
+        getEventSetTimeValidationError(form.eventDate, form.setTime) ??
+          getEventDateValidationError(form.eventDate, form.setTime),
+      );
       return;
     }
 
@@ -151,9 +172,9 @@ export default function BookingRequestModal({
             multiline
           />
 
-          {(localError || dateValidationError || error) ? (
+          {(localError || scheduleValidationError || error) ? (
             <p className="text-sm text-red-400">
-              {localError ?? dateValidationError ?? error}
+              {localError ?? scheduleValidationError ?? error}
             </p>
           ) : null}
 
@@ -168,7 +189,7 @@ export default function BookingRequestModal({
             </button>
             <button
               type="submit"
-              disabled={submitting || Boolean(dateValidationError)}
+              disabled={submitting || scheduleBlocked}
               className="flex-1 ftc-btn-primary w-full px-4 py-3 text-sm uppercase tracking-wide disabled:cursor-not-allowed disabled:opacity-50"
             >
               {submitting ? "Sending..." : "Send booking request"}

@@ -10,6 +10,7 @@ import {
   BOOKING_TIME_BUTTON_COMPACT_CLASS,
   clockPartsToWheelTime,
   clampWheelTimeToMin,
+  applyEventSetTimeStartChange,
   combineClockAndMeridiem,
   combineSetTimeRange,
   defaultEventFinishWheelTime,
@@ -382,7 +383,22 @@ export function BookingSetTimeRangeField({
   function handleStartTimeChange(nextClock: string, nextMeridiem: Meridiem) {
     setStartClock(nextClock);
     setStartMeridiem(nextMeridiem);
-    emitChange(nextClock, nextMeridiem, finishClock, finishMeridiem);
+    const startFormatted = combineClockAndMeridiem(nextClock, nextMeridiem);
+    const finishFormatted = combineClockAndMeridiem(finishClock, finishMeridiem);
+    const nextSetTime = applyEventSetTimeStartChange(
+      eventDate ?? "",
+      startFormatted,
+      finishFormatted,
+    );
+    onChange(nextSetTime);
+    const parsed = parseSetTimeRange(nextSetTime);
+    if (parsed.finish) {
+      setFinishClock(extractClockDisplay(parsed.finish.formatted));
+      setFinishMeridiem(parsed.finish.meridiem);
+    } else {
+      setFinishClock("");
+      setFinishMeridiem("AM");
+    }
   }
 
   function handleFinishTimeChange(nextClock: string, nextMeridiem: Meridiem) {

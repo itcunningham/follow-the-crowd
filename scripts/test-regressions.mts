@@ -22,6 +22,7 @@ import {
   defaultFinishWheelTime,
   defaultStartWheelTime,
   applyEventDateFieldChange,
+  applyEventSetTimeStartChange,
   getMinWheelTimeForEventDate,
   getMinWheelTimeFromNow,
   resolveEventTimePickerOpenValue,
@@ -98,12 +99,50 @@ function testFutureEventDatesAreAllowed() {
 }
 
 function testIncompleteSetTimeIsBlocked() {
-  assert.equal(getEventSetTimeValidationError("9:00 PM"), "Select a finish time");
-  assert.equal(getEventSetTimeValidationError(""), "Select a start time");
+  const eventDate = "2027-01-08";
+  assert.equal(getEventSetTimeValidationError(eventDate, "9:00 PM"), "Select a finish time");
+  assert.equal(getEventSetTimeValidationError(eventDate, ""), "Select a start time");
   assert.equal(
-    getEventSetTimeValidationError(`9:00 PM${SET_TIME_RANGE_JOINER}11:00 PM`),
+    getEventSetTimeValidationError(eventDate, `9:00 PM${SET_TIME_RANGE_JOINER}11:00 PM`),
     null,
   );
+}
+
+function testEventSetTimeRangeValidation() {
+  const eventDate = "2027-06-15";
+  const normal = `7:00 PM${SET_TIME_RANGE_JOINER}11:00 PM`;
+  const sameEveningInvalid = `7:52 PM${SET_TIME_RANGE_JOINER}7:47 PM`;
+  const zeroDuration = `9:00 PM${SET_TIME_RANGE_JOINER}9:00 PM`;
+  const overnightA = `9:00 PM${SET_TIME_RANGE_JOINER}2:00 AM`;
+  const overnightB = `10:00 PM${SET_TIME_RANGE_JOINER}5:00 AM`;
+
+  assert.equal(getEventSetTimeValidationError(eventDate, normal), null);
+  assert.equal(
+    getEventSetTimeValidationError(eventDate, sameEveningInvalid),
+    "Finish time must be after start time",
+  );
+  assert.equal(
+    getEventSetTimeValidationError(eventDate, zeroDuration),
+    "Finish time must be after start time",
+  );
+  assert.equal(getEventSetTimeValidationError(eventDate, overnightA), null);
+  assert.equal(getEventSetTimeValidationError(eventDate, overnightB), null);
+  assert.equal(isEventStartSaveBlocked(eventDate, normal), false);
+  assert.equal(isEventStartSaveBlocked(eventDate, sameEveningInvalid), true);
+
+  const formErrors = getEventFormFieldErrors({
+    name: "Test",
+    venue: "Venue",
+    eventDate,
+    setTime: sameEveningInvalid,
+  });
+  assert.equal(formErrors.finishTime, "Finish time must be after start time");
+}
+
+function testApplyEventSetTimeStartChangeClearsInvalidFinish() {
+  const eventDate = "2027-06-15";
+  const next = applyEventSetTimeStartChange(eventDate, "8:00 PM", "7:47 PM");
+  assert.equal(next, "8:00 PM");
 }
 
 function testOneAcceptedDjWithNullStartShowsStartAction() {
@@ -1502,6 +1541,8 @@ async function main() {
   testPastEventDatesAreBlocked();
   testFutureEventDatesAreAllowed();
   testIncompleteSetTimeIsBlocked();
+  testEventSetTimeRangeValidation();
+  testApplyEventSetTimeStartChangeClearsInvalidFinish();
   testPastPickerDatesAreRejected();
   testWheelTimeBeforeMinHelpers();
   testEventTimePickerDefaultsForToday();
