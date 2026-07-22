@@ -17,6 +17,7 @@ import {
   EVENTS_AREA_SUB_NAV,
   getEventsAreaSubNavItems,
   isPlannerEventsAreaPath,
+  mergeWorkspaceNavRole,
   resolveActiveWorkspaceHref,
 } from "@/lib/plannerEventsNav";
 import { ensureBookingPlansListPrefetched } from "@/lib/bookingPlans/bookingPlansListPrefetch";
@@ -96,11 +97,23 @@ export default function PlannerEventsSubNav({
     cachedNavigation.role ??
     readCachedNavRole();
 
-  if (resolvedRole) {
-    lastKnownRoleRef.current = resolvedRole;
+  const tabsRole = useMemo(
+    () =>
+      mergeWorkspaceNavRole(
+        resolvedRole,
+        initialRole,
+        guardProfile?.role,
+        cachedNavigation.role,
+        lastKnownRoleRef.current,
+        readCachedNavRole(),
+      ),
+    [cachedNavigation.role, guardProfile?.role, initialRole, resolvedRole],
+  );
+
+  if (tabsRole) {
+    lastKnownRoleRef.current = tabsRole;
   }
 
-  const tabsRole = resolvedRole ?? lastKnownRoleRef.current;
   const canViewGigs = canViewGigsSubNav(tabsRole);
   const canViewBookingPlans = canViewBookingPlansSubNav(tabsRole);
   const resolvedUserId = guardProfile?.user_id ?? cachedNavigation.userId;

@@ -3,6 +3,7 @@
 import "@/lib/navigationBadgePrefetch";
 import {
   createContext,
+  useCallback,
   useContext,
   useLayoutEffect,
   useMemo,
@@ -15,6 +16,7 @@ import PlannerEventsSubNav from "@/app/components/PlannerEventsSubNav";
 import { MOBILE_NAV_OFFSET_CLASS } from "@/app/components/AppNavigation";
 import AppNavigation from "@/app/components/AppNavigation";
 import {
+  mergeWorkspaceNavRole,
   resolvePlannerWorkspaceTitle,
 } from "@/lib/plannerEventsNav";
 import { readCachedNavRole } from "@/lib/navigationRoleCache";
@@ -83,8 +85,34 @@ type WorkspaceHeaderState = {
   interceptWorkspaceTabNavigation?: ((href: string) => boolean) | null;
 };
 
+function mergeWorkspaceHeaderState(
+  previous: WorkspaceHeaderState,
+  patch: WorkspaceHeaderState,
+): WorkspaceHeaderState {
+  const next: WorkspaceHeaderState = { ...previous };
+
+  if ("activeWorkspaceHref" in patch) {
+    next.activeWorkspaceHref = patch.activeWorkspaceHref;
+  }
+
+  if ("actions" in patch) {
+    next.actions = patch.actions;
+  }
+
+  if ("interceptWorkspaceTabNavigation" in patch) {
+    next.interceptWorkspaceTabNavigation = patch.interceptWorkspaceTabNavigation;
+  }
+
+  if (patch.workspaceRole != null) {
+    next.workspaceRole = mergeWorkspaceNavRole(previous.workspaceRole, patch.workspaceRole);
+  }
+
+  return next;
+}
+
 type WorkspaceHeaderContextValue = {
   setHeaderState: (state: WorkspaceHeaderState) => void;
+  resetHeaderStateForPathnameChange: () => void;
 };
 
 const WorkspaceHeaderContext = createContext<WorkspaceHeaderContextValue | null>(null);
@@ -197,13 +225,23 @@ function resolveDefaultWorkspaceActions(pathname: string, role: UserRole | null)
 export function PlannerWorkspaceRouteLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const guardProfile = useGuardProfile();
-  const [headerState, setHeaderState] = useState<WorkspaceHeaderState>({});
+  const [headerState, setHeaderStateInternal] = useState<WorkspaceHeaderState>({});
   const [syncedPathname, setSyncedPathname] = useState(pathname);
-  const initialRole = guardProfile?.role ?? readCachedNavRole();
+  const layoutRole = mergeWorkspaceNavRole(guardProfile?.role, readCachedNavRole());
+
+  const setHeaderState = useCallback((patch: WorkspaceHeaderState) => {
+    setHeaderStateInternal((previous) => mergeWorkspaceHeaderState(previous, patch));
+  }, []);
+
+  const resetHeaderStateForPathnameChange = useCallback(() => {
+    setHeaderStateInternal((previous) => ({
+      workspaceRole: previous.workspaceRole,
+    }));
+  }, []);
 
   if (pathname !== syncedPathname) {
     setSyncedPathname(pathname);
-    setHeaderState({});
+    resetHeaderStateForPathnameChange();
   }
 
   const title = useMemo(
@@ -214,13 +252,14 @@ export function PlannerWorkspaceRouteLayout({ children }: { children: ReactNode 
       }),
     [headerState.activeWorkspaceHref, pathname],
   );
-  const actions = headerState.actions ?? resolveDefaultWorkspaceActions(pathname, initialRole);
-  const workspaceRole = headerState.workspaceRole ?? initialRole;
+  const actions = headerState.actions ?? resolveDefaultWorkspaceActions(pathname, layoutRole);
+  const workspaceRole = mergeWorkspaceNavRole(headerState.workspaceRole, layoutRole);
   const headerContextValue = useMemo<WorkspaceHeaderContextValue>(
     () => ({
       setHeaderState,
+      resetHeaderStateForPathnameChange,
     }),
-    [],
+    [resetHeaderStateForPathnameChange, setHeaderState],
   );
 
   const workspaceIntercept =

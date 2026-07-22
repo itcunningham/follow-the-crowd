@@ -65,7 +65,7 @@ import {
   PLANNER_WORKSPACE_SUBNAV_ROW_CLASS,
   PLANNER_WORKSPACE_SUBNAV_SLOT_CLASS,
 } from "../app/components/planner/PlannerWorkspaceLayout";
-import { getEventsAreaSubNavItems, resolveActiveWorkspaceHref, buildWorkspaceSubNavDestinationHref, EVENTS_AREA_SUB_NAV, isCalendarWorkspacePath } from "../lib/plannerEventsNav";
+import { getEventsAreaSubNavItems, resolveActiveWorkspaceHref, buildWorkspaceSubNavDestinationHref, EVENTS_AREA_SUB_NAV, isCalendarWorkspacePath, mergeWorkspaceNavRole } from "../lib/plannerEventsNav";
 import {
   EVENT_PLAN_ACTION_RESERVE_CLASS,
   EVENT_PLAN_USE_BUTTON_CLASS,
@@ -829,8 +829,16 @@ function testWorkspaceSubNavLayoutIsStable() {
     new URL("../app/components/PlannerEventsSubNav.tsx", import.meta.url),
     "utf8",
   );
+  const layoutSource = readFileSync(
+    new URL("../app/components/planner/PlannerWorkspaceLayout.tsx", import.meta.url),
+    "utf8",
+  );
   assert.doesNotMatch(subNavSource, /scrollIntoView/);
+  assert.match(subNavSource, /mergeWorkspaceNavRole/);
+  assert.match(subNavSource, /key=\{tab\.href\}/);
   assert.match(subNavSource, /reserveSpace/);
+  assert.match(layoutSource, /resetHeaderStateForPathnameChange/);
+  assert.match(layoutSource, /mergeWorkspaceHeaderState/);
   assert.match(
     readFileSync(
       new URL("../app/components/planner/PlannerWorkspaceSubNavLink.tsx", import.meta.url),
@@ -845,6 +853,24 @@ function testWorkspaceSubNavLayoutIsStable() {
     "/events,/booking-plans,/calendar,/bookings",
   );
   assert.equal(getEventsAreaSubNavItems(null).map((item) => item.href).join(","), "/events,/calendar");
+}
+
+function testWorkspaceNavRoleDoesNotDropEventPlansTab() {
+  assert.equal(mergeWorkspaceNavRole("dj", "both"), "both");
+  assert.equal(mergeWorkspaceNavRole("both", "dj"), "both");
+  assert.equal(mergeWorkspaceNavRole("dj", null), "dj");
+  assert.equal(
+    getEventsAreaSubNavItems(mergeWorkspaceNavRole("dj", "both")).map((item) => item.label).join("|"),
+    "Events|Event Plans|Calendar|Gigs",
+  );
+  assert.equal(
+    EVENTS_AREA_SUB_NAV.bookingPlans.label,
+    "Event Plans",
+  );
+  assert.equal(
+    EVENTS_AREA_SUB_NAV.calendar.label,
+    "Calendar",
+  );
 }
 
 function testWorkspaceActiveHrefIgnoresStaleOverrides() {
@@ -1662,6 +1688,7 @@ async function main() {
   testGigsWorkspaceChromeStateSyncAvoidsNoOpUpdates();
   testBookingsRouteMountsPersistentGigsSecondaryBand();
   testWorkspaceSubNavLayoutIsStable();
+  testWorkspaceNavRoleDoesNotDropEventPlansTab();
   testWorkspaceActiveHrefIgnoresStaleOverrides();
   testProfileIdentityPresentationHierarchy();
   await testEventsHistorySelectAllButtonInteraction();

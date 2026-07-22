@@ -46,6 +46,41 @@ export function getEventsAreaSubNavItems(role: UserRole | null): EventsAreaSubNa
   return items;
 }
 
+/** Prefer the role that preserves the fullest workspace tab set (avoids dj/null flicker dropping Event Plans). */
+export function mergeWorkspaceNavRole(
+  ...candidates: Array<UserRole | null | undefined>
+): UserRole | null {
+  const rank = (role: UserRole | null | undefined): number => {
+    if (role === "both") {
+      return 3;
+    }
+
+    if (role === "promoter" || role === "dj") {
+      return 2;
+    }
+
+    return 0;
+  };
+
+  let bestRole: UserRole | null = null;
+  let bestRank = 0;
+
+  for (const candidate of candidates) {
+    if (!candidate) {
+      continue;
+    }
+
+    const candidateRank = rank(candidate);
+
+    if (candidateRank >= bestRank) {
+      bestRank = candidateRank;
+      bestRole = candidate;
+    }
+  }
+
+  return bestRole;
+}
+
 export function isCalendarWorkspacePath(pathname: string | null | undefined): boolean {
   return pathname === "/calendar" || (pathname?.startsWith("/calendar/") ?? false);
 }
