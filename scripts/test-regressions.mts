@@ -36,7 +36,7 @@ import {
   isDjGigPastAccepted,
   resolveBookingDateKey,
 } from "../lib/bookingRequests";
-import { parseDjGigsListTab, resolveGigsListTabParam, buildGigsWorkspaceIncomingHref } from "../lib/bookings/gigsListNavigation";
+import { parseDjGigsListTab, resolveGigsListTabParam, resolveGigsListTabForBookingsPage, buildGigsWorkspaceIncomingHref } from "../lib/bookings/gigsListNavigation";
 import { resolveEventsHistoryTrashVisible } from "../lib/events/eventsListNavigation";
 import { resolveHistoryBulkSelectAllToggle } from "../app/components/history/HistoryBulkManage";
 import { resolvePlannerHistoryHideEventIds } from "../lib/events";
@@ -1389,6 +1389,43 @@ function testGigsInnerTabSelectionFollowsRouteImmediately() {
   assert.equal(resolveGigsListTabParam(null, null, "?tab=accepted"), "accepted");
   assert.equal(resolveGigsListTabParam("history", null, ""), "pending");
   assert.equal(resolveGigsListTabParam("history", null, "?tab=history"), "history");
+
+  assert.equal(
+    resolveGigsListTabForBookingsPage({
+      nextPathname: "/bookings",
+      searchParamsTab: "history",
+      locationPathname: "/events",
+      locationSearch: "?tab=history",
+    }),
+    "pending",
+  );
+  assert.equal(
+    resolveGigsListTabForBookingsPage({
+      nextPathname: "/bookings",
+      searchParamsTab: "history",
+      locationPathname: "/bookings",
+      locationSearch: "",
+    }),
+    "pending",
+  );
+  assert.equal(
+    resolveGigsListTabForBookingsPage({
+      nextPathname: "/bookings",
+      searchParamsTab: "history",
+      locationPathname: "/bookings",
+      locationSearch: "?tab=history",
+    }),
+    "history",
+  );
+  assert.equal(
+    resolveGigsListTabForBookingsPage({
+      nextPathname: "/bookings",
+      searchParamsTab: "accepted",
+      locationPathname: null,
+      locationSearch: null,
+    }),
+    "accepted",
+  );
 }
 
 function testWorkspaceGigsTabOpensIncomingWithoutEventsQuery() {

@@ -8,14 +8,14 @@ import {
   type ReactNode,
   type SetStateAction,
 } from "react";
-import { useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { DjGigsTabs } from "@/app/components/bookings/DjGigsTabs";
 import { DjGigsTabRow } from "@/app/components/skeleton/Skeleton";
 import {
   PlannerWorkspaceSecondaryControlsPlaceholder,
   PLANNER_WORKSPACE_SECONDARY_BAND_CLASS,
 } from "@/app/components/planner/PlannerWorkspaceLayout";
-import { resolveGigsListTabParam } from "@/lib/bookings/gigsListNavigation";
+import { resolveGigsListTabForBookingsPage } from "@/lib/bookings/gigsListNavigation";
 import { isPlannerBookingsCreateChromeActive } from "@/lib/bookings/planDeepLink";
 import { readCachedNavRole } from "@/lib/navigationRoleCache";
 import type { DjGigsListTab } from "@/lib/bookingRequests";
@@ -126,19 +126,17 @@ export function GigsWorkspaceTabRow({
   );
 }
 
-function resolveBookingsGigsActiveView(searchParamsTab: string | null, locationSearch: string | null) {
-  return resolveGigsListTabParam(searchParamsTab, null, locationSearch);
-}
-
 function resolveBookingsGigsActiveViewFromWindow(): DjGigsListTab {
   if (typeof window === "undefined") {
     return "pending";
   }
 
-  return resolveBookingsGigsActiveView(
-    new URLSearchParams(window.location.search).get("tab"),
-    window.location.search,
-  );
+  return resolveGigsListTabForBookingsPage({
+    nextPathname: window.location.pathname,
+    searchParamsTab: new URLSearchParams(window.location.search).get("tab"),
+    locationPathname: window.location.pathname,
+    locationSearch: window.location.search,
+  });
 }
 
 function GigsWorkspaceSecondaryBandBody({
@@ -207,6 +205,7 @@ export function GigsWorkspaceSecondaryBand({
   role?: UserRole | null;
   plannerBookingCreateOpen?: boolean;
 } = {}) {
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const role = roleProp ?? readCachedNavRole();
   const plannerBookingCreateOpen =
@@ -219,10 +218,12 @@ export function GigsWorkspaceSecondaryBand({
             : ""
           : window.location.search,
     });
-  const activeView = resolveBookingsGigsActiveView(
-    searchParams.get("tab"),
-    typeof window === "undefined" ? null : window.location.search,
-  );
+  const activeView = resolveGigsListTabForBookingsPage({
+    nextPathname: pathname,
+    searchParamsTab: searchParams.get("tab"),
+    locationPathname: typeof window === "undefined" ? null : window.location.pathname,
+    locationSearch: typeof window === "undefined" ? null : window.location.search,
+  });
 
   return (
     <div className={PLANNER_WORKSPACE_SECONDARY_BAND_CLASS}>

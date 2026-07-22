@@ -18,6 +18,10 @@ export function parseDjGigsListTab(value: string | null | undefined): DjGigsList
   return "pending";
 }
 
+export function isBookingsGigsListPathname(pathname: string): boolean {
+  return pathname === "/bookings" || pathname.startsWith("/bookings/");
+}
+
 export function resolveGigsListTabParam(
   searchParamsTab: string | null | undefined,
   initialTab?: string | null,
@@ -40,6 +44,40 @@ export function resolveGigsListTabParam(
   }
 
   return parseDjGigsListTab(initialTab);
+}
+
+/**
+ * Gigs list tab for /bookings — never inherit Events (or other workspace) `?tab=`.
+ * During cross-workspace navigation, Next pathname can be /bookings while the browser
+ * URL is still /events?tab=history; ignore tab until the browser is on /bookings.
+ */
+export function resolveGigsListTabForBookingsPage(options: {
+  nextPathname: string;
+  searchParamsTab: string | null;
+  locationPathname?: string | null;
+  locationSearch?: string | null;
+}): DjGigsListTab {
+  if (!isBookingsGigsListPathname(options.nextPathname)) {
+    return "pending";
+  }
+
+  const locationPathname = options.locationPathname ?? null;
+  const locationOnBookings =
+    locationPathname != null && isBookingsGigsListPathname(locationPathname);
+
+  if (locationOnBookings && options.locationSearch != null) {
+    return resolveGigsListTabParam(null, null, options.locationSearch);
+  }
+
+  if (locationPathname != null && !locationOnBookings) {
+    return "pending";
+  }
+
+  if (options.searchParamsTab != null) {
+    return parseDjGigsListTab(options.searchParamsTab);
+  }
+
+  return "pending";
 }
 
 /** Top workspace Gigs tab: Incoming with no inherited Events query params. */

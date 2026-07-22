@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   BookingsPageLoadingShell,
   BookingCreateEventDetailsFormSkeleton,
@@ -118,7 +118,7 @@ import {
   buildGigsEventDetailHref,
   buildGigsListHref,
   buildGigsWorkspaceIncomingHref,
-  resolveGigsListTabParam,
+  resolveGigsListTabForBookingsPage,
 } from "@/lib/bookings/gigsListNavigation";
 import {
   clearPendingBookingPlanId,
@@ -285,6 +285,7 @@ function BookingsPageSuspenseFallback() {
 
 function BookingsPageContent() {
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const guardProfile = useGuardProfile();
   const deepLinkInFlightKeyRef = useRef<string | null>(null);
@@ -308,12 +309,13 @@ function BookingsPageContent() {
   const [locationRevision, setLocationRevision] = useState(0);
   const djGigsView = useMemo(
     () =>
-      resolveGigsListTabParam(
-        searchParams.get("tab"),
-        null,
-        typeof window === "undefined" ? null : window.location.search,
-      ),
-    [searchParams, locationRevision],
+      resolveGigsListTabForBookingsPage({
+        nextPathname: pathname,
+        searchParamsTab: searchParams.get("tab"),
+        locationPathname: typeof window === "undefined" ? null : window.location.pathname,
+        locationSearch: typeof window === "undefined" ? null : window.location.search,
+      }),
+    [pathname, searchParams, locationRevision],
   );
   const [djAvailabilityHints, setDjAvailabilityHints] = useState<
     Map<string, DjPlannerAvailabilityHint>
