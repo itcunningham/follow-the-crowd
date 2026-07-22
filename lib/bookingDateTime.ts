@@ -314,8 +314,12 @@ export function defaultFinishWheelTime(): WheelTimeValue {
   return { hour: 1, minute: 0, meridiem: "AM" };
 }
 
+export function resolveEventDateKeyForEventTime(eventDate: string): string | null {
+  return resolveEventDateKey(eventDate);
+}
+
 export function defaultEventStartWheelTime(eventDate: string): WheelTimeValue {
-  const dateKey = resolveEventDateKey(eventDate);
+  const dateKey = resolveEventDateKeyForEventTime(eventDate);
 
   if (dateKey === getTodayDateKey()) {
     return getMinWheelTimeFromNow();
@@ -325,13 +329,31 @@ export function defaultEventStartWheelTime(eventDate: string): WheelTimeValue {
 }
 
 export function defaultEventFinishWheelTime(eventDate: string): WheelTimeValue {
-  const dateKey = resolveEventDateKey(eventDate);
+  const dateKey = resolveEventDateKeyForEventTime(eventDate);
 
   if (dateKey === getTodayDateKey()) {
     return getMinWheelTimeFromNow();
   }
 
   return defaultFinishWheelTime();
+}
+
+export function applyEventDateFieldChange(
+  previousEventDate: string,
+  nextEventDate: string,
+  setTime: string,
+): string {
+  if (previousEventDate.trim() === nextEventDate.trim()) {
+    return setTime;
+  }
+
+  const parsed = parseSetTimeRange(setTime);
+
+  if (parsed.start && parsed.finish && !parsed.unparsedRaw) {
+    return setTime;
+  }
+
+  return "";
 }
 
 export function wheelTimeToFormatted(value: WheelTimeValue): string {
@@ -388,7 +410,7 @@ export function getMinWheelTimeFromNow(): WheelTimeValue {
 }
 
 export function getMinWheelTimeForEventDate(eventDate: string): WheelTimeValue | null {
-  const dateKey = resolveEventDateKey(eventDate);
+  const dateKey = resolveEventDateKeyForEventTime(eventDate);
 
   if (!dateKey || dateKey !== getTodayDateKey()) {
     return null;

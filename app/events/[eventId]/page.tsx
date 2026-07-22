@@ -40,7 +40,7 @@ import {
   PlannerStatChip,
 } from "@/app/components/planner/PlannerUi";
 import { BookingDateField, BookingSetTimeRangeField } from "@/app/components/BookingDateTimeFields";
-import { getTodayDateKey } from "@/lib/bookingDateTime";
+import { applyEventDateFieldChange, getTodayDateKey } from "@/lib/bookingDateTime";
 import {
   getEventFormFieldErrors,
   hasEventFormFieldErrors,
@@ -1269,7 +1269,15 @@ function EventDetailPageView() {
                   label="Event date"
                   value={editForm.eventDate}
                   onChange={(value) =>
-                    setEditForm((prev) => (prev ? { ...prev, eventDate: value } : prev))
+                    setEditForm((prev) =>
+                      prev
+                        ? {
+                            ...prev,
+                            eventDate: value,
+                            setTime: applyEventDateFieldChange(prev.eventDate, value, prev.setTime),
+                          }
+                        : prev,
+                    )
                   }
                   minDate={getTodayDateKey()}
                   required

@@ -336,17 +336,12 @@ export function BookingSetTimeRangeField({
   startError?: string | null;
   finishError?: string | null;
 }) {
-  const userEditedRef = useRef(false);
   const [startClock, setStartClock] = useState("");
   const [startMeridiem, setStartMeridiem] = useState<Meridiem>("PM");
   const [finishClock, setFinishClock] = useState("");
   const [finishMeridiem, setFinishMeridiem] = useState<Meridiem>("AM");
 
   useEffect(() => {
-    if (userEditedRef.current) {
-      return;
-    }
-
     const parsed = parseSetTimeRange(value);
 
     if (parsed.unparsedRaw) {
@@ -372,7 +367,7 @@ export function BookingSetTimeRangeField({
       setFinishClock("");
       setFinishMeridiem("AM");
     }
-  }, [value]);
+  }, [value, eventDate]);
 
   function emitChange(
     nextStartClock: string,
@@ -380,8 +375,6 @@ export function BookingSetTimeRangeField({
     nextFinishClock: string,
     nextFinishMeridiem: Meridiem,
   ) {
-    userEditedRef.current = true;
-
     const startFormatted = combineClockAndMeridiem(nextStartClock, nextStartMeridiem);
     const finishFormatted = combineClockAndMeridiem(nextFinishClock, nextFinishMeridiem);
 

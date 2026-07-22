@@ -63,6 +63,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 - **Design system (2026-07-14):** `docs/design/FTC_DESIGN_SYSTEM.md` + `lib/design/ftcDesignSystem.ts` — shared tokens; standardised status badges, empty states, section titles, button min-heights
 - **History hide:** bulk remove from History view sets `history_hidden_at` on owned `events` rows via authenticated RLS update (does not delete records). Optional RPC hardening: `20250720120000_event_history_hide_past.sql` (not yet applied on production as of 2026-07-20 — legacy RPC only hid `cancelled`).
 - **Create/edit validation:** inline field errors after Save; start + finish time both required; notes length/line limits disable save
+- **Event create/edit time pickers (2026-07-22):** shared `BookingSetTimeRangeField` uses `defaultEventStartWheelTime` / `defaultEventFinishWheelTime` + today past-time floor; Events → Create → From scratch clears partial set times on date change and re-syncs wheel state so today opens at current local time (not stale 9:00 PM)
 - **Notes** section on event detail (heading "Notes", muted section label)
 - Edit with confirmation when booking-impacting fields change + group chat update message
 - **Edit event form polish (2026-07-14):** unified form control height/radius/focus; settings-panel card header; intentional flyer upload panel; aligned colour chips + preview row; subtle notes counter
@@ -206,6 +207,8 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `<pending>` — apply event time defaults across create flows
+- `525bc86` — improve event time picker defaults (today → current time; preserve selection on reopen)
 - `a9f5fff` — fix calendar nested return and dm punctuation
 - `3c43c73` — fix planner calendar event navigation
 - `3462084` — open event details from planner calendar

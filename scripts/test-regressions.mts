@@ -20,6 +20,7 @@ import {
   defaultEventFinishWheelTime,
   defaultEventStartWheelTime,
   defaultStartWheelTime,
+  applyEventDateFieldChange,
   getMinWheelTimeFromNow,
   SET_TIME_RANGE_JOINER,
 } from "../lib/bookingDateTime";
@@ -276,6 +277,18 @@ function testEventTimePickerDefaultsForToday() {
   assert.deepEqual(defaultEventStartWheelTime(todayKey), nowDefault);
   assert.deepEqual(defaultEventFinishWheelTime(todayKey), nowDefault);
   assert.deepEqual(defaultEventStartWheelTime("2028-06-15"), defaultStartWheelTime());
+}
+
+function testApplyEventDateFieldChangeClearsPartialSetTime() {
+  const todayKey = getTodayDateKey();
+  const completeSetTime = `7:00 PM${SET_TIME_RANGE_JOINER}11:00 PM`;
+
+  assert.equal(applyEventDateFieldChange("", todayKey, "9:00 PM"), "");
+  assert.equal(
+    applyEventDateFieldChange(todayKey, "2028-06-15", completeSetTime),
+    completeSetTime,
+  );
+  assert.equal(applyEventDateFieldChange(todayKey, "2028-06-15", "9:00 PM"), "");
 }
 
 function testConflictingCrewChatFlagsPreferStartAction() {
@@ -1380,6 +1393,7 @@ async function main() {
   testPastPickerDatesAreRejected();
   testWheelTimeBeforeMinHelpers();
   testEventTimePickerDefaultsForToday();
+  testApplyEventDateFieldChangeClearsPartialSetTime();
   testOneAcceptedDjWithNullStartShowsStartAction();
   testOneAcceptedDjWithStartedAtShowsGroupChat();
   testZeroAcceptedDjsShowsNoCrewChatAction();

@@ -28,7 +28,12 @@ import {
   PlannerStatChip,
 } from "@/app/components/planner/PlannerUi";
 import { BookingDateField, BookingSetTimeRangeField } from "@/app/components/BookingDateTimeFields";
-import { getTodayDateKey, formatDisplayEventDate, sanitizePrefilledEventDateKey } from "@/lib/bookingDateTime";
+import {
+  applyEventDateFieldChange,
+  getTodayDateKey,
+  formatDisplayEventDate,
+  sanitizePrefilledEventDateKey,
+} from "@/lib/bookingDateTime";
 import {
   getEventFormFieldErrors,
   hasEventFormFieldErrors,
@@ -802,7 +807,17 @@ function EventsPageClientView({
   }
 
   function updateField<Key extends keyof EventInput>(key: Key, value: EventInput[Key]) {
-    setForm((prev) => ({ ...prev, [key]: value }));
+    setForm((prev) => {
+      if (key === "eventDate" && typeof value === "string") {
+        return {
+          ...prev,
+          eventDate: value,
+          setTime: applyEventDateFieldChange(prev.eventDate, value, prev.setTime),
+        };
+      }
+
+      return { ...prev, [key]: value };
+    });
   }
 
   function openInviteModal() {
