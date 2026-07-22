@@ -44,6 +44,8 @@ import { getTodayDateKey } from "@/lib/bookingDateTime";
 import {
   getEventFormFieldErrors,
   hasEventFormFieldErrors,
+  MAX_EVENT_NAME_LENGTH,
+  MAX_EVENT_VENUE_LENGTH,
 } from "@/lib/events/eventFormFieldValidation";
 import EventCoverImageField, {
   emptyEventCoverImageFieldState,
@@ -1227,6 +1229,7 @@ function EventDetailPageView() {
                   value={editForm.name}
                   onChange={(value) => setEditForm((prev) => (prev ? { ...prev, name: value } : prev))}
                   required
+                  maxLength={MAX_EVENT_NAME_LENGTH}
                   error={editFormFieldErrors.name}
                 />
                 <PlannerFormField
@@ -1234,6 +1237,7 @@ function EventDetailPageView() {
                   value={editForm.venue}
                   onChange={(value) => setEditForm((prev) => (prev ? { ...prev, venue: value } : prev))}
                   required
+                  maxLength={MAX_EVENT_VENUE_LENGTH}
                   error={editFormFieldErrors.venue}
                 />
                 <EventCoverImageField

@@ -942,6 +942,13 @@ function testEventCreateFormTextFieldMaxLength() {
   );
   assert.match(eventsSource, /maxLength=\{MAX_EVENT_NAME_LENGTH\}/);
   assert.match(eventsSource, /maxLength=\{MAX_EVENT_VENUE_LENGTH\}/);
+
+  const eventDetailSource = readFileSync(
+    new URL("../app/events/[eventId]/page.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(eventDetailSource, /maxLength=\{MAX_EVENT_NAME_LENGTH\}/);
+  assert.match(eventDetailSource, /maxLength=\{MAX_EVENT_VENUE_LENGTH\}/);
 }
 
 function testEventPlanPickerClearsSelectionOnFormBack() {
