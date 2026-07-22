@@ -12,6 +12,7 @@ import {
   countEventNotesLines,
   MAX_EVENT_NOTES_LINES,
 } from "@/lib/events/eventNotes";
+import { applyTextInputLimit } from "@/lib/textInputLimits";
 import { useBoundedAutoGrowTextarea } from "@/lib/useBoundedAutoGrowTextarea";
 
 export function PlannerFieldError({ message }: { message: string }) {
@@ -118,13 +119,28 @@ export function PlannerFormField({
     );
   }
 
+  function handleSingleLineChange(next: string) {
+    if (maxLength !== undefined) {
+      const limited = applyTextInputLimit(value, next, maxLength);
+
+      if (limited === null) {
+        return;
+      }
+
+      onChange(limited);
+      return;
+    }
+
+    onChange(next);
+  }
+
   return (
     <label className="block">
       <span className="ftc-label">{label}</span>
       <input
         type="text"
         value={value}
-        onChange={(event) => onChange(event.target.value)}
+        onChange={(event) => handleSingleLineChange(event.target.value)}
         placeholder={placeholder}
         required={required}
         maxLength={maxLength}

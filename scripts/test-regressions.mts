@@ -4,7 +4,13 @@ import {
   getEventFormFieldErrors,
   MAX_EVENT_NAME_LENGTH,
   MAX_EVENT_VENUE_LENGTH,
+  PLANNER_EVENT_PLAN_SHORT_TEXT_MAX_LENGTH,
 } from "../lib/events/eventFormFieldValidation";
+import {
+  assertBookingPlanFormTextFieldLimits,
+  getBookingPlanFormFieldErrors,
+} from "../lib/bookingPlans/bookingPlanFormFieldValidation";
+import { applyTextInputLimit } from "../lib/textInputLimits";
 import { readFileSync } from "node:fs";
 import { formatRateDisplay } from "../lib/bookingRate";
 import {
@@ -1112,6 +1118,49 @@ function testEventCreateFormTextFieldMaxLength() {
   );
   assert.match(eventDetailSource, /maxLength=\{MAX_EVENT_NAME_LENGTH\}/);
   assert.match(eventDetailSource, /maxLength=\{MAX_EVENT_VENUE_LENGTH\}/);
+
+  assert.equal(PLANNER_EVENT_PLAN_SHORT_TEXT_MAX_LENGTH, 30);
+  assert.equal(MAX_EVENT_NAME_LENGTH, MAX_EVENT_VENUE_LENGTH);
+
+  const planErrors = getBookingPlanFormFieldErrors({
+    name: "a".repeat(31),
+    eventName: "Event",
+    venue: "Venue",
+  });
+  assert.match(planErrors.name ?? "", /Plan name must be 30 characters or fewer/);
+
+  assert.throws(
+    () =>
+      assertBookingPlanFormTextFieldLimits({
+        name: "Plan",
+        eventName: "Event",
+        venue: "v".repeat(31),
+      }),
+    /Venue must be 30 characters or fewer/,
+  );
+
+  assert.equal(applyTextInputLimit("short", "x".repeat(31), 30), "x".repeat(30));
+  assert.equal(applyTextInputLimit("x".repeat(35), "x".repeat(34), 30), "x".repeat(34));
+
+  const bookingPlansSource = readFileSync(
+    new URL("../app/(planner-workspace)/booking-plans/page.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(bookingPlansSource, /maxLength=\{MAX_BOOKING_PLAN_NAME_LENGTH\}/);
+  assert.match(bookingPlansSource, /getBookingPlanFormFieldErrors/);
+
+  const bookingsSource = readFileSync(
+    new URL("../app/(planner-workspace)/bookings/page.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(bookingsSource, /maxLength=\{MAX_EVENT_NAME_LENGTH\}/);
+  assert.match(bookingsSource, /getEventNameVenueFieldErrors/);
+
+  const plannerUiSource = readFileSync(
+    new URL("../app/components/planner/PlannerUi.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(plannerUiSource, /applyTextInputLimit\(value, next, maxLength\)/);
 }
 
 function testEventPlanPickerClearsSelectionOnFormBack() {

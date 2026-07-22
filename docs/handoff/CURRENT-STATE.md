@@ -130,6 +130,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 
 ## Event Plans
 
+- **Event/plan short text limits (2026-07-22):** Event name, venue, and plan name share **`PLANNER_EVENT_PLAN_SHORT_TEXT_MAX_LENGTH` (30)** via `eventFormFieldValidation` + `bookingPlanFormFieldValidation`; `PlannerFormField` uses `applyTextInputLimit` on single-line inputs; save blocked when over limit (legacy longer DB values display until shortened).
 - **Event Plans load perf (2026-07-21):** session/local list cache + workspace prefetch (`ensureBookingPlansListPrefetched` from Events sub-nav) — stale-while-revalidate on mount; create/edit/delete update cache; avoids skeleton + duplicate wait on repeat Events ↔ Event Plans navigation
 - **Mobile cards (2026-07-14):** compact layout below `sm` — title + vertically centred Use plan on one row; inline `Event` / `Venue` labels with `text-ftc-text-secondary` values and `text-ftc-text-muted` separator on one truncated line; NOTES label only when notes exist; tighter card padding and list spacing; desktop grid unchanged
 - **Event Plans polish (2026-07-14):** removed redundant “Saved Event Plans” heading; stronger title/meta hierarchy; 2-line notes preview; weighted Use plan outline button; History-matched bulk delete rows (`FTC_SURFACE_ROW_CLASS`, checkbox, toolbar)

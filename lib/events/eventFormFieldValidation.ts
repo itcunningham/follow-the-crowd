@@ -7,8 +7,12 @@ import {
 } from "@/lib/bookingDateTime";
 import { getTextLengthValidationError } from "@/lib/textInputLimits";
 
-export const MAX_EVENT_NAME_LENGTH = 30;
-export const MAX_EVENT_VENUE_LENGTH = 30;
+/** Shared 30-character cap for planner event/plan name and venue fields. */
+export const PLANNER_EVENT_PLAN_SHORT_TEXT_MAX_LENGTH = 30;
+
+export const MAX_EVENT_NAME_LENGTH = PLANNER_EVENT_PLAN_SHORT_TEXT_MAX_LENGTH;
+export const MAX_EVENT_VENUE_LENGTH = PLANNER_EVENT_PLAN_SHORT_TEXT_MAX_LENGTH;
+export const MAX_BOOKING_PLAN_NAME_LENGTH = PLANNER_EVENT_PLAN_SHORT_TEXT_MAX_LENGTH;
 
 export type EventFormFieldErrors = {
   name?: string;
@@ -18,6 +22,59 @@ export type EventFormFieldErrors = {
   finishTime?: string;
 };
 
+export type EventNameVenueFieldErrors = Pick<EventFormFieldErrors, "name" | "venue">;
+
+function getEventNameFieldError(name: string): string | undefined {
+  if (!name.trim()) {
+    return "Enter an event name";
+  }
+
+  const nameLengthError = getTextLengthValidationError(
+    name,
+    MAX_EVENT_NAME_LENGTH,
+    "Event name",
+  );
+
+  return nameLengthError ?? undefined;
+}
+
+function getVenueFieldError(venue: string): string | undefined {
+  if (!venue.trim()) {
+    return "Enter a venue";
+  }
+
+  const venueLengthError = getTextLengthValidationError(
+    venue,
+    MAX_EVENT_VENUE_LENGTH,
+    "Venue",
+  );
+
+  return venueLengthError ?? undefined;
+}
+
+export function getEventNameVenueFieldErrors(input: {
+  name: string;
+  venue: string;
+}): EventNameVenueFieldErrors {
+  const errors: EventNameVenueFieldErrors = {};
+
+  const nameError = getEventNameFieldError(input.name);
+  if (nameError) {
+    errors.name = nameError;
+  }
+
+  const venueError = getVenueFieldError(input.venue);
+  if (venueError) {
+    errors.venue = venueError;
+  }
+
+  return errors;
+}
+
+export function hasEventNameVenueFieldErrors(errors: EventNameVenueFieldErrors): boolean {
+  return Boolean(errors.name || errors.venue);
+}
+
 export function getEventFormFieldErrors(input: {
   name: string;
   venue: string;
@@ -26,32 +83,14 @@ export function getEventFormFieldErrors(input: {
 }): EventFormFieldErrors {
   const errors: EventFormFieldErrors = {};
 
-  if (!input.name.trim()) {
-    errors.name = "Enter an event name";
-  } else {
-    const nameLengthError = getTextLengthValidationError(
-      input.name,
-      MAX_EVENT_NAME_LENGTH,
-      "Event name",
-    );
-
-    if (nameLengthError) {
-      errors.name = nameLengthError;
-    }
+  const nameError = getEventNameFieldError(input.name);
+  if (nameError) {
+    errors.name = nameError;
   }
 
-  if (!input.venue.trim()) {
-    errors.venue = "Enter a venue";
-  } else {
-    const venueLengthError = getTextLengthValidationError(
-      input.venue,
-      MAX_EVENT_VENUE_LENGTH,
-      "Venue",
-    );
-
-    if (venueLengthError) {
-      errors.venue = venueLengthError;
-    }
+  const venueError = getVenueFieldError(input.venue);
+  if (venueError) {
+    errors.venue = venueError;
   }
 
   const trimmedDate = input.eventDate.trim();

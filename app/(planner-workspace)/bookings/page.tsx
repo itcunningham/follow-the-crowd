@@ -37,6 +37,12 @@ import EventDjSendOfferControls, {
 } from "@/app/components/booking/EventDjSendOfferControls";
 import { PlannerEmptyState, PlannerFormField } from "@/app/components/planner/PlannerUi";
 import { getEventNotesValidationError, MAX_EVENT_NOTES_LENGTH } from "@/lib/events/eventNotes";
+import {
+  getEventNameVenueFieldErrors,
+  hasEventNameVenueFieldErrors,
+  MAX_EVENT_NAME_LENGTH,
+  MAX_EVENT_VENUE_LENGTH,
+} from "@/lib/events/eventFormFieldValidation";
 import ArchiveAllBookingRequestsButton from "@/app/components/ArchiveAllBookingRequestsButton";
 import {
   HistoryManageButton,
@@ -473,6 +479,25 @@ function BookingsPageContent() {
     return name || null;
   }, [effectiveSelectedPlanId, bookingPlans]);
 
+  const detailsFormFieldErrors = useMemo(() => {
+    if (!createOpen || effectiveCreateStep !== "details") {
+      return {};
+    }
+
+    return getEventNameVenueFieldErrors({
+      name: form.eventName,
+      venue: form.venue,
+    });
+  }, [createOpen, effectiveCreateStep, form.eventName, form.venue]);
+
+  const detailsFormTextValidationError = useMemo(() => {
+    if (!createOpen || effectiveCreateStep !== "details") {
+      return null;
+    }
+
+    return detailsFormFieldErrors.name ?? detailsFormFieldErrors.venue ?? null;
+  }, [createOpen, detailsFormFieldErrors, effectiveCreateStep]);
+
   const detailsFormDateValidationError = useMemo(() => {
     if (!createOpen || effectiveCreateStep !== "details") {
       return null;
@@ -493,7 +518,9 @@ function BookingsPageContent() {
   }, [createOpen, effectiveCreateStep, form.notes]);
 
   const detailsFormValidationError =
-    detailsFormDateValidationError ?? detailsFormNotesValidationError;
+    detailsFormTextValidationError ??
+    detailsFormDateValidationError ??
+    detailsFormNotesValidationError;
 
   const sendOfferSummary = useMemo(() => {
     return sendableSelectedDjIds.map((djId) => {
@@ -1210,12 +1237,17 @@ function BookingsPageContent() {
   function handleContinueToDjSelection(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (
-      !form.eventName.trim() ||
-      !form.venue.trim() ||
-      !form.eventDate.trim() ||
-      !form.setTime.trim()
-    ) {
+    const nameVenueErrors = getEventNameVenueFieldErrors({
+      name: form.eventName,
+      venue: form.venue,
+    });
+
+    if (hasEventNameVenueFieldErrors(nameVenueErrors)) {
+      setError(nameVenueErrors.name ?? nameVenueErrors.venue ?? "Please fill in all required booking details");
+      return;
+    }
+
+    if (!form.eventDate.trim() || !form.setTime.trim()) {
       setError("Please fill in all required booking details");
       return;
     }
@@ -1692,6 +1724,8 @@ function BookingsPageContent() {
                     onChange={(value) => updateField("eventName", value)}
                     placeholder="Event name"
                     required
+                    maxLength={MAX_EVENT_NAME_LENGTH}
+                    error={detailsFormFieldErrors.name}
                   />
                   <PlannerFormField
                     label="Venue"
@@ -1699,6 +1733,8 @@ function BookingsPageContent() {
                     onChange={(value) => updateField("venue", value)}
                     placeholder="Venue"
                     required
+                    maxLength={MAX_EVENT_VENUE_LENGTH}
+                    error={detailsFormFieldErrors.venue}
                   />
                   <BookingDateField
                     label="Event date"

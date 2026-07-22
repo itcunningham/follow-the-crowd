@@ -17,6 +17,15 @@ import {
 } from "@/app/components/history/HistoryBulkManage";
 import { getEventNotesValidationError, MAX_EVENT_NOTES_LENGTH } from "@/lib/events/eventNotes";
 import {
+  MAX_BOOKING_PLAN_NAME_LENGTH,
+  MAX_EVENT_NAME_LENGTH,
+  MAX_EVENT_VENUE_LENGTH,
+} from "@/lib/events/eventFormFieldValidation";
+import {
+  getBookingPlanFormFieldErrors,
+  hasBookingPlanFormFieldErrors,
+} from "@/lib/bookingPlans/bookingPlanFormFieldValidation";
+import {
   createBookingPlan,
   deleteBookingPlans,
   listBookingPlans,
@@ -198,6 +207,27 @@ export default function BookingPlansPage() {
 
   const planBulkManage = useHistoryBulkManage(plans);
 
+  const planFormFieldErrors = useMemo(() => {
+    if (!formOpen) {
+      return {};
+    }
+
+    return getBookingPlanFormFieldErrors(form);
+  }, [formOpen, form.name, form.eventName, form.venue]);
+
+  const planFormTextValidationError = useMemo(() => {
+    if (!formOpen) {
+      return null;
+    }
+
+    return (
+      planFormFieldErrors.name ??
+      planFormFieldErrors.eventName ??
+      planFormFieldErrors.venue ??
+      null
+    );
+  }, [formOpen, planFormFieldErrors]);
+
   const planFormNotesValidationError = useMemo(() => {
     if (!formOpen) {
       return null;
@@ -205,7 +235,7 @@ export default function BookingPlansPage() {
 
     return getEventNotesValidationError(form.notes);
   }, [formOpen, form.notes]);
-  const planFormValidationError = planFormNotesValidationError;
+  const planFormValidationError = planFormTextValidationError ?? planFormNotesValidationError;
 
   const visiblePlans = useMemo(() => {
     if (planBulkManage.removingIds.size === 0) {
@@ -344,8 +374,15 @@ export default function BookingPlansPage() {
   async function handleSavePlan(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (!form.name.trim() || !form.eventName.trim() || !form.venue.trim()) {
-      setError("Please fill in all required plan fields.");
+    const fieldErrors = getBookingPlanFormFieldErrors(form);
+
+    if (hasBookingPlanFormFieldErrors(fieldErrors)) {
+      setError(
+        fieldErrors.name ??
+          fieldErrors.eventName ??
+          fieldErrors.venue ??
+          "Please fill in all required plan fields.",
+      );
       return;
     }
 
@@ -499,6 +536,8 @@ export default function BookingPlansPage() {
                   onChange={(value) => updateField("name", value)}
                   placeholder="Plan name"
                   required
+                  maxLength={MAX_BOOKING_PLAN_NAME_LENGTH}
+                  error={planFormFieldErrors.name}
                 />
                 <PlannerFormField
                   label="Event name"
@@ -506,6 +545,8 @@ export default function BookingPlansPage() {
                   onChange={(value) => updateField("eventName", value)}
                   placeholder="Event name"
                   required
+                  maxLength={MAX_EVENT_NAME_LENGTH}
+                  error={planFormFieldErrors.eventName}
                 />
                 <PlannerFormField
                   label="Venue"
@@ -513,6 +554,8 @@ export default function BookingPlansPage() {
                   onChange={(value) => updateField("venue", value)}
                   placeholder="Venue"
                   required
+                  maxLength={MAX_EVENT_VENUE_LENGTH}
+                  error={planFormFieldErrors.venue}
                 />
                 <PlannerFormField
                   label="Notes"

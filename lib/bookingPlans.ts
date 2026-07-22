@@ -2,6 +2,7 @@ import { supabase } from "@/lib/supabaseClient";
 import type { BookingRequestInput } from "@/lib/bookingRequests";
 import { normalizeStoredRate } from "@/lib/bookingRate";
 import { getCurrentUserId } from "@/lib/user/currentUser";
+import { assertBookingPlanFormTextFieldLimits } from "@/lib/bookingPlans/bookingPlanFormFieldValidation";
 
 export type BookingPlan = {
   id: string;
@@ -84,6 +85,7 @@ export async function getBookingPlanById(planId: string): Promise<BookingPlan | 
 }
 
 export async function createBookingPlan(input: BookingPlanInput): Promise<BookingPlan> {
+  assertBookingPlanFormTextFieldLimits(input);
   const userId = await getCurrentUserId();
 
   const { data, error } = await supabase
@@ -106,6 +108,7 @@ export async function updateBookingPlan(
   planId: string,
   input: BookingPlanInput,
 ): Promise<BookingPlan> {
+  assertBookingPlanFormTextFieldLimits(input);
   const userId = await getCurrentUserId();
 
   const { data, error } = await supabase
