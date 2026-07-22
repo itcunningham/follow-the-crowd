@@ -1203,7 +1203,7 @@ function testEventsCreateFlowTabPillNavigation() {
   assert.ok(tabLinkHandler.length > 0, "handleEventsListTabLinkClick not found");
   assert.match(controlsSource, /eventsListTabPillClass\(!createOpen && !isHistoryTab\)/);
   assert.match(controlsSource, /eventsListTabPillClass\(!createOpen && isHistoryTab\)/);
-  assert.match(source, /<EventsWorkspacePage/);
+  assert.match(source, /<EventsListTabControls/);
   assert.match(tabLinkHandler, /createOpen && !isCalendarCreateFlow/);
   assert.match(
     tabLinkHandler,
@@ -1251,7 +1251,7 @@ function testEventsCreateEventHiddenDuringHistorySelectionToolbar() {
   assert.match(source, /hideEventsHeaderCreateForCalendarFlow/);
   assert.match(source, /isCalendarCreateFlow && \(createOpen \|\| pathname === "\/events"\)/);
   assert.match(source, /EVENTS_HEADER_CREATE_EVENT_PLACEHOLDER/);
-  assert.match(source, /headerActions=\{workspaceHeaderActions\}/);
+  assert.match(source, /actions=\{workspaceHeaderActions\}/);
 }
 
 function testEventPlansSelectionToolbarMatchesHistory() {
@@ -1466,24 +1466,15 @@ function testEventsListTabControlsMatchLoadingShellAndLoadedPage() {
     new URL("../app/(planner-workspace)/events/EventsPageClient.tsx", import.meta.url),
     "utf8",
   );
-  const workspacePageSource = readFileSync(
-    new URL("../app/components/events/EventsWorkspacePage.tsx", import.meta.url),
+  const controlsSource = readFileSync(
+    new URL("../app/components/events/EventsListTabControls.tsx", import.meta.url),
     "utf8",
   );
-  const loadingSource = readFileSync(
-    new URL("../app/(planner-workspace)/events/loading.tsx", import.meta.url),
-    "utf8",
-  );
-  const layoutSource = readFileSync(
-    new URL("../app/components/planner/PlannerWorkspaceLayout.tsx", import.meta.url),
-    "utf8",
-  );
-  assert.match(skeletonSource, /<EventsWorkspacePage[\s\S]*loadingShell/);
-  assert.match(clientSource, /<EventsWorkspacePage/);
-  assert.match(clientSource, /loadingShell=\{!eventsListReady\}/);
-  assert.match(workspacePageSource, /EventsListTabControls/);
-  assert.match(loadingSource, /<OnboardingGuard>/);
-  assert.match(layoutSource, /EventsWorkspaceCreateEventAction disabled/);
+  assert.match(skeletonSource, /<EventsListTabControls[\s\S]*loadingShell/);
+  assert.match(clientSource, /<EventsListTabControls/);
+  assert.match(skeletonSource, /EventsWorkspaceCreateEventAction disabled/);
+  assert.match(controlsSource, /FTC_EVENTS_LIST_TAB_PILL_ROW_CLASS/);
+  assert.match(controlsSource, /eventsListTabPillClass/);
 
   const loadingActive = resolveEventsListTabRowChrome({
     isPlanner: true,

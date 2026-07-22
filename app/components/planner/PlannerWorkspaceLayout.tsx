@@ -13,7 +13,6 @@ import {
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import PlannerEventsSubNav from "@/app/components/PlannerEventsSubNav";
-import { EventsWorkspaceCreateEventAction } from "@/app/components/events/EventsListTabControls";
 import { MOBILE_NAV_OFFSET_CLASS } from "@/app/components/AppNavigation";
 import AppNavigation from "@/app/components/AppNavigation";
 import {
@@ -198,7 +197,14 @@ export function PlannerWorkspacePageHeader({
 
 function resolveDefaultWorkspaceActions(pathname: string, role: UserRole | null): ReactNode {
   if (pathname === "/events" && canManageEvents(role)) {
-    return <EventsWorkspaceCreateEventAction disabled />;
+    return (
+      <Link
+        href="/events?create=event"
+        className="shrink-0 ftc-btn-primary px-4 py-2.5 text-sm uppercase tracking-wide"
+      >
+        Create event
+      </Link>
+    );
   }
 
   if (pathname === "/booking-plans" || pathname.startsWith("/booking-plans/")) {

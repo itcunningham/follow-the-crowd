@@ -183,7 +183,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 - **Desktop consistency tokens:** shared primary surface (`PLANNER_WORKSPACE_PRIMARY_SURFACE_CLASS`), list spacing (`PLANNER_WORKSPACE_LIST_CLASS`), title-row baseline alignment; Calendar reference shell — no duplicate in-card titles on desktop; loading skeletons match loaded layout
 - **Events list cards (2026-07-14):** smaller list artwork (~14%), bolder title, compact status badge + booking stat chips, full-card tap target with chevron as visual cue only
 - **Events list card polish (2026-07-20):** two-column Gigs pattern — artwork left, left-aligned body stack (GigCardHeader + GigCardMetaRows rhythm), status + chevron top-right, compact stat chips below time
-- **Events loading chrome (2026-07-22):** Route `loading.tsx`, Suspense fallback, and loaded page share `EventsWorkspacePage` (single `PlannerWorkspacePage` + `EventsListTabControls` tree); list fetch keeps `loadingShell` until `eventsListReady`; default header Create uses disabled `<button>` matching the shell; route loading wrapped in `OnboardingGuard` like the loaded page.
+- **Events loading chrome (2026-07-22):** `EventsListTabControls` + `loadingShell` shared between route loading shell and loaded client (`eb70e53`); attempted `EventsWorkspacePage` wrapper (`f927644`) reverted — caused circular import via `PlannerWorkspaceLayout` → `EventsListTabControls` → `ftcDesignSystem` → `PlannerWorkspaceLayout`.
 - **Event detail page (2026-07-14):** shorter hero (~25%), icon-led event summary block, compact lineup booking cards aligned with DM cards, Invite DJs action label, cancel event moved below bookings, flat action cards, dashed run sheet empty state
 - **Invite DJs sheet (2026-07-14):** full-card tap selection with avatar checkmark, icon search field, compact DJ row hierarchy, dynamic confirm button label
 - **Event detail visual consistency (2026-07-14):** shared `eventDetailUi` tokens — unified section titles (`text-base font-bold`), card padding (`p-3.5 sm:p-4`), button heights (`min-h-10`), compact status badges (9px), feedback banners, Run Sheet / Bookings / Notes / Your booking headings aligned; Invite DJs modal matches same language
@@ -211,7 +211,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
-- `<pending>` — fix events loading chrome layout shift
+- `f927644` — fix events loading chrome layout shift
 - `eb70e53` — stabilise events active history filters during loading
 
 - `ed846e5` — fix persistent workspace tab label glitch
