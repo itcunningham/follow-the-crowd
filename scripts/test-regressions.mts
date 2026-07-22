@@ -657,8 +657,10 @@ function testWorkspaceActiveHrefIgnoresStaleOverrides() {
   assert.equal(resolveActiveWorkspaceHref("/calendar"), "/calendar");
   assert.equal(resolveActiveWorkspaceHref("/calendar", "/events"), "/calendar");
   assert.equal(resolveActiveWorkspaceHref("/events"), "/events");
+  assert.equal(resolveActiveWorkspaceHref("/events", "/calendar"), "/calendar");
   assert.equal(resolveActiveWorkspaceHref("/bookings", "/booking-plans"), "/booking-plans");
   assert.equal(resolveActiveWorkspaceHref("/bookings"), "/bookings");
+  assert.equal(resolveActiveWorkspaceHref("/events", "/booking-plans"), "/events");
 }
 
 function testProfileIdentityPresentationHierarchy() {

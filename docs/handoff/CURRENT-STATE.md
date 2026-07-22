@@ -111,6 +111,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 - Default send button label mode: **Confirm N DJ(s)** (`SendBookingRequestsPanel`)
 - Unavailable-DJ confirm modal uses Confirm wording
 - Calendar-origin and standard create flows aligned on copy and validation
+- **Calendar create workspace tab (2026-07-22):** Calendar-originated Create Event / Saved Event Plans on `/events` keep CALENDAR highlighted via `resolveEventsWorkspaceActiveHref` + `resolveActiveWorkspaceHref` calendar override (return/cancel unchanged)
 - **Gigs History cards (2026-07-15):** `Fixed ·` / `Open offer` fee copy aligned with Incoming/Confirmed; tighter info-to-actions spacing; shorter View event (primary) + Open DM (subdued) buttons
 - **Gigs Confirmed tab (2026-07-19):** received gigs reload after booking acceptance (`ftc-notifications-updated` + tab visibility) so accepted bookings appear in Confirmed without stale client state; gig date keys use shared `resolveEventDateKey` (legacy + ISO); `?tab=confirmed` URL alias maps to Confirmed
 - **Gigs tab row (2026-07-19):** shared `DjGigsTabs` + `DjGigsTabRow` use compact content-width pills in a `shrink-0 gap-2` cluster (no `flex-1` stretch), reserved count slots, and a reserved History manage slot (`h-9 w-9`) so tabs, counts and bin match the reference layout at 390px

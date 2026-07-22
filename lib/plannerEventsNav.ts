@@ -98,6 +98,13 @@ export function resolveActiveWorkspaceHref(
     return override;
   }
 
+  if (
+    pathnameHref === EVENTS_AREA_SUB_NAV.events.href &&
+    override === EVENTS_AREA_SUB_NAV.calendar.href
+  ) {
+    return override;
+  }
+
   return pathnameHref;
 }
 
