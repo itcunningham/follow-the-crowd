@@ -1095,7 +1095,8 @@ function testCalendarLoadUsesCacheAndPrefetch() {
   assert.match(djCalendarSource, /writeDjGigsCalendarCache\(\{ entries, bookings: activeBookings \}\)/);
 
   assert.match(bothCalendarSource, /plannerTabMounted/);
-  assert.match(bothCalendarSource, /activeTab === "planner" \? undefined : "hidden"/);
+  assert.match(bothCalendarSource, /activeTab === "planner" \? "contents" : "hidden"/);
+  assert.match(bothCalendarSource, /activeTab === "dj" \? "contents" : "hidden"/);
 
   assert.match(subNavSource, /ensurePlannerCalendarItemsPrefetched/);
   assert.match(subNavSource, /ensureDjGigsCalendarPrefetched/);

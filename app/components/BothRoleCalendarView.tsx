@@ -146,7 +146,7 @@ export default function BothRoleCalendarView({ activeTab }: BothRoleCalendarView
   return (
     <section className={`${PLANNER_WORKSPACE_PRIMARY_SURFACE_CLASS} flex flex-col`}>
       {plannerTabMounted ? (
-        <div className={activeTab === "planner" ? undefined : "hidden"}>
+        <div className={activeTab === "planner" ? "contents" : "hidden"}>
           <PlannerCalendar
             variant="dual"
             isActive={activeTab === "planner"}
@@ -157,7 +157,7 @@ export default function BothRoleCalendarView({ activeTab }: BothRoleCalendarView
         </div>
       ) : null}
       {djTabMounted ? (
-        <div className={activeTab === "dj" ? undefined : "hidden"}>
+        <div className={activeTab === "dj" ? "contents" : "hidden"}>
           <DjAvailabilityCalendar
             variant="dual"
             isActive={activeTab === "dj"}
