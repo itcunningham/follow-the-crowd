@@ -1,8 +1,12 @@
 "use client";
 
 import type { ButtonHTMLAttributes, ReactNode } from "react";
-import { useEffect, useRef, useState } from "react";
-import { formatPlannerCalendarItemHeadline } from "@/lib/calendar";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import {
+  doesFullCalendarTitleFit,
+  resolveCompactCalendarEventOnlyTitle,
+  resolveCompactCalendarFullTitle,
+} from "@/lib/calendar/compactCalendarEventVenueTitle";
 
 export const CALENDAR_MOBILE_INTERACTIVE_PRESS_CLASS =
   "active:scale-[0.98] transition duration-150 ease-out motion-reduce:transition-none motion-reduce:transform-none";
@@ -45,7 +49,7 @@ export const CALENDAR_MOBILE_AGENDA_CARD_HEADER_ROW_CLASS =
 
 export const CALENDAR_MOBILE_AGENDA_CARD_TITLE_SLOT_CLASS = "min-w-0 flex-1 overflow-hidden";
 
-/** One continuous Event · Venue line; browser ellipsis on the full string. */
+/** Single left-aligned title line; CSS ellipsis when the chosen string overflows. */
 export const CALENDAR_MOBILE_AGENDA_CARD_TITLE_CLASS =
   "block min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-sm font-semibold text-ftc-text";
 
@@ -63,8 +67,51 @@ export function CompactCalendarEventVenueTitle({
   venue?: string | null;
   className?: string;
 }) {
+  const titleRef = useRef<HTMLSpanElement>(null);
+  const hasVenue = Boolean(venue?.trim());
+  const fullTitle = useMemo(
+    () => (hasVenue ? resolveCompactCalendarFullTitle(eventName, venue) : ""),
+    [eventName, hasVenue, venue],
+  );
+  const eventOnlyTitle = useMemo(
+    () => resolveCompactCalendarEventOnlyTitle(eventName),
+    [eventName],
+  );
+  const [displayText, setDisplayText] = useState(() =>
+    hasVenue ? fullTitle : eventOnlyTitle,
+  );
+
+  useLayoutEffect(() => {
+    const element = titleRef.current;
+
+    if (!element) {
+      return;
+    }
+
+    if (!hasVenue) {
+      setDisplayText(eventOnlyTitle);
+      return;
+    }
+
+    function syncDisplayText() {
+      const fits = doesFullCalendarTitleFit(element!.clientWidth, fullTitle, className);
+      setDisplayText(fits ? fullTitle : eventOnlyTitle);
+    }
+
+    syncDisplayText();
+
+    const observer = new ResizeObserver(syncDisplayText);
+    observer.observe(element);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [className, eventOnlyTitle, fullTitle, hasVenue]);
+
   return (
-    <span className={className}>{formatPlannerCalendarItemHeadline(eventName, venue)}</span>
+    <span ref={titleRef} className={className}>
+      {displayText}
+    </span>
   );
 }
 

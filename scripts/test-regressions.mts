@@ -13,6 +13,10 @@ import {
 } from "../lib/bookingPlans/bookingPlanFormFieldValidation";
 import { applyTextInputLimit } from "../lib/textInputLimits";
 import { formatPlannerCalendarItemHeadline } from "../lib/calendar";
+import {
+  resolveCompactCalendarDisplayTitle,
+  resolveCompactCalendarEventOnlyTitle,
+} from "../lib/calendar/compactCalendarEventVenueTitle";
 import { readFileSync } from "node:fs";
 import { formatRateDisplay } from "../lib/bookingRate";
 import {
@@ -1814,18 +1818,28 @@ function testCompactCalendarEventVenueTitleTruncates() {
     new URL("../app/components/calendar/calendarMobileUi.tsx", import.meta.url),
     "utf8",
   );
+  const compactTitleSource = readFileSync(
+    new URL("../lib/calendar/compactCalendarEventVenueTitle.ts", import.meta.url),
+    "utf8",
+  );
   const plannerCalendarSource = readFileSync(
     new URL("../app/components/PlannerCalendar.tsx", import.meta.url),
     "utf8",
   );
 
   assert.match(mobileUiSource, /CompactCalendarEventVenueTitle/);
-  assert.match(mobileUiSource, /formatPlannerCalendarItemHeadline/);
+  assert.match(mobileUiSource, /doesFullCalendarTitleFit/);
+  assert.match(mobileUiSource, /ResizeObserver/);
+  assert.doesNotMatch(mobileUiSource, /formatPlannerCalendarItemHeadline/);
   assert.doesNotMatch(mobileUiSource, /CALENDAR_MOBILE_AGENDA_CARD_TITLE_ROW_CLASS/);
   assert.doesNotMatch(mobileUiSource, /CALENDAR_MOBILE_AGENDA_CARD_TITLE_EVENT_CLASS/);
   assert.doesNotMatch(mobileUiSource, /formatCompactCalendarEventVenueTitle/);
   assert.match(mobileUiSource, /overflow-hidden text-ellipsis whitespace-nowrap/);
   assert.match(mobileUiSource, /CALENDAR_MOBILE_AGENDA_CARD_BADGE_SLOT_CLASS[\s\S]*basis-\[5\.75rem\]/);
+  assert.match(compactTitleSource, /formatPlannerCalendarItemHeadline/);
+  assert.match(compactTitleSource, /doesFullCalendarTitleFit/);
+  assert.doesNotMatch(compactTitleSource, /\.\.\./);
+  assert.doesNotMatch(compactTitleSource, /slice\s*\(/);
   assert.match(plannerCalendarSource, /CompactCalendarEventVenueTitle/);
 
   assert.equal(
@@ -1834,6 +1848,21 @@ function testCompactCalendarEventVenueTitleTruncates() {
   );
   assert.equal(formatPlannerCalendarItemHeadline("Warehouse Session", ""), "Warehouse Session");
   assert.equal(formatPlannerCalendarItemHeadline("Warehouse Session", "   "), "Warehouse Session");
+
+  assert.equal(resolveCompactCalendarEventOnlyTitle("  Beta  "), "Beta");
+  assert.equal(resolveCompactCalendarEventOnlyTitle(""), "Untitled event");
+  assert.equal(
+    resolveCompactCalendarDisplayTitle("Warehouse Session", "Revolver", true),
+    "Warehouse Session · Revolver",
+  );
+  assert.equal(
+    resolveCompactCalendarDisplayTitle("Warehouse Session", "Revolver", false),
+    "Warehouse Session",
+  );
+  assert.equal(
+    resolveCompactCalendarDisplayTitle("Warehouse Session", "", true),
+    "Warehouse Session",
+  );
 }
 
 async function main() {
