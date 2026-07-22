@@ -1,6 +1,9 @@
+import type { CalendarOriginState } from "@/lib/bookings/gigsCalendarNavigation";
 import {
   buildCalendarOriginReturnHref,
   parseCalendarOriginFromEventDetail,
+  parseCalendarOriginReturnParams,
+  resolveCalendarOriginEventHref,
 } from "@/lib/calendar";
 import { DM_BOOKING_FOCUS_SCROLL_ONLY } from "@/lib/dm/chatBookingTarget";
 import { looksLikeUserId } from "@/lib/user/displayName";
@@ -57,7 +60,23 @@ export function resolveDmThreadBackHref(context: DmThreadBackContext): string {
   }
 
   if (from === "event-detail") {
-    return resolveValidatedEventDetailBackHref(context.eventId) ?? "/events";
+    const eventHref = resolveValidatedEventDetailBackHref(context.eventId);
+
+    if (!eventHref) {
+      return "/events";
+    }
+
+    const calendarOrigin = parseCalendarOriginReturnParams(
+      context.calendarDate,
+      context.calendarView,
+      context.calendarMonth,
+    );
+
+    if (calendarOrigin) {
+      return resolveCalendarOriginEventHref(eventHref, calendarOrigin);
+    }
+
+    return eventHref;
   }
 
   if (from === "bookings") {
@@ -97,6 +116,9 @@ export function buildDmThreadHref(
     eventId?: string;
     bookingRequestId?: string;
     bookingFocus?: typeof DM_BOOKING_FOCUS_SCROLL_ONLY;
+    calendarDate?: string;
+    calendarView?: CalendarOriginState["calendarView"];
+    calendarMonth?: string;
   },
 ): string {
   const params = new URLSearchParams();
@@ -121,6 +143,18 @@ export function buildDmThreadHref(
     params.set("bookingFocus", DM_BOOKING_FOCUS_SCROLL_ONLY);
   }
 
+  if (options?.calendarDate?.trim()) {
+    params.set("calendarDate", options.calendarDate.trim());
+  }
+
+  if (options?.calendarView === "event" || options?.calendarView === "dj") {
+    params.set("calendarView", options.calendarView);
+  }
+
+  if (options?.calendarMonth?.trim()) {
+    params.set("calendarMonth", options.calendarMonth.trim());
+  }
+
   const query = params.toString();
 
   return query ? `/dm/${conversationId}?${query}` : `/dm/${conversationId}`;
@@ -129,9 +163,13 @@ export function buildDmThreadHref(
 export function buildEventDetailDmThreadHref(
   conversationId: string,
   eventId: string,
+  calendarOrigin?: CalendarOriginState | null,
 ): string {
   return buildDmThreadHref(conversationId, {
     from: "event-detail",
     eventId,
+    calendarDate: calendarOrigin?.calendarDate,
+    calendarView: calendarOrigin?.calendarView,
+    calendarMonth: calendarOrigin?.calendarMonth,
   });
 }

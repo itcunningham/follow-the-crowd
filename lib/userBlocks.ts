@@ -22,7 +22,7 @@ export function getDmBlockBannerMessage(
   }
 
   if (status.blockedMe) {
-    return "You can no longer send messages in this conversation.";
+    return "You can no longer send messages in this conversation";
   }
 
   return null;

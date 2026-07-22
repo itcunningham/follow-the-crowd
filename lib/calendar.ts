@@ -840,6 +840,34 @@ export function parseCalendarOriginFromEventDetail(searchParams: {
   };
 }
 
+export function parseCalendarOriginReturnParams(
+  calendarDate: string | null | undefined,
+  calendarView: string | null | undefined,
+  calendarMonth: string | null | undefined,
+): CalendarOriginState | null {
+  const trimmedDate = calendarDate?.trim();
+  const trimmedView = calendarView?.trim();
+
+  if (!trimmedDate || (trimmedView !== "event" && trimmedView !== "dj")) {
+    return null;
+  }
+
+  const restoredDate = parsePlannerCalendarDateParam(trimmedDate);
+  const resolvedMonth =
+    calendarMonth?.trim() ??
+    (restoredDate ? toDateKey(getMonthStart(restoredDate)) : null);
+
+  if (!resolvedMonth) {
+    return null;
+  }
+
+  return {
+    calendarDate: trimmedDate,
+    calendarView: trimmedView,
+    calendarMonth: resolvedMonth,
+  };
+}
+
 export function resolveDjCalendarViewMonthStart(
   dateParam: string | null | undefined,
   monthParam: string | null | undefined,

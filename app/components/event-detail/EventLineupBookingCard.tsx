@@ -23,6 +23,7 @@ import {
   type BookingRequest,
 } from "@/lib/bookingRequests";
 import { buildEventDetailDmThreadHref } from "@/lib/dm/threadNavigation";
+import type { CalendarOriginState } from "@/lib/bookings/gigsCalendarNavigation";
 import type { BookingRecipientProfile } from "@/lib/user/currentUser";
 
 function getLineupRateLine(booking: BookingRequest): string {
@@ -37,6 +38,7 @@ export default function EventLineupBookingCard({
   profile,
   currentUserId,
   eventDetailId,
+  calendarOrigin = null,
   readOnly = false,
   cancelledByLabel,
   cancellationReasonLabel,
@@ -55,6 +57,7 @@ export default function EventLineupBookingCard({
   profile?: BookingRecipientProfile;
   currentUserId: string | null;
   eventDetailId?: string | null;
+  calendarOrigin?: CalendarOriginState | null;
   readOnly?: boolean;
   cancelledByLabel?: string | null;
   cancellationReasonLabel?: string | null;
@@ -162,7 +165,11 @@ export default function EventLineupBookingCard({
           <Link
             href={
               eventDetailId
-                ? buildEventDetailDmThreadHref(booking.conversation_id, eventDetailId)
+                ? buildEventDetailDmThreadHref(
+                    booking.conversation_id,
+                    eventDetailId,
+                    calendarOrigin,
+                  )
                 : `/dm/${booking.conversation_id}`
             }
             className={`${EVENT_DETAIL_BTN_SECONDARY} w-full sm:w-auto sm:min-w-[7.5rem]`}

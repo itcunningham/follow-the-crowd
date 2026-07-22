@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { looksLikeUserId } from "@/lib/user/displayName";
+import { parseCalendarOriginFromEventDetail } from "@/lib/calendar";
 import { buildEventDetailDmThreadHref } from "@/lib/dm/threadNavigation";
 import AppNavigation, { MOBILE_NAV_OFFSET_CLASS } from "@/app/components/AppNavigation";
 import EventDeleteCancelButton from "@/app/components/EventDeleteCancelButton";
@@ -198,6 +199,18 @@ function EventDetailPageView() {
         fromDmConversation: searchParams.get("fromDmConversation"),
       }),
     [searchParams],
+  );
+  const calendarOrigin = useMemo(
+    () =>
+      parseCalendarOriginFromEventDetail({
+        get: (key) => searchParams.get(key),
+      }),
+    [searchParams],
+  );
+  const buildEventDetailLineupDmHref = useCallback(
+    (conversationId: string) =>
+      buildEventDetailDmThreadHref(conversationId, eventId, calendarOrigin),
+    [calendarOrigin, eventId],
   );
 
   function goBackToEvents() {
@@ -1364,7 +1377,7 @@ function EventDetailPageView() {
                   ) : null}
                   {viewerBooking.conversation_id && !hideOpenBookingConversation ? (
                     <Link
-                      href={buildEventDetailDmThreadHref(viewerBooking.conversation_id, eventId)}
+                      href={buildEventDetailLineupDmHref(viewerBooking.conversation_id)}
                       className={`${EVENT_DETAIL_BTN_SECONDARY} w-full sm:w-auto sm:min-w-[7.5rem]`}
                     >
                       Open DM
@@ -1418,6 +1431,7 @@ function EventDetailPageView() {
                           profile={profile}
                           currentUserId={currentUserId}
                           eventDetailId={eventId}
+                          calendarOrigin={calendarOrigin}
                           readOnly={isHistoryEventDetail}
                           cancelledByLabel={resolveBookingCancelledByLabel(booking, profiles)}
                           cancellationReasonLabel={resolveBookingCancellationReasonLabel(booking)}
@@ -1464,7 +1478,7 @@ function EventDetailPageView() {
           <EventDetailBottomBar>
             <EventDetailPrimaryAction
               icon="chat"
-              href={buildEventDetailDmThreadHref(viewerBooking.conversation_id, eventId)}
+              href={buildEventDetailLineupDmHref(viewerBooking.conversation_id)}
             >
               Open booking conversation
             </EventDetailPrimaryAction>

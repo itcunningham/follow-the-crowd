@@ -454,16 +454,35 @@ function testActiveEventLineupStatsMatchVisibleLineupRules() {
 function testDmThreadEventDetailBackHref() {
   const eventId = "11111111-1111-4111-8111-111111111111";
   const conversationId = "22222222-2222-4222-8222-222222222222";
+  const calendarOrigin = {
+    calendarDate: "2026-07-14",
+    calendarView: "event" as const,
+    calendarMonth: "2026-07-01",
+  };
 
   assert.equal(
     resolveDmThreadBackHref({ from: "event-detail", eventId }),
     `/events/${eventId}`,
+  );
+  assert.equal(
+    resolveDmThreadBackHref({
+      from: "event-detail",
+      eventId,
+      calendarDate: calendarOrigin.calendarDate,
+      calendarView: calendarOrigin.calendarView,
+      calendarMonth: calendarOrigin.calendarMonth,
+    }),
+    `/events/${eventId}?from=calendar&calendarDate=2026-07-14&calendarView=event&calendarMonth=2026-07-01`,
   );
   assert.equal(resolveDmThreadBackHref({ from: "event-detail", eventId: "not-a-uuid" }), "/events");
   assert.equal(resolveDmThreadBackHref({ from: "bookings" }), "/bookings");
   assert.equal(
     buildEventDetailDmThreadHref(conversationId, eventId),
     `/dm/${conversationId}?from=event-detail&eventId=${eventId}`,
+  );
+  assert.equal(
+    buildEventDetailDmThreadHref(conversationId, eventId, calendarOrigin),
+    `/dm/${conversationId}?from=event-detail&eventId=${eventId}&calendarDate=2026-07-14&calendarView=event&calendarMonth=2026-07-01`,
   );
   assert.equal(
     buildDmThreadHref(conversationId, { from: "dm" }),
