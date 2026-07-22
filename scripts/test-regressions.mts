@@ -12,10 +12,7 @@ import {
   getVisibleBookingPlanFormFieldErrors,
 } from "../lib/bookingPlans/bookingPlanFormFieldValidation";
 import { applyTextInputLimit } from "../lib/textInputLimits";
-import {
-  formatCompactCalendarEventVenueTitle,
-  PLANNER_CALENDAR_TITLE_VENUE_SEPARATOR,
-} from "../lib/calendar";
+import { formatPlannerCalendarItemHeadline } from "../lib/calendar";
 import { readFileSync } from "node:fs";
 import { formatRateDisplay } from "../lib/bookingRate";
 import {
@@ -1823,28 +1820,18 @@ function testCompactCalendarEventVenueTitleTruncates() {
   );
 
   assert.match(mobileUiSource, /CompactCalendarEventVenueTitle/);
-  assert.match(mobileUiSource, /formatCompactCalendarEventVenueTitle/);
+  assert.match(mobileUiSource, /formatPlannerCalendarItemHeadline/);
+  assert.doesNotMatch(mobileUiSource, /formatCompactCalendarEventVenueTitle/);
+  assert.match(mobileUiSource, /overflow-hidden text-ellipsis whitespace-nowrap/);
   assert.match(mobileUiSource, /CALENDAR_MOBILE_AGENDA_CARD_BADGE_SLOT_CLASS[\s\S]*basis-\[5\.75rem\]/);
-  assert.match(mobileUiSource, /truncate whitespace-nowrap/);
   assert.match(plannerCalendarSource, /CompactCalendarEventVenueTitle/);
 
   assert.equal(
-    formatCompactCalendarEventVenueTitle("Warehouse Session", "Revolver", 80),
+    formatPlannerCalendarItemHeadline("Warehouse Session", "Revolver"),
     "Warehouse Session · Revolver",
   );
-
-  const longEventOnly = formatCompactCalendarEventVenueTitle(
-    "A".repeat(30),
-    "Club",
-    20,
-  );
-  assert.doesNotMatch(longEventOnly, new RegExp(`${PLANNER_CALENDAR_TITLE_VENUE_SEPARATOR.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\.\\.\\.$`));
-  assert.match(longEventOnly, /\.\.\.$/);
-
-  const shortEventLongVenue = formatCompactCalendarEventVenueTitle("Gig", "A".repeat(30), 16);
-  assert.match(shortEventLongVenue, /^Gig · /);
-  assert.match(shortEventLongVenue, /\.\.\.$/);
-  assert.doesNotMatch(shortEventLongVenue, / · \.\.\.$/);
+  assert.equal(formatPlannerCalendarItemHeadline("Warehouse Session", ""), "Warehouse Session");
+  assert.equal(formatPlannerCalendarItemHeadline("Warehouse Session", "   "), "Warehouse Session");
 }
 
 async function main() {

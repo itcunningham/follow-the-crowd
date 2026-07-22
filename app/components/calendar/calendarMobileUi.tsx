@@ -2,7 +2,7 @@
 
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
-import { formatCompactCalendarEventVenueTitle } from "@/lib/calendar";
+import { formatPlannerCalendarItemHeadline } from "@/lib/calendar";
 
 export const CALENDAR_MOBILE_INTERACTIVE_PRESS_CLASS =
   "active:scale-[0.98] transition duration-150 ease-out motion-reduce:transition-none motion-reduce:transform-none";
@@ -45,9 +45,9 @@ export const CALENDAR_MOBILE_AGENDA_CARD_HEADER_ROW_CLASS =
 
 export const CALENDAR_MOBILE_AGENDA_CARD_TITLE_SLOT_CLASS = "min-w-0 flex-1 overflow-hidden";
 
-/** Single-line Event · Venue headline for mobile agenda cards (ellipsis when long). */
+/** Single-line Event · Venue headline; full string truncated by CSS in the title slot. */
 export const CALENDAR_MOBILE_AGENDA_CARD_TITLE_CLASS =
-  "block min-w-0 truncate whitespace-nowrap text-sm font-semibold text-ftc-text";
+  "block min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-sm font-semibold text-ftc-text";
 
 export const CALENDAR_MOBILE_AGENDA_CARD_BADGE_SLOT_CLASS =
   "flex shrink-0 basis-[5.75rem] justify-end self-center";
@@ -65,7 +65,7 @@ export function CompactCalendarEventVenueTitle({
 }) {
   return (
     <span className={className}>
-      {formatCompactCalendarEventVenueTitle(eventName, venue)}
+      {formatPlannerCalendarItemHeadline(eventName, venue)}
     </span>
   );
 }
