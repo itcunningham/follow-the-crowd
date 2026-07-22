@@ -24,6 +24,7 @@ import CalendarMobileChrome, {
 } from "@/app/components/calendar/CalendarMobileChrome";
 import {
   CALENDAR_MOBILE_AGENDA_CARD_LIST_CLASS,
+  CALENDAR_MOBILE_AGENDA_CARD_TITLE_CLASS,
   CALENDAR_MOBILE_INTERACTIVE_PRESS_CLASS,
   CalendarMobileAgendaCard,
   CalendarMobileDashedEmptyState,
@@ -616,13 +617,17 @@ function DjCalendarBookingNavButton({
         onContextMenu={(event) => event.preventDefault()}
         className={`${className} touch-manipulation [-webkit-touch-callout:none] ${CALENDAR_MOBILE_INTERACTIVE_PRESS_CLASS}`}
       >
-        <span className="pointer-events-none block w-full">
-          <span className="flex items-center justify-between gap-2">
-            <span className="truncate text-xs font-semibold text-ftc-text">{eventName}</span>
-            <span
-              className={`shrink-0 rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide ${getDjBookingStatusBadgeClass(booking.status === "accepted" ? "accepted" : "pending")}`}
-            >
-              {statusLabel}
+        <span className="pointer-events-none block w-full min-w-0 overflow-hidden">
+          <span className="flex min-w-0 items-center justify-between gap-2 overflow-hidden">
+            <span className={`min-w-0 flex-1 overflow-hidden ${CALENDAR_MOBILE_AGENDA_CARD_TITLE_CLASS} text-xs`}>
+              {eventName}
+            </span>
+            <span className="flex shrink-0 basis-[5.75rem] justify-end self-center">
+              <span
+                className={`rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide ${getDjBookingStatusBadgeClass(booking.status === "accepted" ? "accepted" : "pending")}`}
+              >
+                {statusLabel}
+              </span>
             </span>
           </span>
           {booking.set_time.trim() ? (
@@ -653,7 +658,9 @@ function DjCalendarBookingNavButton({
           {statusLabel}
         </span>
       }
-      heading={<span className="truncate text-sm font-semibold text-ftc-text">{eventName}</span>}
+      heading={
+        <span className={`${CALENDAR_MOBILE_AGENDA_CARD_TITLE_CLASS} text-sm`}>{eventName}</span>
+      }
       time={
         booking.set_time.trim() ? (
           <span className="block truncate text-xs text-ftc-text-muted">

@@ -14,6 +14,7 @@ import {
   CalendarMobileAgendaCard,
   CalendarMobileDashedEmptyState,
   CalendarMobileSelectedDayHeader,
+  CompactCalendarEventVenueTitle,
   useCalendarMobileAgendaTransition,
 } from "@/app/components/calendar/calendarMobileUi";
 import PlannerCalendarActionButtons from "@/app/components/PlannerCalendarActionButtons";
@@ -48,7 +49,6 @@ import {
   getCalendarWeekRows,
   getDefaultSelectedCalendarDate,
   getMonthStart,
-  formatPlannerCalendarItemHeadline,
   getPlannerCalendarBadgeLabel,
   getPlannerCalendarAgendaAccentClass,
   groupCalendarItemsByDate,
@@ -130,9 +130,11 @@ function PlannerCalendarItemBadge({
         <span className="block truncate text-[9px] font-semibold uppercase tracking-wide sm:text-[10px] md:text-xs">
           {getPlannerCalendarBadgeLabel(item)}
         </span>
-        <span className="block truncate text-[9px] normal-case tracking-normal opacity-90 sm:text-[10px] md:text-xs">
-          {formatPlannerCalendarItemHeadline(item.title, item.venue)}
-        </span>
+        <CompactCalendarEventVenueTitle
+          eventName={item.title}
+          venue={item.venue}
+          className="block min-w-0 truncate whitespace-nowrap text-[9px] font-semibold normal-case tracking-normal opacity-90 sm:text-[10px] md:text-xs"
+        />
         {item.timeLabel ? (
           <span className="block truncate text-[9px] normal-case tracking-normal opacity-70 sm:text-[10px] md:text-xs">
             {item.timeLabel}
@@ -266,9 +268,7 @@ function PlannerCalendarAgendaCard({
         </span>
       }
       heading={
-        <span className="truncate text-sm font-semibold text-ftc-text">
-          {formatPlannerCalendarItemHeadline(item.title, item.venue)}
-        </span>
+        <CompactCalendarEventVenueTitle eventName={item.title} venue={item.venue} />
       }
       time={
         item.timeLabel ? (

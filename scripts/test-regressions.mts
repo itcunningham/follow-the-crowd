@@ -1808,6 +1808,23 @@ function testBookingsRouteMountsPersistentGigsSecondaryBand() {
   assert.match(subNavSource, /window\.location\.pathname/);
 }
 
+function testCompactCalendarEventVenueTitleTruncates() {
+  const mobileUiSource = readFileSync(
+    new URL("../app/components/calendar/calendarMobileUi.tsx", import.meta.url),
+    "utf8",
+  );
+  const plannerCalendarSource = readFileSync(
+    new URL("../app/components/PlannerCalendar.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(mobileUiSource, /CompactCalendarEventVenueTitle/);
+  assert.match(mobileUiSource, /formatPlannerCalendarItemHeadline/);
+  assert.match(mobileUiSource, /CALENDAR_MOBILE_AGENDA_CARD_BADGE_SLOT_CLASS[\s\S]*basis-\[5\.75rem\]/);
+  assert.match(mobileUiSource, /truncate whitespace-nowrap/);
+  assert.match(plannerCalendarSource, /CompactCalendarEventVenueTitle/);
+}
+
 async function main() {
   testPastEventDatesAreBlocked();
   testFutureEventDatesAreAllowed();
@@ -1863,6 +1880,7 @@ async function main() {
   testEventPlansListLoadUsesCacheAndPrefetch();
   testCalendarLoadUsesCacheAndPrefetch();
   testCalendarScrollStabilityOnTabSwitch();
+  testCompactCalendarEventVenueTitleTruncates();
   testEventPlansActionRowLayout();
   testEventPlansInlineFeedbackMatchesEventsHistory();
   testEventsHistoryTrashVisibleUsesRenderedHistoryList();

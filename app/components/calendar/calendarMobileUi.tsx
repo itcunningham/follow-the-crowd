@@ -2,6 +2,7 @@
 
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
+import { formatPlannerCalendarItemHeadline } from "@/lib/calendar";
 
 export const CALENDAR_MOBILE_INTERACTIVE_PRESS_CLASS =
   "active:scale-[0.98] transition duration-150 ease-out motion-reduce:transition-none motion-reduce:transform-none";
@@ -40,13 +41,34 @@ export const CALENDAR_MOBILE_AGENDA_CARD_LEADING_SPACER_CLASS =
 export const CALENDAR_MOBILE_AGENDA_CARD_CONTENT_CLASS = "min-w-0 flex-1 py-px";
 
 export const CALENDAR_MOBILE_AGENDA_CARD_HEADER_ROW_CLASS =
-  "flex items-center justify-between gap-2";
+  "flex min-w-0 items-center justify-between gap-2 overflow-hidden";
 
-export const CALENDAR_MOBILE_AGENDA_CARD_TITLE_SLOT_CLASS = "min-w-0 flex-1";
+export const CALENDAR_MOBILE_AGENDA_CARD_TITLE_SLOT_CLASS = "min-w-0 flex-1 overflow-hidden";
 
-export const CALENDAR_MOBILE_AGENDA_CARD_BADGE_SLOT_CLASS = "shrink-0 self-center";
+/** Single-line Event · Venue headline for mobile agenda cards (ellipsis when long). */
+export const CALENDAR_MOBILE_AGENDA_CARD_TITLE_CLASS =
+  "block min-w-0 truncate whitespace-nowrap text-sm font-semibold text-ftc-text";
+
+export const CALENDAR_MOBILE_AGENDA_CARD_BADGE_SLOT_CLASS =
+  "flex shrink-0 basis-[5.75rem] justify-end self-center";
 
 export const CALENDAR_MOBILE_AGENDA_CARD_TIME_SLOT_CLASS = "mt-1.5";
+
+export function CompactCalendarEventVenueTitle({
+  eventName,
+  venue,
+  className = CALENDAR_MOBILE_AGENDA_CARD_TITLE_CLASS,
+}: {
+  eventName: string;
+  venue?: string | null;
+  className?: string;
+}) {
+  return (
+    <span className={className}>
+      {formatPlannerCalendarItemHeadline(eventName, venue)}
+    </span>
+  );
+}
 
 type CalendarMobileAgendaCardProps = {
   shellClassName?: string;
