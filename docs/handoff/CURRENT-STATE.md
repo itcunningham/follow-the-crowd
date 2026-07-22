@@ -211,7 +211,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
-- `TBD` — Polish gigs filter tabs
+- `7b0268e` — Polish gigs filter tabs
 - `591ecd2` — revert broken events loading refactor
 - `caa405d` — limit events loading state to event list
 - `ee191d6` — fix events route regression
