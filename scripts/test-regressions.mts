@@ -17,6 +17,10 @@ import {
   isWheelTimeBefore,
   resolvePickerEventDateValue,
   clampWheelTimeToMin,
+  defaultEventFinishWheelTime,
+  defaultEventStartWheelTime,
+  defaultStartWheelTime,
+  getMinWheelTimeFromNow,
   SET_TIME_RANGE_JOINER,
 } from "../lib/bookingDateTime";
 import type { BookingRequest } from "../lib/bookingRequests";
@@ -263,6 +267,15 @@ function testWheelTimeBeforeMinHelpers() {
     clampWheelTimeToMin({ hour: 1, minute: 0, meridiem: "AM" }, min),
     min,
   );
+}
+
+function testEventTimePickerDefaultsForToday() {
+  const todayKey = getTodayDateKey();
+  const nowDefault = getMinWheelTimeFromNow();
+
+  assert.deepEqual(defaultEventStartWheelTime(todayKey), nowDefault);
+  assert.deepEqual(defaultEventFinishWheelTime(todayKey), nowDefault);
+  assert.deepEqual(defaultEventStartWheelTime("2028-06-15"), defaultStartWheelTime());
 }
 
 function testConflictingCrewChatFlagsPreferStartAction() {
@@ -1366,6 +1379,7 @@ async function main() {
   testIncompleteSetTimeIsBlocked();
   testPastPickerDatesAreRejected();
   testWheelTimeBeforeMinHelpers();
+  testEventTimePickerDefaultsForToday();
   testOneAcceptedDjWithNullStartShowsStartAction();
   testOneAcceptedDjWithStartedAtShowsGroupChat();
   testZeroAcceptedDjsShowsNoCrewChatAction();

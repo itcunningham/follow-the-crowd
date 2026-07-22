@@ -314,6 +314,26 @@ export function defaultFinishWheelTime(): WheelTimeValue {
   return { hour: 1, minute: 0, meridiem: "AM" };
 }
 
+export function defaultEventStartWheelTime(eventDate: string): WheelTimeValue {
+  const dateKey = resolveEventDateKey(eventDate);
+
+  if (dateKey === getTodayDateKey()) {
+    return getMinWheelTimeFromNow();
+  }
+
+  return defaultStartWheelTime();
+}
+
+export function defaultEventFinishWheelTime(eventDate: string): WheelTimeValue {
+  const dateKey = resolveEventDateKey(eventDate);
+
+  if (dateKey === getTodayDateKey()) {
+    return getMinWheelTimeFromNow();
+  }
+
+  return defaultFinishWheelTime();
+}
+
 export function wheelTimeToFormatted(value: WheelTimeValue): string {
   return `${value.hour}:${padTimePart(value.minute)} ${value.meridiem}`;
 }

@@ -2,7 +2,7 @@
 
 import FtcDatePicker from "@/app/components/FtcDatePicker";
 import { PlannerFieldError } from "@/app/components/planner/PlannerUi";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { BookingTimeWheelPicker } from "@/app/components/BookingTimeWheelPicker";
 import {
   BOOKING_FIELD_LABEL_CLASS,
@@ -12,6 +12,8 @@ import {
   clampWheelTimeToMin,
   combineClockAndMeridiem,
   combineSetTimeRange,
+  defaultEventFinishWheelTime,
+  defaultEventStartWheelTime,
   defaultFinishWheelTime,
   defaultStartWheelTime,
   extractClockDisplay,
@@ -178,10 +180,15 @@ function BookingTimeControl({
     setPickerOpen(false);
   }
 
-  const pickerValue = resolveWheelTimeForPicker(
-    clockPartsToWheelTime(clock, meridiem) ?? defaultWheelTime(),
-    minWheelTime,
-  );
+  const pickerValue = (() => {
+    const selectedWheelTime = clockPartsToWheelTime(clock, meridiem);
+
+    if (selectedWheelTime) {
+      return selectedWheelTime;
+    }
+
+    return resolveWheelTimeForPicker(defaultWheelTime(), minWheelTime);
+  })();
 
   return (
     <div>
@@ -394,6 +401,14 @@ export function BookingSetTimeRangeField({
   }
 
   const minStartWheelTime = getMinWheelTimeForEventDate(eventDate ?? "");
+  const resolveDefaultStartWheelTime = useCallback(
+    () => defaultEventStartWheelTime(eventDate ?? ""),
+    [eventDate],
+  );
+  const resolveDefaultFinishWheelTime = useCallback(
+    () => defaultEventFinishWheelTime(eventDate ?? ""),
+    [eventDate],
+  );
 
   return (
     <div className="grid gap-4 sm:grid-cols-2">
@@ -401,7 +416,7 @@ export function BookingSetTimeRangeField({
         label="Start Time"
         clock={startClock}
         meridiem={startMeridiem}
-        defaultWheelTime={defaultStartWheelTime}
+        defaultWheelTime={resolveDefaultStartWheelTime}
         onTimeChange={handleStartTimeChange}
         required={required}
         minWheelTime={minStartWheelTime}
@@ -414,7 +429,7 @@ export function BookingSetTimeRangeField({
         label="Finish Time"
         clock={finishClock}
         meridiem={finishMeridiem}
-        defaultWheelTime={defaultFinishWheelTime}
+        defaultWheelTime={resolveDefaultFinishWheelTime}
         onTimeChange={handleFinishTimeChange}
         buttonLabel={
           combineClockAndMeridiem(finishClock, finishMeridiem) || "Select finish time"
