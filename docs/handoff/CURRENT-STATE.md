@@ -83,7 +83,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 - **Status dot priority per date:** Accepted (green) → Pending (amber) → Upcoming (dark blue); Today uses tile outline, not dot colour
 - **Cancelled events hidden** from calendar items, dots, and counts (History unchanged)
 - Agenda/grid ordering: booking priority then start time (`sortPlannerCalendarAgendaItems`)
-- Event cards: `Event Name · Venue Name` on one truncated line; coloured event accent bar
+- Event cards: compact title shows full `Event Name · Venue` when it fits the title slot; otherwise **event name only** (CSS ellipsis) — never a truncated venue suffix (`CompactCalendarEventVenueTitle` + `doesFullCalendarTitleFit`); coloured event accent bar
 - **Shared mobile chrome:** `CalendarMobileChrome` owns month nav, legend row, and day-strip spacing for Events and Gigs calendars (standalone + dual-mode); both calendars reserve the Select Dates secondary row and use `CALENDAR_MOBILE_CHROME_GIGS_DAY_STRIP_CLASS` (`mt-1`) for identical legend-to-strip rhythm; day-strip chips use content-height `PlannerCalendarMobileDateStrip` markup (no fixed live chip height; `h-[3.75rem]` skeleton-only)
 - **Calendar load perf (2026-07-22):** Events Calendar uses session/local item cache + workspace prefetch (`ensurePlannerCalendarItemsPrefetched`) with stale-while-revalidate on mount; no refetch on `date`/`month` URL-only changes; saved-plans hint reads Event Plans list cache when warm. Gigs Calendar uses matching cache/prefetch (`ensureDjGigsCalendarPrefetched`). Dual-role Events ↔ Gigs calendar tabs remount on switch (avoids `display: contents` hit-testing bugs); caches keep repeat opens fast. Workspace header uses `sticky top-0 z-50 isolate bg-ftc-bg` so primary tabs stay the top interactive layer on `/calendar`. Mobile agenda does not call `scrollIntoView` (month changes no longer shift document scroll); date strip centring uses horizontal `scrollLeft` only; dual calendar sub-tab switches preserve `window.scrollY`; active workspace and filter pills are no-ops on tap. Repeat Events ↔ Calendar workspace navigation shows cached grid immediately while background revalidate runs.
 - **Gigs Calendar workspace tabs (2026-07-22):** Top workspace pills use shared `PlannerWorkspaceSubNavLink`; touch uses `window.location.assign` (iOS Safari), desktop uses `router.push`. Workspace header is `sticky top-0 z-50 isolate` with page body at `relative z-0` so calendar paint cannot win hit-testing over Events/Event Plans/Gigs/Calendar pills. Gigs month-nav update toast uses grid stacking in `CalendarMonthNav` (no absolute full-row overlay). Leaving Calendar clears stale Use Plan intercept and opens canonical destinations (Gigs → Incoming).
@@ -212,6 +212,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `9e77fe5` — simplify compact calendar title layout
 - `16c1ba6` — enforce 30 character event and plan field limits
 - `7b0268e` — Polish gigs filter tabs
 - `591ecd2` — revert broken events loading refactor
