@@ -20,6 +20,8 @@ import {
   resolveActiveWorkspaceHref,
 } from "@/lib/plannerEventsNav";
 import { ensureBookingPlansListPrefetched } from "@/lib/bookingPlans/bookingPlansListPrefetch";
+import { ensureDjGigsCalendarPrefetched } from "@/lib/djGigsCalendarPrefetch";
+import { ensurePlannerCalendarItemsPrefetched } from "@/lib/plannerCalendarPrefetch";
 import { readCachedNavigation, readCachedNavRole } from "@/lib/navigationRoleCache";
 import { getCurrentUserProfile, type UserRole } from "@/lib/user/currentUser";
 
@@ -132,6 +134,20 @@ export default function PlannerEventsSubNav({
 
     void ensureBookingPlansListPrefetched();
   }, [canViewBookingPlans, resolvedRole]);
+
+  useEffect(() => {
+    if (!resolvedRole) {
+      return;
+    }
+
+    if (resolvedRole === "promoter" || resolvedRole === "both") {
+      void ensurePlannerCalendarItemsPrefetched();
+    }
+
+    if (canViewGigs) {
+      void ensureDjGigsCalendarPrefetched();
+    }
+  }, [canViewGigs, resolvedRole]);
 
   const displayGigsPendingCount = useMemo(() => {
     if (!canViewGigs) {

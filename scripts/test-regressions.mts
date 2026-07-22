@@ -1059,6 +1059,48 @@ function testEventPlansListLoadUsesCacheAndPrefetch() {
   assert.match(subNavSource, /ensureBookingPlansListPrefetched/);
 }
 
+function testCalendarLoadUsesCacheAndPrefetch() {
+  const plannerCalendarSource = readFileSync(
+    new URL("../app/components/PlannerCalendar.tsx", import.meta.url),
+    "utf8",
+  );
+  const djCalendarSource = readFileSync(
+    new URL("../app/components/DjAvailabilityCalendar.tsx", import.meta.url),
+    "utf8",
+  );
+  const bothCalendarSource = readFileSync(
+    new URL("../app/components/BothRoleCalendarView.tsx", import.meta.url),
+    "utf8",
+  );
+  const subNavSource = readFileSync(
+    new URL("../app/components/PlannerEventsSubNav.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(plannerCalendarSource, /readPlannerCalendarItemsCache\(\) \?\? \[\]/);
+  assert.match(plannerCalendarSource, /readPlannerCalendarItemsCache\(\) === null/);
+  assert.match(
+    plannerCalendarSource,
+    /if \(cachedItems !== null\) \{\s*setItems\(cachedItems\);\s*setLoading\(false\)/,
+  );
+  assert.match(plannerCalendarSource, /writePlannerCalendarItemsCache\(nextItems\)/);
+  assert.doesNotMatch(plannerCalendarSource, /\[loadCalendar, searchParams\]/);
+  assert.match(plannerCalendarSource, /readBookingPlansListCache\(\)/);
+
+  assert.match(djCalendarSource, /readDjGigsCalendarCache\(\)/);
+  assert.match(
+    djCalendarSource,
+    /if \(cachedSnapshot !== null\) \{\s*setAvailabilityEntries\(cachedSnapshot\.entries\)/,
+  );
+  assert.match(djCalendarSource, /writeDjGigsCalendarCache\(\{ entries, bookings: activeBookings \}\)/);
+
+  assert.match(bothCalendarSource, /plannerTabMounted/);
+  assert.match(bothCalendarSource, /activeTab === "planner" \? undefined : "hidden"/);
+
+  assert.match(subNavSource, /ensurePlannerCalendarItemsPrefetched/);
+  assert.match(subNavSource, /ensureDjGigsCalendarPrefetched/);
+}
+
 function testEventPlansActionRowLayout() {
   const skeletonSource = readFileSync(
     new URL("../app/components/skeleton/Skeleton.tsx", import.meta.url),
@@ -1258,6 +1300,7 @@ async function main() {
   testEventPlansSelectionToolbarMatchesHistory();
   testEventPlansSelectionToolbarRowMatchesEventsHistory();
   testEventPlansListLoadUsesCacheAndPrefetch();
+  testCalendarLoadUsesCacheAndPrefetch();
   testEventPlansActionRowLayout();
   testEventPlansInlineFeedbackMatchesEventsHistory();
   testEventsHistoryTrashVisibleUsesRenderedHistoryList();

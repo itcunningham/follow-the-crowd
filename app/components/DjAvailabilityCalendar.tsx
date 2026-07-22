@@ -9,6 +9,10 @@ import {
   type BookingRequest,
 } from "@/lib/bookingRequests";
 import {
+  readDjGigsCalendarCache,
+  writeDjGigsCalendarCache,
+} from "@/lib/djGigsCalendarCache";
+import {
   getFlatAvailabilityFillClass,
   getFlatBookingFillClass,
   FTC_CAL_CELL,
@@ -1101,9 +1105,14 @@ export default function DjAvailabilityCalendar({
   );
   const monthStart = isDual && sharedViewState ? sharedViewState.monthStart : localMonthStart;
   const selectedDate = isDual && sharedViewState ? sharedViewState.selectedDate : localSelectedDate;
-  const [availabilityEntries, setAvailabilityEntries] = useState<DjAvailabilityEntry[]>([]);
-  const [bookings, setBookings] = useState<BookingRequest[]>([]);
-  const [loading, setLoading] = useState(true);
+  const initialDjCalendarCache = readDjGigsCalendarCache();
+  const [availabilityEntries, setAvailabilityEntries] = useState<DjAvailabilityEntry[]>(
+    () => initialDjCalendarCache?.entries ?? [],
+  );
+  const [bookings, setBookings] = useState<BookingRequest[]>(
+    () => initialDjCalendarCache?.bookings ?? [],
+  );
+  const [loading, setLoading] = useState(() => initialDjCalendarCache === null);
   const [savingDateKey, setSavingDateKey] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [todayParts, setTodayParts] = useState<{ year: number; month: number; day: number } | null>(
@@ -1467,7 +1476,16 @@ export default function DjAvailabilityCalendar({
   const calendarWeeks = useMemo(() => getCalendarWeekRows(monthStart), [monthStart]);
 
   const loadCalendarData = useCallback(async () => {
-    setLoading(true);
+    const cachedSnapshot = readDjGigsCalendarCache();
+
+    if (cachedSnapshot !== null) {
+      setAvailabilityEntries(cachedSnapshot.entries);
+      setBookings(cachedSnapshot.bookings);
+      setLoading(false);
+    } else {
+      setLoading(true);
+    }
+
     setError(null);
 
     try {
@@ -1477,10 +1495,15 @@ export default function DjAvailabilityCalendar({
       ]);
       setAvailabilityEntries(entries);
       setBookings(activeBookings);
+      writeDjGigsCalendarCache({ entries, bookings: activeBookings });
     } catch (loadError) {
       console.error("Failed to load DJ availability calendar:", loadError);
-      setAvailabilityEntries([]);
-      setBookings([]);
+
+      if (cachedSnapshot === null) {
+        setAvailabilityEntries([]);
+        setBookings([]);
+      }
+
       setError(getDjAvailabilityLoadErrorMessage(loadError));
     } finally {
       setLoading(false);

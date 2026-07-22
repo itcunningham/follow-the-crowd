@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import DjAvailabilityCalendar, {
   DjAvailabilityCalendarLegend,
@@ -51,6 +51,16 @@ export default function BothRoleCalendarView({ activeTab }: BothRoleCalendarView
   const djMonthActivityRef = useRef<(month: number, year: number) => string | null>(() => null);
   const djMonthNavHandlersRef = useRef<CalendarDualModeRegistration>({});
   const [djMonthNavChrome, setDjMonthNavChrome] = useState<CalendarDualModeChrome | null>(null);
+  const [plannerTabMounted, setPlannerTabMounted] = useState(() => activeTab === "planner");
+  const [djTabMounted, setDjTabMounted] = useState(() => activeTab === "dj");
+
+  useEffect(() => {
+    if (activeTab === "planner") {
+      setPlannerTabMounted(true);
+    } else {
+      setDjTabMounted(true);
+    }
+  }, [activeTab]);
 
   useLayoutEffect(() => {
     const nextView = resolvePlannerCalendarViewState(
@@ -135,26 +145,31 @@ export default function BothRoleCalendarView({ activeTab }: BothRoleCalendarView
 
   return (
     <section className={`${PLANNER_WORKSPACE_PRIMARY_SURFACE_CLASS} flex flex-col`}>
-      {activeTab === "planner" ? (
-        <PlannerCalendar
-          variant="dual"
-          isActive
-          sharedViewState={sharedViewState}
-          onMobileStripConfigChange={setPlannerStripConfig}
-          onMonthActivityDotClassChange={handlePlannerMonthActivityDotClassChange}
-        />
-      ) : (
-        <DjAvailabilityCalendar
-          variant="dual"
-          isActive
-          sharedViewState={sharedViewState}
-          onMobileStripConfigChange={setDjStripConfig}
-          onMonthActivityDotClassChange={handleDjMonthActivityDotClassChange}
-          onDualModeRegistration={handleDjDualModeRegistration}
-          onDualModeChromeChange={handleDjDualModeChromeChange}
-          description="Manage your availability and received bookings."
-        />
-      )}
+      {plannerTabMounted ? (
+        <div className={activeTab === "planner" ? undefined : "hidden"}>
+          <PlannerCalendar
+            variant="dual"
+            isActive={activeTab === "planner"}
+            sharedViewState={sharedViewState}
+            onMobileStripConfigChange={setPlannerStripConfig}
+            onMonthActivityDotClassChange={handlePlannerMonthActivityDotClassChange}
+          />
+        </div>
+      ) : null}
+      {djTabMounted ? (
+        <div className={activeTab === "dj" ? undefined : "hidden"}>
+          <DjAvailabilityCalendar
+            variant="dual"
+            isActive={activeTab === "dj"}
+            sharedViewState={sharedViewState}
+            onMobileStripConfigChange={setDjStripConfig}
+            onMonthActivityDotClassChange={handleDjMonthActivityDotClassChange}
+            onDualModeRegistration={handleDjDualModeRegistration}
+            onDualModeChromeChange={handleDjDualModeChromeChange}
+            description="Manage your availability and received bookings."
+          />
+        </div>
+      ) : null}
 
       <div className="order-2 w-full shrink-0">
         <CalendarMobileChrome

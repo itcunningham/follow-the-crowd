@@ -33,6 +33,11 @@ import {
   prepareMobileDocumentScrollReset,
 } from "@/lib/navigation/prepareMobileDocumentScrollReset";
 import { listBookingPlans } from "@/lib/bookingPlans";
+import { readBookingPlansListCache } from "@/lib/bookingPlans/bookingPlansListCache";
+import {
+  readPlannerCalendarItemsCache,
+  writePlannerCalendarItemsCache,
+} from "@/lib/plannerCalendarItemsCache";
 import {
   buildCalendarOriginState,
   filterCalendarItemsForMonth,
@@ -356,9 +361,11 @@ export default function PlannerCalendar({
     searchParams.get("date"),
     searchParams.get("month"),
   );
-  const [items, setItems] = useState<CalendarItem[]>([]);
+  const [items, setItems] = useState<CalendarItem[]>(
+    () => readPlannerCalendarItemsCache() ?? [],
+  );
   const [localMonthStart, setLocalMonthStart] = useState(() => initialView.monthStart);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => readPlannerCalendarItemsCache() === null);
   const [error, setError] = useState<string | null>(null);
   const [todayParts, setTodayParts] = useState<{ year: number; month: number; day: number } | null>(
     null,
@@ -441,6 +448,13 @@ export default function PlannerCalendar({
   }, [isDual, searchParams]);
 
   useEffect(() => {
+    const cachedPlans = readBookingPlansListCache();
+
+    if (cachedPlans !== null) {
+      setHasSavedEventPlans(cachedPlans.length > 0);
+      return;
+    }
+
     void listBookingPlans()
       .then((plans) => {
         setHasSavedEventPlans(plans.length > 0);
@@ -461,14 +475,28 @@ export default function PlannerCalendar({
   }, []);
 
   const loadCalendar = useCallback(async () => {
-    setLoading(true);
+    const cachedItems = readPlannerCalendarItemsCache();
+
+    if (cachedItems !== null) {
+      setItems(cachedItems);
+      setLoading(false);
+    } else {
+      setLoading(true);
+    }
+
     setError(null);
 
     try {
-      setItems(await loadPlannerCalendarItems());
+      const nextItems = await loadPlannerCalendarItems();
+      setItems(nextItems);
+      writePlannerCalendarItemsCache(nextItems);
     } catch (loadError) {
       console.error("Failed to load planner calendar:", loadError);
-      setItems([]);
+
+      if (cachedItems === null) {
+        setItems([]);
+      }
+
       setError(getCalendarLoadErrorMessage(loadError));
     } finally {
       setLoading(false);
@@ -477,7 +505,7 @@ export default function PlannerCalendar({
 
   useEffect(() => {
     void loadCalendar();
-  }, [loadCalendar, searchParams]);
+  }, [loadCalendar]);
 
   const monthItems = useMemo(
     () => filterCalendarItemsForMonth(items, monthStart),
