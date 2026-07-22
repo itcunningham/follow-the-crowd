@@ -1058,13 +1058,25 @@ function EventsPageClientView({
     tab: EventsListTab,
   ) {
     const isTargetTab = tab === "history" ? isHistoryTab : !isHistoryTab;
+    const closeEventsOriginatedCreate = createOpen && !isCalendarCreateFlow;
 
-    if (isTargetTab) {
-      event.preventDefault();
+    event.preventDefault();
+
+    if (closeEventsOriginatedCreate) {
+      if (!isTargetTab) {
+        const href = buildEventsListHref(tab);
+        window.history.pushState(window.history.state, "", href);
+        handleEventsListTabChange();
+      }
+
+      closeCreateFlow();
       return;
     }
 
-    event.preventDefault();
+    if (isTargetTab) {
+      return;
+    }
+
     const href = buildEventsListHref(tab);
     window.history.pushState(window.history.state, "", href);
     handleEventsListTabChange();

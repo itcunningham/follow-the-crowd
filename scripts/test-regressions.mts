@@ -1114,11 +1114,12 @@ function testEventsCreateFlowTabPillNavigation() {
   assert.ok(tabLinkHandler.length > 0, "handleEventsListTabLinkClick not found");
   assert.match(source, /ftcFilterPillClass\(!createOpen && !isHistoryTab\)/);
   assert.match(source, /ftcFilterPillClass\(!createOpen && isHistoryTab\)/);
-  assert.match(tabLinkHandler, /window\.history\.pushState\(window\.history\.state, "", href\)/);
+  assert.match(tabLinkHandler, /createOpen && !isCalendarCreateFlow/);
   assert.match(
     tabLinkHandler,
-    /handleEventsListTabChange\(\);[\s\S]*?if \(createOpen\) \{\s*closeCreateFlow\(\);/,
+    /if \(!isTargetTab\) \{\s*const href = buildEventsListHref\(tab\);\s*window\.history\.pushState\(window\.history\.state, "", href\);\s*handleEventsListTabChange\(\);\s*\}\s*closeCreateFlow\(\);/,
   );
+  assert.match(tabLinkHandler, /window\.history\.pushState\(window\.history\.state, "", href\)/);
   assert.doesNotMatch(tabLinkHandler, /router\.(push|replace)\(/);
   assert.match(
     source,
@@ -1138,7 +1139,7 @@ function testEventsListTabSwitchUsesClientHistoryWithoutRouterNavigation() {
   assert.ok(tabLinkHandler.length > 0, "handleEventsListTabLinkClick not found");
   assert.match(
     tabLinkHandler,
-    /event\.preventDefault\(\);\s*const href = buildEventsListHref\(tab\);\s*window\.history\.pushState/,
+    /event\.preventDefault\(\);[\s\S]*window\.history\.pushState\(window\.history\.state, "", href\)/,
   );
   assert.doesNotMatch(tabLinkHandler, /router\.(push|replace)\(/);
   assert.match(
