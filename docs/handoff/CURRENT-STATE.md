@@ -211,7 +211,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
-- `42c3675` — stabilise complete events loading chrome
+- `21ace05` — stabilise complete events loading chrome
 - `caa405d` — limit events loading state to event list
 - `ee191d6` — fix events route regression
 - `f927644` — fix events loading chrome layout shift (reverted in next commit — TDZ circular import)
