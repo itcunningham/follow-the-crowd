@@ -13,29 +13,36 @@ type PlannerWorkspaceSubNavLinkProps = {
   href: string;
   isActive: boolean;
   children: ReactNode;
+  interceptNavigate?: (href: string) => boolean;
 };
 
 export default function PlannerWorkspaceSubNavLink({
   href,
   isActive,
   children,
+  interceptNavigate,
 }: PlannerWorkspaceSubNavLinkProps) {
   const router = useRouter();
   const navigatedThisGestureRef = useRef(false);
   const activeGestureRef = useRef<{ pointerId: number; cancelled: boolean } | null>(null);
 
-  const navigate = useCallback(() => {
+  const tryNavigate = useCallback(() => {
+    if (interceptNavigate?.(href)) {
+      navigatedThisGestureRef.current = true;
+      return;
+    }
+
     if (navigatedThisGestureRef.current || isActive) {
       return;
     }
 
     navigatedThisGestureRef.current = true;
     router.push(href, { scroll: false });
-  }, [href, isActive, router]);
+  }, [href, interceptNavigate, isActive, router]);
 
   const handlePointerDown = useCallback(
     (event: React.PointerEvent<HTMLAnchorElement>) => {
-      if (isActive) {
+      if (isActive && !interceptNavigate) {
         event.preventDefault();
         return;
       }
@@ -50,7 +57,7 @@ export default function PlannerWorkspaceSubNavLink({
         cancelled: false,
       };
     },
-    [isActive],
+    [interceptNavigate, isActive],
   );
 
   const handlePointerUp = useCallback(
@@ -58,7 +65,7 @@ export default function PlannerWorkspaceSubNavLink({
       const gesture = activeGestureRef.current;
 
       if (
-        isActive ||
+        (!interceptNavigate && isActive) ||
         !gesture ||
         event.pointerId !== gesture.pointerId ||
         gesture.cancelled
@@ -70,10 +77,10 @@ export default function PlannerWorkspaceSubNavLink({
 
       if (event.pointerType === "touch") {
         event.preventDefault();
-        navigate();
+        tryNavigate();
       }
     },
-    [isActive, navigate],
+    [interceptNavigate, isActive, tryNavigate],
   );
 
   const handlePointerCancel = useCallback((event: React.PointerEvent<HTMLAnchorElement>) => {
@@ -87,6 +94,12 @@ export default function PlannerWorkspaceSubNavLink({
 
   const handleClick = useCallback(
     (event: React.MouseEvent<HTMLAnchorElement>) => {
+      if (interceptNavigate) {
+        event.preventDefault();
+        tryNavigate();
+        return;
+      }
+
       if (isActive) {
         event.preventDefault();
         return;
@@ -96,7 +109,7 @@ export default function PlannerWorkspaceSubNavLink({
         event.preventDefault();
       }
     },
-    [isActive],
+    [interceptNavigate, isActive, tryNavigate],
   );
 
   return (

@@ -79,6 +79,8 @@ type WorkspaceHeaderState = {
   activeWorkspaceHref?: string | null;
   actions?: ReactNode;
   workspaceRole?: UserRole | null;
+  /** When true, sub-nav handled navigation (e.g. closed an in-page create flow). */
+  interceptWorkspaceTabNavigation?: ((href: string) => boolean) | null;
 };
 
 type WorkspaceHeaderContextValue = {
@@ -133,12 +135,14 @@ export function PlannerWorkspacePageHeader({
   actions,
   showWorkspaceSubNav = true,
   activeWorkspaceHref,
+  interceptWorkspaceTabNavigation,
 }: {
   title: string;
   initialRole?: UserRole | null;
   actions?: ReactNode;
   showWorkspaceSubNav?: boolean;
   activeWorkspaceHref?: string | null;
+  interceptWorkspaceTabNavigation?: ((href: string) => boolean) | null;
 }) {
   return (
     <header className={PLANNER_WORKSPACE_HEADER_CLASS}>
@@ -152,6 +156,7 @@ export function PlannerWorkspacePageHeader({
             <PlannerEventsSubNav
               initialRole={initialRole}
               activeWorkspaceHref={activeWorkspaceHref}
+              interceptWorkspaceTabNavigation={interceptWorkspaceTabNavigation}
             />
           </div>
         </div>
@@ -226,6 +231,7 @@ export function PlannerWorkspaceRouteLayout({ children }: { children: ReactNode 
           title={title}
           initialRole={workspaceRole}
           activeWorkspaceHref={headerState.activeWorkspaceHref}
+          interceptWorkspaceTabNavigation={headerState.interceptWorkspaceTabNavigation}
           actions={actions}
         />
         <div className={PLANNER_WORKSPACE_BELOW_HEADER_CLASS}>{children}</div>
@@ -238,6 +244,7 @@ type PlannerWorkspacePageContentProps = {
   activeWorkspaceHref?: string | null;
   actions?: ReactNode;
   initialRole?: UserRole | null;
+  interceptWorkspaceTabNavigation?: ((href: string) => boolean) | null;
   /** Pre-wrapped secondary row (e.g. EventsListTabRow with shared spacing class). */
   secondaryControlsSlot?: ReactNode;
   /** Wrapped automatically with PlannerWorkspaceSecondaryControls. */
@@ -283,6 +290,7 @@ export function PlannerWorkspacePageContent({
   activeWorkspaceHref,
   actions,
   initialRole,
+  interceptWorkspaceTabNavigation,
   secondaryControlsSlot,
   secondaryControls,
   secondaryControlsPlaceholder = false,
@@ -306,8 +314,9 @@ export function PlannerWorkspacePageContent({
       activeWorkspaceHref,
       actions,
       workspaceRole: initialRole,
+      interceptWorkspaceTabNavigation,
     });
-  }, [actions, activeWorkspaceHref, headerContext, initialRole]);
+  }, [actions, activeWorkspaceHref, headerContext, initialRole, interceptWorkspaceTabNavigation]);
 
   return (
     <>
@@ -332,6 +341,7 @@ export function PlannerWorkspacePage({
   initialRole,
   activeWorkspaceHref,
   actions,
+  interceptWorkspaceTabNavigation,
   secondaryControlsSlot,
   secondaryControls,
   secondaryControlsPlaceholder = false,
@@ -354,6 +364,7 @@ export function PlannerWorkspacePage({
       activeWorkspaceHref={activeWorkspaceHref}
       actions={actions}
       initialRole={initialRole}
+      interceptWorkspaceTabNavigation={interceptWorkspaceTabNavigation}
       secondaryControlsSlot={secondaryControlsSlot}
       secondaryControls={secondaryControls}
       secondaryControlsPlaceholder={secondaryControlsPlaceholder}

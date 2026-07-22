@@ -64,10 +64,12 @@ function GigsPendingCountBadge({
 export default function PlannerEventsSubNav({
   initialRole = null,
   activeWorkspaceHref,
+  interceptWorkspaceTabNavigation,
 }: {
   initialRole?: UserRole | null;
   /** Overrides pathname-derived workspace highlight (e.g. planner booking create on /bookings). */
   activeWorkspaceHref?: string | null;
+  interceptWorkspaceTabNavigation?: ((href: string) => boolean) | null;
 }) {
   const pathname = usePathname();
   const pathnameForSubNav =
@@ -214,7 +216,12 @@ export default function PlannerEventsSubNav({
         const showPendingBadge = tab.href === EVENTS_AREA_SUB_NAV.gigs.href;
 
         return (
-          <PlannerWorkspaceSubNavLink key={tab.href} href={tab.href} isActive={isActive}>
+          <PlannerWorkspaceSubNavLink
+            key={tab.href}
+            href={tab.href}
+            isActive={isActive}
+            interceptNavigate={interceptWorkspaceTabNavigation ?? undefined}
+          >
             {tab.label}
             {showPendingBadge ? (
               <GigsPendingCountBadge

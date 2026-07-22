@@ -1255,6 +1255,24 @@ function testCalendarLoadUsesCacheAndPrefetch() {
   assert.match(subNavSource, /ensureDjGigsCalendarPrefetched/);
 }
 
+function testBookingsUsePlanWorkspaceTabNavigation() {
+  const bookingsSource = readFileSync(
+    new URL("../app/(planner-workspace)/bookings/page.tsx", import.meta.url),
+    "utf8",
+  );
+  const subNavLinkSource = readFileSync(
+    new URL("../app/components/planner/PlannerWorkspaceSubNavLink.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(bookingsSource, /interceptWorkspaceTabNavigation=\{/);
+  assert.match(bookingsSource, /handleWorkspaceTabNavigate/);
+  assert.match(bookingsSource, /resetCreateFlowState\(\)/);
+  assert.match(bookingsSource, /router\.replace\("\/bookings", \{ scroll: false \}\)/);
+  assert.match(subNavLinkSource, /interceptNavigate\?\.\(href\)/);
+  assert.match(subNavLinkSource, /if \(interceptNavigate\)/);
+}
+
 function testCalendarScrollStabilityOnTabSwitch() {
   const calendarPageSource = readFileSync(
     new URL("../app/(planner-workspace)/calendar/page.tsx", import.meta.url),
@@ -1463,6 +1481,7 @@ async function main() {
   testResolvePlannerHistoryHideEventIds();
   testEventsHistorySelectionToolbarUsesDeleteLabel();
   testEventsCreateFlowTabPillNavigation();
+  testBookingsUsePlanWorkspaceTabNavigation();
   testEventsListTabSwitchUsesClientHistoryWithoutRouterNavigation();
   testEventsCreateEventHiddenDuringHistorySelectionToolbar();
   testEventDetailLoadUsesParallelQueriesAndListCache();

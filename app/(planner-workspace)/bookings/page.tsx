@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   BookingsPageLoadingShell,
@@ -1062,6 +1062,29 @@ function BookingsPageContent() {
     resetCreateFlowState();
   }
 
+  const handleWorkspaceTabNavigate = useCallback(
+    (href: string) => {
+      if (!plannerCreateVisible) {
+        return false;
+      }
+
+      if (sending) {
+        return true;
+      }
+
+      resetCreateFlowState();
+
+      if (href === EVENTS_AREA_SUB_NAV.gigs.href) {
+        router.replace("/bookings", { scroll: false });
+      } else {
+        router.push(href, { scroll: false });
+      }
+
+      return true;
+    },
+    [plannerCreateVisible, router, sending],
+  );
+
   function finishCreateFlowAfterSend(successMessage: string) {
     const returnToEventPlans = detailsEntrySource === "event-plans-deeplink";
     const intent = resolveBookingsDeepLinkIntent(searchParams);
@@ -1464,6 +1487,9 @@ function BookingsPageContent() {
         omitSecondaryBand
         activeWorkspaceHref={
           plannerCreateVisible ? EVENTS_AREA_SUB_NAV.bookingPlans.href : undefined
+        }
+        interceptWorkspaceTabNavigation={
+          plannerCreateVisible ? handleWorkspaceTabNavigate : undefined
         }
       >
 
