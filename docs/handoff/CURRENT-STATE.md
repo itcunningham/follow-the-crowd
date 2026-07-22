@@ -205,7 +205,8 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
-- `c88a45e` — preserve calendar workspace state during create flow
+- `0837921` — shorten calendar event plans button label
+- `aeb9c24` — prevent current month calendar scroll shift
 - `68df4d5` — stabilize calendar scroll position during tab switching
 - `bc48393` — fix calendar workspace tab navigation (remove dual-tab `display:contents`; header z-index)
 - `6a33797` — restore calendar layouts after performance optimisation (dual-tab `contents` wrappers preserve flex order)
