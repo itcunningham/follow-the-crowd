@@ -900,6 +900,22 @@ html {
   color: var(--ftc-color-text-inverse);
 }
 
+/* Workspace sub-nav (Events / Event Plans / Calendar / Gigs) — stable outer box when toggling active. */
+.ftc-filter-pill.ftc-workspace-subnav-pill {
+  box-sizing: border-box;
+  flex-shrink: 0;
+  min-height: 1.625rem;
+  white-space: nowrap;
+  border-width: 1px;
+  border-style: solid;
+}
+
+.ftc-filter-pill.ftc-workspace-subnav-pill.ftc-filter-pill-active {
+  border-width: 1px;
+  border-style: solid;
+  border-color: transparent;
+}
+
 .ftc-filter-pill.ftc-gig-availability-pill-available {
   border: 1px solid transparent;
   background: var(--ftc-color-primary);

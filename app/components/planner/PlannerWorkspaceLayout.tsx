@@ -37,15 +37,15 @@ export const PLANNER_WORKSPACE_HEADER_CLASS = `ftc-page-header sticky top-0 z-50
 export const PLANNER_WORKSPACE_TITLE_CLASS = "text-xl font-semibold leading-tight text-ftc-text";
 
 export const PLANNER_WORKSPACE_TITLE_ROW_CLASS =
-  "flex flex-wrap items-start justify-between gap-3 md:min-h-[2.75rem] md:items-center";
+  "flex min-h-[2.75rem] flex-wrap items-start justify-between gap-3 md:items-center";
 
 export const PLANNER_WORKSPACE_TITLE_ACTIONS_CLASS =
   "flex shrink-0 items-start justify-end md:min-h-[2.625rem] md:min-w-[11.75rem] md:items-center";
 
-export const PLANNER_WORKSPACE_SUBNAV_SLOT_CLASS = "mt-4 min-h-[2.375rem] md:min-h-[2.375rem]";
+export const PLANNER_WORKSPACE_SUBNAV_SLOT_CLASS = "mt-4 min-h-11 md:min-h-11";
 
 export const PLANNER_WORKSPACE_SUBNAV_ROW_CLASS =
-  "relative -mx-4 flex flex-nowrap gap-2 overflow-x-auto overscroll-x-contain px-4 touch-manipulation [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden sm:-mx-6 sm:px-6 md:mx-0 md:flex-wrap md:overflow-visible md:px-0";
+  "relative -mx-4 flex flex-nowrap gap-2 overflow-x-auto overscroll-x-contain px-4 touch-manipulation [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden sm:-mx-6 sm:px-6 md:mx-0 md:overflow-x-auto md:px-0";
 
 /** @deprecated Use PLANNER_WORKSPACE_PAGE_INSET_CLASS + body padding instead. */
 export const PLANNER_WORKSPACE_CONTENT_CLASS = `${PLANNER_WORKSPACE_PAGE_INSET_CLASS} pb-4 pt-4`;

@@ -821,9 +821,23 @@ function testConfirmedTabAliasParsesFromUrl() {
 }
 
 function testWorkspaceSubNavLayoutIsStable() {
-  assert.match(PLANNER_WORKSPACE_SUBNAV_SLOT_CLASS, /min-h-\[2\.375rem\]/);
+  assert.match(PLANNER_WORKSPACE_SUBNAV_SLOT_CLASS, /min-h-11/);
   assert.match(PLANNER_WORKSPACE_SUBNAV_ROW_CLASS, /flex-nowrap/);
   assert.match(PLANNER_WORKSPACE_SUBNAV_ROW_CLASS, /overflow-x-auto/);
+  assert.doesNotMatch(PLANNER_WORKSPACE_SUBNAV_ROW_CLASS, /flex-wrap/);
+  const subNavSource = readFileSync(
+    new URL("../app/components/PlannerEventsSubNav.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.doesNotMatch(subNavSource, /scrollIntoView/);
+  assert.match(subNavSource, /reserveSpace/);
+  assert.match(
+    readFileSync(
+      new URL("../app/components/planner/PlannerWorkspaceSubNavLink.tsx", import.meta.url),
+      "utf8",
+    ),
+    /ftc-workspace-subnav-pill/,
+  );
   assert.equal(getEventsAreaSubNavItems("promoter").map((item) => item.href).join(","), "/events,/booking-plans,/calendar");
   assert.equal(getEventsAreaSubNavItems("dj").map((item) => item.href).join(","), "/events,/calendar,/bookings");
   assert.equal(

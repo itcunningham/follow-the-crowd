@@ -10,9 +10,10 @@ import {
 } from "@/lib/plannerEventsNav";
 
 const PLANNER_WORKSPACE_SUB_NAV_HIT_CLASS =
-  "relative inline-flex min-h-11 min-w-11 items-center justify-center touch-manipulation";
+  "relative inline-flex shrink-0 min-h-11 min-w-11 items-center justify-center touch-manipulation";
 
-const PLANNER_WORKSPACE_SUB_NAV_PILL_CLASS = "inline-flex items-center gap-1.5 ftc-filter-pill";
+const PLANNER_WORKSPACE_SUB_NAV_PILL_CLASS =
+  "inline-flex shrink-0 items-center gap-1.5 ftc-filter-pill ftc-workspace-subnav-pill";
 
 type PlannerWorkspaceSubNavLinkProps = {
   href: string;
