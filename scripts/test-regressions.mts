@@ -49,7 +49,7 @@ import {
   buildEventDetailDmThreadHref,
   resolveDmThreadBackHref,
 } from "../lib/dm/threadNavigation";
-import { resolveGigsCalendarBookingNavigation, resolvePlannerCalendarItemHref } from "../lib/bookings/gigsCalendarNavigation";
+import { resolveGigsCalendarBookingNavigation, resolvePlannerCalendarItemEventId, resolvePlannerCalendarItemHref } from "../lib/bookings/gigsCalendarNavigation";
 import { hasUnsavedProfileEdits, createProfileEditBaseline } from "../lib/user/profileEditDirtyState";
 import { getUsernameFormatError, normalizeSoundCloudInput, resolveProfileIdentityPresentation } from "../lib/user/profileFormUtils";
 import {
@@ -546,6 +546,8 @@ function testPlannerCalendarItemHref() {
   assert.equal(
     resolvePlannerCalendarItemHref(
       {
+        id: "sent_booking-booking-1",
+        type: "sent_booking",
         href: `/dm/conversation-1?bookingRequestId=booking-1`,
         eventId,
       },
@@ -557,12 +559,37 @@ function testPlannerCalendarItemHref() {
   assert.equal(
     resolvePlannerCalendarItemHref(
       {
-        href: `/events/${eventId}`,
-        eventId,
+        id: "event-11111111-1111-4111-8111-111111111111",
+        type: "event",
+        href: `/dm/conversation-1`,
+        eventId: null,
       },
       origin,
     ),
     `/events/${eventId}?from=calendar&calendarDate=2026-07-14&calendarView=event&calendarMonth=2026-07-01`,
+  );
+
+  assert.equal(
+    resolvePlannerCalendarItemHref(
+      {
+        id: "sent_booking-booking-1",
+        type: "sent_booking",
+        href: `/dm/conversation-1?bookingRequestId=booking-1`,
+        eventId: null,
+      },
+      origin,
+    ),
+    null,
+  );
+
+  assert.equal(
+    resolvePlannerCalendarItemEventId({
+      id: `event-${eventId}`,
+      type: "event",
+      href: `/dm/conversation-1`,
+      eventId: null,
+    }),
+    eventId,
   );
 }
 
@@ -1120,7 +1147,7 @@ function testCalendarLoadUsesCacheAndPrefetch() {
   assert.match(plannerCalendarSource, /writePlannerCalendarItemsCache\(nextItems\)/);
   assert.doesNotMatch(plannerCalendarSource, /\[loadCalendar, searchParams\]/);
   assert.doesNotMatch(plannerCalendarSource, /scrollIntoView/);
-  assert.match(plannerCalendarSource, /resolvePlannerCalendarItemHref/);
+  assert.match(plannerCalendarSource, /usePlannerCalendarItemNavigation/);
   assert.match(plannerCalendarSource, /readBookingPlansListCache\(\)/);
 
   assert.match(djCalendarSource, /readDjGigsCalendarCache\(\)/);

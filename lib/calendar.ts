@@ -477,6 +477,38 @@ export async function loadCalendarItems(role: UserRole | null): Promise<Calendar
   });
 }
 
+function linkPlannerCalendarSentBookingsToEvents(items: CalendarItem[]): CalendarItem[] {
+  const eventIdByDateAndTitle = new Map<string, string>();
+
+  for (const item of items) {
+    if (item.type !== "event" || !item.eventId) {
+      continue;
+    }
+
+    const key = `${item.dateKey}\0${item.title.trim().toLowerCase()}`;
+    eventIdByDateAndTitle.set(key, item.eventId);
+  }
+
+  return items.map((item) => {
+    if (item.type !== "sent_booking" || item.eventId) {
+      return item;
+    }
+
+    const key = `${item.dateKey}\0${item.title.trim().toLowerCase()}`;
+    const linkedEventId = eventIdByDateAndTitle.get(key);
+
+    if (!linkedEventId) {
+      return item;
+    }
+
+    return {
+      ...item,
+      eventId: linkedEventId,
+      href: `/events/${linkedEventId}`,
+    };
+  });
+}
+
 export async function loadPlannerCalendarItems(): Promise<CalendarItem[]> {
   const [events, sentBookings] = await Promise.all([
     listOwnedEvents(),
@@ -525,7 +557,7 @@ export async function loadPlannerCalendarItems(): Promise<CalendarItem[]> {
     }
   }
 
-  return items.sort((left, right) => {
+  return linkPlannerCalendarSentBookingsToEvents(items).sort((left, right) => {
     if (left.dateKey !== right.dateKey) {
       return left.dateKey.localeCompare(right.dateKey);
     }
@@ -751,6 +783,7 @@ export {
   resolveCalendarOriginBookingHref,
   resolveCalendarOriginEventHref,
   resolveGigsCalendarBookingNavigation,
+  resolvePlannerCalendarItemEventId,
   resolvePlannerCalendarItemHref,
 } from "@/lib/bookings/gigsCalendarNavigation";
 import type { CalendarOriginState, CalendarOriginView } from "@/lib/bookings/gigsCalendarNavigation";

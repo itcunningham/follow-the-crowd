@@ -6,6 +6,43 @@ export type CalendarOriginState = {
   calendarMonth: string;
 };
 
+const LINKED_EVENT_ID_PATTERN = /^[0-9a-f-]{36}$/i;
+
+export type PlannerCalendarItemNavigationSource = {
+  id: string;
+  type: "event" | "sent_booking" | "received_booking";
+  href: string;
+  eventId?: string | null;
+};
+
+export function resolvePlannerCalendarItemEventId(
+  item: PlannerCalendarItemNavigationSource,
+): string | null {
+  const explicitEventId = item.eventId?.trim();
+
+  if (explicitEventId && LINKED_EVENT_ID_PATTERN.test(explicitEventId)) {
+    return explicitEventId;
+  }
+
+  if (item.type === "event" && item.id.startsWith("event-")) {
+    const fromItemId = item.id.slice("event-".length);
+
+    if (LINKED_EVENT_ID_PATTERN.test(fromItemId)) {
+      return fromItemId;
+    }
+  }
+
+  if (item.href.startsWith("/events/")) {
+    const fromHref = item.href.slice("/events/".length).split("?")[0]?.trim();
+
+    if (fromHref && LINKED_EVENT_ID_PATTERN.test(fromHref)) {
+      return fromHref;
+    }
+  }
+
+  return null;
+}
+
 export function resolveCalendarOriginEventHref(
   href: string,
   origin: CalendarOriginState,
@@ -31,10 +68,10 @@ export function resolveCalendarOriginEventHref(
 }
 
 export function resolvePlannerCalendarItemHref(
-  item: { href: string; eventId?: string | null },
+  item: PlannerCalendarItemNavigationSource,
   origin: CalendarOriginState,
-): string {
-  const eventId = item.eventId?.trim();
+): string | null {
+  const eventId = resolvePlannerCalendarItemEventId(item);
 
   if (eventId) {
     return resolveCalendarOriginEventHref(`/events/${eventId}`, origin);
@@ -44,7 +81,7 @@ export function resolvePlannerCalendarItemHref(
     return resolveCalendarOriginEventHref(item.href, origin);
   }
 
-  return resolveCalendarOriginBookingHref(item.href, origin);
+  return null;
 }
 
 export function resolveCalendarOriginBookingHref(

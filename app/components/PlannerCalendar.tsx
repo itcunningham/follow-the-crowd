@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import CalendarDotLegend from "@/app/components/calendar/CalendarDotLegend";
@@ -29,9 +28,9 @@ import type { CalendarDualModeProps } from "@/lib/calendarDualView";
 import { isDateKeyBeforeToday } from "@/lib/bookingDateTime";
 import { consumeEventCreateInviteMessage } from "@/lib/events/eventCreateInviteMessages";
 import {
-  prepareCalendarAgendaEventNavigation,
   prepareMobileDocumentScrollReset,
 } from "@/lib/navigation/prepareMobileDocumentScrollReset";
+import { usePlannerCalendarItemNavigation } from "@/lib/navigation/usePlannerCalendarItemNavigation";
 import { listBookingPlans } from "@/lib/bookingPlans";
 import { readBookingPlansListCache } from "@/lib/bookingPlans/bookingPlansListCache";
 import {
@@ -115,12 +114,14 @@ function PlannerCalendarItemBadge({
   item: CalendarItem;
   calendarOrigin: CalendarOriginState;
 }) {
-  return (
-    <Link
-      href={resolvePlannerCalendarItemHref(item, calendarOrigin)}
-      onClick={prepareMobileDocumentScrollReset}
-      className={`flex w-full items-stretch gap-1 rounded-md border-0 px-1.5 py-1 text-left transition hover:opacity-90 md:gap-1.5 md:px-2 md:py-1.5 ${getPlannerCalendarStatusBadgeClass(item.statusKind)}`}
-    >
+  const eventDetailHref = useMemo(
+    () => resolvePlannerCalendarItemHref(item, calendarOrigin),
+    [calendarOrigin, item],
+  );
+  const badgeClassName = `flex w-full items-stretch gap-1 rounded-md border-0 px-1.5 py-1 text-left transition hover:opacity-90 md:gap-1.5 md:px-2 md:py-1.5 ${getPlannerCalendarStatusBadgeClass(item.statusKind)}`;
+
+  const badgeContent = (
+    <>
       <span
         aria-hidden="true"
         className={`my-0.5 w-0.5 shrink-0 rounded-full ${getPlannerCalendarAgendaAccentClass(item.eventFallbackColour)}`}
@@ -138,6 +139,20 @@ function PlannerCalendarItemBadge({
           </span>
         ) : null}
       </span>
+    </>
+  );
+
+  if (!eventDetailHref) {
+    return <div className={badgeClassName}>{badgeContent}</div>;
+  }
+
+  return (
+    <Link
+      href={eventDetailHref}
+      onClick={prepareMobileDocumentScrollReset}
+      className={badgeClassName}
+    >
+      {badgeContent}
     </Link>
   );
 }
@@ -218,19 +233,25 @@ function PlannerCalendarAgendaCard({
   item: CalendarItem;
   calendarOrigin: CalendarOriginState;
 }) {
-  const router = useRouter();
-  const eventHref = resolvePlannerCalendarItemHref(item, calendarOrigin);
-
-  const handleOpenEvent = useCallback(() => {
-    prepareCalendarAgendaEventNavigation();
-    router.push(eventHref, { scroll: false });
-  }, [eventHref, router]);
+  const {
+    eventDetailHref,
+    handleClick,
+    handlePointerCancel,
+    handlePointerDown,
+    handlePointerUp,
+  } = usePlannerCalendarItemNavigation(item, calendarOrigin);
 
   return (
     <CalendarMobileAgendaCard
-      onClick={handleOpenEvent}
+      onPointerDown={handlePointerDown}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerCancel}
+      onClick={handleClick}
+      disabled={!eventDetailHref}
+      aria-disabled={!eventDetailHref}
+      onContextMenu={(event) => event.preventDefault()}
       shellClassName="border border-ftc-border-subtle bg-ftc-bg-elevated hover:border-ftc-border-strong"
-      className={CALENDAR_MOBILE_INTERACTIVE_PRESS_CLASS}
+      className={`touch-manipulation [-webkit-touch-callout:none] ${CALENDAR_MOBILE_INTERACTIVE_PRESS_CLASS}`}
       leading={
         <span
           aria-hidden="true"

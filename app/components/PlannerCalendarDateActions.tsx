@@ -172,10 +172,33 @@ export default function PlannerCalendarDateActions({
               )
             ) : (
               <ul className="mt-4 max-h-64 space-y-2 overflow-y-auto pr-1">
-                {items.map((item) => (
+                {items.map((item) => {
+                  const eventDetailHref = resolvePlannerCalendarItemHref(item, calendarOrigin);
+
+                  if (!eventDetailHref) {
+                    return (
+                      <li key={item.id}>
+                        <div
+                          className={`block rounded-xl border-0 px-3 py-2.5 ${getPlannerCalendarStatusBadgeClass(item.statusKind)}`}
+                        >
+                          <span className="block text-[10px] font-semibold uppercase tracking-wide">
+                            {getPlannerCalendarBadgeLabel(item)}
+                          </span>
+                          <span className="mt-0.5 block truncate text-sm font-medium">
+                            {formatPlannerCalendarItemHeadline(item.title, item.venue)}
+                          </span>
+                          {item.timeLabel ? (
+                            <span className="mt-0.5 block text-xs opacity-70">{item.timeLabel}</span>
+                          ) : null}
+                        </div>
+                      </li>
+                    );
+                  }
+
+                  return (
                   <li key={item.id}>
                     <Link
-                      href={resolvePlannerCalendarItemHref(item, calendarOrigin)}
+                      href={eventDetailHref}
                       onClick={() => {
                         prepareMobileDocumentScrollReset();
                         onClose();
@@ -193,7 +216,8 @@ export default function PlannerCalendarDateActions({
                       ) : null}
                     </Link>
                   </li>
-                ))}
+                  );
+                })}
               </ul>
             )}
           </div>
