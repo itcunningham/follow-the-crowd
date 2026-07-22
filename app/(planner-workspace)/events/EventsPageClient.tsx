@@ -10,7 +10,7 @@ import {
   type MouseEvent,
   type ReactNode,
 } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
 import { useGuardProfile } from "@/app/components/GuardProfileContext";
 import EventDateStatusBadge from "@/app/components/EventDateStatusBadge";
@@ -371,6 +371,7 @@ function EventsPageClientView({
   initialEventDate,
 }: EventsPageClientProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const guardProfile = useGuardProfile();
   const handledCreateParamsRef = useRef<string | null>(null);
@@ -432,6 +433,14 @@ function EventsPageClientView({
     calendarOriginDateKey,
     createParam,
   );
+  const hideEventsHeaderCreateForCalendarFlow =
+    isCalendarCreateFlow && (createOpen || pathname === "/events");
+
+  useEffect(() => {
+    if (pathname !== "/events" && calendarOriginDateKey !== null) {
+      setCalendarOriginDateKey(null);
+    }
+  }, [calendarOriginDateKey, pathname]);
 
   const inviteDraft = useSendBookingRequestsDraft({
     eventDate: form.eventDate,
@@ -758,7 +767,6 @@ function EventsPageClientView({
     setCreateSaveAttempted(false);
     setForm(emptyEventForm);
     setSelectedPlanId(null);
-    setCalendarOriginDateKey(null);
     setError(null);
     setCoverField(emptyEventCoverImageFieldState);
     if (coverPreviewUrl?.startsWith("blob:")) {
@@ -776,7 +784,10 @@ function EventsPageClientView({
 
     if (originDateKey) {
       navigateToCalendarOrigin(originDateKey);
+      return;
     }
+
+    setCalendarOriginDateKey(null);
   }
 
   function handleSelectPlan(plan: BookingPlan) {
@@ -828,7 +839,6 @@ function EventsPageClientView({
     originDateKey: string | null,
     inviteNotice: string | null,
   ) {
-    setCalendarOriginDateKey(null);
     setCreateOpen(false);
     inviteDraft.resetDraft();
     queuedInviteDraft.resetDraft();
@@ -846,6 +856,7 @@ function EventsPageClientView({
       return;
     }
 
+    setCalendarOriginDateKey(null);
     router.push(`/events/${createdEventId}`);
   }
 
@@ -1132,7 +1143,7 @@ function EventsPageClientView({
 
   const workspaceHeaderActions: ReactNode | undefined = !isPlanner
     ? undefined
-    : createOpen && isCalendarCreateFlow
+    : hideEventsHeaderCreateForCalendarFlow
       ? EVENTS_HEADER_CREATE_EVENT_PLACEHOLDER
       : !createOpen
         ? historyTabRowSelectionMode

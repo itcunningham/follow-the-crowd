@@ -1010,7 +1010,8 @@ function testEventsCreateEventHiddenDuringHistorySelectionToolbar() {
   );
   assert.match(source, /historyTabRowSelectionMode/);
   assert.match(source, /workspaceHeaderActions/);
-  assert.match(source, /createOpen && isCalendarCreateFlow/);
+  assert.match(source, /hideEventsHeaderCreateForCalendarFlow/);
+  assert.match(source, /isCalendarCreateFlow && \(createOpen \|\| pathname === "\/events"\)/);
   assert.match(source, /EVENTS_HEADER_CREATE_EVENT_PLACEHOLDER/);
   assert.match(source, /actions=\{workspaceHeaderActions\}/);
 }
