@@ -1820,9 +1820,9 @@ function testCompactCalendarEventVenueTitleTruncates() {
   );
 
   assert.match(mobileUiSource, /CompactCalendarEventVenueTitle/);
-  assert.match(mobileUiSource, /CALENDAR_MOBILE_AGENDA_CARD_TITLE_ROW_CLASS/);
-  assert.match(mobileUiSource, /PLANNER_CALENDAR_TITLE_VENUE_SEPARATOR/);
-  assert.doesNotMatch(mobileUiSource, /formatPlannerCalendarItemHeadline/);
+  assert.match(mobileUiSource, /formatPlannerCalendarItemHeadline/);
+  assert.doesNotMatch(mobileUiSource, /CALENDAR_MOBILE_AGENDA_CARD_TITLE_ROW_CLASS/);
+  assert.doesNotMatch(mobileUiSource, /CALENDAR_MOBILE_AGENDA_CARD_TITLE_EVENT_CLASS/);
   assert.doesNotMatch(mobileUiSource, /formatCompactCalendarEventVenueTitle/);
   assert.match(mobileUiSource, /overflow-hidden text-ellipsis whitespace-nowrap/);
   assert.match(mobileUiSource, /CALENDAR_MOBILE_AGENDA_CARD_BADGE_SLOT_CLASS[\s\S]*basis-\[5\.75rem\]/);
