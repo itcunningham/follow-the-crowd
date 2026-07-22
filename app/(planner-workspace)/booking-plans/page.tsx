@@ -23,7 +23,9 @@ import {
 } from "@/lib/events/eventFormFieldValidation";
 import {
   getBookingPlanFormFieldErrors,
+  getVisibleBookingPlanFormFieldErrors,
   hasBookingPlanFormFieldErrors,
+  type BookingPlanFormFieldKey,
 } from "@/lib/bookingPlans/bookingPlanFormFieldValidation";
 import {
   createBookingPlan,
@@ -56,6 +58,12 @@ import {
   EVENT_PLANS_CREATE_BUTTON_CLASS,
 } from "@/lib/design/ftcDesignSystem";
 import { useInlineTabFeedbackDismiss } from "@/lib/design/inlineTabFeedback";
+
+const emptyPlanFormTouched: Record<"name" | "eventName" | "venue", boolean> = {
+  name: false,
+  eventName: false,
+  venue: false,
+};
 
 const emptyPlanForm: BookingPlanInput = {
   name: "",
@@ -199,6 +207,8 @@ export default function BookingPlansPage() {
   const [formOpen, setFormOpen] = useState(false);
   const [editingPlanId, setEditingPlanId] = useState<string | null>(null);
   const [form, setForm] = useState<BookingPlanInput>(emptyPlanForm);
+  const [planFormSaveAttempted, setPlanFormSaveAttempted] = useState(false);
+  const [planFormTouchedFields, setPlanFormTouchedFields] = useState(emptyPlanFormTouched);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -215,18 +225,16 @@ export default function BookingPlansPage() {
     return getBookingPlanFormFieldErrors(form);
   }, [formOpen, form.name, form.eventName, form.venue]);
 
-  const planFormTextValidationError = useMemo(() => {
+  const visiblePlanFormFieldErrors = useMemo(() => {
     if (!formOpen) {
-      return null;
+      return {};
     }
 
-    return (
-      planFormFieldErrors.name ??
-      planFormFieldErrors.eventName ??
-      planFormFieldErrors.venue ??
-      null
-    );
-  }, [formOpen, planFormFieldErrors]);
+    return getVisibleBookingPlanFormFieldErrors(planFormFieldErrors, {
+      saveAttempted: planFormSaveAttempted,
+      touched: planFormTouchedFields,
+    });
+  }, [formOpen, planFormFieldErrors, planFormSaveAttempted, planFormTouchedFields]);
 
   const planFormNotesValidationError = useMemo(() => {
     if (!formOpen) {
@@ -235,7 +243,18 @@ export default function BookingPlansPage() {
 
     return getEventNotesValidationError(form.notes);
   }, [formOpen, form.notes]);
-  const planFormValidationError = planFormTextValidationError ?? planFormNotesValidationError;
+  const planFormValidationError = planFormNotesValidationError;
+
+  function resetPlanFormInteractionState() {
+    setPlanFormSaveAttempted(false);
+    setPlanFormTouchedFields(emptyPlanFormTouched);
+  }
+
+  function markPlanFormFieldTouched(field: BookingPlanFormFieldKey) {
+    setPlanFormTouchedFields((current) =>
+      current[field] ? current : { ...current, [field]: true },
+    );
+  }
 
   const visiblePlans = useMemo(() => {
     if (planBulkManage.removingIds.size === 0) {
@@ -335,6 +354,7 @@ export default function BookingPlansPage() {
     setFormOpen(true);
     setEditingPlanId(null);
     setForm(emptyPlanForm);
+    resetPlanFormInteractionState();
     setError(null);
     setSuccessMessage(null);
   }
@@ -349,6 +369,7 @@ export default function BookingPlansPage() {
       fee: "",
       notes: plan.notes,
     });
+    resetPlanFormInteractionState();
     setError(null);
     setSuccessMessage(null);
   }
@@ -361,6 +382,7 @@ export default function BookingPlansPage() {
     setFormOpen(false);
     setEditingPlanId(null);
     setForm(emptyPlanForm);
+    resetPlanFormInteractionState();
     setError(null);
   }
 
@@ -374,15 +396,12 @@ export default function BookingPlansPage() {
   async function handleSavePlan(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
+    setPlanFormSaveAttempted(true);
+
     const fieldErrors = getBookingPlanFormFieldErrors(form);
 
     if (hasBookingPlanFormFieldErrors(fieldErrors)) {
-      setError(
-        fieldErrors.name ??
-          fieldErrors.eventName ??
-          fieldErrors.venue ??
-          "Please fill in all required plan fields.",
-      );
+      setError(null);
       return;
     }
 
@@ -534,28 +553,31 @@ export default function BookingPlansPage() {
                   label="Plan name"
                   value={form.name}
                   onChange={(value) => updateField("name", value)}
+                  onBlur={() => markPlanFormFieldTouched("name")}
                   placeholder="Plan name"
                   required
                   maxLength={MAX_BOOKING_PLAN_NAME_LENGTH}
-                  error={planFormFieldErrors.name}
+                  error={visiblePlanFormFieldErrors.name}
                 />
                 <PlannerFormField
                   label="Event name"
                   value={form.eventName}
                   onChange={(value) => updateField("eventName", value)}
+                  onBlur={() => markPlanFormFieldTouched("eventName")}
                   placeholder="Event name"
                   required
                   maxLength={MAX_EVENT_NAME_LENGTH}
-                  error={planFormFieldErrors.eventName}
+                  error={visiblePlanFormFieldErrors.eventName}
                 />
                 <PlannerFormField
                   label="Venue"
                   value={form.venue}
                   onChange={(value) => updateField("venue", value)}
+                  onBlur={() => markPlanFormFieldTouched("venue")}
                   placeholder="Venue"
                   required
                   maxLength={MAX_EVENT_VENUE_LENGTH}
-                  error={planFormFieldErrors.venue}
+                  error={visiblePlanFormFieldErrors.venue}
                 />
                 <PlannerFormField
                   label="Notes"

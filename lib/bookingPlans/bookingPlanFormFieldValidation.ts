@@ -78,6 +78,28 @@ export function getBookingPlanFormFieldErrors(input: {
   return errors;
 }
 
+export type BookingPlanFormFieldKey = "name" | "eventName" | "venue";
+
+export function getVisibleBookingPlanFormFieldErrors(
+  errors: BookingPlanFormFieldErrors,
+  options: {
+    saveAttempted: boolean;
+    touched: Partial<Record<BookingPlanFormFieldKey, boolean>>;
+  },
+): BookingPlanFormFieldErrors {
+  const visible: BookingPlanFormFieldErrors = {};
+
+  (["name", "eventName", "venue"] as const).forEach((field) => {
+    const message = errors[field];
+
+    if (message && (options.saveAttempted || options.touched[field])) {
+      visible[field] = message;
+    }
+  });
+
+  return visible;
+}
+
 export function hasBookingPlanFormFieldErrors(errors: BookingPlanFormFieldErrors): boolean {
   return Boolean(errors.name || errors.eventName || errors.venue);
 }

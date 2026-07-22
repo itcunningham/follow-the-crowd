@@ -9,6 +9,7 @@ import {
 import {
   assertBookingPlanFormTextFieldLimits,
   getBookingPlanFormFieldErrors,
+  getVisibleBookingPlanFormFieldErrors,
 } from "../lib/bookingPlans/bookingPlanFormFieldValidation";
 import { applyTextInputLimit } from "../lib/textInputLimits";
 import { readFileSync } from "node:fs";
@@ -1147,7 +1148,25 @@ function testEventCreateFormTextFieldMaxLength() {
     "utf8",
   );
   assert.match(bookingPlansSource, /maxLength=\{MAX_BOOKING_PLAN_NAME_LENGTH\}/);
-  assert.match(bookingPlansSource, /getBookingPlanFormFieldErrors/);
+  assert.match(bookingPlansSource, /getVisibleBookingPlanFormFieldErrors/);
+  assert.match(bookingPlansSource, /planFormSaveAttempted/);
+  assert.match(bookingPlansSource, /markPlanFormFieldTouched/);
+
+  assert.deepEqual(
+    getVisibleBookingPlanFormFieldErrors(
+      getBookingPlanFormFieldErrors({ name: "", eventName: "", venue: "" }),
+      { saveAttempted: false, touched: {} },
+    ),
+    {},
+  );
+
+  assert.equal(
+    getVisibleBookingPlanFormFieldErrors(
+      getBookingPlanFormFieldErrors({ name: "", eventName: "Gig", venue: "Club" }),
+      { saveAttempted: false, touched: { name: true } },
+    ).name,
+    "Enter a plan name",
+  );
 
   const bookingsSource = readFileSync(
     new URL("../app/(planner-workspace)/bookings/page.tsx", import.meta.url),

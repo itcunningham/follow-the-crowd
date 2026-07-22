@@ -96,6 +96,7 @@ export function PlannerFormField({
   multiline = false,
   maxLength,
   error,
+  onBlur,
 }: {
   label: string;
   value: string;
@@ -105,6 +106,7 @@ export function PlannerFormField({
   multiline?: boolean;
   maxLength?: number;
   error?: string | null;
+  onBlur?: () => void;
 }) {
   if (multiline) {
     return (
@@ -144,6 +146,7 @@ export function PlannerFormField({
         placeholder={placeholder}
         required={required}
         maxLength={maxLength}
+        onBlur={onBlur}
         className="ftc-input px-3.5 py-2.5"
       />
       {error ? <PlannerFieldError message={error} /> : null}
