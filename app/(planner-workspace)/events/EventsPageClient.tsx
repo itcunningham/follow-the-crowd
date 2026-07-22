@@ -4,6 +4,7 @@ import Link from "next/link";
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -11,12 +12,8 @@ import {
   type ReactNode,
 } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
-import OnboardingGuard from "@/app/components/OnboardingGuard";
 import { useGuardProfile } from "@/app/components/GuardProfileContext";
 import EventDateStatusBadge from "@/app/components/EventDateStatusBadge";
-import {
-  PlannerWorkspacePage,
-} from "@/app/components/planner/PlannerWorkspaceLayout";
 import {
   PlannerBackLink,
   PlannerEmptyState,
@@ -57,10 +54,8 @@ import {
   FTC_LIST_GAP_CLASS,
 } from "@/lib/design/ftcDesignSystem";
 import { EventListSkeleton } from "@/app/components/skeleton/Skeleton";
-import {
-  EventsListTabControls,
-  EventsWorkspaceCreateEventAction,
-} from "@/app/components/events/EventsListTabControls";
+import { EventsWorkspaceCreateEventAction } from "@/app/components/events/EventsListTabControls";
+import { useEventsWorkspacePageBridgeContext } from "@/app/components/events/EventsWorkspacePageBridge";
 import {
   HistoryRemoveConfirmDialog,
   HistorySelectionToolbar,
@@ -362,11 +357,7 @@ function eventsListCardShellClassName(
 }
 
 export default function EventsPageClient(props: EventsPageClientProps) {
-  return (
-    <OnboardingGuard>
-      <EventsPageClientView {...props} />
-    </OnboardingGuard>
-  );
+  return <EventsPageClientView {...props} />;
 }
 
 function EventsPageClientView({
@@ -1173,53 +1164,71 @@ function EventsPageClientView({
             )
         : undefined;
 
+  const eventsWorkspaceBridge = useEventsWorkspacePageBridgeContext();
+  const historySelectionToolbar = (
+    <HistorySelectionToolbar
+      embedded
+      selectedCount={historyBulkManage.selectedCount}
+      allSelected={allVisibleRemovableHistorySelected}
+      removing={historyBulkManage.removing}
+      onCancel={historyBulkManage.cancelSelectionMode}
+      onSelectAll={() => {
+        historyBulkManage.toggleSelectAllForIds(
+          visibleRemovableHistoryEvents.map((event) => event.id),
+        );
+      }}
+      onRemove={openHistoryRemoveConfirm}
+      canToggleAll={canToggleAllHistorySelection}
+      canDelete={canDeleteHistorySelection}
+      removeLabel="Delete"
+      selectAllLabel="ALL"
+      cancelVariant="backIcon"
+      selectAllToggle
+      centeredSelectAll
+    />
+  );
+
+  useLayoutEffect(() => {
+    if (!eventsWorkspaceBridge) {
+      return;
+    }
+
+    eventsWorkspaceBridge.setPageBridge({
+      activeWorkspaceHref: eventsWorkspaceActiveHref,
+      workspaceHeaderActions,
+      createOpen,
+      isCalendarCreateFlow,
+      eventsListReady,
+      isHistoryTab,
+      historyFeedbackFading,
+      historyTabRowSelectionMode,
+      historyLoadSettled,
+      visibleHistoryEventCount,
+      successMessage,
+      handleEventsListTabLinkClick,
+      onTrashClick: historyBulkManage.enterSelectionMode,
+      selectionToolbar: historySelectionToolbar,
+    });
+  }, [
+    createOpen,
+    eventsListReady,
+    eventsWorkspaceActiveHref,
+    eventsWorkspaceBridge,
+    handleEventsListTabLinkClick,
+    historyBulkManage.enterSelectionMode,
+    historyFeedbackFading,
+    historyLoadSettled,
+    historySelectionToolbar,
+    historyTabRowSelectionMode,
+    isCalendarCreateFlow,
+    isHistoryTab,
+    successMessage,
+    visibleHistoryEventCount,
+    workspaceHeaderActions,
+  ]);
+
   return (
-      <PlannerWorkspacePage
-        initialRole={resolvedRole}
-        activeWorkspaceHref={eventsWorkspaceActiveHref}
-        includeChrome={false}
-        actions={workspaceHeaderActions}
-        secondaryControlsSlot={
-          !isCalendarCreateFlow ? (
-            <EventsListTabControls
-              isPlanner={isPlanner}
-              listTab={isHistoryTab ? "history" : "active"}
-              createOpen={createOpen}
-              onTabLinkClick={handleEventsListTabLinkClick}
-              feedbackMessage={isHistoryTab ? successMessage : null}
-              feedbackFading={historyFeedbackFading}
-              selectionMode={historyTabRowSelectionMode}
-              onTrashClick={historyBulkManage.enterSelectionMode}
-              historyLoadSettled={historyLoadSettled}
-              visibleHistoryEventCount={visibleHistoryEventCount}
-              loadingShell={!eventsListReady}
-              selectionToolbar={
-                <HistorySelectionToolbar
-                  embedded
-                  selectedCount={historyBulkManage.selectedCount}
-                  allSelected={allVisibleRemovableHistorySelected}
-                  removing={historyBulkManage.removing}
-                  onCancel={historyBulkManage.cancelSelectionMode}
-                  onSelectAll={() => {
-                    historyBulkManage.toggleSelectAllForIds(
-                      visibleRemovableHistoryEvents.map((event) => event.id),
-                    );
-                  }}
-                  onRemove={openHistoryRemoveConfirm}
-                  canToggleAll={canToggleAllHistorySelection}
-                  canDelete={canDeleteHistorySelection}
-                  removeLabel="Delete"
-                  selectAllLabel="ALL"
-                  cancelVariant="backIcon"
-                  selectAllToggle
-                  centeredSelectAll
-                />
-              }
-            />
-          ) : undefined
-        }
-        secondaryControlsPlaceholder={isCalendarCreateFlow}
-      >
+    <>
           {createOpen && isPlanner ? (
             <PlannerFormCard title="Create event" onCancel={closeCreateFlow} cancelDisabled={saving}>
               {createStep === "source" ? (
@@ -1557,6 +1566,6 @@ function EventsPageClientView({
           )}
             </>
           ) : null}
-      </PlannerWorkspacePage>
+    </>
   );
 }
