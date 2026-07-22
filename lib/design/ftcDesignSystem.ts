@@ -53,12 +53,26 @@ export const FTC_LIST_GAP_CLASS = "space-y-3";
 /** Filter / status pill row gap. */
 export const FTC_PILL_ROW_GAP_CLASS = "flex flex-wrap items-center gap-2";
 
+/** Events Active/History pill row — nowrap so pills never wrap during route load. */
+export const FTC_EVENTS_LIST_TAB_PILL_ROW_CLASS = "flex shrink-0 flex-nowrap items-center gap-2";
+
 /** Shared filter pill layout — keeps active/inactive pills aligned in a row. */
 export const FTC_FILTER_PILL_CLASS = "inline-flex items-center ftc-filter-pill";
+
+/** Stable outer box for Events Active/History pills (active state must not change size). */
+export const FTC_EVENTS_LIST_TAB_PILL_MODIFIER_CLASS = "ftc-events-list-tab-pill";
 
 export function ftcFilterPillClass(isActive: boolean): string {
   return `${FTC_FILTER_PILL_CLASS}${isActive ? " ftc-filter-pill-active" : ""}`;
 }
+
+export function eventsListTabPillClass(isActive: boolean): string {
+  return `${FTC_FILTER_PILL_CLASS} ${FTC_EVENTS_LIST_TAB_PILL_MODIFIER_CLASS}${isActive ? " ftc-filter-pill-active" : ""}`;
+}
+
+/** Shared Create event control in Events workspace title row. */
+export const EVENTS_CREATE_EVENT_BUTTON_CLASS =
+  "shrink-0 ftc-btn-primary px-4 py-2.5 text-sm uppercase tracking-wide";
 
 /** Gigs workspace tab pill — slightly narrower than default filter pills; gap on the link in DjGigsTabs. */
 export const GIGS_TAB_PILL_GAP_CLASS = "gap-1";
@@ -92,9 +106,9 @@ export const FTC_EVENTS_LIST_TAB_ACTION_CLASS =
 export const FTC_EVENTS_LIST_TAB_ACTION_PLACEHOLDER_CLASS =
   "inline-flex h-[1.875rem] w-[1.875rem] shrink-0 invisible pointer-events-none";
 
-/** Events Active/History tab row — locked height on mobile and desktop. */
+/** Events Active/History tab row — single locked height at all breakpoints. */
 export const EVENTS_LIST_TAB_ROW_CLASS =
-  "mb-4 flex h-[2.875rem] min-h-[2.875rem] flex-nowrap items-center gap-2 md:h-[2.375rem] md:min-h-[2.375rem]";
+  "mb-4 flex h-[2.375rem] min-h-[2.375rem] flex-nowrap items-center gap-2";
 
 /** Inline history-remove feedback beside History tab (truncate, no row growth). */
 export const EVENTS_LIST_TAB_FEEDBACK_CLASS =

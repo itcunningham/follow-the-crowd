@@ -32,8 +32,15 @@ import {
   GIGS_LIST_TAB_ROW_CLASS,
   GIGS_MANAGE_BUTTON_PLACEHOLDER_CLASS,
   FTC_PILL_ROW_GAP_CLASS,
+  eventsListTabPillClass,
+  FTC_EVENTS_LIST_TAB_PILL_ROW_CLASS,
   ftcFilterPillClass,
 } from "@/lib/design/ftcDesignSystem";
+import {
+  EventsListTabControls,
+  EventsWorkspaceCreateEventAction,
+} from "@/app/components/events/EventsListTabControls";
+import { EventsListTabRow } from "@/app/components/events/EventsListTabRow";
 import DmConversationHeader from "@/app/components/dm/DmConversationHeader";
 import MessagesInboxLayout from "@/app/components/dm/MessagesInboxLayout";
 import CalendarViewTabs, { type CalendarViewTab } from "@/app/components/CalendarViewTabs";
@@ -57,7 +64,7 @@ import {
 } from "@/app/components/layout/AppPageLayout";
 import ProfilePageHeader from "@/app/components/profile/ProfilePageHeader";
 import { isPlannerBookingsCreateChromeActive } from "@/lib/bookings/planDeepLink";
-import { buildEventsListHref, isCalendarOriginCreateParam, resolveCalendarCreateInitialStep, resolveEventDetailBackHref, resolveEventsListTabParam } from "@/lib/events/eventsListNavigation";
+import { isCalendarOriginCreateParam, resolveCalendarCreateInitialStep, resolveEventDetailBackHref, resolveEventsListTabParam } from "@/lib/events/eventsListNavigation";
 import { useEventEditHeaderState } from "@/lib/events/useEventEditHeaderVisibility";
 import type { EventEditHeaderState } from "@/lib/events/useEventEditHeaderVisibility";
 import { canManageEvents, type UserRole } from "@/lib/user/currentUser";
@@ -336,71 +343,8 @@ export function EventDetailSkeleton() {
   return <EventDetailLoadingShell />;
 }
 
-export function EventsListTabRow({
-  children,
-  showTrashButton = false,
-  trashButtonDisabled = true,
-  onTrashClick,
-  reserveTrashSlot = false,
-  feedbackMessage = null,
-  feedbackFading = false,
-  selectionMode = false,
-  selectionToolbar = null,
-  trashAriaLabel = "Manage history",
-}: {
-  children: ReactNode;
-  showTrashButton?: boolean;
-  trashButtonDisabled?: boolean;
-  onTrashClick?: () => void;
-  /** Keep tab row height identical when trash is hidden (Events Active tab). */
-  reserveTrashSlot?: boolean;
-  feedbackMessage?: string | null;
-  feedbackFading?: boolean;
-  selectionMode?: boolean;
-  selectionToolbar?: ReactNode;
-  trashAriaLabel?: string;
-}) {
-  const showRightTrash = !selectionMode && showTrashButton;
-  const showRightPlaceholder = !selectionMode && !showTrashButton && reserveTrashSlot;
-
-  return (
-    <div className={EVENTS_LIST_TAB_ROW_CLASS}>
-      <div className="flex shrink-0 items-center">{children}</div>
-      {selectionMode ? (
-        <div className="flex min-h-0 min-w-0 flex-1 items-center overflow-hidden">
-          {selectionToolbar}
-        </div>
-      ) : (
-        <>
-          <div className="min-w-0 flex-1 overflow-hidden" aria-live="polite">
-            {feedbackMessage ? (
-              <p
-                className={`${EVENTS_LIST_TAB_FEEDBACK_CLASS} ${
-                  feedbackFading ? "opacity-0" : "opacity-100"
-                }`}
-              >
-                {feedbackMessage}
-              </p>
-            ) : null}
-          </div>
-          <div className="flex w-[1.875rem] shrink-0 items-center justify-end">
-            {showRightTrash ? (
-              <HistoryManageButton
-                ariaLabel={trashAriaLabel}
-                onClick={onTrashClick ?? (() => undefined)}
-                disabled={trashButtonDisabled || !onTrashClick}
-                className={FTC_EVENTS_LIST_TAB_ACTION_CLASS}
-              />
-            ) : showRightPlaceholder ? (
-              <span aria-hidden="true" className={FTC_EVENTS_LIST_TAB_ACTION_PLACEHOLDER_CLASS} />
-            ) : null}
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
-
+/** @deprecated Import from `@/app/components/events/EventsListTabRow`. */
+export { EventsListTabRow } from "@/app/components/events/EventsListTabRow";
 export function DjGigsTabRow({
   children,
   showManageButton = false,
@@ -505,37 +449,13 @@ export function EventsPageLoadingShell({
   return (
     <PlannerWorkspacePage
       initialRole={role}
-      actions={
-        isPlanner ? (
-          <Link
-            href="/events?create=event"
-            className="shrink-0 ftc-btn-primary px-4 py-2.5 text-sm uppercase tracking-wide"
-          >
-            Create event
-          </Link>
-        ) : undefined
-      }
+      actions={isPlanner ? <EventsWorkspaceCreateEventAction disabled /> : undefined}
       secondaryControlsSlot={
-        <EventsListTabRow
-          showTrashButton={isPlanner && isHistoryTab}
-          trashButtonDisabled
-          reserveTrashSlot={isPlanner && !isHistoryTab}
-        >
-          <div className={FTC_PILL_ROW_GAP_CLASS}>
-            <Link
-              href={buildEventsListHref("active")}
-              className={ftcFilterPillClass(!isHistoryTab)}
-            >
-              {isPlanner ? "Active" : "Upcoming"}
-            </Link>
-            <Link
-              href={buildEventsListHref("history")}
-              className={ftcFilterPillClass(isHistoryTab)}
-            >
-              History
-            </Link>
-          </div>
-        </EventsListTabRow>
+        <EventsListTabControls
+          isPlanner={isPlanner}
+          listTab={isHistoryTab ? "history" : "active"}
+          loadingShell
+        />
       }
       includeChrome={false}
     >
@@ -696,9 +616,9 @@ export function SavedEventPlansSectionHeading({ className = "mb-3" }: { classNam
 export function EventsListTabPillWidthSpacer() {
   return (
     <div className="pointer-events-none invisible flex shrink-0 items-center" aria-hidden="true">
-      <div className={FTC_PILL_ROW_GAP_CLASS}>
-        <span className={ftcFilterPillClass(false)}>Active</span>
-        <span className={ftcFilterPillClass(true)}>History</span>
+      <div className={FTC_EVENTS_LIST_TAB_PILL_ROW_CLASS}>
+        <span className={eventsListTabPillClass(false)}>Active</span>
+        <span className={eventsListTabPillClass(true)}>History</span>
       </div>
     </div>
   );

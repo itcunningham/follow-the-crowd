@@ -53,14 +53,14 @@ import { EventDetailPrimaryAction } from "@/app/components/event-detail/EventDet
 import UnavailableDjBookingConfirmModal from "@/app/components/UnavailableDjBookingConfirmModal";
 import { EventCoverImageListThumb } from "@/app/components/events/EventCoverImageDisplay";
 import {
-  EVENTS_LIST_TAB_ROW_CLASS,
-  FTC_EVENTS_LIST_TAB_ACTION_CLASS,
-  FTC_EVENTS_LIST_TAB_ACTION_PLACEHOLDER_CLASS,
+  EVENTS_CREATE_EVENT_BUTTON_CLASS,
   FTC_LIST_GAP_CLASS,
-  FTC_PILL_ROW_GAP_CLASS,
-  ftcFilterPillClass,
 } from "@/lib/design/ftcDesignSystem";
-import { EventListSkeleton, EventsListTabRow } from "@/app/components/skeleton/Skeleton";
+import { EventListSkeleton } from "@/app/components/skeleton/Skeleton";
+import {
+  EventsListTabControls,
+  EventsWorkspaceCreateEventAction,
+} from "@/app/components/events/EventsListTabControls";
 import {
   HistoryRemoveConfirmDialog,
   HistorySelectionToolbar,
@@ -114,7 +114,6 @@ import {
   resolveCalendarCreateBootstrapState,
   resolveCalendarCreateInitialStep,
   resolveCalendarSaveReturnDateKey,
-  resolveEventsHistoryTrashVisible,
   resolveEventsListTabParam,
   resolveEventsWorkspaceActiveHref,
 } from "@/lib/events/eventsListNavigation";
@@ -183,7 +182,7 @@ const EVENT_LIST_CARD_CHEVRON_SLOT_CLASS = "mt-0.5 h-4 w-4 shrink-0";
 const EVENTS_HEADER_CREATE_EVENT_PLACEHOLDER = (
   <span
     aria-hidden="true"
-    className="pointer-events-none invisible inline-flex shrink-0 ftc-btn-primary px-4 py-2.5 text-sm uppercase tracking-wide"
+    className={`pointer-events-none invisible inline-flex ${EVENTS_CREATE_EVENT_BUTTON_CLASS}`}
   >
     Create event
   </span>
@@ -505,7 +504,7 @@ function EventsPageClientView({
     createFormHasFieldErrors || Boolean(createFormNotesValidationError);
   const showEventsListContent = !isCalendarCreateFlow && !createOpen;
 
-  const resolvedRole = role ?? guardProfile?.role ?? null;
+  const resolvedRole = role ?? guardProfile?.role ?? readCachedNavRole();
   const isPlanner = canManageEvents(resolvedRole);
   const roleReady = resolvedRole !== null;
   const upcomingEvents = useMemo(() => {
@@ -555,16 +554,6 @@ function EventsPageClientView({
   );
   const historyLoadSettled = eventsListReady && !loadingEvents;
   const visibleHistoryEventCount = isHistoryTab ? visibleFilteredEvents.length : 0;
-  const historyTrashVisible = resolveEventsHistoryTrashVisible({
-    isPlanner,
-    isHistoryTab,
-    createOpen,
-    selectionMode: historyBulkManage.selectionMode,
-    historyLoadSettled,
-    visibleHistoryEventCount,
-  });
-  const historyTrashButtonDisabled =
-    !historyLoadSettled || visibleHistoryEventCount === 0;
   const historyTabRowSelectionMode =
     isPlanner && isHistoryTab && historyBulkManage.showSelectionToolbar;
 
@@ -1172,19 +1161,15 @@ function EventsPageClientView({
     ? undefined
     : hideEventsHeaderCreateForCalendarFlow
       ? EVENTS_HEADER_CREATE_EVENT_PLACEHOLDER
-      : !createOpen
+          : !createOpen
         ? historyTabRowSelectionMode
           ? EVENTS_HEADER_CREATE_EVENT_PLACEHOLDER
           : (
-              <button
-                type="button"
+              <EventsWorkspaceCreateEventAction
                 onClick={() => {
                   void openCreateFlow();
                 }}
-                className="shrink-0 ftc-btn-primary px-4 py-2.5 text-sm uppercase tracking-wide"
-              >
-                Create event
-              </button>
+              />
             )
         : undefined;
 
@@ -1196,18 +1181,17 @@ function EventsPageClientView({
         actions={workspaceHeaderActions}
         secondaryControlsSlot={
           !isCalendarCreateFlow ? (
-            <EventsListTabRow
-              showTrashButton={historyTrashVisible}
-              trashButtonDisabled={historyTrashButtonDisabled}
-              onTrashClick={historyBulkManage.enterSelectionMode}
-              reserveTrashSlot={
-                isPlanner &&
-                !historyBulkManage.selectionMode &&
-                !historyTrashVisible
-              }
+            <EventsListTabControls
+              isPlanner={isPlanner}
+              listTab={isHistoryTab ? "history" : "active"}
+              createOpen={createOpen}
+              onTabLinkClick={handleEventsListTabLinkClick}
               feedbackMessage={isHistoryTab ? successMessage : null}
               feedbackFading={historyFeedbackFading}
               selectionMode={historyTabRowSelectionMode}
+              onTrashClick={historyBulkManage.enterSelectionMode}
+              historyLoadSettled={historyLoadSettled}
+              visibleHistoryEventCount={visibleHistoryEventCount}
               selectionToolbar={
                 <HistorySelectionToolbar
                   embedded
@@ -1230,28 +1214,7 @@ function EventsPageClientView({
                   centeredSelectAll
                 />
               }
-            >
-              <div className={FTC_PILL_ROW_GAP_CLASS}>
-                <Link
-                  href={buildEventsListHref("active")}
-                  className={ftcFilterPillClass(!createOpen && !isHistoryTab)}
-                  onClick={(event) => {
-                    handleEventsListTabLinkClick(event, "active");
-                  }}
-                >
-                  {isPlanner ? "Active" : "Upcoming"}
-                </Link>
-                <Link
-                  href={buildEventsListHref("history")}
-                  className={ftcFilterPillClass(!createOpen && isHistoryTab)}
-                  onClick={(event) => {
-                    handleEventsListTabLinkClick(event, "history");
-                  }}
-                >
-                  History
-                </Link>
-              </div>
-            </EventsListTabRow>
+            />
           ) : undefined
         }
         secondaryControlsPlaceholder={isCalendarCreateFlow}

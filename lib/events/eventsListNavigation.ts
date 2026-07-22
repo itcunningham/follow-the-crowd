@@ -82,6 +82,51 @@ export function resolveEventsHistoryTrashVisible({
   );
 }
 
+export function resolveEventsListTabRowChrome({
+  isPlanner,
+  isHistoryTab,
+  createOpen,
+  selectionMode,
+  historyLoadSettled,
+  visibleHistoryEventCount,
+  loadingShell = false,
+}: {
+  isPlanner: boolean;
+  isHistoryTab: boolean;
+  createOpen: boolean;
+  selectionMode: boolean;
+  historyLoadSettled: boolean;
+  visibleHistoryEventCount: number;
+  loadingShell?: boolean;
+}): {
+  showTrashButton: boolean;
+  trashButtonDisabled: boolean;
+  reserveTrashSlot: boolean;
+} {
+  if (loadingShell) {
+    return {
+      showTrashButton: isPlanner && isHistoryTab,
+      trashButtonDisabled: true,
+      reserveTrashSlot: isPlanner && !isHistoryTab,
+    };
+  }
+
+  const showTrashButton = resolveEventsHistoryTrashVisible({
+    isPlanner,
+    isHistoryTab,
+    createOpen,
+    selectionMode,
+    historyLoadSettled,
+    visibleHistoryEventCount,
+  });
+
+  return {
+    showTrashButton,
+    trashButtonDisabled: !historyLoadSettled || visibleHistoryEventCount === 0,
+    reserveTrashSlot: isPlanner && !selectionMode && !showTrashButton,
+  };
+}
+
 export function buildEventDetailHref(eventId: string, tab: EventsListTab = "active"): string {
   if (tab === "history") {
     return `/events/${eventId}?fromTab=history`;

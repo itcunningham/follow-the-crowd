@@ -38,7 +38,7 @@ import {
   resolveBookingDateKey,
 } from "../lib/bookingRequests";
 import { parseDjGigsListTab, resolveGigsListTabParam, resolveGigsListTabForBookingsPage, buildGigsWorkspaceIncomingHref } from "../lib/bookings/gigsListNavigation";
-import { resolveEventsHistoryTrashVisible } from "../lib/events/eventsListNavigation";
+import { resolveEventsHistoryTrashVisible, resolveEventsListTabRowChrome } from "../lib/events/eventsListNavigation";
 import { resolveHistoryBulkSelectAllToggle } from "../app/components/history/HistoryBulkManage";
 import { resolvePlannerHistoryHideEventIds } from "../lib/events";
 import {
@@ -1194,11 +1194,16 @@ function testEventsCreateFlowTabPillNavigation() {
     new URL("../app/(planner-workspace)/events/EventsPageClient.tsx", import.meta.url),
     "utf8",
   );
+  const controlsSource = readFileSync(
+    new URL("../app/components/events/EventsListTabControls.tsx", import.meta.url),
+    "utf8",
+  );
   const tabLinkHandler =
     source.match(/function handleEventsListTabLinkClick\([\s\S]*?\n  \}/)?.[0] ?? "";
   assert.ok(tabLinkHandler.length > 0, "handleEventsListTabLinkClick not found");
-  assert.match(source, /ftcFilterPillClass\(!createOpen && !isHistoryTab\)/);
-  assert.match(source, /ftcFilterPillClass\(!createOpen && isHistoryTab\)/);
+  assert.match(controlsSource, /eventsListTabPillClass\(!createOpen && !isHistoryTab\)/);
+  assert.match(controlsSource, /eventsListTabPillClass\(!createOpen && isHistoryTab\)/);
+  assert.match(source, /<EventsListTabControls/);
   assert.match(tabLinkHandler, /createOpen && !isCalendarCreateFlow/);
   assert.match(
     tabLinkHandler,
@@ -1210,8 +1215,7 @@ function testEventsCreateFlowTabPillNavigation() {
     source,
     /resolveEventsListTabParam\(null, initialTab, window\.location\.search\)/,
   );
-  assert.match(source, /handleEventsListTabLinkClick\(event, "active"\)/);
-  assert.match(source, /handleEventsListTabLinkClick\(event, "history"\)/);
+  assert.match(source, /onTabLinkClick=\{handleEventsListTabLinkClick\}/);
 }
 
 function testEventsListTabSwitchUsesClientHistoryWithoutRouterNavigation() {
@@ -1453,6 +1457,64 @@ function testEventsHistoryTrashVisibleUsesRenderedHistoryList() {
   );
 }
 
+function testEventsListTabControlsMatchLoadingShellAndLoadedPage() {
+  const skeletonSource = readFileSync(
+    new URL("../app/components/skeleton/Skeleton.tsx", import.meta.url),
+    "utf8",
+  );
+  const clientSource = readFileSync(
+    new URL("../app/(planner-workspace)/events/EventsPageClient.tsx", import.meta.url),
+    "utf8",
+  );
+  const controlsSource = readFileSync(
+    new URL("../app/components/events/EventsListTabControls.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(skeletonSource, /<EventsListTabControls[\s\S]*loadingShell/);
+  assert.match(clientSource, /<EventsListTabControls/);
+  assert.match(skeletonSource, /EventsWorkspaceCreateEventAction disabled/);
+  assert.match(controlsSource, /FTC_EVENTS_LIST_TAB_PILL_ROW_CLASS/);
+  assert.match(controlsSource, /eventsListTabPillClass/);
+
+  const loadingActive = resolveEventsListTabRowChrome({
+    isPlanner: true,
+    isHistoryTab: false,
+    createOpen: false,
+    selectionMode: false,
+    historyLoadSettled: true,
+    visibleHistoryEventCount: 0,
+    loadingShell: true,
+  });
+  const loadedActiveBeforeFetch = resolveEventsListTabRowChrome({
+    isPlanner: true,
+    isHistoryTab: false,
+    createOpen: false,
+    selectionMode: false,
+    historyLoadSettled: false,
+    visibleHistoryEventCount: 0,
+  });
+  assert.deepEqual(loadingActive, loadedActiveBeforeFetch);
+
+  const loadingHistory = resolveEventsListTabRowChrome({
+    isPlanner: true,
+    isHistoryTab: true,
+    createOpen: false,
+    selectionMode: false,
+    historyLoadSettled: true,
+    visibleHistoryEventCount: 0,
+    loadingShell: true,
+  });
+  const loadedHistoryBeforeFetch = resolveEventsListTabRowChrome({
+    isPlanner: true,
+    isHistoryTab: true,
+    createOpen: false,
+    selectionMode: false,
+    historyLoadSettled: false,
+    visibleHistoryEventCount: 0,
+  });
+  assert.deepEqual(loadingHistory, loadedHistoryBeforeFetch);
+}
+
 function testGigsTabCountsDeriveFromSameBookingSnapshot() {
   const bookings = [
     makeDjGigBooking({ status: "pending", event_date: "Saturday, 12 July 2027" }),
@@ -1687,6 +1749,7 @@ async function main() {
   testEventPlansActionRowLayout();
   testEventPlansInlineFeedbackMatchesEventsHistory();
   testEventsHistoryTrashVisibleUsesRenderedHistoryList();
+  testEventsListTabControlsMatchLoadingShellAndLoadedPage();
   testGigsTabCountsDeriveFromSameBookingSnapshot();
   testGigsInnerTabSelectionFollowsRouteImmediately();
   testWorkspaceGigsTabOpensIncomingWithoutEventsQuery();
