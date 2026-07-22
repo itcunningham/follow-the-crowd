@@ -212,6 +212,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `e517c08` — final polish compact calendar titles
 - `9e77fe5` — simplify compact calendar title layout
 - `16c1ba6` — enforce 30 character event and plan field limits
 - `7b0268e` — Polish gigs filter tabs
