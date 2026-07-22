@@ -15,9 +15,6 @@ import OnboardingGuard from "@/app/components/OnboardingGuard";
 import { useGuardProfile } from "@/app/components/GuardProfileContext";
 import EventDateStatusBadge from "@/app/components/EventDateStatusBadge";
 import {
-  PlannerWorkspacePage,
-} from "@/app/components/planner/PlannerWorkspaceLayout";
-import {
   PlannerBackLink,
   PlannerEmptyState,
   PlannerFormCard,
@@ -57,10 +54,8 @@ import {
   FTC_LIST_GAP_CLASS,
 } from "@/lib/design/ftcDesignSystem";
 import { EventListSkeleton } from "@/app/components/skeleton/Skeleton";
-import {
-  EventsListTabControls,
-  EventsWorkspaceCreateEventAction,
-} from "@/app/components/events/EventsListTabControls";
+import { EventsWorkspacePage, resolveEventsWorkspaceDisplayRole } from "@/app/components/events/EventsWorkspacePage";
+import { EventsWorkspaceCreateEventAction } from "@/app/components/events/EventsListTabControls";
 import {
   HistoryRemoveConfirmDialog,
   HistorySelectionToolbar,
@@ -504,7 +499,7 @@ function EventsPageClientView({
     createFormHasFieldErrors || Boolean(createFormNotesValidationError);
   const showEventsListContent = !isCalendarCreateFlow && !createOpen;
 
-  const resolvedRole = role ?? guardProfile?.role ?? readCachedNavRole();
+  const resolvedRole = resolveEventsWorkspaceDisplayRole(role, guardProfile?.role);
   const isPlanner = canManageEvents(resolvedRole);
   const roleReady = resolvedRole !== null;
   const upcomingEvents = useMemo(() => {
@@ -1174,50 +1169,44 @@ function EventsPageClientView({
         : undefined;
 
   return (
-      <PlannerWorkspacePage
-        initialRole={resolvedRole}
+      <EventsWorkspacePage
+        role={resolvedRole}
         activeWorkspaceHref={eventsWorkspaceActiveHref}
-        includeChrome={false}
-        actions={workspaceHeaderActions}
-        secondaryControlsSlot={
-          !isCalendarCreateFlow ? (
-            <EventsListTabControls
-              isPlanner={isPlanner}
-              listTab={isHistoryTab ? "history" : "active"}
-              createOpen={createOpen}
-              onTabLinkClick={handleEventsListTabLinkClick}
-              feedbackMessage={isHistoryTab ? successMessage : null}
-              feedbackFading={historyFeedbackFading}
-              selectionMode={historyTabRowSelectionMode}
-              onTrashClick={historyBulkManage.enterSelectionMode}
-              historyLoadSettled={historyLoadSettled}
-              visibleHistoryEventCount={visibleHistoryEventCount}
-              selectionToolbar={
-                <HistorySelectionToolbar
-                  embedded
-                  selectedCount={historyBulkManage.selectedCount}
-                  allSelected={allVisibleRemovableHistorySelected}
-                  removing={historyBulkManage.removing}
-                  onCancel={historyBulkManage.cancelSelectionMode}
-                  onSelectAll={() => {
-                    historyBulkManage.toggleSelectAllForIds(
-                      visibleRemovableHistoryEvents.map((event) => event.id),
-                    );
-                  }}
-                  onRemove={openHistoryRemoveConfirm}
-                  canToggleAll={canToggleAllHistorySelection}
-                  canDelete={canDeleteHistorySelection}
-                  removeLabel="Delete"
-                  selectAllLabel="ALL"
-                  cancelVariant="backIcon"
-                  selectAllToggle
-                  centeredSelectAll
-                />
-              }
-            />
-          ) : undefined
-        }
+        headerActions={workspaceHeaderActions}
+        listTab={isHistoryTab ? "history" : "active"}
+        createOpen={createOpen}
+        loadingShell={!eventsListReady}
+        onTabLinkClick={handleEventsListTabLinkClick}
+        feedbackMessage={isHistoryTab ? successMessage : null}
+        feedbackFading={historyFeedbackFading}
+        selectionMode={historyTabRowSelectionMode}
+        onTrashClick={historyBulkManage.enterSelectionMode}
+        historyLoadSettled={historyLoadSettled}
+        visibleHistoryEventCount={visibleHistoryEventCount}
+        omitSecondaryControls={isCalendarCreateFlow}
         secondaryControlsPlaceholder={isCalendarCreateFlow}
+        selectionToolbar={
+          <HistorySelectionToolbar
+            embedded
+            selectedCount={historyBulkManage.selectedCount}
+            allSelected={allVisibleRemovableHistorySelected}
+            removing={historyBulkManage.removing}
+            onCancel={historyBulkManage.cancelSelectionMode}
+            onSelectAll={() => {
+              historyBulkManage.toggleSelectAllForIds(
+                visibleRemovableHistoryEvents.map((event) => event.id),
+              );
+            }}
+            onRemove={openHistoryRemoveConfirm}
+            canToggleAll={canToggleAllHistorySelection}
+            canDelete={canDeleteHistorySelection}
+            removeLabel="Delete"
+            selectAllLabel="ALL"
+            cancelVariant="backIcon"
+            selectAllToggle
+            centeredSelectAll
+          />
+        }
       >
           {createOpen && isPlanner ? (
             <PlannerFormCard title="Create event" onCancel={closeCreateFlow} cancelDisabled={saving}>
@@ -1556,6 +1545,6 @@ function EventsPageClientView({
           )}
             </>
           ) : null}
-      </PlannerWorkspacePage>
+      </EventsWorkspacePage>
   );
 }

@@ -36,10 +36,7 @@ import {
   FTC_EVENTS_LIST_TAB_PILL_ROW_CLASS,
   ftcFilterPillClass,
 } from "@/lib/design/ftcDesignSystem";
-import {
-  EventsListTabControls,
-  EventsWorkspaceCreateEventAction,
-} from "@/app/components/events/EventsListTabControls";
+import { EventsWorkspacePage } from "@/app/components/events/EventsWorkspacePage";
 import { EventsListTabRow } from "@/app/components/events/EventsListTabRow";
 import DmConversationHeader from "@/app/components/dm/DmConversationHeader";
 import MessagesInboxLayout from "@/app/components/dm/MessagesInboxLayout";
@@ -447,20 +444,13 @@ export function EventsPageLoadingShell({
   const isHistoryTab = listTab === "history";
 
   return (
-    <PlannerWorkspacePage
-      initialRole={role}
-      actions={isPlanner ? <EventsWorkspaceCreateEventAction disabled /> : undefined}
-      secondaryControlsSlot={
-        <EventsListTabControls
-          isPlanner={isPlanner}
-          listTab={isHistoryTab ? "history" : "active"}
-          loadingShell
-        />
-      }
-      includeChrome={false}
+    <EventsWorkspacePage
+      role={role}
+      listTab={isHistoryTab ? "history" : "active"}
+      loadingShell
     >
       <EventListSkeleton showPlannerStats={isPlanner} showFilterPills={false} />
-    </PlannerWorkspacePage>
+    </EventsWorkspacePage>
   );
 }
 
