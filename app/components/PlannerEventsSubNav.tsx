@@ -18,7 +18,6 @@ import {
   getEventsAreaSubNavItems,
   isPlannerEventsAreaPath,
   resolveActiveWorkspaceHref,
-  buildWorkspaceSubNavDestinationHref,
 } from "@/lib/plannerEventsNav";
 import { ensureBookingPlansListPrefetched } from "@/lib/bookingPlans/bookingPlansListPrefetch";
 import { ensureDjGigsCalendarPrefetched } from "@/lib/djGigsCalendarPrefetch";
@@ -219,7 +218,7 @@ export default function PlannerEventsSubNav({
         return (
           <PlannerWorkspaceSubNavLink
             key={tab.href}
-            href={buildWorkspaceSubNavDestinationHref(tab.href, pathnameForSubNav)}
+            href={tab.href}
             isActive={isActive}
             interceptNavigate={interceptWorkspaceTabNavigation ?? undefined}
           >

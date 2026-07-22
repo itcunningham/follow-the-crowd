@@ -33,19 +33,28 @@ export default function PlannerWorkspaceSubNavLink({
   const navigatedThisGestureRef = useRef(false);
   const activeGestureRef = useRef<{ pointerId: number; cancelled: boolean } | null>(null);
 
-  const tryNavigate = useCallback(() => {
-    if (interceptNavigate?.(destinationHref)) {
+  const commitNavigation = useCallback(
+    (fromTouch: boolean) => {
+      if (interceptNavigate?.(destinationHref)) {
+        navigatedThisGestureRef.current = true;
+        return;
+      }
+
+      if (navigatedThisGestureRef.current || isActive) {
+        return;
+      }
+
       navigatedThisGestureRef.current = true;
-      return;
-    }
 
-    if (navigatedThisGestureRef.current || isActive) {
-      return;
-    }
+      if (fromTouch) {
+        window.location.assign(destinationHref);
+        return;
+      }
 
-    navigatedThisGestureRef.current = true;
-    router.push(destinationHref, { scroll: false });
-  }, [destinationHref, interceptNavigate, isActive, router]);
+      router.push(destinationHref, { scroll: false });
+    },
+    [destinationHref, interceptNavigate, isActive, router],
+  );
 
   const handlePointerDown = useCallback(
     (event: React.PointerEvent<HTMLAnchorElement>) => {
@@ -83,11 +92,10 @@ export default function PlannerWorkspaceSubNavLink({
       activeGestureRef.current = null;
 
       if (event.pointerType === "touch") {
-        event.preventDefault();
-        tryNavigate();
+        commitNavigation(true);
       }
     },
-    [interceptNavigate, isActive, tryNavigate],
+    [commitNavigation, interceptNavigate, isActive],
   );
 
   const handlePointerCancel = useCallback((event: React.PointerEvent<HTMLAnchorElement>) => {
@@ -103,7 +111,7 @@ export default function PlannerWorkspaceSubNavLink({
     (event: React.MouseEvent<HTMLAnchorElement>) => {
       if (interceptNavigate) {
         event.preventDefault();
-        tryNavigate();
+        commitNavigation(false);
         return;
       }
 
@@ -117,7 +125,7 @@ export default function PlannerWorkspaceSubNavLink({
         href !== EVENTS_AREA_SUB_NAV.calendar.href
       ) {
         event.preventDefault();
-        tryNavigate();
+        commitNavigation(false);
         return;
       }
 
@@ -125,7 +133,7 @@ export default function PlannerWorkspaceSubNavLink({
         event.preventDefault();
       }
     },
-    [href, interceptNavigate, isActive, pathname, tryNavigate],
+    [commitNavigation, href, interceptNavigate, isActive, pathname],
   );
 
   return (

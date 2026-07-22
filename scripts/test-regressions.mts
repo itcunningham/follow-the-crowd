@@ -1495,7 +1495,7 @@ function testWorkspaceGigsTabOpensIncomingWithoutEventsQuery() {
     new URL("../app/components/PlannerEventsSubNav.tsx", import.meta.url),
     "utf8",
   );
-  assert.match(subNavSource, /buildWorkspaceSubNavDestinationHref\(tab\.href, pathnameForSubNav\)/);
+  assert.match(subNavSource, /href=\{tab\.href\}/);
 }
 
 function testCalendarWorkspaceClearsStaleWorkspaceIntercept() {
@@ -1511,13 +1511,20 @@ function testCalendarWorkspaceClearsStaleWorkspaceIntercept() {
     new URL("../app/components/BothRoleCalendarView.tsx", import.meta.url),
     "utf8",
   );
+  const monthNavSource = readFileSync(
+    new URL("../app/components/CalendarMonthNav.tsx", import.meta.url),
+    "utf8",
+  );
 
   assert.match(layoutSource, /workspaceIntercept/);
   assert.match(layoutSource, /interceptWorkspaceTabNavigation=\{workspaceIntercept\}/);
-  assert.match(layoutSource, /PLANNER_WORKSPACE_SUBNAV_ROW_CLASS[\s\S]*relative z-30/);
+  assert.match(layoutSource, /PLANNER_WORKSPACE_HEADER_CLASS[\s\S]*sticky top-0 z-50/);
+  assert.match(layoutSource, /PLANNER_WORKSPACE_BELOW_HEADER_CLASS[\s\S]*relative z-0/);
   assert.match(subNavLinkSource, /isCalendarWorkspacePath\(pathname\)/);
+  assert.match(subNavLinkSource, /window\.location\.assign\(destinationHref\)/);
   assert.match(subNavLinkSource, /router\.push\(destinationHref/);
-  assert.match(bothCalendarSource, /relative z-0 flex flex-col/);
+  assert.match(bothCalendarSource, /relative isolate z-0 flex flex-col/);
+  assert.match(monthNavSource, /grid-cols-1 grid-rows-1/);
   assert.equal(isCalendarWorkspacePath("/calendar"), true);
   assert.equal(isCalendarWorkspacePath("/calendar/foo"), true);
   assert.equal(isCalendarWorkspacePath("/events"), false);

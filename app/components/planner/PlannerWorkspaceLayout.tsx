@@ -32,7 +32,7 @@ export const PLANNER_WORKSPACE_SHELL_WIDE_CLASS = `mx-auto min-h-[100dvh] w-full
 
 export const PLANNER_WORKSPACE_PAGE_INSET_CLASS = "px-4 sm:px-6";
 
-export const PLANNER_WORKSPACE_HEADER_CLASS = `ftc-page-header relative z-20 bg-ftc-bg ${PLANNER_WORKSPACE_PAGE_INSET_CLASS} pb-4 pt-4 md:pt-4`;
+export const PLANNER_WORKSPACE_HEADER_CLASS = `ftc-page-header sticky top-0 z-50 isolate bg-ftc-bg ${PLANNER_WORKSPACE_PAGE_INSET_CLASS} pb-4 pt-4 md:pt-4`;
 
 export const PLANNER_WORKSPACE_TITLE_CLASS = "text-xl font-semibold leading-tight text-ftc-text";
 
@@ -45,12 +45,12 @@ export const PLANNER_WORKSPACE_TITLE_ACTIONS_CLASS =
 export const PLANNER_WORKSPACE_SUBNAV_SLOT_CLASS = "mt-4 min-h-[2.375rem] md:min-h-[2.375rem]";
 
 export const PLANNER_WORKSPACE_SUBNAV_ROW_CLASS =
-  "relative z-30 -mx-4 flex flex-nowrap gap-2 overflow-x-auto overscroll-x-contain px-4 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden sm:-mx-6 sm:px-6 md:mx-0 md:flex-wrap md:overflow-visible md:px-0";
+  "relative -mx-4 flex flex-nowrap gap-2 overflow-x-auto overscroll-x-contain px-4 touch-manipulation [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden sm:-mx-6 sm:px-6 md:mx-0 md:flex-wrap md:overflow-visible md:px-0";
 
 /** @deprecated Use PLANNER_WORKSPACE_PAGE_INSET_CLASS + body padding instead. */
 export const PLANNER_WORKSPACE_CONTENT_CLASS = `${PLANNER_WORKSPACE_PAGE_INSET_CLASS} pb-4 pt-4`;
 
-export const PLANNER_WORKSPACE_BELOW_HEADER_CLASS = PLANNER_WORKSPACE_PAGE_INSET_CLASS;
+export const PLANNER_WORKSPACE_BELOW_HEADER_CLASS = `relative z-0 ${PLANNER_WORKSPACE_PAGE_INSET_CLASS}`;
 
 export const PLANNER_WORKSPACE_BODY_CLASS = "pb-4";
 

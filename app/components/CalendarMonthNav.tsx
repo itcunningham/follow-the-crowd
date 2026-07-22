@@ -81,9 +81,11 @@ export default function CalendarMonthNav({
   }
 
   return (
-    <div className="relative w-full">
-      {overlay}
-      <div className="relative z-10 flex min-h-9 items-center justify-center">
+    <div className="relative grid w-full grid-cols-1 grid-rows-1">
+      {overlay ? (
+        <div className="pointer-events-none col-start-1 row-start-1 min-h-9">{overlay}</div>
+      ) : null}
+      <div className="relative z-10 col-start-1 row-start-1 flex min-h-9 items-center justify-center">
         <div className="flex min-w-0 items-center justify-center gap-0">
           <button
             type="button"
