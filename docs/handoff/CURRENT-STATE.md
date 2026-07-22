@@ -208,6 +208,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `<pending>` — fix workspace navigation during use plan flow
 - `65d5589` — fix events tabs during create flow
 - `d5c6e3f` — fix time defaults in scratch and event plan flows
 - `9402a39` — apply event time defaults across create flows
