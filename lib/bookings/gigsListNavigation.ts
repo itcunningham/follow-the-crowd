@@ -23,26 +23,28 @@ export function resolveGigsListTabParam(
   initialTab?: string | null,
   locationSearch?: string | null,
 ): DjGigsListTab {
+  if (locationSearch != null) {
+    const locationTab = new URLSearchParams(
+      locationSearch.startsWith("?") ? locationSearch.slice(1) : locationSearch,
+    ).get("tab");
+
+    if (locationTab != null) {
+      return parseDjGigsListTab(locationTab);
+    }
+
+    return "pending";
+  }
+
   if (searchParamsTab != null) {
     return parseDjGigsListTab(searchParamsTab);
   }
 
-  const locationTab =
-    locationSearch != null
-      ? new URLSearchParams(
-          locationSearch.startsWith("?") ? locationSearch.slice(1) : locationSearch,
-        ).get("tab")
-      : null;
-
-  if (locationTab != null) {
-    return parseDjGigsListTab(locationTab);
-  }
-
-  if (locationSearch != null) {
-    return "pending";
-  }
-
   return parseDjGigsListTab(initialTab);
+}
+
+/** Top workspace Gigs tab: Incoming with no inherited Events query params. */
+export function buildGigsWorkspaceIncomingHref(): string {
+  return "/bookings";
 }
 
 export function buildGigsListHref(tab: DjGigsListTab = "pending"): string {

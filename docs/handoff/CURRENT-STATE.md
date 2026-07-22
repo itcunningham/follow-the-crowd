@@ -177,6 +177,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 
 - **Shared planner shell:** `PlannerWorkspacePage` in `app/components/planner/PlannerWorkspaceLayout.tsx` — Events, Event Plans, Calendar, Gigs share title row (heading derived from active workspace href via `resolvePlannerWorkspaceTitle`), primary tabs, divider, secondary controls baseline on desktop (`md:max-w-5xl`)
 - **Workspace sub-nav responsiveness (2026-07-14):** `PlannerEventsSubNav` prefetches all four workspace routes; compact `ftc-filter-pill` visuals restored with 44px hit area on outer link wrapper; touch tab switches use `window.location.assign` (iOS Safari); `/events/loading.tsx` and `/bookings/loading.tsx` show fixed workspace chrome instantly while dynamic RSC loads
+- **Workspace Gigs tab (2026-07-22):** top Gigs sub-nav uses `buildGigsWorkspaceIncomingHref()` (`/bookings`, no query); Gigs inner tab resolution prefers `window.location.search` over stale `useSearchParams` so Events `?tab=history` does not open Gigs History
 - **Desktop consistency tokens:** shared primary surface (`PLANNER_WORKSPACE_PRIMARY_SURFACE_CLASS`), list spacing (`PLANNER_WORKSPACE_LIST_CLASS`), title-row baseline alignment; Calendar reference shell — no duplicate in-card titles on desktop; loading skeletons match loaded layout
 - **Events list cards (2026-07-14):** smaller list artwork (~14%), bolder title, compact status badge + booking stat chips, full-card tap target with chevron as visual cue only
 - **Events list card polish (2026-07-20):** two-column Gigs pattern — artwork left, left-aligned body stack (GigCardHeader + GigCardMetaRows rhythm), status + chevron top-right, compact stat chips below time
@@ -208,7 +209,8 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
-- `<pending>` — fix workspace navigation during use plan flow
+- `<pending>` — open gigs on incoming from workspace navigation
+- `0e7fd16` — fix workspace navigation during use plan flow
 - `65d5589` — fix events tabs during create flow
 - `d5c6e3f` — fix time defaults in scratch and event plan flows
 - `9402a39` — apply event time defaults across create flows

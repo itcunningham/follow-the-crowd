@@ -36,7 +36,7 @@ import {
   isDjGigPastAccepted,
   resolveBookingDateKey,
 } from "../lib/bookingRequests";
-import { parseDjGigsListTab, resolveGigsListTabParam } from "../lib/bookings/gigsListNavigation";
+import { parseDjGigsListTab, resolveGigsListTabParam, buildGigsWorkspaceIncomingHref } from "../lib/bookings/gigsListNavigation";
 import { resolveEventsHistoryTrashVisible } from "../lib/events/eventsListNavigation";
 import { resolveHistoryBulkSelectAllToggle } from "../app/components/history/HistoryBulkManage";
 import { resolvePlannerHistoryHideEventIds } from "../lib/events";
@@ -64,7 +64,7 @@ import {
   PLANNER_WORKSPACE_SUBNAV_ROW_CLASS,
   PLANNER_WORKSPACE_SUBNAV_SLOT_CLASS,
 } from "../app/components/planner/PlannerWorkspaceLayout";
-import { getEventsAreaSubNavItems, resolveActiveWorkspaceHref } from "../lib/plannerEventsNav";
+import { getEventsAreaSubNavItems, resolveActiveWorkspaceHref, buildWorkspaceSubNavDestinationHref, EVENTS_AREA_SUB_NAV } from "../lib/plannerEventsNav";
 import {
   EVENT_PLAN_ACTION_RESERVE_CLASS,
   EVENT_PLAN_USE_BUTTON_CLASS,
@@ -1268,7 +1268,7 @@ function testBookingsUsePlanWorkspaceTabNavigation() {
   assert.match(bookingsSource, /interceptWorkspaceTabNavigation=\{/);
   assert.match(bookingsSource, /handleWorkspaceTabNavigate/);
   assert.match(bookingsSource, /resetCreateFlowState\(\)/);
-  assert.match(bookingsSource, /router\.replace\("\/bookings", \{ scroll: false \}\)/);
+  assert.match(bookingsSource, /buildGigsWorkspaceIncomingHref\(\)/);
   assert.match(subNavLinkSource, /interceptNavigate\?\.\(href\)/);
   assert.match(subNavLinkSource, /if \(interceptNavigate\)/);
 }
@@ -1387,6 +1387,24 @@ function testGigsInnerTabSelectionFollowsRouteImmediately() {
   assert.equal(resolveGigsListTabParam("accepted", null, null), "accepted");
   assert.equal(resolveGigsListTabParam("history", null, null), "history");
   assert.equal(resolveGigsListTabParam(null, null, "?tab=accepted"), "accepted");
+  assert.equal(resolveGigsListTabParam("history", null, ""), "pending");
+  assert.equal(resolveGigsListTabParam("history", null, "?tab=history"), "history");
+}
+
+function testWorkspaceGigsTabOpensIncomingWithoutEventsQuery() {
+  assert.equal(buildGigsWorkspaceIncomingHref(), "/bookings");
+  assert.equal(buildWorkspaceSubNavDestinationHref(EVENTS_AREA_SUB_NAV.gigs.href), "/bookings");
+  assert.equal(buildWorkspaceSubNavDestinationHref(EVENTS_AREA_SUB_NAV.events.href), "/events");
+  assert.equal(
+    buildWorkspaceSubNavDestinationHref(EVENTS_AREA_SUB_NAV.bookingPlans.href),
+    "/booking-plans",
+  );
+
+  const subNavSource = readFileSync(
+    new URL("../app/components/PlannerEventsSubNav.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(subNavSource, /buildWorkspaceSubNavDestinationHref\(tab\.href\)/);
 }
 
 function testGigsWorkspaceChromeStateSyncAvoidsNoOpUpdates() {
@@ -1500,6 +1518,7 @@ async function main() {
   testEventsHistoryTrashVisibleUsesRenderedHistoryList();
   testGigsTabCountsDeriveFromSameBookingSnapshot();
   testGigsInnerTabSelectionFollowsRouteImmediately();
+  testWorkspaceGigsTabOpensIncomingWithoutEventsQuery();
   testGigsWorkspaceChromeStateSyncAvoidsNoOpUpdates();
   testBookingsRouteMountsPersistentGigsSecondaryBand();
   testWorkspaceSubNavLayoutIsStable();

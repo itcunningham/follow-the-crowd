@@ -117,6 +117,7 @@ import {
   buildGigsConversationHref,
   buildGigsEventDetailHref,
   buildGigsListHref,
+  buildGigsWorkspaceIncomingHref,
   resolveGigsListTabParam,
 } from "@/lib/bookings/gigsListNavigation";
 import {
@@ -1075,7 +1076,7 @@ function BookingsPageContent() {
       resetCreateFlowState();
 
       if (href === EVENTS_AREA_SUB_NAV.gigs.href) {
-        router.replace("/bookings", { scroll: false });
+        router.replace(buildGigsWorkspaceIncomingHref(), { scroll: false });
       } else {
         router.push(href, { scroll: false });
       }

@@ -1,5 +1,6 @@
 import type { UserRole } from "@/lib/user/currentUser";
 import { isEventCrewChatPath } from "@/lib/groupChats";
+import { buildGigsWorkspaceIncomingHref } from "@/lib/bookings/gigsListNavigation";
 
 export type EventsAreaSubNavItem = {
   href: string;
@@ -43,6 +44,15 @@ export function getEventsAreaSubNavItems(role: UserRole | null): EventsAreaSubNa
   }
 
   return items;
+}
+
+/** Workspace sub-nav destination; strips unrelated query when opening Gigs Incoming. */
+export function buildWorkspaceSubNavDestinationHref(href: string): string {
+  if (href === EVENTS_AREA_SUB_NAV.gigs.href) {
+    return buildGigsWorkspaceIncomingHref();
+  }
+
+  return href;
 }
 
 export function getActiveWorkspaceHref(pathname: string): string {
