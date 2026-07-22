@@ -49,11 +49,11 @@ export default function PlannerCalendarActionButtons({
       {hasSavedEventPlans ? (
         onPlansClick ? (
           <button type="button" onClick={onPlansClick} className={PLANNER_CALENDAR_ACTION_BUTTON_CLASS}>
-            Saved Event Plans
+            Event Plans
           </button>
         ) : (
           <Link href={plansHref} className={PLANNER_CALENDAR_ACTION_BUTTON_CLASS}>
-            Saved Event Plans
+            Event Plans
           </Link>
         )
       ) : null}
