@@ -209,7 +209,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
-- `<pending>` — fix gigs default tab on workspace navigation
+- `f292825` — fix gigs default tab on workspace navigation
 - `4f1a520` — open gigs on incoming from workspace navigation
 - `0e7fd16` — fix workspace navigation during use plan flow
 - `65d5589` — fix events tabs during create flow
