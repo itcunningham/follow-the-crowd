@@ -1010,8 +1010,8 @@ function testEventsCreateEventHiddenDuringHistorySelectionToolbar() {
   );
   assert.match(source, /historyTabRowSelectionMode/);
   assert.match(source, /workspaceHeaderActions/);
-  assert.match(source, /historyTabRowSelectionMode\s*\?\s*\(\s*<span/);
-  assert.match(source, /pointer-events-none invisible inline-flex shrink-0 ftc-btn-primary/);
+  assert.match(source, /createOpen && isCalendarCreateFlow/);
+  assert.match(source, /EVENTS_HEADER_CREATE_EVENT_PLACEHOLDER/);
   assert.match(source, /actions=\{workspaceHeaderActions\}/);
 }
 

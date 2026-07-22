@@ -175,6 +175,15 @@ function getCalendarBootstrapState(
 
 const EVENT_LIST_CARD_CHEVRON_SLOT_CLASS = "mt-0.5 h-4 w-4 shrink-0";
 
+const EVENTS_HEADER_CREATE_EVENT_PLACEHOLDER = (
+  <span
+    aria-hidden="true"
+    className="pointer-events-none invisible inline-flex shrink-0 ftc-btn-primary px-4 py-2.5 text-sm uppercase tracking-wide"
+  >
+    Create event
+  </span>
+);
+
 function EventsListCardChevron() {
   return (
     <span aria-hidden="true" className={`${EVENT_LIST_CARD_CHEVRON_SLOT_CLASS} text-ftc-text-muted`}>
@@ -1121,29 +1130,25 @@ function EventsPageClientView({
     }
   }
 
-  const workspaceHeaderActions =
-    isPlanner && !createOpen
-      ? historyTabRowSelectionMode
-        ? (
-            <span
-              aria-hidden="true"
-              className="pointer-events-none invisible inline-flex shrink-0 ftc-btn-primary px-4 py-2.5 text-sm uppercase tracking-wide"
-            >
-              Create event
-            </span>
-          )
-        : (
-            <button
-              type="button"
-              onClick={() => {
-                void openCreateFlow();
-              }}
-              className="shrink-0 ftc-btn-primary px-4 py-2.5 text-sm uppercase tracking-wide"
-            >
-              Create event
-            </button>
-          )
-      : undefined;
+  const workspaceHeaderActions: ReactNode | undefined = !isPlanner
+    ? undefined
+    : createOpen && isCalendarCreateFlow
+      ? EVENTS_HEADER_CREATE_EVENT_PLACEHOLDER
+      : !createOpen
+        ? historyTabRowSelectionMode
+          ? EVENTS_HEADER_CREATE_EVENT_PLACEHOLDER
+          : (
+              <button
+                type="button"
+                onClick={() => {
+                  void openCreateFlow();
+                }}
+                className="shrink-0 ftc-btn-primary px-4 py-2.5 text-sm uppercase tracking-wide"
+              >
+                Create event
+              </button>
+            )
+        : undefined;
 
   return (
       <PlannerWorkspacePage

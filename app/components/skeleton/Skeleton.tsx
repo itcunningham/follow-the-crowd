@@ -438,6 +438,14 @@ export function EventsCalendarCreateLoadingShell({
     <PlannerWorkspacePage
       initialRole={role}
       activeWorkspaceHref={EVENTS_AREA_SUB_NAV.calendar.href}
+      actions={
+        <span
+          aria-hidden="true"
+          className="pointer-events-none invisible inline-flex shrink-0 ftc-btn-primary px-4 py-2.5 text-sm uppercase tracking-wide"
+        >
+          Create event
+        </span>
+      }
       secondaryControlsPlaceholder
       includeChrome={false}
     >
