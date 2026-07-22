@@ -172,7 +172,7 @@ function GigCalendarUpdatePill({ message, onDismiss }: GigCalendarUpdatePillProp
 
   return (
     <div
-      className="pointer-events-none absolute inset-x-0 top-0 z-0 flex h-full items-center justify-center px-10 sm:px-12"
+      className="pointer-events-none absolute inset-x-0 top-0 z-0 flex min-h-9 items-center justify-center px-10 sm:px-12"
       aria-hidden={!visible}
     >
       <p aria-live="polite" aria-atomic="true" className="pointer-events-none min-w-0 max-w-full">

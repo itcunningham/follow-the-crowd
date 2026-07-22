@@ -65,7 +65,7 @@ import {
   PLANNER_WORKSPACE_SUBNAV_ROW_CLASS,
   PLANNER_WORKSPACE_SUBNAV_SLOT_CLASS,
 } from "../app/components/planner/PlannerWorkspaceLayout";
-import { getEventsAreaSubNavItems, resolveActiveWorkspaceHref, buildWorkspaceSubNavDestinationHref, EVENTS_AREA_SUB_NAV } from "../lib/plannerEventsNav";
+import { getEventsAreaSubNavItems, resolveActiveWorkspaceHref, buildWorkspaceSubNavDestinationHref, EVENTS_AREA_SUB_NAV, isCalendarWorkspacePath } from "../lib/plannerEventsNav";
 import {
   EVENT_PLAN_ACTION_RESERVE_CLASS,
   EVENT_PLAN_USE_BUTTON_CLASS,
@@ -1308,7 +1308,7 @@ function testBookingsUsePlanWorkspaceTabNavigation() {
   assert.match(bookingsSource, /handleWorkspaceTabNavigate/);
   assert.match(bookingsSource, /resetCreateFlowState\(\)/);
   assert.match(bookingsSource, /buildGigsWorkspaceIncomingHref\(\)/);
-  assert.match(subNavLinkSource, /interceptNavigate\?\.\(href\)/);
+  assert.match(subNavLinkSource, /interceptNavigate\?\.\(destinationHref\)/);
   assert.match(subNavLinkSource, /if \(interceptNavigate\)/);
 }
 
@@ -1470,9 +1470,24 @@ function testGigsInnerTabSelectionFollowsRouteImmediately() {
 function testWorkspaceGigsTabOpensIncomingWithoutEventsQuery() {
   assert.equal(buildGigsWorkspaceIncomingHref(), "/bookings");
   assert.equal(buildWorkspaceSubNavDestinationHref(EVENTS_AREA_SUB_NAV.gigs.href), "/bookings");
+  assert.equal(
+    buildWorkspaceSubNavDestinationHref(EVENTS_AREA_SUB_NAV.gigs.href, "/calendar"),
+    "/bookings",
+  );
   assert.equal(buildWorkspaceSubNavDestinationHref(EVENTS_AREA_SUB_NAV.events.href), "/events");
   assert.equal(
-    buildWorkspaceSubNavDestinationHref(EVENTS_AREA_SUB_NAV.bookingPlans.href),
+    buildWorkspaceSubNavDestinationHref(EVENTS_AREA_SUB_NAV.events.href, "/calendar?view=dj"),
+    "/events",
+  );
+  assert.equal(
+    buildWorkspaceSubNavDestinationHref(EVENTS_AREA_SUB_NAV.bookingPlans.href, "/calendar"),
+    "/booking-plans",
+  );
+  assert.equal(
+    buildWorkspaceSubNavDestinationHref(
+      EVENTS_AREA_SUB_NAV.bookingPlans.href,
+      "/booking-plans",
+    ),
     "/booking-plans",
   );
 
@@ -1480,7 +1495,32 @@ function testWorkspaceGigsTabOpensIncomingWithoutEventsQuery() {
     new URL("../app/components/PlannerEventsSubNav.tsx", import.meta.url),
     "utf8",
   );
-  assert.match(subNavSource, /buildWorkspaceSubNavDestinationHref\(tab\.href\)/);
+  assert.match(subNavSource, /buildWorkspaceSubNavDestinationHref\(tab\.href, pathnameForSubNav\)/);
+}
+
+function testCalendarWorkspaceClearsStaleWorkspaceIntercept() {
+  const layoutSource = readFileSync(
+    new URL("../app/components/planner/PlannerWorkspaceLayout.tsx", import.meta.url),
+    "utf8",
+  );
+  const subNavLinkSource = readFileSync(
+    new URL("../app/components/planner/PlannerWorkspaceSubNavLink.tsx", import.meta.url),
+    "utf8",
+  );
+  const bothCalendarSource = readFileSync(
+    new URL("../app/components/BothRoleCalendarView.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(layoutSource, /workspaceIntercept/);
+  assert.match(layoutSource, /interceptWorkspaceTabNavigation=\{workspaceIntercept\}/);
+  assert.match(layoutSource, /PLANNER_WORKSPACE_SUBNAV_ROW_CLASS[\s\S]*relative z-30/);
+  assert.match(subNavLinkSource, /isCalendarWorkspacePath\(pathname\)/);
+  assert.match(subNavLinkSource, /router\.push\(destinationHref/);
+  assert.match(bothCalendarSource, /relative z-0 flex flex-col/);
+  assert.equal(isCalendarWorkspacePath("/calendar"), true);
+  assert.equal(isCalendarWorkspacePath("/calendar/foo"), true);
+  assert.equal(isCalendarWorkspacePath("/events"), false);
 }
 
 function testGigsWorkspaceChromeStateSyncAvoidsNoOpUpdates() {
@@ -1597,6 +1637,7 @@ async function main() {
   testGigsTabCountsDeriveFromSameBookingSnapshot();
   testGigsInnerTabSelectionFollowsRouteImmediately();
   testWorkspaceGigsTabOpensIncomingWithoutEventsQuery();
+  testCalendarWorkspaceClearsStaleWorkspaceIntercept();
   testGigsWorkspaceChromeStateSyncAvoidsNoOpUpdates();
   testBookingsRouteMountsPersistentGigsSecondaryBand();
   testWorkspaceSubNavLayoutIsStable();

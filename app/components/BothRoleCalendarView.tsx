@@ -134,7 +134,7 @@ export default function BothRoleCalendarView({ activeTab }: BothRoleCalendarView
   const activeStripConfig = activeTab === "planner" ? plannerStripConfig : djStripConfig;
 
   return (
-    <section className={`${PLANNER_WORKSPACE_PRIMARY_SURFACE_CLASS} flex flex-col`}>
+    <section className={`${PLANNER_WORKSPACE_PRIMARY_SURFACE_CLASS} relative z-0 flex flex-col`}>
       {activeTab === "planner" ? (
         <PlannerCalendar
           variant="dual"

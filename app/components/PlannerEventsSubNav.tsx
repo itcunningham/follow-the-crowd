@@ -219,7 +219,7 @@ export default function PlannerEventsSubNav({
         return (
           <PlannerWorkspaceSubNavLink
             key={tab.href}
-            href={buildWorkspaceSubNavDestinationHref(tab.href)}
+            href={buildWorkspaceSubNavDestinationHref(tab.href, pathnameForSubNav)}
             isActive={isActive}
             interceptNavigate={interceptWorkspaceTabNavigation ?? undefined}
           >

@@ -46,8 +46,15 @@ export function getEventsAreaSubNavItems(role: UserRole | null): EventsAreaSubNa
   return items;
 }
 
+export function isCalendarWorkspacePath(pathname: string | null | undefined): boolean {
+  return pathname === "/calendar" || (pathname?.startsWith("/calendar/") ?? false);
+}
+
 /** Workspace sub-nav destination; strips unrelated query when opening Gigs Incoming. */
-export function buildWorkspaceSubNavDestinationHref(href: string): string {
+export function buildWorkspaceSubNavDestinationHref(
+  href: string,
+  _currentPathname?: string | null,
+): string {
   if (href === EVENTS_AREA_SUB_NAV.gigs.href) {
     return buildGigsWorkspaceIncomingHref();
   }

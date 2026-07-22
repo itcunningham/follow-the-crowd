@@ -1,8 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useRef, type ReactNode } from "react";
+import {
+  buildWorkspaceSubNavDestinationHref,
+  EVENTS_AREA_SUB_NAV,
+  isCalendarWorkspacePath,
+} from "@/lib/plannerEventsNav";
 
 const PLANNER_WORKSPACE_SUB_NAV_HIT_CLASS =
   "relative inline-flex min-h-11 min-w-11 items-center justify-center touch-manipulation";
@@ -23,11 +28,13 @@ export default function PlannerWorkspaceSubNavLink({
   interceptNavigate,
 }: PlannerWorkspaceSubNavLinkProps) {
   const router = useRouter();
+  const pathname = usePathname();
+  const destinationHref = buildWorkspaceSubNavDestinationHref(href, pathname);
   const navigatedThisGestureRef = useRef(false);
   const activeGestureRef = useRef<{ pointerId: number; cancelled: boolean } | null>(null);
 
   const tryNavigate = useCallback(() => {
-    if (interceptNavigate?.(href)) {
+    if (interceptNavigate?.(destinationHref)) {
       navigatedThisGestureRef.current = true;
       return;
     }
@@ -37,8 +44,8 @@ export default function PlannerWorkspaceSubNavLink({
     }
 
     navigatedThisGestureRef.current = true;
-    router.push(href, { scroll: false });
-  }, [href, interceptNavigate, isActive, router]);
+    router.push(destinationHref, { scroll: false });
+  }, [destinationHref, interceptNavigate, isActive, router]);
 
   const handlePointerDown = useCallback(
     (event: React.PointerEvent<HTMLAnchorElement>) => {
@@ -105,16 +112,25 @@ export default function PlannerWorkspaceSubNavLink({
         return;
       }
 
+      if (
+        isCalendarWorkspacePath(pathname) &&
+        href !== EVENTS_AREA_SUB_NAV.calendar.href
+      ) {
+        event.preventDefault();
+        tryNavigate();
+        return;
+      }
+
       if (navigatedThisGestureRef.current) {
         event.preventDefault();
       }
     },
-    [interceptNavigate, isActive, tryNavigate],
+    [href, interceptNavigate, isActive, pathname, tryNavigate],
   );
 
   return (
     <Link
-      href={href}
+      href={destinationHref}
       prefetch
       onPointerDown={handlePointerDown}
       onPointerUp={handlePointerUp}
