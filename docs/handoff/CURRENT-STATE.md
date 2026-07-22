@@ -211,7 +211,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
-- `c0d5dfd` — stabilise workspace navigation layout
+- `8fb0e89` — stabilise workspace navigation layout
 - `71bfd47` — Fix Gigs Calendar intercepting workspace navigation
 - `6c601e6` — fix workspace navigation from gigs calendar
 - `75100cb` — Standardise event time validation with overnight support
