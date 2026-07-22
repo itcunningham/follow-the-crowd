@@ -949,10 +949,24 @@ function testGigsTabRowKeepsStableCountSlots() {
   assert.doesNotMatch(GIGS_TAB_PILL_ROW_CLASS, /flex-1/);
   assert.match(GIGS_TAB_PILL_MODIFIER_CLASS, /ftc-gigs-tab-pill/);
   assert.match(GIGS_TAB_COUNT_SLOT_CLASS, /tabular-nums/);
-  assert.match(GIGS_TAB_COUNT_SLOT_CLASS, /min-w-/);
+  assert.match(GIGS_TAB_COUNT_SLOT_CLASS, /w-\[2\.25ch\]/);
   assert.match(GIGS_LIST_TAB_ROW_CLASS, /flex-nowrap/);
   assert.match(GIGS_LIST_TAB_ROW_CLASS, /justify-between/);
   assert.doesNotMatch(GIGS_LIST_TAB_ROW_CLASS, /flex-wrap/);
+}
+
+function testGigsFilterTabsPolish() {
+  const tabsSource = readFileSync(
+    new URL("../app/components/bookings/DjGigsTabs.tsx", import.meta.url),
+    "utf8",
+  );
+  const cssSource = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
+
+  assert.match(tabsSource, /showCountBadge: true/);
+  assert.match(tabsSource, /showCountBadge: false/);
+  assert.match(tabsSource, /showCountBadge \?/);
+  assert.doesNotMatch(tabsSource, /tab\.value !== "history"/);
+  assert.match(cssSource, /\.ftc-filter-pill\.ftc-gigs-tab-pill[\s\S]*padding-inline: 0\.5rem/);
 }
 
 async function testEventsHistorySelectAllButtonInteraction() {
@@ -1762,6 +1776,7 @@ async function main() {
   testConfirmedTabAliasParsesFromUrl();
   testEventPlanUseButtonKeepsStableCardLayout();
   testGigsTabRowKeepsStableCountSlots();
+  testGigsFilterTabsPolish();
   testEventsHistoryBulkSelectAllTogglesSelection();
   testResolvePlannerHistoryHideEventIds();
   testEventsHistorySelectionToolbarUsesDeleteLabel();

@@ -32,38 +32,25 @@ const GIGS_TAB_CONFIG: {
   value: DjGigsListTab;
   label: string;
   showHistoryIcon?: boolean;
+  showCountBadge?: boolean;
 }[] = [
-  { value: "pending", label: "Incoming" },
-  { value: "accepted", label: "Confirmed" },
-  { value: "history", label: "History", showHistoryIcon: true },
+  { value: "pending", label: "Incoming", showCountBadge: true },
+  { value: "accepted", label: "Confirmed", showCountBadge: true },
+  { value: "history", label: "History", showHistoryIcon: true, showCountBadge: false },
 ];
 
 function DjGigsTabCount({
   count,
   countsReady,
-  reserveSlot,
 }: {
   count: number;
   countsReady: boolean;
-  reserveSlot: boolean;
 }) {
-  const visibleCount = countsReady && count > 0 ? ` ${count}` : "";
-
-  if (!reserveSlot) {
-    if (!visibleCount) {
-      return null;
-    }
-
-    return (
-      <span aria-hidden className="tabular-nums">
-        {visibleCount}
-      </span>
-    );
-  }
+  const digits = countsReady && count > 0 ? String(count) : "";
 
   return (
-    <span aria-hidden={!visibleCount} className={GIGS_TAB_COUNT_SLOT_CLASS}>
-      {visibleCount}
+    <span aria-hidden={!digits} className={GIGS_TAB_COUNT_SLOT_CLASS}>
+      {digits}
     </span>
   );
 }
@@ -83,10 +70,9 @@ export function DjGigsTabs({
         const isActive = activeView === tab.value;
         const href = buildGigsListHref(tab.value);
         const count = counts?.[tab.value] ?? 0;
+        const showCountBadge = tab.showCountBadge === true;
         const ariaLabel =
-          countsReady && count > 0 ? `${tab.label} ${count}` : tab.label;
-
-        const reserveCountSlot = tab.value !== "history";
+          showCountBadge && countsReady && count > 0 ? `${tab.label} ${count}` : tab.label;
 
         return (
           <Link
@@ -103,11 +89,9 @@ export function DjGigsTabs({
           >
             {tab.showHistoryIcon ? <HistoryIcon /> : null}
             {tab.label}
-            <DjGigsTabCount
-              count={count}
-              countsReady={countsReady}
-              reserveSlot={reserveCountSlot}
-            />
+            {showCountBadge ? (
+              <DjGigsTabCount count={count} countsReady={countsReady} />
+            ) : null}
           </Link>
         );
       })}

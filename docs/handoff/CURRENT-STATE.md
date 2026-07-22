@@ -118,7 +118,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 - **Calendar create workspace tab (2026-07-22):** Calendar-originated Create Event / Saved Event Plans on `/events` keep CALENDAR highlighted via `resolveEventsWorkspaceActiveHref` + `resolveActiveWorkspaceHref` calendar override (return/cancel unchanged); header Create event action uses invisible placeholder while calendar create is open so layout default action does not appear
 - **Gigs History cards (2026-07-15):** `Fixed ·` / `Open offer` fee copy aligned with Incoming/Confirmed; tighter info-to-actions spacing; shorter View event (primary) + Open DM (subdued) buttons
 - **Gigs Confirmed tab (2026-07-19):** received gigs reload after booking acceptance (`ftc-notifications-updated` + tab visibility) so accepted bookings appear in Confirmed without stale client state; gig date keys use shared `resolveEventDateKey` (legacy + ISO); `?tab=confirmed` URL alias maps to Confirmed
-- **Gigs tab row (2026-07-19):** shared `DjGigsTabs` + `DjGigsTabRow` use compact content-width pills in a `shrink-0 gap-2` cluster (no `flex-1` stretch), reserved count slots, and a reserved History manage slot (`h-9 w-9`) so tabs, counts and bin match the reference layout at 390px
+- **Gigs tab row (2026-07-22):** `DjGigsTabs` — fixed-width count slots on Incoming/Confirmed before counts load; History is label-only (no badge); tighter `padding-inline: 0.5rem` on gigs pills.
 - **Gigs list loading (2026-07-19):** Incoming/Confirmed/History show `ReceivedBookingsListSkeleton` while the initial gigs fetch runs (toolbar stays visible; no blank list gap); tab switches with cached data skip the skeleton
 - **Gigs tab counts (2026-07-19):** Incoming/Confirmed counts derive from the received-bookings + hidden-id snapshot as soon as those requests complete; sender profile fetch no longer blocks counts; reserved count slots stay stable before numbers appear (no fake zero)
 - **Workspace sub-nav (2026-07-19):** shared `(planner-workspace)` layout keeps Events / Event Plans / Calendar / Gigs tabs mounted across route transitions; loading shells render content only below the persistent tab row; mobile tabs use horizontal scroll + `router.push` (no full reload)
@@ -211,6 +211,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `TBD` — Polish gigs filter tabs
 - `591ecd2` — revert broken events loading refactor
 - `caa405d` — limit events loading state to event list
 - `ee191d6` — fix events route regression
