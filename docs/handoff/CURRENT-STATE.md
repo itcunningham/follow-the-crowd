@@ -206,6 +206,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `3c43c73` — fix planner calendar event navigation
 - `3462084` — open event details from planner calendar
 - `0837921` — shorten calendar event plans button label
 - `aeb9c24` — prevent current month calendar scroll shift
