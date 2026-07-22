@@ -207,7 +207,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
-- `<pending>` — apply event time defaults across create flows
+- `9402a39` — apply event time defaults across create flows
 - `525bc86` — improve event time picker defaults (today → current time; preserve selection on reopen)
 - `a9f5fff` — fix calendar nested return and dm punctuation
 - `3c43c73` — fix planner calendar event navigation
