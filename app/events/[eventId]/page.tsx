@@ -303,7 +303,7 @@ function EventDetailPageView() {
   const fromHistoryTab = searchParams.get("fromTab") === "history";
   const isHistoryEventDetail = Boolean(event && isPlannerEventInHistoryTab(event));
   const editHeaderState =
-    fromHistoryTab || isHistoryEventDetail ? "hidden" : editHeaderStateRaw;
+    fromHistoryTab || isHistoryEventDetail || editOpen ? "hidden" : editHeaderStateRaw;
   const hasAcceptedBooking = Boolean(
     currentUserId &&
       lineup.some(
