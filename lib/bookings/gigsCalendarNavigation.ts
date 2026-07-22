@@ -30,6 +30,23 @@ export function resolveCalendarOriginEventHref(
   return `/events/${eventId}?${params.toString()}`;
 }
 
+export function resolvePlannerCalendarItemHref(
+  item: { href: string; eventId?: string | null },
+  origin: CalendarOriginState,
+): string {
+  const eventId = item.eventId?.trim();
+
+  if (eventId) {
+    return resolveCalendarOriginEventHref(`/events/${eventId}`, origin);
+  }
+
+  if (item.href.startsWith("/events/")) {
+    return resolveCalendarOriginEventHref(item.href, origin);
+  }
+
+  return resolveCalendarOriginBookingHref(item.href, origin);
+}
+
 export function resolveCalendarOriginBookingHref(
   href: string,
   origin: CalendarOriginState,

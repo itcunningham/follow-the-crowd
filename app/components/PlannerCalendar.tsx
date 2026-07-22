@@ -59,7 +59,7 @@ import {
   isSameDay,
   isSameMonth,
   loadPlannerCalendarItems,
-  resolveCalendarOriginEventHref,
+  resolvePlannerCalendarItemHref,
   parsePlannerCalendarDateParam,
   resolvePlannerCalendarViewState,
   sortPlannerCalendarAgendaItems,
@@ -117,7 +117,7 @@ function PlannerCalendarItemBadge({
 }) {
   return (
     <Link
-      href={resolveCalendarOriginEventHref(item.href, calendarOrigin)}
+      href={resolvePlannerCalendarItemHref(item, calendarOrigin)}
       onClick={prepareMobileDocumentScrollReset}
       className={`flex w-full items-stretch gap-1 rounded-md border-0 px-1.5 py-1 text-left transition hover:opacity-90 md:gap-1.5 md:px-2 md:py-1.5 ${getPlannerCalendarStatusBadgeClass(item.statusKind)}`}
     >
@@ -219,7 +219,7 @@ function PlannerCalendarAgendaCard({
   calendarOrigin: CalendarOriginState;
 }) {
   const router = useRouter();
-  const eventHref = resolveCalendarOriginEventHref(item.href, calendarOrigin);
+  const eventHref = resolvePlannerCalendarItemHref(item, calendarOrigin);
 
   const handleOpenEvent = useCallback(() => {
     prepareCalendarAgendaEventNavigation();

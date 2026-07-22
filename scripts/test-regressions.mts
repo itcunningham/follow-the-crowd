@@ -49,7 +49,7 @@ import {
   buildEventDetailDmThreadHref,
   resolveDmThreadBackHref,
 } from "../lib/dm/threadNavigation";
-import { resolveGigsCalendarBookingNavigation } from "../lib/bookings/gigsCalendarNavigation";
+import { resolveGigsCalendarBookingNavigation, resolvePlannerCalendarItemHref } from "../lib/bookings/gigsCalendarNavigation";
 import { hasUnsavedProfileEdits, createProfileEditBaseline } from "../lib/user/profileEditDirtyState";
 import { getUsernameFormatError, normalizeSoundCloudInput, resolveProfileIdentityPresentation } from "../lib/user/profileFormUtils";
 import {
@@ -533,6 +533,37 @@ function testGigsCalendarBookingNavigation() {
   );
 
   assert.equal(missingEvent.kind, "error");
+}
+
+function testPlannerCalendarItemHref() {
+  const origin: import("../lib/bookings/gigsCalendarNavigation").CalendarOriginState = {
+    calendarDate: "2026-07-14",
+    calendarView: "event",
+    calendarMonth: "2026-07-01",
+  };
+  const eventId = "11111111-1111-4111-8111-111111111111";
+
+  assert.equal(
+    resolvePlannerCalendarItemHref(
+      {
+        href: `/dm/conversation-1?bookingRequestId=booking-1`,
+        eventId,
+      },
+      origin,
+    ),
+    `/events/${eventId}?from=calendar&calendarDate=2026-07-14&calendarView=event&calendarMonth=2026-07-01`,
+  );
+
+  assert.equal(
+    resolvePlannerCalendarItemHref(
+      {
+        href: `/events/${eventId}`,
+        eventId,
+      },
+      origin,
+    ),
+    `/events/${eventId}?from=calendar&calendarDate=2026-07-14&calendarView=event&calendarMonth=2026-07-01`,
+  );
 }
 
 function makeDjGigBooking(
@@ -1089,6 +1120,7 @@ function testCalendarLoadUsesCacheAndPrefetch() {
   assert.match(plannerCalendarSource, /writePlannerCalendarItemsCache\(nextItems\)/);
   assert.doesNotMatch(plannerCalendarSource, /\[loadCalendar, searchParams\]/);
   assert.doesNotMatch(plannerCalendarSource, /scrollIntoView/);
+  assert.match(plannerCalendarSource, /resolvePlannerCalendarItemHref/);
   assert.match(plannerCalendarSource, /readBookingPlansListCache\(\)/);
 
   assert.match(djCalendarSource, /readDjGigsCalendarCache\(\)/);
@@ -1295,6 +1327,7 @@ async function main() {
   testActiveEventLineupStatsMatchVisibleLineupRules();
   testDmThreadEventDetailBackHref();
   testGigsCalendarBookingNavigation();
+  testPlannerCalendarItemHref();
   testAcceptedFutureGigAppearsInConfirmed();
   testAcceptedPastGigAppearsInHistory();
   testPendingGigAppearsOnlyInIncoming();

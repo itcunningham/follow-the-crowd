@@ -76,6 +76,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 ## Calendar
 
 - **Calendar action CTA (2026-07-22):** mobile/desktop date actions show **Event Plans** (not “Saved Event Plans”) on the second pill; workspace tab and Event Plans page copy unchanged
+- **Planner Event Calendar cards (2026-07-22):** agenda/grid/day-modal taps open **Event Details** with `from=calendar` return params (not DM); sent bookings resolve linked `event_id` (including name/date match to owned events when `event_id` is missing on the row)
 - Desktop: month grid + day modal (wider layout, same behaviour)
 - No intro/description copy under the page title (planner event calendar)
 - **Status dot priority per date:** Accepted (green) → Pending (amber) → Upcoming (dark blue); Today uses tile outline, not dot colour
@@ -205,6 +206,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `<pending>` — open event details from planner calendar
 - `0837921` — shorten calendar event plans button label
 - `aeb9c24` — prevent current month calendar scroll shift
 - `68df4d5` — stabilize calendar scroll position during tab switching

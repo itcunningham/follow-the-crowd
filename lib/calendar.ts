@@ -59,6 +59,7 @@ export type CalendarItem = {
   statusLabel: string;
   statusKind: CalendarStatusKind;
   href: string;
+  eventId: string | null;
   typeLabel: string;
   startTimeSortKey: number;
   eventFallbackColour: string | null;
@@ -317,6 +318,47 @@ function isBookingLinkedToCancelledEvent(
   return Boolean(booking.event_id && cancelledEventIds.has(booking.event_id));
 }
 
+function resolvePlannerCalendarBookingEventId(
+  booking: BookingRequest,
+  ownedEvents: Event[],
+): string | null {
+  const directEventId = booking.event_id?.trim();
+
+  if (directEventId) {
+    return directEventId;
+  }
+
+  const dateKey = resolveCalendarDateKey(booking.event_date);
+
+  if (!dateKey) {
+    return null;
+  }
+
+  const bookingName = booking.event_name.trim().toLowerCase();
+
+  if (!bookingName) {
+    return null;
+  }
+
+  for (const event of ownedEvents) {
+    if (isEventCancelled(event)) {
+      continue;
+    }
+
+    const eventDateKey = resolveCalendarDateKey(event.event_date);
+
+    if (eventDateKey !== dateKey) {
+      continue;
+    }
+
+    if (event.name.trim().toLowerCase() === bookingName) {
+      return event.id;
+    }
+  }
+
+  return null;
+}
+
 function mapEventToCalendarItem(event: Event): CalendarItem | null {
   const dateKey = resolveCalendarDateKey(event.event_date);
 
@@ -336,6 +378,7 @@ function mapEventToCalendarItem(event: Event): CalendarItem | null {
     statusLabel: displayLabel,
     statusKind: mapEventDateDisplayKind(displayLabel),
     href: `/events/${event.id}`,
+    eventId: event.id,
     typeLabel: getCalendarTypeLabel("event"),
     startTimeSortKey: resolveCalendarItemStartTimeSortKey(event.event_date, event.set_time),
     eventFallbackColour: event.fallback_colour?.trim() || null,
@@ -346,6 +389,9 @@ function mapBookingToCalendarItem(
   booking: BookingRequest,
   type: "sent_booking" | "received_booking",
   eventFallbackColour: string | null = null,
+  options?: {
+    resolveEventId?: (booking: BookingRequest) => string | null;
+  },
 ): CalendarItem | null {
   const dateKey = resolveCalendarDateKey(booking.event_date);
 
@@ -353,9 +399,9 @@ function mapBookingToCalendarItem(
     return null;
   }
 
-  const href = booking.event_id
-    ? `/events/${booking.event_id}`
-    : `/dm/${booking.conversation_id}`;
+  const eventId =
+    options?.resolveEventId?.(booking) ?? booking.event_id?.trim() ?? null;
+  const href = eventId ? `/events/${eventId}` : `/dm/${booking.conversation_id}`;
 
   return {
     id: `${type}-${booking.id}`,
@@ -367,6 +413,7 @@ function mapBookingToCalendarItem(
     statusLabel: formatBookingStatusLabel(booking.status),
     statusKind: booking.status,
     href,
+    eventId,
     typeLabel: getCalendarTypeLabel(type),
     startTimeSortKey: resolveCalendarItemStartTimeSortKey(booking.event_date, booking.set_time),
     eventFallbackColour,
@@ -467,6 +514,10 @@ export async function loadPlannerCalendarItems(): Promise<CalendarItem[]> {
       booking,
       "sent_booking",
       booking.event_id ? eventFallbackColourById.get(booking.event_id) ?? null : null,
+      {
+        resolveEventId: (sentBooking) =>
+          resolvePlannerCalendarBookingEventId(sentBooking, events),
+      },
     );
 
     if (item) {
@@ -700,6 +751,7 @@ export {
   resolveCalendarOriginBookingHref,
   resolveCalendarOriginEventHref,
   resolveGigsCalendarBookingNavigation,
+  resolvePlannerCalendarItemHref,
 } from "@/lib/bookings/gigsCalendarNavigation";
 import type { CalendarOriginState, CalendarOriginView } from "@/lib/bookings/gigsCalendarNavigation";
 

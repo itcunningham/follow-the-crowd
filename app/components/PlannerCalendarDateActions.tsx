@@ -17,7 +17,7 @@ import {
   getPlannerViewDaySubtitle,
   getPlannerCalendarTodayDate,
   isSameDay,
-  resolveCalendarOriginEventHref,
+  resolvePlannerCalendarItemHref,
   toDateKey,
   type CalendarItem,
 } from "@/lib/calendar";
@@ -175,7 +175,7 @@ export default function PlannerCalendarDateActions({
                 {items.map((item) => (
                   <li key={item.id}>
                     <Link
-                      href={resolveCalendarOriginEventHref(item.href, calendarOrigin)}
+                      href={resolvePlannerCalendarItemHref(item, calendarOrigin)}
                       onClick={() => {
                         prepareMobileDocumentScrollReset();
                         onClose();
