@@ -36,15 +36,20 @@ function useStableWorkspaceGigsSubNavCount(
     readDisplayCount,
     readDisplayCount,
   );
-  const latchedCount = readWorkspaceGigsSubNavDisplayLatch(badgeUserId, badgeRole);
+  const latchedCount = readWorkspaceGigsSubNavDisplayLatch(badgeUserId, badgeRole) ?? 0;
   const stableCountRef = useRef(
-    Math.max(latchedCount ?? 0, rawCount, readDisplayCount()),
+    Math.max(latchedCount, rawCount, readDisplayCount()),
   );
 
-  if (rawCount > 0) {
-    stableCountRef.current = rawCount;
-  } else if (rawCount === 0 && readLocalGigsPendingCount(badgeUserId, badgeRole) === 0) {
+  const localCount = readLocalGigsPendingCount(badgeUserId, badgeRole);
+  if (localCount === 0) {
     stableCountRef.current = 0;
+    return 0;
+  }
+
+  const nextCount = Math.max(stableCountRef.current, latchedCount, rawCount);
+  if (nextCount > 0) {
+    stableCountRef.current = nextCount;
   }
 
   return stableCountRef.current;

@@ -2020,10 +2020,9 @@ function testCalendarWorkspaceClearsStaleWorkspaceIntercept() {
   assert.match(tokensSource, /PLANNER_WORKSPACE_BELOW_HEADER_CLASS[\s\S]*relative z-0/);
   assert.match(layoutSource, /PLANNER_WORKSPACE_HEADER_CLASS/);
   assert.match(layoutSource, /PLANNER_WORKSPACE_BELOW_HEADER_CLASS/);
-  assert.match(subNavLinkSource, /isCalendarWorkspacePath\(pathname\)/);
-  assert.match(subNavLinkSource, /window\.location\.assign\(destinationHref\)/);
   assert.match(subNavLinkSource, /router\.push\(destinationHref/);
-  assert.match(subNavLinkSource, /commitNavigation\(false\)/);
+  assert.match(subNavLinkSource, /commitNavigation\(/);
+  assert.doesNotMatch(subNavLinkSource, /window\.location\.assign\(destinationHref\)/);
   assert.match(bothCalendarSource, /relative isolate z-0 flex flex-col/);
   assert.match(monthNavSource, /grid-cols-1 grid-rows-1/);
   assert.equal(isCalendarWorkspacePath("/calendar"), true);

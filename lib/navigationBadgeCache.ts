@@ -763,3 +763,7 @@ export function getCachedGigsPendingCount(
 
   return null;
 }
+
+if (typeof window !== "undefined") {
+  hydrateWorkspaceGigsSubNavDisplayLatchFromSessionStorage();
+}

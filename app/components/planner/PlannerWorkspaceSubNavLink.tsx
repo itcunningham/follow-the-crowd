@@ -5,8 +5,6 @@ import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useRef, type ReactNode } from "react";
 import {
   buildWorkspaceSubNavDestinationHref,
-  EVENTS_AREA_SUB_NAV,
-  isCalendarWorkspacePath,
 } from "@/lib/plannerEventsNav";
 
 const PLANNER_WORKSPACE_SUB_NAV_HIT_CLASS =
@@ -35,7 +33,7 @@ export default function PlannerWorkspaceSubNavLink({
   const activeGestureRef = useRef<{ pointerId: number; cancelled: boolean } | null>(null);
 
   const commitNavigation = useCallback(
-    (fromTouch: boolean) => {
+    () => {
       if (interceptNavigate?.(destinationHref)) {
         navigatedThisGestureRef.current = true;
         return;
@@ -46,23 +44,9 @@ export default function PlannerWorkspaceSubNavLink({
       }
 
       navigatedThisGestureRef.current = true;
-
-      if (fromTouch) {
-        if (
-          isCalendarWorkspacePath(pathname) &&
-          destinationHref !== EVENTS_AREA_SUB_NAV.calendar.href
-        ) {
-          window.location.assign(destinationHref);
-          return;
-        }
-
-        router.push(destinationHref, { scroll: false });
-        return;
-      }
-
       router.push(destinationHref, { scroll: false });
     },
-    [destinationHref, interceptNavigate, isActive, pathname, router],
+    [destinationHref, interceptNavigate, isActive, router],
   );
 
   const handlePointerDown = useCallback(
@@ -101,7 +85,7 @@ export default function PlannerWorkspaceSubNavLink({
       activeGestureRef.current = null;
 
       if (event.pointerType === "touch") {
-        commitNavigation(true);
+        commitNavigation();
       }
     },
     [commitNavigation, interceptNavigate, isActive],
@@ -120,7 +104,7 @@ export default function PlannerWorkspaceSubNavLink({
     (event: React.MouseEvent<HTMLAnchorElement>) => {
       if (interceptNavigate) {
         event.preventDefault();
-        commitNavigation(false);
+        commitNavigation();
         return;
       }
 
@@ -135,7 +119,7 @@ export default function PlannerWorkspaceSubNavLink({
       }
 
       event.preventDefault();
-      commitNavigation(false);
+      commitNavigation();
     },
     [commitNavigation, interceptNavigate, isActive],
   );

@@ -135,7 +135,12 @@ export function readWorkspaceGigsBadgeDisplayCountForSubNav(
     return 0;
   }
 
-  const latchedBeforeResolve = readWorkspaceGigsSubNavDisplayLatch(resolvedUserId, resolvedRole);
+  const latchedCount = readWorkspaceGigsSubNavDisplayLatch(resolvedUserId, resolvedRole);
+  if (latchedCount != null && latchedCount > 0) {
+    return latchedCount;
+  }
+
+  const latchedBeforeResolve = latchedCount;
   const runtimeSnapshot = readRuntimeNavBadgeSnapshot(resolvedUserId, resolvedRole);
   const cached = getCachedGigsPendingCount(resolvedUserId, resolvedRole);
   const providerCount = cached ?? runtimeSnapshot?.gigsPending ?? 0;
