@@ -294,14 +294,19 @@ const HISTORY_SELECTION_EMBEDDED_CONTROL_HEIGHT_CLASS = "h-[1.625rem] py-0 leadi
 const HISTORY_SELECTION_EMBEDDED_PANEL_CLASS =
   "rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated/60";
 
-const HISTORY_SELECTION_TAB_ROW_CONTROL_HEIGHT_CLASS = "h-[1.25rem] py-0 leading-none";
+const HISTORY_SELECTION_TAB_ROW_CONTROL_HEIGHT_CLASS = "h-[1.25rem] max-h-full py-0 leading-none";
 
 const HISTORY_SELECTION_TAB_ROW_TEXT_CLASS =
   "text-[10px] font-semibold uppercase tracking-wide sm:text-[11px]";
 
 const HISTORY_SELECTION_TAB_ROW_BUTTON_INSET_CLASS = "px-1.5";
 
-const HISTORY_SELECTION_TAB_ROW_PANEL_INSET_CLASS = "px-3.5 py-0 sm:px-4";
+/** Matches Events Active/History pill outer box (`.ftc-events-list-tab-pill` min-height). */
+const HISTORY_SELECTION_TAB_ROW_PANEL_SIZE_CLASS =
+  "box-border h-[1.875rem] max-h-[1.875rem] shrink-0";
+
+/** Even inset between panel border and tab-row controls (~4px). */
+const HISTORY_SELECTION_TAB_ROW_PANEL_INSET_CLASS = "p-1";
 
 function historySelectionTabRowNeutralButtonClass() {
   return `${HISTORY_SELECTION_NEUTRAL_BUTTON_CLASS} ${HISTORY_SELECTION_TAB_ROW_CONTROL_HEIGHT_CLASS} ${HISTORY_SELECTION_TAB_ROW_TEXT_CLASS} text-ftc-text-secondary`;
@@ -377,7 +382,7 @@ export function HistorySelectionToolbar({
     : historySelectionDeleteButtonClass(embedded);
   const outerClassName = embedded
     ? tabRowEmbedded
-      ? `mb-0 box-border flex h-full max-h-full w-auto max-w-full shrink-0 flex-nowrap items-center gap-2 ${embeddedPanelClass} ${HISTORY_SELECTION_TAB_ROW_PANEL_INSET_CLASS}`
+      ? `mb-0 flex w-auto max-w-full flex-nowrap items-center gap-1.5 ${embeddedPanelClass} ${HISTORY_SELECTION_TAB_ROW_PANEL_SIZE_CLASS} ${HISTORY_SELECTION_TAB_ROW_PANEL_INSET_CLASS}`
       : `mb-0 box-border flex h-full w-full min-h-0 flex-nowrap items-center gap-2 ${embeddedPanelClass} px-3 py-1.5`
     : `mb-4 flex flex-wrap items-center justify-between gap-3 ${embeddedPanelClass} px-3 py-2.5`;
   const groupClassName = embedded
