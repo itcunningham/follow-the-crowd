@@ -10,7 +10,7 @@ import {
 } from "@/lib/design/ftcDesignSystem";
 import {
   buildEventsListHref,
-  resolveEventsListActiveTabLabel,
+  resolveEventsListActiveTabLabelForWorkspaceChrome,
   resolveEventsListTabRowChrome,
   type EventsListTab,
 } from "@/lib/events/eventsListNavigation";
@@ -107,7 +107,7 @@ export function EventsListTabControls({
 
   const activeTabClass = eventsListTabPillClass(!createOpen && !isHistoryTab);
   const historyTabClass = eventsListTabPillClass(!createOpen && isHistoryTab);
-  const activeLabel = resolveEventsListActiveTabLabel(isPlanner);
+  const activeLabel = resolveEventsListActiveTabLabelForWorkspaceChrome(isPlanner);
 
   return (
     <EventsListTabRow

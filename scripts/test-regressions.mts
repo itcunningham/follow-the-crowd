@@ -50,7 +50,7 @@ import {
   resolveBookingDateKey,
 } from "../lib/bookingRequests";
 import { parseDjGigsListTab, resolveGigsListTabParam, resolveGigsListTabForBookingsPage, buildGigsWorkspaceIncomingHref } from "../lib/bookings/gigsListNavigation";
-import { resolveEventsHistoryTrashVisible, resolveEventsListTabRowChrome, resolveEventsListActiveTabLabel, EVENTS_LIST_ACTIVE_TAB_LABEL_PLANNER } from "../lib/events/eventsListNavigation";
+import { resolveEventsHistoryTrashVisible, resolveEventsListTabRowChrome, resolveEventsListActiveTabLabel, resolveEventsListActiveTabLabelForWorkspaceChrome, EVENTS_LIST_ACTIVE_TAB_LABEL_PLANNER } from "../lib/events/eventsListNavigation";
 import { resolveHistoryBulkSelectAllToggle } from "../app/components/history/HistoryBulkManage";
 import { resolvePlannerHistoryHideEventIds } from "../lib/events";
 import {
@@ -1585,8 +1585,8 @@ function testEventsListTabControlsMatchLoadingShellAndLoadedPage() {
   );
   assert.match(controlsSource, /FTC_EVENTS_LIST_TAB_PILL_ROW_CLASS/);
   assert.match(controlsSource, /eventsListTabPillClass/);
-  assert.match(controlsSource, /resolveEventsListActiveTabLabel/);
-  assert.doesNotMatch(controlsSource, /isPlanner \? "Active" : "Upcoming"/);
+  assert.match(controlsSource, /resolveEventsListActiveTabLabelForWorkspaceChrome/);
+  assert.doesNotMatch(controlsSource, /resolveEventsListActiveTabLabel\(isPlanner\)/);
 
   const loadingActive = resolveEventsListTabRowChrome({
     isPlanner: true,
@@ -1665,7 +1665,7 @@ function testEventsRouteLoadingIsListAreaOnly() {
   );
   assert.match(
     appLoadingSource,
-    /export function EventsPageLoadingShell[\s\S]*resolveEventsWorkspaceChromeRole[\s\S]*readCachedUserProfileSync[\s\S]*EventsWorkspaceCreateEventAction disabled/,
+    /export function EventsPageLoadingShell[\s\S]*resolveEventsWorkspaceChromeRole[\s\S]*EventsWorkspaceCreateEventAction disabled/,
   );
   assert.match(
     appLoadingSource,

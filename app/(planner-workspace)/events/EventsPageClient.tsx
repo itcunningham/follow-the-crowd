@@ -358,7 +358,7 @@ function readMountEventsListState() {
     return seedEventsListStateFromCache(true);
   }
 
-  const isPlanner = canManageEvents(resolveEventsWorkspaceChromeRole(readCachedNavRole()));
+  const isPlanner = canManageEvents(resolveEventsWorkspaceChromeRole());
 
   return seedEventsListStateFromCache(isPlanner);
 }
@@ -382,8 +382,8 @@ function EventsPageClientView({
   const guardProfile = useGuardProfile();
   const handledCreateParamsRef = useRef<string | null>(null);
   const [mountListState] = useState(readMountEventsListState);
-  const [role, setRole] = useState<UserRole | null>(
-    () => guardProfile?.role ?? readCachedNavRole(),
+  const [role, setRole] = useState<UserRole | null>(() =>
+    resolveEventsWorkspaceChromeRole(guardProfile?.role, readCachedNavRole()),
   );
   const [events, setEvents] = useState<EventWithLineupStats[]>(() => mountListState.events);
   const eventsRef = useRef(events);

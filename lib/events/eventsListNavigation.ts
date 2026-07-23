@@ -1,5 +1,7 @@
 import { buildGigsListHref, parseDjGigsListTab } from "@/lib/bookings/gigsListNavigation";
 import { buildDmThreadHref } from "@/lib/dm/threadNavigation";
+import { resolveEventsWorkspaceChromeRole } from "@/lib/events/eventsWorkspaceChromeRole";
+import { canManageEvents } from "@/lib/user/currentUser";
 import { DM_BOOKING_FOCUS_SCROLL_ONLY } from "@/lib/dm/chatBookingTarget";
 import {
   buildCalendarOriginReturnHref,
@@ -20,6 +22,15 @@ export const EVENTS_LIST_ACTIVE_TAB_LABEL_DJ = "Upcoming";
 
 export function resolveEventsListActiveTabLabel(isPlanner: boolean): string {
   return isPlanner ? EVENTS_LIST_ACTIVE_TAB_LABEL_PLANNER : EVENTS_LIST_ACTIVE_TAB_LABEL_DJ;
+}
+
+/** First-tab label from parent planner flag + merged workspace role caches. */
+export function resolveEventsListActiveTabLabelForWorkspaceChrome(
+  isPlannerFromParent: boolean,
+): string {
+  return resolveEventsListActiveTabLabel(
+    isPlannerFromParent || canManageEvents(resolveEventsWorkspaceChromeRole()),
+  );
 }
 
 export function parseEventsListTab(value: string | null | undefined): EventsListTab {

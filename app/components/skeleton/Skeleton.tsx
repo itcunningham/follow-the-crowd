@@ -70,7 +70,7 @@ import { isPlannerBookingsCreateChromeActive } from "@/lib/bookings/planDeepLink
 import { isCalendarOriginCreateParam, resolveCalendarCreateInitialStep, resolveEventDetailBackHref, resolveEventsListTabParam } from "@/lib/events/eventsListNavigation";
 import { useEventEditHeaderState } from "@/lib/events/useEventEditHeaderVisibility";
 import type { EventEditHeaderState } from "@/lib/events/useEventEditHeaderVisibility";
-import { canManageEvents, readCachedUserProfileSync, type UserRole } from "@/lib/user/currentUser";
+import { canManageEvents, type UserRole } from "@/lib/user/currentUser";
 import { EVENTS_AREA_SUB_NAV } from "@/lib/plannerEventsNav";
 import { resolveEventsWorkspaceChromeRole } from "@/lib/events/eventsWorkspaceChromeRole";
 import { EVENT_DETAIL_CARD_CLASS } from "@/app/components/event-detail/eventDetailUi";
@@ -441,11 +441,7 @@ export function EventsPageLoadingShell({
   const [locationSearch] = useState(() =>
     typeof window === "undefined" ? null : window.location.search,
   );
-  const resolvedRole = resolveEventsWorkspaceChromeRole(
-    roleProp,
-    readCachedUserProfileSync()?.role,
-    cachedRole,
-  );
+  const resolvedRole = resolveEventsWorkspaceChromeRole(roleProp, cachedRole);
   const createParam = createParamProp;
 
   if (isCalendarOriginCreateParam(createParam)) {
