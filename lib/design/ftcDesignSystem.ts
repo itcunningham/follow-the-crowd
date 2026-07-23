@@ -81,11 +81,21 @@ export const GIGS_TAB_PILL_GAP_CLASS = "gap-1.5";
 /** Modifier for Incoming/Confirmed/History pills — tighter horizontal padding, same vertical sizing. */
 export const GIGS_TAB_PILL_MODIFIER_CLASS = "ftc-gigs-tab-pill";
 
+/** Incoming/Confirmed only — symmetric padding and stable outer box (History unchanged). */
+export const GIGS_TAB_PILL_WITH_COUNT_MODIFIER_CLASS = "ftc-gigs-tab-pill-with-count";
+
+/** Label inside Incoming/Confirmed inner row. */
+export const GIGS_TAB_PILL_LABEL_CLASS = "shrink-0";
+
 /** Count beside Incoming/Confirmed labels — hugs digits, stays vertically centred in the pill. */
 export const GIGS_TAB_COUNT_SLOT_CLASS = "inline-block shrink-0 tabular-nums";
 
-export function gigsTabPillClass(isActive: boolean): string {
-  return `${FTC_FILTER_PILL_CLASS} ${GIGS_TAB_PILL_MODIFIER_CLASS}${isActive ? " ftc-filter-pill-active" : ""}`;
+export function gigsTabPillClass(isActive: boolean, withCount = false): string {
+  const modifiers = [GIGS_TAB_PILL_MODIFIER_CLASS];
+  if (withCount) {
+    modifiers.push(GIGS_TAB_PILL_WITH_COUNT_MODIFIER_CLASS);
+  }
+  return `${FTC_FILTER_PILL_CLASS} ${modifiers.join(" ")}${isActive ? " ftc-filter-pill-active" : ""}`;
 }
 
 /** Gigs Incoming/Confirmed/History pill group — compact cluster, no stretch. */

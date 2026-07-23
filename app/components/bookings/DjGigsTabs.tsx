@@ -5,6 +5,7 @@ import type { DjGigsListTab } from "@/lib/bookingRequests";
 import {
   GIGS_TAB_COUNT_SLOT_CLASS,
   GIGS_TAB_PILL_GAP_CLASS,
+  GIGS_TAB_PILL_LABEL_CLASS,
   GIGS_TAB_PILL_ROW_CLASS,
   gigsTabPillClass,
 } from "@/lib/design/ftcDesignSystem";
@@ -70,12 +71,16 @@ export function DjGigsTabs({
                 event.preventDefault();
               }
             }}
-            className={`inline-flex items-center ${GIGS_TAB_PILL_GAP_CLASS} ${gigsTabPillClass(isActive)}`}
+            className={gigsTabPillClass(isActive, showCountBadge)}
           >
-            {tab.label}
             {showCountBadge ? (
-              <DjGigsTabCount count={count} countsReady={countsReady} />
-            ) : null}
+              <span className={`inline-flex items-center ${GIGS_TAB_PILL_GAP_CLASS}`}>
+                <span className={GIGS_TAB_PILL_LABEL_CLASS}>{tab.label}</span>
+                <DjGigsTabCount count={count} countsReady={countsReady} />
+              </span>
+            ) : (
+              tab.label
+            )}
           </Link>
         );
       })}

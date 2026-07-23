@@ -120,7 +120,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 - **Calendar create workspace tab (2026-07-23):** Calendar Create Event / Event Plans open on `/calendar?create=…` via `EventsCalendarOriginCreateClient` (no intermediate `/events` list); legacy `/events?create=calendar` redirects to calendar; CALENDAR tab stays highlighted; cancel/save return unchanged
 - **Gigs History cards (2026-07-15):** `Fixed ·` / `Open offer` fee copy aligned with Incoming/Confirmed; tighter info-to-actions spacing; shorter View event (primary) + Open DM (subdued) buttons
 - **Gigs Confirmed tab (2026-07-19):** received gigs reload after booking acceptance (`ftc-notifications-updated` + tab visibility) so accepted bookings appear in Confirmed without stale client state; gig date keys use shared `resolveEventDateKey` (legacy + ISO); `?tab=confirmed` URL alias maps to Confirmed
-- **Gigs tab row (2026-07-23):** `DjGigsTabs` — History label-only (no clock icon); tighter gigs pill `padding-inline: 0.375rem`; Incoming/Confirmed counts hug labels (`gap-0.5`, no fixed count slot width).
+- **Gigs tab row (2026-07-23):** `DjGigsTabs` — History label-only (unchanged `padding-inline: 0.375rem`); Incoming/Confirmed share inner label+count row (`gap-1.5`) with matched symmetric `padding: 0.375rem 0.5rem` and stable active border box (`ftc-gigs-tab-pill-with-count`).
 - **Gigs list loading (2026-07-19):** Incoming/Confirmed/History show `ReceivedBookingsListSkeleton` while the initial gigs fetch runs (toolbar stays visible; no blank list gap); tab switches with cached data skip the skeleton
 - **Gigs tab counts (2026-07-19):** Incoming/Confirmed counts derive from the received-bookings + hidden-id snapshot as soon as those requests complete; sender profile fetch no longer blocks counts; reserved count slots stay stable before numbers appear (no fake zero)
 - **Workspace sub-nav (2026-07-19):** shared `(planner-workspace)` layout keeps Events / Event Plans / Calendar / Gigs tabs mounted across route transitions; loading shells render content only below the persistent tab row; mobile tabs use horizontal scroll + `router.push` (no full reload)
@@ -214,6 +214,8 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `TBD` — balance Gigs Incoming/Confirmed pill padding
+- `3a802a6` — Gigs tabs: add ~6px gap between label and count
 - `3835957` — standardise planner workspace vertical spacing between sub-nav and secondary controls
 - `58f63af` — align events loading filter label
 - `a80058a` — fix circular workspace dependency causing route crash

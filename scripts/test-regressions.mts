@@ -89,6 +89,7 @@ import {
   EVENT_PLAN_USE_BUTTON_WRAP_CLASS,
   GIGS_TAB_COUNT_SLOT_CLASS,
   GIGS_TAB_PILL_MODIFIER_CLASS,
+  GIGS_TAB_PILL_WITH_COUNT_MODIFIER_CLASS,
   GIGS_TAB_PILL_ROW_CLASS,
   GIGS_LIST_TAB_ROW_CLASS,
   EVENTS_LIST_TAB_ROW_CLASS,
@@ -1007,6 +1008,7 @@ function testGigsTabRowKeepsStableCountSlots() {
   assert.match(GIGS_TAB_PILL_ROW_CLASS, /gap-2/);
   assert.doesNotMatch(GIGS_TAB_PILL_ROW_CLASS, /flex-1/);
   assert.match(GIGS_TAB_PILL_MODIFIER_CLASS, /ftc-gigs-tab-pill/);
+  assert.match(GIGS_TAB_PILL_WITH_COUNT_MODIFIER_CLASS, /ftc-gigs-tab-pill-with-count/);
   assert.match(GIGS_TAB_COUNT_SLOT_CLASS, /tabular-nums/);
   assert.doesNotMatch(GIGS_TAB_COUNT_SLOT_CLASS, /w-\[2\.25ch\]/);
   assert.match(GIGS_LIST_TAB_ROW_CLASS, /flex-nowrap/);
@@ -1026,7 +1028,13 @@ function testGigsFilterTabsPolish() {
   assert.match(tabsSource, /showCountBadge \?/);
   assert.doesNotMatch(tabsSource, /showHistoryIcon/);
   assert.doesNotMatch(tabsSource, /HistoryIcon/);
+  assert.match(tabsSource, /gigsTabPillClass\(isActive, showCountBadge\)/);
+  assert.match(tabsSource, /GIGS_TAB_PILL_LABEL_CLASS/);
   assert.match(cssSource, /\.ftc-filter-pill\.ftc-gigs-tab-pill[\s\S]*padding-inline: 0\.375rem/);
+  assert.match(
+    cssSource,
+    /\.ftc-gigs-tab-pill-with-count[\s\S]*padding: 0\.375rem 0\.5rem/,
+  );
 }
 
 async function testEventsHistorySelectAllButtonInteraction() {
