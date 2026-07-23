@@ -268,12 +268,12 @@ export function HistoryManageButton({
   );
 }
 
-function HistorySelectionBackIcon() {
+function HistorySelectionBackIcon({ className = "h-4 w-4" }: { className?: string }) {
   return (
     <svg
       aria-hidden="true"
       viewBox="0 0 24 24"
-      className="h-4 w-4"
+      className={className}
       fill="none"
       stroke="currentColor"
       strokeWidth="1.75"
@@ -293,6 +293,19 @@ const HISTORY_SELECTION_EMBEDDED_CONTROL_HEIGHT_CLASS = "h-[1.625rem] py-0 leadi
 
 const HISTORY_SELECTION_EMBEDDED_PANEL_CLASS =
   "rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated/60";
+
+const HISTORY_SELECTION_TAB_ROW_CONTROL_HEIGHT_CLASS = "h-[1.375rem] py-0 leading-none";
+
+const HISTORY_SELECTION_TAB_ROW_TEXT_CLASS =
+  "text-[10px] font-semibold uppercase tracking-wide sm:text-[11px]";
+
+function historySelectionTabRowNeutralButtonClass() {
+  return `${HISTORY_SELECTION_NEUTRAL_BUTTON_CLASS} ${HISTORY_SELECTION_TAB_ROW_CONTROL_HEIGHT_CLASS} ${HISTORY_SELECTION_TAB_ROW_TEXT_CLASS} text-ftc-text-secondary`;
+}
+
+function historySelectionTabRowDeleteButtonClass() {
+  return `${HISTORY_SELECTION_DELETE_BUTTON_CLASS} ${HISTORY_SELECTION_TAB_ROW_CONTROL_HEIGHT_CLASS} ${HISTORY_SELECTION_TAB_ROW_TEXT_CLASS} px-2`;
+}
 
 function historySelectionNeutralButtonClass(embedded: boolean) {
   return embedded
@@ -350,9 +363,17 @@ export function HistorySelectionToolbar({
   tabRowEmbedded?: boolean;
 }) {
   const embeddedPanelClass = HISTORY_SELECTION_EMBEDDED_PANEL_CLASS;
+  const tabRowNeutralButtonClass = historySelectionTabRowNeutralButtonClass();
+  const tabRowDeleteButtonClass = historySelectionTabRowDeleteButtonClass();
+  const neutralButtonClass = tabRowEmbedded
+    ? tabRowNeutralButtonClass
+    : historySelectionNeutralButtonClass(embedded);
+  const deleteButtonClass = tabRowEmbedded
+    ? tabRowDeleteButtonClass
+    : historySelectionDeleteButtonClass(embedded);
   const outerClassName = embedded
     ? tabRowEmbedded
-      ? `mb-0 box-border flex h-full max-h-full w-auto max-w-full shrink-0 flex-nowrap items-center gap-1.5 sm:gap-2 ${embeddedPanelClass} px-2 py-0 sm:px-3`
+      ? `mb-0 box-border flex h-full max-h-full w-auto max-w-full shrink-0 flex-nowrap items-center gap-1.5 ${embeddedPanelClass} px-3 py-0 sm:gap-1.5 sm:px-3.5`
       : `mb-0 box-border flex h-full w-full min-h-0 flex-nowrap items-center gap-2 ${embeddedPanelClass} px-3 py-1.5`
     : `mb-4 flex flex-wrap items-center justify-between gap-3 ${embeddedPanelClass} px-3 py-2.5`;
   const groupClassName = embedded
@@ -386,16 +407,16 @@ export function HistorySelectionToolbar({
         onClick={onCancel}
         disabled={removing}
         aria-label="Exit selection mode"
-        className={`${historySelectionNeutralButtonClass(embedded)} px-2.5`}
+        className={`${neutralButtonClass} ${tabRowEmbedded ? "px-2" : "px-2.5"}`}
       >
-        <HistorySelectionBackIcon />
+        <HistorySelectionBackIcon className={tabRowEmbedded ? "h-3.5 w-3.5" : "h-4 w-4"} />
       </button>
     ) : (
       <button
         type="button"
         onClick={onCancel}
         disabled={removing}
-        className={`${historySelectionNeutralButtonClass(embedded)} px-3 disabled:opacity-50`}
+        className={`${neutralButtonClass} ${tabRowEmbedded ? "px-2" : "px-3"} disabled:opacity-50`}
       >
         Cancel
       </button>
@@ -409,7 +430,7 @@ export function HistorySelectionToolbar({
       disabled={selectAllDisabled}
       aria-pressed={selectAllToggle ? allSelected : undefined}
       aria-label={selectAllToggle ? selectAllAriaLabel : undefined}
-      className={`${historySelectionNeutralButtonClass(embedded)} px-3`}
+      className={`${neutralButtonClass} ${tabRowEmbedded ? "px-2" : "px-3"}`}
     >
       {selectAllLabel}
     </button>
@@ -422,7 +443,7 @@ export function HistorySelectionToolbar({
       onClick={onRemove}
       disabled={deleteDisabled}
       aria-busy={removing}
-      className={historySelectionDeleteButtonClass(embedded)}
+      className={deleteButtonClass}
     >
       {removing ? removingLabel : removeLabel}
     </button>
