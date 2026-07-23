@@ -82,10 +82,12 @@ export default function PlannerEventsSubNav({
   const resolvedUserId = guardProfile?.user_id ?? cachedNavigation.userId;
   const badgeRole = roleForTabVisibility ?? lastKnownRoleRef.current ?? readCachedNavRole();
   const badgeUserId = resolvedUserId ?? cachedNavigation.userId;
+  const readDisplayCount = () =>
+    readWorkspaceGigsBadgeDisplayCountForSubNav(badgeUserId, badgeRole);
   const displayGigsPendingCount = useSyncExternalStore(
     subscribeNavigationBadgeListeners,
-    () => readWorkspaceGigsBadgeDisplayCountForSubNav(badgeUserId, badgeRole),
-    () => 0,
+    readDisplayCount,
+    readDisplayCount,
   );
 
   useEffect(() => {

@@ -64,11 +64,37 @@ export function resolveWorkspaceGigsPendingDisplayCount(input: {
   }
 
   if (input.badgesReady) {
+    if (input.providerCount === 0 && sessionCount != null && sessionCount > 0) {
+      return sessionCount;
+    }
     writeWorkspaceGigsDisplaySessionCount(userId, role, input.providerCount);
     return Math.max(0, Math.floor(input.providerCount));
   }
 
   return 0;
+}
+
+function finalizeWorkspaceGigsBadgeDisplayCount(
+  userId: string | null | undefined,
+  role: UserRole,
+  computed: number,
+): number {
+  if (computed > 0) {
+    return computed;
+  }
+
+  const localCount = readLocalGigsPendingCount(userId, role);
+  if (localCount === 0) {
+    writeWorkspaceGigsDisplaySessionCount(userId, role, 0);
+    return 0;
+  }
+
+  const sessionCount = readWorkspaceGigsDisplaySessionCount(userId, role);
+  if (sessionCount != null && sessionCount > 0) {
+    return sessionCount;
+  }
+
+  return computed;
 }
 
 /** Snapshot for workspace sub-nav — reads runtime/cache directly (avoids React context zero frames). */
@@ -93,11 +119,13 @@ export function readWorkspaceGigsBadgeDisplayCountForSubNav(
     cached != null ||
     readWorkspaceGigsDisplaySessionCount(resolvedUserId, resolvedRole) != null;
 
-  return resolveWorkspaceGigsPendingDisplayCount({
+  const computed = resolveWorkspaceGigsPendingDisplayCount({
     canViewGigs: true,
     userId: resolvedUserId,
     role: resolvedRole,
     providerCount,
     badgesReady,
   });
+
+  return finalizeWorkspaceGigsBadgeDisplayCount(resolvedUserId, resolvedRole, computed);
 }
