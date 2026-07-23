@@ -17,6 +17,7 @@ import {
 } from "@/app/components/planner/PlannerWorkspaceLayout";
 import { PLANNER_WORKSPACE_SECONDARY_BAND_CLASS } from "@/lib/design/plannerWorkspaceTokens";
 import { resolveGigsListTabForBookingsPage } from "@/lib/bookings/gigsListNavigation";
+import { readGigsTabCountsCache } from "@/lib/bookings/gigsTabCountsCache";
 import { isPlannerBookingsCreateChromeActive } from "@/lib/bookings/planDeepLink";
 import { readCachedNavRole } from "@/lib/navigationRoleCache";
 import type { DjGigsListTab } from "@/lib/bookingRequests";
@@ -74,9 +75,18 @@ export function gigsWorkspaceChromeStatesEqual(
 }
 
 export function GigsWorkspaceChromeProvider({ children }: { children: ReactNode }) {
-  const [chromeState, setChromeState] = useState<GigsWorkspaceChromeState>(
-    defaultGigsWorkspaceChromeState,
-  );
+  const [chromeState, setChromeState] = useState<GigsWorkspaceChromeState>(() => {
+    const cachedCounts = readGigsTabCountsCache();
+
+    if (!cachedCounts) {
+      return defaultGigsWorkspaceChromeState;
+    }
+
+    return {
+      ...defaultGigsWorkspaceChromeState,
+      counts: cachedCounts,
+    };
+  });
 
   return (
     <GigsWorkspaceChromeDispatchContext.Provider value={setChromeState}>

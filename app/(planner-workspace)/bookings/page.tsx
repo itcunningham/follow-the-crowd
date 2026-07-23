@@ -141,6 +141,10 @@ import {
   stashBookingPlansSuccessMessage,
   type BookingsDeepLinkIntent,
 } from "@/lib/bookings/planDeepLink";
+import {
+  readGigsTabCountsCache,
+  writeGigsTabCountsCache,
+} from "@/lib/bookings/gigsTabCountsCache";
 import { EVENTS_AREA_SUB_NAV } from "@/lib/plannerEventsNav";
 
 const emptyForm: BookingRequestInput = {
@@ -571,6 +575,8 @@ function BookingsPageContent() {
     [gigsListReady, receivedBookings, hiddenBookingIds],
   );
 
+  const resolvedGigsTabCounts = gigsTabCounts ?? readGigsTabCountsCache();
+
   const isGigsHistoryTab = djGigsView === "history";
   const showGigsManageButton =
     isGigsHistoryTab &&
@@ -586,10 +592,16 @@ function BookingsPageContent() {
   gigsManageClickRef.current = gigsHistoryBulkManage.enterSelectionMode;
 
   useLayoutEffect(() => {
+    if (gigsTabCounts) {
+      writeGigsTabCountsCache(gigsTabCounts);
+    }
+  }, [gigsTabCounts]);
+
+  useLayoutEffect(() => {
     const nextState = !showGigsWorkspace || plannerCreateVisible
       ? defaultGigsWorkspaceChromeState
       : {
-          counts: gigsTabCounts,
+          counts: resolvedGigsTabCounts,
           showManageButton: showGigsManageButton,
           reserveManageSlot: reserveGigsManageSlot,
           onManageClick: gigsManageClickRef.current,
@@ -599,9 +611,9 @@ function BookingsPageContent() {
       gigsWorkspaceChromeStatesEqual(previousState, nextState) ? previousState : nextState,
     );
   }, [
-    gigsTabCounts,
     plannerCreateVisible,
     reserveGigsManageSlot,
+    resolvedGigsTabCounts,
     setGigsWorkspaceChromeState,
     showGigsManageButton,
     showGigsWorkspace,

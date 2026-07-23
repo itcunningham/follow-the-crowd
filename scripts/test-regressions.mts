@@ -1049,6 +1049,28 @@ function testGigsTabRowKeepsStableCountSlots() {
   assert.doesNotMatch(GIGS_LIST_TAB_ROW_CLASS, /flex-wrap/);
 }
 
+function testGigsFilterTabCountsPersistDuringLoading() {
+  const pageSource = readFileSync(
+    new URL("../app/(planner-workspace)/bookings/page.tsx", import.meta.url),
+    "utf8",
+  );
+  const chromeSource = readFileSync(
+    new URL("../app/components/bookings/GigsWorkspaceChrome.tsx", import.meta.url),
+    "utf8",
+  );
+  const cacheSource = readFileSync(
+    new URL("../lib/bookings/gigsTabCountsCache.ts", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(pageSource, /gigsListReady/);
+  assert.match(pageSource, /gigsTabCounts \?\? readGigsTabCountsCache\(\)/);
+  assert.match(pageSource, /writeGigsTabCountsCache\(gigsTabCounts\)/);
+  assert.match(pageSource, /counts: resolvedGigsTabCounts/);
+  assert.match(chromeSource, /readGigsTabCountsCache/);
+  assert.match(cacheSource, /ftc-gigs-tab-counts-v1/);
+}
+
 function testGigsFilterTabsPolish() {
   const tabsSource = readFileSync(
     new URL("../app/components/bookings/DjGigsTabs.tsx", import.meta.url),
@@ -2208,6 +2230,7 @@ async function main() {
   testEventPlanUseButtonKeepsStableCardLayout();
   testGigsTabRowKeepsStableCountSlots();
   testGigsFilterTabsPolish();
+  testGigsFilterTabCountsPersistDuringLoading();
   testWorkspaceGigsPendingDisplayCountPreservesLastKnown();
   testWorkspaceGigsSubNavCountSurvivesStaleRuntimeZero();
   testGigsTabCountDisplayCap();
