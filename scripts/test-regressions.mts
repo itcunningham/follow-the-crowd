@@ -2010,8 +2010,20 @@ function testCalendarOriginCreateLinksStayOnCalendarRoute() {
     new URL("../app/(planner-workspace)/calendar/page.tsx", import.meta.url),
     "utf8",
   );
+  const eventsClientSource = readFileSync(
+    new URL("../app/(planner-workspace)/events/EventsPageClient.tsx", import.meta.url),
+    "utf8",
+  );
   assert.match(calendarPageSource, /EventsCalendarOriginCreateClient/);
   assert.match(calendarPageSource, /isCalendarOriginCreateParam/);
+  assert.match(
+    eventsClientSource,
+    /createParam === "calendar" \|\| createParam === "calendar-plans"[\s\S]*isCalendarWorkspaceHost[\s\S]*return;/,
+  );
+  assert.doesNotMatch(
+    eventsClientSource,
+    /isCalendarWorkspaceHost && createOpen && isCalendarOriginCreateParam\(createParam\)/,
+  );
 }
 
 async function main() {

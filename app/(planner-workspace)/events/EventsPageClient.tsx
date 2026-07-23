@@ -101,7 +101,6 @@ import {
 } from "@/lib/events/eventCoverImage";
 import {
   buildPlannerCalendarHref,
-  buildPlannerCalendarHrefClearingCreate,
   buildPlannerCalendarCreateHref,
   resolveCalendarOriginDateKey,
   stashPlannerCalendarReturnDate,
@@ -730,25 +729,11 @@ function EventsPageClientView({
     if (createParam === "calendar" || createParam === "calendar-plans") {
       const finishNavigation = () => {
         if (isCalendarWorkspaceHost) {
-          router.replace(
-            buildPlannerCalendarHrefClearingCreate(
-              calendarOriginDateKey ?? resolveCalendarOriginDateKey(eventDateParam),
-              {
-                view: searchParams.get("view"),
-                month: searchParams.get("month"),
-              },
-            ),
-          );
           return;
         }
 
         router.replace("/events");
       };
-
-      if (isCalendarWorkspaceHost && createOpen && isCalendarOriginCreateParam(createParam)) {
-        finishNavigation();
-        return;
-      }
 
       if (calendarOriginDateKey) {
         void loadBookingPlansForCreate().finally(finishNavigation);
