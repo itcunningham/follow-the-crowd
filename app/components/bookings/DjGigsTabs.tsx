@@ -15,6 +15,7 @@ import {
   gigsTabPillClass,
 } from "@/lib/design/ftcDesignSystem";
 import { buildGigsListHref } from "@/lib/bookings/gigsListNavigation";
+import { publishGigsListTabPending } from "@/lib/bookings/gigsListTabPending";
 
 const GIGS_TAB_CONFIG: {
   value: DjGigsListTab;
@@ -78,7 +79,10 @@ export function DjGigsTabs({
             onClick={(event) => {
               if (isActive) {
                 event.preventDefault();
+                return;
               }
+
+              publishGigsListTabPending(tab.value);
             }}
             className={pillClass}
           >

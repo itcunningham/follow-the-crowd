@@ -3,7 +3,9 @@
 import {
   createContext,
   useContext,
+  useEffect,
   useState,
+  useSyncExternalStore,
   type Dispatch,
   type ReactNode,
   type SetStateAction,
@@ -17,6 +19,13 @@ import {
 } from "@/app/components/planner/PlannerWorkspaceLayout";
 import { PLANNER_WORKSPACE_SECONDARY_BAND_CLASS } from "@/lib/design/plannerWorkspaceTokens";
 import { resolveGigsListTabForBookingsPage } from "@/lib/bookings/gigsListNavigation";
+import {
+  clearGigsListTabPending,
+  readGigsListTabPending,
+  resolveDisplayedGigsListTab,
+  subscribeGigsListTabPending,
+  syncGigsListTabPendingWithRoute,
+} from "@/lib/bookings/gigsListTabPending";
 import { readGigsTabCountsCache } from "@/lib/bookings/gigsTabCountsCache";
 import { isPlannerBookingsCreateChromeActive } from "@/lib/bookings/planDeepLink";
 import { readCachedNavRole } from "@/lib/navigationRoleCache";
@@ -150,6 +159,29 @@ function resolveBookingsGigsActiveViewFromWindow(): DjGigsListTab {
   });
 }
 
+function useDisplayedGigsListTab(routeTab: DjGigsListTab): DjGigsListTab {
+  useSyncExternalStore(
+    subscribeGigsListTabPending,
+    readGigsListTabPending,
+    () => null,
+  );
+
+  useEffect(() => {
+    syncGigsListTabPendingWithRoute(routeTab);
+  }, [routeTab]);
+
+  useEffect(() => {
+    function handlePopState() {
+      clearGigsListTabPending();
+    }
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
+
+  return resolveDisplayedGigsListTab(routeTab);
+}
+
 function GigsWorkspaceSecondaryBandBody({
   activeView,
   role,
@@ -190,7 +222,8 @@ export function GigsWorkspaceSecondaryBandFallback({
   role?: UserRole | null;
   plannerBookingCreateOpen?: boolean;
 } = {}) {
-  const [activeView] = useState(resolveBookingsGigsActiveViewFromWindow);
+  const routeActiveView = resolveBookingsGigsActiveViewFromWindow();
+  const activeView = useDisplayedGigsListTab(routeActiveView);
   const role = roleProp ?? readCachedNavRole();
   const plannerBookingCreateOpen =
     plannerBookingCreateOpenProp ??
@@ -231,12 +264,13 @@ export function GigsWorkspaceSecondaryBand({
             : ""
           : window.location.search,
     });
-  const activeView = resolveGigsListTabForBookingsPage({
+  const routeActiveView = resolveGigsListTabForBookingsPage({
     nextPathname: pathname,
     searchParamsTab: searchParams.get("tab"),
     locationPathname: typeof window === "undefined" ? null : window.location.pathname,
     locationSearch: typeof window === "undefined" ? null : window.location.search,
   });
+  const activeView = useDisplayedGigsListTab(routeActiveView);
 
   return (
     <div className={PLANNER_WORKSPACE_SECONDARY_BAND_CLASS}>

@@ -1049,6 +1049,27 @@ function testGigsTabRowKeepsStableCountSlots() {
   assert.doesNotMatch(GIGS_LIST_TAB_ROW_CLASS, /flex-wrap/);
 }
 
+function testGigsListTabPendingOptimisticSelection() {
+  const tabsSource = readFileSync(
+    new URL("../app/components/bookings/DjGigsTabs.tsx", import.meta.url),
+    "utf8",
+  );
+  const chromeSource = readFileSync(
+    new URL("../app/components/bookings/GigsWorkspaceChrome.tsx", import.meta.url),
+    "utf8",
+  );
+  const pendingSource = readFileSync(
+    new URL("../lib/bookings/gigsListTabPending.ts", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(tabsSource, /publishGigsListTabPending\(tab\.value\)/);
+  assert.match(chromeSource, /useDisplayedGigsListTab/);
+  assert.match(chromeSource, /syncGigsListTabPendingWithRoute/);
+  assert.match(chromeSource, /clearGigsListTabPending/);
+  assert.match(pendingSource, /resolveDisplayedGigsListTab/);
+}
+
 function testGigsFilterTabCountsPersistDuringLoading() {
   const pageSource = readFileSync(
     new URL("../app/(planner-workspace)/bookings/page.tsx", import.meta.url),
@@ -2247,6 +2268,7 @@ async function main() {
   testEventPlanUseButtonKeepsStableCardLayout();
   testGigsTabRowKeepsStableCountSlots();
   testGigsFilterTabsPolish();
+  testGigsListTabPendingOptimisticSelection();
   testGigsFilterTabCountsPersistDuringLoading();
   testWorkspaceGigsPendingDisplayCountPreservesLastKnown();
   testWorkspaceGigsSubNavCountSurvivesStaleRuntimeZero();
