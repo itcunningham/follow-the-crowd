@@ -1476,6 +1476,31 @@ function testCalendarScrollStabilityOnTabSwitch() {
   assert.match(subNavLinkSource, /if \(isActive\) \{\s*event\.preventDefault\(\)/);
 }
 
+function testCalendarRouteLoadingSkipsFullSkeletonCard() {
+  const routeLoadingSource = readFileSync(
+    new URL("../app/(planner-workspace)/calendar/loading.tsx", import.meta.url),
+    "utf8",
+  );
+  const skeletonSource = readFileSync(
+    new URL("../app/components/skeleton/Skeleton.tsx", import.meta.url),
+    "utf8",
+  );
+  const calendarPageSource = readFileSync(
+    new URL("../app/(planner-workspace)/calendar/page.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(routeLoadingSource, /CalendarPageLoadingShell/);
+  const calendarLoadingShellSource =
+    skeletonSource.match(/export function CalendarPageLoadingShell\([\s\S]*?\n\}/)?.[0] ?? "";
+  assert.notEqual(calendarLoadingShellSource, "");
+  assert.match(calendarLoadingShellSource, /CalendarViewTabs/);
+  assert.doesNotMatch(calendarLoadingShellSource, /PlannerCalendarLoadingCard/);
+  assert.doesNotMatch(calendarLoadingShellSource, /DjCalendarLoadingCard/);
+  assert.doesNotMatch(calendarPageSource, /PlannerCalendarLoadingCard/);
+  assert.doesNotMatch(calendarPageSource, /DjCalendarLoadingCard/);
+}
+
 function testEventPlansActionRowLayout() {
   const skeletonSource = readFileSync(
     new URL("../app/components/skeleton/Skeleton.tsx", import.meta.url),
@@ -1978,6 +2003,7 @@ async function main() {
   testEventPlansListLoadUsesCacheAndPrefetch();
   testCalendarLoadUsesCacheAndPrefetch();
   testCalendarScrollStabilityOnTabSwitch();
+  testCalendarRouteLoadingSkipsFullSkeletonCard();
   testCompactCalendarEventVenueTitleTruncates();
   testEventPlansActionRowLayout();
   testEventPlansInlineFeedbackMatchesEventsHistory();

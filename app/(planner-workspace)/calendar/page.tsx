@@ -7,10 +7,6 @@ import DjAvailabilityCalendar from "@/app/components/DjAvailabilityCalendar";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
 import { useGuardProfile } from "@/app/components/GuardProfileContext";
 import PlannerCalendar from "@/app/components/PlannerCalendar";
-import {
-  DjCalendarLoadingCard,
-  PlannerCalendarLoadingCard,
-} from "@/app/components/skeleton/Skeleton";
 import { PlannerWorkspacePage } from "@/app/components/planner/PlannerWorkspaceLayout";
 import { parseCalendarPageViewTab } from "@/lib/calendar";
 import { readCachedNavRole } from "@/lib/navigationRoleCache";
@@ -53,9 +49,7 @@ function CalendarWorkspaceBody({
     return <p className="text-sm text-ftc-text-muted">Calendar is not available for this account</p>;
   }
 
-  return displayRole === null ? (
-    <PlannerCalendarLoadingCard />
-  ) : null;
+  return null;
 }
 
 export default function CalendarPage() {

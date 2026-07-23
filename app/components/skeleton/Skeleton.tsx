@@ -971,20 +971,10 @@ export function CalendarPageLoadingShell() {
           <CalendarViewTabs activeTab={bothCalendarTab} onChange={setBothCalendarTab} />
         ) : undefined
       }
-      secondaryControlsPlaceholder={cachedRole === "promoter" || cachedRole === "dj"}
+      secondaryControlsPlaceholder={cachedRole === "promoter" || cachedRole === "dj" || cachedRole == null}
       includeChrome={false}
     >
-      {cachedRole === "both" ? (
-        bothCalendarTab === "dj" ? (
-          <DjCalendarLoadingCard />
-        ) : (
-          <PlannerCalendarLoadingCard />
-        )
-      ) : cachedRole === "dj" ? (
-        <DjCalendarLoadingCard />
-      ) : (
-        <PlannerCalendarLoadingCard />
-      )}
+      {null}
     </PlannerWorkspacePage>
   );
 }
