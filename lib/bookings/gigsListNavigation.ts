@@ -65,16 +65,18 @@ export function resolveGigsListTabForBookingsPage(options: {
   const locationOnBookings =
     locationPathname != null && isBookingsGigsListPathname(locationPathname);
 
-  if (locationOnBookings && options.locationSearch != null) {
-    return resolveGigsListTabParam(null, null, options.locationSearch);
-  }
-
+  // Cross-workspace: Next on /bookings while the browser URL is still another workspace route.
   if (locationPathname != null && !locationOnBookings) {
     return "pending";
   }
 
+  // In-app Gigs tab switches — Next searchParams can lead window.location.search on client nav.
   if (options.searchParamsTab != null) {
     return parseDjGigsListTab(options.searchParamsTab);
+  }
+
+  if (locationOnBookings && options.locationSearch) {
+    return resolveGigsListTabParam(null, null, options.locationSearch);
   }
 
   return "pending";

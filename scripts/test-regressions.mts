@@ -1972,7 +1972,16 @@ function testGigsInnerTabSelectionFollowsRouteImmediately() {
       locationPathname: "/bookings",
       locationSearch: "",
     }),
-    "pending",
+    "history",
+  );
+  assert.equal(
+    resolveGigsListTabForBookingsPage({
+      nextPathname: "/bookings",
+      searchParamsTab: "accepted",
+      locationPathname: "/bookings",
+      locationSearch: "",
+    }),
+    "accepted",
   );
   assert.equal(
     resolveGigsListTabForBookingsPage({
