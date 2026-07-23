@@ -75,7 +75,8 @@ export const EVENTS_CREATE_EVENT_BUTTON_CLASS =
   "shrink-0 ftc-btn-primary px-4 py-2.5 text-sm uppercase tracking-wide";
 
 export { WORKSPACE_GIGS_PENDING_BADGE_SLOT_CLASS } from "@/lib/design/workspaceSubNavBadge";
-export const GIGS_TAB_PILL_GAP_CLASS = "gap-0.5";
+/** Space between Gigs tab label and count (~6px). */
+export const GIGS_TAB_PILL_GAP_CLASS = "gap-1.5";
 
 /** Modifier for Incoming/Confirmed/History pills — tighter horizontal padding, same vertical sizing. */
 export const GIGS_TAB_PILL_MODIFIER_CLASS = "ftc-gigs-tab-pill";
