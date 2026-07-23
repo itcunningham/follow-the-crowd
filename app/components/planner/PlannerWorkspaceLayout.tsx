@@ -275,7 +275,9 @@ function renderSecondaryBand({
   }
 
   if (secondaryControlsSlot) {
-    return secondaryControlsSlot;
+    return (
+      <PlannerWorkspaceSecondaryControls>{secondaryControlsSlot}</PlannerWorkspaceSecondaryControls>
+    );
   }
 
   if (secondaryControlsPlaceholder) {

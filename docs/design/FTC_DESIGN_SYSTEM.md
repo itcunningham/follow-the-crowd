@@ -74,7 +74,7 @@ Apply to: page headers, body content, Event Details content, Messages inbox.
 
 | Area | Rule |
 |------|------|
-| Page header | `pt-4 pb-4` + bottom border — `PLANNER_WORKSPACE_HEADER_CLASS` |
+| Page header | `pt-4` + bottom border — `PLANNER_WORKSPACE_HEADER_CLASS` (no bottom padding; gap to secondary is the band below) |
 | Sub-nav below title | `mt-4` — `PLANNER_WORKSPACE_SUBNAV_SLOT_CLASS` |
 | Secondary controls row (tabs, filters) | `pt-4` band + `mb-4` row — `PLANNER_WORKSPACE_SECONDARY_BAND_CLASS`, `PLANNER_WORKSPACE_SECONDARY_CONTROLS_CLASS` |
 | Page body bottom | `pb-4` — `PLANNER_WORKSPACE_BODY_CLASS` |

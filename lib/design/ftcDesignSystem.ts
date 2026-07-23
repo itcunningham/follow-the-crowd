@@ -93,7 +93,7 @@ export const GIGS_TAB_PILL_ROW_CLASS = "flex shrink-0 flex-nowrap items-center g
 
 /** Gigs filter row — matches planner secondary controls with nowrap for 390px. */
 export const GIGS_LIST_TAB_ROW_CLASS =
-  "mb-4 flex min-h-[1.875rem] flex-nowrap items-center justify-between gap-2 md:min-h-[2.375rem]";
+  "flex min-h-[1.875rem] flex-nowrap items-center justify-between gap-2 md:min-h-[2.375rem]";
 
 /** Invisible slot reserved while History manage action is loading or empty. */
 export const GIGS_MANAGE_BUTTON_PLACEHOLDER_CLASS =
@@ -109,15 +109,14 @@ export const FTC_EVENTS_LIST_TAB_ACTION_PLACEHOLDER_CLASS =
 
 /** Events Active/History tab row — single locked height at all breakpoints. */
 export const EVENTS_LIST_TAB_ROW_CLASS =
-  "mb-4 flex h-[2.375rem] min-h-[2.375rem] flex-nowrap items-center gap-2";
+  "flex min-h-[1.875rem] flex-nowrap items-center gap-2 md:min-h-[2.375rem]";
 
 /** Inline history-remove feedback beside History tab (truncate, no row growth). */
 export const EVENTS_LIST_TAB_FEEDBACK_CLASS =
   "min-w-0 truncate text-[11px] font-normal leading-none text-ftc-text-muted transition-opacity duration-300 sm:text-xs";
 
 /** Event Plans toolbar row — fixed height for trash ↔ delete-selection swap. */
-export const EVENT_PLANS_TOOLBAR_ROW_CLASS =
-  "relative mb-4 h-[3.125rem] w-full shrink-0";
+export const EVENT_PLANS_TOOLBAR_ROW_CLASS = "relative h-[3.125rem] w-full shrink-0";
 
 /** Event Plans card — layout-only reserve matching Use plan width in delete-selection mode. */
 export const EVENT_PLAN_ACTION_RESERVE_CLASS =

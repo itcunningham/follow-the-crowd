@@ -76,6 +76,9 @@ import { getUsernameFormatError, normalizeSoundCloudInput, resolveProfileIdentit
 import {
   PLANNER_WORKSPACE_SUBNAV_ROW_CLASS,
   PLANNER_WORKSPACE_SUBNAV_SLOT_CLASS,
+  PLANNER_WORKSPACE_HEADER_CLASS,
+  PLANNER_WORKSPACE_SECONDARY_BAND_CLASS,
+  PLANNER_WORKSPACE_SECONDARY_CONTROLS_CLASS,
 } from "../lib/design/plannerWorkspaceTokens";
 import { getEventsAreaSubNavItems, resolveActiveWorkspaceHref, buildWorkspaceSubNavDestinationHref, EVENTS_AREA_SUB_NAV, isCalendarWorkspacePath, mergeWorkspaceNavRole, WORKSPACE_SUB_NAV_TABS, isWorkspaceSubNavTabVisible } from "../lib/plannerEventsNav";
 import { resolveEventsWorkspaceChromeRole } from "../lib/events/eventsWorkspaceChromeRole";
@@ -87,6 +90,8 @@ import {
   GIGS_TAB_PILL_MODIFIER_CLASS,
   GIGS_TAB_PILL_ROW_CLASS,
   GIGS_LIST_TAB_ROW_CLASS,
+  EVENTS_LIST_TAB_ROW_CLASS,
+  EVENT_PLANS_TOOLBAR_ROW_CLASS,
 } from "../lib/design/ftcDesignSystem";
 
 function testPastEventDatesAreBlocked() {
@@ -877,6 +882,33 @@ function testWorkspaceSubNavLayoutIsStable() {
     "/events,/booking-plans,/calendar,/bookings",
   );
   assert.equal(getEventsAreaSubNavItems(null).map((item) => item.href).join(","), "/events,/calendar");
+}
+
+function testPlannerWorkspaceSecondaryRowRhythm() {
+  assert.doesNotMatch(PLANNER_WORKSPACE_HEADER_CLASS, /\bpb-4\b/);
+  assert.match(PLANNER_WORKSPACE_SECONDARY_BAND_CLASS, /^pt-4$/);
+  assert.match(PLANNER_WORKSPACE_SECONDARY_CONTROLS_CLASS, /\bmb-4\b/);
+
+  assert.doesNotMatch(EVENTS_LIST_TAB_ROW_CLASS, /\bmb-4\b/);
+  assert.doesNotMatch(GIGS_LIST_TAB_ROW_CLASS, /\bmb-4\b/);
+  assert.doesNotMatch(EVENT_PLANS_TOOLBAR_ROW_CLASS, /\bmb-4\b/);
+  assert.match(EVENTS_LIST_TAB_ROW_CLASS, /md:min-h-\[2\.375rem\]/);
+  assert.match(GIGS_LIST_TAB_ROW_CLASS, /md:min-h-\[2\.375rem\]/);
+
+  const layoutSource = readFileSync(
+    new URL("../app/components/planner/PlannerWorkspaceLayout.tsx", import.meta.url),
+    "utf8",
+  );
+  const gigsChromeSource = readFileSync(
+    new URL("../app/components/bookings/GigsWorkspaceChrome.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(
+    layoutSource,
+    /secondaryControlsSlot[\s\S]*PlannerWorkspaceSecondaryControls>\{secondaryControlsSlot\}/,
+  );
+  assert.match(gigsChromeSource, /<PlannerWorkspaceSecondaryControls>[\s\S]*<GigsWorkspaceTabRow/);
 }
 
 function testWorkspaceNavRoleDoesNotDropEventPlansTab() {
@@ -2017,6 +2049,7 @@ async function main() {
   testGigsWorkspaceChromeStateSyncAvoidsNoOpUpdates();
   testBookingsRouteMountsPersistentGigsSecondaryBand();
   testWorkspaceSubNavLayoutIsStable();
+  testPlannerWorkspaceSecondaryRowRhythm();
   testWorkspaceNavRoleDoesNotDropEventPlansTab();
   testWorkspaceActiveHrefIgnoresStaleOverrides();
   testProfileIdentityPresentationHierarchy();

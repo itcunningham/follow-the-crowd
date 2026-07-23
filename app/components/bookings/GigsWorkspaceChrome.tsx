@@ -12,6 +12,7 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { DjGigsTabs } from "@/app/components/bookings/DjGigsTabs";
 import { DjGigsTabRow } from "@/app/components/skeleton/Skeleton";
 import {
+  PlannerWorkspaceSecondaryControls,
   PlannerWorkspaceSecondaryControlsPlaceholder,
 } from "@/app/components/planner/PlannerWorkspaceLayout";
 import { PLANNER_WORKSPACE_SECONDARY_BAND_CLASS } from "@/lib/design/plannerWorkspaceTokens";
@@ -160,13 +161,15 @@ function GigsWorkspaceSecondaryBandBody({
   }
 
   return (
-    <GigsWorkspaceTabRow
-      activeView={activeView}
-      counts={chromeState.counts}
-      showManageButton={chromeState.showManageButton}
-      reserveManageSlot={reserveManageSlot}
-      onManageClick={chromeState.onManageClick}
-    />
+    <PlannerWorkspaceSecondaryControls>
+      <GigsWorkspaceTabRow
+        activeView={activeView}
+        counts={chromeState.counts}
+        showManageButton={chromeState.showManageButton}
+        reserveManageSlot={reserveManageSlot}
+        onManageClick={chromeState.onManageClick}
+      />
+    </PlannerWorkspaceSecondaryControls>
   );
 }
 
