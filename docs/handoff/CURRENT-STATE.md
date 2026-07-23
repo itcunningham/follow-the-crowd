@@ -213,6 +213,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `3835957` — standardise planner workspace vertical spacing between sub-nav and secondary controls
 - `58f63af` — align events loading filter label
 - `a80058a` — fix circular workspace dependency causing route crash
 - `b43e2bf` — show cached events list on tab return without skeleton flash
