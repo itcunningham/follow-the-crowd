@@ -184,7 +184,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 - **Desktop consistency tokens:** shared primary surface (`PLANNER_WORKSPACE_PRIMARY_SURFACE_CLASS`), list spacing (`PLANNER_WORKSPACE_LIST_CLASS`), title-row baseline alignment; Calendar reference shell — no duplicate in-card titles on desktop; loading skeletons match loaded layout
 - **Events list cards (2026-07-14):** smaller list artwork (~14%), bolder title, compact status badge + booking stat chips, full-card tap target with chevron as visual cue only
 - **Events list card polish (2026-07-20):** two-column Gigs pattern — artwork left, left-aligned body stack (GigCardHeader + GigCardMetaRows rhythm), status + chevron top-right, compact stat chips below time
-- **Events loading boundary (2026-07-23):** Route `loading.tsx` and auth `AppLoadingShell` for `/events` render **`EventsPageLoadingShell`** via **`EventsListAreaLoading`** — real Active/History (`EventsListTabControls` + `loadingShell`) and disabled Create event when cached role is planner; list-only **`EventListSkeleton`** matches loaded card geometry (`ftc-gigs-list`, thumb/title/meta/pills/badge/chevron slots). Persistent title + workspace tabs stay in **`PlannerWorkspaceRouteLayout`**. Calendar-origin create unchanged.
+- **Events loading boundary (2026-07-23):** Route/auth loading uses **`EventsPageLoadingShell`** with **`resolveEventsWorkspaceChromeRole`** (guard + cache merge, same as loaded **`EventsPageClient`**) — **Active**/History labels, **`EventsWorkspaceCreateEventLink`** for planners, list skeleton only; workspace tabs + stable **`WORKSPACE_GIGS_PENDING_BADGE_SLOT_CLASS`** on Gigs pill via **`PlannerEventsSubNav`**.
 - **Event detail page (2026-07-14):** shorter hero (~25%), icon-led event summary block, compact lineup booking cards aligned with DM cards, Invite DJs action label, cancel event moved below bookings, flat action cards, dashed run sheet empty state
 - **Invite DJs sheet (2026-07-14):** full-card tap selection with avatar checkmark, icon search field, compact DJ row hierarchy, dynamic confirm button label
 - **Event detail visual consistency (2026-07-14):** shared `eventDetailUi` tokens — unified section titles (`text-base font-bold`), card padding (`p-3.5 sm:p-4`), button heights (`min-h-10`), compact status badges (9px), feedback banners, Run Sheet / Bookings / Notes / Your booking headings aligned; Invite DJs modal matches same language
@@ -212,6 +212,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `2a0f98d` — stabilise events filters and card skeletons
 - `e517c08` — final polish compact calendar titles
 - `9e77fe5` — simplify compact calendar title layout
 - `16c1ba6` — enforce 30 character event and plan field limits
