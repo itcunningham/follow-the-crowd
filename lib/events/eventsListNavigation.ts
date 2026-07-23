@@ -1,7 +1,7 @@
 import { buildGigsListHref, parseDjGigsListTab } from "@/lib/bookings/gigsListNavigation";
 import { buildDmThreadHref } from "@/lib/dm/threadNavigation";
 import { resolveEventsWorkspaceChromeRole } from "@/lib/events/eventsWorkspaceChromeRole";
-import { canManageEvents } from "@/lib/user/currentUser";
+import { canManageEvents, type UserRole } from "@/lib/user/currentUser";
 import { DM_BOOKING_FOCUS_SCROLL_ONLY } from "@/lib/dm/chatBookingTarget";
 import {
   buildCalendarOriginReturnHref,
@@ -24,12 +24,18 @@ export function resolveEventsListActiveTabLabel(isPlanner: boolean): string {
   return isPlanner ? EVENTS_LIST_ACTIVE_TAB_LABEL_PLANNER : EVENTS_LIST_ACTIVE_TAB_LABEL_DJ;
 }
 
-/** First-tab label from parent planner flag + merged workspace role caches. */
+/** First-tab label — loading shell always shows planner label; loaded state uses guard + caches. */
 export function resolveEventsListActiveTabLabelForWorkspaceChrome(
   isPlannerFromParent: boolean,
+  options?: { loadingShell?: boolean; guardRole?: UserRole | null },
 ): string {
+  if (options?.loadingShell) {
+    return EVENTS_LIST_ACTIVE_TAB_LABEL_PLANNER;
+  }
+
   return resolveEventsListActiveTabLabel(
-    isPlannerFromParent || canManageEvents(resolveEventsWorkspaceChromeRole()),
+    isPlannerFromParent ||
+      canManageEvents(resolveEventsWorkspaceChromeRole(options?.guardRole)),
   );
 }
 

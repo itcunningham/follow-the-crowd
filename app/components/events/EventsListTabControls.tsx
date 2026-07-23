@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import type { MouseEvent, ReactNode } from "react";
+import { useGuardProfile } from "@/app/components/GuardProfileContext";
 import { EventsListTabRow } from "@/app/components/events/EventsListTabRow";
 import {
   EVENTS_CREATE_EVENT_BUTTON_CLASS,
@@ -94,6 +95,7 @@ export function EventsListTabControls({
   visibleHistoryEventCount = 0,
   loadingShell = false,
 }: EventsListTabControlsProps) {
+  const guardProfile = useGuardProfile();
   const isHistoryTab = listTab === "history";
   const rowChrome = resolveEventsListTabRowChrome({
     isPlanner,
@@ -107,7 +109,10 @@ export function EventsListTabControls({
 
   const activeTabClass = eventsListTabPillClass(!createOpen && !isHistoryTab);
   const historyTabClass = eventsListTabPillClass(!createOpen && isHistoryTab);
-  const activeLabel = resolveEventsListActiveTabLabelForWorkspaceChrome(isPlanner);
+  const activeLabel = resolveEventsListActiveTabLabelForWorkspaceChrome(isPlanner, {
+    loadingShell,
+    guardRole: guardProfile?.role,
+  });
 
   return (
     <EventsListTabRow

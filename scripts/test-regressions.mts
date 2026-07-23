@@ -1585,7 +1585,19 @@ function testEventsListTabControlsMatchLoadingShellAndLoadedPage() {
   );
   assert.match(controlsSource, /FTC_EVENTS_LIST_TAB_PILL_ROW_CLASS/);
   assert.match(controlsSource, /eventsListTabPillClass/);
-  assert.match(controlsSource, /resolveEventsListActiveTabLabelForWorkspaceChrome\(isPlanner\)/);
+  assert.match(controlsSource, /resolveEventsListActiveTabLabelForWorkspaceChrome\(isPlanner/);
+  assert.match(controlsSource, /loadingShell/);
+  assert.equal(
+    resolveEventsListActiveTabLabelForWorkspaceChrome(false, { loadingShell: true }),
+    EVENTS_LIST_ACTIVE_TAB_LABEL_PLANNER,
+  );
+  assert.equal(
+    resolveEventsListActiveTabLabelForWorkspaceChrome(false, {
+      loadingShell: false,
+      guardRole: "both",
+    }),
+    "Active",
+  );
   assert.doesNotMatch(controlsSource, /resolveEventsListActiveTabLabel\(isPlanner\)/);
 
   const loadingActive = resolveEventsListTabRowChrome({
