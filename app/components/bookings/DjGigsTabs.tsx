@@ -3,6 +3,10 @@
 import Link from "next/link";
 import type { DjGigsListTab } from "@/lib/bookingRequests";
 import {
+  formatGigsTabCountAriaCount,
+  formatGigsTabCountDisplay,
+} from "@/lib/bookings/gigsTabCountDisplay";
+import {
   GIGS_TAB_COUNT_SLOT_CLASS,
   GIGS_TAB_PILL_GAP_CLASS,
   GIGS_TAB_PILL_LABEL_CLASS,
@@ -28,15 +32,15 @@ function DjGigsTabCount({
   count: number;
   countsReady: boolean;
 }) {
-  const digits = countsReady && count > 0 ? String(count) : "";
+  const display = countsReady ? formatGigsTabCountDisplay(count) : null;
 
-  if (!digits) {
+  if (!display) {
     return null;
   }
 
   return (
     <span className={GIGS_TAB_COUNT_SLOT_CLASS} aria-hidden={false}>
-      {digits}
+      {display}
     </span>
   );
 }
@@ -58,7 +62,9 @@ export function DjGigsTabs({
         const count = counts?.[tab.value] ?? 0;
         const showCountBadge = tab.showCountBadge === true;
         const ariaLabel =
-          showCountBadge && countsReady && count > 0 ? `${tab.label} ${count}` : tab.label;
+          showCountBadge && countsReady && count > 0
+            ? `${tab.label} ${formatGigsTabCountAriaCount(count)}`
+            : tab.label;
 
         return (
           <Link

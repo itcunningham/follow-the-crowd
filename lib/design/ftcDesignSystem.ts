@@ -75,20 +75,21 @@ export const EVENTS_CREATE_EVENT_BUTTON_CLASS =
   "shrink-0 ftc-btn-primary px-4 py-2.5 text-sm uppercase tracking-wide";
 
 export { WORKSPACE_GIGS_PENDING_BADGE_SLOT_CLASS } from "@/lib/design/workspaceSubNavBadge";
-/** Space between Gigs tab label and count (~6px). */
-export const GIGS_TAB_PILL_GAP_CLASS = "gap-1.5";
+/** Space between Gigs Incoming/Confirmed label and count (~8px). */
+export const GIGS_TAB_PILL_GAP_CLASS = "gap-2";
 
 /** Modifier for Incoming/Confirmed/History pills — tighter horizontal padding, same vertical sizing. */
 export const GIGS_TAB_PILL_MODIFIER_CLASS = "ftc-gigs-tab-pill";
 
-/** Incoming/Confirmed only — symmetric padding and stable outer box (History unchanged). */
+/** Incoming/Confirmed only — pairs with inner label+count row (padding shared on all gigs pills). */
 export const GIGS_TAB_PILL_WITH_COUNT_MODIFIER_CLASS = "ftc-gigs-tab-pill-with-count";
 
 /** Label inside Incoming/Confirmed inner row. */
 export const GIGS_TAB_PILL_LABEL_CLASS = "shrink-0";
 
-/** Count beside Incoming/Confirmed labels — hugs digits, stays vertically centred in the pill. */
-export const GIGS_TAB_COUNT_SLOT_CLASS = "inline-block shrink-0 tabular-nums";
+/** Count beside Incoming/Confirmed labels — stable width through 99+, vertically centred. */
+export const GIGS_TAB_COUNT_SLOT_CLASS =
+  "ftc-gigs-tab-count-slot inline-block shrink-0 tabular-nums";
 
 export function gigsTabPillClass(isActive: boolean, withCount = false): string {
   const modifiers = [GIGS_TAB_PILL_MODIFIER_CLASS];

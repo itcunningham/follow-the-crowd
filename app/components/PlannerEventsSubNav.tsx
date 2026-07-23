@@ -11,6 +11,7 @@ import {
   getNavigationBadgeCacheVersion,
   subscribeNavigationBadgeListeners,
 } from "@/lib/navigationBadgePrefetch";
+import { formatGigsTabCountDisplay, formatGigsTabCountAriaCount } from "@/lib/bookings/gigsTabCountDisplay";
 import { WORKSPACE_GIGS_PENDING_BADGE_SLOT_CLASS } from "@/lib/design/workspaceSubNavBadge";
 import {
   canViewGigsSubNav,
@@ -53,17 +54,19 @@ function GigsPendingCountBadge({
         aria-hidden="true"
         className={`${WORKSPACE_GIGS_PENDING_BADGE_SLOT_CLASS} opacity-0 ${badgeToneClass}`.trim()}
       >
-        0
+        99+
       </span>
     );
   }
 
+  const display = formatGigsTabCountDisplay(count)!;
+
   return (
     <span
-      aria-label={`${count} pending incoming gig${count === 1 ? "" : "s"}`}
+      aria-label={`${formatGigsTabCountAriaCount(count)} pending incoming gig${count === 1 ? "" : "s"}`}
       className={`${WORKSPACE_GIGS_PENDING_BADGE_SLOT_CLASS} ${badgeToneClass}`}
     >
-      {count > 99 ? "99+" : count}
+      {display}
     </span>
   );
 }

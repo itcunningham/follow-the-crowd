@@ -882,13 +882,8 @@ html {
     color 0.15s ease;
 }
 
-/* Gigs Incoming/Confirmed/History — compact horizontal padding; vertical sizing unchanged. */
+/* Gigs Incoming/Confirmed/History — shared horizontal padding and stable active border box. */
 .ftc-filter-pill.ftc-gigs-tab-pill {
-  padding-inline: 0.375rem;
-}
-
-/* Gigs Incoming/Confirmed — matched pair: explicit symmetric padding, stable size when active. */
-.ftc-filter-pill.ftc-gigs-tab-pill.ftc-gigs-tab-pill-with-count {
   box-sizing: border-box;
   flex-shrink: 0;
   white-space: nowrap;
@@ -897,10 +892,15 @@ html {
   border-style: solid;
 }
 
-.ftc-filter-pill.ftc-gigs-tab-pill.ftc-gigs-tab-pill-with-count.ftc-filter-pill-active {
+.ftc-filter-pill.ftc-gigs-tab-pill.ftc-filter-pill-active {
   border-width: 1px;
   border-style: solid;
   border-color: transparent;
+}
+
+.ftc-gigs-tab-count-slot {
+  min-width: 2.75ch;
+  text-align: right;
 }
 
 @media (hover: hover) {
