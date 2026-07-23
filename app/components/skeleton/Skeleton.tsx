@@ -37,11 +37,9 @@ import {
   FTC_EVENTS_LIST_TAB_PILL_ROW_CLASS,
   ftcFilterPillClass,
 } from "@/lib/design/ftcDesignSystem";
-import { useGuardProfile } from "@/app/components/GuardProfileContext";
 import {
   EventsListTabControls,
-  EventsWorkspaceCreateEventLink,
-  EventsWorkspaceCreateEventPlaceholder,
+  EventsWorkspaceCreateEventAction,
 } from "@/app/components/events/EventsListTabControls";
 import { EventsListTabRow } from "@/app/components/events/EventsListTabRow";
 import DmConversationHeader from "@/app/components/dm/DmConversationHeader";
@@ -426,8 +424,8 @@ export function EventsCalendarCreateLoadingShell({
 
 export function EventsPageLoadingShell({
   role: roleProp,
-  createParam: createParamProp,
-  initialTab: initialTabProp,
+  createParam: createParamProp = null,
+  initialTab: initialTabProp = null,
 }: {
   /** @deprecated Pass `role` instead — derived from role when omitted. */
   showPlannerStats?: boolean;
@@ -435,18 +433,12 @@ export function EventsPageLoadingShell({
   createParam?: string | null;
   initialTab?: string | null;
 }) {
-  const searchParams = useSearchParams();
-  const guardProfile = useGuardProfile();
-  const [cachedNavigation] = useState(readCachedNavigation);
+  const [cachedRole] = useState<UserRole | null>(() => readCachedNavRole());
   const [locationSearch] = useState(() =>
     typeof window === "undefined" ? null : window.location.search,
   );
-  const resolvedRole = resolveEventsWorkspaceChromeRole(
-    roleProp,
-    guardProfile?.role,
-    cachedNavigation.role,
-  );
-  const createParam = createParamProp ?? searchParams.get("create");
+  const resolvedRole = resolveEventsWorkspaceChromeRole(roleProp, cachedRole);
+  const createParam = createParamProp;
 
   if (isCalendarOriginCreateParam(createParam)) {
     return (
@@ -457,24 +449,21 @@ export function EventsPageLoadingShell({
     );
   }
 
+  const routeTab =
+    initialTabProp ??
+    (locationSearch
+      ? new URLSearchParams(
+          locationSearch.startsWith("?") ? locationSearch.slice(1) : locationSearch,
+        ).get("tab")
+      : null);
   const isPlanner = canManageEvents(resolvedRole);
-  const listTab = resolveEventsListTabParam(
-    searchParams.get("tab"),
-    initialTabProp,
-    locationSearch,
-  );
+  const listTab = resolveEventsListTabParam(routeTab, initialTabProp, locationSearch);
   const isHistoryTab = listTab === "history";
-
-  const headerActions = isPlanner ? (
-    <EventsWorkspaceCreateEventLink />
-  ) : resolvedRole === null ? (
-    <EventsWorkspaceCreateEventPlaceholder />
-  ) : undefined;
 
   return (
     <PlannerWorkspacePage
       initialRole={resolvedRole}
-      actions={headerActions}
+      actions={isPlanner ? <EventsWorkspaceCreateEventAction disabled /> : undefined}
       secondaryControlsSlot={
         <EventsListTabControls
           isPlanner={isPlanner}

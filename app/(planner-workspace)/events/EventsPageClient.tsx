@@ -496,7 +496,7 @@ function EventsPageClientView({
     createFormHasFieldErrors || Boolean(createFormNotesValidationError);
   const showEventsListContent = !isCalendarCreateFlow && !createOpen;
 
-  const resolvedRole = resolveEventsWorkspaceChromeRole(role, guardProfile?.role);
+  const resolvedRole = resolveEventsWorkspaceChromeRole(guardProfile?.role, role);
   const isPlanner = canManageEvents(resolvedRole);
   const roleReady = resolvedRole !== null;
   const upcomingEvents = useMemo(() => {

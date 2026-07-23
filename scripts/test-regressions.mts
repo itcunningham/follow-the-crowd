@@ -1635,7 +1635,7 @@ function testEventsRouteLoadingIsListAreaOnly() {
   );
   assert.match(
     appLoadingSource,
-    /export function EventsPageLoadingShell[\s\S]*resolveEventsWorkspaceChromeRole[\s\S]*EventsWorkspaceCreateEventLink/,
+    /export function EventsPageLoadingShell[\s\S]*resolveEventsWorkspaceChromeRole[\s\S]*EventsWorkspaceCreateEventAction disabled/,
   );
   assert.match(
     appLoadingSource,
