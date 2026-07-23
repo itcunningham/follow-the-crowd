@@ -11,19 +11,19 @@ export function WorkspaceGigsPendingBadge({
   isActive: boolean;
 }) {
   const display = formatGigsTabCountDisplay(count);
-  const badgeToneClass =
-    display != null
-      ? isActive
-        ? "bg-ftc-bg/20 text-ftc-bg"
-        : "bg-ftc-primary/15 text-ftc-primary"
-      : "";
+  const showBadge = count > 0;
+  const badgeToneClass = showBadge
+    ? isActive
+      ? "bg-ftc-bg/20 text-ftc-bg"
+      : "bg-ftc-primary/15 text-ftc-primary"
+    : "";
 
   return (
     <span
       className={`${WORKSPACE_GIGS_PENDING_BADGE_SLOT_CLASS} ${badgeToneClass}`.trim()}
-      aria-hidden={display == null ? true : undefined}
+      aria-hidden={!showBadge ? true : undefined}
       aria-label={
-        display != null
+        showBadge
           ? `${formatGigsTabCountAriaCount(count)} pending incoming gig${count === 1 ? "" : "s"}`
           : undefined
       }

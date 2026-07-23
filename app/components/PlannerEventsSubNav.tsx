@@ -7,8 +7,8 @@ import { useGuardProfile } from "@/app/components/GuardProfileContext";
 import { WorkspaceGigsPendingBadge } from "@/app/components/planner/WorkspaceGigsPendingBadge";
 import {
   ensureGigsPendingPrefetched,
-  subscribeNavigationBadgeListeners,
 } from "@/lib/navigationBadgePrefetch";
+import { subscribeWorkspaceGigsSubNavBadgeDisplay, readLocalGigsPendingCount } from "@/lib/navigationBadgeCache";
 import { readWorkspaceGigsBadgeDisplayCountForSubNav } from "@/lib/navigation/resolveWorkspaceGigsPendingDisplayCount";
 import {
   canViewGigsSubNav,
@@ -24,6 +24,28 @@ import { ensureDjGigsCalendarPrefetched } from "@/lib/djGigsCalendarPrefetch";
 import { ensurePlannerCalendarItemsPrefetched } from "@/lib/plannerCalendarPrefetch";
 import { readCachedNavigation, readCachedNavRole } from "@/lib/navigationRoleCache";
 import { getCurrentUserProfile, type UserRole } from "@/lib/user/currentUser";
+
+function useStableWorkspaceGigsSubNavCount(
+  badgeUserId: string | null | undefined,
+  badgeRole: UserRole | null | undefined,
+): number {
+  const readDisplayCount = () =>
+    readWorkspaceGigsBadgeDisplayCountForSubNav(badgeUserId, badgeRole);
+  const rawCount = useSyncExternalStore(
+    subscribeWorkspaceGigsSubNavBadgeDisplay,
+    readDisplayCount,
+    readDisplayCount,
+  );
+  const stableCountRef = useRef(rawCount);
+
+  if (rawCount > 0) {
+    stableCountRef.current = rawCount;
+  } else if (rawCount === 0 && readLocalGigsPendingCount(badgeUserId, badgeRole) === 0) {
+    stableCountRef.current = 0;
+  }
+
+  return stableCountRef.current;
+}
 
 export default function PlannerEventsSubNav({
   initialRole = null,
@@ -82,13 +104,7 @@ export default function PlannerEventsSubNav({
   const resolvedUserId = guardProfile?.user_id ?? cachedNavigation.userId;
   const badgeRole = roleForTabVisibility ?? lastKnownRoleRef.current ?? readCachedNavRole();
   const badgeUserId = resolvedUserId ?? cachedNavigation.userId;
-  const readDisplayCount = () =>
-    readWorkspaceGigsBadgeDisplayCountForSubNav(badgeUserId, badgeRole);
-  const displayGigsPendingCount = useSyncExternalStore(
-    subscribeNavigationBadgeListeners,
-    readDisplayCount,
-    readDisplayCount,
-  );
+  const displayGigsPendingCount = useStableWorkspaceGigsSubNavCount(badgeUserId, badgeRole);
 
   useEffect(() => {
     WORKSPACE_SUB_NAV_TABS.forEach((tab) => {

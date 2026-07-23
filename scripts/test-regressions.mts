@@ -55,10 +55,13 @@ import {
   formatGigsTabCountDisplay,
   GIGS_TAB_COUNT_MAX_DISPLAY,
 } from "../lib/bookings/gigsTabCountDisplay";
-import { resolveWorkspaceGigsPendingDisplayCount } from "../lib/navigation/resolveWorkspaceGigsPendingDisplayCount";
+import { resolveWorkspaceGigsPendingDisplayCount, readWorkspaceGigsBadgeDisplayCountForSubNav } from "../lib/navigation/resolveWorkspaceGigsPendingDisplayCount";
 import {
+  applyPersistedGigsPendingCount,
   clearNavigationBadgeCache,
   clearWorkspaceGigsDisplaySession,
+  clearWorkspaceGigsSubNavDisplayLatch,
+  getCachedGigsPendingCount,
   writeRuntimeGigsPendingCount,
 } from "../lib/navigationBadgeCache";
 import { resolveEventsHistoryTrashVisible, resolveEventsListTabRowChrome, resolveEventsListActiveTabLabel, resolveEventsListActiveTabLabelForWorkspaceChrome, EVENTS_LIST_ACTIVE_TAB_LABEL_PLANNER } from "../lib/events/eventsListNavigation";
@@ -871,6 +874,8 @@ function testWorkspaceSubNavLayoutIsStable() {
   assert.match(subNavSource, /isWorkspaceSubNavTabVisible/);
   assert.match(subNavSource, /WorkspaceGigsPendingBadge/);
   assert.match(subNavSource, /readWorkspaceGigsBadgeDisplayCountForSubNav/);
+  assert.match(subNavSource, /subscribeWorkspaceGigsSubNavBadgeDisplay/);
+  assert.match(subNavSource, /useStableWorkspaceGigsSubNavCount/);
   assert.match(subNavSource, /useSyncExternalStore/);
   assert.match(subNavSource, /badgeRole/);
   assert.doesNotMatch(subNavSource, /reserveSpace/);
@@ -1120,6 +1125,31 @@ function testWorkspaceGigsPendingDisplayCountPreservesLastKnown() {
     }),
     1,
     "stale runtime zero must not clear session display",
+  );
+}
+
+function testWorkspaceGigsSubNavCountSurvivesStaleRuntimeZero() {
+  clearNavigationBadgeCache();
+  clearWorkspaceGigsDisplaySession();
+  clearWorkspaceGigsSubNavDisplayLatch();
+
+  applyPersistedGigsPendingCount("user-a", "both", 2);
+  assert.equal(
+    readWorkspaceGigsBadgeDisplayCountForSubNav("user-a", "both"),
+    2,
+    "sub-nav should show persisted gigs count",
+  );
+
+  writeRuntimeGigsPendingCount("user-a", "both", 0);
+  assert.equal(
+    getCachedGigsPendingCount("user-a", "both"),
+    2,
+    "local gigs cache must win over stale runtime zero",
+  );
+  assert.equal(
+    readWorkspaceGigsBadgeDisplayCountForSubNav("user-a", "both"),
+    2,
+    "sub-nav must not flash zero when runtime is stale during tab navigation",
   );
 }
 
@@ -2170,6 +2200,7 @@ async function main() {
   testGigsTabRowKeepsStableCountSlots();
   testGigsFilterTabsPolish();
   testWorkspaceGigsPendingDisplayCountPreservesLastKnown();
+  testWorkspaceGigsSubNavCountSurvivesStaleRuntimeZero();
   testGigsTabCountDisplayCap();
   testEventsHistoryBulkSelectAllTogglesSelection();
   testResolvePlannerHistoryHideEventIds();

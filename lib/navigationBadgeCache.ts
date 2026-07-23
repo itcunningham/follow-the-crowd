@@ -113,6 +113,96 @@ export function clearWorkspaceGigsDisplaySession(): void {
   workspaceGigsDisplaySession = null;
 }
 
+type WorkspaceGigsSubNavDisplayLatch = {
+  userId: string;
+  role: UserRole;
+  count: number;
+};
+
+/** Last value shown on workspace Gigs tab — survives unrelated nav badge refreshes during tab switches. */
+let workspaceGigsSubNavDisplayLatch: WorkspaceGigsSubNavDisplayLatch | null = null;
+
+const workspaceGigsSubNavDisplayListeners = new Set<() => void>();
+
+export function subscribeWorkspaceGigsSubNavBadgeDisplay(listener: () => void): () => void {
+  workspaceGigsSubNavDisplayListeners.add(listener);
+  return () => workspaceGigsSubNavDisplayListeners.delete(listener);
+}
+
+function notifyWorkspaceGigsSubNavBadgeDisplayListeners(): void {
+  workspaceGigsSubNavDisplayListeners.forEach((listener) => listener());
+}
+
+function matchesWorkspaceGigsSubNavDisplayLatchIdentity(
+  latch: WorkspaceGigsSubNavDisplayLatch,
+  userId: string | null | undefined,
+  role: UserRole,
+): boolean {
+  if (latch.role !== role) {
+    return false;
+  }
+
+  if (!userId?.trim()) {
+    return true;
+  }
+
+  return latch.userId === userId;
+}
+
+export function readWorkspaceGigsSubNavDisplayLatch(
+  userId: string | null | undefined,
+  role: UserRole | null | undefined,
+): number | null {
+  if (!role || !workspaceGigsSubNavDisplayLatch) {
+    return null;
+  }
+
+  if (!matchesWorkspaceGigsSubNavDisplayLatchIdentity(workspaceGigsSubNavDisplayLatch, userId, role)) {
+    return null;
+  }
+
+  return workspaceGigsSubNavDisplayLatch.count;
+}
+
+export function syncWorkspaceGigsSubNavDisplayLatch(
+  userId: string | null | undefined,
+  role: UserRole,
+  count: number,
+): void {
+  const resolvedUserId =
+    userId?.trim() ||
+    workspaceGigsSubNavDisplayLatch?.userId ||
+    workspaceGigsDisplaySession?.userId ||
+    runtimeGigsPendingIdentity?.userId ||
+    "";
+
+  if (!resolvedUserId) {
+    return;
+  }
+
+  const normalized = Math.max(0, Math.floor(count));
+  const previous = workspaceGigsSubNavDisplayLatch;
+
+  workspaceGigsSubNavDisplayLatch = {
+    userId: resolvedUserId,
+    role,
+    count: normalized,
+  };
+
+  if (
+    !previous ||
+    previous.userId !== resolvedUserId ||
+    previous.role !== role ||
+    previous.count !== normalized
+  ) {
+    notifyWorkspaceGigsSubNavBadgeDisplayListeners();
+  }
+}
+
+export function clearWorkspaceGigsSubNavDisplayLatch(): void {
+  workspaceGigsSubNavDisplayLatch = null;
+}
+
 function isUserRole(value: unknown): value is UserRole {
   return value === "dj" || value === "promoter" || value === "both";
 }
@@ -250,6 +340,8 @@ export function applyPersistedGigsPendingCount(
       updatedAt: Date.now(),
     });
   }
+
+  syncWorkspaceGigsSubNavDisplayLatch(userId, role, normalizedCount);
 }
 
 export function readLocalMessagesUnreadCount(
@@ -472,6 +564,7 @@ export function clearNavigationBadgeCache(): void {
   runtimeBadgeFetchedAt = 0;
   runtimeNavBadgeSnapshot = null;
   workspaceGigsDisplaySession = null;
+  workspaceGigsSubNavDisplayLatch = null;
 
   if (typeof window === "undefined") {
     return;
@@ -568,12 +661,29 @@ export function getCachedGigsPendingCount(
     return null;
   }
 
+  const localGigsCount = readLocalGigsPendingCount(userId, role);
   const runtimeCount = readRuntimeGigsPendingCount(userId, role);
+
   if (runtimeCount != null) {
+    if (runtimeCount === 0) {
+      if (localGigsCount != null && localGigsCount > 0) {
+        return localGigsCount;
+      }
+
+      const latchedCount = readWorkspaceGigsSubNavDisplayLatch(userId, role);
+      if (latchedCount != null && latchedCount > 0) {
+        return latchedCount;
+      }
+
+      const sessionCount = readWorkspaceGigsDisplaySessionCount(userId, role);
+      if (sessionCount != null && sessionCount > 0) {
+        return sessionCount;
+      }
+    }
+
     return runtimeCount;
   }
 
-  const localGigsCount = readLocalGigsPendingCount(userId, role);
   if (localGigsCount != null) {
     return localGigsCount;
   }

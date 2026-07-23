@@ -1,9 +1,10 @@
 import {
   getCachedGigsPendingCount,
   readLocalGigsPendingCount,
-  readRuntimeGigsPendingCount,
   readRuntimeNavBadgeSnapshot,
   readWorkspaceGigsDisplaySessionCount,
+  readWorkspaceGigsSubNavDisplayLatch,
+  syncWorkspaceGigsSubNavDisplayLatch,
   writeWorkspaceGigsDisplaySessionCount,
 } from "@/lib/navigationBadgeCache";
 import { readCachedNavigation, readCachedNavRole } from "@/lib/navigationRoleCache";
@@ -55,6 +56,10 @@ export function resolveWorkspaceGigsPendingDisplayCount(input: {
     if (sessionCount != null && sessionCount > 0) {
       return sessionCount;
     }
+    const latchedWhenCachedZero = readWorkspaceGigsSubNavDisplayLatch(userId, role);
+    if (latchedWhenCachedZero != null && latchedWhenCachedZero > 0) {
+      return latchedWhenCachedZero;
+    }
     writeWorkspaceGigsDisplaySessionCount(userId, role, 0);
     return 0;
   }
@@ -64,8 +69,19 @@ export function resolveWorkspaceGigsPendingDisplayCount(input: {
   }
 
   if (input.badgesReady) {
-    if (input.providerCount === 0 && sessionCount != null && sessionCount > 0) {
-      return sessionCount;
+    if (input.providerCount === 0) {
+      const latchedCount = readWorkspaceGigsSubNavDisplayLatch(userId, role);
+      if (latchedCount != null && latchedCount > 0) {
+        return latchedCount;
+      }
+      if (sessionCount != null && sessionCount > 0) {
+        return sessionCount;
+      }
+      const localWhenReady = readLocalGigsPendingCount(userId, role);
+      if (localWhenReady != null && localWhenReady > 0) {
+        writeWorkspaceGigsDisplaySessionCount(userId, role, localWhenReady);
+        return localWhenReady;
+      }
     }
     writeWorkspaceGigsDisplaySessionCount(userId, role, input.providerCount);
     return Math.max(0, Math.floor(input.providerCount));
@@ -79,14 +95,19 @@ function finalizeWorkspaceGigsBadgeDisplayCount(
   role: UserRole,
   computed: number,
 ): number {
-  if (computed > 0) {
-    return computed;
-  }
-
   const localCount = readLocalGigsPendingCount(userId, role);
   if (localCount === 0) {
     writeWorkspaceGigsDisplaySessionCount(userId, role, 0);
     return 0;
+  }
+
+  if (computed > 0) {
+    return computed;
+  }
+
+  const latchedCount = readWorkspaceGigsSubNavDisplayLatch(userId, role);
+  if (latchedCount != null && latchedCount > 0) {
+    return latchedCount;
   }
 
   const sessionCount = readWorkspaceGigsDisplaySessionCount(userId, role);
@@ -108,12 +129,16 @@ export function readWorkspaceGigsBadgeDisplayCountForSubNav(
   }
 
   const resolvedUserId = userId ?? readCachedNavigation().userId;
+  const localCount = readLocalGigsPendingCount(resolvedUserId, resolvedRole);
+  if (localCount === 0) {
+    syncWorkspaceGigsSubNavDisplayLatch(resolvedUserId, resolvedRole, 0);
+    return 0;
+  }
+
+  const latchedBeforeResolve = readWorkspaceGigsSubNavDisplayLatch(resolvedUserId, resolvedRole);
   const runtimeSnapshot = readRuntimeNavBadgeSnapshot(resolvedUserId, resolvedRole);
   const cached = getCachedGigsPendingCount(resolvedUserId, resolvedRole);
-  const providerCount =
-    readRuntimeGigsPendingCount(resolvedUserId, resolvedRole) ??
-    runtimeSnapshot?.gigsPending ??
-    0;
+  const providerCount = cached ?? runtimeSnapshot?.gigsPending ?? 0;
   const badgesReady =
     runtimeSnapshot?.badgesReady === true ||
     cached != null ||
@@ -127,5 +152,20 @@ export function readWorkspaceGigsBadgeDisplayCountForSubNav(
     badgesReady,
   });
 
-  return finalizeWorkspaceGigsBadgeDisplayCount(resolvedUserId, resolvedRole, computed);
+  let result = finalizeWorkspaceGigsBadgeDisplayCount(resolvedUserId, resolvedRole, computed);
+
+  if (
+    result === 0 &&
+    latchedBeforeResolve != null &&
+    latchedBeforeResolve > 0 &&
+    localCount !== 0
+  ) {
+    result = latchedBeforeResolve;
+  }
+
+  if (result > 0 || localCount === 0) {
+    syncWorkspaceGigsSubNavDisplayLatch(resolvedUserId, resolvedRole, result);
+  }
+
+  return result;
 }
