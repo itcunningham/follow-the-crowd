@@ -1040,7 +1040,7 @@ function testGigsTabRowKeepsStableCountSlots() {
   assert.doesNotMatch(GIGS_TAB_PILL_ROW_CLASS, /flex-1/);
   assert.match(GIGS_TAB_PILL_MODIFIER_CLASS, /ftc-gigs-tab-pill/);
   assert.match(GIGS_TAB_PILL_WITH_COUNT_MODIFIER_CLASS, /ftc-gigs-tab-pill-with-count/);
-  assert.equal(GIGS_TAB_PILL_GAP_CLASS, "gap-2");
+  assert.equal(GIGS_TAB_PILL_GAP_CLASS, "gap-1.5");
   assert.match(GIGS_TAB_COUNT_SLOT_CLASS, /tabular-nums/);
   assert.match(GIGS_TAB_COUNT_SLOT_CLASS, /ftc-gigs-tab-count-slot/);
   assert.doesNotMatch(GIGS_TAB_COUNT_SLOT_CLASS, /w-\[2\.25ch\]/);
@@ -1061,11 +1061,13 @@ function testGigsFilterTabsPolish() {
   assert.match(tabsSource, /showCountBadge \?/);
   assert.doesNotMatch(tabsSource, /showHistoryIcon/);
   assert.doesNotMatch(tabsSource, /HistoryIcon/);
-  assert.match(tabsSource, /gigsTabPillClass\(isActive, showCountBadge\)/);
+  assert.match(tabsSource, /eventsListTabPillClass\(isActive\)/);
+  assert.match(tabsSource, /gigsTabPillClass\(isActive, true\)/);
   assert.match(tabsSource, /formatGigsTabCountDisplay/);
   assert.match(tabsSource, /GIGS_TAB_PILL_LABEL_CLASS/);
   assert.match(cssSource, /\.ftc-filter-pill\.ftc-gigs-tab-pill[\s\S]*padding: 0\.375rem 0\.5rem/);
-  assert.match(cssSource, /\.ftc-gigs-tab-count-slot[\s\S]*min-width: 2\.75ch/);
+  assert.match(cssSource, /\.ftc-gigs-tab-count-slot[\s\S]*min-width: 2\.5ch/);
+  assert.doesNotMatch(cssSource, /\.ftc-gigs-tab-count-slot[\s\S]*min-width: 2\.75ch/);
 }
 
 function testWorkspaceGigsPendingDisplayCountPreservesLastKnown() {

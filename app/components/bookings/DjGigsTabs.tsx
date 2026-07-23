@@ -11,6 +11,7 @@ import {
   GIGS_TAB_PILL_GAP_CLASS,
   GIGS_TAB_PILL_LABEL_CLASS,
   GIGS_TAB_PILL_ROW_CLASS,
+  eventsListTabPillClass,
   gigsTabPillClass,
 } from "@/lib/design/ftcDesignSystem";
 import { buildGigsListHref } from "@/lib/bookings/gigsListNavigation";
@@ -61,6 +62,9 @@ export function DjGigsTabs({
         const href = buildGigsListHref(tab.value);
         const count = counts?.[tab.value] ?? 0;
         const showCountBadge = tab.showCountBadge === true;
+        const pillClass = showCountBadge
+          ? gigsTabPillClass(isActive, true)
+          : eventsListTabPillClass(isActive);
         const ariaLabel =
           showCountBadge && countsReady && count > 0
             ? `${tab.label} ${formatGigsTabCountAriaCount(count)}`
@@ -77,7 +81,7 @@ export function DjGigsTabs({
                 event.preventDefault();
               }
             }}
-            className={gigsTabPillClass(isActive, showCountBadge)}
+            className={pillClass}
           >
             {showCountBadge ? (
               <span className={`inline-flex items-center ${GIGS_TAB_PILL_GAP_CLASS}`}>
