@@ -76,7 +76,7 @@ import { getUsernameFormatError, normalizeSoundCloudInput, resolveProfileIdentit
 import {
   PLANNER_WORKSPACE_SUBNAV_ROW_CLASS,
   PLANNER_WORKSPACE_SUBNAV_SLOT_CLASS,
-} from "../app/components/planner/PlannerWorkspaceLayout";
+} from "../lib/design/plannerWorkspaceTokens";
 import { getEventsAreaSubNavItems, resolveActiveWorkspaceHref, buildWorkspaceSubNavDestinationHref, EVENTS_AREA_SUB_NAV, isCalendarWorkspacePath, mergeWorkspaceNavRole, WORKSPACE_SUB_NAV_TABS, isWorkspaceSubNavTabVisible } from "../lib/plannerEventsNav";
 import { resolveEventsWorkspaceChromeRole } from "../lib/events/eventsWorkspaceChromeRole";
 import {
@@ -853,6 +853,14 @@ function testWorkspaceSubNavLayoutIsStable() {
   assert.match(subNavSource, /reserveSpace/);
   assert.match(subNavSource, /WORKSPACE_GIGS_PENDING_BADGE_SLOT_CLASS/);
   assert.doesNotMatch(subNavSource, /from "@\/lib\/design\/ftcDesignSystem"/);
+  const designSystemSource = readFileSync(
+    new URL("../lib/design/ftcDesignSystem.ts", import.meta.url),
+    "utf8",
+  );
+  assert.doesNotMatch(designSystemSource, /PlannerWorkspaceLayout/);
+  assert.doesNotMatch(designSystemSource, /AppPageLayout/);
+  assert.match(designSystemSource, /plannerWorkspaceTokens/);
+  assert.match(layoutSource, /from "@\/lib\/design\/plannerWorkspaceTokens"/);
   assert.match(layoutSource, /resetHeaderStateForPathnameChange/);
   assert.match(layoutSource, /mergeWorkspaceHeaderState/);
   assert.match(
@@ -1770,10 +1778,17 @@ function testCalendarWorkspaceClearsStaleWorkspaceIntercept() {
     "utf8",
   );
 
+  const tokensSource = readFileSync(
+    new URL("../lib/design/plannerWorkspaceTokens.ts", import.meta.url),
+    "utf8",
+  );
+
   assert.match(layoutSource, /workspaceIntercept/);
   assert.match(layoutSource, /interceptWorkspaceTabNavigation=\{workspaceIntercept\}/);
-  assert.match(layoutSource, /PLANNER_WORKSPACE_HEADER_CLASS[\s\S]*sticky top-0 z-50/);
-  assert.match(layoutSource, /PLANNER_WORKSPACE_BELOW_HEADER_CLASS[\s\S]*relative z-0/);
+  assert.match(tokensSource, /PLANNER_WORKSPACE_HEADER_CLASS[\s\S]*sticky top-0 z-50/);
+  assert.match(tokensSource, /PLANNER_WORKSPACE_BELOW_HEADER_CLASS[\s\S]*relative z-0/);
+  assert.match(layoutSource, /PLANNER_WORKSPACE_HEADER_CLASS/);
+  assert.match(layoutSource, /PLANNER_WORKSPACE_BELOW_HEADER_CLASS/);
   assert.match(subNavLinkSource, /isCalendarWorkspacePath\(pathname\)/);
   assert.match(subNavLinkSource, /window\.location\.assign\(destinationHref\)/);
   assert.match(subNavLinkSource, /router\.push\(destinationHref/);

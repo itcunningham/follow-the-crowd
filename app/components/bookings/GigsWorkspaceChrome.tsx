@@ -13,8 +13,8 @@ import { DjGigsTabs } from "@/app/components/bookings/DjGigsTabs";
 import { DjGigsTabRow } from "@/app/components/skeleton/Skeleton";
 import {
   PlannerWorkspaceSecondaryControlsPlaceholder,
-  PLANNER_WORKSPACE_SECONDARY_BAND_CLASS,
 } from "@/app/components/planner/PlannerWorkspaceLayout";
+import { PLANNER_WORKSPACE_SECONDARY_BAND_CLASS } from "@/lib/design/plannerWorkspaceTokens";
 import { resolveGigsListTabForBookingsPage } from "@/lib/bookings/gigsListNavigation";
 import { isPlannerBookingsCreateChromeActive } from "@/lib/bookings/planDeepLink";
 import { readCachedNavRole } from "@/lib/navigationRoleCache";

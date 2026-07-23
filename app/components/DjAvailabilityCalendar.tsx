@@ -1,6 +1,6 @@
 "use client";
 
-import { PLANNER_WORKSPACE_PRIMARY_SURFACE_CLASS } from "@/app/components/planner/PlannerWorkspaceLayout";
+import { PLANNER_WORKSPACE_PRIMARY_SURFACE_CLASS } from "@/lib/design/plannerWorkspaceTokens";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {

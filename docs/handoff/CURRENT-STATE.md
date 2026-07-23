@@ -1,4 +1,4 @@
-# Current state (last updated: 2026-07-22)
+# Current state (last updated: 2026-07-23)
 
 Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 
@@ -181,7 +181,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 - **Shared planner shell:** `PlannerWorkspacePage` in `app/components/planner/PlannerWorkspaceLayout.tsx` — Events, Event Plans, Calendar, Gigs share title row (heading derived from active workspace href via `resolvePlannerWorkspaceTitle`), primary tabs, divider, secondary controls baseline on desktop (`md:max-w-5xl`)
 - **Workspace sub-nav responsiveness (2026-07-14):** `PlannerEventsSubNav` prefetches all four workspace routes; compact `ftc-filter-pill` visuals restored with 44px hit area on outer link wrapper; touch tab switches use `window.location.assign` (iOS Safari); `/events/loading.tsx` and `/bookings/loading.tsx` show fixed workspace chrome instantly while dynamic RSC loads
 - **Workspace Gigs tab (2026-07-22):** top Gigs sub-nav uses `buildGigsWorkspaceIncomingHref()` (`/bookings`, no query); `resolveGigsListTabForBookingsPage` only reads `?tab=` when the browser pathname is already `/bookings` (avoids Events `?tab=history` during the App Router transition when Next pathname is `/bookings` but `window.location` is still `/events`)
-- **Desktop consistency tokens:** shared primary surface (`PLANNER_WORKSPACE_PRIMARY_SURFACE_CLASS`), list spacing (`PLANNER_WORKSPACE_LIST_CLASS`), title-row baseline alignment; Calendar reference shell — no duplicate in-card titles on desktop; loading skeletons match loaded layout
+- **Desktop consistency tokens:** shared primary surface (`PLANNER_WORKSPACE_PRIMARY_SURFACE_CLASS`), list spacing (`PLANNER_WORKSPACE_LIST_CLASS`), title-row baseline alignment; Calendar reference shell — no duplicate in-card titles on desktop; loading skeletons match loaded layout. **Layout class strings live in `lib/design/plannerWorkspaceTokens.ts` (leaf module, no imports)** — `ftcDesignSystem` must not re-export from `PlannerWorkspaceLayout` / `AppPageLayout` (prevents route TDZ crash).
 - **Events list cards (2026-07-14):** smaller list artwork (~14%), bolder title, compact status badge + booking stat chips, full-card tap target with chevron as visual cue only
 - **Events list card polish (2026-07-20):** two-column Gigs pattern — artwork left, left-aligned body stack (GigCardHeader + GigCardMetaRows rhythm), status + chevron top-right, compact stat chips below time
 - **Events loading boundary (2026-07-23):** Route/auth loading uses **`EventsPageLoadingShell`** with **`resolveEventsWorkspaceChromeRole`** (guard + cache merge, same as loaded **`EventsPageClient`**) — **Active**/History labels, **`EventsWorkspaceCreateEventLink`** for planners, list skeleton only; workspace tabs + stable **`WORKSPACE_GIGS_PENDING_BADGE_SLOT_CLASS`** on Gigs pill via **`PlannerEventsSubNav`**.
@@ -212,6 +212,8 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `<pending>` — fix circular workspace dependency causing route crash
+- `b43e2bf` — show cached events list on tab return without skeleton flash
 - `2a0f98d` — stabilise events filters and card skeletons
 - `e517c08` — final polish compact calendar titles
 - `9e77fe5` — simplify compact calendar title layout

@@ -49,11 +49,13 @@ import {
   PlannerWorkspacePage,
   PlannerWorkspaceSecondaryControls,
   PlannerWorkspaceSecondaryControlsPlaceholder,
+} from "@/app/components/planner/PlannerWorkspaceLayout";
+import {
   PLANNER_WORKSPACE_CONTENT_CLASS,
   PLANNER_WORKSPACE_PRIMARY_SURFACE_CLASS,
   PLANNER_WORKSPACE_SECONDARY_BAND_CLASS,
   PLANNER_WORKSPACE_SECONDARY_CONTROLS_CLASS,
-} from "@/app/components/planner/PlannerWorkspaceLayout";
+} from "@/lib/design/plannerWorkspaceTokens";
 import {
   APP_PAGE_PROFILE_CONTENT_CLASS,
   APP_PAGE_PROFILE_IDENTITY_STACK_CLASS,

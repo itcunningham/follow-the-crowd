@@ -90,8 +90,7 @@ function getNavItems(role: UserRole, currentUserId: string | null): NavItem[] {
   return [events, messages, profile];
 }
 
-export const MOBILE_NAV_OFFSET_CLASS =
-  "ftc-mobile-nav-offset pb-[calc(3.5rem+env(safe-area-inset-bottom))] md:pb-0";
+export { MOBILE_NAV_OFFSET_CLASS } from "@/lib/design/plannerWorkspaceTokens";
 
 export const MOBILE_NAV_Z_CLASS = "z-50";
 

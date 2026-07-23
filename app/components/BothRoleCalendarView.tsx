@@ -12,7 +12,7 @@ import CalendarMobileChrome, {
   CALENDAR_MOBILE_CHROME_GIGS_DAY_STRIP_CLASS,
 } from "@/app/components/calendar/CalendarMobileChrome";
 import type { CalendarViewTab } from "@/app/components/CalendarViewTabs";
-import { PLANNER_WORKSPACE_PRIMARY_SURFACE_CLASS } from "@/app/components/planner/PlannerWorkspaceLayout";
+import { PLANNER_WORKSPACE_PRIMARY_SURFACE_CLASS } from "@/lib/design/plannerWorkspaceTokens";
 import {
   getDefaultSelectedCalendarDate,
   getMonthStart,

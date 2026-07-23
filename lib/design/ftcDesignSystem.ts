@@ -11,7 +11,7 @@ export {
   APP_PAGE_PRIMARY_SURFACE_CLASS,
   APP_PAGE_SHELL_CLASS,
   APP_PAGE_TITLE_CLASS,
-} from "@/app/components/layout/AppPageLayout";
+} from "@/lib/design/plannerWorkspaceTokens";
 
 export {
   PLANNER_WORKSPACE_BODY_CLASS,
@@ -23,7 +23,7 @@ export {
   PLANNER_WORKSPACE_SECONDARY_BAND_CLASS,
   PLANNER_WORKSPACE_SECONDARY_CONTROLS_CLASS,
   PLANNER_WORKSPACE_TITLE_CLASS,
-} from "@/app/components/planner/PlannerWorkspaceLayout";
+} from "@/lib/design/plannerWorkspaceTokens";
 
 export {
   getFtcStatusBadgeSizeClass,

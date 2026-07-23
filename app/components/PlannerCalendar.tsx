@@ -20,7 +20,7 @@ import {
 import PlannerCalendarActionButtons from "@/app/components/PlannerCalendarActionButtons";
 import PlannerCalendarDateActions from "@/app/components/PlannerCalendarDateActions";
 import PlannerCalendarMobileDateStrip from "@/app/components/PlannerCalendarMobileDateStrip";
-import { PLANNER_WORKSPACE_PRIMARY_SURFACE_CLASS } from "@/app/components/planner/PlannerWorkspaceLayout";
+import { PLANNER_WORKSPACE_PRIMARY_SURFACE_CLASS } from "@/lib/design/plannerWorkspaceTokens";
 import {
   PlannerCalendarBodySkeleton,
   PlannerCalendarContentSkeleton,
