@@ -123,7 +123,7 @@ import {
 } from "@/lib/user/currentUser";
 import { readCachedNavRole } from "@/lib/navigationRoleCache";
 import { prepareEventsListEventNavigation } from "@/lib/navigation/prepareMobileDocumentScrollReset";
-import { readEventsListCache, writeEventsListCache } from "@/lib/events/eventsListCache";
+import { readEventsListCache, seedEventsListStateFromCache, writeEventsListCache } from "@/lib/events/eventsListCache";
 import { writeBookingPlansListCache } from "@/lib/bookingPlans/bookingPlansListCache";
 import { seedEventOwnerId, seedEventOwnerIdsFromEvents } from "@/lib/events/eventOwnerIdCache";
 
@@ -353,6 +353,16 @@ function eventsListCardShellClassName(
     .join(" ");
 }
 
+function readMountEventsListState() {
+  if (typeof window === "undefined") {
+    return seedEventsListStateFromCache(true);
+  }
+
+  const isPlanner = canManageEvents(resolveEventsWorkspaceChromeRole(readCachedNavRole()));
+
+  return seedEventsListStateFromCache(isPlanner);
+}
+
 export default function EventsPageClient(props: EventsPageClientProps) {
   return (
     <OnboardingGuard>
@@ -371,13 +381,14 @@ function EventsPageClientView({
   const searchParams = useSearchParams();
   const guardProfile = useGuardProfile();
   const handledCreateParamsRef = useRef<string | null>(null);
+  const [mountListState] = useState(readMountEventsListState);
   const [role, setRole] = useState<UserRole | null>(
     () => guardProfile?.role ?? readCachedNavRole(),
   );
-  const [events, setEvents] = useState<EventWithLineupStats[]>([]);
+  const [events, setEvents] = useState<EventWithLineupStats[]>(() => mountListState.events);
   const eventsRef = useRef(events);
   eventsRef.current = events;
-  const [loadingEvents, setLoadingEvents] = useState(true);
+  const [loadingEvents, setLoadingEvents] = useState(() => mountListState.loadingEvents);
   const calendarBootstrap = getCalendarBootstrapState(initialCreate, initialEventDate);
   const [createOpen, setCreateOpen] = useState(() => calendarBootstrap?.createOpen ?? false);
   const [createStep, setCreateStep] = useState<CreateStep>(
@@ -414,7 +425,7 @@ function EventsPageClientView({
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [historyFeedbackFading, setHistoryFeedbackFading] = useState(false);
-  const [eventsListReady, setEventsListReady] = useState(false);
+  const [eventsListReady, setEventsListReady] = useState(() => mountListState.eventsListReady);
   const [calendarOriginDateKey, setCalendarOriginDateKey] = useState<string | null>(
     () => calendarBootstrap?.calendarOriginDateKey ?? null,
   );
@@ -575,7 +586,7 @@ function EventsPageClientView({
       setEvents(cachedEvents);
       seedEventOwnerIdsFromEvents(cachedEvents);
       setLoadingEvents(false);
-    } else {
+    } else if (eventsRef.current.length === 0) {
       setLoadingEvents(true);
     }
 
@@ -618,6 +629,21 @@ function EventsPageClientView({
         console.error("Failed to load events access:", loadError);
       });
   }, [guardProfile?.role, roleReady]);
+
+  useEffect(() => {
+    if (!roleReady || isCalendarCreateFlow) {
+      return;
+    }
+
+    const cachedEvents = readEventsListCache(isPlanner);
+
+    if (cachedEvents.length > 0 && eventsRef.current.length === 0) {
+      setEvents(cachedEvents);
+      seedEventOwnerIdsFromEvents(cachedEvents);
+      setLoadingEvents(false);
+      setEventsListReady(true);
+    }
+  }, [isCalendarCreateFlow, isPlanner, roleReady]);
 
   useEffect(() => {
     if (!roleReady || isCalendarCreateFlow) {
@@ -1444,7 +1470,7 @@ function EventsPageClientView({
             onConfirm={confirmHistoryRemove}
           />
 
-          {loadingEvents ? (
+          {loadingEvents && events.length === 0 ? (
             <EventListSkeleton showPlannerStats={isPlanner} showFilterPills={false} />
           ) : error && events.length === 0 ? (
             <PlannerInlineError message={error} />

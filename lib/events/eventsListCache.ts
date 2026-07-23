@@ -100,6 +100,22 @@ export function readEventsListCache(isPlanner: boolean): EventWithLineupStats[] 
   return readLocalEventsListCache(isPlanner);
 }
 
+/** Hydrate list UI from session/local cache (stale-while-revalidate on tab return). */
+export function seedEventsListStateFromCache(isPlanner: boolean): {
+  events: EventWithLineupStats[];
+  loadingEvents: boolean;
+  eventsListReady: boolean;
+} {
+  const events = readEventsListCache(isPlanner);
+
+  if (events.length > 0) {
+    seedEventOwnerIdsFromEvents(events);
+    return { events, loadingEvents: false, eventsListReady: true };
+  }
+
+  return { events: [], loadingEvents: true, eventsListReady: false };
+}
+
 export function writeEventsListCache(isPlanner: boolean, events: EventWithLineupStats[]): void {
   if (typeof window === "undefined") {
     return;

@@ -74,6 +74,7 @@ import { resolveEventsWorkspaceChromeRole } from "@/lib/events/eventsWorkspaceCh
 import { EVENT_DETAIL_CARD_CLASS } from "@/app/components/event-detail/eventDetailUi";
 import { CALENDAR_MOBILE_EMPTY_STATE_CLASS } from "@/app/components/calendar/calendarMobileUi";
 import { readCachedNavRole, readCachedNavigation, resolveIsOwnProfilePath } from "@/lib/navigationRoleCache";
+import { readEventsListCache } from "@/lib/events/eventsListCache";
 
 export function SkeletonBlock({
   className = "",
@@ -460,6 +461,7 @@ export function EventsPageLoadingShell({
   const isPlanner = canManageEvents(resolvedRole);
   const listTab = resolveEventsListTabParam(routeTab, initialTabProp, locationSearch);
   const isHistoryTab = listTab === "history";
+  const hasCachedEventsList = readEventsListCache(isPlanner).length > 0;
 
   return (
     <PlannerWorkspacePage
@@ -474,7 +476,9 @@ export function EventsPageLoadingShell({
       }
       includeChrome={false}
     >
-      <EventListSkeleton showPlannerStats={isPlanner} showFilterPills={false} />
+      {hasCachedEventsList ? null : (
+        <EventListSkeleton showPlannerStats={isPlanner} showFilterPills={false} />
+      )}
     </PlannerWorkspacePage>
   );
 }

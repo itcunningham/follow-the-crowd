@@ -1557,8 +1557,24 @@ function testEventsListTabControlsMatchLoadingShellAndLoadedPage() {
     new URL("../app/components/events/EventsListTabControls.tsx", import.meta.url),
     "utf8",
   );
+  const appLoadingSource = readFileSync(
+    new URL("../app/components/skeleton/Skeleton.tsx", import.meta.url),
+    "utf8",
+  );
   assert.match(clientSource, /<EventsListTabControls/);
   assert.match(clientSource, /loadingShell=\{!eventsListReady\}/);
+  assert.match(
+    clientSource,
+    /loadingEvents && events\.length === 0/,
+  );
+  assert.match(
+    clientSource,
+    /seedEventsListStateFromCache/,
+  );
+  assert.match(
+    appLoadingSource,
+    /hasCachedEventsList[\s\S]*EventListSkeleton/,
+  );
   assert.match(controlsSource, /FTC_EVENTS_LIST_TAB_PILL_ROW_CLASS/);
   assert.match(controlsSource, /eventsListTabPillClass/);
 
