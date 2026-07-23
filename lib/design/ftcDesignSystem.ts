@@ -75,14 +75,13 @@ export const EVENTS_CREATE_EVENT_BUTTON_CLASS =
   "shrink-0 ftc-btn-primary px-4 py-2.5 text-sm uppercase tracking-wide";
 
 export { WORKSPACE_GIGS_PENDING_BADGE_SLOT_CLASS } from "@/lib/design/workspaceSubNavBadge";
-export const GIGS_TAB_PILL_GAP_CLASS = "gap-1";
+export const GIGS_TAB_PILL_GAP_CLASS = "gap-0.5";
 
 /** Modifier for Incoming/Confirmed/History pills — tighter horizontal padding, same vertical sizing. */
 export const GIGS_TAB_PILL_MODIFIER_CLASS = "ftc-gigs-tab-pill";
 
-/** Reserved width for Incoming/Confirmed counts (up to two digits; slot always mounted). */
-export const GIGS_TAB_COUNT_SLOT_CLASS =
-  "inline-block w-[2.25ch] shrink-0 text-right tabular-nums";
+/** Count beside Incoming/Confirmed labels — hugs digits, stays vertically centred in the pill. */
+export const GIGS_TAB_COUNT_SLOT_CLASS = "inline-block shrink-0 tabular-nums";
 
 export function gigsTabPillClass(isActive: boolean): string {
   return `${FTC_FILTER_PILL_CLASS} ${GIGS_TAB_PILL_MODIFIER_CLASS}${isActive ? " ftc-filter-pill-active" : ""}`;

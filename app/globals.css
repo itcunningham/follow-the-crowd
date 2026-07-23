@@ -884,7 +884,7 @@ html {
 
 /* Gigs Incoming/Confirmed/History — compact horizontal padding; vertical sizing unchanged. */
 .ftc-filter-pill.ftc-gigs-tab-pill {
-  padding-inline: 0.5rem;
+  padding-inline: 0.375rem;
 }
 
 @media (hover: hover) {
