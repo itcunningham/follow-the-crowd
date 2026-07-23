@@ -55,6 +55,7 @@ import {
   formatGigsTabCountDisplay,
   GIGS_TAB_COUNT_MAX_DISPLAY,
 } from "../lib/bookings/gigsTabCountDisplay";
+import { resolveWorkspaceGigsPendingDisplayCount } from "../lib/navigation/resolveWorkspaceGigsPendingDisplayCount";
 import { resolveEventsHistoryTrashVisible, resolveEventsListTabRowChrome, resolveEventsListActiveTabLabel, resolveEventsListActiveTabLabelForWorkspaceChrome, EVENTS_LIST_ACTIVE_TAB_LABEL_PLANNER } from "../lib/events/eventsListNavigation";
 import { resolveHistoryBulkSelectAllToggle } from "../app/components/history/HistoryBulkManage";
 import { resolvePlannerHistoryHideEventIds } from "../lib/events";
@@ -863,8 +864,15 @@ function testWorkspaceSubNavLayoutIsStable() {
   assert.match(subNavSource, /WORKSPACE_SUB_NAV_TABS\.map/);
   assert.match(subNavSource, /key=\{tab\.id\}/);
   assert.match(subNavSource, /isWorkspaceSubNavTabVisible/);
-  assert.match(subNavSource, /reserveSpace/);
-  assert.match(subNavSource, /WORKSPACE_GIGS_PENDING_BADGE_SLOT_CLASS/);
+  assert.match(subNavSource, /WorkspaceGigsPendingBadge/);
+  assert.match(subNavSource, /resolveWorkspaceGigsPendingDisplayCount/);
+  assert.doesNotMatch(subNavSource, /reserveSpace/);
+  assert.doesNotMatch(subNavSource, /opacity-0[\s\S]*99\+/);
+  const workspaceGigsBadgeSource = readFileSync(
+    new URL("../app/components/planner/WorkspaceGigsPendingBadge.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(workspaceGigsBadgeSource, /WORKSPACE_GIGS_PENDING_BADGE_SLOT_CLASS/);
   assert.doesNotMatch(subNavSource, /from "@\/lib\/design\/ftcDesignSystem"/);
   const designSystemSource = readFileSync(
     new URL("../lib/design/ftcDesignSystem.ts", import.meta.url),
@@ -1041,6 +1049,31 @@ function testGigsFilterTabsPolish() {
   assert.match(tabsSource, /GIGS_TAB_PILL_LABEL_CLASS/);
   assert.match(cssSource, /\.ftc-filter-pill\.ftc-gigs-tab-pill[\s\S]*padding: 0\.375rem 0\.5rem/);
   assert.match(cssSource, /\.ftc-gigs-tab-count-slot[\s\S]*min-width: 2\.75ch/);
+}
+
+function testWorkspaceGigsPendingDisplayCountPreservesLastKnown() {
+  assert.equal(
+    resolveWorkspaceGigsPendingDisplayCount({
+      canViewGigs: true,
+      userId: "user-a",
+      role: "dj",
+      providerCount: 0,
+      badgesReady: false,
+      lastKnownCount: 1,
+    }),
+    1,
+  );
+  assert.equal(
+    resolveWorkspaceGigsPendingDisplayCount({
+      canViewGigs: true,
+      userId: "user-a",
+      role: "dj",
+      providerCount: 0,
+      badgesReady: true,
+      lastKnownCount: 1,
+    }),
+    0,
+  );
 }
 
 function testGigsTabCountDisplayCap() {
@@ -2089,6 +2122,7 @@ async function main() {
   testEventPlanUseButtonKeepsStableCardLayout();
   testGigsTabRowKeepsStableCountSlots();
   testGigsFilterTabsPolish();
+  testWorkspaceGigsPendingDisplayCountPreservesLastKnown();
   testGigsTabCountDisplayCap();
   testEventsHistoryBulkSelectAllTogglesSelection();
   testResolvePlannerHistoryHideEventIds();

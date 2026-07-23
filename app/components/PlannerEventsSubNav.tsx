@@ -5,14 +5,13 @@ import { usePathname, useRouter } from "next/navigation";
 import PlannerWorkspaceSubNavLink from "@/app/components/planner/PlannerWorkspaceSubNavLink";
 import { useGuardProfile } from "@/app/components/GuardProfileContext";
 import { useNavBadges } from "@/app/components/navigation/NavBadgeProvider";
-import { getCachedGigsPendingCount } from "@/lib/navigationBadgeCache";
+import { WorkspaceGigsPendingBadge } from "@/app/components/planner/WorkspaceGigsPendingBadge";
 import {
   ensureGigsPendingPrefetched,
   getNavigationBadgeCacheVersion,
   subscribeNavigationBadgeListeners,
 } from "@/lib/navigationBadgePrefetch";
-import { formatGigsTabCountDisplay, formatGigsTabCountAriaCount } from "@/lib/bookings/gigsTabCountDisplay";
-import { WORKSPACE_GIGS_PENDING_BADGE_SLOT_CLASS } from "@/lib/design/workspaceSubNavBadge";
+import { resolveWorkspaceGigsPendingDisplayCount } from "@/lib/navigation/resolveWorkspaceGigsPendingDisplayCount";
 import {
   canViewGigsSubNav,
   canViewBookingPlansSubNav,
@@ -27,49 +26,6 @@ import { ensureDjGigsCalendarPrefetched } from "@/lib/djGigsCalendarPrefetch";
 import { ensurePlannerCalendarItemsPrefetched } from "@/lib/plannerCalendarPrefetch";
 import { readCachedNavigation, readCachedNavRole } from "@/lib/navigationRoleCache";
 import { getCurrentUserProfile, type UserRole } from "@/lib/user/currentUser";
-
-function GigsPendingCountBadge({
-  count,
-  isActive,
-  reserveSpace,
-}: {
-  count: number;
-  isActive: boolean;
-  reserveSpace?: boolean;
-}) {
-  const badgeToneClass =
-    count > 0
-      ? isActive
-        ? "bg-ftc-bg/20 text-ftc-bg"
-        : "bg-ftc-primary/15 text-ftc-primary"
-      : "";
-
-  if (count <= 0) {
-    if (!reserveSpace) {
-      return null;
-    }
-
-    return (
-      <span
-        aria-hidden="true"
-        className={`${WORKSPACE_GIGS_PENDING_BADGE_SLOT_CLASS} opacity-0 ${badgeToneClass}`.trim()}
-      >
-        99+
-      </span>
-    );
-  }
-
-  const display = formatGigsTabCountDisplay(count)!;
-
-  return (
-    <span
-      aria-label={`${formatGigsTabCountAriaCount(count)} pending incoming gig${count === 1 ? "" : "s"}`}
-      className={`${WORKSPACE_GIGS_PENDING_BADGE_SLOT_CLASS} ${badgeToneClass}`}
-    >
-      {display}
-    </span>
-  );
-}
 
 export default function PlannerEventsSubNav({
   initialRole = null,
@@ -90,7 +46,8 @@ export default function PlannerEventsSubNav({
         : pathname;
   const router = useRouter();
   const guardProfile = useGuardProfile();
-  const { gigsPendingCount } = useNavBadges();
+  const { gigsPendingCount, badgesReady } = useNavBadges();
+  const lastKnownGigsCountRef = useRef(0);
   const [cachedNavigation] = useState(readCachedNavigation);
   const [role, setRole] = useState<UserRole | null>(
     () => initialRole ?? guardProfile?.role ?? cachedNavigation.role,
@@ -172,17 +129,24 @@ export default function PlannerEventsSubNav({
   }, [canViewGigs, resolvedRole]);
 
   const displayGigsPendingCount = useMemo(() => {
-    if (!canViewGigs) {
-      return 0;
-    }
-
-    const cachedCount = getCachedGigsPendingCount(resolvedUserId, resolvedRole);
-    if (cachedCount != null) {
-      return cachedCount;
-    }
-
-    return gigsPendingCount;
-  }, [badgeCacheVersion, canViewGigs, gigsPendingCount, resolvedRole, resolvedUserId]);
+    const next = resolveWorkspaceGigsPendingDisplayCount({
+      canViewGigs,
+      userId: resolvedUserId,
+      role: resolvedRole,
+      providerCount: gigsPendingCount,
+      badgesReady,
+      lastKnownCount: lastKnownGigsCountRef.current,
+    });
+    lastKnownGigsCountRef.current = next;
+    return next;
+  }, [
+    badgeCacheVersion,
+    badgesReady,
+    canViewGigs,
+    gigsPendingCount,
+    resolvedRole,
+    resolvedUserId,
+  ]);
 
   useEffect(() => {
     if (guardProfile?.role || initialRole || cachedNavigation.role) {
@@ -225,11 +189,7 @@ export default function PlannerEventsSubNav({
           >
             {tab.label}
             {showPendingBadge ? (
-              <GigsPendingCountBadge
-                count={displayGigsPendingCount}
-                isActive={isActive}
-                reserveSpace
-              />
+              <WorkspaceGigsPendingBadge count={displayGigsPendingCount} isActive={isActive} />
             ) : null}
           </PlannerWorkspaceSubNavLink>
         );
