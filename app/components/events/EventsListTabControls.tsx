@@ -16,6 +16,25 @@ import {
 
 export { EVENTS_CREATE_EVENT_BUTTON_CLASS };
 
+export function EventsWorkspaceCreateEventPlaceholder() {
+  return (
+    <span
+      aria-hidden="true"
+      className={`pointer-events-none invisible inline-flex ${EVENTS_CREATE_EVENT_BUTTON_CLASS}`}
+    >
+      Create event
+    </span>
+  );
+}
+
+export function EventsWorkspaceCreateEventLink() {
+  return (
+    <Link href="/events?create=event" className={EVENTS_CREATE_EVENT_BUTTON_CLASS}>
+      Create event
+    </Link>
+  );
+}
+
 export function EventsWorkspaceCreateEventAction({
   disabled = false,
   onClick,

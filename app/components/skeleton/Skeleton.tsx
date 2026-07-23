@@ -37,9 +37,11 @@ import {
   FTC_EVENTS_LIST_TAB_PILL_ROW_CLASS,
   ftcFilterPillClass,
 } from "@/lib/design/ftcDesignSystem";
+import { useGuardProfile } from "@/app/components/GuardProfileContext";
 import {
   EventsListTabControls,
-  EventsWorkspaceCreateEventAction,
+  EventsWorkspaceCreateEventLink,
+  EventsWorkspaceCreateEventPlaceholder,
 } from "@/app/components/events/EventsListTabControls";
 import { EventsListTabRow } from "@/app/components/events/EventsListTabRow";
 import DmConversationHeader from "@/app/components/dm/DmConversationHeader";
@@ -69,7 +71,7 @@ import { isCalendarOriginCreateParam, resolveCalendarCreateInitialStep, resolveE
 import { useEventEditHeaderState } from "@/lib/events/useEventEditHeaderVisibility";
 import type { EventEditHeaderState } from "@/lib/events/useEventEditHeaderVisibility";
 import { canManageEvents, type UserRole } from "@/lib/user/currentUser";
-import { EVENTS_AREA_SUB_NAV } from "@/lib/plannerEventsNav";
+import { EVENTS_AREA_SUB_NAV, resolveEventsWorkspaceChromeRole } from "@/lib/plannerEventsNav";
 import { EVENT_DETAIL_CARD_CLASS } from "@/app/components/event-detail/eventDetailUi";
 import { CALENDAR_MOBILE_EMPTY_STATE_CLASS } from "@/app/components/calendar/calendarMobileUi";
 import { readCachedNavRole, readCachedNavigation, resolveIsOwnProfilePath } from "@/lib/navigationRoleCache";
@@ -434,23 +436,28 @@ export function EventsPageLoadingShell({
   initialTab?: string | null;
 }) {
   const searchParams = useSearchParams();
-  const [cachedRole] = useState<UserRole | null>(() => readCachedNavRole());
+  const guardProfile = useGuardProfile();
+  const [cachedNavigation] = useState(readCachedNavigation);
   const [locationSearch] = useState(() =>
     typeof window === "undefined" ? null : window.location.search,
   );
-  const role = roleProp ?? cachedRole;
+  const resolvedRole = resolveEventsWorkspaceChromeRole(
+    roleProp,
+    guardProfile?.role,
+    cachedNavigation.role,
+  );
   const createParam = createParamProp ?? searchParams.get("create");
 
   if (isCalendarOriginCreateParam(createParam)) {
     return (
       <EventsCalendarCreateLoadingShell
-        role={role}
+        role={resolvedRole}
         createStep={resolveCalendarCreateInitialStep(createParam)}
       />
     );
   }
 
-  const isPlanner = canManageEvents(role);
+  const isPlanner = canManageEvents(resolvedRole);
   const listTab = resolveEventsListTabParam(
     searchParams.get("tab"),
     initialTabProp,
@@ -458,10 +465,16 @@ export function EventsPageLoadingShell({
   );
   const isHistoryTab = listTab === "history";
 
+  const headerActions = isPlanner ? (
+    <EventsWorkspaceCreateEventLink />
+  ) : resolvedRole === null ? (
+    <EventsWorkspaceCreateEventPlaceholder />
+  ) : undefined;
+
   return (
     <PlannerWorkspacePage
-      initialRole={role}
-      actions={isPlanner ? <EventsWorkspaceCreateEventAction disabled /> : undefined}
+      initialRole={resolvedRole}
+      actions={headerActions}
       secondaryControlsSlot={
         <EventsListTabControls
           isPlanner={isPlanner}

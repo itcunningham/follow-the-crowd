@@ -11,6 +11,7 @@ import {
   getNavigationBadgeCacheVersion,
   subscribeNavigationBadgeListeners,
 } from "@/lib/navigationBadgePrefetch";
+import { WORKSPACE_GIGS_PENDING_BADGE_SLOT_CLASS } from "@/lib/design/ftcDesignSystem";
 import {
   canViewGigsSubNav,
   canViewBookingPlansSubNav,
@@ -35,6 +36,13 @@ function GigsPendingCountBadge({
   isActive: boolean;
   reserveSpace?: boolean;
 }) {
+  const badgeToneClass =
+    count > 0
+      ? isActive
+        ? "bg-ftc-bg/20 text-ftc-bg"
+        : "bg-ftc-primary/15 text-ftc-primary"
+      : "";
+
   if (count <= 0) {
     if (!reserveSpace) {
       return null;
@@ -43,19 +51,17 @@ function GigsPendingCountBadge({
     return (
       <span
         aria-hidden="true"
-        className="inline-flex h-4 min-w-4 shrink-0 opacity-0"
-      />
+        className={`${WORKSPACE_GIGS_PENDING_BADGE_SLOT_CLASS} opacity-0 ${badgeToneClass}`.trim()}
+      >
+        0
+      </span>
     );
   }
 
   return (
     <span
       aria-label={`${count} pending incoming gig${count === 1 ? "" : "s"}`}
-      className={`inline-flex h-4 min-w-4 shrink-0 items-center justify-center rounded-full px-1 text-[10px] font-bold leading-none ${
-        isActive
-          ? "bg-ftc-bg/20 text-ftc-bg"
-          : "bg-ftc-primary/15 text-ftc-primary"
-      }`}
+      className={`${WORKSPACE_GIGS_PENDING_BADGE_SLOT_CLASS} ${badgeToneClass}`}
     >
       {count > 99 ? "99+" : count}
     </span>

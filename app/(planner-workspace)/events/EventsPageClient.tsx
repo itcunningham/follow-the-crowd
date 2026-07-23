@@ -52,14 +52,12 @@ import { useSendBookingRequestsDraft } from "@/app/components/booking/useSendBoo
 import { EventDetailPrimaryAction } from "@/app/components/event-detail/EventDetailBottomBar";
 import UnavailableDjBookingConfirmModal from "@/app/components/UnavailableDjBookingConfirmModal";
 import { EventCoverImageListThumb } from "@/app/components/events/EventCoverImageDisplay";
-import {
-  EVENTS_CREATE_EVENT_BUTTON_CLASS,
-  FTC_LIST_GAP_CLASS,
-} from "@/lib/design/ftcDesignSystem";
+import { FTC_LIST_GAP_CLASS } from "@/lib/design/ftcDesignSystem";
 import { EventListSkeleton } from "@/app/components/skeleton/Skeleton";
 import {
   EventsListTabControls,
   EventsWorkspaceCreateEventAction,
+  EventsWorkspaceCreateEventPlaceholder,
 } from "@/app/components/events/EventsListTabControls";
 import {
   HistoryRemoveConfirmDialog,
@@ -117,6 +115,7 @@ import {
   resolveEventsListTabParam,
   resolveEventsWorkspaceActiveHref,
 } from "@/lib/events/eventsListNavigation";
+import { resolveEventsWorkspaceChromeRole } from "@/lib/plannerEventsNav";
 import {
   canManageEvents,
   getCurrentUserProfile,
@@ -179,14 +178,7 @@ function getCalendarBootstrapState(
 
 const EVENT_LIST_CARD_CHEVRON_SLOT_CLASS = "mt-0.5 h-4 w-4 shrink-0";
 
-const EVENTS_HEADER_CREATE_EVENT_PLACEHOLDER = (
-  <span
-    aria-hidden="true"
-    className={`pointer-events-none invisible inline-flex ${EVENTS_CREATE_EVENT_BUTTON_CLASS}`}
-  >
-    Create event
-  </span>
-);
+const EVENTS_HEADER_CREATE_EVENT_PLACEHOLDER = <EventsWorkspaceCreateEventPlaceholder />;
 
 function EventsListCardChevron() {
   return (
@@ -504,7 +496,7 @@ function EventsPageClientView({
     createFormHasFieldErrors || Boolean(createFormNotesValidationError);
   const showEventsListContent = !isCalendarCreateFlow && !createOpen;
 
-  const resolvedRole = role ?? guardProfile?.role ?? readCachedNavRole();
+  const resolvedRole = resolveEventsWorkspaceChromeRole(role, guardProfile?.role);
   const isPlanner = canManageEvents(resolvedRole);
   const roleReady = resolvedRole !== null;
   const upcomingEvents = useMemo(() => {

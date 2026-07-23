@@ -77,7 +77,7 @@ import {
   PLANNER_WORKSPACE_SUBNAV_ROW_CLASS,
   PLANNER_WORKSPACE_SUBNAV_SLOT_CLASS,
 } from "../app/components/planner/PlannerWorkspaceLayout";
-import { getEventsAreaSubNavItems, resolveActiveWorkspaceHref, buildWorkspaceSubNavDestinationHref, EVENTS_AREA_SUB_NAV, isCalendarWorkspacePath, mergeWorkspaceNavRole, WORKSPACE_SUB_NAV_TABS, isWorkspaceSubNavTabVisible } from "../lib/plannerEventsNav";
+import { getEventsAreaSubNavItems, resolveActiveWorkspaceHref, buildWorkspaceSubNavDestinationHref, EVENTS_AREA_SUB_NAV, isCalendarWorkspacePath, mergeWorkspaceNavRole, resolveEventsWorkspaceChromeRole, WORKSPACE_SUB_NAV_TABS, isWorkspaceSubNavTabVisible } from "../lib/plannerEventsNav";
 import {
   EVENT_PLAN_ACTION_RESERVE_CLASS,
   EVENT_PLAN_USE_BUTTON_CLASS,
@@ -850,6 +850,7 @@ function testWorkspaceSubNavLayoutIsStable() {
   assert.match(subNavSource, /key=\{tab\.id\}/);
   assert.match(subNavSource, /isWorkspaceSubNavTabVisible/);
   assert.match(subNavSource, /reserveSpace/);
+  assert.match(subNavSource, /WORKSPACE_GIGS_PENDING_BADGE_SLOT_CLASS/);
   assert.match(layoutSource, /resetHeaderStateForPathnameChange/);
   assert.match(layoutSource, /mergeWorkspaceHeaderState/);
   assert.match(
@@ -885,6 +886,7 @@ function testWorkspaceNavRoleDoesNotDropEventPlansTab() {
   assert.equal(mergeWorkspaceNavRole("dj", "both"), "both");
   assert.equal(mergeWorkspaceNavRole("both", "dj"), "both");
   assert.equal(mergeWorkspaceNavRole("dj", null), "dj");
+  assert.equal(resolveEventsWorkspaceChromeRole("dj", "promoter"), "promoter");
   assert.equal(
     getEventsAreaSubNavItems(mergeWorkspaceNavRole("dj", "both")).map((item) => item.label).join("|"),
     "Events|Event Plans|Calendar|Gigs",
@@ -1633,7 +1635,7 @@ function testEventsRouteLoadingIsListAreaOnly() {
   );
   assert.match(
     appLoadingSource,
-    /export function EventsPageLoadingShell[\s\S]*<EventsListTabControls[\s\S]*loadingShell/,
+    /export function EventsPageLoadingShell[\s\S]*resolveEventsWorkspaceChromeRole[\s\S]*EventsWorkspaceCreateEventLink/,
   );
   assert.match(
     appLoadingSource,

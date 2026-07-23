@@ -74,7 +74,9 @@ export function eventsListTabPillClass(isActive: boolean): string {
 export const EVENTS_CREATE_EVENT_BUTTON_CLASS =
   "shrink-0 ftc-btn-primary px-4 py-2.5 text-sm uppercase tracking-wide";
 
-/** Gigs workspace tab pill — slightly narrower than default filter pills; gap on the link in DjGigsTabs. */
+/** Reserved width for Gigs workspace sub-nav pending count (stable pill width before count hydrates). */
+export const WORKSPACE_GIGS_PENDING_BADGE_SLOT_CLASS =
+  "inline-flex h-4 min-w-[1.375rem] shrink-0 items-center justify-center rounded-full px-1 text-[10px] font-bold leading-none tabular-nums";
 export const GIGS_TAB_PILL_GAP_CLASS = "gap-1";
 
 /** Modifier for Incoming/Confirmed/History pills — tighter horizontal padding, same vertical sizing. */
