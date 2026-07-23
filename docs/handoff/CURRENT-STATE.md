@@ -212,6 +212,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `<pending>` — align events loading filter label
 - `a80058a` — fix circular workspace dependency causing route crash
 - `b43e2bf` — show cached events list on tab return without skeleton flash
 - `2a0f98d` — stabilise events filters and card skeletons
