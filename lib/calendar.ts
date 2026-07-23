@@ -755,20 +755,47 @@ export function formatPlannerSelectedDateLabel(date: Date): string {
   return formatWrittenCalendarDateLabel(date);
 }
 
-export function buildPlannerCreateEventHref(dateKey: string): string {
+export function buildPlannerCalendarCreateHref(
+  dateKey: string,
+  create: "calendar" | "calendar-plans",
+): string {
   const params = new URLSearchParams({
-    create: "calendar",
+    date: dateKey,
+    create,
     eventDate: dateKey,
   });
-  return `/events?${params.toString()}`;
+  return `/calendar?${params.toString()}`;
+}
+
+export function buildPlannerCreateEventHref(dateKey: string): string {
+  return buildPlannerCalendarCreateHref(dateKey, "calendar");
 }
 
 export function buildPlannerCreateEventFromPlansHref(dateKey: string): string {
-  const params = new URLSearchParams({
-    create: "calendar-plans",
-    eventDate: dateKey,
-  });
-  return `/events?${params.toString()}`;
+  return buildPlannerCalendarCreateHref(dateKey, "calendar-plans");
+}
+
+/** Strip calendar-origin create params while preserving calendar view state. */
+export function buildPlannerCalendarHrefClearingCreate(
+  dateKey: string | null,
+  options?: { view?: string | null; month?: string | null },
+): string {
+  const params = new URLSearchParams();
+
+  if (dateKey) {
+    params.set("date", dateKey);
+  }
+
+  if (options?.view) {
+    params.set("view", options.view);
+  }
+
+  if (options?.month) {
+    params.set("month", options.month);
+  }
+
+  const query = params.toString();
+  return query ? `/calendar?${query}` : "/calendar";
 }
 
 export function buildPlannerCalendarHref(dateKey: string): string {

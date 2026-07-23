@@ -70,6 +70,7 @@ import {
   buildEventDetailDmThreadHref,
   resolveDmThreadBackHref,
 } from "../lib/dm/threadNavigation";
+import { buildPlannerCreateEventFromPlansHref, buildPlannerCreateEventHref } from "../lib/calendar";
 import { resolveGigsCalendarBookingNavigation, resolvePlannerCalendarItemEventId, resolvePlannerCalendarItemHref } from "../lib/bookings/gigsCalendarNavigation";
 import { hasUnsavedProfileEdits, createProfileEditBaseline } from "../lib/user/profileEditDirtyState";
 import { getUsernameFormatError, normalizeSoundCloudInput, resolveProfileIdentityPresentation } from "../lib/user/profileFormUtils";
@@ -1397,7 +1398,8 @@ function testEventsCreateEventHiddenDuringHistorySelectionToolbar() {
   assert.match(source, /historyTabRowSelectionMode/);
   assert.match(source, /workspaceHeaderActions/);
   assert.match(source, /hideEventsHeaderCreateForCalendarFlow/);
-  assert.match(source, /isCalendarCreateFlow && \(createOpen \|\| pathname === "\/events"\)/);
+  assert.match(source, /isCalendarWorkspaceHost/);
+  assert.match(source, /buildPlannerCalendarCreateHref/);
   assert.match(source, /EVENTS_HEADER_CREATE_EVENT_PLACEHOLDER/);
   assert.match(source, /actions=\{workspaceHeaderActions\}/);
 }
@@ -1997,6 +1999,21 @@ function testCompactCalendarEventVenueTitleTruncates() {
   );
 }
 
+function testCalendarOriginCreateLinksStayOnCalendarRoute() {
+  assert.match(buildPlannerCreateEventHref("2027-03-15"), /^\/calendar\?/);
+  assert.match(buildPlannerCreateEventFromPlansHref("2027-03-15"), /^\/calendar\?/);
+  assert.match(buildPlannerCreateEventHref("2027-03-15"), /create=calendar/);
+  assert.match(buildPlannerCreateEventFromPlansHref("2027-03-15"), /create=calendar-plans/);
+  assert.doesNotMatch(buildPlannerCreateEventHref("2027-03-15"), /^\/events/);
+
+  const calendarPageSource = readFileSync(
+    new URL("../app/(planner-workspace)/calendar/page.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(calendarPageSource, /EventsCalendarOriginCreateClient/);
+  assert.match(calendarPageSource, /isCalendarOriginCreateParam/);
+}
+
 async function main() {
   testPastEventDatesAreBlocked();
   testFutureEventDatesAreAllowed();
@@ -2053,6 +2070,7 @@ async function main() {
   testCalendarLoadUsesCacheAndPrefetch();
   testCalendarScrollStabilityOnTabSwitch();
   testCalendarRouteLoadingSkipsFullSkeletonCard();
+  testCalendarOriginCreateLinksStayOnCalendarRoute();
   testCompactCalendarEventVenueTitleTruncates();
   testEventPlansActionRowLayout();
   testEventPlansInlineFeedbackMatchesEventsHistory();

@@ -101,6 +101,8 @@ import {
 } from "@/lib/events/eventCoverImage";
 import {
   buildPlannerCalendarHref,
+  buildPlannerCalendarHrefClearingCreate,
+  buildPlannerCalendarCreateHref,
   resolveCalendarOriginDateKey,
   stashPlannerCalendarReturnDate,
 } from "@/lib/calendar";
@@ -108,6 +110,7 @@ import {
   buildEventDetailHref,
   buildEventsListHref,
   type EventsListTab,
+  isCalendarOriginCreateParam,
   isCalendarOriginEventsFlow,
   resolveCalendarCreateBootstrapState,
   resolveCalendarCreateInitialStep,
@@ -150,6 +153,7 @@ type EventsPageClientProps = {
   initialTab: string | null;
   initialCreate?: string | null;
   initialEventDate?: string | null;
+  workspaceHost?: "events" | "calendar";
 };
 
 function readCreateParamsFromLocation(): { create: string | null; eventDate: string | null } {
@@ -366,8 +370,25 @@ function readMountEventsListState() {
 export default function EventsPageClient(props: EventsPageClientProps) {
   return (
     <OnboardingGuard>
-      <EventsPageClientView {...props} />
+      <EventsPageClientView {...props} workspaceHost="events" />
     </OnboardingGuard>
+  );
+}
+
+export function EventsCalendarOriginCreateClient({
+  initialCreate,
+  initialEventDate,
+}: {
+  initialCreate?: string | null;
+  initialEventDate?: string | null;
+}) {
+  return (
+    <EventsPageClientView
+      initialTab={null}
+      initialCreate={initialCreate}
+      initialEventDate={initialEventDate}
+      workspaceHost="calendar"
+    />
   );
 }
 
@@ -375,10 +396,12 @@ function EventsPageClientView({
   initialTab,
   initialCreate,
   initialEventDate,
+  workspaceHost = "events",
 }: EventsPageClientProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const isCalendarWorkspaceHost = workspaceHost === "calendar";
   const guardProfile = useGuardProfile();
   const handledCreateParamsRef = useRef<string | null>(null);
   const [mountListState] = useState(readMountEventsListState);
@@ -441,10 +464,32 @@ function EventsPageClientView({
     createParam,
   );
   const hideEventsHeaderCreateForCalendarFlow =
-    isCalendarCreateFlow && (createOpen || pathname === "/events");
+    isCalendarCreateFlow &&
+    (createOpen || pathname === "/events" || isCalendarWorkspaceHost);
 
   useEffect(() => {
-    if (pathname !== "/events" && calendarOriginDateKey !== null) {
+    if (isCalendarWorkspaceHost || pathname !== "/events") {
+      return;
+    }
+
+    const create = searchParams.get("create");
+    const eventDate = searchParams.get("eventDate");
+
+    if (!isCalendarOriginCreateParam(create)) {
+      return;
+    }
+
+    const dateKey = resolveCalendarOriginDateKey(eventDate) ?? eventDate ?? "";
+
+    if (!dateKey) {
+      return;
+    }
+
+    router.replace(buildPlannerCalendarCreateHref(dateKey, create));
+  }, [isCalendarWorkspaceHost, pathname, router, searchParams]);
+
+  useEffect(() => {
+    if (pathname !== "/events" && pathname !== "/calendar" && calendarOriginDateKey !== null) {
       setCalendarOriginDateKey(null);
     }
   }, [calendarOriginDateKey, pathname]);
@@ -684,8 +729,26 @@ function EventsPageClientView({
 
     if (createParam === "calendar" || createParam === "calendar-plans") {
       const finishNavigation = () => {
+        if (isCalendarWorkspaceHost) {
+          router.replace(
+            buildPlannerCalendarHrefClearingCreate(
+              calendarOriginDateKey ?? resolveCalendarOriginDateKey(eventDateParam),
+              {
+                view: searchParams.get("view"),
+                month: searchParams.get("month"),
+              },
+            ),
+          );
+          return;
+        }
+
         router.replace("/events");
       };
+
+      if (isCalendarWorkspaceHost && createOpen && isCalendarOriginCreateParam(createParam)) {
+        finishNavigation();
+        return;
+      }
 
       if (calendarOriginDateKey) {
         void loadBookingPlansForCreate().finally(finishNavigation);
@@ -712,7 +775,15 @@ function EventsPageClientView({
         router.replace("/events");
       });
     }
-  }, [roleReady, isPlanner, router]);
+  }, [
+    calendarOriginDateKey,
+    createOpen,
+    isCalendarWorkspaceHost,
+    isPlanner,
+    roleReady,
+    router,
+    searchParams,
+  ]);
 
   async function loadBookingPlansForCreate() {
     setLoadingPlans(true);
