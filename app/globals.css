@@ -900,7 +900,9 @@ html {
 }
 
 .ftc-gigs-tab-count-slot {
+  box-sizing: border-box;
   min-width: 2.5ch;
+  padding-right: 0.25rem;
   text-align: right;
 }
 

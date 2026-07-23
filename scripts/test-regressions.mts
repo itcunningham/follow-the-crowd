@@ -1067,6 +1067,8 @@ function testGigsFilterTabsPolish() {
   assert.match(tabsSource, /GIGS_TAB_PILL_LABEL_CLASS/);
   assert.match(cssSource, /\.ftc-filter-pill\.ftc-gigs-tab-pill[\s\S]*padding: 0\.375rem 0\.5rem/);
   assert.match(cssSource, /\.ftc-gigs-tab-count-slot[\s\S]*min-width: 2\.5ch/);
+  assert.match(cssSource, /\.ftc-gigs-tab-count-slot[\s\S]*padding-right: 0\.25rem/);
+  assert.match(cssSource, /\.ftc-gigs-tab-count-slot[\s\S]*box-sizing: border-box/);
   assert.doesNotMatch(cssSource, /\.ftc-gigs-tab-count-slot[\s\S]*min-width: 2\.75ch/);
 }
 
