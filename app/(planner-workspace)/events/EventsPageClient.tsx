@@ -551,6 +551,8 @@ function EventsPageClientView({
     createFormHasFieldErrors || Boolean(createFormNotesValidationError);
   const showEventsListContent = !isCalendarCreateFlow && !createOpen;
 
+  const createFlowPanelTitle = createStep === "pick-plan" ? "Event Plans" : "Create event";
+
   const resolvedRole = resolveEventsWorkspaceChromeRole(guardProfile?.role, role);
   const isPlanner = canManageEvents(resolvedRole);
   const roleReady = resolvedRole !== null;
@@ -1296,7 +1298,7 @@ function EventsPageClientView({
         secondaryControlsPlaceholder={isCalendarCreateFlow}
       >
           {createOpen && isPlanner ? (
-            <PlannerFormCard title="Create event" onCancel={closeCreateFlow} cancelDisabled={saving}>
+            <PlannerFormCard title={createFlowPanelTitle} onCancel={closeCreateFlow} cancelDisabled={saving}>
               {createStep === "source" ? (
                 <div className="space-y-3">
                   <PlannerOptionCard

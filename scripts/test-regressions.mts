@@ -2024,6 +2024,8 @@ function testCalendarOriginCreateLinksStayOnCalendarRoute() {
     eventsClientSource,
     /isCalendarWorkspaceHost && createOpen && isCalendarOriginCreateParam\(createParam\)/,
   );
+  assert.match(eventsClientSource, /createFlowPanelTitle/);
+  assert.match(eventsClientSource, /createStep === "pick-plan" \? "Event Plans" : "Create event"/);
 }
 
 async function main() {
