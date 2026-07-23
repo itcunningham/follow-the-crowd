@@ -10,6 +10,7 @@ import {
 } from "@/lib/design/ftcDesignSystem";
 import {
   buildEventsListHref,
+  resolveEventsListActiveTabLabel,
   resolveEventsListTabRowChrome,
   type EventsListTab,
 } from "@/lib/events/eventsListNavigation";
@@ -106,7 +107,7 @@ export function EventsListTabControls({
 
   const activeTabClass = eventsListTabPillClass(!createOpen && !isHistoryTab);
   const historyTabClass = eventsListTabPillClass(!createOpen && isHistoryTab);
-  const activeLabel = isPlanner ? "Active" : "Upcoming";
+  const activeLabel = resolveEventsListActiveTabLabel(isPlanner);
 
   return (
     <EventsListTabRow

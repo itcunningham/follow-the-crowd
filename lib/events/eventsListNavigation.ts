@@ -14,6 +14,14 @@ export type EventsListTab = "active" | "history";
 
 export type EventsListView = "active" | "cancelled";
 
+/** Immutable first-tab labels — shared by route loading shell and loaded Events page. */
+export const EVENTS_LIST_ACTIVE_TAB_LABEL_PLANNER = "Active";
+export const EVENTS_LIST_ACTIVE_TAB_LABEL_DJ = "Upcoming";
+
+export function resolveEventsListActiveTabLabel(isPlanner: boolean): string {
+  return isPlanner ? EVENTS_LIST_ACTIVE_TAB_LABEL_PLANNER : EVENTS_LIST_ACTIVE_TAB_LABEL_DJ;
+}
+
 export function parseEventsListTab(value: string | null | undefined): EventsListTab {
   return value === "history" ? "history" : "active";
 }
