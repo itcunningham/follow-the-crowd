@@ -1133,6 +1133,12 @@ function testEventsHistorySelectionToolbarUsesDeleteLabel() {
   assert.match(source, /centeredSelectAll/);
   assert.match(source, /cancelVariant="backIcon"/);
   assert.match(source, /tabRowEmbedded/);
+  const bulkSource = readFileSync(
+    new URL("../app/components/history/HistoryBulkManage.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(bulkSource, /tabRowEmbedded[\s\S]*w-auto max-w-full/);
+  assert.match(bulkSource, /HISTORY_SELECTION_EMBEDDED_PANEL_CLASS/);
   assert.match(rowSource, /selectionMode \?/);
   assert.match(rowSource, /justify-end overflow-hidden/);
   assert.match(rowSource, /w-\[1\.875rem\]/);

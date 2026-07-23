@@ -291,6 +291,9 @@ const HISTORY_SELECTION_DELETE_BUTTON_CLASS =
 
 const HISTORY_SELECTION_EMBEDDED_CONTROL_HEIGHT_CLASS = "h-[1.625rem] py-0 leading-none";
 
+const HISTORY_SELECTION_EMBEDDED_PANEL_CLASS =
+  "rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated/60";
+
 function historySelectionNeutralButtonClass(embedded: boolean) {
   return embedded
     ? `${HISTORY_SELECTION_NEUTRAL_BUTTON_CLASS} ${HISTORY_SELECTION_EMBEDDED_CONTROL_HEIGHT_CLASS}`
@@ -343,14 +346,15 @@ export function HistorySelectionToolbar({
   selectableCount?: number;
   className?: string;
   embedded?: boolean;
-  /** Inline embedded toolbar in Events/Plans tab row — no bordered panel padding (prevents row height jump). */
+  /** Inline embedded toolbar in Events/Plans tab row — bordered panel, zero vertical padding (fixed row height). */
   tabRowEmbedded?: boolean;
 }) {
+  const embeddedPanelClass = HISTORY_SELECTION_EMBEDDED_PANEL_CLASS;
   const outerClassName = embedded
     ? tabRowEmbedded
-      ? "mb-0 flex h-full w-full min-h-0 max-h-full flex-nowrap items-center justify-end gap-1.5 sm:gap-2"
-      : "mb-0 box-border flex h-full w-full min-h-0 flex-nowrap items-center gap-2 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated/60 px-3 py-1.5"
-    : "mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated/60 px-3 py-2.5";
+      ? `mb-0 box-border flex h-full max-h-full w-auto max-w-full shrink-0 flex-nowrap items-center gap-1.5 sm:gap-2 ${embeddedPanelClass} px-2 py-0 sm:px-3`
+      : `mb-0 box-border flex h-full w-full min-h-0 flex-nowrap items-center gap-2 ${embeddedPanelClass} px-3 py-1.5`
+    : `mb-4 flex flex-wrap items-center justify-between gap-3 ${embeddedPanelClass} px-3 py-2.5`;
   const groupClassName = embedded
     ? "flex min-w-0 flex-nowrap items-center gap-2"
     : "flex flex-wrap items-center gap-2";
@@ -425,6 +429,16 @@ export function HistorySelectionToolbar({
   );
 
   if (embedded && centeredSelectAll && cancelVariant === "backIcon") {
+    if (tabRowEmbedded) {
+      return (
+        <div className={`${outerClassName} ${className}`.trim()}>
+          {backControl}
+          {selectAllControl}
+          {deleteControl}
+        </div>
+      );
+    }
+
     return (
       <div className={`${outerClassName} ${className}`.trim()}>
         <div className="grid w-full min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2">
