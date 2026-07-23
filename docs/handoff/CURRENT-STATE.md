@@ -214,6 +214,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `070e397` — stabilise workspace gigs badge during navigation
 - `754d14b` — Polish Gigs filter pill count spacing
 - `fd9bc65` — balance Gigs Incoming/Confirmed pill padding
 - `3a802a6` — Gigs tabs: add ~6px gap between label and count
