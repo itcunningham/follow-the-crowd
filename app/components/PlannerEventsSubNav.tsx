@@ -8,7 +8,7 @@ import { WorkspaceGigsPendingBadge } from "@/app/components/planner/WorkspaceGig
 import {
   ensureGigsPendingPrefetched,
 } from "@/lib/navigationBadgePrefetch";
-import { subscribeWorkspaceGigsSubNavBadgeDisplay, readLocalGigsPendingCount } from "@/lib/navigationBadgeCache";
+import { subscribeWorkspaceGigsSubNavBadgeDisplay, readLocalGigsPendingCount, readWorkspaceGigsSubNavDisplayLatch } from "@/lib/navigationBadgeCache";
 import { readWorkspaceGigsBadgeDisplayCountForSubNav } from "@/lib/navigation/resolveWorkspaceGigsPendingDisplayCount";
 import {
   canViewGigsSubNav,
@@ -36,7 +36,10 @@ function useStableWorkspaceGigsSubNavCount(
     readDisplayCount,
     readDisplayCount,
   );
-  const stableCountRef = useRef(rawCount);
+  const latchedCount = readWorkspaceGigsSubNavDisplayLatch(badgeUserId, badgeRole);
+  const stableCountRef = useRef(
+    Math.max(latchedCount ?? 0, rawCount, readDisplayCount()),
+  );
 
   if (rawCount > 0) {
     stableCountRef.current = rawCount;

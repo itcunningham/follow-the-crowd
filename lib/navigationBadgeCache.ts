@@ -4,6 +4,7 @@ const NAV_BADGE_CACHE_KEY = "ftc-nav-badge-counts";
 const NAV_BADGE_LOCAL_CACHE_KEY = "ftc-nav-badge-counts-local";
 const GIGS_PENDING_LOCAL_CACHE_KEY = "ftc-gigs-pending-count";
 const MESSAGES_UNREAD_LOCAL_CACHE_KEY = "ftc-messages-unread-count";
+const WORKSPACE_GIGS_SUBNAV_LATCH_KEY = "ftc-workspace-gigs-subnav-latch";
 
 export type NavigationBadgeCache = {
   userId: string;
@@ -27,6 +28,10 @@ type MessagesUnreadLocalCache = {
   count: number;
   updatedAt: number;
 };
+
+function isUserRole(value: unknown): value is UserRole {
+  return value === "dj" || value === "promoter" || value === "both";
+}
 
 let memoryCache: NavigationBadgeCache | null = null;
 let runtimeGigsPendingCount: number | null = null;
@@ -122,6 +127,68 @@ type WorkspaceGigsSubNavDisplayLatch = {
 /** Last value shown on workspace Gigs tab — survives unrelated nav badge refreshes during tab switches. */
 let workspaceGigsSubNavDisplayLatch: WorkspaceGigsSubNavDisplayLatch | null = null;
 
+function parseWorkspaceGigsSubNavDisplayLatch(raw: string): WorkspaceGigsSubNavDisplayLatch | null {
+  try {
+    const parsed = JSON.parse(raw) as Partial<WorkspaceGigsSubNavDisplayLatch>;
+
+    if (
+      typeof parsed.userId !== "string" ||
+      !parsed.userId.trim() ||
+      !isUserRole(parsed.role) ||
+      typeof parsed.count !== "number"
+    ) {
+      return null;
+    }
+
+    return {
+      userId: parsed.userId,
+      role: parsed.role,
+      count: Math.max(0, Math.floor(parsed.count)),
+    };
+  } catch {
+    return null;
+  }
+}
+
+function readPersistedWorkspaceGigsSubNavDisplayLatch(): WorkspaceGigsSubNavDisplayLatch | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  const raw = sessionStorage.getItem(WORKSPACE_GIGS_SUBNAV_LATCH_KEY);
+  if (!raw) {
+    return null;
+  }
+
+  return parseWorkspaceGigsSubNavDisplayLatch(raw);
+}
+
+function writePersistedWorkspaceGigsSubNavDisplayLatch(
+  latch: WorkspaceGigsSubNavDisplayLatch | null,
+): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  if (!latch) {
+    sessionStorage.removeItem(WORKSPACE_GIGS_SUBNAV_LATCH_KEY);
+    return;
+  }
+
+  sessionStorage.setItem(WORKSPACE_GIGS_SUBNAV_LATCH_KEY, JSON.stringify(latch));
+}
+
+function hydrateWorkspaceGigsSubNavDisplayLatchFromSessionStorage(): void {
+  if (workspaceGigsSubNavDisplayLatch) {
+    return;
+  }
+
+  const persisted = readPersistedWorkspaceGigsSubNavDisplayLatch();
+  if (persisted) {
+    workspaceGigsSubNavDisplayLatch = persisted;
+  }
+}
+
 const workspaceGigsSubNavDisplayListeners = new Set<() => void>();
 
 export function subscribeWorkspaceGigsSubNavBadgeDisplay(listener: () => void): () => void {
@@ -153,6 +220,8 @@ export function readWorkspaceGigsSubNavDisplayLatch(
   userId: string | null | undefined,
   role: UserRole | null | undefined,
 ): number | null {
+  hydrateWorkspaceGigsSubNavDisplayLatchFromSessionStorage();
+
   if (!role || !workspaceGigsSubNavDisplayLatch) {
     return null;
   }
@@ -188,6 +257,7 @@ export function syncWorkspaceGigsSubNavDisplayLatch(
     role,
     count: normalized,
   };
+  writePersistedWorkspaceGigsSubNavDisplayLatch(workspaceGigsSubNavDisplayLatch);
 
   if (
     !previous ||
@@ -201,10 +271,7 @@ export function syncWorkspaceGigsSubNavDisplayLatch(
 
 export function clearWorkspaceGigsSubNavDisplayLatch(): void {
   workspaceGigsSubNavDisplayLatch = null;
-}
-
-function isUserRole(value: unknown): value is UserRole {
-  return value === "dj" || value === "promoter" || value === "both";
+  writePersistedWorkspaceGigsSubNavDisplayLatch(null);
 }
 
 function parseGigsPendingLocalCache(raw: string): GigsPendingLocalCache | null {
@@ -565,6 +632,7 @@ export function clearNavigationBadgeCache(): void {
   runtimeNavBadgeSnapshot = null;
   workspaceGigsDisplaySession = null;
   workspaceGigsSubNavDisplayLatch = null;
+  writePersistedWorkspaceGigsSubNavDisplayLatch(null);
 
   if (typeof window === "undefined") {
     return;

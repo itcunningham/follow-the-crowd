@@ -876,6 +876,11 @@ function testWorkspaceSubNavLayoutIsStable() {
   assert.match(subNavSource, /readWorkspaceGigsBadgeDisplayCountForSubNav/);
   assert.match(subNavSource, /subscribeWorkspaceGigsSubNavBadgeDisplay/);
   assert.match(subNavSource, /useStableWorkspaceGigsSubNavCount/);
+  const badgeCacheSource = readFileSync(
+    new URL("../lib/navigationBadgeCache.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(badgeCacheSource, /ftc-workspace-gigs-subnav-latch/);
   assert.match(subNavSource, /useSyncExternalStore/);
   assert.match(subNavSource, /badgeRole/);
   assert.doesNotMatch(subNavSource, /reserveSpace/);
@@ -2018,6 +2023,7 @@ function testCalendarWorkspaceClearsStaleWorkspaceIntercept() {
   assert.match(subNavLinkSource, /isCalendarWorkspacePath\(pathname\)/);
   assert.match(subNavLinkSource, /window\.location\.assign\(destinationHref\)/);
   assert.match(subNavLinkSource, /router\.push\(destinationHref/);
+  assert.match(subNavLinkSource, /commitNavigation\(false\)/);
   assert.match(bothCalendarSource, /relative isolate z-0 flex flex-col/);
   assert.match(monthNavSource, /grid-cols-1 grid-rows-1/);
   assert.equal(isCalendarWorkspacePath("/calendar"), true);

@@ -48,13 +48,21 @@ export default function PlannerWorkspaceSubNavLink({
       navigatedThisGestureRef.current = true;
 
       if (fromTouch) {
-        window.location.assign(destinationHref);
+        if (
+          isCalendarWorkspacePath(pathname) &&
+          destinationHref !== EVENTS_AREA_SUB_NAV.calendar.href
+        ) {
+          window.location.assign(destinationHref);
+          return;
+        }
+
+        router.push(destinationHref, { scroll: false });
         return;
       }
 
       router.push(destinationHref, { scroll: false });
     },
-    [destinationHref, interceptNavigate, isActive, router],
+    [destinationHref, interceptNavigate, isActive, pathname, router],
   );
 
   const handlePointerDown = useCallback(
@@ -121,20 +129,15 @@ export default function PlannerWorkspaceSubNavLink({
         return;
       }
 
-      if (
-        isCalendarWorkspacePath(pathname) &&
-        href !== EVENTS_AREA_SUB_NAV.calendar.href
-      ) {
+      if (navigatedThisGestureRef.current) {
         event.preventDefault();
-        commitNavigation(false);
         return;
       }
 
-      if (navigatedThisGestureRef.current) {
-        event.preventDefault();
-      }
+      event.preventDefault();
+      commitNavigation(false);
     },
-    [commitNavigation, href, interceptNavigate, isActive, pathname],
+    [commitNavigation, interceptNavigate, isActive],
   );
 
   return (
