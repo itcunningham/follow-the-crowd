@@ -4,14 +4,12 @@ import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "reac
 import { usePathname, useRouter } from "next/navigation";
 import PlannerWorkspaceSubNavLink from "@/app/components/planner/PlannerWorkspaceSubNavLink";
 import { useGuardProfile } from "@/app/components/GuardProfileContext";
-import { useNavBadges } from "@/app/components/navigation/NavBadgeProvider";
 import { WorkspaceGigsPendingBadge } from "@/app/components/planner/WorkspaceGigsPendingBadge";
 import {
   ensureGigsPendingPrefetched,
-  getNavigationBadgeCacheVersion,
   subscribeNavigationBadgeListeners,
 } from "@/lib/navigationBadgePrefetch";
-import { resolveWorkspaceGigsPendingDisplayCount } from "@/lib/navigation/resolveWorkspaceGigsPendingDisplayCount";
+import { readWorkspaceGigsBadgeDisplayCountForSubNav } from "@/lib/navigation/resolveWorkspaceGigsPendingDisplayCount";
 import {
   canViewGigsSubNav,
   canViewBookingPlansSubNav,
@@ -46,7 +44,6 @@ export default function PlannerEventsSubNav({
         : pathname;
   const router = useRouter();
   const guardProfile = useGuardProfile();
-  const { gigsPendingCount, badgesReady } = useNavBadges();
   const [cachedNavigation] = useState(readCachedNavigation);
   const [role, setRole] = useState<UserRole | null>(
     () => initialRole ?? guardProfile?.role ?? cachedNavigation.role,
@@ -83,9 +80,11 @@ export default function PlannerEventsSubNav({
   const canViewGigs = canViewGigsSubNav(roleForTabVisibility);
   const canViewBookingPlans = canViewBookingPlansSubNav(roleForTabVisibility);
   const resolvedUserId = guardProfile?.user_id ?? cachedNavigation.userId;
-  const badgeCacheVersion = useSyncExternalStore(
+  const badgeRole = roleForTabVisibility ?? lastKnownRoleRef.current ?? readCachedNavRole();
+  const badgeUserId = resolvedUserId ?? cachedNavigation.userId;
+  const displayGigsPendingCount = useSyncExternalStore(
     subscribeNavigationBadgeListeners,
-    getNavigationBadgeCacheVersion,
+    () => readWorkspaceGigsBadgeDisplayCountForSubNav(badgeUserId, badgeRole),
     () => 0,
   );
 
@@ -126,25 +125,6 @@ export default function PlannerEventsSubNav({
       void ensureDjGigsCalendarPrefetched();
     }
   }, [canViewGigs, resolvedRole]);
-
-  const displayGigsPendingCount = useMemo(
-    () =>
-      resolveWorkspaceGigsPendingDisplayCount({
-        canViewGigs,
-        userId: resolvedUserId,
-        role: resolvedRole,
-        providerCount: gigsPendingCount,
-        badgesReady,
-      }),
-    [
-      badgeCacheVersion,
-      badgesReady,
-      canViewGigs,
-      gigsPendingCount,
-      resolvedRole,
-      resolvedUserId,
-    ],
-  );
 
   useEffect(() => {
     if (guardProfile?.role || initialRole || cachedNavigation.role) {

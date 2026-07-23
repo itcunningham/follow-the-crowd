@@ -870,7 +870,9 @@ function testWorkspaceSubNavLayoutIsStable() {
   assert.match(subNavSource, /key=\{tab\.id\}/);
   assert.match(subNavSource, /isWorkspaceSubNavTabVisible/);
   assert.match(subNavSource, /WorkspaceGigsPendingBadge/);
-  assert.match(subNavSource, /resolveWorkspaceGigsPendingDisplayCount/);
+  assert.match(subNavSource, /readWorkspaceGigsBadgeDisplayCountForSubNav/);
+  assert.match(subNavSource, /useSyncExternalStore/);
+  assert.match(subNavSource, /badgeRole/);
   assert.doesNotMatch(subNavSource, /reserveSpace/);
   assert.doesNotMatch(subNavSource, /opacity-0[\s\S]*99\+/);
   const workspaceGigsBadgeSource = readFileSync(
