@@ -518,6 +518,7 @@ export default function BookingPlansPage() {
               selectionToolbar={
                 <HistorySelectionToolbar
                   embedded
+                  tabRowEmbedded
                   selectedCount={planBulkManage.selectedCount}
                   allSelected={allVisiblePlansSelected}
                   removing={planBulkManage.removing}

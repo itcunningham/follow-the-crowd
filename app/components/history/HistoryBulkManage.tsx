@@ -321,6 +321,7 @@ export function HistorySelectionToolbar({
   selectableCount,
   className = "",
   embedded = false,
+  tabRowEmbedded = false,
 }: {
   selectedCount: number;
   allSelected: boolean;
@@ -342,9 +343,13 @@ export function HistorySelectionToolbar({
   selectableCount?: number;
   className?: string;
   embedded?: boolean;
+  /** Inline embedded toolbar in Events/Plans tab row — no bordered panel padding (prevents row height jump). */
+  tabRowEmbedded?: boolean;
 }) {
   const outerClassName = embedded
-    ? "mb-0 box-border flex h-full w-full min-h-0 flex-nowrap items-center gap-2 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated/60 px-3 py-1.5"
+    ? tabRowEmbedded
+      ? "mb-0 flex h-full w-full min-h-0 max-h-full flex-nowrap items-center justify-end gap-1.5 sm:gap-2"
+      : "mb-0 box-border flex h-full w-full min-h-0 flex-nowrap items-center gap-2 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated/60 px-3 py-1.5"
     : "mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated/60 px-3 py-2.5";
   const groupClassName = embedded
     ? "flex min-w-0 flex-nowrap items-center gap-2"

@@ -1214,6 +1214,7 @@ function EventsPageClientView({
               selectionToolbar={
                 <HistorySelectionToolbar
                   embedded
+                  tabRowEmbedded
                   selectedCount={historyBulkManage.selectedCount}
                   allSelected={allVisibleRemovableHistorySelected}
                   removing={historyBulkManage.removing}

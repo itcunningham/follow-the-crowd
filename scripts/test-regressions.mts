@@ -892,7 +892,8 @@ function testPlannerWorkspaceSecondaryRowRhythm() {
   assert.doesNotMatch(EVENTS_LIST_TAB_ROW_CLASS, /\bmb-4\b/);
   assert.doesNotMatch(GIGS_LIST_TAB_ROW_CLASS, /\bmb-4\b/);
   assert.doesNotMatch(EVENT_PLANS_TOOLBAR_ROW_CLASS, /\bmb-4\b/);
-  assert.match(EVENTS_LIST_TAB_ROW_CLASS, /md:min-h-\[2\.375rem\]/);
+  assert.match(EVENTS_LIST_TAB_ROW_CLASS, /md:h-\[2\.375rem\]/);
+  assert.match(EVENTS_LIST_TAB_ROW_CLASS, /max-h-\[1\.875rem\]/);
   assert.match(GIGS_LIST_TAB_ROW_CLASS, /md:min-h-\[2\.375rem\]/);
 
   const layoutSource = readFileSync(
@@ -1120,6 +1121,10 @@ function testEventsHistorySelectionToolbarUsesDeleteLabel() {
     new URL("../app/(planner-workspace)/events/EventsPageClient.tsx", import.meta.url),
     "utf8",
   );
+  const rowSource = readFileSync(
+    new URL("../app/components/events/EventsListTabRow.tsx", import.meta.url),
+    "utf8",
+  );
   assert.match(source, /removeLabel="Delete"/);
   assert.match(source, /selectAllLabel="ALL"/);
   assert.match(source, /canToggleAll=\{canToggleAllHistorySelection\}/);
@@ -1127,6 +1132,10 @@ function testEventsHistorySelectionToolbarUsesDeleteLabel() {
   assert.match(source, /selectAllToggle/);
   assert.match(source, /centeredSelectAll/);
   assert.match(source, /cancelVariant="backIcon"/);
+  assert.match(source, /tabRowEmbedded/);
+  assert.match(rowSource, /selectionMode \?/);
+  assert.match(rowSource, /justify-end overflow-hidden/);
+  assert.match(rowSource, /w-\[1\.875rem\]/);
 }
 
 function testEventCreateFormTextFieldMaxLength() {
