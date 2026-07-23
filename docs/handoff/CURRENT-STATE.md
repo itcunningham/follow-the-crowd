@@ -214,6 +214,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `f3e5e8b` — preserve workspace gigs badge count during navigation
 - `070e397` — stabilise workspace gigs badge during navigation
 - `754d14b` — Polish Gigs filter pill count spacing
 - `fd9bc65` — balance Gigs Incoming/Confirmed pill padding
