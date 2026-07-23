@@ -573,10 +573,15 @@ export function getCachedGigsPendingCount(
     return runtimeCount;
   }
 
+  const localGigsCount = readLocalGigsPendingCount(userId, role);
+  if (localGigsCount != null) {
+    return localGigsCount;
+  }
+
   const sessionCache = readNavigationBadgeCache(userId, role);
   if (sessionCache) {
     return sessionCache.gigsPending;
   }
 
-  return readLocalGigsPendingCount(userId, role);
+  return null;
 }

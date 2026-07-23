@@ -1,5 +1,6 @@
 import {
   getCachedGigsPendingCount,
+  readLocalGigsPendingCount,
   readWorkspaceGigsDisplaySessionCount,
   writeWorkspaceGigsDisplaySessionCount,
 } from "@/lib/navigationBadgeCache";
@@ -18,7 +19,9 @@ export function resolveWorkspaceGigsPendingDisplayCount(input: {
   }
 
   const cached = getCachedGigsPendingCount(input.userId, input.role);
-  if (cached != null) {
+  const sessionCount = readWorkspaceGigsDisplaySessionCount(input.userId, input.role);
+
+  if (cached != null && cached > 0) {
     writeWorkspaceGigsDisplaySessionCount(input.userId, input.role, cached);
     return cached;
   }
@@ -28,7 +31,23 @@ export function resolveWorkspaceGigsPendingDisplayCount(input: {
     return input.providerCount;
   }
 
-  const sessionCount = readWorkspaceGigsDisplaySessionCount(input.userId, input.role);
+  if (cached === 0) {
+    const localCount = readLocalGigsPendingCount(input.userId, input.role);
+    if (localCount === 0) {
+      writeWorkspaceGigsDisplaySessionCount(input.userId, input.role, 0);
+      return 0;
+    }
+    if (localCount != null && localCount > 0) {
+      writeWorkspaceGigsDisplaySessionCount(input.userId, input.role, localCount);
+      return localCount;
+    }
+    if (sessionCount != null && sessionCount > 0) {
+      return sessionCount;
+    }
+    writeWorkspaceGigsDisplaySessionCount(input.userId, input.role, 0);
+    return 0;
+  }
+
   if (sessionCount != null) {
     return sessionCount;
   }

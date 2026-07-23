@@ -125,9 +125,10 @@ function buildInitialState(userId: string | null, role: UserRole | null): NavBad
 
   const messagesCount = messagesFromStore ?? cached?.messages ?? 0;
   const bookingsCount = cached?.bookings ?? 0;
+  const resolvedGigsPending = gigsFromStore ?? cached?.gigsPending ?? 0;
 
   if (cached) {
-    writeRuntimeGigsPendingCount(cached.userId, cached.role, cached.gigsPending);
+    writeRuntimeGigsPendingCount(cached.userId, cached.role, resolvedGigsPending);
   }
 
   return {
@@ -136,7 +137,7 @@ function buildInitialState(userId: string | null, role: UserRole | null): NavBad
       bookings: bookingsCount,
       total: messagesCount + bookingsCount,
     },
-    gigsPendingCount: gigsFromStore ?? cached?.gigsPending ?? 0,
+    gigsPendingCount: resolvedGigsPending,
     badgesReady: hasMessagesCache,
     reserveBadgeSpace: hasIdentity && !hasMessagesCache,
     reserveGigsBadgeSpace: Boolean(hasIdentity && canViewGigs && gigsFromStore == null),

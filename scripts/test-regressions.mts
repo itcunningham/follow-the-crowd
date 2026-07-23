@@ -1083,6 +1083,7 @@ function testWorkspaceGigsPendingDisplayCountPreservesLastKnown() {
     "transient provider zero must not clear a confirmed session count",
   );
 
+  clearWorkspaceGigsDisplaySession();
   writeRuntimeGigsPendingCount("user-a", "dj", 0);
   assert.equal(
     resolveWorkspaceGigsPendingDisplayCount({
@@ -1093,7 +1094,30 @@ function testWorkspaceGigsPendingDisplayCountPreservesLastKnown() {
       badgesReady: true,
     }),
     0,
-    "cached zero must replace the displayed count",
+    "authoritative zero must replace an empty session display",
+  );
+
+  clearNavigationBadgeCache();
+  clearWorkspaceGigsDisplaySession();
+  writeRuntimeGigsPendingCount("user-a", "dj", 0);
+  resolveWorkspaceGigsPendingDisplayCount({
+    canViewGigs: true,
+    userId: "user-a",
+    role: "dj",
+    providerCount: 1,
+    badgesReady: true,
+  });
+  writeRuntimeGigsPendingCount("user-a", "dj", 0);
+  assert.equal(
+    resolveWorkspaceGigsPendingDisplayCount({
+      canViewGigs: true,
+      userId: "user-a",
+      role: "dj",
+      providerCount: 0,
+      badgesReady: true,
+    }),
+    1,
+    "stale runtime zero must not clear session display",
   );
 }
 
