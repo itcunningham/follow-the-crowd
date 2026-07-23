@@ -894,6 +894,7 @@ function testPlannerWorkspaceSecondaryRowRhythm() {
   assert.doesNotMatch(EVENT_PLANS_TOOLBAR_ROW_CLASS, /\bmb-4\b/);
   assert.match(EVENTS_LIST_TAB_ROW_CLASS, /md:h-\[2\.375rem\]/);
   assert.match(EVENTS_LIST_TAB_ROW_CLASS, /max-h-\[1\.875rem\]/);
+  assert.match(EVENTS_LIST_TAB_ROW_CLASS, /\bw-full\b/);
   assert.match(GIGS_LIST_TAB_ROW_CLASS, /md:min-h-\[2\.375rem\]/);
 
   const layoutSource = readFileSync(
@@ -1140,8 +1141,9 @@ function testEventsHistorySelectionToolbarUsesDeleteLabel() {
   assert.match(bulkSource, /tabRowEmbedded[\s\S]*w-auto max-w-full/);
   assert.match(bulkSource, /HISTORY_SELECTION_EMBEDDED_PANEL_CLASS/);
   assert.match(rowSource, /selectionMode \?/);
-  assert.match(rowSource, /justify-end overflow-hidden/);
-  assert.match(rowSource, /w-\[1\.875rem\]/);
+  assert.match(rowSource, /flex shrink-0 items-center justify-end/);
+  assert.match(rowSource, /min-w-0 flex-1 overflow-hidden/);
+  assert.doesNotMatch(rowSource, /justify-end overflow-hidden[\s\S]*selectionToolbar/);
 }
 
 function testEventCreateFormTextFieldMaxLength() {

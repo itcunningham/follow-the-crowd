@@ -37,38 +37,30 @@ export function EventsListTabRow({
   return (
     <div className={EVENTS_LIST_TAB_ROW_CLASS}>
       <div className="flex shrink-0 items-center">{children}</div>
-      <div className="flex h-full min-h-0 min-w-0 flex-1 items-center overflow-hidden">
+      <div className="min-h-0 min-w-0 flex-1 overflow-hidden" aria-live={selectionMode ? undefined : "polite"}>
+        {!selectionMode && feedbackMessage ? (
+          <p
+            className={`${EVENTS_LIST_TAB_FEEDBACK_CLASS} ${
+              feedbackFading ? "opacity-0" : "opacity-100"
+            }`}
+          >
+            {feedbackMessage}
+          </p>
+        ) : null}
+      </div>
+      <div className="flex shrink-0 items-center justify-end">
         {selectionMode ? (
-          <div className="flex h-full min-w-0 flex-1 items-center justify-end overflow-hidden">
-            {selectionToolbar}
-          </div>
-        ) : (
-          <>
-            <div className="min-w-0 flex-1 overflow-hidden" aria-live="polite">
-              {feedbackMessage ? (
-                <p
-                  className={`${EVENTS_LIST_TAB_FEEDBACK_CLASS} ${
-                    feedbackFading ? "opacity-0" : "opacity-100"
-                  }`}
-                >
-                  {feedbackMessage}
-                </p>
-              ) : null}
-            </div>
-            <div className="flex w-[1.875rem] shrink-0 items-center justify-end">
-              {showRightTrash ? (
-                <HistoryManageButton
-                  ariaLabel={trashAriaLabel}
-                  onClick={onTrashClick ?? (() => undefined)}
-                  disabled={trashButtonDisabled || !onTrashClick}
-                  className={FTC_EVENTS_LIST_TAB_ACTION_CLASS}
-                />
-              ) : showRightPlaceholder ? (
-                <span aria-hidden="true" className={FTC_EVENTS_LIST_TAB_ACTION_PLACEHOLDER_CLASS} />
-              ) : null}
-            </div>
-          </>
-        )}
+          selectionToolbar
+        ) : showRightTrash ? (
+          <HistoryManageButton
+            ariaLabel={trashAriaLabel}
+            onClick={onTrashClick ?? (() => undefined)}
+            disabled={trashButtonDisabled || !onTrashClick}
+            className={FTC_EVENTS_LIST_TAB_ACTION_CLASS}
+          />
+        ) : showRightPlaceholder ? (
+          <span aria-hidden="true" className={FTC_EVENTS_LIST_TAB_ACTION_PLACEHOLDER_CLASS} />
+        ) : null}
       </div>
     </div>
   );

@@ -107,9 +107,9 @@ export const FTC_EVENTS_LIST_TAB_ACTION_CLASS =
 export const FTC_EVENTS_LIST_TAB_ACTION_PLACEHOLDER_CLASS =
   "inline-flex h-[1.875rem] w-[1.875rem] shrink-0 invisible pointer-events-none";
 
-/** Events Active/History tab row — fixed height; selection toolbar swaps in the bin slot without growing the row. */
+/** Events Active/History tab row — fixed height; filters left, page actions right (`w-full`). */
 export const EVENTS_LIST_TAB_ROW_CLASS =
-  "flex h-[1.875rem] max-h-[1.875rem] min-h-[1.875rem] flex-nowrap items-center gap-2 md:h-[2.375rem] md:max-h-[2.375rem] md:min-h-[2.375rem]";
+  "flex h-[1.875rem] max-h-[1.875rem] min-h-[1.875rem] w-full flex-nowrap items-center gap-2 md:h-[2.375rem] md:max-h-[2.375rem] md:min-h-[2.375rem]";
 
 /** Inline history-remove feedback beside History tab (truncate, no row growth). */
 export const EVENTS_LIST_TAB_FEEDBACK_CLASS =
