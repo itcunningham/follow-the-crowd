@@ -1062,11 +1062,17 @@ function testGigsFilterTabCountsPersistDuringLoading() {
     new URL("../lib/bookings/gigsTabCountsCache.ts", import.meta.url),
     "utf8",
   );
+  const subNavSource = readFileSync(
+    new URL("../app/components/PlannerEventsSubNav.tsx", import.meta.url),
+    "utf8",
+  );
 
   assert.match(pageSource, /gigsListReady/);
   assert.match(pageSource, /gigsTabCounts \?\? readGigsTabCountsCache\(\)/);
   assert.match(pageSource, /writeGigsTabCountsCache\(gigsTabCounts\)/);
   assert.match(pageSource, /counts: resolvedGigsTabCounts/);
+  assert.match(pageSource, /loadGigsListSnapshot/);
+  assert.match(subNavSource, /ensureGigsListSnapshotPrefetched/);
   assert.match(chromeSource, /readGigsTabCountsCache/);
   assert.match(cacheSource, /ftc-gigs-tab-counts-v1/);
 }
@@ -1087,6 +1093,8 @@ function testGigsFilterTabsPolish() {
   assert.match(tabsSource, /gigsTabPillClass\(isActive, true\)/);
   assert.match(tabsSource, /formatGigsTabCountDisplay/);
   assert.match(tabsSource, /GIGS_TAB_PILL_LABEL_CLASS/);
+  assert.match(tabsSource, /display \?\? ""/);
+  assert.doesNotMatch(tabsSource, /if \(!display\) \{\s*return null;/);
   assert.match(cssSource, /\.ftc-filter-pill\.ftc-gigs-tab-pill[\s\S]*padding: 0\.375rem 0\.5rem/);
   assert.match(cssSource, /\.ftc-gigs-tab-count-slot[\s\S]*min-width: 2\.5ch/);
   assert.match(cssSource, /\.ftc-gigs-tab-count-slot[\s\S]*padding-right: 0\.25rem/);

@@ -145,6 +145,7 @@ import {
   readGigsTabCountsCache,
   writeGigsTabCountsCache,
 } from "@/lib/bookings/gigsTabCountsCache";
+import { loadGigsListSnapshot } from "@/lib/bookings/gigsListSnapshotPrefetch";
 import { EVENTS_AREA_SUB_NAV } from "@/lib/plannerEventsNav";
 
 const emptyForm: BookingRequestInput = {
@@ -737,12 +738,14 @@ function BookingsPageContent() {
           return;
         }
 
-        const [receivedResult, hiddenIds] = await Promise.all([
-          listReceivedBookingRequests(),
-          listBookingRequestHistoryHideIds(),
-        ]);
+        const snapshot = await loadGigsListSnapshot({
+          force: options?.showLoading === false,
+        });
+        const receivedResult = snapshot.received;
+        const hiddenIds = [...snapshot.hiddenBookingIds];
         setReceivedBookings(receivedResult);
         setHiddenBookingIds(new Set(hiddenIds));
+        writeGigsTabCountsCache(snapshot.counts);
         setGigsListReady(true);
         setSentBookings([]);
         setSentGroups([]);

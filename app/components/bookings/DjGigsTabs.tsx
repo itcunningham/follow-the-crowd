@@ -35,13 +35,12 @@ function DjGigsTabCount({
 }) {
   const display = countsReady ? formatGigsTabCountDisplay(count) : null;
 
-  if (!display) {
-    return null;
-  }
-
   return (
-    <span className={GIGS_TAB_COUNT_SLOT_CLASS} aria-hidden={false}>
-      {display}
+    <span
+      className={GIGS_TAB_COUNT_SLOT_CLASS}
+      aria-hidden={display == null ? true : undefined}
+    >
+      {display ?? ""}
     </span>
   );
 }

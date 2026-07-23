@@ -8,6 +8,7 @@ import { WorkspaceGigsPendingBadge } from "@/app/components/planner/WorkspaceGig
 import {
   ensureGigsPendingPrefetched,
 } from "@/lib/navigationBadgePrefetch";
+import { ensureGigsListSnapshotPrefetched } from "@/lib/bookings/gigsListSnapshotPrefetch";
 import { subscribeWorkspaceGigsSubNavBadgeDisplay, readLocalGigsPendingCount, readWorkspaceGigsSubNavDisplayLatch } from "@/lib/navigationBadgeCache";
 import { readWorkspaceGigsBadgeDisplayCountForSubNav } from "@/lib/navigation/resolveWorkspaceGigsPendingDisplayCount";
 import {
@@ -128,6 +129,7 @@ export default function PlannerEventsSubNav({
     }
 
     void ensureGigsPendingPrefetched(resolvedRole);
+    void ensureGigsListSnapshotPrefetched(resolvedRole);
   }, [canViewGigs, resolvedRole]);
 
   useEffect(() => {
