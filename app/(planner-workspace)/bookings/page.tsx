@@ -12,6 +12,7 @@ import {
 import {
   defaultGigsWorkspaceChromeState,
   gigsWorkspaceChromeStatesEqual,
+  useDisplayedGigsListTab,
   useSetGigsWorkspaceChromeState,
 } from "@/app/components/bookings/GigsWorkspaceChrome";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
@@ -145,7 +146,14 @@ import {
   readGigsTabCountsCache,
   writeGigsTabCountsCache,
 } from "@/lib/bookings/gigsTabCountsCache";
-import { loadGigsListSnapshot } from "@/lib/bookings/gigsListSnapshotPrefetch";
+import { loadGigsListSnapshot, readGigsListMemorySnapshot } from "@/lib/bookings/gigsListSnapshotPrefetch";
+import {
+  hasGigsTabBookingsCache,
+  readGigsListSessionState,
+  readGigsTabBookingsCache,
+  writeGigsListSessionSenderProfiles,
+  writeGigsListSessionState,
+} from "@/lib/bookings/gigsListTabBookingsCache";
 import { EVENTS_AREA_SUB_NAV } from "@/lib/plannerEventsNav";
 
 const emptyForm: BookingRequestInput = {
@@ -300,6 +308,54 @@ function BookingsPageSuspenseFallback() {
   );
 }
 
+function resolveInitialGigsPageListState(): {
+  receivedBookings: BookingRequest[];
+  hiddenBookingIds: ReadonlySet<string>;
+  gigsListReady: boolean;
+  loadingList: boolean;
+  senderProfiles: Map<string, BookingRecipientProfile>;
+} {
+  if (typeof window === "undefined") {
+    return {
+      receivedBookings: [],
+      hiddenBookingIds: new Set(),
+      gigsListReady: false,
+      loadingList: true,
+      senderProfiles: new Map(),
+    };
+  }
+
+  const session = readGigsListSessionState();
+  if (session) {
+    return {
+      receivedBookings: session.received,
+      hiddenBookingIds: session.hiddenBookingIds,
+      gigsListReady: true,
+      loadingList: false,
+      senderProfiles: session.senderProfiles,
+    };
+  }
+
+  const memorySnapshot = readGigsListMemorySnapshot();
+  if (memorySnapshot) {
+    return {
+      receivedBookings: memorySnapshot.received,
+      hiddenBookingIds: memorySnapshot.hiddenBookingIds,
+      gigsListReady: true,
+      loadingList: false,
+      senderProfiles: new Map(),
+    };
+  }
+
+  return {
+    receivedBookings: [],
+    hiddenBookingIds: new Set(),
+    gigsListReady: false,
+    loadingList: true,
+    senderProfiles: new Map(),
+  };
+}
+
 function BookingsPageContent() {
   const router = useRouter();
   const pathname = usePathname();
@@ -307,18 +363,24 @@ function BookingsPageContent() {
   const guardProfile = useGuardProfile();
   const deepLinkInFlightKeyRef = useRef<string | null>(null);
   const deepLinkCompletedKeyRef = useRef<string | null>(null);
+  const gigsLoadGenerationRef = useRef(0);
+  const initialGigsListState = useMemo(() => resolveInitialGigsPageListState(), []);
   const [role, setRole] = useState<UserRole | null>(
     () => guardProfile?.role ?? readCachedNavRole(),
   );
   const [loadingAccess, setLoadingAccess] = useState(
     () => !guardProfile?.role && readCachedNavRole() == null,
   );
-  const [loadingList, setLoadingList] = useState(true);
-  const [gigsListReady, setGigsListReady] = useState(false);
+  const [loadingList, setLoadingList] = useState(initialGigsListState.loadingList);
+  const [gigsListReady, setGigsListReady] = useState(initialGigsListState.gigsListReady);
   const [sentGroups, setSentGroups] = useState<SentBookingGroup[]>([]);
   const [sentBookings, setSentBookings] = useState<BookingRequest[]>([]);
-  const [receivedBookings, setReceivedBookings] = useState<BookingRequest[]>([]);
-  const [hiddenBookingIds, setHiddenBookingIds] = useState<ReadonlySet<string>>(() => new Set());
+  const [receivedBookings, setReceivedBookings] = useState<BookingRequest[]>(
+    () => initialGigsListState.receivedBookings,
+  );
+  const [hiddenBookingIds, setHiddenBookingIds] = useState<ReadonlySet<string>>(
+    () => initialGigsListState.hiddenBookingIds,
+  );
   const [sectionTab, setSectionTab] = useState<BookingsSectionTab>("sent");
   const [plannerSentView, setPlannerSentView] = useState<PlannerSentPrimaryTab>("pending");
   const [plannerHistorySubView, setPlannerHistorySubView] =
@@ -334,6 +396,7 @@ function BookingsPageContent() {
       }),
     [pathname, searchParams, locationRevision],
   );
+  const displayedGigsTab = useDisplayedGigsListTab(djGigsView);
   const [djAvailabilityHints, setDjAvailabilityHints] = useState<
     Map<string, DjPlannerAvailabilityHint>
   >(new Map());
@@ -341,7 +404,7 @@ function BookingsPageContent() {
     Map<string, BookingRecipientProfile>
   >(new Map());
   const [senderProfiles, setSenderProfiles] = useState<Map<string, BookingRecipientProfile>>(
-    new Map(),
+    () => initialGigsListState.senderProfiles,
   );
   const [createOpen, setCreateOpen] = useState(false);
   const [createStep, setCreateStep] = useState<CreateStep>("source");
@@ -556,8 +619,18 @@ function BookingsPageContent() {
       return [];
     }
 
-    return filterDjGigsByTab(receivedBookings, djGigsView, hiddenBookingIds);
-  }, [receivedBookings, djGigsView, showGigsWorkspace, hiddenBookingIds]);
+    if (gigsListReady) {
+      return filterDjGigsByTab(receivedBookings, displayedGigsTab, hiddenBookingIds);
+    }
+
+    return readGigsTabBookingsCache(displayedGigsTab) ?? [];
+  }, [
+    receivedBookings,
+    displayedGigsTab,
+    showGigsWorkspace,
+    hiddenBookingIds,
+    gigsListReady,
+  ]);
 
   const djHistoryBookings = useMemo(
     () => filterDjGigsByTab(receivedBookings, "history", hiddenBookingIds),
@@ -565,7 +638,7 @@ function BookingsPageContent() {
   );
 
   const gigsHistoryBulkManage = useHistoryBulkManage(
-    showGigsWorkspace && djGigsView === "history" && gigsListReady ? djHistoryBookings : [],
+    showGigsWorkspace && displayedGigsTab === "history" && gigsListReady ? djHistoryBookings : [],
   );
 
   const gigsTabCounts = useMemo(
@@ -578,7 +651,7 @@ function BookingsPageContent() {
 
   const resolvedGigsTabCounts = gigsTabCounts ?? readGigsTabCountsCache();
 
-  const isGigsHistoryTab = djGigsView === "history";
+  const isGigsHistoryTab = displayedGigsTab === "history";
   const showGigsManageButton =
     isGigsHistoryTab &&
     gigsListReady &&
@@ -657,6 +730,9 @@ function BookingsPageContent() {
     loadingPlans,
   ]);
 
+  const showGigsListSkeleton =
+    loadingList && !gigsListReady && !hasGigsTabBookingsCache(displayedGigsTab);
+
   const accessDenied = !loadingAccess && !canAccessBookings(displayRole);
 
   useEffect(() => {
@@ -719,8 +795,9 @@ function BookingsPageContent() {
 
     async function loadBookings(options?: { showLoading?: boolean }) {
       const showLoading = options?.showLoading ?? true;
+      const loadGeneration = ++gigsLoadGenerationRef.current;
 
-      if (showLoading) {
+      if (showLoading && !gigsListReady && !hasGigsTabBookingsCache(displayedGigsTab)) {
         setLoadingList(true);
       }
 
@@ -728,6 +805,10 @@ function BookingsPageContent() {
 
       try {
         if (!canViewGigsWorkspace(role)) {
+          if (loadGeneration !== gigsLoadGenerationRef.current) {
+            return;
+          }
+
           setSentBookings([]);
           setSentGroups([]);
           setReceivedBookings([]);
@@ -741,11 +822,19 @@ function BookingsPageContent() {
         const snapshot = await loadGigsListSnapshot({
           force: options?.showLoading === false,
         });
+        if (loadGeneration !== gigsLoadGenerationRef.current) {
+          return;
+        }
+
         const receivedResult = snapshot.received;
         const hiddenIds = [...snapshot.hiddenBookingIds];
         setReceivedBookings(receivedResult);
         setHiddenBookingIds(new Set(hiddenIds));
         writeGigsTabCountsCache(snapshot.counts);
+        writeGigsListSessionState({
+          received: receivedResult,
+          hiddenBookingIds: snapshot.hiddenBookingIds,
+        });
         setGigsListReady(true);
         setSentBookings([]);
         setSentGroups([]);
@@ -756,16 +845,31 @@ function BookingsPageContent() {
         if (senderIds.length > 0) {
           try {
             const profiles = await getBookingRecipientProfilesByIds(senderIds);
+            if (loadGeneration !== gigsLoadGenerationRef.current) {
+              return;
+            }
+
             setSenderProfiles(profiles);
+            writeGigsListSessionSenderProfiles(profiles);
           } catch (profileError) {
+            if (loadGeneration !== gigsLoadGenerationRef.current) {
+              return;
+            }
+
             logBookingsLoadError(profileError);
             console.error("Failed to load gig sender profiles:", profileError);
             setSenderProfiles(new Map());
+            writeGigsListSessionSenderProfiles(new Map());
           }
         } else {
           setSenderProfiles(new Map());
+          writeGigsListSessionSenderProfiles(new Map());
         }
       } catch (loadError) {
+        if (loadGeneration !== gigsLoadGenerationRef.current) {
+          return;
+        }
+
         logBookingsLoadError(loadError);
         console.error("Failed to load bookings:", loadError);
         setSentBookings([]);
@@ -777,7 +881,7 @@ function BookingsPageContent() {
         setError(getBookingsLoadErrorMessage(loadError));
         setGigsListReady(true);
       } finally {
-        if (showLoading) {
+        if (loadGeneration === gigsLoadGenerationRef.current) {
           setLoadingList(false);
         }
       }
@@ -1570,7 +1674,7 @@ function BookingsPageContent() {
             </p>
           ) : null}
 
-          {djGigsView === "history" && !plannerCreateVisible && gigsHistoryBulkManage.showSelectionToolbar ? (
+          {displayedGigsTab === "history" && !plannerCreateVisible && gigsHistoryBulkManage.showSelectionToolbar ? (
             <HistorySelectionToolbar
               selectedCount={gigsHistoryBulkManage.selectedCount}
               allSelected={gigsHistoryBulkManage.allSelected}
@@ -1980,24 +2084,24 @@ function BookingsPageContent() {
               }
             />
           ) : showGigsWorkspace && !createOpen ? (
-            loadingList ? (
+            showGigsListSkeleton ? (
               <ReceivedBookingsListSkeleton />
             ) : error && !plannerCreateVisible ? (
               <p className="text-sm text-red-400">{error}</p>
-            ) : receivedBookings.length === 0 ? (
+            ) : gigsListReady && receivedBookings.length === 0 ? (
               <PlannerEmptyState title="No gigs yet" />
             ) : filteredReceivedBookings.length === 0 && !gigsHistoryBulkManage.removing ? (
               <p className="rounded-xl border border-ftc-border-subtle bg-ftc-surface/40 px-4 py-8 text-center text-sm text-ftc-text-muted">
-                {getGigsEmptyMessage(djGigsView)}
+                {getGigsEmptyMessage(displayedGigsTab)}
               </p>
             ) : visibleReceivedBookings.length > 0 ? (
               <ul className="ftc-gigs-list space-y-2.5 sm:space-y-3">
                 {visibleReceivedBookings.map((booking) =>
-                  djGigsView === "history" ? (
+                  displayedGigsTab === "history" ? (
                     <BookingHistoryCard
                       key={booking.id}
                       booking={booking}
-                      gigsTab={djGigsView}
+                      gigsTab={displayedGigsTab}
                       senderName={senderProfiles.get(booking.sender_id)?.display_name?.trim()}
                       muted
                       selectionMode={gigsHistoryBulkManage.showSelectionToolbar}
@@ -2008,7 +2112,7 @@ function BookingsPageContent() {
                     <ReceivedBookingCard
                       key={booking.id}
                       booking={booking}
-                      gigsTab={djGigsView}
+                      gigsTab={displayedGigsTab}
                       senderName={senderProfiles.get(booking.sender_id)?.display_name?.trim()}
                     />
                   ),

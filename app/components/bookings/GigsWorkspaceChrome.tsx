@@ -159,7 +159,7 @@ function resolveBookingsGigsActiveViewFromWindow(): DjGigsListTab {
   });
 }
 
-function useDisplayedGigsListTab(routeTab: DjGigsListTab): DjGigsListTab {
+export function useDisplayedGigsListTab(routeTab: DjGigsListTab): DjGigsListTab {
   useSyncExternalStore(
     subscribeGigsListTabPending,
     readGigsListTabPending,

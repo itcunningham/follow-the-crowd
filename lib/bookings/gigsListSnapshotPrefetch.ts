@@ -8,6 +8,10 @@ import {
   writeGigsTabCountsCache,
   type GigsTabCountsSnapshot,
 } from "@/lib/bookings/gigsTabCountsCache";
+import {
+  clearGigsListTabBookingsCacheForTests,
+  writeGigsListSessionState,
+} from "@/lib/bookings/gigsListTabBookingsCache";
 import { canViewGigsSubNav } from "@/lib/plannerEventsNav";
 import type { UserRole } from "@/lib/user/currentUser";
 
@@ -27,11 +31,18 @@ function buildSnapshot(
   const hiddenBookingIds = new Set(hiddenIds);
   const counts = countDjGigsByTab(received, hiddenBookingIds);
 
-  return {
+  const snapshot = {
     received,
     hiddenBookingIds,
     counts,
   };
+
+  writeGigsListSessionState({
+    received,
+    hiddenBookingIds,
+  });
+
+  return snapshot;
 }
 
 async function fetchGigsListSnapshot(): Promise<GigsListSnapshot> {
@@ -96,7 +107,12 @@ export function loadGigsListSnapshot(options?: { force?: boolean }): Promise<Gig
   return inFlightSnapshot;
 }
 
+export function readGigsListMemorySnapshot(): GigsListSnapshot | null {
+  return memorySnapshot;
+}
+
 export function clearGigsListSnapshotPrefetchForTests(): void {
   memorySnapshot = null;
   inFlightSnapshot = null;
+  clearGigsListTabBookingsCacheForTests();
 }

@@ -1049,6 +1049,29 @@ function testGigsTabRowKeepsStableCountSlots() {
   assert.doesNotMatch(GIGS_LIST_TAB_ROW_CLASS, /flex-wrap/);
 }
 
+function testGigsTabBookingsCacheForTabSwitching() {
+  const pageSource = readFileSync(
+    new URL("../app/(planner-workspace)/bookings/page.tsx", import.meta.url),
+    "utf8",
+  );
+  const cacheSource = readFileSync(
+    new URL("../lib/bookings/gigsListTabBookingsCache.ts", import.meta.url),
+    "utf8",
+  );
+  const prefetchSource = readFileSync(
+    new URL("../lib/bookings/gigsListSnapshotPrefetch.ts", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(pageSource, /useDisplayedGigsListTab\(djGigsView\)/);
+  assert.match(pageSource, /readGigsTabBookingsCache\(displayedGigsTab\)/);
+  assert.match(pageSource, /writeGigsListSessionState/);
+  assert.match(pageSource, /gigsLoadGenerationRef/);
+  assert.match(pageSource, /showGigsListSkeleton/);
+  assert.match(cacheSource, /writeGigsListSessionState/);
+  assert.match(prefetchSource, /writeGigsListSessionState/);
+}
+
 function testGigsListTabPendingOptimisticSelection() {
   const tabsSource = readFileSync(
     new URL("../app/components/bookings/DjGigsTabs.tsx", import.meta.url),
@@ -2268,6 +2291,7 @@ async function main() {
   testEventPlanUseButtonKeepsStableCardLayout();
   testGigsTabRowKeepsStableCountSlots();
   testGigsFilterTabsPolish();
+  testGigsTabBookingsCacheForTabSwitching();
   testGigsListTabPendingOptimisticSelection();
   testGigsFilterTabCountsPersistDuringLoading();
   testWorkspaceGigsPendingDisplayCountPreservesLastKnown();
