@@ -1,7 +1,6 @@
 import type { UserRole } from "@/lib/user/currentUser";
 import { isEventCrewChatPath } from "@/lib/groupChats";
 import { buildGigsWorkspaceIncomingHref } from "@/lib/bookings/gigsListNavigation";
-import { readCachedNavRole } from "@/lib/navigationRoleCache";
 
 export type EventsAreaSubNavItem = {
   href: string;
@@ -123,13 +122,6 @@ export function mergeWorkspaceNavRole(
   }
 
   return bestRole;
-}
-
-/** Same role merge as workspace sub-nav and Events list chrome (cache + guard, prefer fullest role). */
-export function resolveEventsWorkspaceChromeRole(
-  ...candidates: Array<UserRole | null | undefined>
-): UserRole | null {
-  return mergeWorkspaceNavRole(...candidates, readCachedNavRole());
 }
 
 export function isCalendarWorkspacePath(pathname: string | null | undefined): boolean {

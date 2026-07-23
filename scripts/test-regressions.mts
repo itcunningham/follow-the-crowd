@@ -77,7 +77,8 @@ import {
   PLANNER_WORKSPACE_SUBNAV_ROW_CLASS,
   PLANNER_WORKSPACE_SUBNAV_SLOT_CLASS,
 } from "../app/components/planner/PlannerWorkspaceLayout";
-import { getEventsAreaSubNavItems, resolveActiveWorkspaceHref, buildWorkspaceSubNavDestinationHref, EVENTS_AREA_SUB_NAV, isCalendarWorkspacePath, mergeWorkspaceNavRole, resolveEventsWorkspaceChromeRole, WORKSPACE_SUB_NAV_TABS, isWorkspaceSubNavTabVisible } from "../lib/plannerEventsNav";
+import { getEventsAreaSubNavItems, resolveActiveWorkspaceHref, buildWorkspaceSubNavDestinationHref, EVENTS_AREA_SUB_NAV, isCalendarWorkspacePath, mergeWorkspaceNavRole, WORKSPACE_SUB_NAV_TABS, isWorkspaceSubNavTabVisible } from "../lib/plannerEventsNav";
+import { resolveEventsWorkspaceChromeRole } from "../lib/events/eventsWorkspaceChromeRole";
 import {
   EVENT_PLAN_ACTION_RESERVE_CLASS,
   EVENT_PLAN_USE_BUTTON_CLASS,
@@ -851,6 +852,7 @@ function testWorkspaceSubNavLayoutIsStable() {
   assert.match(subNavSource, /isWorkspaceSubNavTabVisible/);
   assert.match(subNavSource, /reserveSpace/);
   assert.match(subNavSource, /WORKSPACE_GIGS_PENDING_BADGE_SLOT_CLASS/);
+  assert.doesNotMatch(subNavSource, /from "@\/lib\/design\/ftcDesignSystem"/);
   assert.match(layoutSource, /resetHeaderStateForPathnameChange/);
   assert.match(layoutSource, /mergeWorkspaceHeaderState/);
   assert.match(

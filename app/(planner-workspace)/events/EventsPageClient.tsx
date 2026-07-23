@@ -115,7 +115,7 @@ import {
   resolveEventsListTabParam,
   resolveEventsWorkspaceActiveHref,
 } from "@/lib/events/eventsListNavigation";
-import { resolveEventsWorkspaceChromeRole } from "@/lib/plannerEventsNav";
+import { resolveEventsWorkspaceChromeRole } from "@/lib/events/eventsWorkspaceChromeRole";
 import {
   canManageEvents,
   getCurrentUserProfile,

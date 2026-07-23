@@ -11,7 +11,7 @@ import {
   getNavigationBadgeCacheVersion,
   subscribeNavigationBadgeListeners,
 } from "@/lib/navigationBadgePrefetch";
-import { WORKSPACE_GIGS_PENDING_BADGE_SLOT_CLASS } from "@/lib/design/ftcDesignSystem";
+import { WORKSPACE_GIGS_PENDING_BADGE_SLOT_CLASS } from "@/lib/design/workspaceSubNavBadge";
 import {
   canViewGigsSubNav,
   canViewBookingPlansSubNav,

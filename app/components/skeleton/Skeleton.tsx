@@ -69,7 +69,8 @@ import { isCalendarOriginCreateParam, resolveCalendarCreateInitialStep, resolveE
 import { useEventEditHeaderState } from "@/lib/events/useEventEditHeaderVisibility";
 import type { EventEditHeaderState } from "@/lib/events/useEventEditHeaderVisibility";
 import { canManageEvents, type UserRole } from "@/lib/user/currentUser";
-import { EVENTS_AREA_SUB_NAV, resolveEventsWorkspaceChromeRole } from "@/lib/plannerEventsNav";
+import { EVENTS_AREA_SUB_NAV } from "@/lib/plannerEventsNav";
+import { resolveEventsWorkspaceChromeRole } from "@/lib/events/eventsWorkspaceChromeRole";
 import { EVENT_DETAIL_CARD_CLASS } from "@/app/components/event-detail/eventDetailUi";
 import { CALENDAR_MOBILE_EMPTY_STATE_CLASS } from "@/app/components/calendar/calendarMobileUi";
 import { readCachedNavRole, readCachedNavigation, resolveIsOwnProfilePath } from "@/lib/navigationRoleCache";
