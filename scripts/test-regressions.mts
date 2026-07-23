@@ -1622,17 +1622,22 @@ function testEventsRouteLoadingIsListAreaOnly() {
   assert.match(loadingSource, /EventsRouteLoadingShell/);
   assert.match(routeShellSource, /EventsListAreaLoading/);
   assert.doesNotMatch(routeShellSource, /EventsPageLoadingShell/);
-  assert.match(listAreaSource, /EventListSkeleton showPlannerStats/);
-  assert.match(listAreaSource, /isCalendarOriginCreateParam/);
+  assert.match(listAreaSource, /EventsPageLoadingShell/);
+  assert.doesNotMatch(listAreaSource, /EventListSkeleton/);
+  assert.match(listAreaSource, /readCachedNavRole/);
   assert.doesNotMatch(pageSource, /Suspense/);
   assert.doesNotMatch(pageSource, /EventsPageLoadingFallback/);
   assert.match(
     appLoadingSource,
-    /pathname === "\/events"[\s\S]*EventListSkeleton[\s\S]*showFilterPills=\{false\}/,
+    /pathname === "\/events"[\s\S]*EventsPageLoadingShell/,
   );
-  assert.doesNotMatch(
+  assert.match(
     appLoadingSource,
-    /pathname === "\/events"[\s\S]*EventsPageLoadingShell[\s\S]*EventsListTabControls/,
+    /export function EventsPageLoadingShell[\s\S]*<EventsListTabControls[\s\S]*loadingShell/,
+  );
+  assert.match(
+    appLoadingSource,
+    /EventListSkeleton[\s\S]*ftc-gigs-list[\s\S]*FTC_LIST_GAP_CLASS/,
   );
 }
 
