@@ -47,7 +47,6 @@ export default function PlannerEventsSubNav({
   const router = useRouter();
   const guardProfile = useGuardProfile();
   const { gigsPendingCount, badgesReady } = useNavBadges();
-  const lastKnownGigsCountRef = useRef(0);
   const [cachedNavigation] = useState(readCachedNavigation);
   const [role, setRole] = useState<UserRole | null>(
     () => initialRole ?? guardProfile?.role ?? cachedNavigation.role,
@@ -128,25 +127,24 @@ export default function PlannerEventsSubNav({
     }
   }, [canViewGigs, resolvedRole]);
 
-  const displayGigsPendingCount = useMemo(() => {
-    const next = resolveWorkspaceGigsPendingDisplayCount({
-      canViewGigs,
-      userId: resolvedUserId,
-      role: resolvedRole,
-      providerCount: gigsPendingCount,
+  const displayGigsPendingCount = useMemo(
+    () =>
+      resolveWorkspaceGigsPendingDisplayCount({
+        canViewGigs,
+        userId: resolvedUserId,
+        role: resolvedRole,
+        providerCount: gigsPendingCount,
+        badgesReady,
+      }),
+    [
+      badgeCacheVersion,
       badgesReady,
-      lastKnownCount: lastKnownGigsCountRef.current,
-    });
-    lastKnownGigsCountRef.current = next;
-    return next;
-  }, [
-    badgeCacheVersion,
-    badgesReady,
-    canViewGigs,
-    gigsPendingCount,
-    resolvedRole,
-    resolvedUserId,
-  ]);
+      canViewGigs,
+      gigsPendingCount,
+      resolvedRole,
+      resolvedUserId,
+    ],
+  );
 
   useEffect(() => {
     if (guardProfile?.role || initialRole || cachedNavigation.role) {

@@ -43,6 +43,76 @@ export type RuntimeNavBadgeSnapshot = NavigationBadgeCache & {
 
 let runtimeNavBadgeSnapshot: RuntimeNavBadgeSnapshot | null = null;
 
+type WorkspaceGigsDisplaySession = {
+  userId: string;
+  role: UserRole;
+  count: number;
+};
+
+/** Last confirmed workspace Gigs badge count for the active identity (survives route transitions). */
+let workspaceGigsDisplaySession: WorkspaceGigsDisplaySession | null = null;
+
+function matchesWorkspaceGigsDisplayIdentity(
+  session: WorkspaceGigsDisplaySession,
+  userId: string | null | undefined,
+  role: UserRole,
+): boolean {
+  if (session.role !== role) {
+    return false;
+  }
+
+  if (!userId?.trim()) {
+    return true;
+  }
+
+  return session.userId === userId;
+}
+
+export function readWorkspaceGigsDisplaySessionCount(
+  userId: string | null | undefined,
+  role: UserRole | null | undefined,
+): number | null {
+  if (!role || !workspaceGigsDisplaySession) {
+    return null;
+  }
+
+  if (!matchesWorkspaceGigsDisplayIdentity(workspaceGigsDisplaySession, userId, role)) {
+    return null;
+  }
+
+  return workspaceGigsDisplaySession.count;
+}
+
+export function writeWorkspaceGigsDisplaySessionCount(
+  userId: string | null | undefined,
+  role: UserRole | null | undefined,
+  count: number,
+): void {
+  if (!role) {
+    return;
+  }
+
+  const resolvedUserId =
+    userId?.trim() ||
+    (runtimeGigsPendingIdentity?.role === role ? runtimeGigsPendingIdentity.userId : "") ||
+    workspaceGigsDisplaySession?.userId ||
+    "";
+
+  if (!resolvedUserId) {
+    return;
+  }
+
+  workspaceGigsDisplaySession = {
+    userId: resolvedUserId,
+    role,
+    count: Math.max(0, Math.floor(count)),
+  };
+}
+
+export function clearWorkspaceGigsDisplaySession(): void {
+  workspaceGigsDisplaySession = null;
+}
+
 function isUserRole(value: unknown): value is UserRole {
   return value === "dj" || value === "promoter" || value === "both";
 }
@@ -401,6 +471,7 @@ export function clearNavigationBadgeCache(): void {
   runtimeMessagesUnreadIdentity = null;
   runtimeBadgeFetchedAt = 0;
   runtimeNavBadgeSnapshot = null;
+  workspaceGigsDisplaySession = null;
 
   if (typeof window === "undefined") {
     return;

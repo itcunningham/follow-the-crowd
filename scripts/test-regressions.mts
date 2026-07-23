@@ -56,6 +56,11 @@ import {
   GIGS_TAB_COUNT_MAX_DISPLAY,
 } from "../lib/bookings/gigsTabCountDisplay";
 import { resolveWorkspaceGigsPendingDisplayCount } from "../lib/navigation/resolveWorkspaceGigsPendingDisplayCount";
+import {
+  clearNavigationBadgeCache,
+  clearWorkspaceGigsDisplaySession,
+  writeRuntimeGigsPendingCount,
+} from "../lib/navigationBadgeCache";
 import { resolveEventsHistoryTrashVisible, resolveEventsListTabRowChrome, resolveEventsListActiveTabLabel, resolveEventsListActiveTabLabelForWorkspaceChrome, EVENTS_LIST_ACTIVE_TAB_LABEL_PLANNER } from "../lib/events/eventsListNavigation";
 import { resolveHistoryBulkSelectAllToggle } from "../app/components/history/HistoryBulkManage";
 import { resolvePlannerHistoryHideEventIds } from "../lib/events";
@@ -1052,17 +1057,20 @@ function testGigsFilterTabsPolish() {
 }
 
 function testWorkspaceGigsPendingDisplayCountPreservesLastKnown() {
+  clearNavigationBadgeCache();
+  clearWorkspaceGigsDisplaySession();
+
   assert.equal(
     resolveWorkspaceGigsPendingDisplayCount({
       canViewGigs: true,
       userId: "user-a",
       role: "dj",
-      providerCount: 0,
-      badgesReady: false,
-      lastKnownCount: 1,
+      providerCount: 1,
+      badgesReady: true,
     }),
     1,
   );
+
   assert.equal(
     resolveWorkspaceGigsPendingDisplayCount({
       canViewGigs: true,
@@ -1070,9 +1078,22 @@ function testWorkspaceGigsPendingDisplayCountPreservesLastKnown() {
       role: "dj",
       providerCount: 0,
       badgesReady: true,
-      lastKnownCount: 1,
+    }),
+    1,
+    "transient provider zero must not clear a confirmed session count",
+  );
+
+  writeRuntimeGigsPendingCount("user-a", "dj", 0);
+  assert.equal(
+    resolveWorkspaceGigsPendingDisplayCount({
+      canViewGigs: true,
+      userId: "user-a",
+      role: "dj",
+      providerCount: 0,
+      badgesReady: true,
     }),
     0,
+    "cached zero must replace the displayed count",
   );
 }
 
