@@ -151,6 +151,7 @@ import {
   hasGigsTabBookingsCache,
   readGigsListSessionState,
   readGigsTabBookingsCache,
+  type GigsEventArtworkSnapshot,
   writeGigsListSessionState,
 } from "@/lib/bookings/gigsListTabBookingsCache";
 import { EVENTS_AREA_SUB_NAV } from "@/lib/plannerEventsNav";
@@ -314,6 +315,7 @@ function resolveInitialGigsPageListState(): {
   gigsListReady: boolean;
   loadingList: boolean;
   senderProfiles: Map<string, BookingRecipientProfile>;
+  eventArtworkById: Map<string, GigsEventArtworkSnapshot>;
 } {
   if (typeof window === "undefined") {
     return {
@@ -322,6 +324,7 @@ function resolveInitialGigsPageListState(): {
       gigsListReady: false,
       loadingList: true,
       senderProfiles: new Map(),
+      eventArtworkById: new Map(),
     };
   }
 
@@ -333,6 +336,7 @@ function resolveInitialGigsPageListState(): {
       gigsListReady: true,
       loadingList: false,
       senderProfiles: session.senderProfiles,
+      eventArtworkById: session.eventArtworkById,
     };
   }
 
@@ -344,6 +348,7 @@ function resolveInitialGigsPageListState(): {
       gigsListReady: true,
       loadingList: false,
       senderProfiles: memorySnapshot.senderProfiles,
+      eventArtworkById: memorySnapshot.eventArtworkById,
     };
   }
 
@@ -353,6 +358,7 @@ function resolveInitialGigsPageListState(): {
     gigsListReady: false,
     loadingList: true,
     senderProfiles: new Map(),
+    eventArtworkById: new Map(),
   };
 }
 
@@ -406,6 +412,9 @@ function BookingsPageContent() {
   const [senderProfiles, setSenderProfiles] = useState<Map<string, BookingRecipientProfile>>(
     () => initialGigsListState.senderProfiles,
   );
+  const [eventArtworkById, setEventArtworkById] = useState<
+    Map<string, GigsEventArtworkSnapshot>
+  >(() => initialGigsListState.eventArtworkById);
   const [createOpen, setCreateOpen] = useState(false);
   const [createStep, setCreateStep] = useState<CreateStep>("source");
   const [form, setForm] = useState<BookingRequestInput>(emptyForm);
@@ -815,6 +824,7 @@ function BookingsPageContent() {
           setHiddenBookingIds(new Set());
           setRecipientProfiles(new Map());
           setSenderProfiles(new Map());
+          setEventArtworkById(new Map());
           setGigsListReady(true);
           return;
         }
@@ -831,11 +841,13 @@ function BookingsPageContent() {
         setReceivedBookings(receivedResult);
         setHiddenBookingIds(new Set(hiddenIds));
         setSenderProfiles(snapshot.senderProfiles);
+        setEventArtworkById(snapshot.eventArtworkById);
         writeGigsTabCountsCache(snapshot.counts);
         writeGigsListSessionState({
           received: receivedResult,
           hiddenBookingIds: snapshot.hiddenBookingIds,
           senderProfiles: snapshot.senderProfiles,
+          eventArtworkById: snapshot.eventArtworkById,
         });
         setGigsListReady(true);
         setSentBookings([]);
@@ -854,6 +866,7 @@ function BookingsPageContent() {
         setHiddenBookingIds(new Set());
         setRecipientProfiles(new Map());
         setSenderProfiles(new Map());
+        setEventArtworkById(new Map());
         setError(getBookingsLoadErrorMessage(loadError));
         setGigsListReady(true);
       } finally {
@@ -2090,6 +2103,16 @@ function BookingsPageContent() {
                       booking={booking}
                       gigsTab={displayedGigsTab}
                       senderName={senderProfiles.get(booking.sender_id)?.display_name?.trim()}
+                      coverImageUrl={
+                        booking.event_id
+                          ? eventArtworkById.get(booking.event_id)?.coverImageUrl
+                          : undefined
+                      }
+                      fallbackColour={
+                        booking.event_id
+                          ? eventArtworkById.get(booking.event_id)?.fallbackColour
+                          : undefined
+                      }
                     />
                   ),
                 )}
@@ -2454,10 +2477,14 @@ function ReceivedBookingCard({
   booking,
   gigsTab = "pending",
   senderName,
+  coverImageUrl,
+  fallbackColour,
 }: {
   booking: BookingRequest;
   gigsTab?: DjGigsListTab;
   senderName?: string;
+  coverImageUrl?: string | null;
+  fallbackColour?: string | null;
 }) {
   const eventHref = booking.event_id ? buildGigsEventDetailHref(booking.event_id, gigsTab) : null;
   const conversationHref = buildGigsConversationHref(
@@ -2468,7 +2495,7 @@ function ReceivedBookingCard({
   const rateLabel = getGigCardOfferSummary(booking);
   const isConfirmed = gigsTab === "accepted";
   const plannerLabel = senderName ? `From ${senderName}` : undefined;
-  const showChevron = Boolean(eventHref);
+  const showChevron = isConfirmed && Boolean(eventHref);
 
   function renderOpenDmLink() {
     return (
@@ -2487,7 +2514,11 @@ function ReceivedBookingCard({
   const cardBody = (
     <div className={GIG_CARD_ROW_CLASS}>
       <div className={GIG_CARD_ARTWORK_CLASS}>
-        <EventCoverImageListThumb eventName={booking.event_name} />
+        <EventCoverImageListThumb
+          eventName={booking.event_name}
+          coverImageUrl={coverImageUrl}
+          fallbackColour={fallbackColour}
+        />
       </div>
       <div className={GIG_CARD_CONTENT_CLASS}>
         <GigCardHeader
@@ -2521,19 +2552,6 @@ function ReceivedBookingCard({
         >
           {cardBody}
         </Link>
-      </li>
-    );
-  }
-
-  if (eventHref) {
-    return (
-      <li className={`${GIG_CARD_CLASS_NAME} relative min-w-0 overflow-hidden`}>
-        <Link
-          href={eventHref}
-          aria-label={`View ${booking.event_name}`}
-          className="absolute inset-0 z-0 rounded-[inherit] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ftc-primary/35"
-        />
-        <div className="relative z-[1] pointer-events-none">{cardBody}</div>
       </li>
     );
   }

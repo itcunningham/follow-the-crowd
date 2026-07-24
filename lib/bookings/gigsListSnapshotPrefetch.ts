@@ -10,10 +10,13 @@ import {
 } from "@/lib/bookings/gigsTabCountsCache";
 import {
   clearGigsListTabBookingsCacheForTests,
+  mergeGigsEventArtwork,
   mergeGigsSenderProfiles,
+  type GigsEventArtworkSnapshot,
   writeGigsListSessionState,
 } from "@/lib/bookings/gigsListTabBookingsCache";
 import { canViewGigsSubNav } from "@/lib/plannerEventsNav";
+import { getEventArtworkByIds } from "@/lib/events";
 import {
   getBookingRecipientProfilesByIds,
   type BookingRecipientProfile,
@@ -25,6 +28,7 @@ export type GigsListSnapshot = {
   hiddenBookingIds: ReadonlySet<string>;
   counts: GigsTabCountsSnapshot;
   senderProfiles: Map<string, BookingRecipientProfile>;
+  eventArtworkById: Map<string, GigsEventArtworkSnapshot>;
 };
 
 let memorySnapshot: GigsListSnapshot | null = null;
@@ -34,6 +38,7 @@ function buildSnapshot(
   received: BookingRequest[],
   hiddenIds: string[],
   senderProfiles: Map<string, BookingRecipientProfile>,
+  eventArtworkById: Map<string, GigsEventArtworkSnapshot>,
 ): GigsListSnapshot {
   const hiddenBookingIds = new Set(hiddenIds);
   const counts = countDjGigsByTab(received, hiddenBookingIds);
@@ -43,12 +48,14 @@ function buildSnapshot(
     hiddenBookingIds,
     counts,
     senderProfiles,
+    eventArtworkById,
   };
 
   writeGigsListSessionState({
     received,
     hiddenBookingIds,
     senderProfiles,
+    eventArtworkById,
   });
 
   return snapshot;
@@ -72,16 +79,50 @@ async function loadGigsSenderProfiles(
   }
 }
 
+async function loadGigsEventArtwork(
+  received: BookingRequest[],
+): Promise<Map<string, GigsEventArtworkSnapshot>> {
+  const eventIds = [
+    ...new Set(
+      received
+        .map((booking) => booking.event_id)
+        .filter((eventId): eventId is string => Boolean(eventId)),
+    ),
+  ];
+
+  if (eventIds.length === 0) {
+    return mergeGigsEventArtwork(new Map());
+  }
+
+  try {
+    const freshArtwork = await getEventArtworkByIds(eventIds);
+    const mapped = new Map<string, GigsEventArtworkSnapshot>();
+
+    for (const [eventId, artwork] of freshArtwork) {
+      mapped.set(eventId, {
+        coverImageUrl: artwork.coverImageUrl,
+        fallbackColour: artwork.fallbackColour,
+      });
+    }
+
+    return mergeGigsEventArtwork(mapped);
+  } catch (error) {
+    console.error("[gigs-list] Failed to load gig event artwork:", error);
+    return mergeGigsEventArtwork(new Map());
+  }
+}
+
 async function fetchGigsListSnapshot(): Promise<GigsListSnapshot> {
   const receivedPromise = listReceivedBookingRequests();
   const hiddenIdsPromise = listBookingRequestHistoryHideIds();
   const received = await receivedPromise;
-  const [hiddenIds, senderProfiles] = await Promise.all([
+  const [hiddenIds, senderProfiles, eventArtworkById] = await Promise.all([
     hiddenIdsPromise,
     loadGigsSenderProfiles(received),
+    loadGigsEventArtwork(received),
   ]);
 
-  const snapshot = buildSnapshot(received, hiddenIds, senderProfiles);
+  const snapshot = buildSnapshot(received, hiddenIds, senderProfiles, eventArtworkById);
   memorySnapshot = snapshot;
   writeGigsTabCountsCache(snapshot.counts);
   return snapshot;

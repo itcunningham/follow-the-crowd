@@ -1156,11 +1156,41 @@ function testIncomingGigsCardDetailsNavigation() {
     pageSource.indexOf("function BookingHistoryCard"),
   );
 
-  assert.match(
+  assert.doesNotMatch(
     receivedCardSource,
     /if \(eventHref\) \{[\s\S]*absolute inset-0 z-0[\s\S]*pointer-events-none/,
   );
+  assert.match(receivedCardSource, /showChevron = isConfirmed && Boolean\(eventHref\)/);
+  assert.match(receivedCardSource, /if \(isConfirmed && eventHref\)/);
   assert.match(receivedCardSource, /event\.stopPropagation\(\)/);
+}
+
+function testGigsIncomingEventArtwork() {
+  const prefetchSource = readFileSync(
+    new URL("../lib/bookings/gigsListSnapshotPrefetch.ts", import.meta.url),
+    "utf8",
+  );
+  const cacheSource = readFileSync(
+    new URL("../lib/bookings/gigsListTabBookingsCache.ts", import.meta.url),
+    "utf8",
+  );
+  const pageSource = readFileSync(
+    new URL("../app/(planner-workspace)/bookings/page.tsx", import.meta.url),
+    "utf8",
+  );
+  const receivedCardSource = pageSource.slice(
+    pageSource.indexOf("function ReceivedBookingCard"),
+    pageSource.indexOf("function BookingHistoryCard"),
+  );
+
+  assert.match(prefetchSource, /getEventArtworkByIds/);
+  assert.match(prefetchSource, /loadGigsEventArtwork/);
+  assert.match(prefetchSource, /mergeGigsEventArtwork/);
+  assert.match(cacheSource, /mergeGigsEventArtwork/);
+  assert.match(pageSource, /setEventArtworkById\(snapshot\.eventArtworkById\)/);
+  assert.match(pageSource, /memorySnapshot\.eventArtworkById/);
+  assert.match(receivedCardSource, /coverImageUrl=\{coverImageUrl\}/);
+  assert.match(receivedCardSource, /fallbackColour=\{fallbackColour\}/);
 }
 
 function testGigsListTabPendingOptimisticSelection() {
@@ -2387,6 +2417,7 @@ async function main() {
   testGigsTabBookingsCacheForTabSwitching();
   testGigsPlannerNamesLoadWithBookingCards();
   testIncomingGigsCardDetailsNavigation();
+  testGigsIncomingEventArtwork();
   testGigsListTabPendingOptimisticSelection();
   testGigsFilterTabCountsPersistDuringLoading();
   testWorkspaceGigsPendingDisplayCountPreservesLastKnown();
