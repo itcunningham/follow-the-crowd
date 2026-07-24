@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode } from "react";
+import { Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   BookingsPageLoadingShell,
@@ -155,6 +155,7 @@ import {
   writeGigsListSessionState,
 } from "@/lib/bookings/gigsListTabBookingsCache";
 import { EVENTS_AREA_SUB_NAV } from "@/lib/plannerEventsNav";
+import { EVENT_PLAN_USE_BUTTON_CLASS } from "@/lib/design/ftcDesignSystem";
 
 const emptyForm: BookingRequestInput = {
   eventName: "",
@@ -2455,42 +2456,13 @@ function GigCardMetaRows({
   );
 }
 
-function GigCardHistoryAction({
-  href,
-  children,
-  emphasis = "secondary",
-  className,
-  onClick,
-}: {
-  href: string;
-  children: React.ReactNode;
-  emphasis?: "primary" | "secondary";
-  className?: string;
-  onClick?: (event: MouseEvent<HTMLAnchorElement>) => void;
-}) {
-  const emphasisClassName =
-    emphasis === "primary"
-      ? "inline-flex min-h-8 flex-1 items-center justify-center rounded-lg border border-ftc-border-strong bg-ftc-bg-elevated px-3 py-1 text-xs font-semibold uppercase tracking-wide text-ftc-text-secondary transition hover:text-ftc-text sm:flex-none"
-      : "inline-flex min-h-8 flex-1 items-center justify-center rounded-lg border border-ftc-border-subtle bg-ftc-bg-elevated/40 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-ftc-text-muted transition hover:border-ftc-border-strong hover:text-ftc-text-secondary sm:flex-none";
-
-  return (
-    <Link
-      href={href}
-      className={[emphasisClassName, className].filter(Boolean).join(" ")}
-      onClick={onClick}
-    >
-      {children}
-    </Link>
-  );
-}
-
 const GIG_CARD_HISTORY_CLASS_NAME =
   "ftc-gig-card ftc-surface-row relative overflow-hidden rounded-[var(--ftc-radius-xl)] py-2 px-2.5 sm:p-4 bg-ftc-bg-elevated/60";
 
 const GIG_CARD_HISTORY_BODY_CLASS_NAME =
-  "flex min-w-0 max-w-full flex-col gap-1.5 sm:gap-2";
+  "flex min-w-0 max-w-full flex-col gap-1 overflow-hidden sm:gap-3";
 
-const GIG_CARD_HISTORY_ACTIONS_CLASS = "flex min-w-0 flex-wrap gap-2";
+const GIG_CARD_SECONDARY_ACTION_CLASS = `${EVENT_PLAN_USE_BUTTON_CLASS} relative z-[2] shrink-0 pointer-events-auto`;
 
 function ReceivedBookingCard({
   booking,
@@ -2608,6 +2580,20 @@ function BookingHistoryCard({
     : `Select ${booking.event_name} for removal from history`;
   const showEventNavigation = Boolean(eventHref) && !selectionMode;
 
+  function renderOpenDmLink() {
+    return (
+      <Link
+        href={conversationHref}
+        className={GIG_CARD_SECONDARY_ACTION_CLASS}
+        onClick={(event) => {
+          event.stopPropagation();
+        }}
+      >
+        Open DM
+      </Link>
+    );
+  }
+
   const cardBody = (
     <div className={muted ? GIG_CARD_HISTORY_BODY_CLASS_NAME : GIG_CARD_BODY_CLASS_NAME}>
       <div className="flex min-w-0 gap-3">
@@ -2630,25 +2616,15 @@ function BookingHistoryCard({
             extraLine={cancellationReasonLabel ?? undefined}
             muted={muted}
             offerMuted={false}
+            mobileAction={!selectionMode ? renderOpenDmLink() : undefined}
           />
         </div>
       </div>
 
-      {selectionMode ? null : (
-        <div className={muted ? GIG_CARD_HISTORY_ACTIONS_CLASS : "flex flex-wrap gap-2"}>
-          {action}
-          <GigCardHistoryAction
-            href={conversationHref}
-            emphasis="secondary"
-            className="relative z-[2] pointer-events-auto"
-            onClick={(event) => {
-              event.stopPropagation();
-            }}
-          >
-            Open DM
-          </GigCardHistoryAction>
-        </div>
-      )}
+      {action}
+      {!selectionMode ? (
+        <div className="hidden min-w-0 justify-end sm:flex">{renderOpenDmLink()}</div>
+      ) : null}
     </div>
   );
 

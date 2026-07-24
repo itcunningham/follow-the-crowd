@@ -1062,9 +1062,16 @@ function testGigsHistoryCardNavigation() {
     /showEventNavigation[\s\S]*<Link[\s\S]*href=\{eventHref\}/,
   );
   assert.match(pageSource, /showChevron=\{Boolean\(eventHref\)\}/);
+  assert.match(pageSource, /EVENT_PLAN_USE_BUTTON_CLASS/);
+  assert.match(pageSource, /GIG_CARD_SECONDARY_ACTION_CLASS/);
   assert.match(
     pageSource,
-    /GigCardHistoryAction[\s\S]*Open DM[\s\S]*event\.stopPropagation\(\)/,
+    /renderOpenDmLink[\s\S]*event\.stopPropagation\(\)/,
+  );
+  assert.match(pageSource, /hidden min-w-0 justify-end sm:flex/);
+  assert.match(
+    pageSource,
+    /function ReceivedBookingCard[\s\S]*ftc-btn-primary[\s\S]*Open DM/,
   );
 }
 
