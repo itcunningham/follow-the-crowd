@@ -1049,6 +1049,25 @@ function testGigsTabRowKeepsStableCountSlots() {
   assert.doesNotMatch(GIGS_LIST_TAB_ROW_CLASS, /flex-wrap/);
 }
 
+function testGigsHistoryCardNavigation() {
+  const pageSource = readFileSync(
+    new URL("../app/(planner-workspace)/bookings/page.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.doesNotMatch(pageSource, /View event[\s\S]*BookingHistoryCard/);
+  assert.match(pageSource, /function BookingHistoryCard/);
+  assert.match(
+    pageSource,
+    /showEventNavigation[\s\S]*<Link[\s\S]*href=\{eventHref\}/,
+  );
+  assert.match(pageSource, /showChevron=\{Boolean\(eventHref\)\}/);
+  assert.match(
+    pageSource,
+    /GigCardHistoryAction[\s\S]*Open DM[\s\S]*event\.stopPropagation\(\)/,
+  );
+}
+
 function testGigsTabBookingsCacheForTabSwitching() {
   const pageSource = readFileSync(
     new URL("../app/(planner-workspace)/bookings/page.tsx", import.meta.url),
@@ -2291,6 +2310,7 @@ async function main() {
   testEventPlanUseButtonKeepsStableCardLayout();
   testGigsTabRowKeepsStableCountSlots();
   testGigsFilterTabsPolish();
+  testGigsHistoryCardNavigation();
   testGigsTabBookingsCacheForTabSwitching();
   testGigsListTabPendingOptimisticSelection();
   testGigsFilterTabCountsPersistDuringLoading();

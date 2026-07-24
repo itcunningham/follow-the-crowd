@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   BookingsPageLoadingShell,
@@ -2278,6 +2278,26 @@ const GIG_CARD_BODY_CLASS_NAME = "flex min-w-0 max-w-full flex-col gap-1 overflo
 const GIG_CARD_MOBILE_OPEN_DM_CLASS =
   "ftc-btn-primary inline-flex min-h-[2.125rem] shrink-0 items-center justify-center px-2.5 py-0.5 text-[0.6875rem] uppercase tracking-wide";
 
+const GIG_CARD_CHEVRON_SLOT_CLASS = "mt-0.5 h-4 w-4 shrink-0";
+
+function GigCardChevron() {
+  return (
+    <span aria-hidden="true" className={`${GIG_CARD_CHEVRON_SLOT_CLASS} text-ftc-text-muted`}>
+      <svg
+        viewBox="0 0 24 24"
+        className="h-4 w-4"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M9 6l6 6-6 6" />
+      </svg>
+    </span>
+  );
+}
+
 function GigCardOfferLineFromLabel({
   rateLabel,
   muted = false,
@@ -2326,11 +2346,13 @@ function GigCardHeader({
   status,
   plannerLabel,
   muted = false,
+  showChevron = false,
 }: {
   eventName: string;
   status: BookingRequestStatus;
   plannerLabel?: string;
   muted?: boolean;
+  showChevron?: boolean;
 }) {
   const titleClass = muted ? "text-ftc-text-secondary" : "text-ftc-text";
 
@@ -2342,9 +2364,12 @@ function GigCardHeader({
         >
           {eventName}
         </h3>
-        <span className="mt-0.5 shrink-0">
-          <BookingStatusBadge status={status} />
-        </span>
+        <div className="flex shrink-0 items-start gap-1 sm:gap-1.5">
+          <span className="mt-0.5 shrink-0">
+            <BookingStatusBadge status={status} />
+          </span>
+          {showChevron ? <GigCardChevron /> : null}
+        </div>
       </div>
       {plannerLabel ? (
         <p className="mt-2 text-[11px] font-normal leading-snug text-ftc-text-muted sm:mt-2 sm:text-xs">
@@ -2434,18 +2459,26 @@ function GigCardHistoryAction({
   href,
   children,
   emphasis = "secondary",
+  className,
+  onClick,
 }: {
   href: string;
   children: React.ReactNode;
   emphasis?: "primary" | "secondary";
+  className?: string;
+  onClick?: (event: MouseEvent<HTMLAnchorElement>) => void;
 }) {
-  const className =
+  const emphasisClassName =
     emphasis === "primary"
       ? "inline-flex min-h-8 flex-1 items-center justify-center rounded-lg border border-ftc-border-strong bg-ftc-bg-elevated px-3 py-1 text-xs font-semibold uppercase tracking-wide text-ftc-text-secondary transition hover:text-ftc-text sm:flex-none"
       : "inline-flex min-h-8 flex-1 items-center justify-center rounded-lg border border-ftc-border-subtle bg-ftc-bg-elevated/40 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-ftc-text-muted transition hover:border-ftc-border-strong hover:text-ftc-text-secondary sm:flex-none";
 
   return (
-    <Link href={href} className={className}>
+    <Link
+      href={href}
+      className={[emphasisClassName, className].filter(Boolean).join(" ")}
+      onClick={onClick}
+    >
       {children}
     </Link>
   );
@@ -2573,6 +2606,7 @@ function BookingHistoryCard({
   const selectionLabel = selected
     ? `Deselect ${booking.event_name} for removal from history`
     : `Select ${booking.event_name} for removal from history`;
+  const showEventNavigation = Boolean(eventHref) && !selectionMode;
 
   const cardBody = (
     <div className={muted ? GIG_CARD_HISTORY_BODY_CLASS_NAME : GIG_CARD_BODY_CLASS_NAME}>
@@ -2586,6 +2620,7 @@ function BookingHistoryCard({
             status={booking.status}
             plannerLabel={plannerLabel}
             muted={muted}
+            showChevron={Boolean(eventHref)}
           />
           <GigCardMetaRows
             venue={booking.venue}
@@ -2602,12 +2637,14 @@ function BookingHistoryCard({
       {selectionMode ? null : (
         <div className={muted ? GIG_CARD_HISTORY_ACTIONS_CLASS : "flex flex-wrap gap-2"}>
           {action}
-          {eventHref ? (
-            <GigCardHistoryAction href={eventHref} emphasis="primary">
-              View event
-            </GigCardHistoryAction>
-          ) : null}
-          <GigCardHistoryAction href={conversationHref} emphasis="secondary">
+          <GigCardHistoryAction
+            href={conversationHref}
+            emphasis="secondary"
+            className="relative z-[2] pointer-events-auto"
+            onClick={(event) => {
+              event.stopPropagation();
+            }}
+          >
             Open DM
           </GigCardHistoryAction>
         </div>
@@ -2636,8 +2673,16 @@ function BookingHistoryCard({
           aria-pressed={selected}
           className="absolute inset-0 z-10 rounded-[inherit] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ftc-primary/35"
         />
+      ) : showEventNavigation && eventHref ? (
+        <Link
+          href={eventHref}
+          aria-label={`View ${booking.event_name}`}
+          className="absolute inset-0 z-0 rounded-[inherit] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ftc-primary/35"
+        />
       ) : null}
-      {cardBody}
+      <div className={selectionMode ? "pointer-events-none" : "relative z-[1] pointer-events-none"}>
+        {cardBody}
+      </div>
     </li>
   );
 }
