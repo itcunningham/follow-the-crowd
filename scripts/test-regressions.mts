@@ -1048,8 +1048,7 @@ function testGigsTabRowKeepsStableCountSlots() {
   assert.match(GIGS_TAB_COUNT_SLOT_CLASS, /ftc-gigs-tab-count-slot/);
   assert.doesNotMatch(GIGS_TAB_COUNT_SLOT_CLASS, /w-\[2\.25ch\]/);
   assert.match(GIGS_LIST_TAB_ROW_CLASS, /flex-nowrap/);
-  assert.match(GIGS_LIST_TAB_ROW_CLASS, /gap-2/);
-  assert.doesNotMatch(GIGS_LIST_TAB_ROW_CLASS, /justify-between/);
+  assert.match(GIGS_LIST_TAB_ROW_CLASS, /justify-between/);
   assert.doesNotMatch(GIGS_LIST_TAB_ROW_CLASS, /flex-wrap/);
 }
 
@@ -2452,8 +2451,12 @@ function testGigsHistoryInlineFeedbackMatchesEventsHistory() {
     new URL("../app/components/bookings/GigsWorkspaceChrome.tsx", import.meta.url),
     "utf8",
   );
-  const skeletonSource = readFileSync(
-    new URL("../app/components/skeleton/Skeleton.tsx", import.meta.url),
+  const layoutSource = readFileSync(
+    new URL("../app/components/planner/PlannerWorkspaceLayout.tsx", import.meta.url),
+    "utf8",
+  );
+  const feedbackSource = readFileSync(
+    new URL("../lib/design/inlineTabFeedback.ts", import.meta.url),
     "utf8",
   );
 
@@ -2461,14 +2464,18 @@ function testGigsHistoryInlineFeedbackMatchesEventsHistory() {
   assert.equal(formatGigsHistoryRemoveSuccessMessage(3), "3 gigs removed from history");
   assert.match(pageSource, /useInlineTabFeedbackDismiss/);
   assert.match(pageSource, /formatGigsHistoryRemoveSuccessMessage/);
-  assert.match(pageSource, /historyFeedbackMessage:/);
-  assert.match(pageSource, /historyFeedbackFading: gigsHistoryFeedbackFading/);
+  assert.match(pageSource, /useSetPlannerWorkspaceHeaderState/);
+  assert.match(pageSource, /titleFeedbackMessage:/);
+  assert.match(pageSource, /titleFeedbackFading:/);
   assert.match(pageSource, /setGigsHistorySuccessMessage/);
   assert.doesNotMatch(pageSource, /gig\$\{successes\.length === 1 \? "" : "s"\} removed from history\./);
-  assert.match(chromeSource, /historyFeedbackMessage=\{chromeState\.historyFeedbackMessage\}/);
-  assert.match(chromeSource, /feedbackMessage=\{historyFeedbackMessage\}/);
-  assert.match(skeletonSource, /EVENTS_LIST_TAB_FEEDBACK_CLASS/);
-  assert.match(skeletonSource, /min-w-0 flex-1 overflow-hidden/);
+  assert.doesNotMatch(chromeSource, /historyFeedbackMessage/);
+  assert.doesNotMatch(chromeSource, /feedbackMessage=\{historyFeedbackMessage\}/);
+  assert.match(layoutSource, /titleFeedbackMessage=\{headerState\.titleFeedbackMessage/);
+  assert.match(layoutSource, /PLANNER_WORKSPACE_TITLE_FEEDBACK_CLASS/);
+  assert.match(layoutSource, /absolute inset-x-0/);
+  assert.match(feedbackSource, /whitespace-nowrap/);
+  assert.doesNotMatch(feedbackSource, /PLANNER_WORKSPACE_TITLE_FEEDBACK_CLASS[\s\S]*truncate/);
 }
 
 function testGigsListTabSwitchUsesClientHistoryWithoutRouterNavigation() {

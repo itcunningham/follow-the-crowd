@@ -4,6 +4,13 @@ import { useEffect, useState } from "react";
 export const INLINE_TAB_FEEDBACK_FADE_MS = 2700;
 export const INLINE_TAB_FEEDBACK_CLEAR_MS = 3000;
 
+/** Shared muted inline feedback typography (Events History tab row). */
+export const INLINE_TAB_FEEDBACK_TEXT_CLASS =
+  "text-[11px] font-normal leading-none text-ftc-text-muted transition-opacity duration-300 sm:text-xs";
+
+/** Gigs History removal success — centred in planner title row; no truncation. */
+export const PLANNER_WORKSPACE_TITLE_FEEDBACK_CLASS = `${INLINE_TAB_FEEDBACK_TEXT_CLASS} whitespace-nowrap text-center`;
+
 export function formatGigsHistoryRemoveSuccessMessage(count: number): string {
   return `${count} gig${count === 1 ? "" : "s"} removed from history`;
 }

@@ -23,7 +23,7 @@ export const PLANNER_WORKSPACE_HEADER_CLASS = `ftc-page-header sticky top-0 z-50
 export const PLANNER_WORKSPACE_TITLE_CLASS = "text-xl font-semibold leading-tight text-ftc-text";
 
 export const PLANNER_WORKSPACE_TITLE_ROW_CLASS =
-  "flex min-h-[2.75rem] flex-wrap items-start justify-between gap-3 md:items-center";
+  "relative flex min-h-[2.75rem] flex-wrap items-start justify-between gap-3 md:items-center";
 
 export const PLANNER_WORKSPACE_TITLE_ACTIONS_CLASS =
   "flex shrink-0 items-start justify-end md:min-h-[2.625rem] md:min-w-[11.75rem] md:items-center";

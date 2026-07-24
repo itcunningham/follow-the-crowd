@@ -20,6 +20,7 @@ import OnboardingGuard from "@/app/components/OnboardingGuard";
 import { useGuardProfile } from "@/app/components/GuardProfileContext";
 import {
   PlannerWorkspacePage,
+  useSetPlannerWorkspaceHeaderState,
 } from "@/app/components/planner/PlannerWorkspaceLayout";
 import DjBookingAvailabilityBadge from "@/app/components/DjBookingAvailabilityBadge";
 import ProfileAvatar from "@/app/components/ProfileAvatar";
@@ -675,6 +676,7 @@ function BookingsPageContent() {
   const gigsHistorySelectionCanDelete = gigsHistoryBulkManage.selectedCount > 0;
 
   const setGigsWorkspaceChromeState = useSetGigsWorkspaceChromeState();
+  const setPlannerWorkspaceHeaderState = useSetPlannerWorkspaceHeaderState();
   const gigsManageClickRef = useRef(gigsHistoryBulkManage.enterSelectionMode);
   gigsManageClickRef.current = gigsHistoryBulkManage.enterSelectionMode;
   const gigsHistoryCancelSelectionRef = useRef(gigsHistoryBulkManage.cancelSelectionMode);
@@ -707,9 +709,6 @@ function BookingsPageContent() {
           onHistorySelectionCancel: gigsHistoryCancelSelectionRef.current,
           onHistorySelectionSelectAll: gigsHistorySelectAllRef.current,
           onHistorySelectionRemove: gigsHistoryRemoveRef.current,
-          historyFeedbackMessage:
-            isGigsHistoryTab && !gigsHistorySelectionMode ? gigsHistorySuccessMessage : null,
-          historyFeedbackFading: gigsHistoryFeedbackFading,
         };
 
     setGigsWorkspaceChromeState((previousState) =>
@@ -723,13 +722,39 @@ function BookingsPageContent() {
     gigsHistorySelectionCanDelete,
     gigsHistorySelectionCanToggleAll,
     gigsHistorySelectionMode,
-    gigsHistorySuccessMessage,
-    isGigsHistoryTab,
     plannerCreateVisible,
     reserveGigsManageSlot,
     resolvedGigsTabCounts,
     setGigsWorkspaceChromeState,
     showGigsManageButton,
+    showGigsWorkspace,
+  ]);
+
+  useLayoutEffect(() => {
+    const showTitleFeedback =
+      showGigsWorkspace &&
+      isGigsHistoryTab &&
+      !gigsHistorySelectionMode &&
+      !plannerCreateVisible;
+
+    setPlannerWorkspaceHeaderState({
+      titleFeedbackMessage: showTitleFeedback ? gigsHistorySuccessMessage : null,
+      titleFeedbackFading: showTitleFeedback ? gigsHistoryFeedbackFading : false,
+    });
+
+    return () => {
+      setPlannerWorkspaceHeaderState({
+        titleFeedbackMessage: null,
+        titleFeedbackFading: false,
+      });
+    };
+  }, [
+    gigsHistoryFeedbackFading,
+    gigsHistorySelectionMode,
+    gigsHistorySuccessMessage,
+    isGigsHistoryTab,
+    plannerCreateVisible,
+    setPlannerWorkspaceHeaderState,
     showGigsWorkspace,
   ]);
 

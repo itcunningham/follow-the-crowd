@@ -369,8 +369,6 @@ export function DjGigsTabRow({
   onManageClick,
   selectionMode = false,
   selectionToolbar = null,
-  feedbackMessage = null,
-  feedbackFading = false,
 }: {
   children: ReactNode;
   showManageButton?: boolean;
@@ -378,8 +376,6 @@ export function DjGigsTabRow({
   onManageClick?: () => void;
   selectionMode?: boolean;
   selectionToolbar?: ReactNode;
-  feedbackMessage?: string | null;
-  feedbackFading?: boolean;
 }) {
   const showRightManage = !selectionMode && showManageButton;
   const showRightPlaceholder = !selectionMode && !showManageButton && reserveManageSlot;
@@ -387,17 +383,6 @@ export function DjGigsTabRow({
   return (
     <div className={GIGS_LIST_TAB_ROW_CLASS}>
       <div className="flex shrink-0 items-center">{children}</div>
-      <div className="min-h-0 min-w-0 flex-1 overflow-hidden" aria-live={selectionMode ? undefined : "polite"}>
-        {!selectionMode && feedbackMessage ? (
-          <p
-            className={`${EVENTS_LIST_TAB_FEEDBACK_CLASS} ${
-              feedbackFading ? "opacity-0" : "opacity-100"
-            }`}
-          >
-            {feedbackMessage}
-          </p>
-        ) : null}
-      </div>
       <div className="flex shrink-0 items-center justify-end">
         {selectionMode ? (
           selectionToolbar
