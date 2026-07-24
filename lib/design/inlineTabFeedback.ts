@@ -8,8 +8,8 @@ export const INLINE_TAB_FEEDBACK_CLEAR_MS = 3000;
 export const INLINE_TAB_FEEDBACK_TEXT_CLASS =
   "text-[11px] font-normal leading-none text-ftc-text-muted transition-opacity duration-300 sm:text-xs";
 
-/** Gigs History removal success — centred in planner title row; no truncation. */
-export const PLANNER_WORKSPACE_TITLE_FEEDBACK_CLASS = `${INLINE_TAB_FEEDBACK_TEXT_CLASS} whitespace-nowrap text-center`;
+/** Gigs History tab-row feedback — Events typography; overlay layer avoids truncate at 390px. */
+export const GIGS_LIST_TAB_FEEDBACK_CLASS = `${INLINE_TAB_FEEDBACK_TEXT_CLASS} whitespace-nowrap`;
 
 export function formatGigsHistoryRemoveSuccessMessage(count: number): string {
   return `${count} gig${count === 1 ? "" : "s"} removed from history`;

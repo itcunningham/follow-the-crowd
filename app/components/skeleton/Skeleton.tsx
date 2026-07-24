@@ -23,6 +23,7 @@ import {
 import {
   HistoryManageButton,
 } from "@/app/components/history/HistoryBulkManage";
+import { HistoryTabRowFeedbackCell } from "@/app/components/history/HistoryTabRowFeedbackCell";
 import {
   EVENTS_LIST_TAB_ROW_CLASS,
   EVENTS_LIST_TAB_FEEDBACK_CLASS,
@@ -369,6 +370,8 @@ export function DjGigsTabRow({
   onManageClick,
   selectionMode = false,
   selectionToolbar = null,
+  feedbackMessage = null,
+  feedbackFading = false,
 }: {
   children: ReactNode;
   showManageButton?: boolean;
@@ -376,14 +379,22 @@ export function DjGigsTabRow({
   onManageClick?: () => void;
   selectionMode?: boolean;
   selectionToolbar?: ReactNode;
+  feedbackMessage?: string | null;
+  feedbackFading?: boolean;
 }) {
   const showRightManage = !selectionMode && showManageButton;
   const showRightPlaceholder = !selectionMode && !showManageButton && reserveManageSlot;
 
   return (
-    <div className={GIGS_LIST_TAB_ROW_CLASS}>
-      <div className="flex shrink-0 items-center">{children}</div>
-      <div className="flex shrink-0 items-center justify-end">
+    <div className={`${GIGS_LIST_TAB_ROW_CLASS} overflow-visible`}>
+      <div className="relative z-[1] flex shrink-0 items-center">{children}</div>
+      <HistoryTabRowFeedbackCell
+        message={feedbackMessage}
+        fading={feedbackFading}
+        selectionMode={selectionMode}
+        variant="gigs"
+      />
+      <div className="relative z-[1] flex shrink-0 items-center justify-end">
         {selectionMode ? (
           selectionToolbar
         ) : showRightManage ? (

@@ -51,6 +51,8 @@ export type GigsWorkspaceChromeState = {
   onHistorySelectionCancel?: () => void;
   onHistorySelectionSelectAll?: () => void;
   onHistorySelectionRemove?: () => void;
+  historyFeedbackMessage: string | null;
+  historyFeedbackFading: boolean;
 };
 
 export const defaultGigsWorkspaceChromeState: GigsWorkspaceChromeState = {
@@ -67,6 +69,8 @@ export const defaultGigsWorkspaceChromeState: GigsWorkspaceChromeState = {
   onHistorySelectionCancel: undefined,
   onHistorySelectionSelectAll: undefined,
   onHistorySelectionRemove: undefined,
+  historyFeedbackMessage: null,
+  historyFeedbackFading: false,
 };
 
 const GigsWorkspaceChromeDispatchContext =
@@ -95,7 +99,9 @@ export function gigsWorkspaceChromeStatesEqual(
     left.historySelectionCanDelete !== right.historySelectionCanDelete ||
     left.onHistorySelectionCancel !== right.onHistorySelectionCancel ||
     left.onHistorySelectionSelectAll !== right.onHistorySelectionSelectAll ||
-    left.onHistorySelectionRemove !== right.onHistorySelectionRemove
+    left.onHistorySelectionRemove !== right.onHistorySelectionRemove ||
+    left.historyFeedbackMessage !== right.historyFeedbackMessage ||
+    left.historyFeedbackFading !== right.historyFeedbackFading
   ) {
     return false;
   }
@@ -169,6 +175,8 @@ export function GigsWorkspaceTabRow({
   onHistorySelectionCancel,
   onHistorySelectionSelectAll,
   onHistorySelectionRemove,
+  historyFeedbackMessage = null,
+  historyFeedbackFading = false,
 }: {
   activeView: DjGigsListTab;
   counts: Record<DjGigsListTab, number> | null;
@@ -184,6 +192,8 @@ export function GigsWorkspaceTabRow({
   onHistorySelectionCancel?: () => void;
   onHistorySelectionSelectAll?: () => void;
   onHistorySelectionRemove?: () => void;
+  historyFeedbackMessage?: string | null;
+  historyFeedbackFading?: boolean;
 }) {
   const historySelectionToolbar =
     historySelectionMode &&
@@ -216,6 +226,8 @@ export function GigsWorkspaceTabRow({
       onManageClick={onManageClick}
       selectionMode={historySelectionMode}
       selectionToolbar={historySelectionToolbar}
+      feedbackMessage={historyFeedbackMessage}
+      feedbackFading={historyFeedbackFading}
     >
       <DjGigsTabs
         activeView={activeView}
@@ -315,7 +327,7 @@ function GigsWorkspaceSecondaryBandBody({
   }
 
   return (
-    <PlannerWorkspaceSecondaryControls>
+    <PlannerWorkspaceSecondaryControls className="overflow-visible">
       <GigsWorkspaceTabRow
         activeView={activeView}
         counts={chromeState.counts}
@@ -331,6 +343,8 @@ function GigsWorkspaceSecondaryBandBody({
         onHistorySelectionCancel={chromeState.onHistorySelectionCancel}
         onHistorySelectionSelectAll={chromeState.onHistorySelectionSelectAll}
         onHistorySelectionRemove={chromeState.onHistorySelectionRemove}
+        historyFeedbackMessage={chromeState.historyFeedbackMessage}
+        historyFeedbackFading={chromeState.historyFeedbackFading}
       />
     </PlannerWorkspaceSecondaryControls>
   );

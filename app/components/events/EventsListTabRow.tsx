@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { HistoryManageButton } from "@/app/components/history/HistoryBulkManage";
+import { HistoryTabRowFeedbackCell } from "@/app/components/history/HistoryTabRowFeedbackCell";
 import {
-  EVENTS_LIST_TAB_FEEDBACK_CLASS,
   EVENTS_LIST_TAB_ROW_CLASS,
   FTC_EVENTS_LIST_TAB_ACTION_CLASS,
   FTC_EVENTS_LIST_TAB_ACTION_PLACEHOLDER_CLASS,
@@ -37,17 +37,12 @@ export function EventsListTabRow({
   return (
     <div className={EVENTS_LIST_TAB_ROW_CLASS}>
       <div className="flex shrink-0 items-center">{children}</div>
-      <div className="min-h-0 min-w-0 flex-1 overflow-hidden" aria-live={selectionMode ? undefined : "polite"}>
-        {!selectionMode && feedbackMessage ? (
-          <p
-            className={`${EVENTS_LIST_TAB_FEEDBACK_CLASS} ${
-              feedbackFading ? "opacity-0" : "opacity-100"
-            }`}
-          >
-            {feedbackMessage}
-          </p>
-        ) : null}
-      </div>
+      <HistoryTabRowFeedbackCell
+        message={feedbackMessage}
+        fading={feedbackFading}
+        selectionMode={selectionMode}
+        variant="events"
+      />
       <div className="flex shrink-0 items-center justify-end">
         {selectionMode ? (
           selectionToolbar

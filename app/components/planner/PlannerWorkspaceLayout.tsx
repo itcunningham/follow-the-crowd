@@ -34,7 +34,6 @@ import {
 import { readCachedNavRole } from "@/lib/navigationRoleCache";
 import { useGuardProfile } from "@/app/components/GuardProfileContext";
 import { canManageEvents, type UserRole } from "@/lib/user/currentUser";
-import { PLANNER_WORKSPACE_TITLE_FEEDBACK_CLASS } from "@/lib/design/inlineTabFeedback";
 
 /** Matches the widest Events-area create button so title rows stay aligned. */
 const PLANNER_WORKSPACE_TITLE_ACTION_PLACEHOLDER_CLASS =
@@ -46,8 +45,6 @@ type WorkspaceHeaderState = {
   workspaceRole?: UserRole | null;
   /** When true, sub-nav handled navigation (e.g. closed an in-page create flow). */
   interceptWorkspaceTabNavigation?: ((href: string) => boolean) | null;
-  titleFeedbackMessage?: string | null;
-  titleFeedbackFading?: boolean;
 };
 
 function mergeWorkspaceHeaderState(
@@ -68,14 +65,6 @@ function mergeWorkspaceHeaderState(
     next.interceptWorkspaceTabNavigation = patch.interceptWorkspaceTabNavigation;
   }
 
-  if ("titleFeedbackMessage" in patch) {
-    next.titleFeedbackMessage = patch.titleFeedbackMessage;
-  }
-
-  if ("titleFeedbackFading" in patch) {
-    next.titleFeedbackFading = patch.titleFeedbackFading;
-  }
-
   if (patch.workspaceRole != null) {
     next.workspaceRole = mergeWorkspaceNavRole(previous.workspaceRole, patch.workspaceRole);
   }
@@ -89,16 +78,6 @@ type WorkspaceHeaderContextValue = {
 };
 
 const WorkspaceHeaderContext = createContext<WorkspaceHeaderContextValue | null>(null);
-
-export function useSetPlannerWorkspaceHeaderState(): WorkspaceHeaderContextValue["setHeaderState"] {
-  const headerContext = useContext(WorkspaceHeaderContext);
-
-  if (!headerContext) {
-    throw new Error("useSetPlannerWorkspaceHeaderState must be used within PlannerWorkspaceRouteLayout");
-  }
-
-  return headerContext.setHeaderState;
-}
 
 function PlannerWorkspaceTitleActions({ actions }: { actions?: ReactNode }) {
   return (
@@ -147,8 +126,6 @@ export function PlannerWorkspacePageHeader({
   showWorkspaceSubNav = true,
   activeWorkspaceHref,
   interceptWorkspaceTabNavigation,
-  titleFeedbackMessage = null,
-  titleFeedbackFading = false,
 }: {
   title: string;
   initialRole?: UserRole | null;
@@ -156,27 +133,11 @@ export function PlannerWorkspacePageHeader({
   showWorkspaceSubNav?: boolean;
   activeWorkspaceHref?: string | null;
   interceptWorkspaceTabNavigation?: ((href: string) => boolean) | null;
-  titleFeedbackMessage?: string | null;
-  titleFeedbackFading?: boolean;
 }) {
   return (
     <header className={PLANNER_WORKSPACE_HEADER_CLASS}>
       <div className={PLANNER_WORKSPACE_TITLE_ROW_CLASS}>
-        <h1 className={`${PLANNER_WORKSPACE_TITLE_CLASS} shrink-0`}>{title}</h1>
-        <div
-          className="pointer-events-none absolute inset-x-0 flex min-h-[2.75rem] items-center justify-center px-16 sm:px-20 md:px-[12.5rem]"
-          aria-live={titleFeedbackMessage ? "polite" : undefined}
-        >
-          {titleFeedbackMessage ? (
-            <p
-              className={`${PLANNER_WORKSPACE_TITLE_FEEDBACK_CLASS} ${
-                titleFeedbackFading ? "opacity-0" : "opacity-100"
-              }`}
-            >
-              {titleFeedbackMessage}
-            </p>
-          ) : null}
-        </div>
+        <h1 className={PLANNER_WORKSPACE_TITLE_CLASS}>{title}</h1>
         <PlannerWorkspaceTitleActions actions={actions} />
       </div>
       {showWorkspaceSubNav ? (
@@ -278,8 +239,6 @@ export function PlannerWorkspaceRouteLayout({ children }: { children: ReactNode 
           activeWorkspaceHref={headerState.activeWorkspaceHref}
           interceptWorkspaceTabNavigation={workspaceIntercept}
           actions={actions}
-          titleFeedbackMessage={headerState.titleFeedbackMessage ?? null}
-          titleFeedbackFading={headerState.titleFeedbackFading ?? false}
         />
         <div className={PLANNER_WORKSPACE_BELOW_HEADER_CLASS}>{children}</div>
       </div>
