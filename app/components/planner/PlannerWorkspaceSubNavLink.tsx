@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useRef, type ReactNode } from "react";
 import {
   buildWorkspaceSubNavDestinationHref,
+  isCalendarWorkspacePath,
 } from "@/lib/plannerEventsNav";
 
 const PLANNER_WORKSPACE_SUB_NAV_HIT_CLASS =
@@ -29,6 +30,8 @@ export default function PlannerWorkspaceSubNavLink({
   const router = useRouter();
   const pathname = usePathname();
   const destinationHref = buildWorkspaceSubNavDestinationHref(href, pathname);
+  const leaveCalendarViaNativeLink =
+    isCalendarWorkspacePath(pathname) && !interceptNavigate;
   const navigatedThisGestureRef = useRef(false);
   const activeGestureRef = useRef<{ pointerId: number; cancelled: boolean } | null>(null);
 
@@ -51,6 +54,10 @@ export default function PlannerWorkspaceSubNavLink({
 
   const handlePointerDown = useCallback(
     (event: React.PointerEvent<HTMLAnchorElement>) => {
+      if (leaveCalendarViaNativeLink && !isActive) {
+        return;
+      }
+
       if (isActive && !interceptNavigate) {
         event.preventDefault();
         return;
@@ -66,11 +73,15 @@ export default function PlannerWorkspaceSubNavLink({
         cancelled: false,
       };
     },
-    [interceptNavigate, isActive],
+    [interceptNavigate, isActive, leaveCalendarViaNativeLink],
   );
 
   const handlePointerUp = useCallback(
     (event: React.PointerEvent<HTMLAnchorElement>) => {
+      if (leaveCalendarViaNativeLink && !isActive) {
+        return;
+      }
+
       const gesture = activeGestureRef.current;
 
       if (
@@ -88,7 +99,7 @@ export default function PlannerWorkspaceSubNavLink({
         commitNavigation();
       }
     },
-    [commitNavigation, interceptNavigate, isActive],
+    [commitNavigation, interceptNavigate, isActive, leaveCalendarViaNativeLink],
   );
 
   const handlePointerCancel = useCallback((event: React.PointerEvent<HTMLAnchorElement>) => {
@@ -102,6 +113,10 @@ export default function PlannerWorkspaceSubNavLink({
 
   const handleClick = useCallback(
     (event: React.MouseEvent<HTMLAnchorElement>) => {
+      if (leaveCalendarViaNativeLink && !isActive) {
+        return;
+      }
+
       if (interceptNavigate) {
         event.preventDefault();
         commitNavigation();
@@ -121,7 +136,7 @@ export default function PlannerWorkspaceSubNavLink({
       event.preventDefault();
       commitNavigation();
     },
-    [commitNavigation, interceptNavigate, isActive],
+    [commitNavigation, interceptNavigate, isActive, leaveCalendarViaNativeLink],
   );
 
   return (

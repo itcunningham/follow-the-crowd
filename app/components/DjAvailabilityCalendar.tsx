@@ -172,7 +172,7 @@ function GigCalendarUpdatePill({ message, onDismiss }: GigCalendarUpdatePillProp
   }
 
   return (
-    <div className="pointer-events-none grid w-full grid-cols-1 grid-rows-1">
+    <div className="pointer-events-none [&_*]:pointer-events-none grid w-full grid-cols-1 grid-rows-1">
       <p
         aria-live="polite"
         aria-atomic="true"

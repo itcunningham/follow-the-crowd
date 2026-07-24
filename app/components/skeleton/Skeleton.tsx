@@ -1152,7 +1152,7 @@ function PlannerCalendarDesktopGridSkeleton() {
 
 export function PlannerCalendarBodySkeleton() {
   return (
-    <div aria-busy="true" aria-label="Loading calendar" className="contents">
+    <div aria-busy="true" aria-label="Loading calendar" className="w-full shrink-0">
       <PlannerCalendarMobileAgendaPanelSkeleton />
       <PlannerCalendarDesktopGridSkeleton />
     </div>
@@ -1161,7 +1161,7 @@ export function PlannerCalendarBodySkeleton() {
 
 export function PlannerCalendarContentSkeleton() {
   return (
-    <div aria-busy="true" aria-label="Loading calendar" className="contents">
+    <div aria-busy="true" aria-label="Loading calendar" className="w-full shrink-0">
       <CalendarMobileChromeSkeleton
         legend={<PlannerCalendarLegendSkeleton />}
         includeSecondaryRow
@@ -1268,7 +1268,7 @@ function DjCalendarDesktopGridSkeleton() {
 
 export function DjCalendarBodySkeleton() {
   return (
-    <div aria-busy="true" aria-label="Loading calendar" className="contents">
+    <div aria-busy="true" aria-label="Loading calendar" className="w-full shrink-0">
       <DjCalendarMobileAgendaPanelSkeleton />
       <DjCalendarDesktopGridSkeleton />
     </div>
@@ -1277,7 +1277,7 @@ export function DjCalendarBodySkeleton() {
 
 export function DjCalendarContentSkeleton() {
   return (
-    <div aria-busy="true" aria-label="Loading calendar" className="contents">
+    <div aria-busy="true" aria-label="Loading calendar" className="w-full shrink-0">
       <CalendarMobileChromeSkeleton
         legend={<DjCalendarLegendSkeleton />}
         includeSecondaryRow

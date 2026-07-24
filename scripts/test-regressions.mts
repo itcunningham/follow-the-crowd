@@ -2287,6 +2287,14 @@ function testCalendarWorkspaceClearsStaleWorkspaceIntercept() {
     new URL("../app/components/CalendarMonthNav.tsx", import.meta.url),
     "utf8",
   );
+  const djCalendarSource = readFileSync(
+    new URL("../app/components/DjAvailabilityCalendar.tsx", import.meta.url),
+    "utf8",
+  );
+  const skeletonSource = readFileSync(
+    new URL("../app/components/skeleton/Skeleton.tsx", import.meta.url),
+    "utf8",
+  );
 
   const tokensSource = readFileSync(
     new URL("../lib/design/plannerWorkspaceTokens.ts", import.meta.url),
@@ -2301,9 +2309,18 @@ function testCalendarWorkspaceClearsStaleWorkspaceIntercept() {
   assert.match(layoutSource, /PLANNER_WORKSPACE_BELOW_HEADER_CLASS/);
   assert.match(subNavLinkSource, /router\.push\(destinationHref/);
   assert.match(subNavLinkSource, /commitNavigation\(/);
+  assert.match(subNavLinkSource, /leaveCalendarViaNativeLink/);
+  assert.match(subNavLinkSource, /isCalendarWorkspacePath\(pathname\)/);
   assert.doesNotMatch(subNavLinkSource, /window\.location\.assign\(destinationHref\)/);
   assert.match(bothCalendarSource, /relative isolate z-0 flex flex-col/);
   assert.match(monthNavSource, /grid-cols-1 grid-rows-1/);
+  assert.match(monthNavSource, /\[&_\*\]:pointer-events-none/);
+  assert.match(djCalendarSource, /GigCalendarUpdatePill[\s\S]*\[&_\*\]:pointer-events-none/);
+  assert.match(skeletonSource, /DjCalendarBodySkeleton[\s\S]*w-full shrink-0/);
+  assert.doesNotMatch(
+    skeletonSource,
+    /export function DjCalendarBodySkeleton\(\) \{[\s\S]*?className="contents"/,
+  );
   assert.equal(isCalendarWorkspacePath("/calendar"), true);
   assert.equal(isCalendarWorkspacePath("/calendar/foo"), true);
   assert.equal(isCalendarWorkspacePath("/events"), false);
