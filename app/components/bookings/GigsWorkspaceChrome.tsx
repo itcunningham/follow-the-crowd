@@ -13,6 +13,7 @@ import {
 } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { DjGigsTabs } from "@/app/components/bookings/DjGigsTabs";
+import { HistorySelectionToolbar } from "@/app/components/history/HistoryBulkManage";
 import { DjGigsTabRow } from "@/app/components/skeleton/Skeleton";
 import {
   PlannerWorkspaceSecondaryControls,
@@ -38,6 +39,15 @@ export type GigsWorkspaceChromeState = {
   showManageButton: boolean;
   reserveManageSlot: boolean;
   onManageClick?: () => void;
+  historySelectionMode: boolean;
+  historySelectionSelectedCount: number;
+  historySelectionAllSelected: boolean;
+  historySelectionRemoving: boolean;
+  historySelectionCanToggleAll: boolean;
+  historySelectionCanDelete: boolean;
+  onHistorySelectionCancel?: () => void;
+  onHistorySelectionSelectAll?: () => void;
+  onHistorySelectionRemove?: () => void;
 };
 
 export const defaultGigsWorkspaceChromeState: GigsWorkspaceChromeState = {
@@ -45,6 +55,15 @@ export const defaultGigsWorkspaceChromeState: GigsWorkspaceChromeState = {
   showManageButton: false,
   reserveManageSlot: true,
   onManageClick: undefined,
+  historySelectionMode: false,
+  historySelectionSelectedCount: 0,
+  historySelectionAllSelected: false,
+  historySelectionRemoving: false,
+  historySelectionCanToggleAll: false,
+  historySelectionCanDelete: false,
+  onHistorySelectionCancel: undefined,
+  onHistorySelectionSelectAll: undefined,
+  onHistorySelectionRemove: undefined,
 };
 
 const GigsWorkspaceChromeDispatchContext =
@@ -64,7 +83,16 @@ export function gigsWorkspaceChromeStatesEqual(
   if (
     left.showManageButton !== right.showManageButton ||
     left.reserveManageSlot !== right.reserveManageSlot ||
-    left.onManageClick !== right.onManageClick
+    left.onManageClick !== right.onManageClick ||
+    left.historySelectionMode !== right.historySelectionMode ||
+    left.historySelectionSelectedCount !== right.historySelectionSelectedCount ||
+    left.historySelectionAllSelected !== right.historySelectionAllSelected ||
+    left.historySelectionRemoving !== right.historySelectionRemoving ||
+    left.historySelectionCanToggleAll !== right.historySelectionCanToggleAll ||
+    left.historySelectionCanDelete !== right.historySelectionCanDelete ||
+    left.onHistorySelectionCancel !== right.onHistorySelectionCancel ||
+    left.onHistorySelectionSelectAll !== right.onHistorySelectionSelectAll ||
+    left.onHistorySelectionRemove !== right.onHistorySelectionRemove
   ) {
     return false;
   }
@@ -129,20 +157,68 @@ export function GigsWorkspaceTabRow({
   showManageButton = false,
   reserveManageSlot = false,
   onManageClick,
+  historySelectionMode = false,
+  historySelectionSelectedCount = 0,
+  historySelectionAllSelected = false,
+  historySelectionRemoving = false,
+  historySelectionCanToggleAll = false,
+  historySelectionCanDelete = false,
+  onHistorySelectionCancel,
+  onHistorySelectionSelectAll,
+  onHistorySelectionRemove,
 }: {
   activeView: DjGigsListTab;
   counts: Record<DjGigsListTab, number> | null;
   showManageButton?: boolean;
   reserveManageSlot?: boolean;
   onManageClick?: () => void;
+  historySelectionMode?: boolean;
+  historySelectionSelectedCount?: number;
+  historySelectionAllSelected?: boolean;
+  historySelectionRemoving?: boolean;
+  historySelectionCanToggleAll?: boolean;
+  historySelectionCanDelete?: boolean;
+  onHistorySelectionCancel?: () => void;
+  onHistorySelectionSelectAll?: () => void;
+  onHistorySelectionRemove?: () => void;
 }) {
+  const historySelectionToolbar =
+    historySelectionMode &&
+    onHistorySelectionCancel &&
+    onHistorySelectionSelectAll &&
+    onHistorySelectionRemove ? (
+      <HistorySelectionToolbar
+        embedded
+        tabRowEmbedded
+        selectedCount={historySelectionSelectedCount}
+        allSelected={historySelectionAllSelected}
+        removing={historySelectionRemoving}
+        onCancel={onHistorySelectionCancel}
+        onSelectAll={onHistorySelectionSelectAll}
+        onRemove={onHistorySelectionRemove}
+        canToggleAll={historySelectionCanToggleAll}
+        canDelete={historySelectionCanDelete}
+        removeLabel="Delete"
+        selectAllLabel="ALL"
+        cancelVariant="backIcon"
+        selectAllToggle
+        centeredSelectAll
+      />
+    ) : null;
+
   return (
     <DjGigsTabRow
       showManageButton={showManageButton}
       reserveManageSlot={reserveManageSlot}
       onManageClick={onManageClick}
+      selectionMode={historySelectionMode}
+      selectionToolbar={historySelectionToolbar}
     >
-      <DjGigsTabs activeView={activeView} counts={counts} />
+      <DjGigsTabs
+        activeView={activeView}
+        counts={counts}
+        hideHistoryTab={historySelectionMode}
+      />
     </DjGigsTabRow>
   );
 }
@@ -239,6 +315,15 @@ function GigsWorkspaceSecondaryBandBody({
         showManageButton={chromeState.showManageButton}
         reserveManageSlot={reserveManageSlot}
         onManageClick={chromeState.onManageClick}
+        historySelectionMode={chromeState.historySelectionMode}
+        historySelectionSelectedCount={chromeState.historySelectionSelectedCount}
+        historySelectionAllSelected={chromeState.historySelectionAllSelected}
+        historySelectionRemoving={chromeState.historySelectionRemoving}
+        historySelectionCanToggleAll={chromeState.historySelectionCanToggleAll}
+        historySelectionCanDelete={chromeState.historySelectionCanDelete}
+        onHistorySelectionCancel={chromeState.onHistorySelectionCancel}
+        onHistorySelectionSelectAll={chromeState.onHistorySelectionSelectAll}
+        onHistorySelectionRemove={chromeState.onHistorySelectionRemove}
       />
     </PlannerWorkspaceSecondaryControls>
   );

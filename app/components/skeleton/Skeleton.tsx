@@ -367,22 +367,31 @@ export function DjGigsTabRow({
   showManageButton = false,
   reserveManageSlot = false,
   onManageClick,
+  selectionMode = false,
+  selectionToolbar = null,
 }: {
   children: ReactNode;
   showManageButton?: boolean;
   reserveManageSlot?: boolean;
   onManageClick?: () => void;
+  selectionMode?: boolean;
+  selectionToolbar?: ReactNode;
 }) {
+  const showRightManage = !selectionMode && showManageButton;
+  const showRightPlaceholder = !selectionMode && !showManageButton && reserveManageSlot;
+
   return (
     <div className={GIGS_LIST_TAB_ROW_CLASS}>
       <div className="flex shrink-0 items-center">{children}</div>
       <div className="flex shrink-0 items-center justify-end">
-        {showManageButton ? (
+        {selectionMode ? (
+          selectionToolbar
+        ) : showRightManage ? (
           <HistoryManageButton
             onClick={onManageClick ?? (() => undefined)}
             className={GIGS_LIST_TAB_ACTION_CLASS}
           />
-        ) : reserveManageSlot ? (
+        ) : showRightPlaceholder ? (
           <span aria-hidden="true" className={GIGS_MANAGE_BUTTON_PLACEHOLDER_CLASS} />
         ) : null}
       </div>

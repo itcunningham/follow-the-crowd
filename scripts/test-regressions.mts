@@ -2398,7 +2398,7 @@ function testGigsTabRowReservesManageSlotOnAllTabs() {
     "utf8",
   );
 
-  assert.match(pageSource, /const reserveGigsManageSlot = !showGigsManageButton;/);
+  assert.match(pageSource, /const reserveGigsManageSlot = !showGigsManageButton && !gigsHistoryBulkManage\.selectionMode;/);
   assert.doesNotMatch(pageSource, /isGigsHistoryTab && !gigsHistoryBulkManage\.selectionMode && !showGigsManageButton/);
   assert.match(gigsChromeSource, /reserveManageSlot: true/);
   assert.doesNotMatch(
@@ -2411,7 +2411,34 @@ function testGigsTabRowReservesManageSlotOnAllTabs() {
   );
   assert.match(djGigsTabRowSource, /GIGS_LIST_TAB_ACTION_CLASS/);
   assert.match(djGigsTabRowSource, /GIGS_MANAGE_BUTTON_PLACEHOLDER_CLASS/);
+  assert.match(djGigsTabRowSource, /selectionMode \?/);
   assert.match(designSource, /GIGS_MANAGE_BUTTON_PLACEHOLDER_CLASS = FTC_EVENTS_LIST_TAB_ACTION_PLACEHOLDER_CLASS/);
+}
+
+function testGigsHistorySelectionToolbarEmbeddedInTabRow() {
+  const pageSource = readFileSync(
+    new URL("../app/(planner-workspace)/bookings/page.tsx", import.meta.url),
+    "utf8",
+  );
+  const gigsChromeSource = readFileSync(
+    new URL("../app/components/bookings/GigsWorkspaceChrome.tsx", import.meta.url),
+    "utf8",
+  );
+  const tabsSource = readFileSync(
+    new URL("../app/components/bookings/DjGigsTabs.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.doesNotMatch(pageSource, /<HistorySelectionToolbar/);
+  assert.match(pageSource, /historySelectionMode: gigsHistorySelectionMode/);
+  assert.match(pageSource, /reserveGigsManageSlot = !showGigsManageButton && !gigsHistoryBulkManage\.selectionMode/);
+  assert.match(pageSource, /gigsHistoryCancelSelectionRef/);
+  assert.match(gigsChromeSource, /tabRowEmbedded/);
+  assert.match(gigsChromeSource, /removeLabel="Delete"/);
+  assert.match(gigsChromeSource, /selectAllLabel="ALL"/);
+  assert.match(gigsChromeSource, /cancelVariant="backIcon"/);
+  assert.match(gigsChromeSource, /hideHistoryTab=\{historySelectionMode\}/);
+  assert.match(tabsSource, /hideHistoryTab/);
 }
 
 function testGigsWorkspaceChromeStateSyncAvoidsNoOpUpdates() {
@@ -2633,6 +2660,7 @@ async function main() {
   testWorkspaceGigsTabOpensIncomingWithoutEventsQuery();
   testCalendarWorkspaceClearsStaleWorkspaceIntercept();
   testGigsTabRowReservesManageSlotOnAllTabs();
+  testGigsHistorySelectionToolbarEmbeddedInTabRow();
   testGigsWorkspaceChromeStateSyncAvoidsNoOpUpdates();
   testBookingsRouteMountsPersistentGigsSecondaryBand();
   testWorkspaceSubNavLayoutIsStable();

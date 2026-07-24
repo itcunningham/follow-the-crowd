@@ -49,15 +49,17 @@ function DjGigsTabCount({
 export function DjGigsTabs({
   activeView,
   counts,
+  hideHistoryTab = false,
 }: {
   activeView: DjGigsListTab;
   counts: Record<DjGigsListTab, number> | null;
+  hideHistoryTab?: boolean;
 }) {
   const countsReady = counts !== null;
 
   return (
     <div className={GIGS_TAB_PILL_ROW_CLASS} aria-busy={counts === null ? true : undefined}>
-      {GIGS_TAB_CONFIG.map((tab) => {
+      {GIGS_TAB_CONFIG.filter((tab) => !(hideHistoryTab && tab.value === "history")).map((tab) => {
         const isActive = activeView === tab.value;
         const href = buildGigsListHref(tab.value);
         const count = counts?.[tab.value] ?? 0;

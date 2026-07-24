@@ -48,9 +48,7 @@ import {
 } from "@/lib/events/eventFormFieldValidation";
 import ArchiveAllBookingRequestsButton from "@/app/components/ArchiveAllBookingRequestsButton";
 import {
-  HistoryManageButton,
   HistoryRemoveConfirmDialog,
-  HistorySelectionToolbar,
   filterOutRemovingHistoryItems,
   useHistoryBulkManage,
 } from "@/app/components/history/HistoryBulkManage";
@@ -658,11 +656,21 @@ function BookingsPageContent() {
     !loadingList &&
     gigsHistoryBulkManage.showManageControl &&
     !gigsHistoryBulkManage.selectionMode;
-  const reserveGigsManageSlot = !showGigsManageButton;
+  const reserveGigsManageSlot = !showGigsManageButton && !gigsHistoryBulkManage.selectionMode;
+  const gigsHistorySelectionMode =
+    isGigsHistoryTab && gigsHistoryBulkManage.showSelectionToolbar;
+  const gigsHistorySelectionCanToggleAll = djHistoryBookings.length > 0;
+  const gigsHistorySelectionCanDelete = gigsHistoryBulkManage.selectedCount > 0;
 
   const setGigsWorkspaceChromeState = useSetGigsWorkspaceChromeState();
   const gigsManageClickRef = useRef(gigsHistoryBulkManage.enterSelectionMode);
   gigsManageClickRef.current = gigsHistoryBulkManage.enterSelectionMode;
+  const gigsHistoryCancelSelectionRef = useRef(gigsHistoryBulkManage.cancelSelectionMode);
+  gigsHistoryCancelSelectionRef.current = gigsHistoryBulkManage.cancelSelectionMode;
+  const gigsHistorySelectAllRef = useRef(gigsHistoryBulkManage.toggleSelectAll);
+  gigsHistorySelectAllRef.current = gigsHistoryBulkManage.toggleSelectAll;
+  const gigsHistoryRemoveRef = useRef(gigsHistoryBulkManage.openConfirm);
+  gigsHistoryRemoveRef.current = gigsHistoryBulkManage.openConfirm;
 
   useLayoutEffect(() => {
     if (gigsTabCounts) {
@@ -678,18 +686,47 @@ function BookingsPageContent() {
           showManageButton: showGigsManageButton,
           reserveManageSlot: reserveGigsManageSlot,
           onManageClick: gigsManageClickRef.current,
+          historySelectionMode: gigsHistorySelectionMode,
+          historySelectionSelectedCount: gigsHistoryBulkManage.selectedCount,
+          historySelectionAllSelected: gigsHistoryBulkManage.allSelected,
+          historySelectionRemoving: gigsHistoryBulkManage.removing,
+          historySelectionCanToggleAll: gigsHistorySelectionCanToggleAll,
+          historySelectionCanDelete: gigsHistorySelectionCanDelete,
+          onHistorySelectionCancel: gigsHistoryCancelSelectionRef.current,
+          onHistorySelectionSelectAll: gigsHistorySelectAllRef.current,
+          onHistorySelectionRemove: gigsHistoryRemoveRef.current,
         };
 
     setGigsWorkspaceChromeState((previousState) =>
       gigsWorkspaceChromeStatesEqual(previousState, nextState) ? previousState : nextState,
     );
   }, [
+    gigsHistoryBulkManage.allSelected,
+    gigsHistoryBulkManage.removing,
+    gigsHistoryBulkManage.selectedCount,
+    gigsHistorySelectionCanDelete,
+    gigsHistorySelectionCanToggleAll,
+    gigsHistorySelectionMode,
     plannerCreateVisible,
     reserveGigsManageSlot,
     resolvedGigsTabCounts,
     setGigsWorkspaceChromeState,
     showGigsManageButton,
     showGigsWorkspace,
+  ]);
+
+  useEffect(() => {
+    if (!gigsHistoryBulkManage.selectionMode) {
+      return;
+    }
+
+    if (!isGigsHistoryTab || plannerCreateVisible) {
+      gigsHistoryCancelSelectionRef.current();
+    }
+  }, [
+    gigsHistoryBulkManage.selectionMode,
+    isGigsHistoryTab,
+    plannerCreateVisible,
   ]);
 
   const visibleReceivedBookings = useMemo(
@@ -1642,17 +1679,6 @@ function BookingsPageContent() {
             <p className="mb-4 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated px-4 py-3 text-sm text-ftc-text-secondary">
               {successMessage}
             </p>
-          ) : null}
-
-          {displayedGigsTab === "history" && !plannerCreateVisible && gigsHistoryBulkManage.showSelectionToolbar ? (
-            <HistorySelectionToolbar
-              selectedCount={gigsHistoryBulkManage.selectedCount}
-              allSelected={gigsHistoryBulkManage.allSelected}
-              removing={gigsHistoryBulkManage.removing}
-              onCancel={gigsHistoryBulkManage.cancelSelectionMode}
-              onSelectAll={gigsHistoryBulkManage.selectAll}
-              onRemove={gigsHistoryBulkManage.openConfirm}
-            />
           ) : null}
 
           <HistoryRemoveConfirmDialog

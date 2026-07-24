@@ -121,6 +121,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 - **Gigs History cards (2026-07-15):** `Fixed ·` / `Open offer` fee copy aligned with Incoming/Confirmed; tighter info-to-actions spacing; shorter View event (primary) + Open DM (subdued) buttons
 - **Gigs Confirmed tab (2026-07-19):** received gigs reload after booking acceptance (`ftc-notifications-updated` + tab visibility) so accepted bookings appear in Confirmed without stale client state; gig date keys use shared `resolveEventDateKey` (legacy + ISO); `?tab=confirmed` URL alias maps to Confirmed
 - **Gigs tab row (2026-07-23):** `DjGigsTabs` — Incoming/Confirmed use compact `ftc-gigs-tab-pill` (`0.375rem 0.5rem`, `min-height: 1.875rem`); counts cap at **99+** via `formatGigsTabCountDisplay`, with a fixed **`2.5ch`** right-aligned count slot (always reserved, empty until ready) and label/count gap **`gap-1.5` (~6px)**; **History** reuses **`eventsListTabPillClass`**. **`gigsTabCountsCache`** + **`gigsListSnapshotPrefetch`** (from workspace sub-nav) warm tab counts before first Gigs visit. Workspace **Gigs** sub-nav badge unchanged.
+- **Gigs History delete-selection row (2026-07-24):** bulk-delete toolbar reuses shared `HistorySelectionToolbar` (`tabRowEmbedded`, back/ALL/Delete) inline in `DjGigsTabRow` — History pill + trash swap to toolbar in the same row (`Incoming | Confirmed | ← ALL Delete`); Incoming/Confirmed stay tappable; leaving History (tab or workspace nav) exits selection and clears picks; no second toolbar row or card layout jump
 - **Gigs list loading (2026-07-19):** Incoming/Confirmed/History show `ReceivedBookingsListSkeleton` while the initial gigs fetch runs (toolbar stays visible; no blank list gap); tab switches with cached data skip the skeleton
 - **Gigs tab counts (2026-07-19):** Incoming/Confirmed counts derive from the received-bookings + hidden-id snapshot as soon as those requests complete; sender profile fetch no longer blocks counts; reserved count slots stay stable before numbers appear (no fake zero)
 - **Workspace sub-nav (2026-07-19):** shared `(planner-workspace)` layout keeps Events / Event Plans / Calendar / Gigs tabs mounted across route transitions; loading shells render content only below the persistent tab row; mobile tabs use horizontal scroll + `router.push` (no full reload)
@@ -214,7 +215,8 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
-- `<pending>` — open Gigs Incoming on fresh workspace entry
+- `<pending>` — inline Gigs History delete-selection toolbar in tab row
+- `888b4f2` — open Gigs Incoming on fresh workspace entry
 - `72888d4` — fix Gigs Calendar workspace navigation from calendar
 - `845b91c` — preserve gigs filter counts during loading
 - `29546e8` — Refine Gigs filter tab visual balance
