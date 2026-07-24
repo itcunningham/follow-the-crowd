@@ -214,7 +214,9 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `<pending>` — open Gigs Incoming on fresh workspace entry
 - `72888d4` — fix Gigs Calendar workspace navigation from calendar
+- `845b91c` — preserve gigs filter counts during loading
 - `29546e8` — Refine Gigs filter tab visual balance
 - `f3e5e8b` — preserve workspace gigs badge count during navigation
 - `070e397` — stabilise workspace gigs badge during navigation
