@@ -114,7 +114,6 @@ import {
 import {
   canAccessBookings,
   getCurrentUserId,
-  getBookingRecipientProfilesByIds,
   getCurrentUserProfile,
   getDefaultRouteForRole,
   getRoleLabel,
@@ -152,7 +151,6 @@ import {
   hasGigsTabBookingsCache,
   readGigsListSessionState,
   readGigsTabBookingsCache,
-  writeGigsListSessionSenderProfiles,
   writeGigsListSessionState,
 } from "@/lib/bookings/gigsListTabBookingsCache";
 import { EVENTS_AREA_SUB_NAV } from "@/lib/plannerEventsNav";
@@ -345,7 +343,7 @@ function resolveInitialGigsPageListState(): {
       hiddenBookingIds: memorySnapshot.hiddenBookingIds,
       gigsListReady: true,
       loadingList: false,
-      senderProfiles: new Map(),
+      senderProfiles: memorySnapshot.senderProfiles,
     };
   }
 
@@ -832,41 +830,17 @@ function BookingsPageContent() {
         const hiddenIds = [...snapshot.hiddenBookingIds];
         setReceivedBookings(receivedResult);
         setHiddenBookingIds(new Set(hiddenIds));
+        setSenderProfiles(snapshot.senderProfiles);
         writeGigsTabCountsCache(snapshot.counts);
         writeGigsListSessionState({
           received: receivedResult,
           hiddenBookingIds: snapshot.hiddenBookingIds,
+          senderProfiles: snapshot.senderProfiles,
         });
         setGigsListReady(true);
         setSentBookings([]);
         setSentGroups([]);
         setRecipientProfiles(new Map());
-
-        const senderIds = [...new Set(receivedResult.map((booking) => booking.sender_id))];
-
-        if (senderIds.length > 0) {
-          try {
-            const profiles = await getBookingRecipientProfilesByIds(senderIds);
-            if (loadGeneration !== gigsLoadGenerationRef.current) {
-              return;
-            }
-
-            setSenderProfiles(profiles);
-            writeGigsListSessionSenderProfiles(profiles);
-          } catch (profileError) {
-            if (loadGeneration !== gigsLoadGenerationRef.current) {
-              return;
-            }
-
-            logBookingsLoadError(profileError);
-            console.error("Failed to load gig sender profiles:", profileError);
-            setSenderProfiles(new Map());
-            writeGigsListSessionSenderProfiles(new Map());
-          }
-        } else {
-          setSenderProfiles(new Map());
-          writeGigsListSessionSenderProfiles(new Map());
-        }
       } catch (loadError) {
         if (loadGeneration !== gigsLoadGenerationRef.current) {
           return;

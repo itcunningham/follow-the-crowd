@@ -1116,6 +1116,34 @@ function testGigsTabBookingsCacheForTabSwitching() {
   assert.match(pageSource, /showGigsListSkeleton/);
   assert.match(cacheSource, /writeGigsListSessionState/);
   assert.match(prefetchSource, /writeGigsListSessionState/);
+  assert.match(prefetchSource, /getBookingRecipientProfilesByIds/);
+  assert.match(prefetchSource, /senderProfiles/);
+  assert.match(pageSource, /setSenderProfiles\(snapshot\.senderProfiles\)/);
+  assert.doesNotMatch(pageSource, /setGigsListReady\(true\)[\s\S]*getBookingRecipientProfilesByIds/);
+}
+
+function testGigsPlannerNamesLoadWithBookingCards() {
+  const prefetchSource = readFileSync(
+    new URL("../lib/bookings/gigsListSnapshotPrefetch.ts", import.meta.url),
+    "utf8",
+  );
+  const pageSource = readFileSync(
+    new URL("../app/(planner-workspace)/bookings/page.tsx", import.meta.url),
+    "utf8",
+  );
+  const cacheSource = readFileSync(
+    new URL("../lib/bookings/gigsListTabBookingsCache.ts", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(prefetchSource, /loadGigsSenderProfiles/);
+  assert.match(prefetchSource, /mergeGigsSenderProfiles/);
+  assert.match(cacheSource, /mergeGigsSenderProfiles/);
+  assert.match(pageSource, /memorySnapshot\.senderProfiles/);
+  assert.doesNotMatch(
+    pageSource,
+    /const senderIds = \[\.\.\.new Set\(receivedResult\.map\(\(booking\) => booking\.sender_id\)\)\]/,
+  );
 }
 
 function testGigsListTabPendingOptimisticSelection() {
@@ -2340,6 +2368,7 @@ async function main() {
   testGigsHistoryCardNavigation();
   testIncomingGigsCardDesignSystem();
   testGigsTabBookingsCacheForTabSwitching();
+  testGigsPlannerNamesLoadWithBookingCards();
   testGigsListTabPendingOptimisticSelection();
   testGigsFilterTabCountsPersistDuringLoading();
   testWorkspaceGigsPendingDisplayCountPreservesLastKnown();

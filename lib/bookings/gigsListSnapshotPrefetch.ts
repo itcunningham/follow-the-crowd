@@ -10,15 +10,21 @@ import {
 } from "@/lib/bookings/gigsTabCountsCache";
 import {
   clearGigsListTabBookingsCacheForTests,
+  mergeGigsSenderProfiles,
   writeGigsListSessionState,
 } from "@/lib/bookings/gigsListTabBookingsCache";
 import { canViewGigsSubNav } from "@/lib/plannerEventsNav";
+import {
+  getBookingRecipientProfilesByIds,
+  type BookingRecipientProfile,
+} from "@/lib/user/currentUser";
 import type { UserRole } from "@/lib/user/currentUser";
 
 export type GigsListSnapshot = {
   received: BookingRequest[];
   hiddenBookingIds: ReadonlySet<string>;
   counts: GigsTabCountsSnapshot;
+  senderProfiles: Map<string, BookingRecipientProfile>;
 };
 
 let memorySnapshot: GigsListSnapshot | null = null;
@@ -27,6 +33,7 @@ let inFlightSnapshot: Promise<GigsListSnapshot> | null = null;
 function buildSnapshot(
   received: BookingRequest[],
   hiddenIds: string[],
+  senderProfiles: Map<string, BookingRecipientProfile>,
 ): GigsListSnapshot {
   const hiddenBookingIds = new Set(hiddenIds);
   const counts = countDjGigsByTab(received, hiddenBookingIds);
@@ -35,23 +42,46 @@ function buildSnapshot(
     received,
     hiddenBookingIds,
     counts,
+    senderProfiles,
   };
 
   writeGigsListSessionState({
     received,
     hiddenBookingIds,
+    senderProfiles,
   });
 
   return snapshot;
 }
 
+async function loadGigsSenderProfiles(
+  received: BookingRequest[],
+): Promise<Map<string, BookingRecipientProfile>> {
+  const senderIds = [...new Set(received.map((booking) => booking.sender_id).filter(Boolean))];
+
+  if (senderIds.length === 0) {
+    return mergeGigsSenderProfiles(new Map());
+  }
+
+  try {
+    const freshProfiles = await getBookingRecipientProfilesByIds(senderIds);
+    return mergeGigsSenderProfiles(freshProfiles);
+  } catch (error) {
+    console.error("[gigs-list] Failed to load gig sender profiles:", error);
+    return mergeGigsSenderProfiles(new Map());
+  }
+}
+
 async function fetchGigsListSnapshot(): Promise<GigsListSnapshot> {
-  const [received, hiddenIds] = await Promise.all([
-    listReceivedBookingRequests(),
-    listBookingRequestHistoryHideIds(),
+  const receivedPromise = listReceivedBookingRequests();
+  const hiddenIdsPromise = listBookingRequestHistoryHideIds();
+  const received = await receivedPromise;
+  const [hiddenIds, senderProfiles] = await Promise.all([
+    hiddenIdsPromise,
+    loadGigsSenderProfiles(received),
   ]);
 
-  const snapshot = buildSnapshot(received, hiddenIds);
+  const snapshot = buildSnapshot(received, hiddenIds, senderProfiles);
   memorySnapshot = snapshot;
   writeGigsTabCountsCache(snapshot.counts);
   return snapshot;

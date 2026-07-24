@@ -40,6 +40,10 @@ export function writeGigsListSessionState(options: {
     senderProfiles: options.senderProfiles ?? previousProfiles,
     tabBookings,
   };
+
+  if (options.senderProfiles && options.senderProfiles.size > 0) {
+    seedGigsSenderProfilesMemoryCache(options.senderProfiles);
+  }
 }
 
 export function writeGigsListSessionSenderProfiles(
@@ -53,6 +57,33 @@ export function writeGigsListSessionSenderProfiles(
     ...sessionState,
     senderProfiles,
   };
+}
+
+let memorySenderProfiles = new Map<string, BookingRecipientProfile>();
+
+/** Retains previously loaded planner names across gigs list refreshes. */
+export function mergeGigsSenderProfiles(
+  fresh: Map<string, BookingRecipientProfile>,
+): Map<string, BookingRecipientProfile> {
+  if (fresh.size > 0) {
+    memorySenderProfiles = new Map([...memorySenderProfiles, ...fresh]);
+  }
+
+  return new Map(memorySenderProfiles);
+}
+
+export function seedGigsSenderProfilesMemoryCache(
+  senderProfiles: Map<string, BookingRecipientProfile>,
+): void {
+  if (senderProfiles.size === 0) {
+    return;
+  }
+
+  memorySenderProfiles = new Map([...memorySenderProfiles, ...senderProfiles]);
+}
+
+export function readGigsSenderProfilesMemoryCache(): Map<string, BookingRecipientProfile> {
+  return new Map(memorySenderProfiles);
 }
 
 export function readGigsListSessionState(): GigsListSessionState | null {
@@ -73,4 +104,5 @@ export function hasGigsTabBookingsCache(tab: DjGigsListTab): boolean {
 
 export function clearGigsListTabBookingsCacheForTests(): void {
   sessionState = null;
+  memorySenderProfiles = new Map();
 }
