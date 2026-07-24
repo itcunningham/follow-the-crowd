@@ -104,11 +104,7 @@ export const GIGS_TAB_PILL_ROW_CLASS = "flex shrink-0 flex-nowrap items-center g
 
 /** Gigs filter row — matches planner secondary controls with nowrap for 390px. */
 export const GIGS_LIST_TAB_ROW_CLASS =
-  "flex min-h-[1.875rem] flex-nowrap items-center justify-between gap-2 md:min-h-[2.375rem]";
-
-/** Invisible slot reserved while History manage action is loading or empty. */
-export const GIGS_MANAGE_BUTTON_PLACEHOLDER_CLASS =
-  "inline-flex h-9 w-9 shrink-0 invisible pointer-events-none";
+  "flex h-[1.875rem] max-h-[1.875rem] min-h-[1.875rem] w-full flex-nowrap items-center justify-between gap-2 md:h-[2.375rem] md:max-h-[2.375rem] md:min-h-[2.375rem]";
 
 /** Events list tab row — trash action matches filter pill height (30px). */
 export const FTC_EVENTS_LIST_TAB_ACTION_CLASS =
@@ -117,6 +113,12 @@ export const FTC_EVENTS_LIST_TAB_ACTION_CLASS =
 /** Invisible slot reserved on Active so History trash does not shift layout. */
 export const FTC_EVENTS_LIST_TAB_ACTION_PLACEHOLDER_CLASS =
   "inline-flex h-[1.875rem] w-[1.875rem] shrink-0 invisible pointer-events-none";
+
+/** Gigs list tab row — manage action matches tab row height (30px). */
+export const GIGS_LIST_TAB_ACTION_CLASS = FTC_EVENTS_LIST_TAB_ACTION_CLASS;
+
+/** Invisible slot reserved on Incoming/Confirmed so History manage action does not shift layout. */
+export const GIGS_MANAGE_BUTTON_PLACEHOLDER_CLASS = FTC_EVENTS_LIST_TAB_ACTION_PLACEHOLDER_CLASS;
 
 /** Events Active/History tab row — fixed height; filters left, page actions right (`w-full`). */
 export const EVENTS_LIST_TAB_ROW_CLASS =

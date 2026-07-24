@@ -43,7 +43,7 @@ export type GigsWorkspaceChromeState = {
 export const defaultGigsWorkspaceChromeState: GigsWorkspaceChromeState = {
   counts: null,
   showManageButton: false,
-  reserveManageSlot: false,
+  reserveManageSlot: true,
   onManageClick: undefined,
 };
 
@@ -194,10 +194,7 @@ function GigsWorkspaceSecondaryBandBody({
 }) {
   const chromeState = useGigsWorkspaceChromeState();
   const showGigsTabs = !plannerBookingCreateOpen && canShowGigsWorkspaceTabs(role);
-  const reserveManageSlot =
-    activeView === "history" &&
-    !chromeState.showManageButton &&
-    (chromeState.onManageClick == null || chromeState.reserveManageSlot);
+  const reserveManageSlot = !chromeState.showManageButton && chromeState.reserveManageSlot;
 
   if (!showGigsTabs) {
     return <PlannerWorkspaceSecondaryControlsPlaceholder />;

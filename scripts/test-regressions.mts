@@ -928,7 +928,9 @@ function testPlannerWorkspaceSecondaryRowRhythm() {
   assert.match(EVENTS_LIST_TAB_ROW_CLASS, /md:h-\[2\.375rem\]/);
   assert.match(EVENTS_LIST_TAB_ROW_CLASS, /max-h-\[1\.875rem\]/);
   assert.match(EVENTS_LIST_TAB_ROW_CLASS, /\bw-full\b/);
-  assert.match(GIGS_LIST_TAB_ROW_CLASS, /md:min-h-\[2\.375rem\]/);
+  assert.match(GIGS_LIST_TAB_ROW_CLASS, /md:h-\[2\.375rem\]/);
+  assert.match(GIGS_LIST_TAB_ROW_CLASS, /max-h-\[1\.875rem\]/);
+  assert.match(GIGS_LIST_TAB_ROW_CLASS, /\bw-full\b/);
 
   const layoutSource = readFileSync(
     new URL("../app/components/planner/PlannerWorkspaceLayout.tsx", import.meta.url),
@@ -2280,6 +2282,40 @@ function testCalendarWorkspaceClearsStaleWorkspaceIntercept() {
   assert.equal(isCalendarWorkspacePath("/events"), false);
 }
 
+function testGigsTabRowReservesManageSlotOnAllTabs() {
+  const pageSource = readFileSync(
+    new URL("../app/(planner-workspace)/bookings/page.tsx", import.meta.url),
+    "utf8",
+  );
+  const gigsChromeSource = readFileSync(
+    new URL("../app/components/bookings/GigsWorkspaceChrome.tsx", import.meta.url),
+    "utf8",
+  );
+  const skeletonSource = readFileSync(
+    new URL("../app/components/skeleton/Skeleton.tsx", import.meta.url),
+    "utf8",
+  );
+  const designSource = readFileSync(
+    new URL("../lib/design/ftcDesignSystem.ts", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(pageSource, /const reserveGigsManageSlot = !showGigsManageButton;/);
+  assert.doesNotMatch(pageSource, /isGigsHistoryTab && !gigsHistoryBulkManage\.selectionMode && !showGigsManageButton/);
+  assert.match(gigsChromeSource, /reserveManageSlot: true/);
+  assert.doesNotMatch(
+    gigsChromeSource,
+    /activeView === "history" &&[\s\S]*reserveManageSlot/,
+  );
+  const djGigsTabRowSource = skeletonSource.slice(
+    skeletonSource.indexOf("export function DjGigsTabRow"),
+    skeletonSource.indexOf("export function EventsCalendarCreateLoadingShell"),
+  );
+  assert.match(djGigsTabRowSource, /GIGS_LIST_TAB_ACTION_CLASS/);
+  assert.match(djGigsTabRowSource, /GIGS_MANAGE_BUTTON_PLACEHOLDER_CLASS/);
+  assert.match(designSource, /GIGS_MANAGE_BUTTON_PLACEHOLDER_CLASS = FTC_EVENTS_LIST_TAB_ACTION_PLACEHOLDER_CLASS/);
+}
+
 function testGigsWorkspaceChromeStateSyncAvoidsNoOpUpdates() {
   const counts = { pending: 2, accepted: 1, history: 0 };
 
@@ -2496,6 +2532,7 @@ async function main() {
   testGigsEventDetailReturnPreservesTab();
   testWorkspaceGigsTabOpensIncomingWithoutEventsQuery();
   testCalendarWorkspaceClearsStaleWorkspaceIntercept();
+  testGigsTabRowReservesManageSlotOnAllTabs();
   testGigsWorkspaceChromeStateSyncAvoidsNoOpUpdates();
   testBookingsRouteMountsPersistentGigsSecondaryBand();
   testWorkspaceSubNavLayoutIsStable();

@@ -675,8 +675,7 @@ function BookingsPageContent() {
     !loadingList &&
     gigsHistoryBulkManage.showManageControl &&
     !gigsHistoryBulkManage.selectionMode;
-  const reserveGigsManageSlot =
-    isGigsHistoryTab && !gigsHistoryBulkManage.selectionMode && !showGigsManageButton;
+  const reserveGigsManageSlot = !showGigsManageButton;
 
   const setGigsWorkspaceChromeState = useSetGigsWorkspaceChromeState();
   const gigsManageClickRef = useRef(gigsHistoryBulkManage.enterSelectionMode);

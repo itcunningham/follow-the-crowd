@@ -29,6 +29,7 @@ import {
   EVENT_PLANS_CREATE_BUTTON_CLASS,
   FTC_EVENTS_LIST_TAB_ACTION_CLASS,
   FTC_EVENTS_LIST_TAB_ACTION_PLACEHOLDER_CLASS,
+  GIGS_LIST_TAB_ACTION_CLASS,
   GIGS_LIST_TAB_ROW_CLASS,
   GIGS_MANAGE_BUTTON_PLACEHOLDER_CLASS,
   FTC_LIST_GAP_CLASS,
@@ -374,12 +375,17 @@ export function DjGigsTabRow({
 }) {
   return (
     <div className={GIGS_LIST_TAB_ROW_CLASS}>
-      {children}
-      {showManageButton ? (
-        <HistoryManageButton onClick={onManageClick ?? (() => undefined)} />
-      ) : reserveManageSlot ? (
-        <span aria-hidden="true" className={GIGS_MANAGE_BUTTON_PLACEHOLDER_CLASS} />
-      ) : null}
+      <div className="flex shrink-0 items-center">{children}</div>
+      <div className="flex shrink-0 items-center justify-end">
+        {showManageButton ? (
+          <HistoryManageButton
+            onClick={onManageClick ?? (() => undefined)}
+            className={GIGS_LIST_TAB_ACTION_CLASS}
+          />
+        ) : reserveManageSlot ? (
+          <span aria-hidden="true" className={GIGS_MANAGE_BUTTON_PLACEHOLDER_CLASS} />
+        ) : null}
+      </div>
     </div>
   );
 }
