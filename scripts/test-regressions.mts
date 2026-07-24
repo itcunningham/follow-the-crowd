@@ -2166,6 +2166,46 @@ function testGigsInnerTabSelectionFollowsRouteImmediately() {
     }),
     "accepted",
   );
+  assert.equal(
+    resolveGigsListTabForBookingsPage({
+      nextPathname: "/bookings",
+      searchParamsTab: null,
+      locationPathname: "/bookings",
+      locationSearch: "?tab=accepted",
+    }),
+    "accepted",
+  );
+  assert.equal(
+    resolveGigsListTabForBookingsPage({
+      nextPathname: "/bookings",
+      searchParamsTab: "pending",
+      locationPathname: "/bookings",
+      locationSearch: "?tab=accepted",
+    }),
+    "accepted",
+  );
+}
+
+function testGigsEventDetailReturnPreservesTab() {
+  const pageSource = readFileSync(
+    new URL("../app/(planner-workspace)/bookings/page.tsx", import.meta.url),
+    "utf8",
+  );
+  const chromeSource = readFileSync(
+    new URL("../app/components/bookings/GigsWorkspaceChrome.tsx", import.meta.url),
+    "utf8",
+  );
+  const navigationSource = readFileSync(
+    new URL("../lib/bookings/gigsListNavigation.ts", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(navigationSource, /ensureGigsListTabInBrowserHistory/);
+  assert.match(navigationSource, /window\.history\.replaceState/);
+  assert.match(pageSource, /ensureGigsListTabInBrowserHistory\(gigsTab\)/);
+  assert.match(pageSource, /searchParamsTab: null/);
+  assert.match(chromeSource, /searchParamsTab: null/);
+  assert.match(pageSource, /setLocationRevision\(\(current\) => current \+ 1\)/);
 }
 
 function testWorkspaceGigsTabOpensIncomingWithoutEventsQuery() {
@@ -2451,6 +2491,7 @@ async function main() {
   testEventsRouteLoadingIsListAreaOnly();
   testGigsTabCountsDeriveFromSameBookingSnapshot();
   testGigsInnerTabSelectionFollowsRouteImmediately();
+  testGigsEventDetailReturnPreservesTab();
   testWorkspaceGigsTabOpensIncomingWithoutEventsQuery();
   testCalendarWorkspaceClearsStaleWorkspaceIntercept();
   testGigsWorkspaceChromeStateSyncAvoidsNoOpUpdates();

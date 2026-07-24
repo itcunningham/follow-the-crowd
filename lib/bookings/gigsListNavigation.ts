@@ -65,9 +65,21 @@ export function resolveGigsListTabForBookingsPage(options: {
   const locationOnBookings =
     locationPathname != null && isBookingsGigsListPathname(locationPathname);
 
-  // Cross-workspace: Next on /bookings while the browser URL is still another workspace route.
+  // Cross-workspace: browser still on another workspace route.
   if (locationPathname != null && !locationOnBookings) {
     return "pending";
+  }
+
+  if (locationOnBookings && options.locationSearch != null) {
+    const locationTabParam = new URLSearchParams(
+      options.locationSearch.startsWith("?")
+        ? options.locationSearch.slice(1)
+        : options.locationSearch,
+    ).get("tab");
+
+    if (locationTabParam != null) {
+      return parseDjGigsListTab(locationTabParam);
+    }
   }
 
   // In-app Gigs tab switches — Next searchParams can lead window.location.search on client nav.
@@ -75,11 +87,30 @@ export function resolveGigsListTabForBookingsPage(options: {
     return parseDjGigsListTab(options.searchParamsTab);
   }
 
-  if (locationOnBookings && options.locationSearch) {
+  if (locationOnBookings && options.locationSearch != null) {
     return resolveGigsListTabParam(null, null, options.locationSearch);
   }
 
   return "pending";
+}
+
+/** Ensures browser Back from Event Details returns to the active Gigs sub-tab. */
+export function ensureGigsListTabInBrowserHistory(tab: DjGigsListTab): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  if (!isBookingsGigsListPathname(window.location.pathname)) {
+    return;
+  }
+
+  const currentTab = resolveGigsListTabParam(null, null, window.location.search);
+
+  if (currentTab === tab) {
+    return;
+  }
+
+  window.history.replaceState(window.history.state, "", buildGigsListHref(tab));
 }
 
 /** Top workspace Gigs tab: Incoming with no inherited Events query params. */

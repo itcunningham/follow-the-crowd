@@ -131,6 +131,7 @@ import {
   buildGigsEventDetailHref,
   buildGigsListHref,
   buildGigsWorkspaceIncomingHref,
+  ensureGigsListTabInBrowserHistory,
   resolveGigsListTabForBookingsPage,
 } from "@/lib/bookings/gigsListNavigation";
 import {
@@ -392,16 +393,23 @@ function BookingsPageContent() {
   const [plannerHistorySubView, setPlannerHistorySubView] =
     useState<PlannerHistorySubView>("cancelled");
   const [locationRevision, setLocationRevision] = useState(0);
-  const djGigsView = useMemo(
-    () =>
-      resolveGigsListTabForBookingsPage({
+  const djGigsView = useMemo(() => {
+    if (typeof window === "undefined") {
+      return resolveGigsListTabForBookingsPage({
         nextPathname: pathname,
         searchParamsTab: searchParams.get("tab"),
-        locationPathname: typeof window === "undefined" ? null : window.location.pathname,
-        locationSearch: typeof window === "undefined" ? null : window.location.search,
-      }),
-    [pathname, searchParams, locationRevision],
-  );
+        locationPathname: null,
+        locationSearch: null,
+      });
+    }
+
+    return resolveGigsListTabForBookingsPage({
+      nextPathname: pathname,
+      searchParamsTab: null,
+      locationPathname: window.location.pathname,
+      locationSearch: window.location.search,
+    });
+  }, [pathname, searchParams, locationRevision]);
   const displayedGigsTab = useDisplayedGigsListTab(djGigsView);
   const [djAvailabilityHints, setDjAvailabilityHints] = useState<
     Map<string, DjPlannerAvailabilityHint>
@@ -767,6 +775,10 @@ function BookingsPageContent() {
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
   }, []);
+
+  useEffect(() => {
+    setLocationRevision((current) => current + 1);
+  }, [searchParams]);
 
   useEffect(() => {
     if (guardProfile?.role) {
@@ -2549,6 +2561,9 @@ function ReceivedBookingCard({
         <Link
           href={eventHref}
           className={`${GIG_CARD_CLASS_NAME} block w-full min-w-0 focus-visible:outline-none`}
+          onClick={() => {
+            ensureGigsListTabInBrowserHistory(gigsTab);
+          }}
         >
           {cardBody}
         </Link>
@@ -2676,6 +2691,9 @@ function BookingHistoryCard({
           href={eventHref}
           aria-label={`View ${booking.event_name}`}
           className="absolute inset-0 z-0 rounded-[inherit] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ftc-primary/35"
+          onClick={() => {
+            ensureGigsListTabInBrowserHistory(gigsTab ?? "history");
+          }}
         />
       ) : null}
       <div className={selectionMode ? "pointer-events-none" : "relative z-[1] pointer-events-none"}>

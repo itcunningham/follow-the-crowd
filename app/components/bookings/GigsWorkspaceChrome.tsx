@@ -4,6 +4,7 @@ import {
   createContext,
   useContext,
   useEffect,
+  useMemo,
   useState,
   useSyncExternalStore,
   type Dispatch,
@@ -253,6 +254,7 @@ export function GigsWorkspaceSecondaryBand({
 } = {}) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const [locationRevision, setLocationRevision] = useState(0);
   const role = roleProp ?? readCachedNavRole();
   const plannerBookingCreateOpen =
     plannerBookingCreateOpenProp ??
@@ -264,12 +266,37 @@ export function GigsWorkspaceSecondaryBand({
             : ""
           : window.location.search,
     });
-  const routeActiveView = resolveGigsListTabForBookingsPage({
-    nextPathname: pathname,
-    searchParamsTab: searchParams.get("tab"),
-    locationPathname: typeof window === "undefined" ? null : window.location.pathname,
-    locationSearch: typeof window === "undefined" ? null : window.location.search,
-  });
+
+  useEffect(() => {
+    function handlePopState() {
+      setLocationRevision((current) => current + 1);
+    }
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
+
+  useEffect(() => {
+    setLocationRevision((current) => current + 1);
+  }, [searchParams]);
+
+  const routeActiveView = useMemo(() => {
+    if (typeof window === "undefined") {
+      return resolveGigsListTabForBookingsPage({
+        nextPathname: pathname,
+        searchParamsTab: searchParams.get("tab"),
+        locationPathname: null,
+        locationSearch: null,
+      });
+    }
+
+    return resolveGigsListTabForBookingsPage({
+      nextPathname: pathname,
+      searchParamsTab: null,
+      locationPathname: window.location.pathname,
+      locationSearch: window.location.search,
+    });
+  }, [pathname, searchParams, locationRevision]);
   const activeView = useDisplayedGigsListTab(routeActiveView);
 
   return (
