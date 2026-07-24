@@ -3,8 +3,10 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useRef, type ReactNode } from "react";
+import { clearGigsListTabPending } from "@/lib/bookings/gigsListTabPending";
 import {
   buildWorkspaceSubNavDestinationHref,
+  EVENTS_AREA_SUB_NAV,
   isCalendarWorkspacePath,
 } from "@/lib/plannerEventsNav";
 
@@ -47,9 +49,14 @@ export default function PlannerWorkspaceSubNavLink({
       }
 
       navigatedThisGestureRef.current = true;
+
+      if (href === EVENTS_AREA_SUB_NAV.gigs.href) {
+        clearGigsListTabPending();
+      }
+
       router.push(destinationHref, { scroll: false });
     },
-    [destinationHref, interceptNavigate, isActive, router],
+    [destinationHref, href, interceptNavigate, isActive, router],
   );
 
   const handlePointerDown = useCallback(
@@ -114,6 +121,9 @@ export default function PlannerWorkspaceSubNavLink({
   const handleClick = useCallback(
     (event: React.MouseEvent<HTMLAnchorElement>) => {
       if (leaveCalendarViaNativeLink && !isActive) {
+        if (href === EVENTS_AREA_SUB_NAV.gigs.href) {
+          clearGigsListTabPending();
+        }
         return;
       }
 

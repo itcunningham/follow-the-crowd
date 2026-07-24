@@ -25,6 +25,11 @@ export function publishGigsListTabPending(tab: DjGigsListTab | null): void {
 export function syncGigsListTabPendingWithRoute(routeTab: DjGigsListTab): void {
   if (pendingGigsListTab != null && pendingGigsListTab === routeTab) {
     publishGigsListTabPending(null);
+    return;
+  }
+
+  if (routeTab === "pending" && pendingGigsListTab != null && pendingGigsListTab !== "pending") {
+    publishGigsListTabPending(null);
   }
 }
 
@@ -33,5 +38,9 @@ export function clearGigsListTabPending(): void {
 }
 
 export function resolveDisplayedGigsListTab(routeTab: DjGigsListTab): DjGigsListTab {
+  if (routeTab === "pending" && pendingGigsListTab != null && pendingGigsListTab !== "pending") {
+    return "pending";
+  }
+
   return pendingGigsListTab ?? routeTab;
 }

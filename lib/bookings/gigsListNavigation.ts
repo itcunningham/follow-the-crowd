@@ -46,10 +46,22 @@ export function resolveGigsListTabParam(
   return parseDjGigsListTab(initialTab);
 }
 
+function isBookingsContextualReturnLocation(
+  locationPathname: string,
+  locationSearch: string | null | undefined,
+): boolean {
+  const params = new URLSearchParams(
+    locationSearch?.startsWith("?") ? locationSearch.slice(1) : (locationSearch ?? ""),
+  );
+
+  return params.get("from") === "bookings";
+}
+
 /**
  * Gigs list tab for /bookings — never inherit Events (or other workspace) `?tab=`.
- * During cross-workspace navigation, Next pathname can be /bookings while the browser
- * URL is still /events?tab=history; ignore tab until the browser is on /bookings.
+ * Browser URL on /bookings is authoritative. During cross-workspace navigation, only
+ * trust Next searchParams when the browser is still on a bookings contextual return
+ * screen (Event Details / DM with `from=bookings`).
  */
 export function resolveGigsListTabForBookingsPage(options: {
   nextPathname: string;
@@ -65,30 +77,23 @@ export function resolveGigsListTabForBookingsPage(options: {
   const locationOnBookings =
     locationPathname != null && isBookingsGigsListPathname(locationPathname);
 
-  // In-app navigation to /bookings?tab=… can update Next searchParams before window.location.
-  if (options.searchParamsTab != null) {
-    return parseDjGigsListTab(options.searchParamsTab);
+  if (locationOnBookings) {
+    return resolveGigsListTabParam(null, null, options.locationSearch ?? "");
   }
 
-  if (locationOnBookings && options.locationSearch != null) {
-    const locationTabParam = new URLSearchParams(
-      options.locationSearch.startsWith("?")
-        ? options.locationSearch.slice(1)
-        : options.locationSearch,
-    ).get("tab");
-
-    if (locationTabParam != null) {
-      return parseDjGigsListTab(locationTabParam);
-    }
-  }
-
-  // Cross-workspace: Next on /bookings while the browser URL is still another workspace route.
   if (locationPathname != null && !locationOnBookings) {
+    if (
+      options.searchParamsTab != null &&
+      isBookingsContextualReturnLocation(locationPathname, options.locationSearch)
+    ) {
+      return parseDjGigsListTab(options.searchParamsTab);
+    }
+
     return "pending";
   }
 
-  if (locationOnBookings && options.locationSearch != null) {
-    return resolveGigsListTabParam(null, null, options.locationSearch);
+  if (options.searchParamsTab != null) {
+    return parseDjGigsListTab(options.searchParamsTab);
   }
 
   return "pending";

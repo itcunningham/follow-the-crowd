@@ -1216,6 +1216,42 @@ function testGigsListTabPendingOptimisticSelection() {
   assert.match(chromeSource, /syncGigsListTabPendingWithRoute/);
   assert.match(chromeSource, /clearGigsListTabPending/);
   assert.match(pendingSource, /resolveDisplayedGigsListTab/);
+  assert.match(pendingSource, /routeTab === "pending" && pendingGigsListTab != null/);
+}
+
+function testGigsFreshWorkspaceEntryOpensIncoming() {
+  const subNavLinkSource = readFileSync(
+    new URL("../app/components/planner/PlannerWorkspaceSubNavLink.tsx", import.meta.url),
+    "utf8",
+  );
+  const navigationSource = readFileSync(
+    new URL("../lib/bookings/gigsListNavigation.ts", import.meta.url),
+    "utf8",
+  );
+
+  assert.equal(buildGigsWorkspaceIncomingHref(), "/bookings");
+  assert.match(navigationSource, /isBookingsContextualReturnLocation/);
+  assert.match(subNavLinkSource, /clearGigsListTabPending\(\)/);
+  assert.match(subNavLinkSource, /href === EVENTS_AREA_SUB_NAV\.gigs\.href/);
+
+  assert.equal(
+    resolveGigsListTabForBookingsPage({
+      nextPathname: "/bookings",
+      searchParamsTab: "history",
+      locationPathname: "/calendar",
+      locationSearch: "?view=dj",
+    }),
+    "pending",
+  );
+  assert.equal(
+    resolveGigsListTabForBookingsPage({
+      nextPathname: "/bookings",
+      searchParamsTab: "history",
+      locationPathname: "/booking-plans",
+      locationSearch: "",
+    }),
+    "pending",
+  );
 }
 
 function testGigsFilterTabCountsPersistDuringLoading() {
@@ -2132,7 +2168,25 @@ function testGigsInnerTabSelectionFollowsRouteImmediately() {
       locationPathname: "/events",
       locationSearch: "?tab=history",
     }),
+    "pending",
+  );
+  assert.equal(
+    resolveGigsListTabForBookingsPage({
+      nextPathname: "/bookings",
+      searchParamsTab: "history",
+      locationPathname: "/events/event-123",
+      locationSearch: "?from=bookings&tab=history",
+    }),
     "history",
+  );
+  assert.equal(
+    resolveGigsListTabForBookingsPage({
+      nextPathname: "/bookings",
+      searchParamsTab: "accepted",
+      locationPathname: "/dm/conversation-1",
+      locationSearch: "?from=bookings&tab=accepted&bookingRequestId=br-1",
+    }),
+    "accepted",
   );
   assert.equal(
     resolveGigsListTabForBookingsPage({
@@ -2150,7 +2204,7 @@ function testGigsInnerTabSelectionFollowsRouteImmediately() {
       locationPathname: "/bookings",
       locationSearch: "",
     }),
-    "history",
+    "pending",
   );
   assert.equal(
     resolveGigsListTabForBookingsPage({
@@ -2159,7 +2213,7 @@ function testGigsInnerTabSelectionFollowsRouteImmediately() {
       locationPathname: "/bookings",
       locationSearch: "",
     }),
-    "accepted",
+    "pending",
   );
   assert.equal(
     resolveGigsListTabForBookingsPage({
@@ -2195,7 +2249,7 @@ function testGigsInnerTabSelectionFollowsRouteImmediately() {
       locationPathname: "/bookings",
       locationSearch: "?tab=accepted",
     }),
-    "pending",
+    "accepted",
   );
 }
 
@@ -2541,6 +2595,7 @@ async function main() {
   testIncomingGigsCardDetailsNavigation();
   testGigsIncomingEventArtwork();
   testGigsListTabPendingOptimisticSelection();
+  testGigsFreshWorkspaceEntryOpensIncoming();
   testGigsFilterTabCountsPersistDuringLoading();
   testWorkspaceGigsPendingDisplayCountPreservesLastKnown();
   testWorkspaceGigsSubNavCountSurvivesStaleRuntimeZero();
