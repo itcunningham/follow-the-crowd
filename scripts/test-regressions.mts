@@ -70,6 +70,7 @@ import { resolvePlannerHistoryHideEventIds } from "../lib/events";
 import {
   INLINE_TAB_FEEDBACK_CLEAR_MS,
   INLINE_TAB_FEEDBACK_FADE_MS,
+  formatGigsHistoryRemoveSuccessMessage,
 } from "../lib/design/inlineTabFeedback";
 import {
   defaultGigsWorkspaceChromeState,
@@ -1047,7 +1048,8 @@ function testGigsTabRowKeepsStableCountSlots() {
   assert.match(GIGS_TAB_COUNT_SLOT_CLASS, /ftc-gigs-tab-count-slot/);
   assert.doesNotMatch(GIGS_TAB_COUNT_SLOT_CLASS, /w-\[2\.25ch\]/);
   assert.match(GIGS_LIST_TAB_ROW_CLASS, /flex-nowrap/);
-  assert.match(GIGS_LIST_TAB_ROW_CLASS, /justify-between/);
+  assert.match(GIGS_LIST_TAB_ROW_CLASS, /gap-2/);
+  assert.doesNotMatch(GIGS_LIST_TAB_ROW_CLASS, /justify-between/);
   assert.doesNotMatch(GIGS_LIST_TAB_ROW_CLASS, /flex-wrap/);
 }
 
@@ -2441,6 +2443,57 @@ function testGigsHistorySelectionToolbarEmbeddedInTabRow() {
   assert.match(tabsSource, /hideHistoryTab/);
 }
 
+function testGigsHistoryInlineFeedbackMatchesEventsHistory() {
+  const pageSource = readFileSync(
+    new URL("../app/(planner-workspace)/bookings/page.tsx", import.meta.url),
+    "utf8",
+  );
+  const chromeSource = readFileSync(
+    new URL("../app/components/bookings/GigsWorkspaceChrome.tsx", import.meta.url),
+    "utf8",
+  );
+  const skeletonSource = readFileSync(
+    new URL("../app/components/skeleton/Skeleton.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.equal(formatGigsHistoryRemoveSuccessMessage(1), "1 gig removed from history");
+  assert.equal(formatGigsHistoryRemoveSuccessMessage(3), "3 gigs removed from history");
+  assert.match(pageSource, /useInlineTabFeedbackDismiss/);
+  assert.match(pageSource, /formatGigsHistoryRemoveSuccessMessage/);
+  assert.match(pageSource, /historyFeedbackMessage:/);
+  assert.match(pageSource, /historyFeedbackFading: gigsHistoryFeedbackFading/);
+  assert.match(pageSource, /setGigsHistorySuccessMessage/);
+  assert.doesNotMatch(pageSource, /gig\$\{successes\.length === 1 \? "" : "s"\} removed from history\./);
+  assert.match(chromeSource, /historyFeedbackMessage=\{chromeState\.historyFeedbackMessage\}/);
+  assert.match(chromeSource, /feedbackMessage=\{historyFeedbackMessage\}/);
+  assert.match(skeletonSource, /EVENTS_LIST_TAB_FEEDBACK_CLASS/);
+  assert.match(skeletonSource, /min-w-0 flex-1 overflow-hidden/);
+}
+
+function testGigsListTabSwitchUsesClientHistoryWithoutRouterNavigation() {
+  const tabsSource = readFileSync(
+    new URL("../app/components/bookings/DjGigsTabs.tsx", import.meta.url),
+    "utf8",
+  );
+  const pendingSource = readFileSync(
+    new URL("../lib/bookings/gigsListTabPending.ts", import.meta.url),
+    "utf8",
+  );
+  const chromeSource = readFileSync(
+    new URL("../app/components/bookings/GigsWorkspaceChrome.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(tabsSource, /event\.preventDefault\(\)/);
+  assert.match(tabsSource, /window\.history\.pushState\(window\.history\.state, "", href\)/);
+  assert.match(tabsSource, /bumpGigsListRouteRevision\(\)/);
+  assert.match(pendingSource, /export function bumpGigsListRouteRevision/);
+  assert.match(chromeSource, /subscribeGigsListRouteRevision/);
+  assert.match(chromeSource, /readGigsListRouteRevision/);
+  assert.doesNotMatch(chromeSource, /setLocationRevision/);
+}
+
 function testGigsWorkspaceChromeStateSyncAvoidsNoOpUpdates() {
   const counts = { pending: 2, accepted: 1, history: 0 };
 
@@ -2661,6 +2714,8 @@ async function main() {
   testCalendarWorkspaceClearsStaleWorkspaceIntercept();
   testGigsTabRowReservesManageSlotOnAllTabs();
   testGigsHistorySelectionToolbarEmbeddedInTabRow();
+  testGigsHistoryInlineFeedbackMatchesEventsHistory();
+  testGigsListTabSwitchUsesClientHistoryWithoutRouterNavigation();
   testGigsWorkspaceChromeStateSyncAvoidsNoOpUpdates();
   testBookingsRouteMountsPersistentGigsSecondaryBand();
   testWorkspaceSubNavLayoutIsStable();

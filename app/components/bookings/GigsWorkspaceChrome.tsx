@@ -27,6 +27,9 @@ import {
   resolveDisplayedGigsListTab,
   subscribeGigsListTabPending,
   syncGigsListTabPendingWithRoute,
+  bumpGigsListRouteRevision,
+  readGigsListRouteRevision,
+  subscribeGigsListRouteRevision,
 } from "@/lib/bookings/gigsListTabPending";
 import { readGigsTabCountsCache } from "@/lib/bookings/gigsTabCountsCache";
 import { isPlannerBookingsCreateChromeActive } from "@/lib/bookings/planDeepLink";
@@ -48,6 +51,8 @@ export type GigsWorkspaceChromeState = {
   onHistorySelectionCancel?: () => void;
   onHistorySelectionSelectAll?: () => void;
   onHistorySelectionRemove?: () => void;
+  historyFeedbackMessage: string | null;
+  historyFeedbackFading: boolean;
 };
 
 export const defaultGigsWorkspaceChromeState: GigsWorkspaceChromeState = {
@@ -64,6 +69,8 @@ export const defaultGigsWorkspaceChromeState: GigsWorkspaceChromeState = {
   onHistorySelectionCancel: undefined,
   onHistorySelectionSelectAll: undefined,
   onHistorySelectionRemove: undefined,
+  historyFeedbackMessage: null,
+  historyFeedbackFading: false,
 };
 
 const GigsWorkspaceChromeDispatchContext =
@@ -92,7 +99,9 @@ export function gigsWorkspaceChromeStatesEqual(
     left.historySelectionCanDelete !== right.historySelectionCanDelete ||
     left.onHistorySelectionCancel !== right.onHistorySelectionCancel ||
     left.onHistorySelectionSelectAll !== right.onHistorySelectionSelectAll ||
-    left.onHistorySelectionRemove !== right.onHistorySelectionRemove
+    left.onHistorySelectionRemove !== right.onHistorySelectionRemove ||
+    left.historyFeedbackMessage !== right.historyFeedbackMessage ||
+    left.historyFeedbackFading !== right.historyFeedbackFading
   ) {
     return false;
   }
@@ -166,6 +175,8 @@ export function GigsWorkspaceTabRow({
   onHistorySelectionCancel,
   onHistorySelectionSelectAll,
   onHistorySelectionRemove,
+  historyFeedbackMessage = null,
+  historyFeedbackFading = false,
 }: {
   activeView: DjGigsListTab;
   counts: Record<DjGigsListTab, number> | null;
@@ -181,6 +192,8 @@ export function GigsWorkspaceTabRow({
   onHistorySelectionCancel?: () => void;
   onHistorySelectionSelectAll?: () => void;
   onHistorySelectionRemove?: () => void;
+  historyFeedbackMessage?: string | null;
+  historyFeedbackFading?: boolean;
 }) {
   const historySelectionToolbar =
     historySelectionMode &&
@@ -213,6 +226,8 @@ export function GigsWorkspaceTabRow({
       onManageClick={onManageClick}
       selectionMode={historySelectionMode}
       selectionToolbar={historySelectionToolbar}
+      feedbackMessage={historyFeedbackMessage}
+      feedbackFading={historyFeedbackFading}
     >
       <DjGigsTabs
         activeView={activeView}
@@ -240,11 +255,15 @@ function resolveBookingsGigsActiveViewFromWindow(): DjGigsListTab {
 export function useGigsListRouteTab(): DjGigsListTab {
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const [locationRevision, setLocationRevision] = useState(0);
+  const routeRevision = useSyncExternalStore(
+    subscribeGigsListRouteRevision,
+    readGigsListRouteRevision,
+    () => 0,
+  );
 
   useLayoutEffect(() => {
     function handlePopState() {
-      setLocationRevision((current) => current + 1);
+      bumpGigsListRouteRevision();
     }
 
     window.addEventListener("popstate", handlePopState);
@@ -252,7 +271,7 @@ export function useGigsListRouteTab(): DjGigsListTab {
   }, []);
 
   useLayoutEffect(() => {
-    setLocationRevision((current) => current + 1);
+    bumpGigsListRouteRevision();
   }, [searchParams]);
 
   return useMemo(
@@ -263,7 +282,7 @@ export function useGigsListRouteTab(): DjGigsListTab {
         locationPathname: typeof window === "undefined" ? null : window.location.pathname,
         locationSearch: typeof window === "undefined" ? null : window.location.search,
       }),
-    [pathname, searchParams, locationRevision],
+    [pathname, searchParams, routeRevision],
   );
 }
 
@@ -324,6 +343,8 @@ function GigsWorkspaceSecondaryBandBody({
         onHistorySelectionCancel={chromeState.onHistorySelectionCancel}
         onHistorySelectionSelectAll={chromeState.onHistorySelectionSelectAll}
         onHistorySelectionRemove={chromeState.onHistorySelectionRemove}
+        historyFeedbackMessage={chromeState.historyFeedbackMessage}
+        historyFeedbackFading={chromeState.historyFeedbackFading}
       />
     </PlannerWorkspaceSecondaryControls>
   );

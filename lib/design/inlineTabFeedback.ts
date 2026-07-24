@@ -4,6 +4,10 @@ import { useEffect, useState } from "react";
 export const INLINE_TAB_FEEDBACK_FADE_MS = 2700;
 export const INLINE_TAB_FEEDBACK_CLEAR_MS = 3000;
 
+export function formatGigsHistoryRemoveSuccessMessage(count: number): string {
+  return `${count} gig${count === 1 ? "" : "s"} removed from history`;
+}
+
 export function useInlineTabFeedbackDismiss(
   message: string | null,
   onClear: () => void,

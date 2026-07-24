@@ -102,9 +102,9 @@ export function gigsTabPillClass(isActive: boolean, withCount = false): string {
 /** Gigs Incoming/Confirmed/History pill group — compact cluster, no stretch. */
 export const GIGS_TAB_PILL_ROW_CLASS = "flex shrink-0 flex-nowrap items-center gap-2";
 
-/** Gigs filter row — matches planner secondary controls with nowrap for 390px. */
+/** Gigs filter row — matches Events list tab row (filters left, feedback middle, action right). */
 export const GIGS_LIST_TAB_ROW_CLASS =
-  "flex h-[1.875rem] max-h-[1.875rem] min-h-[1.875rem] w-full flex-nowrap items-center justify-between gap-2 md:h-[2.375rem] md:max-h-[2.375rem] md:min-h-[2.375rem]";
+  "flex h-[1.875rem] max-h-[1.875rem] min-h-[1.875rem] w-full flex-nowrap items-center gap-2 md:h-[2.375rem] md:max-h-[2.375rem] md:min-h-[2.375rem]";
 
 /** Events list tab row — trash action matches filter pill height (30px). */
 export const FTC_EVENTS_LIST_TAB_ACTION_CLASS =

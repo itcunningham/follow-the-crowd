@@ -2,9 +2,30 @@ import type { DjGigsListTab } from "@/lib/bookingRequests";
 
 let pendingGigsListTab: DjGigsListTab | null = null;
 const listeners = new Set<() => void>();
+let gigsListRouteRevision = 0;
+const routeRevisionListeners = new Set<() => void>();
 
 function notifyGigsListTabPendingListeners(): void {
   listeners.forEach((listener) => listener());
+}
+
+function notifyGigsListRouteRevisionListeners(): void {
+  routeRevisionListeners.forEach((listener) => listener());
+}
+
+export function subscribeGigsListRouteRevision(listener: () => void): () => void {
+  routeRevisionListeners.add(listener);
+  return () => routeRevisionListeners.delete(listener);
+}
+
+export function readGigsListRouteRevision(): number {
+  return gigsListRouteRevision;
+}
+
+/** Re-read `window.location` after client `pushState` tab switches (Next searchParams lag). */
+export function bumpGigsListRouteRevision(): void {
+  gigsListRouteRevision += 1;
+  notifyGigsListRouteRevisionListeners();
 }
 
 export function subscribeGigsListTabPending(listener: () => void): () => void {

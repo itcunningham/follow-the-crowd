@@ -155,6 +155,10 @@ import {
 } from "@/lib/bookings/gigsListTabBookingsCache";
 import { EVENTS_AREA_SUB_NAV } from "@/lib/plannerEventsNav";
 import { GIG_CARD_OPEN_DM_BUTTON_CLASS, FTC_LIST_CARD_ARTWORK_CLASS, FTC_LIST_CARD_ROW_CLASS } from "@/lib/design/ftcDesignSystem";
+import {
+  formatGigsHistoryRemoveSuccessMessage,
+  useInlineTabFeedbackDismiss,
+} from "@/lib/design/inlineTabFeedback";
 
 const emptyForm: BookingRequestInput = {
   eventName: "",
@@ -420,6 +424,14 @@ function BookingsPageContent() {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [gigsHistorySuccessMessage, setGigsHistorySuccessMessage] = useState<string | null>(null);
+  const clearGigsHistorySuccessMessage = useCallback(() => {
+    setGigsHistorySuccessMessage(null);
+  }, []);
+  const gigsHistoryFeedbackFading = useInlineTabFeedbackDismiss(
+    gigsHistorySuccessMessage,
+    clearGigsHistorySuccessMessage,
+  );
   const [failureDetails, setFailureDetails] = useState<string[]>([]);
   const [eventDateOverride, setEventDateOverride] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -695,6 +707,9 @@ function BookingsPageContent() {
           onHistorySelectionCancel: gigsHistoryCancelSelectionRef.current,
           onHistorySelectionSelectAll: gigsHistorySelectAllRef.current,
           onHistorySelectionRemove: gigsHistoryRemoveRef.current,
+          historyFeedbackMessage:
+            isGigsHistoryTab && !gigsHistorySelectionMode ? gigsHistorySuccessMessage : null,
+          historyFeedbackFading: gigsHistoryFeedbackFading,
         };
 
     setGigsWorkspaceChromeState((previousState) =>
@@ -704,9 +719,12 @@ function BookingsPageContent() {
     gigsHistoryBulkManage.allSelected,
     gigsHistoryBulkManage.removing,
     gigsHistoryBulkManage.selectedCount,
+    gigsHistoryFeedbackFading,
     gigsHistorySelectionCanDelete,
     gigsHistorySelectionCanToggleAll,
     gigsHistorySelectionMode,
+    gigsHistorySuccessMessage,
+    isGigsHistoryTab,
     plannerCreateVisible,
     reserveGigsManageSlot,
     resolvedGigsTabCounts,
@@ -728,6 +746,12 @@ function BookingsPageContent() {
     isGigsHistoryTab,
     plannerCreateVisible,
   ]);
+
+  useEffect(() => {
+    if (!isGigsHistoryTab && gigsHistorySuccessMessage) {
+      clearGigsHistorySuccessMessage();
+    }
+  }, [clearGigsHistorySuccessMessage, gigsHistorySuccessMessage, isGigsHistoryTab]);
 
   const visibleReceivedBookings = useMemo(
     () =>
@@ -1621,16 +1645,14 @@ function BookingsPageContent() {
 
   async function handleRemoveGigsFromHistory(bookingIds: string[]) {
     setError(null);
-    setSuccessMessage(null);
+    setGigsHistorySuccessMessage(null);
 
     try {
       const { successes, failures } = await hideBookingRequestsFromHistory(bookingIds);
 
       if (successes.length > 0) {
         setHiddenBookingIds((current) => new Set([...current, ...successes]));
-        setSuccessMessage(
-          `${successes.length} gig${successes.length === 1 ? "" : "s"} removed from history.`,
-        );
+        setGigsHistorySuccessMessage(formatGigsHistoryRemoveSuccessMessage(successes.length));
       }
 
       if (failures.length > 0) {
@@ -1675,7 +1697,7 @@ function BookingsPageContent() {
         }
       >
 
-          {successMessage ? (
+          {successMessage && !showGigsWorkspace ? (
             <p className="mb-4 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated px-4 py-3 text-sm text-ftc-text-secondary">
               {successMessage}
             </p>
