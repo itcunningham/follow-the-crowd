@@ -217,6 +217,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `<pending>` — move Gigs History success message to title row
 - `2b3c989` — Gigs History inline feedback + instant sub-tab switching
 - `08815fb` — inline Gigs History delete-selection toolbar in tab row
 - `888b4f2` — open Gigs Incoming on fresh workspace entry
