@@ -2132,6 +2132,15 @@ function testGigsInnerTabSelectionFollowsRouteImmediately() {
       locationPathname: "/events",
       locationSearch: "?tab=history",
     }),
+    "history",
+  );
+  assert.equal(
+    resolveGigsListTabForBookingsPage({
+      nextPathname: "/bookings",
+      searchParamsTab: null,
+      locationPathname: "/events",
+      locationSearch: "?tab=history",
+    }),
     "pending",
   );
   assert.equal(
@@ -2186,8 +2195,27 @@ function testGigsInnerTabSelectionFollowsRouteImmediately() {
       locationPathname: "/bookings",
       locationSearch: "?tab=accepted",
     }),
-    "accepted",
+    "pending",
   );
+}
+
+function testGigsRouteTabUsesSharedHook() {
+  const pageSource = readFileSync(
+    new URL("../app/(planner-workspace)/bookings/page.tsx", import.meta.url),
+    "utf8",
+  );
+  const chromeSource = readFileSync(
+    new URL("../app/components/bookings/GigsWorkspaceChrome.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(pageSource, /const djGigsView = useGigsListRouteTab\(\)/);
+  assert.match(chromeSource, /export function useGigsListRouteTab/);
+  assert.match(chromeSource, /const routeActiveView = useGigsListRouteTab\(\)/);
+  assert.match(chromeSource, /searchParamsTab: searchParams\.get\("tab"\)/);
+  assert.doesNotMatch(pageSource, /searchParamsTab: null/);
+  assert.match(chromeSource, /useLayoutEffect/);
+  assert.doesNotMatch(pageSource, /setLocationRevision/);
 }
 
 function testGigsEventDetailReturnPreservesTab() {
@@ -2207,9 +2235,8 @@ function testGigsEventDetailReturnPreservesTab() {
   assert.match(navigationSource, /ensureGigsListTabInBrowserHistory/);
   assert.match(navigationSource, /window\.history\.replaceState/);
   assert.match(pageSource, /ensureGigsListTabInBrowserHistory\(gigsTab\)/);
-  assert.match(pageSource, /searchParamsTab: null/);
-  assert.match(chromeSource, /searchParamsTab: null/);
-  assert.match(pageSource, /setLocationRevision\(\(current\) => current \+ 1\)/);
+  assert.match(pageSource, /useGigsListRouteTab/);
+  assert.doesNotMatch(chromeSource, /searchParamsTab: null/);
 }
 
 function testWorkspaceGigsTabOpensIncomingWithoutEventsQuery() {
@@ -2530,6 +2557,7 @@ async function main() {
   testGigsTabCountsDeriveFromSameBookingSnapshot();
   testGigsInnerTabSelectionFollowsRouteImmediately();
   testGigsEventDetailReturnPreservesTab();
+  testGigsRouteTabUsesSharedHook();
   testWorkspaceGigsTabOpensIncomingWithoutEventsQuery();
   testCalendarWorkspaceClearsStaleWorkspaceIntercept();
   testGigsTabRowReservesManageSlotOnAllTabs();

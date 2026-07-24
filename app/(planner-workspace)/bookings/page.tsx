@@ -13,6 +13,7 @@ import {
   defaultGigsWorkspaceChromeState,
   gigsWorkspaceChromeStatesEqual,
   useDisplayedGigsListTab,
+  useGigsListRouteTab,
   useSetGigsWorkspaceChromeState,
 } from "@/app/components/bookings/GigsWorkspaceChrome";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
@@ -132,7 +133,6 @@ import {
   buildGigsListHref,
   buildGigsWorkspaceIncomingHref,
   ensureGigsListTabInBrowserHistory,
-  resolveGigsListTabForBookingsPage,
 } from "@/lib/bookings/gigsListNavigation";
 import {
   clearPendingBookingPlanId,
@@ -392,24 +392,7 @@ function BookingsPageContent() {
   const [plannerSentView, setPlannerSentView] = useState<PlannerSentPrimaryTab>("pending");
   const [plannerHistorySubView, setPlannerHistorySubView] =
     useState<PlannerHistorySubView>("cancelled");
-  const [locationRevision, setLocationRevision] = useState(0);
-  const djGigsView = useMemo(() => {
-    if (typeof window === "undefined") {
-      return resolveGigsListTabForBookingsPage({
-        nextPathname: pathname,
-        searchParamsTab: searchParams.get("tab"),
-        locationPathname: null,
-        locationSearch: null,
-      });
-    }
-
-    return resolveGigsListTabForBookingsPage({
-      nextPathname: pathname,
-      searchParamsTab: null,
-      locationPathname: window.location.pathname,
-      locationSearch: window.location.search,
-    });
-  }, [pathname, searchParams, locationRevision]);
+  const djGigsView = useGigsListRouteTab();
   const displayedGigsTab = useDisplayedGigsListTab(djGigsView);
   const [djAvailabilityHints, setDjAvailabilityHints] = useState<
     Map<string, DjPlannerAvailabilityHint>
@@ -765,19 +748,6 @@ function BookingsPageContent() {
 
     router.replace(getDefaultRouteForRole(displayRole));
   }, [displayRole, loadingAccess, router]);
-
-  useEffect(() => {
-    function handlePopState() {
-      setLocationRevision((current) => current + 1);
-    }
-
-    window.addEventListener("popstate", handlePopState);
-    return () => window.removeEventListener("popstate", handlePopState);
-  }, []);
-
-  useEffect(() => {
-    setLocationRevision((current) => current + 1);
-  }, [searchParams]);
 
   useEffect(() => {
     if (guardProfile?.role) {

@@ -3,7 +3,7 @@
 import {
   createContext,
   useContext,
-  useEffect,
+  useLayoutEffect,
   useMemo,
   useState,
   useSyncExternalStore,
@@ -160,6 +160,37 @@ function resolveBookingsGigsActiveViewFromWindow(): DjGigsListTab {
   });
 }
 
+/** Single authoritative Gigs sub-tab value from the current route URL. */
+export function useGigsListRouteTab(): DjGigsListTab {
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const [locationRevision, setLocationRevision] = useState(0);
+
+  useLayoutEffect(() => {
+    function handlePopState() {
+      setLocationRevision((current) => current + 1);
+    }
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
+
+  useLayoutEffect(() => {
+    setLocationRevision((current) => current + 1);
+  }, [searchParams]);
+
+  return useMemo(
+    () =>
+      resolveGigsListTabForBookingsPage({
+        nextPathname: pathname,
+        searchParamsTab: searchParams.get("tab"),
+        locationPathname: typeof window === "undefined" ? null : window.location.pathname,
+        locationSearch: typeof window === "undefined" ? null : window.location.search,
+      }),
+    [pathname, searchParams, locationRevision],
+  );
+}
+
 export function useDisplayedGigsListTab(routeTab: DjGigsListTab): DjGigsListTab {
   useSyncExternalStore(
     subscribeGigsListTabPending,
@@ -167,11 +198,11 @@ export function useDisplayedGigsListTab(routeTab: DjGigsListTab): DjGigsListTab 
     () => null,
   );
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     syncGigsListTabPendingWithRoute(routeTab);
   }, [routeTab]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     function handlePopState() {
       clearGigsListTabPending();
     }
@@ -249,10 +280,8 @@ export function GigsWorkspaceSecondaryBand({
   role?: UserRole | null;
   plannerBookingCreateOpen?: boolean;
 } = {}) {
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const [locationRevision, setLocationRevision] = useState(0);
   const role = roleProp ?? readCachedNavRole();
+  const searchParams = useSearchParams();
   const plannerBookingCreateOpen =
     plannerBookingCreateOpenProp ??
     isPlannerBookingsCreateChromeActive({
@@ -263,37 +292,7 @@ export function GigsWorkspaceSecondaryBand({
             : ""
           : window.location.search,
     });
-
-  useEffect(() => {
-    function handlePopState() {
-      setLocationRevision((current) => current + 1);
-    }
-
-    window.addEventListener("popstate", handlePopState);
-    return () => window.removeEventListener("popstate", handlePopState);
-  }, []);
-
-  useEffect(() => {
-    setLocationRevision((current) => current + 1);
-  }, [searchParams]);
-
-  const routeActiveView = useMemo(() => {
-    if (typeof window === "undefined") {
-      return resolveGigsListTabForBookingsPage({
-        nextPathname: pathname,
-        searchParamsTab: searchParams.get("tab"),
-        locationPathname: null,
-        locationSearch: null,
-      });
-    }
-
-    return resolveGigsListTabForBookingsPage({
-      nextPathname: pathname,
-      searchParamsTab: null,
-      locationPathname: window.location.pathname,
-      locationSearch: window.location.search,
-    });
-  }, [pathname, searchParams, locationRevision]);
+  const routeActiveView = useGigsListRouteTab();
   const activeView = useDisplayedGigsListTab(routeActiveView);
 
   return (
