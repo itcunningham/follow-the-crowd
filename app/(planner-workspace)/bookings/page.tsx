@@ -2313,6 +2313,20 @@ function GigCardChevron() {
   );
 }
 
+/** Reserves chevron slot when showChevron is false (same alignment as visible chevron). */
+function GigCardChevronSlot({ showChevron }: { showChevron: boolean }) {
+  if (showChevron) {
+    return <GigCardChevron />;
+  }
+
+  return (
+    <span
+      aria-hidden="true"
+      className={`${GIG_CARD_CHEVRON_SLOT_CLASS} invisible pointer-events-none`}
+    />
+  );
+}
+
 function GigCardOfferLineFromLabel({
   rateLabel,
   muted = false,
@@ -2388,7 +2402,7 @@ function GigCardHeader({
           <span className="mt-0.5 shrink-0">
             <BookingStatusBadge status={status} variant="compact" />
           </span>
-          {showChevron ? <GigCardChevron /> : null}
+          <GigCardChevronSlot showChevron={showChevron} />
         </div>
       </div>
       {plannerLabel ? (

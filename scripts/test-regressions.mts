@@ -1091,6 +1091,8 @@ function testIncomingGigsCardDesignSystem() {
   assert.match(pageSource, /GIG_CARD_OPEN_DM_BUTTON_CLASS/);
   assert.match(receivedCardSource, /GIG_CARD_SECONDARY_ACTION_CLASS/);
   assert.match(pageSource, /function GigCardHeader[\s\S]*variant="compact"/);
+  assert.match(pageSource, /function GigCardChevronSlot[\s\S]*invisible pointer-events-none/);
+  assert.match(pageSource, /GigCardChevronSlot showChevron=\{showChevron\}/);
   assert.doesNotMatch(receivedCardSource, /ftc-btn-primary/);
   assert.match(skeletonSource, /ReceivedBookingCardSkeleton[\s\S]*h-16 w-16/);
 }
