@@ -1069,10 +1069,28 @@ function testGigsHistoryCardNavigation() {
     /renderOpenDmLink[\s\S]*event\.stopPropagation\(\)/,
   );
   assert.match(pageSource, /hidden min-w-0 justify-end sm:flex/);
-  assert.match(
-    pageSource,
-    /function ReceivedBookingCard[\s\S]*ftc-btn-primary[\s\S]*Open DM/,
+}
+
+function testIncomingGigsCardDesignSystem() {
+  const pageSource = readFileSync(
+    new URL("../app/(planner-workspace)/bookings/page.tsx", import.meta.url),
+    "utf8",
   );
+  const skeletonSource = readFileSync(
+    new URL("../app/components/skeleton/Skeleton.tsx", import.meta.url),
+    "utf8",
+  );
+  const receivedCardSource = pageSource.slice(
+    pageSource.indexOf("function ReceivedBookingCard"),
+    pageSource.indexOf("function BookingHistoryCard"),
+  );
+
+  assert.match(receivedCardSource, /EventCoverImageListThumb/);
+  assert.match(receivedCardSource, /GIG_CARD_ROW_CLASS/);
+  assert.match(receivedCardSource, /showChevron=\{showChevron\}/);
+  assert.match(receivedCardSource, /GIG_CARD_SECONDARY_ACTION_CLASS[\s\S]*Open DM/);
+  assert.doesNotMatch(receivedCardSource, /ftc-btn-primary/);
+  assert.match(skeletonSource, /ReceivedBookingCardSkeleton[\s\S]*h-16 w-16/);
 }
 
 function testGigsTabBookingsCacheForTabSwitching() {
@@ -2318,6 +2336,7 @@ async function main() {
   testGigsTabRowKeepsStableCountSlots();
   testGigsFilterTabsPolish();
   testGigsHistoryCardNavigation();
+  testIncomingGigsCardDesignSystem();
   testGigsTabBookingsCacheForTabSwitching();
   testGigsListTabPendingOptimisticSelection();
   testGigsFilterTabCountsPersistDuringLoading();

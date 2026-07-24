@@ -22,6 +22,7 @@ import {
 } from "@/app/components/planner/PlannerWorkspaceLayout";
 import DjBookingAvailabilityBadge from "@/app/components/DjBookingAvailabilityBadge";
 import ProfileAvatar from "@/app/components/ProfileAvatar";
+import { EventCoverImageListThumb } from "@/app/components/events/EventCoverImageDisplay";
 import { BookingDateField, BookingSetTimeRangeField } from "@/app/components/BookingDateTimeFields";
 import {
   applyEventDateFieldChange,
@@ -2276,8 +2277,11 @@ const GIG_CARD_CLASS_NAME =
 
 const GIG_CARD_BODY_CLASS_NAME = "flex min-w-0 max-w-full flex-col gap-1 overflow-hidden sm:gap-3";
 
-const GIG_CARD_MOBILE_OPEN_DM_CLASS =
-  "ftc-btn-primary inline-flex min-h-[2.125rem] shrink-0 items-center justify-center px-2.5 py-0.5 text-[0.6875rem] uppercase tracking-wide";
+const GIG_CARD_ROW_CLASS = "flex min-w-0 max-w-full items-start gap-2 sm:gap-2.5";
+
+const GIG_CARD_ARTWORK_CLASS = "shrink-0 self-start";
+
+const GIG_CARD_CONTENT_CLASS = "flex min-w-0 flex-1 flex-col gap-1 overflow-hidden sm:gap-2";
 
 const GIG_CARD_CHEVRON_SLOT_CLASS = "mt-0.5 h-4 w-4 shrink-0";
 
@@ -2348,14 +2352,19 @@ function GigCardHeader({
   plannerLabel,
   muted = false,
   showChevron = false,
+  compactPlannerLabel = false,
 }: {
   eventName: string;
   status: BookingRequestStatus;
   plannerLabel?: string;
   muted?: boolean;
   showChevron?: boolean;
+  compactPlannerLabel?: boolean;
 }) {
   const titleClass = muted ? "text-ftc-text-secondary" : "text-ftc-text";
+  const plannerLabelClass = compactPlannerLabel
+    ? "mt-1 text-[11px] font-normal leading-snug text-ftc-text-muted sm:mt-1.5 sm:text-xs"
+    : "mt-2 text-[11px] font-normal leading-snug text-ftc-text-muted sm:mt-2 sm:text-xs";
 
   return (
     <div className="min-w-0">
@@ -2373,9 +2382,7 @@ function GigCardHeader({
         </div>
       </div>
       {plannerLabel ? (
-        <p className="mt-2 text-[11px] font-normal leading-snug text-ftc-text-muted sm:mt-2 sm:text-xs">
-          {plannerLabel}
-        </p>
+        <p className={plannerLabelClass}>{plannerLabel}</p>
       ) : null}
     </div>
   );
@@ -2390,6 +2397,7 @@ function GigCardMetaRows({
   muted = false,
   offerMuted,
   mobileAction,
+  compactMetaSpacing = false,
 }: {
   venue?: string;
   eventDate?: string;
@@ -2399,8 +2407,10 @@ function GigCardMetaRows({
   muted?: boolean;
   offerMuted?: boolean;
   mobileAction?: ReactNode;
+  compactMetaSpacing?: boolean;
 }) {
   const textClass = muted ? "text-ftc-text-muted" : "text-ftc-text-secondary";
+  const desktopMetaSpacingClass = compactMetaSpacing ? "sm:mt-1.5" : "sm:mt-2";
   const venueDateParts = [venue?.trim(), eventDate?.trim() ? formatDisplayEventDate(eventDate) : ""].filter(Boolean);
   const venueDateLine = venueDateParts.join(" · ");
   const setTimeLine = setTime?.trim() || "TBC";
@@ -2443,7 +2453,7 @@ function GigCardMetaRows({
         ) : null}
       </div>
       <div
-        className={`ftc-gig-card-meta mt-1 hidden min-w-0 overflow-hidden text-xs sm:mt-2 sm:block sm:text-sm ${textClass}`}
+        className={`ftc-gig-card-meta mt-1 hidden min-w-0 overflow-hidden text-xs sm:block sm:text-sm ${desktopMetaSpacingClass} ${textClass}`}
       >
         {detailsBlock}
         {extraLine ? (
@@ -2482,42 +2492,47 @@ function ReceivedBookingCard({
   const rateLabel = getGigCardOfferSummary(booking);
   const isConfirmed = gigsTab === "accepted";
   const plannerLabel = senderName ? `From ${senderName}` : undefined;
+  const showChevron = Boolean(eventHref);
+
+  function renderOpenDmLink() {
+    return (
+      <Link
+        href={conversationHref}
+        className={GIG_CARD_SECONDARY_ACTION_CLASS}
+        onClick={(event) => {
+          event.stopPropagation();
+        }}
+      >
+        Open DM
+      </Link>
+    );
+  }
 
   const cardBody = (
-    <div className={GIG_CARD_BODY_CLASS_NAME}>
-      <GigCardHeader
-        eventName={booking.event_name}
-        status={booking.status}
-        plannerLabel={plannerLabel}
-      />
-      <GigCardMetaRows
-        venue={booking.venue}
-        eventDate={booking.event_date}
-        setTime={booking.set_time}
-        rateLabel={rateLabel}
-        mobileAction={
-          !isConfirmed ? (
-            <Link
-              href={conversationHref}
-              className={GIG_CARD_MOBILE_OPEN_DM_CLASS}
-              onClick={(event) => event.stopPropagation()}
-            >
-              Open DM
-            </Link>
-          ) : undefined
-        }
-      />
-      {!isConfirmed ? (
-        <div className="hidden min-w-0 justify-end sm:flex">
-          <Link
-            href={conversationHref}
-            className="ftc-btn-primary inline-flex min-h-11 shrink-0 items-center justify-center px-3 py-2 text-xs uppercase tracking-wide"
-            onClick={(event) => event.stopPropagation()}
-          >
-            Open DM
-          </Link>
-        </div>
-      ) : null}
+    <div className={GIG_CARD_ROW_CLASS}>
+      <div className={GIG_CARD_ARTWORK_CLASS}>
+        <EventCoverImageListThumb eventName={booking.event_name} />
+      </div>
+      <div className={GIG_CARD_CONTENT_CLASS}>
+        <GigCardHeader
+          eventName={booking.event_name}
+          status={booking.status}
+          plannerLabel={plannerLabel}
+          showChevron={showChevron}
+          compactPlannerLabel
+        />
+        <GigCardMetaRows
+          venue={booking.venue}
+          eventDate={booking.event_date}
+          setTime={booking.set_time}
+          rateLabel={rateLabel}
+          compactMetaSpacing
+          mobileAction={!isConfirmed ? renderOpenDmLink() : undefined}
+        />
+        {!isConfirmed ? (
+          <div className="hidden min-w-0 justify-end sm:flex">{renderOpenDmLink()}</div>
+        ) : null}
+      </div>
     </div>
   );
 

@@ -548,21 +548,27 @@ export function ReceivedBookingsListSkeleton({ count = 3 }: { count?: number }) 
 function ReceivedBookingCardSkeleton() {
   return (
     <div className="ftc-gig-card ftc-surface-row rounded-[var(--ftc-radius-xl)] py-2 px-2.5 sm:p-4">
-      <div className="flex min-w-0 max-w-full flex-col gap-1 overflow-hidden sm:gap-3">
-        <div className="flex min-w-0 items-start justify-between gap-2">
-          <div className="min-w-0 flex-1">
-            <SkeletonBlock className="h-4 w-4/5 max-w-[12rem]" />
-            <SkeletonBlock className="mt-2 h-3 w-2/5 max-w-[8rem]" />
+      <div className="flex min-w-0 max-w-full items-start gap-2 sm:gap-2.5">
+        <SkeletonBlock className="h-16 w-16 shrink-0 rounded-xl" />
+        <div className="flex min-w-0 flex-1 flex-col gap-1 overflow-hidden sm:gap-2">
+          <div className="flex min-w-0 items-start justify-between gap-2">
+            <div className="min-w-0 flex-1">
+              <SkeletonBlock className="h-4 w-4/5 max-w-[12rem]" />
+              <SkeletonBlock className="mt-1 h-3 w-2/5 max-w-[8rem]" />
+            </div>
+            <div className="flex shrink-0 items-start gap-1">
+              <SkeletonBlock className="mt-0.5 h-5 w-16 shrink-0 rounded-full" />
+              <SkeletonBlock className="mt-0.5 h-4 w-4 shrink-0 rounded-sm" />
+            </div>
           </div>
-          <SkeletonBlock className="mt-0.5 h-5 w-16 shrink-0 rounded-full" />
-        </div>
-        <div className="mt-1 flex min-w-0 items-center gap-2">
-          <div className="min-w-0 flex-1 space-y-0.5">
+          <div className="mt-1 space-y-0.5">
             <SkeletonBlock className="h-3 w-3/5 max-w-[10rem]" />
             <SkeletonBlock className="h-3 w-2/5 max-w-[7rem]" />
             <SkeletonBlock className="h-3 w-2/5 max-w-[8rem]" />
           </div>
-          <SkeletonBlock className="h-[2.125rem] w-[4.75rem] shrink-0 rounded-xl" />
+          <div className="hidden min-w-0 justify-end sm:flex">
+            <SkeletonBlock className="h-11 w-[5.5rem] shrink-0 rounded-xl" />
+          </div>
         </div>
       </div>
     </div>
