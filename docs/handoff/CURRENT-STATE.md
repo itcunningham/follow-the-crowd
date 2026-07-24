@@ -217,6 +217,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `0b753d6` — move Gigs History success feedback to centred planner title row (tab row stays controls-only)
 - `b249e6a` — align Gigs History feedback with Events tab-row pattern
 - `23b4789` — move Gigs History success message to title row
 - `2b3c989` — Gigs History inline feedback + instant sub-tab switching
