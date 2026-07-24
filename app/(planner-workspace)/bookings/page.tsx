@@ -2525,6 +2525,19 @@ function ReceivedBookingCard({
     );
   }
 
+  if (eventHref) {
+    return (
+      <li className={`${GIG_CARD_CLASS_NAME} relative min-w-0 overflow-hidden`}>
+        <Link
+          href={eventHref}
+          aria-label={`View ${booking.event_name}`}
+          className="absolute inset-0 z-0 rounded-[inherit] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ftc-primary/35"
+        />
+        <div className="relative z-[1] pointer-events-none">{cardBody}</div>
+      </li>
+    );
+  }
+
   return <li className={`${GIG_CARD_CLASS_NAME} min-w-0`}>{cardBody}</li>;
 }
 

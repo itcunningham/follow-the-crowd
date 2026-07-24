@@ -1146,6 +1146,23 @@ function testGigsPlannerNamesLoadWithBookingCards() {
   );
 }
 
+function testIncomingGigsCardDetailsNavigation() {
+  const pageSource = readFileSync(
+    new URL("../app/(planner-workspace)/bookings/page.tsx", import.meta.url),
+    "utf8",
+  );
+  const receivedCardSource = pageSource.slice(
+    pageSource.indexOf("function ReceivedBookingCard"),
+    pageSource.indexOf("function BookingHistoryCard"),
+  );
+
+  assert.match(
+    receivedCardSource,
+    /if \(eventHref\) \{[\s\S]*absolute inset-0 z-0[\s\S]*pointer-events-none/,
+  );
+  assert.match(receivedCardSource, /event\.stopPropagation\(\)/);
+}
+
 function testGigsListTabPendingOptimisticSelection() {
   const tabsSource = readFileSync(
     new URL("../app/components/bookings/DjGigsTabs.tsx", import.meta.url),
@@ -2369,6 +2386,7 @@ async function main() {
   testIncomingGigsCardDesignSystem();
   testGigsTabBookingsCacheForTabSwitching();
   testGigsPlannerNamesLoadWithBookingCards();
+  testIncomingGigsCardDetailsNavigation();
   testGigsListTabPendingOptimisticSelection();
   testGigsFilterTabCountsPersistDuringLoading();
   testWorkspaceGigsPendingDisplayCountPreservesLastKnown();
