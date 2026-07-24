@@ -174,5 +174,18 @@ export const FTC_ICON_BUTTON_SM_CLASS =
 /** Event list thumbnail — fixed 64px square. */
 export const FTC_EVENT_THUMB_LIST_SIZE = "list" as const;
 
+/** Events / Gigs list card — artwork + body row (matches EventsPageClient). */
+export const FTC_LIST_CARD_ROW_CLASS =
+  "flex min-w-0 max-w-full items-start gap-2 text-left sm:gap-2.5";
+
+export const FTC_LIST_CARD_ARTWORK_CLASS = "shrink-0 self-start";
+
+export const FTC_LIST_CARD_BODY_CLASS =
+  "flex min-w-0 flex-1 flex-col gap-1 overflow-hidden text-left sm:gap-3";
+
+/** Gigs card Open DM — outlined secondary, slightly narrower than Event Plans Use plan. */
+export const GIG_CARD_OPEN_DM_BUTTON_CLASS =
+  "ftc-btn-secondary inline-flex min-h-11 shrink-0 items-center justify-center border-[1.5px] border-ftc-border-strong px-2.5 py-2 text-xs font-semibold uppercase tracking-wide text-ftc-text";
+
 /** Standard transition for interactive surfaces. */
 export const FTC_TRANSITION_SURFACE = "transition duration-150 ease-out motion-reduce:transition-none";

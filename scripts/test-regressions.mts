@@ -1062,7 +1062,7 @@ function testGigsHistoryCardNavigation() {
     /showEventNavigation[\s\S]*<Link[\s\S]*href=\{eventHref\}/,
   );
   assert.match(pageSource, /showChevron=\{Boolean\(eventHref\)\}/);
-  assert.match(pageSource, /EVENT_PLAN_USE_BUTTON_CLASS/);
+  assert.match(pageSource, /GIG_CARD_OPEN_DM_BUTTON_CLASS/);
   assert.match(pageSource, /GIG_CARD_SECONDARY_ACTION_CLASS/);
   assert.match(
     pageSource,
@@ -1088,7 +1088,9 @@ function testIncomingGigsCardDesignSystem() {
   assert.match(receivedCardSource, /EventCoverImageListThumb/);
   assert.match(receivedCardSource, /GIG_CARD_ROW_CLASS/);
   assert.match(receivedCardSource, /showChevron=\{showChevron\}/);
-  assert.match(receivedCardSource, /GIG_CARD_SECONDARY_ACTION_CLASS[\s\S]*Open DM/);
+  assert.match(pageSource, /GIG_CARD_OPEN_DM_BUTTON_CLASS/);
+  assert.match(receivedCardSource, /GIG_CARD_SECONDARY_ACTION_CLASS/);
+  assert.match(pageSource, /function GigCardHeader[\s\S]*variant="compact"/);
   assert.doesNotMatch(receivedCardSource, /ftc-btn-primary/);
   assert.match(skeletonSource, /ReceivedBookingCardSkeleton[\s\S]*h-16 w-16/);
 }

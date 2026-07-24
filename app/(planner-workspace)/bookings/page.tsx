@@ -156,7 +156,7 @@ import {
   writeGigsListSessionState,
 } from "@/lib/bookings/gigsListTabBookingsCache";
 import { EVENTS_AREA_SUB_NAV } from "@/lib/plannerEventsNav";
-import { EVENT_PLAN_USE_BUTTON_CLASS } from "@/lib/design/ftcDesignSystem";
+import { GIG_CARD_OPEN_DM_BUTTON_CLASS, FTC_LIST_CARD_ARTWORK_CLASS, FTC_LIST_CARD_ROW_CLASS } from "@/lib/design/ftcDesignSystem";
 
 const emptyForm: BookingRequestInput = {
   eventName: "",
@@ -2277,11 +2277,12 @@ const GIG_CARD_CLASS_NAME =
 
 const GIG_CARD_BODY_CLASS_NAME = "flex min-w-0 max-w-full flex-col gap-1 overflow-hidden sm:gap-3";
 
-const GIG_CARD_ROW_CLASS = "flex min-w-0 max-w-full items-start gap-2 sm:gap-2.5";
+const GIG_CARD_ROW_CLASS = FTC_LIST_CARD_ROW_CLASS;
 
-const GIG_CARD_ARTWORK_CLASS = "shrink-0 self-start";
+const GIG_CARD_ARTWORK_CLASS = FTC_LIST_CARD_ARTWORK_CLASS;
 
-const GIG_CARD_CONTENT_CLASS = "flex min-w-0 flex-1 flex-col gap-1 overflow-hidden sm:gap-2";
+const GIG_CARD_CONTENT_CLASS =
+  "flex min-w-0 flex-1 flex-col gap-1 overflow-hidden text-left sm:gap-2";
 
 const GIG_CARD_CHEVRON_SLOT_CLASS = "mt-0.5 h-4 w-4 shrink-0";
 
@@ -2363,7 +2364,7 @@ function GigCardHeader({
 }) {
   const titleClass = muted ? "text-ftc-text-secondary" : "text-ftc-text";
   const plannerLabelClass = compactPlannerLabel
-    ? "mt-1 text-[11px] font-normal leading-snug text-ftc-text-muted sm:mt-1.5 sm:text-xs"
+    ? "mt-0.5 text-[11px] font-normal leading-snug text-ftc-text-muted sm:mt-1 sm:text-xs"
     : "mt-2 text-[11px] font-normal leading-snug text-ftc-text-muted sm:mt-2 sm:text-xs";
 
   return (
@@ -2376,7 +2377,7 @@ function GigCardHeader({
         </h3>
         <div className="flex shrink-0 items-start gap-1 sm:gap-1.5">
           <span className="mt-0.5 shrink-0">
-            <BookingStatusBadge status={status} />
+            <BookingStatusBadge status={status} variant="compact" />
           </span>
           {showChevron ? <GigCardChevron /> : null}
         </div>
@@ -2410,7 +2411,8 @@ function GigCardMetaRows({
   compactMetaSpacing?: boolean;
 }) {
   const textClass = muted ? "text-ftc-text-muted" : "text-ftc-text-secondary";
-  const desktopMetaSpacingClass = compactMetaSpacing ? "sm:mt-1.5" : "sm:mt-2";
+  const metaTopSpacingClass = compactMetaSpacing ? "mt-0.5 sm:mt-1" : "mt-1 sm:mt-2";
+  const detailsSpacingClass = compactMetaSpacing ? "space-y-px" : "space-y-0.5";
   const venueDateParts = [venue?.trim(), eventDate?.trim() ? formatDisplayEventDate(eventDate) : ""].filter(Boolean);
   const venueDateLine = venueDateParts.join(" · ");
   const setTimeLine = setTime?.trim() || "TBC";
@@ -2431,12 +2433,12 @@ function GigCardMetaRows({
     </>
   );
 
-  const detailsBlock = <div className="space-y-0.5">{detailsLines}</div>;
+  const detailsBlock = <div className={detailsSpacingClass}>{detailsLines}</div>;
 
   return (
     <>
       <div
-        className={`ftc-gig-card-meta mt-1 min-w-0 overflow-hidden text-xs sm:hidden ${textClass}`}
+        className={`ftc-gig-card-meta ${metaTopSpacingClass} min-w-0 overflow-hidden text-xs sm:hidden ${textClass}`}
       >
         {mobileAction ? (
           <div className="flex min-w-0 items-center gap-2">
@@ -2453,7 +2455,7 @@ function GigCardMetaRows({
         ) : null}
       </div>
       <div
-        className={`ftc-gig-card-meta mt-1 hidden min-w-0 overflow-hidden text-xs sm:block sm:text-sm ${desktopMetaSpacingClass} ${textClass}`}
+        className={`ftc-gig-card-meta hidden min-w-0 overflow-hidden text-xs sm:block sm:text-sm ${metaTopSpacingClass} ${textClass}`}
       >
         {detailsBlock}
         {extraLine ? (
@@ -2472,7 +2474,7 @@ const GIG_CARD_HISTORY_CLASS_NAME =
 const GIG_CARD_HISTORY_BODY_CLASS_NAME =
   "flex min-w-0 max-w-full flex-col gap-1 overflow-hidden sm:gap-3";
 
-const GIG_CARD_SECONDARY_ACTION_CLASS = `${EVENT_PLAN_USE_BUTTON_CLASS} relative z-[2] shrink-0 pointer-events-auto`;
+const GIG_CARD_SECONDARY_ACTION_CLASS = `${GIG_CARD_OPEN_DM_BUTTON_CLASS} relative z-[2] pointer-events-auto`;
 
 function ReceivedBookingCard({
   booking,

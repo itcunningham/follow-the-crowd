@@ -567,7 +567,7 @@ function ReceivedBookingCardSkeleton() {
             <SkeletonBlock className="h-3 w-2/5 max-w-[8rem]" />
           </div>
           <div className="hidden min-w-0 justify-end sm:flex">
-            <SkeletonBlock className="h-11 w-[5.5rem] shrink-0 rounded-xl" />
+            <SkeletonBlock className="h-11 w-[5rem] shrink-0 rounded-xl" />
           </div>
         </div>
       </div>
