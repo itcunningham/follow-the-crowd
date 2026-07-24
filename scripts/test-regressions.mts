@@ -1049,7 +1049,7 @@ function testGigsTabRowKeepsStableCountSlots() {
   assert.doesNotMatch(GIGS_TAB_COUNT_SLOT_CLASS, /w-\[2\.25ch\]/);
   assert.match(GIGS_LIST_TAB_ROW_CLASS, /flex-nowrap/);
   assert.match(GIGS_LIST_TAB_ROW_CLASS, /gap-2/);
-  assert.doesNotMatch(GIGS_LIST_TAB_ROW_CLASS, /justify-between/);
+  assert.match(GIGS_LIST_TAB_ROW_CLASS, /justify-between/);
   assert.doesNotMatch(GIGS_LIST_TAB_ROW_CLASS, /flex-wrap/);
 }
 
@@ -1524,7 +1524,7 @@ function testEventsHistorySelectionToolbarUsesDeleteLabel() {
   assert.match(rowSource, /selectionMode \?/);
   assert.match(rowSource, /flex shrink-0 items-center justify-end/);
   assert.match(rowSource, /HistoryTabRowFeedbackCell/);
-  assert.match(rowSource, /variant="events"/);
+  assert.doesNotMatch(rowSource, /variant="events"/);
   assert.doesNotMatch(rowSource, /justify-end overflow-hidden[\s\S]*selectionToolbar/);
 }
 
@@ -2461,6 +2461,10 @@ function testGigsHistoryInlineFeedbackMatchesEventsHistory() {
     new URL("../app/components/history/HistoryTabRowFeedbackCell.tsx", import.meta.url),
     "utf8",
   );
+  const layoutSource = readFileSync(
+    new URL("../app/components/planner/PlannerWorkspaceLayout.tsx", import.meta.url),
+    "utf8",
+  );
   const eventsRowSource = readFileSync(
     new URL("../app/components/events/EventsListTabRow.tsx", import.meta.url),
     "utf8",
@@ -2472,20 +2476,24 @@ function testGigsHistoryInlineFeedbackMatchesEventsHistory() {
   assert.equal(INLINE_TAB_FEEDBACK_CLEAR_MS, 3000);
   assert.match(pageSource, /useInlineTabFeedbackDismiss/);
   assert.match(pageSource, /formatGigsHistoryRemoveSuccessMessage/);
-  assert.match(pageSource, /historyFeedbackMessage:/);
-  assert.match(pageSource, /historyFeedbackFading: gigsHistoryFeedbackFading/);
+  assert.match(pageSource, /useSetPlannerWorkspaceHeaderState/);
+  assert.match(pageSource, /titleFeedbackMessage: showTitleFeedback \? gigsHistorySuccessMessage : null/);
+  assert.match(pageSource, /titleFeedbackFading: showTitleFeedback \? gigsHistoryFeedbackFading : false/);
   assert.match(pageSource, /setGigsHistorySuccessMessage/);
-  assert.doesNotMatch(pageSource, /useSetPlannerWorkspaceHeaderState/);
-  assert.doesNotMatch(pageSource, /titleFeedbackMessage/);
-  assert.match(chromeSource, /historyFeedbackMessage=\{chromeState\.historyFeedbackMessage\}/);
-  assert.match(chromeSource, /feedbackFading=\{historyFeedbackFading\}/);
-  assert.match(skeletonSource, /HistoryTabRowFeedbackCell/);
-  assert.match(skeletonSource, /variant="gigs"/);
-  assert.match(skeletonSource, /overflow-visible/);
-  assert.match(feedbackCellSource, /variant === "gigs"[\s\S]*overflow-visible/);
-  assert.match(feedbackCellSource, /absolute left-0 top-1\/2 -translate-y-1\/2/);
+  assert.doesNotMatch(pageSource, /historyFeedbackMessage:/);
+  assert.doesNotMatch(chromeSource, /historyFeedbackMessage/);
+  assert.doesNotMatch(chromeSource, /historyFeedbackFading/);
+  const djGigsTabRowSource =
+    skeletonSource.match(/export function DjGigsTabRow[\s\S]*?(?=\nexport function )/)?.[0] ?? "";
+  assert.match(djGigsTabRowSource, /export function DjGigsTabRow/);
+  assert.doesNotMatch(djGigsTabRowSource, /feedbackMessage/);
+  assert.doesNotMatch(djGigsTabRowSource, /HistoryTabRowFeedbackCell/);
+  assert.doesNotMatch(feedbackCellSource, /variant === "gigs"/);
+  assert.doesNotMatch(feedbackCellSource, /GIGS_LIST_TAB_FEEDBACK/);
+  assert.match(layoutSource, /PLANNER_WORKSPACE_TITLE_FEEDBACK_CLASS/);
+  assert.match(layoutSource, /pointer-events-none absolute inset-x-0/);
   assert.match(eventsRowSource, /HistoryTabRowFeedbackCell/);
-  assert.match(eventsRowSource, /variant="events"/);
+  assert.doesNotMatch(eventsRowSource, /variant="events"/);
 }
 
 function testGigsListTabSwitchUsesClientHistoryWithoutRouterNavigation() {

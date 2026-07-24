@@ -41,7 +41,6 @@ export function EventsListTabRow({
         message={feedbackMessage}
         fading={feedbackFading}
         selectionMode={selectionMode}
-        variant="events"
       />
       <div className="flex shrink-0 items-center justify-end">
         {selectionMode ? (
