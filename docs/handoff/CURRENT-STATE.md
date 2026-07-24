@@ -215,7 +215,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
-- `<pending>` — inline Gigs History delete-selection toolbar in tab row
+- `08815fb` — inline Gigs History delete-selection toolbar in tab row
 - `888b4f2` — open Gigs Incoming on fresh workspace entry
 - `72888d4` — fix Gigs Calendar workspace navigation from calendar
 - `845b91c` — preserve gigs filter counts during loading
