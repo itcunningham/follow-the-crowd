@@ -16,7 +16,7 @@ import {
   countWithdrawalOtherReasonLines,
   MAX_WITHDRAWAL_OTHER_REASON_LINES,
   sanitizeWithdrawalOtherReason,
-  sanitizeWithdrawalOtherReasonInput,
+  sanitizeWithdrawalOtherReasonValue,
 } from "../lib/booking/withdrawalReasonDetails";
 import { MAX_WITHDRAWAL_OTHER_REASON_LENGTH } from "../lib/bookingRequests";
 import { formatPlannerCalendarItemHeadline } from "../lib/calendar";
@@ -1645,55 +1645,50 @@ function testWithdrawalOtherReasonInputLimits() {
   assert.equal(MAX_WITHDRAWAL_OTHER_REASON_LINES, 3);
   assert.equal(MAX_WITHDRAWAL_OTHER_REASON_LENGTH, 120);
 
-  assert.equal(sanitizeWithdrawalOtherReasonInput("", "Line one"), "Line one");
+  assert.equal(sanitizeWithdrawalOtherReasonValue(""), "");
+  assert.equal(sanitizeWithdrawalOtherReasonValue("Line one"), "Line one");
   assert.equal(
-    sanitizeWithdrawalOtherReasonInput("", "Line one\nLine two"),
+    sanitizeWithdrawalOtherReasonValue("Line one\nLine two"),
     "Line one\nLine two",
   );
   assert.equal(
-    sanitizeWithdrawalOtherReasonInput("", "Line one\nLine two\nLine three"),
+    sanitizeWithdrawalOtherReasonValue("Line one\nLine two\nLine three"),
     "Line one\nLine two\nLine three",
   );
   assert.equal(
-    sanitizeWithdrawalOtherReasonInput(
-      "Line one\nLine two\nLine three",
-      "Line one\nLine two\nLine three\nLine four",
-    ),
-    null,
-  );
-  assert.equal(
-    sanitizeWithdrawalOtherReasonInput(
-      "Line one\nLine two\nLine three",
-      "Line one\nLine two\nLine three\nLine four",
-      { allowLineTruncation: true },
-    ),
+    sanitizeWithdrawalOtherReasonValue("Line one\nLine two\nLine three\nLine four"),
     "Line one\nLine two\nLine three",
   );
 
   const fiveLines = ["one", "two", "three", "four", "five"].join("\n");
   assert.equal(
-    sanitizeWithdrawalOtherReasonInput("", fiveLines, { allowLineTruncation: true }),
+    sanitizeWithdrawalOtherReasonValue(fiveLines),
     ["one", "two", "three"].join("\n"),
   );
 
   const threeLongLines = ["a".repeat(50), "b".repeat(50), "c".repeat(50)].join("\n");
-  assert.equal(sanitizeWithdrawalOtherReason(threeLongLines).length, 120);
-  assert.equal(countWithdrawalOtherReasonLines(sanitizeWithdrawalOtherReason(threeLongLines)), 3);
+  assert.equal(sanitizeWithdrawalOtherReasonValue(threeLongLines).length, 120);
+  assert.equal(
+    countWithdrawalOtherReasonLines(sanitizeWithdrawalOtherReasonValue(threeLongLines)),
+    3,
+  );
 
   const overBothLimits = `${"x".repeat(40)}\n${"y".repeat(40)}\n${"z".repeat(40)}\nextra\nextra`;
-  const sanitizedBoth = sanitizeWithdrawalOtherReason(overBothLimits);
+  const sanitizedBoth = sanitizeWithdrawalOtherReasonValue(overBothLimits);
   assert.equal(countWithdrawalOtherReasonLines(sanitizedBoth), 3);
   assert.equal(sanitizedBoth.length, 120);
 
-  assert.equal(sanitizeWithdrawalOtherReason("Unavailable"), "Unavailable");
+  assert.equal(sanitizeWithdrawalOtherReasonValue("Unavailable"), "Unavailable");
+  assert.equal(sanitizeWithdrawalOtherReason, sanitizeWithdrawalOtherReasonValue);
 
   const fieldSource = readFileSync(
     new URL("../app/components/booking/WithdrawalReasonDetailsField.tsx", import.meta.url),
     "utf8",
   );
-  assert.match(fieldSource, /sanitizeWithdrawalOtherReasonInput/);
-  assert.match(fieldSource, /onBeforeInput=\{handleBeforeInput\}/);
-  assert.match(fieldSource, /onPaste=\{handlePaste\}/);
+  assert.match(fieldSource, /sanitizeWithdrawalOtherReasonValue/);
+  assert.match(fieldSource, /onChange=\{handleChange\}/);
+  assert.doesNotMatch(fieldSource, /onBeforeInput/);
+  assert.doesNotMatch(fieldSource, /onPaste/);
   assert.doesNotMatch(fieldSource, /onKeyDown/);
   assert.doesNotMatch(fieldSource, /measureWithdrawalReasonVisibleRows/);
 

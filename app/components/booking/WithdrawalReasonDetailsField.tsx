@@ -1,29 +1,11 @@
 "use client";
 
-import { useLayoutEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useReducer, useRef, useState } from "react";
 import { MAX_WITHDRAWAL_OTHER_REASON_LENGTH } from "@/lib/bookingRequests";
-import { sanitizeWithdrawalOtherReasonInput } from "@/lib/booking/withdrawalReasonDetails";
-
-function readBeforeInputInsertion(event: React.FormEvent<HTMLTextAreaElement>): string | null {
-  const nativeEvent = event.nativeEvent as InputEvent;
-
-  if (nativeEvent.isComposing) {
-    return null;
-  }
-
-  if (nativeEvent.inputType === "insertLineBreak") {
-    return "\n";
-  }
-
-  if (
-    nativeEvent.inputType === "insertText" ||
-    nativeEvent.inputType === "insertReplacementText"
-  ) {
-    return nativeEvent.data ?? "";
-  }
-
-  return null;
-}
+import {
+  mapWithdrawalReasonCursorAfterSanitize,
+  sanitizeWithdrawalOtherReasonValue,
+} from "@/lib/booking/withdrawalReasonDetails";
 
 export default function WithdrawalReasonDetailsField({
   value,
@@ -37,7 +19,14 @@ export default function WithdrawalReasonDetailsField({
   placeholder?: string;
 }) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const isComposingRef = useRef(false);
   const pendingSelectionRef = useRef<{ start: number; end: number } | null>(null);
+  const [displayValue, setDisplayValue] = useState(value);
+  const [, forceRender] = useReducer((count: number) => count + 1, 0);
+
+  useEffect(() => {
+    setDisplayValue(value);
+  }, [value]);
 
   useLayoutEffect(() => {
     const textarea = textareaRef.current;
@@ -49,8 +38,8 @@ export default function WithdrawalReasonDetailsField({
 
     if (pendingSelection) {
       const { start, end } = pendingSelection;
-      const safeStart = Math.max(0, Math.min(start, value.length));
-      const safeEnd = Math.max(safeStart, Math.min(end, value.length));
+      const safeStart = Math.max(0, Math.min(start, displayValue.length));
+      const safeEnd = Math.max(safeStart, Math.min(end, displayValue.length));
       textarea.setSelectionRange(safeStart, safeEnd);
       pendingSelectionRef.current = null;
       return;
@@ -60,126 +49,44 @@ export default function WithdrawalReasonDetailsField({
       return;
     }
 
-    const selectionStart = textarea.selectionStart;
-    const selectionEnd = textarea.selectionEnd;
+    textarea.setSelectionRange(textarea.selectionStart, textarea.selectionEnd);
+  }, [displayValue]);
 
-    textarea.setSelectionRange(selectionStart, selectionEnd);
-  }, [value]);
+  function applySanitizedValue(rawValue: string, cursor: number) {
+    const sanitized = sanitizeWithdrawalOtherReasonValue(rawValue);
+    const nextCursor = mapWithdrawalReasonCursorAfterSanitize(rawValue, sanitized, cursor);
 
-  function commitValue(nextValue: string, selectionStart: number, selectionEnd = selectionStart) {
-    pendingSelectionRef.current = { start: selectionStart, end: selectionEnd };
-    onChange(nextValue);
-  }
+    pendingSelectionRef.current = { start: nextCursor, end: nextCursor };
+    setDisplayValue(sanitized);
 
-  function sanitizeEdit(
-    nextValue: string,
-    allowLineTruncation: boolean,
-  ): string | null {
-    return sanitizeWithdrawalOtherReasonInput(value, nextValue, {
-      allowLineTruncation,
-    });
-  }
-
-  function handleBeforeInput(event: React.FormEvent<HTMLTextAreaElement>) {
-    const nativeEvent = event.nativeEvent as InputEvent;
-
-    if (nativeEvent.isComposing) {
-      return;
+    if (sanitized !== rawValue) {
+      forceRender();
     }
 
-    if (nativeEvent.inputType.startsWith("delete") || nativeEvent.inputType === "historyUndo") {
-      return;
+    if (sanitized !== value) {
+      onChange(sanitized);
     }
-
-    if (nativeEvent.inputType === "insertFromPaste") {
-      event.preventDefault();
-      return;
-    }
-
-    const inserted = readBeforeInputInsertion(event);
-
-    if (inserted === null) {
-      return;
-    }
-
-    const textarea = event.currentTarget;
-    const selectionStart = textarea.selectionStart ?? value.length;
-    const selectionEnd = textarea.selectionEnd ?? value.length;
-    const nextValue = value.slice(0, selectionStart) + inserted + value.slice(selectionEnd);
-    const limited = sanitizeEdit(nextValue, false);
-
-    if (limited === null) {
-      event.preventDefault();
-      pendingSelectionRef.current = { start: selectionStart, end: selectionEnd };
-      return;
-    }
-
-    if (limited !== nextValue) {
-      event.preventDefault();
-      const cursor =
-        limited.startsWith(value.slice(0, selectionStart)) &&
-        limited.endsWith(value.slice(selectionEnd))
-          ? selectionStart +
-            (limited.length - selectionStart - (value.length - selectionEnd))
-          : Math.min(limited.length, selectionStart + inserted.length);
-      commitValue(limited, cursor);
-    }
-  }
-
-  function handlePaste(event: React.ClipboardEvent<HTMLTextAreaElement>) {
-    event.preventDefault();
-
-    const textarea = event.currentTarget;
-    const pastedText = event.clipboardData.getData("text/plain");
-    const selectionStart = textarea.selectionStart ?? value.length;
-    const selectionEnd = textarea.selectionEnd ?? value.length;
-    const nextValue = value.slice(0, selectionStart) + pastedText + value.slice(selectionEnd);
-    const limited = sanitizeEdit(nextValue, true);
-
-    if (limited === null) {
-      pendingSelectionRef.current = { start: selectionStart, end: selectionEnd };
-      return;
-    }
-
-    const cursor =
-      limited.startsWith(value.slice(0, selectionStart)) &&
-      limited.endsWith(value.slice(selectionEnd))
-        ? selectionStart +
-          (limited.length - selectionStart - (value.length - selectionEnd))
-        : limited.length;
-    commitValue(limited, cursor);
   }
 
   function handleChange(event: React.ChangeEvent<HTMLTextAreaElement>) {
-    const textarea = event.currentTarget;
-    const nextValue = event.target.value;
+    const rawValue = event.target.value;
+    const cursor = event.target.selectionStart ?? rawValue.length;
 
-    if (nextValue === value) {
+    if (isComposingRef.current) {
+      setDisplayValue(rawValue);
       return;
     }
 
-    const selectionStart = textarea.selectionStart ?? value.length;
-    const selectionEnd = textarea.selectionEnd ?? value.length;
-    const allowLineTruncation = nextValue.length - value.length > 1;
-    const limited = sanitizeEdit(nextValue, allowLineTruncation);
+    applySanitizedValue(rawValue, cursor);
+  }
 
-    if (limited === null) {
-      pendingSelectionRef.current = { start: selectionStart, end: selectionEnd };
-      return;
-    }
+  function handleCompositionEnd(event: React.CompositionEvent<HTMLTextAreaElement>) {
+    isComposingRef.current = false;
 
-    if (limited !== value) {
-      const cursor =
-        limited.startsWith(value.slice(0, selectionStart)) &&
-        limited.endsWith(value.slice(selectionEnd))
-          ? selectionStart +
-            (limited.length - selectionStart - (value.length - selectionEnd))
-          : Math.min(limited.length, selectionStart);
-      commitValue(limited, cursor);
-      return;
-    }
+    const rawValue = event.currentTarget.value;
+    const cursor = event.currentTarget.selectionStart ?? rawValue.length;
 
-    pendingSelectionRef.current = { start: selectionStart, end: selectionEnd };
+    applySanitizedValue(rawValue, cursor);
   }
 
   return (
@@ -190,18 +97,19 @@ export default function WithdrawalReasonDetailsField({
       <div className="relative">
         <textarea
           ref={textareaRef}
-          value={value}
+          value={displayValue}
           disabled={disabled}
-          onBeforeInput={handleBeforeInput}
-          onPaste={handlePaste}
           onChange={handleChange}
+          onCompositionStart={() => {
+            isComposingRef.current = true;
+          }}
+          onCompositionEnd={handleCompositionEnd}
           rows={3}
-          maxLength={MAX_WITHDRAWAL_OTHER_REASON_LENGTH}
           placeholder={placeholder}
           className="ftc-textarea ftc-withdrawal-reason-textarea w-full rounded-lg px-3 py-2 text-sm"
         />
         <span className="ftc-textarea-inline-counter" aria-hidden="true">
-          {value.length}/{MAX_WITHDRAWAL_OTHER_REASON_LENGTH}
+          {displayValue.length}/{MAX_WITHDRAWAL_OTHER_REASON_LENGTH}
         </span>
       </div>
     </label>
