@@ -5,9 +5,11 @@ import { createPortal } from "react-dom";
 import CalendarMonthNav from "@/app/components/CalendarMonthNav";
 import {
   BOOKING_DATE_TIME_INPUT_CLASS,
+  BOOKING_DATE_PLACEHOLDER_LABEL,
   guardEventDatePickerChange,
   parseEventDate,
   getBookingFieldTriggerLabelClassName,
+  hasBookingFieldTriggerLabelValue,
   resolveMinEventDateKey,
   resolvePickerEventDateValue,
   savedEventDateNeedsPickerReselection,
@@ -50,7 +52,7 @@ function formatPickerButtonLabel(value: string): string {
     return formatAvailabilityDateLabel(parsed.isoDate);
   }
 
-  return "Select date";
+  return BOOKING_DATE_PLACEHOLDER_LABEL;
 }
 
 function CalendarIcon() {
@@ -153,7 +155,7 @@ export default function FtcDatePicker({
   const today = new Date();
   const calendarWeeks = getCalendarWeekRows(monthStart);
   const buttonLabel = formatPickerButtonLabel(pickerValue);
-  const hasValue = Boolean(parsed.isoDate);
+  const hasValue = hasBookingFieldTriggerLabelValue(buttonLabel);
 
   function isDayDisabled(day: Date): boolean {
     return toDateKey(day) < effectiveMinDate;

@@ -31,6 +31,8 @@ import {
   getEventSetTimeValidationError,
   getTodayDateKey,
   guardEventDatePickerChange,
+  hasBookingFieldTriggerLabelValue,
+  isBookingFieldTriggerPlaceholder,
   isEventStartSaveBlocked,
   isWheelMinuteDisabled,
   isWheelTimeBefore,
@@ -215,15 +217,30 @@ function testBookingFieldTriggerPlaceholderStylingIsShared() {
     bookingDateTimeSource,
     /export const BOOKING_DATE_TIME_INPUT_CLASS = BOOKING_TIME_BUTTON_CLASS;/,
   );
-  assert.match(bookingDateTimeSource, /getBookingFieldTriggerLabelClassName/);
-  assert.match(bookingDateTimeSource, /is-placeholder/);
+  assert.match(bookingDateTimeSource, /isBookingFieldTriggerPlaceholder/);
+  assert.match(bookingDateTimeSource, /hasBookingFieldTriggerLabelValue/);
+  assert.match(bookingDateTimeSource, /BOOKING_START_TIME_PLACEHOLDER_LABEL/);
   assert.match(globalsSource, /\.ftc-field-trigger \.ftc-field-trigger-label\.is-placeholder/);
   assert.match(globalsSource, /color: var\(--ftc-color-text-muted\)/);
-  assert.match(datePickerSource, /getBookingFieldTriggerLabelClassName\(hasValue\)/);
+  assert.match(datePickerSource, /hasBookingFieldTriggerLabelValue\(buttonLabel\)/);
   assert.doesNotMatch(datePickerSource, /placeholder:text-/);
-  assert.match(bookingFieldsSource, /getBookingFieldTriggerLabelClassName\(hasValue/);
-  assert.match(runSheetSource, /getBookingFieldTriggerLabelClassName\(hasValue/);
+  assert.match(bookingFieldsSource, /hasBookingFieldTriggerLabelValue\(resolvedLabel\)/);
+  assert.doesNotMatch(
+    bookingFieldsSource,
+    /resolvedLabel !== "Select" && resolvedLabel !== "Select time"/,
+  );
+  assert.match(runSheetSource, /hasBookingFieldTriggerLabelValue\(displayValue\)/);
   assert.doesNotMatch(runSheetSource, /hasValue \? "text-ftc-text" : "text-ftc-text-muted"/);
+}
+
+function testBookingFieldTriggerPlaceholderDetection() {
+  assert.equal(isBookingFieldTriggerPlaceholder("Select date"), true);
+  assert.equal(isBookingFieldTriggerPlaceholder("Select time"), true);
+  assert.equal(isBookingFieldTriggerPlaceholder("Select start time"), true);
+  assert.equal(isBookingFieldTriggerPlaceholder("Select finish time"), true);
+  assert.equal(isBookingFieldTriggerPlaceholder("Select"), true);
+  assert.equal(hasBookingFieldTriggerLabelValue("9:00 PM"), true);
+  assert.equal(hasBookingFieldTriggerLabelValue("Select start time"), false);
 }
 
 function testOneAcceptedDjWithNullStartShowsStartAction() {
@@ -2949,6 +2966,7 @@ async function main() {
   testEventSetTimeRangeValidation();
   testApplyEventSetTimeStartChangeClearsInvalidFinish();
   testBookingFieldTriggerPlaceholderStylingIsShared();
+  testBookingFieldTriggerPlaceholderDetection();
   testPastPickerDatesAreRejected();
   testWheelTimeBeforeMinHelpers();
   testEventTimePickerDefaultsForToday();

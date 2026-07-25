@@ -499,7 +499,33 @@ export function resolveWheelTimeForPicker(
 }
 
 export function formatTimeButtonLabel(clock: string, meridiem: Meridiem): string {
-  return combineClockAndMeridiem(clock, meridiem) || "Select time";
+  return combineClockAndMeridiem(clock, meridiem) || BOOKING_TIME_PLACEHOLDER_LABEL;
+}
+
+export const BOOKING_DATE_PLACEHOLDER_LABEL = "Select date";
+
+export const BOOKING_TIME_PLACEHOLDER_LABEL = "Select time";
+
+export const BOOKING_START_TIME_PLACEHOLDER_LABEL = "Select start time";
+
+export const BOOKING_FINISH_TIME_PLACEHOLDER_LABEL = "Select finish time";
+
+export const BOOKING_COMPACT_TIME_PLACEHOLDER_LABEL = "Select";
+
+const BOOKING_FIELD_TRIGGER_PLACEHOLDER_LABELS = new Set([
+  BOOKING_DATE_PLACEHOLDER_LABEL,
+  BOOKING_TIME_PLACEHOLDER_LABEL,
+  BOOKING_START_TIME_PLACEHOLDER_LABEL,
+  BOOKING_FINISH_TIME_PLACEHOLDER_LABEL,
+  BOOKING_COMPACT_TIME_PLACEHOLDER_LABEL,
+]);
+
+export function isBookingFieldTriggerPlaceholder(label: string): boolean {
+  return BOOKING_FIELD_TRIGGER_PLACEHOLDER_LABELS.has(label.trim());
+}
+
+export function hasBookingFieldTriggerLabelValue(label: string): boolean {
+  return !isBookingFieldTriggerPlaceholder(label);
 }
 
 export const BOOKING_TIME_BUTTON_CLASS =

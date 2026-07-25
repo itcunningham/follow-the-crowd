@@ -21,6 +21,8 @@ import {
   defaultStartWheelTime,
   extractClockDisplay,
   getBookingFieldTriggerLabelClassName,
+  hasBookingFieldTriggerLabelValue,
+  BOOKING_TIME_PLACEHOLDER_LABEL,
   parseSetTimeRange,
   SET_TIME_RANGE_JOINER,
   wheelTimeToClockParts,
@@ -113,7 +115,7 @@ function formatRunSheetSetTimeDisplay(startTime: string, finishTime: string): st
   const finish = finishTime.trim();
 
   if (!start && !finish) {
-    return "Select time";
+    return BOOKING_TIME_PLACEHOLDER_LABEL;
   }
 
   if (start && finish) {
@@ -225,7 +227,7 @@ function RunSheetSetTimeField({
     );
   }
 
-  const hasValue = displayValue !== "Select time";
+  const hasValue = hasBookingFieldTriggerLabelValue(displayValue);
 
   function handleDone(start: WheelTimeValue, finish: WheelTimeValue) {
     userEditedRef.current = true;

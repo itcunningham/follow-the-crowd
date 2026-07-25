@@ -20,6 +20,10 @@ import {
   extractClockDisplay,
   formatTimeButtonLabel,
   getBookingFieldTriggerLabelClassName,
+  hasBookingFieldTriggerLabelValue,
+  BOOKING_START_TIME_PLACEHOLDER_LABEL,
+  BOOKING_FINISH_TIME_PLACEHOLDER_LABEL,
+  BOOKING_COMPACT_TIME_PLACEHOLDER_LABEL,
   getMinWheelTimeForEventDate,
   formatDisplayEventDate,
   guardEventDatePickerChange,
@@ -168,9 +172,9 @@ function BookingTimeControl({
   const resolvedLabel =
     buttonLabel ??
     (isCompact
-      ? combineClockAndMeridiem(clock, meridiem) || "Select"
+      ? combineClockAndMeridiem(clock, meridiem) || BOOKING_COMPACT_TIME_PLACEHOLDER_LABEL
       : formatTimeButtonLabel(clock, meridiem));
-  const hasValue = resolvedLabel !== "Select" && resolvedLabel !== "Select time";
+  const hasValue = hasBookingFieldTriggerLabelValue(resolvedLabel);
 
   function openPicker() {
     setPickerOpen(true);
@@ -291,7 +295,7 @@ export function BookingTimeField({
   }
 
   const formattedTime = combineClockAndMeridiem(clock, meridiem);
-  const compactButtonLabel = legacyValue || formattedTime || "Select";
+  const compactButtonLabel = legacyValue || formattedTime || BOOKING_COMPACT_TIME_PLACEHOLDER_LABEL;
   const minWheelTime = getMinWheelTimeForEventDate(eventDate ?? "");
 
   return (
@@ -427,7 +431,7 @@ export function BookingSetTimeRangeField({
         required={required}
         minWheelTime={minStartWheelTime}
         buttonLabel={
-          combineClockAndMeridiem(startClock, startMeridiem) || "Select start time"
+          combineClockAndMeridiem(startClock, startMeridiem) || BOOKING_START_TIME_PLACEHOLDER_LABEL
         }
         error={startError}
       />
@@ -438,7 +442,8 @@ export function BookingSetTimeRangeField({
         defaultWheelTime={resolveDefaultFinishWheelTime}
         onTimeChange={handleFinishTimeChange}
         buttonLabel={
-          combineClockAndMeridiem(finishClock, finishMeridiem) || "Select finish time"
+          combineClockAndMeridiem(finishClock, finishMeridiem) ||
+          BOOKING_FINISH_TIME_PLACEHOLDER_LABEL
         }
         error={finishError}
       />
