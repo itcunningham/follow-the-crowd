@@ -148,7 +148,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 - **Mobile cards (2026-07-14):** compact layout below `sm` — title + vertically centred Use plan on one row; inline `Event` / `Venue` labels with `text-ftc-text-secondary` values and `text-ftc-text-muted` separator on one truncated line; NOTES label only when notes exist; tighter card padding and list spacing; desktop grid unchanged
 - **Event Plans polish (2026-07-14):** removed redundant “Saved Event Plans” heading; stronger title/meta hierarchy; 2-line notes preview; weighted Use plan outline button; History-matched bulk delete rows (`FTC_SURFACE_ROW_CLASS`, checkbox, toolbar)
 - **Use Plan flow polish (2026-07-14):** Event details step shows `Plan` label + plan name; Use Plan entry uses top-right Cancel (returns to Event Plans); header uses `ftc-form-card-header` spacing to match Create Event
-- **Use Plan workspace tabs (2026-07-22):** while planner booking create is open on `/bookings` (Event Plans → Use Plan), workspace sub-nav intercept closes create via `resetCreateFlowState` then navigates (Gigs uses `router.replace("/bookings")` to clear plan deep link)
+- **Use Plan workspace tabs (2026-07-25):** while planner booking create is open on `/bookings` (Event Plans → Use Plan), Gigs Incoming/Confirmed/History sub-tabs are not mounted (`plannerBookingCreateOpen` synced via `GigsWorkspaceChromeState` after deep link clears `planId` from URL); workspace sub-nav intercept closes create via `resetCreateFlowState` then navigates; Event Plans stays highlighted
 
 ## Group chat
 
@@ -225,7 +225,8 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
-- `PLACEHOLDER` — preserve Event Plan card dimensions in bulk-selection mode
+- `PLACEHOLDER` — hide Gigs sub-tabs during Event Plan Use Plan flow
+- `95f5d1d` — preserve Event Plan card dimensions in bulk-selection mode
 - `56b0234` — fix Event Plans card list shift when bulk-selection opens
 - `2b2311a` — align Event Plans Use plan button with Gigs Open DM placement
 - `960ee70` — use shared transient feedback for booking send success on event detail
