@@ -19,6 +19,7 @@ import {
   defaultStartWheelTime,
   extractClockDisplay,
   formatTimeButtonLabel,
+  getBookingFieldTriggerLabelClassName,
   getMinWheelTimeForEventDate,
   formatDisplayEventDate,
   guardEventDatePickerChange,
@@ -202,7 +203,7 @@ function BookingTimeControl({
         {isCompact ? (
           <>
             <span
-              className={`min-w-0 flex-1 truncate text-center tabular-nums ${hasValue ? "text-ftc-text" : "text-ftc-text-muted"}`}
+              className={getBookingFieldTriggerLabelClassName(hasValue, "truncate text-center tabular-nums")}
             >
               {resolvedLabel}
             </span>
@@ -211,9 +212,7 @@ function BookingTimeControl({
         ) : (
           <>
             <ClockIcon />
-            <span
-              className={`min-w-0 flex-1 tabular-nums ${hasValue ? "text-ftc-text" : "text-ftc-text-muted"}`}
-            >
+            <span className={getBookingFieldTriggerLabelClassName(hasValue, "tabular-nums")}>
               {resolvedLabel}
             </span>
             <ChevronIcon />

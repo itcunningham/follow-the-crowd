@@ -192,6 +192,40 @@ function testApplyEventSetTimeStartChangeClearsInvalidFinish() {
   assert.equal(next, "8:00 PM");
 }
 
+function testBookingFieldTriggerPlaceholderStylingIsShared() {
+  const bookingDateTimeSource = readFileSync(
+    new URL("../lib/bookingDateTime.ts", import.meta.url),
+    "utf8",
+  );
+  const globalsSource = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
+  const datePickerSource = readFileSync(
+    new URL("../app/components/FtcDatePicker.tsx", import.meta.url),
+    "utf8",
+  );
+  const bookingFieldsSource = readFileSync(
+    new URL("../app/components/BookingDateTimeFields.tsx", import.meta.url),
+    "utf8",
+  );
+  const runSheetSource = readFileSync(
+    new URL("../app/components/EventRunSheetSection.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(
+    bookingDateTimeSource,
+    /export const BOOKING_DATE_TIME_INPUT_CLASS = BOOKING_TIME_BUTTON_CLASS;/,
+  );
+  assert.match(bookingDateTimeSource, /getBookingFieldTriggerLabelClassName/);
+  assert.match(bookingDateTimeSource, /is-placeholder/);
+  assert.match(globalsSource, /\.ftc-field-trigger \.ftc-field-trigger-label\.is-placeholder/);
+  assert.match(globalsSource, /color: var\(--ftc-color-text-muted\)/);
+  assert.match(datePickerSource, /getBookingFieldTriggerLabelClassName\(hasValue\)/);
+  assert.doesNotMatch(datePickerSource, /placeholder:text-/);
+  assert.match(bookingFieldsSource, /getBookingFieldTriggerLabelClassName\(hasValue/);
+  assert.match(runSheetSource, /getBookingFieldTriggerLabelClassName\(hasValue/);
+  assert.doesNotMatch(runSheetSource, /hasValue \? "text-ftc-text" : "text-ftc-text-muted"/);
+}
+
 function testOneAcceptedDjWithNullStartShowsStartAction() {
   const unlock: CrewChatUnlockState = {
     acceptedDjCount: 1,
@@ -2914,6 +2948,7 @@ async function main() {
   testIncompleteSetTimeIsBlocked();
   testEventSetTimeRangeValidation();
   testApplyEventSetTimeStartChangeClearsInvalidFinish();
+  testBookingFieldTriggerPlaceholderStylingIsShared();
   testPastPickerDatesAreRejected();
   testWheelTimeBeforeMinHelpers();
   testEventTimePickerDefaultsForToday();

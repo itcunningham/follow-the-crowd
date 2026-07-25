@@ -508,8 +508,20 @@ export const BOOKING_TIME_BUTTON_CLASS =
 export const BOOKING_TIME_BUTTON_COMPACT_CLASS =
   "ftc-field-trigger inline-flex w-full min-h-[2.25rem] items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium sm:min-h-[2rem] lg:max-w-[6.25rem]";
 
-export const BOOKING_DATE_TIME_INPUT_CLASS =
-  "ftc-field-trigger w-full px-3.5 py-2.5 text-sm [color-scheme:dark]";
+export const BOOKING_DATE_TIME_INPUT_CLASS = BOOKING_TIME_BUTTON_CLASS;
+
+export const BOOKING_FIELD_TRIGGER_LABEL_BASE_CLASS = "ftc-field-trigger-label min-w-0 flex-1";
+
+export function getBookingFieldTriggerLabelClassName(
+  hasValue: boolean,
+  extraClassName = "",
+): string {
+  const stateClass = hasValue ? "is-value" : "is-placeholder";
+
+  return [BOOKING_FIELD_TRIGGER_LABEL_BASE_CLASS, stateClass, extraClassName]
+    .filter(Boolean)
+    .join(" ");
+}
 
 export const BOOKING_FIELD_LABEL_CLASS = "ftc-label";
 

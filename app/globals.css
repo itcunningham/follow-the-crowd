@@ -323,6 +323,14 @@ html {
   min-height: 2.75rem;
 }
 
+.ftc-field-trigger .ftc-field-trigger-label.is-placeholder {
+  color: var(--ftc-color-text-muted);
+}
+
+.ftc-field-trigger .ftc-field-trigger-label.is-value {
+  color: var(--ftc-color-text-primary);
+}
+
 .ftc-input {
   width: 100%;
   font-size: 0.875rem;

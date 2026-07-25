@@ -20,6 +20,7 @@ import {
   defaultFinishWheelTime,
   defaultStartWheelTime,
   extractClockDisplay,
+  getBookingFieldTriggerLabelClassName,
   parseSetTimeRange,
   SET_TIME_RANGE_JOINER,
   wheelTimeToClockParts,
@@ -257,7 +258,7 @@ function RunSheetSetTimeField({
         className={RUN_SHEET_SET_TIME_BUTTON_CLASS}
       >
         <span
-          className={`min-w-0 flex-1 truncate text-center tabular-nums ${hasValue ? "text-ftc-text" : "text-ftc-text-muted"}`}
+          className={getBookingFieldTriggerLabelClassName(hasValue, "truncate text-center tabular-nums")}
         >
           {displayValue}
         </span>
