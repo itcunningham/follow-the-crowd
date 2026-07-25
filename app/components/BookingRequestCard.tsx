@@ -42,6 +42,7 @@ import {
 import { rateDigitsToInteger } from "@/lib/bookingRate";
 import { formatBookingCardEventDate } from "@/lib/bookingDateTime";
 import { buildEventDetailFromDmHref } from "@/lib/events/eventsListNavigation";
+import type { DmThreadEntryContext } from "@/lib/dm/threadNavigation";
 import type { BookingRecipientProfile } from "@/lib/user/currentUser";
 
 function BookingCardAnimatedExpand({
@@ -91,6 +92,7 @@ export default function BookingRequestCard({
   crewChatUnlocked = false,
   eventCancelled = false,
   dmConversationId = null,
+  dmThreadEntryContext = null,
 }: {
   booking: BookingRequest;
   currentUserId: string | null;
@@ -119,6 +121,7 @@ export default function BookingRequestCard({
   crewChatUnlocked?: boolean;
   eventCancelled?: boolean;
   dmConversationId?: string | null;
+  dmThreadEntryContext?: DmThreadEntryContext | null;
 }) {
   const [proposeSheetOpen, setProposeSheetOpen] = useState(false);
   const isEventCancelledBooking = isBookingAffectedByCancelledEvent(booking, eventCancelled);
@@ -154,7 +157,12 @@ export default function BookingRequestCard({
   const showActionButtons = bookingLoaded && !bookingLoading;
   const eventHref = booking.event_id
     ? dmConversationId
-      ? buildEventDetailFromDmHref(booking.event_id, dmConversationId, booking.id)
+      ? buildEventDetailFromDmHref(
+          booking.event_id,
+          dmConversationId,
+          booking.id,
+          dmThreadEntryContext,
+        )
       : `/events/${booking.event_id}`
     : null;
 

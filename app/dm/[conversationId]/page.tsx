@@ -52,7 +52,7 @@ import {
   updateBookingRequestStatus,
   type BookingRequest,
 } from "@/lib/bookingRequests";
-import { resolveDmThreadBackHref } from "@/lib/dm/threadNavigation";
+import { parseDmThreadEntryContext, resolveDmThreadBackHref } from "@/lib/dm/threadNavigation";
 import { buildChatReturnTo } from "@/lib/profileNavigation";
 import {
   getDmAttachmentNotificationBody,
@@ -153,6 +153,10 @@ export default function DmChatPage() {
     calendarView: searchParams.get("calendarView"),
     calendarMonth: searchParams.get("calendarMonth"),
   });
+  const dmThreadEntryContext = useMemo(
+    () => parseDmThreadEntryContext((key) => searchParams.get(key)),
+    [searchParams],
+  );
   const bookingTargetRef = useRef<{
     conversationId: string;
     bookingRequestId: string;
@@ -1711,6 +1715,7 @@ export default function DmChatPage() {
                     }
                     eventCancelled={eventCancelled}
                     dmConversationId={conversationId}
+                    dmThreadEntryContext={dmThreadEntryContext}
                     canRespond={canRespond && !eventCancelled}
                     responding={
                       actionBooking ? respondingBookingId === actionBooking.id : false

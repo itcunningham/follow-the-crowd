@@ -101,6 +101,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 - **Gigs booked-card navigation (2026-07-14):** mobile agenda cards navigate on touch `pointerup` via `window.location.assign` (iOS Safari does not commit App Router `router.push`); desktop mouse and keyboard use `router.push`; booked items validate UUID `event_id` before navigation; calendar return query params preserved on event/DM links; calendar-origin DMs return to Gigs Calendar via `buildCalendarOriginReturnHref` (not Messages)
 - **Gigs → DM booking deep link (2026-07-14):** `Open conversation` passes `bookingRequestId` query param; DM scrolls target booking card into view; absolute overlay focus ring (2px primary) holds ~2s then fades ~1s via active/fading phases
 - **DM → event → Back (2026-07-14):** `View event` from DM booking card passes `from=dm&conversationId&bookingRequestId`; event detail Back returns to `/dm/{conversationId}?bookingRequestId=…&bookingFocus=scroll-only` — scrolls to booking without blue highlight; Gigs/Calendar deep-links omit `bookingFocus` and keep scroll + highlight
+- **Gigs → DM → event return chain (2026-07-25):** Opening DM from Incoming/Confirmed forwards `from=bookings` (+ tab when not Incoming); View event encodes `dmReturnFrom=bookings` on event detail; Event Back restores DM with bookings origin; DM Back returns to canonical `/bookings` or `/bookings?tab=…`; Messages-origin DMs unchanged (`bookingFocus=scroll-only`, Back → `/dm`)
 - Create-from-calendar: Save event + **Confirm N DJ(s)** invite flow
 - Today highlight on date strip; selected + today states on desktop grid cells
 
@@ -219,6 +220,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `<pending>` — preserve Gigs Incoming return chain through DM and event detail
 - `14e5194` — shrink Gigs nav pills when count is zero
 - `6be58e5` — unify DatePicker and TimePicker placeholder styling
 - `3441eb4` — fix date picker placeholder colour consistency

@@ -58,7 +58,7 @@ import {
   isDjGigPastAccepted,
   resolveBookingDateKey,
 } from "../lib/bookingRequests";
-import { parseDjGigsListTab, resolveGigsListTabParam, resolveGigsListTabForBookingsPage, buildGigsWorkspaceIncomingHref } from "../lib/bookings/gigsListNavigation";
+import { parseDjGigsListTab, resolveGigsListTabParam, resolveGigsListTabForBookingsPage, buildGigsWorkspaceIncomingHref, buildGigsConversationHref } from "../lib/bookings/gigsListNavigation";
 import {
   formatGigsTabCountAriaCount,
   formatGigsTabCountDisplay,
@@ -97,8 +97,13 @@ import { getAuthRedirectUrl } from "../lib/auth/appUrl";
 import {
   buildDmThreadHref,
   buildEventDetailDmThreadHref,
+  parseDmThreadEntryContext,
   resolveDmThreadBackHref,
 } from "../lib/dm/threadNavigation";
+import {
+  buildEventDetailFromDmHref,
+  resolveEventDetailBackHref,
+} from "../lib/events/eventsListNavigation";
 import { buildPlannerCreateEventFromPlansHref, buildPlannerCreateEventHref } from "../lib/calendar";
 import { resolveGigsCalendarBookingNavigation, resolvePlannerCalendarItemEventId, resolvePlannerCalendarItemHref } from "../lib/bookings/gigsCalendarNavigation";
 import { hasUnsavedProfileEdits, createProfileEditBaseline } from "../lib/user/profileEditDirtyState";
@@ -679,6 +684,10 @@ function testDmThreadEventDetailBackHref() {
   assert.equal(resolveDmThreadBackHref({ from: "event-detail", eventId: "not-a-uuid" }), "/events");
   assert.equal(resolveDmThreadBackHref({ from: "bookings" }), "/bookings");
   assert.equal(
+    resolveDmThreadBackHref({ from: "bookings", tab: "accepted" }),
+    "/bookings?tab=accepted",
+  );
+  assert.equal(
     buildEventDetailDmThreadHref(conversationId, eventId),
     `/dm/${conversationId}?from=event-detail&eventId=${eventId}`,
   );
@@ -694,6 +703,93 @@ function testDmThreadEventDetailBackHref() {
     buildDmThreadHref(conversationId, { from: "event-detail", eventId: "bad-id" }),
     `/dm/${conversationId}?from=event-detail`,
   );
+}
+
+function testGigsIncomingDmEventDetailReturnChain() {
+  const eventId = "11111111-1111-4111-8111-111111111111";
+  const conversationId = "22222222-2222-4222-8222-222222222222";
+  const bookingRequestId = "33333333-3333-4333-8333-333333333333";
+
+  const dmHref = buildGigsConversationHref(conversationId, bookingRequestId, "pending");
+  assert.equal(
+    dmHref,
+    `/dm/${conversationId}?from=bookings&bookingRequestId=${bookingRequestId}`,
+  );
+
+  const entryContext = parseDmThreadEntryContext((key) => {
+    const params = new URLSearchParams(dmHref.split("?")[1] ?? "");
+    return params.get(key);
+  });
+  assert.deepEqual(entryContext, {
+    from: "bookings",
+    tab: null,
+    calendarDate: null,
+    calendarView: null,
+    calendarMonth: null,
+    profileUserId: null,
+  });
+
+  const eventHref = buildEventDetailFromDmHref(
+    eventId,
+    conversationId,
+    bookingRequestId,
+    entryContext,
+  );
+  assert.equal(
+    eventHref,
+    `/events/${eventId}?from=dm&conversationId=${conversationId}&bookingRequestId=${bookingRequestId}&dmReturnFrom=bookings`,
+  );
+
+  const eventSearch = new URLSearchParams(eventHref.split("?")[1] ?? "");
+  assert.equal(
+    resolveEventDetailBackHref(null, {
+      from: eventSearch.get("from"),
+      conversationId: eventSearch.get("conversationId"),
+      bookingRequestId: eventSearch.get("bookingRequestId"),
+      dmReturnFrom: eventSearch.get("dmReturnFrom"),
+      tab: eventSearch.get("tab"),
+    }),
+    `/dm/${conversationId}?from=bookings&bookingRequestId=${bookingRequestId}`,
+  );
+
+  assert.equal(
+    resolveDmThreadBackHref({
+      from: "bookings",
+      tab: eventSearch.get("tab"),
+    }),
+    "/bookings",
+  );
+
+  const messagesEventHref = buildEventDetailFromDmHref(
+    eventId,
+    conversationId,
+    bookingRequestId,
+    null,
+  );
+  assert.equal(
+    resolveEventDetailBackHref(null, {
+      from: "dm",
+      conversationId,
+      bookingRequestId,
+    }),
+    `/dm/${conversationId}?bookingRequestId=${bookingRequestId}&bookingFocus=scroll-only`,
+  );
+  assert.doesNotMatch(messagesEventHref, /dmReturnFrom=/);
+  assert.equal(resolveDmThreadBackHref({}), "/dm");
+
+  const dmPageSource = readFileSync(
+    new URL("../app/dm/[conversationId]/page.tsx", import.meta.url),
+    "utf8",
+  );
+  const bookingCardSource = readFileSync(
+    new URL("../app/components/BookingRequestCard.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(dmPageSource, /parseDmThreadEntryContext/);
+  assert.match(dmPageSource, /dmThreadEntryContext=\{dmThreadEntryContext\}/);
+  assert.match(bookingCardSource, /dmThreadEntryContext/);
+  assert.match(bookingCardSource, /buildEventDetailFromDmHref\([\s\S]*dmThreadEntryContext/);
 }
 
 function testGigsCalendarBookingNavigation() {
@@ -2996,6 +3092,7 @@ async function main() {
   testDmThreadCalendarBackHref();
   testActiveEventLineupStatsMatchVisibleLineupRules();
   testDmThreadEventDetailBackHref();
+  testGigsIncomingDmEventDetailReturnChain();
   testGigsCalendarBookingNavigation();
   testPlannerCalendarItemHref();
   testAcceptedFutureGigAppearsInConfirmed();

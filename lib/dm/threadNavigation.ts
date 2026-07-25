@@ -1,5 +1,9 @@
 import type { CalendarOriginState } from "@/lib/bookings/gigsCalendarNavigation";
 import {
+  buildGigsListHref,
+  parseDjGigsListTab,
+} from "@/lib/bookings/gigsListNavigation";
+import {
   buildCalendarOriginReturnHref,
   parseCalendarOriginFromEventDetail,
   parseCalendarOriginReturnParams,
@@ -7,6 +11,166 @@ import {
 } from "@/lib/calendar";
 import { DM_BOOKING_FOCUS_SCROLL_ONLY } from "@/lib/dm/chatBookingTarget";
 import { looksLikeUserId } from "@/lib/user/displayName";
+
+export type DmThreadEntryContext = {
+  from: string;
+  tab?: string | null;
+  calendarDate?: string | null;
+  calendarView?: string | null;
+  calendarMonth?: string | null;
+  profileUserId?: string | null;
+};
+
+const DM_THREAD_ENTRY_FROM_VALUES = new Set([
+  "bookings",
+  "calendar",
+  "events",
+  "profile",
+]);
+
+export function parseDmThreadEntryContext(
+  getParam: (key: string) => string | null,
+): DmThreadEntryContext | null {
+  const from = getParam("from")?.trim();
+
+  if (!from || !DM_THREAD_ENTRY_FROM_VALUES.has(from)) {
+    return null;
+  }
+
+  return {
+    from,
+    tab: getParam("tab"),
+    calendarDate: getParam("calendarDate"),
+    calendarView: getParam("calendarView"),
+    calendarMonth: getParam("calendarMonth"),
+    profileUserId: getParam("profileUserId"),
+  };
+}
+
+export function appendDmReturnContextToEventDetailParams(
+  params: URLSearchParams,
+  entryContext: DmThreadEntryContext | null | undefined,
+): void {
+  const entryFrom = entryContext?.from?.trim();
+
+  if (!entryFrom || !DM_THREAD_ENTRY_FROM_VALUES.has(entryFrom)) {
+    return;
+  }
+
+  params.set("dmReturnFrom", entryFrom);
+
+  if (entryFrom === "bookings") {
+    const tab = entryContext?.tab?.trim();
+
+    if (tab) {
+      params.set("tab", tab);
+    }
+
+    return;
+  }
+
+  if (entryFrom === "calendar") {
+    if (entryContext?.calendarDate?.trim()) {
+      params.set("calendarDate", entryContext.calendarDate.trim());
+    }
+
+    if (
+      entryContext?.calendarView === "event" ||
+      entryContext?.calendarView === "dj"
+    ) {
+      params.set("calendarView", entryContext.calendarView);
+    }
+
+    if (entryContext?.calendarMonth?.trim()) {
+      params.set("calendarMonth", entryContext.calendarMonth.trim());
+    }
+
+    return;
+  }
+
+  if (entryFrom === "profile") {
+    const profileUserId = entryContext?.profileUserId?.trim();
+
+    if (profileUserId) {
+      params.set("profileUserId", profileUserId);
+    }
+  }
+}
+
+export function resolveDmThreadHrefOptionsFromEventDetailReturn(options: {
+  dmReturnFrom?: string | null;
+  tab?: string | null;
+  calendarDate?: string | null;
+  calendarView?: string | null;
+  calendarMonth?: string | null;
+  profileUserId?: string | null;
+  bookingRequestId?: string | null;
+}): {
+  from?: string;
+  tab?: string;
+  calendarDate?: string;
+  calendarView?: CalendarOriginState["calendarView"];
+  calendarMonth?: string;
+  profileUserId?: string;
+  bookingRequestId?: string;
+  bookingFocus?: typeof DM_BOOKING_FOCUS_SCROLL_ONLY;
+} {
+  const dmReturnFrom = options.dmReturnFrom?.trim();
+  const bookingRequestId = options.bookingRequestId?.trim();
+
+  if (!dmReturnFrom || !DM_THREAD_ENTRY_FROM_VALUES.has(dmReturnFrom)) {
+    return {
+      bookingRequestId: bookingRequestId || undefined,
+      bookingFocus: bookingRequestId ? DM_BOOKING_FOCUS_SCROLL_ONLY : undefined,
+    };
+  }
+
+  const hrefOptions: {
+    from?: string;
+    tab?: string;
+    calendarDate?: string;
+    calendarView?: CalendarOriginState["calendarView"];
+    calendarMonth?: string;
+    profileUserId?: string;
+    bookingRequestId?: string;
+    bookingFocus?: typeof DM_BOOKING_FOCUS_SCROLL_ONLY;
+  } = {
+    from: dmReturnFrom,
+    bookingRequestId: bookingRequestId || undefined,
+  };
+
+  if (dmReturnFrom === "bookings") {
+    const tab = options.tab?.trim();
+
+    if (tab) {
+      hrefOptions.tab = tab;
+    }
+  }
+
+  if (dmReturnFrom === "calendar") {
+    if (options.calendarDate?.trim()) {
+      hrefOptions.calendarDate = options.calendarDate.trim();
+    }
+
+    if (options.calendarView === "event" || options.calendarView === "dj") {
+      hrefOptions.calendarView = options.calendarView;
+    }
+
+    if (options.calendarMonth?.trim()) {
+      hrefOptions.calendarMonth = options.calendarMonth.trim();
+    }
+  }
+
+  if (dmReturnFrom === "profile") {
+    const profileUserId = options.profileUserId?.trim();
+
+    if (profileUserId) {
+      hrefOptions.profileUserId = profileUserId;
+    }
+  }
+
+  return hrefOptions;
+}
 
 export type DmThreadBackContext = {
   from?: string | null;
@@ -80,7 +244,13 @@ export function resolveDmThreadBackHref(context: DmThreadBackContext): string {
   }
 
   if (from === "bookings") {
-    return "/bookings";
+    const tab = parseDjGigsListTab(context.tab);
+
+    if (tab === "pending") {
+      return "/bookings";
+    }
+
+    return buildGigsListHref(tab);
   }
 
   if (from === "events") {
@@ -114,6 +284,7 @@ export function buildDmThreadHref(
     from?: string;
     tab?: string;
     eventId?: string;
+    profileUserId?: string;
     bookingRequestId?: string;
     bookingFocus?: typeof DM_BOOKING_FOCUS_SCROLL_ONLY;
     calendarDate?: string;
@@ -133,6 +304,10 @@ export function buildDmThreadHref(
 
   if (options?.eventId?.trim() && looksLikeUserId(options.eventId)) {
     params.set("eventId", options.eventId.trim());
+  }
+
+  if (options?.profileUserId?.trim()) {
+    params.set("profileUserId", options.profileUserId.trim());
   }
 
   if (options?.bookingRequestId?.trim()) {

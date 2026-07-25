@@ -1539,6 +1539,8 @@ export function AppLoadingShell({
       conversationId: searchParams.get("conversationId"),
       bookingRequestId: searchParams.get("bookingRequestId"),
       fromDmConversation: searchParams.get("fromDmConversation"),
+      dmReturnFrom: searchParams.get("dmReturnFrom"),
+      profileUserId: searchParams.get("profileUserId"),
     });
 
     if (eventId) {

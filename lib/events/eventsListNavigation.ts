@@ -1,8 +1,12 @@
 import { buildGigsListHref, parseDjGigsListTab } from "@/lib/bookings/gigsListNavigation";
-import { buildDmThreadHref } from "@/lib/dm/threadNavigation";
+import {
+  appendDmReturnContextToEventDetailParams,
+  buildDmThreadHref,
+  resolveDmThreadHrefOptionsFromEventDetailReturn,
+  type DmThreadEntryContext,
+} from "@/lib/dm/threadNavigation";
 import { resolveEventsWorkspaceChromeRole } from "@/lib/events/eventsWorkspaceChromeRole";
 import { canManageEvents, type UserRole } from "@/lib/user/currentUser";
-import { DM_BOOKING_FOCUS_SCROLL_ONLY } from "@/lib/dm/chatBookingTarget";
 import {
   buildCalendarOriginReturnHref,
   buildPlannerCalendarHref,
@@ -164,12 +168,15 @@ export function buildEventDetailFromDmHref(
   eventId: string,
   conversationId: string,
   bookingRequestId: string,
+  entryContext?: DmThreadEntryContext | null,
 ): string {
   const params = new URLSearchParams({
     from: "dm",
     conversationId: conversationId.trim(),
     bookingRequestId: bookingRequestId.trim(),
   });
+
+  appendDmReturnContextToEventDetailParams(params, entryContext);
 
   return `/events/${eventId}?${params.toString()}`;
 }
@@ -201,17 +208,25 @@ export function resolveEventDetailBackHref(
     conversationId?: string | null;
     bookingRequestId?: string | null;
     fromDmConversation?: string | null;
+    dmReturnFrom?: string | null;
+    profileUserId?: string | null;
   },
 ): string {
   const dmConversationId = resolveDmEventDetailConversationId(options);
 
   if (dmConversationId) {
-    const bookingRequestId = options?.bookingRequestId?.trim();
-
-    return buildDmThreadHref(dmConversationId, {
-      bookingRequestId: bookingRequestId || undefined,
-      bookingFocus: bookingRequestId ? DM_BOOKING_FOCUS_SCROLL_ONLY : undefined,
-    });
+    return buildDmThreadHref(
+      dmConversationId,
+      resolveDmThreadHrefOptionsFromEventDetailReturn({
+        dmReturnFrom: options?.dmReturnFrom,
+        tab: options?.tab,
+        calendarDate: options?.calendarDate,
+        calendarView: options?.calendarView,
+        calendarMonth: options?.calendarMonth,
+        profileUserId: options?.profileUserId,
+        bookingRequestId: options?.bookingRequestId,
+      }),
+    );
   }
 
   if (options?.from === "calendar") {
