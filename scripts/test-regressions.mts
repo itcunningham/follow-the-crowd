@@ -1712,7 +1712,19 @@ function testWithdrawalOtherReasonInputLimits() {
   );
   assert.match(
     readFileSync(new URL("../app/components/booking/DmBookingCardLayout.tsx", import.meta.url), "utf8"),
-    /line-clamp-3/,
+    /ftc-dm-booking-cancellation-reason-text/,
+  );
+  assert.match(
+    readFileSync(new URL("../app/components/booking/DmBookingCardLayout.tsx", import.meta.url), "utf8"),
+    /min-w-0.*overflow-x-hidden/,
+  );
+  assert.match(
+    readFileSync(new URL("../app/components/BookingRequestCard.tsx", import.meta.url), "utf8"),
+    /overflow-x-hidden/,
+  );
+  assert.match(
+    readFileSync(new URL("../app/globals.css", import.meta.url), "utf8"),
+    /\.ftc-dm-booking-cancellation-reason-text[\s\S]*overflow-wrap: anywhere/,
   );
 
   const cancelButtonSource = readFileSync(

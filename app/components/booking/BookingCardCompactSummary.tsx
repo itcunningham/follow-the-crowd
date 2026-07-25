@@ -108,7 +108,7 @@ export default function BookingCardCompactSummary({
   const setTime = booking.set_time?.trim() || "TBC";
 
   return (
-    <div className="space-y-3">
+    <div className="min-w-0 space-y-3">
       <ul className="space-y-2.5">
         {venue ? (
           <FtcMetaRow icon={<FtcVenueIcon />}>{venue}</FtcMetaRow>

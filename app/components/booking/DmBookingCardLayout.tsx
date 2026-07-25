@@ -4,15 +4,12 @@ import type { ReactNode } from "react";
 
 export const DM_BOOKING_CARD_MAX_WIDTH_CLASS = "max-w-xs";
 
-export const DM_BOOKING_CARD_SHELL_CLASS = `w-full ${DM_BOOKING_CARD_MAX_WIDTH_CLASS} rounded-2xl border border-ftc-border-subtle bg-ftc-surface p-3.5`;
+export const DM_BOOKING_CARD_SHELL_CLASS = `w-full min-w-0 ${DM_BOOKING_CARD_MAX_WIDTH_CLASS} overflow-x-hidden rounded-2xl border border-ftc-border-subtle bg-ftc-surface p-3.5`;
 
 export const DM_BOOKING_CARD_ACTIONS_CLASS = "mt-4 flex flex-col gap-2";
 
 export const DM_BOOKING_CARD_STATUS_MESSAGE_CLASS =
-  "break-words text-xs leading-snug text-ftc-text-secondary/70";
-
-export const DM_BOOKING_CARD_CANCELLATION_REASON_TEXT_CLASS =
-  "mt-0.5 block line-clamp-3 break-words [overflow-wrap:anywhere]";
+  "min-w-0 max-w-full break-words text-xs leading-snug text-ftc-text-secondary/70 [overflow-wrap:anywhere]";
 
 export function DmBookingCardStatusMessage({
   label,
@@ -32,9 +29,9 @@ export function DmBookingCardStatusMessage({
 
 export function DmBookingCardCancellationReason({ children }: { children: ReactNode }) {
   return (
-    <div className={DM_BOOKING_CARD_STATUS_MESSAGE_CLASS}>
+    <div className={`${DM_BOOKING_CARD_STATUS_MESSAGE_CLASS} overflow-hidden`}>
       <span className="text-ftc-text-muted/80">Reason</span>
-      <span className={DM_BOOKING_CARD_CANCELLATION_REASON_TEXT_CLASS}>{children}</span>
+      <p className="ftc-dm-booking-cancellation-reason-text mt-0.5">{children}</p>
     </div>
   );
 }
