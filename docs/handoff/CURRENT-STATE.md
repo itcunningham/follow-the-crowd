@@ -220,7 +220,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
-- `<pending>` — fix cancellation reason layout in DM cards and event detail
+- `2297ff2` — fix cancellation reason layout in DM cards and event detail
 - `e6f52ba` — preserve Gigs Incoming return chain through DM and event detail
 - `14e5194` — shrink Gigs nav pills when count is zero
 - `6be58e5` — unify DatePicker and TimePicker placeholder styling
