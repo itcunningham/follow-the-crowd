@@ -23,6 +23,9 @@ export function formatGigsHistoryRemoveSuccessMessage(count: number): string {
   return `${count} gig${count === 1 ? "" : "s"} removed from history`;
 }
 
+/** Event detail header feedback after a pending booking request is cancelled successfully. */
+export const BOOKING_REQUEST_CANCELLED_SUCCESS_MESSAGE = "Booking request cancelled";
+
 /** Transient inline success feedback lifecycle — source of truth for Event Plans + History header. */
 export function useInlineTabFeedbackDismiss(
   message: string | null,

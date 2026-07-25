@@ -40,6 +40,7 @@ import {
   PlannerFormField,
   PlannerStatChip,
 } from "@/app/components/planner/PlannerUi";
+import { PlannerWorkspaceTitleFeedback } from "@/app/components/planner/PlannerWorkspaceTitleFeedback";
 import { BookingDateField, BookingSetTimeRangeField } from "@/app/components/BookingDateTimeFields";
 import { applyEventDateFieldChange, getTodayDateKey } from "@/lib/bookingDateTime";
 import {
@@ -123,6 +124,10 @@ import {
 } from "@/lib/events/eventGroupChatUpdate";
 import { readCachedEventSummaryById } from "@/lib/events/eventDetailCache";
 import { resolveEventDetailBackHref } from "@/lib/events/eventsListNavigation";
+import {
+  BOOKING_REQUEST_CANCELLED_SUCCESS_MESSAGE,
+  useInlineTabFeedbackDismiss,
+} from "@/lib/design/inlineTabFeedback";
 import {
   shouldResetMobileEventDetailScroll,
   useMobileEventDetailScrollReset,
@@ -235,6 +240,18 @@ function EventDetailPageView() {
   const [lineupFilter, setLineupFilter] = useState<ActiveBookingStatusFilter>("all");
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [headerFeedbackMessage, setHeaderFeedbackMessage] = useState<string | null>(null);
+  const clearHeaderFeedbackMessage = useCallback(() => {
+    setHeaderFeedbackMessage(null);
+  }, []);
+  const headerFeedbackFading = useInlineTabFeedbackDismiss(
+    headerFeedbackMessage,
+    clearHeaderFeedbackMessage,
+  );
+
+  useEffect(() => {
+    setHeaderFeedbackMessage(null);
+  }, [eventId]);
 
   useEffect(() => {
     const inviteMessage = consumeEventCreateInviteMessage();
@@ -859,7 +876,7 @@ function EventDetailPageView() {
     try {
       await cancelBookingRequest(bookingId);
       await reloadEventLineup();
-      setSuccessMessage("Booking request cancelled.");
+      setHeaderFeedbackMessage(BOOKING_REQUEST_CANCELLED_SUCCESS_MESSAGE);
     } catch (cancelError) {
       console.error("Failed to cancel booking request:", cancelError);
       setError(getBookingMutationErrorMessage(cancelError));
@@ -1153,6 +1170,10 @@ function EventDetailPageView() {
               <EventDetailEditHeaderSlot state={editHeaderState} onEditClick={openEditForm} />
             </div>
           </div>
+          <PlannerWorkspaceTitleFeedback
+            message={headerFeedbackMessage}
+            fading={headerFeedbackFading}
+          />
         </div>
 
         {showCrewChatHelpUi && crewChatHelpOpen ? (

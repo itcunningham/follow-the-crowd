@@ -78,6 +78,7 @@ import { resolveEventsHistoryTrashVisible, resolveEventsListTabRowChrome, resolv
 import { resolveHistoryBulkSelectAllToggle } from "../app/components/history/HistoryBulkManage";
 import { resolvePlannerHistoryHideEventIds } from "../lib/events";
 import {
+  BOOKING_REQUEST_CANCELLED_SUCCESS_MESSAGE,
   HISTORY_REMOVAL_FEEDBACK_CLEAR_MS,
   HISTORY_REMOVAL_FEEDBACK_FADE_MS,
   HISTORY_REMOVAL_FEEDBACK_VISIBLE_MS,
@@ -2757,6 +2758,10 @@ function testHistoryRemovalHeaderFeedbackUnified() {
     new URL("../app/(planner-workspace)/bookings/page.tsx", import.meta.url),
     "utf8",
   );
+  const eventDetailSource = readFileSync(
+    new URL("../app/events/[eventId]/page.tsx", import.meta.url),
+    "utf8",
+  );
   const eventsSource = readFileSync(
     new URL("../app/(planner-workspace)/events/EventsPageClient.tsx", import.meta.url),
     "utf8",
@@ -2798,6 +2803,7 @@ function testHistoryRemovalHeaderFeedbackUnified() {
   assert.equal(formatEventsHistoryRemoveSuccessMessage(3), "3 events removed from history");
   assert.equal(formatGigsHistoryRemoveSuccessMessage(1), "1 gig removed from history");
   assert.equal(formatGigsHistoryRemoveSuccessMessage(3), "3 gigs removed from history");
+  assert.equal(BOOKING_REQUEST_CANCELLED_SUCCESS_MESSAGE, "Booking request cancelled");
   assert.equal(INLINE_TAB_FEEDBACK_FADE_MS, 2700);
   assert.equal(INLINE_TAB_FEEDBACK_CLEAR_MS, 3000);
 
@@ -2808,6 +2814,13 @@ function testHistoryRemovalHeaderFeedbackUnified() {
   assert.match(eventsSource, /formatEventsHistoryRemoveSuccessMessage/);
   assert.match(eventsSource, /titleFeedbackMessage: showTitleFeedback \? successMessage : null/);
   assert.match(plansSource, /useInlineTabFeedbackDismiss/);
+  assert.match(eventDetailSource, /useInlineTabFeedbackDismiss/);
+  assert.match(eventDetailSource, /PlannerWorkspaceTitleFeedback/);
+  assert.match(
+    eventDetailSource,
+    /setHeaderFeedbackMessage\(BOOKING_REQUEST_CANCELLED_SUCCESS_MESSAGE\)/,
+  );
+  assert.doesNotMatch(eventDetailSource, /setSuccessMessage\("Booking request cancelled\.\."\)/);
   assert.match(feedbackMessageSource, /EVENTS_LIST_TAB_FEEDBACK_CLASS/);
   assert.match(feedbackMessageSource, /opacity-0/);
   assert.match(titleFeedbackSource, /InlineTabFeedbackMessage/);
