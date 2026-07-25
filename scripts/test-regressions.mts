@@ -1263,6 +1263,19 @@ function testIncomingGigsCardDesignSystem() {
   assert.match(skeletonSource, /ReceivedBookingCardSkeleton[\s\S]*h-16 w-16/);
 }
 
+function testCancelledBookingCardHidesViewEvent() {
+  const bookingCardSource = readFileSync(
+    new URL("../app/components/BookingRequestCard.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(bookingCardSource, /booking\.event_id && eventHref && !showAsCancelled/);
+  assert.doesNotMatch(
+    bookingCardSource,
+    /isAccepted && !showAsCancelled \? \([\s\S]*View event[\s\S]*\) : \([\s\S]*View event/,
+  );
+}
+
 function testGigsTabBookingsCacheForTabSwitching() {
   const pageSource = readFileSync(
     new URL("../app/(planner-workspace)/bookings/page.tsx", import.meta.url),
@@ -3127,6 +3140,7 @@ async function main() {
   testGigsFilterTabsPolish();
   testGigsHistoryCardNavigation();
   testIncomingGigsCardDesignSystem();
+  testCancelledBookingCardHidesViewEvent();
   testGigsTabBookingsCacheForTabSwitching();
   testGigsPlannerNamesLoadWithBookingCards();
   testIncomingGigsCardDetailsNavigation();

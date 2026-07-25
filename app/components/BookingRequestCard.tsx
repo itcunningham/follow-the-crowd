@@ -304,8 +304,8 @@ export default function BookingRequestCard({
           />
         ) : null}
 
-        {booking.event_id && eventHref ? (
-          isAccepted && !showAsCancelled ? (
+        {booking.event_id && eventHref && !showAsCancelled ? (
+          isAccepted ? (
             <div className={DM_BOOKING_CARD_ACTIONS_CLASS}>
               <Link
                 href={eventHref}
