@@ -16,6 +16,7 @@ import {
   useDisplayedGigsListTab,
   useGigsListRouteTab,
   useSetGigsWorkspaceChromeState,
+  type GigsWorkspaceChromeState,
 } from "@/app/components/bookings/GigsWorkspaceChrome";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
 import { useGuardProfile } from "@/app/components/GuardProfileContext";
@@ -694,8 +695,11 @@ function BookingsPageContent() {
   }, [gigsTabCounts]);
 
   useLayoutEffect(() => {
-    const nextState = !showGigsWorkspace || plannerCreateVisible
-      ? defaultGigsWorkspaceChromeState
+    const nextState: GigsWorkspaceChromeState = !showGigsWorkspace || plannerCreateVisible
+      ? {
+          ...defaultGigsWorkspaceChromeState,
+          plannerBookingCreateOpen: plannerCreateVisible,
+        }
       : {
           counts: resolvedGigsTabCounts,
           showManageButton: showGigsManageButton,
@@ -710,11 +714,20 @@ function BookingsPageContent() {
           onHistorySelectionCancel: gigsHistoryCancelSelectionRef.current,
           onHistorySelectionSelectAll: gigsHistorySelectAllRef.current,
           onHistorySelectionRemove: gigsHistoryRemoveRef.current,
+          plannerBookingCreateOpen: false,
         };
 
     setGigsWorkspaceChromeState((previousState) =>
       gigsWorkspaceChromeStatesEqual(previousState, nextState) ? previousState : nextState,
     );
+
+    return () => {
+      setGigsWorkspaceChromeState((previousState) =>
+        previousState.plannerBookingCreateOpen
+          ? { ...previousState, plannerBookingCreateOpen: false }
+          : previousState,
+      );
+    };
   }, [
     gigsHistoryBulkManage.allSelected,
     gigsHistoryBulkManage.removing,

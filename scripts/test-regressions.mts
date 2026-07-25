@@ -1113,6 +1113,29 @@ function testPlannerWorkspaceSecondaryRowRhythm() {
   assert.match(gigsChromeSource, /<PlannerWorkspaceSecondaryControls[\s\S]*<GigsWorkspaceTabRow/);
 }
 
+function testPlannerBookingCreateHidesGigsSubTabs() {
+  const gigsChromeSource = readFileSync(
+    new URL("../app/components/bookings/GigsWorkspaceChrome.tsx", import.meta.url),
+    "utf8",
+  );
+  const bookingsSource = readFileSync(
+    new URL("../app/(planner-workspace)/bookings/page.tsx", import.meta.url),
+    "utf8",
+  );
+  const planDeepLinkSource = readFileSync(
+    new URL("../lib/bookings/planDeepLink.ts", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(gigsChromeSource, /plannerBookingCreateOpen: boolean/);
+  assert.match(gigsChromeSource, /plannerCreateActive/);
+  assert.match(gigsChromeSource, /if \(plannerCreateActive\) \{\s*return null;/);
+  assert.match(gigsChromeSource, /chromeState\.plannerBookingCreateOpen/);
+  assert.match(bookingsSource, /plannerBookingCreateOpen: plannerCreateVisible/);
+  assert.match(bookingsSource, /isPlannerBookingsCreateChromeActive/);
+  assert.match(planDeepLinkSource, /export function isPlannerBookingsCreateChromeActive/);
+}
+
 function testWorkspaceNavRoleDoesNotDropEventPlansTab() {
   assert.equal(
     WORKSPACE_SUB_NAV_TABS.map((tab) => tab.label).join("|"),
@@ -3234,6 +3257,7 @@ async function main() {
   testGigsListTabSwitchUsesClientHistoryWithoutRouterNavigation();
   testGigsWorkspaceChromeStateSyncAvoidsNoOpUpdates();
   testBookingsRouteMountsPersistentGigsSecondaryBand();
+  testPlannerBookingCreateHidesGigsSubTabs();
   testWorkspaceSubNavLayoutIsStable();
   testPlannerWorkspaceSecondaryRowRhythm();
   testWorkspaceNavRoleDoesNotDropEventPlansTab();

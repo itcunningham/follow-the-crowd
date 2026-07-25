@@ -51,6 +51,8 @@ export type GigsWorkspaceChromeState = {
   onHistorySelectionCancel?: () => void;
   onHistorySelectionSelectAll?: () => void;
   onHistorySelectionRemove?: () => void;
+  /** Planner Event Plan / booking create flow open on `/bookings` — hides Gigs sub-tabs. */
+  plannerBookingCreateOpen: boolean;
 };
 
 export const defaultGigsWorkspaceChromeState: GigsWorkspaceChromeState = {
@@ -67,6 +69,7 @@ export const defaultGigsWorkspaceChromeState: GigsWorkspaceChromeState = {
   onHistorySelectionCancel: undefined,
   onHistorySelectionSelectAll: undefined,
   onHistorySelectionRemove: undefined,
+  plannerBookingCreateOpen: false,
 };
 
 const GigsWorkspaceChromeDispatchContext =
@@ -95,7 +98,8 @@ export function gigsWorkspaceChromeStatesEqual(
     left.historySelectionCanDelete !== right.historySelectionCanDelete ||
     left.onHistorySelectionCancel !== right.onHistorySelectionCancel ||
     left.onHistorySelectionSelectAll !== right.onHistorySelectionSelectAll ||
-    left.onHistorySelectionRemove !== right.onHistorySelectionRemove
+    left.onHistorySelectionRemove !== right.onHistorySelectionRemove ||
+    left.plannerBookingCreateOpen !== right.plannerBookingCreateOpen
   ) {
     return false;
   }
@@ -307,12 +311,18 @@ function GigsWorkspaceSecondaryBandBody({
   plannerBookingCreateOpen: boolean;
 }) {
   const chromeState = useGigsWorkspaceChromeState();
-  const showGigsTabs = !plannerBookingCreateOpen && canShowGigsWorkspaceTabs(role);
-  const reserveManageSlot = !chromeState.showManageButton && chromeState.reserveManageSlot;
+  const plannerCreateActive =
+    plannerBookingCreateOpen || chromeState.plannerBookingCreateOpen;
 
-  if (!showGigsTabs) {
+  if (plannerCreateActive) {
+    return null;
+  }
+
+  if (!canShowGigsWorkspaceTabs(role)) {
     return <PlannerWorkspaceSecondaryControlsPlaceholder />;
   }
+
+  const reserveManageSlot = !chromeState.showManageButton && chromeState.reserveManageSlot;
 
   return (
     <PlannerWorkspaceSecondaryControls>
@@ -377,6 +387,7 @@ export function GigsWorkspaceSecondaryBand({
   const plannerBookingCreateOpen =
     plannerBookingCreateOpenProp ??
     isPlannerBookingsCreateChromeActive({
+      searchParams,
       locationSearch:
         typeof window === "undefined"
           ? searchParams.toString()
