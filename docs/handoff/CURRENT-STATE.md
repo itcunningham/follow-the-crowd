@@ -217,6 +217,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `33ca7e5` — move Event Plans success feedback to shared header slot below title row
 - `196e254` — align History removal toast with Event Plans `useInlineTabFeedbackDismiss` lifecycle
 - `4273ff7` — polish History removal toast: below title row, smoother 350ms fade
 - `97b9488` — unify Events + Gigs History removal feedback in planner title row with shared fade lifecycle
