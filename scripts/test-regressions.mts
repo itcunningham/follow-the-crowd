@@ -2874,7 +2874,13 @@ function testDmMessageReactionGestureInteractions() {
   assert.match(bubbleSource, /onContextMenu=\{handleContextMenu\}/);
   assert.match(bubbleSource, /aria-label="React to message"/);
   assert.match(bubbleSource, /DmReactionPicker/);
-  assert.match(gestureSource, /DM_MESSAGE_LONG_PRESS_MS = 500/);
+  assert.match(bubbleSource, /resetLongPressGesture/);
+  assert.doesNotMatch(reactionsSource, /fixed inset-0/);
+  assert.doesNotMatch(reactionsSource, /Close reaction picker/);
+  assert.match(reactionsSource, /data-dm-reaction-picker/);
+  assert.match(reactionsSource, /pointerdown", handlePointerDown, true/);
+  assert.match(reactionsSource, /pointermove", handlePointerMove/);
+  assert.match(gestureSource, /resetLongPressGesture: resetGesture/);
   assert.match(gestureSource, /DM_MESSAGE_LONG_PRESS_MOVE_THRESHOLD_PX = 10/);
   assert.match(gestureSource, /consumeLongPressActivation/);
   assert.match(gestureSource, /prefersFinePointer/);

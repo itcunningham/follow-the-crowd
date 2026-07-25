@@ -6,10 +6,24 @@ import { DM_QUICK_REACTIONS, summarizeDmReactions, type DmMessageReaction } from
 const PICKER_CLASS =
   "absolute z-[60] flex max-w-[min(calc(100vw-2rem),20rem)] shrink-0 items-center gap-1 rounded-full border border-ftc-border-strong bg-ftc-bg-elevated/95 px-2 py-1.5 shadow-[0_8px_24px_rgba(0,0,0,0.45)] backdrop-blur-sm";
 
+const PICKER_SCROLL_DISMISS_THRESHOLD_PX = 10;
+
 function getPickerPositionClass(isOwnMessage: boolean) {
   return isOwnMessage
     ? "bottom-full right-0 mb-2 max-sm:left-1/2 max-sm:right-auto max-sm:-translate-x-1/2 sm:top-1/2 sm:right-full sm:mr-2 sm:mb-0 sm:-translate-y-1/2 sm:translate-x-0"
     : "bottom-full left-0 mb-2 max-sm:left-1/2 max-sm:-translate-x-1/2 sm:top-1/2 sm:left-full sm:ml-2 sm:mb-0 sm:-translate-y-1/2 sm:translate-x-0";
+}
+
+function prefersFinePointer(): boolean {
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  return window.matchMedia("(pointer: fine)").matches;
+}
+
+function isPickerTarget(target: EventTarget | null, pickerElement: HTMLElement | null): boolean {
+  return Boolean(target instanceof Node && pickerElement?.contains(target));
 }
 
 export function DmReactionPicker({
@@ -25,14 +39,18 @@ export function DmReactionPicker({
   onToggleReaction: (emoji: string) => void;
   onClosePicker: () => void;
 }) {
+  const pickerRef = useRef<HTMLDivElement>(null);
   const firstReactionRef = useRef<HTMLButtonElement>(null);
+  const pointerStartsRef = useRef<Map<number, { x: number; y: number }>>(new Map());
 
   useEffect(() => {
     if (!show) {
       return;
     }
 
-    firstReactionRef.current?.focus();
+    if (prefersFinePointer()) {
+      firstReactionRef.current?.focus();
+    }
   }, [show]);
 
   useEffect(() => {
@@ -47,10 +65,63 @@ export function DmReactionPicker({
       }
     }
 
+    function handlePointerDown(event: PointerEvent) {
+      if (isPickerTarget(event.target, pickerRef.current)) {
+        pointerStartsRef.current.set(event.pointerId, {
+          x: event.clientX,
+          y: event.clientY,
+        });
+        return;
+      }
+
+      onClosePicker();
+    }
+
+    function handlePointerMove(event: PointerEvent) {
+      const pickerElement = pickerRef.current;
+
+      if (isPickerTarget(event.target, pickerElement)) {
+        return;
+      }
+
+      const start = pointerStartsRef.current.get(event.pointerId) ?? {
+        x: event.clientX,
+        y: event.clientY,
+      };
+
+      pointerStartsRef.current.set(event.pointerId, start);
+
+      if (
+        Math.hypot(event.clientX - start.x, event.clientY - start.y) >
+        PICKER_SCROLL_DISMISS_THRESHOLD_PX
+      ) {
+        onClosePicker();
+      }
+    }
+
+    function handlePointerUp(event: PointerEvent) {
+      pointerStartsRef.current.delete(event.pointerId);
+    }
+
+    function handleWheel() {
+      onClosePicker();
+    }
+
     window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("pointerdown", handlePointerDown, true);
+    window.addEventListener("pointermove", handlePointerMove, { passive: true });
+    window.addEventListener("pointerup", handlePointerUp, { passive: true });
+    window.addEventListener("pointercancel", handlePointerUp, { passive: true });
+    window.addEventListener("wheel", handleWheel, { passive: true });
 
     return () => {
+      pointerStartsRef.current.clear();
       window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("pointerdown", handlePointerDown, true);
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", handlePointerUp);
+      window.removeEventListener("pointercancel", handlePointerUp);
+      window.removeEventListener("wheel", handleWheel);
     };
   }, [onClosePicker, show]);
 
@@ -59,33 +130,27 @@ export function DmReactionPicker({
   }
 
   return (
-    <>
-      <button
-        type="button"
-        aria-label="Close reaction picker"
-        className="fixed inset-0 z-[55]"
-        onClick={onClosePicker}
-      />
-      <div
-        role="toolbar"
-        aria-label="React to message"
-        className={`${PICKER_CLASS} ${getPickerPositionClass(isOwnMessage)}`}
-      >
-        {DM_QUICK_REACTIONS.map((emoji, index) => (
-          <button
-            key={emoji}
-            ref={index === 0 ? firstReactionRef : undefined}
-            type="button"
-            disabled={reacting}
-            aria-label={`React with ${emoji}`}
-            onClick={() => onToggleReaction(emoji)}
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-lg transition hover:bg-ftc-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ftc-primary/35 disabled:opacity-50"
-          >
-            {emoji}
-          </button>
-        ))}
-      </div>
-    </>
+    <div
+      ref={pickerRef}
+      data-dm-reaction-picker
+      role="toolbar"
+      aria-label="React to message"
+      className={`${PICKER_CLASS} ${getPickerPositionClass(isOwnMessage)}`}
+    >
+      {DM_QUICK_REACTIONS.map((emoji, index) => (
+        <button
+          key={emoji}
+          ref={index === 0 ? firstReactionRef : undefined}
+          type="button"
+          disabled={reacting}
+          aria-label={`React with ${emoji}`}
+          onClick={() => onToggleReaction(emoji)}
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-lg transition hover:bg-ftc-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ftc-primary/35 disabled:opacity-50"
+        >
+          {emoji}
+        </button>
+      ))}
+    </div>
   );
 }
 

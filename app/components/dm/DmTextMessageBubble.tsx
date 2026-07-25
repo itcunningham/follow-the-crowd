@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import ChatProfileAvatarLink from "@/app/components/chat/ChatProfileAvatarLink";
 import DmMessageAttachmentView from "@/app/components/dm/DmMessageAttachment";
 import DmMessageReactions, { DmReactionPicker } from "@/app/components/dm/DmMessageReactions";
@@ -66,7 +67,16 @@ export default function DmTextMessageBubble({
     handlePointerCancel,
     handleContextMenu,
     consumeLongPressActivation,
+    resetLongPressGesture,
   } = useMessageReactionLongPress(onOpenReactionPicker);
+
+  useEffect(() => {
+    if (!showReactionPicker) {
+      return;
+    }
+
+    resetLongPressGesture();
+  }, [resetLongPressGesture, showReactionPicker]);
 
   if (isHighlighted) {
     logChatHighlightRender(messageId, true);
