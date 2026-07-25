@@ -25,6 +25,14 @@ function FileIcon() {
   );
 }
 
+function handleImageContextMenu(
+  event: React.MouseEvent<HTMLElement>,
+  onContextMenu?: (event: React.MouseEvent<HTMLElement>) => void,
+) {
+  event.preventDefault();
+  onContextMenu?.(event);
+}
+
 export default function DmMessageAttachmentView({
   attachment,
   isOwnMessage,
@@ -32,26 +40,29 @@ export default function DmMessageAttachmentView({
 }: {
   attachment: DmMessageAttachment;
   isOwnMessage: boolean;
-  onContextMenu?: (event: React.MouseEvent<HTMLAnchorElement>) => void;
+  onContextMenu?: (event: React.MouseEvent<HTMLElement>) => void;
 }) {
   if (isDmImageAttachment(attachment.file_type)) {
     return (
-      <a
-        href={attachment.file_url}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="block max-w-full overflow-hidden rounded-2xl border border-ftc-border bg-ftc-bg-elevated/40"
-        onContextMenu={onContextMenu}
+      <button
+        type="button"
+        aria-label="Open image"
+        className="ftc-dm-message-image-open block max-w-full overflow-hidden rounded-2xl border border-ftc-border bg-ftc-bg-elevated/40"
+        onClick={() => {
+          window.open(attachment.file_url, "_blank", "noopener,noreferrer");
+        }}
+        onContextMenu={(event) => handleImageContextMenu(event, onContextMenu)}
+        onDragStart={(event) => event.preventDefault()}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={attachment.file_url}
           alt={attachment.file_name}
           draggable={false}
-          className="max-h-72 w-full max-w-full object-cover select-none [-webkit-touch-callout:none] sm:max-w-[min(100%,18rem)]"
+          className="pointer-events-none max-h-72 w-full max-w-full object-cover sm:max-w-[min(100%,18rem)]"
           loading="lazy"
         />
-      </a>
+      </button>
     );
   }
 

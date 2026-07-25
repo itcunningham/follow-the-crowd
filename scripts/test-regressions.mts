@@ -2878,6 +2878,28 @@ function testDmMessageReactionGestureInteractions() {
   assert.match(gestureSource, /DM_MESSAGE_LONG_PRESS_MOVE_THRESHOLD_PX = 10/);
   assert.match(gestureSource, /consumeLongPressActivation/);
   assert.match(gestureSource, /prefersFinePointer/);
+
+  const attachmentSource = readFileSync(
+    new URL("../app/components/dm/DmMessageAttachment.tsx", import.meta.url),
+    "utf8",
+  );
+  const globalsSource = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
+
+  assert.match(attachmentSource, /aria-label="Open image"/);
+  assert.match(attachmentSource, /ftc-dm-message-image-open/);
+  assert.match(attachmentSource, /type="button"/);
+  assert.match(attachmentSource, /pointer-events-none/);
+  assert.match(attachmentSource, /onDragStart=\{\(event\) => event\.preventDefault\(\)\}/);
+  assert.match(
+    attachmentSource,
+    /onContextMenu=\{\(event\) => handleImageContextMenu\(event, onContextMenu\)\}/,
+  );
+  assert.match(
+    attachmentSource,
+    /if \(isDmImageAttachment\(attachment\.file_type\)\) \{\s*return \(\s*<button/,
+  );
+  assert.match(globalsSource, /\.ftc-dm-message-image-open/);
+  assert.match(globalsSource, /-webkit-touch-callout: none;/);
 }
 
 async function main() {

@@ -1212,6 +1212,18 @@ html {
   box-shadow: 0 0 0 2px var(--ftc-color-primary);
 }
 
+.ftc-dm-message-image-open {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  touch-action: pan-y;
+  user-select: none;
+}
+
+.ftc-dm-message-image-open img {
+  -webkit-touch-callout: none;
+  -webkit-user-drag: none;
+}
+
 /* -------------------------------------------------------------------------- */
 /* Chat highlight                                                              */
 /* -------------------------------------------------------------------------- */
