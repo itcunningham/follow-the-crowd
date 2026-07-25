@@ -218,6 +218,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `57ef874` — clear DM composer photo preview after successful send
 - `fe75fad` — polish withdrawal Details textarea scroll padding and caret visibility
 - `196e254` — align History removal toast with Event Plans `useInlineTabFeedbackDismiss` lifecycle
 - `4273ff7` — polish History removal toast: below title row, smoother 350ms fade
