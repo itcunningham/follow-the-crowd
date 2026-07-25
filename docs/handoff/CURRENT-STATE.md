@@ -138,6 +138,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 - **Event Plans delete mode (2026-07-19):** trash and delete-selection toolbars share one fixed-height secondary row (`EVENT_PLANS_TOOLBAR_ROW_CLASS`) so plan cards no longer shift when entering or leaving selection mode; title-row Create button slot stays reserved on mobile; toolbar layers swap in place via absolute positioning with `embedded` selection controls (no flex-wrap growth)
 - **History bulk selection (2026-07-19):** Events History and Gigs History delete-selection use full-card tap plus cyan ring only — no presentational checkboxes; cards expose `aria-pressed` and `aria-selected` for screen readers; cancel exits atomically with stable card shells (border stays on the list item, not a swapping inner button) to prevent white border flash
 - **Event Plans selection cards (2026-07-19):** delete-selection uses full-card tap plus cyan ring only — no checkbox; layout-only action reserve (`EVENT_PLAN_ACTION_RESERVE_CLASS`) keeps text aligned when Use plan is hidden
+- **Event Plans Use plan placement (2026-07-25):** `Use plan` CTA matches Gigs `Open DM` placement — mobile inline beside event/venue meta row; desktop bottom-right row (`hidden sm:flex justify-end`); button styling and tap target unchanged
 
 ## Event Plans
 
@@ -223,7 +224,8 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
-- `PLACEHOLDER` — use shared transient feedback for booking send success on event detail
+- `PLACEHOLDER` — align Event Plans Use plan button with Gigs Open DM placement
+- `960ee70` — use shared transient feedback for booking send success on event detail
 - `a02e788` — use shared transient feedback for booking request cancellation on event detail
 - `c7d79df` — hide View event on cancelled DM booking cards
 - `2297ff2` — fix cancellation reason layout in DM cards and event detail
