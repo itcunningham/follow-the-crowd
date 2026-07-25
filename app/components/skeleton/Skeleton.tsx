@@ -24,10 +24,8 @@ import {
   HistoryManageButton,
 } from "@/app/components/history/HistoryBulkManage";
 import {
-  EVENTS_LIST_TAB_ROW_CLASS,
   EVENT_PLANS_CREATE_BUTTON_CLASS,
-  FTC_EVENTS_LIST_TAB_ACTION_CLASS,
-  FTC_EVENTS_LIST_TAB_ACTION_PLACEHOLDER_CLASS,
+  EVENT_PLANS_TOOLBAR_ROW_CLASS,
   GIGS_LIST_TAB_ACTION_CLASS,
   GIGS_LIST_TAB_ROW_CLASS,
   GIGS_MANAGE_BUTTON_PLACEHOLDER_CLASS,
@@ -678,38 +676,20 @@ export function SavedEventPlansSectionHeader({
   selectionToolbar: ReactNode;
   showTrashButton?: boolean;
 }) {
-  if (selectionMode) {
-    return (
-      <EventsListTabRow
-        showTrashButton={showTrashButton}
-        trashButtonDisabled={trashButtonDisabled}
-        onTrashClick={onTrashClick}
-        reserveTrashSlot={!showTrashButton}
-        selectionMode
-        selectionToolbar={selectionToolbar}
-        trashAriaLabel="Delete event plans"
-      >
-        <EventsListTabPillWidthSpacer />
-      </EventsListTabRow>
-    );
-  }
-
   return (
-    <div className={EVENTS_LIST_TAB_ROW_CLASS}>
-      <div className="flex w-[1.875rem] shrink-0 items-center justify-start" aria-hidden="true">
-        <span className={FTC_EVENTS_LIST_TAB_ACTION_PLACEHOLDER_CLASS} />
-      </div>
-      <div className="flex shrink-0 items-center justify-end">
-        {showTrashButton ? (
-          <HistoryManageButton
-            ariaLabel="Delete event plans"
-            onClick={onTrashClick ?? (() => undefined)}
-            disabled={trashButtonDisabled || !onTrashClick}
-            className={FTC_EVENTS_LIST_TAB_ACTION_CLASS}
-          />
-        ) : (
-          <span aria-hidden="true" className={FTC_EVENTS_LIST_TAB_ACTION_PLACEHOLDER_CLASS} />
-        )}
+    <div className={EVENT_PLANS_TOOLBAR_ROW_CLASS}>
+      <div className="flex h-full w-full items-center">
+        <EventsListTabRow
+          showTrashButton={showTrashButton}
+          trashButtonDisabled={trashButtonDisabled}
+          onTrashClick={onTrashClick}
+          reserveTrashSlot={!showTrashButton}
+          selectionMode={selectionMode}
+          selectionToolbar={selectionToolbar}
+          trashAriaLabel="Delete event plans"
+        >
+          <EventsListTabPillWidthSpacer />
+        </EventsListTabRow>
       </div>
     </div>
   );
