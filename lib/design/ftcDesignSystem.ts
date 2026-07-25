@@ -134,12 +134,16 @@ export const EVENT_PLANS_TOOLBAR_ROW_CLASS = "relative h-[3.125rem] w-full shrin
 /** Event Plans card — layout-only reserve matching Use plan width in delete-selection mode. */
 export const EVENT_PLAN_ACTION_RESERVE_CLASS = "h-11 w-[5.5rem] shrink-0";
 
+/** Hides Use plan in delete-selection mode while preserving button layout footprint. */
+export const EVENT_PLAN_USE_BUTTON_SELECTION_HIDDEN_CLASS =
+  "pointer-events-none invisible";
+
 /** Event Plans card — desktop Use plan row (matches Gigs Open DM placement). */
 export const EVENT_PLAN_USE_BUTTON_WRAP_CLASS = "hidden min-w-0 justify-end sm:flex";
 
 /** Event Plans card — shared sizing for live and reserved Use plan buttons. */
 export const EVENT_PLAN_USE_BUTTON_CLASS =
-  "ftc-btn-secondary inline-flex min-h-11 items-center justify-center border-[1.5px] border-ftc-border-strong px-3 py-2 text-xs font-semibold uppercase tracking-wide text-ftc-text";
+  "ftc-btn-secondary inline-flex min-h-11 shrink-0 items-center justify-center border-[1.5px] border-ftc-border-strong px-3 py-2 text-xs font-semibold uppercase tracking-wide text-ftc-text";
 
 /** Event Plans title action — shared sizing for live and reserved Create button. */
 export const EVENT_PLANS_CREATE_BUTTON_CLASS =

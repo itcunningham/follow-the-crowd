@@ -55,8 +55,8 @@ import {
 } from "@/lib/bookingPlans/bookingPlansListCache";
 import {
   FTC_LIST_GAP_CLASS,
-  EVENT_PLAN_ACTION_RESERVE_CLASS,
   EVENT_PLAN_USE_BUTTON_CLASS,
+  EVENT_PLAN_USE_BUTTON_SELECTION_HIDDEN_CLASS,
   EVENT_PLAN_USE_BUTTON_WRAP_CLASS,
   EVENT_PLANS_CREATE_BUTTON_CLASS,
 } from "@/lib/design/ftcDesignSystem";
@@ -694,29 +694,31 @@ function EventPlanCard({
     ? `Deselect ${plan.name}`
     : `Select ${plan.name} for deletion`;
   const cardClassName = selectionMode
-    ? `ftc-card relative overflow-hidden${selected ? " ring-1 ring-ftc-primary/40" : ""}`
+    ? `ftc-card relative overflow-hidden${selected ? " ring-1 ring-inset ring-ftc-primary/40" : ""}`
     : "ftc-card relative overflow-hidden ftc-card-hoverable";
 
   function renderUsePlanButton() {
     return (
       <button
         type="button"
+        tabIndex={selectionMode ? -1 : 0}
+        aria-hidden={selectionMode ? true : undefined}
         onClick={(event) => {
+          if (selectionMode) {
+            return;
+          }
+
           event.stopPropagation();
           onUseForBooking();
         }}
-        className={EVENT_PLAN_USE_BUTTON_CLASS}
+        className={`${EVENT_PLAN_USE_BUTTON_CLASS} ${
+          selectionMode ? EVENT_PLAN_USE_BUTTON_SELECTION_HIDDEN_CLASS : ""
+        }`}
       >
         Use plan
       </button>
     );
   }
-
-  const mobileAction = selectionMode ? (
-    <div aria-hidden="true" className={EVENT_PLAN_ACTION_RESERVE_CLASS} />
-  ) : (
-    renderUsePlanButton()
-  );
 
   return (
     <li
@@ -740,31 +742,25 @@ function EventPlanCard({
               plan={plan}
               notesText={notesText}
               hasNotes={hasNotes}
-              mobileAction={mobileAction}
+              mobileAction={renderUsePlanButton()}
             />
           </div>
         ) : (
           <button
             type="button"
             onClick={onCardClick}
-            className="min-w-0 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ftc-primary/35 active:bg-ftc-bg-elevated/60"
+            className="min-w-0 w-full border-0 bg-transparent p-0 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ftc-primary/35 active:bg-ftc-bg-elevated/60"
           >
             <EventPlanCardBody
               plan={plan}
               notesText={notesText}
               hasNotes={hasNotes}
-              mobileAction={mobileAction}
+              mobileAction={renderUsePlanButton()}
             />
           </button>
         )}
 
-        <div className={EVENT_PLAN_USE_BUTTON_WRAP_CLASS}>
-          {selectionMode ? (
-            <div aria-hidden="true" className={EVENT_PLAN_ACTION_RESERVE_CLASS} />
-          ) : (
-            renderUsePlanButton()
-          )}
-        </div>
+        <div className={EVENT_PLAN_USE_BUTTON_WRAP_CLASS}>{renderUsePlanButton()}</div>
       </div>
     </li>
   );

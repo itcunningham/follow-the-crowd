@@ -120,8 +120,8 @@ import {
 import { getEventsAreaSubNavItems, resolveActiveWorkspaceHref, buildWorkspaceSubNavDestinationHref, EVENTS_AREA_SUB_NAV, isCalendarWorkspacePath, mergeWorkspaceNavRole, WORKSPACE_SUB_NAV_TABS, isWorkspaceSubNavTabVisible } from "../lib/plannerEventsNav";
 import { resolveEventsWorkspaceChromeRole } from "../lib/events/eventsWorkspaceChromeRole";
 import {
-  EVENT_PLAN_ACTION_RESERVE_CLASS,
   EVENT_PLAN_USE_BUTTON_CLASS,
+  EVENT_PLAN_USE_BUTTON_SELECTION_HIDDEN_CLASS,
   EVENT_PLAN_USE_BUTTON_WRAP_CLASS,
   GIGS_TAB_COUNT_SLOT_CLASS,
   GIGS_TAB_PILL_GAP_CLASS,
@@ -1195,19 +1195,20 @@ function testEventPlanUseButtonKeepsStableCardLayout() {
   assert.match(EVENT_PLANS_TOOLBAR_ROW_CLASS, /h-\[3\.125rem\]/);
   assert.doesNotMatch(EVENT_PLAN_USE_BUTTON_WRAP_CLASS, /self-center/);
   assert.match(EVENT_PLAN_USE_BUTTON_CLASS, /min-h-11/);
+  assert.match(EVENT_PLAN_USE_BUTTON_CLASS, /shrink-0/);
   assert.doesNotMatch(EVENT_PLAN_USE_BUTTON_CLASS, /w-full/);
   assert.doesNotMatch(EVENT_PLAN_USE_BUTTON_CLASS, /w-\[/);
-  assert.match(EVENT_PLAN_ACTION_RESERVE_CLASS, /h-11/);
-  assert.match(EVENT_PLAN_ACTION_RESERVE_CLASS, /w-\[5\.5rem\]/);
-  assert.doesNotMatch(EVENT_PLAN_ACTION_RESERVE_CLASS, /ftc-btn/);
-  assert.doesNotMatch(EVENT_PLAN_ACTION_RESERVE_CLASS, /self-center/);
+  assert.match(EVENT_PLAN_USE_BUTTON_SELECTION_HIDDEN_CLASS, /pointer-events-none invisible/);
 
   const pageSource = readFileSync(
     new URL("../app/(planner-workspace)/booking-plans/page.tsx", import.meta.url),
     "utf8",
   );
-  assert.match(pageSource, /mobileAction=\{mobileAction\}/);
-  assert.match(pageSource, /EVENT_PLAN_USE_BUTTON_WRAP_CLASS/);
+  assert.match(pageSource, /mobileAction=\{renderUsePlanButton\(\)\}/);
+  assert.match(pageSource, /EVENT_PLAN_USE_BUTTON_WRAP_CLASS\}\>\{renderUsePlanButton\(\)\}/);
+  assert.match(pageSource, /EVENT_PLAN_USE_BUTTON_SELECTION_HIDDEN_CLASS/);
+  assert.match(pageSource, /ring-inset ring-ftc-primary\/40/);
+  assert.doesNotMatch(pageSource, /EVENT_PLAN_ACTION_RESERVE_CLASS/);
   assert.doesNotMatch(pageSource, /flex items-center gap-3 p-3/);
 }
 
