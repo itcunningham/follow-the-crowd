@@ -25,8 +25,11 @@ export const INLINE_TAB_FEEDBACK_CLEAR_MS = HISTORY_REMOVAL_FEEDBACK_CLEAR_MS;
 export const INLINE_TAB_FEEDBACK_TEXT_CLASS =
   "text-[11px] font-normal leading-none text-ftc-text-muted transition-opacity duration-[350ms] ease-out sm:text-xs";
 
-/** History removal success — centred below planner title row; no truncation. */
-export const PLANNER_WORKSPACE_TITLE_FEEDBACK_CLASS = `${INLINE_TAB_FEEDBACK_TEXT_CLASS} whitespace-nowrap text-center`;
+/** History removal success — centred below planner title row; fade via globals.css animation. */
+export const PLANNER_WORKSPACE_TITLE_FEEDBACK_CLASS = "ftc-history-removal-feedback";
+
+export const PLANNER_WORKSPACE_TITLE_FEEDBACK_FADING_CLASS =
+  "ftc-history-removal-feedback--fading";
 
 export function formatEventsHistoryRemoveSuccessMessage(count: number): string {
   return `${count} event${count === 1 ? "" : "s"} removed from history`;

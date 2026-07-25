@@ -2512,7 +2512,8 @@ function testHistoryRemovalHeaderFeedbackUnified() {
   assert.doesNotMatch(eventsRowSource, /HistoryTabRowFeedbackCell/);
   assert.match(EVENTS_LIST_TAB_ROW_CLASS, /justify-between/);
   assert.match(titleFeedbackSource, /PlannerWorkspaceTitleFeedback/);
-  assert.match(titleFeedbackSource, /onTransitionEnd/);
+  assert.match(titleFeedbackSource, /onAnimationEnd/);
+  assert.match(titleFeedbackSource, /PLANNER_WORKSPACE_TITLE_FEEDBACK_FADING_CLASS/);
   assert.match(titleFeedbackSource, /onFadeComplete/);
   assert.match(titleFeedbackSource, /PLANNER_WORKSPACE_TITLE_FEEDBACK_SLOT_CLASS/);
   assert.doesNotMatch(titleFeedbackSource, /absolute inset-x-0/);

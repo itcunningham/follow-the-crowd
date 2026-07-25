@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef } from "react";
 import {
   HISTORY_REMOVAL_FEEDBACK_FADE_MS,
   PLANNER_WORKSPACE_TITLE_FEEDBACK_CLASS,
+  PLANNER_WORKSPACE_TITLE_FEEDBACK_FADING_CLASS,
 } from "@/lib/design/inlineTabFeedback";
 import { PLANNER_WORKSPACE_TITLE_FEEDBACK_SLOT_CLASS } from "@/lib/design/plannerWorkspaceTokens";
 
@@ -60,10 +61,13 @@ export function PlannerWorkspaceTitleFeedback({
       {message ? (
         <p
           className={`${PLANNER_WORKSPACE_TITLE_FEEDBACK_CLASS} ${
-            fading ? "opacity-0" : "opacity-100"
+            fading ? PLANNER_WORKSPACE_TITLE_FEEDBACK_FADING_CLASS : ""
           }`}
-          onTransitionEnd={(event) => {
-            if (event.propertyName !== "opacity" || event.target !== event.currentTarget) {
+          onAnimationEnd={(event) => {
+            if (
+              event.animationName !== "ftc-history-removal-feedback-fade-out" ||
+              !fading
+            ) {
               return;
             }
 

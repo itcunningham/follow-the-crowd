@@ -1437,3 +1437,42 @@ html {
     animation: none;
   }
 }
+
+/* -------------------------------------------------------------------------- */
+/* History removal header toast (Events + Gigs)                                */
+/* -------------------------------------------------------------------------- */
+
+@keyframes ftc-history-removal-feedback-fade-out {
+  from {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0;
+  }
+}
+
+.ftc-history-removal-feedback {
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 1;
+  color: var(--ftc-color-text-muted);
+  white-space: nowrap;
+  text-align: center;
+}
+
+@media (min-width: 640px) {
+  .ftc-history-removal-feedback {
+    font-size: 12px;
+  }
+}
+
+.ftc-history-removal-feedback--fading {
+  animation: ftc-history-removal-feedback-fade-out 350ms ease-out forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ftc-history-removal-feedback--fading {
+    animation-duration: 1ms;
+  }
+}
