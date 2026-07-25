@@ -218,6 +218,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `TBD` — fix iPhone Safari image long-press opening native link preview
 - `7a9426b` — replace persistent DM React action with press-and-hold picker
 - `8cc6f55` — clear image selection styling after successful send
 - `57ef874` — clear DM composer photo preview after successful send
