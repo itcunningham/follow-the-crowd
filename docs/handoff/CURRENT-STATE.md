@@ -65,6 +65,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 - **Create/edit validation:** inline field errors after Save; start + finish time both required; notes length/line limits disable save
 - **Event create/edit time pickers (2026-07-22):** empty start/finish wheels open at current local time via `defaultEventStartWheelTime` / `resolveEventTimePickerOpenValue`; past-time floor only when event date is today; shared `getEventSetTimeValidationErrors` enforces finish-after-start (overnight PM→AM only), zero duration, 24h max, and today start-in-past across Events create/edit, Use Plan booking create, and booking request modal via `BookingSetTimeRangeField` + `eventFormFieldValidation` + `lib/events.ts` server asserts
 - **Booking date/time field placeholders (2026-07-25):** shared `isBookingFieldTriggerPlaceholder` / `hasBookingFieldTriggerLabelValue` + `.ftc-field-trigger-label.is-placeholder` CSS so empty Event Date, Start Time, and Finish Time labels share one placeholder detection path (`FtcDatePicker`, `BookingDateTimeFields`, run sheet compact time); selected values unchanged
+- **Event detail booking cancel feedback (2026-07-25):** successful pending booking-request cancellation shows `Booking request cancelled` in the shared planner header inline feedback slot (`PlannerWorkspaceTitleFeedback` + `useInlineTabFeedbackDismiss`) — same typography, timing (2700ms visible + 300ms fade), and no-layout-shift reserved row as Events/Gigs History removal; heavy in-content card removed for this case only
 - **Notes** section on event detail (heading "Notes", muted section label)
 - Edit with confirmation when booking-impacting fields change + group chat update message
 - **Edit event form polish (2026-07-14):** unified form control height/radius/focus; settings-panel card header; intentional flyer upload panel; aligned colour chips + preview row; subtle notes counter
@@ -221,6 +222,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `a02e788` — use shared transient feedback for booking request cancellation on event detail
 - `c7d79df` — hide View event on cancelled DM booking cards
 - `2297ff2` — fix cancellation reason layout in DM cards and event detail
 - `e6f52ba` — preserve Gigs Incoming return chain through DM and event detail
