@@ -1691,9 +1691,19 @@ function testWithdrawalOtherReasonInputLimits() {
   assert.doesNotMatch(fieldSource, /onPaste/);
   assert.doesNotMatch(fieldSource, /onKeyDown/);
   assert.doesNotMatch(fieldSource, /measureWithdrawalReasonVisibleRows/);
+  assert.match(fieldSource, /scrollWithdrawalReasonCaretIntoView/);
+
+  const scrollSource = readFileSync(
+    new URL("../lib/booking/scrollWithdrawalReasonCaretIntoView.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(scrollSource, /scrollWithdrawalReasonCaretIntoView/);
+  assert.match(scrollSource, /resetWithdrawalReasonTextareaScroll/);
 
   const globalsSource = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
   assert.match(globalsSource, /\.ftc-withdrawal-reason-textarea[\s\S]*overflow-y: auto !important/);
+  assert.match(globalsSource, /\.ftc-withdrawal-reason-textarea[\s\S]*scroll-padding-bottom: 2rem/);
+  assert.match(globalsSource, /\.ftc-withdrawal-reason-textarea[\s\S]*padding-bottom: 2rem !important/);
 
   const cancelButtonSource = readFileSync(
     new URL("../app/components/booking/CancelAcceptedBookingButton.tsx", import.meta.url),

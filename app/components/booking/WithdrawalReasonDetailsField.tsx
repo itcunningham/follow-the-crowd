@@ -6,6 +6,10 @@ import {
   mapWithdrawalReasonCursorAfterSanitize,
   sanitizeWithdrawalOtherReasonValue,
 } from "@/lib/booking/withdrawalReasonDetails";
+import {
+  resetWithdrawalReasonTextareaScroll,
+  scrollWithdrawalReasonCaretIntoView,
+} from "@/lib/booking/scrollWithdrawalReasonCaretIntoView";
 
 export default function WithdrawalReasonDetailsField({
   value,
@@ -26,15 +30,22 @@ export default function WithdrawalReasonDetailsField({
 
   useEffect(() => {
     setDisplayValue(value);
+
+    const textarea = textareaRef.current;
+
+    if (textarea) {
+      resetWithdrawalReasonTextareaScroll(textarea);
+    }
   }, [value]);
 
   useLayoutEffect(() => {
     const textarea = textareaRef.current;
-    const pendingSelection = pendingSelectionRef.current;
 
     if (!textarea) {
       return;
     }
+
+    const pendingSelection = pendingSelectionRef.current;
 
     if (pendingSelection) {
       const { start, end } = pendingSelection;
@@ -42,15 +53,22 @@ export default function WithdrawalReasonDetailsField({
       const safeEnd = Math.max(safeStart, Math.min(end, displayValue.length));
       textarea.setSelectionRange(safeStart, safeEnd);
       pendingSelectionRef.current = null;
-      return;
     }
 
-    if (document.activeElement !== textarea) {
-      return;
+    if (document.activeElement === textarea) {
+      scrollWithdrawalReasonCaretIntoView(textarea);
     }
-
-    textarea.setSelectionRange(textarea.selectionStart, textarea.selectionEnd);
   }, [displayValue]);
+
+  function syncCaretVisibility() {
+    const textarea = textareaRef.current;
+
+    if (!textarea || document.activeElement !== textarea) {
+      return;
+    }
+
+    scrollWithdrawalReasonCaretIntoView(textarea);
+  }
 
   function applySanitizedValue(rawValue: string, cursor: number) {
     const sanitized = sanitizeWithdrawalOtherReasonValue(rawValue);
@@ -104,9 +122,12 @@ export default function WithdrawalReasonDetailsField({
             isComposingRef.current = true;
           }}
           onCompositionEnd={handleCompositionEnd}
+          onSelect={syncCaretVisibility}
+          onKeyUp={syncCaretVisibility}
+          onClick={syncCaretVisibility}
           rows={3}
           placeholder={placeholder}
-          className="ftc-textarea ftc-withdrawal-reason-textarea w-full rounded-lg px-3 py-2 text-sm"
+          className="ftc-textarea ftc-withdrawal-reason-textarea w-full rounded-lg text-sm"
         />
         <span className="ftc-textarea-inline-counter" aria-hidden="true">
           {displayValue.length}/{MAX_WITHDRAWAL_OTHER_REASON_LENGTH}
