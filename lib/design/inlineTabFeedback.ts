@@ -1,14 +1,19 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 /** Fully visible duration before fade begins (Events + Gigs History header feedback). */
 export const HISTORY_REMOVAL_FEEDBACK_VISIBLE_MS = 2700;
 
-/** Opacity transition duration — must match `duration-300` on feedback text classes. */
-export const HISTORY_REMOVAL_FEEDBACK_FADE_MS = 300;
+/** Opacity transition duration — must match `duration-[350ms]` on feedback text classes. */
+export const HISTORY_REMOVAL_FEEDBACK_FADE_MS = 350;
 
-/** Clear display message only after visible window + fade transition complete. */
+/** Small buffer after fade starts so clear runs only after the CSS transition finishes. */
+export const HISTORY_REMOVAL_FEEDBACK_FADE_BUFFER_MS = 16;
+
+/** @deprecated Derived total; prefer VISIBLE_MS + fade chain in the hook. */
 export const HISTORY_REMOVAL_FEEDBACK_CLEAR_MS =
-  HISTORY_REMOVAL_FEEDBACK_VISIBLE_MS + HISTORY_REMOVAL_FEEDBACK_FADE_MS;
+  HISTORY_REMOVAL_FEEDBACK_VISIBLE_MS +
+  HISTORY_REMOVAL_FEEDBACK_FADE_MS +
+  HISTORY_REMOVAL_FEEDBACK_FADE_BUFFER_MS;
 
 /** @deprecated Use HISTORY_REMOVAL_FEEDBACK_VISIBLE_MS */
 export const INLINE_TAB_FEEDBACK_FADE_MS = HISTORY_REMOVAL_FEEDBACK_VISIBLE_MS;
@@ -18,9 +23,9 @@ export const INLINE_TAB_FEEDBACK_CLEAR_MS = HISTORY_REMOVAL_FEEDBACK_CLEAR_MS;
 
 /** Shared muted inline feedback typography. */
 export const INLINE_TAB_FEEDBACK_TEXT_CLASS =
-  "text-[11px] font-normal leading-none text-ftc-text-muted transition-opacity duration-300 ease-out sm:text-xs";
+  "text-[11px] font-normal leading-none text-ftc-text-muted transition-opacity duration-[350ms] ease-out sm:text-xs";
 
-/** History removal success — centred in planner title row; no truncation. */
+/** History removal success — centred below planner title row; no truncation. */
 export const PLANNER_WORKSPACE_TITLE_FEEDBACK_CLASS = `${INLINE_TAB_FEEDBACK_TEXT_CLASS} whitespace-nowrap text-center`;
 
 export function formatEventsHistoryRemoveSuccessMessage(count: number): string {
@@ -38,6 +43,12 @@ export function useHistoryRemovalHeaderFeedback(
   const [displayMessage, setDisplayMessage] = useState<string | null>(null);
   const [fading, setFading] = useState(false);
 
+  const completeFade = useCallback(() => {
+    setDisplayMessage(null);
+    setFading(false);
+    onClearSource();
+  }, [onClearSource]);
+
   useEffect(() => {
     if (!message) {
       setDisplayMessage(null);
@@ -48,21 +59,31 @@ export function useHistoryRemovalHeaderFeedback(
     setDisplayMessage(message);
     setFading(false);
 
-    const fadeTimer = window.setTimeout(
-      () => setFading(true),
-      HISTORY_REMOVAL_FEEDBACK_VISIBLE_MS,
-    );
-    const clearTimer = window.setTimeout(() => {
-      setDisplayMessage(null);
-      setFading(false);
-      onClearSource();
-    }, HISTORY_REMOVAL_FEEDBACK_CLEAR_MS);
+    const fadeTimer = window.setTimeout(() => {
+      window.requestAnimationFrame(() => {
+        setFading(true);
+      });
+    }, HISTORY_REMOVAL_FEEDBACK_VISIBLE_MS);
 
     return () => {
       window.clearTimeout(fadeTimer);
+    };
+  }, [message]);
+
+  useEffect(() => {
+    if (!fading || !displayMessage) {
+      return;
+    }
+
+    const clearTimer = window.setTimeout(
+      completeFade,
+      HISTORY_REMOVAL_FEEDBACK_FADE_MS + HISTORY_REMOVAL_FEEDBACK_FADE_BUFFER_MS,
+    );
+
+    return () => {
       window.clearTimeout(clearTimer);
     };
-  }, [message, onClearSource]);
+  }, [completeFade, displayMessage, fading]);
 
   return { displayMessage, fading };
 }

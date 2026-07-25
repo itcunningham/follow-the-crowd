@@ -1,31 +1,30 @@
 import { PLANNER_WORKSPACE_TITLE_FEEDBACK_CLASS } from "@/lib/design/inlineTabFeedback";
+import { PLANNER_WORKSPACE_TITLE_FEEDBACK_SLOT_CLASS } from "@/lib/design/plannerWorkspaceTokens";
 
 type PlannerWorkspaceTitleFeedbackProps = {
   message: string | null;
   fading: boolean;
 };
 
-/** Centred history-removal success overlay in the planner title row (Events + Gigs). */
+/** Centred history-removal success row below the planner title row (Events + Gigs). */
 export function PlannerWorkspaceTitleFeedback({
   message,
   fading,
 }: PlannerWorkspaceTitleFeedbackProps) {
-  if (!message) {
-    return null;
-  }
-
   return (
     <div
-      className="pointer-events-none absolute inset-x-0 flex min-h-[2.75rem] items-center justify-center px-16 sm:px-20 md:px-[12.5rem]"
-      aria-live="polite"
+      className={PLANNER_WORKSPACE_TITLE_FEEDBACK_SLOT_CLASS}
+      aria-live={message ? "polite" : undefined}
     >
-      <p
-        className={`${PLANNER_WORKSPACE_TITLE_FEEDBACK_CLASS} ${
-          fading ? "opacity-0" : "opacity-100"
-        }`}
-      >
-        {message}
-      </p>
+      {message ? (
+        <p
+          className={`${PLANNER_WORKSPACE_TITLE_FEEDBACK_CLASS} ${
+            fading ? "opacity-0" : "opacity-100"
+          }`}
+        >
+          {message}
+        </p>
+      ) : null}
     </div>
   );
 }

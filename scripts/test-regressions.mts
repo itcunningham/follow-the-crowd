@@ -1968,8 +1968,8 @@ function testEventPlansInlineFeedbackMatchesEventsHistory() {
     /rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated px-4 py-3 text-sm text-ftc-text-secondary/,
   );
   assert.equal(HISTORY_REMOVAL_FEEDBACK_VISIBLE_MS, 2700);
-  assert.equal(HISTORY_REMOVAL_FEEDBACK_FADE_MS, 300);
-  assert.equal(HISTORY_REMOVAL_FEEDBACK_CLEAR_MS, 3000);
+  assert.equal(HISTORY_REMOVAL_FEEDBACK_FADE_MS, 350);
+  assert.equal(HISTORY_REMOVAL_FEEDBACK_CLEAR_MS, 3066);
   assert.equal(INLINE_TAB_FEEDBACK_FADE_MS, HISTORY_REMOVAL_FEEDBACK_VISIBLE_MS);
   assert.equal(INLINE_TAB_FEEDBACK_CLEAR_MS, HISTORY_REMOVAL_FEEDBACK_CLEAR_MS);
   assert.match(eventsSource, /useHistoryRemovalHeaderFeedback/);
@@ -2492,8 +2492,8 @@ function testHistoryRemovalHeaderFeedbackUnified() {
   assert.equal(formatGigsHistoryRemoveSuccessMessage(1), "1 gig removed from history");
   assert.equal(formatGigsHistoryRemoveSuccessMessage(3), "3 gigs removed from history");
   assert.equal(HISTORY_REMOVAL_FEEDBACK_VISIBLE_MS, 2700);
-  assert.equal(HISTORY_REMOVAL_FEEDBACK_FADE_MS, 300);
-  assert.equal(HISTORY_REMOVAL_FEEDBACK_CLEAR_MS, 3000);
+  assert.equal(HISTORY_REMOVAL_FEEDBACK_FADE_MS, 350);
+  assert.equal(HISTORY_REMOVAL_FEEDBACK_CLEAR_MS, 3066);
 
   assert.match(gigsPageSource, /useHistoryRemovalHeaderFeedback/);
   assert.match(gigsPageSource, /formatGigsHistoryRemoveSuccessMessage/);
@@ -2513,6 +2513,8 @@ function testHistoryRemovalHeaderFeedbackUnified() {
   assert.match(EVENTS_LIST_TAB_ROW_CLASS, /justify-between/);
   assert.match(titleFeedbackSource, /PlannerWorkspaceTitleFeedback/);
   assert.match(titleFeedbackSource, /PLANNER_WORKSPACE_TITLE_FEEDBACK_CLASS/);
+  assert.match(titleFeedbackSource, /PLANNER_WORKSPACE_TITLE_FEEDBACK_SLOT_CLASS/);
+  assert.doesNotMatch(titleFeedbackSource, /absolute inset-x-0/);
   assert.match(layoutSource, /PlannerWorkspaceTitleFeedback/);
 }
 
