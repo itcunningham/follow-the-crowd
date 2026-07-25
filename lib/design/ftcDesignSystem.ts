@@ -120,9 +120,9 @@ export const GIGS_LIST_TAB_ACTION_CLASS = FTC_EVENTS_LIST_TAB_ACTION_CLASS;
 /** Invisible slot reserved on Incoming/Confirmed so History manage action does not shift layout. */
 export const GIGS_MANAGE_BUTTON_PLACEHOLDER_CLASS = FTC_EVENTS_LIST_TAB_ACTION_PLACEHOLDER_CLASS;
 
-/** Events Active/History tab row — fixed height; filters left, page actions right (`w-full`). */
+/** Events Active/History tab row — Active/History left, trash right. */
 export const EVENTS_LIST_TAB_ROW_CLASS =
-  "flex h-[1.875rem] max-h-[1.875rem] min-h-[1.875rem] w-full flex-nowrap items-center gap-2 md:h-[2.375rem] md:max-h-[2.375rem] md:min-h-[2.375rem]";
+  "flex h-[1.875rem] max-h-[1.875rem] min-h-[1.875rem] w-full flex-nowrap items-center justify-between gap-2 md:h-[2.375rem] md:max-h-[2.375rem] md:min-h-[2.375rem]";
 
 /** Inline history-remove feedback beside History tab (truncate, no row growth). */
 export const EVENTS_LIST_TAB_FEEDBACK_CLASS =

@@ -70,8 +70,6 @@ type EventsListTabControlsProps = {
   listTab: EventsListTab;
   createOpen?: boolean;
   onTabLinkClick?: (event: MouseEvent<HTMLAnchorElement>, tab: EventsListTab) => void;
-  feedbackMessage?: string | null;
-  feedbackFading?: boolean;
   selectionMode?: boolean;
   selectionToolbar?: ReactNode;
   onTrashClick?: () => void;
@@ -86,8 +84,6 @@ export function EventsListTabControls({
   listTab,
   createOpen = false,
   onTabLinkClick,
-  feedbackMessage = null,
-  feedbackFading = false,
   selectionMode = false,
   selectionToolbar = null,
   onTrashClick,
@@ -120,8 +116,6 @@ export function EventsListTabControls({
       trashButtonDisabled={rowChrome.trashButtonDisabled}
       onTrashClick={onTrashClick}
       reserveTrashSlot={rowChrome.reserveTrashSlot}
-      feedbackMessage={feedbackMessage}
-      feedbackFading={feedbackFading}
       selectionMode={selectionMode}
       selectionToolbar={selectionToolbar}
     >

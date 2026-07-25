@@ -34,7 +34,7 @@ import {
 import { readCachedNavRole } from "@/lib/navigationRoleCache";
 import { useGuardProfile } from "@/app/components/GuardProfileContext";
 import { canManageEvents, type UserRole } from "@/lib/user/currentUser";
-import { PLANNER_WORKSPACE_TITLE_FEEDBACK_CLASS } from "@/lib/design/inlineTabFeedback";
+import { PlannerWorkspaceTitleFeedback } from "@/app/components/planner/PlannerWorkspaceTitleFeedback";
 
 /** Matches the widest Events-area create button so title rows stay aligned. */
 const PLANNER_WORKSPACE_TITLE_ACTION_PLACEHOLDER_CLASS =
@@ -163,20 +163,10 @@ export function PlannerWorkspacePageHeader({
     <header className={PLANNER_WORKSPACE_HEADER_CLASS}>
       <div className={PLANNER_WORKSPACE_TITLE_ROW_CLASS}>
         <h1 className={`${PLANNER_WORKSPACE_TITLE_CLASS} shrink-0`}>{title}</h1>
-        <div
-          className="pointer-events-none absolute inset-x-0 flex min-h-[2.75rem] items-center justify-center px-16 sm:px-20 md:px-[12.5rem]"
-          aria-live={titleFeedbackMessage ? "polite" : undefined}
-        >
-          {titleFeedbackMessage ? (
-            <p
-              className={`${PLANNER_WORKSPACE_TITLE_FEEDBACK_CLASS} ${
-                titleFeedbackFading ? "opacity-0" : "opacity-100"
-              }`}
-            >
-              {titleFeedbackMessage}
-            </p>
-          ) : null}
-        </div>
+        <PlannerWorkspaceTitleFeedback
+          message={titleFeedbackMessage}
+          fading={titleFeedbackFading}
+        />
         <PlannerWorkspaceTitleActions actions={actions} />
       </div>
       {showWorkspaceSubNav ? (

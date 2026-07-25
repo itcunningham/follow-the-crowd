@@ -4,6 +4,7 @@ import Link from "next/link";
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -16,6 +17,7 @@ import { useGuardProfile } from "@/app/components/GuardProfileContext";
 import EventDateStatusBadge from "@/app/components/EventDateStatusBadge";
 import {
   PlannerWorkspacePage,
+  useSetPlannerWorkspaceHeaderState,
 } from "@/app/components/planner/PlannerWorkspaceLayout";
 import {
   PlannerBackLink,
@@ -53,6 +55,10 @@ import { EventDetailPrimaryAction } from "@/app/components/event-detail/EventDet
 import UnavailableDjBookingConfirmModal from "@/app/components/UnavailableDjBookingConfirmModal";
 import { EventCoverImageListThumb } from "@/app/components/events/EventCoverImageDisplay";
 import { FTC_LIST_GAP_CLASS } from "@/lib/design/ftcDesignSystem";
+import {
+  formatEventsHistoryRemoveSuccessMessage,
+  useHistoryRemovalHeaderFeedback,
+} from "@/lib/design/inlineTabFeedback";
 import { EventListSkeleton } from "@/app/components/skeleton/Skeleton";
 import {
   EventsListTabControls,
@@ -446,7 +452,14 @@ function EventsPageClientView({
   const [createSaveAttempted, setCreateSaveAttempted] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [historyFeedbackFading, setHistoryFeedbackFading] = useState(false);
+  const clearHistoryRemoveSuccessMessage = useCallback(() => {
+    setSuccessMessage(null);
+  }, []);
+  const {
+    displayMessage: historyRemoveFeedbackMessage,
+    fading: historyRemoveFeedbackFading,
+  } = useHistoryRemovalHeaderFeedback(successMessage, clearHistoryRemoveSuccessMessage);
+  const setPlannerWorkspaceHeaderState = useSetPlannerWorkspaceHeaderState();
   const [eventsListReady, setEventsListReady] = useState(() => mountListState.eventsListReady);
   const [calendarOriginDateKey, setCalendarOriginDateKey] = useState<string | null>(
     () => calendarBootstrap?.calendarOriginDateKey ?? null,
@@ -606,24 +619,35 @@ function EventsPageClientView({
   const historyTabRowSelectionMode =
     isPlanner && isHistoryTab && historyBulkManage.showSelectionToolbar;
 
-  useEffect(() => {
-    if (!successMessage) {
-      setHistoryFeedbackFading(false);
-      return;
-    }
+  useLayoutEffect(() => {
+    const showTitleFeedback =
+      showEventsListContent && isHistoryTab && !historyTabRowSelectionMode;
 
-    setHistoryFeedbackFading(false);
-    const fadeTimer = window.setTimeout(() => setHistoryFeedbackFading(true), 2700);
-    const clearTimer = window.setTimeout(() => {
-      setSuccessMessage(null);
-      setHistoryFeedbackFading(false);
-    }, 3000);
+    setPlannerWorkspaceHeaderState({
+      titleFeedbackMessage: showTitleFeedback ? historyRemoveFeedbackMessage : null,
+      titleFeedbackFading: showTitleFeedback ? historyRemoveFeedbackFading : false,
+    });
 
     return () => {
-      window.clearTimeout(fadeTimer);
-      window.clearTimeout(clearTimer);
+      setPlannerWorkspaceHeaderState({
+        titleFeedbackMessage: null,
+        titleFeedbackFading: false,
+      });
     };
-  }, [successMessage]);
+  }, [
+    historyRemoveFeedbackFading,
+    historyRemoveFeedbackMessage,
+    historyTabRowSelectionMode,
+    isHistoryTab,
+    setPlannerWorkspaceHeaderState,
+    showEventsListContent,
+  ]);
+
+  useEffect(() => {
+    if (!isHistoryTab && successMessage) {
+      clearHistoryRemoveSuccessMessage();
+    }
+  }, [clearHistoryRemoveSuccessMessage, isHistoryTab, successMessage]);
 
   const loadEvents = useCallback(async () => {
     const cachedEvents = readEventsListCache(isPlanner);
@@ -1199,9 +1223,7 @@ function EventsPageClientView({
           writeEventsListCache(isPlanner, next);
           return next;
         });
-        setSuccessMessage(
-          `${successes.length} event${successes.length === 1 ? "" : "s"} removed from history`,
-        );
+        setSuccessMessage(formatEventsHistoryRemoveSuccessMessage(successes.length));
       }
 
       if (failures.length > 0) {
@@ -1262,8 +1284,6 @@ function EventsPageClientView({
               listTab={isHistoryTab ? "history" : "active"}
               createOpen={createOpen}
               onTabLinkClick={handleEventsListTabLinkClick}
-              feedbackMessage={isHistoryTab ? successMessage : null}
-              feedbackFading={historyFeedbackFading}
               selectionMode={historyTabRowSelectionMode}
               onTrashClick={historyBulkManage.enterSelectionMode}
               historyLoadSettled={historyLoadSettled}

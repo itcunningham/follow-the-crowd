@@ -690,8 +690,6 @@ export function SavedEventPlansSectionHeader({
         trashButtonDisabled={trashButtonDisabled}
         onTrashClick={onTrashClick}
         reserveTrashSlot={!showTrashButton}
-        feedbackMessage={null}
-        feedbackFading={feedbackFading}
         selectionMode
         selectionToolbar={selectionToolbar}
         trashAriaLabel="Delete event plans"

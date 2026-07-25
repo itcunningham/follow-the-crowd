@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   BookingsPageLoadingShell,
@@ -158,7 +159,7 @@ import { EVENTS_AREA_SUB_NAV } from "@/lib/plannerEventsNav";
 import { GIG_CARD_OPEN_DM_BUTTON_CLASS, FTC_LIST_CARD_ARTWORK_CLASS, FTC_LIST_CARD_ROW_CLASS } from "@/lib/design/ftcDesignSystem";
 import {
   formatGigsHistoryRemoveSuccessMessage,
-  useInlineTabFeedbackDismiss,
+  useHistoryRemovalHeaderFeedback,
 } from "@/lib/design/inlineTabFeedback";
 
 const emptyForm: BookingRequestInput = {
@@ -429,7 +430,10 @@ function BookingsPageContent() {
   const clearGigsHistorySuccessMessage = useCallback(() => {
     setGigsHistorySuccessMessage(null);
   }, []);
-  const gigsHistoryFeedbackFading = useInlineTabFeedbackDismiss(
+  const {
+    displayMessage: gigsHistoryFeedbackMessage,
+    fading: gigsHistoryFeedbackFading,
+  } = useHistoryRemovalHeaderFeedback(
     gigsHistorySuccessMessage,
     clearGigsHistorySuccessMessage,
   );
@@ -737,7 +741,7 @@ function BookingsPageContent() {
       !plannerCreateVisible;
 
     setPlannerWorkspaceHeaderState({
-      titleFeedbackMessage: showTitleFeedback ? gigsHistorySuccessMessage : null,
+      titleFeedbackMessage: showTitleFeedback ? gigsHistoryFeedbackMessage : null,
       titleFeedbackFading: showTitleFeedback ? gigsHistoryFeedbackFading : false,
     });
 
@@ -749,8 +753,8 @@ function BookingsPageContent() {
     };
   }, [
     gigsHistoryFeedbackFading,
+    gigsHistoryFeedbackMessage,
     gigsHistorySelectionMode,
-    gigsHistorySuccessMessage,
     isGigsHistoryTab,
     plannerCreateVisible,
     setPlannerWorkspaceHeaderState,
