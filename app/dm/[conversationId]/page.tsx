@@ -1094,18 +1094,26 @@ export default function DmChatPage() {
         return [...prev, attachment];
       });
 
-      if (otherUserId) {
-        await createNotification(
-          otherUserId,
-          "message",
-          "New message",
-          caption || getDmAttachmentNotificationBody(attachment),
-          `/dm/${conversationId}`,
-        );
-      }
-
       setInput("");
       clearPendingAttachment();
+
+      if (otherUserId) {
+        try {
+          await createNotification(
+            otherUserId,
+            "message",
+            "New message",
+            caption || getDmAttachmentNotificationBody(attachment),
+            `/dm/${conversationId}`,
+          );
+        } catch (notificationError) {
+          console.error(
+            "[dm] Attachment sent but notification failed:",
+            notificationError,
+          );
+        }
+      }
+
       void markConversationRead(conversationId, {
         readThroughCreatedAt: optimisticMessage.created_at,
       });

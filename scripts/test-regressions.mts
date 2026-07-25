@@ -2805,6 +2805,14 @@ function testDmComposerClearsPendingPhotoAfterSuccessfulSend() {
     new URL("../app/components/dm/DmComposer.tsx", import.meta.url),
     "utf8",
   );
+  const bubbleSource = readFileSync(
+    new URL("../app/components/dm/DmTextMessageBubble.tsx", import.meta.url),
+    "utf8",
+  );
+  const attachmentSource = readFileSync(
+    new URL("../app/components/dm/DmMessageAttachment.tsx", import.meta.url),
+    "utf8",
+  );
   const pageSource = readFileSync(
     new URL("../app/dm/[conversationId]/page.tsx", import.meta.url),
     "utf8",
@@ -2813,20 +2821,28 @@ function testDmComposerClearsPendingPhotoAfterSuccessfulSend() {
     new URL("../lib/dm/composerPendingAttachment.ts", import.meta.url),
     "utf8",
   );
+  const globalsSource = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
 
-  assert.match(composerSource, /ring-2 ring-ftc-primary/);
+  assert.match(composerSource, /dm-composer-pending-photo-selected/);
+  assert.doesNotMatch(composerSource, /ring-2 ring-ftc-primary/);
   assert.match(composerSource, /onStagePhoto/);
   assert.match(composerSource, /onClearPendingPhoto/);
   assert.match(composerSource, /pendingAttachmentPreviewUrl/);
   assert.match(composerSource, /disabled=\{busy \|\| !canSend\}/);
   assert.doesNotMatch(composerSource, /onPhotoSelected/);
 
+  assert.match(globalsSource, /\.dm-composer-pending-photo-selected/);
+  assert.match(bubbleSource, /const attachmentOnly = hasAttachments && !hasText;/);
+  assert.match(bubbleSource, /const bubbleShellClass = attachmentOnly/);
+  assert.doesNotMatch(attachmentSource, /dm-composer-pending-photo-selected/);
+  assert.doesNotMatch(attachmentSource, /ring-ftc-primary/);
+
   assert.match(pageSource, /createPendingComposerAttachment/);
   assert.match(pageSource, /clearPendingAttachment/);
   assert.match(pageSource, /onStagePhoto=\{stagePendingPhoto\}/);
   assert.match(
     pageSource,
-    /setInput\(""\);\s*clearPendingAttachment\(\);\s*void markConversationRead/,
+    /setInput\(""\);\s*clearPendingAttachment\(\);\s*if \(otherUserId\)/,
   );
   assert.doesNotMatch(
     pageSource,

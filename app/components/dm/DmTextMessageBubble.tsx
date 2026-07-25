@@ -65,6 +65,14 @@ export default function DmTextMessageBubble({
   }
 
   const highlightClass = getChatNewMessageHighlightClass(isHighlighted);
+  const attachmentOnly = hasAttachments && !hasText;
+  const bubbleShellClass = attachmentOnly
+    ? "overflow-hidden"
+    : `overflow-hidden ${
+        isOwnMessage
+          ? `ftc-bubble-own ${hasAttachments ? "p-1" : "px-4 py-2.5"}`
+          : `ftc-bubble-other ${hasAttachments ? "p-1" : "px-4 py-2.5"}`
+      }`;
 
   return (
     <li
@@ -86,13 +94,7 @@ export default function DmTextMessageBubble({
         ) : null}
         <div className={`flex min-w-0 flex-col ${isOwnMessage ? "items-end" : "items-start"}`}>
           <div className={`relative max-w-full ${highlightClass}`}>
-            <div
-              className={`overflow-hidden ${
-                isOwnMessage
-                  ? `ftc-bubble-own ${hasAttachments && !hasText ? "p-1" : "px-4 py-2.5"}`
-                  : `ftc-bubble-other ${hasAttachments && !hasText ? "p-1" : "px-4 py-2.5"}`
-              }`}
-            >
+            <div className={bubbleShellClass}>
               {hasAttachments ? (
                 <div className={`space-y-2 ${hasText ? "mb-2" : ""}`}>
                   {attachments.map((attachment) => (

@@ -90,7 +90,7 @@ export default function DmComposer({
       {hasPendingPhoto && pendingAttachmentPreviewUrl ? (
         <div className="mb-2 flex items-start gap-2">
           <div
-            className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl ring-2 ring-ftc-primary"
+            className="dm-composer-pending-photo-selected relative h-16 w-16 shrink-0 overflow-hidden rounded-xl"
             data-testid="dm-composer-pending-photo"
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
