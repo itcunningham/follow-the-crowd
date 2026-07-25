@@ -1946,9 +1946,10 @@ function testEventPlansActionRowLayout() {
     new URL("../app/(planner-workspace)/booking-plans/page.tsx", import.meta.url),
     "utf8",
   );
-  assert.match(skeletonSource, /justify-center overflow-hidden/);
-  assert.match(skeletonSource, /InlineTabFeedbackMessage message=\{feedbackMessage\} fading=\{feedbackFading\}/);
+  assert.doesNotMatch(skeletonSource, /InlineTabFeedbackMessage/);
   assert.match(pageSource, /const showEventPlansToolbar = !formOpen;/);
+  assert.match(pageSource, /useSetPlannerWorkspaceHeaderState/);
+  assert.match(pageSource, /titleFeedbackMessage: showTitleFeedback \? successMessage : null/);
 }
 
 function testEventPlansInlineFeedbackMatchesEventsHistory() {
@@ -1961,8 +1962,9 @@ function testEventPlansInlineFeedbackMatchesEventsHistory() {
     "utf8",
   );
   assert.match(plansSource, /useInlineTabFeedbackDismiss/);
-  assert.match(plansSource, /feedbackMessage=\{successMessage\}/);
-  assert.match(plansSource, /feedbackFading=\{successFeedbackFading\}/);
+  assert.match(plansSource, /useSetPlannerWorkspaceHeaderState/);
+  assert.match(plansSource, /titleFeedbackMessage: showTitleFeedback \? successMessage : null/);
+  assert.doesNotMatch(plansSource, /feedbackMessage=\{successMessage\}/);
   assert.doesNotMatch(
     plansSource,
     /rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated px-4 py-3 text-sm text-ftc-text-secondary/,

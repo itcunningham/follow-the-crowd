@@ -23,7 +23,6 @@ import {
 import {
   HistoryManageButton,
 } from "@/app/components/history/HistoryBulkManage";
-import { InlineTabFeedbackMessage } from "@/app/components/feedback/InlineTabFeedbackMessage";
 import {
   EVENTS_LIST_TAB_ROW_CLASS,
   EVENT_PLANS_CREATE_BUTTON_CLASS,
@@ -671,16 +670,12 @@ export function SavedEventPlansSectionHeader({
   trashButtonDisabled = true,
   onTrashClick,
   selectionToolbar,
-  feedbackMessage = null,
-  feedbackFading = false,
   showTrashButton = true,
 }: {
   selectionMode: boolean;
   trashButtonDisabled?: boolean;
   onTrashClick?: () => void;
   selectionToolbar: ReactNode;
-  feedbackMessage?: string | null;
-  feedbackFading?: boolean;
   showTrashButton?: boolean;
 }) {
   if (selectionMode) {
@@ -704,13 +699,7 @@ export function SavedEventPlansSectionHeader({
       <div className="flex w-[1.875rem] shrink-0 items-center justify-start" aria-hidden="true">
         <span className={FTC_EVENTS_LIST_TAB_ACTION_PLACEHOLDER_CLASS} />
       </div>
-      <div
-        className="flex min-w-0 flex-1 items-center justify-center overflow-hidden"
-        aria-live="polite"
-      >
-        <InlineTabFeedbackMessage message={feedbackMessage} fading={feedbackFading} />
-      </div>
-      <div className="flex w-[1.875rem] shrink-0 items-center justify-end">
+      <div className="flex shrink-0 items-center justify-end">
         {showTrashButton ? (
           <HistoryManageButton
             ariaLabel="Delete event plans"

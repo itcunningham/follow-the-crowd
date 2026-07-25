@@ -6,7 +6,7 @@ type PlannerWorkspaceTitleFeedbackProps = {
   fading: boolean;
 };
 
-/** Centred history-removal success row below the planner title row (Events + Gigs). */
+/** Centred planner title-row success feedback (Events History, Gigs History, Event Plans). */
 export function PlannerWorkspaceTitleFeedback({
   message,
   fading,

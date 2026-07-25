@@ -1,11 +1,14 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
 import { useGuardProfile } from "@/app/components/GuardProfileContext";
-import { PlannerWorkspacePage } from "@/app/components/planner/PlannerWorkspaceLayout";
+import {
+  PlannerWorkspacePage,
+  useSetPlannerWorkspaceHeaderState,
+} from "@/app/components/planner/PlannerWorkspaceLayout";
 import { PlannerFormCard, PlannerFormField, PlannerInlineError } from "@/app/components/planner/PlannerUi";
 import {
   BookingPlanListSkeleton,
@@ -214,6 +217,7 @@ export default function BookingPlansPage() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const clearSuccessMessage = useCallback(() => setSuccessMessage(null), []);
   const successFeedbackFading = useInlineTabFeedbackDismiss(successMessage, clearSuccessMessage);
+  const setPlannerWorkspaceHeaderState = useSetPlannerWorkspaceHeaderState();
 
   const planBulkManage = useHistoryBulkManage(plans);
 
@@ -309,6 +313,22 @@ export default function BookingPlansPage() {
       setSuccessMessage(message);
     }
   }, []);
+
+  useLayoutEffect(() => {
+    const showTitleFeedback = !formOpen;
+
+    setPlannerWorkspaceHeaderState({
+      titleFeedbackMessage: showTitleFeedback ? successMessage : null,
+      titleFeedbackFading: showTitleFeedback ? successFeedbackFading : false,
+    });
+
+    return () => {
+      setPlannerWorkspaceHeaderState({
+        titleFeedbackMessage: null,
+        titleFeedbackFading: false,
+      });
+    };
+  }, [formOpen, setPlannerWorkspaceHeaderState, successFeedbackFading, successMessage]);
 
   useEffect(() => {
     if (guardProfile?.role) {
@@ -513,8 +533,6 @@ export default function BookingPlansPage() {
               trashButtonDisabled={trashButtonDisabled}
               onTrashClick={planBulkManage.enterSelectionMode}
               showTrashButton={showTrashButton}
-              feedbackMessage={successMessage}
-              feedbackFading={successFeedbackFading}
               selectionToolbar={
                 <HistorySelectionToolbar
                   embedded
