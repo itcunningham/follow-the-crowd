@@ -2,11 +2,12 @@
 
 import ChatProfileAvatarLink from "@/app/components/chat/ChatProfileAvatarLink";
 import DmMessageAttachmentView from "@/app/components/dm/DmMessageAttachment";
-import DmMessageReactions from "@/app/components/dm/DmMessageReactions";
+import DmMessageReactions, { DmReactionPicker } from "@/app/components/dm/DmMessageReactions";
 import { getChatNewMessageHighlightClass, logChatHighlightRender } from "@/lib/chatNewMessageHighlight";
 import { formatBookingMessagePreview } from "@/lib/bookingRequests";
 import type { DmMessageAttachment } from "@/lib/dmAttachments";
-import type { DmMessageReaction } from "@/lib/dmReactions";
+import { useMessageReactionLongPress } from "@/lib/dm/useMessageReactionLongPress";
+import { summarizeDmReactions, type DmMessageReaction } from "@/lib/dmReactions";
 
 export default function DmTextMessageBubble({
   messageId,
@@ -55,6 +56,17 @@ export default function DmTextMessageBubble({
   const displayText = formatBookingMessagePreview(trimmedText);
   const hasAttachments = attachments.length > 0;
   const hasText = displayText.length > 0;
+  const hasReactionSummaries =
+    summarizeDmReactions(reactions, currentUserId).length > 0;
+
+  const {
+    handlePointerDown,
+    handlePointerMove,
+    handlePointerUp,
+    handlePointerCancel,
+    handleContextMenu,
+    consumeLongPressActivation,
+  } = useMessageReactionLongPress(onOpenReactionPicker);
 
   if (isHighlighted) {
     logChatHighlightRender(messageId, true);
@@ -67,8 +79,8 @@ export default function DmTextMessageBubble({
   const highlightClass = getChatNewMessageHighlightClass(isHighlighted);
   const attachmentOnly = hasAttachments && !hasText;
   const bubbleShellClass = attachmentOnly
-    ? "overflow-hidden"
-    : `overflow-hidden ${
+    ? "overflow-hidden [touch-action:pan-y]"
+    : `overflow-hidden [touch-action:pan-y] ${
         isOwnMessage
           ? `ftc-bubble-own ${hasAttachments ? "p-1" : "px-4 py-2.5"}`
           : `ftc-bubble-other ${hasAttachments ? "p-1" : "px-4 py-2.5"}`
@@ -94,7 +106,29 @@ export default function DmTextMessageBubble({
         ) : null}
         <div className={`flex min-w-0 flex-col ${isOwnMessage ? "items-end" : "items-start"}`}>
           <div className={`relative max-w-full ${highlightClass}`}>
-            <div className={bubbleShellClass}>
+            {!hasReactionSummaries ? (
+              <button
+                type="button"
+                aria-label="React to message"
+                disabled={reacting}
+                onClick={onOpenReactionPicker}
+                className={`absolute top-1 z-10 flex h-6 w-6 items-center justify-center rounded-full border border-ftc-border bg-ftc-bg-elevated/90 text-xs text-ftc-text-secondary opacity-0 transition hover:border-ftc-border-strong hover:text-ftc-text focus-visible:opacity-100 disabled:opacity-50 sm:group-hover/message:opacity-100 ${
+                  isOwnMessage ? "right-1" : "left-1"
+                }`}
+              >
+                +
+              </button>
+            ) : null}
+
+            <div
+              className={bubbleShellClass}
+              onPointerDown={handlePointerDown}
+              onPointerMove={handlePointerMove}
+              onPointerUp={handlePointerUp}
+              onPointerCancel={handlePointerCancel}
+              onContextMenu={handleContextMenu}
+              onClickCapture={consumeLongPressActivation}
+            >
               {hasAttachments ? (
                 <div className={`space-y-2 ${hasText ? "mb-2" : ""}`}>
                   {attachments.map((attachment) => (
@@ -102,6 +136,7 @@ export default function DmTextMessageBubble({
                       key={attachment.id}
                       attachment={attachment}
                       isOwnMessage={isOwnMessage}
+                      onContextMenu={handleContextMenu}
                     />
                   ))}
                 </div>
@@ -112,6 +147,14 @@ export default function DmTextMessageBubble({
                 </p>
               ) : null}
             </div>
+
+            <DmReactionPicker
+              show={showReactionPicker}
+              reacting={reacting}
+              isOwnMessage={isOwnMessage}
+              onToggleReaction={onToggleReaction}
+              onClosePicker={onCloseReactionPicker}
+            />
           </div>
 
           <time
@@ -126,13 +169,10 @@ export default function DmTextMessageBubble({
           <DmMessageReactions
             reactions={reactions}
             currentUserId={currentUserId}
-            showPicker={showReactionPicker}
             reacting={reacting}
-            prominentActions={hasAttachments}
             isOwnMessage={isOwnMessage}
             onToggleReaction={onToggleReaction}
             onOpenPicker={onOpenReactionPicker}
-            onClosePicker={onCloseReactionPicker}
           />
 
           {isOwnMessage && showSeen ? (

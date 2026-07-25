@@ -2853,6 +2853,33 @@ function testDmComposerClearsPendingPhotoAfterSuccessfulSend() {
   assert.match(helperSource, /revokePendingComposerAttachment/);
 }
 
+function testDmMessageReactionGestureInteractions() {
+  const bubbleSource = readFileSync(
+    new URL("../app/components/dm/DmTextMessageBubble.tsx", import.meta.url),
+    "utf8",
+  );
+  const reactionsSource = readFileSync(
+    new URL("../app/components/dm/DmMessageReactions.tsx", import.meta.url),
+    "utf8",
+  );
+  const gestureSource = readFileSync(
+    new URL("../lib/dm/useMessageReactionLongPress.ts", import.meta.url),
+    "utf8",
+  );
+
+  assert.doesNotMatch(reactionsSource, />React</);
+  assert.doesNotMatch(reactionsSource, /prominentActions/);
+  assert.match(reactionsSource, /if \(summaries\.length === 0\) \{\s*return null;/);
+  assert.match(bubbleSource, /useMessageReactionLongPress/);
+  assert.match(bubbleSource, /onContextMenu=\{handleContextMenu\}/);
+  assert.match(bubbleSource, /aria-label="React to message"/);
+  assert.match(bubbleSource, /DmReactionPicker/);
+  assert.match(gestureSource, /DM_MESSAGE_LONG_PRESS_MS = 500/);
+  assert.match(gestureSource, /DM_MESSAGE_LONG_PRESS_MOVE_THRESHOLD_PX = 10/);
+  assert.match(gestureSource, /consumeLongPressActivation/);
+  assert.match(gestureSource, /prefersFinePointer/);
+}
+
 async function main() {
   testPastEventDatesAreBlocked();
   testFutureEventDatesAreAllowed();
@@ -2915,6 +2942,7 @@ async function main() {
   testEventCreateFormTextFieldMaxLength();
   testWithdrawalOtherReasonInputLimits();
   testDmComposerClearsPendingPhotoAfterSuccessfulSend();
+  testDmMessageReactionGestureInteractions();
   testEventFallbackColourSelectionRadioBehaviour();
   testEventPlanPickerClearsSelectionOnFormBack();
   testEventPlansSelectionToolbarMatchesHistory();

@@ -28,9 +28,11 @@ function FileIcon() {
 export default function DmMessageAttachmentView({
   attachment,
   isOwnMessage,
+  onContextMenu,
 }: {
   attachment: DmMessageAttachment;
   isOwnMessage: boolean;
+  onContextMenu?: (event: React.MouseEvent<HTMLAnchorElement>) => void;
 }) {
   if (isDmImageAttachment(attachment.file_type)) {
     return (
@@ -39,7 +41,7 @@ export default function DmMessageAttachmentView({
         target="_blank"
         rel="noopener noreferrer"
         className="block max-w-full overflow-hidden rounded-2xl border border-ftc-border bg-ftc-bg-elevated/40"
-        onContextMenu={(event) => event.preventDefault()}
+        onContextMenu={onContextMenu}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
@@ -59,6 +61,7 @@ export default function DmMessageAttachmentView({
       target="_blank"
       rel="noopener noreferrer"
       download={attachment.file_name}
+      onContextMenu={onContextMenu}
       className={`flex max-w-full items-center gap-3 rounded-2xl border px-3 py-2.5 transition hover:border-ftc-primary/30 ${
         isOwnMessage
           ? "border-ftc-primary/20 bg-ftc-primary/8"

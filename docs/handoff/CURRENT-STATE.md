@@ -72,7 +72,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 - Accepted bookings cancellable by planner or DJ with reason + group chat update
 - Booking cards in DMs show **live** event fields from `events` when `event_id` set; expanded card uses compact icon metadata rows (venue/date/time/rate), no event initials thumb, expandable notes, tighter spacing
 - **DM photo picker (2026-07-14):** media icon opens native OS chooser (Photo Library / Take Photo on iOS); no forced camera via `capture`
-- **DM composer photo staging (2026-07-25):** selected image shows in-composer preview with composer-only blue ring (`.dm-composer-pending-photo-selected`); Send uploads caption + photo; preview clears immediately after message insert (before notification); image-only chat messages render without `ftc-bubble-own` blue shell so sent photos do not look selected
+- **DM message reactions (2026-07-25):** persistent `React` label removed; press-and-hold (~500ms) or right-click opens existing picker on text/image messages; desktop hover/focus-visible `+` affordance; keyboard-accessible `React to message` button; booking/system cards unchanged
 - **Mobile bottom nav + keyboard (2026-07-21):** on viewports below `md`, text-field focus latches a keyboard session from `visualViewport` height gap; nav stays hidden while focused (including iOS scroll) until height gap shows dismissal or focus leaves; offset padding clears with the bar
 
 ## Calendar
@@ -218,7 +218,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
-- `TBD` — clear image selection styling after successful send
+- `8cc6f55` — clear image selection styling after successful send
 - `57ef874` — clear DM composer photo preview after successful send
 - `fe75fad` — polish withdrawal Details textarea scroll padding and caret visibility
 - `196e254` — align History removal toast with Event Plans `useInlineTabFeedbackDismiss` lifecycle
