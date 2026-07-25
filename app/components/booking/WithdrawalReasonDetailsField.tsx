@@ -2,7 +2,11 @@
 
 import { useCallback, useLayoutEffect, useRef } from "react";
 import { MAX_WITHDRAWAL_OTHER_REASON_LENGTH } from "@/lib/bookingRequests";
-import { applyTextInputLimit } from "@/lib/textInputLimits";
+import {
+  countWithdrawalOtherReasonLines,
+  MAX_WITHDRAWAL_OTHER_REASON_LINES,
+  sanitizeWithdrawalOtherReasonInput,
+} from "@/lib/booking/withdrawalReasonDetails";
 
 function applyWithdrawalReasonTextareaHeight(textarea: HTMLTextAreaElement): void {
   const style = window.getComputedStyle(textarea);
@@ -69,14 +73,29 @@ export default function WithdrawalReasonDetailsField({
     };
   }, [adjustHeight]);
 
-  function handleChange(next: string) {
-    const limited = applyTextInputLimit(value, next, MAX_WITHDRAWAL_OTHER_REASON_LENGTH);
+  function applySanitizedValue(next: string) {
+    const limited = sanitizeWithdrawalOtherReasonInput(value, next);
 
     if (limited === null) {
       return;
     }
 
     onChange(limited);
+  }
+
+  function handleKeyDown(event: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (event.key !== "Enter" || event.nativeEvent.isComposing) {
+      return;
+    }
+
+    const textarea = event.currentTarget;
+    const selectionStart = textarea.selectionStart ?? value.length;
+    const selectionEnd = textarea.selectionEnd ?? value.length;
+    const nextValue = value.slice(0, selectionStart) + "\n" + value.slice(selectionEnd);
+
+    if (countWithdrawalOtherReasonLines(nextValue) > MAX_WITHDRAWAL_OTHER_REASON_LINES) {
+      event.preventDefault();
+    }
   }
 
   return (
@@ -89,7 +108,8 @@ export default function WithdrawalReasonDetailsField({
           ref={textareaRef}
           value={value}
           disabled={disabled}
-          onChange={(event) => handleChange(event.target.value)}
+          onChange={(event) => applySanitizedValue(event.target.value)}
+          onKeyDown={handleKeyDown}
           rows={2}
           maxLength={MAX_WITHDRAWAL_OTHER_REASON_LENGTH}
           placeholder={placeholder}

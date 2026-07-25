@@ -11,6 +11,7 @@ import {
   PLANNER_CANCELLATION_REASONS,
   type AcceptedBookingCancellationRole,
 } from "@/lib/bookingRequests";
+import { sanitizeWithdrawalOtherReason } from "@/lib/booking/withdrawalReasonDetails";
 
 function buildResolvedReason(selectedReason: string, otherReason: string): string | null {
   const trimmedSelected = selectedReason.trim();
@@ -20,7 +21,9 @@ function buildResolvedReason(selectedReason: string, otherReason: string): strin
   }
 
   if (trimmedSelected === "Other") {
-    return otherReason.trim() || null;
+    const sanitized = sanitizeWithdrawalOtherReason(otherReason);
+
+    return sanitized.trim() || null;
   }
 
   return trimmedSelected;

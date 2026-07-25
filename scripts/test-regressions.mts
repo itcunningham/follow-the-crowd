@@ -12,6 +12,13 @@ import {
   getVisibleBookingPlanFormFieldErrors,
 } from "../lib/bookingPlans/bookingPlanFormFieldValidation";
 import { applyTextInputLimit } from "../lib/textInputLimits";
+import {
+  countWithdrawalOtherReasonLines,
+  MAX_WITHDRAWAL_OTHER_REASON_LINES,
+  sanitizeWithdrawalOtherReason,
+  sanitizeWithdrawalOtherReasonInput,
+} from "../lib/booking/withdrawalReasonDetails";
+import { MAX_WITHDRAWAL_OTHER_REASON_LENGTH } from "../lib/bookingRequests";
 import { formatPlannerCalendarItemHeadline } from "../lib/calendar";
 import {
   resolveCompactCalendarDisplayTitle,
@@ -1634,6 +1641,65 @@ function testEventCreateFormTextFieldMaxLength() {
   assert.match(plannerUiSource, /applyTextInputLimit\(value, next, maxLength\)/);
 }
 
+function testWithdrawalOtherReasonInputLimits() {
+  assert.equal(MAX_WITHDRAWAL_OTHER_REASON_LINES, 3);
+  assert.equal(MAX_WITHDRAWAL_OTHER_REASON_LENGTH, 120);
+
+  assert.equal(sanitizeWithdrawalOtherReasonInput("", "Line one"), "Line one");
+  assert.equal(
+    sanitizeWithdrawalOtherReasonInput("", "Line one\nLine two"),
+    "Line one\nLine two",
+  );
+  assert.equal(
+    sanitizeWithdrawalOtherReasonInput("", "Line one\nLine two\nLine three"),
+    "Line one\nLine two\nLine three",
+  );
+  assert.equal(
+    sanitizeWithdrawalOtherReasonInput(
+      "Line one\nLine two\nLine three",
+      "Line one\nLine two\nLine three\nLine four",
+    ),
+    "Line one\nLine two\nLine three",
+  );
+
+  const fiveLines = ["one", "two", "three", "four", "five"].join("\n");
+  assert.equal(
+    sanitizeWithdrawalOtherReasonInput("", fiveLines),
+    ["one", "two", "three"].join("\n"),
+  );
+
+  const threeLongLines = ["a".repeat(50), "b".repeat(50), "c".repeat(50)].join("\n");
+  assert.equal(sanitizeWithdrawalOtherReason(threeLongLines).length, 120);
+  assert.equal(countWithdrawalOtherReasonLines(sanitizeWithdrawalOtherReason(threeLongLines)), 3);
+
+  const overBothLimits = `${"x".repeat(40)}\n${"y".repeat(40)}\n${"z".repeat(40)}\nextra\nextra`;
+  const sanitizedBoth = sanitizeWithdrawalOtherReason(overBothLimits);
+  assert.equal(countWithdrawalOtherReasonLines(sanitizedBoth), 3);
+  assert.equal(sanitizedBoth.length, 120);
+
+  assert.equal(sanitizeWithdrawalOtherReason("Unavailable"), "Unavailable");
+
+  const fieldSource = readFileSync(
+    new URL("../app/components/booking/WithdrawalReasonDetailsField.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(fieldSource, /sanitizeWithdrawalOtherReasonInput/);
+  assert.match(fieldSource, /onKeyDown=\{handleKeyDown\}/);
+  assert.match(fieldSource, /countWithdrawalOtherReasonLines\(nextValue\) > MAX_WITHDRAWAL_OTHER_REASON_LINES/);
+
+  const cancelButtonSource = readFileSync(
+    new URL("../app/components/booking/CancelAcceptedBookingButton.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(cancelButtonSource, /sanitizeWithdrawalOtherReason\(otherReason\)/);
+
+  const bookingRequestsSource = readFileSync(
+    new URL("../lib/bookingRequests.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(bookingRequestsSource, /sanitizeWithdrawalOtherReason\(trimmedReason\)/);
+}
+
 function testEventPlanPickerClearsSelectionOnFormBack() {
   const source = readFileSync(
     new URL("../app/(planner-workspace)/events/EventsPageClient.tsx", import.meta.url),
@@ -2754,6 +2820,7 @@ async function main() {
   testMobileSoftwareKeyboardHidesBottomNavigation();
   testEventsActiveStatusPillsSingleRowLayout();
   testEventCreateFormTextFieldMaxLength();
+  testWithdrawalOtherReasonInputLimits();
   testEventFallbackColourSelectionRadioBehaviour();
   testEventPlanPickerClearsSelectionOnFormBack();
   testEventPlansSelectionToolbarMatchesHistory();

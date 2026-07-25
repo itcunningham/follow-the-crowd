@@ -18,6 +18,7 @@ import { getCurrentUserId, getUserAvatarProfilesByIds, type BookingRecipientProf
 import { countAcceptedCrewDjsForEvent } from "@/lib/events/crewChatUnlock";
 import { postBookingCancellationGroupChatUpdate } from "@/lib/events/bookingCancellation";
 import { postBookingAcceptanceGroupChatUpdate } from "@/lib/events/bookingAcceptance";
+import { sanitizeWithdrawalOtherReason, sanitizeWithdrawalOtherReasonInput } from "@/lib/booking/withdrawalReasonDetails";
 
 export type BookingRequestStatus = "pending" | "accepted" | "declined" | "cancelled";
 
@@ -114,7 +115,7 @@ export const DJ_WITHDRAWAL_REASONS = [
   "Other",
 ] as const;
 
-export const MAX_WITHDRAWAL_OTHER_REASON_LENGTH = 120;
+export { MAX_WITHDRAWAL_OTHER_REASON_LENGTH } from "@/lib/booking/withdrawalReasonDetails";
 
 function formatStatusLabel(status: BookingRequestStatus): string {
   if (status === "accepted") {
@@ -2516,9 +2517,10 @@ export async function cancelBookingRequest(
   options?: { reason?: string; previousStatus?: BookingRequestStatus },
 ): Promise<BookingRequest> {
   const trimmedReason = options?.reason?.trim() || null;
+  const sanitizedReason = trimmedReason ? sanitizeWithdrawalOtherReason(trimmedReason) : null;
   const { data, error } = await supabase.rpc("cancel_booking_request", {
     p_booking_id: bookingId,
-    p_cancellation_reason: trimmedReason,
+    p_cancellation_reason: sanitizedReason || null,
   });
 
   if (error) {
