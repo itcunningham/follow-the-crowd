@@ -18,6 +18,7 @@ import EventDateStatusBadge from "@/app/components/EventDateStatusBadge";
 import {
   PlannerWorkspacePage,
   useSetPlannerWorkspaceHeaderState,
+  useSetPlannerWorkspaceTitleFeedbackFadeComplete,
 } from "@/app/components/planner/PlannerWorkspaceLayout";
 import {
   PlannerBackLink,
@@ -458,8 +459,11 @@ function EventsPageClientView({
   const {
     displayMessage: historyRemoveFeedbackMessage,
     fading: historyRemoveFeedbackFading,
+    completeFade: completeHistoryRemoveFeedbackFade,
   } = useHistoryRemovalHeaderFeedback(successMessage, clearHistoryRemoveSuccessMessage);
   const setPlannerWorkspaceHeaderState = useSetPlannerWorkspaceHeaderState();
+  const setPlannerWorkspaceTitleFeedbackFadeComplete =
+    useSetPlannerWorkspaceTitleFeedbackFadeComplete();
   const [eventsListReady, setEventsListReady] = useState(() => mountListState.eventsListReady);
   const [calendarOriginDateKey, setCalendarOriginDateKey] = useState<string | null>(
     () => calendarBootstrap?.calendarOriginDateKey ?? null,
@@ -627,19 +631,25 @@ function EventsPageClientView({
       titleFeedbackMessage: showTitleFeedback ? historyRemoveFeedbackMessage : null,
       titleFeedbackFading: showTitleFeedback ? historyRemoveFeedbackFading : false,
     });
+    setPlannerWorkspaceTitleFeedbackFadeComplete(
+      showTitleFeedback ? completeHistoryRemoveFeedbackFade : null,
+    );
 
     return () => {
       setPlannerWorkspaceHeaderState({
         titleFeedbackMessage: null,
         titleFeedbackFading: false,
       });
+      setPlannerWorkspaceTitleFeedbackFadeComplete(null);
     };
   }, [
+    completeHistoryRemoveFeedbackFade,
     historyRemoveFeedbackFading,
     historyRemoveFeedbackMessage,
     historyTabRowSelectionMode,
     isHistoryTab,
     setPlannerWorkspaceHeaderState,
+    setPlannerWorkspaceTitleFeedbackFadeComplete,
     showEventsListContent,
   ]);
 

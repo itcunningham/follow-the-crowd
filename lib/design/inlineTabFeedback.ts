@@ -39,7 +39,11 @@ export function formatGigsHistoryRemoveSuccessMessage(count: number): string {
 export function useHistoryRemovalHeaderFeedback(
   message: string | null,
   onClearSource: () => void,
-): { displayMessage: string | null; fading: boolean } {
+): {
+  displayMessage: string | null;
+  fading: boolean;
+  completeFade: () => void;
+} {
   const [displayMessage, setDisplayMessage] = useState<string | null>(null);
   const [fading, setFading] = useState(false);
 
@@ -61,7 +65,9 @@ export function useHistoryRemovalHeaderFeedback(
 
     const fadeTimer = window.setTimeout(() => {
       window.requestAnimationFrame(() => {
-        setFading(true);
+        window.requestAnimationFrame(() => {
+          setFading(true);
+        });
       });
     }, HISTORY_REMOVAL_FEEDBACK_VISIBLE_MS);
 
@@ -70,22 +76,7 @@ export function useHistoryRemovalHeaderFeedback(
     };
   }, [message]);
 
-  useEffect(() => {
-    if (!fading || !displayMessage) {
-      return;
-    }
-
-    const clearTimer = window.setTimeout(
-      completeFade,
-      HISTORY_REMOVAL_FEEDBACK_FADE_MS + HISTORY_REMOVAL_FEEDBACK_FADE_BUFFER_MS,
-    );
-
-    return () => {
-      window.clearTimeout(clearTimer);
-    };
-  }, [completeFade, displayMessage, fading]);
-
-  return { displayMessage, fading };
+  return { displayMessage, fading, completeFade };
 }
 
 /** Tab-row inline feedback (Event Plans toolbar). Shares lifecycle constants via header hook. */

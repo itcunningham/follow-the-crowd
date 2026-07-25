@@ -7,6 +7,7 @@ import {
   useContext,
   useLayoutEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -86,6 +87,7 @@ function mergeWorkspaceHeaderState(
 type WorkspaceHeaderContextValue = {
   setHeaderState: (state: WorkspaceHeaderState) => void;
   resetHeaderStateForPathnameChange: () => void;
+  setTitleFeedbackFadeComplete: (handler: (() => void) | null) => void;
 };
 
 const WorkspaceHeaderContext = createContext<WorkspaceHeaderContextValue | null>(null);
@@ -98,6 +100,18 @@ export function useSetPlannerWorkspaceHeaderState(): WorkspaceHeaderContextValue
   }
 
   return headerContext.setHeaderState;
+}
+
+export function useSetPlannerWorkspaceTitleFeedbackFadeComplete(): WorkspaceHeaderContextValue["setTitleFeedbackFadeComplete"] {
+  const headerContext = useContext(WorkspaceHeaderContext);
+
+  if (!headerContext) {
+    throw new Error(
+      "useSetPlannerWorkspaceTitleFeedbackFadeComplete must be used within PlannerWorkspaceRouteLayout",
+    );
+  }
+
+  return headerContext.setTitleFeedbackFadeComplete;
 }
 
 function PlannerWorkspaceTitleActions({ actions }: { actions?: ReactNode }) {
@@ -149,6 +163,7 @@ export function PlannerWorkspacePageHeader({
   interceptWorkspaceTabNavigation,
   titleFeedbackMessage = null,
   titleFeedbackFading = false,
+  onTitleFeedbackFadeComplete,
 }: {
   title: string;
   initialRole?: UserRole | null;
@@ -158,6 +173,7 @@ export function PlannerWorkspacePageHeader({
   interceptWorkspaceTabNavigation?: ((href: string) => boolean) | null;
   titleFeedbackMessage?: string | null;
   titleFeedbackFading?: boolean;
+  onTitleFeedbackFadeComplete?: () => void;
 }) {
   return (
     <header className={PLANNER_WORKSPACE_HEADER_CLASS}>
@@ -168,6 +184,7 @@ export function PlannerWorkspacePageHeader({
       <PlannerWorkspaceTitleFeedback
         message={titleFeedbackMessage}
         fading={titleFeedbackFading}
+        onFadeComplete={onTitleFeedbackFadeComplete}
       />
       {showWorkspaceSubNav ? (
         <div className={PLANNER_WORKSPACE_SUBNAV_SLOT_CLASS}>
@@ -218,6 +235,7 @@ export function PlannerWorkspaceRouteLayout({ children }: { children: ReactNode 
   const guardProfile = useGuardProfile();
   const [headerState, setHeaderStateInternal] = useState<WorkspaceHeaderState>({});
   const [syncedPathname, setSyncedPathname] = useState(pathname);
+  const titleFeedbackFadeCompleteRef = useRef<(() => void) | null>(null);
   const layoutRole = mergeWorkspaceNavRole(guardProfile?.role, readCachedNavRole());
 
   const setHeaderState = useCallback((patch: WorkspaceHeaderState) => {
@@ -245,12 +263,21 @@ export function PlannerWorkspaceRouteLayout({ children }: { children: ReactNode 
   );
   const actions = headerState.actions ?? resolveDefaultWorkspaceActions(pathname, layoutRole);
   const workspaceRole = mergeWorkspaceNavRole(headerState.workspaceRole, layoutRole);
+  const setTitleFeedbackFadeComplete = useCallback((handler: (() => void) | null) => {
+    titleFeedbackFadeCompleteRef.current = handler;
+  }, []);
+
+  const handleTitleFeedbackFadeComplete = useCallback(() => {
+    titleFeedbackFadeCompleteRef.current?.();
+  }, []);
+
   const headerContextValue = useMemo<WorkspaceHeaderContextValue>(
     () => ({
       setHeaderState,
       resetHeaderStateForPathnameChange,
+      setTitleFeedbackFadeComplete,
     }),
-    [resetHeaderStateForPathnameChange, setHeaderState],
+    [resetHeaderStateForPathnameChange, setHeaderState, setTitleFeedbackFadeComplete],
   );
 
   const workspaceIntercept =
@@ -270,6 +297,7 @@ export function PlannerWorkspaceRouteLayout({ children }: { children: ReactNode 
           actions={actions}
           titleFeedbackMessage={headerState.titleFeedbackMessage ?? null}
           titleFeedbackFading={headerState.titleFeedbackFading ?? false}
+          onTitleFeedbackFadeComplete={handleTitleFeedbackFadeComplete}
         />
         <div className={PLANNER_WORKSPACE_BELOW_HEADER_CLASS}>{children}</div>
       </div>

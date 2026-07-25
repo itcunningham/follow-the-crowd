@@ -22,6 +22,7 @@ import { useGuardProfile } from "@/app/components/GuardProfileContext";
 import {
   PlannerWorkspacePage,
   useSetPlannerWorkspaceHeaderState,
+  useSetPlannerWorkspaceTitleFeedbackFadeComplete,
 } from "@/app/components/planner/PlannerWorkspaceLayout";
 import DjBookingAvailabilityBadge from "@/app/components/DjBookingAvailabilityBadge";
 import ProfileAvatar from "@/app/components/ProfileAvatar";
@@ -433,6 +434,7 @@ function BookingsPageContent() {
   const {
     displayMessage: gigsHistoryFeedbackMessage,
     fading: gigsHistoryFeedbackFading,
+    completeFade: completeGigsHistoryFeedbackFade,
   } = useHistoryRemovalHeaderFeedback(
     gigsHistorySuccessMessage,
     clearGigsHistorySuccessMessage,
@@ -681,6 +683,8 @@ function BookingsPageContent() {
 
   const setGigsWorkspaceChromeState = useSetGigsWorkspaceChromeState();
   const setPlannerWorkspaceHeaderState = useSetPlannerWorkspaceHeaderState();
+  const setPlannerWorkspaceTitleFeedbackFadeComplete =
+    useSetPlannerWorkspaceTitleFeedbackFadeComplete();
   const gigsManageClickRef = useRef(gigsHistoryBulkManage.enterSelectionMode);
   gigsManageClickRef.current = gigsHistoryBulkManage.enterSelectionMode;
   const gigsHistoryCancelSelectionRef = useRef(gigsHistoryBulkManage.cancelSelectionMode);
@@ -744,20 +748,26 @@ function BookingsPageContent() {
       titleFeedbackMessage: showTitleFeedback ? gigsHistoryFeedbackMessage : null,
       titleFeedbackFading: showTitleFeedback ? gigsHistoryFeedbackFading : false,
     });
+    setPlannerWorkspaceTitleFeedbackFadeComplete(
+      showTitleFeedback ? completeGigsHistoryFeedbackFade : null,
+    );
 
     return () => {
       setPlannerWorkspaceHeaderState({
         titleFeedbackMessage: null,
         titleFeedbackFading: false,
       });
+      setPlannerWorkspaceTitleFeedbackFadeComplete(null);
     };
   }, [
+    completeGigsHistoryFeedbackFade,
     gigsHistoryFeedbackFading,
     gigsHistoryFeedbackMessage,
     gigsHistorySelectionMode,
     isGigsHistoryTab,
     plannerCreateVisible,
     setPlannerWorkspaceHeaderState,
+    setPlannerWorkspaceTitleFeedbackFadeComplete,
     showGigsWorkspace,
   ]);
 
