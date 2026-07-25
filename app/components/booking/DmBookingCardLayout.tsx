@@ -11,6 +11,9 @@ export const DM_BOOKING_CARD_ACTIONS_CLASS = "mt-4 flex flex-col gap-2";
 export const DM_BOOKING_CARD_STATUS_MESSAGE_CLASS =
   "break-words text-xs leading-snug text-ftc-text-secondary/70";
 
+export const DM_BOOKING_CARD_CANCELLATION_REASON_TEXT_CLASS =
+  "mt-0.5 block line-clamp-3 break-words [overflow-wrap:anywhere]";
+
 export function DmBookingCardStatusMessage({
   label,
   children,
@@ -24,6 +27,15 @@ export function DmBookingCardStatusMessage({
       {label ? " " : null}
       {children}
     </p>
+  );
+}
+
+export function DmBookingCardCancellationReason({ children }: { children: ReactNode }) {
+  return (
+    <div className={DM_BOOKING_CARD_STATUS_MESSAGE_CLASS}>
+      <span className="text-ftc-text-muted/80">Reason</span>
+      <span className={DM_BOOKING_CARD_CANCELLATION_REASON_TEXT_CLASS}>{children}</span>
+    </div>
   );
 }
 

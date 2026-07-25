@@ -10,7 +10,7 @@ import {
 } from "@/app/components/ftc/FtcCompactMeta";
 import { formatBookingCardEventDate } from "@/lib/bookingDateTime";
 import { getDmBookingCardOfferSummary, type BookingRequest } from "@/lib/bookingRequests";
-import { DmBookingCardStatusMessage } from "@/app/components/booking/DmBookingCardLayout";
+import { DmBookingCardCancellationReason, DmBookingCardStatusMessage } from "@/app/components/booking/DmBookingCardLayout";
 
 function BookingCardExpandableNotes({ notes }: { notes: string }) {
   const [expanded, setExpanded] = useState(false);
@@ -131,7 +131,7 @@ export default function BookingCardCompactSummary({
       ) : null}
 
       {cancellationReasonLabel ? (
-        <DmBookingCardStatusMessage label="Reason">{cancellationReasonLabel}</DmBookingCardStatusMessage>
+        <DmBookingCardCancellationReason>{cancellationReasonLabel}</DmBookingCardCancellationReason>
       ) : null}
     </div>
   );

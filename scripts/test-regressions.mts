@@ -1643,7 +1643,7 @@ function testEventCreateFormTextFieldMaxLength() {
 
 function testWithdrawalOtherReasonInputLimits() {
   assert.equal(MAX_WITHDRAWAL_OTHER_REASON_LINES, 3);
-  assert.equal(MAX_WITHDRAWAL_OTHER_REASON_LENGTH, 120);
+  assert.equal(MAX_WITHDRAWAL_OTHER_REASON_LENGTH, 80);
 
   assert.equal(sanitizeWithdrawalOtherReasonValue(""), "");
   assert.equal(sanitizeWithdrawalOtherReasonValue("Line one"), "Line one");
@@ -1667,16 +1667,14 @@ function testWithdrawalOtherReasonInputLimits() {
   );
 
   const threeLongLines = ["a".repeat(50), "b".repeat(50), "c".repeat(50)].join("\n");
-  assert.equal(sanitizeWithdrawalOtherReasonValue(threeLongLines).length, 120);
-  assert.equal(
-    countWithdrawalOtherReasonLines(sanitizeWithdrawalOtherReasonValue(threeLongLines)),
-    3,
-  );
+  const sanitizedThreeLongLines = sanitizeWithdrawalOtherReasonValue(threeLongLines);
+  assert.equal(sanitizedThreeLongLines.length, 80);
+  assert.ok(countWithdrawalOtherReasonLines(sanitizedThreeLongLines) <= 3);
 
   const overBothLimits = `${"x".repeat(40)}\n${"y".repeat(40)}\n${"z".repeat(40)}\nextra\nextra`;
   const sanitizedBoth = sanitizeWithdrawalOtherReasonValue(overBothLimits);
-  assert.equal(countWithdrawalOtherReasonLines(sanitizedBoth), 3);
-  assert.equal(sanitizedBoth.length, 120);
+  assert.ok(countWithdrawalOtherReasonLines(sanitizedBoth) <= 3);
+  assert.equal(sanitizedBoth.length, 80);
 
   assert.equal(sanitizeWithdrawalOtherReasonValue("Unavailable"), "Unavailable");
   assert.equal(sanitizeWithdrawalOtherReason, sanitizeWithdrawalOtherReasonValue);
@@ -1704,6 +1702,18 @@ function testWithdrawalOtherReasonInputLimits() {
   assert.match(globalsSource, /\.ftc-withdrawal-reason-textarea[\s\S]*overflow-y: auto !important/);
   assert.match(globalsSource, /\.ftc-withdrawal-reason-textarea[\s\S]*scroll-padding-bottom: 2rem/);
   assert.match(globalsSource, /\.ftc-withdrawal-reason-textarea[\s\S]*padding-bottom: 2rem !important/);
+
+  assert.match(
+    readFileSync(
+      new URL("../app/components/booking/BookingCardCompactSummary.tsx", import.meta.url),
+      "utf8",
+    ),
+    /DmBookingCardCancellationReason/,
+  );
+  assert.match(
+    readFileSync(new URL("../app/components/booking/DmBookingCardLayout.tsx", import.meta.url), "utf8"),
+    /line-clamp-3/,
+  );
 
   const cancelButtonSource = readFileSync(
     new URL("../app/components/booking/CancelAcceptedBookingButton.tsx", import.meta.url),

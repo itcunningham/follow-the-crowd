@@ -1,4 +1,4 @@
-export const MAX_WITHDRAWAL_OTHER_REASON_LENGTH = 120;
+export const MAX_WITHDRAWAL_OTHER_REASON_LENGTH = 80;
 export const MAX_WITHDRAWAL_OTHER_REASON_LINES = 3;
 
 export function countWithdrawalOtherReasonLines(value: string): number {
