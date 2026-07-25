@@ -221,7 +221,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
-- `<pending>` — hide View event on cancelled DM booking cards
+- `c7d79df` — hide View event on cancelled DM booking cards
 - `2297ff2` — fix cancellation reason layout in DM cards and event detail
 - `e6f52ba` — preserve Gigs Incoming return chain through DM and event detail
 - `14e5194` — shrink Gigs nav pills when count is zero
