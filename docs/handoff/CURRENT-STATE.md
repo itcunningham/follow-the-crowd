@@ -219,6 +219,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `6204231` — fix date picker placeholder colour consistency
 - `1ee1980` — fix DM reaction picker blocking chat scroll after open
 - `c278601` — fix iPhone Safari image long-press opening native link preview
 - `7a9426b` — replace persistent DM React action with press-and-hold picker
