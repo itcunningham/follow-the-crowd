@@ -122,7 +122,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 - **Gigs Confirmed tab (2026-07-19):** received gigs reload after booking acceptance (`ftc-notifications-updated` + tab visibility) so accepted bookings appear in Confirmed without stale client state; gig date keys use shared `resolveEventDateKey` (legacy + ISO); `?tab=confirmed` URL alias maps to Confirmed
 - **Gigs tab row (2026-07-23):** `DjGigsTabs` — Incoming/Confirmed use compact `ftc-gigs-tab-pill` (`0.375rem 0.5rem`, `min-height: 1.875rem`); counts cap at **99+** via `formatGigsTabCountDisplay`, with a fixed **`2.5ch`** right-aligned count slot (always reserved, empty until ready) and label/count gap **`gap-1.5` (~6px)**; **History** reuses **`eventsListTabPillClass`**. **`gigsTabCountsCache`** + **`gigsListSnapshotPrefetch`** (from workspace sub-nav) warm tab counts before first Gigs visit. Workspace **Gigs** sub-nav badge unchanged.
 - **Gigs History delete-selection row (2026-07-24):** bulk-delete toolbar reuses shared `HistorySelectionToolbar` (`tabRowEmbedded`, back/ALL/Delete) inline in `DjGigsTabRow` — History pill + trash swap to toolbar in the same row (`Incoming | Confirmed | ← ALL Delete`); Incoming/Confirmed stay tappable; leaving History (tab or workspace nav) exits selection and clears picks; no second toolbar row or card layout jump
-- **Gigs History inline feedback (2026-07-25):** Events/Gigs History removal + Event Plans create/delete success share `useInlineTabFeedbackDismiss` + `InlineTabFeedbackMessage` via centred `PlannerWorkspaceTitleFeedback` below the title row (`2700ms` visible, `duration-300` fade, clear at `3000ms`); Event Plans trash row no longer renders inline success copy
+- **Withdrawal Other reason field (2026-07-25):** DJ withdraw / planner cancel “Other” details use `WithdrawalReasonDetailsField` — 120-char hard limit (`applyTextInputLimit` + `maxLength`), bounded auto-grow (2–3 visible rows then internal scroll), live `n/120` counter bottom-right inside the textarea; reason chips and submit logic unchanged
 - **Gigs sub-tab switching (2026-07-24):** Incoming/Confirmed/History pills use `history.pushState` + `bumpGigsListRouteRevision` (Events pattern) so active pill and list filter update immediately without waiting for Next `searchParams` or App Router navigation
 - **Gigs list loading (2026-07-19):** Incoming/Confirmed/History show `ReceivedBookingsListSkeleton` while the initial gigs fetch runs (toolbar stays visible; no blank list gap); tab switches with cached data skip the skeleton
 - **Gigs tab counts (2026-07-19):** Incoming/Confirmed counts derive from the received-bookings + hidden-id snapshot as soon as those requests complete; sender profile fetch no longer blocks counts; reserved count slots stay stable before numbers appear (no fake zero)
@@ -217,7 +217,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
-- `33ca7e5` — move Event Plans success feedback to shared header slot below title row
+- `ecf8b7b` — withdrawal Other-reason textarea: 120-char limit, auto-grow, inline counter
 - `196e254` — align History removal toast with Event Plans `useInlineTabFeedbackDismiss` lifecycle
 - `4273ff7` — polish History removal toast: below title row, smoother 350ms fade
 - `97b9488` — unify Events + Gigs History removal feedback in planner title row with shared fade lifecycle
