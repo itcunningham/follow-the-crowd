@@ -217,7 +217,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
-- `TBD` — withdrawal Other textarea: fixed 3-row height, scroll overflow, full 120-char typing
+- `4d09ff6` — withdrawal Other textarea: fixed 3-row height, scroll overflow, full 120-char typing
 - `196e254` — align History removal toast with Event Plans `useInlineTabFeedbackDismiss` lifecycle
 - `4273ff7` — polish History removal toast: below title row, smoother 350ms fade
 - `97b9488` — unify Events + Gigs History removal feedback in planner title row with shared fade lifecycle
