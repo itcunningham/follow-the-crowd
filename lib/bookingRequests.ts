@@ -2426,7 +2426,10 @@ export function buildBookingSendResultMessage(
   successCount: number,
   skippedDuplicateCount: number,
 ): string {
-  const base = `Sent booking request to ${successCount} DJ${successCount === 1 ? "" : "s"}`;
+  const base =
+    successCount === 1
+      ? "Sent booking request to 1 DJ"
+      : `Sent booking requests to ${successCount} DJs`;
 
   if (skippedDuplicateCount === 0) {
     return base;

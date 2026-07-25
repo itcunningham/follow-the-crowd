@@ -260,7 +260,7 @@ function EventDetailPageView() {
       if (inviteMessage.includes("could not be sent")) {
         setError(inviteMessage);
       } else {
-        setSuccessMessage(inviteMessage);
+        setHeaderFeedbackMessage(inviteMessage);
       }
     }
   }, []);
@@ -704,6 +704,7 @@ function EventDetailPageView() {
     inviteDraft.resetDraft();
     setError(null);
     setSuccessMessage(null);
+    setHeaderFeedbackMessage(null);
   }
 
   useEffect(() => {
@@ -853,7 +854,7 @@ function EventDetailPageView() {
         return;
       }
 
-      setSuccessMessage(buildBookingSendResultMessage(successes.length, skippedCount));
+      setHeaderFeedbackMessage(buildBookingSendResultMessage(successes.length, skippedCount));
       setUnavailableConfirmOpen(false);
       closeSendBookings();
       await loadEventData();

@@ -51,6 +51,7 @@ import {
 } from "../lib/bookingDateTime";
 import type { BookingRequest } from "../lib/bookingRequests";
 import {
+  buildBookingSendResultMessage,
   filterDjGigsByTab,
   countDjGigsByTab,
   getActiveEventLineupStats,
@@ -2804,6 +2805,8 @@ function testHistoryRemovalHeaderFeedbackUnified() {
   assert.equal(formatGigsHistoryRemoveSuccessMessage(1), "1 gig removed from history");
   assert.equal(formatGigsHistoryRemoveSuccessMessage(3), "3 gigs removed from history");
   assert.equal(BOOKING_REQUEST_CANCELLED_SUCCESS_MESSAGE, "Booking request cancelled");
+  assert.equal(buildBookingSendResultMessage(1, 0), "Sent booking request to 1 DJ");
+  assert.equal(buildBookingSendResultMessage(3, 0), "Sent booking requests to 3 DJs");
   assert.equal(INLINE_TAB_FEEDBACK_FADE_MS, 2700);
   assert.equal(INLINE_TAB_FEEDBACK_CLEAR_MS, 3000);
 
@@ -2819,6 +2822,15 @@ function testHistoryRemovalHeaderFeedbackUnified() {
   assert.match(
     eventDetailSource,
     /setHeaderFeedbackMessage\(BOOKING_REQUEST_CANCELLED_SUCCESS_MESSAGE\)/,
+  );
+  assert.match(
+    eventDetailSource,
+    /setHeaderFeedbackMessage\(buildBookingSendResultMessage\(successes\.length, skippedCount\)\)/,
+  );
+  assert.match(eventDetailSource, /setHeaderFeedbackMessage\(inviteMessage\)/);
+  assert.doesNotMatch(
+    eventDetailSource,
+    /setSuccessMessage\(buildBookingSendResultMessage/,
   );
   assert.doesNotMatch(eventDetailSource, /setSuccessMessage\("Booking request cancelled\.\."\)/);
   assert.match(feedbackMessageSource, /EVENTS_LIST_TAB_FEEDBACK_CLASS/);
