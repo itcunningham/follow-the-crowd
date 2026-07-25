@@ -114,6 +114,8 @@ export const DJ_WITHDRAWAL_REASONS = [
   "Other",
 ] as const;
 
+export const MAX_WITHDRAWAL_OTHER_REASON_LENGTH = 120;
+
 function formatStatusLabel(status: BookingRequestStatus): string {
   if (status === "accepted") {
     return "Accepted";

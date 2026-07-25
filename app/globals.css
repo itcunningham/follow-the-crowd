@@ -351,6 +351,27 @@ html {
   max-height: calc(8lh + 1.25rem + 2px) !important;
 }
 
+.ftc-withdrawal-reason-textarea {
+  resize: none !important;
+  overflow-x: hidden !important;
+  line-height: 1.5 !important;
+  box-sizing: border-box !important;
+  min-height: calc(2lh + 1rem + 2px) !important;
+  max-height: calc(3lh + 1rem + 2px) !important;
+  padding-bottom: 1.375rem !important;
+  padding-right: 3.25rem !important;
+}
+
+.ftc-textarea-inline-counter {
+  position: absolute;
+  right: 0.75rem;
+  bottom: 0.5rem;
+  pointer-events: none;
+  font-size: 0.625rem;
+  font-variant-numeric: tabular-nums;
+  color: rgb(100 116 139 / 0.75);
+}
+
 .ftc-input::placeholder,
 .ftc-textarea::placeholder {
   color: var(--ftc-color-text-muted);

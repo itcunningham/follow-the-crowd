@@ -5,6 +5,7 @@ import BookingSheetDialog, {
   BookingSheetDangerButton,
   BookingSheetSecondaryButton,
 } from "@/app/components/booking/BookingSheetDialog";
+import WithdrawalReasonDetailsField from "@/app/components/booking/WithdrawalReasonDetailsField";
 import {
   DJ_WITHDRAWAL_REASONS,
   PLANNER_CANCELLATION_REASONS,
@@ -141,19 +142,11 @@ export default function CancelAcceptedBookingButton({
             })}
           </div>
           {selectedReason === "Other" ? (
-            <label className="block">
-              <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted">
-                Details
-              </span>
-              <textarea
-                value={otherReason}
-                disabled={loading}
-                onChange={(event) => setOtherReason(event.target.value)}
-                rows={2}
-                placeholder="Add a short reason"
-                className="ftc-textarea w-full rounded-lg px-3 py-2 text-sm"
-              />
-            </label>
+            <WithdrawalReasonDetailsField
+              value={otherReason}
+              disabled={loading}
+              onChange={setOtherReason}
+            />
           ) : null}
         </fieldset>
       </BookingSheetDialog>
