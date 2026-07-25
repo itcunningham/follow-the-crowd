@@ -63,6 +63,7 @@ import {
   formatGigsTabCountAriaCount,
   formatGigsTabCountDisplay,
   GIGS_TAB_COUNT_MAX_DISPLAY,
+  shouldRenderGigsTabCount,
 } from "../lib/bookings/gigsTabCountDisplay";
 import { resolveWorkspaceGigsPendingDisplayCount, readWorkspaceGigsBadgeDisplayCountForSubNav } from "../lib/navigation/resolveWorkspaceGigsPendingDisplayCount";
 import {
@@ -953,6 +954,9 @@ function testWorkspaceSubNavLayoutIsStable() {
     "utf8",
   );
   assert.match(workspaceGigsBadgeSource, /WORKSPACE_GIGS_PENDING_BADGE_SLOT_CLASS/);
+  assert.match(workspaceGigsBadgeSource, /shouldRenderGigsTabCount/);
+  assert.match(workspaceGigsBadgeSource, /return null;/);
+  assert.doesNotMatch(workspaceGigsBadgeSource, /display \?\? ""/);
   assert.doesNotMatch(subNavSource, /from "@\/lib\/design\/ftcDesignSystem"/);
   const designSystemSource = readFileSync(
     new URL("../lib/design/ftcDesignSystem.ts", import.meta.url),
@@ -1099,7 +1103,7 @@ function testEventPlanUseButtonKeepsStableCardLayout() {
   assert.doesNotMatch(EVENT_PLAN_ACTION_RESERVE_CLASS, /ftc-btn/);
 }
 
-function testGigsTabRowKeepsStableCountSlots() {
+function testGigsTabRowUsesCompactPillsWithoutCounts() {
   assert.match(GIGS_TAB_PILL_ROW_CLASS, /shrink-0/);
   assert.match(GIGS_TAB_PILL_ROW_CLASS, /gap-2/);
   assert.doesNotMatch(GIGS_TAB_PILL_ROW_CLASS, /flex-1/);
@@ -1355,15 +1359,17 @@ function testGigsFilterTabsPolish() {
 
   assert.match(tabsSource, /showCountBadge: true/);
   assert.match(tabsSource, /showCountBadge: false/);
-  assert.match(tabsSource, /showCountBadge \?/);
+  assert.match(tabsSource, /showCountBadge && shouldRenderGigsTabCount/);
   assert.doesNotMatch(tabsSource, /showHistoryIcon/);
   assert.doesNotMatch(tabsSource, /HistoryIcon/);
   assert.match(tabsSource, /eventsListTabPillClass\(isActive\)/);
-  assert.match(tabsSource, /gigsTabPillClass\(isActive, true\)/);
+  assert.match(tabsSource, /shouldRenderGigsTabCount/);
+  assert.match(tabsSource, /gigsTabPillClass\(isActive, showCount\)/);
   assert.match(tabsSource, /formatGigsTabCountDisplay/);
   assert.match(tabsSource, /GIGS_TAB_PILL_LABEL_CLASS/);
-  assert.match(tabsSource, /display \?\? ""/);
-  assert.doesNotMatch(tabsSource, /if \(!display\) \{\s*return null;/);
+  assert.match(tabsSource, /showCount && countDisplay/);
+  assert.doesNotMatch(tabsSource, /display \?\? ""/);
+  assert.doesNotMatch(tabsSource, /DjGigsTabCount/);
   assert.match(cssSource, /\.ftc-filter-pill\.ftc-gigs-tab-pill[\s\S]*padding: 0\.375rem 0\.5rem/);
   assert.match(cssSource, /\.ftc-gigs-tab-count-slot[\s\S]*min-width: 2\.5ch/);
   assert.match(cssSource, /\.ftc-gigs-tab-count-slot[\s\S]*padding-right: 0\.25rem/);
@@ -1468,6 +1474,10 @@ function testGigsTabCountDisplayCap() {
   assert.equal(formatGigsTabCountDisplay(99), "99");
   assert.equal(formatGigsTabCountDisplay(100), "99+");
   assert.equal(formatGigsTabCountAriaCount(100), "more than 99");
+  assert.equal(shouldRenderGigsTabCount(0), false);
+  assert.equal(shouldRenderGigsTabCount(1), true);
+  assert.equal(shouldRenderGigsTabCount(5, { countsReady: false }), false);
+  assert.equal(shouldRenderGigsTabCount(5, { countsReady: true }), true);
 }
 
 async function testEventsHistorySelectAllButtonInteraction() {
@@ -2996,7 +3006,7 @@ async function main() {
   testLegacyEventDatesResolveForGigTabs();
   testConfirmedTabAliasParsesFromUrl();
   testEventPlanUseButtonKeepsStableCardLayout();
-  testGigsTabRowKeepsStableCountSlots();
+  testGigsTabRowUsesCompactPillsWithoutCounts();
   testGigsFilterTabsPolish();
   testGigsHistoryCardNavigation();
   testIncomingGigsCardDesignSystem();

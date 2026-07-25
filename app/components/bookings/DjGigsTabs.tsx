@@ -5,6 +5,7 @@ import type { DjGigsListTab } from "@/lib/bookingRequests";
 import {
   formatGigsTabCountAriaCount,
   formatGigsTabCountDisplay,
+  shouldRenderGigsTabCount,
 } from "@/lib/bookings/gigsTabCountDisplay";
 import {
   GIGS_TAB_COUNT_SLOT_CLASS,
@@ -30,25 +31,6 @@ const GIGS_TAB_CONFIG: {
   { value: "history", label: "History", showCountBadge: false },
 ];
 
-function DjGigsTabCount({
-  count,
-  countsReady,
-}: {
-  count: number;
-  countsReady: boolean;
-}) {
-  const display = countsReady ? formatGigsTabCountDisplay(count) : null;
-
-  return (
-    <span
-      className={GIGS_TAB_COUNT_SLOT_CLASS}
-      aria-hidden={display == null ? true : undefined}
-    >
-      {display ?? ""}
-    </span>
-  );
-}
-
 export function DjGigsTabs({
   activeView,
   counts,
@@ -67,11 +49,13 @@ export function DjGigsTabs({
         const href = buildGigsListHref(tab.value);
         const count = counts?.[tab.value] ?? 0;
         const showCountBadge = tab.showCountBadge === true;
+        const showCount = showCountBadge && shouldRenderGigsTabCount(count, { countsReady });
+        const countDisplay = showCount ? formatGigsTabCountDisplay(count) : null;
         const pillClass = showCountBadge
-          ? gigsTabPillClass(isActive, true)
+          ? gigsTabPillClass(isActive, showCount)
           : eventsListTabPillClass(isActive);
         const ariaLabel =
-          showCountBadge && countsReady && count > 0
+          showCount && count > 0
             ? `${tab.label} ${formatGigsTabCountAriaCount(count)}`
             : tab.label;
 
@@ -95,10 +79,12 @@ export function DjGigsTabs({
             }}
             className={pillClass}
           >
-            {showCountBadge ? (
+            {showCount && countDisplay ? (
               <span className={`inline-flex items-center ${GIGS_TAB_PILL_GAP_CLASS}`}>
                 <span className={GIGS_TAB_PILL_LABEL_CLASS}>{tab.label}</span>
-                <DjGigsTabCount count={count} countsReady={countsReady} />
+                <span className={GIGS_TAB_COUNT_SLOT_CLASS} aria-hidden="true">
+                  {countDisplay}
+                </span>
               </span>
             ) : (
               tab.label

@@ -22,3 +22,15 @@ export function formatGigsTabCountAriaCount(count: number): string {
 
   return String(count);
 }
+
+/** True when a Gigs nav pill should show its count (not loading, count > 0). */
+export function shouldRenderGigsTabCount(
+  count: number,
+  options?: { countsReady?: boolean },
+): boolean {
+  if (options?.countsReady === false) {
+    return false;
+  }
+
+  return formatGigsTabCountDisplay(count) !== null;
+}

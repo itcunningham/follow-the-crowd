@@ -87,7 +87,7 @@ export const GIGS_TAB_PILL_WITH_COUNT_MODIFIER_CLASS = "ftc-gigs-tab-pill-with-c
 /** Label inside Incoming/Confirmed inner row. */
 export const GIGS_TAB_PILL_LABEL_CLASS = "shrink-0";
 
-/** Count beside Incoming/Confirmed labels — stable width through 99+, vertically centred. */
+/** Count beside Incoming/Confirmed labels when a count is shown — min-width through 99+. */
 export const GIGS_TAB_COUNT_SLOT_CLASS =
   "ftc-gigs-tab-count-slot inline-block shrink-0 tabular-nums";
 
