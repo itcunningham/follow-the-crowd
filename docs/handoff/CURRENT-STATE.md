@@ -218,6 +218,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `TBD` — clear image selection styling after successful send
 - `57ef874` — clear DM composer photo preview after successful send
 - `fe75fad` — polish withdrawal Details textarea scroll padding and caret visibility
 - `196e254` — align History removal toast with Event Plans `useInlineTabFeedbackDismiss` lifecycle
