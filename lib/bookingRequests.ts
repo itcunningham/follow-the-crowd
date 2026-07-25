@@ -18,7 +18,7 @@ import { getCurrentUserId, getUserAvatarProfilesByIds, type BookingRecipientProf
 import { countAcceptedCrewDjsForEvent } from "@/lib/events/crewChatUnlock";
 import { postBookingCancellationGroupChatUpdate } from "@/lib/events/bookingCancellation";
 import { postBookingAcceptanceGroupChatUpdate } from "@/lib/events/bookingAcceptance";
-import { sanitizeWithdrawalOtherReason, sanitizeWithdrawalOtherReasonInput } from "@/lib/booking/withdrawalReasonDetails";
+import { sanitizeWithdrawalOtherReason } from "@/lib/booking/withdrawalReasonDetails";
 
 export type BookingRequestStatus = "pending" | "accepted" | "declined" | "cancelled";
 

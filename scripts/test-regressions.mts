@@ -1659,12 +1659,20 @@ function testWithdrawalOtherReasonInputLimits() {
       "Line one\nLine two\nLine three",
       "Line one\nLine two\nLine three\nLine four",
     ),
+    null,
+  );
+  assert.equal(
+    sanitizeWithdrawalOtherReasonInput(
+      "Line one\nLine two\nLine three",
+      "Line one\nLine two\nLine three\nLine four",
+      { allowLineTruncation: true },
+    ),
     "Line one\nLine two\nLine three",
   );
 
   const fiveLines = ["one", "two", "three", "four", "five"].join("\n");
   assert.equal(
-    sanitizeWithdrawalOtherReasonInput("", fiveLines),
+    sanitizeWithdrawalOtherReasonInput("", fiveLines, { allowLineTruncation: true }),
     ["one", "two", "three"].join("\n"),
   );
 
@@ -1684,10 +1692,10 @@ function testWithdrawalOtherReasonInputLimits() {
     "utf8",
   );
   assert.match(fieldSource, /sanitizeWithdrawalOtherReasonInput/);
-  assert.match(fieldSource, /onKeyDown=\{handleKeyDown\}/);
-  assert.match(fieldSource, /countWithdrawalOtherReasonLines\(nextValue\) > MAX_WITHDRAWAL_OTHER_REASON_LINES/);
+  assert.match(fieldSource, /onBeforeInput=\{handleBeforeInput\}/);
+  assert.match(fieldSource, /onPaste=\{handlePaste\}/);
+  assert.doesNotMatch(fieldSource, /onKeyDown/);
   assert.doesNotMatch(fieldSource, /measureWithdrawalReasonVisibleRows/);
-  assert.doesNotMatch(fieldSource, /resolveWithdrawalReasonFieldValue/);
 
   const globalsSource = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
   assert.match(globalsSource, /\.ftc-withdrawal-reason-textarea[\s\S]*overflow-y: auto !important/);

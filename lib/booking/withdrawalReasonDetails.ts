@@ -3,6 +3,10 @@ import { applyTextInputLimit } from "@/lib/textInputLimits";
 export const MAX_WITHDRAWAL_OTHER_REASON_LENGTH = 120;
 export const MAX_WITHDRAWAL_OTHER_REASON_LINES = 3;
 
+export type SanitizeWithdrawalOtherReasonInputOptions = {
+  allowLineTruncation?: boolean;
+};
+
 export function countWithdrawalOtherReasonLines(value: string): number {
   return value.split("\n").length;
 }
@@ -14,7 +18,9 @@ function truncateWithdrawalOtherReasonToMaxLines(value: string): string {
 export function sanitizeWithdrawalOtherReasonInput(
   currentValue: string,
   nextValue: string,
+  options: SanitizeWithdrawalOtherReasonInputOptions = {},
 ): string | null {
+  const allowLineTruncation = options.allowLineTruncation ?? false;
   const currentLines = countWithdrawalOtherReasonLines(currentValue);
   const nextLines = countWithdrawalOtherReasonLines(nextValue);
   const currentOverLimit =
@@ -24,12 +30,15 @@ export function sanitizeWithdrawalOtherReasonInput(
   let limitedNext = nextValue;
 
   if (nextLines > MAX_WITHDRAWAL_OTHER_REASON_LINES) {
-    if (currentOverLimit && nextLines <= currentLines && nextValue.length <= currentValue.length) {
-      limitedNext = nextValue;
-    } else if (currentOverLimit) {
-      return null;
-    } else {
+    if (allowLineTruncation) {
       limitedNext = truncateWithdrawalOtherReasonToMaxLines(nextValue);
+    } else if (
+      nextValue.length <= currentValue.length &&
+      (nextLines <= currentLines || currentOverLimit)
+    ) {
+      limitedNext = nextValue;
+    } else {
+      return null;
     }
   }
 
