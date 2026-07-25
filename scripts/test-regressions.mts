@@ -1873,7 +1873,7 @@ function testWithdrawalOtherReasonInputLimits() {
   );
   assert.match(
     readFileSync(new URL("../app/components/booking/DmBookingCardLayout.tsx", import.meta.url), "utf8"),
-    /min-w-0.*overflow-x-hidden/,
+    /min-w-0 w-full max-w-full overflow-hidden/,
   );
   assert.match(
     readFileSync(new URL("../app/components/BookingRequestCard.tsx", import.meta.url), "utf8"),
@@ -1881,7 +1881,27 @@ function testWithdrawalOtherReasonInputLimits() {
   );
   assert.match(
     readFileSync(new URL("../app/globals.css", import.meta.url), "utf8"),
-    /\.ftc-dm-booking-cancellation-reason-text[\s\S]*overflow-wrap: anywhere/,
+    /\.ftc-dm-booking-cancellation-reason-text[\s\S]*line-clamp: 3/,
+  );
+  assert.match(
+    readFileSync(new URL("../app/globals.css", import.meta.url), "utf8"),
+    /\.ftc-dm-booking-cancellation-reason-text[\s\S]*white-space: pre-line/,
+  );
+  assert.match(
+    readFileSync(new URL("../app/globals.css", import.meta.url), "utf8"),
+    /\.ftc-dm-booking-cancellation-reason-text[\s\S]*max-height:/,
+  );
+  assert.match(
+    readFileSync(new URL("../app/globals.css", import.meta.url), "utf8"),
+    /\.ftc-event-detail-cancellation-reason-text[\s\S]*overflow-wrap: anywhere/,
+  );
+  assert.match(
+    readFileSync(new URL("../app/events/[eventId]/page.tsx", import.meta.url), "utf8"),
+    /EventDetailBookingCancellationDetails/,
+  );
+  assert.match(
+    readFileSync(new URL("../app/events/[eventId]/page.tsx", import.meta.url), "utf8"),
+    /min-w-0 flex-1/,
   );
 
   const cancelButtonSource = readFileSync(

@@ -29,6 +29,7 @@ import {
   EVENT_DETAIL_SECTION_SPACING,
 } from "@/app/components/event-detail/eventDetailUi";
 import EventLineupBookingCard from "@/app/components/event-detail/EventLineupBookingCard";
+import { EventDetailBookingCancellationDetails } from "@/app/components/event-detail/EventDetailBookingCancellationDetails";
 import { useGuardProfile } from "@/app/components/GuardProfileContext";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
 import { EventDetailLoadingShell, EventDetailPlannerLowerSectionsSkeleton } from "@/app/components/skeleton/Skeleton";
@@ -1357,29 +1358,21 @@ function EventDetailPageView() {
           {!isOwner && viewerBooking ? (
             <section className={`${EVENT_DETAIL_SECTION_SPACING} ${EVENT_DETAIL_CARD_CLASS}`}>
               <EventDetailSectionTitle>Your booking</EventDetailSectionTitle>
-              <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div>
+              <div className="mt-3 flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div className="min-w-0 flex-1">
                   <BookingStatusBadge status={viewerBooking.status} variant="compact" />
                   <p className="mt-2 text-sm text-ftc-text-secondary">
                     Set time {viewerBooking.set_time || "TBC"}
                     {viewerBooking.fee ? ` · ${formatRateDisplay(viewerBooking.fee)}` : ""}
                   </p>
                   {viewerBooking.status === "cancelled" ? (
-                    <>
-                      {resolveBookingCancelledByLabel(viewerBooking, profiles) ? (
-                        <p className="mt-2 text-sm text-ftc-text-muted">
-                          Cancelled by {resolveBookingCancelledByLabel(viewerBooking, profiles)}
-                        </p>
-                      ) : null}
-                      {resolveBookingCancellationReasonLabel(viewerBooking) ? (
-                        <p className="text-sm text-ftc-text-muted">
-                          Reason: {resolveBookingCancellationReasonLabel(viewerBooking)}
-                        </p>
-                      ) : null}
-                    </>
+                    <EventDetailBookingCancellationDetails
+                      cancelledByLabel={resolveBookingCancelledByLabel(viewerBooking, profiles)}
+                      cancellationReasonLabel={resolveBookingCancellationReasonLabel(viewerBooking)}
+                    />
                   ) : null}
                 </div>
-                <div className="flex flex-col items-stretch gap-2 sm:items-end">
+                <div className="flex w-full shrink-0 flex-col items-stretch gap-2 sm:w-auto sm:items-end">
                   {!isHistoryEventDetail &&
                   getAcceptedBookingCancellationRole(viewerBooking, currentUserId) === "dj" ? (
                     <CancelAcceptedBookingButton

@@ -125,7 +125,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 - **Gigs Confirmed tab (2026-07-19):** received gigs reload after booking acceptance (`ftc-notifications-updated` + tab visibility) so accepted bookings appear in Confirmed without stale client state; gig date keys use shared `resolveEventDateKey` (legacy + ISO); `?tab=confirmed` URL alias maps to Confirmed
 - **Gigs tab row (2026-07-23):** `DjGigsTabs` — Incoming/Confirmed use compact `ftc-gigs-tab-pill` (`0.375rem 0.5rem`, `min-height: 1.875rem`); counts cap at **99+** via `formatGigsTabCountDisplay`; label/count row and **`2.5ch`** count slot mount only when count &gt; 0 via shared **`shouldRenderGigsTabCount`**; label/count gap **`gap-1.5` (~6px)**; **History** reuses **`eventsListTabPillClass`**. **`gigsTabCountsCache`** + **`gigsListSnapshotPrefetch`** (from workspace sub-nav) warm tab counts before first Gigs visit.
 - **Gigs History delete-selection row (2026-07-24):** bulk-delete toolbar reuses shared `HistorySelectionToolbar` (`tabRowEmbedded`, back/ALL/Delete) inline in `DjGigsTabRow` — History pill + trash swap to toolbar in the same row (`Incoming | Confirmed | ← ALL Delete`); Incoming/Confirmed stay tappable; leaving History (tab or workspace nav) exits selection and clears picks; no second toolbar row or card layout jump
-- **Withdrawal Other reason field (2026-07-25):** DJ withdraw / planner cancel “Other” details — 80 chars max, 3 explicit `\n` lines; fixed ~3-row scroll textarea; DM booking card Reason uses `ftc-dm-booking-cancellation-reason-text` (3-line clamp, safe wrap for long strings)
+- **Withdrawal Other reason field (2026-07-25):** DJ withdraw / planner cancel “Other” details — 80 chars max, 3 explicit `\n` lines; fixed ~3-row scroll textarea; DM booking card Reason uses `ftc-dm-booking-cancellation-reason-text` (3-line clamp + `max-height` fallback, `pre-line`, safe wrap); Event Details `Your booking` + lineup cards use `EventDetailBookingCancellationDetails` + `ftc-event-detail-cancellation-reason-text` (full reason, safe wrap, `min-w-0` flex children)
 - **Gigs sub-tab switching (2026-07-24):** Incoming/Confirmed/History pills use `history.pushState` + `bumpGigsListRouteRevision` (Events pattern) so active pill and list filter update immediately without waiting for Next `searchParams` or App Router navigation
 - **Gigs list loading (2026-07-19):** Incoming/Confirmed/History show `ReceivedBookingsListSkeleton` while the initial gigs fetch runs (toolbar stays visible; no blank list gap); tab switches with cached data skip the skeleton
 - **Gigs tab counts (2026-07-19):** Incoming/Confirmed counts derive from the received-bookings + hidden-id snapshot as soon as those requests complete; sender profile fetch no longer blocks counts; reserved count slots stay stable before numbers appear (no fake zero)
@@ -220,6 +220,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `<pending>` — fix cancellation reason layout in DM cards and event detail
 - `e6f52ba` — preserve Gigs Incoming return chain through DM and event detail
 - `14e5194` — shrink Gigs nav pills when count is zero
 - `6be58e5` — unify DatePicker and TimePicker placeholder styling

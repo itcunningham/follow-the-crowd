@@ -10,6 +10,7 @@ import CancelBookingRequestButton from "@/app/components/CancelBookingRequestBut
 import HideDeclinedBookingButton from "@/app/components/HideDeclinedBookingButton";
 import ProfileAvatar from "@/app/components/ProfileAvatar";
 import { FtcMetaTextRow } from "@/app/components/ftc/FtcCompactMeta";
+import { EventDetailBookingCancellationDetails } from "@/app/components/event-detail/EventDetailBookingCancellationDetails";
 import {
   EVENT_DETAIL_BADGE_COMPACT,
   EVENT_DETAIL_BTN_DESTRUCTIVE,
@@ -119,15 +120,12 @@ export default function EventLineupBookingCard({
             <FtcMetaTextRow>{rateLine}</FtcMetaTextRow>
           </ul>
 
-          {cancelledByLabel ? (
-            <p className="mt-2 text-xs leading-snug text-ftc-text-muted">
-              Cancelled by {cancelledByLabel}
-            </p>
-          ) : null}
-          {cancellationReasonLabel ? (
-            <p className="text-xs leading-snug text-ftc-text-muted">
-              Reason: {cancellationReasonLabel}
-            </p>
+          {cancelledByLabel || cancellationReasonLabel ? (
+            <EventDetailBookingCancellationDetails
+              cancelledByLabel={cancelledByLabel}
+              cancellationReasonLabel={cancellationReasonLabel}
+              textSizeClass="text-xs"
+            />
           ) : null}
 
           {readOnly ? (

@@ -29,9 +29,11 @@ export function DmBookingCardStatusMessage({
 
 export function DmBookingCardCancellationReason({ children }: { children: ReactNode }) {
   return (
-    <div className={`${DM_BOOKING_CARD_STATUS_MESSAGE_CLASS} overflow-hidden`}>
-      <span className="text-ftc-text-muted/80">Reason</span>
-      <p className="ftc-dm-booking-cancellation-reason-text mt-0.5">{children}</p>
+    <div className="min-w-0 w-full max-w-full overflow-hidden">
+      <span className="text-xs leading-snug text-ftc-text-muted/80">Reason</span>
+      <p className="ftc-dm-booking-cancellation-reason-text mt-0.5 text-xs leading-snug text-ftc-text-secondary/70">
+        {children}
+      </p>
     </div>
   );
 }
