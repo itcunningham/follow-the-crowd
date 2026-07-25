@@ -1683,9 +1683,25 @@ function testWithdrawalOtherReasonInputLimits() {
     new URL("../app/components/booking/WithdrawalReasonDetailsField.tsx", import.meta.url),
     "utf8",
   );
-  assert.match(fieldSource, /sanitizeWithdrawalOtherReasonInput/);
-  assert.match(fieldSource, /onKeyDown=\{handleKeyDown\}/);
-  assert.match(fieldSource, /countWithdrawalOtherReasonLines\(nextValue\) > MAX_WITHDRAWAL_OTHER_REASON_LINES/);
+  assert.match(fieldSource, /resolveWithdrawalReasonFieldValue/);
+  assert.match(fieldSource, /onBeforeInput=\{handleBeforeInput\}/);
+  assert.match(fieldSource, /onPaste=\{handlePaste\}/);
+  assert.match(fieldSource, /applyWithdrawalReasonTextareaHeight/);
+
+  const resolveSource = readFileSync(
+    new URL("../lib/booking/resolveWithdrawalReasonFieldValue.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(resolveSource, /withdrawalReasonFitsVisibleRows/);
+  assert.match(resolveSource, /overflowY = "hidden"/);
+
+  const measureSource = readFileSync(
+    new URL("../lib/booking/measureWithdrawalReasonVisibleRows.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(measureSource, /measureWithdrawalReasonContentHeight/);
+  assert.match(measureSource, /MOBILE_REFERENCE_VIEWPORT_WIDTH = 390/);
+  assert.match(measureSource, /truncateWithdrawalReasonToVisibleRows/);
 
   const cancelButtonSource = readFileSync(
     new URL("../app/components/booking/CancelAcceptedBookingButton.tsx", import.meta.url),

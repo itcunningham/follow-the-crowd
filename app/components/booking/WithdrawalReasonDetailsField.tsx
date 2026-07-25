@@ -3,27 +3,29 @@
 import { useCallback, useLayoutEffect, useRef } from "react";
 import { MAX_WITHDRAWAL_OTHER_REASON_LENGTH } from "@/lib/bookingRequests";
 import {
-  countWithdrawalOtherReasonLines,
-  MAX_WITHDRAWAL_OTHER_REASON_LINES,
-  sanitizeWithdrawalOtherReasonInput,
-} from "@/lib/booking/withdrawalReasonDetails";
+  applyWithdrawalReasonTextareaHeight,
+  resolveWithdrawalReasonFieldValue,
+} from "@/lib/booking/resolveWithdrawalReasonFieldValue";
 
-function applyWithdrawalReasonTextareaHeight(textarea: HTMLTextAreaElement): void {
-  const style = window.getComputedStyle(textarea);
-  const minHeight = parseFloat(style.minHeight);
-  const maxHeight = parseFloat(style.maxHeight);
+function readInputData(event: React.FormEvent<HTMLTextAreaElement>): string | null {
+  const nativeEvent = event.nativeEvent as InputEvent;
 
-  if (!Number.isFinite(minHeight) || !Number.isFinite(maxHeight) || maxHeight <= 0) {
-    return;
+  if (nativeEvent.isComposing) {
+    return null;
   }
 
-  textarea.style.overflowY = "hidden";
-  textarea.style.height = `${minHeight}px`;
-  const contentHeight = textarea.scrollHeight;
-  const nextHeight = Math.min(Math.max(contentHeight, minHeight), maxHeight);
+  if (nativeEvent.inputType === "insertLineBreak") {
+    return "\n";
+  }
 
-  textarea.style.height = `${nextHeight}px`;
-  textarea.style.overflowY = contentHeight > maxHeight ? "auto" : "hidden";
+  if (
+    nativeEvent.inputType === "insertText" ||
+    nativeEvent.inputType === "insertReplacementText"
+  ) {
+    return nativeEvent.data ?? "";
+  }
+
+  return null;
 }
 
 export default function WithdrawalReasonDetailsField({
@@ -38,6 +40,7 @@ export default function WithdrawalReasonDetailsField({
   placeholder?: string;
 }) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const pendingSelectionRef = useRef<{ start: number; end: number } | null>(null);
 
   const adjustHeight = useCallback(() => {
     const textarea = textareaRef.current;
@@ -73,29 +76,142 @@ export default function WithdrawalReasonDetailsField({
     };
   }, [adjustHeight]);
 
-  function applySanitizedValue(next: string) {
-    const limited = sanitizeWithdrawalOtherReasonInput(value, next);
+  useLayoutEffect(() => {
+    const textarea = textareaRef.current;
+    const pendingSelection = pendingSelectionRef.current;
 
-    if (limited === null) {
+    if (!textarea || !pendingSelection) {
       return;
     }
 
-    onChange(limited);
+    const { start, end } = pendingSelection;
+    const safeStart = Math.max(0, Math.min(start, value.length));
+    const safeEnd = Math.max(safeStart, Math.min(end, value.length));
+
+    textarea.setSelectionRange(safeStart, safeEnd);
+    pendingSelectionRef.current = null;
+  }, [value]);
+
+  function commitValue(nextValue: string, selectionStart: number, selectionEnd = selectionStart) {
+    pendingSelectionRef.current = { start: selectionStart, end: selectionEnd };
+    onChange(nextValue);
   }
 
-  function handleKeyDown(event: React.KeyboardEvent<HTMLTextAreaElement>) {
-    if (event.key !== "Enter" || event.nativeEvent.isComposing) {
+  function resolveNextValue(
+    textarea: HTMLTextAreaElement,
+    nextValue: string,
+    allowVisibleRowTruncation: boolean,
+  ): string | null {
+    return resolveWithdrawalReasonFieldValue(textarea, value, nextValue, {
+      allowVisibleRowTruncation,
+    });
+  }
+
+  function handleBeforeInput(event: React.FormEvent<HTMLTextAreaElement>) {
+    const textarea = event.currentTarget;
+    const nativeEvent = event.nativeEvent as InputEvent;
+
+    if (nativeEvent.isComposing) {
       return;
     }
 
-    const textarea = event.currentTarget;
+    if (nativeEvent.inputType.startsWith("delete") || nativeEvent.inputType === "historyUndo") {
+      return;
+    }
+
+    if (nativeEvent.inputType === "insertFromPaste") {
+      event.preventDefault();
+      return;
+    }
+
+    const inserted = readInputData(event);
+
+    if (inserted === null) {
+      return;
+    }
+
     const selectionStart = textarea.selectionStart ?? value.length;
     const selectionEnd = textarea.selectionEnd ?? value.length;
-    const nextValue = value.slice(0, selectionStart) + "\n" + value.slice(selectionEnd);
+    const nextValue = value.slice(0, selectionStart) + inserted + value.slice(selectionEnd);
+    const resolved = resolveNextValue(textarea, nextValue, false);
 
-    if (countWithdrawalOtherReasonLines(nextValue) > MAX_WITHDRAWAL_OTHER_REASON_LINES) {
+    if (resolved === null) {
       event.preventDefault();
+      pendingSelectionRef.current = { start: selectionStart, end: selectionEnd };
+      return;
     }
+
+    if (resolved !== nextValue) {
+      event.preventDefault();
+      const prefix = value.slice(0, selectionStart);
+      const suffix = value.slice(selectionEnd);
+      const cursor =
+        resolved.startsWith(prefix) && resolved.endsWith(suffix)
+          ? prefix.length + (resolved.length - prefix.length - suffix.length)
+          : Math.min(resolved.length, selectionStart + inserted.length);
+      commitValue(resolved, cursor);
+    }
+  }
+
+  function handlePaste(event: React.ClipboardEvent<HTMLTextAreaElement>) {
+    event.preventDefault();
+
+    const textarea = event.currentTarget;
+    const pastedText = event.clipboardData.getData("text/plain");
+    const selectionStart = textarea.selectionStart ?? value.length;
+    const selectionEnd = textarea.selectionEnd ?? value.length;
+    const nextValue = value.slice(0, selectionStart) + pastedText + value.slice(selectionEnd);
+    const resolved = resolveNextValue(textarea, nextValue, true);
+
+    if (resolved === null) {
+      pendingSelectionRef.current = { start: selectionStart, end: selectionEnd };
+      return;
+    }
+
+    const cursor =
+      resolved.startsWith(value.slice(0, selectionStart)) &&
+      resolved.endsWith(value.slice(selectionEnd))
+        ? selectionStart +
+          (resolved.length -
+            selectionStart -
+            (value.length - selectionEnd))
+        : Math.min(resolved.length, selectionStart + pastedText.length);
+    commitValue(resolved, cursor);
+  }
+
+  function handleChange(event: React.ChangeEvent<HTMLTextAreaElement>) {
+    const textarea = event.currentTarget;
+    const nextValue = event.target.value;
+
+    if (nextValue === value) {
+      return;
+    }
+
+    const selectionStart = textarea.selectionStart ?? value.length;
+    const selectionEnd = textarea.selectionEnd ?? value.length;
+    const resolved = resolveNextValue(
+      textarea,
+      nextValue,
+      isPasteLikeInsertion(nextValue.length - value.length),
+    );
+
+    if (resolved === null) {
+      pendingSelectionRef.current = { start: selectionStart, end: selectionEnd };
+      return;
+    }
+
+    if (resolved !== value) {
+      const prefix = value.slice(0, selectionStart);
+      const suffix = value.slice(selectionEnd);
+      const cursor =
+        resolved.startsWith(prefix) && resolved.endsWith(suffix)
+          ? prefix.length + (resolved.length - prefix.length - suffix.length)
+          : Math.min(resolved.length, selectionStart);
+      commitValue(resolved, cursor);
+      return;
+    }
+
+    pendingSelectionRef.current = { start: selectionStart, end: selectionEnd };
   }
 
   return (
@@ -108,8 +224,9 @@ export default function WithdrawalReasonDetailsField({
           ref={textareaRef}
           value={value}
           disabled={disabled}
-          onChange={(event) => applySanitizedValue(event.target.value)}
-          onKeyDown={handleKeyDown}
+          onBeforeInput={handleBeforeInput}
+          onPaste={handlePaste}
+          onChange={handleChange}
           rows={2}
           maxLength={MAX_WITHDRAWAL_OTHER_REASON_LENGTH}
           placeholder={placeholder}
@@ -121,4 +238,8 @@ export default function WithdrawalReasonDetailsField({
       </div>
     </label>
   );
+}
+
+function isPasteLikeInsertion(lengthDelta: number): boolean {
+  return lengthDelta > 1;
 }
