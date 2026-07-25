@@ -62,6 +62,11 @@ import {
   type DmMessageAttachment,
 } from "@/lib/dmAttachments";
 import {
+  createPendingComposerAttachment,
+  revokePendingComposerAttachment,
+  type PendingComposerAttachment,
+} from "@/lib/dm/composerPendingAttachment";
+import {
   groupDmReactionsByMessageId,
   listDmReactionsForConversation,
   toggleDmMessageReaction,
@@ -201,6 +206,9 @@ export default function DmChatPage() {
   const [otherUserProfile, setOtherUserProfile] = useState<UserAvatarProfile | null>(null);
   const [conversationMetaLoaded, setConversationMetaLoaded] = useState(false);
   const [input, setInput] = useState("");
+  const [pendingAttachment, setPendingAttachment] = useState<PendingComposerAttachment | null>(
+    null,
+  );
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -245,6 +253,30 @@ export default function DmChatPage() {
   });
   const { addHighlightedMessageId, isMessageHighlighted } = useChatNewMessageHighlight();
   const { highlightBookingFocus, getMessageBookingFocusPhase } = useChatBookingFocusHighlight();
+
+  const clearPendingAttachment = useCallback(() => {
+    setPendingAttachment((current) => {
+      revokePendingComposerAttachment(current);
+      return null;
+    });
+  }, []);
+
+  const stagePendingPhoto = useCallback((file: File) => {
+    setPendingAttachment((current) => {
+      revokePendingComposerAttachment(current);
+      return createPendingComposerAttachment(file);
+    });
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      revokePendingComposerAttachment(pendingAttachment);
+    };
+  }, [pendingAttachment]);
+
+  useEffect(() => {
+    clearPendingAttachment();
+  }, [clearPendingAttachment, conversationId]);
 
   useChatBookingTargetScroll({
     scrollTargetBookingRequestId,
@@ -950,8 +982,9 @@ export default function DmChatPage() {
 
   async function sendMessage() {
     const text = input.trim();
+    const attachmentToSend = pendingAttachment?.file ?? null;
 
-    if (!text || !conversationId || sending || uploading) {
+    if ((!text && !attachmentToSend) || !conversationId || sending || uploading) {
       return;
     }
 
@@ -959,6 +992,11 @@ export default function DmChatPage() {
 
     if (blockSendError) {
       setError(blockSendError);
+      return;
+    }
+
+    if (attachmentToSend) {
+      await sendAttachment(attachmentToSend);
       return;
     }
 
@@ -1067,6 +1105,7 @@ export default function DmChatPage() {
       }
 
       setInput("");
+      clearPendingAttachment();
       void markConversationRead(conversationId, {
         readThroughCreatedAt: optimisticMessage.created_at,
       });
@@ -1807,8 +1846,10 @@ export default function DmChatPage() {
         <DmComposer
           value={input}
           onChange={setInput}
-          onSend={sendMessage}
-          onPhotoSelected={(file) => void sendAttachment(file)}
+          onSend={() => void sendMessage()}
+          pendingAttachmentPreviewUrl={pendingAttachment?.previewUrl ?? null}
+          onStagePhoto={stagePendingPhoto}
+          onClearPendingPhoto={clearPendingAttachment}
           onAttachmentError={setError}
           sending={sending}
           uploading={uploading}

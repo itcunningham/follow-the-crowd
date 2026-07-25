@@ -2800,6 +2800,43 @@ function testCalendarOriginCreateLinksStayOnCalendarRoute() {
   assert.match(eventsClientSource, /createStep === "pick-plan" \? "Event Plans" : "Create event"/);
 }
 
+function testDmComposerClearsPendingPhotoAfterSuccessfulSend() {
+  const composerSource = readFileSync(
+    new URL("../app/components/dm/DmComposer.tsx", import.meta.url),
+    "utf8",
+  );
+  const pageSource = readFileSync(
+    new URL("../app/dm/[conversationId]/page.tsx", import.meta.url),
+    "utf8",
+  );
+  const helperSource = readFileSync(
+    new URL("../lib/dm/composerPendingAttachment.ts", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(composerSource, /ring-2 ring-ftc-primary/);
+  assert.match(composerSource, /onStagePhoto/);
+  assert.match(composerSource, /onClearPendingPhoto/);
+  assert.match(composerSource, /pendingAttachmentPreviewUrl/);
+  assert.match(composerSource, /disabled=\{busy \|\| !canSend\}/);
+  assert.doesNotMatch(composerSource, /onPhotoSelected/);
+
+  assert.match(pageSource, /createPendingComposerAttachment/);
+  assert.match(pageSource, /clearPendingAttachment/);
+  assert.match(pageSource, /onStagePhoto=\{stagePendingPhoto\}/);
+  assert.match(
+    pageSource,
+    /setInput\(""\);\s*clearPendingAttachment\(\);\s*void markConversationRead/,
+  );
+  assert.doesNotMatch(
+    pageSource,
+    /onPhotoSelected=\{\(file\) => void sendAttachment\(file\)\}/,
+  );
+
+  assert.match(helperSource, /createPendingComposerAttachment/);
+  assert.match(helperSource, /revokePendingComposerAttachment/);
+}
+
 async function main() {
   testPastEventDatesAreBlocked();
   testFutureEventDatesAreAllowed();
@@ -2861,6 +2898,7 @@ async function main() {
   testEventsActiveStatusPillsSingleRowLayout();
   testEventCreateFormTextFieldMaxLength();
   testWithdrawalOtherReasonInputLimits();
+  testDmComposerClearsPendingPhotoAfterSuccessfulSend();
   testEventFallbackColourSelectionRadioBehaviour();
   testEventPlanPickerClearsSelectionOnFormBack();
   testEventPlansSelectionToolbarMatchesHistory();

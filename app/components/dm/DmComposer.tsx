@@ -42,7 +42,9 @@ export default function DmComposer({
   value,
   onChange,
   onSend,
-  onPhotoSelected,
+  pendingAttachmentPreviewUrl,
+  onStagePhoto,
+  onClearPendingPhoto,
   onAttachmentError,
   sending,
   uploading,
@@ -50,18 +52,25 @@ export default function DmComposer({
   value: string;
   onChange: (value: string) => void;
   onSend: () => void;
-  onPhotoSelected: (file: File) => void;
+  pendingAttachmentPreviewUrl: string | null;
+  onStagePhoto: (file: File) => void;
+  onClearPendingPhoto: () => void;
   onAttachmentError?: (message: string) => void;
   sending: boolean;
   uploading: boolean;
 }) {
   const photoInputRef = useRef<HTMLInputElement>(null);
   const busy = sending || uploading;
+  const hasPendingPhoto = Boolean(pendingAttachmentPreviewUrl);
+  const canSend = Boolean(value.trim()) || hasPendingPhoto;
 
   function handleKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
     if (event.key === "Enter") {
       event.preventDefault();
-      onSend();
+
+      if (canSend && !busy) {
+        onSend();
+      }
     }
   }
 
@@ -78,6 +87,31 @@ export default function DmComposer({
 
   return (
     <div className="shrink-0 border-t border-ftc-border-subtle bg-ftc-bg px-3 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-4">
+      {hasPendingPhoto && pendingAttachmentPreviewUrl ? (
+        <div className="mb-2 flex items-start gap-2">
+          <div
+            className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl ring-2 ring-ftc-primary"
+            data-testid="dm-composer-pending-photo"
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={pendingAttachmentPreviewUrl}
+              alt="Selected photo"
+              className="h-full w-full object-cover"
+            />
+          </div>
+          <button
+            type="button"
+            aria-label="Remove selected photo"
+            disabled={busy}
+            onClick={onClearPendingPhoto}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-ftc-border-subtle bg-ftc-surface text-sm text-ftc-text-secondary transition hover:border-ftc-border-strong hover:text-ftc-text disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            ×
+          </button>
+        </div>
+      ) : null}
+
       <div className="flex min-w-0 items-end gap-2">
         <ComposerIconButton
           label="Add photo"
@@ -104,7 +138,7 @@ export default function DmComposer({
         <button
           type="button"
           onClick={onSend}
-          disabled={busy || !value.trim()}
+          disabled={busy || !canSend}
           aria-label="Send message"
           className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-ftc-primary text-ftc-bg transition hover:bg-ftc-primary-dim disabled:cursor-not-allowed disabled:opacity-50 sm:h-10 sm:w-10"
         >
@@ -126,7 +160,7 @@ export default function DmComposer({
           event.target.value = "";
 
           if (file) {
-            handleAttachmentSelected(file, onPhotoSelected);
+            handleAttachmentSelected(file, onStagePhoto);
           }
         }}
       />
