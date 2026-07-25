@@ -138,7 +138,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 - **Event Plans delete mode (2026-07-19):** trash and delete-selection toolbars share one fixed-height secondary row (`EVENT_PLANS_TOOLBAR_ROW_CLASS`) so plan cards no longer shift when entering or leaving selection mode; title-row Create button slot stays reserved on mobile; toolbar layers swap in place via `EventsListTabRow` + embedded `HistorySelectionToolbar` (no flex-wrap growth)
 - **Event Plans selection toolbar stability (2026-07-25):** `SavedEventPlansSectionHeader` always renders trash and Back/All/Delete inside the same `EVENT_PLANS_TOOLBAR_ROW_CLASS` slot via `EventsListTabRow` + `EventsListTabPillWidthSpacer` — removes conditional alternate DOM that caused card list jump on mode toggle
 - **History bulk selection (2026-07-19):** Events History and Gigs History delete-selection use full-card tap plus cyan ring only — no presentational checkboxes; cards expose `aria-pressed` and `aria-selected` for screen readers; cancel exits atomically with stable card shells (border stays on the list item, not a swapping inner button) to prevent white border flash
-- **Event Plans selection cards (2026-07-19):** delete-selection uses full-card tap plus cyan ring only — no checkbox; layout-only action reserve (`EVENT_PLAN_ACTION_RESERVE_CLASS`) keeps text aligned when Use plan is hidden
+- **Event Plans selection cards (2026-07-25):** delete-selection uses full-card tap plus inset cyan ring only — no checkbox; hidden `Use plan` button (`EVENT_PLAN_USE_BUTTON_SELECTION_HIDDEN_CLASS`) preserves CTA footprint in mobile + desktop slots so content width and card height stay stable when selection mode opens
 - **Event Plans Use plan placement (2026-07-25):** `Use plan` CTA matches Gigs `Open DM` placement — mobile inline beside event/venue meta row; desktop bottom-right row (`hidden sm:flex justify-end`); button styling and tap target unchanged
 
 ## Event Plans
@@ -225,7 +225,8 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
-- `PLACEHOLDER` — fix Event Plans card list shift when bulk-selection opens
+- `PLACEHOLDER` — preserve Event Plan card dimensions in bulk-selection mode
+- `56b0234` — fix Event Plans card list shift when bulk-selection opens
 - `2b2311a` — align Event Plans Use plan button with Gigs Open DM placement
 - `960ee70` — use shared transient feedback for booking send success on event detail
 - `a02e788` — use shared transient feedback for booking request cancellation on event detail
