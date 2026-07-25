@@ -1947,7 +1947,7 @@ function testEventPlansActionRowLayout() {
     "utf8",
   );
   assert.match(skeletonSource, /justify-center overflow-hidden/);
-  assert.match(skeletonSource, /EVENTS_LIST_TAB_FEEDBACK_CLASS} w-full text-center/);
+  assert.match(skeletonSource, /InlineTabFeedbackMessage message=\{feedbackMessage\} fading=\{feedbackFading\}/);
   assert.match(pageSource, /const showEventPlansToolbar = !formOpen;/);
 }
 
@@ -1968,12 +1968,13 @@ function testEventPlansInlineFeedbackMatchesEventsHistory() {
     /rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated px-4 py-3 text-sm text-ftc-text-secondary/,
   );
   assert.equal(HISTORY_REMOVAL_FEEDBACK_VISIBLE_MS, 2700);
-  assert.equal(HISTORY_REMOVAL_FEEDBACK_FADE_MS, 350);
-  assert.equal(HISTORY_REMOVAL_FEEDBACK_CLEAR_MS, 3066);
-  assert.equal(INLINE_TAB_FEEDBACK_FADE_MS, HISTORY_REMOVAL_FEEDBACK_VISIBLE_MS);
-  assert.equal(INLINE_TAB_FEEDBACK_CLEAR_MS, HISTORY_REMOVAL_FEEDBACK_CLEAR_MS);
-  assert.match(eventsSource, /useHistoryRemovalHeaderFeedback/);
+  assert.equal(HISTORY_REMOVAL_FEEDBACK_FADE_MS, 300);
+  assert.equal(HISTORY_REMOVAL_FEEDBACK_CLEAR_MS, 3000);
+  assert.equal(INLINE_TAB_FEEDBACK_FADE_MS, 2700);
+  assert.equal(INLINE_TAB_FEEDBACK_CLEAR_MS, 3000);
+  assert.match(eventsSource, /useInlineTabFeedbackDismiss/);
   assert.match(eventsSource, /useSetPlannerWorkspaceHeaderState/);
+  assert.match(eventsSource, /titleFeedbackMessage: showTitleFeedback \? successMessage : null/);
   assert.doesNotMatch(eventsSource, /setHistoryFeedbackFading/);
   assert.doesNotMatch(eventsSource, /feedbackMessage=\{isHistoryTab \? successMessage/);
 }
@@ -2486,21 +2487,32 @@ function testHistoryRemovalHeaderFeedbackUnified() {
     new URL("../app/components/events/EventsListTabControls.tsx", import.meta.url),
     "utf8",
   );
+  const plansSource = readFileSync(
+    new URL("../app/(planner-workspace)/booking-plans/page.tsx", import.meta.url),
+    "utf8",
+  );
+  const feedbackMessageSource = readFileSync(
+    new URL("../app/components/feedback/InlineTabFeedbackMessage.tsx", import.meta.url),
+    "utf8",
+  );
 
   assert.equal(formatEventsHistoryRemoveSuccessMessage(1), "1 event removed from history");
   assert.equal(formatEventsHistoryRemoveSuccessMessage(3), "3 events removed from history");
   assert.equal(formatGigsHistoryRemoveSuccessMessage(1), "1 gig removed from history");
   assert.equal(formatGigsHistoryRemoveSuccessMessage(3), "3 gigs removed from history");
-  assert.equal(HISTORY_REMOVAL_FEEDBACK_VISIBLE_MS, 2700);
-  assert.equal(HISTORY_REMOVAL_FEEDBACK_FADE_MS, 350);
-  assert.equal(HISTORY_REMOVAL_FEEDBACK_CLEAR_MS, 3066);
+  assert.equal(INLINE_TAB_FEEDBACK_FADE_MS, 2700);
+  assert.equal(INLINE_TAB_FEEDBACK_CLEAR_MS, 3000);
 
-  assert.match(gigsPageSource, /useHistoryRemovalHeaderFeedback/);
+  assert.match(gigsPageSource, /useInlineTabFeedbackDismiss/);
   assert.match(gigsPageSource, /formatGigsHistoryRemoveSuccessMessage/);
-  assert.match(gigsPageSource, /titleFeedbackMessage: showTitleFeedback \? gigsHistoryFeedbackMessage : null/);
-  assert.match(eventsSource, /useHistoryRemovalHeaderFeedback/);
+  assert.match(gigsPageSource, /titleFeedbackMessage: showTitleFeedback \? gigsHistorySuccessMessage : null/);
+  assert.match(eventsSource, /useInlineTabFeedbackDismiss/);
   assert.match(eventsSource, /formatEventsHistoryRemoveSuccessMessage/);
-  assert.match(eventsSource, /titleFeedbackMessage: showTitleFeedback \? historyRemoveFeedbackMessage : null/);
+  assert.match(eventsSource, /titleFeedbackMessage: showTitleFeedback \? successMessage : null/);
+  assert.match(plansSource, /useInlineTabFeedbackDismiss/);
+  assert.match(feedbackMessageSource, /EVENTS_LIST_TAB_FEEDBACK_CLASS/);
+  assert.match(feedbackMessageSource, /opacity-0/);
+  assert.match(titleFeedbackSource, /InlineTabFeedbackMessage/);
   assert.doesNotMatch(gigsPageSource, /historyFeedbackMessage:/);
   assert.doesNotMatch(gigsChromeSource, /historyFeedbackMessage/);
   assert.doesNotMatch(eventsSource, /feedbackMessage=\{isHistoryTab/);
@@ -2512,11 +2524,11 @@ function testHistoryRemovalHeaderFeedbackUnified() {
   assert.doesNotMatch(eventsRowSource, /HistoryTabRowFeedbackCell/);
   assert.match(EVENTS_LIST_TAB_ROW_CLASS, /justify-between/);
   assert.match(titleFeedbackSource, /PlannerWorkspaceTitleFeedback/);
-  assert.match(titleFeedbackSource, /onAnimationEnd/);
-  assert.match(titleFeedbackSource, /PLANNER_WORKSPACE_TITLE_FEEDBACK_FADING_CLASS/);
-  assert.match(titleFeedbackSource, /onFadeComplete/);
+  assert.match(titleFeedbackSource, /InlineTabFeedbackMessage/);
   assert.match(titleFeedbackSource, /PLANNER_WORKSPACE_TITLE_FEEDBACK_SLOT_CLASS/);
   assert.doesNotMatch(titleFeedbackSource, /absolute inset-x-0/);
+  assert.doesNotMatch(titleFeedbackSource, /onAnimationEnd/);
+  assert.doesNotMatch(titleFeedbackSource, /ftc-history-removal-feedback/);
   assert.match(layoutSource, /PlannerWorkspaceTitleFeedback/);
 }
 

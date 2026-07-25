@@ -18,7 +18,6 @@ import EventDateStatusBadge from "@/app/components/EventDateStatusBadge";
 import {
   PlannerWorkspacePage,
   useSetPlannerWorkspaceHeaderState,
-  useSetPlannerWorkspaceTitleFeedbackFadeComplete,
 } from "@/app/components/planner/PlannerWorkspaceLayout";
 import {
   PlannerBackLink,
@@ -58,7 +57,7 @@ import { EventCoverImageListThumb } from "@/app/components/events/EventCoverImag
 import { FTC_LIST_GAP_CLASS } from "@/lib/design/ftcDesignSystem";
 import {
   formatEventsHistoryRemoveSuccessMessage,
-  useHistoryRemovalHeaderFeedback,
+  useInlineTabFeedbackDismiss,
 } from "@/lib/design/inlineTabFeedback";
 import { EventListSkeleton } from "@/app/components/skeleton/Skeleton";
 import {
@@ -456,14 +455,11 @@ function EventsPageClientView({
   const clearHistoryRemoveSuccessMessage = useCallback(() => {
     setSuccessMessage(null);
   }, []);
-  const {
-    displayMessage: historyRemoveFeedbackMessage,
-    fading: historyRemoveFeedbackFading,
-    completeFade: completeHistoryRemoveFeedbackFade,
-  } = useHistoryRemovalHeaderFeedback(successMessage, clearHistoryRemoveSuccessMessage);
+  const historyRemoveFeedbackFading = useInlineTabFeedbackDismiss(
+    successMessage,
+    clearHistoryRemoveSuccessMessage,
+  );
   const setPlannerWorkspaceHeaderState = useSetPlannerWorkspaceHeaderState();
-  const setPlannerWorkspaceTitleFeedbackFadeComplete =
-    useSetPlannerWorkspaceTitleFeedbackFadeComplete();
   const [eventsListReady, setEventsListReady] = useState(() => mountListState.eventsListReady);
   const [calendarOriginDateKey, setCalendarOriginDateKey] = useState<string | null>(
     () => calendarBootstrap?.calendarOriginDateKey ?? null,
@@ -628,29 +624,23 @@ function EventsPageClientView({
       showEventsListContent && isHistoryTab && !historyTabRowSelectionMode;
 
     setPlannerWorkspaceHeaderState({
-      titleFeedbackMessage: showTitleFeedback ? historyRemoveFeedbackMessage : null,
+      titleFeedbackMessage: showTitleFeedback ? successMessage : null,
       titleFeedbackFading: showTitleFeedback ? historyRemoveFeedbackFading : false,
     });
-    setPlannerWorkspaceTitleFeedbackFadeComplete(
-      showTitleFeedback ? completeHistoryRemoveFeedbackFade : null,
-    );
 
     return () => {
       setPlannerWorkspaceHeaderState({
         titleFeedbackMessage: null,
         titleFeedbackFading: false,
       });
-      setPlannerWorkspaceTitleFeedbackFadeComplete(null);
     };
   }, [
-    completeHistoryRemoveFeedbackFade,
     historyRemoveFeedbackFading,
-    historyRemoveFeedbackMessage,
     historyTabRowSelectionMode,
     isHistoryTab,
     setPlannerWorkspaceHeaderState,
-    setPlannerWorkspaceTitleFeedbackFadeComplete,
     showEventsListContent,
+    successMessage,
   ]);
 
   useEffect(() => {

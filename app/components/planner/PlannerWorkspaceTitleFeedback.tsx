@@ -1,82 +1,22 @@
-"use client";
-
-import { useCallback, useEffect, useRef } from "react";
-import {
-  HISTORY_REMOVAL_FEEDBACK_FADE_MS,
-  PLANNER_WORKSPACE_TITLE_FEEDBACK_CLASS,
-  PLANNER_WORKSPACE_TITLE_FEEDBACK_FADING_CLASS,
-} from "@/lib/design/inlineTabFeedback";
+import { InlineTabFeedbackMessage } from "@/app/components/feedback/InlineTabFeedbackMessage";
 import { PLANNER_WORKSPACE_TITLE_FEEDBACK_SLOT_CLASS } from "@/lib/design/plannerWorkspaceTokens";
 
 type PlannerWorkspaceTitleFeedbackProps = {
   message: string | null;
   fading: boolean;
-  onFadeComplete?: () => void;
 };
 
 /** Centred history-removal success row below the planner title row (Events + Gigs). */
 export function PlannerWorkspaceTitleFeedback({
   message,
   fading,
-  onFadeComplete,
 }: PlannerWorkspaceTitleFeedbackProps) {
-  const onFadeCompleteRef = useRef(onFadeComplete);
-  const fadeFinishedRef = useRef(false);
-
-  onFadeCompleteRef.current = onFadeComplete;
-
-  useEffect(() => {
-    fadeFinishedRef.current = false;
-  }, [message]);
-
-  const finishFade = useCallback(() => {
-    if (fadeFinishedRef.current || !fading) {
-      return;
-    }
-
-    fadeFinishedRef.current = true;
-    onFadeCompleteRef.current?.();
-  }, [fading]);
-
-  useEffect(() => {
-    if (!fading || !message) {
-      return;
-    }
-
-    const fallbackTimer = window.setTimeout(
-      finishFade,
-      HISTORY_REMOVAL_FEEDBACK_FADE_MS + 50,
-    );
-
-    return () => {
-      window.clearTimeout(fallbackTimer);
-    };
-  }, [fading, finishFade, message]);
-
   return (
     <div
       className={PLANNER_WORKSPACE_TITLE_FEEDBACK_SLOT_CLASS}
       aria-live={message ? "polite" : undefined}
     >
-      {message ? (
-        <p
-          className={`${PLANNER_WORKSPACE_TITLE_FEEDBACK_CLASS} ${
-            fading ? PLANNER_WORKSPACE_TITLE_FEEDBACK_FADING_CLASS : ""
-          }`}
-          onAnimationEnd={(event) => {
-            if (
-              event.animationName !== "ftc-history-removal-feedback-fade-out" ||
-              !fading
-            ) {
-              return;
-            }
-
-            finishFade();
-          }}
-        >
-          {message}
-        </p>
-      ) : null}
+      <InlineTabFeedbackMessage message={message} fading={fading} />
     </div>
   );
 }

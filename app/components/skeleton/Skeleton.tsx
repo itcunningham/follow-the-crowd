@@ -23,9 +23,9 @@ import {
 import {
   HistoryManageButton,
 } from "@/app/components/history/HistoryBulkManage";
+import { InlineTabFeedbackMessage } from "@/app/components/feedback/InlineTabFeedbackMessage";
 import {
   EVENTS_LIST_TAB_ROW_CLASS,
-  EVENTS_LIST_TAB_FEEDBACK_CLASS,
   EVENT_PLANS_CREATE_BUTTON_CLASS,
   FTC_EVENTS_LIST_TAB_ACTION_CLASS,
   FTC_EVENTS_LIST_TAB_ACTION_PLACEHOLDER_CLASS,
@@ -708,15 +708,7 @@ export function SavedEventPlansSectionHeader({
         className="flex min-w-0 flex-1 items-center justify-center overflow-hidden"
         aria-live="polite"
       >
-        {feedbackMessage ? (
-          <p
-            className={`${EVENTS_LIST_TAB_FEEDBACK_CLASS} w-full text-center ${
-              feedbackFading ? "opacity-0" : "opacity-100"
-            }`}
-          >
-            {feedbackMessage}
-          </p>
-        ) : null}
+        <InlineTabFeedbackMessage message={feedbackMessage} fading={feedbackFading} />
       </div>
       <div className="flex w-[1.875rem] shrink-0 items-center justify-end">
         {showTrashButton ? (
