@@ -123,7 +123,9 @@ import {
   resolveEventsListTabParam,
   resolveEventsWorkspaceActiveHref,
 } from "@/lib/events/eventsListNavigation";
+import { buildGigsWorkspaceIncomingHref } from "@/lib/bookings/gigsListNavigation";
 import { resolveEventsWorkspaceChromeRole } from "@/lib/events/eventsWorkspaceChromeRole";
+import { EVENTS_AREA_SUB_NAV } from "@/lib/plannerEventsNav";
 import {
   canManageEvents,
   getCurrentUserProfile,
@@ -849,13 +851,7 @@ function EventsPageClientView({
     await loadBookingPlansForCreate();
   }
 
-  function closeCreateFlow() {
-    if (saving) {
-      return;
-    }
-
-    const originDateKey = calendarOriginDateKey;
-
+  function resetCalendarCreateFlowState() {
     setCreateOpen(false);
     setCreateStep("source");
     setCreateSaveAttempted(false);
@@ -875,14 +871,49 @@ function EventsPageClientView({
     setInviteModalOpen(false);
     setUnavailableConfirmOpen(false);
     setPendingPostCreateInviteSend(null);
+    setCalendarOriginDateKey(null);
+  }
 
-    if (originDateKey) {
-      navigateToCalendarOrigin(originDateKey);
+  function closeCreateFlow() {
+    if (saving) {
       return;
     }
 
-    setCalendarOriginDateKey(null);
+    const originDateKey = calendarOriginDateKey;
+
+    resetCalendarCreateFlowState();
+
+    if (originDateKey) {
+      navigateToCalendarOrigin(originDateKey);
+    }
   }
+
+  const handleCalendarCreateWorkspaceTabNavigate = useCallback(
+    (href: string) => {
+      if (!isCalendarCreateFlow || !createOpen) {
+        return false;
+      }
+
+      if (saving) {
+        return true;
+      }
+
+      if (href === EVENTS_AREA_SUB_NAV.calendar.href) {
+        return true;
+      }
+
+      resetCalendarCreateFlowState();
+
+      if (href === EVENTS_AREA_SUB_NAV.gigs.href) {
+        router.replace(buildGigsWorkspaceIncomingHref(), { scroll: false });
+      } else {
+        router.replace(href, { scroll: false });
+      }
+
+      return true;
+    },
+    [createOpen, isCalendarCreateFlow, router, saving],
+  );
 
   function handleSelectPlan(plan: BookingPlan) {
     const input = eventInputFromBookingPlan(plan);
@@ -1276,6 +1307,9 @@ function EventsPageClientView({
         initialRole={resolvedRole}
         activeWorkspaceHref={eventsWorkspaceActiveHref}
         includeChrome={false}
+        interceptWorkspaceTabNavigation={
+          isCalendarCreateFlow && createOpen ? handleCalendarCreateWorkspaceTabNavigate : undefined
+        }
         actions={workspaceHeaderActions}
         secondaryControlsSlot={
           !isCalendarCreateFlow ? (

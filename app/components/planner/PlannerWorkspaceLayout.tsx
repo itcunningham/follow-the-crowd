@@ -253,10 +253,7 @@ export function PlannerWorkspaceRouteLayout({ children }: { children: ReactNode 
     [resetHeaderStateForPathnameChange, setHeaderState],
   );
 
-  const workspaceIntercept =
-    pathname === "/calendar" || pathname.startsWith("/calendar/")
-      ? null
-      : headerState.interceptWorkspaceTabNavigation;
+  const workspaceIntercept = headerState.interceptWorkspaceTabNavigation;
 
   return (
     <WorkspaceHeaderContext.Provider value={headerContextValue}>

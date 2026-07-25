@@ -2235,6 +2235,31 @@ function testBookingsUsePlanWorkspaceTabNavigation() {
   assert.match(subNavLinkSource, /if \(interceptNavigate\)/);
 }
 
+function testCalendarCreateWorkspaceTabNavigation() {
+  const eventsSource = readFileSync(
+    new URL("../app/(planner-workspace)/events/EventsPageClient.tsx", import.meta.url),
+    "utf8",
+  );
+  const layoutSource = readFileSync(
+    new URL("../app/components/planner/PlannerWorkspaceLayout.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(eventsSource, /handleCalendarCreateWorkspaceTabNavigate/);
+  assert.match(eventsSource, /resetCalendarCreateFlowState/);
+  assert.match(
+    eventsSource,
+    /isCalendarCreateFlow && createOpen \? handleCalendarCreateWorkspaceTabNavigate : undefined/,
+  );
+  assert.match(eventsSource, /href === EVENTS_AREA_SUB_NAV\.calendar\.href/);
+  assert.match(eventsSource, /router\.replace\(href, \{ scroll: false \}\)/);
+  assert.match(layoutSource, /const workspaceIntercept = headerState\.interceptWorkspaceTabNavigation/);
+  assert.doesNotMatch(
+    layoutSource,
+    /pathname === "\/calendar"[\s\S]*\? null[\s\S]*: headerState\.interceptWorkspaceTabNavigation/,
+  );
+}
+
 function testCalendarScrollStabilityOnTabSwitch() {
   const calendarPageSource = readFileSync(
     new URL("../app/(planner-workspace)/calendar/page.tsx", import.meta.url),
@@ -3221,6 +3246,7 @@ async function main() {
   testEventsHistorySelectionToolbarUsesDeleteLabel();
   testEventsCreateFlowTabPillNavigation();
   testBookingsUsePlanWorkspaceTabNavigation();
+  testCalendarCreateWorkspaceTabNavigation();
   testEventsListTabSwitchUsesClientHistoryWithoutRouterNavigation();
   testEventsCreateEventHiddenDuringHistorySelectionToolbar();
   testEventDetailLoadUsesParallelQueriesAndListCache();

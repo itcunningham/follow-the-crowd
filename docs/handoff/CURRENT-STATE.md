@@ -123,6 +123,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 - Unavailable-DJ confirm modal uses Confirm wording
 - Calendar-origin and standard create flows aligned on copy and validation
 - **Calendar create workspace tab (2026-07-23):** Calendar Create Event / Event Plans open on `/calendar?create=…` via `EventsCalendarOriginCreateClient` (no intermediate `/events` list); legacy `/events?create=calendar` redirects to calendar; CALENDAR tab stays highlighted; cancel/save return unchanged
+- **Calendar create workspace navigation (2026-07-25):** while calendar-originated create is open, workspace sub-nav uses `interceptWorkspaceTabNavigation` (same pattern as Gigs Use Plan) to reset create state and `router.replace` to Events / Event Plans / Gigs; Cancel still returns to the selected calendar date; layout no longer strips intercept on `/calendar`
 - **Gigs History cards (2026-07-15):** `Fixed ·` / `Open offer` fee copy aligned with Incoming/Confirmed; tighter info-to-actions spacing; shorter View event (primary) + Open DM (subdued) buttons
 - **Gigs Confirmed tab (2026-07-19):** received gigs reload after booking acceptance (`ftc-notifications-updated` + tab visibility) so accepted bookings appear in Confirmed without stale client state; gig date keys use shared `resolveEventDateKey` (legacy + ISO); `?tab=confirmed` URL alias maps to Confirmed
 - **Gigs tab row (2026-07-23):** `DjGigsTabs` — Incoming/Confirmed use compact `ftc-gigs-tab-pill` (`0.375rem 0.5rem`, `min-height: 1.875rem`); counts cap at **99+** via `formatGigsTabCountDisplay`; label/count row and **`2.5ch`** count slot mount only when count &gt; 0 via shared **`shouldRenderGigsTabCount`**; label/count gap **`gap-1.5` (~6px)**; **History** reuses **`eventsListTabPillClass`**. **`gigsTabCountsCache`** + **`gigsListSnapshotPrefetch`** (from workspace sub-nav) warm tab counts before first Gigs visit.
@@ -225,7 +226,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
-- `PLACEHOLDER` — hide Gigs sub-tabs during Event Plan Use Plan flow
+- `308c4a1` — hide Gigs sub-tabs during Event Plan Use Plan flow
 - `95f5d1d` — preserve Event Plan card dimensions in bulk-selection mode
 - `56b0234` — fix Event Plans card list shift when bulk-selection opens
 - `2b2311a` — align Event Plans Use plan button with Gigs Open DM placement
