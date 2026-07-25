@@ -1191,14 +1191,23 @@ function testProfileIdentityPresentationHierarchy() {
 }
 
 function testEventPlanUseButtonKeepsStableCardLayout() {
-  assert.match(EVENT_PLAN_USE_BUTTON_WRAP_CLASS, /shrink-0/);
-  assert.match(EVENT_PLAN_USE_BUTTON_WRAP_CLASS, /self-center/);
+  assert.match(EVENT_PLAN_USE_BUTTON_WRAP_CLASS, /hidden min-w-0 justify-end sm:flex/);
+  assert.doesNotMatch(EVENT_PLAN_USE_BUTTON_WRAP_CLASS, /self-center/);
   assert.match(EVENT_PLAN_USE_BUTTON_CLASS, /min-h-11/);
   assert.doesNotMatch(EVENT_PLAN_USE_BUTTON_CLASS, /w-full/);
   assert.doesNotMatch(EVENT_PLAN_USE_BUTTON_CLASS, /w-\[/);
   assert.match(EVENT_PLAN_ACTION_RESERVE_CLASS, /h-11/);
   assert.match(EVENT_PLAN_ACTION_RESERVE_CLASS, /w-\[5\.5rem\]/);
   assert.doesNotMatch(EVENT_PLAN_ACTION_RESERVE_CLASS, /ftc-btn/);
+  assert.doesNotMatch(EVENT_PLAN_ACTION_RESERVE_CLASS, /self-center/);
+
+  const pageSource = readFileSync(
+    new URL("../app/(planner-workspace)/booking-plans/page.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(pageSource, /mobileAction=\{mobileAction\}/);
+  assert.match(pageSource, /EVENT_PLAN_USE_BUTTON_WRAP_CLASS/);
+  assert.doesNotMatch(pageSource, /flex items-center gap-3 p-3/);
 }
 
 function testGigsTabRowUsesCompactPillsWithoutCounts() {

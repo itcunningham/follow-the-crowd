@@ -132,12 +132,10 @@ export const EVENTS_LIST_TAB_FEEDBACK_CLASS =
 export const EVENT_PLANS_TOOLBAR_ROW_CLASS = "relative h-[3.125rem] w-full shrink-0";
 
 /** Event Plans card — layout-only reserve matching Use plan width in delete-selection mode. */
-export const EVENT_PLAN_ACTION_RESERVE_CLASS =
-  "h-11 w-[5.5rem] shrink-0 self-center";
+export const EVENT_PLAN_ACTION_RESERVE_CLASS = "h-11 w-[5.5rem] shrink-0";
 
-/** Event Plans card — vertically centred Use plan column. */
-export const EVENT_PLAN_USE_BUTTON_WRAP_CLASS =
-  "shrink-0 self-center sm:flex sm:justify-end";
+/** Event Plans card — desktop Use plan row (matches Gigs Open DM placement). */
+export const EVENT_PLAN_USE_BUTTON_WRAP_CLASS = "hidden min-w-0 justify-end sm:flex";
 
 /** Event Plans card — shared sizing for live and reserved Use plan buttons. */
 export const EVENT_PLAN_USE_BUTTON_CLASS =

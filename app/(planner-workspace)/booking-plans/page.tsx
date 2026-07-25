@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
 import { useGuardProfile } from "@/app/components/GuardProfileContext";
@@ -697,6 +697,27 @@ function EventPlanCard({
     ? `ftc-card relative overflow-hidden${selected ? " ring-1 ring-ftc-primary/40" : ""}`
     : "ftc-card relative overflow-hidden ftc-card-hoverable";
 
+  function renderUsePlanButton() {
+    return (
+      <button
+        type="button"
+        onClick={(event) => {
+          event.stopPropagation();
+          onUseForBooking();
+        }}
+        className={EVENT_PLAN_USE_BUTTON_CLASS}
+      >
+        Use plan
+      </button>
+    );
+  }
+
+  const mobileAction = selectionMode ? (
+    <div aria-hidden="true" className={EVENT_PLAN_ACTION_RESERVE_CLASS} />
+  ) : (
+    renderUsePlanButton()
+  );
+
   return (
     <li
       className={cardClassName}
@@ -712,37 +733,38 @@ function EventPlanCard({
         />
       ) : null}
 
-      <div className="flex items-center gap-3 p-3 sm:gap-4 sm:p-4">
+      <div className="flex flex-col gap-1 p-3 sm:gap-2 sm:p-4">
         {selectionMode ? (
-          <div className="min-w-0 flex-1 text-left">
-            <EventPlanCardBody plan={plan} notesText={notesText} hasNotes={hasNotes} />
+          <div className="min-w-0">
+            <EventPlanCardBody
+              plan={plan}
+              notesText={notesText}
+              hasNotes={hasNotes}
+              mobileAction={mobileAction}
+            />
           </div>
         ) : (
           <button
             type="button"
             onClick={onCardClick}
-            className="flex min-w-0 flex-1 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ftc-primary/35 active:bg-ftc-bg-elevated/60"
+            className="min-w-0 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ftc-primary/35 active:bg-ftc-bg-elevated/60"
           >
-            <EventPlanCardBody plan={plan} notesText={notesText} hasNotes={hasNotes} />
+            <EventPlanCardBody
+              plan={plan}
+              notesText={notesText}
+              hasNotes={hasNotes}
+              mobileAction={mobileAction}
+            />
           </button>
         )}
 
-        {selectionMode ? (
-          <div aria-hidden="true" className={EVENT_PLAN_ACTION_RESERVE_CLASS} />
-        ) : (
-          <div className={EVENT_PLAN_USE_BUTTON_WRAP_CLASS}>
-            <button
-              type="button"
-              onClick={(event) => {
-                event.stopPropagation();
-                onUseForBooking();
-              }}
-              className={EVENT_PLAN_USE_BUTTON_CLASS}
-            >
-              Use plan
-            </button>
-          </div>
-        )}
+        <div className={EVENT_PLAN_USE_BUTTON_WRAP_CLASS}>
+          {selectionMode ? (
+            <div aria-hidden="true" className={EVENT_PLAN_ACTION_RESERVE_CLASS} />
+          ) : (
+            renderUsePlanButton()
+          )}
+        </div>
       </div>
     </li>
   );
@@ -752,17 +774,29 @@ function EventPlanCardBody({
   plan,
   notesText,
   hasNotes,
+  mobileAction,
 }: {
   plan: BookingPlan;
   notesText: string;
   hasNotes: boolean;
+  mobileAction?: ReactNode;
 }) {
+  const hasMobileMeta = Boolean(plan.event_name.trim() || plan.venue.trim());
+
   return (
     <span className="min-w-0 flex-1">
       <span className="block text-[1.0625rem] font-bold leading-snug text-ftc-text sm:text-lg">
         {plan.name}
       </span>
-      <MobilePlanEventVenueRow eventName={plan.event_name} venue={plan.venue} />
+      {hasMobileMeta ? (
+        <MobilePlanEventVenueRow
+          eventName={plan.event_name}
+          venue={plan.venue}
+          mobileAction={mobileAction}
+        />
+      ) : mobileAction ? (
+        <div className="mt-1.5 flex min-w-0 justify-end sm:hidden">{mobileAction}</div>
+      ) : null}
       {hasNotes ? (
         <div className="mt-2 sm:hidden">
           <PlanFieldLabel as="p">Notes</PlanFieldLabel>
@@ -799,9 +833,11 @@ function PlanFieldLabel({
 function MobilePlanEventVenueRow({
   eventName,
   venue,
+  mobileAction,
 }: {
   eventName: string;
   venue: string;
+  mobileAction?: ReactNode;
 }) {
   const event = eventName.trim();
   const venueName = venue.trim();
@@ -810,8 +846,8 @@ function MobilePlanEventVenueRow({
     return null;
   }
 
-  return (
-    <p className="mt-1.5 min-w-0 text-sm sm:hidden">
+  const metaLine = (
+    <p className="min-w-0 flex-1 text-sm">
       {event ? (
         <>
           <PlanFieldLabel as="span">Event</PlanFieldLabel>{" "}
@@ -826,6 +862,19 @@ function MobilePlanEventVenueRow({
         </>
       ) : null}
     </p>
+  );
+
+  return (
+    <div className="mt-1.5 min-w-0 sm:hidden">
+      {mobileAction ? (
+        <div className="flex min-w-0 items-center gap-2">
+          {metaLine}
+          {mobileAction}
+        </div>
+      ) : (
+        metaLine
+      )}
+    </div>
   );
 }
 
