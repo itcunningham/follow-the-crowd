@@ -220,7 +220,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
-- `<pending>` — preserve Gigs Incoming return chain through DM and event detail
+- `e6f52ba` — preserve Gigs Incoming return chain through DM and event detail
 - `14e5194` — shrink Gigs nav pills when count is zero
 - `6be58e5` — unify DatePicker and TimePicker placeholder styling
 - `3441eb4` — fix date picker placeholder colour consistency
