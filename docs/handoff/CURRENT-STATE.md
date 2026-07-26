@@ -227,6 +227,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `e8120ab` — fix(calendar): sort daily agenda chronologically by start time
 - `0105b83` — fix planner calendar pending booking navigation to Event Details
 - `5e9adae` — fix Calendar create workspace tab requiring two taps
 - `34154ca` — fix workspace navigation during Calendar create event flow
