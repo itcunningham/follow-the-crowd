@@ -11,6 +11,7 @@ import {
   parseEventDate,
   parseSetTimeRange,
   resolveEventDateKey,
+  resolveEventEndDateTime,
   resolveEventStartDateTime,
   SET_TIME_RANGE_JOINER,
 } from "@/lib/bookingDateTime";
@@ -62,6 +63,8 @@ export type CalendarItem = {
   eventId: string | null;
   typeLabel: string;
   startTimeSortKey: number;
+  endTimeSortKey: number;
+  createdAtSortKey: number;
   eventFallbackColour: string | null;
 };
 
@@ -133,38 +136,39 @@ function resolveCalendarItemStartTimeSortKey(eventDate: string, setTime: string)
   return startDateTime?.getTime() ?? Number.MAX_SAFE_INTEGER;
 }
 
-function getPlannerCalendarAgendaPriority(item: CalendarItem): number {
-  if (item.statusKind === "accepted") {
-    return 0;
-  }
+function resolveCalendarItemEndTimeSortKey(eventDate: string, setTime: string): number {
+  const endDateTime = resolveEventEndDateTime(eventDate, setTime);
 
-  if (item.statusKind === "pending") {
-    return 1;
-  }
+  return endDateTime?.getTime() ?? Number.MAX_SAFE_INTEGER;
+}
 
-  if (item.statusKind === "event_cancelled" || item.statusKind === "cancelled") {
-    return 3;
-  }
+function resolveCalendarItemCreatedAtSortKey(createdAt: string): number {
+  const parsed = Date.parse(createdAt.trim());
 
-  return 2;
+  return Number.isFinite(parsed) ? parsed : 0;
 }
 
 export function sortPlannerCalendarAgendaItems(items: CalendarItem[]): CalendarItem[] {
   return [...items].sort((left, right) => {
-    const priorityDelta =
-      getPlannerCalendarAgendaPriority(left) - getPlannerCalendarAgendaPriority(right);
+    const startDelta = left.startTimeSortKey - right.startTimeSortKey;
 
-    if (priorityDelta !== 0) {
-      return priorityDelta;
+    if (startDelta !== 0) {
+      return startDelta;
     }
 
-    const timeDelta = left.startTimeSortKey - right.startTimeSortKey;
+    const endDelta = left.endTimeSortKey - right.endTimeSortKey;
 
-    if (timeDelta !== 0) {
-      return timeDelta;
+    if (endDelta !== 0) {
+      return endDelta;
     }
 
-    return left.title.localeCompare(right.title, undefined, { sensitivity: "base" });
+    const createdDelta = left.createdAtSortKey - right.createdAtSortKey;
+
+    if (createdDelta !== 0) {
+      return createdDelta;
+    }
+
+    return left.id.localeCompare(right.id);
   });
 }
 
@@ -395,6 +399,8 @@ function mapEventToCalendarItem(event: Event): CalendarItem | null {
     eventId: event.id,
     typeLabel: getCalendarTypeLabel("event"),
     startTimeSortKey: resolveCalendarItemStartTimeSortKey(event.event_date, event.set_time),
+    endTimeSortKey: resolveCalendarItemEndTimeSortKey(event.event_date, event.set_time),
+    createdAtSortKey: resolveCalendarItemCreatedAtSortKey(event.created_at),
     eventFallbackColour: event.fallback_colour?.trim() || null,
   };
 }
@@ -432,6 +438,8 @@ function mapBookingToCalendarItem(
     eventId,
     typeLabel: getCalendarTypeLabel(type),
     startTimeSortKey: resolveCalendarItemStartTimeSortKey(booking.event_date, booking.set_time),
+    endTimeSortKey: resolveCalendarItemEndTimeSortKey(booking.event_date, booking.set_time),
+    createdAtSortKey: resolveCalendarItemCreatedAtSortKey(booking.created_at),
     eventFallbackColour,
   };
 }

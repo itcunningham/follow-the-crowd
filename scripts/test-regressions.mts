@@ -22,6 +22,7 @@ import { MAX_WITHDRAWAL_OTHER_REASON_LENGTH } from "../lib/bookingRequests";
 import {
   formatPlannerCalendarItemHeadline,
   linkPlannerCalendarSentBookingsToEvents,
+  sortPlannerCalendarAgendaItems,
   type CalendarItem,
 } from "../lib/calendar";
 import {
@@ -929,6 +930,8 @@ function testPlannerCalendarPendingSentBookingEventLink() {
     timeLabel: "9:00 PM",
     typeLabel: "Sent booking",
     startTimeSortKey: 1,
+    endTimeSortKey: 2,
+    createdAtSortKey: 3,
     eventFallbackColour: null,
   } satisfies Partial<CalendarItem>;
   const eventItem: CalendarItem = {
@@ -961,6 +964,71 @@ function testPlannerCalendarPendingSentBookingEventLink() {
   assert.equal(
     resolvePlannerCalendarItemHref(linkedPending, origin),
     `/events/${eventId}?from=calendar&calendarDate=2026-07-14&calendarView=event&calendarMonth=2026-07-01`,
+  );
+}
+
+function testPlannerCalendarAgendaChronologicalSort() {
+  function makeAgendaItem(
+    overrides: Partial<CalendarItem> & Pick<CalendarItem, "id">,
+  ): CalendarItem {
+    return {
+      dateKey: "2026-07-14",
+      type: "event",
+      title: "Event",
+      venue: null,
+      timeLabel: null,
+      statusLabel: "Upcoming",
+      statusKind: "event_upcoming",
+      href: "/events/test",
+      eventId: "test",
+      typeLabel: "Event",
+      startTimeSortKey: 100,
+      endTimeSortKey: 200,
+      createdAtSortKey: 1000,
+      eventFallbackColour: null,
+      ...overrides,
+    };
+  }
+
+  const byStartTime = sortPlannerCalendarAgendaItems([
+    makeAgendaItem({ id: "pending-late", startTimeSortKey: 300, statusKind: "pending" }),
+    makeAgendaItem({ id: "upcoming-early", startTimeSortKey: 100, statusKind: "event_upcoming" }),
+    makeAgendaItem({ id: "accepted-mid", startTimeSortKey: 200, statusKind: "accepted" }),
+  ]);
+
+  assert.deepEqual(
+    byStartTime.map((item) => item.id),
+    ["upcoming-early", "accepted-mid", "pending-late"],
+  );
+
+  const byEndTime = sortPlannerCalendarAgendaItems([
+    makeAgendaItem({ id: "later-finish", startTimeSortKey: 100, endTimeSortKey: 400 }),
+    makeAgendaItem({ id: "earlier-finish", startTimeSortKey: 100, endTimeSortKey: 250 }),
+  ]);
+
+  assert.deepEqual(
+    byEndTime.map((item) => item.id),
+    ["earlier-finish", "later-finish"],
+  );
+
+  const byStableTieBreaker = sortPlannerCalendarAgendaItems([
+    makeAgendaItem({
+      id: "item-b",
+      startTimeSortKey: 100,
+      endTimeSortKey: 200,
+      createdAtSortKey: 1000,
+    }),
+    makeAgendaItem({
+      id: "item-a",
+      startTimeSortKey: 100,
+      endTimeSortKey: 200,
+      createdAtSortKey: 1000,
+    }),
+  ]);
+
+  assert.deepEqual(
+    byStableTieBreaker.map((item) => item.id),
+    ["item-a", "item-b"],
   );
 }
 
@@ -3276,6 +3344,7 @@ async function main() {
   testGigsCalendarBookingNavigation();
   testPlannerCalendarItemHref();
   testPlannerCalendarPendingSentBookingEventLink();
+  testPlannerCalendarAgendaChronologicalSort();
   testAcceptedFutureGigAppearsInConfirmed();
   testAcceptedPastGigAppearsInHistory();
   testPendingGigAppearsOnlyInIncoming();
