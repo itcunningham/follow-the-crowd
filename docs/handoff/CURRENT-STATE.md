@@ -44,6 +44,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 - Rate proposals: open offers, fixed offers, DJ counter-proposals, accept/decline RPCs
 - **Propose rate modal copy (2026-07-26):** notes field label `Notes (optional)`; placeholder `Notes`; description sentence without trailing full stop
 - **Booking rate proposal actions (2026-07-26):** planner review panel — full-width `Accept proposed rate`; compact equal-width row below with `Keep offer` + `Cancel` (`min-h-8` secondary/destructive; shared in DM booking card + Event Details lineup)
+- **DM booking pending event actions (2026-07-26):** pending open-offer cards with linked event use paired row — `View event` (left, outlined) + `Cancel` (right, destructive); `min-h-8` / `gap-2` matches proposal + lineup paired buttons; standalone cancel when no event link unchanged
 - Events: create, edit, cancel, delete, lineup, send bookings, run sheet
 - Event Plans (`/booking-plans`), Calendar (`/calendar`), Gigs (`/bookings`)
 - Notifications, settings, account deletion
@@ -264,6 +265,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `bc47f1a` — refine DM booking action layout
 - `55160bb` — polish booking proposal action layout
 - `783e565` — refine propose rate modal copy
 - `65c8601` — remove permanently deleted events from calendar
