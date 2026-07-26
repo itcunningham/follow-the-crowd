@@ -53,7 +53,7 @@ See [KNOWN-ISSUES.md](./KNOWN-ISSUES.md). Medium and Low items are accepted for 
 | Supabase backup confirmed | **Not confirmed** | Isaac must confirm before first tester invite |
 | Rollback procedure confirmed | **Not confirmed** | Vercel rollback + migration notes in `SUPABASE.md` |
 | Vercel/Supabase monitoring available | **Not confirmed** | Confirm dashboards/alerts before invite |
-| `QA-BETA-*` data cleaned or isolated | **Not confirmed** | Do not mix tester data with QA seed accounts without plan |
+| `QA-BETA-*` data cleaned or isolated | **Script ready** | Run `docs/qa/QA-BETA-ENVIRONMENT-RESET.md` before official beta testing |
 | Test-account credentials local/Git-ignored | **Required** | Never commit `.env.qa.local`, tokens, or Playwright storage states |
 
 ---
@@ -85,7 +85,7 @@ Complete before the first coached tester invite:
 | OP-07 | Supabase backup confirmed | ☐ |
 | OP-08 | Rollback procedure confirmed | ☐ |
 | OP-09 | Vercel/Supabase monitoring available | ☐ |
-| OP-10 | Existing `QA-BETA-*` data safely cleaned or isolated | ☐ |
+| OP-10 | Existing `QA-BETA-*` data safely cleaned or isolated | ☐ Run `npm run qa:reset-environment -- --confirm` or SQL in `scripts/cleanupTestData.sql` |
 | OP-11 | Test-account credentials remain local and Git-ignored | ☐ |
 
 ---

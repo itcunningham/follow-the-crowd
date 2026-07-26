@@ -32,6 +32,7 @@ Master gate checklist for FTC private beta.
 | Test planner account available | Passed | Critical | QA | |
 | Test DJ account available | Passed | Critical | QA | |
 | Test “both” role account (optional) | Passed | Medium | QA | |
+| QA transactional data reset procedure | Passed | High | Builder | `docs/qa/QA-BETA-ENVIRONMENT-RESET.md` |
 | Mobile test device / 390px emulator | Passed | High | QA | |
 | iPhone Safari physical smoke | Passed | High | QA | 7/7 passed |
 
