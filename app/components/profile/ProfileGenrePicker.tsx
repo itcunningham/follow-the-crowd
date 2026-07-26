@@ -64,18 +64,12 @@ export default function ProfileGenrePicker({
       {selectedTags.length > 0 ? (
         <div className="flex flex-wrap gap-2">
           {selectedTags.map((tag) => (
-            <button
+            <span
               key={tag}
-              type="button"
-              onClick={() => onToggleTag(tag)}
-              aria-label={`Remove ${tag}`}
-              className="inline-flex items-center gap-1.5 rounded-full border border-ftc-primary bg-ftc-bg-elevated px-3 py-1.5 text-xs font-medium text-ftc-text transition hover:border-ftc-border-strong"
+              className="inline-flex items-center rounded-full border border-ftc-border-subtle bg-ftc-bg-elevated px-3 py-1.5 text-xs font-medium text-ftc-text"
             >
-              <span>{tag}</span>
-              <span aria-hidden="true" className="text-ftc-text-muted">
-                ×
-              </span>
-            </button>
+              {tag}
+            </span>
           ))}
         </div>
       ) : null}
