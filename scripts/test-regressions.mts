@@ -126,6 +126,7 @@ import {
 import {
   buildEventDetailFromDmHref,
   resolveEventDetailBackHref,
+  resolveEventsListTabParam,
 } from "../lib/events/eventsListNavigation";
 import { buildPlannerCreateEventFromPlansHref, buildPlannerCreateEventHref } from "../lib/calendar";
 import { resolveGigsCalendarBookingNavigation, resolvePlannerCalendarItemEventId, resolvePlannerCalendarItemHref } from "../lib/bookings/gigsCalendarNavigation";
@@ -2503,7 +2504,21 @@ function testEventsCreateFlowTabPillNavigation() {
     source,
     /resolveEventsListTabParam\(null, initialTab, window\.location\.search\)/,
   );
+  assert.match(source, /prepareEventsListEventNavigation\(listTab\)/);
+  assert.match(source, /writeEventsListTabCache\(tab\)/);
   assert.match(source, /onTabLinkClick=\{handleEventsListTabLinkClick\}/);
+}
+
+function testEventsListTabParamRestoresHistoryWithoutActiveDefault() {
+  assert.equal(resolveEventsListTabParam(null, "history", ""), "history");
+  assert.equal(resolveEventsListTabParam(null, "history", "?"), "history");
+  assert.equal(resolveEventsListTabParam(null, null, "?tab=history"), "history");
+  assert.equal(resolveEventsListTabParam(null, null, ""), "active");
+  assert.equal(resolveEventsListTabParam(null, null, "?"), "active");
+  assert.equal(
+    resolveEventDetailBackHref("history"),
+    "/events?tab=history",
+  );
 }
 
 function testEventsListTabSwitchUsesClientHistoryWithoutRouterNavigation() {
@@ -3866,6 +3881,7 @@ async function main() {
   testResolvePlannerHistoryHideEventIds();
   testEventsHistorySelectionToolbarUsesDeleteLabel();
   testEventsCreateFlowTabPillNavigation();
+  testEventsListTabParamRestoresHistoryWithoutActiveDefault();
   testBookingsUsePlanWorkspaceTabNavigation();
   testBookingsUsePlanCancelReturnsToEventPlans();
   testBookingsUsePlanCreatesEventBeforeSend();

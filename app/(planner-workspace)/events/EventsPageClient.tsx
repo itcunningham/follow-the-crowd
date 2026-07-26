@@ -124,6 +124,7 @@ import {
   resolveEventsListTabParam,
   resolveEventsWorkspaceActiveHref,
 } from "@/lib/events/eventsListNavigation";
+import { writeEventsListTabCache } from "@/lib/events/eventsListTabCache";
 import { resolveEventsWorkspaceChromeRole } from "@/lib/events/eventsWorkspaceChromeRole";
 import {
   canManageEvents,
@@ -1189,6 +1190,7 @@ function EventsPageClientView({
     if (closeEventsOriginatedCreate) {
       if (!isTargetTab) {
         const href = buildEventsListHref(tab);
+        writeEventsListTabCache(tab);
         window.history.pushState(window.history.state, "", href);
         handleEventsListTabChange();
       }
@@ -1202,6 +1204,7 @@ function EventsPageClientView({
     }
 
     const href = buildEventsListHref(tab);
+    writeEventsListTabCache(tab);
     window.history.pushState(window.history.state, "", href);
     handleEventsListTabChange();
 
@@ -1661,7 +1664,7 @@ function EventsPageClientView({
                         aria-label={`View ${event.name}`}
                         onClick={() => {
                           seedEventOwnerId(event.id, event.owner_id);
-                          prepareEventsListEventNavigation();
+                          prepareEventsListEventNavigation(listTab);
                           router.push(eventHref, { scroll: false });
                         }}
                         className="block w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ftc-primary/35"
