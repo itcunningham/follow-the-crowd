@@ -125,8 +125,16 @@ export function resolveEventPlansCreateReturnHref(options: {
   return null;
 }
 
-export function navigateAwayFromEventPlansCreateFlow(returnHref: string): void {
-  window.location.assign(returnHref);
+type EventPlansCreateFlowRouter = {
+  replace: (href: string, options?: { scroll?: boolean }) => void;
+};
+
+/** Client-navigate back to Event Plans without resetting bookings create state first. */
+export function navigateAwayFromEventPlansCreateFlow(
+  returnHref: string,
+  router: EventPlansCreateFlowRouter,
+): void {
+  router.replace(returnHref, { scroll: false });
 }
 
 /** Synchronous chrome gate: planner booking-create UI (not default Gigs workspace). */

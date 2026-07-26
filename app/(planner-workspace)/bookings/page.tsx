@@ -1306,13 +1306,12 @@ function BookingsPageContent() {
 
     if (returnHref) {
       markActiveBookingsDeepLinkCompleted();
+      clearPendingBookingPlanId();
+      navigateAwayFromEventPlansCreateFlow(returnHref, router);
+      return;
     }
 
     resetCreateFlowState(options);
-
-    if (returnHref) {
-      navigateAwayFromEventPlansCreateFlow(returnHref);
-    }
   }
 
   function closeCreateFlow() {
@@ -1333,6 +1332,18 @@ function BookingsPageContent() {
         return true;
       }
 
+      const eventPlansReturnHref = resolveEventPlansCreateReturnHref({
+        detailsEntrySource,
+        persistedReturnHref: eventPlansCreateReturnHrefRef.current,
+      });
+
+      if (eventPlansReturnHref && href === eventPlansReturnHref) {
+        markActiveBookingsDeepLinkCompleted();
+        clearPendingBookingPlanId();
+        navigateAwayFromEventPlansCreateFlow(eventPlansReturnHref, router);
+        return true;
+      }
+
       resetCreateFlowState();
 
       if (href === EVENTS_AREA_SUB_NAV.gigs.href) {
@@ -1343,7 +1354,7 @@ function BookingsPageContent() {
 
       return true;
     },
-    [plannerCreateVisible, router, sending],
+    [detailsEntrySource, plannerCreateVisible, router, searchParams, sending],
   );
 
   function finishCreateFlowAfterSend(successMessage: string) {
@@ -1354,14 +1365,14 @@ function BookingsPageContent() {
       deepLinkCompletedKeyRef.current = getBookingsDeepLinkKey(intent);
     }
 
-    resetCreateFlowState({ preserveDeepLinkCompletion: true });
-
     if (returnHref) {
       stashBookingPlansSuccessMessage(successMessage);
-      router.replace(returnHref, { scroll: false });
+      clearPendingBookingPlanId();
+      navigateAwayFromEventPlansCreateFlow(returnHref, router);
       return;
     }
 
+    resetCreateFlowState({ preserveDeepLinkCompletion: true });
     setSuccessMessage(successMessage);
     router.replace("/bookings", { scroll: false });
   }

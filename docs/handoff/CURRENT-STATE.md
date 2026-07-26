@@ -158,7 +158,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 - **Event Plans polish (2026-07-14):** removed redundant “Saved Event Plans” heading; stronger title/meta hierarchy; 2-line notes preview; weighted Use plan outline button; History-matched bulk delete rows (`FTC_SURFACE_ROW_CLASS`, checkbox, toolbar)
 - **Use Plan flow polish (2026-07-14):** Event details step shows `Plan` label + plan name; Use Plan entry uses top-right Cancel (returns to Event Plans); header uses `ftc-form-card-header` spacing to match Create Event
 - **Use Plan workspace tabs (2026-07-25):** while planner booking create is open on `/bookings` (Event Plans → Use Plan), Gigs Incoming/Confirmed/History sub-tabs are not mounted (`plannerBookingCreateOpen` synced via `GigsWorkspaceChromeState` after deep link clears `planId` from URL); workspace sub-nav intercept closes create via `resetCreateFlowState` then navigates; Event Plans stays highlighted
-- **Use Plan cancel on DJ step (2026-07-26):** Cancel on step 2 of 2 (Select DJs) returns to Event Plans via persisted return ref + `navigateAwayFromEventPlansCreateFlow` (same hard-exit pattern as Calendar create); deeplink marked completed on cancel so Gigs list does not re-open
+- **Use Plan cancel on DJ step (2026-07-26):** Cancel on step 1 or 2 returns to Event Plans without resetting `createOpen` first — bookings create UI and Event Plans workspace highlight stay mounted until `router.replace("/booking-plans")`; no transient Gigs Incoming/Confirmed/History render
 
 ## Group chat
 

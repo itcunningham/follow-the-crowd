@@ -2421,9 +2421,13 @@ function testBookingsUsePlanCancelReturnsToEventPlans() {
 
   assert.match(bookingsSource, /eventPlansCreateReturnHrefRef/);
   assert.match(bookingsSource, /resolveEventPlansCreateReturnHref/);
-  assert.match(bookingsSource, /navigateAwayFromEventPlansCreateFlow\(returnHref\)/);
+  assert.match(bookingsSource, /navigateAwayFromEventPlansCreateFlow\(returnHref, router\)/);
+  assert.match(
+    bookingsSource,
+    /function exitPlannerCreateFlow[\s\S]*?if \(returnHref\) \{[\s\S]*?navigateAwayFromEventPlansCreateFlow\(returnHref, router\);[\s\S]*?return;[\s\S]*?\}[\s\S]*?resetCreateFlowState/,
+  );
   assert.match(planDeepLinkSource, /export function resolveEventPlansCreateReturnHref/);
-  assert.match(planDeepLinkSource, /export function navigateAwayFromEventPlansCreateFlow/);
+  assert.match(planDeepLinkSource, /router\.replace\(returnHref, \{ scroll: false \}\)/);
 }
 
 function testCalendarCreateWorkspaceTabNavigation() {
