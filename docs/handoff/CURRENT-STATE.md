@@ -268,6 +268,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `bb40ce3` — prevent DM auto-scroll on booking card layout changes
 - `1bf0e63` — fix DM booking card scroll target identity
 - `fabeaf5` — remove DM booking card scroll spacer regression
 - `84b53f4` — fix DM booking card collapse scroll anchoring
