@@ -8,6 +8,7 @@ import {
   groupActiveBookingsByDate,
   listMyActiveReceivedBookings,
   sortDjGigsCalendarAgendaBookings,
+  formatBookingStatusLabel,
   type BookingRequest,
 } from "@/lib/bookingRequests";
 import {
@@ -21,6 +22,7 @@ import {
   FTC_STATUS_DANGER,
 } from "@/lib/ftcFlatStatus";
 import CalendarDotLegend from "@/app/components/calendar/CalendarDotLegend";
+import BookingStatusBadge from "@/app/components/booking/BookingStatusBadge";
 import CalendarMobileChrome, {
   CALENDAR_MOBILE_CHROME_GIGS_DAY_STRIP_CLASS,
 } from "@/app/components/calendar/CalendarMobileChrome";
@@ -478,7 +480,8 @@ function DjCalendarBookingNavButton({
     cancelled: boolean;
   } | null>(null);
   const eventName = booking.event_name.trim() || "Booking request";
-  const statusLabel = booking.status === "accepted" ? "Booked" : "Pending Request";
+  const cardBookingStatus = booking.status === "accepted" ? "accepted" : "pending";
+  const statusLabel = formatBookingStatusLabel(cardBookingStatus);
 
   const performNavigation = useCallback(
     (navigateFrom: "pointerup" | "click") => {
@@ -571,11 +574,7 @@ function DjCalendarBookingNavButton({
               {eventName}
             </span>
             <span className="flex shrink-0 basis-[5.75rem] justify-end self-center">
-              <span
-                className={`rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide ${getDjBookingStatusBadgeClass(booking.status === "accepted" ? "accepted" : "pending")}`}
-              >
-                {statusLabel}
-              </span>
+              <BookingStatusBadge status={cardBookingStatus} variant="compact" />
             </span>
           </span>
           {booking.set_time.trim() ? (
@@ -599,13 +598,7 @@ function DjCalendarBookingNavButton({
       shellClassName={className}
       className={`touch-manipulation [-webkit-touch-callout:none] ${CALENDAR_MOBILE_INTERACTIVE_PRESS_CLASS}`}
       reserveLeadingSpace
-      badge={
-        <span
-          className={`rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide ${getDjBookingStatusBadgeClass(booking.status === "accepted" ? "accepted" : "pending")}`}
-        >
-          {statusLabel}
-        </span>
-      }
+      badge={<BookingStatusBadge status={cardBookingStatus} variant="compact" />}
       heading={
         <span className={`${CALENDAR_MOBILE_AGENDA_CARD_TITLE_CLASS} text-sm`}>{eventName}</span>
       }

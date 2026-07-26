@@ -118,6 +118,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 - **Legend + strip dots:** compact dot-and-label legend (shared `CalendarDotLegend`) — Gigs: two centred rows (availability, then booking status); Events mobile: reserved empty top row + booking-status row (Today, Upcoming, Pending, Accepted); desktop Events pills unchanged
 - **Past dates:** availability controls hidden (mobile panel + desktop cell menu); empty booking message and mobile helper text suppressed; historical availability badges and booking cards remain visible; mobile date-strip dots and overflow counts hidden before local today; Gigs bulk / Quick Select cannot select dates before local today (`isDjGigsCalendarBulkSelectableDateKey`)
 - **Gigs Calendar availability feedback (2026-07-26):** bulk availability success uses shared planner title-row inline feedback (`PlannerWorkspaceTitleFeedback` + `useInlineTabFeedbackDismiss` + `formatGigsCalendarAvailabilityMarkedMessage` / `formatGigsCalendarAvailabilityClearedMessage`) — same centred slot, typography, and 2700ms + 300ms fade lifecycle as Gigs History removal; removed month-nav overlay pill that overlapped the calendar heading
+- **Gigs Calendar card status pills (2026-07-26):** mobile agenda booking cards use shared `BookingStatusBadge` compact (`Accepted` / `Pending`; legend unchanged)
 - Shared strip component: `PlannerCalendarMobileDateStrip` accepts optional `getDateMarker` for DJ markers (`getDjAvailabilityDateStripMarker`)
 
 ## Booking / invite UX
