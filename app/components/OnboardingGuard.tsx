@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import FtcAppSplashScreen from "@/app/components/brand/FtcAppSplashScreen";
 import { GuardProfileProvider } from "@/app/components/GuardProfileContext";
 import { NavBadgeProvider } from "@/app/components/navigation/NavBadgeProvider";
+import { PlannerTitleFeedbackProvider } from "@/app/components/planner/PlannerTitleFeedbackProvider";
 import { AppLoadingShell } from "@/app/components/skeleton/Skeleton";
 import { ensureGigsPendingPrefetched, ensureNavMessagesPrefetched, ensureNavigationBadgesPrefetched } from "@/lib/navigationBadgePrefetch";
 import { cacheNavigationRole, readCachedNavigation } from "@/lib/navigationRoleCache";
@@ -244,12 +245,14 @@ export default function OnboardingGuard({ children }: { children: React.ReactNod
     return (
       <GuardProfileProvider profile={loadingProfile}>
         <NavBadgeProvider>
-          <AppLoadingShell
-            pathname={pathname}
-            role={loadingProfile?.role ?? cached.role}
-            currentUserId={loadingProfile?.user_id ?? cached.userId}
-            search={typeof window !== "undefined" ? window.location.search : ""}
-          />
+          <PlannerTitleFeedbackProvider>
+            <AppLoadingShell
+              pathname={pathname}
+              role={loadingProfile?.role ?? cached.role}
+              currentUserId={loadingProfile?.user_id ?? cached.userId}
+              search={typeof window !== "undefined" ? window.location.search : ""}
+            />
+          </PlannerTitleFeedbackProvider>
         </NavBadgeProvider>
       </GuardProfileProvider>
     );
@@ -258,9 +261,11 @@ export default function OnboardingGuard({ children }: { children: React.ReactNod
   return (
     <GuardProfileProvider profile={loadingProfile}>
       <NavBadgeProvider>
-        <div className={pathname === HOME_PATH ? "ftc-app-content-enter" : undefined}>
-          {children}
-        </div>
+        <PlannerTitleFeedbackProvider>
+          <div className={pathname === HOME_PATH ? "ftc-app-content-enter" : undefined}>
+            {children}
+          </div>
+        </PlannerTitleFeedbackProvider>
       </NavBadgeProvider>
     </GuardProfileProvider>
   );

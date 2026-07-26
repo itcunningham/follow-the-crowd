@@ -1,12 +1,11 @@
 import { InlineTabFeedbackMessage } from "@/app/components/feedback/InlineTabFeedbackMessage";
-import { PLANNER_WORKSPACE_TITLE_FEEDBACK_SLOT_CLASS } from "@/lib/design/plannerWorkspaceTokens";
 
 type PlannerWorkspaceTitleFeedbackProps = {
   message: string | null;
   fading: boolean;
 };
 
-/** Centred floating planner title-row success feedback (Events History, Gigs History, Event Details). */
+/** Centred planner title-row success feedback — positioning lives in PlannerTitleFeedbackProvider host. */
 export function PlannerWorkspaceTitleFeedback({
   message,
   fading,
@@ -15,9 +14,5 @@ export function PlannerWorkspaceTitleFeedback({
     return null;
   }
 
-  return (
-    <div className={PLANNER_WORKSPACE_TITLE_FEEDBACK_SLOT_CLASS} aria-live="polite">
-      <InlineTabFeedbackMessage message={message} fading={fading} />
-    </div>
-  );
+  return <InlineTabFeedbackMessage message={message} fading={fading} />;
 }

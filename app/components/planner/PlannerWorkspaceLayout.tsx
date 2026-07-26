@@ -34,7 +34,7 @@ import {
 import { readCachedNavRole } from "@/lib/navigationRoleCache";
 import { useGuardProfile } from "@/app/components/GuardProfileContext";
 import { canManageEvents, type UserRole } from "@/lib/user/currentUser";
-import { PlannerWorkspaceTitleFeedback } from "@/app/components/planner/PlannerWorkspaceTitleFeedback";
+import { usePlannerTitleFeedback } from "@/app/components/planner/PlannerTitleFeedbackProvider";
 
 /** Matches the widest Events-area create button so title rows stay aligned. */
 const PLANNER_WORKSPACE_TITLE_ACTION_PLACEHOLDER_CLASS =
@@ -147,8 +147,6 @@ export function PlannerWorkspacePageHeader({
   showWorkspaceSubNav = true,
   activeWorkspaceHref,
   interceptWorkspaceTabNavigation,
-  titleFeedbackMessage = null,
-  titleFeedbackFading = false,
 }: {
   title: string;
   initialRole?: UserRole | null;
@@ -156,18 +154,12 @@ export function PlannerWorkspacePageHeader({
   showWorkspaceSubNav?: boolean;
   activeWorkspaceHref?: string | null;
   interceptWorkspaceTabNavigation?: ((href: string) => boolean) | null;
-  titleFeedbackMessage?: string | null;
-  titleFeedbackFading?: boolean;
 }) {
   return (
     <header className={PLANNER_WORKSPACE_HEADER_CLASS}>
       <div className={`${PLANNER_WORKSPACE_TITLE_ROW_CLASS} relative`}>
         <h1 className={`${PLANNER_WORKSPACE_TITLE_CLASS} shrink-0`}>{title}</h1>
         <PlannerWorkspaceTitleActions actions={actions} />
-        <PlannerWorkspaceTitleFeedback
-          message={titleFeedbackMessage}
-          fading={titleFeedbackFading}
-        />
       </div>
       {showWorkspaceSubNav ? (
         <div className={PLANNER_WORKSPACE_SUBNAV_SLOT_CLASS}>
@@ -216,6 +208,7 @@ function resolveDefaultWorkspaceActions(pathname: string, role: UserRole | null)
 export function PlannerWorkspaceRouteLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const guardProfile = useGuardProfile();
+  const { setTitleFeedback } = usePlannerTitleFeedback();
   const [headerState, setHeaderStateInternal] = useState<WorkspaceHeaderState>({});
   const [syncedPathname, setSyncedPathname] = useState(pathname);
   const layoutRole = mergeWorkspaceNavRole(guardProfile?.role, readCachedNavRole());
@@ -255,6 +248,20 @@ export function PlannerWorkspaceRouteLayout({ children }: { children: ReactNode 
 
   const workspaceIntercept = headerState.interceptWorkspaceTabNavigation;
 
+  useLayoutEffect(() => {
+    setTitleFeedback({
+      message: headerState.titleFeedbackMessage ?? null,
+      fading: headerState.titleFeedbackFading ?? false,
+    });
+
+    return () => {
+      setTitleFeedback({
+        message: null,
+        fading: false,
+      });
+    };
+  }, [headerState.titleFeedbackFading, headerState.titleFeedbackMessage, setTitleFeedback]);
+
   return (
     <WorkspaceHeaderContext.Provider value={headerContextValue}>
       <div className={PLANNER_WORKSPACE_PAGE_SHELL_CLASS}>
@@ -265,8 +272,6 @@ export function PlannerWorkspaceRouteLayout({ children }: { children: ReactNode 
           activeWorkspaceHref={headerState.activeWorkspaceHref}
           interceptWorkspaceTabNavigation={workspaceIntercept}
           actions={actions}
-          titleFeedbackMessage={headerState.titleFeedbackMessage ?? null}
-          titleFeedbackFading={headerState.titleFeedbackFading ?? false}
         />
         <div className={PLANNER_WORKSPACE_BELOW_HEADER_CLASS}>{children}</div>
       </div>

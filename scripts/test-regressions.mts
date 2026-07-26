@@ -3097,6 +3097,14 @@ function testHistoryRemovalHeaderFeedbackUnified() {
     new URL("../app/components/planner/PlannerWorkspaceTitleFeedback.tsx", import.meta.url),
     "utf8",
   );
+  const titleFeedbackProviderSource = readFileSync(
+    new URL("../app/components/planner/PlannerTitleFeedbackProvider.tsx", import.meta.url),
+    "utf8",
+  );
+  const onboardingGuardSource = readFileSync(
+    new URL("../app/components/OnboardingGuard.tsx", import.meta.url),
+    "utf8",
+  );
   const layoutSource = readFileSync(
     new URL("../app/components/planner/PlannerWorkspaceLayout.tsx", import.meta.url),
     "utf8",
@@ -3142,8 +3150,8 @@ function testHistoryRemovalHeaderFeedbackUnified() {
   assert.match(eventsSource, /titleFeedbackMessage: showTitleFeedback \? successMessage : null/);
   assert.match(plansSource, /useInlineTabFeedbackDismiss/);
   assert.match(eventDetailSource, /useInlineTabFeedbackDismiss/);
-  assert.match(eventDetailSource, /PlannerWorkspaceTitleFeedback/);
-  assert.match(eventDetailSource, /className="relative"[\s\S]*PlannerWorkspaceTitleFeedback/);
+  assert.match(eventDetailSource, /useSyncPlannerTitleFeedback/);
+  assert.doesNotMatch(eventDetailSource, /PlannerWorkspaceTitleFeedback/);
   assert.match(
     eventDetailSource,
     /setHeaderFeedbackMessage\(BOOKING_REQUEST_CANCELLED_SUCCESS_MESSAGE\)/,
@@ -3179,17 +3187,22 @@ function testHistoryRemovalHeaderFeedbackUnified() {
   assert.match(EVENTS_LIST_TAB_ROW_CLASS, /justify-between/);
   assert.match(titleFeedbackSource, /PlannerWorkspaceTitleFeedback/);
   assert.match(titleFeedbackSource, /InlineTabFeedbackMessage/);
-  assert.match(titleFeedbackSource, /PLANNER_WORKSPACE_TITLE_FEEDBACK_SLOT_CLASS/);
   assert.match(titleFeedbackSource, /if \(!message\)/);
   const plannerTokensSource = readFileSync(
     new URL("../lib/design/plannerWorkspaceTokens.ts", import.meta.url),
     "utf8",
   );
+  assert.match(plannerTokensSource, /PLANNER_WORKSPACE_TITLE_FEEDBACK_HOST_CLASS[\s\S]*fixed inset-x-0/);
   assert.match(plannerTokensSource, /PLANNER_WORKSPACE_TITLE_FEEDBACK_SLOT_CLASS[\s\S]*absolute inset-x-0/);
   assert.doesNotMatch(titleFeedbackSource, /onAnimationEnd/);
   assert.doesNotMatch(titleFeedbackSource, /ftc-history-removal-feedback/);
   assert.match(layoutSource, /PLANNER_WORKSPACE_TITLE_ROW_CLASS} relative/);
-  assert.match(layoutSource, /PlannerWorkspaceTitleFeedback/);
+  assert.match(layoutSource, /setTitleFeedback/);
+  assert.doesNotMatch(layoutSource, /PlannerWorkspaceTitleFeedback/);
+  assert.match(titleFeedbackProviderSource, /PlannerWorkspaceTitleFeedback/);
+  assert.match(titleFeedbackProviderSource, /PLANNER_WORKSPACE_TITLE_FEEDBACK_HOST_CLASS/);
+  assert.match(titleFeedbackProviderSource, /useSyncPlannerTitleFeedback/);
+  assert.match(onboardingGuardSource, /PlannerTitleFeedbackProvider/);
 }
 
 function testGigsListTabSwitchUsesClientHistoryWithoutRouterNavigation() {
