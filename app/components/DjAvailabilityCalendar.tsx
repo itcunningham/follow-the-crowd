@@ -977,12 +977,12 @@ function DjAvailabilityDayCell({
           {pendingBookings.length === 1 ? (
             <button
               type="button"
-              title="Pending Request"
-              aria-label="Pending Request"
+              title={formatBookingStatusLabel("pending")}
+              aria-label={formatBookingStatusLabel("pending")}
               onClick={() => onOpenBooking(pendingBookings[0], dateKey)}
               className={`${calendarCellColorBadgeClass} transition hover:opacity-90 ${getFlatBookingFillClass("pending")}`}
             >
-              <span className="sr-only">Pending Request</span>
+              <span className="sr-only">{formatBookingStatusLabel("pending")}</span>
             </button>
           ) : pendingBookings.length > 1 ? (
             <div className="relative">
@@ -1016,7 +1016,7 @@ function DjAvailabilityDayCell({
               className={`block w-full rounded-md border-0 px-1 py-1 text-left transition hover:opacity-90 ${getDjBookingStatusBadgeClass("accepted")}`}
             >
               <span className="block truncate text-[9px] font-semibold uppercase tracking-wide sm:text-[10px]">
-                Booked
+                {formatBookingStatusLabel("accepted")}
               </span>
               <span className="block truncate text-[9px] normal-case tracking-normal text-ftc-bg/90 sm:text-[10px]">
                 {booking.event_name.trim() || "Confirmed gig"}

@@ -133,8 +133,8 @@ export const DJ_CALENDAR_AVAILABILITY_LEGEND_ITEMS = [
 ] as const;
 
 export const DJ_CALENDAR_BOOKING_LEGEND_ITEMS = [
-  { label: "Pending Request", kind: "pending_request" as const },
-  { label: "Booked", kind: "booked" as const },
+  { label: "Pending", kind: "pending_request" as const },
+  { label: "Accepted", kind: "booked" as const },
 ] as const;
 
 export const DJ_CALENDAR_LEGEND_ITEMS = [
