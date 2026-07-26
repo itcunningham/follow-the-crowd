@@ -3,6 +3,7 @@
 import { PLANNER_WORKSPACE_PRIMARY_SURFACE_CLASS } from "@/lib/design/plannerWorkspaceTokens";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useSetPlannerWorkspaceHeaderState } from "@/app/components/planner/PlannerWorkspaceLayout";
 import {
   groupActiveBookingsByDate,
   listMyActiveReceivedBookings,
@@ -80,6 +81,11 @@ import {
 } from "@/lib/bookings/gigsCalendarNavigation";
 import { prepareCalendarAgendaEventNavigation } from "@/lib/navigation/prepareMobileDocumentScrollReset";
 import { isDateKeyBeforeToday } from "@/lib/bookingDateTime";
+import {
+  formatGigsCalendarAvailabilityClearedMessage,
+  formatGigsCalendarAvailabilityMarkedMessage,
+  useInlineTabFeedbackDismiss,
+} from "@/lib/design/inlineTabFeedback";
 
 
 const AVAILABILITY_STATUS_VALUES: readonly DjAvailabilityStatus[] = [
@@ -118,76 +124,16 @@ export function GigCalendarSelectDatesButton({
   );
 }
 
-const GIG_CALENDAR_UPDATE_PILL_CLASS =
-  "inline-flex max-w-full items-center rounded-lg border-0 bg-ftc-primary px-2 py-1.5 text-[11px] font-medium text-ftc-bg transition-opacity duration-200 ease-out motion-reduce:transition-none sm:px-2.5";
-
-const GIG_CALENDAR_UPDATE_VISIBLE_MS = 2800;
-const GIG_CALENDAR_UPDATE_FADE_MS = 200;
-
-type GigCalendarUpdatePillProps = {
-  message: string | null;
-  onDismiss: () => void;
-};
-
-function GigCalendarUpdatePill({ message, onDismiss }: GigCalendarUpdatePillProps) {
-  const [displayMessage, setDisplayMessage] = useState<string | null>(null);
-  const [visible, setVisible] = useState(false);
-  const isShowingRef = useRef(false);
-  const fadeInRafRef = useRef(0);
-
-  useEffect(() => {
-    if (!message) {
-      return;
-    }
-
-    setDisplayMessage(message);
-
-    if (!isShowingRef.current) {
-      isShowingRef.current = true;
-      setVisible(false);
-      fadeInRafRef.current = requestAnimationFrame(() => {
-        fadeInRafRef.current = requestAnimationFrame(() => setVisible(true));
-      });
-    } else {
-      setVisible(true);
-    }
-
-    const fadeOutTimer = window.setTimeout(() => {
-      setVisible(false);
-      isShowingRef.current = false;
-    }, GIG_CALENDAR_UPDATE_VISIBLE_MS);
-
-    const dismissTimer = window.setTimeout(() => {
-      setDisplayMessage(null);
-      onDismiss();
-    }, GIG_CALENDAR_UPDATE_VISIBLE_MS + GIG_CALENDAR_UPDATE_FADE_MS);
-
-    return () => {
-      cancelAnimationFrame(fadeInRafRef.current);
-      window.clearTimeout(fadeOutTimer);
-      window.clearTimeout(dismissTimer);
-    };
-  }, [message, onDismiss]);
-
-  if (!displayMessage) {
-    return null;
+function getBulkAvailabilityStatusLabel(status: DjAvailabilityStatus): "available" | "maybe" | "unavailable" {
+  if (status === "tentative") {
+    return "maybe";
   }
 
-  return (
-    <div className="pointer-events-none [&_*]:pointer-events-none grid w-full grid-cols-1 grid-rows-1">
-      <p
-        aria-live="polite"
-        aria-atomic="true"
-        className="pointer-events-none col-start-1 row-start-1 flex min-h-9 items-center justify-center self-center justify-self-center px-10 sm:px-12"
-      >
-        <span
-          className={`pointer-events-none ${GIG_CALENDAR_UPDATE_PILL_CLASS} ${visible ? "opacity-100" : "opacity-0"}`}
-        >
-          {displayMessage}
-        </span>
-      </p>
-    </div>
-  );
+  if (status === "unavailable") {
+    return "unavailable";
+  }
+
+  return "available";
 }
 
 type PendingBulkChoice =
@@ -1140,10 +1086,18 @@ export default function DjAvailabilityCalendar({
   const [bulkSaving, setBulkSaving] = useState(false);
   const [pendingBulkChoice, setPendingBulkChoice] = useState<PendingBulkChoice | null>(null);
   const [bulkActionError, setBulkActionError] = useState<string | null>(null);
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const dismissToast = useCallback(() => setToastMessage(null), []);
+  const setPlannerWorkspaceHeaderState = useSetPlannerWorkspaceHeaderState();
+  const [availabilitySuccessMessage, setAvailabilitySuccessMessage] = useState<string | null>(null);
+  const clearAvailabilitySuccessMessage = useCallback(
+    () => setAvailabilitySuccessMessage(null),
+    [],
+  );
+  const availabilitySuccessFeedbackFading = useInlineTabFeedbackDismiss(
+    availabilitySuccessMessage,
+    clearAvailabilitySuccessMessage,
+  );
   const reportBookingNavigationError = useCallback((message: string) => {
-    setToastMessage(message);
+    setError(message);
   }, []);
   const availabilitySaveVersionRef = useRef<Map<string, number>>(new Map());
 
@@ -1299,14 +1253,19 @@ export default function DjAvailabilityCalendar({
       if (pendingBulkChoice.type === "clear") {
         await batchClearMyAvailabilityForDates(dates);
         removeAvailabilityEntriesForDates(dates);
-        setToastMessage(`${dates.length} date${dates.length === 1 ? "" : "s"} cleared`);
+        setAvailabilitySuccessMessage(formatGigsCalendarAvailabilityClearedMessage(dates.length));
       } else {
         const entries = await batchSaveMyAvailability({
           dates,
           status: pendingBulkChoice.status,
         });
         mergeAvailabilityEntries(entries);
-        setToastMessage(`${dates.length} date${dates.length === 1 ? "" : "s"} updated`);
+        setAvailabilitySuccessMessage(
+          formatGigsCalendarAvailabilityMarkedMessage(
+            dates.length,
+            getBulkAvailabilityStatusLabel(pendingBulkChoice.status),
+          ),
+        );
       }
 
       setPendingBulkChoice(null);
@@ -1459,9 +1418,27 @@ export default function DjAvailabilityCalendar({
     });
   }, [closeCalendarOverlays, exitMultiSelectMode, isDual, onDualModeRegistration]);
 
-  const monthNavOverlay = !loading ? (
-    <GigCalendarUpdatePill message={toastMessage} onDismiss={dismissToast} />
-  ) : null;
+  useLayoutEffect(() => {
+    const showTitleFeedback = isActive && !loading;
+
+    setPlannerWorkspaceHeaderState({
+      titleFeedbackMessage: showTitleFeedback ? availabilitySuccessMessage : null,
+      titleFeedbackFading: showTitleFeedback ? availabilitySuccessFeedbackFading : false,
+    });
+
+    return () => {
+      setPlannerWorkspaceHeaderState({
+        titleFeedbackMessage: null,
+        titleFeedbackFading: false,
+      });
+    };
+  }, [
+    availabilitySuccessFeedbackFading,
+    availabilitySuccessMessage,
+    isActive,
+    loading,
+    setPlannerWorkspaceHeaderState,
+  ]);
 
   const secondaryRowAction = multiSelectMode ? (
     <QuickSelectMenu
@@ -1488,12 +1465,11 @@ export default function DjAvailabilityCalendar({
     }
 
     onDualModeChromeChange({
-      overlay: monthNavOverlay,
       secondaryRowAction,
     });
 
     return () => onDualModeChromeChange(null);
-  }, [isDual, loading, monthNavOverlay, onDualModeChromeChange, secondaryRowAction]);
+  }, [isDual, onDualModeChromeChange, secondaryRowAction]);
 
   const calendarWeeks = useMemo(() => getCalendarWeekRows(monthStart), [monthStart]);
 
@@ -1739,7 +1715,6 @@ export default function DjAvailabilityCalendar({
               exitMultiSelectMode();
             },
             getMonthActivityDotClass: getMonthActivityDotClass,
-            overlay: monthNavOverlay,
           }}
           monthNavPrefix={
             error ? (

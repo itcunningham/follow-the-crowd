@@ -93,6 +93,8 @@ import {
   INLINE_TAB_FEEDBACK_CLEAR_MS,
   INLINE_TAB_FEEDBACK_FADE_MS,
   formatEventsHistoryRemoveSuccessMessage,
+  formatGigsCalendarAvailabilityClearedMessage,
+  formatGigsCalendarAvailabilityMarkedMessage,
   formatGigsHistoryRemoveSuccessMessage,
 } from "../lib/design/inlineTabFeedback";
 import {
@@ -2924,7 +2926,16 @@ function testCalendarWorkspaceClearsStaleWorkspaceIntercept() {
   assert.match(bothCalendarSource, /relative isolate z-0 flex flex-col/);
   assert.match(monthNavSource, /grid-cols-1 grid-rows-1/);
   assert.match(monthNavSource, /\[&_\*\]:pointer-events-none/);
-  assert.match(djCalendarSource, /GigCalendarUpdatePill[\s\S]*\[&_\*\]:pointer-events-none/);
+  assert.match(djCalendarSource, /useSetPlannerWorkspaceHeaderState/);
+  assert.match(djCalendarSource, /useInlineTabFeedbackDismiss/);
+  assert.match(djCalendarSource, /formatGigsCalendarAvailabilityMarkedMessage/);
+  assert.match(djCalendarSource, /formatGigsCalendarAvailabilityClearedMessage/);
+  assert.match(
+    djCalendarSource,
+    /titleFeedbackMessage: showTitleFeedback \? availabilitySuccessMessage : null/,
+  );
+  assert.doesNotMatch(djCalendarSource, /GigCalendarUpdatePill/);
+  assert.doesNotMatch(djCalendarSource, /monthNavOverlay/);
   assert.match(skeletonSource, /DjCalendarBodySkeleton[\s\S]*w-full shrink-0/);
   assert.doesNotMatch(
     skeletonSource,
@@ -3046,6 +3057,11 @@ function testHistoryRemovalHeaderFeedbackUnified() {
   assert.equal(formatEventsHistoryRemoveSuccessMessage(3), "3 events removed from history");
   assert.equal(formatGigsHistoryRemoveSuccessMessage(1), "1 gig removed from history");
   assert.equal(formatGigsHistoryRemoveSuccessMessage(3), "3 gigs removed from history");
+  assert.equal(formatGigsCalendarAvailabilityMarkedMessage(1, "available"), "1 date marked available");
+  assert.equal(formatGigsCalendarAvailabilityMarkedMessage(6, "maybe"), "6 dates marked maybe");
+  assert.equal(formatGigsCalendarAvailabilityMarkedMessage(6, "unavailable"), "6 dates marked unavailable");
+  assert.equal(formatGigsCalendarAvailabilityClearedMessage(1), "Availability cleared for 1 date");
+  assert.equal(formatGigsCalendarAvailabilityClearedMessage(6), "Availability cleared for 6 dates");
   assert.equal(BOOKING_REQUEST_CANCELLED_SUCCESS_MESSAGE, "Booking request cancelled");
   assert.equal(buildBookingSendResultMessage(1, 0), "Sent booking request to 1 DJ");
   assert.equal(buildBookingSendResultMessage(3, 0), "Sent booking requests to 3 DJs");

@@ -23,6 +23,21 @@ export function formatGigsHistoryRemoveSuccessMessage(count: number): string {
   return `${count} gig${count === 1 ? "" : "s"} removed from history`;
 }
 
+export function formatGigsCalendarAvailabilityMarkedMessage(
+  count: number,
+  statusLabel: "available" | "maybe" | "unavailable",
+): string {
+  return count === 1
+    ? `1 date marked ${statusLabel}`
+    : `${count} dates marked ${statusLabel}`;
+}
+
+export function formatGigsCalendarAvailabilityClearedMessage(count: number): string {
+  return count === 1
+    ? "Availability cleared for 1 date"
+    : `Availability cleared for ${count} dates`;
+}
+
 /** Event detail header feedback after a pending booking request is cancelled successfully. */
 export const BOOKING_REQUEST_CANCELLED_SUCCESS_MESSAGE = "Booking request cancelled";
 
