@@ -246,7 +246,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
-- `Place Event Details notification in header status slot` — inline header slot; restore Gigs workspace slot; remove viewport host
+- `001f934` — Place Event Details notification in header status slot
 - `bc339db` — Unify Event Details with shared notification system
 - `2ba503a` — Match Event Details notification position to Gigs
 - `e9d82d6` — Refine Event Details status and success notification
