@@ -9,7 +9,8 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { PlannerTitleFeedbackPortal } from "@/app/components/planner/PlannerTitleFeedbackPortal";
+import { PlannerTitleFeedbackAnchor } from "@/app/components/planner/PlannerTitleFeedbackAnchor";
+import { PlannerTitleFeedbackSlot } from "@/app/components/planner/PlannerTitleFeedbackSlot";
 
 type TitleFeedbackState = {
   message: string | null;
@@ -47,8 +48,9 @@ export function PlannerTitleFeedbackProvider({ children }: { children: ReactNode
 
   return (
     <PlannerTitleFeedbackContext.Provider value={value}>
+      <PlannerTitleFeedbackAnchor />
       {children}
-      <PlannerTitleFeedbackPortal />
+      <PlannerTitleFeedbackSlot />
     </PlannerTitleFeedbackContext.Provider>
   );
 }

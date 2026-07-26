@@ -28,13 +28,13 @@ export const PLANNER_WORKSPACE_TITLE_ROW_CLASS =
 export const PLANNER_WORKSPACE_TITLE_ACTIONS_CLASS =
   "flex shrink-0 items-start justify-end md:min-h-[2.625rem] md:min-w-[11.75rem] md:items-center";
 
+/** Shared host styling for planner title-row success feedback. */
+export const PLANNER_WORKSPACE_TITLE_FEEDBACK_HOST_CLASS =
+  "pointer-events-none z-50 flex items-center justify-center";
+
 /** Floating transient success feedback below title/action row — zero layout footprint. */
 export const PLANNER_WORKSPACE_TITLE_FEEDBACK_SLOT_CLASS =
-  "pointer-events-none absolute inset-x-0 top-full z-50 mt-1.5 flex items-center justify-center";
-
-/** Fixed portal host for title feedback on routes without workspace header slot (Event Details). */
-export const PLANNER_WORKSPACE_TITLE_FEEDBACK_PORTAL_CLASS =
-  "pointer-events-none fixed inset-x-0 z-[60] mx-auto flex w-full max-w-2xl items-center justify-center px-4 sm:px-6 md:max-w-5xl top-[calc(env(safe-area-inset-top)+4.125rem)] md:top-[calc(env(safe-area-inset-top)+7.125rem)]";
+  `${PLANNER_WORKSPACE_TITLE_FEEDBACK_HOST_CLASS} absolute inset-x-0 top-full mt-1.5`;
 
 export const PLANNER_WORKSPACE_SUBNAV_SLOT_CLASS = "mt-4 min-h-11 md:min-h-11";
 
