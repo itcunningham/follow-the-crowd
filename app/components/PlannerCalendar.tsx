@@ -123,21 +123,23 @@ function PlannerCalendarItemBadge({
   const badgeClassName = `flex w-full items-stretch gap-1 rounded-md border-0 px-1 py-1 text-left transition hover:opacity-90 ${getPlannerCalendarStatusBadgeClass(item.statusKind)}`;
 
   const badgeContent = (
-    <span className="min-w-0 flex-1">
-      <span className="block truncate text-[9px] font-semibold normal-case tracking-normal sm:text-[10px] md:text-xs">
-        {resolveCompactCalendarEventOnlyTitle(item.title)}
+    <span className="flex min-w-0 items-start gap-1">
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-[9px] font-semibold normal-case tracking-normal sm:text-[10px] md:text-xs">
+          {resolveCompactCalendarEventOnlyTitle(item.title)}
+        </span>
+        {item.venue?.trim() ? (
+          <span className="block truncate text-[9px] opacity-80 sm:text-[10px] md:text-xs">
+            {item.venue.trim()}
+          </span>
+        ) : null}
+        {item.timeLabel ? (
+          <span className="block truncate text-[9px] opacity-70 sm:text-[10px] md:text-xs">
+            {item.timeLabel}
+          </span>
+        ) : null}
       </span>
-      {item.venue?.trim() ? (
-        <span className="block truncate text-[9px] opacity-80 sm:text-[10px] md:text-xs">
-          {item.venue.trim()}
-        </span>
-      ) : null}
-      {item.timeLabel ? (
-        <span className="block truncate text-[9px] opacity-70 sm:text-[10px] md:text-xs">
-          {item.timeLabel}
-        </span>
-      ) : null}
-      <span className="mt-1 block text-[9px] font-semibold uppercase tracking-wide sm:text-[10px] md:text-xs">
+      <span className="shrink-0 text-[9px] font-semibold uppercase tracking-wide sm:text-[10px] md:text-xs">
         {getPlannerCalendarBadgeLabel(item)}
       </span>
     </span>

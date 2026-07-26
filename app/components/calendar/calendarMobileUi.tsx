@@ -68,8 +68,6 @@ export const CALENDAR_MOBILE_AGENDA_CARD_VENUE_CLASS =
 
 export const CALENDAR_MOBILE_AGENDA_CARD_STACKED_META_CLASS = "mt-0.5";
 
-export const CALENDAR_MOBILE_AGENDA_CARD_STACKED_BADGE_SLOT_CLASS = "mt-1.5";
-
 /** Shared status pill geometry for mobile agenda cards. */
 export const CALENDAR_MOBILE_AGENDA_CARD_STATUS_BADGE_BASE_CLASS =
   "inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide";
@@ -158,7 +156,10 @@ export function CalendarMobileAgendaCard({
   const content =
     layout === "stacked" ? (
       <span className={CALENDAR_MOBILE_AGENDA_CARD_CONTENT_CLASS}>
-        <span className="block min-w-0 w-full overflow-hidden">{heading}</span>
+        <span className={CALENDAR_MOBILE_AGENDA_CARD_HEADER_ROW_CLASS}>
+          <span className={CALENDAR_MOBILE_AGENDA_CARD_TITLE_SLOT_CLASS}>{heading}</span>
+          <span className={CALENDAR_MOBILE_AGENDA_CARD_BADGE_SLOT_CLASS}>{badge}</span>
+        </span>
         {subtitle ? (
           <span className={CALENDAR_MOBILE_AGENDA_CARD_STACKED_META_CLASS}>{subtitle}</span>
         ) : null}
@@ -173,7 +174,6 @@ export function CalendarMobileAgendaCard({
             {time}
           </span>
         ) : null}
-        <span className={CALENDAR_MOBILE_AGENDA_CARD_STACKED_BADGE_SLOT_CLASS}>{badge}</span>
       </span>
     ) : (
       <span className={CALENDAR_MOBILE_AGENDA_CARD_CONTENT_CLASS}>

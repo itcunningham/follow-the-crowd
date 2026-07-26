@@ -178,19 +178,23 @@ export default function PlannerCalendarDateActions({
                         <div
                           className={`block rounded-xl border-0 px-3 py-2.5 ${getPlannerCalendarStatusBadgeClass(item.statusKind)}`}
                         >
-                          <span className="block truncate text-sm font-semibold">
-                            {resolveCompactCalendarEventOnlyTitle(item.title)}
-                          </span>
-                          {item.venue?.trim() ? (
-                            <span className="mt-0.5 block truncate text-xs opacity-80">
-                              {item.venue.trim()}
+                          <span className="flex items-start gap-2">
+                            <span className="min-w-0 flex-1">
+                              <span className="block truncate text-sm font-semibold">
+                                {resolveCompactCalendarEventOnlyTitle(item.title)}
+                              </span>
+                              {item.venue?.trim() ? (
+                                <span className="mt-0.5 block truncate text-xs opacity-80">
+                                  {item.venue.trim()}
+                                </span>
+                              ) : null}
+                              {item.timeLabel ? (
+                                <span className="mt-0.5 block text-xs opacity-70">{item.timeLabel}</span>
+                              ) : null}
                             </span>
-                          ) : null}
-                          {item.timeLabel ? (
-                            <span className="mt-0.5 block text-xs opacity-70">{item.timeLabel}</span>
-                          ) : null}
-                          <span className="mt-1.5 block text-[10px] font-semibold uppercase tracking-wide">
-                            {getPlannerCalendarBadgeLabel(item)}
+                            <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wide">
+                              {getPlannerCalendarBadgeLabel(item)}
+                            </span>
                           </span>
                         </div>
                       </li>
@@ -207,19 +211,23 @@ export default function PlannerCalendarDateActions({
                       }}
                       className={`block rounded-xl border-0 px-3 py-2.5 transition hover:opacity-90 ${getPlannerCalendarStatusBadgeClass(item.statusKind)}`}
                     >
-                      <span className="block truncate text-sm font-semibold">
-                        {resolveCompactCalendarEventOnlyTitle(item.title)}
-                      </span>
-                      {item.venue?.trim() ? (
-                        <span className="mt-0.5 block truncate text-xs opacity-80">
-                          {item.venue.trim()}
+                      <span className="flex items-start gap-2">
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-sm font-semibold">
+                            {resolveCompactCalendarEventOnlyTitle(item.title)}
+                          </span>
+                          {item.venue?.trim() ? (
+                            <span className="mt-0.5 block truncate text-xs opacity-80">
+                              {item.venue.trim()}
+                            </span>
+                          ) : null}
+                          {item.timeLabel ? (
+                            <span className="mt-0.5 block text-xs opacity-70">{item.timeLabel}</span>
+                          ) : null}
                         </span>
-                      ) : null}
-                      {item.timeLabel ? (
-                        <span className="mt-0.5 block text-xs opacity-70">{item.timeLabel}</span>
-                      ) : null}
-                      <span className="mt-1.5 block text-[10px] font-semibold uppercase tracking-wide">
-                        {getPlannerCalendarBadgeLabel(item)}
+                        <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wide">
+                          {getPlannerCalendarBadgeLabel(item)}
+                        </span>
                       </span>
                     </Link>
                   </li>

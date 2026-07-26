@@ -3330,6 +3330,8 @@ function testCompactCalendarEventVenueTitleTruncates() {
   assert.match(mobileUiSource, /doesFullCalendarTitleFit/);
   assert.match(mobileUiSource, /ResizeObserver/);
   assert.match(mobileUiSource, /layout === "stacked"/);
+  assert.match(mobileUiSource, /CALENDAR_MOBILE_AGENDA_CARD_HEADER_ROW_CLASS[\s\S]*CALENDAR_MOBILE_AGENDA_CARD_BADGE_SLOT_CLASS/);
+  assert.doesNotMatch(mobileUiSource, /CALENDAR_MOBILE_AGENDA_CARD_STACKED_BADGE_SLOT_CLASS/);
   assert.match(mobileUiSource, /CALENDAR_MOBILE_AGENDA_CARD_VENUE_CLASS[\s\S]*text-xs text-ftc-text-secondary/);
   assert.doesNotMatch(mobileUiSource, /formatPlannerCalendarItemHeadline/);
   assert.doesNotMatch(mobileUiSource, /CALENDAR_MOBILE_AGENDA_CARD_TITLE_ROW_CLASS/);
