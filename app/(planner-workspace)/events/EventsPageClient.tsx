@@ -123,9 +123,7 @@ import {
   resolveEventsListTabParam,
   resolveEventsWorkspaceActiveHref,
 } from "@/lib/events/eventsListNavigation";
-import { buildGigsWorkspaceIncomingHref } from "@/lib/bookings/gigsListNavigation";
 import { resolveEventsWorkspaceChromeRole } from "@/lib/events/eventsWorkspaceChromeRole";
-import { EVENTS_AREA_SUB_NAV } from "@/lib/plannerEventsNav";
 import {
   canManageEvents,
   getCurrentUserProfile,
@@ -411,7 +409,6 @@ function EventsPageClientView({
   const isCalendarWorkspaceHost = workspaceHost === "calendar";
   const guardProfile = useGuardProfile();
   const handledCreateParamsRef = useRef<string | null>(null);
-  const calendarCreateNavigationPendingRef = useRef(false);
   const [mountListState] = useState(readMountEventsListState);
   const [role, setRole] = useState<UserRole | null>(() =>
     resolveEventsWorkspaceChromeRole(guardProfile?.role, readCachedNavRole()),
@@ -488,10 +485,6 @@ function EventsPageClientView({
   const hideEventsHeaderCreateForCalendarFlow =
     isCalendarCreateFlow &&
     (createOpen || pathname === "/events" || isCalendarWorkspaceHost);
-
-  useEffect(() => {
-    calendarCreateNavigationPendingRef.current = false;
-  }, [pathname]);
 
   useEffect(() => {
     if (isCalendarWorkspaceHost || pathname !== "/events") {
@@ -915,36 +908,7 @@ function EventsPageClientView({
     }
   }
 
-  const handleCalendarCreateWorkspaceTabNavigate = useCallback(
-    (href: string) => {
-      if (!isCalendarWorkspaceHost || !isCalendarOriginCreateParam(createParam)) {
-        return false;
-      }
-
-      if (saving) {
-        return true;
-      }
-
-      if (href === EVENTS_AREA_SUB_NAV.calendar.href) {
-        return true;
-      }
-
-      if (calendarCreateNavigationPendingRef.current) {
-        return true;
-      }
-
-      calendarCreateNavigationPendingRef.current = true;
-
-      const destination =
-        href === EVENTS_AREA_SUB_NAV.gigs.href
-          ? buildGigsWorkspaceIncomingHref()
-          : href;
-
-      router.replace(destination, { scroll: false });
-      return true;
-    },
-    [createParam, isCalendarWorkspaceHost, router, saving],
-  );
+  const blockWorkspaceTabsWhileCalendarCreateSaving = useCallback(() => true, []);
 
   function handleSelectPlan(plan: BookingPlan) {
     const input = eventInputFromBookingPlan(plan);
@@ -1339,8 +1303,8 @@ function EventsPageClientView({
         activeWorkspaceHref={eventsWorkspaceActiveHref}
         includeChrome={false}
         interceptWorkspaceTabNavigation={
-          isCalendarWorkspaceHost && isCalendarOriginCreateParam(createParam)
-            ? handleCalendarCreateWorkspaceTabNavigate
+          isCalendarWorkspaceHost && isCalendarOriginCreateParam(createParam) && saving
+            ? blockWorkspaceTabsWhileCalendarCreateSaving
             : undefined
         }
         actions={workspaceHeaderActions}

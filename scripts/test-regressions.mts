@@ -2232,7 +2232,7 @@ function testBookingsUsePlanWorkspaceTabNavigation() {
   assert.match(bookingsSource, /resetCreateFlowState\(\)/);
   assert.match(bookingsSource, /buildGigsWorkspaceIncomingHref\(\)/);
   assert.match(subNavLinkSource, /interceptNavigate\?\.\(destinationHref\)/);
-  assert.match(subNavLinkSource, /if \(interceptNavigate\)/);
+  assert.match(subNavLinkSource, /shouldCommitNavigationGesture/);
 }
 
 function testCalendarCreateWorkspaceTabNavigation() {
@@ -2244,16 +2244,18 @@ function testCalendarCreateWorkspaceTabNavigation() {
     new URL("../app/components/planner/PlannerWorkspaceLayout.tsx", import.meta.url),
     "utf8",
   );
+  const subNavLinkSource = readFileSync(
+    new URL("../app/components/planner/PlannerWorkspaceSubNavLink.tsx", import.meta.url),
+    "utf8",
+  );
 
-  assert.match(eventsSource, /handleCalendarCreateWorkspaceTabNavigate/);
-  assert.match(eventsSource, /resetCalendarCreateFlowState/);
+  assert.match(eventsSource, /blockWorkspaceTabsWhileCalendarCreateSaving/);
   assert.match(
     eventsSource,
-    /isCalendarWorkspaceHost && isCalendarOriginCreateParam\(createParam\)/,
+    /isCalendarWorkspaceHost && isCalendarOriginCreateParam\(createParam\) && saving/,
   );
-  assert.match(eventsSource, /href === EVENTS_AREA_SUB_NAV\.calendar\.href/);
-  assert.match(eventsSource, /router\.replace\(destination, \{ scroll: false \}\)/);
-  assert.match(eventsSource, /readBookingPlansListCache/);
+  assert.match(subNavLinkSource, /isCalendarCreateFlowPath/);
+  assert.match(subNavLinkSource, /shouldCommitNavigationGesture/);
   assert.match(layoutSource, /const workspaceIntercept = headerState\.interceptWorkspaceTabNavigation/);
   assert.doesNotMatch(
     layoutSource,
@@ -2742,7 +2744,7 @@ function testCalendarWorkspaceClearsStaleWorkspaceIntercept() {
   assert.match(layoutSource, /PLANNER_WORKSPACE_BELOW_HEADER_CLASS/);
   assert.match(subNavLinkSource, /router\.push\(destinationHref/);
   assert.match(subNavLinkSource, /commitNavigation\(/);
-  assert.match(subNavLinkSource, /leaveCalendarViaNativeLink/);
+  assert.match(subNavLinkSource, /shouldLeaveCalendarViaNativeLink/);
   assert.match(subNavLinkSource, /isCalendarWorkspacePath\(pathname\)/);
   assert.doesNotMatch(subNavLinkSource, /window\.location\.assign\(destinationHref\)/);
   assert.match(bothCalendarSource, /relative isolate z-0 flex flex-col/);
