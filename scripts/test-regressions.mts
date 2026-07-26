@@ -766,6 +766,11 @@ function testEventLineupBookingCardProfileNavigationAndActions() {
   assert.match(cardSource, /href=\{profileHref\}/);
   assert.match(cardSource, /EVENT_DETAIL_LINEUP_ACTIONS_ROW/);
   assert.match(cardSource, /EVENT_DETAIL_LINEUP_ACTION_BTN/);
+  assert.match(cardSource, /EVENT_DETAIL_LINEUP_BTN_SECONDARY/);
+  assert.match(cardSource, />\s*Message\s*</);
+  assert.match(cardSource, /label="Cancel"/);
+  assert.match(cardSource, /compact/);
+  assert.doesNotMatch(cardSource, /Open DM/);
   assert.match(cardSource, /Ask for rate/);
   assert.match(cardSource, /Fixed offer • \$\{amount\}/);
   assert.doesNotMatch(cardSource, /flex-col gap-2 sm:flex-row/);

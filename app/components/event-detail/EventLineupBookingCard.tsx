@@ -12,10 +12,9 @@ import ChatProfileAvatarLink from "@/app/components/chat/ChatProfileAvatarLink";
 import { EventDetailBookingCancellationDetails } from "@/app/components/event-detail/EventDetailBookingCancellationDetails";
 import {
   EVENT_DETAIL_BADGE_COMPACT,
-  EVENT_DETAIL_BTN_DESTRUCTIVE,
-  EVENT_DETAIL_BTN_SECONDARY,
   EVENT_DETAIL_LINEUP_ACTION_BTN,
   EVENT_DETAIL_LINEUP_ACTIONS_ROW,
+  EVENT_DETAIL_LINEUP_BTN_SECONDARY,
 } from "@/app/components/event-detail/eventDetailUi";
 import { formatRateDisplay } from "@/lib/bookingRate";
 import {
@@ -178,21 +177,6 @@ export default function EventLineupBookingCard({
 
       {showActions ? (
         <div className={EVENT_DETAIL_LINEUP_ACTIONS_ROW}>
-          {showCancelRequest ? (
-            <CancelBookingRequestButton
-              loading={cancelling}
-              onConfirm={onCancelBooking}
-              className={`${EVENT_DETAIL_BTN_DESTRUCTIVE} ${actionButtonClass}`}
-            />
-          ) : null}
-          {showCancelAccepted ? (
-            <CancelAcceptedBookingButton
-              role="planner"
-              loading={cancelling}
-              onConfirm={onCancelAccepted}
-              className={`${EVENT_DETAIL_BTN_DESTRUCTIVE} ${actionButtonClass}`}
-            />
-          ) : null}
           {showOpenDm ? (
             <Link
               href={
@@ -204,10 +188,28 @@ export default function EventLineupBookingCard({
                     )
                   : `/dm/${booking.conversation_id}`
               }
-              className={`${EVENT_DETAIL_BTN_SECONDARY} ${actionButtonClass}`}
+              className={`${EVENT_DETAIL_LINEUP_BTN_SECONDARY} ${actionButtonClass}`}
             >
-              Open DM
+              Message
             </Link>
+          ) : null}
+          {showCancelRequest ? (
+            <CancelBookingRequestButton
+              compact
+              label="Cancel"
+              loading={cancelling}
+              onConfirm={onCancelBooking}
+              className={actionButtonClass}
+            />
+          ) : null}
+          {showCancelAccepted ? (
+            <CancelAcceptedBookingButton
+              compact
+              role="planner"
+              loading={cancelling}
+              onConfirm={onCancelAccepted}
+              className={actionButtonClass}
+            />
           ) : null}
         </div>
       ) : null}

@@ -26,8 +26,10 @@ export const EVENT_DETAIL_BTN_DESTRUCTIVE =
 
 export const EVENT_DETAIL_LINEUP_ACTIONS_ROW = "mt-2.5 flex gap-2";
 
-export const EVENT_DETAIL_LINEUP_ACTION_BTN =
-  "min-h-10 min-w-0 flex-1";
+export const EVENT_DETAIL_LINEUP_ACTION_BTN = "min-h-9 min-w-0 flex-1";
+
+export const EVENT_DETAIL_LINEUP_BTN_SECONDARY =
+  "ftc-btn-secondary inline-flex min-h-9 items-center justify-center px-2.5 py-1.5 text-xs uppercase tracking-wide";
 
 export const EVENT_DETAIL_BADGE_COMPACT =
   "inline-flex shrink-0 rounded-full px-2 py-0.5 text-[9px] font-medium uppercase tracking-wide";
