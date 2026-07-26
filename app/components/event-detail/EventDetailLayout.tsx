@@ -41,9 +41,9 @@ export function EventDetailSummary({ event }: { event: Event }) {
   return (
     <div className={EVENT_DETAIL_CARD_CLASS}>
       <ul className="space-y-1.5">
+        <FtcMetaRow icon={<FtcVenueIcon />}>{venue}</FtcMetaRow>
         <FtcMetaRow icon={<FtcCalendarIcon />}>{date}</FtcMetaRow>
         <FtcMetaRow icon={<FtcClockIcon />}>{time}</FtcMetaRow>
-        <FtcMetaRow icon={<FtcVenueIcon />}>{venue}</FtcMetaRow>
       </ul>
     </div>
   );
