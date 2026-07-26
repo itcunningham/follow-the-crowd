@@ -890,7 +890,7 @@ function EventsPageClientView({
 
   const handleCalendarCreateWorkspaceTabNavigate = useCallback(
     (href: string) => {
-      if (!isCalendarCreateFlow || !createOpen) {
+      if (!isCalendarWorkspaceHost || !isCalendarOriginCreateParam(createParam)) {
         return false;
       }
 
@@ -902,17 +902,15 @@ function EventsPageClientView({
         return true;
       }
 
-      resetCalendarCreateFlowState();
+      const destination =
+        href === EVENTS_AREA_SUB_NAV.gigs.href
+          ? buildGigsWorkspaceIncomingHref()
+          : href;
 
-      if (href === EVENTS_AREA_SUB_NAV.gigs.href) {
-        router.replace(buildGigsWorkspaceIncomingHref(), { scroll: false });
-      } else {
-        router.replace(href, { scroll: false });
-      }
-
+      window.location.assign(destination);
       return true;
     },
-    [createOpen, isCalendarCreateFlow, router, saving],
+    [createParam, isCalendarWorkspaceHost, saving],
   );
 
   function handleSelectPlan(plan: BookingPlan) {
@@ -1308,7 +1306,9 @@ function EventsPageClientView({
         activeWorkspaceHref={eventsWorkspaceActiveHref}
         includeChrome={false}
         interceptWorkspaceTabNavigation={
-          isCalendarCreateFlow && createOpen ? handleCalendarCreateWorkspaceTabNavigate : undefined
+          isCalendarWorkspaceHost && isCalendarOriginCreateParam(createParam)
+            ? handleCalendarCreateWorkspaceTabNavigate
+            : undefined
         }
         actions={workspaceHeaderActions}
         secondaryControlsSlot={

@@ -2249,10 +2249,10 @@ function testCalendarCreateWorkspaceTabNavigation() {
   assert.match(eventsSource, /resetCalendarCreateFlowState/);
   assert.match(
     eventsSource,
-    /isCalendarCreateFlow && createOpen \? handleCalendarCreateWorkspaceTabNavigate : undefined/,
+    /isCalendarWorkspaceHost && isCalendarOriginCreateParam\(createParam\)/,
   );
   assert.match(eventsSource, /href === EVENTS_AREA_SUB_NAV\.calendar\.href/);
-  assert.match(eventsSource, /router\.replace\(href, \{ scroll: false \}\)/);
+  assert.match(eventsSource, /window\.location\.assign\(destination\)/);
   assert.match(layoutSource, /const workspaceIntercept = headerState\.interceptWorkspaceTabNavigation/);
   assert.doesNotMatch(
     layoutSource,
