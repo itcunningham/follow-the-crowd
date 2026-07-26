@@ -730,7 +730,7 @@ function DjAvailabilityMobileDayPanel({
           </div>
         ) : canEditAvailability ? (
           <div className="mt-3">
-            <CalendarMobileDashedEmptyState message="No booking requests on this date" />
+            <CalendarMobileDashedEmptyState message="Nothing scheduled for this date" />
           </div>
         ) : null}
       </div>
