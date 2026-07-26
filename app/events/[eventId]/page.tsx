@@ -371,14 +371,19 @@ function EventDetailPageView() {
   const lineupStats = useMemo(() => getActiveEventLineupStats(lineup), [lineup]);
 
   const filteredLineup = useMemo(() => {
-    const base = lineupFilter === "all" ? visibleLineup : activeLineup;
+    const base =
+      lineupFilter === "all"
+        ? isHistoryEventDetail
+          ? visibleLineup
+          : activeLineup
+        : activeLineup;
 
     if (lineupFilter === "all") {
       return base;
     }
 
     return base.filter((booking) => booking.status === lineupFilter);
-  }, [activeLineup, lineupFilter, visibleLineup]);
+  }, [activeLineup, isHistoryEventDetail, lineupFilter, visibleLineup]);
 
   const editFormFieldErrors = useMemo(() => {
     if (!editForm || !editSaveAttempted) {

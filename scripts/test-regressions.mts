@@ -58,7 +58,10 @@ import {
 import type { BookingRequest } from "../lib/bookingRequests";
 import {
   buildBookingSendResultMessage,
+  filterActiveBookings,
   filterDjGigsByTab,
+  filterHistoryCancelledBookings,
+  filterVisibleEventLineupBookings,
   countDjGigsByTab,
   getActiveEventLineupStats,
   isDmBookingActionRequired,
@@ -673,6 +676,28 @@ function testActiveEventLineupStatsMatchVisibleLineupRules() {
     accepted: 1,
     declined: 1,
   });
+}
+
+function testPlannerCancelledBookingExcludedFromActiveEventLineup() {
+  const lineup = [
+    makeLineupStatsBooking({ id: "pending", status: "pending" }),
+    makeLineupStatsBooking({
+      id: "cancelled",
+      status: "cancelled",
+      cancelled_by: "sender",
+    }),
+  ];
+
+  const visibleLineup = filterVisibleEventLineupBookings(lineup);
+  const activeLineup = filterActiveBookings(visibleLineup);
+
+  assert.equal(visibleLineup.length, 2);
+  assert.equal(activeLineup.length, 1);
+  assert.equal(activeLineup[0]?.id, "pending");
+
+  const historyLineup = filterHistoryCancelledBookings(lineup);
+  assert.equal(historyLineup.length, 1);
+  assert.equal(historyLineup[0]?.id, "cancelled");
 }
 
 function testDmThreadEventDetailBackHref() {
@@ -3651,6 +3676,7 @@ async function main() {
   testSoundCloudInputNormalization();
   testDmThreadCalendarBackHref();
   testActiveEventLineupStatsMatchVisibleLineupRules();
+  testPlannerCancelledBookingExcludedFromActiveEventLineup();
   testDmThreadEventDetailBackHref();
   testProfileChatBackNavigation();
   testGigsIncomingDmEventDetailReturnChain();
