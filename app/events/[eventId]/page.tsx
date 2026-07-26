@@ -40,6 +40,7 @@ import {
   PlannerFormField,
   PlannerStatChip,
 } from "@/app/components/planner/PlannerUi";
+import { useSyncPlannerTitleFeedback } from "@/app/components/planner/PlannerTitleFeedbackProvider";
 import { BookingDateField, BookingSetTimeRangeField } from "@/app/components/BookingDateTimeFields";
 import { applyEventDateFieldChange, getTodayDateKey } from "@/lib/bookingDateTime";
 import {
@@ -245,7 +246,11 @@ function EventDetailPageView() {
   const clearHeaderFeedbackMessage = useCallback(() => {
     setHeaderFeedbackMessage(null);
   }, []);
-  useInlineTabFeedbackDismiss(headerFeedbackMessage, clearHeaderFeedbackMessage);
+  const headerFeedbackFading = useInlineTabFeedbackDismiss(
+    headerFeedbackMessage,
+    clearHeaderFeedbackMessage,
+  );
+  useSyncPlannerTitleFeedback(headerFeedbackMessage, headerFeedbackFading, true);
 
   useEffect(() => {
     setHeaderFeedbackMessage(null);
