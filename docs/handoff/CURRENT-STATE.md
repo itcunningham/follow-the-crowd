@@ -254,6 +254,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `7d2a59f` — separate planner events from DJ bookings in calendars
 - `7915e79` — remove ellipsis from DJ confirmation loading state
 - `e1c615b` — fix Event Plan Use Plan event creation flow
 - `8364a0c` — Improve long event title wrapping and truncation
