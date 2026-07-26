@@ -1128,7 +1128,8 @@ function EventDetailPageView() {
         <AppNavigation />
 
         <div className="border-b border-ftc-border-subtle bg-ftc-bg/95 px-4 py-3 backdrop-blur-md sm:px-6">
-          <div className="flex items-start justify-between gap-3">
+          <div className="relative">
+            <div className="flex items-start justify-between gap-3">
             <EventDetailOverlayButton onClick={goBackToEvents} label="Back to events">
               <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.75">
                 <path d="M15 6l-6 6 6 6" strokeLinecap="round" strokeLinejoin="round" />
@@ -1185,11 +1186,12 @@ function EventDetailPageView() {
               ) : null}
               <EventDetailEditHeaderSlot state={editHeaderState} onEditClick={openEditForm} />
             </div>
+            </div>
+            <PlannerWorkspaceTitleFeedback
+              message={headerFeedbackMessage}
+              fading={headerFeedbackFading}
+            />
           </div>
-          <PlannerWorkspaceTitleFeedback
-            message={headerFeedbackMessage}
-            fading={headerFeedbackFading}
-          />
         </div>
 
         {showCrewChatHelpUi && crewChatHelpOpen ? (

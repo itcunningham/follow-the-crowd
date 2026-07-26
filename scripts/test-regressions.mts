@@ -3143,6 +3143,7 @@ function testHistoryRemovalHeaderFeedbackUnified() {
   assert.match(plansSource, /useInlineTabFeedbackDismiss/);
   assert.match(eventDetailSource, /useInlineTabFeedbackDismiss/);
   assert.match(eventDetailSource, /PlannerWorkspaceTitleFeedback/);
+  assert.match(eventDetailSource, /className="relative"[\s\S]*PlannerWorkspaceTitleFeedback/);
   assert.match(
     eventDetailSource,
     /setHeaderFeedbackMessage\(BOOKING_REQUEST_CANCELLED_SUCCESS_MESSAGE\)/,
@@ -3179,9 +3180,15 @@ function testHistoryRemovalHeaderFeedbackUnified() {
   assert.match(titleFeedbackSource, /PlannerWorkspaceTitleFeedback/);
   assert.match(titleFeedbackSource, /InlineTabFeedbackMessage/);
   assert.match(titleFeedbackSource, /PLANNER_WORKSPACE_TITLE_FEEDBACK_SLOT_CLASS/);
-  assert.doesNotMatch(titleFeedbackSource, /absolute inset-x-0/);
+  assert.match(titleFeedbackSource, /if \(!message\)/);
+  const plannerTokensSource = readFileSync(
+    new URL("../lib/design/plannerWorkspaceTokens.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(plannerTokensSource, /PLANNER_WORKSPACE_TITLE_FEEDBACK_SLOT_CLASS[\s\S]*absolute inset-x-0/);
   assert.doesNotMatch(titleFeedbackSource, /onAnimationEnd/);
   assert.doesNotMatch(titleFeedbackSource, /ftc-history-removal-feedback/);
+  assert.match(layoutSource, /PLANNER_WORKSPACE_TITLE_ROW_CLASS} relative/);
   assert.match(layoutSource, /PlannerWorkspaceTitleFeedback/);
 }
 

@@ -161,14 +161,14 @@ export function PlannerWorkspacePageHeader({
 }) {
   return (
     <header className={PLANNER_WORKSPACE_HEADER_CLASS}>
-      <div className={PLANNER_WORKSPACE_TITLE_ROW_CLASS}>
+      <div className={`${PLANNER_WORKSPACE_TITLE_ROW_CLASS} relative`}>
         <h1 className={`${PLANNER_WORKSPACE_TITLE_CLASS} shrink-0`}>{title}</h1>
         <PlannerWorkspaceTitleActions actions={actions} />
+        <PlannerWorkspaceTitleFeedback
+          message={titleFeedbackMessage}
+          fading={titleFeedbackFading}
+        />
       </div>
-      <PlannerWorkspaceTitleFeedback
-        message={titleFeedbackMessage}
-        fading={titleFeedbackFading}
-      />
       {showWorkspaceSubNav ? (
         <div className={PLANNER_WORKSPACE_SUBNAV_SLOT_CLASS}>
           <div className={PLANNER_WORKSPACE_SUBNAV_ROW_CLASS}>

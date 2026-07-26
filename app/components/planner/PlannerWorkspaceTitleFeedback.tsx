@@ -6,16 +6,17 @@ type PlannerWorkspaceTitleFeedbackProps = {
   fading: boolean;
 };
 
-/** Centred planner title-row success feedback (Events History, Gigs History, Event Plans). */
+/** Centred floating planner title-row success feedback (Events History, Gigs History, Event Details). */
 export function PlannerWorkspaceTitleFeedback({
   message,
   fading,
 }: PlannerWorkspaceTitleFeedbackProps) {
+  if (!message) {
+    return null;
+  }
+
   return (
-    <div
-      className={PLANNER_WORKSPACE_TITLE_FEEDBACK_SLOT_CLASS}
-      aria-live={message ? "polite" : undefined}
-    >
+    <div className={PLANNER_WORKSPACE_TITLE_FEEDBACK_SLOT_CLASS} aria-live="polite">
       <InlineTabFeedbackMessage message={message} fading={fading} />
     </div>
   );
