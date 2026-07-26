@@ -42,6 +42,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 - Discover, profiles, DM conversations
 - Booking requests via DM (pending / accepted / declined / cancelled)
 - Rate proposals: open offers, fixed offers, DJ counter-proposals, accept/decline RPCs
+- **Propose rate modal copy (2026-07-26):** notes field label `Notes (optional)`; placeholder `Notes`; description sentence without trailing full stop
 - Events: create, edit, cancel, delete, lineup, send bookings, run sheet
 - Event Plans (`/booking-plans`), Calendar (`/calendar`), Gigs (`/bookings`)
 - Notifications, settings, account deletion
