@@ -250,7 +250,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
-- `015737c` — Fix Event Plan saving button copy
+- `8364a0c` — Improve long event title wrapping and truncation
 - `36132c8` — Improve Event Calendar agenda card hierarchy
 - `bc339db` — Unify Event Details with shared notification system
 - `2ba503a` — Match Event Details notification position to Gigs
