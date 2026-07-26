@@ -95,10 +95,6 @@ import {
   CHAT_BOOKING_REQUEST_ID_ATTR,
 } from "@/lib/dm/chatBookingTarget";
 import {
-  scheduleDmBookingCardCollapseClamp,
-  scheduleDmBookingCardExpandScroll,
-} from "@/lib/dm/dmBookingCardScrollAnchor";
-import {
   blockDmUser,
   getDmBlockBannerMessage,
   getDmBlockSendErrorMessage,
@@ -229,9 +225,6 @@ export default function DmChatPage() {
   const [proposalLoadingId, setProposalLoadingId] = useState<string | null>(null);
   const [cancellingBookingId, setCancellingBookingId] = useState<string | null>(null);
   const [expandedBookingIds, setExpandedBookingIds] = useState<Set<string>>(() => new Set());
-  const bookingCardAnchorRefs = useRef(new Map<string, HTMLElement>());
-  const pendingScrollBookingIdRef = useRef<string | null>(null);
-  const bookingExpandScrollCleanupRef = useRef<(() => void) | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -249,6 +242,7 @@ export default function DmChatPage() {
   const [reportMessageSubmitting, setReportMessageSubmitting] = useState(false);
   const [otherUserLastReadAt, setOtherUserLastReadAt] = useState<string | null>(null);
   const lastMessage = messages.length > 0 ? messages[messages.length - 1] : null;
+  const messageIds = useMemo(() => messages.map((message) => message.id), [messages]);
   const {
     scrollRef,
     bottomRef,
@@ -259,7 +253,7 @@ export default function DmChatPage() {
     captureScrollBeforeIncomingInsert,
   } = useChatScroll({
     loading,
-    messageCount: messages.length,
+    messageIds,
     lastMessageSenderId: lastMessage?.user_id ?? null,
     lastMessageIsFromCurrentUser: lastMessage?._clientScrollMeta?.isFromCurrentUser ?? null,
     currentUserId,
@@ -392,26 +386,7 @@ export default function DmChatPage() {
   useEffect(() => {
     setExpandedBookingIds(new Set());
     setEventIdsWithAcceptedBookings(new Set());
-    bookingExpandScrollCleanupRef.current?.();
-    bookingExpandScrollCleanupRef.current = null;
-    bookingCardAnchorRefs.current.clear();
-    pendingScrollBookingIdRef.current = null;
   }, [conversationId]);
-
-  const registerBookingCardAnchor = useCallback(
-    (bookingRequestId: string, element: HTMLElement | null) => {
-      if (!bookingRequestId) {
-        return;
-      }
-
-      if (element) {
-        bookingCardAnchorRefs.current.set(bookingRequestId, element);
-      } else {
-        bookingCardAnchorRefs.current.delete(bookingRequestId);
-      }
-    },
-    [],
-  );
 
   const setBookingExpanded = useCallback((bookingKey: string, expanded: boolean) => {
     setExpandedBookingIds((previous) => {
@@ -429,36 +404,9 @@ export default function DmChatPage() {
 
   const handleBookingExpansionChange = useCallback(
     (bookingRequestId: string, expanded: boolean) => {
-      bookingExpandScrollCleanupRef.current?.();
-      bookingExpandScrollCleanupRef.current = null;
-
-      if (expanded) {
-        pendingScrollBookingIdRef.current = bookingRequestId;
-      } else {
-        pendingScrollBookingIdRef.current = null;
-      }
-
       setBookingExpanded(bookingRequestId, expanded);
-
-      const container = scrollRef.current;
-
-      if (!container) {
-        return;
-      }
-
-      if (expanded) {
-        bookingExpandScrollCleanupRef.current = scheduleDmBookingCardExpandScroll(
-          container,
-          () => bookingCardAnchorRefs.current.get(bookingRequestId) ?? null,
-          bookingRequestId,
-          pendingScrollBookingIdRef,
-        );
-        return;
-      }
-
-      bookingExpandScrollCleanupRef.current = scheduleDmBookingCardCollapseClamp(container);
     },
-    [scrollRef, setBookingExpanded],
+    [setBookingExpanded],
   );
 
   useEffect(() => {
@@ -1547,7 +1495,7 @@ export default function DmChatPage() {
 
       <div
         ref={scrollRef}
-        className="flex min-h-0 flex-1 flex-col-reverse overflow-y-auto overscroll-contain [overflow-anchor:none] px-3 py-4 sm:px-4"
+        className="flex min-h-0 flex-1 flex-col-reverse overflow-y-auto overscroll-contain px-3 py-4 sm:px-4"
       >
         <div ref={bottomRef} data-chat-bottom aria-hidden="true" className="h-px shrink-0" />
         {loading ? (
@@ -1745,9 +1693,6 @@ export default function DmChatPage() {
                 const bookingFocusPhase = getMessageBookingFocusPhase(message.id);
                 logChatHighlightRender(message.id, highlighted || Boolean(bookingFocusPhase));
                 const bookingExpansionKey = resolvedBooking.id;
-                const registerBookingCardAnchorForCard = (element: HTMLElement | null) => {
-                  registerBookingCardAnchor(bookingExpansionKey, element);
-                };
                 const highlightClassName = bookingFocusPhase
                   ? ""
                   : getChatNewMessageHighlightClass(highlighted);
@@ -1836,7 +1781,6 @@ export default function DmChatPage() {
                     onKeepOriginalOffer={() =>
                       actionBooking ? handleKeepOriginalOffer(actionBooking) : undefined
                     }
-                    anchorRef={registerBookingCardAnchorForCard}
                   />
                 );
 
@@ -1868,7 +1812,6 @@ export default function DmChatPage() {
                             eventCancelled={eventCancelled}
                             highlightClassName={highlightClassName}
                             bookingFocusPhase={bookingFocusPhase}
-                            anchorRef={registerBookingCardAnchorForCard}
                             onViewDetails={() =>
                               handleBookingExpansionChange(bookingExpansionKey, true)
                             }

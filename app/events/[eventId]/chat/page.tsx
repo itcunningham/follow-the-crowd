@@ -166,7 +166,7 @@ export default function EventCrewChatPage() {
     captureScrollBeforeIncomingInsert,
   } = useChatScroll({
     loading,
-    messageCount: messages.length,
+    messageIds: messages.map((message) => message.id),
     lastMessageSenderId: lastMessage?.user_id ?? null,
     lastMessageIsFromCurrentUser: lastMessage?._clientScrollMeta?.isFromCurrentUser ?? null,
     currentUserId,

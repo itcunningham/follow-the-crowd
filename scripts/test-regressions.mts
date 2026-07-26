@@ -71,6 +71,7 @@ import {
   resolveBookingDateKey,
   sortDjGigsCalendarAgendaBookings,
 } from "../lib/bookingRequests";
+import { getAppendedMessageIds } from "../lib/useChatScroll";
 import { parseDjGigsListTab, resolveGigsListTabParam, resolveGigsListTabForBookingsPage, buildGigsWorkspaceIncomingHref, buildGigsConversationHref } from "../lib/bookings/gigsListNavigation";
 import {
   formatGigsTabCountAriaCount,
@@ -473,41 +474,29 @@ function testDmBookingCardExpandCollapseScrollAnchor() {
     new URL("../app/dm/[conversationId]/page.tsx", import.meta.url),
     "utf8",
   );
-  const cardSource = readFileSync(
-    new URL("../app/components/BookingRequestCard.tsx", import.meta.url),
-    "utf8",
-  );
-  const updateRowSource = readFileSync(
-    new URL("../app/components/dm/DmBookingUpdateRow.tsx", import.meta.url),
-    "utf8",
-  );
-  const anchorSource = readFileSync(
-    new URL("../lib/dm/dmBookingCardScrollAnchor.ts", import.meta.url),
+  const scrollSource = readFileSync(
+    new URL("../lib/useChatScroll.ts", import.meta.url),
     "utf8",
   );
 
   assert.match(pageSource, /handleBookingExpansionChange/);
-  assert.match(pageSource, /scheduleDmBookingCardExpandScroll/);
-  assert.match(pageSource, /scheduleDmBookingCardCollapseClamp/);
-  assert.match(pageSource, /bookingCardAnchorRefs/);
-  assert.match(pageSource, /pendingScrollBookingIdRef/);
-  assert.match(pageSource, /registerBookingCardAnchor/);
-  assert.match(pageSource, /bookingExpansionKey = resolvedBooking\.id/);
+  assert.match(pageSource, /setBookingExpanded\(bookingRequestId, expanded\)/);
+  assert.match(pageSource, /messageIds/);
+  assert.doesNotMatch(pageSource, /dmBookingCardScrollAnchor/);
+  assert.doesNotMatch(pageSource, /scheduleDmBookingCardExpandScroll/);
   assert.doesNotMatch(pageSource, /bookingExpandSpacerPx/);
-  assert.doesNotMatch(pageSource, /findDmBookingCardAnchor/);
-  assert.match(cardSource, /data-dm-booking-card-anchor/);
-  assert.match(cardSource, /DM_BOOKING_CARD_REQUEST_ID_ATTR/);
-  assert.match(cardSource, /anchorRef/);
-  assert.match(updateRowSource, /data-dm-booking-card-anchor/);
-  assert.match(updateRowSource, /DM_BOOKING_CARD_REQUEST_ID_ATTR/);
-  assert.match(updateRowSource, /anchorRef/);
-  assert.match(anchorSource, /scheduleDmBookingCardExpandScroll/);
-  assert.match(anchorSource, /scheduleDmBookingCardCollapseClamp/);
-  assert.match(anchorSource, /DM_BOOKING_CARD_REQUEST_ID_ATTR/);
-  assert.match(anchorSource, /pendingBookingRequestIdRef/);
-  assert.doesNotMatch(anchorSource, /querySelector/);
-  assert.doesNotMatch(anchorSource, /ResizeObserver/);
-  assert.doesNotMatch(anchorSource, /findDmBookingCardAnchor/);
+  assert.doesNotMatch(pageSource, /overflow-anchor:none/);
+  assert.match(scrollSource, /getAppendedMessageIds/);
+  assert.match(scrollSource, /messageIds: readonly string\[\]/);
+  assert.doesNotMatch(scrollSource, /messageCount/);
+}
+
+function testChatAppendedMessageIds() {
+  assert.deepEqual(getAppendedMessageIds([], ["a"]), ["a"]);
+  assert.deepEqual(getAppendedMessageIds(["a"], ["a", "b"]), ["b"]);
+  assert.deepEqual(getAppendedMessageIds(["a", "b"], ["a", "b"]), []);
+  assert.deepEqual(getAppendedMessageIds(["a", "b"], ["a", "c"]), []);
+  assert.deepEqual(getAppendedMessageIds(["a"], ["b"]), []);
 }
 
 function testDmBookingCardProposedRateCopy() {
@@ -3980,6 +3969,7 @@ async function main() {
   testBookingRateProposalPanelActionLayout();
   testDmBookingCardPendingEventPairedActions();
   testDmBookingCardExpandCollapseScrollAnchor();
+  testChatAppendedMessageIds();
   testDmBookingCardProposedRateCopy();
   testAskForRateDmBookingCardOfferSummary();
   testUsernameBlockedTermChecks();

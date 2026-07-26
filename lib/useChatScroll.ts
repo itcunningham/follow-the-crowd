@@ -32,6 +32,24 @@ export function tagChatMessageForScroll<T extends { user_id: string }>(
   };
 }
 
+/** Returns IDs appended to the end of the list — not updates, reorders, or removals. */
+export function getAppendedMessageIds(
+  previousIds: readonly string[],
+  nextIds: readonly string[],
+): string[] {
+  if (nextIds.length <= previousIds.length) {
+    return [];
+  }
+
+  const isAppendOnly = previousIds.every((id, index) => nextIds[index] === id);
+
+  if (!isAppendOnly) {
+    return [];
+  }
+
+  return nextIds.slice(previousIds.length);
+}
+
 function findTopmostVisibleMessageAnchor(container: HTMLElement) {
   const containerRect = container.getBoundingClientRect();
   const messageElements = container.querySelectorAll<HTMLElement>(
@@ -63,7 +81,7 @@ function findTopmostVisibleMessageAnchor(container: HTMLElement) {
 
 type UseChatScrollOptions = {
   loading: boolean;
-  messageCount: number;
+  messageIds: readonly string[];
   lastMessageSenderId: string | null;
   lastMessageIsFromCurrentUser: boolean | null;
   currentUserId: string | null;
@@ -72,7 +90,7 @@ type UseChatScrollOptions = {
 
 export function useChatScroll({
   loading,
-  messageCount,
+  messageIds,
   lastMessageSenderId,
   lastMessageIsFromCurrentUser,
   currentUserId,
@@ -83,7 +101,7 @@ export function useChatScroll({
   const pendingUserSentScrollRef = useRef(false);
   const pendingVisualAnchorRef = useRef<PendingVisualAnchor | null>(null);
   const pendingScrollPreserveRef = useRef<number | null>(null);
-  const previousMessageCountRef = useRef(0);
+  const previousMessageIdsRef = useRef<string[]>([]);
   const [showNewMessagesPill, setShowNewMessagesPill] = useState(false);
   const [newMessagesPillCount, setNewMessagesPillCount] = useState(0);
 
@@ -192,24 +210,12 @@ export function useChatScroll({
             container.scrollTop += delta;
           }
 
-          console.log("[chat visual anchor]", {
-            anchorMessageId: pendingAnchor.anchorMessageId,
-            beforeTop: pendingAnchor.anchorRectTop,
-            afterTop,
-            delta,
-            adjustedScrollTop: container.scrollTop,
-          });
           return;
         }
       }
 
       if (fallbackScrollTop !== null) {
         container.scrollTop = fallbackScrollTop;
-
-        console.log("[chat scroll preserve]", {
-          previousScrollTop: fallbackScrollTop,
-          restoredScrollTop: container.scrollTop,
-        });
       }
     };
 
@@ -242,7 +248,7 @@ export function useChatScroll({
 
   useEffect(() => {
     if (loading) {
-      previousMessageCountRef.current = 0;
+      previousMessageIdsRef.current = [];
       clearPendingScrollPreserve();
       hideNewMessagesPill();
     }
@@ -253,12 +259,16 @@ export function useChatScroll({
       return;
     }
 
-    const previousCount = previousMessageCountRef.current;
-    previousMessageCountRef.current = messageCount;
+    const previousIds = previousMessageIdsRef.current;
+    previousMessageIdsRef.current = [...messageIds];
 
-    const messageCountChanged = messageCount > previousCount && previousCount > 0;
+    if (previousIds.length === 0) {
+      return;
+    }
 
-    if (!messageCountChanged) {
+    const appendedIds = getAppendedMessageIds(previousIds, messageIds);
+
+    if (appendedIds.length === 0) {
       return;
     }
 
@@ -273,13 +283,6 @@ export function useChatScroll({
         return;
       }
 
-      console.log("[chat scroll final]", {
-        senderId,
-        currentUserId,
-        isOwnMessage: true,
-        action: "scroll",
-      });
-
       requestAnimationFrame(() => scrollToBottom("smooth"));
       return;
     }
@@ -291,13 +294,6 @@ export function useChatScroll({
         return;
       }
 
-      console.log("[chat scroll final]", {
-        senderId,
-        currentUserId,
-        isOwnMessage: true,
-        action: "scroll",
-      });
-
       requestAnimationFrame(() => scrollToBottom("smooth"));
       return;
     }
@@ -305,31 +301,16 @@ export function useChatScroll({
     const nearBottom = isNearBottom();
 
     if (!nearBottom) {
-      const incomingCount = messageCount - previousCount;
-      setNewMessagesPillCount((current) => current + incomingCount);
+      setNewMessagesPillCount((current) => current + appendedIds.length);
       setShowNewMessagesPill(true);
       restorePreservedScrollPosition();
-
-      console.log("[chat scroll final]", {
-        senderId,
-        currentUserId,
-        isOwnMessage: false,
-        action: "show-pill",
-      });
       return;
     }
 
     clearPendingScrollPreserve();
-
-    console.log("[chat scroll final]", {
-      senderId,
-      currentUserId,
-      isOwnMessage: false,
-      action: "noop",
-    });
   }, [
     loading,
-    messageCount,
+    messageIds,
     lastMessageSenderId,
     lastMessageIsFromCurrentUser,
     currentUserId,
