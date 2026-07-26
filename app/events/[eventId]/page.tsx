@@ -42,10 +42,9 @@ import {
 import { useSyncPlannerTitleFeedback } from "@/app/components/planner/PlannerTitleFeedbackProvider";
 import { PlannerTitleFeedbackSlot } from "@/app/components/planner/PlannerTitleFeedbackSlot";
 import {
+  PLANNER_EVENT_DETAIL_HEADER_CONTROLS_ROW_CLASS,
+  PLANNER_EVENT_DETAIL_HEADER_FEEDBACK_CELL_CLASS,
   PLANNER_WORKSPACE_PAGE_INSET_CLASS,
-  PLANNER_WORKSPACE_TITLE_ACTIONS_CLASS,
-  PLANNER_WORKSPACE_TITLE_FEEDBACK_BAND_CLASS,
-  PLANNER_WORKSPACE_TITLE_ROW_CLASS,
 } from "@/lib/design/plannerWorkspaceTokens";
 import { BookingDateField, BookingSetTimeRangeField } from "@/app/components/BookingDateTimeFields";
 import { applyEventDateFieldChange, getTodayDateKey } from "@/lib/bookingDateTime";
@@ -1135,16 +1134,22 @@ function EventDetailPageView() {
         <AppNavigation />
 
         <header
-          className={`ftc-page-header border-b border-ftc-border-subtle bg-ftc-bg/95 backdrop-blur-md ${PLANNER_WORKSPACE_PAGE_INSET_CLASS} pt-4 md:pt-4`}
+          className={`ftc-page-header border-b border-ftc-border-subtle bg-ftc-bg/95 backdrop-blur-md ${PLANNER_WORKSPACE_PAGE_INSET_CLASS} py-3`}
         >
-          <div className={PLANNER_WORKSPACE_TITLE_ROW_CLASS}>
-            <EventDetailOverlayButton onClick={goBackToEvents} label="Back to events">
-              <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.75">
-                <path d="M15 6l-6 6 6 6" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </EventDetailOverlayButton>
+          <div className={PLANNER_EVENT_DETAIL_HEADER_CONTROLS_ROW_CLASS}>
+            <div className="shrink-0">
+              <EventDetailOverlayButton onClick={goBackToEvents} label="Back to events">
+                <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.75">
+                  <path d="M15 6l-6 6 6 6" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </EventDetailOverlayButton>
+            </div>
 
-            <div className={`${PLANNER_WORKSPACE_TITLE_ACTIONS_CLASS} gap-1.5 sm:gap-2`}>
+            <div className={PLANNER_EVENT_DETAIL_HEADER_FEEDBACK_CELL_CLASS}>
+              <PlannerTitleFeedbackSlot variant="header-controls" />
+            </div>
+
+            <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
               {showCrewChatHeaderAction ? (
                 <div
                   className={`group ${HEADER_GROUP_CHAT_CHIP_CLASS} ${
@@ -1194,9 +1199,7 @@ function EventDetailPageView() {
               ) : null}
               <EventDetailEditHeaderSlot state={editHeaderState} onEditClick={openEditForm} />
             </div>
-            <PlannerTitleFeedbackSlot variant="event-detail" />
           </div>
-          <div aria-hidden="true" className={PLANNER_WORKSPACE_TITLE_FEEDBACK_BAND_CLASS} />
         </header>
 
         {showCrewChatHelpUi && crewChatHelpOpen ? (

@@ -3163,9 +3163,11 @@ function testHistoryRemovalHeaderFeedbackUnified() {
   assert.match(plansSource, /useInlineTabFeedbackDismiss/);
   assert.match(eventDetailSource, /useInlineTabFeedbackDismiss/);
   assert.match(eventDetailSource, /useSyncPlannerTitleFeedback/);
-  assert.match(eventDetailSource, /PlannerTitleFeedbackSlot variant="event-detail"/);
-  assert.match(eventDetailSource, /PLANNER_WORKSPACE_TITLE_ROW_CLASS/);
-  assert.doesNotMatch(eventDetailSource, /placement="in-row"/);
+  assert.match(eventDetailSource, /PlannerTitleFeedbackSlot variant="header-controls"/);
+  assert.match(eventDetailSource, /PLANNER_EVENT_DETAIL_HEADER_CONTROLS_ROW_CLASS/);
+  assert.match(eventDetailSource, /PLANNER_EVENT_DETAIL_HEADER_FEEDBACK_CELL_CLASS/);
+  assert.doesNotMatch(eventDetailSource, /PLANNER_WORKSPACE_TITLE_FEEDBACK_BAND_CLASS/);
+  assert.doesNotMatch(eventDetailSource, /variant="event-detail"/);
   assert.doesNotMatch(eventDetailSource, /PlannerTitleFeedbackViewportHost/);
   assert.doesNotMatch(eventDetailSource, /EventDateStatusBadge/);
   assert.doesNotMatch(eventDetailSource, /statusBadge=/);
@@ -3212,9 +3214,9 @@ function testHistoryRemovalHeaderFeedbackUnified() {
     "utf8",
   );
   assert.match(plannerTokensSource, /PLANNER_WORKSPACE_TITLE_FEEDBACK_SLOT_CLASS/);
-  assert.match(plannerTokensSource, /PLANNER_WORKSPACE_TITLE_FEEDBACK_BAND_CLASS/);
-  assert.match(plannerTokensSource, /PLANNER_EVENT_DETAIL_TITLE_FEEDBACK_SLOT_CLASS/);
-  assert.match(titleFeedbackSlotSource, /PLANNER_EVENT_DETAIL_TITLE_FEEDBACK_SLOT_CLASS/);
+  assert.match(plannerTokensSource, /PLANNER_EVENT_DETAIL_HEADER_FEEDBACK_SLOT_CLASS/);
+  assert.match(plannerTokensSource, /PLANNER_EVENT_DETAIL_HEADER_CONTROLS_ROW_CLASS/);
+  assert.match(titleFeedbackSlotSource, /PLANNER_EVENT_DETAIL_HEADER_FEEDBACK_SLOT_CLASS/);
   assert.doesNotMatch(titleFeedbackSlotSource, /IN_ROW/);
   assert.doesNotMatch(titleFeedbackSlotSource, /createPortal/);
   assert.match(titleFeedbackSlotSource, /PlannerWorkspaceTitleFeedback/);

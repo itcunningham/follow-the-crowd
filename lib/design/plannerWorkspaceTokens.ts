@@ -36,12 +36,16 @@ export const PLANNER_WORKSPACE_TITLE_FEEDBACK_HOST_CLASS =
 export const PLANNER_WORKSPACE_TITLE_FEEDBACK_SLOT_CLASS =
   `${PLANNER_WORKSPACE_TITLE_FEEDBACK_HOST_CLASS} absolute inset-x-0 top-full mt-1.5`;
 
-/** Event Details — vertically centred in the header feedback band (matches mt-4 band height). */
-export const PLANNER_EVENT_DETAIL_TITLE_FEEDBACK_SLOT_CLASS =
-  `${PLANNER_WORKSPACE_TITLE_FEEDBACK_HOST_CLASS} absolute inset-x-0 top-full h-4`;
+/** Event Details header controls — Back | centred feedback | Edit. */
+export const PLANNER_EVENT_DETAIL_HEADER_CONTROLS_ROW_CLASS =
+  "grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3";
 
-/** Reserved band below title row — matches Gigs sub-nav top spacing for feedback alignment. */
-export const PLANNER_WORKSPACE_TITLE_FEEDBACK_BAND_CLASS = "mt-4 h-0";
+export const PLANNER_EVENT_DETAIL_HEADER_FEEDBACK_CELL_CLASS =
+  "pointer-events-none flex min-w-0 items-center justify-center px-1";
+
+/** Inline feedback within Event Details header controls row. */
+export const PLANNER_EVENT_DETAIL_HEADER_FEEDBACK_SLOT_CLASS =
+  "pointer-events-none w-full min-w-0 text-center";
 
 export const PLANNER_WORKSPACE_SUBNAV_SLOT_CLASS = "mt-4 min-h-11 md:min-h-11";
 
