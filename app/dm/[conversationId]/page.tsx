@@ -1462,6 +1462,7 @@ export default function DmChatPage() {
           otherUserId={otherUserId}
           otherUserName={otherUserLabel}
           otherUserAvatarUrl={otherUserProfile?.avatar_url}
+          profileReturnTo={chatReturnTo}
           blockedByMe={blockStatus.blockedByMe}
           busy={blockActionLoading}
           onClose={() => setDetailsOpen(false)}

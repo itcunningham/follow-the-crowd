@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import {
   APP_PAGE_PROFILE_CONTENT_CLASS,
   APP_PAGE_PROFILE_IDENTITY_STACK_CLASS,
@@ -23,6 +23,7 @@ import {
   readCachedNavigation,
   resolveIsOwnProfilePath,
 } from "@/lib/navigationRoleCache";
+import { resolveProfileChatBackNavigation } from "@/lib/profileNavigation";
 import {
   getCurrentUserId,
   getUserProfileById,
@@ -43,6 +44,7 @@ export default function UserProfilePage() {
 
 function UserProfilePageView({ userId }: { userId: string }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const guardProfile = useGuardProfile();
   const [cachedNavigation] = useState(readCachedNavigation);
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -117,6 +119,14 @@ function UserProfilePageView({ userId }: { userId: string }) {
   const resolvedCurrentUserId =
     currentUserId ?? guardProfile?.user_id ?? cachedNavigation.userId;
   const isOwnProfile = resolveIsOwnProfilePath(userId, resolvedCurrentUserId);
+  const profileBackNavigation = useMemo(
+    () =>
+      resolveProfileChatBackNavigation(
+        searchParams.get("from"),
+        searchParams.get("returnTo"),
+      ),
+    [searchParams],
+  );
   const showDjSections = profile?.role === "dj" || profile?.role === "both";
   const showPromoterSections = profile?.role === "promoter" || profile?.role === "both";
   function getMessageButtonLabel(): string {
@@ -133,7 +143,11 @@ function UserProfilePageView({ userId }: { userId: string }) {
 
   return (
     <AppProfilePageShell>
-      <ProfilePageHeader isOwnProfile={isOwnProfile} />
+      <ProfilePageHeader
+        isOwnProfile={isOwnProfile}
+        backHref={profileBackNavigation?.href}
+        backLabel={profileBackNavigation?.label}
+      />
 
       <AppPageBody className={`py-6 md:py-8 ${!isOwnProfile && profile ? "pb-4" : "pb-8"}`}>
         {loading ? (

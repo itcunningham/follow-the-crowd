@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import DmReportFormModal from "@/app/components/dm/DmReportFormModal";
 import ProfileAvatar from "@/app/components/ProfileAvatar";
+import { buildProfileHref } from "@/lib/profileNavigation";
 import { submitDmUserReport, type DmReportReason } from "@/lib/userReports";
 import { getRoleLabel, getUserProfileById, type UserProfile } from "@/lib/user/currentUser";
 
@@ -13,6 +14,7 @@ export default function DmConversationDetailsPanel({
   otherUserId,
   otherUserName,
   otherUserAvatarUrl,
+  profileReturnTo,
   blockedByMe,
   busy,
   onClose,
@@ -24,6 +26,7 @@ export default function DmConversationDetailsPanel({
   otherUserId: string;
   otherUserName: string;
   otherUserAvatarUrl?: string | null;
+  profileReturnTo?: string | null;
   blockedByMe: boolean;
   busy: boolean;
   onClose: () => void;
@@ -161,7 +164,7 @@ export default function DmConversationDetailsPanel({
 
             <div className="mt-6 space-y-2">
               <Link
-                href={`/profile/${otherUserId}`}
+                href={buildProfileHref(otherUserId, { returnTo: profileReturnTo })}
                 onClick={onClose}
                 className="flex min-h-[44px] items-center justify-center rounded-xl border border-ftc-border bg-ftc-surface/60 px-4 py-3 text-sm font-semibold text-ftc-text transition hover:border-ftc-primary/30 hover:text-ftc-primary/90"
               >

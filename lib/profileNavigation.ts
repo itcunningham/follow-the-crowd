@@ -43,3 +43,25 @@ export function buildChatReturnTo(pathname: string, search: string): string {
 
   return query ? `${pathname}?${query}` : pathname;
 }
+
+export function resolveProfileChatBackNavigation(
+  from: string | null | undefined,
+  returnTo: string | null | undefined,
+): { href: string; label: string } | null {
+  if (from?.trim() !== "chat") {
+    return null;
+  }
+
+  const trimmed = returnTo?.trim();
+
+  if (
+    !trimmed ||
+    !trimmed.startsWith("/") ||
+    trimmed.startsWith("//") ||
+    trimmed.startsWith("/profile/")
+  ) {
+    return null;
+  }
+
+  return { href: trimmed, label: "Back to chat" };
+}

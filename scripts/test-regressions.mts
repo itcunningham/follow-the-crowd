@@ -112,6 +112,10 @@ import {
   resolveDmThreadBackHref,
 } from "../lib/dm/threadNavigation";
 import {
+  buildProfileHref,
+  resolveProfileChatBackNavigation,
+} from "../lib/profileNavigation";
+import {
   buildEventDetailFromDmHref,
   resolveEventDetailBackHref,
 } from "../lib/events/eventsListNavigation";
@@ -714,6 +718,42 @@ function testDmThreadEventDetailBackHref() {
     buildDmThreadHref(conversationId, { from: "event-detail", eventId: "bad-id" }),
     `/dm/${conversationId}?from=event-detail`,
   );
+}
+
+function testProfileChatBackNavigation() {
+  const conversationId = "22222222-2222-4222-8222-222222222222";
+  const userId = "33333333-3333-4333-8333-333333333333";
+  const returnTo = `/dm/${conversationId}?from=bookings&bookingRequestId=abc`;
+
+  assert.equal(
+    buildProfileHref(userId, { returnTo }),
+    `/profile/${userId}?from=chat&returnTo=${encodeURIComponent(returnTo)}`,
+  );
+  assert.deepEqual(resolveProfileChatBackNavigation("chat", returnTo), {
+    href: returnTo,
+    label: "Back to chat",
+  });
+  assert.equal(resolveProfileChatBackNavigation("discover", returnTo), null);
+  assert.equal(resolveProfileChatBackNavigation("chat", null), null);
+  assert.equal(resolveProfileChatBackNavigation("chat", `/profile/${userId}`), null);
+
+  const profilePageSource = readFileSync(
+    new URL("../app/profile/[userId]/page.tsx", import.meta.url),
+    "utf8",
+  );
+  const profileHeaderSource = readFileSync(
+    new URL("../app/components/profile/ProfilePageHeader.tsx", import.meta.url),
+    "utf8",
+  );
+  const dmDetailsSource = readFileSync(
+    new URL("../app/components/dm/DmConversationDetailsPanel.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(profilePageSource, /resolveProfileChatBackNavigation/);
+  assert.match(profileHeaderSource, /replace/);
+  assert.match(profileHeaderSource, /scroll=\{false\}/);
+  assert.match(dmDetailsSource, /buildProfileHref\(otherUserId, \{ returnTo: profileReturnTo \}\)/);
 }
 
 function testGigsIncomingDmEventDetailReturnChain() {
@@ -3443,6 +3483,7 @@ async function main() {
   testDmThreadCalendarBackHref();
   testActiveEventLineupStatsMatchVisibleLineupRules();
   testDmThreadEventDetailBackHref();
+  testProfileChatBackNavigation();
   testGigsIncomingDmEventDetailReturnChain();
   testGigsCalendarBookingNavigation();
   testPlannerCalendarItemHref();

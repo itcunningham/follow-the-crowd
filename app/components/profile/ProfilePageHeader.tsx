@@ -7,13 +7,49 @@ import { PROFILE_SETUP_PATH, SETTINGS_PATH } from "@/lib/user/currentUser";
 const profileHeaderIconButtonClass =
   "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-ftc-border-subtle bg-ftc-surface text-ftc-text-secondary transition hover:border-ftc-border-strong hover:text-ftc-text";
 
-export default function ProfilePageHeader({ isOwnProfile }: { isOwnProfile: boolean }) {
+function ProfileBackButton({ href, label }: { href: string; label: string }) {
+  return (
+    <Link
+      href={href}
+      replace
+      scroll={false}
+      aria-label={label}
+      className={`${profileHeaderIconButtonClass} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ftc-primary`}
+    >
+      <svg
+        aria-hidden="true"
+        viewBox="0 0 24 24"
+        className="h-5 w-5"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M15 18l-6-6 6-6" />
+      </svg>
+    </Link>
+  );
+}
+
+export default function ProfilePageHeader({
+  isOwnProfile,
+  backHref,
+  backLabel = "Back to chat",
+}: {
+  isOwnProfile: boolean;
+  backHref?: string | null;
+  backLabel?: string;
+}) {
   return (
     <header className="sticky top-0 z-10 border-b border-ftc-border-subtle bg-ftc-bg/95 backdrop-blur-md md:top-12">
       <div className={`flex items-center justify-between gap-3 ${APP_PAGE_INSET_CLASS} py-2.5`}>
-        <span className="text-xs font-medium uppercase tracking-wide text-ftc-text-muted">
-          Profile
-        </span>
+        <div className="flex min-w-0 flex-1 items-center gap-2">
+          {backHref ? <ProfileBackButton href={backHref} label={backLabel} /> : null}
+          <span className="text-xs font-medium uppercase tracking-wide text-ftc-text-muted">
+            Profile
+          </span>
+        </div>
 
         {isOwnProfile ? (
           <div className="flex items-center gap-2">
@@ -58,7 +94,7 @@ export default function ProfilePageHeader({ isOwnProfile }: { isOwnProfile: bool
               </svg>
             </Link>
           </div>
-        ) : (
+        ) : backHref ? null : (
           <span className="h-10 w-10 shrink-0" aria-hidden="true" />
         )}
       </div>
