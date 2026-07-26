@@ -72,6 +72,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 - **Event detail booking cancel feedback (2026-07-25):** successful pending booking-request cancellation shows `Booking request cancelled` via global `PlannerTitleFeedbackProvider` + `useInlineTabFeedbackDismiss` — same typography, timing (2700ms visible + 300ms fade), and fixed overlay as Events/Gigs History removal; heavy in-content card removed for this case only
 - **Event detail active lineup (2026-07-26):** planner-cancelled booking requests disappear from the active Event Details Bookings list immediately after cancel (All filter uses active lineup, not visible lineup); record preserved in DB; Gigs History still shows cancelled sent bookings with existing status labels; History event detail still shows cancelled bookings for archival read-only view
 - **Send bookings modal scroll lock (2026-07-26):** Event Details + Events create Send bookings modal locks background scroll on mobile Safari (`position: fixed` body lock + restore scroll position on close); backdrop/outside touch does not dismiss or scroll the page; modal DJ list remains scrollable; Cancel and successful send still close the modal
+- **Send bookings iOS scroll containment (2026-07-26):** boundary-aware touchmove containment blocks rubber-band transfer at DJ list/dialog scroll edges; locks `html` + `body`; nested scroll areas use `overscroll-contain` + `touch-pan-y`
 - **Event detail booking send feedback (2026-07-25):** successful Invite DJs send uses the same global title feedback host (`buildBookingSendResultMessage` copy: `Sent booking request to 1 DJ` / `Sent booking requests to {n} DJs`; post-create invite stash on first load too); heavy in-content card removed for send success
 - **Notes** section on event detail (heading "Notes", muted section label); read-only notes use `ftc-event-detail-notes-text` — full text with `pre-wrap` line breaks, safe wrap for long URLs/unbroken strings, no horizontal overflow
 - Edit with confirmation when booking-impacting fields change + group chat update message
@@ -257,6 +258,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `eba6498` — contain Send bookings modal scrolling on iOS
 - `14b749c` — lock background interaction behind Send bookings modal
 - `7e1287e` — polish send bookings modal copy
 - `5dce023` — hide planner-cancelled bookings from active list
