@@ -69,17 +69,13 @@ import {
 import { formatRateDisplay } from "@/lib/bookingRate";
 import UnavailableDjBookingConfirmModal from "@/app/components/UnavailableDjBookingConfirmModal";
 import BookingStatusBadge from "@/app/components/booking/BookingStatusBadge";
-import SendBookingRequestsPanel from "@/app/components/booking/SendBookingRequestsPanel";
+import SendBookingRequestsModal from "@/app/components/booking/SendBookingRequestsModal";
 import { useSendBookingRequestsDraft } from "@/app/components/booking/useSendBookingRequestsDraft";
 import { sendBookingRequestsForRecipients } from "@/lib/bookings/sendBookingRequestsFlow";
 import {
   InlineOptionHelpButton,
   InlineOptionHelpPanel,
 } from "@/app/components/booking/InlineOptionHelp";
-import BookingSheetDialog, {
-  BookingSheetDangerButton,
-  BookingSheetSecondaryButton,
-} from "@/app/components/booking/BookingSheetDialog";
 import CancelAcceptedBookingButton from "@/app/components/booking/CancelAcceptedBookingButton";
 import {
   cancelBookingRequest,
@@ -300,8 +296,6 @@ function EventDetailPageView() {
   const scrollToTopAfterSuccessfulSaveRef = useRef(false);
 
   const [sendOpen, setSendOpen] = useState(false);
-  const [sendDiscardConfirmOpen, setSendDiscardConfirmOpen] = useState(false);
-  const sendBookingsSectionRef = useRef<HTMLDivElement | null>(null);
   const [sending, setSending] = useState(false);
   const [cancellingBookingId, setCancellingBookingId] = useState<string | null>(null);
   const [proposalLoadingId, setProposalLoadingId] = useState<string | null>(null);
@@ -749,77 +743,15 @@ function EventDetailPageView() {
     setHeaderFeedbackMessage(null);
   }
 
-  useEffect(() => {
-    if (!sendOpen) {
-      return;
-    }
-
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-
-    return () => {
-      document.body.style.overflow = previousOverflow;
-    };
-  }, [sendOpen]);
-
-  useEffect(() => {
-    if (!sendOpen) {
-      return;
-    }
-
-    window.requestAnimationFrame(() => {
-      sendBookingsSectionRef.current?.focus({ preventScroll: true });
-    });
-  }, [sendOpen]);
-
   function closeSendBookings() {
     if (sending) {
       return;
     }
 
     setSendOpen(false);
-    setSendDiscardConfirmOpen(false);
     inviteDraft.resetDraft();
     setUnavailableConfirmOpen(false);
   }
-
-  function requestCloseSendBookings() {
-    if (sending) {
-      return;
-    }
-
-    if (inviteDraft.hasDraft) {
-      setSendDiscardConfirmOpen(true);
-      return;
-    }
-
-    closeSendBookings();
-  }
-
-  useEffect(() => {
-    if (!sendOpen) {
-      return;
-    }
-
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key !== "Escape" || sending) {
-        return;
-      }
-
-      if (sendDiscardConfirmOpen) {
-        setSendDiscardConfirmOpen(false);
-        return;
-      }
-
-      requestCloseSendBookings();
-    }
-
-    window.addEventListener("keydown", handleKeyDown);
-
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [inviteDraft.hasDraft, sendDiscardConfirmOpen, sendOpen, sending]);
 
   function requestSendBookings() {
     if (!event) {
@@ -1601,59 +1533,19 @@ function EventDetailPageView() {
       </div>
 
       {sendOpen && isOwner && !eventIsCancelled && !isHistoryEventDetail ? (
-        <div
-          className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 p-0 sm:items-center sm:p-4"
-          onClick={() => {
-            if (!sending) {
-              requestCloseSendBookings();
-            }
-          }}
-        >
-          <div
-            ref={sendBookingsSectionRef}
-            role="dialog"
-            aria-modal="true"
-            aria-label="Send bookings"
-            tabIndex={-1}
-            className="max-h-[90dvh] w-full max-w-2xl overflow-y-auto overscroll-contain rounded-t-2xl border border-ftc-border-subtle bg-ftc-bg p-3.5 pb-[max(1rem,env(safe-area-inset-bottom))] sm:rounded-2xl sm:p-4 sm:pb-0 focus:outline-none"
-            onClick={(clickEvent) => clickEvent.stopPropagation()}
-          >
-            <PlannerFormCard
-              title="Send bookings"
-              cardClassName="mb-0 p-0 border-0 bg-transparent shadow-none"
-              titleClassName="text-base font-bold text-ftc-text"
-              onCancel={requestCloseSendBookings}
-              cancelDisabled={sending}
-            >
-              <SendBookingRequestsPanel
-                draft={inviteDraft}
-                disabled={sending}
-                sending={sending}
-                showSendButton
-                onSend={requestSendBookings}
-                introText="Event details will be prefilled from this event, each DJ receives a private booking request DM"
-              />
-            </PlannerFormCard>
-          </div>
-        </div>
+        <SendBookingRequestsModal
+          open
+          draft={inviteDraft}
+          onClose={closeSendBookings}
+          sending={sending}
+          showSendButton
+          onSend={requestSendBookings}
+          introText="Event details will be prefilled from this event, each DJ receives a private booking request DM"
+          dialogClassName="relative z-10 max-h-[90dvh] w-full max-w-2xl overflow-y-auto overscroll-contain rounded-t-2xl border border-ftc-border-subtle bg-ftc-bg p-3.5 pb-[max(1rem,env(safe-area-inset-bottom))] sm:rounded-2xl sm:p-4 sm:pb-0 focus:outline-none"
+          formCardClassName="mb-0 p-0 border-0 bg-transparent shadow-none"
+          formTitleClassName="text-base font-bold text-ftc-text"
+        />
       ) : null}
-
-      <BookingSheetDialog
-        open={sendDiscardConfirmOpen}
-        title="Discard booking draft?"
-        titleId="discard-send-bookings-title"
-        description="Your selected DJs and entered booking details will be lost"
-        overlayClassName="z-[60]"
-        onBackdropClick={() => setSendDiscardConfirmOpen(false)}
-        footer={
-          <>
-            <BookingSheetSecondaryButton onClick={() => setSendDiscardConfirmOpen(false)}>
-              Keep editing
-            </BookingSheetSecondaryButton>
-            <BookingSheetDangerButton onClick={closeSendBookings}>Discard</BookingSheetDangerButton>
-          </>
-        }
-      />
 
       <UnavailableDjBookingConfirmModal
         open={unavailableConfirmOpen}

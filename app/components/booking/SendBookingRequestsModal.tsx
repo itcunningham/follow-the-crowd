@@ -8,6 +8,7 @@ import BookingSheetDialog, {
   BookingSheetSecondaryButton,
 } from "@/app/components/booking/BookingSheetDialog";
 import type { SendBookingRequestsDraft } from "@/app/components/booking/useSendBookingRequestsDraft";
+import { useBodyScrollLock, usePreventTouchScrollOutside } from "@/lib/ui/useBodyScrollLock";
 
 type SendBookingRequestsModalProps = {
   open: boolean;
@@ -21,7 +22,13 @@ type SendBookingRequestsModalProps = {
   confirmDiscardOnClose?: boolean;
   title?: string;
   sendButtonLabelMode?: "send" | "confirm";
+  dialogClassName?: string;
+  formCardClassName?: string;
+  formTitleClassName?: string;
 };
+
+const DEFAULT_DIALOG_CLASS =
+  "relative z-10 max-h-[90dvh] w-full max-w-2xl overflow-y-auto overscroll-contain rounded-t-2xl border border-ftc-border-subtle bg-ftc-bg pb-[max(1rem,env(safe-area-inset-bottom))] sm:rounded-2xl sm:pb-0 focus:outline-none";
 
 export default function SendBookingRequestsModal({
   open,
@@ -35,22 +42,15 @@ export default function SendBookingRequestsModal({
   confirmDiscardOnClose = true,
   title = "Send bookings",
   sendButtonLabelMode = "send",
+  dialogClassName = DEFAULT_DIALOG_CLASS,
+  formCardClassName,
+  formTitleClassName,
 }: SendBookingRequestsModalProps) {
-  const sectionRef = useRef<HTMLDivElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
   const [discardConfirmOpen, setDiscardConfirmOpen] = useState(false);
 
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
-
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-
-    return () => {
-      document.body.style.overflow = previousOverflow;
-    };
-  }, [open]);
+  useBodyScrollLock(open);
+  usePreventTouchScrollOutside(open, dialogRef);
 
   useEffect(() => {
     if (!open) {
@@ -58,7 +58,7 @@ export default function SendBookingRequestsModal({
     }
 
     window.requestAnimationFrame(() => {
-      sectionRef.current?.focus({ preventScroll: true });
+      dialogRef.current?.focus({ preventScroll: true });
     });
   }, [open]);
 
@@ -113,20 +113,27 @@ export default function SendBookingRequestsModal({
 
   return (
     <>
-      <div
-        className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 p-0 sm:items-center sm:p-4"
-        onClick={requestClose}
-      >
+      <div className="fixed inset-0 z-50 flex items-end justify-center p-0 pointer-events-none sm:items-center sm:p-4">
         <div
-          ref={sectionRef}
+          aria-hidden="true"
+          className="pointer-events-auto absolute inset-0 touch-none bg-black/70"
+        />
+        <div
+          ref={dialogRef}
           role="dialog"
           aria-modal="true"
           aria-label={title}
           tabIndex={-1}
-          className="max-h-[90dvh] w-full max-w-2xl overflow-y-auto overscroll-contain rounded-t-2xl border border-ftc-border-subtle bg-ftc-bg pb-[max(1rem,env(safe-area-inset-bottom))] sm:rounded-2xl sm:pb-0 focus:outline-none"
+          className={`pointer-events-auto ${dialogClassName}`}
           onClick={(clickEvent) => clickEvent.stopPropagation()}
         >
-          <PlannerFormCard title={title} onCancel={requestClose} cancelDisabled={sending || disabled}>
+          <PlannerFormCard
+            title={title}
+            onCancel={requestClose}
+            cancelDisabled={sending || disabled}
+            cardClassName={formCardClassName}
+            titleClassName={formTitleClassName}
+          >
             <SendBookingRequestsPanel
               draft={draft}
               disabled={disabled || sending}

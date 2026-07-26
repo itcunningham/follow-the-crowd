@@ -700,6 +700,30 @@ function testPlannerCancelledBookingExcludedFromActiveEventLineup() {
   assert.equal(historyLineup[0]?.id, "cancelled");
 }
 
+function testSendBookingsModalLocksBackgroundInteraction() {
+  const modalSource = readFileSync(
+    new URL("../app/components/booking/SendBookingRequestsModal.tsx", import.meta.url),
+    "utf8",
+  );
+  const scrollLockSource = readFileSync(
+    new URL("../lib/ui/useBodyScrollLock.ts", import.meta.url),
+    "utf8",
+  );
+  const eventDetailSource = readFileSync(
+    new URL("../app/events/[eventId]/page.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(modalSource, /useBodyScrollLock\(open\)/);
+  assert.match(modalSource, /usePreventTouchScrollOutside\(open, dialogRef\)/);
+  assert.doesNotMatch(modalSource, /onClick=\{requestClose\}/);
+  assert.match(modalSource, /touch-none bg-black\/70/);
+  assert.match(scrollLockSource, /body\.style\.position = "fixed"/);
+  assert.match(scrollLockSource, /window\.scrollTo\(0, scrollY\)/);
+  assert.match(eventDetailSource, /<SendBookingRequestsModal/);
+  assert.doesNotMatch(eventDetailSource, /sendDiscardConfirmOpen/);
+}
+
 function testDmThreadEventDetailBackHref() {
   const eventId = "11111111-1111-4111-8111-111111111111";
   const conversationId = "22222222-2222-4222-8222-222222222222";
@@ -3677,6 +3701,7 @@ async function main() {
   testDmThreadCalendarBackHref();
   testActiveEventLineupStatsMatchVisibleLineupRules();
   testPlannerCancelledBookingExcludedFromActiveEventLineup();
+  testSendBookingsModalLocksBackgroundInteraction();
   testDmThreadEventDetailBackHref();
   testProfileChatBackNavigation();
   testGigsIncomingDmEventDetailReturnChain();
