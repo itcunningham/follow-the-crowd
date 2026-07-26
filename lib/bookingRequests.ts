@@ -622,10 +622,10 @@ export function getDmBookingCardOfferSummary(booking: BookingRequest): string {
     const feeLabel = getBookingOfferRateLabel(booking);
 
     if (feeLabel === "Ask for rate") {
-      return "Open offer";
+      return "Ask for rate";
     }
 
-    return `Open · ${feeLabel}`;
+    return `Ask for rate · ${feeLabel}`;
   }
 
   return `Fixed · ${getBookingOfferRateLabel(booking)}`;

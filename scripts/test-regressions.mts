@@ -65,6 +65,7 @@ import {
   filterVisibleEventLineupBookings,
   countDjGigsByTab,
   getActiveEventLineupStats,
+  getDmBookingCardOfferSummary,
   isDmBookingActionRequired,
   isDjGigPastAccepted,
   resolveBookingDateKey,
@@ -485,8 +486,19 @@ function testDmBookingCardProposedRateCopy() {
   assert.match(panelSource, /Rate proposed/);
   assert.doesNotMatch(panelSource, /DJ proposed/);
   assert.match(panelSource, /formatIntegerRateDisplay\(booking\.proposed_rate\)/);
-  assert.match(summarySource, /offerRateLabel === "Ask for rate"/);
-  assert.match(summarySource, /return "Ask for rate"/);
+  assert.match(summarySource, /return getDmBookingCardOfferSummary\(booking\)/);
+  assert.doesNotMatch(summarySource, /Open offer/);
+}
+
+function testAskForRateDmBookingCardOfferSummary() {
+  const openAsk = { rate_mode: "open", fee: "" } as BookingRequest;
+  const openWithSuggested = { rate_mode: "open", fee: "500" } as BookingRequest;
+  const fixed = { rate_mode: "fixed", fee: "500" } as BookingRequest;
+
+  assert.equal(getDmBookingCardOfferSummary(openAsk), "Ask for rate");
+  assert.equal(getDmBookingCardOfferSummary(openWithSuggested), "Ask for rate · $500");
+  assert.equal(getDmBookingCardOfferSummary(fixed), "Fixed · $500");
+  assert.doesNotMatch(getDmBookingCardOfferSummary(openAsk), /Open offer/);
 }
 
 function testWheelTimeBeforeMinHelpers() {
@@ -3926,6 +3938,7 @@ async function main() {
   testBookingRateProposalPanelActionLayout();
   testDmBookingCardPendingEventPairedActions();
   testDmBookingCardProposedRateCopy();
+  testAskForRateDmBookingCardOfferSummary();
   testUsernameBlockedTermChecks();
   testAuthRedirectUrlUsesLoginPath();
   testProfileEditDirtyDetection();

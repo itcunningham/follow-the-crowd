@@ -77,18 +77,10 @@ function BookingCardExpandableNotes({ notes }: { notes: string }) {
 
 export function getBookingCardCompactRateLine(
   booking: BookingRequest,
-  offerRateLabel: string,
-  rateDetailLabel: string,
-  pendingProposal: boolean,
+  _offerRateLabel: string,
+  _rateDetailLabel: string,
+  _pendingProposal: boolean,
 ): string {
-  if (booking.rate_mode === "open" && pendingProposal) {
-    if (offerRateLabel === "Ask for rate") {
-      return "Ask for rate";
-    }
-
-    return `${rateDetailLabel} · ${offerRateLabel}`;
-  }
-
   return getDmBookingCardOfferSummary(booking);
 }
 
