@@ -2189,7 +2189,7 @@ function BookingsPageContent() {
                       className="flex-1 ftc-btn-primary w-full px-4 py-3 text-sm uppercase tracking-wide disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       {sending
-                        ? "Confirming..."
+                        ? "Confirming"
                         : allSelectedAreDuplicates
                           ? "No new DJs to confirm"
                           : `Confirm ${sendableSelectedDjIds.length} DJ${sendableSelectedDjIds.length === 1 ? "" : "s"}`}

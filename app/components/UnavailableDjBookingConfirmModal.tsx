@@ -42,7 +42,7 @@ export default function UnavailableDjBookingConfirmModal({
             Back
           </BookingSheetSecondaryButton>
           <BookingSheetWarningButton disabled={loading} onClick={() => void onConfirm()}>
-            {loading ? "Confirming..." : isSingle ? "Confirm anyway" : "Confirm requests anyway"}
+            {loading ? "Confirming" : isSingle ? "Confirm anyway" : "Confirm requests anyway"}
           </BookingSheetWarningButton>
         </>
       }
