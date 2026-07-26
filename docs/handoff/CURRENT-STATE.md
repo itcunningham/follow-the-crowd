@@ -32,7 +32,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 
 **Before first tester invite:** complete operational checklist OP-01–OP-11 in `PRIVATE-BETA-GO-LIVE.md` (tester list, invitations, feedback channel, backup, monitoring, QA data isolation).
 
-**Beta readiness QA reset (2026-07-26):** Canonical script `scripts/resetQaEnvironment.sql` + runbook `docs/qa/FTC-BETA-ENVIRONMENT-RESET.md`. Wipes transactional data, clears `dm-attachments`/`event-covers`, seeds QA profiles. Optional: `npm run qa:reset-environment -- --confirm`.
+**Beta readiness QA reset (2026-07-26):** One-step reset — paste `scripts/resetQaEnvironment.sql` in Supabase SQL Editor. Runbook: `docs/qa/FTC-BETA-ENVIRONMENT-RESET.md`.
 
 **Pause rule:** new Critical/High production defect pauses tester onboarding.
 
@@ -236,11 +236,11 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 | Booking cancellation | `scripts/setupBookingCancellation.sql` |
 | Crew-chat auto-start auth | `supabase/migrations/20250715180000_harden_crew_chat_auto_start_auth.sql` |
 | Remove legacy public message INSERT | `supabase/migrations/20250715213000_remove_legacy_public_message_insert.sql` |
-| **QA beta data reset** (manual / local script) | `scripts/resetQaEnvironment.sql` or `npm run qa:reset-environment -- --confirm` — see `docs/qa/FTC-BETA-ENVIRONMENT-RESET.md` |
+| **QA beta data reset** | `scripts/resetQaEnvironment.sql` — see `docs/qa/FTC-BETA-ENVIRONMENT-RESET.md` |
 
 ## Recent commits (reference)
 
-- (pending) — Automate FTC beta environment reset
+- `567fedc` — Automate FTC beta environment reset
 - `cbaf7aa` — Prepare clean QA environment for beta readiness testing
 - `4f82297` — add profile Back button when opened from DM
 - `8e00b42` — align Events Calendar agenda card height with Gigs reference

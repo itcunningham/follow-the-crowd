@@ -9,7 +9,6 @@
     "lint": "eslint",
     "test:regressions": "tsx --env-file=.env.local scripts/test-regressions.mts",
     "qa:preflight": "tsx scripts/qa-preflight.mts",
-    "qa:reset-environment": "tsx --env-file=.env.local scripts/prepareQaBetaEnvironment.mts",
     "qa:e2e:install": "playwright install webkit",
     "qa:e2e:prod": "tsx scripts/qa-preflight.mts --require-credentials && playwright test --config=playwright.config.ts"
   },
