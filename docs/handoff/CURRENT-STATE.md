@@ -262,6 +262,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `65c8601` — remove permanently deleted events from calendar
 - `8729db6` — prevent Active tab flash when returning to Events History
 - `1bf70a9` — simplify Edit Event primary button copy
 - `9e9acfe` — polish Event Plans delete confirmation copy
