@@ -127,6 +127,7 @@ import { resolveEventDetailBackHref } from "@/lib/events/eventsListNavigation";
 import {
   BOOKING_REQUEST_CANCELLED_SUCCESS_MESSAGE,
   useInlineTabFeedbackDismiss,
+  EVENT_UPDATED_SUCCESS_MESSAGE,
 } from "@/lib/design/inlineTabFeedback";
 import {
   shouldResetMobileEventDetailScroll,
@@ -636,7 +637,7 @@ function EventDetailPageView() {
           setEditForm(null);
           resetEditCoverState();
           setEditConfirmOpen(false);
-          setSuccessMessage("Event updated. Remember to let affected DJs know.");
+          setHeaderFeedbackMessage("Event updated. Remember to let affected DJs know.");
           setError("Event saved, but the group chat update could not be posted.");
           return;
         }
@@ -648,10 +649,10 @@ function EventDetailPageView() {
       setEditForm(null);
       resetEditCoverState();
       setEditConfirmOpen(false);
-      setSuccessMessage(
+      setHeaderFeedbackMessage(
         shouldNotifyGroupChat && groupChatFieldChanges.length > 0
           ? "Event updated. A summary was posted in the group chat."
-          : "Event updated",
+          : EVENT_UPDATED_SUCCESS_MESSAGE,
       );
     } catch (saveError) {
       console.error("Failed to update event:", saveError);

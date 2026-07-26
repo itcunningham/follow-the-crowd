@@ -96,6 +96,7 @@ import {
   formatGigsCalendarAvailabilityClearedMessage,
   formatGigsCalendarAvailabilityMarkedMessage,
   formatGigsHistoryRemoveSuccessMessage,
+  EVENT_UPDATED_SUCCESS_MESSAGE,
 } from "../lib/design/inlineTabFeedback";
 import {
   defaultGigsWorkspaceChromeState,
@@ -3127,6 +3128,7 @@ function testHistoryRemovalHeaderFeedbackUnified() {
   assert.equal(formatGigsCalendarAvailabilityClearedMessage(1), "Availability cleared for 1 date");
   assert.equal(formatGigsCalendarAvailabilityClearedMessage(6), "Availability cleared for 6 dates");
   assert.equal(BOOKING_REQUEST_CANCELLED_SUCCESS_MESSAGE, "Booking request cancelled");
+  assert.equal(EVENT_UPDATED_SUCCESS_MESSAGE, "Event updated");
   assert.equal(buildBookingSendResultMessage(1, 0), "Sent booking request to 1 DJ");
   assert.equal(buildBookingSendResultMessage(3, 0), "Sent booking requests to 3 DJs");
   assert.equal(INLINE_TAB_FEEDBACK_FADE_MS, 2700);
@@ -3149,6 +3151,12 @@ function testHistoryRemovalHeaderFeedbackUnified() {
     eventDetailSource,
     /setHeaderFeedbackMessage\(buildBookingSendResultMessage\(successes\.length, skippedCount\)\)/,
   );
+  assert.match(
+    eventDetailSource,
+    /setHeaderFeedbackMessage\([\s\S]*EVENT_UPDATED_SUCCESS_MESSAGE/,
+  );
+  assert.doesNotMatch(eventDetailSource, /setSuccessMessage\([\s\S]*EVENT_UPDATED_SUCCESS_MESSAGE/);
+  assert.doesNotMatch(eventDetailSource, /setSuccessMessage\("Event updated"\)/);
   assert.match(eventDetailSource, /setHeaderFeedbackMessage\(inviteMessage\)/);
   assert.doesNotMatch(
     eventDetailSource,

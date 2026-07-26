@@ -41,6 +41,9 @@ export function formatGigsCalendarAvailabilityClearedMessage(count: number): str
 /** Event detail header feedback after a pending booking request is cancelled successfully. */
 export const BOOKING_REQUEST_CANCELLED_SUCCESS_MESSAGE = "Booking request cancelled";
 
+/** Event detail header feedback after event details are saved successfully. */
+export const EVENT_UPDATED_SUCCESS_MESSAGE = "Event updated";
+
 /** Transient inline success feedback lifecycle — source of truth for Event Plans + History header. */
 export function useInlineTabFeedbackDismiss(
   message: string | null,
