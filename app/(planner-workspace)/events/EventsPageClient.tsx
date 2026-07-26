@@ -117,6 +117,7 @@ import {
   type EventsListTab,
   isCalendarOriginCreateParam,
   isCalendarOriginEventsFlow,
+  prefetchCalendarCreateWorkspaceExitTargets,
   resolveCalendarCreateBootstrapState,
   resolveCalendarCreateInitialStep,
   resolveCalendarSaveReturnDateKey,
@@ -485,6 +486,14 @@ function EventsPageClientView({
   const hideEventsHeaderCreateForCalendarFlow =
     isCalendarCreateFlow &&
     (createOpen || pathname === "/events" || isCalendarWorkspaceHost);
+
+  useEffect(() => {
+    if (!isCalendarWorkspaceHost || !isCalendarOriginCreateParam(createParam)) {
+      return;
+    }
+
+    prefetchCalendarCreateWorkspaceExitTargets(router);
+  }, [createParam, isCalendarWorkspaceHost, router]);
 
   useEffect(() => {
     if (isCalendarWorkspaceHost || pathname !== "/events") {

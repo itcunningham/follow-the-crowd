@@ -2254,7 +2254,9 @@ function testCalendarCreateWorkspaceTabNavigation() {
     eventsSource,
     /isCalendarWorkspaceHost && isCalendarOriginCreateParam\(createParam\) && saving/,
   );
-  assert.match(subNavLinkSource, /isCalendarCreateFlowPath/);
+  assert.match(eventsSource, /prefetchCalendarCreateWorkspaceExitTargets/);
+  assert.match(subNavLinkSource, /isCalendarCreateWorkspaceLocation/);
+  assert.match(subNavLinkSource, /navigateAwayFromCalendarCreateWorkspace/);
   assert.match(subNavLinkSource, /shouldCommitNavigationGesture/);
   assert.match(layoutSource, /const workspaceIntercept = headerState\.interceptWorkspaceTabNavigation/);
   assert.doesNotMatch(

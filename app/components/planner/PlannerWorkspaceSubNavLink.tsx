@@ -5,32 +5,20 @@ import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useRef, type ReactNode } from "react";
 import { clearGigsListTabPending } from "@/lib/bookings/gigsListTabPending";
 import {
+  isCalendarCreateWorkspaceLocation,
+  navigateAwayFromCalendarCreateWorkspace,
+} from "@/lib/events/eventsListNavigation";
+import {
   buildWorkspaceSubNavDestinationHref,
   EVENTS_AREA_SUB_NAV,
   isCalendarWorkspacePath,
 } from "@/lib/plannerEventsNav";
-import { isCalendarOriginCreateParam } from "@/lib/events/eventsListNavigation";
 
 const PLANNER_WORKSPACE_SUB_NAV_HIT_CLASS =
   "relative inline-flex shrink-0 min-h-11 min-w-11 items-center justify-center touch-manipulation";
 
 const PLANNER_WORKSPACE_SUB_NAV_PILL_CLASS =
   "inline-flex shrink-0 items-center gap-1.5 ftc-filter-pill ftc-workspace-subnav-pill";
-
-function readCalendarCreateParam(): string | null {
-  if (typeof window === "undefined") {
-    return null;
-  }
-
-  return new URLSearchParams(window.location.search).get("create");
-}
-
-function isCalendarCreateFlowPath(pathname: string | null): boolean {
-  return (
-    isCalendarWorkspacePath(pathname) &&
-    isCalendarOriginCreateParam(readCalendarCreateParam())
-  );
-}
 
 type PlannerWorkspaceSubNavLinkProps = {
   href: string;
@@ -55,12 +43,12 @@ export default function PlannerWorkspaceSubNavLink({
     return (
       isCalendarWorkspacePath(pathname) &&
       !interceptNavigate &&
-      !isCalendarCreateFlowPath(pathname)
+      !isCalendarCreateWorkspaceLocation(pathname)
     );
   }, [interceptNavigate, pathname]);
 
   const shouldCommitNavigationGesture = useCallback(() => {
-    return Boolean(interceptNavigate) || isCalendarCreateFlowPath(pathname);
+    return Boolean(interceptNavigate) || isCalendarCreateWorkspaceLocation(pathname);
   }, [interceptNavigate, pathname]);
 
   const commitNavigation = useCallback(
@@ -80,9 +68,14 @@ export default function PlannerWorkspaceSubNavLink({
         clearGigsListTabPending();
       }
 
+      if (isCalendarCreateWorkspaceLocation(pathname)) {
+        navigateAwayFromCalendarCreateWorkspace(destinationHref);
+        return;
+      }
+
       router.push(destinationHref, { scroll: false });
     },
-    [destinationHref, href, interceptNavigate, isActive, router],
+    [destinationHref, href, interceptNavigate, isActive, pathname, router],
   );
 
   const handlePointerDown = useCallback(
@@ -155,7 +148,11 @@ export default function PlannerWorkspaceSubNavLink({
 
       if (shouldCommitNavigationGesture()) {
         event.preventDefault();
-        commitNavigation();
+
+        if (!navigatedThisGestureRef.current) {
+          commitNavigation();
+        }
+
         return;
       }
 

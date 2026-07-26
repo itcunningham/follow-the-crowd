@@ -14,7 +14,8 @@ import {
   resolveCalendarOriginDateKey,
 } from "@/lib/calendar";
 import { sanitizePrefilledEventDateKey } from "@/lib/bookingDateTime";
-import { EVENTS_AREA_SUB_NAV } from "@/lib/plannerEventsNav";
+import { EVENTS_AREA_SUB_NAV, isCalendarWorkspacePath } from "@/lib/plannerEventsNav";
+import { buildGigsWorkspaceIncomingHref } from "@/lib/bookings/gigsListNavigation";
 
 export type EventsListTab = "active" | "history";
 
@@ -270,6 +271,35 @@ export function isCalendarOriginCreateParam(
   create: string | null | undefined,
 ): create is CalendarOriginCreateParam {
   return create === "calendar" || create === "calendar-plans";
+}
+
+export function readCalendarCreateParamFromLocation(): string | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  return new URLSearchParams(window.location.search).get("create");
+}
+
+/** True when the current URL is a calendar-originated create flow (`/calendar?create=…`). */
+export function isCalendarCreateWorkspaceLocation(pathname: string | null): boolean {
+  return (
+    isCalendarWorkspacePath(pathname) &&
+    isCalendarOriginCreateParam(readCalendarCreateParamFromLocation())
+  );
+}
+
+/** Hard navigation — App Router client transitions are unreliable from calendar create URLs. */
+export function navigateAwayFromCalendarCreateWorkspace(destinationHref: string): void {
+  window.location.assign(destinationHref);
+}
+
+export function prefetchCalendarCreateWorkspaceExitTargets(router: {
+  prefetch: (href: string) => void;
+}): void {
+  router.prefetch(EVENTS_AREA_SUB_NAV.events.href);
+  router.prefetch(EVENTS_AREA_SUB_NAV.bookingPlans.href);
+  router.prefetch(buildGigsWorkspaceIncomingHref());
 }
 
 export function resolveCalendarCreateReturnHref(eventDate: string | null | undefined): string {
