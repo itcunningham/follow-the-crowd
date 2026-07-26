@@ -752,6 +752,21 @@ function testModalScrollContainmentBlocksBoundaryOverscroll() {
   assert.equal(canScrollInTouchDirection(scrollable, -10), false);
 }
 
+function testEventLineupBookingCardProfileNavigationAndActions() {
+  const cardSource = readFileSync(
+    new URL("../app/components/event-detail/EventLineupBookingCard.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(cardSource, /ChatProfileAvatarLink/);
+  assert.match(cardSource, /href=\{`\/profile\/\$\{djUserId\}`\}/);
+  assert.match(cardSource, /EVENT_DETAIL_LINEUP_ACTIONS_ROW/);
+  assert.match(cardSource, /EVENT_DETAIL_LINEUP_ACTION_BTN/);
+  assert.match(cardSource, /Ask for rate/);
+  assert.match(cardSource, /Fixed offer • \$\{amount\}/);
+  assert.doesNotMatch(cardSource, /flex-col gap-2 sm:flex-row/);
+}
+
 function testDmThreadEventDetailBackHref() {
   const eventId = "11111111-1111-4111-8111-111111111111";
   const conversationId = "22222222-2222-4222-8222-222222222222";
@@ -3731,6 +3746,7 @@ async function main() {
   testPlannerCancelledBookingExcludedFromActiveEventLineup();
   testSendBookingsModalLocksBackgroundInteraction();
   testModalScrollContainmentBlocksBoundaryOverscroll();
+  testEventLineupBookingCardProfileNavigationAndActions();
   testDmThreadEventDetailBackHref();
   testProfileChatBackNavigation();
   testGigsIncomingDmEventDetailReturnChain();

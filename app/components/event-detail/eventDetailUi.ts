@@ -24,8 +24,10 @@ export const EVENT_DETAIL_BTN_SECONDARY =
 export const EVENT_DETAIL_BTN_DESTRUCTIVE =
   "inline-flex min-h-10 items-center justify-center rounded-xl border border-[var(--ftc-color-danger)] bg-ftc-surface px-3 py-2 text-xs font-semibold uppercase tracking-wide text-[var(--ftc-color-danger)] transition hover:border-0 hover:bg-[var(--ftc-color-danger)] hover:text-ftc-bg disabled:cursor-not-allowed disabled:opacity-50";
 
-export const EVENT_DETAIL_LINEUP_ACTION_CLASS =
-  "inline-flex min-h-10 w-full items-center justify-center rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-wide transition sm:w-auto sm:min-w-[7.5rem]";
+export const EVENT_DETAIL_LINEUP_ACTIONS_ROW = "mt-2.5 flex gap-2";
+
+export const EVENT_DETAIL_LINEUP_ACTION_BTN =
+  "min-h-10 min-w-0 flex-1";
 
 export const EVENT_DETAIL_BADGE_COMPACT =
   "inline-flex shrink-0 rounded-full px-2 py-0.5 text-[9px] font-medium uppercase tracking-wide";

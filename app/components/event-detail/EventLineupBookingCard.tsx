@@ -8,13 +8,14 @@ import BookingStatusBadge from "@/app/components/booking/BookingStatusBadge";
 import CancelAcceptedBookingButton from "@/app/components/booking/CancelAcceptedBookingButton";
 import CancelBookingRequestButton from "@/app/components/CancelBookingRequestButton";
 import HideDeclinedBookingButton from "@/app/components/HideDeclinedBookingButton";
-import ProfileAvatar from "@/app/components/ProfileAvatar";
-import { FtcMetaTextRow } from "@/app/components/ftc/FtcCompactMeta";
+import ChatProfileAvatarLink from "@/app/components/chat/ChatProfileAvatarLink";
 import { EventDetailBookingCancellationDetails } from "@/app/components/event-detail/EventDetailBookingCancellationDetails";
 import {
   EVENT_DETAIL_BADGE_COMPACT,
   EVENT_DETAIL_BTN_DESTRUCTIVE,
   EVENT_DETAIL_BTN_SECONDARY,
+  EVENT_DETAIL_LINEUP_ACTION_BTN,
+  EVENT_DETAIL_LINEUP_ACTIONS_ROW,
 } from "@/app/components/event-detail/eventDetailUi";
 import { formatRateDisplay } from "@/lib/bookingRate";
 import {
@@ -28,10 +29,13 @@ import type { CalendarOriginState } from "@/lib/bookings/gigsCalendarNavigation"
 import type { BookingRecipientProfile } from "@/lib/user/currentUser";
 
 function getLineupRateLine(booking: BookingRequest): string {
-  const offerType = booking.rate_mode === "open" ? "Ask for rate" : "Fixed offer";
+  if (booking.rate_mode === "open") {
+    return "Ask for rate";
+  }
+
   const amount = formatRateDisplay(booking.fee);
 
-  return amount !== "$" ? `${offerType} · ${amount}` : offerType;
+  return amount !== "$" ? `Fixed offer • ${amount}` : "Fixed offer";
 }
 
 export default function EventLineupBookingCard({
@@ -75,13 +79,21 @@ export default function EventLineupBookingCard({
 }) {
   const displayName = profile?.display_name?.trim() || "DJ";
   const genre = profile?.genre?.trim();
+  const djUserId = booking.recipient_id;
   const acceptedCancellationRole = getAcceptedBookingCancellationRole(booking, currentUserId);
   const rateLine = getLineupRateLine(booking);
   const pendingProposal = hasPendingRateProposal(booking);
+  const showCancelRequest =
+    !readOnly && canCancelBookingRequest(booking, currentUserId);
+  const showCancelAccepted =
+    !readOnly && acceptedCancellationRole === "planner";
+  const showOpenDm = Boolean(booking.conversation_id);
+  const showActions = showCancelRequest || showCancelAccepted || showOpenDm;
+  const actionButtonClass = `${EVENT_DETAIL_LINEUP_ACTION_BTN}`;
 
   return (
     <div
-      className={`ftc-lineup-booking-card relative p-3.5 transition duration-150 ease-out motion-reduce:transition-none ${
+      className={`ftc-lineup-booking-card relative p-3 transition duration-150 ease-out motion-reduce:transition-none ${
         canHideFromLineup ? "pr-11 sm:pr-12" : ""
       }`}
     >
@@ -95,13 +107,23 @@ export default function EventLineupBookingCard({
       ) : null}
 
       <div className="flex min-w-0 items-start gap-3">
-        <ProfileAvatar name={displayName} avatarUrl={profile?.avatar_url} size="sm" />
+        <ChatProfileAvatarLink
+          userId={djUserId}
+          name={displayName}
+          avatarUrl={profile?.avatar_url}
+          size="sm"
+        />
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0 flex-1">
-              <p className="text-base font-bold leading-snug text-ftc-text">{displayName}</p>
+              <Link
+                href={`/profile/${djUserId}`}
+                className="text-base font-bold leading-snug text-ftc-text transition hover:text-ftc-primary"
+              >
+                {displayName}
+              </Link>
               {genre ? (
-                <p className="mt-0.5 text-xs text-ftc-text-muted">{genre}</p>
+                <p className="mt-0.5 truncate text-xs text-ftc-text-muted">{genre}</p>
               ) : null}
             </div>
             <div className="flex shrink-0 flex-col items-end gap-1">
@@ -116,9 +138,7 @@ export default function EventLineupBookingCard({
             </div>
           </div>
 
-          <ul className="mt-2 space-y-1">
-            <FtcMetaTextRow>{rateLine}</FtcMetaTextRow>
-          </ul>
+          <p className="mt-1.5 text-xs leading-snug text-ftc-text-muted">{rateLine}</p>
 
           {cancelledByLabel || cancellationReasonLabel ? (
             <EventDetailBookingCancellationDetails
@@ -143,39 +163,41 @@ export default function EventLineupBookingCard({
         </div>
       </div>
 
-      <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:justify-end">
-        {!readOnly && canCancelBookingRequest(booking, currentUserId) ? (
-          <CancelBookingRequestButton
-            loading={cancelling}
-            onConfirm={onCancelBooking}
-            className={`${EVENT_DETAIL_BTN_DESTRUCTIVE} w-full sm:w-auto sm:min-w-[7.5rem]`}
-          />
-        ) : null}
-        {!readOnly && acceptedCancellationRole === "planner" ? (
-          <CancelAcceptedBookingButton
-            role="planner"
-            loading={cancelling}
-            onConfirm={onCancelAccepted}
-            className={`${EVENT_DETAIL_BTN_DESTRUCTIVE} w-full sm:w-auto sm:min-w-[7.5rem]`}
-          />
-        ) : null}
-        {booking.conversation_id ? (
-          <Link
-            href={
-              eventDetailId
-                ? buildEventDetailDmThreadHref(
-                    booking.conversation_id,
-                    eventDetailId,
-                    calendarOrigin,
-                  )
-                : `/dm/${booking.conversation_id}`
-            }
-            className={`${EVENT_DETAIL_BTN_SECONDARY} w-full sm:w-auto sm:min-w-[7.5rem]`}
-          >
-            Open DM
-          </Link>
-        ) : null}
-      </div>
+      {showActions ? (
+        <div className={EVENT_DETAIL_LINEUP_ACTIONS_ROW}>
+          {showCancelRequest ? (
+            <CancelBookingRequestButton
+              loading={cancelling}
+              onConfirm={onCancelBooking}
+              className={`${EVENT_DETAIL_BTN_DESTRUCTIVE} ${actionButtonClass}`}
+            />
+          ) : null}
+          {showCancelAccepted ? (
+            <CancelAcceptedBookingButton
+              role="planner"
+              loading={cancelling}
+              onConfirm={onCancelAccepted}
+              className={`${EVENT_DETAIL_BTN_DESTRUCTIVE} ${actionButtonClass}`}
+            />
+          ) : null}
+          {showOpenDm ? (
+            <Link
+              href={
+                eventDetailId
+                  ? buildEventDetailDmThreadHref(
+                      booking.conversation_id!,
+                      eventDetailId,
+                      calendarOrigin,
+                    )
+                  : `/dm/${booking.conversation_id}`
+              }
+              className={`${EVENT_DETAIL_BTN_SECONDARY} ${actionButtonClass}`}
+            >
+              Open DM
+            </Link>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 }

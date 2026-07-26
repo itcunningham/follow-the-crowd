@@ -259,6 +259,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `8785062` — polish Send Bookings DJ cards
 - `eba6498` — contain Send bookings modal scrolling on iOS
 - `14b749c` — lock background interaction behind Send bookings modal
 - `7e1287e` — polish send bookings modal copy
