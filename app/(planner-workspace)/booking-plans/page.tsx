@@ -151,11 +151,11 @@ function EventPlanDeleteConfirmDialog({
             {title}
           </h2>
           <p className="mt-2 text-sm leading-relaxed text-ftc-text-secondary">
-            These Event Plans will be permanently deleted.
+            These event plans will be permanently deleted
           </p>
           <p className="mt-2 text-sm leading-relaxed text-ftc-text-secondary">
             Existing events, bookings, booking requests and messages created from these plans will
-            NOT be affected.
+            NOT be affected
           </p>
         </div>
 
@@ -176,7 +176,7 @@ function EventPlanDeleteConfirmDialog({
               tabIndex={-1}
               className="inline-flex min-h-[2.75rem] w-full cursor-not-allowed items-center justify-center rounded-xl border-0 bg-[var(--ftc-color-danger)] px-4 py-2.5 text-sm font-semibold uppercase tracking-wide text-ftc-bg sm:w-auto"
             >
-              Deleting...
+              Deleting
             </button>
           ) : (
             <button
