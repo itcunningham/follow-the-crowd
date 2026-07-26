@@ -2553,6 +2553,14 @@ function testPlannerCalendarScopesOwnedEventsOnly() {
     calendarSource,
     /export async function loadPlannerCalendarItems[\s\S]*?sent_booking/,
   );
+  assert.match(
+    calendarSource,
+    /PLANNER_CALENDAR_VISIBLE_LEGEND_ITEMS = PLANNER_CALENDAR_LEGEND_ITEMS\.filter\([\s\S]*?event_today[\s\S]*?event_upcoming/,
+  );
+  assert.doesNotMatch(
+    calendarSource,
+    /PLANNER_CALENDAR_VISIBLE_LEGEND_ITEMS[\s\S]*?kind !== "declined"/,
+  );
 }
 
 function testCalendarCreateWorkspaceTabNavigation() {

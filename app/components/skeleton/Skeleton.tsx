@@ -1017,7 +1017,7 @@ function PlannerCalendarMobileLegendSkeleton() {
     <div aria-hidden="true" className="flex flex-col items-center gap-y-2 md:hidden">
       <div className="min-h-[1.125rem]" />
       <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
-        {Array.from({ length: 4 }, (_, index) => (
+        {Array.from({ length: 2 }, (_, index) => (
           <span key={index} className="inline-flex items-center gap-1.5">
             <SkeletonBlock className="h-1.5 w-1.5 rounded-full" />
             <SkeletonBlock className="h-3 w-14" />
@@ -1034,7 +1034,7 @@ function PlannerCalendarDesktopLegendSkeleton() {
       aria-hidden="true"
       className="hidden flex-wrap items-center justify-center gap-2 md:flex"
     >
-      {Array.from({ length: 4 }, (_, index) => (
+      {Array.from({ length: 2 }, (_, index) => (
         <SkeletonBlock key={index} className="h-5 w-[4.5rem] rounded-full" />
       ))}
     </div>

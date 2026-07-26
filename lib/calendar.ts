@@ -637,7 +637,7 @@ export const PLANNER_CALENDAR_LEGEND_ITEMS = [
 ] as const;
 
 export const PLANNER_CALENDAR_VISIBLE_LEGEND_ITEMS = PLANNER_CALENDAR_LEGEND_ITEMS.filter(
-  (item) => item.kind !== "declined",
+  (item) => item.kind === "event_today" || item.kind === "event_upcoming",
 );
 
 const PLANNER_CALENDAR_EVENT_STATUS_PRIORITY: CalendarStatusKind[] = [
