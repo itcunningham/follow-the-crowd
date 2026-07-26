@@ -4,7 +4,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { looksLikeUserId } from "@/lib/user/displayName";
-import { parseCalendarOriginFromEventDetail } from "@/lib/calendar";
+import { parseCalendarOriginFromEventDetail, resolveSentBookingsLinkedToPlannerEvent } from "@/lib/calendar";
 import { buildEventDetailDmThreadHref } from "@/lib/dm/threadNavigation";
 import AppNavigation, { MOBILE_NAV_OFFSET_CLASS } from "@/app/components/AppNavigation";
 import EventDeleteCancelButton from "@/app/components/EventDeleteCancelButton";
@@ -96,6 +96,7 @@ import {
   getBookingMutationErrorMessage,
   hideDeclinedBookingFromLineup,
   listBookingRequestsForEvent,
+  listSentBookingRequests,
   type ActiveBookingStatusFilter,
   type BookingRequest,
   type BookingRequestStatus,
@@ -122,6 +123,11 @@ import { computeCrewChatEventActions } from "@/lib/events/crewChatEventActions";
 import { getEventCrewChatLink } from "@/lib/eventCrewChat";
 import { getEventCoverUploadErrorMessage, normalizeEventCoverImageUrl } from "@/lib/events/eventCoverImage";
 import { consumeEventCreateInviteMessage } from "@/lib/events/eventCreateInviteMessages";
+import {
+  cancelCalendarLinkedOrphanSentBookingsForEvent,
+  syncPlannerEventCancelledFromClientCaches,
+  syncPlannerEventDeletedFromClientCaches,
+} from "@/lib/events/plannerEventLifecycleClientSync";
 import { shouldConfirmEventEditSave } from "@/lib/events/eventEditConfirmation";
 import {
   getBookingImpactingEventFieldChanges,
@@ -244,6 +250,9 @@ function EventDetailPageView() {
   const [event, setEvent] = useState<Event | null>(() => cachedEventSummary);
   eventRef.current = event;
   const [lineup, setLineup] = useState<BookingRequest[]>([]);
+  const [calendarLinkedOrphanBookings, setCalendarLinkedOrphanBookings] = useState<BookingRequest[]>(
+    [],
+  );
   const [profiles, setProfiles] = useState<Map<string, BookingRecipientProfile>>(new Map());
   const [lineupFilter, setLineupFilter] = useState<ActiveBookingStatusFilter>("all");
   const [error, setError] = useState<string | null>(null);
@@ -392,6 +401,7 @@ function EventDetailPageView() {
     if (!hasValidEventId) {
       setEvent(null);
       setLineup([]);
+      setCalendarLinkedOrphanBookings([]);
       setProfiles(new Map());
       setCrewChatUnlock(null);
       setError("Event not found or you do not have access.");
@@ -407,23 +417,30 @@ function EventDetailPageView() {
     setError(null);
 
     try {
-      const [loadedEvent, bookings, unlock] = await Promise.all([
+      const [loadedEvent, bookings, unlock, sentBookings] = await Promise.all([
         getEventById(eventId),
         listBookingRequestsForEvent(eventId),
         getCrewChatUnlockStateForEvent(eventId),
+        listSentBookingRequests(),
       ]);
 
       if (!loadedEvent) {
         setEvent(null);
         setLineup([]);
+        setCalendarLinkedOrphanBookings([]);
         setProfiles(new Map());
         setCrewChatUnlock(null);
         setError("Event not found or you do not have access.");
         return;
       }
 
+      const linkedBookings = resolveSentBookingsLinkedToPlannerEvent(loadedEvent, sentBookings);
+
       setEvent(loadedEvent);
       setLineup(bookings);
+      setCalendarLinkedOrphanBookings(
+        linkedBookings.filter((booking) => !booking.event_id?.trim()),
+      );
       setCrewChatUnlock(unlock);
 
       const recipientIds = bookings.map((booking) => booking.recipient_id);
@@ -440,6 +457,7 @@ function EventDetailPageView() {
         setEvent(null);
       }
       setLineup([]);
+      setCalendarLinkedOrphanBookings([]);
       setProfiles(new Map());
       setCrewChatUnlock(null);
       setError(getEventsLoadErrorMessage(loadError));
@@ -499,6 +517,7 @@ function EventDetailPageView() {
     setLoadingEvent(!summary);
     setLineupLoading(true);
     setLineup([]);
+    setCalendarLinkedOrphanBookings([]);
     setProfiles(new Map());
     setCrewChatUnlock(null);
   }, [eventId, hasValidEventId]);
@@ -986,7 +1005,15 @@ function EventDetailPageView() {
     setError(null);
 
     try {
+      const linkedBookings = await cancelCalendarLinkedOrphanSentBookingsForEvent(event);
+      const relatedBookingIds = [
+        ...lineup.map((booking) => booking.id),
+        ...calendarLinkedOrphanBookings.map((booking) => booking.id),
+        ...linkedBookings.map((booking) => booking.id),
+      ];
+
       await deleteEmptyEvent(event.id, event.cover_image_url);
+      syncPlannerEventDeletedFromClientCaches(event.id, relatedBookingIds);
       router.replace(eventsBackHref);
     } catch (deleteError) {
       console.error("Failed to delete event:", deleteError);
@@ -1004,7 +1031,20 @@ function EventDetailPageView() {
     setError(null);
 
     try {
-      await cancelEvent(event.id);
+      const cancelResult = await cancelEvent(event.id);
+      const cancelledOrphans = await cancelCalendarLinkedOrphanSentBookingsForEvent(event);
+      const relatedBookingIds = [
+        ...lineup.map((booking) => booking.id),
+        ...calendarLinkedOrphanBookings.map((booking) => booking.id),
+        ...cancelResult.cancelledBookings.map((booking) => booking.id),
+        ...cancelledOrphans.map((booking) => booking.id),
+      ];
+
+      syncPlannerEventCancelledFromClientCaches(
+        event.id,
+        relatedBookingIds,
+        cancelResult.event,
+      );
       router.replace(eventsBackHref);
     } catch (cancelError) {
       console.error("Failed to cancel event:", cancelError);

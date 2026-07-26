@@ -421,6 +421,22 @@ function resolvePlannerCalendarBookingEventId(
   return resolveSoleOwnedEventIdOnPlannerCalendarDate(ownedEvents, dateKey);
 }
 
+/** Sent bookings the planner calendar would treat as belonging to this event (including unlinked rows). */
+export function resolveSentBookingsLinkedToPlannerEvent(
+  event: Pick<Event, "id" | "name" | "event_date">,
+  sentBookings: BookingRequest[],
+): BookingRequest[] {
+  const ownedEvents = [event as Event];
+
+  return sentBookings.filter((booking) => {
+    if (booking.status === "cancelled" || booking.status === "declined") {
+      return false;
+    }
+
+    return resolvePlannerCalendarBookingEventId(booking, ownedEvents) === event.id;
+  });
+}
+
 function mapEventToCalendarItem(event: Event): CalendarItem | null {
   const dateKey = resolveCalendarDateKey(event.event_date);
 

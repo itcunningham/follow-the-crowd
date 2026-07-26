@@ -99,3 +99,48 @@ export function clearPlannerCalendarItemsCache(): void {
     console.error("[planner-calendar] Failed to clear items cache:", cacheError);
   }
 }
+
+export function removePlannerCalendarItemsForEvent(
+  eventId: string,
+  relatedBookingIds: string[] = [],
+): void {
+  const normalizedEventId = eventId.trim();
+
+  if (!normalizedEventId) {
+    return;
+  }
+
+  const cached = readPlannerCalendarItemsCache();
+
+  if (!cached) {
+    return;
+  }
+
+  const relatedBookingIdSet = new Set(
+    relatedBookingIds.map((bookingId) => bookingId.trim()).filter(Boolean),
+  );
+
+  const next = cached.filter((item) => {
+    if (item.eventId === normalizedEventId) {
+      return false;
+    }
+
+    if (item.type === "event" && item.id === `event-${normalizedEventId}`) {
+      return false;
+    }
+
+    if (item.type === "sent_booking") {
+      const bookingId = item.id.startsWith("sent_booking-")
+        ? item.id.slice("sent_booking-".length)
+        : "";
+
+      if (bookingId && relatedBookingIdSet.has(bookingId)) {
+        return false;
+      }
+    }
+
+    return true;
+  });
+
+  writePlannerCalendarItemsCache(next);
+}

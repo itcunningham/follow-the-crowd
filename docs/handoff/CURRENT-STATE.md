@@ -88,6 +88,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 - **Calendar action row layout (2026-07-26):** Events Calendar Create Event / Event Plans use a stable two-column grid; when Event Plans is hidden the right slot stays reserved so Create Event position, width, and styling do not shift
 - **Planner Event Calendar cards (2026-07-22):** mobile agenda cards use `usePlannerCalendarItemNavigation` (touch `pointerup` + `location.assign`) to open Event Details with `from=calendar` return params — never DM; calendar origin is forwarded through Event Details → lineup DM → Back → Event Details → Back via `buildEventDetailDmThreadHref` + `resolveDmThreadBackHref` + existing `resolveEventDetailBackHref`
 - **Planner pending calendar navigation (2026-07-26):** pending sent-booking cards resolve Event Details hrefs when `event_id` is missing by linking to the sole owned event on that date (after name/date match); planner calendar item cache bumped to v3
+- **Planner calendar pending event deletion (2026-07-26):** deleting an event from Event Details cancels calendar-linked orphan sent bookings (pending rows without `event_id`) before `delete_empty_event`, then removes the event and related calendar/events list cache entries so yellow Pending cards disappear immediately
 - Desktop: month grid + day modal (wider layout, same behaviour)
 - No intro/description copy under the page title (planner event calendar)
 - **Status dot priority per date:** Accepted (green) → Pending (amber) → Upcoming (dark blue); Today uses tile outline, not dot colour

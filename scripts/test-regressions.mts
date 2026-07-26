@@ -2517,6 +2517,27 @@ function testBookingsUsePlanCreatesEventBeforeSend() {
   assert.match(bookingsSource, /existingEventBookings: duplicateSource/);
 }
 
+function testPlannerCalendarEventDeletionSync() {
+  const eventDetailSource = readFileSync(
+    new URL("../app/events/[eventId]/page.tsx", import.meta.url),
+    "utf8",
+  );
+  const calendarSource = readFileSync(new URL("../lib/calendar.ts", import.meta.url), "utf8");
+  const lifecycleSource = readFileSync(
+    new URL("../lib/events/plannerEventLifecycleClientSync.ts", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(calendarSource, /export function resolveSentBookingsLinkedToPlannerEvent/);
+  assert.match(lifecycleSource, /cancelCalendarLinkedOrphanSentBookingsForEvent/);
+  assert.match(lifecycleSource, /syncPlannerEventDeletedFromClientCaches/);
+  assert.match(lifecycleSource, /removePlannerCalendarItemsForEvent/);
+  assert.match(eventDetailSource, /cancelCalendarLinkedOrphanSentBookingsForEvent\(event\)/);
+  assert.match(eventDetailSource, /syncPlannerEventDeletedFromClientCaches/);
+  assert.match(eventDetailSource, /syncPlannerEventCancelledFromClientCaches/);
+  assert.match(eventDetailSource, /resolveSentBookingsLinkedToPlannerEvent/);
+}
+
 function testCalendarCreateWorkspaceTabNavigation() {
   const eventsSource = readFileSync(
     new URL("../app/(planner-workspace)/events/EventsPageClient.tsx", import.meta.url),
@@ -3636,6 +3657,7 @@ async function main() {
   testBookingsUsePlanWorkspaceTabNavigation();
   testBookingsUsePlanCancelReturnsToEventPlans();
   testBookingsUsePlanCreatesEventBeforeSend();
+  testPlannerCalendarEventDeletionSync();
   testCalendarCreateWorkspaceTabNavigation();
   testEventsListTabSwitchUsesClientHistoryWithoutRouterNavigation();
   testEventsCreateEventHiddenDuringHistorySelectionToolbar();

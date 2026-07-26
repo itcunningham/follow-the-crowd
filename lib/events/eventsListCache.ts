@@ -140,6 +140,27 @@ export function prependEventToEventsListCache(
   writeEventsListCache(isPlanner, next);
 }
 
+export function removeEventFromEventsListCache(isPlanner: boolean, eventId: string): void {
+  const normalizedEventId = eventId.trim();
+
+  if (!normalizedEventId) {
+    return;
+  }
+
+  const cached = readEventsListCache(isPlanner);
+  const next = cached.filter((item) => item.id !== normalizedEventId);
+  writeEventsListCache(isPlanner, next);
+}
+
+export function patchEventInEventsListCache(
+  isPlanner: boolean,
+  event: Partial<EventWithLineupStats> & Pick<EventWithLineupStats, "id">,
+): void {
+  const cached = readEventsListCache(isPlanner);
+  const next = cached.map((item) => (item.id === event.id ? { ...item, ...event } : item));
+  writeEventsListCache(isPlanner, next);
+}
+
 export function readCachedEventOwnerId(eventId: string): string | null | undefined {
   if (!eventId.trim()) {
     return undefined;
