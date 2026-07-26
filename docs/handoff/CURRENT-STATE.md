@@ -247,7 +247,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
-- `001f934` — Place Event Details notification in header status slot
+- `a9c2822` — Fix event image removal in edit mode
 - `bc339db` — Unify Event Details with shared notification system
 - `2ba503a` — Match Event Details notification position to Gigs
 - `e9d82d6` — Refine Event Details status and success notification
