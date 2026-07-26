@@ -3238,11 +3238,23 @@ function testCompactCalendarEventVenueTitleTruncates() {
   assert.match(mobileUiSource, /CALENDAR_MOBILE_AGENDA_CARD_TITLE_CLASS[\s\S]*w-full max-w-full min-w-0/);
   assert.match(mobileUiSource, /CALENDAR_MOBILE_AGENDA_CARD_TITLE_SLOT_CLASS[\s\S]*min-w-0 w-0 flex-1/);
   assert.match(mobileUiSource, /CALENDAR_MOBILE_AGENDA_CARD_BADGE_SLOT_CLASS[\s\S]*basis-\[5\.75rem\]/);
+  assert.match(mobileUiSource, /CALENDAR_MOBILE_AGENDA_CARD_TIME_CLASS[\s\S]*text-xs text-ftc-text-muted/);
+  assert.match(mobileUiSource, /CALENDAR_MOBILE_AGENDA_CARD_STATUS_BADGE_BASE_CLASS/);
   assert.match(compactTitleSource, /formatPlannerCalendarItemHeadline/);
   assert.match(compactTitleSource, /doesFullCalendarTitleFit/);
   assert.doesNotMatch(compactTitleSource, /\.\.\./);
   assert.doesNotMatch(compactTitleSource, /slice\s*\(/);
   assert.match(plannerCalendarSource, /CompactCalendarEventVenueTitle/);
+  assert.match(plannerCalendarSource, /CALENDAR_MOBILE_AGENDA_CARD_TIME_CLASS/);
+  assert.match(plannerCalendarSource, /CALENDAR_MOBILE_AGENDA_CARD_STATUS_BADGE_BASE_CLASS/);
+  assert.doesNotMatch(plannerCalendarSource, /text-sm text-ftc-text-secondary/);
+
+  const djCalendarSource = readFileSync(
+    new URL("../app/components/DjAvailabilityCalendar.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(djCalendarSource, /CALENDAR_MOBILE_AGENDA_CARD_TIME_CLASS/);
+  assert.match(djCalendarSource, /CALENDAR_MOBILE_AGENDA_CARD_STATUS_BADGE_BASE_CLASS/);
 
   assert.equal(
     formatPlannerCalendarItemHeadline("Warehouse Session", "Revolver"),

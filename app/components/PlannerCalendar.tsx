@@ -10,6 +10,8 @@ import CalendarMobileChrome, {
 import {
   CALENDAR_MOBILE_AGENDA_CARD_LEADING_CLASS,
   CALENDAR_MOBILE_AGENDA_CARD_LIST_CLASS,
+  CALENDAR_MOBILE_AGENDA_CARD_STATUS_BADGE_BASE_CLASS,
+  CALENDAR_MOBILE_AGENDA_CARD_TIME_CLASS,
   CALENDAR_MOBILE_INTERACTIVE_PRESS_CLASS,
   CalendarMobileAgendaCard,
   CalendarMobileDashedEmptyState,
@@ -118,7 +120,7 @@ function PlannerCalendarItemBadge({
     () => resolvePlannerCalendarItemHref(item, calendarOrigin),
     [calendarOrigin, item],
   );
-  const badgeClassName = `flex w-full items-stretch gap-1 rounded-md border-0 px-1.5 py-1 text-left transition hover:opacity-90 md:gap-1.5 md:px-2 md:py-1.5 ${getPlannerCalendarStatusBadgeClass(item.statusKind)}`;
+  const badgeClassName = `flex w-full items-stretch gap-1 rounded-md border-0 px-1 py-1 text-left transition hover:opacity-90 ${getPlannerCalendarStatusBadgeClass(item.statusKind)}`;
 
   const badgeContent = (
     <>
@@ -262,7 +264,7 @@ function PlannerCalendarAgendaCard({
       }
       badge={
         <span
-          className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${getPlannerCalendarStatusBadgeClass(item.statusKind)}`}
+          className={`${CALENDAR_MOBILE_AGENDA_CARD_STATUS_BADGE_BASE_CLASS} ${getPlannerCalendarStatusBadgeClass(item.statusKind)}`}
         >
           {getPlannerCalendarBadgeLabel(item)}
         </span>
@@ -272,7 +274,7 @@ function PlannerCalendarAgendaCard({
       }
       time={
         item.timeLabel ? (
-          <span className="block truncate text-sm text-ftc-text-secondary">{item.timeLabel}</span>
+          <span className={CALENDAR_MOBILE_AGENDA_CARD_TIME_CLASS}>{item.timeLabel}</span>
         ) : undefined
       }
     />

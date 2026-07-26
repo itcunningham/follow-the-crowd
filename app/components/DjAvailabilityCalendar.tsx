@@ -29,6 +29,8 @@ import CalendarMobileChrome, {
 import {
   CALENDAR_MOBILE_AGENDA_CARD_LEADING_CLASS,
   CALENDAR_MOBILE_AGENDA_CARD_LIST_CLASS,
+  CALENDAR_MOBILE_AGENDA_CARD_STATUS_BADGE_BASE_CLASS,
+  CALENDAR_MOBILE_AGENDA_CARD_TIME_CLASS,
   CALENDAR_MOBILE_INTERACTIVE_PRESS_CLASS,
   CalendarMobileAgendaCard,
   CalendarMobileDashedEmptyState,
@@ -589,7 +591,7 @@ function DjCalendarBookingNavButton({
       leading={renderDjCalendarAgendaLeadingBanner(eventFallbackColour)}
       badge={
         <span
-          className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${getBookingStatusBadgeClass(cardBookingStatus)}`}
+          className={`${CALENDAR_MOBILE_AGENDA_CARD_STATUS_BADGE_BASE_CLASS} ${getBookingStatusBadgeClass(cardBookingStatus)}`}
         >
           {formatBookingStatusLabel(cardBookingStatus)}
         </span>
@@ -597,7 +599,7 @@ function DjCalendarBookingNavButton({
       heading={<CompactCalendarEventVenueTitle eventName={eventName} venue={booking.venue} />}
       time={
         booking.set_time.trim() ? (
-          <span className="block truncate text-xs text-ftc-text-muted">
+          <span className={CALENDAR_MOBILE_AGENDA_CARD_TIME_CLASS}>
             {formatCalendarTimeLabel(booking.set_time)}
           </span>
         ) : undefined

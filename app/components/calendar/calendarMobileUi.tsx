@@ -58,6 +58,14 @@ export const CALENDAR_MOBILE_AGENDA_CARD_BADGE_SLOT_CLASS =
 
 export const CALENDAR_MOBILE_AGENDA_CARD_TIME_SLOT_CLASS = "mt-1.5";
 
+/** Shared secondary time line — Gigs Calendar is the reference geometry. */
+export const CALENDAR_MOBILE_AGENDA_CARD_TIME_CLASS =
+  "block truncate text-xs text-ftc-text-muted";
+
+/** Shared status pill geometry for mobile agenda cards. */
+export const CALENDAR_MOBILE_AGENDA_CARD_STATUS_BADGE_BASE_CLASS =
+  "inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide";
+
 export function CompactCalendarEventVenueTitle({
   eventName,
   venue,
