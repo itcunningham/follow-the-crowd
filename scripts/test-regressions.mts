@@ -21,6 +21,7 @@ import {
 import { MAX_WITHDRAWAL_OTHER_REASON_LENGTH } from "../lib/bookingRequests";
 import {
   formatPlannerCalendarItemHeadline,
+  isDjGigsCalendarBulkSelectableDateKey,
   linkPlannerCalendarSentBookingsToEvents,
   sortPlannerCalendarAgendaItems,
   type CalendarItem,
@@ -1158,6 +1159,14 @@ function testTodaysFutureGigIsNotHistorical() {
   assert.equal(isDjGigPastAccepted(booking), false);
   assert.equal(filterDjGigsByTab([booking], "accepted").length, 1);
   assert.equal(filterDjGigsByTab([booking], "history").length, 0);
+}
+
+function testDjGigsCalendarBulkSelectableDates() {
+  const today = getTodayDateKey();
+
+  assert.equal(isDjGigsCalendarBulkSelectableDateKey(today), true);
+  assert.equal(isDjGigsCalendarBulkSelectableDateKey("2099-01-01"), true);
+  assert.equal(isDjGigsCalendarBulkSelectableDateKey("2020-01-01"), false);
 }
 
 function testLegacyEventDatesResolveForGigTabs() {
@@ -2367,6 +2376,11 @@ function testCalendarLoadUsesCacheAndPrefetch() {
     /if \(cachedSnapshot !== null\) \{\s*setAvailabilityEntries\(cachedSnapshot\.entries\)/,
   );
   assert.match(djCalendarSource, /writeDjGigsCalendarCache\(\{ entries, bookings: activeBookings \}\)/);
+  assert.match(djCalendarSource, /isDjGigsCalendarBulkSelectableDateKey/);
+  assert.match(
+    djCalendarSource,
+    /selectDisplayedDatesMatching[\s\S]*filter\(isDjGigsCalendarBulkSelectableDateKey\)/,
+  );
 
   assert.match(bothCalendarSource, /activeTab === "planner" \? \(/);
   assert.doesNotMatch(bothCalendarSource, /display:\s*contents|"contents"/);
@@ -3389,6 +3403,7 @@ async function main() {
   testPendingGigAppearsOnlyInIncoming();
   testConfirmedListUpdatesAfterAcceptance();
   testTodaysFutureGigIsNotHistorical();
+  testDjGigsCalendarBulkSelectableDates();
   testLegacyEventDatesResolveForGigTabs();
   testConfirmedTabAliasParsesFromUrl();
   testEventPlanUseButtonKeepsStableCardLayout();

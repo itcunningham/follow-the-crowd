@@ -70,6 +70,7 @@ import {
   parsePlannerCalendarDateParam,
   resolveDjCalendarSelectedDate,
   resolveDjCalendarViewMonthStart,
+  isDjGigsCalendarBulkSelectableDateKey,
   toDateKey,
   WEEKDAY_LABELS,
 } from "@/lib/calendar";
@@ -903,6 +904,7 @@ function DjAvailabilityDayCell({
 }) {
   const dateKey = toDateKey(date);
   const canEditAvailability = !isDateKeyBeforeToday(dateKey);
+  const canBulkSelectDate = isDjGigsCalendarBulkSelectableDateKey(dateKey);
   const sortedDayBookings = sortDjGigsCalendarAgendaBookings(dayBookings);
   const pendingBookings = sortedDayBookings.filter((booking) => booking.status === "pending");
   const acceptedBookings = sortedDayBookings.filter((booking) => booking.status === "accepted");
@@ -918,13 +920,13 @@ function DjAvailabilityDayCell({
     isPreviewingAvailability && pendingBulkChoice.type === "clear";
 
   function handleCellClick() {
-    if (multiSelectMode) {
+    if (multiSelectMode && canBulkSelectDate) {
       onToggleSelect();
     }
   }
 
   function handleCellKeyDown(event: { key: string; preventDefault: () => void }) {
-    if (!multiSelectMode) {
+    if (!multiSelectMode || !canBulkSelectDate) {
       return;
     }
 
@@ -936,23 +938,25 @@ function DjAvailabilityDayCell({
 
   return (
     <div
-      role={multiSelectMode ? "button" : undefined}
-      tabIndex={multiSelectMode ? 0 : undefined}
-      aria-pressed={multiSelectMode ? isSelected : undefined}
-      aria-label={multiSelectMode ? `Select ${dateKey}` : undefined}
-      onClick={multiSelectMode ? handleCellClick : undefined}
-      onKeyDown={multiSelectMode ? handleCellKeyDown : undefined}
+      role={multiSelectMode && canBulkSelectDate ? "button" : undefined}
+      tabIndex={multiSelectMode && canBulkSelectDate ? 0 : undefined}
+      aria-pressed={multiSelectMode && canBulkSelectDate ? isSelected : undefined}
+      aria-label={multiSelectMode && canBulkSelectDate ? `Select ${dateKey}` : undefined}
+      onClick={multiSelectMode && canBulkSelectDate ? handleCellClick : undefined}
+      onKeyDown={multiSelectMode && canBulkSelectDate ? handleCellKeyDown : undefined}
       className={`relative min-h-[6.5rem] rounded-lg border bg-ftc-bg-elevated/20 p-1.5 transition sm:min-h-[7.5rem] sm:p-2 ${
         multiSelectMode
-          ? isSelected
-            ? "cursor-pointer border-ftc-primary"
-            : "cursor-pointer border-ftc-border/70 hover:border-ftc-border-strong"
+          ? canBulkSelectDate
+            ? isSelected
+              ? "cursor-pointer border-ftc-primary"
+              : "cursor-pointer border-ftc-border/70 hover:border-ftc-border-strong"
+            : "border-ftc-border/70"
           : menuOpen
             ? "border-ftc-border-strong"
             : "border-ftc-border/70 hover:border-ftc-border-strong/90"
       }`}
     >
-      {multiSelectMode && isSelected ? (
+      {multiSelectMode && canBulkSelectDate && isSelected ? (
         <span className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-full bg-ftc-primary-dim text-white">
           <svg aria-hidden="true" viewBox="0 0 24 24" className="h-2.5 w-2.5" fill="none" stroke="currentColor" strokeWidth="3">
             <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" />
@@ -1209,6 +1213,10 @@ export default function DjAvailabilityCalendar({
   }, [closeCalendarOverlays]);
 
   const toggleDateSelection = useCallback((dateKey: string) => {
+    if (!isDjGigsCalendarBulkSelectableDateKey(dateKey)) {
+      return;
+    }
+
     setSelectedDateKeys((current) => {
       const next = new Set(current);
 
@@ -1223,7 +1231,11 @@ export default function DjAvailabilityCalendar({
   }, []);
 
   function selectDisplayedDatesMatching(predicate: (date: Date) => boolean) {
-    const keys = getDisplayedMonthDates(monthStart).filter(predicate).map(toDateKey);
+    const keys = getDisplayedMonthDates(monthStart)
+      .filter(predicate)
+      .map(toDateKey)
+      .filter(isDjGigsCalendarBulkSelectableDateKey);
+
     setSelectedDateKeys(new Set(keys));
   }
 
@@ -1279,7 +1291,7 @@ export default function DjAvailabilityCalendar({
       return;
     }
 
-    const dates = [...selectedDateKeys];
+    const dates = [...selectedDateKeys].filter(isDjGigsCalendarBulkSelectableDateKey);
     setBulkSaving(true);
     setBulkActionError(null);
 

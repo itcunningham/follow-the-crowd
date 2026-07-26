@@ -782,6 +782,11 @@ export function shouldShowCalendarDateStripIndicators(dateKey: string): boolean 
   return !isDateKeyBeforeToday(dateKey);
 }
 
+/** Gigs Calendar bulk / Quick Select must not include dates before local today. */
+export function isDjGigsCalendarBulkSelectableDateKey(dateKey: string): boolean {
+  return !isDateKeyBeforeToday(dateKey);
+}
+
 export function getPlannerCalendarDateStripMarker(
   items: CalendarItem[],
   isHighlighted: boolean,
