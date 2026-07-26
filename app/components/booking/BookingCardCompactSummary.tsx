@@ -82,6 +82,10 @@ export function getBookingCardCompactRateLine(
   pendingProposal: boolean,
 ): string {
   if (booking.rate_mode === "open" && pendingProposal) {
+    if (offerRateLabel === "Ask for rate") {
+      return "Ask for rate";
+    }
+
     return `${rateDetailLabel} · ${offerRateLabel}`;
   }
 

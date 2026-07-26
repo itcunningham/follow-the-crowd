@@ -217,19 +217,14 @@ export default function BookingRequestCard({
   }
 
   function renderHeaderBadges() {
+    if (!showOpenOfferLabel) {
+      return null;
+    }
+
     return (
-      <>
-        {showOpenOfferLabel ? (
-          <span className="inline-flex rounded-full border border-ftc-border-subtle bg-ftc-bg-elevated px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-ftc-primary">
-            Ask for rate
-          </span>
-        ) : null}
-        {pendingProposal ? (
-          <span className="inline-flex rounded-full border border-ftc-border-subtle bg-ftc-bg-elevated px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-ftc-primary">
-            Rate proposed
-          </span>
-        ) : null}
-      </>
+      <span className="inline-flex rounded-full border border-ftc-border-subtle bg-ftc-bg-elevated px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-ftc-primary">
+        Ask for rate
+      </span>
     );
   }
 

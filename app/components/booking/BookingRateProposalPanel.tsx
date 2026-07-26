@@ -39,7 +39,7 @@ export default function BookingRateProposalPanel({
         Rate proposed
       </p>
       <p className="mt-1 text-sm font-semibold text-ftc-text">
-        DJ proposed {formatIntegerRateDisplay(booking.proposed_rate)}
+        {formatIntegerRateDisplay(booking.proposed_rate)}
       </p>
       {booking.proposed_rate_note?.trim() ? (
         <p className="mt-2 text-sm leading-relaxed text-ftc-text-muted">
@@ -131,7 +131,7 @@ export function BookingRateProposalNotice({
           Rate proposed
         </p>
         <p className="mt-1 text-sm font-semibold text-ftc-text">
-          DJ proposed {formatIntegerRateDisplay(booking.proposed_rate)}
+          {formatIntegerRateDisplay(booking.proposed_rate)}
         </p>
         {booking.proposed_rate_note?.trim() ? (
           <p className="mt-2 text-sm leading-relaxed text-ftc-text-muted">
