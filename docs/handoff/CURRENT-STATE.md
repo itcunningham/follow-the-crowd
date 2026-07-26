@@ -249,7 +249,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
-- `02463cd` — Restore Event Calendar status pill position
+- `5d1dac6` — Fix Event Plan card text overflow
 - `36132c8` — Improve Event Calendar agenda card hierarchy
 - `bc339db` — Unify Event Details with shared notification system
 - `2ba503a` — Match Event Details notification position to Gigs
