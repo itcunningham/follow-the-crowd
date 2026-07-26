@@ -149,6 +149,21 @@ export function eventInputFromBookingPlan(plan: BookingPlan): EventInput {
   };
 }
 
+export function eventInputFromBookingRequestInput(
+  input: Pick<BookingRequestInput, "eventName" | "venue" | "eventDate" | "setTime" | "fee" | "notes">,
+  bookingPlanId?: string | null,
+): EventInput {
+  return {
+    name: input.eventName,
+    venue: input.venue,
+    eventDate: input.eventDate,
+    setTime: input.setTime,
+    rate: normalizeStoredRate(input.fee),
+    notes: input.notes,
+    bookingPlanId: bookingPlanId ?? null,
+  };
+}
+
 export function getEventDateDisplayLabel(
   eventDate: string,
   setTime = "",

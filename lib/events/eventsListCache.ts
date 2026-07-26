@@ -130,6 +130,16 @@ export function writeEventsListCache(isPlanner: boolean, events: EventWithLineup
   }
 }
 
+/** Insert or refresh one event at the front of the planner list cache after off-page creation. */
+export function prependEventToEventsListCache(
+  isPlanner: boolean,
+  event: EventWithLineupStats,
+): void {
+  const cached = readEventsListCache(isPlanner);
+  const next = [event, ...cached.filter((item) => item.id !== event.id)];
+  writeEventsListCache(isPlanner, next);
+}
+
 export function readCachedEventOwnerId(eventId: string): string | null | undefined {
   if (!eventId.trim()) {
     return undefined;

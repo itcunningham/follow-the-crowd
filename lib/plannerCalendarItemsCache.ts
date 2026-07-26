@@ -86,3 +86,16 @@ export function writePlannerCalendarItemsCache(items: CalendarItem[]): void {
     console.error("[planner-calendar] Failed to write items cache:", cacheError);
   }
 }
+
+export function clearPlannerCalendarItemsCache(): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    window.sessionStorage.removeItem(PLANNER_CALENDAR_ITEMS_CACHE_KEY);
+    window.localStorage.removeItem(PLANNER_CALENDAR_ITEMS_LOCAL_CACHE_KEY);
+  } catch (cacheError) {
+    console.error("[planner-calendar] Failed to clear items cache:", cacheError);
+  }
+}

@@ -2500,6 +2500,23 @@ function testBookingsUsePlanCancelReturnsToEventPlans() {
   assert.match(planDeepLinkSource, /router\.replace\(returnHref, \{ scroll: false \}\)/);
 }
 
+function testBookingsUsePlanCreatesEventBeforeSend() {
+  const bookingsSource = readFileSync(
+    new URL("../app/(planner-workspace)/bookings/page.tsx", import.meta.url),
+    "utf8",
+  );
+  const eventsSource = readFileSync(new URL("../lib/events.ts", import.meta.url), "utf8");
+
+  assert.match(eventsSource, /eventInputFromBookingRequestInput/);
+  assert.match(
+    bookingsSource,
+    /if \(!eventId\) \{[\s\S]*createEvent\([\s\S]*eventInputFromBookingRequestInput\(form, effectiveSelectedPlanId\)/,
+  );
+  assert.match(bookingsSource, /prependEventToEventsListCache\(true, createdWithStats\)/);
+  assert.match(bookingsSource, /clearPlannerCalendarItemsCache\(\)/);
+  assert.match(bookingsSource, /existingEventBookings: duplicateSource/);
+}
+
 function testCalendarCreateWorkspaceTabNavigation() {
   const eventsSource = readFileSync(
     new URL("../app/(planner-workspace)/events/EventsPageClient.tsx", import.meta.url),
@@ -3618,6 +3635,7 @@ async function main() {
   testEventsCreateFlowTabPillNavigation();
   testBookingsUsePlanWorkspaceTabNavigation();
   testBookingsUsePlanCancelReturnsToEventPlans();
+  testBookingsUsePlanCreatesEventBeforeSend();
   testCalendarCreateWorkspaceTabNavigation();
   testEventsListTabSwitchUsesClientHistoryWithoutRouterNavigation();
   testEventsCreateEventHiddenDuringHistorySelectionToolbar();

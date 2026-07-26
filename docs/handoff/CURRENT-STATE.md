@@ -168,6 +168,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 - **Use Plan flow polish (2026-07-14):** Event details step shows `Plan` label + plan name; Use Plan entry uses top-right Cancel (returns to Event Plans); header uses `ftc-form-card-header` spacing to match Create Event
 - **Use Plan workspace tabs (2026-07-25):** while planner booking create is open on `/bookings` (Event Plans → Use Plan), Gigs Incoming/Confirmed/History sub-tabs are not mounted (`plannerBookingCreateOpen` synced via `GigsWorkspaceChromeState` after deep link clears `planId` from URL); workspace sub-nav intercept closes create via `resetCreateFlowState` then navigates; Event Plans stays highlighted
 - **Use Plan cancel on DJ step (2026-07-26):** Cancel on step 1 or 2 returns to Event Plans without resetting `createOpen` first — bookings create UI and Event Plans workspace highlight stay mounted until `router.replace("/booking-plans")`; no transient Gigs Incoming/Confirmed/History render
+- **Use Plan event creation (2026-07-26):** sending booking requests from Event Plans → Use Plan now creates an `events` row first (same `createEvent` path as Events → Create event), links booking requests via `event_id`, prepends Events Active cache, and clears planner calendar cache so new events appear immediately in Events → Active and on Calendar; saved Event Plan unchanged
 
 ## Group chat
 
@@ -250,6 +251,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `(pending)` — fix Event Plan Use Plan event creation flow
 - `8364a0c` — Improve long event title wrapping and truncation
 - `36132c8` — Improve Event Calendar agenda card hierarchy
 - `bc339db` — Unify Event Details with shared notification system

@@ -42,6 +42,14 @@ import EventDjSendOfferControls, {
   type DjSendOffer,
 } from "@/app/components/booking/EventDjSendOfferControls";
 import { PlannerEmptyState, PlannerFormField } from "@/app/components/planner/PlannerUi";
+import {
+  attachLineupStats,
+  createEvent,
+  eventInputFromBookingRequestInput,
+  getEventById,
+} from "@/lib/events";
+import { prependEventToEventsListCache } from "@/lib/events/eventsListCache";
+import { clearPlannerCalendarItemsCache } from "@/lib/plannerCalendarItemsCache";
 import { getEventNotesValidationError, MAX_EVENT_NOTES_LENGTH } from "@/lib/events/eventNotes";
 import {
   getEventNameVenueFieldErrors,
@@ -1545,25 +1553,9 @@ function BookingsPageContent() {
     recipientIds: string[] = sendableSelectedDjIds,
     skippedDuplicateCount = 0,
   ) {
-    const duplicateSource = form.eventId ? eventBookings : [];
-    const { sendableIds, skippedIds } = form.eventId
-      ? filterSendableRecipientIdsForEvent(recipientIds, duplicateSource)
-      : { sendableIds: recipientIds, skippedIds: [] as string[] };
-    const totalSkippedDuplicates = skippedDuplicateCount + skippedIds.length;
-
-    if (sendableIds.length === 0) {
-      if (form.eventId) {
-        setError(ALL_SELECTED_DJS_ALREADY_HAVE_EVENT_REQUEST_MESSAGE);
-        setSelectedDjIds([]);
-        return;
-      }
-
+    if (recipientIds.length === 0) {
       setError("Select at least one DJ.");
       return;
-    }
-
-    if (skippedIds.length > 0) {
-      setSelectedDjIds(sendableIds);
     }
 
     setSending(true);
@@ -1572,6 +1564,36 @@ function BookingsPageContent() {
     setSuccessMessage(null);
 
     try {
+      let eventId = form.eventId?.trim() ?? "";
+
+      if (!eventId) {
+        const createdEvent = await createEvent(
+          eventInputFromBookingRequestInput(form, effectiveSelectedPlanId),
+        );
+        eventId = createdEvent.id;
+        setForm((previous) => ({ ...previous, eventId }));
+        const [createdWithStats] = await attachLineupStats([createdEvent]);
+        prependEventToEventsListCache(true, createdWithStats);
+        clearPlannerCalendarItemsCache();
+      }
+
+      const duplicateSource = await listBookingRequestsForEvent(eventId);
+      const { sendableIds, skippedIds } = filterSendableRecipientIdsForEvent(
+        recipientIds,
+        duplicateSource,
+      );
+      const totalSkippedDuplicates = skippedDuplicateCount + skippedIds.length;
+
+      if (sendableIds.length === 0) {
+        setError(ALL_SELECTED_DJS_ALREADY_HAVE_EVENT_REQUEST_MESSAGE);
+        setSelectedDjIds([]);
+        return;
+      }
+
+      if (skippedIds.length > 0) {
+        setSelectedDjIds(sendableIds);
+      }
+
       const { successes, failures, skippedDuplicateRecipientIds } =
         await sendBookingRequestsToDjs(
           sendableIds,
@@ -1582,10 +1604,10 @@ function BookingsPageContent() {
             setTime: form.setTime,
             notes: form.notes,
             fee: "",
-            eventId: form.eventId,
+            eventId,
           },
           {
-            existingEventBookings: form.eventId ? duplicateSource : undefined,
+            existingEventBookings: duplicateSource,
             perRecipient: (recipientId) => {
               const offer = djOffers[recipientId] ?? DEFAULT_DJ_SEND_OFFER;
 
@@ -1597,6 +1619,13 @@ function BookingsPageContent() {
           },
         );
       const skippedCount = totalSkippedDuplicates + skippedDuplicateRecipientIds.length;
+
+      const savedEvent = await getEventById(eventId);
+
+      if (savedEvent) {
+        const [savedWithStats] = await attachLineupStats([savedEvent]);
+        prependEventToEventsListCache(true, savedWithStats);
+      }
 
       if (successes.length === 0) {
         if (skippedCount > 0) {
