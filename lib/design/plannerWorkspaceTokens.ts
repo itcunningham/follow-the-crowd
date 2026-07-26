@@ -32,10 +32,6 @@ export const PLANNER_WORKSPACE_TITLE_ACTIONS_CLASS =
 export const PLANNER_WORKSPACE_TITLE_FEEDBACK_SLOT_CLASS =
   "pointer-events-none absolute inset-x-0 top-full z-50 mt-1.5 flex items-center justify-center";
 
-/** App-wide fixed overlay host for planner title feedback (Gigs History, Event Details, etc.). */
-export const PLANNER_WORKSPACE_TITLE_FEEDBACK_HOST_CLASS =
-  "pointer-events-none fixed inset-x-0 z-[60] mx-auto flex w-full max-w-2xl items-center justify-center px-4 sm:px-6 md:max-w-5xl top-[calc(env(safe-area-inset-top)+4.125rem)] md:top-[calc(env(safe-area-inset-top)+7.125rem)]";
-
 export const PLANNER_WORKSPACE_SUBNAV_SLOT_CLASS = "mt-4 min-h-11 md:min-h-11";
 
 export const PLANNER_WORKSPACE_SUBNAV_ROW_CLASS =

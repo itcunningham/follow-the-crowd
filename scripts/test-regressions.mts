@@ -3101,6 +3101,10 @@ function testHistoryRemovalHeaderFeedbackUnified() {
     new URL("../app/components/planner/PlannerTitleFeedbackProvider.tsx", import.meta.url),
     "utf8",
   );
+  const titleFeedbackMountSource = readFileSync(
+    new URL("../app/components/planner/PlannerTitleFeedbackMount.tsx", import.meta.url),
+    "utf8",
+  );
   const appProvidersSource = readFileSync(
     new URL("../app/components/AppProviders.tsx", import.meta.url),
     "utf8",
@@ -3159,6 +3163,8 @@ function testHistoryRemovalHeaderFeedbackUnified() {
   assert.match(plansSource, /useInlineTabFeedbackDismiss/);
   assert.match(eventDetailSource, /useInlineTabFeedbackDismiss/);
   assert.match(eventDetailSource, /useSyncPlannerTitleFeedback/);
+  assert.match(eventDetailSource, /PlannerTitleFeedbackMount/);
+  assert.match(eventDetailSource, /PLANNER_WORKSPACE_TITLE_ROW_CLASS/);
   assert.doesNotMatch(eventDetailSource, /PlannerWorkspaceTitleFeedback/);
   assert.match(
     eventDetailSource,
@@ -3200,16 +3206,17 @@ function testHistoryRemovalHeaderFeedbackUnified() {
     new URL("../lib/design/plannerWorkspaceTokens.ts", import.meta.url),
     "utf8",
   );
-  assert.match(plannerTokensSource, /PLANNER_WORKSPACE_TITLE_FEEDBACK_HOST_CLASS[\s\S]*fixed inset-x-0/);
   assert.match(plannerTokensSource, /PLANNER_WORKSPACE_TITLE_FEEDBACK_SLOT_CLASS[\s\S]*absolute inset-x-0/);
+  assert.match(titleFeedbackMountSource, /PLANNER_WORKSPACE_TITLE_FEEDBACK_SLOT_CLASS/);
+  assert.match(titleFeedbackMountSource, /PlannerWorkspaceTitleFeedback/);
   assert.doesNotMatch(titleFeedbackSource, /onAnimationEnd/);
   assert.doesNotMatch(titleFeedbackSource, /ftc-history-removal-feedback/);
   assert.match(layoutSource, /PLANNER_WORKSPACE_TITLE_ROW_CLASS} relative/);
+  assert.match(layoutSource, /PlannerTitleFeedbackMount/);
   assert.match(layoutSource, /setTitleFeedback/);
   assert.doesNotMatch(layoutSource, /PlannerWorkspaceTitleFeedback/);
-  assert.match(titleFeedbackProviderSource, /PlannerWorkspaceTitleFeedback/);
-  assert.match(titleFeedbackProviderSource, /PLANNER_WORKSPACE_TITLE_FEEDBACK_HOST_CLASS/);
   assert.match(titleFeedbackProviderSource, /useSyncPlannerTitleFeedback/);
+  assert.doesNotMatch(titleFeedbackProviderSource, /PLANNER_WORKSPACE_TITLE_FEEDBACK_HOST_CLASS/);
   assert.match(appProvidersSource, /PlannerTitleFeedbackProvider/);
   assert.match(rootLayoutSource, /AppProviders/);
   assert.doesNotMatch(onboardingGuardSource, /PlannerTitleFeedbackProvider/);

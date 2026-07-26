@@ -9,8 +9,6 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { PlannerWorkspaceTitleFeedback } from "@/app/components/planner/PlannerWorkspaceTitleFeedback";
-import { PLANNER_WORKSPACE_TITLE_FEEDBACK_HOST_CLASS } from "@/lib/design/plannerWorkspaceTokens";
 
 type TitleFeedbackState = {
   message: string | null;
@@ -21,7 +19,9 @@ type PlannerTitleFeedbackContextValue = {
   setTitleFeedback: (patch: Partial<TitleFeedbackState>) => void;
 };
 
-const PlannerTitleFeedbackContext = createContext<PlannerTitleFeedbackContextValue | null>(null);
+const PlannerTitleFeedbackContext = createContext<
+  (PlannerTitleFeedbackContextValue & TitleFeedbackState) | null
+>(null);
 
 export function PlannerTitleFeedbackProvider({ children }: { children: ReactNode }) {
   const [feedback, setFeedbackState] = useState<TitleFeedbackState>({
@@ -36,14 +36,17 @@ export function PlannerTitleFeedbackProvider({ children }: { children: ReactNode
     }));
   }, []);
 
-  const value = useMemo(() => ({ setTitleFeedback }), [setTitleFeedback]);
+  const value = useMemo(
+    () => ({
+      ...feedback,
+      setTitleFeedback,
+    }),
+    [feedback, setTitleFeedback],
+  );
 
   return (
     <PlannerTitleFeedbackContext.Provider value={value}>
       {children}
-      <div className={PLANNER_WORKSPACE_TITLE_FEEDBACK_HOST_CLASS} aria-live="polite">
-        <PlannerWorkspaceTitleFeedback message={feedback.message} fading={feedback.fading} />
-      </div>
     </PlannerTitleFeedbackContext.Provider>
   );
 }
@@ -56,6 +59,19 @@ export function usePlannerTitleFeedback(): PlannerTitleFeedbackContextValue {
   }
 
   return context;
+}
+
+export function usePlannerTitleFeedbackState(): TitleFeedbackState {
+  const context = useContext(PlannerTitleFeedbackContext);
+
+  if (!context) {
+    throw new Error("usePlannerTitleFeedbackState must be used within PlannerTitleFeedbackProvider");
+  }
+
+  return {
+    message: context.message,
+    fading: context.fading,
+  };
 }
 
 /** Sync transient title feedback from any FTC screen (Gigs History, Event Details, etc.). */
