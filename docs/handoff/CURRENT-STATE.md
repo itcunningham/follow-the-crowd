@@ -49,7 +49,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 
 ## Events
 
-- **Events empty state (2026-07-26):** planner Active tab shows `No events`; Event Plans: `No saved event plans`. Gigs tab empty copy: Incoming `No incoming gigs`, Confirmed `No confirmed gigs`, History `No past or cancelled gigs`.
+- **Events empty state (2026-07-26):** planner Active tab shows `No events`; Event Plans: `No saved event plans`. Gigs tab empty copy: Incoming `No incoming gigs`, Confirmed `No confirmed gigs`, History `No gig history`. Events History: `No event history`.
 - Optional event flyer upload (JPEG/PNG/WebP, 5 MB, bucket `event-covers`)
 - **Event cover images (2026-07-14):** Event Details centred natural-aspect flyer hero (~430px max-height); status badge overlaps flyer foot; tighter flyer→title spacing; coloured fallback header unchanged; edit preview + list thumbs unchanged
 - Event colour: 8 selectable + Auto (slate neutral when Auto or legacy slate)
