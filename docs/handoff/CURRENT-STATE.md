@@ -227,6 +227,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `0105b83` — fix planner calendar pending booking navigation to Event Details
 - `5e9adae` — fix Calendar create workspace tab requiring two taps
 - `34154ca` — fix workspace navigation during Calendar create event flow
 - `308c4a1` — hide Gigs sub-tabs during Event Plan Use Plan flow
