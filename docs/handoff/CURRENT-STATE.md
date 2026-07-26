@@ -248,7 +248,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
-- `TBD` — Improve Event Calendar agenda card hierarchy
+- `a7084f2` — Improve Event Calendar agenda card hierarchy
 - `bc339db` — Unify Event Details with shared notification system
 - `2ba503a` — Match Event Details notification position to Gigs
 - `e9d82d6` — Refine Event Details status and success notification
