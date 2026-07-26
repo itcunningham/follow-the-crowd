@@ -6,6 +6,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { useSetPlannerWorkspaceHeaderState } from "@/app/components/planner/PlannerWorkspaceLayout";
 import {
   groupActiveBookingsByDate,
+  getBookingStatusBadgeClass,
   listMyActiveReceivedBookings,
   sortDjGigsCalendarAgendaBookings,
   formatBookingStatusLabel,
@@ -22,20 +23,17 @@ import {
   FTC_STATUS_DANGER,
 } from "@/lib/ftcFlatStatus";
 import CalendarDotLegend from "@/app/components/calendar/CalendarDotLegend";
-import BookingStatusBadge from "@/app/components/booking/BookingStatusBadge";
 import CalendarMobileChrome, {
   CALENDAR_MOBILE_CHROME_GIGS_DAY_STRIP_CLASS,
 } from "@/app/components/calendar/CalendarMobileChrome";
 import {
-  CALENDAR_MOBILE_AGENDA_CARD_BODY_CLASS,
-  CALENDAR_MOBILE_AGENDA_CARD_CONTENT_CLASS,
   CALENDAR_MOBILE_AGENDA_CARD_LEADING_CLASS,
   CALENDAR_MOBILE_AGENDA_CARD_LIST_CLASS,
-  CALENDAR_MOBILE_AGENDA_CARD_TITLE_CLASS,
   CALENDAR_MOBILE_INTERACTIVE_PRESS_CLASS,
   CalendarMobileAgendaCard,
   CalendarMobileDashedEmptyState,
   CalendarMobileSelectedDayHeader,
+  CompactCalendarEventVenueTitle,
   useCalendarMobileAgendaTransition,
 } from "@/app/components/calendar/calendarMobileUi";
 import PlannerCalendarMobileDateStrip from "@/app/components/PlannerCalendarMobileDateStrip";
@@ -95,6 +93,8 @@ import {
 } from "@/lib/design/inlineTabFeedback";
 import { getEventArtworkByIds } from "@/lib/events";
 
+const GIGS_CALENDAR_AGENDA_CARD_SHELL_CLASS =
+  "border border-ftc-border bg-ftc-surface/80 hover:border-ftc-primary/30 hover:bg-ftc-surface";
 
 function renderDjCalendarAgendaLeadingBanner(eventFallbackColour: string | null | undefined) {
   return (
@@ -104,6 +104,7 @@ function renderDjCalendarAgendaLeadingBanner(eventFallbackColour: string | null 
     />
   );
 }
+
 const AVAILABILITY_STATUS_VALUES: readonly DjAvailabilityStatus[] = [
   "available",
   "tentative",
@@ -284,8 +285,7 @@ function DayBookingsPopover({
               )}
               onBeforeNavigate={onClose}
               onNavigationError={onBookingNavigationError}
-              compact
-              className="block w-full rounded-lg border border-ftc-border bg-ftc-surface/80 px-2.5 py-2 text-left hover:border-ftc-primary/30 hover:bg-ftc-surface"
+              className={GIGS_CALENDAR_AGENDA_CARD_SHELL_CLASS}
             />
           </li>
         ))}
@@ -484,16 +484,14 @@ function DjCalendarBookingNavButton({
   eventFallbackColour = null,
   onBeforeNavigate,
   onNavigationError,
-  className,
-  compact = false,
+  className = GIGS_CALENDAR_AGENDA_CARD_SHELL_CLASS,
 }: {
   booking: BookingRequest;
   calendarOrigin: CalendarOriginState;
   eventFallbackColour?: string | null;
   onBeforeNavigate?: () => void;
   onNavigationError?: (message: string) => void;
-  className: string;
-  compact?: boolean;
+  className?: string;
 }) {
   const router = useRouter();
   const navigatedThisGestureRef = useRef(false);
@@ -578,42 +576,6 @@ function DjCalendarBookingNavButton({
     performNavigation("click");
   }, [performNavigation]);
 
-  if (compact) {
-    return (
-      <button
-        type="button"
-        onPointerDown={handlePointerDown}
-        onPointerUp={handlePointerUp}
-        onPointerCancel={handlePointerCancel}
-        onClick={handleClick}
-        aria-label={`${eventName}, ${statusLabel}`}
-        onContextMenu={(event) => event.preventDefault()}
-        className={`${className} touch-manipulation [-webkit-touch-callout:none] ${CALENDAR_MOBILE_INTERACTIVE_PRESS_CLASS}`}
-      >
-        <span className="pointer-events-none block w-full min-w-0 overflow-hidden">
-          <span className={CALENDAR_MOBILE_AGENDA_CARD_BODY_CLASS}>
-            {renderDjCalendarAgendaLeadingBanner(eventFallbackColour)}
-            <span className={CALENDAR_MOBILE_AGENDA_CARD_CONTENT_CLASS}>
-              <span className="flex min-w-0 items-center justify-between gap-2 overflow-hidden">
-                <span className={`min-w-0 flex-1 overflow-hidden ${CALENDAR_MOBILE_AGENDA_CARD_TITLE_CLASS} text-xs`}>
-                  {eventName}
-                </span>
-                <span className="flex shrink-0 basis-[5.75rem] justify-end self-center">
-                  <BookingStatusBadge status={cardBookingStatus} variant="compact" />
-                </span>
-              </span>
-              {booking.set_time.trim() ? (
-                <span className="mt-0.5 block truncate text-[11px] text-ftc-text-muted">
-                  {formatCalendarTimeLabel(booking.set_time)}
-                </span>
-              ) : null}
-            </span>
-          </span>
-        </span>
-      </button>
-    );
-  }
-
   return (
     <CalendarMobileAgendaCard
       onPointerDown={handlePointerDown}
@@ -625,10 +587,14 @@ function DjCalendarBookingNavButton({
       shellClassName={className}
       className={`touch-manipulation [-webkit-touch-callout:none] ${CALENDAR_MOBILE_INTERACTIVE_PRESS_CLASS}`}
       leading={renderDjCalendarAgendaLeadingBanner(eventFallbackColour)}
-      badge={<BookingStatusBadge status={cardBookingStatus} variant="compact" />}
-      heading={
-        <span className={`${CALENDAR_MOBILE_AGENDA_CARD_TITLE_CLASS} text-sm`}>{eventName}</span>
+      badge={
+        <span
+          className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${getBookingStatusBadgeClass(cardBookingStatus)}`}
+        >
+          {formatBookingStatusLabel(cardBookingStatus)}
+        </span>
       }
+      heading={<CompactCalendarEventVenueTitle eventName={eventName} venue={booking.venue} />}
       time={
         booking.set_time.trim() ? (
           <span className="block truncate text-xs text-ftc-text-muted">
@@ -659,7 +625,7 @@ function DjCalendarMobileBookingCard({
       calendarOrigin={calendarOrigin}
       eventFallbackColour={eventFallbackColour}
       onNavigationError={onNavigationError}
-      className="border border-ftc-border bg-ftc-surface/80 hover:border-ftc-primary/30 hover:bg-ftc-surface"
+      className={GIGS_CALENDAR_AGENDA_CARD_SHELL_CLASS}
     />
   );
 }
@@ -746,21 +712,20 @@ function DjAvailabilityMobileDayPanel({
         inert={isAgendaTransitionInteractive ? undefined : true}
       >
         {sortedDayBookings.length > 0 ? (
-          <ul className={CALENDAR_MOBILE_AGENDA_CARD_LIST_CLASS}>
+          <div className={CALENDAR_MOBILE_AGENDA_CARD_LIST_CLASS}>
             {sortedDayBookings.map((booking) => (
-              <li key={booking.id}>
-                <DjCalendarMobileBookingCard
-                  booking={booking}
-                  calendarOrigin={bookingsCalendarOrigin}
-                  eventFallbackColour={resolveCalendarBookingEventFallbackColour(
-                    booking.event_id,
-                    eventFallbackColourById,
-                  )}
-                  onNavigationError={onBookingNavigationError}
-                />
-              </li>
+              <DjCalendarMobileBookingCard
+                key={booking.id}
+                booking={booking}
+                calendarOrigin={bookingsCalendarOrigin}
+                eventFallbackColour={resolveCalendarBookingEventFallbackColour(
+                  booking.event_id,
+                  eventFallbackColourById,
+                )}
+                onNavigationError={onBookingNavigationError}
+              />
             ))}
-          </ul>
+          </div>
         ) : canEditAvailability ? (
           <div className="mt-3">
             <CalendarMobileDashedEmptyState message="No booking requests on this date" />
