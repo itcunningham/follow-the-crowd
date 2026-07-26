@@ -103,22 +103,13 @@ export default function ProfileGenrePicker({
             onClick={(event) => event.stopPropagation()}
           >
             <div className="border-b border-ftc-border-subtle px-4 pb-4 pt-4 sm:px-5">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <h2 id="profile-genre-picker-title" className="text-base font-semibold text-ftc-text">
-                    Music genres
-                  </h2>
-                  <p className="mt-1 text-xs text-ftc-text-muted">
-                    {selectedTags.length} of {MAX_PROFILE_GENRE_TAGS} selected
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setSheetOpen(false)}
-                  className="rounded-lg border border-ftc-border-subtle px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-ftc-text-secondary transition hover:border-ftc-border-strong hover:text-ftc-text"
-                >
-                  Cancel
-                </button>
+              <div>
+                <h2 id="profile-genre-picker-title" className="text-base font-semibold text-ftc-text">
+                  Music genres
+                </h2>
+                <p className="mt-1 text-xs text-ftc-text-muted">
+                  {selectedTags.length} of {MAX_PROFILE_GENRE_TAGS} selected
+                </p>
               </div>
 
               <input
