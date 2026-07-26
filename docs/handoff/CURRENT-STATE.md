@@ -235,6 +235,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `<pending>` — fix Use Plan cancel flicker through Gigs workspace
 - `79be94a` — fix Use Plan step-2 cancel return to Event Plans
 - `c2e54d0` — fix(gigs-calendar): use shared title-row feedback for availability updates
 - `b89ecd3` — fix(gigs-calendar): prevent selecting past dates
