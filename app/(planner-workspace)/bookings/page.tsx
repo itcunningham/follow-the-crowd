@@ -2189,7 +2189,7 @@ function BookingsPageContent() {
             ) : error && !plannerCreateVisible ? (
               <p className="text-sm text-red-400">{error}</p>
             ) : gigsListReady && receivedBookings.length === 0 ? (
-              <PlannerEmptyState title="No gigs yet" />
+              <PlannerEmptyState title="No gigs" />
             ) : filteredReceivedBookings.length === 0 && !gigsHistoryBulkManage.removing ? (
               <p className="rounded-xl border border-ftc-border-subtle bg-ftc-surface/40 px-4 py-8 text-center text-sm text-ftc-text-muted">
                 {getGigsEmptyMessage(displayedGigsTab)}

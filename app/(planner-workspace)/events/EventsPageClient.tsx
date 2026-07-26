@@ -1604,7 +1604,7 @@ function EventsPageClientView({
                     isHistoryTab
                       ? "No past or cancelled events"
                       : isPlanner
-                        ? "No events yet"
+                        ? "No events"
                         : "No event invitations yet"
                   }
                 />

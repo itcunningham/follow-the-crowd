@@ -9,7 +9,7 @@ import {
   PlannerWorkspacePage,
   useSetPlannerWorkspaceHeaderState,
 } from "@/app/components/planner/PlannerWorkspaceLayout";
-import { PlannerFormCard, PlannerFormField, PlannerInlineError } from "@/app/components/planner/PlannerUi";
+import { PlannerEmptyState, PlannerFormCard, PlannerFormField, PlannerInlineError } from "@/app/components/planner/PlannerUi";
 import {
   BookingPlanListSkeleton,
   SavedEventPlansSectionHeader,
@@ -631,19 +631,7 @@ export default function BookingPlansPage() {
               ) : error && plans.length === 0 ? (
                 <PlannerInlineError message={error} />
               ) : plans.length === 0 ? (
-                <div className="ftc-card-empty px-6 py-12 text-center">
-                  <p className="text-base font-medium text-ftc-text-secondary">No saved event plans yet</p>
-                  <p className="mt-2 text-sm text-ftc-text-muted">
-                    Create an event plan to reuse details when booking DJs
-                  </p>
-                  <button
-                    type="button"
-                    onClick={openCreateForm}
-                    className="ftc-btn-primary mt-6 px-5 py-3 text-sm uppercase tracking-wide"
-                  >
-                    Create event plan
-                  </button>
-                </div>
+                <PlannerEmptyState title="No saved event plans" />
               ) : (
                 <ul className={FTC_LIST_GAP_CLASS}>
                   {visiblePlans.map((plan) => (
