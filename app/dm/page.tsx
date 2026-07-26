@@ -75,12 +75,9 @@ function removeUnreadEventChatId(previous: Set<string>, eventId: string): Set<st
 function GroupChatsEmptyState() {
   return (
     <div className="flex flex-col items-center justify-center px-6 py-16 text-center sm:py-24">
-      <div className="flex h-11 w-11 items-center justify-center rounded-2xl border-0 bg-ftc-primary text-xs font-semibold uppercase tracking-wide text-ftc-bg">
-        GC
-      </div>
       <h2 className="mt-5 text-lg font-semibold text-ftc-text">No group chats</h2>
       <p className="mt-2 max-w-sm text-sm leading-relaxed text-ftc-text-muted">
-        Event group chats will appear here.
+        Event group chats will appear here
       </p>
     </div>
   );
@@ -199,23 +196,14 @@ function getConversationDisplayName(
   return resolveUserDisplayName(otherUserProfile);
 }
 
-function DirectMessagesEmptyIcon() {
-  return (
-    <div className="flex h-12 w-12 items-center justify-center rounded-2xl border-0 bg-ftc-primary text-xs font-semibold uppercase tracking-wide text-ftc-bg">
-      DM
-    </div>
-  );
-}
-
 function DirectMessagesEmptyState({ compact = false }: { compact?: boolean }) {
   if (compact) {
     return (
       <div className="px-4 py-6 sm:px-6">
         <div className="rounded-xl border border-ftc-border bg-ftc-surface/30 px-4 py-5 text-center">
-          <DirectMessagesEmptyIcon />
           <h3 className="mt-4 text-base font-semibold text-ftc-text">No messages</h3>
           <p className="mt-2 text-sm leading-relaxed text-ftc-text-muted">
-            Your conversations will appear here.
+            Your conversations will appear here
           </p>
         </div>
       </div>
@@ -224,10 +212,9 @@ function DirectMessagesEmptyState({ compact = false }: { compact?: boolean }) {
 
   return (
     <div className="flex flex-col items-center justify-center px-6 py-16 text-center sm:py-24">
-      <DirectMessagesEmptyIcon />
       <h2 className="mt-5 text-lg font-semibold text-ftc-text">No messages</h2>
       <p className="mt-2 max-w-sm text-sm leading-relaxed text-ftc-text-muted">
-        Your conversations will appear here.
+        Your conversations will appear here
       </p>
     </div>
   );
