@@ -245,7 +245,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
-- `45dbbc2` — Refactor Event Details to shared success toast
+- `f737431` — Refactor Event Details to shared success toast
 - `1a74cc5` — Use shared success toast for Event Details
 - `8b8a369` — Match Event Details success toast styling
 - `52d2e1a` — Scroll Event Details to top after save
