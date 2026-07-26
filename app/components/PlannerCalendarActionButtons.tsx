@@ -7,7 +7,11 @@ import {
 } from "@/lib/calendar";
 
 export const PLANNER_CALENDAR_ACTION_BUTTON_CLASS =
-  "ftc-filter-pill inline-flex h-8 min-w-[5.5rem] flex-1 items-center justify-center whitespace-nowrap";
+  "ftc-filter-pill inline-flex h-8 min-w-[5.5rem] w-full items-center justify-center whitespace-nowrap";
+
+const PLANNER_CALENDAR_ACTION_ROW_CLASS = "grid grid-cols-2 items-center gap-2";
+
+const PLANNER_CALENDAR_ACTION_SLOT_RESERVE_CLASS = "h-8 w-full";
 
 type PlannerCalendarActionButtonsProps = {
   dateKey: string;
@@ -28,36 +32,45 @@ export default function PlannerCalendarActionButtons({
   const plansHref = buildPlannerCreateEventFromPlansHref(dateKey);
 
   return (
-    <div className={`flex items-center gap-2 ${className}`}>
-      {onCreateClick ? (
-        <button
-          type="button"
-          onClick={onCreateClick}
-          className={`${PLANNER_CALENDAR_ACTION_BUTTON_CLASS}${hasSavedEventPlans ? "" : " !flex-none"}`}
-        >
-          Create event
-        </button>
-      ) : (
-        <Link
-          href={createHref}
-          scroll={false}
-          className={`${PLANNER_CALENDAR_ACTION_BUTTON_CLASS}${hasSavedEventPlans ? "" : " !flex-none"}`}
-        >
-          Create event
-        </Link>
-      )}
-
-      {hasSavedEventPlans ? (
-        onPlansClick ? (
-          <button type="button" onClick={onPlansClick} className={PLANNER_CALENDAR_ACTION_BUTTON_CLASS}>
-            Event Plans
+    <div className={`${PLANNER_CALENDAR_ACTION_ROW_CLASS} ${className}`}>
+      <div className="min-w-0">
+        {onCreateClick ? (
+          <button
+            type="button"
+            onClick={onCreateClick}
+            className={PLANNER_CALENDAR_ACTION_BUTTON_CLASS}
+          >
+            Create event
           </button>
         ) : (
-          <Link href={plansHref} scroll={false} className={PLANNER_CALENDAR_ACTION_BUTTON_CLASS}>
-            Event Plans
+          <Link
+            href={createHref}
+            scroll={false}
+            className={PLANNER_CALENDAR_ACTION_BUTTON_CLASS}
+          >
+            Create event
           </Link>
-        )
-      ) : null}
+        )}
+      </div>
+
+      <div className="min-w-0">
+        {hasSavedEventPlans ? (
+          onPlansClick ? (
+            <button type="button" onClick={onPlansClick} className={PLANNER_CALENDAR_ACTION_BUTTON_CLASS}>
+              Event Plans
+            </button>
+          ) : (
+            <Link href={plansHref} scroll={false} className={PLANNER_CALENDAR_ACTION_BUTTON_CLASS}>
+              Event Plans
+            </Link>
+          )
+        ) : (
+          <div
+            className={PLANNER_CALENDAR_ACTION_SLOT_RESERVE_CLASS}
+            aria-hidden="true"
+          />
+        )}
+      </div>
     </div>
   );
 }

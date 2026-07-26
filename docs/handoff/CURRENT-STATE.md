@@ -85,6 +85,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 ## Calendar
 
 - **Calendar action CTA (2026-07-22):** mobile/desktop date actions show **Event Plans** (not “Saved Event Plans”) on the second pill; workspace tab and Event Plans page copy unchanged
+- **Calendar action row layout (2026-07-26):** Events Calendar Create Event / Event Plans use a stable two-column grid; when Event Plans is hidden the right slot stays reserved so Create Event position, width, and styling do not shift
 - **Planner Event Calendar cards (2026-07-22):** mobile agenda cards use `usePlannerCalendarItemNavigation` (touch `pointerup` + `location.assign`) to open Event Details with `from=calendar` return params — never DM; calendar origin is forwarded through Event Details → lineup DM → Back → Event Details → Back via `buildEventDetailDmThreadHref` + `resolveDmThreadBackHref` + existing `resolveEventDetailBackHref`
 - **Planner pending calendar navigation (2026-07-26):** pending sent-booking cards resolve Event Details hrefs when `event_id` is missing by linking to the sole owned event on that date (after name/date match); planner calendar item cache bumped to v3
 - Desktop: month grid + day modal (wider layout, same behaviour)
