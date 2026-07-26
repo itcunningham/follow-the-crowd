@@ -23,7 +23,10 @@ import {
   readCachedNavigation,
   resolveIsOwnProfilePath,
 } from "@/lib/navigationRoleCache";
-import { resolveProfileChatBackNavigation } from "@/lib/profileNavigation";
+import {
+  resolveProfileChatBackNavigation,
+  resolveProfileEventDetailBackNavigation,
+} from "@/lib/profileNavigation";
 import {
   getCurrentUserId,
   getUserProfileById,
@@ -119,26 +122,41 @@ function UserProfilePageView({ userId }: { userId: string }) {
   const resolvedCurrentUserId =
     currentUserId ?? guardProfile?.user_id ?? cachedNavigation.userId;
   const isOwnProfile = resolveIsOwnProfilePath(userId, resolvedCurrentUserId);
-  const profileBackNavigation = useMemo(
-    () =>
-      resolveProfileChatBackNavigation(
-        searchParams.get("from"),
-        searchParams.get("returnTo"),
-      ),
-    [searchParams],
-  );
+  const profileBackNavigation = useMemo(() => {
+    const from = searchParams.get("from");
+
+    return (
+      resolveProfileEventDetailBackNavigation(from, {
+        eventId: searchParams.get("eventId"),
+        fromTab: searchParams.get("fromTab"),
+        calendarDate: searchParams.get("calendarDate"),
+        calendarView: searchParams.get("calendarView"),
+        calendarMonth: searchParams.get("calendarMonth"),
+      }) ??
+      resolveProfileChatBackNavigation(from, searchParams.get("returnTo"))
+    );
+  }, [searchParams]);
+  const openedFromEventDetail = searchParams.get("from") === "event-detail";
   const showDjSections = profile?.role === "dj" || profile?.role === "both";
   const showPromoterSections = profile?.role === "promoter" || profile?.role === "both";
   function getMessageButtonLabel(): string {
+    if (messaging) {
+      return "Opening";
+    }
+
+    if (openedFromEventDetail && showDjSections) {
+      return "Message";
+    }
+
     if (profile?.role === "dj") {
-      return messaging ? "Opening..." : "Message / Book DJ";
+      return "Message / Book DJ";
     }
 
     if (profile?.role === "promoter") {
-      return messaging ? "Opening..." : "Message Promoter";
+      return "Message Promoter";
     }
 
-    return messaging ? "Opening..." : "Message";
+    return "Message";
   }
 
   return (

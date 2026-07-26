@@ -1475,6 +1475,7 @@ function EventDetailPageView() {
                                   profile={profile}
                                   currentUserId={currentUserId}
                                   eventDetailId={eventId}
+                                  eventDetailFromTab={searchParams.get("fromTab")}
                                   calendarOrigin={calendarOrigin}
                                   readOnly={isHistoryEventDetail}
                                   cancelledByLabel={resolveBookingCancelledByLabel(booking, profiles)}

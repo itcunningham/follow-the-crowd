@@ -71,7 +71,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 - **Booking date/time field placeholders (2026-07-25):** shared `isBookingFieldTriggerPlaceholder` / `hasBookingFieldTriggerLabelValue` + `.ftc-field-trigger-label.is-placeholder` CSS so empty Event Date, Start Time, and Finish Time labels share one placeholder detection path (`FtcDatePicker`, `BookingDateTimeFields`, run sheet compact time); selected values unchanged
 - **Event detail booking cancel feedback (2026-07-25):** successful pending booking-request cancellation shows `Booking request cancelled` via global `PlannerTitleFeedbackProvider` + `useInlineTabFeedbackDismiss` — same typography, timing (2700ms visible + 300ms fade), and fixed overlay as Events/Gigs History removal; heavy in-content card removed for this case only
 - **Event detail active lineup (2026-07-26):** planner-cancelled booking requests disappear from the active Event Details Bookings list immediately after cancel (All filter uses active lineup, not visible lineup); record preserved in DB; Gigs History still shows cancelled sent bookings with existing status labels; History event detail still shows cancelled bookings for archival read-only view
-- **Event detail lineup cards (2026-07-26):** DJ avatar + name open profile; compact card padding; rate copy muted single line (`Ask for rate` / `Fixed offer • $amount`); Cancel request + Open DM side-by-side equal-width row on mobile and desktop
+- **Event detail lineup cards (2026-07-26):** DJ avatar + name open profile with `from=event-detail` return context (Back restores exact Event Details URL incl. calendar/history params via `Link replace scroll={false}`); profile CTA shows `Message` (not Message / Book DJ) when opened from Event Details; loading label `Opening` without ellipsis
 - **Send bookings modal scroll lock (2026-07-26):** Event Details + Events create Send bookings modal locks background scroll on mobile Safari (`position: fixed` body lock + restore scroll position on close); backdrop/outside touch does not dismiss or scroll the page; modal DJ list remains scrollable; Cancel and successful send still close the modal
 - **Send bookings iOS scroll containment (2026-07-26):** boundary-aware touchmove containment blocks rubber-band transfer at DJ list/dialog scroll edges; locks `html` + `body`; nested scroll areas use `overscroll-contain` + `touch-pan-y`
 - **Send bookings DJ cards (2026-07-26):** hide Unknown availability pill in invite list; genre line single-row truncate with full text in `title`; Already Invited and other availability pills unchanged
@@ -260,6 +260,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `be65609` — planner booking card polish and profile navigation
 - `8785062` — polish Send Bookings DJ cards
 - `eba6498` — contain Send bookings modal scrolling on iOS
 - `14b749c` — lock background interaction behind Send bookings modal

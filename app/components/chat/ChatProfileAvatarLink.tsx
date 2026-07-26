@@ -11,6 +11,7 @@ export default function ChatProfileAvatarLink({
   size = "sm",
   className = "",
   returnTo,
+  href,
 }: {
   userId: string;
   name: string;
@@ -18,10 +19,11 @@ export default function ChatProfileAvatarLink({
   size?: "sm" | "md" | "lg" | "xl";
   className?: string;
   returnTo?: string | null;
+  href?: string;
 }) {
   return (
     <Link
-      href={buildProfileHref(userId, { returnTo })}
+      href={href ?? buildProfileHref(userId, { returnTo })}
       aria-label={`View ${name}'s profile`}
       className={PROFILE_AVATAR_INTERACTIVE_CLASS}
     >

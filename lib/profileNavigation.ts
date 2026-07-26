@@ -1,4 +1,66 @@
+import type { CalendarOriginState } from "@/lib/bookings/gigsCalendarNavigation";
+import { resolveCalendarOriginEventHref } from "@/lib/bookings/gigsCalendarNavigation";
+import { parseCalendarOriginReturnParams } from "@/lib/calendar";
 import { getDefaultRouteForRole, type UserRole } from "@/lib/user/currentUser";
+import { looksLikeUserId } from "@/lib/user/displayName";
+
+export type EventDetailProfileReturnContext = {
+  eventId: string;
+  fromTab?: string | null;
+  calendarOrigin?: CalendarOriginState | null;
+};
+
+function resolveValidatedEventDetailHref(eventId: string | null | undefined): string | null {
+  const trimmedEventId = eventId?.trim();
+
+  if (!trimmedEventId || !looksLikeUserId(trimmedEventId)) {
+    return null;
+  }
+
+  return `/events/${trimmedEventId}`;
+}
+
+export function buildEventDetailReturnHref(
+  context: EventDetailProfileReturnContext,
+): string | null {
+  const baseHref = resolveValidatedEventDetailHref(context.eventId);
+
+  if (!baseHref) {
+    return null;
+  }
+
+  if (context.calendarOrigin) {
+    return resolveCalendarOriginEventHref(baseHref, context.calendarOrigin);
+  }
+
+  if (context.fromTab?.trim() === "history") {
+    return `${baseHref}?fromTab=history`;
+  }
+
+  return baseHref;
+}
+
+export function buildEventDetailProfileHref(
+  userId: string,
+  context: EventDetailProfileReturnContext,
+): string {
+  const params = new URLSearchParams({
+    from: "event-detail",
+    eventId: context.eventId.trim(),
+  });
+
+  if (context.fromTab?.trim() === "history") {
+    params.set("fromTab", "history");
+  }
+
+  if (context.calendarOrigin) {
+    params.set("calendarDate", context.calendarOrigin.calendarDate);
+    params.set("calendarView", context.calendarOrigin.calendarView);
+    params.set("calendarMonth", context.calendarOrigin.calendarMonth);
+  }
+
+  return `/profile/${userId}?${params.toString()}`;
+}
 
 export function buildProfileHref(
   userId: string,
@@ -17,6 +79,39 @@ export function buildProfileHref(
   });
 
   return `${base}?${params.toString()}`;
+}
+
+export function resolveProfileEventDetailBackNavigation(
+  from: string | null | undefined,
+  options: {
+    eventId?: string | null;
+    fromTab?: string | null;
+    calendarDate?: string | null;
+    calendarView?: string | null;
+    calendarMonth?: string | null;
+  },
+): { href: string; label: string } | null {
+  if (from?.trim() !== "event-detail") {
+    return null;
+  }
+
+  const calendarOrigin = parseCalendarOriginReturnParams(
+    options.calendarDate,
+    options.calendarView,
+    options.calendarMonth,
+  );
+
+  const href = buildEventDetailReturnHref({
+    eventId: options.eventId ?? "",
+    fromTab: options.fromTab,
+    calendarOrigin,
+  });
+
+  if (!href) {
+    return null;
+  }
+
+  return { href, label: "Back to event" };
 }
 
 export function resolveProfileBackNavigation(

@@ -117,8 +117,10 @@ import {
   resolveDmThreadBackHref,
 } from "../lib/dm/threadNavigation";
 import {
+  buildEventDetailProfileHref,
   buildProfileHref,
   resolveProfileChatBackNavigation,
+  resolveProfileEventDetailBackNavigation,
 } from "../lib/profileNavigation";
 import {
   buildEventDetailFromDmHref,
@@ -759,7 +761,8 @@ function testEventLineupBookingCardProfileNavigationAndActions() {
   );
 
   assert.match(cardSource, /ChatProfileAvatarLink/);
-  assert.match(cardSource, /href=\{`\/profile\/\$\{djUserId\}`\}/);
+  assert.match(cardSource, /buildEventDetailProfileHref/);
+  assert.match(cardSource, /href=\{profileHref\}/);
   assert.match(cardSource, /EVENT_DETAIL_LINEUP_ACTIONS_ROW/);
   assert.match(cardSource, /EVENT_DETAIL_LINEUP_ACTION_BTN/);
   assert.match(cardSource, /Ask for rate/);
@@ -831,6 +834,41 @@ function testProfileChatBackNavigation() {
   assert.equal(resolveProfileChatBackNavigation("chat", null), null);
   assert.equal(resolveProfileChatBackNavigation("chat", `/profile/${userId}`), null);
 
+  const eventId = "11111111-1111-4111-8111-111111111111";
+  const calendarOrigin = {
+    calendarDate: "2026-07-14",
+    calendarView: "event" as const,
+    calendarMonth: "2026-07-01",
+  };
+
+  assert.equal(
+    buildEventDetailProfileHref(userId, { eventId, calendarOrigin }),
+    `/profile/${userId}?from=event-detail&eventId=${eventId}&calendarDate=2026-07-14&calendarView=event&calendarMonth=2026-07-01`,
+  );
+  assert.deepEqual(
+    resolveProfileEventDetailBackNavigation("event-detail", {
+      eventId,
+      calendarDate: calendarOrigin.calendarDate,
+      calendarView: calendarOrigin.calendarView,
+      calendarMonth: calendarOrigin.calendarMonth,
+    }),
+    {
+      href: `/events/${eventId}?from=calendar&calendarDate=2026-07-14&calendarView=event&calendarMonth=2026-07-01`,
+      label: "Back to event",
+    },
+  );
+  assert.deepEqual(
+    resolveProfileEventDetailBackNavigation("event-detail", {
+      eventId,
+      fromTab: "history",
+    }),
+    {
+      href: `/events/${eventId}?fromTab=history`,
+      label: "Back to event",
+    },
+  );
+  assert.equal(resolveProfileEventDetailBackNavigation("chat", { eventId }), null);
+
   const profilePageSource = readFileSync(
     new URL("../app/profile/[userId]/page.tsx", import.meta.url),
     "utf8",
@@ -844,7 +882,11 @@ function testProfileChatBackNavigation() {
     "utf8",
   );
 
+  assert.match(profilePageSource, /resolveProfileEventDetailBackNavigation/);
   assert.match(profilePageSource, /resolveProfileChatBackNavigation/);
+  assert.match(profilePageSource, /return "Opening"/);
+  assert.match(profilePageSource, /openedFromEventDetail && showDjSections/);
+  assert.doesNotMatch(profilePageSource, /Opening\.\.\./);
   assert.match(profileHeaderSource, /replace/);
   assert.match(profileHeaderSource, /scroll=\{false\}/);
   assert.match(dmDetailsSource, /buildProfileHref\(otherUserId, \{ returnTo: profileReturnTo \}\)/);

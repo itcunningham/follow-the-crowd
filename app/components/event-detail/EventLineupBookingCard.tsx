@@ -26,7 +26,9 @@ import {
 } from "@/lib/bookingRequests";
 import { buildEventDetailDmThreadHref } from "@/lib/dm/threadNavigation";
 import type { CalendarOriginState } from "@/lib/bookings/gigsCalendarNavigation";
+import { buildEventDetailProfileHref } from "@/lib/profileNavigation";
 import type { BookingRecipientProfile } from "@/lib/user/currentUser";
+import { looksLikeUserId } from "@/lib/user/displayName";
 
 function getLineupRateLine(booking: BookingRequest): string {
   if (booking.rate_mode === "open") {
@@ -43,6 +45,7 @@ export default function EventLineupBookingCard({
   profile,
   currentUserId,
   eventDetailId,
+  eventDetailFromTab = null,
   calendarOrigin = null,
   readOnly = false,
   cancelledByLabel,
@@ -62,6 +65,7 @@ export default function EventLineupBookingCard({
   profile?: BookingRecipientProfile;
   currentUserId: string | null;
   eventDetailId?: string | null;
+  eventDetailFromTab?: string | null;
   calendarOrigin?: CalendarOriginState | null;
   readOnly?: boolean;
   cancelledByLabel?: string | null;
@@ -90,6 +94,14 @@ export default function EventLineupBookingCard({
   const showOpenDm = Boolean(booking.conversation_id);
   const showActions = showCancelRequest || showCancelAccepted || showOpenDm;
   const actionButtonClass = `${EVENT_DETAIL_LINEUP_ACTION_BTN}`;
+  const profileHref =
+    eventDetailId && looksLikeUserId(eventDetailId)
+      ? buildEventDetailProfileHref(djUserId, {
+          eventId: eventDetailId,
+          fromTab: eventDetailFromTab,
+          calendarOrigin,
+        })
+      : `/profile/${djUserId}`;
 
   return (
     <div
@@ -112,12 +124,13 @@ export default function EventLineupBookingCard({
           name={displayName}
           avatarUrl={profile?.avatar_url}
           size="sm"
+          href={profileHref}
         />
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0 flex-1">
               <Link
-                href={`/profile/${djUserId}`}
+                href={profileHref}
                 className="text-base font-bold leading-snug text-ftc-text transition hover:text-ftc-primary"
               >
                 {displayName}
