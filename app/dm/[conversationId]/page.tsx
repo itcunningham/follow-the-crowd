@@ -96,6 +96,7 @@ import {
 } from "@/lib/dm/chatBookingTarget";
 import {
   preserveDmBookingCardScrollAnchor,
+  resolveDmBookingCardScrollSpacerStyle,
   scheduleDmBookingCardExpandScroll,
 } from "@/lib/dm/dmBookingCardScrollAnchor";
 import {
@@ -229,6 +230,9 @@ export default function DmChatPage() {
   const [proposalLoadingId, setProposalLoadingId] = useState<string | null>(null);
   const [cancellingBookingId, setCancellingBookingId] = useState<string | null>(null);
   const [expandedBookingIds, setExpandedBookingIds] = useState<Set<string>>(() => new Set());
+  const [bookingExpandSpacerPx, setBookingExpandSpacerPx] = useState(0);
+  const bookingExpandSpacerPxRef = useRef(0);
+  const bookingExpandScrollCleanupRef = useRef<(() => void) | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -389,6 +393,10 @@ export default function DmChatPage() {
   useEffect(() => {
     setExpandedBookingIds(new Set());
     setEventIdsWithAcceptedBookings(new Set());
+    bookingExpandScrollCleanupRef.current?.();
+    bookingExpandScrollCleanupRef.current = null;
+    bookingExpandSpacerPxRef.current = 0;
+    setBookingExpandSpacerPx(0);
   }, [conversationId]);
 
   const setBookingExpanded = useCallback((bookingKey: string, expanded: boolean) => {
@@ -408,18 +416,42 @@ export default function DmChatPage() {
   const handleBookingExpansionChange = useCallback(
     (messageId: string, expanded: boolean) => {
       const container = scrollRef.current;
+      const spacerControls = {
+        getHeight: () => bookingExpandSpacerPxRef.current,
+        setHeight: (heightPx: number) => {
+          bookingExpandSpacerPxRef.current = heightPx;
+          setBookingExpandSpacerPx(heightPx);
+        },
+      };
 
-      if (!expanded && container) {
-        preserveDmBookingCardScrollAnchor(container, messageId, () => {
+      if (!expanded) {
+        bookingExpandScrollCleanupRef.current?.();
+        bookingExpandScrollCleanupRef.current = null;
+
+        if (container) {
+          preserveDmBookingCardScrollAnchor(container, messageId, () => {
+            setBookingExpanded(messageId, false);
+            bookingExpandSpacerPxRef.current = 0;
+            setBookingExpandSpacerPx(0);
+          });
+        } else {
           setBookingExpanded(messageId, false);
-        });
+          bookingExpandSpacerPxRef.current = 0;
+          setBookingExpandSpacerPx(0);
+        }
+
         return;
       }
 
       setBookingExpanded(messageId, expanded);
 
       if (expanded && container) {
-        scheduleDmBookingCardExpandScroll(container, messageId);
+        bookingExpandScrollCleanupRef.current?.();
+        bookingExpandScrollCleanupRef.current = scheduleDmBookingCardExpandScroll(
+          container,
+          messageId,
+          { spacer: spacerControls },
+        );
       }
     },
     [scrollRef, setBookingExpanded],
@@ -1548,7 +1580,11 @@ export default function DmChatPage() {
         ) : (
           <ul
             data-chat-content-root
+            data-dm-booking-card-scroll-spacer={
+              bookingExpandSpacerPx > 0 ? bookingExpandSpacerPx : undefined
+            }
             className="flex flex-col-reverse gap-3 pb-2"
+            style={resolveDmBookingCardScrollSpacerStyle(bookingExpandSpacerPx)}
           >
             {reversedMessages.map((message) => {
               if (isBookingActivityDmMessage(message.text)) {
