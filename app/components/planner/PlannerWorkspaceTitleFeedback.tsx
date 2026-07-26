@@ -5,7 +5,7 @@ type PlannerWorkspaceTitleFeedbackProps = {
   fading: boolean;
 };
 
-/** Centred planner title-row success feedback — positioned via PlannerTitleFeedbackMount slot. */
+/** Centred planner title-row success feedback — rendered via PlannerTitleFeedbackSlot. */
 export function PlannerWorkspaceTitleFeedback({
   message,
   fading,

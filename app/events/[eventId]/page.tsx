@@ -41,7 +41,7 @@ import {
   PlannerStatChip,
 } from "@/app/components/planner/PlannerUi";
 import { useSyncPlannerTitleFeedback } from "@/app/components/planner/PlannerTitleFeedbackProvider";
-import { PlannerTitleFeedbackAnchorBand } from "@/app/components/planner/PlannerTitleFeedbackAnchorBand";
+import { PlannerTitleFeedbackHeaderChrome } from "@/app/components/planner/PlannerTitleFeedbackHeaderChrome";
 import { BookingDateField, BookingSetTimeRangeField } from "@/app/components/BookingDateTimeFields";
 import { applyEventDateFieldChange, getTodayDateKey } from "@/lib/bookingDateTime";
 import {
@@ -1128,7 +1128,7 @@ function EventDetailPageView() {
       className={`mx-auto min-h-[100dvh] w-full max-w-2xl bg-ftc-bg font-sans text-ftc-text ${MOBILE_NAV_OFFSET_CLASS}`}
     >
         <AppNavigation />
-        <PlannerTitleFeedbackAnchorBand />
+        <PlannerTitleFeedbackHeaderChrome />
 
         <div className="border-b border-ftc-border-subtle bg-ftc-bg/95 px-4 py-3 backdrop-blur-md sm:px-6">
           <div className="flex items-start justify-between gap-3">

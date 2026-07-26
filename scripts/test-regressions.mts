@@ -3101,16 +3101,12 @@ function testHistoryRemovalHeaderFeedbackUnified() {
     new URL("../app/components/planner/PlannerTitleFeedbackProvider.tsx", import.meta.url),
     "utf8",
   );
-  const titleFeedbackOverlaySource = readFileSync(
-    new URL("../app/components/planner/PlannerTitleFeedbackOverlay.tsx", import.meta.url),
+  const titleFeedbackSlotSource = readFileSync(
+    new URL("../app/components/planner/PlannerTitleFeedbackSlot.tsx", import.meta.url),
     "utf8",
   );
-  const titleFeedbackAnchorSource = readFileSync(
-    new URL("../app/components/planner/PlannerTitleFeedbackAnchor.tsx", import.meta.url),
-    "utf8",
-  );
-  const titleFeedbackAnchorBandSource = readFileSync(
-    new URL("../app/components/planner/PlannerTitleFeedbackAnchorBand.tsx", import.meta.url),
+  const titleFeedbackHeaderChromeSource = readFileSync(
+    new URL("../app/components/planner/PlannerTitleFeedbackHeaderChrome.tsx", import.meta.url),
     "utf8",
   );
   const appProvidersSource = readFileSync(
@@ -3171,8 +3167,9 @@ function testHistoryRemovalHeaderFeedbackUnified() {
   assert.match(plansSource, /useInlineTabFeedbackDismiss/);
   assert.match(eventDetailSource, /useInlineTabFeedbackDismiss/);
   assert.match(eventDetailSource, /useSyncPlannerTitleFeedback/);
-  assert.match(eventDetailSource, /PlannerTitleFeedbackAnchorBand/);
-  assert.doesNotMatch(eventDetailSource, /PlannerTitleFeedbackMount/);
+  assert.match(eventDetailSource, /PlannerTitleFeedbackHeaderChrome/);
+  assert.doesNotMatch(eventDetailSource, /PlannerTitleFeedbackOverlay/);
+  assert.doesNotMatch(eventDetailSource, /PlannerTitleFeedbackAnchorBand/);
   assert.doesNotMatch(eventDetailSource, /PlannerWorkspaceTitleFeedback/);
   assert.match(
     eventDetailSource,
@@ -3214,22 +3211,20 @@ function testHistoryRemovalHeaderFeedbackUnified() {
     new URL("../lib/design/plannerWorkspaceTokens.ts", import.meta.url),
     "utf8",
   );
-  assert.match(plannerTokensSource, /PLANNER_WORKSPACE_TITLE_FEEDBACK_ANCHOR_CLASS[\s\S]*absolute inset-x-0/);
-  assert.match(plannerTokensSource, /PLANNER_WORKSPACE_TITLE_FEEDBACK_OVERLAY_CLASS[\s\S]*fixed z-\[60\]/);
-  assert.match(titleFeedbackAnchorSource, /data-planner-title-feedback-anchor/);
-  assert.match(titleFeedbackAnchorSource, /PLANNER_WORKSPACE_TITLE_FEEDBACK_ANCHOR_CLASS/);
-  assert.match(titleFeedbackOverlaySource, /createPortal/);
-  assert.match(titleFeedbackOverlaySource, /PlannerWorkspaceTitleFeedback/);
-  assert.match(titleFeedbackOverlaySource, /PLANNER_WORKSPACE_TITLE_FEEDBACK_OVERLAY_CLASS/);
-  assert.match(titleFeedbackAnchorBandSource, /PlannerTitleFeedbackAnchor/);
+  assert.match(plannerTokensSource, /PLANNER_WORKSPACE_TITLE_FEEDBACK_SLOT_CLASS[\s\S]*absolute inset-x-0/);
+  assert.match(titleFeedbackSlotSource, /PLANNER_WORKSPACE_TITLE_FEEDBACK_SLOT_CLASS/);
+  assert.match(titleFeedbackSlotSource, /PlannerWorkspaceTitleFeedback/);
+  assert.match(titleFeedbackSlotSource, /usePlannerTitleFeedbackState/);
+  assert.match(titleFeedbackHeaderChromeSource, /PlannerTitleFeedbackSlot/);
+  assert.match(titleFeedbackHeaderChromeSource, /PLANNER_WORKSPACE_HEADER_CLASS/);
   assert.doesNotMatch(titleFeedbackSource, /onAnimationEnd/);
   assert.doesNotMatch(titleFeedbackSource, /ftc-history-removal-feedback/);
   assert.match(layoutSource, /PLANNER_WORKSPACE_TITLE_ROW_CLASS} relative/);
-  assert.match(layoutSource, /PlannerTitleFeedbackAnchor/);
+  assert.match(layoutSource, /PlannerTitleFeedbackSlot/);
   assert.match(layoutSource, /setTitleFeedback/);
-  assert.doesNotMatch(layoutSource, /PlannerTitleFeedbackMount/);
-  assert.match(titleFeedbackProviderSource, /PlannerTitleFeedbackOverlay/);
+  assert.doesNotMatch(layoutSource, /PlannerTitleFeedbackOverlay/);
   assert.match(titleFeedbackProviderSource, /useSyncPlannerTitleFeedback/);
+  assert.doesNotMatch(titleFeedbackProviderSource, /PlannerTitleFeedbackOverlay/);
   assert.match(appProvidersSource, /PlannerTitleFeedbackProvider/);
   assert.match(rootLayoutSource, /AppProviders/);
   assert.doesNotMatch(onboardingGuardSource, /PlannerTitleFeedbackProvider/);

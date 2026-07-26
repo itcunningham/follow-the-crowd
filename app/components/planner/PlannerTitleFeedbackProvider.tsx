@@ -9,7 +9,6 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { PlannerTitleFeedbackOverlay } from "@/app/components/planner/PlannerTitleFeedbackOverlay";
 
 type TitleFeedbackState = {
   message: string | null;
@@ -48,7 +47,6 @@ export function PlannerTitleFeedbackProvider({ children }: { children: ReactNode
   return (
     <PlannerTitleFeedbackContext.Provider value={value}>
       {children}
-      <PlannerTitleFeedbackOverlay />
     </PlannerTitleFeedbackContext.Provider>
   );
 }
