@@ -251,7 +251,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
-- `(pending)` — fix Event Plan Use Plan event creation flow
+- `e1c615b` — fix Event Plan Use Plan event creation flow
 - `8364a0c` — Improve long event title wrapping and truncation
 - `36132c8` — Improve Event Calendar agenda card hierarchy
 - `bc339db` — Unify Event Details with shared notification system
