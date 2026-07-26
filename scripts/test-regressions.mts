@@ -487,17 +487,18 @@ function testDmBookingCardExpandCollapseScrollAnchor() {
   );
 
   assert.match(pageSource, /handleBookingExpansionChange/);
-  assert.match(pageSource, /preserveDmBookingCardScrollAnchor/);
+  assert.match(pageSource, /scheduleDmBookingCardCollapseScrollAnchor/);
   assert.match(pageSource, /scheduleDmBookingCardExpandScroll/);
   assert.match(cardSource, /data-dm-booking-card-anchor/);
   assert.match(updateRowSource, /data-dm-booking-card-anchor/);
   assert.match(pageSource, /bookingExpandSpacerPx/);
   assert.match(pageSource, /resolveDmBookingCardScrollSpacerStyle/);
   assert.match(pageSource, /data-dm-booking-card-scroll-spacer/);
-  assert.match(anchorSource, /computeRequiredBottomSpacerPx/);
+  assert.match(anchorSource, /scheduleDmBookingCardCollapseScrollAnchor/);
+  assert.match(anchorSource, /clampDmMessageScrollTop/);
+  assert.match(anchorSource, /removeDmBookingExpandSpacerSafely/);
   assert.match(anchorSource, /ResizeObserver/);
-  assert.match(anchorSource, /resolveDmBookingCardScrollSpacerStyle/);
-  assert.match(anchorSource, /DM_BOOKING_CARD_SCROLL_SPACER_ATTR/);
+  assert.match(anchorSource, /DM_BOOKING_CARD_COLLAPSE_STABLE_FRAMES/);
 }
 
 function testDmBookingCardProposedRateCopy() {

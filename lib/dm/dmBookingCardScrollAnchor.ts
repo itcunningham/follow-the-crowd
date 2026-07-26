@@ -11,6 +11,8 @@ const DM_BOOKING_CARD_SCROLL_TOP_OFFSET_PX = 8;
 
 const DM_BOOKING_CARD_SCROLL_ALIGN_MAX_ITERATIONS = 6;
 
+const DM_BOOKING_CARD_COLLAPSE_STABLE_FRAMES = 2;
+
 export type DmBookingCardScrollSpacerControls = {
   getHeight: () => number;
   setHeight: (heightPx: number) => void;
@@ -19,6 +21,11 @@ export type DmBookingCardScrollSpacerControls = {
 export type DmBookingCardExpandScrollOptions = {
   spacer: DmBookingCardScrollSpacerControls;
   topOffsetPx?: number;
+};
+
+export type DmBookingCardCollapseScrollOptions = {
+  spacer: DmBookingCardScrollSpacerControls;
+  mutate: () => void;
 };
 
 function resolveScrollBehavior(): ScrollBehavior {
@@ -107,6 +114,55 @@ function applyDmBookingCardScrollAlign(
   return Math.abs(computeScrollDelta(container, cardAnchor, topOffsetPx)) < 4;
 }
 
+export function clampDmMessageScrollTop(container: HTMLElement): void {
+  const maxScrollTop = Math.max(0, container.scrollHeight - container.clientHeight);
+
+  if (container.scrollTop > maxScrollTop) {
+    container.scrollTop = maxScrollTop;
+  }
+
+  if (container.scrollTop < 0) {
+    container.scrollTop = 0;
+  }
+}
+
+function preserveDmBookingCardVisualAnchor(
+  container: HTMLElement,
+  messageId: string,
+  beforeTop: number,
+): void {
+  const afterAnchor = findDmBookingCardAnchor(container, messageId);
+
+  if (!afterAnchor) {
+    return;
+  }
+
+  const afterTop = afterAnchor.getBoundingClientRect().top;
+  const delta = afterTop - beforeTop;
+
+  if (delta !== 0) {
+    container.scrollTop += delta;
+  }
+}
+
+function removeDmBookingExpandSpacerSafely(
+  container: HTMLElement,
+  spacer: DmBookingCardScrollSpacerControls,
+): void {
+  const spacerHeight = spacer.getHeight();
+
+  if (spacerHeight <= 0) {
+    clampDmMessageScrollTop(container);
+    return;
+  }
+
+  spacer.setHeight(0);
+
+  requestAnimationFrame(() => {
+    clampDmMessageScrollTop(container);
+  });
+}
+
 export function scrollDmBookingCardTopIntoView(
   container: HTMLElement,
   cardAnchor: HTMLElement,
@@ -118,41 +174,101 @@ export function scrollDmBookingCardTopIntoView(
   return applyDmBookingCardScrollAlign(container, cardAnchor, topOffsetPx, behavior);
 }
 
-export function preserveDmBookingCardScrollAnchor(
+export function scheduleDmBookingCardCollapseScrollAnchor(
   container: HTMLElement,
   messageId: string,
-  mutate: () => void,
-  animationMs = DM_BOOKING_CARD_EXPAND_ANIMATION_MS,
-): void {
+  options: DmBookingCardCollapseScrollOptions,
+): () => void {
+  let cancelled = false;
+  let finished = false;
+  let observer: ResizeObserver | null = null;
+  let pendingFrameId = 0;
+  let stableFrames = 0;
+  let lastObservedHeight = 0;
+
   const beforeAnchor = findDmBookingCardAnchor(container, messageId);
   const beforeTop = beforeAnchor?.getBoundingClientRect().top;
 
-  mutate();
-
-  if (beforeTop === undefined) {
-    return;
-  }
-
-  const adjust = () => {
-    const afterAnchor = findDmBookingCardAnchor(container, messageId);
-
-    if (!afterAnchor) {
+  const finish = () => {
+    if (cancelled || finished) {
       return;
     }
 
-    const afterTop = afterAnchor.getBoundingClientRect().top;
-    const delta = afterTop - beforeTop;
+    finished = true;
+    observer?.disconnect();
+    observer = null;
 
-    if (delta !== 0) {
-      container.scrollTop += delta;
+    if (beforeTop !== undefined) {
+      preserveDmBookingCardVisualAnchor(container, messageId, beforeTop);
     }
+
+    removeDmBookingExpandSpacerSafely(container, options.spacer);
   };
 
-  requestAnimationFrame(() => {
-    adjust();
-    requestAnimationFrame(adjust);
+  options.mutate();
+
+  if (beforeTop === undefined) {
+    removeDmBookingExpandSpacerSafely(container, options.spacer);
+    return () => {
+      cancelled = true;
+    };
+  }
+
+  const observeAnchor = () => {
+    const anchor = findDmBookingCardAnchor(container, messageId);
+
+    if (!anchor || cancelled || finished) {
+      if (!finished && !cancelled) {
+        finish();
+      }
+      return;
+    }
+
+    lastObservedHeight = anchor.getBoundingClientRect().height;
+    stableFrames = 0;
+
+    observer?.disconnect();
+    observer = new ResizeObserver(() => {
+      if (cancelled || finished) {
+        return;
+      }
+
+      const currentAnchor = findDmBookingCardAnchor(container, messageId);
+
+      if (!currentAnchor) {
+        finish();
+        return;
+      }
+
+      const nextHeight = currentAnchor.getBoundingClientRect().height;
+
+      if (Math.abs(nextHeight - lastObservedHeight) < 1) {
+        stableFrames += 1;
+
+        if (stableFrames >= DM_BOOKING_CARD_COLLAPSE_STABLE_FRAMES) {
+          finish();
+        }
+
+        return;
+      }
+
+      lastObservedHeight = nextHeight;
+      stableFrames = 0;
+    });
+
+    observer.observe(anchor);
+  };
+
+  pendingFrameId = requestAnimationFrame(() => {
+    requestAnimationFrame(observeAnchor);
   });
-  window.setTimeout(adjust, animationMs);
+
+  return () => {
+    cancelled = true;
+    cancelAnimationFrame(pendingFrameId);
+    observer?.disconnect();
+    observer = null;
+  };
 }
 
 export function scheduleDmBookingCardExpandScroll(

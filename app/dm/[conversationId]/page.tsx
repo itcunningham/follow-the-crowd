@@ -95,8 +95,8 @@ import {
   CHAT_BOOKING_REQUEST_ID_ATTR,
 } from "@/lib/dm/chatBookingTarget";
 import {
-  preserveDmBookingCardScrollAnchor,
   resolveDmBookingCardScrollSpacerStyle,
+  scheduleDmBookingCardCollapseScrollAnchor,
   scheduleDmBookingCardExpandScroll,
 } from "@/lib/dm/dmBookingCardScrollAnchor";
 import {
@@ -429,11 +429,14 @@ export default function DmChatPage() {
         bookingExpandScrollCleanupRef.current = null;
 
         if (container) {
-          preserveDmBookingCardScrollAnchor(container, messageId, () => {
-            setBookingExpanded(messageId, false);
-            bookingExpandSpacerPxRef.current = 0;
-            setBookingExpandSpacerPx(0);
-          });
+          bookingExpandScrollCleanupRef.current = scheduleDmBookingCardCollapseScrollAnchor(
+            container,
+            messageId,
+            {
+              spacer: spacerControls,
+              mutate: () => setBookingExpanded(messageId, false),
+            },
+          );
         } else {
           setBookingExpanded(messageId, false);
           bookingExpandSpacerPxRef.current = 0;
