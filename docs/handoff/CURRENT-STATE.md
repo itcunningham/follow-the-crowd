@@ -229,6 +229,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `c2e54d0` — fix(gigs-calendar): use shared title-row feedback for availability updates
 - `b89ecd3` — fix(gigs-calendar): prevent selecting past dates
 - `b1d4172` — feat(gigs-calendar): prioritise actionable bookings in daily agenda
 - `8cc6a71` — feat(calendar): prioritise actionable events in daily agenda
