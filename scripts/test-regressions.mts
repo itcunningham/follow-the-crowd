@@ -3167,6 +3167,9 @@ function testHistoryRemovalHeaderFeedbackUnified() {
   assert.match(plansSource, /useInlineTabFeedbackDismiss/);
   assert.match(eventDetailSource, /useInlineTabFeedbackDismiss/);
   assert.match(eventDetailSource, /useSyncPlannerTitleFeedback/);
+  assert.match(eventDetailSource, /data-planner-title-feedback-anchor/);
+  assert.doesNotMatch(eventDetailSource, /EventDateStatusBadge/);
+  assert.doesNotMatch(eventDetailSource, /statusBadge=/);
   assert.doesNotMatch(eventDetailSource, /PlannerTitleFeedbackHeaderChrome/);
   assert.doesNotMatch(eventDetailSource, /PlannerTitleFeedbackSlot/);
   assert.doesNotMatch(eventDetailSource, /PlannerWorkspaceTitleFeedback/);
@@ -3215,7 +3218,7 @@ function testHistoryRemovalHeaderFeedbackUnified() {
   assert.match(titleFeedbackAnchorSource, /data-planner-title-feedback-anchor/);
   assert.match(titleFeedbackSlotSource, /createPortal/);
   assert.match(titleFeedbackSlotSource, /PLANNER_WORKSPACE_TITLE_FEEDBACK_HOST_CLASS/);
-  assert.match(titleFeedbackSlotSource, /PLANNER_TITLE_FEEDBACK_ANCHOR_SELECTOR/);
+  assert.match(titleFeedbackSlotSource, /resolvePlannerTitleFeedbackAnchor/);
   assert.match(titleFeedbackSlotSource, /PlannerWorkspaceTitleFeedback/);
   assert.match(titleFeedbackSlotSource, /usePlannerTitleFeedbackState/);
   assert.doesNotMatch(titleFeedbackSource, /onAnimationEnd/);

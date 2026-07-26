@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import { PlannerWorkspaceTitleFeedback } from "@/app/components/planner/PlannerWorkspaceTitleFeedback";
 import { usePlannerTitleFeedbackState } from "@/app/components/planner/PlannerTitleFeedbackProvider";
 import { PLANNER_WORKSPACE_TITLE_FEEDBACK_HOST_CLASS } from "@/lib/design/plannerWorkspaceTokens";
-import { PLANNER_TITLE_FEEDBACK_ANCHOR_SELECTOR } from "@/lib/planner/plannerTitleFeedbackAnchor";
+import { resolvePlannerTitleFeedbackAnchor } from "@/lib/planner/plannerTitleFeedbackAnchor";
 
 /** Shared success notification — single render path for Gigs, Event Details, and workspace routes. */
 export function PlannerTitleFeedbackSlot() {
@@ -22,7 +22,7 @@ export function PlannerTitleFeedbackSlot() {
     }
 
     function updatePosition() {
-      const anchor = document.querySelector(PLANNER_TITLE_FEEDBACK_ANCHOR_SELECTOR);
+      const anchor = resolvePlannerTitleFeedbackAnchor();
 
       if (!anchor) {
         setHostStyle(null);
