@@ -2252,7 +2252,8 @@ function testCalendarCreateWorkspaceTabNavigation() {
     /isCalendarWorkspaceHost && isCalendarOriginCreateParam\(createParam\)/,
   );
   assert.match(eventsSource, /href === EVENTS_AREA_SUB_NAV\.calendar\.href/);
-  assert.match(eventsSource, /window\.location\.assign\(destination\)/);
+  assert.match(eventsSource, /router\.replace\(destination, \{ scroll: false \}\)/);
+  assert.match(eventsSource, /readBookingPlansListCache/);
   assert.match(layoutSource, /const workspaceIntercept = headerState\.interceptWorkspaceTabNavigation/);
   assert.doesNotMatch(
     layoutSource,

@@ -134,7 +134,7 @@ import {
 import { readCachedNavRole } from "@/lib/navigationRoleCache";
 import { prepareEventsListEventNavigation } from "@/lib/navigation/prepareMobileDocumentScrollReset";
 import { readEventsListCache, seedEventsListStateFromCache, writeEventsListCache } from "@/lib/events/eventsListCache";
-import { writeBookingPlansListCache } from "@/lib/bookingPlans/bookingPlansListCache";
+import { writeBookingPlansListCache, readBookingPlansListCache } from "@/lib/bookingPlans/bookingPlansListCache";
 import { seedEventOwnerId, seedEventOwnerIdsFromEvents } from "@/lib/events/eventOwnerIdCache";
 
 const emptyEventForm: EventInput = {
@@ -411,6 +411,7 @@ function EventsPageClientView({
   const isCalendarWorkspaceHost = workspaceHost === "calendar";
   const guardProfile = useGuardProfile();
   const handledCreateParamsRef = useRef<string | null>(null);
+  const calendarCreateNavigationPendingRef = useRef(false);
   const [mountListState] = useState(readMountEventsListState);
   const [role, setRole] = useState<UserRole | null>(() =>
     resolveEventsWorkspaceChromeRole(guardProfile?.role, readCachedNavRole()),
@@ -424,13 +425,20 @@ function EventsPageClientView({
   const [createStep, setCreateStep] = useState<CreateStep>(
     () => calendarBootstrap?.createStep ?? "source",
   );
-  const [bookingPlans, setBookingPlans] = useState<BookingPlan[]>([]);
-  const [loadingPlans, setLoadingPlans] = useState(
-    () =>
-      Boolean(
-        calendarBootstrap?.createOpen && calendarBootstrap.createStep === "pick-plan",
-      ),
-  );
+  const [bookingPlans, setBookingPlans] = useState<BookingPlan[]>(() => {
+    if (calendarBootstrap?.createStep === "pick-plan") {
+      return readBookingPlansListCache() ?? [];
+    }
+
+    return [];
+  });
+  const [loadingPlans, setLoadingPlans] = useState(() => {
+    if (!calendarBootstrap?.createOpen || calendarBootstrap.createStep !== "pick-plan") {
+      return false;
+    }
+
+    return readBookingPlansListCache() === null;
+  });
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
   const [form, setForm] = useState<EventInput>(() => ({
     ...emptyEventForm,
@@ -480,6 +488,10 @@ function EventsPageClientView({
   const hideEventsHeaderCreateForCalendarFlow =
     isCalendarCreateFlow &&
     (createOpen || pathname === "/events" || isCalendarWorkspaceHost);
+
+  useEffect(() => {
+    calendarCreateNavigationPendingRef.current = false;
+  }, [pathname]);
 
   useEffect(() => {
     if (isCalendarWorkspaceHost || pathname !== "/events") {
@@ -748,18 +760,21 @@ function EventsPageClientView({
     handledCreateParamsRef.current = paramKey;
 
     if (createParam === "event") {
-      void openCreateFlow({ eventDate: eventDateParam, initialStep: "source" }).finally(() => {
-        router.replace("/events");
-      });
+      openCreateFlow({ eventDate: eventDateParam, initialStep: "source" });
+      router.replace("/events");
       return;
     }
 
     if (createParam === "calendar" || createParam === "calendar-plans") {
-      const finishNavigation = () => {
-        if (isCalendarWorkspaceHost) {
-          return;
+      if (isCalendarWorkspaceHost) {
+        if (resolveCalendarCreateInitialStep(createParam) === "pick-plan") {
+          void loadBookingPlansForCreate();
         }
 
+        return;
+      }
+
+      const finishNavigation = () => {
         router.replace("/events");
       };
 
@@ -768,25 +783,24 @@ function EventsPageClientView({
         return;
       }
 
-      void openCreateFlow({
+      openCreateFlow({
         eventDate: eventDateParam,
         initialStep: resolveCalendarCreateInitialStep(createParam),
         calendarOriginDateKey: resolveCalendarOriginDateKey(eventDateParam),
-      }).finally(finishNavigation);
+      });
+      finishNavigation();
       return;
     }
 
     if (createParam === "custom") {
-      void openCreateFlow({ eventDate: eventDateParam, initialStep: "form" }).finally(() => {
-        router.replace("/events");
-      });
+      openCreateFlow({ eventDate: eventDateParam, initialStep: "form" });
+      router.replace("/events");
       return;
     }
 
     if (createParam === "plan") {
-      void openCreateFlow({ eventDate: eventDateParam, initialStep: "pick-plan" }).finally(() => {
-        router.replace("/events");
-      });
+      openCreateFlow({ eventDate: eventDateParam, initialStep: "pick-plan" });
+      router.replace("/events");
     }
   }, [
     calendarOriginDateKey,
@@ -799,7 +813,15 @@ function EventsPageClientView({
   ]);
 
   async function loadBookingPlansForCreate() {
-    setLoadingPlans(true);
+    const cachedPlans = readBookingPlansListCache();
+
+    if (cachedPlans !== null) {
+      setBookingPlans(cachedPlans);
+      setLoadingPlans(false);
+    } else {
+      setLoadingPlans(true);
+    }
+
     setError(null);
 
     try {
@@ -819,7 +841,7 @@ function EventsPageClientView({
     router.push(buildPlannerCalendarHref(dateKey));
   }
 
-  async function openCreateFlow(options?: {
+  function openCreateFlow(options?: {
     eventDate?: string;
     initialStep?: CreateStep;
     calendarOriginDateKey?: string | null;
@@ -828,8 +850,10 @@ function EventsPageClientView({
       options?.calendarOriginDateKey ?? resolveCalendarOriginDateKey(options?.eventDate);
     const prefilledEventDate =
       originDateKey ?? sanitizePrefilledEventDateKey(options?.eventDate ?? "");
+    const initialStep = options?.initialStep ?? "source";
+
     setCreateOpen(true);
-    setCreateStep(options?.initialStep ?? "source");
+    setCreateStep(initialStep);
     setCreateSaveAttempted(false);
     setCalendarOriginDateKey(originDateKey);
     setForm({
@@ -848,7 +872,10 @@ function EventsPageClientView({
     setInviteModalOpen(false);
     setUnavailableConfirmOpen(false);
     setPendingPostCreateInviteSend(null);
-    await loadBookingPlansForCreate();
+
+    if (initialStep === "pick-plan") {
+      void loadBookingPlansForCreate();
+    }
   }
 
   function resetCalendarCreateFlowState() {
@@ -902,15 +929,21 @@ function EventsPageClientView({
         return true;
       }
 
+      if (calendarCreateNavigationPendingRef.current) {
+        return true;
+      }
+
+      calendarCreateNavigationPendingRef.current = true;
+
       const destination =
         href === EVENTS_AREA_SUB_NAV.gigs.href
           ? buildGigsWorkspaceIncomingHref()
           : href;
 
-      window.location.assign(destination);
+      router.replace(destination, { scroll: false });
       return true;
     },
-    [createParam, isCalendarWorkspaceHost, saving],
+    [createParam, isCalendarWorkspaceHost, router, saving],
   );
 
   function handleSelectPlan(plan: BookingPlan) {
@@ -1361,6 +1394,9 @@ function EventsPageClientView({
                     onClick={() => {
                       setError(null);
                       setCreateStep("pick-plan");
+                      if (bookingPlans.length === 0) {
+                        void loadBookingPlansForCreate();
+                      }
                     }}
                   />
                   <PlannerOptionCard

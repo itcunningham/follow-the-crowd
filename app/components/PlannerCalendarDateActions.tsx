@@ -88,12 +88,12 @@ export default function PlannerCalendarDateActions({
 
   function navigateToCreateEvent() {
     onClose();
-    router.push(buildPlannerCreateEventHref(dateKey));
+    router.push(buildPlannerCreateEventHref(dateKey), { scroll: false });
   }
 
   function navigateToSavedEventPlans() {
     onClose();
-    router.push(buildPlannerCreateEventFromPlansHref(dateKey));
+    router.push(buildPlannerCreateEventFromPlansHref(dateKey), { scroll: false });
   }
 
   return (

@@ -40,6 +40,7 @@ export default function PlannerCalendarActionButtons({
       ) : (
         <Link
           href={createHref}
+          scroll={false}
           className={`${PLANNER_CALENDAR_ACTION_BUTTON_CLASS}${hasSavedEventPlans ? "" : " !flex-none"}`}
         >
           Create event
@@ -52,7 +53,7 @@ export default function PlannerCalendarActionButtons({
             Event Plans
           </button>
         ) : (
-          <Link href={plansHref} className={PLANNER_CALENDAR_ACTION_BUTTON_CLASS}>
+          <Link href={plansHref} scroll={false} className={PLANNER_CALENDAR_ACTION_BUTTON_CLASS}>
             Event Plans
           </Link>
         )
