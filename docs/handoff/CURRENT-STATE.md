@@ -267,6 +267,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `67fe621` — unify Ask for rate booking terminology
 - `5c82f2f` — simplify proposed rate booking card
 - `bc47f1a` — refine DM booking action layout
 - `55160bb` — polish booking proposal action layout
