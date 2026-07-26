@@ -256,7 +256,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
-- `TBD` — hide planner-cancelled bookings from active list
+- `5dce023` — hide planner-cancelled bookings from active list
 - `cffce57` — improve Event Details notes wrapping
 - `4b5f194` — simplify Events Calendar legend
 - `7d2a59f` — separate planner events from DJ bookings in calendars
