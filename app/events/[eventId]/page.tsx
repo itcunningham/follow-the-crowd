@@ -1062,6 +1062,7 @@ function EventDetailPageView() {
   }, [showStartCrewChatAction]);
 
   const showStickyActions = !editOpen && !sendOpen;
+  const showReadOnlyEventDetails = !editOpen;
   const showOwnerSendAction =
     isOwner && isPlanner && !eventIsCancelled && !isHistoryEventDetail;
   const showOpenDmInYourBookingSection =
@@ -1183,57 +1184,63 @@ function EventDetailPageView() {
           </div>
         ) : null}
 
-        <EventDetailHero
-          eventName={event.name}
-          coverImageUrl={event.cover_image_url}
-          fallbackColour={event.fallback_colour}
-          compact={isHistoryEventDetail}
-          statusBadge={
-            <EventDateStatusBadge
-              eventDate={event.event_date}
-              setTime={event.set_time}
-              status={event.status}
-              variant="compact"
-            />
-          }
-        />
+        {showReadOnlyEventDetails ? (
+          <EventDetailHero
+            eventName={event.name}
+            coverImageUrl={event.cover_image_url}
+            fallbackColour={event.fallback_colour}
+            compact={isHistoryEventDetail}
+            statusBadge={
+              <EventDateStatusBadge
+                eventDate={event.event_date}
+                setTime={event.set_time}
+                status={event.status}
+                variant="compact"
+              />
+            }
+          />
+        ) : null}
 
         <div className={`px-4 sm:px-6 ${showBottomBar ? "pb-28" : "pb-6"} pt-5`}>
-          {searchParams.get("coverUpload") === "failed" ? (
-            <p className={`${EVENT_DETAIL_FEEDBACK_CLASS} text-ftc-text-secondary`}>
-              Event saved, but the flyer could not be uploaded. Open Edit event to try again.
-            </p>
-          ) : null}
+          {showReadOnlyEventDetails ? (
+            <>
+              {searchParams.get("coverUpload") === "failed" ? (
+                <p className={`${EVENT_DETAIL_FEEDBACK_CLASS} text-ftc-text-secondary`}>
+                  Event saved, but the flyer could not be uploaded. Open Edit event to try again.
+                </p>
+              ) : null}
 
-          {successMessage ? (
-            <p className={`${EVENT_DETAIL_FEEDBACK_CLASS} text-ftc-text-secondary`}>
-              {successMessage}
-            </p>
-          ) : null}
+              {successMessage ? (
+                <p className={`${EVENT_DETAIL_FEEDBACK_CLASS} text-ftc-text-secondary`}>
+                  {successMessage}
+                </p>
+              ) : null}
 
-          {error ? (
-            <p className={`${EVENT_DETAIL_FEEDBACK_CLASS} text-[var(--ftc-color-danger)]`}>
-              {error}
-            </p>
-          ) : null}
+              {error ? (
+                <p className={`${EVENT_DETAIL_FEEDBACK_CLASS} text-[var(--ftc-color-danger)]`}>
+                  {error}
+                </p>
+              ) : null}
 
-          <h1 className="text-xl font-bold leading-tight tracking-tight text-ftc-text sm:text-2xl">
-            {event.name}
-          </h1>
+              <h1 className="text-xl font-bold leading-tight tracking-tight text-ftc-text sm:text-2xl">
+                {event.name}
+              </h1>
 
-          <div className="mt-3">
-            <EventDetailSummary event={event} />
-          </div>
+              <div className="mt-3">
+                <EventDetailSummary event={event} />
+              </div>
 
-          {event.notes?.trim() ? (
-            <section className={EVENT_DETAIL_SECTION_SPACING}>
-              <EventDetailSectionTitle>Notes</EventDetailSectionTitle>
-              <p className="mt-2 text-sm leading-relaxed text-ftc-text-secondary">{event.notes}</p>
-            </section>
+              {event.notes?.trim() ? (
+                <section className={EVENT_DETAIL_SECTION_SPACING}>
+                  <EventDetailSectionTitle>Notes</EventDetailSectionTitle>
+                  <p className="mt-2 text-sm leading-relaxed text-ftc-text-secondary">{event.notes}</p>
+                </section>
+              ) : null}
+            </>
           ) : null}
 
           {editOpen && editForm && canEditEvent && !isHistoryEventDetail ? (
-            <section ref={editFormSectionRef} className="mt-4 scroll-mt-24">
+            <section ref={editFormSectionRef} className="scroll-mt-24">
             <PlannerFormCard
               title="Edit event"
               cardClassName={`mb-0 ${EVENT_DETAIL_CARD_CLASS}`}
@@ -1346,160 +1353,164 @@ function EventDetailPageView() {
             </section>
           ) : null}
 
-          {lineupLoading ? (
-            <EventDetailPlannerLowerSectionsSkeleton />
-          ) : (
+          {showReadOnlyEventDetails ? (
             <>
-          {canViewRunSheet ? (
-            <>
-              {showRunSheetSendBookingsAction ? (
-                <div className="mt-8">
-                  <EventDetailPrimaryAction onClick={openSendBookings}>
-                    Invite DJs
-                  </EventDetailPrimaryAction>
+              {lineupLoading ? (
+                <EventDetailPlannerLowerSectionsSkeleton />
+              ) : (
+                <>
+                  {canViewRunSheet ? (
+                    <>
+                      {showRunSheetSendBookingsAction ? (
+                        <div className="mt-8">
+                          <EventDetailPrimaryAction onClick={openSendBookings}>
+                            Invite DJs
+                          </EventDetailPrimaryAction>
+                        </div>
+                      ) : null}
+                      <div className={showRunSheetSendBookingsAction ? "mt-4" : "mt-8"}>
+                        <EventRunSheetSection
+                          eventId={event.id}
+                          canEdit={canEditRunSheet}
+                          lineup={lineup}
+                          profiles={profiles}
+                          onSaved={(message) => setSuccessMessage(message)}
+                          readOnlyHint={isHistoryEventDetail ? null : undefined}
+                          emptyStateMessage={
+                            isHistoryEventDetail
+                              ? "No run sheet was saved for this event"
+                              : undefined
+                          }
+                        />
+                      </div>
+                    </>
+                  ) : null}
+
+                  {!isOwner && viewerBooking ? (
+                    <section className={`${EVENT_DETAIL_SECTION_SPACING} ${EVENT_DETAIL_CARD_CLASS}`}>
+                      <EventDetailSectionTitle>Your booking</EventDetailSectionTitle>
+                      <div className="mt-3 flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <div className="min-w-0 flex-1">
+                          <BookingStatusBadge status={viewerBooking.status} variant="compact" />
+                          <p className="mt-2 text-sm text-ftc-text-secondary">
+                            Set time {viewerBooking.set_time || "TBC"}
+                            {viewerBooking.fee ? ` · ${formatRateDisplay(viewerBooking.fee)}` : ""}
+                          </p>
+                          {viewerBooking.status === "cancelled" ? (
+                            <EventDetailBookingCancellationDetails
+                              cancelledByLabel={resolveBookingCancelledByLabel(viewerBooking, profiles)}
+                              cancellationReasonLabel={resolveBookingCancellationReasonLabel(viewerBooking)}
+                            />
+                          ) : null}
+                        </div>
+                        <div className="flex w-full shrink-0 flex-col items-stretch gap-2 sm:w-auto sm:items-end">
+                          {!isHistoryEventDetail &&
+                          getAcceptedBookingCancellationRole(viewerBooking, currentUserId) === "dj" ? (
+                            <CancelAcceptedBookingButton
+                              role="dj"
+                              loading={cancellingBookingId === viewerBooking.id}
+                              onConfirm={(reason) => handleCancelAcceptedBooking(viewerBooking, reason)}
+                              className={`${EVENT_DETAIL_BTN_DESTRUCTIVE} w-full sm:w-auto sm:min-w-[7.5rem]`}
+                            />
+                          ) : null}
+                          {viewerBooking.conversation_id && !hideOpenBookingConversation ? (
+                            <Link
+                              href={buildEventDetailLineupDmHref(viewerBooking.conversation_id)}
+                              className={`${EVENT_DETAIL_BTN_SECONDARY} w-full sm:w-auto sm:min-w-[7.5rem]`}
+                            >
+                              Open DM
+                            </Link>
+                          ) : null}
+                        </div>
+                      </div>
+                    </section>
+                  ) : null}
+
+                  {isOwner ? (
+                    <section className={`${EVENT_DETAIL_SECTION_SPACING} ${EVENT_DETAIL_CARD_CLASS}`}>
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div>
+                          <EventDetailSectionTitle>Bookings</EventDetailSectionTitle>
+                          <div className="mt-2.5 flex flex-wrap gap-1.5">
+                            <PlannerStatChip label="Invited" value={lineupStats.total} variant="compact" />
+                            <PlannerStatChip label="Pending" value={lineupStats.pending} variant="compact" />
+                            <PlannerStatChip label="Accepted" value={lineupStats.accepted} variant="compact" />
+                            <PlannerStatChip label="Declined" value={lineupStats.declined} variant="compact" />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="mt-3">
+                        <PlannerFilterPills
+                          options={STATUS_FILTERS}
+                          value={lineupFilter}
+                          onChange={setLineupFilter}
+                        />
+                      </div>
+
+                      {filteredLineup.length === 0 ? (
+                        <PlannerEmptyPanel
+                          className="mt-5"
+                          message={
+                            isHistoryEventDetail
+                              ? "No bookings for this event"
+                              : "No DJs invited yet, send booking requests to build your lineup"
+                          }
+                        />
+                      ) : (
+                        <ul className="mt-3 space-y-2.5">
+                          {filteredLineup.map((booking) => {
+                            const profile = profiles.get(booking.recipient_id);
+
+                            return (
+                              <li key={booking.id}>
+                                <EventLineupBookingCard
+                                  booking={booking}
+                                  profile={profile}
+                                  currentUserId={currentUserId}
+                                  eventDetailId={eventId}
+                                  calendarOrigin={calendarOrigin}
+                                  readOnly={isHistoryEventDetail}
+                                  cancelledByLabel={resolveBookingCancelledByLabel(booking, profiles)}
+                                  cancellationReasonLabel={resolveBookingCancellationReasonLabel(booking)}
+                                  canHideFromLineup={
+                                    !isHistoryEventDetail &&
+                                    isOwner &&
+                                    isPlanner &&
+                                    booking.status === "declined" &&
+                                    !booking.lineup_hidden_at
+                                  }
+                                  hiding={hidingBookingId === booking.id}
+                                  hideDisabled={Boolean(hidingBookingId) && hidingBookingId !== booking.id}
+                                  cancelling={cancellingBookingId === booking.id}
+                                  proposalLoading={proposalLoadingId === booking.id}
+                                  onHideFromLineup={() => handleHideFromLineup(booking.id)}
+                                  onCancelBooking={() => handleCancelBooking(booking.id)}
+                                  onCancelAccepted={(reason) => handleCancelAcceptedBooking(booking, reason)}
+                                  onAcceptProposal={() => handleAcceptProposedRate(booking)}
+                                  onKeepOriginalOffer={() => handleKeepOriginalOffer(booking)}
+                                />
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      )}
+                    </section>
+                  ) : null}
+                </>
+              )}
+
+              {isOwner && isPlanner && canManageEventLifecycle ? (
+                <div className="mt-8 border-t border-ftc-border-subtle pt-6">
+                  <EventDeleteCancelButton
+                    mode={hasLinkedBookings ? "cancel" : "delete"}
+                    loading={hasLinkedBookings ? cancellingEvent : deletingEvent}
+                    disabled={deletingEvent || cancellingEvent}
+                    onConfirm={hasLinkedBookings ? handleCancelEvent : handleDeleteEvent}
+                  />
                 </div>
               ) : null}
-              <div className={showRunSheetSendBookingsAction ? "mt-4" : "mt-8"}>
-                <EventRunSheetSection
-                  eventId={event.id}
-                  canEdit={canEditRunSheet}
-                  lineup={lineup}
-                  profiles={profiles}
-                  onSaved={(message) => setSuccessMessage(message)}
-                  readOnlyHint={isHistoryEventDetail ? null : undefined}
-                  emptyStateMessage={
-                    isHistoryEventDetail
-                      ? "No run sheet was saved for this event"
-                      : undefined
-                  }
-                />
-              </div>
             </>
-          ) : null}
-
-          {!isOwner && viewerBooking ? (
-            <section className={`${EVENT_DETAIL_SECTION_SPACING} ${EVENT_DETAIL_CARD_CLASS}`}>
-              <EventDetailSectionTitle>Your booking</EventDetailSectionTitle>
-              <div className="mt-3 flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                <div className="min-w-0 flex-1">
-                  <BookingStatusBadge status={viewerBooking.status} variant="compact" />
-                  <p className="mt-2 text-sm text-ftc-text-secondary">
-                    Set time {viewerBooking.set_time || "TBC"}
-                    {viewerBooking.fee ? ` · ${formatRateDisplay(viewerBooking.fee)}` : ""}
-                  </p>
-                  {viewerBooking.status === "cancelled" ? (
-                    <EventDetailBookingCancellationDetails
-                      cancelledByLabel={resolveBookingCancelledByLabel(viewerBooking, profiles)}
-                      cancellationReasonLabel={resolveBookingCancellationReasonLabel(viewerBooking)}
-                    />
-                  ) : null}
-                </div>
-                <div className="flex w-full shrink-0 flex-col items-stretch gap-2 sm:w-auto sm:items-end">
-                  {!isHistoryEventDetail &&
-                  getAcceptedBookingCancellationRole(viewerBooking, currentUserId) === "dj" ? (
-                    <CancelAcceptedBookingButton
-                      role="dj"
-                      loading={cancellingBookingId === viewerBooking.id}
-                      onConfirm={(reason) => handleCancelAcceptedBooking(viewerBooking, reason)}
-                      className={`${EVENT_DETAIL_BTN_DESTRUCTIVE} w-full sm:w-auto sm:min-w-[7.5rem]`}
-                    />
-                  ) : null}
-                  {viewerBooking.conversation_id && !hideOpenBookingConversation ? (
-                    <Link
-                      href={buildEventDetailLineupDmHref(viewerBooking.conversation_id)}
-                      className={`${EVENT_DETAIL_BTN_SECONDARY} w-full sm:w-auto sm:min-w-[7.5rem]`}
-                    >
-                      Open DM
-                    </Link>
-                  ) : null}
-                </div>
-              </div>
-            </section>
-          ) : null}
-
-          {isOwner ? (
-            <section className={`${EVENT_DETAIL_SECTION_SPACING} ${EVENT_DETAIL_CARD_CLASS}`}>
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <EventDetailSectionTitle>Bookings</EventDetailSectionTitle>
-                  <div className="mt-2.5 flex flex-wrap gap-1.5">
-                    <PlannerStatChip label="Invited" value={lineupStats.total} variant="compact" />
-                    <PlannerStatChip label="Pending" value={lineupStats.pending} variant="compact" />
-                    <PlannerStatChip label="Accepted" value={lineupStats.accepted} variant="compact" />
-                    <PlannerStatChip label="Declined" value={lineupStats.declined} variant="compact" />
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-3">
-                <PlannerFilterPills
-                  options={STATUS_FILTERS}
-                  value={lineupFilter}
-                  onChange={setLineupFilter}
-                />
-              </div>
-
-              {filteredLineup.length === 0 ? (
-                <PlannerEmptyPanel
-                  className="mt-5"
-                  message={
-                    isHistoryEventDetail
-                      ? "No bookings for this event"
-                      : "No DJs invited yet, send booking requests to build your lineup"
-                  }
-                />
-              ) : (
-                <ul className="mt-3 space-y-2.5">
-                  {filteredLineup.map((booking) => {
-                    const profile = profiles.get(booking.recipient_id);
-
-                    return (
-                      <li key={booking.id}>
-                        <EventLineupBookingCard
-                          booking={booking}
-                          profile={profile}
-                          currentUserId={currentUserId}
-                          eventDetailId={eventId}
-                          calendarOrigin={calendarOrigin}
-                          readOnly={isHistoryEventDetail}
-                          cancelledByLabel={resolveBookingCancelledByLabel(booking, profiles)}
-                          cancellationReasonLabel={resolveBookingCancellationReasonLabel(booking)}
-                          canHideFromLineup={
-                            !isHistoryEventDetail &&
-                            isOwner &&
-                            isPlanner &&
-                            booking.status === "declined" &&
-                            !booking.lineup_hidden_at
-                          }
-                          hiding={hidingBookingId === booking.id}
-                          hideDisabled={Boolean(hidingBookingId) && hidingBookingId !== booking.id}
-                          cancelling={cancellingBookingId === booking.id}
-                          proposalLoading={proposalLoadingId === booking.id}
-                          onHideFromLineup={() => handleHideFromLineup(booking.id)}
-                          onCancelBooking={() => handleCancelBooking(booking.id)}
-                          onCancelAccepted={(reason) => handleCancelAcceptedBooking(booking, reason)}
-                          onAcceptProposal={() => handleAcceptProposedRate(booking)}
-                          onKeepOriginalOffer={() => handleKeepOriginalOffer(booking)}
-                        />
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
-            </section>
-          ) : null}
-            </>
-          )}
-
-          {isOwner && isPlanner && canManageEventLifecycle ? (
-            <div className="mt-8 border-t border-ftc-border-subtle pt-6">
-              <EventDeleteCancelButton
-                mode={hasLinkedBookings ? "cancel" : "delete"}
-                loading={hasLinkedBookings ? cancellingEvent : deletingEvent}
-                disabled={deletingEvent || cancellingEvent}
-                onConfirm={hasLinkedBookings ? handleCancelEvent : handleDeleteEvent}
-              />
-            </div>
           ) : null}
         </div>
 
