@@ -240,6 +240,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `dfa13b8` — Scope QA reset to QA accounts only
 - `3654455` — Simplify FTC QA reset process
 - `567fedc` — Automate FTC beta environment reset
 - `cbaf7aa` — Prepare clean QA environment for beta readiness testing
