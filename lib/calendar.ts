@@ -215,6 +215,19 @@ export function getPlannerCalendarAgendaAccentClass(
   return getEventFallbackColourStyles("blue").swatchClassName;
 }
 
+export function resolveCalendarBookingEventFallbackColour(
+  eventId: string | null | undefined,
+  eventFallbackColourById: ReadonlyMap<string, string | null>,
+): string | null {
+  const trimmedEventId = eventId?.trim();
+
+  if (!trimmedEventId) {
+    return null;
+  }
+
+  return eventFallbackColourById.get(trimmedEventId) ?? null;
+}
+
 export const WEEKDAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 export function getCalendarStatusBadgeClass(kind: CalendarStatusKind): string {

@@ -27,6 +27,9 @@ import CalendarMobileChrome, {
   CALENDAR_MOBILE_CHROME_GIGS_DAY_STRIP_CLASS,
 } from "@/app/components/calendar/CalendarMobileChrome";
 import {
+  CALENDAR_MOBILE_AGENDA_CARD_BODY_CLASS,
+  CALENDAR_MOBILE_AGENDA_CARD_CONTENT_CLASS,
+  CALENDAR_MOBILE_AGENDA_CARD_LEADING_CLASS,
   CALENDAR_MOBILE_AGENDA_CARD_LIST_CLASS,
   CALENDAR_MOBILE_AGENDA_CARD_TITLE_CLASS,
   CALENDAR_MOBILE_INTERACTIVE_PRESS_CLASS,
@@ -74,6 +77,8 @@ import {
   resolveDjCalendarSelectedDate,
   resolveDjCalendarViewMonthStart,
   isDjGigsCalendarBulkSelectableDateKey,
+  getPlannerCalendarAgendaAccentClass,
+  resolveCalendarBookingEventFallbackColour,
   toDateKey,
   WEEKDAY_LABELS,
 } from "@/lib/calendar";
@@ -88,8 +93,17 @@ import {
   formatGigsCalendarAvailabilityMarkedMessage,
   useInlineTabFeedbackDismiss,
 } from "@/lib/design/inlineTabFeedback";
+import { getEventArtworkByIds } from "@/lib/events";
 
 
+function renderDjCalendarAgendaLeadingBanner(eventFallbackColour: string | null | undefined) {
+  return (
+    <span
+      aria-hidden="true"
+      className={`${CALENDAR_MOBILE_AGENDA_CARD_LEADING_CLASS} ${getPlannerCalendarAgendaAccentClass(eventFallbackColour)}`}
+    />
+  );
+}
 const AVAILABILITY_STATUS_VALUES: readonly DjAvailabilityStatus[] = [
   "available",
   "tentative",
@@ -222,6 +236,7 @@ type DayBookingsPopoverProps = {
   dateKey: string;
   bookings: BookingRequest[];
   monthStart: Date;
+  eventFallbackColourById: Map<string, string | null>;
   onClose: () => void;
   onBookingNavigationError?: (message: string) => void;
 };
@@ -230,6 +245,7 @@ function DayBookingsPopover({
   dateKey,
   bookings,
   monthStart,
+  eventFallbackColourById,
   onClose,
   onBookingNavigationError,
 }: DayBookingsPopoverProps) {
@@ -262,6 +278,10 @@ function DayBookingsPopover({
             <DjCalendarBookingNavButton
               booking={booking}
               calendarOrigin={calendarOrigin}
+              eventFallbackColour={resolveCalendarBookingEventFallbackColour(
+                booking.event_id,
+                eventFallbackColourById,
+              )}
               onBeforeNavigate={onClose}
               onNavigationError={onBookingNavigationError}
               compact
@@ -461,6 +481,7 @@ function BulkActionBar({
 function DjCalendarBookingNavButton({
   booking,
   calendarOrigin,
+  eventFallbackColour = null,
   onBeforeNavigate,
   onNavigationError,
   className,
@@ -468,6 +489,7 @@ function DjCalendarBookingNavButton({
 }: {
   booking: BookingRequest;
   calendarOrigin: CalendarOriginState;
+  eventFallbackColour?: string | null;
   onBeforeNavigate?: () => void;
   onNavigationError?: (message: string) => void;
   className: string;
@@ -569,19 +591,24 @@ function DjCalendarBookingNavButton({
         className={`${className} touch-manipulation [-webkit-touch-callout:none] ${CALENDAR_MOBILE_INTERACTIVE_PRESS_CLASS}`}
       >
         <span className="pointer-events-none block w-full min-w-0 overflow-hidden">
-          <span className="flex min-w-0 items-center justify-between gap-2 overflow-hidden">
-            <span className={`min-w-0 flex-1 overflow-hidden ${CALENDAR_MOBILE_AGENDA_CARD_TITLE_CLASS} text-xs`}>
-              {eventName}
-            </span>
-            <span className="flex shrink-0 basis-[5.75rem] justify-end self-center">
-              <BookingStatusBadge status={cardBookingStatus} variant="compact" />
+          <span className={CALENDAR_MOBILE_AGENDA_CARD_BODY_CLASS}>
+            {renderDjCalendarAgendaLeadingBanner(eventFallbackColour)}
+            <span className={CALENDAR_MOBILE_AGENDA_CARD_CONTENT_CLASS}>
+              <span className="flex min-w-0 items-center justify-between gap-2 overflow-hidden">
+                <span className={`min-w-0 flex-1 overflow-hidden ${CALENDAR_MOBILE_AGENDA_CARD_TITLE_CLASS} text-xs`}>
+                  {eventName}
+                </span>
+                <span className="flex shrink-0 basis-[5.75rem] justify-end self-center">
+                  <BookingStatusBadge status={cardBookingStatus} variant="compact" />
+                </span>
+              </span>
+              {booking.set_time.trim() ? (
+                <span className="mt-0.5 block truncate text-[11px] text-ftc-text-muted">
+                  {formatCalendarTimeLabel(booking.set_time)}
+                </span>
+              ) : null}
             </span>
           </span>
-          {booking.set_time.trim() ? (
-            <span className="mt-0.5 block truncate text-[11px] text-ftc-text-muted">
-              {formatCalendarTimeLabel(booking.set_time)}
-            </span>
-          ) : null}
         </span>
       </button>
     );
@@ -597,7 +624,7 @@ function DjCalendarBookingNavButton({
       onContextMenu={(event) => event.preventDefault()}
       shellClassName={className}
       className={`touch-manipulation [-webkit-touch-callout:none] ${CALENDAR_MOBILE_INTERACTIVE_PRESS_CLASS}`}
-      reserveLeadingSpace
+      leading={renderDjCalendarAgendaLeadingBanner(eventFallbackColour)}
       badge={<BookingStatusBadge status={cardBookingStatus} variant="compact" />}
       heading={
         <span className={`${CALENDAR_MOBILE_AGENDA_CARD_TITLE_CLASS} text-sm`}>{eventName}</span>
@@ -616,18 +643,21 @@ function DjCalendarBookingNavButton({
 type DjCalendarMobileBookingCardProps = {
   booking: BookingRequest;
   calendarOrigin: CalendarOriginState;
+  eventFallbackColour?: string | null;
   onNavigationError?: (message: string) => void;
 };
 
 function DjCalendarMobileBookingCard({
   booking,
   calendarOrigin,
+  eventFallbackColour = null,
   onNavigationError,
 }: DjCalendarMobileBookingCardProps) {
   return (
     <DjCalendarBookingNavButton
       booking={booking}
       calendarOrigin={calendarOrigin}
+      eventFallbackColour={eventFallbackColour}
       onNavigationError={onNavigationError}
       className="border border-ftc-border bg-ftc-surface/80 hover:border-ftc-primary/30 hover:bg-ftc-surface"
     />
@@ -646,6 +676,7 @@ type DjAvailabilityMobileDayPanelProps = {
   animatedBookingsDateKey: string;
   bookingsTransitionClassName: string;
   isAgendaTransitionInteractive: boolean;
+  eventFallbackColourById: Map<string, string | null>;
   onBookingNavigationError?: (message: string) => void;
 };
 
@@ -661,6 +692,7 @@ function DjAvailabilityMobileDayPanel({
   animatedBookingsDateKey,
   bookingsTransitionClassName,
   isAgendaTransitionInteractive,
+  eventFallbackColourById,
   onBookingNavigationError,
 }: DjAvailabilityMobileDayPanelProps) {
   const dateKey = toDateKey(selectedDate);
@@ -720,6 +752,10 @@ function DjAvailabilityMobileDayPanel({
                 <DjCalendarMobileBookingCard
                   booking={booking}
                   calendarOrigin={bookingsCalendarOrigin}
+                  eventFallbackColour={resolveCalendarBookingEventFallbackColour(
+                    booking.event_id,
+                    eventFallbackColourById,
+                  )}
                   onNavigationError={onBookingNavigationError}
                 />
               </li>
@@ -748,6 +784,7 @@ type DjAvailabilityMobileAgendaProps = {
   onSelectDate: (date: Date) => void;
   onSetPersonalStatus: (dateKey: string, status: DjAvailabilityStatus) => void;
   onClearPersonalStatus: (dateKey: string) => void;
+  eventFallbackColourById: Map<string, string | null>;
   onBookingNavigationError?: (message: string) => void;
 };
 
@@ -764,6 +801,7 @@ function DjAvailabilityMobileAgenda({
   onSelectDate,
   onSetPersonalStatus,
   onClearPersonalStatus,
+  eventFallbackColourById,
   onBookingNavigationError,
 }: DjAvailabilityMobileAgendaProps) {
   const selectedDateKey = toDateKey(selectedDate);
@@ -791,6 +829,7 @@ function DjAvailabilityMobileAgenda({
           animatedBookingsDateKey={displayDateKey}
           bookingsTransitionClassName={transitionClassName}
           isAgendaTransitionInteractive={isAgendaTransitionInteractive}
+          eventFallbackColourById={eventFallbackColourById}
           onBookingNavigationError={onBookingNavigationError}
         />
       )}
@@ -818,6 +857,7 @@ function DjAvailabilityDayCell({
   onClearPersonalStatus,
   onOpenBooking,
   onToggleBookingPopover,
+  eventFallbackColourById,
   onBookingNavigationError,
 }: {
   date: Date;
@@ -839,6 +879,7 @@ function DjAvailabilityDayCell({
   onClearPersonalStatus: () => void;
   onOpenBooking: (booking: BookingRequest, calendarDate: string) => void;
   onToggleBookingPopover: () => void;
+  eventFallbackColourById: Map<string, string | null>;
   onBookingNavigationError?: (message: string) => void;
 }) {
   const dateKey = toDateKey(date);
@@ -1001,6 +1042,7 @@ function DjAvailabilityDayCell({
                   dateKey={dateKey}
                   bookings={interactiveBookings}
                   monthStart={monthStart}
+                  eventFallbackColourById={eventFallbackColourById}
                   onClose={onCloseOverlays}
                   onBookingNavigationError={onBookingNavigationError}
                 />
@@ -1065,6 +1107,9 @@ export default function DjAvailabilityCalendar({
   const [bookings, setBookings] = useState<BookingRequest[]>(
     () => initialDjCalendarCache?.bookings ?? [],
   );
+  const [eventFallbackColourById, setEventFallbackColourById] = useState<
+    Map<string, string | null>
+  >(() => new Map());
   const [loading, setLoading] = useState(() => initialDjCalendarCache === null);
   const [savingDateKey, setSavingDateKey] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -1484,8 +1529,26 @@ export default function DjAvailabilityCalendar({
         listMyAvailabilityEntries(),
         listMyActiveReceivedBookings(),
       ]);
+      const eventIds = [
+        ...new Set(
+          activeBookings
+            .map((booking) => booking.event_id?.trim())
+            .filter((eventId): eventId is string => Boolean(eventId)),
+        ),
+      ];
+      const artworkById = await getEventArtworkByIds(eventIds);
+      const nextEventFallbackColourById = new Map<string, string | null>();
+
+      for (const eventId of eventIds) {
+        nextEventFallbackColourById.set(
+          eventId,
+          artworkById.get(eventId)?.fallbackColour ?? null,
+        );
+      }
+
       setAvailabilityEntries(entries);
       setBookings(activeBookings);
+      setEventFallbackColourById(nextEventFallbackColourById);
       writeDjGigsCalendarCache({ entries, bookings: activeBookings });
     } catch (loadError) {
       console.error("Failed to load DJ availability calendar:", loadError);
@@ -1493,6 +1556,7 @@ export default function DjAvailabilityCalendar({
       if (cachedSnapshot === null) {
         setAvailabilityEntries([]);
         setBookings([]);
+        setEventFallbackColourById(new Map());
       }
 
       setError(getDjAvailabilityLoadErrorMessage(loadError));
@@ -1738,6 +1802,7 @@ export default function DjAvailabilityCalendar({
         onSelectDate={handleMobileSelectDate}
         onSetPersonalStatus={(dateKey, status) => void handleSetPersonalStatus(dateKey, status)}
         onClearPersonalStatus={(dateKey) => void handleClearPersonalStatus(dateKey)}
+        eventFallbackColourById={eventFallbackColourById}
         onBookingNavigationError={reportBookingNavigationError}
       />
 
@@ -1793,6 +1858,7 @@ export default function DjAvailabilityCalendar({
                   onSetPersonalStatus={(status) => void handleSetPersonalStatus(dateKey, status)}
                   onClearPersonalStatus={() => void handleClearPersonalStatus(dateKey)}
                   onOpenBooking={handleOpenBooking}
+                  eventFallbackColourById={eventFallbackColourById}
                   onBookingNavigationError={reportBookingNavigationError}
                   onToggleBookingPopover={() => {
                     setOpenMenuDateKey(null);
