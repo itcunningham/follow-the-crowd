@@ -1,4 +1,4 @@
-# Current state (last updated: 2026-07-25)
+# Current state (last updated: 2026-07-26)
 
 Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 
@@ -82,6 +82,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 
 - **Calendar action CTA (2026-07-22):** mobile/desktop date actions show **Event Plans** (not “Saved Event Plans”) on the second pill; workspace tab and Event Plans page copy unchanged
 - **Planner Event Calendar cards (2026-07-22):** mobile agenda cards use `usePlannerCalendarItemNavigation` (touch `pointerup` + `location.assign`) to open Event Details with `from=calendar` return params — never DM; calendar origin is forwarded through Event Details → lineup DM → Back → Event Details → Back via `buildEventDetailDmThreadHref` + `resolveDmThreadBackHref` + existing `resolveEventDetailBackHref`
+- **Planner pending calendar navigation (2026-07-26):** pending sent-booking cards resolve Event Details hrefs when `event_id` is missing by linking to the sole owned event on that date (after name/date match); planner calendar item cache bumped to v3
 - Desktop: month grid + day modal (wider layout, same behaviour)
 - No intro/description copy under the page title (planner event calendar)
 - **Status dot priority per date:** Accepted (green) → Pending (amber) → Upcoming (dark blue); Today uses tile outline, not dot colour

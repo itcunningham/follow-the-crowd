@@ -318,6 +318,32 @@ function isBookingLinkedToCancelledEvent(
   return Boolean(booking.event_id && cancelledEventIds.has(booking.event_id));
 }
 
+function resolveOwnedEventsOnPlannerCalendarDate(
+  ownedEvents: Event[],
+  dateKey: string,
+): Event[] {
+  return ownedEvents.filter((event) => {
+    if (isEventCancelled(event)) {
+      return false;
+    }
+
+    return resolveCalendarDateKey(event.event_date) === dateKey;
+  });
+}
+
+function resolveSoleOwnedEventIdOnPlannerCalendarDate(
+  ownedEvents: Event[],
+  dateKey: string,
+): string | null {
+  const eventsOnDate = resolveOwnedEventsOnPlannerCalendarDate(ownedEvents, dateKey);
+
+  if (eventsOnDate.length !== 1) {
+    return null;
+  }
+
+  return eventsOnDate[0]?.id ?? null;
+}
+
 function resolvePlannerCalendarBookingEventId(
   booking: BookingRequest,
   ownedEvents: Event[],
@@ -336,27 +362,15 @@ function resolvePlannerCalendarBookingEventId(
 
   const bookingName = booking.event_name.trim().toLowerCase();
 
-  if (!bookingName) {
-    return null;
-  }
-
-  for (const event of ownedEvents) {
-    if (isEventCancelled(event)) {
-      continue;
-    }
-
-    const eventDateKey = resolveCalendarDateKey(event.event_date);
-
-    if (eventDateKey !== dateKey) {
-      continue;
-    }
-
-    if (event.name.trim().toLowerCase() === bookingName) {
-      return event.id;
+  if (bookingName) {
+    for (const event of resolveOwnedEventsOnPlannerCalendarDate(ownedEvents, dateKey)) {
+      if (event.name.trim().toLowerCase() === bookingName) {
+        return event.id;
+      }
     }
   }
 
-  return null;
+  return resolveSoleOwnedEventIdOnPlannerCalendarDate(ownedEvents, dateKey);
 }
 
 function mapEventToCalendarItem(event: Event): CalendarItem | null {
@@ -400,7 +414,9 @@ function mapBookingToCalendarItem(
   }
 
   const eventId =
-    options?.resolveEventId?.(booking) ?? booking.event_id?.trim() ?? null;
+    options?.resolveEventId?.(booking)?.trim() ||
+    booking.event_id?.trim() ||
+    null;
   const href = eventId ? `/events/${eventId}` : `/dm/${booking.conversation_id}`;
 
   return {
@@ -477,8 +493,9 @@ export async function loadCalendarItems(role: UserRole | null): Promise<Calendar
   });
 }
 
-function linkPlannerCalendarSentBookingsToEvents(items: CalendarItem[]): CalendarItem[] {
+export function linkPlannerCalendarSentBookingsToEvents(items: CalendarItem[]): CalendarItem[] {
   const eventIdByDateAndTitle = new Map<string, string>();
+  const eventIdsByDateKey = new Map<string, string[]>();
 
   for (const item of items) {
     if (item.type !== "event" || !item.eventId) {
@@ -487,6 +504,14 @@ function linkPlannerCalendarSentBookingsToEvents(items: CalendarItem[]): Calenda
 
     const key = `${item.dateKey}\0${item.title.trim().toLowerCase()}`;
     eventIdByDateAndTitle.set(key, item.eventId);
+
+    const eventIdsOnDate = eventIdsByDateKey.get(item.dateKey) ?? [];
+
+    if (!eventIdsOnDate.includes(item.eventId)) {
+      eventIdsOnDate.push(item.eventId);
+    }
+
+    eventIdsByDateKey.set(item.dateKey, eventIdsOnDate);
   }
 
   return items.map((item) => {
@@ -494,8 +519,11 @@ function linkPlannerCalendarSentBookingsToEvents(items: CalendarItem[]): Calenda
       return item;
     }
 
-    const key = `${item.dateKey}\0${item.title.trim().toLowerCase()}`;
-    const linkedEventId = eventIdByDateAndTitle.get(key);
+    const linkedEventId =
+      eventIdByDateAndTitle.get(`${item.dateKey}\0${item.title.trim().toLowerCase()}`) ??
+      (eventIdsByDateKey.get(item.dateKey)?.length === 1
+        ? eventIdsByDateKey.get(item.dateKey)?.[0] ?? null
+        : null);
 
     if (!linkedEventId) {
       return item;

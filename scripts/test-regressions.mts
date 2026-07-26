@@ -19,7 +19,11 @@ import {
   sanitizeWithdrawalOtherReasonValue,
 } from "../lib/booking/withdrawalReasonDetails";
 import { MAX_WITHDRAWAL_OTHER_REASON_LENGTH } from "../lib/bookingRequests";
-import { formatPlannerCalendarItemHeadline } from "../lib/calendar";
+import {
+  formatPlannerCalendarItemHeadline,
+  linkPlannerCalendarSentBookingsToEvents,
+  type CalendarItem,
+} from "../lib/calendar";
 import {
   resolveCompactCalendarDisplayTitle,
   resolveCompactCalendarEventOnlyTitle,
@@ -909,6 +913,54 @@ function testPlannerCalendarItemHref() {
       eventId: null,
     }),
     eventId,
+  );
+}
+
+function testPlannerCalendarPendingSentBookingEventLink() {
+  const origin: import("../lib/bookings/gigsCalendarNavigation").CalendarOriginState = {
+    calendarDate: "2026-07-14",
+    calendarView: "event",
+    calendarMonth: "2026-07-01",
+  };
+  const eventId = "11111111-1111-4111-8111-111111111111";
+  const baseItemFields = {
+    dateKey: "2026-07-14",
+    venue: "Revolver",
+    timeLabel: "9:00 PM",
+    typeLabel: "Sent booking",
+    startTimeSortKey: 1,
+    eventFallbackColour: null,
+  } satisfies Partial<CalendarItem>;
+  const eventItem: CalendarItem = {
+    ...baseItemFields,
+    id: `event-${eventId}`,
+    type: "event",
+    title: "Warehouse Session",
+    statusLabel: "Upcoming",
+    statusKind: "event_upcoming",
+    href: `/events/${eventId}`,
+    eventId,
+  };
+  const pendingSentBooking: CalendarItem = {
+    ...baseItemFields,
+    id: "sent_booking-booking-1",
+    type: "sent_booking",
+    title: "Warehouse Session (DJ invite)",
+    statusLabel: "Pending",
+    statusKind: "pending",
+    href: "/dm/conversation-1",
+    eventId: null,
+  };
+
+  const linkedItems = linkPlannerCalendarSentBookingsToEvents([eventItem, pendingSentBooking]);
+  const linkedPending = linkedItems.find((item) => item.id === pendingSentBooking.id);
+
+  assert.ok(linkedPending);
+  assert.equal(linkedPending.eventId, eventId);
+  assert.equal(linkedPending.href, `/events/${eventId}`);
+  assert.equal(
+    resolvePlannerCalendarItemHref(linkedPending, origin),
+    `/events/${eventId}?from=calendar&calendarDate=2026-07-14&calendarView=event&calendarMonth=2026-07-01`,
   );
 }
 
@@ -3223,6 +3275,7 @@ async function main() {
   testGigsIncomingDmEventDetailReturnChain();
   testGigsCalendarBookingNavigation();
   testPlannerCalendarItemHref();
+  testPlannerCalendarPendingSentBookingEventLink();
   testAcceptedFutureGigAppearsInConfirmed();
   testAcceptedPastGigAppearsInHistory();
   testPendingGigAppearsOnlyInIncoming();
