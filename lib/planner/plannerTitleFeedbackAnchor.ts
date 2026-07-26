@@ -1,13 +1,7 @@
-/** DOM selector for the shared planner title-row feedback anchor. */
+/** DOM selector for the Gigs-reference planner title-row feedback anchor. */
 export const PLANNER_TITLE_FEEDBACK_ANCHOR_SELECTOR = "[data-planner-title-feedback-anchor]";
 
-/** Prefer the last matching anchor so route-specific markers override the global fallback. */
-export function resolvePlannerTitleFeedbackAnchor(): Element | null {
-  const anchors = document.querySelectorAll(PLANNER_TITLE_FEEDBACK_ANCHOR_SELECTOR);
-
-  if (anchors.length === 0) {
-    return null;
-  }
-
-  return anchors[anchors.length - 1] ?? null;
+/** Sole positioning source — shared by Gigs, Event Details, and workspace routes. */
+export function getPlannerTitleFeedbackAnchor(): Element | null {
+  return document.querySelector(PLANNER_TITLE_FEEDBACK_ANCHOR_SELECTOR);
 }

@@ -1127,7 +1127,7 @@ function EventDetailPageView() {
     >
         <AppNavigation />
 
-        <div className="relative border-b border-ftc-border-subtle bg-ftc-bg/95 px-4 py-3 backdrop-blur-md sm:px-6">
+        <div className="border-b border-ftc-border-subtle bg-ftc-bg/95 px-4 py-3 backdrop-blur-md sm:px-6">
           <div className="flex items-start justify-between gap-3">
             <EventDetailOverlayButton onClick={goBackToEvents} label="Back to events">
               <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.75">
@@ -1186,11 +1186,6 @@ function EventDetailPageView() {
               <EventDetailEditHeaderSlot state={editHeaderState} onEditClick={openEditForm} />
             </div>
           </div>
-          <div
-            aria-hidden="true"
-            data-planner-title-feedback-anchor
-            className="pointer-events-none absolute inset-x-0 top-full mt-1.5 h-0"
-          />
         </div>
 
         {showCrewChatHelpUi && crewChatHelpOpen ? (
