@@ -2,15 +2,25 @@
 -- FTC QA Environment Reset — paste this entire file into Supabase SQL Editor → Run
 -- =============================================================================
 --
--- Wipes all transactional data, clears QA storage artifacts, and normalises
--- permanent QA profiles. Safe to re-run.
+-- Removes transactional data belonging to detected QA accounts ONLY.
+-- Non-QA users and their data are never touched. Safe to re-run (idempotent).
 --
--- QA accounts are detected automatically (no email editing required):
---   • display_name starts with "FTC QA"
---   • username starts with "ftcqa_"
---   • auth email local-part starts with ftcqa, ftc.qa, or ftc_qa
+-- HOW QA ACCOUNTS ARE IDENTIFIED (_qa_detected → _qa_user_ids):
+--   • public.users.display_name starts with "FTC QA"
+--   • public.users.username starts with "ftcqa_"
+--   • auth.users email local-part starts with ftcqa, ftc.qa, or ftc_qa
+--   • email local-part keywords infer role (planner, dj1, dj2, dj3, both, dj)
 --
--- PRESERVES: auth.users, avatars (profile-images), RLS, app configuration.
+-- HOW QA DATA IS SCOPED (derived temp tables):
+--   • _qa_events          — events owned by a QA user
+--   • _qa_booking_plans   — event plans owned by a QA user
+--   • _qa_booking_requests — QA↔QA bookings, or bookings on QA-owned events
+--   • _qa_only_conversations — every member is a QA user (whole thread removed)
+--   • _qa_touch_conversations — at least one QA member (QA messages/membership only)
+--   • _qa_messages        — crew chat on QA events, all msgs in QA-only DMs,
+--                           or messages authored by QA in mixed DMs
+--
+-- PRESERVES: non-QA transactional data, auth.users, avatars (profile-images), RLS.
 -- Runbook: docs/qa/FTC-BETA-ENVIRONMENT-RESET.md
 
 -- ---------------------------------------------------------------------------
@@ -38,7 +48,7 @@ insert into _qa_seed values
   ('FTC QA Both', 'both', 'ftcqa_both', 'Dual-role QA account — plans events and plays DJ sets.', 'eclectic', 'Melbourne', 'FTC QA Both', 'FTC QA Dual', 'Planner and DJ workflows for beta parity testing.');
 
 -- ---------------------------------------------------------------------------
--- Auto-detect QA auth users (no manual email map)
+-- Auto-detect QA auth users (source of truth for all scoping)
 -- ---------------------------------------------------------------------------
 
 create temp table _qa_detected as
@@ -81,40 +91,152 @@ where u.display_name like 'FTC QA%'
    or i.email_local like 'ftc_qa%'
 order by i.user_id;
 
+create temp table _qa_user_ids as
+select user_id from _qa_detected;
+
 -- ---------------------------------------------------------------------------
--- 1. Transactional cleanup
+-- Derive QA-owned / QA-touching record sets (empty when no QA accounts found)
+-- ---------------------------------------------------------------------------
+
+create temp table _qa_events as
+select e.id
+from public.events e
+where e.owner_id in (select user_id from _qa_user_ids);
+
+create temp table _qa_booking_plans as
+select bp.id
+from public.booking_plans bp
+where bp.owner_id in (select user_id from _qa_user_ids);
+
+create temp table _qa_booking_requests as
+select br.id
+from public.booking_requests br
+where (
+  br.sender_id in (select user_id from _qa_user_ids)
+  and br.recipient_id in (select user_id from _qa_user_ids)
+)
+or br.event_id in (select id from _qa_events);
+
+create temp table _qa_touch_conversations as
+select distinct cm.conversation_id
+from public.conversation_members cm
+where cm.user_id in (select user_id from _qa_user_ids);
+
+create temp table _qa_only_conversations as
+select cm.conversation_id
+from public.conversation_members cm
+group by cm.conversation_id
+having bool_and(cm.user_id in (select user_id from _qa_user_ids));
+
+create temp table _qa_messages as
+select m.id
+from public.messages m
+where (
+  m.event_id is not null
+  and btrim(m.event_id) ~ '^[0-9a-fA-F-]{36}$'
+  and m.event_id::uuid in (select id from _qa_events)
+)
+or m.conversation_id in (select conversation_id from _qa_only_conversations)
+or (
+  m.conversation_id in (select conversation_id from _qa_touch_conversations)
+  and m.user_id in (select user_id from _qa_user_ids)
+);
+
+-- ---------------------------------------------------------------------------
+-- 1. Scoped transactional cleanup (FK-safe order; skips when _qa_user_ids empty)
 -- ---------------------------------------------------------------------------
 
 begin;
 
-delete from public.user_reports;
-delete from public.message_reactions;
-delete from public.message_attachments;
-delete from public.message_reads;
-delete from public.booking_request_history_hides;
-delete from public.notifications;
-delete from public.messages;
-delete from public.event_run_sheet_rows;
-delete from public.event_run_sheet_columns;
-delete from public.booking_requests;
-delete from public.events;
-delete from public.booking_plans;
-delete from public.conversation_members;
-delete from public.conversations;
-delete from public.dj_availability;
-delete from public.user_blocks;
+delete from public.user_reports ur
+where ur.reporter_id in (select user_id from _qa_user_ids)
+   or ur.reported_user_id in (select user_id from _qa_user_ids)
+   or ur.conversation_id in (select conversation_id from _qa_only_conversations)
+   or ur.message_id in (select id from _qa_messages);
+
+delete from public.message_reactions mr
+where mr.message_id in (select id from _qa_messages)
+   or mr.user_id in (select user_id from _qa_user_ids);
+
+delete from public.message_attachments ma
+where ma.message_id in (select id from _qa_messages)
+   or ma.uploader_id in (select user_id from _qa_user_ids)
+   or ma.conversation_id in (select conversation_id from _qa_only_conversations);
+
+delete from public.message_reads mr
+where mr.user_id in (select user_id from _qa_user_ids)
+   or mr.conversation_id in (select conversation_id from _qa_touch_conversations)
+   or mr.event_id in (select id from _qa_events);
+
+delete from public.booking_request_history_hides h
+where h.user_id in (select user_id from _qa_user_ids)
+   or h.booking_request_id in (select id from _qa_booking_requests);
+
+delete from public.notifications n
+where n.user_id in (select user_id from _qa_user_ids);
+
+delete from public.messages m
+where m.id in (select id from _qa_messages);
+
+delete from public.event_run_sheet_rows r
+where r.event_id in (select id from _qa_events);
+
+delete from public.event_run_sheet_columns c
+where c.event_id in (select id from _qa_events);
+
+delete from public.booking_requests br
+where br.id in (select id from _qa_booking_requests);
+
+delete from public.events e
+where e.id in (select id from _qa_events);
+
+delete from public.booking_plans bp
+where bp.id in (select id from _qa_booking_plans);
+
+delete from public.conversation_members cm
+where cm.user_id in (select user_id from _qa_user_ids);
+
+delete from public.conversations c
+where c.id in (select conversation_id from _qa_only_conversations)
+   or not exists (
+     select 1
+     from public.conversation_members cm
+     where cm.conversation_id = c.id
+   );
+
+delete from public.dj_availability da
+where da.user_id in (select user_id from _qa_user_ids);
+
+delete from public.user_blocks ub
+where ub.blocker_id in (select user_id from _qa_user_ids)
+   or ub.blocked_id in (select user_id from _qa_user_ids);
 
 commit;
 
 -- ---------------------------------------------------------------------------
 -- 2. QA storage cleanup (avatars preserved in profile-images)
+-- event-covers path: {owner_id}/{event_id}/…
+-- dm-attachments path: {conversation_id}/{user_id}/…
 -- ---------------------------------------------------------------------------
 
-delete from storage.objects
-where bucket_id in ('dm-attachments', 'event-covers');
+delete from storage.objects so
+where so.bucket_id = 'event-covers'
+  and (
+    (storage.foldername(so.name))[1] in (select user_id from _qa_user_ids)
+    or (storage.foldername(so.name))[2] in (select id::text from _qa_events)
+  );
+
+delete from storage.objects so
+where so.bucket_id = 'dm-attachments'
+  and (
+    (storage.foldername(so.name))[2] in (select user_id from _qa_user_ids)
+    or (storage.foldername(so.name))[1] in (
+      select conversation_id::text from _qa_only_conversations
+    )
+  );
 
 -- ---------------------------------------------------------------------------
--- 3. Clear stale profile text on detected QA accounts
+-- 3. Clear stale profile text on QA accounts only
 -- ---------------------------------------------------------------------------
 
 update public.users u
@@ -125,9 +247,7 @@ set
   promoter_past_events = '',
   dj_availability = '',
   deleted_at = null
-where u.user_id in (select user_id from _qa_detected where resolved_display_name is not null)
-   or u.display_name like 'FTC QA%'
-   or u.username like 'ftcqa_%';
+where u.user_id in (select user_id from _qa_user_ids);
 
 -- ---------------------------------------------------------------------------
 -- 4. Upsert / normalise QA profiles
@@ -188,28 +308,75 @@ set
   dj_availability = '',
   deleted_at = null
 from _qa_seed s
-where u.display_name = s.display_name;
+where u.user_id in (select user_id from _qa_user_ids)
+  and u.display_name = s.display_name;
 
 -- ---------------------------------------------------------------------------
 -- 5. Verification
 -- ---------------------------------------------------------------------------
 
-select '--- transactional counts (expect 0) ---' as section;
+select '--- detected QA accounts ---' as section;
 
-select 'user_reports' as table_name, count(*) as row_count from public.user_reports
-union all select 'booking_requests', count(*) from public.booking_requests
-union all select 'events', count(*) from public.events
-union all select 'booking_plans', count(*) from public.booking_plans
-union all select 'messages', count(*) from public.messages
-union all select 'conversations', count(*) from public.conversations
-union all select 'notifications', count(*) from public.notifications
-union all select 'dj_availability', count(*) from public.dj_availability
-union all select 'user_blocks', count(*) from public.user_blocks
-union all select 'storage:dm-attachments', count(*) from storage.objects where bucket_id = 'dm-attachments'
-union all select 'storage:event-covers', count(*) from storage.objects where bucket_id = 'event-covers'
-order by table_name;
+select user_id, email, resolved_display_name
+from _qa_detected
+order by resolved_display_name nulls last, email;
 
-select '--- QA accounts (expect your permanent set) ---' as section;
+select '--- QA data remaining (expect 0) ---' as section;
+
+select 'qa_events' as scope, count(*) as row_count
+from public.events e
+where e.owner_id in (select user_id from _qa_user_ids)
+union all
+select 'qa_booking_plans', count(*)
+from public.booking_plans bp
+where bp.owner_id in (select user_id from _qa_user_ids)
+union all
+select 'qa_booking_requests', count(*)
+from public.booking_requests br
+where br.id in (select id from _qa_booking_requests)
+union all
+select 'qa_messages', count(*)
+from public.messages m
+where m.id in (select id from _qa_messages)
+union all
+select 'qa_notifications', count(*)
+from public.notifications n
+where n.user_id in (select user_id from _qa_user_ids)
+union all
+select 'qa_dj_availability', count(*)
+from public.dj_availability da
+where da.user_id in (select user_id from _qa_user_ids)
+union all
+select 'qa_user_blocks', count(*)
+from public.user_blocks ub
+where ub.blocker_id in (select user_id from _qa_user_ids)
+   or ub.blocked_id in (select user_id from _qa_user_ids)
+order by scope;
+
+select '--- non-QA data preserved (informational) ---' as section;
+
+select 'non_qa_events' as scope, count(*) as row_count
+from public.events e
+where e.owner_id not in (select user_id from _qa_user_ids)
+union all
+select 'non_qa_booking_plans', count(*)
+from public.booking_plans bp
+where bp.owner_id not in (select user_id from _qa_user_ids)
+union all
+select 'non_qa_booking_requests', count(*)
+from public.booking_requests br
+where br.id not in (select id from _qa_booking_requests)
+union all
+select 'non_qa_messages', count(*)
+from public.messages m
+where m.id not in (select id from _qa_messages)
+union all
+select 'non_qa_notifications', count(*)
+from public.notifications n
+where n.user_id not in (select user_id from _qa_user_ids)
+order by scope;
+
+select '--- QA accounts (profiles) ---' as section;
 
 select
   u.user_id,
@@ -220,12 +387,10 @@ select
   au.email as auth_email
 from public.users u
 left join auth.users au on au.id::text = u.user_id
-where u.display_name like 'FTC QA%'
-   or u.username like 'ftcqa_%'
-   or u.user_id in (select user_id from _qa_detected)
+where u.user_id in (select user_id from _qa_user_ids)
 order by u.display_name;
 
-select '--- expected but not found (sign up in app, then re-run) ---' as section;
+select '--- expected QA accounts not yet signed up ---' as section;
 
 select s.display_name as missing_account
 from _qa_seed s

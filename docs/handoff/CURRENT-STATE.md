@@ -32,7 +32,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 
 **Before first tester invite:** complete operational checklist OP-01–OP-11 in `PRIVATE-BETA-GO-LIVE.md` (tester list, invitations, feedback channel, backup, monitoring, QA data isolation).
 
-**Beta readiness QA reset (2026-07-26):** One-step reset — paste `scripts/resetQaEnvironment.sql` in Supabase SQL Editor. Runbook: `docs/qa/FTC-BETA-ENVIRONMENT-RESET.md`.
+**Beta readiness QA reset (2026-07-26):** `scripts/resetQaEnvironment.sql` removes **QA account data only** (non-QA users untouched). Runbook: `docs/qa/FTC-BETA-ENVIRONMENT-RESET.md`.
 
 **Pause rule:** new Critical/High production defect pauses tester onboarding.
 
@@ -240,7 +240,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
-- (pending) — Simplify FTC QA reset process
+- `3654455` — Simplify FTC QA reset process
 - `567fedc` — Automate FTC beta environment reset
 - `cbaf7aa` — Prepare clean QA environment for beta readiness testing
 - `4f82297` — add profile Back button when opened from DM
