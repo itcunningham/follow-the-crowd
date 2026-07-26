@@ -7,7 +7,7 @@ import BookingSheetDialog, {
 } from "@/app/components/booking/BookingSheetDialog";
 
 const COMPACT_TRIGGER_CLASS =
-  "inline-flex min-h-9 items-center justify-center rounded-xl border border-[var(--ftc-color-danger)] bg-ftc-surface px-2.5 py-1.5 text-xs font-semibold uppercase tracking-wide text-[var(--ftc-color-danger)] transition hover:border-0 hover:bg-[var(--ftc-color-danger)] hover:text-ftc-bg disabled:cursor-not-allowed disabled:opacity-50";
+  "inline-flex min-h-8 items-center justify-center rounded-xl border border-[var(--ftc-color-danger)] bg-ftc-surface px-2 py-1 text-xs font-semibold uppercase tracking-wide text-[var(--ftc-color-danger)] transition hover:border-0 hover:bg-[var(--ftc-color-danger)] hover:text-ftc-bg disabled:cursor-not-allowed disabled:opacity-50";
 
 const DEFAULT_TRIGGER_CLASS =
   "rounded-xl border border-[var(--ftc-color-danger)] bg-ftc-surface px-3 py-2 text-xs font-semibold uppercase tracking-wide text-[var(--ftc-color-danger)] transition hover:border-0 hover:bg-[var(--ftc-color-danger)] hover:text-ftc-bg disabled:cursor-not-allowed disabled:opacity-50";
