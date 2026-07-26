@@ -1187,14 +1187,17 @@ export default function DjAvailabilityCalendar({
     });
   }, []);
 
-  function selectDisplayedDatesMatching(predicate: (date: Date) => boolean) {
-    const keys = getDisplayedMonthDates(monthStart)
-      .filter(predicate)
-      .map(toDateKey)
-      .filter(isDjGigsCalendarBulkSelectableDateKey);
+  const selectDisplayedDatesMatching = useCallback(
+    (predicate: (date: Date) => boolean) => {
+      const keys = getDisplayedMonthDates(monthStart)
+        .filter(predicate)
+        .map(toDateKey)
+        .filter(isDjGigsCalendarBulkSelectableDateKey);
 
-    setSelectedDateKeys(new Set(keys));
-  }
+      setSelectedDateKeys(new Set(keys));
+    },
+    [monthStart],
+  );
 
   function mergeAvailabilityEntries(entries: DjAvailabilityEntry[]) {
     setAvailabilityEntries((current) => {
@@ -1443,23 +1446,33 @@ export default function DjAvailabilityCalendar({
     setPlannerWorkspaceHeaderState,
   ]);
 
-  const secondaryRowAction = multiSelectMode ? (
-    <QuickSelectMenu
-      open={quickSelectOpen}
-      onToggle={() => setQuickSelectOpen((open) => !open)}
-      onSelectFridays={() => selectDisplayedDatesMatching((date) => getWeekdayIndex(date) === 4)}
-      onSelectSaturdays={() => selectDisplayedDatesMatching((date) => getWeekdayIndex(date) === 5)}
-      onSelectWeekends={() =>
-        selectDisplayedDatesMatching((date) => {
-          const weekday = getWeekdayIndex(date);
-          return weekday === 4 || weekday === 5;
-        })
-      }
-      onClearSelection={() => setSelectedDateKeys(new Set())}
-      onClose={() => setQuickSelectOpen(false)}
-    />
-  ) : (
-    <GigCalendarSelectDatesButton disabled={loading} onClick={enterMultiSelectMode} />
+  const secondaryRowAction = useMemo(
+    () =>
+      multiSelectMode ? (
+        <QuickSelectMenu
+          open={quickSelectOpen}
+          onToggle={() => setQuickSelectOpen((open) => !open)}
+          onSelectFridays={() => selectDisplayedDatesMatching((date) => getWeekdayIndex(date) === 4)}
+          onSelectSaturdays={() => selectDisplayedDatesMatching((date) => getWeekdayIndex(date) === 5)}
+          onSelectWeekends={() =>
+            selectDisplayedDatesMatching((date) => {
+              const weekday = getWeekdayIndex(date);
+              return weekday === 4 || weekday === 5;
+            })
+          }
+          onClearSelection={() => setSelectedDateKeys(new Set())}
+          onClose={() => setQuickSelectOpen(false)}
+        />
+      ) : (
+        <GigCalendarSelectDatesButton disabled={loading} onClick={enterMultiSelectMode} />
+      ),
+    [
+      enterMultiSelectMode,
+      loading,
+      multiSelectMode,
+      quickSelectOpen,
+      selectDisplayedDatesMatching,
+    ],
   );
 
   useEffect(() => {

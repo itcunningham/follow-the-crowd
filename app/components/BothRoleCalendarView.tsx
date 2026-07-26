@@ -110,7 +110,9 @@ export default function BothRoleCalendarView({ activeTab }: BothRoleCalendarView
   );
 
   const handleDjDualModeChromeChange = useCallback((chrome: CalendarDualModeChrome | null) => {
-    setDjMonthNavChrome(chrome);
+    setDjMonthNavChrome((current) =>
+      current?.secondaryRowAction === chrome?.secondaryRowAction ? current : chrome,
+    );
   }, []);
 
   const handleDjDualModeRegistration = useCallback((registration: CalendarDualModeRegistration) => {

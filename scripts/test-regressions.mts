@@ -2936,6 +2936,8 @@ function testCalendarWorkspaceClearsStaleWorkspaceIntercept() {
   );
   assert.doesNotMatch(djCalendarSource, /GigCalendarUpdatePill/);
   assert.doesNotMatch(djCalendarSource, /monthNavOverlay/);
+  assert.match(djCalendarSource, /const secondaryRowAction = useMemo/);
+  assert.match(bothCalendarSource, /current\?\.secondaryRowAction === chrome\?\.secondaryRowAction/);
   assert.match(skeletonSource, /DjCalendarBodySkeleton[\s\S]*w-full shrink-0/);
   assert.doesNotMatch(
     skeletonSource,

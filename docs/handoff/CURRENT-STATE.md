@@ -122,6 +122,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 - **Gigs Calendar legend labels (2026-07-26):** booking legend uses `Pending` / `Accepted` (matches Events Calendar and card pills)
 - **Gigs Calendar card event banners (2026-07-26):** mobile agenda booking cards use shared `CALENDAR_MOBILE_AGENDA_CARD_LEADING_CLASS` + `getPlannerCalendarAgendaAccentClass` with planner `fallback_colour` from `getEventArtworkByIds` (same source as Events Calendar); status pills unchanged
 - **Gigs Calendar card dimensions (2026-07-26):** booking agenda cards use the same `CalendarMobileAgendaCard` layout as Events Calendar (`CompactCalendarEventVenueTitle`, matching badge geometry, shared shell padding/min-height); popover cards no longer use a separate compact layout
+- **Gigs Calendar workspace navigation (2026-07-26):** memoized dual-mode `secondaryRowAction` chrome registration to stop re-render loop blocking workspace tab navigation after switching to Gigs Calendar
 - Shared strip component: `PlannerCalendarMobileDateStrip` accepts optional `getDateMarker` for DJ markers (`getDjAvailabilityDateStripMarker`)
 
 ## Booking / invite UX
