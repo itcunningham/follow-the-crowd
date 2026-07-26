@@ -245,6 +245,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `fbb04f5` — Restore Event Details header after toast regression
 - `8c4454c` — Use shared success notification for Event Details
 - `97b098c` — Match Event Details toast to shared Gigs notification
 - `f0f6403` — Correct Event Details toast placement
