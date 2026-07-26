@@ -244,6 +244,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `c93f009` — Refine Gigs Calendar empty state copy
 - `6a3c003` — Align Event Plans empty state spacing
 - `626c054` — Simplify Messages search placeholder
 - `624563d` — Simplify Messages empty states
