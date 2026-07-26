@@ -1194,7 +1194,7 @@ function EventDetailPageView() {
               ) : null}
               <EventDetailEditHeaderSlot state={editHeaderState} onEditClick={openEditForm} />
             </div>
-            <PlannerTitleFeedbackSlot />
+            <PlannerTitleFeedbackSlot variant="event-detail" />
           </div>
           <div aria-hidden="true" className={PLANNER_WORKSPACE_TITLE_FEEDBACK_BAND_CLASS} />
         </header>
