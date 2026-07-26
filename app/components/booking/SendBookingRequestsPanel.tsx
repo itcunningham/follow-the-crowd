@@ -156,6 +156,8 @@ export default function SendBookingRequestsPanel({
             const selected = draft.selectedDjIds.includes(dj.user_id);
             const displayName = dj.display_name?.trim() || "DJ";
             const availabilityHint = draft.djAvailabilityHints.get(dj.user_id);
+            const showAvailabilityBadge =
+              availabilityHint !== undefined && availabilityHint.status !== "unknown";
             const duplicateStatus = draft.eventBookingDuplicates.get(dj.user_id);
             const isDuplicateBlocked = Boolean(duplicateStatus);
             const offer = draft.djOffers[dj.user_id] ?? {
@@ -187,16 +189,19 @@ export default function SendBookingRequestsPanel({
                   <div className="min-w-0 flex-1 text-left">
                     <p className="text-sm font-bold leading-snug text-ftc-text">{displayName}</p>
                     {dj.genre?.trim() ? (
-                      <p className="mt-0.5 text-xs leading-snug text-ftc-text-muted">
-                        {dj.genre}
+                      <p
+                        className="mt-0.5 truncate text-xs leading-snug text-ftc-text-muted"
+                        title={dj.genre.trim()}
+                      >
+                        {dj.genre.trim()}
                       </p>
                     ) : null}
-                    {duplicateStatus || availabilityHint ? (
+                    {duplicateStatus || showAvailabilityBadge ? (
                       <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                         {duplicateStatus ? (
                           <EventBookingDuplicateBadge status={duplicateStatus} variant="compact" />
                         ) : null}
-                        {availabilityHint ? (
+                        {showAvailabilityBadge ? (
                           <DjBookingAvailabilityBadge hint={availabilityHint} variant="compact" />
                         ) : null}
                       </div>
