@@ -260,6 +260,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `5bc9cd9` — polish planner booking action buttons
 - `9f67e5a` — preserve Event Details profile context through DMs
 - `465b3a1` — fix DJ profile return navigation and CTA copy
 - `be65609` — planner booking card polish and profile navigation
