@@ -1,8 +1,8 @@
 import { readSupabaseSessionUserIdSync } from "@/lib/auth/sessionUserId";
 import type { CalendarItem } from "@/lib/calendar";
 
-const PLANNER_CALENDAR_ITEMS_CACHE_KEY = "ftc-planner-calendar-items-v4";
-const PLANNER_CALENDAR_ITEMS_LOCAL_CACHE_KEY = "ftc-planner-calendar-items-v4-local";
+const PLANNER_CALENDAR_ITEMS_CACHE_KEY = "ftc-planner-calendar-items-v5";
+const PLANNER_CALENDAR_ITEMS_LOCAL_CACHE_KEY = "ftc-planner-calendar-items-v5-local";
 
 type PlannerCalendarItemsCachePayload = {
   userId: string;

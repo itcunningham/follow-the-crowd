@@ -1,7 +1,6 @@
 import {
   formatBookingStatusLabel,
   listReceivedBookingRequests,
-  listSentBookingRequests,
   type BookingRequest,
   type BookingRequestStatus,
 } from "@/lib/bookingRequests";
@@ -508,27 +507,10 @@ export async function loadCalendarItems(role: UserRole | null): Promise<Calendar
   const items: CalendarItem[] = [];
 
   if (role === "promoter" || role === "both") {
-    const [events, sentBookings] = await Promise.all([
-      listOwnedEvents(),
-      listSentBookingRequests(),
-    ]);
-
-    const cancelledEventIds = getCancelledEventIds(events);
+    const events = await listOwnedEvents();
 
     for (const event of events) {
       const item = mapEventToCalendarItem(event);
-
-      if (item) {
-        items.push(item);
-      }
-    }
-
-    for (const booking of sentBookings) {
-      if (booking.status === "cancelled" || isBookingLinkedToCancelledEvent(booking, cancelledEventIds)) {
-        continue;
-      }
-
-      const item = mapBookingToCalendarItem(booking, "sent_booking");
 
       if (item) {
         items.push(item);
@@ -606,19 +588,7 @@ export function linkPlannerCalendarSentBookingsToEvents(items: CalendarItem[]): 
 }
 
 export async function loadPlannerCalendarItems(): Promise<CalendarItem[]> {
-  const [events, sentBookings] = await Promise.all([
-    listOwnedEvents(),
-    listSentBookingRequests(),
-  ]);
-
-  const cancelledEventIds = getCancelledEventIds(events);
-
-  const eventFallbackColourById = new Map(
-    events
-      .filter((event) => !isEventCancelled(event))
-      .map((event) => [event.id, event.fallback_colour?.trim() || null]),
-  );
-
+  const events = await listOwnedEvents();
   const items: CalendarItem[] = [];
 
   for (const event of events) {
@@ -629,31 +599,7 @@ export async function loadPlannerCalendarItems(): Promise<CalendarItem[]> {
     }
   }
 
-  for (const booking of sentBookings) {
-    if (
-      booking.status === "cancelled" ||
-      booking.status === "declined" ||
-      isBookingLinkedToCancelledEvent(booking, cancelledEventIds)
-    ) {
-      continue;
-    }
-
-    const item = mapBookingToCalendarItem(
-      booking,
-      "sent_booking",
-      booking.event_id ? eventFallbackColourById.get(booking.event_id) ?? null : null,
-      {
-        resolveEventId: (sentBooking) =>
-          resolvePlannerCalendarBookingEventId(sentBooking, events),
-      },
-    );
-
-    if (item) {
-      items.push(item);
-    }
-  }
-
-  return linkPlannerCalendarSentBookingsToEvents(items).sort((left, right) => {
+  return items.sort((left, right) => {
     if (left.dateKey !== right.dateKey) {
       return left.dateKey.localeCompare(right.dateKey);
     }

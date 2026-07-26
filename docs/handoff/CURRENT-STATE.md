@@ -94,6 +94,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 - **Status dot priority per date:** Accepted (green) → Pending (amber) → Upcoming (dark blue); Today uses tile outline, not dot colour
 - **Cancelled events hidden** from calendar items, dots, and counts (History unchanged)
 - Agenda/grid ordering: Today → Pending → Upcoming/Accepted → Past, then chronological within each group (`sortPlannerCalendarAgendaItems`)
+- **Events Calendar data scope (2026-07-26):** planner Events Calendar loads owned `events` rows only — no sent/received booking-request cards; pending/accepted booking activity stays on Gigs Calendar; Both-role accounts no longer see duplicate UPCOMING + PENDING cards for the same owned event; planner calendar item cache bumped to v5
 - Event cards: title with status pill top-right on mobile agenda; venue on a dedicated secondary line; time below venue; desktop month-grid and date-modal items use the same hierarchy with status top-right; event fallback colour accent strip removed from agenda cards (colour remains on list/detail surfaces)
 - **Shared mobile chrome:** `CalendarMobileChrome` owns month nav, legend row, and day-strip spacing for Events and Gigs calendars (standalone + dual-mode); both calendars reserve the Select Dates secondary row and use `CALENDAR_MOBILE_CHROME_GIGS_DAY_STRIP_CLASS` (`mt-1`) for identical legend-to-strip rhythm; day-strip chips use content-height `PlannerCalendarMobileDateStrip` markup (no fixed live chip height; `h-[3.75rem]` skeleton-only)
 - **Calendar route loading (2026-07-23):** `/calendar` `loading.tsx` keeps workspace secondary controls (Events/Gigs calendar tabs when role is both) but **does not** render `PlannerCalendarLoadingCard` / `DjCalendarLoadingCard`; persistent layout header + real calendar components (cache-backed internal loading only). Events Calendar uses session/local item cache + workspace prefetch (`ensurePlannerCalendarItemsPrefetched`) with stale-while-revalidate on mount; no refetch on `date`/`month` URL-only changes; saved-plans hint reads Event Plans list cache when warm. Gigs Calendar uses matching cache/prefetch (`ensureDjGigsCalendarPrefetched`). Dual-role Events ↔ Gigs calendar tabs remount on switch (avoids `display: contents` hit-testing bugs); caches keep repeat opens fast. Workspace header uses `sticky top-0 z-50 isolate bg-ftc-bg` so primary tabs stay the top interactive layer on `/calendar`. Mobile agenda does not call `scrollIntoView` (month changes no longer shift document scroll); date strip centring uses horizontal `scrollLeft` only; dual calendar sub-tab switches preserve `window.scrollY`; active workspace and filter pills are no-ops on tap. Repeat Events ↔ Calendar workspace navigation shows cached grid immediately while background revalidate runs.
@@ -253,7 +254,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
-- `7c8f6bf` — fix planner calendar event deletion
+- `7915e79` — remove ellipsis from DJ confirmation loading state
 - `e1c615b` — fix Event Plan Use Plan event creation flow
 - `8364a0c` — Improve long event title wrapping and truncation
 - `36132c8` — Improve Event Calendar agenda card hierarchy

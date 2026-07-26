@@ -2538,6 +2538,23 @@ function testPlannerCalendarEventDeletionSync() {
   assert.match(eventDetailSource, /resolveSentBookingsLinkedToPlannerEvent/);
 }
 
+function testPlannerCalendarScopesOwnedEventsOnly() {
+  const calendarSource = readFileSync(new URL("../lib/calendar.ts", import.meta.url), "utf8");
+
+  assert.match(
+    calendarSource,
+    /export async function loadPlannerCalendarItems[\s\S]*?const events = await listOwnedEvents\(\)/,
+  );
+  assert.doesNotMatch(
+    calendarSource,
+    /export async function loadPlannerCalendarItems[\s\S]*?listSentBookingRequests/,
+  );
+  assert.doesNotMatch(
+    calendarSource,
+    /export async function loadPlannerCalendarItems[\s\S]*?sent_booking/,
+  );
+}
+
 function testCalendarCreateWorkspaceTabNavigation() {
   const eventsSource = readFileSync(
     new URL("../app/(planner-workspace)/events/EventsPageClient.tsx", import.meta.url),
@@ -3658,6 +3675,7 @@ async function main() {
   testBookingsUsePlanCancelReturnsToEventPlans();
   testBookingsUsePlanCreatesEventBeforeSend();
   testPlannerCalendarEventDeletionSync();
+  testPlannerCalendarScopesOwnedEventsOnly();
   testCalendarCreateWorkspaceTabNavigation();
   testEventsListTabSwitchUsesClientHistoryWithoutRouterNavigation();
   testEventsCreateEventHiddenDuringHistorySelectionToolbar();
