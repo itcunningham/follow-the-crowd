@@ -245,6 +245,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `60e02a1` — Fix app startup regression from shared toast refactor
 - `f737431` — Refactor Event Details to shared success toast
 - `1a74cc5` — Use shared success toast for Event Details
 - `8b8a369` — Match Event Details success toast styling
