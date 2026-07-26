@@ -100,7 +100,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 - **Events History delete-selection row (2026-07-23):** `EventsListTabRow` is `w-full` with filters left, flex-1 middle (feedback/spacer), and a right `shrink-0` action column (bin / outlined delete toolbar expanding left); row height unchanged.
 - **Gigs `Select dates` row:** secondary action reserves space from first frame — disabled real button while calendar data loads; dual-mode parent always reserves row via `reserveSecondaryRow` (Events tab leaves row empty); standalone Events calendar reserves same row
 - **Calendar mobile polish (2026-07-14):** shared `calendarMobileUi` — selected-day header, dashed empty state with muted calendar icon, agenda fade/slide transition (175ms, `motion-reduce`), `active:scale-[0.98]` press on day chips/cards/arrows; month title `text-base`; nav arrow gap `gap-0`; shared `CalendarMobileAgendaCard` layout for Events and Gigs mobile agenda cards (min height, padding, title/badge/time slots); mobile bottom nav uses `z-50` so fixed nav wins hit testing over overlapping agenda card buttons; agenda transition hook settles immediately on first mount (no fade/`inert` stuck state) and clears `translate-y`/`inert` once date keys match so initial Events Calendar load does not block Messages nav taps; **Events/Gigs calendar tab pills** use touch `pointerup` activation in `PlannerFilterPills` (same iOS Safari pattern as Gigs booked-card nav) so tab switches commit when `click` is dropped during layout/scroll
-- **Calendar polish (2026-07-14):** empty-day hint copy; month picker ~12% narrower (`15rem`); date strip always re-centres selected day (removed scroll cache); desktop day modal empty copy aligned
+- **Calendar empty-day copy (2026-07-26):** removed `Select another day or create a new event` helper under `No events scheduled` (mobile agenda + desktop date modal)
 - **Calendar production polish (2026-07-14):** today vs selected hierarchy on strip/desktop; centred strip scroll; compact empty state + agenda cards; tighter legend; month picker grid/button/Confirm CTA polish; 150–175ms transitions
 - **Calendar today label (2026-07-15):** fixed-height status row under selected-date heading prevents layout jump when toggling today vs other dates (Events + Gigs mobile)
 - **Calendar past-date strip indicators (2026-07-15):** shared `shouldShowCalendarDateStripIndicators` in `PlannerCalendarMobileDateStrip` hides dots and `+N` counts on dates before local today; past dates remain tappable with full agenda/booking content unchanged (Events + Gigs)
@@ -241,6 +241,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `c94d0e9` — Remove redundant empty state helper text
 - `53d35d2` — Simplify empty state copy and remove duplicate CTAs
 - `da859d3` — Refine Events empty state
 - `dfa13b8` — Scope QA reset to QA accounts only
