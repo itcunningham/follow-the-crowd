@@ -169,6 +169,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 
 - Per-event crew chat for owner + accepted DJs
 - Messages inbox Group tab with artwork tile, deduped by event_id
+- **Messages inbox empty state (2026-07-26):** DM tab: `No messages` + `Your conversations will appear here.`; Group tab: `No group chats` + `Event group chats will appear here.`
 - Event edit posts one update message to group chat (booking-impacting fields)
 - Planner does not get unread from own group messages
 - Group chat page: header only (duplicate context card removed)

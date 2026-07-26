@@ -78,9 +78,9 @@ function GroupChatsEmptyState() {
       <div className="flex h-11 w-11 items-center justify-center rounded-2xl border-0 bg-ftc-primary text-xs font-semibold uppercase tracking-wide text-ftc-bg">
         GC
       </div>
-      <h2 className="mt-5 text-lg font-semibold text-ftc-text">No group chats yet</h2>
+      <h2 className="mt-5 text-lg font-semibold text-ftc-text">No group chats</h2>
       <p className="mt-2 max-w-sm text-sm leading-relaxed text-ftc-text-muted">
-        Group chats appear here when you create events or accept bookings
+        Event group chats will appear here.
       </p>
     </div>
   );
@@ -199,9 +199,6 @@ function getConversationDisplayName(
   return resolveUserDisplayName(otherUserProfile);
 }
 
-const MVP_DM_EMPTY_MESSAGE =
-  "Ask the DJ or planner you are working with to join FTC so you can send or receive booking requests.";
-
 function DirectMessagesEmptyIcon() {
   return (
     <div className="flex h-12 w-12 items-center justify-center rounded-2xl border-0 bg-ftc-primary text-xs font-semibold uppercase tracking-wide text-ftc-bg">
@@ -216,9 +213,9 @@ function DirectMessagesEmptyState({ compact = false }: { compact?: boolean }) {
       <div className="px-4 py-6 sm:px-6">
         <div className="rounded-xl border border-ftc-border bg-ftc-surface/30 px-4 py-5 text-center">
           <DirectMessagesEmptyIcon />
-          <h3 className="mt-4 text-base font-semibold text-ftc-text">No messages yet</h3>
+          <h3 className="mt-4 text-base font-semibold text-ftc-text">No messages</h3>
           <p className="mt-2 text-sm leading-relaxed text-ftc-text-muted">
-            {MVP_DM_EMPTY_MESSAGE}
+            Your conversations will appear here.
           </p>
         </div>
       </div>
@@ -228,9 +225,9 @@ function DirectMessagesEmptyState({ compact = false }: { compact?: boolean }) {
   return (
     <div className="flex flex-col items-center justify-center px-6 py-16 text-center sm:py-24">
       <DirectMessagesEmptyIcon />
-      <h2 className="mt-5 text-lg font-semibold text-ftc-text">No messages yet</h2>
+      <h2 className="mt-5 text-lg font-semibold text-ftc-text">No messages</h2>
       <p className="mt-2 max-w-sm text-sm leading-relaxed text-ftc-text-muted">
-        {MVP_DM_EMPTY_MESSAGE} Your chats will appear here.
+        Your conversations will appear here.
       </p>
     </div>
   );
