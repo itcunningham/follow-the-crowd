@@ -32,7 +32,7 @@ export default function CancelBookingRequestButton({
         onClick={() => setOpen(true)}
         className={`rounded-xl border border-[var(--ftc-color-danger)] bg-ftc-surface px-3 py-2 text-xs font-semibold uppercase tracking-wide text-[var(--ftc-color-danger)] transition hover:border-0 hover:bg-[var(--ftc-color-danger)] hover:text-ftc-bg disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
       >
-        {loading ? "Cancelling..." : "Cancel request"}
+        {loading ? "Cancelling" : "Cancel request"}
       </button>
 
       <BookingSheetDialog
@@ -48,7 +48,7 @@ export default function CancelBookingRequestButton({
               Keep request
             </BookingSheetSecondaryButton>
             <BookingSheetDangerButton disabled={loading} onClick={() => void handleConfirm()}>
-              {loading ? "Cancelling..." : "Cancel request"}
+              {loading ? "Cancelling" : "Cancel request"}
             </BookingSheetDangerButton>
           </>
         }
