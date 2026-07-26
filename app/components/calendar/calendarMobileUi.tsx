@@ -62,6 +62,14 @@ export const CALENDAR_MOBILE_AGENDA_CARD_TIME_SLOT_CLASS = "mt-1.5";
 export const CALENDAR_MOBILE_AGENDA_CARD_TIME_CLASS =
   "block truncate text-xs text-ftc-text-muted";
 
+/** Secondary venue line for Events Calendar stacked agenda cards. */
+export const CALENDAR_MOBILE_AGENDA_CARD_VENUE_CLASS =
+  "block truncate text-xs text-ftc-text-secondary";
+
+export const CALENDAR_MOBILE_AGENDA_CARD_STACKED_META_CLASS = "mt-0.5";
+
+export const CALENDAR_MOBILE_AGENDA_CARD_STACKED_BADGE_SLOT_CLASS = "mt-1.5";
+
 /** Shared status pill geometry for mobile agenda cards. */
 export const CALENDAR_MOBILE_AGENDA_CARD_STATUS_BADGE_BASE_CLASS =
   "inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide";
@@ -127,8 +135,10 @@ type CalendarMobileAgendaCardProps = {
   shellClassName?: string;
   leading?: ReactNode;
   reserveLeadingSpace?: boolean;
+  layout?: "header-badge" | "stacked";
   badge: ReactNode;
   heading: ReactNode;
+  subtitle?: ReactNode;
   time?: ReactNode;
 } & ButtonHTMLAttributes<HTMLButtonElement>;
 
@@ -136,13 +146,47 @@ export function CalendarMobileAgendaCard({
   shellClassName = "",
   leading,
   reserveLeadingSpace = false,
+  layout = "header-badge",
   badge,
   heading,
+  subtitle,
   time,
   className = "",
   type = "button",
   ...buttonProps
 }: CalendarMobileAgendaCardProps) {
+  const content =
+    layout === "stacked" ? (
+      <span className={CALENDAR_MOBILE_AGENDA_CARD_CONTENT_CLASS}>
+        <span className="block min-w-0 w-full overflow-hidden">{heading}</span>
+        {subtitle ? (
+          <span className={CALENDAR_MOBILE_AGENDA_CARD_STACKED_META_CLASS}>{subtitle}</span>
+        ) : null}
+        {time ? (
+          <span
+            className={
+              subtitle
+                ? CALENDAR_MOBILE_AGENDA_CARD_STACKED_META_CLASS
+                : CALENDAR_MOBILE_AGENDA_CARD_TIME_SLOT_CLASS
+            }
+          >
+            {time}
+          </span>
+        ) : null}
+        <span className={CALENDAR_MOBILE_AGENDA_CARD_STACKED_BADGE_SLOT_CLASS}>{badge}</span>
+      </span>
+    ) : (
+      <span className={CALENDAR_MOBILE_AGENDA_CARD_CONTENT_CLASS}>
+        <span className={CALENDAR_MOBILE_AGENDA_CARD_HEADER_ROW_CLASS}>
+          <span className={CALENDAR_MOBILE_AGENDA_CARD_TITLE_SLOT_CLASS}>{heading}</span>
+          <span className={CALENDAR_MOBILE_AGENDA_CARD_BADGE_SLOT_CLASS}>{badge}</span>
+        </span>
+        {time ? (
+          <span className={CALENDAR_MOBILE_AGENDA_CARD_TIME_SLOT_CLASS}>{time}</span>
+        ) : null}
+      </span>
+    );
+
   return (
     <button
       type={type}
@@ -157,15 +201,7 @@ export function CalendarMobileAgendaCard({
             (reserveLeadingSpace ? (
               <span aria-hidden="true" className={CALENDAR_MOBILE_AGENDA_CARD_LEADING_SPACER_CLASS} />
             ) : null)}
-          <span className={CALENDAR_MOBILE_AGENDA_CARD_CONTENT_CLASS}>
-            <span className={CALENDAR_MOBILE_AGENDA_CARD_HEADER_ROW_CLASS}>
-              <span className={CALENDAR_MOBILE_AGENDA_CARD_TITLE_SLOT_CLASS}>{heading}</span>
-              <span className={CALENDAR_MOBILE_AGENDA_CARD_BADGE_SLOT_CLASS}>{badge}</span>
-            </span>
-            {time ? (
-              <span className={CALENDAR_MOBILE_AGENDA_CARD_TIME_SLOT_CLASS}>{time}</span>
-            ) : null}
-          </span>
+          {content}
         </span>
       </span>
     </button>

@@ -8,15 +8,15 @@ import CalendarMobileChrome, {
   CALENDAR_MOBILE_CHROME_GIGS_DAY_STRIP_CLASS,
 } from "@/app/components/calendar/CalendarMobileChrome";
 import {
-  CALENDAR_MOBILE_AGENDA_CARD_LEADING_CLASS,
   CALENDAR_MOBILE_AGENDA_CARD_LIST_CLASS,
   CALENDAR_MOBILE_AGENDA_CARD_STATUS_BADGE_BASE_CLASS,
   CALENDAR_MOBILE_AGENDA_CARD_TIME_CLASS,
+  CALENDAR_MOBILE_AGENDA_CARD_TITLE_CLASS,
+  CALENDAR_MOBILE_AGENDA_CARD_VENUE_CLASS,
   CALENDAR_MOBILE_INTERACTIVE_PRESS_CLASS,
   CalendarMobileAgendaCard,
   CalendarMobileDashedEmptyState,
   CalendarMobileSelectedDayHeader,
-  CompactCalendarEventVenueTitle,
   useCalendarMobileAgendaTransition,
 } from "@/app/components/calendar/calendarMobileUi";
 import PlannerCalendarActionButtons from "@/app/components/PlannerCalendarActionButtons";
@@ -52,7 +52,6 @@ import {
   getDefaultSelectedCalendarDate,
   getMonthStart,
   getPlannerCalendarBadgeLabel,
-  getPlannerCalendarAgendaAccentClass,
   groupCalendarItemsByDate,
   buildPlannerCalendarMonthActivityByKey,
   getPlannerCalendarMonthActivityDotClass,
@@ -70,6 +69,7 @@ import {
   type CalendarItem,
   type CalendarOriginState,
 } from "@/lib/calendar";
+import { resolveCompactCalendarEventOnlyTitle } from "@/lib/calendar/compactCalendarEventVenueTitle";
 
 export function PlannerCalendarMobileLegend() {
   const bookingStatusRow = PLANNER_CALENDAR_VISIBLE_LEGEND_ITEMS.map((item) => ({
@@ -123,27 +123,24 @@ function PlannerCalendarItemBadge({
   const badgeClassName = `flex w-full items-stretch gap-1 rounded-md border-0 px-1 py-1 text-left transition hover:opacity-90 ${getPlannerCalendarStatusBadgeClass(item.statusKind)}`;
 
   const badgeContent = (
-    <>
-      <span
-        aria-hidden="true"
-        className={`my-0.5 w-0.5 shrink-0 rounded-full ${getPlannerCalendarAgendaAccentClass(item.eventFallbackColour)}`}
-      />
-      <span className="min-w-0 flex-1">
-        <span className="block truncate text-[9px] font-semibold uppercase tracking-wide sm:text-[10px] md:text-xs">
-          {getPlannerCalendarBadgeLabel(item)}
-        </span>
-        <CompactCalendarEventVenueTitle
-          eventName={item.title}
-          venue={item.venue}
-          className="block w-full max-w-full min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-[9px] font-semibold normal-case tracking-normal opacity-90 sm:text-[10px] md:text-xs"
-        />
-        {item.timeLabel ? (
-          <span className="block truncate text-[9px] normal-case tracking-normal opacity-70 sm:text-[10px] md:text-xs">
-            {item.timeLabel}
-          </span>
-        ) : null}
+    <span className="min-w-0 flex-1">
+      <span className="block truncate text-[9px] font-semibold normal-case tracking-normal sm:text-[10px] md:text-xs">
+        {resolveCompactCalendarEventOnlyTitle(item.title)}
       </span>
-    </>
+      {item.venue?.trim() ? (
+        <span className="block truncate text-[9px] opacity-80 sm:text-[10px] md:text-xs">
+          {item.venue.trim()}
+        </span>
+      ) : null}
+      {item.timeLabel ? (
+        <span className="block truncate text-[9px] opacity-70 sm:text-[10px] md:text-xs">
+          {item.timeLabel}
+        </span>
+      ) : null}
+      <span className="mt-1 block text-[9px] font-semibold uppercase tracking-wide sm:text-[10px] md:text-xs">
+        {getPlannerCalendarBadgeLabel(item)}
+      </span>
+    </span>
   );
 
   if (!eventDetailHref) {
@@ -254,14 +251,9 @@ function PlannerCalendarAgendaCard({
       disabled={!eventDetailHref}
       aria-disabled={!eventDetailHref}
       onContextMenu={(event) => event.preventDefault()}
-      shellClassName="border border-ftc-border-subtle bg-ftc-bg-elevated hover:border-ftc-border-strong"
+      layout="stacked"
+      shellClassName="min-h-[5rem] border border-ftc-border-subtle bg-ftc-bg-elevated hover:border-ftc-border-strong"
       className={`touch-manipulation [-webkit-touch-callout:none] ${CALENDAR_MOBILE_INTERACTIVE_PRESS_CLASS}`}
-      leading={
-        <span
-          aria-hidden="true"
-          className={`${CALENDAR_MOBILE_AGENDA_CARD_LEADING_CLASS} ${getPlannerCalendarAgendaAccentClass(item.eventFallbackColour)}`}
-        />
-      }
       badge={
         <span
           className={`${CALENDAR_MOBILE_AGENDA_CARD_STATUS_BADGE_BASE_CLASS} ${getPlannerCalendarStatusBadgeClass(item.statusKind)}`}
@@ -270,7 +262,14 @@ function PlannerCalendarAgendaCard({
         </span>
       }
       heading={
-        <CompactCalendarEventVenueTitle eventName={item.title} venue={item.venue} />
+        <span className={CALENDAR_MOBILE_AGENDA_CARD_TITLE_CLASS}>
+          {resolveCompactCalendarEventOnlyTitle(item.title)}
+        </span>
+      }
+      subtitle={
+        item.venue?.trim() ? (
+          <span className={CALENDAR_MOBILE_AGENDA_CARD_VENUE_CLASS}>{item.venue.trim()}</span>
+        ) : undefined
       }
       time={
         item.timeLabel ? (

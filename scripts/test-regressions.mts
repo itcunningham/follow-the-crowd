@@ -3329,6 +3329,8 @@ function testCompactCalendarEventVenueTitleTruncates() {
   assert.match(mobileUiSource, /CompactCalendarEventVenueTitle/);
   assert.match(mobileUiSource, /doesFullCalendarTitleFit/);
   assert.match(mobileUiSource, /ResizeObserver/);
+  assert.match(mobileUiSource, /layout === "stacked"/);
+  assert.match(mobileUiSource, /CALENDAR_MOBILE_AGENDA_CARD_VENUE_CLASS[\s\S]*text-xs text-ftc-text-secondary/);
   assert.doesNotMatch(mobileUiSource, /formatPlannerCalendarItemHeadline/);
   assert.doesNotMatch(mobileUiSource, /CALENDAR_MOBILE_AGENDA_CARD_TITLE_ROW_CLASS/);
   assert.doesNotMatch(mobileUiSource, /CALENDAR_MOBILE_AGENDA_CARD_TITLE_EVENT_CLASS/);
@@ -3343,10 +3345,14 @@ function testCompactCalendarEventVenueTitleTruncates() {
   assert.match(compactTitleSource, /doesFullCalendarTitleFit/);
   assert.doesNotMatch(compactTitleSource, /\.\.\./);
   assert.doesNotMatch(compactTitleSource, /slice\s*\(/);
-  assert.match(plannerCalendarSource, /CompactCalendarEventVenueTitle/);
+  assert.doesNotMatch(plannerCalendarSource, /CompactCalendarEventVenueTitle/);
+  assert.match(plannerCalendarSource, /layout="stacked"/);
+  assert.match(plannerCalendarSource, /CALENDAR_MOBILE_AGENDA_CARD_VENUE_CLASS/);
+  assert.match(plannerCalendarSource, /resolveCompactCalendarEventOnlyTitle/);
   assert.match(plannerCalendarSource, /CALENDAR_MOBILE_AGENDA_CARD_TIME_CLASS/);
   assert.match(plannerCalendarSource, /CALENDAR_MOBILE_AGENDA_CARD_STATUS_BADGE_BASE_CLASS/);
-  assert.doesNotMatch(plannerCalendarSource, /text-sm text-ftc-text-secondary/);
+  assert.doesNotMatch(plannerCalendarSource, /getPlannerCalendarAgendaAccentClass/);
+  assert.doesNotMatch(plannerCalendarSource, /CALENDAR_MOBILE_AGENDA_CARD_LEADING_CLASS/);
 
   const djCalendarSource = readFileSync(
     new URL("../app/components/DjAvailabilityCalendar.tsx", import.meta.url),
@@ -3354,6 +3360,7 @@ function testCompactCalendarEventVenueTitleTruncates() {
   );
   assert.match(djCalendarSource, /CALENDAR_MOBILE_AGENDA_CARD_TIME_CLASS/);
   assert.match(djCalendarSource, /CALENDAR_MOBILE_AGENDA_CARD_STATUS_BADGE_BASE_CLASS/);
+  assert.match(djCalendarSource, /CompactCalendarEventVenueTitle/);
 
   assert.equal(
     formatPlannerCalendarItemHeadline("Warehouse Session", "Revolver"),
