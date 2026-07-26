@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { looksLikeUserId } from "@/lib/user/displayName";
@@ -132,6 +132,7 @@ import {
   shouldResetMobileEventDetailScroll,
   useMobileEventDetailScrollReset,
 } from "@/lib/navigation/useCalendarOriginMobileScrollReset";
+import { scrollDocumentToTop } from "@/lib/navigation/scrollPageToTop";
 import { getEventNotesValidationError, MAX_EVENT_NOTES_LENGTH } from "@/lib/events/eventNotes";
 import { useEventEditHeaderState } from "@/lib/events/useEventEditHeaderVisibility";
 import {
@@ -278,6 +279,7 @@ function EventDetailPageView() {
   const [editConfirmOpen, setEditConfirmOpen] = useState(false);
   const [savingEdit, setSavingEdit] = useState(false);
   const editFormSectionRef = useRef<HTMLElement | null>(null);
+  const scrollToTopAfterSuccessfulSaveRef = useRef(false);
 
   const [sendOpen, setSendOpen] = useState(false);
   const [sendDiscardConfirmOpen, setSendDiscardConfirmOpen] = useState(false);
@@ -628,6 +630,7 @@ function EventDetailPageView() {
           await postEventGroupChatUpdate(savedEvent.id, savedEvent.name, groupChatFieldChanges);
         } catch (groupChatError) {
           console.error("Failed to post event group chat update:", groupChatError);
+          scrollToTopAfterSuccessfulSaveRef.current = true;
           setEvent(savedEvent);
           setEditOpen(false);
           setEditForm(null);
@@ -639,6 +642,7 @@ function EventDetailPageView() {
         }
       }
 
+      scrollToTopAfterSuccessfulSaveRef.current = true;
       setEvent(savedEvent);
       setEditOpen(false);
       setEditForm(null);
@@ -1063,6 +1067,15 @@ function EventDetailPageView() {
 
   const showStickyActions = !editOpen && !sendOpen;
   const showReadOnlyEventDetails = !editOpen;
+
+  useLayoutEffect(() => {
+    if (editOpen || !scrollToTopAfterSuccessfulSaveRef.current) {
+      return;
+    }
+
+    scrollToTopAfterSuccessfulSaveRef.current = false;
+    scrollDocumentToTop();
+  }, [editOpen]);
   const showOwnerSendAction =
     isOwner && isPlanner && !eventIsCancelled && !isHistoryEventDetail;
   const showOpenDmInYourBookingSection =
