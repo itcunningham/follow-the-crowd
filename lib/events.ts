@@ -244,6 +244,17 @@ export function isPlannerEventInHistoryTab(
   return isPlannerEventPast(event.event_date, event.set_time, referenceDate);
 }
 
+/** Owned events that should appear on the planner Events Calendar. */
+export function isPlannerEventVisibleOnCalendar(
+  event: Pick<Event, "status" | "history_hidden_at">,
+): boolean {
+  if (event.history_hidden_at) {
+    return false;
+  }
+
+  return !isEventCancelled(event);
+}
+
 export function filterPlannerHistoryTabEvents<
   T extends Pick<Event, "event_date" | "set_time" | "status" | "history_hidden_at">,
 >(events: T[]): T[] {

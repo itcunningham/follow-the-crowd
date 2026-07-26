@@ -66,7 +66,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 - **History event detail (2026-07-14):** past/cancelled events read-only on detail — no Edit, Invite DJs, lifecycle delete/cancel, run sheet edit, booking cancel/hide/proposal actions; Open DM and existing group chat link kept; historical empty copy for run sheet and bookings
 - **History bulk select (2026-07-14):** Select all operates on full History list (`filterPlannerHistoryTabEvents`), not cancelled-only subset
 - **Design system (2026-07-14):** `docs/design/FTC_DESIGN_SYSTEM.md` + `lib/design/ftcDesignSystem.ts` — shared tokens; standardised status badges, empty states, section titles, button min-heights
-- **History hide:** bulk remove from History view sets `history_hidden_at` on owned `events` rows via authenticated RLS update (does not delete records). Optional RPC hardening: `20250720120000_event_history_hide_past.sql` (not yet applied on production as of 2026-07-20 — legacy RPC only hid `cancelled`).
+- **History hide:** bulk remove from History view sets `history_hidden_at` on owned `events` rows via authenticated RLS update (does not delete records). Optional RPC hardening: `20250720120000_event_history_hide_past.sql` (not yet applied on production as of 2026-07-20 — legacy RPC only hid `cancelled`). Hidden events are excluded from Events Calendar (`isPlannerEventVisibleOnCalendar`) and removed from planner calendar item cache immediately via `syncPlannerEventsHiddenFromHistoryClientCaches` on History delete success
 - **Create/edit validation:** inline field errors after Save; start + finish time both required; notes length/line limits disable save
 - **Event create/edit time pickers (2026-07-22):** empty start/finish wheels open at current local time via `defaultEventStartWheelTime` / `resolveEventTimePickerOpenValue`; past-time floor only when event date is today; shared `getEventSetTimeValidationErrors` enforces finish-after-start (overnight PM→AM only), zero duration, 24h max, and today start-in-past across Events create/edit, Use Plan booking create, and booking request modal via `BookingSetTimeRangeField` + `eventFormFieldValidation` + `lib/events.ts` server asserts
 - **Booking date/time field placeholders (2026-07-25):** shared `isBookingFieldTriggerPlaceholder` / `hasBookingFieldTriggerLabelValue` + `.ftc-field-trigger-label.is-placeholder` CSS so empty Event Date, Start Time, and Finish Time labels share one placeholder detection path (`FtcDatePicker`, `BookingDateTimeFields`, run sheet compact time); selected values unchanged
@@ -262,6 +262,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `8729db6` — prevent Active tab flash when returning to Events History
 - `1bf70a9` — simplify Edit Event primary button copy
 - `9e9acfe` — polish Event Plans delete confirmation copy
 - `fbc1382` — final planner booking button polish

@@ -21,6 +21,7 @@ import {
 import {
   getEventDateDisplayLabel,
   isEventCancelled,
+  isPlannerEventVisibleOnCalendar,
   listOwnedEvents,
   type Event,
   type EventDateDisplayLabel,
@@ -437,9 +438,13 @@ export function resolveSentBookingsLinkedToPlannerEvent(
 }
 
 function mapEventToCalendarItem(event: Event): CalendarItem | null {
+  if (!isPlannerEventVisibleOnCalendar(event)) {
+    return null;
+  }
+
   const dateKey = resolveCalendarDateKey(event.event_date);
 
-  if (!dateKey || isEventCancelled(event)) {
+  if (!dateKey) {
     return null;
   }
 

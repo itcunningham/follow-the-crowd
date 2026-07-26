@@ -88,7 +88,7 @@ import {
 } from "../lib/navigationBadgeCache";
 import { resolveEventsHistoryTrashVisible, resolveEventsListTabRowChrome, resolveEventsListActiveTabLabel, resolveEventsListActiveTabLabelForWorkspaceChrome, EVENTS_LIST_ACTIVE_TAB_LABEL_PLANNER } from "../lib/events/eventsListNavigation";
 import { resolveHistoryBulkSelectAllToggle } from "../app/components/history/HistoryBulkManage";
-import { resolvePlannerHistoryHideEventIds } from "../lib/events";
+import { isPlannerEventVisibleOnCalendar, resolvePlannerHistoryHideEventIds } from "../lib/events";
 import {
   BOOKING_REQUEST_CANCELLED_SUCCESS_MESSAGE,
   HISTORY_REMOVAL_FEEDBACK_CLEAR_MS,
@@ -2098,6 +2098,7 @@ function testEventsHistoryBulkSelectAllTogglesSelection() {
   assert.match(eventsSource, /errorMessage=\{error\}/);
   assert.match(eventsSource, /confirmHistoryRemove/);
   assert.match(eventsSource, /hideEventsFromHistory\(hideableEventIds\)/);
+  assert.match(eventsSource, /syncPlannerEventsHiddenFromHistoryClientCaches\(successes\)/);
 
   const eventsLibSource = readFileSync(
     new URL("../lib/events.ts", import.meta.url),
@@ -2729,6 +2730,7 @@ function testPlannerCalendarEventDeletionSync() {
   assert.match(calendarSource, /export function resolveSentBookingsLinkedToPlannerEvent/);
   assert.match(lifecycleSource, /cancelCalendarLinkedOrphanSentBookingsForEvent/);
   assert.match(lifecycleSource, /syncPlannerEventDeletedFromClientCaches/);
+  assert.match(lifecycleSource, /syncPlannerEventsHiddenFromHistoryClientCaches/);
   assert.match(lifecycleSource, /removePlannerCalendarItemsForEvent/);
   assert.match(eventDetailSource, /cancelCalendarLinkedOrphanSentBookingsForEvent\(event\)/);
   assert.match(eventDetailSource, /syncPlannerEventDeletedFromClientCaches/);
@@ -2758,6 +2760,31 @@ function testPlannerCalendarScopesOwnedEventsOnly() {
   assert.doesNotMatch(
     calendarSource,
     /PLANNER_CALENDAR_VISIBLE_LEGEND_ITEMS[\s\S]*?kind !== "declined"/,
+  );
+  assert.match(calendarSource, /isPlannerEventVisibleOnCalendar\(event\)/);
+}
+
+function testPlannerHistoryHideRemovesCalendarItems() {
+  assert.equal(
+    isPlannerEventVisibleOnCalendar({
+      status: "upcoming",
+      history_hidden_at: "2026-01-01T00:00:00.000Z",
+    }),
+    false,
+  );
+  assert.equal(
+    isPlannerEventVisibleOnCalendar({
+      status: "upcoming",
+      history_hidden_at: null,
+    }),
+    true,
+  );
+  assert.equal(
+    isPlannerEventVisibleOnCalendar({
+      status: "cancelled",
+      history_hidden_at: null,
+    }),
+    false,
   );
 }
 
@@ -3887,6 +3914,7 @@ async function main() {
   testBookingsUsePlanCreatesEventBeforeSend();
   testPlannerCalendarEventDeletionSync();
   testPlannerCalendarScopesOwnedEventsOnly();
+  testPlannerHistoryHideRemovesCalendarItems();
   testCalendarCreateWorkspaceTabNavigation();
   testEventsListTabSwitchUsesClientHistoryWithoutRouterNavigation();
   testEventsCreateEventHiddenDuringHistorySelectionToolbar();

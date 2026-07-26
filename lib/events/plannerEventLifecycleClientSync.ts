@@ -35,6 +35,12 @@ export async function cancelCalendarLinkedOrphanSentBookingsForEvent(
   return cancelledBookings;
 }
 
+export function syncPlannerEventsHiddenFromHistoryClientCaches(eventIds: string[]): void {
+  for (const eventId of eventIds) {
+    removePlannerCalendarItemsForEvent(eventId);
+  }
+}
+
 export function syncPlannerEventDeletedFromClientCaches(
   eventId: string,
   relatedBookingIds: string[] = [],

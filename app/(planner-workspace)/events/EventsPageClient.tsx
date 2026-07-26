@@ -133,6 +133,7 @@ import {
 } from "@/lib/user/currentUser";
 import { readCachedNavRole } from "@/lib/navigationRoleCache";
 import { prepareEventsListEventNavigation } from "@/lib/navigation/prepareMobileDocumentScrollReset";
+import { syncPlannerEventsHiddenFromHistoryClientCaches } from "@/lib/events/plannerEventLifecycleClientSync";
 import { readEventsListCache, seedEventsListStateFromCache, writeEventsListCache } from "@/lib/events/eventsListCache";
 import { writeBookingPlansListCache, readBookingPlansListCache } from "@/lib/bookingPlans/bookingPlansListCache";
 import { seedEventOwnerId, seedEventOwnerIdsFromEvents } from "@/lib/events/eventOwnerIdCache";
@@ -1251,6 +1252,8 @@ function EventsPageClientView({
       if (successes.length > 0) {
         const hiddenAt = new Date().toISOString();
         const successIdSet = new Set(successes.map((id) => String(id)));
+
+        syncPlannerEventsHiddenFromHistoryClientCaches(successes);
 
         setEvents((current) => {
           const next = current.map((event) =>
