@@ -245,6 +245,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `97b098c` — Match Event Details toast to shared Gigs notification
 - `f0f6403` — Correct Event Details toast placement
 - `60e02a1` — Fix app startup regression from shared toast refactor
 - `f737431` — Refactor Event Details to shared success toast
