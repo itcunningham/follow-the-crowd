@@ -1,6 +1,8 @@
-import { CHAT_MESSAGE_ID_ATTR } from "@/lib/useChatScroll";
+import type { MutableRefObject } from "react";
 
 export const DM_BOOKING_CARD_ANCHOR_ATTR = "data-dm-booking-card-anchor";
+
+export const DM_BOOKING_CARD_REQUEST_ID_ATTR = "data-dm-booking-request-id";
 
 /** Matches BookingCardAnimatedExpand transition duration. */
 export const DM_BOOKING_CARD_EXPAND_ANIMATION_MS = 200;
@@ -15,24 +17,6 @@ function resolveScrollBehavior(): ScrollBehavior {
   return window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth";
 }
 
-export function findDmBookingCardAnchor(
-  container: HTMLElement,
-  messageId: string,
-): HTMLElement | null {
-  const messageElement = container.querySelector<HTMLElement>(
-    `[${CHAT_MESSAGE_ID_ATTR}="${CSS.escape(messageId)}"]`,
-  );
-
-  if (!messageElement) {
-    return null;
-  }
-
-  return (
-    messageElement.querySelector<HTMLElement>(`[${DM_BOOKING_CARD_ANCHOR_ATTR}]`) ??
-    messageElement
-  );
-}
-
 export function clampDmMessageScrollTop(container: HTMLElement): void {
   const maxScrollTop = Math.max(0, container.scrollHeight - container.clientHeight);
 
@@ -45,13 +29,10 @@ export function clampDmMessageScrollTop(container: HTMLElement): void {
   }
 }
 
-function scrollBookingCardTopIntoView(container: HTMLElement, messageId: string): void {
-  const cardAnchor = findDmBookingCardAnchor(container, messageId);
-
-  if (!cardAnchor) {
-    return;
-  }
-
+export function scrollDmBookingCardTopIntoView(
+  container: HTMLElement,
+  cardAnchor: HTMLElement,
+): void {
   const containerRect = container.getBoundingClientRect();
   const cardRect = cardAnchor.getBoundingClientRect();
   const delta = cardRect.top - containerRect.top - DM_BOOKING_CARD_SCROLL_TOP_OFFSET_PX;
@@ -70,19 +51,30 @@ function scrollBookingCardTopIntoView(container: HTMLElement, messageId: string)
   });
 }
 
-/** One smooth scroll after the expand animation completes. No artificial height is added. */
+/** One smooth scroll after the expand animation for the booking the user opened. */
 export function scheduleDmBookingCardExpandScroll(
   container: HTMLElement,
-  messageId: string,
+  getCardAnchor: () => HTMLElement | null,
+  bookingRequestId: string,
+  pendingBookingRequestIdRef: MutableRefObject<string | null>,
 ): () => void {
   let cancelled = false;
 
   const timeoutId = window.setTimeout(() => {
-    if (cancelled) {
+    if (cancelled || pendingBookingRequestIdRef.current !== bookingRequestId) {
       return;
     }
 
-    scrollBookingCardTopIntoView(container, messageId);
+    const cardAnchor = getCardAnchor();
+
+    if (
+      !cardAnchor ||
+      cardAnchor.getAttribute(DM_BOOKING_CARD_REQUEST_ID_ATTR) !== bookingRequestId
+    ) {
+      return;
+    }
+
+    scrollDmBookingCardTopIntoView(container, cardAnchor);
   }, DM_BOOKING_CARD_EXPAND_ANIMATION_MS);
 
   return () => {

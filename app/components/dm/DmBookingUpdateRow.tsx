@@ -16,6 +16,7 @@ import {
   type BookingRequestStatus,
 } from "@/lib/bookingRequests";
 import { formatBookingCardEventDate } from "@/lib/bookingDateTime";
+import { DM_BOOKING_CARD_REQUEST_ID_ATTR } from "@/lib/dm/dmBookingCardScrollAnchor";
 import type { BookingFocusPhase } from "@/lib/chatBookingFocusHighlight";
 
 export default function DmBookingUpdateRow({
@@ -25,6 +26,7 @@ export default function DmBookingUpdateRow({
   highlightClassName = "",
   bookingFocusPhase = null,
   onViewDetails,
+  anchorRef,
 }: {
   booking: BookingRequest;
   currentUserId: string | null;
@@ -32,6 +34,7 @@ export default function DmBookingUpdateRow({
   highlightClassName?: string;
   bookingFocusPhase?: BookingFocusPhase;
   onViewDetails: () => void;
+  anchorRef?: (element: HTMLElement | null) => void;
 }) {
   const isExplicitCancelled = booking.status === "cancelled";
   const showAsCancelled =
@@ -55,12 +58,14 @@ export default function DmBookingUpdateRow({
 
   return (
     <button
+      ref={anchorRef}
       type="button"
       onClick={onViewDetails}
       aria-expanded={false}
       aria-label={`${title}, ${statusText}. View booking details`}
       className={`relative ${DM_BOOKING_CARD_SHELL_CLASS} min-h-[44px] touch-manipulation text-left transition hover:border-ftc-border-strong active:border-ftc-border-strong focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ftc-primary ${highlightClassName}`}
       data-dm-booking-card-anchor
+      {...{ [DM_BOOKING_CARD_REQUEST_ID_ATTR]: booking.id }}
     >
       <DmBookingCardCollapsedHeader
         title={title}

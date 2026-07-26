@@ -229,6 +229,8 @@ export default function DmChatPage() {
   const [proposalLoadingId, setProposalLoadingId] = useState<string | null>(null);
   const [cancellingBookingId, setCancellingBookingId] = useState<string | null>(null);
   const [expandedBookingIds, setExpandedBookingIds] = useState<Set<string>>(() => new Set());
+  const bookingCardAnchorRefs = useRef(new Map<string, HTMLElement>());
+  const pendingScrollBookingIdRef = useRef<string | null>(null);
   const bookingExpandScrollCleanupRef = useRef<(() => void) | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -392,7 +394,24 @@ export default function DmChatPage() {
     setEventIdsWithAcceptedBookings(new Set());
     bookingExpandScrollCleanupRef.current?.();
     bookingExpandScrollCleanupRef.current = null;
+    bookingCardAnchorRefs.current.clear();
+    pendingScrollBookingIdRef.current = null;
   }, [conversationId]);
+
+  const registerBookingCardAnchor = useCallback(
+    (bookingRequestId: string, element: HTMLElement | null) => {
+      if (!bookingRequestId) {
+        return;
+      }
+
+      if (element) {
+        bookingCardAnchorRefs.current.set(bookingRequestId, element);
+      } else {
+        bookingCardAnchorRefs.current.delete(bookingRequestId);
+      }
+    },
+    [],
+  );
 
   const setBookingExpanded = useCallback((bookingKey: string, expanded: boolean) => {
     setExpandedBookingIds((previous) => {
@@ -409,11 +428,17 @@ export default function DmChatPage() {
   }, []);
 
   const handleBookingExpansionChange = useCallback(
-    (messageId: string, expanded: boolean) => {
+    (bookingRequestId: string, expanded: boolean) => {
       bookingExpandScrollCleanupRef.current?.();
       bookingExpandScrollCleanupRef.current = null;
 
-      setBookingExpanded(messageId, expanded);
+      if (expanded) {
+        pendingScrollBookingIdRef.current = bookingRequestId;
+      } else {
+        pendingScrollBookingIdRef.current = null;
+      }
+
+      setBookingExpanded(bookingRequestId, expanded);
 
       const container = scrollRef.current;
 
@@ -424,7 +449,9 @@ export default function DmChatPage() {
       if (expanded) {
         bookingExpandScrollCleanupRef.current = scheduleDmBookingCardExpandScroll(
           container,
-          messageId,
+          () => bookingCardAnchorRefs.current.get(bookingRequestId) ?? null,
+          bookingRequestId,
+          pendingScrollBookingIdRef,
         );
         return;
       }
@@ -1717,7 +1744,10 @@ export default function DmChatPage() {
                 const highlighted = isMessageHighlighted(message.id);
                 const bookingFocusPhase = getMessageBookingFocusPhase(message.id);
                 logChatHighlightRender(message.id, highlighted || Boolean(bookingFocusPhase));
-                const bookingExpansionKey = message.id;
+                const bookingExpansionKey = resolvedBooking.id;
+                const registerBookingCardAnchorForCard = (element: HTMLElement | null) => {
+                  registerBookingCardAnchor(bookingExpansionKey, element);
+                };
                 const highlightClassName = bookingFocusPhase
                   ? ""
                   : getChatNewMessageHighlightClass(highlighted);
@@ -1806,6 +1836,7 @@ export default function DmChatPage() {
                     onKeepOriginalOffer={() =>
                       actionBooking ? handleKeepOriginalOffer(actionBooking) : undefined
                     }
+                    anchorRef={registerBookingCardAnchorForCard}
                   />
                 );
 
@@ -1837,6 +1868,7 @@ export default function DmChatPage() {
                             eventCancelled={eventCancelled}
                             highlightClassName={highlightClassName}
                             bookingFocusPhase={bookingFocusPhase}
+                            anchorRef={registerBookingCardAnchorForCard}
                             onViewDetails={() =>
                               handleBookingExpansionChange(bookingExpansionKey, true)
                             }
