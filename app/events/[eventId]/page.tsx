@@ -533,14 +533,19 @@ function EventDetailPageView() {
   }
 
   function handleEditCoverFileSelected(file: File | null) {
-    syncPendingCoverSave({
-      file,
-      removeExisting: false,
-    });
-    setEditCoverField((previous) => ({
-      file,
-      removeExisting: false,
-    }));
+    if (file) {
+      const next = { file, removeExisting: false };
+      syncPendingCoverSave(next);
+      setEditCoverField(next);
+      return;
+    }
+
+    const next = {
+      file: null,
+      removeExisting: pendingCoverSaveRef.current.removeExisting,
+    };
+    syncPendingCoverSave(next);
+    setEditCoverField(next);
   }
 
   function showEditFormError(message: string) {
