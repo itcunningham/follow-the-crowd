@@ -46,6 +46,7 @@ import { rateDigitsToInteger } from "@/lib/bookingRate";
 import { formatBookingCardEventDate } from "@/lib/bookingDateTime";
 import { buildEventDetailFromDmHref } from "@/lib/events/eventsListNavigation";
 import type { DmThreadEntryContext } from "@/lib/dm/threadNavigation";
+import { DM_BOOKING_CARD_REQUEST_ID_ATTR } from "@/lib/dm/dmBookingCardExpandScroll";
 import type { BookingRecipientProfile } from "@/lib/user/currentUser";
 
 function BookingCardAnimatedExpand({
@@ -96,6 +97,7 @@ export default function BookingRequestCard({
   eventCancelled = false,
   dmConversationId = null,
   dmThreadEntryContext = null,
+  anchorRef,
 }: {
   booking: BookingRequest;
   currentUserId: string | null;
@@ -125,6 +127,7 @@ export default function BookingRequestCard({
   eventCancelled?: boolean;
   dmConversationId?: string | null;
   dmThreadEntryContext?: DmThreadEntryContext | null;
+  anchorRef?: (element: HTMLElement | null) => void;
 }) {
   const [proposeSheetOpen, setProposeSheetOpen] = useState(false);
   const isEventCancelledBooking = isBookingAffectedByCancelledEvent(booking, eventCancelled);
@@ -472,7 +475,12 @@ export default function BookingRequestCard({
   if (collapsible) {
     return (
       <>
-        <div className={DM_BOOKING_CARD_SHELL_CLASS} data-dm-booking-card-anchor>
+        <div
+          ref={anchorRef}
+          className={DM_BOOKING_CARD_SHELL_CLASS}
+          data-dm-booking-card-anchor
+          {...{ [DM_BOOKING_CARD_REQUEST_ID_ATTR]: booking.id }}
+        >
           {!expanded ? (
             <button
               type="button"
@@ -546,7 +554,12 @@ export default function BookingRequestCard({
 
   return (
     <>
-      <div className={DM_BOOKING_CARD_SHELL_CLASS} data-dm-booking-card-anchor>
+      <div
+        ref={anchorRef}
+        className={DM_BOOKING_CARD_SHELL_CLASS}
+        data-dm-booking-card-anchor
+        {...{ [DM_BOOKING_CARD_REQUEST_ID_ATTR]: booking.id }}
+      >
         {renderExpandedHeader(renderStatusBadge())}
 
         <div className="mt-3">{renderExpandedBody()}</div>

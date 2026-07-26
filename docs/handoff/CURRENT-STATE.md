@@ -47,7 +47,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 - **DM booking pending event actions (2026-07-26):** pending open-offer cards with linked event use paired row — `View event` (left, outlined) + `Cancel` (right, destructive); `min-h-8` / `gap-2` matches proposal + lineup paired buttons; standalone cancel when no event link unchanged
 - **DM booking proposed-rate copy (2026-07-26):** planner card removes duplicate header `Rate proposed` pill (panel heading retained); proposal body shows proposed `$amount` only; open-offer rate line shows `Ask for rate` (not `Offered rate · Ask for rate`) when DJ has proposed
 - **Ask for rate DM terminology (2026-07-26):** planner DM booking cards (collapsed + expanded + history rows) always show `Ask for rate` for open-offer bookings via `getDmBookingCardOfferSummary`; `Open offer` removed from planner DM summaries; DJ Gigs list copy unchanged
-- **DM chat scroll (2026-07-26):** auto-scroll runs only when a new message ID is appended (not on booking-card layout changes); booking expand/collapse does not reposition the viewport; native overflow anchoring enabled on DM message list
+- **DM chat scroll (2026-07-26):** auto-scroll runs only when a new message ID is appended (not on booking-card layout changes); booking expand scrolls the tapped card below the conversation header via per-booking anchor refs + `dmBookingCardExpandScroll`; collapse clamps scroll only (no reposition); native overflow anchoring enabled on DM message list
 - Events: create, edit, cancel, delete, lineup, send bookings, run sheet
 - Event Plans (`/booking-plans`), Calendar (`/calendar`), Gigs (`/bookings`)
 - Notifications, settings, account deletion
@@ -268,6 +268,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `942efac` — align expanded DM booking card below header
 - `bb40ce3` — prevent DM auto-scroll on booking card layout changes
 - `1bf0e63` — fix DM booking card scroll target identity
 - `fabeaf5` — remove DM booking card scroll spacer regression

@@ -474,18 +474,29 @@ function testDmBookingCardExpandCollapseScrollAnchor() {
     new URL("../app/dm/[conversationId]/page.tsx", import.meta.url),
     "utf8",
   );
+  const expandScrollSource = readFileSync(
+    new URL("../lib/dm/dmBookingCardExpandScroll.ts", import.meta.url),
+    "utf8",
+  );
   const scrollSource = readFileSync(
     new URL("../lib/useChatScroll.ts", import.meta.url),
     "utf8",
   );
 
   assert.match(pageSource, /handleBookingExpansionChange/);
-  assert.match(pageSource, /setBookingExpanded\(bookingRequestId, expanded\)/);
-  assert.match(pageSource, /messageIds/);
+  assert.match(pageSource, /scheduleExpandedBookingCardScrollAlign/);
+  assert.match(pageSource, /scheduleCollapsedBookingCardScrollClamp/);
+  assert.match(pageSource, /bookingCardAnchorRefs/);
+  assert.match(pageSource, /registerBookingCardAnchor/);
+  assert.match(pageSource, /pendingBookingCardScrollIdRef/);
+  assert.match(pageSource, /anchorRef=\{registerBookingCardAnchorForCard\}/);
   assert.doesNotMatch(pageSource, /dmBookingCardScrollAnchor/);
   assert.doesNotMatch(pageSource, /scheduleDmBookingCardExpandScroll/);
   assert.doesNotMatch(pageSource, /bookingExpandSpacerPx/);
   assert.doesNotMatch(pageSource, /overflow-anchor:none/);
+  assert.match(expandScrollSource, /scrollExpandedBookingCardBelowHeader/);
+  assert.match(expandScrollSource, /clampDmMessageScrollTop/);
+  assert.doesNotMatch(expandScrollSource, /scrollIntoView/);
   assert.match(scrollSource, /getAppendedMessageIds/);
   assert.match(scrollSource, /messageIds: readonly string\[\]/);
   assert.doesNotMatch(scrollSource, /messageCount/);

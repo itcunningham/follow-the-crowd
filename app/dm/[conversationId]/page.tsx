@@ -95,6 +95,10 @@ import {
   CHAT_BOOKING_REQUEST_ID_ATTR,
 } from "@/lib/dm/chatBookingTarget";
 import {
+  scheduleCollapsedBookingCardScrollClamp,
+  scheduleExpandedBookingCardScrollAlign,
+} from "@/lib/dm/dmBookingCardExpandScroll";
+import {
   blockDmUser,
   getDmBlockBannerMessage,
   getDmBlockSendErrorMessage,
@@ -225,6 +229,9 @@ export default function DmChatPage() {
   const [proposalLoadingId, setProposalLoadingId] = useState<string | null>(null);
   const [cancellingBookingId, setCancellingBookingId] = useState<string | null>(null);
   const [expandedBookingIds, setExpandedBookingIds] = useState<Set<string>>(() => new Set());
+  const bookingCardAnchorRefs = useRef(new Map<string, HTMLElement>());
+  const pendingBookingCardScrollIdRef = useRef<string | null>(null);
+  const bookingCardScrollCleanupRef = useRef<(() => void) | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -386,7 +393,30 @@ export default function DmChatPage() {
   useEffect(() => {
     setExpandedBookingIds(new Set());
     setEventIdsWithAcceptedBookings(new Set());
+    bookingCardScrollCleanupRef.current?.();
+    bookingCardScrollCleanupRef.current = null;
+    bookingCardAnchorRefs.current.clear();
+    pendingBookingCardScrollIdRef.current = null;
   }, [conversationId]);
+
+  const registerBookingCardAnchor = useCallback(
+    (bookingRequestId: string, element: HTMLElement | null) => {
+      if (!bookingRequestId) {
+        return;
+      }
+
+      if (element) {
+        bookingCardAnchorRefs.current.set(bookingRequestId, element);
+      } else {
+        bookingCardAnchorRefs.current.delete(bookingRequestId);
+      }
+    },
+    [],
+  );
+
+  const restoreChatAutoScrollSuppression = useCallback(() => {
+    suppressAutoScrollRef.current = Boolean(scrollTargetBookingRequestId);
+  }, [scrollTargetBookingRequestId]);
 
   const setBookingExpanded = useCallback((bookingKey: string, expanded: boolean) => {
     setExpandedBookingIds((previous) => {
@@ -404,9 +434,47 @@ export default function DmChatPage() {
 
   const handleBookingExpansionChange = useCallback(
     (bookingRequestId: string, expanded: boolean) => {
-      setBookingExpanded(bookingRequestId, expanded);
+      bookingCardScrollCleanupRef.current?.();
+      bookingCardScrollCleanupRef.current = null;
+
+      if (expanded) {
+        pendingBookingCardScrollIdRef.current = bookingRequestId;
+        suppressAutoScrollRef.current = true;
+        setBookingExpanded(bookingRequestId, true);
+
+        const container = scrollRef.current;
+
+        if (container) {
+          bookingCardScrollCleanupRef.current = scheduleExpandedBookingCardScrollAlign(
+            container,
+            () => bookingCardAnchorRefs.current.get(bookingRequestId) ?? null,
+            bookingRequestId,
+            pendingBookingCardScrollIdRef,
+            () => {
+              pendingBookingCardScrollIdRef.current = null;
+              restoreChatAutoScrollSuppression();
+            },
+          );
+        } else {
+          pendingBookingCardScrollIdRef.current = null;
+          restoreChatAutoScrollSuppression();
+        }
+
+        return;
+      }
+
+      pendingBookingCardScrollIdRef.current = null;
+      setBookingExpanded(bookingRequestId, false);
+
+      const container = scrollRef.current;
+
+      if (container) {
+        bookingCardScrollCleanupRef.current = scheduleCollapsedBookingCardScrollClamp(container);
+      }
+
+      restoreChatAutoScrollSuppression();
     },
-    [setBookingExpanded],
+    [restoreChatAutoScrollSuppression, scrollRef, setBookingExpanded],
   );
 
   useEffect(() => {
@@ -1693,6 +1761,9 @@ export default function DmChatPage() {
                 const bookingFocusPhase = getMessageBookingFocusPhase(message.id);
                 logChatHighlightRender(message.id, highlighted || Boolean(bookingFocusPhase));
                 const bookingExpansionKey = resolvedBooking.id;
+                const registerBookingCardAnchorForCard = (element: HTMLElement | null) => {
+                  registerBookingCardAnchor(bookingExpansionKey, element);
+                };
                 const highlightClassName = bookingFocusPhase
                   ? ""
                   : getChatNewMessageHighlightClass(highlighted);
@@ -1781,6 +1852,7 @@ export default function DmChatPage() {
                     onKeepOriginalOffer={() =>
                       actionBooking ? handleKeepOriginalOffer(actionBooking) : undefined
                     }
+                    anchorRef={registerBookingCardAnchorForCard}
                   />
                 );
 
@@ -1812,6 +1884,7 @@ export default function DmChatPage() {
                             eventCancelled={eventCancelled}
                             highlightClassName={highlightClassName}
                             bookingFocusPhase={bookingFocusPhase}
+                            anchorRef={registerBookingCardAnchorForCard}
                             onViewDetails={() =>
                               handleBookingExpansionChange(bookingExpansionKey, true)
                             }
