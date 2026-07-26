@@ -108,6 +108,27 @@ export function getBookingsDeepLinkKey(intent: BookingsDeepLinkIntent): string {
   }
 }
 
+export function resolveEventPlansCreateReturnHref(options: {
+  detailsEntrySource?: string | null;
+  persistedReturnHref?: string | null;
+}): string | null {
+  const persistedReturnHref = options.persistedReturnHref?.trim();
+
+  if (persistedReturnHref) {
+    return persistedReturnHref;
+  }
+
+  if (options.detailsEntrySource === "event-plans-deeplink") {
+    return "/booking-plans";
+  }
+
+  return null;
+}
+
+export function navigateAwayFromEventPlansCreateFlow(returnHref: string): void {
+  window.location.assign(returnHref);
+}
+
 /** Synchronous chrome gate: planner booking-create UI (not default Gigs workspace). */
 export function isPlannerBookingsCreateChromeActive(options: {
   createOpen?: boolean;

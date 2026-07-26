@@ -140,7 +140,9 @@ import {
   consumeBookingPlansSuccessMessage,
   getBookingsDeepLinkKey,
   isPlannerBookingsCreateChromeActive,
+  navigateAwayFromEventPlansCreateFlow,
   resolveBookingsDeepLinkIntent,
+  resolveEventPlansCreateReturnHref,
   stashBookingPlansSuccessMessage,
   type BookingsDeepLinkIntent,
 } from "@/lib/bookings/planDeepLink";
@@ -375,6 +377,7 @@ function BookingsPageContent() {
   const guardProfile = useGuardProfile();
   const deepLinkInFlightKeyRef = useRef<string | null>(null);
   const deepLinkCompletedKeyRef = useRef<string | null>(null);
+  const eventPlansCreateReturnHrefRef = useRef<string | null>(null);
   const gigsLoadGenerationRef = useRef(0);
   const initialGigsListState = useMemo(() => resolveInitialGigsPageListState(), []);
   const [role, setRole] = useState<UserRole | null>(
@@ -993,6 +996,7 @@ function BookingsPageContent() {
     setLoadingPlans(true);
 
     if (intent.type === "plan") {
+      eventPlansCreateReturnHrefRef.current = EVENTS_AREA_SUB_NAV.bookingPlans.href;
       setCreateStep("details");
       setSelectedPlanId(intent.planId);
       setDetailsEntrySource("event-plans-deeplink");
@@ -1279,6 +1283,36 @@ function BookingsPageContent() {
     }
 
     deepLinkInFlightKeyRef.current = null;
+    eventPlansCreateReturnHrefRef.current = null;
+  }
+
+  function markActiveBookingsDeepLinkCompleted() {
+    const intent = resolveBookingsDeepLinkIntent(searchParams);
+
+    if (intent) {
+      deepLinkCompletedKeyRef.current = getBookingsDeepLinkKey(intent);
+    }
+  }
+
+  function resolvePlannerCreateFlowReturnHref(): string | null {
+    return resolveEventPlansCreateReturnHref({
+      detailsEntrySource,
+      persistedReturnHref: eventPlansCreateReturnHrefRef.current,
+    });
+  }
+
+  function exitPlannerCreateFlow(options?: { preserveDeepLinkCompletion?: boolean }) {
+    const returnHref = resolvePlannerCreateFlowReturnHref();
+
+    if (returnHref) {
+      markActiveBookingsDeepLinkCompleted();
+    }
+
+    resetCreateFlowState(options);
+
+    if (returnHref) {
+      navigateAwayFromEventPlansCreateFlow(returnHref);
+    }
   }
 
   function closeCreateFlow() {
@@ -1286,7 +1320,7 @@ function BookingsPageContent() {
       return;
     }
 
-    resetCreateFlowState();
+    exitPlannerCreateFlow();
   }
 
   const handleWorkspaceTabNavigate = useCallback(
@@ -1313,7 +1347,7 @@ function BookingsPageContent() {
   );
 
   function finishCreateFlowAfterSend(successMessage: string) {
-    const returnToEventPlans = detailsEntrySource === "event-plans-deeplink";
+    const returnHref = resolvePlannerCreateFlowReturnHref();
     const intent = resolveBookingsDeepLinkIntent(searchParams);
 
     if (intent) {
@@ -1322,9 +1356,9 @@ function BookingsPageContent() {
 
     resetCreateFlowState({ preserveDeepLinkCompletion: true });
 
-    if (returnToEventPlans) {
+    if (returnHref) {
       stashBookingPlansSuccessMessage(successMessage);
-      router.replace(EVENTS_AREA_SUB_NAV.bookingPlans.href, { scroll: false });
+      router.replace(returnHref, { scroll: false });
       return;
     }
 
@@ -1337,7 +1371,6 @@ function BookingsPageContent() {
 
     if (detailsEntrySource === "event-plans-deeplink") {
       closeCreateFlow();
-      router.push(EVENTS_AREA_SUB_NAV.bookingPlans.href);
       return;
     }
 

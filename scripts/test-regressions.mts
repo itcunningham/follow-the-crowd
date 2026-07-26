@@ -2409,6 +2409,23 @@ function testBookingsUsePlanWorkspaceTabNavigation() {
   assert.match(subNavLinkSource, /shouldCommitNavigationGesture/);
 }
 
+function testBookingsUsePlanCancelReturnsToEventPlans() {
+  const bookingsSource = readFileSync(
+    new URL("../app/(planner-workspace)/bookings/page.tsx", import.meta.url),
+    "utf8",
+  );
+  const planDeepLinkSource = readFileSync(
+    new URL("../lib/bookings/planDeepLink.ts", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(bookingsSource, /eventPlansCreateReturnHrefRef/);
+  assert.match(bookingsSource, /resolveEventPlansCreateReturnHref/);
+  assert.match(bookingsSource, /navigateAwayFromEventPlansCreateFlow\(returnHref\)/);
+  assert.match(planDeepLinkSource, /export function resolveEventPlansCreateReturnHref/);
+  assert.match(planDeepLinkSource, /export function navigateAwayFromEventPlansCreateFlow/);
+}
+
 function testCalendarCreateWorkspaceTabNavigation() {
   const eventsSource = readFileSync(
     new URL("../app/(planner-workspace)/events/EventsPageClient.tsx", import.meta.url),
@@ -3445,6 +3462,7 @@ async function main() {
   testEventsHistorySelectionToolbarUsesDeleteLabel();
   testEventsCreateFlowTabPillNavigation();
   testBookingsUsePlanWorkspaceTabNavigation();
+  testBookingsUsePlanCancelReturnsToEventPlans();
   testCalendarCreateWorkspaceTabNavigation();
   testEventsListTabSwitchUsesClientHistoryWithoutRouterNavigation();
   testEventsCreateEventHiddenDuringHistorySelectionToolbar();
