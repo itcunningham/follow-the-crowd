@@ -252,6 +252,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `7c8f6bf` — fix planner calendar event deletion
 - `e1c615b` — fix Event Plan Use Plan event creation flow
 - `8364a0c` — Improve long event title wrapping and truncation
 - `36132c8` — Improve Event Calendar agenda card hierarchy
