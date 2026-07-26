@@ -81,10 +81,10 @@ export default function ProposeBookingRateSheet({
           required
         />
         <BookingFormField
-          label="Note (optional)"
+          label="Notes (optional)"
           value={note}
           onChange={(value) => setNote(value.slice(0, MAX_NOTE_LENGTH))}
-          placeholder="Travel, set length, equipment..."
+          placeholder="Notes"
           multiline
         />
         <p className="text-xs text-ftc-text-muted">
