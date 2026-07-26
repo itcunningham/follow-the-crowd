@@ -268,7 +268,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
-- `942efac` — align expanded DM booking card below header
+- `a84d814` — align expanded DM booking card below header
 - `bb40ce3` — prevent DM auto-scroll on booking card layout changes
 - `1bf0e63` — fix DM booking card scroll target identity
 - `fabeaf5` — remove DM booking card scroll spacer regression
