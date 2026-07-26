@@ -62,6 +62,60 @@ export function buildEventDetailProfileHref(
   return `/profile/${userId}?${params.toString()}`;
 }
 
+export function readProfileEventDetailContext(
+  getParam: (key: string) => string | null,
+): EventDetailProfileReturnContext | null {
+  if (getParam("from")?.trim() !== "event-detail") {
+    return null;
+  }
+
+  const eventId = getParam("eventId")?.trim();
+
+  if (!eventId || !looksLikeUserId(eventId)) {
+    return null;
+  }
+
+  return {
+    eventId,
+    fromTab: getParam("fromTab"),
+    calendarOrigin: parseCalendarOriginReturnParams(
+      getParam("calendarDate"),
+      getParam("calendarView"),
+      getParam("calendarMonth"),
+    ),
+  };
+}
+
+export function buildProfileDmThreadHref(
+  conversationId: string,
+  profileUserId: string,
+  eventDetailContext?: EventDetailProfileReturnContext | null,
+): string {
+  const params = new URLSearchParams({
+    from: "profile",
+    profileUserId: profileUserId.trim(),
+  });
+
+  if (eventDetailContext) {
+    params.set("profileFrom", "event-detail");
+    params.set("eventId", eventDetailContext.eventId.trim());
+
+    if (eventDetailContext.fromTab?.trim() === "history") {
+      params.set("fromTab", "history");
+    }
+
+    if (eventDetailContext.calendarOrigin) {
+      params.set("calendarDate", eventDetailContext.calendarOrigin.calendarDate);
+      params.set("calendarView", eventDetailContext.calendarOrigin.calendarView);
+      params.set("calendarMonth", eventDetailContext.calendarOrigin.calendarMonth);
+    }
+  }
+
+  const query = params.toString();
+
+  return query ? `/dm/${conversationId}?${query}` : `/dm/${conversationId}`;
+}
+
 export function buildProfileHref(
   userId: string,
   options?: { returnTo?: string | null },

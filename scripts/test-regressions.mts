@@ -118,6 +118,7 @@ import {
 } from "../lib/dm/threadNavigation";
 import {
   buildEventDetailProfileHref,
+  buildProfileDmThreadHref,
   buildProfileHref,
   resolveProfileChatBackNavigation,
   resolveProfileEventDetailBackNavigation,
@@ -869,6 +870,27 @@ function testProfileChatBackNavigation() {
   );
   assert.equal(resolveProfileEventDetailBackNavigation("chat", { eventId }), null);
 
+  assert.equal(
+    buildProfileDmThreadHref("conversation-1", userId, { eventId, calendarOrigin }),
+    `/dm/conversation-1?from=profile&profileUserId=${userId}&profileFrom=event-detail&eventId=${eventId}&calendarDate=2026-07-14&calendarView=event&calendarMonth=2026-07-01`,
+  );
+  assert.equal(
+    resolveDmThreadBackHref({
+      from: "profile",
+      profileUserId: userId,
+      profileFrom: "event-detail",
+      eventId,
+      calendarDate: calendarOrigin.calendarDate,
+      calendarView: calendarOrigin.calendarView,
+      calendarMonth: calendarOrigin.calendarMonth,
+    }),
+    buildEventDetailProfileHref(userId, { eventId, calendarOrigin }),
+  );
+  assert.equal(
+    resolveDmThreadBackHref({ from: "profile", profileUserId: userId }),
+    `/profile/${userId}`,
+  );
+
   const profilePageSource = readFileSync(
     new URL("../app/profile/[userId]/page.tsx", import.meta.url),
     "utf8",
@@ -881,7 +903,17 @@ function testProfileChatBackNavigation() {
     new URL("../app/components/dm/DmConversationDetailsPanel.tsx", import.meta.url),
     "utf8",
   );
+  const dmPageSource = readFileSync(
+    new URL("../app/dm/[conversationId]/page.tsx", import.meta.url),
+    "utf8",
+  );
+  const dmHeaderSource = readFileSync(
+    new URL("../app/components/dm/DmConversationHeader.tsx", import.meta.url),
+    "utf8",
+  );
 
+  assert.match(profilePageSource, /buildProfileDmThreadHref/);
+  assert.match(profilePageSource, /readProfileEventDetailContext/);
   assert.match(profilePageSource, /resolveProfileEventDetailBackNavigation/);
   assert.match(profilePageSource, /resolveProfileChatBackNavigation/);
   assert.match(profilePageSource, /return "Opening"/);
@@ -890,6 +922,10 @@ function testProfileChatBackNavigation() {
   assert.match(profileHeaderSource, /replace/);
   assert.match(profileHeaderSource, /scroll=\{false\}/);
   assert.match(dmDetailsSource, /buildProfileHref\(otherUserId, \{ returnTo: profileReturnTo \}\)/);
+  assert.match(dmPageSource, /profileFrom: searchParams\.get\("profileFrom"\)/);
+  assert.match(dmPageSource, /backReplace=\{backReplace\}/);
+  assert.match(dmHeaderSource, /backReplace/);
+  assert.match(dmHeaderSource, /scroll=\{false\}/);
 }
 
 function testGigsIncomingDmEventDetailReturnChain() {

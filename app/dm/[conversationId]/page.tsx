@@ -148,11 +148,14 @@ export default function DmChatPage() {
     from: searchParams.get("from"),
     tab: searchParams.get("tab"),
     profileUserId: searchParams.get("profileUserId"),
+    profileFrom: searchParams.get("profileFrom"),
+    fromTab: searchParams.get("fromTab"),
     eventId: searchParams.get("eventId"),
     calendarDate: searchParams.get("calendarDate"),
     calendarView: searchParams.get("calendarView"),
     calendarMonth: searchParams.get("calendarMonth"),
   });
+  const backReplace = searchParams.get("from") === "profile";
   const dmThreadEntryContext = useMemo(
     () => parseDmThreadEntryContext((key) => searchParams.get(key)),
     [searchParams],
@@ -1445,6 +1448,7 @@ export default function DmChatPage() {
       <header className="z-10 shrink-0 border-b border-ftc-border-subtle bg-ftc-bg/95 px-3 py-2.5 backdrop-blur-md sm:px-4">
         <DmConversationHeader
           backHref={backHref}
+          backReplace={backReplace}
           loading={dmHeaderLoading}
           conversationTitle={conversationTitle}
           avatarName={otherUserLabel}

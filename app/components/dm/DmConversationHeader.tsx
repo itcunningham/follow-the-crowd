@@ -5,10 +5,20 @@ import ChatProfileAvatarLink from "@/app/components/chat/ChatProfileAvatarLink";
 import ProfileAvatar from "@/app/components/ProfileAvatar";
 import { SkeletonBlock } from "@/app/components/skeleton/Skeleton";
 
-function ChatBackButton({ href, label = "Back to inbox" }: { href: string; label?: string }) {
+function ChatBackButton({
+  href,
+  label = "Back to inbox",
+  replace = false,
+}: {
+  href: string;
+  label?: string;
+  replace?: boolean;
+}) {
   return (
     <Link
       href={href}
+      replace={replace}
+      scroll={false}
       aria-label={label}
       className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-ftc-border-subtle bg-ftc-surface text-ftc-text-secondary transition hover:border-ftc-border-strong hover:text-ftc-text focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ftc-primary"
     >
@@ -54,6 +64,7 @@ function ChatDetailsMenuButton({
 export default function DmConversationHeader({
   backHref,
   backLabel = "Back to inbox",
+  backReplace = false,
   loading = false,
   conversationTitle,
   avatarName,
@@ -64,6 +75,7 @@ export default function DmConversationHeader({
 }: {
   backHref: string;
   backLabel?: string;
+  backReplace?: boolean;
   loading?: boolean;
   conversationTitle: string;
   avatarName: string;
@@ -74,7 +86,7 @@ export default function DmConversationHeader({
 }) {
   return (
     <div className="flex items-center gap-2">
-      <ChatBackButton href={backHref} label={backLabel} />
+      <ChatBackButton href={backHref} label={backLabel} replace={backReplace} />
 
       <div className="flex min-w-0 flex-1 items-center gap-3">
         {loading ? (

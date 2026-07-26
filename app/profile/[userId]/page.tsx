@@ -24,6 +24,8 @@ import {
   resolveIsOwnProfilePath,
 } from "@/lib/navigationRoleCache";
 import {
+  buildProfileDmThreadHref,
+  readProfileEventDetailContext,
   resolveProfileChatBackNavigation,
   resolveProfileEventDetailBackNavigation,
 } from "@/lib/profileNavigation";
@@ -110,7 +112,8 @@ function UserProfilePageView({ userId }: { userId: string }) {
     try {
       const authUserId = await getCurrentUserId();
       const conversationId = await startDm(authUserId, profile.user_id);
-      router.push(`/dm/${conversationId}?from=profile&profileUserId=${profile.user_id}`);
+      const eventDetailContext = readProfileEventDetailContext((key) => searchParams.get(key));
+      router.push(buildProfileDmThreadHref(conversationId, profile.user_id, eventDetailContext));
     } catch (messageError) {
       console.error("startDm failed from profile page:", messageError);
       setError(messageError instanceof Error ? messageError.message : "Failed to start message");

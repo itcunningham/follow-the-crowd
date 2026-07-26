@@ -10,6 +10,7 @@ import {
   resolveCalendarOriginEventHref,
 } from "@/lib/calendar";
 import { DM_BOOKING_FOCUS_SCROLL_ONLY } from "@/lib/dm/chatBookingTarget";
+import { buildEventDetailProfileHref } from "@/lib/profileNavigation";
 import { looksLikeUserId } from "@/lib/user/displayName";
 
 export type DmThreadEntryContext = {
@@ -176,6 +177,8 @@ export type DmThreadBackContext = {
   from?: string | null;
   tab?: string | null;
   profileUserId?: string | null;
+  profileFrom?: string | null;
+  fromTab?: string | null;
   eventId?: string | null;
   calendarDate?: string | null;
   calendarView?: string | null;
@@ -264,11 +267,28 @@ export function resolveDmThreadBackHref(context: DmThreadBackContext): string {
   if (from === "profile") {
     const profileUserId = context.profileUserId?.trim();
 
-    if (profileUserId) {
-      return `/profile/${profileUserId}`;
+    if (!profileUserId) {
+      return "/dm";
     }
 
-    return "/dm";
+    if (context.profileFrom?.trim() === "event-detail") {
+      const calendarOrigin = parseCalendarOriginReturnParams(
+        context.calendarDate,
+        context.calendarView,
+        context.calendarMonth,
+      );
+      const eventId = context.eventId?.trim();
+
+      if (eventId && looksLikeUserId(eventId)) {
+        return buildEventDetailProfileHref(profileUserId, {
+          eventId,
+          fromTab: context.fromTab,
+          calendarOrigin,
+        });
+      }
+    }
+
+    return `/profile/${profileUserId}`;
   }
 
   if (context.tab === "group") {
