@@ -95,6 +95,10 @@ import {
   CHAT_BOOKING_REQUEST_ID_ATTR,
 } from "@/lib/dm/chatBookingTarget";
 import {
+  preserveDmBookingCardScrollAnchor,
+  scheduleDmBookingCardExpandScroll,
+} from "@/lib/dm/dmBookingCardScrollAnchor";
+import {
   blockDmUser,
   getDmBlockBannerMessage,
   getDmBlockSendErrorMessage,
@@ -400,6 +404,26 @@ export default function DmChatPage() {
       return next;
     });
   }, []);
+
+  const handleBookingExpansionChange = useCallback(
+    (messageId: string, expanded: boolean) => {
+      const container = scrollRef.current;
+
+      if (!expanded && container) {
+        preserveDmBookingCardScrollAnchor(container, messageId, () => {
+          setBookingExpanded(messageId, false);
+        });
+        return;
+      }
+
+      setBookingExpanded(messageId, expanded);
+
+      if (expanded && container) {
+        scheduleDmBookingCardExpandScroll(container, messageId);
+      }
+    },
+    [scrollRef, setBookingExpanded],
+  );
 
   useEffect(() => {
     if (!conversationId) {
@@ -1705,7 +1729,7 @@ export default function DmChatPage() {
                     collapsible={actionRequired || isBookingExpanded}
                     expanded={actionRequired ? isBookingExpanded : true}
                     onExpandedChange={(expanded) =>
-                      setBookingExpanded(bookingExpansionKey, expanded)
+                      handleBookingExpansionChange(bookingExpansionKey, expanded)
                     }
                     useCompactDmCollapseHeader={!actionRequired && isBookingExpanded}
                     eventHasAcceptedBooking={
@@ -1808,7 +1832,7 @@ export default function DmChatPage() {
                             highlightClassName={highlightClassName}
                             bookingFocusPhase={bookingFocusPhase}
                             onViewDetails={() =>
-                              setBookingExpanded(bookingExpansionKey, true)
+                              handleBookingExpansionChange(bookingExpansionKey, true)
                             }
                           />
                         ) : (

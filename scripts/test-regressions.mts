@@ -468,6 +468,34 @@ function testDmBookingCardPendingEventPairedActions() {
   assert.match(layoutSource, /min-h-8 min-w-0 flex-1/);
 }
 
+function testDmBookingCardExpandCollapseScrollAnchor() {
+  const pageSource = readFileSync(
+    new URL("../app/dm/[conversationId]/page.tsx", import.meta.url),
+    "utf8",
+  );
+  const cardSource = readFileSync(
+    new URL("../app/components/BookingRequestCard.tsx", import.meta.url),
+    "utf8",
+  );
+  const updateRowSource = readFileSync(
+    new URL("../app/components/dm/DmBookingUpdateRow.tsx", import.meta.url),
+    "utf8",
+  );
+  const anchorSource = readFileSync(
+    new URL("../lib/dm/dmBookingCardScrollAnchor.ts", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(pageSource, /handleBookingExpansionChange/);
+  assert.match(pageSource, /preserveDmBookingCardScrollAnchor/);
+  assert.match(pageSource, /scheduleDmBookingCardExpandScroll/);
+  assert.match(cardSource, /data-dm-booking-card-anchor/);
+  assert.match(updateRowSource, /data-dm-booking-card-anchor/);
+  assert.match(anchorSource, /scrollDmBookingCardTopIntoView/);
+  assert.match(anchorSource, /prefers-reduced-motion/);
+  assert.match(anchorSource, /DM_BOOKING_CARD_EXPAND_ANIMATION_MS = 200/);
+}
+
 function testDmBookingCardProposedRateCopy() {
   const cardSource = readFileSync(
     new URL("../app/components/BookingRequestCard.tsx", import.meta.url),
@@ -3937,6 +3965,7 @@ async function main() {
   testDmBookingActionRequiredStates();
   testBookingRateProposalPanelActionLayout();
   testDmBookingCardPendingEventPairedActions();
+  testDmBookingCardExpandCollapseScrollAnchor();
   testDmBookingCardProposedRateCopy();
   testAskForRateDmBookingCardOfferSummary();
   testUsernameBlockedTermChecks();

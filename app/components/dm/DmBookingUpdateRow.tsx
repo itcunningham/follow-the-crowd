@@ -60,6 +60,7 @@ export default function DmBookingUpdateRow({
       aria-expanded={false}
       aria-label={`${title}, ${statusText}. View booking details`}
       className={`relative ${DM_BOOKING_CARD_SHELL_CLASS} min-h-[44px] touch-manipulation text-left transition hover:border-ftc-border-strong active:border-ftc-border-strong focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ftc-primary ${highlightClassName}`}
+      data-dm-booking-card-anchor
     >
       <DmBookingCardCollapsedHeader
         title={title}

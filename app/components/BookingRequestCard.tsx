@@ -472,7 +472,7 @@ export default function BookingRequestCard({
   if (collapsible) {
     return (
       <>
-        <div className={DM_BOOKING_CARD_SHELL_CLASS}>
+        <div className={DM_BOOKING_CARD_SHELL_CLASS} data-dm-booking-card-anchor>
           {!expanded ? (
             <button
               type="button"
@@ -546,7 +546,7 @@ export default function BookingRequestCard({
 
   return (
     <>
-      <div className={DM_BOOKING_CARD_SHELL_CLASS}>
+      <div className={DM_BOOKING_CARD_SHELL_CLASS} data-dm-booking-card-anchor>
         {renderExpandedHeader(renderStatusBadge())}
 
         <div className="mt-3">{renderExpandedBody()}</div>
