@@ -241,6 +241,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `53d35d2` — Simplify empty state copy and remove duplicate CTAs
 - `da859d3` — Refine Events empty state
 - `dfa13b8` — Scope QA reset to QA accounts only
 - `3654455` — Simplify FTC QA reset process
