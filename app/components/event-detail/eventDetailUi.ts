@@ -1,6 +1,8 @@
 /** Shared layout tokens for the Event Details planner flow. */
 export const EVENT_DETAIL_SECTION_SPACING = "mt-8";
 
+export const EVENT_DETAIL_NOTES_TEXT_CLASS = "ftc-event-detail-notes-text";
+
 export const EVENT_DETAIL_CARD_CLASS = "ftc-card p-3.5 sm:p-4";
 
 export const EVENT_DETAIL_SECTION_TITLE_CLASS = "ftc-section-title";

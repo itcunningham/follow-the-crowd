@@ -412,6 +412,16 @@ html {
   white-space: pre-line;
 }
 
+/** Event Details notes — full text, preserved line breaks, safe wrap for long tokens. */
+.ftc-event-detail-notes-text {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: hidden;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+
 /** Event title — up to 2 lines, ellipsis when clipped; long unbroken words wrap without stretching layout. */
 .ftc-event-title-clamp-2 {
   display: -webkit-box;

@@ -25,6 +25,7 @@ import {
   EVENT_DETAIL_BTN_SECONDARY,
   EVENT_DETAIL_CARD_CLASS,
   EVENT_DETAIL_FEEDBACK_CLASS,
+  EVENT_DETAIL_NOTES_TEXT_CLASS,
   EVENT_DETAIL_SECTION_SPACING,
 } from "@/app/components/event-detail/eventDetailUi";
 import EventLineupBookingCard from "@/app/components/event-detail/EventLineupBookingCard";
@@ -1295,9 +1296,13 @@ function EventDetailPageView() {
               </div>
 
               {event.notes?.trim() ? (
-                <section className={EVENT_DETAIL_SECTION_SPACING}>
+                <section className={`${EVENT_DETAIL_SECTION_SPACING} min-w-0`}>
                   <EventDetailSectionTitle>Notes</EventDetailSectionTitle>
-                  <p className="mt-2 text-sm leading-relaxed text-ftc-text-secondary">{event.notes}</p>
+                  <p
+                    className={`mt-2 text-sm leading-relaxed text-ftc-text-secondary ${EVENT_DETAIL_NOTES_TEXT_CLASS}`}
+                  >
+                    {event.notes}
+                  </p>
                 </section>
               ) : null}
             </>

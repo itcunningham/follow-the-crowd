@@ -2161,6 +2161,14 @@ function testWithdrawalOtherReasonInputLimits() {
     /\.ftc-event-detail-cancellation-reason-text[\s\S]*overflow-wrap: anywhere/,
   );
   assert.match(
+    readFileSync(new URL("../app/globals.css", import.meta.url), "utf8"),
+    /\.ftc-event-detail-notes-text[\s\S]*white-space: pre-wrap[\s\S]*overflow-wrap: anywhere/,
+  );
+  assert.match(
+    readFileSync(new URL("../app/events/[eventId]/page.tsx", import.meta.url), "utf8"),
+    /EVENT_DETAIL_NOTES_TEXT_CLASS/,
+  );
+  assert.match(
     readFileSync(new URL("../app/events/[eventId]/page.tsx", import.meta.url), "utf8"),
     /EventDetailBookingCancellationDetails/,
   );
