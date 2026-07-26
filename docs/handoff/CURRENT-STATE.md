@@ -240,7 +240,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
-- `4639f3d` — Prepare clean QA environment for beta readiness testing
+- `28059cb` — Prepare clean QA environment for beta readiness testing
 - `4f82297` — add profile Back button when opened from DM
 - `8e00b42` — align Events Calendar agenda card height with Gigs reference
 - `5979f2f` — fix Use Plan cancel flicker through Gigs workspace
