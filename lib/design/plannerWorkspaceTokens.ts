@@ -29,8 +29,16 @@ export const PLANNER_WORKSPACE_TITLE_ACTIONS_CLASS =
   "flex shrink-0 items-start justify-end md:min-h-[2.625rem] md:min-w-[11.75rem] md:items-center";
 
 /** Floating transient success feedback below title/action row — zero layout footprint. */
+export const PLANNER_WORKSPACE_TITLE_FEEDBACK_ANCHOR_CLASS =
+  "pointer-events-none absolute inset-x-0 top-full z-50 mt-1.5 h-0";
+
+/** @deprecated Inline slot render — feedback is portaled via PlannerTitleFeedbackOverlay. */
 export const PLANNER_WORKSPACE_TITLE_FEEDBACK_SLOT_CLASS =
   "pointer-events-none absolute inset-x-0 top-full z-50 mt-1.5 flex items-center justify-center";
+
+/** Fixed overlay shell positioned from the shared title-row feedback anchor. */
+export const PLANNER_WORKSPACE_TITLE_FEEDBACK_OVERLAY_CLASS =
+  "pointer-events-none fixed z-[60] flex items-start justify-center";
 
 export const PLANNER_WORKSPACE_SUBNAV_SLOT_CLASS = "mt-4 min-h-11 md:min-h-11";
 
