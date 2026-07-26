@@ -228,6 +228,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `b1d4172` — feat(gigs-calendar): prioritise actionable bookings in daily agenda
 - `8cc6a71` — feat(calendar): prioritise actionable events in daily agenda
 - `e8120ab` — fix(calendar): sort daily agenda chronologically by start time
 - `0105b83` — fix planner calendar pending booking navigation to Event Details
