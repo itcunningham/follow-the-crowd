@@ -6,6 +6,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import {
   groupActiveBookingsByDate,
   listMyActiveReceivedBookings,
+  sortDjGigsCalendarAgendaBookings,
   type BookingRequest,
 } from "@/lib/bookingRequests";
 import {
@@ -728,9 +729,7 @@ function DjAvailabilityMobileDayPanel({
     calendarView: "dj",
     monthStart,
   });
-  const pendingBookings = animatedDayBookings.filter((booking) => booking.status === "pending");
-  const acceptedBookings = animatedDayBookings.filter((booking) => booking.status === "accepted");
-  const interactiveBookings = [...pendingBookings, ...acceptedBookings];
+  const sortedDayBookings = sortDjGigsCalendarAgendaBookings(animatedDayBookings);
   const canEditAvailability = !isDateKeyBeforeToday(dateKey);
   const selectedAvailabilityStatus = personalEntry?.status ?? null;
 
@@ -774,9 +773,9 @@ function DjAvailabilityMobileDayPanel({
         className={bookingsTransitionClassName}
         inert={isAgendaTransitionInteractive ? undefined : true}
       >
-        {interactiveBookings.length > 0 ? (
+        {sortedDayBookings.length > 0 ? (
           <ul className={CALENDAR_MOBILE_AGENDA_CARD_LIST_CLASS}>
-            {interactiveBookings.map((booking) => (
+            {sortedDayBookings.map((booking) => (
               <li key={booking.id}>
                 <DjCalendarMobileBookingCard
                   booking={booking}
@@ -904,9 +903,12 @@ function DjAvailabilityDayCell({
 }) {
   const dateKey = toDateKey(date);
   const canEditAvailability = !isDateKeyBeforeToday(dateKey);
-  const pendingBookings = dayBookings.filter((booking) => booking.status === "pending");
-  const acceptedBookings = dayBookings.filter((booking) => booking.status === "accepted");
-  const interactiveBookings = [...pendingBookings, ...acceptedBookings];
+  const sortedDayBookings = sortDjGigsCalendarAgendaBookings(dayBookings);
+  const pendingBookings = sortedDayBookings.filter((booking) => booking.status === "pending");
+  const acceptedBookings = sortedDayBookings.filter((booking) => booking.status === "accepted");
+  const interactiveBookings = sortedDayBookings.filter(
+    (booking) => booking.status === "pending" || booking.status === "accepted",
+  );
   const isPreviewingAvailability = multiSelectMode && isSelected && pendingBulkChoice !== null;
   const previewStatus =
     isPreviewingAvailability && pendingBulkChoice.type === "status"

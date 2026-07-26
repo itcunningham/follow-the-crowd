@@ -1,8 +1,11 @@
 import { supabase } from "@/lib/supabaseClient";
 import {
   isDateKeyBeforeToday,
+  isPlannerEventPast,
   parseEventDate,
   resolveEventDateKey,
+  resolveEventEndDateTime,
+  resolveEventStartDateTime,
 } from "@/lib/bookingDateTime";
 import { createNotification, getNotificationCreateErrorMessage, notifyNavigationBadgesRefresh } from "@/lib/notifications";
 import { formatRateDisplay, formatIntegerRateDisplay, normalizeStoredRate } from "@/lib/bookingRate";
@@ -294,6 +297,87 @@ export function sortGigsByEventDateAsc(bookings: BookingRequest[]): BookingReque
     }
 
     return left.event_name.localeCompare(right.event_name);
+  });
+}
+
+function getDjGigsCalendarAgendaGroupPriority(booking: BookingRequest): number {
+  if (booking.status === "pending") {
+    return 0;
+  }
+
+  if (booking.status === "accepted") {
+    if (isPlannerEventPast(booking.event_date, booking.set_time)) {
+      return 2;
+    }
+
+    return 1;
+  }
+
+  return 2;
+}
+
+function resolveDjGigsCalendarBookingStartTimeSortKey(booking: BookingRequest): number {
+  const startDateTime = resolveEventStartDateTime(booking.event_date, booking.set_time);
+
+  return startDateTime?.getTime() ?? Number.MAX_SAFE_INTEGER;
+}
+
+function resolveDjGigsCalendarBookingEndTimeSortKey(booking: BookingRequest): number {
+  const endDateTime = resolveEventEndDateTime(booking.event_date, booking.set_time);
+
+  return endDateTime?.getTime() ?? Number.MAX_SAFE_INTEGER;
+}
+
+function resolveDjGigsCalendarBookingCreatedAtSortKey(booking: BookingRequest): number {
+  const parsed = Date.parse(booking.created_at.trim());
+
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function compareDjGigsCalendarAgendaBookingsChronologically(
+  left: BookingRequest,
+  right: BookingRequest,
+): number {
+  const startDelta =
+    resolveDjGigsCalendarBookingStartTimeSortKey(left) -
+    resolveDjGigsCalendarBookingStartTimeSortKey(right);
+
+  if (startDelta !== 0) {
+    return startDelta;
+  }
+
+  const endDelta =
+    resolveDjGigsCalendarBookingEndTimeSortKey(left) -
+    resolveDjGigsCalendarBookingEndTimeSortKey(right);
+
+  if (endDelta !== 0) {
+    return endDelta;
+  }
+
+  const createdDelta =
+    resolveDjGigsCalendarBookingCreatedAtSortKey(left) -
+    resolveDjGigsCalendarBookingCreatedAtSortKey(right);
+
+  if (createdDelta !== 0) {
+    return createdDelta;
+  }
+
+  return left.id.localeCompare(right.id);
+}
+
+export function sortDjGigsCalendarAgendaBookings(
+  bookings: BookingRequest[],
+): BookingRequest[] {
+  return [...bookings].sort((left, right) => {
+    const groupDelta =
+      getDjGigsCalendarAgendaGroupPriority(left) -
+      getDjGigsCalendarAgendaGroupPriority(right);
+
+    if (groupDelta !== 0) {
+      return groupDelta;
+    }
+
+    return compareDjGigsCalendarAgendaBookingsChronologically(left, right);
   });
 }
 
@@ -2189,10 +2273,7 @@ export function groupActiveBookingsByDate(
   }
 
   for (const [dateKey, dayBookings] of grouped) {
-    grouped.set(
-      dateKey,
-      dayBookings.sort((left, right) => left.event_name.localeCompare(right.event_name)),
-    );
+    grouped.set(dateKey, sortDjGigsCalendarAgendaBookings(dayBookings));
   }
 
   return grouped;

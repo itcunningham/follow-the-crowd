@@ -63,6 +63,7 @@ import {
   isDmBookingActionRequired,
   isDjGigPastAccepted,
   resolveBookingDateKey,
+  sortDjGigsCalendarAgendaBookings,
 } from "../lib/bookingRequests";
 import { parseDjGigsListTab, resolveGigsListTabParam, resolveGigsListTabForBookingsPage, buildGigsWorkspaceIncomingHref, buildGigsConversationHref } from "../lib/bookings/gigsListNavigation";
 import {
@@ -1032,6 +1033,40 @@ function testPlannerCalendarAgendaChronologicalSort() {
   assert.deepEqual(
     byStableTieBreaker.map((item) => item.id),
     ["item-a", "item-b"],
+  );
+}
+
+function testDjGigsCalendarAgendaSort() {
+  const sorted = sortDjGigsCalendarAgendaBookings([
+    makeDjGigBooking({
+      id: "past-accepted",
+      status: "accepted",
+      event_date: "2020-01-15",
+      set_time: "9:00 PM",
+    }),
+    makeDjGigBooking({
+      id: "pending-late",
+      status: "pending",
+      event_date: "2030-06-15",
+      set_time: "6:00 PM",
+    }),
+    makeDjGigBooking({
+      id: "accepted-upcoming",
+      status: "accepted",
+      event_date: "2030-06-15",
+      set_time: "8:00 PM",
+    }),
+    makeDjGigBooking({
+      id: "pending-early",
+      status: "pending",
+      event_date: "2030-06-15",
+      set_time: "3:00 PM",
+    }),
+  ]);
+
+  assert.deepEqual(
+    sorted.map((booking) => booking.id),
+    ["pending-early", "pending-late", "accepted-upcoming", "past-accepted"],
   );
 }
 
@@ -3348,6 +3383,7 @@ async function main() {
   testPlannerCalendarItemHref();
   testPlannerCalendarPendingSentBookingEventLink();
   testPlannerCalendarAgendaChronologicalSort();
+  testDjGigsCalendarAgendaSort();
   testAcceptedFutureGigAppearsInConfirmed();
   testAcceptedPastGigAppearsInHistory();
   testPendingGigAppearsOnlyInIncoming();
