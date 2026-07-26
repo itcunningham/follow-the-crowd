@@ -1424,7 +1424,8 @@ function testProfileIdentityPresentationHierarchy() {
 
 function testEventPlanUseButtonKeepsStableCardLayout() {
   assert.match(EVENT_PLAN_USE_BUTTON_WRAP_CLASS, /hidden min-w-0 justify-end sm:flex/);
-  assert.match(EVENT_PLANS_TOOLBAR_ROW_CLASS, /h-\[3\.125rem\]/);
+  assert.match(EVENT_PLANS_TOOLBAR_ROW_CLASS, /h-\[1\.875rem\]/);
+  assert.match(EVENT_PLANS_TOOLBAR_ROW_CLASS, /md:h-\[2\.375rem\]/);
   assert.doesNotMatch(EVENT_PLAN_USE_BUTTON_WRAP_CLASS, /self-center/);
   assert.match(EVENT_PLAN_USE_BUTTON_CLASS, /min-h-11/);
   assert.match(EVENT_PLAN_USE_BUTTON_CLASS, /shrink-0/);
@@ -2355,7 +2356,7 @@ function testEventPlansSelectionToolbarRowMatchesEventsHistory() {
     "utf8",
   );
   assert.match(source, /export function EventsListTabPillWidthSpacer/);
-  assert.match(source, /EVENT_PLANS_TOOLBAR_ROW_CLASS/);
+  assert.doesNotMatch(source, /SavedEventPlansSectionHeader[\s\S]*EVENT_PLANS_TOOLBAR_ROW_CLASS/);
   assert.match(source, /SavedEventPlansSectionHeader[\s\S]*<EventsListTabRow/);
   assert.match(source, /<EventsListTabPillWidthSpacer \/>/);
   assert.doesNotMatch(source, /SavedEventPlansSectionHeader[\s\S]*if \(selectionMode\)/);

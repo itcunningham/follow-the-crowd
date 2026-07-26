@@ -25,7 +25,6 @@ import {
 } from "@/app/components/history/HistoryBulkManage";
 import {
   EVENT_PLANS_CREATE_BUTTON_CLASS,
-  EVENT_PLANS_TOOLBAR_ROW_CLASS,
   GIGS_LIST_TAB_ACTION_CLASS,
   GIGS_LIST_TAB_ROW_CLASS,
   GIGS_MANAGE_BUTTON_PLACEHOLDER_CLASS,
@@ -677,21 +676,17 @@ export function SavedEventPlansSectionHeader({
   showTrashButton?: boolean;
 }) {
   return (
-    <div className={EVENT_PLANS_TOOLBAR_ROW_CLASS}>
-      <div className="flex h-full w-full items-center">
-        <EventsListTabRow
-          showTrashButton={showTrashButton}
-          trashButtonDisabled={trashButtonDisabled}
-          onTrashClick={onTrashClick}
-          reserveTrashSlot={!showTrashButton}
-          selectionMode={selectionMode}
-          selectionToolbar={selectionToolbar}
-          trashAriaLabel="Delete event plans"
-        >
-          <EventsListTabPillWidthSpacer />
-        </EventsListTabRow>
-      </div>
-    </div>
+    <EventsListTabRow
+      showTrashButton={showTrashButton}
+      trashButtonDisabled={trashButtonDisabled}
+      onTrashClick={onTrashClick}
+      reserveTrashSlot={!showTrashButton}
+      selectionMode={selectionMode}
+      selectionToolbar={selectionToolbar}
+      trashAriaLabel="Delete event plans"
+    >
+      <EventsListTabPillWidthSpacer />
+    </EventsListTabRow>
   );
 }
 

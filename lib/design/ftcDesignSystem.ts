@@ -128,8 +128,9 @@ export const EVENTS_LIST_TAB_ROW_CLASS =
 export const EVENTS_LIST_TAB_FEEDBACK_CLASS =
   "min-w-0 truncate text-[11px] font-normal leading-none text-ftc-text-muted transition-opacity duration-300 sm:text-xs";
 
-/** Event Plans toolbar row — fixed height for trash ↔ delete-selection swap. */
-export const EVENT_PLANS_TOOLBAR_ROW_CLASS = "relative h-[3.125rem] w-full shrink-0";
+/** Event Plans toolbar row — fixed height for trash ↔ delete-selection swap (matches Events/Gigs tab row). */
+export const EVENT_PLANS_TOOLBAR_ROW_CLASS =
+  "relative h-[1.875rem] max-h-[1.875rem] min-h-[1.875rem] w-full shrink-0 md:h-[2.375rem] md:max-h-[2.375rem] md:min-h-[2.375rem]";
 
 /** Event Plans card — layout-only reserve matching Use plan width in delete-selection mode. */
 export const EVENT_PLAN_ACTION_RESERVE_CLASS = "h-11 w-[5.5rem] shrink-0";
