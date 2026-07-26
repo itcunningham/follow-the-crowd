@@ -225,7 +225,7 @@ function formatSentDate(timestamp: string) {
 
 const GIGS_INCOMING_EMPTY_MESSAGE = "No incoming gigs";
 const GIGS_CONFIRMED_EMPTY_MESSAGE = "No confirmed gigs";
-const GIGS_HISTORY_EMPTY_MESSAGE = "No past or cancelled gigs";
+const GIGS_HISTORY_EMPTY_MESSAGE = "No gig history";
 const PLANNER_GIGS_EMPTY_MESSAGE =
   "Gigs are for DJs and artists playing events — manage your event lineups from Events";
 

@@ -1602,7 +1602,7 @@ function EventsPageClientView({
                 <PlannerEmptyState
                   title={
                     isHistoryTab
-                      ? "No past or cancelled events"
+                      ? "No event history"
                       : isPlanner
                         ? "No events"
                         : "No event invitations yet"
@@ -1611,7 +1611,7 @@ function EventsPageClientView({
               ) : filteredEvents.length === 0 && !historyBulkManage.removing ? (
                 <PlannerEmptyState
                   title={
-                    isHistoryTab ? "No past or cancelled events" : "No active events"
+                    isHistoryTab ? "No event history" : "No active events"
                   }
                 />
               ) : visibleFilteredEvents.length > 0 ? (
