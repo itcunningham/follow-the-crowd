@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, type RefObject } from "react";
+import { useEffect } from "react";
 
 type SavedBodyStyle = {
   overflow: string;
@@ -12,9 +12,14 @@ type SavedBodyStyle = {
   paddingRight: string;
 };
 
+type SavedHtmlStyle = {
+  overflow: string;
+};
+
 let lockCount = 0;
 let savedScrollY = 0;
 let savedBodyStyle: SavedBodyStyle | null = null;
+let savedHtmlStyle: SavedHtmlStyle | null = null;
 
 function getScrollbarWidth(): number {
   return Math.max(0, window.innerWidth - document.documentElement.clientWidth);
@@ -28,6 +33,7 @@ export function lockBodyScroll(): void {
   if (lockCount === 0) {
     savedScrollY = window.scrollY;
     const body = document.body;
+    const html = document.documentElement;
 
     savedBodyStyle = {
       overflow: body.style.overflow,
@@ -38,9 +44,13 @@ export function lockBodyScroll(): void {
       width: body.style.width,
       paddingRight: body.style.paddingRight,
     };
+    savedHtmlStyle = {
+      overflow: html.style.overflow,
+    };
 
     const scrollbarWidth = getScrollbarWidth();
 
+    html.style.overflow = "hidden";
     body.style.overflow = "hidden";
     body.style.position = "fixed";
     body.style.top = `-${savedScrollY}px`;
@@ -63,13 +73,15 @@ export function unlockBodyScroll(): void {
 
   lockCount -= 1;
 
-  if (lockCount > 0 || !savedBodyStyle) {
+  if (lockCount > 0 || !savedBodyStyle || !savedHtmlStyle) {
     return;
   }
 
   const body = document.body;
+  const html = document.documentElement;
   const scrollY = savedScrollY;
 
+  html.style.overflow = savedHtmlStyle.overflow;
   body.style.overflow = savedBodyStyle.overflow;
   body.style.position = savedBodyStyle.position;
   body.style.top = savedBodyStyle.top;
@@ -79,6 +91,8 @@ export function unlockBodyScroll(): void {
   body.style.paddingRight = savedBodyStyle.paddingRight;
 
   savedBodyStyle = null;
+  savedHtmlStyle = null;
+
   window.scrollTo(0, scrollY);
 }
 
@@ -96,30 +110,4 @@ export function useBodyScrollLock(active: boolean): void {
   }, [active]);
 }
 
-export function usePreventTouchScrollOutside(
-  active: boolean,
-  allowedRootRef: RefObject<HTMLElement | null>,
-): void {
-  useEffect(() => {
-    if (!active) {
-      return;
-    }
-
-    function handleTouchMove(event: TouchEvent) {
-      const allowedRoot = allowedRootRef.current;
-      const target = event.target;
-
-      if (allowedRoot && target instanceof Node && allowedRoot.contains(target)) {
-        return;
-      }
-
-      event.preventDefault();
-    }
-
-    document.addEventListener("touchmove", handleTouchMove, { passive: false });
-
-    return () => {
-      document.removeEventListener("touchmove", handleTouchMove);
-    };
-  }, [active, allowedRootRef]);
-}
+export { useModalTouchScrollContainment } from "@/lib/ui/modalScrollContainment";

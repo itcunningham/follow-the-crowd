@@ -31,6 +31,7 @@ import {
   resolveCompactCalendarEventOnlyTitle,
 } from "../lib/calendar/compactCalendarEventVenueTitle";
 import { readFileSync } from "node:fs";
+import { canScrollInTouchDirection } from "../lib/ui/modalScrollContainment";
 import { formatRateDisplay } from "../lib/bookingRate";
 import {
   getEventDateValidationError,
@@ -709,19 +710,46 @@ function testSendBookingsModalLocksBackgroundInteraction() {
     new URL("../lib/ui/useBodyScrollLock.ts", import.meta.url),
     "utf8",
   );
+  const scrollContainmentSource = readFileSync(
+    new URL("../lib/ui/modalScrollContainment.ts", import.meta.url),
+    "utf8",
+  );
+  const panelSource = readFileSync(
+    new URL("../app/components/booking/SendBookingRequestsPanel.tsx", import.meta.url),
+    "utf8",
+  );
   const eventDetailSource = readFileSync(
     new URL("../app/events/[eventId]/page.tsx", import.meta.url),
     "utf8",
   );
 
   assert.match(modalSource, /useBodyScrollLock\(open\)/);
-  assert.match(modalSource, /usePreventTouchScrollOutside\(open, dialogRef\)/);
+  assert.match(modalSource, /useModalTouchScrollContainment\(open, dialogRef\)/);
   assert.doesNotMatch(modalSource, /onClick=\{requestClose\}/);
   assert.match(modalSource, /touch-none bg-black\/70/);
   assert.match(scrollLockSource, /body\.style\.position = "fixed"/);
+  assert.match(scrollLockSource, /html\.style\.overflow = "hidden"/);
   assert.match(scrollLockSource, /window\.scrollTo\(0, scrollY\)/);
+  assert.match(scrollContainmentSource, /shouldPreventModalTouchScroll/);
+  assert.match(scrollContainmentSource, /canScrollInTouchDirection/);
+  assert.match(panelSource, /overflow-y-auto overscroll-contain/);
   assert.match(eventDetailSource, /<SendBookingRequestsModal/);
   assert.doesNotMatch(eventDetailSource, /sendDiscardConfirmOpen/);
+}
+
+function testModalScrollContainmentBlocksBoundaryOverscroll() {
+  const scrollable = {
+    scrollTop: 0,
+    clientHeight: 100,
+    scrollHeight: 200,
+  } as HTMLElement;
+
+  assert.equal(canScrollInTouchDirection(scrollable, -10), true);
+  assert.equal(canScrollInTouchDirection(scrollable, 10), false);
+
+  scrollable.scrollTop = 100;
+  assert.equal(canScrollInTouchDirection(scrollable, 10), true);
+  assert.equal(canScrollInTouchDirection(scrollable, -10), false);
 }
 
 function testDmThreadEventDetailBackHref() {
@@ -3702,6 +3730,7 @@ async function main() {
   testActiveEventLineupStatsMatchVisibleLineupRules();
   testPlannerCancelledBookingExcludedFromActiveEventLineup();
   testSendBookingsModalLocksBackgroundInteraction();
+  testModalScrollContainmentBlocksBoundaryOverscroll();
   testDmThreadEventDetailBackHref();
   testProfileChatBackNavigation();
   testGigsIncomingDmEventDetailReturnChain();

@@ -1541,7 +1541,7 @@ function EventDetailPageView() {
           showSendButton
           onSend={requestSendBookings}
           introText="Event details will be prefilled from this event, each DJ receives a private booking request DM"
-          dialogClassName="relative z-10 max-h-[90dvh] w-full max-w-2xl overflow-y-auto overscroll-contain rounded-t-2xl border border-ftc-border-subtle bg-ftc-bg p-3.5 pb-[max(1rem,env(safe-area-inset-bottom))] sm:rounded-2xl sm:p-4 sm:pb-0 focus:outline-none"
+          dialogClassName="relative z-10 max-h-[90dvh] w-full max-w-2xl overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch] touch-pan-y rounded-t-2xl border border-ftc-border-subtle bg-ftc-bg p-3.5 pb-[max(1rem,env(safe-area-inset-bottom))] sm:rounded-2xl sm:p-4 sm:pb-0 focus:outline-none"
           formCardClassName="mb-0 p-0 border-0 bg-transparent shadow-none"
           formTitleClassName="text-base font-bold text-ftc-text"
         />

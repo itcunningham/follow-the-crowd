@@ -151,7 +151,7 @@ export default function SendBookingRequestsPanel({
       ) : draft.filteredDjs.length === 0 ? (
         <PlannerEmptyPanel message="No available DJs to invite." />
       ) : (
-        <ul className={`${listMaxHeightClass} space-y-2.5 overflow-y-auto`}>
+        <ul className={`${listMaxHeightClass} space-y-2.5 overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch] touch-pan-y`}>
           {draft.filteredDjs.map((dj) => {
             const selected = draft.selectedDjIds.includes(dj.user_id);
             const displayName = dj.display_name?.trim() || "DJ";

@@ -8,7 +8,7 @@ import BookingSheetDialog, {
   BookingSheetSecondaryButton,
 } from "@/app/components/booking/BookingSheetDialog";
 import type { SendBookingRequestsDraft } from "@/app/components/booking/useSendBookingRequestsDraft";
-import { useBodyScrollLock, usePreventTouchScrollOutside } from "@/lib/ui/useBodyScrollLock";
+import { useBodyScrollLock, useModalTouchScrollContainment } from "@/lib/ui/useBodyScrollLock";
 
 type SendBookingRequestsModalProps = {
   open: boolean;
@@ -28,7 +28,7 @@ type SendBookingRequestsModalProps = {
 };
 
 const DEFAULT_DIALOG_CLASS =
-  "relative z-10 max-h-[90dvh] w-full max-w-2xl overflow-y-auto overscroll-contain rounded-t-2xl border border-ftc-border-subtle bg-ftc-bg pb-[max(1rem,env(safe-area-inset-bottom))] sm:rounded-2xl sm:pb-0 focus:outline-none";
+  "relative z-10 max-h-[90dvh] w-full max-w-2xl overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch] touch-pan-y rounded-t-2xl border border-ftc-border-subtle bg-ftc-bg pb-[max(1rem,env(safe-area-inset-bottom))] sm:rounded-2xl sm:pb-0 focus:outline-none";
 
 export default function SendBookingRequestsModal({
   open,
@@ -50,7 +50,7 @@ export default function SendBookingRequestsModal({
   const [discardConfirmOpen, setDiscardConfirmOpen] = useState(false);
 
   useBodyScrollLock(open);
-  usePreventTouchScrollOutside(open, dialogRef);
+  useModalTouchScrollContainment(open, dialogRef);
 
   useEffect(() => {
     if (!open) {
