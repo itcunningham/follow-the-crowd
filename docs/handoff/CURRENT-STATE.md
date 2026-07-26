@@ -268,6 +268,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `84b53f4` — fix DM booking card collapse scroll anchoring
 - `5b10980` — fix bottom DM booking card scroll anchoring
 - `91979b7` — improve booking card expand/collapse scroll anchoring
 - `67fe621` — unify Ask for rate booking terminology
