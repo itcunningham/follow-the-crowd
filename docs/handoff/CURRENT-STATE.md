@@ -120,6 +120,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 - **Gigs Calendar availability feedback (2026-07-26):** bulk availability success uses shared planner title-row inline feedback (`PlannerWorkspaceTitleFeedback` + `useInlineTabFeedbackDismiss` + `formatGigsCalendarAvailabilityMarkedMessage` / `formatGigsCalendarAvailabilityClearedMessage`) — same centred slot, typography, and 2700ms + 300ms fade lifecycle as Gigs History removal; removed month-nav overlay pill that overlapped the calendar heading
 - **Gigs Calendar card status pills (2026-07-26):** mobile agenda booking cards use shared `BookingStatusBadge` compact (`Accepted` / `Pending`)
 - **Gigs Calendar legend labels (2026-07-26):** booking legend uses `Pending` / `Accepted` (matches Events Calendar and card pills)
+- **Gigs Calendar card event banners (2026-07-26):** mobile agenda booking cards use shared `CALENDAR_MOBILE_AGENDA_CARD_LEADING_CLASS` + `getPlannerCalendarAgendaAccentClass` with planner `fallback_colour` from `getEventArtworkByIds` (same source as Events Calendar); status pills unchanged
 - Shared strip component: `PlannerCalendarMobileDateStrip` accepts optional `getDateMarker` for DJ markers (`getDjAvailabilityDateStripMarker`)
 
 ## Booking / invite UX
