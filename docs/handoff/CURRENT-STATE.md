@@ -268,6 +268,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `1bf0e63` — fix DM booking card scroll target identity
 - `fabeaf5` — remove DM booking card scroll spacer regression
 - `84b53f4` — fix DM booking card collapse scroll anchoring
 - `5b10980` — fix bottom DM booking card scroll anchoring
