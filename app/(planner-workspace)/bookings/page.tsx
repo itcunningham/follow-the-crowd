@@ -223,9 +223,9 @@ function formatSentDate(timestamp: string) {
   });
 }
 
-const GIGS_INCOMING_EMPTY_MESSAGE = "No incoming gig requests";
-const GIGS_CONFIRMED_EMPTY_MESSAGE = "No confirmed upcoming gigs";
-const GIGS_HISTORY_EMPTY_MESSAGE = "No gig history yet";
+const GIGS_INCOMING_EMPTY_MESSAGE = "No incoming gigs";
+const GIGS_CONFIRMED_EMPTY_MESSAGE = "No confirmed gigs";
+const GIGS_HISTORY_EMPTY_MESSAGE = "No past or cancelled gigs";
 const PLANNER_GIGS_EMPTY_MESSAGE =
   "Gigs are for DJs and artists playing events — manage your event lineups from Events";
 
@@ -2189,7 +2189,7 @@ function BookingsPageContent() {
             ) : error && !plannerCreateVisible ? (
               <p className="text-sm text-red-400">{error}</p>
             ) : gigsListReady && receivedBookings.length === 0 ? (
-              <PlannerEmptyState title="No gigs" />
+              <PlannerEmptyState title={getGigsEmptyMessage(displayedGigsTab)} />
             ) : filteredReceivedBookings.length === 0 && !gigsHistoryBulkManage.removing ? (
               <p className="rounded-xl border border-ftc-border-subtle bg-ftc-surface/40 px-4 py-8 text-center text-sm text-ftc-text-muted">
                 {getGigsEmptyMessage(displayedGigsTab)}

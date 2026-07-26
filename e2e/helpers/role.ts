@@ -36,7 +36,7 @@ export async function readCachedRole(page: Page): Promise<QaRole | "unknown"> {
   if (navLabels.includes("Events")) {
     await page.goto("/bookings", { waitUntil: "domcontentloaded" });
     const text = await page.locator("body").innerText();
-    if (text.includes("Bookings Received") || text.includes("No gigs")) {
+    if (text.includes("Bookings Received") || text.includes("No incoming gigs")) {
       return "both";
     }
     return "planner";
