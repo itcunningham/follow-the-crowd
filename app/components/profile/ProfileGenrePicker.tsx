@@ -117,7 +117,7 @@ export default function ProfileGenrePicker({
                   onClick={() => setSheetOpen(false)}
                   className="rounded-lg border border-ftc-border-subtle px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-ftc-text-secondary transition hover:border-ftc-border-strong hover:text-ftc-text"
                 >
-                  Done
+                  Cancel
                 </button>
               </div>
 
