@@ -1361,7 +1361,7 @@ function EventDetailPageView() {
                     aria-disabled={savingEdit || (editSaveAttempted && editFormHasValidationErrors)}
                     className={EVENT_DETAIL_BTN_PRIMARY_WIDE}
                   >
-                    {savingEdit ? "Saving event..." : "Save event changes"}
+                    {savingEdit ? "Saving event" : "Save event changes"}
                   </button>
                 </div>
               </form>
