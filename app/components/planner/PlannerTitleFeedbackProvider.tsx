@@ -9,8 +9,6 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { PlannerTitleFeedbackViewportHost } from "@/app/components/planner/PlannerTitleFeedbackViewportHost";
-
 type TitleFeedbackState = {
   message: string | null;
   fading: boolean;
@@ -47,7 +45,6 @@ export function PlannerTitleFeedbackProvider({ children }: { children: ReactNode
 
   return (
     <PlannerTitleFeedbackContext.Provider value={value}>
-      <PlannerTitleFeedbackViewportHost />
       {children}
     </PlannerTitleFeedbackContext.Provider>
   );

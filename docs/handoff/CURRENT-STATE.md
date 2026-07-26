@@ -218,7 +218,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 - **Events loading boundary (2026-07-23):** Route loading uses **`EventsPageLoadingShell`** with **`resolveEventsWorkspaceChromeRole`** (nav cache + **cached profile role**, same merge as loaded **`EventsPageClient`**) — **`resolveEventsListActiveTabLabel`** shows **Active**/History for planners from first frame; list skeleton only.
 - **Event detail page (2026-07-14):** shorter hero (~25%), icon-led event summary block, compact lineup booking cards aligned with DM cards, Invite DJs action label, cancel event moved below bookings, flat action cards, dashed run sheet empty state
 - **Invite DJs sheet (2026-07-14):** full-card tap selection with avatar checkmark, icon search field, compact DJ row hierarchy, dynamic confirm button label
-- **Event detail edit mode (2026-07-26):** opening Edit event hides read-only hero, title, summary, notes, bookings, and run sheet — edit form is the sole content until Cancel or successful Save restores the read-only view; successful save scrolls document to top after read-only content renders (`useLayoutEffect` + `scrollDocumentToTop`); save success shows `Event updated` via shared `PlannerTitleFeedbackProvider` — same inline `PlannerTitleFeedbackSlot` inside `PlannerTitleFeedbackViewportHost` as Gigs History (no Event Details page renderer or portal)
+- **Event detail edit mode (2026-07-26):** opening Edit event hides read-only hero, title, summary, notes, bookings, and run sheet — edit form is the sole content until Cancel or successful Save restores the read-only view; successful save scrolls document to top after read-only content renders (`useLayoutEffect` + `scrollDocumentToTop`); save success shows `Event updated` via inline `PlannerTitleFeedbackSlot` in the Event Details header band (`placement="in-row"`) — same component and shared styles as Gigs workspace title-row slot; provider holds state only (no global viewport host)
 - **Event detail status badge (2026-07-26):** removed redundant `UPCOMING` (and related) date badge from the full Event Details hero image; status badges unchanged on Events list cards, Calendar, Gigs, and other surfaces
 - **Event detail visual consistency (2026-07-14):** shared `eventDetailUi` tokens — unified section titles (`text-base font-bold`), card padding (`p-3.5 sm:p-4`), button heights (`min-h-10`), compact status badges (9px), feedback banners, Run Sheet / Bookings / Notes / Your booking headings aligned; Invite DJs modal matches same language
 - **Calendar day selection:** desktop grid highlight tied to open day panel (`actionDate`); closing the panel clears the outline instantly (no transition fade) and blurs focus; Today styling unchanged
@@ -246,6 +246,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `Place Event Details notification in header status slot` — inline header slot; restore Gigs workspace slot; remove viewport host
 - `bc339db` — Unify Event Details with shared notification system
 - `2ba503a` — Match Event Details notification position to Gigs
 - `e9d82d6` — Refine Event Details status and success notification

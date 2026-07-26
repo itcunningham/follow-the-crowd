@@ -36,6 +36,10 @@ export const PLANNER_WORKSPACE_TITLE_FEEDBACK_HOST_CLASS =
 export const PLANNER_WORKSPACE_TITLE_FEEDBACK_SLOT_CLASS =
   `${PLANNER_WORKSPACE_TITLE_FEEDBACK_HOST_CLASS} absolute inset-x-0 top-full mt-1.5`;
 
+/** Centred transient success feedback within a header row (Event Details Back/Edit band). */
+export const PLANNER_WORKSPACE_TITLE_FEEDBACK_IN_ROW_CLASS =
+  `${PLANNER_WORKSPACE_TITLE_FEEDBACK_HOST_CLASS} absolute inset-x-0 inset-y-0`;
+
 export const PLANNER_WORKSPACE_SUBNAV_SLOT_CLASS = "mt-4 min-h-11 md:min-h-11";
 
 export const PLANNER_WORKSPACE_SUBNAV_ROW_CLASS =

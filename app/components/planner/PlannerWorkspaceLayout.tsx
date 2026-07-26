@@ -35,6 +35,7 @@ import { readCachedNavRole } from "@/lib/navigationRoleCache";
 import { useGuardProfile } from "@/app/components/GuardProfileContext";
 import { canManageEvents, type UserRole } from "@/lib/user/currentUser";
 import { usePlannerTitleFeedback } from "@/app/components/planner/PlannerTitleFeedbackProvider";
+import { PlannerTitleFeedbackSlot } from "@/app/components/planner/PlannerTitleFeedbackSlot";
 
 /** Matches the widest Events-area create button so title rows stay aligned. */
 const PLANNER_WORKSPACE_TITLE_ACTION_PLACEHOLDER_CLASS =
@@ -157,9 +158,10 @@ export function PlannerWorkspacePageHeader({
 }) {
   return (
     <header className={PLANNER_WORKSPACE_HEADER_CLASS}>
-      <div className={`${PLANNER_WORKSPACE_TITLE_ROW_CLASS} relative`}>
+      <div className={PLANNER_WORKSPACE_TITLE_ROW_CLASS}>
         <h1 className={`${PLANNER_WORKSPACE_TITLE_CLASS} shrink-0`}>{title}</h1>
         <PlannerWorkspaceTitleActions actions={actions} />
+        <PlannerTitleFeedbackSlot />
       </div>
       {showWorkspaceSubNav ? (
         <div className={PLANNER_WORKSPACE_SUBNAV_SLOT_CLASS}>
