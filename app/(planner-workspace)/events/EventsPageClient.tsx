@@ -1604,21 +1604,8 @@ function EventsPageClientView({
                     isHistoryTab
                       ? "No past or cancelled events"
                       : isPlanner
-                        ? "No events yet — create your first event"
+                        ? "No events yet"
                         : "No event invitations yet"
-                  }
-                  action={
-                    isPlanner && !createOpen && !isHistoryTab ? (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          void openCreateFlow();
-                        }}
-                        className="ftc-btn-primary px-5 py-3 text-sm uppercase tracking-wide"
-                      >
-                        Create event
-                      </button>
-                    ) : undefined
                   }
                 />
               ) : filteredEvents.length === 0 && !historyBulkManage.removing ? (
