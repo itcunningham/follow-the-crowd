@@ -343,7 +343,6 @@ function PlannerCalendarMobileAgenda({
             isPastEmptyDate ? null : (
               <CalendarMobileDashedEmptyState
                 message="No events scheduled"
-                hint="Select another day or create a new event"
               />
             )
           ) : (
