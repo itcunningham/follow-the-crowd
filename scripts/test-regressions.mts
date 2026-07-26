@@ -1444,6 +1444,10 @@ function testEventPlanUseButtonKeepsStableCardLayout() {
   assert.match(pageSource, /ring-inset ring-ftc-primary\/40/);
   assert.doesNotMatch(pageSource, /EVENT_PLAN_ACTION_RESERVE_CLASS/);
   assert.doesNotMatch(pageSource, /flex items-center gap-3 p-3/);
+  assert.match(pageSource, /MobilePlanEventVenueRow[\s\S]*min-w-0 truncate text-sm text-ftc-text/);
+  assert.match(pageSource, /PlanFieldLabel as="span" className="shrink-0"/);
+  assert.match(pageSource, /PlanDetail[\s\S]*truncate text-ftc-text/);
+  assert.match(pageSource, /block min-w-0 truncate text-\[1\.0625rem\]/);
 }
 
 function testGigsTabRowUsesCompactPillsWithoutCounts() {

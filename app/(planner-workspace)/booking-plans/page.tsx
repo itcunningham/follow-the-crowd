@@ -769,7 +769,7 @@ function EventPlanCardBody({
 
   return (
     <span className="min-w-0 flex-1">
-      <span className="block text-[1.0625rem] font-bold leading-snug text-ftc-text sm:text-lg">
+      <span className="block min-w-0 truncate text-[1.0625rem] font-bold leading-snug text-ftc-text sm:text-lg">
         {plan.name}
       </span>
       {hasMobileMeta ? (
@@ -803,12 +803,16 @@ function EventPlanCardBody({
 function PlanFieldLabel({
   children,
   as: Tag = "dt",
+  className = "",
 }: {
   children: React.ReactNode;
   as?: "dt" | "p" | "span";
+  className?: string;
 }) {
   return (
-    <Tag className="text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted">
+    <Tag
+      className={`text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted ${className}`.trim()}
+    >
       {children}
     </Tag>
   );
@@ -830,33 +834,40 @@ function MobilePlanEventVenueRow({
     return null;
   }
 
-  const metaLine = (
-    <p className="min-w-0 flex-1 text-sm">
+  const metaBlock = (
+    <div className="min-w-0 flex-1 overflow-hidden">
       {event ? (
-        <>
-          <PlanFieldLabel as="span">Event</PlanFieldLabel>{" "}
-          <span className="text-ftc-text">{event}</span>
-        </>
+        <div className="flex min-w-0 items-baseline gap-1 overflow-hidden">
+          <PlanFieldLabel as="span" className="shrink-0">
+            Event
+          </PlanFieldLabel>
+          <span className="min-w-0 truncate text-sm text-ftc-text">{event}</span>
+        </div>
       ) : null}
-      {event && venueName ? <span className="text-ftc-text-muted"> • </span> : null}
       {venueName ? (
-        <>
-          <PlanFieldLabel as="span">Venue</PlanFieldLabel>{" "}
-          <span className="text-ftc-text">{venueName}</span>
-        </>
+        <div
+          className={`flex min-w-0 items-baseline gap-1 overflow-hidden${
+            event ? " mt-0.5" : ""
+          }`}
+        >
+          <PlanFieldLabel as="span" className="shrink-0">
+            Venue
+          </PlanFieldLabel>
+          <span className="min-w-0 truncate text-sm text-ftc-text">{venueName}</span>
+        </div>
       ) : null}
-    </p>
+    </div>
   );
 
   return (
-    <div className="mt-1.5 min-w-0 sm:hidden">
+    <div className="mt-1.5 min-w-0 overflow-hidden sm:hidden">
       {mobileAction ? (
-        <div className="flex min-w-0 items-center gap-2">
-          {metaLine}
-          {mobileAction}
+        <div className="flex min-w-0 items-start gap-2 overflow-hidden">
+          {metaBlock}
+          <span className="shrink-0">{mobileAction}</span>
         </div>
       ) : (
-        metaLine
+        metaBlock
       )}
     </div>
   );
@@ -874,13 +885,13 @@ function PlanDetail({
   clampLines?: boolean;
 }) {
   return (
-    <div className={className}>
+    <div className={`min-w-0 overflow-hidden ${className}`.trim()}>
       <PlanFieldLabel>{label}</PlanFieldLabel>
       <dd
         className={`mt-0.5 min-w-0 ${
           clampLines
             ? "line-clamp-2 leading-snug text-ftc-text-muted"
-            : "text-ftc-text"
+            : "truncate text-ftc-text"
         }`}
       >
         {value}
