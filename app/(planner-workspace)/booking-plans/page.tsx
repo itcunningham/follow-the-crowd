@@ -618,7 +618,7 @@ export default function BookingPlansPage() {
                   title={planFormValidationError ? planFormValidationError : undefined}
                   className="ftc-btn-primary px-5 py-3 text-sm uppercase tracking-wide disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  {saving ? "Saving..." : editingPlanId ? "Save changes" : "Save event plan"}
+                  {saving ? "Saving" : editingPlanId ? "Save changes" : "Save event plan"}
                 </button>
               </form>
             </PlannerFormCard>

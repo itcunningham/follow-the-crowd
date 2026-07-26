@@ -2559,6 +2559,8 @@ function testEventPlansActionRowLayout() {
   assert.match(pageSource, /const showEventPlansToolbar = !formOpen;/);
   assert.match(pageSource, /useSetPlannerWorkspaceHeaderState/);
   assert.match(pageSource, /titleFeedbackMessage: showTitleFeedback \? successMessage : null/);
+  assert.match(pageSource, /saving \? "Saving" : editingPlanId \? "Save changes" : "Save event plan"/);
+  assert.doesNotMatch(pageSource, /Saving\.\.\./);
 }
 
 function testEventPlansInlineFeedbackMatchesEventsHistory() {
