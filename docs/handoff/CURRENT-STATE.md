@@ -236,6 +236,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `8e00b42` — align Events Calendar agenda card height with Gigs reference
 - `5979f2f` — fix Use Plan cancel flicker through Gigs workspace
 - `79be94a` — fix Use Plan step-2 cancel return to Event Plans
 - `c2e54d0` — fix(gigs-calendar): use shared title-row feedback for availability updates
