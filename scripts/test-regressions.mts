@@ -487,18 +487,19 @@ function testDmBookingCardExpandCollapseScrollAnchor() {
   );
 
   assert.match(pageSource, /handleBookingExpansionChange/);
-  assert.match(pageSource, /scheduleDmBookingCardCollapseScrollAnchor/);
   assert.match(pageSource, /scheduleDmBookingCardExpandScroll/);
+  assert.match(pageSource, /scheduleDmBookingCardCollapseClamp/);
+  assert.doesNotMatch(pageSource, /bookingExpandSpacerPx/);
+  assert.doesNotMatch(pageSource, /data-dm-booking-card-scroll-spacer/);
+  assert.doesNotMatch(pageSource, /scheduleDmBookingCardCollapseScrollAnchor/);
   assert.match(cardSource, /data-dm-booking-card-anchor/);
   assert.match(updateRowSource, /data-dm-booking-card-anchor/);
-  assert.match(pageSource, /bookingExpandSpacerPx/);
-  assert.match(pageSource, /resolveDmBookingCardScrollSpacerStyle/);
-  assert.match(pageSource, /data-dm-booking-card-scroll-spacer/);
-  assert.match(anchorSource, /scheduleDmBookingCardCollapseScrollAnchor/);
+  assert.match(anchorSource, /scheduleDmBookingCardExpandScroll/);
+  assert.match(anchorSource, /scheduleDmBookingCardCollapseClamp/);
   assert.match(anchorSource, /clampDmMessageScrollTop/);
-  assert.match(anchorSource, /removeDmBookingExpandSpacerSafely/);
-  assert.match(anchorSource, /ResizeObserver/);
-  assert.match(anchorSource, /DM_BOOKING_CARD_COLLAPSE_STABLE_FRAMES/);
+  assert.doesNotMatch(anchorSource, /ResizeObserver/);
+  assert.doesNotMatch(anchorSource, /computeRequiredBottomSpacerPx/);
+  assert.doesNotMatch(anchorSource, /resolveDmBookingCardScrollSpacerStyle/);
 }
 
 function testDmBookingCardProposedRateCopy() {

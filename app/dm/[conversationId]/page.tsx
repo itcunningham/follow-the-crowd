@@ -95,8 +95,7 @@ import {
   CHAT_BOOKING_REQUEST_ID_ATTR,
 } from "@/lib/dm/chatBookingTarget";
 import {
-  resolveDmBookingCardScrollSpacerStyle,
-  scheduleDmBookingCardCollapseScrollAnchor,
+  scheduleDmBookingCardCollapseClamp,
   scheduleDmBookingCardExpandScroll,
 } from "@/lib/dm/dmBookingCardScrollAnchor";
 import {
@@ -230,8 +229,6 @@ export default function DmChatPage() {
   const [proposalLoadingId, setProposalLoadingId] = useState<string | null>(null);
   const [cancellingBookingId, setCancellingBookingId] = useState<string | null>(null);
   const [expandedBookingIds, setExpandedBookingIds] = useState<Set<string>>(() => new Set());
-  const [bookingExpandSpacerPx, setBookingExpandSpacerPx] = useState(0);
-  const bookingExpandSpacerPxRef = useRef(0);
   const bookingExpandScrollCleanupRef = useRef<(() => void) | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -395,8 +392,6 @@ export default function DmChatPage() {
     setEventIdsWithAcceptedBookings(new Set());
     bookingExpandScrollCleanupRef.current?.();
     bookingExpandScrollCleanupRef.current = null;
-    bookingExpandSpacerPxRef.current = 0;
-    setBookingExpandSpacerPx(0);
   }, [conversationId]);
 
   const setBookingExpanded = useCallback((bookingKey: string, expanded: boolean) => {
@@ -415,47 +410,26 @@ export default function DmChatPage() {
 
   const handleBookingExpansionChange = useCallback(
     (messageId: string, expanded: boolean) => {
-      const container = scrollRef.current;
-      const spacerControls = {
-        getHeight: () => bookingExpandSpacerPxRef.current,
-        setHeight: (heightPx: number) => {
-          bookingExpandSpacerPxRef.current = heightPx;
-          setBookingExpandSpacerPx(heightPx);
-        },
-      };
-
-      if (!expanded) {
-        bookingExpandScrollCleanupRef.current?.();
-        bookingExpandScrollCleanupRef.current = null;
-
-        if (container) {
-          bookingExpandScrollCleanupRef.current = scheduleDmBookingCardCollapseScrollAnchor(
-            container,
-            messageId,
-            {
-              spacer: spacerControls,
-              mutate: () => setBookingExpanded(messageId, false),
-            },
-          );
-        } else {
-          setBookingExpanded(messageId, false);
-          bookingExpandSpacerPxRef.current = 0;
-          setBookingExpandSpacerPx(0);
-        }
-
-        return;
-      }
+      bookingExpandScrollCleanupRef.current?.();
+      bookingExpandScrollCleanupRef.current = null;
 
       setBookingExpanded(messageId, expanded);
 
-      if (expanded && container) {
-        bookingExpandScrollCleanupRef.current?.();
+      const container = scrollRef.current;
+
+      if (!container) {
+        return;
+      }
+
+      if (expanded) {
         bookingExpandScrollCleanupRef.current = scheduleDmBookingCardExpandScroll(
           container,
           messageId,
-          { spacer: spacerControls },
         );
+        return;
       }
+
+      bookingExpandScrollCleanupRef.current = scheduleDmBookingCardCollapseClamp(container);
     },
     [scrollRef, setBookingExpanded],
   );
@@ -1581,14 +1555,7 @@ export default function DmChatPage() {
             </p>
           </div>
         ) : (
-          <ul
-            data-chat-content-root
-            data-dm-booking-card-scroll-spacer={
-              bookingExpandSpacerPx > 0 ? bookingExpandSpacerPx : undefined
-            }
-            className="flex flex-col-reverse gap-3 pb-2"
-            style={resolveDmBookingCardScrollSpacerStyle(bookingExpandSpacerPx)}
-          >
+          <ul data-chat-content-root className="flex flex-col-reverse gap-3 pb-2">
             {reversedMessages.map((message) => {
               if (isBookingActivityDmMessage(message.text)) {
                 return null;
