@@ -14,6 +14,9 @@ import CancelAcceptedBookingButton from "@/app/components/booking/CancelAccepted
 import CancelBookingRequestButton from "@/app/components/CancelBookingRequestButton";
 import {
   DM_BOOKING_CARD_ACTIONS_CLASS,
+  DM_BOOKING_CARD_PAIRED_ACTIONS_ROW_CLASS,
+  DM_BOOKING_CARD_PAIRED_CANCEL_CLASS,
+  DM_BOOKING_CARD_PAIRED_VIEW_EVENT_CLASS,
   DM_BOOKING_CARD_SECONDARY_BUTTON_CLASS,
   DM_BOOKING_CARD_SHELL_CLASS,
   DmBookingCardCollapsedDetails,
@@ -165,6 +168,10 @@ export default function BookingRequestCard({
         )
       : `/events/${booking.event_id}`
     : null;
+  const showPendingEventPairedActions =
+    Boolean(booking.event_id && eventHref && !showAsCancelled && !isAccepted) &&
+    showPendingCancel &&
+    !canReviewProposal;
 
   async function handleProposeRate(rateDigits: string, note: string) {
     if (!onProposeRate) {
@@ -322,6 +329,19 @@ export default function BookingRequestCard({
                 />
               ) : null}
             </div>
+          ) : showPendingEventPairedActions ? (
+            <div className={DM_BOOKING_CARD_PAIRED_ACTIONS_ROW_CLASS}>
+              <Link href={eventHref} className={DM_BOOKING_CARD_PAIRED_VIEW_EVENT_CLASS}>
+                View event
+              </Link>
+              <CancelBookingRequestButton
+                compact
+                label="Cancel"
+                loading={Boolean(cancelling)}
+                onConfirm={onCancel}
+                className={DM_BOOKING_CARD_PAIRED_CANCEL_CLASS}
+              />
+            </div>
           ) : (
             <div className={DM_BOOKING_CARD_ACTIONS_CLASS}>
               <Link href={eventHref} className={DM_BOOKING_CARD_SECONDARY_BUTTON_CLASS}>
@@ -430,7 +450,7 @@ export default function BookingRequestCard({
           </div>
         ) : null}
 
-        {showPendingCancel && !canReviewProposal ? (
+        {showPendingCancel && !canReviewProposal && !showPendingEventPairedActions ? (
           <div className={DM_BOOKING_CARD_ACTIONS_CLASS}>
             <CancelBookingRequestButton
               loading={Boolean(cancelling)}

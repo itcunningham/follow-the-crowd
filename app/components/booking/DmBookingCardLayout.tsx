@@ -8,6 +8,13 @@ export const DM_BOOKING_CARD_SHELL_CLASS = `w-full min-w-0 ${DM_BOOKING_CARD_MAX
 
 export const DM_BOOKING_CARD_ACTIONS_CLASS = "mt-4 flex flex-col gap-2";
 
+export const DM_BOOKING_CARD_PAIRED_ACTIONS_ROW_CLASS = "mt-4 flex gap-2";
+
+export const DM_BOOKING_CARD_PAIRED_VIEW_EVENT_CLASS =
+  "inline-flex min-h-8 min-w-0 flex-1 items-center justify-center rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated px-2 py-1 text-xs font-semibold uppercase tracking-wide text-ftc-text-secondary transition hover:border-ftc-border-strong";
+
+export const DM_BOOKING_CARD_PAIRED_CANCEL_CLASS = "min-w-0 flex-1";
+
 export const DM_BOOKING_CARD_STATUS_MESSAGE_CLASS =
   "min-w-0 max-w-full break-words text-xs leading-snug text-ftc-text-secondary/70 [overflow-wrap:anywhere]";
 

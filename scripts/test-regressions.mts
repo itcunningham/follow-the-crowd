@@ -445,6 +445,27 @@ function testBookingRateProposalPanelActionLayout() {
   assert.doesNotMatch(source, /flex-col gap-2[\s\S]*Keep offer[\s\S]*Accept proposed rate/);
 }
 
+function testDmBookingCardPendingEventPairedActions() {
+  const cardSource = readFileSync(
+    new URL("../app/components/BookingRequestCard.tsx", import.meta.url),
+    "utf8",
+  );
+  const layoutSource = readFileSync(
+    new URL("../app/components/booking/DmBookingCardLayout.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(cardSource, /showPendingEventPairedActions/);
+  assert.match(cardSource, /DM_BOOKING_CARD_PAIRED_ACTIONS_ROW_CLASS/);
+  assert.match(cardSource, /DM_BOOKING_CARD_PAIRED_VIEW_EVENT_CLASS/);
+  assert.match(
+    cardSource,
+    /showPendingCancel && !canReviewProposal && !showPendingEventPairedActions/,
+  );
+  assert.match(layoutSource, /DM_BOOKING_CARD_PAIRED_ACTIONS_ROW_CLASS = "mt-4 flex gap-2"/);
+  assert.match(layoutSource, /min-h-8 min-w-0 flex-1/);
+}
+
 function testWheelTimeBeforeMinHelpers() {
   const min = { hour: 5, minute: 30, meridiem: "PM" as const };
 
@@ -3880,6 +3901,7 @@ async function main() {
   testDmBookingDisplayKeepsPerDjFeeOverEmptyEventRate();
   testDmBookingActionRequiredStates();
   testBookingRateProposalPanelActionLayout();
+  testDmBookingCardPendingEventPairedActions();
   testUsernameBlockedTermChecks();
   testAuthRedirectUrlUsesLoginPath();
   testProfileEditDirtyDetection();
