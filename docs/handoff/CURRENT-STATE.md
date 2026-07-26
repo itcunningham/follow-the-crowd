@@ -261,6 +261,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `1bf70a9` — simplify Edit Event primary button copy
 - `9e9acfe` — polish Event Plans delete confirmation copy
 - `fbc1382` — final planner booking button polish
 - `5bc9cd9` — polish planner booking action buttons
