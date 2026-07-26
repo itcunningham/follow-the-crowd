@@ -3101,6 +3101,14 @@ function testHistoryRemovalHeaderFeedbackUnified() {
     new URL("../app/components/planner/PlannerTitleFeedbackProvider.tsx", import.meta.url),
     "utf8",
   );
+  const appProvidersSource = readFileSync(
+    new URL("../app/components/AppProviders.tsx", import.meta.url),
+    "utf8",
+  );
+  const rootLayoutSource = readFileSync(
+    new URL("../app/layout.tsx", import.meta.url),
+    "utf8",
+  );
   const onboardingGuardSource = readFileSync(
     new URL("../app/components/OnboardingGuard.tsx", import.meta.url),
     "utf8",
@@ -3202,7 +3210,9 @@ function testHistoryRemovalHeaderFeedbackUnified() {
   assert.match(titleFeedbackProviderSource, /PlannerWorkspaceTitleFeedback/);
   assert.match(titleFeedbackProviderSource, /PLANNER_WORKSPACE_TITLE_FEEDBACK_HOST_CLASS/);
   assert.match(titleFeedbackProviderSource, /useSyncPlannerTitleFeedback/);
-  assert.match(onboardingGuardSource, /PlannerTitleFeedbackProvider/);
+  assert.match(appProvidersSource, /PlannerTitleFeedbackProvider/);
+  assert.match(rootLayoutSource, /AppProviders/);
+  assert.doesNotMatch(onboardingGuardSource, /PlannerTitleFeedbackProvider/);
 }
 
 function testGigsListTabSwitchUsesClientHistoryWithoutRouterNavigation() {
