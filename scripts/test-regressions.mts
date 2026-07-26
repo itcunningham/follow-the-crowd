@@ -428,6 +428,23 @@ function testDmBookingActionRequiredStates() {
   );
 }
 
+function testBookingRateProposalPanelActionLayout() {
+  const source = readFileSync(
+    new URL("../app/components/booking/BookingRateProposalPanel.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(source, /PROPOSAL_PRIMARY_ACTION_CLASS/);
+  assert.match(source, /PROPOSAL_SECONDARY_ACTIONS_ROW_CLASS/);
+  assert.match(source, /Accept proposed rate/);
+  assert.match(source, />\s*Keep offer\s*</);
+  assert.match(source, /label="Cancel"/);
+  assert.match(source, /compact/);
+  assert.match(source, /min-h-8 min-w-0 flex-1/);
+  assert.doesNotMatch(source, /Keep original offer/);
+  assert.doesNotMatch(source, /flex-col gap-2[\s\S]*Keep offer[\s\S]*Accept proposed rate/);
+}
+
 function testWheelTimeBeforeMinHelpers() {
   const min = { hour: 5, minute: 30, meridiem: "PM" as const };
 
@@ -3862,6 +3879,7 @@ async function main() {
   testConflictingCrewChatFlagsPreferStartAction();
   testDmBookingDisplayKeepsPerDjFeeOverEmptyEventRate();
   testDmBookingActionRequiredStates();
+  testBookingRateProposalPanelActionLayout();
   testUsernameBlockedTermChecks();
   testAuthRedirectUrlUsesLoginPath();
   testProfileEditDirtyDetection();

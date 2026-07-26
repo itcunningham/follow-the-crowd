@@ -4,6 +4,16 @@ import CancelBookingRequestButton from "@/app/components/CancelBookingRequestBut
 import { formatIntegerRateDisplay } from "@/lib/bookingRate";
 import { hasDeclinedRateProposal, hasPendingRateProposal, type BookingRequest } from "@/lib/bookingRequests";
 
+const PROPOSAL_PRIMARY_ACTION_CLASS =
+  "ftc-btn-primary w-full px-3 py-2.5 text-xs uppercase tracking-wide disabled:cursor-not-allowed disabled:opacity-50";
+
+const PROPOSAL_SECONDARY_ACTION_CLASS =
+  "inline-flex min-h-8 min-w-0 flex-1 items-center justify-center rounded-xl border border-ftc-border-subtle bg-ftc-surface px-2 py-1 text-xs font-semibold uppercase tracking-wide text-ftc-text-secondary transition hover:border-ftc-border-strong disabled:cursor-not-allowed disabled:opacity-50";
+
+const PROPOSAL_SECONDARY_ACTIONS_ROW_CLASS = "flex gap-2";
+
+const PROPOSAL_SECONDARY_CANCEL_CLASS = "min-w-0 flex-1";
+
 export default function BookingRateProposalPanel({
   booking,
   currentUserId,
@@ -42,24 +52,29 @@ export default function BookingRateProposalPanel({
           type="button"
           disabled={loading}
           onClick={() => void onAcceptProposal()}
-          className="ftc-btn-primary w-full px-3 py-2.5 text-xs uppercase tracking-wide disabled:cursor-not-allowed disabled:opacity-50"
+          className={PROPOSAL_PRIMARY_ACTION_CLASS}
         >
           Accept proposed rate
         </button>
-        <button
-          type="button"
-          disabled={loading}
-          onClick={() => void onKeepOriginalOffer()}
-          className="w-full rounded-xl border border-ftc-border-subtle bg-ftc-surface px-3 py-2.5 text-xs font-semibold uppercase tracking-wide text-ftc-text-secondary transition hover:border-ftc-border-strong disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          Keep original offer
-        </button>
-        {onDeclineBooking ? (
-          <CancelBookingRequestButton
-            loading={Boolean(loading)}
-            onConfirm={onDeclineBooking}
-          />
-        ) : null}
+        <div className={PROPOSAL_SECONDARY_ACTIONS_ROW_CLASS}>
+          <button
+            type="button"
+            disabled={loading}
+            onClick={() => void onKeepOriginalOffer()}
+            className={PROPOSAL_SECONDARY_ACTION_CLASS}
+          >
+            Keep offer
+          </button>
+          {onDeclineBooking ? (
+            <CancelBookingRequestButton
+              compact
+              label="Cancel"
+              loading={Boolean(loading)}
+              onConfirm={onDeclineBooking}
+              className={PROPOSAL_SECONDARY_CANCEL_CLASS}
+            />
+          ) : null}
+        </div>
       </div>
     </div>
   );
