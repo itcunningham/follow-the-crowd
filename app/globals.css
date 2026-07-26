@@ -412,6 +412,19 @@ html {
   white-space: pre-line;
 }
 
+/** Event title — up to 2 lines, ellipsis when clipped; long unbroken words wrap without stretching layout. */
+.ftc-event-title-clamp-2 {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
 .ftc-input::placeholder,
 .ftc-textarea::placeholder {
   color: var(--ftc-color-text-muted);

@@ -145,6 +145,7 @@ import {
   GIGS_LIST_TAB_ROW_CLASS,
   EVENTS_LIST_TAB_ROW_CLASS,
   EVENT_PLANS_TOOLBAR_ROW_CLASS,
+  FTC_EVENT_TITLE_CLAMP_CLASS,
 } from "../lib/design/ftcDesignSystem";
 
 function testPastEventDatesAreBlocked() {
@@ -2256,6 +2257,29 @@ function testMobileSoftwareKeyboardHidesBottomNavigation() {
   assert.match(cssSource, /html\[data-mobile-keyboard-open\] \.ftc-mobile-nav-offset/);
 }
 
+function testEventTitleClampLayout() {
+  assert.equal(FTC_EVENT_TITLE_CLAMP_CLASS, "ftc-event-title-clamp-2");
+
+  const cssSource = readFileSync(
+    new URL("../app/globals.css", import.meta.url),
+    "utf8",
+  );
+  const eventsSource = readFileSync(
+    new URL("../app/(planner-workspace)/events/EventsPageClient.tsx", import.meta.url),
+    "utf8",
+  );
+  const eventDetailSource = readFileSync(
+    new URL("../app/events/[eventId]/page.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(cssSource, /\.ftc-event-title-clamp-2[\s\S]*-webkit-line-clamp: 2/);
+  assert.match(cssSource, /\.ftc-event-title-clamp-2[\s\S]*overflow-wrap: anywhere/);
+  assert.match(eventsSource, /FTC_EVENT_TITLE_CLAMP_CLASS/);
+  assert.doesNotMatch(eventsSource, /line-clamp-2 sm:text-base/);
+  assert.match(eventDetailSource, /FTC_EVENT_TITLE_CLAMP_CLASS/);
+}
+
 function testEventsActiveStatusPillsSingleRowLayout() {
   const source = readFileSync(
     new URL("../app/(planner-workspace)/events/EventsPageClient.tsx", import.meta.url),
@@ -3599,6 +3623,7 @@ async function main() {
   testEventsCreateEventHiddenDuringHistorySelectionToolbar();
   testEventDetailLoadUsesParallelQueriesAndListCache();
   testMobileSoftwareKeyboardHidesBottomNavigation();
+  testEventTitleClampLayout();
   testEventsActiveStatusPillsSingleRowLayout();
   testEventCreateFormTextFieldMaxLength();
   testWithdrawalOtherReasonInputLimits();

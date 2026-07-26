@@ -54,7 +54,7 @@ import { useSendBookingRequestsDraft } from "@/app/components/booking/useSendBoo
 import { EventDetailPrimaryAction } from "@/app/components/event-detail/EventDetailBottomBar";
 import UnavailableDjBookingConfirmModal from "@/app/components/UnavailableDjBookingConfirmModal";
 import { EventCoverImageListThumb } from "@/app/components/events/EventCoverImageDisplay";
-import { FTC_LIST_GAP_CLASS } from "@/lib/design/ftcDesignSystem";
+import { FTC_EVENT_TITLE_CLAMP_CLASS, FTC_LIST_GAP_CLASS } from "@/lib/design/ftcDesignSystem";
 import {
   formatEventsHistoryRemoveSuccessMessage,
   useInlineTabFeedbackDismiss,
@@ -280,7 +280,7 @@ function EventsListCardContent({
         <div className="min-w-0 w-full text-left">
           <div className="flex min-w-0 items-start justify-between gap-2 sm:gap-2.5">
             <h3
-              className={`min-w-0 flex-1 text-left text-sm font-bold leading-snug line-clamp-2 sm:text-base ${titleClassName}`}
+              className={`min-w-0 flex-1 text-left text-sm font-bold leading-snug sm:text-base ${FTC_EVENT_TITLE_CLAMP_CLASS} ${titleClassName}`}
             >
               {event.name}
             </h3>

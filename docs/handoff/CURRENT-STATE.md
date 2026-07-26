@@ -217,6 +217,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 - **Workspace Gigs tab (2026-07-22):** top Gigs sub-nav uses `buildGigsWorkspaceIncomingHref()` (`/bookings`, no query); `resolveGigsListTabForBookingsPage` only reads `?tab=` when the browser pathname is already `/bookings` (avoids Events `?tab=history` during the App Router transition when Next pathname is `/bookings` but `window.location` is still `/events`)
 - **Desktop consistency tokens:** shared primary surface (`PLANNER_WORKSPACE_PRIMARY_SURFACE_CLASS`), list spacing (`PLANNER_WORKSPACE_LIST_CLASS`), title-row baseline alignment; Calendar reference shell — no duplicate in-card titles on desktop; loading skeletons match loaded layout. **Layout class strings live in `lib/design/plannerWorkspaceTokens.ts` (leaf module, no imports)** — `ftcDesignSystem` must not re-export from `PlannerWorkspaceLayout` / `AppPageLayout` (prevents route TDZ crash).
 - **Events list cards (2026-07-14):** smaller list artwork (~14%), bolder title, compact status badge + booking stat chips, full-card tap target with chevron as visual cue only
+- **Event title display (2026-07-26):** shared `FTC_EVENT_TITLE_CLAMP_CLASS` (`ftc-event-title-clamp-2`) on Events list cards and Event Details heading — up to 2 lines with ellipsis, `overflow-wrap: anywhere` for long unbroken names; single-line titles keep compact card height
 - **Events list card polish (2026-07-20):** two-column Gigs pattern — artwork left, left-aligned body stack (GigCardHeader + GigCardMetaRows rhythm), status + chevron top-right, compact stat chips below time
 - **Events loading boundary (2026-07-23):** Route loading uses **`EventsPageLoadingShell`** with **`resolveEventsWorkspaceChromeRole`** (nav cache + **cached profile role**, same merge as loaded **`EventsPageClient`**) — **`resolveEventsListActiveTabLabel`** shows **Active**/History for planners from first frame; list skeleton only.
 - **Event detail page (2026-07-14):** shorter hero (~25%), icon-led event summary block, compact lineup booking cards aligned with DM cards, Invite DJs action label, cancel event moved below bookings, flat action cards, dashed run sheet empty state
@@ -249,7 +250,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
-- `1cdcc8d` — Fix Event Plan saving button copy
+- `015737c` — Fix Event Plan saving button copy
 - `36132c8` — Improve Event Calendar agenda card hierarchy
 - `bc339db` — Unify Event Details with shared notification system
 - `2ba503a` — Match Event Details notification position to Gigs

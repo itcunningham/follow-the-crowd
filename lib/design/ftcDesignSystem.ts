@@ -179,6 +179,9 @@ export const FTC_ICON_BUTTON_SM_CLASS =
 /** Event list thumbnail — fixed 64px square. */
 export const FTC_EVENT_THUMB_LIST_SIZE = "list" as const;
 
+/** Event title — up to 2 lines, ellipsis, long unbroken words wrap without stretching layout. */
+export const FTC_EVENT_TITLE_CLAMP_CLASS = "ftc-event-title-clamp-2";
+
 /** Events / Gigs list card — artwork + body row (matches EventsPageClient). */
 export const FTC_LIST_CARD_ROW_CLASS =
   "flex min-w-0 max-w-full items-start gap-2 text-left sm:gap-2.5";

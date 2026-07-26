@@ -46,6 +46,7 @@ import {
   PLANNER_EVENT_DETAIL_HEADER_FEEDBACK_CELL_CLASS,
   PLANNER_WORKSPACE_PAGE_INSET_CLASS,
 } from "@/lib/design/plannerWorkspaceTokens";
+import { FTC_EVENT_TITLE_CLAMP_CLASS } from "@/lib/design/ftcDesignSystem";
 import { BookingDateField, BookingSetTimeRangeField } from "@/app/components/BookingDateTimeFields";
 import { applyEventDateFieldChange, getTodayDateKey } from "@/lib/bookingDateTime";
 import {
@@ -1243,7 +1244,9 @@ function EventDetailPageView() {
                 </p>
               ) : null}
 
-              <h1 className="text-xl font-bold leading-tight tracking-tight text-ftc-text sm:text-2xl">
+              <h1
+                className={`${FTC_EVENT_TITLE_CLAMP_CLASS} text-xl font-bold leading-tight tracking-tight text-ftc-text sm:text-2xl`}
+              >
                 {event.name}
               </h1>
 
