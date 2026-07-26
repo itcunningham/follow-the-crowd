@@ -990,15 +990,18 @@ function testPlannerCalendarAgendaChronologicalSort() {
     };
   }
 
-  const byStartTime = sortPlannerCalendarAgendaItems([
-    makeAgendaItem({ id: "pending-late", startTimeSortKey: 300, statusKind: "pending" }),
-    makeAgendaItem({ id: "upcoming-early", startTimeSortKey: 100, statusKind: "event_upcoming" }),
-    makeAgendaItem({ id: "accepted-mid", startTimeSortKey: 200, statusKind: "accepted" }),
+  const byActionableGroups = sortPlannerCalendarAgendaItems([
+    makeAgendaItem({ id: "past-early", startTimeSortKey: 100, statusKind: "event_completed" }),
+    makeAgendaItem({ id: "pending-mid", startTimeSortKey: 200, statusKind: "pending" }),
+    makeAgendaItem({ id: "today-late", startTimeSortKey: 300, statusKind: "event_today" }),
+    makeAgendaItem({ id: "upcoming", startTimeSortKey: 150, statusKind: "event_upcoming" }),
+    makeAgendaItem({ id: "today-early", startTimeSortKey: 50, statusKind: "event_today" }),
+    makeAgendaItem({ id: "accepted", startTimeSortKey: 250, statusKind: "accepted" }),
   ]);
 
   assert.deepEqual(
-    byStartTime.map((item) => item.id),
-    ["upcoming-early", "accepted-mid", "pending-late"],
+    byActionableGroups.map((item) => item.id),
+    ["today-early", "today-late", "pending-mid", "upcoming", "accepted", "past-early"],
   );
 
   const byEndTime = sortPlannerCalendarAgendaItems([

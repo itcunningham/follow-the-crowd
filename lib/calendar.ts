@@ -148,27 +148,58 @@ function resolveCalendarItemCreatedAtSortKey(createdAt: string): number {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
+function getPlannerCalendarAgendaGroupPriority(statusKind: CalendarStatusKind): number {
+  if (statusKind === "event_today") {
+    return 0;
+  }
+
+  if (statusKind === "pending") {
+    return 1;
+  }
+
+  if (statusKind === "event_completed") {
+    return 3;
+  }
+
+  return 2;
+}
+
+function comparePlannerCalendarAgendaItemsChronologically(
+  left: CalendarItem,
+  right: CalendarItem,
+): number {
+  const startDelta = left.startTimeSortKey - right.startTimeSortKey;
+
+  if (startDelta !== 0) {
+    return startDelta;
+  }
+
+  const endDelta = left.endTimeSortKey - right.endTimeSortKey;
+
+  if (endDelta !== 0) {
+    return endDelta;
+  }
+
+  const createdDelta = left.createdAtSortKey - right.createdAtSortKey;
+
+  if (createdDelta !== 0) {
+    return createdDelta;
+  }
+
+  return left.id.localeCompare(right.id);
+}
+
 export function sortPlannerCalendarAgendaItems(items: CalendarItem[]): CalendarItem[] {
   return [...items].sort((left, right) => {
-    const startDelta = left.startTimeSortKey - right.startTimeSortKey;
+    const groupDelta =
+      getPlannerCalendarAgendaGroupPriority(left.statusKind) -
+      getPlannerCalendarAgendaGroupPriority(right.statusKind);
 
-    if (startDelta !== 0) {
-      return startDelta;
+    if (groupDelta !== 0) {
+      return groupDelta;
     }
 
-    const endDelta = left.endTimeSortKey - right.endTimeSortKey;
-
-    if (endDelta !== 0) {
-      return endDelta;
-    }
-
-    const createdDelta = left.createdAtSortKey - right.createdAtSortKey;
-
-    if (createdDelta !== 0) {
-      return createdDelta;
-    }
-
-    return left.id.localeCompare(right.id);
+    return comparePlannerCalendarAgendaItemsChronologically(left, right);
   });
 }
 
