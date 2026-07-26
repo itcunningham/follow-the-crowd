@@ -263,9 +263,8 @@ function EventsListCardContent({
   const applyCancelledTypography = cancelled && dimCancelledAppearance;
   const titleClassName = applyCancelledTypography ? "text-ftc-text-secondary" : "text-ftc-text";
   const metaClassName = applyCancelledTypography ? "text-ftc-text-muted" : "text-ftc-text-secondary";
-  const venueDateLine = [event.venue?.trim(), formatDisplayEventDate(event.event_date)]
-    .filter(Boolean)
-    .join(" · ");
+  const venue = event.venue?.trim();
+  const date = formatDisplayEventDate(event.event_date);
 
   return (
     <div className={EVENT_LIST_CARD_ROW_CLASS}>
@@ -299,15 +298,16 @@ function EventsListCardContent({
           </div>
         </div>
         <div
-          className={`ftc-gig-card-meta mt-1 min-w-0 overflow-hidden text-left text-xs sm:mt-2 sm:text-sm ${metaClassName}`}
+          className={`ftc-gig-card-meta mt-0.5 min-w-0 text-left text-xs sm:mt-1.5 sm:text-sm ${metaClassName}`}
         >
-          <div className="space-y-0.5 text-left">
-            {venueDateLine ? (
-              <p className="min-w-0 max-w-full overflow-hidden break-words text-left">
-                {venueDateLine}
-              </p>
+          <div className="space-y-0 text-left">
+            {venue ? (
+              <p className="min-w-0 max-w-full break-words text-left">{venue}</p>
             ) : null}
-            <p className="min-w-0 max-w-full overflow-hidden break-words text-left text-ftc-text-muted">
+            {date ? (
+              <p className="min-w-0 max-w-full break-words text-left">{date}</p>
+            ) : null}
+            <p className="min-w-0 max-w-full break-words text-left text-ftc-text-muted">
               {event.set_time}
             </p>
           </div>
