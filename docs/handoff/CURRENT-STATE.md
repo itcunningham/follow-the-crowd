@@ -242,6 +242,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `ab67c05` — Refine Messages empty state copy
 - `c94d0e9` — Remove redundant empty state helper text
 - `53d35d2` — Simplify empty state copy and remove duplicate CTAs
 - `da859d3` — Refine Events empty state
