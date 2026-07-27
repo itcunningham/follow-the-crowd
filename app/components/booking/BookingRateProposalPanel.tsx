@@ -4,7 +4,7 @@ import { type ReactNode } from "react";
 import CancelBookingRequestButton from "@/app/components/CancelBookingRequestButton";
 import BookingCardExpandableNotes from "@/app/components/booking/BookingCardExpandableNotes";
 import { formatIntegerRateDisplay } from "@/lib/bookingRate";
-import { hasDeclinedRateProposal, hasPendingRateProposal, type BookingRequest } from "@/lib/bookingRequests";
+import { getProposalReviewSecondaryActionLabel, hasPendingRateProposal, type BookingRequest } from "@/lib/bookingRequests";
 
 /** Shared proposal card shell for DM booking cards, Event Details lineup, and future proposal surfaces. */
 export const BOOKING_PROPOSAL_CARD_SHELL_CLASS =
@@ -76,6 +76,8 @@ export default function BookingRateProposalPanel({
     return null;
   }
 
+  const secondaryActionLabel = getProposalReviewSecondaryActionLabel(booking);
+
   return (
     <BookingProposalCardShell>
       <BookingProposalCardAmount value={booking.proposed_rate} />
@@ -100,7 +102,7 @@ export default function BookingRateProposalPanel({
             onClick={() => void onKeepOriginalOffer()}
             className={PROPOSAL_SECONDARY_ACTION_CLASS}
           >
-            Keep offer
+            {secondaryActionLabel}
           </button>
           {onDeclineBooking ? (
             <CancelBookingRequestButton
@@ -126,16 +128,6 @@ export function BookingRateProposalNotice({
   currentUserId: string | null;
   onNotesExpandedChange?: (expanded: boolean) => void;
 }) {
-  if (hasDeclinedRateProposal(booking) && booking.recipient_id === currentUserId) {
-    return (
-      <BookingProposalCardShell>
-        <p className="text-sm text-ftc-text-muted">
-          Proposal declined · original offer still available
-        </p>
-      </BookingProposalCardShell>
-    );
-  }
-
   if (!hasPendingRateProposal(booking)) {
     return null;
   }

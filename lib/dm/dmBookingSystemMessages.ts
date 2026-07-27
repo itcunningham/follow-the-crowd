@@ -4,6 +4,8 @@ export const DM_BOOKING_PROPOSED_RATE_PREFIX = "Rate proposed: ";
 
 export const DM_BOOKING_ORIGINAL_OFFER_KEPT_MESSAGE = "Original offer kept";
 
+export const DM_BOOKING_RATE_DECLINED_MESSAGE = "Rate declined";
+
 export const DM_BOOKING_PROPOSED_RATE_ACCEPTED_MESSAGE = "Proposed rate accepted";
 
 export const DM_BOOKING_CONFIRMED_MESSAGE = "Booking confirmed";
@@ -96,6 +98,7 @@ function isCanonicalDmBookingSystemMessage(text: string): boolean {
     isStoredProposedRateMessage(trimmed) ||
     trimmed === DM_BOOKING_ORIGINAL_OFFER_KEPT_MESSAGE ||
     trimmed === VERBOSE_ORIGINAL_OFFER_KEPT_MESSAGE ||
+    trimmed === DM_BOOKING_RATE_DECLINED_MESSAGE ||
     trimmed === DM_BOOKING_PROPOSED_RATE_ACCEPTED_MESSAGE ||
     trimmed === VERBOSE_PROPOSED_RATE_ACCEPTED_MESSAGE ||
     trimmed === DM_BOOKING_CONFIRMED_MESSAGE ||
@@ -182,6 +185,10 @@ export function formatDmBookingSystemMessageDisplay(text: string): string {
     isLegacyRateProposalDeclinedDmMessage(trimmed)
   ) {
     return DM_BOOKING_ORIGINAL_OFFER_KEPT_MESSAGE;
+  }
+
+  if (trimmed === DM_BOOKING_RATE_DECLINED_MESSAGE) {
+    return DM_BOOKING_RATE_DECLINED_MESSAGE;
   }
 
   if (

@@ -66,6 +66,8 @@ import {
   countDjGigsByTab,
   getActiveEventLineupStats,
   getDmBookingCardOfferSummary,
+  getProposalDeclinedDmMessage,
+  getProposalReviewSecondaryActionLabel,
   isDmBookingActionRequired,
   isDjGigPastAccepted,
   resolveBookingDateKey,
@@ -80,6 +82,7 @@ import {
 import {
   DM_BOOKING_CONFIRMED_MESSAGE,
   DM_BOOKING_ORIGINAL_OFFER_KEPT_MESSAGE,
+  DM_BOOKING_RATE_DECLINED_MESSAGE,
   formatDmBookingSystemMessageDisplay,
   formatRateProposedDmSystemMessage,
   isDmBookingSystemMessage,
@@ -460,7 +463,8 @@ function testBookingRateProposalPanelActionLayout() {
   assert.match(source, /PROPOSAL_PRIMARY_ACTION_CLASS/);
   assert.match(source, /PROPOSAL_SECONDARY_ACTIONS_ROW_CLASS/);
   assert.match(source, /Accept rate/);
-  assert.match(source, />\s*Keep offer\s*</);
+  assert.match(source, /getProposalReviewSecondaryActionLabel/);
+  assert.match(source, /secondaryActionLabel/);
   assert.match(source, /Proposed rate/);
   assert.match(source, /BookingProposalCardShell/);
   assert.match(source, /label="Cancel"/);
@@ -468,7 +472,40 @@ function testBookingRateProposalPanelActionLayout() {
   assert.match(source, /min-h-8 min-w-0 flex-1/);
   assert.doesNotMatch(source, />\s*Keep original offer\s*</);
   assert.doesNotMatch(source, /Accept proposed rate/);
+  assert.doesNotMatch(source, /Proposal declined · original offer still available/);
   assert.doesNotMatch(source, /flex-col gap-2[\s\S]*Keep offer[\s\S]*Accept rate/);
+}
+
+function testAskForRateDeclineFlow() {
+  const panelSource = readFileSync(
+    new URL("../app/components/booking/BookingRateProposalPanel.tsx", import.meta.url),
+    "utf8",
+  );
+  const bookingRequestsSource = readFileSync(
+    new URL("../lib/bookingRequests.ts", import.meta.url),
+    "utf8",
+  );
+  const dmMessagesSource = readFileSync(
+    new URL("../lib/dm/dmBookingSystemMessages.ts", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(panelSource, /getProposalReviewSecondaryActionLabel/);
+  assert.doesNotMatch(panelSource, /Proposal declined · original offer still available/);
+  assert.match(bookingRequestsSource, /getProposalReviewSecondaryActionLabel/);
+  assert.match(bookingRequestsSource, /getProposalDeclinedDmMessage/);
+  assert.match(bookingRequestsSource, /DM_BOOKING_RATE_DECLINED_MESSAGE/);
+  assert.match(bookingRequestsSource, /Rate declined/);
+  assert.match(bookingRequestsSource, /propose a new rate/);
+  assert.match(dmMessagesSource, /DM_BOOKING_RATE_DECLINED_MESSAGE = "Rate declined"/);
+
+  const openBooking = { rate_mode: "open" } as BookingRequest;
+  const fixedBooking = { rate_mode: "fixed" } as BookingRequest;
+
+  assert.equal(getProposalReviewSecondaryActionLabel(openBooking), "Decline rate");
+  assert.equal(getProposalReviewSecondaryActionLabel(fixedBooking), "Keep offer");
+  assert.equal(getProposalDeclinedDmMessage(openBooking), "Rate declined");
+  assert.equal(getProposalDeclinedDmMessage(fixedBooking), "Original offer kept");
 }
 
 function testDmBookingCardPendingEventPairedActions() {
@@ -594,6 +631,7 @@ function testDmBookingSystemMessages() {
 
   assert.match(bookingRequestsSource, /formatRateProposedDmSystemMessage/);
   assert.match(bookingRequestsSource, /DM_BOOKING_ORIGINAL_OFFER_KEPT_MESSAGE/);
+  assert.match(bookingRequestsSource, /DM_BOOKING_RATE_DECLINED_MESSAGE/);
   assert.match(bookingRequestsSource, /DM_BOOKING_PROPOSED_RATE_ACCEPTED_MESSAGE/);
   assert.match(bookingRequestsSource, /DM_BOOKING_CONFIRMED_MESSAGE/);
   assert.match(bookingRequestsSource, /DM_BOOKING_CANCELLED_MESSAGE/);
@@ -616,6 +654,11 @@ function testDmBookingSystemMessages() {
     "Rate proposed: $66",
   );
   assert.equal(isDmBookingSystemMessage("Rate proposed: $66"), true);
+  assert.equal(isDmBookingSystemMessage(DM_BOOKING_RATE_DECLINED_MESSAGE), true);
+  assert.equal(
+    formatDmBookingSystemMessageDisplay(DM_BOOKING_RATE_DECLINED_MESSAGE),
+    DM_BOOKING_RATE_DECLINED_MESSAGE,
+  );
   assert.equal(isDmBookingSystemMessage("BOOKING ACTIVITY · event-cancelled · Party"), false);
 }
 
@@ -4381,6 +4424,7 @@ async function main() {
   testDmBookingDisplayKeepsPerDjFeeOverEmptyEventRate();
   testDmBookingActionRequiredStates();
   testBookingRateProposalPanelActionLayout();
+  testAskForRateDeclineFlow();
   testDmBookingCardPendingEventPairedActions();
   testDmBookingCardExpandCollapseScrollAnchor();
   testDmBookingCardAlignScrollTopMath();

@@ -14,6 +14,7 @@ import {
   DM_BOOKING_CONFIRMED_MESSAGE,
   DM_BOOKING_ORIGINAL_OFFER_KEPT_MESSAGE,
   DM_BOOKING_PROPOSED_RATE_ACCEPTED_MESSAGE,
+  DM_BOOKING_RATE_DECLINED_MESSAGE,
   formatRateProposedDmSystemMessage,
   formatDmBookingSystemMessageDisplay,
   isDmBookingSystemMessage,
@@ -605,6 +606,21 @@ export function canRespondToRateProposal(
     booking.status === "pending" &&
     hasPendingRateProposal(booking)
   );
+}
+
+export function isAskForRateBooking(booking: BookingRequest): boolean {
+  return booking.rate_mode === "open";
+}
+
+/** Planner secondary action when reviewing a DJ rate proposal. */
+export function getProposalReviewSecondaryActionLabel(booking: BookingRequest): string {
+  return isAskForRateBooking(booking) ? "Decline rate" : "Keep offer";
+}
+
+export function getProposalDeclinedDmMessage(booking: BookingRequest): string {
+  return isAskForRateBooking(booking)
+    ? DM_BOOKING_RATE_DECLINED_MESSAGE
+    : DM_BOOKING_ORIGINAL_OFFER_KEPT_MESSAGE;
 }
 
 export function getBookingOfferRateLabel(booking: BookingRequest): string {
@@ -1304,6 +1320,7 @@ async function insertBookingAcceptedDmMessageIfNeeded(
 
 export const RATE_PROPOSAL_DECLINED_DM_PREFIX = LEGACY_RATE_PROPOSAL_DECLINED_DM_PREFIX;
 
+/** @deprecated Use getProposalDeclinedDmMessage(booking) */
 export const RATE_PROPOSAL_DECLINED_DM_MESSAGE = DM_BOOKING_ORIGINAL_OFFER_KEPT_MESSAGE;
 
 export function isRateProposalDeclinedDmMessage(text: string): boolean {
@@ -1311,6 +1328,7 @@ export function isRateProposalDeclinedDmMessage(text: string): boolean {
 
   return (
     trimmed === DM_BOOKING_ORIGINAL_OFFER_KEPT_MESSAGE ||
+    trimmed === DM_BOOKING_RATE_DECLINED_MESSAGE ||
     trimmed === "Planner kept the original offer." ||
     trimmed.startsWith(LEGACY_RATE_PROPOSAL_DECLINED_DM_PREFIX)
   );
@@ -1342,13 +1360,17 @@ async function insertRateProposalDeclinedDmMessageIfNeeded(
       row.text.trim().startsWith("DJ proposed a rate of "),
   )?.created_at;
 
+  const declineMessage = getProposalDeclinedDmMessage(booking);
+
   let declineQuery = supabase
     .from("messages")
     .select("id")
     .eq("conversation_id", booking.conversation_id)
     .eq("user_id", booking.sender_id)
     .in("text", [
-      RATE_PROPOSAL_DECLINED_DM_MESSAGE,
+      declineMessage,
+      DM_BOOKING_ORIGINAL_OFFER_KEPT_MESSAGE,
+      DM_BOOKING_RATE_DECLINED_MESSAGE,
       LEGACY_RATE_PROPOSAL_DECLINED_DM_MESSAGE,
     ]);
 
@@ -1369,7 +1391,7 @@ async function insertRateProposalDeclinedDmMessageIfNeeded(
   const { error: insertError } = await supabase.from("messages").insert({
     conversation_id: booking.conversation_id,
     user_id: booking.sender_id,
-    text: RATE_PROPOSAL_DECLINED_DM_MESSAGE,
+    text: declineMessage,
   });
 
   if (insertError) {
@@ -3160,17 +3182,22 @@ export async function declineProposedBookingRate(
   await insertRateProposalDeclinedDmMessageIfNeeded(booking);
 
   let warning: string | null = null;
+  const isAskForRate = isAskForRateBooking(booking);
 
   try {
     await createNotification(
       booking.recipient_id,
       "booking_update",
-      "Original offer kept",
-      `${booking.event_name} · ${getBookingOfferRateLabel(booking)}`,
+      isAskForRate ? "Rate declined" : "Original offer kept",
+      isAskForRate
+        ? `${booking.event_name} · propose a new rate`
+        : `${booking.event_name} · ${getBookingOfferRateLabel(booking)}`,
       booking.conversation_id ? `/dm/${booking.conversation_id}` : "/bookings",
     );
   } catch (notificationError) {
-    warning = `Original offer was kept, but the DJ could not be notified. ${getNotificationCreateErrorMessage(notificationError)}`;
+    warning = isAskForRate
+      ? `Rate was declined, but the DJ could not be notified. ${getNotificationCreateErrorMessage(notificationError)}`
+      : `Original offer was kept, but the DJ could not be notified. ${getNotificationCreateErrorMessage(notificationError)}`;
     console.error("[bookings] booking_update notification failed after proposal decline:", notificationError);
   }
 

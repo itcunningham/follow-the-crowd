@@ -925,7 +925,9 @@ function EventDetailPageView() {
     try {
       await declineProposedBookingRate(booking.id);
       await reloadEventLineup();
-      setSuccessMessage("Original offer kept.");
+      setSuccessMessage(
+        booking.rate_mode === "open" ? "Rate declined." : "Original offer kept.",
+      );
     } catch (declineError) {
       console.error("Failed to keep original offer:", declineError);
       setError(getBookingMutationErrorMessage(declineError));
