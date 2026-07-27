@@ -268,6 +268,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `c42d3f5` — implement standard chat scroll model (Option B-lite)
 - `53e9a7d` — prevent latest-message scroll during booking expansion
 - `bc03e3a` — reset Events tab to Active when returning from other workspaces
 - `bb40ce3` — prevent DM auto-scroll on booking card layout changes
