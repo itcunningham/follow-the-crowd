@@ -268,7 +268,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
-- `(pending)` — reset Events tab to Active when returning from other workspaces
+- `15ca4a6` — reset Events tab to Active when returning from other workspaces
 - `bb40ce3` — prevent DM auto-scroll on booking card layout changes
 - `1bf0e63` — fix DM booking card scroll target identity
 - `fabeaf5` — remove DM booking card scroll spacer regression
