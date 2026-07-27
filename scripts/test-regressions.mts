@@ -814,6 +814,23 @@ function testDmBookingCardNotesRevealScroll() {
   assert.equal(computeMinimumScrollToRevealBottom(container, 900), 500);
 }
 
+function testProposeBookingRateNotesTextareaGrowth() {
+  const sheetSource = readFileSync(
+    new URL("../app/components/booking/ProposeBookingRateSheet.tsx", import.meta.url),
+    "utf8",
+  );
+  const cssSource = readFileSync(
+    new URL("../app/globals.css", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(sheetSource, /MAX_NOTE_LENGTH = 250/);
+  assert.match(sheetSource, /ftc-proposal-rate-notes-textarea/);
+  assert.match(cssSource, /\.ftc-proposal-rate-notes-textarea/);
+  assert.match(cssSource, /max-height: calc\(6lh \+ 1\.25rem \+ 2px\)/);
+  assert.match(cssSource, /overflow-y: auto !important/);
+}
+
 function testAskForRateDmBookingCardOfferSummary() {
   const openAsk = { rate_mode: "open", fee: "" } as BookingRequest;
   const openWithSuggested = { rate_mode: "open", fee: "500" } as BookingRequest;
@@ -4286,6 +4303,7 @@ async function main() {
   testDmBookingCardNotesExpandAnimation();
   testDmBookingCardNotesRevealScroll();
   testDmBookingCardBookingTypePresentation();
+  testProposeBookingRateNotesTextareaGrowth();
   testAskForRateDmBookingCardOfferSummary();
   testUsernameBlockedTermChecks();
   testAuthRedirectUrlUsesLoginPath();

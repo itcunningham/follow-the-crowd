@@ -7,6 +7,7 @@ export default function BookingFormField({
   placeholder,
   required = false,
   multiline = false,
+  textareaClassName = "",
 }: {
   label: string;
   value: string;
@@ -14,6 +15,7 @@ export default function BookingFormField({
   placeholder: string;
   required?: boolean;
   multiline?: boolean;
+  textareaClassName?: string;
 }) {
   return (
     <label className="block">
@@ -24,7 +26,7 @@ export default function BookingFormField({
           onChange={(event) => onChange(event.target.value)}
           placeholder={placeholder}
           rows={3}
-          className="ftc-input px-3.5 py-2.5"
+          className={`ftc-input px-3.5 py-2.5 ${textareaClassName}`.trim()}
         />
       ) : (
         <input
