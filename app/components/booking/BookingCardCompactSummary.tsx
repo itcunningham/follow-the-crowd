@@ -19,7 +19,13 @@ function prefersReducedMotion(): boolean {
   );
 }
 
-function BookingCardExpandableNotes({ notes }: { notes: string }) {
+function BookingCardExpandableNotes({
+  notes,
+  detailsOpen = true,
+}: {
+  notes: string;
+  detailsOpen?: boolean;
+}) {
   const [expanded, setExpanded] = useState(false);
   const [showToggle, setShowToggle] = useState(false);
   const [noteHeights, setNoteHeights] = useState<{ collapsed: number; full: number } | null>(
@@ -30,6 +36,12 @@ function BookingCardExpandableNotes({ notes }: { notes: string }) {
   const expandedRef = useRef(expanded);
   expandedRef.current = expanded;
   const trimmed = notes.trim();
+
+  useLayoutEffect(() => {
+    if (!detailsOpen) {
+      setExpanded(false);
+    }
+  }, [detailsOpen]);
 
   useLayoutEffect(() => {
     const element = textRef.current;
@@ -49,7 +61,10 @@ function BookingCardExpandableNotes({ notes }: { notes: string }) {
       const fullHeight = node.scrollHeight;
       node.classList.add("line-clamp-3");
       const collapsedHeight = node.scrollHeight;
-      node.classList.remove("line-clamp-3");
+
+      if (expandedRef.current) {
+        node.classList.remove("line-clamp-3");
+      }
 
       setNoteHeights({ collapsed: collapsedHeight, full: fullHeight });
       setShowToggle(fullHeight > collapsedHeight + 1);
@@ -64,14 +79,22 @@ function BookingCardExpandableNotes({ notes }: { notes: string }) {
     return () => {
       window.removeEventListener("resize", measureHeights);
     };
-  }, [trimmed]);
+  }, [trimmed, detailsOpen]);
+
+  useLayoutEffect(() => {
+    if (!detailsOpen || !noteHeights || expanded) {
+      return;
+    }
+
+    setAnimatedHeight(noteHeights.collapsed);
+  }, [detailsOpen, expanded, noteHeights]);
 
   if (!trimmed) {
     return null;
   }
 
   const canToggle = showToggle || expanded;
-  const useMeasuredHeight = noteHeights != null && animatedHeight != null;
+  const useMeasuredHeight = noteHeights != null && animatedHeight != null && (expanded || showToggle);
 
   function handleToggle() {
     if (!noteHeights) {
@@ -109,7 +132,7 @@ function BookingCardExpandableNotes({ notes }: { notes: string }) {
         <p
           ref={textRef}
           className={`mt-1 break-words text-sm leading-snug text-ftc-text-secondary ${
-            useMeasuredHeight ? "block" : expanded ? "block overflow-visible" : "line-clamp-3"
+            expanded ? "block overflow-visible" : "line-clamp-3"
           }`}
         >
           {trimmed}
@@ -143,12 +166,14 @@ export default function BookingCardCompactSummary({
   eventStatusLabel,
   cancelledByLabel,
   cancellationReasonLabel,
+  detailsOpen = true,
 }: {
   booking: BookingRequest;
   rateLine: string;
   eventStatusLabel?: string | null;
   cancelledByLabel?: string | null;
   cancellationReasonLabel?: string | null;
+  detailsOpen?: boolean;
 }) {
   const venue = booking.venue?.trim();
   const eventDate = booking.event_date?.trim()
@@ -169,7 +194,9 @@ export default function BookingCardCompactSummary({
         {rateLine ? <FtcMetaTextRow>{rateLine}</FtcMetaTextRow> : null}
       </ul>
 
-      {booking.notes?.trim() ? <BookingCardExpandableNotes notes={booking.notes} /> : null}
+      {booking.notes?.trim() ? (
+        <BookingCardExpandableNotes notes={booking.notes} detailsOpen={detailsOpen} />
+      ) : null}
 
       {eventStatusLabel ? (
         <DmBookingCardStatusMessage>{eventStatusLabel}</DmBookingCardStatusMessage>

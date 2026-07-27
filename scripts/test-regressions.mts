@@ -743,6 +743,15 @@ function testDmBookingCardNotesExpandAnimation() {
   assert.match(summarySource, /requestAnimationFrame/);
   assert.match(summarySource, /Show more/);
   assert.match(summarySource, /Show less/);
+  assert.match(summarySource, /line-clamp-3/);
+  assert.match(summarySource, /detailsOpen/);
+  assert.doesNotMatch(summarySource, /useMeasuredHeight \? "block"/);
+
+  const cardSource = readFileSync(
+    new URL("../app/components/BookingRequestCard.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(cardSource, /detailsOpen=\{expanded\}/);
 }
 
 function testAskForRateDmBookingCardOfferSummary() {

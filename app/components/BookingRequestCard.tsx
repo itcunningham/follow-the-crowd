@@ -259,6 +259,7 @@ export default function BookingRequestCard({
         eventStatusLabel={eventCancelledLabel}
         cancelledByLabel={cancelledByLabel}
         cancellationReasonLabel={cancellationReasonLabel}
+        detailsOpen={expanded}
       />
     );
   }
