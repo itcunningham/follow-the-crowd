@@ -1,7 +1,6 @@
 "use client";
 
 import { type ReactNode } from "react";
-import CancelBookingRequestButton from "@/app/components/CancelBookingRequestButton";
 import BookingCardExpandableNotes from "@/app/components/booking/BookingCardExpandableNotes";
 import { formatIntegerRateDisplay } from "@/lib/bookingRate";
 import { getProposalReviewSecondaryActionLabel, hasPendingRateProposal, type BookingRequest } from "@/lib/bookingRequests";
@@ -14,11 +13,7 @@ const PROPOSAL_PRIMARY_ACTION_CLASS =
   "ftc-btn-primary w-full px-3 py-2.5 text-xs uppercase tracking-wide disabled:cursor-not-allowed disabled:opacity-50";
 
 const PROPOSAL_SECONDARY_ACTION_CLASS =
-  "inline-flex min-h-8 min-w-0 flex-1 items-center justify-center rounded-xl border border-ftc-border-subtle bg-ftc-surface px-2 py-1 text-xs font-semibold uppercase tracking-wide text-ftc-text-secondary transition hover:border-ftc-border-strong disabled:cursor-not-allowed disabled:opacity-50";
-
-const PROPOSAL_SECONDARY_ACTIONS_ROW_CLASS = "flex gap-2";
-
-const PROPOSAL_SECONDARY_CANCEL_CLASS = "min-w-0 flex-1";
+  "inline-flex min-h-8 w-full items-center justify-center rounded-xl border border-ftc-border-subtle bg-ftc-surface px-2 py-1 text-xs font-semibold uppercase tracking-wide text-ftc-text-secondary transition hover:border-ftc-border-strong disabled:cursor-not-allowed disabled:opacity-50";
 
 export function BookingProposalCardShell({ children }: { children: ReactNode }) {
   return <div className={BOOKING_PROPOSAL_CARD_SHELL_CLASS}>{children}</div>;
@@ -61,7 +56,6 @@ export default function BookingRateProposalPanel({
   loading,
   onAcceptProposal,
   onKeepOriginalOffer,
-  onDeclineBooking,
   onNotesExpandedChange,
 }: {
   booking: BookingRequest;
@@ -69,7 +63,6 @@ export default function BookingRateProposalPanel({
   loading?: boolean;
   onAcceptProposal: () => void | Promise<void>;
   onKeepOriginalOffer: () => void | Promise<void>;
-  onDeclineBooking?: () => void | Promise<void>;
   onNotesExpandedChange?: (expanded: boolean) => void;
 }) {
   if (!hasPendingRateProposal(booking) || booking.sender_id !== currentUserId) {
@@ -95,25 +88,14 @@ export default function BookingRateProposalPanel({
         >
           Accept rate
         </button>
-        <div className={PROPOSAL_SECONDARY_ACTIONS_ROW_CLASS}>
-          <button
-            type="button"
-            disabled={loading}
-            onClick={() => void onKeepOriginalOffer()}
-            className={PROPOSAL_SECONDARY_ACTION_CLASS}
-          >
-            {secondaryActionLabel}
-          </button>
-          {onDeclineBooking ? (
-            <CancelBookingRequestButton
-              compact
-              label="Back"
-              loading={Boolean(loading)}
-              onConfirm={onDeclineBooking}
-              className={PROPOSAL_SECONDARY_CANCEL_CLASS}
-            />
-          ) : null}
-        </div>
+        <button
+          type="button"
+          disabled={loading}
+          onClick={() => void onKeepOriginalOffer()}
+          className={PROPOSAL_SECONDARY_ACTION_CLASS}
+        >
+          {secondaryActionLabel}
+        </button>
       </div>
     </BookingProposalCardShell>
   );

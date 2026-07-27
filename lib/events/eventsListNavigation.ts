@@ -194,6 +194,28 @@ function resolveDmEventDetailConversationId(options?: {
   return legacyConversationId || null;
 }
 
+export function resolveEventDetailDmOriginConversationId(options?: {
+  from?: string | null;
+  conversationId?: string | null;
+  fromDmConversation?: string | null;
+}): string | null {
+  return resolveDmEventDetailConversationId(options);
+}
+
+export function shouldHideEventDetailLineupMessageButton(
+  bookingConversationId: string | null | undefined,
+  dmOriginConversationId: string | null | undefined,
+): boolean {
+  const bookingConversation = bookingConversationId?.trim();
+  const dmOriginConversation = dmOriginConversationId?.trim();
+
+  return Boolean(
+    bookingConversation &&
+      dmOriginConversation &&
+      bookingConversation === dmOriginConversation,
+  );
+}
+
 export function resolveEventDetailBackHref(
   fromTab: string | null | undefined,
   options?: {

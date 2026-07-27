@@ -152,9 +152,11 @@ import {
   buildEventDetailFromDmHref,
   isEventsListCreateDeepLinkParam,
   resolveEventDetailBackHref,
+  resolveEventDetailDmOriginConversationId,
   resolveEventsListCreateBootstrapState,
   resolveEventsListCreateFlowChromeActive,
   resolveEventsListTabParam,
+  shouldHideEventDetailLineupMessageButton,
 } from "../lib/events/eventsListNavigation";
 import { clearEventsListTabCache } from "../lib/events/eventsListTabCache";
 import { buildPlannerCreateEventFromPlansHref, buildPlannerCreateEventHref } from "../lib/calendar";
@@ -470,15 +472,16 @@ function testBookingRateProposalPanelActionLayout() {
   );
 
   assert.match(source, /PROPOSAL_PRIMARY_ACTION_CLASS/);
-  assert.match(source, /PROPOSAL_SECONDARY_ACTIONS_ROW_CLASS/);
+  assert.match(source, /PROPOSAL_SECONDARY_ACTION_CLASS/);
   assert.match(source, /Accept rate/);
   assert.match(source, /getProposalReviewSecondaryActionLabel/);
   assert.match(source, /secondaryActionLabel/);
   assert.match(source, /Proposed rate/);
   assert.match(source, /BookingProposalCardShell/);
-  assert.match(source, /label="Back"/);
-  assert.match(source, /compact/);
-  assert.match(source, /min-h-8 min-w-0 flex-1/);
+  assert.doesNotMatch(source, /CancelBookingRequestButton/);
+  assert.doesNotMatch(source, /onDeclineBooking/);
+  assert.match(source, /w-full items-center justify-center/);
+  assert.doesNotMatch(source, /PROPOSAL_SECONDARY_ACTIONS_ROW_CLASS/);
   assert.doesNotMatch(source, />\s*Keep original offer\s*</);
   assert.doesNotMatch(source, /Accept proposed rate/);
   assert.doesNotMatch(source, /Proposal declined · original offer still available/);
@@ -1322,6 +1325,8 @@ function testEventLineupBookingCardProfileNavigationAndActions() {
   assert.match(cardSource, /EVENT_DETAIL_LINEUP_ACTIONS_ROW/);
   assert.match(cardSource, /EVENT_DETAIL_LINEUP_ACTION_BTN/);
   assert.match(cardSource, /EVENT_DETAIL_LINEUP_BTN_SECONDARY/);
+  assert.match(cardSource, /shouldHideEventDetailLineupMessageButton/);
+  assert.match(cardSource, /dmOriginConversationId/);
   assert.match(cardSource, />\s*Message\s*</);
   assert.match(cardSource, /label="Cancel"/);
   assert.match(cardSource, /compact/);
@@ -3103,6 +3108,21 @@ function testEventsCreateFlowTabPillNavigation() {
   assert.equal(resolveEventsListCreateFlowChromeActive({ createOpen: true }), true);
   assert.equal(resolveEventsListCreateFlowChromeActive({ locationSearch: "?create=plan" }), true);
   assert.equal(isEventsListCreateDeepLinkParam("plan"), true);
+  assert.equal(
+    resolveEventDetailDmOriginConversationId({
+      from: "dm",
+      conversationId: "conv-1",
+    }),
+    "conv-1",
+  );
+  assert.equal(
+    shouldHideEventDetailLineupMessageButton("conv-1", "conv-1"),
+    true,
+  );
+  assert.equal(
+    shouldHideEventDetailLineupMessageButton("conv-1", "conv-2"),
+    false,
+  );
 }
 
 function testEventsListTabParamRestoresHistoryWithoutActiveDefault() {

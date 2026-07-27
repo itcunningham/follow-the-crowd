@@ -24,6 +24,7 @@ import {
   type BookingRequest,
 } from "@/lib/bookingRequests";
 import { buildEventDetailDmThreadHref } from "@/lib/dm/threadNavigation";
+import { shouldHideEventDetailLineupMessageButton } from "@/lib/events/eventsListNavigation";
 import type { CalendarOriginState } from "@/lib/bookings/gigsCalendarNavigation";
 import { buildEventDetailProfileHref } from "@/lib/profileNavigation";
 import type { BookingRecipientProfile } from "@/lib/user/currentUser";
@@ -45,6 +46,7 @@ export default function EventLineupBookingCard({
   currentUserId,
   eventDetailId,
   eventDetailFromTab = null,
+  dmOriginConversationId = null,
   calendarOrigin = null,
   readOnly = false,
   cancelledByLabel,
@@ -65,6 +67,7 @@ export default function EventLineupBookingCard({
   currentUserId: string | null;
   eventDetailId?: string | null;
   eventDetailFromTab?: string | null;
+  dmOriginConversationId?: string | null;
   calendarOrigin?: CalendarOriginState | null;
   readOnly?: boolean;
   cancelledByLabel?: string | null;
@@ -90,7 +93,11 @@ export default function EventLineupBookingCard({
     !readOnly && canCancelBookingRequest(booking, currentUserId);
   const showCancelAccepted =
     !readOnly && acceptedCancellationRole === "planner";
-  const showOpenDm = Boolean(booking.conversation_id);
+  const hideMessageButton = shouldHideEventDetailLineupMessageButton(
+    booking.conversation_id,
+    dmOriginConversationId,
+  );
+  const showOpenDm = Boolean(booking.conversation_id) && !hideMessageButton;
   const showActions = showCancelRequest || showCancelAccepted || showOpenDm;
   const actionButtonClass = `${EVENT_DETAIL_LINEUP_ACTION_BTN}`;
   const profileHref =
@@ -169,7 +176,6 @@ export default function EventLineupBookingCard({
               loading={proposalLoading}
               onAcceptProposal={onAcceptProposal}
               onKeepOriginalOffer={onKeepOriginalOffer}
-              onDeclineBooking={onCancelBooking}
             />
           )}
         </div>

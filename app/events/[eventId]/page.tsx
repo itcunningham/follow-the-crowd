@@ -132,7 +132,10 @@ import {
   shouldPostEventGroupChatUpdate,
 } from "@/lib/events/eventGroupChatUpdate";
 import { readCachedEventSummaryById } from "@/lib/events/eventDetailCache";
-import { resolveEventDetailBackHref } from "@/lib/events/eventsListNavigation";
+import {
+  resolveEventDetailBackHref,
+  resolveEventDetailDmOriginConversationId,
+} from "@/lib/events/eventsListNavigation";
 import {
   BOOKING_REQUEST_CANCELLED_SUCCESS_MESSAGE,
   useInlineTabFeedbackDismiss,
@@ -1021,10 +1024,11 @@ function EventDetailPageView() {
         : null,
     [visibleLineup, currentUserId],
   );
-  const dmOriginConversationId =
-    searchParams.get("from") === "dm"
-      ? searchParams.get("conversationId")?.trim() || null
-      : searchParams.get("fromDmConversation")?.trim() || null;
+  const dmOriginConversationId = resolveEventDetailDmOriginConversationId({
+    from: searchParams.get("from"),
+    conversationId: searchParams.get("conversationId"),
+    fromDmConversation: searchParams.get("fromDmConversation"),
+  });
   const hideOpenBookingConversation = Boolean(
     dmOriginConversationId &&
       viewerBooking?.conversation_id &&
@@ -1478,6 +1482,7 @@ function EventDetailPageView() {
                                   currentUserId={currentUserId}
                                   eventDetailId={eventId}
                                   eventDetailFromTab={searchParams.get("fromTab")}
+                                  dmOriginConversationId={dmOriginConversationId}
                                   calendarOrigin={calendarOrigin}
                                   readOnly={isHistoryEventDetail}
                                   cancelledByLabel={resolveBookingCancelledByLabel(booking, profiles)}

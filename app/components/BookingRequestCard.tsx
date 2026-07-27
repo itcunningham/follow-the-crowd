@@ -298,7 +298,6 @@ export default function BookingRequestCard({
             loading={actionDisabled}
             onAcceptProposal={onAcceptProposal!}
             onKeepOriginalOffer={onKeepOriginalOffer!}
-            onDeclineBooking={onCancel}
             onNotesExpandedChange={onNotesExpandedChange}
           />
         ) : null}
