@@ -92,6 +92,7 @@ export default function BookingRequestCard({
   collapsible = false,
   expanded = true,
   onExpandedChange,
+  onNotesExpandedChange,
   useCompactDmCollapseHeader = false,
   eventHasAcceptedBooking = false,
   crewChatUnlocked = false,
@@ -122,6 +123,7 @@ export default function BookingRequestCard({
   collapsible?: boolean;
   expanded?: boolean;
   onExpandedChange?: (expanded: boolean) => void;
+  onNotesExpandedChange?: (expanded: boolean) => void;
   useCompactDmCollapseHeader?: boolean;
   eventHasAcceptedBooking?: boolean;
   crewChatUnlocked?: boolean;
@@ -260,6 +262,7 @@ export default function BookingRequestCard({
         cancelledByLabel={cancelledByLabel}
         cancellationReasonLabel={cancellationReasonLabel}
         detailsOpen={expanded}
+        onNotesExpandedChange={onNotesExpandedChange}
       />
     );
   }

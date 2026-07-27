@@ -100,6 +100,7 @@ import {
 } from "@/lib/dm/chatBookingTarget";
 import {
   captureBookingCardScrollPosition,
+  scheduleBookingCardNotesRevealScroll,
   scheduleCollapsedBookingCardScrollRestore,
   scheduleExpandedBookingCardScrollAlign,
 } from "@/lib/dm/dmBookingCardExpandScroll";
@@ -236,6 +237,7 @@ export default function DmChatPage() {
   const [expandedBookingIds, setExpandedBookingIds] = useState<Set<string>>(() => new Set());
   const bookingCardAnchorRefs = useRef(new Map<string, HTMLElement>());
   const pendingBookingCardScrollIdRef = useRef<string | null>(null);
+  const pendingBookingNotesScrollIdRef = useRef<string | null>(null);
   const bookingCardScrollCleanupRef = useRef<(() => void) | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -410,6 +412,7 @@ export default function DmChatPage() {
     bookingCardScrollCleanupRef.current = null;
     bookingCardAnchorRefs.current.clear();
     pendingBookingCardScrollIdRef.current = null;
+    pendingBookingNotesScrollIdRef.current = null;
   }, [conversationId]);
 
   const registerBookingCardAnchor = useCallback(
@@ -499,6 +502,38 @@ export default function DmChatPage() {
       }
     },
     [restoreChatAutoScrollSuppression, scrollRef, setBookingExpanded],
+  );
+
+  const handleBookingNotesExpansionChange = useCallback(
+    (bookingRequestId: string, expanded: boolean) => {
+      if (!expanded) {
+        return;
+      }
+
+      bookingCardScrollCleanupRef.current?.();
+      bookingCardScrollCleanupRef.current = null;
+      suppressAutoScrollRef.current = true;
+      pendingBookingNotesScrollIdRef.current = bookingRequestId;
+
+      const container = scrollRef.current;
+
+      if (container) {
+        bookingCardScrollCleanupRef.current = scheduleBookingCardNotesRevealScroll(
+          container,
+          () => bookingCardAnchorRefs.current.get(bookingRequestId) ?? null,
+          bookingRequestId,
+          pendingBookingNotesScrollIdRef,
+          () => {
+            pendingBookingNotesScrollIdRef.current = null;
+            restoreChatAutoScrollSuppression();
+          },
+        );
+      } else {
+        pendingBookingNotesScrollIdRef.current = null;
+        restoreChatAutoScrollSuppression();
+      }
+    },
+    [restoreChatAutoScrollSuppression, scrollRef],
   );
 
   useEffect(() => {
@@ -1782,6 +1817,9 @@ export default function DmChatPage() {
                     expanded={isBookingExpanded}
                     onExpandedChange={(expanded) =>
                       handleBookingExpansionChange(bookingExpansionKey, expanded)
+                    }
+                    onNotesExpandedChange={(expanded) =>
+                      handleBookingNotesExpansionChange(bookingExpansionKey, expanded)
                     }
                     useCompactDmCollapseHeader={!actionRequired && isBookingExpanded}
                     eventHasAcceptedBooking={

@@ -6,14 +6,23 @@ export const DM_BOOKING_CARD_REQUEST_ID_ATTR = "data-dm-booking-request-id";
 
 export const DM_BOOKING_CARD_EXPAND_PANEL_ATTR = "data-dm-booking-card-expand-panel";
 
+export const DM_BOOKING_NOTES_EXPAND_PANEL_ATTR = "data-dm-booking-notes-expand-panel";
+
+export const DM_BOOKING_NOTES_TOGGLE_ATTR = "data-dm-booking-notes-toggle";
+
 export const DM_CONVERSATION_HEADER_ATTR = "data-dm-conversation-header";
 
 /** Visual gap between the conversation header and the expanded card top. */
 const DM_BOOKING_CARD_HEADER_GAP_PX = 8;
 
+/** Visual gap between revealed notes controls and the DM scroller bottom. */
+const DM_BOOKING_NOTES_REVEAL_GAP_PX = 8;
+
 const DM_BOOKING_CARD_ANCHOR_WAIT_MAX_FRAMES = 24;
 
 const DM_BOOKING_CARD_EXPAND_TRANSITION_MS = 220;
+
+const DM_BOOKING_NOTES_EXPAND_TRANSITION_MS = 220;
 
 export type BookingCardScrollCapture = {
   scrollTop: number;
@@ -177,6 +186,90 @@ export function computeBookingCardAlignScrollTop(
   const targetScrollTop = scrollTop + delta;
 
   return Math.max(0, Math.min(maxScrollTop, targetScrollTop));
+}
+
+/** Bottom edge to keep visible after Notes expand — card bottom includes action rows. */
+export function resolveBookingNotesRevealBottom(cardAnchor: HTMLElement): number {
+  const toggle = cardAnchor.querySelector<HTMLElement>(`[${DM_BOOKING_NOTES_TOGGLE_ATTR}]`);
+  const cardBottom = cardAnchor.getBoundingClientRect().bottom;
+
+  if (toggle) {
+    return Math.max(toggle.getBoundingClientRect().bottom, cardBottom);
+  }
+
+  return cardBottom;
+}
+
+/** Minimum scrollTop delta to bring targetBottom above the scroller's visible bottom. */
+export function computeMinimumScrollToRevealBottom(
+  container: HTMLElement,
+  targetBottom: number,
+  paddingPx: number = DM_BOOKING_NOTES_REVEAL_GAP_PX,
+): number | null {
+  const visibleBottom = container.getBoundingClientRect().bottom - paddingPx;
+  const overflow = targetBottom - visibleBottom;
+
+  if (overflow <= 1) {
+    return null;
+  }
+
+  const maxScrollTop = Math.max(0, container.scrollHeight - container.clientHeight);
+  const targetScrollTop = Math.min(container.scrollTop + overflow, maxScrollTop);
+
+  if (Math.abs(targetScrollTop - container.scrollTop) < 2) {
+    return null;
+  }
+
+  return targetScrollTop;
+}
+
+function waitForBookingNotesExpandTransition(
+  notesPanel: HTMLElement,
+  onReady: () => void,
+): () => void {
+  if (prefersReducedMotion()) {
+    requestAnimationFrame(onReady);
+    return () => {};
+  }
+
+  let finished = false;
+
+  const finish = () => {
+    if (finished) {
+      return;
+    }
+
+    finished = true;
+    notesPanel.removeEventListener("transitionend", handleTransitionEnd);
+    window.clearTimeout(fallbackTimeoutId);
+    onReady();
+  };
+
+  const handleTransitionEnd = (event: Event) => {
+    const transitionEvent = event as TransitionEvent;
+
+    if (transitionEvent.target !== notesPanel) {
+      return;
+    }
+
+    if (transitionEvent.propertyName !== "height") {
+      return;
+    }
+
+    finish();
+  };
+
+  notesPanel.addEventListener("transitionend", handleTransitionEnd);
+  const fallbackTimeoutId = window.setTimeout(
+    finish,
+    DM_BOOKING_NOTES_EXPAND_TRANSITION_MS,
+  );
+
+  return () => {
+    finished = true;
+    notesPanel.removeEventListener("transitionend", handleTransitionEnd);
+    window.clearTimeout(fallbackTimeoutId);
+  };
 }
 
 function waitForBookingCardExpandTransition(
@@ -477,6 +570,95 @@ export function scheduleCollapsedBookingCardScrollRestore(
   };
 
   cancelReadyWait = waitForExpandedBookingCardReady(getCardAnchor, runRestore);
+
+  return finish;
+}
+
+/** After Notes expand, scroll the minimum amount to keep controls above the scroller bottom. */
+export function scheduleBookingCardNotesRevealScroll(
+  container: HTMLElement,
+  getCardAnchor: () => HTMLElement | null,
+  bookingRequestId: string,
+  pendingBookingNotesScrollIdRef: MutableRefObject<string | null>,
+  onComplete?: () => void,
+): () => void {
+  let cancelled = false;
+  let cancelTransitionWait: (() => void) | null = null;
+  let cancelScrollAlignWait: (() => void) | null = null;
+
+  const finish = () => {
+    if (cancelled) {
+      return;
+    }
+
+    cancelled = true;
+    cancelTransitionWait?.();
+    cancelTransitionWait = null;
+    cancelScrollAlignWait?.();
+    cancelScrollAlignWait = null;
+    onComplete?.();
+  };
+
+  const runScroll = () => {
+    if (cancelled || pendingBookingNotesScrollIdRef.current !== bookingRequestId) {
+      finish();
+      return;
+    }
+
+    const cardAnchor = getCardAnchor();
+
+    if (!cardAnchor) {
+      finish();
+      return;
+    }
+
+    const targetBottom = resolveBookingNotesRevealBottom(cardAnchor);
+    const targetScrollTop = computeMinimumScrollToRevealBottom(container, targetBottom);
+
+    if (targetScrollTop === null) {
+      finish();
+      return;
+    }
+
+    const scrollBehavior = resolveScrollBehavior();
+
+    if (scrollBehavior === "auto") {
+      container.scrollTop = targetScrollTop;
+      clampDmMessageScrollTop(container);
+      finish();
+      return;
+    }
+
+    container.scrollTo({
+      top: targetScrollTop,
+      behavior: scrollBehavior,
+    });
+    cancelScrollAlignWait = waitForSmoothScrollAlign(container, targetScrollTop, finish);
+  };
+
+  const cardAnchor = getCardAnchor();
+
+  if (!cardAnchor) {
+    finish();
+    return finish;
+  }
+
+  const notesPanel = cardAnchor.querySelector<HTMLElement>(
+    `[${DM_BOOKING_NOTES_EXPAND_PANEL_ATTR}]`,
+  );
+
+  if (!notesPanel) {
+    requestAnimationFrame(runScroll);
+    return finish;
+  }
+
+  cancelTransitionWait = waitForBookingNotesExpandTransition(notesPanel, () => {
+    if (cancelled) {
+      return;
+    }
+
+    requestAnimationFrame(runScroll);
+  });
 
   return finish;
 }

@@ -22,9 +22,11 @@ function prefersReducedMotion(): boolean {
 function BookingCardExpandableNotes({
   notes,
   detailsOpen = true,
+  onNotesExpandedChange,
 }: {
   notes: string;
   detailsOpen?: boolean;
+  onNotesExpandedChange?: (expanded: boolean) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [showToggle, setShowToggle] = useState(false);
@@ -125,13 +127,23 @@ function BookingCardExpandableNotes({
 
   function handleToggle() {
     if (!noteHeights) {
-      setExpanded((open) => !open);
+      const nextExpanded = !expanded;
+
+      if (nextExpanded) {
+        onNotesExpandedChange?.(true);
+      }
+
+      setExpanded(nextExpanded);
       return;
     }
 
     const nextExpanded = !expanded;
     const nextHeight = nextExpanded ? noteHeights.full : noteHeights.collapsed;
     const startHeight = nextExpanded ? noteHeights.collapsed : noteHeights.full;
+
+    if (nextExpanded) {
+      onNotesExpandedChange?.(true);
+    }
 
     if (prefersReducedMotion()) {
       setExpanded(nextExpanded);
@@ -168,6 +180,7 @@ function BookingCardExpandableNotes({
       {canToggle ? (
         <button
           type="button"
+          data-dm-booking-notes-toggle
           onClick={handleToggle}
           className="mt-1 text-xs font-semibold text-ftc-primary transition hover:text-ftc-primary-dim"
         >
@@ -194,6 +207,7 @@ export default function BookingCardCompactSummary({
   cancelledByLabel,
   cancellationReasonLabel,
   detailsOpen = true,
+  onNotesExpandedChange,
 }: {
   booking: BookingRequest;
   rateLine: string;
@@ -201,6 +215,7 @@ export default function BookingCardCompactSummary({
   cancelledByLabel?: string | null;
   cancellationReasonLabel?: string | null;
   detailsOpen?: boolean;
+  onNotesExpandedChange?: (expanded: boolean) => void;
 }) {
   const venue = booking.venue?.trim();
   const eventDate = booking.event_date?.trim()
@@ -222,7 +237,11 @@ export default function BookingCardCompactSummary({
       </ul>
 
       {booking.notes?.trim() ? (
-        <BookingCardExpandableNotes notes={booking.notes} detailsOpen={detailsOpen} />
+        <BookingCardExpandableNotes
+          notes={booking.notes}
+          detailsOpen={detailsOpen}
+          onNotesExpandedChange={onNotesExpandedChange}
+        />
       ) : null}
 
       {eventStatusLabel ? (

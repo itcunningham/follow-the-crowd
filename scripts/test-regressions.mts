@@ -72,7 +72,7 @@ import {
   sortDjGigsCalendarAgendaBookings,
 } from "../lib/bookingRequests";
 import { getAppendedMessageIds } from "../lib/useChatScroll";
-import { computeBookingCardAlignScrollTop } from "../lib/dm/dmBookingCardExpandScroll";
+import { computeBookingCardAlignScrollTop, computeMinimumScrollToRevealBottom } from "../lib/dm/dmBookingCardExpandScroll";
 import {
   buildDmConversationTimestampLayout,
   DM_CHAT_MEANINGFUL_TIME_GAP_MS,
@@ -748,6 +748,8 @@ function testDmBookingCardNotesExpandAnimation() {
   assert.match(summarySource, /scrollHeight > node\.clientHeight \+ 1/);
   assert.match(summarySource, /node\.clientHeight/);
   assert.match(summarySource, /ResizeObserver/);
+  assert.match(summarySource, /onNotesExpandedChange/);
+  assert.match(summarySource, /data-dm-booking-notes-toggle/);
   assert.doesNotMatch(summarySource, /useMeasuredHeight \? "block"/);
 
   const cardSource = readFileSync(
@@ -755,6 +757,43 @@ function testDmBookingCardNotesExpandAnimation() {
     "utf8",
   );
   assert.match(cardSource, /detailsOpen=\{expanded\}/);
+  assert.match(cardSource, /onNotesExpandedChange/);
+}
+
+function testDmBookingCardNotesRevealScroll() {
+  const expandScrollSource = readFileSync(
+    new URL("../lib/dm/dmBookingCardExpandScroll.ts", import.meta.url),
+    "utf8",
+  );
+  const pageSource = readFileSync(
+    new URL("../app/dm/[conversationId]/page.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(expandScrollSource, /scheduleBookingCardNotesRevealScroll/);
+  assert.match(expandScrollSource, /computeMinimumScrollToRevealBottom/);
+  assert.match(expandScrollSource, /resolveBookingNotesRevealBottom/);
+  assert.match(expandScrollSource, /DM_BOOKING_NOTES_EXPAND_PANEL_ATTR/);
+  assert.match(expandScrollSource, /DM_BOOKING_NOTES_TOGGLE_ATTR/);
+  assert.match(expandScrollSource, /propertyName !== "height"/);
+  assert.doesNotMatch(expandScrollSource, /scheduleBookingCardNotesRevealScroll[\s\S]*grid-template-rows/);
+
+  assert.match(pageSource, /scheduleBookingCardNotesRevealScroll/);
+  assert.match(pageSource, /handleBookingNotesExpansionChange/);
+  assert.match(pageSource, /pendingBookingNotesScrollIdRef/);
+  assert.match(pageSource, /onNotesExpandedChange/);
+
+  const container = {
+    scrollTop: 100,
+    scrollHeight: 1000,
+    clientHeight: 400,
+    getBoundingClientRect: () => ({ bottom: 500 }),
+    scrollTo: () => {},
+  } as unknown as HTMLElement;
+
+  assert.equal(computeMinimumScrollToRevealBottom(container, 480), null);
+  assert.equal(computeMinimumScrollToRevealBottom(container, 520), 120);
+  assert.equal(computeMinimumScrollToRevealBottom(container, 900), 500);
 }
 
 function testAskForRateDmBookingCardOfferSummary() {
@@ -4227,6 +4266,7 @@ async function main() {
   testChatAppendedMessageIds();
   testDmBookingCardProposedRateCopy();
   testDmBookingCardNotesExpandAnimation();
+  testDmBookingCardNotesRevealScroll();
   testAskForRateDmBookingCardOfferSummary();
   testUsernameBlockedTermChecks();
   testAuthRedirectUrlUsesLoginPath();
