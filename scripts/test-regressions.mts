@@ -3323,6 +3323,25 @@ function testEventPlansCreateFormDeepLink() {
   );
 }
 
+function testEventPlanCardSelectionHighlight() {
+  const eventsSource = readFileSync(
+    new URL("../app/(planner-workspace)/events/EventsPageClient.tsx", import.meta.url),
+    "utf8",
+  );
+  const plannerUiSource = readFileSync(
+    new URL("../app/components/planner/PlannerUi.tsx", import.meta.url),
+    "utf8",
+  );
+  const cssSource = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
+
+  assert.doesNotMatch(eventsSource, /selected=\{selectedPlanId === plan\.id\}/);
+  assert.match(plannerUiSource, /buttonRef\.current\?\.blur\(\)/);
+  assert.match(plannerUiSource, /touch-manipulation ftc-option-card/);
+  assert.match(plannerUiSource, /focus-visible:outline-ftc-primary/);
+  assert.match(cssSource, /\.ftc-option-card:active:not\(:disabled\)/);
+  assert.doesNotMatch(cssSource, /\.ftc-option-card:focus-within/);
+}
+
 function testBookingsUsePlanCreatesEventBeforeSend() {
   const bookingsSource = readFileSync(
     new URL("../app/(planner-workspace)/bookings/page.tsx", import.meta.url),
@@ -4560,6 +4579,7 @@ async function main() {
   testBookingsUsePlanWorkspaceTabNavigation();
   testBookingsUsePlanCancelReturnsToEventPlans();
   testEventPlansCreateFormDeepLink();
+  testEventPlanCardSelectionHighlight();
   testBookingsUsePlanCreatesEventBeforeSend();
   testPlannerCalendarEventDeletionSync();
   testPlannerCalendarScopesOwnedEventsOnly();

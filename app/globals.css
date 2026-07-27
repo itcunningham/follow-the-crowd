@@ -950,13 +950,12 @@ html {
     background-color 0.15s ease;
 }
 
+.ftc-option-card:active:not(:disabled) {
+  background: var(--ftc-color-bg-surface-raised);
+}
+
 @media (hover: hover) {
   .ftc-option-card:hover:not(:disabled) {
-    border-color: var(--ftc-color-border-strong);
-    background: var(--ftc-color-bg-elevated);
-  }
-
-  .ftc-option-card:focus-within:not(:disabled) {
     border-color: var(--ftc-color-border-strong);
     background: var(--ftc-color-bg-elevated);
   }

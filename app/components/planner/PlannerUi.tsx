@@ -212,11 +212,19 @@ export function PlannerOptionCard({
   selected?: boolean;
   onClick: () => void;
 }) {
+  const buttonRef = useRef<HTMLButtonElement>(null);
+
+  function handleClick() {
+    onClick();
+    buttonRef.current?.blur();
+  }
+
   return (
     <button
+      ref={buttonRef}
       type="button"
-      onClick={onClick}
-      className={`ftc-option-card ${selected ? "ftc-option-card-selected" : ""}`}
+      onClick={handleClick}
+      className={`touch-manipulation ftc-option-card focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ftc-primary ${selected ? "ftc-option-card-selected" : ""}`}
     >
       <p className="text-base font-semibold text-ftc-text">{title}</p>
       <p className="mt-2 text-sm leading-relaxed text-ftc-text-secondary">{description}</p>

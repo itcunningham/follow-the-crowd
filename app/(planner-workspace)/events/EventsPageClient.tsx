@@ -1461,7 +1461,6 @@ function EventsPageClientView({
                           <PlannerOptionCard
                             title={plan.name}
                             description={`${plan.event_name} · ${plan.venue}`}
-                            selected={selectedPlanId === plan.id}
                             onClick={() => handleSelectPlan(plan)}
                           />
                         </li>
