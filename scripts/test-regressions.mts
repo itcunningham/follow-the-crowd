@@ -74,7 +74,7 @@ import {
 import { getAppendedMessageIds } from "../lib/useChatScroll";
 import { computeBookingCardAlignScrollTop } from "../lib/dm/dmBookingCardExpandScroll";
 import {
-  buildDmBookingTimelineTimestampLayout,
+  buildDmConversationTimestampLayout,
   DM_CHAT_MEANINGFUL_TIME_GAP_MS,
 } from "../lib/dm/dmChatTimestampVisibility";
 import {
@@ -610,7 +610,7 @@ function testDmBookingSystemMessages() {
   assert.equal(isDmBookingSystemMessage("BOOKING ACTIVITY · event-cancelled · Party"), false);
 }
 
-function testDmBookingTimelineTimestampLayout() {
+function testDmConversationTimestampLayout() {
   const pageSource = readFileSync(
     new URL("../app/dm/[conversationId]/page.tsx", import.meta.url),
     "utf8",
@@ -619,11 +619,17 @@ function testDmBookingTimelineTimestampLayout() {
     new URL("../app/components/dm/DmBookingTimelineNotice.tsx", import.meta.url),
     "utf8",
   );
+  const bubbleSource = readFileSync(
+    new URL("../app/components/dm/DmTextMessageBubble.tsx", import.meta.url),
+    "utf8",
+  );
 
-  assert.match(pageSource, /buildDmBookingTimelineTimestampLayout/);
-  assert.match(pageSource, /showTimestamp=/);
-  assert.match(pageSource, /compactBelow=/);
-  assert.match(timelineSource, /sr-only/);
+  assert.match(pageSource, /buildDmConversationTimestampLayout/);
+  assert.match(pageSource, /conversationTimestampLayout/);
+  assert.match(pageSource, /showTimestamp=\{messageTimestampLayout/);
+  assert.doesNotMatch(pageSource, /buildDmBookingTimelineTimestampLayout/);
+  assert.doesNotMatch(timelineSource, /showTimestamp/);
+  assert.match(bubbleSource, /showTimestamp\?: boolean/);
 
   const baseTime = Date.parse("2026-07-27T12:00:00.000Z");
   const quickGapMs = 60_000;
@@ -656,14 +662,15 @@ function testDmBookingTimelineTimestampLayout() {
     },
   ];
 
-  const clusteredLayout = buildDmBookingTimelineTimestampLayout(messages, {
+  const clusteredLayout = buildDmConversationTimestampLayout(messages, {
     bookings: [],
     conversationId: "conversation-1",
   });
 
   assert.equal(clusteredLayout.get("timeline-1")?.showTimestamp, false);
   assert.equal(clusteredLayout.get("timeline-2")?.showTimestamp, false);
-  assert.equal(clusteredLayout.get("timeline-3")?.showTimestamp, true);
+  assert.equal(clusteredLayout.get("timeline-3")?.showTimestamp, false);
+  assert.equal(clusteredLayout.get("chat-2")?.showTimestamp, true);
   assert.equal(clusteredLayout.get("timeline-1")?.compactBelow, true);
   assert.equal(clusteredLayout.get("timeline-2")?.compactBelow, true);
   assert.equal(clusteredLayout.get("timeline-3")?.compactBelow, false);
@@ -681,7 +688,7 @@ function testDmBookingTimelineTimestampLayout() {
     },
   ];
 
-  const gapLayout = buildDmBookingTimelineTimestampLayout(gapMessages, {
+  const gapLayout = buildDmConversationTimestampLayout(gapMessages, {
     bookings: [],
     conversationId: "conversation-1",
   });
@@ -4186,7 +4193,7 @@ async function main() {
   testDmBookingCardExpandCollapseScrollAnchor();
   testDmBookingCardAlignScrollTopMath();
   testDmBookingSystemMessages();
-  testDmBookingTimelineTimestampLayout();
+  testDmConversationTimestampLayout();
   testChatAppendedMessageIds();
   testDmBookingCardProposedRateCopy();
   testAskForRateDmBookingCardOfferSummary();

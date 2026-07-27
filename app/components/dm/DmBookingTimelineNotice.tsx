@@ -8,7 +8,6 @@ export default function DmBookingTimelineNotice({
   createdAt,
   formatTime,
   isHighlighted = false,
-  showTimestamp = true,
   compactBelow = false,
 }: {
   messageId: string;
@@ -16,11 +15,8 @@ export default function DmBookingTimelineNotice({
   createdAt: string;
   formatTime: (timestamp: string) => string;
   isHighlighted?: boolean;
-  showTimestamp?: boolean;
   compactBelow?: boolean;
 }) {
-  const formattedTime = formatTime(createdAt);
-
   return (
     <li
       data-chat-message-id={messageId}
@@ -32,18 +28,9 @@ export default function DmBookingTimelineNotice({
         >
           {text}
         </p>
-        {showTimestamp ? (
-          <time
-            dateTime={createdAt}
-            className="mt-1 block text-[10px] leading-none text-ftc-text-muted"
-          >
-            {formattedTime}
-          </time>
-        ) : (
-          <time dateTime={createdAt} className="sr-only">
-            {formattedTime}
-          </time>
-        )}
+        <time dateTime={createdAt} className="sr-only">
+          {formatTime(createdAt)}
+        </time>
       </div>
     </li>
   );

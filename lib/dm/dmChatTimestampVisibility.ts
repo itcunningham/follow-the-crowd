@@ -7,17 +7,17 @@ import {
 } from "@/lib/bookingRequests";
 import { isDmBookingSystemMessage } from "@/lib/dm/dmBookingSystemMessages";
 
-/** Gap after which a new timestamp adds value (matches common messaging app clustering). */
+/** Gap after which the next message starts a new timestamp cluster. */
 export const DM_CHAT_MEANINGFUL_TIME_GAP_MS = 5 * 60 * 1000;
 
 export type DmChatVisibleMessageKind = "timeline" | "chat" | "booking_card" | "hidden";
 
-export type DmChatTimestampLayout = {
+export type DmConversationTimestampLayout = {
   showTimestamp: boolean;
   compactBelow: boolean;
 };
 
-type TimestampVisibilityMessage = {
+type ClassifiedConversationMessage = {
   id: string;
   created_at: string;
   kind: DmChatVisibleMessageKind;
@@ -29,52 +29,22 @@ function resolveMessageTimestampMs(createdAt: string): number {
   return Number.isNaN(timestampMs) ? 0 : timestampMs;
 }
 
-function hasMeaningfulGapFromPrevious(
-  currentCreatedAt: string,
-  previousCreatedAt: string | undefined,
+function hasMeaningfulGapBetween(
+  earlierCreatedAt: string,
+  laterCreatedAt: string | undefined,
 ): boolean {
-  if (!previousCreatedAt) {
+  if (!laterCreatedAt) {
     return false;
   }
 
-  const currentMs = resolveMessageTimestampMs(currentCreatedAt);
-  const previousMs = resolveMessageTimestampMs(previousCreatedAt);
+  const earlierMs = resolveMessageTimestampMs(earlierCreatedAt);
+  const laterMs = resolveMessageTimestampMs(laterCreatedAt);
 
-  if (currentMs === 0 || previousMs === 0) {
+  if (earlierMs === 0 || laterMs === 0) {
     return false;
   }
 
-  return currentMs - previousMs >= DM_CHAT_MEANINGFUL_TIME_GAP_MS;
-}
-
-/** Decide when booking timeline rows show a visible timestamp. */
-export function resolveDmBookingTimelineTimestampLayout(
-  messages: readonly TimestampVisibilityMessage[],
-): Map<string, DmChatTimestampLayout> {
-  const layoutByMessageId = new Map<string, DmChatTimestampLayout>();
-  const visibleMessages = messages.filter((message) => message.kind !== "hidden");
-
-  for (let index = 0; index < visibleMessages.length; index += 1) {
-    const message = visibleMessages[index];
-
-    if (message.kind !== "timeline") {
-      continue;
-    }
-
-    const previous = visibleMessages[index - 1];
-    const next = visibleMessages[index + 1];
-    const nextIsTimeline = next?.kind === "timeline";
-    const isLastInTimelineRun = !nextIsTimeline;
-
-    layoutByMessageId.set(message.id, {
-      showTimestamp:
-        isLastInTimelineRun ||
-        hasMeaningfulGapFromPrevious(message.created_at, previous?.created_at),
-      compactBelow: nextIsTimeline,
-    });
-  }
-
-  return layoutByMessageId;
+  return laterMs - earlierMs >= DM_CHAT_MEANINGFUL_TIME_GAP_MS;
 }
 
 export function classifyDmConversationMessageKind(
@@ -112,18 +82,40 @@ export function classifyDmConversationMessageKind(
   return "chat";
 }
 
-export function buildDmBookingTimelineTimestampLayout(
+/** Shared timestamp clustering for every visible DM conversation item. */
+export function buildDmConversationTimestampLayout(
   messages: readonly { id: string; created_at: string; text: string }[],
   options: {
     bookings: BookingRequest[];
     conversationId: string;
   },
-): Map<string, DmChatTimestampLayout> {
-  return resolveDmBookingTimelineTimestampLayout(
-    messages.map((message) => ({
+): Map<string, DmConversationTimestampLayout> {
+  const layoutByMessageId = new Map<string, DmConversationTimestampLayout>();
+  const visibleMessages: ClassifiedConversationMessage[] = messages
+    .map((message) => ({
       id: message.id,
       created_at: message.created_at,
       kind: classifyDmConversationMessageKind(message.text, options),
-    })),
-  );
+    }))
+    .filter((message) => message.kind !== "hidden");
+
+  for (let index = 0; index < visibleMessages.length; index += 1) {
+    const message = visibleMessages[index];
+    const next = visibleMessages[index + 1];
+    const showTimestamp =
+      !next || hasMeaningfulGapBetween(message.created_at, next.created_at);
+    const compactBelow = Boolean(
+      next &&
+        !showTimestamp &&
+        message.kind === "timeline" &&
+        next.kind === "timeline",
+    );
+
+    layoutByMessageId.set(message.id, {
+      showTimestamp,
+      compactBelow,
+    });
+  }
+
+  return layoutByMessageId;
 }

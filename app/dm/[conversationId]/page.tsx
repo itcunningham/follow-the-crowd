@@ -54,7 +54,7 @@ import {
   isDmBookingSystemMessage,
 } from "@/lib/dm/dmBookingSystemMessages";
 import {
-  buildDmBookingTimelineTimestampLayout,
+  buildDmConversationTimestampLayout,
 } from "@/lib/dm/dmChatTimestampVisibility";
 import { parseDmThreadEntryContext, resolveDmThreadBackHref } from "@/lib/dm/threadNavigation";
 import { buildChatReturnTo } from "@/lib/profileNavigation";
@@ -351,9 +351,9 @@ export default function DmChatPage() {
     [reactions],
   );
   const reversedMessages = useMemo(() => [...messages].reverse(), [messages]);
-  const bookingTimelineTimestampLayout = useMemo(
+  const conversationTimestampLayout = useMemo(
     () =>
-      buildDmBookingTimelineTimestampLayout(messages, {
+      buildDmConversationTimestampLayout(messages, {
         bookings,
         conversationId,
       }),
@@ -1634,7 +1634,7 @@ export default function DmChatPage() {
               }
 
               if (isDmBookingSystemMessage(message.text)) {
-                const timelineTimestampLayout = bookingTimelineTimestampLayout.get(message.id);
+                const timelineLayout = conversationTimestampLayout.get(message.id);
 
                 return (
                   <DmBookingTimelineNotice
@@ -1644,8 +1644,7 @@ export default function DmChatPage() {
                     createdAt={message.created_at}
                     formatTime={formatMessageTime}
                     isHighlighted={isMessageHighlighted(message.id)}
-                    showTimestamp={timelineTimestampLayout?.showTimestamp ?? true}
-                    compactBelow={timelineTimestampLayout?.compactBelow ?? false}
+                    compactBelow={timelineLayout?.compactBelow ?? false}
                   />
                 );
               }
@@ -1658,6 +1657,8 @@ export default function DmChatPage() {
               const isBookingMessage = isBookingRequestMessage(message.text);
 
               if (!isBookingMessage) {
+                const messageTimestampLayout = conversationTimestampLayout.get(message.id);
+
                 return (
                   <DmTextMessageBubble
                     key={message.id}
@@ -1693,6 +1694,7 @@ export default function DmChatPage() {
                     formatTime={formatMessageTime}
                     isHighlighted={isMessageHighlighted(message.id)}
                     showSeen={shouldShowSeenOnMessage(message.id, message.created_at)}
+                    showTimestamp={messageTimestampLayout?.showTimestamp ?? true}
                   />
                 );
               }
@@ -1730,7 +1732,7 @@ export default function DmChatPage() {
                 : null;
 
               if (cardVisibility.hideCard) {
-                const timelineTimestampLayout = bookingTimelineTimestampLayout.get(message.id);
+                const timelineLayout = conversationTimestampLayout.get(message.id);
 
                 return (
                   <DmBookingTimelineNotice
@@ -1742,8 +1744,7 @@ export default function DmChatPage() {
                     createdAt={message.created_at}
                     formatTime={formatMessageTime}
                     isHighlighted={isMessageHighlighted(message.id)}
-                    showTimestamp={timelineTimestampLayout?.showTimestamp ?? true}
-                    compactBelow={timelineTimestampLayout?.compactBelow ?? false}
+                    compactBelow={timelineLayout?.compactBelow ?? false}
                   />
                 );
               }
@@ -1887,6 +1888,10 @@ export default function DmChatPage() {
                           dateTime={message.created_at}
                           className={`${DM_BOOKING_MESSAGE_TIMESTAMP_CLASS} ${
                             isOwnMessage ? "text-right" : "text-left"
+                          } ${
+                            conversationTimestampLayout.get(message.id)?.showTimestamp
+                              ? ""
+                              : "sr-only"
                           }`}
                         >
                           {formatMessageTime(message.created_at)}

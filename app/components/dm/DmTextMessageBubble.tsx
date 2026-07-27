@@ -31,6 +31,7 @@ export default function DmTextMessageBubble({
   formatTime,
   isHighlighted = false,
   showSeen = false,
+  showTimestamp = true,
 }: {
   messageId: string;
   text: string;
@@ -52,6 +53,7 @@ export default function DmTextMessageBubble({
   formatTime: (timestamp: string) => string;
   isHighlighted?: boolean;
   showSeen?: boolean;
+  showTimestamp?: boolean;
 }) {
   const trimmedText = text.trim();
   const displayText = formatBookingMessagePreview(trimmedText);
@@ -88,6 +90,7 @@ export default function DmTextMessageBubble({
 
   const highlightClass = getChatNewMessageHighlightClass(isHighlighted);
   const attachmentOnly = hasAttachments && !hasText;
+  const formattedTime = formatTime(createdAt);
   const bubbleShellClass = attachmentOnly
     ? "overflow-hidden [touch-action:pan-y]"
     : `overflow-hidden [touch-action:pan-y] ${
@@ -171,9 +174,9 @@ export default function DmTextMessageBubble({
             dateTime={createdAt}
             className={`-mt-1 block px-1 text-[10px] text-ftc-text-muted ${
               isOwnMessage ? "text-right" : "text-left"
-            }`}
+            } ${showTimestamp ? "" : "sr-only"}`}
           >
-            {formatTime(createdAt)}
+            {formattedTime}
           </time>
 
           <DmMessageReactions
