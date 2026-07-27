@@ -270,6 +270,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `cf374fb` — implement booking notes reveal scroll
 - `9e34a05` — restore booking notes Show more behaviour
 - `b2f16b7` — restore collapsed booking notes default state
 - `652c645` — smooth booking notes expansion
