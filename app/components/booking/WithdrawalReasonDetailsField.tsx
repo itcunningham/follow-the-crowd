@@ -127,7 +127,7 @@ export default function WithdrawalReasonDetailsField({
           onClick={syncCaretVisibility}
           rows={3}
           placeholder={placeholder}
-          className="ftc-textarea ftc-withdrawal-reason-textarea w-full rounded-lg text-sm"
+          className="ftc-textarea ftc-fixed-scroll-textarea ftc-fixed-scroll-textarea-3 ftc-withdrawal-reason-textarea w-full rounded-lg text-sm"
         />
         <span className="ftc-textarea-inline-counter" aria-hidden="true">
           {displayValue.length}/{MAX_WITHDRAWAL_OTHER_REASON_LENGTH}

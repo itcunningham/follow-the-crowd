@@ -70,6 +70,8 @@ Before writing code, walk this ladder top to bottom and **stop at the first rung
 6. **One line?** → One line.
 7. **Only then:** the minimum that works.
 
+**Reuse-first UI rule:** Before adding a new component, hook, CSS class, or interaction pattern, search the codebase for an existing solution (same problem → same pattern). Reuse `.ftc-*` tokens, `PlannerUi` primitives, `BookingSheetDialog`, badge components, and documented patterns in `docs/design/FTC_DESIGN_SYSTEM.md`. Create a new variant only when reuse would break semantics or layout; if two implementations already exist, report them and align to one standard rather than adding a third.
+
 ## 6. FTC product rules
 
 - **MVP-first** — smallest reliable version.

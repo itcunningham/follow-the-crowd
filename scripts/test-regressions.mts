@@ -826,11 +826,10 @@ function testProposeBookingRateNotesTextareaGrowth() {
   );
 
   assert.match(sheetSource, /MAX_NOTE_LENGTH = 250/);
-  assert.match(sheetSource, /ftc-proposal-rate-notes-textarea/);
-  assert.match(cssSource, /\.ftc-proposal-rate-notes-textarea/);
-  assert.match(cssSource, /height: calc\(6lh \+ 1\.25rem \+ 2px\) !important/);
-  assert.match(cssSource, /max-height: calc\(6lh \+ 1\.25rem \+ 2px\) !important/);
-  assert.match(cssSource, /overflow-y: auto !important/);
+  assert.match(sheetSource, /ftc-fixed-scroll-textarea ftc-fixed-scroll-textarea-6/);
+  assert.match(cssSource, /\.ftc-fixed-scroll-textarea/);
+  assert.match(cssSource, /\.ftc-fixed-scroll-textarea-6[\s\S]*height: calc\(6lh \+ 1\.25rem \+ 2px\) !important/);
+  assert.match(cssSource, /\.ftc-fixed-scroll-textarea[\s\S]*overflow-y: auto !important/);
   assert.match(sheetSource, /textareaRows=\{1\}/);
 }
 
@@ -2733,7 +2732,8 @@ function testWithdrawalOtherReasonInputLimits() {
   assert.match(scrollSource, /resetWithdrawalReasonTextareaScroll/);
 
   const globalsSource = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
-  assert.match(globalsSource, /\.ftc-withdrawal-reason-textarea[\s\S]*overflow-y: auto !important/);
+  assert.match(globalsSource, /\.ftc-fixed-scroll-textarea[\s\S]*overflow-y: auto !important/);
+  assert.match(globalsSource, /\.ftc-fixed-scroll-textarea-3[\s\S]*height: calc\(3lh \+ 1rem \+ 2px\) !important/);
   assert.match(globalsSource, /\.ftc-withdrawal-reason-textarea[\s\S]*scroll-padding-bottom: 2rem/);
   assert.match(globalsSource, /\.ftc-withdrawal-reason-textarea[\s\S]*padding-bottom: 2rem !important/);
 

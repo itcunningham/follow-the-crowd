@@ -238,7 +238,7 @@ Use `getFtcStatusBadgeSizeClass()` from `lib/design/ftcStatusBadge.ts` + semanti
 | Element | Class | Notes |
 |---------|-------|-------|
 | Text input | `.ftc-input px-3.5 py-2.5` | `min-height: 2.75rem` |
-| Textarea | `.ftc-input` on textarea | Event notes: `.ftc-event-notes-textarea` |
+| Textarea | `.ftc-input` on textarea | Event notes: `.ftc-event-notes-textarea` + `useBoundedAutoGrowTextarea`; fixed scroll: `.ftc-fixed-scroll-textarea` + `.ftc-fixed-scroll-textarea-3` or `-6` |
 | Label | `.ftc-label` | 11px uppercase, secondary colour |
 | Field error | `.ftc-inline-error` + `PlannerFieldError` | 12px below field |
 | Form card header | `.ftc-form-card-header` | Title + Cancel link |
