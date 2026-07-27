@@ -48,6 +48,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 - **DM booking proposed-rate copy (2026-07-26):** planner card removes duplicate header `Rate proposed` pill (panel heading retained); proposal body shows proposed `$amount` only; open-offer rate line shows `Ask for rate` (not `Offered rate · Ask for rate`) when DJ has proposed
 - **Ask for rate DM terminology (2026-07-26):** planner DM booking cards (collapsed + expanded + history rows) always show `Ask for rate` for open-offer bookings via `getDmBookingCardOfferSummary`; `Open offer` removed from planner DM summaries; DJ Gigs list copy unchanged
 - **DM booking expand scroll (2026-07-27):** chat scroller uses standard column scroll (`scrollTop` max = newest); View details expands smoothly then gently smooth-scrolls the minimum distance so the card top sits below the fixed header (`prefers-reduced-motion`: instant align)
+- **DM booking card booking type (2026-07-27):** expanded cards show status badge only in header; booking type appears once in details as labelled metadata (`Booking type` + secondary body text) after venue/date/time — no duplicate header pill
 - **DM booking system messages (2026-07-27):** booking event pills removed; timeline uses centred lightweight `DmBookingTimelineNotice` copy (e.g. `Rate proposed: $111`, `Original offer kept`); no pill borders/backgrounds; consecutive timeline events use subtle extra padding (`pb-1.5`) without tightening toward the next chat/card; timeline events share one conversation timestamp cluster with chat/booking cards via `buildDmConversationTimestampLayout` (5 min gap rule); booking card notes expand/collapse with measured-height animation (`duration-200`, `prefers-reduced-motion` respected), default to truncated `line-clamp-3` until Show more, and after expand use dedicated bottom-reveal scroll (`scheduleBookingCardNotesRevealScroll`) so Show less and action buttons stay above the DM scroller; notes reset collapsed when booking card hides details; booking card remains source of truth for current state
 - **DM history booking expand (2026-07-27):** cancelled/accepted/declined cards stay on `BookingRequestCard` when collapsed so View details uses the same grid expand animation as pending cards
 - Events: create, edit, cancel, delete, lineup, send bookings, run sheet
@@ -270,6 +271,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `TBD` — refine booking type presentation in booking cards
 - `cf374fb` — implement booking notes reveal scroll
 - `9e34a05` — restore booking notes Show more behaviour
 - `b2f16b7` — restore collapsed booking notes default state
