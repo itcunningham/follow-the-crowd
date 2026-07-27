@@ -444,7 +444,6 @@ export default function DmChatPage() {
         pendingBookingCardScrollIdRef.current = bookingRequestId;
 
         const container = scrollRef.current;
-        const lockedScrollTop = container?.scrollTop ?? 0;
 
         flushSync(() => {
           setBookingExpanded(bookingRequestId, true);
@@ -456,7 +455,6 @@ export default function DmChatPage() {
             () => bookingCardAnchorRefs.current.get(bookingRequestId) ?? null,
             bookingRequestId,
             pendingBookingCardScrollIdRef,
-            lockedScrollTop,
             () => {
               pendingBookingCardScrollIdRef.current = null;
               restoreChatAutoScrollSuppression();
@@ -1541,7 +1539,10 @@ export default function DmChatPage() {
     <div className="fixed inset-0 flex flex-col overflow-hidden bg-ftc-bg font-sans text-ftc-text">
       <AppNavigation />
       <div className={`${APP_DM_CHAT_COLUMN_CLASS} ${MOBILE_NAV_OFFSET_CLASS}`}>
-      <header className="z-10 shrink-0 border-b border-ftc-border-subtle bg-ftc-bg/95 px-3 py-2.5 backdrop-blur-md sm:px-4">
+      <header
+        data-dm-conversation-header
+        className="z-10 shrink-0 border-b border-ftc-border-subtle bg-ftc-bg/95 px-3 py-2.5 backdrop-blur-md sm:px-4"
+      >
         <DmConversationHeader
           backHref={backHref}
           backReplace={backReplace}

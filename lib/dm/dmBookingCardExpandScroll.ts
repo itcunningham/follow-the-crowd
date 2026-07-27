@@ -6,10 +6,12 @@ export const DM_BOOKING_CARD_REQUEST_ID_ATTR = "data-dm-booking-request-id";
 
 export const DM_BOOKING_CARD_EXPAND_PANEL_ATTR = "data-dm-booking-card-expand-panel";
 
-/** Visual gap between the scroll container top and the expanded card. */
+export const DM_CONVERSATION_HEADER_ATTR = "data-dm-conversation-header";
+
+/** Visual gap between the conversation header and the expanded card top. */
 const DM_BOOKING_CARD_HEADER_GAP_PX = 8;
 
-const DM_BOOKING_CARD_LAYOUT_STABLE_MAX_FRAMES = 24;
+const DM_BOOKING_CARD_ANCHOR_WAIT_MAX_FRAMES = 24;
 
 const DM_BOOKING_CARD_EXPAND_TRANSITION_MS = 220;
 
@@ -23,6 +25,10 @@ function prefersReducedMotion(): boolean {
     typeof window !== "undefined" &&
     window.matchMedia("(prefers-reduced-motion: reduce)").matches
   );
+}
+
+function resolveScrollBehavior(): ScrollBehavior {
+  return prefersReducedMotion() ? "auto" : "smooth";
 }
 
 export function clampDmMessageScrollTop(container: HTMLElement): void {
@@ -100,6 +106,25 @@ export function restoreBookingCardScrollPosition(
   clampDmMessageScrollTop(container);
 }
 
+/** Viewport Y coordinate where the expanded card top should sit (below the DM header). */
+export function resolveDmBookingCardAlignTop(
+  container: HTMLElement,
+  gap: number = DM_BOOKING_CARD_HEADER_GAP_PX,
+): number {
+  const header = container.parentElement?.querySelector<HTMLElement>(
+    `[${DM_CONVERSATION_HEADER_ATTR}]`,
+  );
+
+  if (header) {
+    return header.getBoundingClientRect().bottom + gap;
+  }
+
+  const containerRect = container.getBoundingClientRect();
+  const paddingTop = Number.parseFloat(getComputedStyle(container).paddingTop) || 0;
+
+  return containerRect.top + paddingTop + gap;
+}
+
 export function scrollExpandedBookingCardBelowHeader(
   container: HTMLElement,
   cardAnchor: HTMLElement,
@@ -109,13 +134,13 @@ export function scrollExpandedBookingCardBelowHeader(
     return;
   }
 
-  const containerRect = container.getBoundingClientRect();
   const cardRect = cardAnchor.getBoundingClientRect();
+  const desiredCardTop = resolveDmBookingCardAlignTop(container);
   const maxScrollTop = Math.max(0, container.scrollHeight - container.clientHeight);
   const targetScrollTop = computeBookingCardAlignScrollTop(
     container.scrollTop,
     cardRect.top,
-    containerRect.top,
+    desiredCardTop,
     maxScrollTop,
   );
 
@@ -123,19 +148,20 @@ export function scrollExpandedBookingCardBelowHeader(
     return;
   }
 
-  container.scrollTop = targetScrollTop;
+  container.scrollTo({
+    top: targetScrollTop,
+    behavior: resolveScrollBehavior(),
+  });
 }
 
-/** Align card top to the scroll container top (+ gap) in a flex-col-reverse DM list. */
+/** Align card top to a viewport Y in a flex-col-reverse DM message list. */
 export function computeBookingCardAlignScrollTop(
   scrollTop: number,
   cardTop: number,
-  containerTop: number,
+  desiredCardTop: number,
   maxScrollTop: number,
-  gap: number = DM_BOOKING_CARD_HEADER_GAP_PX,
 ): number {
-  const desiredTop = containerTop + gap;
-  const delta = cardTop - desiredTop;
+  const delta = cardTop - desiredCardTop;
 
   if (Math.abs(delta) < 2) {
     return scrollTop;
@@ -151,60 +177,6 @@ export function computeBookingCardAlignScrollTop(
   }
 
   return Math.max(0, Math.min(maxScrollTop, targetScrollTop));
-}
-
-function waitForBookingCardLayoutStable(
-  getCardAnchor: () => HTMLElement | null,
-  onReady: () => void,
-): () => void {
-  let cancelled = false;
-  let frameId = 0;
-  let attempts = 0;
-  let lastHeight = -1;
-
-  const tick = () => {
-    if (cancelled) {
-      return;
-    }
-
-    const cardAnchor = getCardAnchor();
-
-    if (!cardAnchor) {
-      attempts += 1;
-
-      if (attempts < DM_BOOKING_CARD_LAYOUT_STABLE_MAX_FRAMES) {
-        frameId = requestAnimationFrame(tick);
-      }
-
-      return;
-    }
-
-    const nextHeight = cardAnchor.getBoundingClientRect().height;
-
-    if (nextHeight === lastHeight && lastHeight >= 0) {
-      onReady();
-      return;
-    }
-
-    lastHeight = nextHeight;
-    attempts += 1;
-
-    if (attempts < DM_BOOKING_CARD_LAYOUT_STABLE_MAX_FRAMES) {
-      frameId = requestAnimationFrame(tick);
-      return;
-    }
-
-    onReady();
-  };
-
-  frameId = requestAnimationFrame(() => {
-    frameId = requestAnimationFrame(tick);
-  });
-
-  return () => {
-    cancelled = true;
-    cancelAnimationFrame(frameId);
-  };
 }
 
 function waitForBookingCardExpandTransition(
@@ -265,33 +237,23 @@ function waitForBookingCardExpandTransition(
   };
 }
 
-function waitForBookingCardExpandLayout(
+function waitForExpandedBookingCardReady(
   getCardAnchor: () => HTMLElement | null,
   onReady: () => void,
 ): () => void {
   let cancelled = false;
-  let cancelStableWait: (() => void) | null = null;
+  let frameId = 0;
+  let attempts = 0;
   let cancelTransitionWait: (() => void) | null = null;
 
   const finish = () => {
-    if (cancelled) {
-      return;
-    }
-
     cancelled = true;
-    cancelStableWait?.();
-    cancelStableWait = null;
+    cancelAnimationFrame(frameId);
     cancelTransitionWait?.();
     cancelTransitionWait = null;
   };
 
-  cancelStableWait = waitForBookingCardLayoutStable(() => {
-    if (cancelled) {
-      return null;
-    }
-
-    return getCardAnchor();
-  }, () => {
+  const tick = () => {
     if (cancelled) {
       return;
     }
@@ -299,36 +261,42 @@ function waitForBookingCardExpandLayout(
     const cardAnchor = getCardAnchor();
 
     if (!cardAnchor) {
-      onReady();
-      finish();
+      attempts += 1;
+
+      if (attempts < DM_BOOKING_CARD_ANCHOR_WAIT_MAX_FRAMES) {
+        frameId = requestAnimationFrame(tick);
+      }
+
       return;
     }
 
     cancelTransitionWait = waitForBookingCardExpandTransition(cardAnchor, () => {
-      if (!cancelled) {
-        onReady();
+      if (cancelled) {
+        return;
       }
 
-      finish();
+      requestAnimationFrame(() => {
+        requestAnimationFrame(onReady);
+      });
     });
-  });
+  };
+
+  frameId = requestAnimationFrame(tick);
 
   return finish;
 }
 
-/** Scroll once after the tapped card's expanded layout + transition have finished. */
+/** Scroll once after the tapped card has fully expanded. */
 export function scheduleExpandedBookingCardScrollAlign(
   container: HTMLElement,
   getCardAnchor: () => HTMLElement | null,
   bookingRequestId: string,
   pendingBookingRequestIdRef: MutableRefObject<string | null>,
-  lockedScrollTop: number,
   onComplete?: () => void,
 ): () => void {
   let cancelled = false;
   let scrolled = false;
-  let unlockScroll: (() => void) | null = lockDmMessageScrollTop(container, lockedScrollTop);
-  let cancelLayoutWait: (() => void) | null = null;
+  let cancelReadyWait: (() => void) | null = null;
 
   const finish = () => {
     if (cancelled) {
@@ -336,10 +304,8 @@ export function scheduleExpandedBookingCardScrollAlign(
     }
 
     cancelled = true;
-    cancelLayoutWait?.();
-    cancelLayoutWait = null;
-    unlockScroll?.();
-    unlockScroll = null;
+    cancelReadyWait?.();
+    cancelReadyWait = null;
     onComplete?.();
   };
 
@@ -356,14 +322,12 @@ export function scheduleExpandedBookingCardScrollAlign(
       return;
     }
 
-    unlockScroll?.();
-    unlockScroll = null;
     scrollExpandedBookingCardBelowHeader(container, cardAnchor, bookingRequestId);
     scrolled = true;
     finish();
   };
 
-  cancelLayoutWait = waitForBookingCardExpandLayout(getCardAnchor, runScroll);
+  cancelReadyWait = waitForExpandedBookingCardReady(getCardAnchor, runScroll);
 
   return finish;
 }
@@ -380,7 +344,7 @@ export function scheduleCollapsedBookingCardScrollRestore(
     container,
     capture?.scrollTop ?? container.scrollTop,
   );
-  let cancelLayoutWait: (() => void) | null = null;
+  let cancelReadyWait: (() => void) | null = null;
 
   const finish = () => {
     if (cancelled) {
@@ -388,8 +352,8 @@ export function scheduleCollapsedBookingCardScrollRestore(
     }
 
     cancelled = true;
-    cancelLayoutWait?.();
-    cancelLayoutWait = null;
+    cancelReadyWait?.();
+    cancelReadyWait = null;
     unlockScroll?.();
     unlockScroll = null;
     onComplete?.();
@@ -415,7 +379,7 @@ export function scheduleCollapsedBookingCardScrollRestore(
     finish();
   };
 
-  cancelLayoutWait = waitForBookingCardExpandLayout(getCardAnchor, runRestore);
+  cancelReadyWait = waitForExpandedBookingCardReady(getCardAnchor, runRestore);
 
   return finish;
 }

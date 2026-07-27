@@ -497,8 +497,10 @@ function testDmBookingCardExpandCollapseScrollAnchor() {
   assert.doesNotMatch(pageSource, /scheduleDmBookingCardExpandScroll/);
   assert.doesNotMatch(pageSource, /bookingExpandSpacerPx/);
   assert.match(pageSource, /\[overflow-anchor:none\]/);
-  assert.match(expandScrollSource, /lockDmMessageScrollTop/);
+  assert.match(pageSource, /data-dm-conversation-header/);
+  assert.match(expandScrollSource, /resolveDmBookingCardAlignTop/);
   assert.match(expandScrollSource, /scrollExpandedBookingCardBelowHeader/);
+  assert.match(expandScrollSource, /scrollTo\(/);
   assert.match(expandScrollSource, /restoreBookingCardScrollPosition/);
   assert.match(expandScrollSource, /clampDmMessageScrollTop/);
   assert.match(expandScrollSource, /DM_BOOKING_CARD_EXPAND_PANEL_ATTR/);
@@ -511,25 +513,20 @@ function testDmBookingCardExpandCollapseScrollAnchor() {
 }
 
 function testDmBookingCardAlignScrollTopMath() {
-  const containerTop = 100;
-  const gap = 8;
-  const desiredTop = containerTop + gap;
+  const desiredCardTop = 108;
   const maxScrollTop = 1200;
 
+  assert.equal(computeBookingCardAlignScrollTop(0, desiredCardTop, desiredCardTop, maxScrollTop), 0);
   assert.equal(
-    computeBookingCardAlignScrollTop(0, desiredTop, containerTop, maxScrollTop, gap),
-    0,
-  );
-  assert.equal(
-    computeBookingCardAlignScrollTop(0, desiredTop + 92, containerTop, maxScrollTop, gap),
+    computeBookingCardAlignScrollTop(0, desiredCardTop + 92, desiredCardTop, maxScrollTop),
     92,
   );
   assert.equal(
-    computeBookingCardAlignScrollTop(0, desiredTop - 308, containerTop, maxScrollTop, gap),
+    computeBookingCardAlignScrollTop(0, desiredCardTop - 308, desiredCardTop, maxScrollTop),
     308,
   );
   assert.equal(
-    computeBookingCardAlignScrollTop(500, desiredTop - 308, containerTop, maxScrollTop, gap),
+    computeBookingCardAlignScrollTop(500, desiredCardTop - 308, desiredCardTop, maxScrollTop),
     192,
   );
 }
