@@ -502,7 +502,9 @@ function testDmBookingCardExpandCollapseScrollAnchor() {
   assert.match(pageSource, /\[overflow-anchor:none\]/);
   assert.match(pageSource, /data-dm-conversation-header/);
   assert.match(expandScrollSource, /resolveDmBookingCardAlignTop/);
-  assert.match(expandScrollSource, /scrollExpandedBookingCardBelowHeader/);
+  assert.match(expandScrollSource, /resolveScrollBehavior/);
+  assert.match(expandScrollSource, /waitForSmoothScrollAlign/);
+  assert.match(expandScrollSource, /scrollend/);
   assert.match(expandScrollSource, /scrollTo\(/);
   assert.match(expandScrollSource, /restoreBookingCardScrollPosition/);
   assert.match(expandScrollSource, /clampDmMessageScrollTop/);

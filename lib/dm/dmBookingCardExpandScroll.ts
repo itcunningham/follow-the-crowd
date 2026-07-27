@@ -284,6 +284,70 @@ function waitForExpandedBookingCardReady(
   return finish;
 }
 
+function waitForSmoothScrollAlign(
+  container: HTMLElement,
+  targetScrollTop: number,
+  onComplete: () => void,
+): () => void {
+  let finished = false;
+
+  const complete = () => {
+    if (finished) {
+      return;
+    }
+
+    finished = true;
+    onComplete();
+  };
+
+  const cancel = () => {
+    finished = true;
+  };
+
+  if ("onscrollend" in window) {
+    container.addEventListener("scrollend", complete, { once: true });
+    return cancel;
+  }
+
+  let lastScrollTop = container.scrollTop;
+  let stableFrames = 0;
+  let frameId = 0;
+
+  const tick = () => {
+    if (finished) {
+      return;
+    }
+
+    const currentScrollTop = container.scrollTop;
+
+    if (Math.abs(currentScrollTop - targetScrollTop) < 2) {
+      complete();
+      return;
+    }
+
+    if (currentScrollTop === lastScrollTop) {
+      stableFrames += 1;
+
+      if (stableFrames >= 3) {
+        complete();
+        return;
+      }
+    } else {
+      stableFrames = 0;
+      lastScrollTop = currentScrollTop;
+    }
+
+    frameId = requestAnimationFrame(tick);
+  };
+
+  frameId = requestAnimationFrame(tick);
+
+  return () => {
+    finished = true;
+    cancelAnimationFrame(frameId);
+  };
+}
+
 /** Scroll once after the tapped card has fully expanded. */
 export function scheduleExpandedBookingCardScrollAlign(
   container: HTMLElement,
@@ -295,6 +359,7 @@ export function scheduleExpandedBookingCardScrollAlign(
   let cancelled = false;
   let scrolled = false;
   let cancelReadyWait: (() => void) | null = null;
+  let cancelScrollAlignWait: (() => void) | null = null;
 
   const finish = () => {
     if (cancelled) {
@@ -304,6 +369,8 @@ export function scheduleExpandedBookingCardScrollAlign(
     cancelled = true;
     cancelReadyWait?.();
     cancelReadyWait = null;
+    cancelScrollAlignWait?.();
+    cancelScrollAlignWait = null;
     onComplete?.();
   };
 
@@ -320,8 +387,40 @@ export function scheduleExpandedBookingCardScrollAlign(
       return;
     }
 
-    scrollExpandedBookingCardBelowHeader(container, cardAnchor, bookingRequestId, "auto");
+    const scrollBehavior = resolveScrollBehavior();
+    const cardRect = cardAnchor.getBoundingClientRect();
+    const desiredCardTop = resolveDmBookingCardAlignTop(container);
+    const maxScrollTop = Math.max(0, container.scrollHeight - container.clientHeight);
+    const targetScrollTop = computeBookingCardAlignScrollTop(
+      container.scrollTop,
+      cardRect.top,
+      desiredCardTop,
+      maxScrollTop,
+    );
+
+    if (targetScrollTop === container.scrollTop) {
+      scrolled = true;
+      finish();
+      return;
+    }
+
+    scrollExpandedBookingCardBelowHeader(
+      container,
+      cardAnchor,
+      bookingRequestId,
+      scrollBehavior,
+    );
     scrolled = true;
+
+    if (scrollBehavior === "smooth") {
+      cancelScrollAlignWait = waitForSmoothScrollAlign(
+        container,
+        targetScrollTop,
+        finish,
+      );
+      return;
+    }
+
     finish();
   };
 
