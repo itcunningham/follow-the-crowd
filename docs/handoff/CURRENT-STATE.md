@@ -269,6 +269,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `6df8c87` — smooth DM booking card alignment scroll
 - `92b189d` — smoothly expand DM history booking cards
 - `c42d3f5` — implement standard chat scroll model (Option B-lite)
 - `53e9a7d` — prevent latest-message scroll during booking expansion
