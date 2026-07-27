@@ -46,7 +46,7 @@ function BookingCardExpandableNotes({
   useLayoutEffect(() => {
     const element = textRef.current;
 
-    if (!element) {
+    if (!element || !detailsOpen) {
       return;
     }
 
@@ -57,29 +57,56 @@ function BookingCardExpandableNotes({
         return;
       }
 
-      node.classList.remove("line-clamp-3");
-      const fullHeight = node.scrollHeight;
-      node.classList.add("line-clamp-3");
-      const collapsedHeight = node.scrollHeight;
+      const isExpanded = expandedRef.current;
 
-      if (expandedRef.current) {
-        node.classList.remove("line-clamp-3");
+      if (!isExpanded) {
+        setShowToggle(node.scrollHeight > node.clientHeight + 1);
       }
 
-      setNoteHeights({ collapsed: collapsedHeight, full: fullHeight });
-      setShowToggle(fullHeight > collapsedHeight + 1);
-      setAnimatedHeight(
-        expandedRef.current ? fullHeight : collapsedHeight,
-      );
+      node.classList.remove("line-clamp-3");
+      const fullHeight = node.scrollHeight;
+
+      if (!isExpanded) {
+        node.classList.add("line-clamp-3");
+      }
+
+      const collapsedHeight = isExpanded
+        ? (() => {
+            node.classList.add("line-clamp-3");
+            const height = node.clientHeight;
+            node.classList.remove("line-clamp-3");
+            return height;
+          })()
+        : node.clientHeight;
+
+      const needsToggle = fullHeight > collapsedHeight + 1;
+
+      if (!isExpanded) {
+        setShowToggle(needsToggle);
+      }
+
+      if (needsToggle || isExpanded) {
+        setNoteHeights({ collapsed: collapsedHeight, full: fullHeight });
+        setAnimatedHeight(isExpanded ? fullHeight : collapsedHeight);
+      } else {
+        setNoteHeights(null);
+        setAnimatedHeight(null);
+      }
     }
 
     measureHeights();
+
+    const resizeObserver = new ResizeObserver(() => {
+      measureHeights();
+    });
+    resizeObserver.observe(element);
     window.addEventListener("resize", measureHeights);
 
     return () => {
+      resizeObserver.disconnect();
       window.removeEventListener("resize", measureHeights);
     };
-  }, [trimmed, detailsOpen]);
+  }, [trimmed, detailsOpen, expanded]);
 
   useLayoutEffect(() => {
     if (!detailsOpen || !noteHeights || expanded) {

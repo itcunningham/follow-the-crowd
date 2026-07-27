@@ -745,6 +745,9 @@ function testDmBookingCardNotesExpandAnimation() {
   assert.match(summarySource, /Show less/);
   assert.match(summarySource, /line-clamp-3/);
   assert.match(summarySource, /detailsOpen/);
+  assert.match(summarySource, /scrollHeight > node\.clientHeight \+ 1/);
+  assert.match(summarySource, /node\.clientHeight/);
+  assert.match(summarySource, /ResizeObserver/);
   assert.doesNotMatch(summarySource, /useMeasuredHeight \? "block"/);
 
   const cardSource = readFileSync(
