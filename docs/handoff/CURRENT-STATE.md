@@ -48,7 +48,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 - **DM booking proposed-rate copy (2026-07-26):** planner card removes duplicate header `Rate proposed` pill (panel heading retained); proposal body shows proposed `$amount` only; open-offer rate line shows `Ask for rate` (not `Offered rate · Ask for rate`) when DJ has proposed
 - **Ask for rate DM terminology (2026-07-26):** planner DM booking cards (collapsed + expanded + history rows) always show `Ask for rate` for open-offer bookings via `getDmBookingCardOfferSummary`; `Open offer` removed from planner DM summaries; DJ Gigs list copy unchanged
 - **DM booking expand scroll (2026-07-27):** chat scroller uses standard column scroll (`scrollTop` max = newest); View details expands smoothly then gently smooth-scrolls the minimum distance so the card top sits below the fixed header (`prefers-reduced-motion`: instant align)
-- **DM booking system messages (2026-07-27):** booking event pills removed; timeline uses centred lightweight `DmBookingTimelineNotice` copy (e.g. `Rate proposed: $111`, `Original offer kept`); no pill borders/backgrounds; timeline events share one conversation timestamp cluster with chat/booking cards via `buildDmConversationTimestampLayout` (5 min gap rule); booking card remains source of truth for current state
+- **DM booking system messages (2026-07-27):** booking event pills removed; timeline uses centred lightweight `DmBookingTimelineNotice` copy (e.g. `Rate proposed: $111`, `Original offer kept`); no pill borders/backgrounds; consecutive timeline events use subtle extra padding (`pb-1.5`) without tightening toward the next chat/card; timeline events share one conversation timestamp cluster with chat/booking cards via `buildDmConversationTimestampLayout` (5 min gap rule); booking card remains source of truth for current state
 - **DM history booking expand (2026-07-27):** cancelled/accepted/declined cards stay on `BookingRequestCard` when collapsed so View details uses the same grid expand animation as pending cards
 - Events: create, edit, cancel, delete, lineup, send bookings, run sheet
 - Event Plans (`/booking-plans`), Calendar (`/calendar`), Gigs (`/bookings`)
@@ -270,6 +270,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `78195bd` — improve booking timeline event spacing
 - `a6a82ff` — unify booking timeline timestamp behaviour
 - `d308e18` — improve booking timeline timestamp grouping
 - `52a7037` — polish booking timeline system messages
