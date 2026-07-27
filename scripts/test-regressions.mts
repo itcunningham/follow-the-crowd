@@ -485,7 +485,8 @@ function testDmBookingCardExpandCollapseScrollAnchor() {
 
   assert.match(pageSource, /handleBookingExpansionChange/);
   assert.match(pageSource, /scheduleExpandedBookingCardScrollAlign/);
-  assert.match(pageSource, /scheduleCollapsedBookingCardScrollClamp/);
+  assert.match(pageSource, /scheduleCollapsedBookingCardScrollRestore/);
+  assert.match(pageSource, /captureBookingCardScrollPosition/);
   assert.match(pageSource, /bookingCardAnchorRefs/);
   assert.match(pageSource, /registerBookingCardAnchor/);
   assert.match(pageSource, /pendingBookingCardScrollIdRef/);
@@ -495,6 +496,7 @@ function testDmBookingCardExpandCollapseScrollAnchor() {
   assert.doesNotMatch(pageSource, /bookingExpandSpacerPx/);
   assert.doesNotMatch(pageSource, /overflow-anchor:none/);
   assert.match(expandScrollSource, /scrollExpandedBookingCardBelowHeader/);
+  assert.match(expandScrollSource, /restoreBookingCardScrollPosition/);
   assert.match(expandScrollSource, /clampDmMessageScrollTop/);
   assert.doesNotMatch(expandScrollSource, /scrollIntoView/);
   assert.match(scrollSource, /getAppendedMessageIds/);

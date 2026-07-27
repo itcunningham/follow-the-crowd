@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 
 export const DM_BOOKING_CARD_MAX_WIDTH_CLASS = "max-w-xs";
 
-export const DM_BOOKING_CARD_SHELL_CLASS = `w-full min-w-0 ${DM_BOOKING_CARD_MAX_WIDTH_CLASS} overflow-x-hidden rounded-2xl border border-ftc-border-subtle bg-ftc-surface p-3.5`;
+export const DM_BOOKING_CARD_SHELL_CLASS = `w-full min-w-0 ${DM_BOOKING_CARD_MAX_WIDTH_CLASS} overflow-x-hidden [overflow-anchor:none] rounded-2xl border border-ftc-border-subtle bg-ftc-surface p-3.5`;
 
 export const DM_BOOKING_CARD_ACTIONS_CLASS = "mt-4 flex flex-col gap-2";
 

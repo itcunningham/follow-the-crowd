@@ -4,10 +4,18 @@ export const DM_BOOKING_CARD_ANCHOR_ATTR = "data-dm-booking-card-anchor";
 
 export const DM_BOOKING_CARD_REQUEST_ID_ATTR = "data-dm-booking-request-id";
 
+/** Prevent booking-card height changes from becoming scroll anchors in flex-col-reverse DMs. */
+export const DM_BOOKING_CARD_OVERFLOW_ANCHOR_CLASS = "[overflow-anchor:none]";
+
 /** Visual gap between the scroll container top and the expanded card. */
 const DM_BOOKING_CARD_HEADER_GAP_PX = 8;
 
 const DM_BOOKING_CARD_LAYOUT_STABLE_MAX_FRAMES = 12;
+
+export type BookingCardScrollCapture = {
+  scrollTop: number;
+  anchorTop: number;
+};
 
 function resolveScrollBehavior(): ScrollBehavior {
   if (typeof window === "undefined") {
@@ -27,6 +35,30 @@ export function clampDmMessageScrollTop(container: HTMLElement): void {
   if (container.scrollTop < 0) {
     container.scrollTop = 0;
   }
+}
+
+export function captureBookingCardScrollPosition(
+  container: HTMLElement,
+  cardAnchor: HTMLElement,
+): BookingCardScrollCapture {
+  return {
+    scrollTop: container.scrollTop,
+    anchorTop: cardAnchor.getBoundingClientRect().top,
+  };
+}
+
+export function restoreBookingCardScrollPosition(
+  container: HTMLElement,
+  cardAnchor: HTMLElement,
+  capture: BookingCardScrollCapture,
+): void {
+  const delta = cardAnchor.getBoundingClientRect().top - capture.anchorTop;
+
+  if (delta !== 0) {
+    container.scrollTop = capture.scrollTop + delta;
+  }
+
+  clampDmMessageScrollTop(container);
 }
 
 export function scrollExpandedBookingCardBelowHeader(
@@ -56,7 +88,7 @@ export function scrollExpandedBookingCardBelowHeader(
   });
 }
 
-function waitForExpandedBookingCardLayout(
+function waitForBookingCardLayoutStable(
   getCardAnchor: () => HTMLElement | null,
   onReady: () => void,
 ): () => void {
@@ -151,27 +183,50 @@ export function scheduleExpandedBookingCardScrollAlign(
     finish();
   };
 
-  cancelLayoutWait = waitForExpandedBookingCardLayout(getCardAnchor, runScroll);
+  cancelLayoutWait = waitForBookingCardLayoutStable(getCardAnchor, runScroll);
 
   return finish;
 }
 
-export function scheduleCollapsedBookingCardScrollClamp(
+/** After collapse, restore the card's visual position then clamp if needed. */
+export function scheduleCollapsedBookingCardScrollRestore(
   container: HTMLElement,
+  getCardAnchor: () => HTMLElement | null,
+  capture: BookingCardScrollCapture | null,
+  onComplete?: () => void,
 ): () => void {
   let cancelled = false;
-  let frameId = 0;
+  let cancelLayoutWait: (() => void) | null = null;
 
-  frameId = requestAnimationFrame(() => {
-    frameId = requestAnimationFrame(() => {
-      if (!cancelled) {
-        clampDmMessageScrollTop(container);
-      }
-    });
-  });
+  const finish = () => {
+    if (cancelled) {
+      return;
+    }
 
-  return () => {
     cancelled = true;
-    cancelAnimationFrame(frameId);
+    cancelLayoutWait?.();
+    cancelLayoutWait = null;
+    onComplete?.();
   };
+
+  const runRestore = () => {
+    if (cancelled) {
+      finish();
+      return;
+    }
+
+    const cardAnchor = getCardAnchor();
+
+    if (cardAnchor && capture) {
+      restoreBookingCardScrollPosition(container, cardAnchor, capture);
+    } else {
+      clampDmMessageScrollTop(container);
+    }
+
+    finish();
+  };
+
+  cancelLayoutWait = waitForBookingCardLayoutStable(getCardAnchor, runRestore);
+
+  return finish;
 }

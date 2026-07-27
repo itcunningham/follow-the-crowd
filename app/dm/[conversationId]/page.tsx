@@ -95,7 +95,8 @@ import {
   CHAT_BOOKING_REQUEST_ID_ATTR,
 } from "@/lib/dm/chatBookingTarget";
 import {
-  scheduleCollapsedBookingCardScrollClamp,
+  captureBookingCardScrollPosition,
+  scheduleCollapsedBookingCardScrollRestore,
   scheduleExpandedBookingCardScrollAlign,
 } from "@/lib/dm/dmBookingCardExpandScroll";
 import {
@@ -436,10 +437,10 @@ export default function DmChatPage() {
     (bookingRequestId: string, expanded: boolean) => {
       bookingCardScrollCleanupRef.current?.();
       bookingCardScrollCleanupRef.current = null;
+      suppressAutoScrollRef.current = true;
 
       if (expanded) {
         pendingBookingCardScrollIdRef.current = bookingRequestId;
-        suppressAutoScrollRef.current = true;
         setBookingExpanded(bookingRequestId, true);
 
         const container = scrollRef.current;
@@ -464,15 +465,26 @@ export default function DmChatPage() {
       }
 
       pendingBookingCardScrollIdRef.current = null;
-      setBookingExpanded(bookingRequestId, false);
 
       const container = scrollRef.current;
+      const cardAnchor = bookingCardAnchorRefs.current.get(bookingRequestId) ?? null;
+      const collapseCapture =
+        container && cardAnchor
+          ? captureBookingCardScrollPosition(container, cardAnchor)
+          : null;
+
+      setBookingExpanded(bookingRequestId, false);
 
       if (container) {
-        bookingCardScrollCleanupRef.current = scheduleCollapsedBookingCardScrollClamp(container);
+        bookingCardScrollCleanupRef.current = scheduleCollapsedBookingCardScrollRestore(
+          container,
+          () => bookingCardAnchorRefs.current.get(bookingRequestId) ?? null,
+          collapseCapture,
+          restoreChatAutoScrollSuppression,
+        );
+      } else {
+        restoreChatAutoScrollSuppression();
       }
-
-      restoreChatAutoScrollSuppression();
     },
     [restoreChatAutoScrollSuppression, scrollRef, setBookingExpanded],
   );
@@ -1565,7 +1577,13 @@ export default function DmChatPage() {
         ref={scrollRef}
         className="flex min-h-0 flex-1 flex-col-reverse overflow-y-auto overscroll-contain px-3 py-4 sm:px-4"
       >
-        <div ref={bottomRef} data-chat-bottom aria-hidden="true" className="h-px shrink-0" />
+        <div
+          ref={bottomRef}
+          data-chat-bottom
+          aria-hidden="true"
+          className="h-px shrink-0"
+          style={{ overflowAnchor: "none" }}
+        />
         {loading ? (
           <ChatMessagesSkeleton />
         ) : messages.length === 0 ? (
