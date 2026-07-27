@@ -128,6 +128,7 @@ import {
   resolveCalendarCreateInitialStep,
   resolveCalendarSaveReturnDateKey,
   resolveEventsListTabParam,
+  resolveEventsListCreateBootstrapState,
   resolveEventsWorkspaceActiveHref,
 } from "@/lib/events/eventsListNavigation";
 import { resolveEventsWorkspaceChromeRole } from "@/lib/events/eventsWorkspaceChromeRole";
@@ -191,6 +192,26 @@ function getCalendarBootstrapState(
     initialCreate ?? locationParams.create,
     initialEventDate ?? locationParams.eventDate,
   );
+}
+
+function getEventsCreateBootstrapState(
+  initialCreate?: string | null,
+  initialEventDate?: string | null,
+) {
+  const locationParams = readCreateParamsFromLocation();
+
+  return resolveEventsListCreateBootstrapState(
+    initialCreate ?? locationParams.create,
+    initialEventDate ?? locationParams.eventDate,
+  );
+}
+
+function readCreateFlowReturnPlanIdFromLocation(): string | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  return resolveCreateFlowReturnPlanId(new URLSearchParams(window.location.search));
 }
 
 const EVENT_LIST_CARD_CHEVRON_SLOT_CLASS = "mt-0.5 h-4 w-4 shrink-0";
@@ -426,28 +447,36 @@ function EventsPageClientView({
   eventsRef.current = events;
   const [loadingEvents, setLoadingEvents] = useState(() => mountListState.loadingEvents);
   const calendarBootstrap = getCalendarBootstrapState(initialCreate, initialEventDate);
-  const [createOpen, setCreateOpen] = useState(() => calendarBootstrap?.createOpen ?? false);
+  const eventsCreateBootstrap = getEventsCreateBootstrapState(initialCreate, initialEventDate);
+  const createBootstrap = calendarBootstrap ?? eventsCreateBootstrap;
+  const [createOpen, setCreateOpen] = useState(() => createBootstrap?.createOpen ?? false);
   const [createStep, setCreateStep] = useState<CreateStep>(
-    () => calendarBootstrap?.createStep ?? "source",
+    () => createBootstrap?.createStep ?? "source",
   );
   const [bookingPlans, setBookingPlans] = useState<BookingPlan[]>(() => {
-    if (calendarBootstrap?.createStep === "pick-plan") {
+    if (createBootstrap?.createStep === "pick-plan") {
       return readBookingPlansListCache() ?? [];
     }
 
     return [];
   });
   const [loadingPlans, setLoadingPlans] = useState(() => {
-    if (!calendarBootstrap?.createOpen || calendarBootstrap.createStep !== "pick-plan") {
+    if (!createBootstrap?.createOpen || createBootstrap.createStep !== "pick-plan") {
       return false;
     }
 
     return readBookingPlansListCache() === null;
   });
-  const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
+  const [selectedPlanId, setSelectedPlanId] = useState<string | null>(() => {
+    if (eventsCreateBootstrap?.createStep !== "pick-plan") {
+      return null;
+    }
+
+    return readCreateFlowReturnPlanIdFromLocation();
+  });
   const [form, setForm] = useState<EventInput>(() => ({
     ...emptyEventForm,
-    eventDate: calendarBootstrap?.prefilledEventDate ?? "",
+    eventDate: createBootstrap?.prefilledEventDate ?? "",
   }));
   const [coverField, setCoverField] = useState<EventCoverImageFieldState>(
     emptyEventCoverImageFieldState,
@@ -1349,7 +1378,6 @@ function EventsPageClientView({
               isPlanner={isPlanner}
               listTab={isHistoryTab ? "history" : "active"}
               createOpen={createOpen}
-              createParam={createParam}
               onTabLinkClick={handleEventsListTabLinkClick}
               selectionMode={historyTabRowSelectionMode}
               onTrashClick={historyBulkManage.enterSelectionMode}

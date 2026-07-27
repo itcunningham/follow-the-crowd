@@ -270,12 +270,40 @@ export function isEventsListCreateDeepLinkParam(
   return create === "event" || create === "custom" || create === "plan";
 }
 
-/** True while create flow is open or a create deep link is still being consumed. */
-export function isEventsListCreateFlowDisplayed(
-  createOpen: boolean,
-  createParam?: string | null,
-): boolean {
-  return createOpen || isEventsListCreateDeepLinkParam(createParam);
+export type EventsListCreateBootstrapState = {
+  createOpen: true;
+  createStep: "source" | "pick-plan" | "form";
+  prefilledEventDate: string;
+};
+
+export function resolveEventsListCreateInitialStep(
+  create: string | null | undefined,
+): EventsListCreateBootstrapState["createStep"] {
+  if (create === "plan") {
+    return "pick-plan";
+  }
+
+  if (create === "custom") {
+    return "form";
+  }
+
+  return "source";
+}
+
+/** Sync bootstrap for /events create deep links before createParam is stripped from the URL. */
+export function resolveEventsListCreateBootstrapState(
+  create: string | null | undefined,
+  eventDate: string | null | undefined,
+): EventsListCreateBootstrapState | null {
+  if (!isEventsListCreateDeepLinkParam(create)) {
+    return null;
+  }
+
+  return {
+    createOpen: true,
+    createStep: resolveEventsListCreateInitialStep(create),
+    prefilledEventDate: sanitizePrefilledEventDateKey(eventDate ?? ""),
+  };
 }
 
 export function isCalendarOriginCreateParam(

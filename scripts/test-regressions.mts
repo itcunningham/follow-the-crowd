@@ -150,8 +150,9 @@ import {
 } from "../lib/profileNavigation";
 import {
   buildEventDetailFromDmHref,
-  isEventsListCreateFlowDisplayed,
+  isEventsListCreateDeepLinkParam,
   resolveEventDetailBackHref,
+  resolveEventsListCreateBootstrapState,
   resolveEventsListTabParam,
 } from "../lib/events/eventsListNavigation";
 import { clearEventsListTabCache } from "../lib/events/eventsListTabCache";
@@ -3044,10 +3045,12 @@ function testEventsCreateFlowTabPillNavigation() {
   const tabLinkHandler =
     source.match(/function handleEventsListTabLinkClick\([\s\S]*?\n  \}/)?.[0] ?? "";
   assert.ok(tabLinkHandler.length > 0, "handleEventsListTabLinkClick not found");
-  assert.match(controlsSource, /isEventsListCreateFlowDisplayed\(createOpen, createParam\)/);
-  assert.match(controlsSource, /eventsListTabPillClass\(!createFlowDisplayed && !isHistoryTab\)/);
-  assert.match(controlsSource, /eventsListTabPillClass\(!createFlowDisplayed && isHistoryTab\)/);
+  assert.match(controlsSource, /eventsListTabPillClass\(!createOpen && !isHistoryTab\)/);
+  assert.match(controlsSource, /eventsListTabPillClass\(!createOpen && isHistoryTab\)/);
   assert.match(source, /<EventsListTabControls/);
+  assert.match(source, /resolveEventsListCreateBootstrapState/);
+  assert.match(source, /getEventsCreateBootstrapState/);
+  assert.match(source, /createBootstrap = calendarBootstrap \?\? eventsCreateBootstrap/);
   assert.match(tabLinkHandler, /createOpen && !isCalendarCreateFlow/);
   assert.match(
     tabLinkHandler,
@@ -3061,17 +3064,18 @@ function testEventsCreateFlowTabPillNavigation() {
   );
   assert.match(source, /prepareEventsListEventNavigation\(listTab\)/);
   assert.doesNotMatch(source, /writeEventsListTabCache/);
-  assert.match(source, /createParam=\{createParam\}/);
   assert.match(source, /onTabLinkClick=\{handleEventsListTabLinkClick\}/);
   const appLoadingSource = readFileSync(
     new URL("../app/components/skeleton/Skeleton.tsx", import.meta.url),
     "utf8",
   );
-  assert.match(appLoadingSource, /createParam=\{createParam\}/);
-  assert.equal(isEventsListCreateFlowDisplayed(false, "plan"), true);
-  assert.equal(isEventsListCreateFlowDisplayed(true, null), true);
-  assert.equal(isEventsListCreateFlowDisplayed(false, null), false);
-  assert.equal(isEventsListCreateFlowDisplayed(false, "booking"), false);
+  assert.match(appLoadingSource, /createOpen=\{isEventsListCreateDeepLinkParam\(createParam\)\}/);
+  assert.equal(resolveEventsListCreateBootstrapState("plan", "")?.createOpen, true);
+  assert.equal(resolveEventsListCreateBootstrapState("plan", "")?.createStep, "pick-plan");
+  assert.equal(resolveEventsListCreateBootstrapState("event", "2026-08-01")?.createStep, "source");
+  assert.equal(resolveEventsListCreateBootstrapState("custom", "")?.createStep, "form");
+  assert.equal(resolveEventsListCreateBootstrapState("booking", ""), null);
+  assert.equal(isEventsListCreateDeepLinkParam("plan"), true);
 }
 
 function testEventsListTabParamRestoresHistoryWithoutActiveDefault() {

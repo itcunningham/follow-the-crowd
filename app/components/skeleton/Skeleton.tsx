@@ -64,7 +64,7 @@ import {
 } from "@/app/components/layout/AppPageLayout";
 import ProfilePageHeader from "@/app/components/profile/ProfilePageHeader";
 import { isPlannerBookingsCreateChromeActive } from "@/lib/bookings/planDeepLink";
-import { isCalendarOriginCreateParam, resolveCalendarCreateInitialStep, resolveEventDetailBackHref, resolveEventsListTabParam } from "@/lib/events/eventsListNavigation";
+import { isCalendarOriginCreateParam, isEventsListCreateDeepLinkParam, resolveCalendarCreateInitialStep, resolveEventDetailBackHref, resolveEventsListTabParam } from "@/lib/events/eventsListNavigation";
 import { useEventEditHeaderState } from "@/lib/events/useEventEditHeaderVisibility";
 import type { EventEditHeaderState } from "@/lib/events/useEventEditHeaderVisibility";
 import { canManageEvents, type UserRole } from "@/lib/user/currentUser";
@@ -484,7 +484,7 @@ export function EventsPageLoadingShell({
         <EventsListTabControls
           isPlanner={isPlanner}
           listTab={isHistoryTab ? "history" : "active"}
-          createParam={createParam}
+          createOpen={isEventsListCreateDeepLinkParam(createParam)}
           loadingShell
         />
       }
