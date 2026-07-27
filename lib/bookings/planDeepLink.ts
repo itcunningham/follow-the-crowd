@@ -193,6 +193,49 @@ export function resolveEventPlansCreateReturnHrefFromParams(
   return readEventPlansCreateReturnHref();
 }
 
+export function appendPlanIdToCreateFlowReturnHref(
+  returnHref: string,
+  planId: string,
+): string {
+  const trimmedPlanId = planId.trim();
+  const trimmedReturnHref = returnHref.trim();
+
+  if (!trimmedPlanId || !trimmedReturnHref) {
+    return trimmedReturnHref;
+  }
+
+  const queryIndex = trimmedReturnHref.indexOf("?");
+  const pathname =
+    queryIndex === -1 ? trimmedReturnHref : trimmedReturnHref.slice(0, queryIndex);
+  const query =
+    queryIndex === -1 ? "" : trimmedReturnHref.slice(queryIndex + 1);
+  const params = new URLSearchParams(query);
+  params.set("planId", trimmedPlanId);
+
+  const nextQuery = params.toString();
+  return nextQuery ? `${pathname}?${nextQuery}` : pathname;
+}
+
+export function resolveCreateFlowReturnPlanId(searchParams: SearchParamsLike): string | null {
+  const fromParams = searchParams.get("planId")?.trim();
+
+  if (fromParams) {
+    return fromParams;
+  }
+
+  return readPendingBookingPlanId();
+}
+
+export function completeEventPlansCreateReturn(options: {
+  returnHref: string;
+  planId: string;
+}): string {
+  stashPendingBookingPlanId(options.planId);
+  clearEventPlansCreateReturnHref();
+
+  return appendPlanIdToCreateFlowReturnHref(options.returnHref, options.planId);
+}
+
 export function resolveEventPlansCreateReturnHref(options: {
   detailsEntrySource?: string | null;
   persistedReturnHref?: string | null;

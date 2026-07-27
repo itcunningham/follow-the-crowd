@@ -114,6 +114,8 @@ import {
 import {
   buildEventPlansCreateFormHref,
   buildEventsCreatePickPlanReturnHref,
+  clearPendingBookingPlanId,
+  resolveCreateFlowReturnPlanId,
 } from "@/lib/bookings/planDeepLink";
 import {
   buildEventDetailHref,
@@ -752,19 +754,28 @@ function EventsPageClientView({
     const params = new URLSearchParams(window.location.search);
     const createParam = params.get("create");
     const eventDateParam = params.get("eventDate") ?? "";
+    const returnPlanId = resolveCreateFlowReturnPlanId(params);
 
     if (!createParam) {
       handledCreateParamsRef.current = null;
       return;
     }
 
-    const paramKey = `${createParam}:${eventDateParam}`;
+    const paramKey = `${createParam}:${eventDateParam}:${returnPlanId ?? ""}`;
 
     if (handledCreateParamsRef.current === paramKey) {
       return;
     }
 
     handledCreateParamsRef.current = paramKey;
+
+    if (returnPlanId) {
+      clearPendingBookingPlanId();
+    }
+
+    const finishPickPlanReturn = (preselectPlanId: string | null) => {
+      void loadBookingPlansForCreate({ preselectPlanId });
+    };
 
     if (createParam === "event") {
       openCreateFlow({ eventDate: eventDateParam, initialStep: "source" });
@@ -775,7 +786,7 @@ function EventsPageClientView({
     if (createParam === "calendar" || createParam === "calendar-plans") {
       if (isCalendarWorkspaceHost) {
         if (resolveCalendarCreateInitialStep(createParam) === "pick-plan") {
-          void loadBookingPlansForCreate();
+          finishPickPlanReturn(returnPlanId);
         }
 
         return;
@@ -786,7 +797,7 @@ function EventsPageClientView({
       };
 
       if (calendarOriginDateKey) {
-        void loadBookingPlansForCreate().finally(finishNavigation);
+        void loadBookingPlansForCreate({ preselectPlanId: returnPlanId }).finally(finishNavigation);
         return;
       }
 
@@ -795,6 +806,7 @@ function EventsPageClientView({
         initialStep: resolveCalendarCreateInitialStep(createParam),
         calendarOriginDateKey: resolveCalendarOriginDateKey(eventDateParam),
       });
+      finishPickPlanReturn(returnPlanId);
       finishNavigation();
       return;
     }
@@ -807,6 +819,7 @@ function EventsPageClientView({
 
     if (createParam === "plan") {
       openCreateFlow({ eventDate: eventDateParam, initialStep: "pick-plan" });
+      finishPickPlanReturn(returnPlanId);
       router.replace("/events");
     }
   }, [
@@ -819,7 +832,7 @@ function EventsPageClientView({
     searchParams,
   ]);
 
-  async function loadBookingPlansForCreate() {
+  async function loadBookingPlansForCreate(options?: { preselectPlanId?: string | null }) {
     const cachedPlans = readBookingPlansListCache();
 
     if (cachedPlans !== null) {
@@ -835,6 +848,12 @@ function EventsPageClientView({
       const plans = await listBookingPlans();
       setBookingPlans(plans);
       writeBookingPlansListCache(plans);
+
+      const preselectPlanId = options?.preselectPlanId?.trim();
+
+      if (preselectPlanId && plans.some((plan) => plan.id === preselectPlanId)) {
+        setSelectedPlanId(preselectPlanId);
+      }
     } catch (loadError) {
       console.error("Failed to load booking plans for event create:", loadError);
       setError(loadError instanceof Error ? loadError.message : "Failed to load event plans");

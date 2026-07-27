@@ -48,6 +48,7 @@ import { readCachedNavRole } from "@/lib/navigationRoleCache";
 import {
   consumeBookingPlansSuccessMessage,
   clearEventPlansCreateReturnHref,
+  completeEventPlansCreateReturn,
   navigateAwayFromEventPlansCreateFlow,
   readEventPlansCreateReturnHref,
   resolveEventPlansCreateReturnHrefFromParams,
@@ -493,6 +494,7 @@ export default function BookingPlansPage() {
           return nextPlans;
         });
         setSuccessMessage("Event plan updated");
+        resetFormState();
       } else {
         const createdPlan = await createBookingPlan(form);
         setPlans((currentPlans) => {
@@ -500,10 +502,23 @@ export default function BookingPlansPage() {
           writeBookingPlansListCache(nextPlans);
           return nextPlans;
         });
+
+        const returnHref = readEventPlansCreateReturnHref();
+        resetFormState();
+
+        if (returnHref) {
+          navigateAwayFromEventPlansCreateFlow(
+            completeEventPlansCreateReturn({
+              returnHref,
+              planId: createdPlan.id,
+            }),
+            router,
+          );
+          return;
+        }
+
         setSuccessMessage("Event plan created");
       }
-
-      resetFormState();
     } catch (saveError) {
       console.error("Failed to save booking plan:", saveError);
       setError(saveError instanceof Error ? saveError.message : "Failed to save event plan");

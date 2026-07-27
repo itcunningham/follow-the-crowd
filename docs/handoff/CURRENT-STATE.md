@@ -55,7 +55,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 - **DM history booking expand (2026-07-27):** cancelled/accepted/declined cards stay on `BookingRequestCard` when collapsed so View details uses the same grid expand animation as pending cards
 - Events: create, edit, cancel, delete, lineup, send bookings, run sheet
 - Event Plans (`/booking-plans`), Calendar (`/calendar`), Gigs (`/bookings`)
-- **Event Plans create deep link (2026-07-27):** empty-state **Create event plan** CTA from Events/Bookings create flows opens `/booking-plans?create=plan` form immediately; cancel returns to originating pick-plan step via `returnTo` param
+- **Event Plans create deep link (2026-07-27):** empty-state **Create event plan** CTA from Events/Bookings create flows opens `/booking-plans?create=plan` form immediately; cancel returns to originating pick-plan step via `returnTo`; successful create returns to Create Event/Bookings pick-plan with new plan preselected via `planId` + list cache refresh
 - Notifications, settings, account deletion
 - DJ availability calendar
 

@@ -107,8 +107,10 @@ import {
 } from "../lib/navigationBadgeCache";
 import { resolveEventsHistoryTrashVisible, resolveEventsListTabRowChrome, resolveEventsListActiveTabLabel, resolveEventsListActiveTabLabelForWorkspaceChrome, EVENTS_LIST_ACTIVE_TAB_LABEL_PLANNER } from "../lib/events/eventsListNavigation";
 import {
+  appendPlanIdToCreateFlowReturnHref,
   buildEventPlansCreateFormHref,
   buildEventsCreatePickPlanReturnHref,
+  completeEventPlansCreateReturn,
 } from "../lib/bookings/planDeepLink";
 import { resolveHistoryBulkSelectAllToggle } from "../app/components/history/HistoryBulkManage";
 import { isPlannerEventVisibleOnCalendar, resolvePlannerHistoryHideEventIds } from "../lib/events";
@@ -3281,9 +3283,15 @@ function testEventPlansCreateFormDeepLink() {
   assert.match(planDeepLinkSource, /resolveEventPlansPageCreateIntent/);
   assert.match(planDeepLinkSource, /buildEventsCreatePickPlanReturnHref/);
   assert.match(planDeepLinkSource, /buildBookingsCreatePickPlanReturnHref/);
+  assert.match(planDeepLinkSource, /completeEventPlansCreateReturn/);
+  assert.match(planDeepLinkSource, /appendPlanIdToCreateFlowReturnHref/);
+  assert.match(planDeepLinkSource, /resolveCreateFlowReturnPlanId/);
   assert.match(bookingPlansSource, /resolveEventPlansPageCreateIntent\(searchParams\)/);
+  assert.match(bookingPlansSource, /completeEventPlansCreateReturn/);
   assert.match(bookingPlansSource, /router\.replace\("\/booking-plans", \{ scroll: false \}\)/);
   assert.match(bookingPlansSource, /navigateAwayFromEventPlansCreateFlow\(returnHref, router\)/);
+  assert.match(eventsSource, /resolveCreateFlowReturnPlanId/);
+  assert.match(eventsSource, /loadBookingPlansForCreate\(\{ preselectPlanId/);
   assert.match(eventsSource, /buildEventPlansCreateFormHref/);
   assert.match(eventsSource, /Create event plan/);
   assert.doesNotMatch(eventsSource, /Create an event plan/);
@@ -3300,6 +3308,17 @@ function testEventPlansCreateFormDeepLink() {
   assert.equal(
     buildEventsCreatePickPlanReturnHref({ calendarOriginDateKey: "2026-07-27" }),
     "/events?create=calendar-plans&eventDate=2026-07-27",
+  );
+  assert.equal(
+    appendPlanIdToCreateFlowReturnHref("/events?create=plan", "plan-123"),
+    "/events?create=plan&planId=plan-123",
+  );
+  assert.equal(
+    completeEventPlansCreateReturn({
+      returnHref: "/events?create=plan",
+      planId: "plan-123",
+    }),
+    "/events?create=plan&planId=plan-123",
   );
 }
 
