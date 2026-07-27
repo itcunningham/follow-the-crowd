@@ -828,8 +828,10 @@ function testProposeBookingRateNotesTextareaGrowth() {
   assert.match(sheetSource, /MAX_NOTE_LENGTH = 250/);
   assert.match(sheetSource, /ftc-proposal-rate-notes-textarea/);
   assert.match(cssSource, /\.ftc-proposal-rate-notes-textarea/);
-  assert.match(cssSource, /max-height: calc\(6lh \+ 1\.25rem \+ 2px\)/);
+  assert.match(cssSource, /height: calc\(6lh \+ 1\.25rem \+ 2px\) !important/);
+  assert.match(cssSource, /max-height: calc\(6lh \+ 1\.25rem \+ 2px\) !important/);
   assert.match(cssSource, /overflow-y: auto !important/);
+  assert.match(sheetSource, /textareaRows=\{1\}/);
 }
 
 function testProposeRateHelperPreference() {

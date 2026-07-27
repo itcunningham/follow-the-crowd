@@ -107,6 +107,7 @@ export default function ProposeBookingRateSheet({
           onChange={(value) => setNote(value.slice(0, MAX_NOTE_LENGTH))}
           placeholder="Notes"
           multiline
+          textareaRows={1}
           textareaClassName="ftc-proposal-rate-notes-textarea"
         />
         <p className="text-xs text-ftc-text-muted">
