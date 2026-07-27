@@ -10,11 +10,11 @@ import {
 import { createNotification, getNotificationCreateErrorMessage, notifyNavigationBadgesRefresh } from "@/lib/notifications";
 import { formatRateDisplay, formatIntegerRateDisplay, normalizeStoredRate } from "@/lib/bookingRate";
 import {
+  DM_BOOKING_CANCELLED_MESSAGE,
   DM_BOOKING_CONFIRMED_MESSAGE,
-  DM_BOOKING_PLANNER_ACCEPTED_PROPOSED_RATE_MESSAGE,
-  DM_BOOKING_PLANNER_KEPT_ORIGINAL_OFFER_MESSAGE,
-  DM_BOOKING_REQUEST_CANCELLED_MESSAGE,
-  formatDjProposedRateDmSystemMessage,
+  DM_BOOKING_ORIGINAL_OFFER_KEPT_MESSAGE,
+  DM_BOOKING_PROPOSED_RATE_ACCEPTED_MESSAGE,
+  formatRateProposedDmSystemMessage,
   formatDmBookingSystemMessageDisplay,
   isDmBookingSystemMessage,
   isLegacyRateProposedDmMessage,
@@ -1104,14 +1104,15 @@ async function insertBookingCancellationActivityMessageIfNeeded(
 }
 
 export function formatBookingCancelledDmMessage(_booking: BookingRequest): string {
-  return DM_BOOKING_REQUEST_CANCELLED_MESSAGE;
+  return DM_BOOKING_CANCELLED_MESSAGE;
 }
 
 export function isBookingCancelledDmMessage(text: string): boolean {
   const trimmed = text.trim();
 
   return (
-    trimmed === DM_BOOKING_REQUEST_CANCELLED_MESSAGE ||
+    trimmed === DM_BOOKING_CANCELLED_MESSAGE ||
+    trimmed === "Booking request cancelled." ||
     trimmed.startsWith(BOOKING_CANCELLED_DM_PREFIX) ||
     trimmed === LEGACY_CANCELLED_BOOKING_DM_SYSTEM_MESSAGE
   );
@@ -1187,7 +1188,7 @@ async function insertBookingCancelledDmMessageIfNeeded(
 export function formatRateProposedDmMessage(
   proposedRate: number | null | undefined,
 ): string {
-  return formatDjProposedRateDmSystemMessage(proposedRate);
+  return formatRateProposedDmSystemMessage(proposedRate);
 }
 
 async function insertRateProposedDmMessageIfNeeded(
@@ -1290,13 +1291,14 @@ async function insertBookingAcceptedDmMessageIfNeeded(
 
 export const RATE_PROPOSAL_DECLINED_DM_PREFIX = LEGACY_RATE_PROPOSAL_DECLINED_DM_PREFIX;
 
-export const RATE_PROPOSAL_DECLINED_DM_MESSAGE = DM_BOOKING_PLANNER_KEPT_ORIGINAL_OFFER_MESSAGE;
+export const RATE_PROPOSAL_DECLINED_DM_MESSAGE = DM_BOOKING_ORIGINAL_OFFER_KEPT_MESSAGE;
 
 export function isRateProposalDeclinedDmMessage(text: string): boolean {
   const trimmed = text.trim();
 
   return (
-    trimmed === DM_BOOKING_PLANNER_KEPT_ORIGINAL_OFFER_MESSAGE ||
+    trimmed === DM_BOOKING_ORIGINAL_OFFER_KEPT_MESSAGE ||
+    trimmed === "Planner kept the original offer." ||
     trimmed.startsWith(LEGACY_RATE_PROPOSAL_DECLINED_DM_PREFIX)
   );
 }
@@ -1323,6 +1325,7 @@ async function insertRateProposalDeclinedDmMessageIfNeeded(
   const latestProposedAt = recentRecipientRows?.find(
     (row) =>
       isLegacyRateProposedDmMessage(row.text) ||
+      row.text.trim().startsWith("Rate proposed: ") ||
       row.text.trim().startsWith("DJ proposed a rate of "),
   )?.created_at;
 
@@ -1367,7 +1370,7 @@ async function insertRateProposalDeclinedDmMessageIfNeeded(
 async function insertAcceptProposedRateDmMessageIfNeeded(
   booking: BookingRequest,
 ): Promise<{ inserted: boolean; messageText: string }> {
-  const messageText = DM_BOOKING_PLANNER_ACCEPTED_PROPOSED_RATE_MESSAGE;
+  const messageText = DM_BOOKING_PROPOSED_RATE_ACCEPTED_MESSAGE;
 
   if (!booking.conversation_id) {
     return { inserted: false, messageText };

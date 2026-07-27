@@ -18,7 +18,7 @@ import DmConversationDetailsPanel from "@/app/components/dm/DmConversationDetail
 import DmComposer from "@/app/components/dm/DmComposer";
 import DmReportFormModal from "@/app/components/dm/DmReportFormModal";
 import DmTextMessageBubble from "@/app/components/dm/DmTextMessageBubble";
-import GroupChatSystemNotice from "@/app/components/group-chat/GroupChatSystemNotice";
+import DmBookingTimelineNotice from "@/app/components/dm/DmBookingTimelineNotice";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
 import ChatProfileAvatarLink from "@/app/components/chat/ChatProfileAvatarLink";
 import { ChatMessagesSkeleton } from "@/app/components/skeleton/Skeleton";
@@ -49,7 +49,7 @@ import {
   type BookingRequest,
 } from "@/lib/bookingRequests";
 import {
-  DM_BOOKING_REQUEST_CANCELLED_MESSAGE,
+  DM_BOOKING_CANCELLED_MESSAGE,
   formatDmBookingSystemMessageDisplay,
   isDmBookingSystemMessage,
 } from "@/lib/dm/dmBookingSystemMessages";
@@ -1624,7 +1624,7 @@ export default function DmChatPage() {
 
               if (isDmBookingSystemMessage(message.text)) {
                 return (
-                  <GroupChatSystemNotice
+                  <DmBookingTimelineNotice
                     key={message.id}
                     messageId={message.id}
                     text={formatDmBookingSystemMessageDisplay(message.text)}
@@ -1716,11 +1716,11 @@ export default function DmChatPage() {
 
               if (cardVisibility.hideCard) {
                 return (
-                  <GroupChatSystemNotice
+                  <DmBookingTimelineNotice
                     key={message.id}
                     messageId={message.id}
                     text={formatDmBookingSystemMessageDisplay(
-                      DM_BOOKING_REQUEST_CANCELLED_MESSAGE,
+                      DM_BOOKING_CANCELLED_MESSAGE,
                     )}
                     createdAt={message.created_at}
                     formatTime={formatMessageTime}

@@ -75,9 +75,9 @@ import { getAppendedMessageIds } from "../lib/useChatScroll";
 import { computeBookingCardAlignScrollTop } from "../lib/dm/dmBookingCardExpandScroll";
 import {
   DM_BOOKING_CONFIRMED_MESSAGE,
-  DM_BOOKING_PLANNER_KEPT_ORIGINAL_OFFER_MESSAGE,
+  DM_BOOKING_ORIGINAL_OFFER_KEPT_MESSAGE,
   formatDmBookingSystemMessageDisplay,
-  formatDjProposedRateDmSystemMessage,
+  formatRateProposedDmSystemMessage,
   isDmBookingSystemMessage,
   LEGACY_RATE_PROPOSED_DM_PREFIX,
   LEGACY_RATE_PROPOSAL_DECLINED_DM_MESSAGE,
@@ -559,38 +559,50 @@ function testDmBookingSystemMessages() {
     new URL("../app/dm/[conversationId]/page.tsx", import.meta.url),
     "utf8",
   );
+  const timelineSource = readFileSync(
+    new URL("../app/components/dm/DmBookingTimelineNotice.tsx", import.meta.url),
+    "utf8",
+  );
   const bookingRequestsSource = readFileSync(
     new URL("../lib/bookingRequests.ts", import.meta.url),
     "utf8",
   );
 
-  assert.match(pageSource, /GroupChatSystemNotice/);
+  assert.match(pageSource, /DmBookingTimelineNotice/);
+  assert.doesNotMatch(pageSource, /GroupChatSystemNotice/);
   assert.match(pageSource, /formatDmBookingSystemMessageDisplay/);
   assert.match(pageSource, /isDmBookingSystemMessage/);
   assert.doesNotMatch(pageSource, /systemPillClassName/);
   assert.doesNotMatch(pageSource, /Rate proposed ·/);
   assert.doesNotMatch(pageSource, /Proposal declined ·/);
+  assert.doesNotMatch(timelineSource, /rounded-full/);
+  assert.doesNotMatch(timelineSource, /border-ftc-border/);
+  assert.match(timelineSource, /text-ftc-text-secondary/);
 
-  assert.match(bookingRequestsSource, /formatDjProposedRateDmSystemMessage/);
-  assert.match(bookingRequestsSource, /DM_BOOKING_PLANNER_KEPT_ORIGINAL_OFFER_MESSAGE/);
-  assert.match(bookingRequestsSource, /DM_BOOKING_PLANNER_ACCEPTED_PROPOSED_RATE_MESSAGE/);
+  assert.match(bookingRequestsSource, /formatRateProposedDmSystemMessage/);
+  assert.match(bookingRequestsSource, /DM_BOOKING_ORIGINAL_OFFER_KEPT_MESSAGE/);
+  assert.match(bookingRequestsSource, /DM_BOOKING_PROPOSED_RATE_ACCEPTED_MESSAGE/);
   assert.match(bookingRequestsSource, /DM_BOOKING_CONFIRMED_MESSAGE/);
-  assert.match(bookingRequestsSource, /DM_BOOKING_REQUEST_CANCELLED_MESSAGE/);
+  assert.match(bookingRequestsSource, /DM_BOOKING_CANCELLED_MESSAGE/);
 
-  assert.equal(formatDjProposedRateDmSystemMessage(111), "DJ proposed a rate of $111.");
+  assert.equal(formatRateProposedDmSystemMessage(111), "Rate proposed: $111");
   assert.equal(
     formatDmBookingSystemMessageDisplay(`${LEGACY_RATE_PROPOSED_DM_PREFIX} $111`),
-    "DJ proposed a rate of $111.",
+    "Rate proposed: $111",
   );
   assert.equal(
     formatDmBookingSystemMessageDisplay(LEGACY_RATE_PROPOSAL_DECLINED_DM_MESSAGE),
-    DM_BOOKING_PLANNER_KEPT_ORIGINAL_OFFER_MESSAGE,
+    DM_BOOKING_ORIGINAL_OFFER_KEPT_MESSAGE,
   );
   assert.equal(
     formatDmBookingSystemMessageDisplay("BOOKING ACTIVITY · accepted · Summer Party"),
     DM_BOOKING_CONFIRMED_MESSAGE,
   );
-  assert.equal(isDmBookingSystemMessage("DJ proposed a rate of $66."), true);
+  assert.equal(
+    formatDmBookingSystemMessageDisplay("DJ proposed a rate of $66."),
+    "Rate proposed: $66",
+  );
+  assert.equal(isDmBookingSystemMessage("Rate proposed: $66"), true);
   assert.equal(isDmBookingSystemMessage("BOOKING ACTIVITY · event-cancelled · Party"), false);
 }
 

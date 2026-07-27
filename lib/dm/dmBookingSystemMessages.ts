@@ -1,16 +1,27 @@
 import { formatIntegerRateDisplay } from "@/lib/bookingRate";
 
-export const DM_BOOKING_PROPOSED_RATE_PREFIX = "DJ proposed a rate of ";
+export const DM_BOOKING_PROPOSED_RATE_PREFIX = "Rate proposed: ";
 
-export const DM_BOOKING_PLANNER_KEPT_ORIGINAL_OFFER_MESSAGE =
-  "Planner kept the original offer.";
+export const DM_BOOKING_ORIGINAL_OFFER_KEPT_MESSAGE = "Original offer kept";
 
-export const DM_BOOKING_PLANNER_ACCEPTED_PROPOSED_RATE_MESSAGE =
-  "Planner accepted the proposed rate.";
+export const DM_BOOKING_PROPOSED_RATE_ACCEPTED_MESSAGE = "Proposed rate accepted";
 
-export const DM_BOOKING_CONFIRMED_MESSAGE = "Booking confirmed.";
+export const DM_BOOKING_CONFIRMED_MESSAGE = "Booking confirmed";
 
-export const DM_BOOKING_REQUEST_CANCELLED_MESSAGE = "Booking request cancelled.";
+export const DM_BOOKING_CANCELLED_MESSAGE = "Booking cancelled";
+
+export const DM_BOOKING_REQUEST_DECLINED_MESSAGE = "Booking request declined";
+
+/** Prior concise system-message copy (still stored in some threads). */
+const VERBOSE_PROPOSED_RATE_PREFIX = "DJ proposed a rate of ";
+
+const VERBOSE_ORIGINAL_OFFER_KEPT_MESSAGE = "Planner kept the original offer.";
+
+const VERBOSE_PROPOSED_RATE_ACCEPTED_MESSAGE = "Planner accepted the proposed rate.";
+
+const VERBOSE_CONFIRMED_MESSAGE = "Booking confirmed.";
+
+const VERBOSE_CANCELLED_MESSAGE = "Booking request cancelled.";
 
 /** Legacy pill-style DM notices kept for historical threads. */
 export const LEGACY_RATE_PROPOSED_DM_PREFIX = "Rate proposed ·";
@@ -29,11 +40,24 @@ export const LEGACY_BOOKING_CANCELLED_DM_PREFIX = "Booking cancelled ·";
 
 export const LEGACY_BOOKING_ACTIVITY_DM_PREFIX = "BOOKING ACTIVITY ·";
 
-export function formatDjProposedRateDmSystemMessage(
+/** @deprecated Use DM_BOOKING_ORIGINAL_OFFER_KEPT_MESSAGE */
+export const DM_BOOKING_PLANNER_KEPT_ORIGINAL_OFFER_MESSAGE = DM_BOOKING_ORIGINAL_OFFER_KEPT_MESSAGE;
+
+/** @deprecated Use DM_BOOKING_PROPOSED_RATE_ACCEPTED_MESSAGE */
+export const DM_BOOKING_PLANNER_ACCEPTED_PROPOSED_RATE_MESSAGE =
+  DM_BOOKING_PROPOSED_RATE_ACCEPTED_MESSAGE;
+
+/** @deprecated Use DM_BOOKING_CANCELLED_MESSAGE */
+export const DM_BOOKING_REQUEST_CANCELLED_MESSAGE = DM_BOOKING_CANCELLED_MESSAGE;
+
+export function formatRateProposedDmSystemMessage(
   proposedRate: number | null | undefined,
 ): string {
-  return `${DM_BOOKING_PROPOSED_RATE_PREFIX}${formatIntegerRateDisplay(proposedRate)}.`;
+  return `${DM_BOOKING_PROPOSED_RATE_PREFIX}${formatIntegerRateDisplay(proposedRate)}`;
 }
+
+/** @deprecated Use formatRateProposedDmSystemMessage */
+export const formatDjProposedRateDmSystemMessage = formatRateProposedDmSystemMessage;
 
 export function isLegacyRateProposedDmMessage(text: string): boolean {
   return text.trim().startsWith(LEGACY_RATE_PROPOSED_DM_PREFIX);
@@ -55,15 +79,30 @@ export function isLegacyBookingActivityDmMessage(text: string): boolean {
   return text.trim().startsWith(LEGACY_BOOKING_ACTIVITY_DM_PREFIX);
 }
 
-function isCanonicalDmBookingSystemMessage(text: string): boolean {
+function isStoredProposedRateMessage(text: string): boolean {
   const trimmed = text.trim();
 
   return (
     trimmed.startsWith(DM_BOOKING_PROPOSED_RATE_PREFIX) ||
-    trimmed === DM_BOOKING_PLANNER_KEPT_ORIGINAL_OFFER_MESSAGE ||
-    trimmed === DM_BOOKING_PLANNER_ACCEPTED_PROPOSED_RATE_MESSAGE ||
+    trimmed.startsWith(VERBOSE_PROPOSED_RATE_PREFIX) ||
+    isLegacyRateProposedDmMessage(trimmed)
+  );
+}
+
+function isCanonicalDmBookingSystemMessage(text: string): boolean {
+  const trimmed = text.trim();
+
+  return (
+    isStoredProposedRateMessage(trimmed) ||
+    trimmed === DM_BOOKING_ORIGINAL_OFFER_KEPT_MESSAGE ||
+    trimmed === VERBOSE_ORIGINAL_OFFER_KEPT_MESSAGE ||
+    trimmed === DM_BOOKING_PROPOSED_RATE_ACCEPTED_MESSAGE ||
+    trimmed === VERBOSE_PROPOSED_RATE_ACCEPTED_MESSAGE ||
     trimmed === DM_BOOKING_CONFIRMED_MESSAGE ||
-    trimmed === DM_BOOKING_REQUEST_CANCELLED_MESSAGE
+    trimmed === VERBOSE_CONFIRMED_MESSAGE ||
+    trimmed === DM_BOOKING_CANCELLED_MESSAGE ||
+    trimmed === VERBOSE_CANCELLED_MESSAGE ||
+    trimmed === DM_BOOKING_REQUEST_DECLINED_MESSAGE
   );
 }
 
@@ -80,7 +119,6 @@ export function isDmBookingSystemMessage(text: string): boolean {
 
   return (
     isCanonicalDmBookingSystemMessage(trimmed) ||
-    isLegacyRateProposedDmMessage(trimmed) ||
     isLegacyRateProposalDeclinedDmMessage(trimmed) ||
     isLegacyBookingCancelledDmMessage(trimmed) ||
     isLegacyBookingAcceptedDmMessage(trimmed) ||
@@ -89,14 +127,22 @@ export function isDmBookingSystemMessage(text: string): boolean {
   );
 }
 
-function parseLegacyProposedRateDisplay(text: string): string | null {
-  if (!isLegacyRateProposedDmMessage(text)) {
-    return null;
+function parseStoredProposedRate(text: string): string | null {
+  const trimmed = text.trim();
+
+  if (trimmed.startsWith(DM_BOOKING_PROPOSED_RATE_PREFIX)) {
+    return trimmed.slice(DM_BOOKING_PROPOSED_RATE_PREFIX.length).trim() || null;
   }
 
-  const rate = text.trim().slice(LEGACY_RATE_PROPOSED_DM_PREFIX.length).trim();
+  if (trimmed.startsWith(VERBOSE_PROPOSED_RATE_PREFIX)) {
+    return trimmed.slice(VERBOSE_PROPOSED_RATE_PREFIX.length).replace(/\.$/, "").trim() || null;
+  }
 
-  return rate || null;
+  if (isLegacyRateProposedDmMessage(trimmed)) {
+    return trimmed.slice(LEGACY_RATE_PROPOSED_DM_PREFIX.length).trim() || null;
+  }
+
+  return null;
 }
 
 function parseLegacyBookingActivityAcceptedEventName(text: string): string | null {
@@ -123,50 +169,49 @@ function parseLegacyEventCancellationActivityEventName(text: string): string | n
 /** User-facing copy for booking timeline system messages in DM. */
 export function formatDmBookingSystemMessageDisplay(text: string): string {
   const trimmed = text.trim();
+  const proposedRate = parseStoredProposedRate(trimmed);
 
-  if (trimmed.startsWith(DM_BOOKING_PROPOSED_RATE_PREFIX)) {
-    return trimmed.endsWith(".") ? trimmed : `${trimmed}.`;
+  if (proposedRate) {
+    return `${DM_BOOKING_PROPOSED_RATE_PREFIX}${proposedRate}`;
   }
 
   if (
-    trimmed === DM_BOOKING_PLANNER_KEPT_ORIGINAL_OFFER_MESSAGE ||
-    trimmed === DM_BOOKING_PLANNER_ACCEPTED_PROPOSED_RATE_MESSAGE ||
-    trimmed === DM_BOOKING_CONFIRMED_MESSAGE ||
-    trimmed === DM_BOOKING_REQUEST_CANCELLED_MESSAGE
-  ) {
-    return trimmed;
-  }
-
-  const legacyProposedRate = parseLegacyProposedRateDisplay(trimmed);
-
-  if (legacyProposedRate) {
-    return `${DM_BOOKING_PROPOSED_RATE_PREFIX}${legacyProposedRate}.`;
-  }
-
-  if (
+    trimmed === DM_BOOKING_ORIGINAL_OFFER_KEPT_MESSAGE ||
+    trimmed === VERBOSE_ORIGINAL_OFFER_KEPT_MESSAGE ||
     trimmed === LEGACY_RATE_PROPOSAL_DECLINED_DM_MESSAGE ||
     isLegacyRateProposalDeclinedDmMessage(trimmed)
   ) {
-    return DM_BOOKING_PLANNER_KEPT_ORIGINAL_OFFER_MESSAGE;
+    return DM_BOOKING_ORIGINAL_OFFER_KEPT_MESSAGE;
   }
 
   if (
-    trimmed === LEGACY_CANCELLED_BOOKING_DM_SYSTEM_MESSAGE ||
-    isLegacyBookingCancelledDmMessage(trimmed) ||
-    parseLegacyBookingActivityCancelledBookingId(trimmed)
+    trimmed === DM_BOOKING_PROPOSED_RATE_ACCEPTED_MESSAGE ||
+    trimmed === VERBOSE_PROPOSED_RATE_ACCEPTED_MESSAGE
   ) {
-    return DM_BOOKING_REQUEST_CANCELLED_MESSAGE;
+    return DM_BOOKING_PROPOSED_RATE_ACCEPTED_MESSAGE;
   }
 
   if (
+    trimmed === DM_BOOKING_CONFIRMED_MESSAGE ||
+    trimmed === VERBOSE_CONFIRMED_MESSAGE ||
     isLegacyBookingAcceptedDmMessage(trimmed) ||
     parseLegacyBookingActivityAcceptedEventName(trimmed)
   ) {
     return DM_BOOKING_CONFIRMED_MESSAGE;
   }
 
-  if (parseLegacyEventCancellationActivityEventName(trimmed)) {
-    return DM_BOOKING_REQUEST_CANCELLED_MESSAGE;
+  if (trimmed === DM_BOOKING_REQUEST_DECLINED_MESSAGE) {
+    return DM_BOOKING_REQUEST_DECLINED_MESSAGE;
+  }
+
+  if (
+    trimmed === DM_BOOKING_CANCELLED_MESSAGE ||
+    trimmed === VERBOSE_CANCELLED_MESSAGE ||
+    trimmed === LEGACY_CANCELLED_BOOKING_DM_SYSTEM_MESSAGE ||
+    isLegacyBookingCancelledDmMessage(trimmed) ||
+    parseLegacyBookingActivityCancelledBookingId(trimmed)
+  ) {
+    return DM_BOOKING_CANCELLED_MESSAGE;
   }
 
   return trimmed;
