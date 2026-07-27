@@ -8,6 +8,7 @@ import BookingSheetDialog, {
   BookingSheetPrimaryButton,
   BookingSheetSecondaryButton,
 } from "@/app/components/booking/BookingSheetDialog";
+import { PlannerFieldError } from "@/app/components/planner/PlannerUi";
 import { isPositiveWholeDollarRate } from "@/lib/bookingRate";
 import {
   applyCappedMultilineInputLimit,
@@ -25,6 +26,31 @@ function applyProposalNoteInputLimit(currentNote: string, nextNote: string): str
   return applyCappedMultilineInputLimit(currentNote, nextNote, MAX_NOTE_LINES, MAX_NOTE_LENGTH);
 }
 
+function ProposeRateSubmitSpinner() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      className="h-4 w-4 shrink-0 animate-spin motion-reduce:animate-none"
+      fill="none"
+    >
+      <circle
+        className="opacity-25"
+        cx="12"
+        cy="12"
+        r="10"
+        stroke="currentColor"
+        strokeWidth="3"
+      />
+      <path
+        className="opacity-75"
+        fill="currentColor"
+        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+      />
+    </svg>
+  );
+}
+
 export default function ProposeBookingRateSheet({
   open,
   loading,
@@ -38,7 +64,8 @@ export default function ProposeBookingRateSheet({
 }) {
   const [rateDigits, setRateDigits] = useState("");
   const [note, setNote] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const [rateError, setRateError] = useState<string | null>(null);
+  const [noteError, setNoteError] = useState<string | null>(null);
   const [showHelper, setShowHelper] = useState(false);
   const recordedOpenRef = useRef(false);
   const isComposingNoteRef = useRef(false);
@@ -62,7 +89,8 @@ export default function ProposeBookingRateSheet({
     if (!open) {
       setRateDigits("");
       setNote("");
-      setError(null);
+      setRateError(null);
+      setNoteError(null);
     }
   }, [open]);
 
@@ -101,21 +129,32 @@ export default function ProposeBookingRateSheet({
 
   async function handleSubmit() {
     if (!isPositiveWholeDollarRate(rateDigits)) {
-      setError("Enter a positive whole dollar amount.");
+      setRateError("Enter a positive whole dollar amount");
+      setNoteError(null);
       return;
     }
 
     if (note.trim().length > MAX_NOTE_LENGTH) {
-      setError(`Note must be ${MAX_NOTE_LENGTH} characters or fewer.`);
+      setNoteError(`Note must be ${MAX_NOTE_LENGTH} characters or fewer`);
+      setRateError(null);
       return;
     }
 
-    setError(null);
+    setRateError(null);
+    setNoteError(null);
 
     try {
       await onSubmit(rateDigits, note.trim());
     } catch (submitError) {
-      setError(submitError instanceof Error ? submitError.message : "Failed to send proposal.");
+      setNoteError(submitError instanceof Error ? submitError.message : "Failed to send proposal");
+    }
+  }
+
+  function handleRateChange(nextRateDigits: string) {
+    setRateDigits(nextRateDigits);
+
+    if (rateError) {
+      setRateError(null);
     }
   }
 
@@ -133,36 +172,50 @@ export default function ProposeBookingRateSheet({
             Cancel
           </BookingSheetSecondaryButton>
           <BookingSheetPrimaryButton disabled={loading} onClick={() => void handleSubmit()}>
-            {loading ? "Sending..." : "Send proposal"}
+            <span className="inline-flex min-w-[5.5rem] items-center justify-center gap-2">
+              {loading ? (
+                <>
+                  <ProposeRateSubmitSpinner />
+                  Sending
+                </>
+              ) : (
+                "Send"
+              )}
+            </span>
           </BookingSheetPrimaryButton>
         </>
       }
     >
       <div className="space-y-4">
-        <BookingRateField
-          label="Proposed rate"
-          value={rateDigits}
-          onChange={setRateDigits}
-          required
-        />
-        <BookingFormField
-          label="Notes (optional)"
-          value={note}
-          onChange={handleNoteChange}
-          placeholder="Notes"
-          multiline
-          textareaRows={1}
-          textareaClassName="ftc-fixed-scroll-textarea ftc-fixed-scroll-textarea-3"
-          textareaOnKeyDown={handleNoteKeyDown}
-          textareaOnCompositionStart={() => {
-            isComposingNoteRef.current = true;
-          }}
-          textareaOnCompositionEnd={handleNoteCompositionEnd}
-        />
-        <p className="text-xs text-ftc-text-muted">
-          {note.trim().length}/{MAX_NOTE_LENGTH}
-        </p>
-        {error ? <p className="text-sm text-red-400">{error}</p> : null}
+        <div>
+          <BookingRateField
+            label="Proposed rate"
+            value={rateDigits}
+            onChange={handleRateChange}
+            required
+          />
+          {rateError ? <PlannerFieldError message={rateError} /> : null}
+        </div>
+        <div>
+          <BookingFormField
+            label="Notes (optional)"
+            value={note}
+            onChange={handleNoteChange}
+            placeholder="Notes"
+            multiline
+            textareaRows={1}
+            textareaClassName="ftc-fixed-scroll-textarea ftc-fixed-scroll-textarea-3"
+            textareaOnKeyDown={handleNoteKeyDown}
+            textareaOnCompositionStart={() => {
+              isComposingNoteRef.current = true;
+            }}
+            textareaOnCompositionEnd={handleNoteCompositionEnd}
+          />
+          {noteError ? <PlannerFieldError message={noteError} /> : null}
+          <p className="mt-1 text-xs text-ftc-text-muted">
+            {note.trim().length}/{MAX_NOTE_LENGTH}
+          </p>
+        </div>
       </div>
     </BookingSheetDialog>
   );

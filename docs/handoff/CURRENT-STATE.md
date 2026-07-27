@@ -42,7 +42,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 - Discover, profiles, DM conversations
 - Booking requests via DM (pending / accepted / declined / cancelled)
 - Rate proposals: open offers, fixed offers, DJ counter-proposals, accept/decline RPCs
-- **Propose rate modal copy (2026-07-26):** notes field label `Notes (optional)`; placeholder `Notes`; description sentence without trailing full stop; notes textarea modal standard (~3 visible lines, internal scroll) with **3 explicit newline rows max** + 250 chars via `applyCappedMultilineInputLimit`
+- **Propose rate modal copy (2026-07-26):** notes field label `Notes (optional)`; placeholder `Notes`; description sentence without trailing full stop; notes textarea modal standard (~3 visible lines, internal scroll) with **3 explicit newline rows max** + 250 chars via `applyCappedMultilineInputLimit`; primary action **Send** (loading **Sending** + spinner); rate validation under Proposed rate field via `PlannerFieldError`
 - **Propose rate helper (2026-07-27):** onboarding description shows for first 3 modal opens per user (localStorage), then header compacts automatically — no manual dismiss
 - **Booking rate proposal actions (2026-07-26):** planner review panel — full-width `Accept proposed rate`; compact equal-width row below with `Keep offer` + `Cancel` (`min-h-8` secondary/destructive; shared in DM booking card + Event Details lineup)
 - **DM booking pending event actions (2026-07-26):** pending open-offer cards with linked event use paired row — `View event` (left, outlined) + `Cancel` (right, destructive); `min-h-8` / `gap-2` matches proposal + lineup paired buttons; standalone cancel when no event link unchanged

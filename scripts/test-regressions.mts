@@ -840,6 +840,11 @@ function testProposeBookingRateNotesTextareaGrowth() {
   assert.match(sheetSource, /applyCappedMultilineInputLimit/);
   assert.match(sheetSource, /shouldBlockMultilineEnter/);
   assert.match(sheetSource, /MAX_NOTE_LINES = 3/);
+  assert.match(sheetSource, /Enter a positive whole dollar amount"/);
+  assert.doesNotMatch(sheetSource, /Send proposal/);
+  assert.match(sheetSource, /Sending/);
+  assert.match(sheetSource, /PlannerFieldError/);
+  assert.match(sheetSource, /min-w-\[5\.5rem\]/);
 }
 
 function testCappedMultilineInputLimit() {
