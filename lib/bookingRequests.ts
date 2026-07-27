@@ -629,9 +629,18 @@ export function getBookingRateDetailLabel(booking: BookingRequest): string {
   return "Rate";
 }
 
-export function getBookingCollapsedOfferSummary(booking: BookingRequest): string {
+export function getBookingCollapsedOfferSummary(
+  booking: BookingRequest,
+  currentUserId?: string | null,
+): string {
   if (hasPendingRateProposal(booking) && booking.proposed_rate != null) {
-    return `${formatIntegerRateDisplay(booking.proposed_rate)} proposed`;
+    const amount = formatIntegerRateDisplay(booking.proposed_rate);
+
+    if (currentUserId && canRespondToRateProposal(booking, currentUserId)) {
+      return amount;
+    }
+
+    return `${amount} proposed`;
   }
 
   return getDmBookingCardOfferSummary(booking);
@@ -671,7 +680,7 @@ export function getBookingCollapsedUrgentLabel(
   }
 
   if (canRespondToRateProposal(booking, currentUserId)) {
-    return "Rate proposed";
+    return "Proposed rate";
   }
 
   return null;

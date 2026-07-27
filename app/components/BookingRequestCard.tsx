@@ -199,7 +199,7 @@ export default function BookingRequestCard({
     canRespond,
     bookingLoaded,
   });
-  const collapsedOfferSummary = getBookingCollapsedOfferSummary(booking);
+  const collapsedOfferSummary = getBookingCollapsedOfferSummary(booking, currentUserId);
   const collapsedDateVenue = [
     booking.event_date?.trim() ? formatBookingCardEventDate(booking.event_date) : "",
     booking.venue?.trim(),
@@ -487,7 +487,13 @@ export default function BookingRequestCard({
               />
 
               {urgentLabel ? (
-                <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-ftc-primary">
+                <p
+                  className={
+                    urgentLabel === "Proposed rate"
+                      ? "mt-2 text-xs font-medium text-ftc-text-muted"
+                      : "mt-2 text-xs font-semibold uppercase tracking-wide text-ftc-primary"
+                  }
+                >
                   {urgentLabel}
                 </p>
               ) : null}

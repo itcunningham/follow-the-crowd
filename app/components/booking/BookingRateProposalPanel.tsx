@@ -100,7 +100,7 @@ export default function BookingRateProposalPanel({
             onClick={() => void onKeepOriginalOffer()}
             className={PROPOSAL_SECONDARY_ACTION_CLASS}
           >
-            Keep original offer
+            Keep offer
           </button>
           {onDeclineBooking ? (
             <CancelBookingRequestButton

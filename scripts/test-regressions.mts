@@ -460,13 +460,13 @@ function testBookingRateProposalPanelActionLayout() {
   assert.match(source, /PROPOSAL_PRIMARY_ACTION_CLASS/);
   assert.match(source, /PROPOSAL_SECONDARY_ACTIONS_ROW_CLASS/);
   assert.match(source, /Accept rate/);
-  assert.match(source, />\s*Keep original offer\s*</);
+  assert.match(source, />\s*Keep offer\s*</);
   assert.match(source, /Proposed rate/);
   assert.match(source, /BookingProposalCardShell/);
   assert.match(source, /label="Cancel"/);
   assert.match(source, /compact/);
   assert.match(source, /min-h-8 min-w-0 flex-1/);
-  assert.doesNotMatch(source, />\s*Keep offer\s*</);
+  assert.doesNotMatch(source, />\s*Keep original offer\s*</);
   assert.doesNotMatch(source, /Accept proposed rate/);
   assert.doesNotMatch(source, /flex-col gap-2[\s\S]*Keep offer[\s\S]*Accept rate/);
 }
@@ -741,12 +741,16 @@ function testDmBookingCardProposedRateCopy() {
   assert.match(summarySource, /return getDmBookingCardOfferSummary\(booking\)/);
   assert.doesNotMatch(summarySource, /Open offer/);
   assert.match(cardSource, /rateLine=\{pendingProposal \? "" : compactRateLine\}/);
+  assert.match(cardSource, /getBookingCollapsedOfferSummary\(booking, currentUserId\)/);
+  assert.match(cardSource, /urgentLabel === "Proposed rate"/);
 
   const bookingRequestsSource = readFileSync(
     new URL("../lib/bookingRequests.ts", import.meta.url),
     "utf8",
   );
-  assert.match(bookingRequestsSource, /formatIntegerRateDisplay\(booking\.proposed_rate\)\} proposed/);
+  assert.match(bookingRequestsSource, /canRespondToRateProposal\(booking, currentUserId\)/);
+  assert.match(bookingRequestsSource, /return "Proposed rate"/);
+  assert.match(bookingRequestsSource, /\$\{amount\} proposed/);
 }
 
 function testDmBookingCardNotesExpandAnimation() {
