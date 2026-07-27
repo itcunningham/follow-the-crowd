@@ -920,6 +920,7 @@ function testProposeBookingRateNotesTextareaGrowth() {
   assert.match(sheetSource, /Enter a positive whole dollar amount"/);
   assert.doesNotMatch(sheetSource, /Send proposal/);
   assert.match(sheetSource, /Sending/);
+  assert.doesNotMatch(sheetSource, /Sending\.\.\./);
   assert.match(sheetSource, /PlannerFieldError/);
   assert.match(sheetSource, /min-w-\[5\.5rem\]/);
 }
@@ -3525,6 +3526,8 @@ function testEventPlansInlineFeedbackMatchesEventsHistory() {
   assert.match(eventsSource, /titleFeedbackMessage: showTitleFeedback \? successMessage : null/);
   assert.doesNotMatch(eventsSource, /setHistoryFeedbackFading/);
   assert.doesNotMatch(eventsSource, /feedbackMessage=\{isHistoryTab \? successMessage/);
+  assert.match(eventsSource, /saving \? "Saving" : "Save event"/);
+  assert.doesNotMatch(eventsSource, /Saving\.\.\./);
 }
 
 function testEventsHistoryTrashVisibleUsesRenderedHistoryList() {

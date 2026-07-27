@@ -1574,7 +1574,7 @@ function EventsPageClientView({
                     aria-disabled={saving || (createSaveAttempted && createFormHasValidationErrors)}
                     className="ftc-btn-primary px-5 py-3 text-sm uppercase tracking-wide disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    {saving ? "Saving..." : "Save event"}
+                    {saving ? "Saving" : "Save event"}
                   </button>
                 </form>
               ) : null}
