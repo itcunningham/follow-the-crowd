@@ -73,6 +73,15 @@ import {
 } from "../lib/bookingRequests";
 import { getAppendedMessageIds } from "../lib/useChatScroll";
 import { computeBookingCardAlignScrollTop } from "../lib/dm/dmBookingCardExpandScroll";
+import {
+  DM_BOOKING_CONFIRMED_MESSAGE,
+  DM_BOOKING_PLANNER_KEPT_ORIGINAL_OFFER_MESSAGE,
+  formatDmBookingSystemMessageDisplay,
+  formatDjProposedRateDmSystemMessage,
+  isDmBookingSystemMessage,
+  LEGACY_RATE_PROPOSED_DM_PREFIX,
+  LEGACY_RATE_PROPOSAL_DECLINED_DM_MESSAGE,
+} from "../lib/dm/dmBookingSystemMessages";
 import { parseDjGigsListTab, resolveGigsListTabParam, resolveGigsListTabForBookingsPage, buildGigsWorkspaceIncomingHref, buildGigsConversationHref } from "../lib/bookings/gigsListNavigation";
 import {
   formatGigsTabCountAriaCount,
@@ -543,6 +552,46 @@ function testDmBookingCardAlignScrollTopMath() {
     computeBookingCardAlignScrollTop(500, desiredCardTop - 308, desiredCardTop, maxScrollTop),
     192,
   );
+}
+
+function testDmBookingSystemMessages() {
+  const pageSource = readFileSync(
+    new URL("../app/dm/[conversationId]/page.tsx", import.meta.url),
+    "utf8",
+  );
+  const bookingRequestsSource = readFileSync(
+    new URL("../lib/bookingRequests.ts", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(pageSource, /GroupChatSystemNotice/);
+  assert.match(pageSource, /formatDmBookingSystemMessageDisplay/);
+  assert.match(pageSource, /isDmBookingSystemMessage/);
+  assert.doesNotMatch(pageSource, /systemPillClassName/);
+  assert.doesNotMatch(pageSource, /Rate proposed ·/);
+  assert.doesNotMatch(pageSource, /Proposal declined ·/);
+
+  assert.match(bookingRequestsSource, /formatDjProposedRateDmSystemMessage/);
+  assert.match(bookingRequestsSource, /DM_BOOKING_PLANNER_KEPT_ORIGINAL_OFFER_MESSAGE/);
+  assert.match(bookingRequestsSource, /DM_BOOKING_PLANNER_ACCEPTED_PROPOSED_RATE_MESSAGE/);
+  assert.match(bookingRequestsSource, /DM_BOOKING_CONFIRMED_MESSAGE/);
+  assert.match(bookingRequestsSource, /DM_BOOKING_REQUEST_CANCELLED_MESSAGE/);
+
+  assert.equal(formatDjProposedRateDmSystemMessage(111), "DJ proposed a rate of $111.");
+  assert.equal(
+    formatDmBookingSystemMessageDisplay(`${LEGACY_RATE_PROPOSED_DM_PREFIX} $111`),
+    "DJ proposed a rate of $111.",
+  );
+  assert.equal(
+    formatDmBookingSystemMessageDisplay(LEGACY_RATE_PROPOSAL_DECLINED_DM_MESSAGE),
+    DM_BOOKING_PLANNER_KEPT_ORIGINAL_OFFER_MESSAGE,
+  );
+  assert.equal(
+    formatDmBookingSystemMessageDisplay("BOOKING ACTIVITY · accepted · Summer Party"),
+    DM_BOOKING_CONFIRMED_MESSAGE,
+  );
+  assert.equal(isDmBookingSystemMessage("DJ proposed a rate of $66."), true);
+  assert.equal(isDmBookingSystemMessage("BOOKING ACTIVITY · event-cancelled · Party"), false);
 }
 
 function testChatAppendedMessageIds() {
@@ -4040,6 +4089,7 @@ async function main() {
   testDmBookingCardPendingEventPairedActions();
   testDmBookingCardExpandCollapseScrollAnchor();
   testDmBookingCardAlignScrollTopMath();
+  testDmBookingSystemMessages();
   testChatAppendedMessageIds();
   testDmBookingCardProposedRateCopy();
   testAskForRateDmBookingCardOfferSummary();

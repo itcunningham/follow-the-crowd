@@ -13,6 +13,10 @@ import {
   BOOKING_ACCEPTED_DM_PREFIX,
   type BookingRequest,
 } from "@/lib/bookingRequests";
+import {
+  formatDmBookingSystemMessageDisplay,
+  isDmBookingSystemMessage,
+} from "@/lib/dm/dmBookingSystemMessages";
 
 function resolveLiveConversationBooking(
   bookings: BookingRequest[],
@@ -169,6 +173,10 @@ export function formatDmInboxMessagePreview(
 
   const bookings = options?.bookings ?? [];
 
+  if (isDmBookingSystemMessage(trimmed)) {
+    return formatDmBookingSystemMessageDisplay(trimmed);
+  }
+
   if (isBookingRequestMessage(trimmed)) {
     return formatBookingMessagePreview(
       trimmed,
@@ -200,6 +208,7 @@ export function isDmInboxSystemPreviewMessage(
   }
 
   return (
+    isDmBookingSystemMessage(trimmed) ||
     isBookingRequestMessage(trimmed) ||
     isBookingActivityDmMessage(trimmed) ||
     isBookingAcceptedDmMessage(trimmed)

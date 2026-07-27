@@ -9,6 +9,23 @@ import {
 } from "@/lib/bookingDateTime";
 import { createNotification, getNotificationCreateErrorMessage, notifyNavigationBadgesRefresh } from "@/lib/notifications";
 import { formatRateDisplay, formatIntegerRateDisplay, normalizeStoredRate } from "@/lib/bookingRate";
+import {
+  DM_BOOKING_CONFIRMED_MESSAGE,
+  DM_BOOKING_PLANNER_ACCEPTED_PROPOSED_RATE_MESSAGE,
+  DM_BOOKING_PLANNER_KEPT_ORIGINAL_OFFER_MESSAGE,
+  DM_BOOKING_REQUEST_CANCELLED_MESSAGE,
+  formatDjProposedRateDmSystemMessage,
+  formatDmBookingSystemMessageDisplay,
+  isDmBookingSystemMessage,
+  isLegacyRateProposedDmMessage,
+  LEGACY_BOOKING_ACCEPTED_DM_PREFIX,
+  LEGACY_BOOKING_ACTIVITY_DM_PREFIX,
+  LEGACY_BOOKING_CANCELLED_DM_PREFIX,
+  LEGACY_CANCELLED_BOOKING_DM_SYSTEM_MESSAGE,
+  LEGACY_RATE_PROPOSED_DM_PREFIX,
+  LEGACY_RATE_PROPOSAL_DECLINED_DM_MESSAGE,
+  LEGACY_RATE_PROPOSAL_DECLINED_DM_PREFIX,
+} from "@/lib/dm/dmBookingSystemMessages";
 import { startDm } from "@/lib/startDm";
 import {
   FTC_STATUS_DANGER,
@@ -873,18 +890,17 @@ export function isBookingRequestMessage(text: string): boolean {
   return text.trim().startsWith("BOOKING REQUEST");
 }
 
-export const CANCELLED_BOOKING_DM_SYSTEM_MESSAGE =
-  "Booking request cancelled by planner.";
+export const CANCELLED_BOOKING_DM_SYSTEM_MESSAGE = LEGACY_CANCELLED_BOOKING_DM_SYSTEM_MESSAGE;
 
-export const RATE_PROPOSED_DM_PREFIX = "Rate proposed ·";
+export const RATE_PROPOSED_DM_PREFIX = LEGACY_RATE_PROPOSED_DM_PREFIX;
 
 const RATE_PROPOSED_DM_DUPLICATE_WINDOW_MS = 10_000;
 
 export function isRateProposedDmMessage(text: string): boolean {
-  return text.trim().startsWith(RATE_PROPOSED_DM_PREFIX);
+  return isLegacyRateProposedDmMessage(text);
 }
 
-export const BOOKING_ACCEPTED_DM_PREFIX = "Booking accepted ·";
+export const BOOKING_ACCEPTED_DM_PREFIX = LEGACY_BOOKING_ACCEPTED_DM_PREFIX;
 
 export function formatBookingAcceptedDmMessage(eventName: string): string {
   const trimmedEventName = eventName.trim() || "Event";
@@ -909,11 +925,11 @@ export function isBookingAcceptedDmMessage(text: string): boolean {
   return text.trim().startsWith(BOOKING_ACCEPTED_DM_PREFIX);
 }
 
-export const BOOKING_CANCELLED_DM_PREFIX = "Booking cancelled ·";
+export const BOOKING_CANCELLED_DM_PREFIX = LEGACY_BOOKING_CANCELLED_DM_PREFIX;
 
 const BOOKING_CANCELLED_DM_DUPLICATE_WINDOW_MS = 10_000;
 
-export const BOOKING_ACTIVITY_DM_PREFIX = "BOOKING ACTIVITY ·";
+export const BOOKING_ACTIVITY_DM_PREFIX = LEGACY_BOOKING_ACTIVITY_DM_PREFIX;
 
 export function isBookingActivityDmMessage(text: string): boolean {
   return text.trim().startsWith(BOOKING_ACTIVITY_DM_PREFIX);
@@ -1087,20 +1103,18 @@ async function insertBookingCancellationActivityMessageIfNeeded(
   }
 }
 
-export function formatBookingCancelledDmMessage(booking: BookingRequest): string {
-  const trimmedReason = booking.cancellation_reason?.trim();
-
-  if (trimmedReason) {
-    return `${BOOKING_CANCELLED_DM_PREFIX} ${formatPublicCancellationReason(trimmedReason)}`;
-  }
-
-  const trimmedEventName = booking.event_name.trim() || "Event";
-
-  return `${BOOKING_CANCELLED_DM_PREFIX} ${trimmedEventName}`;
+export function formatBookingCancelledDmMessage(_booking: BookingRequest): string {
+  return DM_BOOKING_REQUEST_CANCELLED_MESSAGE;
 }
 
 export function isBookingCancelledDmMessage(text: string): boolean {
-  return text.trim().startsWith(BOOKING_CANCELLED_DM_PREFIX);
+  const trimmed = text.trim();
+
+  return (
+    trimmed === DM_BOOKING_REQUEST_CANCELLED_MESSAGE ||
+    trimmed.startsWith(BOOKING_CANCELLED_DM_PREFIX) ||
+    trimmed === LEGACY_CANCELLED_BOOKING_DM_SYSTEM_MESSAGE
+  );
 }
 
 async function insertBookingCancelledDmMessageIfNeeded(
@@ -1120,7 +1134,10 @@ async function insertBookingCancelledDmMessageIfNeeded(
     .from("messages")
     .select("id, created_at")
     .eq("conversation_id", booking.conversation_id)
-    .eq("text", messageText)
+    .in("text", [
+      messageText,
+      LEGACY_CANCELLED_BOOKING_DM_SYSTEM_MESSAGE,
+    ])
     .order("created_at", { ascending: false })
     .limit(1);
 
@@ -1170,7 +1187,7 @@ async function insertBookingCancelledDmMessageIfNeeded(
 export function formatRateProposedDmMessage(
   proposedRate: number | null | undefined,
 ): string {
-  return `${RATE_PROPOSED_DM_PREFIX} ${formatIntegerRateDisplay(proposedRate)}`;
+  return formatDjProposedRateDmSystemMessage(proposedRate);
 }
 
 async function insertRateProposedDmMessageIfNeeded(
@@ -1233,80 +1250,55 @@ async function insertRateProposedDmMessageIfNeeded(
 async function insertBookingAcceptedDmMessageIfNeeded(
   booking: BookingRequest,
 ): Promise<{ inserted: boolean; messageText: string }> {
-  const messageText = formatBookingAcceptedDmMessage(booking.event_name);
+  const messageText = DM_BOOKING_CONFIRMED_MESSAGE;
+  const legacyMessageText = formatBookingAcceptedDmMessage(booking.event_name);
   const activityText = formatBookingAcceptanceActivityMessage(booking.event_name);
 
   if (!booking.conversation_id) {
     return { inserted: false, messageText };
   }
 
-  const { data: existingActivityRows, error: existingActivityError } = await supabase
+  const { data: existingRows, error: existingError } = await supabase
     .from("messages")
     .select("id")
     .eq("conversation_id", booking.conversation_id)
-    .eq("text", activityText)
+    .in("text", [messageText, activityText, legacyMessageText])
     .limit(1);
 
-  if (existingActivityError) {
+  if (existingError) {
     console.error(
-      "[bookings] Failed to check booking-accepted activity duplicate:",
-      existingActivityError,
+      "[bookings] Failed to check booking-confirmed DM duplicate:",
+      existingError,
     );
-  } else if (existingActivityRows?.[0]) {
-    return { inserted: false, messageText };
-  }
-
-  const { data: existingActivityPrefixRows, error: existingActivityPrefixError } = await supabase
-    .from("messages")
-    .select("id")
-    .eq("conversation_id", booking.conversation_id)
-    .like("text", `${BOOKING_ACTIVITY_DM_PREFIX} accepted ·%`)
-    .limit(1);
-
-  if (existingActivityPrefixError) {
-    console.error(
-      "[bookings] Failed to check booking-accepted activity prefix duplicate:",
-      existingActivityPrefixError,
-    );
-  } else if (existingActivityPrefixRows?.[0]) {
-    return { inserted: false, messageText };
-  }
-
-  const { data: existingLegacyRows, error: existingLegacyError } = await supabase
-    .from("messages")
-    .select("id")
-    .eq("conversation_id", booking.conversation_id)
-    .eq("user_id", booking.recipient_id)
-    .eq("text", messageText)
-    .limit(1);
-
-  if (existingLegacyError) {
-    console.error("[bookings] Failed to check legacy booking-accepted DM duplicate:", existingLegacyError);
-  } else if (existingLegacyRows?.[0]) {
+  } else if (existingRows?.[0]) {
     return { inserted: false, messageText };
   }
 
   const { error: insertError } = await supabase.from("messages").insert({
     conversation_id: booking.conversation_id,
     user_id: booking.recipient_id,
-    text: activityText,
+    text: messageText,
   });
 
   if (insertError) {
-    console.error("[bookings] Failed to insert booking-accepted activity DM message:", insertError);
+    console.error("[bookings] Failed to insert booking-confirmed DM message:", insertError);
     return { inserted: false, messageText };
   }
 
   return { inserted: true, messageText };
 }
 
-export const RATE_PROPOSAL_DECLINED_DM_PREFIX = "Proposal declined ·";
+export const RATE_PROPOSAL_DECLINED_DM_PREFIX = LEGACY_RATE_PROPOSAL_DECLINED_DM_PREFIX;
 
-export const RATE_PROPOSAL_DECLINED_DM_MESSAGE =
-  "Proposal declined · original offer still available";
+export const RATE_PROPOSAL_DECLINED_DM_MESSAGE = DM_BOOKING_PLANNER_KEPT_ORIGINAL_OFFER_MESSAGE;
 
 export function isRateProposalDeclinedDmMessage(text: string): boolean {
-  return text.trim().startsWith(RATE_PROPOSAL_DECLINED_DM_PREFIX);
+  const trimmed = text.trim();
+
+  return (
+    trimmed === DM_BOOKING_PLANNER_KEPT_ORIGINAL_OFFER_MESSAGE ||
+    trimmed.startsWith(LEGACY_RATE_PROPOSAL_DECLINED_DM_PREFIX)
+  );
 }
 
 async function insertRateProposalDeclinedDmMessageIfNeeded(
@@ -1316,27 +1308,33 @@ async function insertRateProposalDeclinedDmMessageIfNeeded(
     return { inserted: false };
   }
 
-  const { data: latestProposedRows, error: proposedError } = await supabase
+  const { data: recentRecipientRows, error: proposedError } = await supabase
     .from("messages")
-    .select("created_at")
+    .select("created_at, text")
     .eq("conversation_id", booking.conversation_id)
     .eq("user_id", booking.recipient_id)
-    .like("text", `${RATE_PROPOSED_DM_PREFIX}%`)
     .order("created_at", { ascending: false })
-    .limit(1);
+    .limit(20);
 
   if (proposedError) {
     console.error("[bookings] Failed to load latest rate-proposal DM notice:", proposedError);
   }
 
-  const latestProposedAt = latestProposedRows?.[0]?.created_at;
+  const latestProposedAt = recentRecipientRows?.find(
+    (row) =>
+      isLegacyRateProposedDmMessage(row.text) ||
+      row.text.trim().startsWith("DJ proposed a rate of "),
+  )?.created_at;
 
   let declineQuery = supabase
     .from("messages")
     .select("id")
     .eq("conversation_id", booking.conversation_id)
     .eq("user_id", booking.sender_id)
-    .eq("text", RATE_PROPOSAL_DECLINED_DM_MESSAGE);
+    .in("text", [
+      RATE_PROPOSAL_DECLINED_DM_MESSAGE,
+      LEGACY_RATE_PROPOSAL_DECLINED_DM_MESSAGE,
+    ]);
 
   if (latestProposedAt) {
     declineQuery = declineQuery.gte("created_at", latestProposedAt);
@@ -1364,6 +1362,46 @@ async function insertRateProposalDeclinedDmMessageIfNeeded(
   }
 
   return { inserted: true };
+}
+
+async function insertAcceptProposedRateDmMessageIfNeeded(
+  booking: BookingRequest,
+): Promise<{ inserted: boolean; messageText: string }> {
+  const messageText = DM_BOOKING_PLANNER_ACCEPTED_PROPOSED_RATE_MESSAGE;
+
+  if (!booking.conversation_id) {
+    return { inserted: false, messageText };
+  }
+
+  const { data: existingRows, error: existingError } = await supabase
+    .from("messages")
+    .select("id")
+    .eq("conversation_id", booking.conversation_id)
+    .eq("user_id", booking.sender_id)
+    .eq("text", messageText)
+    .limit(1);
+
+  if (existingError) {
+    console.error(
+      "[bookings] Failed to check accepted-proposal DM duplicate:",
+      existingError,
+    );
+  } else if (existingRows?.[0]) {
+    return { inserted: false, messageText };
+  }
+
+  const { error: insertError } = await supabase.from("messages").insert({
+    conversation_id: booking.conversation_id,
+    user_id: booking.sender_id,
+    text: messageText,
+  });
+
+  if (insertError) {
+    console.error("[bookings] Failed to insert accepted-proposal DM message:", insertError);
+    return { inserted: false, messageText };
+  }
+
+  return { inserted: true, messageText };
 }
 
 const BOOKING_PREVIEW_LABELS: Record<BookingRequestStatus, string> = {
@@ -1394,11 +1432,15 @@ export function formatBookingMessagePreview(
   const trimmed = messageText.trim();
 
   if (trimmed === CANCELLED_BOOKING_DM_SYSTEM_MESSAGE) {
-    return trimmed;
+    return formatDmBookingSystemMessageDisplay(trimmed);
+  }
+
+  if (isDmBookingSystemMessage(trimmed)) {
+    return formatDmBookingSystemMessageDisplay(trimmed);
   }
 
   if (isBookingCancelledDmMessage(trimmed)) {
-    return trimmed;
+    return formatDmBookingSystemMessageDisplay(trimmed);
   }
 
   if (isBookingActivityDmMessage(trimmed)) {
@@ -2651,9 +2693,9 @@ export async function cancelBookingRequest(
   );
 
   try {
-    await insertBookingCancellationActivityMessageIfNeeded(booking);
-  } catch (activityError) {
-    console.error("[bookingRequests] Failed to insert booking-activity DM message:", activityError);
+    await insertBookingCancelledDmMessageIfNeeded(booking);
+  } catch (cancelMessageError) {
+    console.error("[bookingRequests] Failed to insert booking-cancelled DM message:", cancelMessageError);
   }
 
   return booking;
@@ -3039,6 +3081,25 @@ export async function acceptProposedBookingRate(bookingId: string): Promise<Book
     `${booking.event_name} · ${formatRateDisplay(booking.fee)}`,
     booking.conversation_id ? `/dm/${booking.conversation_id}` : "/bookings",
   );
+
+  const dmResult = await insertAcceptProposedRateDmMessageIfNeeded(booking);
+
+  if (dmResult.inserted && booking.conversation_id) {
+    try {
+      await createNotification(
+        booking.recipient_id,
+        "message",
+        "New message",
+        dmResult.messageText,
+        `/dm/${booking.conversation_id}`,
+      );
+    } catch (notificationError) {
+      console.error(
+        "[bookings] message notification failed after accepted proposal:",
+        notificationError,
+      );
+    }
+  }
 
   if (booking.event_id) {
     try {

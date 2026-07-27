@@ -18,6 +18,7 @@ import DmConversationDetailsPanel from "@/app/components/dm/DmConversationDetail
 import DmComposer from "@/app/components/dm/DmComposer";
 import DmReportFormModal from "@/app/components/dm/DmReportFormModal";
 import DmTextMessageBubble from "@/app/components/dm/DmTextMessageBubble";
+import GroupChatSystemNotice from "@/app/components/group-chat/GroupChatSystemNotice";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
 import ChatProfileAvatarLink from "@/app/components/chat/ChatProfileAvatarLink";
 import { ChatMessagesSkeleton } from "@/app/components/skeleton/Skeleton";
@@ -27,7 +28,6 @@ import {
   acceptProposedBookingRate,
   cancelAcceptedBookingRequest,
   cancelBookingRequest,
-  CANCELLED_BOOKING_DM_SYSTEM_MESSAGE,
   canRecipientRespondToPendingBooking,
   declineProposedBookingRate,
   evaluateDmBookingCardVisibility,
@@ -37,20 +37,22 @@ import {
   getBookingMutationErrorMessage,
   getBookingRequestsForConversation,
   getEventIdsWithAcceptedBookings,
-  isBookingAcceptedDmMessage,
   isBookingActivityDmMessage,
-  isBookingCancelledDmMessage,
   isBookingRateProposalSchemaError,
   isBookingRequestMessage,
-  isRateProposedDmMessage,
-  isRateProposalDeclinedDmMessage,
   mergeBookingRequests,
   mergeBookingWithMessage,
   parseBookingRequestMessage,
+  parseEventCancellationActivityEventName,
   proposeBookingRate,
   updateBookingRequestStatus,
   type BookingRequest,
 } from "@/lib/bookingRequests";
+import {
+  DM_BOOKING_REQUEST_CANCELLED_MESSAGE,
+  formatDmBookingSystemMessageDisplay,
+  isDmBookingSystemMessage,
+} from "@/lib/dm/dmBookingSystemMessages";
 import { parseDmThreadEntryContext, resolveDmThreadBackHref } from "@/lib/dm/threadNavigation";
 import { buildChatReturnTo } from "@/lib/profileNavigation";
 import {
@@ -1613,51 +1615,32 @@ export default function DmChatPage() {
         ) : (
           <ul data-chat-content-root className="flex flex-col-reverse gap-3 pb-2">
             {reversedMessages.map((message) => {
-              if (isBookingActivityDmMessage(message.text)) {
+              if (
+                isBookingActivityDmMessage(message.text) &&
+                parseEventCancellationActivityEventName(message.text)
+              ) {
                 return null;
               }
 
-              if (isBookingAcceptedDmMessage(message.text)) {
+              if (isDmBookingSystemMessage(message.text)) {
+                return (
+                  <GroupChatSystemNotice
+                    key={message.id}
+                    messageId={message.id}
+                    text={formatDmBookingSystemMessageDisplay(message.text)}
+                    createdAt={message.created_at}
+                    formatTime={formatMessageTime}
+                    isHighlighted={isMessageHighlighted(message.id)}
+                  />
+                );
+              }
+
+              if (isBookingActivityDmMessage(message.text)) {
                 return null;
               }
 
               const isOwnMessage = currentUserId !== null && message.user_id === currentUserId;
               const isBookingMessage = isBookingRequestMessage(message.text);
-              const isBookingCancelledNotice = isBookingCancelledDmMessage(message.text);
-              const isRateProposalNotice =
-                isRateProposedDmMessage(message.text) ||
-                isRateProposalDeclinedDmMessage(message.text) ||
-                isBookingCancelledNotice;
-
-              if (isRateProposalNotice) {
-                const highlighted = isMessageHighlighted(message.id);
-                logChatHighlightRender(message.id, highlighted);
-                const systemPillClassName = isBookingCancelledNotice
-                  ? "rounded-full border border-[var(--ftc-color-danger)]/35 bg-[var(--ftc-color-danger)]/10 px-3 py-1.5 text-xs text-[var(--ftc-color-danger)]/90"
-                  : "rounded-full border border-ftc-border bg-ftc-bg-elevated/50 px-3 py-1.5 text-xs text-ftc-text-muted";
-
-                return (
-                  <li
-                    key={message.id}
-                    data-chat-message-id={message.id}
-                    className="flex justify-center"
-                  >
-                    <div className="max-w-sm px-3 py-1 text-center">
-                      <p
-                        className={`${systemPillClassName} ${getChatNewMessageHighlightClass(highlighted)}`}
-                      >
-                        {message.text.trim()}
-                      </p>
-                      <time
-                        dateTime={message.created_at}
-                        className="-mt-1 block text-[10px] text-ftc-text-muted"
-                      >
-                        {formatMessageTime(message.created_at)}
-                      </time>
-                    </div>
-                  </li>
-                );
-              }
 
               if (!isBookingMessage) {
                 return (
@@ -1732,34 +1715,19 @@ export default function DmChatPage() {
                 : null;
 
               if (cardVisibility.hideCard) {
-                  const highlighted = isMessageHighlighted(message.id);
-                  logChatHighlightRender(message.id, highlighted);
-
-                  return (
-                    <li
-                      key={message.id}
-                      data-chat-message-id={message.id}
-                      {...(bookingId
-                        ? { [CHAT_BOOKING_REQUEST_ID_ATTR]: bookingId }
-                        : {})}
-                      className="flex justify-center"
-                    >
-                      <div className="max-w-sm px-3 py-1 text-center">
-                        <p
-                          className={`rounded-full border border-ftc-border bg-ftc-bg-elevated/50 px-3 py-1.5 text-xs text-ftc-text-muted ${getChatNewMessageHighlightClass(highlighted)}`}
-                        >
-                          {CANCELLED_BOOKING_DM_SYSTEM_MESSAGE}
-                        </p>
-                        <time
-                          dateTime={message.created_at}
-                          className="-mt-1 block text-[10px] text-ftc-text-muted"
-                        >
-                          {formatMessageTime(message.created_at)}
-                        </time>
-                      </div>
-                    </li>
-                  );
-                }
+                return (
+                  <GroupChatSystemNotice
+                    key={message.id}
+                    messageId={message.id}
+                    text={formatDmBookingSystemMessageDisplay(
+                      DM_BOOKING_REQUEST_CANCELLED_MESSAGE,
+                    )}
+                    createdAt={message.created_at}
+                    formatTime={formatMessageTime}
+                    isHighlighted={isMessageHighlighted(message.id)}
+                  />
+                );
+              }
 
                 const canRespond = actionBooking
                   ? canRecipientRespondToPendingBooking(actionBooking, currentUserId)
