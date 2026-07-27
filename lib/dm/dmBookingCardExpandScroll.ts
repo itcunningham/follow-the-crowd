@@ -43,7 +43,7 @@ export function clampDmMessageScrollTop(container: HTMLElement): void {
   }
 }
 
-/** Hold scrollTop steady while flex-col-reverse layout changes would snap to latest messages. */
+/** Hold scrollTop steady while collapse layout changes run. */
 export function lockDmMessageScrollTop(
   container: HTMLElement,
   lockedScrollTop: number,
@@ -161,7 +161,7 @@ export function scrollExpandedBookingCardBelowHeader(
   });
 }
 
-/** Align card top to a viewport Y in a flex-col-reverse DM message list. */
+/** Align card top to a viewport Y in the DM message scroller. */
 export function computeBookingCardAlignScrollTop(
   scrollTop: number,
   cardTop: number,
@@ -174,14 +174,7 @@ export function computeBookingCardAlignScrollTop(
     return scrollTop;
   }
 
-  let targetScrollTop = scrollTop + delta;
-
-  // flex-col-reverse: scrollTop=0 is the newest-message edge. When a card expands
-  // above the viewport from that edge, a negative delta would clamp to 0 — scroll
-  // into older content instead so the card top can reach the target line.
-  if (targetScrollTop < 0 && delta < 0) {
-    targetScrollTop = -delta;
-  }
+  const targetScrollTop = scrollTop + delta;
 
   return Math.max(0, Math.min(maxScrollTop, targetScrollTop));
 }
@@ -282,9 +275,7 @@ function waitForExpandedBookingCardReady(
         return;
       }
 
-      requestAnimationFrame(() => {
-        requestAnimationFrame(onReady);
-      });
+      requestAnimationFrame(onReady);
     });
   };
 
@@ -299,13 +290,11 @@ export function scheduleExpandedBookingCardScrollAlign(
   getCardAnchor: () => HTMLElement | null,
   bookingRequestId: string,
   pendingBookingRequestIdRef: MutableRefObject<string | null>,
-  lockedScrollTop: number,
   onComplete?: () => void,
 ): () => void {
   let cancelled = false;
   let scrolled = false;
   let cancelReadyWait: (() => void) | null = null;
-  let unlockScroll: (() => void) | null = lockDmMessageScrollTop(container, lockedScrollTop);
 
   const finish = () => {
     if (cancelled) {
@@ -315,8 +304,6 @@ export function scheduleExpandedBookingCardScrollAlign(
     cancelled = true;
     cancelReadyWait?.();
     cancelReadyWait = null;
-    unlockScroll?.();
-    unlockScroll = null;
     onComplete?.();
   };
 
@@ -332,9 +319,6 @@ export function scheduleExpandedBookingCardScrollAlign(
       finish();
       return;
     }
-
-    unlockScroll?.();
-    unlockScroll = null;
 
     scrollExpandedBookingCardBelowHeader(container, cardAnchor, bookingRequestId, "auto");
     scrolled = true;

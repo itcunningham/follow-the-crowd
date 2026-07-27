@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type MutableRefObject } from "react";
-import { isDmChatAutoScrollSuppressed } from "@/lib/dm/dmBookingExpandScrollGuard";
 
 export const CHAT_NEAR_BOTTOM_THRESHOLD_PX = 120;
 export const CHAT_MESSAGE_ID_ATTR = "data-chat-message-id";
@@ -20,6 +19,10 @@ type PendingVisualAnchor = {
   anchorRectTop: number;
   previousScrollTop: number;
 };
+
+export function getChatMaxScrollTop(container: HTMLElement): number {
+  return Math.max(0, container.scrollHeight - container.clientHeight);
+}
 
 export function tagChatMessageForScroll<T extends { user_id: string }>(
   message: T,
@@ -87,7 +90,6 @@ type UseChatScrollOptions = {
   lastMessageIsFromCurrentUser: boolean | null;
   currentUserId: string | null;
   suppressAutoScrollRef?: MutableRefObject<boolean>;
-  bookingCardExpandAlignGuardRef?: MutableRefObject<string | null>;
 };
 
 export function useChatScroll({
@@ -97,7 +99,6 @@ export function useChatScroll({
   lastMessageIsFromCurrentUser,
   currentUserId,
   suppressAutoScrollRef,
-  bookingCardExpandAlignGuardRef,
 }: UseChatScrollOptions) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -105,6 +106,7 @@ export function useChatScroll({
   const pendingVisualAnchorRef = useRef<PendingVisualAnchor | null>(null);
   const pendingScrollPreserveRef = useRef<number | null>(null);
   const previousMessageIdsRef = useRef<string[]>([]);
+  const needsInitialScrollRef = useRef(true);
   const [showNewMessagesPill, setShowNewMessagesPill] = useState(false);
   const [newMessagesPillCount, setNewMessagesPillCount] = useState(0);
 
@@ -125,31 +127,24 @@ export function useChatScroll({
       return true;
     }
 
-    // flex-col-reverse anchors newest messages at scrollTop ~= 0
-    return container.scrollTop <= CHAT_NEAR_BOTTOM_THRESHOLD_PX;
+    const maxScrollTop = getChatMaxScrollTop(container);
+
+    return maxScrollTop - container.scrollTop <= CHAT_NEAR_BOTTOM_THRESHOLD_PX;
   }, []);
 
   const scrollToBottom = useCallback(
     (behavior: ScrollBehavior = "auto") => {
       const container = scrollRef.current;
 
-      if (
-        !container ||
-        isDmChatAutoScrollSuppressed(suppressAutoScrollRef, bookingCardExpandAlignGuardRef)
-      ) {
+      if (!container || suppressAutoScrollRef?.current) {
         return;
       }
 
       clearPendingScrollPreserve();
-      container.scrollTo({ top: 0, behavior });
+      container.scrollTo({ top: getChatMaxScrollTop(container), behavior });
       hideNewMessagesPill();
     },
-    [
-      bookingCardExpandAlignGuardRef,
-      clearPendingScrollPreserve,
-      hideNewMessagesPill,
-      suppressAutoScrollRef,
-    ],
+    [clearPendingScrollPreserve, hideNewMessagesPill, suppressAutoScrollRef],
   );
 
   const scrollToBottomSmooth = useCallback(() => {
@@ -259,11 +254,28 @@ export function useChatScroll({
 
   useEffect(() => {
     if (loading) {
+      needsInitialScrollRef.current = true;
       previousMessageIdsRef.current = [];
       clearPendingScrollPreserve();
       hideNewMessagesPill();
     }
   }, [clearPendingScrollPreserve, hideNewMessagesPill, loading]);
+
+  useEffect(() => {
+    if (loading || messageIds.length === 0 || !needsInitialScrollRef.current) {
+      return;
+    }
+
+    needsInitialScrollRef.current = false;
+
+    if (suppressAutoScrollRef?.current) {
+      return;
+    }
+
+    requestAnimationFrame(() => {
+      scrollToBottom("auto");
+    });
+  }, [loading, messageIds.length, scrollToBottom, suppressAutoScrollRef]);
 
   useEffect(() => {
     if (loading) {
@@ -283,14 +295,13 @@ export function useChatScroll({
       return;
     }
 
-    const senderId = lastMessageSenderId;
     const isOwnMessage = lastMessageIsFromCurrentUser === true;
 
     if (pendingUserSentScrollRef.current) {
       pendingUserSentScrollRef.current = false;
       clearPendingScrollPreserve();
 
-      if (isDmChatAutoScrollSuppressed(suppressAutoScrollRef, bookingCardExpandAlignGuardRef)) {
+      if (suppressAutoScrollRef?.current) {
         return;
       }
 
@@ -301,7 +312,7 @@ export function useChatScroll({
     if (isOwnMessage) {
       clearPendingScrollPreserve();
 
-      if (isDmChatAutoScrollSuppressed(suppressAutoScrollRef, bookingCardExpandAlignGuardRef)) {
+      if (suppressAutoScrollRef?.current) {
         return;
       }
 
@@ -312,7 +323,7 @@ export function useChatScroll({
     const nearBottom = isNearBottom();
 
     if (!nearBottom) {
-      if (isDmChatAutoScrollSuppressed(suppressAutoScrollRef, bookingCardExpandAlignGuardRef)) {
+      if (suppressAutoScrollRef?.current) {
         return;
       }
 
@@ -322,11 +333,12 @@ export function useChatScroll({
       return;
     }
 
-    if (isDmChatAutoScrollSuppressed(suppressAutoScrollRef, bookingCardExpandAlignGuardRef)) {
+    if (suppressAutoScrollRef?.current) {
       return;
     }
 
     clearPendingScrollPreserve();
+    requestAnimationFrame(() => scrollToBottom("smooth"));
   }, [
     loading,
     messageIds,
@@ -338,7 +350,6 @@ export function useChatScroll({
     restorePreservedScrollPosition,
     scrollToBottom,
     suppressAutoScrollRef,
-    bookingCardExpandAlignGuardRef,
   ]);
 
   return {

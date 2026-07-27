@@ -521,9 +521,8 @@ export default function EventCrewChatPage() {
 
           <div
             ref={scrollRef}
-            className="flex min-h-0 flex-1 flex-col-reverse overflow-y-auto overscroll-contain [overflow-anchor:none] px-3 py-4 sm:px-4"
+            className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain [overflow-anchor:none] px-3 py-4 sm:px-4"
           >
-            <div ref={bottomRef} data-chat-bottom aria-hidden="true" className="h-px shrink-0" />
             {accessLoading || messagesLoading ? (
               <ChatMessagesSkeleton />
             ) : messagesError ? (
@@ -580,6 +579,7 @@ export default function EventCrewChatPage() {
                 })}
               </ul>
             )}
+            <div ref={bottomRef} data-chat-bottom aria-hidden="true" className="h-px shrink-0" />
           </div>
 
           <div className="relative shrink-0">

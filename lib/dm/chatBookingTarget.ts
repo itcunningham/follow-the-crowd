@@ -3,7 +3,6 @@ import {
   findDmMessageIdForBookingRequest,
   type BookingRequestMessageSource,
 } from "@/lib/bookingRequests";
-import { isDmChatAutoScrollSuppressed } from "@/lib/dm/dmBookingExpandScrollGuard";
 import { CHAT_MESSAGE_ID_ATTR } from "@/lib/useChatScroll";
 
 export const CHAT_BOOKING_REQUEST_ID_ATTR = "data-chat-booking-request-id";
@@ -62,7 +61,6 @@ type UseChatBookingTargetScrollOptions = {
   scrollRef: RefObject<HTMLDivElement | null>;
   highlightBookingFocus: (messageId: string) => void;
   suppressAutoScrollRef: MutableRefObject<boolean>;
-  bookingCardExpandAlignGuardRef?: MutableRefObject<string | null>;
 };
 
 export function useChatBookingTargetScroll({
@@ -73,7 +71,6 @@ export function useChatBookingTargetScroll({
   scrollRef,
   highlightBookingFocus,
   suppressAutoScrollRef,
-  bookingCardExpandAlignGuardRef,
 }: UseChatBookingTargetScrollOptions) {
   const targetMessageId = useMemo(
     () =>
@@ -96,10 +93,6 @@ export function useChatBookingTargetScroll({
       return;
     }
 
-    if (isDmChatAutoScrollSuppressed(suppressAutoScrollRef, bookingCardExpandAlignGuardRef)) {
-      return;
-    }
-
     if (!targetMessageId) {
       completedRef.current = true;
       suppressAutoScrollRef.current = false;
@@ -117,10 +110,6 @@ export function useChatBookingTargetScroll({
     const scrollToTarget = () => {
       if (cancelled || completedRef.current) {
         return true;
-      }
-
-      if (isDmChatAutoScrollSuppressed(suppressAutoScrollRef, bookingCardExpandAlignGuardRef)) {
-        return false;
       }
 
       const container = scrollRef.current;
@@ -188,7 +177,6 @@ export function useChatBookingTargetScroll({
     scrollRef,
     scrollTargetBookingRequestId,
     suppressAutoScrollRef,
-    bookingCardExpandAlignGuardRef,
     targetMessageId,
   ]);
 }

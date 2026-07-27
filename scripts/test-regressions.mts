@@ -504,16 +504,21 @@ function testDmBookingCardExpandCollapseScrollAnchor() {
   assert.match(expandScrollSource, /restoreBookingCardScrollPosition/);
   assert.match(expandScrollSource, /clampDmMessageScrollTop/);
   assert.match(expandScrollSource, /DM_BOOKING_CARD_EXPAND_PANEL_ATTR/);
-  assert.match(pageSource, /flushSync/);
-  assert.match(pageSource, /bookingCardExpandAlignGuardRef/);
+  assert.doesNotMatch(pageSource, /flex-1 flex-col-reverse overflow-y-auto/);
+  assert.match(pageSource, /flex-1 flex-col overflow-y-auto/);
+  assert.match(pageSource, /data-chat-bottom/);
+  assert.doesNotMatch(pageSource, /flushSync/);
+  assert.doesNotMatch(pageSource, /bookingCardExpandAlignGuardRef/);
+  assert.doesNotMatch(pageSource, /dmBookingExpandScrollGuard/);
   assert.match(expandScrollSource, /lockDmMessageScrollTop/);
   assert.match(expandScrollSource, /computeBookingCardAlignScrollTop/);
   assert.doesNotMatch(expandScrollSource, /scrollIntoView/);
   assert.match(scrollSource, /getAppendedMessageIds/);
-  assert.match(scrollSource, /bookingCardExpandAlignGuardRef/);
-  assert.match(scrollSource, /isDmChatAutoScrollSuppressed/);
+  assert.match(scrollSource, /getChatMaxScrollTop/);
+  assert.match(scrollSource, /needsInitialScrollRef/);
   assert.match(scrollSource, /messageIds: readonly string\[\]/);
   assert.doesNotMatch(scrollSource, /messageCount/);
+  assert.doesNotMatch(scrollSource, /flex-col-reverse anchors newest messages/);
 }
 
 function testDmBookingCardAlignScrollTopMath() {
@@ -527,7 +532,7 @@ function testDmBookingCardAlignScrollTopMath() {
   );
   assert.equal(
     computeBookingCardAlignScrollTop(0, desiredCardTop - 308, desiredCardTop, maxScrollTop),
-    308,
+    0,
   );
   assert.equal(
     computeBookingCardAlignScrollTop(500, desiredCardTop - 308, desiredCardTop, maxScrollTop),

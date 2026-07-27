@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { flushSync } from "react-dom";
 import { useParams, usePathname, useSearchParams } from "next/navigation";
 import AppNavigation, { MOBILE_NAV_OFFSET_CLASS } from "@/app/components/AppNavigation";
 import { APP_DM_CHAT_COLUMN_CLASS } from "@/app/components/layout/AppPageLayout";
@@ -199,7 +198,6 @@ export default function DmChatPage() {
       bookingFocusMode: "scroll-and-highlight" as const,
     };
   const suppressAutoScrollRef = useRef(Boolean(scrollTargetBookingRequestId));
-  const bookingCardExpandAlignGuardRef = useRef<string | null>(null);
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [attachments, setAttachments] = useState<DmMessageAttachment[]>([]);
@@ -268,7 +266,6 @@ export default function DmChatPage() {
     lastMessageIsFromCurrentUser: lastMessage?._clientScrollMeta?.isFromCurrentUser ?? null,
     currentUserId,
     suppressAutoScrollRef,
-    bookingCardExpandAlignGuardRef,
   });
   const { addHighlightedMessageId, isMessageHighlighted } = useChatNewMessageHighlight();
   const { highlightBookingFocus, getMessageBookingFocusPhase } = useChatBookingFocusHighlight();
@@ -305,7 +302,6 @@ export default function DmChatPage() {
     scrollRef,
     highlightBookingFocus,
     suppressAutoScrollRef,
-    bookingCardExpandAlignGuardRef,
   });
 
   const conversationTitle = otherUserProfile ? getConversationTitle(otherUserProfile) : "";
@@ -402,7 +398,6 @@ export default function DmChatPage() {
     bookingCardScrollCleanupRef.current = null;
     bookingCardAnchorRefs.current.clear();
     pendingBookingCardScrollIdRef.current = null;
-    bookingCardExpandAlignGuardRef.current = null;
   }, [conversationId]);
 
   const registerBookingCardAnchor = useCallback(
@@ -446,14 +441,9 @@ export default function DmChatPage() {
 
       if (expanded) {
         pendingBookingCardScrollIdRef.current = bookingRequestId;
-        bookingCardExpandAlignGuardRef.current = bookingRequestId;
+        setBookingExpanded(bookingRequestId, true);
 
         const container = scrollRef.current;
-        const lockedScrollTop = container?.scrollTop ?? 0;
-
-        flushSync(() => {
-          setBookingExpanded(bookingRequestId, true);
-        });
 
         if (container) {
           bookingCardScrollCleanupRef.current = scheduleExpandedBookingCardScrollAlign(
@@ -461,16 +451,13 @@ export default function DmChatPage() {
             () => bookingCardAnchorRefs.current.get(bookingRequestId) ?? null,
             bookingRequestId,
             pendingBookingCardScrollIdRef,
-            lockedScrollTop,
             () => {
               pendingBookingCardScrollIdRef.current = null;
-              bookingCardExpandAlignGuardRef.current = null;
               restoreChatAutoScrollSuppression();
             },
           );
         } else {
           pendingBookingCardScrollIdRef.current = null;
-          bookingCardExpandAlignGuardRef.current = null;
           restoreChatAutoScrollSuppression();
         }
 
@@ -486,9 +473,7 @@ export default function DmChatPage() {
           ? captureBookingCardScrollPosition(container, cardAnchor)
           : null;
 
-      flushSync(() => {
-        setBookingExpanded(bookingRequestId, false);
-      });
+      setBookingExpanded(bookingRequestId, false);
 
       if (container) {
         bookingCardScrollCleanupRef.current = scheduleCollapsedBookingCardScrollRestore(
@@ -1593,9 +1578,8 @@ export default function DmChatPage() {
 
       <div
         ref={scrollRef}
-        className="flex min-h-0 flex-1 flex-col-reverse overflow-y-auto overscroll-contain [overflow-anchor:none] px-3 py-4 sm:px-4"
+        className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain [overflow-anchor:none] px-3 py-4 sm:px-4"
       >
-        <div ref={bottomRef} data-chat-bottom aria-hidden="true" className="h-px shrink-0" />
         {loading ? (
           <ChatMessagesSkeleton />
         ) : messages.length === 0 ? (
@@ -1947,6 +1931,7 @@ export default function DmChatPage() {
             })}
           </ul>
         )}
+        <div ref={bottomRef} data-chat-bottom aria-hidden="true" className="h-px shrink-0" />
       </div>
 
       <div className="relative shrink-0">
