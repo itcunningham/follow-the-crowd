@@ -270,6 +270,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `a6a82ff` — unify booking timeline timestamp behaviour
 - `d308e18` — improve booking timeline timestamp grouping
 - `52a7037` — polish booking timeline system messages
 - `9ecf6e4` — replace booking event pills with system messages
@@ -472,5 +473,4 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 - `78a2b5b` — remove calendar intro copy
 - `d961180` — polish desktop planner workspace consistency
 - `1943163` — speed up page loads (optimistic auth + profile caching)
-- `daf08a2` — fix desktop workspace alignment drift
-- `8e324f7` — desktop/mobile planner UX parity
+- `daf08a2` — fix desktop workspace alignm
