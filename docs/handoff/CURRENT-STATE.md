@@ -272,6 +272,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `743ea18` — add first-time helper behaviour to propose rate modal
 - `4d1ef05` — limit proposal notes textarea growth
 - `d2f2608` — refine booking type presentation in booking cards
 - `cf374fb` — implement booking notes reveal scroll
