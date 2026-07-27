@@ -270,6 +270,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `d308e18` — improve booking timeline timestamp grouping
 - `52a7037` — polish booking timeline system messages
 - `9ecf6e4` — replace booking event pills with system messages
 - `6df8c87` — smooth DM booking card alignment scroll
