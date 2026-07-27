@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import type { CompositionEvent, KeyboardEvent } from "react";
 import { BookingRateField } from "@/app/components/BookingRateField";
 import BookingFormField from "@/app/components/booking/BookingFormField";
 import BookingSheetDialog, {
@@ -9,11 +10,20 @@ import BookingSheetDialog, {
 } from "@/app/components/booking/BookingSheetDialog";
 import { isPositiveWholeDollarRate } from "@/lib/bookingRate";
 import {
+  applyCappedMultilineInputLimit,
+  shouldBlockMultilineEnter,
+} from "@/lib/cappedMultilineInput";
+import {
   PROPOSE_RATE_HELPER_DESCRIPTION,
   resolveProposeRateHelperVisibility,
 } from "@/lib/booking/proposeRateHelperPreference";
 
 const MAX_NOTE_LENGTH = 250;
+const MAX_NOTE_LINES = 3;
+
+function applyProposalNoteInputLimit(currentNote: string, nextNote: string): string | null {
+  return applyCappedMultilineInputLimit(currentNote, nextNote, MAX_NOTE_LINES, MAX_NOTE_LENGTH);
+}
 
 export default function ProposeBookingRateSheet({
   open,
@@ -31,6 +41,7 @@ export default function ProposeBookingRateSheet({
   const [error, setError] = useState<string | null>(null);
   const [showHelper, setShowHelper] = useState(false);
   const recordedOpenRef = useRef(false);
+  const isComposingNoteRef = useRef(false);
 
   useLayoutEffect(() => {
     if (!open) {
@@ -54,6 +65,39 @@ export default function ProposeBookingRateSheet({
       setError(null);
     }
   }, [open]);
+
+  function handleNoteChange(nextNote: string) {
+    if (isComposingNoteRef.current) {
+      setNote(nextNote);
+      return;
+    }
+
+    const limited = applyProposalNoteInputLimit(note, nextNote);
+
+    if (limited !== null) {
+      setNote(limited);
+    }
+  }
+
+  function handleNoteKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
+    if (event.key !== "Enter" || event.nativeEvent.isComposing) {
+      return;
+    }
+
+    if (shouldBlockMultilineEnter(note, MAX_NOTE_LINES)) {
+      event.preventDefault();
+    }
+  }
+
+  function handleNoteCompositionEnd(event: CompositionEvent<HTMLTextAreaElement>) {
+    isComposingNoteRef.current = false;
+
+    const limited = applyProposalNoteInputLimit(note, event.currentTarget.value);
+
+    if (limited !== null) {
+      setNote(limited);
+    }
+  }
 
   async function handleSubmit() {
     if (!isPositiveWholeDollarRate(rateDigits)) {
@@ -104,11 +148,16 @@ export default function ProposeBookingRateSheet({
         <BookingFormField
           label="Notes (optional)"
           value={note}
-          onChange={(value) => setNote(value.slice(0, MAX_NOTE_LENGTH))}
+          onChange={handleNoteChange}
           placeholder="Notes"
           multiline
           textareaRows={1}
           textareaClassName="ftc-fixed-scroll-textarea ftc-fixed-scroll-textarea-3"
+          textareaOnKeyDown={handleNoteKeyDown}
+          textareaOnCompositionStart={() => {
+            isComposingNoteRef.current = true;
+          }}
+          textareaOnCompositionEnd={handleNoteCompositionEnd}
         />
         <p className="text-xs text-ftc-text-muted">
           {note.trim().length}/{MAX_NOTE_LENGTH}

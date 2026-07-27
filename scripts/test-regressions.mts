@@ -151,6 +151,11 @@ import { hasUnsavedProfileEdits, createProfileEditBaseline } from "../lib/user/p
 import { getUsernameFormatError, normalizeSoundCloudInput, resolveProfileIdentityPresentation } from "../lib/user/profileFormUtils";
 import { PROPOSE_RATE_HELPER_MAX_OPENS } from "../lib/booking/proposeRateHelperPreference";
 import {
+  applyCappedMultilineInputLimit,
+  countExplicitLines,
+  shouldBlockMultilineEnter,
+} from "../lib/cappedMultilineInput";
+import {
   PLANNER_WORKSPACE_SUBNAV_ROW_CLASS,
   PLANNER_WORKSPACE_SUBNAV_SLOT_CLASS,
   PLANNER_WORKSPACE_HEADER_CLASS,
@@ -832,6 +837,34 @@ function testProposeBookingRateNotesTextareaGrowth() {
   assert.match(cssSource, /\.ftc-fixed-scroll-textarea[\s\S]*overflow-y: auto !important/);
   assert.doesNotMatch(cssSource, /\.ftc-fixed-scroll-textarea-6/);
   assert.match(sheetSource, /textareaRows=\{1\}/);
+  assert.match(sheetSource, /applyCappedMultilineInputLimit/);
+  assert.match(sheetSource, /shouldBlockMultilineEnter/);
+  assert.match(sheetSource, /MAX_NOTE_LINES = 3/);
+}
+
+function testCappedMultilineInputLimit() {
+  assert.equal(countExplicitLines(""), 1);
+  assert.equal(countExplicitLines("one"), 1);
+  assert.equal(countExplicitLines("one\ntwo\nthree"), 3);
+  assert.equal(countExplicitLines("one\ntwo\nthree\nfour"), 4);
+
+  assert.equal(shouldBlockMultilineEnter("a\nb\nc", 3), true);
+  assert.equal(shouldBlockMultilineEnter("a\nb", 3), false);
+
+  assert.equal(applyCappedMultilineInputLimit("", "a\nb\nc\nd", 3, 250), "a\nb\nc");
+  assert.equal(applyCappedMultilineInputLimit("a\nb", "a\nb\nc", 3, 250), "a\nb\nc");
+  assert.equal(applyCappedMultilineInputLimit("a\nb\nc", "a\nb\nc\nd", 3, 250), null);
+
+  const longLine = "x".repeat(200);
+  assert.equal(
+    applyCappedMultilineInputLimit("", `${longLine}\n${longLine}`, 3, 250)?.length,
+    250,
+  );
+
+  assert.equal(
+    countExplicitLines("word ".repeat(80).trim()),
+    1,
+  );
 }
 
 function testProposeRateHelperPreference() {
@@ -4326,6 +4359,7 @@ async function main() {
   testDmBookingCardNotesRevealScroll();
   testDmBookingCardBookingTypePresentation();
   testProposeBookingRateNotesTextareaGrowth();
+  testCappedMultilineInputLimit();
   testProposeRateHelperPreference();
   testAskForRateDmBookingCardOfferSummary();
   testUsernameBlockedTermChecks();
