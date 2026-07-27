@@ -53,6 +53,9 @@ import {
   formatDmBookingSystemMessageDisplay,
   isDmBookingSystemMessage,
 } from "@/lib/dm/dmBookingSystemMessages";
+import {
+  buildDmBookingTimelineTimestampLayout,
+} from "@/lib/dm/dmChatTimestampVisibility";
 import { parseDmThreadEntryContext, resolveDmThreadBackHref } from "@/lib/dm/threadNavigation";
 import { buildChatReturnTo } from "@/lib/profileNavigation";
 import {
@@ -348,6 +351,14 @@ export default function DmChatPage() {
     [reactions],
   );
   const reversedMessages = useMemo(() => [...messages].reverse(), [messages]);
+  const bookingTimelineTimestampLayout = useMemo(
+    () =>
+      buildDmBookingTimelineTimestampLayout(messages, {
+        bookings,
+        conversationId,
+      }),
+    [bookings, conversationId, messages],
+  );
   const canShowReadReceipts = shouldShowDmReadReceipts({
     isBlocked: blockStatus.isBlocked,
     otherUserDisplayName: otherUserProfile?.display_name,
@@ -1623,6 +1634,8 @@ export default function DmChatPage() {
               }
 
               if (isDmBookingSystemMessage(message.text)) {
+                const timelineTimestampLayout = bookingTimelineTimestampLayout.get(message.id);
+
                 return (
                   <DmBookingTimelineNotice
                     key={message.id}
@@ -1631,6 +1644,8 @@ export default function DmChatPage() {
                     createdAt={message.created_at}
                     formatTime={formatMessageTime}
                     isHighlighted={isMessageHighlighted(message.id)}
+                    showTimestamp={timelineTimestampLayout?.showTimestamp ?? true}
+                    compactBelow={timelineTimestampLayout?.compactBelow ?? false}
                   />
                 );
               }
@@ -1715,6 +1730,8 @@ export default function DmChatPage() {
                 : null;
 
               if (cardVisibility.hideCard) {
+                const timelineTimestampLayout = bookingTimelineTimestampLayout.get(message.id);
+
                 return (
                   <DmBookingTimelineNotice
                     key={message.id}
@@ -1725,6 +1742,8 @@ export default function DmChatPage() {
                     createdAt={message.created_at}
                     formatTime={formatMessageTime}
                     isHighlighted={isMessageHighlighted(message.id)}
+                    showTimestamp={timelineTimestampLayout?.showTimestamp ?? true}
+                    compactBelow={timelineTimestampLayout?.compactBelow ?? false}
                   />
                 );
               }
