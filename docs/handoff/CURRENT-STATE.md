@@ -270,6 +270,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `9ecf6e4` — replace booking event pills with system messages
 - `6df8c87` — smooth DM booking card alignment scroll
 - `92b189d` — smoothly expand DM history booking cards
 - `c42d3f5` — implement standard chat scroll model (Option B-lite)
