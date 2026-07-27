@@ -241,7 +241,7 @@ export default function BookingRequestCard({
     return (
       <BookingCardCompactSummary
         booking={booking}
-        rateLine={compactRateLine}
+        rateLine={pendingProposal ? "" : compactRateLine}
         eventStatusLabel={eventCancelledLabel}
         cancelledByLabel={cancelledByLabel}
         cancellationReasonLabel={cancellationReasonLabel}
@@ -335,7 +335,7 @@ export default function BookingRequestCard({
               />
             </div>
           ) : (
-            <div className={DM_BOOKING_CARD_ACTIONS_CLASS}>
+            <div className={canReviewProposal ? "mt-2 flex flex-col gap-2" : DM_BOOKING_CARD_ACTIONS_CLASS}>
               <Link href={eventHref} className={DM_BOOKING_CARD_SECONDARY_BUTTON_CLASS}>
                 View event
               </Link>

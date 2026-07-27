@@ -1,9 +1,14 @@
 "use client";
 
+import { type ReactNode } from "react";
 import CancelBookingRequestButton from "@/app/components/CancelBookingRequestButton";
 import BookingCardExpandableNotes from "@/app/components/booking/BookingCardExpandableNotes";
 import { formatIntegerRateDisplay } from "@/lib/bookingRate";
 import { hasDeclinedRateProposal, hasPendingRateProposal, type BookingRequest } from "@/lib/bookingRequests";
+
+/** Shared proposal card shell for DM booking cards, Event Details lineup, and future proposal surfaces. */
+export const BOOKING_PROPOSAL_CARD_SHELL_CLASS =
+  "mt-2.5 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated p-3";
 
 const PROPOSAL_PRIMARY_ACTION_CLASS =
   "ftc-btn-primary w-full px-3 py-2.5 text-xs uppercase tracking-wide disabled:cursor-not-allowed disabled:opacity-50";
@@ -15,11 +20,18 @@ const PROPOSAL_SECONDARY_ACTIONS_ROW_CLASS = "flex gap-2";
 
 const PROPOSAL_SECONDARY_CANCEL_CLASS = "min-w-0 flex-1";
 
-function ProposedRateAmount({ value }: { value: number | null | undefined }) {
+export function BookingProposalCardShell({ children }: { children: ReactNode }) {
+  return <div className={BOOKING_PROPOSAL_CARD_SHELL_CLASS}>{children}</div>;
+}
+
+export function BookingProposalCardAmount({ value }: { value: number | null | undefined }) {
   return (
-    <p className="text-sm font-semibold tabular-nums text-ftc-text">
-      {formatIntegerRateDisplay(value)}
-    </p>
+    <div>
+      <p className="text-xs font-medium text-ftc-text-muted">Proposed rate</p>
+      <p className="mt-0.5 text-sm font-semibold tabular-nums text-ftc-text">
+        {formatIntegerRateDisplay(value)}
+      </p>
+    </div>
   );
 }
 
@@ -65,8 +77,8 @@ export default function BookingRateProposalPanel({
   }
 
   return (
-    <div className="mt-2.5 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated p-3">
-      <ProposedRateAmount value={booking.proposed_rate} />
+    <BookingProposalCardShell>
+      <BookingProposalCardAmount value={booking.proposed_rate} />
       <ProposedRateNote
         note={booking.proposed_rate_note}
         onNotesExpandedChange={onNotesExpandedChange}
@@ -88,7 +100,7 @@ export default function BookingRateProposalPanel({
             onClick={() => void onKeepOriginalOffer()}
             className={PROPOSAL_SECONDARY_ACTION_CLASS}
           >
-            Keep offer
+            Keep original offer
           </button>
           {onDeclineBooking ? (
             <CancelBookingRequestButton
@@ -101,7 +113,7 @@ export default function BookingRateProposalPanel({
           ) : null}
         </div>
       </div>
-    </div>
+    </BookingProposalCardShell>
   );
 }
 
@@ -116,11 +128,11 @@ export function BookingRateProposalNotice({
 }) {
   if (hasDeclinedRateProposal(booking) && booking.recipient_id === currentUserId) {
     return (
-      <div className="mt-2.5 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated p-3">
+      <BookingProposalCardShell>
         <p className="text-sm text-ftc-text-muted">
           Proposal declined · original offer still available
         </p>
-      </div>
+      </BookingProposalCardShell>
     );
   }
 
@@ -132,30 +144,26 @@ export function BookingRateProposalNotice({
 
   if (isRecipient) {
     return (
-      <div className="mt-2.5 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated p-3">
-        <p className="text-sm text-ftc-text-secondary">
-          <span className="font-semibold tabular-nums text-ftc-text">
-            {formatIntegerRateDisplay(booking.proposed_rate)}
-          </span>{" "}
-          pending review
-        </p>
+      <BookingProposalCardShell>
+        <BookingProposalCardAmount value={booking.proposed_rate} />
+        <p className="mt-1 text-xs text-ftc-text-secondary">Pending review</p>
         <ProposedRateNote
           note={booking.proposed_rate_note}
           onNotesExpandedChange={onNotesExpandedChange}
         />
-      </div>
+      </BookingProposalCardShell>
     );
   }
 
   if (booking.sender_id === currentUserId) {
     return (
-      <div className="mt-2.5 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated p-3">
-        <ProposedRateAmount value={booking.proposed_rate} />
+      <BookingProposalCardShell>
+        <BookingProposalCardAmount value={booking.proposed_rate} />
         <ProposedRateNote
           note={booking.proposed_rate_note}
           onNotesExpandedChange={onNotesExpandedChange}
         />
-      </div>
+      </BookingProposalCardShell>
     );
   }
 

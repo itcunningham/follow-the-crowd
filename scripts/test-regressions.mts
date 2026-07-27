@@ -460,11 +460,13 @@ function testBookingRateProposalPanelActionLayout() {
   assert.match(source, /PROPOSAL_PRIMARY_ACTION_CLASS/);
   assert.match(source, /PROPOSAL_SECONDARY_ACTIONS_ROW_CLASS/);
   assert.match(source, /Accept rate/);
-  assert.match(source, />\s*Keep offer\s*</);
+  assert.match(source, />\s*Keep original offer\s*</);
+  assert.match(source, /Proposed rate/);
+  assert.match(source, /BookingProposalCardShell/);
   assert.match(source, /label="Cancel"/);
   assert.match(source, /compact/);
   assert.match(source, /min-h-8 min-w-0 flex-1/);
-  assert.doesNotMatch(source, /Keep original offer/);
+  assert.doesNotMatch(source, />\s*Keep offer\s*</);
   assert.doesNotMatch(source, /Accept proposed rate/);
   assert.doesNotMatch(source, /flex-col gap-2[\s\S]*Keep offer[\s\S]*Accept rate/);
 }
@@ -486,7 +488,7 @@ function testDmBookingCardPendingEventPairedActions() {
     cardSource,
     /showPendingCancel && !canReviewProposal && !showPendingEventPairedActions/,
   );
-  assert.doesNotMatch(cardSource, /pendingProposal \?/);
+  assert.match(cardSource, /rateLine=\{pendingProposal \? "" : compactRateLine\}/);
   assert.match(layoutSource, /DM_BOOKING_CARD_PAIRED_ACTIONS_ROW_CLASS = "mt-4 flex gap-2"/);
   assert.match(layoutSource, /min-h-8 min-w-0 flex-1/);
 }
@@ -729,7 +731,8 @@ function testDmBookingCardProposedRateCopy() {
   );
 
   assert.doesNotMatch(cardSource, /Rate proposed/);
-  assert.match(panelSource, /formatIntegerRateDisplay\(booking\.proposed_rate\)/);
+  assert.match(panelSource, /formatIntegerRateDisplay\(value\)/);
+  assert.match(panelSource, /Proposed rate/);
   assert.match(panelSource, /BookingCardExpandableNotes/);
   assert.doesNotMatch(panelSource, /Rate proposed/);
   assert.equal(formatIntegerRateDisplay(350), "$350");
@@ -737,6 +740,13 @@ function testDmBookingCardProposedRateCopy() {
   assert.equal(formatIntegerRateDisplay(22238484), "$22,238,484");
   assert.match(summarySource, /return getDmBookingCardOfferSummary\(booking\)/);
   assert.doesNotMatch(summarySource, /Open offer/);
+  assert.match(cardSource, /rateLine=\{pendingProposal \? "" : compactRateLine\}/);
+
+  const bookingRequestsSource = readFileSync(
+    new URL("../lib/bookingRequests.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(bookingRequestsSource, /formatIntegerRateDisplay\(booking\.proposed_rate\)\} proposed/);
 }
 
 function testDmBookingCardNotesExpandAnimation() {
@@ -831,7 +841,7 @@ function testDmBookingCardNotesRevealScroll() {
 
   assert.equal(computeMinimumScrollToRevealBottom(container, 480), null);
   assert.equal(computeMinimumScrollToRevealBottom(container, 520), 128);
-  assert.equal(computeMinimumScrollToRevealBottom(container, 900), 500);
+  assert.equal(computeMinimumScrollToRevealBottom(container, 900), 508);
 }
 
 function testProposeBookingRateNotesTextareaGrowth() {

@@ -630,6 +630,10 @@ export function getBookingRateDetailLabel(booking: BookingRequest): string {
 }
 
 export function getBookingCollapsedOfferSummary(booking: BookingRequest): string {
+  if (hasPendingRateProposal(booking) && booking.proposed_rate != null) {
+    return `${formatIntegerRateDisplay(booking.proposed_rate)} proposed`;
+  }
+
   return getDmBookingCardOfferSummary(booking);
 }
 
