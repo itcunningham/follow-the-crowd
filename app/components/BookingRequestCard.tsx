@@ -162,7 +162,6 @@ export default function BookingRequestCard({
   const actionDisabled = responding || cancelling || proposalLoading;
   const offerRateLabel = getBookingOfferRateLabel(booking);
   const rateDetailLabel = getBookingRateDetailLabel(booking);
-  const showOpenOfferLabel = bookingLoaded && booking.rate_mode === "open" && !pendingProposal;
   const showActionButtons = bookingLoaded && !bookingLoading;
   const eventHref = booking.event_id
     ? dmConversationId
@@ -222,18 +221,6 @@ export default function BookingRequestCard({
     return <BookingStatusBadge status={displayStatus} />;
   }
 
-  function renderHeaderBadges() {
-    if (!showOpenOfferLabel) {
-      return null;
-    }
-
-    return (
-      <span className="inline-flex rounded-full border border-ftc-border-subtle bg-ftc-bg-elevated px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-ftc-primary">
-        Ask for rate
-      </span>
-    );
-  }
-
   function renderExpandedHeader(statusBadge: ReactNode) {
     return (
       <div className="flex min-w-0 items-start justify-between gap-2">
@@ -245,10 +232,7 @@ export default function BookingRequestCard({
             {booking.event_name}
           </p>
         </div>
-        <div className="flex shrink-0 flex-col items-end gap-1">
-          {statusBadge}
-          {renderHeaderBadges()}
-        </div>
+        <div className="flex shrink-0 flex-col items-end gap-1">{statusBadge}</div>
       </div>
     );
   }

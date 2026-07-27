@@ -760,6 +760,24 @@ function testDmBookingCardNotesExpandAnimation() {
   assert.match(cardSource, /onNotesExpandedChange/);
 }
 
+function testDmBookingCardBookingTypePresentation() {
+  const cardSource = readFileSync(
+    new URL("../app/components/BookingRequestCard.tsx", import.meta.url),
+    "utf8",
+  );
+  const summarySource = readFileSync(
+    new URL("../app/components/booking/BookingCardCompactSummary.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.doesNotMatch(cardSource, /renderHeaderBadges/);
+  assert.doesNotMatch(cardSource, /showOpenOfferLabel/);
+  assert.doesNotMatch(cardSource, /text-ftc-primary[\s\S]*Ask for rate/);
+  assert.match(summarySource, /Booking type/);
+  assert.match(summarySource, /text-ftc-text-secondary/);
+  assert.doesNotMatch(summarySource, /FtcMetaTextRow/);
+}
+
 function testDmBookingCardNotesRevealScroll() {
   const expandScrollSource = readFileSync(
     new URL("../lib/dm/dmBookingCardExpandScroll.ts", import.meta.url),
@@ -792,7 +810,7 @@ function testDmBookingCardNotesRevealScroll() {
   } as unknown as HTMLElement;
 
   assert.equal(computeMinimumScrollToRevealBottom(container, 480), null);
-  assert.equal(computeMinimumScrollToRevealBottom(container, 520), 120);
+  assert.equal(computeMinimumScrollToRevealBottom(container, 520), 128);
   assert.equal(computeMinimumScrollToRevealBottom(container, 900), 500);
 }
 
@@ -4267,6 +4285,7 @@ async function main() {
   testDmBookingCardProposedRateCopy();
   testDmBookingCardNotesExpandAnimation();
   testDmBookingCardNotesRevealScroll();
+  testDmBookingCardBookingTypePresentation();
   testAskForRateDmBookingCardOfferSummary();
   testUsernameBlockedTermChecks();
   testAuthRedirectUrlUsesLoginPath();

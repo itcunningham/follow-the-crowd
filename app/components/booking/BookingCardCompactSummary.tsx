@@ -5,7 +5,6 @@ import {
   FtcCalendarIcon,
   FtcClockIcon,
   FtcMetaRow,
-  FtcMetaTextRow,
   FtcVenueIcon,
 } from "@/app/components/ftc/FtcCompactMeta";
 import { formatBookingCardEventDate } from "@/lib/bookingDateTime";
@@ -233,8 +232,18 @@ export default function BookingCardCompactSummary({
           <FtcMetaRow icon={<FtcCalendarIcon />}>{eventDate}</FtcMetaRow>
         ) : null}
         <FtcMetaRow icon={<FtcClockIcon />}>{setTime}</FtcMetaRow>
-        {rateLine ? <FtcMetaTextRow>{rateLine}</FtcMetaTextRow> : null}
       </ul>
+
+      {rateLine ? (
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted">
+            Booking type
+          </p>
+          <p className="mt-1 break-words text-sm leading-snug text-ftc-text-secondary">
+            {rateLine}
+          </p>
+        </div>
+      ) : null}
 
       {booking.notes?.trim() ? (
         <BookingCardExpandableNotes
