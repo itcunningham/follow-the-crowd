@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { BookingRateField } from "@/app/components/BookingRateField";
 import BookingFormField from "@/app/components/booking/BookingFormField";
 import BookingSheetDialog, {
@@ -8,6 +8,10 @@ import BookingSheetDialog, {
   BookingSheetSecondaryButton,
 } from "@/app/components/booking/BookingSheetDialog";
 import { isPositiveWholeDollarRate } from "@/lib/bookingRate";
+import {
+  PROPOSE_RATE_HELPER_DESCRIPTION,
+  resolveProposeRateHelperVisibility,
+} from "@/lib/booking/proposeRateHelperPreference";
 
 const MAX_NOTE_LENGTH = 250;
 
@@ -25,6 +29,23 @@ export default function ProposeBookingRateSheet({
   const [rateDigits, setRateDigits] = useState("");
   const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [showHelper, setShowHelper] = useState(false);
+  const recordedOpenRef = useRef(false);
+
+  useLayoutEffect(() => {
+    if (!open) {
+      recordedOpenRef.current = false;
+      setShowHelper(false);
+      return;
+    }
+
+    if (recordedOpenRef.current) {
+      return;
+    }
+
+    recordedOpenRef.current = true;
+    setShowHelper(resolveProposeRateHelperVisibility());
+  }, [open]);
 
   useEffect(() => {
     if (!open) {
@@ -59,7 +80,7 @@ export default function ProposeBookingRateSheet({
       open={open}
       title="Propose rate"
       titleId="propose-booking-rate-title"
-      description="Send your fee for this booking. The planner can accept it or keep their original offer"
+      description={showHelper ? PROPOSE_RATE_HELPER_DESCRIPTION : undefined}
       loading={loading}
       onBackdropClick={onClose}
       footer={

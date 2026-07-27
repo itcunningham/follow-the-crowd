@@ -149,6 +149,7 @@ import { buildPlannerCreateEventFromPlansHref, buildPlannerCreateEventHref } fro
 import { resolveGigsCalendarBookingNavigation, resolvePlannerCalendarItemEventId, resolvePlannerCalendarItemHref } from "../lib/bookings/gigsCalendarNavigation";
 import { hasUnsavedProfileEdits, createProfileEditBaseline } from "../lib/user/profileEditDirtyState";
 import { getUsernameFormatError, normalizeSoundCloudInput, resolveProfileIdentityPresentation } from "../lib/user/profileFormUtils";
+import { PROPOSE_RATE_HELPER_MAX_OPENS } from "../lib/booking/proposeRateHelperPreference";
 import {
   PLANNER_WORKSPACE_SUBNAV_ROW_CLASS,
   PLANNER_WORKSPACE_SUBNAV_SLOT_CLASS,
@@ -829,6 +830,24 @@ function testProposeBookingRateNotesTextareaGrowth() {
   assert.match(cssSource, /\.ftc-proposal-rate-notes-textarea/);
   assert.match(cssSource, /max-height: calc\(6lh \+ 1\.25rem \+ 2px\)/);
   assert.match(cssSource, /overflow-y: auto !important/);
+}
+
+function testProposeRateHelperPreference() {
+  const preferenceSource = readFileSync(
+    new URL("../lib/booking/proposeRateHelperPreference.ts", import.meta.url),
+    "utf8",
+  );
+  const sheetSource = readFileSync(
+    new URL("../app/components/booking/ProposeBookingRateSheet.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.equal(PROPOSE_RATE_HELPER_MAX_OPENS, 3);
+  assert.match(preferenceSource, /resolveProposeRateHelperVisibility/);
+  assert.match(preferenceSource, /ftc-propose-rate-helper-opens-v1/);
+  assert.match(sheetSource, /resolveProposeRateHelperVisibility/);
+  assert.match(sheetSource, /showHelper \? PROPOSE_RATE_HELPER_DESCRIPTION : undefined/);
+  assert.match(sheetSource, /useLayoutEffect/);
 }
 
 function testAskForRateDmBookingCardOfferSummary() {
@@ -4304,6 +4323,7 @@ async function main() {
   testDmBookingCardNotesRevealScroll();
   testDmBookingCardBookingTypePresentation();
   testProposeBookingRateNotesTextareaGrowth();
+  testProposeRateHelperPreference();
   testAskForRateDmBookingCardOfferSummary();
   testUsernameBlockedTermChecks();
   testAuthRedirectUrlUsesLoginPath();
