@@ -1,3 +1,4 @@
+import { readPendingBookingPlanId } from "@/lib/bookings/planDeepLink";
 import { buildGigsListHref, parseDjGigsListTab } from "@/lib/bookings/gigsListNavigation";
 import { readEventsListTabFromLocationSearch } from "@/lib/events/eventsListTabCache";
 import {
@@ -268,6 +269,65 @@ export function isEventsListCreateDeepLinkParam(
   create: string | null | undefined,
 ): create is EventsListCreateDeepLinkParam {
   return create === "event" || create === "custom" || create === "plan";
+}
+
+export const EVENTS_CREATE_FLOW_CHROME_KEY = "ftc-events-create-flow-chrome";
+
+export function markEventsCreateFlowChromeOpen(): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  sessionStorage.setItem(EVENTS_CREATE_FLOW_CHROME_KEY, "1");
+}
+
+export function clearEventsCreateFlowChromeOpen(): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  sessionStorage.removeItem(EVENTS_CREATE_FLOW_CHROME_KEY);
+}
+
+export function readEventsCreateFlowChromeOpen(): boolean {
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  return sessionStorage.getItem(EVENTS_CREATE_FLOW_CHROME_KEY) === "1";
+}
+
+function readLocationSearchParam(
+  locationSearch: string | null | undefined,
+  name: string,
+): string | null {
+  const search = locationSearch ?? (typeof window !== "undefined" ? window.location.search : "");
+  const params = new URLSearchParams(search.startsWith("?") ? search.slice(1) : search);
+  return params.get(name);
+}
+
+/** Synchronous gate for Events Active/History pill selection — survives loading shells and router timing. */
+export function resolveEventsListCreateFlowChromeActive(options: {
+  createOpen?: boolean;
+  locationSearch?: string | null;
+} = {}): boolean {
+  if (options.createOpen) {
+    return true;
+  }
+
+  if (isEventsListCreateDeepLinkParam(readLocationSearchParam(options.locationSearch, "create"))) {
+    return true;
+  }
+
+  if (typeof window === "undefined" || window.location.pathname !== "/events") {
+    return false;
+  }
+
+  if (readPendingBookingPlanId() != null) {
+    return true;
+  }
+
+  return readEventsCreateFlowChromeOpen();
 }
 
 export type EventsListCreateBootstrapState = {

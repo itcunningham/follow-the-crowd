@@ -1047,6 +1047,7 @@ html {
   white-space: nowrap;
   border-width: 1px;
   border-style: solid;
+  transition: none;
 }
 
 .ftc-filter-pill.ftc-events-list-tab-pill.ftc-filter-pill-active {

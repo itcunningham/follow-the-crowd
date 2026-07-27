@@ -1,28 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useSearchParams } from "next/navigation";
 import EventsListAreaLoading from "@/app/components/events/EventsListAreaLoading";
-
-function readRouteSearchParams(): { create: string | null; tab: string | null } {
-  if (typeof window === "undefined") {
-    return { create: null, tab: null };
-  }
-
-  const params = new URLSearchParams(window.location.search);
-  return {
-    create: params.get("create"),
-    tab: params.get("tab"),
-  };
-}
 
 /** Next.js route loading slot — Active/History + list skeleton via EventsListAreaLoading. */
 export default function EventsRouteLoadingShell() {
-  const [routeParams] = useState(readRouteSearchParams);
+  const searchParams = useSearchParams();
+  const locationSearch = searchParams.toString() ? `?${searchParams.toString()}` : "";
 
   return (
     <EventsListAreaLoading
-      createParam={routeParams.create}
-      initialTab={routeParams.tab}
+      locationSearch={locationSearch}
+      initialTab={searchParams.get("tab")}
     />
   );
 }

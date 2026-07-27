@@ -64,7 +64,7 @@ import {
 } from "@/app/components/layout/AppPageLayout";
 import ProfilePageHeader from "@/app/components/profile/ProfilePageHeader";
 import { isPlannerBookingsCreateChromeActive } from "@/lib/bookings/planDeepLink";
-import { isCalendarOriginCreateParam, isEventsListCreateDeepLinkParam, resolveCalendarCreateInitialStep, resolveEventDetailBackHref, resolveEventsListTabParam } from "@/lib/events/eventsListNavigation";
+import { isCalendarOriginCreateParam, resolveCalendarCreateInitialStep, resolveEventDetailBackHref, resolveEventsListCreateFlowChromeActive, resolveEventsListTabParam } from "@/lib/events/eventsListNavigation";
 import { useEventEditHeaderState } from "@/lib/events/useEventEditHeaderVisibility";
 import type { EventEditHeaderState } from "@/lib/events/useEventEditHeaderVisibility";
 import { canManageEvents, type UserRole } from "@/lib/user/currentUser";
@@ -439,21 +439,23 @@ export function EventsCalendarCreateLoadingShell({
 
 export function EventsPageLoadingShell({
   role: roleProp,
-  createParam: createParamProp = null,
+  locationSearch: locationSearchProp = "",
   initialTab: initialTabProp = null,
 }: {
   /** @deprecated Pass `role` instead — derived from role when omitted. */
   showPlannerStats?: boolean;
   role?: UserRole | null;
-  createParam?: string | null;
+  locationSearch?: string;
   initialTab?: string | null;
 }) {
   const [cachedRole] = useState<UserRole | null>(() => readCachedNavRole());
-  const [locationSearch] = useState(() =>
-    typeof window === "undefined" ? null : window.location.search,
-  );
   const resolvedRole = resolveEventsWorkspaceChromeRole(roleProp, cachedRole);
-  const createParam = createParamProp;
+  const locationSearch =
+    locationSearchProp ||
+    (typeof window !== "undefined" ? window.location.search : "");
+  const createParam = new URLSearchParams(
+    locationSearch.startsWith("?") ? locationSearch.slice(1) : locationSearch,
+  ).get("create");
 
   if (isCalendarOriginCreateParam(createParam)) {
     return (
@@ -475,6 +477,9 @@ export function EventsPageLoadingShell({
   const listTab = resolveEventsListTabParam(routeTab, initialTabProp, locationSearch);
   const isHistoryTab = listTab === "history";
   const hasCachedEventsList = readEventsListCache(isPlanner).length > 0;
+  const createFlowChromeActive = resolveEventsListCreateFlowChromeActive({
+    locationSearch,
+  });
 
   return (
     <PlannerWorkspacePage
@@ -484,7 +489,8 @@ export function EventsPageLoadingShell({
         <EventsListTabControls
           isPlanner={isPlanner}
           listTab={isHistoryTab ? "history" : "active"}
-          createOpen={isEventsListCreateDeepLinkParam(createParam)}
+          locationSearch={locationSearch}
+          createOpen={createFlowChromeActive}
           loadingShell
         />
       }
@@ -1485,7 +1491,7 @@ export function AppLoadingShell({
       return (
         <EventsPageLoadingShell
           role={role ?? readCachedNavRole()}
-          createParam={createParam}
+          locationSearch={search}
         />
       );
     }
@@ -1493,7 +1499,7 @@ export function AppLoadingShell({
     return (
       <EventsPageLoadingShell
         role={role ?? readCachedNavRole()}
-        createParam={createParam}
+        locationSearch={search}
         initialTab={searchParams.get("tab")}
       />
     );

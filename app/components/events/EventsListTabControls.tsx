@@ -12,6 +12,7 @@ import {
 import {
   buildEventsListHref,
   resolveEventsListActiveTabLabelForWorkspaceChrome,
+  resolveEventsListCreateFlowChromeActive,
   resolveEventsListTabRowChrome,
   type EventsListTab,
 } from "@/lib/events/eventsListNavigation";
@@ -69,6 +70,8 @@ type EventsListTabControlsProps = {
   isPlanner: boolean;
   listTab: EventsListTab;
   createOpen?: boolean;
+  /** Router search string — when omitted, falls back to window.location.search. */
+  locationSearch?: string | null;
   onTabLinkClick?: (event: MouseEvent<HTMLAnchorElement>, tab: EventsListTab) => void;
   selectionMode?: boolean;
   selectionToolbar?: ReactNode;
@@ -83,6 +86,7 @@ export function EventsListTabControls({
   isPlanner,
   listTab,
   createOpen = false,
+  locationSearch = null,
   onTabLinkClick,
   selectionMode = false,
   selectionToolbar = null,
@@ -103,8 +107,12 @@ export function EventsListTabControls({
     loadingShell,
   });
 
-  const activeTabClass = eventsListTabPillClass(!createOpen && !isHistoryTab);
-  const historyTabClass = eventsListTabPillClass(!createOpen && isHistoryTab);
+  const createFlowChromeActive = resolveEventsListCreateFlowChromeActive({
+    createOpen,
+    locationSearch,
+  });
+  const activeTabClass = eventsListTabPillClass(!createFlowChromeActive && !isHistoryTab);
+  const historyTabClass = eventsListTabPillClass(!createFlowChromeActive && isHistoryTab);
   const activeLabel = resolveEventsListActiveTabLabelForWorkspaceChrome(isPlanner, {
     loadingShell,
     guardRole: guardProfile?.role,

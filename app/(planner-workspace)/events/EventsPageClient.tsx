@@ -130,6 +130,8 @@ import {
   resolveEventsListTabParam,
   resolveEventsListCreateBootstrapState,
   resolveEventsWorkspaceActiveHref,
+  markEventsCreateFlowChromeOpen,
+  clearEventsCreateFlowChromeOpen,
 } from "@/lib/events/eventsListNavigation";
 import { resolveEventsWorkspaceChromeRole } from "@/lib/events/eventsWorkspaceChromeRole";
 import {
@@ -449,7 +451,14 @@ function EventsPageClientView({
   const calendarBootstrap = getCalendarBootstrapState(initialCreate, initialEventDate);
   const eventsCreateBootstrap = getEventsCreateBootstrapState(initialCreate, initialEventDate);
   const createBootstrap = calendarBootstrap ?? eventsCreateBootstrap;
-  const [createOpen, setCreateOpen] = useState(() => createBootstrap?.createOpen ?? false);
+  const [createOpen, setCreateOpen] = useState(() => {
+    if (createBootstrap?.createOpen) {
+      markEventsCreateFlowChromeOpen();
+      return true;
+    }
+
+    return false;
+  });
   const [createStep, setCreateStep] = useState<CreateStep>(
     () => createBootstrap?.createStep ?? "source",
   );
@@ -907,6 +916,7 @@ function EventsPageClientView({
       originDateKey ?? sanitizePrefilledEventDateKey(options?.eventDate ?? "");
     const initialStep = options?.initialStep ?? "source";
 
+    markEventsCreateFlowChromeOpen();
     setCreateOpen(true);
     setCreateStep(initialStep);
     setCreateSaveAttempted(false);
@@ -934,6 +944,7 @@ function EventsPageClientView({
   }
 
   function resetCalendarCreateFlowState() {
+    clearEventsCreateFlowChromeOpen();
     setCreateOpen(false);
     setCreateStep("source");
     setCreateSaveAttempted(false);
@@ -1031,6 +1042,7 @@ function EventsPageClientView({
     originDateKey: string | null,
     inviteNotice: string | null,
   ) {
+    clearEventsCreateFlowChromeOpen();
     setCreateOpen(false);
     inviteDraft.resetDraft();
     queuedInviteDraft.resetDraft();
@@ -1178,6 +1190,7 @@ function EventsPageClientView({
           console.error("Failed to upload event cover image:", uploadError);
           setSaving(false);
           setCalendarOriginDateKey(null);
+          clearEventsCreateFlowChromeOpen();
           setCreateOpen(false);
           inviteDraft.resetDraft();
           queuedInviteDraft.resetDraft();
@@ -1378,6 +1391,9 @@ function EventsPageClientView({
               isPlanner={isPlanner}
               listTab={isHistoryTab ? "history" : "active"}
               createOpen={createOpen}
+              locationSearch={
+                searchParams.toString() ? `?${searchParams.toString()}` : ""
+              }
               onTabLinkClick={handleEventsListTabLinkClick}
               selectionMode={historyTabRowSelectionMode}
               onTrashClick={historyBulkManage.enterSelectionMode}

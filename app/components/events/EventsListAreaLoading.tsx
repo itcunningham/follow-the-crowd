@@ -6,10 +6,10 @@ import { readCachedNavRole } from "@/lib/navigationRoleCache";
 
 /** Route loading for /events — Active/History + list skeleton; title row lives in workspace layout. */
 export default function EventsListAreaLoading({
-  createParam = null,
+  locationSearch = "",
   initialTab = null,
 }: {
-  createParam?: string | null;
+  locationSearch?: string;
   initialTab?: string | null;
 }) {
   const [role] = useState(() => readCachedNavRole());
@@ -17,7 +17,7 @@ export default function EventsListAreaLoading({
   return (
     <EventsPageLoadingShell
       role={role}
-      createParam={createParam}
+      locationSearch={locationSearch}
       initialTab={initialTab}
     />
   );

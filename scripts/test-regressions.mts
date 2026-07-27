@@ -153,6 +153,7 @@ import {
   isEventsListCreateDeepLinkParam,
   resolveEventDetailBackHref,
   resolveEventsListCreateBootstrapState,
+  resolveEventsListCreateFlowChromeActive,
   resolveEventsListTabParam,
 } from "../lib/events/eventsListNavigation";
 import { clearEventsListTabCache } from "../lib/events/eventsListTabCache";
@@ -3045,9 +3046,12 @@ function testEventsCreateFlowTabPillNavigation() {
   const tabLinkHandler =
     source.match(/function handleEventsListTabLinkClick\([\s\S]*?\n  \}/)?.[0] ?? "";
   assert.ok(tabLinkHandler.length > 0, "handleEventsListTabLinkClick not found");
-  assert.match(controlsSource, /eventsListTabPillClass\(!createOpen && !isHistoryTab\)/);
-  assert.match(controlsSource, /eventsListTabPillClass\(!createOpen && isHistoryTab\)/);
+  assert.match(controlsSource, /resolveEventsListCreateFlowChromeActive/);
+  assert.match(controlsSource, /eventsListTabPillClass\(!createFlowChromeActive && !isHistoryTab\)/);
+  assert.match(controlsSource, /eventsListTabPillClass\(!createFlowChromeActive && isHistoryTab\)/);
   assert.match(source, /<EventsListTabControls/);
+  assert.match(source, /markEventsCreateFlowChromeOpen/);
+  assert.match(source, /clearEventsCreateFlowChromeOpen/);
   assert.match(source, /resolveEventsListCreateBootstrapState/);
   assert.match(source, /getEventsCreateBootstrapState/);
   assert.match(source, /createBootstrap = calendarBootstrap \?\? eventsCreateBootstrap/);
@@ -3069,12 +3073,35 @@ function testEventsCreateFlowTabPillNavigation() {
     new URL("../app/components/skeleton/Skeleton.tsx", import.meta.url),
     "utf8",
   );
-  assert.match(appLoadingSource, /createOpen=\{isEventsListCreateDeepLinkParam\(createParam\)\}/);
+  assert.match(appLoadingSource, /resolveEventsListCreateFlowChromeActive/);
+  assert.match(
+    readFileSync(
+      new URL("../app/(planner-workspace)/events/EventsRouteLoadingShell.tsx", import.meta.url),
+      "utf8",
+    ),
+    /useSearchParams/,
+  );
+  assert.doesNotMatch(
+    readFileSync(
+      new URL("../app/(planner-workspace)/events/EventsRouteLoadingShell.tsx", import.meta.url),
+      "utf8",
+    ),
+    /useState\(readRouteSearchParams\)/,
+  );
   assert.equal(resolveEventsListCreateBootstrapState("plan", "")?.createOpen, true);
   assert.equal(resolveEventsListCreateBootstrapState("plan", "")?.createStep, "pick-plan");
   assert.equal(resolveEventsListCreateBootstrapState("event", "2026-08-01")?.createStep, "source");
   assert.equal(resolveEventsListCreateBootstrapState("custom", "")?.createStep, "form");
   assert.equal(resolveEventsListCreateBootstrapState("booking", ""), null);
+  assert.match(
+    readFileSync(
+      new URL("../app/globals.css", import.meta.url),
+      "utf8",
+    ),
+    /\.ftc-filter-pill\.ftc-events-list-tab-pill[\s\S]*transition: none/,
+  );
+  assert.equal(resolveEventsListCreateFlowChromeActive({ createOpen: true }), true);
+  assert.equal(resolveEventsListCreateFlowChromeActive({ locationSearch: "?create=plan" }), true);
   assert.equal(isEventsListCreateDeepLinkParam("plan"), true);
 }
 
@@ -3722,6 +3749,8 @@ function testEventsRouteLoadingIsListAreaOnly() {
   assert.match(listAreaSource, /EventsPageLoadingShell/);
   assert.doesNotMatch(listAreaSource, /EventListSkeleton/);
   assert.match(listAreaSource, /readCachedNavRole/);
+  assert.match(loadingSource, /Suspense/);
+  assert.match(loadingSource, /EventsListAreaLoading/);
   assert.doesNotMatch(pageSource, /Suspense/);
   assert.doesNotMatch(pageSource, /EventsPageLoadingFallback/);
   assert.match(
