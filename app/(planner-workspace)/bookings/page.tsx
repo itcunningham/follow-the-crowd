@@ -144,6 +144,8 @@ import {
   ensureGigsListTabInBrowserHistory,
 } from "@/lib/bookings/gigsListNavigation";
 import {
+  buildBookingsCreatePickPlanReturnHref,
+  buildEventPlansCreateFormHref,
   clearPendingBookingPlanId,
   consumeBookingPlansSuccessMessage,
   getBookingsDeepLinkKey,
@@ -1928,10 +1930,14 @@ function BookingsPageContent() {
                     <div className="rounded-xl border border-dashed border-ftc-border bg-ftc-bg-elevated/40 px-4 py-6 text-center">
                       <p className="text-sm text-ftc-text-secondary">No saved event plans yet</p>
                       <Link
-                        href="/booking-plans"
+                        href={buildEventPlansCreateFormHref({
+                          returnHref: buildBookingsCreatePickPlanReturnHref({
+                            eventDate: form.eventDate,
+                          }),
+                        })}
                         className="mt-3 inline-block text-sm font-semibold text-ftc-primary transition hover:text-ftc-primary/90"
                       >
-                        Create an event plan
+                        Create event plan
                       </Link>
                     </div>
                   ) : (

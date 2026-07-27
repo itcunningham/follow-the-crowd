@@ -1,7 +1,7 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useLayoutEffect, useMemo, useState, type ReactNode } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
 import { useGuardProfile } from "@/app/components/GuardProfileContext";
@@ -47,6 +47,12 @@ import {
 import { readCachedNavRole } from "@/lib/navigationRoleCache";
 import {
   consumeBookingPlansSuccessMessage,
+  clearEventPlansCreateReturnHref,
+  navigateAwayFromEventPlansCreateFlow,
+  readEventPlansCreateReturnHref,
+  resolveEventPlansCreateReturnHrefFromParams,
+  resolveEventPlansPageCreateIntent,
+  stashEventPlansCreateReturnHref,
   stashPendingBookingPlanId,
 } from "@/lib/bookings/planDeepLink";
 import {
@@ -196,6 +202,8 @@ function EventPlanDeleteConfirmDialog({
 
 export default function BookingPlansPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const handledCreateDeepLinkRef = useRef<string | null>(null);
   const guardProfile = useGuardProfile();
   const [cachedRole] = useState<UserRole | null>(() => readCachedNavRole());
   const [role, setRole] = useState<UserRole | null>(
@@ -369,6 +377,42 @@ export default function BookingPlansPage() {
     loadPlans();
   }, [loadingAccess, role, loadPlans]);
 
+  useEffect(() => {
+    if (loadingAccess || !canAccessBookingPlans(role)) {
+      return;
+    }
+
+    if (!resolveEventPlansPageCreateIntent(searchParams)) {
+      handledCreateDeepLinkRef.current = null;
+      return;
+    }
+
+    const deepLinkKey = searchParams.toString();
+
+    if (handledCreateDeepLinkRef.current === deepLinkKey) {
+      return;
+    }
+
+    handledCreateDeepLinkRef.current = deepLinkKey;
+
+    const returnHref = resolveEventPlansCreateReturnHrefFromParams(searchParams);
+
+    if (returnHref) {
+      stashEventPlansCreateReturnHref(returnHref);
+    }
+
+    openCreateForm();
+    router.replace("/booking-plans", { scroll: false });
+  }, [loadingAccess, role, router, searchParams]);
+
+  function resetFormState() {
+    setFormOpen(false);
+    setEditingPlanId(null);
+    setForm(emptyPlanForm);
+    resetPlanFormInteractionState();
+    setError(null);
+  }
+
   function openCreateForm() {
     planBulkManage.cancelSelectionMode();
     setFormOpen(true);
@@ -399,11 +443,13 @@ export default function BookingPlansPage() {
       return;
     }
 
-    setFormOpen(false);
-    setEditingPlanId(null);
-    setForm(emptyPlanForm);
-    resetPlanFormInteractionState();
-    setError(null);
+    const returnHref = readEventPlansCreateReturnHref();
+    resetFormState();
+
+    if (returnHref) {
+      clearEventPlansCreateReturnHref();
+      navigateAwayFromEventPlansCreateFlow(returnHref, router);
+    }
   }
 
   function updateField<Key extends keyof BookingPlanInput>(
@@ -457,7 +503,7 @@ export default function BookingPlansPage() {
         setSuccessMessage("Event plan created");
       }
 
-      closeForm();
+      resetFormState();
     } catch (saveError) {
       console.error("Failed to save booking plan:", saveError);
       setError(saveError instanceof Error ? saveError.message : "Failed to save event plan");

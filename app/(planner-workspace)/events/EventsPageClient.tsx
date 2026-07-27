@@ -112,6 +112,10 @@ import {
   stashPlannerCalendarReturnDate,
 } from "@/lib/calendar";
 import {
+  buildEventPlansCreateFormHref,
+  buildEventsCreatePickPlanReturnHref,
+} from "@/lib/bookings/planDeepLink";
+import {
   buildEventDetailHref,
   buildEventsListHref,
   type EventsListTab,
@@ -1420,8 +1424,15 @@ function EventsPageClientView({
                   ) : bookingPlans.length === 0 ? (
                     <div className="ftc-card-empty px-6 py-8 text-center">
                       <p className="text-sm text-ftc-text-secondary">No saved event plans yet</p>
-                      <PlannerLinkAction href="/booking-plans" className="mt-3">
-                        Create an event plan
+                      <PlannerLinkAction
+                        href={buildEventPlansCreateFormHref({
+                          returnHref: buildEventsCreatePickPlanReturnHref({
+                            calendarOriginDateKey,
+                          }),
+                        })}
+                        className="mt-3"
+                      >
+                        Create event plan
                       </PlannerLinkAction>
                     </div>
                   ) : (

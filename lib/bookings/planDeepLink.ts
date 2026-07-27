@@ -1,5 +1,7 @@
 export const PENDING_BOOKING_PLAN_ID_KEY = "ftc-pending-booking-plan-id";
 export const BOOKING_PLANS_SUCCESS_MESSAGE_KEY = "ftc-booking-plans-success-message";
+export const EVENT_PLANS_CREATE_RETURN_HREF_KEY = "ftc-event-plans-create-return-href";
+export const EVENT_PLANS_PAGE_CREATE_PARAM = "plan";
 
 export function stashPendingBookingPlanId(planId: string): void {
   if (typeof window === "undefined") {
@@ -47,6 +49,31 @@ export function consumeBookingPlansSuccessMessage(): string | null {
 
   sessionStorage.removeItem(BOOKING_PLANS_SUCCESS_MESSAGE_KEY);
   return value;
+}
+
+export function stashEventPlansCreateReturnHref(href: string): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  sessionStorage.setItem(EVENT_PLANS_CREATE_RETURN_HREF_KEY, href);
+}
+
+export function readEventPlansCreateReturnHref(): string | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  const value = sessionStorage.getItem(EVENT_PLANS_CREATE_RETURN_HREF_KEY)?.trim();
+  return value || null;
+}
+
+export function clearEventPlansCreateReturnHref(): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  sessionStorage.removeItem(EVENT_PLANS_CREATE_RETURN_HREF_KEY);
 }
 
 type SearchParamsLike = {
@@ -106,6 +133,64 @@ export function getBookingsDeepLinkKey(intent: BookingsDeepLinkIntent): string {
     case "create-plan":
       return `create-plan:${intent.eventDate ?? ""}`;
   }
+}
+
+export function resolveEventPlansPageCreateIntent(searchParams: SearchParamsLike): boolean {
+  return searchParams.get("create") === EVENT_PLANS_PAGE_CREATE_PARAM;
+}
+
+export function buildEventsCreatePickPlanReturnHref(options: {
+  calendarOriginDateKey?: string | null;
+}): string {
+  const calendarOriginDateKey = options.calendarOriginDateKey?.trim();
+
+  if (calendarOriginDateKey) {
+    const params = new URLSearchParams({
+      create: "calendar-plans",
+      eventDate: calendarOriginDateKey,
+    });
+    return `/events?${params.toString()}`;
+  }
+
+  return "/events?create=plan";
+}
+
+export function buildBookingsCreatePickPlanReturnHref(options?: {
+  eventDate?: string | null;
+}): string {
+  const params = new URLSearchParams({ create: "plan" });
+  const eventDate = options?.eventDate?.trim();
+
+  if (eventDate) {
+    params.set("eventDate", eventDate);
+  }
+
+  return `/bookings?${params.toString()}`;
+}
+
+export function buildEventPlansCreateFormHref(options?: {
+  returnHref?: string | null;
+}): string {
+  const params = new URLSearchParams({ create: EVENT_PLANS_PAGE_CREATE_PARAM });
+  const returnHref = options?.returnHref?.trim();
+
+  if (returnHref) {
+    params.set("returnTo", returnHref);
+  }
+
+  return `/booking-plans?${params.toString()}`;
+}
+
+export function resolveEventPlansCreateReturnHrefFromParams(
+  searchParams: SearchParamsLike,
+): string | null {
+  const fromParams = searchParams.get("returnTo")?.trim();
+
+  if (fromParams) {
+    return fromParams;
+  }
+
+  return readEventPlansCreateReturnHref();
 }
 
 export function resolveEventPlansCreateReturnHref(options: {

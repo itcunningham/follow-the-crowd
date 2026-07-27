@@ -106,6 +106,10 @@ import {
   writeRuntimeGigsPendingCount,
 } from "../lib/navigationBadgeCache";
 import { resolveEventsHistoryTrashVisible, resolveEventsListTabRowChrome, resolveEventsListActiveTabLabel, resolveEventsListActiveTabLabelForWorkspaceChrome, EVENTS_LIST_ACTIVE_TAB_LABEL_PLANNER } from "../lib/events/eventsListNavigation";
+import {
+  buildEventPlansCreateFormHref,
+  buildEventsCreatePickPlanReturnHref,
+} from "../lib/bookings/planDeepLink";
 import { resolveHistoryBulkSelectAllToggle } from "../app/components/history/HistoryBulkManage";
 import { isPlannerEventVisibleOnCalendar, resolvePlannerHistoryHideEventIds } from "../lib/events";
 import {
@@ -3255,6 +3259,50 @@ function testBookingsUsePlanCancelReturnsToEventPlans() {
   assert.match(planDeepLinkSource, /router\.replace\(returnHref, \{ scroll: false \}\)/);
 }
 
+function testEventPlansCreateFormDeepLink() {
+  const eventsSource = readFileSync(
+    new URL("../app/(planner-workspace)/events/EventsPageClient.tsx", import.meta.url),
+    "utf8",
+  );
+  const bookingsSource = readFileSync(
+    new URL("../app/(planner-workspace)/bookings/page.tsx", import.meta.url),
+    "utf8",
+  );
+  const bookingPlansSource = readFileSync(
+    new URL("../app/(planner-workspace)/booking-plans/page.tsx", import.meta.url),
+    "utf8",
+  );
+  const planDeepLinkSource = readFileSync(
+    new URL("../lib/bookings/planDeepLink.ts", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(planDeepLinkSource, /buildEventPlansCreateFormHref/);
+  assert.match(planDeepLinkSource, /resolveEventPlansPageCreateIntent/);
+  assert.match(planDeepLinkSource, /buildEventsCreatePickPlanReturnHref/);
+  assert.match(planDeepLinkSource, /buildBookingsCreatePickPlanReturnHref/);
+  assert.match(bookingPlansSource, /resolveEventPlansPageCreateIntent\(searchParams\)/);
+  assert.match(bookingPlansSource, /router\.replace\("\/booking-plans", \{ scroll: false \}\)/);
+  assert.match(bookingPlansSource, /navigateAwayFromEventPlansCreateFlow\(returnHref, router\)/);
+  assert.match(eventsSource, /buildEventPlansCreateFormHref/);
+  assert.match(eventsSource, /Create event plan/);
+  assert.doesNotMatch(eventsSource, /Create an event plan/);
+  assert.match(bookingsSource, /buildEventPlansCreateFormHref/);
+  assert.match(bookingsSource, /Create event plan/);
+  assert.doesNotMatch(bookingsSource, /Create an event plan/);
+  assert.equal(
+    buildEventPlansCreateFormHref({
+      returnHref: "/events?create=plan",
+    }),
+    "/booking-plans?create=plan&returnTo=%2Fevents%3Fcreate%3Dplan",
+  );
+  assert.equal(buildEventsCreatePickPlanReturnHref({ calendarOriginDateKey: null }), "/events?create=plan");
+  assert.equal(
+    buildEventsCreatePickPlanReturnHref({ calendarOriginDateKey: "2026-07-27" }),
+    "/events?create=calendar-plans&eventDate=2026-07-27",
+  );
+}
+
 function testBookingsUsePlanCreatesEventBeforeSend() {
   const bookingsSource = readFileSync(
     new URL("../app/(planner-workspace)/bookings/page.tsx", import.meta.url),
@@ -4489,6 +4537,7 @@ async function main() {
   testEventsListTabIgnoresLegacySessionCacheWithoutUrlTab();
   testBookingsUsePlanWorkspaceTabNavigation();
   testBookingsUsePlanCancelReturnsToEventPlans();
+  testEventPlansCreateFormDeepLink();
   testBookingsUsePlanCreatesEventBeforeSend();
   testPlannerCalendarEventDeletionSync();
   testPlannerCalendarScopesOwnedEventsOnly();
