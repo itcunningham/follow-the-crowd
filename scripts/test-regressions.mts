@@ -729,6 +729,22 @@ function testDmBookingCardProposedRateCopy() {
   assert.doesNotMatch(summarySource, /Open offer/);
 }
 
+function testDmBookingCardNotesExpandAnimation() {
+  const summarySource = readFileSync(
+    new URL("../app/components/booking/BookingCardCompactSummary.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(summarySource, /data-dm-booking-notes-expand-panel/);
+  assert.match(summarySource, /transition-\[height\]/);
+  assert.match(summarySource, /duration-200 ease-out/);
+  assert.match(summarySource, /motion-reduce:transition-none/);
+  assert.match(summarySource, /prefersReducedMotion/);
+  assert.match(summarySource, /requestAnimationFrame/);
+  assert.match(summarySource, /Show more/);
+  assert.match(summarySource, /Show less/);
+}
+
 function testAskForRateDmBookingCardOfferSummary() {
   const openAsk = { rate_mode: "open", fee: "" } as BookingRequest;
   const openWithSuggested = { rate_mode: "open", fee: "500" } as BookingRequest;
@@ -4198,6 +4214,7 @@ async function main() {
   testDmConversationTimestampLayout();
   testChatAppendedMessageIds();
   testDmBookingCardProposedRateCopy();
+  testDmBookingCardNotesExpandAnimation();
   testAskForRateDmBookingCardOfferSummary();
   testUsernameBlockedTermChecks();
   testAuthRedirectUrlUsesLoginPath();
