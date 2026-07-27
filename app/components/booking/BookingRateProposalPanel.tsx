@@ -1,6 +1,7 @@
 "use client";
 
 import CancelBookingRequestButton from "@/app/components/CancelBookingRequestButton";
+import BookingCardExpandableNotes from "@/app/components/booking/BookingCardExpandableNotes";
 import { formatIntegerRateDisplay } from "@/lib/bookingRate";
 import { hasDeclinedRateProposal, hasPendingRateProposal, type BookingRequest } from "@/lib/bookingRequests";
 
@@ -14,6 +15,34 @@ const PROPOSAL_SECONDARY_ACTIONS_ROW_CLASS = "flex gap-2";
 
 const PROPOSAL_SECONDARY_CANCEL_CLASS = "min-w-0 flex-1";
 
+function ProposedRateAmount({ value }: { value: number | null | undefined }) {
+  return (
+    <p className="text-sm font-semibold tabular-nums text-ftc-text">
+      {formatIntegerRateDisplay(value)}
+    </p>
+  );
+}
+
+function ProposedRateNote({
+  note,
+  onNotesExpandedChange,
+}: {
+  note: string | null | undefined;
+  onNotesExpandedChange?: (expanded: boolean) => void;
+}) {
+  const trimmed = note?.trim();
+
+  if (!trimmed) {
+    return null;
+  }
+
+  return (
+    <div className="mt-1.5">
+      <BookingCardExpandableNotes notes={trimmed} onNotesExpandedChange={onNotesExpandedChange} />
+    </div>
+  );
+}
+
 export default function BookingRateProposalPanel({
   booking,
   currentUserId,
@@ -21,6 +50,7 @@ export default function BookingRateProposalPanel({
   onAcceptProposal,
   onKeepOriginalOffer,
   onDeclineBooking,
+  onNotesExpandedChange,
 }: {
   booking: BookingRequest;
   currentUserId: string | null;
@@ -28,33 +58,28 @@ export default function BookingRateProposalPanel({
   onAcceptProposal: () => void | Promise<void>;
   onKeepOriginalOffer: () => void | Promise<void>;
   onDeclineBooking?: () => void | Promise<void>;
+  onNotesExpandedChange?: (expanded: boolean) => void;
 }) {
   if (!hasPendingRateProposal(booking) || booking.sender_id !== currentUserId) {
     return null;
   }
 
   return (
-    <div className="mt-3 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated p-3">
-      <p className="text-[10px] font-semibold uppercase tracking-wide text-ftc-primary">
-        Rate proposed
-      </p>
-      <p className="mt-1 text-sm font-semibold text-ftc-text">
-        {formatIntegerRateDisplay(booking.proposed_rate)}
-      </p>
-      {booking.proposed_rate_note?.trim() ? (
-        <p className="mt-2 text-sm leading-relaxed text-ftc-text-muted">
-          {booking.proposed_rate_note.trim()}
-        </p>
-      ) : null}
+    <div className="mt-2.5 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated p-3">
+      <ProposedRateAmount value={booking.proposed_rate} />
+      <ProposedRateNote
+        note={booking.proposed_rate_note}
+        onNotesExpandedChange={onNotesExpandedChange}
+      />
 
-      <div className="mt-4 flex flex-col gap-2">
+      <div className="mt-3 flex flex-col gap-2">
         <button
           type="button"
           disabled={loading}
           onClick={() => void onAcceptProposal()}
           className={PROPOSAL_PRIMARY_ACTION_CLASS}
         >
-          Accept proposed rate
+          Accept rate
         </button>
         <div className={PROPOSAL_SECONDARY_ACTIONS_ROW_CLASS}>
           <button
@@ -83,17 +108,16 @@ export default function BookingRateProposalPanel({
 export function BookingRateProposalNotice({
   booking,
   currentUserId,
+  onNotesExpandedChange,
 }: {
   booking: BookingRequest;
   currentUserId: string | null;
+  onNotesExpandedChange?: (expanded: boolean) => void;
 }) {
   if (hasDeclinedRateProposal(booking) && booking.recipient_id === currentUserId) {
     return (
-      <div className="mt-3 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated p-3">
-        <p className="text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted">
-          Rate proposal
-        </p>
-        <p className="mt-1 text-sm text-ftc-text-muted">
+      <div className="mt-2.5 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated p-3">
+        <p className="text-sm text-ftc-text-muted">
           Proposal declined · original offer still available
         </p>
       </div>
@@ -108,36 +132,29 @@ export function BookingRateProposalNotice({
 
   if (isRecipient) {
     return (
-      <div className="mt-3 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated p-3">
-        <p className="text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted">
-          Your proposal
+      <div className="mt-2.5 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated p-3">
+        <p className="text-sm text-ftc-text-secondary">
+          <span className="font-semibold tabular-nums text-ftc-text">
+            {formatIntegerRateDisplay(booking.proposed_rate)}
+          </span>{" "}
+          pending review
         </p>
-        <p className="mt-1 text-sm font-semibold text-ftc-text">
-          {formatIntegerRateDisplay(booking.proposed_rate)} pending review
-        </p>
-        {booking.proposed_rate_note?.trim() ? (
-          <p className="mt-2 text-sm leading-relaxed text-ftc-text-muted">
-            {booking.proposed_rate_note.trim()}
-          </p>
-        ) : null}
+        <ProposedRateNote
+          note={booking.proposed_rate_note}
+          onNotesExpandedChange={onNotesExpandedChange}
+        />
       </div>
     );
   }
 
   if (booking.sender_id === currentUserId) {
     return (
-      <div className="mt-3 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated p-3">
-        <p className="text-[10px] font-semibold uppercase tracking-wide text-ftc-primary">
-          Rate proposed
-        </p>
-        <p className="mt-1 text-sm font-semibold text-ftc-text">
-          {formatIntegerRateDisplay(booking.proposed_rate)}
-        </p>
-        {booking.proposed_rate_note?.trim() ? (
-          <p className="mt-2 text-sm leading-relaxed text-ftc-text-muted">
-            {booking.proposed_rate_note.trim()}
-          </p>
-        ) : null}
+      <div className="mt-2.5 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated p-3">
+        <ProposedRateAmount value={booking.proposed_rate} />
+        <ProposedRateNote
+          note={booking.proposed_rate_note}
+          onNotesExpandedChange={onNotesExpandedChange}
+        />
       </div>
     );
   }

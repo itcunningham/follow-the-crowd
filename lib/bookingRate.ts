@@ -50,5 +50,5 @@ export function formatIntegerRateDisplay(value: number | null | undefined): stri
     return "$";
   }
 
-  return `$${value}`;
+  return `$${value.toLocaleString("en-AU")}`;
 }

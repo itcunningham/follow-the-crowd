@@ -32,7 +32,7 @@ import {
 } from "../lib/calendar/compactCalendarEventVenueTitle";
 import { readFileSync } from "node:fs";
 import { canScrollInTouchDirection } from "../lib/ui/modalScrollContainment";
-import { formatRateDisplay } from "../lib/bookingRate";
+import { formatRateDisplay, formatIntegerRateDisplay } from "../lib/bookingRate";
 import {
   getEventDateValidationError,
   getEventSetTimeValidationError,
@@ -459,13 +459,14 @@ function testBookingRateProposalPanelActionLayout() {
 
   assert.match(source, /PROPOSAL_PRIMARY_ACTION_CLASS/);
   assert.match(source, /PROPOSAL_SECONDARY_ACTIONS_ROW_CLASS/);
-  assert.match(source, /Accept proposed rate/);
+  assert.match(source, /Accept rate/);
   assert.match(source, />\s*Keep offer\s*</);
   assert.match(source, /label="Cancel"/);
   assert.match(source, /compact/);
   assert.match(source, /min-h-8 min-w-0 flex-1/);
   assert.doesNotMatch(source, /Keep original offer/);
-  assert.doesNotMatch(source, /flex-col gap-2[\s\S]*Keep offer[\s\S]*Accept proposed rate/);
+  assert.doesNotMatch(source, /Accept proposed rate/);
+  assert.doesNotMatch(source, /flex-col gap-2[\s\S]*Keep offer[\s\S]*Accept rate/);
 }
 
 function testDmBookingCardPendingEventPairedActions() {
@@ -728,35 +729,48 @@ function testDmBookingCardProposedRateCopy() {
   );
 
   assert.doesNotMatch(cardSource, /Rate proposed/);
-  assert.match(panelSource, /Rate proposed/);
-  assert.doesNotMatch(panelSource, /DJ proposed/);
   assert.match(panelSource, /formatIntegerRateDisplay\(booking\.proposed_rate\)/);
+  assert.match(panelSource, /BookingCardExpandableNotes/);
+  assert.doesNotMatch(panelSource, /Rate proposed/);
+  assert.equal(formatIntegerRateDisplay(350), "$350");
+  assert.equal(formatIntegerRateDisplay(1500), "$1,500");
+  assert.equal(formatIntegerRateDisplay(22238484), "$22,238,484");
   assert.match(summarySource, /return getDmBookingCardOfferSummary\(booking\)/);
   assert.doesNotMatch(summarySource, /Open offer/);
 }
 
 function testDmBookingCardNotesExpandAnimation() {
+  const notesSource = readFileSync(
+    new URL("../app/components/booking/BookingCardExpandableNotes.tsx", import.meta.url),
+    "utf8",
+  );
   const summarySource = readFileSync(
     new URL("../app/components/booking/BookingCardCompactSummary.tsx", import.meta.url),
     "utf8",
   );
+  const panelSource = readFileSync(
+    new URL("../app/components/booking/BookingRateProposalPanel.tsx", import.meta.url),
+    "utf8",
+  );
 
-  assert.match(summarySource, /data-dm-booking-notes-expand-panel/);
-  assert.match(summarySource, /transition-\[height\]/);
-  assert.match(summarySource, /duration-200 ease-out/);
-  assert.match(summarySource, /motion-reduce:transition-none/);
-  assert.match(summarySource, /prefersReducedMotion/);
-  assert.match(summarySource, /requestAnimationFrame/);
-  assert.match(summarySource, /Show more/);
-  assert.match(summarySource, /Show less/);
-  assert.match(summarySource, /line-clamp-3/);
-  assert.match(summarySource, /detailsOpen/);
-  assert.match(summarySource, /scrollHeight > node\.clientHeight \+ 1/);
-  assert.match(summarySource, /node\.clientHeight/);
-  assert.match(summarySource, /ResizeObserver/);
-  assert.match(summarySource, /onNotesExpandedChange/);
-  assert.match(summarySource, /data-dm-booking-notes-toggle/);
-  assert.doesNotMatch(summarySource, /useMeasuredHeight \? "block"/);
+  assert.match(notesSource, /data-dm-booking-notes-expand-panel/);
+  assert.match(notesSource, /transition-\[height\]/);
+  assert.match(notesSource, /duration-200 ease-out/);
+  assert.match(notesSource, /motion-reduce:transition-none/);
+  assert.match(notesSource, /prefersReducedMotion/);
+  assert.match(notesSource, /requestAnimationFrame/);
+  assert.match(notesSource, /Show more/);
+  assert.match(notesSource, /Show less/);
+  assert.match(summarySource, /BookingCardExpandableNotes/);
+  assert.match(panelSource, /BookingCardExpandableNotes/);
+  assert.match(notesSource, /line-clamp-3/);
+  assert.match(notesSource, /detailsOpen/);
+  assert.match(notesSource, /scrollHeight > node\.clientHeight \+ 1/);
+  assert.match(notesSource, /node\.clientHeight/);
+  assert.match(notesSource, /ResizeObserver/);
+  assert.match(notesSource, /onNotesExpandedChange/);
+  assert.match(notesSource, /data-dm-booking-notes-toggle/);
+  assert.doesNotMatch(notesSource, /useMeasuredHeight \? "block"/);
 
   const cardSource = readFileSync(
     new URL("../app/components/BookingRequestCard.tsx", import.meta.url),

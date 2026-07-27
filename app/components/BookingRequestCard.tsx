@@ -284,7 +284,11 @@ export default function BookingRequestCard({
         {renderCompactSummary()}
 
         {!canReviewProposal ? (
-          <BookingRateProposalNotice booking={booking} currentUserId={currentUserId} />
+          <BookingRateProposalNotice
+            booking={booking}
+            currentUserId={currentUserId}
+            onNotesExpandedChange={onNotesExpandedChange}
+          />
         ) : null}
 
         {canReviewProposal ? (
@@ -295,6 +299,7 @@ export default function BookingRequestCard({
             onAcceptProposal={onAcceptProposal!}
             onKeepOriginalOffer={onKeepOriginalOffer!}
             onDeclineBooking={onCancel}
+            onNotesExpandedChange={onNotesExpandedChange}
           />
         ) : null}
 
