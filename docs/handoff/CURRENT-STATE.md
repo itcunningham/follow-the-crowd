@@ -268,7 +268,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
-- `00ff91a` — prevent latest-message scroll during booking expansion
+- `53e9a7d` — prevent latest-message scroll during booking expansion
 - `bc03e3a` — reset Events tab to Active when returning from other workspaces
 - `bb40ce3` — prevent DM auto-scroll on booking card layout changes
 - `1bf0e63` — fix DM booking card scroll target identity
