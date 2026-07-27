@@ -107,7 +107,7 @@ export default function BookingRateProposalPanel({
           {onDeclineBooking ? (
             <CancelBookingRequestButton
               compact
-              label="Cancel"
+              label="Back"
               loading={Boolean(loading)}
               onConfirm={onDeclineBooking}
               className={PROPOSAL_SECONDARY_CANCEL_CLASS}

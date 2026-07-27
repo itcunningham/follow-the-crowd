@@ -476,7 +476,7 @@ function testBookingRateProposalPanelActionLayout() {
   assert.match(source, /secondaryActionLabel/);
   assert.match(source, /Proposed rate/);
   assert.match(source, /BookingProposalCardShell/);
-  assert.match(source, /label="Cancel"/);
+  assert.match(source, /label="Back"/);
   assert.match(source, /compact/);
   assert.match(source, /min-h-8 min-w-0 flex-1/);
   assert.doesNotMatch(source, />\s*Keep original offer\s*</);
