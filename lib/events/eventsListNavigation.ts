@@ -1,9 +1,5 @@
 import { buildGigsListHref, parseDjGigsListTab } from "@/lib/bookings/gigsListNavigation";
-import {
-  readEventsListTabCache,
-  readEventsListTabFromLocationSearch,
-  writeEventsListTabCache,
-} from "@/lib/events/eventsListTabCache";
+import { readEventsListTabFromLocationSearch } from "@/lib/events/eventsListTabCache";
 import {
   appendDmReturnContextToEventDetailParams,
   buildDmThreadHref,
@@ -59,26 +55,16 @@ export function resolveEventsListTabParam(
   locationSearch?: string | null,
 ): EventsListTab {
   if (searchParamsTab != null) {
-    const tab = parseEventsListTab(searchParamsTab);
-    writeEventsListTabCache(tab);
-    return tab;
+    return parseEventsListTab(searchParamsTab);
   }
 
   const locationTab = readEventsListTabFromLocationSearch(locationSearch);
   if (locationTab != null) {
-    writeEventsListTabCache(locationTab);
     return locationTab;
   }
 
   if (initialTab != null) {
-    const tab = parseEventsListTab(initialTab);
-    writeEventsListTabCache(tab);
-    return tab;
-  }
-
-  const cachedTab = readEventsListTabCache();
-  if (cachedTab != null) {
-    return cachedTab;
+    return parseEventsListTab(initialTab);
   }
 
   return "active";

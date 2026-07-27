@@ -131,6 +131,7 @@ import {
   resolveEventDetailBackHref,
   resolveEventsListTabParam,
 } from "../lib/events/eventsListNavigation";
+import { clearEventsListTabCache } from "../lib/events/eventsListTabCache";
 import { buildPlannerCreateEventFromPlansHref, buildPlannerCreateEventHref } from "../lib/calendar";
 import { resolveGigsCalendarBookingNavigation, resolvePlannerCalendarItemEventId, resolvePlannerCalendarItemHref } from "../lib/bookings/gigsCalendarNavigation";
 import { hasUnsavedProfileEdits, createProfileEditBaseline } from "../lib/user/profileEditDirtyState";
@@ -2652,7 +2653,7 @@ function testEventsCreateFlowTabPillNavigation() {
     /resolveEventsListTabParam\(null, initialTab, window\.location\.search\)/,
   );
   assert.match(source, /prepareEventsListEventNavigation\(listTab\)/);
-  assert.match(source, /writeEventsListTabCache\(tab\)/);
+  assert.doesNotMatch(source, /writeEventsListTabCache/);
   assert.match(source, /onTabLinkClick=\{handleEventsListTabLinkClick\}/);
 }
 
@@ -2666,6 +2667,17 @@ function testEventsListTabParamRestoresHistoryWithoutActiveDefault() {
     resolveEventDetailBackHref("history"),
     "/events?tab=history",
   );
+}
+
+function testEventsListTabIgnoresLegacySessionCacheWithoutUrlTab() {
+  if (typeof sessionStorage !== "undefined") {
+    sessionStorage.setItem("ftc:events-list-tab", "history");
+  }
+
+  assert.equal(resolveEventsListTabParam(null, null, ""), "active");
+  assert.equal(resolveEventsListTabParam(null, null, "/events"), "active");
+
+  clearEventsListTabCache();
 }
 
 function testEventsListTabSwitchUsesClientHistoryWithoutRouterNavigation() {
@@ -3405,7 +3417,12 @@ function testWorkspaceGigsTabOpensIncomingWithoutEventsQuery() {
     new URL("../app/components/PlannerEventsSubNav.tsx", import.meta.url),
     "utf8",
   );
+  const subNavLinkSource = readFileSync(
+    new URL("../app/components/planner/PlannerWorkspaceSubNavLink.tsx", import.meta.url),
+    "utf8",
+  );
   assert.match(subNavSource, /href=\{tab\.href\}/);
+  assert.match(subNavLinkSource, /clearEventsListTabCache/);
 }
 
 function testCalendarWorkspaceClearsStaleWorkspaceIntercept() {
@@ -4062,6 +4079,7 @@ async function main() {
   testEventsHistorySelectionToolbarUsesDeleteLabel();
   testEventsCreateFlowTabPillNavigation();
   testEventsListTabParamRestoresHistoryWithoutActiveDefault();
+  testEventsListTabIgnoresLegacySessionCacheWithoutUrlTab();
   testBookingsUsePlanWorkspaceTabNavigation();
   testBookingsUsePlanCancelReturnsToEventPlans();
   testBookingsUsePlanCreatesEventBeforeSend();

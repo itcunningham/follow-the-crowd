@@ -124,7 +124,6 @@ import {
   resolveEventsListTabParam,
   resolveEventsWorkspaceActiveHref,
 } from "@/lib/events/eventsListNavigation";
-import { writeEventsListTabCache } from "@/lib/events/eventsListTabCache";
 import { resolveEventsWorkspaceChromeRole } from "@/lib/events/eventsWorkspaceChromeRole";
 import {
   canManageEvents,
@@ -1191,7 +1190,6 @@ function EventsPageClientView({
     if (closeEventsOriginatedCreate) {
       if (!isTargetTab) {
         const href = buildEventsListHref(tab);
-        writeEventsListTabCache(tab);
         window.history.pushState(window.history.state, "", href);
         handleEventsListTabChange();
       }
@@ -1205,7 +1203,6 @@ function EventsPageClientView({
     }
 
     const href = buildEventsListHref(tab);
-    writeEventsListTabCache(tab);
     window.history.pushState(window.history.state, "", href);
     handleEventsListTabChange();
 

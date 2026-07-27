@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useRef, type ReactNode } from "react";
 import { clearGigsListTabPending } from "@/lib/bookings/gigsListTabPending";
+import { clearEventsListTabCache } from "@/lib/events/eventsListTabCache";
 import {
   isCalendarCreateWorkspaceLocation,
   navigateAwayFromCalendarCreateWorkspace,
@@ -13,6 +14,10 @@ import {
   EVENTS_AREA_SUB_NAV,
   isCalendarWorkspacePath,
 } from "@/lib/plannerEventsNav";
+
+function isEventsWorkspacePath(pathname: string | null | undefined): boolean {
+  return pathname === "/events" || (pathname?.startsWith("/events/") ?? false);
+}
 
 const PLANNER_WORKSPACE_SUB_NAV_HIT_CLASS =
   "relative inline-flex shrink-0 min-h-11 min-w-11 items-center justify-center touch-manipulation";
@@ -66,6 +71,13 @@ export default function PlannerWorkspaceSubNavLink({
 
       if (href === EVENTS_AREA_SUB_NAV.gigs.href) {
         clearGigsListTabPending();
+      }
+
+      if (
+        isEventsWorkspacePath(pathname) &&
+        href !== EVENTS_AREA_SUB_NAV.events.href
+      ) {
+        clearEventsListTabCache();
       }
 
       if (isCalendarCreateWorkspaceLocation(pathname)) {
@@ -143,6 +155,14 @@ export default function PlannerWorkspaceSubNavLink({
         if (href === EVENTS_AREA_SUB_NAV.gigs.href) {
           clearGigsListTabPending();
         }
+
+        if (
+          isEventsWorkspacePath(pathname) &&
+          href !== EVENTS_AREA_SUB_NAV.events.href
+        ) {
+          clearEventsListTabCache();
+        }
+
         return;
       }
 

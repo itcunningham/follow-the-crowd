@@ -64,7 +64,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 - Event list: Active + History tabs; whole card links to detail
 - **Create event tab pills (2026-07-21):** while Create event flow is open, Active/History pills show neutral styling; tapping a tab closes create and lands on that list (URL updates synchronously before create closes — no Active/History flash); Cancel restores the tab from URL (`?tab=history` preserved)
 - **Events History tab perf (2026-07-21):** Active/History switches use `history.pushState` only (no Next `router.push`) so `EventsPageClient` stays mounted — avoids Suspense/`loading.tsx` remount and duplicate `listOwnedEvents` + lineup-stats fetch on every History click
-- **Events History return tab (2026-07-26):** returning from event detail to Events History resolves tab synchronously — `resolveEventsListTabParam` checks `initialTab` + session tab cache before defaulting Active (fixes empty-search → Active flash); `prepareEventsListEventNavigation(listTab)` + pushState tab switches write `ftc:events-list-tab` cache so loading shell and first paint show History immediately
+- **Events History return tab (2026-07-26):** returning from event detail to Events History uses `?tab=history` in the URL; Active/History switches within Events use `history.pushState` only (Events page stays mounted). Entering `/events` from another workspace ignores legacy session tab cache and defaults to Active.
 - **Events list load (2026-07-19):** lineup stat chips load via one batched `booking_requests` query per page fetch (minimal fields), not one query per event
 - **History UX (2026-07-14):** History tab matches Active list layout/spacing; locked tab row height + reserved trash slot prevents layout jump on tab switch
 - **Event detail (2026-07-19):** single `OnboardingGuard` wrapper; Open DM from event detail returns Back to same event via `from=event-detail&eventId=…`
@@ -268,7 +268,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
-- `a84d814` — align expanded DM booking card below header
+- `(pending)` — reset Events tab to Active when returning from other workspaces
 - `bb40ce3` — prevent DM auto-scroll on booking card layout changes
 - `1bf0e63` — fix DM booking card scroll target identity
 - `fabeaf5` — remove DM booking card scroll spacer regression
