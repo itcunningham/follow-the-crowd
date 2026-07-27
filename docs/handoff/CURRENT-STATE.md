@@ -42,7 +42,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 - Discover, profiles, DM conversations
 - Booking requests via DM (pending / accepted / declined / cancelled)
 - Rate proposals: open offers, fixed offers, DJ counter-proposals, accept/decline RPCs
-- **Propose rate modal copy (2026-07-26):** notes field label `Notes (optional)`; placeholder `Notes`; description sentence without trailing full stop
+- **Propose rate modal copy (2026-07-26):** notes field label `Notes (optional)`; placeholder `Notes`; description sentence without trailing full stop; notes textarea capped at 6 visible lines with internal scroll (`ftc-proposal-rate-notes-textarea`)
 - **Booking rate proposal actions (2026-07-26):** planner review panel — full-width `Accept proposed rate`; compact equal-width row below with `Keep offer` + `Cancel` (`min-h-8` secondary/destructive; shared in DM booking card + Event Details lineup)
 - **DM booking pending event actions (2026-07-26):** pending open-offer cards with linked event use paired row — `View event` (left, outlined) + `Cancel` (right, destructive); `min-h-8` / `gap-2` matches proposal + lineup paired buttons; standalone cancel when no event link unchanged
 - **DM booking proposed-rate copy (2026-07-26):** planner card removes duplicate header `Rate proposed` pill (panel heading retained); proposal body shows proposed `$amount` only; open-offer rate line shows `Ask for rate` (not `Offered rate · Ask for rate`) when DJ has proposed
@@ -271,7 +271,8 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
-- `TBD` — refine booking type presentation in booking cards
+- `TBD` — limit proposal notes textarea growth
+- `d2f2608` — refine booking type presentation in booking cards
 - `cf374fb` — implement booking notes reveal scroll
 - `9e34a05` — restore booking notes Show more behaviour
 - `b2f16b7` — restore collapsed booking notes default state
