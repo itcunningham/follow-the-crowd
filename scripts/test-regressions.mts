@@ -494,10 +494,12 @@ function testDmBookingCardExpandCollapseScrollAnchor() {
   assert.doesNotMatch(pageSource, /dmBookingCardScrollAnchor/);
   assert.doesNotMatch(pageSource, /scheduleDmBookingCardExpandScroll/);
   assert.doesNotMatch(pageSource, /bookingExpandSpacerPx/);
-  assert.doesNotMatch(pageSource, /overflow-anchor:none/);
+  assert.match(pageSource, /\[overflow-anchor:none\]/);
+  assert.match(expandScrollSource, /lockDmMessageScrollTop/);
   assert.match(expandScrollSource, /scrollExpandedBookingCardBelowHeader/);
   assert.match(expandScrollSource, /restoreBookingCardScrollPosition/);
   assert.match(expandScrollSource, /clampDmMessageScrollTop/);
+  assert.match(expandScrollSource, /DM_BOOKING_CARD_EXPAND_PANEL_ATTR/);
   assert.doesNotMatch(expandScrollSource, /scrollIntoView/);
   assert.match(scrollSource, /getAppendedMessageIds/);
   assert.match(scrollSource, /messageIds: readonly string\[\]/);

@@ -441,9 +441,11 @@ export default function DmChatPage() {
 
       if (expanded) {
         pendingBookingCardScrollIdRef.current = bookingRequestId;
-        setBookingExpanded(bookingRequestId, true);
 
         const container = scrollRef.current;
+        const lockedScrollTop = container?.scrollTop ?? 0;
+
+        setBookingExpanded(bookingRequestId, true);
 
         if (container) {
           bookingCardScrollCleanupRef.current = scheduleExpandedBookingCardScrollAlign(
@@ -451,6 +453,7 @@ export default function DmChatPage() {
             () => bookingCardAnchorRefs.current.get(bookingRequestId) ?? null,
             bookingRequestId,
             pendingBookingCardScrollIdRef,
+            lockedScrollTop,
             () => {
               pendingBookingCardScrollIdRef.current = null;
               restoreChatAutoScrollSuppression();
@@ -1575,15 +1578,9 @@ export default function DmChatPage() {
 
       <div
         ref={scrollRef}
-        className="flex min-h-0 flex-1 flex-col-reverse overflow-y-auto overscroll-contain px-3 py-4 sm:px-4"
+        className="flex min-h-0 flex-1 flex-col-reverse overflow-y-auto overscroll-contain [overflow-anchor:none] px-3 py-4 sm:px-4"
       >
-        <div
-          ref={bottomRef}
-          data-chat-bottom
-          aria-hidden="true"
-          className="h-px shrink-0"
-          style={{ overflowAnchor: "none" }}
-        />
+        <div ref={bottomRef} data-chat-bottom aria-hidden="true" className="h-px shrink-0" />
         {loading ? (
           <ChatMessagesSkeleton />
         ) : messages.length === 0 ? (

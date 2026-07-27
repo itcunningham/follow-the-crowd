@@ -58,6 +58,7 @@ function BookingCardAnimatedExpand({
 }) {
   return (
     <div
+      data-dm-booking-card-expand-panel
       className={`grid min-h-0 transition-[grid-template-rows,opacity] duration-200 ease-out motion-reduce:transition-none ${
         open ? "opacity-100" : "opacity-0"
       }`}
