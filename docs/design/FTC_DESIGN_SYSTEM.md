@@ -11,11 +11,39 @@ This document is the single reference for spacing, typography, and component rul
 
 ## Design principles
 
-1. **Mobile-first** — design and test at **390px** width minimum; also verify **~1280px** desktop parity per `FTC_WORKFLOW.md` §7.
+1. **Mobile-first** — design and test at **390px** width minimum; also verify **~1280px** desktop parity per `FTC_WORKFLOW.md` §8.
 2. **One product** — same padding, card radius, button heights, and badge sizes everywhere.
 3. **Workflow-first** — information hierarchy over decorative imagery (compact list thumbs; flyer hero only on Event Details).
 4. **Flat & readable** — high contrast text on dark surfaces; status colours are solid fills.
 5. **Reuse shared components** — prefer `PlannerWorkspacePage`, `PlannerUi`, `ftc-*` classes, and design-system exports over one-off styles.
+
+---
+
+## Shared Pattern Lifecycle
+
+Whenever a new shared pattern is introduced, document it here (or in the relevant section below) with:
+
+| Field | What to record |
+|-------|----------------|
+| **Purpose** | Problem the pattern solves |
+| **Where it should be used** | Surfaces, flows, constraints |
+| **Where it should NOT be used** | Cases where another pattern is correct |
+| **Existing components using it** | Current adopters in the codebase |
+| **Future components that should adopt it** | Planned or likely migration targets |
+| **Older patterns that may eventually be deprecated** | Competing implementations to retire |
+
+Follow the **Design System Decision** process in `FTC_WORKFLOW.md` §6 before introducing a new pattern. Do not large-scale refactor automatically — present recommendations first.
+
+### Example: fixed-scroll textarea
+
+| Field | Detail |
+|-------|--------|
+| **Purpose** | Cap visible textarea height; scroll content internally (modals, capped DM fields) |
+| **Where it should be used** | Booking modals, withdrawal/proposal notes, any fixed-height multiline field |
+| **Where it should NOT be used** | Long-form planner notes that should grow with content (use `useBoundedAutoGrowTextarea` + `.ftc-event-notes-textarea`) |
+| **Existing components using it** | `WithdrawalReasonDetailsField` (3 lines), `ProposeBookingRateSheet` (6 lines) |
+| **Future components that should adopt it** | Any new modal textarea with a line cap |
+| **Older patterns that may eventually be deprecated** | One-off fixed-height classes (e.g. duplicate per-feature textarea CSS); `.ftc-profile-bio-textarea` (rem-based fixed height — evaluate alignment) |
 
 ---
 
@@ -339,6 +367,8 @@ History uses the **same list card component and layout** as Active. Tab row heig
 - [ ] Empty states use `PlannerEmptyState` or `PlannerEmptyPanel`
 - [ ] No new colours; no glow; no raw UUIDs in UI
 - [ ] Test at 390px width
+- [ ] Completed **Design System Decision** (`FTC_WORKFLOW.md` §6) if introducing new UI
+- [ ] Updated **Shared Pattern Lifecycle** (this doc) if introducing a new shared pattern
 
 ---
 

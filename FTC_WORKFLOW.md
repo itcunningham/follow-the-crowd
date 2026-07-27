@@ -56,6 +56,20 @@ Every agent response must include:
 | **Next action** | Who does what next (Reviewer / QA / Builder) |
 | **Handoff updated** | Which `docs/handoff/` files were updated (Builder, when task completes) |
 
+For **meaningful UI tasks** (new or changed components, CSS patterns, modals, forms, badges, empty states, animations, loading states), also include:
+
+### Existing FTC patterns reused
+
+List every existing component, hook, utility, or CSS pattern reused instead of creating something new.
+
+### Design System Review
+
+- **Existing pattern reused:**
+- **New shared pattern created:**
+- **Candidate to become FTC standard:**
+- **Future refactor recommended:**
+- **Reasoning:**
+
 ---
 
 ## 5. Pre-code decision ladder
@@ -72,7 +86,38 @@ Before writing code, walk this ladder top to bottom and **stop at the first rung
 
 **Reuse-first UI rule:** Before adding a new component, hook, CSS class, or interaction pattern, search the codebase for an existing solution (same problem → same pattern). Reuse `.ftc-*` tokens, `PlannerUi` primitives, `BookingSheetDialog`, badge components, and documented patterns in `docs/design/FTC_DESIGN_SYSTEM.md`. Create a new variant only when reuse would break semantics or layout; if two implementations already exist, report them and align to one standard rather than adding a third.
 
-## 6. FTC product rules
+---
+
+## 6. Design System Decision
+
+Before creating any new UI implementation, ask:
+
+1. **Does FTC already solve this problem somewhere else?**
+   - If yes, reuse that implementation whenever practical.
+
+2. **If not, is this new implementation better than the existing FTC standard?**
+
+   Consider:
+   - simplicity
+   - consistency
+   - accessibility
+   - maintainability
+   - reusability
+   - responsiveness
+   - performance
+
+3. **If the answer is YES:**
+   - Recommend promoting it to the new FTC standard.
+   - Identify every location where it could eventually replace the old implementation.
+   - Do **NOT** perform a large-scale refactor automatically.
+   - Present the recommendation first.
+
+4. **If the answer is NO:**
+   - Keep using the existing FTC standard.
+
+---
+
+## 7. FTC product rules
 
 - **MVP-first** — smallest reliable version.
 - **Mobile-first** at **390px** width.
@@ -83,7 +128,7 @@ Before writing code, walk this ladder top to bottom and **stop at the first rung
 
 ---
 
-## 7. Phone / desktop parity (permanent — from 2026-07-19)
+## 8. Phone / desktop parity (permanent — from 2026-07-19)
 
 Every FTC change must work on **both** reference viewports:
 

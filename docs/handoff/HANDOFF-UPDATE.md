@@ -24,6 +24,7 @@ Read this after `HOW-WE-WORK.md`. Cursor rule: `.cursor/rules/handoff-update-on-
 | **`USER-PREFERENCES.md`** | Isaac's working style preferences changed |
 | **`SUPABASE.md`** | New migration or `scripts/setup*.sql`; note if Isaac must run SQL |
 | **`FTC_WORKFLOW.md`** | Builder/Reviewer/QA process changed |
+| **`docs/design/FTC_DESIGN_SYSTEM.md`** | New shared UI pattern documented; Shared Pattern Lifecycle updated |
 
 Do **not** put secret values in handoff files (`SECRETS.md` stays pointers only).
 
@@ -52,6 +53,6 @@ When in doubt, update `CURRENT-STATE.md` at minimum.
 1. Implement + `npm run build` (if code changed)
 2. Commit/push (if task requires)
 3. **Update handoff docs** (this checklist)
-4. Return summary including **Handoff updated:** list of files touched
+4. Return summary including **Handoff updated:** list of files touched, plus **Design System Review** for meaningful UI tasks (`FTC_WORKFLOW.md` §4)
 
-For any UI, loading, or navigation change: confirm **phone (~390px) and desktop (~1280px) parity** per `FTC_WORKFLOW.md` §7 before marking complete.
+For any UI, loading, or navigation change: confirm **phone (~390px) and desktop (~1280px) parity** per `FTC_WORKFLOW.md` §8 before marking complete.
