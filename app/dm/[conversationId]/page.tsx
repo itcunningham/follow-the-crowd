@@ -7,7 +7,6 @@ import { APP_DM_CHAT_COLUMN_CLASS } from "@/app/components/layout/AppPageLayout"
 import BookingRequestCard, {
   buildUpdatedBookingMessage,
 } from "@/app/components/BookingRequestCard";
-import DmBookingUpdateRow from "@/app/components/dm/DmBookingUpdateRow";
 import {
   DM_BOOKING_MESSAGE_COLUMN_CLASS,
   DM_BOOKING_MESSAGE_TIMESTAMP_CLASS,
@@ -1783,7 +1782,6 @@ export default function DmChatPage() {
                   : getChatNewMessageHighlightClass(highlighted);
                 const actionRequired = isDmBookingActionRequired(resolvedBooking, eventCancelled);
                 const isBookingExpanded = expandedBookingIds.has(bookingExpansionKey);
-                const showCompactBookingRow = !actionRequired && !isBookingExpanded;
 
                 const bookingCard = (
                   <BookingRequestCard
@@ -1792,8 +1790,8 @@ export default function DmChatPage() {
                     bookingLoaded={bookingLoaded}
                     bookingLoading={bookingLoading}
                     bookingSource={bookingSource}
-                    collapsible={actionRequired || isBookingExpanded}
-                    expanded={actionRequired ? isBookingExpanded : true}
+                    collapsible
+                    expanded={isBookingExpanded}
                     onExpandedChange={(expanded) =>
                       handleBookingExpansionChange(bookingExpansionKey, expanded)
                     }
@@ -1891,27 +1889,13 @@ export default function DmChatPage() {
                         />
                       ) : null}
                       <div className={DM_BOOKING_MESSAGE_COLUMN_CLASS}>
-                        {showCompactBookingRow ? (
-                          <DmBookingUpdateRow
-                            booking={resolvedBooking}
-                            currentUserId={currentUserId}
-                            eventCancelled={eventCancelled}
-                            highlightClassName={highlightClassName}
-                            bookingFocusPhase={bookingFocusPhase}
-                            anchorRef={registerBookingCardAnchorForCard}
-                            onViewDetails={() =>
-                              handleBookingExpansionChange(bookingExpansionKey, true)
-                            }
-                          />
-                        ) : (
-                          <BookingCardFocusRing phase={bookingFocusPhase}>
-                            {highlightClassName ? (
-                              <div className={highlightClassName}>{bookingCard}</div>
-                            ) : (
-                              bookingCard
-                            )}
-                          </BookingCardFocusRing>
-                        )}
+                        <BookingCardFocusRing phase={bookingFocusPhase}>
+                          {highlightClassName ? (
+                            <div className={highlightClassName}>{bookingCard}</div>
+                          ) : (
+                            bookingCard
+                          )}
+                        </BookingCardFocusRing>
                         <time
                           dateTime={message.created_at}
                           className={`${DM_BOOKING_MESSAGE_TIMESTAMP_CLASS} ${

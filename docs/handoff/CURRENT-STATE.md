@@ -47,7 +47,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 - **DM booking pending event actions (2026-07-26):** pending open-offer cards with linked event use paired row — `View event` (left, outlined) + `Cancel` (right, destructive); `min-h-8` / `gap-2` matches proposal + lineup paired buttons; standalone cancel when no event link unchanged
 - **DM booking proposed-rate copy (2026-07-26):** planner card removes duplicate header `Rate proposed` pill (panel heading retained); proposal body shows proposed `$amount` only; open-offer rate line shows `Ask for rate` (not `Offered rate · Ask for rate`) when DJ has proposed
 - **Ask for rate DM terminology (2026-07-26):** planner DM booking cards (collapsed + expanded + history rows) always show `Ask for rate` for open-offer bookings via `getDmBookingCardOfferSummary`; `Open offer` removed from planner DM summaries; DJ Gigs list copy unchanged
-- **DM booking expand scroll (2026-07-27):** chat scroller uses standard column scroll (`scrollTop` max = newest); View details aligns expanded card below fixed header after transition without reverse-era locks/guards
+- **DM history booking expand (2026-07-27):** cancelled/accepted/declined cards stay on `BookingRequestCard` when collapsed so View details uses the same grid expand animation as pending cards
 - Events: create, edit, cancel, delete, lineup, send bookings, run sheet
 - Event Plans (`/booking-plans`), Calendar (`/calendar`), Gigs (`/bookings`)
 - Notifications, settings, account deletion

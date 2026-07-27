@@ -485,7 +485,10 @@ function testDmBookingCardExpandCollapseScrollAnchor() {
     "utf8",
   );
 
-  assert.match(pageSource, /handleBookingExpansionChange/);
+  assert.doesNotMatch(pageSource, /showCompactBookingRow/);
+  assert.doesNotMatch(pageSource, /DmBookingUpdateRow/);
+  assert.match(pageSource, /collapsible/);
+  assert.match(pageSource, /expanded=\{isBookingExpanded\}/);
   assert.match(pageSource, /scheduleExpandedBookingCardScrollAlign/);
   assert.match(pageSource, /scheduleCollapsedBookingCardScrollRestore/);
   assert.match(pageSource, /captureBookingCardScrollPosition/);
