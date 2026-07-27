@@ -629,6 +629,8 @@ function testDmConversationTimestampLayout() {
   assert.match(pageSource, /showTimestamp=\{messageTimestampLayout/);
   assert.doesNotMatch(pageSource, /buildDmBookingTimelineTimestampLayout/);
   assert.doesNotMatch(timelineSource, /showTimestamp/);
+  assert.doesNotMatch(timelineSource, /-mb-2/);
+  assert.match(timelineSource, /compactBelow \? "pb-1.5"/);
   assert.match(bubbleSource, /showTimestamp\?: boolean/);
 
   const baseTime = Date.parse("2026-07-27T12:00:00.000Z");

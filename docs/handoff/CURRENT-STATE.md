@@ -473,4 +473,5 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 - `78a2b5b` — remove calendar intro copy
 - `d961180` — polish desktop planner workspace consistency
 - `1943163` — speed up page loads (optimistic auth + profile caching)
-- `daf08a2` — fix desktop workspace alignm
+- `daf08a2` — fix desktop workspace alignment drift
+- `8e324f7` — desktop/mobile planner UX parity
