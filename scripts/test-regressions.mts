@@ -72,6 +72,7 @@ import {
   sortDjGigsCalendarAgendaBookings,
 } from "../lib/bookingRequests";
 import { getAppendedMessageIds } from "../lib/useChatScroll";
+import { computeBookingCardAlignScrollTop } from "../lib/dm/dmBookingCardExpandScroll";
 import { parseDjGigsListTab, resolveGigsListTabParam, resolveGigsListTabForBookingsPage, buildGigsWorkspaceIncomingHref, buildGigsConversationHref } from "../lib/bookings/gigsListNavigation";
 import {
   formatGigsTabCountAriaCount,
@@ -500,10 +501,36 @@ function testDmBookingCardExpandCollapseScrollAnchor() {
   assert.match(expandScrollSource, /restoreBookingCardScrollPosition/);
   assert.match(expandScrollSource, /clampDmMessageScrollTop/);
   assert.match(expandScrollSource, /DM_BOOKING_CARD_EXPAND_PANEL_ATTR/);
+  assert.match(pageSource, /flushSync/);
+  assert.match(expandScrollSource, /computeBookingCardAlignScrollTop/);
   assert.doesNotMatch(expandScrollSource, /scrollIntoView/);
   assert.match(scrollSource, /getAppendedMessageIds/);
   assert.match(scrollSource, /messageIds: readonly string\[\]/);
   assert.doesNotMatch(scrollSource, /messageCount/);
+}
+
+function testDmBookingCardAlignScrollTopMath() {
+  const containerTop = 100;
+  const gap = 8;
+  const desiredTop = containerTop + gap;
+  const maxScrollTop = 1200;
+
+  assert.equal(
+    computeBookingCardAlignScrollTop(0, desiredTop, containerTop, maxScrollTop, gap),
+    0,
+  );
+  assert.equal(
+    computeBookingCardAlignScrollTop(0, desiredTop + 92, containerTop, maxScrollTop, gap),
+    92,
+  );
+  assert.equal(
+    computeBookingCardAlignScrollTop(0, desiredTop - 308, containerTop, maxScrollTop, gap),
+    308,
+  );
+  assert.equal(
+    computeBookingCardAlignScrollTop(500, desiredTop - 308, containerTop, maxScrollTop, gap),
+    192,
+  );
 }
 
 function testChatAppendedMessageIds() {
@@ -3984,6 +4011,7 @@ async function main() {
   testBookingRateProposalPanelActionLayout();
   testDmBookingCardPendingEventPairedActions();
   testDmBookingCardExpandCollapseScrollAnchor();
+  testDmBookingCardAlignScrollTopMath();
   testChatAppendedMessageIds();
   testDmBookingCardProposedRateCopy();
   testAskForRateDmBookingCardOfferSummary();

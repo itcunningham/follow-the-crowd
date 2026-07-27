@@ -111,20 +111,46 @@ export function scrollExpandedBookingCardBelowHeader(
 
   const containerRect = container.getBoundingClientRect();
   const cardRect = cardAnchor.getBoundingClientRect();
-  const delta = cardRect.top - containerRect.top - DM_BOOKING_CARD_HEADER_GAP_PX;
+  const maxScrollTop = Math.max(0, container.scrollHeight - container.clientHeight);
+  const targetScrollTop = computeBookingCardAlignScrollTop(
+    container.scrollTop,
+    cardRect.top,
+    containerRect.top,
+    maxScrollTop,
+  );
 
-  if (Math.abs(delta) < 2) {
+  if (targetScrollTop === container.scrollTop) {
     return;
   }
 
-  const targetScrollTop = container.scrollTop + delta;
-  const maxScrollTop = Math.max(0, container.scrollHeight - container.clientHeight);
-  const clampedScrollTop = Math.max(0, Math.min(maxScrollTop, targetScrollTop));
+  container.scrollTop = targetScrollTop;
+}
 
-  container.scrollTo({
-    top: clampedScrollTop,
-    behavior: "auto",
-  });
+/** Align card top to the scroll container top (+ gap) in a flex-col-reverse DM list. */
+export function computeBookingCardAlignScrollTop(
+  scrollTop: number,
+  cardTop: number,
+  containerTop: number,
+  maxScrollTop: number,
+  gap: number = DM_BOOKING_CARD_HEADER_GAP_PX,
+): number {
+  const desiredTop = containerTop + gap;
+  const delta = cardTop - desiredTop;
+
+  if (Math.abs(delta) < 2) {
+    return scrollTop;
+  }
+
+  let targetScrollTop = scrollTop + delta;
+
+  // flex-col-reverse: scrollTop=0 is the newest-message edge. When a card expands
+  // above the viewport from that edge, a negative delta would clamp to 0 — scroll
+  // into older content instead so the card top can reach the target line.
+  if (targetScrollTop < 0 && delta < 0) {
+    targetScrollTop = -delta;
+  }
+
+  return Math.max(0, Math.min(maxScrollTop, targetScrollTop));
 }
 
 function waitForBookingCardLayoutStable(

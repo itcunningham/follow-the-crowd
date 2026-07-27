@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import { useParams, usePathname, useSearchParams } from "next/navigation";
 import AppNavigation, { MOBILE_NAV_OFFSET_CLASS } from "@/app/components/AppNavigation";
 import { APP_DM_CHAT_COLUMN_CLASS } from "@/app/components/layout/AppPageLayout";
@@ -445,7 +446,9 @@ export default function DmChatPage() {
         const container = scrollRef.current;
         const lockedScrollTop = container?.scrollTop ?? 0;
 
-        setBookingExpanded(bookingRequestId, true);
+        flushSync(() => {
+          setBookingExpanded(bookingRequestId, true);
+        });
 
         if (container) {
           bookingCardScrollCleanupRef.current = scheduleExpandedBookingCardScrollAlign(
@@ -476,7 +479,9 @@ export default function DmChatPage() {
           ? captureBookingCardScrollPosition(container, cardAnchor)
           : null;
 
-      setBookingExpanded(bookingRequestId, false);
+      flushSync(() => {
+        setBookingExpanded(bookingRequestId, false);
+      });
 
       if (container) {
         bookingCardScrollCleanupRef.current = scheduleCollapsedBookingCardScrollRestore(
