@@ -11,6 +11,7 @@ import {
 } from "@/lib/design/ftcDesignSystem";
 import {
   buildEventsListHref,
+  isEventsListCreateFlowDisplayed,
   resolveEventsListActiveTabLabelForWorkspaceChrome,
   resolveEventsListTabRowChrome,
   type EventsListTab,
@@ -69,6 +70,7 @@ type EventsListTabControlsProps = {
   isPlanner: boolean;
   listTab: EventsListTab;
   createOpen?: boolean;
+  createParam?: string | null;
   onTabLinkClick?: (event: MouseEvent<HTMLAnchorElement>, tab: EventsListTab) => void;
   selectionMode?: boolean;
   selectionToolbar?: ReactNode;
@@ -83,6 +85,7 @@ export function EventsListTabControls({
   isPlanner,
   listTab,
   createOpen = false,
+  createParam = null,
   onTabLinkClick,
   selectionMode = false,
   selectionToolbar = null,
@@ -103,8 +106,9 @@ export function EventsListTabControls({
     loadingShell,
   });
 
-  const activeTabClass = eventsListTabPillClass(!createOpen && !isHistoryTab);
-  const historyTabClass = eventsListTabPillClass(!createOpen && isHistoryTab);
+  const createFlowDisplayed = isEventsListCreateFlowDisplayed(createOpen, createParam);
+  const activeTabClass = eventsListTabPillClass(!createFlowDisplayed && !isHistoryTab);
+  const historyTabClass = eventsListTabPillClass(!createFlowDisplayed && isHistoryTab);
   const activeLabel = resolveEventsListActiveTabLabelForWorkspaceChrome(isPlanner, {
     loadingShell,
     guardRole: guardProfile?.role,

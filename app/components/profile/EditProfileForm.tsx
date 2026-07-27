@@ -564,7 +564,7 @@ export default function EditProfileForm({
             <div className="mt-3 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-100">
               <p>
                 Changing from Both to a single role hides the other role&apos;s profile sections,
-                but your saved details stay on your account.
+                but your saved details stay on your account
               </p>
               <label className="mt-3 flex items-start gap-2">
                 <input
@@ -573,7 +573,7 @@ export default function EditProfileForm({
                   onChange={(event) => setRoleChangeAcknowledged(event.target.checked)}
                   className="mt-0.5 h-4 w-4 accent-ftc-primary"
                 />
-                <span>I understand my hidden details will be preserved.</span>
+                <span>I understand my hidden details will be preserved</span>
               </label>
             </div>
           ) : null}

@@ -262,6 +262,22 @@ export function resolveEventDetailBackHref(
 
 export type CalendarOriginCreateParam = "calendar" | "calendar-plans";
 
+export type EventsListCreateDeepLinkParam = "event" | "custom" | "plan";
+
+export function isEventsListCreateDeepLinkParam(
+  create: string | null | undefined,
+): create is EventsListCreateDeepLinkParam {
+  return create === "event" || create === "custom" || create === "plan";
+}
+
+/** True while create flow is open or a create deep link is still being consumed. */
+export function isEventsListCreateFlowDisplayed(
+  createOpen: boolean,
+  createParam?: string | null,
+): boolean {
+  return createOpen || isEventsListCreateDeepLinkParam(createParam);
+}
+
 export function isCalendarOriginCreateParam(
   create: string | null | undefined,
 ): create is CalendarOriginCreateParam {

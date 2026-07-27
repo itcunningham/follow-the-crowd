@@ -1349,6 +1349,7 @@ function EventsPageClientView({
               isPlanner={isPlanner}
               listTab={isHistoryTab ? "history" : "active"}
               createOpen={createOpen}
+              createParam={createParam}
               onTabLinkClick={handleEventsListTabLinkClick}
               selectionMode={historyTabRowSelectionMode}
               onTrashClick={historyBulkManage.enterSelectionMode}

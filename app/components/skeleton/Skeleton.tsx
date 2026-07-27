@@ -484,6 +484,7 @@ export function EventsPageLoadingShell({
         <EventsListTabControls
           isPlanner={isPlanner}
           listTab={isHistoryTab ? "history" : "active"}
+          createParam={createParam}
           loadingShell
         />
       }
