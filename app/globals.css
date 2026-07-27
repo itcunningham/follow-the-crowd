@@ -376,10 +376,18 @@ html {
   max-height: calc(3lh + 1rem + 2px) !important;
 }
 
-.ftc-fixed-scroll-textarea-6 {
-  height: calc(6lh + 1.25rem + 2px) !important;
-  min-height: calc(6lh + 1.25rem + 2px) !important;
-  max-height: calc(6lh + 1.25rem + 2px) !important;
+/** Default modal textarea — compose `.ftc-fixed-scroll-textarea.ftc-fixed-scroll-textarea-3` (or this alias). */
+.ftc-modal-textarea {
+  resize: none !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  line-height: 1.5 !important;
+  box-sizing: border-box !important;
+  height: calc(3lh + 1rem + 2px) !important;
+  min-height: calc(3lh + 1rem + 2px) !important;
+  max-height: calc(3lh + 1rem + 2px) !important;
 }
 
 .ftc-withdrawal-reason-textarea {

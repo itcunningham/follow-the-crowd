@@ -108,7 +108,7 @@ export default function ProposeBookingRateSheet({
           placeholder="Notes"
           multiline
           textareaRows={1}
-          textareaClassName="ftc-fixed-scroll-textarea ftc-fixed-scroll-textarea-6"
+          textareaClassName="ftc-fixed-scroll-textarea ftc-fixed-scroll-textarea-3"
         />
         <p className="text-xs text-ftc-text-muted">
           {note.trim().length}/{MAX_NOTE_LENGTH}

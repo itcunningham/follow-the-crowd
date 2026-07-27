@@ -34,16 +34,16 @@ Whenever a new shared pattern is introduced, document it here (or in the relevan
 
 Follow the **Design System Decision** process in `FTC_WORKFLOW.md` §6 before introducing a new pattern. Do not large-scale refactor automatically — present recommendations first.
 
-### Example: fixed-scroll textarea
+### Example: fixed-scroll textarea (modal standard)
 
 | Field | Detail |
 |-------|--------|
-| **Purpose** | Cap visible textarea height; scroll content internally (modals, capped DM fields) |
-| **Where it should be used** | Booking modals, withdrawal/proposal notes, any fixed-height multiline field |
-| **Where it should NOT be used** | Long-form planner notes that should grow with content (use `useBoundedAutoGrowTextarea` + `.ftc-event-notes-textarea`) |
-| **Existing components using it** | `WithdrawalReasonDetailsField` (3 lines), `ProposeBookingRateSheet` (6 lines) |
-| **Future components that should adopt it** | Any new modal textarea with a line cap |
-| **Older patterns that may eventually be deprecated** | One-off fixed-height classes (e.g. duplicate per-feature textarea CSS); `.ftc-profile-bio-textarea` (rem-based fixed height — evaluate alignment) |
+| **Purpose** | Cap visible textarea height at ~3 lines; scroll content internally |
+| **Where it should be used** | **Modal textareas** — booking sheets, propose rate, withdrawal/cancel reason fields |
+| **Where it should NOT be used** | **Page/editor textareas** — event notes, profile bio, run sheet (use auto-grow or dedicated page patterns) |
+| **Existing components using it** | `ProposeBookingRateSheet`, `WithdrawalReasonDetailsField` — `.ftc-fixed-scroll-textarea` + `.ftc-fixed-scroll-textarea-3` (or `.ftc-modal-textarea`) |
+| **Future components that should adopt it** | Any new modal multiline field |
+| **Older patterns that may eventually be deprecated** | `.ftc-fixed-scroll-textarea-6` (removed); one-off per-modal textarea height CSS; `.ftc-profile-bio-textarea` for modal contexts |
 
 ---
 
@@ -263,10 +263,21 @@ Use `getFtcStatusBadgeSizeClass()` from `lib/design/ftcStatusBadge.ts` + semanti
 
 ## Forms
 
+### Textareas — modal vs page
+
+| Context | Pattern | Classes / hook | Behaviour |
+|---------|---------|----------------|-----------|
+| **Modal textarea** (default) | Compact, fixed ~3 visible lines, internal scroll | `.ftc-modal-textarea` **or** `.ftc-fixed-scroll-textarea` + `.ftc-fixed-scroll-textarea-3` on `.ftc-input` / `.ftc-textarea` | Height never grows; overflow scrolls inside the field; modal shell stays stable |
+| **Page / editor textarea** | Auto-grow within bounds | `.ftc-event-notes-textarea` + `useBoundedAutoGrowTextarea` | Grows from ~4 to ~8 lines with content; internal scroll at max |
+| **Profile bio** | Fixed page field | `.ftc-profile-bio-textarea` | Fixed rem height; page context only |
+
+**Rule:** New modal multiline fields **must** use the modal pattern (~3 lines). Do not use auto-grow in modals. Do not use modal fixed-scroll on long-form planner/editor fields.
+
 | Element | Class | Notes |
 |---------|-------|-------|
 | Text input | `.ftc-input px-3.5 py-2.5` | `min-height: 2.75rem` |
-| Textarea | `.ftc-input` on textarea | Event notes: `.ftc-event-notes-textarea` + `useBoundedAutoGrowTextarea`; fixed scroll: `.ftc-fixed-scroll-textarea` + `.ftc-fixed-scroll-textarea-3` or `-6` |
+| Modal textarea | `.ftc-modal-textarea` or `.ftc-fixed-scroll-textarea.ftc-fixed-scroll-textarea-3` | ~3 lines; see table above |
+| Page textarea | `.ftc-event-notes-textarea` + `useBoundedAutoGrowTextarea` | Bounded auto-grow |
 | Label | `.ftc-label` | 11px uppercase, secondary colour |
 | Field error | `.ftc-inline-error` + `PlannerFieldError` | 12px below field |
 | Form card header | `.ftc-form-card-header` | Title + Cancel link |

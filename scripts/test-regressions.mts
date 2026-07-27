@@ -826,10 +826,11 @@ function testProposeBookingRateNotesTextareaGrowth() {
   );
 
   assert.match(sheetSource, /MAX_NOTE_LENGTH = 250/);
-  assert.match(sheetSource, /ftc-fixed-scroll-textarea ftc-fixed-scroll-textarea-6/);
-  assert.match(cssSource, /\.ftc-fixed-scroll-textarea/);
-  assert.match(cssSource, /\.ftc-fixed-scroll-textarea-6[\s\S]*height: calc\(6lh \+ 1\.25rem \+ 2px\) !important/);
+  assert.match(sheetSource, /ftc-fixed-scroll-textarea ftc-fixed-scroll-textarea-3/);
+  assert.match(cssSource, /\.ftc-modal-textarea[\s\S]*height: calc\(3lh \+ 1rem \+ 2px\) !important/);
+  assert.match(cssSource, /\.ftc-fixed-scroll-textarea-3[\s\S]*height: calc\(3lh \+ 1rem \+ 2px\) !important/);
   assert.match(cssSource, /\.ftc-fixed-scroll-textarea[\s\S]*overflow-y: auto !important/);
+  assert.doesNotMatch(cssSource, /\.ftc-fixed-scroll-textarea-6/);
   assert.match(sheetSource, /textareaRows=\{1\}/);
 }
 
