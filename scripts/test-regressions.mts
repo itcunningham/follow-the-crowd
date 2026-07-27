@@ -505,9 +505,13 @@ function testDmBookingCardExpandCollapseScrollAnchor() {
   assert.match(expandScrollSource, /clampDmMessageScrollTop/);
   assert.match(expandScrollSource, /DM_BOOKING_CARD_EXPAND_PANEL_ATTR/);
   assert.match(pageSource, /flushSync/);
+  assert.match(pageSource, /bookingCardExpandAlignGuardRef/);
+  assert.match(expandScrollSource, /lockDmMessageScrollTop/);
   assert.match(expandScrollSource, /computeBookingCardAlignScrollTop/);
   assert.doesNotMatch(expandScrollSource, /scrollIntoView/);
   assert.match(scrollSource, /getAppendedMessageIds/);
+  assert.match(scrollSource, /bookingCardExpandAlignGuardRef/);
+  assert.match(scrollSource, /isDmChatAutoScrollSuppressed/);
   assert.match(scrollSource, /messageIds: readonly string\[\]/);
   assert.doesNotMatch(scrollSource, /messageCount/);
 }

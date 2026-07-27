@@ -199,6 +199,7 @@ export default function DmChatPage() {
       bookingFocusMode: "scroll-and-highlight" as const,
     };
   const suppressAutoScrollRef = useRef(Boolean(scrollTargetBookingRequestId));
+  const bookingCardExpandAlignGuardRef = useRef<string | null>(null);
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [attachments, setAttachments] = useState<DmMessageAttachment[]>([]);
@@ -267,6 +268,7 @@ export default function DmChatPage() {
     lastMessageIsFromCurrentUser: lastMessage?._clientScrollMeta?.isFromCurrentUser ?? null,
     currentUserId,
     suppressAutoScrollRef,
+    bookingCardExpandAlignGuardRef,
   });
   const { addHighlightedMessageId, isMessageHighlighted } = useChatNewMessageHighlight();
   const { highlightBookingFocus, getMessageBookingFocusPhase } = useChatBookingFocusHighlight();
@@ -303,6 +305,7 @@ export default function DmChatPage() {
     scrollRef,
     highlightBookingFocus,
     suppressAutoScrollRef,
+    bookingCardExpandAlignGuardRef,
   });
 
   const conversationTitle = otherUserProfile ? getConversationTitle(otherUserProfile) : "";
@@ -399,6 +402,7 @@ export default function DmChatPage() {
     bookingCardScrollCleanupRef.current = null;
     bookingCardAnchorRefs.current.clear();
     pendingBookingCardScrollIdRef.current = null;
+    bookingCardExpandAlignGuardRef.current = null;
   }, [conversationId]);
 
   const registerBookingCardAnchor = useCallback(
@@ -442,8 +446,10 @@ export default function DmChatPage() {
 
       if (expanded) {
         pendingBookingCardScrollIdRef.current = bookingRequestId;
+        bookingCardExpandAlignGuardRef.current = bookingRequestId;
 
         const container = scrollRef.current;
+        const lockedScrollTop = container?.scrollTop ?? 0;
 
         flushSync(() => {
           setBookingExpanded(bookingRequestId, true);
@@ -455,13 +461,16 @@ export default function DmChatPage() {
             () => bookingCardAnchorRefs.current.get(bookingRequestId) ?? null,
             bookingRequestId,
             pendingBookingCardScrollIdRef,
+            lockedScrollTop,
             () => {
               pendingBookingCardScrollIdRef.current = null;
+              bookingCardExpandAlignGuardRef.current = null;
               restoreChatAutoScrollSuppression();
             },
           );
         } else {
           pendingBookingCardScrollIdRef.current = null;
+          bookingCardExpandAlignGuardRef.current = null;
           restoreChatAutoScrollSuppression();
         }
 

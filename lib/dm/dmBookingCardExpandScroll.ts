@@ -129,6 +129,7 @@ export function scrollExpandedBookingCardBelowHeader(
   container: HTMLElement,
   cardAnchor: HTMLElement,
   bookingRequestId: string,
+  scrollBehavior: ScrollBehavior = resolveScrollBehavior(),
 ): void {
   if (cardAnchor.getAttribute(DM_BOOKING_CARD_REQUEST_ID_ATTR) !== bookingRequestId) {
     return;
@@ -148,9 +149,15 @@ export function scrollExpandedBookingCardBelowHeader(
     return;
   }
 
+  if (scrollBehavior === "auto") {
+    container.scrollTop = targetScrollTop;
+    clampDmMessageScrollTop(container);
+    return;
+  }
+
   container.scrollTo({
     top: targetScrollTop,
-    behavior: resolveScrollBehavior(),
+    behavior: scrollBehavior,
   });
 }
 
@@ -292,11 +299,13 @@ export function scheduleExpandedBookingCardScrollAlign(
   getCardAnchor: () => HTMLElement | null,
   bookingRequestId: string,
   pendingBookingRequestIdRef: MutableRefObject<string | null>,
+  lockedScrollTop: number,
   onComplete?: () => void,
 ): () => void {
   let cancelled = false;
   let scrolled = false;
   let cancelReadyWait: (() => void) | null = null;
+  let unlockScroll: (() => void) | null = lockDmMessageScrollTop(container, lockedScrollTop);
 
   const finish = () => {
     if (cancelled) {
@@ -306,6 +315,8 @@ export function scheduleExpandedBookingCardScrollAlign(
     cancelled = true;
     cancelReadyWait?.();
     cancelReadyWait = null;
+    unlockScroll?.();
+    unlockScroll = null;
     onComplete?.();
   };
 
@@ -322,7 +333,10 @@ export function scheduleExpandedBookingCardScrollAlign(
       return;
     }
 
-    scrollExpandedBookingCardBelowHeader(container, cardAnchor, bookingRequestId);
+    unlockScroll?.();
+    unlockScroll = null;
+
+    scrollExpandedBookingCardBelowHeader(container, cardAnchor, bookingRequestId, "auto");
     scrolled = true;
     finish();
   };
