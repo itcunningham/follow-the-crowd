@@ -75,6 +75,7 @@ import {
   type PendingComposerAttachment,
 } from "@/lib/dm/composerPendingAttachment";
 import { useDismissComposerKeyboardOnIntentionalScroll } from "@/lib/dm/dismissComposerKeyboardOnIntentionalScroll";
+import { restoreComposerInputFocus as restoreComposerInputFocusElement } from "@/lib/dm/restoreComposerInputFocus";
 import {
   groupDmReactionsByMessageId,
   listDmReactionsForConversation,
@@ -312,9 +313,7 @@ export default function DmChatPage() {
     }
 
     shouldRestoreComposerFocusRef.current = false;
-    requestAnimationFrame(() => {
-      composerInputRef.current?.focus({ preventScroll: true });
-    });
+    restoreComposerInputFocusElement(composerInputRef.current);
   }, []);
 
   const handleComposerInputBlurWhileBusy = useCallback(() => {

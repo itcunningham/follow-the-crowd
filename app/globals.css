@@ -508,6 +508,17 @@ html {
   }
 }
 
+/* DM composer — on mobile, cyan focus ring follows keyboard session, not stale :focus */
+@media (max-width: 767px) {
+  .dm-composer .ftc-input:focus {
+    border-color: var(--ftc-color-border-subtle);
+  }
+
+  html[data-mobile-keyboard-open] .dm-composer .ftc-input:focus {
+    border-color: var(--ftc-color-primary);
+  }
+}
+
 .ftc-input.ftc-input-error,
 .ftc-textarea.ftc-input-error,
 .ftc-input[aria-invalid="true"],

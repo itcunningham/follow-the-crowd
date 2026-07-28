@@ -100,7 +100,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 - **DM photo picker (2026-07-14):** media icon opens native OS chooser (Photo Library / Take Photo on iOS); no forced camera via `capture`
 - **DM message reactions (2026-07-25):** persistent `React` label removed; press-and-hold (~500ms) or right-click opens existing picker on text/image messages; desktop hover/focus-visible `+` affordance; keyboard-accessible `React to message` button; booking/system cards unchanged; DM image attachments use button open surface (not `<a>`) with scoped `-webkit-touch-callout: none` so iPhone Safari long-press opens FTC picker instead of native link preview; reaction picker no longer uses a full-screen blocking backdrop — outside tap or scroll dismisses it without trapping chat scroll
 - **Mobile bottom nav + keyboard (2026-07-21):** on viewports below `md`, text-field focus latches a keyboard session from `visualViewport` height gap; nav stays hidden while focused (including iOS scroll) until height gap shows dismissal or focus leaves; offset padding clears with the bar
-- **DM composer focus (2026-07-28):** after send, message input stays focused and keyboard remains open (standard chat UX); send button uses pointerdown focus retention; input no longer disables during send; `preventScroll: true` on refocus avoids viewport jumps
+- **DM composer focus (2026-07-28):** after send, message input stays focused and keyboard remains open (standard chat UX); send button uses pointerdown focus retention; input no longer disables during send; `preventScroll: true` on refocus avoids viewport jumps; mobile focus ring follows `data-mobile-keyboard-open` so stale `:focus` after emoji-only send cannot show cyan border; `syncComposerInputFocusState` blur/refocus retries when iOS closes keyboard on clear
 - **DM keyboard dismiss on scroll (2026-07-28):** on mobile viewports, intentional finger scroll in the message list (≥10px) blurs the focused composer and syncs keyboard session state — native chat UX; no scroll position changes; desktop unchanged
 - **DM return composer layout (2026-07-28):** Event Details Back adds `bookingRequestId` + `bookingFocus=scroll-only`; booking-target scroll now uses container `scrollTop` math (same pattern as booking-card expand scroll) instead of `scrollIntoView`, which on iPhone Safari shifted the document/visual viewport and mispositioned the fixed chat shell above the bottom nav; `traceDmChatLayout()` logs mount/ready/booking-scroll geometry in dev for path comparison; document scroll lock + `h-[100dvh]` shell unchanged
 
@@ -278,6 +278,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `ce19be0` — sync DM composer focus styling with keyboard session after send
 - `43bb356` — dismiss DM composer keyboard on intentional mobile scroll
 - `0f3be16` — keep DM composer focused after send
 - `f663dab` — show inline finish time validation on bookings DJ selection step (shared set-time errors + aria-invalid trigger styling)

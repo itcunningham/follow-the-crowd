@@ -4862,13 +4862,16 @@ function testDmComposerClearsPendingPhotoAfterSuccessfulSend() {
   assert.match(composerSource, /inputRef/);
   assert.doesNotMatch(composerSource, /onPhotoSelected/);
 
+  assert.match(composerSource, /className="dm-composer shrink-0/);
+
   assert.match(pageSource, /composerInputRef/);
   assert.match(pageSource, /restoreComposerInputFocus/);
-  assert.match(pageSource, /preventScroll: true/);
+  assert.match(pageSource, /restoreComposerInputFocusElement/);
   assert.match(pageSource, /shouldRestoreComposerFocusRef/);
   assert.match(pageSource, /onInputBlurWhileBusy=\{handleComposerInputBlurWhileBusy\}/);
 
   assert.match(globalsSource, /\.dm-composer-pending-photo-selected/);
+  assert.match(globalsSource, /html\[data-mobile-keyboard-open\] \.dm-composer \.ftc-input:focus/);
   assert.match(bubbleSource, /const attachmentOnly = hasAttachments && !hasText;/);
   assert.match(bubbleSource, /const bubbleShellClass = attachmentOnly/);
   assert.doesNotMatch(attachmentSource, /dm-composer-pending-photo-selected/);
@@ -4888,6 +4891,20 @@ function testDmComposerClearsPendingPhotoAfterSuccessfulSend() {
 
   assert.match(helperSource, /createPendingComposerAttachment/);
   assert.match(helperSource, /revokePendingComposerAttachment/);
+}
+
+function testDmComposerFocusSyncAfterSend() {
+  const focusSource = readFileSync(
+    new URL("../lib/dm/restoreComposerInputFocus.ts", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(focusSource, /syncComposerInputFocusState/);
+  assert.match(focusSource, /restoreComposerInputFocus/);
+  assert.match(focusSource, /preventScroll: true/);
+  assert.match(focusSource, /isMobileSoftwareKeyboardOpen/);
+  assert.match(focusSource, /syncMobileSoftwareKeyboardDocumentState/);
+  assert.match(focusSource, /input\.blur\(\)/);
 }
 
 function testDmMessageReactionGestureInteractions() {
@@ -5072,6 +5089,7 @@ async function main() {
   testEventCreateFormTextFieldMaxLength();
   testWithdrawalOtherReasonInputLimits();
   testDmComposerClearsPendingPhotoAfterSuccessfulSend();
+  testDmComposerFocusSyncAfterSend();
   testDmMessageReactionGestureInteractions();
   testEventFallbackColourSelectionRadioBehaviour();
   testEventPlanPickerClearsSelectionOnFormBack();
