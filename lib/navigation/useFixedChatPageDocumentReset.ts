@@ -1,12 +1,16 @@
 "use client";
 
-import { useLayoutEffect } from "react";
-import { prepareFixedChatPageMount } from "@/lib/navigation/prepareFixedChatPageMount";
+import { useEffect, useLayoutEffect } from "react";
+import {
+  lockFixedChatDocumentScroll,
+  prepareFixedChatPageMount,
+} from "@/lib/navigation/prepareFixedChatPageMount";
+import { runDoubleRafDocumentScrollToTop } from "@/lib/navigation/scrollPageToTop";
 
-/** Reset window/document insets when entering a fixed chat page (e.g. DM return from Event Details). */
-export function useFixedChatPageDocumentReset(): void {
+/** Lock document scroll while a fixed chat route is active (e.g. DM return from Event Details). */
+export function useFixedChatPageDocumentReset(routeKey: string): void {
   useLayoutEffect(() => {
-    prepareFixedChatPageMount();
+    const unlockDocumentScroll = lockFixedChatDocumentScroll();
 
     function handlePageShow(event: PageTransitionEvent) {
       if (event.persisted) {
@@ -18,6 +22,25 @@ export function useFixedChatPageDocumentReset(): void {
 
     return () => {
       window.removeEventListener("pageshow", handlePageShow);
+      unlockDocumentScroll();
     };
-  }, []);
+  }, [routeKey]);
+
+  useEffect(() => {
+    prepareFixedChatPageMount();
+    const cancelScrollReset = runDoubleRafDocumentScrollToTop();
+
+    function handleVisibilityChange() {
+      if (document.visibilityState === "visible") {
+        prepareFixedChatPageMount();
+      }
+    }
+
+    window.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      cancelScrollReset();
+      window.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [routeKey]);
 }

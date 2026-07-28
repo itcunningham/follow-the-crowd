@@ -3175,17 +3175,27 @@ function testFixedChatPageDocumentReset() {
     "utf8",
   );
 
-  assert.match(dmPageSource, /useFixedChatPageDocumentReset/);
+  assert.match(dmPageSource, /useFixedChatPageDocumentReset\(fixedChatRouteKey\)/);
+  assert.match(dmPageSource, /FIXED_CHAT_PAGE_SHELL_CLASS/);
+  assert.match(prepareSource, /lockFixedChatDocumentScroll/);
+  assert.match(prepareSource, /html\.style\.overflow = "hidden"/);
+  assert.match(prepareSource, /body\.style\.overflow = "hidden"/);
+  assert.match(prepareSource, /readFixedChatLayoutDiagnostics/);
+  assert.match(prepareSource, /h-\[100dvh\]/);
   assert.match(prepareSource, /scrollDocumentToTop/);
   assert.match(prepareSource, /resetMobileSoftwareKeyboardSession/);
   assert.match(prepareSource, /removeAttribute\(MOBILE_KEYBOARD_OPEN_HTML_ATTRIBUTE\)/);
   assert.match(prepareSource, /history\.scrollRestoration = "manual"/);
   assert.match(hookSource, /useLayoutEffect/);
+  assert.match(hookSource, /lockFixedChatDocumentScroll/);
+  assert.match(hookSource, /runDoubleRafDocumentScrollToTop/);
   assert.match(hookSource, /pageshow/);
+  assert.match(hookSource, /visibilitychange/);
   assert.match(keyboardSource, /resetMobileSoftwareKeyboardSession/);
   assert.match(composerSource, /placeholder="Message"/);
   assert.doesNotMatch(composerSource, /placeholder="Message\.\.\."/);
-  assert.match(eventDetailSource, /router\.push\(eventsBackHref, \{ scroll: false \}\)/);
+  assert.match(eventDetailSource, /router\.push\(eventsBackHref\)/);
+  assert.doesNotMatch(eventDetailSource, /router\.push\(eventsBackHref, \{ scroll: false \}\)/);
 }
 
 function testEventTitleClampLayout() {

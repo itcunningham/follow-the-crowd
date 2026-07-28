@@ -59,6 +59,7 @@ import {
 } from "@/lib/dm/dmChatTimestampVisibility";
 import { parseDmThreadEntryContext, resolveDmThreadBackHref } from "@/lib/dm/threadNavigation";
 import { useFixedChatPageDocumentReset } from "@/lib/navigation/useFixedChatPageDocumentReset";
+import { FIXED_CHAT_PAGE_SHELL_CLASS } from "@/lib/navigation/prepareFixedChatPageMount";
 import { buildChatReturnTo } from "@/lib/profileNavigation";
 import {
   getDmAttachmentNotificationBody,
@@ -205,8 +206,9 @@ export default function DmChatPage() {
       bookingFocusMode: "scroll-and-highlight" as const,
     };
   const suppressAutoScrollRef = useRef(Boolean(scrollTargetBookingRequestId));
+  const fixedChatRouteKey = `${pathname}?${searchParams.toString()}`;
 
-  useFixedChatPageDocumentReset();
+  useFixedChatPageDocumentReset(fixedChatRouteKey);
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [attachments, setAttachments] = useState<DmMessageAttachment[]>([]);
@@ -1581,7 +1583,7 @@ export default function DmChatPage() {
 
   return (
     <OnboardingGuard>
-    <div className="fixed inset-0 flex flex-col overflow-hidden bg-ftc-bg font-sans text-ftc-text">
+    <div className={FIXED_CHAT_PAGE_SHELL_CLASS}>
       <AppNavigation />
       <div className={`${APP_DM_CHAT_COLUMN_CLASS} ${MOBILE_NAV_OFFSET_CLASS}`}>
       <header
