@@ -65,6 +65,7 @@ export function traceBookingCardCollapseScroll(
   phase: string,
   container: HTMLElement,
   cardAnchor: HTMLElement | null,
+  write?: { writer: string; beforeScrollTop: number; afterScrollTop: number },
 ): void {
   if (!isBookingCardCollapseTraceEnabled()) {
     return;
@@ -72,7 +73,69 @@ export function traceBookingCardCollapseScroll(
 
   console.info("[ftc-booking-collapse-scroll]", phase, {
     ...readBookingCardScrollDiagnostics(container, cardAnchor),
+    ...(write
+      ? {
+          writer: write.writer,
+          beforeScrollTop: write.beforeScrollTop,
+          afterScrollTop: write.afterScrollTop,
+          scrollTopDelta: write.afterScrollTop - write.beforeScrollTop,
+        }
+      : {}),
   });
+}
+
+function writeDmMessageScrollTop(
+  container: HTMLElement,
+  scrollTop: number,
+  writer: string,
+  traceCollapseWrites: boolean,
+  getCardAnchor?: () => HTMLElement | null,
+): void {
+  const beforeScrollTop = container.scrollTop;
+
+  if (beforeScrollTop === scrollTop) {
+    return;
+  }
+
+  container.scrollTop = scrollTop;
+
+  if (traceCollapseWrites) {
+    traceBookingCardCollapseScroll(`scroll-write:${writer}`, container, getCardAnchor?.() ?? null, {
+      writer,
+      beforeScrollTop,
+      afterScrollTop: scrollTop,
+    });
+  }
+}
+
+function scrollDmMessageContainerTo(
+  container: HTMLElement,
+  scrollTop: number,
+  behavior: ScrollBehavior,
+  writer: string,
+  traceCollapseWrites: boolean,
+  getCardAnchor?: () => HTMLElement | null,
+): void {
+  const beforeScrollTop = container.scrollTop;
+
+  if (beforeScrollTop === scrollTop) {
+    return;
+  }
+
+  container.scrollTo({ top: scrollTop, behavior });
+
+  if (traceCollapseWrites && behavior === "auto") {
+    traceBookingCardCollapseScroll(`scroll-write:${writer}`, container, getCardAnchor?.() ?? null, {
+      writer,
+      beforeScrollTop,
+      afterScrollTop: container.scrollTop,
+    });
+  }
+}
+
+/** Safari keeps smooth scrollTo animations alive after our waiter is cancelled. */
+function abortInFlightContainerScroll(container: HTMLElement): void {
+  container.scrollTo({ top: container.scrollTop, behavior: "auto" });
 }
 
 function prefersReducedMotion(): boolean {
@@ -86,15 +149,20 @@ function resolveScrollBehavior(): ScrollBehavior {
   return prefersReducedMotion() ? "auto" : "smooth";
 }
 
-export function clampDmMessageScrollTop(container: HTMLElement): void {
+export function clampDmMessageScrollTop(
+  container: HTMLElement,
+  writer = "clampDmMessageScrollTop",
+  traceCollapseWrites = false,
+  getCardAnchor?: () => HTMLElement | null,
+): void {
   const maxScrollTop = Math.max(0, container.scrollHeight - container.clientHeight);
 
   if (container.scrollTop > maxScrollTop) {
-    container.scrollTop = maxScrollTop;
+    writeDmMessageScrollTop(container, maxScrollTop, writer, traceCollapseWrites, getCardAnchor);
   }
 
   if (container.scrollTop < 0) {
-    container.scrollTop = 0;
+    writeDmMessageScrollTop(container, 0, writer, traceCollapseWrites, getCardAnchor);
   }
 }
 
@@ -176,15 +244,18 @@ function scrollExpandedBookingCardBelowHeader(
   }
 
   if (scrollBehavior === "auto") {
-    container.scrollTop = targetScrollTop;
+    writeDmMessageScrollTop(container, targetScrollTop, "expand-align:auto", false);
     clampDmMessageScrollTop(container);
     return;
   }
 
-  container.scrollTo({
-    top: targetScrollTop,
-    behavior: scrollBehavior,
-  });
+  scrollDmMessageContainerTo(
+    container,
+    targetScrollTop,
+    scrollBehavior,
+    "expand-align:smooth",
+    false,
+  );
 }
 
 /** Bottom edge to keep visible after Notes expand — card bottom includes action rows. */
@@ -441,7 +512,11 @@ function waitForSmoothScrollAlign(
 }
 
 /** Keep scrollTop in sync with accordion height changes during the grid transition. */
-function compensateScrollDuringPanelTransition(container: HTMLElement): () => void {
+function compensateScrollDuringPanelTransition(
+  container: HTMLElement,
+  traceCollapseWrites: boolean,
+  getCardAnchor?: () => HTMLElement | null,
+): () => void {
   if (prefersReducedMotion()) {
     return () => {};
   }
@@ -464,9 +539,13 @@ function compensateScrollDuringPanelTransition(container: HTMLElement): () => vo
       maxScrollTop,
     );
 
-    if (nextScrollTop !== container.scrollTop) {
-      container.scrollTop = nextScrollTop;
-    }
+    writeDmMessageScrollTop(
+      container,
+      nextScrollTop,
+      "collapse:height-compensation",
+      traceCollapseWrites,
+      getCardAnchor,
+    );
 
     previousScrollHeight = currentScrollHeight;
     frameId = requestAnimationFrame(tick);
@@ -495,7 +574,8 @@ export function scheduleBookingCardExpandScrollTransition(
   let cancelTransitionWait: (() => void) | null = null;
   let cancelScrollAlignWait: (() => void) | null = null;
   let stopScrollCompensation: (() => void) | null = null;
-  const transitionStartScrollHeight = container.scrollHeight;
+  let pendingSmoothAlign = false;
+  const traceCollapseWrites = direction === "collapse";
 
   const finish = () => {
     if (cancelled) {
@@ -509,6 +589,12 @@ export function scheduleBookingCardExpandScrollTransition(
     cancelScrollAlignWait = null;
     stopScrollCompensation?.();
     stopScrollCompensation = null;
+
+    if (pendingSmoothAlign) {
+      pendingSmoothAlign = false;
+      abortInFlightContainerScroll(container);
+    }
+
     onComplete?.();
   };
 
@@ -524,18 +610,7 @@ export function scheduleBookingCardExpandScrollTransition(
     const cardAnchor = getCardAnchor();
 
     if (direction === "collapse") {
-      if (prefersReducedMotion()) {
-        const maxScrollTop = Math.max(0, container.scrollHeight - container.clientHeight);
-        container.scrollTop = computeScrollTopAfterShrink(
-          container.scrollTop,
-          transitionStartScrollHeight,
-          container.scrollHeight,
-          maxScrollTop,
-        );
-      }
-
       traceBookingCardCollapseScroll("collapse-settled", container, cardAnchor);
-      clampDmMessageScrollTop(container);
       finish();
       return;
     }
@@ -577,10 +652,12 @@ export function scheduleBookingCardExpandScrollTransition(
     );
 
     if (scrollBehavior === "smooth") {
+      pendingSmoothAlign = true;
       cancelScrollAlignWait = waitForSmoothScrollAlign(
         container,
         targetScrollTop,
         () => {
+          pendingSmoothAlign = false;
           traceBookingCardCollapseScroll("expand-settled:aligned", container, cardAnchor);
           finish();
         },
@@ -593,11 +670,15 @@ export function scheduleBookingCardExpandScrollTransition(
   };
 
   const beginScrollCompensation = () => {
-    if (cancelled) {
+    if (cancelled || direction !== "collapse") {
       return;
     }
 
-    stopScrollCompensation = compensateScrollDuringPanelTransition(container);
+    stopScrollCompensation = compensateScrollDuringPanelTransition(
+      container,
+      traceCollapseWrites,
+      getCardAnchor,
+    );
   };
 
   cancelTransitionWait = waitForBookingCardTransitionEnd(

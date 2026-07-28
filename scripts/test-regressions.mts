@@ -599,7 +599,12 @@ function testDmBookingCardExpandCollapseScrollAnchor() {
   assert.doesNotMatch(expandScrollSource, /restoreBookingCardScrollPosition/);
   assert.doesNotMatch(expandScrollSource, /lockDmMessageScrollTop/);
   assert.doesNotMatch(expandScrollSource, /scrollIntoView/);
-  assert.match(expandScrollSource, /clampDmMessageScrollTop/);
+  assert.doesNotMatch(
+    expandScrollSource,
+    /direction === "collapse"[\s\S]{0,220}clampDmMessageScrollTop/,
+  );
+  assert.match(expandScrollSource, /scroll-write:collapse:height-compensation/);
+  assert.match(expandScrollSource, /abortInFlightContainerScroll/);
   assert.match(expandScrollSource, /DM_BOOKING_CARD_EXPAND_PANEL_ATTR/);
   assert.doesNotMatch(pageSource, /flex-1 flex-col-reverse overflow-y-auto/);
   assert.match(pageSource, /flex-1 flex-col overflow-y-auto/);
