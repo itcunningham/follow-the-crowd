@@ -3319,18 +3319,25 @@ function testDismissComposerKeyboardOnIntentionalScroll() {
     "utf8",
   );
 
-  assert.match(hookSource, /COMPOSER_KEYBOARD_DISMISS_DOWNWARD_DRAG_PX = 16/);
-  assert.match(hookSource, /COMPOSER_KEYBOARD_DISMISS_COMMIT_DRAG_PX = 36/);
-  assert.match(hookSource, /COMPOSER_KEYBOARD_DISMISS_SCROLL_CONFIRM_PX = 8/);
+  assert.match(hookSource, /COMPOSER_KEYBOARD_DISMISS_THRESHOLD_PX = 120/);
+  assert.match(hookSource, /COMPOSER_KEYBOARD_DISMISS_VERTICAL_DOMINANCE_RATIO = 1\.25/);
+  assert.match(hookSource, /COMPOSER_KEYBOARD_DISMISS_REVERSAL_CANCEL_PX = 24/);
+  assert.match(hookSource, /COMPOSER_KEYBOARD_DISMISS_VIEWPORT_LOWER_RATIO = 0\.55/);
   assert.match(hookSource, /MOBILE_NAVIGATION_MEDIA_QUERY = "\(max-width: 767px\)"/);
   assert.match(hookSource, /input\.blur\(\)/);
   assert.match(hookSource, /syncMobileSoftwareKeyboardDocumentState/);
   assert.match(hookSource, /preserveScrollPositionDuringKeyboardDismiss/);
-  assert.match(hookSource, /fingerDeltaY < 0/);
+  assert.match(hookSource, /isDownwardDismissIntent/);
+  assert.match(hookSource, /deltaY < 0/);
+  assert.match(hookSource, /maxDownwardDeltaY/);
+  assert.match(hookSource, /getVisibleViewportLowerBound/);
+  assert.doesNotMatch(hookSource, /scrollTowardOlderMessages/);
+  assert.doesNotMatch(hookSource, /scrollTop - container\.scrollTop/);
   assert.match(hookSource, /touchstart[\s\S]*passive: true/);
-  assert.match(hookSource, /touchmove[\s\S]*passive: true/);
-  assert.match(hookSource, /scrollTowardOlderMessages/);
-  assert.match(hookSource, /visualViewport\?\.addEventListener\("resize"/);
+  assert.match(hookSource, /touchmove[\s\S]*passive: false/);
+  assert.match(hookSource, /onTouchStart[\s\S]*?onTouchMove/s);
+  assert.doesNotMatch(hookSource, /onTouchStart[\s\S]*?input\.blur\(\)/);
+  assert.match(hookSource, /UIScrollView-style interactive keyboard tracking is not exposed/);
   assert.match(dmPageSource, /useDismissComposerKeyboardOnIntentionalScroll\(scrollRef, composerInputRef\)/);
 }
 
