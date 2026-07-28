@@ -278,7 +278,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
-- `ce19be0` — sync DM composer focus styling with keyboard session after send
+- `7c3416a` — sync DM composer focus styling with keyboard session after send
 - `43bb356` — dismiss DM composer keyboard on intentional mobile scroll
 - `0f3be16` — keep DM composer focused after send
 - `f663dab` — show inline finish time validation on bookings DJ selection step (shared set-time errors + aria-invalid trigger styling)
