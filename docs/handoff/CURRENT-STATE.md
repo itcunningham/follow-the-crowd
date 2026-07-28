@@ -275,6 +275,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `aba9889` — polish proposal action buttons (Accept/Decline side-by-side)
 - `ef27346` — fix DM composer return layout root cause (container-only booking-target scroll; no scrollIntoView on return)
 - `087b261` — fix DM return composer position and placeholder (superseded by document scroll lock)
 - `74aab82` — final DM booking negotiation polish (timeline suppression + muted hierarchy)
