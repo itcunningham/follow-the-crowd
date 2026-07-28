@@ -276,7 +276,8 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
-- `06d1af8` — remove final DM collapse scroll adjustment (no post-settle clamp; abort ghost expand smooth scroll)
+- `7869cf4` — preserve DM bottom position through booking accordion (bottom-pinned vs anchor-preservation modes)
+- `06d1af8` — remove final DM collapse scroll adjustment
 - `99bf565` — refactor DM booking accordion scroll coordination
 - `fc453da` — restore smooth booking details transition (viewport anchor — superseded by refactor above)
 - `a37270c` — fix booking card collapse scroll position (restore pre-expand capture — superseded)
