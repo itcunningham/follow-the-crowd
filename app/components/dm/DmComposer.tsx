@@ -130,7 +130,7 @@ export default function DmComposer({
           value={value}
           onChange={(event) => onChange(event.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Message..."
+          placeholder="Message"
           disabled={busy}
           className="ftc-input h-11 min-w-0 flex-1 rounded-full px-4 py-0 disabled:cursor-not-allowed"
         />

@@ -211,7 +211,7 @@ export async function normalizeSyntheticBlockRelationships(roles: RolePages): Pr
 
 export async function verifyPlannerDjBookingReady(roles: RolePages): Promise<void> {
   await openDmThreadWithSupportedFallbacks(roles.planner, SYNTHETIC_DISPLAY_NAMES.dj, "Planner");
-  await expect(roles.planner.getByPlaceholder("Message...")).toBeVisible({ timeout: 10_000 });
+  await expect(roles.planner.getByPlaceholder("Message")).toBeVisible({ timeout: 10_000 });
   await expect(roles.planner.locator("body")).not.toContainText(/no longer send messages/i);
   await expect(roles.planner.locator("body")).not.toContainText(/^You blocked /i);
 

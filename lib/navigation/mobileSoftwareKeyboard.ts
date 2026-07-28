@@ -154,6 +154,11 @@ export function subscribeMobileSoftwareKeyboard(listener: () => void): () => voi
   };
 }
 
+/** Clear a latched keyboard session after leaving a fixed chat surface. */
+export function resetMobileSoftwareKeyboardSession(): void {
+  mobileKeyboardSessionActive = false;
+}
+
 export function getMobileSoftwareKeyboardOpenSnapshot(): boolean {
   return isMobileSoftwareKeyboardOpen();
 }

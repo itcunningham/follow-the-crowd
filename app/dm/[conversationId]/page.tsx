@@ -58,6 +58,7 @@ import {
   classifyDmConversationMessageKind,
 } from "@/lib/dm/dmChatTimestampVisibility";
 import { parseDmThreadEntryContext, resolveDmThreadBackHref } from "@/lib/dm/threadNavigation";
+import { useFixedChatPageDocumentReset } from "@/lib/navigation/useFixedChatPageDocumentReset";
 import { buildChatReturnTo } from "@/lib/profileNavigation";
 import {
   getDmAttachmentNotificationBody,
@@ -204,6 +205,8 @@ export default function DmChatPage() {
       bookingFocusMode: "scroll-and-highlight" as const,
     };
   const suppressAutoScrollRef = useRef(Boolean(scrollTargetBookingRequestId));
+
+  useFixedChatPageDocumentReset();
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [attachments, setAttachments] = useState<DmMessageAttachment[]>([]);

@@ -238,7 +238,7 @@ function EventDetailPageView() {
   );
 
   function goBackToEvents() {
-    router.push(eventsBackHref);
+    router.push(eventsBackHref, { scroll: false });
   }
 
   const guardProfile = useGuardProfile();

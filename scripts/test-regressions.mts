@@ -3149,6 +3149,45 @@ function testMobileSoftwareKeyboardHidesBottomNavigation() {
   assert.match(cssSource, /html\[data-mobile-keyboard-open\] \.ftc-mobile-nav-offset/);
 }
 
+function testFixedChatPageDocumentReset() {
+  const dmPageSource = readFileSync(
+    new URL("../app/dm/[conversationId]/page.tsx", import.meta.url),
+    "utf8",
+  );
+  const prepareSource = readFileSync(
+    new URL("../lib/navigation/prepareFixedChatPageMount.ts", import.meta.url),
+    "utf8",
+  );
+  const hookSource = readFileSync(
+    new URL("../lib/navigation/useFixedChatPageDocumentReset.ts", import.meta.url),
+    "utf8",
+  );
+  const keyboardSource = readFileSync(
+    new URL("../lib/navigation/mobileSoftwareKeyboard.ts", import.meta.url),
+    "utf8",
+  );
+  const composerSource = readFileSync(
+    new URL("../app/components/dm/DmComposer.tsx", import.meta.url),
+    "utf8",
+  );
+  const eventDetailSource = readFileSync(
+    new URL("../app/events/[eventId]/page.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(dmPageSource, /useFixedChatPageDocumentReset/);
+  assert.match(prepareSource, /scrollDocumentToTop/);
+  assert.match(prepareSource, /resetMobileSoftwareKeyboardSession/);
+  assert.match(prepareSource, /removeAttribute\(MOBILE_KEYBOARD_OPEN_HTML_ATTRIBUTE\)/);
+  assert.match(prepareSource, /history\.scrollRestoration = "manual"/);
+  assert.match(hookSource, /useLayoutEffect/);
+  assert.match(hookSource, /pageshow/);
+  assert.match(keyboardSource, /resetMobileSoftwareKeyboardSession/);
+  assert.match(composerSource, /placeholder="Message"/);
+  assert.doesNotMatch(composerSource, /placeholder="Message\.\.\."/);
+  assert.match(eventDetailSource, /router\.push\(eventsBackHref, \{ scroll: false \}\)/);
+}
+
 function testEventTitleClampLayout() {
   assert.equal(FTC_EVENT_TITLE_CLAMP_CLASS, "ftc-event-title-clamp-2");
 
@@ -4802,6 +4841,7 @@ async function main() {
   testEventsCreateEventHiddenDuringHistorySelectionToolbar();
   testEventDetailLoadUsesParallelQueriesAndListCache();
   testMobileSoftwareKeyboardHidesBottomNavigation();
+  testFixedChatPageDocumentReset();
   testEventTitleClampLayout();
   testEventsActiveStatusPillsSingleRowLayout();
   testEventCreateFormTextFieldMaxLength();

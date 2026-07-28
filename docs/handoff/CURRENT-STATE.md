@@ -99,6 +99,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 - **DM photo picker (2026-07-14):** media icon opens native OS chooser (Photo Library / Take Photo on iOS); no forced camera via `capture`
 - **DM message reactions (2026-07-25):** persistent `React` label removed; press-and-hold (~500ms) or right-click opens existing picker on text/image messages; desktop hover/focus-visible `+` affordance; keyboard-accessible `React to message` button; booking/system cards unchanged; DM image attachments use button open surface (not `<a>`) with scoped `-webkit-touch-callout: none` so iPhone Safari long-press opens FTC picker instead of native link preview; reaction picker no longer uses a full-screen blocking backdrop — outside tap or scroll dismisses it without trapping chat scroll
 - **Mobile bottom nav + keyboard (2026-07-21):** on viewports below `md`, text-field focus latches a keyboard session from `visualViewport` height gap; nav stays hidden while focused (including iOS scroll) until height gap shows dismissal or focus leaves; offset padding clears with the bar
+- **DM fixed chat document reset (2026-07-28):** returning to DM from Event Details resets document scroll/keyboard/nav-offset state before paint via `useFixedChatPageDocumentReset` so the composer does not jump above the bottom nav; Event Details Back uses `router.push(..., { scroll: false })`; DM composer placeholder `Message` (no ellipsis)
 
 ## Calendar
 
