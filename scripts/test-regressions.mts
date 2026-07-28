@@ -3319,14 +3319,18 @@ function testDismissComposerKeyboardOnIntentionalScroll() {
     "utf8",
   );
 
-  assert.match(hookSource, /COMPOSER_KEYBOARD_DISMISS_SCROLL_THRESHOLD_PX = 10/);
+  assert.match(hookSource, /COMPOSER_KEYBOARD_DISMISS_DOWNWARD_DRAG_PX = 16/);
+  assert.match(hookSource, /COMPOSER_KEYBOARD_DISMISS_COMMIT_DRAG_PX = 36/);
+  assert.match(hookSource, /COMPOSER_KEYBOARD_DISMISS_SCROLL_CONFIRM_PX = 8/);
   assert.match(hookSource, /MOBILE_NAVIGATION_MEDIA_QUERY = "\(max-width: 767px\)"/);
   assert.match(hookSource, /input\.blur\(\)/);
   assert.match(hookSource, /syncMobileSoftwareKeyboardDocumentState/);
+  assert.match(hookSource, /preserveScrollPositionDuringKeyboardDismiss/);
+  assert.match(hookSource, /fingerDeltaY < 0/);
   assert.match(hookSource, /touchstart[\s\S]*passive: true/);
   assert.match(hookSource, /touchmove[\s\S]*passive: true/);
-  assert.match(hookSource, /deltaY >= COMPOSER_KEYBOARD_DISMISS_SCROLL_THRESHOLD_PX/);
-  assert.doesNotMatch(hookSource, /scrollTop\s*=/);
+  assert.match(hookSource, /scrollTowardOlderMessages/);
+  assert.match(hookSource, /visualViewport\?\.addEventListener\("resize"/);
   assert.match(dmPageSource, /useDismissComposerKeyboardOnIntentionalScroll\(scrollRef, composerInputRef\)/);
 }
 

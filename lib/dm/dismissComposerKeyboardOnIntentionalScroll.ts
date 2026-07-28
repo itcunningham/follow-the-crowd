@@ -3,8 +3,17 @@
 import { useEffect, type RefObject } from "react";
 import { syncMobileSoftwareKeyboardDocumentState } from "@/lib/navigation/mobileSoftwareKeyboard";
 
-/** Minimum finger travel before treating a gesture as intentional scroll (not a tap). */
-export const COMPOSER_KEYBOARD_DISMISS_SCROLL_THRESHOLD_PX = 10;
+/** Minimum downward finger travel before we consider keyboard-dismiss intent. */
+export const COMPOSER_KEYBOARD_DISMISS_DOWNWARD_DRAG_PX = 16;
+
+/** Downward drag that dismisses even when the list cannot scroll further. */
+export const COMPOSER_KEYBOARD_DISMISS_COMMIT_DRAG_PX = 36;
+
+/** Scroll movement toward older messages that confirms dismiss intent early. */
+export const COMPOSER_KEYBOARD_DISMISS_SCROLL_CONFIRM_PX = 8;
+
+/** Downward drag paired with scroll confirmation. */
+export const COMPOSER_KEYBOARD_DISMISS_SCROLL_DRAG_PX = 24;
 
 const MOBILE_NAVIGATION_MEDIA_QUERY = "(max-width: 767px)";
 
@@ -20,9 +29,34 @@ function isComposerInputFocused(input: HTMLInputElement | null): boolean {
   return input !== null && document.activeElement === input;
 }
 
+function preserveScrollPositionDuringKeyboardDismiss(
+  container: HTMLElement,
+  dismiss: () => void,
+): void {
+  const scrollTop = container.scrollTop;
+
+  dismiss();
+
+  const restoreScrollTop = () => {
+    if (container.scrollTop !== scrollTop) {
+      container.scrollTop = scrollTop;
+    }
+  };
+
+  requestAnimationFrame(restoreScrollTop);
+  requestAnimationFrame(() => {
+    requestAnimationFrame(restoreScrollTop);
+  });
+  window.setTimeout(restoreScrollTop, 50);
+  window.visualViewport?.addEventListener("resize", restoreScrollTop, { once: true });
+}
+
 /**
- * Dismiss the software keyboard when the user intentionally scrolls the message list
- * while the composer input is focused. Mobile only — desktop keeps existing behaviour.
+ * Dismiss the software keyboard when the user deliberately drags downward in the
+ * message list while the composer is focused. Mobile only — desktop is unchanged.
+ *
+ * True interactive keyboard tracking (keyboard following the finger) is not exposed
+ * on mobile web; this is the closest high-quality fallback.
  */
 export function useDismissComposerKeyboardOnIntentionalScroll(
   scrollRef: RefObject<HTMLElement | null>,
@@ -36,6 +70,7 @@ export function useDismissComposerKeyboardOnIntentionalScroll(
     }
 
     let touchStartY: number | null = null;
+    let touchStartScrollTop: number | null = null;
     let dismissedForGesture = false;
 
     const dismissComposerKeyboard = () => {
@@ -45,12 +80,15 @@ export function useDismissComposerKeyboardOnIntentionalScroll(
         return;
       }
 
-      input.blur();
-      syncMobileSoftwareKeyboardDocumentState();
+      preserveScrollPositionDuringKeyboardDismiss(container, () => {
+        input.blur();
+        syncMobileSoftwareKeyboardDocumentState();
+      });
     };
 
     const resetTouchGesture = () => {
       touchStartY = null;
+      touchStartScrollTop = null;
       dismissedForGesture = false;
     };
 
@@ -66,6 +104,7 @@ export function useDismissComposerKeyboardOnIntentionalScroll(
       }
 
       touchStartY = event.touches[0].clientY;
+      touchStartScrollTop = container.scrollTop;
       dismissedForGesture = false;
     };
 
@@ -73,19 +112,40 @@ export function useDismissComposerKeyboardOnIntentionalScroll(
       if (
         dismissedForGesture ||
         touchStartY === null ||
+        touchStartScrollTop === null ||
         event.touches.length !== 1 ||
         !isComposerInputFocused(composerInputRef.current)
       ) {
         return;
       }
 
-      const deltaY = Math.abs(event.touches[0].clientY - touchStartY);
+      const fingerDeltaY = event.touches[0].clientY - touchStartY;
 
-      if (deltaY >= COMPOSER_KEYBOARD_DISMISS_SCROLL_THRESHOLD_PX) {
-        dismissedForGesture = true;
-        touchStartY = null;
-        dismissComposerKeyboard();
+      // Upward finger movement — reading newer messages; never dismiss the keyboard.
+      if (fingerDeltaY < 0) {
+        return;
       }
+
+      if (fingerDeltaY < COMPOSER_KEYBOARD_DISMISS_DOWNWARD_DRAG_PX) {
+        return;
+      }
+
+      const scrollTowardOlderMessages =
+        touchStartScrollTop - container.scrollTop >= COMPOSER_KEYBOARD_DISMISS_SCROLL_CONFIRM_PX;
+
+      const shouldDismiss =
+        fingerDeltaY >= COMPOSER_KEYBOARD_DISMISS_COMMIT_DRAG_PX ||
+        (scrollTowardOlderMessages &&
+          fingerDeltaY >= COMPOSER_KEYBOARD_DISMISS_SCROLL_DRAG_PX);
+
+      if (!shouldDismiss) {
+        return;
+      }
+
+      dismissedForGesture = true;
+      touchStartY = null;
+      touchStartScrollTop = null;
+      dismissComposerKeyboard();
     };
 
     container.addEventListener("touchstart", onTouchStart, { passive: true });
