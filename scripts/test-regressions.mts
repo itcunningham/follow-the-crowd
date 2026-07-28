@@ -477,19 +477,21 @@ function testBookingRateProposalPanelActionLayout() {
 
   assert.match(source, /PROPOSAL_PRIMARY_ACTION_CLASS/);
   assert.match(source, /PROPOSAL_SECONDARY_ACTION_CLASS/);
-  assert.match(source, /Accept rate/);
+  assert.match(source, />\s*Accept\s*</);
   assert.match(source, /getProposalReviewSecondaryActionLabel/);
   assert.match(source, /secondaryActionLabel/);
   assert.match(source, /Proposed rate/);
   assert.match(source, /BookingProposalCardShell/);
   assert.doesNotMatch(source, /CancelBookingRequestButton/);
   assert.doesNotMatch(source, /onDeclineBooking/);
-  assert.match(source, /w-full items-center justify-center/);
-  assert.doesNotMatch(source, /PROPOSAL_SECONDARY_ACTIONS_ROW_CLASS/);
+  assert.match(source, /PROPOSAL_ACTIONS_ROW_CLASS/);
+  assert.match(source, /min-w-0 flex-1 items-center justify-center/);
   assert.doesNotMatch(source, />\s*Keep original offer\s*</);
   assert.doesNotMatch(source, /Accept proposed rate/);
+  assert.doesNotMatch(source, /Accept rate/);
+  assert.doesNotMatch(source, /Decline rate/);
   assert.doesNotMatch(source, /Proposal declined · original offer still available/);
-  assert.doesNotMatch(source, /flex-col gap-2[\s\S]*Keep offer[\s\S]*Accept rate/);
+  assert.doesNotMatch(source, /flex-col gap-2[\s\S]*Keep offer[\s\S]*Accept/);
 }
 
 function testAskForRateDeclineFlow() {
@@ -518,7 +520,7 @@ function testAskForRateDeclineFlow() {
   const openBooking = { rate_mode: "open" } as BookingRequest;
   const fixedBooking = { rate_mode: "fixed" } as BookingRequest;
 
-  assert.equal(getProposalReviewSecondaryActionLabel(openBooking), "Decline rate");
+  assert.equal(getProposalReviewSecondaryActionLabel(openBooking), "Decline");
   assert.equal(getProposalReviewSecondaryActionLabel(fixedBooking), "Keep offer");
   assert.equal(getProposalDeclinedDmMessage(openBooking), "Rate declined");
   assert.equal(getProposalDeclinedDmMessage(fixedBooking), "Original offer kept");

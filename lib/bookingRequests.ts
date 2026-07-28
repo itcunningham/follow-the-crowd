@@ -614,7 +614,7 @@ export function isAskForRateBooking(booking: BookingRequest): boolean {
 
 /** Planner secondary action when reviewing a DJ rate proposal. */
 export function getProposalReviewSecondaryActionLabel(booking: BookingRequest): string {
-  return isAskForRateBooking(booking) ? "Decline rate" : "Keep offer";
+  return isAskForRateBooking(booking) ? "Decline" : "Keep offer";
 }
 
 export function getProposalDeclinedDmMessage(booking: BookingRequest): string {

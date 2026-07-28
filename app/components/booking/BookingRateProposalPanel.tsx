@@ -9,11 +9,13 @@ import { getProposalReviewSecondaryActionLabel, hasPendingRateProposal, type Boo
 export const BOOKING_PROPOSAL_CARD_SHELL_CLASS =
   "mt-2.5 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated p-3";
 
+const PROPOSAL_ACTIONS_ROW_CLASS = "mt-3 flex gap-2";
+
 const PROPOSAL_PRIMARY_ACTION_CLASS =
-  "ftc-btn-primary w-full px-3 py-2.5 text-xs uppercase tracking-wide disabled:cursor-not-allowed disabled:opacity-50";
+  "ftc-btn-primary inline-flex min-h-8 min-w-0 flex-1 items-center justify-center px-3 py-2.5 text-xs uppercase tracking-wide disabled:cursor-not-allowed disabled:opacity-50";
 
 const PROPOSAL_SECONDARY_ACTION_CLASS =
-  "inline-flex min-h-8 w-full items-center justify-center rounded-xl border border-ftc-border-subtle bg-ftc-surface px-2 py-1 text-xs font-semibold uppercase tracking-wide text-ftc-text-secondary transition hover:border-ftc-border-strong disabled:cursor-not-allowed disabled:opacity-50";
+  "inline-flex min-h-8 min-w-0 flex-1 items-center justify-center rounded-xl border border-ftc-border-subtle bg-ftc-surface px-2 py-1 text-xs font-semibold uppercase tracking-wide text-ftc-text-secondary transition hover:border-ftc-border-strong disabled:cursor-not-allowed disabled:opacity-50";
 
 export function BookingProposalCardShell({ children }: { children: ReactNode }) {
   return <div className={BOOKING_PROPOSAL_CARD_SHELL_CLASS}>{children}</div>;
@@ -79,14 +81,14 @@ export default function BookingRateProposalPanel({
         onNotesExpandedChange={onNotesExpandedChange}
       />
 
-      <div className="mt-3 flex flex-col gap-2">
+      <div className={PROPOSAL_ACTIONS_ROW_CLASS}>
         <button
           type="button"
           disabled={loading}
           onClick={() => void onAcceptProposal()}
           className={PROPOSAL_PRIMARY_ACTION_CLASS}
         >
-          Accept rate
+          Accept
         </button>
         <button
           type="button"

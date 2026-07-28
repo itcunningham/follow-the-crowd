@@ -116,7 +116,7 @@ test.describe("Booking journeys", () => {
       /\$650|650|Rate proposed|proposed/i,
     );
 
-    const acceptProposal = roles.planner.getByRole("button", { name: "Accept proposed rate" });
+    const acceptProposal = roles.planner.getByRole("button", { name: "Accept" });
     await expect(acceptProposal).toBeVisible();
     await acceptProposal.click();
     await expect(acceptProposal).toBeHidden({ timeout: 10_000 });
