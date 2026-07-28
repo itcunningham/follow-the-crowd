@@ -276,7 +276,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
-- `TBD` — fix DM booking card expand positioning (asymmetric expand/collapse scroll policy)
+- `0deb822` — fix DM booking card expand positioning (asymmetric expand/collapse scroll policy)
 - `7869cf4` — preserve DM bottom position through booking accordion
 - `06d1af8` — remove final DM collapse scroll adjustment
 - `99bf565` — refactor DM booking accordion scroll coordination
