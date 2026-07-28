@@ -1,11 +1,24 @@
+import { formatIntegerRateDisplay } from "@/lib/bookingRate";
 import {
   evaluateDmBookingCardVisibility,
+  hasPendingRateProposal,
   isBookingActivityDmMessage,
   isBookingRequestMessage,
   parseEventCancellationActivityEventName,
+  resolveLiveBookingForDmMessage,
   type BookingRequest,
 } from "@/lib/bookingRequests";
-import { isDmBookingSystemMessage } from "@/lib/dm/dmBookingSystemMessages";
+import {
+  DM_BOOKING_CANCELLED_MESSAGE,
+  DM_BOOKING_CONFIRMED_MESSAGE,
+  DM_BOOKING_ORIGINAL_OFFER_KEPT_MESSAGE,
+  DM_BOOKING_PROPOSED_RATE_ACCEPTED_MESSAGE,
+  DM_BOOKING_PROPOSED_RATE_PREFIX,
+  DM_BOOKING_RATE_DECLINED_MESSAGE,
+  DM_BOOKING_REQUEST_DECLINED_MESSAGE,
+  formatDmBookingSystemMessageDisplay,
+  isDmBookingSystemMessage,
+} from "@/lib/dm/dmBookingSystemMessages";
 
 /** Gap after which the next message starts a new timestamp cluster. */
 export const DM_CHAT_MEANINGFUL_TIME_GAP_MS = 5 * 60 * 1000;
@@ -47,11 +60,132 @@ function hasMeaningfulGapBetween(
   return laterMs - earlierMs >= DM_CHAT_MEANINGFUL_TIME_GAP_MS;
 }
 
+function resolveVisibleBookingFromMessage(
+  messageText: string,
+  bookings: BookingRequest[],
+  conversationId: string,
+): BookingRequest | null {
+  if (!isBookingRequestMessage(messageText)) {
+    return null;
+  }
+
+  if (
+    evaluateDmBookingCardVisibility(messageText, bookings, conversationId).hideCard
+  ) {
+    return null;
+  }
+
+  return resolveLiveBookingForDmMessage(messageText, bookings, conversationId);
+}
+
+function findVisibleBookingForTimelineNotice(
+  messageIndex: number,
+  messages: readonly { text: string }[],
+  bookings: BookingRequest[],
+  conversationId: string,
+): BookingRequest | null {
+  for (const offset of [-1, 1, -2, 2]) {
+    const neighbor = messages[messageIndex + offset];
+
+    if (!neighbor) {
+      continue;
+    }
+
+    const booking = resolveVisibleBookingFromMessage(
+      neighbor.text,
+      bookings,
+      conversationId,
+    );
+
+    if (booking) {
+      return booking;
+    }
+  }
+
+  for (let index = messageIndex - 1; index >= 0; index -= 1) {
+    const booking = resolveVisibleBookingFromMessage(
+      messages[index].text,
+      bookings,
+      conversationId,
+    );
+
+    if (booking) {
+      return booking;
+    }
+  }
+
+  return null;
+}
+
+/** Hide timeline copy when a visible booking card already reflects the same live state. */
+export function shouldSuppressDmBookingTimelineNotice(
+  messageText: string,
+  options: {
+    bookings: BookingRequest[];
+    conversationId: string;
+    messages: readonly { text: string }[];
+    messageIndex: number;
+  },
+): boolean {
+  if (!isDmBookingSystemMessage(messageText)) {
+    return false;
+  }
+
+  const booking = findVisibleBookingForTimelineNotice(
+    options.messageIndex,
+    options.messages,
+    options.bookings,
+    options.conversationId,
+  );
+
+  if (!booking) {
+    return false;
+  }
+
+  const display = formatDmBookingSystemMessageDisplay(messageText);
+  const status = booking.status;
+
+  if (display.startsWith(DM_BOOKING_PROPOSED_RATE_PREFIX)) {
+    const proposedRate = display.slice(DM_BOOKING_PROPOSED_RATE_PREFIX.length).trim();
+
+    return (
+      hasPendingRateProposal(booking) &&
+      formatIntegerRateDisplay(booking.proposed_rate) === proposedRate
+    );
+  }
+
+  if (
+    display === DM_BOOKING_RATE_DECLINED_MESSAGE ||
+    display === DM_BOOKING_ORIGINAL_OFFER_KEPT_MESSAGE
+  ) {
+    return status === "pending" && !hasPendingRateProposal(booking);
+  }
+
+  if (
+    display === DM_BOOKING_PROPOSED_RATE_ACCEPTED_MESSAGE ||
+    display === DM_BOOKING_CONFIRMED_MESSAGE
+  ) {
+    return status === "accepted";
+  }
+
+  if (display === DM_BOOKING_REQUEST_DECLINED_MESSAGE) {
+    return status === "declined";
+  }
+
+  if (display === DM_BOOKING_CANCELLED_MESSAGE) {
+    return status === "cancelled";
+  }
+
+  return false;
+}
+
 export function classifyDmConversationMessageKind(
   messageText: string,
   options: {
     bookings: BookingRequest[];
     conversationId: string;
+    messages?: readonly { text: string }[];
+    messageIndex?: number;
   },
 ): DmChatVisibleMessageKind {
   if (
@@ -62,6 +196,19 @@ export function classifyDmConversationMessageKind(
   }
 
   if (isDmBookingSystemMessage(messageText)) {
+    if (
+      options.messages != null &&
+      options.messageIndex != null &&
+      shouldSuppressDmBookingTimelineNotice(messageText, {
+        bookings: options.bookings,
+        conversationId: options.conversationId,
+        messages: options.messages,
+        messageIndex: options.messageIndex,
+      })
+    ) {
+      return "hidden";
+    }
+
     return "timeline";
   }
 
@@ -92,10 +239,14 @@ export function buildDmConversationTimestampLayout(
 ): Map<string, DmConversationTimestampLayout> {
   const layoutByMessageId = new Map<string, DmConversationTimestampLayout>();
   const visibleMessages: ClassifiedConversationMessage[] = messages
-    .map((message) => ({
+    .map((message, messageIndex) => ({
       id: message.id,
       created_at: message.created_at,
-      kind: classifyDmConversationMessageKind(message.text, options),
+      kind: classifyDmConversationMessageKind(message.text, {
+        ...options,
+        messages,
+        messageIndex,
+      }),
     }))
     .filter((message) => message.kind !== "hidden");
 

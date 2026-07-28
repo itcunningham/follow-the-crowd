@@ -20,11 +20,11 @@ export default function DmBookingTimelineNotice({
   return (
     <li
       data-chat-message-id={messageId}
-      className={`flex justify-center pt-0.5 ${compactBelow ? "pb-1.5" : "pb-0.5"}`}
+      className={`flex justify-center pt-0 ${compactBelow ? "pb-1" : "pb-0"}`}
     >
-      <div className="flex max-w-[92%] flex-col items-center px-3 text-center">
+      <div className="flex max-w-[88%] flex-col items-center px-2 text-center">
         <p
-          className={`text-xs leading-snug text-ftc-text-secondary ${getChatNewMessageHighlightClass(isHighlighted)}`}
+          className={`text-[11px] font-normal leading-snug tracking-wide text-ftc-text-muted/85 ${getChatNewMessageHighlightClass(isHighlighted)}`}
         >
           {text}
         </p>

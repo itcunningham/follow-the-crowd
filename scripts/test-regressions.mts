@@ -64,6 +64,7 @@ import {
   filterHistoryCancelledBookings,
   filterVisibleEventLineupBookings,
   countDjGigsByTab,
+  formatBookingRequestMessage,
   getActiveEventLineupStats,
   getDmBookingCardOfferSummary,
   getProposalDeclinedDmMessage,
@@ -77,7 +78,9 @@ import { getAppendedMessageIds } from "../lib/useChatScroll";
 import { computeBookingCardAlignScrollTop, computeMinimumScrollToRevealBottom } from "../lib/dm/dmBookingCardExpandScroll";
 import {
   buildDmConversationTimestampLayout,
+  classifyDmConversationMessageKind,
   DM_CHAT_MEANINGFUL_TIME_GAP_MS,
+  shouldSuppressDmBookingTimelineNotice,
 } from "../lib/dm/dmChatTimestampVisibility";
 import {
   DM_BOOKING_CONFIRMED_MESSAGE,
@@ -639,7 +642,8 @@ function testDmBookingSystemMessages() {
   assert.doesNotMatch(pageSource, /Proposal declined ·/);
   assert.doesNotMatch(timelineSource, /rounded-full/);
   assert.doesNotMatch(timelineSource, /border-ftc-border/);
-  assert.match(timelineSource, /text-ftc-text-secondary/);
+  assert.match(timelineSource, /text-ftc-text-muted/);
+  assert.match(pageSource, /classifyDmConversationMessageKind/);
 
   assert.match(bookingRequestsSource, /formatRateProposedDmSystemMessage/);
   assert.match(bookingRequestsSource, /DM_BOOKING_ORIGINAL_OFFER_KEPT_MESSAGE/);
@@ -694,7 +698,7 @@ function testDmConversationTimestampLayout() {
   assert.doesNotMatch(pageSource, /buildDmBookingTimelineTimestampLayout/);
   assert.doesNotMatch(timelineSource, /showTimestamp/);
   assert.doesNotMatch(timelineSource, /-mb-2/);
-  assert.match(timelineSource, /compactBelow \? "pb-1.5"/);
+  assert.match(timelineSource, /compactBelow \? "pb-1"/);
   assert.match(bubbleSource, /showTimestamp\?: boolean/);
 
   const baseTime = Date.parse("2026-07-27T12:00:00.000Z");
@@ -761,6 +765,149 @@ function testDmConversationTimestampLayout() {
 
   assert.equal(gapLayout.get("timeline-gap-1")?.showTimestamp, true);
   assert.equal(gapLayout.get("timeline-gap-2")?.showTimestamp, true);
+}
+
+function createRegressionBookingRequest(
+  overrides: Partial<BookingRequest> = {},
+): BookingRequest {
+  return {
+    id: "booking-regression-1",
+    created_at: "2026-07-27T12:00:00.000Z",
+    sender_id: "planner-1",
+    recipient_id: "dj-1",
+    conversation_id: "conversation-1",
+    event_id: null,
+    event_name: "Summer Party",
+    venue: "Main Room",
+    event_date: "2026-08-01",
+    set_time: "22:00",
+    fee: "200",
+    notes: "",
+    status: "pending",
+    archived_at: null,
+    lineup_hidden_at: null,
+    cancelled_at: null,
+    cancelled_by: null,
+    cancellation_reason: null,
+    rate_mode: "open",
+    proposed_rate: null,
+    proposed_rate_note: null,
+    proposed_rate_at: null,
+    proposed_rate_status: null,
+    ...overrides,
+  };
+}
+
+function testDmBookingTimelineSuppression() {
+  const conversationId = "conversation-1";
+  const booking = createRegressionBookingRequest({
+    proposed_rate: 222,
+    proposed_rate_status: "pending",
+    proposed_rate_at: "2026-07-27T12:01:00.000Z",
+  });
+  const bookingMessageText = formatBookingRequestMessage(booking);
+  const messages = [
+    {
+      id: "booking-card",
+      created_at: "2026-07-27T12:00:00.000Z",
+      text: bookingMessageText,
+    },
+    {
+      id: "timeline-current-proposal",
+      created_at: "2026-07-27T12:01:00.000Z",
+      text: "Rate proposed: $222",
+    },
+    {
+      id: "timeline-historical-proposal",
+      created_at: "2026-07-27T12:02:00.000Z",
+      text: "Rate proposed: $111",
+    },
+  ];
+
+  assert.equal(
+    shouldSuppressDmBookingTimelineNotice(messages[1].text, {
+      bookings: [booking],
+      conversationId,
+      messages,
+      messageIndex: 1,
+    }),
+    true,
+  );
+  assert.equal(
+    shouldSuppressDmBookingTimelineNotice(messages[2].text, {
+      bookings: [booking],
+      conversationId,
+      messages,
+      messageIndex: 2,
+    }),
+    false,
+  );
+  assert.equal(
+    classifyDmConversationMessageKind(messages[1].text, {
+      bookings: [booking],
+      conversationId,
+      messages,
+      messageIndex: 1,
+    }),
+    "hidden",
+  );
+  assert.equal(
+    classifyDmConversationMessageKind(messages[2].text, {
+      bookings: [booking],
+      conversationId,
+      messages,
+      messageIndex: 2,
+    }),
+    "timeline",
+  );
+
+  const keptOfferBooking = createRegressionBookingRequest();
+  const keptOfferMessages = [
+    {
+      id: "booking-card",
+      created_at: "2026-07-27T12:00:00.000Z",
+      text: formatBookingRequestMessage(keptOfferBooking),
+    },
+    {
+      id: "timeline-kept-offer",
+      created_at: "2026-07-27T12:01:00.000Z",
+      text: DM_BOOKING_ORIGINAL_OFFER_KEPT_MESSAGE,
+    },
+  ];
+
+  assert.equal(
+    shouldSuppressDmBookingTimelineNotice(keptOfferMessages[1].text, {
+      bookings: [keptOfferBooking],
+      conversationId,
+      messages: keptOfferMessages,
+      messageIndex: 1,
+    }),
+    true,
+  );
+
+  const acceptedBooking = createRegressionBookingRequest({ status: "accepted" });
+  const acceptedMessages = [
+    {
+      id: "booking-card",
+      created_at: "2026-07-27T12:00:00.000Z",
+      text: formatBookingRequestMessage(acceptedBooking),
+    },
+    {
+      id: "timeline-confirmed",
+      created_at: "2026-07-27T12:01:00.000Z",
+      text: DM_BOOKING_CONFIRMED_MESSAGE,
+    },
+  ];
+
+  assert.equal(
+    shouldSuppressDmBookingTimelineNotice(acceptedMessages[1].text, {
+      bookings: [acceptedBooking],
+      conversationId,
+      messages: acceptedMessages,
+      messageIndex: 1,
+    }),
+    true,
+  );
 }
 
 function testChatAppendedMessageIds() {
@@ -4584,6 +4731,7 @@ async function main() {
   testDmBookingCardAlignScrollTopMath();
   testDmBookingSystemMessages();
   testDmConversationTimestampLayout();
+  testDmBookingTimelineSuppression();
   testChatAppendedMessageIds();
   testDmBookingCardProposedRateCopy();
   testDmBookingCardNotesExpandAnimation();

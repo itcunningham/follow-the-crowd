@@ -55,6 +55,7 @@ import {
 } from "@/lib/dm/dmBookingSystemMessages";
 import {
   buildDmConversationTimestampLayout,
+  classifyDmConversationMessageKind,
 } from "@/lib/dm/dmChatTimestampVisibility";
 import { parseDmThreadEntryContext, resolveDmThreadBackHref } from "@/lib/dm/threadNavigation";
 import { buildChatReturnTo } from "@/lib/profileNavigation";
@@ -1669,6 +1670,20 @@ export default function DmChatPage() {
               }
 
               if (isDmBookingSystemMessage(message.text)) {
+                const messageIndex = messages.findIndex(
+                  (candidate) => candidate.id === message.id,
+                );
+                const timelineKind = classifyDmConversationMessageKind(message.text, {
+                  bookings,
+                  conversationId,
+                  messages,
+                  messageIndex,
+                });
+
+                if (timelineKind === "hidden") {
+                  return null;
+                }
+
                 const timelineLayout = conversationTimestampLayout.get(message.id);
 
                 return (
