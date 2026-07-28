@@ -29,6 +29,59 @@ export type BookingCardScrollCapture = {
   anchorTop: number;
 };
 
+export type BookingCardScrollDiagnostics = {
+  scrollTop: number;
+  scrollHeight: number;
+  clientHeight: number;
+  distanceFromBottom: number;
+  cardTop: number | null;
+  cardBottom: number | null;
+};
+
+export function readBookingCardScrollDiagnostics(
+  container: HTMLElement,
+  cardAnchor: HTMLElement | null,
+): BookingCardScrollDiagnostics {
+  const maxScrollTop = Math.max(0, container.scrollHeight - container.clientHeight);
+  const cardRect = cardAnchor?.getBoundingClientRect();
+
+  return {
+    scrollTop: container.scrollTop,
+    scrollHeight: container.scrollHeight,
+    clientHeight: container.clientHeight,
+    distanceFromBottom: maxScrollTop - container.scrollTop,
+    cardTop: cardRect?.top ?? null,
+    cardBottom: cardRect?.bottom ?? null,
+  };
+}
+
+function isBookingCardCollapseTraceEnabled(): boolean {
+  if (process.env.NODE_ENV !== "production") {
+    return true;
+  }
+
+  return (
+    typeof sessionStorage !== "undefined" &&
+    sessionStorage.getItem("ftc-booking-collapse-trace-enabled") === "1"
+  );
+}
+
+export function traceBookingCardCollapseScroll(
+  phase: string,
+  container: HTMLElement,
+  cardAnchor: HTMLElement | null,
+  capture?: BookingCardScrollCapture | null,
+): void {
+  if (!isBookingCardCollapseTraceEnabled()) {
+    return;
+  }
+
+  console.info("[ftc-booking-collapse-scroll]", phase, {
+    ...readBookingCardScrollDiagnostics(container, cardAnchor),
+    capture,
+  });
+}
+
 function prefersReducedMotion(): boolean {
   return (
     typeof window !== "undefined" &&
@@ -107,11 +160,7 @@ export function restoreBookingCardScrollPosition(
   capture: BookingCardScrollCapture,
 ): void {
   const delta = cardAnchor.getBoundingClientRect().top - capture.anchorTop;
-
-  if (delta !== 0) {
-    container.scrollTop = capture.scrollTop + delta;
-  }
-
+  container.scrollTop = capture.scrollTop + delta;
   clampDmMessageScrollTop(container);
 }
 
@@ -561,7 +610,9 @@ export function scheduleCollapsedBookingCardScrollRestore(
     unlockScroll = null;
 
     if (cardAnchor && capture) {
+      traceBookingCardCollapseScroll("collapse-restore:before", container, cardAnchor, capture);
       restoreBookingCardScrollPosition(container, cardAnchor, capture);
+      traceBookingCardCollapseScroll("collapse-restore:after", container, cardAnchor, capture);
     } else {
       clampDmMessageScrollTop(container);
     }

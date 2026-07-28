@@ -75,7 +75,11 @@ import {
   sortDjGigsCalendarAgendaBookings,
 } from "../lib/bookingRequests";
 import { getAppendedMessageIds } from "../lib/useChatScroll";
-import { computeBookingCardAlignScrollTop, computeMinimumScrollToRevealBottom } from "../lib/dm/dmBookingCardExpandScroll";
+import {
+  computeBookingCardAlignScrollTop,
+  computeMinimumScrollToRevealBottom,
+  restoreBookingCardScrollPosition,
+} from "../lib/dm/dmBookingCardExpandScroll";
 import { computeChatMessageCenterScrollTop } from "../lib/dm/chatBookingTarget";
 import {
   buildDmConversationTimestampLayout,
@@ -570,6 +574,12 @@ function testDmBookingCardExpandCollapseScrollAnchor() {
   assert.match(pageSource, /scheduleExpandedBookingCardScrollAlign/);
   assert.match(pageSource, /scheduleCollapsedBookingCardScrollRestore/);
   assert.match(pageSource, /captureBookingCardScrollPosition/);
+  assert.match(pageSource, /bookingCardPreExpandCaptureRef/);
+  assert.match(pageSource, /traceBookingCardCollapseScroll/);
+  assert.doesNotMatch(
+    pageSource,
+    /setBookingExpanded\(bookingRequestId, false\)[\s\S]{0,220}captureBookingCardScrollPosition/,
+  );
   assert.match(pageSource, /bookingCardAnchorRefs/);
   assert.match(pageSource, /registerBookingCardAnchor/);
   assert.match(pageSource, /pendingBookingCardScrollIdRef/);
@@ -621,6 +631,48 @@ function testDmBookingCardAlignScrollTopMath() {
     computeBookingCardAlignScrollTop(500, desiredCardTop - 308, desiredCardTop, maxScrollTop),
     192,
   );
+}
+
+function testBookingCardCollapseRestoreUsesPreExpandCapture() {
+  let cardTop = 420;
+  const container = {
+    scrollTop: 180,
+    scrollHeight: 1400,
+    clientHeight: 600,
+    getBoundingClientRect: () => ({
+      top: 72,
+      bottom: 672,
+      left: 0,
+      right: 390,
+      width: 390,
+      height: 600,
+      x: 0,
+      y: 72,
+      toJSON: () => ({}),
+    }),
+  } as HTMLElement;
+
+  const cardAnchor = {
+    getBoundingClientRect: () => ({
+      top: cardTop,
+      bottom: cardTop + 88,
+      left: 0,
+      right: 390,
+      width: 390,
+      height: 88,
+      x: 0,
+      y: cardTop,
+      toJSON: () => ({}),
+    }),
+  } as HTMLElement;
+
+  const preExpandCapture = { scrollTop: 180, anchorTop: 420 };
+
+  container.scrollTop = 340;
+  cardTop = 420;
+  restoreBookingCardScrollPosition(container, cardAnchor, preExpandCapture);
+
+  assert.equal(container.scrollTop, 180);
 }
 
 function testDmBookingSystemMessages() {
@@ -4863,6 +4915,7 @@ async function main() {
   testDmBookingCardPendingEventPairedActions();
   testDmBookingCardExpandCollapseScrollAnchor();
   testDmBookingCardAlignScrollTopMath();
+  testBookingCardCollapseRestoreUsesPreExpandCapture();
   testDmBookingSystemMessages();
   testDmConversationTimestampLayout();
   testDmBookingTimelineSuppression();
