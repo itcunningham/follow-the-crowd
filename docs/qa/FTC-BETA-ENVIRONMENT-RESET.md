@@ -1,6 +1,14 @@
 # FTC Beta Environment Reset
 
-**One process only:** paste `scripts/resetQaEnvironment.sql` into Supabase SQL Editor and run it.
+**Recommended:** run the reusable QA reset utility, then paste the SQL into Supabase.
+
+```bash
+npm run qa:reset              # runbook + scope summary
+npm run qa:reset:check        # validate SQL structure only
+npm run qa:reset -- --print-sql   # print SQL to stdout (pipe to clipboard)
+```
+
+**One process in Supabase:** paste `scripts/resetQaEnvironment.sql` into Supabase SQL Editor and run it.
 
 This script removes **QA account data only**. Non-QA users (e.g. real beta testers) and their data are **not** touched.
 
@@ -49,6 +57,7 @@ Sign up QA accounts in the **app** (not via SQL). Use display names `FTC QA Plan
 | Events and plans owned by QA users | Non-QA events, plans, bookings |
 | QA↔QA bookings; bookings on QA events | Bookings between QA and non-QA users |
 | QA-only DM threads (all members QA) | Mixed DMs — only QA messages removed |
+| QA-authored crew/group chat messages | Non-QA crew chat messages on shared events |
 | QA notifications, calendar, blocks | Non-QA notifications and data |
 | QA event covers and DM attachments | Non-QA storage files and avatars |
 

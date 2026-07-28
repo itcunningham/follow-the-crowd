@@ -17,8 +17,8 @@
 --   • _qa_booking_requests — QA↔QA bookings, or bookings on QA-owned events
 --   • _qa_only_conversations — every member is a QA user (whole thread removed)
 --   • _qa_touch_conversations — at least one QA member (QA messages/membership only)
---   • _qa_messages        — crew chat on QA events, all msgs in QA-only DMs,
---                           or messages authored by QA in mixed DMs
+--   • _qa_messages        — crew chat on QA events, QA-authored crew chat on any event,
+--                           all msgs in QA-only DMs, or messages authored by QA in mixed DMs
 --
 -- PRESERVES: non-QA transactional data, auth.users, avatars (profile-images), RLS.
 -- Runbook: docs/qa/FTC-BETA-ENVIRONMENT-RESET.md
@@ -135,6 +135,11 @@ where (
   m.event_id is not null
   and btrim(m.event_id) ~ '^[0-9a-fA-F-]{36}$'
   and m.event_id::uuid in (select id from _qa_events)
+)
+or (
+  m.event_id is not null
+  and btrim(m.event_id) <> ''
+  and m.user_id in (select user_id from _qa_user_ids)
 )
 or m.conversation_id in (select conversation_id from _qa_only_conversations)
 or (
@@ -351,6 +356,14 @@ select 'qa_user_blocks', count(*)
 from public.user_blocks ub
 where ub.blocker_id in (select user_id from _qa_user_ids)
    or ub.blocked_id in (select user_id from _qa_user_ids)
+union all
+select 'qa_conversations_touched', count(*)
+from public.conversation_members cm
+where cm.user_id in (select user_id from _qa_user_ids)
+union all
+select 'qa_message_reads', count(*)
+from public.message_reads mr
+where mr.user_id in (select user_id from _qa_user_ids)
 order by scope;
 
 select '--- non-QA data preserved (informational) ---' as section;

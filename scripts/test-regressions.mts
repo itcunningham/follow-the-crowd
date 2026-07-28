@@ -4909,6 +4909,22 @@ function testDmMessageReactionGestureInteractions() {
   assert.match(globalsSource, /-webkit-touch-callout: none;/);
 }
 
+function testQaEnvironmentResetScript() {
+  const sql = readFileSync(new URL("./resetQaEnvironment.sql", import.meta.url), "utf8");
+  assert.match(sql, /BEGIN QA ENVIRONMENT RESET/);
+  assert.match(sql, /END QA ENVIRONMENT RESET/);
+  assert.match(sql, /create temp table _qa_user_ids/);
+  assert.match(sql, /create temp table _qa_messages/);
+  assert.match(sql, /m\.user_id in \(select user_id from _qa_user_ids\)/);
+  assert.match(sql, /delete from public\.profiles/);
+  assert.match(sql, /insert into public\.profiles/);
+  assert.match(sql, /qa_active_bookings/);
+
+  const cli = readFileSync(new URL("./reset-qa-environment.mts", import.meta.url), "utf8");
+  assert.match(cli, /resetQaEnvironment\.sql/);
+  assert.match(cli, /BEGIN QA ENVIRONMENT RESET/);
+}
+
 async function main() {
   testPastEventDatesAreBlocked();
   testFutureEventDatesAreAllowed();
@@ -5053,6 +5069,7 @@ async function main() {
   testWorkspaceNavRoleDoesNotDropEventPlansTab();
   testWorkspaceActiveHrefIgnoresStaleOverrides();
   testProfileIdentityPresentationHierarchy();
+  testQaEnvironmentResetScript();
   await testEventsHistorySelectAllButtonInteraction();
   await testEventsHistoryRemoveConfirmInteraction();
   console.log("All regression checks passed.");
