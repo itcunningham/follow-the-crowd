@@ -34,7 +34,19 @@ export function computeManualMessageListScrollTop(
   currentY: number,
   maxScrollTop: number,
 ): number {
-  const nextScrollTop = startScrollTop + (currentY - startY);
+  // Finger up (currentY < startY) increases scrollTop toward older messages.
+  const nextScrollTop = startScrollTop + (startY - currentY);
+
+  return Math.max(0, Math.min(maxScrollTop, nextScrollTop));
+}
+
+export function applyManualMessageListScrollDelta(
+  currentScrollTop: number,
+  previousY: number,
+  currentY: number,
+  maxScrollTop: number,
+): number {
+  const nextScrollTop = currentScrollTop + (previousY - currentY);
 
   return Math.max(0, Math.min(maxScrollTop, nextScrollTop));
 }

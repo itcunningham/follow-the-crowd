@@ -85,6 +85,7 @@ import {
 import { CHAT_NEAR_BOTTOM_THRESHOLD_PX } from "../lib/useChatScroll";
 import { computeChatMessageCenterScrollTop } from "../lib/dm/chatBookingTarget";
 import {
+  applyManualMessageListScrollDelta,
   computeManualMessageListScrollTop,
   isPinnedToNewestMessages,
   shouldDismissComposerKeyboardAtBottom,
@@ -3335,7 +3336,7 @@ function testDismissComposerKeyboardOnIntentionalScroll() {
   assert.match(policySource, /shouldDismissComposerKeyboardAtBottom/);
 
   assert.match(hookSource, /event\.preventDefault\(\)/);
-  assert.match(hookSource, /computeManualMessageListScrollTop/);
+  assert.match(hookSource, /applyManualMessageListScrollDelta/);
   assert.match(hookSource, /shouldDismissComposerKeyboardAtBottom/);
   assert.match(hookSource, /input\.blur\(\)/);
   assert.match(hookSource, /syncMobileSoftwareKeyboardDocumentState/);
@@ -3355,7 +3356,10 @@ function testComposerKeyboardDismissPolicyMath() {
   } as HTMLElement;
 
   assert.equal(isPinnedToNewestMessages(container), true);
-  assert.equal(computeManualMessageListScrollTop(880, 200, 150, 900), 830);
+  assert.equal(computeManualMessageListScrollTop(880, 200, 150, 900), 930);
+  assert.equal(applyManualMessageListScrollDelta(880, 200, 150, 900), 930);
+  assert.equal(computeManualMessageListScrollTop(500, 200, 250, 900), 450);
+  assert.equal(applyManualMessageListScrollDelta(500, 200, 250, 900), 450);
   assert.equal(
     shouldDismissComposerKeyboardAtBottom({
       pinnedToNewest: true,

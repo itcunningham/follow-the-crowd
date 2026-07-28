@@ -2,7 +2,7 @@
 
 import { useEffect, type RefObject } from "react";
 import {
-  computeManualMessageListScrollTop,
+  applyManualMessageListScrollDelta,
   nextDownwardDragAtBottomPx,
   shouldDismissComposerKeyboardAtBottom,
 } from "@/lib/dm/composerKeyboardDismissPolicy";
@@ -14,7 +14,6 @@ const MOBILE_NAVIGATION_MEDIA_QUERY = "(max-width: 767px)";
 type ActiveGesture = {
   startX: number;
   startY: number;
-  startScrollTop: number;
   lastY: number;
   downwardDragAtBottomPx: number;
 };
@@ -114,7 +113,6 @@ export function useDismissComposerKeyboardOnIntentionalScroll(
       activeGesture = {
         startX: touch.clientX,
         startY: touch.clientY,
-        startScrollTop: container.scrollTop,
         lastY: touch.clientY,
         downwardDragAtBottomPx: 0,
       };
@@ -137,11 +135,13 @@ export function useDismissComposerKeyboardOnIntentionalScroll(
       const deltaX = touch.clientX - activeGesture.startX;
       const deltaY = touch.clientY - activeGesture.startY;
       const maxScrollTop = getChatMaxScrollTop(container);
+      const previousY = activeGesture.lastY;
+      const currentY = touch.clientY;
 
-      container.scrollTop = computeManualMessageListScrollTop(
-        activeGesture.startScrollTop,
-        activeGesture.startY,
-        touch.clientY,
+      container.scrollTop = applyManualMessageListScrollDelta(
+        container.scrollTop,
+        previousY,
+        currentY,
         maxScrollTop,
       );
 
@@ -151,10 +151,10 @@ export function useDismissComposerKeyboardOnIntentionalScroll(
         activeGesture.downwardDragAtBottomPx,
         pinnedToNewest,
         deltaY,
-        activeGesture.lastY,
-        touch.clientY,
+        previousY,
+        currentY,
       );
-      activeGesture.lastY = touch.clientY;
+      activeGesture.lastY = currentY;
 
       if (
         shouldDismissComposerKeyboardAtBottom({
