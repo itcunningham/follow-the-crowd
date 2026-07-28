@@ -275,6 +275,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `f76101a` — final proposal hierarchy polish (Cancel at booking level; Proposed pill)
 - `aba9889` — polish proposal action buttons (Accept/Decline side-by-side)
 - `ef27346` — fix DM composer return layout root cause (container-only booking-target scroll; no scrollIntoView on return)
 - `087b261` — fix DM return composer position and placeholder (superseded by document scroll lock)
