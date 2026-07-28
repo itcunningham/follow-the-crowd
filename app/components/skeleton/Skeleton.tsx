@@ -70,7 +70,11 @@ import type { EventEditHeaderState } from "@/lib/events/useEventEditHeaderVisibi
 import { canManageEvents, type UserRole } from "@/lib/user/currentUser";
 import { EVENTS_AREA_SUB_NAV } from "@/lib/plannerEventsNav";
 import { resolveEventsWorkspaceChromeRole } from "@/lib/events/eventsWorkspaceChromeRole";
-import { EVENT_DETAIL_CARD_CLASS } from "@/app/components/event-detail/eventDetailUi";
+import {
+  EVENT_DETAIL_CARD_CLASS,
+  EVENT_DETAIL_PAGE_CONTENT_CLASS,
+  EVENT_DETAIL_PAGE_SHELL_CLASS,
+} from "@/app/components/event-detail/eventDetailUi";
 import { CALENDAR_MOBILE_EMPTY_STATE_CLASS } from "@/app/components/calendar/calendarMobileUi";
 import { readCachedNavRole, readCachedNavigation, resolveIsOwnProfilePath } from "@/lib/navigationRoleCache";
 import { readEventsListCache } from "@/lib/events/eventsListCache";
@@ -272,7 +276,7 @@ export function EventDetailContentSkeleton() {
         <SkeletonBlock className="h-full w-full rounded-none" rounded="rounded-none" />
       </div>
 
-      <div className="px-4 pb-6 pt-5 sm:px-6">
+      <div className={EVENT_DETAIL_PAGE_CONTENT_CLASS}>
         <SkeletonBlock className="h-8 w-4/5 max-w-[18rem] sm:h-9" />
 
         <div className="mt-3">
@@ -306,7 +310,7 @@ export function EventDetailLoadingShell({
     <div
       aria-busy="true"
       aria-label="Loading event"
-      className={`mx-auto min-h-[100dvh] w-full max-w-2xl bg-ftc-bg font-sans text-ftc-text ${MOBILE_NAV_OFFSET_CLASS}`}
+      className={EVENT_DETAIL_PAGE_SHELL_CLASS}
     >
       <AppNavigation />
 

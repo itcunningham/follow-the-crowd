@@ -26,7 +26,10 @@ import {
   EVENT_DETAIL_CARD_CLASS,
   EVENT_DETAIL_FEEDBACK_CLASS,
   EVENT_DETAIL_NOTES_TEXT_CLASS,
+  EVENT_DETAIL_PAGE_CONTENT_CLASS,
+  EVENT_DETAIL_PAGE_SHELL_CLASS,
   EVENT_DETAIL_SECTION_SPACING,
+  getEventDetailPageContentBottomClass,
 } from "@/app/components/event-detail/eventDetailUi";
 import EventLineupBookingCard from "@/app/components/event-detail/EventLineupBookingCard";
 import { EventDetailBookingCancellationDetails } from "@/app/components/event-detail/EventDetailBookingCancellationDetails";
@@ -1098,11 +1101,9 @@ function EventDetailPageView() {
 
   if (!event) {
     return (
-      <div
-        className={`mx-auto min-h-[100dvh] w-full max-w-2xl bg-ftc-bg font-sans text-ftc-text ${MOBILE_NAV_OFFSET_CLASS}`}
-      >
+      <div className={EVENT_DETAIL_PAGE_SHELL_CLASS}>
         <AppNavigation />
-        <div className="px-4 py-8 sm:px-6">
+        <div className={`${PLANNER_WORKSPACE_PAGE_INSET_CLASS} py-8 ${MOBILE_NAV_OFFSET_CLASS}`}>
           <p className="text-sm text-red-400">{error ?? "Event not found."}</p>
           <button
             type="button"
@@ -1118,9 +1119,7 @@ function EventDetailPageView() {
 
   return (
     <>
-    <div
-      className={`mx-auto min-h-[100dvh] w-full max-w-2xl bg-ftc-bg font-sans text-ftc-text ${MOBILE_NAV_OFFSET_CLASS}`}
-    >
+    <div className={EVENT_DETAIL_PAGE_SHELL_CLASS}>
         <AppNavigation />
 
         <header
@@ -1207,7 +1206,9 @@ function EventDetailPageView() {
           />
         ) : null}
 
-        <div className={`px-4 sm:px-6 ${showBottomBar ? "pb-28" : "pb-6"} pt-5`}>
+        <div
+          className={`${EVENT_DETAIL_PAGE_CONTENT_CLASS} ${getEventDetailPageContentBottomClass(showBottomBar)}`}
+        >
           {showReadOnlyEventDetails ? (
             <>
               {searchParams.get("coverUpload") === "failed" ? (

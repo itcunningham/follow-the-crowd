@@ -1,4 +1,19 @@
 /** Shared layout tokens for the Event Details planner flow. */
+import {
+  MOBILE_NAV_OFFSET_CLASS,
+  PLANNER_WORKSPACE_PAGE_INSET_CLASS,
+} from "@/lib/design/plannerWorkspaceTokens";
+
+export const EVENT_DETAIL_PAGE_SHELL_CLASS =
+  "mx-auto min-h-[100dvh] w-full max-w-2xl bg-ftc-bg font-sans text-ftc-text";
+
+/** Scrollable Event Details body — mobile nav offset must live here, not only on the shell. */
+export const EVENT_DETAIL_PAGE_CONTENT_CLASS = `${PLANNER_WORKSPACE_PAGE_INSET_CLASS} pt-5 ${MOBILE_NAV_OFFSET_CLASS} md:pb-6`;
+
+export function getEventDetailPageContentBottomClass(showBottomBar: boolean): string {
+  return showBottomBar ? "pb-28" : "";
+}
+
 export const EVENT_DETAIL_SECTION_SPACING = "mt-8";
 
 export const EVENT_DETAIL_NOTES_TEXT_CLASS = "ftc-event-detail-notes-text";

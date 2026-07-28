@@ -3132,6 +3132,35 @@ function testEventDetailLoadUsesParallelQueriesAndListCache() {
   assert.match(skeletonSource, /min-h-\[3\.25rem\]/);
 }
 
+function testEventDetailMobileNavContentOffset() {
+  const pageSource = readFileSync(
+    new URL("../app/events/[eventId]/page.tsx", import.meta.url),
+    "utf8",
+  );
+  const uiSource = readFileSync(
+    new URL("../app/components/event-detail/eventDetailUi.ts", import.meta.url),
+    "utf8",
+  );
+  const skeletonSource = readFileSync(
+    new URL("../app/components/skeleton/Skeleton.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(uiSource, /EVENT_DETAIL_PAGE_CONTENT_CLASS/);
+  assert.match(uiSource, /MOBILE_NAV_OFFSET_CLASS/);
+  assert.match(uiSource, /ftc-mobile-nav-offset/);
+  assert.match(uiSource, /getEventDetailPageContentBottomClass/);
+  assert.match(pageSource, /EVENT_DETAIL_PAGE_SHELL_CLASS/);
+  assert.match(pageSource, /EVENT_DETAIL_PAGE_CONTENT_CLASS/);
+  assert.match(pageSource, /getEventDetailPageContentBottomClass\(showBottomBar\)/);
+  assert.doesNotMatch(
+    pageSource,
+    /EVENT_DETAIL_PAGE_SHELL_CLASS[\s\S]*MOBILE_NAV_OFFSET_CLASS/,
+  );
+  assert.match(skeletonSource, /EVENT_DETAIL_PAGE_CONTENT_CLASS/);
+  assert.match(skeletonSource, /EVENT_DETAIL_PAGE_SHELL_CLASS/);
+}
+
 function testMobileSoftwareKeyboardHidesBottomNavigation() {
   const navSource = readFileSync(
     new URL("../app/components/AppNavigation.tsx", import.meta.url),
@@ -4906,6 +4935,7 @@ async function main() {
   testEventsListTabSwitchUsesClientHistoryWithoutRouterNavigation();
   testEventsCreateEventHiddenDuringHistorySelectionToolbar();
   testEventDetailLoadUsesParallelQueriesAndListCache();
+  testEventDetailMobileNavContentOffset();
   testMobileSoftwareKeyboardHidesBottomNavigation();
   testFixedChatPageDocumentReset();
   testDmBookingTargetScrollUsesContainerOnly();
