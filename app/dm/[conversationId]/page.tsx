@@ -103,9 +103,11 @@ import {
   CHAT_BOOKING_REQUEST_ID_ATTR,
 } from "@/lib/dm/chatBookingTarget";
 import {
+  captureBookingCardExpandScrollContext,
   scheduleBookingCardExpandScrollTransition,
   scheduleBookingCardNotesRevealScroll,
   traceBookingCardCollapseScroll,
+  type BookingCardExpandScrollContext,
 } from "@/lib/dm/dmBookingCardExpandScroll";
 import {
   blockDmUser,
@@ -255,6 +257,7 @@ export default function DmChatPage() {
   const pendingBookingCardScrollIdRef = useRef<string | null>(null);
   const pendingBookingNotesScrollIdRef = useRef<string | null>(null);
   const bookingCardScrollCleanupRef = useRef<(() => void) | null>(null);
+  const bookingCardScrollContextRef = useRef(new Map<string, BookingCardExpandScrollContext>());
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -438,6 +441,7 @@ export default function DmChatPage() {
     bookingCardScrollCleanupRef.current?.();
     bookingCardScrollCleanupRef.current = null;
     bookingCardAnchorRefs.current.clear();
+    bookingCardScrollContextRef.current.clear();
     pendingBookingCardScrollIdRef.current = null;
     pendingBookingNotesScrollIdRef.current = null;
   }, [conversationId]);
@@ -488,19 +492,25 @@ export default function DmChatPage() {
         pendingBookingCardScrollIdRef.current = bookingRequestId;
 
         const cardAnchor = getCardAnchor();
+        let scrollContext: BookingCardExpandScrollContext | null = null;
 
         if (container && cardAnchor) {
-          traceBookingCardCollapseScroll("expand-start", container, cardAnchor);
+          scrollContext = captureBookingCardExpandScrollContext(container, cardAnchor);
+          bookingCardScrollContextRef.current.set(bookingRequestId, scrollContext);
+          traceBookingCardCollapseScroll("expand-start", container, cardAnchor, undefined, scrollContext);
+        } else {
+          bookingCardScrollContextRef.current.delete(bookingRequestId);
         }
 
         setBookingExpanded(bookingRequestId, true);
 
-        if (container) {
+        if (container && scrollContext) {
           bookingCardScrollCleanupRef.current = scheduleBookingCardExpandScrollTransition(
             container,
             getCardAnchor,
             bookingRequestId,
             "expand",
+            scrollContext,
             pendingBookingCardScrollIdRef,
             () => {
               pendingBookingCardScrollIdRef.current = null;
@@ -518,23 +528,29 @@ export default function DmChatPage() {
       pendingBookingCardScrollIdRef.current = null;
 
       const cardAnchor = getCardAnchor();
+      const scrollContext = bookingCardScrollContextRef.current.get(bookingRequestId) ?? null;
 
       if (container && cardAnchor) {
-        traceBookingCardCollapseScroll("collapse-start", container, cardAnchor);
+        traceBookingCardCollapseScroll("collapse-start", container, cardAnchor, undefined, scrollContext);
       }
 
       setBookingExpanded(bookingRequestId, false);
 
-      if (container) {
+      if (container && scrollContext) {
         bookingCardScrollCleanupRef.current = scheduleBookingCardExpandScrollTransition(
           container,
           getCardAnchor,
           bookingRequestId,
           "collapse",
+          scrollContext,
           pendingBookingCardScrollIdRef,
-          restoreChatAutoScrollSuppression,
+          () => {
+            bookingCardScrollContextRef.current.delete(bookingRequestId);
+            restoreChatAutoScrollSuppression();
+          },
         );
       } else {
+        bookingCardScrollContextRef.current.delete(bookingRequestId);
         restoreChatAutoScrollSuppression();
       }
     },

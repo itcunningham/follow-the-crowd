@@ -78,8 +78,11 @@ import { getAppendedMessageIds } from "../lib/useChatScroll";
 import {
   computeBookingCardAlignScrollTop,
   computeMinimumScrollToRevealBottom,
+  computePinnedBottomScrollTop,
   computeScrollTopAfterShrink,
+  captureBookingCardExpandScrollContext,
 } from "../lib/dm/dmBookingCardExpandScroll";
+import { CHAT_NEAR_BOTTOM_THRESHOLD_PX } from "../lib/useChatScroll";
 import { computeChatMessageCenterScrollTop } from "../lib/dm/chatBookingTarget";
 import {
   buildDmConversationTimestampLayout,
@@ -574,7 +577,8 @@ function testDmBookingCardExpandCollapseScrollAnchor() {
   assert.match(pageSource, /scheduleBookingCardExpandScrollTransition/);
   assert.doesNotMatch(pageSource, /scheduleExpandedBookingCardScrollAlign/);
   assert.doesNotMatch(pageSource, /scheduleCollapsedBookingCardScrollRestore/);
-  assert.doesNotMatch(pageSource, /captureBookingCardScrollPosition/);
+  assert.match(pageSource, /captureBookingCardExpandScrollContext/);
+  assert.match(pageSource, /bookingCardScrollContextRef/);
   assert.doesNotMatch(pageSource, /bookingCardPreExpandCaptureRef/);
   assert.match(pageSource, /traceBookingCardCollapseScroll/);
   assert.match(pageSource, /bookingCardAnchorRefs/);
@@ -591,21 +595,21 @@ function testDmBookingCardExpandCollapseScrollAnchor() {
   assert.match(expandScrollSource, /waitForSmoothScrollAlign/);
   assert.match(expandScrollSource, /scrollend/);
   assert.match(expandScrollSource, /scrollTo\(/);
-  assert.match(expandScrollSource, /computeScrollTopAfterShrink/);
-  assert.match(expandScrollSource, /compensateScrollDuringPanelTransition/);
+  assert.match(expandScrollSource, /captureBookingCardExpandScrollContext/);
+  assert.match(expandScrollSource, /bottom-pinned/);
+  assert.match(expandScrollSource, /anchor-preservation/);
+  assert.match(expandScrollSource, /computePinnedBottomScrollTop/);
+  assert.match(expandScrollSource, /CHAT_NEAR_BOTTOM_THRESHOLD_PX/);
+  assert.match(expandScrollSource, /transition:bottom-pinned/);
+  assert.match(expandScrollSource, /transition:anchor-preservation/);
+  assert.match(expandScrollSource, /collapse:bottom-pinned-settle/);
   assert.match(expandScrollSource, /scheduleBookingCardExpandScrollTransition/);
   assert.match(expandScrollSource, /computeBookingCardAlignScrollTop/);
   assert.doesNotMatch(expandScrollSource, /maintainBookingCardViewportAnchor/);
   assert.doesNotMatch(expandScrollSource, /restoreBookingCardScrollPosition/);
   assert.doesNotMatch(expandScrollSource, /lockDmMessageScrollTop/);
   assert.doesNotMatch(expandScrollSource, /scrollIntoView/);
-  assert.doesNotMatch(
-    expandScrollSource,
-    /direction === "collapse"[\s\S]{0,220}clampDmMessageScrollTop/,
-  );
-  assert.match(expandScrollSource, /scroll-write:collapse:height-compensation/);
   assert.match(expandScrollSource, /abortInFlightContainerScroll/);
-  assert.match(expandScrollSource, /DM_BOOKING_CARD_EXPAND_PANEL_ATTR/);
   assert.doesNotMatch(pageSource, /flex-1 flex-col-reverse overflow-y-auto/);
   assert.match(pageSource, /flex-1 flex-col overflow-y-auto/);
   assert.match(pageSource, /data-chat-bottom/);
@@ -637,6 +641,45 @@ function testDmBookingCardAlignScrollTopMath() {
     computeBookingCardAlignScrollTop(500, desiredCardTop - 308, desiredCardTop, maxScrollTop),
     192,
   );
+}
+
+function testBookingCardExpandScrollContextCapture() {
+  const container = {
+    scrollTop: 920,
+    scrollHeight: 1520,
+    clientHeight: 600,
+  } as HTMLElement;
+
+  const cardAnchor = {
+    getBoundingClientRect: () => ({
+      top: 480,
+      bottom: 568,
+      left: 0,
+      right: 390,
+      width: 390,
+      height: 88,
+      x: 0,
+      y: 480,
+      toJSON: () => ({}),
+    }),
+  } as HTMLElement;
+
+  const nearBottom = captureBookingCardExpandScrollContext(container, cardAnchor);
+  assert.equal(nearBottom.mode, "bottom-pinned");
+  assert.equal(nearBottom.pinnedDistanceFromBottom, 0);
+
+  container.scrollTop = 180;
+  const anchored = captureBookingCardExpandScrollContext(container, cardAnchor);
+  assert.equal(anchored.mode, "anchor-preservation");
+  assert.equal(anchored.pinnedDistanceFromBottom, 740);
+  assert.equal(anchored.anchorViewportTop, 480);
+  assert.ok(740 > CHAT_NEAR_BOTTOM_THRESHOLD_PX);
+}
+
+function testBookingCardPinnedBottomScrollTop() {
+  assert.equal(computePinnedBottomScrollTop(1520, 600, 0), 920);
+  assert.equal(computePinnedBottomScrollTop(1400, 600, 0), 800);
+  assert.equal(computePinnedBottomScrollTop(1400, 600, 40), 760);
 }
 
 function testBookingCardCollapseScrollHeightCompensation() {
@@ -4889,6 +4932,8 @@ async function main() {
   testDmBookingCardPendingEventPairedActions();
   testDmBookingCardExpandCollapseScrollAnchor();
   testDmBookingCardAlignScrollTopMath();
+  testBookingCardExpandScrollContextCapture();
+  testBookingCardPinnedBottomScrollTop();
   testBookingCardCollapseScrollHeightCompensation();
   testDmBookingSystemMessages();
   testDmConversationTimestampLayout();

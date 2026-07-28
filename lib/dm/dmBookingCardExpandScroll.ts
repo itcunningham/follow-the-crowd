@@ -1,4 +1,5 @@
 import type { MutableRefObject } from "react";
+import { CHAT_NEAR_BOTTOM_THRESHOLD_PX } from "@/lib/useChatScroll";
 
 export const DM_BOOKING_CARD_ANCHOR_ATTR = "data-dm-booking-card-anchor";
 
@@ -23,6 +24,63 @@ const DM_BOOKING_CARD_ANCHOR_WAIT_MAX_FRAMES = 24;
 const DM_BOOKING_CARD_EXPAND_TRANSITION_MS = 220;
 
 const DM_BOOKING_NOTES_EXPAND_TRANSITION_MS = 220;
+
+export type BookingCardScrollMode = "bottom-pinned" | "anchor-preservation";
+
+export type BookingCardExpandScrollContext = {
+  mode: BookingCardScrollMode;
+  /** Distance from maxScrollTop captured before expand (bottom-pinned mode). */
+  pinnedDistanceFromBottom: number;
+  /** Card viewport Y captured before expand (anchor-preservation mode). */
+  anchorViewportTop: number;
+};
+
+export function getDmMessageDistanceFromBottom(container: HTMLElement): number {
+  const maxScrollTop = Math.max(0, container.scrollHeight - container.clientHeight);
+
+  return maxScrollTop - container.scrollTop;
+}
+
+export function isDmMessageNearBottom(
+  container: HTMLElement,
+  thresholdPx: number = CHAT_NEAR_BOTTOM_THRESHOLD_PX,
+): boolean {
+  return getDmMessageDistanceFromBottom(container) <= thresholdPx;
+}
+
+/** Capture scroll mode before opening booking details. */
+export function captureBookingCardExpandScrollContext(
+  container: HTMLElement,
+  cardAnchor: HTMLElement,
+  thresholdPx: number = CHAT_NEAR_BOTTOM_THRESHOLD_PX,
+): BookingCardExpandScrollContext {
+  const pinnedDistanceFromBottom = getDmMessageDistanceFromBottom(container);
+
+  if (pinnedDistanceFromBottom <= thresholdPx) {
+    return {
+      mode: "bottom-pinned",
+      pinnedDistanceFromBottom,
+      anchorViewportTop: cardAnchor.getBoundingClientRect().top,
+    };
+  }
+
+  return {
+    mode: "anchor-preservation",
+    pinnedDistanceFromBottom,
+    anchorViewportTop: cardAnchor.getBoundingClientRect().top,
+  };
+}
+
+/** scrollTop that keeps the captured bottom distance while scrollHeight changes. */
+export function computePinnedBottomScrollTop(
+  scrollHeight: number,
+  clientHeight: number,
+  pinnedDistanceFromBottom: number,
+): number {
+  const maxScrollTop = Math.max(0, scrollHeight - clientHeight);
+
+  return Math.max(0, maxScrollTop - pinnedDistanceFromBottom);
+}
 
 export type BookingCardScrollDiagnostics = {
   scrollTop: number;
@@ -66,6 +124,7 @@ export function traceBookingCardCollapseScroll(
   container: HTMLElement,
   cardAnchor: HTMLElement | null,
   write?: { writer: string; beforeScrollTop: number; afterScrollTop: number },
+  scrollContext?: BookingCardExpandScrollContext | null,
 ): void {
   if (!isBookingCardCollapseTraceEnabled()) {
     return;
@@ -73,6 +132,8 @@ export function traceBookingCardCollapseScroll(
 
   console.info("[ftc-booking-collapse-scroll]", phase, {
     ...readBookingCardScrollDiagnostics(container, cardAnchor),
+    scrollMode: scrollContext?.mode ?? null,
+    pinnedDistanceFromBottom: scrollContext?.pinnedDistanceFromBottom ?? null,
     ...(write
       ? {
           writer: write.writer,
@@ -511,11 +572,12 @@ function waitForSmoothScrollAlign(
   };
 }
 
-/** Keep scrollTop in sync with accordion height changes during the grid transition. */
+/** Adjust scrollTop during the accordion transition according to the captured scroll mode. */
 function compensateScrollDuringPanelTransition(
   container: HTMLElement,
-  traceCollapseWrites: boolean,
-  getCardAnchor?: () => HTMLElement | null,
+  scrollContext: BookingCardExpandScrollContext,
+  traceTransitionWrites: boolean,
+  getCardAnchor: () => HTMLElement | null,
 ): () => void {
   if (prefersReducedMotion()) {
     return () => {};
@@ -523,31 +585,44 @@ function compensateScrollDuringPanelTransition(
 
   let active = true;
   let frameId = 0;
-  let previousScrollHeight = container.scrollHeight;
 
   const tick = () => {
     if (!active) {
       return;
     }
 
-    const currentScrollHeight = container.scrollHeight;
-    const maxScrollTop = Math.max(0, currentScrollHeight - container.clientHeight);
-    const nextScrollTop = computeScrollTopAfterShrink(
-      container.scrollTop,
-      previousScrollHeight,
-      currentScrollHeight,
-      maxScrollTop,
-    );
+    if (scrollContext.mode === "bottom-pinned") {
+      const targetScrollTop = computePinnedBottomScrollTop(
+        container.scrollHeight,
+        container.clientHeight,
+        scrollContext.pinnedDistanceFromBottom,
+      );
 
-    writeDmMessageScrollTop(
-      container,
-      nextScrollTop,
-      "collapse:height-compensation",
-      traceCollapseWrites,
-      getCardAnchor,
-    );
+      writeDmMessageScrollTop(
+        container,
+        targetScrollTop,
+        "transition:bottom-pinned",
+        traceTransitionWrites,
+        getCardAnchor,
+      );
+    } else {
+      const cardAnchor = getCardAnchor();
 
-    previousScrollHeight = currentScrollHeight;
+      if (cardAnchor) {
+        const delta = cardAnchor.getBoundingClientRect().top - scrollContext.anchorViewportTop;
+
+        if (Math.abs(delta) >= 0.5) {
+          writeDmMessageScrollTop(
+            container,
+            container.scrollTop + delta,
+            "transition:anchor-preservation",
+            traceTransitionWrites,
+            getCardAnchor,
+          );
+        }
+      }
+    }
+
     frameId = requestAnimationFrame(tick);
   };
 
@@ -567,6 +642,7 @@ export function scheduleBookingCardExpandScrollTransition(
   getCardAnchor: () => HTMLElement | null,
   bookingRequestId: string,
   direction: BookingCardExpandScrollDirection,
+  scrollContext: BookingCardExpandScrollContext | null,
   pendingBookingRequestIdRef: MutableRefObject<string | null>,
   onComplete?: () => void,
 ): () => void {
@@ -575,7 +651,7 @@ export function scheduleBookingCardExpandScrollTransition(
   let cancelScrollAlignWait: (() => void) | null = null;
   let stopScrollCompensation: (() => void) | null = null;
   let pendingSmoothAlign = false;
-  const traceCollapseWrites = direction === "collapse";
+  const traceTransitionWrites = scrollContext != null;
 
   const finish = () => {
     if (cancelled) {
@@ -610,7 +686,58 @@ export function scheduleBookingCardExpandScrollTransition(
     const cardAnchor = getCardAnchor();
 
     if (direction === "collapse") {
-      traceBookingCardCollapseScroll("collapse-settled", container, cardAnchor);
+      if (scrollContext?.mode === "bottom-pinned") {
+        const targetScrollTop = computePinnedBottomScrollTop(
+          container.scrollHeight,
+          container.clientHeight,
+          0,
+        );
+
+        writeDmMessageScrollTop(
+          container,
+          targetScrollTop,
+          "collapse:bottom-pinned-settle",
+          traceTransitionWrites,
+          getCardAnchor,
+        );
+      } else if (scrollContext?.mode === "anchor-preservation" && prefersReducedMotion()) {
+        const anchorCard = getCardAnchor();
+
+        if (anchorCard) {
+          const delta = anchorCard.getBoundingClientRect().top - scrollContext.anchorViewportTop;
+
+          if (Math.abs(delta) >= 0.5) {
+            writeDmMessageScrollTop(
+              container,
+              container.scrollTop + delta,
+              "collapse:anchor-preservation-settle",
+              traceTransitionWrites,
+              getCardAnchor,
+            );
+          }
+        }
+      }
+
+      traceBookingCardCollapseScroll("collapse-settled", container, cardAnchor, undefined, scrollContext);
+      finish();
+      return;
+    }
+
+    if (scrollContext?.mode === "bottom-pinned") {
+      const targetScrollTop = computePinnedBottomScrollTop(
+        container.scrollHeight,
+        container.clientHeight,
+        scrollContext.pinnedDistanceFromBottom,
+      );
+
+      writeDmMessageScrollTop(
+        container,
+        targetScrollTop,
+        "expand:bottom-pinned-settle",
+        traceTransitionWrites,
+        getCardAnchor,
+      );
+      traceBookingCardCollapseScroll("expand-settled:bottom-pinned", container, cardAnchor, undefined, scrollContext);
       finish();
       return;
     }
@@ -670,13 +797,14 @@ export function scheduleBookingCardExpandScrollTransition(
   };
 
   const beginScrollCompensation = () => {
-    if (cancelled || direction !== "collapse") {
+    if (cancelled || !scrollContext) {
       return;
     }
 
     stopScrollCompensation = compensateScrollDuringPanelTransition(
       container,
-      traceCollapseWrites,
+      scrollContext,
+      traceTransitionWrites,
       getCardAnchor,
     );
   };
