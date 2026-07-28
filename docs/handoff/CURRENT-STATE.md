@@ -278,7 +278,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
-- `fdd86ef` — dismiss DM composer keyboard on intentional mobile scroll
+- `43bb356` — dismiss DM composer keyboard on intentional mobile scroll
 - `0f3be16` — keep DM composer focused after send
 - `f663dab` — show inline finish time validation on bookings DJ selection step (shared set-time errors + aria-invalid trigger styling)
 - `0deb822` — fix DM booking card expand positioning (asymmetric expand/collapse scroll policy)
