@@ -99,7 +99,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 - **DM photo picker (2026-07-14):** media icon opens native OS chooser (Photo Library / Take Photo on iOS); no forced camera via `capture`
 - **DM message reactions (2026-07-25):** persistent `React` label removed; press-and-hold (~500ms) or right-click opens existing picker on text/image messages; desktop hover/focus-visible `+` affordance; keyboard-accessible `React to message` button; booking/system cards unchanged; DM image attachments use button open surface (not `<a>`) with scoped `-webkit-touch-callout: none` so iPhone Safari long-press opens FTC picker instead of native link preview; reaction picker no longer uses a full-screen blocking backdrop — outside tap or scroll dismisses it without trapping chat scroll
 - **Mobile bottom nav + keyboard (2026-07-21):** on viewports below `md`, text-field focus latches a keyboard session from `visualViewport` height gap; nav stays hidden while focused (including iOS scroll) until height gap shows dismissal or focus leaves; offset padding clears with the bar
-- **DM fixed chat document reset (2026-07-28):** DM conversation uses `h-[100dvh]` fixed shell + `lockFixedChatDocumentScroll()` while mounted so Event Details document scroll cannot misposition the composer above the bottom nav on return; `readFixedChatLayoutDiagnostics()` traces scroll/viewport/keyboard state; Event Details Back uses default scroll-to-top navigation (not `scroll: false`); DM composer placeholder `Message` (no ellipsis)
+- **DM return composer layout (2026-07-28):** Event Details Back adds `bookingRequestId` + `bookingFocus=scroll-only`; booking-target scroll now uses container `scrollTop` math (same pattern as booking-card expand scroll) instead of `scrollIntoView`, which on iPhone Safari shifted the document/visual viewport and mispositioned the fixed chat shell above the bottom nav; `traceDmChatLayout()` logs mount/ready/booking-scroll geometry in dev for path comparison; document scroll lock + `h-[100dvh]` shell unchanged
 
 ## Calendar
 
@@ -275,7 +275,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
-- `c53d7a2` — fix persistent DM composer return offset (document scroll lock + 100dvh shell)
+- (pending) — fix DM composer return layout root cause (container-only booking-target scroll; no scrollIntoView on return)
 - `087b261` — fix DM return composer position and placeholder (superseded by document scroll lock)
 - `74aab82` — final DM booking negotiation polish (timeline suppression + muted hierarchy)
 - `743ea18` — add first-time helper behaviour to propose rate modal

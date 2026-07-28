@@ -5,16 +5,19 @@ import {
   lockFixedChatDocumentScroll,
   prepareFixedChatPageMount,
 } from "@/lib/navigation/prepareFixedChatPageMount";
+import { traceDmChatLayout } from "@/lib/navigation/dmChatLayoutTrace";
 import { runDoubleRafDocumentScrollToTop } from "@/lib/navigation/scrollPageToTop";
 
 /** Lock document scroll while a fixed chat route is active (e.g. DM return from Event Details). */
 export function useFixedChatPageDocumentReset(routeKey: string): void {
   useLayoutEffect(() => {
     const unlockDocumentScroll = lockFixedChatDocumentScroll();
+    traceDmChatLayout("document-reset:layout-lock", routeKey);
 
     function handlePageShow(event: PageTransitionEvent) {
       if (event.persisted) {
         prepareFixedChatPageMount();
+        traceDmChatLayout("document-reset:pageshow-bfcache", routeKey);
       }
     }
 

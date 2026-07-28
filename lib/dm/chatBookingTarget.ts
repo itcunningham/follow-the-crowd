@@ -3,6 +3,8 @@ import {
   findDmMessageIdForBookingRequest,
   type BookingRequestMessageSource,
 } from "@/lib/bookingRequests";
+import { clampDmMessageScrollTop } from "@/lib/dm/dmBookingCardExpandScroll";
+import { traceDmChatLayout } from "@/lib/navigation/dmChatLayoutTrace";
 import { CHAT_MESSAGE_ID_ATTR } from "@/lib/useChatScroll";
 
 export const CHAT_BOOKING_REQUEST_ID_ATTR = "data-chat-booking-request-id";
@@ -13,6 +15,29 @@ export type DmBookingFocusMode = "scroll-and-highlight" | "scroll-only";
 
 const BOOKING_TARGET_SCROLL_MAX_ATTEMPTS = 12;
 const BOOKING_TARGET_SCROLL_RETRY_MS = 50;
+
+/** Scroll a chat message to the vertical center of the DM scroller without touching document scroll. */
+export function computeChatMessageCenterScrollTop(
+  container: HTMLElement,
+  messageElement: HTMLElement,
+): number {
+  const containerRect = container.getBoundingClientRect();
+  const messageRect = messageElement.getBoundingClientRect();
+  const messageCenter = messageRect.top + messageRect.height / 2;
+  const containerCenter = containerRect.top + container.clientHeight / 2;
+  const delta = messageCenter - containerCenter;
+  const maxScrollTop = Math.max(0, container.scrollHeight - container.clientHeight);
+
+  return Math.max(0, Math.min(maxScrollTop, container.scrollTop + delta));
+}
+
+export function scrollChatBookingTargetIntoView(
+  container: HTMLElement,
+  messageElement: HTMLElement,
+): void {
+  container.scrollTop = computeChatMessageCenterScrollTop(container, messageElement);
+  clampDmMessageScrollTop(container);
+}
 
 export function parseDmBookingRequestIdParam(
   value: string | null | undefined,
@@ -126,7 +151,17 @@ export function useChatBookingTargetScroll({
         return false;
       }
 
-      messageElement.scrollIntoView({ block: "center", behavior: "auto" });
+      traceDmChatLayout("booking-target-scroll:before", window.location.pathname + window.location.search, {
+        targetMessageId,
+        containerScrollTop: container.scrollTop,
+      });
+
+      scrollChatBookingTargetIntoView(container, messageElement);
+
+      traceDmChatLayout("booking-target-scroll:after", window.location.pathname + window.location.search, {
+        targetMessageId,
+        containerScrollTop: container.scrollTop,
+      });
 
       if (highlightTargetBookingRequestId) {
         highlightBookingFocus(targetMessageId);

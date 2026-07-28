@@ -76,6 +76,7 @@ import {
 } from "../lib/bookingRequests";
 import { getAppendedMessageIds } from "../lib/useChatScroll";
 import { computeBookingCardAlignScrollTop, computeMinimumScrollToRevealBottom } from "../lib/dm/dmBookingCardExpandScroll";
+import { computeChatMessageCenterScrollTop } from "../lib/dm/chatBookingTarget";
 import {
   buildDmConversationTimestampLayout,
   classifyDmConversationMessageKind,
@@ -3198,6 +3199,54 @@ function testFixedChatPageDocumentReset() {
   assert.doesNotMatch(eventDetailSource, /router\.push\(eventsBackHref, \{ scroll: false \}\)/);
 }
 
+function testDmBookingTargetScrollUsesContainerOnly() {
+  const bookingTargetSource = readFileSync(
+    new URL("../lib/dm/chatBookingTarget.ts", import.meta.url),
+    "utf8",
+  );
+
+  assert.doesNotMatch(bookingTargetSource, /scrollIntoView/);
+  assert.match(bookingTargetSource, /scrollChatBookingTargetIntoView/);
+  assert.match(bookingTargetSource, /computeChatMessageCenterScrollTop/);
+  assert.match(bookingTargetSource, /clampDmMessageScrollTop/);
+  assert.match(bookingTargetSource, /traceDmChatLayout/);
+}
+
+function testDmBookingTargetCenterScrollTopMath() {
+  const container = {
+    scrollTop: 100,
+    scrollHeight: 1000,
+    clientHeight: 400,
+    getBoundingClientRect: () => ({
+      top: 80,
+      bottom: 480,
+      left: 0,
+      right: 390,
+      width: 390,
+      height: 400,
+      x: 0,
+      y: 80,
+      toJSON: () => ({}),
+    }),
+  } as HTMLElement;
+
+  const messageElement = {
+    getBoundingClientRect: () => ({
+      top: 500,
+      bottom: 540,
+      left: 0,
+      right: 390,
+      width: 390,
+      height: 40,
+      x: 0,
+      y: 500,
+      toJSON: () => ({}),
+    }),
+  } as HTMLElement;
+
+  assert.equal(computeChatMessageCenterScrollTop(container, messageElement), 340);
+}
+
 function testEventTitleClampLayout() {
   assert.equal(FTC_EVENT_TITLE_CLAMP_CLASS, "ftc-event-title-clamp-2");
 
@@ -4852,6 +4901,8 @@ async function main() {
   testEventDetailLoadUsesParallelQueriesAndListCache();
   testMobileSoftwareKeyboardHidesBottomNavigation();
   testFixedChatPageDocumentReset();
+  testDmBookingTargetScrollUsesContainerOnly();
+  testDmBookingTargetCenterScrollTopMath();
   testEventTitleClampLayout();
   testEventsActiveStatusPillsSingleRowLayout();
   testEventCreateFormTextFieldMaxLength();

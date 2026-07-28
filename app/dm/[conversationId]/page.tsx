@@ -60,6 +60,7 @@ import {
 import { parseDmThreadEntryContext, resolveDmThreadBackHref } from "@/lib/dm/threadNavigation";
 import { useFixedChatPageDocumentReset } from "@/lib/navigation/useFixedChatPageDocumentReset";
 import { FIXED_CHAT_PAGE_SHELL_CLASS } from "@/lib/navigation/prepareFixedChatPageMount";
+import { traceDmChatLayout } from "@/lib/navigation/dmChatLayoutTrace";
 import { buildChatReturnTo } from "@/lib/profileNavigation";
 import {
   getDmAttachmentNotificationBody,
@@ -210,6 +211,16 @@ export default function DmChatPage() {
 
   useFixedChatPageDocumentReset(fixedChatRouteKey);
 
+  useEffect(() => {
+    traceDmChatLayout("dm-page:mount", fixedChatRouteKey, {
+      scrollTargetBookingRequestId,
+    });
+
+    return () => {
+      traceDmChatLayout("dm-page:unmount", fixedChatRouteKey);
+    };
+  }, [fixedChatRouteKey, scrollTargetBookingRequestId]);
+
   const [messages, setMessages] = useState<Message[]>([]);
   const [attachments, setAttachments] = useState<DmMessageAttachment[]>([]);
   const [reactions, setReactions] = useState<DmMessageReaction[]>([]);
@@ -315,6 +326,17 @@ export default function DmChatPage() {
     highlightBookingFocus,
     suppressAutoScrollRef,
   });
+
+  useEffect(() => {
+    if (loading) {
+      return;
+    }
+
+    traceDmChatLayout("dm-page:ready", fixedChatRouteKey, {
+      scrollTargetBookingRequestId,
+      messageCount: messages.length,
+    });
+  }, [fixedChatRouteKey, loading, messages.length, scrollTargetBookingRequestId]);
 
   const conversationTitle = otherUserProfile ? getConversationTitle(otherUserProfile) : "";
   const otherUserLabel = otherUserProfile ? resolveUserDisplayName(otherUserProfile) : "";
