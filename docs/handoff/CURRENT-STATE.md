@@ -278,7 +278,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
-- `TBD` — improve DM keyboard dismiss with downward-drag gesture
+- `a5a9640` — improve DM keyboard dismiss with downward-drag gesture
 - `7c3416a` — sync DM composer focus styling with keyboard session after send
 - `43bb356` — dismiss DM composer keyboard on intentional mobile scroll
 - `0f3be16` — keep DM composer focused after send
