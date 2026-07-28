@@ -274,6 +274,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `74aab82` — final DM booking negotiation polish (timeline suppression + muted hierarchy)
 - `743ea18` — add first-time helper behaviour to propose rate modal
 - `4d1ef05` — limit proposal notes textarea growth
 - `d2f2608` — refine booking type presentation in booking cards
