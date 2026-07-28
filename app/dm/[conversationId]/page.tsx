@@ -103,12 +103,9 @@ import {
   CHAT_BOOKING_REQUEST_ID_ATTR,
 } from "@/lib/dm/chatBookingTarget";
 import {
-  captureBookingCardScrollPosition,
+  scheduleBookingCardExpandScrollTransition,
   scheduleBookingCardNotesRevealScroll,
-  scheduleCollapsedBookingCardScrollRestore,
-  scheduleExpandedBookingCardScrollAlign,
   traceBookingCardCollapseScroll,
-  type BookingCardScrollCapture,
 } from "@/lib/dm/dmBookingCardExpandScroll";
 import {
   blockDmUser,
@@ -258,7 +255,6 @@ export default function DmChatPage() {
   const pendingBookingCardScrollIdRef = useRef<string | null>(null);
   const pendingBookingNotesScrollIdRef = useRef<string | null>(null);
   const bookingCardScrollCleanupRef = useRef<(() => void) | null>(null);
-  const bookingCardPreExpandCaptureRef = useRef(new Map<string, BookingCardScrollCapture>());
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -442,7 +438,6 @@ export default function DmChatPage() {
     bookingCardScrollCleanupRef.current?.();
     bookingCardScrollCleanupRef.current = null;
     bookingCardAnchorRefs.current.clear();
-    bookingCardPreExpandCaptureRef.current.clear();
     pendingBookingCardScrollIdRef.current = null;
     pendingBookingNotesScrollIdRef.current = null;
   }, [conversationId]);
@@ -486,36 +481,29 @@ export default function DmChatPage() {
       bookingCardScrollCleanupRef.current = null;
       suppressAutoScrollRef.current = true;
 
+      const container = scrollRef.current;
+      const getCardAnchor = () => bookingCardAnchorRefs.current.get(bookingRequestId) ?? null;
+
       if (expanded) {
         pendingBookingCardScrollIdRef.current = bookingRequestId;
 
-        const container = scrollRef.current;
-        const cardAnchor = bookingCardAnchorRefs.current.get(bookingRequestId) ?? null;
+        const cardAnchor = getCardAnchor();
 
         if (container && cardAnchor) {
-          const preExpandCapture = captureBookingCardScrollPosition(container, cardAnchor);
-          bookingCardPreExpandCaptureRef.current.set(bookingRequestId, preExpandCapture);
-          traceBookingCardCollapseScroll("expand-capture:before-open", container, cardAnchor, preExpandCapture);
-        } else {
-          bookingCardPreExpandCaptureRef.current.delete(bookingRequestId);
+          traceBookingCardCollapseScroll("expand-start", container, cardAnchor);
         }
 
         setBookingExpanded(bookingRequestId, true);
 
         if (container) {
-          bookingCardScrollCleanupRef.current = scheduleExpandedBookingCardScrollAlign(
+          bookingCardScrollCleanupRef.current = scheduleBookingCardExpandScrollTransition(
             container,
-            () => bookingCardAnchorRefs.current.get(bookingRequestId) ?? null,
+            getCardAnchor,
             bookingRequestId,
+            "expand",
             pendingBookingCardScrollIdRef,
             () => {
               pendingBookingCardScrollIdRef.current = null;
-              const alignedAnchor = bookingCardAnchorRefs.current.get(bookingRequestId) ?? null;
-
-              if (container) {
-                traceBookingCardCollapseScroll("expand-align:settled", container, alignedAnchor);
-              }
-
               restoreChatAutoScrollSuppression();
             },
           );
@@ -529,24 +517,21 @@ export default function DmChatPage() {
 
       pendingBookingCardScrollIdRef.current = null;
 
-      const container = scrollRef.current;
-      const cardAnchor = bookingCardAnchorRefs.current.get(bookingRequestId) ?? null;
-      const collapseCapture =
-        bookingCardPreExpandCaptureRef.current.get(bookingRequestId) ?? null;
-
-      bookingCardPreExpandCaptureRef.current.delete(bookingRequestId);
+      const cardAnchor = getCardAnchor();
 
       if (container && cardAnchor) {
-        traceBookingCardCollapseScroll("collapse-capture:pre-expand", container, cardAnchor, collapseCapture);
+        traceBookingCardCollapseScroll("collapse-start", container, cardAnchor);
       }
 
       setBookingExpanded(bookingRequestId, false);
 
       if (container) {
-        bookingCardScrollCleanupRef.current = scheduleCollapsedBookingCardScrollRestore(
+        bookingCardScrollCleanupRef.current = scheduleBookingCardExpandScrollTransition(
           container,
-          () => bookingCardAnchorRefs.current.get(bookingRequestId) ?? null,
-          collapseCapture,
+          getCardAnchor,
+          bookingRequestId,
+          "collapse",
+          pendingBookingCardScrollIdRef,
           restoreChatAutoScrollSuppression,
         );
       } else {

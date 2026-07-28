@@ -78,7 +78,7 @@ import { getAppendedMessageIds } from "../lib/useChatScroll";
 import {
   computeBookingCardAlignScrollTop,
   computeMinimumScrollToRevealBottom,
-  restoreBookingCardScrollPosition,
+  computeScrollTopAfterShrink,
 } from "../lib/dm/dmBookingCardExpandScroll";
 import { computeChatMessageCenterScrollTop } from "../lib/dm/chatBookingTarget";
 import {
@@ -571,15 +571,12 @@ function testDmBookingCardExpandCollapseScrollAnchor() {
   assert.doesNotMatch(pageSource, /DmBookingUpdateRow/);
   assert.match(pageSource, /collapsible/);
   assert.match(pageSource, /expanded=\{isBookingExpanded\}/);
-  assert.match(pageSource, /scheduleExpandedBookingCardScrollAlign/);
-  assert.match(pageSource, /scheduleCollapsedBookingCardScrollRestore/);
-  assert.match(pageSource, /captureBookingCardScrollPosition/);
-  assert.match(pageSource, /bookingCardPreExpandCaptureRef/);
+  assert.match(pageSource, /scheduleBookingCardExpandScrollTransition/);
+  assert.doesNotMatch(pageSource, /scheduleExpandedBookingCardScrollAlign/);
+  assert.doesNotMatch(pageSource, /scheduleCollapsedBookingCardScrollRestore/);
+  assert.doesNotMatch(pageSource, /captureBookingCardScrollPosition/);
+  assert.doesNotMatch(pageSource, /bookingCardPreExpandCaptureRef/);
   assert.match(pageSource, /traceBookingCardCollapseScroll/);
-  assert.doesNotMatch(
-    pageSource,
-    /setBookingExpanded\(bookingRequestId, false\)[\s\S]{0,220}captureBookingCardScrollPosition/,
-  );
   assert.match(pageSource, /bookingCardAnchorRefs/);
   assert.match(pageSource, /registerBookingCardAnchor/);
   assert.match(pageSource, /pendingBookingCardScrollIdRef/);
@@ -594,7 +591,14 @@ function testDmBookingCardExpandCollapseScrollAnchor() {
   assert.match(expandScrollSource, /waitForSmoothScrollAlign/);
   assert.match(expandScrollSource, /scrollend/);
   assert.match(expandScrollSource, /scrollTo\(/);
-  assert.match(expandScrollSource, /restoreBookingCardScrollPosition/);
+  assert.match(expandScrollSource, /computeScrollTopAfterShrink/);
+  assert.match(expandScrollSource, /compensateScrollDuringPanelTransition/);
+  assert.match(expandScrollSource, /scheduleBookingCardExpandScrollTransition/);
+  assert.match(expandScrollSource, /computeBookingCardAlignScrollTop/);
+  assert.doesNotMatch(expandScrollSource, /maintainBookingCardViewportAnchor/);
+  assert.doesNotMatch(expandScrollSource, /restoreBookingCardScrollPosition/);
+  assert.doesNotMatch(expandScrollSource, /lockDmMessageScrollTop/);
+  assert.doesNotMatch(expandScrollSource, /scrollIntoView/);
   assert.match(expandScrollSource, /clampDmMessageScrollTop/);
   assert.match(expandScrollSource, /DM_BOOKING_CARD_EXPAND_PANEL_ATTR/);
   assert.doesNotMatch(pageSource, /flex-1 flex-col-reverse overflow-y-auto/);
@@ -603,10 +607,6 @@ function testDmBookingCardExpandCollapseScrollAnchor() {
   assert.doesNotMatch(pageSource, /flushSync/);
   assert.doesNotMatch(pageSource, /bookingCardExpandAlignGuardRef/);
   assert.doesNotMatch(pageSource, /dmBookingExpandScrollGuard/);
-  assert.match(expandScrollSource, /maintainBookingCardViewportAnchor/);
-  assert.match(expandScrollSource, /computeBookingCardAlignScrollTop/);
-  assert.doesNotMatch(expandScrollSource, /lockDmMessageScrollTop/);
-  assert.doesNotMatch(expandScrollSource, /scrollIntoView/);
   assert.match(scrollSource, /getAppendedMessageIds/);
   assert.match(scrollSource, /getChatMaxScrollTop/);
   assert.match(scrollSource, /needsInitialScrollRef/);
@@ -634,46 +634,14 @@ function testDmBookingCardAlignScrollTopMath() {
   );
 }
 
-function testBookingCardCollapseRestoreUsesPreExpandCapture() {
-  let cardTop = 420;
-  const container = {
-    scrollTop: 180,
-    scrollHeight: 1400,
-    clientHeight: 600,
-    getBoundingClientRect: () => ({
-      top: 72,
-      bottom: 672,
-      left: 0,
-      right: 390,
-      width: 390,
-      height: 600,
-      x: 0,
-      y: 72,
-      toJSON: () => ({}),
-    }),
-  } as HTMLElement;
+function testBookingCardCollapseScrollHeightCompensation() {
+  const maxScrollTop = 800;
 
-  const cardAnchor = {
-    getBoundingClientRect: () => ({
-      top: cardTop,
-      bottom: cardTop + 88,
-      left: 0,
-      right: 390,
-      width: 390,
-      height: 88,
-      x: 0,
-      y: cardTop,
-      toJSON: () => ({}),
-    }),
-  } as HTMLElement;
-
-  const preExpandCapture = { scrollTop: 180, anchorTop: 420 };
-
-  container.scrollTop = 340;
-  cardTop = 420;
-  restoreBookingCardScrollPosition(container, cardAnchor, preExpandCapture);
-
-  assert.equal(container.scrollTop, 180);
+  assert.equal(computeScrollTopAfterShrink(340, 1560, 1400, maxScrollTop), 180);
+  assert.equal(computeScrollTopAfterShrink(340, 1400, 1400, maxScrollTop), 340);
+  assert.equal(computeScrollTopAfterShrink(340, 1400, 1500, maxScrollTop), 340);
+  assert.equal(computeScrollTopAfterShrink(20, 900, 850, 100), 20);
+  assert.equal(computeScrollTopAfterShrink(120, 900, 850, 100), 100);
 }
 
 function testDmBookingSystemMessages() {
@@ -4916,7 +4884,7 @@ async function main() {
   testDmBookingCardPendingEventPairedActions();
   testDmBookingCardExpandCollapseScrollAnchor();
   testDmBookingCardAlignScrollTopMath();
-  testBookingCardCollapseRestoreUsesPreExpandCapture();
+  testBookingCardCollapseScrollHeightCompensation();
   testDmBookingSystemMessages();
   testDmConversationTimestampLayout();
   testDmBookingTimelineSuppression();

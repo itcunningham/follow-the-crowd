@@ -24,11 +24,6 @@ const DM_BOOKING_CARD_EXPAND_TRANSITION_MS = 220;
 
 const DM_BOOKING_NOTES_EXPAND_TRANSITION_MS = 220;
 
-export type BookingCardScrollCapture = {
-  scrollTop: number;
-  anchorTop: number;
-};
-
 export type BookingCardScrollDiagnostics = {
   scrollTop: number;
   scrollHeight: number;
@@ -70,7 +65,6 @@ export function traceBookingCardCollapseScroll(
   phase: string,
   container: HTMLElement,
   cardAnchor: HTMLElement | null,
-  capture?: BookingCardScrollCapture | null,
 ): void {
   if (!isBookingCardCollapseTraceEnabled()) {
     return;
@@ -78,7 +72,6 @@ export function traceBookingCardCollapseScroll(
 
   console.info("[ftc-booking-collapse-scroll]", phase, {
     ...readBookingCardScrollDiagnostics(container, cardAnchor),
-    capture,
   });
 }
 
@@ -105,64 +98,20 @@ export function clampDmMessageScrollTop(container: HTMLElement): void {
   }
 }
 
-/** Keep the booking card at a stable viewport Y while accordion height animates. */
-export function maintainBookingCardViewportAnchor(
-  container: HTMLElement,
-  getCardAnchor: () => HTMLElement | null,
-  targetAnchorTop: number,
-): () => void {
-  if (prefersReducedMotion()) {
-    return () => {};
+/** scrollTop after the scroller shrinks while the card accordion collapses. */
+export function computeScrollTopAfterShrink(
+  scrollTop: number,
+  previousScrollHeight: number,
+  currentScrollHeight: number,
+  maxScrollTop: number,
+): number {
+  const shrink = previousScrollHeight - currentScrollHeight;
+
+  if (shrink <= 0) {
+    return scrollTop;
   }
 
-  let active = true;
-  let frameId = 0;
-
-  const tick = () => {
-    if (!active) {
-      return;
-    }
-
-    const cardAnchor = getCardAnchor();
-
-    if (cardAnchor) {
-      const delta = cardAnchor.getBoundingClientRect().top - targetAnchorTop;
-
-      if (Math.abs(delta) >= 0.5) {
-        container.scrollTop += delta;
-        clampDmMessageScrollTop(container);
-      }
-    }
-
-    frameId = requestAnimationFrame(tick);
-  };
-
-  frameId = requestAnimationFrame(tick);
-
-  return () => {
-    active = false;
-    cancelAnimationFrame(frameId);
-  };
-}
-
-export function captureBookingCardScrollPosition(
-  container: HTMLElement,
-  cardAnchor: HTMLElement,
-): BookingCardScrollCapture {
-  return {
-    scrollTop: container.scrollTop,
-    anchorTop: cardAnchor.getBoundingClientRect().top,
-  };
-}
-
-export function restoreBookingCardScrollPosition(
-  container: HTMLElement,
-  cardAnchor: HTMLElement,
-  capture: BookingCardScrollCapture,
-): void {
-  const delta = cardAnchor.getBoundingClientRect().top - capture.anchorTop;
-  container.scrollTop = capture.scrollTop + delta;
-  clampDmMessageScrollTop(container);
+  return Math.max(0, Math.min(maxScrollTop, scrollTop - shrink));
 }
 
 /** Viewport Y coordinate where the expanded card top should sit (below the DM header). */
@@ -184,7 +133,25 @@ export function resolveDmBookingCardAlignTop(
   return containerRect.top + paddingTop + gap;
 }
 
-export function scrollExpandedBookingCardBelowHeader(
+/** Align card top to a viewport Y in the DM message scroller. */
+export function computeBookingCardAlignScrollTop(
+  scrollTop: number,
+  cardTop: number,
+  desiredCardTop: number,
+  maxScrollTop: number,
+): number {
+  const delta = cardTop - desiredCardTop;
+
+  if (Math.abs(delta) < 2) {
+    return scrollTop;
+  }
+
+  const targetScrollTop = scrollTop + delta;
+
+  return Math.max(0, Math.min(maxScrollTop, targetScrollTop));
+}
+
+function scrollExpandedBookingCardBelowHeader(
   container: HTMLElement,
   cardAnchor: HTMLElement,
   bookingRequestId: string,
@@ -218,24 +185,6 @@ export function scrollExpandedBookingCardBelowHeader(
     top: targetScrollTop,
     behavior: scrollBehavior,
   });
-}
-
-/** Align card top to a viewport Y in the DM message scroller. */
-export function computeBookingCardAlignScrollTop(
-  scrollTop: number,
-  cardTop: number,
-  desiredCardTop: number,
-  maxScrollTop: number,
-): number {
-  const delta = cardTop - desiredCardTop;
-
-  if (Math.abs(delta) < 2) {
-    return scrollTop;
-  }
-
-  const targetScrollTop = scrollTop + delta;
-
-  return Math.max(0, Math.min(maxScrollTop, targetScrollTop));
 }
 
 /** Bottom edge to keep visible after Notes expand — card bottom includes action rows. */
@@ -380,7 +329,7 @@ function waitForBookingCardExpandTransition(
   };
 }
 
-function waitForExpandedBookingCardReady(
+function waitForBookingCardTransitionEnd(
   getCardAnchor: () => HTMLElement | null,
   onReady: () => void,
 ): () => void {
@@ -491,19 +440,62 @@ function waitForSmoothScrollAlign(
   };
 }
 
-/** Scroll once after the tapped card has fully expanded. */
-export function scheduleExpandedBookingCardScrollAlign(
+/** Keep scrollTop in sync with accordion height changes during the grid transition. */
+function compensateScrollDuringPanelTransition(container: HTMLElement): () => void {
+  if (prefersReducedMotion()) {
+    return () => {};
+  }
+
+  let active = true;
+  let frameId = 0;
+  let previousScrollHeight = container.scrollHeight;
+
+  const tick = () => {
+    if (!active) {
+      return;
+    }
+
+    const currentScrollHeight = container.scrollHeight;
+    const maxScrollTop = Math.max(0, currentScrollHeight - container.clientHeight);
+    const nextScrollTop = computeScrollTopAfterShrink(
+      container.scrollTop,
+      previousScrollHeight,
+      currentScrollHeight,
+      maxScrollTop,
+    );
+
+    if (nextScrollTop !== container.scrollTop) {
+      container.scrollTop = nextScrollTop;
+    }
+
+    previousScrollHeight = currentScrollHeight;
+    frameId = requestAnimationFrame(tick);
+  };
+
+  frameId = requestAnimationFrame(tick);
+
+  return () => {
+    active = false;
+    cancelAnimationFrame(frameId);
+  };
+}
+
+export type BookingCardExpandScrollDirection = "expand" | "collapse";
+
+/** One scroll coordinator for booking-card accordion expand and collapse. */
+export function scheduleBookingCardExpandScrollTransition(
   container: HTMLElement,
   getCardAnchor: () => HTMLElement | null,
   bookingRequestId: string,
+  direction: BookingCardExpandScrollDirection,
   pendingBookingRequestIdRef: MutableRefObject<string | null>,
   onComplete?: () => void,
 ): () => void {
   let cancelled = false;
-  let scrolled = false;
-  let cancelReadyWait: (() => void) | null = null;
+  let cancelTransitionWait: (() => void) | null = null;
   let cancelScrollAlignWait: (() => void) | null = null;
-  let unlockVisualAnchor: (() => void) | null = null;
+  let stopScrollCompensation: (() => void) | null = null;
+  const transitionStartScrollHeight = container.scrollHeight;
 
   const finish = () => {
     if (cancelled) {
@@ -511,30 +503,54 @@ export function scheduleExpandedBookingCardScrollAlign(
     }
 
     cancelled = true;
-    cancelReadyWait?.();
-    cancelReadyWait = null;
+    cancelTransitionWait?.();
+    cancelTransitionWait = null;
     cancelScrollAlignWait?.();
     cancelScrollAlignWait = null;
-    unlockVisualAnchor?.();
-    unlockVisualAnchor = null;
+    stopScrollCompensation?.();
+    stopScrollCompensation = null;
     onComplete?.();
   };
 
-  const runScroll = () => {
-    unlockVisualAnchor?.();
-    unlockVisualAnchor = null;
+  const settleAfterTransition = () => {
+    stopScrollCompensation?.();
+    stopScrollCompensation = null;
 
-    if (cancelled || scrolled || pendingBookingRequestIdRef.current !== bookingRequestId) {
+    if (cancelled) {
       finish();
       return;
     }
 
     const cardAnchor = getCardAnchor();
 
+    if (direction === "collapse") {
+      if (prefersReducedMotion()) {
+        const maxScrollTop = Math.max(0, container.scrollHeight - container.clientHeight);
+        container.scrollTop = computeScrollTopAfterShrink(
+          container.scrollTop,
+          transitionStartScrollHeight,
+          container.scrollHeight,
+          maxScrollTop,
+        );
+      }
+
+      traceBookingCardCollapseScroll("collapse-settled", container, cardAnchor);
+      clampDmMessageScrollTop(container);
+      finish();
+      return;
+    }
+
+    if (pendingBookingRequestIdRef.current !== bookingRequestId) {
+      finish();
+      return;
+    }
+
     if (!cardAnchor) {
       finish();
       return;
     }
+
+    traceBookingCardCollapseScroll("expand-settled:before-align", container, cardAnchor);
 
     const scrollBehavior = resolveScrollBehavior();
     const cardRect = cardAnchor.getBoundingClientRect();
@@ -548,7 +564,7 @@ export function scheduleExpandedBookingCardScrollAlign(
     );
 
     if (targetScrollTop === container.scrollTop) {
-      scrolled = true;
+      traceBookingCardCollapseScroll("expand-settled:aligned", container, cardAnchor);
       finish();
       return;
     }
@@ -559,103 +575,36 @@ export function scheduleExpandedBookingCardScrollAlign(
       bookingRequestId,
       scrollBehavior,
     );
-    scrolled = true;
 
     if (scrollBehavior === "smooth") {
       cancelScrollAlignWait = waitForSmoothScrollAlign(
         container,
         targetScrollTop,
-        finish,
+        () => {
+          traceBookingCardCollapseScroll("expand-settled:aligned", container, cardAnchor);
+          finish();
+        },
       );
       return;
     }
 
+    traceBookingCardCollapseScroll("expand-settled:aligned", container, cardAnchor);
     finish();
   };
 
-  const beginVisualAnchor = () => {
+  const beginScrollCompensation = () => {
     if (cancelled) {
       return;
     }
 
-    const cardAnchor = getCardAnchor();
-
-    if (!cardAnchor) {
-      return;
-    }
-
-    unlockVisualAnchor = maintainBookingCardViewportAnchor(
-      container,
-      getCardAnchor,
-      cardAnchor.getBoundingClientRect().top,
-    );
+    stopScrollCompensation = compensateScrollDuringPanelTransition(container);
   };
 
-  cancelReadyWait = waitForExpandedBookingCardReady(getCardAnchor, runScroll);
-  requestAnimationFrame(() => {
-    requestAnimationFrame(beginVisualAnchor);
-  });
-
-  return finish;
-}
-
-/** After collapse, restore the card's visual position then clamp if needed. */
-export function scheduleCollapsedBookingCardScrollRestore(
-  container: HTMLElement,
-  getCardAnchor: () => HTMLElement | null,
-  capture: BookingCardScrollCapture | null,
-  onComplete?: () => void,
-): () => void {
-  let cancelled = false;
-  let cancelReadyWait: (() => void) | null = null;
-  let unlockVisualAnchor: (() => void) | null = null;
-  const cardAnchorAtStart = getCardAnchor();
-  const transitionAnchorTop = cardAnchorAtStart?.getBoundingClientRect().top ?? null;
-
-  if (cardAnchorAtStart && transitionAnchorTop != null) {
-    unlockVisualAnchor = maintainBookingCardViewportAnchor(
-      container,
-      getCardAnchor,
-      transitionAnchorTop,
-    );
-  }
-
-  const finish = () => {
-    if (cancelled) {
-      return;
-    }
-
-    cancelled = true;
-    cancelReadyWait?.();
-    cancelReadyWait = null;
-    unlockVisualAnchor?.();
-    unlockVisualAnchor = null;
-    onComplete?.();
-  };
-
-  const runRestore = () => {
-    if (cancelled) {
-      finish();
-      return;
-    }
-
-    const cardAnchor = getCardAnchor();
-
-    unlockVisualAnchor?.();
-    unlockVisualAnchor = null;
-
-    if (cardAnchor && capture) {
-      traceBookingCardCollapseScroll("collapse-restore:before", container, cardAnchor, capture);
-      restoreBookingCardScrollPosition(container, cardAnchor, capture);
-      traceBookingCardCollapseScroll("collapse-restore:after", container, cardAnchor, capture);
-    } else {
-      clampDmMessageScrollTop(container);
-    }
-
-    finish();
-  };
-
-  cancelReadyWait = waitForExpandedBookingCardReady(getCardAnchor, runRestore);
+  cancelTransitionWait = waitForBookingCardTransitionEnd(
+    getCardAnchor,
+    settleAfterTransition,
+  );
+  requestAnimationFrame(beginScrollCompensation);
 
   return finish;
 }
