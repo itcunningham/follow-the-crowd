@@ -14,6 +14,10 @@ import {
   shouldStartMomentumScroll,
   type TouchSample,
 } from "@/lib/dm/composerMessageListMomentumScroll";
+import {
+  isValidMessageHistoryGestureStart,
+  shouldStabilizeComposerTouchMove,
+} from "@/lib/dm/messageHistoryGestureTarget";
 import { syncMobileSoftwareKeyboardDocumentState } from "@/lib/navigation/mobileSoftwareKeyboard";
 import { getChatMaxScrollTop, CHAT_NEAR_BOTTOM_THRESHOLD_PX } from "@/lib/useChatScroll";
 
@@ -73,6 +77,7 @@ function preserveScrollPositionDuringKeyboardDismiss(
 export function useDismissComposerKeyboardOnIntentionalScroll(
   scrollRef: RefObject<HTMLElement | null>,
   composerInputRef: RefObject<HTMLInputElement | null>,
+  composerRootRef: RefObject<HTMLElement | null>,
 ): void {
   useEffect(() => {
     if (!isMobileChatViewport()) {
@@ -81,6 +86,7 @@ export function useDismissComposerKeyboardOnIntentionalScroll(
 
     const container = scrollRef.current;
     const composerInput = composerInputRef.current;
+    const composerRoot = composerRootRef.current;
 
     if (!container) {
       return;
@@ -168,7 +174,7 @@ export function useDismissComposerKeyboardOnIntentionalScroll(
       momentumFrameId = requestAnimationFrame(stepMomentumScroll);
     };
 
-    const onTouchStart = (event: TouchEvent) => {
+    const onMessageHistoryTouchStart = (event: TouchEvent) => {
       cancelMomentumScroll();
 
       if (!isComposerInputFocused(composerInputRef.current)) {
@@ -177,6 +183,13 @@ export function useDismissComposerKeyboardOnIntentionalScroll(
       }
 
       if (event.touches.length !== 1) {
+        resetTouchGesture();
+        return;
+      }
+
+      if (
+        !isValidMessageHistoryGestureStart(event.target, container, composerRoot)
+      ) {
         resetTouchGesture();
         return;
       }
@@ -194,7 +207,7 @@ export function useDismissComposerKeyboardOnIntentionalScroll(
       dismissedKeyboardForGesture = false;
     };
 
-    const onTouchMove = (event: TouchEvent) => {
+    const onMessageHistoryTouchMove = (event: TouchEvent) => {
       if (
         dismissedKeyboardForGesture ||
         activeGesture === null ||
@@ -252,7 +265,7 @@ export function useDismissComposerKeyboardOnIntentionalScroll(
       }
     };
 
-    const onTouchEnd = () => {
+    const onMessageHistoryTouchEnd = () => {
       if (
         !dismissedKeyboardForGesture &&
         activeGesture !== null &&
@@ -265,26 +278,51 @@ export function useDismissComposerKeyboardOnIntentionalScroll(
       resetTouchGesture();
     };
 
+    const onComposerTouchStart = () => {
+      cancelMomentumScroll();
+      resetTouchGesture();
+    };
+
+    const onComposerTouchMove = (event: TouchEvent) => {
+      if (!composerRoot || !isComposerInputFocused(composerInputRef.current)) {
+        return;
+      }
+
+      if (shouldStabilizeComposerTouchMove(event.target, composerRoot)) {
+        event.preventDefault();
+      }
+    };
+
     const onComposerBlur = () => {
       cancelMomentumScroll();
       resetTouchGesture();
     };
 
-    container.addEventListener("touchstart", onTouchStart, { passive: true });
-    container.addEventListener("touchmove", onTouchMove, { passive: false });
-    container.addEventListener("touchend", onTouchEnd, { passive: true });
-    container.addEventListener("touchcancel", onTouchEnd, { passive: true });
+    container.addEventListener("touchstart", onMessageHistoryTouchStart, { passive: true });
+    container.addEventListener("touchmove", onMessageHistoryTouchMove, { passive: false });
+    container.addEventListener("touchend", onMessageHistoryTouchEnd, { passive: true });
+    container.addEventListener("touchcancel", onMessageHistoryTouchEnd, { passive: true });
     composerInput?.addEventListener("blur", onComposerBlur);
+
+    if (composerRoot) {
+      composerRoot.addEventListener("touchstart", onComposerTouchStart, { passive: true });
+      composerRoot.addEventListener("touchmove", onComposerTouchMove, { passive: false });
+    }
 
     return () => {
       cancelMomentumScroll();
-      container.removeEventListener("touchstart", onTouchStart);
-      container.removeEventListener("touchmove", onTouchMove);
-      container.removeEventListener("touchend", onTouchEnd);
-      container.removeEventListener("touchcancel", onTouchEnd);
+      container.removeEventListener("touchstart", onMessageHistoryTouchStart);
+      container.removeEventListener("touchmove", onMessageHistoryTouchMove);
+      container.removeEventListener("touchend", onMessageHistoryTouchEnd);
+      container.removeEventListener("touchcancel", onMessageHistoryTouchEnd);
       composerInput?.removeEventListener("blur", onComposerBlur);
+
+      if (composerRoot) {
+        composerRoot.removeEventListener("touchstart", onComposerTouchStart);
+        composerRoot.removeEventListener("touchmove", onComposerTouchMove);
+      }
     };
-  }, [composerInputRef, scrollRef]);
+  }, [composerInputRef, composerRootRef, scrollRef]);
 }
 
 // Re-export policy constants for regression tests and documentation.

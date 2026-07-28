@@ -260,6 +260,7 @@ export default function DmChatPage() {
   const pendingBookingNotesScrollIdRef = useRef<string | null>(null);
   const bookingCardScrollCleanupRef = useRef<(() => void) | null>(null);
   const composerInputRef = useRef<HTMLInputElement>(null);
+  const composerRootRef = useRef<HTMLDivElement>(null);
   const shouldRestoreComposerFocusRef = useRef(false);
   const bookingCardScrollContextRef = useRef(new Map<string, BookingCardExpandScrollContext>());
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -296,7 +297,7 @@ export default function DmChatPage() {
     currentUserId,
     suppressAutoScrollRef,
   });
-  useDismissComposerKeyboardOnIntentionalScroll(scrollRef, composerInputRef);
+  useDismissComposerKeyboardOnIntentionalScroll(scrollRef, composerInputRef, composerRootRef);
   const { addHighlightedMessageId, isMessageHighlighted } = useChatNewMessageHighlight();
   const { highlightBookingFocus, getMessageBookingFocusPhase } = useChatBookingFocusHighlight();
 
@@ -2064,6 +2065,7 @@ export default function DmChatPage() {
           onChange={setInput}
           onSend={() => void sendMessage()}
           inputRef={composerInputRef}
+          composerRootRef={composerRootRef}
           onInputBlurWhileBusy={handleComposerInputBlurWhileBusy}
           pendingAttachmentPreviewUrl={pendingAttachment?.previewUrl ?? null}
           onStagePhoto={stagePendingPhoto}

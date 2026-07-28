@@ -43,6 +43,7 @@ export default function DmComposer({
   onChange,
   onSend,
   inputRef,
+  composerRootRef,
   onInputBlurWhileBusy,
   pendingAttachmentPreviewUrl,
   onStagePhoto,
@@ -55,6 +56,7 @@ export default function DmComposer({
   onChange: (value: string) => void;
   onSend: () => void;
   inputRef?: RefObject<HTMLInputElement | null>;
+  composerRootRef?: RefObject<HTMLDivElement | null>;
   onInputBlurWhileBusy?: () => void;
   pendingAttachmentPreviewUrl: string | null;
   onStagePhoto: (file: File) => void;
@@ -98,7 +100,10 @@ export default function DmComposer({
   }
 
   return (
-    <div className="dm-composer shrink-0 border-t border-ftc-border-subtle bg-ftc-bg px-3 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-4">
+    <div
+      ref={composerRootRef}
+      className="dm-composer shrink-0 border-t border-ftc-border-subtle bg-ftc-bg px-3 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-4"
+    >
       {hasPendingPhoto && pendingAttachmentPreviewUrl ? (
         <div className="mb-2 flex items-start gap-2">
           <div

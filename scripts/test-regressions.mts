@@ -91,6 +91,10 @@ import {
   shouldDismissComposerKeyboardAtBottom,
 } from "../lib/dm/composerKeyboardDismissPolicy";
 import {
+  isValidMessageHistoryGestureStart,
+  shouldStabilizeComposerTouchMove,
+} from "../lib/dm/messageHistoryGestureTarget";
+import {
   applyMomentumFriction,
   applyMomentumScrollStep,
   computeReleaseScrollVelocityPxPerMs,
@@ -3347,7 +3351,10 @@ function testDismissComposerKeyboardOnIntentionalScroll() {
   assert.match(hookSource, /computeReleaseScrollVelocityPxPerMs/);
   assert.match(hookSource, /startMomentumScroll/);
   assert.match(hookSource, /cancelMomentumScroll/);
-  assert.match(hookSource, /dismissedKeyboardForGesture/);
+  assert.match(hookSource, /isValidMessageHistoryGestureStart/);
+  assert.match(hookSource, /shouldStabilizeComposerTouchMove/);
+  assert.match(hookSource, /onComposerTouchStart/);
+  assert.match(hookSource, /composerRootRef/);
   assert.match(hookSource, /requestAnimationFrame\(stepMomentumScroll\)/);
   assert.match(hookSource, /shouldDismissComposerKeyboardAtBottom/);
   assert.match(hookSource, /input\.blur\(\)/);
@@ -3357,7 +3364,8 @@ function testDismissComposerKeyboardOnIntentionalScroll() {
   assert.match(hookSource, /touchmove[\s\S]*passive: false/);
   assert.doesNotMatch(hookSource, /onTouchStart[\s\S]*?input\.blur\(\)/);
   assert.doesNotMatch(hookSource, /setTimeout/);
-  assert.match(dmPageSource, /useDismissComposerKeyboardOnIntentionalScroll\(scrollRef, composerInputRef\)/);
+  assert.match(dmPageSource, /useDismissComposerKeyboardOnIntentionalScroll\(scrollRef, composerInputRef, composerRootRef\)/);
+  assert.match(dmPageSource, /composerRootRef=\{composerRootRef\}/);
 }
 
 function testComposerKeyboardDismissPolicyMath() {
@@ -3412,6 +3420,33 @@ function testComposerKeyboardDismissPolicyMath() {
     }),
     false,
   );
+}
+
+function testMessageHistoryGestureTarget() {
+  const scrollContainer = document.createElement("div");
+  const composerRoot = document.createElement("div");
+  const message = document.createElement("p");
+  const button = document.createElement("button");
+  const input = document.createElement("input");
+
+  scrollContainer.append(message, button);
+  composerRoot.append(input);
+
+  assert.equal(
+    isValidMessageHistoryGestureStart(message, scrollContainer, composerRoot),
+    true,
+  );
+  assert.equal(
+    isValidMessageHistoryGestureStart(button, scrollContainer, composerRoot),
+    false,
+  );
+  assert.equal(
+    isValidMessageHistoryGestureStart(input, scrollContainer, composerRoot),
+    false,
+  );
+  composerRoot.className = "dm-composer";
+  assert.equal(shouldStabilizeComposerTouchMove(button, composerRoot), true);
+  assert.equal(shouldStabilizeComposerTouchMove(input, composerRoot), false);
 }
 
 function testComposerMessageListMomentumScroll() {
@@ -4966,7 +5001,7 @@ function testDmComposerClearsPendingPhotoAfterSuccessfulSend() {
   assert.match(composerSource, /onPointerDown/);
   assert.match(composerSource, /preventDefault/);
   assert.match(composerSource, /onInputBlurWhileBusy/);
-  assert.match(composerSource, /inputRef/);
+  assert.match(composerSource, /composerRootRef/);
   assert.doesNotMatch(composerSource, /onPhotoSelected/);
 
   assert.match(composerSource, /className="dm-composer shrink-0/);
@@ -5190,6 +5225,7 @@ async function main() {
   testFixedChatPageDocumentReset();
   testDismissComposerKeyboardOnIntentionalScroll();
   testComposerKeyboardDismissPolicyMath();
+  testMessageHistoryGestureTarget();
   testComposerMessageListMomentumScroll();
   testDmBookingTargetScrollUsesContainerOnly();
   testDmBookingTargetCenterScrollTopMath();
