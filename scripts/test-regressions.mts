@@ -85,6 +85,11 @@ import {
 import { CHAT_NEAR_BOTTOM_THRESHOLD_PX } from "../lib/useChatScroll";
 import { computeChatMessageCenterScrollTop } from "../lib/dm/chatBookingTarget";
 import {
+  computeManualMessageListScrollTop,
+  isPinnedToNewestMessages,
+  shouldDismissComposerKeyboardAtBottom,
+} from "../lib/dm/composerKeyboardDismissPolicy";
+import {
   buildDmConversationTimestampLayout,
   classifyDmConversationMessageKind,
   DM_CHAT_MEANINGFUL_TIME_GAP_MS,
@@ -3314,31 +3319,83 @@ function testDismissComposerKeyboardOnIntentionalScroll() {
     new URL("../lib/dm/dismissComposerKeyboardOnIntentionalScroll.ts", import.meta.url),
     "utf8",
   );
+  const policySource = readFileSync(
+    new URL("../lib/dm/composerKeyboardDismissPolicy.ts", import.meta.url),
+    "utf8",
+  );
   const dmPageSource = readFileSync(
     new URL("../app/dm/[conversationId]/page.tsx", import.meta.url),
     "utf8",
   );
 
-  assert.match(hookSource, /COMPOSER_KEYBOARD_DISMISS_THRESHOLD_PX = 120/);
-  assert.match(hookSource, /COMPOSER_KEYBOARD_DISMISS_VERTICAL_DOMINANCE_RATIO = 1\.25/);
-  assert.match(hookSource, /COMPOSER_KEYBOARD_DISMISS_REVERSAL_CANCEL_PX = 24/);
-  assert.match(hookSource, /COMPOSER_KEYBOARD_DISMISS_VIEWPORT_LOWER_RATIO = 0\.55/);
-  assert.match(hookSource, /MOBILE_NAVIGATION_MEDIA_QUERY = "\(max-width: 767px\)"/);
+  assert.match(policySource, /COMPOSER_KEYBOARD_DISMISS_AT_BOTTOM_VIEWPORT_RATIO = 0\.18/);
+  assert.match(policySource, /UIScrollView\.keyboardDismissMode/);
+  assert.match(policySource, /WebKit dismisses the software keyboard as soon as a/);
+  assert.match(policySource, /computeManualMessageListScrollTop/);
+  assert.match(policySource, /shouldDismissComposerKeyboardAtBottom/);
+
+  assert.match(hookSource, /event\.preventDefault\(\)/);
+  assert.match(hookSource, /computeManualMessageListScrollTop/);
+  assert.match(hookSource, /shouldDismissComposerKeyboardAtBottom/);
   assert.match(hookSource, /input\.blur\(\)/);
   assert.match(hookSource, /syncMobileSoftwareKeyboardDocumentState/);
   assert.match(hookSource, /preserveScrollPositionDuringKeyboardDismiss/);
-  assert.match(hookSource, /isDownwardDismissIntent/);
-  assert.match(hookSource, /deltaY < 0/);
-  assert.match(hookSource, /maxDownwardDeltaY/);
-  assert.match(hookSource, /getVisibleViewportLowerBound/);
-  assert.doesNotMatch(hookSource, /scrollTowardOlderMessages/);
-  assert.doesNotMatch(hookSource, /scrollTop - container\.scrollTop/);
   assert.match(hookSource, /touchstart[\s\S]*passive: true/);
   assert.match(hookSource, /touchmove[\s\S]*passive: false/);
-  assert.match(hookSource, /onTouchStart[\s\S]*?onTouchMove/s);
   assert.doesNotMatch(hookSource, /onTouchStart[\s\S]*?input\.blur\(\)/);
-  assert.match(hookSource, /UIScrollView-style interactive keyboard tracking is not exposed/);
+  assert.doesNotMatch(hookSource, /setTimeout/);
   assert.match(dmPageSource, /useDismissComposerKeyboardOnIntentionalScroll\(scrollRef, composerInputRef\)/);
+}
+
+function testComposerKeyboardDismissPolicyMath() {
+  const container = {
+    scrollTop: 880,
+    scrollHeight: 1000,
+    clientHeight: 100,
+  } as HTMLElement;
+
+  assert.equal(isPinnedToNewestMessages(container), true);
+  assert.equal(computeManualMessageListScrollTop(880, 200, 150, 900), 830);
+  assert.equal(
+    shouldDismissComposerKeyboardAtBottom({
+      pinnedToNewest: true,
+      downwardDragAtBottomPx: 80,
+      visibleViewportHeight: 400,
+      deltaX: 0,
+      deltaY: 80,
+    }),
+    true,
+  );
+  assert.equal(
+    shouldDismissComposerKeyboardAtBottom({
+      pinnedToNewest: true,
+      downwardDragAtBottomPx: 40,
+      visibleViewportHeight: 400,
+      deltaX: 0,
+      deltaY: 40,
+    }),
+    false,
+  );
+  assert.equal(
+    shouldDismissComposerKeyboardAtBottom({
+      pinnedToNewest: false,
+      downwardDragAtBottomPx: 120,
+      visibleViewportHeight: 400,
+      deltaX: 0,
+      deltaY: 120,
+    }),
+    false,
+  );
+  assert.equal(
+    shouldDismissComposerKeyboardAtBottom({
+      pinnedToNewest: true,
+      downwardDragAtBottomPx: 120,
+      visibleViewportHeight: 400,
+      deltaX: 100,
+      deltaY: 20,
+    }),
+    false,
+  );
 }
 
 function testDmBookingTargetScrollUsesContainerOnly() {
@@ -5093,6 +5150,7 @@ async function main() {
   testMobileSoftwareKeyboardHidesBottomNavigation();
   testFixedChatPageDocumentReset();
   testDismissComposerKeyboardOnIntentionalScroll();
+  testComposerKeyboardDismissPolicyMath();
   testDmBookingTargetScrollUsesContainerOnly();
   testDmBookingTargetCenterScrollTopMath();
   testEventTitleClampLayout();

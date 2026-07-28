@@ -101,7 +101,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 - **DM message reactions (2026-07-25):** persistent `React` label removed; press-and-hold (~500ms) or right-click opens existing picker on text/image messages; desktop hover/focus-visible `+` affordance; keyboard-accessible `React to message` button; booking/system cards unchanged; DM image attachments use button open surface (not `<a>`) with scoped `-webkit-touch-callout: none` so iPhone Safari long-press opens FTC picker instead of native link preview; reaction picker no longer uses a full-screen blocking backdrop — outside tap or scroll dismisses it without trapping chat scroll
 - **Mobile bottom nav + keyboard (2026-07-21):** on viewports below `md`, text-field focus latches a keyboard session from `visualViewport` height gap; nav stays hidden while focused (including iOS scroll) until height gap shows dismissal or focus leaves; offset padding clears with the bar
 - **DM composer focus (2026-07-28):** after send, message input stays focused and keyboard remains open (standard chat UX); send button uses pointerdown focus retention; input no longer disables during send; `preventScroll: true` on refocus avoids viewport jumps; mobile focus ring follows `data-mobile-keyboard-open` so stale `:focus` after emoji-only send cannot show cyan border; `syncComposerInputFocusState` blur/refocus retries when iOS closes keyboard on clear
-- **DM keyboard dismiss on scroll (2026-07-28):** mobile threshold fallback only — true interactive keyboard tracking unavailable on iOS Safari web; dismiss requires ~120px deliberate downward drag with vertical dominance, lower-viewport reach, and upward reversal cancels; no blur on touchstart; scroll-through-messages never triggers dismiss; scroll position preserved across blur
+- **DM keyboard dismiss (2026-07-28):** Instagram-style interactive dismiss is not available on iOS Safari web — WebKit auto-dismisses on native scroll; FTC intercepts scroll while composer focused, applies manual scrollTop, and blurs only after downward pull at newest-message edge (18% visible viewport height); policy documented in `composerKeyboardDismissPolicy.ts`
 - **DM return composer layout (2026-07-28):** Event Details Back adds `bookingRequestId` + `bookingFocus=scroll-only`; booking-target scroll now uses container `scrollTop` math (same pattern as booking-card expand scroll) instead of `scrollIntoView`, which on iPhone Safari shifted the document/visual viewport and mispositioned the fixed chat shell above the bottom nav; `traceDmChatLayout()` logs mount/ready/booking-scroll geometry in dev for path comparison; document scroll lock + `h-[100dvh]` shell unchanged
 
 ## Calendar
@@ -278,7 +278,8 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
-- `bad4a4e` — fix immediate DM keyboard dismiss; require 120px downward drag
+- `179bd94` — intercept native scroll to fix premature DM keyboard dismiss on iOS
+- `81069a9` — fix immediate DM keyboard dismiss; require 120px downward drag
 - `4307ee7` — improve DM keyboard dismiss with downward-drag gesture
 - `7c3416a` — sync DM composer focus styling with keyboard session after send
 - `43bb356` — dismiss DM composer keyboard on intentional mobile scroll

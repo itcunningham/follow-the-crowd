@@ -1,29 +1,22 @@
 "use client";
 
 import { useEffect, type RefObject } from "react";
+import {
+  computeManualMessageListScrollTop,
+  nextDownwardDragAtBottomPx,
+  shouldDismissComposerKeyboardAtBottom,
+} from "@/lib/dm/composerKeyboardDismissPolicy";
 import { syncMobileSoftwareKeyboardDocumentState } from "@/lib/navigation/mobileSoftwareKeyboard";
-
-/**
- * Downward finger travel required before the keyboard may close.
- * Chosen to approximate Instagram-style deliberate dismiss on iPhone (~390px wide).
- */
-export const COMPOSER_KEYBOARD_DISMISS_THRESHOLD_PX = 120;
-
-/** Vertical movement must exceed horizontal movement by this ratio. */
-export const COMPOSER_KEYBOARD_DISMISS_VERTICAL_DOMINANCE_RATIO = 1.25;
-
-/** Upward reversal from peak downward travel cancels an in-progress dismiss gesture. */
-export const COMPOSER_KEYBOARD_DISMISS_REVERSAL_CANCEL_PX = 24;
-
-/** Finger must reach this fraction of the visible viewport height before dismiss. */
-export const COMPOSER_KEYBOARD_DISMISS_VIEWPORT_LOWER_RATIO = 0.55;
+import { getChatMaxScrollTop, CHAT_NEAR_BOTTOM_THRESHOLD_PX } from "@/lib/useChatScroll";
 
 const MOBILE_NAVIGATION_MEDIA_QUERY = "(max-width: 767px)";
 
 type ActiveGesture = {
   startX: number;
   startY: number;
-  maxDownwardDeltaY: number;
+  startScrollTop: number;
+  lastY: number;
+  downwardDragAtBottomPx: number;
 };
 
 function isMobileChatViewport(): boolean {
@@ -38,29 +31,8 @@ function isComposerInputFocused(input: HTMLInputElement | null): boolean {
   return input !== null && document.activeElement === input;
 }
 
-function getVisibleViewportLowerBound(): number {
-  const viewport = window.visualViewport;
-
-  if (!viewport) {
-    return window.innerHeight * COMPOSER_KEYBOARD_DISMISS_VIEWPORT_LOWER_RATIO;
-  }
-
-  return viewport.offsetTop + viewport.height * COMPOSER_KEYBOARD_DISMISS_VIEWPORT_LOWER_RATIO;
-}
-
-function isDownwardDismissIntent(deltaX: number, deltaY: number): boolean {
-  if (deltaY <= 0) {
-    return false;
-  }
-
-  const verticalTravel = Math.abs(deltaY);
-  const horizontalTravel = Math.abs(deltaX);
-
-  if (horizontalTravel === 0) {
-    return true;
-  }
-
-  return verticalTravel / horizontalTravel >= COMPOSER_KEYBOARD_DISMISS_VERTICAL_DOMINANCE_RATIO;
+function readVisibleViewportHeight(): number {
+  return window.visualViewport?.height ?? window.innerHeight;
 }
 
 function preserveScrollPositionDuringKeyboardDismiss(
@@ -85,18 +57,20 @@ function preserveScrollPositionDuringKeyboardDismiss(
 }
 
 /**
- * Threshold-based keyboard dismiss for mobile DM chat.
- *
- * True UIScrollView-style interactive keyboard tracking is not exposed to web pages
- * on iOS Safari or Android Chrome — the OS keyboard cannot follow the finger.
- * This hook implements a restrained fallback: no blur on touchstart, no dismiss on
- * taps or small movement, no dismiss on upward drag or ordinary message scrolling.
+ * While the mobile composer is focused, intercept native message-list scrolling so
+ * WebKit cannot auto-dismiss the keyboard on the first touchmove. Manual scroll keeps
+ * the keyboard open; blur() runs only after a deliberate downward pull at the newest
+ * message edge (see composerKeyboardDismissPolicy.ts).
  */
 export function useDismissComposerKeyboardOnIntentionalScroll(
   scrollRef: RefObject<HTMLElement | null>,
   composerInputRef: RefObject<HTMLInputElement | null>,
 ): void {
   useEffect(() => {
+    if (!isMobileChatViewport()) {
+      return;
+    }
+
     const container = scrollRef.current;
 
     if (!container) {
@@ -125,7 +99,7 @@ export function useDismissComposerKeyboardOnIntentionalScroll(
     };
 
     const onTouchStart = (event: TouchEvent) => {
-      if (!isMobileChatViewport() || !isComposerInputFocused(composerInputRef.current)) {
+      if (!isComposerInputFocused(composerInputRef.current)) {
         resetTouchGesture();
         return;
       }
@@ -136,10 +110,13 @@ export function useDismissComposerKeyboardOnIntentionalScroll(
       }
 
       const touch = event.touches[0];
+
       activeGesture = {
         startX: touch.clientX,
         startY: touch.clientY,
-        maxDownwardDeltaY: 0,
+        startScrollTop: container.scrollTop,
+        lastY: touch.clientY,
+        downwardDragAtBottomPx: 0,
       };
       dismissedForGesture = false;
     };
@@ -154,42 +131,44 @@ export function useDismissComposerKeyboardOnIntentionalScroll(
         return;
       }
 
+      event.preventDefault();
+
       const touch = event.touches[0];
       const deltaX = touch.clientX - activeGesture.startX;
       const deltaY = touch.clientY - activeGesture.startY;
+      const maxScrollTop = getChatMaxScrollTop(container);
 
-      if (deltaY < 0) {
-        return;
-      }
+      container.scrollTop = computeManualMessageListScrollTop(
+        activeGesture.startScrollTop,
+        activeGesture.startY,
+        touch.clientY,
+        maxScrollTop,
+      );
 
-      if (!isDownwardDismissIntent(deltaX, deltaY)) {
-        return;
-      }
+      const pinnedToNewest = maxScrollTop - container.scrollTop <= CHAT_NEAR_BOTTOM_THRESHOLD_PX;
 
-      if (deltaY > activeGesture.maxDownwardDeltaY) {
-        activeGesture.maxDownwardDeltaY = deltaY;
-      } else if (
-        activeGesture.maxDownwardDeltaY - deltaY >= COMPOSER_KEYBOARD_DISMISS_REVERSAL_CANCEL_PX
+      activeGesture.downwardDragAtBottomPx = nextDownwardDragAtBottomPx(
+        activeGesture.downwardDragAtBottomPx,
+        pinnedToNewest,
+        deltaY,
+        activeGesture.lastY,
+        touch.clientY,
+      );
+      activeGesture.lastY = touch.clientY;
+
+      if (
+        shouldDismissComposerKeyboardAtBottom({
+          pinnedToNewest,
+          downwardDragAtBottomPx: activeGesture.downwardDragAtBottomPx,
+          visibleViewportHeight: readVisibleViewportHeight(),
+          deltaX,
+          deltaY,
+        })
       ) {
-        resetTouchGesture();
-        return;
+        dismissedForGesture = true;
+        activeGesture = null;
+        dismissComposerKeyboard();
       }
-
-      const peakDownwardDeltaY = activeGesture.maxDownwardDeltaY;
-
-      if (peakDownwardDeltaY < COMPOSER_KEYBOARD_DISMISS_THRESHOLD_PX) {
-        event.preventDefault();
-        return;
-      }
-
-      if (touch.clientY < getVisibleViewportLowerBound()) {
-        event.preventDefault();
-        return;
-      }
-
-      dismissedForGesture = true;
-      activeGesture = null;
-      dismissComposerKeyboard();
     };
 
     container.addEventListener("touchstart", onTouchStart, { passive: true });
@@ -205,3 +184,9 @@ export function useDismissComposerKeyboardOnIntentionalScroll(
     };
   }, [composerInputRef, scrollRef]);
 }
+
+// Re-export policy constants for regression tests and documentation.
+export {
+  COMPOSER_KEYBOARD_DISMISS_AT_BOTTOM_VIEWPORT_RATIO,
+  COMPOSER_KEYBOARD_DISMISS_VERTICAL_DOMINANCE_RATIO,
+} from "@/lib/dm/composerKeyboardDismissPolicy";
