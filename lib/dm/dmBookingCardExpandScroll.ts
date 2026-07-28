@@ -105,41 +105,42 @@ export function clampDmMessageScrollTop(container: HTMLElement): void {
   }
 }
 
-/** Hold scrollTop steady while collapse layout changes run. */
-export function lockDmMessageScrollTop(
+/** Keep the booking card at a stable viewport Y while accordion height animates. */
+export function maintainBookingCardViewportAnchor(
   container: HTMLElement,
-  lockedScrollTop: number,
+  getCardAnchor: () => HTMLElement | null,
+  targetAnchorTop: number,
 ): () => void {
-  let active = true;
+  if (prefersReducedMotion()) {
+    return () => {};
+  }
 
-  const enforce = () => {
+  let active = true;
+  let frameId = 0;
+
+  const tick = () => {
     if (!active) {
       return;
     }
 
-    if (container.scrollTop !== lockedScrollTop) {
-      container.scrollTop = lockedScrollTop;
+    const cardAnchor = getCardAnchor();
+
+    if (cardAnchor) {
+      const delta = cardAnchor.getBoundingClientRect().top - targetAnchorTop;
+
+      if (Math.abs(delta) >= 0.5) {
+        container.scrollTop += delta;
+        clampDmMessageScrollTop(container);
+      }
     }
+
+    frameId = requestAnimationFrame(tick);
   };
 
-  enforce();
-  container.addEventListener("scroll", enforce);
-
-  let frameId = 0;
-
-  const loop = () => {
-    enforce();
-
-    if (active) {
-      frameId = requestAnimationFrame(loop);
-    }
-  };
-
-  frameId = requestAnimationFrame(loop);
+  frameId = requestAnimationFrame(tick);
 
   return () => {
     active = false;
-    container.removeEventListener("scroll", enforce);
     cancelAnimationFrame(frameId);
   };
 }
@@ -502,6 +503,7 @@ export function scheduleExpandedBookingCardScrollAlign(
   let scrolled = false;
   let cancelReadyWait: (() => void) | null = null;
   let cancelScrollAlignWait: (() => void) | null = null;
+  let unlockVisualAnchor: (() => void) | null = null;
 
   const finish = () => {
     if (cancelled) {
@@ -513,10 +515,15 @@ export function scheduleExpandedBookingCardScrollAlign(
     cancelReadyWait = null;
     cancelScrollAlignWait?.();
     cancelScrollAlignWait = null;
+    unlockVisualAnchor?.();
+    unlockVisualAnchor = null;
     onComplete?.();
   };
 
   const runScroll = () => {
+    unlockVisualAnchor?.();
+    unlockVisualAnchor = null;
+
     if (cancelled || scrolled || pendingBookingRequestIdRef.current !== bookingRequestId) {
       finish();
       return;
@@ -566,7 +573,28 @@ export function scheduleExpandedBookingCardScrollAlign(
     finish();
   };
 
+  const beginVisualAnchor = () => {
+    if (cancelled) {
+      return;
+    }
+
+    const cardAnchor = getCardAnchor();
+
+    if (!cardAnchor) {
+      return;
+    }
+
+    unlockVisualAnchor = maintainBookingCardViewportAnchor(
+      container,
+      getCardAnchor,
+      cardAnchor.getBoundingClientRect().top,
+    );
+  };
+
   cancelReadyWait = waitForExpandedBookingCardReady(getCardAnchor, runScroll);
+  requestAnimationFrame(() => {
+    requestAnimationFrame(beginVisualAnchor);
+  });
 
   return finish;
 }
@@ -579,11 +607,18 @@ export function scheduleCollapsedBookingCardScrollRestore(
   onComplete?: () => void,
 ): () => void {
   let cancelled = false;
-  let unlockScroll: (() => void) | null = lockDmMessageScrollTop(
-    container,
-    capture?.scrollTop ?? container.scrollTop,
-  );
   let cancelReadyWait: (() => void) | null = null;
+  let unlockVisualAnchor: (() => void) | null = null;
+  const cardAnchorAtStart = getCardAnchor();
+  const transitionAnchorTop = cardAnchorAtStart?.getBoundingClientRect().top ?? null;
+
+  if (cardAnchorAtStart && transitionAnchorTop != null) {
+    unlockVisualAnchor = maintainBookingCardViewportAnchor(
+      container,
+      getCardAnchor,
+      transitionAnchorTop,
+    );
+  }
 
   const finish = () => {
     if (cancelled) {
@@ -593,8 +628,8 @@ export function scheduleCollapsedBookingCardScrollRestore(
     cancelled = true;
     cancelReadyWait?.();
     cancelReadyWait = null;
-    unlockScroll?.();
-    unlockScroll = null;
+    unlockVisualAnchor?.();
+    unlockVisualAnchor = null;
     onComplete?.();
   };
 
@@ -606,8 +641,8 @@ export function scheduleCollapsedBookingCardScrollRestore(
 
     const cardAnchor = getCardAnchor();
 
-    unlockScroll?.();
-    unlockScroll = null;
+    unlockVisualAnchor?.();
+    unlockVisualAnchor = null;
 
     if (cardAnchor && capture) {
       traceBookingCardCollapseScroll("collapse-restore:before", container, cardAnchor, capture);

@@ -603,8 +603,9 @@ function testDmBookingCardExpandCollapseScrollAnchor() {
   assert.doesNotMatch(pageSource, /flushSync/);
   assert.doesNotMatch(pageSource, /bookingCardExpandAlignGuardRef/);
   assert.doesNotMatch(pageSource, /dmBookingExpandScrollGuard/);
-  assert.match(expandScrollSource, /lockDmMessageScrollTop/);
+  assert.match(expandScrollSource, /maintainBookingCardViewportAnchor/);
   assert.match(expandScrollSource, /computeBookingCardAlignScrollTop/);
+  assert.doesNotMatch(expandScrollSource, /lockDmMessageScrollTop/);
   assert.doesNotMatch(expandScrollSource, /scrollIntoView/);
   assert.match(scrollSource, /getAppendedMessageIds/);
   assert.match(scrollSource, /getChatMaxScrollTop/);
