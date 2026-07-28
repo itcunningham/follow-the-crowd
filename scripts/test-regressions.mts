@@ -3309,6 +3309,27 @@ function testFixedChatPageDocumentReset() {
   assert.doesNotMatch(eventDetailSource, /router\.push\(eventsBackHref, \{ scroll: false \}\)/);
 }
 
+function testDismissComposerKeyboardOnIntentionalScroll() {
+  const hookSource = readFileSync(
+    new URL("../lib/dm/dismissComposerKeyboardOnIntentionalScroll.ts", import.meta.url),
+    "utf8",
+  );
+  const dmPageSource = readFileSync(
+    new URL("../app/dm/[conversationId]/page.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(hookSource, /COMPOSER_KEYBOARD_DISMISS_SCROLL_THRESHOLD_PX = 10/);
+  assert.match(hookSource, /MOBILE_NAVIGATION_MEDIA_QUERY = "\(max-width: 767px\)"/);
+  assert.match(hookSource, /input\.blur\(\)/);
+  assert.match(hookSource, /syncMobileSoftwareKeyboardDocumentState/);
+  assert.match(hookSource, /touchstart[\s\S]*passive: true/);
+  assert.match(hookSource, /touchmove[\s\S]*passive: true/);
+  assert.match(hookSource, /deltaY >= COMPOSER_KEYBOARD_DISMISS_SCROLL_THRESHOLD_PX/);
+  assert.doesNotMatch(hookSource, /scrollTop\s*=/);
+  assert.match(dmPageSource, /useDismissComposerKeyboardOnIntentionalScroll\(scrollRef, composerInputRef\)/);
+}
+
 function testDmBookingTargetScrollUsesContainerOnly() {
   const bookingTargetSource = readFileSync(
     new URL("../lib/dm/chatBookingTarget.ts", import.meta.url),
@@ -5043,6 +5064,7 @@ async function main() {
   testEventDetailMobileNavContentOffset();
   testMobileSoftwareKeyboardHidesBottomNavigation();
   testFixedChatPageDocumentReset();
+  testDismissComposerKeyboardOnIntentionalScroll();
   testDmBookingTargetScrollUsesContainerOnly();
   testDmBookingTargetCenterScrollTopMath();
   testEventTitleClampLayout();

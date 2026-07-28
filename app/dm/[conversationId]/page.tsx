@@ -74,6 +74,7 @@ import {
   revokePendingComposerAttachment,
   type PendingComposerAttachment,
 } from "@/lib/dm/composerPendingAttachment";
+import { useDismissComposerKeyboardOnIntentionalScroll } from "@/lib/dm/dismissComposerKeyboardOnIntentionalScroll";
 import {
   groupDmReactionsByMessageId,
   listDmReactionsForConversation,
@@ -294,6 +295,7 @@ export default function DmChatPage() {
     currentUserId,
     suppressAutoScrollRef,
   });
+  useDismissComposerKeyboardOnIntentionalScroll(scrollRef, composerInputRef);
   const { addHighlightedMessageId, isMessageHighlighted } = useChatNewMessageHighlight();
   const { highlightBookingFocus, getMessageBookingFocusPhase } = useChatBookingFocusHighlight();
 
