@@ -91,11 +91,14 @@ export default function DmTextMessageBubble({
   const highlightClass = getChatNewMessageHighlightClass(isHighlighted);
   const attachmentOnly = hasAttachments && !hasText;
   const formattedTime = formatTime(createdAt);
+  const rowMaxWidthClass = isOwnMessage
+    ? "max-w-[85%] sm:max-w-[72%]"
+    : "max-w-[88%] sm:max-w-[78%]";
   const bubbleShellClass = attachmentOnly
     ? "overflow-hidden [touch-action:pan-y]"
     : `overflow-hidden [touch-action:pan-y] ${
         isOwnMessage
-          ? `ftc-bubble-own ${hasAttachments ? "p-1" : "px-4 py-2.5"}`
+          ? `ftc-bubble-own ${hasAttachments ? "p-1" : "px-3.5 py-2"}`
           : `ftc-bubble-other ${hasAttachments ? "p-1" : "px-4 py-2.5"}`
       }`;
 
@@ -105,7 +108,7 @@ export default function DmTextMessageBubble({
       data-chat-message-id={messageId}
     >
       <div
-        className={`flex max-w-[88%] items-end gap-2 sm:max-w-[78%] ${
+        className={`flex ${rowMaxWidthClass} items-end gap-2 ${
           isOwnMessage ? "flex-row-reverse" : "flex-row"
         }`}
       >
@@ -172,7 +175,7 @@ export default function DmTextMessageBubble({
 
           <time
             dateTime={createdAt}
-            className={`-mt-1 block px-1 text-[10px] text-ftc-text-muted ${
+            className={`${isOwnMessage ? "mt-0.5" : "-mt-1"} block px-1 text-[10px] text-ftc-text-muted ${
               isOwnMessage ? "text-right" : "text-left"
             } ${showTimestamp ? "" : "sr-only"}`}
           >

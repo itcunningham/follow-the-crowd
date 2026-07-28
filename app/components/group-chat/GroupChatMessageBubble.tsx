@@ -29,6 +29,9 @@ export default function GroupChatMessageBubble({
   showSenderName?: boolean;
 }) {
   const highlightClass = getChatNewMessageHighlightClass(isHighlighted);
+  const rowMaxWidthClass = isOwnMessage
+    ? "max-w-[85%] sm:max-w-[72%]"
+    : "max-w-[88%] sm:max-w-[78%]";
 
   return (
     <li
@@ -36,7 +39,7 @@ export default function GroupChatMessageBubble({
       className={`flex ${isOwnMessage ? "justify-end" : "justify-start"}`}
     >
       <div
-        className={`flex max-w-[88%] items-end gap-2 sm:max-w-[78%] ${
+        className={`flex ${rowMaxWidthClass} items-end gap-2 ${
           isOwnMessage ? "flex-row-reverse" : "flex-row"
         }`}
       >
@@ -59,7 +62,7 @@ export default function GroupChatMessageBubble({
           <div className={`relative max-w-full ${highlightClass}`}>
             <div
               className={
-                isOwnMessage ? "ftc-bubble-own px-4 py-2.5" : "ftc-bubble-other px-4 py-2.5"
+                isOwnMessage ? "ftc-bubble-own px-3.5 py-2" : "ftc-bubble-other px-4 py-2.5"
               }
             >
               <p className="text-[15px] leading-relaxed whitespace-pre-wrap break-words">{text}</p>
@@ -68,7 +71,7 @@ export default function GroupChatMessageBubble({
 
           <time
             dateTime={createdAt}
-            className={`mt-1 block px-1 text-[10px] text-ftc-text-muted ${
+            className={`${isOwnMessage ? "mt-0.5" : "mt-1"} block px-1 text-[10px] text-ftc-text-muted ${
               isOwnMessage ? "text-right" : "text-left"
             }`}
           >
