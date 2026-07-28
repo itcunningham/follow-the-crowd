@@ -6,6 +6,14 @@ import {
   nextDownwardDragAtBottomPx,
   shouldDismissComposerKeyboardAtBottom,
 } from "@/lib/dm/composerKeyboardDismissPolicy";
+import {
+  appendTouchSample,
+  applyMomentumFriction,
+  applyMomentumScrollStep,
+  computeReleaseScrollVelocityPxPerMs,
+  shouldStartMomentumScroll,
+  type TouchSample,
+} from "@/lib/dm/composerMessageListMomentumScroll";
 import { syncMobileSoftwareKeyboardDocumentState } from "@/lib/navigation/mobileSoftwareKeyboard";
 import { getChatMaxScrollTop, CHAT_NEAR_BOTTOM_THRESHOLD_PX } from "@/lib/useChatScroll";
 
@@ -16,6 +24,7 @@ type ActiveGesture = {
   startY: number;
   lastY: number;
   downwardDragAtBottomPx: number;
+  samples: TouchSample[];
 };
 
 function isMobileChatViewport(): boolean {
@@ -71,13 +80,27 @@ export function useDismissComposerKeyboardOnIntentionalScroll(
     }
 
     const container = scrollRef.current;
+    const composerInput = composerInputRef.current;
 
     if (!container) {
       return;
     }
 
     let activeGesture: ActiveGesture | null = null;
-    let dismissedForGesture = false;
+    let dismissedKeyboardForGesture = false;
+    let momentumFrameId: number | null = null;
+    let momentumVelocityPxPerMs = 0;
+    let momentumLastFrameTime = 0;
+
+    const cancelMomentumScroll = () => {
+      if (momentumFrameId !== null) {
+        cancelAnimationFrame(momentumFrameId);
+        momentumFrameId = null;
+      }
+
+      momentumVelocityPxPerMs = 0;
+      momentumLastFrameTime = 0;
+    };
 
     const dismissComposerKeyboard = () => {
       const input = composerInputRef.current;
@@ -85,6 +108,8 @@ export function useDismissComposerKeyboardOnIntentionalScroll(
       if (!input || !isComposerInputFocused(input)) {
         return;
       }
+
+      cancelMomentumScroll();
 
       preserveScrollPositionDuringKeyboardDismiss(container, () => {
         input.blur();
@@ -94,10 +119,58 @@ export function useDismissComposerKeyboardOnIntentionalScroll(
 
     const resetTouchGesture = () => {
       activeGesture = null;
-      dismissedForGesture = false;
+      dismissedKeyboardForGesture = false;
+    };
+
+    const stepMomentumScroll = (frameTime: number) => {
+      if (!isComposerInputFocused(composerInputRef.current)) {
+        cancelMomentumScroll();
+        return;
+      }
+
+      if (momentumLastFrameTime === 0) {
+        momentumLastFrameTime = frameTime;
+        momentumFrameId = requestAnimationFrame(stepMomentumScroll);
+        return;
+      }
+
+      const frameDeltaMs = Math.min(32, frameTime - momentumLastFrameTime);
+      momentumLastFrameTime = frameTime;
+
+      const maxScrollTop = getChatMaxScrollTop(container);
+      const nextVelocity = applyMomentumFriction(momentumVelocityPxPerMs, frameDeltaMs);
+      const nextStep = applyMomentumScrollStep({
+        scrollTop: container.scrollTop,
+        velocityPxPerMs: nextVelocity,
+        frameDeltaMs,
+        maxScrollTop,
+      });
+
+      container.scrollTop = nextStep.scrollTop;
+      momentumVelocityPxPerMs = nextStep.velocityPxPerMs;
+
+      if (momentumVelocityPxPerMs === 0) {
+        cancelMomentumScroll();
+        return;
+      }
+
+      momentumFrameId = requestAnimationFrame(stepMomentumScroll);
+    };
+
+    const startMomentumScroll = (releaseVelocityPxPerMs: number) => {
+      if (!shouldStartMomentumScroll(releaseVelocityPxPerMs)) {
+        return;
+      }
+
+      cancelMomentumScroll();
+      momentumVelocityPxPerMs = releaseVelocityPxPerMs;
+      momentumLastFrameTime = 0;
+      momentumFrameId = requestAnimationFrame(stepMomentumScroll);
     };
 
     const onTouchStart = (event: TouchEvent) => {
+      cancelMomentumScroll();
+
       if (!isComposerInputFocused(composerInputRef.current)) {
         resetTouchGesture();
         return;
@@ -109,19 +182,21 @@ export function useDismissComposerKeyboardOnIntentionalScroll(
       }
 
       const touch = event.touches[0];
+      const time = event.timeStamp;
 
       activeGesture = {
         startX: touch.clientX,
         startY: touch.clientY,
         lastY: touch.clientY,
         downwardDragAtBottomPx: 0,
+        samples: appendTouchSample([], touch.clientY, time),
       };
-      dismissedForGesture = false;
+      dismissedKeyboardForGesture = false;
     };
 
     const onTouchMove = (event: TouchEvent) => {
       if (
-        dismissedForGesture ||
+        dismissedKeyboardForGesture ||
         activeGesture === null ||
         event.touches.length !== 1 ||
         !isComposerInputFocused(composerInputRef.current)
@@ -145,6 +220,12 @@ export function useDismissComposerKeyboardOnIntentionalScroll(
         maxScrollTop,
       );
 
+      activeGesture.samples = appendTouchSample(
+        activeGesture.samples,
+        currentY,
+        event.timeStamp,
+      );
+
       const pinnedToNewest = maxScrollTop - container.scrollTop <= CHAT_NEAR_BOTTOM_THRESHOLD_PX;
 
       activeGesture.downwardDragAtBottomPx = nextDownwardDragAtBottomPx(
@@ -165,22 +246,43 @@ export function useDismissComposerKeyboardOnIntentionalScroll(
           deltaY,
         })
       ) {
-        dismissedForGesture = true;
+        dismissedKeyboardForGesture = true;
         activeGesture = null;
         dismissComposerKeyboard();
       }
     };
 
+    const onTouchEnd = () => {
+      if (
+        !dismissedKeyboardForGesture &&
+        activeGesture !== null &&
+        isComposerInputFocused(composerInputRef.current)
+      ) {
+        const releaseVelocity = computeReleaseScrollVelocityPxPerMs(activeGesture.samples);
+        startMomentumScroll(releaseVelocity);
+      }
+
+      resetTouchGesture();
+    };
+
+    const onComposerBlur = () => {
+      cancelMomentumScroll();
+      resetTouchGesture();
+    };
+
     container.addEventListener("touchstart", onTouchStart, { passive: true });
     container.addEventListener("touchmove", onTouchMove, { passive: false });
-    container.addEventListener("touchend", resetTouchGesture, { passive: true });
-    container.addEventListener("touchcancel", resetTouchGesture, { passive: true });
+    container.addEventListener("touchend", onTouchEnd, { passive: true });
+    container.addEventListener("touchcancel", onTouchEnd, { passive: true });
+    composerInput?.addEventListener("blur", onComposerBlur);
 
     return () => {
+      cancelMomentumScroll();
       container.removeEventListener("touchstart", onTouchStart);
       container.removeEventListener("touchmove", onTouchMove);
-      container.removeEventListener("touchend", resetTouchGesture);
-      container.removeEventListener("touchcancel", resetTouchGesture);
+      container.removeEventListener("touchend", onTouchEnd);
+      container.removeEventListener("touchcancel", onTouchEnd);
+      composerInput?.removeEventListener("blur", onComposerBlur);
     };
   }, [composerInputRef, scrollRef]);
 }

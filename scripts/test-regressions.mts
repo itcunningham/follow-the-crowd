@@ -91,6 +91,12 @@ import {
   shouldDismissComposerKeyboardAtBottom,
 } from "../lib/dm/composerKeyboardDismissPolicy";
 import {
+  applyMomentumFriction,
+  applyMomentumScrollStep,
+  computeReleaseScrollVelocityPxPerMs,
+  shouldStartMomentumScroll,
+} from "../lib/dm/composerMessageListMomentumScroll";
+import {
   buildDmConversationTimestampLayout,
   classifyDmConversationMessageKind,
   DM_CHAT_MEANINGFUL_TIME_GAP_MS,
@@ -3337,6 +3343,12 @@ function testDismissComposerKeyboardOnIntentionalScroll() {
 
   assert.match(hookSource, /event\.preventDefault\(\)/);
   assert.match(hookSource, /applyManualMessageListScrollDelta/);
+  assert.match(hookSource, /appendTouchSample/);
+  assert.match(hookSource, /computeReleaseScrollVelocityPxPerMs/);
+  assert.match(hookSource, /startMomentumScroll/);
+  assert.match(hookSource, /cancelMomentumScroll/);
+  assert.match(hookSource, /dismissedKeyboardForGesture/);
+  assert.match(hookSource, /requestAnimationFrame\(stepMomentumScroll\)/);
   assert.match(hookSource, /shouldDismissComposerKeyboardAtBottom/);
   assert.match(hookSource, /input\.blur\(\)/);
   assert.match(hookSource, /syncMobileSoftwareKeyboardDocumentState/);
@@ -3400,6 +3412,29 @@ function testComposerKeyboardDismissPolicyMath() {
     }),
     false,
   );
+}
+
+function testComposerMessageListMomentumScroll() {
+  const samples = [
+    { y: 300, time: 0 },
+    { y: 250, time: 50 },
+  ];
+
+  assert.equal(computeReleaseScrollVelocityPxPerMs(samples), 1);
+  assert.equal(shouldStartMomentumScroll(1), true);
+  assert.equal(shouldStartMomentumScroll(0.05), false);
+
+  const frictionStep = applyMomentumFriction(1, 16);
+  assert.ok(frictionStep > 0 && frictionStep < 1);
+
+  const boundaryStep = applyMomentumScrollStep({
+    scrollTop: 895,
+    velocityPxPerMs: 2,
+    frameDeltaMs: 16,
+    maxScrollTop: 900,
+  });
+  assert.equal(boundaryStep.scrollTop, 900);
+  assert.equal(boundaryStep.velocityPxPerMs, 0);
 }
 
 function testDmBookingTargetScrollUsesContainerOnly() {
@@ -5155,6 +5190,7 @@ async function main() {
   testFixedChatPageDocumentReset();
   testDismissComposerKeyboardOnIntentionalScroll();
   testComposerKeyboardDismissPolicyMath();
+  testComposerMessageListMomentumScroll();
   testDmBookingTargetScrollUsesContainerOnly();
   testDmBookingTargetCenterScrollTopMath();
   testEventTitleClampLayout();
