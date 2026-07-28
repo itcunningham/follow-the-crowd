@@ -278,7 +278,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
-- `179bd94` — intercept native scroll to fix premature DM keyboard dismiss on iOS
+- `dcf183d` — intercept native scroll to fix premature DM keyboard dismiss on iOS
 - `81069a9` — fix immediate DM keyboard dismiss; require 120px downward drag
 - `4307ee7` — improve DM keyboard dismiss with downward-drag gesture
 - `7c3416a` — sync DM composer focus styling with keyboard session after send
