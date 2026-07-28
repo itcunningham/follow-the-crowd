@@ -147,7 +147,7 @@ export default function SendBookingRequestsPanel({
       />
 
       {draft.loadingDjs ? (
-        <p className="text-sm text-ftc-text-muted">Loading DJs...</p>
+        <p className="text-sm text-ftc-text-muted">Loading DJs</p>
       ) : draft.filteredDjs.length === 0 ? (
         <PlannerEmptyPanel message="No available DJs to invite." />
       ) : (

@@ -2044,7 +2044,7 @@ function BookingsPageContent() {
                   </p>
 
                   {loadingDjs ? (
-                    <p className="text-sm text-ftc-text-muted">Loading DJs...</p>
+                    <p className="text-sm text-ftc-text-muted">Loading DJs</p>
                   ) : filteredDjs.length === 0 ? (
                     <p className="text-sm text-ftc-text-muted">No DJs match your search</p>
                   ) : (
