@@ -48,7 +48,7 @@ export function isDmMessageNearBottom(
   return getDmMessageDistanceFromBottom(container) <= thresholdPx;
 }
 
-/** Capture scroll mode before opening booking details. */
+/** Capture collapse-restore mode before opening booking details. Expand uses header align instead. */
 export function captureBookingCardExpandScrollContext(
   container: HTMLElement,
   cardAnchor: HTMLElement,
@@ -572,14 +572,22 @@ function waitForSmoothScrollAlign(
   };
 }
 
-/** Adjust scrollTop during the accordion transition according to the captured scroll mode. */
+/** Adjust scrollTop during the accordion transition (collapse-only for bottom-pinned). */
 function compensateScrollDuringPanelTransition(
   container: HTMLElement,
   scrollContext: BookingCardExpandScrollContext,
+  direction: BookingCardExpandScrollDirection,
   traceTransitionWrites: boolean,
   getCardAnchor: () => HTMLElement | null,
 ): () => void {
   if (prefersReducedMotion()) {
+    return () => {};
+  }
+
+  const useBottomPinned = direction === "collapse" && scrollContext.mode === "bottom-pinned";
+  const useAnchorPreservation = scrollContext.mode === "anchor-preservation";
+
+  if (!useBottomPinned && !useAnchorPreservation) {
     return () => {};
   }
 
@@ -591,7 +599,7 @@ function compensateScrollDuringPanelTransition(
       return;
     }
 
-    if (scrollContext.mode === "bottom-pinned") {
+    if (useBottomPinned) {
       const targetScrollTop = computePinnedBottomScrollTop(
         container.scrollHeight,
         container.clientHeight,
@@ -605,7 +613,7 @@ function compensateScrollDuringPanelTransition(
         traceTransitionWrites,
         getCardAnchor,
       );
-    } else {
+    } else if (useAnchorPreservation) {
       const cardAnchor = getCardAnchor();
 
       if (cardAnchor) {
@@ -723,25 +731,6 @@ export function scheduleBookingCardExpandScrollTransition(
       return;
     }
 
-    if (scrollContext?.mode === "bottom-pinned") {
-      const targetScrollTop = computePinnedBottomScrollTop(
-        container.scrollHeight,
-        container.clientHeight,
-        scrollContext.pinnedDistanceFromBottom,
-      );
-
-      writeDmMessageScrollTop(
-        container,
-        targetScrollTop,
-        "expand:bottom-pinned-settle",
-        traceTransitionWrites,
-        getCardAnchor,
-      );
-      traceBookingCardCollapseScroll("expand-settled:bottom-pinned", container, cardAnchor, undefined, scrollContext);
-      finish();
-      return;
-    }
-
     if (pendingBookingRequestIdRef.current !== bookingRequestId) {
       finish();
       return;
@@ -804,6 +793,7 @@ export function scheduleBookingCardExpandScrollTransition(
     stopScrollCompensation = compensateScrollDuringPanelTransition(
       container,
       scrollContext,
+      direction,
       traceTransitionWrites,
       getCardAnchor,
     );

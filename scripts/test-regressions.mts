@@ -600,9 +600,9 @@ function testDmBookingCardExpandCollapseScrollAnchor() {
   assert.match(expandScrollSource, /anchor-preservation/);
   assert.match(expandScrollSource, /computePinnedBottomScrollTop/);
   assert.match(expandScrollSource, /CHAT_NEAR_BOTTOM_THRESHOLD_PX/);
-  assert.match(expandScrollSource, /transition:bottom-pinned/);
-  assert.match(expandScrollSource, /transition:anchor-preservation/);
-  assert.match(expandScrollSource, /collapse:bottom-pinned-settle/);
+  assert.doesNotMatch(expandScrollSource, /expand:bottom-pinned-settle/);
+  assert.match(expandScrollSource, /expand-settled:before-align/);
+  assert.match(expandScrollSource, /direction === "collapse" && scrollContext\.mode === "bottom-pinned"/);
   assert.match(expandScrollSource, /scheduleBookingCardExpandScrollTransition/);
   assert.match(expandScrollSource, /computeBookingCardAlignScrollTop/);
   assert.doesNotMatch(expandScrollSource, /maintainBookingCardViewportAnchor/);
