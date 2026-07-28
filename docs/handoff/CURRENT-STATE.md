@@ -275,6 +275,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `c53d7a2` — fix persistent DM composer return offset (document scroll lock + 100dvh shell)
 - `087b261` — fix DM return composer position and placeholder (superseded by document scroll lock)
 - `74aab82` — final DM booking negotiation polish (timeline suppression + muted hierarchy)
 - `743ea18` — add first-time helper behaviour to propose rate modal
