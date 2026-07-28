@@ -4833,6 +4833,7 @@ function testDmComposerClearsPendingPhotoAfterSuccessfulSend() {
   assert.match(composerSource, /onClearPendingPhoto/);
   assert.match(composerSource, /pendingAttachmentPreviewUrl/);
   assert.match(composerSource, /disabled=\{busy \|\| !canSend\}/);
+  assert.doesNotMatch(composerSource, /text-xs font-bold">…/);
   assert.doesNotMatch(composerSource, /placeholder="Message"[\s\S]*disabled=\{busy\}/);
   assert.match(composerSource, /onPointerDown/);
   assert.match(composerSource, /preventDefault/);
