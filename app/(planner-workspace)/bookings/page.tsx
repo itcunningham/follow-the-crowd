@@ -31,9 +31,7 @@ import { BookingDateField, BookingSetTimeRangeField } from "@/app/components/Boo
 import {
   applyEventDateFieldChange,
   formatDisplayEventDate,
-  getEventDateValidationError,
-  getEventSetTimeValidationError,
-  isEventStartSaveBlocked,
+  getTodayDateKey,
 } from "@/lib/bookingDateTime";
 import EventDjSendOfferControls, {
   createDefaultDjSendOffer,
@@ -52,8 +50,8 @@ import { prependEventToEventsListCache } from "@/lib/events/eventsListCache";
 import { clearPlannerCalendarItemsCache } from "@/lib/plannerCalendarItemsCache";
 import { getEventNotesValidationError, MAX_EVENT_NOTES_LENGTH } from "@/lib/events/eventNotes";
 import {
-  getEventNameVenueFieldErrors,
-  hasEventNameVenueFieldErrors,
+  getEventFormFieldErrors,
+  hasEventFormFieldErrors,
   MAX_EVENT_NAME_LENGTH,
   MAX_EVENT_VENUE_LENGTH,
 } from "@/lib/events/eventFormFieldValidation";
@@ -426,6 +424,7 @@ function BookingsPageContent() {
   >(() => initialGigsListState.eventArtworkById);
   const [createOpen, setCreateOpen] = useState(false);
   const [createStep, setCreateStep] = useState<CreateStep>("source");
+  const [detailsContinueAttempted, setDetailsContinueAttempted] = useState(false);
   const [form, setForm] = useState<BookingRequestInput>(emptyForm);
   const [bookingPlans, setBookingPlans] = useState<BookingPlan[]>([]);
   const [loadingPlans, setLoadingPlans] = useState(false);
@@ -574,47 +573,38 @@ function BookingsPageContent() {
   }, [effectiveSelectedPlanId, bookingPlans]);
 
   const detailsFormFieldErrors = useMemo(() => {
-    if (!createOpen || effectiveCreateStep !== "details") {
+    if (!createOpen || effectiveCreateStep !== "details" || !detailsContinueAttempted) {
       return {};
     }
 
-    return getEventNameVenueFieldErrors({
+    return getEventFormFieldErrors({
       name: form.eventName,
       venue: form.venue,
+      eventDate: form.eventDate,
+      setTime: form.setTime,
     });
-  }, [createOpen, effectiveCreateStep, form.eventName, form.venue]);
+  }, [
+    createOpen,
+    detailsContinueAttempted,
+    effectiveCreateStep,
+    form.eventDate,
+    form.eventName,
+    form.setTime,
+    form.venue,
+  ]);
 
-  const detailsFormTextValidationError = useMemo(() => {
-    if (!createOpen || effectiveCreateStep !== "details") {
-      return null;
-    }
-
-    return detailsFormFieldErrors.name ?? detailsFormFieldErrors.venue ?? null;
-  }, [createOpen, detailsFormFieldErrors, effectiveCreateStep]);
-
-  const detailsFormDateValidationError = useMemo(() => {
-    if (!createOpen || effectiveCreateStep !== "details") {
-      return null;
-    }
-
-    return (
-      getEventSetTimeValidationError(form.eventDate, form.setTime) ??
-      getEventDateValidationError(form.eventDate, form.setTime)
-    );
-  }, [createOpen, effectiveCreateStep, form.eventDate, form.setTime]);
+  const detailsFormHasFieldErrors = hasEventFormFieldErrors(detailsFormFieldErrors);
 
   const detailsFormNotesValidationError = useMemo(() => {
-    if (!createOpen || effectiveCreateStep !== "details") {
+    if (!createOpen || effectiveCreateStep !== "details" || !detailsContinueAttempted) {
       return null;
     }
 
     return getEventNotesValidationError(form.notes);
-  }, [createOpen, effectiveCreateStep, form.notes]);
+  }, [createOpen, detailsContinueAttempted, effectiveCreateStep, form.notes]);
 
-  const detailsFormValidationError =
-    detailsFormTextValidationError ??
-    detailsFormDateValidationError ??
-    detailsFormNotesValidationError;
+  const detailsFormHasValidationErrors =
+    detailsFormHasFieldErrors || Boolean(detailsFormNotesValidationError);
 
   const sendOfferSummary = useMemo(() => {
     return sendableSelectedDjIds.map((djId) => {
@@ -1273,6 +1263,7 @@ function BookingsPageContent() {
   function resetCreateFlowState(options?: { preserveDeepLinkCompletion?: boolean }) {
     setCreateOpen(false);
     setCreateStep("source");
+    setDetailsContinueAttempted(false);
     setForm(emptyForm);
     setSelectedPlanId(null);
     setDetailsEntrySource(null);
@@ -1479,34 +1470,20 @@ function BookingsPageContent() {
   function handleContinueToDjSelection(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    const nameVenueErrors = getEventNameVenueFieldErrors({
+    setDetailsContinueAttempted(true);
+
+    const fieldErrors = getEventFormFieldErrors({
       name: form.eventName,
       venue: form.venue,
+      eventDate: form.eventDate,
+      setTime: form.setTime,
     });
 
-    if (hasEventNameVenueFieldErrors(nameVenueErrors)) {
-      setError(nameVenueErrors.name ?? nameVenueErrors.venue ?? "Please fill in all required booking details");
+    if (hasEventFormFieldErrors(fieldErrors)) {
       return;
     }
 
-    if (!form.eventDate.trim() || !form.setTime.trim()) {
-      setError("Please fill in all required booking details");
-      return;
-    }
-
-    if (isEventStartSaveBlocked(form.eventDate, form.setTime)) {
-      setError(
-        getEventSetTimeValidationError(form.eventDate, form.setTime) ??
-          getEventDateValidationError(form.eventDate, form.setTime) ??
-          "Please fill in all required booking details",
-      );
-      return;
-    }
-
-    const notesValidationError = getEventNotesValidationError(form.notes);
-
-    if (notesValidationError) {
-      setError(notesValidationError);
+    if (getEventNotesValidationError(form.notes)) {
       return;
     }
 
@@ -1994,13 +1971,17 @@ function BookingsPageContent() {
                     label="Event date"
                     value={form.eventDate}
                     onChange={(value) => updateField("eventDate", value)}
+                    minDate={getTodayDateKey()}
                     required
+                    error={detailsFormFieldErrors.eventDate}
                   />
                   <BookingSetTimeRangeField
                     value={form.setTime}
                     onChange={(value) => updateField("setTime", value)}
                     required
                     eventDate={form.eventDate}
+                    startError={detailsFormFieldErrors.startTime}
+                    finishError={detailsFormFieldErrors.finishTime}
                   />
                   <PlannerFormField
                     label="Notes"
@@ -2009,17 +1990,15 @@ function BookingsPageContent() {
                     placeholder="Notes"
                     multiline
                     maxLength={MAX_EVENT_NOTES_LENGTH}
+                    error={detailsFormNotesValidationError}
                   />
 
-                  {error && error !== detailsFormValidationError ? (
-                    <p className="text-sm text-red-400">{error}</p>
-                  ) : null}
+                  {error ? <p className="text-sm text-red-400">{error}</p> : null}
 
                   <button
                     type="submit"
-                    disabled={Boolean(detailsFormValidationError)}
-                    aria-disabled={Boolean(detailsFormValidationError)}
-                    title={detailsFormValidationError ?? undefined}
+                    disabled={detailsContinueAttempted && detailsFormHasValidationErrors}
+                    aria-disabled={detailsContinueAttempted && detailsFormHasValidationErrors}
                     className="ftc-btn-primary px-5 py-3 text-sm uppercase tracking-wide disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     Continue to DJ selection

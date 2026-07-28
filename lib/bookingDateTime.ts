@@ -561,7 +561,8 @@ export const EVENT_START_TIME_REQUIRED_ERROR = "Select a start time";
 
 export const EVENT_FINISH_TIME_REQUIRED_ERROR = "Select a finish time";
 
-export const EVENT_FINISH_NOT_AFTER_START_ERROR = "Finish time must be after start time";
+export const EVENT_FINISH_NOT_AFTER_START_ERROR =
+  "Finish time must be later than the start time.";
 
 export const EVENT_DURATION_MAX_EXCEEDED_ERROR = "Event duration cannot exceed 24 hours";
 

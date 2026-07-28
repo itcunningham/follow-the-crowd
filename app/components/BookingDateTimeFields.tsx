@@ -202,6 +202,7 @@ function BookingTimeControl({
         onClick={openPicker}
         aria-label={`${label}, ${resolvedLabel}`}
         aria-required={required}
+        aria-invalid={error ? true : undefined}
         className={isCompact ? BOOKING_TIME_BUTTON_COMPACT_CLASS : BOOKING_TIME_BUTTON_CLASS}
       >
         {isCompact ? (

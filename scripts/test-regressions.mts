@@ -247,11 +247,11 @@ function testEventSetTimeRangeValidation() {
   assert.equal(getEventSetTimeValidationError(eventDate, normal), null);
   assert.equal(
     getEventSetTimeValidationError(eventDate, sameEveningInvalid),
-    "Finish time must be after start time",
+    "Finish time must be later than the start time.",
   );
   assert.equal(
     getEventSetTimeValidationError(eventDate, zeroDuration),
-    "Finish time must be after start time",
+    "Finish time must be later than the start time.",
   );
   assert.equal(getEventSetTimeValidationError(eventDate, overnightA), null);
   assert.equal(getEventSetTimeValidationError(eventDate, overnightB), null);
@@ -264,7 +264,7 @@ function testEventSetTimeRangeValidation() {
     eventDate,
     setTime: sameEveningInvalid,
   });
-  assert.equal(formErrors.finishTime, "Finish time must be after start time");
+  assert.equal(formErrors.finishTime, "Finish time must be later than the start time.");
 }
 
 function testApplyEventSetTimeStartChangeClearsInvalidFinish() {
@@ -304,6 +304,7 @@ function testBookingFieldTriggerPlaceholderStylingIsShared() {
   assert.match(datePickerSource, /hasBookingFieldTriggerLabelValue\(buttonLabel\)/);
   assert.doesNotMatch(datePickerSource, /placeholder:text-/);
   assert.match(bookingFieldsSource, /hasBookingFieldTriggerLabelValue\(resolvedLabel\)/);
+  assert.match(bookingFieldsSource, /aria-invalid=\{error \? true : undefined\}/);
   assert.doesNotMatch(
     bookingFieldsSource,
     /resolvedLabel !== "Select" && resolvedLabel !== "Select time"/,
@@ -4918,7 +4919,7 @@ function testQaEnvironmentResetScript() {
   assert.match(sql, /create temp table _qa_messages/);
   assert.match(sql, /m\.user_id in \(select user_id from _qa_user_ids\)/);
   assert.match(sql, /conversation_id in \(select conversation_id from _qa_only_conversations\)/);
-  assert.match(sql, /insert into public\.users/);
+  assert.match(sql, /set_config\('storage\.allow_delete_query', 'true', true\)/);
   assert.match(sql, /qa_booking_requests_mixed_remaining/);
 
   const cli = readFileSync(new URL("./reset-qa-environment.mts", import.meta.url), "utf8");
