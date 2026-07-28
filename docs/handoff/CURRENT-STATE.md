@@ -276,7 +276,9 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
-- `a37270c` — fix booking card collapse scroll position (restore pre-expand capture)
+- `TBD` — refactor DM booking accordion scroll coordination (unified transition scheduler + scrollHeight shrink compensation)
+- `fc453da` — restore smooth booking details transition (viewport anchor — superseded by refactor above)
+- `a37270c` — fix booking card collapse scroll position (restore pre-expand capture — superseded)
 - `1ac85ec` — fix Event Details content overlap with mobile nav
 - `f76101a` — final proposal hierarchy polish (Cancel at booking level; Proposed pill)
 - `aba9889` — polish proposal action buttons (Accept/Decline side-by-side)
