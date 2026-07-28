@@ -257,6 +257,8 @@ export default function DmChatPage() {
   const pendingBookingCardScrollIdRef = useRef<string | null>(null);
   const pendingBookingNotesScrollIdRef = useRef<string | null>(null);
   const bookingCardScrollCleanupRef = useRef<(() => void) | null>(null);
+  const composerInputRef = useRef<HTMLInputElement>(null);
+  const shouldRestoreComposerFocusRef = useRef(false);
   const bookingCardScrollContextRef = useRef(new Map<string, BookingCardExpandScrollContext>());
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -300,6 +302,21 @@ export default function DmChatPage() {
       revokePendingComposerAttachment(current);
       return null;
     });
+  }, []);
+
+  const restoreComposerInputFocus = useCallback(() => {
+    if (!shouldRestoreComposerFocusRef.current) {
+      return;
+    }
+
+    shouldRestoreComposerFocusRef.current = false;
+    requestAnimationFrame(() => {
+      composerInputRef.current?.focus({ preventScroll: true });
+    });
+  }, []);
+
+  const handleComposerInputBlurWhileBusy = useCallback(() => {
+    shouldRestoreComposerFocusRef.current = false;
   }, []);
 
   const stagePendingPhoto = useCallback((file: File) => {
@@ -1191,10 +1208,12 @@ export default function DmChatPage() {
     }
 
     if (attachmentToSend) {
+      shouldRestoreComposerFocusRef.current = true;
       await sendAttachment(attachmentToSend);
       return;
     }
 
+    shouldRestoreComposerFocusRef.current = true;
     setSending(true);
     setError(null);
     markUserSentMessage();
@@ -1210,6 +1229,7 @@ export default function DmChatPage() {
     if (insertError) {
       setError(insertError.message);
       setSending(false);
+      restoreComposerInputFocus();
       return;
     }
 
@@ -1232,6 +1252,7 @@ export default function DmChatPage() {
 
     setInput("");
     setSending(false);
+    restoreComposerInputFocus();
     void markConversationRead(conversationId, {
       readThroughCreatedAt: latestConversationMessageCreatedAt,
     });
@@ -1249,6 +1270,7 @@ export default function DmChatPage() {
       return;
     }
 
+    shouldRestoreComposerFocusRef.current = true;
     setUploading(true);
     setError(null);
     markUserSentMessage();
@@ -1317,6 +1339,7 @@ export default function DmChatPage() {
       setError(uploadError instanceof Error ? uploadError.message : "Failed to send attachment");
     } finally {
       setUploading(false);
+      restoreComposerInputFocus();
     }
   }
 
@@ -2039,6 +2062,8 @@ export default function DmChatPage() {
           value={input}
           onChange={setInput}
           onSend={() => void sendMessage()}
+          inputRef={composerInputRef}
+          onInputBlurWhileBusy={handleComposerInputBlurWhileBusy}
           pendingAttachmentPreviewUrl={pendingAttachment?.previewUrl ?? null}
           onStagePhoto={stagePendingPhoto}
           onClearPendingPhoto={clearPendingAttachment}

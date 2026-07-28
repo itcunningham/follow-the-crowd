@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, type RefObject } from "react";
 import ChatSendIcon from "@/app/components/chat/ChatSendIcon";
 import {
   DM_PHOTO_INPUT_ACCEPT,
@@ -42,6 +42,8 @@ export default function DmComposer({
   value,
   onChange,
   onSend,
+  inputRef,
+  onInputBlurWhileBusy,
   pendingAttachmentPreviewUrl,
   onStagePhoto,
   onClearPendingPhoto,
@@ -52,6 +54,8 @@ export default function DmComposer({
   value: string;
   onChange: (value: string) => void;
   onSend: () => void;
+  inputRef?: RefObject<HTMLInputElement | null>;
+  onInputBlurWhileBusy?: () => void;
   pendingAttachmentPreviewUrl: string | null;
   onStagePhoto: (file: File) => void;
   onClearPendingPhoto: () => void;
@@ -60,9 +64,17 @@ export default function DmComposer({
   uploading: boolean;
 }) {
   const photoInputRef = useRef<HTMLInputElement>(null);
+  const localInputRef = useRef<HTMLInputElement>(null);
+  const messageInputRef = inputRef ?? localInputRef;
   const busy = sending || uploading;
   const hasPendingPhoto = Boolean(pendingAttachmentPreviewUrl);
   const canSend = Boolean(value.trim()) || hasPendingPhoto;
+
+  function handleInputBlur() {
+    if (busy) {
+      onInputBlurWhileBusy?.();
+    }
+  }
 
   function handleKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
     if (event.key === "Enter") {
@@ -126,17 +138,21 @@ export default function DmComposer({
         </ComposerIconButton>
 
         <input
+          ref={messageInputRef}
           type="text"
           value={value}
           onChange={(event) => onChange(event.target.value)}
           onKeyDown={handleKeyDown}
+          onBlur={handleInputBlur}
           placeholder="Message"
-          disabled={busy}
-          className="ftc-input h-11 min-w-0 flex-1 rounded-full px-4 py-0 disabled:cursor-not-allowed"
+          className="ftc-input h-11 min-w-0 flex-1 rounded-full px-4 py-0"
         />
 
         <button
           type="button"
+          onPointerDown={(event) => {
+            event.preventDefault();
+          }}
           onClick={onSend}
           disabled={busy || !canSend}
           aria-label="Send message"

@@ -4833,7 +4833,18 @@ function testDmComposerClearsPendingPhotoAfterSuccessfulSend() {
   assert.match(composerSource, /onClearPendingPhoto/);
   assert.match(composerSource, /pendingAttachmentPreviewUrl/);
   assert.match(composerSource, /disabled=\{busy \|\| !canSend\}/);
+  assert.doesNotMatch(composerSource, /placeholder="Message"[\s\S]*disabled=\{busy\}/);
+  assert.match(composerSource, /onPointerDown/);
+  assert.match(composerSource, /preventDefault/);
+  assert.match(composerSource, /onInputBlurWhileBusy/);
+  assert.match(composerSource, /inputRef/);
   assert.doesNotMatch(composerSource, /onPhotoSelected/);
+
+  assert.match(pageSource, /composerInputRef/);
+  assert.match(pageSource, /restoreComposerInputFocus/);
+  assert.match(pageSource, /preventScroll: true/);
+  assert.match(pageSource, /shouldRestoreComposerFocusRef/);
+  assert.match(pageSource, /onInputBlurWhileBusy=\{handleComposerInputBlurWhileBusy\}/);
 
   assert.match(globalsSource, /\.dm-composer-pending-photo-selected/);
   assert.match(bubbleSource, /const attachmentOnly = hasAttachments && !hasText;/);
