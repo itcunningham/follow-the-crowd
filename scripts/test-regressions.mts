@@ -552,8 +552,10 @@ function testDmBookingCardPendingEventPairedActions() {
   );
   assert.match(cardSource, /canReviewProposal && showPendingCancel/);
   assert.match(cardSource, /rateLine=\{pendingProposal \? "" : compactRateLine\}/);
-  assert.match(layoutSource, /DM_BOOKING_CARD_PAIRED_ACTIONS_ROW_CLASS = "mt-4 flex gap-2"/);
-  assert.match(layoutSource, /min-h-8 min-w-0 flex-1/);
+  assert.match(layoutSource, /DM_BOOKING_CARD_PAIRED_ACTIONS_ROW_CLASS = "mt-4 flex w-full gap-1.5"/);
+  assert.match(layoutSource, /DM_BOOKING_CARD_PAIRED_BUTTON_BASE_CLASS/);
+  assert.match(layoutSource, /whitespace-nowrap/);
+  assert.match(layoutSource, /min-h-9 min-w-0 flex-1/);
 }
 
 function testDmBookingCardExpandCollapseScrollAnchor() {

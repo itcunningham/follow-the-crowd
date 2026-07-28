@@ -8,10 +8,14 @@ export const DM_BOOKING_CARD_SHELL_CLASS = `w-full min-w-0 ${DM_BOOKING_CARD_MAX
 
 export const DM_BOOKING_CARD_ACTIONS_CLASS = "mt-4 flex flex-col gap-2";
 
-export const DM_BOOKING_CARD_PAIRED_ACTIONS_ROW_CLASS = "mt-4 flex gap-2";
+export const DM_BOOKING_CARD_PAIRED_ACTIONS_ROW_CLASS = "mt-4 flex w-full gap-1.5";
+
+/** Shared sizing for side-by-side booking card actions (View event + Cancel). */
+export const DM_BOOKING_CARD_PAIRED_BUTTON_BASE_CLASS =
+  "inline-flex min-h-9 min-w-0 flex-1 items-center justify-center whitespace-nowrap rounded-xl px-2.5 py-2 text-xs font-semibold uppercase tracking-wide transition";
 
 export const DM_BOOKING_CARD_PAIRED_VIEW_EVENT_CLASS =
-  "inline-flex min-h-8 min-w-0 flex-1 items-center justify-center rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated px-2 py-1 text-xs font-semibold uppercase tracking-wide text-ftc-text-secondary transition hover:border-ftc-border-strong";
+  `${DM_BOOKING_CARD_PAIRED_BUTTON_BASE_CLASS} border border-ftc-border-subtle bg-ftc-bg-elevated text-ftc-text-secondary hover:border-ftc-border-strong`;
 
 export const DM_BOOKING_CARD_PAIRED_CANCEL_CLASS = "min-w-0 flex-1";
 
