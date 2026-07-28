@@ -97,6 +97,7 @@ export function BookingDateField({
         required={required && needsPickerReselection}
         minDate={effectiveMinDate}
         ariaLabel={label}
+        invalid={Boolean(error)}
       />
       {error ? <PlannerFieldError message={error} /> : null}
     </label>

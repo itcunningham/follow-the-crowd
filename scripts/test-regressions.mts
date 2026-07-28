@@ -302,8 +302,10 @@ function testBookingFieldTriggerPlaceholderStylingIsShared() {
   assert.match(globalsSource, /\.ftc-field-trigger \.ftc-field-trigger-label\.is-placeholder/);
   assert.match(globalsSource, /color: var\(--ftc-color-text-muted\)/);
   assert.match(datePickerSource, /hasBookingFieldTriggerLabelValue\(buttonLabel\)/);
+  assert.match(datePickerSource, /aria-invalid=\{invalid \? true : undefined\}/);
   assert.doesNotMatch(datePickerSource, /placeholder:text-/);
   assert.match(bookingFieldsSource, /hasBookingFieldTriggerLabelValue\(resolvedLabel\)/);
+  assert.match(bookingFieldsSource, /invalid=\{Boolean\(error\)\}/);
   assert.match(bookingFieldsSource, /aria-invalid=\{error \? true : undefined\}/);
   assert.doesNotMatch(
     bookingFieldsSource,

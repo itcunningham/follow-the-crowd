@@ -97,6 +97,7 @@ export default function FtcDatePicker({
   minDate,
   ariaLabel = "Event date",
   className = BOOKING_DATE_TIME_INPUT_CLASS,
+  invalid = false,
 }: {
   value: string;
   onChange: (value: string) => void;
@@ -105,6 +106,7 @@ export default function FtcDatePicker({
   minDate?: string;
   ariaLabel?: string;
   className?: string;
+  invalid?: boolean;
 }) {
   const pickerId = useId();
   const effectiveMinDate = resolveMinEventDateKey(minDate);
@@ -328,6 +330,7 @@ export default function FtcDatePicker({
         aria-label={`${ariaLabel}, ${buttonLabel}`}
         aria-haspopup="dialog"
         aria-expanded={open}
+        aria-invalid={invalid ? true : undefined}
         className={`${className} disabled:cursor-not-allowed`}
       >
         <CalendarIcon />
