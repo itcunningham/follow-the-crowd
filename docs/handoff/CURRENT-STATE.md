@@ -32,7 +32,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 
 **Before first tester invite:** complete operational checklist OP-01–OP-11 in `PRIVATE-BETA-GO-LIVE.md` (tester list, invitations, feedback channel, backup, monitoring, QA data isolation).
 
-**Beta readiness QA reset (2026-07-28):** reusable CLI `npm run qa:reset` + `scripts/resetQaEnvironment.sql` removes **QA account data only** (non-QA users untouched). Runbook: `docs/qa/FTC-BETA-ENVIRONMENT-RESET.md`.
+**Beta readiness QA reset (2026-07-28):** reusable CLI `npm run qa:reset` + hardened `scripts/resetQaEnvironment.sql` removes **QA account data only** (non-QA users untouched). Runbook: `docs/qa/FTC-BETA-ENVIRONMENT-RESET.md`. Review commit hardens message_reads scope and verification queries.
 
 **Pause rule:** new Critical/High production defect pauses tester onboarding.
 

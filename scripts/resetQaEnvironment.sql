@@ -1,4 +1,5 @@
 -- =============================================================================
+-- BEGIN QA ENVIRONMENT RESET
 -- FTC QA Environment Reset — paste this entire file into Supabase SQL Editor → Run
 -- =============================================================================
 --
@@ -22,6 +23,18 @@
 --
 -- PRESERVES: non-QA transactional data, auth.users, avatars (profile-images), RLS.
 -- Runbook: docs/qa/FTC-BETA-ENVIRONMENT-RESET.md
+
+-- Safe to re-run in the same SQL Editor session (drops prior temp tables first).
+drop table if exists _qa_seed;
+drop table if exists _qa_detected;
+drop table if exists _qa_user_ids;
+drop table if exists _qa_events;
+drop table if exists _qa_booking_plans;
+drop table if exists _qa_booking_requests;
+drop table if exists _qa_booking_requests_touching;
+drop table if exists _qa_touch_conversations;
+drop table if exists _qa_only_conversations;
+drop table if exists _qa_messages;
 
 -- ---------------------------------------------------------------------------
 -- QA profile definitions (single source)
@@ -117,6 +130,13 @@ where (
 )
 or br.event_id in (select id from _qa_events);
 
+-- Informational only: any booking row touching a QA user (may include QA↔non-QA).
+create temp table _qa_booking_requests_touching as
+select br.id
+from public.booking_requests br
+where br.sender_id in (select user_id from _qa_user_ids)
+   or br.recipient_id in (select user_id from _qa_user_ids);
+
 create temp table _qa_touch_conversations as
 select distinct cm.conversation_id
 from public.conversation_members cm
@@ -170,7 +190,7 @@ where ma.message_id in (select id from _qa_messages)
 
 delete from public.message_reads mr
 where mr.user_id in (select user_id from _qa_user_ids)
-   or mr.conversation_id in (select conversation_id from _qa_touch_conversations)
+   or mr.conversation_id in (select conversation_id from _qa_only_conversations)
    or mr.event_id in (select id from _qa_events);
 
 delete from public.booking_request_history_hides h
@@ -178,7 +198,17 @@ where h.user_id in (select user_id from _qa_user_ids)
    or h.booking_request_id in (select id from _qa_booking_requests);
 
 delete from public.notifications n
-where n.user_id in (select user_id from _qa_user_ids);
+where n.user_id in (select user_id from _qa_user_ids)
+   or (
+     n.link ~ '^/dm/[0-9a-fA-F-]{36}$'
+     and substring(n.link from '^/dm/([0-9a-fA-F-]{36})$')::uuid
+       in (select conversation_id from _qa_only_conversations)
+   )
+   or (
+     n.link ~ '^/events/[0-9a-fA-F-]{36}/chat$'
+     and substring(n.link from '^/events/([0-9a-fA-F-]{36})/chat$')::uuid
+       in (select id from _qa_events)
+   );
 
 delete from public.messages m
 where m.id in (select id from _qa_messages);
@@ -344,6 +374,41 @@ select 'qa_messages', count(*)
 from public.messages m
 where m.id in (select id from _qa_messages)
 union all
+select 'qa_message_reactions', count(*)
+from public.message_reactions mr
+where mr.message_id in (select id from _qa_messages)
+   or mr.user_id in (select user_id from _qa_user_ids)
+union all
+select 'qa_message_attachments', count(*)
+from public.message_attachments ma
+where ma.message_id in (select id from _qa_messages)
+   or ma.uploader_id in (select user_id from _qa_user_ids)
+   or ma.conversation_id in (select conversation_id from _qa_only_conversations)
+union all
+select 'qa_user_reports', count(*)
+from public.user_reports ur
+where ur.reporter_id in (select user_id from _qa_user_ids)
+   or ur.reported_user_id in (select user_id from _qa_user_ids)
+   or ur.conversation_id in (select conversation_id from _qa_only_conversations)
+   or ur.message_id in (select id from _qa_messages)
+union all
+select 'qa_booking_request_history_hides', count(*)
+from public.booking_request_history_hides h
+where h.user_id in (select user_id from _qa_user_ids)
+   or h.booking_request_id in (select id from _qa_booking_requests)
+union all
+select 'qa_run_sheet_rows', count(*)
+from public.event_run_sheet_rows r
+where r.event_id in (select id from _qa_events)
+union all
+select 'qa_run_sheet_columns', count(*)
+from public.event_run_sheet_columns c
+where c.event_id in (select id from _qa_events)
+union all
+select 'qa_only_conversations', count(*)
+from public.conversations c
+where c.id in (select conversation_id from _qa_only_conversations)
+union all
 select 'qa_notifications', count(*)
 from public.notifications n
 where n.user_id in (select user_id from _qa_user_ids)
@@ -365,6 +430,13 @@ select 'qa_message_reads', count(*)
 from public.message_reads mr
 where mr.user_id in (select user_id from _qa_user_ids)
 order by scope;
+
+select '--- QA mixed bookings remaining (informational; 0 when QA tested QA-only) ---' as section;
+
+select 'qa_booking_requests_mixed_remaining' as scope, count(*) as row_count
+from public.booking_requests br
+where br.id in (select id from _qa_booking_requests_touching)
+  and br.id not in (select id from _qa_booking_requests);
 
 select '--- non-QA data preserved (informational) ---' as section;
 
@@ -410,3 +482,5 @@ from _qa_seed s
 left join public.users u on u.display_name = s.display_name
 where u.user_id is null
 order by s.display_name;
+
+-- END QA ENVIRONMENT RESET

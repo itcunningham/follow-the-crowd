@@ -26,7 +26,8 @@ No edits required.
 
 ## Step 3 — Check the output
 
-- **QA data remaining** → all counts **0**
+- **QA data remaining** → all counts **0** (except `qa_booking_requests_mixed_remaining` — see below)
+- **QA mixed bookings remaining** → **0** when QA only tested with other QA accounts; may be **> 0** if a QA account booked a real beta tester (those rows are preserved intentionally)
 - **Non-QA data preserved** → informational counts (unchanged by this script)
 - **QA accounts** → your permanent accounts listed
 - **Missing accounts** → empty, or sign up in the app and re-run
@@ -62,6 +63,19 @@ Sign up QA accounts in the **app** (not via SQL). Use display names `FTC QA Plan
 | QA event covers and DM attachments | Non-QA storage files and avatars |
 
 **Mixed DM example:** If a QA account messaged a real beta tester, the beta tester's messages and thread remain; only the QA user's messages and inbox membership are cleared.
+
+---
+
+## Edge cases (read before Beta Readiness)
+
+| Scenario | Reset behaviour |
+|----------|-----------------|
+| QA↔non-QA booking | Booking row **preserved** — QA Gigs/Calendar may still show it until manually archived or the beta tester cancels |
+| Mixed DM thread | Non-QA messages and read state **preserved**; only QA messages and QA membership removed |
+| Non-QA notification linking to deleted QA-only DM/event | **Removed** (stale inbox link) |
+| Non-QA notification about a preserved QA↔non-QA booking | **Preserved** |
+| QA account with email/display name outside detection rules | **Not touched** — rename to match rules or add manually |
+| Re-run in same SQL Editor session | Safe — temp tables dropped at start |
 
 ---
 
