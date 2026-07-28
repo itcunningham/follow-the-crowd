@@ -98,7 +98,6 @@ export default function EventLineupBookingCard({
     dmOriginConversationId,
   );
   const showOpenDm = Boolean(booking.conversation_id) && !hideMessageButton;
-  const showActions = showCancelRequest || showCancelAccepted || showOpenDm;
   const actionButtonClass = `${EVENT_DETAIL_LINEUP_ACTION_BTN}`;
   const profileHref =
     eventDetailId && looksLikeUserId(eventDetailId)
@@ -151,7 +150,7 @@ export default function EventLineupBookingCard({
                 <span
                   className={`${EVENT_DETAIL_BADGE_COMPACT} border border-ftc-border-subtle bg-ftc-bg-elevated text-ftc-primary`}
                 >
-                  Rate proposed
+                  Proposed
                 </span>
               ) : null}
             </div>
@@ -181,7 +180,7 @@ export default function EventLineupBookingCard({
         </div>
       </div>
 
-      {showActions ? (
+      {showOpenDm || (showCancelRequest && !pendingProposal) || showCancelAccepted ? (
         <div className={EVENT_DETAIL_LINEUP_ACTIONS_ROW}>
           {showOpenDm ? (
             <Link
@@ -199,7 +198,7 @@ export default function EventLineupBookingCard({
               Message
             </Link>
           ) : null}
-          {showCancelRequest ? (
+          {showCancelRequest && !pendingProposal ? (
             <CancelBookingRequestButton
               compact
               label="Cancel"
@@ -217,6 +216,16 @@ export default function EventLineupBookingCard({
               className={actionButtonClass}
             />
           ) : null}
+        </div>
+      ) : null}
+
+      {showCancelRequest && pendingProposal ? (
+        <div className="mt-4">
+          <CancelBookingRequestButton
+            loading={cancelling}
+            onConfirm={onCancelBooking}
+            className="w-full"
+          />
         </div>
       ) : null}
     </div>

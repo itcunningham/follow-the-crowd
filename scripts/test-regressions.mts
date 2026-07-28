@@ -541,8 +541,9 @@ function testDmBookingCardPendingEventPairedActions() {
   assert.match(cardSource, /DM_BOOKING_CARD_PAIRED_VIEW_EVENT_CLASS/);
   assert.match(
     cardSource,
-    /showPendingCancel && !canReviewProposal && !showPendingEventPairedActions/,
+    /showPendingCancel &&[\s\S]*!showPendingEventPairedActions/,
   );
+  assert.match(cardSource, /canReviewProposal && showPendingCancel/);
   assert.match(cardSource, /rateLine=\{pendingProposal \? "" : compactRateLine\}/);
   assert.match(layoutSource, /DM_BOOKING_CARD_PAIRED_ACTIONS_ROW_CLASS = "mt-4 flex gap-2"/);
   assert.match(layoutSource, /min-h-8 min-w-0 flex-1/);
@@ -947,14 +948,14 @@ function testDmBookingCardProposedRateCopy() {
   assert.doesNotMatch(summarySource, /Open offer/);
   assert.match(cardSource, /rateLine=\{pendingProposal \? "" : compactRateLine\}/);
   assert.match(cardSource, /getBookingCollapsedOfferSummary\(booking, currentUserId\)/);
-  assert.match(cardSource, /urgentLabel === "Proposed rate"/);
+  assert.match(cardSource, /urgentLabel === "Proposed"/);
 
   const bookingRequestsSource = readFileSync(
     new URL("../lib/bookingRequests.ts", import.meta.url),
     "utf8",
   );
   assert.match(bookingRequestsSource, /canRespondToRateProposal\(booking, currentUserId\)/);
-  assert.match(bookingRequestsSource, /return "Proposed rate"/);
+  assert.match(bookingRequestsSource, /return "Proposed"/);
   assert.match(bookingRequestsSource, /\$\{amount\} proposed/);
 }
 
@@ -1479,6 +1480,10 @@ function testEventLineupBookingCardProfileNavigationAndActions() {
   assert.match(cardSource, /dmOriginConversationId/);
   assert.match(cardSource, />\s*Message\s*</);
   assert.match(cardSource, /label="Cancel"/);
+  assert.match(cardSource, /showCancelRequest && !pendingProposal/);
+  assert.match(cardSource, /showCancelRequest && pendingProposal/);
+  assert.match(cardSource, />\s*Proposed\s*</);
+  assert.doesNotMatch(cardSource, /Rate proposed/);
   assert.match(cardSource, /compact/);
   assert.doesNotMatch(cardSource, /Open DM/);
   assert.match(cardSource, /Ask for rate/);

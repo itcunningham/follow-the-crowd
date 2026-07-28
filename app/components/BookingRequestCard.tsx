@@ -334,10 +334,17 @@ export default function BookingRequestCard({
               />
             </div>
           ) : (
-            <div className={canReviewProposal ? "mt-2 flex flex-col gap-2" : DM_BOOKING_CARD_ACTIONS_CLASS}>
+            <div className={DM_BOOKING_CARD_ACTIONS_CLASS}>
               <Link href={eventHref} className={DM_BOOKING_CARD_SECONDARY_BUTTON_CLASS}>
                 View event
               </Link>
+              {canReviewProposal && showPendingCancel ? (
+                <CancelBookingRequestButton
+                  loading={Boolean(cancelling)}
+                  onConfirm={onCancel}
+                  className="w-full"
+                />
+              ) : null}
             </div>
           )
         ) : null}
@@ -441,7 +448,9 @@ export default function BookingRequestCard({
           </div>
         ) : null}
 
-        {showPendingCancel && !canReviewProposal && !showPendingEventPairedActions ? (
+        {showPendingCancel &&
+        !showPendingEventPairedActions &&
+        !(canReviewProposal && booking.event_id && eventHref && !showAsCancelled && !isAccepted) ? (
           <div className={DM_BOOKING_CARD_ACTIONS_CLASS}>
             <CancelBookingRequestButton
               loading={Boolean(cancelling)}
@@ -488,7 +497,7 @@ export default function BookingRequestCard({
               {urgentLabel ? (
                 <p
                   className={
-                    urgentLabel === "Proposed rate"
+                    urgentLabel === "Proposed"
                       ? "mt-2 text-xs font-medium text-ftc-text-muted"
                       : "mt-2 text-xs font-semibold uppercase tracking-wide text-ftc-primary"
                   }

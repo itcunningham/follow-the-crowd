@@ -696,7 +696,7 @@ export function getBookingCollapsedUrgentLabel(
   }
 
   if (canRespondToRateProposal(booking, currentUserId)) {
-    return "Proposed rate";
+    return "Proposed";
   }
 
   return null;
