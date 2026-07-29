@@ -271,8 +271,8 @@ export default function DmMessageReactions({
             onClick={() => onToggleReaction(summary.emoji)}
             className={`${CHAT_MESSAGE_REACTION_EMOJI_BUTTON_CLASS} transition motion-reduce:transition-none disabled:pointer-events-none ${
               summary.reactedByCurrentUser
-                ? "bg-ftc-surface/80"
-                : "hover:bg-ftc-surface/50"
+                ? "bg-ftc-surface/50"
+                : "hover:bg-ftc-surface/35"
             }`}
           >
             <span aria-hidden="true">{summary.emoji}</span>
@@ -288,7 +288,7 @@ export default function DmMessageReactions({
           aria-label="Add reaction"
           disabled={reacting}
           onClick={onOpenPicker}
-          className="hidden h-[1.125rem] w-[1.125rem] shrink-0 items-center justify-center rounded-full text-[10px] leading-none text-ftc-text-secondary transition hover:bg-ftc-surface/50 hover:text-ftc-text focus-visible:inline-flex disabled:pointer-events-none sm:group-hover/message:inline-flex"
+          className="hidden h-4 w-4 shrink-0 items-center justify-center rounded-full text-[10px] leading-none text-ftc-text-secondary transition hover:bg-ftc-surface/35 hover:text-ftc-text focus-visible:inline-flex disabled:pointer-events-none sm:group-hover/message:inline-flex"
         >
           +
         </button>

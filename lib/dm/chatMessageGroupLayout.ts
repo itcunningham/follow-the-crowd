@@ -123,9 +123,9 @@ export const CHAT_MESSAGE_LIST_CLASS = "flex flex-col-reverse gap-0 pb-4 pt-2";
 export const CHAT_MESSAGE_SCROLLER_CLASS =
   "flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain [overflow-anchor:none] px-3 pb-4 pt-2 sm:px-4";
 
-/** Compact Instagram-style badge — ~6px horizontal inset per side. */
+/** Compact Instagram-style badge — subtle corner-attached weight. */
 export const CHAT_MESSAGE_REACTION_PILL_CLASS =
-  "inline-flex max-w-none flex-nowrap items-center gap-0 rounded-full border border-ftc-border-subtle bg-ftc-bg-elevated px-1.5 py-0 shadow-[0_1px_3px_rgba(0,0,0,0.22)]";
+  "inline-flex max-w-none flex-nowrap items-center gap-0 rounded-full border border-ftc-border-subtle/50 bg-ftc-bg-elevated/90 px-1 py-0 shadow-[0_1px_2px_rgba(0,0,0,0.12)]";
 
 /** Pill enter/exit animation — scale 0.8 ↔ 1.0 with light spring. */
 export const CHAT_MESSAGE_REACTION_PILL_ANIMATION_MS = 160;
@@ -140,7 +140,7 @@ export const CHAT_MESSAGE_REACTION_PILL_HIDDEN_CLASS =
 
 /** Emoji control inside the pill — pill supplies horizontal padding. */
 export const CHAT_MESSAGE_REACTION_EMOJI_BUTTON_CLASS =
-  "inline-flex h-[1.125rem] shrink-0 items-center justify-center rounded-full p-0 text-xs leading-none";
+  "inline-flex h-4 shrink-0 items-center justify-center rounded-full p-0 text-xs leading-none";
 
 /** Interactive controls inside the pill wrapper. */
 export const CHAT_MESSAGE_REACTIONS_STACK_CLASS = "pointer-events-auto";
@@ -150,9 +150,9 @@ export const CHAT_MESSAGE_REACTIONS_STACK_CLASS = "pointer-events-auto";
  * Stack rhythm comes only from `CHAT_LIST_ITEM_*` list-item margins.
  */
 export function resolveMessageReactionAnchorClass(isOwnMessage: boolean): string {
-  const corner = isOwnMessage ? "right-0.5" : "left-0.5";
+  const corner = isOwnMessage ? "right-1" : "left-1";
 
-  return `pointer-events-none absolute bottom-0 z-10 ${corner} translate-y-1/2`;
+  return `pointer-events-none absolute bottom-0 z-10 ${corner} translate-y-[calc(50%-2px)]`;
 }
 
 /** @deprecated In-flow row removed — reactions no longer affect list-item height. */

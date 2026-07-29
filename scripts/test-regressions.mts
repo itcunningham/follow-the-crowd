@@ -5167,7 +5167,7 @@ function testDmMessageReactionGestureInteractions() {
   assert.match(reactionsSource, /disabled:pointer-events-none/);
   assert.doesNotMatch(reactionsSource, /resolveChatMessageReactionsAnchorClass/);
   assert.match(reactionsSource, /CHAT_MESSAGE_REACTION_PILL_CLASS/);
-  assert.match(reactionsSource, /hidden h-\[1\.125rem\]/);
+  assert.match(reactionsSource, /hidden h-4/);
   assert.match(reactionsSource, /CHAT_MESSAGE_REACTION_PILL_VISIBLE_CLASS/);
   assert.match(reactionsSource, /CHAT_MESSAGE_REACTION_PILL_HIDDEN_CLASS/);
   assert.match(groupLayoutSource, /CHAT_MESSAGE_REACTION_PILL_ANIMATION_MS/);
