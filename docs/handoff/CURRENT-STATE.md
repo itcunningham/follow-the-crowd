@@ -279,6 +279,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `30acf44` — double-tap ❤️ reaction + viewport-safe portaled emoji picker (DM + group chat)
 - `dcf183d` — intercept native scroll to fix premature DM keyboard dismiss on iOS
 - `81069a9` — fix immediate DM keyboard dismiss; require 120px downward drag
 - `4307ee7` — improve DM keyboard dismiss with downward-drag gesture
