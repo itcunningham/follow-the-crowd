@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import type { HTMLAttributes, ReactNode, RefObject } from "react";
 import DmMessageReactions, { DmReactionPicker } from "@/app/components/dm/DmMessageReactions";
 import {
-  CHAT_MESSAGE_REACTION_OVERLAP_RESERVE_CLASS,
   CHAT_MESSAGE_REACTION_PILL_ANIMATION_MS,
   resolveMessageReactionAnchorClass,
 } from "@/lib/dm/chatMessageGroupLayout";
@@ -89,12 +88,7 @@ export default function ChatMessageBubbleShell({
     useReactionOverlayLifecycle(reactions, currentUserId);
 
   return (
-    <div
-      ref={pickerAnchorRef}
-      className={`inline-flex w-fit max-w-full flex-col ${
-        reactionRowMounted ? CHAT_MESSAGE_REACTION_OVERLAP_RESERVE_CLASS : ""
-      }`.trim()}
-    >
+    <div ref={pickerAnchorRef} className="inline-flex w-fit max-w-full flex-col">
       <div
         className={`relative w-fit max-w-full overflow-visible ${highlightClassName}`.trim()}
       >

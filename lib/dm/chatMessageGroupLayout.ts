@@ -119,8 +119,8 @@ export const CHAT_SEEN_LABEL_SPACING_CLASS = "mt-0.5";
 /** Seen / delivered when a reaction badge overlaps the bubble corner. */
 export const CHAT_SEEN_LABEL_WITH_REACTIONS_SPACING_CLASS = "mt-2";
 
-/** Document-flow clearance below a bubble that carries a corner reaction badge. */
-export const CHAT_MESSAGE_REACTION_OVERLAP_RESERVE_CLASS = "mb-1.5";
+/** @deprecated Reactions overlap the inter-message gap — no document-flow reserve. */
+export const CHAT_MESSAGE_REACTION_OVERLAP_RESERVE_CLASS = "";
 
 /** Scroll list — flex-col-reverse: `pb-*` clears the fixed header at the visual top. */
 export const CHAT_MESSAGE_LIST_CLASS = "flex flex-col-reverse gap-0 pb-4 pt-2";
@@ -151,8 +151,8 @@ export const CHAT_MESSAGE_REACTION_EMOJI_BUTTON_CLASS =
 /** Interactive controls inside the pill wrapper. */
 export const CHAT_MESSAGE_REACTIONS_STACK_CLASS = "pointer-events-auto";
 
-/** Shared vertical overlap — sits on the corner arc, not the flat bottom edge. */
-export const CHAT_MESSAGE_REACTION_ANCHOR_TRANSLATE_Y_CLASS = "translate-y-[calc(50%-2px)]";
+/** Shared vertical overlap — sits on the corner arc, not suspended below the lip. */
+export const CHAT_MESSAGE_REACTION_ANCHOR_TRANSLATE_Y_CLASS = "translate-y-[calc(50%-5px)]";
 
 /** Nudge onto the corner radius — outgoing (into bubble, breaks vertical column read). */
 export const CHAT_MESSAGE_REACTION_ANCHOR_NUDGE_OUTGOING_CLASS = "-translate-x-1";
@@ -184,7 +184,7 @@ export function resolveMessageReactionAnchorClass(isOwnMessage: boolean): string
     ? CHAT_MESSAGE_REACTION_ANCHOR_NUDGE_OUTGOING_CLASS
     : CHAT_MESSAGE_REACTION_ANCHOR_NUDGE_INCOMING_CLASS;
 
-  return `pointer-events-none absolute bottom-0.5 z-10 ${corner} ${CHAT_MESSAGE_REACTION_ANCHOR_TRANSLATE_Y_CLASS} ${nudge}`;
+  return `pointer-events-none absolute bottom-1 z-10 ${corner} ${CHAT_MESSAGE_REACTION_ANCHOR_TRANSLATE_Y_CLASS} ${nudge}`;
 }
 
 /** @deprecated In-flow row removed — reactions no longer affect list-item height. */

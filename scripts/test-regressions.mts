@@ -5189,9 +5189,11 @@ function testDmMessageReactionGestureInteractions() {
   assert.match(groupLayoutSource, /gap-0/);
   assert.match(shellSource, /resolveMessageReactionAnchorClass/);
   assert.match(shellSource, /useReactionOverlayLifecycle/);
-  assert.match(shellSource, /CHAT_MESSAGE_REACTION_OVERLAP_RESERVE_CLASS/);
+  assert.match(groupLayoutSource, /translate-y-\[calc\(50%-5px\)\]/);
+  assert.match(groupLayoutSource, /bottom-1 z-10/);
+  assert.doesNotMatch(shellSource, /CHAT_MESSAGE_REACTION_OVERLAP_RESERVE_CLASS/);
   assert.match(groupLayoutSource, /CHAT_SEEN_LABEL_WITH_REACTIONS_SPACING_CLASS/);
-  assert.match(groupLayoutSource, /CHAT_MESSAGE_REACTION_OVERLAP_RESERVE_CLASS/);
+  assert.match(groupLayoutSource, /CHAT_MESSAGE_REACTION_OVERLAP_RESERVE_CLASS = ""/);
   assert.match(groupLayoutSource, /resolveSeenLabelSpacingClass/);
   assert.doesNotMatch(shellSource, /grid-participant/);
   assert.doesNotMatch(reactionsSource, /bg-ftc-primary/);
