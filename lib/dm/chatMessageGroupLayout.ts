@@ -151,14 +151,19 @@ export const CHAT_MESSAGE_REACTION_EMOJI_BUTTON_CLASS =
 /** Interactive controls inside the pill wrapper. */
 export const CHAT_MESSAGE_REACTIONS_STACK_CLASS = "pointer-events-auto";
 
-/** Shared vertical overlap — sits on the corner arc, not suspended below the lip. */
-export const CHAT_MESSAGE_REACTION_ANCHOR_TRANSLATE_Y_CLASS = "translate-y-[calc(50%-5px)]";
+/**
+ * Vertical placement — pill sits mostly below the bubble lip.
+ * `bottom-0` + `translate-y-[calc(100%-4px)]` keeps ~4px on the corner arc and
+ * the rest in the inter-message gap (no text overlap on short bubbles).
+ */
+export const CHAT_MESSAGE_REACTION_ANCHOR_TRANSLATE_Y_CLASS =
+  "translate-y-[calc(100%-4px)]";
 
-/** Nudge onto the corner radius — outgoing (into bubble, breaks vertical column read). */
-export const CHAT_MESSAGE_REACTION_ANCHOR_NUDGE_OUTGOING_CLASS = "-translate-x-1";
+/** @deprecated Inward nudges overlapped text on short bubbles — horizontal inset only. */
+export const CHAT_MESSAGE_REACTION_ANCHOR_NUDGE_OUTGOING_CLASS = "";
 
-/** Nudge onto the corner radius — incoming. */
-export const CHAT_MESSAGE_REACTION_ANCHOR_NUDGE_INCOMING_CLASS = "translate-x-1";
+/** @deprecated Inward nudges overlapped text on short bubbles — horizontal inset only. */
+export const CHAT_MESSAGE_REACTION_ANCHOR_NUDGE_INCOMING_CLASS = "";
 
 /** Trailing-edge inset — outgoing bubbles (identical for every own message). */
 export const CHAT_MESSAGE_REACTION_ANCHOR_INSET_OUTGOING_CLASS = "right-2.5";
@@ -167,8 +172,8 @@ export const CHAT_MESSAGE_REACTION_ANCHOR_INSET_OUTGOING_CLASS = "right-2.5";
 export const CHAT_MESSAGE_REACTION_ANCHOR_INSET_INCOMING_CLASS = "left-2.5";
 
 /**
- * Reaction badge anchor — absolute corner overlap with zero document-flow height.
- * Stack rhythm comes only from `CHAT_LIST_ITEM_*` list-item margins.
+ * Reaction badge anchor — absolute, zero document-flow height.
+ * Anchored to the bubble wrapper's outer bottom corner (not the text content box).
  */
 export function resolveSeenLabelSpacingClass(hasReactions: boolean): string {
   return hasReactions
@@ -180,11 +185,8 @@ export function resolveMessageReactionAnchorClass(isOwnMessage: boolean): string
   const corner = isOwnMessage
     ? CHAT_MESSAGE_REACTION_ANCHOR_INSET_OUTGOING_CLASS
     : CHAT_MESSAGE_REACTION_ANCHOR_INSET_INCOMING_CLASS;
-  const nudge = isOwnMessage
-    ? CHAT_MESSAGE_REACTION_ANCHOR_NUDGE_OUTGOING_CLASS
-    : CHAT_MESSAGE_REACTION_ANCHOR_NUDGE_INCOMING_CLASS;
 
-  return `pointer-events-none absolute bottom-1 z-10 ${corner} ${CHAT_MESSAGE_REACTION_ANCHOR_TRANSLATE_Y_CLASS} ${nudge}`;
+  return `pointer-events-none absolute bottom-0 z-10 ${corner} ${CHAT_MESSAGE_REACTION_ANCHOR_TRANSLATE_Y_CLASS}`;
 }
 
 /** @deprecated In-flow row removed — reactions no longer affect list-item height. */
