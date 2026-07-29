@@ -109,6 +109,7 @@ import {
 import {
   buildChatMessageGroupLayout,
   CHAT_LIST_ITEM_CLUSTER_END_BEFORE_TIMESTAMP_SPACING_CLASS,
+  CHAT_LIST_ITEM_CLUSTER_START_AFTER_TIMESTAMP_SPACING_CLASS,
   CHAT_LIST_ITEM_CLUSTER_END_SPACING_CLASS,
   CHAT_LIST_ITEM_WITHIN_GROUP_SPACING_CLASS,
   resolveMessageGroupLiClass,
@@ -5174,8 +5175,10 @@ function testDmMessageReactionGestureInteractions() {
   assert.match(groupLayoutSource, /CHAT_LIST_ITEM_AFTER_REACTION_SPACING_CLASS/);
   assert.match(groupLayoutSource, /CHAT_LIST_ITEM_CLUSTER_END_SPACING_CLASS/);
   assert.match(groupLayoutSource, /CHAT_LIST_ITEM_CLUSTER_END_BEFORE_TIMESTAMP_SPACING_CLASS/);
+  assert.match(groupLayoutSource, /CHAT_LIST_ITEM_CLUSTER_START_AFTER_TIMESTAMP_SPACING_CLASS/);
   assert.match(groupLayoutSource, /CHAT_SEEN_LABEL_SPACING_CLASS/);
   assert.match(groupLayoutSource, /followedByTimeSeparator/);
+  assert.match(groupLayoutSource, /precededByTimeSeparator/);
   assert.match(groupLayoutSource, /CHAT_TIME_SEPARATOR_SPACING_CLASS/);
   assert.match(groupLayoutSource, /gap-0/);
   assert.match(shellSource, /resolveMessageReactionRowClass/);
@@ -5222,6 +5225,7 @@ function testDmMessageReactionGestureInteractions() {
   assert.match(bubbleSource, /resolveMessageGroupLiClass/);
   assert.match(bubbleSource, /previousInGroupHadReactions/);
   assert.match(bubbleSource, /followedByTimeSeparator/);
+  assert.match(bubbleSource, /precededByTimeSeparator/);
   assert.match(bubbleSource, /CHAT_SEEN_LABEL_SPACING_CLASS/);
   assert.doesNotMatch(bubbleSource, /layout=\{shellLayout\}/);
   assert.match(bubbleSource, /ChatMessageBubbleShell/);
@@ -5339,6 +5343,15 @@ function testChatMessageGroupLayout() {
   );
   assert.match(
     resolveMessageGroupLiClass({
+      isOwnMessage: true,
+      position: "standalone",
+      isClusterEnd: true,
+      precededByTimeSeparator: true,
+    }),
+    new RegExp(CHAT_LIST_ITEM_CLUSTER_START_AFTER_TIMESTAMP_SPACING_CLASS),
+  );
+  assert.match(
+    resolveMessageGroupLiClass({
       isOwnMessage: false,
       position: "middle",
       isClusterEnd: false,
@@ -5359,8 +5372,10 @@ function testChatMessageGroupLayout() {
   assert.match(groupLayoutSource, /CHAT_LIST_ITEM_WITHIN_GROUP_SPACING_CLASS/);
   assert.match(groupLayoutSource, /CHAT_LIST_ITEM_CLUSTER_END_SPACING_CLASS/);
   assert.match(groupLayoutSource, /CHAT_LIST_ITEM_CLUSTER_END_BEFORE_TIMESTAMP_SPACING_CLASS/);
+  assert.match(groupLayoutSource, /CHAT_LIST_ITEM_CLUSTER_START_AFTER_TIMESTAMP_SPACING_CLASS/);
   assert.match(groupLayoutSource, /CHAT_SEEN_LABEL_SPACING_CLASS/);
   assert.match(groupLayoutSource, /followedByTimeSeparator/);
+  assert.match(groupLayoutSource, /precededByTimeSeparator/);
   assert.match(groupLayoutSource, /previousInGroupHadReactions/);
   assert.match(groupLayoutSource, /CHAT_MESSAGE_REACTION_PILL_CLASS/);
   assert.match(groupLayoutSource, /resolveMessageGroupLiClass/);
@@ -5375,6 +5390,7 @@ function testChatMessageGroupLayout() {
   assert.match(dmPageSource, /resolveFollowedByTimeSeparator/);
   assert.match(dmPageSource, /previousInGroupHadReactions/);
   assert.match(dmPageSource, /followedByTimeSeparator/);
+  assert.match(dmPageSource, /precededByTimeSeparator/);
   assert.match(dmPageSource, /CHAT_SEEN_LABEL_SPACING_CLASS/);
   assert.match(dmPageSource, /DmIncomingMessageLayout/);
   assert.match(dmPageSource, /showAvatar=\{messageGroupLayout\?\.showAvatar/);

@@ -105,13 +105,16 @@ export const CHAT_LIST_ITEM_AFTER_REACTION_SPACING_CLASS = "mb-1.5";
 export const CHAT_LIST_ITEM_CLUSTER_END_SPACING_CLASS = "mb-3.5";
 
 /** Cluster end immediately above a centred timestamp — timestamp band supplies separation. */
-export const CHAT_LIST_ITEM_CLUSTER_END_BEFORE_TIMESTAMP_SPACING_CLASS = "mb-1";
+export const CHAT_LIST_ITEM_CLUSTER_END_BEFORE_TIMESTAMP_SPACING_CLASS = "mb-0.5";
+
+/** Cluster start (standalone) immediately below a centred timestamp. */
+export const CHAT_LIST_ITEM_CLUSTER_START_AFTER_TIMESTAMP_SPACING_CLASS = "mb-0.5";
 
 /** Centred timestamp separator — thin band, balanced above and below. */
-export const CHAT_TIME_SEPARATOR_SPACING_CLASS = "my-1";
+export const CHAT_TIME_SEPARATOR_SPACING_CLASS = "my-0.5";
 
 /** Seen / delivered label beneath the final outgoing bubble. */
-export const CHAT_SEEN_LABEL_SPACING_CLASS = "mt-px";
+export const CHAT_SEEN_LABEL_SPACING_CLASS = "-mt-0.5";
 
 /** Scroll list — flex-col-reverse: `pb-*` clears the fixed header at the visual top. */
 export const CHAT_MESSAGE_LIST_CLASS = "flex flex-col-reverse gap-0 pb-4 pt-2";
@@ -170,16 +173,24 @@ function resolveMessageListItemSpacingClass({
   isClusterEnd,
   previousInGroupHadReactions,
   followedByTimeSeparator,
+  precededByTimeSeparator,
 }: {
   position: ChatMessageGroupPosition;
   isClusterEnd: boolean;
   previousInGroupHadReactions: boolean;
   followedByTimeSeparator: boolean;
+  precededByTimeSeparator: boolean;
 }): string {
   if (isClusterEnd) {
-    return followedByTimeSeparator
-      ? CHAT_LIST_ITEM_CLUSTER_END_BEFORE_TIMESTAMP_SPACING_CLASS
-      : CHAT_LIST_ITEM_CLUSTER_END_SPACING_CLASS;
+    if (followedByTimeSeparator) {
+      return CHAT_LIST_ITEM_CLUSTER_END_BEFORE_TIMESTAMP_SPACING_CLASS;
+    }
+
+    if (precededByTimeSeparator) {
+      return CHAT_LIST_ITEM_CLUSTER_START_AFTER_TIMESTAMP_SPACING_CLASS;
+    }
+
+    return CHAT_LIST_ITEM_CLUSTER_END_SPACING_CLASS;
   }
 
   if (position === "middle" || position === "last") {
@@ -198,6 +209,7 @@ export function resolveMessageGroupLiClass({
   isClusterEnd,
   previousInGroupHadReactions = false,
   followedByTimeSeparator = false,
+  precededByTimeSeparator = false,
 }: {
   isOwnMessage: boolean;
   position: ChatMessageGroupPosition;
@@ -206,6 +218,8 @@ export function resolveMessageGroupLiClass({
   previousInGroupHadReactions?: boolean;
   /** A centred timestamp separator sits directly below this cluster end. */
   followedByTimeSeparator?: boolean;
+  /** This message begins a time cluster — timestamp sits directly above. */
+  precededByTimeSeparator?: boolean;
 }): string {
   return [
     "group/message flex",
@@ -215,6 +229,7 @@ export function resolveMessageGroupLiClass({
       isClusterEnd,
       previousInGroupHadReactions,
       followedByTimeSeparator,
+      precededByTimeSeparator,
     }),
   ]
     .filter(Boolean)
@@ -251,11 +266,13 @@ export function resolveOutgoingGroupLiClass({
   isClusterEnd,
   previousInGroupHadReactions = false,
   followedByTimeSeparator = false,
+  precededByTimeSeparator = false,
 }: {
   position: ChatMessageGroupPosition;
   isClusterEnd: boolean;
   previousInGroupHadReactions?: boolean;
   followedByTimeSeparator?: boolean;
+  precededByTimeSeparator?: boolean;
   /** @deprecated Reactions no longer affect grouping margins. */
   hasReactions?: boolean;
 }): string {
@@ -265,6 +282,7 @@ export function resolveOutgoingGroupLiClass({
     isClusterEnd,
     previousInGroupHadReactions,
     followedByTimeSeparator,
+    precededByTimeSeparator,
   });
 }
 
@@ -365,11 +383,13 @@ export function resolveIncomingGroupLiClass({
   isClusterEnd,
   previousInGroupHadReactions = false,
   followedByTimeSeparator = false,
+  precededByTimeSeparator = false,
 }: {
   position: ChatMessageGroupPosition;
   isClusterEnd: boolean;
   previousInGroupHadReactions?: boolean;
   followedByTimeSeparator?: boolean;
+  precededByTimeSeparator?: boolean;
   showTimestamp?: boolean;
   /** @deprecated Reactions no longer affect grouping margins. */
   hasReactions?: boolean;
@@ -380,5 +400,6 @@ export function resolveIncomingGroupLiClass({
     isClusterEnd,
     previousInGroupHadReactions,
     followedByTimeSeparator,
+    precededByTimeSeparator,
   });
 }

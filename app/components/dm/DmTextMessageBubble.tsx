@@ -59,6 +59,7 @@ export default function DmTextMessageBubble({
   groupPosition = "standalone",
   previousInGroupHadReactions = false,
   followedByTimeSeparator = false,
+  precededByTimeSeparator = false,
 }: {
   messageId: string;
   text: string;
@@ -84,6 +85,7 @@ export default function DmTextMessageBubble({
   groupPosition?: ChatMessageGroupPosition;
   previousInGroupHadReactions?: boolean;
   followedByTimeSeparator?: boolean;
+  precededByTimeSeparator?: boolean;
 }) {
   const trimmedText = text.trim();
   const displayText = formatBookingMessagePreview(trimmedText);
@@ -211,6 +213,7 @@ export default function DmTextMessageBubble({
           isClusterEnd,
           previousInGroupHadReactions,
           followedByTimeSeparator,
+          precededByTimeSeparator,
         })}
         data-chat-message-id={messageId}
       >
@@ -245,6 +248,7 @@ export default function DmTextMessageBubble({
         isClusterEnd,
         previousInGroupHadReactions,
         followedByTimeSeparator,
+        precededByTimeSeparator,
       })}
       data-chat-message-id={messageId}
     >

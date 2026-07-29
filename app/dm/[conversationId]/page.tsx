@@ -1826,6 +1826,8 @@ export default function DmChatPage() {
                   messageVisuallyBelow?.id,
                   conversationTimestampLayout,
                 );
+                const precededByTimeSeparator =
+                  messageTimestampLayout?.showTimeSeparatorBefore ?? false;
 
                 return wrapWithTimeSeparator(
                   message.id,
@@ -1859,6 +1861,7 @@ export default function DmChatPage() {
                     groupPosition={messageGroupLayout?.position ?? "standalone"}
                     previousInGroupHadReactions={previousInGroupHadReactions}
                     followedByTimeSeparator={followedByTimeSeparator}
+                    precededByTimeSeparator={precededByTimeSeparator}
                   />,
                   messageTimestampLayout,
                 );
@@ -1948,6 +1951,9 @@ export default function DmChatPage() {
                   messageVisuallyBelow?.id,
                   conversationTimestampLayout,
                 );
+                const bookingTimestampLayout = conversationTimestampLayout.get(message.id);
+                const precededByTimeSeparator =
+                  bookingTimestampLayout?.showTimeSeparatorBefore ?? false;
 
                 const bookingCard = (
                   <BookingRequestCard
@@ -2037,8 +2043,6 @@ export default function DmChatPage() {
                   />
                 );
 
-                const bookingTimestampLayout = conversationTimestampLayout.get(message.id);
-
                 return wrapWithTimeSeparator(
                   message.id,
                   message.created_at,
@@ -2051,6 +2055,7 @@ export default function DmChatPage() {
                       isClusterEnd: messageGroupLayout?.showAvatar ?? true,
                       previousInGroupHadReactions,
                       followedByTimeSeparator,
+                      precededByTimeSeparator,
                     })}
                   >
                     {isOwnMessage ? (
