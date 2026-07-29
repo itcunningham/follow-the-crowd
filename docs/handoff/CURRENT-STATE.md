@@ -99,7 +99,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 - Booking cards in DMs show **live** event fields from `events` when `event_id` set; expanded card uses compact icon metadata rows (venue/date/time/rate), no event initials thumb, expandable notes, tighter spacing
 - **DM photo picker (2026-07-14):** media icon opens native OS chooser (Photo Library / Take Photo on iOS); no forced camera via `capture`
 - **DM message reactions (2026-07-25):** persistent `React` label removed; press-and-hold (~500ms) or right-click opens existing picker on text/image messages; desktop hover/focus-visible `+` affordance; keyboard-accessible `React to message` button; booking/system cards unchanged; DM image attachments use button open surface (not `<a>`) with scoped `-webkit-touch-callout: none` so iPhone Safari long-press opens FTC picker instead of native link preview; reaction picker no longer uses a full-screen blocking backdrop — outside tap or scroll dismisses it without trapping chat scroll
-- **Chat reaction gestures (2026-07-29):** double-tap ❤️ toggles current user only; long-press picker; `ChatMessageBubbleShell` corner overlay (`bottom-0 translate-y-1/2` — 50% bubble overlap, derived from pill height); reaction-only gutter (`h-2.5` spacer); incoming cluster-end uses `grid-participant` layout (bubble row 1, gutter row 2) so avatar aligns to bubble bottom; outgoing Seen uses `mt-1` when reactions present
+- **Chat reaction gestures (2026-07-29):** double-tap ❤️ toggles current user only; long-press picker; in-flow reaction row (`resolveMessageReactionRowClass`) corner-attached with overlap; neutral pill on `bg-ftc-bg-elevated` for both senders
 - **DM message grouping (2026-07-29):** `buildChatMessageGroupLayout` + centralized spacing tokens (`CHAT_LIST_ITEM_*`, `CHAT_TIME_SEPARATOR_SPACING_CLASS`); list uses `gap-0` with per-`li` margins via `resolveMessageGroupLiClass`; in-flow reaction rows reserve space (no absolute overlay); reaction-after spacing via `previousInGroupHadReactions`
 - **DM timestamp clusters (2026-07-29):** centred `DmChatTimeSeparator` when gap from previous visible message ≥ 5 min (`DM_CHAT_MEANINGFUL_TIME_GAP_MS` unchanged); no per-message inline timestamps; Seen/read on latest relevant outgoing message; hidden `<time>` for a11y on each row
 - **Chat bubble geometry (2026-07-29):** text bubbles use `w-fit max-w-full`; compact padding `px-3.5 py-[0.4375rem]`, standard `px-4 py-2.5`; `.ftc-bubble-own` / `.ftc-bubble-other` tail radii + grouped stack variants; bubble overlay add-reaction + removed (prevents flash during optimistic toggle)
@@ -291,6 +291,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 - `b753c2b` — DM reaction positioning + Seen clearance gutter polish
 - `dca1f57` — DM completion pass: derived reaction anchor, unified grouping with 5-min threshold, avatar grid fix
 - `b92a533` — unify incoming/outgoing group spacing after timestamp separators
+- `44c4750` — centralized DM spacing tokens + in-flow reaction layout
 - `4354b00` — final DM reaction pill polish (compact sizing, corner anchor, animation)
 - `f936515` — Instagram-style reaction gutter + neutral single pill
 - `c5d9425` — message-owned reaction overlay via ChatMessageBubbleShell
