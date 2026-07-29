@@ -1,14 +1,28 @@
 "use client";
 
-import { useEffect } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import ChatProfileAvatarLink from "@/app/components/chat/ChatProfileAvatarLink";
 import DmMessageAttachmentView from "@/app/components/dm/DmMessageAttachment";
 import DmMessageReactions, { DmReactionPicker } from "@/app/components/dm/DmMessageReactions";
 import { getChatNewMessageHighlightClass, logChatHighlightRender } from "@/lib/chatNewMessageHighlight";
 import { formatBookingMessagePreview } from "@/lib/bookingRequests";
 import type { DmMessageAttachment } from "@/lib/dmAttachments";
+import {
+  DM_DEFAULT_REACTION_EMOJI,
+  useMessageReactionDoubleTap,
+} from "@/lib/dm/useMessageReactionDoubleTap";
 import { useMessageReactionLongPress } from "@/lib/dm/useMessageReactionLongPress";
 import { summarizeDmReactions, type DmMessageReaction } from "@/lib/dmReactions";
+
+function chainPointerHandler(
+  first: (event: React.PointerEvent<HTMLElement>) => void,
+  second: (event: React.PointerEvent<HTMLElement>) => void,
+) {
+  return (event: React.PointerEvent<HTMLElement>) => {
+    first(event);
+    second(event);
+  };
+}
 
 export default function DmTextMessageBubble({
   messageId,
@@ -24,6 +38,7 @@ export default function DmTextMessageBubble({
   currentUserId,
   showReactionPicker,
   reacting,
+  scrollContainerRef,
   onToggleReaction,
   onOpenReactionPicker,
   onCloseReactionPicker,
@@ -46,6 +61,7 @@ export default function DmTextMessageBubble({
   currentUserId: string | null;
   showReactionPicker: boolean;
   reacting: boolean;
+  scrollContainerRef?: React.RefObject<HTMLElement | null>;
   onToggleReaction: (emoji: string) => void;
   onOpenReactionPicker: () => void;
   onCloseReactionPicker: () => void;
@@ -61,16 +77,37 @@ export default function DmTextMessageBubble({
   const hasText = displayText.length > 0;
   const hasReactionSummaries =
     summarizeDmReactions(reactions, currentUserId).length > 0;
+  const bubbleShellRef = useRef<HTMLDivElement>(null);
+  const pickerAnchorRef = useRef<HTMLDivElement>(null);
 
   const {
-    handlePointerDown,
-    handlePointerMove,
-    handlePointerUp,
-    handlePointerCancel,
+    handlePointerDown: handleLongPressPointerDown,
+    handlePointerMove: handleLongPressPointerMove,
+    handlePointerUp: handleLongPressPointerUp,
+    handlePointerCancel: handleLongPressPointerCancel,
     handleContextMenu,
     consumeLongPressActivation,
+    wasLongPressActivated,
     resetLongPressGesture,
   } = useMessageReactionLongPress(onOpenReactionPicker);
+
+  const handleToggleHeart = useCallback(() => {
+    onToggleReaction(DM_DEFAULT_REACTION_EMOJI);
+  }, [onToggleReaction]);
+
+  const {
+    handlePointerDown: handleDoubleTapPointerDown,
+    handlePointerMove: handleDoubleTapPointerMove,
+    handlePointerUp: handleDoubleTapPointerUp,
+    handlePointerCancel: handleDoubleTapPointerCancel,
+    consumeDoubleTapActivation,
+    resetDoubleTapGesture,
+  } = useMessageReactionDoubleTap({
+    bubbleRootRef: bubbleShellRef,
+    onToggleHeart: handleToggleHeart,
+    wasLongPressActivated,
+    disabled: reacting,
+  });
 
   useEffect(() => {
     if (!showReactionPicker) {
@@ -78,7 +115,8 @@ export default function DmTextMessageBubble({
     }
 
     resetLongPressGesture();
-  }, [resetLongPressGesture, showReactionPicker]);
+    resetDoubleTapGesture();
+  }, [resetDoubleTapGesture, resetLongPressGesture, showReactionPicker]);
 
   if (isHighlighted) {
     logChatHighlightRender(messageId, true);
@@ -96,7 +134,7 @@ export default function DmTextMessageBubble({
     : "max-w-[88%] sm:max-w-[78%]";
   const bubbleShellClass = attachmentOnly
     ? "overflow-hidden [touch-action:pan-y]"
-    : `overflow-hidden [touch-action:pan-y] ${
+    : `overflow-hidden [touch-action:pan-y] select-none sm:select-text ${
         isOwnMessage
           ? `ftc-bubble-own ${hasAttachments ? "p-1" : "px-3.5 py-2"}`
           : `ftc-bubble-other ${hasAttachments ? "p-1" : "px-4 py-2.5"}`
@@ -121,7 +159,7 @@ export default function DmTextMessageBubble({
           />
         ) : null}
         <div className={`flex min-w-0 flex-col ${isOwnMessage ? "items-end" : "items-start"}`}>
-          <div className={`relative max-w-full ${highlightClass}`}>
+          <div ref={pickerAnchorRef} className={`relative max-w-full ${highlightClass}`}>
             {!hasReactionSummaries ? (
               <button
                 type="button"
@@ -137,13 +175,26 @@ export default function DmTextMessageBubble({
             ) : null}
 
             <div
+              ref={bubbleShellRef}
               className={bubbleShellClass}
-              onPointerDown={handlePointerDown}
-              onPointerMove={handlePointerMove}
-              onPointerUp={handlePointerUp}
-              onPointerCancel={handlePointerCancel}
+              onPointerDown={chainPointerHandler(
+                handleDoubleTapPointerDown,
+                handleLongPressPointerDown,
+              )}
+              onPointerMove={chainPointerHandler(
+                handleDoubleTapPointerMove,
+                handleLongPressPointerMove,
+              )}
+              onPointerUp={chainPointerHandler(handleDoubleTapPointerUp, handleLongPressPointerUp)}
+              onPointerCancel={chainPointerHandler(
+                handleDoubleTapPointerCancel,
+                handleLongPressPointerCancel,
+              )}
               onContextMenu={handleContextMenu}
-              onClickCapture={consumeLongPressActivation}
+              onClickCapture={(event) => {
+                consumeLongPressActivation(event);
+                consumeDoubleTapActivation(event);
+              }}
             >
               {hasAttachments ? (
                 <div className={`space-y-2 ${hasText ? "mb-2" : ""}`}>
@@ -168,6 +219,8 @@ export default function DmTextMessageBubble({
               show={showReactionPicker}
               reacting={reacting}
               isOwnMessage={isOwnMessage}
+              anchorRef={pickerAnchorRef}
+              scrollContainerRef={scrollContainerRef}
               onToggleReaction={onToggleReaction}
               onClosePicker={onCloseReactionPicker}
             />

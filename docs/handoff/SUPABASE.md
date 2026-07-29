@@ -18,6 +18,7 @@ Legacy one-off scripts remain in `scripts/` for bootstrapping and fixes. New fea
 | Event fallback colour column | `scripts/setupEventFallbackColour.sql` |
 | Expand colour keys (orange, pink) | `scripts/updateEventFallbackColourOptions.sql` |
 | Event group chat | `scripts/setupEventCrewChat.sql` |
+| Group chat reactions RLS | `scripts/setupEventCrewChatReactions.sql` (after DM reactions + crew chat) |
 | Message reads / unread | `scripts/setupMessageReads.sql` |
 | Duplicate booking protection | `scripts/fixEventBookingDuplicateProtection.sql` |
 | Production RLS | `scripts/setupProductionRls.sql` |

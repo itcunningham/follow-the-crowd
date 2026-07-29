@@ -1736,6 +1736,10 @@ function testProfileChatBackNavigation() {
   assert.match(dmPageSource, /backReplace=\{backReplace\}/);
   assert.match(dmHeaderSource, /backReplace/);
   assert.match(dmHeaderSource, /scroll=\{false\}/);
+  assert.doesNotMatch(dmHeaderSource, /ChatDetailsMenuButton/);
+  assert.doesNotMatch(dmHeaderSource, /onOpenDetails/);
+  assert.doesNotMatch(dmPageSource, /DmConversationDetailsPanel/);
+  assert.doesNotMatch(dmPageSource, /detailsOpen/);
 }
 
 function testGigsIncomingDmEventDetailReturnChain() {
@@ -5066,24 +5070,51 @@ function testDmMessageReactionGestureInteractions() {
     new URL("../lib/dm/useMessageReactionLongPress.ts", import.meta.url),
     "utf8",
   );
+  const doubleTapSource = readFileSync(
+    new URL("../lib/dm/useMessageReactionDoubleTap.ts", import.meta.url),
+    "utf8",
+  );
+  const pickerPositionSource = readFileSync(
+    new URL("../lib/dm/reactionPickerPosition.ts", import.meta.url),
+    "utf8",
+  );
+  const groupBubbleSource = readFileSync(
+    new URL("../app/components/group-chat/GroupChatMessageBubble.tsx", import.meta.url),
+    "utf8",
+  );
 
   assert.doesNotMatch(reactionsSource, />React</);
   assert.doesNotMatch(reactionsSource, /prominentActions/);
   assert.match(reactionsSource, /if \(summaries\.length === 0\) \{\s*return null;/);
   assert.match(bubbleSource, /useMessageReactionLongPress/);
+  assert.match(bubbleSource, /useMessageReactionDoubleTap/);
   assert.match(bubbleSource, /onContextMenu=\{handleContextMenu\}/);
   assert.match(bubbleSource, /aria-label="React to message"/);
   assert.match(bubbleSource, /DmReactionPicker/);
   assert.match(bubbleSource, /resetLongPressGesture/);
+  assert.match(bubbleSource, /DM_DEFAULT_REACTION_EMOJI/);
+  assert.match(bubbleSource, /scrollContainerRef/);
+  assert.match(reactionsSource, /createPortal/);
+  assert.match(reactionsSource, /fixed z-\[120\]/);
   assert.doesNotMatch(reactionsSource, /fixed inset-0/);
   assert.doesNotMatch(reactionsSource, /Close reaction picker/);
   assert.match(reactionsSource, /data-dm-reaction-picker/);
   assert.match(reactionsSource, /pointerdown", handlePointerDown, true/);
   assert.match(reactionsSource, /pointermove", handlePointerMove/);
+  assert.match(reactionsSource, /useReactionPickerPosition/);
   assert.match(gestureSource, /resetLongPressGesture: resetGesture/);
+  assert.match(gestureSource, /wasLongPressActivated/);
   assert.match(gestureSource, /DM_MESSAGE_LONG_PRESS_MOVE_THRESHOLD_PX = 10/);
   assert.match(gestureSource, /consumeLongPressActivation/);
   assert.match(gestureSource, /prefersFinePointer/);
+  assert.match(doubleTapSource, /DM_MESSAGE_DOUBLE_TAP_MS = 300/);
+  assert.match(doubleTapSource, /isInteractiveMessageTarget/);
+  assert.match(doubleTapSource, /prefersFinePointer/);
+  assert.match(pickerPositionSource, /computeReactionPickerPosition/);
+  assert.match(pickerPositionSource, /getReactionPickerViewportBounds/);
+  assert.match(pickerPositionSource, /data-chat-composer/);
+  assert.match(groupBubbleSource, /useMessageReactionDoubleTap/);
+  assert.match(groupBubbleSource, /DmReactionPicker/);
 
   const attachmentSource = readFileSync(
     new URL("../app/components/dm/DmMessageAttachment.tsx", import.meta.url),

@@ -47,8 +47,27 @@ export async function listDmReactionsForConversation(
     throw messagesError;
   }
 
-  const messageIds = (messages ?? []).map((row) => row.id as string);
+  return listMessageReactionsForMessageIds((messages ?? []).map((row) => row.id as string));
+}
 
+export async function listMessageReactionsForEvent(
+  eventId: string,
+): Promise<DmMessageReaction[]> {
+  const { data: messages, error: messagesError } = await supabase
+    .from("messages")
+    .select("id")
+    .eq("event_id", eventId);
+
+  if (messagesError) {
+    throw messagesError;
+  }
+
+  return listMessageReactionsForMessageIds((messages ?? []).map((row) => row.id as string));
+}
+
+async function listMessageReactionsForMessageIds(
+  messageIds: string[],
+): Promise<DmMessageReaction[]> {
   if (messageIds.length === 0) {
     return [];
   }

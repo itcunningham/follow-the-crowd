@@ -1,4 +1,4 @@
-# Current state (last updated: 2026-07-28)
+# Current state (last updated: 2026-07-29)
 
 Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 
@@ -99,6 +99,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 - Booking cards in DMs show **live** event fields from `events` when `event_id` set; expanded card uses compact icon metadata rows (venue/date/time/rate), no event initials thumb, expandable notes, tighter spacing
 - **DM photo picker (2026-07-14):** media icon opens native OS chooser (Photo Library / Take Photo on iOS); no forced camera via `capture`
 - **DM message reactions (2026-07-25):** persistent `React` label removed; press-and-hold (~500ms) or right-click opens existing picker on text/image messages; desktop hover/focus-visible `+` affordance; keyboard-accessible `React to message` button; booking/system cards unchanged; DM image attachments use button open surface (not `<a>`) with scoped `-webkit-touch-callout: none` so iPhone Safari long-press opens FTC picker instead of native link preview; reaction picker no longer uses a full-screen blocking backdrop — outside tap or scroll dismisses it without trapping chat scroll
+- **Chat reaction gestures (2026-07-29):** double-tap message bubble toggles ❤️ (Instagram-style, touch-only); long-press still opens full emoji tray; picker portaled to `document.body` with measured flip/clamp inside visual viewport + safe-area + composer/header bounds; same gestures on event group chat text messages; group chat reactions reuse `toggleDmMessageReaction` + optimistic/realtime sync — **SQL:** run `scripts/setupEventCrewChatReactions.sql` on Supabase for crew-chat RLS
 - **Mobile bottom nav + keyboard (2026-07-21):** on viewports below `md`, text-field focus latches a keyboard session from `visualViewport` height gap; nav stays hidden while focused (including iOS scroll) until height gap shows dismissal or focus leaves; offset padding clears with the bar
 - **DM composer focus (2026-07-28):** after send, input stays focused and keyboard remains open when it was already open at send time; `shouldKeepComposerFocusedAfterSend` gates restore; no post-send blur; send button uses pointerdown focus retention; mobile focus ring follows `data-mobile-keyboard-open`
 - **DM keyboard dismiss (2026-07-28):** scroll interception while composer focused; manual scrollTop + rAF momentum coast after flick; blur only after downward pull at newest-message edge — see `composerKeyboardDismissPolicy.ts` + `composerMessageListMomentumScroll.ts`

@@ -347,6 +347,10 @@ export default function DmChatPage() {
     clearPendingAttachment();
   }, [clearPendingAttachment, conversationId]);
 
+  useEffect(() => {
+    setReactionPickerMessageId(null);
+  }, [conversationId]);
+
   useChatBookingTargetScroll({
     scrollTargetBookingRequestId,
     highlightTargetBookingRequestId,
@@ -1668,6 +1672,7 @@ export default function DmChatPage() {
       <AppNavigation />
       <div className={`${APP_DM_CHAT_COLUMN_CLASS} ${MOBILE_NAV_OFFSET_CLASS}`}>
       <header
+        data-chat-header
         data-dm-conversation-header
         className="z-10 shrink-0 border-b border-ftc-border-subtle bg-ftc-bg/95 px-3 py-2.5 backdrop-blur-md sm:px-4"
       >
@@ -1811,6 +1816,7 @@ export default function DmChatPage() {
                     currentUserId={currentUserId}
                     showReactionPicker={reactionPickerMessageId === message.id}
                     reacting={reactingMessageId === message.id}
+                    scrollContainerRef={scrollRef}
                     onToggleReaction={(emoji) => void handleToggleReaction(message.id, emoji)}
                     onOpenReactionPicker={() => setReactionPickerMessageId(message.id)}
                     onCloseReactionPicker={() =>

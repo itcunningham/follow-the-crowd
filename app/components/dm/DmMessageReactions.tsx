@@ -1,18 +1,18 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-import { DM_QUICK_REACTIONS, summarizeDmReactions, type DmMessageReaction } from "@/lib/dmReactions";
+import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import {
+  DM_QUICK_REACTIONS,
+  summarizeDmReactions,
+  type DmMessageReaction,
+} from "@/lib/dmReactions";
+import { useReactionPickerPosition } from "@/lib/dm/useReactionPickerPosition";
 
 const PICKER_CLASS =
-  "absolute z-[60] flex max-w-[min(calc(100vw-2rem),20rem)] shrink-0 items-center gap-1 rounded-full border border-ftc-border-strong bg-ftc-bg-elevated/95 px-2 py-1.5 shadow-[0_8px_24px_rgba(0,0,0,0.45)] backdrop-blur-sm";
+  "fixed z-[120] flex max-w-[min(calc(100vw-2rem),20rem)] shrink-0 items-center gap-1 rounded-full border border-ftc-border-strong bg-ftc-bg-elevated/95 px-2 py-1.5 shadow-[0_8px_24px_rgba(0,0,0,0.45)] backdrop-blur-sm";
 
 const PICKER_SCROLL_DISMISS_THRESHOLD_PX = 10;
-
-function getPickerPositionClass(isOwnMessage: boolean) {
-  return isOwnMessage
-    ? "bottom-full right-0 mb-2 max-sm:left-1/2 max-sm:right-auto max-sm:-translate-x-1/2 sm:top-1/2 sm:right-full sm:mr-2 sm:mb-0 sm:-translate-y-1/2 sm:translate-x-0"
-    : "bottom-full left-0 mb-2 max-sm:left-1/2 max-sm:-translate-x-1/2 sm:top-1/2 sm:left-full sm:ml-2 sm:mb-0 sm:-translate-y-1/2 sm:translate-x-0";
-}
 
 function prefersFinePointer(): boolean {
   if (typeof window === "undefined") {
@@ -30,18 +30,34 @@ export function DmReactionPicker({
   show,
   reacting,
   isOwnMessage,
+  anchorRef,
+  scrollContainerRef,
   onToggleReaction,
   onClosePicker,
 }: {
   show: boolean;
   reacting: boolean;
   isOwnMessage: boolean;
+  anchorRef: React.RefObject<HTMLElement | null>;
+  scrollContainerRef?: React.RefObject<HTMLElement | null>;
   onToggleReaction: (emoji: string) => void;
   onClosePicker: () => void;
 }) {
   const pickerRef = useRef<HTMLDivElement>(null);
   const firstReactionRef = useRef<HTMLButtonElement>(null);
   const pointerStartsRef = useRef<Map<number, { x: number; y: number }>>(new Map());
+  const [mounted, setMounted] = useState(false);
+  const { position } = useReactionPickerPosition({
+    show,
+    anchorRef,
+    pickerRef,
+    isOwnMessage,
+    scrollContainerRef,
+  });
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (!show) {
@@ -107,12 +123,23 @@ export function DmReactionPicker({
       onClosePicker();
     }
 
+    function handleScroll(event: Event) {
+      const scrollContainer = scrollContainerRef?.current;
+
+      if (scrollContainer && event.target === scrollContainer) {
+        onClosePicker();
+      }
+    }
+
+    const scrollContainer = scrollContainerRef?.current;
+
     window.addEventListener("keydown", handleKeyDown);
     window.addEventListener("pointerdown", handlePointerDown, true);
     window.addEventListener("pointermove", handlePointerMove, { passive: true });
     window.addEventListener("pointerup", handlePointerUp, { passive: true });
     window.addEventListener("pointercancel", handlePointerUp, { passive: true });
     window.addEventListener("wheel", handleWheel, { passive: true });
+    scrollContainer?.addEventListener("scroll", handleScroll, { passive: true });
 
     return () => {
       pointerStartsRef.current.clear();
@@ -122,20 +149,26 @@ export function DmReactionPicker({
       window.removeEventListener("pointerup", handlePointerUp);
       window.removeEventListener("pointercancel", handlePointerUp);
       window.removeEventListener("wheel", handleWheel);
+      scrollContainer?.removeEventListener("scroll", handleScroll);
     };
-  }, [onClosePicker, show]);
+  }, [onClosePicker, scrollContainerRef, show]);
 
-  if (!show) {
+  if (!show || !mounted) {
     return null;
   }
 
-  return (
+  const picker = (
     <div
       ref={pickerRef}
       data-dm-reaction-picker
       role="toolbar"
       aria-label="React to message"
-      className={`${PICKER_CLASS} ${getPickerPositionClass(isOwnMessage)}`}
+      className={PICKER_CLASS}
+      style={{
+        top: position.top,
+        left: position.left,
+        visibility: position.ready ? "visible" : "hidden",
+      }}
     >
       {DM_QUICK_REACTIONS.map((emoji, index) => (
         <button
@@ -152,6 +185,8 @@ export function DmReactionPicker({
       ))}
     </div>
   );
+
+  return createPortal(picker, document.body);
 }
 
 export default function DmMessageReactions({

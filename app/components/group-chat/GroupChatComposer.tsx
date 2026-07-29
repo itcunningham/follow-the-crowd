@@ -25,7 +25,10 @@ export default function GroupChatComposer({
   }
 
   return (
-    <div className="shrink-0 border-t border-ftc-border-subtle bg-ftc-bg px-3 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-4">
+    <div
+      data-chat-composer
+      className="shrink-0 border-t border-ftc-border-subtle bg-ftc-bg px-3 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-4"
+    >
       <div className="flex min-w-0 items-end gap-2">
         <input
           type="text"

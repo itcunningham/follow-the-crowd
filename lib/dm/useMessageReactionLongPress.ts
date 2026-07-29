@@ -119,6 +119,8 @@ export function useMessageReactionLongPress(onOpenPicker: () => void) {
 
   useEffect(() => () => clearTimer(), [clearTimer]);
 
+  const wasLongPressActivated = useCallback(() => longPressActivatedRef.current, []);
+
   return {
     handlePointerDown,
     handlePointerMove,
@@ -126,6 +128,7 @@ export function useMessageReactionLongPress(onOpenPicker: () => void) {
     handlePointerCancel,
     handleContextMenu,
     consumeLongPressActivation,
+    wasLongPressActivated,
     resetLongPressGesture: resetGesture,
   };
 }

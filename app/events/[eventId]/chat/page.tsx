@@ -20,6 +20,13 @@ import {
   sendEventCrewChatMessage,
   type EventCrewChatMessage,
 } from "@/lib/eventCrewChat";
+import {
+  groupDmReactionsByMessageId,
+  listMessageReactionsForEvent,
+  toggleDmMessageReaction,
+  upsertDmReactionInList,
+  type DmMessageReaction,
+} from "@/lib/dmReactions";
 import type { CrewChatUnlockState } from "@/lib/events/crewChatUnlock";
 import {
   buildGroupChatSenderNameVisibility,
@@ -127,6 +134,9 @@ export default function EventCrewChatPage() {
   };
 
   const [messages, setMessages] = useState<EventCrewChatMessageWithScrollMeta[]>([]);
+  const [reactions, setReactions] = useState<DmMessageReaction[]>([]);
+  const [reactingMessageId, setReactingMessageId] = useState<string | null>(null);
+  const [reactionPickerMessageId, setReactionPickerMessageId] = useState<string | null>(null);
   const [senderProfiles, setSenderProfiles] = useState<Map<string, UserAvatarProfile>>(
     new Map(),
   );
@@ -145,6 +155,7 @@ export default function EventCrewChatPage() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const messagesLoadGenerationRef = useRef(0);
+  const messageIdsRef = useRef<string[]>([]);
   const loading = accessLoading || messagesLoading;
   const lastMessage = messages.length > 0 ? messages[messages.length - 1] : null;
   const reversedMessages = useMemo(() => [...messages].reverse(), [messages]);
@@ -152,6 +163,12 @@ export default function EventCrewChatPage() {
     () => buildGroupChatSenderNameVisibility(messages, currentUserId),
     [messages, currentUserId],
   );
+  const reactionsByMessageId = useMemo(
+    () => groupDmReactionsByMessageId(reactions),
+    [reactions],
+  );
+  const messageIds = useMemo(() => messages.map((message) => message.id), [messages]);
+  messageIdsRef.current = messageIds;
   const memberCount = resolveCrewChatMemberCount(
     crewParticipantIds.length > 0 ? crewParticipantIds.length : null,
     crewUnlock?.acceptedDjCount ?? 0,
@@ -166,7 +183,7 @@ export default function EventCrewChatPage() {
     captureScrollBeforeIncomingInsert,
   } = useChatScroll({
     loading,
-    messageIds: messages.map((message) => message.id),
+    messageIds,
     lastMessageSenderId: lastMessage?.user_id ?? null,
     lastMessageIsFromCurrentUser: lastMessage?._clientScrollMeta?.isFromCurrentUser ?? null,
     currentUserId,
@@ -260,7 +277,13 @@ export default function EventCrewChatPage() {
         setCurrentUserId(userId);
       }
 
-      const rows = await withGroupChatMessagesTimeout(listEventCrewChatMessages(eventId));
+      const [rows, reactionsResult] = await Promise.all([
+        withGroupChatMessagesTimeout(listEventCrewChatMessages(eventId)),
+        listMessageReactionsForEvent(eventId).catch((reactionError) => {
+          console.error("Failed to load group chat reactions:", reactionError);
+          return [] as DmMessageReaction[];
+        }),
+      ]);
 
       if (generation !== messagesLoadGenerationRef.current) {
         return;
@@ -270,6 +293,7 @@ export default function EventCrewChatPage() {
         rows.length > 0 ? rows[rows.length - 1]?.created_at ?? null : null;
 
       setMessages(rows.map((message) => tagChatMessageForScroll(message, userId)));
+      setReactions(reactionsResult);
       markGroupChatOpened(latestMessageCreatedAt);
       void loadSenderProfiles(rows);
     } catch (loadError) {
@@ -298,6 +322,8 @@ export default function EventCrewChatPage() {
       setCanAccessChat(false);
       setError(null);
       setMessages([]);
+      setReactions([]);
+      setReactionPickerMessageId(null);
       setSenderProfiles(new Map());
       setMessagesError(null);
       setMessagesLoading(true);
@@ -447,6 +473,114 @@ export default function EventCrewChatPage() {
     };
   }, [eventId, currentUserId, captureScrollBeforeIncomingInsert, addHighlightedMessageId]);
 
+  useEffect(() => {
+    setReactionPickerMessageId(null);
+  }, [eventId]);
+
+  useEffect(() => {
+    if (!eventId || !canAccessChat) {
+      return;
+    }
+
+    function upsertReaction(nextReaction: DmMessageReaction) {
+      if (!messageIdsRef.current.includes(nextReaction.message_id)) {
+        return;
+      }
+
+      setReactions((prev) => {
+        const withoutExisting = prev.filter(
+          (reaction) =>
+            !(
+              reaction.message_id === nextReaction.message_id &&
+              reaction.user_id === nextReaction.user_id
+            ),
+        );
+
+        return [...withoutExisting, nextReaction];
+      });
+    }
+
+    const channel = supabase
+      .channel(`event-crew-reactions:${eventId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "message_reactions",
+        },
+        (payload) => {
+          upsertReaction(payload.new as DmMessageReaction);
+        },
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "message_reactions",
+        },
+        (payload) => {
+          upsertReaction(payload.new as DmMessageReaction);
+        },
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "DELETE",
+          schema: "public",
+          table: "message_reactions",
+        },
+        (payload) => {
+          const deleted = payload.old as DmMessageReaction;
+
+          if (!messageIdsRef.current.includes(deleted.message_id)) {
+            return;
+          }
+
+          setReactions((prev) =>
+            prev.filter(
+              (reaction) =>
+                !(
+                  reaction.message_id === deleted.message_id &&
+                  reaction.user_id === deleted.user_id
+                ),
+            ),
+          );
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [canAccessChat, eventId]);
+
+  async function handleToggleReaction(messageId: string, emoji: string) {
+    if (!currentUserId || reactingMessageId) {
+      return;
+    }
+
+    setReactingMessageId(messageId);
+    setError(null);
+
+    try {
+      const nextReaction = await toggleDmMessageReaction(messageId, emoji);
+
+      setReactions((prev) =>
+        upsertDmReactionInList(prev, nextReaction, messageId, currentUserId),
+      );
+      setReactionPickerMessageId(null);
+    } catch (reactionError) {
+      console.error("Failed to toggle group chat reaction:", reactionError);
+      setError(
+        reactionError instanceof Error ? reactionError.message : "Failed to update reaction",
+      );
+    } finally {
+      setReactingMessageId(null);
+    }
+  }
+
   async function sendMessage() {
     const text = input.trim();
 
@@ -502,7 +636,10 @@ export default function EventCrewChatPage() {
         <div
           className={`mx-auto flex min-h-0 w-full max-w-2xl flex-1 flex-col overflow-hidden ${MOBILE_NAV_OFFSET_CLASS}`}
         >
-          <header className="z-10 shrink-0 overflow-visible border-b border-ftc-border-subtle bg-ftc-bg/95 px-3 py-2.5 backdrop-blur-md sm:px-4">
+          <header
+            data-chat-header
+            className="z-10 shrink-0 overflow-visible border-b border-ftc-border-subtle bg-ftc-bg/95 px-3 py-2.5 backdrop-blur-md sm:px-4"
+          >
             {accessLoading ? (
               <ChatHeaderSkeleton />
             ) : (
@@ -571,6 +708,18 @@ export default function EventCrewChatPage() {
                       senderLabel={senderLabel}
                       senderAvatarUrl={profile?.avatar_url}
                       profileReturnTo={chatReturnTo}
+                      reactions={reactionsByMessageId.get(message.id) ?? []}
+                      currentUserId={currentUserId}
+                      showReactionPicker={reactionPickerMessageId === message.id}
+                      reacting={reactingMessageId === message.id}
+                      scrollContainerRef={scrollRef}
+                      onToggleReaction={(emoji) => void handleToggleReaction(message.id, emoji)}
+                      onOpenReactionPicker={() => setReactionPickerMessageId(message.id)}
+                      onCloseReactionPicker={() =>
+                        setReactionPickerMessageId((current) =>
+                          current === message.id ? null : current,
+                        )
+                      }
                       formatTime={formatMessageTime}
                       isHighlighted={highlighted}
                       showSenderName={senderNameVisibility.get(message.id) ?? false}
