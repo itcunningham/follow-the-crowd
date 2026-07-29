@@ -287,6 +287,8 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `20ee05d` — final chat polish: within-group spacing mb-1.5, Seen/reaction clearance, composer placeholder min-width
+
 - `41ef5cf` — Final reaction positioning polish
 - `d94af60` — Final reaction attachment polish
 - `54848dc` — Final visual polish for reaction badge
