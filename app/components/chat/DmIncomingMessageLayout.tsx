@@ -15,25 +15,20 @@ export default function DmIncomingMessageLayout({
   showTimestamp,
   createdAt,
   formattedTime,
-  hasReactions,
   children,
-  reactions,
 }: {
   className?: string;
   groupPosition: ChatMessageGroupPosition;
   showTimestamp: boolean;
   createdAt: string;
   formattedTime: string;
-  hasReactions: boolean;
   children: ReactNode;
-  reactions?: ReactNode;
 }) {
   const showVisibleTimestamp = isIncomingClusterEnd(groupPosition) && showTimestamp;
 
   return (
     <div className={`${DM_INCOMING_MESSAGE_COLUMN_CLASS} ${className}`.trim()}>
       {children}
-      {hasReactions ? <div className="min-w-0">{reactions}</div> : null}
       {showVisibleTimestamp ? (
         <time dateTime={createdAt} className={DM_INCOMING_TIMESTAMP_CLASS}>
           {formattedTime}

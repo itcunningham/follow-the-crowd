@@ -191,6 +191,15 @@ export default function DmTextMessageBubble({
         ) : null}
       </div>
 
+      <DmMessageReactions
+        reactions={reactions}
+        currentUserId={currentUserId}
+        reacting={reacting}
+        isOwnMessage={isOwnMessage}
+        onToggleReaction={onToggleReaction}
+        onOpenPicker={onOpenReactionPicker}
+      />
+
       <DmReactionPicker
         show={showReactionPicker}
         reacting={reacting}
@@ -203,20 +212,8 @@ export default function DmTextMessageBubble({
     </div>
   );
 
-  const reactionsBlock = (
-    <DmMessageReactions
-      reactions={reactions}
-      currentUserId={currentUserId}
-      reacting={reacting}
-      isOwnMessage={isOwnMessage}
-      onToggleReaction={onToggleReaction}
-      onOpenPicker={onOpenReactionPicker}
-    />
-  );
-
   if (!isOwnMessage) {
     const isClusterEnd = showAvatar;
-    const hasReactionSummaries = reactions.length > 0;
 
     return (
       <li
@@ -233,8 +230,6 @@ export default function DmTextMessageBubble({
           showTimestamp={showTimestamp}
           createdAt={createdAt}
           formattedTime={formattedTime}
-          hasReactions={hasReactionSummaries}
-          reactions={reactionsBlock}
         >
           {bubbleBlock}
         </DmIncomingMessageLayout>
@@ -260,7 +255,6 @@ export default function DmTextMessageBubble({
           >
             {formattedTime}
           </time>
-          {reactionsBlock}
           {showSeen ? (
             <p className="ftc-seen-label mt-0.5 self-end text-right">Seen</p>
           ) : null}

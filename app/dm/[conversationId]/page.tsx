@@ -2010,7 +2010,6 @@ export default function DmChatPage() {
                         }
                         createdAt={message.created_at}
                         formattedTime={formatMessageTime(message.created_at)}
-                        hasReactions={false}
                       >
                         <BookingCardFocusRing phase={bookingFocusPhase}>
                           {highlightClassName ? (

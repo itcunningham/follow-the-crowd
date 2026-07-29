@@ -156,6 +156,15 @@ export default function GroupChatMessageBubble({
         <p className={bubbleTextClass}>{text}</p>
       </div>
 
+      <DmMessageReactions
+        reactions={reactions}
+        currentUserId={currentUserId}
+        reacting={reacting}
+        isOwnMessage={isOwnMessage}
+        onToggleReaction={onToggleReaction}
+        onOpenPicker={onOpenReactionPicker}
+      />
+
       <DmReactionPicker
         show={showReactionPicker}
         reacting={reacting}
@@ -168,20 +177,8 @@ export default function GroupChatMessageBubble({
     </div>
   );
 
-  const reactionsBlock = (
-    <DmMessageReactions
-      reactions={reactions}
-      currentUserId={currentUserId}
-      reacting={reacting}
-      isOwnMessage={isOwnMessage}
-      onToggleReaction={onToggleReaction}
-      onOpenPicker={onOpenReactionPicker}
-    />
-  );
-
   if (!isOwnMessage) {
     const isClusterEnd = showAvatar;
-    const hasReactionSummaries = reactions.length > 0;
 
     return (
       <li
@@ -198,8 +195,6 @@ export default function GroupChatMessageBubble({
           showTimestamp={showTimestamp}
           createdAt={createdAt}
           formattedTime={formatTime(createdAt)}
-          hasReactions={hasReactionSummaries}
-          reactions={reactionsBlock}
           leadingContent={
             showSenderName ? (
               <p className="mb-1 px-1 text-[11px] font-semibold text-ftc-text-secondary">
@@ -238,7 +233,6 @@ export default function GroupChatMessageBubble({
           >
             {formatTime(createdAt)}
           </time>
-          {reactionsBlock}
         </div>
       </div>
     </li>

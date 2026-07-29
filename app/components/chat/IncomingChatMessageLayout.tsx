@@ -5,9 +5,6 @@ import {
   CHAT_INCOMING_AVATAR_CELL_CLASS,
   CHAT_INCOMING_AVATAR_SLOT_CLASS,
   CHAT_INCOMING_BUBBLE_CELL_CLASS,
-  CHAT_INCOMING_BUBBLE_STACK_CLASS,
-  CHAT_INCOMING_REACTIONS_CELL_CLASS,
-  CHAT_INCOMING_REACTIONS_INLINE_CLASS,
   CHAT_INCOMING_ROW_GRID_CLASS,
   CHAT_INCOMING_ROW_GRID_CLUSTER_END_CLASS,
   CHAT_INCOMING_TIMESTAMP_CELL_CLASS,
@@ -22,10 +19,8 @@ export default function IncomingChatMessageLayout({
   avatar,
   createdAt,
   formattedTime,
-  hasReactions,
   leadingContent,
   children,
-  reactions,
 }: {
   className?: string;
   groupPosition: ChatMessageGroupPosition;
@@ -33,10 +28,8 @@ export default function IncomingChatMessageLayout({
   avatar: ReactNode;
   createdAt: string;
   formattedTime: string;
-  hasReactions: boolean;
   leadingContent?: ReactNode;
   children: ReactNode;
-  reactions?: ReactNode;
 }) {
   const isClusterEnd = isIncomingClusterEnd(groupPosition);
   const showVisibleTimestamp = isClusterEnd && showTimestamp;
@@ -62,10 +55,6 @@ export default function IncomingChatMessageLayout({
             {formattedTime}
           </time>
         )}
-
-        {hasReactions ? (
-          <div className={CHAT_INCOMING_REACTIONS_CELL_CLASS}>{reactions}</div>
-        ) : null}
       </div>
     );
   }
@@ -76,12 +65,9 @@ export default function IncomingChatMessageLayout({
         <span aria-hidden="true" className={CHAT_INCOMING_AVATAR_SLOT_CLASS} />
       </div>
 
-      <div className={`${CHAT_INCOMING_BUBBLE_CELL_CLASS} ${CHAT_INCOMING_BUBBLE_STACK_CLASS}`}>
+      <div className={CHAT_INCOMING_BUBBLE_CELL_CLASS}>
         {leadingContent}
         {children}
-        {hasReactions ? (
-          <div className={CHAT_INCOMING_REACTIONS_INLINE_CLASS}>{reactions}</div>
-        ) : null}
       </div>
 
       <time dateTime={createdAt} hidden>

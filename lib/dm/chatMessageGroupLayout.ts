@@ -36,13 +36,13 @@ export const CHAT_INCOMING_AVATAR_CELL_CLASS =
 export const CHAT_INCOMING_BUBBLE_CELL_CLASS =
   "col-start-2 row-start-1 min-w-0 w-full flex flex-col items-start";
 
-/** First/middle rows stack reactions under the bubble in the same column. */
+/** First/middle rows stack bubble content in the same column. */
 export const CHAT_INCOMING_BUBBLE_STACK_CLASS = "gap-0.5";
 
-/** Inline reactions stay in the bubble column — no extra grid row. */
+/** @deprecated Reactions anchor to the bubble via absolute positioning. */
 export const CHAT_INCOMING_REACTIONS_INLINE_CLASS = "min-w-0";
 
-/** Cluster-end reactions sit below the bubble without affecting avatar row alignment. */
+/** @deprecated Reactions anchor to the bubble via absolute positioning. */
 export const CHAT_INCOMING_REACTIONS_CELL_CLASS = "col-start-2 row-start-2 min-w-0 -mt-0.5";
 
 /** Timestamp sits under the avatar, never wraps. */
@@ -59,6 +59,19 @@ export const DM_INCOMING_MESSAGE_COLUMN_CLASS =
 /** DM timestamp beneath the bubble/reactions stack at cluster end. */
 export const DM_INCOMING_TIMESTAMP_CLASS =
   "self-start whitespace-nowrap px-0.5 text-[10px] leading-none text-ftc-text-muted";
+
+/** Absolute anchor — reactions overlap the bubble edge without expanding the message row. */
+export function resolveChatMessageReactionsAnchorClass(isOwnMessage: boolean): string {
+  const base = "pointer-events-none absolute z-10 max-w-[calc(100%+1rem)]";
+
+  return isOwnMessage
+    ? `${base} bottom-0 right-1 translate-y-1/2`
+    : `${base} bottom-0 left-1 translate-y-1/2`;
+}
+
+/** Interactive reaction chips inside the anchor wrapper. */
+export const CHAT_MESSAGE_REACTIONS_STACK_CLASS =
+  "pointer-events-auto flex max-w-full flex-wrap items-center gap-1";
 
 export function isIncomingClusterEnd(
   groupPosition: ChatMessageGroupPosition,

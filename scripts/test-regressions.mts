@@ -5143,6 +5143,9 @@ function testDmMessageReactionGestureInteractions() {
   assert.doesNotMatch(reactionsSource, /prominentActions/);
   assert.match(reactionsSource, /if \(summaries\.length === 0\) \{\s*return null;/);
   assert.match(reactionsSource, /disabled:pointer-events-none/);
+  assert.match(reactionsSource, /resolveChatMessageReactionsAnchorClass/);
+  assert.match(reactionsSource, /CHAT_MESSAGE_REACTIONS_STACK_CLASS/);
+  assert.match(reactionsSource, /pointer-events-none absolute/);
   assert.match(reactionsSource, /border-ftc-border-strong bg-ftc-surface text-ftc-text/);
   assert.doesNotMatch(reactionsSource, /disabled:opacity-50/);
   assert.match(bubbleSource, /useMessageReactionLongPress/);
@@ -5180,6 +5183,8 @@ function testDmMessageReactionGestureInteractions() {
   assert.match(bubbleSource, /groupPosition/);
   assert.match(bubbleSource, /DmIncomingMessageLayout/);
   assert.doesNotMatch(bubbleSource, /IncomingChatMessageLayout/);
+  assert.match(bubbleSource, /DmMessageReactions/);
+  assert.doesNotMatch(bubbleSource, /hasReactions=/);
   assert.match(bubbleSource, /resolveIncomingGroupLiClass/);
   assert.doesNotMatch(bubbleSource, /CHAT_INCOMING_GROUP_FOOTER_CLASS/);
   assert.doesNotMatch(bubbleSource, /Report message/);
@@ -5252,7 +5257,7 @@ function testChatMessageGroupLayout() {
   assert.match(groupLayoutSource, /CHAT_INCOMING_GROUP_TIGHT_MIDDLE_CLASS/);
   assert.match(groupLayoutSource, /CHAT_INCOMING_GROUP_TIGHT_LAST_CLASS/);
   assert.match(groupLayoutSource, /CHAT_INCOMING_ROW_GRID_CLUSTER_END_CLASS/);
-  assert.match(groupLayoutSource, /CHAT_INCOMING_REACTIONS_INLINE_CLASS/);
+  assert.match(groupLayoutSource, /resolveChatMessageReactionsAnchorClass/);
   assert.match(groupLayoutSource, /CHAT_INCOMING_BUBBLE_STACK_CLASS/);
   assert.match(groupLayoutSource, /CHAT_MESSAGE_SCROLLER_CLASS/);
   assert.match(groupLayoutSource, /resolveIncomingGroupTightMarginClass/);

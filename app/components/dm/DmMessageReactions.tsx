@@ -7,6 +7,10 @@ import {
   summarizeDmReactions,
   type DmMessageReaction,
 } from "@/lib/dmReactions";
+import {
+  CHAT_MESSAGE_REACTIONS_STACK_CLASS,
+  resolveChatMessageReactionsAnchorClass,
+} from "@/lib/dm/chatMessageGroupLayout";
 import { useReactionPickerPosition } from "@/lib/dm/useReactionPickerPosition";
 
 const PICKER_ANIMATION_MS = 175;
@@ -258,11 +262,12 @@ export default function DmMessageReactions({
   }
 
   return (
-    <div
-      className={`${isOwnMessage ? "mt-0.5" : "mt-0"} flex max-w-full flex-wrap items-center gap-1 ${
-        isOwnMessage ? "justify-end" : "justify-start self-start"
-      }`}
-    >
+    <div className={resolveChatMessageReactionsAnchorClass(isOwnMessage)}>
+      <div
+        className={`${CHAT_MESSAGE_REACTIONS_STACK_CLASS} ${
+          isOwnMessage ? "justify-end" : "justify-start"
+        }`}
+      >
       {summaries.map((summary) => (
         <button
           key={summary.emoji}
@@ -287,6 +292,7 @@ export default function DmMessageReactions({
       >
         +
       </button>
+      </div>
     </div>
   );
 }
