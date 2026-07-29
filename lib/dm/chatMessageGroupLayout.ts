@@ -125,7 +125,7 @@ export const CHAT_MESSAGE_SCROLLER_CLASS =
 
 /** Compact Instagram-style badge — subtle corner-attached weight. */
 export const CHAT_MESSAGE_REACTION_PILL_CLASS =
-  "inline-flex max-w-none flex-nowrap items-center gap-0 rounded-full border border-ftc-border-subtle/50 bg-ftc-bg-elevated/90 px-1 py-0 shadow-[0_1px_2px_rgba(0,0,0,0.12)]";
+  "inline-flex max-w-none flex-nowrap items-center gap-0 rounded-full border border-ftc-border-subtle/50 bg-ftc-bg-elevated/90 px-0.5 py-0 shadow-[0_1px_2px_rgba(0,0,0,0.12)]";
 
 /** Pill enter/exit animation — scale 0.8 ↔ 1.0 with light spring. */
 export const CHAT_MESSAGE_REACTION_PILL_ANIMATION_MS = 160;
@@ -140,19 +140,30 @@ export const CHAT_MESSAGE_REACTION_PILL_HIDDEN_CLASS =
 
 /** Emoji control inside the pill — pill supplies horizontal padding. */
 export const CHAT_MESSAGE_REACTION_EMOJI_BUTTON_CLASS =
-  "inline-flex h-4 shrink-0 items-center justify-center rounded-full p-0 text-xs leading-none";
+  "inline-flex h-3.5 shrink-0 items-center justify-center rounded-full p-0 text-xs leading-none";
 
 /** Interactive controls inside the pill wrapper. */
 export const CHAT_MESSAGE_REACTIONS_STACK_CLASS = "pointer-events-auto";
+
+/** Shared vertical overlap — half below bubble lip; corner curve stays visible. */
+export const CHAT_MESSAGE_REACTION_ANCHOR_TRANSLATE_Y_CLASS = "translate-y-1/2";
+
+/** Trailing-edge inset — outgoing bubbles (identical for every own message). */
+export const CHAT_MESSAGE_REACTION_ANCHOR_INSET_OUTGOING_CLASS = "right-1.5";
+
+/** Leading-edge inset — incoming bubbles (identical for every peer message). */
+export const CHAT_MESSAGE_REACTION_ANCHOR_INSET_INCOMING_CLASS = "left-1.5";
 
 /**
  * Reaction badge anchor — absolute corner overlap with zero document-flow height.
  * Stack rhythm comes only from `CHAT_LIST_ITEM_*` list-item margins.
  */
 export function resolveMessageReactionAnchorClass(isOwnMessage: boolean): string {
-  const corner = isOwnMessage ? "right-1" : "left-1";
+  const corner = isOwnMessage
+    ? CHAT_MESSAGE_REACTION_ANCHOR_INSET_OUTGOING_CLASS
+    : CHAT_MESSAGE_REACTION_ANCHOR_INSET_INCOMING_CLASS;
 
-  return `pointer-events-none absolute bottom-0 z-10 ${corner} translate-y-[calc(50%-2px)]`;
+  return `pointer-events-none absolute bottom-0 z-10 ${corner} ${CHAT_MESSAGE_REACTION_ANCHOR_TRANSLATE_Y_CLASS}`;
 }
 
 /** @deprecated In-flow row removed — reactions no longer affect list-item height. */

@@ -288,7 +288,7 @@ export default function DmMessageReactions({
           aria-label="Add reaction"
           disabled={reacting}
           onClick={onOpenPicker}
-          className="hidden h-4 w-4 shrink-0 items-center justify-center rounded-full text-[10px] leading-none text-ftc-text-secondary transition hover:bg-ftc-surface/35 hover:text-ftc-text focus-visible:inline-flex disabled:pointer-events-none sm:group-hover/message:inline-flex"
+          className="hidden h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full text-[10px] leading-none text-ftc-text-secondary transition hover:bg-ftc-surface/35 hover:text-ftc-text focus-visible:inline-flex disabled:pointer-events-none sm:group-hover/message:inline-flex"
         >
           +
         </button>
