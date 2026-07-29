@@ -19,8 +19,8 @@ export type ChatMessageGroupLayout = {
   tightWithPrevious: boolean;
 };
 
-/** Avatar slot — matches ProfileAvatar sm (h-8 w-8). */
-export const CHAT_INCOMING_AVATAR_SLOT_CLASS = "block h-8 w-8 shrink-0";
+/** Avatar slot — width reservation only; height comes from the avatar on cluster end. */
+export const CHAT_INCOMING_AVATAR_SLOT_CLASS = "block w-8 shrink-0";
 
 /** Fixed avatar column — wide enough for a single-line timestamp beneath the avatar. */
 export const CHAT_INCOMING_AVATAR_COLUMN_WIDTH_CLASS = "w-12";
@@ -29,7 +29,7 @@ export const CHAT_INCOMING_AVATAR_COLUMN_WIDTH_CLASS = "w-12";
 export const CHAT_INCOMING_ROW_GRID_CLASS =
   "grid grid-cols-[3rem_minmax(0,1fr)] gap-x-1";
 
-/** Cluster-end rows split bubble and metadata so avatar tracks the final bubble. */
+/** Cluster-end rows split bubble and reaction gutter so avatar tracks the bubble bottom. */
 export const CHAT_INCOMING_ROW_GRID_CLUSTER_END_CLASS = "grid-rows-[auto_auto] gap-y-0.5";
 
 /** Bottom-align avatar with the bubble on row 1 (cluster end only). */
@@ -165,8 +165,26 @@ export function resolveOutgoingGroupLiClass({
   /** @deprecated Reactions no longer affect grouping margins. */
   hasReactions?: boolean;
 }): string {
+  return resolveMessageGroupLiClass({
+    isOwnMessage: true,
+    position,
+    isClusterEnd,
+  });
+}
+
+/** Shared list-item spacing for incoming and outgoing DM bubbles. */
+export function resolveMessageGroupLiClass({
+  isOwnMessage,
+  position,
+  isClusterEnd,
+}: {
+  isOwnMessage: boolean;
+  position: ChatMessageGroupPosition;
+  isClusterEnd: boolean;
+}): string {
   return [
-    "group/message flex justify-end",
+    "group/message flex",
+    isOwnMessage ? "justify-end" : "justify-start",
     resolveIncomingGroupTightMarginClass(position),
     isClusterEnd ? CHAT_INCOMING_GROUP_CLUSTER_END_CLASS : "",
   ]
@@ -287,11 +305,9 @@ export function resolveIncomingGroupLiClass({
   /** @deprecated Reactions no longer affect grouping margins. */
   hasReactions?: boolean;
 }): string {
-  return [
-    "group/message flex justify-start",
-    resolveIncomingGroupTightMarginClass(position),
-    isClusterEnd ? CHAT_INCOMING_GROUP_CLUSTER_END_CLASS : "",
-  ]
-    .filter(Boolean)
-    .join(" ");
+  return resolveMessageGroupLiClass({
+    isOwnMessage: false,
+    position,
+    isClusterEnd,
+  });
 }

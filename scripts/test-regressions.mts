@@ -806,7 +806,7 @@ function testDmConversationTimestampLayout() {
   assert.doesNotMatch(timelineSource, /showTimestamp/);
   assert.doesNotMatch(timelineSource, /-mb-2/);
   assert.match(timelineSource, /compactBelow \? "pb-1"/);
-  assert.match(bubbleSource, /resolveOutgoingGroupLiClass/);
+  assert.match(bubbleSource, /resolveMessageGroupLiClass/);
   assert.doesNotMatch(bubbleSource, /showTimestamp\?: boolean/);
 
   const baseTime = Date.parse("2026-07-27T12:00:00.000Z");
@@ -5206,15 +5206,17 @@ function testDmMessageReactionGestureInteractions() {
   assert.match(bubbleSource, /onDoubleClick=\{handleDoubleTapDoubleClick\}/);
   assert.match(bubbleSource, /showAvatar/);
   assert.match(bubbleSource, /groupPosition/);
-  assert.match(bubbleSource, /resolveOutgoingGroupLiClass/);
-  assert.match(bubbleSource, /layout=\{!isOwnMessage && isClusterEnd \? "grid-participant" : "stacked"\}/);
+  assert.match(bubbleSource, /resolveMessageGroupLiClass/);
+  assert.match(bubbleSource, /layout=\{shellLayout\}/);
   assert.match(bubbleSource, /ChatMessageBubbleShell/);
   assert.match(bubbleSource, /ChatProfileAvatarLink/);
   assert.match(bubbleSource, /DmIncomingMessageLayout/);
   assert.doesNotMatch(bubbleSource, /IncomingChatMessageLayout/);
   assert.doesNotMatch(bubbleSource, /DmMessageReactions/);
   assert.doesNotMatch(bubbleSource, /hasReactions=/);
-  assert.match(bubbleSource, /resolveIncomingGroupLiClass/);
+  assert.match(bubbleSource, /resolveMessageGroupLiClass/);
+  assert.match(bubbleSource, /shellLayout/);
+  assert.doesNotMatch(bubbleSource, /resolveIncomingGroupLiClass/);
   assert.doesNotMatch(bubbleSource, /CHAT_INCOMING_GROUP_FOOTER_CLASS/);
   assert.doesNotMatch(bubbleSource, /Report message/);
   assert.match(groupBubbleSource, /onDoubleClick=\{handleDoubleTapDoubleClick\}/);
@@ -5305,6 +5307,10 @@ function testChatMessageGroupLayout() {
     new URL("../lib/dm/chatMessageGroupLayout.ts", import.meta.url),
     "utf8",
   );
+  const incomingLayoutSource = readFileSync(
+    new URL("../app/components/chat/DmIncomingMessageLayout.tsx", import.meta.url),
+    "utf8",
+  );
   const dmPageSource = readFileSync(
     new URL("../app/dm/[conversationId]/page.tsx", import.meta.url),
     "utf8",
@@ -5312,9 +5318,11 @@ function testChatMessageGroupLayout() {
 
   assert.match(groupLayoutSource, /CHAT_INCOMING_GROUP_TIGHT_MIDDLE_CLASS/);
   assert.match(groupLayoutSource, /CHAT_INCOMING_GROUP_TIGHT_LAST_CLASS/);
-  assert.match(groupLayoutSource, /CHAT_INCOMING_ROW_GRID_CLUSTER_END_CLASS/);
+  assert.match(incomingLayoutSource, /useReactionGutterRow/);
+  assert.match(incomingLayoutSource, /shellLayout === "grid-participant"/);
   assert.match(groupLayoutSource, /CHAT_MESSAGE_REACTION_GUTTER_CLASS/);
   assert.match(groupLayoutSource, /CHAT_MESSAGE_REACTION_PILL_CLASS/);
+  assert.match(groupLayoutSource, /resolveMessageGroupLiClass/);
   assert.match(groupLayoutSource, /resolveOutgoingGroupLiClass/);
   assert.match(groupLayoutSource, /gap-x-1/);
   assert.match(groupLayoutSource, /h-2\.5/);

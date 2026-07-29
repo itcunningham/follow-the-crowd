@@ -13,8 +13,7 @@ import {
   resolveChatMessageBubbleTextClass,
 } from "@/lib/dm/chatMessageBubbleGeometry";
 import {
-  resolveIncomingGroupLiClass,
-  resolveOutgoingGroupLiClass,
+  resolveMessageGroupLiClass,
   type ChatMessageGroupPosition,
 } from "@/lib/dm/chatMessageGroupLayout";
 import {
@@ -151,6 +150,7 @@ export default function DmTextMessageBubble({
   const bubbleTextClass = resolveChatMessageBubbleTextClass(displayText);
   const hasReactions = reactions.length > 0;
   const isClusterEnd = showAvatar;
+  const shellLayout = !isOwnMessage && isClusterEnd && hasReactions ? "grid-participant" : "stacked";
 
   const bubbleBlock = (
     <ChatMessageBubbleShell
@@ -159,7 +159,7 @@ export default function DmTextMessageBubble({
       bubbleShellClassName={bubbleShellClass}
       highlightClassName={highlightClass}
       isOwnMessage={isOwnMessage}
-      layout={!isOwnMessage && isClusterEnd ? "grid-participant" : "stacked"}
+      layout={shellLayout}
       reactions={reactions}
       currentUserId={currentUserId}
       reacting={reacting}
@@ -203,7 +203,8 @@ export default function DmTextMessageBubble({
   if (!isOwnMessage) {
     return (
       <li
-        className={resolveIncomingGroupLiClass({
+        className={resolveMessageGroupLiClass({
+          isOwnMessage: false,
           position: groupPosition,
           isClusterEnd,
         })}
@@ -213,6 +214,7 @@ export default function DmTextMessageBubble({
           className={rowMaxWidthClass}
           groupPosition={groupPosition}
           showAvatar={showAvatar}
+          shellLayout={shellLayout}
           createdAt={createdAt}
           formattedTime={formattedTime}
           avatar={
@@ -234,7 +236,8 @@ export default function DmTextMessageBubble({
 
   return (
     <li
-      className={resolveOutgoingGroupLiClass({
+      className={resolveMessageGroupLiClass({
+        isOwnMessage: true,
         position: groupPosition,
         isClusterEnd,
       })}
