@@ -285,7 +285,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
-- `4949cfa` — fix incoming chat layout with position-aware row structure
+- `2adfe46` — split DM incoming layout from group chat sender-aware layout
 - `329cb89` — DM/group chat composer: Return inserts newline; auto-grow textarea; Send only via button
 - `aaeade9` — remove dead Report prop; unify booking-card incoming group classes
 - `9fa2f65` — fix incoming message grouping spacing for flex-col-reverse lists
