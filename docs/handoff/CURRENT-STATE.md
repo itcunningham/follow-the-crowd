@@ -285,7 +285,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
-- `8de6ab6` — fix empty composer height and block consecutive blank newlines
+- `2c37577` — rebuild incoming chat layout with fixed avatar column
 - `329cb89` — DM/group chat composer: Return inserts newline; auto-grow textarea; Send only via button
 - `aaeade9` — remove dead Report prop; unify booking-card incoming group classes
 - `9fa2f65` — fix incoming message grouping spacing for flex-col-reverse lists
