@@ -20,6 +20,7 @@ Legacy one-off scripts remain in `scripts/` for bootstrapping and fixes. New fea
 | Event group chat | `scripts/setupEventCrewChat.sql` |
 | Group chat reactions RLS | `scripts/setupEventCrewChatReactions.sql` (after DM reactions + crew chat) |
 | Message reads / unread | `scripts/setupMessageReads.sql` |
+| **DM reactions Realtime** | `supabase/migrations/20250729100000_message_reactions_realtime.sql` (or re-run `scripts/setupDmAttachmentsAndReactions.sql` publication block) |
 | Duplicate booking protection | `scripts/fixEventBookingDuplicateProtection.sql` |
 | Production RLS | `scripts/setupProductionRls.sql` |
 | **Crew-chat auto-start auth** | `supabase/migrations/20250715180000_harden_crew_chat_auto_start_auth.sql` |

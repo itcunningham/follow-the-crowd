@@ -91,7 +91,9 @@ import {
   applyOptimisticDmReactionToggle,
   groupDmReactionsByMessageId,
   listDmReactionsForConversation,
+  removeDmReactionFromRealtime,
   toggleDmMessageReaction,
+  upsertDmReactionFromRealtime,
   upsertDmReactionInList,
   type DmMessageReaction,
 } from "@/lib/dmReactions";
@@ -303,6 +305,7 @@ export default function DmChatPage() {
   const composerRootRef = useRef<HTMLDivElement>(null);
   const keepComposerFocusedAfterSendRef = useRef(false);
   const bookingCardScrollContextRef = useRef(new Map<string, BookingCardExpandScrollContext>());
+  const conversationMessageIdsRef = useRef(new Set<string>());
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -571,6 +574,10 @@ export default function DmChatPage() {
 
     return latest;
   }, [currentUserId, messages, reactions]);
+
+  useEffect(() => {
+    conversationMessageIdsRef.current = new Set(messages.map((message) => message.id));
+  }, [messages]);
 
   useEffect(() => {
     setExpandedBookingIds(new Set());
@@ -1194,17 +1201,19 @@ export default function DmChatPage() {
     }
 
     function upsertReaction(nextReaction: DmMessageReaction) {
-      setReactions((prev) => {
-        const withoutExisting = prev.filter(
-          (reaction) =>
-            !(
-              reaction.message_id === nextReaction.message_id &&
-              reaction.user_id === nextReaction.user_id
-            ),
-        );
+      if (!conversationMessageIdsRef.current.has(nextReaction.message_id)) {
+        return;
+      }
 
-        return [...withoutExisting, nextReaction];
-      });
+      setReactions((prev) => upsertDmReactionFromRealtime(prev, nextReaction));
+    }
+
+    function removeReaction(deleted: Pick<DmMessageReaction, "id" | "message_id" | "user_id">) {
+      if (deleted.message_id && !conversationMessageIdsRef.current.has(deleted.message_id)) {
+        return;
+      }
+
+      setReactions((prev) => removeDmReactionFromRealtime(prev, deleted));
     }
 
     const channel = supabase
@@ -1239,17 +1248,7 @@ export default function DmChatPage() {
           table: "message_reactions",
         },
         (payload) => {
-          const deleted = payload.old as DmMessageReaction;
-
-          setReactions((prev) =>
-            prev.filter(
-              (reaction) =>
-                !(
-                  reaction.message_id === deleted.message_id &&
-                  reaction.user_id === deleted.user_id
-                ),
-            ),
-          );
+          removeReaction(payload.old as DmMessageReaction);
         },
       )
       .subscribe();

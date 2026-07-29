@@ -124,6 +124,22 @@ create policy "message_reactions_delete_own"
 
 grant select, insert, update, delete on table public.message_reactions to authenticated;
 
+-- Enable Realtime for reaction INSERT/UPDATE/DELETE events (no-op if already added).
+alter table public.message_reactions replica identity full;
+
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_publication_tables
+    where pubname = 'supabase_realtime'
+      and schemaname = 'public'
+      and tablename = 'message_reactions'
+  ) then
+    alter publication supabase_realtime add table public.message_reactions;
+  end if;
+end $$;
+
 -- ---------------------------------------------------------------------------
 -- Storage: dm-attachments bucket
 -- Path format: {conversation_id}/{user_id}/{filename}

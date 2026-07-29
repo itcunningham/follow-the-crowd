@@ -127,6 +127,11 @@ import {
   shouldMarkDmReactionInboxUnread,
 } from "../lib/dm/dmReactionInbox";
 import {
+  removeDmReactionFromRealtime,
+  upsertDmReactionFromRealtime,
+  type DmMessageReaction,
+} from "../lib/dmReactions";
+import {
   canComposerInsertNewline,
   getComposerLineBeforeCursor,
 } from "../lib/dm/composerNewlineKeydown";
@@ -5427,6 +5432,53 @@ function testDmReactionInboxActivity() {
   assert.doesNotMatch(inboxPageSource, /event: "DELETE"[\s\S]*message_reactions/);
 }
 
+function testDmReactionRealtime() {
+  const migrationSource = readFileSync(
+    new URL("../supabase/migrations/20250729100000_message_reactions_realtime.sql", import.meta.url),
+    "utf8",
+  );
+  const setupSource = readFileSync(
+    new URL("../scripts/setupDmAttachmentsAndReactions.sql", import.meta.url),
+    "utf8",
+  );
+  const dmPageSource = readFileSync(
+    new URL("../app/dm/[conversationId]/page.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(migrationSource, /alter publication supabase_realtime add table public\.message_reactions/);
+  assert.match(migrationSource, /replica identity full/);
+  assert.match(setupSource, /alter publication supabase_realtime add table public\.message_reactions/);
+  assert.match(dmPageSource, /upsertDmReactionFromRealtime/);
+  assert.match(dmPageSource, /removeDmReactionFromRealtime/);
+  assert.match(dmPageSource, /conversationMessageIdsRef/);
+
+  const baseReaction: DmMessageReaction = {
+    id: "reaction-1",
+    message_id: "message-1",
+    user_id: "user-a",
+    emoji: "❤️",
+    created_at: "2026-01-02T10:00:00.000Z",
+  };
+
+  const firstUpsert = upsertDmReactionFromRealtime([], baseReaction);
+  assert.equal(firstUpsert.length, 1);
+
+  const duplicateUpsert = upsertDmReactionFromRealtime(firstUpsert, baseReaction);
+  assert.equal(duplicateUpsert.length, 1);
+
+  const optimisticReaction: DmMessageReaction = {
+    ...baseReaction,
+    id: "optimistic-message-1-user-a",
+  };
+  const reconciled = upsertDmReactionFromRealtime([optimisticReaction], baseReaction);
+  assert.equal(reconciled.length, 1);
+  assert.equal(reconciled[0]?.id, "reaction-1");
+
+  const removed = removeDmReactionFromRealtime(reconciled, baseReaction);
+  assert.equal(removed.length, 0);
+}
+
 function testChatMessageGroupLayout() {
   const layout = buildChatMessageGroupLayout([
     { id: "a", user_id: "u1" },
@@ -5745,6 +5797,7 @@ async function main() {
   testDmMessageReactionGestureInteractions();
   testDmReactionNotifications();
   testDmReactionInboxActivity();
+  testDmReactionRealtime();
   testChatMessageGroupLayout();
   testChatMessageBubbleGeometry();
   testEventFallbackColourSelectionRadioBehaviour();

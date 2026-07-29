@@ -242,3 +242,52 @@ export function upsertDmReactionInList(
 
   return [...withoutUserReaction, nextReaction];
 }
+
+export function upsertDmReactionFromRealtime(
+  reactions: ReadonlyArray<DmMessageReaction>,
+  nextReaction: DmMessageReaction,
+): DmMessageReaction[] {
+  const existingById = reactions.find((reaction) => reaction.id === nextReaction.id);
+
+  if (
+    existingById &&
+    existingById.emoji === nextReaction.emoji &&
+    existingById.created_at === nextReaction.created_at &&
+    existingById.message_id === nextReaction.message_id &&
+    existingById.user_id === nextReaction.user_id
+  ) {
+    return [...reactions];
+  }
+
+  const withoutExisting = reactions.filter(
+    (reaction) =>
+      reaction.id !== nextReaction.id &&
+      !(
+        reaction.message_id === nextReaction.message_id &&
+        reaction.user_id === nextReaction.user_id
+      ),
+  );
+
+  return [...withoutExisting, nextReaction];
+}
+
+export function removeDmReactionFromRealtime(
+  reactions: ReadonlyArray<DmMessageReaction>,
+  deleted: Pick<DmMessageReaction, "id" | "message_id" | "user_id">,
+): DmMessageReaction[] {
+  if (deleted.id) {
+    return reactions.filter((reaction) => reaction.id !== deleted.id);
+  }
+
+  if (deleted.message_id && deleted.user_id) {
+    return reactions.filter(
+      (reaction) =>
+        !(
+          reaction.message_id === deleted.message_id &&
+          reaction.user_id === deleted.user_id
+        ),
+    );
+  }
+
+  return [...reactions];
+}
