@@ -287,7 +287,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
-- `<pending>` — DM final beta polish: centred timestamp separators, unified grouping, reaction pill refinement
+- `461005e` — DM final beta polish: centred timestamp separators, unified grouping, reaction pill refinement
 - `4354b00` — final DM reaction pill polish (compact sizing, corner anchor, animation)
 - `f936515` — Instagram-style reaction gutter + neutral single pill
 - `c5d9425` — message-owned reaction overlay via ChatMessageBubbleShell
