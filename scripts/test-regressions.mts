@@ -5186,7 +5186,7 @@ function testDmMessageReactionGestureInteractions() {
   assert.doesNotMatch(groupLayoutSource, /right-2\.5/);
   assert.doesNotMatch(groupLayoutSource, /-translate-x-1/);
   assert.match(groupLayoutSource, /CHAT_LIST_ITEM_WITHIN_GROUP_SPACING_CLASS = "mb-1\.5"/);
-  assert.match(shellSource, /resolveMessageReactionSlotClass/);
+  assert.match(shellSource, /resolveMessageReactionSlotClass\(isOwnMessage\)/);
   assert.doesNotMatch(shellSource, /CHAT_MESSAGE_REACTION_STACK_PAD_CLASS/);
   assert.match(shellSource, /useReactionOverlayLifecycle/);
   assert.doesNotMatch(shellSource, /CHAT_MESSAGE_REACTION_OVERLAP_RESERVE_CLASS/);
