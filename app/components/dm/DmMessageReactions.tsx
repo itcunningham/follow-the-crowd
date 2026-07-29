@@ -9,7 +9,6 @@ import {
 } from "@/lib/dmReactions";
 import {
   CHAT_MESSAGE_REACTIONS_STACK_CLASS,
-  resolveChatMessageReactionsAnchorClass,
 } from "@/lib/dm/chatMessageGroupLayout";
 import { useReactionPickerPosition } from "@/lib/dm/useReactionPickerPosition";
 
@@ -262,12 +261,11 @@ export default function DmMessageReactions({
   }
 
   return (
-    <div className={resolveChatMessageReactionsAnchorClass(isOwnMessage)}>
-      <div
-        className={`${CHAT_MESSAGE_REACTIONS_STACK_CLASS} ${
-          isOwnMessage ? "justify-end" : "justify-start"
-        }`}
-      >
+    <div
+      className={`${CHAT_MESSAGE_REACTIONS_STACK_CLASS} ${
+        isOwnMessage ? "justify-end" : "justify-start"
+      }`}
+    >
       {summaries.map((summary) => (
         <button
           key={summary.emoji}
@@ -292,7 +290,6 @@ export default function DmMessageReactions({
       >
         +
       </button>
-      </div>
     </div>
   );
 }

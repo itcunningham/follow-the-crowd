@@ -32,7 +32,6 @@ export default function IncomingChatMessageLayout({
   children: ReactNode;
 }) {
   const isClusterEnd = isIncomingClusterEnd(groupPosition);
-  const showVisibleTimestamp = isClusterEnd && showTimestamp;
 
   if (isClusterEnd) {
     return (
@@ -46,15 +45,12 @@ export default function IncomingChatMessageLayout({
           {children}
         </div>
 
-        {showVisibleTimestamp ? (
-          <time dateTime={createdAt} className={CHAT_INCOMING_TIMESTAMP_CELL_CLASS}>
-            {formattedTime}
-          </time>
-        ) : (
-          <time dateTime={createdAt} hidden>
-            {formattedTime}
-          </time>
-        )}
+        <time
+          dateTime={createdAt}
+          className={`${CHAT_INCOMING_TIMESTAMP_CELL_CLASS} ${showTimestamp ? "" : "sr-only"}`}
+        >
+          {formattedTime}
+        </time>
       </div>
     );
   }

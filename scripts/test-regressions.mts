@@ -5139,13 +5139,25 @@ function testDmMessageReactionGestureInteractions() {
     "utf8",
   );
 
+  const shellSource = readFileSync(
+    new URL("../app/components/chat/ChatMessageBubbleShell.tsx", import.meta.url),
+    "utf8",
+  );
+  const groupLayoutSource = readFileSync(
+    new URL("../lib/dm/chatMessageGroupLayout.ts", import.meta.url),
+    "utf8",
+  );
+
   assert.doesNotMatch(reactionsSource, />React</);
   assert.doesNotMatch(reactionsSource, /prominentActions/);
   assert.match(reactionsSource, /if \(summaries\.length === 0\) \{\s*return null;/);
   assert.match(reactionsSource, /disabled:pointer-events-none/);
-  assert.match(reactionsSource, /resolveChatMessageReactionsAnchorClass/);
+  assert.doesNotMatch(reactionsSource, /resolveChatMessageReactionsAnchorClass/);
   assert.match(reactionsSource, /CHAT_MESSAGE_REACTIONS_STACK_CLASS/);
-  assert.match(reactionsSource, /top-full/);
+  assert.match(groupLayoutSource, /flex-nowrap/);
+  assert.match(shellSource, /resolveMessageReactionsOverlayClass/);
+  assert.match(shellSource, /overflow-visible/);
+  assert.match(shellSource, /inline-flex w-fit max-w-full flex-col/);
   assert.match(reactionsSource, /border-ftc-border-strong bg-ftc-surface text-ftc-text/);
   assert.doesNotMatch(reactionsSource, /disabled:opacity-50/);
   assert.match(bubbleSource, /useMessageReactionLongPress/);
@@ -5153,10 +5165,12 @@ function testDmMessageReactionGestureInteractions() {
   assert.match(bubbleSource, /onContextMenu=\{handleContextMenu\}/);
   assert.doesNotMatch(bubbleSource, /aria-label="React to message"/);
   assert.doesNotMatch(groupBubbleSource, /aria-label="React to message"/);
-  assert.match(bubbleSource, /DmReactionPicker/);
+  assert.match(bubbleSource, /ChatMessageBubbleShell/);
   assert.match(bubbleSource, /resetLongPressGesture/);
   assert.match(bubbleSource, /DM_DEFAULT_REACTION_EMOJI/);
   assert.match(bubbleSource, /scrollContainerRef/);
+  assert.doesNotMatch(bubbleSource, /DmMessageReactions/);
+  assert.match(shellSource, /DmReactionPicker/);
   assert.match(reactionsSource, /createPortal/);
   assert.match(reactionsSource, /fixed z-\[120\]/);
   assert.match(reactionsSource, /fixed inset-0/);
@@ -5181,11 +5195,11 @@ function testDmMessageReactionGestureInteractions() {
   assert.match(bubbleSource, /showAvatar/);
   assert.match(bubbleSource, /tightWithPrevious/);
   assert.match(bubbleSource, /groupPosition/);
-  assert.match(bubbleSource, /relative w-fit max-w-full/);
+  assert.match(bubbleSource, /ChatMessageBubbleShell/);
   assert.match(bubbleSource, /ChatProfileAvatarLink/);
   assert.match(bubbleSource, /DmIncomingMessageLayout/);
   assert.doesNotMatch(bubbleSource, /IncomingChatMessageLayout/);
-  assert.match(bubbleSource, /DmMessageReactions/);
+  assert.doesNotMatch(bubbleSource, /DmMessageReactions/);
   assert.doesNotMatch(bubbleSource, /hasReactions=/);
   assert.match(bubbleSource, /resolveIncomingGroupLiClass/);
   assert.doesNotMatch(bubbleSource, /CHAT_INCOMING_GROUP_FOOTER_CLASS/);
@@ -5196,6 +5210,7 @@ function testDmMessageReactionGestureInteractions() {
   assert.match(pickerPositionSource, /data-chat-composer/);
   assert.match(groupBubbleSource, /useMessageReactionDoubleTap/);
   assert.match(groupBubbleSource, /DmReactionPicker/);
+  assert.match(groupBubbleSource, /ChatMessageBubbleShell/);
   assert.match(groupBubbleSource, /IncomingChatMessageLayout/);
 
   const attachmentSource = readFileSync(
@@ -5261,8 +5276,8 @@ function testChatMessageGroupLayout() {
   assert.match(groupLayoutSource, /CHAT_INCOMING_GROUP_TIGHT_MIDDLE_CLASS/);
   assert.match(groupLayoutSource, /CHAT_INCOMING_GROUP_TIGHT_LAST_CLASS/);
   assert.match(groupLayoutSource, /CHAT_INCOMING_ROW_GRID_CLUSTER_END_CLASS/);
-  assert.match(groupLayoutSource, /resolveChatMessageReactionsAnchorClass/);
-  assert.match(groupLayoutSource, /top-full/);
+  assert.match(groupLayoutSource, /flex-nowrap/);
+  assert.match(groupLayoutSource, /gap-x-1\.5/);
   assert.match(groupLayoutSource, /CHAT_INCOMING_BUBBLE_STACK_CLASS/);
   assert.match(groupLayoutSource, /CHAT_MESSAGE_SCROLLER_CLASS/);
   assert.match(groupLayoutSource, /resolveIncomingGroupTightMarginClass/);

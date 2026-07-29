@@ -23,7 +23,7 @@ export const CHAT_INCOMING_AVATAR_COLUMN_WIDTH_CLASS = "w-12";
 
 /** Incoming row grid: fixed avatar column + message column. */
 export const CHAT_INCOMING_ROW_GRID_CLASS =
-  "grid grid-cols-[3rem_minmax(0,1fr)] gap-x-2";
+  "grid grid-cols-[3rem_minmax(0,1fr)] gap-x-1.5";
 
 /** Cluster-end rows split bubble and metadata so avatar tracks the final bubble. */
 export const CHAT_INCOMING_ROW_GRID_CLUSTER_END_CLASS = "grid-rows-[auto_auto] gap-y-0.5";
@@ -60,7 +60,7 @@ export const DM_INCOMING_MESSAGE_COLUMN_CLASS =
 export const DM_INCOMING_TIMESTAMP_CLASS =
   "self-start whitespace-nowrap px-0.5 text-[10px] leading-none text-ftc-text-muted";
 
-/** Absolute anchor — reactions sit on the bubble shell, outside normal message flow. */
+/** @deprecated Reactions overlay is owned by ChatMessageBubbleShell. */
 export function resolveChatMessageReactionsAnchorClass(isOwnMessage: boolean): string {
   const base = "pointer-events-none absolute z-10 max-w-[calc(100%+0.75rem)]";
 
@@ -69,9 +69,9 @@ export function resolveChatMessageReactionsAnchorClass(isOwnMessage: boolean): s
     : `${base} top-full left-0 -translate-y-1/2`;
 }
 
-/** Interactive reaction chips inside the anchor wrapper. */
+/** Horizontal reaction chip row — single overlay row, never wraps into pseudo message rows. */
 export const CHAT_MESSAGE_REACTIONS_STACK_CLASS =
-  "pointer-events-auto flex max-w-full flex-wrap items-center gap-1";
+  "pointer-events-auto inline-flex max-w-none flex-nowrap items-center gap-1";
 
 export function isIncomingClusterEnd(
   groupPosition: ChatMessageGroupPosition,

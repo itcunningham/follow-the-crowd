@@ -1,9 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useRef } from "react";
+import ChatMessageBubbleShell from "@/app/components/chat/ChatMessageBubbleShell";
 import ChatProfileAvatarLink from "@/app/components/chat/ChatProfileAvatarLink";
 import IncomingChatMessageLayout from "@/app/components/chat/IncomingChatMessageLayout";
-import DmMessageReactions, { DmReactionPicker } from "@/app/components/dm/DmMessageReactions";
 import { getChatNewMessageHighlightClass } from "@/lib/chatNewMessageHighlight";
 import {
   resolveChatMessageBubbleShellClass,
@@ -136,48 +136,38 @@ export default function GroupChatMessageBubble({
   const bubbleTextClass = resolveChatMessageBubbleTextClass(text);
 
   const bubbleBlock = (
-    <div ref={pickerAnchorRef} className={`max-w-full ${highlightClass}`}>
-      <div className="relative w-fit max-w-full">
-        <div
-          ref={bubbleShellRef}
-          className={bubbleShellClass}
-          onPointerDown={chainPointerHandler(handleDoubleTapPointerDown, handleLongPressPointerDown)}
-          onPointerMove={chainPointerHandler(handleDoubleTapPointerMove, handleLongPressPointerMove)}
-          onPointerUp={chainPointerHandler(handleDoubleTapPointerUp, handleLongPressPointerUp)}
-          onPointerCancel={chainPointerHandler(
-            handleDoubleTapPointerCancel,
-            handleLongPressPointerCancel,
-          )}
-          onContextMenu={handleContextMenu}
-          onDoubleClick={handleDoubleTapDoubleClick}
-          onClickCapture={(event) => {
-            consumeLongPressActivation(event);
-            consumeDoubleTapActivation(event);
-          }}
-        >
-          <p className={bubbleTextClass}>{text}</p>
-        </div>
-
-        <DmMessageReactions
-          reactions={reactions}
-          currentUserId={currentUserId}
-          reacting={reacting}
-          isOwnMessage={isOwnMessage}
-          onToggleReaction={onToggleReaction}
-          onOpenPicker={onOpenReactionPicker}
-        />
-      </div>
-
-      <DmReactionPicker
-        show={showReactionPicker}
-        reacting={reacting}
-        isOwnMessage={isOwnMessage}
-        anchorRef={pickerAnchorRef}
-        scrollContainerRef={scrollContainerRef}
-        onToggleReaction={onToggleReaction}
-        onClosePicker={onCloseReactionPicker}
-      />
-    </div>
+    <ChatMessageBubbleShell
+      bubbleShellRef={bubbleShellRef}
+      pickerAnchorRef={pickerAnchorRef}
+      bubbleShellClassName={bubbleShellClass}
+      highlightClassName={highlightClass}
+      isOwnMessage={isOwnMessage}
+      reactions={reactions}
+      currentUserId={currentUserId}
+      reacting={reacting}
+      showReactionPicker={showReactionPicker}
+      scrollContainerRef={scrollContainerRef}
+      onToggleReaction={onToggleReaction}
+      onOpenReactionPicker={onOpenReactionPicker}
+      onCloseReactionPicker={onCloseReactionPicker}
+      bubbleHandlers={{
+        onPointerDown: chainPointerHandler(handleDoubleTapPointerDown, handleLongPressPointerDown),
+        onPointerMove: chainPointerHandler(handleDoubleTapPointerMove, handleLongPressPointerMove),
+        onPointerUp: chainPointerHandler(handleDoubleTapPointerUp, handleLongPressPointerUp),
+        onPointerCancel: chainPointerHandler(
+          handleDoubleTapPointerCancel,
+          handleLongPressPointerCancel,
+        ),
+        onContextMenu: handleContextMenu,
+        onDoubleClick: handleDoubleTapDoubleClick,
+        onClickCapture: (event) => {
+          consumeLongPressActivation(event);
+          consumeDoubleTapActivation(event);
+        },
+      }}
+    >
+      <p className={bubbleTextClass}>{text}</p>
+    </ChatMessageBubbleShell>
   );
 
   if (!isOwnMessage) {

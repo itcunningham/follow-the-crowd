@@ -1,10 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useRef } from "react";
+import ChatMessageBubbleShell from "@/app/components/chat/ChatMessageBubbleShell";
 import ChatProfileAvatarLink from "@/app/components/chat/ChatProfileAvatarLink";
 import DmIncomingMessageLayout from "@/app/components/chat/DmIncomingMessageLayout";
 import DmMessageAttachmentView from "@/app/components/dm/DmMessageAttachment";
-import DmMessageReactions, { DmReactionPicker } from "@/app/components/dm/DmMessageReactions";
 import { getChatNewMessageHighlightClass, logChatHighlightRender } from "@/lib/chatNewMessageHighlight";
 import { formatBookingMessagePreview } from "@/lib/bookingRequests";
 import type { DmMessageAttachment } from "@/lib/dmAttachments";
@@ -156,64 +156,50 @@ export default function DmTextMessageBubble({
   const bubbleTextClass = resolveChatMessageBubbleTextClass(displayText);
 
   const bubbleBlock = (
-    <div ref={pickerAnchorRef} className={`max-w-full ${highlightClass}`}>
-      <div className="relative w-fit max-w-full">
-        <div
-          ref={bubbleShellRef}
-          className={bubbleShellClass}
-          onPointerDown={chainPointerHandler(handleDoubleTapPointerDown, handleLongPressPointerDown)}
-          onPointerMove={chainPointerHandler(handleDoubleTapPointerMove, handleLongPressPointerMove)}
-          onPointerUp={chainPointerHandler(handleDoubleTapPointerUp, handleLongPressPointerUp)}
-          onPointerCancel={chainPointerHandler(
-            handleDoubleTapPointerCancel,
-            handleLongPressPointerCancel,
-          )}
-          onContextMenu={handleContextMenu}
-          onDoubleClick={handleDoubleTapDoubleClick}
-          onClickCapture={(event) => {
-            consumeLongPressActivation(event);
-            consumeDoubleTapActivation(event);
-          }}
-        >
-          {hasAttachments ? (
-            <div className={`space-y-2 ${hasText ? "mb-2" : ""}`}>
-              {attachments.map((attachment) => (
-                <DmMessageAttachmentView
-                  key={attachment.id}
-                  attachment={attachment}
-                  isOwnMessage={isOwnMessage}
-                  onContextMenu={handleContextMenu}
-                />
-              ))}
-            </div>
-          ) : null}
-          {hasText ? (
-            <p className={bubbleTextClass}>
-              {displayText}
-            </p>
-          ) : null}
+    <ChatMessageBubbleShell
+      bubbleShellRef={bubbleShellRef}
+      pickerAnchorRef={pickerAnchorRef}
+      bubbleShellClassName={bubbleShellClass}
+      highlightClassName={highlightClass}
+      isOwnMessage={isOwnMessage}
+      reactions={reactions}
+      currentUserId={currentUserId}
+      reacting={reacting}
+      showReactionPicker={showReactionPicker}
+      scrollContainerRef={scrollContainerRef}
+      onToggleReaction={onToggleReaction}
+      onOpenReactionPicker={onOpenReactionPicker}
+      onCloseReactionPicker={onCloseReactionPicker}
+      bubbleHandlers={{
+        onPointerDown: chainPointerHandler(handleDoubleTapPointerDown, handleLongPressPointerDown),
+        onPointerMove: chainPointerHandler(handleDoubleTapPointerMove, handleLongPressPointerMove),
+        onPointerUp: chainPointerHandler(handleDoubleTapPointerUp, handleLongPressPointerUp),
+        onPointerCancel: chainPointerHandler(
+          handleDoubleTapPointerCancel,
+          handleLongPressPointerCancel,
+        ),
+        onContextMenu: handleContextMenu,
+        onDoubleClick: handleDoubleTapDoubleClick,
+        onClickCapture: (event) => {
+          consumeLongPressActivation(event);
+          consumeDoubleTapActivation(event);
+        },
+      }}
+    >
+      {hasAttachments ? (
+        <div className={`space-y-2 ${hasText ? "mb-2" : ""}`}>
+          {attachments.map((attachment) => (
+            <DmMessageAttachmentView
+              key={attachment.id}
+              attachment={attachment}
+              isOwnMessage={isOwnMessage}
+              onContextMenu={handleContextMenu}
+            />
+          ))}
         </div>
-
-        <DmMessageReactions
-          reactions={reactions}
-          currentUserId={currentUserId}
-          reacting={reacting}
-          isOwnMessage={isOwnMessage}
-          onToggleReaction={onToggleReaction}
-          onOpenPicker={onOpenReactionPicker}
-        />
-      </div>
-
-      <DmReactionPicker
-        show={showReactionPicker}
-        reacting={reacting}
-        isOwnMessage={isOwnMessage}
-        anchorRef={pickerAnchorRef}
-        scrollContainerRef={scrollContainerRef}
-        onToggleReaction={onToggleReaction}
-        onClosePicker={onCloseReactionPicker}
-      />
-    </div>
+      ) : null}
+      {hasText ? <p className={bubbleTextClass}>{displayText}</p> : null}
+    </ChatMessageBubbleShell>
   );
 
   if (!isOwnMessage) {
