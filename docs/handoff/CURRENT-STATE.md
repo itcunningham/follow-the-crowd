@@ -282,6 +282,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `TBD` — anchor incoming avatar to final bubble and tighten grouped spacing
 - `285849b` — DM interaction polish pass (double-tap heart, grouping, reaction tray animation)
 - `67d63a1` — add breathing room below Messages inbox segmented control
 - `8b2efd6` — hide profile CTA when opened from active DM + restore chat scroll on Back
