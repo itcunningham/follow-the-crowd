@@ -286,6 +286,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `c5d9425` — message-owned reaction overlay via ChatMessageBubbleShell
 - `fe1720d` — DM beta polish: grouped avatars, anchored reactions, connected bubble corners
 - `c9ac8c0` — anchor message reactions to bubbles with absolute positioning
 - `2adfe46` — split DM incoming layout from group chat sender-aware layout
