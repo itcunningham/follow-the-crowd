@@ -100,7 +100,7 @@ export default function MessagesInboxLayout({
             />
           </div>
 
-          <div className="ftc-tab-pill mt-3 md:min-h-[2.375rem]" role="tablist" aria-label="Message categories">
+          <div className="ftc-tab-pill mb-3 mt-3 md:min-h-[2.375rem]" role="tablist" aria-label="Message categories">
             <InboxTabButton
               active={activeTab === "dm"}
               label="Messages"

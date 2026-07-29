@@ -206,6 +206,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 - Messages inbox Group tab with artwork tile, deduped by event_id
 - **Messages inbox empty state (2026-07-26):** DM tab: `No messages` + `Your conversations will appear here`; Group tab: `No group chats` + `Event group chats will appear here`; no DM/GC badge icons above headings
 - **Messages inbox search (2026-07-26):** placeholder `Search` (was `Search conversations...`)
+- **Messages inbox tab spacing (2026-07-29):** Messages/Groups segmented control uses `mb-3` above the sticky header divider so the pill border does not merge with the page divider
 - Event edit posts one update message to group chat (booking-impacting fields)
 - Planner does not get unread from own group messages
 - Group chat page: header only (duplicate context card removed)
@@ -281,6 +282,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `TBD` — add breathing room below Messages inbox segmented control
 - `8b2efd6` — hide profile CTA when opened from active DM + restore chat scroll on Back
 - `dcf183d` — intercept native scroll to fix premature DM keyboard dismiss on iOS
 - `81069a9` — fix immediate DM keyboard dismiss; require 120px downward drag
