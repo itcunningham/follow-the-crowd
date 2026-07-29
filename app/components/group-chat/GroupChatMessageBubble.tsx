@@ -5,6 +5,12 @@ import ChatProfileAvatarLink from "@/app/components/chat/ChatProfileAvatarLink";
 import DmMessageReactions, { DmReactionPicker } from "@/app/components/dm/DmMessageReactions";
 import { getChatNewMessageHighlightClass } from "@/lib/chatNewMessageHighlight";
 import {
+  CHAT_INCOMING_AVATAR_SLOT_CLASS,
+  CHAT_INCOMING_GROUP_CLUSTER_END_CLASS,
+  CHAT_INCOMING_GROUP_TIGHT_PREVIOUS_CLASS,
+  CHAT_INCOMING_METADATA_INDENT_CLASS,
+} from "@/lib/dm/chatMessageGroupLayout";
+import {
   DM_DEFAULT_REACTION_EMOJI,
   useMessageReactionDoubleTap,
 } from "@/lib/dm/useMessageReactionDoubleTap";
@@ -115,109 +121,127 @@ export default function GroupChatMessageBubble({
     ? "max-w-[85%] sm:max-w-[72%]"
     : "max-w-[88%] sm:max-w-[78%]";
 
-  return (
-    <li
-      data-chat-message-id={messageId}
-      className={`group/message flex ${isOwnMessage ? "justify-end" : "justify-start"} ${
-        tightWithPrevious ? "-mt-2" : ""
-      } mb-1.5`}
-    >
-      <div
-        className={`flex ${rowMaxWidthClass} items-end gap-2 ${
-          isOwnMessage ? "flex-row-reverse" : "flex-row"
-        }`}
-      >
-        {!isOwnMessage ? (
-          showAvatar ? (
-            <ChatProfileAvatarLink
-              userId={senderUserId}
-              name={senderLabel}
-              avatarUrl={senderAvatarUrl}
-              returnTo={profileReturnTo}
-            />
-          ) : (
-            <div className="h-8 w-8 shrink-0" aria-hidden="true" />
-          )
-        ) : null}
+  const bubbleBlock = (
+    <div ref={pickerAnchorRef} className={`relative max-w-full ${highlightClass}`}>
+      {!hasReactionSummaries ? (
+        <button
+          type="button"
+          aria-label="React to message"
+          disabled={reacting}
+          onClick={onOpenReactionPicker}
+          className={`absolute top-1 z-10 flex h-6 w-6 items-center justify-center rounded-full border border-ftc-border bg-ftc-bg-elevated/90 text-xs text-ftc-text-secondary opacity-0 transition hover:border-ftc-border-strong hover:text-ftc-text focus-visible:opacity-100 disabled:opacity-50 pointer-events-none sm:group-hover/message:pointer-events-auto sm:group-hover/message:opacity-100 ${
+            isOwnMessage ? "right-1" : "left-1"
+          }`}
+        >
+          +
+        </button>
+      ) : null}
 
-        <div className={`flex min-w-0 flex-col ${isOwnMessage ? "items-end" : "items-start"}`}>
-          {!isOwnMessage && showSenderName ? (
-            <p className="mb-1 px-1 text-[11px] font-semibold text-ftc-text-secondary">
+      <div
+        ref={bubbleShellRef}
+        className={`overflow-hidden [touch-action:pan-y] select-none sm:select-text ${
+          isOwnMessage ? "ftc-bubble-own px-3.5 py-2" : "ftc-bubble-other px-4 py-2.5"
+        }`}
+        onPointerDown={chainPointerHandler(handleDoubleTapPointerDown, handleLongPressPointerDown)}
+        onPointerMove={chainPointerHandler(handleDoubleTapPointerMove, handleLongPressPointerMove)}
+        onPointerUp={chainPointerHandler(handleDoubleTapPointerUp, handleLongPressPointerUp)}
+        onPointerCancel={chainPointerHandler(
+          handleDoubleTapPointerCancel,
+          handleLongPressPointerCancel,
+        )}
+        onContextMenu={handleContextMenu}
+        onDoubleClick={handleDoubleTapDoubleClick}
+        onClickCapture={(event) => {
+          consumeLongPressActivation(event);
+          consumeDoubleTapActivation(event);
+        }}
+      >
+        <p className="text-[15px] leading-relaxed whitespace-pre-wrap break-words">{text}</p>
+      </div>
+
+      <DmReactionPicker
+        show={showReactionPicker}
+        reacting={reacting}
+        isOwnMessage={isOwnMessage}
+        anchorRef={pickerAnchorRef}
+        scrollContainerRef={scrollContainerRef}
+        onToggleReaction={onToggleReaction}
+        onClosePicker={onCloseReactionPicker}
+      />
+    </div>
+  );
+
+  const reactionsBlock = (
+    <DmMessageReactions
+      reactions={reactions}
+      currentUserId={currentUserId}
+      reacting={reacting}
+      isOwnMessage={isOwnMessage}
+      onToggleReaction={onToggleReaction}
+      onOpenPicker={onOpenReactionPicker}
+    />
+  );
+
+  if (!isOwnMessage) {
+    return (
+      <li
+        data-chat-message-id={messageId}
+        className={`group/message flex justify-start ${
+          tightWithPrevious ? CHAT_INCOMING_GROUP_TIGHT_PREVIOUS_CLASS : ""
+        } ${CHAT_INCOMING_GROUP_CLUSTER_END_CLASS}`}
+      >
+        <div className={`flex min-w-0 flex-col ${rowMaxWidthClass}`}>
+          {showSenderName ? (
+            <p className={`mb-1 px-1 text-[11px] font-semibold text-ftc-text-secondary ${CHAT_INCOMING_METADATA_INDENT_CLASS}`}>
               {senderLabel}
             </p>
           ) : null}
 
-          <div ref={pickerAnchorRef} className={`relative max-w-full ${highlightClass}`}>
-            {!hasReactionSummaries ? (
-              <button
-                type="button"
-                aria-label="React to message"
-                disabled={reacting}
-                onClick={onOpenReactionPicker}
-                className={`absolute top-1 z-10 flex h-6 w-6 items-center justify-center rounded-full border border-ftc-border bg-ftc-bg-elevated/90 text-xs text-ftc-text-secondary opacity-0 transition hover:border-ftc-border-strong hover:text-ftc-text focus-visible:opacity-100 disabled:opacity-50 pointer-events-none sm:group-hover/message:pointer-events-auto sm:group-hover/message:opacity-100 ${
-                  isOwnMessage ? "right-1" : "left-1"
-                }`}
-              >
-                +
-              </button>
-            ) : null}
-
-            <div
-              ref={bubbleShellRef}
-              className={`overflow-hidden [touch-action:pan-y] select-none sm:select-text ${
-                isOwnMessage ? "ftc-bubble-own px-3.5 py-2" : "ftc-bubble-other px-4 py-2.5"
-              }`}
-              onPointerDown={chainPointerHandler(
-                handleDoubleTapPointerDown,
-                handleLongPressPointerDown,
-              )}
-              onPointerMove={chainPointerHandler(
-                handleDoubleTapPointerMove,
-                handleLongPressPointerMove,
-              )}
-              onPointerUp={chainPointerHandler(handleDoubleTapPointerUp, handleLongPressPointerUp)}
-              onPointerCancel={chainPointerHandler(
-                handleDoubleTapPointerCancel,
-                handleLongPressPointerCancel,
-              )}
-              onContextMenu={handleContextMenu}
-              onDoubleClick={handleDoubleTapDoubleClick}
-              onClickCapture={(event) => {
-                consumeLongPressActivation(event);
-                consumeDoubleTapActivation(event);
-              }}
-            >
-              <p className="text-[15px] leading-relaxed whitespace-pre-wrap break-words">{text}</p>
+          <div className="flex items-end gap-2">
+            {showAvatar ? (
+              <ChatProfileAvatarLink
+                userId={senderUserId}
+                name={senderLabel}
+                avatarUrl={senderAvatarUrl}
+                returnTo={profileReturnTo}
+              />
+            ) : (
+              <div className={CHAT_INCOMING_AVATAR_SLOT_CLASS} aria-hidden="true" />
+            )}
+            <div className="flex min-w-0 flex-col items-start">
+              {bubbleBlock}
+              {reactionsBlock}
             </div>
-
-            <DmReactionPicker
-              show={showReactionPicker}
-              reacting={reacting}
-              isOwnMessage={isOwnMessage}
-              anchorRef={pickerAnchorRef}
-              scrollContainerRef={scrollContainerRef}
-              onToggleReaction={onToggleReaction}
-              onClosePicker={onCloseReactionPicker}
-            />
           </div>
 
+          <div className={CHAT_INCOMING_METADATA_INDENT_CLASS}>
+            <time
+              dateTime={createdAt}
+              className="mt-0.5 block px-1 text-[10px] text-ftc-text-muted text-left"
+            >
+              {formatTime(createdAt)}
+            </time>
+          </div>
+        </div>
+      </li>
+    );
+  }
+
+  return (
+    <li
+      data-chat-message-id={messageId}
+      className={`group/message flex justify-end ${tightWithPrevious ? "-mt-2" : ""} mb-1.5`}
+    >
+      <div className={`flex ${rowMaxWidthClass} items-end gap-2 flex-row-reverse`}>
+        <div className="flex min-w-0 flex-col items-end">
+          {bubbleBlock}
           <time
             dateTime={createdAt}
-            className={`mt-0.5 block px-1 text-[10px] text-ftc-text-muted ${
-              isOwnMessage ? "text-right" : "text-left"
-            }`}
+            className="mt-0.5 block px-1 text-[10px] text-ftc-text-muted text-right"
           >
             {formatTime(createdAt)}
           </time>
-
-          <DmMessageReactions
-            reactions={reactions}
-            currentUserId={currentUserId}
-            reacting={reacting}
-            isOwnMessage={isOwnMessage}
-            onToggleReaction={onToggleReaction}
-            onOpenPicker={onOpenReactionPicker}
-          />
+          {reactionsBlock}
         </div>
       </div>
     </li>

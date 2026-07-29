@@ -135,6 +135,6 @@ export const DM_BOOKING_CARD_SECONDARY_BUTTON_CLASS =
 /** Column wrapper for a booking card + its timestamp in DM messages. */
 export const DM_BOOKING_MESSAGE_COLUMN_CLASS = "flex min-w-0 flex-col";
 
-/** Timestamp spacing below every booking card — always positive, never overlapping. */
+/** Timestamp spacing below booking card — sits in metadata indent row beneath avatar-aligned card. */
 export const DM_BOOKING_MESSAGE_TIMESTAMP_CLASS =
-  "mt-1 block text-[10px] leading-none text-ftc-text-muted";
+  "mt-0.5 block text-[10px] leading-none text-ftc-text-muted";

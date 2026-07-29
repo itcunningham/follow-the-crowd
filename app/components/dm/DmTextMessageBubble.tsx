@@ -8,6 +8,12 @@ import { getChatNewMessageHighlightClass, logChatHighlightRender } from "@/lib/c
 import { formatBookingMessagePreview } from "@/lib/bookingRequests";
 import type { DmMessageAttachment } from "@/lib/dmAttachments";
 import {
+  CHAT_INCOMING_AVATAR_SLOT_CLASS,
+  CHAT_INCOMING_GROUP_CLUSTER_END_CLASS,
+  CHAT_INCOMING_GROUP_TIGHT_PREVIOUS_CLASS,
+  CHAT_INCOMING_METADATA_INDENT_CLASS,
+} from "@/lib/dm/chatMessageGroupLayout";
+import {
   DM_DEFAULT_REACTION_EMOJI,
   useMessageReactionDoubleTap,
 } from "@/lib/dm/useMessageReactionDoubleTap";
@@ -145,132 +151,158 @@ export default function DmTextMessageBubble({
           : `ftc-bubble-other ${hasAttachments ? "p-1" : "px-4 py-2.5"}`
       }`;
 
-  return (
-    <li
-      className={`group/message flex ${isOwnMessage ? "justify-end" : "justify-start"} ${
-        tightWithPrevious ? "-mt-2" : ""
-      } ${showTimestamp ? "mb-1.5" : ""}`}
-      data-chat-message-id={messageId}
-    >
+  const bubbleBlock = (
+    <div ref={pickerAnchorRef} className={`relative max-w-full ${highlightClass}`}>
+      {!hasReactionSummaries ? (
+        <button
+          type="button"
+          aria-label="React to message"
+          disabled={reacting}
+          onClick={onOpenReactionPicker}
+          className={`absolute top-1 z-10 flex h-6 w-6 items-center justify-center rounded-full border border-ftc-border bg-ftc-bg-elevated/90 text-xs text-ftc-text-secondary opacity-0 transition hover:border-ftc-border-strong hover:text-ftc-text focus-visible:opacity-100 disabled:opacity-50 pointer-events-none sm:group-hover/message:pointer-events-auto sm:group-hover/message:opacity-100 ${
+            isOwnMessage ? "right-1" : "left-1"
+          }`}
+        >
+          +
+        </button>
+      ) : null}
+
       <div
-        className={`flex ${rowMaxWidthClass} items-end gap-2 ${
-          isOwnMessage ? "flex-row-reverse" : "flex-row"
-        }`}
+        ref={bubbleShellRef}
+        className={bubbleShellClass}
+        onPointerDown={chainPointerHandler(handleDoubleTapPointerDown, handleLongPressPointerDown)}
+        onPointerMove={chainPointerHandler(handleDoubleTapPointerMove, handleLongPressPointerMove)}
+        onPointerUp={chainPointerHandler(handleDoubleTapPointerUp, handleLongPressPointerUp)}
+        onPointerCancel={chainPointerHandler(
+          handleDoubleTapPointerCancel,
+          handleLongPressPointerCancel,
+        )}
+        onContextMenu={handleContextMenu}
+        onDoubleClick={handleDoubleTapDoubleClick}
+        onClickCapture={(event) => {
+          consumeLongPressActivation(event);
+          consumeDoubleTapActivation(event);
+        }}
       >
-        {!isOwnMessage && otherUserId ? (
-          showAvatar ? (
-            <ChatProfileAvatarLink
-              userId={otherUserId}
-              name={otherUserLabel}
-              avatarUrl={otherUserAvatarUrl}
-              returnTo={profileReturnTo}
-            />
-          ) : (
-            <div className="h-8 w-8 shrink-0" aria-hidden="true" />
-          )
+        {hasAttachments ? (
+          <div className={`space-y-2 ${hasText ? "mb-2" : ""}`}>
+            {attachments.map((attachment) => (
+              <DmMessageAttachmentView
+                key={attachment.id}
+                attachment={attachment}
+                isOwnMessage={isOwnMessage}
+                onContextMenu={handleContextMenu}
+              />
+            ))}
+          </div>
         ) : null}
-        <div className={`flex min-w-0 flex-col ${isOwnMessage ? "items-end" : "items-start"}`}>
-          <div ref={pickerAnchorRef} className={`relative max-w-full ${highlightClass}`}>
-            {!hasReactionSummaries ? (
-              <button
-                type="button"
-                aria-label="React to message"
-                disabled={reacting}
-                onClick={onOpenReactionPicker}
-                className={`absolute top-1 z-10 flex h-6 w-6 items-center justify-center rounded-full border border-ftc-border bg-ftc-bg-elevated/90 text-xs text-ftc-text-secondary opacity-0 transition hover:border-ftc-border-strong hover:text-ftc-text focus-visible:opacity-100 disabled:opacity-50 pointer-events-none sm:group-hover/message:pointer-events-auto sm:group-hover/message:opacity-100 ${
-                  isOwnMessage ? "right-1" : "left-1"
-                }`}
-              >
-                +
-              </button>
+        {hasText ? (
+          <p className="text-[15px] leading-relaxed whitespace-pre-wrap break-words">
+            {displayText}
+          </p>
+        ) : null}
+      </div>
+
+      <DmReactionPicker
+        show={showReactionPicker}
+        reacting={reacting}
+        isOwnMessage={isOwnMessage}
+        anchorRef={pickerAnchorRef}
+        scrollContainerRef={scrollContainerRef}
+        onToggleReaction={onToggleReaction}
+        onClosePicker={onCloseReactionPicker}
+      />
+    </div>
+  );
+
+  const reactionsBlock = (
+    <DmMessageReactions
+      reactions={reactions}
+      currentUserId={currentUserId}
+      reacting={reacting}
+      isOwnMessage={isOwnMessage}
+      onToggleReaction={onToggleReaction}
+      onOpenPicker={onOpenReactionPicker}
+    />
+  );
+
+  if (!isOwnMessage) {
+    return (
+      <li
+        className={`group/message flex justify-start ${
+          tightWithPrevious ? CHAT_INCOMING_GROUP_TIGHT_PREVIOUS_CLASS : ""
+        } ${showTimestamp ? CHAT_INCOMING_GROUP_CLUSTER_END_CLASS : ""}`}
+        data-chat-message-id={messageId}
+      >
+        <div className={`flex min-w-0 flex-col ${rowMaxWidthClass}`}>
+          <div className="flex items-end gap-2">
+            {otherUserId ? (
+              showAvatar ? (
+                <ChatProfileAvatarLink
+                  userId={otherUserId}
+                  name={otherUserLabel}
+                  avatarUrl={otherUserAvatarUrl}
+                  returnTo={profileReturnTo}
+                />
+              ) : (
+                <div className={CHAT_INCOMING_AVATAR_SLOT_CLASS} aria-hidden="true" />
+              )
             ) : null}
-
-            <div
-              ref={bubbleShellRef}
-              className={bubbleShellClass}
-              onPointerDown={chainPointerHandler(
-                handleDoubleTapPointerDown,
-                handleLongPressPointerDown,
-              )}
-              onPointerMove={chainPointerHandler(
-                handleDoubleTapPointerMove,
-                handleLongPressPointerMove,
-              )}
-              onPointerUp={chainPointerHandler(handleDoubleTapPointerUp, handleLongPressPointerUp)}
-              onPointerCancel={chainPointerHandler(
-                handleDoubleTapPointerCancel,
-                handleLongPressPointerCancel,
-              )}
-              onContextMenu={handleContextMenu}
-              onDoubleClick={handleDoubleTapDoubleClick}
-              onClickCapture={(event) => {
-                consumeLongPressActivation(event);
-                consumeDoubleTapActivation(event);
-              }}
-            >
-              {hasAttachments ? (
-                <div className={`space-y-2 ${hasText ? "mb-2" : ""}`}>
-                  {attachments.map((attachment) => (
-                    <DmMessageAttachmentView
-                      key={attachment.id}
-                      attachment={attachment}
-                      isOwnMessage={isOwnMessage}
-                      onContextMenu={handleContextMenu}
-                    />
-                  ))}
-                </div>
-              ) : null}
-              {hasText ? (
-                <p className="text-[15px] leading-relaxed whitespace-pre-wrap break-words">
-                  {displayText}
-                </p>
-              ) : null}
+            <div className="flex min-w-0 flex-col items-start">
+              {bubbleBlock}
+              {reactionsBlock}
             </div>
-
-            <DmReactionPicker
-              show={showReactionPicker}
-              reacting={reacting}
-              isOwnMessage={isOwnMessage}
-              anchorRef={pickerAnchorRef}
-              scrollContainerRef={scrollContainerRef}
-              onToggleReaction={onToggleReaction}
-              onClosePicker={onCloseReactionPicker}
-            />
           </div>
 
+          <div className={CHAT_INCOMING_METADATA_INDENT_CLASS}>
+            <time
+              dateTime={createdAt}
+              className={`mt-0.5 block px-1 text-[10px] text-ftc-text-muted text-left ${
+                showTimestamp ? "" : "sr-only"
+              }`}
+            >
+              {formattedTime}
+            </time>
+
+            {onReportMessage ? (
+              <button
+                type="button"
+                aria-label="Report message"
+                onClick={onReportMessage}
+                className={`mt-1 rounded-full border border-transparent px-2 py-0.5 text-[11px] text-ftc-text-muted transition hover:border-ftc-border-strong hover:bg-ftc-surface hover:text-ftc-text-secondary ${
+                  hasAttachments ? "opacity-100" : "opacity-0 group-hover/message:opacity-100"
+                }`}
+              >
+                Report
+              </button>
+            ) : null}
+          </div>
+        </div>
+      </li>
+    );
+  }
+
+  return (
+    <li
+      className={`group/message flex justify-end ${tightWithPrevious ? "-mt-2" : ""} ${
+        showTimestamp ? "mb-1.5" : ""
+      }`}
+      data-chat-message-id={messageId}
+    >
+      <div className={`flex ${rowMaxWidthClass} items-end gap-2 flex-row-reverse`}>
+        <div className="flex min-w-0 flex-col items-end">
+          {bubbleBlock}
           <time
             dateTime={createdAt}
-            className={`mt-0.5 block px-1 text-[10px] text-ftc-text-muted ${
-              isOwnMessage ? "text-right" : "text-left"
-            } ${showTimestamp ? "" : "sr-only"}`}
+            className={`mt-0.5 block px-1 text-[10px] text-ftc-text-muted text-right ${
+              showTimestamp ? "" : "sr-only"
+            }`}
           >
             {formattedTime}
           </time>
-
-          <DmMessageReactions
-            reactions={reactions}
-            currentUserId={currentUserId}
-            reacting={reacting}
-            isOwnMessage={isOwnMessage}
-            onToggleReaction={onToggleReaction}
-            onOpenPicker={onOpenReactionPicker}
-          />
-
-          {isOwnMessage && showSeen ? (
+          {reactionsBlock}
+          {showSeen ? (
             <p className="ftc-seen-label mt-0.5 self-end text-right">Seen</p>
-          ) : null}
-
-          {!isOwnMessage && onReportMessage ? (
-            <button
-              type="button"
-              aria-label="Report message"
-              onClick={onReportMessage}
-              className={`mt-1 rounded-full border border-transparent px-2 py-0.5 text-[11px] text-ftc-text-muted transition hover:border-ftc-border-strong hover:bg-ftc-surface hover:text-ftc-text-secondary ${
-                hasAttachments ? "opacity-100" : "opacity-0 group-hover/message:opacity-100"
-              }`}
-            >
-              Report
-            </button>
           ) : null}
         </div>
       </div>

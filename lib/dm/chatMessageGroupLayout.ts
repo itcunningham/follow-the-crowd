@@ -10,6 +10,18 @@ export type ChatMessageGroupLayout = {
   tightWithPrevious: boolean;
 };
 
+/** Avatar column width — matches ProfileAvatar sm (h-8 w-8) + gap-2. */
+export const CHAT_INCOMING_AVATAR_SLOT_CLASS = "h-8 w-8 shrink-0";
+
+/** Indent metadata (timestamp, report) to align with bubble column, not avatar. */
+export const CHAT_INCOMING_METADATA_INDENT_CLASS = "pl-10";
+
+/** Tighter stack gap for consecutive incoming bubbles (~2px net with gap-3 list). */
+export const CHAT_INCOMING_GROUP_TIGHT_PREVIOUS_CLASS = "-mt-2.5";
+
+/** Breathing room after a visible timestamp at cluster end. */
+export const CHAT_INCOMING_GROUP_CLUSTER_END_CLASS = "mb-1.5";
+
 function findPreviousParticipant(
   messages: readonly ChatMessageGroupParticipant[],
   index: number,

@@ -56,7 +56,13 @@ import {
   buildDmConversationTimestampLayout,
   classifyDmConversationMessageKind,
 } from "@/lib/dm/dmChatTimestampVisibility";
-import { buildChatMessageGroupLayout } from "@/lib/dm/chatMessageGroupLayout";
+import {
+  buildChatMessageGroupLayout,
+  CHAT_INCOMING_AVATAR_SLOT_CLASS,
+  CHAT_INCOMING_GROUP_CLUSTER_END_CLASS,
+  CHAT_INCOMING_GROUP_TIGHT_PREVIOUS_CLASS,
+  CHAT_INCOMING_METADATA_INDENT_CLASS,
+} from "@/lib/dm/chatMessageGroupLayout";
 import { parseDmThreadEntryContext, resolveDmThreadBackHref } from "@/lib/dm/threadNavigation";
 import { useFixedChatPageDocumentReset } from "@/lib/navigation/useFixedChatPageDocumentReset";
 import { FIXED_CHAT_PAGE_SHELL_CLASS } from "@/lib/navigation/prepareFixedChatPageMount";
@@ -454,7 +460,7 @@ export default function DmChatPage() {
       }
 
       if (isBookingRequestMessage(message.text)) {
-        return [];
+        return [{ id: message.id, user_id: message.user_id }];
       }
 
       return [{ id: message.id, user_id: message.user_id }];
@@ -1902,6 +1908,7 @@ export default function DmChatPage() {
                   : getChatNewMessageHighlightClass(highlighted);
                 const actionRequired = isDmBookingActionRequired(resolvedBooking, eventCancelled);
                 const isBookingExpanded = expandedBookingIds.has(bookingExpansionKey);
+                const messageGroupLayout = chatMessageGroupLayout.get(message.id);
 
                 const bookingCard = (
                   <BookingRequestCard
@@ -1996,47 +2003,81 @@ export default function DmChatPage() {
                     key={message.id}
                     data-chat-message-id={message.id}
                     {...(bookingId ? { [CHAT_BOOKING_REQUEST_ID_ATTR]: bookingId } : {})}
-                    className={`flex ${isOwnMessage ? "justify-end" : "justify-start"}`}
+                    className={`flex ${isOwnMessage ? "justify-end" : "justify-start"} ${
+                      !isOwnMessage && (messageGroupLayout?.tightWithPrevious ?? false)
+                        ? CHAT_INCOMING_GROUP_TIGHT_PREVIOUS_CLASS
+                        : ""
+                    } ${
+                      !isOwnMessage &&
+                      (conversationTimestampLayout.get(message.id)?.showTimestamp ?? true)
+                        ? CHAT_INCOMING_GROUP_CLUSTER_END_CLASS
+                        : ""
+                    }`}
                   >
-                    <div
-                      className={`flex max-w-[92%] items-end gap-2 sm:max-w-[80%] ${
-                        isOwnMessage ? "flex-row-reverse" : "flex-row"
-                      }`}
-                    >
-                      {!isOwnMessage && otherUserId ? (
-                        <ChatProfileAvatarLink
-                          userId={otherUserId}
-                          name={otherUserLabel}
-                          avatarUrl={otherUserProfile?.avatar_url}
-                          returnTo={chatReturnTo}
-                        />
-                      ) : null}
-                      <div className={DM_BOOKING_MESSAGE_COLUMN_CLASS}>
-                        <BookingCardFocusRing phase={bookingFocusPhase}>
-                          {highlightClassName ? (
-                            <div className={highlightClassName}>{bookingCard}</div>
-                          ) : (
-                            bookingCard
-                          )}
-                        </BookingCardFocusRing>
-                        <time
-                          dateTime={message.created_at}
-                          className={`${DM_BOOKING_MESSAGE_TIMESTAMP_CLASS} ${
-                            isOwnMessage ? "text-right" : "text-left"
-                          } ${
-                            conversationTimestampLayout.get(message.id)?.showTimestamp
-                              ? ""
-                              : "sr-only"
-                          }`}
-                        >
-                          {formatMessageTime(message.created_at)}
-                        </time>
-                        {isOwnMessage &&
-                        shouldShowSeenOnMessage(message.id, message.created_at) ? (
-                          <p className="ftc-seen-label mt-0.5 text-right">Seen</p>
-                        ) : null}
+                    {isOwnMessage ? (
+                      <div className="flex max-w-[92%] items-end gap-2 sm:max-w-[80%] flex-row-reverse">
+                        <div className={DM_BOOKING_MESSAGE_COLUMN_CLASS}>
+                          <BookingCardFocusRing phase={bookingFocusPhase}>
+                            {highlightClassName ? (
+                              <div className={highlightClassName}>{bookingCard}</div>
+                            ) : (
+                              bookingCard
+                            )}
+                          </BookingCardFocusRing>
+                          <time
+                            dateTime={message.created_at}
+                            className={`${DM_BOOKING_MESSAGE_TIMESTAMP_CLASS} text-right ${
+                              conversationTimestampLayout.get(message.id)?.showTimestamp
+                                ? ""
+                                : "sr-only"
+                            }`}
+                          >
+                            {formatMessageTime(message.created_at)}
+                          </time>
+                          {shouldShowSeenOnMessage(message.id, message.created_at) ? (
+                            <p className="ftc-seen-label mt-0.5 text-right">Seen</p>
+                          ) : null}
+                        </div>
                       </div>
-                    </div>
+                    ) : (
+                      <div className="flex min-w-0 max-w-[92%] flex-col sm:max-w-[80%]">
+                        <div className="flex items-end gap-2">
+                          {otherUserId ? (
+                            messageGroupLayout?.showAvatar ?? true ? (
+                              <ChatProfileAvatarLink
+                                userId={otherUserId}
+                                name={otherUserLabel}
+                                avatarUrl={otherUserProfile?.avatar_url}
+                                returnTo={chatReturnTo}
+                              />
+                            ) : (
+                              <div className={CHAT_INCOMING_AVATAR_SLOT_CLASS} aria-hidden="true" />
+                            )
+                          ) : null}
+                          <div className="min-w-0 flex-1">
+                            <BookingCardFocusRing phase={bookingFocusPhase}>
+                              {highlightClassName ? (
+                                <div className={highlightClassName}>{bookingCard}</div>
+                              ) : (
+                                bookingCard
+                              )}
+                            </BookingCardFocusRing>
+                          </div>
+                        </div>
+                        <div className={CHAT_INCOMING_METADATA_INDENT_CLASS}>
+                          <time
+                            dateTime={message.created_at}
+                            className={`${DM_BOOKING_MESSAGE_TIMESTAMP_CLASS} text-left ${
+                              conversationTimestampLayout.get(message.id)?.showTimestamp
+                                ? ""
+                                : "sr-only"
+                            }`}
+                          >
+                            {formatMessageTime(message.created_at)}
+                          </time>
+                        </div>
+                      </div>
+                    )}
                   </li>
                 );
             })}

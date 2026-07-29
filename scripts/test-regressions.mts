@@ -5140,6 +5140,8 @@ function testDmMessageReactionGestureInteractions() {
   assert.match(bubbleSource, /onDoubleClick=\{handleDoubleTapDoubleClick\}/);
   assert.match(bubbleSource, /showAvatar/);
   assert.match(bubbleSource, /tightWithPrevious/);
+  assert.match(bubbleSource, /CHAT_INCOMING_METADATA_INDENT_CLASS/);
+  assert.match(bubbleSource, /CHAT_INCOMING_GROUP_TIGHT_PREVIOUS_CLASS/);
   assert.match(groupBubbleSource, /onDoubleClick=\{handleDoubleTapDoubleClick\}/);
   assert.match(pickerPositionSource, /computeReactionPickerPosition/);
   assert.match(pickerPositionSource, /getReactionPickerViewportBounds/);
