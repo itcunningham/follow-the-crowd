@@ -283,6 +283,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `4f716e5` — final DM UI polish (bubble sizing, incoming grouping, remove Report)
 - `703e0b4` — refine chat bubble geometry for compact pill sizing
 - `c5cd8c8` — anchor incoming avatar to final bubble and tighten grouped spacing
 - `285849b` — DM interaction polish pass (double-tap heart, grouping, reaction tray animation)
