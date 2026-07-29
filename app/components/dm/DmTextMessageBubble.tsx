@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef } from "react";
 import ChatProfileAvatarLink from "@/app/components/chat/ChatProfileAvatarLink";
+import IncomingChatMessageLayout from "@/app/components/chat/IncomingChatMessageLayout";
 import DmMessageAttachmentView from "@/app/components/dm/DmMessageAttachment";
 import DmMessageReactions, { DmReactionPicker } from "@/app/components/dm/DmMessageReactions";
 import { getChatNewMessageHighlightClass, logChatHighlightRender } from "@/lib/chatNewMessageHighlight";
@@ -12,8 +13,6 @@ import {
   resolveChatMessageBubbleTextClass,
 } from "@/lib/dm/chatMessageBubbleGeometry";
 import {
-  CHAT_INCOMING_GROUP_FOOTER_CLASS,
-  CHAT_INCOMING_MESSAGE_COLUMN_CLASS,
   resolveIncomingGroupLiClass,
   CHAT_OUTGOING_GROUP_TIGHT_PREVIOUS_CLASS,
   CHAT_INCOMING_GROUP_CLUSTER_END_CLASS,
@@ -218,6 +217,7 @@ export default function DmTextMessageBubble({
 
   if (!isOwnMessage) {
     const isClusterEnd = showAvatar;
+    const hasReactionSummaries = reactions.length > 0;
 
     return (
       <li
@@ -228,35 +228,29 @@ export default function DmTextMessageBubble({
         })}
         data-chat-message-id={messageId}
       >
-        <div className={`${CHAT_INCOMING_MESSAGE_COLUMN_CLASS} ${rowMaxWidthClass}`}>
+        <IncomingChatMessageLayout
+          className={rowMaxWidthClass}
+          showAvatar={showAvatar}
+          showTimestamp={showTimestamp}
+          createdAt={createdAt}
+          formattedTime={formattedTime}
+          hasReactions={hasReactionSummaries}
+          reactions={reactionsBlock}
+          avatar={
+            otherUserId ? (
+              <ChatProfileAvatarLink
+                userId={otherUserId}
+                name={otherUserLabel}
+                avatarUrl={otherUserAvatarUrl}
+                returnTo={profileReturnTo}
+              />
+            ) : (
+              <span aria-hidden="true" className="block h-8 w-8 shrink-0" />
+            )
+          }
+        >
           {bubbleBlock}
-          {reactionsBlock}
-
-          {isClusterEnd ? (
-            <div className={CHAT_INCOMING_GROUP_FOOTER_CLASS}>
-              {otherUserId ? (
-                <ChatProfileAvatarLink
-                  userId={otherUserId}
-                  name={otherUserLabel}
-                  avatarUrl={otherUserAvatarUrl}
-                  returnTo={profileReturnTo}
-                />
-              ) : null}
-              <time
-                dateTime={createdAt}
-                className={`px-0.5 text-[10px] leading-none text-ftc-text-muted ${
-                  showTimestamp ? "" : "sr-only"
-                }`}
-              >
-                {formattedTime}
-              </time>
-            </div>
-          ) : (
-            <time dateTime={createdAt} className="sr-only">
-              {formattedTime}
-            </time>
-          )}
-        </div>
+        </IncomingChatMessageLayout>
       </li>
     );
   }

@@ -5177,9 +5177,9 @@ function testDmMessageReactionGestureInteractions() {
   assert.match(bubbleSource, /showAvatar/);
   assert.match(bubbleSource, /tightWithPrevious/);
   assert.match(bubbleSource, /groupPosition/);
-  assert.match(bubbleSource, /CHAT_INCOMING_MESSAGE_COLUMN_CLASS/);
+  assert.match(bubbleSource, /IncomingChatMessageLayout/);
   assert.match(bubbleSource, /resolveIncomingGroupLiClass/);
-  assert.match(bubbleSource, /CHAT_INCOMING_GROUP_FOOTER_CLASS/);
+  assert.doesNotMatch(bubbleSource, /CHAT_INCOMING_GROUP_FOOTER_CLASS/);
   assert.doesNotMatch(bubbleSource, /Report message/);
   assert.match(groupBubbleSource, /onDoubleClick=\{handleDoubleTapDoubleClick\}/);
   assert.match(pickerPositionSource, /computeReactionPickerPosition/);
@@ -5248,8 +5248,10 @@ function testChatMessageGroupLayout() {
 
   assert.match(groupLayoutSource, /CHAT_INCOMING_GROUP_TIGHT_MIDDLE_CLASS/);
   assert.match(groupLayoutSource, /CHAT_INCOMING_GROUP_TIGHT_LAST_CLASS/);
+  assert.match(groupLayoutSource, /CHAT_INCOMING_ROW_GRID_CLASS/);
+  assert.match(groupLayoutSource, /CHAT_INCOMING_AVATAR_CELL_CLASS/);
   assert.match(groupLayoutSource, /resolveIncomingGroupTightMarginClass/);
-  assert.match(groupLayoutSource, /-mt-1 flex items-center gap-1\.5/);
+  assert.match(dmPageSource, /IncomingChatMessageLayout/);
   assert.doesNotMatch(dmPageSource, /title="Report message"/);
   assert.doesNotMatch(dmPageSource, /submitDmMessageReport/);
 }

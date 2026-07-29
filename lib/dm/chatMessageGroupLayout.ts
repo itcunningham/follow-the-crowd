@@ -9,18 +9,35 @@ export type ChatMessageGroupPosition = "standalone" | "first" | "middle" | "last
 
 export type ChatMessageGroupLayout = {
   position: ChatMessageGroupPosition;
-  /** Incoming cluster end — show avatar + timestamp footer. */
+  /** Incoming cluster end — render avatar beside the final bubble. */
   showAvatar: boolean;
   /** Pull toward the visually older message above (flex-col-reverse safe). */
   tightWithPrevious: boolean;
 };
 
-/** Avatar column width — matches ProfileAvatar sm (h-8 w-8). */
-export const CHAT_INCOMING_AVATAR_SLOT_CLASS = "h-8 w-8 shrink-0";
+/** Avatar slot — matches ProfileAvatar sm (h-8 w-8). */
+export const CHAT_INCOMING_AVATAR_SLOT_CLASS = "block h-8 w-8 shrink-0";
 
-/** Incoming bubble column — shared left edge for bubble, reactions, and footer. */
-export const CHAT_INCOMING_MESSAGE_COLUMN_CLASS =
-  "flex min-w-0 flex-col items-start self-start";
+/** Incoming row grid: fixed avatar column + flexible message column. */
+export const CHAT_INCOMING_ROW_GRID_CLASS =
+  "grid grid-cols-[2rem_minmax(0,1fr)] gap-x-2";
+
+/** Bottom-align avatar with the bubble on the same row. */
+export const CHAT_INCOMING_AVATAR_CELL_CLASS = "col-start-1 row-start-1 self-end";
+
+/** Bubble, attachments, and optional sender label. */
+export const CHAT_INCOMING_BUBBLE_CELL_CLASS =
+  "col-start-2 row-start-1 min-w-0 flex flex-col items-start";
+
+/** Reactions stay on the bubble column, below the bubble. */
+export const CHAT_INCOMING_REACTIONS_CELL_CLASS = "col-start-2 row-start-2 min-w-0";
+
+/** Timestamp sits in the avatar column beneath the final bubble row. */
+export const CHAT_INCOMING_TIMESTAMP_CELL_CLASS =
+  "col-start-1 row-start-2 self-start px-0.5 text-[10px] leading-none text-ftc-text-muted";
+
+/** @deprecated Use CHAT_INCOMING_BUBBLE_CELL_CLASS */
+export const CHAT_INCOMING_MESSAGE_COLUMN_CLASS = CHAT_INCOMING_BUBBLE_CELL_CLASS;
 
 /**
  * Tighten stacked incoming bubbles. Uses negative bottom margin because the message
@@ -31,10 +48,6 @@ export const CHAT_INCOMING_GROUP_TIGHT_LAST_CLASS = "-mb-3.5";
 
 /** Breathing room after a cluster footer before the next sender. */
 export const CHAT_INCOMING_GROUP_CLUSTER_END_CLASS = "mb-1.5";
-
-/** Avatar + timestamp row anchored beneath the final bubble in a group. */
-export const CHAT_INCOMING_GROUP_FOOTER_CLASS =
-  "-mt-1 flex items-center gap-1.5 self-start leading-none";
 
 /** Outgoing consecutive same-sender stack (unchanged feel). */
 export const CHAT_OUTGOING_GROUP_TIGHT_PREVIOUS_CLASS = "-mt-2.5";

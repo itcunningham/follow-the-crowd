@@ -19,6 +19,7 @@ import DmTextMessageBubble from "@/app/components/dm/DmTextMessageBubble";
 import DmBookingTimelineNotice from "@/app/components/dm/DmBookingTimelineNotice";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
 import ChatProfileAvatarLink from "@/app/components/chat/ChatProfileAvatarLink";
+import IncomingChatMessageLayout from "@/app/components/chat/IncomingChatMessageLayout";
 import { ChatMessagesSkeleton } from "@/app/components/skeleton/Skeleton";
 import ProfileAvatar from "@/app/components/ProfileAvatar";
 import {
@@ -57,8 +58,6 @@ import {
 } from "@/lib/dm/dmChatTimestampVisibility";
 import {
   buildChatMessageGroupLayout,
-  CHAT_INCOMING_GROUP_FOOTER_CLASS,
-  CHAT_INCOMING_MESSAGE_COLUMN_CLASS,
   resolveIncomingGroupLiClass,
 } from "@/lib/dm/chatMessageGroupLayout";
 import { parseDmThreadEntryContext, resolveDmThreadBackHref } from "@/lib/dm/threadNavigation";
@@ -2003,7 +2002,28 @@ export default function DmChatPage() {
                         </div>
                       </div>
                     ) : (
-                      <div className={`${CHAT_INCOMING_MESSAGE_COLUMN_CLASS} max-w-[92%] sm:max-w-[80%]`}>
+                      <IncomingChatMessageLayout
+                        className="max-w-[92%] sm:max-w-[80%]"
+                        showAvatar={messageGroupLayout?.showAvatar ?? true}
+                        showTimestamp={
+                          conversationTimestampLayout.get(message.id)?.showTimestamp ?? true
+                        }
+                        createdAt={message.created_at}
+                        formattedTime={formatMessageTime(message.created_at)}
+                        hasReactions={false}
+                        avatar={
+                          otherUserId ? (
+                            <ChatProfileAvatarLink
+                              userId={otherUserId}
+                              name={otherUserLabel}
+                              avatarUrl={otherUserProfile?.avatar_url}
+                              returnTo={chatReturnTo}
+                            />
+                          ) : (
+                            <span aria-hidden="true" className="block h-8 w-8 shrink-0" />
+                          )
+                        }
+                      >
                         <BookingCardFocusRing phase={bookingFocusPhase}>
                           {highlightClassName ? (
                             <div className={highlightClassName}>{bookingCard}</div>
@@ -2011,33 +2031,7 @@ export default function DmChatPage() {
                             bookingCard
                           )}
                         </BookingCardFocusRing>
-                        {messageGroupLayout?.showAvatar ?? true ? (
-                          <div className={CHAT_INCOMING_GROUP_FOOTER_CLASS}>
-                            {otherUserId ? (
-                              <ChatProfileAvatarLink
-                                userId={otherUserId}
-                                name={otherUserLabel}
-                                avatarUrl={otherUserProfile?.avatar_url}
-                                returnTo={chatReturnTo}
-                              />
-                            ) : null}
-                            <time
-                              dateTime={message.created_at}
-                              className={`px-0.5 text-[10px] leading-none text-ftc-text-muted ${
-                                conversationTimestampLayout.get(message.id)?.showTimestamp
-                                  ? ""
-                                  : "sr-only"
-                              }`}
-                            >
-                              {formatMessageTime(message.created_at)}
-                            </time>
-                          </div>
-                        ) : (
-                          <time dateTime={message.created_at} className="sr-only">
-                            {formatMessageTime(message.created_at)}
-                          </time>
-                        )}
-                      </div>
+                      </IncomingChatMessageLayout>
                     )}
                   </li>
                 );
