@@ -5,8 +5,7 @@ import type { HTMLAttributes, ReactNode, RefObject } from "react";
 import DmMessageReactions, { DmReactionPicker } from "@/app/components/dm/DmMessageReactions";
 import {
   CHAT_MESSAGE_REACTION_PILL_ANIMATION_MS,
-  CHAT_MESSAGE_REACTION_STACK_PAD_CLASS,
-  resolveMessageReactionHangerClass,
+  resolveMessageReactionFooterClass,
 } from "@/lib/dm/chatMessageGroupLayout";
 import { summarizeDmReactions, type DmMessageReaction } from "@/lib/dmReactions";
 
@@ -49,9 +48,9 @@ function useReactionOverlayLifecycle(
 }
 
 /**
- * Message stack: bubble (content) + in-flow reaction hanger (Instagram-style).
- * Reactions are never absolutely positioned over the text — they hang from a
- * zero-height row below the bubble and overlap only the outer corner / inter-message gap.
+ * Message unit (Instagram-style): bubble frame owns bubble + in-flow reaction footer.
+ * The footer contributes real height so each reacted message reserves its own space;
+ * overlap is structural (negative margin on footer), not absolute positioning.
  */
 export default function ChatMessageBubbleShell({
   bubbleShellRef,
@@ -91,30 +90,27 @@ export default function ChatMessageBubbleShell({
   const stackAlignClass = isOwnMessage ? "items-end" : "items-start";
 
   return (
-    <div
-      ref={pickerAnchorRef}
-      className={`inline-flex w-fit max-w-full flex-col ${stackAlignClass} ${
-        reactionRowMounted ? CHAT_MESSAGE_REACTION_STACK_PAD_CLASS : ""
-      }`.trim()}
-    >
-      <div className={`w-fit max-w-full ${highlightClassName}`.trim()}>
+    <div ref={pickerAnchorRef} className={`inline-flex w-fit max-w-full flex-col ${stackAlignClass}`}>
+      <div
+        className={`flex w-fit max-w-full flex-col ${stackAlignClass} ${highlightClassName}`.trim()}
+      >
         <div ref={bubbleShellRef} className={bubbleShellClassName} {...bubbleHandlers}>
           {children}
         </div>
-      </div>
 
-      {reactionRowMounted ? (
-        <div className={resolveMessageReactionHangerClass(isOwnMessage)}>
-          <DmMessageReactions
-            reactions={reactions}
-            currentUserId={currentUserId}
-            reacting={reacting}
-            visible={reactionRowVisible}
-            onToggleReaction={onToggleReaction}
-            onOpenPicker={onOpenReactionPicker}
-          />
-        </div>
-      ) : null}
+        {reactionRowMounted ? (
+          <div className={resolveMessageReactionFooterClass(isOwnMessage)}>
+            <DmMessageReactions
+              reactions={reactions}
+              currentUserId={currentUserId}
+              reacting={reacting}
+              visible={reactionRowVisible}
+              onToggleReaction={onToggleReaction}
+              onOpenPicker={onOpenReactionPicker}
+            />
+          </div>
+        ) : null}
+      </div>
 
       <DmReactionPicker
         show={showReactionPicker}

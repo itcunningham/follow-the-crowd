@@ -152,20 +152,32 @@ export const CHAT_MESSAGE_REACTION_EMOJI_BUTTON_CLASS =
 export const CHAT_MESSAGE_REACTIONS_STACK_CLASS = "pointer-events-auto";
 
 /**
- * In-flow reaction hanger — sits as a zero-height sibling directly below the bubble.
- * Negative top margin pulls the pill onto the outer corner; bottom padding on the
- * message stack (see CHAT_MESSAGE_REACTION_STACK_PAD_CLASS) clears Seen/status text.
- * Replaces the absolute overlay model which overlapped text and Seen.
+ * In-flow reaction footer — real-height row directly below the bubble inside the
+ * bubble frame. Negative top margin overlaps the outer corner (~half pill height)
+ * so the badge hugs the bubble instead of sitting in the inter-message gap.
+ * Instagram/iMessage model: message unit = bubble + footer; footer owns layout space.
  */
+export const CHAT_MESSAGE_REACTION_FOOTER_BASE_CLASS =
+  "pointer-events-none relative z-10 -mt-1.5 flex w-full shrink-0";
+
+export const CHAT_MESSAGE_REACTION_FOOTER_OUTGOING_CLASS = "justify-end";
+
+export const CHAT_MESSAGE_REACTION_FOOTER_INCOMING_CLASS = "justify-start";
+
+/** @deprecated Zero-height hanger replaced by in-flow footer with real height. */
 export const CHAT_MESSAGE_REACTION_HANGER_BASE_CLASS =
-  "pointer-events-none relative z-10 -mt-2 flex h-0 w-full overflow-visible";
+  CHAT_MESSAGE_REACTION_FOOTER_BASE_CLASS;
 
-export const CHAT_MESSAGE_REACTION_HANGER_OUTGOING_CLASS = "justify-end pr-0.5";
+/** @deprecated */
+export const CHAT_MESSAGE_REACTION_HANGER_OUTGOING_CLASS =
+  CHAT_MESSAGE_REACTION_FOOTER_OUTGOING_CLASS;
 
-export const CHAT_MESSAGE_REACTION_HANGER_INCOMING_CLASS = "justify-start pl-0.5";
+/** @deprecated */
+export const CHAT_MESSAGE_REACTION_HANGER_INCOMING_CLASS =
+  CHAT_MESSAGE_REACTION_FOOTER_INCOMING_CLASS;
 
-/** Padding-bottom on message stack when reactions present — clears Seen without covering text. */
-export const CHAT_MESSAGE_REACTION_STACK_PAD_CLASS = "pb-2";
+/** @deprecated Padding hack removed — footer height reserves Seen/status clearance. */
+export const CHAT_MESSAGE_REACTION_STACK_PAD_CLASS = "";
 
 /** @deprecated Absolute overlay replaced by in-flow hanger. */
 export const CHAT_MESSAGE_REACTION_ANCHOR_VERTICAL_CLASS = "";
@@ -186,24 +198,29 @@ export const CHAT_MESSAGE_REACTION_ANCHOR_INSET_OUTGOING_CLASS = "right-0.5";
 export const CHAT_MESSAGE_REACTION_ANCHOR_INSET_INCOMING_CLASS = "left-0.5";
 
 /**
- * Reaction badge hanger — in-flow sibling below bubble, zero row height contribution.
+ * Reaction badge footer — in-flow row below bubble inside the bubble frame.
  */
 export function resolveSeenLabelSpacingClass(_hasReactions: boolean): string {
   return CHAT_SEEN_LABEL_SPACING_CLASS;
 }
 
-export function resolveMessageReactionHangerClass(isOwnMessage: boolean): string {
+export function resolveMessageReactionFooterClass(isOwnMessage: boolean): string {
   return [
-    CHAT_MESSAGE_REACTION_HANGER_BASE_CLASS,
+    CHAT_MESSAGE_REACTION_FOOTER_BASE_CLASS,
     isOwnMessage
-      ? CHAT_MESSAGE_REACTION_HANGER_OUTGOING_CLASS
-      : CHAT_MESSAGE_REACTION_HANGER_INCOMING_CLASS,
+      ? CHAT_MESSAGE_REACTION_FOOTER_OUTGOING_CLASS
+      : CHAT_MESSAGE_REACTION_FOOTER_INCOMING_CLASS,
   ].join(" ");
 }
 
-/** @deprecated Use resolveMessageReactionHangerClass. */
+/** @deprecated Use resolveMessageReactionFooterClass. */
+export function resolveMessageReactionHangerClass(isOwnMessage: boolean): string {
+  return resolveMessageReactionFooterClass(isOwnMessage);
+}
+
+/** @deprecated Use resolveMessageReactionFooterClass. */
 export function resolveMessageReactionAnchorClass(isOwnMessage: boolean): string {
-  return resolveMessageReactionHangerClass(isOwnMessage);
+  return resolveMessageReactionFooterClass(isOwnMessage);
 }
 
 /** @deprecated In-flow row removed — reactions no longer affect list-item height. */
