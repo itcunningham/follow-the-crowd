@@ -152,44 +152,58 @@ export const CHAT_MESSAGE_REACTION_EMOJI_BUTTON_CLASS =
 export const CHAT_MESSAGE_REACTIONS_STACK_CLASS = "pointer-events-auto";
 
 /**
- * Vertical placement — anchor top to bubble wrapper bottom (`top-full`), pull up 3px
- * so ~3px kisses the corner arc and the rest sits in the inter-message gap.
- * Instagram geometry: badge hangs below the bubble, not inside the padding box.
+ * In-flow reaction hanger — sits as a zero-height sibling directly below the bubble.
+ * Negative top margin pulls the pill onto the outer corner; bottom padding on the
+ * message stack (see CHAT_MESSAGE_REACTION_STACK_PAD_CLASS) clears Seen/status text.
+ * Replaces the absolute overlay model which overlapped text and Seen.
  */
-export const CHAT_MESSAGE_REACTION_ANCHOR_VERTICAL_CLASS = "top-full -translate-y-[3px]";
+export const CHAT_MESSAGE_REACTION_HANGER_BASE_CLASS =
+  "pointer-events-none relative z-10 -mt-2 flex h-0 w-full overflow-visible";
 
-/** @deprecated Use CHAT_MESSAGE_REACTION_ANCHOR_VERTICAL_CLASS */
-export const CHAT_MESSAGE_REACTION_ANCHOR_TRANSLATE_Y_CLASS =
-  CHAT_MESSAGE_REACTION_ANCHOR_VERTICAL_CLASS;
+export const CHAT_MESSAGE_REACTION_HANGER_OUTGOING_CLASS = "justify-end pr-0.5";
 
-/** @deprecated Inward inset overlapped text — use outer-edge inset instead. */
+export const CHAT_MESSAGE_REACTION_HANGER_INCOMING_CLASS = "justify-start pl-0.5";
+
+/** Padding-bottom on message stack when reactions present — clears Seen without covering text. */
+export const CHAT_MESSAGE_REACTION_STACK_PAD_CLASS = "pb-2";
+
+/** @deprecated Absolute overlay replaced by in-flow hanger. */
+export const CHAT_MESSAGE_REACTION_ANCHOR_VERTICAL_CLASS = "";
+
+/** @deprecated Absolute overlay replaced by in-flow hanger. */
+export const CHAT_MESSAGE_REACTION_ANCHOR_TRANSLATE_Y_CLASS = "";
+
+/** @deprecated Absolute overlay replaced by in-flow hanger. */
 export const CHAT_MESSAGE_REACTION_ANCHOR_NUDGE_OUTGOING_CLASS = "";
 
-/** @deprecated Inward inset overlapped text — use outer-edge inset instead. */
+/** @deprecated Absolute overlay replaced by in-flow hanger. */
 export const CHAT_MESSAGE_REACTION_ANCHOR_NUDGE_INCOMING_CLASS = "";
 
-/** Trailing outer edge — outgoing (badge hangs below lower-right corner). */
+/** @deprecated Use CHAT_MESSAGE_REACTION_HANGER_* alignment classes. */
 export const CHAT_MESSAGE_REACTION_ANCHOR_INSET_OUTGOING_CLASS = "right-0.5";
 
-/** Leading outer edge — incoming (mirrored below lower-left corner). */
+/** @deprecated Use CHAT_MESSAGE_REACTION_HANGER_* alignment classes. */
 export const CHAT_MESSAGE_REACTION_ANCHOR_INSET_INCOMING_CLASS = "left-0.5";
 
 /**
- * Reaction badge anchor — absolute, zero document-flow height.
- * Anchored to the bubble wrapper's outer bottom corner (not the text content box).
+ * Reaction badge hanger — in-flow sibling below bubble, zero row height contribution.
  */
-export function resolveSeenLabelSpacingClass(hasReactions: boolean): string {
-  return hasReactions
-    ? CHAT_SEEN_LABEL_WITH_REACTIONS_SPACING_CLASS
-    : CHAT_SEEN_LABEL_SPACING_CLASS;
+export function resolveSeenLabelSpacingClass(_hasReactions: boolean): string {
+  return CHAT_SEEN_LABEL_SPACING_CLASS;
 }
 
-export function resolveMessageReactionAnchorClass(isOwnMessage: boolean): string {
-  const horizontal = isOwnMessage
-    ? CHAT_MESSAGE_REACTION_ANCHOR_INSET_OUTGOING_CLASS
-    : CHAT_MESSAGE_REACTION_ANCHOR_INSET_INCOMING_CLASS;
+export function resolveMessageReactionHangerClass(isOwnMessage: boolean): string {
+  return [
+    CHAT_MESSAGE_REACTION_HANGER_BASE_CLASS,
+    isOwnMessage
+      ? CHAT_MESSAGE_REACTION_HANGER_OUTGOING_CLASS
+      : CHAT_MESSAGE_REACTION_HANGER_INCOMING_CLASS,
+  ].join(" ");
+}
 
-  return `pointer-events-none absolute z-10 ${horizontal} ${CHAT_MESSAGE_REACTION_ANCHOR_VERTICAL_CLASS}`;
+/** @deprecated Use resolveMessageReactionHangerClass. */
+export function resolveMessageReactionAnchorClass(isOwnMessage: boolean): string {
+  return resolveMessageReactionHangerClass(isOwnMessage);
 }
 
 /** @deprecated In-flow row removed — reactions no longer affect list-item height. */

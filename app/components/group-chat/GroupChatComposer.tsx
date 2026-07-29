@@ -1,6 +1,7 @@
 "use client";
 
 import ChatSendIcon from "@/app/components/chat/ChatSendIcon";
+import ComposerMessageField from "@/app/components/chat/ComposerMessageField";
 import { handleComposerNewlineKeyDown } from "@/lib/dm/composerNewlineKeydown";
 import { useComposerTextareaAutogrow } from "@/lib/dm/useComposerTextareaAutogrow";
 
@@ -20,7 +21,6 @@ export default function GroupChatComposer({
   sending: boolean;
 }) {
   const { textareaRef } = useComposerTextareaAutogrow(value);
-  const isCompactComposerField = value.length === 0 || !value.includes("\n");
 
   return (
     <div
@@ -28,19 +28,13 @@ export default function GroupChatComposer({
       className="shrink-0 border-t border-ftc-border-subtle bg-ftc-bg px-3 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-4"
     >
       <div className="flex min-w-0 items-end gap-2">
-        <textarea
-          ref={textareaRef}
-          rows={1}
+        <ComposerMessageField
+          textareaRef={textareaRef}
           value={value}
           onChange={(event) => onChange(event.target.value)}
           onKeyDown={handleComposerNewlineKeyDown}
           placeholder="Message..."
           disabled={sending}
-          className={`ftc-input min-w-[5.75rem] flex-1 resize-none rounded-full px-4 disabled:cursor-not-allowed ${
-            isCompactComposerField
-              ? "h-11 py-0 leading-[2.75rem]"
-              : "min-h-11 py-2 leading-normal"
-          }`}
         />
         <button
           type="button"

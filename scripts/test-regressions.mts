@@ -5051,13 +5051,13 @@ function testDmComposerClearsPendingPhotoAfterSuccessfulSend() {
   assert.match(composerSource, /onInputBlurWhileBusy/);
   assert.match(composerSource, /inputRef/);
   assert.match(composerSource, /composerRootRef/);
-  assert.match(composerSource, /<textarea/);
+  assert.match(composerSource, /ComposerMessageField/);
   assert.match(composerSource, /useComposerTextareaAutogrow/);
   assert.match(composerSource, /handleComposerNewlineKeyDown/);
   assert.doesNotMatch(composerSource, /event\.key === "Enter"[\s\S]*onSend/);
   assert.doesNotMatch(composerSource, /onPhotoSelected/);
-
-  assert.match(composerSource, /min-w-\[5\.75rem\]/);
+  assert.doesNotMatch(composerSource, /leading-\[2\.75rem\]/);
+  assert.doesNotMatch(composerSource, /min-w-\[5\.75rem\]/);
   assert.doesNotMatch(composerSource, /overflow-hidden/);
   assert.match(composerSource, /className="dm-composer shrink-0/);
 
@@ -5170,22 +5170,22 @@ function testDmMessageReactionGestureInteractions() {
   assert.doesNotMatch(reactionsSource, /resolveChatMessageReactionsAnchorClass/);
   assert.match(reactionsSource, /CHAT_MESSAGE_REACTION_PILL_CLASS/);
   assert.match(reactionsSource, /hidden h-3\.5/);
-  assert.match(groupLayoutSource, /top-full -translate-y-\[3px\]/);
-  assert.match(groupLayoutSource, /CHAT_MESSAGE_REACTION_ANCHOR_VERTICAL_CLASS/);
-  assert.match(groupLayoutSource, /right-0\.5/);
-  assert.match(groupLayoutSource, /left-0\.5/);
+  assert.match(groupLayoutSource, /CHAT_MESSAGE_REACTION_HANGER_BASE_CLASS/);
+  assert.match(groupLayoutSource, /-mt-2 flex h-0 w-full overflow-visible/);
+  assert.match(groupLayoutSource, /CHAT_MESSAGE_REACTION_STACK_PAD_CLASS = "pb-2"/);
+  assert.match(groupLayoutSource, /resolveMessageReactionHangerClass/);
+  assert.doesNotMatch(groupLayoutSource, /top-full -translate-y-\[3px\]/);
   assert.doesNotMatch(groupLayoutSource, /bottom-0 z-10/);
   assert.doesNotMatch(groupLayoutSource, /translate-y-\[calc\(100%/);
   assert.doesNotMatch(groupLayoutSource, /right-2\.5/);
-  assert.match(groupLayoutSource, /resolveMessageReactionAnchorClass/);
-  assert.match(groupLayoutSource, /CHAT_MESSAGE_REACTION_ANCHOR_NUDGE_OUTGOING_CLASS = ""/);
   assert.doesNotMatch(groupLayoutSource, /-translate-x-1/);
   assert.match(groupLayoutSource, /CHAT_LIST_ITEM_WITHIN_GROUP_SPACING_CLASS = "mb-1\.5"/);
-  assert.match(shellSource, /isolate/);
-  assert.match(shellSource, /resolveMessageReactionAnchorClass/);
+  assert.match(shellSource, /resolveMessageReactionHangerClass/);
+  assert.match(shellSource, /CHAT_MESSAGE_REACTION_STACK_PAD_CLASS/);
   assert.match(shellSource, /useReactionOverlayLifecycle/);
   assert.doesNotMatch(shellSource, /CHAT_MESSAGE_REACTION_OVERLAP_RESERVE_CLASS/);
-  assert.match(groupLayoutSource, /CHAT_SEEN_LABEL_WITH_REACTIONS_SPACING_CLASS/);
+  assert.doesNotMatch(shellSource, /isolate/);
+  assert.doesNotMatch(shellSource, /absolute/);
   assert.match(groupLayoutSource, /CHAT_MESSAGE_REACTION_OVERLAP_RESERVE_CLASS = ""/);
   assert.match(groupLayoutSource, /resolveSeenLabelSpacingClass/);
   assert.doesNotMatch(shellSource, /grid-participant/);

@@ -2,6 +2,7 @@
 
 import { useRef, type RefObject } from "react";
 import ChatSendIcon from "@/app/components/chat/ChatSendIcon";
+import ComposerMessageField from "@/app/components/chat/ComposerMessageField";
 import {
   DM_PHOTO_INPUT_ACCEPT,
   validateDmAttachmentFile,
@@ -72,7 +73,6 @@ export default function DmComposer({
   const busy = sending || uploading;
   const hasPendingPhoto = Boolean(pendingAttachmentPreviewUrl);
   const canSend = Boolean(value.trim()) || hasPendingPhoto;
-  const isCompactComposerField = value.length === 0 || !value.includes("\n");
 
   function handleInputBlur() {
     if (busy) {
@@ -135,19 +135,13 @@ export default function DmComposer({
           </svg>
         </ComposerIconButton>
 
-        <textarea
-          ref={messageInputRef}
-          rows={1}
+        <ComposerMessageField
+          textareaRef={messageInputRef}
           value={value}
           onChange={(event) => onChange(event.target.value)}
           onKeyDown={handleComposerNewlineKeyDown}
           onBlur={handleInputBlur}
           placeholder="Message"
-          className={`ftc-input min-w-[5.75rem] flex-1 resize-none rounded-full px-4 ${
-            isCompactComposerField
-              ? "h-11 py-0 leading-[2.75rem]"
-              : "min-h-11 py-2 leading-normal"
-          }`}
         />
 
         <button
