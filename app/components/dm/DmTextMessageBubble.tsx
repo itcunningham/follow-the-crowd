@@ -57,7 +57,6 @@ export default function DmTextMessageBubble({
   showSeen = false,
   showAvatar = true,
   groupPosition = "standalone",
-  previousInGroupHadReactions = false,
   followedByTimeSeparator = false,
   precededByTimeSeparator = false,
 }: {
@@ -83,7 +82,6 @@ export default function DmTextMessageBubble({
   showSeen?: boolean;
   showAvatar?: boolean;
   groupPosition?: ChatMessageGroupPosition;
-  previousInGroupHadReactions?: boolean;
   followedByTimeSeparator?: boolean;
   precededByTimeSeparator?: boolean;
 }) {
@@ -211,7 +209,6 @@ export default function DmTextMessageBubble({
           isOwnMessage: false,
           position: groupPosition,
           isClusterEnd,
-          previousInGroupHadReactions,
           followedByTimeSeparator,
           precededByTimeSeparator,
         })}
@@ -246,7 +243,6 @@ export default function DmTextMessageBubble({
         isOwnMessage: true,
         position: groupPosition,
         isClusterEnd,
-        previousInGroupHadReactions,
         followedByTimeSeparator,
         precededByTimeSeparator,
       })}

@@ -176,25 +176,6 @@ function wrapWithTimeSeparator(
   );
 }
 
-function resolvePreviousInGroupHadReactions(
-  messageId: string,
-  visualAboveMessageId: string | undefined,
-  groupLayout: Map<string, { tightWithPrevious: boolean }>,
-  reactionsForMessage: (id: string) => readonly unknown[],
-): boolean {
-  if (!visualAboveMessageId) {
-    return false;
-  }
-
-  const currentLayout = groupLayout.get(messageId);
-
-  if (!currentLayout?.tightWithPrevious) {
-    return false;
-  }
-
-  return reactionsForMessage(visualAboveMessageId).length > 0;
-}
-
 function resolveFollowedByTimeSeparator(
   messageVisuallyBelowId: string | undefined,
   timestampLayout: Map<string, DmConversationTimestampLayout>,
@@ -1814,14 +1795,7 @@ export default function DmChatPage() {
               if (!isBookingMessage) {
                 const messageTimestampLayout = conversationTimestampLayout.get(message.id);
                 const messageGroupLayout = chatMessageGroupLayout.get(message.id);
-                const visualAboveMessage = reversedMessages[reversedIndex + 1];
                 const messageVisuallyBelow = reversedMessages[reversedIndex - 1];
-                const previousInGroupHadReactions = resolvePreviousInGroupHadReactions(
-                  message.id,
-                  visualAboveMessage?.id,
-                  chatMessageGroupLayout,
-                  (messageId) => reactionsByMessageId.get(messageId) ?? [],
-                );
                 const followedByTimeSeparator = resolveFollowedByTimeSeparator(
                   messageVisuallyBelow?.id,
                   conversationTimestampLayout,
@@ -1859,7 +1833,6 @@ export default function DmChatPage() {
                     showSeen={shouldShowSeenOnMessage(message.id, message.created_at)}
                     showAvatar={messageGroupLayout?.showAvatar ?? true}
                     groupPosition={messageGroupLayout?.position ?? "standalone"}
-                    previousInGroupHadReactions={previousInGroupHadReactions}
                     followedByTimeSeparator={followedByTimeSeparator}
                     precededByTimeSeparator={precededByTimeSeparator}
                   />,
@@ -1939,14 +1912,7 @@ export default function DmChatPage() {
                 const actionRequired = isDmBookingActionRequired(resolvedBooking, eventCancelled);
                 const isBookingExpanded = expandedBookingIds.has(bookingExpansionKey);
                 const messageGroupLayout = chatMessageGroupLayout.get(message.id);
-                const visualAboveMessage = reversedMessages[reversedIndex + 1];
                 const messageVisuallyBelow = reversedMessages[reversedIndex - 1];
-                const previousInGroupHadReactions = resolvePreviousInGroupHadReactions(
-                  message.id,
-                  visualAboveMessage?.id,
-                  chatMessageGroupLayout,
-                  (messageId) => reactionsByMessageId.get(messageId) ?? [],
-                );
                 const followedByTimeSeparator = resolveFollowedByTimeSeparator(
                   messageVisuallyBelow?.id,
                   conversationTimestampLayout,
@@ -2053,7 +2019,6 @@ export default function DmChatPage() {
                       isOwnMessage,
                       position: messageGroupLayout?.position ?? "standalone",
                       isClusterEnd: messageGroupLayout?.showAvatar ?? true,
-                      previousInGroupHadReactions,
                       followedByTimeSeparator,
                       precededByTimeSeparator,
                     })}

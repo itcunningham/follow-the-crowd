@@ -5223,7 +5223,7 @@ function testDmMessageReactionGestureInteractions() {
   assert.match(bubbleSource, /showAvatar/);
   assert.match(bubbleSource, /groupPosition/);
   assert.match(bubbleSource, /resolveMessageGroupLiClass/);
-  assert.match(bubbleSource, /previousInGroupHadReactions/);
+  assert.doesNotMatch(bubbleSource, /previousInGroupHadReactions/);
   assert.match(bubbleSource, /followedByTimeSeparator/);
   assert.match(bubbleSource, /precededByTimeSeparator/);
   assert.match(bubbleSource, /CHAT_SEEN_LABEL_SPACING_CLASS/);
@@ -5355,7 +5355,6 @@ function testChatMessageGroupLayout() {
       isOwnMessage: false,
       position: "middle",
       isClusterEnd: false,
-      previousInGroupHadReactions: false,
     }),
     new RegExp(CHAT_LIST_ITEM_WITHIN_GROUP_SPACING_CLASS),
   );
@@ -5376,7 +5375,7 @@ function testChatMessageGroupLayout() {
   assert.match(groupLayoutSource, /CHAT_SEEN_LABEL_SPACING_CLASS/);
   assert.match(groupLayoutSource, /followedByTimeSeparator/);
   assert.match(groupLayoutSource, /precededByTimeSeparator/);
-  assert.match(groupLayoutSource, /previousInGroupHadReactions/);
+  assert.doesNotMatch(groupLayoutSource, /previousInGroupHadReactions/);
   assert.match(groupLayoutSource, /CHAT_MESSAGE_REACTION_PILL_CLASS/);
   assert.match(groupLayoutSource, /resolveMessageGroupLiClass/);
   assert.match(groupLayoutSource, /resolveOutgoingGroupLiClass/);
@@ -5386,9 +5385,9 @@ function testChatMessageGroupLayout() {
   assert.match(groupLayoutSource, /DM_CHAT_MEANINGFUL_TIME_GAP_MS/);
   assert.match(groupLayoutSource, /CHAT_MESSAGE_SCROLLER_CLASS/);
   assert.match(groupLayoutSource, /DM_INCOMING_MESSAGE_COLUMN_CLASS/);
-  assert.match(dmPageSource, /resolvePreviousInGroupHadReactions/);
+  assert.doesNotMatch(dmPageSource, /resolvePreviousInGroupHadReactions/);
+  assert.doesNotMatch(dmPageSource, /previousInGroupHadReactions/);
   assert.match(dmPageSource, /resolveFollowedByTimeSeparator/);
-  assert.match(dmPageSource, /previousInGroupHadReactions/);
   assert.match(dmPageSource, /followedByTimeSeparator/);
   assert.match(dmPageSource, /precededByTimeSeparator/);
   assert.match(dmPageSource, /CHAT_SEEN_LABEL_SPACING_CLASS/);

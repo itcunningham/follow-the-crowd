@@ -98,7 +98,7 @@ export const CHAT_INCOMING_GROUP_CLUSTER_END_CLASS = "mb-1.5";
 /** Consecutive bubbles from the same sender (small Instagram-style gap). */
 export const CHAT_LIST_ITEM_WITHIN_GROUP_SPACING_CLASS = "mb-0.5";
 
-/** Same sender, but the visually older bubble had a reaction (pill already reserves in-flow space). */
+/** @deprecated Reaction space is reserved in-flow on the reacted message only — do not propagate list margins. */
 export const CHAT_LIST_ITEM_AFTER_REACTION_SPACING_CLASS = "mb-1.5";
 
 /** End of a sender cluster before a different sender. */
@@ -138,9 +138,9 @@ export const CHAT_MESSAGE_REACTION_PILL_VISIBLE_CLASS = "scale-100 opacity-100";
 export const CHAT_MESSAGE_REACTION_PILL_HIDDEN_CLASS =
   "scale-[0.8] opacity-0 pointer-events-none";
 
-/** Emoji tap target — compact visual, adequate touch area via min dimensions. */
+/** Emoji tap target — fixed height, width hugs glyph; minimal horizontal inset. */
 export const CHAT_MESSAGE_REACTION_EMOJI_BUTTON_CLASS =
-  "inline-flex min-h-[1.125rem] min-w-[1.125rem] shrink-0 items-center justify-center rounded-full p-0 text-xs leading-none";
+  "inline-flex h-[1.125rem] shrink-0 items-center justify-center rounded-full px-px py-0 text-xs leading-none";
 
 /** Interactive controls inside the pill wrapper. */
 export const CHAT_MESSAGE_REACTIONS_STACK_CLASS = "pointer-events-auto";
@@ -171,13 +171,11 @@ export function isIncomingClusterEnd(
 function resolveMessageListItemSpacingClass({
   position,
   isClusterEnd,
-  previousInGroupHadReactions,
   followedByTimeSeparator,
   precededByTimeSeparator,
 }: {
   position: ChatMessageGroupPosition;
   isClusterEnd: boolean;
-  previousInGroupHadReactions: boolean;
   followedByTimeSeparator: boolean;
   precededByTimeSeparator: boolean;
 }): string {
@@ -194,9 +192,7 @@ function resolveMessageListItemSpacingClass({
   }
 
   if (position === "middle" || position === "last") {
-    return previousInGroupHadReactions
-      ? CHAT_LIST_ITEM_AFTER_REACTION_SPACING_CLASS
-      : CHAT_LIST_ITEM_WITHIN_GROUP_SPACING_CLASS;
+    return CHAT_LIST_ITEM_WITHIN_GROUP_SPACING_CLASS;
   }
 
   return "";
@@ -207,15 +203,12 @@ export function resolveMessageGroupLiClass({
   isOwnMessage,
   position,
   isClusterEnd,
-  previousInGroupHadReactions = false,
   followedByTimeSeparator = false,
   precededByTimeSeparator = false,
 }: {
   isOwnMessage: boolean;
   position: ChatMessageGroupPosition;
   isClusterEnd: boolean;
-  /** Visually older message in the same sender group had reactions. */
-  previousInGroupHadReactions?: boolean;
   /** A centred timestamp separator sits directly below this cluster end. */
   followedByTimeSeparator?: boolean;
   /** This message begins a time cluster — timestamp sits directly above. */
@@ -227,7 +220,6 @@ export function resolveMessageGroupLiClass({
     resolveMessageListItemSpacingClass({
       position,
       isClusterEnd,
-      previousInGroupHadReactions,
       followedByTimeSeparator,
       precededByTimeSeparator,
     }),
@@ -264,23 +256,22 @@ function hasMeaningfulTimeGapBetweenParticipants(
 export function resolveOutgoingGroupLiClass({
   position,
   isClusterEnd,
-  previousInGroupHadReactions = false,
   followedByTimeSeparator = false,
   precededByTimeSeparator = false,
 }: {
   position: ChatMessageGroupPosition;
   isClusterEnd: boolean;
-  previousInGroupHadReactions?: boolean;
   followedByTimeSeparator?: boolean;
   precededByTimeSeparator?: boolean;
   /** @deprecated Reactions no longer affect grouping margins. */
   hasReactions?: boolean;
+  /** @deprecated Reaction space is reserved in-flow on the reacted message only. */
+  previousInGroupHadReactions?: boolean;
 }): string {
   return resolveMessageGroupLiClass({
     isOwnMessage: true,
     position,
     isClusterEnd,
-    previousInGroupHadReactions,
     followedByTimeSeparator,
     precededByTimeSeparator,
   });
@@ -381,24 +372,23 @@ export function buildChatMessageGroupLayout(
 export function resolveIncomingGroupLiClass({
   position,
   isClusterEnd,
-  previousInGroupHadReactions = false,
   followedByTimeSeparator = false,
   precededByTimeSeparator = false,
 }: {
   position: ChatMessageGroupPosition;
   isClusterEnd: boolean;
-  previousInGroupHadReactions?: boolean;
   followedByTimeSeparator?: boolean;
   precededByTimeSeparator?: boolean;
   showTimestamp?: boolean;
   /** @deprecated Reactions no longer affect grouping margins. */
   hasReactions?: boolean;
+  /** @deprecated Reaction space is reserved in-flow on the reacted message only. */
+  previousInGroupHadReactions?: boolean;
 }): string {
   return resolveMessageGroupLiClass({
     isOwnMessage: false,
     position,
     isClusterEnd,
-    previousInGroupHadReactions,
     followedByTimeSeparator,
     precededByTimeSeparator,
   });
