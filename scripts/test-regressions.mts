@@ -5349,6 +5349,15 @@ function testChatMessageGroupLayout() {
       isOwnMessage: true,
       position: "last",
       isClusterEnd: true,
+      followedByTimeSeparator: true,
+    }),
+    new RegExp(CHAT_LIST_ITEM_CLUSTER_END_BEFORE_TIMESTAMP_SPACING_CLASS),
+  );
+  assert.match(
+    resolveMessageGroupLiClass({
+      isOwnMessage: true,
+      position: "last",
+      isClusterEnd: true,
       followedByTimeSeparator: false,
     }),
     new RegExp(CHAT_LIST_ITEM_WITHIN_GROUP_SPACING_CLASS),
@@ -5392,6 +5401,10 @@ function testChatMessageGroupLayout() {
   assert.match(groupLayoutSource, /CHAT_LIST_ITEM_WITHIN_GROUP_SPACING_CLASS = "mb-1\.5"/);
   assert.match(groupLayoutSource, /CHAT_LIST_ITEM_CLUSTER_END_SPACING_CLASS/);
   assert.match(groupLayoutSource, /CHAT_LIST_ITEM_CLUSTER_END_BEFORE_TIMESTAMP_SPACING_CLASS/);
+  assert.match(
+    groupLayoutSource,
+    /CHAT_LIST_ITEM_CLUSTER_END_BEFORE_TIMESTAMP_SPACING_CLASS[\s\S]*CHAT_LIST_ITEM_CLUSTER_END_SPACING_CLASS/,
+  );
   assert.match(groupLayoutSource, /CHAT_LIST_ITEM_CLUSTER_START_AFTER_TIMESTAMP_SPACING_CLASS/);
   assert.match(groupLayoutSource, /CHAT_SEEN_LABEL_SPACING_CLASS/);
   assert.match(groupLayoutSource, /followedByTimeSeparator/);

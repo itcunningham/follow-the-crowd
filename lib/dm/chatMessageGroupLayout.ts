@@ -104,8 +104,9 @@ export const CHAT_LIST_ITEM_AFTER_REACTION_SPACING_CLASS = "mb-1.5";
 /** End of a sender cluster before a different sender. */
 export const CHAT_LIST_ITEM_CLUSTER_END_SPACING_CLASS = "mb-3.5";
 
-/** Cluster end immediately above a centred timestamp — timestamp band supplies separation. */
-export const CHAT_LIST_ITEM_CLUSTER_END_BEFORE_TIMESTAMP_SPACING_CLASS = "mb-0.5";
+/** Cluster end immediately above a centred timestamp — must clear reaction hang below bubble. */
+export const CHAT_LIST_ITEM_CLUSTER_END_BEFORE_TIMESTAMP_SPACING_CLASS =
+  CHAT_LIST_ITEM_CLUSTER_END_SPACING_CLASS;
 
 /** Cluster start (standalone) immediately below a centred timestamp. */
 export const CHAT_LIST_ITEM_CLUSTER_START_AFTER_TIMESTAMP_SPACING_CLASS = "mb-0.5";
@@ -263,16 +264,17 @@ function resolveMessageListItemSpacingClass({
   precededByTimeSeparator: boolean;
 }): string {
   // flex-col-reverse: margin-bottom opens toward the visually older sibling above.
+  // Any message directly above a centred timestamp must clear absolute reaction hang.
+  if (followedByTimeSeparator) {
+    return CHAT_LIST_ITEM_CLUSTER_END_BEFORE_TIMESTAMP_SPACING_CLASS;
+  }
+
   // Within a sender group, every message except the oldest uses uniform tight spacing.
   if (position === "middle" || position === "last") {
     return CHAT_LIST_ITEM_WITHIN_GROUP_SPACING_CLASS;
   }
 
   // Cluster boundary — standalone or oldest in group (faces a different sender above).
-  if (followedByTimeSeparator) {
-    return CHAT_LIST_ITEM_CLUSTER_END_BEFORE_TIMESTAMP_SPACING_CLASS;
-  }
-
   if (precededByTimeSeparator) {
     return CHAT_LIST_ITEM_CLUSTER_START_AFTER_TIMESTAMP_SPACING_CLASS;
   }
