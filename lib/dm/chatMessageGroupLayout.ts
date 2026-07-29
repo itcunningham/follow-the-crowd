@@ -60,12 +60,12 @@ export const DM_INCOMING_MESSAGE_COLUMN_CLASS =
 export const DM_INCOMING_TIMESTAMP_CLASS =
   "self-start whitespace-nowrap px-0.5 text-[10px] leading-none text-ftc-text-muted";
 
-/** Minimal in-flow gutter — reserves space for the overlay without shifting the bubble. */
-export const CHAT_MESSAGE_REACTION_GUTTER_CLASS = "pb-2";
+/** Minimal in-flow gutter — reserves space for the overlay pill without shifting the bubble. */
+export const CHAT_MESSAGE_REACTION_GUTTER_CLASS = "pb-3";
 
 /** Overlay anchor — hangs from the lower bubble corner with slight outside overlap. */
 export function resolveMessageReactionsOverlayClass(isOwnMessage: boolean): string {
-  const base = "pointer-events-none absolute top-full z-10 -mt-0.5";
+  const base = "pointer-events-none absolute top-full z-10 -mt-1.5 translate-y-0.5";
 
   return isOwnMessage ? `${base} right-0` : `${base} left-0`;
 }

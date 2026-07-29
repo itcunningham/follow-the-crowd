@@ -5163,8 +5163,9 @@ function testDmMessageReactionGestureInteractions() {
   assert.match(reactionsSource, /CHAT_MESSAGE_REACTION_PILL_VISIBLE_CLASS/);
   assert.match(reactionsSource, /CHAT_MESSAGE_REACTION_PILL_HIDDEN_CLASS/);
   assert.match(groupLayoutSource, /CHAT_MESSAGE_REACTION_PILL_ANIMATION_MS/);
-  assert.match(groupLayoutSource, /pb-2\.5/);
+  assert.match(groupLayoutSource, /pb-3/);
   assert.match(groupLayoutSource, /-mt-1\.5/);
+  assert.match(groupLayoutSource, /translate-y-0\.5/);
   assert.match(shellSource, /useReactionOverlayLifecycle/);
   assert.match(shellSource, /reactionOverlayVisible/);
   assert.doesNotMatch(reactionsSource, /bg-ftc-primary/);
@@ -5290,7 +5291,7 @@ function testChatMessageGroupLayout() {
   assert.match(groupLayoutSource, /CHAT_MESSAGE_REACTION_PILL_CLASS/);
   assert.match(groupLayoutSource, /resolveOutgoingGroupLiClass/);
   assert.match(groupLayoutSource, /gap-x-1/);
-  assert.match(groupLayoutSource, /pb-2/);
+  assert.match(groupLayoutSource, /pb-3/);
   assert.match(groupLayoutSource, /CHAT_INCOMING_BUBBLE_STACK_CLASS/);
   assert.match(groupLayoutSource, /CHAT_MESSAGE_SCROLLER_CLASS/);
   assert.match(groupLayoutSource, /resolveIncomingGroupTightMarginClass/);

@@ -248,7 +248,13 @@ export default function DmTextMessageBubble({
             {formattedTime}
           </time>
           {showSeen ? (
-            <p className="ftc-seen-label mt-0.5 self-end text-right">Seen</p>
+            <p
+              className={`ftc-seen-label self-end text-right ${
+                hasReactions ? "mt-1.5" : "mt-0.5"
+              }`}
+            >
+              Seen
+            </p>
           ) : null}
         </div>
       </div>
