@@ -287,6 +287,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `TBD` — Polish reaction spacing to preserve compact message stacks
 - `d423327` — DM final layout polish: tighter timestamp band, symmetric cluster-start-after-timestamp margin, Seen nudge
 - `6be3416` — DM conversation density pass: tighter Instagram-style spacing tokens, timestamp-aware cluster margins, Seen label token
 - `461005e` — DM final beta polish: centred timestamp separators, unified grouping, reaction pill refinement
