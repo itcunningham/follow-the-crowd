@@ -747,6 +747,7 @@ export default function EventCrewChatPage() {
                       showAvatar={messageGroupLayout?.showAvatar ?? true}
                       tightWithPrevious={messageGroupLayout?.tightWithPrevious ?? false}
                       showTimestamp={messageGroupLayout?.showAvatar ?? true}
+                      groupPosition={messageGroupLayout?.position ?? "standalone"}
                     />
                   );
                 })}

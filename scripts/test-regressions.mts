@@ -5151,6 +5151,8 @@ function testDmMessageReactionGestureInteractions() {
   assert.match(bubbleSource, /onDoubleClick=\{handleDoubleTapDoubleClick\}/);
   assert.match(bubbleSource, /showAvatar/);
   assert.match(bubbleSource, /tightWithPrevious/);
+  assert.match(bubbleSource, /groupPosition/);
+  assert.match(bubbleSource, /CHAT_INCOMING_MESSAGE_COLUMN_CLASS/);
   assert.match(bubbleSource, /resolveIncomingGroupLiClass/);
   assert.match(bubbleSource, /CHAT_INCOMING_GROUP_FOOTER_CLASS/);
   assert.doesNotMatch(bubbleSource, /Report message/);
@@ -5209,6 +5211,22 @@ function testChatMessageGroupLayout() {
 
   assert.equal(brokenLayout.get("t2")?.tightWithPrevious, false);
   assert.equal(brokenLayout.get("img")?.position, "standalone");
+
+  const groupLayoutSource = readFileSync(
+    new URL("../lib/dm/chatMessageGroupLayout.ts", import.meta.url),
+    "utf8",
+  );
+  const dmPageSource = readFileSync(
+    new URL("../app/dm/[conversationId]/page.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(groupLayoutSource, /CHAT_INCOMING_GROUP_TIGHT_MIDDLE_CLASS/);
+  assert.match(groupLayoutSource, /CHAT_INCOMING_GROUP_TIGHT_LAST_CLASS/);
+  assert.match(groupLayoutSource, /resolveIncomingGroupTightMarginClass/);
+  assert.match(groupLayoutSource, /-mt-1 flex items-center gap-1\.5/);
+  assert.doesNotMatch(dmPageSource, /title="Report message"/);
+  assert.doesNotMatch(dmPageSource, /submitDmMessageReport/);
 }
 
 function testChatMessageBubbleGeometry() {
@@ -5224,14 +5242,14 @@ function testChatMessageBubbleGeometry() {
   );
   assert.match(
     resolveChatMessageBubbleShellClass({ isOwnMessage: true, text: "OK" }),
-    /px-3\.5 py-1\.5/,
+    /px-3\.5 py-\[0\.4375rem\]/,
   );
   assert.match(
     resolveChatMessageBubbleShellClass({
       isOwnMessage: false,
       text: "Longer single line that still wraps eventually",
     }),
-    /px-4 py-2/,
+    /px-4 py-2\.5/,
   );
 }
 

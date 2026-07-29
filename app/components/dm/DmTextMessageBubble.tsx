@@ -13,9 +13,11 @@ import {
 } from "@/lib/dm/chatMessageBubbleGeometry";
 import {
   CHAT_INCOMING_GROUP_FOOTER_CLASS,
+  CHAT_INCOMING_MESSAGE_COLUMN_CLASS,
   resolveIncomingGroupLiClass,
   CHAT_OUTGOING_GROUP_TIGHT_PREVIOUS_CLASS,
   CHAT_INCOMING_GROUP_CLUSTER_END_CLASS,
+  type ChatMessageGroupPosition,
 } from "@/lib/dm/chatMessageGroupLayout";
 import {
   DM_DEFAULT_REACTION_EMOJI,
@@ -58,6 +60,7 @@ export default function DmTextMessageBubble({
   showTimestamp = true,
   showAvatar = true,
   tightWithPrevious = false,
+  groupPosition = "standalone",
 }: {
   messageId: string;
   text: string;
@@ -82,6 +85,7 @@ export default function DmTextMessageBubble({
   showTimestamp?: boolean;
   showAvatar?: boolean;
   tightWithPrevious?: boolean;
+  groupPosition?: ChatMessageGroupPosition;
 }) {
   const trimmedText = text.trim();
   const displayText = formatBookingMessagePreview(trimmedText);
@@ -218,13 +222,13 @@ export default function DmTextMessageBubble({
     return (
       <li
         className={resolveIncomingGroupLiClass({
-          tightWithPrevious,
+          position: groupPosition,
           isClusterEnd,
           showTimestamp,
         })}
         data-chat-message-id={messageId}
       >
-        <div className={`flex min-w-0 flex-col ${rowMaxWidthClass}`}>
+        <div className={`${CHAT_INCOMING_MESSAGE_COLUMN_CLASS} ${rowMaxWidthClass}`}>
           {bubbleBlock}
           {reactionsBlock}
 
@@ -240,7 +244,7 @@ export default function DmTextMessageBubble({
               ) : null}
               <time
                 dateTime={createdAt}
-                className={`px-0.5 text-[10px] text-ftc-text-muted ${
+                className={`px-0.5 text-[10px] leading-none text-ftc-text-muted ${
                   showTimestamp ? "" : "sr-only"
                 }`}
               >

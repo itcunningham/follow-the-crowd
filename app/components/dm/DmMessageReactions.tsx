@@ -249,8 +249,8 @@ export default function DmMessageReactions({
 
   return (
     <div
-      className={`mt-0.5 flex max-w-full flex-wrap items-center gap-1 ${
-        isOwnMessage ? "justify-end" : "justify-start"
+      className={`${isOwnMessage ? "mt-0.5" : "mt-0"} flex max-w-full flex-wrap items-center gap-1 ${
+        isOwnMessage ? "justify-end" : "justify-start self-start"
       }`}
     >
       {summaries.map((summary) => (

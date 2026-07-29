@@ -30,7 +30,7 @@ export function resolveChatMessageBubbleShellClass({
 
   const base = isOwnMessage ? "ftc-bubble-own" : "ftc-bubble-other";
   const compact = isCompactChatBubbleText(text);
-  const padding = hasAttachments ? "p-1" : compact ? "px-3.5 py-1.5" : "px-4 py-2";
+  const padding = hasAttachments ? "p-1" : compact ? "px-3.5 py-[0.4375rem]" : "px-4 py-2.5";
 
   return `overflow-hidden ${interaction} w-fit max-w-full select-none sm:select-text ${base} ${padding}`;
 }

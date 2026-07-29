@@ -1193,15 +1193,15 @@ html {
 /* -------------------------------------------------------------------------- */
 
 .ftc-bubble-own {
-  border-radius: 1.125rem;
-  border-bottom-right-radius: 0.3125rem;
+  border-radius: 1.25rem;
+  border-bottom-right-radius: 0.375rem;
   background: var(--ftc-color-primary);
   color: var(--ftc-color-text-inverse);
 }
 
 .ftc-bubble-other {
-  border-radius: 1.25rem;
-  border-bottom-left-radius: 0.375rem;
+  border-radius: 1.3125rem;
+  border-bottom-left-radius: 0.4375rem;
   border: 1px solid var(--ftc-color-border-subtle);
   background: var(--ftc-color-bg-surface);
   color: var(--ftc-color-text-primary);

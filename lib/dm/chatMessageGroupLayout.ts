@@ -18,17 +18,23 @@ export type ChatMessageGroupLayout = {
 /** Avatar column width — matches ProfileAvatar sm (h-8 w-8). */
 export const CHAT_INCOMING_AVATAR_SLOT_CLASS = "h-8 w-8 shrink-0";
 
+/** Incoming bubble column — shared left edge for bubble, reactions, and footer. */
+export const CHAT_INCOMING_MESSAGE_COLUMN_CLASS =
+  "flex min-w-0 flex-col items-start self-start";
+
 /**
  * Tighten stacked incoming bubbles. Uses negative bottom margin because the message
  * list is `flex-col-reverse` (newer DOM nodes sit visually below older ones).
  */
-export const CHAT_INCOMING_GROUP_TIGHT_PREVIOUS_CLASS = "-mb-3";
+export const CHAT_INCOMING_GROUP_TIGHT_MIDDLE_CLASS = "-mb-4";
+export const CHAT_INCOMING_GROUP_TIGHT_LAST_CLASS = "-mb-3.5";
 
 /** Breathing room after a cluster footer before the next sender. */
 export const CHAT_INCOMING_GROUP_CLUSTER_END_CLASS = "mb-1.5";
 
 /** Avatar + timestamp row anchored beneath the final bubble in a group. */
-export const CHAT_INCOMING_GROUP_FOOTER_CLASS = "mt-0 flex items-center gap-1.5";
+export const CHAT_INCOMING_GROUP_FOOTER_CLASS =
+  "-mt-1 flex items-center gap-1.5 self-start leading-none";
 
 /** Outgoing consecutive same-sender stack (unchanged feel). */
 export const CHAT_OUTGOING_GROUP_TIGHT_PREVIOUS_CLASS = "-mt-2.5";
@@ -93,6 +99,19 @@ function resolveGroupPosition(
   return "last";
 }
 
+function resolveIncomingGroupTightMarginClass(
+  position: ChatMessageGroupPosition,
+): string {
+  switch (position) {
+    case "middle":
+      return CHAT_INCOMING_GROUP_TIGHT_MIDDLE_CLASS;
+    case "last":
+      return CHAT_INCOMING_GROUP_TIGHT_LAST_CLASS;
+    default:
+      return "";
+  }
+}
+
 /** Group consecutive text bubbles from the same sender for spacing + avatar layout. */
 export function buildChatMessageGroupLayout(
   messages: readonly ChatMessageGroupParticipant[],
@@ -118,17 +137,17 @@ export function buildChatMessageGroupLayout(
 }
 
 export function resolveIncomingGroupLiClass({
-  tightWithPrevious,
+  position,
   isClusterEnd,
   showTimestamp,
 }: {
-  tightWithPrevious: boolean;
+  position: ChatMessageGroupPosition;
   isClusterEnd: boolean;
   showTimestamp: boolean;
 }): string {
   return [
     "group/message flex justify-start",
-    tightWithPrevious ? CHAT_INCOMING_GROUP_TIGHT_PREVIOUS_CLASS : "",
+    resolveIncomingGroupTightMarginClass(position),
     isClusterEnd && showTimestamp ? CHAT_INCOMING_GROUP_CLUSTER_END_CLASS : "",
   ]
     .filter(Boolean)

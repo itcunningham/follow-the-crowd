@@ -10,9 +10,11 @@ import {
 } from "@/lib/dm/chatMessageBubbleGeometry";
 import {
   CHAT_INCOMING_GROUP_FOOTER_CLASS,
+  CHAT_INCOMING_MESSAGE_COLUMN_CLASS,
   resolveIncomingGroupLiClass,
   CHAT_OUTGOING_GROUP_TIGHT_PREVIOUS_CLASS,
   CHAT_INCOMING_GROUP_CLUSTER_END_CLASS,
+  type ChatMessageGroupPosition,
 } from "@/lib/dm/chatMessageGroupLayout";
 import {
   DM_DEFAULT_REACTION_EMOJI,
@@ -54,6 +56,7 @@ export default function GroupChatMessageBubble({
   showAvatar = true,
   tightWithPrevious = false,
   showTimestamp = true,
+  groupPosition = "standalone",
 }: {
   messageId: string;
   text: string;
@@ -77,6 +80,7 @@ export default function GroupChatMessageBubble({
   showAvatar?: boolean;
   tightWithPrevious?: boolean;
   showTimestamp?: boolean;
+  groupPosition?: ChatMessageGroupPosition;
 }) {
   const bubbleShellRef = useRef<HTMLDivElement>(null);
   const pickerAnchorRef = useRef<HTMLDivElement>(null);
@@ -183,12 +187,12 @@ export default function GroupChatMessageBubble({
       <li
         data-chat-message-id={messageId}
         className={resolveIncomingGroupLiClass({
-          tightWithPrevious,
+          position: groupPosition,
           isClusterEnd,
           showTimestamp,
         })}
       >
-        <div className={`flex min-w-0 flex-col ${rowMaxWidthClass}`}>
+        <div className={`${CHAT_INCOMING_MESSAGE_COLUMN_CLASS} ${rowMaxWidthClass}`}>
           {showSenderName ? (
             <p className="mb-1 px-1 text-[11px] font-semibold text-ftc-text-secondary">
               {senderLabel}
@@ -208,7 +212,7 @@ export default function GroupChatMessageBubble({
               />
               <time
                 dateTime={createdAt}
-                className={`px-0.5 text-[10px] text-ftc-text-muted ${showTimestamp ? "" : "sr-only"}`}
+                className={`px-0.5 text-[10px] leading-none text-ftc-text-muted ${showTimestamp ? "" : "sr-only"}`}
               >
                 {formatTime(createdAt)}
               </time>

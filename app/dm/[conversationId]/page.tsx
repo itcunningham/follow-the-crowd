@@ -15,7 +15,6 @@ import BookingCardFocusRing from "@/app/components/dm/BookingCardFocusRing";
 import DmConversationHeader from "@/app/components/dm/DmConversationHeader";
 import ChatNewMessagesPill from "@/app/components/dm/ChatNewMessagesPill";
 import DmComposer from "@/app/components/dm/DmComposer";
-import DmReportFormModal from "@/app/components/dm/DmReportFormModal";
 import DmTextMessageBubble from "@/app/components/dm/DmTextMessageBubble";
 import DmBookingTimelineNotice from "@/app/components/dm/DmBookingTimelineNotice";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
@@ -59,6 +58,7 @@ import {
 import {
   buildChatMessageGroupLayout,
   CHAT_INCOMING_GROUP_FOOTER_CLASS,
+  CHAT_INCOMING_MESSAGE_COLUMN_CLASS,
   resolveIncomingGroupLiClass,
 } from "@/lib/dm/chatMessageGroupLayout";
 import { parseDmThreadEntryContext, resolveDmThreadBackHref } from "@/lib/dm/threadNavigation";
@@ -126,7 +126,6 @@ import {
   getDmBlockStatus,
   type DmBlockStatus,
 } from "@/lib/userBlocks";
-import { submitDmMessageReport, type DmReportReason } from "@/lib/userReports";
 import {
   getCurrentUserId,
   getBookingRecipientProfilesByIds,
@@ -278,11 +277,6 @@ export default function DmChatPage() {
     blockedMe: false,
     isBlocked: false,
   });
-  const [reportMessageTarget, setReportMessageTarget] = useState<{
-    messageId: string;
-    reportedUserId: string;
-  } | null>(null);
-  const [reportMessageSubmitting, setReportMessageSubmitting] = useState(false);
   const [otherUserLastReadAt, setOtherUserLastReadAt] = useState<string | null>(null);
   const lastMessage = messages.length > 0 ? messages[messages.length - 1] : null;
   const messageIds = useMemo(() => messages.map((message) => message.id), [messages]);
@@ -1662,26 +1656,6 @@ export default function DmChatPage() {
     }
   }
 
-  async function handleSubmitMessageReport(input: { reason: DmReportReason; note: string }) {
-    if (!reportMessageTarget || !conversationId) {
-      return;
-    }
-
-    setReportMessageSubmitting(true);
-
-    try {
-      await submitDmMessageReport({
-        conversationId,
-        messageId: reportMessageTarget.messageId,
-        reportedUserId: reportMessageTarget.reportedUserId,
-        reason: input.reason,
-        note: input.note,
-      });
-    } finally {
-      setReportMessageSubmitting(false);
-    }
-  }
-
   return (
     <OnboardingGuard>
     <div className={FIXED_CHAT_PAGE_SHELL_CLASS}>
@@ -1703,16 +1677,6 @@ export default function DmChatPage() {
           profileReturnTo={chatReturnTo}
         />
       </header>
-
-      <DmReportFormModal
-        open={reportMessageTarget !== null}
-        title="Report message"
-        description="Tell us what happened. Reporting does not block this user or delete the message."
-        reportType="message"
-        busy={reportMessageSubmitting}
-        onClose={() => setReportMessageTarget(null)}
-        onSubmit={handleSubmitMessageReport}
-      />
 
       <div
         ref={scrollRef}
@@ -1830,6 +1794,7 @@ export default function DmChatPage() {
                     showTimestamp={messageTimestampLayout?.showTimestamp ?? true}
                     showAvatar={messageGroupLayout?.showAvatar ?? true}
                     tightWithPrevious={messageGroupLayout?.tightWithPrevious ?? false}
+                    groupPosition={messageGroupLayout?.position ?? "standalone"}
                   />
                 );
               }
@@ -2004,7 +1969,7 @@ export default function DmChatPage() {
                       isOwnMessage
                         ? "flex justify-end"
                         : resolveIncomingGroupLiClass({
-                            tightWithPrevious: messageGroupLayout?.tightWithPrevious ?? false,
+                            position: messageGroupLayout?.position ?? "standalone",
                             isClusterEnd: messageGroupLayout?.showAvatar ?? true,
                             showTimestamp:
                               conversationTimestampLayout.get(message.id)?.showTimestamp ??
@@ -2038,7 +2003,7 @@ export default function DmChatPage() {
                         </div>
                       </div>
                     ) : (
-                      <div className="flex min-w-0 max-w-[92%] flex-col sm:max-w-[80%]">
+                      <div className={`${CHAT_INCOMING_MESSAGE_COLUMN_CLASS} max-w-[92%] sm:max-w-[80%]`}>
                         <BookingCardFocusRing phase={bookingFocusPhase}>
                           {highlightClassName ? (
                             <div className={highlightClassName}>{bookingCard}</div>
