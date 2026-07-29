@@ -145,14 +145,20 @@ export const CHAT_MESSAGE_REACTION_EMOJI_BUTTON_CLASS =
 /** Interactive controls inside the pill wrapper. */
 export const CHAT_MESSAGE_REACTIONS_STACK_CLASS = "pointer-events-auto";
 
-/** Shared vertical overlap — half below bubble lip; corner curve stays visible. */
-export const CHAT_MESSAGE_REACTION_ANCHOR_TRANSLATE_Y_CLASS = "translate-y-1/2";
+/** Shared vertical overlap — sits on the corner arc, not the flat bottom edge. */
+export const CHAT_MESSAGE_REACTION_ANCHOR_TRANSLATE_Y_CLASS = "translate-y-[calc(50%-2px)]";
+
+/** Nudge onto the corner radius — outgoing (into bubble, breaks vertical column read). */
+export const CHAT_MESSAGE_REACTION_ANCHOR_NUDGE_OUTGOING_CLASS = "-translate-x-1";
+
+/** Nudge onto the corner radius — incoming. */
+export const CHAT_MESSAGE_REACTION_ANCHOR_NUDGE_INCOMING_CLASS = "translate-x-1";
 
 /** Trailing-edge inset — outgoing bubbles (identical for every own message). */
-export const CHAT_MESSAGE_REACTION_ANCHOR_INSET_OUTGOING_CLASS = "right-1.5";
+export const CHAT_MESSAGE_REACTION_ANCHOR_INSET_OUTGOING_CLASS = "right-2.5";
 
 /** Leading-edge inset — incoming bubbles (identical for every peer message). */
-export const CHAT_MESSAGE_REACTION_ANCHOR_INSET_INCOMING_CLASS = "left-1.5";
+export const CHAT_MESSAGE_REACTION_ANCHOR_INSET_INCOMING_CLASS = "left-2.5";
 
 /**
  * Reaction badge anchor — absolute corner overlap with zero document-flow height.
@@ -162,8 +168,11 @@ export function resolveMessageReactionAnchorClass(isOwnMessage: boolean): string
   const corner = isOwnMessage
     ? CHAT_MESSAGE_REACTION_ANCHOR_INSET_OUTGOING_CLASS
     : CHAT_MESSAGE_REACTION_ANCHOR_INSET_INCOMING_CLASS;
+  const nudge = isOwnMessage
+    ? CHAT_MESSAGE_REACTION_ANCHOR_NUDGE_OUTGOING_CLASS
+    : CHAT_MESSAGE_REACTION_ANCHOR_NUDGE_INCOMING_CLASS;
 
-  return `pointer-events-none absolute bottom-0 z-10 ${corner} ${CHAT_MESSAGE_REACTION_ANCHOR_TRANSLATE_Y_CLASS}`;
+  return `pointer-events-none absolute bottom-0.5 z-10 ${corner} ${CHAT_MESSAGE_REACTION_ANCHOR_TRANSLATE_Y_CLASS} ${nudge}`;
 }
 
 /** @deprecated In-flow row removed — reactions no longer affect list-item height. */

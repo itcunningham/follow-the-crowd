@@ -5168,6 +5168,7 @@ function testDmMessageReactionGestureInteractions() {
   assert.doesNotMatch(reactionsSource, /resolveChatMessageReactionsAnchorClass/);
   assert.match(reactionsSource, /CHAT_MESSAGE_REACTION_PILL_CLASS/);
   assert.match(reactionsSource, /hidden h-3\.5/);
+  assert.match(groupLayoutSource, /CHAT_MESSAGE_REACTION_ANCHOR_NUDGE_OUTGOING_CLASS/);
   assert.match(groupLayoutSource, /CHAT_MESSAGE_REACTION_ANCHOR_INSET_OUTGOING_CLASS/);
   assert.match(groupLayoutSource, /CHAT_MESSAGE_REACTION_ANCHOR_TRANSLATE_Y_CLASS/);
   assert.match(reactionsSource, /CHAT_MESSAGE_REACTION_PILL_VISIBLE_CLASS/);
