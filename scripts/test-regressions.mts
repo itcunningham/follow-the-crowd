@@ -106,6 +106,7 @@ import {
   DM_CHAT_MEANINGFUL_TIME_GAP_MS,
   shouldSuppressDmBookingTimelineNotice,
 } from "../lib/dm/dmChatTimestampVisibility";
+import { buildChatMessageGroupLayout } from "../lib/dm/chatMessageGroupLayout";
 import {
   DM_BOOKING_CONFIRMED_MESSAGE,
   DM_BOOKING_ORIGINAL_OFFER_KEPT_MESSAGE,
@@ -5118,7 +5119,9 @@ function testDmMessageReactionGestureInteractions() {
   assert.match(bubbleSource, /scrollContainerRef/);
   assert.match(reactionsSource, /createPortal/);
   assert.match(reactionsSource, /fixed z-\[120\]/);
-  assert.doesNotMatch(reactionsSource, /fixed inset-0/);
+  assert.match(reactionsSource, /fixed inset-0/);
+  assert.match(reactionsSource, /scale-\[0\.96\]/);
+  assert.match(reactionsSource, /duration-\[175ms\]/);
   assert.doesNotMatch(reactionsSource, /Close reaction picker/);
   assert.match(reactionsSource, /data-dm-reaction-picker/);
   assert.match(reactionsSource, /pointerdown", handlePointerDown, true/);
@@ -5132,6 +5135,12 @@ function testDmMessageReactionGestureInteractions() {
   assert.match(doubleTapSource, /DM_MESSAGE_DOUBLE_TAP_MS = 300/);
   assert.match(doubleTapSource, /isInteractiveMessageTarget/);
   assert.match(doubleTapSource, /prefersFinePointer/);
+  assert.match(doubleTapSource, /onCancelCompetingGesture/);
+  assert.match(doubleTapSource, /handleDoubleClick/);
+  assert.match(bubbleSource, /onDoubleClick=\{handleDoubleTapDoubleClick\}/);
+  assert.match(bubbleSource, /showAvatar/);
+  assert.match(bubbleSource, /tightWithPrevious/);
+  assert.match(groupBubbleSource, /onDoubleClick=\{handleDoubleTapDoubleClick\}/);
   assert.match(pickerPositionSource, /computeReactionPickerPosition/);
   assert.match(pickerPositionSource, /getReactionPickerViewportBounds/);
   assert.match(pickerPositionSource, /data-chat-composer/);
@@ -5159,6 +5168,21 @@ function testDmMessageReactionGestureInteractions() {
   );
   assert.match(globalsSource, /\.ftc-dm-message-image-open/);
   assert.match(globalsSource, /-webkit-touch-callout: none;/);
+}
+
+function testChatMessageGroupLayout() {
+  const layout = buildChatMessageGroupLayout([
+    { id: "a", user_id: "u1" },
+    { id: "b", user_id: "u1" },
+    { id: "c", user_id: "u2" },
+  ]);
+
+  assert.equal(layout.get("a")?.tightWithPrevious, false);
+  assert.equal(layout.get("a")?.showAvatar, false);
+  assert.equal(layout.get("b")?.tightWithPrevious, true);
+  assert.equal(layout.get("b")?.showAvatar, true);
+  assert.equal(layout.get("c")?.tightWithPrevious, false);
+  assert.equal(layout.get("c")?.showAvatar, true);
 }
 
 function testQaEnvironmentResetScript() {
@@ -5293,6 +5317,7 @@ async function main() {
   testDmComposerClearsPendingPhotoAfterSuccessfulSend();
   testDmComposerFocusSyncAfterSend();
   testDmMessageReactionGestureInteractions();
+  testChatMessageGroupLayout();
   testEventFallbackColourSelectionRadioBehaviour();
   testEventPlanPickerClearsSelectionOnFormBack();
   testEventPlansSelectionToolbarMatchesHistory();

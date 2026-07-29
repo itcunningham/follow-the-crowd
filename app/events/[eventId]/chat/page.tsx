@@ -21,12 +21,14 @@ import {
   type EventCrewChatMessage,
 } from "@/lib/eventCrewChat";
 import {
+  applyOptimisticDmReactionToggle,
   groupDmReactionsByMessageId,
   listMessageReactionsForEvent,
   toggleDmMessageReaction,
   upsertDmReactionInList,
   type DmMessageReaction,
 } from "@/lib/dmReactions";
+import { buildChatMessageGroupLayout } from "@/lib/dm/chatMessageGroupLayout";
 import type { CrewChatUnlockState } from "@/lib/events/crewChatUnlock";
 import {
   buildGroupChatSenderNameVisibility,
@@ -163,6 +165,13 @@ export default function EventCrewChatPage() {
     () => buildGroupChatSenderNameVisibility(messages, currentUserId),
     [messages, currentUserId],
   );
+  const chatMessageGroupLayout = useMemo(() => {
+    const chatMessages = messages
+      .filter((message) => !isGroupChatSystemUpdateMessage(message.text))
+      .map((message) => ({ id: message.id, user_id: message.user_id }));
+
+    return buildChatMessageGroupLayout(chatMessages);
+  }, [messages]);
   const reactionsByMessageId = useMemo(
     () => groupDmReactionsByMessageId(reactions),
     [reactions],
@@ -557,10 +566,17 @@ export default function EventCrewChatPage() {
   }, [canAccessChat, eventId]);
 
   async function handleToggleReaction(messageId: string, emoji: string) {
-    if (!currentUserId || reactingMessageId) {
+    if (!currentUserId) {
       return;
     }
 
+    let rollbackReactions: DmMessageReaction[] = [];
+
+    setReactions((prev) => {
+      rollbackReactions = prev.filter((reaction) => reaction.message_id === messageId);
+      return applyOptimisticDmReactionToggle(prev, messageId, emoji, currentUserId);
+    });
+    setReactionPickerMessageId(null);
     setReactingMessageId(messageId);
     setError(null);
 
@@ -570,9 +586,13 @@ export default function EventCrewChatPage() {
       setReactions((prev) =>
         upsertDmReactionInList(prev, nextReaction, messageId, currentUserId),
       );
-      setReactionPickerMessageId(null);
     } catch (reactionError) {
       console.error("Failed to toggle group chat reaction:", reactionError);
+      setReactions((prev) => {
+        const withoutMessage = prev.filter((reaction) => reaction.message_id !== messageId);
+
+        return [...withoutMessage, ...rollbackReactions];
+      });
       setError(
         reactionError instanceof Error ? reactionError.message : "Failed to update reaction",
       );
@@ -696,6 +716,7 @@ export default function EventCrewChatPage() {
 
                   const profile = senderProfiles.get(message.user_id);
                   const senderLabel = getSenderLabel(profile, message.user_id);
+                  const messageGroupLayout = chatMessageGroupLayout.get(message.id);
 
                   return (
                     <GroupChatMessageBubble
@@ -723,6 +744,8 @@ export default function EventCrewChatPage() {
                       formatTime={formatMessageTime}
                       isHighlighted={highlighted}
                       showSenderName={senderNameVisibility.get(message.id) ?? false}
+                      showAvatar={messageGroupLayout?.showAvatar ?? true}
+                      tightWithPrevious={messageGroupLayout?.tightWithPrevious ?? false}
                     />
                   );
                 })}

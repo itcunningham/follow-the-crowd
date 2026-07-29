@@ -28,12 +28,12 @@ export function useMessageReactionDoubleTap({
   bubbleRootRef,
   onToggleHeart,
   wasLongPressActivated,
-  disabled = false,
+  onCancelCompetingGesture,
 }: {
   bubbleRootRef: React.RefObject<HTMLElement | null>;
   onToggleHeart: () => void;
   wasLongPressActivated: () => boolean;
-  disabled?: boolean;
+  onCancelCompetingGesture?: () => void;
 }) {
   const lastTapRef = useRef<{ time: number; x: number; y: number } | null>(null);
   const startRef = useRef<{ x: number; y: number } | null>(null);
@@ -65,9 +65,25 @@ export function useMessageReactionDoubleTap({
     [bubbleRootRef],
   );
 
+  const isWithinDoubleTapWindow = useCallback((clientX: number, clientY: number) => {
+    const lastTap = lastTapRef.current;
+
+    if (!lastTap) {
+      return false;
+    }
+
+    const now = Date.now();
+
+    return (
+      now - lastTap.time <= DM_MESSAGE_DOUBLE_TAP_MS &&
+      Math.hypot(clientX - lastTap.x, clientY - lastTap.y) <=
+        DM_MESSAGE_DOUBLE_TAP_MOVE_THRESHOLD_PX
+    );
+  }, []);
+
   const handlePointerDown = useCallback(
     (event: React.PointerEvent<HTMLElement>) => {
-      if (!event.isPrimary || event.button !== 0 || disabled) {
+      if (!event.isPrimary || event.button !== 0) {
         return;
       }
 
@@ -79,12 +95,16 @@ export function useMessageReactionDoubleTap({
         return;
       }
 
+      if (isWithinDoubleTapWindow(event.clientX, event.clientY)) {
+        onCancelCompetingGesture?.();
+      }
+
       activePointerRef.current = event.pointerId;
       startRef.current = { x: event.clientX, y: event.clientY };
       movedRef.current = false;
       doubleTapHandledRef.current = false;
     },
-    [disabled, isGestureSurface],
+    [isGestureSurface, isWithinDoubleTapWindow, onCancelCompetingGesture],
   );
 
   const handlePointerMove = useCallback(
@@ -113,7 +133,7 @@ export function useMessageReactionDoubleTap({
       activePointerRef.current = null;
       startRef.current = null;
 
-      if (disabled || movedRef.current || wasLongPressActivated()) {
+      if (movedRef.current || wasLongPressActivated()) {
         return;
       }
 
@@ -148,7 +168,7 @@ export function useMessageReactionDoubleTap({
         y: event.clientY,
       };
     },
-    [disabled, isGestureSurface, onToggleHeart, wasLongPressActivated],
+    [isGestureSurface, onToggleHeart, wasLongPressActivated],
   );
 
   const handlePointerCancel = useCallback(
@@ -159,6 +179,23 @@ export function useMessageReactionDoubleTap({
       }
     },
     [resetGesture],
+  );
+
+  const handleDoubleClick = useCallback(
+    (event: React.MouseEvent<HTMLElement>) => {
+      if (!prefersFinePointer()) {
+        return;
+      }
+
+      if (!isGestureSurface(event.target)) {
+        return;
+      }
+
+      event.preventDefault();
+      event.stopPropagation();
+      onToggleHeart();
+    },
+    [isGestureSurface, onToggleHeart],
   );
 
   const consumeDoubleTapActivation = useCallback((event: React.SyntheticEvent) => {
@@ -176,6 +213,7 @@ export function useMessageReactionDoubleTap({
     handlePointerMove,
     handlePointerUp,
     handlePointerCancel,
+    handleDoubleClick,
     consumeDoubleTapActivation,
     resetDoubleTapGesture: resetGesture,
   };

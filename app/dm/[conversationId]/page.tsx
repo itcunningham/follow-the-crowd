@@ -56,6 +56,7 @@ import {
   buildDmConversationTimestampLayout,
   classifyDmConversationMessageKind,
 } from "@/lib/dm/dmChatTimestampVisibility";
+import { buildChatMessageGroupLayout } from "@/lib/dm/chatMessageGroupLayout";
 import { parseDmThreadEntryContext, resolveDmThreadBackHref } from "@/lib/dm/threadNavigation";
 import { useFixedChatPageDocumentReset } from "@/lib/navigation/useFixedChatPageDocumentReset";
 import { FIXED_CHAT_PAGE_SHELL_CLASS } from "@/lib/navigation/prepareFixedChatPageMount";
@@ -80,6 +81,7 @@ import {
   shouldKeepComposerFocusedAfterSend,
 } from "@/lib/dm/restoreComposerInputFocus";
 import {
+  applyOptimisticDmReactionToggle,
   groupDmReactionsByMessageId,
   listDmReactionsForConversation,
   toggleDmMessageReaction,
@@ -425,6 +427,41 @@ export default function DmChatPage() {
       }),
     [bookings, conversationId, messages],
   );
+  const chatMessageGroupLayout = useMemo(() => {
+    const chatMessages = messages.flatMap((message, messageIndex) => {
+      if (
+        isBookingActivityDmMessage(message.text) &&
+        parseEventCancellationActivityEventName(message.text)
+      ) {
+        return [];
+      }
+
+      if (isDmBookingSystemMessage(message.text)) {
+        const timelineKind = classifyDmConversationMessageKind(message.text, {
+          bookings,
+          conversationId,
+          messages,
+          messageIndex,
+        });
+
+        if (timelineKind !== "chat") {
+          return [];
+        }
+      }
+
+      if (isBookingActivityDmMessage(message.text)) {
+        return [];
+      }
+
+      if (isBookingRequestMessage(message.text)) {
+        return [];
+      }
+
+      return [{ id: message.id, user_id: message.user_id }];
+    });
+
+    return buildChatMessageGroupLayout(chatMessages);
+  }, [bookings, conversationId, messages]);
   const canShowReadReceipts = shouldShowDmReadReceipts({
     isBlocked: blockStatus.isBlocked,
     otherUserDisplayName: otherUserProfile?.display_name,
@@ -1361,10 +1398,17 @@ export default function DmChatPage() {
   }
 
   async function handleToggleReaction(messageId: string, emoji: string) {
-    if (!currentUserId || reactingMessageId) {
+    if (!currentUserId) {
       return;
     }
 
+    let rollbackReactions: DmMessageReaction[] = [];
+
+    setReactions((prev) => {
+      rollbackReactions = prev.filter((reaction) => reaction.message_id === messageId);
+      return applyOptimisticDmReactionToggle(prev, messageId, emoji, currentUserId);
+    });
+    setReactionPickerMessageId(null);
     setReactingMessageId(messageId);
     setError(null);
 
@@ -1374,9 +1418,13 @@ export default function DmChatPage() {
       setReactions((prev) =>
         upsertDmReactionInList(prev, nextReaction, messageId, currentUserId),
       );
-      setReactionPickerMessageId(null);
     } catch (reactionError) {
       console.error("Failed to toggle reaction:", reactionError);
+      setReactions((prev) => {
+        const withoutMessage = prev.filter((reaction) => reaction.message_id !== messageId);
+
+        return [...withoutMessage, ...rollbackReactions];
+      });
       setError(reactionError instanceof Error ? reactionError.message : "Failed to update reaction");
     } finally {
       setReactingMessageId(null);
@@ -1738,6 +1786,7 @@ export default function DmChatPage() {
 
               if (!isBookingMessage) {
                 const messageTimestampLayout = conversationTimestampLayout.get(message.id);
+                const messageGroupLayout = chatMessageGroupLayout.get(message.id);
 
                 return (
                   <DmTextMessageBubble
@@ -1776,6 +1825,8 @@ export default function DmChatPage() {
                     isHighlighted={isMessageHighlighted(message.id)}
                     showSeen={shouldShowSeenOnMessage(message.id, message.created_at)}
                     showTimestamp={messageTimestampLayout?.showTimestamp ?? true}
+                    showAvatar={messageGroupLayout?.showAvatar ?? true}
+                    tightWithPrevious={messageGroupLayout?.tightWithPrevious ?? false}
                   />
                 );
               }

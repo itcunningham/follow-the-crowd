@@ -194,6 +194,38 @@ export async function toggleDmMessageReaction(
   return data as DmMessageReaction;
 }
 
+export function applyOptimisticDmReactionToggle(
+  reactions: ReadonlyArray<DmMessageReaction>,
+  messageId: string,
+  emoji: string,
+  userId: string,
+): DmMessageReaction[] {
+  const existing = reactions.find(
+    (reaction) => reaction.message_id === messageId && reaction.user_id === userId,
+  );
+
+  if (existing?.emoji === emoji) {
+    return reactions.filter((reaction) => reaction.id !== existing.id);
+  }
+
+  if (existing) {
+    return reactions.map((reaction) =>
+      reaction.id === existing.id ? { ...reaction, emoji } : reaction,
+    );
+  }
+
+  return [
+    ...reactions,
+    {
+      id: `optimistic-${messageId}-${userId}`,
+      message_id: messageId,
+      user_id: userId,
+      emoji,
+      created_at: new Date().toISOString(),
+    },
+  ];
+}
+
 export function upsertDmReactionInList(
   reactions: DmMessageReaction[],
   nextReaction: DmMessageReaction | null,

@@ -9,8 +9,13 @@ import {
 } from "@/lib/dmReactions";
 import { useReactionPickerPosition } from "@/lib/dm/useReactionPickerPosition";
 
+const PICKER_ANIMATION_MS = 175;
+
 const PICKER_CLASS =
-  "fixed z-[120] flex max-w-[min(calc(100vw-2rem),20rem)] shrink-0 items-center gap-1 rounded-full border border-ftc-border-strong bg-ftc-bg-elevated/95 px-2 py-1.5 shadow-[0_8px_24px_rgba(0,0,0,0.45)] backdrop-blur-sm";
+  "fixed z-[120] flex max-w-[min(calc(100vw-2rem),20rem)] shrink-0 items-center gap-1 rounded-full border border-ftc-border-strong bg-ftc-bg-elevated/95 px-2 py-1.5 shadow-[0_8px_24px_rgba(0,0,0,0.45)] backdrop-blur-sm transition-[opacity,transform] duration-[175ms] ease-out motion-reduce:transition-none motion-reduce:transform-none";
+
+const PICKER_BACKDROP_CLASS =
+  "fixed inset-0 z-[119] bg-black/20 transition-opacity duration-[175ms] ease-out motion-reduce:transition-none";
 
 const PICKER_SCROLL_DISMISS_THRESHOLD_PX = 10;
 
@@ -47,8 +52,10 @@ export function DmReactionPicker({
   const firstReactionRef = useRef<HTMLButtonElement>(null);
   const pointerStartsRef = useRef<Map<number, { x: number; y: number }>>(new Map());
   const [mounted, setMounted] = useState(false);
+  const [renderPicker, setRenderPicker] = useState(false);
+  const [pickerVisible, setPickerVisible] = useState(false);
   const { position } = useReactionPickerPosition({
-    show,
+    show: renderPicker,
     anchorRef,
     pickerRef,
     isOwnMessage,
@@ -61,16 +68,38 @@ export function DmReactionPicker({
 
   useEffect(() => {
     if (!show) {
+      setPickerVisible(false);
+      const timer = window.setTimeout(() => {
+        setRenderPicker(false);
+      }, PICKER_ANIMATION_MS);
+
+      return () => {
+        window.clearTimeout(timer);
+      };
+    }
+
+    setRenderPicker(true);
+    const frame = window.requestAnimationFrame(() => {
+      setPickerVisible(true);
+    });
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+    };
+  }, [show]);
+
+  useEffect(() => {
+    if (!renderPicker) {
       return;
     }
 
     if (prefersFinePointer()) {
       firstReactionRef.current?.focus();
     }
-  }, [show]);
+  }, [renderPicker]);
 
   useEffect(() => {
-    if (!show) {
+    if (!renderPicker) {
       return;
     }
 
@@ -151,39 +180,47 @@ export function DmReactionPicker({
       window.removeEventListener("wheel", handleWheel);
       scrollContainer?.removeEventListener("scroll", handleScroll);
     };
-  }, [onClosePicker, scrollContainerRef, show]);
+  }, [onClosePicker, renderPicker, scrollContainerRef]);
 
-  if (!show || !mounted) {
+  if (!renderPicker || !mounted) {
     return null;
   }
 
   const picker = (
-    <div
-      ref={pickerRef}
-      data-dm-reaction-picker
-      role="toolbar"
-      aria-label="React to message"
-      className={PICKER_CLASS}
-      style={{
-        top: position.top,
-        left: position.left,
-        visibility: position.ready ? "visible" : "hidden",
-      }}
-    >
-      {DM_QUICK_REACTIONS.map((emoji, index) => (
-        <button
-          key={emoji}
-          ref={index === 0 ? firstReactionRef : undefined}
-          type="button"
-          disabled={reacting}
-          aria-label={`React with ${emoji}`}
-          onClick={() => onToggleReaction(emoji)}
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-lg transition hover:bg-ftc-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ftc-primary/35 disabled:opacity-50"
-        >
-          {emoji}
-        </button>
-      ))}
-    </div>
+    <>
+      <div
+        aria-hidden="true"
+        className={`${PICKER_BACKDROP_CLASS} ${pickerVisible ? "opacity-100" : "opacity-0"}`}
+      />
+      <div
+        ref={pickerRef}
+        data-dm-reaction-picker
+        role="toolbar"
+        aria-label="React to message"
+        className={`${PICKER_CLASS} ${
+          pickerVisible ? "scale-100 opacity-100" : "scale-[0.96] opacity-0"
+        }`}
+        style={{
+          top: position.top,
+          left: position.left,
+          visibility: position.ready ? "visible" : "hidden",
+        }}
+      >
+        {DM_QUICK_REACTIONS.map((emoji, index) => (
+          <button
+            key={emoji}
+            ref={index === 0 ? firstReactionRef : undefined}
+            type="button"
+            disabled={reacting}
+            aria-label={`React with ${emoji}`}
+            onClick={() => onToggleReaction(emoji)}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-lg transition hover:bg-ftc-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ftc-primary/35 disabled:opacity-50"
+          >
+            {emoji}
+          </button>
+        ))}
+      </div>
+    </>
   );
 
   return createPortal(picker, document.body);

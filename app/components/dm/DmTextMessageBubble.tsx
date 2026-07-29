@@ -47,6 +47,8 @@ export default function DmTextMessageBubble({
   isHighlighted = false,
   showSeen = false,
   showTimestamp = true,
+  showAvatar = true,
+  tightWithPrevious = false,
 }: {
   messageId: string;
   text: string;
@@ -70,6 +72,8 @@ export default function DmTextMessageBubble({
   isHighlighted?: boolean;
   showSeen?: boolean;
   showTimestamp?: boolean;
+  showAvatar?: boolean;
+  tightWithPrevious?: boolean;
 }) {
   const trimmedText = text.trim();
   const displayText = formatBookingMessagePreview(trimmedText);
@@ -100,13 +104,14 @@ export default function DmTextMessageBubble({
     handlePointerMove: handleDoubleTapPointerMove,
     handlePointerUp: handleDoubleTapPointerUp,
     handlePointerCancel: handleDoubleTapPointerCancel,
+    handleDoubleClick: handleDoubleTapDoubleClick,
     consumeDoubleTapActivation,
     resetDoubleTapGesture,
   } = useMessageReactionDoubleTap({
     bubbleRootRef: bubbleShellRef,
     onToggleHeart: handleToggleHeart,
     wasLongPressActivated,
-    disabled: reacting,
+    onCancelCompetingGesture: resetLongPressGesture,
   });
 
   useEffect(() => {
@@ -142,7 +147,9 @@ export default function DmTextMessageBubble({
 
   return (
     <li
-      className={`group/message flex ${isOwnMessage ? "justify-end" : "justify-start"}`}
+      className={`group/message flex ${isOwnMessage ? "justify-end" : "justify-start"} ${
+        tightWithPrevious ? "-mt-2" : ""
+      } ${showTimestamp ? "mb-1.5" : ""}`}
       data-chat-message-id={messageId}
     >
       <div
@@ -151,12 +158,16 @@ export default function DmTextMessageBubble({
         }`}
       >
         {!isOwnMessage && otherUserId ? (
-          <ChatProfileAvatarLink
-            userId={otherUserId}
-            name={otherUserLabel}
-            avatarUrl={otherUserAvatarUrl}
-            returnTo={profileReturnTo}
-          />
+          showAvatar ? (
+            <ChatProfileAvatarLink
+              userId={otherUserId}
+              name={otherUserLabel}
+              avatarUrl={otherUserAvatarUrl}
+              returnTo={profileReturnTo}
+            />
+          ) : (
+            <div className="h-8 w-8 shrink-0" aria-hidden="true" />
+          )
         ) : null}
         <div className={`flex min-w-0 flex-col ${isOwnMessage ? "items-end" : "items-start"}`}>
           <div ref={pickerAnchorRef} className={`relative max-w-full ${highlightClass}`}>
@@ -166,7 +177,7 @@ export default function DmTextMessageBubble({
                 aria-label="React to message"
                 disabled={reacting}
                 onClick={onOpenReactionPicker}
-                className={`absolute top-1 z-10 flex h-6 w-6 items-center justify-center rounded-full border border-ftc-border bg-ftc-bg-elevated/90 text-xs text-ftc-text-secondary opacity-0 transition hover:border-ftc-border-strong hover:text-ftc-text focus-visible:opacity-100 disabled:opacity-50 sm:group-hover/message:opacity-100 ${
+                className={`absolute top-1 z-10 flex h-6 w-6 items-center justify-center rounded-full border border-ftc-border bg-ftc-bg-elevated/90 text-xs text-ftc-text-secondary opacity-0 transition hover:border-ftc-border-strong hover:text-ftc-text focus-visible:opacity-100 disabled:opacity-50 pointer-events-none sm:group-hover/message:pointer-events-auto sm:group-hover/message:opacity-100 ${
                   isOwnMessage ? "right-1" : "left-1"
                 }`}
               >
@@ -191,6 +202,7 @@ export default function DmTextMessageBubble({
                 handleLongPressPointerCancel,
               )}
               onContextMenu={handleContextMenu}
+              onDoubleClick={handleDoubleTapDoubleClick}
               onClickCapture={(event) => {
                 consumeLongPressActivation(event);
                 consumeDoubleTapActivation(event);
@@ -228,7 +240,7 @@ export default function DmTextMessageBubble({
 
           <time
             dateTime={createdAt}
-            className={`${isOwnMessage ? "mt-0.5" : "-mt-1"} block px-1 text-[10px] text-ftc-text-muted ${
+            className={`mt-0.5 block px-1 text-[10px] text-ftc-text-muted ${
               isOwnMessage ? "text-right" : "text-left"
             } ${showTimestamp ? "" : "sr-only"}`}
           >
