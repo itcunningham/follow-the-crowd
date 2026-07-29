@@ -287,7 +287,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
-- `TBD` — DM conversation density pass: tighter Instagram-style spacing tokens, timestamp-aware cluster margins, Seen label token
+- `6be3416` — DM conversation density pass: tighter Instagram-style spacing tokens, timestamp-aware cluster margins, Seen label token
 - `461005e` — DM final beta polish: centred timestamp separators, unified grouping, reaction pill refinement
 - `b753c2b` — DM reaction positioning + Seen clearance gutter polish
 - `dca1f57` — DM completion pass: derived reaction anchor, unified grouping with 5-min threshold, avatar grid fix
