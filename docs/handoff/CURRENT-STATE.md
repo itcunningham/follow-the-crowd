@@ -285,7 +285,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
-- `2455161` — incoming message grouping polish: position-specific spacing, avatar/timestamp tuck, bubble radii; remove dead message Report UI
+- `8de6ab6` — fix empty composer height and block consecutive blank newlines
 - `329cb89` — DM/group chat composer: Return inserts newline; auto-grow textarea; Send only via button
 - `aaeade9` — remove dead Report prop; unify booking-card incoming group classes
 - `9fa2f65` — fix incoming message grouping spacing for flex-col-reverse lists
