@@ -13,6 +13,7 @@ import {
   resolveChatMessageBubbleTextClass,
 } from "@/lib/dm/chatMessageBubbleGeometry";
 import {
+  CHAT_SEEN_LABEL_SPACING_CLASS,
   resolveMessageGroupLiClass,
   type ChatMessageGroupPosition,
 } from "@/lib/dm/chatMessageGroupLayout";
@@ -57,6 +58,7 @@ export default function DmTextMessageBubble({
   showAvatar = true,
   groupPosition = "standalone",
   previousInGroupHadReactions = false,
+  followedByTimeSeparator = false,
 }: {
   messageId: string;
   text: string;
@@ -81,6 +83,7 @@ export default function DmTextMessageBubble({
   showAvatar?: boolean;
   groupPosition?: ChatMessageGroupPosition;
   previousInGroupHadReactions?: boolean;
+  followedByTimeSeparator?: boolean;
 }) {
   const trimmedText = text.trim();
   const displayText = formatBookingMessagePreview(trimmedText);
@@ -207,6 +210,7 @@ export default function DmTextMessageBubble({
           position: groupPosition,
           isClusterEnd,
           previousInGroupHadReactions,
+          followedByTimeSeparator,
         })}
         data-chat-message-id={messageId}
       >
@@ -240,6 +244,7 @@ export default function DmTextMessageBubble({
         position: groupPosition,
         isClusterEnd,
         previousInGroupHadReactions,
+        followedByTimeSeparator,
       })}
       data-chat-message-id={messageId}
     >
@@ -250,7 +255,9 @@ export default function DmTextMessageBubble({
             {formattedTime}
           </time>
           {showSeen ? (
-            <p className="ftc-seen-label mt-0.5 self-end text-right">Seen</p>
+            <p className={`ftc-seen-label ${CHAT_SEEN_LABEL_SPACING_CLASS} self-end text-right`}>
+              Seen
+            </p>
           ) : null}
         </div>
       </div>

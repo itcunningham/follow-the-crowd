@@ -106,7 +106,13 @@ import {
   DM_CHAT_MEANINGFUL_TIME_GAP_MS,
   shouldSuppressDmBookingTimelineNotice,
 } from "../lib/dm/dmChatTimestampVisibility";
-import { buildChatMessageGroupLayout } from "../lib/dm/chatMessageGroupLayout";
+import {
+  buildChatMessageGroupLayout,
+  CHAT_LIST_ITEM_CLUSTER_END_BEFORE_TIMESTAMP_SPACING_CLASS,
+  CHAT_LIST_ITEM_CLUSTER_END_SPACING_CLASS,
+  CHAT_LIST_ITEM_WITHIN_GROUP_SPACING_CLASS,
+  resolveMessageGroupLiClass,
+} from "../lib/dm/chatMessageGroupLayout";
 import {
   canComposerInsertNewline,
   getComposerLineBeforeCursor,
@@ -5167,6 +5173,9 @@ function testDmMessageReactionGestureInteractions() {
   assert.match(groupLayoutSource, /CHAT_LIST_ITEM_WITHIN_GROUP_SPACING_CLASS/);
   assert.match(groupLayoutSource, /CHAT_LIST_ITEM_AFTER_REACTION_SPACING_CLASS/);
   assert.match(groupLayoutSource, /CHAT_LIST_ITEM_CLUSTER_END_SPACING_CLASS/);
+  assert.match(groupLayoutSource, /CHAT_LIST_ITEM_CLUSTER_END_BEFORE_TIMESTAMP_SPACING_CLASS/);
+  assert.match(groupLayoutSource, /CHAT_SEEN_LABEL_SPACING_CLASS/);
+  assert.match(groupLayoutSource, /followedByTimeSeparator/);
   assert.match(groupLayoutSource, /CHAT_TIME_SEPARATOR_SPACING_CLASS/);
   assert.match(groupLayoutSource, /gap-0/);
   assert.match(shellSource, /resolveMessageReactionRowClass/);
@@ -5212,6 +5221,8 @@ function testDmMessageReactionGestureInteractions() {
   assert.match(bubbleSource, /groupPosition/);
   assert.match(bubbleSource, /resolveMessageGroupLiClass/);
   assert.match(bubbleSource, /previousInGroupHadReactions/);
+  assert.match(bubbleSource, /followedByTimeSeparator/);
+  assert.match(bubbleSource, /CHAT_SEEN_LABEL_SPACING_CLASS/);
   assert.doesNotMatch(bubbleSource, /layout=\{shellLayout\}/);
   assert.match(bubbleSource, /ChatMessageBubbleShell/);
   assert.match(bubbleSource, /ChatProfileAvatarLink/);
@@ -5308,6 +5319,34 @@ function testChatMessageGroupLayout() {
   assert.equal(timedLayout.get("late")?.position, "standalone");
   assert.equal(timedLayout.get("late")?.tightWithPrevious, false);
 
+  assert.match(
+    resolveMessageGroupLiClass({
+      isOwnMessage: true,
+      position: "last",
+      isClusterEnd: true,
+      followedByTimeSeparator: true,
+    }),
+    new RegExp(CHAT_LIST_ITEM_CLUSTER_END_BEFORE_TIMESTAMP_SPACING_CLASS),
+  );
+  assert.match(
+    resolveMessageGroupLiClass({
+      isOwnMessage: true,
+      position: "last",
+      isClusterEnd: true,
+      followedByTimeSeparator: false,
+    }),
+    new RegExp(CHAT_LIST_ITEM_CLUSTER_END_SPACING_CLASS),
+  );
+  assert.match(
+    resolveMessageGroupLiClass({
+      isOwnMessage: false,
+      position: "middle",
+      isClusterEnd: false,
+      previousInGroupHadReactions: false,
+    }),
+    new RegExp(CHAT_LIST_ITEM_WITHIN_GROUP_SPACING_CLASS),
+  );
+
   const groupLayoutSource = readFileSync(
     new URL("../lib/dm/chatMessageGroupLayout.ts", import.meta.url),
     "utf8",
@@ -5319,6 +5358,9 @@ function testChatMessageGroupLayout() {
 
   assert.match(groupLayoutSource, /CHAT_LIST_ITEM_WITHIN_GROUP_SPACING_CLASS/);
   assert.match(groupLayoutSource, /CHAT_LIST_ITEM_CLUSTER_END_SPACING_CLASS/);
+  assert.match(groupLayoutSource, /CHAT_LIST_ITEM_CLUSTER_END_BEFORE_TIMESTAMP_SPACING_CLASS/);
+  assert.match(groupLayoutSource, /CHAT_SEEN_LABEL_SPACING_CLASS/);
+  assert.match(groupLayoutSource, /followedByTimeSeparator/);
   assert.match(groupLayoutSource, /previousInGroupHadReactions/);
   assert.match(groupLayoutSource, /CHAT_MESSAGE_REACTION_PILL_CLASS/);
   assert.match(groupLayoutSource, /resolveMessageGroupLiClass/);
@@ -5330,7 +5372,10 @@ function testChatMessageGroupLayout() {
   assert.match(groupLayoutSource, /CHAT_MESSAGE_SCROLLER_CLASS/);
   assert.match(groupLayoutSource, /DM_INCOMING_MESSAGE_COLUMN_CLASS/);
   assert.match(dmPageSource, /resolvePreviousInGroupHadReactions/);
+  assert.match(dmPageSource, /resolveFollowedByTimeSeparator/);
   assert.match(dmPageSource, /previousInGroupHadReactions/);
+  assert.match(dmPageSource, /followedByTimeSeparator/);
+  assert.match(dmPageSource, /CHAT_SEEN_LABEL_SPACING_CLASS/);
   assert.match(dmPageSource, /DmIncomingMessageLayout/);
   assert.match(dmPageSource, /showAvatar=\{messageGroupLayout\?\.showAvatar/);
   assert.doesNotMatch(dmPageSource, /IncomingChatMessageLayout/);

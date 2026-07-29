@@ -61,6 +61,7 @@ import {
   buildChatMessageGroupLayout,
   CHAT_MESSAGE_LIST_CLASS,
   CHAT_MESSAGE_SCROLLER_CLASS,
+  CHAT_SEEN_LABEL_SPACING_CLASS,
   resolveMessageGroupLiClass,
 } from "@/lib/dm/chatMessageGroupLayout";
 import { parseDmThreadEntryContext, resolveDmThreadBackHref } from "@/lib/dm/threadNavigation";
@@ -192,6 +193,17 @@ function resolvePreviousInGroupHadReactions(
   }
 
   return reactionsForMessage(visualAboveMessageId).length > 0;
+}
+
+function resolveFollowedByTimeSeparator(
+  messageVisuallyBelowId: string | undefined,
+  timestampLayout: Map<string, DmConversationTimestampLayout>,
+): boolean {
+  if (!messageVisuallyBelowId) {
+    return false;
+  }
+
+  return timestampLayout.get(messageVisuallyBelowId)?.showTimeSeparatorBefore ?? false;
 }
 
 function getConversationTitle(otherUserProfile: UserAvatarProfile) {
@@ -1803,11 +1815,16 @@ export default function DmChatPage() {
                 const messageTimestampLayout = conversationTimestampLayout.get(message.id);
                 const messageGroupLayout = chatMessageGroupLayout.get(message.id);
                 const visualAboveMessage = reversedMessages[reversedIndex + 1];
+                const messageVisuallyBelow = reversedMessages[reversedIndex - 1];
                 const previousInGroupHadReactions = resolvePreviousInGroupHadReactions(
                   message.id,
                   visualAboveMessage?.id,
                   chatMessageGroupLayout,
                   (messageId) => reactionsByMessageId.get(messageId) ?? [],
+                );
+                const followedByTimeSeparator = resolveFollowedByTimeSeparator(
+                  messageVisuallyBelow?.id,
+                  conversationTimestampLayout,
                 );
 
                 return wrapWithTimeSeparator(
@@ -1841,6 +1858,7 @@ export default function DmChatPage() {
                     showAvatar={messageGroupLayout?.showAvatar ?? true}
                     groupPosition={messageGroupLayout?.position ?? "standalone"}
                     previousInGroupHadReactions={previousInGroupHadReactions}
+                    followedByTimeSeparator={followedByTimeSeparator}
                   />,
                   messageTimestampLayout,
                 );
@@ -1919,11 +1937,16 @@ export default function DmChatPage() {
                 const isBookingExpanded = expandedBookingIds.has(bookingExpansionKey);
                 const messageGroupLayout = chatMessageGroupLayout.get(message.id);
                 const visualAboveMessage = reversedMessages[reversedIndex + 1];
+                const messageVisuallyBelow = reversedMessages[reversedIndex - 1];
                 const previousInGroupHadReactions = resolvePreviousInGroupHadReactions(
                   message.id,
                   visualAboveMessage?.id,
                   chatMessageGroupLayout,
                   (messageId) => reactionsByMessageId.get(messageId) ?? [],
+                );
+                const followedByTimeSeparator = resolveFollowedByTimeSeparator(
+                  messageVisuallyBelow?.id,
+                  conversationTimestampLayout,
                 );
 
                 const bookingCard = (
@@ -2027,6 +2050,7 @@ export default function DmChatPage() {
                       position: messageGroupLayout?.position ?? "standalone",
                       isClusterEnd: messageGroupLayout?.showAvatar ?? true,
                       previousInGroupHadReactions,
+                      followedByTimeSeparator,
                     })}
                   >
                     {isOwnMessage ? (
@@ -2043,7 +2067,9 @@ export default function DmChatPage() {
                             {formatMessageTime(message.created_at)}
                           </time>
                           {shouldShowSeenOnMessage(message.id, message.created_at) ? (
-                            <p className="ftc-seen-label mt-0.5 text-right">Seen</p>
+                            <p className={`ftc-seen-label ${CHAT_SEEN_LABEL_SPACING_CLASS} text-right`}>
+                              Seen
+                            </p>
                           ) : null}
                         </div>
                       </div>
