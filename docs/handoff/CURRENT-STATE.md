@@ -284,6 +284,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `44c96f8` — DM/group chat composer: Return inserts newline; auto-grow textarea; Send only via button
 - `aaeade9` — remove dead Report prop; unify booking-card incoming group classes
 - `9fa2f65` — fix incoming message grouping spacing for flex-col-reverse lists
 - `703e0b4` — refine chat bubble geometry for compact pill sizing
