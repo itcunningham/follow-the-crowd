@@ -152,24 +152,27 @@ export const CHAT_MESSAGE_REACTION_EMOJI_BUTTON_CLASS =
 export const CHAT_MESSAGE_REACTIONS_STACK_CLASS = "pointer-events-auto";
 
 /**
- * Vertical placement — pill sits mostly below the bubble lip.
- * `bottom-0` + `translate-y-[calc(100%-4px)]` keeps ~4px on the corner arc and
- * the rest in the inter-message gap (no text overlap on short bubbles).
+ * Vertical placement — anchor top to bubble wrapper bottom (`top-full`), pull up 3px
+ * so ~3px kisses the corner arc and the rest sits in the inter-message gap.
+ * Instagram geometry: badge hangs below the bubble, not inside the padding box.
  */
-export const CHAT_MESSAGE_REACTION_ANCHOR_TRANSLATE_Y_CLASS =
-  "translate-y-[calc(100%-4px)]";
+export const CHAT_MESSAGE_REACTION_ANCHOR_VERTICAL_CLASS = "top-full -translate-y-[3px]";
 
-/** @deprecated Inward nudges overlapped text on short bubbles — horizontal inset only. */
+/** @deprecated Use CHAT_MESSAGE_REACTION_ANCHOR_VERTICAL_CLASS */
+export const CHAT_MESSAGE_REACTION_ANCHOR_TRANSLATE_Y_CLASS =
+  CHAT_MESSAGE_REACTION_ANCHOR_VERTICAL_CLASS;
+
+/** @deprecated Inward inset overlapped text — use outer-edge inset instead. */
 export const CHAT_MESSAGE_REACTION_ANCHOR_NUDGE_OUTGOING_CLASS = "";
 
-/** @deprecated Inward nudges overlapped text on short bubbles — horizontal inset only. */
+/** @deprecated Inward inset overlapped text — use outer-edge inset instead. */
 export const CHAT_MESSAGE_REACTION_ANCHOR_NUDGE_INCOMING_CLASS = "";
 
-/** Trailing-edge inset — outgoing bubbles (identical for every own message). */
-export const CHAT_MESSAGE_REACTION_ANCHOR_INSET_OUTGOING_CLASS = "right-2.5";
+/** Trailing outer edge — outgoing (badge hangs below lower-right corner). */
+export const CHAT_MESSAGE_REACTION_ANCHOR_INSET_OUTGOING_CLASS = "right-0.5";
 
-/** Leading-edge inset — incoming bubbles (identical for every peer message). */
-export const CHAT_MESSAGE_REACTION_ANCHOR_INSET_INCOMING_CLASS = "left-2.5";
+/** Leading outer edge — incoming (mirrored below lower-left corner). */
+export const CHAT_MESSAGE_REACTION_ANCHOR_INSET_INCOMING_CLASS = "left-0.5";
 
 /**
  * Reaction badge anchor — absolute, zero document-flow height.
@@ -182,11 +185,11 @@ export function resolveSeenLabelSpacingClass(hasReactions: boolean): string {
 }
 
 export function resolveMessageReactionAnchorClass(isOwnMessage: boolean): string {
-  const corner = isOwnMessage
+  const horizontal = isOwnMessage
     ? CHAT_MESSAGE_REACTION_ANCHOR_INSET_OUTGOING_CLASS
     : CHAT_MESSAGE_REACTION_ANCHOR_INSET_INCOMING_CLASS;
 
-  return `pointer-events-none absolute bottom-0 z-10 ${corner} ${CHAT_MESSAGE_REACTION_ANCHOR_TRANSLATE_Y_CLASS}`;
+  return `pointer-events-none absolute z-10 ${horizontal} ${CHAT_MESSAGE_REACTION_ANCHOR_VERTICAL_CLASS}`;
 }
 
 /** @deprecated In-flow row removed — reactions no longer affect list-item height. */

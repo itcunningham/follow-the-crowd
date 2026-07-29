@@ -90,7 +90,7 @@ export default function ChatMessageBubbleShell({
   return (
     <div ref={pickerAnchorRef} className="inline-flex w-fit max-w-full flex-col">
       <div
-        className={`relative w-fit max-w-full overflow-visible ${highlightClassName}`.trim()}
+        className={`relative isolate w-fit max-w-full overflow-visible ${highlightClassName}`.trim()}
       >
         <div ref={bubbleShellRef} className={bubbleShellClassName} {...bubbleHandlers}>
           {children}
