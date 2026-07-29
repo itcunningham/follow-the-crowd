@@ -38,29 +38,6 @@ function ChatBackButton({
   );
 }
 
-function ChatDetailsMenuButton({
-  conversationTitle,
-  onClick,
-}: {
-  conversationTitle: string;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      aria-label={`Open profile for ${conversationTitle}`}
-      onClick={onClick}
-      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-ftc-border-subtle bg-ftc-surface text-ftc-text-secondary transition hover:border-ftc-border-strong hover:text-ftc-text focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ftc-primary"
-    >
-      <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor">
-        <circle cx="5" cy="12" r="1.5" />
-        <circle cx="12" cy="12" r="1.5" />
-        <circle cx="19" cy="12" r="1.5" />
-      </svg>
-    </button>
-  );
-}
-
 export default function DmConversationHeader({
   backHref,
   backLabel = "Back to inbox",
@@ -71,7 +48,6 @@ export default function DmConversationHeader({
   avatarUrl,
   otherUserId,
   profileReturnTo,
-  onOpenDetails,
 }: {
   backHref: string;
   backLabel?: string;
@@ -82,7 +58,6 @@ export default function DmConversationHeader({
   avatarUrl?: string | null;
   otherUserId: string | null;
   profileReturnTo?: string | null;
-  onOpenDetails?: () => void;
 }) {
   return (
     <div className="flex items-center gap-2">
@@ -116,10 +91,6 @@ export default function DmConversationHeader({
           )}
         </div>
       </div>
-
-      {!loading && otherUserId && onOpenDetails ? (
-        <ChatDetailsMenuButton conversationTitle={conversationTitle} onClick={onOpenDetails} />
-      ) : null}
     </div>
   );
 }

@@ -14,7 +14,6 @@ import {
 import BookingCardFocusRing from "@/app/components/dm/BookingCardFocusRing";
 import DmConversationHeader from "@/app/components/dm/DmConversationHeader";
 import ChatNewMessagesPill from "@/app/components/dm/ChatNewMessagesPill";
-import DmConversationDetailsPanel from "@/app/components/dm/DmConversationDetailsPanel";
 import DmComposer from "@/app/components/dm/DmComposer";
 import DmReportFormModal from "@/app/components/dm/DmReportFormModal";
 import DmTextMessageBubble from "@/app/components/dm/DmTextMessageBubble";
@@ -115,11 +114,9 @@ import {
   type BookingCardExpandScrollContext,
 } from "@/lib/dm/dmBookingCardExpandScroll";
 import {
-  blockDmUser,
   getDmBlockBannerMessage,
   getDmBlockSendErrorMessage,
   getDmBlockStatus,
-  unblockDmUser,
   type DmBlockStatus,
 } from "@/lib/userBlocks";
 import { submitDmMessageReport, type DmReportReason } from "@/lib/userReports";
@@ -274,8 +271,6 @@ export default function DmChatPage() {
     blockedMe: false,
     isBlocked: false,
   });
-  const [blockActionLoading, setBlockActionLoading] = useState(false);
-  const [detailsOpen, setDetailsOpen] = useState(false);
   const [reportMessageTarget, setReportMessageTarget] = useState<{
     messageId: string;
     reportedUserId: string;
@@ -1600,52 +1595,6 @@ export default function DmChatPage() {
     }
   }
 
-  async function handleBlockUser() {
-    if (!otherUserId || blockActionLoading) {
-      return;
-    }
-
-    setBlockActionLoading(true);
-    setError(null);
-
-    try {
-      await blockDmUser(otherUserId);
-      setBlockStatus({
-        blockedByMe: true,
-        blockedMe: false,
-        isBlocked: true,
-      });
-    } catch (blockError) {
-      console.error("Failed to block user:", blockError);
-      setError(blockError instanceof Error ? blockError.message : "Failed to block user");
-    } finally {
-      setBlockActionLoading(false);
-    }
-  }
-
-  async function handleUnblockUser() {
-    if (!otherUserId || blockActionLoading) {
-      return;
-    }
-
-    setBlockActionLoading(true);
-    setError(null);
-
-    try {
-      await unblockDmUser(otherUserId);
-      setBlockStatus({
-        blockedByMe: false,
-        blockedMe: false,
-        isBlocked: false,
-      });
-    } catch (unblockError) {
-      console.error("Failed to unblock user:", unblockError);
-      setError(unblockError instanceof Error ? unblockError.message : "Failed to unblock user");
-    } finally {
-      setBlockActionLoading(false);
-    }
-  }
-
   async function handleSubmitMessageReport(input: { reason: DmReportReason; note: string }) {
     if (!reportMessageTarget || !conversationId) {
       return;
@@ -1685,25 +1634,8 @@ export default function DmChatPage() {
           avatarUrl={otherUserProfile?.avatar_url}
           otherUserId={otherUserId}
           profileReturnTo={chatReturnTo}
-          onOpenDetails={() => setDetailsOpen(true)}
         />
       </header>
-
-      {otherUserId ? (
-        <DmConversationDetailsPanel
-          open={detailsOpen}
-          conversationId={conversationId}
-          otherUserId={otherUserId}
-          otherUserName={otherUserLabel}
-          otherUserAvatarUrl={otherUserProfile?.avatar_url}
-          profileReturnTo={chatReturnTo}
-          blockedByMe={blockStatus.blockedByMe}
-          busy={blockActionLoading}
-          onClose={() => setDetailsOpen(false)}
-          onBlock={handleBlockUser}
-          onUnblock={handleUnblockUser}
-        />
-      ) : null}
 
       <DmReportFormModal
         open={reportMessageTarget !== null}
