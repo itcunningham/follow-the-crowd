@@ -283,6 +283,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `TBD` — refine chat bubble geometry for compact pill sizing
 - `c5cd8c8` — anchor incoming avatar to final bubble and tighten grouped spacing
 - `285849b` — DM interaction polish pass (double-tap heart, grouping, reaction tray animation)
 - `67d63a1` — add breathing room below Messages inbox segmented control
