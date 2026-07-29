@@ -1,14 +1,52 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import type { HTMLAttributes, ReactNode, RefObject } from "react";
 import DmMessageReactions, { DmReactionPicker } from "@/app/components/dm/DmMessageReactions";
 import {
   CHAT_MESSAGE_REACTION_GUTTER_CLASS,
+  CHAT_MESSAGE_REACTION_PILL_ANIMATION_MS,
   resolveMessageReactionsOverlayClass,
 } from "@/lib/dm/chatMessageGroupLayout";
 import { summarizeDmReactions, type DmMessageReaction } from "@/lib/dmReactions";
 
 type BubbleShellHandlers = Omit<HTMLAttributes<HTMLDivElement>, "className" | "children">;
+
+function useReactionOverlayLifecycle(
+  reactions: DmMessageReaction[],
+  currentUserId: string | null,
+) {
+  const summaries = summarizeDmReactions(reactions, currentUserId);
+  const hasSummaries = summaries.length > 0;
+  const [mounted, setMounted] = useState(hasSummaries);
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    if (hasSummaries) {
+      setMounted(true);
+      const frame = window.requestAnimationFrame(() => {
+        setVisible(true);
+      });
+
+      return () => {
+        window.cancelAnimationFrame(frame);
+      };
+    }
+
+    if (mounted) {
+      setVisible(false);
+      const timer = window.setTimeout(() => {
+        setMounted(false);
+      }, CHAT_MESSAGE_REACTION_PILL_ANIMATION_MS);
+
+      return () => {
+        window.clearTimeout(timer);
+      };
+    }
+  }, [hasSummaries, mounted]);
+
+  return { mounted, visible, summaries };
+}
 
 /**
  * Shared bubble frame: bubble shell + reserved reaction gutter + absolute overlay pill.
@@ -47,14 +85,14 @@ export default function ChatMessageBubbleShell({
   bubbleHandlers: BubbleShellHandlers;
   children: ReactNode;
 }) {
-  const reactionSummaries = summarizeDmReactions(reactions, currentUserId);
-  const hasReactions = reactionSummaries.length > 0;
+  const { mounted: reactionOverlayMounted, visible: reactionOverlayVisible } =
+    useReactionOverlayLifecycle(reactions, currentUserId);
 
   return (
     <div
       ref={pickerAnchorRef}
       className={`inline-flex w-fit max-w-full flex-col ${
-        hasReactions ? CHAT_MESSAGE_REACTION_GUTTER_CLASS : ""
+        reactionOverlayMounted ? CHAT_MESSAGE_REACTION_GUTTER_CLASS : ""
       }`.trim()}
     >
       <div
@@ -64,12 +102,13 @@ export default function ChatMessageBubbleShell({
           {children}
         </div>
 
-        {hasReactions ? (
+        {reactionOverlayMounted ? (
           <div className={resolveMessageReactionsOverlayClass(isOwnMessage)}>
             <DmMessageReactions
               reactions={reactions}
               currentUserId={currentUserId}
               reacting={reacting}
+              visible={reactionOverlayVisible}
               onToggleReaction={onToggleReaction}
               onOpenPicker={onOpenReactionPicker}
             />

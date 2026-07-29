@@ -5154,11 +5154,13 @@ function testDmMessageReactionGestureInteractions() {
   assert.match(reactionsSource, /disabled:pointer-events-none/);
   assert.doesNotMatch(reactionsSource, /resolveChatMessageReactionsAnchorClass/);
   assert.match(reactionsSource, /CHAT_MESSAGE_REACTION_PILL_CLASS/);
-  assert.match(groupLayoutSource, /CHAT_MESSAGE_REACTION_GUTTER_CLASS/);
-  assert.match(groupLayoutSource, /resolveMessageReactionsOverlayClass/);
-  assert.match(shellSource, /CHAT_MESSAGE_REACTION_GUTTER_CLASS/);
-  assert.match(shellSource, /resolveMessageReactionsOverlayClass/);
-  assert.doesNotMatch(shellSource, /translate-y-1\/2/);
+  assert.match(reactionsSource, /CHAT_MESSAGE_REACTION_PILL_VISIBLE_CLASS/);
+  assert.match(reactionsSource, /CHAT_MESSAGE_REACTION_PILL_HIDDEN_CLASS/);
+  assert.match(groupLayoutSource, /CHAT_MESSAGE_REACTION_PILL_ANIMATION_MS/);
+  assert.match(groupLayoutSource, /pb-2\.5/);
+  assert.match(groupLayoutSource, /-mt-1\.5/);
+  assert.match(shellSource, /useReactionOverlayLifecycle/);
+  assert.match(shellSource, /reactionOverlayVisible/);
   assert.doesNotMatch(reactionsSource, /bg-ftc-primary/);
   assert.doesNotMatch(reactionsSource, /isOwnMessage/);
   assert.doesNotMatch(reactionsSource, /disabled:opacity-50/);

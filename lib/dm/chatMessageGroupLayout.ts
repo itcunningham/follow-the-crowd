@@ -60,19 +60,34 @@ export const DM_INCOMING_MESSAGE_COLUMN_CLASS =
 export const DM_INCOMING_TIMESTAMP_CLASS =
   "self-start whitespace-nowrap px-0.5 text-[10px] leading-none text-ftc-text-muted";
 
-/** Reserved gutter beneath reacted bubbles — in-flow space so overlays never collide with metadata. */
-export const CHAT_MESSAGE_REACTION_GUTTER_CLASS = "pb-3.5";
+/** Minimal in-flow gutter — reserves space for the overlay without shifting the bubble. */
+export const CHAT_MESSAGE_REACTION_GUTTER_CLASS = "pb-2.5";
 
-/** Overlay anchor — sits below the bubble shell; slight corner overlap only (not message text). */
+/** Overlay anchor — lower corner of bubble; ~6px overlap on the outside edge only. */
 export function resolveMessageReactionsOverlayClass(isOwnMessage: boolean): string {
-  const base = "pointer-events-none absolute top-full z-10 -mt-px";
+  const base = "pointer-events-none absolute top-full z-10 -mt-1.5";
 
-  return isOwnMessage ? `${base} right-1.5` : `${base} left-1.5`;
+  return isOwnMessage ? `${base} right-0.5` : `${base} left-0.5`;
 }
 
-/** Single Instagram-style pill — emojis stay on one horizontal row inside the overlay. */
+/** Compact Instagram-style pill — hugs emoji content on both sides. */
 export const CHAT_MESSAGE_REACTION_PILL_CLASS =
-  "inline-flex max-w-none flex-nowrap items-center gap-0.5 rounded-full border border-ftc-border-subtle bg-ftc-bg-elevated px-1.5 py-0.5 shadow-[0_1px_4px_rgba(0,0,0,0.28)]";
+  "inline-flex max-w-none flex-nowrap items-center gap-px rounded-full border border-ftc-border-subtle bg-ftc-bg-elevated px-1 py-px shadow-[0_1px_3px_rgba(0,0,0,0.22)]";
+
+/** Pill enter/exit animation — scale 0.8 ↔ 1.0 with light spring. */
+export const CHAT_MESSAGE_REACTION_PILL_ANIMATION_MS = 160;
+
+export const CHAT_MESSAGE_REACTION_PILL_TRANSITION_CLASS =
+  "transition-[opacity,transform] duration-[160ms] ease-[cubic-bezier(0.34,1.4,0.64,1)] motion-reduce:transition-none motion-reduce:transform-none";
+
+export const CHAT_MESSAGE_REACTION_PILL_VISIBLE_CLASS = "scale-100 opacity-100";
+
+export const CHAT_MESSAGE_REACTION_PILL_HIDDEN_CLASS =
+  "scale-[0.8] opacity-0 pointer-events-none";
+
+/** Emoji tap target — compact visual, adequate touch area via min dimensions. */
+export const CHAT_MESSAGE_REACTION_EMOJI_BUTTON_CLASS =
+  "inline-flex min-h-[1.375rem] min-w-[1.375rem] shrink-0 items-center justify-center rounded-full p-0 text-[13px] leading-none";
 
 /** Interactive controls inside the pill wrapper. */
 export const CHAT_MESSAGE_REACTIONS_STACK_CLASS = "pointer-events-auto";

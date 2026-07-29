@@ -8,7 +8,11 @@ import {
   type DmMessageReaction,
 } from "@/lib/dmReactions";
 import {
+  CHAT_MESSAGE_REACTION_EMOJI_BUTTON_CLASS,
   CHAT_MESSAGE_REACTION_PILL_CLASS,
+  CHAT_MESSAGE_REACTION_PILL_HIDDEN_CLASS,
+  CHAT_MESSAGE_REACTION_PILL_TRANSITION_CLASS,
+  CHAT_MESSAGE_REACTION_PILL_VISIBLE_CLASS,
   CHAT_MESSAGE_REACTIONS_STACK_CLASS,
 } from "@/lib/dm/chatMessageGroupLayout";
 import { useReactionPickerPosition } from "@/lib/dm/useReactionPickerPosition";
@@ -234,12 +238,14 @@ export default function DmMessageReactions({
   reactions,
   currentUserId,
   reacting,
+  visible = true,
   onToggleReaction,
   onOpenPicker,
 }: {
   reactions: DmMessageReaction[];
   currentUserId: string | null;
   reacting: boolean;
+  visible?: boolean;
   onToggleReaction: (emoji: string) => void;
   onOpenPicker: () => void;
 }) {
@@ -251,7 +257,11 @@ export default function DmMessageReactions({
 
   return (
     <div className={CHAT_MESSAGE_REACTIONS_STACK_CLASS}>
-      <div className={CHAT_MESSAGE_REACTION_PILL_CLASS}>
+      <div
+        className={`${CHAT_MESSAGE_REACTION_PILL_CLASS} ${CHAT_MESSAGE_REACTION_PILL_TRANSITION_CLASS} ${
+          visible ? CHAT_MESSAGE_REACTION_PILL_VISIBLE_CLASS : CHAT_MESSAGE_REACTION_PILL_HIDDEN_CLASS
+        }`}
+      >
         {summaries.map((summary) => (
           <button
             key={summary.emoji}
@@ -259,7 +269,7 @@ export default function DmMessageReactions({
             disabled={reacting}
             aria-label={`React with ${summary.emoji}`}
             onClick={() => onToggleReaction(summary.emoji)}
-            className={`inline-flex shrink-0 items-center gap-0.5 rounded-full px-0.5 text-sm transition motion-reduce:transition-none disabled:pointer-events-none ${
+            className={`${CHAT_MESSAGE_REACTION_EMOJI_BUTTON_CLASS} transition motion-reduce:transition-none disabled:pointer-events-none ${
               summary.reactedByCurrentUser
                 ? "bg-ftc-surface/80"
                 : "hover:bg-ftc-surface/50"
@@ -267,7 +277,7 @@ export default function DmMessageReactions({
           >
             <span aria-hidden="true">{summary.emoji}</span>
             {summary.count > 1 ? (
-              <span className="text-[10px] font-semibold leading-none text-ftc-text-secondary">
+              <span className="ml-px text-[9px] font-semibold leading-none text-ftc-text-secondary">
                 {summary.count}
               </span>
             ) : null}
@@ -278,7 +288,7 @@ export default function DmMessageReactions({
           aria-label="Add reaction"
           disabled={reacting}
           onClick={onOpenPicker}
-          className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] leading-none text-ftc-text-secondary opacity-0 transition hover:bg-ftc-surface/50 hover:text-ftc-text focus-visible:opacity-100 disabled:pointer-events-none sm:group-hover/message:opacity-100"
+          className="inline-flex h-[1.125rem] w-[1.125rem] shrink-0 items-center justify-center rounded-full text-[10px] leading-none text-ftc-text-secondary opacity-0 transition hover:bg-ftc-surface/50 hover:text-ftc-text focus-visible:opacity-100 disabled:pointer-events-none sm:group-hover/message:opacity-100"
         >
           +
         </button>
