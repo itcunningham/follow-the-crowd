@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useParams, usePathname, useSearchParams } from "next/navigation";
 import AppNavigation, { MOBILE_NAV_OFFSET_CLASS } from "@/app/components/AppNavigation";
 import { APP_DM_CHAT_COLUMN_CLASS } from "@/app/components/layout/AppPageLayout";
@@ -9,7 +9,6 @@ import BookingRequestCard, {
 } from "@/app/components/BookingRequestCard";
 import {
   DM_BOOKING_MESSAGE_COLUMN_CLASS,
-  DM_BOOKING_MESSAGE_TIMESTAMP_CLASS,
 } from "@/app/components/booking/DmBookingCardLayout";
 import BookingCardFocusRing from "@/app/components/dm/BookingCardFocusRing";
 import DmConversationHeader from "@/app/components/dm/DmConversationHeader";
@@ -17,6 +16,7 @@ import ChatNewMessagesPill from "@/app/components/dm/ChatNewMessagesPill";
 import DmComposer from "@/app/components/dm/DmComposer";
 import DmTextMessageBubble from "@/app/components/dm/DmTextMessageBubble";
 import DmBookingTimelineNotice from "@/app/components/dm/DmBookingTimelineNotice";
+import DmChatTimeSeparator from "@/app/components/dm/DmChatTimeSeparator";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
 import ChatProfileAvatarLink from "@/app/components/chat/ChatProfileAvatarLink";
 import DmIncomingMessageLayout from "@/app/components/chat/DmIncomingMessageLayout";
@@ -55,12 +55,14 @@ import {
 import {
   buildDmConversationTimestampLayout,
   classifyDmConversationMessageKind,
+  type DmConversationTimestampLayout,
 } from "@/lib/dm/dmChatTimestampVisibility";
 import {
   buildChatMessageGroupLayout,
   CHAT_MESSAGE_LIST_CLASS,
   CHAT_MESSAGE_SCROLLER_CLASS,
   resolveIncomingGroupLiClass,
+  resolveOutgoingGroupLiClass,
 } from "@/lib/dm/chatMessageGroupLayout";
 import { parseDmThreadEntryContext, resolveDmThreadBackHref } from "@/lib/dm/threadNavigation";
 import { useFixedChatPageDocumentReset } from "@/lib/navigation/useFixedChatPageDocumentReset";
@@ -153,6 +155,25 @@ function formatMessageTime(timestamp: string) {
     minute: "2-digit",
     hour12: true,
   });
+}
+
+function wrapWithTimeSeparator(
+  messageId: string,
+  createdAt: string,
+  node: ReactNode,
+  timestampLayout: DmConversationTimestampLayout | undefined,
+) {
+  return (
+    <Fragment key={messageId}>
+      {node}
+      {timestampLayout?.showTimeSeparatorBefore ? (
+        <DmChatTimeSeparator
+          dateTime={createdAt}
+          label={formatMessageTime(createdAt)}
+        />
+      ) : null}
+    </Fragment>
+  );
 }
 
 function getConversationTitle(otherUserProfile: UserAvatarProfile) {
@@ -1738,16 +1759,18 @@ export default function DmChatPage() {
 
                 const timelineLayout = conversationTimestampLayout.get(message.id);
 
-                return (
+                return wrapWithTimeSeparator(
+                  message.id,
+                  message.created_at,
                   <DmBookingTimelineNotice
-                    key={message.id}
                     messageId={message.id}
                     text={formatDmBookingSystemMessageDisplay(message.text)}
                     createdAt={message.created_at}
                     formatTime={formatMessageTime}
                     isHighlighted={isMessageHighlighted(message.id)}
                     compactBelow={timelineLayout?.compactBelow ?? false}
-                  />
+                  />,
+                  timelineLayout,
                 );
               }
 
@@ -1762,9 +1785,10 @@ export default function DmChatPage() {
                 const messageTimestampLayout = conversationTimestampLayout.get(message.id);
                 const messageGroupLayout = chatMessageGroupLayout.get(message.id);
 
-                return (
+                return wrapWithTimeSeparator(
+                  message.id,
+                  message.created_at,
                   <DmTextMessageBubble
-                    key={message.id}
                     messageId={message.id}
                     text={message.text}
                     createdAt={message.created_at}
@@ -1789,11 +1813,10 @@ export default function DmChatPage() {
                     formatTime={formatMessageTime}
                     isHighlighted={isMessageHighlighted(message.id)}
                     showSeen={shouldShowSeenOnMessage(message.id, message.created_at)}
-                    showTimestamp={messageTimestampLayout?.showTimestamp ?? true}
                     showAvatar={messageGroupLayout?.showAvatar ?? true}
-                    tightWithPrevious={messageGroupLayout?.tightWithPrevious ?? false}
                     groupPosition={messageGroupLayout?.position ?? "standalone"}
-                  />
+                  />,
+                  messageTimestampLayout,
                 );
               }
 
@@ -1958,9 +1981,12 @@ export default function DmChatPage() {
                   />
                 );
 
-                return (
+                const bookingTimestampLayout = conversationTimestampLayout.get(message.id);
+
+                return wrapWithTimeSeparator(
+                  message.id,
+                  message.created_at,
                   <li
-                    key={message.id}
                     data-chat-message-id={message.id}
                     {...(bookingId ? { [CHAT_BOOKING_REQUEST_ID_ATTR]: bookingId } : {})}
                     className={
@@ -1969,9 +1995,6 @@ export default function DmChatPage() {
                         : resolveIncomingGroupLiClass({
                             position: messageGroupLayout?.position ?? "standalone",
                             isClusterEnd: messageGroupLayout?.showAvatar ?? true,
-                            showTimestamp:
-                              conversationTimestampLayout.get(message.id)?.showTimestamp ??
-                              true,
                           })
                     }
                   >
@@ -1985,14 +2008,7 @@ export default function DmChatPage() {
                               bookingCard
                             )}
                           </BookingCardFocusRing>
-                          <time
-                            dateTime={message.created_at}
-                            className={`${DM_BOOKING_MESSAGE_TIMESTAMP_CLASS} text-right ${
-                              conversationTimestampLayout.get(message.id)?.showTimestamp
-                                ? ""
-                                : "sr-only"
-                            }`}
-                          >
+                          <time dateTime={message.created_at} hidden>
                             {formatMessageTime(message.created_at)}
                           </time>
                           {shouldShowSeenOnMessage(message.id, message.created_at) ? (
@@ -2004,10 +2020,6 @@ export default function DmChatPage() {
                       <DmIncomingMessageLayout
                         className="max-w-[92%] sm:max-w-[80%]"
                         groupPosition={messageGroupLayout?.position ?? "standalone"}
-                        showTimestamp={
-                          conversationTimestampLayout.get(message.id)?.showTimestamp ??
-                          true
-                        }
                         showAvatar={messageGroupLayout?.showAvatar ?? true}
                         createdAt={message.created_at}
                         formattedTime={formatMessageTime(message.created_at)}
@@ -2031,7 +2043,8 @@ export default function DmChatPage() {
                         </BookingCardFocusRing>
                       </DmIncomingMessageLayout>
                     )}
-                  </li>
+                  </li>,
+                  bookingTimestampLayout,
                 );
             })}
           </ul>

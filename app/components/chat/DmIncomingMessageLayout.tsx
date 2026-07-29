@@ -6,8 +6,6 @@ import {
   CHAT_INCOMING_AVATAR_SLOT_CLASS,
   CHAT_INCOMING_BUBBLE_CELL_CLASS,
   CHAT_INCOMING_ROW_GRID_CLASS,
-  CHAT_INCOMING_ROW_GRID_CLUSTER_END_CLASS,
-  CHAT_INCOMING_TIMESTAMP_CELL_CLASS,
   isIncomingClusterEnd,
   type ChatMessageGroupPosition,
 } from "@/lib/dm/chatMessageGroupLayout";
@@ -16,7 +14,6 @@ import {
 export default function DmIncomingMessageLayout({
   className = "",
   groupPosition,
-  showTimestamp,
   showAvatar,
   avatar,
   createdAt,
@@ -25,7 +22,6 @@ export default function DmIncomingMessageLayout({
 }: {
   className?: string;
   groupPosition: ChatMessageGroupPosition;
-  showTimestamp: boolean;
   showAvatar: boolean;
   avatar: ReactNode;
   createdAt: string;
@@ -36,19 +32,14 @@ export default function DmIncomingMessageLayout({
 
   if (isClusterEnd) {
     return (
-      <div
-        className={`${CHAT_INCOMING_ROW_GRID_CLASS} ${CHAT_INCOMING_ROW_GRID_CLUSTER_END_CLASS} ${className}`.trim()}
-      >
+      <div className={`${CHAT_INCOMING_ROW_GRID_CLASS} ${className}`.trim()}>
         <div className={CHAT_INCOMING_AVATAR_CELL_CLASS}>
           {showAvatar ? avatar : <span aria-hidden="true" className={CHAT_INCOMING_AVATAR_SLOT_CLASS} />}
         </div>
 
         <div className={CHAT_INCOMING_BUBBLE_CELL_CLASS}>{children}</div>
 
-        <time
-          dateTime={createdAt}
-          className={`${CHAT_INCOMING_TIMESTAMP_CELL_CLASS} ${showTimestamp ? "" : "sr-only"}`}
-        >
+        <time dateTime={createdAt} hidden>
           {formattedTime}
         </time>
       </div>

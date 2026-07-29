@@ -23,7 +23,7 @@ export const CHAT_INCOMING_AVATAR_COLUMN_WIDTH_CLASS = "w-12";
 
 /** Incoming row grid: fixed avatar column + message column. */
 export const CHAT_INCOMING_ROW_GRID_CLASS =
-  "grid grid-cols-[3rem_minmax(0,1fr)] gap-x-1.5";
+  "grid grid-cols-[3rem_minmax(0,1fr)] gap-x-1";
 
 /** Cluster-end rows split bubble and metadata so avatar tracks the final bubble. */
 export const CHAT_INCOMING_ROW_GRID_CLUSTER_END_CLASS = "grid-rows-[auto_auto] gap-y-0.5";
@@ -61,18 +61,18 @@ export const DM_INCOMING_TIMESTAMP_CLASS =
   "self-start whitespace-nowrap px-0.5 text-[10px] leading-none text-ftc-text-muted";
 
 /** Minimal in-flow gutter — reserves space for the overlay without shifting the bubble. */
-export const CHAT_MESSAGE_REACTION_GUTTER_CLASS = "pb-2.5";
+export const CHAT_MESSAGE_REACTION_GUTTER_CLASS = "pb-2";
 
-/** Overlay anchor — lower corner of bubble; ~6px overlap on the outside edge only. */
+/** Overlay anchor — hangs from the lower bubble corner with slight outside overlap. */
 export function resolveMessageReactionsOverlayClass(isOwnMessage: boolean): string {
-  const base = "pointer-events-none absolute top-full z-10 -mt-1.5";
+  const base = "pointer-events-none absolute top-full z-10 -mt-0.5";
 
-  return isOwnMessage ? `${base} right-0.5` : `${base} left-0.5`;
+  return isOwnMessage ? `${base} right-0` : `${base} left-0`;
 }
 
 /** Compact Instagram-style pill — hugs emoji content on both sides. */
 export const CHAT_MESSAGE_REACTION_PILL_CLASS =
-  "inline-flex max-w-none flex-nowrap items-center gap-px rounded-full border border-ftc-border-subtle bg-ftc-bg-elevated px-1 py-px shadow-[0_1px_3px_rgba(0,0,0,0.22)]";
+  "inline-flex max-w-none flex-nowrap items-center gap-px rounded-full border border-ftc-border-subtle bg-ftc-bg-elevated px-0.5 py-0 shadow-[0_1px_3px_rgba(0,0,0,0.22)]";
 
 /** Pill enter/exit animation — scale 0.8 ↔ 1.0 with light spring. */
 export const CHAT_MESSAGE_REACTION_PILL_ANIMATION_MS = 160;
@@ -87,7 +87,7 @@ export const CHAT_MESSAGE_REACTION_PILL_HIDDEN_CLASS =
 
 /** Emoji tap target — compact visual, adequate touch area via min dimensions. */
 export const CHAT_MESSAGE_REACTION_EMOJI_BUTTON_CLASS =
-  "inline-flex min-h-[1.375rem] min-w-[1.375rem] shrink-0 items-center justify-center rounded-full p-0 text-[13px] leading-none";
+  "inline-flex min-h-[1.125rem] min-w-[1.125rem] shrink-0 items-center justify-center rounded-full p-0 text-xs leading-none";
 
 /** Interactive controls inside the pill wrapper. */
 export const CHAT_MESSAGE_REACTIONS_STACK_CLASS = "pointer-events-auto";
@@ -115,8 +115,27 @@ export const CHAT_MESSAGE_LIST_CLASS = "flex flex-col-reverse gap-3 pb-4 pt-2";
 export const CHAT_MESSAGE_SCROLLER_CLASS =
   "flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain [overflow-anchor:none] px-3 pb-4 pt-2 sm:px-4";
 
-/** Outgoing consecutive same-sender stack (unchanged feel). */
+/** @deprecated Group chat still uses legacy outgoing tight class. */
 export const CHAT_OUTGOING_GROUP_TIGHT_PREVIOUS_CLASS = "-mt-2.5";
+
+/** Outgoing row — same flex-col-reverse grouping margins as incoming. */
+export function resolveOutgoingGroupLiClass({
+  position,
+  isClusterEnd,
+  hasReactions = false,
+}: {
+  position: ChatMessageGroupPosition;
+  isClusterEnd: boolean;
+  hasReactions?: boolean;
+}): string {
+  return [
+    "group/message flex justify-end",
+    resolveIncomingGroupTightMarginClass(position, hasReactions),
+    isClusterEnd ? CHAT_INCOMING_GROUP_CLUSTER_END_CLASS : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
 
 function findPreviousParticipant(
   messages: readonly ChatMessageGroupParticipant[],

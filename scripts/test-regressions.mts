@@ -620,7 +620,7 @@ function testDmBookingCardExpandCollapseScrollAnchor() {
   assert.doesNotMatch(pageSource, /dmBookingCardScrollAnchor/);
   assert.doesNotMatch(pageSource, /scheduleDmBookingCardExpandScroll/);
   assert.doesNotMatch(pageSource, /bookingExpandSpacerPx/);
-  assert.match(pageSource, /\[overflow-anchor:none\]/);
+  assert.match(pageSource, /CHAT_MESSAGE_SCROLLER_CLASS/);
   assert.match(pageSource, /data-dm-conversation-header/);
   assert.match(expandScrollSource, /resolveDmBookingCardAlignTop/);
   assert.match(expandScrollSource, /resolveScrollBehavior/);
@@ -643,7 +643,7 @@ function testDmBookingCardExpandCollapseScrollAnchor() {
   assert.doesNotMatch(expandScrollSource, /scrollIntoView/);
   assert.match(expandScrollSource, /abortInFlightContainerScroll/);
   assert.doesNotMatch(pageSource, /flex-1 flex-col-reverse overflow-y-auto/);
-  assert.match(pageSource, /flex-1 flex-col overflow-y-auto/);
+  assert.match(pageSource, /CHAT_MESSAGE_SCROLLER_CLASS/);
   assert.match(pageSource, /data-chat-bottom/);
   assert.doesNotMatch(pageSource, /flushSync/);
   assert.doesNotMatch(pageSource, /bookingCardExpandAlignGuardRef/);
@@ -799,12 +799,15 @@ function testDmConversationTimestampLayout() {
 
   assert.match(pageSource, /buildDmConversationTimestampLayout/);
   assert.match(pageSource, /conversationTimestampLayout/);
-  assert.match(pageSource, /showTimestamp=\{messageTimestampLayout/);
+  assert.match(pageSource, /showTimeSeparatorBefore/);
+  assert.match(pageSource, /DmChatTimeSeparator/);
+  assert.match(pageSource, /wrapWithTimeSeparator/);
   assert.doesNotMatch(pageSource, /buildDmBookingTimelineTimestampLayout/);
   assert.doesNotMatch(timelineSource, /showTimestamp/);
   assert.doesNotMatch(timelineSource, /-mb-2/);
   assert.match(timelineSource, /compactBelow \? "pb-1"/);
-  assert.match(bubbleSource, /showTimestamp\?: boolean/);
+  assert.match(bubbleSource, /resolveOutgoingGroupLiClass/);
+  assert.doesNotMatch(bubbleSource, /showTimestamp\?: boolean/);
 
   const baseTime = Date.parse("2026-07-27T12:00:00.000Z");
   const quickGapMs = 60_000;
@@ -845,7 +848,8 @@ function testDmConversationTimestampLayout() {
   assert.equal(clusteredLayout.get("timeline-1")?.showTimestamp, false);
   assert.equal(clusteredLayout.get("timeline-2")?.showTimestamp, false);
   assert.equal(clusteredLayout.get("timeline-3")?.showTimestamp, false);
-  assert.equal(clusteredLayout.get("chat-2")?.showTimestamp, true);
+  assert.equal(clusteredLayout.get("chat-2")?.showTimestamp, false);
+  assert.equal(clusteredLayout.get("chat-2")?.showTimeSeparatorBefore, false);
   assert.equal(clusteredLayout.get("timeline-1")?.compactBelow, true);
   assert.equal(clusteredLayout.get("timeline-2")?.compactBelow, true);
   assert.equal(clusteredLayout.get("timeline-3")?.compactBelow, false);
@@ -868,8 +872,10 @@ function testDmConversationTimestampLayout() {
     conversationId: "conversation-1",
   });
 
-  assert.equal(gapLayout.get("timeline-gap-1")?.showTimestamp, true);
-  assert.equal(gapLayout.get("timeline-gap-2")?.showTimestamp, true);
+  assert.equal(gapLayout.get("timeline-gap-1")?.showTimestamp, false);
+  assert.equal(gapLayout.get("timeline-gap-2")?.showTimestamp, false);
+  assert.equal(gapLayout.get("timeline-gap-1")?.showTimeSeparatorBefore, false);
+  assert.equal(gapLayout.get("timeline-gap-2")?.showTimeSeparatorBefore, true);
 }
 
 function createRegressionBookingRequest(
@@ -5197,8 +5203,8 @@ function testDmMessageReactionGestureInteractions() {
   assert.match(doubleTapSource, /handleDoubleClick/);
   assert.match(bubbleSource, /onDoubleClick=\{handleDoubleTapDoubleClick\}/);
   assert.match(bubbleSource, /showAvatar/);
-  assert.match(bubbleSource, /tightWithPrevious/);
   assert.match(bubbleSource, /groupPosition/);
+  assert.match(bubbleSource, /resolveOutgoingGroupLiClass/);
   assert.match(bubbleSource, /ChatMessageBubbleShell/);
   assert.match(bubbleSource, /ChatProfileAvatarLink/);
   assert.match(bubbleSource, /DmIncomingMessageLayout/);
@@ -5282,7 +5288,9 @@ function testChatMessageGroupLayout() {
   assert.match(groupLayoutSource, /CHAT_INCOMING_ROW_GRID_CLUSTER_END_CLASS/);
   assert.match(groupLayoutSource, /CHAT_MESSAGE_REACTION_GUTTER_CLASS/);
   assert.match(groupLayoutSource, /CHAT_MESSAGE_REACTION_PILL_CLASS/);
-  assert.match(groupLayoutSource, /gap-x-1\.5/);
+  assert.match(groupLayoutSource, /resolveOutgoingGroupLiClass/);
+  assert.match(groupLayoutSource, /gap-x-1/);
+  assert.match(groupLayoutSource, /pb-2/);
   assert.match(groupLayoutSource, /CHAT_INCOMING_BUBBLE_STACK_CLASS/);
   assert.match(groupLayoutSource, /CHAT_MESSAGE_SCROLLER_CLASS/);
   assert.match(groupLayoutSource, /resolveIncomingGroupTightMarginClass/);

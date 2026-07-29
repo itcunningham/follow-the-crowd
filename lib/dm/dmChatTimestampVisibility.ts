@@ -26,7 +26,10 @@ export const DM_CHAT_MEANINGFUL_TIME_GAP_MS = 5 * 60 * 1000;
 export type DmChatVisibleMessageKind = "timeline" | "chat" | "booking_card" | "hidden";
 
 export type DmConversationTimestampLayout = {
+  /** @deprecated Per-message inline timestamps removed — use showTimeSeparatorBefore. */
   showTimestamp: boolean;
+  /** Centred separator before this message when a new time cluster begins. */
+  showTimeSeparatorBefore: boolean;
   compactBelow: boolean;
 };
 
@@ -252,18 +255,21 @@ export function buildDmConversationTimestampLayout(
 
   for (let index = 0; index < visibleMessages.length; index += 1) {
     const message = visibleMessages[index];
+    const previous = visibleMessages[index - 1];
     const next = visibleMessages[index + 1];
-    const showTimestamp =
-      !next || hasMeaningfulGapBetween(message.created_at, next.created_at);
+    const showTimeSeparatorBefore = Boolean(
+      previous && hasMeaningfulGapBetween(previous.created_at, message.created_at),
+    );
     const compactBelow = Boolean(
       next &&
-        !showTimestamp &&
+        !hasMeaningfulGapBetween(message.created_at, next.created_at) &&
         message.kind === "timeline" &&
         next.kind === "timeline",
     );
 
     layoutByMessageId.set(message.id, {
-      showTimestamp,
+      showTimestamp: false,
+      showTimeSeparatorBefore,
       compactBelow,
     });
   }

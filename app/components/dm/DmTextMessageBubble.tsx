@@ -14,8 +14,7 @@ import {
 } from "@/lib/dm/chatMessageBubbleGeometry";
 import {
   resolveIncomingGroupLiClass,
-  CHAT_OUTGOING_GROUP_TIGHT_PREVIOUS_CLASS,
-  CHAT_INCOMING_GROUP_CLUSTER_END_CLASS,
+  resolveOutgoingGroupLiClass,
   type ChatMessageGroupPosition,
 } from "@/lib/dm/chatMessageGroupLayout";
 import {
@@ -56,9 +55,7 @@ export default function DmTextMessageBubble({
   formatTime,
   isHighlighted = false,
   showSeen = false,
-  showTimestamp = true,
   showAvatar = true,
-  tightWithPrevious = false,
   groupPosition = "standalone",
 }: {
   messageId: string;
@@ -81,9 +78,7 @@ export default function DmTextMessageBubble({
   formatTime: (timestamp: string) => string;
   isHighlighted?: boolean;
   showSeen?: boolean;
-  showTimestamp?: boolean;
   showAvatar?: boolean;
-  tightWithPrevious?: boolean;
   groupPosition?: ChatMessageGroupPosition;
 }) {
   const trimmedText = text.trim();
@@ -155,6 +150,7 @@ export default function DmTextMessageBubble({
   });
   const bubbleTextClass = resolveChatMessageBubbleTextClass(displayText);
   const hasReactions = reactions.length > 0;
+  const isClusterEnd = showAvatar;
 
   const bubbleBlock = (
     <ChatMessageBubbleShell
@@ -204,14 +200,11 @@ export default function DmTextMessageBubble({
   );
 
   if (!isOwnMessage) {
-    const isClusterEnd = showAvatar;
-
     return (
       <li
         className={resolveIncomingGroupLiClass({
           position: groupPosition,
           isClusterEnd,
-          showTimestamp,
           hasReactions,
         })}
         data-chat-message-id={messageId}
@@ -219,7 +212,6 @@ export default function DmTextMessageBubble({
         <DmIncomingMessageLayout
           className={rowMaxWidthClass}
           groupPosition={groupPosition}
-          showTimestamp={showTimestamp}
           showAvatar={showAvatar}
           createdAt={createdAt}
           formattedTime={formattedTime}
@@ -242,20 +234,17 @@ export default function DmTextMessageBubble({
 
   return (
     <li
-      className={`group/message flex justify-end ${
-        tightWithPrevious ? CHAT_OUTGOING_GROUP_TIGHT_PREVIOUS_CLASS : ""
-      } ${showTimestamp ? CHAT_INCOMING_GROUP_CLUSTER_END_CLASS : ""}`}
+      className={resolveOutgoingGroupLiClass({
+        position: groupPosition,
+        isClusterEnd,
+        hasReactions,
+      })}
       data-chat-message-id={messageId}
     >
       <div className={`flex ${rowMaxWidthClass} items-end gap-2 flex-row-reverse`}>
         <div className="flex min-w-0 flex-col items-end">
           {bubbleBlock}
-          <time
-            dateTime={createdAt}
-            className={`mt-0.5 block px-1 text-[10px] text-ftc-text-muted text-right ${
-              showTimestamp ? "" : "sr-only"
-            }`}
-          >
+          <time dateTime={createdAt} hidden>
             {formattedTime}
           </time>
           {showSeen ? (
