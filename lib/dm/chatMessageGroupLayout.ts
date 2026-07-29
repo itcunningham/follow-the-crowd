@@ -123,9 +123,9 @@ export const CHAT_MESSAGE_LIST_CLASS = "flex flex-col-reverse gap-0 pb-4 pt-2";
 export const CHAT_MESSAGE_SCROLLER_CLASS =
   "flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain [overflow-anchor:none] px-3 pb-4 pt-2 sm:px-4";
 
-/** Compact Instagram-style pill — hugs emoji content on both sides. */
+/** Compact Instagram-style badge — ~6px horizontal inset per side. */
 export const CHAT_MESSAGE_REACTION_PILL_CLASS =
-  "inline-flex max-w-none flex-nowrap items-center gap-0 rounded-full border border-ftc-border-subtle bg-ftc-bg-elevated px-0 py-0 shadow-[0_1px_3px_rgba(0,0,0,0.22)]";
+  "inline-flex max-w-none flex-nowrap items-center gap-0 rounded-full border border-ftc-border-subtle bg-ftc-bg-elevated px-1.5 py-0 shadow-[0_1px_3px_rgba(0,0,0,0.22)]";
 
 /** Pill enter/exit animation — scale 0.8 ↔ 1.0 with light spring. */
 export const CHAT_MESSAGE_REACTION_PILL_ANIMATION_MS = 160;
@@ -138,28 +138,31 @@ export const CHAT_MESSAGE_REACTION_PILL_VISIBLE_CLASS = "scale-100 opacity-100";
 export const CHAT_MESSAGE_REACTION_PILL_HIDDEN_CLASS =
   "scale-[0.8] opacity-0 pointer-events-none";
 
-/** Emoji tap target — fixed height, width hugs glyph; minimal horizontal inset. */
+/** Emoji control inside the pill — pill supplies horizontal padding. */
 export const CHAT_MESSAGE_REACTION_EMOJI_BUTTON_CLASS =
-  "inline-flex h-[1.125rem] shrink-0 items-center justify-center rounded-full px-px py-0 text-xs leading-none";
+  "inline-flex h-[1.125rem] shrink-0 items-center justify-center rounded-full p-0 text-xs leading-none";
 
 /** Interactive controls inside the pill wrapper. */
 export const CHAT_MESSAGE_REACTIONS_STACK_CLASS = "pointer-events-auto";
 
 /**
- * In-flow reaction row — sits below the bubble, overlaps the corner via negative margin,
- * and reserves space so the next bubble never collides with the pill.
+ * Reaction badge anchor — absolute corner overlap with zero document-flow height.
+ * Stack rhythm comes only from `CHAT_LIST_ITEM_*` list-item margins.
  */
-export function resolveMessageReactionRowClass(isOwnMessage: boolean): string {
-  const corner = isOwnMessage ? "justify-end pr-0.5" : "justify-start pl-0.5";
+export function resolveMessageReactionAnchorClass(isOwnMessage: boolean): string {
+  const corner = isOwnMessage ? "right-0.5" : "left-0.5";
 
-  return `flex w-full -mt-2.5 ${corner}`;
+  return `pointer-events-none absolute bottom-0 z-10 ${corner} translate-y-1/2`;
 }
 
-/** @deprecated Absolute overlay removed — reactions are in-flow. */
-export function resolveMessageReactionsOverlayClass(isOwnMessage: boolean): string {
-  const base = "pointer-events-none absolute bottom-0 z-10 translate-y-1/2";
+/** @deprecated In-flow row removed — reactions no longer affect list-item height. */
+export function resolveMessageReactionRowClass(isOwnMessage: boolean): string {
+  return resolveMessageReactionAnchorClass(isOwnMessage);
+}
 
-  return isOwnMessage ? `${base} right-0` : `${base} left-0`;
+/** @deprecated Use resolveMessageReactionAnchorClass. */
+export function resolveMessageReactionsOverlayClass(isOwnMessage: boolean): string {
+  return resolveMessageReactionAnchorClass(isOwnMessage);
 }
 
 export function isIncomingClusterEnd(

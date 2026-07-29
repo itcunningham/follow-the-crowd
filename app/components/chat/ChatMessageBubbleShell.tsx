@@ -5,7 +5,7 @@ import type { HTMLAttributes, ReactNode, RefObject } from "react";
 import DmMessageReactions, { DmReactionPicker } from "@/app/components/dm/DmMessageReactions";
 import {
   CHAT_MESSAGE_REACTION_PILL_ANIMATION_MS,
-  resolveMessageReactionRowClass,
+  resolveMessageReactionAnchorClass,
 } from "@/lib/dm/chatMessageGroupLayout";
 import { summarizeDmReactions, type DmMessageReaction } from "@/lib/dmReactions";
 
@@ -48,8 +48,8 @@ function useReactionOverlayLifecycle(
 }
 
 /**
- * Shared bubble frame: bubble shell + in-flow reaction row.
- * Reactions reserve vertical space in document flow so the next message never collides.
+ * Shared bubble frame: bubble shell + absolute reaction badge.
+ * Reactions overlap the bubble corner without affecting list-item stack rhythm.
  */
 export default function ChatMessageBubbleShell({
   bubbleShellRef,
@@ -95,20 +95,20 @@ export default function ChatMessageBubbleShell({
         <div ref={bubbleShellRef} className={bubbleShellClassName} {...bubbleHandlers}>
           {children}
         </div>
-      </div>
 
-      {reactionRowMounted ? (
-        <div className={resolveMessageReactionRowClass(isOwnMessage)}>
-          <DmMessageReactions
-            reactions={reactions}
-            currentUserId={currentUserId}
-            reacting={reacting}
-            visible={reactionRowVisible}
-            onToggleReaction={onToggleReaction}
-            onOpenPicker={onOpenReactionPicker}
-          />
-        </div>
-      ) : null}
+        {reactionRowMounted ? (
+          <div className={resolveMessageReactionAnchorClass(isOwnMessage)}>
+            <DmMessageReactions
+              reactions={reactions}
+              currentUserId={currentUserId}
+              reacting={reacting}
+              visible={reactionRowVisible}
+              onToggleReaction={onToggleReaction}
+              onOpenPicker={onOpenReactionPicker}
+            />
+          </div>
+        ) : null}
+      </div>
 
       <DmReactionPicker
         show={showReactionPicker}

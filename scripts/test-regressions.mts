@@ -5167,10 +5167,11 @@ function testDmMessageReactionGestureInteractions() {
   assert.match(reactionsSource, /disabled:pointer-events-none/);
   assert.doesNotMatch(reactionsSource, /resolveChatMessageReactionsAnchorClass/);
   assert.match(reactionsSource, /CHAT_MESSAGE_REACTION_PILL_CLASS/);
+  assert.match(reactionsSource, /hidden h-\[1\.125rem\]/);
   assert.match(reactionsSource, /CHAT_MESSAGE_REACTION_PILL_VISIBLE_CLASS/);
   assert.match(reactionsSource, /CHAT_MESSAGE_REACTION_PILL_HIDDEN_CLASS/);
   assert.match(groupLayoutSource, /CHAT_MESSAGE_REACTION_PILL_ANIMATION_MS/);
-  assert.match(groupLayoutSource, /resolveMessageReactionRowClass/);
+  assert.match(groupLayoutSource, /resolveMessageReactionAnchorClass/);
   assert.match(groupLayoutSource, /CHAT_LIST_ITEM_WITHIN_GROUP_SPACING_CLASS/);
   assert.match(groupLayoutSource, /CHAT_LIST_ITEM_AFTER_REACTION_SPACING_CLASS/);
   assert.match(groupLayoutSource, /CHAT_LIST_ITEM_CLUSTER_END_SPACING_CLASS/);
@@ -5181,7 +5182,7 @@ function testDmMessageReactionGestureInteractions() {
   assert.match(groupLayoutSource, /precededByTimeSeparator/);
   assert.match(groupLayoutSource, /CHAT_TIME_SEPARATOR_SPACING_CLASS/);
   assert.match(groupLayoutSource, /gap-0/);
-  assert.match(shellSource, /resolveMessageReactionRowClass/);
+  assert.match(shellSource, /resolveMessageReactionAnchorClass/);
   assert.match(shellSource, /useReactionOverlayLifecycle/);
   assert.match(shellSource, /reactionRowVisible/);
   assert.doesNotMatch(shellSource, /grid-participant/);
