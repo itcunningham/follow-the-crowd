@@ -5172,7 +5172,10 @@ function testDmMessageReactionGestureInteractions() {
   assert.match(reactionsSource, /hidden h-3\.5/);
   assert.match(groupLayoutSource, /CHAT_MESSAGE_REACTION_FOOTER_BASE_CLASS/);
   assert.match(groupLayoutSource, /-mt-1\.5 flex w-full shrink-0/);
-  assert.match(groupLayoutSource, /resolveMessageReactionFooterClass/);
+  assert.match(groupLayoutSource, /CHAT_MESSAGE_REACTION_FOOTER_ALIGN_CLASS = "justify-start"/);
+  assert.match(groupLayoutSource, /CHAT_MESSAGE_BUBBLE_FRAME_CLASS/);
+  assert.doesNotMatch(groupLayoutSource, /FOOTER_OUTGOING_CLASS = "justify-end"/);
+  assert.doesNotMatch(shellSource, /items-end/);
   assert.doesNotMatch(groupLayoutSource, /h-0 w-full overflow-visible/);
   assert.match(groupLayoutSource, /CHAT_MESSAGE_REACTION_STACK_PAD_CLASS = ""/);
   assert.doesNotMatch(groupLayoutSource, /top-full -translate-y-\[3px\]/);
@@ -5189,7 +5192,8 @@ function testDmMessageReactionGestureInteractions() {
   assert.doesNotMatch(shellSource, /absolute/);
   assert.doesNotMatch(shellSource, /h-0/);
   assert.match(groupLayoutSource, /CHAT_MESSAGE_REACTION_OVERLAP_RESERVE_CLASS = ""/);
-  assert.match(groupLayoutSource, /resolveSeenLabelSpacingClass/);
+  assert.match(groupLayoutSource, /resolveMessageReactionFooterClass/);
+  assert.match(groupLayoutSource, /CHAT_SEEN_LABEL_WITH_REACTIONS_SPACING_CLASS/);
   assert.doesNotMatch(shellSource, /grid-participant/);
   assert.doesNotMatch(reactionsSource, /bg-ftc-primary/);
   assert.doesNotMatch(reactionsSource, /isOwnMessage/);

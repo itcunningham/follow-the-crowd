@@ -5,6 +5,7 @@ import type { HTMLAttributes, ReactNode, RefObject } from "react";
 import DmMessageReactions, { DmReactionPicker } from "@/app/components/dm/DmMessageReactions";
 import {
   CHAT_MESSAGE_REACTION_PILL_ANIMATION_MS,
+  CHAT_MESSAGE_BUBBLE_FRAME_CLASS,
   resolveMessageReactionFooterClass,
 } from "@/lib/dm/chatMessageGroupLayout";
 import { summarizeDmReactions, type DmMessageReaction } from "@/lib/dmReactions";
@@ -87,19 +88,16 @@ export default function ChatMessageBubbleShell({
 }) {
   const { mounted: reactionRowMounted, visible: reactionRowVisible } =
     useReactionOverlayLifecycle(reactions, currentUserId);
-  const stackAlignClass = isOwnMessage ? "items-end" : "items-start";
 
   return (
-    <div ref={pickerAnchorRef} className={`inline-flex w-fit max-w-full flex-col ${stackAlignClass}`}>
-      <div
-        className={`flex w-fit max-w-full flex-col ${stackAlignClass} ${highlightClassName}`.trim()}
-      >
+    <div ref={pickerAnchorRef} className="inline-flex w-fit max-w-full flex-col items-start">
+      <div className={`${CHAT_MESSAGE_BUBBLE_FRAME_CLASS} ${highlightClassName}`.trim()}>
         <div ref={bubbleShellRef} className={bubbleShellClassName} {...bubbleHandlers}>
           {children}
         </div>
 
         {reactionRowMounted ? (
-          <div className={resolveMessageReactionFooterClass(isOwnMessage)}>
+          <div className={resolveMessageReactionFooterClass()}>
             <DmMessageReactions
               reactions={reactions}
               currentUserId={currentUserId}

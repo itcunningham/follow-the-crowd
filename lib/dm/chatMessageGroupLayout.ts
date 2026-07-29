@@ -153,16 +153,26 @@ export const CHAT_MESSAGE_REACTIONS_STACK_CLASS = "pointer-events-auto";
 
 /**
  * In-flow reaction footer — real-height row directly below the bubble inside the
- * bubble frame. Negative top margin overlaps the outer corner (~half pill height)
- * so the badge hugs the bubble instead of sitting in the inter-message gap.
- * Instagram/iMessage model: message unit = bubble + footer; footer owns layout space.
+ * bubble frame. Negative top margin overlaps the lower-left corner (~half pill
+ * height). Instagram attaches reactions to the bubble's lower-left for every
+ * message direction — never mirrored to the trailing edge.
  */
 export const CHAT_MESSAGE_REACTION_FOOTER_BASE_CLASS =
   "pointer-events-none relative z-10 -mt-1.5 flex w-full shrink-0";
 
-export const CHAT_MESSAGE_REACTION_FOOTER_OUTGOING_CLASS = "justify-end";
+/** Lower-left corner — same for incoming and outgoing (Instagram geometry). */
+export const CHAT_MESSAGE_REACTION_FOOTER_ALIGN_CLASS = "justify-start";
 
-export const CHAT_MESSAGE_REACTION_FOOTER_INCOMING_CLASS = "justify-start";
+/** Bubble frame aligns footer to the bubble's leading edge — not the row edge. */
+export const CHAT_MESSAGE_BUBBLE_FRAME_CLASS = "flex w-fit max-w-full flex-col items-start";
+
+/** @deprecated Instagram uses lower-left for all directions. */
+export const CHAT_MESSAGE_REACTION_FOOTER_OUTGOING_CLASS =
+  CHAT_MESSAGE_REACTION_FOOTER_ALIGN_CLASS;
+
+/** @deprecated Instagram uses lower-left for all directions. */
+export const CHAT_MESSAGE_REACTION_FOOTER_INCOMING_CLASS =
+  CHAT_MESSAGE_REACTION_FOOTER_ALIGN_CLASS;
 
 /** @deprecated Zero-height hanger replaced by in-flow footer with real height. */
 export const CHAT_MESSAGE_REACTION_HANGER_BASE_CLASS =
@@ -200,17 +210,16 @@ export const CHAT_MESSAGE_REACTION_ANCHOR_INSET_INCOMING_CLASS = "left-0.5";
 /**
  * Reaction badge footer — in-flow row below bubble inside the bubble frame.
  */
-export function resolveSeenLabelSpacingClass(_hasReactions: boolean): string {
-  return CHAT_SEEN_LABEL_SPACING_CLASS;
+export function resolveSeenLabelSpacingClass(hasReactions: boolean): string {
+  return hasReactions
+    ? CHAT_SEEN_LABEL_WITH_REACTIONS_SPACING_CLASS
+    : CHAT_SEEN_LABEL_SPACING_CLASS;
 }
 
-export function resolveMessageReactionFooterClass(isOwnMessage: boolean): string {
-  return [
-    CHAT_MESSAGE_REACTION_FOOTER_BASE_CLASS,
-    isOwnMessage
-      ? CHAT_MESSAGE_REACTION_FOOTER_OUTGOING_CLASS
-      : CHAT_MESSAGE_REACTION_FOOTER_INCOMING_CLASS,
-  ].join(" ");
+export function resolveMessageReactionFooterClass(_isOwnMessage?: boolean): string {
+  return [CHAT_MESSAGE_REACTION_FOOTER_BASE_CLASS, CHAT_MESSAGE_REACTION_FOOTER_ALIGN_CLASS].join(
+    " ",
+  );
 }
 
 /** @deprecated Use resolveMessageReactionFooterClass. */
