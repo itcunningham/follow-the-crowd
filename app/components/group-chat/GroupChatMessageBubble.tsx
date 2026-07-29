@@ -9,10 +9,10 @@ import {
   resolveChatMessageBubbleTextClass,
 } from "@/lib/dm/chatMessageBubbleGeometry";
 import {
-  CHAT_INCOMING_GROUP_CLUSTER_END_CLASS,
   CHAT_INCOMING_GROUP_FOOTER_CLASS,
-  CHAT_INCOMING_GROUP_TIGHT_PREVIOUS_CLASS,
+  resolveIncomingGroupLiClass,
   CHAT_OUTGOING_GROUP_TIGHT_PREVIOUS_CLASS,
+  CHAT_INCOMING_GROUP_CLUSTER_END_CLASS,
 } from "@/lib/dm/chatMessageGroupLayout";
 import {
   DM_DEFAULT_REACTION_EMOJI,
@@ -182,9 +182,11 @@ export default function GroupChatMessageBubble({
     return (
       <li
         data-chat-message-id={messageId}
-        className={`group/message flex justify-start ${
-          tightWithPrevious ? CHAT_INCOMING_GROUP_TIGHT_PREVIOUS_CLASS : ""
-        } ${isClusterEnd && showTimestamp ? CHAT_INCOMING_GROUP_CLUSTER_END_CLASS : ""}`}
+        className={resolveIncomingGroupLiClass({
+          tightWithPrevious,
+          isClusterEnd,
+          showTimestamp,
+        })}
       >
         <div className={`flex min-w-0 flex-col ${rowMaxWidthClass}`}>
           {showSenderName ? (

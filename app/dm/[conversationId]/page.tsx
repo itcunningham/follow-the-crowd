@@ -459,14 +459,22 @@ export default function DmChatPage() {
       }
 
       if (isBookingRequestMessage(message.text)) {
-        return [{ id: message.id, user_id: message.user_id }];
+        return [{ id: message.id, user_id: message.user_id, groupable: false }];
       }
 
-      return [{ id: message.id, user_id: message.user_id }];
+      const messageAttachments = attachmentsByMessageId.get(message.id) ?? [];
+
+      return [
+        {
+          id: message.id,
+          user_id: message.user_id,
+          groupable: messageAttachments.length === 0,
+        },
+      ];
     });
 
     return buildChatMessageGroupLayout(chatMessages);
-  }, [bookings, conversationId, messages]);
+  }, [attachmentsByMessageId, bookings, conversationId, messages]);
   const canShowReadReceipts = shouldShowDmReadReceipts({
     isBlocked: blockStatus.isBlocked,
     otherUserDisplayName: otherUserProfile?.display_name,
@@ -1999,6 +2007,7 @@ export default function DmChatPage() {
                         : ""
                     } ${
                       !isOwnMessage &&
+                      (messageGroupLayout?.showAvatar ?? true) &&
                       (conversationTimestampLayout.get(message.id)?.showTimestamp ?? true)
                         ? CHAT_INCOMING_GROUP_CLUSTER_END_CLASS
                         : ""

@@ -5147,8 +5147,8 @@ function testDmMessageReactionGestureInteractions() {
   assert.match(bubbleSource, /onDoubleClick=\{handleDoubleTapDoubleClick\}/);
   assert.match(bubbleSource, /showAvatar/);
   assert.match(bubbleSource, /tightWithPrevious/);
-  assert.match(bubbleSource, /resolveChatMessageBubbleShellClass/);
-  assert.match(bubbleSource, /resolveChatMessageBubbleTextClass/);
+  assert.match(bubbleSource, /resolveIncomingGroupLiClass/);
+  assert.match(bubbleSource, /CHAT_INCOMING_GROUP_FOOTER_CLASS/);
   assert.doesNotMatch(bubbleSource, /Report message/);
   assert.match(groupBubbleSource, /onDoubleClick=\{handleDoubleTapDoubleClick\}/);
   assert.match(pickerPositionSource, /computeReactionPickerPosition/);
@@ -5187,12 +5187,24 @@ function testChatMessageGroupLayout() {
     { id: "c", user_id: "u2" },
   ]);
 
+  assert.equal(layout.get("a")?.position, "first");
   assert.equal(layout.get("a")?.tightWithPrevious, false);
   assert.equal(layout.get("a")?.showAvatar, false);
+  assert.equal(layout.get("b")?.position, "last");
   assert.equal(layout.get("b")?.tightWithPrevious, true);
   assert.equal(layout.get("b")?.showAvatar, true);
+  assert.equal(layout.get("c")?.position, "standalone");
   assert.equal(layout.get("c")?.tightWithPrevious, false);
   assert.equal(layout.get("c")?.showAvatar, true);
+
+  const brokenLayout = buildChatMessageGroupLayout([
+    { id: "t1", user_id: "u1" },
+    { id: "img", user_id: "u1", groupable: false },
+    { id: "t2", user_id: "u1" },
+  ]);
+
+  assert.equal(brokenLayout.get("t2")?.tightWithPrevious, false);
+  assert.equal(brokenLayout.get("img")?.position, "standalone");
 }
 
 function testChatMessageBubbleGeometry() {
