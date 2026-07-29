@@ -214,3 +214,30 @@ export function resolveProfileChatBackNavigation(
 
   return { href: trimmed, label: "Back to chat" };
 }
+
+const DM_CONVERSATION_RETURN_TO_PATTERN = /^\/dm\/([^/?#]+)/;
+
+export function readDmConversationIdFromReturnTo(
+  returnTo: string | null | undefined,
+): string | null {
+  const trimmed = returnTo?.trim();
+
+  if (!trimmed) {
+    return null;
+  }
+
+  const match = trimmed.match(DM_CONVERSATION_RETURN_TO_PATTERN);
+  return match?.[1] ?? null;
+}
+
+/** Profile opened from an active DM thread — hide redundant bottom message CTA. */
+export function isProfileOpenedFromDmConversation(
+  from: string | null | undefined,
+  returnTo: string | null | undefined,
+): boolean {
+  if (from?.trim() !== "chat") {
+    return false;
+  }
+
+  return readDmConversationIdFromReturnTo(returnTo) !== null;
+}

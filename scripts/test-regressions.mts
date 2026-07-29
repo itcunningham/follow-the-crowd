@@ -172,6 +172,8 @@ import {
   buildEventDetailProfileHref,
   buildProfileDmThreadHref,
   buildProfileHref,
+  isProfileOpenedFromDmConversation,
+  readDmConversationIdFromReturnTo,
   resolveProfileChatBackNavigation,
   resolveProfileEventDetailBackNavigation,
 } from "../lib/profileNavigation";
@@ -1646,6 +1648,23 @@ function testProfileChatBackNavigation() {
   assert.equal(resolveProfileChatBackNavigation("chat", `/profile/${userId}`), null);
 
   const eventId = "11111111-1111-4111-8111-111111111111";
+
+  assert.equal(
+    readDmConversationIdFromReturnTo(returnTo),
+    conversationId,
+  );
+  assert.equal(
+    isProfileOpenedFromDmConversation("chat", returnTo),
+    true,
+  );
+  assert.equal(
+    isProfileOpenedFromDmConversation(
+      "chat",
+      `/events/${eventId}/chat?from=dm`,
+    ),
+    false,
+  );
+  assert.equal(isProfileOpenedFromDmConversation("discover", returnTo), false);
   const calendarOrigin = {
     calendarDate: "2026-07-14",
     calendarView: "event" as const,
@@ -1726,6 +1745,8 @@ function testProfileChatBackNavigation() {
   assert.match(profilePageSource, /readProfileEventDetailContext/);
   assert.match(profilePageSource, /resolveProfileEventDetailBackNavigation/);
   assert.match(profilePageSource, /resolveProfileChatBackNavigation/);
+  assert.match(profilePageSource, /isProfileOpenedFromDmConversation/);
+  assert.match(profilePageSource, /showMessageAction/);
   assert.match(profilePageSource, /return "Opening"/);
   assert.match(profilePageSource, /openedFromEventDetail && showDjSections/);
   assert.doesNotMatch(profilePageSource, /Opening\.\.\./);
@@ -1733,6 +1754,7 @@ function testProfileChatBackNavigation() {
   assert.match(profileHeaderSource, /scroll=\{false\}/);
   assert.match(dmDetailsSource, /buildProfileHref\(otherUserId, \{ returnTo: profileReturnTo \}\)/);
   assert.match(dmPageSource, /profileFrom: searchParams\.get\("profileFrom"\)/);
+  assert.match(dmPageSource, /useDmChatScrollRestoreOnProfileReturn/);
   assert.match(dmPageSource, /backReplace=\{backReplace\}/);
   assert.match(dmHeaderSource, /backReplace/);
   assert.match(dmHeaderSource, /scroll=\{false\}/);

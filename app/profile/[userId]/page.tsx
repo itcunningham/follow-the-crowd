@@ -25,6 +25,7 @@ import {
 } from "@/lib/navigationRoleCache";
 import {
   buildProfileDmThreadHref,
+  isProfileOpenedFromDmConversation,
   readProfileEventDetailContext,
   resolveProfileChatBackNavigation,
   resolveProfileEventDetailBackNavigation,
@@ -140,6 +141,15 @@ function UserProfilePageView({ userId }: { userId: string }) {
     );
   }, [searchParams]);
   const openedFromEventDetail = searchParams.get("from") === "event-detail";
+  const openedFromDmConversation = useMemo(
+    () =>
+      isProfileOpenedFromDmConversation(
+        searchParams.get("from"),
+        searchParams.get("returnTo"),
+      ),
+    [searchParams],
+  );
+  const showMessageAction = !isOwnProfile && profile && !openedFromDmConversation;
   const showDjSections = profile?.role === "dj" || profile?.role === "both";
   const showPromoterSections = profile?.role === "promoter" || profile?.role === "both";
   function getMessageButtonLabel(): string {
@@ -170,7 +180,7 @@ function UserProfilePageView({ userId }: { userId: string }) {
         backLabel={profileBackNavigation?.label}
       />
 
-      <AppPageBody className={`py-6 md:py-8 ${!isOwnProfile && profile ? "pb-4" : "pb-8"}`}>
+      <AppPageBody className={`py-6 md:py-8 ${showMessageAction ? "pb-4" : "pb-8"}`}>
         {loading ? (
           <ProfileSkeleton />
         ) : error && !profile ? (
@@ -217,7 +227,7 @@ function UserProfilePageView({ userId }: { userId: string }) {
         ) : null}
       </AppPageBody>
 
-      {!isOwnProfile && profile ? (
+      {showMessageAction ? (
         <ProfileMessageAction
           label={getMessageButtonLabel()}
           disabled={messaging}
