@@ -58,10 +58,9 @@ import {
 } from "@/lib/dm/dmChatTimestampVisibility";
 import {
   buildChatMessageGroupLayout,
-  CHAT_INCOMING_AVATAR_SLOT_CLASS,
   CHAT_INCOMING_GROUP_CLUSTER_END_CLASS,
+  CHAT_INCOMING_GROUP_FOOTER_CLASS,
   CHAT_INCOMING_GROUP_TIGHT_PREVIOUS_CLASS,
-  CHAT_INCOMING_METADATA_INDENT_CLASS,
 } from "@/lib/dm/chatMessageGroupLayout";
 import { parseDmThreadEntryContext, resolveDmThreadBackHref } from "@/lib/dm/threadNavigation";
 import { useFixedChatPageDocumentReset } from "@/lib/navigation/useFixedChatPageDocumentReset";
@@ -1818,15 +1817,6 @@ export default function DmChatPage() {
                         current === message.id ? null : current,
                       )
                     }
-                    onReportMessage={
-                      !isOwnMessage
-                        ? () =>
-                            setReportMessageTarget({
-                              messageId: message.id,
-                              reportedUserId: message.user_id,
-                            })
-                        : undefined
-                    }
                     formatTime={formatMessageTime}
                     isHighlighted={isMessageHighlighted(message.id)}
                     showSeen={shouldShowSeenOnMessage(message.id, message.created_at)}
@@ -2041,41 +2031,39 @@ export default function DmChatPage() {
                       </div>
                     ) : (
                       <div className="flex min-w-0 max-w-[92%] flex-col sm:max-w-[80%]">
-                        <div className="flex items-end gap-2">
-                          {otherUserId ? (
-                            messageGroupLayout?.showAvatar ?? true ? (
+                        <BookingCardFocusRing phase={bookingFocusPhase}>
+                          {highlightClassName ? (
+                            <div className={highlightClassName}>{bookingCard}</div>
+                          ) : (
+                            bookingCard
+                          )}
+                        </BookingCardFocusRing>
+                        {messageGroupLayout?.showAvatar ?? true ? (
+                          <div className={CHAT_INCOMING_GROUP_FOOTER_CLASS}>
+                            {otherUserId ? (
                               <ChatProfileAvatarLink
                                 userId={otherUserId}
                                 name={otherUserLabel}
                                 avatarUrl={otherUserProfile?.avatar_url}
                                 returnTo={chatReturnTo}
                               />
-                            ) : (
-                              <div className={CHAT_INCOMING_AVATAR_SLOT_CLASS} aria-hidden="true" />
-                            )
-                          ) : null}
-                          <div className="min-w-0 flex-1">
-                            <BookingCardFocusRing phase={bookingFocusPhase}>
-                              {highlightClassName ? (
-                                <div className={highlightClassName}>{bookingCard}</div>
-                              ) : (
-                                bookingCard
-                              )}
-                            </BookingCardFocusRing>
+                            ) : null}
+                            <time
+                              dateTime={message.created_at}
+                              className={`px-0.5 text-[10px] leading-none text-ftc-text-muted ${
+                                conversationTimestampLayout.get(message.id)?.showTimestamp
+                                  ? ""
+                                  : "sr-only"
+                              }`}
+                            >
+                              {formatMessageTime(message.created_at)}
+                            </time>
                           </div>
-                        </div>
-                        <div className={CHAT_INCOMING_METADATA_INDENT_CLASS}>
-                          <time
-                            dateTime={message.created_at}
-                            className={`${DM_BOOKING_MESSAGE_TIMESTAMP_CLASS} text-left ${
-                              conversationTimestampLayout.get(message.id)?.showTimestamp
-                                ? ""
-                                : "sr-only"
-                            }`}
-                          >
+                        ) : (
+                          <time dateTime={message.created_at} className="sr-only">
                             {formatMessageTime(message.created_at)}
                           </time>
-                        </div>
+                        )}
                       </div>
                     )}
                   </li>

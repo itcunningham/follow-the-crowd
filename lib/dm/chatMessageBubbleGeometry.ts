@@ -30,13 +30,11 @@ export function resolveChatMessageBubbleShellClass({
 
   const base = isOwnMessage ? "ftc-bubble-own" : "ftc-bubble-other";
   const compact = isCompactChatBubbleText(text);
-  const padding = hasAttachments ? "p-1" : compact ? "px-3 py-1" : "px-3.5 py-1.5";
+  const padding = hasAttachments ? "p-1" : compact ? "px-3.5 py-1.5" : "px-4 py-2";
 
   return `overflow-hidden ${interaction} w-fit max-w-full select-none sm:select-text ${base} ${padding}`;
 }
 
-export function resolveChatMessageBubbleTextClass(text: string): string {
-  const leading = isCompactChatBubbleText(text) ? "leading-snug" : "leading-normal";
-
-  return `text-[15px] ${leading} whitespace-pre-wrap break-words`;
+export function resolveChatMessageBubbleTextClass(_text: string): string {
+  return "text-[15px] leading-normal whitespace-pre-wrap break-words";
 }

@@ -5144,9 +5144,9 @@ function testDmMessageReactionGestureInteractions() {
   assert.match(bubbleSource, /onDoubleClick=\{handleDoubleTapDoubleClick\}/);
   assert.match(bubbleSource, /showAvatar/);
   assert.match(bubbleSource, /tightWithPrevious/);
-  assert.match(bubbleSource, /CHAT_INCOMING_METADATA_INDENT_CLASS/);
   assert.match(bubbleSource, /resolveChatMessageBubbleShellClass/);
   assert.match(bubbleSource, /resolveChatMessageBubbleTextClass/);
+  assert.doesNotMatch(bubbleSource, /Report message/);
   assert.match(groupBubbleSource, /onDoubleClick=\{handleDoubleTapDoubleClick\}/);
   assert.match(pickerPositionSource, /computeReactionPickerPosition/);
   assert.match(pickerPositionSource, /getReactionPickerViewportBounds/);
@@ -5205,14 +5205,14 @@ function testChatMessageBubbleGeometry() {
   );
   assert.match(
     resolveChatMessageBubbleShellClass({ isOwnMessage: true, text: "OK" }),
-    /px-3 py-1/,
+    /px-3\.5 py-1\.5/,
   );
   assert.match(
     resolveChatMessageBubbleShellClass({
       isOwnMessage: false,
       text: "Longer single line that still wraps eventually",
     }),
-    /px-3\.5 py-1\.5/,
+    /px-4 py-2/,
   );
 }
 

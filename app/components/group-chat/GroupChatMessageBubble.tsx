@@ -9,10 +9,10 @@ import {
   resolveChatMessageBubbleTextClass,
 } from "@/lib/dm/chatMessageBubbleGeometry";
 import {
-  CHAT_INCOMING_AVATAR_SLOT_CLASS,
   CHAT_INCOMING_GROUP_CLUSTER_END_CLASS,
+  CHAT_INCOMING_GROUP_FOOTER_CLASS,
   CHAT_INCOMING_GROUP_TIGHT_PREVIOUS_CLASS,
-  CHAT_INCOMING_METADATA_INDENT_CLASS,
+  CHAT_OUTGOING_GROUP_TIGHT_PREVIOUS_CLASS,
 } from "@/lib/dm/chatMessageGroupLayout";
 import {
   DM_DEFAULT_REACTION_EMOJI,
@@ -53,6 +53,7 @@ export default function GroupChatMessageBubble({
   showSenderName = false,
   showAvatar = true,
   tightWithPrevious = false,
+  showTimestamp = true,
 }: {
   messageId: string;
   text: string;
@@ -75,6 +76,7 @@ export default function GroupChatMessageBubble({
   showSenderName?: boolean;
   showAvatar?: boolean;
   tightWithPrevious?: boolean;
+  showTimestamp?: boolean;
 }) {
   const bubbleShellRef = useRef<HTMLDivElement>(null);
   const pickerAnchorRef = useRef<HTMLDivElement>(null);
@@ -191,45 +193,45 @@ export default function GroupChatMessageBubble({
   );
 
   if (!isOwnMessage) {
+    const isClusterEnd = showAvatar;
+
     return (
       <li
         data-chat-message-id={messageId}
         className={`group/message flex justify-start ${
           tightWithPrevious ? CHAT_INCOMING_GROUP_TIGHT_PREVIOUS_CLASS : ""
-        } ${CHAT_INCOMING_GROUP_CLUSTER_END_CLASS}`}
+        } ${isClusterEnd && showTimestamp ? CHAT_INCOMING_GROUP_CLUSTER_END_CLASS : ""}`}
       >
         <div className={`flex min-w-0 flex-col ${rowMaxWidthClass}`}>
           {showSenderName ? (
-            <p className={`mb-1 px-1 text-[11px] font-semibold text-ftc-text-secondary ${CHAT_INCOMING_METADATA_INDENT_CLASS}`}>
+            <p className="mb-1 px-1 text-[11px] font-semibold text-ftc-text-secondary">
               {senderLabel}
             </p>
           ) : null}
 
-          <div className="flex items-end gap-2">
-            {showAvatar ? (
+          {bubbleBlock}
+          {reactionsBlock}
+
+          {isClusterEnd ? (
+            <div className={CHAT_INCOMING_GROUP_FOOTER_CLASS}>
               <ChatProfileAvatarLink
                 userId={senderUserId}
                 name={senderLabel}
                 avatarUrl={senderAvatarUrl}
                 returnTo={profileReturnTo}
               />
-            ) : (
-              <div className={CHAT_INCOMING_AVATAR_SLOT_CLASS} aria-hidden="true" />
-            )}
-            <div className="flex min-w-0 flex-col items-start">
-              {bubbleBlock}
-              {reactionsBlock}
+              <time
+                dateTime={createdAt}
+                className={`px-0.5 text-[10px] text-ftc-text-muted ${showTimestamp ? "" : "sr-only"}`}
+              >
+                {formatTime(createdAt)}
+              </time>
             </div>
-          </div>
-
-          <div className={CHAT_INCOMING_METADATA_INDENT_CLASS}>
-            <time
-              dateTime={createdAt}
-              className="mt-0.5 block px-1 text-[10px] text-ftc-text-muted text-left"
-            >
+          ) : (
+            <time dateTime={createdAt} className="sr-only">
               {formatTime(createdAt)}
             </time>
-          </div>
+          )}
         </div>
       </li>
     );
@@ -238,7 +240,9 @@ export default function GroupChatMessageBubble({
   return (
     <li
       data-chat-message-id={messageId}
-      className={`group/message flex justify-end ${tightWithPrevious ? "-mt-2" : ""} mb-1.5`}
+      className={`group/message flex justify-end ${
+        tightWithPrevious ? CHAT_OUTGOING_GROUP_TIGHT_PREVIOUS_CLASS : ""
+      } ${CHAT_INCOMING_GROUP_CLUSTER_END_CLASS}`}
     >
       <div className={`flex ${rowMaxWidthClass} items-end gap-2 flex-row-reverse`}>
         <div className="flex min-w-0 flex-col items-end">

@@ -249,7 +249,7 @@ export default function DmMessageReactions({
 
   return (
     <div
-      className={`mt-1 flex max-w-full flex-wrap items-center gap-1 ${
+      className={`mt-0.5 flex max-w-full flex-wrap items-center gap-1 ${
         isOwnMessage ? "justify-end" : "justify-start"
       }`}
     >

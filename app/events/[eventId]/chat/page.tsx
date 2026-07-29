@@ -746,6 +746,7 @@ export default function EventCrewChatPage() {
                       showSenderName={senderNameVisibility.get(message.id) ?? false}
                       showAvatar={messageGroupLayout?.showAvatar ?? true}
                       tightWithPrevious={messageGroupLayout?.tightWithPrevious ?? false}
+                      showTimestamp={messageGroupLayout?.showAvatar ?? true}
                     />
                   );
                 })}

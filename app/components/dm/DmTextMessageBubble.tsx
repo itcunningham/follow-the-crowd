@@ -12,10 +12,10 @@ import {
   resolveChatMessageBubbleTextClass,
 } from "@/lib/dm/chatMessageBubbleGeometry";
 import {
-  CHAT_INCOMING_AVATAR_SLOT_CLASS,
   CHAT_INCOMING_GROUP_CLUSTER_END_CLASS,
+  CHAT_INCOMING_GROUP_FOOTER_CLASS,
   CHAT_INCOMING_GROUP_TIGHT_PREVIOUS_CLASS,
-  CHAT_INCOMING_METADATA_INDENT_CLASS,
+  CHAT_OUTGOING_GROUP_TIGHT_PREVIOUS_CLASS,
 } from "@/lib/dm/chatMessageGroupLayout";
 import {
   DM_DEFAULT_REACTION_EMOJI,
@@ -231,56 +231,43 @@ export default function DmTextMessageBubble({
   );
 
   if (!isOwnMessage) {
+    const isClusterEnd = showAvatar;
+
     return (
       <li
         className={`group/message flex justify-start ${
           tightWithPrevious ? CHAT_INCOMING_GROUP_TIGHT_PREVIOUS_CLASS : ""
-        } ${showTimestamp ? CHAT_INCOMING_GROUP_CLUSTER_END_CLASS : ""}`}
+        } ${isClusterEnd && showTimestamp ? CHAT_INCOMING_GROUP_CLUSTER_END_CLASS : ""}`}
         data-chat-message-id={messageId}
       >
         <div className={`flex min-w-0 flex-col ${rowMaxWidthClass}`}>
-          <div className="flex items-end gap-2">
-            {otherUserId ? (
-              showAvatar ? (
+          {bubbleBlock}
+          {reactionsBlock}
+
+          {isClusterEnd ? (
+            <div className={CHAT_INCOMING_GROUP_FOOTER_CLASS}>
+              {otherUserId ? (
                 <ChatProfileAvatarLink
                   userId={otherUserId}
                   name={otherUserLabel}
                   avatarUrl={otherUserAvatarUrl}
                   returnTo={profileReturnTo}
                 />
-              ) : (
-                <div className={CHAT_INCOMING_AVATAR_SLOT_CLASS} aria-hidden="true" />
-              )
-            ) : null}
-            <div className="flex min-w-0 flex-col items-start">
-              {bubbleBlock}
-              {reactionsBlock}
-            </div>
-          </div>
-
-          <div className={CHAT_INCOMING_METADATA_INDENT_CLASS}>
-            <time
-              dateTime={createdAt}
-              className={`mt-0.5 block px-1 text-[10px] text-ftc-text-muted text-left ${
-                showTimestamp ? "" : "sr-only"
-              }`}
-            >
-              {formattedTime}
-            </time>
-
-            {onReportMessage ? (
-              <button
-                type="button"
-                aria-label="Report message"
-                onClick={onReportMessage}
-                className={`mt-1 rounded-full border border-transparent px-2 py-0.5 text-[11px] text-ftc-text-muted transition hover:border-ftc-border-strong hover:bg-ftc-surface hover:text-ftc-text-secondary ${
-                  hasAttachments ? "opacity-100" : "opacity-0 group-hover/message:opacity-100"
+              ) : null}
+              <time
+                dateTime={createdAt}
+                className={`px-0.5 text-[10px] text-ftc-text-muted ${
+                  showTimestamp ? "" : "sr-only"
                 }`}
               >
-                Report
-              </button>
-            ) : null}
-          </div>
+                {formattedTime}
+              </time>
+            </div>
+          ) : (
+            <time dateTime={createdAt} className="sr-only">
+              {formattedTime}
+            </time>
+          )}
         </div>
       </li>
     );
@@ -288,9 +275,9 @@ export default function DmTextMessageBubble({
 
   return (
     <li
-      className={`group/message flex justify-end ${tightWithPrevious ? "-mt-2" : ""} ${
-        showTimestamp ? "mb-1.5" : ""
-      }`}
+      className={`group/message flex justify-end ${
+        tightWithPrevious ? CHAT_OUTGOING_GROUP_TIGHT_PREVIOUS_CLASS : ""
+      } ${showTimestamp ? CHAT_INCOMING_GROUP_CLUSTER_END_CLASS : ""}`}
       data-chat-message-id={messageId}
     >
       <div className={`flex ${rowMaxWidthClass} items-end gap-2 flex-row-reverse`}>
