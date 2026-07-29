@@ -172,7 +172,11 @@ export default function EventCrewChatPage() {
   const chatMessageGroupLayout = useMemo(() => {
     const chatMessages = messages
       .filter((message) => !isGroupChatSystemUpdateMessage(message.text))
-      .map((message) => ({ id: message.id, user_id: message.user_id }));
+      .map((message) => ({
+        id: message.id,
+        user_id: message.user_id,
+        created_at: message.created_at,
+      }));
 
     return buildChatMessageGroupLayout(chatMessages);
   }, [messages]);

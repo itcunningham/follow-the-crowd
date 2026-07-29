@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import type { HTMLAttributes, ReactNode, RefObject } from "react";
 import DmMessageReactions, { DmReactionPicker } from "@/app/components/dm/DmMessageReactions";
 import {
+  CHAT_MESSAGE_BUBBLE_GRID_BUBBLE_CLASS,
+  CHAT_MESSAGE_BUBBLE_GRID_GUTTER_CLASS,
   CHAT_MESSAGE_REACTION_GUTTER_CLASS,
   CHAT_MESSAGE_REACTION_PILL_ANIMATION_MS,
   resolveMessageReactionsOverlayClass,
@@ -11,6 +13,8 @@ import {
 import { summarizeDmReactions, type DmMessageReaction } from "@/lib/dmReactions";
 
 type BubbleShellHandlers = Omit<HTMLAttributes<HTMLDivElement>, "className" | "children">;
+
+export type ChatMessageBubbleShellLayout = "stacked" | "grid-participant";
 
 function useReactionOverlayLifecycle(
   reactions: DmMessageReaction[],
@@ -67,6 +71,7 @@ export default function ChatMessageBubbleShell({
   onOpenReactionPicker,
   onCloseReactionPicker,
   bubbleHandlers,
+  layout = "stacked",
   children,
 }: {
   bubbleShellRef: RefObject<HTMLDivElement | null>;
@@ -83,39 +88,70 @@ export default function ChatMessageBubbleShell({
   onOpenReactionPicker: () => void;
   onCloseReactionPicker: () => void;
   bubbleHandlers: BubbleShellHandlers;
+  /** `grid-participant` places bubble + gutter as sibling grid rows for incoming DM avatar alignment. */
+  layout?: ChatMessageBubbleShellLayout;
   children: ReactNode;
 }) {
   const { mounted: reactionOverlayMounted, visible: reactionOverlayVisible } =
     useReactionOverlayLifecycle(reactions, currentUserId);
 
-  return (
-    <div
-      ref={pickerAnchorRef}
-      className={`inline-flex w-fit max-w-full flex-col ${
-        reactionOverlayMounted ? CHAT_MESSAGE_REACTION_GUTTER_CLASS : ""
-      }`.trim()}
-    >
-      <div
-        className={`relative w-fit max-w-full overflow-visible ${highlightClassName}`.trim()}
-      >
-        <div ref={bubbleShellRef} className={bubbleShellClassName} {...bubbleHandlers}>
-          {children}
-        </div>
+  const reactionOverlay = reactionOverlayMounted ? (
+    <div className={resolveMessageReactionsOverlayClass(isOwnMessage)}>
+      <DmMessageReactions
+        reactions={reactions}
+        currentUserId={currentUserId}
+        reacting={reacting}
+        visible={reactionOverlayVisible}
+        onToggleReaction={onToggleReaction}
+        onOpenPicker={onOpenReactionPicker}
+      />
+    </div>
+  ) : null;
 
-        {reactionOverlayMounted ? (
-          <div className={resolveMessageReactionsOverlayClass(isOwnMessage)}>
-            <DmMessageReactions
-              reactions={reactions}
-              currentUserId={currentUserId}
-              reacting={reacting}
-              visible={reactionOverlayVisible}
-              onToggleReaction={onToggleReaction}
-              onOpenPicker={onOpenReactionPicker}
-            />
-          </div>
-        ) : null}
+  const reactionGutter = reactionOverlayMounted ? (
+    <div aria-hidden="true" className={CHAT_MESSAGE_REACTION_GUTTER_CLASS} />
+  ) : null;
+
+  const bubbleFrameClassName = [
+    layout === "grid-participant" ? CHAT_MESSAGE_BUBBLE_GRID_BUBBLE_CLASS : "relative w-fit max-w-full overflow-visible",
+    highlightClassName,
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  const bubbleFrame = (
+    <div ref={layout === "grid-participant" ? pickerAnchorRef : undefined} className={bubbleFrameClassName}>
+      <div ref={bubbleShellRef} className={bubbleShellClassName} {...bubbleHandlers}>
+        {children}
       </div>
+      {reactionOverlay}
+    </div>
+  );
 
+  if (layout === "grid-participant") {
+    return (
+      <>
+        {bubbleFrame}
+        {reactionGutter ? (
+          <div aria-hidden="true" className={CHAT_MESSAGE_BUBBLE_GRID_GUTTER_CLASS} />
+        ) : null}
+        <DmReactionPicker
+          show={showReactionPicker}
+          reacting={reacting}
+          isOwnMessage={isOwnMessage}
+          anchorRef={pickerAnchorRef}
+          scrollContainerRef={scrollContainerRef}
+          onToggleReaction={onToggleReaction}
+          onClosePicker={onCloseReactionPicker}
+        />
+      </>
+    );
+  }
+
+  return (
+    <div ref={pickerAnchorRef} className="inline-flex w-fit max-w-full flex-col">
+      {bubbleFrame}
+      {reactionGutter}
       <DmReactionPicker
         show={showReactionPicker}
         reacting={reacting}

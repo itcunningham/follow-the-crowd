@@ -159,6 +159,7 @@ export default function DmTextMessageBubble({
       bubbleShellClassName={bubbleShellClass}
       highlightClassName={highlightClass}
       isOwnMessage={isOwnMessage}
+      layout={!isOwnMessage && isClusterEnd ? "grid-participant" : "stacked"}
       reactions={reactions}
       currentUserId={currentUserId}
       reacting={reacting}
@@ -205,7 +206,6 @@ export default function DmTextMessageBubble({
         className={resolveIncomingGroupLiClass({
           position: groupPosition,
           isClusterEnd,
-          hasReactions,
         })}
         data-chat-message-id={messageId}
       >
@@ -237,7 +237,6 @@ export default function DmTextMessageBubble({
       className={resolveOutgoingGroupLiClass({
         position: groupPosition,
         isClusterEnd,
-        hasReactions,
       })}
       data-chat-message-id={messageId}
     >
@@ -250,7 +249,7 @@ export default function DmTextMessageBubble({
           {showSeen ? (
             <p
               className={`ftc-seen-label self-end text-right ${
-                hasReactions ? "mt-1.5" : "mt-0.5"
+                hasReactions ? "mt-1" : "mt-0.5"
               }`}
             >
               Seen

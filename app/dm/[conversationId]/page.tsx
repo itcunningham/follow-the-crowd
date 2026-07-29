@@ -474,7 +474,7 @@ export default function DmChatPage() {
       }
 
       if (isBookingRequestMessage(message.text)) {
-        return [{ id: message.id, user_id: message.user_id, groupable: false }];
+        return [{ id: message.id, user_id: message.user_id, groupable: false, created_at: message.created_at }];
       }
 
       const messageAttachments = attachmentsByMessageId.get(message.id) ?? [];
@@ -483,7 +483,7 @@ export default function DmChatPage() {
         {
           id: message.id,
           user_id: message.user_id,
-          groupable: messageAttachments.length === 0,
+          created_at: message.created_at,
         },
       ];
     });

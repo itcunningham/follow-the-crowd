@@ -1,7 +1,11 @@
+import { DM_CHAT_MEANINGFUL_TIME_GAP_MS } from "@/lib/dm/dmChatTimestampVisibility";
+
 export type ChatMessageGroupParticipant = {
   id: string;
   user_id: string;
-  /** When false, breaks same-sender grouping (attachments, booking cards). */
+  /** ISO timestamp — consecutive same-sender groups break after the meaningful time gap. */
+  created_at?: string;
+  /** When false, breaks same-sender grouping (booking cards). */
   groupable?: boolean;
 };
 
@@ -60,19 +64,28 @@ export const DM_INCOMING_MESSAGE_COLUMN_CLASS =
 export const DM_INCOMING_TIMESTAMP_CLASS =
   "self-start whitespace-nowrap px-0.5 text-[10px] leading-none text-ftc-text-muted";
 
-/** Minimal in-flow gutter — reserves space for the overlay pill without shifting the bubble. */
-export const CHAT_MESSAGE_REACTION_GUTTER_CLASS = "pb-3";
+/** Minimal in-flow gutter — half the reaction pill height (pill min-h-[1.125rem]). */
+export const CHAT_MESSAGE_REACTION_GUTTER_CLASS = "h-2.5 shrink-0";
 
-/** Overlay anchor — hangs from the lower bubble corner with slight outside overlap. */
+/** Grid-participant layout: bubble on row 1, gutter on row 2 (incoming DM avatar alignment). */
+export const CHAT_MESSAGE_BUBBLE_GRID_BUBBLE_CLASS =
+  "col-start-2 row-start-1 relative w-fit max-w-full min-w-0 overflow-visible";
+
+export const CHAT_MESSAGE_BUBBLE_GRID_GUTTER_CLASS = `col-start-2 row-start-2 ${CHAT_MESSAGE_REACTION_GUTTER_CLASS}`;
+
+/**
+ * Corner-anchored overlay — vertically centred on the bubble bottom edge (50% overlap).
+ * Horizontal edge aligns with the bubble corner; no arbitrary pixel offsets.
+ */
 export function resolveMessageReactionsOverlayClass(isOwnMessage: boolean): string {
-  const base = "pointer-events-none absolute top-full z-10 -mt-1.5 translate-y-0.5";
+  const base = "pointer-events-none absolute bottom-0 z-10 translate-y-1/2";
 
   return isOwnMessage ? `${base} right-0` : `${base} left-0`;
 }
 
 /** Compact Instagram-style pill — hugs emoji content on both sides. */
 export const CHAT_MESSAGE_REACTION_PILL_CLASS =
-  "inline-flex max-w-none flex-nowrap items-center gap-px rounded-full border border-ftc-border-subtle bg-ftc-bg-elevated px-0.5 py-0 shadow-[0_1px_3px_rgba(0,0,0,0.22)]";
+  "inline-flex max-w-none flex-nowrap items-center gap-0 rounded-full border border-ftc-border-subtle bg-ftc-bg-elevated px-0 py-0 shadow-[0_1px_3px_rgba(0,0,0,0.22)]";
 
 /** Pill enter/exit animation — scale 0.8 ↔ 1.0 with light spring. */
 export const CHAT_MESSAGE_REACTION_PILL_ANIMATION_MS = 160;
@@ -118,19 +131,43 @@ export const CHAT_MESSAGE_SCROLLER_CLASS =
 /** @deprecated Group chat still uses legacy outgoing tight class. */
 export const CHAT_OUTGOING_GROUP_TIGHT_PREVIOUS_CLASS = "-mt-2.5";
 
+function resolveMessageTimestampMs(createdAt: string | undefined): number {
+  if (!createdAt) {
+    return 0;
+  }
+
+  const timestampMs = new Date(createdAt).getTime();
+
+  return Number.isNaN(timestampMs) ? 0 : timestampMs;
+}
+
+function hasMeaningfulTimeGapBetweenParticipants(
+  earlier: ChatMessageGroupParticipant,
+  later: ChatMessageGroupParticipant,
+): boolean {
+  const earlierMs = resolveMessageTimestampMs(earlier.created_at);
+  const laterMs = resolveMessageTimestampMs(later.created_at);
+
+  if (earlierMs === 0 || laterMs === 0) {
+    return false;
+  }
+
+  return laterMs - earlierMs >= DM_CHAT_MEANINGFUL_TIME_GAP_MS;
+}
+
 /** Outgoing row — same flex-col-reverse grouping margins as incoming. */
 export function resolveOutgoingGroupLiClass({
   position,
   isClusterEnd,
-  hasReactions = false,
 }: {
   position: ChatMessageGroupPosition;
   isClusterEnd: boolean;
+  /** @deprecated Reactions no longer affect grouping margins. */
   hasReactions?: boolean;
 }): string {
   return [
     "group/message flex justify-end",
-    resolveIncomingGroupTightMarginClass(position, hasReactions),
+    resolveIncomingGroupTightMarginClass(position),
     isClusterEnd ? CHAT_INCOMING_GROUP_CLUSTER_END_CLASS : "",
   ]
     .filter(Boolean)
@@ -175,7 +212,15 @@ function isSameSenderGroup(
     return false;
   }
 
-  return isGroupableParticipant(earlier) && isGroupableParticipant(later);
+  if (!isGroupableParticipant(earlier) || !isGroupableParticipant(later)) {
+    return false;
+  }
+
+  if (hasMeaningfulTimeGapBetweenParticipants(earlier, later)) {
+    return false;
+  }
+
+  return true;
 }
 
 function resolveGroupPosition(
@@ -197,21 +242,7 @@ function resolveGroupPosition(
   return "last";
 }
 
-function resolveIncomingGroupTightMarginClass(
-  position: ChatMessageGroupPosition,
-  hasReactions = false,
-): string {
-  if (hasReactions) {
-    switch (position) {
-      case "middle":
-        return "-mb-2";
-      case "last":
-        return "-mb-1.5";
-      default:
-        return "";
-    }
-  }
-
+function resolveIncomingGroupTightMarginClass(position: ChatMessageGroupPosition): string {
   switch (position) {
     case "middle":
       return CHAT_INCOMING_GROUP_TIGHT_MIDDLE_CLASS;
@@ -249,16 +280,16 @@ export function buildChatMessageGroupLayout(
 export function resolveIncomingGroupLiClass({
   position,
   isClusterEnd,
-  hasReactions = false,
 }: {
   position: ChatMessageGroupPosition;
   isClusterEnd: boolean;
   showTimestamp?: boolean;
+  /** @deprecated Reactions no longer affect grouping margins. */
   hasReactions?: boolean;
 }): string {
   return [
     "group/message flex justify-start",
-    resolveIncomingGroupTightMarginClass(position, hasReactions),
+    resolveIncomingGroupTightMarginClass(position),
     isClusterEnd ? CHAT_INCOMING_GROUP_CLUSTER_END_CLASS : "",
   ]
     .filter(Boolean)

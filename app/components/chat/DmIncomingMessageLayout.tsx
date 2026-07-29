@@ -6,6 +6,7 @@ import {
   CHAT_INCOMING_AVATAR_SLOT_CLASS,
   CHAT_INCOMING_BUBBLE_CELL_CLASS,
   CHAT_INCOMING_ROW_GRID_CLASS,
+  CHAT_INCOMING_ROW_GRID_CLUSTER_END_CLASS,
   isIncomingClusterEnd,
   type ChatMessageGroupPosition,
 } from "@/lib/dm/chatMessageGroupLayout";
@@ -32,7 +33,9 @@ export default function DmIncomingMessageLayout({
 
   if (isClusterEnd) {
     return (
-      <div className={`${CHAT_INCOMING_ROW_GRID_CLASS} ${className}`.trim()}>
+      <div
+        className={`${CHAT_INCOMING_ROW_GRID_CLASS} ${CHAT_INCOMING_ROW_GRID_CLUSTER_END_CLASS} ${className}`.trim()}
+      >
         <div className={CHAT_INCOMING_AVATAR_CELL_CLASS}>
           {showAvatar ? avatar : <span aria-hidden="true" className={CHAT_INCOMING_AVATAR_SLOT_CLASS} />}
         </div>

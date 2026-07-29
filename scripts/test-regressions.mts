@@ -5163,9 +5163,10 @@ function testDmMessageReactionGestureInteractions() {
   assert.match(reactionsSource, /CHAT_MESSAGE_REACTION_PILL_VISIBLE_CLASS/);
   assert.match(reactionsSource, /CHAT_MESSAGE_REACTION_PILL_HIDDEN_CLASS/);
   assert.match(groupLayoutSource, /CHAT_MESSAGE_REACTION_PILL_ANIMATION_MS/);
-  assert.match(groupLayoutSource, /pb-3/);
-  assert.match(groupLayoutSource, /-mt-1\.5/);
-  assert.match(groupLayoutSource, /translate-y-0\.5/);
+  assert.match(groupLayoutSource, /h-2\.5/);
+  assert.match(groupLayoutSource, /bottom-0/);
+  assert.match(groupLayoutSource, /translate-y-1\/2/);
+  assert.match(shellSource, /grid-participant/);
   assert.match(shellSource, /useReactionOverlayLifecycle/);
   assert.match(shellSource, /reactionOverlayVisible/);
   assert.doesNotMatch(reactionsSource, /bg-ftc-primary/);
@@ -5206,6 +5207,7 @@ function testDmMessageReactionGestureInteractions() {
   assert.match(bubbleSource, /showAvatar/);
   assert.match(bubbleSource, /groupPosition/);
   assert.match(bubbleSource, /resolveOutgoingGroupLiClass/);
+  assert.match(bubbleSource, /layout=\{!isOwnMessage && isClusterEnd \? "grid-participant" : "stacked"\}/);
   assert.match(bubbleSource, /ChatMessageBubbleShell/);
   assert.match(bubbleSource, /ChatProfileAvatarLink/);
   assert.match(bubbleSource, /DmIncomingMessageLayout/);
@@ -5275,6 +5277,30 @@ function testChatMessageGroupLayout() {
   assert.equal(brokenLayout.get("t2")?.tightWithPrevious, false);
   assert.equal(brokenLayout.get("img")?.position, "standalone");
 
+  const baseTime = Date.parse("2026-01-01T10:00:00.000Z");
+  const mediaGroupLayout = buildChatMessageGroupLayout([
+    { id: "t1", user_id: "u1", created_at: new Date(baseTime).toISOString() },
+    { id: "img", user_id: "u1", created_at: new Date(baseTime + 60_000).toISOString() },
+    { id: "t2", user_id: "u1", created_at: new Date(baseTime + 120_000).toISOString() },
+  ]);
+
+  assert.equal(mediaGroupLayout.get("t1")?.position, "first");
+  assert.equal(mediaGroupLayout.get("img")?.position, "middle");
+  assert.equal(mediaGroupLayout.get("t2")?.position, "last");
+
+  const timedLayout = buildChatMessageGroupLayout([
+    { id: "early", user_id: "u1", created_at: new Date(baseTime).toISOString() },
+    {
+      id: "late",
+      user_id: "u1",
+      created_at: new Date(baseTime + DM_CHAT_MEANINGFUL_TIME_GAP_MS + 60_000).toISOString(),
+    },
+  ]);
+
+  assert.equal(timedLayout.get("early")?.position, "standalone");
+  assert.equal(timedLayout.get("late")?.position, "standalone");
+  assert.equal(timedLayout.get("late")?.tightWithPrevious, false);
+
   const groupLayoutSource = readFileSync(
     new URL("../lib/dm/chatMessageGroupLayout.ts", import.meta.url),
     "utf8",
@@ -5291,7 +5317,8 @@ function testChatMessageGroupLayout() {
   assert.match(groupLayoutSource, /CHAT_MESSAGE_REACTION_PILL_CLASS/);
   assert.match(groupLayoutSource, /resolveOutgoingGroupLiClass/);
   assert.match(groupLayoutSource, /gap-x-1/);
-  assert.match(groupLayoutSource, /pb-3/);
+  assert.match(groupLayoutSource, /h-2\.5/);
+  assert.match(groupLayoutSource, /DM_CHAT_MEANINGFUL_TIME_GAP_MS/);
   assert.match(groupLayoutSource, /CHAT_INCOMING_BUBBLE_STACK_CLASS/);
   assert.match(groupLayoutSource, /CHAT_MESSAGE_SCROLLER_CLASS/);
   assert.match(groupLayoutSource, /resolveIncomingGroupTightMarginClass/);
