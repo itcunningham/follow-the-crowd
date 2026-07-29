@@ -287,6 +287,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `2a50984` — Instagram geometry: top-full hang below bubble corner, outer-edge inset
 - `ac41884` — fix reaction anchor: outside bubble corner (`calc(100%-4px)`), remove inward nudges
 - `9d13a8a` — final messaging polish: tuck reactions higher, zero document-flow height for reacted messages
 - `20ee05d` — final chat polish: within-group spacing mb-1.5, Seen/reaction clearance, composer placeholder min-width
