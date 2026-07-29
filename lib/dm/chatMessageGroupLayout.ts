@@ -21,19 +21,28 @@ export const CHAT_INCOMING_AVATAR_SLOT_CLASS = "block h-8 w-8 shrink-0";
 /** Fixed avatar column — wide enough for a single-line timestamp beneath the avatar. */
 export const CHAT_INCOMING_AVATAR_COLUMN_WIDTH_CLASS = "w-12";
 
-/** Incoming row grid: avatar column + message column, bubble row then metadata row. */
+/** Incoming row grid: fixed avatar column + message column. */
 export const CHAT_INCOMING_ROW_GRID_CLASS =
-  "grid grid-cols-[3rem_minmax(0,1fr)] grid-rows-[auto_auto] gap-x-2 gap-y-0.5";
+  "grid grid-cols-[3rem_minmax(0,1fr)] gap-x-2";
 
-/** Bottom-align avatar with the bubble on row 1 (reactions sit on row 2). */
+/** Cluster-end rows split bubble and metadata so avatar tracks the final bubble. */
+export const CHAT_INCOMING_ROW_GRID_CLUSTER_END_CLASS = "grid-rows-[auto_auto] gap-y-0.5";
+
+/** Bottom-align avatar with the bubble on row 1 (cluster end only). */
 export const CHAT_INCOMING_AVATAR_CELL_CLASS =
   "col-start-1 row-start-1 justify-self-center self-end";
 
-/** Bubble content only — reactions render on row 2 so avatar tracks the bubble. */
+/** Bubble only on cluster end row 1. */
 export const CHAT_INCOMING_BUBBLE_CELL_CLASS =
   "col-start-2 row-start-1 min-w-0 w-full flex flex-col items-start";
 
-/** Reactions attach tightly beneath their bubble without shifting avatar alignment. */
+/** First/middle rows stack reactions under the bubble in the same column. */
+export const CHAT_INCOMING_BUBBLE_STACK_CLASS = "gap-0.5";
+
+/** Inline reactions stay in the bubble column — no extra grid row. */
+export const CHAT_INCOMING_REACTIONS_INLINE_CLASS = "min-w-0";
+
+/** Cluster-end reactions sit below the bubble without affecting avatar row alignment. */
 export const CHAT_INCOMING_REACTIONS_CELL_CLASS = "col-start-2 row-start-2 min-w-0 -mt-0.5";
 
 /** Timestamp sits under the avatar, never wraps. */

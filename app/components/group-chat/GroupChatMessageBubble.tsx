@@ -194,7 +194,7 @@ export default function GroupChatMessageBubble({
       >
         <IncomingChatMessageLayout
           className={rowMaxWidthClass}
-          showAvatar={showAvatar}
+          groupPosition={groupPosition}
           showTimestamp={showTimestamp}
           createdAt={createdAt}
           formattedTime={formatTime(createdAt)}

@@ -5249,9 +5249,9 @@ function testChatMessageGroupLayout() {
 
   assert.match(groupLayoutSource, /CHAT_INCOMING_GROUP_TIGHT_MIDDLE_CLASS/);
   assert.match(groupLayoutSource, /CHAT_INCOMING_GROUP_TIGHT_LAST_CLASS/);
-  assert.match(groupLayoutSource, /CHAT_INCOMING_ROW_GRID_CLASS/);
-  assert.match(groupLayoutSource, /CHAT_INCOMING_AVATAR_CELL_CLASS/);
-  assert.match(groupLayoutSource, /whitespace-nowrap/);
+  assert.match(groupLayoutSource, /CHAT_INCOMING_ROW_GRID_CLUSTER_END_CLASS/);
+  assert.match(groupLayoutSource, /CHAT_INCOMING_REACTIONS_INLINE_CLASS/);
+  assert.match(groupLayoutSource, /CHAT_INCOMING_BUBBLE_STACK_CLASS/);
   assert.match(groupLayoutSource, /CHAT_MESSAGE_SCROLLER_CLASS/);
   assert.match(groupLayoutSource, /resolveIncomingGroupTightMarginClass/);
   assert.match(dmPageSource, /IncomingChatMessageLayout/);

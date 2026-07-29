@@ -230,7 +230,7 @@ export default function DmTextMessageBubble({
       >
         <IncomingChatMessageLayout
           className={rowMaxWidthClass}
-          showAvatar={showAvatar}
+          groupPosition={groupPosition}
           showTimestamp={showTimestamp}
           createdAt={createdAt}
           formattedTime={formattedTime}

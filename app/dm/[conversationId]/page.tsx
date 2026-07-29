@@ -2003,9 +2003,10 @@ export default function DmChatPage() {
                     ) : (
                       <IncomingChatMessageLayout
                         className="max-w-[92%] sm:max-w-[80%]"
-                        showAvatar={messageGroupLayout?.showAvatar ?? true}
+                        groupPosition={messageGroupLayout?.position ?? "standalone"}
                         showTimestamp={
-                          conversationTimestampLayout.get(message.id)?.showTimestamp ?? true
+                          conversationTimestampLayout.get(message.id)?.showTimestamp ??
+                          true
                         }
                         createdAt={message.created_at}
                         formattedTime={formatMessageTime(message.created_at)}
