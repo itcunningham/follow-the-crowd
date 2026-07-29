@@ -6,6 +6,7 @@ import {
   DM_PHOTO_INPUT_ACCEPT,
   validateDmAttachmentFile,
 } from "@/lib/dmAttachments";
+import { handleComposerNewlineKeyDown } from "@/lib/dm/composerNewlineKeydown";
 import { useComposerTextareaAutogrow } from "@/lib/dm/useComposerTextareaAutogrow";
 
 function ComposerIconButton({
@@ -138,9 +139,12 @@ export default function DmComposer({
           rows={1}
           value={value}
           onChange={(event) => onChange(event.target.value)}
+          onKeyDown={handleComposerNewlineKeyDown}
           onBlur={handleInputBlur}
           placeholder="Message"
-          className="ftc-input min-h-11 min-w-0 flex-1 resize-none rounded-full px-4 py-0"
+          className={`ftc-input min-w-0 flex-1 resize-none rounded-full px-4 py-0 ${
+            value.length === 0 ? "h-11 overflow-hidden" : "min-h-11"
+          }`}
         />
 
         <button

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, type RefObject } from "react";
+import { useCallback, useLayoutEffect, useRef, type RefObject } from "react";
 
 /** ~5 lines at 1.5rem line-height inside the composer field. */
 export const COMPOSER_TEXTAREA_MAX_HEIGHT_PX = 120;
@@ -20,15 +20,21 @@ export function useComposerTextareaAutogrow(
       return;
     }
 
+    if (value.length === 0) {
+      textarea.style.height = "";
+      textarea.style.overflowY = "hidden";
+      return;
+    }
+
     if (singleLineHeightRef.current === null) {
       const savedValue = textarea.value;
       textarea.value = "";
-      textarea.style.height = "auto";
+      textarea.style.height = "0px";
       singleLineHeightRef.current = textarea.scrollHeight;
       textarea.value = savedValue;
     }
 
-    textarea.style.height = "auto";
+    textarea.style.height = "0px";
     const scrollHeight = textarea.scrollHeight;
     const minHeight = singleLineHeightRef.current ?? scrollHeight;
     const nextHeight = Math.min(Math.max(minHeight, scrollHeight), COMPOSER_TEXTAREA_MAX_HEIGHT_PX);
@@ -36,9 +42,9 @@ export function useComposerTextareaAutogrow(
     textarea.style.height = `${nextHeight}px`;
     textarea.style.overflowY =
       scrollHeight > COMPOSER_TEXTAREA_MAX_HEIGHT_PX ? "auto" : "hidden";
-  }, [textareaRef]);
+  }, [textareaRef, value]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     adjustHeight();
   }, [value, adjustHeight]);
 

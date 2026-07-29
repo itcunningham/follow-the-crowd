@@ -108,6 +108,10 @@ import {
 } from "../lib/dm/dmChatTimestampVisibility";
 import { buildChatMessageGroupLayout } from "../lib/dm/chatMessageGroupLayout";
 import {
+  canComposerInsertNewline,
+  getComposerLineBeforeCursor,
+} from "../lib/dm/composerNewlineKeydown";
+import {
   isCompactChatBubbleText,
   resolveChatMessageBubbleShellClass,
 } from "../lib/dm/chatMessageBubbleGeometry";
@@ -5036,8 +5040,8 @@ function testDmComposerClearsPendingPhotoAfterSuccessfulSend() {
   assert.match(composerSource, /composerRootRef/);
   assert.match(composerSource, /<textarea/);
   assert.match(composerSource, /useComposerTextareaAutogrow/);
-  assert.doesNotMatch(composerSource, /event\.key === "Enter"/);
-  assert.doesNotMatch(composerSource, /onKeyDown/);
+  assert.match(composerSource, /handleComposerNewlineKeyDown/);
+  assert.doesNotMatch(composerSource, /event\.key === "Enter"[\s\S]*onSend/);
   assert.doesNotMatch(composerSource, /onPhotoSelected/);
 
   assert.match(composerSource, /className="dm-composer shrink-0/);
@@ -5071,6 +5075,27 @@ function testDmComposerClearsPendingPhotoAfterSuccessfulSend() {
 
   assert.match(helperSource, /createPendingComposerAttachment/);
   assert.match(helperSource, /revokePendingComposerAttachment/);
+}
+
+function testComposerNewlineKeydown() {
+  assert.equal(getComposerLineBeforeCursor("hello\nworld", 8), "wor");
+  assert.equal(getComposerLineBeforeCursor("hello\nworld", 7), "");
+  assert.equal(getComposerLineBeforeCursor("", 0), "");
+
+  assert.equal(canComposerInsertNewline("", 0), false);
+  assert.equal(canComposerInsertNewline("hello", 5), true);
+  assert.equal(canComposerInsertNewline("hello\n", 6), false);
+  assert.equal(canComposerInsertNewline("hello\n ", 7), false);
+  assert.equal(canComposerInsertNewline("hello\nworld", 11), true);
+
+  const autogrowSource = readFileSync(
+    new URL("../lib/dm/useComposerTextareaAutogrow.ts", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(autogrowSource, /value\.length === 0/);
+  assert.match(autogrowSource, /textarea\.style\.height = ""/);
+  assert.match(autogrowSource, /useLayoutEffect/);
 }
 
 function testDmComposerFocusSyncAfterSend() {
@@ -5383,6 +5408,7 @@ async function main() {
   testEventCreateFormTextFieldMaxLength();
   testWithdrawalOtherReasonInputLimits();
   testDmComposerClearsPendingPhotoAfterSuccessfulSend();
+  testComposerNewlineKeydown();
   testDmComposerFocusSyncAfterSend();
   testDmMessageReactionGestureInteractions();
   testChatMessageGroupLayout();

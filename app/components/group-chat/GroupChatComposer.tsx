@@ -1,6 +1,7 @@
 "use client";
 
 import ChatSendIcon from "@/app/components/chat/ChatSendIcon";
+import { handleComposerNewlineKeyDown } from "@/lib/dm/composerNewlineKeydown";
 import { useComposerTextareaAutogrow } from "@/lib/dm/useComposerTextareaAutogrow";
 
 function SendIcon() {
@@ -31,9 +32,12 @@ export default function GroupChatComposer({
           rows={1}
           value={value}
           onChange={(event) => onChange(event.target.value)}
+          onKeyDown={handleComposerNewlineKeyDown}
           placeholder="Message..."
           disabled={sending}
-          className="ftc-input min-h-11 min-w-0 flex-1 resize-none rounded-full py-0 px-4 disabled:cursor-not-allowed"
+          className={`ftc-input min-w-0 flex-1 resize-none rounded-full py-0 px-4 disabled:cursor-not-allowed ${
+            value.length === 0 ? "h-11 overflow-hidden" : "min-h-11"
+          }`}
         />
         <button
           type="button"
