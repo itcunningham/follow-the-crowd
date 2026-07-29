@@ -11,8 +11,7 @@ import {
 } from "@/lib/dm/chatMessageBubbleGeometry";
 import {
   resolveIncomingGroupLiClass,
-  CHAT_OUTGOING_GROUP_TIGHT_PREVIOUS_CLASS,
-  CHAT_INCOMING_GROUP_CLUSTER_END_CLASS,
+  resolveOutgoingGroupLiClass,
   type ChatMessageGroupPosition,
 } from "@/lib/dm/chatMessageGroupLayout";
 import {
@@ -134,7 +133,7 @@ export default function GroupChatMessageBubble({
     groupPosition,
   });
   const bubbleTextClass = resolveChatMessageBubbleTextClass(text);
-  const hasReactions = reactions.length > 0;
+  const isClusterEnd = groupPosition === "last" || groupPosition === "standalone";
 
   const bubbleBlock = (
     <ChatMessageBubbleShell
@@ -181,7 +180,6 @@ export default function GroupChatMessageBubble({
           position: groupPosition,
           isClusterEnd,
           showTimestamp,
-          hasReactions,
         })}
       >
         <IncomingChatMessageLayout
@@ -215,9 +213,10 @@ export default function GroupChatMessageBubble({
   return (
     <li
       data-chat-message-id={messageId}
-      className={`group/message flex justify-end ${
-        tightWithPrevious ? CHAT_OUTGOING_GROUP_TIGHT_PREVIOUS_CLASS : ""
-      } ${CHAT_INCOMING_GROUP_CLUSTER_END_CLASS}`}
+      className={resolveOutgoingGroupLiClass({
+        position: groupPosition,
+        isClusterEnd,
+      })}
     >
       <div className={`flex ${rowMaxWidthClass} items-end gap-2 flex-row-reverse`}>
         <div className="flex min-w-0 flex-col items-end">

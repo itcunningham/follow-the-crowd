@@ -96,7 +96,7 @@ export const CHAT_INCOMING_GROUP_CLUSTER_END_CLASS = "mb-1.5";
  */
 
 /** Consecutive bubbles from the same sender (small Instagram-style gap). */
-export const CHAT_LIST_ITEM_WITHIN_GROUP_SPACING_CLASS = "mb-0.5";
+export const CHAT_LIST_ITEM_WITHIN_GROUP_SPACING_CLASS = "mb-1.5";
 
 /** @deprecated Reaction space is reserved in-flow on the reacted message only — do not propagate list margins. */
 export const CHAT_LIST_ITEM_AFTER_REACTION_SPACING_CLASS = "mb-1.5";
@@ -113,8 +113,14 @@ export const CHAT_LIST_ITEM_CLUSTER_START_AFTER_TIMESTAMP_SPACING_CLASS = "mb-0.
 /** Centred timestamp separator — thin band, balanced above and below. */
 export const CHAT_TIME_SEPARATOR_SPACING_CLASS = "my-0.5";
 
-/** Seen / delivered label beneath the final outgoing bubble. */
-export const CHAT_SEEN_LABEL_SPACING_CLASS = "-mt-0.5";
+/** Seen / delivered label beneath the final outgoing bubble (no reactions). */
+export const CHAT_SEEN_LABEL_SPACING_CLASS = "mt-0.5";
+
+/** Seen / delivered when a reaction badge overlaps the bubble corner. */
+export const CHAT_SEEN_LABEL_WITH_REACTIONS_SPACING_CLASS = "mt-2";
+
+/** Document-flow clearance below a bubble that carries a corner reaction badge. */
+export const CHAT_MESSAGE_REACTION_OVERLAP_RESERVE_CLASS = "mb-1.5";
 
 /** Scroll list — flex-col-reverse: `pb-*` clears the fixed header at the visual top. */
 export const CHAT_MESSAGE_LIST_CLASS = "flex flex-col-reverse gap-0 pb-4 pt-2";
@@ -164,6 +170,12 @@ export const CHAT_MESSAGE_REACTION_ANCHOR_INSET_INCOMING_CLASS = "left-2.5";
  * Reaction badge anchor — absolute corner overlap with zero document-flow height.
  * Stack rhythm comes only from `CHAT_LIST_ITEM_*` list-item margins.
  */
+export function resolveSeenLabelSpacingClass(hasReactions: boolean): string {
+  return hasReactions
+    ? CHAT_SEEN_LABEL_WITH_REACTIONS_SPACING_CLASS
+    : CHAT_SEEN_LABEL_SPACING_CLASS;
+}
+
 export function resolveMessageReactionAnchorClass(isOwnMessage: boolean): string {
   const corner = isOwnMessage
     ? CHAT_MESSAGE_REACTION_ANCHOR_INSET_OUTGOING_CLASS

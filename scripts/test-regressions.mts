@@ -5057,6 +5057,8 @@ function testDmComposerClearsPendingPhotoAfterSuccessfulSend() {
   assert.doesNotMatch(composerSource, /event\.key === "Enter"[\s\S]*onSend/);
   assert.doesNotMatch(composerSource, /onPhotoSelected/);
 
+  assert.match(composerSource, /min-w-\[5\.75rem\]/);
+  assert.doesNotMatch(composerSource, /overflow-hidden/);
   assert.match(composerSource, /className="dm-composer shrink-0/);
 
   assert.match(pageSource, /composerInputRef/);
@@ -5175,7 +5177,7 @@ function testDmMessageReactionGestureInteractions() {
   assert.match(reactionsSource, /CHAT_MESSAGE_REACTION_PILL_HIDDEN_CLASS/);
   assert.match(groupLayoutSource, /CHAT_MESSAGE_REACTION_PILL_ANIMATION_MS/);
   assert.match(groupLayoutSource, /resolveMessageReactionAnchorClass/);
-  assert.match(groupLayoutSource, /CHAT_LIST_ITEM_WITHIN_GROUP_SPACING_CLASS/);
+  assert.match(groupLayoutSource, /CHAT_LIST_ITEM_WITHIN_GROUP_SPACING_CLASS = "mb-1\.5"/);
   assert.match(groupLayoutSource, /CHAT_LIST_ITEM_AFTER_REACTION_SPACING_CLASS/);
   assert.match(groupLayoutSource, /CHAT_LIST_ITEM_CLUSTER_END_SPACING_CLASS/);
   assert.match(groupLayoutSource, /CHAT_LIST_ITEM_CLUSTER_END_BEFORE_TIMESTAMP_SPACING_CLASS/);
@@ -5187,7 +5189,10 @@ function testDmMessageReactionGestureInteractions() {
   assert.match(groupLayoutSource, /gap-0/);
   assert.match(shellSource, /resolveMessageReactionAnchorClass/);
   assert.match(shellSource, /useReactionOverlayLifecycle/);
-  assert.match(shellSource, /reactionRowVisible/);
+  assert.match(shellSource, /CHAT_MESSAGE_REACTION_OVERLAP_RESERVE_CLASS/);
+  assert.match(groupLayoutSource, /CHAT_SEEN_LABEL_WITH_REACTIONS_SPACING_CLASS/);
+  assert.match(groupLayoutSource, /CHAT_MESSAGE_REACTION_OVERLAP_RESERVE_CLASS/);
+  assert.match(groupLayoutSource, /resolveSeenLabelSpacingClass/);
   assert.doesNotMatch(shellSource, /grid-participant/);
   assert.doesNotMatch(reactionsSource, /bg-ftc-primary/);
   assert.doesNotMatch(reactionsSource, /isOwnMessage/);
@@ -5230,7 +5235,8 @@ function testDmMessageReactionGestureInteractions() {
   assert.doesNotMatch(bubbleSource, /previousInGroupHadReactions/);
   assert.match(bubbleSource, /followedByTimeSeparator/);
   assert.match(bubbleSource, /precededByTimeSeparator/);
-  assert.match(bubbleSource, /CHAT_SEEN_LABEL_SPACING_CLASS/);
+  assert.match(bubbleSource, /resolveSeenLabelSpacingClass/);
+  assert.match(bubbleSource, /seenLabelSpacingClass/);
   assert.doesNotMatch(bubbleSource, /layout=\{shellLayout\}/);
   assert.match(bubbleSource, /ChatMessageBubbleShell/);
   assert.match(bubbleSource, /ChatProfileAvatarLink/);
@@ -5250,7 +5256,8 @@ function testDmMessageReactionGestureInteractions() {
   assert.match(groupBubbleSource, /useMessageReactionDoubleTap/);
   assert.match(groupBubbleSource, /DmReactionPicker/);
   assert.match(groupBubbleSource, /ChatMessageBubbleShell/);
-  assert.match(groupBubbleSource, /IncomingChatMessageLayout/);
+  assert.match(groupBubbleSource, /resolveOutgoingGroupLiClass/);
+  assert.doesNotMatch(groupBubbleSource, /CHAT_OUTGOING_GROUP_TIGHT_PREVIOUS_CLASS/);
 
   const attachmentSource = readFileSync(
     new URL("../app/components/dm/DmMessageAttachment.tsx", import.meta.url),
@@ -5372,7 +5379,7 @@ function testChatMessageGroupLayout() {
     "utf8",
   );
 
-  assert.match(groupLayoutSource, /CHAT_LIST_ITEM_WITHIN_GROUP_SPACING_CLASS/);
+  assert.match(groupLayoutSource, /CHAT_LIST_ITEM_WITHIN_GROUP_SPACING_CLASS = "mb-1\.5"/);
   assert.match(groupLayoutSource, /CHAT_LIST_ITEM_CLUSTER_END_SPACING_CLASS/);
   assert.match(groupLayoutSource, /CHAT_LIST_ITEM_CLUSTER_END_BEFORE_TIMESTAMP_SPACING_CLASS/);
   assert.match(groupLayoutSource, /CHAT_LIST_ITEM_CLUSTER_START_AFTER_TIMESTAMP_SPACING_CLASS/);

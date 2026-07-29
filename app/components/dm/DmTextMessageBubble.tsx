@@ -13,8 +13,8 @@ import {
   resolveChatMessageBubbleTextClass,
 } from "@/lib/dm/chatMessageBubbleGeometry";
 import {
-  CHAT_SEEN_LABEL_SPACING_CLASS,
   resolveMessageGroupLiClass,
+  resolveSeenLabelSpacingClass,
   type ChatMessageGroupPosition,
 } from "@/lib/dm/chatMessageGroupLayout";
 import {
@@ -154,6 +154,8 @@ export default function DmTextMessageBubble({
   });
   const bubbleTextClass = resolveChatMessageBubbleTextClass(displayText);
   const isClusterEnd = showAvatar;
+  const hasReactions = reactions.length > 0;
+  const seenLabelSpacingClass = resolveSeenLabelSpacingClass(hasReactions);
 
   const bubbleBlock = (
     <ChatMessageBubbleShell
@@ -255,7 +257,7 @@ export default function DmTextMessageBubble({
             {formattedTime}
           </time>
           {showSeen ? (
-            <p className={`ftc-seen-label ${CHAT_SEEN_LABEL_SPACING_CLASS} self-end text-right`}>
+            <p className={`ftc-seen-label ${seenLabelSpacingClass} self-end text-right`}>
               Seen
             </p>
           ) : null}

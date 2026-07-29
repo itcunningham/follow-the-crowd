@@ -36,9 +36,9 @@ export default function GroupChatComposer({
           onKeyDown={handleComposerNewlineKeyDown}
           placeholder="Message..."
           disabled={sending}
-          className={`ftc-input min-w-0 flex-1 resize-none rounded-full px-4 disabled:cursor-not-allowed ${
+          className={`ftc-input min-w-[5.75rem] flex-1 resize-none rounded-full px-4 disabled:cursor-not-allowed ${
             isCompactComposerField
-              ? "h-11 overflow-hidden py-0 leading-[2.75rem]"
+              ? "h-11 py-0 leading-[2.75rem]"
               : "min-h-11 py-2 leading-normal"
           }`}
         />
