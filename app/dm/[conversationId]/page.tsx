@@ -58,6 +58,8 @@ import {
 } from "@/lib/dm/dmChatTimestampVisibility";
 import {
   buildChatMessageGroupLayout,
+  CHAT_MESSAGE_LIST_CLASS,
+  CHAT_MESSAGE_SCROLLER_CLASS,
   resolveIncomingGroupLiClass,
 } from "@/lib/dm/chatMessageGroupLayout";
 import { parseDmThreadEntryContext, resolveDmThreadBackHref } from "@/lib/dm/threadNavigation";
@@ -1677,10 +1679,7 @@ export default function DmChatPage() {
         />
       </header>
 
-      <div
-        ref={scrollRef}
-        className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain [overflow-anchor:none] px-3 py-4 sm:px-4"
-      >
+      <div ref={scrollRef} className={CHAT_MESSAGE_SCROLLER_CLASS}>
         {loading ? (
           <ChatMessagesSkeleton />
         ) : messages.length === 0 ? (
@@ -1713,7 +1712,7 @@ export default function DmChatPage() {
             </p>
           </div>
         ) : (
-          <ul data-chat-content-root className="flex flex-col-reverse gap-3 pb-2">
+          <ul data-chat-content-root className={CHAT_MESSAGE_LIST_CLASS}>
             {reversedMessages.map((message) => {
               if (
                 isBookingActivityDmMessage(message.text) &&

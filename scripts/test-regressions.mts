@@ -5094,7 +5094,7 @@ function testComposerNewlineKeydown() {
   );
 
   assert.match(autogrowSource, /value\.length === 0/);
-  assert.match(autogrowSource, /textarea\.style\.height = ""/);
+  assert.match(autogrowSource, /composerNeedsMultilineHeight/);
   assert.match(autogrowSource, /useLayoutEffect/);
 }
 
@@ -5143,6 +5143,7 @@ function testDmMessageReactionGestureInteractions() {
   assert.doesNotMatch(reactionsSource, /prominentActions/);
   assert.match(reactionsSource, /if \(summaries\.length === 0\) \{\s*return null;/);
   assert.match(reactionsSource, /disabled:pointer-events-none/);
+  assert.match(reactionsSource, /border-ftc-border-strong bg-ftc-surface text-ftc-text/);
   assert.doesNotMatch(reactionsSource, /disabled:opacity-50/);
   assert.match(bubbleSource, /useMessageReactionLongPress/);
   assert.match(bubbleSource, /useMessageReactionDoubleTap/);
@@ -5250,6 +5251,8 @@ function testChatMessageGroupLayout() {
   assert.match(groupLayoutSource, /CHAT_INCOMING_GROUP_TIGHT_LAST_CLASS/);
   assert.match(groupLayoutSource, /CHAT_INCOMING_ROW_GRID_CLASS/);
   assert.match(groupLayoutSource, /CHAT_INCOMING_AVATAR_CELL_CLASS/);
+  assert.match(groupLayoutSource, /whitespace-nowrap/);
+  assert.match(groupLayoutSource, /CHAT_MESSAGE_SCROLLER_CLASS/);
   assert.match(groupLayoutSource, /resolveIncomingGroupTightMarginClass/);
   assert.match(dmPageSource, /IncomingChatMessageLayout/);
   assert.doesNotMatch(dmPageSource, /title="Report message"/);
@@ -5269,7 +5272,11 @@ function testChatMessageBubbleGeometry() {
   );
   assert.match(
     resolveChatMessageBubbleShellClass({ isOwnMessage: true, text: "OK" }),
-    /px-3\.5 py-\[0\.4375rem\]/,
+    /px-3\.5 py-1\.5/,
+  );
+  assert.match(
+    resolveChatMessageBubbleShellClass({ isOwnMessage: true, text: "a" }),
+    /min-w-\[2\.75rem\]/,
   );
   assert.match(
     resolveChatMessageBubbleShellClass({

@@ -18,23 +18,27 @@ export type ChatMessageGroupLayout = {
 /** Avatar slot — matches ProfileAvatar sm (h-8 w-8). */
 export const CHAT_INCOMING_AVATAR_SLOT_CLASS = "block h-8 w-8 shrink-0";
 
-/** Incoming row grid: fixed avatar column + flexible message column. */
+/** Fixed avatar column — wide enough for a single-line timestamp beneath the avatar. */
+export const CHAT_INCOMING_AVATAR_COLUMN_WIDTH_CLASS = "w-12";
+
+/** Incoming row grid: avatar column + message column, bubble row then metadata row. */
 export const CHAT_INCOMING_ROW_GRID_CLASS =
-  "grid grid-cols-[2rem_minmax(0,1fr)] gap-x-2";
+  "grid grid-cols-[3rem_minmax(0,1fr)] grid-rows-[auto_auto] gap-x-2 gap-y-0.5";
 
-/** Bottom-align avatar with the bubble on the same row. */
-export const CHAT_INCOMING_AVATAR_CELL_CLASS = "col-start-1 row-start-1 self-end";
+/** Bottom-align avatar with the bubble on row 1 (reactions sit on row 2). */
+export const CHAT_INCOMING_AVATAR_CELL_CLASS =
+  "col-start-1 row-start-1 justify-self-center self-end";
 
-/** Bubble, attachments, and optional sender label. */
+/** Bubble content only — reactions render on row 2 so avatar tracks the bubble. */
 export const CHAT_INCOMING_BUBBLE_CELL_CLASS =
-  "col-start-2 row-start-1 min-w-0 flex flex-col items-start";
+  "col-start-2 row-start-1 min-w-0 w-full flex flex-col items-start";
 
-/** Reactions stay on the bubble column, below the bubble. */
-export const CHAT_INCOMING_REACTIONS_CELL_CLASS = "col-start-2 row-start-2 min-w-0";
+/** Reactions attach tightly beneath their bubble without shifting avatar alignment. */
+export const CHAT_INCOMING_REACTIONS_CELL_CLASS = "col-start-2 row-start-2 min-w-0 -mt-0.5";
 
-/** Timestamp sits in the avatar column beneath the final bubble row. */
+/** Timestamp sits under the avatar, never wraps. */
 export const CHAT_INCOMING_TIMESTAMP_CELL_CLASS =
-  "col-start-1 row-start-2 self-start px-0.5 text-[10px] leading-none text-ftc-text-muted";
+  "col-start-1 row-start-2 justify-self-center whitespace-nowrap text-[10px] leading-none text-ftc-text-muted";
 
 /** @deprecated Use CHAT_INCOMING_BUBBLE_CELL_CLASS */
 export const CHAT_INCOMING_MESSAGE_COLUMN_CLASS = CHAT_INCOMING_BUBBLE_CELL_CLASS;
@@ -48,6 +52,13 @@ export const CHAT_INCOMING_GROUP_TIGHT_LAST_CLASS = "-mb-3.5";
 
 /** Breathing room after a cluster footer before the next sender. */
 export const CHAT_INCOMING_GROUP_CLUSTER_END_CLASS = "mb-1.5";
+
+/** Scroll list padding — flex-col-reverse: `pb-*` clears the fixed header at the visual top. */
+export const CHAT_MESSAGE_LIST_CLASS = "flex flex-col-reverse gap-3 pb-4 pt-2";
+
+/** DM / group chat message scroller — asymmetric padding keeps header clearance at scroll top. */
+export const CHAT_MESSAGE_SCROLLER_CLASS =
+  "flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain [overflow-anchor:none] px-3 pb-4 pt-2 sm:px-4";
 
 /** Outgoing consecutive same-sender stack (unchanged feel). */
 export const CHAT_OUTGOING_GROUP_TIGHT_PREVIOUS_CLASS = "-mt-2.5";

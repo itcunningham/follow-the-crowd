@@ -34,6 +34,7 @@ export default function IncomingChatMessageLayout({
   reactions?: ReactNode;
 }) {
   const isClusterEnd = showAvatar;
+  const showTimestampRow = isClusterEnd && showTimestamp;
 
   return (
     <div className={`${CHAT_INCOMING_ROW_GRID_CLASS} ${className}`.trim()}>
@@ -46,18 +47,19 @@ export default function IncomingChatMessageLayout({
         {children}
       </div>
 
+      {showTimestampRow ? (
+        <time dateTime={createdAt} className={CHAT_INCOMING_TIMESTAMP_CELL_CLASS}>
+          {formattedTime}
+        </time>
+      ) : (
+        <time dateTime={createdAt} className="sr-only">
+          {formattedTime}
+        </time>
+      )}
+
       {hasReactions ? (
         <div className={CHAT_INCOMING_REACTIONS_CELL_CLASS}>{reactions}</div>
       ) : null}
-
-      <time
-        dateTime={createdAt}
-        className={`${CHAT_INCOMING_TIMESTAMP_CELL_CLASS} ${
-          isClusterEnd && showTimestamp ? "" : "sr-only"
-        }`}
-      >
-        {formattedTime}
-      </time>
     </div>
   );
 }

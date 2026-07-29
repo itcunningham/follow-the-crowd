@@ -72,6 +72,7 @@ export default function DmComposer({
   const busy = sending || uploading;
   const hasPendingPhoto = Boolean(pendingAttachmentPreviewUrl);
   const canSend = Boolean(value.trim()) || hasPendingPhoto;
+  const isCompactComposerField = value.length === 0 || !value.includes("\n");
 
   function handleInputBlur() {
     if (busy) {
@@ -142,8 +143,10 @@ export default function DmComposer({
           onKeyDown={handleComposerNewlineKeyDown}
           onBlur={handleInputBlur}
           placeholder="Message"
-          className={`ftc-input min-w-0 flex-1 resize-none rounded-full px-4 py-0 ${
-            value.length === 0 ? "h-11 overflow-hidden" : "min-h-11"
+          className={`ftc-input min-w-0 flex-1 resize-none rounded-full px-4 ${
+            isCompactComposerField
+              ? "h-11 overflow-hidden py-0 leading-[2.75rem]"
+              : "min-h-11 py-2 leading-normal"
           }`}
         />
 

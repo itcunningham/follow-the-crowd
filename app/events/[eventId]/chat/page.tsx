@@ -28,7 +28,11 @@ import {
   upsertDmReactionInList,
   type DmMessageReaction,
 } from "@/lib/dmReactions";
-import { buildChatMessageGroupLayout } from "@/lib/dm/chatMessageGroupLayout";
+import {
+  buildChatMessageGroupLayout,
+  CHAT_MESSAGE_LIST_CLASS,
+  CHAT_MESSAGE_SCROLLER_CLASS,
+} from "@/lib/dm/chatMessageGroupLayout";
 import type { CrewChatUnlockState } from "@/lib/events/crewChatUnlock";
 import {
   buildGroupChatSenderNameVisibility,
@@ -678,7 +682,7 @@ export default function EventCrewChatPage() {
 
           <div
             ref={scrollRef}
-            className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain [overflow-anchor:none] px-3 py-4 sm:px-4"
+            className={CHAT_MESSAGE_SCROLLER_CLASS}
           >
             {accessLoading || messagesLoading ? (
               <ChatMessagesSkeleton />
@@ -693,7 +697,7 @@ export default function EventCrewChatPage() {
             ) : messages.length === 0 ? (
               <GroupChatEmptyState />
             ) : (
-              <ul data-chat-content-root className="flex flex-col-reverse gap-3 pb-2">
+              <ul data-chat-content-root className={CHAT_MESSAGE_LIST_CLASS}>
                 {reversedMessages.map((message) => {
                   const isOwnMessage =
                     currentUserId !== null && message.user_id === currentUserId;

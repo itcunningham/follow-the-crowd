@@ -247,6 +247,16 @@ export default function DmMessageReactions({
     return null;
   }
 
+  function reactionChipClass(reactedByCurrentUser: boolean): string {
+    if (reactedByCurrentUser) {
+      return isOwnMessage
+        ? "border-0 bg-ftc-primary text-ftc-bg"
+        : "border-ftc-border-strong bg-ftc-surface text-ftc-text";
+    }
+
+    return "border-ftc-border-subtle bg-ftc-bg-elevated text-ftc-text hover:border-ftc-border-strong";
+  }
+
   return (
     <div
       className={`${isOwnMessage ? "mt-0.5" : "mt-0"} flex max-w-full flex-wrap items-center gap-1 ${
@@ -260,11 +270,7 @@ export default function DmMessageReactions({
           disabled={reacting}
           aria-label={`React with ${summary.emoji}`}
           onClick={() => onToggleReaction(summary.emoji)}
-          className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs transition motion-reduce:transition-none disabled:pointer-events-none ${
-            summary.reactedByCurrentUser
-              ? "border-0 bg-ftc-primary text-ftc-bg"
-              : "border-ftc-border-subtle bg-ftc-bg-elevated text-ftc-text hover:border-ftc-border-strong"
-          }`}
+          className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs transition motion-reduce:transition-none disabled:pointer-events-none ${reactionChipClass(summary.reactedByCurrentUser)}`}
         >
           <span>{summary.emoji}</span>
           {summary.count > 1 ? (
