@@ -116,6 +116,17 @@ import {
 } from "../lib/dm/chatMessageGroupLayout";
 import { buildDmReactionNotificationBody } from "../lib/dm/dmReactionNotifications";
 import {
+  applyDmInboxRealtimeReaction,
+  type DmInboxRow,
+} from "../lib/dmInbox";
+import {
+  buildDmReactionInboxPreviewText,
+  encodeDmReactionInboxPreview,
+  parseDmReactionInboxPreview,
+  shouldApplyDmReactionInboxActivity,
+  shouldMarkDmReactionInboxUnread,
+} from "../lib/dm/dmReactionInbox";
+import {
   canComposerInsertNewline,
   getComposerLineBeforeCursor,
 } from "../lib/dm/composerNewlineKeydown";
@@ -5317,6 +5328,105 @@ function testDmReactionNotifications() {
   assert.doesNotMatch(dmPageSource, /notifyDmReactionRecipient[\s\S]*applyOptimisticDmReactionToggle/);
 }
 
+function testDmReactionInboxActivity() {
+  assert.equal(
+    buildDmReactionInboxPreviewText("❤️", "Isaac"),
+    "Isaac reacted ❤️ to your message",
+  );
+  assert.equal(buildDmReactionInboxPreviewText("❤️", null), "❤️ Reacted to your message");
+
+  const encoded = encodeDmReactionInboxPreview("reaction-1", "❤️", "user-a");
+  assert.equal(parseDmReactionInboxPreview(encoded)?.reactionId, "reaction-1");
+  assert.equal(parseDmReactionInboxPreview(encoded)?.emoji, "❤️");
+  assert.equal(parseDmReactionInboxPreview(encoded)?.reactorUserId, "user-a");
+
+  assert.equal(
+    shouldApplyDmReactionInboxActivity({
+      currentUserId: "user-b",
+      messageAuthorUserId: "user-b",
+      reactorUserId: "user-a",
+    }),
+    true,
+  );
+  assert.equal(
+    shouldApplyDmReactionInboxActivity({
+      currentUserId: "user-a",
+      messageAuthorUserId: "user-b",
+      reactorUserId: "user-a",
+    }),
+    false,
+  );
+  assert.equal(
+    shouldMarkDmReactionInboxUnread({
+      eventType: "INSERT",
+      currentUserId: "user-b",
+      messageAuthorUserId: "user-b",
+      reactorUserId: "user-a",
+    }),
+    true,
+  );
+  assert.equal(
+    shouldMarkDmReactionInboxUnread({
+      eventType: "UPDATE",
+      currentUserId: "user-b",
+      messageAuthorUserId: "user-b",
+      reactorUserId: "user-a",
+    }),
+    false,
+  );
+
+  const rows: DmInboxRow[] = [
+    {
+      conversationId: "conv-1",
+      latestActivityAt: "2026-01-01T10:00:00.000Z",
+      latestPreview: "Hello",
+      latestMessageUserId: "user-a",
+    },
+  ];
+
+  const insertResult = applyDmInboxRealtimeReaction(rows, {
+    conversationId: "conv-1",
+    reactionId: "reaction-1",
+    emoji: "❤️",
+    reactorUserId: "user-a",
+    activityAt: "2026-01-02T10:00:00.000Z",
+    messageAuthorUserId: "user-b",
+  });
+
+  assert.equal(insertResult.updated, true);
+  assert.equal(insertResult.rows[0]?.latestMessageUserId, "user-a");
+  assert.match(insertResult.rows[0]?.latestPreview ?? "", /^__ftc_dm_reaction__:/);
+
+  const duplicateResult = applyDmInboxRealtimeReaction(insertResult.rows, {
+    conversationId: "conv-1",
+    reactionId: "reaction-1",
+    emoji: "❤️",
+    reactorUserId: "user-a",
+    activityAt: "2026-01-02T10:00:00.000Z",
+    messageAuthorUserId: "user-b",
+  });
+
+  assert.equal(duplicateResult.updated, false);
+
+  const updateResult = applyDmInboxRealtimeReaction(insertResult.rows, {
+    conversationId: "conv-1",
+    reactionId: "reaction-1",
+    emoji: "🔥",
+    reactorUserId: "user-a",
+    activityAt: "2026-01-02T10:00:00.000Z",
+    messageAuthorUserId: "user-b",
+  });
+
+  assert.equal(updateResult.updated, true);
+  assert.match(updateResult.rows[0]?.latestPreview ?? "", /\|🔥\|/);
+
+  const inboxPageSource = readFileSync(new URL("../app/dm/page.tsx", import.meta.url), "utf8");
+  assert.match(inboxPageSource, /dm-inbox:reactions/);
+  assert.match(inboxPageSource, /applyDmInboxRealtimeReaction/);
+  assert.match(inboxPageSource, /message_reactions/);
+  assert.doesNotMatch(inboxPageSource, /event: "DELETE"[\s\S]*message_reactions/);
+}
+
 function testChatMessageGroupLayout() {
   const layout = buildChatMessageGroupLayout([
     { id: "a", user_id: "u1" },
@@ -5634,6 +5744,7 @@ async function main() {
   testDmComposerFocusSyncAfterSend();
   testDmMessageReactionGestureInteractions();
   testDmReactionNotifications();
+  testDmReactionInboxActivity();
   testChatMessageGroupLayout();
   testChatMessageBubbleGeometry();
   testEventFallbackColourSelectionRadioBehaviour();

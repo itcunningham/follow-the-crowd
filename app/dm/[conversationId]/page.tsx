@@ -543,8 +543,34 @@ export default function DmChatPage() {
       setOtherUserLastReadAt(null);
     }
   }, [conversationId, otherUserId]);
-  const latestConversationMessageCreatedAt =
-    messages.length > 0 ? messages[messages.length - 1].created_at : null;
+  const latestConversationReadThroughAt = useMemo(() => {
+    let latest = messages.length > 0 ? messages[messages.length - 1].created_at : null;
+
+    if (!currentUserId) {
+      return latest;
+    }
+
+    for (const reaction of reactions) {
+      if (reaction.user_id === currentUserId) {
+        continue;
+      }
+
+      const message = messages.find((item) => item.id === reaction.message_id);
+
+      if (!message || message.user_id !== currentUserId) {
+        continue;
+      }
+
+      if (
+        !latest ||
+        new Date(reaction.created_at).getTime() > new Date(latest).getTime()
+      ) {
+        latest = reaction.created_at;
+      }
+    }
+
+    return latest;
+  }, [currentUserId, messages, reactions]);
 
   useEffect(() => {
     setExpandedBookingIds(new Set());
@@ -867,9 +893,9 @@ export default function DmChatPage() {
 
     markNotificationsReadForLink(currentUserId, `/dm/${conversationId}`);
     void markConversationRead(conversationId, {
-      readThroughCreatedAt: latestConversationMessageCreatedAt,
+      readThroughCreatedAt: latestConversationReadThroughAt,
     });
-  }, [conversationId, currentUserId, latestConversationMessageCreatedAt, loading]);
+  }, [conversationId, currentUserId, latestConversationReadThroughAt, loading]);
 
   const syncEventArtwork = useCallback(async (nextBookings: BookingRequest[]) => {
     const eventIds = nextBookings
@@ -1348,7 +1374,7 @@ export default function DmChatPage() {
     setSending(false);
     restoreComposerInputFocus();
     void markConversationRead(conversationId, {
-      readThroughCreatedAt: latestConversationMessageCreatedAt,
+      readThroughCreatedAt: latestConversationReadThroughAt,
     });
   }
 

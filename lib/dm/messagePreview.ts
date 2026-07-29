@@ -17,6 +17,13 @@ import {
   formatDmBookingSystemMessageDisplay,
   isDmBookingSystemMessage,
 } from "@/lib/dm/dmBookingSystemMessages";
+import {
+  buildDmReactionInboxPreviewText,
+  isDmReactionInboxPreview,
+  parseDmReactionInboxPreview,
+} from "@/lib/dm/dmReactionInbox";
+import type { UserAvatarProfile } from "@/lib/user/currentUser";
+import { resolveUserDisplayName } from "@/lib/user/displayName";
 
 function resolveLiveConversationBooking(
   bookings: BookingRequest[],
@@ -163,12 +170,26 @@ function formatBookingActivityInboxPreview(
 
 export function formatDmInboxMessagePreview(
   messageText: string | null | undefined,
-  options?: { bookings?: BookingRequest[] },
+  options?: {
+    bookings?: BookingRequest[];
+    userProfiles?: Map<string, UserAvatarProfile>;
+  },
 ): string | null {
   const trimmed = messageText?.trim();
 
   if (!trimmed) {
     return null;
+  }
+
+  const reactionPreview = parseDmReactionInboxPreview(trimmed);
+
+  if (reactionPreview) {
+    const reactorProfile = options?.userProfiles?.get(reactionPreview.reactorUserId);
+    const reactorDisplayName = reactorProfile
+      ? resolveUserDisplayName(reactorProfile)
+      : null;
+
+    return buildDmReactionInboxPreviewText(reactionPreview.emoji, reactorDisplayName);
   }
 
   const bookings = options?.bookings ?? [];
@@ -211,6 +232,7 @@ export function isDmInboxSystemPreviewMessage(
     isDmBookingSystemMessage(trimmed) ||
     isBookingRequestMessage(trimmed) ||
     isBookingActivityDmMessage(trimmed) ||
-    isBookingAcceptedDmMessage(trimmed)
+    isBookingAcceptedDmMessage(trimmed) ||
+    isDmReactionInboxPreview(trimmed)
   );
 }

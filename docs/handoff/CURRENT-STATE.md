@@ -1,4 +1,4 @@
-# Current state (last updated: 2026-07-29)
+# Current state (last updated: 2026-07-06)
 
 Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 
@@ -100,6 +100,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 - **DM photo picker (2026-07-14):** media icon opens native OS chooser (Photo Library / Take Photo on iOS); no forced camera via `capture`
 - **DM message reactions (2026-07-25):** persistent `React` label removed; press-and-hold (~500ms) or right-click opens existing picker on text/image messages; desktop hover/focus-visible `+` affordance; keyboard-accessible `React to message` button; booking/system cards unchanged; DM image attachments use button open surface (not `<a>`) with scoped `-webkit-touch-callout: none` so iPhone Safari long-press opens FTC picker instead of native link preview; reaction picker no longer uses a full-screen blocking backdrop — outside tap or scroll dismisses it without trapping chat scroll
 - **DM reaction notifications (2026-07-29):** `notifyDmReactionRecipient` uses existing `createNotification` (`message` type, `/dm/{conversationId}` link) after successful reaction toggle — author only, not self, not on remove; realtime subscribers do not emit
+- **DM reaction inbox activity (2026-07-29):** reactions on the recipient's messages update DM inbox ordering, preview (`Isaac reacted ❤️ to your message` / `❤️ Reacted to your message`), and unread via the same `latestActivityAt` / `latestPreview` / `getUnreadConversationIds` pipeline as messages; `dm-inbox:reactions` realtime INSERT/UPDATE only; emoji change updates preview without re-unread; open conversation marks read through reaction timestamp
 - **DM message grouping (2026-07-29):** `buildChatMessageGroupLayout` + centralized spacing tokens (`CHAT_LIST_ITEM_*`, `CHAT_TIME_SEPARATOR_SPACING_CLASS`, `CHAT_SEEN_LABEL_*`); within-group gap `mb-1.5` via single `CHAT_LIST_ITEM_WITHIN_GROUP_SPACING_CLASS`; composer placeholder via shared `ComposerMessageField` (`min-w-[6.5rem]` wrapper) — never truncates to "Mes" while focused
 - **DM timestamp clusters (2026-07-29):** centred `DmChatTimeSeparator` when gap from previous visible message ≥ 5 min (`DM_CHAT_MEANINGFUL_TIME_GAP_MS` unchanged); no per-message inline timestamps; Seen/read on latest relevant outgoing message; hidden `<time>` for a11y on each row
 - **Chat bubble geometry (2026-07-29):** text bubbles use `w-fit max-w-full`; compact padding `px-3.5 py-[0.4375rem]`, standard `px-4 py-2.5`; `.ftc-bubble-own` / `.ftc-bubble-other` tail radii + grouped stack variants; bubble overlay add-reaction + removed (prevents flash during optimistic toggle)

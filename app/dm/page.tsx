@@ -25,13 +25,23 @@ import {
 } from "@/lib/groupChats";
 import {
   applyDmInboxRealtimeMessage,
+  applyDmInboxRealtimeReaction,
   buildDmInboxRows,
   detectInboxRealtimeMessageType,
   logInboxRenderOrder,
+  mergeDmInboxReactionActivities,
   normalizeInboxId,
   type DmInboxRow,
 } from "@/lib/dmInbox";
 import { formatGroupChatInboxPreview, isGroupChatSystemUpdateMessage } from "@/lib/groupChatSystemMessages";
+import {
+  buildDmInboxReactionActivity,
+  listLatestDmReactionInboxActivities,
+  loadDmReactionInboxMessageContext,
+  shouldApplyDmReactionInboxActivity,
+  shouldMarkDmReactionInboxUnread,
+} from "@/lib/dm/dmReactionInbox";
+import type { DmMessageReaction } from "@/lib/dmReactions";
 import {
   syncReadInboxNotifications,
 } from "@/lib/inboxUnread";
@@ -451,13 +461,28 @@ function DmInboxPageContent() {
 
     if (messagesResponse.error) {
       console.error("messages response error", messagesResponse.error);
-      setDmInboxRows(buildDmInboxRows(conversationRows, [], { bookingsByConversationId: bookingsResult }));
-    } else {
       setDmInboxRows(
-        buildDmInboxRows(conversationRows, messageRows, {
-          bookingsByConversationId: bookingsResult,
-        }),
+        mergeDmInboxReactionActivities(
+          buildDmInboxRows(conversationRows, [], { bookingsByConversationId: bookingsResult }),
+          new Map(),
+        ),
       );
+    } else {
+      let rows = buildDmInboxRows(conversationRows, messageRows, {
+        bookingsByConversationId: bookingsResult,
+      });
+
+      try {
+        const reactionActivities = await listLatestDmReactionInboxActivities(
+          userId,
+          conversationIds,
+        );
+        rows = mergeDmInboxReactionActivities(rows, reactionActivities);
+      } catch (reactionError) {
+        console.error("Failed to load DM reaction inbox activity:", reactionError);
+      }
+
+      setDmInboxRows(rows);
     }
 
     setLoading(false);
@@ -711,6 +736,101 @@ function DmInboxPageContent() {
     };
   }, [currentUserId, loadGroupChats]);
 
+  useEffect(() => {
+    async function handleDmReactionInboxActivity(
+      reaction: DmMessageReaction,
+      eventType: "INSERT" | "UPDATE",
+    ) {
+      if (!currentUserId) {
+        return;
+      }
+
+      let messageContext: { conversationId: string; messageAuthorUserId: string } | null;
+
+      try {
+        messageContext = await loadDmReactionInboxMessageContext(reaction.message_id);
+      } catch (contextError) {
+        console.error("Failed to load DM reaction inbox context:", contextError);
+        return;
+      }
+
+      if (
+        !messageContext ||
+        !shouldApplyDmReactionInboxActivity({
+          currentUserId,
+          messageAuthorUserId: messageContext.messageAuthorUserId,
+          reactorUserId: reaction.user_id,
+        })
+      ) {
+        return;
+      }
+
+      const activity = buildDmInboxReactionActivity({
+        reaction,
+        conversationId: messageContext.conversationId,
+        messageAuthorUserId: messageContext.messageAuthorUserId,
+      });
+
+      let inboxUpdated = false;
+
+      setDmInboxRows((previous) => {
+        const result = applyDmInboxRealtimeReaction(previous, activity);
+        inboxUpdated = result.updated;
+
+        return result.rows;
+      });
+
+      if (!inboxUpdated) {
+        return;
+      }
+
+      if (
+        shouldMarkDmReactionInboxUnread({
+          eventType,
+          currentUserId,
+          messageAuthorUserId: messageContext.messageAuthorUserId,
+          reactorUserId: reaction.user_id,
+        })
+      ) {
+        setUnreadConversationIds((previous) => {
+          const next = new Set(previous);
+          next.add(messageContext.conversationId);
+          return next;
+        });
+      }
+    }
+
+    const channel = supabase
+      .channel("dm-inbox:reactions")
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "message_reactions",
+        },
+        (payload) => {
+          void handleDmReactionInboxActivity(payload.new as DmMessageReaction, "INSERT");
+        },
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "message_reactions",
+        },
+        (payload) => {
+          void handleDmReactionInboxActivity(payload.new as DmMessageReaction, "UPDATE");
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [currentUserId]);
+
   function openConversation(conversationId: string) {
     router.push(buildDmThreadHref(conversationId, { from: "dm" }));
   }
@@ -737,6 +857,7 @@ function DmInboxPageContent() {
       const preview = (
         formatDmInboxMessagePreview(row.latestPreview, {
           bookings: bookingsByConversationId.get(row.conversationId) ?? [],
+          userProfiles,
         }) ?? ""
       ).toLowerCase();
 
@@ -868,6 +989,7 @@ function DmInboxPageContent() {
                     const displayName = getConversationDisplayName(row, otherProfile);
                     const previewText = formatDmInboxMessagePreview(row.latestPreview, {
                       bookings: bookingsByConversationId.get(row.conversationId) ?? [],
+                      userProfiles,
                     });
                     const prefixPreviewWithYou =
                       row.latestMessageUserId === currentUserId &&

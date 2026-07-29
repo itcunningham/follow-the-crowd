@@ -1,3 +1,8 @@
+import {
+  dmInboxReactionActivityToRowFields,
+  parseDmReactionInboxPreview,
+  type DmInboxReactionActivity,
+} from "@/lib/dm/dmReactionInbox";
 import { pickDmInboxPreviewMessage } from "@/lib/dm/messagePreview";
 import type { BookingRequest } from "@/lib/bookingRequests";
 
@@ -169,6 +174,109 @@ export function applyDmInboxRealtimeMessage(
   });
 
   return { rows: sorted, matched: true };
+}
+
+function getInboxActivityTimestampValue(
+  latestActivityAt: string | null | undefined,
+): number {
+  if (!latestActivityAt) {
+    return 0;
+  }
+
+  const timestamp = new Date(latestActivityAt).getTime();
+
+  return Number.isNaN(timestamp) ? 0 : timestamp;
+}
+
+export function mergeDmInboxReactionActivities(
+  rows: DmInboxRow[],
+  activities: Map<string, DmInboxReactionActivity>,
+): DmInboxRow[] {
+  if (activities.size === 0) {
+    return rows;
+  }
+
+  const updated = rows.map((row) => {
+    const activity = activities.get(row.conversationId);
+
+    if (!activity) {
+      return row;
+    }
+
+    const reactionTimestamp = getInboxActivityTimestampValue(activity.activityAt);
+    const rowTimestamp = getInboxActivityTimestampValue(row.latestActivityAt);
+
+    if (reactionTimestamp < rowTimestamp) {
+      return row;
+    }
+
+    return {
+      ...row,
+      ...dmInboxReactionActivityToRowFields(activity),
+    };
+  });
+
+  return sortDmInboxRows(updated);
+}
+
+export function applyDmInboxRealtimeReaction(
+  rows: DmInboxRow[],
+  activity: DmInboxReactionActivity,
+): { rows: DmInboxRow[]; matched: boolean; updated: boolean } {
+  const targetId = normalizeInboxId(activity.conversationId);
+  let matched = false;
+  let updated = false;
+
+  const nextRows = rows.map((row) => {
+    if (normalizeInboxId(row.conversationId) !== targetId) {
+      return row;
+    }
+
+    matched = true;
+
+    const existingReactionPreview = parseDmReactionInboxPreview(row.latestPreview);
+    const reactionTimestamp = getInboxActivityTimestampValue(activity.activityAt);
+    const rowTimestamp = getInboxActivityTimestampValue(row.latestActivityAt);
+    const isSameReaction = existingReactionPreview?.reactionId === activity.reactionId;
+
+    if (
+      isSameReaction &&
+      existingReactionPreview?.emoji === activity.emoji &&
+      reactionTimestamp === rowTimestamp
+    ) {
+      return row;
+    }
+
+    if (isSameReaction) {
+      updated = true;
+
+      return {
+        ...row,
+        ...dmInboxReactionActivityToRowFields(activity),
+      };
+    }
+
+    if (reactionTimestamp < rowTimestamp) {
+      return row;
+    }
+
+    updated = true;
+
+    return {
+      ...row,
+      ...dmInboxReactionActivityToRowFields(activity),
+    };
+  });
+
+  if (!matched || !updated) {
+    return { rows, matched, updated: false };
+  }
+
+  return {
+    rows: sortDmInboxRows(nextRows),
+    matched: true,
+    updated: true,
+  };
 }
 
 export function logInboxRenderOrder(
