@@ -8,6 +8,7 @@ import {
   type DmMessageReaction,
 } from "@/lib/dmReactions";
 import {
+  CHAT_MESSAGE_REACTION_PILL_CLASS,
   CHAT_MESSAGE_REACTIONS_STACK_CLASS,
 } from "@/lib/dm/chatMessageGroupLayout";
 import { useReactionPickerPosition } from "@/lib/dm/useReactionPickerPosition";
@@ -233,14 +234,12 @@ export default function DmMessageReactions({
   reactions,
   currentUserId,
   reacting,
-  isOwnMessage = false,
   onToggleReaction,
   onOpenPicker,
 }: {
   reactions: DmMessageReaction[];
   currentUserId: string | null;
   reacting: boolean;
-  isOwnMessage?: boolean;
   onToggleReaction: (emoji: string) => void;
   onOpenPicker: () => void;
 }) {
@@ -250,46 +249,40 @@ export default function DmMessageReactions({
     return null;
   }
 
-  function reactionChipClass(reactedByCurrentUser: boolean): string {
-    if (reactedByCurrentUser) {
-      return isOwnMessage
-        ? "border-0 bg-ftc-primary text-ftc-bg"
-        : "border-ftc-border-strong bg-ftc-surface text-ftc-text";
-    }
-
-    return "border-ftc-border-subtle bg-ftc-bg-elevated text-ftc-text hover:border-ftc-border-strong";
-  }
-
   return (
-    <div
-      className={`${CHAT_MESSAGE_REACTIONS_STACK_CLASS} ${
-        isOwnMessage ? "justify-end" : "justify-start"
-      }`}
-    >
-      {summaries.map((summary) => (
+    <div className={CHAT_MESSAGE_REACTIONS_STACK_CLASS}>
+      <div className={CHAT_MESSAGE_REACTION_PILL_CLASS}>
+        {summaries.map((summary) => (
+          <button
+            key={summary.emoji}
+            type="button"
+            disabled={reacting}
+            aria-label={`React with ${summary.emoji}`}
+            onClick={() => onToggleReaction(summary.emoji)}
+            className={`inline-flex shrink-0 items-center gap-0.5 rounded-full px-0.5 text-sm transition motion-reduce:transition-none disabled:pointer-events-none ${
+              summary.reactedByCurrentUser
+                ? "bg-ftc-surface/80"
+                : "hover:bg-ftc-surface/50"
+            }`}
+          >
+            <span aria-hidden="true">{summary.emoji}</span>
+            {summary.count > 1 ? (
+              <span className="text-[10px] font-semibold leading-none text-ftc-text-secondary">
+                {summary.count}
+              </span>
+            ) : null}
+          </button>
+        ))}
         <button
-          key={summary.emoji}
           type="button"
+          aria-label="Add reaction"
           disabled={reacting}
-          aria-label={`React with ${summary.emoji}`}
-          onClick={() => onToggleReaction(summary.emoji)}
-          className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs transition motion-reduce:transition-none disabled:pointer-events-none ${reactionChipClass(summary.reactedByCurrentUser)}`}
+          onClick={onOpenPicker}
+          className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] leading-none text-ftc-text-secondary opacity-0 transition hover:bg-ftc-surface/50 hover:text-ftc-text focus-visible:opacity-100 disabled:pointer-events-none sm:group-hover/message:opacity-100"
         >
-          <span>{summary.emoji}</span>
-          {summary.count > 1 ? (
-            <span className="text-[10px] font-semibold text-ftc-text-secondary">{summary.count}</span>
-          ) : null}
+          +
         </button>
-      ))}
-      <button
-        type="button"
-        aria-label="Add reaction"
-        disabled={reacting}
-        onClick={onOpenPicker}
-        className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-ftc-border bg-ftc-bg-elevated/70 text-xs text-ftc-text-secondary opacity-0 transition hover:border-ftc-border-strong hover:text-ftc-text focus-visible:opacity-100 disabled:pointer-events-none sm:group-hover/message:opacity-100"
-      >
-        +
-      </button>
+      </div>
     </div>
   );
 }

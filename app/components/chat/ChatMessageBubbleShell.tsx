@@ -2,19 +2,16 @@
 
 import type { HTMLAttributes, ReactNode, RefObject } from "react";
 import DmMessageReactions, { DmReactionPicker } from "@/app/components/dm/DmMessageReactions";
+import {
+  CHAT_MESSAGE_REACTION_GUTTER_CLASS,
+  resolveMessageReactionsOverlayClass,
+} from "@/lib/dm/chatMessageGroupLayout";
 import { summarizeDmReactions, type DmMessageReaction } from "@/lib/dmReactions";
 
 type BubbleShellHandlers = Omit<HTMLAttributes<HTMLDivElement>, "className" | "children">;
 
-/** Overlay slot — reactions hang from the bubble edge, never in document flow. */
-function resolveMessageReactionsOverlayClass(isOwnMessage: boolean): string {
-  const base = "pointer-events-none absolute bottom-0 z-10 translate-y-1/2";
-
-  return isOwnMessage ? `${base} right-1` : `${base} left-1`;
-}
-
 /**
- * Shared bubble frame: one positioning root sized to the bubble, reactions in an overlay layer.
+ * Shared bubble frame: bubble shell + reserved reaction gutter + absolute overlay pill.
  * Used by DM and group chat so reactions always belong to their parent message.
  */
 export default function ChatMessageBubbleShell({
@@ -51,9 +48,15 @@ export default function ChatMessageBubbleShell({
   children: ReactNode;
 }) {
   const reactionSummaries = summarizeDmReactions(reactions, currentUserId);
+  const hasReactions = reactionSummaries.length > 0;
 
   return (
-    <div ref={pickerAnchorRef} className="inline-flex w-fit max-w-full flex-col">
+    <div
+      ref={pickerAnchorRef}
+      className={`inline-flex w-fit max-w-full flex-col ${
+        hasReactions ? CHAT_MESSAGE_REACTION_GUTTER_CLASS : ""
+      }`.trim()}
+    >
       <div
         className={`relative w-fit max-w-full overflow-visible ${highlightClassName}`.trim()}
       >
@@ -61,13 +64,12 @@ export default function ChatMessageBubbleShell({
           {children}
         </div>
 
-        {reactionSummaries.length > 0 ? (
+        {hasReactions ? (
           <div className={resolveMessageReactionsOverlayClass(isOwnMessage)}>
             <DmMessageReactions
               reactions={reactions}
               currentUserId={currentUserId}
               reacting={reacting}
-              isOwnMessage={isOwnMessage}
               onToggleReaction={onToggleReaction}
               onOpenPicker={onOpenReactionPicker}
             />

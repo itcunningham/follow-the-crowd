@@ -134,6 +134,7 @@ export default function GroupChatMessageBubble({
     groupPosition,
   });
   const bubbleTextClass = resolveChatMessageBubbleTextClass(text);
+  const hasReactions = reactions.length > 0;
 
   const bubbleBlock = (
     <ChatMessageBubbleShell
@@ -180,6 +181,7 @@ export default function GroupChatMessageBubble({
           position: groupPosition,
           isClusterEnd,
           showTimestamp,
+          hasReactions,
         })}
       >
         <IncomingChatMessageLayout
@@ -222,7 +224,9 @@ export default function GroupChatMessageBubble({
           {bubbleBlock}
           <time
             dateTime={createdAt}
-            className="mt-0.5 block px-1 text-[10px] text-ftc-text-muted text-right"
+            className={`mt-0.5 block px-1 text-[10px] text-ftc-text-muted text-right ${
+              showTimestamp ? "" : "sr-only"
+            }`}
           >
             {formatTime(createdAt)}
           </time>

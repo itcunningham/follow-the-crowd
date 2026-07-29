@@ -60,18 +60,22 @@ export const DM_INCOMING_MESSAGE_COLUMN_CLASS =
 export const DM_INCOMING_TIMESTAMP_CLASS =
   "self-start whitespace-nowrap px-0.5 text-[10px] leading-none text-ftc-text-muted";
 
-/** @deprecated Reactions overlay is owned by ChatMessageBubbleShell. */
-export function resolveChatMessageReactionsAnchorClass(isOwnMessage: boolean): string {
-  const base = "pointer-events-none absolute z-10 max-w-[calc(100%+0.75rem)]";
+/** Reserved gutter beneath reacted bubbles — in-flow space so overlays never collide with metadata. */
+export const CHAT_MESSAGE_REACTION_GUTTER_CLASS = "pb-3.5";
 
-  return isOwnMessage
-    ? `${base} top-full right-0 -translate-y-1/2`
-    : `${base} top-full left-0 -translate-y-1/2`;
+/** Overlay anchor — sits below the bubble shell; slight corner overlap only (not message text). */
+export function resolveMessageReactionsOverlayClass(isOwnMessage: boolean): string {
+  const base = "pointer-events-none absolute top-full z-10 -mt-px";
+
+  return isOwnMessage ? `${base} right-1.5` : `${base} left-1.5`;
 }
 
-/** Horizontal reaction chip row — single overlay row, never wraps into pseudo message rows. */
-export const CHAT_MESSAGE_REACTIONS_STACK_CLASS =
-  "pointer-events-auto inline-flex max-w-none flex-nowrap items-center gap-1";
+/** Single Instagram-style pill — emojis stay on one horizontal row inside the overlay. */
+export const CHAT_MESSAGE_REACTION_PILL_CLASS =
+  "inline-flex max-w-none flex-nowrap items-center gap-0.5 rounded-full border border-ftc-border-subtle bg-ftc-bg-elevated px-1.5 py-0.5 shadow-[0_1px_4px_rgba(0,0,0,0.28)]";
+
+/** Interactive controls inside the pill wrapper. */
+export const CHAT_MESSAGE_REACTIONS_STACK_CLASS = "pointer-events-auto";
 
 export function isIncomingClusterEnd(
   groupPosition: ChatMessageGroupPosition,
@@ -161,7 +165,19 @@ function resolveGroupPosition(
 
 function resolveIncomingGroupTightMarginClass(
   position: ChatMessageGroupPosition,
+  hasReactions = false,
 ): string {
+  if (hasReactions) {
+    switch (position) {
+      case "middle":
+        return "-mb-2";
+      case "last":
+        return "-mb-1.5";
+      default:
+        return "";
+    }
+  }
+
   switch (position) {
     case "middle":
       return CHAT_INCOMING_GROUP_TIGHT_MIDDLE_CLASS;
@@ -199,14 +215,16 @@ export function buildChatMessageGroupLayout(
 export function resolveIncomingGroupLiClass({
   position,
   isClusterEnd,
+  hasReactions = false,
 }: {
   position: ChatMessageGroupPosition;
   isClusterEnd: boolean;
   showTimestamp?: boolean;
+  hasReactions?: boolean;
 }): string {
   return [
     "group/message flex justify-start",
-    resolveIncomingGroupTightMarginClass(position),
+    resolveIncomingGroupTightMarginClass(position, hasReactions),
     isClusterEnd ? CHAT_INCOMING_GROUP_CLUSTER_END_CLASS : "",
   ]
     .filter(Boolean)

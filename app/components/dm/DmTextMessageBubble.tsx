@@ -154,6 +154,7 @@ export default function DmTextMessageBubble({
     groupPosition,
   });
   const bubbleTextClass = resolveChatMessageBubbleTextClass(displayText);
+  const hasReactions = reactions.length > 0;
 
   const bubbleBlock = (
     <ChatMessageBubbleShell
@@ -211,6 +212,7 @@ export default function DmTextMessageBubble({
           position: groupPosition,
           isClusterEnd,
           showTimestamp,
+          hasReactions,
         })}
         data-chat-message-id={messageId}
       >
