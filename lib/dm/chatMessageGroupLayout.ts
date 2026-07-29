@@ -60,13 +60,13 @@ export const DM_INCOMING_MESSAGE_COLUMN_CLASS =
 export const DM_INCOMING_TIMESTAMP_CLASS =
   "self-start whitespace-nowrap px-0.5 text-[10px] leading-none text-ftc-text-muted";
 
-/** Absolute anchor — reactions overlap the bubble edge without expanding the message row. */
+/** Absolute anchor — reactions sit on the bubble shell, outside normal message flow. */
 export function resolveChatMessageReactionsAnchorClass(isOwnMessage: boolean): string {
-  const base = "pointer-events-none absolute z-10 max-w-[calc(100%+1rem)]";
+  const base = "pointer-events-none absolute z-10 max-w-[calc(100%+0.75rem)]";
 
   return isOwnMessage
-    ? `${base} bottom-0 right-1 translate-y-1/2`
-    : `${base} bottom-0 left-1 translate-y-1/2`;
+    ? `${base} top-full right-0 -translate-y-1/2`
+    : `${base} top-full left-0 -translate-y-1/2`;
 }
 
 /** Interactive reaction chips inside the anchor wrapper. */
@@ -199,16 +199,15 @@ export function buildChatMessageGroupLayout(
 export function resolveIncomingGroupLiClass({
   position,
   isClusterEnd,
-  showTimestamp,
 }: {
   position: ChatMessageGroupPosition;
   isClusterEnd: boolean;
-  showTimestamp: boolean;
+  showTimestamp?: boolean;
 }): string {
   return [
     "group/message flex justify-start",
     resolveIncomingGroupTightMarginClass(position),
-    isClusterEnd && showTimestamp ? CHAT_INCOMING_GROUP_CLUSTER_END_CLASS : "",
+    isClusterEnd ? CHAT_INCOMING_GROUP_CLUSTER_END_CLASS : "",
   ]
     .filter(Boolean)
     .join(" ");

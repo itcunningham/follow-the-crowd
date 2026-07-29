@@ -5145,7 +5145,7 @@ function testDmMessageReactionGestureInteractions() {
   assert.match(reactionsSource, /disabled:pointer-events-none/);
   assert.match(reactionsSource, /resolveChatMessageReactionsAnchorClass/);
   assert.match(reactionsSource, /CHAT_MESSAGE_REACTIONS_STACK_CLASS/);
-  assert.match(reactionsSource, /pointer-events-none absolute/);
+  assert.match(reactionsSource, /top-full/);
   assert.match(reactionsSource, /border-ftc-border-strong bg-ftc-surface text-ftc-text/);
   assert.doesNotMatch(reactionsSource, /disabled:opacity-50/);
   assert.match(bubbleSource, /useMessageReactionLongPress/);
@@ -5181,6 +5181,8 @@ function testDmMessageReactionGestureInteractions() {
   assert.match(bubbleSource, /showAvatar/);
   assert.match(bubbleSource, /tightWithPrevious/);
   assert.match(bubbleSource, /groupPosition/);
+  assert.match(bubbleSource, /relative w-fit max-w-full/);
+  assert.match(bubbleSource, /ChatProfileAvatarLink/);
   assert.match(bubbleSource, /DmIncomingMessageLayout/);
   assert.doesNotMatch(bubbleSource, /IncomingChatMessageLayout/);
   assert.match(bubbleSource, /DmMessageReactions/);
@@ -5215,6 +5217,8 @@ function testDmMessageReactionGestureInteractions() {
     attachmentSource,
     /if \(isDmImageAttachment\(attachment\.file_type\)\) \{\s*return \(\s*<button/,
   );
+  assert.match(globalsSource, /\.ftc-bubble-other-stack/);
+  assert.match(globalsSource, /\.ftc-bubble-own-stack-middle/);
   assert.match(globalsSource, /\.ftc-dm-message-image-open/);
   assert.match(globalsSource, /-webkit-touch-callout: none;/);
 }
@@ -5258,11 +5262,13 @@ function testChatMessageGroupLayout() {
   assert.match(groupLayoutSource, /CHAT_INCOMING_GROUP_TIGHT_LAST_CLASS/);
   assert.match(groupLayoutSource, /CHAT_INCOMING_ROW_GRID_CLUSTER_END_CLASS/);
   assert.match(groupLayoutSource, /resolveChatMessageReactionsAnchorClass/);
+  assert.match(groupLayoutSource, /top-full/);
   assert.match(groupLayoutSource, /CHAT_INCOMING_BUBBLE_STACK_CLASS/);
   assert.match(groupLayoutSource, /CHAT_MESSAGE_SCROLLER_CLASS/);
   assert.match(groupLayoutSource, /resolveIncomingGroupTightMarginClass/);
   assert.match(groupLayoutSource, /DM_INCOMING_MESSAGE_COLUMN_CLASS/);
   assert.match(dmPageSource, /DmIncomingMessageLayout/);
+  assert.match(dmPageSource, /showAvatar=\{messageGroupLayout\?\.showAvatar/);
   assert.doesNotMatch(dmPageSource, /IncomingChatMessageLayout/);
   assert.doesNotMatch(dmPageSource, /title="Report message"/);
   assert.doesNotMatch(dmPageSource, /submitDmMessageReport/);
@@ -5286,6 +5292,14 @@ function testChatMessageBubbleGeometry() {
   assert.match(
     resolveChatMessageBubbleShellClass({ isOwnMessage: true, text: "a" }),
     /min-w-\[2\.75rem\]/,
+  );
+  assert.match(
+    resolveChatMessageBubbleShellClass({
+      isOwnMessage: true,
+      text: "OK",
+      groupPosition: "middle",
+    }),
+    /ftc-bubble-own-stack-middle/,
   );
   assert.match(
     resolveChatMessageBubbleShellClass({

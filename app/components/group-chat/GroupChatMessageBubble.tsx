@@ -131,39 +131,42 @@ export default function GroupChatMessageBubble({
   const bubbleShellClass = resolveChatMessageBubbleShellClass({
     isOwnMessage,
     text,
+    groupPosition,
   });
   const bubbleTextClass = resolveChatMessageBubbleTextClass(text);
 
   const bubbleBlock = (
-    <div ref={pickerAnchorRef} className={`relative max-w-full ${highlightClass}`}>
-      <div
-        ref={bubbleShellRef}
-        className={bubbleShellClass}
-        onPointerDown={chainPointerHandler(handleDoubleTapPointerDown, handleLongPressPointerDown)}
-        onPointerMove={chainPointerHandler(handleDoubleTapPointerMove, handleLongPressPointerMove)}
-        onPointerUp={chainPointerHandler(handleDoubleTapPointerUp, handleLongPressPointerUp)}
-        onPointerCancel={chainPointerHandler(
-          handleDoubleTapPointerCancel,
-          handleLongPressPointerCancel,
-        )}
-        onContextMenu={handleContextMenu}
-        onDoubleClick={handleDoubleTapDoubleClick}
-        onClickCapture={(event) => {
-          consumeLongPressActivation(event);
-          consumeDoubleTapActivation(event);
-        }}
-      >
-        <p className={bubbleTextClass}>{text}</p>
-      </div>
+    <div ref={pickerAnchorRef} className={`max-w-full ${highlightClass}`}>
+      <div className="relative w-fit max-w-full">
+        <div
+          ref={bubbleShellRef}
+          className={bubbleShellClass}
+          onPointerDown={chainPointerHandler(handleDoubleTapPointerDown, handleLongPressPointerDown)}
+          onPointerMove={chainPointerHandler(handleDoubleTapPointerMove, handleLongPressPointerMove)}
+          onPointerUp={chainPointerHandler(handleDoubleTapPointerUp, handleLongPressPointerUp)}
+          onPointerCancel={chainPointerHandler(
+            handleDoubleTapPointerCancel,
+            handleLongPressPointerCancel,
+          )}
+          onContextMenu={handleContextMenu}
+          onDoubleClick={handleDoubleTapDoubleClick}
+          onClickCapture={(event) => {
+            consumeLongPressActivation(event);
+            consumeDoubleTapActivation(event);
+          }}
+        >
+          <p className={bubbleTextClass}>{text}</p>
+        </div>
 
-      <DmMessageReactions
-        reactions={reactions}
-        currentUserId={currentUserId}
-        reacting={reacting}
-        isOwnMessage={isOwnMessage}
-        onToggleReaction={onToggleReaction}
-        onOpenPicker={onOpenReactionPicker}
-      />
+        <DmMessageReactions
+          reactions={reactions}
+          currentUserId={currentUserId}
+          reacting={reacting}
+          isOwnMessage={isOwnMessage}
+          onToggleReaction={onToggleReaction}
+          onOpenPicker={onOpenReactionPicker}
+        />
+      </div>
 
       <DmReactionPicker
         show={showReactionPicker}

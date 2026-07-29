@@ -1207,6 +1207,38 @@ html {
   color: var(--ftc-color-text-primary);
 }
 
+.ftc-bubble-other-stack {
+  border-radius: 1.125rem;
+  border-bottom-left-radius: 0.625rem;
+  border: 1px solid var(--ftc-color-border-subtle);
+  background: var(--ftc-color-bg-surface);
+  color: var(--ftc-color-text-primary);
+}
+
+.ftc-bubble-other-stack-middle {
+  border-radius: 1rem;
+  border-bottom-left-radius: 0.5rem;
+  border-bottom-right-radius: 1rem;
+  border: 1px solid var(--ftc-color-border-subtle);
+  background: var(--ftc-color-bg-surface);
+  color: var(--ftc-color-text-primary);
+}
+
+.ftc-bubble-own-stack {
+  border-radius: 1.125rem;
+  border-bottom-right-radius: 0.625rem;
+  background: var(--ftc-color-primary);
+  color: var(--ftc-color-text-inverse);
+}
+
+.ftc-bubble-own-stack-middle {
+  border-radius: 1rem;
+  border-bottom-right-radius: 0.5rem;
+  border-bottom-left-radius: 1rem;
+  background: var(--ftc-color-primary);
+  color: var(--ftc-color-text-inverse);
+}
+
 .ftc-seen-label {
   font-size: 0.6875rem;
   font-weight: 500;

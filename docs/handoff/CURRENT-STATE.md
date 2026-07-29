@@ -99,8 +99,9 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 - Booking cards in DMs show **live** event fields from `events` when `event_id` set; expanded card uses compact icon metadata rows (venue/date/time/rate), no event initials thumb, expandable notes, tighter spacing
 - **DM photo picker (2026-07-14):** media icon opens native OS chooser (Photo Library / Take Photo on iOS); no forced camera via `capture`
 - **DM message reactions (2026-07-25):** persistent `React` label removed; press-and-hold (~500ms) or right-click opens existing picker on text/image messages; desktop hover/focus-visible `+` affordance; keyboard-accessible `React to message` button; booking/system cards unchanged; DM image attachments use button open surface (not `<a>`) with scoped `-webkit-touch-callout: none` so iPhone Safari long-press opens FTC picker instead of native link preview; reaction picker no longer uses a full-screen blocking backdrop — outside tap or scroll dismisses it without trapping chat scroll
-- **Chat reaction gestures (2026-07-29):** double-tap ❤️; long-press emoji tray; reactions anchor absolutely to bubble (`resolveChatMessageReactionsAnchorClass`) — not separate list rows; **DM** uses `DmIncomingMessageLayout`; **group chat** keeps `IncomingChatMessageLayout` with avatar column
-- **Chat bubble geometry (2026-07-29):** text bubbles use `w-fit max-w-full`; compact padding `px-3.5 py-[0.4375rem]`, standard `px-4 py-2.5`; slightly softened `.ftc-bubble-own` / `.ftc-bubble-other` radii; bubble overlay add-reaction + removed (prevents flash during optimistic toggle)
+- **Chat reaction gestures (2026-07-29):** double-tap ❤️; long-press emoji tray; reactions anchor absolutely to bubble shell via inner `relative w-fit` wrapper + `top-full` (`resolveChatMessageReactionsAnchorClass`) — not separate list rows; **DM** uses `DmIncomingMessageLayout` with reserved 3rem avatar column (avatar on cluster end only, timestamp under avatar); **group chat** keeps `IncomingChatMessageLayout` with sender labels
+- **DM message grouping (2026-07-29):** consecutive same-sender text bubbles group via `buildChatMessageGroupLayout` (no time threshold — grouping is sender-only; 5 min gap rule applies to timestamps via `buildDmConversationTimestampLayout`); stacked bubbles use `ftc-bubble-*-stack` connected-corner classes; in-group tight spacing via flex-col-reverse negative margins; cluster-end margin between sender groups
+- **Chat bubble geometry (2026-07-29):** text bubbles use `w-fit max-w-full`; compact padding `px-3.5 py-[0.4375rem]`, standard `px-4 py-2.5`; `.ftc-bubble-own` / `.ftc-bubble-other` tail radii + grouped stack variants; bubble overlay add-reaction + removed (prevents flash during optimistic toggle)
 - **DM message report (2026-07-29):** desktop right-click/long-press opens reaction picker only; per-message Report modal removed from DM chat page (Report user remains in conversation details panel)
 - **Mobile bottom nav + keyboard (2026-07-21):** on viewports below `md`, text-field focus latches a keyboard session from `visualViewport` height gap; nav stays hidden while focused (including iOS scroll) until height gap shows dismissal or focus leaves; offset padding clears with the bar
 - **DM header (2026-07-29):** private beta removes three-dot overflow menu and profile action sheet from conversation header; profile via avatar link unchanged; per-message report modal and block status/banner logic retained in codebase
@@ -285,6 +286,8 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `TBD` — DM beta polish: grouped avatars, anchored reactions, connected bubble corners
+- `c9ac8c0` — anchor message reactions to bubbles with absolute positioning
 - `2adfe46` — split DM incoming layout from group chat sender-aware layout
 - `329cb89` — DM/group chat composer: Return inserts newline; auto-grow textarea; Send only via button
 - `aaeade9` — remove dead Report prop; unify booking-card incoming group classes

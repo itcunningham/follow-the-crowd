@@ -2008,8 +2008,19 @@ export default function DmChatPage() {
                           conversationTimestampLayout.get(message.id)?.showTimestamp ??
                           true
                         }
+                        showAvatar={messageGroupLayout?.showAvatar ?? true}
                         createdAt={message.created_at}
                         formattedTime={formatMessageTime(message.created_at)}
+                        avatar={
+                          otherUserId ? (
+                            <ChatProfileAvatarLink
+                              userId={otherUserId}
+                              name={otherUserLabel}
+                              avatarUrl={otherUserProfile?.avatar_url}
+                              returnTo={chatReturnTo}
+                            />
+                          ) : null
+                        }
                       >
                         <BookingCardFocusRing phase={bookingFocusPhase}>
                           {highlightClassName ? (
