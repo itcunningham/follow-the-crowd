@@ -5170,8 +5170,10 @@ function testDmMessageReactionGestureInteractions() {
   assert.doesNotMatch(reactionsSource, /resolveChatMessageReactionsAnchorClass/);
   assert.match(reactionsSource, /CHAT_MESSAGE_REACTION_PILL_CLASS/);
   assert.match(reactionsSource, /hidden h-3\.5/);
-  assert.match(groupLayoutSource, /CHAT_MESSAGE_REACTION_SLOT_CLASS/);
-  assert.match(groupLayoutSource, /top-full z-10 flex -mt-2\.5/);
+  assert.match(groupLayoutSource, /CHAT_MESSAGE_REACTION_SLOT_BASE_CLASS/);
+  assert.match(groupLayoutSource, /CHAT_MESSAGE_REACTION_SLOT_OVERLAP_CLASS = "-mt-3"/);
+  assert.match(groupLayoutSource, /CHAT_MESSAGE_REACTION_SLOT_OUTGOING_CLASS = "left-0"/);
+  assert.match(groupLayoutSource, /CHAT_MESSAGE_REACTION_SLOT_INCOMING_CLASS = "right-0"/);
   assert.match(groupLayoutSource, /CHAT_MESSAGE_BUBBLE_FRAME_CLASS/);
   assert.match(groupLayoutSource, /resolveMessageReactionSlotClass/);
   assert.doesNotMatch(groupLayoutSource, /FOOTER_OUTGOING_CLASS = "justify-end"/);
@@ -5360,7 +5362,7 @@ function testChatMessageGroupLayout() {
       isClusterEnd: true,
       followedByTimeSeparator: false,
     }),
-    new RegExp(CHAT_LIST_ITEM_WITHIN_GROUP_SPACING_CLASS),
+    new RegExp(CHAT_LIST_ITEM_CLUSTER_END_SPACING_CLASS),
   );
   assert.match(
     resolveMessageGroupLiClass({
@@ -5369,7 +5371,7 @@ function testChatMessageGroupLayout() {
       isClusterEnd: false,
       followedByTimeSeparator: false,
     }),
-    new RegExp(CHAT_LIST_ITEM_CLUSTER_END_SPACING_CLASS),
+    new RegExp(CHAT_LIST_ITEM_WITHIN_GROUP_SPACING_CLASS),
   );
   assert.match(
     resolveMessageGroupLiClass({

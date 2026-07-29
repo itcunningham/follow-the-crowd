@@ -97,7 +97,7 @@ export default function ChatMessageBubbleShell({
         </div>
 
         {reactionRowMounted ? (
-          <div className={resolveMessageReactionSlotClass()}>
+          <div className={resolveMessageReactionSlotClass(isOwnMessage)}>
             <DmMessageReactions
               reactions={reactions}
               currentUserId={currentUserId}

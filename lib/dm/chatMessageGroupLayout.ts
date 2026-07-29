@@ -158,12 +158,25 @@ export const CHAT_MESSAGE_REACTIONS_STACK_CLASS = "pointer-events-auto";
 export const CHAT_MESSAGE_BUBBLE_FRAME_CLASS = "relative w-fit max-w-full";
 
 /**
- * Reaction slot — absolutely anchored to the bubble's lower-left corner.
- * `top-full` + overlap margin places the pill on the corner without contributing
- * to list-item height (Instagram: reactions never affect stack rhythm).
+ * Reaction slot base — anchored to bubble bottom edge; horizontal + overlap are
+ * separate tokens so every message shape shares one overlap value.
  */
-export const CHAT_MESSAGE_REACTION_SLOT_CLASS =
-  "pointer-events-none absolute left-0 top-full z-10 flex -mt-2.5";
+export const CHAT_MESSAGE_REACTION_SLOT_BASE_CLASS =
+  "pointer-events-none absolute top-full z-10 flex";
+
+/** Overlap ≈ 70% of pill height (h-3.5) — hugs corner, minimal gap invasion. */
+export const CHAT_MESSAGE_REACTION_SLOT_OVERLAP_CLASS = "-mt-3";
+
+export const CHAT_MESSAGE_REACTION_SLOT_OUTGOING_CLASS = "left-0";
+
+export const CHAT_MESSAGE_REACTION_SLOT_INCOMING_CLASS = "right-0";
+
+/** @deprecated Compose via resolveMessageReactionSlotClass. */
+export const CHAT_MESSAGE_REACTION_SLOT_CLASS = [
+  CHAT_MESSAGE_REACTION_SLOT_BASE_CLASS,
+  CHAT_MESSAGE_REACTION_SLOT_OVERLAP_CLASS,
+  CHAT_MESSAGE_REACTION_SLOT_OUTGOING_CLASS,
+].join(" ");
 
 /** @deprecated Reactions are absolutely positioned — no in-flow footer. */
 export const CHAT_MESSAGE_REACTION_FOOTER_BASE_CLASS = CHAT_MESSAGE_REACTION_SLOT_CLASS;
@@ -219,8 +232,14 @@ export function resolveSeenLabelSpacingClass(hasReactions: boolean): string {
     : CHAT_SEEN_LABEL_SPACING_CLASS;
 }
 
-export function resolveMessageReactionSlotClass(_isOwnMessage?: boolean): string {
-  return CHAT_MESSAGE_REACTION_SLOT_CLASS;
+export function resolveMessageReactionSlotClass(isOwnMessage = false): string {
+  return [
+    CHAT_MESSAGE_REACTION_SLOT_BASE_CLASS,
+    CHAT_MESSAGE_REACTION_SLOT_OVERLAP_CLASS,
+    isOwnMessage
+      ? CHAT_MESSAGE_REACTION_SLOT_OUTGOING_CLASS
+      : CHAT_MESSAGE_REACTION_SLOT_INCOMING_CLASS,
+  ].join(" ");
 }
 
 /** @deprecated Use resolveMessageReactionSlotClass. */
@@ -269,12 +288,17 @@ function resolveMessageListItemSpacingClass({
     return CHAT_LIST_ITEM_CLUSTER_END_BEFORE_TIMESTAMP_SPACING_CLASS;
   }
 
-  // Within a sender group, every message except the oldest uses uniform tight spacing.
-  if (position === "middle" || position === "last") {
+  // Same-sender stack — uniform tight gap for every non-terminal group position.
+  if (position === "first" || position === "middle") {
     return CHAT_LIST_ITEM_WITHIN_GROUP_SPACING_CLASS;
   }
 
-  // Cluster boundary — standalone or oldest in group (faces a different sender above).
+  // Newest in group — margin opens toward the next sender / timestamp below.
+  if (position === "last") {
+    return CHAT_LIST_ITEM_CLUSTER_END_SPACING_CLASS;
+  }
+
+  // Standalone — cluster boundary toward a different sender above.
   if (precededByTimeSeparator) {
     return CHAT_LIST_ITEM_CLUSTER_START_AFTER_TIMESTAMP_SPACING_CLASS;
   }
