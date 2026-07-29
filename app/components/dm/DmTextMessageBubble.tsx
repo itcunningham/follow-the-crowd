@@ -56,6 +56,7 @@ export default function DmTextMessageBubble({
   showSeen = false,
   showAvatar = true,
   groupPosition = "standalone",
+  previousInGroupHadReactions = false,
 }: {
   messageId: string;
   text: string;
@@ -79,6 +80,7 @@ export default function DmTextMessageBubble({
   showSeen?: boolean;
   showAvatar?: boolean;
   groupPosition?: ChatMessageGroupPosition;
+  previousInGroupHadReactions?: boolean;
 }) {
   const trimmedText = text.trim();
   const displayText = formatBookingMessagePreview(trimmedText);
@@ -148,9 +150,7 @@ export default function DmTextMessageBubble({
     groupPosition,
   });
   const bubbleTextClass = resolveChatMessageBubbleTextClass(displayText);
-  const hasReactions = reactions.length > 0;
   const isClusterEnd = showAvatar;
-  const shellLayout = !isOwnMessage && isClusterEnd && hasReactions ? "grid-participant" : "stacked";
 
   const bubbleBlock = (
     <ChatMessageBubbleShell
@@ -159,7 +159,6 @@ export default function DmTextMessageBubble({
       bubbleShellClassName={bubbleShellClass}
       highlightClassName={highlightClass}
       isOwnMessage={isOwnMessage}
-      layout={shellLayout}
       reactions={reactions}
       currentUserId={currentUserId}
       reacting={reacting}
@@ -207,6 +206,7 @@ export default function DmTextMessageBubble({
           isOwnMessage: false,
           position: groupPosition,
           isClusterEnd,
+          previousInGroupHadReactions,
         })}
         data-chat-message-id={messageId}
       >
@@ -214,7 +214,6 @@ export default function DmTextMessageBubble({
           className={rowMaxWidthClass}
           groupPosition={groupPosition}
           showAvatar={showAvatar}
-          shellLayout={shellLayout}
           createdAt={createdAt}
           formattedTime={formattedTime}
           avatar={
@@ -240,6 +239,7 @@ export default function DmTextMessageBubble({
         isOwnMessage: true,
         position: groupPosition,
         isClusterEnd,
+        previousInGroupHadReactions,
       })}
       data-chat-message-id={messageId}
     >
@@ -250,13 +250,7 @@ export default function DmTextMessageBubble({
             {formattedTime}
           </time>
           {showSeen ? (
-            <p
-              className={`ftc-seen-label self-end text-right ${
-                hasReactions ? "mt-1" : "mt-0.5"
-              }`}
-            >
-              Seen
-            </p>
+            <p className="ftc-seen-label mt-0.5 self-end text-right">Seen</p>
           ) : null}
         </div>
       </div>

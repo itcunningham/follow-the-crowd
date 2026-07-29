@@ -61,8 +61,7 @@ import {
   buildChatMessageGroupLayout,
   CHAT_MESSAGE_LIST_CLASS,
   CHAT_MESSAGE_SCROLLER_CLASS,
-  resolveIncomingGroupLiClass,
-  resolveOutgoingGroupLiClass,
+  resolveMessageGroupLiClass,
 } from "@/lib/dm/chatMessageGroupLayout";
 import { parseDmThreadEntryContext, resolveDmThreadBackHref } from "@/lib/dm/threadNavigation";
 import { useFixedChatPageDocumentReset } from "@/lib/navigation/useFixedChatPageDocumentReset";
@@ -174,6 +173,25 @@ function wrapWithTimeSeparator(
       ) : null}
     </Fragment>
   );
+}
+
+function resolvePreviousInGroupHadReactions(
+  messageId: string,
+  visualAboveMessageId: string | undefined,
+  groupLayout: Map<string, { tightWithPrevious: boolean }>,
+  reactionsForMessage: (id: string) => readonly unknown[],
+): boolean {
+  if (!visualAboveMessageId) {
+    return false;
+  }
+
+  const currentLayout = groupLayout.get(messageId);
+
+  if (!currentLayout?.tightWithPrevious) {
+    return false;
+  }
+
+  return reactionsForMessage(visualAboveMessageId).length > 0;
 }
 
 function getConversationTitle(otherUserProfile: UserAvatarProfile) {
@@ -1734,7 +1752,7 @@ export default function DmChatPage() {
           </div>
         ) : (
           <ul data-chat-content-root className={CHAT_MESSAGE_LIST_CLASS}>
-            {reversedMessages.map((message) => {
+            {reversedMessages.map((message, reversedIndex) => {
               if (
                 isBookingActivityDmMessage(message.text) &&
                 parseEventCancellationActivityEventName(message.text)
@@ -1784,6 +1802,13 @@ export default function DmChatPage() {
               if (!isBookingMessage) {
                 const messageTimestampLayout = conversationTimestampLayout.get(message.id);
                 const messageGroupLayout = chatMessageGroupLayout.get(message.id);
+                const visualAboveMessage = reversedMessages[reversedIndex + 1];
+                const previousInGroupHadReactions = resolvePreviousInGroupHadReactions(
+                  message.id,
+                  visualAboveMessage?.id,
+                  chatMessageGroupLayout,
+                  (messageId) => reactionsByMessageId.get(messageId) ?? [],
+                );
 
                 return wrapWithTimeSeparator(
                   message.id,
@@ -1815,6 +1840,7 @@ export default function DmChatPage() {
                     showSeen={shouldShowSeenOnMessage(message.id, message.created_at)}
                     showAvatar={messageGroupLayout?.showAvatar ?? true}
                     groupPosition={messageGroupLayout?.position ?? "standalone"}
+                    previousInGroupHadReactions={previousInGroupHadReactions}
                   />,
                   messageTimestampLayout,
                 );
@@ -1892,6 +1918,13 @@ export default function DmChatPage() {
                 const actionRequired = isDmBookingActionRequired(resolvedBooking, eventCancelled);
                 const isBookingExpanded = expandedBookingIds.has(bookingExpansionKey);
                 const messageGroupLayout = chatMessageGroupLayout.get(message.id);
+                const visualAboveMessage = reversedMessages[reversedIndex + 1];
+                const previousInGroupHadReactions = resolvePreviousInGroupHadReactions(
+                  message.id,
+                  visualAboveMessage?.id,
+                  chatMessageGroupLayout,
+                  (messageId) => reactionsByMessageId.get(messageId) ?? [],
+                );
 
                 const bookingCard = (
                   <BookingRequestCard
@@ -1989,14 +2022,12 @@ export default function DmChatPage() {
                   <li
                     data-chat-message-id={message.id}
                     {...(bookingId ? { [CHAT_BOOKING_REQUEST_ID_ATTR]: bookingId } : {})}
-                    className={
-                      isOwnMessage
-                        ? "flex justify-end"
-                        : resolveIncomingGroupLiClass({
-                            position: messageGroupLayout?.position ?? "standalone",
-                            isClusterEnd: messageGroupLayout?.showAvatar ?? true,
-                          })
-                    }
+                    className={resolveMessageGroupLiClass({
+                      isOwnMessage,
+                      position: messageGroupLayout?.position ?? "standalone",
+                      isClusterEnd: messageGroupLayout?.showAvatar ?? true,
+                      previousInGroupHadReactions,
+                    })}
                   >
                     {isOwnMessage ? (
                       <div className="flex max-w-[92%] items-end gap-2 sm:max-w-[80%] flex-row-reverse">

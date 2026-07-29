@@ -1,5 +1,7 @@
 "use client";
 
+import { CHAT_TIME_SEPARATOR_SPACING_CLASS } from "@/lib/dm/chatMessageGroupLayout";
+
 /** Centred timestamp between conversation time clusters (Instagram-style). */
 export default function DmChatTimeSeparator({
   dateTime,
@@ -11,7 +13,7 @@ export default function DmChatTimeSeparator({
   return (
     <li
       aria-hidden={false}
-      className="flex w-full list-none justify-center px-4 py-2"
+      className={`flex w-full list-none justify-center px-4 ${CHAT_TIME_SEPARATOR_SPACING_CLASS}`}
       data-chat-time-separator
     >
       <time

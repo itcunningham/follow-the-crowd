@@ -5163,12 +5163,16 @@ function testDmMessageReactionGestureInteractions() {
   assert.match(reactionsSource, /CHAT_MESSAGE_REACTION_PILL_VISIBLE_CLASS/);
   assert.match(reactionsSource, /CHAT_MESSAGE_REACTION_PILL_HIDDEN_CLASS/);
   assert.match(groupLayoutSource, /CHAT_MESSAGE_REACTION_PILL_ANIMATION_MS/);
-  assert.match(groupLayoutSource, /h-2\.5/);
-  assert.match(groupLayoutSource, /bottom-0/);
-  assert.match(groupLayoutSource, /translate-y-1\/2/);
-  assert.match(shellSource, /grid-participant/);
+  assert.match(groupLayoutSource, /resolveMessageReactionRowClass/);
+  assert.match(groupLayoutSource, /CHAT_LIST_ITEM_WITHIN_GROUP_SPACING_CLASS/);
+  assert.match(groupLayoutSource, /CHAT_LIST_ITEM_AFTER_REACTION_SPACING_CLASS/);
+  assert.match(groupLayoutSource, /CHAT_LIST_ITEM_CLUSTER_END_SPACING_CLASS/);
+  assert.match(groupLayoutSource, /CHAT_TIME_SEPARATOR_SPACING_CLASS/);
+  assert.match(groupLayoutSource, /gap-0/);
+  assert.match(shellSource, /resolveMessageReactionRowClass/);
   assert.match(shellSource, /useReactionOverlayLifecycle/);
-  assert.match(shellSource, /reactionOverlayVisible/);
+  assert.match(shellSource, /reactionRowVisible/);
+  assert.doesNotMatch(shellSource, /grid-participant/);
   assert.doesNotMatch(reactionsSource, /bg-ftc-primary/);
   assert.doesNotMatch(reactionsSource, /isOwnMessage/);
   assert.doesNotMatch(reactionsSource, /disabled:opacity-50/);
@@ -5207,7 +5211,8 @@ function testDmMessageReactionGestureInteractions() {
   assert.match(bubbleSource, /showAvatar/);
   assert.match(bubbleSource, /groupPosition/);
   assert.match(bubbleSource, /resolveMessageGroupLiClass/);
-  assert.match(bubbleSource, /layout=\{shellLayout\}/);
+  assert.match(bubbleSource, /previousInGroupHadReactions/);
+  assert.doesNotMatch(bubbleSource, /layout=\{shellLayout\}/);
   assert.match(bubbleSource, /ChatMessageBubbleShell/);
   assert.match(bubbleSource, /ChatProfileAvatarLink/);
   assert.match(bubbleSource, /DmIncomingMessageLayout/);
@@ -5307,30 +5312,25 @@ function testChatMessageGroupLayout() {
     new URL("../lib/dm/chatMessageGroupLayout.ts", import.meta.url),
     "utf8",
   );
-  const incomingLayoutSource = readFileSync(
-    new URL("../app/components/chat/DmIncomingMessageLayout.tsx", import.meta.url),
-    "utf8",
-  );
   const dmPageSource = readFileSync(
     new URL("../app/dm/[conversationId]/page.tsx", import.meta.url),
     "utf8",
   );
 
-  assert.match(groupLayoutSource, /CHAT_INCOMING_GROUP_TIGHT_MIDDLE_CLASS/);
-  assert.match(groupLayoutSource, /CHAT_INCOMING_GROUP_TIGHT_LAST_CLASS/);
-  assert.match(incomingLayoutSource, /useReactionGutterRow/);
-  assert.match(incomingLayoutSource, /shellLayout === "grid-participant"/);
-  assert.match(groupLayoutSource, /CHAT_MESSAGE_REACTION_GUTTER_CLASS/);
+  assert.match(groupLayoutSource, /CHAT_LIST_ITEM_WITHIN_GROUP_SPACING_CLASS/);
+  assert.match(groupLayoutSource, /CHAT_LIST_ITEM_CLUSTER_END_SPACING_CLASS/);
+  assert.match(groupLayoutSource, /previousInGroupHadReactions/);
   assert.match(groupLayoutSource, /CHAT_MESSAGE_REACTION_PILL_CLASS/);
   assert.match(groupLayoutSource, /resolveMessageGroupLiClass/);
   assert.match(groupLayoutSource, /resolveOutgoingGroupLiClass/);
   assert.match(groupLayoutSource, /gap-x-1/);
-  assert.match(groupLayoutSource, /h-2\.5/);
+  assert.match(groupLayoutSource, /gap-0/);
+  assert.match(groupLayoutSource, /CHAT_TIME_SEPARATOR_SPACING_CLASS/);
   assert.match(groupLayoutSource, /DM_CHAT_MEANINGFUL_TIME_GAP_MS/);
-  assert.match(groupLayoutSource, /CHAT_INCOMING_BUBBLE_STACK_CLASS/);
   assert.match(groupLayoutSource, /CHAT_MESSAGE_SCROLLER_CLASS/);
-  assert.match(groupLayoutSource, /resolveIncomingGroupTightMarginClass/);
   assert.match(groupLayoutSource, /DM_INCOMING_MESSAGE_COLUMN_CLASS/);
+  assert.match(dmPageSource, /resolvePreviousInGroupHadReactions/);
+  assert.match(dmPageSource, /previousInGroupHadReactions/);
   assert.match(dmPageSource, /DmIncomingMessageLayout/);
   assert.match(dmPageSource, /showAvatar=\{messageGroupLayout\?\.showAvatar/);
   assert.doesNotMatch(dmPageSource, /IncomingChatMessageLayout/);
