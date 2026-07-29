@@ -152,27 +152,29 @@ export const CHAT_MESSAGE_REACTION_EMOJI_BUTTON_CLASS =
 export const CHAT_MESSAGE_REACTIONS_STACK_CLASS = "pointer-events-auto";
 
 /**
- * In-flow reaction footer — real-height row directly below the bubble inside the
- * bubble frame. Negative top margin overlaps the lower-left corner (~half pill
- * height). Instagram attaches reactions to the bubble's lower-left for every
- * message direction — never mirrored to the trailing edge.
+ * Bubble frame — positioning context for the reaction slot (zero document-flow height).
  */
-export const CHAT_MESSAGE_REACTION_FOOTER_BASE_CLASS =
-  "pointer-events-none relative z-10 -mt-1.5 flex w-full shrink-0";
+export const CHAT_MESSAGE_BUBBLE_FRAME_CLASS = "relative w-fit max-w-full";
 
-/** Lower-left corner — same for incoming and outgoing (Instagram geometry). */
-export const CHAT_MESSAGE_REACTION_FOOTER_ALIGN_CLASS = "justify-start";
+/**
+ * Reaction slot — absolutely anchored to the bubble's lower-left corner.
+ * `top-full` + overlap margin places the pill on the corner without contributing
+ * to list-item height (Instagram: reactions never affect stack rhythm).
+ */
+export const CHAT_MESSAGE_REACTION_SLOT_CLASS =
+  "pointer-events-none absolute left-0 top-full z-10 flex -mt-2.5";
 
-/** Bubble frame aligns footer to the bubble's leading edge — not the row edge. */
-export const CHAT_MESSAGE_BUBBLE_FRAME_CLASS = "flex w-fit max-w-full flex-col items-start";
+/** @deprecated Reactions are absolutely positioned — no in-flow footer. */
+export const CHAT_MESSAGE_REACTION_FOOTER_BASE_CLASS = CHAT_MESSAGE_REACTION_SLOT_CLASS;
 
-/** @deprecated Instagram uses lower-left for all directions. */
-export const CHAT_MESSAGE_REACTION_FOOTER_OUTGOING_CLASS =
-  CHAT_MESSAGE_REACTION_FOOTER_ALIGN_CLASS;
+/** @deprecated */
+export const CHAT_MESSAGE_REACTION_FOOTER_ALIGN_CLASS = "";
 
-/** @deprecated Instagram uses lower-left for all directions. */
-export const CHAT_MESSAGE_REACTION_FOOTER_INCOMING_CLASS =
-  CHAT_MESSAGE_REACTION_FOOTER_ALIGN_CLASS;
+/** @deprecated */
+export const CHAT_MESSAGE_REACTION_FOOTER_OUTGOING_CLASS = "";
+
+/** @deprecated */
+export const CHAT_MESSAGE_REACTION_FOOTER_INCOMING_CLASS = "";
 
 /** @deprecated Zero-height hanger replaced by in-flow footer with real height. */
 export const CHAT_MESSAGE_REACTION_HANGER_BASE_CLASS =
@@ -216,10 +218,13 @@ export function resolveSeenLabelSpacingClass(hasReactions: boolean): string {
     : CHAT_SEEN_LABEL_SPACING_CLASS;
 }
 
-export function resolveMessageReactionFooterClass(_isOwnMessage?: boolean): string {
-  return [CHAT_MESSAGE_REACTION_FOOTER_BASE_CLASS, CHAT_MESSAGE_REACTION_FOOTER_ALIGN_CLASS].join(
-    " ",
-  );
+export function resolveMessageReactionSlotClass(_isOwnMessage?: boolean): string {
+  return CHAT_MESSAGE_REACTION_SLOT_CLASS;
+}
+
+/** @deprecated Use resolveMessageReactionSlotClass. */
+export function resolveMessageReactionFooterClass(isOwnMessage?: boolean): string {
+  return resolveMessageReactionSlotClass(isOwnMessage);
 }
 
 /** @deprecated Use resolveMessageReactionFooterClass. */
@@ -250,32 +255,29 @@ export function isIncomingClusterEnd(
 
 function resolveMessageListItemSpacingClass({
   position,
-  isClusterEnd,
   followedByTimeSeparator,
   precededByTimeSeparator,
 }: {
   position: ChatMessageGroupPosition;
-  isClusterEnd: boolean;
   followedByTimeSeparator: boolean;
   precededByTimeSeparator: boolean;
 }): string {
-  if (isClusterEnd) {
-    if (followedByTimeSeparator) {
-      return CHAT_LIST_ITEM_CLUSTER_END_BEFORE_TIMESTAMP_SPACING_CLASS;
-    }
-
-    if (precededByTimeSeparator) {
-      return CHAT_LIST_ITEM_CLUSTER_START_AFTER_TIMESTAMP_SPACING_CLASS;
-    }
-
-    return CHAT_LIST_ITEM_CLUSTER_END_SPACING_CLASS;
-  }
-
+  // flex-col-reverse: margin-bottom opens toward the visually older sibling above.
+  // Within a sender group, every message except the oldest uses uniform tight spacing.
   if (position === "middle" || position === "last") {
     return CHAT_LIST_ITEM_WITHIN_GROUP_SPACING_CLASS;
   }
 
-  return "";
+  // Cluster boundary — standalone or oldest in group (faces a different sender above).
+  if (followedByTimeSeparator) {
+    return CHAT_LIST_ITEM_CLUSTER_END_BEFORE_TIMESTAMP_SPACING_CLASS;
+  }
+
+  if (precededByTimeSeparator) {
+    return CHAT_LIST_ITEM_CLUSTER_START_AFTER_TIMESTAMP_SPACING_CLASS;
+  }
+
+  return CHAT_LIST_ITEM_CLUSTER_END_SPACING_CLASS;
 }
 
 /** Shared list-item spacing for incoming and outgoing DM bubbles. */
@@ -299,7 +301,6 @@ export function resolveMessageGroupLiClass({
     isOwnMessage ? "justify-end" : "justify-start",
     resolveMessageListItemSpacingClass({
       position,
-      isClusterEnd,
       followedByTimeSeparator,
       precededByTimeSeparator,
     }),

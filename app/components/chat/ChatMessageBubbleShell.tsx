@@ -4,9 +4,9 @@ import { useEffect, useState } from "react";
 import type { HTMLAttributes, ReactNode, RefObject } from "react";
 import DmMessageReactions, { DmReactionPicker } from "@/app/components/dm/DmMessageReactions";
 import {
-  CHAT_MESSAGE_REACTION_PILL_ANIMATION_MS,
   CHAT_MESSAGE_BUBBLE_FRAME_CLASS,
-  resolveMessageReactionFooterClass,
+  CHAT_MESSAGE_REACTION_PILL_ANIMATION_MS,
+  resolveMessageReactionSlotClass,
 } from "@/lib/dm/chatMessageGroupLayout";
 import { summarizeDmReactions, type DmMessageReaction } from "@/lib/dmReactions";
 
@@ -49,9 +49,9 @@ function useReactionOverlayLifecycle(
 }
 
 /**
- * Message unit (Instagram-style): bubble frame owns bubble + in-flow reaction footer.
- * The footer contributes real height so each reacted message reserves its own space;
- * overlap is structural (negative margin on footer), not absolute positioning.
+ * Message unit: bubble frame with absolutely positioned reaction slot on the
+ * lower-left corner. Reactions are out of document flow — stack spacing comes
+ * only from resolveMessageGroupLiClass position tokens.
  */
 export default function ChatMessageBubbleShell({
   bubbleShellRef,
@@ -97,7 +97,7 @@ export default function ChatMessageBubbleShell({
         </div>
 
         {reactionRowMounted ? (
-          <div className={resolveMessageReactionFooterClass()}>
+          <div className={resolveMessageReactionSlotClass()}>
             <DmMessageReactions
               reactions={reactions}
               currentUserId={currentUserId}
