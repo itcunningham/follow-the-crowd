@@ -76,7 +76,6 @@ export default function DmTextMessageBubble({
   onToggleReaction: (emoji: string) => void;
   onOpenReactionPicker: () => void;
   onCloseReactionPicker: () => void;
-  onReportMessage?: () => void;
   formatTime: (timestamp: string) => string;
   isHighlighted?: boolean;
   showSeen?: boolean;

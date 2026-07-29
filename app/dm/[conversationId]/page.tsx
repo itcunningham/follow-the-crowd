@@ -58,9 +58,8 @@ import {
 } from "@/lib/dm/dmChatTimestampVisibility";
 import {
   buildChatMessageGroupLayout,
-  CHAT_INCOMING_GROUP_CLUSTER_END_CLASS,
   CHAT_INCOMING_GROUP_FOOTER_CLASS,
-  CHAT_INCOMING_GROUP_TIGHT_PREVIOUS_CLASS,
+  resolveIncomingGroupLiClass,
 } from "@/lib/dm/chatMessageGroupLayout";
 import { parseDmThreadEntryContext, resolveDmThreadBackHref } from "@/lib/dm/threadNavigation";
 import { useFixedChatPageDocumentReset } from "@/lib/navigation/useFixedChatPageDocumentReset";
@@ -2001,17 +2000,17 @@ export default function DmChatPage() {
                     key={message.id}
                     data-chat-message-id={message.id}
                     {...(bookingId ? { [CHAT_BOOKING_REQUEST_ID_ATTR]: bookingId } : {})}
-                    className={`flex ${isOwnMessage ? "justify-end" : "justify-start"} ${
-                      !isOwnMessage && (messageGroupLayout?.tightWithPrevious ?? false)
-                        ? CHAT_INCOMING_GROUP_TIGHT_PREVIOUS_CLASS
-                        : ""
-                    } ${
-                      !isOwnMessage &&
-                      (messageGroupLayout?.showAvatar ?? true) &&
-                      (conversationTimestampLayout.get(message.id)?.showTimestamp ?? true)
-                        ? CHAT_INCOMING_GROUP_CLUSTER_END_CLASS
-                        : ""
-                    }`}
+                    className={
+                      isOwnMessage
+                        ? "flex justify-end"
+                        : resolveIncomingGroupLiClass({
+                            tightWithPrevious: messageGroupLayout?.tightWithPrevious ?? false,
+                            isClusterEnd: messageGroupLayout?.showAvatar ?? true,
+                            showTimestamp:
+                              conversationTimestampLayout.get(message.id)?.showTimestamp ??
+                              true,
+                          })
+                    }
                   >
                     {isOwnMessage ? (
                       <div className="flex max-w-[92%] items-end gap-2 sm:max-w-[80%] flex-row-reverse">
