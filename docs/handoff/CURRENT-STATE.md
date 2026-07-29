@@ -287,7 +287,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
-- `TBD` — Final reaction attachment polish
+- `d94af60` — Final reaction attachment polish
 - `54848dc` — Final visual polish for reaction badge
 - `a4c8723` — Final polish for message spacing and reaction badge consistency
 - `7d705ce` — Polish reaction spacing to preserve compact message stacks
