@@ -114,6 +114,7 @@ import {
   CHAT_LIST_ITEM_WITHIN_GROUP_SPACING_CLASS,
   resolveMessageGroupLiClass,
 } from "../lib/dm/chatMessageGroupLayout";
+import { buildDmReactionNotificationBody } from "../lib/dm/dmReactionNotifications";
 import {
   canComposerInsertNewline,
   getComposerLineBeforeCursor,
@@ -5291,6 +5292,31 @@ function testDmMessageReactionGestureInteractions() {
   assert.match(globalsSource, /-webkit-touch-callout: none;/);
 }
 
+function testDmReactionNotifications() {
+  assert.equal(
+    buildDmReactionNotificationBody("Isaac", "❤️"),
+    "Isaac reacted ❤️ to your message.",
+  );
+
+  const helperSource = readFileSync(
+    new URL("../lib/dm/dmReactionNotifications.ts", import.meta.url),
+    "utf8",
+  );
+  const dmPageSource = readFileSync(
+    new URL("../app/dm/[conversationId]/page.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(helperSource, /createNotification/);
+  assert.match(helperSource, /"message"/);
+  assert.match(helperSource, /\/dm\/\$\{conversationId\}/);
+  assert.match(helperSource, /recipientUserId === reactorUserId/);
+  assert.match(helperSource, /message\.conversation_id !== conversationId/);
+  assert.match(dmPageSource, /notifyDmReactionRecipient/);
+  assert.match(dmPageSource, /if \(nextReaction && conversationId\)/);
+  assert.doesNotMatch(dmPageSource, /notifyDmReactionRecipient[\s\S]*applyOptimisticDmReactionToggle/);
+}
+
 function testChatMessageGroupLayout() {
   const layout = buildChatMessageGroupLayout([
     { id: "a", user_id: "u1" },
@@ -5607,6 +5633,7 @@ async function main() {
   testComposerNewlineKeydown();
   testDmComposerFocusSyncAfterSend();
   testDmMessageReactionGestureInteractions();
+  testDmReactionNotifications();
   testChatMessageGroupLayout();
   testChatMessageBubbleGeometry();
   testEventFallbackColourSelectionRadioBehaviour();

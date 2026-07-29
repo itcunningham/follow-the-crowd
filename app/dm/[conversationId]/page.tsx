@@ -95,6 +95,7 @@ import {
   upsertDmReactionInList,
   type DmMessageReaction,
 } from "@/lib/dmReactions";
+import { notifyDmReactionRecipient } from "@/lib/dm/dmReactionNotifications";
 import { createNotification, markNotificationsReadForLink } from "@/lib/notifications";
 import { getEventArtworkByIds, isEventCancelled, type EventArtworkSnapshot } from "@/lib/events";
 import { getCrewChatUnlockStateByEventIds } from "@/lib/events/crewChatUnlock";
@@ -1457,6 +1458,19 @@ export default function DmChatPage() {
       setReactions((prev) =>
         upsertDmReactionInList(prev, nextReaction, messageId, currentUserId),
       );
+
+      if (nextReaction && conversationId) {
+        try {
+          await notifyDmReactionRecipient({
+            messageId,
+            emoji: nextReaction.emoji,
+            conversationId,
+            reactorUserId: currentUserId,
+          });
+        } catch (notificationError) {
+          console.error("[dm] Reaction saved but notification failed:", notificationError);
+        }
+      }
     } catch (reactionError) {
       console.error("Failed to toggle reaction:", reactionError);
       setReactions((prev) => {
