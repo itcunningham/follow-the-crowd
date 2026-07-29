@@ -1,6 +1,7 @@
 "use client";
 
 import ChatSendIcon from "@/app/components/chat/ChatSendIcon";
+import { useComposerTextareaAutogrow } from "@/lib/dm/useComposerTextareaAutogrow";
 
 function SendIcon() {
   return <ChatSendIcon />;
@@ -17,12 +18,7 @@ export default function GroupChatComposer({
   onSend: () => void;
   sending: boolean;
 }) {
-  function handleKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
-    if (event.key === "Enter") {
-      event.preventDefault();
-      onSend();
-    }
-  }
+  const { textareaRef } = useComposerTextareaAutogrow(value);
 
   return (
     <div
@@ -30,14 +26,14 @@ export default function GroupChatComposer({
       className="shrink-0 border-t border-ftc-border-subtle bg-ftc-bg px-3 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-4"
     >
       <div className="flex min-w-0 items-end gap-2">
-        <input
-          type="text"
+        <textarea
+          ref={textareaRef}
+          rows={1}
           value={value}
           onChange={(event) => onChange(event.target.value)}
-          onKeyDown={handleKeyDown}
           placeholder="Message..."
           disabled={sending}
-          className="ftc-input h-11 min-w-0 flex-1 rounded-full py-0 px-4 disabled:cursor-not-allowed"
+          className="ftc-input min-h-11 min-w-0 flex-1 resize-none rounded-full py-0 px-4 disabled:cursor-not-allowed"
         />
         <button
           type="button"

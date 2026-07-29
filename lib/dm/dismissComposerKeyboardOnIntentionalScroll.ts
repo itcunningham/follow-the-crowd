@@ -39,7 +39,7 @@ function isMobileChatViewport(): boolean {
   return window.matchMedia(MOBILE_NAVIGATION_MEDIA_QUERY).matches;
 }
 
-function isComposerInputFocused(input: HTMLInputElement | null): boolean {
+function isComposerInputFocused(input: HTMLTextAreaElement | null): boolean {
   return input !== null && document.activeElement === input;
 }
 
@@ -76,7 +76,7 @@ function preserveScrollPositionDuringKeyboardDismiss(
  */
 export function useDismissComposerKeyboardOnIntentionalScroll(
   scrollRef: RefObject<HTMLElement | null>,
-  composerInputRef: RefObject<HTMLInputElement | null>,
+  composerInputRef: RefObject<HTMLTextAreaElement | null>,
   composerRootRef: RefObject<HTMLElement | null>,
 ): void {
   useEffect(() => {

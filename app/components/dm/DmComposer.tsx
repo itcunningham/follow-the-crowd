@@ -6,6 +6,7 @@ import {
   DM_PHOTO_INPUT_ACCEPT,
   validateDmAttachmentFile,
 } from "@/lib/dmAttachments";
+import { useComposerTextareaAutogrow } from "@/lib/dm/useComposerTextareaAutogrow";
 
 function ComposerIconButton({
   label,
@@ -55,7 +56,7 @@ export default function DmComposer({
   value: string;
   onChange: (value: string) => void;
   onSend: () => void;
-  inputRef?: RefObject<HTMLInputElement | null>;
+  inputRef?: RefObject<HTMLTextAreaElement | null>;
   composerRootRef?: RefObject<HTMLDivElement | null>;
   onInputBlurWhileBusy?: () => void;
   pendingAttachmentPreviewUrl: string | null;
@@ -66,8 +67,7 @@ export default function DmComposer({
   uploading: boolean;
 }) {
   const photoInputRef = useRef<HTMLInputElement>(null);
-  const localInputRef = useRef<HTMLInputElement>(null);
-  const messageInputRef = inputRef ?? localInputRef;
+  const { textareaRef: messageInputRef } = useComposerTextareaAutogrow(value, inputRef);
   const busy = sending || uploading;
   const hasPendingPhoto = Boolean(pendingAttachmentPreviewUrl);
   const canSend = Boolean(value.trim()) || hasPendingPhoto;
@@ -75,16 +75,6 @@ export default function DmComposer({
   function handleInputBlur() {
     if (busy) {
       onInputBlurWhileBusy?.();
-    }
-  }
-
-  function handleKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
-    if (event.key === "Enter") {
-      event.preventDefault();
-
-      if (canSend && !busy) {
-        onSend();
-      }
     }
   }
 
@@ -143,15 +133,14 @@ export default function DmComposer({
           </svg>
         </ComposerIconButton>
 
-        <input
+        <textarea
           ref={messageInputRef}
-          type="text"
+          rows={1}
           value={value}
           onChange={(event) => onChange(event.target.value)}
-          onKeyDown={handleKeyDown}
           onBlur={handleInputBlur}
           placeholder="Message"
-          className="ftc-input h-11 min-w-0 flex-1 rounded-full px-4 py-0"
+          className="ftc-input min-h-11 min-w-0 flex-1 resize-none rounded-full px-4 py-0"
         />
 
         <button

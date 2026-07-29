@@ -5034,6 +5034,10 @@ function testDmComposerClearsPendingPhotoAfterSuccessfulSend() {
   assert.match(composerSource, /onInputBlurWhileBusy/);
   assert.match(composerSource, /inputRef/);
   assert.match(composerSource, /composerRootRef/);
+  assert.match(composerSource, /<textarea/);
+  assert.match(composerSource, /useComposerTextareaAutogrow/);
+  assert.doesNotMatch(composerSource, /event\.key === "Enter"/);
+  assert.doesNotMatch(composerSource, /onKeyDown/);
   assert.doesNotMatch(composerSource, /onPhotoSelected/);
 
   assert.match(composerSource, /className="dm-composer shrink-0/);

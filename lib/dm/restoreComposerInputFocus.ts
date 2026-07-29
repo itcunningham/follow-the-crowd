@@ -21,7 +21,7 @@ function isMobileChatViewport(): boolean {
  * On desktop, when the input is already focused.
  */
 export function shouldKeepComposerFocusedAfterSend(
-  input: HTMLInputElement | null | undefined,
+  input: HTMLTextAreaElement | null | undefined,
 ): boolean {
   if (!input || document.activeElement !== input) {
     return false;
@@ -38,7 +38,7 @@ export function shouldKeepComposerFocusedAfterSend(
  * Restore composer focus after send without blurring the input.
  * Call only when shouldKeepComposerFocusedAfterSend was true at send start.
  */
-export function restoreComposerInputFocus(input: HTMLInputElement | null | undefined): void {
+export function restoreComposerInputFocus(input: HTMLTextAreaElement | null | undefined): void {
   if (!input) {
     return;
   }

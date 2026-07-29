@@ -266,7 +266,7 @@ export default function DmChatPage() {
   const pendingBookingCardScrollIdRef = useRef<string | null>(null);
   const pendingBookingNotesScrollIdRef = useRef<string | null>(null);
   const bookingCardScrollCleanupRef = useRef<(() => void) | null>(null);
-  const composerInputRef = useRef<HTMLInputElement>(null);
+  const composerInputRef = useRef<HTMLTextAreaElement>(null);
   const composerRootRef = useRef<HTMLDivElement>(null);
   const keepComposerFocusedAfterSendRef = useRef(false);
   const bookingCardScrollContextRef = useRef(new Map<string, BookingCardExpandScrollContext>());
