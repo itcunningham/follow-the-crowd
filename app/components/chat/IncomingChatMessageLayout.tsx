@@ -11,14 +11,9 @@ import {
   CHAT_INCOMING_ROW_GRID_CLASS,
   CHAT_INCOMING_ROW_GRID_CLUSTER_END_CLASS,
   CHAT_INCOMING_TIMESTAMP_CELL_CLASS,
+  isIncomingClusterEnd,
   type ChatMessageGroupPosition,
 } from "@/lib/dm/chatMessageGroupLayout";
-
-function isIncomingClusterEnd(
-  groupPosition: ChatMessageGroupPosition,
-): boolean {
-  return groupPosition === "last" || groupPosition === "standalone";
-}
 
 export default function IncomingChatMessageLayout({
   className = "",

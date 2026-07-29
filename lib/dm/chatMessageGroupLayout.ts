@@ -9,7 +9,7 @@ export type ChatMessageGroupPosition = "standalone" | "first" | "middle" | "last
 
 export type ChatMessageGroupLayout = {
   position: ChatMessageGroupPosition;
-  /** Incoming cluster end — render avatar beside the final bubble. */
+  /** Group cluster end — show avatar (group chat) or visible timestamp (DM). */
   showAvatar: boolean;
   /** Pull toward the visually older message above (flex-col-reverse safe). */
   tightWithPrevious: boolean;
@@ -51,6 +51,20 @@ export const CHAT_INCOMING_TIMESTAMP_CELL_CLASS =
 
 /** @deprecated Use CHAT_INCOMING_BUBBLE_CELL_CLASS */
 export const CHAT_INCOMING_MESSAGE_COLUMN_CLASS = CHAT_INCOMING_BUBBLE_CELL_CLASS;
+
+/** DM incoming column — no avatar column; bubbles align flush left. */
+export const DM_INCOMING_MESSAGE_COLUMN_CLASS =
+  "flex min-w-0 w-full flex-col items-start gap-0.5";
+
+/** DM timestamp beneath the bubble/reactions stack at cluster end. */
+export const DM_INCOMING_TIMESTAMP_CLASS =
+  "self-start whitespace-nowrap px-0.5 text-[10px] leading-none text-ftc-text-muted";
+
+export function isIncomingClusterEnd(
+  groupPosition: ChatMessageGroupPosition,
+): boolean {
+  return groupPosition === "last" || groupPosition === "standalone";
+}
 
 /**
  * Tighten stacked incoming bubbles. Uses negative bottom margin because the message

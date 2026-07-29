@@ -19,7 +19,7 @@ import DmTextMessageBubble from "@/app/components/dm/DmTextMessageBubble";
 import DmBookingTimelineNotice from "@/app/components/dm/DmBookingTimelineNotice";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
 import ChatProfileAvatarLink from "@/app/components/chat/ChatProfileAvatarLink";
-import IncomingChatMessageLayout from "@/app/components/chat/IncomingChatMessageLayout";
+import DmIncomingMessageLayout from "@/app/components/chat/DmIncomingMessageLayout";
 import { ChatMessagesSkeleton } from "@/app/components/skeleton/Skeleton";
 import ProfileAvatar from "@/app/components/ProfileAvatar";
 import {
@@ -2001,7 +2001,7 @@ export default function DmChatPage() {
                         </div>
                       </div>
                     ) : (
-                      <IncomingChatMessageLayout
+                      <DmIncomingMessageLayout
                         className="max-w-[92%] sm:max-w-[80%]"
                         groupPosition={messageGroupLayout?.position ?? "standalone"}
                         showTimestamp={
@@ -2011,18 +2011,6 @@ export default function DmChatPage() {
                         createdAt={message.created_at}
                         formattedTime={formatMessageTime(message.created_at)}
                         hasReactions={false}
-                        avatar={
-                          otherUserId ? (
-                            <ChatProfileAvatarLink
-                              userId={otherUserId}
-                              name={otherUserLabel}
-                              avatarUrl={otherUserProfile?.avatar_url}
-                              returnTo={chatReturnTo}
-                            />
-                          ) : (
-                            <span aria-hidden="true" className="block h-8 w-8 shrink-0" />
-                          )
-                        }
                       >
                         <BookingCardFocusRing phase={bookingFocusPhase}>
                           {highlightClassName ? (
@@ -2031,7 +2019,7 @@ export default function DmChatPage() {
                             bookingCard
                           )}
                         </BookingCardFocusRing>
-                      </IncomingChatMessageLayout>
+                      </DmIncomingMessageLayout>
                     )}
                   </li>
                 );

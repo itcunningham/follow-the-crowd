@@ -1,8 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef } from "react";
-import ChatProfileAvatarLink from "@/app/components/chat/ChatProfileAvatarLink";
-import IncomingChatMessageLayout from "@/app/components/chat/IncomingChatMessageLayout";
+import DmIncomingMessageLayout from "@/app/components/chat/DmIncomingMessageLayout";
 import DmMessageAttachmentView from "@/app/components/dm/DmMessageAttachment";
 import DmMessageReactions, { DmReactionPicker } from "@/app/components/dm/DmMessageReactions";
 import { getChatNewMessageHighlightClass, logChatHighlightRender } from "@/lib/chatNewMessageHighlight";
@@ -228,7 +227,7 @@ export default function DmTextMessageBubble({
         })}
         data-chat-message-id={messageId}
       >
-        <IncomingChatMessageLayout
+        <DmIncomingMessageLayout
           className={rowMaxWidthClass}
           groupPosition={groupPosition}
           showTimestamp={showTimestamp}
@@ -236,21 +235,9 @@ export default function DmTextMessageBubble({
           formattedTime={formattedTime}
           hasReactions={hasReactionSummaries}
           reactions={reactionsBlock}
-          avatar={
-            otherUserId ? (
-              <ChatProfileAvatarLink
-                userId={otherUserId}
-                name={otherUserLabel}
-                avatarUrl={otherUserAvatarUrl}
-                returnTo={profileReturnTo}
-              />
-            ) : (
-              <span aria-hidden="true" className="block h-8 w-8 shrink-0" />
-            )
-          }
         >
           {bubbleBlock}
-        </IncomingChatMessageLayout>
+        </DmIncomingMessageLayout>
       </li>
     );
   }

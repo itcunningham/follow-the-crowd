@@ -5178,7 +5178,8 @@ function testDmMessageReactionGestureInteractions() {
   assert.match(bubbleSource, /showAvatar/);
   assert.match(bubbleSource, /tightWithPrevious/);
   assert.match(bubbleSource, /groupPosition/);
-  assert.match(bubbleSource, /IncomingChatMessageLayout/);
+  assert.match(bubbleSource, /DmIncomingMessageLayout/);
+  assert.doesNotMatch(bubbleSource, /IncomingChatMessageLayout/);
   assert.match(bubbleSource, /resolveIncomingGroupLiClass/);
   assert.doesNotMatch(bubbleSource, /CHAT_INCOMING_GROUP_FOOTER_CLASS/);
   assert.doesNotMatch(bubbleSource, /Report message/);
@@ -5188,6 +5189,7 @@ function testDmMessageReactionGestureInteractions() {
   assert.match(pickerPositionSource, /data-chat-composer/);
   assert.match(groupBubbleSource, /useMessageReactionDoubleTap/);
   assert.match(groupBubbleSource, /DmReactionPicker/);
+  assert.match(groupBubbleSource, /IncomingChatMessageLayout/);
 
   const attachmentSource = readFileSync(
     new URL("../app/components/dm/DmMessageAttachment.tsx", import.meta.url),
@@ -5254,7 +5256,9 @@ function testChatMessageGroupLayout() {
   assert.match(groupLayoutSource, /CHAT_INCOMING_BUBBLE_STACK_CLASS/);
   assert.match(groupLayoutSource, /CHAT_MESSAGE_SCROLLER_CLASS/);
   assert.match(groupLayoutSource, /resolveIncomingGroupTightMarginClass/);
-  assert.match(dmPageSource, /IncomingChatMessageLayout/);
+  assert.match(groupLayoutSource, /DM_INCOMING_MESSAGE_COLUMN_CLASS/);
+  assert.match(dmPageSource, /DmIncomingMessageLayout/);
+  assert.doesNotMatch(dmPageSource, /IncomingChatMessageLayout/);
   assert.doesNotMatch(dmPageSource, /title="Report message"/);
   assert.doesNotMatch(dmPageSource, /submitDmMessageReport/);
 }
