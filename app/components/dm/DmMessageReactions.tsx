@@ -260,7 +260,7 @@ export default function DmMessageReactions({
           disabled={reacting}
           aria-label={`React with ${summary.emoji}`}
           onClick={() => onToggleReaction(summary.emoji)}
-          className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs transition disabled:opacity-50 ${
+          className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs transition motion-reduce:transition-none disabled:pointer-events-none ${
             summary.reactedByCurrentUser
               ? "border-0 bg-ftc-primary text-ftc-bg"
               : "border-ftc-border-subtle bg-ftc-bg-elevated text-ftc-text hover:border-ftc-border-strong"
@@ -277,7 +277,7 @@ export default function DmMessageReactions({
         aria-label="Add reaction"
         disabled={reacting}
         onClick={onOpenPicker}
-        className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-ftc-border bg-ftc-bg-elevated/70 text-xs text-ftc-text-secondary opacity-0 transition hover:border-ftc-border-strong hover:text-ftc-text focus-visible:opacity-100 disabled:opacity-50 sm:group-hover/message:opacity-100"
+        className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-ftc-border bg-ftc-bg-elevated/70 text-xs text-ftc-text-secondary opacity-0 transition hover:border-ftc-border-strong hover:text-ftc-text focus-visible:opacity-100 disabled:pointer-events-none sm:group-hover/message:opacity-100"
       >
         +
       </button>

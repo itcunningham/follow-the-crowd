@@ -22,7 +22,7 @@ import {
   useMessageReactionDoubleTap,
 } from "@/lib/dm/useMessageReactionDoubleTap";
 import { useMessageReactionLongPress } from "@/lib/dm/useMessageReactionLongPress";
-import { summarizeDmReactions, type DmMessageReaction } from "@/lib/dmReactions";
+import type { DmMessageReaction } from "@/lib/dmReactions";
 
 function chainPointerHandler(
   first: (event: React.PointerEvent<HTMLElement>) => void,
@@ -89,8 +89,6 @@ export default function DmTextMessageBubble({
   const displayText = formatBookingMessagePreview(trimmedText);
   const hasAttachments = attachments.length > 0;
   const hasText = displayText.length > 0;
-  const hasReactionSummaries =
-    summarizeDmReactions(reactions, currentUserId).length > 0;
   const bubbleShellRef = useRef<HTMLDivElement>(null);
   const pickerAnchorRef = useRef<HTMLDivElement>(null);
 
@@ -157,20 +155,6 @@ export default function DmTextMessageBubble({
 
   const bubbleBlock = (
     <div ref={pickerAnchorRef} className={`relative max-w-full ${highlightClass}`}>
-      {!hasReactionSummaries ? (
-        <button
-          type="button"
-          aria-label="React to message"
-          disabled={reacting}
-          onClick={onOpenReactionPicker}
-          className={`absolute top-1 z-10 flex h-6 w-6 items-center justify-center rounded-full border border-ftc-border bg-ftc-bg-elevated/90 text-xs text-ftc-text-secondary opacity-0 transition hover:border-ftc-border-strong hover:text-ftc-text focus-visible:opacity-100 disabled:opacity-50 pointer-events-none sm:group-hover/message:pointer-events-auto sm:group-hover/message:opacity-100 ${
-            isOwnMessage ? "right-1" : "left-1"
-          }`}
-        >
-          +
-        </button>
-      ) : null}
-
       <div
         ref={bubbleShellRef}
         className={bubbleShellClass}

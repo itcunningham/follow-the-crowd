@@ -5113,10 +5113,13 @@ function testDmMessageReactionGestureInteractions() {
   assert.doesNotMatch(reactionsSource, />React</);
   assert.doesNotMatch(reactionsSource, /prominentActions/);
   assert.match(reactionsSource, /if \(summaries\.length === 0\) \{\s*return null;/);
+  assert.match(reactionsSource, /disabled:pointer-events-none/);
+  assert.doesNotMatch(reactionsSource, /disabled:opacity-50/);
   assert.match(bubbleSource, /useMessageReactionLongPress/);
   assert.match(bubbleSource, /useMessageReactionDoubleTap/);
   assert.match(bubbleSource, /onContextMenu=\{handleContextMenu\}/);
-  assert.match(bubbleSource, /aria-label="React to message"/);
+  assert.doesNotMatch(bubbleSource, /aria-label="React to message"/);
+  assert.doesNotMatch(groupBubbleSource, /aria-label="React to message"/);
   assert.match(bubbleSource, /DmReactionPicker/);
   assert.match(bubbleSource, /resetLongPressGesture/);
   assert.match(bubbleSource, /DM_DEFAULT_REACTION_EMOJI/);
