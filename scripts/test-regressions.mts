@@ -108,6 +108,10 @@ import {
 } from "../lib/dm/dmChatTimestampVisibility";
 import { buildChatMessageGroupLayout } from "../lib/dm/chatMessageGroupLayout";
 import {
+  isCompactChatBubbleText,
+  resolveChatMessageBubbleShellClass,
+} from "../lib/dm/chatMessageBubbleGeometry";
+import {
   DM_BOOKING_CONFIRMED_MESSAGE,
   DM_BOOKING_ORIGINAL_OFFER_KEPT_MESSAGE,
   DM_BOOKING_RATE_DECLINED_MESSAGE,
@@ -5141,7 +5145,8 @@ function testDmMessageReactionGestureInteractions() {
   assert.match(bubbleSource, /showAvatar/);
   assert.match(bubbleSource, /tightWithPrevious/);
   assert.match(bubbleSource, /CHAT_INCOMING_METADATA_INDENT_CLASS/);
-  assert.match(bubbleSource, /CHAT_INCOMING_GROUP_TIGHT_PREVIOUS_CLASS/);
+  assert.match(bubbleSource, /resolveChatMessageBubbleShellClass/);
+  assert.match(bubbleSource, /resolveChatMessageBubbleTextClass/);
   assert.match(groupBubbleSource, /onDoubleClick=\{handleDoubleTapDoubleClick\}/);
   assert.match(pickerPositionSource, /computeReactionPickerPosition/);
   assert.match(pickerPositionSource, /getReactionPickerViewportBounds/);
@@ -5185,6 +5190,30 @@ function testChatMessageGroupLayout() {
   assert.equal(layout.get("b")?.showAvatar, true);
   assert.equal(layout.get("c")?.tightWithPrevious, false);
   assert.equal(layout.get("c")?.showAvatar, true);
+}
+
+function testChatMessageBubbleGeometry() {
+  assert.equal(isCompactChatBubbleText("a"), true);
+  assert.equal(isCompactChatBubbleText("OK"), true);
+  assert.equal(isCompactChatBubbleText("❤️"), true);
+  assert.equal(isCompactChatBubbleText("Hello\nworld"), false);
+  assert.equal(isCompactChatBubbleText("a".repeat(43)), false);
+
+  assert.match(
+    resolveChatMessageBubbleShellClass({ isOwnMessage: true, text: "OK" }),
+    /w-fit max-w-full/,
+  );
+  assert.match(
+    resolveChatMessageBubbleShellClass({ isOwnMessage: true, text: "OK" }),
+    /px-3 py-1/,
+  );
+  assert.match(
+    resolveChatMessageBubbleShellClass({
+      isOwnMessage: false,
+      text: "Longer single line that still wraps eventually",
+    }),
+    /px-3\.5 py-1\.5/,
+  );
 }
 
 function testQaEnvironmentResetScript() {
@@ -5320,6 +5349,7 @@ async function main() {
   testDmComposerFocusSyncAfterSend();
   testDmMessageReactionGestureInteractions();
   testChatMessageGroupLayout();
+  testChatMessageBubbleGeometry();
   testEventFallbackColourSelectionRadioBehaviour();
   testEventPlanPickerClearsSelectionOnFormBack();
   testEventPlansSelectionToolbarMatchesHistory();

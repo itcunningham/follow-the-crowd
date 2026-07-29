@@ -99,7 +99,8 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 - Booking cards in DMs show **live** event fields from `events` when `event_id` set; expanded card uses compact icon metadata rows (venue/date/time/rate), no event initials thumb, expandable notes, tighter spacing
 - **DM photo picker (2026-07-14):** media icon opens native OS chooser (Photo Library / Take Photo on iOS); no forced camera via `capture`
 - **DM message reactions (2026-07-25):** persistent `React` label removed; press-and-hold (~500ms) or right-click opens existing picker on text/image messages; desktop hover/focus-visible `+` affordance; keyboard-accessible `React to message` button; booking/system cards unchanged; DM image attachments use button open surface (not `<a>`) with scoped `-webkit-touch-callout: none` so iPhone Safari long-press opens FTC picker instead of native link preview; reaction picker no longer uses a full-screen blocking backdrop — outside tap or scroll dismisses it without trapping chat scroll
-- **Chat reaction gestures (2026-07-29):** double-tap message bubble toggles ❤️ (touch + desktop double-click); long-press opens emoji tray with fade/scale animation (175ms ease-out) + dim backdrop; reactions apply optimistically; incoming message groups use tighter stack spacing (`-mt-2.5`), avatar anchored to final bubble (`items-end` on bubble row only), timestamp/report in indented metadata row (`pl-10`); booking cards share same incoming grouping; shared `buildChatMessageGroupLayout` + layout tokens in `chatMessageGroupLayout.ts`
+- **Chat reaction gestures (2026-07-29):** double-tap message bubble toggles ❤️ (touch + desktop double-click); long-press opens emoji tray with fade/scale animation (175ms ease-out) + dim backdrop; reactions apply optimistically; incoming message groups use tighter stack spacing, avatar anchored to final bubble, timestamp in indented metadata row; shared `buildChatMessageGroupLayout` + layout tokens
+- **Chat bubble geometry (2026-07-29):** text bubbles use `w-fit max-w-full` content sizing, compact pill padding (`px-3 py-1` + `leading-snug`) for single-line messages ≤42 chars, standard padding (`px-3.5 py-1.5` + `leading-normal`) for longer/multi-line; slightly increased corner radius in `.ftc-bubble-own/other`; shared `chatMessageBubbleGeometry.ts` used by DM + group chat
 - **Mobile bottom nav + keyboard (2026-07-21):** on viewports below `md`, text-field focus latches a keyboard session from `visualViewport` height gap; nav stays hidden while focused (including iOS scroll) until height gap shows dismissal or focus leaves; offset padding clears with the bar
 - **DM header (2026-07-29):** private beta removes three-dot overflow menu and profile action sheet from conversation header; profile via avatar link unchanged; per-message report modal and block status/banner logic retained in codebase
 - **DM composer focus (2026-07-28):** after send, input stays focused and keyboard remains open when it was already open at send time; `shouldKeepComposerFocusedAfterSend` gates restore; no post-send blur; send button uses pointerdown focus retention; mobile focus ring follows `data-mobile-keyboard-open`
@@ -282,7 +283,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
-- `TBD` — anchor incoming avatar to final bubble and tighten grouped spacing
+- `c5cd8c8` — anchor incoming avatar to final bubble and tighten grouped spacing
 - `285849b` — DM interaction polish pass (double-tap heart, grouping, reaction tray animation)
 - `67d63a1` — add breathing room below Messages inbox segmented control
 - `8b2efd6` — hide profile CTA when opened from active DM + restore chat scroll on Back

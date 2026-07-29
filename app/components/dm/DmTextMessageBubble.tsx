@@ -8,6 +8,10 @@ import { getChatNewMessageHighlightClass, logChatHighlightRender } from "@/lib/c
 import { formatBookingMessagePreview } from "@/lib/bookingRequests";
 import type { DmMessageAttachment } from "@/lib/dmAttachments";
 import {
+  resolveChatMessageBubbleShellClass,
+  resolveChatMessageBubbleTextClass,
+} from "@/lib/dm/chatMessageBubbleGeometry";
+import {
   CHAT_INCOMING_AVATAR_SLOT_CLASS,
   CHAT_INCOMING_GROUP_CLUSTER_END_CLASS,
   CHAT_INCOMING_GROUP_TIGHT_PREVIOUS_CLASS,
@@ -143,13 +147,13 @@ export default function DmTextMessageBubble({
   const rowMaxWidthClass = isOwnMessage
     ? "max-w-[85%] sm:max-w-[72%]"
     : "max-w-[88%] sm:max-w-[78%]";
-  const bubbleShellClass = attachmentOnly
-    ? "overflow-hidden [touch-action:pan-y]"
-    : `overflow-hidden [touch-action:pan-y] select-none sm:select-text ${
-        isOwnMessage
-          ? `ftc-bubble-own ${hasAttachments ? "p-1" : "px-3.5 py-2"}`
-          : `ftc-bubble-other ${hasAttachments ? "p-1" : "px-4 py-2.5"}`
-      }`;
+  const bubbleShellClass = resolveChatMessageBubbleShellClass({
+    isOwnMessage,
+    text: displayText,
+    hasAttachments,
+    attachmentOnly,
+  });
+  const bubbleTextClass = resolveChatMessageBubbleTextClass(displayText);
 
   const bubbleBlock = (
     <div ref={pickerAnchorRef} className={`relative max-w-full ${highlightClass}`}>
@@ -197,7 +201,7 @@ export default function DmTextMessageBubble({
           </div>
         ) : null}
         {hasText ? (
-          <p className="text-[15px] leading-relaxed whitespace-pre-wrap break-words">
+          <p className={bubbleTextClass}>
             {displayText}
           </p>
         ) : null}

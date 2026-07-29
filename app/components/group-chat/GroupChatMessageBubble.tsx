@@ -5,6 +5,10 @@ import ChatProfileAvatarLink from "@/app/components/chat/ChatProfileAvatarLink";
 import DmMessageReactions, { DmReactionPicker } from "@/app/components/dm/DmMessageReactions";
 import { getChatNewMessageHighlightClass } from "@/lib/chatNewMessageHighlight";
 import {
+  resolveChatMessageBubbleShellClass,
+  resolveChatMessageBubbleTextClass,
+} from "@/lib/dm/chatMessageBubbleGeometry";
+import {
   CHAT_INCOMING_AVATAR_SLOT_CLASS,
   CHAT_INCOMING_GROUP_CLUSTER_END_CLASS,
   CHAT_INCOMING_GROUP_TIGHT_PREVIOUS_CLASS,
@@ -121,6 +125,12 @@ export default function GroupChatMessageBubble({
     ? "max-w-[85%] sm:max-w-[72%]"
     : "max-w-[88%] sm:max-w-[78%]";
 
+  const bubbleShellClass = resolveChatMessageBubbleShellClass({
+    isOwnMessage,
+    text,
+  });
+  const bubbleTextClass = resolveChatMessageBubbleTextClass(text);
+
   const bubbleBlock = (
     <div ref={pickerAnchorRef} className={`relative max-w-full ${highlightClass}`}>
       {!hasReactionSummaries ? (
@@ -139,9 +149,7 @@ export default function GroupChatMessageBubble({
 
       <div
         ref={bubbleShellRef}
-        className={`overflow-hidden [touch-action:pan-y] select-none sm:select-text ${
-          isOwnMessage ? "ftc-bubble-own px-3.5 py-2" : "ftc-bubble-other px-4 py-2.5"
-        }`}
+        className={bubbleShellClass}
         onPointerDown={chainPointerHandler(handleDoubleTapPointerDown, handleLongPressPointerDown)}
         onPointerMove={chainPointerHandler(handleDoubleTapPointerMove, handleLongPressPointerMove)}
         onPointerUp={chainPointerHandler(handleDoubleTapPointerUp, handleLongPressPointerUp)}
@@ -156,7 +164,7 @@ export default function GroupChatMessageBubble({
           consumeDoubleTapActivation(event);
         }}
       >
-        <p className="text-[15px] leading-relaxed whitespace-pre-wrap break-words">{text}</p>
+        <p className={bubbleTextClass}>{text}</p>
       </div>
 
       <DmReactionPicker
