@@ -75,7 +75,10 @@ import {
   type PendingComposerAttachment,
 } from "@/lib/dm/composerPendingAttachment";
 import { useDismissComposerKeyboardOnIntentionalScroll } from "@/lib/dm/dismissComposerKeyboardOnIntentionalScroll";
-import { restoreComposerInputFocus as restoreComposerInputFocusElement } from "@/lib/dm/restoreComposerInputFocus";
+import {
+  restoreComposerInputFocus as restoreComposerInputFocusElement,
+  shouldKeepComposerFocusedAfterSend,
+} from "@/lib/dm/restoreComposerInputFocus";
 import {
   groupDmReactionsByMessageId,
   listDmReactionsForConversation,
@@ -261,7 +264,7 @@ export default function DmChatPage() {
   const bookingCardScrollCleanupRef = useRef<(() => void) | null>(null);
   const composerInputRef = useRef<HTMLInputElement>(null);
   const composerRootRef = useRef<HTMLDivElement>(null);
-  const shouldRestoreComposerFocusRef = useRef(false);
+  const keepComposerFocusedAfterSendRef = useRef(false);
   const bookingCardScrollContextRef = useRef(new Map<string, BookingCardExpandScrollContext>());
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -308,17 +311,23 @@ export default function DmChatPage() {
     });
   }, []);
 
+  const captureComposerFocusIntentForSend = useCallback(() => {
+    keepComposerFocusedAfterSendRef.current = shouldKeepComposerFocusedAfterSend(
+      composerInputRef.current,
+    );
+  }, []);
+
   const restoreComposerInputFocus = useCallback(() => {
-    if (!shouldRestoreComposerFocusRef.current) {
+    if (!keepComposerFocusedAfterSendRef.current) {
       return;
     }
 
-    shouldRestoreComposerFocusRef.current = false;
+    keepComposerFocusedAfterSendRef.current = false;
     restoreComposerInputFocusElement(composerInputRef.current);
   }, []);
 
   const handleComposerInputBlurWhileBusy = useCallback(() => {
-    shouldRestoreComposerFocusRef.current = false;
+    keepComposerFocusedAfterSendRef.current = false;
   }, []);
 
   const stagePendingPhoto = useCallback((file: File) => {
@@ -1210,12 +1219,12 @@ export default function DmChatPage() {
     }
 
     if (attachmentToSend) {
-      shouldRestoreComposerFocusRef.current = true;
+      captureComposerFocusIntentForSend();
       await sendAttachment(attachmentToSend);
       return;
     }
 
-    shouldRestoreComposerFocusRef.current = true;
+    captureComposerFocusIntentForSend();
     setSending(true);
     setError(null);
     markUserSentMessage();
@@ -1272,7 +1281,7 @@ export default function DmChatPage() {
       return;
     }
 
-    shouldRestoreComposerFocusRef.current = true;
+    captureComposerFocusIntentForSend();
     setUploading(true);
     setError(null);
     markUserSentMessage();

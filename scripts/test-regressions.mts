@@ -5001,6 +5001,7 @@ function testDmComposerClearsPendingPhotoAfterSuccessfulSend() {
   assert.match(composerSource, /onPointerDown/);
   assert.match(composerSource, /preventDefault/);
   assert.match(composerSource, /onInputBlurWhileBusy/);
+  assert.match(composerSource, /inputRef/);
   assert.match(composerSource, /composerRootRef/);
   assert.doesNotMatch(composerSource, /onPhotoSelected/);
 
@@ -5009,7 +5010,9 @@ function testDmComposerClearsPendingPhotoAfterSuccessfulSend() {
   assert.match(pageSource, /composerInputRef/);
   assert.match(pageSource, /restoreComposerInputFocus/);
   assert.match(pageSource, /restoreComposerInputFocusElement/);
-  assert.match(pageSource, /shouldRestoreComposerFocusRef/);
+  assert.match(pageSource, /shouldKeepComposerFocusedAfterSend/);
+  assert.match(pageSource, /captureComposerFocusIntentForSend/);
+  assert.match(pageSource, /keepComposerFocusedAfterSendRef/);
   assert.match(pageSource, /onInputBlurWhileBusy=\{handleComposerInputBlurWhileBusy\}/);
 
   assert.match(globalsSource, /\.dm-composer-pending-photo-selected/);
@@ -5041,12 +5044,13 @@ function testDmComposerFocusSyncAfterSend() {
     "utf8",
   );
 
-  assert.match(focusSource, /syncComposerInputFocusState/);
+  assert.match(focusSource, /shouldKeepComposerFocusedAfterSend/);
   assert.match(focusSource, /restoreComposerInputFocus/);
   assert.match(focusSource, /preventScroll: true/);
   assert.match(focusSource, /isMobileSoftwareKeyboardOpen/);
   assert.match(focusSource, /syncMobileSoftwareKeyboardDocumentState/);
-  assert.match(focusSource, /input\.blur\(\)/);
+  assert.doesNotMatch(focusSource, /syncComposerInputFocusState/);
+  assert.doesNotMatch(focusSource, /input\.blur\(\)/);
 }
 
 function testDmMessageReactionGestureInteractions() {

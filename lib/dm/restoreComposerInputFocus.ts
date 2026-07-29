@@ -16,40 +16,28 @@ function isMobileChatViewport(): boolean {
 }
 
 /**
- * Keep the composer DOM focus state aligned with the mobile software keyboard.
- * iOS Safari can leave :focus styling active after clearing emoji-only input even
- * when the keyboard has closed.
+ * Returns true when the composer should stay focused after send.
+ * On mobile, only when the software keyboard is already open.
+ * On desktop, when the input is already focused.
  */
-export function syncComposerInputFocusState(input: HTMLInputElement | null | undefined): void {
-  syncMobileSoftwareKeyboardDocumentState();
-
-  if (!input || !isMobileChatViewport()) {
-    return;
+export function shouldKeepComposerFocusedAfterSend(
+  input: HTMLInputElement | null | undefined,
+): boolean {
+  if (!input || document.activeElement !== input) {
+    return false;
   }
 
-  if (document.activeElement !== input) {
-    return;
+  if (!isMobileChatViewport()) {
+    return true;
   }
 
-  if (isMobileSoftwareKeyboardOpen()) {
-    return;
-  }
-
-  input.blur();
-  requestAnimationFrame(() => {
-    input.focus({ preventScroll: true });
-    syncMobileSoftwareKeyboardDocumentState();
-
-    requestAnimationFrame(() => {
-      if (document.activeElement === input && !isMobileSoftwareKeyboardOpen()) {
-        input.blur();
-      }
-
-      syncMobileSoftwareKeyboardDocumentState();
-    });
-  });
+  return isMobileSoftwareKeyboardOpen();
 }
 
+/**
+ * Restore composer focus after send without blurring the input.
+ * Call only when shouldKeepComposerFocusedAfterSend was true at send start.
+ */
 export function restoreComposerInputFocus(input: HTMLInputElement | null | undefined): void {
   if (!input) {
     return;
@@ -60,8 +48,6 @@ export function restoreComposerInputFocus(input: HTMLInputElement | null | undef
       input.focus({ preventScroll: true });
     }
 
-    requestAnimationFrame(() => {
-      syncComposerInputFocusState(input);
-    });
+    syncMobileSoftwareKeyboardDocumentState();
   });
 }
