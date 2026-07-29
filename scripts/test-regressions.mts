@@ -5230,7 +5230,11 @@ function testDmMessageReactionGestureInteractions() {
   assert.match(doubleTapSource, /isInteractiveMessageTarget/);
   assert.match(doubleTapSource, /prefersFinePointer/);
   assert.match(doubleTapSource, /onCancelCompetingGesture/);
-  assert.match(doubleTapSource, /handleDoubleClick/);
+  assert.match(reactionsSource, /useDoubleTapGesture/);
+  assert.match(reactionsSource, /ReactionEmojiButton/);
+  assert.doesNotMatch(reactionsSource, /onClick=\{\(\) => onToggleReaction\(summary\.emoji\)\}/);
+  assert.match(reactionsSource, /onDoubleClick=\{handleDoubleClick\}/);
+  assert.match(doubleTapSource, /export function useDoubleTapGesture/);
   assert.match(bubbleSource, /onDoubleClick=\{handleDoubleTapDoubleClick\}/);
   assert.match(bubbleSource, /showAvatar/);
   assert.match(bubbleSource, /groupPosition/);

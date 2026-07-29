@@ -16,6 +16,7 @@ import {
   CHAT_MESSAGE_REACTIONS_STACK_CLASS,
 } from "@/lib/dm/chatMessageGroupLayout";
 import { useReactionPickerPosition } from "@/lib/dm/useReactionPickerPosition";
+import { useDoubleTapGesture } from "@/lib/dm/useMessageReactionDoubleTap";
 
 const PICKER_ANIMATION_MS = 175;
 
@@ -234,6 +235,73 @@ export function DmReactionPicker({
   return createPortal(picker, document.body);
 }
 
+function ReactionEmojiButton({
+  emoji,
+  count,
+  reactedByCurrentUser,
+  reacting,
+  onToggleReaction,
+}: {
+  emoji: string;
+  count: number;
+  reactedByCurrentUser: boolean;
+  reacting: boolean;
+  onToggleReaction: (emoji: string) => void;
+}) {
+  const {
+    handlePointerDown,
+    handlePointerMove,
+    handlePointerUp,
+    handlePointerCancel,
+    handleDoubleClick,
+    consumeDoubleTapActivation,
+  } = useDoubleTapGesture({
+    onDoubleTap: () => onToggleReaction(emoji),
+    disabled: reacting || !reactedByCurrentUser,
+  });
+
+  if (!reactedByCurrentUser) {
+    return (
+      <button
+        type="button"
+        tabIndex={-1}
+        disabled
+        aria-label={`${count} ${emoji} reaction${count === 1 ? "" : "s"}`}
+        className={`${CHAT_MESSAGE_REACTION_EMOJI_BUTTON_CLASS} transition motion-reduce:transition-none disabled:pointer-events-none hover:bg-ftc-surface/35`}
+      >
+        <span aria-hidden="true">{emoji}</span>
+        {count > 1 ? (
+          <span className="ml-px text-[9px] font-semibold leading-none text-ftc-text-secondary">
+            {count}
+          </span>
+        ) : null}
+      </button>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      disabled={reacting}
+      aria-label={`Remove ${emoji} reaction`}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerCancel}
+      onDoubleClick={handleDoubleClick}
+      onClickCapture={consumeDoubleTapActivation}
+      className={`${CHAT_MESSAGE_REACTION_EMOJI_BUTTON_CLASS} transition motion-reduce:transition-none disabled:pointer-events-none bg-ftc-surface/50`}
+    >
+      <span aria-hidden="true">{emoji}</span>
+      {count > 1 ? (
+        <span className="ml-px text-[9px] font-semibold leading-none text-ftc-text-secondary">
+          {count}
+        </span>
+      ) : null}
+    </button>
+  );
+}
+
 export default function DmMessageReactions({
   reactions,
   currentUserId,
@@ -263,25 +331,14 @@ export default function DmMessageReactions({
         }`}
       >
         {summaries.map((summary) => (
-          <button
+          <ReactionEmojiButton
             key={summary.emoji}
-            type="button"
-            disabled={reacting}
-            aria-label={`React with ${summary.emoji}`}
-            onClick={() => onToggleReaction(summary.emoji)}
-            className={`${CHAT_MESSAGE_REACTION_EMOJI_BUTTON_CLASS} transition motion-reduce:transition-none disabled:pointer-events-none ${
-              summary.reactedByCurrentUser
-                ? "bg-ftc-surface/50"
-                : "hover:bg-ftc-surface/35"
-            }`}
-          >
-            <span aria-hidden="true">{summary.emoji}</span>
-            {summary.count > 1 ? (
-              <span className="ml-px text-[9px] font-semibold leading-none text-ftc-text-secondary">
-                {summary.count}
-              </span>
-            ) : null}
-          </button>
+            emoji={summary.emoji}
+            count={summary.count}
+            reactedByCurrentUser={summary.reactedByCurrentUser}
+            reacting={reacting}
+            onToggleReaction={onToggleReaction}
+          />
         ))}
         <button
           type="button"
