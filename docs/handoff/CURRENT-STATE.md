@@ -99,7 +99,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 - Booking cards in DMs show **live** event fields from `events` when `event_id` set; expanded card uses compact icon metadata rows (venue/date/time/rate), no event initials thumb, expandable notes, tighter spacing
 - **DM photo picker (2026-07-14):** media icon opens native OS chooser (Photo Library / Take Photo on iOS); no forced camera via `capture`
 - **DM message reactions (2026-07-25):** persistent `React` label removed; press-and-hold (~500ms) or right-click opens existing picker on text/image messages; desktop hover/focus-visible `+` affordance; keyboard-accessible `React to message` button; booking/system cards unchanged; DM image attachments use button open surface (not `<a>`) with scoped `-webkit-touch-callout: none` so iPhone Safari long-press opens FTC picker instead of native link preview; reaction picker no longer uses a full-screen blocking backdrop — outside tap or scroll dismisses it without trapping chat scroll
-- **Chat reaction gestures (2026-07-29):** double-tap ❤️; long-press emoji tray; reactions owned by shared `ChatMessageBubbleShell` — bubble-sized positioning root + overlay layer (`DmMessageReactions` renders chips only); horizontal `flex-nowrap` chip row; **DM** uses `DmIncomingMessageLayout`; **group chat** keeps `IncomingChatMessageLayout`
+- **Chat reaction gestures (2026-07-29):** double-tap ❤️ toggles via `applyOptimisticDmReactionToggle`; long-press picker; shared `ChatMessageBubbleShell` owns bubble + **reserved reaction gutter** (`CHAT_MESSAGE_REACTION_GUTTER_CLASS`) + below-bubble overlay (`top-full`, not into bubble text); single neutral pill (`CHAT_MESSAGE_REACTION_PILL_CLASS`) for incoming/outgoing; reaction-aware group tight margins
 - **DM message grouping (2026-07-29):** consecutive same-sender text bubbles group via `buildChatMessageGroupLayout` (no time threshold — grouping is sender-only; 5 min gap rule applies to timestamps via `buildDmConversationTimestampLayout`); stacked bubbles use `ftc-bubble-*-stack` connected-corner classes; in-group tight spacing via flex-col-reverse negative margins; cluster-end margin between sender groups
 - **Chat bubble geometry (2026-07-29):** text bubbles use `w-fit max-w-full`; compact padding `px-3.5 py-[0.4375rem]`, standard `px-4 py-2.5`; `.ftc-bubble-own` / `.ftc-bubble-other` tail radii + grouped stack variants; bubble overlay add-reaction + removed (prevents flash during optimistic toggle)
 - **DM message report (2026-07-29):** desktop right-click/long-press opens reaction picker only; per-message Report modal removed from DM chat page (Report user remains in conversation details panel)
@@ -286,6 +286,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `TBD` — Instagram-style reaction gutter + neutral single pill
 - `c5d9425` — message-owned reaction overlay via ChatMessageBubbleShell
 - `fe1720d` — DM beta polish: grouped avatars, anchored reactions, connected bubble corners
 - `c9ac8c0` — anchor message reactions to bubbles with absolute positioning
