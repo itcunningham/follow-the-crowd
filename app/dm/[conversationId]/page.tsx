@@ -305,7 +305,6 @@ export default function DmChatPage() {
   const composerRootRef = useRef<HTMLDivElement>(null);
   const keepComposerFocusedAfterSendRef = useRef(false);
   const bookingCardScrollContextRef = useRef(new Map<string, BookingCardExpandScrollContext>());
-  const conversationMessageIdsRef = useRef(new Set<string>());
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -574,10 +573,6 @@ export default function DmChatPage() {
 
     return latest;
   }, [currentUserId, messages, reactions]);
-
-  useEffect(() => {
-    conversationMessageIdsRef.current = new Set(messages.map((message) => message.id));
-  }, [messages]);
 
   useEffect(() => {
     setExpandedBookingIds(new Set());
@@ -1201,18 +1196,10 @@ export default function DmChatPage() {
     }
 
     function upsertReaction(nextReaction: DmMessageReaction) {
-      if (!conversationMessageIdsRef.current.has(nextReaction.message_id)) {
-        return;
-      }
-
       setReactions((prev) => upsertDmReactionFromRealtime(prev, nextReaction));
     }
 
     function removeReaction(deleted: Pick<DmMessageReaction, "id" | "message_id" | "user_id">) {
-      if (deleted.message_id && !conversationMessageIdsRef.current.has(deleted.message_id)) {
-        return;
-      }
-
       setReactions((prev) => removeDmReactionFromRealtime(prev, deleted));
     }
 

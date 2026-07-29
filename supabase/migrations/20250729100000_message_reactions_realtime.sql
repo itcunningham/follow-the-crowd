@@ -20,3 +20,22 @@ begin
 end $$;
 
 notify pgrst, 'reload schema';
+
+-- Verification: both rows must return true.
+select
+  'message_reactions_in_publication' as check_name,
+  exists (
+    select 1
+    from pg_publication_tables
+    where pubname = 'supabase_realtime'
+      and schemaname = 'public'
+      and tablename = 'message_reactions'
+  ) as passed
+union all
+select
+  'message_reactions_replica_identity_full',
+  (
+    select relreplident = 'f'
+    from pg_class
+    where oid = 'public.message_reactions'::regclass
+  );

@@ -5451,7 +5451,9 @@ function testDmReactionRealtime() {
   assert.match(setupSource, /alter publication supabase_realtime add table public\.message_reactions/);
   assert.match(dmPageSource, /upsertDmReactionFromRealtime/);
   assert.match(dmPageSource, /removeDmReactionFromRealtime/);
-  assert.match(dmPageSource, /conversationMessageIdsRef/);
+  // Realtime reaction payloads must never be dropped by a local message-id gate:
+  // reactions can arrive before the message is present in local state.
+  assert.doesNotMatch(dmPageSource, /conversationMessageIdsRef/);
 
   const baseReaction: DmMessageReaction = {
     id: "reaction-1",

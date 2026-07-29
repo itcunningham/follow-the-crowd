@@ -20,7 +20,7 @@ Legacy one-off scripts remain in `scripts/` for bootstrapping and fixes. New fea
 | Event group chat | `scripts/setupEventCrewChat.sql` |
 | Group chat reactions RLS | `scripts/setupEventCrewChatReactions.sql` (after DM reactions + crew chat) |
 | Message reads / unread | `scripts/setupMessageReads.sql` |
-| **DM reactions Realtime** | `supabase/migrations/20250729100000_message_reactions_realtime.sql` (or re-run `scripts/setupDmAttachmentsAndReactions.sql` publication block) |
+| **DM reactions Realtime** | **⚠️ Isaac must run `supabase/migrations/20250729100000_message_reactions_realtime.sql`.** Verified 2026-07-29: `message_reactions` is missing from the `supabase_realtime` publication, so recipients get no reaction events until refresh. Verification query at the end of the migration must return `passed = true` for both rows. |
 | Duplicate booking protection | `scripts/fixEventBookingDuplicateProtection.sql` |
 | Production RLS | `scripts/setupProductionRls.sql` |
 | **Crew-chat auto-start auth** | `supabase/migrations/20250715180000_harden_crew_chat_auto_start_auth.sql` |
