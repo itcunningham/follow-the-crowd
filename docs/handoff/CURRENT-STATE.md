@@ -291,7 +291,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
-- `TBD` — unify direct-message inbox preview formatting
+- `7b65b54` — unify direct-message inbox preview formatting
 - `99e4fa6` — keep pinned DM chats at the bottom while image layout resolves
 - `32ca087` — clear live DM inbox reaction activity on realtime reaction removal
 - `a46262e` — DM reaction inbox activity: ordering, preview, unread via shared inbox pipeline
