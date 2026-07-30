@@ -289,6 +289,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `32ca087` — clear live DM inbox reaction activity on realtime reaction removal
 - `a46262e` — DM reaction inbox activity: ordering, preview, unread via shared inbox pipeline
 - `2a50984` — Instagram geometry: top-full hang below bubble corner, outer-edge inset
 - `ac41884` — fix reaction anchor: outside bubble corner (`calc(100%-4px)`), remove inward nudges
