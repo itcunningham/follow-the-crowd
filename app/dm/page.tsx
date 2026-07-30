@@ -62,8 +62,7 @@ import {
 import { supabase } from "@/lib/supabaseClient";
 import { buildDmThreadHref } from "@/lib/dm/threadNavigation";
 import {
-  formatDmInboxMessagePreview,
-  isDmInboxSystemPreviewMessage,
+  formatDmInboxConversationPreview,
   pickDmInboxPreviewMessage,
 } from "@/lib/dm/messagePreview";
 import { listBookingRequestsForConversations, type BookingRequest } from "@/lib/bookingRequests";
@@ -193,19 +192,22 @@ function normalizeConversations(data: unknown): Conversation[] {
 // (non-empty text) always takes priority over the attachment token.
 function decorateMessageWithAttachmentPreview(
   message: Message,
-  attachmentTypesByMessageId: Map<string, DmAttachmentPreviewKind>,
+  attachmentInfoByMessageId: Map<string, { kind: DmAttachmentPreviewKind; count: number }>,
 ): Message {
   if (message.text.trim()) {
     return message;
   }
 
-  const attachmentKind = attachmentTypesByMessageId.get(message.id);
+  const attachmentInfo = attachmentInfoByMessageId.get(message.id);
 
-  if (!attachmentKind) {
+  if (!attachmentInfo) {
     return message;
   }
 
-  return { ...message, text: encodeDmAttachmentInboxPreview(attachmentKind) };
+  return {
+    ...message,
+    text: encodeDmAttachmentInboxPreview(attachmentInfo.kind, attachmentInfo.count),
+  };
 }
 
 function buildOtherUsersByConversation(
@@ -295,7 +297,9 @@ function DmInboxPageContent() {
   >(() => new Map());
   const inboxMessagesRef = useRef<Message[]>([]);
   const bookingsByConversationRef = useRef<Map<string, BookingRequest[]>>(new Map());
-  const messageAttachmentTypesRef = useRef<Map<string, DmAttachmentPreviewKind>>(new Map());
+  const messageAttachmentTypesRef = useRef<
+    Map<string, { kind: DmAttachmentPreviewKind; count: number }>
+  >(new Map());
   const dmInboxRowsRef = useRef<DmInboxRow[]>([]);
   const [otherUsersByConversation, setOtherUsersByConversation] = useState<Map<string, string>>(
     new Map(),
@@ -508,20 +512,25 @@ function DmInboxPageContent() {
       console.log("conversations error:", response.error);
     }
 
-    const attachmentTypesByMessageId = new Map<string, DmAttachmentPreviewKind>();
+    const attachmentInfoByMessageId = new Map<
+      string,
+      { kind: DmAttachmentPreviewKind; count: number }
+    >();
 
     for (const attachment of attachmentsResponse.data ?? []) {
-      attachmentTypesByMessageId.set(
-        attachment.message_id,
-        resolveDmAttachmentPreviewKind(attachment.file_type),
-      );
+      const existing = attachmentInfoByMessageId.get(attachment.message_id);
+
+      attachmentInfoByMessageId.set(attachment.message_id, {
+        kind: existing?.kind ?? resolveDmAttachmentPreviewKind(attachment.file_type),
+        count: (existing?.count ?? 0) + 1,
+      });
     }
 
-    messageAttachmentTypesRef.current = attachmentTypesByMessageId;
+    messageAttachmentTypesRef.current = attachmentInfoByMessageId;
 
     const conversationRows = normalizeConversations(response.data);
     const messageRows = ((messagesResponse.data ?? []) as Message[]).map((message) =>
-      decorateMessageWithAttachmentPreview(message, attachmentTypesByMessageId),
+      decorateMessageWithAttachmentPreview(message, attachmentInfoByMessageId),
     );
     inboxMessagesRef.current = messageRows;
 
@@ -692,16 +701,14 @@ function DmInboxPageContent() {
         .from("message_attachments")
         .select("file_type")
         .eq("message_id", message.id)
-        .eq("conversation_id", message.conversation_id)
-        .limit(1)
-        .maybeSingle();
+        .eq("conversation_id", message.conversation_id);
 
       if (error) {
         console.error("Failed to resolve DM inbox attachment preview:", error);
         return;
       }
 
-      if (!data) {
+      if (!data || data.length === 0) {
         if (attempt >= 1) {
           return;
         }
@@ -710,8 +717,11 @@ function DmInboxPageContent() {
         return resolveDmInboxAttachmentPreview(message, attempt + 1);
       }
 
-      const attachmentKind = resolveDmAttachmentPreviewKind(data.file_type);
-      messageAttachmentTypesRef.current.set(message.id, attachmentKind);
+      const attachmentInfo = {
+        kind: resolveDmAttachmentPreviewKind(data[0].file_type),
+        count: data.length,
+      };
+      messageAttachmentTypesRef.current.set(message.id, attachmentInfo);
 
       const existingMessage = inboxMessagesRef.current.find((m) => m.id === message.id);
 
@@ -723,7 +733,7 @@ function DmInboxPageContent() {
 
       const decoratedMessage: Message = {
         ...(existingMessage ?? message),
-        text: encodeDmAttachmentInboxPreview(attachmentKind),
+        text: encodeDmAttachmentInboxPreview(attachmentInfo.kind, attachmentInfo.count),
       };
 
       setDmInboxRows((previous) => {
@@ -1109,12 +1119,13 @@ function DmInboxPageContent() {
       const otherUserId = otherUsersByConversation.get(row.conversationId);
       const otherProfile = otherUserId ? userProfiles.get(otherUserId) : undefined;
       const displayName = getConversationDisplayName(row, otherProfile).toLowerCase();
-      const preview = (
-        formatDmInboxMessagePreview(row.latestPreview, {
-          bookings: bookingsByConversationId.get(row.conversationId) ?? [],
-          userProfiles,
-        }) ?? ""
-      ).toLowerCase();
+      const preview = formatDmInboxConversationPreview({
+        latestPreview: row.latestPreview,
+        latestMessageUserId: row.latestMessageUserId,
+        currentUserId,
+        bookings: bookingsByConversationId.get(row.conversationId) ?? [],
+        userProfiles,
+      }).toLowerCase();
 
       return displayName.includes(normalizedSearch) || preview.includes(normalizedSearch);
     });
@@ -1242,17 +1253,13 @@ function DmInboxPageContent() {
                     const otherUserId = otherUsersByConversation.get(row.conversationId);
                     const otherProfile = otherUserId ? userProfiles.get(otherUserId) : undefined;
                     const displayName = getConversationDisplayName(row, otherProfile);
-                    const previewText = formatDmInboxMessagePreview(row.latestPreview, {
+                    const preview = formatDmInboxConversationPreview({
+                      latestPreview: row.latestPreview,
+                      latestMessageUserId: row.latestMessageUserId,
+                      currentUserId,
                       bookings: bookingsByConversationId.get(row.conversationId) ?? [],
                       userProfiles,
                     });
-                    const prefixPreviewWithYou =
-                      row.latestMessageUserId === currentUserId &&
-                      Boolean(previewText) &&
-                      !isDmInboxSystemPreviewMessage(row.latestPreview);
-                    const preview = previewText
-                      ? `${prefixPreviewWithYou ? "You: " : ""}${previewText}`
-                      : "No messages yet";
                     const timestamp = row.latestActivityAt ?? row.conversationCreatedAt;
 
                     return (

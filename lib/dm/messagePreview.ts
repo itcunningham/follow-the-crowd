@@ -199,7 +199,7 @@ export function formatDmInboxMessagePreview(
   const attachmentPreview = parseDmAttachmentInboxPreview(trimmed);
 
   if (attachmentPreview) {
-    return buildDmAttachmentInboxPreviewText(attachmentPreview.kind);
+    return buildDmAttachmentInboxPreviewText(attachmentPreview.kind, attachmentPreview.count);
   }
 
   const bookings = options?.bookings ?? [];
@@ -227,6 +227,38 @@ export function formatDmInboxMessagePreview(
   }
 
   return trimmed;
+}
+
+/**
+ * The single display formatter for direct-message inbox rows.
+ *
+ * Inbox state keeps the latest activity as a raw message or synthetic
+ * attachment/reaction token so loading, refresh, and realtime paths can share
+ * sorting and unread logic. This formatter turns every supported activity
+ * shape into the final row copy in one place.
+ */
+export function formatDmInboxConversationPreview(options: {
+  latestPreview: string | null | undefined;
+  latestMessageUserId: string | null | undefined;
+  currentUserId: string | null | undefined;
+  bookings?: BookingRequest[];
+  userProfiles?: Map<string, UserAvatarProfile>;
+}): string {
+  const preview = formatDmInboxMessagePreview(options.latestPreview, {
+    bookings: options.bookings,
+    userProfiles: options.userProfiles,
+  });
+
+  if (!preview) {
+    return "No messages yet";
+  }
+
+  const isOwnMessage =
+    Boolean(options.currentUserId) &&
+    options.latestMessageUserId === options.currentUserId &&
+    !isDmInboxSystemPreviewMessage(options.latestPreview);
+
+  return isOwnMessage ? `You: ${preview}` : preview;
 }
 
 export function isDmInboxSystemPreviewMessage(

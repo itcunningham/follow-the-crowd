@@ -231,7 +231,7 @@ function getExtensionForFile(file: File): string {
 export async function uploadDmAttachmentFile(
   conversationId: string,
   file: File,
-): Promise<{ fileUrl: string; fileName: string; fileType: string; fileSize: number }> {
+): Promise<{ fileUrl: string; fileName: string; fileType: string; fileSize: number; path: string }> {
   const validation = validateDmAttachmentFile(file);
 
   if (!validation.ok) {
@@ -266,7 +266,24 @@ export async function uploadDmAttachmentFile(
     fileName: file.name.trim() || `${safeName}.${extension}`,
     fileType: mimeType,
     fileSize: file.size,
+    path,
   };
+}
+
+async function cleanupOrphanedDmAttachmentFiles(paths: string[]): Promise<void> {
+  if (paths.length === 0) {
+    return;
+  }
+
+  try {
+    const { error } = await supabase.storage.from(DM_ATTACHMENTS_BUCKET).remove(paths);
+
+    if (error) {
+      console.error("Failed to clean up orphaned DM attachment files:", error);
+    }
+  } catch (cleanupError) {
+    console.error("Failed to clean up orphaned DM attachment files:", cleanupError);
+  }
 }
 
 export async function listDmAttachmentsForConversation(
@@ -301,8 +318,13 @@ export function groupDmAttachmentsByMessageId(
 
 export function getDmAttachmentNotificationBody(
   attachment: Pick<DmMessageAttachment, "file_type">,
+  count = 1,
 ): string {
-  return isDmImageAttachment(attachment.file_type) ? "Sent a photo" : "Sent an attachment";
+  if (!isDmImageAttachment(attachment.file_type)) {
+    return "Sent an attachment";
+  }
+
+  return count > 1 ? `Sent ${count} photos` : "Sent a photo";
 }
 
 // An image-only (or file-only) message has an empty `messages.text`, so the
@@ -316,32 +338,64 @@ export const DM_ATTACHMENT_INBOX_PREVIEW_PREFIX = "__ftc_dm_attachment__:";
 
 export type DmAttachmentPreviewKind = "image" | "file";
 
+/** Maximum number of photos that can be sent in a single grouped DM message. */
+export const DM_MAX_PHOTOS_PER_MESSAGE = 10;
+
 export function resolveDmAttachmentPreviewKind(fileType: string): DmAttachmentPreviewKind {
   return isDmImageAttachment(fileType) ? "image" : "file";
 }
 
-export function encodeDmAttachmentInboxPreview(kind: DmAttachmentPreviewKind): string {
-  return `${DM_ATTACHMENT_INBOX_PREVIEW_PREFIX}${kind}`;
+// A trailing `:<count>` segment is only appended for groups of 2+ so the
+// common single-attachment token (and any already-stored single-attachment
+// text) is untouched.
+export function encodeDmAttachmentInboxPreview(
+  kind: DmAttachmentPreviewKind,
+  count = 1,
+): string {
+  const safeCount = Number.isFinite(count) && count > 1 ? Math.trunc(count) : 1;
+
+  return safeCount > 1
+    ? `${DM_ATTACHMENT_INBOX_PREVIEW_PREFIX}${kind}:${safeCount}`
+    : `${DM_ATTACHMENT_INBOX_PREVIEW_PREFIX}${kind}`;
 }
 
 export function parseDmAttachmentInboxPreview(
   value: string | null | undefined,
-): { kind: DmAttachmentPreviewKind } | null {
+): { kind: DmAttachmentPreviewKind; count: number } | null {
   if (!value || !value.startsWith(DM_ATTACHMENT_INBOX_PREVIEW_PREFIX)) {
     return null;
   }
 
-  const kind = value.slice(DM_ATTACHMENT_INBOX_PREVIEW_PREFIX.length);
+  const encoded = value.slice(DM_ATTACHMENT_INBOX_PREVIEW_PREFIX.length);
+  const [kindPart, countPart] = encoded.split(":");
 
-  return kind === "image" || kind === "file" ? { kind } : null;
+  if (kindPart !== "image" && kindPart !== "file") {
+    return null;
+  }
+
+  if (countPart === undefined) {
+    return { kind: kindPart, count: 1 };
+  }
+
+  const parsedCount = Number.parseInt(countPart, 10);
+  const count = Number.isFinite(parsedCount) && parsedCount > 1 ? parsedCount : 1;
+
+  return { kind: kindPart, count };
 }
 
 export function isDmAttachmentInboxPreview(value: string | null | undefined): boolean {
   return parseDmAttachmentInboxPreview(value) !== null;
 }
 
-export function buildDmAttachmentInboxPreviewText(kind: DmAttachmentPreviewKind): string {
-  return kind === "image" ? "📷 Photo" : "📎 File";
+export function buildDmAttachmentInboxPreviewText(
+  kind: DmAttachmentPreviewKind,
+  count = 1,
+): string {
+  if (kind === "image") {
+    return count > 1 ? "📷 Photos" : "📷 Photo";
+  }
+
+  return "📎 File";
 }
 
 export async function sendDmMessageWithAttachment(input: {
@@ -349,9 +403,76 @@ export async function sendDmMessageWithAttachment(input: {
   text?: string;
   file: File;
 }): Promise<{ messageId: string; attachment: DmMessageAttachment }> {
+  const result = await sendDmMessageWithAttachments({
+    conversationId: input.conversationId,
+    text: input.text,
+    files: [input.file],
+  });
+
+  return { messageId: result.messageId, attachment: result.attachments[0] };
+}
+
+/**
+ * Sends one or more photos as a single grouped message: one `messages` row
+ * (carrying the optional caption) plus one `message_attachments` row per
+ * file, all pointing at that same message id. This is the same
+ * one-message/many-attachments shape the schema already supported for
+ * single-photo sends (`message_attachments.message_id` has no uniqueness
+ * constraint) — sending N photos just inserts N attachment rows instead of 1.
+ *
+ * Failure handling: every file is uploaded to storage first, and the
+ * `messages`/`message_attachments` rows are only written once *all* uploads
+ * succeed, so a mid-batch failure never leaves a half-populated message
+ * visible to either party. If any upload fails, or either DB write fails,
+ * whatever was already uploaded to storage for this attempt is deleted
+ * before the error is thrown, so retrying never creates duplicate files or
+ * duplicate attachment rows.
+ */
+export async function sendDmMessageWithAttachments(input: {
+  conversationId: string;
+  text?: string;
+  files: File[];
+}): Promise<{ messageId: string; attachments: DmMessageAttachment[] }> {
+  const files = input.files;
+
+  if (files.length === 0) {
+    throw new Error("No photos to send");
+  }
+
+  if (files.length > DM_MAX_PHOTOS_PER_MESSAGE) {
+    throw new Error(`You can send up to ${DM_MAX_PHOTOS_PER_MESSAGE} photos at once`);
+  }
+
   const userId = await getCurrentUserId();
   const text = input.text?.trim() ?? "";
-  const uploaded = await uploadDmAttachmentFile(input.conversationId, input.file);
+
+  const uploadOutcomes = await Promise.allSettled(
+    files.map((file) => uploadDmAttachmentFile(input.conversationId, file)),
+  );
+
+  const uploaded: Array<{
+    fileUrl: string;
+    fileName: string;
+    fileType: string;
+    fileSize: number;
+    path: string;
+  }> = [];
+  let firstUploadError: unknown = null;
+
+  for (const outcome of uploadOutcomes) {
+    if (outcome.status === "fulfilled") {
+      uploaded.push(outcome.value);
+    } else if (!firstUploadError) {
+      firstUploadError = outcome.reason;
+    }
+  }
+
+  if (firstUploadError) {
+    await cleanupOrphanedDmAttachmentFiles(uploaded.map((item) => item.path));
+    throw firstUploadError instanceof Error
+      ? firstUploadError
+      : new Error("Failed to upload one or more photos");
+  }
 
   const { data: messageRow, error: messageError } = await supabase
     .from("messages")
@@ -364,29 +485,38 @@ export async function sendDmMessageWithAttachment(input: {
     .single();
 
   if (messageError || !messageRow) {
+    await cleanupOrphanedDmAttachmentFiles(uploaded.map((item) => item.path));
     throw messageError ?? new Error("Failed to create message");
   }
 
-  const { data: attachmentRow, error: attachmentError } = await supabase
+  const { data: attachmentRows, error: attachmentError } = await supabase
     .from("message_attachments")
-    .insert({
-      message_id: messageRow.id,
-      conversation_id: input.conversationId,
-      uploader_id: userId,
-      file_url: uploaded.fileUrl,
-      file_name: uploaded.fileName,
-      file_type: uploaded.fileType,
-      file_size: uploaded.fileSize,
-    })
-    .select(ATTACHMENT_SELECT)
-    .single();
+    .insert(
+      uploaded.map((item) => ({
+        message_id: messageRow.id,
+        conversation_id: input.conversationId,
+        uploader_id: userId,
+        file_url: item.fileUrl,
+        file_name: item.fileName,
+        file_type: item.fileType,
+        file_size: item.fileSize,
+      })),
+    )
+    .select(ATTACHMENT_SELECT);
 
-  if (attachmentError || !attachmentRow) {
-    throw attachmentError ?? new Error("Failed to save attachment");
+  if (attachmentError || !attachmentRows || attachmentRows.length !== uploaded.length) {
+    // The message row itself can't be rolled back (no delete grant on
+    // `messages`), but with an empty caption it renders as nothing (see
+    // DmTextMessageBubble's `!hasText && !hasAttachments` guard) and the
+    // inbox preview pipeline leaves it as empty text, so it never surfaces
+    // to either user. The uploaded files are now unreferenced, so it's safe
+    // — and required — to clean them up.
+    await cleanupOrphanedDmAttachmentFiles(uploaded.map((item) => item.path));
+    throw attachmentError ?? new Error("Failed to save attachments");
   }
 
   return {
     messageId: messageRow.id as string,
-    attachment: attachmentRow as DmMessageAttachment,
+    attachments: attachmentRows as DmMessageAttachment[],
   };
 }
