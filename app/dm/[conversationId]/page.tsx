@@ -70,14 +70,17 @@ import { FIXED_CHAT_PAGE_SHELL_CLASS } from "@/lib/navigation/prepareFixedChatPa
 import { traceDmChatLayout } from "@/lib/navigation/dmChatLayoutTrace";
 import { buildChatReturnTo } from "@/lib/profileNavigation";
 import {
+  DM_MAX_PHOTOS_PER_MESSAGE,
   getDmAttachmentNotificationBody,
   groupDmAttachmentsByMessageId,
   listDmAttachmentsForConversation,
-  sendDmMessageWithAttachment,
+  sendDmMessageWithAttachments,
   type DmMessageAttachment,
 } from "@/lib/dmAttachments";
 import {
-  createPendingComposerAttachment,
+  mergePendingComposerAttachments,
+  removePendingComposerAttachmentAt,
+  revokeAllPendingComposerAttachments,
   revokePendingComposerAttachment,
   type PendingComposerAttachment,
 } from "@/lib/dm/composerPendingAttachment";
@@ -288,9 +291,7 @@ export default function DmChatPage() {
   const [otherUserProfile, setOtherUserProfile] = useState<UserAvatarProfile | null>(null);
   const [conversationMetaLoaded, setConversationMetaLoaded] = useState(false);
   const [input, setInput] = useState("");
-  const [pendingAttachment, setPendingAttachment] = useState<PendingComposerAttachment | null>(
-    null,
-  );
+  const [pendingAttachments, setPendingAttachments] = useState<PendingComposerAttachment[]>([]);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -345,10 +346,10 @@ export default function DmChatPage() {
   const { addHighlightedMessageId, isMessageHighlighted } = useChatNewMessageHighlight();
   const { highlightBookingFocus, getMessageBookingFocusPhase } = useChatBookingFocusHighlight();
 
-  const clearPendingAttachment = useCallback(() => {
-    setPendingAttachment((current) => {
-      revokePendingComposerAttachment(current);
-      return null;
+  const clearPendingAttachments = useCallback(() => {
+    setPendingAttachments((current) => {
+      revokeAllPendingComposerAttachments(current);
+      return [];
     });
   }, []);
 
@@ -371,22 +372,45 @@ export default function DmChatPage() {
     keepComposerFocusedAfterSendRef.current = false;
   }, []);
 
-  const stagePendingPhoto = useCallback((file: File) => {
-    setPendingAttachment((current) => {
-      revokePendingComposerAttachment(current);
-      return createPendingComposerAttachment(file);
+  const stagePendingPhotos = useCallback((files: File[]) => {
+    setPendingAttachments((current) => {
+      const result = mergePendingComposerAttachments(current, files, DM_MAX_PHOTOS_PER_MESSAGE);
+
+      if (result.skippedLimitCount > 0) {
+        setError(
+          `You can only send up to ${DM_MAX_PHOTOS_PER_MESSAGE} photos at once. ` +
+            `${result.skippedLimitCount === 1 ? "1 photo was" : `${result.skippedLimitCount} photos were`} not added.`,
+        );
+      }
+
+      return result.attachments;
     });
   }, []);
 
-  useEffect(() => {
-    return () => {
-      revokePendingComposerAttachment(pendingAttachment);
-    };
-  }, [pendingAttachment]);
+  const removePendingPhotoAt = useCallback((index: number) => {
+    setPendingAttachments((current) => {
+      const result = removePendingComposerAttachmentAt(current, index);
+      revokePendingComposerAttachment(result.removed);
+      return result.attachments;
+    });
+  }, []);
+
+  const pendingAttachmentsRef = useRef<PendingComposerAttachment[]>(pendingAttachments);
 
   useEffect(() => {
-    clearPendingAttachment();
-  }, [clearPendingAttachment, conversationId]);
+    pendingAttachmentsRef.current = pendingAttachments;
+  }, [pendingAttachments]);
+
+  useEffect(() => {
+    return () => {
+      revokeAllPendingComposerAttachments(pendingAttachmentsRef.current);
+    };
+  }, []);
+
+  useEffect(() => {
+    clearPendingAttachments();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [conversationId]);
 
   useEffect(() => {
     setReactionPickerMessageId(null);
@@ -1303,9 +1327,9 @@ export default function DmChatPage() {
 
   async function sendMessage() {
     const text = input.trim();
-    const attachmentToSend = pendingAttachment?.file ?? null;
+    const filesToSend = pendingAttachments.map((pending) => pending.file);
 
-    if ((!text && !attachmentToSend) || !conversationId || sending || uploading) {
+    if ((!text && filesToSend.length === 0) || !conversationId || sending || uploading) {
       return;
     }
 
@@ -1316,9 +1340,9 @@ export default function DmChatPage() {
       return;
     }
 
-    if (attachmentToSend) {
+    if (filesToSend.length > 0) {
       captureComposerFocusIntentForSend();
-      await sendAttachment(attachmentToSend);
+      await sendAttachments(filesToSend);
       return;
     }
 
@@ -1367,8 +1391,8 @@ export default function DmChatPage() {
     });
   }
 
-  async function sendAttachment(file: File) {
-    if (!conversationId || uploading || sending) {
+  async function sendAttachments(files: File[]) {
+    if (!conversationId || uploading || sending || files.length === 0) {
       return;
     }
 
@@ -1386,10 +1410,10 @@ export default function DmChatPage() {
 
     try {
       const caption = input.trim();
-      const { messageId, attachment } = await sendDmMessageWithAttachment({
+      const { messageId, attachments: sentAttachments } = await sendDmMessageWithAttachments({
         conversationId,
         text: caption,
-        file,
+        files,
       });
 
       const userId = await getCurrentUserId();
@@ -1413,15 +1437,20 @@ export default function DmChatPage() {
       });
 
       setAttachments((prev) => {
-        if (prev.some((item) => item.id === attachment.id)) {
+        const existingIds = new Set(prev.map((item) => item.id));
+        const newAttachments = sentAttachments.filter((item) => !existingIds.has(item.id));
+
+        if (newAttachments.length === 0) {
           return prev;
         }
 
-        return [...prev, attachment];
+        return [...prev, ...newAttachments];
       });
 
       setInput("");
-      clearPendingAttachment();
+      // Selection only clears once the send fully succeeds, so a failed
+      // send (see catch below) leaves the same photos staged for retry.
+      clearPendingAttachments();
 
       if (otherUserId) {
         try {
@@ -1429,7 +1458,7 @@ export default function DmChatPage() {
             otherUserId,
             "message",
             "New message",
-            caption || getDmAttachmentNotificationBody(attachment),
+            caption || getDmAttachmentNotificationBody(sentAttachments[0], sentAttachments.length),
             `/dm/${conversationId}`,
           );
         } catch (notificationError) {
@@ -1444,8 +1473,14 @@ export default function DmChatPage() {
         readThroughCreatedAt: optimisticMessage.created_at,
       });
     } catch (uploadError) {
-      console.error("Failed to send attachment:", uploadError);
-      setError(uploadError instanceof Error ? uploadError.message : "Failed to send attachment");
+      console.error("Failed to send attachments:", uploadError);
+      setError(
+        uploadError instanceof Error
+          ? uploadError.message
+          : files.length > 1
+            ? "Failed to send photos. Tap send to try again."
+            : "Failed to send photo. Tap send to try again.",
+      );
     } finally {
       setUploading(false);
       restoreComposerInputFocus();
@@ -2151,9 +2186,10 @@ export default function DmChatPage() {
           inputRef={composerInputRef}
           composerRootRef={composerRootRef}
           onInputBlurWhileBusy={handleComposerInputBlurWhileBusy}
-          pendingAttachmentPreviewUrl={pendingAttachment?.previewUrl ?? null}
-          onStagePhoto={stagePendingPhoto}
-          onClearPendingPhoto={clearPendingAttachment}
+          pendingPhotos={pendingAttachments}
+          onStagePhotos={stagePendingPhotos}
+          onRemovePendingPhoto={removePendingPhotoAt}
+          onClearPendingPhoto={clearPendingAttachments}
           onAttachmentError={setError}
           sending={sending}
           uploading={uploading}

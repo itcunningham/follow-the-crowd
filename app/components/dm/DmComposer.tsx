@@ -4,9 +4,11 @@ import { useRef, type RefObject } from "react";
 import ChatSendIcon from "@/app/components/chat/ChatSendIcon";
 import ComposerMessageField from "@/app/components/chat/ComposerMessageField";
 import {
+  DM_MAX_PHOTOS_PER_MESSAGE,
   DM_PHOTO_INPUT_ACCEPT,
   validateDmAttachmentFile,
 } from "@/lib/dmAttachments";
+import type { PendingComposerAttachment } from "@/lib/dm/composerPendingAttachment";
 import { handleComposerNewlineKeyDown } from "@/lib/dm/composerNewlineKeydown";
 import { useComposerTextareaAutogrow } from "@/lib/dm/useComposerTextareaAutogrow";
 
@@ -48,8 +50,9 @@ export default function DmComposer({
   inputRef,
   composerRootRef,
   onInputBlurWhileBusy,
-  pendingAttachmentPreviewUrl,
-  onStagePhoto,
+  pendingPhotos,
+  onStagePhotos,
+  onRemovePendingPhoto,
   onClearPendingPhoto,
   onAttachmentError,
   sending,
@@ -61,8 +64,9 @@ export default function DmComposer({
   inputRef?: RefObject<HTMLTextAreaElement | null>;
   composerRootRef?: RefObject<HTMLDivElement | null>;
   onInputBlurWhileBusy?: () => void;
-  pendingAttachmentPreviewUrl: string | null;
-  onStagePhoto: (file: File) => void;
+  pendingPhotos: PendingComposerAttachment[];
+  onStagePhotos: (files: File[]) => void;
+  onRemovePendingPhoto: (index: number) => void;
   onClearPendingPhoto: () => void;
   onAttachmentError?: (message: string) => void;
   sending: boolean;
@@ -71,8 +75,8 @@ export default function DmComposer({
   const photoInputRef = useRef<HTMLInputElement>(null);
   const { textareaRef: messageInputRef } = useComposerTextareaAutogrow(value, inputRef);
   const busy = sending || uploading;
-  const hasPendingPhoto = Boolean(pendingAttachmentPreviewUrl);
-  const canSend = Boolean(value.trim()) || hasPendingPhoto;
+  const hasPendingPhotos = pendingPhotos.length > 0;
+  const canSend = Boolean(value.trim()) || hasPendingPhotos;
 
   function handleInputBlur() {
     if (busy) {
@@ -80,15 +84,23 @@ export default function DmComposer({
     }
   }
 
-  function handleAttachmentSelected(file: File, onSelected: (file: File) => void) {
-    const validation = validateDmAttachmentFile(file);
+  function handlePhotosSelected(files: File[]) {
+    const validFiles: File[] = [];
 
-    if (!validation.ok) {
-      onAttachmentError?.(validation.error);
-      return;
+    for (const file of files) {
+      const validation = validateDmAttachmentFile(file);
+
+      if (!validation.ok) {
+        onAttachmentError?.(validation.error);
+        continue;
+      }
+
+      validFiles.push(file);
     }
 
-    onSelected(file);
+    if (validFiles.length > 0) {
+      onStagePhotos(validFiles);
+    }
   }
 
   return (
@@ -97,35 +109,52 @@ export default function DmComposer({
       data-chat-composer
       className="dm-composer shrink-0 border-t border-ftc-border-subtle bg-ftc-bg px-3 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-4"
     >
-      {hasPendingPhoto && pendingAttachmentPreviewUrl ? (
-        <div className="mb-2 flex items-start gap-2">
-          <div
-            className="dm-composer-pending-photo-selected relative h-16 w-16 shrink-0 overflow-hidden rounded-xl"
-            data-testid="dm-composer-pending-photo"
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={pendingAttachmentPreviewUrl}
-              alt="Selected photo"
-              className="h-full w-full object-cover"
-            />
-          </div>
-          <button
-            type="button"
-            aria-label="Remove selected photo"
-            disabled={busy}
-            onClick={onClearPendingPhoto}
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-ftc-border-subtle bg-ftc-surface text-sm text-ftc-text-secondary transition hover:border-ftc-border-strong hover:text-ftc-text disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            ×
-          </button>
+      {hasPendingPhotos ? (
+        <div
+          className="mb-2 flex items-start gap-2 overflow-x-auto pb-1"
+          data-testid="dm-composer-pending-photos"
+        >
+          {pendingPhotos.map((photo, index) => (
+            <div
+              key={photo.previewUrl}
+              className="dm-composer-pending-photo-selected relative h-16 w-16 shrink-0 overflow-hidden rounded-xl"
+              data-testid="dm-composer-pending-photo"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={photo.previewUrl}
+                alt={`Selected photo ${index + 1}`}
+                className="h-full w-full object-cover"
+              />
+              <button
+                type="button"
+                aria-label={`Remove selected photo ${index + 1}`}
+                disabled={busy}
+                onClick={() => onRemovePendingPhoto(index)}
+                className="absolute right-0.5 top-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-ftc-bg/90 text-xs leading-none text-ftc-text-secondary shadow transition hover:text-ftc-text disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                ×
+              </button>
+            </div>
+          ))}
+          {pendingPhotos.length > 1 ? (
+            <button
+              type="button"
+              aria-label="Remove all selected photos"
+              disabled={busy}
+              onClick={onClearPendingPhoto}
+              className="flex h-16 shrink-0 items-center justify-center rounded-xl border border-ftc-border-subtle bg-ftc-surface px-2 text-[11px] font-medium text-ftc-text-secondary transition hover:border-ftc-border-strong hover:text-ftc-text disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Clear all
+            </button>
+          ) : null}
         </div>
       ) : null}
 
       <div className="flex min-w-0 items-end gap-2">
         <ComposerIconButton
           label="Add photo"
-          disabled={busy}
+          disabled={busy || pendingPhotos.length >= DM_MAX_PHOTOS_PER_MESSAGE}
           onClick={() => photoInputRef.current?.click()}
         >
           <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" className="h-5 w-5">
@@ -163,13 +192,14 @@ export default function DmComposer({
         ref={photoInputRef}
         type="file"
         accept={DM_PHOTO_INPUT_ACCEPT}
+        multiple
         className="hidden"
         onChange={(event) => {
-          const file = event.target.files?.[0];
+          const files = Array.from(event.target.files ?? []);
           event.target.value = "";
 
-          if (file) {
-            handleAttachmentSelected(file, onStagePhoto);
+          if (files.length > 0) {
+            handlePhotosSelected(files);
           }
         }}
       />

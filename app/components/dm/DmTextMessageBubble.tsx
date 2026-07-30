@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef } from "react";
 import ChatMessageBubbleShell from "@/app/components/chat/ChatMessageBubbleShell";
 import ChatProfileAvatarLink from "@/app/components/chat/ChatProfileAvatarLink";
 import DmIncomingMessageLayout from "@/app/components/chat/DmIncomingMessageLayout";
-import DmMessageAttachmentView from "@/app/components/dm/DmMessageAttachment";
+import DmMessageAttachmentGroup from "@/app/components/dm/DmMessageAttachmentGroup";
 import { getChatNewMessageHighlightClass, logChatHighlightRender } from "@/lib/chatNewMessageHighlight";
 import { formatBookingMessagePreview } from "@/lib/bookingRequests";
 import type { DmMessageAttachment } from "@/lib/dmAttachments";
@@ -189,15 +189,12 @@ export default function DmTextMessageBubble({
       }}
     >
       {hasAttachments ? (
-        <div className={`space-y-2 ${hasText ? "mb-2" : ""}`}>
-          {attachments.map((attachment) => (
-            <DmMessageAttachmentView
-              key={attachment.id}
-              attachment={attachment}
-              isOwnMessage={isOwnMessage}
-              onContextMenu={handleContextMenu}
-            />
-          ))}
+        <div className={hasText ? "mb-2" : ""}>
+          <DmMessageAttachmentGroup
+            attachments={attachments}
+            isOwnMessage={isOwnMessage}
+            onContextMenu={handleContextMenu}
+          />
         </div>
       ) : null}
       {hasText ? <p className={bubbleTextClass}>{displayText}</p> : null}
