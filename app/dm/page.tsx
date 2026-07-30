@@ -46,6 +46,11 @@ import {
 } from "@/lib/dm/dmReactionInbox";
 import type { DmMessageReaction } from "@/lib/dmReactions";
 import {
+  encodeDmAttachmentInboxPreview,
+  resolveDmAttachmentPreviewKind,
+  type DmAttachmentPreviewKind,
+} from "@/lib/dmAttachments";
+import {
   syncReadInboxNotifications,
 } from "@/lib/inboxUnread";
 import {
@@ -180,6 +185,29 @@ function normalizeConversations(data: unknown): Conversation[] {
   return [];
 }
 
+// Image/file-only messages have an empty `text`, so the inbox preview
+// pipeline (which reads `message.text` as `latestPreview`) has nothing to
+// display and falls through to "No messages yet". Substituting an encoded
+// attachment token (see lib/dmAttachments.ts) into the empty text lets the
+// existing preview/sort/unread pipeline handle it unchanged. A caption
+// (non-empty text) always takes priority over the attachment token.
+function decorateMessageWithAttachmentPreview(
+  message: Message,
+  attachmentTypesByMessageId: Map<string, DmAttachmentPreviewKind>,
+): Message {
+  if (message.text.trim()) {
+    return message;
+  }
+
+  const attachmentKind = attachmentTypesByMessageId.get(message.id);
+
+  if (!attachmentKind) {
+    return message;
+  }
+
+  return { ...message, text: encodeDmAttachmentInboxPreview(attachmentKind) };
+}
+
 function buildOtherUsersByConversation(
   members: ConversationMember[],
   conversationIds: string[],
@@ -267,6 +295,7 @@ function DmInboxPageContent() {
   >(() => new Map());
   const inboxMessagesRef = useRef<Message[]>([]);
   const bookingsByConversationRef = useRef<Map<string, BookingRequest[]>>(new Map());
+  const messageAttachmentTypesRef = useRef<Map<string, DmAttachmentPreviewKind>>(new Map());
   const dmInboxRowsRef = useRef<DmInboxRow[]>([]);
   const [otherUsersByConversation, setOtherUsersByConversation] = useState<Map<string, string>>(
     new Map(),
@@ -442,22 +471,34 @@ function DmInboxPageContent() {
     const otherUsers = buildOtherUsersByConversation(allMembers, conversationIds, userId);
     setOtherUsersByConversation(otherUsers);
 
-    const [profilesResult, response, messagesResponse, bookingsResult] = await Promise.all([
-      getUserAvatarProfilesByIds([...otherUsers.values()]).catch((profileError) => {
-        console.error("Failed to load DM user profiles:", profileError);
-        return new Map<string, UserAvatarProfile>();
-      }),
-      supabase.from("conversations").select("*").in("id", conversationIds),
-      supabase
-        .from("messages")
-        .select("*")
-        .in("conversation_id", conversationIds)
-        .order("created_at", { ascending: false }),
-      listBookingRequestsForConversations(conversationIds).catch((bookingsError) => {
-        console.error("Failed to load conversation bookings:", bookingsError);
-        return new Map<string, BookingRequest[]>();
-      }),
-    ]);
+    const [profilesResult, response, messagesResponse, bookingsResult, attachmentsResponse] =
+      await Promise.all([
+        getUserAvatarProfilesByIds([...otherUsers.values()]).catch((profileError) => {
+          console.error("Failed to load DM user profiles:", profileError);
+          return new Map<string, UserAvatarProfile>();
+        }),
+        supabase.from("conversations").select("*").in("id", conversationIds),
+        supabase
+          .from("messages")
+          .select("*")
+          .in("conversation_id", conversationIds)
+          .order("created_at", { ascending: false }),
+        listBookingRequestsForConversations(conversationIds).catch((bookingsError) => {
+          console.error("Failed to load conversation bookings:", bookingsError);
+          return new Map<string, BookingRequest[]>();
+        }),
+        supabase
+          .from("message_attachments")
+          .select("message_id, file_type")
+          .in("conversation_id", conversationIds)
+          .then(
+            (result) => result,
+            (attachmentsError) => {
+              console.error("Failed to load DM inbox attachments:", attachmentsError);
+              return { data: [] as { message_id: string; file_type: string }[], error: null };
+            },
+          ),
+      ]);
 
     setUserProfiles(profilesResult);
     setBookingsByConversationId(bookingsResult);
@@ -467,8 +508,21 @@ function DmInboxPageContent() {
       console.log("conversations error:", response.error);
     }
 
+    const attachmentTypesByMessageId = new Map<string, DmAttachmentPreviewKind>();
+
+    for (const attachment of attachmentsResponse.data ?? []) {
+      attachmentTypesByMessageId.set(
+        attachment.message_id,
+        resolveDmAttachmentPreviewKind(attachment.file_type),
+      );
+    }
+
+    messageAttachmentTypesRef.current = attachmentTypesByMessageId;
+
     const conversationRows = normalizeConversations(response.data);
-    const messageRows = (messagesResponse.data ?? []) as Message[];
+    const messageRows = ((messagesResponse.data ?? []) as Message[]).map((message) =>
+      decorateMessageWithAttachmentPreview(message, attachmentTypesByMessageId),
+    );
     inboxMessagesRef.current = messageRows;
 
     if (messagesResponse.error) {
@@ -633,6 +687,60 @@ function DmInboxPageContent() {
   }, [activeTab, loadConversations]);
 
   useEffect(() => {
+    async function resolveDmInboxAttachmentPreview(message: Message, attempt = 0): Promise<void> {
+      const { data, error } = await supabase
+        .from("message_attachments")
+        .select("file_type")
+        .eq("message_id", message.id)
+        .eq("conversation_id", message.conversation_id)
+        .limit(1)
+        .maybeSingle();
+
+      if (error) {
+        console.error("Failed to resolve DM inbox attachment preview:", error);
+        return;
+      }
+
+      if (!data) {
+        if (attempt >= 1) {
+          return;
+        }
+
+        await new Promise((resolve) => setTimeout(resolve, 700));
+        return resolveDmInboxAttachmentPreview(message, attempt + 1);
+      }
+
+      const attachmentKind = resolveDmAttachmentPreviewKind(data.file_type);
+      messageAttachmentTypesRef.current.set(message.id, attachmentKind);
+
+      const existingMessage = inboxMessagesRef.current.find((m) => m.id === message.id);
+
+      // If real caption text has since arrived (or the message was
+      // superseded), that always wins over the attachment token.
+      if (existingMessage && existingMessage.text.trim()) {
+        return;
+      }
+
+      const decoratedMessage: Message = {
+        ...(existingMessage ?? message),
+        text: encodeDmAttachmentInboxPreview(attachmentKind),
+      };
+
+      setDmInboxRows((previous) => {
+        const mergedMessages = [
+          decoratedMessage,
+          ...inboxMessagesRef.current.filter((m) => m.id !== decoratedMessage.id),
+        ];
+        inboxMessagesRef.current = mergedMessages;
+        const result = applyDmInboxRealtimeMessage(previous, decoratedMessage, {
+          allMessages: mergedMessages,
+          bookingsByConversationId: bookingsByConversationRef.current,
+        });
+
+        return result.rows;
+      });
+    }
+
     const channel = supabase
       .channel("dm-inbox:messages")
       .on(
@@ -711,14 +819,25 @@ function DmInboxPageContent() {
           }
 
           const targetId = newMessage.conversation_id;
+          // A caption-less image/file message inserts the `messages` row
+          // first, then a `message_attachments` row moments later. If the
+          // attachment kind is already cached here (e.g. resolved for an
+          // earlier message), decorate immediately; otherwise
+          // resolveDmInboxAttachmentPreview (below) patches it in shortly.
+          const decoratedNewMessage = decorateMessageWithAttachmentPreview(
+            newMessage,
+            messageAttachmentTypesRef.current,
+          );
 
           setDmInboxRows((previous) => {
             const mergedMessages = [
-              newMessage,
-              ...inboxMessagesRef.current.filter((message) => message.id !== newMessage.id),
+              decoratedNewMessage,
+              ...inboxMessagesRef.current.filter(
+                (message) => message.id !== decoratedNewMessage.id,
+              ),
             ];
             inboxMessagesRef.current = mergedMessages;
-            const result = applyDmInboxRealtimeMessage(previous, newMessage, {
+            const result = applyDmInboxRealtimeMessage(previous, decoratedNewMessage, {
               allMessages: mergedMessages,
               bookingsByConversationId: bookingsByConversationRef.current,
             });
@@ -738,6 +857,17 @@ function DmInboxPageContent() {
               next.delete(targetId);
               return next;
             });
+          }
+
+          // message_attachments is not in the Realtime publication, so an
+          // image/file message (empty text) can't be patched via a
+          // postgres_changes callback on that table. Instead, resolve it
+          // with a direct, narrowly-scoped select — sendDmMessageWithAttachment
+          // inserts the message row first and the attachment row moments
+          // later, so a short bounded retry covers that ordering gap without
+          // open-ended polling.
+          if (!decoratedNewMessage.text.trim()) {
+            void resolveDmInboxAttachmentPreview(decoratedNewMessage);
           }
         },
       )

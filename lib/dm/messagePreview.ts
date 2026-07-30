@@ -22,6 +22,10 @@ import {
   isDmReactionInboxPreview,
   parseDmReactionInboxPreview,
 } from "@/lib/dm/dmReactionInbox";
+import {
+  buildDmAttachmentInboxPreviewText,
+  parseDmAttachmentInboxPreview,
+} from "@/lib/dmAttachments";
 import type { UserAvatarProfile } from "@/lib/user/currentUser";
 import { resolveUserDisplayName } from "@/lib/user/displayName";
 
@@ -190,6 +194,12 @@ export function formatDmInboxMessagePreview(
       : null;
 
     return buildDmReactionInboxPreviewText(reactionPreview.emoji, reactorDisplayName);
+  }
+
+  const attachmentPreview = parseDmAttachmentInboxPreview(trimmed);
+
+  if (attachmentPreview) {
+    return buildDmAttachmentInboxPreviewText(attachmentPreview.kind);
   }
 
   const bookings = options?.bookings ?? [];

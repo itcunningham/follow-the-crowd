@@ -305,6 +305,45 @@ export function getDmAttachmentNotificationBody(
   return isDmImageAttachment(attachment.file_type) ? "Sent a photo" : "Sent an attachment";
 }
 
+// An image-only (or file-only) message has an empty `messages.text`, so the
+// inbox preview pipeline (which reads `message.text`) has nothing to show
+// and falls through to "No messages yet". Rather than teach every inbox
+// preview consumer about attachments, encode a synthetic token into the
+// message's text the same way DM reaction activity already does
+// (see lib/dm/dmReactionInbox.ts), so it flows through the existing
+// latestPreview/sorting/unread pipeline unchanged.
+export const DM_ATTACHMENT_INBOX_PREVIEW_PREFIX = "__ftc_dm_attachment__:";
+
+export type DmAttachmentPreviewKind = "image" | "file";
+
+export function resolveDmAttachmentPreviewKind(fileType: string): DmAttachmentPreviewKind {
+  return isDmImageAttachment(fileType) ? "image" : "file";
+}
+
+export function encodeDmAttachmentInboxPreview(kind: DmAttachmentPreviewKind): string {
+  return `${DM_ATTACHMENT_INBOX_PREVIEW_PREFIX}${kind}`;
+}
+
+export function parseDmAttachmentInboxPreview(
+  value: string | null | undefined,
+): { kind: DmAttachmentPreviewKind } | null {
+  if (!value || !value.startsWith(DM_ATTACHMENT_INBOX_PREVIEW_PREFIX)) {
+    return null;
+  }
+
+  const kind = value.slice(DM_ATTACHMENT_INBOX_PREVIEW_PREFIX.length);
+
+  return kind === "image" || kind === "file" ? { kind } : null;
+}
+
+export function isDmAttachmentInboxPreview(value: string | null | undefined): boolean {
+  return parseDmAttachmentInboxPreview(value) !== null;
+}
+
+export function buildDmAttachmentInboxPreviewText(kind: DmAttachmentPreviewKind): string {
+  return kind === "image" ? "📷 Photo" : "📎 File";
+}
+
 export async function sendDmMessageWithAttachment(input: {
   conversationId: string;
   text?: string;

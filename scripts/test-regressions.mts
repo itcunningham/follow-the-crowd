@@ -133,6 +133,14 @@ import {
   type DmMessageReaction,
 } from "../lib/dmReactions";
 import {
+  buildDmAttachmentInboxPreviewText,
+  encodeDmAttachmentInboxPreview,
+  isDmAttachmentInboxPreview,
+  parseDmAttachmentInboxPreview,
+  resolveDmAttachmentPreviewKind,
+} from "../lib/dmAttachments";
+import { formatDmInboxMessagePreview, pickDmInboxPreviewMessage } from "../lib/dm/messagePreview";
+import {
   canComposerInsertNewline,
   getComposerLineBeforeCursor,
 } from "../lib/dm/composerNewlineKeydown";
@@ -5495,6 +5503,160 @@ function testDmReactionInboxActivity() {
   );
 }
 
+type TestInboxMessage = {
+  id: string;
+  conversation_id: string;
+  user_id: string;
+  text: string;
+  created_at: string;
+};
+
+function decorateTestMessageWithAttachmentPreview(
+  message: TestInboxMessage,
+  attachmentTypesByMessageId: Map<string, "image" | "file">,
+): TestInboxMessage {
+  if (message.text.trim()) {
+    return message;
+  }
+
+  const attachmentKind = attachmentTypesByMessageId.get(message.id);
+
+  if (!attachmentKind) {
+    return message;
+  }
+
+  return { ...message, text: encodeDmAttachmentInboxPreview(attachmentKind) };
+}
+
+function testDmInboxImageMessagePreview() {
+  // Root cause: image/file-only messages store an empty `messages.text`
+  // (the file lives in a separate message_attachments row). The inbox
+  // preview pipeline reads `message.text` directly as `latestPreview`, so
+  // an empty string is indistinguishable from "no messages" and falls
+  // through to the "No messages yet" placeholder.
+  assert.equal(resolveDmAttachmentPreviewKind("image/jpeg"), "image");
+  assert.equal(resolveDmAttachmentPreviewKind("image/png"), "image");
+  assert.equal(resolveDmAttachmentPreviewKind("application/pdf"), "file");
+
+  const encodedImage = encodeDmAttachmentInboxPreview("image");
+  assert.equal(isDmAttachmentInboxPreview(encodedImage), true);
+  assert.equal(parseDmAttachmentInboxPreview(encodedImage)?.kind, "image");
+  assert.equal(buildDmAttachmentInboxPreviewText("image"), "📷 Photo");
+  assert.equal(buildDmAttachmentInboxPreviewText("file"), "📎 File");
+  assert.equal(parseDmAttachmentInboxPreview("plain text"), null);
+  assert.equal(parseDmAttachmentInboxPreview(null), null);
+
+  // formatDmInboxMessagePreview must render the encoded token, and must
+  // never itself resolve an empty string to anything but null (encoding
+  // happens upstream, at message-load time, not inside the formatter).
+  assert.equal(formatDmInboxMessagePreview(""), null);
+  assert.equal(formatDmInboxMessagePreview(encodedImage), "📷 Photo");
+  assert.equal(
+    formatDmInboxMessagePreview(encodeDmAttachmentInboxPreview("file")),
+    "📎 File",
+  );
+
+  // Test: first message is an image (empty text) — must decorate, not fall
+  // through to null/"No messages yet".
+  const conversationId = "conv-1";
+  const imageOnlyMessages: TestInboxMessage[] = [
+    {
+      id: "msg-image-1",
+      conversation_id: conversationId,
+      user_id: "user-a",
+      text: "",
+      created_at: "2026-01-01T10:00:00.000Z",
+    },
+  ];
+  const imageAttachmentTypes = new Map([["msg-image-1", "image" as const]]);
+  const decoratedImageMessages = imageOnlyMessages.map((message) =>
+    decorateTestMessageWithAttachmentPreview(message, imageAttachmentTypes),
+  );
+  const imagePreviewMessage = pickDmInboxPreviewMessage(decoratedImageMessages, conversationId);
+  assert.equal(
+    formatDmInboxMessagePreview(imagePreviewMessage?.text ?? null),
+    "📷 Photo",
+  );
+
+  // Test: first message is text — unaffected, unchanged behaviour.
+  const textOnlyMessages: TestInboxMessage[] = [
+    {
+      id: "msg-text-1",
+      conversation_id: conversationId,
+      user_id: "user-a",
+      text: "Hey there",
+      created_at: "2026-01-01T10:00:00.000Z",
+    },
+  ];
+  const decoratedTextMessages = textOnlyMessages.map((message) =>
+    decorateTestMessageWithAttachmentPreview(message, new Map()),
+  );
+  const textPreviewMessage = pickDmInboxPreviewMessage(decoratedTextMessages, conversationId);
+  assert.equal(formatDmInboxMessagePreview(textPreviewMessage?.text ?? null), "Hey there");
+
+  // Test: mixed text + image (a caption) — caption wins over the
+  // attachment token, since decoration only applies to empty text.
+  const captionedMessage: TestInboxMessage = {
+    id: "msg-captioned-1",
+    conversation_id: conversationId,
+    user_id: "user-a",
+    text: "Check this out",
+    created_at: "2026-01-01T10:05:00.000Z",
+  };
+  const decoratedCaptioned = decorateTestMessageWithAttachmentPreview(
+    captionedMessage,
+    new Map([[captionedMessage.id, "image"]]),
+  );
+  assert.equal(decoratedCaptioned.text, "Check this out");
+  assert.equal(
+    formatDmInboxMessagePreview(decoratedCaptioned.text),
+    "Check this out",
+  );
+
+  // Test: conversation with only a genuinely empty/no message (no
+  // attachment mapping either) must still fall through to null, so "No
+  // messages yet" only appears when there truly is no activity.
+  assert.equal(pickDmInboxPreviewMessage([], conversationId), null);
+
+  // Test: an older image message must not override a newer text message
+  // as the picked preview (sorting/ordering preserved).
+  const mixedTimelineMessages: TestInboxMessage[] = [
+    {
+      id: "msg-older-image",
+      conversation_id: conversationId,
+      user_id: "user-a",
+      text: "",
+      created_at: "2026-01-01T09:00:00.000Z",
+    },
+    {
+      id: "msg-newer-text",
+      conversation_id: conversationId,
+      user_id: "user-b",
+      text: "Sounds good",
+      created_at: "2026-01-01T09:05:00.000Z",
+    },
+  ];
+  const decoratedMixedTimeline = mixedTimelineMessages.map((message) =>
+    decorateTestMessageWithAttachmentPreview(
+      message,
+      new Map([["msg-older-image", "image"]]),
+    ),
+  );
+  const mixedTimelinePreview = pickDmInboxPreviewMessage(decoratedMixedTimeline, conversationId);
+  assert.equal(mixedTimelinePreview?.id, "msg-newer-text");
+  assert.equal(formatDmInboxMessagePreview(mixedTimelinePreview?.text ?? null), "Sounds good");
+
+  const inboxPageSource = readFileSync(new URL("../app/dm/page.tsx", import.meta.url), "utf8");
+  assert.match(inboxPageSource, /decorateMessageWithAttachmentPreview/);
+  assert.match(inboxPageSource, /resolveDmInboxAttachmentPreview/);
+  assert.match(inboxPageSource, /message_attachments/);
+  // The image-received-live path must resolve via a direct, bounded lookup
+  // rather than relying on message_attachments realtime (not in the
+  // Supabase Realtime publication) or open-ended polling.
+  assert.doesNotMatch(inboxPageSource, /setInterval/);
+  assert.match(inboxPageSource, /messageAttachmentTypesRef/);
+}
+
 function testDmReactionRealtime() {
   const migrationSource = readFileSync(
     new URL("../supabase/migrations/20250729100000_message_reactions_realtime.sql", import.meta.url),
@@ -5862,6 +6024,7 @@ async function main() {
   testDmMessageReactionGestureInteractions();
   testDmReactionNotifications();
   testDmReactionInboxActivity();
+  testDmInboxImageMessagePreview();
   testDmReactionRealtime();
   testChatMessageGroupLayout();
   testChatMessageBubbleGeometry();
