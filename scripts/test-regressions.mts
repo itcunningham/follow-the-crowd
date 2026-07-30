@@ -5480,6 +5480,19 @@ function testDmReactionInboxActivity() {
   assert.match(inboxPageSource, /applyDmInboxRealtimeReactionRemoval/);
   assert.match(inboxPageSource, /message_reactions/);
   assert.match(inboxPageSource, /event: "DELETE"[\s\S]*message_reactions/);
+
+  // Proven root cause: Supabase Realtime's DELETE payload for
+  // message_reactions only ever carries the primary key `id`, never
+  // message_id/user_id/emoji, even under replica identity full. The removal
+  // handler must not gate on message_id (that silently no-oped every
+  // removal) and must resolve the affected conversation from local inbox
+  // state via the encoded reaction id instead of a message_id lookup.
+  assert.doesNotMatch(inboxPageSource, /!reaction\.id \|\| !reaction\.message_id/);
+  assert.match(inboxPageSource, /dmInboxRowsRef/);
+  assert.match(
+    inboxPageSource,
+    /handleDmReactionInboxRemoval[\s\S]{0,1200}dmInboxRowsRef\.current\.find/,
+  );
 }
 
 function testDmReactionRealtime() {

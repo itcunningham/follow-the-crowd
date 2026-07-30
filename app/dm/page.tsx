@@ -40,6 +40,7 @@ import {
   dmInboxReactionActivityToRowFields,
   listLatestDmReactionInboxActivities,
   loadDmReactionInboxMessageContext,
+  parseDmReactionInboxPreview,
   shouldApplyDmReactionInboxActivity,
   shouldMarkDmReactionInboxUnread,
 } from "@/lib/dm/dmReactionInbox";
@@ -266,6 +267,7 @@ function DmInboxPageContent() {
   >(() => new Map());
   const inboxMessagesRef = useRef<Message[]>([]);
   const bookingsByConversationRef = useRef<Map<string, BookingRequest[]>>(new Map());
+  const dmInboxRowsRef = useRef<DmInboxRow[]>([]);
   const [otherUsersByConversation, setOtherUsersByConversation] = useState<Map<string, string>>(
     new Map(),
   );
@@ -298,6 +300,10 @@ function DmInboxPageContent() {
   useEffect(() => {
     setActiveTab(parseInboxTab(searchParams.get("tab")));
   }, [searchParams]);
+
+  useEffect(() => {
+    dmInboxRowsRef.current = dmInboxRows;
+  }, [dmInboxRows]);
 
   const loadGroupChats = useCallback(async (options?: { forceLoading?: boolean; soft?: boolean }) => {
     if (
@@ -806,42 +812,38 @@ function DmInboxPageContent() {
       }
     }
 
-    async function handleDmReactionInboxRemoval(reaction: DmMessageReaction) {
-      if (!currentUserId || !reaction.id || !reaction.message_id) {
+    async function handleDmReactionInboxRemoval(reaction: Pick<DmMessageReaction, "id">) {
+      if (!currentUserId || !reaction.id) {
         return;
       }
 
-      let messageContext: { conversationId: string; messageAuthorUserId: string } | null;
+      // Supabase Realtime's DELETE payload for message_reactions only carries
+      // the row's primary key (`id`) even with replica identity full — the
+      // other columns (message_id/user_id/emoji) are not forwarded to the
+      // client. So the affected conversation must be resolved from local
+      // inbox state, where the reaction id is already encoded in whichever
+      // row's `latestPreview` currently represents it. Reading via a ref
+      // (rather than closing over `dmInboxRows`) avoids acting on a stale
+      // snapshot captured when this subscription effect was created.
+      const conversationId = dmInboxRowsRef.current.find((row) => {
+        const encoded = parseDmReactionInboxPreview(row.latestPreview);
+        return encoded?.reactionId === reaction.id;
+      })?.conversationId;
 
-      try {
-        messageContext = await loadDmReactionInboxMessageContext(reaction.message_id);
-      } catch (contextError) {
-        console.error("Failed to load removed DM reaction inbox context:", contextError);
-        return;
-      }
-
-      if (
-        !messageContext ||
-        !shouldApplyDmReactionInboxActivity({
-          currentUserId,
-          messageAuthorUserId: messageContext.messageAuthorUserId,
-          reactorUserId: reaction.user_id,
-        })
-      ) {
+      if (!conversationId) {
         return;
       }
 
       try {
         const remainingReactionActivities = await listLatestDmReactionInboxActivities(
           currentUserId,
-          [messageContext.conversationId],
+          [conversationId],
         );
-        const remainingReaction = remainingReactionActivities.get(messageContext.conversationId);
-        const bookings =
-          bookingsByConversationRef.current.get(messageContext.conversationId) ?? [];
+        const remainingReaction = remainingReactionActivities.get(conversationId);
+        const bookings = bookingsByConversationRef.current.get(conversationId) ?? [];
         const fallbackMessage = pickDmInboxPreviewMessage(
           inboxMessagesRef.current,
-          messageContext.conversationId,
+          conversationId,
           bookings,
         );
         const fallback =
@@ -860,7 +862,7 @@ function DmInboxPageContent() {
 
         setDmInboxRows((previous) => {
           const result = applyDmInboxRealtimeReactionRemoval(previous, {
-            conversationId: messageContext.conversationId,
+            conversationId,
             reactionId: reaction.id,
             fallback,
           });
@@ -876,17 +878,17 @@ function DmInboxPageContent() {
         if (!fallback.latestActivityAt || !fallback.latestMessageUserId) {
           setUnreadConversationIds((previous) => {
             const next = new Set(previous);
-            next.delete(messageContext.conversationId);
+            next.delete(conversationId);
             return next;
           });
           return;
         }
 
         const unreadConversationIds = await getUnreadConversationIds(
-          [messageContext.conversationId],
+          [conversationId],
           new Map([
             [
-              messageContext.conversationId,
+              conversationId,
               {
                 user_id: fallback.latestMessageUserId,
                 created_at: fallback.latestActivityAt,
@@ -899,10 +901,10 @@ function DmInboxPageContent() {
         setUnreadConversationIds((previous) => {
           const next = new Set(previous);
 
-          if (unreadConversationIds.has(messageContext.conversationId)) {
-            next.add(messageContext.conversationId);
+          if (unreadConversationIds.has(conversationId)) {
+            next.add(conversationId);
           } else {
-            next.delete(messageContext.conversationId);
+            next.delete(conversationId);
           }
 
           return next;
@@ -944,7 +946,7 @@ function DmInboxPageContent() {
           table: "message_reactions",
         },
         (payload) => {
-          void handleDmReactionInboxRemoval(payload.old as DmMessageReaction);
+          void handleDmReactionInboxRemoval(payload.old as Pick<DmMessageReaction, "id">);
         },
       )
       .subscribe();
