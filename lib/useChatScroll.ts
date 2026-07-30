@@ -24,6 +24,13 @@ export function getChatMaxScrollTop(container: HTMLElement): number {
   return Math.max(0, container.scrollHeight - container.clientHeight);
 }
 
+export function shouldKeepChatPinnedAfterLayoutChange(
+  wasPinnedToBottom: boolean,
+  autoScrollSuppressed = false,
+): boolean {
+  return wasPinnedToBottom && !autoScrollSuppressed;
+}
+
 export function tagChatMessageForScroll<T extends { user_id: string }>(
   message: T,
   currentUserId: string | null,
@@ -102,11 +109,13 @@ export function useChatScroll({
 }: UseChatScrollOptions) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
-  const pendingUserSentScrollRef = useRef(false);
+  const pendingOwnAppendPinnedRef = useRef<boolean | null>(null);
+  const pendingIncomingAppendPinnedRef = useRef<boolean | null>(null);
   const pendingVisualAnchorRef = useRef<PendingVisualAnchor | null>(null);
   const pendingScrollPreserveRef = useRef<number | null>(null);
   const previousMessageIdsRef = useRef<string[]>([]);
   const needsInitialScrollRef = useRef(true);
+  const pinnedToBottomRef = useRef(true);
   const [showNewMessagesPill, setShowNewMessagesPill] = useState(false);
   const [newMessagesPillCount, setNewMessagesPillCount] = useState(0);
 
@@ -141,6 +150,7 @@ export function useChatScroll({
       }
 
       clearPendingScrollPreserve();
+      pinnedToBottomRef.current = true;
       container.scrollTo({ top: getChatMaxScrollTop(container), behavior });
       hideNewMessagesPill();
     },
@@ -152,20 +162,40 @@ export function useChatScroll({
   }, [scrollToBottom]);
 
   const markUserSentMessage = useCallback(() => {
-    pendingUserSentScrollRef.current = true;
+    // Sending while reading history must not pull someone away from their
+    // place. Capture the bottom-pinned state before the optimistic message
+    // changes the list height; the append effect consumes this one-shot
+    // intent after React renders the new message.
+    const wasPinnedToBottom = isNearBottom();
+    pendingOwnAppendPinnedRef.current = wasPinnedToBottom;
+
+    if (wasPinnedToBottom) {
+      pinnedToBottomRef.current = true;
+    }
+
     clearPendingScrollPreserve();
-  }, [clearPendingScrollPreserve]);
+  }, [clearPendingScrollPreserve, isNearBottom]);
 
   const captureScrollBeforeIncomingInsert = useCallback(
     (isFromCurrentUser: boolean) => {
       if (isFromCurrentUser) {
+        pendingIncomingAppendPinnedRef.current = null;
+        pinnedToBottomRef.current = true;
         clearPendingScrollPreserve();
         return;
       }
 
       const container = scrollRef.current;
 
-      if (!container || isNearBottom()) {
+      if (!container) {
+        return;
+      }
+
+      const wasPinnedToBottom = isNearBottom();
+      pendingIncomingAppendPinnedRef.current = wasPinnedToBottom;
+
+      if (wasPinnedToBottom) {
+        pinnedToBottomRef.current = true;
         clearPendingScrollPreserve();
         return;
       }
@@ -240,7 +270,10 @@ export function useChatScroll({
     }
 
     function handleScroll() {
-      if (isNearBottom()) {
+      const nearBottom = isNearBottom();
+      pinnedToBottomRef.current = nearBottom;
+
+      if (nearBottom) {
         hideNewMessagesPill();
       }
     }
@@ -253,9 +286,60 @@ export function useChatScroll({
   }, [hideNewMessagesPill, isNearBottom, loading]);
 
   useEffect(() => {
+    const container = scrollRef.current;
+
+    if (!container || typeof ResizeObserver === "undefined") {
+      return;
+    }
+
+    // Image attachments use lazy <img> elements with no fixed intrinsic
+    // height. Their decoded dimensions can increase the message list after
+    // the message-append effect has already scrolled to its then-current
+    // bottom. Watch both the scroll container (keyboard/viewport layout
+    // changes) and its content root (image/layout changes), but only keep
+    // the user pinned when they were already at the newest edge.
+    const resizeObserver = new ResizeObserver(() => {
+      if (
+        !shouldKeepChatPinnedAfterLayoutChange(
+          pinnedToBottomRef.current,
+          suppressAutoScrollRef?.current,
+        )
+      ) {
+        return;
+      }
+
+      requestAnimationFrame(() => {
+        if (
+          shouldKeepChatPinnedAfterLayoutChange(
+            pinnedToBottomRef.current,
+            suppressAutoScrollRef?.current,
+          )
+        ) {
+          scrollToBottom("auto");
+        }
+      });
+    });
+
+    resizeObserver.observe(container);
+
+    const contentRoot = container.querySelector<HTMLElement>("[data-chat-content-root]");
+
+    if (contentRoot) {
+      resizeObserver.observe(contentRoot);
+    }
+
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, [loading, messageIds, scrollToBottom, suppressAutoScrollRef]);
+
+  useEffect(() => {
     if (loading) {
       needsInitialScrollRef.current = true;
       previousMessageIdsRef.current = [];
+      pendingOwnAppendPinnedRef.current = null;
+      pendingIncomingAppendPinnedRef.current = null;
+      pinnedToBottomRef.current = true;
       clearPendingScrollPreserve();
       hideNewMessagesPill();
     }
@@ -297,30 +381,39 @@ export function useChatScroll({
 
     const isOwnMessage = lastMessageIsFromCurrentUser === true;
 
-    if (pendingUserSentScrollRef.current) {
-      pendingUserSentScrollRef.current = false;
+    const pendingOwnAppendPinned = pendingOwnAppendPinnedRef.current;
+
+    if (pendingOwnAppendPinned !== null) {
+      pendingOwnAppendPinnedRef.current = null;
       clearPendingScrollPreserve();
 
-      if (suppressAutoScrollRef?.current) {
+      if (!pendingOwnAppendPinned || suppressAutoScrollRef?.current) {
         return;
       }
 
-      requestAnimationFrame(() => scrollToBottom("smooth"));
+      requestAnimationFrame(() => scrollToBottom("auto"));
       return;
     }
 
     if (isOwnMessage) {
       clearPendingScrollPreserve();
 
-      if (suppressAutoScrollRef?.current) {
+      if (
+        !shouldKeepChatPinnedAfterLayoutChange(
+          pinnedToBottomRef.current,
+          suppressAutoScrollRef?.current,
+        )
+      ) {
         return;
       }
 
-      requestAnimationFrame(() => scrollToBottom("smooth"));
+      requestAnimationFrame(() => scrollToBottom("auto"));
       return;
     }
 
-    const nearBottom = isNearBottom();
+    const pendingIncomingAppendPinned = pendingIncomingAppendPinnedRef.current;
+    pendingIncomingAppendPinnedRef.current = null;
+    const nearBottom = pendingIncomingAppendPinned ?? isNearBottom();
 
     if (!nearBottom) {
       if (suppressAutoScrollRef?.current) {
@@ -338,7 +431,7 @@ export function useChatScroll({
     }
 
     clearPendingScrollPreserve();
-    requestAnimationFrame(() => scrollToBottom("smooth"));
+    requestAnimationFrame(() => scrollToBottom("auto"));
   }, [
     loading,
     messageIds,

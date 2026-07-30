@@ -74,7 +74,10 @@ import {
   resolveBookingDateKey,
   sortDjGigsCalendarAgendaBookings,
 } from "../lib/bookingRequests";
-import { getAppendedMessageIds } from "../lib/useChatScroll";
+import {
+  getAppendedMessageIds,
+  shouldKeepChatPinnedAfterLayoutChange,
+} from "../lib/useChatScroll";
 import {
   computeBookingCardAlignScrollTop,
   computeMinimumScrollToRevealBottom,
@@ -1060,6 +1063,17 @@ function testChatAppendedMessageIds() {
   assert.deepEqual(getAppendedMessageIds(["a", "b"], ["a", "b"]), []);
   assert.deepEqual(getAppendedMessageIds(["a", "b"], ["a", "c"]), []);
   assert.deepEqual(getAppendedMessageIds(["a"], ["b"]), []);
+  assert.equal(shouldKeepChatPinnedAfterLayoutChange(true), true);
+  assert.equal(shouldKeepChatPinnedAfterLayoutChange(false), false);
+  assert.equal(shouldKeepChatPinnedAfterLayoutChange(true, true), false);
+
+  const scrollSource = readFileSync(new URL("../lib/useChatScroll.ts", import.meta.url), "utf8");
+  assert.match(scrollSource, /ResizeObserver/);
+  assert.match(scrollSource, /data-chat-content-root/);
+  assert.match(scrollSource, /pendingOwnAppendPinnedRef/);
+  assert.match(scrollSource, /pendingIncomingAppendPinnedRef/);
+  assert.match(scrollSource, /shouldKeepChatPinnedAfterLayoutChange/);
+  assert.doesNotMatch(scrollSource, /setInterval/);
 }
 
 function testDmBookingCardProposedRateCopy() {
