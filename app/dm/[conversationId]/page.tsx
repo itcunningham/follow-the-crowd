@@ -68,7 +68,6 @@ import { parseDmThreadEntryContext, resolveDmThreadBackHref } from "@/lib/dm/thr
 import { useFixedChatPageDocumentReset } from "@/lib/navigation/useFixedChatPageDocumentReset";
 import { FIXED_CHAT_PAGE_SHELL_CLASS } from "@/lib/navigation/prepareFixedChatPageMount";
 import { traceDmChatLayout } from "@/lib/navigation/dmChatLayoutTrace";
-import { buildChatReturnTo } from "@/lib/profileNavigation";
 import {
   DM_MAX_PHOTOS_PER_MESSAGE,
   getDmAttachmentNotificationBody,
@@ -86,6 +85,11 @@ import {
 } from "@/lib/dm/composerPendingAttachment";
 import { useDismissComposerKeyboardOnIntentionalScroll } from "@/lib/dm/dismissComposerKeyboardOnIntentionalScroll";
 import { useDmChatScrollRestoreOnProfileReturn } from "@/lib/dm/useDmChatScrollRestoreOnProfileReturn";
+import {
+  buildDmChatScrollRestoreHref,
+  DM_CHAT_SCROLL_RESTORE_PARAM,
+  shouldRestoreDmChatScroll,
+} from "@/lib/dm/dmChatScrollRestoration";
 import {
   restoreComposerInputFocus as restoreComposerInputFocusElement,
   shouldKeepComposerFocusedAfterSend,
@@ -206,8 +210,11 @@ export default function DmChatPage() {
   const searchParams = useSearchParams();
   const conversationId = params.conversationId as string;
   const chatReturnTo = useMemo(
-    () => buildChatReturnTo(pathname, searchParams.toString()),
+    () => buildDmChatScrollRestoreHref(pathname, searchParams.toString()),
     [pathname, searchParams],
+  );
+  const shouldRestoreChatScrollOnMount = shouldRestoreDmChatScroll(
+    searchParams.get(DM_CHAT_SCROLL_RESTORE_PARAM),
   );
   const backHref = resolveDmThreadBackHref({
     from: searchParams.get("from"),
@@ -342,6 +349,7 @@ export default function DmChatPage() {
     loading,
     scrollRef,
     suppressAutoScrollRef,
+    shouldRestoreScroll: shouldRestoreChatScrollOnMount,
   });
   const { addHighlightedMessageId, isMessageHighlighted } = useChatNewMessageHighlight();
   const { highlightBookingFocus, getMessageBookingFocusPhase } = useChatBookingFocusHighlight();

@@ -11,21 +11,28 @@ export function useDmChatScrollRestoreOnProfileReturn({
   loading,
   scrollRef,
   suppressAutoScrollRef,
+  shouldRestoreScroll,
 }: {
   conversationId: string;
   loading: boolean;
   scrollRef: RefObject<HTMLElement | null>;
   suppressAutoScrollRef: RefObject<boolean>;
+  /** Only true when navigation explicitly signals a return from that user's profile. */
+  shouldRestoreScroll: boolean;
 }) {
   const pendingScrollTopRef = useRef<number | null>(null);
 
   useEffect(() => {
+    if (!shouldRestoreScroll) {
+      return;
+    }
+
     pendingScrollTopRef.current = consumeDmChatScrollPosition(conversationId);
 
     if (pendingScrollTopRef.current !== null) {
       suppressAutoScrollRef.current = true;
     }
-  }, [conversationId, suppressAutoScrollRef]);
+  }, [conversationId, shouldRestoreScroll, suppressAutoScrollRef]);
 
   useEffect(() => {
     function handleProfileLinkClick(event: MouseEvent) {

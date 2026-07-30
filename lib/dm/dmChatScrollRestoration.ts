@@ -1,5 +1,6 @@
 const DM_CHAT_SCROLL_STORAGE_PREFIX = "ftc-dm-chat-scroll:";
 const DM_CHAT_SCROLL_MAX_AGE_MS = 30 * 60 * 1000;
+export const DM_CHAT_SCROLL_RESTORE_PARAM = "restoreScroll";
 
 type DmChatScrollSnapshot = {
   scrollTop: number;
@@ -8,6 +9,19 @@ type DmChatScrollSnapshot = {
 
 function getStorageKey(conversationId: string): string {
   return `${DM_CHAT_SCROLL_STORAGE_PREFIX}${conversationId}`;
+}
+
+/** Marks an in-chat return URL as eligible to restore its saved message-list position. */
+export function buildDmChatScrollRestoreHref(pathname: string, search: string): string {
+  const params = new URLSearchParams(search.startsWith("?") ? search.slice(1) : search);
+  params.set(DM_CHAT_SCROLL_RESTORE_PARAM, "1");
+  const query = params.toString();
+
+  return query ? `${pathname}?${query}` : pathname;
+}
+
+export function shouldRestoreDmChatScroll(searchValue: string | null | undefined): boolean {
+  return searchValue === "1";
 }
 
 export function saveDmChatScrollPosition(conversationId: string, scrollTop: number): void {
