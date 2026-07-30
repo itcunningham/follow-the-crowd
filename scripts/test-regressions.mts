@@ -117,6 +117,7 @@ import {
 import { buildDmReactionNotificationBody } from "../lib/dm/dmReactionNotifications";
 import {
   applyDmInboxRealtimeReaction,
+  applyDmInboxRealtimeReactionRemoval,
   type DmInboxRow,
 } from "../lib/dmInbox";
 import {
@@ -5446,11 +5447,39 @@ function testDmReactionInboxActivity() {
   assert.equal(updateResult.updated, true);
   assert.match(updateResult.rows[0]?.latestPreview ?? "", /\|🔥\|/);
 
+  const removalResult = applyDmInboxRealtimeReactionRemoval(updateResult.rows, {
+    conversationId: "conv-1",
+    reactionId: "reaction-1",
+    fallback: {
+      latestActivityAt: "2026-01-01T10:00:00.000Z",
+      latestPreview: "Hello",
+      latestMessageUserId: "user-b",
+    },
+  });
+
+  assert.equal(removalResult.removed, true);
+  assert.equal(removalResult.rows[0]?.latestPreview, "Hello");
+  assert.equal(removalResult.rows[0]?.latestActivityAt, "2026-01-01T10:00:00.000Z");
+
+  const olderRemovalResult = applyDmInboxRealtimeReactionRemoval(updateResult.rows, {
+    conversationId: "conv-1",
+    reactionId: "older-reaction",
+    fallback: {
+      latestActivityAt: "2026-01-01T10:00:00.000Z",
+      latestPreview: "Hello",
+      latestMessageUserId: "user-b",
+    },
+  });
+
+  assert.equal(olderRemovalResult.removed, false);
+  assert.match(olderRemovalResult.rows[0]?.latestPreview ?? "", /\|🔥\|/);
+
   const inboxPageSource = readFileSync(new URL("../app/dm/page.tsx", import.meta.url), "utf8");
   assert.match(inboxPageSource, /dm-inbox:reactions/);
   assert.match(inboxPageSource, /applyDmInboxRealtimeReaction/);
+  assert.match(inboxPageSource, /applyDmInboxRealtimeReactionRemoval/);
   assert.match(inboxPageSource, /message_reactions/);
-  assert.doesNotMatch(inboxPageSource, /event: "DELETE"[\s\S]*message_reactions/);
+  assert.match(inboxPageSource, /event: "DELETE"[\s\S]*message_reactions/);
 }
 
 function testDmReactionRealtime() {

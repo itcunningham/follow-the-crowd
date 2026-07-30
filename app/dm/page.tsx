@@ -26,6 +26,7 @@ import {
 import {
   applyDmInboxRealtimeMessage,
   applyDmInboxRealtimeReaction,
+  applyDmInboxRealtimeReactionRemoval,
   buildDmInboxRows,
   detectInboxRealtimeMessageType,
   logInboxRenderOrder,
@@ -36,6 +37,7 @@ import {
 import { formatGroupChatInboxPreview, isGroupChatSystemUpdateMessage } from "@/lib/groupChatSystemMessages";
 import {
   buildDmInboxReactionActivity,
+  dmInboxReactionActivityToRowFields,
   listLatestDmReactionInboxActivities,
   loadDmReactionInboxMessageContext,
   shouldApplyDmReactionInboxActivity,
@@ -53,7 +55,11 @@ import {
 } from "@/lib/messageReads";
 import { supabase } from "@/lib/supabaseClient";
 import { buildDmThreadHref } from "@/lib/dm/threadNavigation";
-import { formatDmInboxMessagePreview, isDmInboxSystemPreviewMessage } from "@/lib/dm/messagePreview";
+import {
+  formatDmInboxMessagePreview,
+  isDmInboxSystemPreviewMessage,
+  pickDmInboxPreviewMessage,
+} from "@/lib/dm/messagePreview";
 import { listBookingRequestsForConversations, type BookingRequest } from "@/lib/bookingRequests";
 import {
   getCurrentUserId,
@@ -800,6 +806,112 @@ function DmInboxPageContent() {
       }
     }
 
+    async function handleDmReactionInboxRemoval(reaction: DmMessageReaction) {
+      if (!currentUserId || !reaction.id || !reaction.message_id) {
+        return;
+      }
+
+      let messageContext: { conversationId: string; messageAuthorUserId: string } | null;
+
+      try {
+        messageContext = await loadDmReactionInboxMessageContext(reaction.message_id);
+      } catch (contextError) {
+        console.error("Failed to load removed DM reaction inbox context:", contextError);
+        return;
+      }
+
+      if (
+        !messageContext ||
+        !shouldApplyDmReactionInboxActivity({
+          currentUserId,
+          messageAuthorUserId: messageContext.messageAuthorUserId,
+          reactorUserId: reaction.user_id,
+        })
+      ) {
+        return;
+      }
+
+      try {
+        const remainingReactionActivities = await listLatestDmReactionInboxActivities(
+          currentUserId,
+          [messageContext.conversationId],
+        );
+        const remainingReaction = remainingReactionActivities.get(messageContext.conversationId);
+        const bookings =
+          bookingsByConversationRef.current.get(messageContext.conversationId) ?? [];
+        const fallbackMessage = pickDmInboxPreviewMessage(
+          inboxMessagesRef.current,
+          messageContext.conversationId,
+          bookings,
+        );
+        const fallback =
+          remainingReaction &&
+          (!fallbackMessage ||
+            new Date(remainingReaction.activityAt).getTime() >=
+              new Date(fallbackMessage.created_at).getTime())
+            ? dmInboxReactionActivityToRowFields(remainingReaction)
+            : {
+                latestActivityAt: fallbackMessage?.created_at ?? null,
+                latestPreview: fallbackMessage?.text ?? null,
+                latestMessageUserId: fallbackMessage?.user_id ?? null,
+              };
+
+        let inboxRemoved = false;
+
+        setDmInboxRows((previous) => {
+          const result = applyDmInboxRealtimeReactionRemoval(previous, {
+            conversationId: messageContext.conversationId,
+            reactionId: reaction.id,
+            fallback,
+          });
+          inboxRemoved = result.removed;
+
+          return result.rows;
+        });
+
+        if (!inboxRemoved) {
+          return;
+        }
+
+        if (!fallback.latestActivityAt || !fallback.latestMessageUserId) {
+          setUnreadConversationIds((previous) => {
+            const next = new Set(previous);
+            next.delete(messageContext.conversationId);
+            return next;
+          });
+          return;
+        }
+
+        const unreadConversationIds = await getUnreadConversationIds(
+          [messageContext.conversationId],
+          new Map([
+            [
+              messageContext.conversationId,
+              {
+                user_id: fallback.latestMessageUserId,
+                created_at: fallback.latestActivityAt,
+              },
+            ],
+          ]),
+          currentUserId,
+        );
+
+        setUnreadConversationIds((previous) => {
+          const next = new Set(previous);
+
+          if (unreadConversationIds.has(messageContext.conversationId)) {
+            next.add(messageContext.conversationId);
+          } else {
+            next.delete(messageContext.conversationId);
+          }
+
+          return next;
+        });
+      } catch (removalError) {
+        console.error("Failed to restore DM inbox after reaction removal:", removalError);
+      }
+    }
+
     const channel = supabase
       .channel("dm-inbox:reactions")
       .on(
@@ -822,6 +934,17 @@ function DmInboxPageContent() {
         },
         (payload) => {
           void handleDmReactionInboxActivity(payload.new as DmMessageReaction, "UPDATE");
+        },
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "DELETE",
+          schema: "public",
+          table: "message_reactions",
+        },
+        (payload) => {
+          void handleDmReactionInboxRemoval(payload.old as DmMessageReaction);
         },
       )
       .subscribe();

@@ -279,6 +279,49 @@ export function applyDmInboxRealtimeReaction(
   };
 }
 
+export function applyDmInboxRealtimeReactionRemoval(
+  rows: DmInboxRow[],
+  options: {
+    conversationId: string;
+    reactionId: string;
+    fallback: Pick<
+      DmInboxRow,
+      "latestActivityAt" | "latestPreview" | "latestMessageUserId"
+    >;
+  },
+): { rows: DmInboxRow[]; removed: boolean } {
+  const targetId = normalizeInboxId(options.conversationId);
+  let removed = false;
+
+  const nextRows = rows.map((row) => {
+    if (normalizeInboxId(row.conversationId) !== targetId) {
+      return row;
+    }
+
+    const currentReactionPreview = parseDmReactionInboxPreview(row.latestPreview);
+
+    if (currentReactionPreview?.reactionId !== options.reactionId) {
+      return row;
+    }
+
+    removed = true;
+
+    return {
+      ...row,
+      ...options.fallback,
+    };
+  });
+
+  if (!removed) {
+    return { rows, removed: false };
+  }
+
+  return {
+    rows: sortDmInboxRows(nextRows),
+    removed: true,
+  };
+}
+
 export function logInboxRenderOrder(
   section: "DM" | "group",
   items: Array<{ id: string; latestActivityAt: string | null }>,
