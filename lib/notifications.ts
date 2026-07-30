@@ -83,6 +83,7 @@ export async function createNotification(
   title: string,
   body: string | null,
   link: string | null,
+  reactionId?: string | null,
 ): Promise<string> {
   const context: NotificationCreateContext = {
     type,
@@ -97,6 +98,9 @@ export async function createNotification(
     p_title: title,
     p_body: body,
     p_link: link,
+    // Only sent for reaction notifications, so callers that predate the
+    // reaction_id parameter keep resolving the original function signature.
+    ...(reactionId ? { p_reaction_id: reactionId } : {}),
   });
 
   if (error) {

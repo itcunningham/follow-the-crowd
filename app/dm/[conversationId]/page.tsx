@@ -97,7 +97,10 @@ import {
   upsertDmReactionInList,
   type DmMessageReaction,
 } from "@/lib/dmReactions";
-import { notifyDmReactionRecipient } from "@/lib/dm/dmReactionNotifications";
+import {
+  notifyDmReactionRecipient,
+  revokeDmReactionNotification,
+} from "@/lib/dm/dmReactionNotifications";
 import { createNotification, markNotificationsReadForLink } from "@/lib/notifications";
 import { getEventArtworkByIds, isEventCancelled, type EventArtworkSnapshot } from "@/lib/events";
 import { getCrewChatUnlockStateByEventIds } from "@/lib/events/crewChatUnlock";
@@ -1455,6 +1458,11 @@ export default function DmChatPage() {
     }
 
     let rollbackReactions: DmMessageReaction[] = [];
+    // Captured before the toggle so a removal knows which reaction's notification to revoke.
+    // Unchanged by an emoji change, since the toggle updates the same reaction row.
+    const previousReactionId = reactions.find(
+      (reaction) => reaction.message_id === messageId && reaction.user_id === currentUserId,
+    )?.id;
 
     setReactions((prev) => {
       rollbackReactions = prev.filter((reaction) => reaction.message_id === messageId);
@@ -1478,9 +1486,20 @@ export default function DmChatPage() {
             emoji: nextReaction.emoji,
             conversationId,
             reactorUserId: currentUserId,
+            reactionId: nextReaction.id,
           });
         } catch (notificationError) {
           console.error("[dm] Reaction saved but notification failed:", notificationError);
+        }
+      } else if (
+        !nextReaction &&
+        previousReactionId &&
+        !previousReactionId.startsWith("optimistic-")
+      ) {
+        try {
+          await revokeDmReactionNotification(previousReactionId);
+        } catch (revokeError) {
+          console.error("[dm] Reaction removed but notification cleanup failed:", revokeError);
         }
       }
     } catch (reactionError) {

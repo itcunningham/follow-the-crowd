@@ -20,11 +20,13 @@ export async function notifyDmReactionRecipient({
   emoji,
   conversationId,
   reactorUserId,
+  reactionId,
 }: {
   messageId: string;
   emoji: string;
   conversationId: string;
   reactorUserId: string;
+  reactionId: string;
 }): Promise<void> {
   const { data: message, error } = await supabase
     .from("messages")
@@ -57,5 +59,21 @@ export async function notifyDmReactionRecipient({
     "New reaction",
     buildDmReactionNotificationBody(reactorDisplayName, emoji),
     `/dm/${conversationId}`,
+    reactionId,
   );
+}
+
+/**
+ * Remove the notification tied to a single reaction after that reaction is deleted.
+ * Keyed by `message_reactions.id`, so it never touches another reactor's notification
+ * or any other notification type. Removal itself never creates a notification.
+ */
+export async function revokeDmReactionNotification(reactionId: string): Promise<void> {
+  const { error } = await supabase.rpc("revoke_reaction_notification", {
+    p_reaction_id: reactionId,
+  });
+
+  if (error) {
+    throw error;
+  }
 }

@@ -5330,7 +5330,28 @@ function testDmReactionNotifications() {
   assert.match(helperSource, /message\.conversation_id !== conversationId/);
   assert.match(dmPageSource, /notifyDmReactionRecipient/);
   assert.match(dmPageSource, /if \(nextReaction && conversationId\)/);
-  assert.doesNotMatch(dmPageSource, /notifyDmReactionRecipient[\s\S]*applyOptimisticDmReactionToggle/);
+  // Notify only after the server toggle resolves, never from the optimistic path.
+  const toggleBody = dmPageSource.slice(dmPageSource.indexOf("async function handleToggleReaction"));
+  assert.ok(
+    toggleBody.indexOf("await toggleDmMessageReaction") <
+      toggleBody.indexOf("notifyDmReactionRecipient"),
+  );
+
+  // Reaction notification lifecycle: keyed by reaction id, updated on change, revoked on remove.
+  const migrationSource = readFileSync(
+    new URL("../supabase/migrations/20250730120000_reaction_notification_lifecycle.sql", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(helperSource, /revokeDmReactionNotification/);
+  assert.match(helperSource, /revoke_reaction_notification/);
+  assert.match(dmPageSource, /reactionId: nextReaction\.id/);
+  assert.match(dmPageSource, /revokeDmReactionNotification\(previousReactionId\)/);
+  assert.match(migrationSource, /add column if not exists reaction_id uuid/);
+  assert.match(migrationSource, /where reaction_id = p_reaction_id/);
+  assert.match(migrationSource, /create or replace function public\.revoke_reaction_notification/);
+  // An emoji change must not reset `read`, so unread is not re-triggered.
+  assert.doesNotMatch(migrationSource, /set title = p_title,\s*body = p_body,\s*read = false/);
 }
 
 function testDmReactionInboxActivity() {
