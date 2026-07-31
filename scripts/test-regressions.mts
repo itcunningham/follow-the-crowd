@@ -314,11 +314,11 @@ function testEventSetTimeRangeValidation() {
   assert.equal(getEventSetTimeValidationError(eventDate, normal), null);
   assert.equal(
     getEventSetTimeValidationError(eventDate, sameEveningInvalid),
-    "Finish time must be later than the start time.",
+    "Finish time must be later than the start time",
   );
   assert.equal(
     getEventSetTimeValidationError(eventDate, zeroDuration),
-    "Finish time must be later than the start time.",
+    "Finish time must be later than the start time",
   );
   assert.equal(getEventSetTimeValidationError(eventDate, overnightA), null);
   assert.equal(getEventSetTimeValidationError(eventDate, overnightB), null);
@@ -331,7 +331,7 @@ function testEventSetTimeRangeValidation() {
     eventDate,
     setTime: sameEveningInvalid,
   });
-  assert.equal(formErrors.finishTime, "Finish time must be later than the start time.");
+  assert.equal(formErrors.finishTime, "Finish time must be later than the start time");
 }
 
 function testApplyEventSetTimeStartChangeClearsInvalidFinish() {

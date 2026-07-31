@@ -2048,7 +2048,7 @@ function BookingsPageContent() {
                   ) : filteredDjs.length === 0 ? (
                     <p className="text-sm text-ftc-text-muted">No DJs match your search</p>
                   ) : (
-                    <ul className="max-h-[420px] space-y-3 overflow-y-auto pr-1">
+                    <ul className="max-h-[65dvh] space-y-3 overflow-y-auto pr-1 sm:max-h-[420px]">
                       {filteredDjs.map((dj) => {
                         const selected = selectedDjIds.includes(dj.user_id);
                         const displayName = dj.display_name ?? dj.user_id;
