@@ -118,28 +118,6 @@ export default function ProfilePhotoViewer({
         onClick={handleBackdropClick}
       />
 
-      <button
-        type="button"
-        aria-label="Close profile photo"
-        className={`absolute right-4 top-[max(1rem,env(safe-area-inset-top))] z-[52] flex h-9 w-9 items-center justify-center rounded-full border border-ftc-border-subtle bg-ftc-surface/90 text-white shadow-sm transition-[opacity,transform] duration-200 ease-out hover:border-ftc-border-strong hover:bg-ftc-surface motion-reduce:transition-none ${
-          visible ? "scale-100 opacity-100" : "scale-95 opacity-0"
-        }`}
-        onClick={onClose}
-      >
-        <svg
-          aria-hidden="true"
-          viewBox="0 0 24 24"
-          className="h-4 w-4"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <path d="M18 6 6 18M6 6l12 12" />
-        </svg>
-      </button>
-
       <div className="pointer-events-none absolute inset-0 flex items-center justify-center p-6">
         <img
           src={imageUrl}
