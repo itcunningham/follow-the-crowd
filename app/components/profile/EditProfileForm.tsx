@@ -591,14 +591,6 @@ export default function EditProfileForm({
             onToggleTag={toggleGenreTag}
             error={fieldErrors.genre}
           />
-
-          <ProfileFormField
-            label="SoundCloud"
-            value={form.soundcloud_url}
-            onChange={(value) => updateField("soundcloud_url", value)}
-            placeholder="SoundCloud"
-            error={fieldErrors.soundcloud_url}
-          />
         </fieldset>
       ) : null}
 
@@ -637,6 +629,16 @@ export default function EditProfileForm({
           placeholder="TikTok"
           error={fieldErrors.tiktok_url}
         />
+
+        {showDjFields ? (
+          <ProfileFormField
+            label="SoundCloud"
+            value={form.soundcloud_url}
+            onChange={(value) => updateField("soundcloud_url", value)}
+            placeholder="SoundCloud"
+            error={fieldErrors.soundcloud_url}
+          />
+        ) : null}
       </fieldset>
 
       {error ? <p className="text-sm text-red-400">{error}</p> : null}
