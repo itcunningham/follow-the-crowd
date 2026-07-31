@@ -5,6 +5,10 @@ import {
   isDmImageAttachment,
   type DmMessageAttachment,
 } from "@/lib/dmAttachments";
+import {
+  getKnownDmImageAspectRatio,
+  recordDmImageAspectRatio,
+} from "@/lib/dm/dmImageAttachmentDimensions";
 
 function FileIcon() {
   return (
@@ -43,6 +47,8 @@ export default function DmMessageAttachmentView({
   onContextMenu?: (event: React.MouseEvent<HTMLElement>) => void;
 }) {
   if (isDmImageAttachment(attachment.file_type)) {
+    const knownAspectRatio = getKnownDmImageAspectRatio(attachment.id);
+
     return (
       <button
         type="button"
@@ -60,7 +66,12 @@ export default function DmMessageAttachmentView({
           alt={attachment.file_name}
           draggable={false}
           className="pointer-events-none max-h-72 w-full max-w-full object-cover sm:max-w-[min(100%,18rem)]"
+          style={knownAspectRatio ? { aspectRatio: knownAspectRatio } : undefined}
           loading="lazy"
+          onLoad={(event) => {
+            const image = event.currentTarget;
+            recordDmImageAspectRatio(attachment.id, image.naturalWidth, image.naturalHeight);
+          }}
         />
       </button>
     );

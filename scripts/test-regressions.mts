@@ -2932,6 +2932,13 @@ async function testDmChatReopenScroll() {
   await runDmChatReopenScrollTest();
 }
 
+async function testDmImageAttachmentDimensions() {
+  const { runDmImageAttachmentDimensionsTest } = await import(
+    "./test-dm-image-attachment-dimensions.js"
+  );
+  await runDmImageAttachmentDimensionsTest();
+}
+
 function testResolvePlannerHistoryHideEventIds() {
   const events = [
     {
@@ -6309,6 +6316,7 @@ async function main() {
   await testEventsHistorySelectAllButtonInteraction();
   await testEventsHistoryRemoveConfirmInteraction();
   await testDmChatReopenScroll();
+  await testDmImageAttachmentDimensions();
   console.log("All regression checks passed.");
 }
 
