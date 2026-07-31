@@ -40,6 +40,17 @@ type NavItem = {
   badgeKey?: keyof NavBadgeCounts;
   isPrimary: boolean;
   isActive: (pathname: string) => boolean;
+  /**
+   * Workspace-selector tabs are entry points into a multi-page workspace
+   * (isActive spans several distinct hrefs), not a single-destination link —
+   * tapping one while already inside that workspace should do nothing rather
+   * than reset back to `href`. Only Events qualifies today: its isActive
+   * (isPlannerEventsAreaPath) covers Events/Event Plans/Calendar/Gigs, so
+   * `pathname !== href` doesn't mean "not here yet." Messages/Profile/DJ
+   * Gigs are single-destination — isActive already implies pathname===href,
+   * so they're unaffected either way and don't need this flag.
+   */
+  isWorkspaceSelector?: boolean;
 };
 
 function getNavItems(role: UserRole, currentUserId: string | null): NavItem[] {
@@ -49,6 +60,7 @@ function getNavItems(role: UserRole, currentUserId: string | null): NavItem[] {
     icon: "events",
     isPrimary: true,
     isActive: (pathname) => isPlannerEventsAreaPath(pathname),
+    isWorkspaceSelector: true,
   };
 
   const gigs: NavItem = {
@@ -242,6 +254,7 @@ function MobileNavTab({
   label,
   icon,
   isActive,
+  isWorkspaceSelector,
   badgeCount,
   showBadgeSlot,
 }: {
@@ -249,6 +262,7 @@ function MobileNavTab({
   label: string;
   icon: NavIconKey;
   isActive: boolean;
+  isWorkspaceSelector: boolean;
   badgeCount: number;
   showBadgeSlot: boolean;
 }) {
@@ -260,8 +274,12 @@ function MobileNavTab({
   } | null>(null);
 
   const navigate = useCallback(() => {
+    if (isWorkspaceSelector && isActive) {
+      return;
+    }
+
     router.push(href, { scroll: false });
-  }, [href, router]);
+  }, [href, isActive, isWorkspaceSelector, router]);
 
   const handlePointerDown = useCallback((event: React.PointerEvent<HTMLAnchorElement>) => {
     if (!event.isPrimary) {
@@ -423,6 +441,11 @@ export default function AppNavigation() {
                   key={item.icon}
                   href={item.href}
                   className={navLinkClassName(isActive, "desktop")}
+                  onClick={(event) => {
+                    if (item.isWorkspaceSelector && isActive) {
+                      event.preventDefault();
+                    }
+                  }}
                 >
                   {item.label}
                   <NavBadge count={badgeCount} reserveSpace={showBadgeSlot} />
@@ -456,6 +479,7 @@ export default function AppNavigation() {
                 label={item.label}
                 icon={item.icon}
                 isActive={isActive}
+                isWorkspaceSelector={Boolean(item.isWorkspaceSelector)}
                 badgeCount={badgeCount}
                 showBadgeSlot={showBadgeSlot}
               />
