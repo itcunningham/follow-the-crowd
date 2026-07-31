@@ -48,6 +48,8 @@ import EventCoverImageField, {
   type EventCoverImageFieldState,
 } from "@/app/components/events/EventCoverImageField";
 import EventFallbackColourField from "@/app/components/events/EventFallbackColourField";
+import EventBrandSelectField from "@/app/components/events/EventBrandSelectField";
+import { parseStoredEventBrands } from "@/lib/user/profileFormUtils";
 import SendBookingRequestsPanel, {
   DJ_INVITE_LIST_MAX_HEIGHT_CLASS,
 } from "@/app/components/booking/SendBookingRequestsPanel";
@@ -157,6 +159,7 @@ const emptyEventForm: EventInput = {
   notes: "",
   bookingPlanId: null,
   fallbackColour: null,
+  eventBrand: null,
 };
 
 type CreateStep = "source" | "pick-plan" | "form";
@@ -489,6 +492,18 @@ function EventsPageClientView({
     ...emptyEventForm,
     eventDate: createBootstrap?.prefilledEventDate ?? "",
   }));
+  const promoterEventBrands = useMemo(
+    () => parseStoredEventBrands(guardProfile?.promoter_brand_name),
+    [guardProfile?.promoter_brand_name],
+  );
+
+  useEffect(() => {
+    if (promoterEventBrands.length !== 1 || form.eventBrand) {
+      return;
+    }
+
+    setForm((prev) => (prev.eventBrand ? prev : { ...prev, eventBrand: promoterEventBrands[0] }));
+  }, [promoterEventBrands, form.eventBrand]);
   const [coverField, setCoverField] = useState<EventCoverImageFieldState>(
     emptyEventCoverImageFieldState,
   );
@@ -1550,6 +1565,11 @@ function EventsPageClientView({
                     required
                     maxLength={MAX_EVENT_VENUE_LENGTH}
                     error={createFormFieldErrors.venue}
+                  />
+                  <EventBrandSelectField
+                    brands={promoterEventBrands}
+                    selectedBrand={form.eventBrand ?? null}
+                    onSelectBrand={(brand) => updateField("eventBrand", brand)}
                   />
                   <EventCoverImageField
                     eventName={form.name || "Event"}

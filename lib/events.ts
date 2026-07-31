@@ -36,6 +36,7 @@ import {
 } from "@/lib/ftcFlatStatus";
 import { getCurrentUserId } from "@/lib/user/currentUser";
 import {
+  isEventBrandColumnMissing,
   isEventHistoryHideAvailable,
   isMissingHistoryHiddenAtColumnError,
   normalizeEventRow,
@@ -64,6 +65,7 @@ export type Event = {
   fallback_colour: string | null;
   crew_chat_started_at: string | null;
   history_hidden_at: string | null;
+  event_brand: string | null;
 };
 
 export type EventInput = {
@@ -75,6 +77,7 @@ export type EventInput = {
   notes: string;
   bookingPlanId?: string | null;
   fallbackColour?: string | null;
+  eventBrand?: string | null;
 };
 
 export type EventDateDisplayLabel = "Upcoming" | "Today" | "Past" | "Unscheduled";
@@ -90,7 +93,9 @@ export type EventWithLineupStats = Event & {
   lineupStats: EventLineupStats;
 };
 
-function mapEventInputToRow(input: EventInput) {
+export function mapEventInputToRow(input: EventInput) {
+  const eventBrand = input.eventBrand?.trim();
+
   return {
     name: input.name.trim(),
     venue: input.venue.trim(),
@@ -100,6 +105,11 @@ function mapEventInputToRow(input: EventInput) {
     notes: input.notes.trim(),
     booking_plan_id: input.bookingPlanId ?? null,
     fallback_colour: input.fallbackColour?.trim() || null,
+    // Omitted entirely (rather than sent as null) when empty, and re-checked live on
+    // every call (not cached) — a retry after an insert 42703s on this column, via
+    // withEventFieldsFallback, calls this again and must see the column now marked
+    // missing so it can drop the key, or the retry would fail identically forever.
+    ...(eventBrand && !isEventBrandColumnMissing() ? { event_brand: eventBrand } : {}),
   };
 }
 

@@ -240,7 +240,9 @@ import { clearEventsListTabCache } from "../lib/events/eventsListTabCache";
 import { buildPlannerCreateEventFromPlansHref, buildPlannerCreateEventHref } from "../lib/calendar";
 import { resolveGigsCalendarBookingNavigation, resolvePlannerCalendarItemEventId, resolvePlannerCalendarItemHref } from "../lib/bookings/gigsCalendarNavigation";
 import { hasUnsavedProfileEdits, createProfileEditBaseline } from "../lib/user/profileEditDirtyState";
-import { getUsernameFormatError, normalizeSoundCloudInput, resolveProfileIdentityPresentation } from "../lib/user/profileFormUtils";
+import { getUsernameFormatError, normalizeSoundCloudInput, resolveProfileIdentityPresentation, addEventBrandTag, parseStoredEventBrands, serializeEventBrands, MAX_PROMOTER_EVENT_BRANDS, MAX_EVENT_BRAND_NAME_LENGTH } from "../lib/user/profileFormUtils";
+import { mapEventInputToRow, type EventInput } from "../lib/events";
+import { markEventBrandColumnMissing, resetEventBrandColumnMissingFlag } from "../lib/events/eventQueryFields";
 import { PROPOSE_RATE_HELPER_MAX_OPENS } from "../lib/booking/proposeRateHelperPreference";
 import {
   applyCappedMultilineInputLimit,
@@ -2494,6 +2496,137 @@ function testProfileIdentityPresentationHierarchy() {
     }),
     { primary: "DJ Nova", secondaryUsername: null },
   );
+
+  // promoter_brand_name now stores a "|"-joined list of brands (Event Brands
+  // feature) — identity presentation must fall back to the FIRST brand, not the
+  // raw delimited string.
+  assert.deepEqual(
+    resolveProfileIdentityPresentation({
+      display_name: null,
+      username: null,
+      artist_name: null,
+      promoter_brand_name: "Synergy|Warehouse Sessions|Pulse",
+    }),
+    { primary: "Synergy", secondaryUsername: null },
+  );
+
+  // A pre-existing single brand name (no separator) — the exact shape an
+  // existing user's data has before ever touching the new chip UI.
+  assert.deepEqual(
+    resolveProfileIdentityPresentation({
+      display_name: null,
+      username: null,
+      artist_name: null,
+      promoter_brand_name: "Synergy",
+    }),
+    { primary: "Synergy", secondaryUsername: null },
+  );
+}
+
+function testEventBrandsParsingAndSerialization() {
+  // Existing users: a pre-existing single brand name has no separator, so it
+  // must parse as a one-item list automatically — this is the entire "migration"
+  // for existing data (see scripts/setupEventBrands.sql header comment).
+  assert.deepEqual(parseStoredEventBrands("Synergy"), ["Synergy"]);
+  assert.deepEqual(parseStoredEventBrands(null), []);
+  assert.deepEqual(parseStoredEventBrands(""), []);
+  assert.deepEqual(parseStoredEventBrands("   "), []);
+
+  // Round trip.
+  assert.deepEqual(
+    parseStoredEventBrands(serializeEventBrands(["Synergy", "Warehouse Sessions", "Pulse"])),
+    ["Synergy", "Warehouse Sessions", "Pulse"],
+  );
+
+  // Trim + collapse internal whitespace.
+  assert.deepEqual(parseStoredEventBrands("  Synergy   Nights  "), ["Synergy Nights"]);
+  assert.equal(serializeEventBrands(["  Synergy   Nights  "]), "Synergy Nights");
+
+  // Case-insensitive de-duplication, first occurrence wins.
+  assert.deepEqual(parseStoredEventBrands("Synergy|SYNERGY|synergy "), ["Synergy"]);
+  assert.deepEqual(serializeEventBrands(["Synergy", "synergy", "SYNERGY"]), "Synergy");
+
+  // Blank entries ignored.
+  assert.deepEqual(parseStoredEventBrands("Synergy||Pulse|  |"), ["Synergy", "Pulse"]);
+
+  // Max count enforced on both parse and serialize.
+  const eleven = Array.from({ length: 11 }, (_, i) => `Brand ${i}`);
+  assert.equal(parseStoredEventBrands(eleven.join("|")).length, MAX_PROMOTER_EVENT_BRANDS);
+  assert.equal(serializeEventBrands(eleven).split("|").length, MAX_PROMOTER_EVENT_BRANDS);
+
+  // Max length per brand enforced.
+  const tooLong = "A".repeat(MAX_EVENT_BRAND_NAME_LENGTH + 20);
+  assert.equal(parseStoredEventBrands(tooLong)[0].length, MAX_EVENT_BRAND_NAME_LENGTH);
+  assert.equal(serializeEventBrands([tooLong]).length, MAX_EVENT_BRAND_NAME_LENGTH);
+}
+
+function testAddEventBrandTag() {
+  // Ignores blank entries (not an error) — spec: "Ignore blank entries."
+  assert.deepEqual(addEventBrandTag(["Synergy"], "   "), { brands: ["Synergy"], error: null });
+
+  // Trims and collapses whitespace before adding.
+  assert.deepEqual(addEventBrandTag([], "  Warehouse   Sessions  "), {
+    brands: ["Warehouse Sessions"],
+    error: null,
+  });
+
+  // Prevents duplicates, case-insensitive.
+  assert.deepEqual(addEventBrandTag(["Synergy"], "synergy"), {
+    brands: ["Synergy"],
+    error: "That brand has already been added",
+  });
+  assert.deepEqual(addEventBrandTag(["Synergy"], "SYNERGY"), {
+    brands: ["Synergy"],
+    error: "That brand has already been added",
+  });
+
+  // Enforces the 10-brand max.
+  const tenBrands = Array.from({ length: MAX_PROMOTER_EVENT_BRANDS }, (_, i) => `Brand ${i}`);
+  const atLimitResult = addEventBrandTag(tenBrands, "One more");
+  assert.deepEqual(atLimitResult.brands, tenBrands);
+  assert.ok(atLimitResult.error);
+
+  // Successful add.
+  assert.deepEqual(addEventBrandTag(["Synergy"], "Pulse"), {
+    brands: ["Synergy", "Pulse"],
+    error: null,
+  });
+}
+
+function testMapEventInputToRowEventBrandFallback() {
+  const baseInput: EventInput = {
+    name: "Test Event",
+    venue: "Test Venue",
+    eventDate: "2026-08-01",
+    setTime: "22:00-late",
+    rate: "",
+    notes: "",
+  };
+
+  resetEventBrandColumnMissingFlag();
+
+  try {
+    // No brand selected: event_brand key must be entirely absent (not sent as
+    // null) — this is what keeps event creation working for the overwhelming
+    // majority of users during the window before the column migration has run.
+    assert.ok(!("event_brand" in mapEventInputToRow(baseInput)));
+    assert.ok(!("event_brand" in mapEventInputToRow({ ...baseInput, eventBrand: null })));
+    assert.ok(!("event_brand" in mapEventInputToRow({ ...baseInput, eventBrand: "" })));
+
+    // Brand selected, column known to exist: key is present.
+    const withBrand = mapEventInputToRow({ ...baseInput, eventBrand: "Synergy" });
+    assert.equal(withBrand.event_brand, "Synergy");
+
+    // Brand selected, but the column is now known to be missing (set by a prior
+    // 42703 on this exact column) — the key must be dropped even though a brand
+    // was selected. This is what breaks withEventFieldsFallback's retry loop:
+    // without it, a retry would resubmit the same failing payload forever.
+    markEventBrandColumnMissing();
+    const withBrandColumnMissing = mapEventInputToRow({ ...baseInput, eventBrand: "Synergy" });
+    assert.ok(!("event_brand" in withBrandColumnMissing));
+  } finally {
+    resetEventBrandColumnMissingFlag();
+  }
 }
 
 function testEventPlanUseButtonKeepsStableCardLayout() {
@@ -6335,6 +6468,9 @@ async function main() {
   testWorkspaceNavRoleDoesNotDropEventPlansTab();
   testWorkspaceActiveHrefIgnoresStaleOverrides();
   testProfileIdentityPresentationHierarchy();
+  testEventBrandsParsingAndSerialization();
+  testAddEventBrandTag();
+  testMapEventInputToRowEventBrandFallback();
   testQaEnvironmentResetScript();
   await testEventsHistorySelectAllButtonInteraction();
   await testEventsHistoryRemoveConfirmInteraction();

@@ -2,7 +2,9 @@ import type { UserProfile, UserProfileInput, UserRole } from "@/lib/user/current
 import {
   createProfileFormInputFromProfile,
   normalizeUsername,
+  parseStoredEventBrands,
   parseStoredGenreTags,
+  serializeEventBrands,
   serializeGenreTags,
 } from "@/lib/user/profileFormUtils";
 
@@ -10,6 +12,7 @@ export type ProfileEditDirtyState = {
   form: UserProfileInput;
   role: UserRole;
   genreTags: string[];
+  brandTags: string[];
   hasPendingPhoto: boolean;
 };
 
@@ -18,6 +21,7 @@ export function createProfileEditBaseline(profile: UserProfile): ProfileEditDirt
     form: createProfileFormInputFromProfile(profile),
     role: profile.role ?? "dj",
     genreTags: parseStoredGenreTags(profile.genre),
+    brandTags: parseStoredEventBrands(profile.promoter_brand_name),
     hasPendingPhoto: false,
   };
 }
@@ -35,6 +39,10 @@ export function hasUnsavedProfileEdits(
   }
 
   if (serializeGenreTags(baseline.genreTags) !== serializeGenreTags(current.genreTags)) {
+    return true;
+  }
+
+  if (serializeEventBrands(baseline.brandTags) !== serializeEventBrands(current.brandTags)) {
     return true;
   }
 

@@ -55,6 +55,99 @@ export const PROFILE_GENRE_OPTIONS = [
 
 export const MAX_PROFILE_GENRE_TAGS = 8;
 export const MAX_PROFILE_BIO_LENGTH = 150;
+export const MAX_PROMOTER_EVENT_BRANDS = 10;
+export const MAX_EVENT_BRAND_NAME_LENGTH = 40;
+
+/** Separator for the `promoter_brand_name` column's list-of-brands format. Reuses the existing
+ * text column rather than a schema change — see parseStoredEventBrands/serializeEventBrands. */
+const EVENT_BRAND_SEPARATOR = "|";
+
+function normalizeEventBrandName(raw: string): string {
+  return raw.replace(/\s+/g, " ").trim().slice(0, MAX_EVENT_BRAND_NAME_LENGTH);
+}
+
+function dedupeEventBrandsCaseInsensitive(names: string[]): string[] {
+  const seen = new Set<string>();
+  const result: string[] = [];
+
+  for (const raw of names) {
+    const normalized = normalizeEventBrandName(raw);
+
+    if (!normalized) {
+      continue;
+    }
+
+    const key = normalized.toLowerCase();
+
+    if (seen.has(key)) {
+      continue;
+    }
+
+    seen.add(key);
+    result.push(normalized);
+  }
+
+  return result;
+}
+
+/**
+ * `promoter_brand_name` predates the multi-brand Event Brands feature and stores a single
+ * `EVENT_BRAND_SEPARATOR`-joined list in the same text column (mirrors how `genre` stores a
+ * delimited list of tags) — no schema change needed. An existing single brand name has no
+ * separator in it, so it parses as a one-item list automatically, preserving current users'
+ * data with no migration step.
+ */
+export function parseStoredEventBrands(brands: string | null | undefined): string[] {
+  if (!brands?.trim()) {
+    return [];
+  }
+
+  return dedupeEventBrandsCaseInsensitive(brands.split(EVENT_BRAND_SEPARATOR)).slice(
+    0,
+    MAX_PROMOTER_EVENT_BRANDS,
+  );
+}
+
+export function serializeEventBrands(brands: string[]): string {
+  return dedupeEventBrandsCaseInsensitive(brands)
+    .slice(0, MAX_PROMOTER_EVENT_BRANDS)
+    .join(EVENT_BRAND_SEPARATOR);
+}
+
+export function applyEventBrandNameInputLimit(current: string, next: string): string | null {
+  return applyTextInputLimit(current, next, MAX_EVENT_BRAND_NAME_LENGTH);
+}
+
+export type AddEventBrandResult = {
+  brands: string[];
+  error: string | null;
+};
+
+/** Blank entries are ignored (not an error) — matches "ignore blank entries" in the spec. */
+export function addEventBrandTag(currentBrands: string[], rawName: string): AddEventBrandResult {
+  const normalized = normalizeEventBrandName(rawName);
+
+  if (!normalized) {
+    return { brands: currentBrands, error: null };
+  }
+
+  if (currentBrands.length >= MAX_PROMOTER_EVENT_BRANDS) {
+    return {
+      brands: currentBrands,
+      error: `You can add up to ${MAX_PROMOTER_EVENT_BRANDS} brands`,
+    };
+  }
+
+  const isDuplicate = currentBrands.some(
+    (brand) => brand.toLowerCase() === normalized.toLowerCase(),
+  );
+
+  if (isDuplicate) {
+    return { brands: currentBrands, error: "That brand has already been added" };
+  }
+
+  return { brands: [...currentBrands, normalized], error: null };
+}
 
 export function applyBioInputLimit(currentBio: string, nextBio: string): string | null {
   return applyTextInputLimit(currentBio, nextBio, MAX_PROFILE_BIO_LENGTH);
@@ -387,7 +480,7 @@ export function resolveProfileIdentityPresentation(profile: {
   const primary =
     pickPublicIdentityField(profile.display_name) ??
     pickPublicIdentityField(profile.artist_name) ??
-    pickPublicIdentityField(profile.promoter_brand_name) ??
+    pickPublicIdentityField(parseStoredEventBrands(profile.promoter_brand_name)[0]) ??
     pickPublicIdentityField(formatProfileIdentityUsername(profile.username)) ??
     "Profile";
 

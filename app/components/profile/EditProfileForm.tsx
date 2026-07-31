@@ -13,6 +13,7 @@ import {
 } from "@/lib/user/currentUser";
 import {
   getUsernameFormatError,
+  addEventBrandTag,
   applyBioInputLimit,
   createProfileFormInputFromProfile,
   MAX_PROFILE_BIO_LENGTH,
@@ -21,7 +22,9 @@ import {
   normalizeSoundCloudInput,
   normalizeTikTokInput,
   normalizeUsername,
+  parseStoredEventBrands,
   parseStoredGenreTags,
+  serializeEventBrands,
   serializeGenreTags,
 } from "@/lib/user/profileFormUtils";
 import {
@@ -30,6 +33,7 @@ import {
 } from "@/lib/user/profileEditDirtyState";
 import ProfileFormField from "@/app/components/profile/ProfileFormField";
 import ProfileGenrePicker from "@/app/components/profile/ProfileGenrePicker";
+import ProfileEventBrandsField from "@/app/components/profile/ProfileEventBrandsField";
 import { isAllowedProfileImageType, uploadProfileImage } from "@/lib/user/uploadProfileImage";
 
 const ROLE_OPTIONS: { value: UserRole; label: string }[] = [
@@ -78,6 +82,9 @@ export default function EditProfileForm({
   const [role, setRole] = useState<UserRole>(initialRole);
   const [savedRole] = useState<UserRole | null>(profile.role);
   const [genreTags, setGenreTags] = useState<string[]>(() => parseStoredGenreTags(profile.genre));
+  const [brandTags, setBrandTags] = useState<string[]>(() =>
+    parseStoredEventBrands(profile.promoter_brand_name),
+  );
   const [existingAvatarUrl, setExistingAvatarUrl] = useState<string | null>(profile.avatar_url);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -114,10 +121,11 @@ export default function EditProfileForm({
         form,
         role,
         genreTags,
+        brandTags,
         hasPendingPhoto: selectedFile !== null,
       }),
     );
-  }, [form, role, genreTags, selectedFile, onDirtyChange]);
+  }, [form, role, genreTags, brandTags, selectedFile, onDirtyChange]);
 
   useEffect(() => {
     const normalized = normalizeUsername(form.username);
@@ -240,6 +248,40 @@ export default function EditProfileForm({
       });
 
       return [...prev, tag];
+    });
+  }
+
+  function addBrandTag(rawName: string) {
+    const result = addEventBrandTag(brandTags, rawName);
+
+    setBrandTags(result.brands);
+    setFieldErrors((errors) => {
+      if (!result.error && !errors.promoter_brand_name) {
+        return errors;
+      }
+
+      const next = { ...errors };
+
+      if (result.error) {
+        next.promoter_brand_name = result.error;
+      } else {
+        delete next.promoter_brand_name;
+      }
+
+      return next;
+    });
+  }
+
+  function removeBrandTag(brand: string) {
+    setBrandTags((prev) => prev.filter((item) => item !== brand));
+    setFieldErrors((errors) => {
+      if (!errors.promoter_brand_name) {
+        return errors;
+      }
+
+      const next = { ...errors };
+      delete next.promoter_brand_name;
+      return next;
     });
   }
 
@@ -390,6 +432,9 @@ export default function EditProfileForm({
       const payload: UserProfileInput = {
         ...form,
         genre: showDjFields ? serializeGenreTags(genreTags) : form.genre.trim(),
+        promoter_brand_name: showPromoterFields
+          ? serializeEventBrands(brandTags)
+          : form.promoter_brand_name.trim(),
         instagram_url: normalizedInstagram,
         tiktok_url: normalizedTikTok,
         soundcloud_url: showDjFields ? normalizedSoundCloud : form.soundcloud_url.trim(),
@@ -600,11 +645,11 @@ export default function EditProfileForm({
             Promoter details
           </legend>
 
-          <ProfileFormField
-            label="Event brand name"
-            value={form.promoter_brand_name}
-            onChange={(value) => updateField("promoter_brand_name", value)}
-            placeholder="Event brand name"
+          <ProfileEventBrandsField
+            brands={brandTags}
+            onAddBrand={addBrandTag}
+            onRemoveBrand={removeBrandTag}
+            error={fieldErrors.promoter_brand_name}
           />
         </fieldset>
       ) : null}
