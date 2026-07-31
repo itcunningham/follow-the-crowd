@@ -1,3 +1,4 @@
+// @ts-nocheck
 // Verifies the ACTUAL request PostgREST/Supabase's real query builder sends
 // for the DM conversation message fetch, not a source-regex on our own file.
 //
