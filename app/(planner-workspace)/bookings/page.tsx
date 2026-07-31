@@ -33,6 +33,7 @@ import {
   formatDisplayEventDate,
   getTodayDateKey,
 } from "@/lib/bookingDateTime";
+import { DJ_INVITE_LIST_MAX_HEIGHT_CLASS } from "@/app/components/booking/SendBookingRequestsPanel";
 import EventDjSendOfferControls, {
   createDefaultDjSendOffer,
   DEFAULT_DJ_SEND_OFFER,
@@ -2048,7 +2049,7 @@ function BookingsPageContent() {
                   ) : filteredDjs.length === 0 ? (
                     <p className="text-sm text-ftc-text-muted">No DJs match your search</p>
                   ) : (
-                    <ul className="max-h-[clamp(480px,72dvh,640px)] space-y-3 overflow-y-auto pr-1 sm:max-h-[420px]">
+                    <ul className={`${DJ_INVITE_LIST_MAX_HEIGHT_CLASS} space-y-3 overflow-y-auto pr-1`}>
                       {filteredDjs.map((dj) => {
                         const selected = selectedDjIds.includes(dj.user_id);
                         const displayName = dj.display_name ?? dj.user_id;

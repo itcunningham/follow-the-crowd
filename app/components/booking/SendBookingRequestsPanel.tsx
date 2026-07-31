@@ -11,6 +11,14 @@ import type { SendBookingRequestsDraft } from "@/app/components/booking/useSendB
 /** Create-event invite DJ search (client-only). */
 export const MAX_BOOKING_DJ_SEARCH_QUERY_LENGTH = 30;
 
+/**
+ * Shared moderate, non-viewport-height cap for the scrollable DJ results list in the
+ * invite-DJs workflow. A taller viewport-scaling height here previously trapped touch-scroll
+ * inside the list; this value is the single source of truth so every surface that renders
+ * this workflow (this panel, or a duplicated inline implementation) stays in sync.
+ */
+export const DJ_INVITE_LIST_MAX_HEIGHT_CLASS = "max-h-80 sm:max-h-[420px]";
+
 type SendBookingRequestsPanelProps = {
   draft: SendBookingRequestsDraft;
   disabled?: boolean;

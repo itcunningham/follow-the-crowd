@@ -48,7 +48,9 @@ import EventCoverImageField, {
   type EventCoverImageFieldState,
 } from "@/app/components/events/EventCoverImageField";
 import EventFallbackColourField from "@/app/components/events/EventFallbackColourField";
-import SendBookingRequestsPanel from "@/app/components/booking/SendBookingRequestsPanel";
+import SendBookingRequestsPanel, {
+  DJ_INVITE_LIST_MAX_HEIGHT_CLASS,
+} from "@/app/components/booking/SendBookingRequestsPanel";
 import SendBookingRequestsModal from "@/app/components/booking/SendBookingRequestsModal";
 import { useSendBookingRequestsDraft } from "@/app/components/booking/useSendBookingRequestsDraft";
 import { EventDetailPrimaryAction } from "@/app/components/event-detail/EventDetailBottomBar";
@@ -1606,7 +1608,7 @@ function EventsPageClientView({
                       draft={inviteDraft}
                       disabled={saving}
                       embedded
-                      listMaxHeightClass="max-h-80 sm:max-h-[420px]"
+                      listMaxHeightClass={DJ_INVITE_LIST_MAX_HEIGHT_CLASS}
                     />
                   )}
 
