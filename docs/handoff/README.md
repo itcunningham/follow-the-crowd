@@ -4,6 +4,10 @@ Use this folder when starting a **new Cursor chat** or **new ChatGPT chat** so y
 
 ## Fastest start
 
+**Claude Code (Builder while Cursor usage is limited):** open the FTC repo and say:
+
+Read docs/handoff/CLAUDE-CODE-BUILDER-HANDOVER.md fully, then docs/handoff/CURRENT-STATE.md. Follow FTC_WORKFLOW.md. My task: [your task]
+
 **Cursor:** open a new chat and say:
 
 Read everything in docs/handoff/ and follow it. Then: [your task]
@@ -14,6 +18,8 @@ Read everything in docs/handoff/ and follow it. Then: [your task]
 
 | File | Purpose |
 |------|---------|
+| `CLAUDE-CODE-BUILDER-HANDOVER.md` | **Claude Code Builder start — team, Isaac prefs, ChatGPT, FTC, ship rules** |
+| `CLAUDE-IMPLEMENTATION-HANDOVER.md` | Deep technical architecture / debt / DM patterns for Claude |
 | `START-HERE-CURSOR.md` | Paste into new Cursor chat |
 | `START-HERE-GPT.md` | Paste into new ChatGPT chat |
 | `HOW-WE-WORK.md` | Who does what (you / Cursor / GPT) |
