@@ -24,7 +24,6 @@ import {
   PlannerWorkspacePage,
   useSetPlannerWorkspaceHeaderState,
 } from "@/app/components/planner/PlannerWorkspaceLayout";
-import DjBookingAvailabilityBadge from "@/app/components/DjBookingAvailabilityBadge";
 import ProfileAvatar from "@/app/components/ProfileAvatar";
 import { EventCoverImageListThumb } from "@/app/components/events/EventCoverImageDisplay";
 import { BookingDateField, BookingSetTimeRangeField } from "@/app/components/BookingDateTimeFields";
@@ -33,7 +32,10 @@ import {
   formatDisplayEventDate,
   getTodayDateKey,
 } from "@/lib/bookingDateTime";
-import { DJ_INVITE_LIST_MAX_HEIGHT_CLASS } from "@/app/components/booking/SendBookingRequestsPanel";
+import {
+  DJ_INVITE_LIST_MAX_HEIGHT_CLASS,
+  DjInviteSelectionRow,
+} from "@/app/components/booking/SendBookingRequestsPanel";
 import EventDjSendOfferControls, {
   createDefaultDjSendOffer,
   DEFAULT_DJ_SEND_OFFER,
@@ -113,7 +115,6 @@ import {
   isPositiveWholeDollarRate,
   normalizeStoredRate,
 } from "@/lib/bookingRate";
-import EventBookingDuplicateBadge from "@/app/components/EventBookingDuplicateBadge";
 import UnavailableDjBookingConfirmModal from "@/app/components/UnavailableDjBookingConfirmModal";
 import {
   getPlannerDjAvailabilityHints,
@@ -2049,70 +2050,26 @@ function BookingsPageContent() {
                   ) : filteredDjs.length === 0 ? (
                     <p className="text-sm text-ftc-text-muted">No DJs match your search</p>
                   ) : (
-                    <ul className={`${DJ_INVITE_LIST_MAX_HEIGHT_CLASS} space-y-3 overflow-y-auto pr-1`}>
+                    <ul className={`${DJ_INVITE_LIST_MAX_HEIGHT_CLASS} space-y-2.5 overflow-y-auto pr-1`}>
                       {filteredDjs.map((dj) => {
                         const selected = selectedDjIds.includes(dj.user_id);
-                        const displayName = dj.display_name ?? dj.user_id;
                         const availabilityHint = djAvailabilityHints.get(dj.user_id);
                         const duplicateStatus = eventBookingDuplicates.get(dj.user_id);
-                        const isDuplicateBlocked = Boolean(duplicateStatus);
                         const offer = djOffers[dj.user_id] ?? createDefaultDjSendOffer();
 
                         return (
-                          <li key={dj.user_id}>
-                            <button
-                              type="button"
-                              onClick={() => toggleDjSelection(dj.user_id)}
-                              disabled={isDuplicateBlocked}
-                              className={`flex w-full items-center gap-3 rounded-xl border p-3 text-left transition ${
-                                isDuplicateBlocked
-                                  ? "cursor-not-allowed border-ftc-border bg-ftc-bg-elevated/20 opacity-70"
-                                  : selected
-                                    ? "border-ftc-border-subtle bg-ftc-bg-elevated"
-                                    : "border-ftc-border-subtle bg-ftc-surface hover:border-ftc-border-strong"
-                              }`}
-                            >
-                              <span
-                                className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border ${
-                                  selected
-                                    ? "border-0 bg-ftc-primary text-ftc-bg"
-                                    : "border-ftc-border-strong bg-ftc-bg-elevated/80 text-transparent"
-                                }`}
-                              >
-                                ✓
-                              </span>
-                              <ProfileAvatar
-                                name={displayName}
-                                avatarUrl={dj.avatar_url}
-                                size="md"
-                              />
-                              <div className="min-w-0 flex-1">
-                                <div className="flex flex-wrap items-center gap-2">
-                                  <p className="font-semibold text-ftc-text">{displayName}</p>
-                                  {duplicateStatus ? (
-                                    <EventBookingDuplicateBadge status={duplicateStatus} />
-                                  ) : null}
-                                  {availabilityHint ? (
-                                    <DjBookingAvailabilityBadge hint={availabilityHint} />
-                                  ) : null}
-                                </div>
-                                <p className="text-xs text-ftc-text-muted">
-                                  {[dj.genre, dj.location].filter(Boolean).join(" · ") ||
-                                    getRoleLabel(dj.role)}
-                                </p>
-                              </div>
-                            </button>
-                            {selected ? (
-                              <div className="mt-2 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated p-3">
-                                <EventDjSendOfferControls
-                                  key={dj.user_id}
-                                  offer={offer}
-                                  disabled={sending}
-                                  onChange={(nextOffer) => updateDjOffer(dj.user_id, nextOffer)}
-                                />
-                              </div>
-                            ) : null}
-                          </li>
+                          <DjInviteSelectionRow
+                            key={dj.user_id}
+                            dj={dj}
+                            selected={selected}
+                            disabled={sending}
+                            isDuplicateBlocked={Boolean(duplicateStatus)}
+                            duplicateStatus={duplicateStatus}
+                            availabilityHint={availabilityHint}
+                            offer={offer}
+                            onToggle={() => toggleDjSelection(dj.user_id)}
+                            onOfferChange={(nextOffer) => updateDjOffer(dj.user_id, nextOffer)}
+                          />
                         );
                       })}
                     </ul>

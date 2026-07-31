@@ -3,10 +3,14 @@
 import ProfileAvatar from "@/app/components/ProfileAvatar";
 import DjBookingAvailabilityBadge from "@/app/components/DjBookingAvailabilityBadge";
 import EventBookingDuplicateBadge from "@/app/components/EventBookingDuplicateBadge";
-import EventDjSendOfferControls from "@/app/components/booking/EventDjSendOfferControls";
+import EventDjSendOfferControls, {
+  type DjSendOffer,
+} from "@/app/components/booking/EventDjSendOfferControls";
 import { PlannerEmptyPanel, PlannerSectionLabel } from "@/app/components/planner/PlannerUi";
 import { EVENT_DETAIL_BTN_PRIMARY_WIDE } from "@/app/components/event-detail/eventDetailUi";
 import type { SendBookingRequestsDraft } from "@/app/components/booking/useSendBookingRequestsDraft";
+import type { EventBookingDuplicateStatus } from "@/lib/bookingRequests";
+import type { DjPlannerAvailabilityHint } from "@/lib/djAvailability";
 
 /** Create-event invite DJ search (client-only). */
 export const MAX_BOOKING_DJ_SEARCH_QUERY_LENGTH = 30;
@@ -92,6 +96,95 @@ function InviteDjAvatar({
   );
 }
 
+export type DjInviteSelectionRowDj = {
+  user_id: string;
+  display_name?: string | null;
+  avatar_url?: string | null;
+  genre?: string | null;
+};
+
+type DjInviteSelectionRowProps = {
+  dj: DjInviteSelectionRowDj;
+  selected: boolean;
+  disabled?: boolean;
+  isDuplicateBlocked?: boolean;
+  duplicateStatus?: EventBookingDuplicateStatus;
+  availabilityHint?: DjPlannerAvailabilityHint;
+  offer: DjSendOffer;
+  onToggle: () => void;
+  onOfferChange: (offer: DjSendOffer) => void;
+};
+
+/**
+ * Single DJ card in the invite-DJs workflow: avatar with selected checkmark badge, name/genre,
+ * compact duplicate/availability badges (an "unknown" availability status is never shown - not
+ * useful information), and inline Fixed Offer / Ask for Rate controls when selected. Shared by
+ * every surface that renders this workflow (Events Create Event, Event Plans' Use Plan) so they
+ * can't visually drift apart again.
+ */
+export function DjInviteSelectionRow({
+  dj,
+  selected,
+  disabled = false,
+  isDuplicateBlocked = false,
+  duplicateStatus,
+  availabilityHint,
+  offer,
+  onToggle,
+  onOfferChange,
+}: DjInviteSelectionRowProps) {
+  const displayName = dj.display_name?.trim() || "DJ";
+  const showAvailabilityBadge =
+    availabilityHint !== undefined && availabilityHint.status !== "unknown";
+
+  return (
+    <li>
+      <button
+        type="button"
+        disabled={disabled || isDuplicateBlocked}
+        aria-pressed={selected}
+        aria-label={`${selected ? "Deselect" : "Select"} ${displayName}`}
+        onClick={onToggle}
+        className={`ftc-option-card flex w-full items-start gap-3 p-2.5 transition duration-150 ease-out disabled:cursor-not-allowed motion-reduce:transition-none ${
+          selected
+            ? "ftc-option-card-selected bg-[var(--ftc-color-primary-subtle)]"
+            : isDuplicateBlocked
+              ? "opacity-70"
+              : ""
+        }`}
+      >
+        <InviteDjAvatar name={displayName} avatarUrl={dj.avatar_url} selected={selected} />
+        <div className="min-w-0 flex-1 text-left">
+          <p className="text-sm font-bold leading-snug text-ftc-text">{displayName}</p>
+          {dj.genre?.trim() ? (
+            <p
+              className="mt-0.5 truncate text-xs leading-snug text-ftc-text-muted"
+              title={dj.genre.trim()}
+            >
+              {dj.genre.trim()}
+            </p>
+          ) : null}
+          {duplicateStatus || showAvailabilityBadge ? (
+            <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+              {duplicateStatus ? (
+                <EventBookingDuplicateBadge status={duplicateStatus} variant="compact" />
+              ) : null}
+              {showAvailabilityBadge ? (
+                <DjBookingAvailabilityBadge hint={availabilityHint!} variant="compact" />
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+      </button>
+      {selected ? (
+        <div className="mt-2 rounded-xl bg-ftc-bg-elevated/70 p-3">
+          <EventDjSendOfferControls offer={offer} disabled={disabled} onChange={onOfferChange} />
+        </div>
+      ) : null}
+    </li>
+  );
+}
+
 function resolveSendButtonLabel(
   draft: SendBookingRequestsDraft,
   sending: boolean,
@@ -162,70 +255,26 @@ export default function SendBookingRequestsPanel({
         <ul className={`${listMaxHeightClass} space-y-2.5 overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch] touch-pan-y`}>
           {draft.filteredDjs.map((dj) => {
             const selected = draft.selectedDjIds.includes(dj.user_id);
-            const displayName = dj.display_name?.trim() || "DJ";
             const availabilityHint = draft.djAvailabilityHints.get(dj.user_id);
-            const showAvailabilityBadge =
-              availabilityHint !== undefined && availabilityHint.status !== "unknown";
             const duplicateStatus = draft.eventBookingDuplicates.get(dj.user_id);
-            const isDuplicateBlocked = Boolean(duplicateStatus);
             const offer = draft.djOffers[dj.user_id] ?? {
               rateMode: "fixed" as const,
               fee: "",
             };
 
             return (
-              <li key={dj.user_id}>
-                <button
-                  type="button"
-                  disabled={disabled || sending || isDuplicateBlocked}
-                  aria-pressed={selected}
-                  aria-label={`${selected ? "Deselect" : "Select"} ${displayName}`}
-                  onClick={() => draft.toggleDjSelection(dj.user_id)}
-                  className={`ftc-option-card flex w-full items-start gap-3 p-2.5 transition duration-150 ease-out disabled:cursor-not-allowed motion-reduce:transition-none ${
-                    selected
-                      ? "ftc-option-card-selected bg-[var(--ftc-color-primary-subtle)]"
-                      : isDuplicateBlocked
-                        ? "opacity-70"
-                        : ""
-                  }`}
-                >
-                  <InviteDjAvatar
-                    name={displayName}
-                    avatarUrl={dj.avatar_url}
-                    selected={selected}
-                  />
-                  <div className="min-w-0 flex-1 text-left">
-                    <p className="text-sm font-bold leading-snug text-ftc-text">{displayName}</p>
-                    {dj.genre?.trim() ? (
-                      <p
-                        className="mt-0.5 truncate text-xs leading-snug text-ftc-text-muted"
-                        title={dj.genre.trim()}
-                      >
-                        {dj.genre.trim()}
-                      </p>
-                    ) : null}
-                    {duplicateStatus || showAvailabilityBadge ? (
-                      <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                        {duplicateStatus ? (
-                          <EventBookingDuplicateBadge status={duplicateStatus} variant="compact" />
-                        ) : null}
-                        {showAvailabilityBadge ? (
-                          <DjBookingAvailabilityBadge hint={availabilityHint} variant="compact" />
-                        ) : null}
-                      </div>
-                    ) : null}
-                  </div>
-                </button>
-                {selected ? (
-                  <div className="mt-2 rounded-xl bg-ftc-bg-elevated/70 p-3">
-                    <EventDjSendOfferControls
-                      offer={offer}
-                      disabled={disabled || sending}
-                      onChange={(nextOffer) => draft.updateDjOffer(dj.user_id, nextOffer)}
-                    />
-                  </div>
-                ) : null}
-              </li>
+              <DjInviteSelectionRow
+                key={dj.user_id}
+                dj={dj}
+                selected={selected}
+                disabled={disabled || sending}
+                isDuplicateBlocked={Boolean(duplicateStatus)}
+                duplicateStatus={duplicateStatus}
+                availabilityHint={availabilityHint}
+                offer={offer}
+                onToggle={() => draft.toggleDjSelection(dj.user_id)}
+                onOfferChange={(nextOffer) => draft.updateDjOffer(dj.user_id, nextOffer)}
+              />
             );
           })}
         </ul>
