@@ -491,19 +491,24 @@ function EventsPageClientView({
   const [form, setForm] = useState<EventInput>(() => ({
     ...emptyEventForm,
     eventDate: createBootstrap?.prefilledEventDate ?? "",
+    // guardProfile may not be populated yet on the very first paint (a calendar-
+    // origin bootstrap can open the form immediately, before openCreateFlow ever
+    // runs) — evaluates to null in that instant, same as having zero brands, so
+    // this only ever fails to preselect, never selects the wrong thing.
+    eventBrand:
+      parseStoredEventBrands(guardProfile?.promoter_brand_name).length === 1
+        ? parseStoredEventBrands(guardProfile?.promoter_brand_name)[0]
+        : null,
   }));
   const promoterEventBrands = useMemo(
     () => parseStoredEventBrands(guardProfile?.promoter_brand_name),
     [guardProfile?.promoter_brand_name],
   );
-
-  useEffect(() => {
-    if (promoterEventBrands.length !== 1 || form.eventBrand) {
-      return;
-    }
-
-    setForm((prev) => (prev.eventBrand ? prev : { ...prev, eventBrand: promoterEventBrands[0] }));
-  }, [promoterEventBrands, form.eventBrand]);
+  // Computed inline at every point the form resets for a new event (not via a
+  // separate effect) — openCreateFlow/"From scratch"/handleSelectPlan all reset
+  // `form` wholesale, and effects run in declaration order, so a later effect
+  // resetting the form would silently clobber an earlier effect's eventBrand.
+  const defaultEventBrand = promoterEventBrands.length === 1 ? promoterEventBrands[0] : null;
   const [coverField, setCoverField] = useState<EventCoverImageFieldState>(
     emptyEventCoverImageFieldState,
   );
@@ -941,6 +946,7 @@ function EventsPageClientView({
     setForm({
       ...emptyEventForm,
       eventDate: prefilledEventDate,
+      eventBrand: defaultEventBrand,
     });
     setSelectedPlanId(null);
     setError(null);
@@ -1006,6 +1012,7 @@ function EventsPageClientView({
     setForm({
       ...input,
       eventDate: calendarOriginDateKey ?? input.eventDate,
+      eventBrand: defaultEventBrand,
     });
     setCreateStep("form");
     setError(null);
@@ -1467,6 +1474,7 @@ function EventsPageClientView({
                       setForm({
                         ...emptyEventForm,
                         eventDate: calendarOriginDateKey ?? "",
+                        eventBrand: defaultEventBrand,
                       });
                       setSelectedPlanId(null);
                       setCreateStep("form");
