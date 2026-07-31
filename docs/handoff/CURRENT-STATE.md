@@ -1,4 +1,4 @@
-# Current state (last updated: 2026-07-30)
+# Current state (last updated: 2026-07-31)
 
 Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 
@@ -211,6 +211,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 - **Use Plan DJ confirm loading copy (2026-07-26):** confirmation step primary button shows `CONFIRMING` while sending (no trailing ellipsis; same on unavailable-DJ confirm modal in this flow)
 - **Event Plans polish (2026-07-14):** removed redundant “Saved Event Plans” heading; stronger title/meta hierarchy; 2-line notes preview; weighted Use plan outline button; History-matched bulk delete rows (`FTC_SURFACE_ROW_CLASS`, checkbox, toolbar)
 - **Use Plan flow polish (2026-07-14):** Event details step shows `Plan` label + plan name; Use Plan entry uses top-right Cancel (returns to Event Plans); header uses `ftc-form-card-header` spacing to match Create Event
+- **Create Event DJ selection list height (2026-07-31):** the DJ selection `<ul>` in `app/(planner-workspace)/bookings/page.tsx` (`select-djs` step) used a flat `max-h-[420px]`; once a DJ's fixed-offer/ask-for-rate controls expanded inline, the remaining budget only showed a sliver of the next card before Send summary. Now `max-h-[65dvh] sm:max-h-[420px]` — mobile gets a viewport-relative height (multiple cards visible even with one expanded), desktop keeps the original 420px cap; list stays independently scrollable in normal document flow (no overlap with bottom nav or Send summary, which remain outside the scroll container)
 - **Use Plan workspace tabs (2026-07-25):** while planner booking create is open on `/bookings` (Event Plans → Use Plan), Gigs Incoming/Confirmed/History sub-tabs are not mounted (`plannerBookingCreateOpen` synced via `GigsWorkspaceChromeState` after deep link clears `planId` from URL); workspace sub-nav intercept closes create via `resetCreateFlowState` then navigates; Event Plans stays highlighted
 - **Use Plan cancel on DJ step (2026-07-26):** Cancel on step 1 or 2 returns to Event Plans without resetting `createOpen` first — bookings create UI and Event Plans workspace highlight stay mounted until `router.replace("/booking-plans")`; no transient Gigs Incoming/Confirmed/History render
 - **Use Plan event creation (2026-07-26):** sending booking requests from Event Plans → Use Plan now creates an `events` row first (same `createEvent` path as Events → Create event), links booking requests via `event_id`, prepends Events Active cache, and clears planner calendar cache so new events appear immediately in Events → Active and on Calendar; saved Event Plan unchanged
@@ -232,6 +233,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 
 - "Create event" sentence case (not "Create Event")
 - No trailing periods on several confirmation dialogs and empty states
+- **Finish-time validation copy (2026-07-31):** `EVENT_FINISH_NOT_AFTER_START_ERROR` (`lib/bookingDateTime.ts`) dropped its trailing full stop — "Finish time must be later than the start time"; validation logic unchanged
 - Desktop planner UX brought into parity with mobile (wording, validation, calendar cards, today/selected styling) without copying mobile layout
 
 ## Beta readiness (historical — resolved at GO 2026-07-16)
@@ -297,6 +299,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `75cd496` — Create Event polish: drop trailing full stop from finish-time validation copy; mobile DJ list max-height `65dvh` (was flat `420px`)
 - `7b65b54` — unify direct-message inbox preview formatting
 - `99e4fa6` — keep pinned DM chats at the bottom while image layout resolves
 - `32ca087` — clear live DM inbox reaction activity on realtime reaction removal
