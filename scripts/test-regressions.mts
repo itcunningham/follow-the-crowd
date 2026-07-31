@@ -2927,6 +2927,11 @@ async function testEventsHistoryRemoveConfirmInteraction() {
   await runHistoryRemoveConfirmFailureTest();
 }
 
+async function testDmChatReopenScroll() {
+  const { runDmChatReopenScrollTest } = await import("./test-dm-chat-reopen-scroll.js");
+  await runDmChatReopenScrollTest();
+}
+
 function testResolvePlannerHistoryHideEventIds() {
   const events = [
     {
@@ -6303,6 +6308,7 @@ async function main() {
   testQaEnvironmentResetScript();
   await testEventsHistorySelectAllButtonInteraction();
   await testEventsHistoryRemoveConfirmInteraction();
+  await testDmChatReopenScroll();
   console.log("All regression checks passed.");
 }
 
