@@ -126,6 +126,14 @@ export const CHAT_MESSAGE_REACTION_OVERLAP_RESERVE_CLASS = "";
 /** Scroll list — flex-col-reverse: `pb-*` clears the fixed header at the visual top. */
 export const CHAT_MESSAGE_LIST_CLASS = "flex flex-col-reverse gap-0 pb-4 pt-2";
 
+/**
+ * DM-only scroll list in normal chronological DOM order (oldest → newest, top → bottom).
+ * `justify-end` keeps short conversations resting at the visual bottom without a reversed
+ * DOM order, so `scrollTop === maxScrollTop` on the (non-reversed) scroller reliably means
+ * "showing the newest message" for long conversations too.
+ */
+export const DM_CHAT_MESSAGE_LIST_CLASS = "flex flex-col justify-end gap-0 pt-2 pb-4";
+
 /** DM / group chat message scroller — asymmetric padding keeps header clearance at scroll top. */
 export const CHAT_MESSAGE_SCROLLER_CLASS =
   "flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain [overflow-anchor:none] px-3 pb-4 pt-2 sm:px-4";

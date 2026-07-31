@@ -59,9 +59,9 @@ import {
 } from "@/lib/dm/dmChatTimestampVisibility";
 import {
   buildChatMessageGroupLayout,
-  CHAT_MESSAGE_LIST_CLASS,
   CHAT_MESSAGE_SCROLLER_CLASS,
   CHAT_SEEN_LABEL_SPACING_CLASS,
+  DM_CHAT_MESSAGE_LIST_CLASS,
   resolveMessageGroupLiClass,
 } from "@/lib/dm/chatMessageGroupLayout";
 import { parseDmThreadEntryContext, resolveDmThreadBackHref } from "@/lib/dm/threadNavigation";
@@ -487,7 +487,6 @@ export default function DmChatPage() {
     () => groupDmReactionsByMessageId(reactions),
     [reactions],
   );
-  const reversedMessages = useMemo(() => [...messages].reverse(), [messages]);
   const conversationTimestampLayout = useMemo(
     () =>
       buildDmConversationTimestampLayout(messages, {
@@ -1832,8 +1831,8 @@ export default function DmChatPage() {
             </p>
           </div>
         ) : (
-          <ul data-chat-content-root className={CHAT_MESSAGE_LIST_CLASS}>
-            {reversedMessages.map((message, reversedIndex) => {
+          <ul data-chat-content-root className={DM_CHAT_MESSAGE_LIST_CLASS}>
+            {messages.map((message, index) => {
               if (
                 isBookingActivityDmMessage(message.text) &&
                 parseEventCancellationActivityEventName(message.text)
@@ -1883,7 +1882,7 @@ export default function DmChatPage() {
               if (!isBookingMessage) {
                 const messageTimestampLayout = conversationTimestampLayout.get(message.id);
                 const messageGroupLayout = chatMessageGroupLayout.get(message.id);
-                const messageVisuallyBelow = reversedMessages[reversedIndex - 1];
+                const messageVisuallyBelow = messages[index + 1];
                 const followedByTimeSeparator = resolveFollowedByTimeSeparator(
                   messageVisuallyBelow?.id,
                   conversationTimestampLayout,
@@ -2000,7 +1999,7 @@ export default function DmChatPage() {
                 const actionRequired = isDmBookingActionRequired(resolvedBooking, eventCancelled);
                 const isBookingExpanded = expandedBookingIds.has(bookingExpansionKey);
                 const messageGroupLayout = chatMessageGroupLayout.get(message.id);
-                const messageVisuallyBelow = reversedMessages[reversedIndex - 1];
+                const messageVisuallyBelow = messages[index + 1];
                 const followedByTimeSeparator = resolveFollowedByTimeSeparator(
                   messageVisuallyBelow?.id,
                   conversationTimestampLayout,
