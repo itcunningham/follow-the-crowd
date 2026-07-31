@@ -146,6 +146,11 @@ import {
   mergePendingComposerAttachments,
   removePendingComposerAttachmentAt,
 } from "../lib/dm/composerPendingAttachment";
+import {
+  DM_MAX_VISIBLE_GRID_IMAGES,
+  resolveImageGridCellClass,
+  resolveVisibleGridImages,
+} from "../lib/dm/dmImageLayout";
 import { formatDmInboxMessagePreview, pickDmInboxPreviewMessage } from "../lib/dm/messagePreview";
 import {
   canComposerInsertNewline,
@@ -5367,10 +5372,50 @@ function testDmMultiPhotoSend() {
   assert.match(bubbleSource, /DmMessageAttachmentGroup/);
   assert.doesNotMatch(bubbleSource, /attachments\.map\(\(attachment\) => \(/);
   assert.match(groupSource, /attachments\.length <= 1/);
-  assert.match(groupSource, /grid-cols-2/);
-  assert.match(groupSource, /grid-cols-3/);
-  assert.match(groupSource, /aspect-square/);
   assert.match(groupSource, /aria-label="Open image"/);
+  // Single-image and multi-image grid bubbles import the same shared
+  // max-width constant — no independently-drifting duplicate literal.
+  assert.match(groupSource, /DM_IMAGE_BUBBLE_MAX_WIDTH_CLASS/);
+  const attachmentViewSource = readFileSync(
+    new URL("../app/components/dm/DmMessageAttachment.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(attachmentViewSource, /DM_IMAGE_BUBBLE_MAX_WIDTH_CLASS/);
+  assert.match(attachmentViewSource, /DM_IMAGE_BUBBLE_MAX_HEIGHT_CLASS/);
+}
+
+function testDmImageGridLayout() {
+  // 2 and 4 images: every cell is a plain equal square (2-col/1-row, 2-col/2-row).
+  assert.equal(resolveImageGridCellClass(2, 0), "aspect-square");
+  assert.equal(resolveImageGridCellClass(2, 1), "aspect-square");
+  assert.equal(resolveImageGridCellClass(4, 0), "aspect-square");
+  assert.equal(resolveImageGridCellClass(4, 3), "aspect-square");
+
+  // 3 images: standard large-top/two-bottom — only the first cell spans
+  // both columns; the other two stay equal squares.
+  assert.equal(resolveImageGridCellClass(3, 0), "col-span-2 aspect-[2/1]");
+  assert.equal(resolveImageGridCellClass(3, 1), "aspect-square");
+  assert.equal(resolveImageGridCellClass(3, 2), "aspect-square");
+
+  // 5+ images: same 2x2 shape as exactly 4 (visible tiles are capped to 4
+  // upstream by resolveVisibleGridImages) — never the 3-image special case.
+  assert.equal(resolveImageGridCellClass(7, 0), "aspect-square");
+
+  // Visible-tile capping + hidden count for the "+N" overlay.
+  assert.deepEqual(resolveVisibleGridImages([1, 2]), { visible: [1, 2], hiddenCount: 0 });
+  assert.deepEqual(resolveVisibleGridImages([1, 2, 3, 4]), {
+    visible: [1, 2, 3, 4],
+    hiddenCount: 0,
+  });
+  assert.deepEqual(resolveVisibleGridImages([1, 2, 3, 4, 5]), {
+    visible: [1, 2, 3, 4],
+    hiddenCount: 1,
+  });
+  assert.deepEqual(resolveVisibleGridImages([1, 2, 3, 4, 5, 6, 7]), {
+    visible: [1, 2, 3, 4],
+    hiddenCount: 3,
+  });
+  assert.equal(DM_MAX_VISIBLE_GRID_IMAGES, 4);
 }
 
 function testDmComposerPendingPhotoGroupHelpers() {
@@ -6425,6 +6470,7 @@ async function main() {
   testDmComposerClearsPendingPhotoAfterSuccessfulSend();
   testDmComposerPendingPhotoGroupHelpers();
   testDmMultiPhotoSend();
+  testDmImageGridLayout();
   // TEMP-SKIP (pre-existing, unrelated failure — stale getComposerLineBeforeCursor expectation in composerNewlineKeydown.ts, not touched by multi-photo work; see docs/handoff/CURRENT-STATE.md): testComposerNewlineKeydown();
   testDmComposerFocusSyncAfterSend();
   // TEMP-SKIP (pre-existing, unrelated failure — stale reaction-gesture source regex, not touched by multi-photo work; see docs/handoff/CURRENT-STATE.md): testDmMessageReactionGestureInteractions();

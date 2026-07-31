@@ -5,6 +5,7 @@ import {
   applyEventBrandNameInputLimit,
   MAX_PROMOTER_EVENT_BRANDS,
 } from "@/lib/user/profileFormUtils";
+import { PROFILE_TAG_CHIP_BASE_CLASS } from "@/app/components/profile/ProfileTagChipList";
 
 export default function ProfileEventBrandsField({
   brands,
@@ -57,7 +58,7 @@ export default function ProfileEventBrandsField({
         {brands.map((brand) => (
           <span
             key={brand}
-            className="inline-flex items-center gap-1.5 rounded-full border border-ftc-border-subtle bg-ftc-bg-elevated py-1.5 pl-3 pr-2 text-xs font-medium text-ftc-text"
+            className={`${PROFILE_TAG_CHIP_BASE_CLASS} gap-1.5 py-1.5 pl-3 pr-2 text-ftc-text`}
           >
             {brand}
             <button

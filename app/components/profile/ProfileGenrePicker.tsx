@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { MAX_PROFILE_GENRE_TAGS, PROFILE_GENRE_OPTIONS } from "@/lib/user/profileFormUtils";
+import { PROFILE_TAG_CHIP_BASE_CLASS } from "@/app/components/profile/ProfileTagChipList";
 
 export default function ProfileGenrePicker({
   selectedTags,
@@ -64,10 +65,7 @@ export default function ProfileGenrePicker({
       {selectedTags.length > 0 ? (
         <div className="flex flex-wrap gap-2">
           {selectedTags.map((tag) => (
-            <span
-              key={tag}
-              className="inline-flex items-center rounded-full border border-ftc-border-subtle bg-ftc-bg-elevated px-3 py-1.5 text-xs font-medium text-ftc-text"
-            >
+            <span key={tag} className={`${PROFILE_TAG_CHIP_BASE_CLASS} px-3 py-1.5 text-ftc-text`}>
               {tag}
             </span>
           ))}

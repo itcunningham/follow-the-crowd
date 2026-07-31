@@ -9,6 +9,10 @@ import {
   getKnownDmImageAspectRatio,
   recordDmImageAspectRatio,
 } from "@/lib/dm/dmImageAttachmentDimensions";
+import {
+  DM_IMAGE_BUBBLE_MAX_HEIGHT_CLASS,
+  DM_IMAGE_BUBBLE_MAX_WIDTH_CLASS,
+} from "@/lib/dm/dmImageLayout";
 
 function FileIcon() {
   return (
@@ -65,7 +69,7 @@ export default function DmMessageAttachmentView({
           src={attachment.file_url}
           alt={attachment.file_name}
           draggable={false}
-          className="pointer-events-none max-h-72 max-w-[min(100%,18rem)]"
+          className={`pointer-events-none ${DM_IMAGE_BUBBLE_MAX_HEIGHT_CLASS} ${DM_IMAGE_BUBBLE_MAX_WIDTH_CLASS}`}
           style={knownAspectRatio ? { aspectRatio: knownAspectRatio } : undefined}
           loading="lazy"
           onLoad={(event) => {
