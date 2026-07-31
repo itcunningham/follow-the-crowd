@@ -24,6 +24,26 @@ export function shouldRestoreDmChatScroll(searchValue: string | null | undefined
   return searchValue === "1";
 }
 
+/** Query param carrying a fresh per-navigation marker — see buildDmChatFreshOpenHref. */
+export const DM_CHAT_FRESH_OPEN_PARAM = "openedAt";
+
+/**
+ * Stamps a href with a fresh, per-click marker so a normal DM open reliably
+ * re-evaluates the initial scroll-to-bottom even when this exact conversation
+ * (and its `useChatScroll`/`loadConversationData` state) may still be around
+ * from an earlier visit in the same session — App Router client-side
+ * navigation is not guaranteed to give every entry a brand-new component
+ * instance. Distinct from `restoreScroll`: this always forces a fresh
+ * "land on newest" evaluation, it never restores a saved position.
+ */
+export function buildDmChatFreshOpenHref(href: string): string {
+  const [path, search = ""] = href.split("?");
+  const params = new URLSearchParams(search);
+  params.set(DM_CHAT_FRESH_OPEN_PARAM, Date.now().toString(36));
+
+  return `${path}?${params.toString()}`;
+}
+
 export function saveDmChatScrollPosition(conversationId: string, scrollTop: number): void {
   if (typeof window === "undefined" || !conversationId.trim()) {
     return;

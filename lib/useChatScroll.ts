@@ -97,6 +97,15 @@ type UseChatScrollOptions = {
   lastMessageIsFromCurrentUser: boolean | null;
   currentUserId: string | null;
   suppressAutoScrollRef?: MutableRefObject<boolean>;
+  /**
+   * Optional fresh-per-navigation marker (see `buildDmChatFreshOpenHref`). When
+   * provided and it changes relative to the last view this hook scrolled for,
+   * forces one fresh initial scroll-to-bottom evaluation even if `loading`
+   * doesn't cycle again — i.e. even when the caller's component instance may
+   * have been reused across an away-and-back navigation. Omit for callers
+   * (e.g. crew chat) that don't need this: behaviour is unchanged when absent.
+   */
+  freshOpenToken?: string | null;
 };
 
 export function useChatScroll({
@@ -106,6 +115,7 @@ export function useChatScroll({
   lastMessageIsFromCurrentUser,
   currentUserId,
   suppressAutoScrollRef,
+  freshOpenToken,
 }: UseChatScrollOptions) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -115,6 +125,7 @@ export function useChatScroll({
   const pendingScrollPreserveRef = useRef<number | null>(null);
   const previousMessageIdsRef = useRef<string[]>([]);
   const needsInitialScrollRef = useRef(true);
+  const lastScrolledFreshOpenTokenRef = useRef(freshOpenToken);
   const pinnedToBottomRef = useRef(true);
   const [showNewMessagesPill, setShowNewMessagesPill] = useState(false);
   const [newMessagesPillCount, setNewMessagesPillCount] = useState(0);
@@ -346,11 +357,24 @@ export function useChatScroll({
   }, [clearPendingScrollPreserve, hideNewMessagesPill, loading]);
 
   useEffect(() => {
-    if (loading || messageIds.length === 0 || !needsInitialScrollRef.current) {
+    if (loading || messageIds.length === 0) {
+      return;
+    }
+
+    const isFreshOpen =
+      freshOpenToken !== undefined &&
+      freshOpenToken !== null &&
+      freshOpenToken !== lastScrolledFreshOpenTokenRef.current;
+
+    if (!needsInitialScrollRef.current && !isFreshOpen) {
       return;
     }
 
     needsInitialScrollRef.current = false;
+
+    if (freshOpenToken !== undefined) {
+      lastScrolledFreshOpenTokenRef.current = freshOpenToken;
+    }
 
     if (suppressAutoScrollRef?.current) {
       return;
@@ -359,7 +383,7 @@ export function useChatScroll({
     requestAnimationFrame(() => {
       scrollToBottom("auto");
     });
-  }, [loading, messageIds.length, scrollToBottom, suppressAutoScrollRef]);
+  }, [loading, messageIds.length, scrollToBottom, suppressAutoScrollRef, freshOpenToken]);
 
   useEffect(() => {
     if (loading) {

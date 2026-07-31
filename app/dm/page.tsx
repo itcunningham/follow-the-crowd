@@ -61,6 +61,7 @@ import {
 } from "@/lib/messageReads";
 import { supabase } from "@/lib/supabaseClient";
 import { buildDmThreadHref } from "@/lib/dm/threadNavigation";
+import { buildDmChatFreshOpenHref } from "@/lib/dm/dmChatScrollRestoration";
 import {
   formatDmInboxConversationPreview,
   pickDmInboxPreviewMessage,
@@ -1097,7 +1098,7 @@ function DmInboxPageContent() {
   }, [currentUserId]);
 
   function openConversation(conversationId: string) {
-    router.push(buildDmThreadHref(conversationId, { from: "dm" }));
+    router.push(buildDmChatFreshOpenHref(buildDmThreadHref(conversationId, { from: "dm" })));
   }
 
   const hasDirectMessages = dmInboxRows.length > 0;

@@ -87,6 +87,7 @@ import { useDismissComposerKeyboardOnIntentionalScroll } from "@/lib/dm/dismissC
 import { useDmChatScrollRestoreOnProfileReturn } from "@/lib/dm/useDmChatScrollRestoreOnProfileReturn";
 import {
   buildDmChatScrollRestoreHref,
+  DM_CHAT_FRESH_OPEN_PARAM,
   DM_CHAT_SCROLL_RESTORE_PARAM,
   shouldRestoreDmChatScroll,
 } from "@/lib/dm/dmChatScrollRestoration";
@@ -216,6 +217,7 @@ export default function DmChatPage() {
   const shouldRestoreChatScrollOnMount = shouldRestoreDmChatScroll(
     searchParams.get(DM_CHAT_SCROLL_RESTORE_PARAM),
   );
+  const freshOpenToken = searchParams.get(DM_CHAT_FRESH_OPEN_PARAM);
   const backHref = resolveDmThreadBackHref({
     from: searchParams.get("from"),
     tab: searchParams.get("tab"),
@@ -342,6 +344,7 @@ export default function DmChatPage() {
     lastMessageIsFromCurrentUser: lastMessage?._clientScrollMeta?.isFromCurrentUser ?? null,
     currentUserId,
     suppressAutoScrollRef,
+    freshOpenToken,
   });
   useDismissComposerKeyboardOnIntentionalScroll(scrollRef, composerInputRef, composerRootRef);
   useDmChatScrollRestoreOnProfileReturn({
