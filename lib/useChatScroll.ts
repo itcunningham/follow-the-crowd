@@ -127,6 +127,15 @@ export function useChatScroll({
   const needsInitialScrollRef = useRef(true);
   const lastScrolledFreshOpenTokenRef = useRef(freshOpenToken);
   const pinnedToBottomRef = useRef(true);
+  // The scrollTop we last set ourselves via scrollToBottom. Native 'scroll'
+  // events are dispatched asynchronously, so a delayed event can arrive after
+  // content (e.g. a decoding image) has grown scrollHeight but before this
+  // ref's target has been superseded. Comparing against it lets handleScroll
+  // tell "the user actually moved" apart from "content grew out from under a
+  // pinned scrollTop, and this is just a stale echo of our own last scrollTo" —
+  // the latter must never un-pin, or it silently defeats the ResizeObserver
+  // re-pin below it (they share pinnedToBottomRef).
+  const lastAutoScrollTopRef = useRef<number | null>(null);
   const [showNewMessagesPill, setShowNewMessagesPill] = useState(false);
   const [newMessagesPillCount, setNewMessagesPillCount] = useState(0);
 
@@ -162,7 +171,9 @@ export function useChatScroll({
 
       clearPendingScrollPreserve();
       pinnedToBottomRef.current = true;
-      container.scrollTo({ top: getChatMaxScrollTop(container), behavior });
+      const target = getChatMaxScrollTop(container);
+      container.scrollTo({ top: target, behavior });
+      lastAutoScrollTopRef.current = target;
       hideNewMessagesPill();
     },
     [clearPendingScrollPreserve, hideNewMessagesPill, suppressAutoScrollRef],
@@ -281,6 +292,18 @@ export function useChatScroll({
     }
 
     function handleScroll() {
+      // A 'scroll' event whose scrollTop still matches what we last set
+      // ourselves is a stale echo of our own async-dispatched scrollTo, not a
+      // new user action — e.g. content grew after we set it, which never
+      // moves scrollTop on its own. Evaluating isNearBottom() against that
+      // echo would compare a now-stale scrollTop to a freshly-grown max and
+      // wrongly un-pin. Only a scrollTop that has actually moved reflects
+      // real movement (user-driven or another effect's own scrollTo, both of
+      // which update lastAutoScrollTopRef when they happen).
+      if (container?.scrollTop === lastAutoScrollTopRef.current) {
+        return;
+      }
+
       const nearBottom = isNearBottom();
       pinnedToBottomRef.current = nearBottom;
 

@@ -2932,6 +2932,11 @@ async function testDmChatReopenScroll() {
   await runDmChatReopenScrollTest();
 }
 
+async function testDmChatGrowthScrollRace() {
+  const { runDmChatGrowthScrollRaceTest } = await import("./test-dm-chat-growth-scroll-race.js");
+  await runDmChatGrowthScrollRaceTest();
+}
+
 async function testDmImageAttachmentDimensions() {
   const { runDmImageAttachmentDimensionsTest } = await import(
     "./test-dm-image-attachment-dimensions.js"
@@ -6323,6 +6328,7 @@ async function main() {
   await testEventsHistorySelectAllButtonInteraction();
   await testEventsHistoryRemoveConfirmInteraction();
   await testDmChatReopenScroll();
+  await testDmChatGrowthScrollRace();
   await testDmImageAttachmentDimensions();
   await testDmMessageOrderDeterminism();
   console.log("All regression checks passed.");
