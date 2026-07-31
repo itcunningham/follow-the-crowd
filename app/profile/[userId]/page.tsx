@@ -85,7 +85,7 @@ function UserProfilePageView({ userId }: { userId: string }) {
 
         if (!userProfile?.display_name?.trim()) {
           setProfile(null);
-          setError("Profile not found.");
+          setError("Profile not found");
           setLoading(false);
           return;
         }

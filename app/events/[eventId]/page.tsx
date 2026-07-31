@@ -410,7 +410,7 @@ function EventDetailPageView() {
       setCalendarLinkedOrphanBookings([]);
       setProfiles(new Map());
       setCrewChatUnlock(null);
-      setError("Event not found or you do not have access.");
+      setError("Event not found or you do not have access");
       setLoadingEvent(false);
       setLineupLoading(false);
       return;
@@ -436,7 +436,7 @@ function EventDetailPageView() {
         setCalendarLinkedOrphanBookings([]);
         setProfiles(new Map());
         setCrewChatUnlock(null);
-        setError("Event not found or you do not have access.");
+        setError("Event not found or you do not have access");
         return;
       }
 
@@ -675,7 +675,7 @@ function EventDetailPageView() {
           resetEditCoverState();
           setEditConfirmOpen(false);
           setHeaderFeedbackMessage("Event updated. Remember to let affected DJs know.");
-          setError("Event saved, but the group chat update could not be posted.");
+          setError("Event saved, but the group chat update could not be posted");
           return;
         }
       }
@@ -1104,7 +1104,7 @@ function EventDetailPageView() {
       <div className={EVENT_DETAIL_PAGE_SHELL_CLASS}>
         <AppNavigation />
         <div className={`${PLANNER_WORKSPACE_PAGE_INSET_CLASS} py-8 ${MOBILE_NAV_OFFSET_CLASS}`}>
-          <p className="text-sm text-red-400">{error ?? "Event not found."}</p>
+          <p className="text-sm text-red-400">{error ?? "Event not found"}</p>
           <button
             type="button"
             onClick={goBackToEvents}

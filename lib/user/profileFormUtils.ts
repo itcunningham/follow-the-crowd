@@ -107,11 +107,11 @@ export function getUsernameFormatError(raw: string): string | null {
   const normalized = normalizeUsername(raw);
 
   if (!normalized) {
-    return "Username is required.";
+    return "Username is required";
   }
 
   if (!isValidUsername(normalized)) {
-    return "Use 3–30 lowercase letters, numbers, underscores, or dots.";
+    return "Use 3–30 lowercase letters, numbers, underscores, or dots";
   }
 
   if (RESERVED_USERNAMES.has(normalized)) {
@@ -119,7 +119,7 @@ export function getUsernameFormatError(raw: string): string | null {
   }
 
   if (containsBlockedUsernameTerm(normalized)) {
-    return "That username is not available.";
+    return "That username is not available";
   }
 
   return null;
@@ -229,13 +229,13 @@ export function normalizeInstagramInput(raw: string): string {
     const parsed = tryParseUrl(trimmed);
 
     if (!parsed) {
-      throw new Error("Enter a valid Instagram URL.");
+      throw new Error("Enter a valid Instagram URL");
     }
 
     const host = parsed.hostname.replace(/^www\./, "").toLowerCase();
 
     if (host !== "instagram.com") {
-      throw new Error("Instagram link must be an instagram.com URL.");
+      throw new Error("Instagram link must be an instagram.com URL");
     }
 
     return parsed.toString();
@@ -244,7 +244,7 @@ export function normalizeInstagramInput(raw: string): string {
   const handle = trimmed.replace(/^@+/, "").replace(/\/.*/, "");
 
   if (!handle) {
-    throw new Error("Enter a valid Instagram handle.");
+    throw new Error("Enter a valid Instagram handle");
   }
 
   return `https://instagram.com/${handle}`;
@@ -261,19 +261,19 @@ export function normalizeTikTokInput(raw: string): string {
     const parsed = tryParseUrl(trimmed);
 
     if (!parsed) {
-      throw new Error("Enter a valid TikTok URL.");
+      throw new Error("Enter a valid TikTok URL");
     }
 
     const host = parsed.hostname.replace(/^www\./, "").toLowerCase();
 
     if (host !== "tiktok.com") {
-      throw new Error("TikTok link must be a tiktok.com URL.");
+      throw new Error("TikTok link must be a tiktok.com URL");
     }
 
     const handleMatch = parsed.pathname.match(/^\/@([^/?#]+)/);
 
     if (!handleMatch?.[1]) {
-      throw new Error("Enter a valid TikTok profile URL.");
+      throw new Error("Enter a valid TikTok profile URL");
     }
 
     return `https://www.tiktok.com/@${handleMatch[1]}`;
@@ -282,7 +282,7 @@ export function normalizeTikTokInput(raw: string): string {
   const handle = trimmed.replace(/^@+/, "").replace(/\/.*/, "");
 
   if (!handle) {
-    throw new Error("Enter a valid TikTok handle.");
+    throw new Error("Enter a valid TikTok handle");
   }
 
   return `https://www.tiktok.com/@${handle}`;
@@ -312,7 +312,7 @@ export function normalizeSoundCloudInput(raw: string): string {
     );
 
     if (!parsed) {
-      throw new Error("Enter a valid SoundCloud URL.");
+      throw new Error("Enter a valid SoundCloud URL");
     }
 
     const host = parsed.hostname.toLowerCase();
@@ -324,7 +324,7 @@ export function normalizeSoundCloudInput(raw: string): string {
       );
 
       if (!shortLink.pathname || shortLink.pathname === "/") {
-        throw new Error("Enter a valid SoundCloud share link.");
+        throw new Error("Enter a valid SoundCloud share link");
       }
 
       return shortLink.toString();
@@ -333,13 +333,13 @@ export function normalizeSoundCloudInput(raw: string): string {
     const profileHost = host.replace(/^www\./, "").replace(/^m\./, "");
 
     if (profileHost !== "soundcloud.com") {
-      throw new Error("SoundCloud link must be a soundcloud.com URL.");
+      throw new Error("SoundCloud link must be a soundcloud.com URL");
     }
 
     const profileMatch = parsed.pathname.match(/^\/([^/?#]+)/);
 
     if (!profileMatch?.[1]) {
-      throw new Error("Enter a valid SoundCloud profile URL.");
+      throw new Error("Enter a valid SoundCloud profile URL");
     }
 
     return `https://soundcloud.com/${profileMatch[1]}`;
@@ -348,7 +348,7 @@ export function normalizeSoundCloudInput(raw: string): string {
   const handle = trimmed.replace(/^@+/, "").replace(/\/.*/, "");
 
   if (!handle || !isValidSoundCloudUsername(handle)) {
-    throw new Error("Enter a valid SoundCloud username.");
+    throw new Error("Enter a valid SoundCloud username");
   }
 
   return `https://soundcloud.com/${handle}`;
@@ -428,7 +428,7 @@ export function normalizeExternalUrl(
   const parsed = tryParseUrl(trimmed);
 
   if (!parsed || !["http:", "https:"].includes(parsed.protocol)) {
-    throw new Error(`Enter a valid ${options?.label ?? "URL"}.`);
+    throw new Error(`Enter a valid ${options?.label ?? "URL"}`);
   }
 
   const host = parsed.hostname.replace(/^www\./, "").toLowerCase();

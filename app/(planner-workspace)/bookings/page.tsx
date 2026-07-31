@@ -1449,7 +1449,7 @@ function BookingsPageContent() {
         const dj = djs.find((item) => item.user_id === djId);
         const name = dj?.display_name?.trim() || "each selected DJ";
 
-        return `Enter a positive whole-dollar fixed offer for ${name}.`;
+        return `Enter a positive whole-dollar fixed offer for ${name}`;
       }
     }
 
@@ -1509,7 +1509,7 @@ function BookingsPageContent() {
         return;
       }
 
-      setError("Select at least one DJ.");
+      setError("Select at least one DJ");
       return;
     }
 
@@ -1535,7 +1535,7 @@ function BookingsPageContent() {
     skippedDuplicateCount = 0,
   ) {
     if (recipientIds.length === 0) {
-      setError("Select at least one DJ.");
+      setError("Select at least one DJ");
       return;
     }
 
@@ -1704,8 +1704,8 @@ function BookingsPageContent() {
       if (failures.length > 0) {
         setError(
           failures.length === bookingIds.length
-            ? "Failed to archive booking requests."
-            : `${failures.length} booking request${failures.length === 1 ? "" : "s"} could not be archived.`,
+            ? "Failed to archive booking requests"
+            : `${failures.length} booking request${failures.length === 1 ? "" : "s"} could not be archived`,
         );
         setFailureDetails(
           failures.map((failure) => `${failure.bookingId}: ${failure.message}`),
@@ -1750,8 +1750,8 @@ function BookingsPageContent() {
       if (failures.length > 0) {
         const message =
           failures.length === bookingIds.length
-            ? "Could not remove selected gigs from history."
-            : `${failures.length} gig${failures.length === 1 ? "" : "s"} could not be removed from history.`;
+            ? "Could not remove selected gigs from history"
+            : `${failures.length} gig${failures.length === 1 ? "" : "s"} could not be removed from history`;
 
         setError(message);
 

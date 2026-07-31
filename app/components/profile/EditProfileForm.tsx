@@ -253,7 +253,7 @@ export default function EditProfileForm({
     }
 
     if (!isAllowedProfileImageType(file.type)) {
-      setUploadError("Please choose a JPG, PNG, or WebP image.");
+      setUploadError("Please choose a JPG, PNG, or WebP image");
       return;
     }
 
@@ -290,7 +290,7 @@ export default function EditProfileForm({
       const available = await isUsernameAvailable(normalized, userId);
 
       if (!available) {
-        return "That username is already taken.";
+        return "That username is already taken";
       }
     } catch (checkError) {
       console.error("Username availability check failed:", checkError);
@@ -318,7 +318,7 @@ export default function EditProfileForm({
     const nextErrors: Partial<Record<string, string>> = {};
 
     if (!form.display_name.trim()) {
-      nextErrors.display_name = "Display name is required.";
+      nextErrors.display_name = "Display name is required";
     }
 
     const usernameError = await validateUsernameField(form.username);
@@ -332,7 +332,7 @@ export default function EditProfileForm({
     }
 
     if (needsRoleChangeAck && !roleChangeAcknowledged) {
-      setError("Confirm the role change warning before saving.");
+      setError("Confirm the role change warning before saving");
       setFieldErrors(nextErrors);
       return;
     }
@@ -345,14 +345,14 @@ export default function EditProfileForm({
       normalizedInstagram = normalizeInstagramInput(form.instagram_url);
     } catch (instagramError) {
       nextErrors.instagram_url =
-        instagramError instanceof Error ? instagramError.message : "Invalid Instagram link.";
+        instagramError instanceof Error ? instagramError.message : "Invalid Instagram link";
     }
 
     try {
       normalizedTikTok = normalizeTikTokInput(form.tiktok_url);
     } catch (tiktokError) {
       nextErrors.tiktok_url =
-        tiktokError instanceof Error ? tiktokError.message : "Invalid TikTok link.";
+        tiktokError instanceof Error ? tiktokError.message : "Invalid TikTok link";
     }
 
     if (showDjFields && form.soundcloud_url.trim()) {
@@ -360,7 +360,7 @@ export default function EditProfileForm({
         normalizedSoundCloud = normalizeSoundCloudInput(form.soundcloud_url);
       } catch (soundCloudError) {
         nextErrors.soundcloud_url =
-          soundCloudError instanceof Error ? soundCloudError.message : "Invalid SoundCloud link.";
+          soundCloudError instanceof Error ? soundCloudError.message : "Invalid SoundCloud link";
       }
     }
 
@@ -381,7 +381,7 @@ export default function EditProfileForm({
           setExistingAvatarUrl(avatarUrl);
         } catch (imageError) {
           console.error("Profile image upload failed:", imageError);
-          setUploadError("Image upload failed.");
+          setUploadError("Image upload failed");
           setSaving(false);
           return;
         }
@@ -405,7 +405,7 @@ export default function EditProfileForm({
       console.error("Failed to save profile:", saveError);
 
       const message =
-        saveError instanceof Error ? saveError.message : "Failed to save profile.";
+        saveError instanceof Error ? saveError.message : "Failed to save profile";
 
       if (message.toLowerCase().includes("username")) {
         setFieldErrors((prev) => ({ ...prev, username: message }));

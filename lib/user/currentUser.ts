@@ -274,7 +274,7 @@ export async function requestPasswordResetEmail(email: string): Promise<void> {
   const trimmedEmail = email.trim();
 
   if (!trimmedEmail) {
-    throw new Error("Email is required to reset your password.");
+    throw new Error("Email is required to reset your password");
   }
 
   const { error } = await supabase.auth.resetPasswordForEmail(trimmedEmail, {
@@ -561,7 +561,7 @@ export async function saveUserProfile(
   const existing = await getCurrentUserProfile();
 
   if (!existing?.role || !existing.onboarding_complete) {
-    throw new Error("Complete role onboarding before saving your profile.");
+    throw new Error("Complete role onboarding before saving your profile");
   }
 
   const updatePayload: Record<string, string> = {
@@ -606,7 +606,7 @@ export async function saveUserProfile(
     });
 
     if (error.code === "23505") {
-      throw new Error("That username is already taken.");
+      throw new Error("That username is already taken");
     }
 
     throw error;
@@ -614,7 +614,7 @@ export async function saveUserProfile(
 
   if (!data) {
     console.error("[users] Profile update matched no row for current user:", { userId });
-    throw new Error("Profile row not found for the current user.");
+    throw new Error("Profile row not found for the current user");
   }
 
   if (!data.display_name?.trim()) {

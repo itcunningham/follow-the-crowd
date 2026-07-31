@@ -30,11 +30,11 @@ export function getDmBlockBannerMessage(
 
 export function getDmBlockSendErrorMessage(status: DmBlockStatus): string | null {
   if (status.blockedByMe) {
-    return "Unblock this user to send messages.";
+    return "Unblock this user to send messages";
   }
 
   if (status.blockedMe) {
-    return "You can no longer send messages in this conversation.";
+    return "You can no longer send messages in this conversation";
   }
 
   return null;

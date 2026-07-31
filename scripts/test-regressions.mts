@@ -1384,7 +1384,7 @@ function testConflictingCrewChatFlagsPreferStartAction() {
 }
 
 function testUsernameBlockedTermChecks() {
-  const blockedMessage = "That username is not available.";
+  const blockedMessage = "That username is not available";
 
   assert.equal(getUsernameFormatError("hitler"), blockedMessage);
   assert.equal(getUsernameFormatError("breaker_breakerfuck"), blockedMessage);
@@ -1480,7 +1480,7 @@ function testSoundCloudInputNormalization() {
 
   assert.throws(
     () => normalizeSoundCloudInput("Artist Name"),
-    /Enter a valid SoundCloud username\./,
+    /Enter a valid SoundCloud username/,
   );
 }
 

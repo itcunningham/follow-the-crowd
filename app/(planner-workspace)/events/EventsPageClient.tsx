@@ -1030,7 +1030,7 @@ function EventsPageClientView({
     }
 
     if (recipientIds.length === 0) {
-      setError("Select at least one DJ to invite.");
+      setError("Select at least one DJ to invite");
       return;
     }
 
@@ -1305,7 +1305,7 @@ function EventsPageClientView({
         selectedEventIds: eventIds,
         selectedCount: eventIds.length,
       });
-      const message = "Could not remove selected events from history.";
+      const message = "Could not remove selected events from history";
       setError(message);
       throw new Error(message);
     }
@@ -1334,8 +1334,8 @@ function EventsPageClientView({
       if (failures.length > 0) {
         const message =
           failures.length === hideableEventIds.length
-            ? "Could not remove selected events from history."
-            : `${failures.length} event${failures.length === 1 ? "" : "s"} could not be removed from history.`;
+            ? "Could not remove selected events from history"
+            : `${failures.length} event${failures.length === 1 ? "" : "s"} could not be removed from history`;
 
         setError(message);
 
@@ -1345,7 +1345,7 @@ function EventsPageClientView({
       }
 
       if (successes.length === 0) {
-        const message = "Could not remove selected events from history.";
+        const message = "Could not remove selected events from history";
         setError(message);
         throw new Error(message);
       }
@@ -1354,7 +1354,7 @@ function EventsPageClientView({
       setError(
         removeError instanceof Error
           ? removeError.message
-          : "Could not remove selected events from history.",
+          : "Could not remove selected events from history",
       );
       throw removeError;
     }

@@ -26,7 +26,7 @@ export async function requestEventPlan(
   });
 
   if (!response.ok) {
-    throw new Error("Failed to generate event plan.");
+    throw new Error("Failed to generate event plan");
   }
 
   return response.json();

@@ -142,7 +142,7 @@ export async function runHistoryRemoveConfirmFailureTest() {
 
   const onRemove = async () => {
     removeCalls += 1;
-    throw new Error("Could not remove selected events from history.");
+    throw new Error("Could not remove selected events from history");
   };
 
   try {

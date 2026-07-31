@@ -75,13 +75,13 @@ export default function LoginPage() {
     setError(null);
 
     if (newPassword.length < 6) {
-      setError("Password must be at least 6 characters.");
+      setError("Password must be at least 6 characters");
       setSubmitting(false);
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      setError("Passwords do not match.");
+      setError("Passwords do not match");
       setSubmitting(false);
       return;
     }

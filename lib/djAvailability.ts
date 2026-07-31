@@ -447,7 +447,7 @@ export async function saveMyAvailability(input: {
   const notes = input.notes?.trim() ?? "";
 
   if (!date) {
-    throw new Error("Please choose a date.");
+    throw new Error("Please choose a date");
   }
 
   const { data: existing, error: existingError } = await supabase

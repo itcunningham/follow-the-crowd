@@ -208,7 +208,7 @@ export async function sendEventCrewChatMessage(
   const unlock = await getCrewChatUnlockStateForEvent(event);
 
   if (!unlock.isUnlocked) {
-    throw new Error("Crew chat is not available for this event yet.");
+    throw new Error("Crew chat is not available for this event yet");
   }
 
   const { error: insertError } = await supabase.from("messages").insert({
@@ -274,7 +274,7 @@ export function getEventCrewChatLoadErrorMessage(error: unknown): string {
     const supabaseError = error as { message?: string; code?: string };
 
     if (supabaseError.code === "42501") {
-      return "You do not have access to this group chat.";
+      return "You do not have access to this group chat";
     }
 
     if (supabaseError.message) {

@@ -27,8 +27,8 @@ function normalizeReportNote(note?: string): string | null {
 
 function getDuplicateReportMessage(reportType: DmReportType): string {
   return reportType === "message"
-    ? "You already reported this message."
-    : "You already submitted an open report for this user in this conversation.";
+    ? "You already reported this message"
+    : "You already submitted an open report for this user in this conversation";
 }
 
 function getReportErrorMessage(error: unknown, reportType: DmReportType): string {

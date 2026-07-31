@@ -587,7 +587,7 @@ export async function updateEventWithCover(
   }
 
   if (!refreshed) {
-    throw new Error("Event not found after save.");
+    throw new Error("Event not found after save");
   }
 
   if (coverChange.file) {
@@ -601,7 +601,7 @@ export async function updateEventWithCover(
   }
 
   if (coverChange.removeExisting && normalizeEventCoverImageUrl(refreshed.cover_image_url)) {
-    throw new Error("Flyer removal completed but cover_image_url is still set on the event row.");
+    throw new Error("Flyer removal completed but cover_image_url is still set on the event row");
   }
 
   return refreshed;
@@ -758,7 +758,7 @@ function parseCancelEventRpcResult(data: unknown): CancelEventResult {
 
     if (event.status !== "cancelled") {
       console.error("[events] cancel_event returned unexpected status:", event);
-      throw new Error("Event status was not updated to cancelled.");
+      throw new Error("Event status was not updated to cancelled");
     }
 
     return { event, cancelledBookings };
@@ -768,7 +768,7 @@ function parseCancelEventRpcResult(data: unknown): CancelEventResult {
 
   if (legacyEvent.status !== "cancelled") {
     console.error("[events] cancel_event returned unexpected status:", legacyEvent);
-    throw new Error("Event status was not updated to cancelled.");
+    throw new Error("Event status was not updated to cancelled");
   }
 
   return {
@@ -891,7 +891,7 @@ export function getEventHistoryHideErrorMessage(error: unknown): string {
     return error.message;
   }
 
-  return "Could not remove selected events from history.";
+  return "Could not remove selected events from history";
 }
 
 function normalizeHistoryHideEventId(value: unknown): string {
@@ -1000,7 +1000,7 @@ export async function hideEventsFromHistory(
     if (!updatedIdSet.has(normalizeHistoryHideEventId(eventId))) {
       failures.push({
         eventId,
-        message: "Event could not be removed from history.",
+        message: "Event could not be removed from history",
       });
     }
   }
@@ -1013,7 +1013,7 @@ export function getEventsLoadErrorMessage(error: unknown): string {
     const supabaseError = error as { message?: string; code?: string };
 
     if (supabaseError.code === "22P02") {
-      return "Event not found or you do not have access.";
+      return "Event not found or you do not have access";
     }
 
     if (supabaseError.code === "42P01" || supabaseError.code === "PGRST205") {
@@ -1028,7 +1028,7 @@ export function getEventsLoadErrorMessage(error: unknown): string {
     }
 
     if (supabaseError.message) {
-      return "Failed to load events.";
+      return "Failed to load events";
     }
   }
 

@@ -46,13 +46,13 @@ export function assertEventCoverImagePersisted(
   if (expected) {
     if (!savedUrl) {
       throw new Error(
-        "Flyer upload succeeded but cover_image_url was not saved on the event row.",
+        "Flyer upload succeeded but cover_image_url was not saved on the event row",
       );
     }
 
     if (savedUrl !== expected) {
       throw new Error(
-        "Flyer upload succeeded but cover_image_url in the database does not match the uploaded public URL.",
+        "Flyer upload succeeded but cover_image_url in the database does not match the uploaded public URL",
       );
     }
 
@@ -60,17 +60,17 @@ export function assertEventCoverImagePersisted(
   }
 
   if (savedUrl) {
-    throw new Error("Flyer removal did not clear cover_image_url on the event row.");
+    throw new Error("Flyer removal did not clear cover_image_url on the event row");
   }
 }
 
 export function validateEventCoverFile(file: File): string | null {
   if (!isAllowedEventCoverImageType(file.type)) {
-    return "Flyer image must be JPEG, PNG, or WebP.";
+    return "Flyer image must be JPEG, PNG, or WebP";
   }
 
   if (file.size > MAX_EVENT_COVER_BYTES) {
-    return "Flyer image must be 5 MB or smaller.";
+    return "Flyer image must be 5 MB or smaller";
   }
 
   return null;
@@ -144,7 +144,7 @@ export function getEventCoverUploadErrorMessage(error: unknown): string {
     }
   }
 
-  return "Flyer image upload failed.";
+  return "Flyer image upload failed";
 }
 
 export function wrapEventCoverSaveError(step: string, error: unknown): Error {
@@ -185,7 +185,7 @@ export async function uploadEventCoverImage(eventId: string, file: File): Promis
   const publicUrl = normalizeEventCoverImageUrl(data.publicUrl);
 
   if (!publicUrl) {
-    throw new Error("Flyer uploaded to storage but no public URL was returned.");
+    throw new Error("Flyer uploaded to storage but no public URL was returned");
   }
 
   return publicUrl;

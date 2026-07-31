@@ -45,7 +45,7 @@ export default function DmReportFormModal({
       );
     } catch (submitError) {
       setErrorMessage(
-        submitError instanceof Error ? submitError.message : "Failed to submit report.",
+        submitError instanceof Error ? submitError.message : "Failed to submit report",
       );
     }
   }

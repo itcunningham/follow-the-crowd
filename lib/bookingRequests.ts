@@ -1229,7 +1229,7 @@ async function insertRateProposedDmMessageIfNeeded(
     return {
       inserted: false,
       messageText,
-      warning: "Your rate was submitted, but this booking has no DM thread to update.",
+      warning: "Your rate was submitted, but this booking has no DM thread to update",
     };
   }
 
@@ -1864,7 +1864,7 @@ export function getBookingMutationErrorMessage(error: unknown): string {
     }
 
     if (supabaseError.code === "23505") {
-      return "This DJ already has an active booking request for this event.";
+      return "This DJ already has an active booking request for this event";
     }
 
     if (supabaseError.code === "42501") {
@@ -2131,7 +2131,7 @@ export async function sendBookingRequestToDj(
   const booking = normalizeBookingRequest(bookingRow);
 
   if (!booking) {
-    throw new Error("Created booking could not be parsed.");
+    throw new Error("Created booking could not be parsed");
   }
 
   assertInsertedBookingRateMode(rateMode, booking);
@@ -2702,12 +2702,12 @@ export async function cancelBookingRequest(
 
   if (!booking) {
     console.error("[bookings] cancel_booking_request returned invalid payload:", data);
-    throw new Error("Cancelled booking could not be parsed.");
+    throw new Error("Cancelled booking could not be parsed");
   }
 
   if (booking.status !== "cancelled") {
     console.error("[bookings] cancel_booking_request returned unexpected status:", booking);
-    throw new Error("Cancelled booking status was not returned correctly.");
+    throw new Error("Cancelled booking status was not returned correctly");
   }
 
   const notifyUserId =
@@ -2796,17 +2796,17 @@ async function mutateArchivedBookingRequest(
 
   if (!booking) {
     console.error(`[bookings] ${rpcName} returned invalid payload:`, data);
-    throw new Error("Archived booking could not be parsed.");
+    throw new Error("Archived booking could not be parsed");
   }
 
   if (rpcName === "archive_booking_request") {
     if (!booking.archived_at) {
       console.error(`[bookings] ${rpcName} did not set archived_at:`, booking);
-      throw new Error("Archived booking timestamp was not returned correctly.");
+      throw new Error("Archived booking timestamp was not returned correctly");
     }
   } else if (booking.archived_at) {
     console.error(`[bookings] ${rpcName} still has archived_at:`, booking);
-    throw new Error("Restored booking still appears archived.");
+    throw new Error("Restored booking still appears archived");
   }
 
   return booking;
@@ -2913,7 +2913,7 @@ function getBookingHistoryHideErrorMessage(error: unknown): string {
     }
   }
 
-  return "Could not remove selected items from history.";
+  return "Could not remove selected items from history";
 }
 
 export async function listBookingRequestHistoryHideIds(): Promise<string[]> {
@@ -2974,7 +2974,7 @@ export async function hideBookingRequestsFromHistory(
     if (!successes.includes(bookingId)) {
       failures.push({
         bookingId,
-        message: "Booking could not be removed from history.",
+        message: "Booking could not be removed from history",
       });
     }
   }
@@ -3010,12 +3010,12 @@ export async function hideDeclinedBookingFromLineup(bookingId: string): Promise<
 
   if (!booking) {
     console.error("[bookings] hide_declined_booking_from_lineup returned invalid payload:", data);
-    throw new Error("Hidden booking could not be parsed.");
+    throw new Error("Hidden booking could not be parsed");
   }
 
   if (booking.status !== "declined") {
     console.error("[bookings] hide_declined_booking_from_lineup returned unexpected status:", booking);
-    throw new Error("Hidden booking status was not returned correctly.");
+    throw new Error("Hidden booking status was not returned correctly");
   }
 
   if (!booking.lineup_hidden_at) {
@@ -3023,7 +3023,7 @@ export async function hideDeclinedBookingFromLineup(bookingId: string): Promise<
       "[bookings] hide_declined_booking_from_lineup did not set lineup_hidden_at:",
       booking,
     );
-    throw new Error("Hidden booking timestamp was not returned correctly.");
+    throw new Error("Hidden booking timestamp was not returned correctly");
   }
 
   return booking;
@@ -3052,7 +3052,7 @@ export async function proposeBookingRate(
   const booking = normalizeBookingRequest(data);
 
   if (!booking) {
-    throw new Error("Proposed rate could not be parsed.");
+    throw new Error("Proposed rate could not be parsed");
   }
 
   if (process.env.NODE_ENV === "development") {
@@ -3109,7 +3109,7 @@ export async function acceptProposedBookingRate(bookingId: string): Promise<Book
   const booking = normalizeBookingRequest(data);
 
   if (!booking) {
-    throw new Error("Accepted booking could not be parsed.");
+    throw new Error("Accepted booking could not be parsed");
   }
 
   await createNotification(
@@ -3176,7 +3176,7 @@ export async function declineProposedBookingRate(
   const booking = normalizeBookingRequest(data);
 
   if (!booking) {
-    throw new Error("Declined proposal could not be parsed.");
+    throw new Error("Declined proposal could not be parsed");
   }
 
   await insertRateProposalDeclinedDmMessageIfNeeded(booking);
@@ -3222,7 +3222,7 @@ export async function updateBookingRequestStatus(
   const booking = normalizeBookingRequest(data);
 
   if (!booking) {
-    throw new Error("Updated booking could not be parsed.");
+    throw new Error("Updated booking could not be parsed");
   }
 
   if (status === "accepted") {

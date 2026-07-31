@@ -23,7 +23,7 @@ export function getSendBookingValidationError(
       const dj = djs.find((item) => item.user_id === djId);
       const name = dj?.display_name?.trim() || "each selected DJ";
 
-      return `Enter a positive whole-dollar fixed offer for ${name}.`;
+      return `Enter a positive whole-dollar fixed offer for ${name}`;
     }
   }
 

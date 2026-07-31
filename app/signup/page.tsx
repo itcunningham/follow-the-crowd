@@ -28,23 +28,23 @@ function validateSignupForm(
   confirmPassword: string,
 ): string | null {
   if (!email.trim()) {
-    return "Email is required.";
+    return "Email is required";
   }
 
   if (!password) {
-    return "Password is required.";
+    return "Password is required";
   }
 
   if (!confirmPassword) {
-    return "Confirm password is required.";
+    return "Confirm password is required";
   }
 
   if (password.length < 6) {
-    return "Password must be at least 6 characters.";
+    return "Password must be at least 6 characters";
   }
 
   if (password !== confirmPassword) {
-    return "Passwords do not match.";
+    return "Passwords do not match";
   }
 
   return null;
