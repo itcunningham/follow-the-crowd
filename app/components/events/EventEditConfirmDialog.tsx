@@ -54,7 +54,7 @@ export default function EventEditConfirmDialog({
             onClick={onConfirm}
             className="ftc-btn-primary px-4 py-2.5 text-sm uppercase tracking-wide disabled:opacity-50"
           >
-            {loading ? "Updating..." : "Update and notify"}
+            {loading ? "Updating" : "Update and notify"}
           </button>
         </div>
       </div>

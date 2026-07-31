@@ -164,7 +164,7 @@ export default function SignupPage() {
             disabled={submitting}
             className="w-full ftc-btn-primary w-full px-4 py-3 text-sm uppercase tracking-wide disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {submitting ? "Creating account..." : "Sign up"}
+            {submitting ? "Creating account" : "Sign up"}
           </button>
         </form>
 

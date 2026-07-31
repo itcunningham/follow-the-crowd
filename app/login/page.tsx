@@ -159,7 +159,7 @@ export default function LoginPage() {
               disabled={submitting}
               className="w-full ftc-btn-primary px-4 py-3 text-sm uppercase tracking-wide disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {submitting ? "Saving..." : "Update password"}
+              {submitting ? "Saving" : "Update password"}
             </button>
           </form>
         ) : (
@@ -202,7 +202,7 @@ export default function LoginPage() {
                 disabled={submitting}
                 className="w-full ftc-btn-primary px-4 py-3 text-sm uppercase tracking-wide disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {submitting ? "Logging in..." : "Log in"}
+                {submitting ? "Logging in" : "Log in"}
               </button>
             </form>
 

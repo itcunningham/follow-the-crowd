@@ -324,7 +324,7 @@ export default function Home() {
                 disabled={loading}
                 className="ftc-btn-primary mt-8 w-full px-6 py-4 text-sm font-bold uppercase tracking-wide disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {loading ? "Generating..." : "Generate AI Event Plan"}
+                {loading ? "Generating" : "Generate AI Event Plan"}
               </button>
 
               {result ? (

@@ -54,7 +54,7 @@ export default function ArchiveBookingRequestButton({
         className={`inline-flex items-center gap-1.5 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated px-3 py-2 text-xs font-semibold uppercase tracking-wide text-ftc-text-secondary transition hover:border-ftc-border-strong disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
       >
         <ArchiveIcon />
-        {loading ? "Archiving..." : "Archive"}
+        {loading ? "Archiving" : "Archive"}
       </button>
 
       <BookingSheetDialog
@@ -70,7 +70,7 @@ export default function ArchiveBookingRequestButton({
               Cancel
             </BookingSheetSecondaryButton>
             <BookingSheetPrimaryButton disabled={loading} onClick={() => void handleConfirm()}>
-              {loading ? "Archiving..." : "Archive"}
+              {loading ? "Archiving" : "Archive"}
             </BookingSheetPrimaryButton>
           </>
         }

@@ -1159,7 +1159,7 @@ function EventDetailPageView() {
                     >
                       <EventHeaderChatIcon />
                       <span className="min-w-0 truncate text-[10px] font-semibold uppercase tracking-wide text-ftc-text sm:text-xs">
-                        {startingCrewChat ? "Starting..." : "Start group chat"}
+                        {startingCrewChat ? "Starting" : "Start group chat"}
                       </span>
                     </button>
                   ) : (

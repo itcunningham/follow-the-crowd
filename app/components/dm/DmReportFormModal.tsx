@@ -153,7 +153,7 @@ export default function DmReportFormModal({
                 onClick={() => void handleSubmit()}
                 className="rounded-xl border-0 bg-[var(--ftc-color-danger)] px-4 py-2.5 text-sm font-semibold uppercase tracking-wide text-ftc-bg transition hover:opacity-90 disabled:opacity-50"
               >
-                {busy ? "Submitting..." : "Submit report"}
+                {busy ? "Submitting" : "Submit report"}
               </button>
             </div>
           </>

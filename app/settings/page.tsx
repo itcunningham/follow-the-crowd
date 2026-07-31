@@ -144,7 +144,7 @@ export default function SettingsPage() {
                     className="rounded-xl border border-ftc-border-subtle bg-ftc-surface px-4 py-3 text-sm font-semibold text-ftc-text-secondary transition hover:border-ftc-border-strong hover:text-ftc-text disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {resettingPassword
-                      ? "Sending..."
+                      ? "Sending"
                       : passwordResetCooldown
                         ? "Email sent"
                         : "Reset password"}
@@ -161,7 +161,7 @@ export default function SettingsPage() {
                     disabled={signingOut}
                     className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm font-semibold text-red-300 transition hover:border-red-500/50 hover:bg-red-500/15 disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    {signingOut ? "Signing out..." : "Sign out"}
+                    {signingOut ? "Signing out" : "Sign out"}
                   </button>
                 </div>
               </section>

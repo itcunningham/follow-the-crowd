@@ -23,7 +23,7 @@ const COPY: Record<
     body: "This will permanently remove this event",
     keepLabel: "Keep event",
     actionLabel: "Delete event",
-    loadingLabel: "Deleting...",
+    loadingLabel: "Deleting",
   },
   cancel: {
     buttonLabel: "Cancel event",
@@ -32,7 +32,7 @@ const COPY: Record<
     body: "This event will be marked as cancelled. Pending booking requests will be cancelled too. Accepted, declined, messages, and history will be kept.",
     keepLabel: "Keep event",
     actionLabel: "Cancel event",
-    loadingLabel: "Cancelling...",
+    loadingLabel: "Cancelling",
   },
 };
 

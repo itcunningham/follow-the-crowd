@@ -34,7 +34,7 @@ export default function ArchiveAllBookingRequestsButton({
         onClick={() => setOpen(true)}
         className={`rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated px-3 py-2 text-xs font-semibold uppercase tracking-wide text-ftc-text-secondary transition hover:border-ftc-border-strong disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
       >
-        {loading ? "Archiving..." : "Archive all"}
+        {loading ? "Archiving" : "Archive all"}
       </button>
 
       <BookingSheetDialog
@@ -50,7 +50,7 @@ export default function ArchiveAllBookingRequestsButton({
               Cancel
             </BookingSheetSecondaryButton>
             <BookingSheetPrimaryButton disabled={loading} onClick={() => void handleConfirm()}>
-              {loading ? "Archiving..." : "Archive all"}
+              {loading ? "Archiving" : "Archive all"}
             </BookingSheetPrimaryButton>
           </>
         }

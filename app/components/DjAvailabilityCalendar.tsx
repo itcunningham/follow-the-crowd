@@ -456,7 +456,7 @@ function BulkActionBar({
             onClick={onConfirm}
             className="rounded-lg bg-ftc-primary-dim px-2.5 py-1.5 text-[11px] font-semibold text-white transition hover:bg-ftc-primary disabled:opacity-50"
           >
-            {saving ? "Saving..." : "Confirm"}
+            {saving ? "Saving" : "Confirm"}
           </button>
           <button
             type="button"

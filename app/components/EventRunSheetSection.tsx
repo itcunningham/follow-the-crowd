@@ -636,7 +636,7 @@ export default function EventRunSheetSection({
               disabled={saving}
               className={`${EVENT_DETAIL_BTN_PRIMARY} disabled:cursor-not-allowed disabled:opacity-50`}
             >
-              {saving ? "Saving..." : "Save run sheet"}
+              {saving ? "Saving" : "Save run sheet"}
             </button>
           </div>
         ) : null}

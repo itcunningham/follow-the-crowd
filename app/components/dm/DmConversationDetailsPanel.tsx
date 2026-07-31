@@ -187,7 +187,7 @@ export default function DmConversationDetailsPanel({
                   onClick={() => void onUnblock()}
                   className="flex min-h-[44px] w-full items-center justify-center rounded-xl border border-ftc-border bg-ftc-surface/60 px-4 py-3 text-sm font-semibold text-ftc-text transition hover:border-ftc-border-strong disabled:opacity-50"
                 >
-                  {busy ? "Unblocking..." : "Unblock user"}
+                  {busy ? "Unblocking" : "Unblock user"}
                 </button>
               ) : (
                 <button
@@ -242,7 +242,7 @@ export default function DmConversationDetailsPanel({
                 onClick={() => void handleConfirmBlock()}
                 className="rounded-xl border-0 bg-[var(--ftc-color-danger)] px-4 py-2.5 text-sm font-semibold uppercase tracking-wide text-ftc-bg transition hover:opacity-90 disabled:opacity-50"
               >
-                {busy ? "Blocking..." : "Block user"}
+                {busy ? "Blocking" : "Block user"}
               </button>
             </div>
           </div>

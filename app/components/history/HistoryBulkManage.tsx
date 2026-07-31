@@ -336,7 +336,7 @@ export function HistorySelectionToolbar({
   onSelectAll,
   onRemove,
   removeLabel = "Remove from history",
-  removingLabel = "Removing...",
+  removingLabel = "Removing",
   selectAllLabel = "Select all",
   cancelVariant = "label",
   selectAllToggle = false,
@@ -495,7 +495,7 @@ function HistoryConfirmDangerButton({
   loading,
   onConfirm,
   label = "Remove from history",
-  loadingLabel = "Removing...",
+  loadingLabel = "Removing",
 }: {
   loading: boolean;
   onConfirm: () => void;
@@ -637,7 +637,7 @@ export function HistoryRemoveConfirmDialog({
   description,
   cancelLabel = "Keep items",
   confirmLabel = "Remove from history",
-  confirmLoadingLabel = "Removing...",
+  confirmLoadingLabel = "Removing",
   errorMessage = null,
   onCancel,
   onConfirm,

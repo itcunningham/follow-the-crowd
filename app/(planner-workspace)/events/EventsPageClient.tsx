@@ -1665,7 +1665,7 @@ function EventsPageClientView({
             description="This will permanently remove the selected events from your history. This action cannot be undone."
             cancelLabel="Cancel"
             confirmLabel="Delete"
-            confirmLoadingLabel="Deleting..."
+            confirmLoadingLabel="Deleting"
             errorMessage={error}
             onCancel={closeHistoryRemoveConfirm}
             onConfirm={confirmHistoryRemove}

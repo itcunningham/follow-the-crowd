@@ -80,7 +80,7 @@ export default function DiscoverFeaturedProfileCard({
           disabled={messaging}
           className="ftc-btn-primary w-full px-4 py-2.5 text-sm uppercase tracking-wide disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {messaging ? "Opening..." : "Message"}
+          {messaging ? "Opening" : "Message"}
         </button>
       </div>
     </article>

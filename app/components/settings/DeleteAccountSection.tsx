@@ -201,7 +201,7 @@ export default function DeleteAccountSection({
                 onClick={() => void handleDeleteAccount()}
                 className="rounded-xl border-0 bg-[var(--ftc-color-danger)] px-4 py-2.5 text-sm font-semibold uppercase tracking-wide text-ftc-bg transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {deleting ? "Deleting..." : "Delete account"}
+                {deleting ? "Deleting" : "Delete account"}
               </button>
             </div>
           </div>

@@ -646,7 +646,7 @@ export default function EditProfileForm({
         disabled={saving}
         className="w-full ftc-btn-primary px-5 py-3 text-sm uppercase tracking-wide disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
       >
-        {saving ? "Saving..." : isEditing ? "Save changes" : "Save profile"}
+        {saving ? "Saving" : isEditing ? "Save changes" : "Save profile"}
       </button>
     </form>
   );

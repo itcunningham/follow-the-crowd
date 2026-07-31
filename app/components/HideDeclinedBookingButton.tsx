@@ -102,7 +102,7 @@ export default function HideDeclinedBookingButton({
               Cancel
             </BookingSheetSecondaryButton>
             <BookingSheetPrimaryButton disabled={loading} onClick={() => void handleConfirm()}>
-              {loading ? "Hiding..." : "Hide"}
+              {loading ? "Hiding" : "Hide"}
             </BookingSheetPrimaryButton>
           </>
         }

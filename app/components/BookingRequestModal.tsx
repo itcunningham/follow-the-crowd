@@ -192,7 +192,7 @@ export default function BookingRequestModal({
               disabled={submitting || scheduleBlocked}
               className="flex-1 ftc-btn-primary w-full px-4 py-3 text-sm uppercase tracking-wide disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {submitting ? "Sending..." : "Send booking request"}
+              {submitting ? "Sending" : "Send booking request"}
             </button>
           </div>
         </form>

@@ -110,7 +110,7 @@ function GroupChatMessagesLoadError({
         disabled={retrying}
         className="mt-4 ftc-btn-secondary px-4 py-2 text-xs uppercase tracking-wide disabled:cursor-not-allowed disabled:opacity-50"
       >
-        {retrying ? "Retrying..." : "Try again"}
+        {retrying ? "Retrying" : "Try again"}
       </button>
     </div>
   );
