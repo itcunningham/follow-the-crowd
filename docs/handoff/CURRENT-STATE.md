@@ -241,6 +241,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 - "Create event" sentence case (not "Create Event")
 - No trailing periods on several confirmation dialogs and empty states
 - **Finish-time validation copy (2026-07-31):** `EVENT_FINISH_NOT_AFTER_START_ERROR` (`lib/bookingDateTime.ts`) dropped its trailing full stop — "Finish time must be later than the start time"; validation logic unchanged
+- **Copy-consistency pass, validation/error messages (2026-07-31):** dropped trailing full stops from ~90 single-sentence validation/error strings across auth (`login`, `signup`), profile (`EditProfileForm.tsx`, `lib/user/currentUser.ts`, `lib/user/profileFormUtils.ts` — Instagram/TikTok/SoundCloud link validation, username checks), events (`lib/events.ts`, `lib/events/eventCoverImage.ts`, `lib/eventCrewChat.ts`), bookings (`lib/bookingRequests.ts`, `lib/bookings/sendBookingRequestsFlow.ts`, `EventsPageClient.tsx`, `bookings/page.tsx`), DM (`lib/userBlocks.ts`, `lib/userReports.ts`, `DmReportFormModal.tsx`), and `lib/client/generate-event-plan.ts` — matching the no-trailing-period style already used elsewhere. Multi-sentence messages ("X. Y.") and DM chat system-message copy were deliberately left untouched (different category, out of scope). No logic/behaviour changed; two `test-regressions.mts` assertions and one test fixture string that hardcoded the old copy were updated to match.
 - Desktop planner UX brought into parity with mobile (wording, validation, calendar cards, today/selected styling) without copying mobile layout
 
 ## Beta readiness (historical — resolved at GO 2026-07-16)
@@ -306,6 +307,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 
 ## Recent commits (reference)
 
+- `77e7a28` — copy-consistency pass: dropped trailing full stops from ~90 single-sentence validation/error messages across auth, profile, events, bookings, and DM flows; multi-sentence messages and chat system-message copy left untouched
 - `0203985` — Event Plans DJ cards now render the same exported `DjInviteSelectionRow` component as Events (avatar+checkmark badge, name/genre typography, compact badges, selected border, rate-control placement) instead of a hand-rolled card with a separate checkbox and an "unknown" status pill
 - `fe3389d` — Event Plans (Use Plan) DJ invite list now shares `DJ_INVITE_LIST_MAX_HEIGHT_CLASS` (exported from `SendBookingRequestsPanel.tsx`) with Events instead of duplicating its own `clamp(...,640px)` value — same 320px mobile / 420px desktop height, no more drift between the two flows
 - `1b0b074` — fixed nested scroll-trap regression from `be1ffff`: `clamp(...,640px)` was nearly full-viewport on mobile and, combined with the panel's `overscroll-contain`/`touch-pan-y`, trapped touch-scroll inside the DJ list. Switched to `max-h-80 sm:max-h-[420px]` (moderate, non-viewport-scaling)
