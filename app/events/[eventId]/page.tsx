@@ -139,6 +139,7 @@ import {
   resolveEventDetailBackHref,
   resolveEventDetailDmOriginConversationId,
 } from "@/lib/events/eventsListNavigation";
+import { DM_CHAT_SCROLL_RESTORE_PARAM } from "@/lib/dm/dmChatScrollRestoration";
 import {
   BOOKING_REQUEST_CANCELLED_SUCCESS_MESSAGE,
   useInlineTabFeedbackDismiss,
@@ -224,6 +225,7 @@ function EventDetailPageView() {
         fromDmConversation: searchParams.get("fromDmConversation"),
         dmReturnFrom: searchParams.get("dmReturnFrom"),
         profileUserId: searchParams.get("profileUserId"),
+        restoreScroll: searchParams.get(DM_CHAT_SCROLL_RESTORE_PARAM),
       }),
     [searchParams],
   );

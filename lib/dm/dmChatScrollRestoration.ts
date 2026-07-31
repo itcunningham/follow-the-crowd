@@ -57,7 +57,7 @@ export function saveDmChatScrollPosition(conversationId: string, scrollTop: numb
   sessionStorage.setItem(getStorageKey(conversationId), JSON.stringify(payload));
 }
 
-export function consumeDmChatScrollPosition(conversationId: string): number | null {
+function readValidSnapshot(conversationId: string): DmChatScrollSnapshot | null {
   if (typeof window === "undefined" || !conversationId.trim()) {
     return null;
   }
@@ -67,8 +67,6 @@ export function consumeDmChatScrollPosition(conversationId: string): number | nu
   if (!raw) {
     return null;
   }
-
-  sessionStorage.removeItem(getStorageKey(conversationId));
 
   try {
     const parsed = JSON.parse(raw) as Partial<DmChatScrollSnapshot>;
@@ -83,8 +81,32 @@ export function consumeDmChatScrollPosition(conversationId: string): number | nu
       return null;
     }
 
-    return Math.max(0, scrollTop);
+    return { scrollTop: Math.max(0, scrollTop), savedAt: savedAt ?? Date.now() };
   } catch {
     return null;
   }
+}
+
+/**
+ * Read-only check for whether a not-yet-expired saved position exists for this
+ * conversation, without consuming it. Lets a caller decide up front whether a
+ * precise restore is available so it can suppress a fallback mechanism (e.g.
+ * booking-target scroll) instead of letting both race to set scrollTop.
+ */
+export function hasSavedDmChatScrollPosition(conversationId: string): boolean {
+  return readValidSnapshot(conversationId) !== null;
+}
+
+export function consumeDmChatScrollPosition(conversationId: string): number | null {
+  if (typeof window === "undefined" || !conversationId.trim()) {
+    return null;
+  }
+
+  const snapshot = readValidSnapshot(conversationId);
+
+  // Remove on any read, valid or not — a stale/malformed entry should not
+  // linger and should not be re-evaluated on a later mount either.
+  sessionStorage.removeItem(getStorageKey(conversationId));
+
+  return snapshot?.scrollTop ?? null;
 }

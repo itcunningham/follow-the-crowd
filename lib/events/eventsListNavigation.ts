@@ -7,6 +7,7 @@ import {
   resolveDmThreadHrefOptionsFromEventDetailReturn,
   type DmThreadEntryContext,
 } from "@/lib/dm/threadNavigation";
+import { DM_CHAT_SCROLL_RESTORE_PARAM } from "@/lib/dm/dmChatScrollRestoration";
 import { resolveEventsWorkspaceChromeRole } from "@/lib/events/eventsWorkspaceChromeRole";
 import { canManageEvents, type UserRole } from "@/lib/user/currentUser";
 import {
@@ -171,6 +172,10 @@ export function buildEventDetailFromDmHref(
     from: "dm",
     conversationId: conversationId.trim(),
     bookingRequestId: bookingRequestId.trim(),
+    // Lets the eventual "Back" href prefer restoring this DM's exact prior
+    // scroll position over the booking-target-scroll fallback — see
+    // resolveDmThreadHrefOptionsFromEventDetailReturn.
+    [DM_CHAT_SCROLL_RESTORE_PARAM]: "1",
   });
 
   appendDmReturnContextToEventDetailParams(params, entryContext);
@@ -229,6 +234,7 @@ export function resolveEventDetailBackHref(
     fromDmConversation?: string | null;
     dmReturnFrom?: string | null;
     profileUserId?: string | null;
+    restoreScroll?: string | null;
   },
 ): string {
   const dmConversationId = resolveDmEventDetailConversationId(options);
@@ -244,6 +250,7 @@ export function resolveEventDetailBackHref(
         calendarMonth: options?.calendarMonth,
         profileUserId: options?.profileUserId,
         bookingRequestId: options?.bookingRequestId,
+        restoreScroll: options?.restoreScroll,
       }),
     );
   }

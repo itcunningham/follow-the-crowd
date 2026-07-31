@@ -17,7 +17,7 @@ export function useDmChatScrollRestoreOnProfileReturn({
   loading: boolean;
   scrollRef: RefObject<HTMLElement | null>;
   suppressAutoScrollRef: RefObject<boolean>;
-  /** Only true when navigation explicitly signals a return from that user's profile. */
+  /** Only true when navigation explicitly signals a return from that user's profile or from Event Details ("View event"). */
   shouldRestoreScroll: boolean;
 }) {
   const pendingScrollTopRef = useRef<number | null>(null);
@@ -35,14 +35,17 @@ export function useDmChatScrollRestoreOnProfileReturn({
   }, [conversationId, shouldRestoreScroll, suppressAutoScrollRef]);
 
   useEffect(() => {
-    function handleProfileLinkClick(event: MouseEvent) {
+    // Also matches "View event" links on booking cards (href like
+    // /events/{id}?...&restoreScroll=1, set by buildEventDetailFromDmHref) so
+    // that round trip gets the same precise-position save as profile links.
+    function handleReturnableLinkClick(event: MouseEvent) {
       const target = event.target;
 
       if (!(target instanceof Element)) {
         return;
       }
 
-      const link = target.closest("a[href*='/profile/']");
+      const link = target.closest("a[href*='/profile/'], a[href*='/events/']");
 
       if (!(link instanceof HTMLAnchorElement)) {
         return;
@@ -57,10 +60,10 @@ export function useDmChatScrollRestoreOnProfileReturn({
       saveDmChatScrollPosition(conversationId, container.scrollTop);
     }
 
-    document.addEventListener("click", handleProfileLinkClick, true);
+    document.addEventListener("click", handleReturnableLinkClick, true);
 
     return () => {
-      document.removeEventListener("click", handleProfileLinkClick, true);
+      document.removeEventListener("click", handleReturnableLinkClick, true);
     };
   }, [conversationId, scrollRef]);
 

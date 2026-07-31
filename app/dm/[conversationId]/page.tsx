@@ -89,6 +89,7 @@ import {
   buildDmChatScrollRestoreHref,
   DM_CHAT_FRESH_OPEN_PARAM,
   DM_CHAT_SCROLL_RESTORE_PARAM,
+  hasSavedDmChatScrollPosition,
   shouldRestoreDmChatScroll,
 } from "@/lib/dm/dmChatScrollRestoration";
 import {
@@ -217,6 +218,28 @@ export default function DmChatPage() {
   const shouldRestoreChatScrollOnMount = shouldRestoreDmChatScroll(
     searchParams.get(DM_CHAT_SCROLL_RESTORE_PARAM),
   );
+  // A precise saved position (exact scrollTop, e.g. from "View event" -> Back)
+  // is preferred over the booking-target-scroll fallback below — checked
+  // read-only here so it can gate the target derivation before either
+  // mechanism's effects run, instead of letting both race to set scrollTop.
+  // useDmChatScrollRestoreOnProfileReturn still owns actually consuming it.
+  // Cached per conversationId (same pattern as bookingTargetRef below) so the
+  // determination stays stable across this mount's re-renders even after the
+  // entry is consumed+removed once loading finishes — otherwise a later
+  // render would see "no saved position" and wrongly re-enable the
+  // booking-target fallback after the precise restore already ran.
+  const preciseScrollRestoreRef = useRef<{ conversationId: string; hasPending: boolean } | null>(
+    null,
+  );
+
+  if (preciseScrollRestoreRef.current?.conversationId !== conversationId) {
+    preciseScrollRestoreRef.current = {
+      conversationId,
+      hasPending: shouldRestoreChatScrollOnMount && hasSavedDmChatScrollPosition(conversationId),
+    };
+  }
+
+  const hasPendingPreciseScrollRestore = preciseScrollRestoreRef.current.hasPending;
   const freshOpenToken = searchParams.get(DM_CHAT_FRESH_OPEN_PARAM);
   const backHref = resolveDmThreadBackHref({
     from: searchParams.get("from"),
@@ -261,12 +284,16 @@ export default function DmChatPage() {
   }
 
   const { scrollTargetBookingRequestId, highlightTargetBookingRequestId } =
-    bookingTargetRef.current?.target ?? {
-      scrollTargetBookingRequestId: null,
-      highlightTargetBookingRequestId: null,
-      bookingFocusMode: "scroll-and-highlight" as const,
-    };
-  const suppressAutoScrollRef = useRef(Boolean(scrollTargetBookingRequestId));
+    hasPendingPreciseScrollRestore
+      ? { scrollTargetBookingRequestId: null, highlightTargetBookingRequestId: null }
+      : bookingTargetRef.current?.target ?? {
+          scrollTargetBookingRequestId: null,
+          highlightTargetBookingRequestId: null,
+          bookingFocusMode: "scroll-and-highlight" as const,
+        };
+  const suppressAutoScrollRef = useRef(
+    Boolean(scrollTargetBookingRequestId) || hasPendingPreciseScrollRestore,
+  );
   const fixedChatRouteKey = `${pathname}?${searchParams.toString()}`;
 
   useFixedChatPageDocumentReset(fixedChatRouteKey);

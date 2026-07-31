@@ -10,6 +10,7 @@ import {
   resolveCalendarOriginEventHref,
 } from "@/lib/calendar";
 import { DM_BOOKING_FOCUS_SCROLL_ONLY } from "@/lib/dm/chatBookingTarget";
+import { DM_CHAT_SCROLL_RESTORE_PARAM } from "@/lib/dm/dmChatScrollRestoration";
 import { buildEventDetailProfileHref } from "@/lib/profileNavigation";
 import { looksLikeUserId } from "@/lib/user/displayName";
 
@@ -106,6 +107,8 @@ export function resolveDmThreadHrefOptionsFromEventDetailReturn(options: {
   calendarMonth?: string | null;
   profileUserId?: string | null;
   bookingRequestId?: string | null;
+  /** Set when the originating "View event" link was built from a DM conversation — see buildEventDetailFromDmHref. */
+  restoreScroll?: string | null;
 }): {
   from?: string;
   tab?: string;
@@ -115,14 +118,17 @@ export function resolveDmThreadHrefOptionsFromEventDetailReturn(options: {
   profileUserId?: string;
   bookingRequestId?: string;
   bookingFocus?: typeof DM_BOOKING_FOCUS_SCROLL_ONLY;
+  restoreScroll?: string;
 } {
   const dmReturnFrom = options.dmReturnFrom?.trim();
   const bookingRequestId = options.bookingRequestId?.trim();
+  const restoreScroll = options.restoreScroll?.trim() || undefined;
 
   if (!dmReturnFrom || !DM_THREAD_ENTRY_FROM_VALUES.has(dmReturnFrom)) {
     return {
       bookingRequestId: bookingRequestId || undefined,
       bookingFocus: bookingRequestId ? DM_BOOKING_FOCUS_SCROLL_ONLY : undefined,
+      restoreScroll,
     };
   }
 
@@ -135,9 +141,11 @@ export function resolveDmThreadHrefOptionsFromEventDetailReturn(options: {
     profileUserId?: string;
     bookingRequestId?: string;
     bookingFocus?: typeof DM_BOOKING_FOCUS_SCROLL_ONLY;
+    restoreScroll?: string;
   } = {
     from: dmReturnFrom,
     bookingRequestId: bookingRequestId || undefined,
+    restoreScroll,
   };
 
   if (dmReturnFrom === "bookings") {
@@ -310,6 +318,8 @@ export function buildDmThreadHref(
     calendarDate?: string;
     calendarView?: CalendarOriginState["calendarView"];
     calendarMonth?: string;
+    /** Set when a precise scroll-position restore should be attempted on mount — see resolveDmThreadHrefOptionsFromEventDetailReturn. */
+    restoreScroll?: string;
   },
 ): string {
   const params = new URLSearchParams();
@@ -336,6 +346,10 @@ export function buildDmThreadHref(
 
   if (options?.bookingFocus === DM_BOOKING_FOCUS_SCROLL_ONLY) {
     params.set("bookingFocus", DM_BOOKING_FOCUS_SCROLL_ONLY);
+  }
+
+  if (options?.restoreScroll?.trim()) {
+    params.set(DM_CHAT_SCROLL_RESTORE_PARAM, "1");
   }
 
   if (options?.calendarDate?.trim()) {

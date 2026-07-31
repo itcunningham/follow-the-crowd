@@ -1862,7 +1862,7 @@ function testGigsIncomingDmEventDetailReturnChain() {
   );
   assert.equal(
     eventHref,
-    `/events/${eventId}?from=dm&conversationId=${conversationId}&bookingRequestId=${bookingRequestId}&dmReturnFrom=bookings`,
+    `/events/${eventId}?from=dm&conversationId=${conversationId}&bookingRequestId=${bookingRequestId}&restoreScroll=1&dmReturnFrom=bookings`,
   );
 
   const eventSearch = new URLSearchParams(eventHref.split("?")[1] ?? "");
@@ -2949,6 +2949,17 @@ async function testDmMessageOrderDeterminism() {
     "./test-dm-message-order-determinism.js"
   );
   await runDmMessageOrderDeterminismTest();
+}
+
+async function testDmBookingReturnScroll() {
+  const {
+    testBookingReturnScrollPlumbing,
+    testHasSavedDmChatScrollPositionIsNonDestructive,
+    runDmBookingReturnScrollRuntimeTest,
+  } = await import("./test-dm-booking-return-scroll.js");
+  testBookingReturnScrollPlumbing();
+  testHasSavedDmChatScrollPositionIsNonDestructive();
+  await runDmBookingReturnScrollRuntimeTest();
 }
 
 function testResolvePlannerHistoryHideEventIds() {
@@ -6331,6 +6342,7 @@ async function main() {
   await testDmChatGrowthScrollRace();
   await testDmImageAttachmentDimensions();
   await testDmMessageOrderDeterminism();
+  await testDmBookingReturnScroll();
   console.log("All regression checks passed.");
 }
 
