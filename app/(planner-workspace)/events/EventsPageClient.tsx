@@ -1606,7 +1606,7 @@ function EventsPageClientView({
                       draft={inviteDraft}
                       disabled={saving}
                       embedded
-                      listMaxHeightClass="max-h-48"
+                      listMaxHeightClass="max-h-[clamp(480px,72dvh,640px)] sm:max-h-[420px]"
                     />
                   )}
 
