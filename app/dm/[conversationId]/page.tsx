@@ -1020,7 +1020,8 @@ export default function DmChatPage() {
         .from("messages")
         .select("*")
         .eq("conversation_id", conversationId)
-        .order("created_at", { ascending: true });
+        .order("created_at", { ascending: true })
+        .order("id", { ascending: true });
 
       if (messagesResult.error) {
         setError(messagesResult.error.message);

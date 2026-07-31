@@ -2939,6 +2939,13 @@ async function testDmImageAttachmentDimensions() {
   await runDmImageAttachmentDimensionsTest();
 }
 
+async function testDmMessageOrderDeterminism() {
+  const { runDmMessageOrderDeterminismTest } = await import(
+    "./test-dm-message-order-determinism.js"
+  );
+  await runDmMessageOrderDeterminismTest();
+}
+
 function testResolvePlannerHistoryHideEventIds() {
   const events = [
     {
@@ -6317,6 +6324,7 @@ async function main() {
   await testEventsHistoryRemoveConfirmInteraction();
   await testDmChatReopenScroll();
   await testDmImageAttachmentDimensions();
+  await testDmMessageOrderDeterminism();
   console.log("All regression checks passed.");
 }
 
