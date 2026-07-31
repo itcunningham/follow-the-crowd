@@ -53,7 +53,6 @@ export default function DmComposer({
   pendingPhotos,
   onStagePhotos,
   onRemovePendingPhoto,
-  onClearPendingPhoto,
   onAttachmentError,
   sending,
   uploading,
@@ -67,7 +66,6 @@ export default function DmComposer({
   pendingPhotos: PendingComposerAttachment[];
   onStagePhotos: (files: File[]) => void;
   onRemovePendingPhoto: (index: number) => void;
-  onClearPendingPhoto: () => void;
   onAttachmentError?: (message: string) => void;
   sending: boolean;
   uploading: boolean;
@@ -117,7 +115,7 @@ export default function DmComposer({
           {pendingPhotos.map((photo, index) => (
             <div
               key={photo.previewUrl}
-              className="dm-composer-pending-photo-selected relative h-16 w-16 shrink-0 overflow-hidden rounded-xl"
+              className="dm-composer-pending-photo-selected relative h-[4.5rem] w-[4.5rem] shrink-0 overflow-hidden rounded-xl"
               data-testid="dm-composer-pending-photo"
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -131,23 +129,12 @@ export default function DmComposer({
                 aria-label={`Remove selected photo ${index + 1}`}
                 disabled={busy}
                 onClick={() => onRemovePendingPhoto(index)}
-                className="absolute right-0.5 top-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-ftc-bg/90 text-xs leading-none text-ftc-text-secondary shadow transition hover:text-ftc-text disabled:cursor-not-allowed disabled:opacity-40"
+                className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-ftc-bg/90 text-xs leading-none text-ftc-text-secondary shadow transition hover:text-ftc-text disabled:cursor-not-allowed disabled:opacity-40"
               >
                 ×
               </button>
             </div>
           ))}
-          {pendingPhotos.length > 1 ? (
-            <button
-              type="button"
-              aria-label="Remove all selected photos"
-              disabled={busy}
-              onClick={onClearPendingPhoto}
-              className="flex h-16 shrink-0 items-center justify-center rounded-xl border border-ftc-border-subtle bg-ftc-surface px-2 text-[11px] font-medium text-ftc-text-secondary transition hover:border-ftc-border-strong hover:text-ftc-text disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              Clear all
-            </button>
-          ) : null}
         </div>
       ) : null}
 

@@ -5258,9 +5258,13 @@ function testDmComposerClearsPendingPhotoAfterSuccessfulSend() {
   assert.match(composerSource, /dm-composer-pending-photo-selected/);
   assert.doesNotMatch(composerSource, /ring-2 ring-ftc-primary/);
   assert.match(composerSource, /onStagePhotos/);
-  assert.match(composerSource, /onClearPendingPhoto/);
+  // "Clear all" removed — individual photos are removed via the × button only.
+  assert.doesNotMatch(composerSource, /onClearPendingPhoto/);
+  assert.doesNotMatch(composerSource, /Clear all/);
   assert.match(composerSource, /onRemovePendingPhoto/);
   assert.match(composerSource, /pendingPhotos/);
+  // Every pending-photo thumbnail is the same fixed size (no per-item variation).
+  assert.match(composerSource, /h-\[4\.5rem\] w-\[4\.5rem\]/);
   assert.match(composerSource, /disabled=\{busy \|\| !canSend\}/);
   assert.doesNotMatch(composerSource, /text-xs font-bold">…/);
   assert.doesNotMatch(composerSource, /placeholder="Message"[\s\S]*disabled=\{busy\}/);

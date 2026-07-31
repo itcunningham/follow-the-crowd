@@ -2227,7 +2227,6 @@ export default function DmChatPage() {
           pendingPhotos={pendingAttachments}
           onStagePhotos={stagePendingPhotos}
           onRemovePendingPhoto={removePendingPhotoAt}
-          onClearPendingPhoto={clearPendingAttachments}
           onAttachmentError={setError}
           sending={sending}
           uploading={uploading}
