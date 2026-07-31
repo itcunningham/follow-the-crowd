@@ -53,7 +53,7 @@ export default function DmMessageAttachmentView({
       <button
         type="button"
         aria-label="Open image"
-        className="ftc-dm-message-image-open block max-w-full overflow-hidden rounded-2xl border border-ftc-border bg-ftc-bg-elevated/40"
+        className="ftc-dm-message-image-open block w-fit max-w-full overflow-hidden rounded-2xl border border-ftc-border bg-ftc-bg-elevated/40"
         onClick={() => {
           window.open(attachment.file_url, "_blank", "noopener,noreferrer");
         }}
@@ -65,7 +65,7 @@ export default function DmMessageAttachmentView({
           src={attachment.file_url}
           alt={attachment.file_name}
           draggable={false}
-          className="pointer-events-none max-h-72 w-full max-w-full object-cover sm:max-w-[min(100%,18rem)]"
+          className="pointer-events-none max-h-72 max-w-[min(100%,18rem)]"
           style={knownAspectRatio ? { aspectRatio: knownAspectRatio } : undefined}
           loading="lazy"
           onLoad={(event) => {
