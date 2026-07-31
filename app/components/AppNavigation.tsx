@@ -44,11 +44,12 @@ type NavItem = {
    * Workspace-selector tabs are entry points into a multi-page workspace
    * (isActive spans several distinct hrefs), not a single-destination link —
    * tapping one while already inside that workspace should do nothing rather
-   * than reset back to `href`. Only Events qualifies today: its isActive
-   * (isPlannerEventsAreaPath) covers Events/Event Plans/Calendar/Gigs, so
-   * `pathname !== href` doesn't mean "not here yet." Messages/Profile/DJ
-   * Gigs are single-destination — isActive already implies pathname===href,
-   * so they're unaffected either way and don't need this flag.
+   * than reset back to `href`. Events (isPlannerEventsAreaPath: Events/Event
+   * Plans/Calendar/Gigs) and Messages (isMessagesInboxPath: Inbox/DM/Group
+   * Chat/Event Chat) qualify — `pathname !== href` doesn't mean "not here
+   * yet" for either. Profile/DJ Gigs are single-destination — isActive
+   * already implies pathname===href, so they're unaffected either way and
+   * don't need this flag.
    */
   isWorkspaceSelector?: boolean;
 };
@@ -79,6 +80,7 @@ function getNavItems(role: UserRole, currentUserId: string | null): NavItem[] {
     badgeKey: "messages",
     isPrimary: true,
     isActive: (pathname) => isMessagesInboxPath(pathname),
+    isWorkspaceSelector: true,
   };
 
   const profile: NavItem = {
