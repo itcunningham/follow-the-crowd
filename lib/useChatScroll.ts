@@ -380,6 +380,15 @@ export function useChatScroll({
       return;
     }
 
+    // Mark pinned synchronously, not only inside scrollToBottom's own deferred
+    // call. The ResizeObserver below can re-run and fire in this same commit
+    // (its effect also depends on messageIds), and on a fresh-open view whose
+    // component instance carries over a stale `false` from a previous
+    // scrolled-up read of this conversation, an early fire would otherwise see
+    // the stale value and skip re-pinning for any height growth (e.g. images
+    // settling) that lands before the rAF below runs.
+    pinnedToBottomRef.current = true;
+
     requestAnimationFrame(() => {
       scrollToBottom("auto");
     });
