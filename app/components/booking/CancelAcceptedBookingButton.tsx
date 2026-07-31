@@ -60,8 +60,8 @@ export default function CancelAcceptedBookingButton({
   const title = role === "planner" ? "Cancel booking?" : "Withdraw from event?";
   const description =
     role === "planner"
-      ? "This DJ will be removed from the event run sheet and notified in the group chat."
-      : "You will be removed from the event run sheet and the planner will be notified in the group chat.";
+      ? "This DJ will be removed from the event run sheet and notified in the group chat"
+      : "You will be removed from the event run sheet and the planner will be notified in the group chat";
   const confirmLabel = role === "planner" ? "Cancel booking" : "Withdraw";
 
   const resolvedReason = useMemo(

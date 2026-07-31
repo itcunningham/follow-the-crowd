@@ -195,7 +195,7 @@ function resolveSendButtonLabel(
   const isConfirmMode = sendButtonLabelMode === "confirm";
 
   if (sending) {
-    return isConfirmMode ? "Confirming" : "Sending...";
+    return isConfirmMode ? "Confirming" : "Sending";
   }
 
   if (selectedCount === 0) {
@@ -250,7 +250,7 @@ export default function SendBookingRequestsPanel({
       {draft.loadingDjs ? (
         <p className="text-sm text-ftc-text-muted">Loading DJs</p>
       ) : draft.filteredDjs.length === 0 ? (
-        <PlannerEmptyPanel message="No available DJs to invite." />
+        <PlannerEmptyPanel message="No available DJs to invite" />
       ) : (
         <ul className={`${listMaxHeightClass} space-y-2.5 overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch] touch-pan-y`}>
           {draft.filteredDjs.map((dj) => {

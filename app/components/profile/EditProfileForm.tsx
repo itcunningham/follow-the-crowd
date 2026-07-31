@@ -224,7 +224,7 @@ export default function EditProfileForm({
       if (prev.length >= MAX_PROFILE_GENRE_TAGS) {
         setFieldErrors((errors) => ({
           ...errors,
-          genre: `Choose up to ${MAX_PROFILE_GENRE_TAGS} genres.`,
+          genre: `Choose up to ${MAX_PROFILE_GENRE_TAGS} genres`,
         }));
         return prev;
       }

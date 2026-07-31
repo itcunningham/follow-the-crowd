@@ -35,7 +35,7 @@ export async function POST(request: Request) {
 
     if (body.confirmation !== "DELETE") {
       return NextResponse.json(
-        { error: "Type DELETE exactly to confirm account deletion." },
+        { error: "Type DELETE exactly to confirm account deletion" },
         { status: 400 },
       );
     }
@@ -44,7 +44,7 @@ export async function POST(request: Request) {
 
     if (!auth) {
       return NextResponse.json(
-        { error: "You need to sign in again before deleting your account." },
+        { error: "You need to sign in again before deleting your account" },
         { status: 401 },
       );
     }

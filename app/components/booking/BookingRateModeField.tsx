@@ -7,12 +7,12 @@ const OPTIONS: Array<{ value: BookingRateMode; title: string; description: strin
   {
     value: "fixed",
     title: "Fixed offer",
-    description: "DJ can accept or decline your rate.",
+    description: "DJ can accept or decline your rate",
   },
   {
     value: "open",
     title: "Ask for rate",
-    description: "DJ sends their price before accepting.",
+    description: "DJ sends their price before accepting",
   },
 ];
 

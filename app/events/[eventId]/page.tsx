@@ -881,9 +881,9 @@ function EventDetailPageView() {
       await reloadEventLineup();
       const baseMessage =
         booking.sender_id === currentUserId
-          ? "Booking cancelled."
-          : "You withdrew from this event.";
-      setSuccessMessage(warning ? `${baseMessage} ${warning}` : baseMessage);
+          ? "Booking cancelled"
+          : "You withdrew from this event";
+      setSuccessMessage(warning ? `${baseMessage}. ${warning}` : baseMessage);
     } catch (cancelError) {
       console.error("Failed to cancel accepted booking:", cancelError);
       setError(getBookingMutationErrorMessage(cancelError));
@@ -899,7 +899,7 @@ function EventDetailPageView() {
     try {
       await hideDeclinedBookingFromLineup(bookingId);
       await reloadEventLineup();
-      setSuccessMessage("Declined booking hidden from lineup.");
+      setSuccessMessage("Declined booking hidden from lineup");
     } catch (hideError) {
       console.error("Failed to hide declined booking from lineup:", hideError);
       setError(getBookingMutationErrorMessage(hideError));
@@ -915,7 +915,7 @@ function EventDetailPageView() {
     try {
       await acceptProposedBookingRate(booking.id);
       await reloadEventLineup();
-      setSuccessMessage("Proposed rate accepted.");
+      setSuccessMessage("Proposed rate accepted");
     } catch (acceptError) {
       console.error("Failed to accept proposed rate:", acceptError);
       setError(getBookingMutationErrorMessage(acceptError));
@@ -932,7 +932,7 @@ function EventDetailPageView() {
       await declineProposedBookingRate(booking.id);
       await reloadEventLineup();
       setSuccessMessage(
-        booking.rate_mode === "open" ? "Rate declined." : "Original offer kept.",
+        booking.rate_mode === "open" ? "Rate declined" : "Original offer kept",
       );
     } catch (declineError) {
       console.error("Failed to keep original offer:", declineError);

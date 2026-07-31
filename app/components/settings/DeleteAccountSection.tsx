@@ -72,7 +72,7 @@ export default function DeleteAccountSection({
 
   async function handleDeleteAccount() {
     if (confirmation !== "DELETE") {
-      setModalError("Type DELETE exactly to confirm.");
+      setModalError("Type DELETE exactly to confirm");
       return;
     }
 

@@ -1668,7 +1668,7 @@ function BookingsPageContent() {
       await reloadPlannerSentBookings();
       setPlannerSentView("history");
       setPlannerHistorySubView("cancelled");
-      setSuccessMessage("Booking request archived.");
+      setSuccessMessage("Booking request archived");
     } catch (archiveError) {
       console.error("Failed to archive booking request:", archiveError);
       setError(getBookingMutationErrorMessage(archiveError));
@@ -1697,7 +1697,7 @@ function BookingsPageContent() {
 
       if (successes.length > 0) {
         setSuccessMessage(
-          `Archived ${successes.length} booking request${successes.length === 1 ? "" : "s"}.`,
+          `Archived ${successes.length} booking request${successes.length === 1 ? "" : "s"}`,
         );
       }
 
@@ -1726,7 +1726,7 @@ function BookingsPageContent() {
     try {
       await unarchiveBookingRequest(bookingId);
       await reloadPlannerSentBookings();
-      setSuccessMessage("Booking request restored to History.");
+      setSuccessMessage("Booking request restored to History");
     } catch (restoreError) {
       console.error("Failed to restore booking request:", restoreError);
       setError(getBookingMutationErrorMessage(restoreError));
