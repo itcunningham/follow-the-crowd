@@ -126,7 +126,7 @@ export default function ProfileGenrePicker({
 
               {atLimit ? (
                 <p className="mt-3 text-xs text-ftc-text-muted">
-                  You can select up to 8 genres.
+                  Select up to 8 genres
                 </p>
               ) : null}
             </div>

@@ -154,7 +154,7 @@ export default function EditProfileForm({
     }
 
     setUsernameLiveTone("muted");
-    setUsernameLiveMessage("Checking…");
+    setUsernameLiveMessage("Checking");
 
     const checkSeq = ++usernameCheckSeqRef.current;
     const timer = window.setTimeout(() => {
