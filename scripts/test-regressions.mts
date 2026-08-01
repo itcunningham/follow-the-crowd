@@ -3567,7 +3567,23 @@ function testCreateEventValidationScrollsAndFocusesFirstInvalidField() {
   assert.ok(focusIndex !== -1 && scrollIndex !== -1, "focus/scroll calls not found");
   assert.ok(focusIndex < scrollIndex, "focus must be called before scrollIntoView");
   assert.match(scrollEffectBlock[0], /\.focus\(\{ preventScroll: true \}\)/);
-  assert.match(scrollEffectBlock[0], /scrollIntoView\(\{ behavior: "smooth", block: "start" \}\)/);
+
+  // Root-cause fix for "Save still scrolls near Invite DJs on physical iPhone
+  // after noValidate": confirmed via a faithful reproduction (the real
+  // PlannerFormField/BookingDateField components, real
+  // getEventFormFieldErrors, real querySelector target) that the DOM
+  // targeting itself was always correct -- Venue's own visible input, not a
+  // wrapper or hidden helper input. `behavior: "smooth"` was the actual
+  // remaining bug: it's a multi-hundred-ms animation, and focusing a real
+  // text input on iOS Safari opens the software keyboard, which triggers
+  // WebKit's own separate "keep the focused element above the keyboard"
+  // scroll adjustment -- distinct from the initial focus-scroll
+  // `preventScroll` suppresses, so it still fires and can interrupt an
+  // in-flight smooth scroll mid-animation. `behavior: "auto"` (instant)
+  // completes synchronously in the same frame as focus, before the keyboard
+  // has begun animating in, leaving no window to race against.
+  assert.match(scrollEffectBlock[0], /scrollIntoView\(\{ behavior: "auto", block: "start" \}\)/);
+  assert.doesNotMatch(scrollEffectBlock[0], /behavior: "smooth"/);
 
   const scrollMarginRule = globalsSource.match(
     /\.ftc-input,\s*\n\.ftc-textarea,\s*\n\.ftc-field-trigger \{[\s\S]*?\n\}/,

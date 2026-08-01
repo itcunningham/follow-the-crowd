@@ -680,6 +680,23 @@ function EventsPageClientView({
   // native scroll a focus call triggers happens synchronously and
   // immediately, so the explicit scrollIntoView right after always
   // overrides it and has the final, deterministic say on scroll position.
+  //
+  // `behavior: "auto"` (instant), not "smooth": confirmed via a faithful
+  // reproduction (the real PlannerFormField/BookingDateField components,
+  // real getEventFormFieldErrors, real querySelector target) that this
+  // effect selects the correct visible field every time -- the DOM
+  // targeting was never the bug. What a *smooth* scroll adds is a
+  // multi-hundred-ms animation window, and focusing a real text input on
+  // iOS Safari opens the software keyboard, which triggers WebKit's own
+  // separate "keep the focused element above the keyboard" scroll
+  // adjustment as the keyboard slides up -- a distinct behaviour from the
+  // initial focus-scroll `preventScroll` suppresses, so it still fires.
+  // That native adjustment can interrupt an in-flight smooth scroll
+  // mid-animation; if cut short early, the page never gets past wherever
+  // the user tapped Save from (e.g. scrolled down near Invite DJs to reach
+  // the button). An instant jump completes synchronously in the same frame
+  // as focus, before the keyboard has begun animating in, leaving no
+  // window for that native adjustment to race against.
   useEffect(() => {
     if (createSaveAttemptCount === 0) {
       return;
@@ -694,7 +711,7 @@ function EventsPageClientView({
     }
 
     firstInvalid.focus({ preventScroll: true });
-    firstInvalid.scrollIntoView({ behavior: "smooth", block: "start" });
+    firstInvalid.scrollIntoView({ behavior: "auto", block: "start" });
   }, [createSaveAttemptCount]);
   const showEventsListContent = !isCalendarCreateFlow && !createOpen;
 
