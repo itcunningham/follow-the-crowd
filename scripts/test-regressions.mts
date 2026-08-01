@@ -5609,9 +5609,10 @@ function testDmMultiPhotoSend() {
   assert.doesNotMatch(bubbleSource, /attachments\.map\(\(attachment\) => \(/);
   assert.match(groupSource, /attachments\.length <= 1/);
   assert.match(groupSource, /aria-label="Open image"/);
-  // Single-image and multi-image grid bubbles import the same shared
-  // max-width constant — no independently-drifting duplicate literal.
-  assert.match(groupSource, /DM_IMAGE_BUBBLE_MAX_WIDTH_CLASS/);
+  // The grid uses a fixed (not max-) width — an explicit width, unlike
+  // max-width, gives the sender-alignment flex chain a real footprint to
+  // right/left-align against instead of collapsing to the full row width.
+  assert.match(groupSource, /DM_IMAGE_BUBBLE_GRID_WIDTH_CLASS/);
   const attachmentViewSource = readFileSync(
     new URL("../app/components/dm/DmMessageAttachment.tsx", import.meta.url),
     "utf8",
@@ -5652,6 +5653,58 @@ function testDmImageGridLayout() {
     hiddenCount: 3,
   });
   assert.equal(DM_MAX_VISIBLE_GRID_IMAGES, 4);
+}
+
+function testDmImageGroupFullViewerAndOwnershipAlignment() {
+  const groupSource = readFileSync(
+    new URL("../app/components/dm/DmMessageAttachmentGroup.tsx", import.meta.url),
+    "utf8",
+  );
+  const lightboxSource = readFileSync(
+    new URL("../app/components/dm/DmImageLightbox.tsx", import.meta.url),
+    "utf8",
+  );
+  const bubbleSource = readFileSync(
+    new URL("../app/components/dm/DmTextMessageBubble.tsx", import.meta.url),
+    "utf8",
+  );
+
+  // Tapping any grid tile opens the shared lightbox (not a per-tile
+  // window.open) with every image in the message, in upload order.
+  assert.match(groupSource, /DmImageLightbox/);
+  assert.doesNotMatch(groupSource, /window\.open/);
+  assert.match(groupSource, /imageAttachments\.map\(\(attachment\) => \(\{/);
+  assert.match(groupSource, /initialIndex=\{lightboxIndex\}/);
+
+  // The "+N" overlay tile opens the first HIDDEN image (index ===
+  // visibleImages.length), not the last visible tile it's drawn over.
+  assert.match(groupSource, /isOverlayTile \? visibleImages\.length : index/);
+
+  // Full-group viewer: swipe navigation, pinch/double-tap zoom, and
+  // swipe-down/Escape/backdrop dismiss are all present (not just an
+  // open-in-new-tab replacement).
+  assert.match(lightboxSource, /goToIndex\(index [+-] 1\)/);
+  assert.match(lightboxSource, /DOUBLE_TAP_ZOOM_SCALE/);
+  assert.match(lightboxSource, /MAX_PINCH_ZOOM_SCALE/);
+  assert.match(lightboxSource, /requestClose/);
+  assert.match(lightboxSource, /ArrowLeft/);
+  assert.match(lightboxSource, /ArrowRight/);
+
+  // Single-image messages are untouched — they keep the original
+  // window.open-in-a-new-tab viewer, not the new lightbox.
+  const attachmentViewSource = readFileSync(
+    new URL("../app/components/dm/DmMessageAttachment.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(attachmentViewSource, /window\.open\(attachment\.file_url/);
+  assert.doesNotMatch(attachmentViewSource, /DmImageLightbox/);
+
+  // Ownership alignment: DmTextMessageBubble still owns left/right alignment
+  // for every message shape (text and attachment groups alike), via the same
+  // resolveMessageGroupLiClass used by plain text bubbles — this fix lives
+  // entirely in the grid's own width, not in a new alignment wrapper.
+  assert.match(bubbleSource, /DmMessageAttachmentGroup/);
+  assert.match(bubbleSource, /resolveMessageGroupLiClass/);
 }
 
 function testDmComposerPendingPhotoGroupHelpers() {
@@ -6707,6 +6760,7 @@ async function main() {
   testDmComposerPendingPhotoGroupHelpers();
   testDmMultiPhotoSend();
   testDmImageGridLayout();
+  testDmImageGroupFullViewerAndOwnershipAlignment();
   // TEMP-SKIP (pre-existing, unrelated failure — stale getComposerLineBeforeCursor expectation in composerNewlineKeydown.ts, not touched by multi-photo work; see docs/handoff/CURRENT-STATE.md): testComposerNewlineKeydown();
   testDmComposerFocusSyncAfterSend();
   // TEMP-SKIP (pre-existing, unrelated failure — stale reaction-gesture source regex, not touched by multi-photo work; see docs/handoff/CURRENT-STATE.md): testDmMessageReactionGestureInteractions();

@@ -1,9 +1,11 @@
 "use client";
 
+import { useState } from "react";
 import DmMessageAttachmentView from "@/app/components/dm/DmMessageAttachment";
+import DmImageLightbox from "@/app/components/dm/DmImageLightbox";
 import { isDmImageAttachment, type DmMessageAttachment } from "@/lib/dmAttachments";
 import {
-  DM_IMAGE_BUBBLE_MAX_WIDTH_CLASS,
+  DM_IMAGE_BUBBLE_GRID_WIDTH_CLASS,
   resolveImageGridCellClass,
   resolveVisibleGridImages,
 } from "@/lib/dm/dmImageLayout";
@@ -20,11 +22,13 @@ function ImageGridCell({
   attachment,
   className,
   overlayCount,
+  onOpen,
   onContextMenu,
 }: {
   attachment: DmMessageAttachment;
   className: string;
   overlayCount?: number;
+  onOpen: () => void;
   onContextMenu?: (event: React.MouseEvent<HTMLElement>) => void;
 }) {
   return (
@@ -32,9 +36,7 @@ function ImageGridCell({
       type="button"
       aria-label="Open image"
       className={`ftc-dm-message-image-open relative block w-full overflow-hidden ${className}`}
-      onClick={() => {
-        window.open(attachment.file_url, "_blank", "noopener,noreferrer");
-      }}
+      onClick={onOpen}
       onContextMenu={(event) => handleImageContextMenu(event, onContextMenu)}
       onDragStart={(event) => event.preventDefault()}
     >
@@ -60,9 +62,12 @@ function ImageGridCell({
  * existing `DmMessageAttachmentView` layout untouched. Two or more images
  * render as one balanced grid — equal 2-column for 2, large-top/two-bottom
  * for 3, 2x2 for 4, and a 2x2 grid with a "+N" overlay on the last cell for
- * 5+ — sharing the same max bubble width as single images. The whole grid is
+ * 5+ — sharing the same max bubble width as single images, with a fixed
+ * (not max-) width so the grid gets a real, predictable footprint the
+ * surrounding message row can align to the sender's side. The whole grid is
  * one border/rounded-corner frame and behaves as a single message; tapping
- * any cell preserves the existing open-in-new-tab image viewing behaviour.
+ * any cell opens the full-group lightbox on that image (including images
+ * hidden behind the "+N" tile), with every image in the message swipeable.
  */
 export default function DmMessageAttachmentGroup({
   attachments,
@@ -73,6 +78,8 @@ export default function DmMessageAttachmentGroup({
   isOwnMessage: boolean;
   onContextMenu?: (event: React.MouseEvent<HTMLElement>) => void;
 }) {
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+
   if (attachments.length <= 1) {
     return (
       <>
@@ -101,21 +108,22 @@ export default function DmMessageAttachmentGroup({
     <div className="space-y-2">
       {visibleImages.length > 0 ? (
         <div
-          className={`grid grid-cols-2 gap-0.5 overflow-hidden rounded-2xl border border-ftc-border bg-ftc-bg-elevated/40 ${DM_IMAGE_BUBBLE_MAX_WIDTH_CLASS}`}
+          className={`grid grid-cols-2 gap-0.5 overflow-hidden rounded-2xl border border-ftc-border bg-ftc-bg-elevated/40 ${DM_IMAGE_BUBBLE_GRID_WIDTH_CLASS}`}
         >
-          {visibleImages.map((attachment, index) => (
-            <ImageGridCell
-              key={attachment.id}
-              attachment={attachment}
-              className={resolveImageGridCellClass(imageAttachments.length, index)}
-              overlayCount={
-                hiddenImageCount > 0 && index === visibleImages.length - 1
-                  ? hiddenImageCount
-                  : undefined
-              }
-              onContextMenu={onContextMenu}
-            />
-          ))}
+          {visibleImages.map((attachment, index) => {
+            const isOverlayTile = hiddenImageCount > 0 && index === visibleImages.length - 1;
+
+            return (
+              <ImageGridCell
+                key={attachment.id}
+                attachment={attachment}
+                className={resolveImageGridCellClass(imageAttachments.length, index)}
+                overlayCount={isOverlayTile ? hiddenImageCount : undefined}
+                onOpen={() => setLightboxIndex(isOverlayTile ? visibleImages.length : index)}
+                onContextMenu={onContextMenu}
+              />
+            );
+          })}
         </div>
       ) : null}
       {fileAttachments.map((attachment) => (
@@ -126,6 +134,16 @@ export default function DmMessageAttachmentGroup({
           onContextMenu={onContextMenu}
         />
       ))}
+      {lightboxIndex !== null ? (
+        <DmImageLightbox
+          images={imageAttachments.map((attachment) => ({
+            url: attachment.file_url,
+            name: attachment.file_name,
+          }))}
+          initialIndex={lightboxIndex}
+          onClose={() => setLightboxIndex(null)}
+        />
+      ) : null}
     </div>
   );
 }

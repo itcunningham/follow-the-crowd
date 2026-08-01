@@ -9,6 +9,17 @@
 export const DM_IMAGE_BUBBLE_MAX_WIDTH_CLASS = "max-w-[min(100%,18rem)]";
 export const DM_IMAGE_BUBBLE_MAX_HEIGHT_CLASS = "max-h-72";
 
+/**
+ * Explicit (not max-) width for the multi-image grid. Grid cells are fixed
+ * aspect ratios rather than intrinsically-sized images, so — unlike the
+ * single-image bubble — the container has no natural content width for the
+ * browser to shrink-wrap around; without an explicit width it renders far
+ * wider than intended and the surrounding flex alignment (which right/left
+ * aligns by shrinking to the bubble's own width) can't hug the sender's
+ * side. A fixed width matching the single-image cap fixes both.
+ */
+export const DM_IMAGE_BUBBLE_GRID_WIDTH_CLASS = "w-[min(100%,18rem)]";
+
 /** Beyond this many images in one message, extras collapse into a "+N" overlay on the last visible tile. */
 export const DM_MAX_VISIBLE_GRID_IMAGES = 4;
 
