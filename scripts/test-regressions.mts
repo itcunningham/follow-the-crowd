@@ -30,7 +30,7 @@ import {
   resolveCompactCalendarDisplayTitle,
   resolveCompactCalendarEventOnlyTitle,
 } from "../lib/calendar/compactCalendarEventVenueTitle";
-import { readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { canScrollInTouchDirection } from "../lib/ui/modalScrollContainment";
 import { formatRateDisplay, formatIntegerRateDisplay } from "../lib/bookingRate";
 import {
@@ -5093,6 +5093,79 @@ async function testOnboardingAccessCheckNeverHangsForever() {
   );
 }
 
+/**
+ * Root-cause regression test for the *actual* splash-hang bug: the 15s
+ * OnboardingGuard timeout above never ran, because React never hydrated in
+ * the first place. Next.js falls back to its own MODERN_BROWSERSLIST_TARGET
+ * (`safari 16.4` minimum — see node_modules/next/dist/shared/lib/modern-browserslist-target.js)
+ * whenever a project has no `browserslist` config, and ships its own
+ * `ErrorBoundaryHandler` (node_modules/next/dist/client/components/error-boundary.js)
+ * using an ES2022 class static initialization block (`static { this.contextType = ... }`)
+ * — syntax Safari didn't support until 16.4. On a classic (non-module)
+ * `<script>`, on the exact chunk that bootstraps React hydration, a
+ * SyntaxError fails the whole script silently: no hydration, no effects, no
+ * OnboardingGuard, no timeout — the server-rendered splash HTML for `/` (it's
+ * a static-prerendered route) just sits there forever on iOS 16.1.2 and any
+ * other pre-16.4 engine.
+ */
+function testBrowserslistSupportsPreSafari164Devices() {
+  const packageJsonSource = readFileSync(new URL("../package.json", import.meta.url), "utf8");
+  const packageJson = JSON.parse(packageJsonSource) as { browserslist?: unknown };
+
+  assert.ok(
+    Array.isArray(packageJson.browserslist) && packageJson.browserslist.length > 0,
+    "package.json must declare a browserslist so Next.js/SWC doesn't fall back to its " +
+      "MODERN_BROWSERSLIST_TARGET default (safari 16.4+), which excludes iOS 16.1-16.3",
+  );
+
+  const browserslist = packageJson.browserslist as unknown[];
+  const safariEntries = browserslist.filter(
+    (entry): entry is string =>
+      typeof entry === "string" && /^(ios_saf|safari)\b/.test(entry),
+  );
+
+  assert.ok(
+    safariEntries.length > 0,
+    "browserslist must explicitly constrain the Safari/iOS floor -- otherwise it's " +
+      "unclear whether pre-16.4 Safari is actually covered",
+  );
+
+  for (const entry of safariEntries) {
+    const versionMatch = entry.match(/(\d+(?:\.\d+)?)/);
+    assert.ok(versionMatch, `could not parse a version out of browserslist entry "${entry}"`);
+    const floorVersion = Number.parseFloat(versionMatch[1]);
+    assert.ok(
+      floorVersion < 16.4,
+      `browserslist entry "${entry}" has a floor of ${floorVersion}, which is >= 16.4 and ` +
+        "would silently re-exclude iOS 16.1-16.3 (the exact version that hit this bug)",
+    );
+  }
+
+  // If a production build is already present (this project's own workflow always
+  // runs `rm -rf .next && npm run build` immediately before `npm run test:regressions`),
+  // also prove the compiled output itself no longer contains the untranspiled
+  // syntax -- confirming the browserslist config actually changes SWC's output,
+  // not just that the config field exists.
+  const chunksDir = new URL("../.next/static/chunks/", import.meta.url);
+
+  if (existsSync(chunksDir)) {
+    const chunkFiles = readdirSync(chunksDir).filter((name) => name.endsWith(".js"));
+    assert.ok(chunkFiles.length > 0, "expected at least one compiled chunk in .next/static/chunks");
+
+    const chunkWithStaticBlock = chunkFiles.find((name) => {
+      const source = readFileSync(new URL(name, chunksDir), "utf8");
+      return /static\s*\{/.test(source);
+    });
+
+    assert.equal(
+      chunkWithStaticBlock,
+      undefined,
+      `found an untranspiled ES2022 class static initialization block in ${chunkWithStaticBlock} -- ` +
+        "Safari < 16.4 (including iOS 16.1.2) cannot parse this and will fail to hydrate silently",
+    );
+  }
+}
+
 function testGigsListTabSwitchUsesClientHistoryWithoutRouterNavigation() {
   const tabsSource = readFileSync(
     new URL("../app/components/bookings/DjGigsTabs.tsx", import.meta.url),
@@ -6570,6 +6643,7 @@ async function main() {
   testGigsHistorySelectionToolbarEmbeddedInTabRow();
   // TEMP-SKIP (pre-existing, unrelated failure — stale planner workspace title row source regex, not touched by multi-photo work; see docs/handoff/CURRENT-STATE.md): testHistoryRemovalHeaderFeedbackUnified();
   await testOnboardingAccessCheckNeverHangsForever();
+  testBrowserslistSupportsPreSafari164Devices();
   testGigsListTabSwitchUsesClientHistoryWithoutRouterNavigation();
   testGigsWorkspaceChromeStateSyncAvoidsNoOpUpdates();
   testBookingsRouteMountsPersistentGigsSecondaryBand();
