@@ -5993,8 +5993,9 @@ function testDmImageGroupFullViewerAndOwnershipAlignment() {
   assert.match(groupSource, /isOverlayTile \? visibleImages\.length : index/);
 
   // Full-group viewer: swipe navigation, pinch/double-tap zoom, and
-  // swipe-down/Escape/backdrop dismiss are all present (not just an
-  // open-in-new-tab replacement).
+  // Escape/backdrop dismiss are all present (not just an open-in-new-tab
+  // replacement). Dismissal is close-button/Escape/backdrop only — no
+  // swipe-to-dismiss (see testDmImageLightboxLocksGestureDirectionVerticalDoesNotDrift).
   assert.match(lightboxSource, /goToIndex\(index [+-] 1\)/);
   assert.match(lightboxSource, /DOUBLE_TAP_ZOOM_SCALE/);
   assert.match(lightboxSource, /MAX_PINCH_ZOOM_SCALE/);
@@ -6201,7 +6202,7 @@ function testDmImageLightboxUsesPagedTrackNotFloatingCard() {
   // (the whole track) are separate transforms — panning a zoomed image must
   // never also drag the track, and vice versa.
   assert.match(lightboxSource, /panOffset\.x/);
-  assert.match(lightboxSource, /setDragOffset\(\{ x: pageDeltaX, y: rawDeltaY \* 0\.4 \}\)/);
+  assert.match(lightboxSource, /setDragOffset\(\{ x: pageDeltaX \}\)/);
   assert.match(lightboxSource, /if \(drag\.mode === "pan"\) \{\s*setPanOffset/);
 
   // Requirement 4: swiping only pages when NOT zoomed — pan mode is chosen
@@ -6232,6 +6233,86 @@ function testDmImageLightboxUsesPagedTrackNotFloatingCard() {
   // the same track transition automatically, no separate animation path.
   assert.match(lightboxSource, /function goToIndex\(nextIndex: number\) \{/);
   assert.match(lightboxSource, /setIndex\(nextIndex\);\s*resetZoom\(\);/);
+}
+
+/**
+ * Root-cause regression test for "the active photo can be dragged vertically
+ * while paging horizontally between DM images".
+ *
+ * Structural cause: the "swipe" branch of `handleTouchMove` set
+ * `dragOffset.y` to 40% of the raw vertical finger delta
+ * (`setDragOffset({ x: pageDeltaX, y: rawDeltaY * 0.4 })`), and that value
+ * was added directly into the current slide's own `transform`
+ * (`translate(panOffset.x, panOffset.y + dragOffset.y)`) — so any vertical
+ * component of a swipe, however small or accidental, visibly moved the
+ * photo up/down at the same time it paged left/right. There was no
+ * direction decision at all: `handleTouchMove` picked `mode = "swipe"` the
+ * moment total movement (`Math.hypot(dx, dy)`) crossed 10px, regardless of
+ * which axis actually dominated, and direction (swipe vs. the old
+ * swipe-down-to-dismiss) was only resolved later, at `touchend`, by which
+ * point the vertical drift had already been visible on screen for the
+ * whole gesture.
+ *
+ * Fix: `dragOffset` no longer has a `y` field at all (nothing to apply even
+ * by mistake), and gesture direction is decided ONCE, the moment raw
+ * movement crosses `GESTURE_LOCK_THRESHOLD_PX`, by comparing `|dx|` vs
+ * `|dy|` at that exact instant. A gesture locked "swipe" never touches `y`
+ * again; a gesture locked "vertical" never touches the track or the image
+ * again for the rest of that same gesture (no re-evaluation mid-drag).
+ */
+function testDmImageLightboxLocksGestureDirectionVerticalDoesNotDrift() {
+  const lightboxSource = readFileSync(
+    new URL("../app/components/dm/DmImageLightbox.tsx", import.meta.url),
+    "utf8",
+  );
+
+  // dragOffset has no `y` field anywhere — the page-track offset is
+  // horizontal-only by construction, not just by convention.
+  assert.match(lightboxSource, /const \[dragOffset, setDragOffset\] = useState\(\{ x: 0 \}\);/);
+  assert.doesNotMatch(lightboxSource, /dragOffset\.y/);
+  assert.doesNotMatch(lightboxSource, /y: rawDeltaY \* 0\.4/);
+
+  // The current slide's own transform only ever carries panOffset (zoomed
+  // panning) — no drag-offset term left to reintroduce vertical drift.
+  assert.match(
+    lightboxSource,
+    /transform: `translate\(\$\{panOffset\.x\}px, \$\{panOffset\.y\}px\) scale\(\$\{scale\}\)`,/,
+  );
+
+  // Direction is a real three-way lock (none -> swipe | vertical), decided
+  // once from whichever axis dominates at the lock threshold, not just a
+  // magnitude check that ignores which way the drag actually went.
+  assert.match(lightboxSource, /mode: "none" \| "swipe" \| "vertical" \| "pan"/);
+  assert.match(lightboxSource, /GESTURE_LOCK_THRESHOLD_PX = 10/);
+  assert.match(
+    lightboxSource,
+    /drag\.mode = Math\.abs\(rawDeltaX\) >= Math\.abs\(rawDeltaY\) \? "swipe" : "vertical";/,
+  );
+
+  // Once locked vertical, a gesture is fully inert: no track movement, no
+  // image movement, and (requirement 3) no dismiss-on-swipe either — both
+  // handleTouchMove and handleTouchEnd bail out immediately for it.
+  assert.match(
+    lightboxSource,
+    /if \(drag\.mode === "vertical"\) \{\s*\/\/ Direction already locked to vertical/,
+  );
+  assert.match(lightboxSource, /if \(drag\.mode === "pan" \|\| drag\.mode === "vertical"\) \{\s*return;\s*\}/);
+
+  // The old swipe-down-to-dismiss branch is gone entirely, along with its
+  // now-dead threshold constant — dismissal is the close button only.
+  assert.doesNotMatch(lightboxSource, /SWIPE_DISMISS_THRESHOLD_PX/);
+  assert.doesNotMatch(lightboxSource, /requestClose\(\);\s*\} else if \(Math\.abs\(deltaX\)/);
+
+  // Pan mode (zoomed, scale > 1) is untouched by the lock — still free
+  // horizontal + vertical panning, still chosen up front from scale at
+  // touchstart, unaffected by the new "none" -> "swipe"/"vertical" branch.
+  assert.match(lightboxSource, /setPanOffset\(\{ x: rawDeltaX, y: rawDeltaY \}\);/);
+  assert.match(lightboxSource, /mode: scale > 1 \? "pan" : "none"/);
+
+  // Horizontal navigation threshold and rubber-band/edge behaviour are
+  // unchanged — only the vertical axis and the dead dismiss path moved.
+  assert.match(lightboxSource, /SWIPE_NAV_THRESHOLD_PX = 50/);
+  assert.match(lightboxSource, /if \(Math\.abs\(deltaX\) > SWIPE_NAV_THRESHOLD_PX\) \{/);
 }
 
 function testDmComposerPendingPhotoGroupHelpers() {
@@ -7291,6 +7372,7 @@ async function main() {
   testDmImageGalleryOverviewForLargeGroups();
   testDmMediaViewerCloseButtonConsistentAndClickable();
   testDmImageLightboxUsesPagedTrackNotFloatingCard();
+  testDmImageLightboxLocksGestureDirectionVerticalDoesNotDrift();
   // TEMP-SKIP (pre-existing, unrelated failure — stale getComposerLineBeforeCursor expectation in composerNewlineKeydown.ts, not touched by multi-photo work; see docs/handoff/CURRENT-STATE.md): testComposerNewlineKeydown();
   testDmComposerFocusSyncAfterSend();
   // TEMP-SKIP (pre-existing, unrelated failure — stale reaction-gesture source regex, not touched by multi-photo work; see docs/handoff/CURRENT-STATE.md): testDmMessageReactionGestureInteractions();

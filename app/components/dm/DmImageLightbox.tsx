@@ -5,8 +5,9 @@ import DmMediaViewerCloseButton from "@/app/components/dm/DmMediaViewerCloseButt
 import { useDmMediaViewerDismiss } from "@/lib/dm/useDmMediaViewerDismiss";
 
 const VIEWER_TRANSITION_MS = 220;
-const SWIPE_DISMISS_THRESHOLD_PX = 90;
 const SWIPE_NAV_THRESHOLD_PX = 50;
+/** Minimum raw movement before a gesture's direction (horizontal vs vertical) is locked in. */
+const GESTURE_LOCK_THRESHOLD_PX = 10;
 const DOUBLE_TAP_ZOOM_SCALE = 2.5;
 const MAX_PINCH_ZOOM_SCALE = 4;
 const PAGE_TRACK_TRANSITION_MS = 300;
@@ -47,14 +48,22 @@ function applyRubberBandResistance(overflowPx: number, viewportWidthPx: number):
 /**
  * Full-group DM image viewer — opens on the tapped image, swipes through
  * every image in the message (including ones hidden behind a "+N" grid
- * tile), and supports pinch/double-tap zoom + swipe-down dismiss. Replaces
- * the old per-tile `window.open` for multi-image messages only; single-image
+ * tile), and supports pinch/double-tap zoom. Dismissal is the top-right
+ * close button only — there is no swipe-to-dismiss gesture. Replaces the
+ * old per-tile `window.open` for multi-image messages only; single-image
  * messages keep their existing new-tab behaviour untouched.
  *
  * Paging is a real horizontal track: every image is mounted once as an
  * adjacent slide (never remounted while paging) and the whole track
  * translates together, so the next page is already in position the instant
  * a swipe starts — no floating card, no exposed backdrop, no crossfade swap.
+ *
+ * Gesture direction is locked once per touch: the first move past
+ * `GESTURE_LOCK_THRESHOLD_PX` decides horizontal (page) vs vertical, and
+ * that decision holds for the rest of the gesture. A horizontal gesture
+ * never moves the image vertically (no drift, no diagonal float); a
+ * vertical gesture never pages. Zoomed panning (scale > 1) is a separate
+ * mode entirely and is unaffected by this lock.
  */
 export default function DmImageLightbox({
   images,
@@ -70,16 +79,21 @@ export default function DmImageLightbox({
   const [scale, setScale] = useState(1);
   // Pan offset for the current image while zoomed in (scale > 1) only.
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
-  // Live, uncommitted drag while not zoomed: `x` moves the page track,
-  // `y` moves only the current slide's image for the dismiss gesture.
-  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  // Live, uncommitted horizontal page-track offset while not zoomed. No `y`
+  // field on purpose — a horizontal (paging) gesture never moves the image
+  // vertically, so there is nothing for a vertical component to drive.
+  const [dragOffset, setDragOffset] = useState({ x: 0 });
 
   const dragStateRef = useRef<{
     startX: number;
     startY: number;
     lastX: number;
     lastY: number;
-    mode: "none" | "swipe" | "pan";
+    // "none": direction not yet decided. "swipe": locked horizontal, pages
+    // between images. "vertical": locked vertical, intentionally inert (no
+    // swipe-to-dismiss in this viewer — the close button is the only way to
+    // dismiss). "pan": zoomed (scale > 1), free horizontal + vertical pan.
+    mode: "none" | "swipe" | "vertical" | "pan";
   } | null>(null);
   const pinchStateRef = useRef<{ startDistance: number; startScale: number } | null>(null);
   const lastTapRef = useRef(0);
@@ -187,21 +201,40 @@ export default function DmImageLightbox({
         return;
       }
 
-      if (drag.mode === "none" && Math.hypot(rawDeltaX, rawDeltaY) > 10) {
-        drag.mode = "swipe";
+      if (drag.mode === "vertical") {
+        // Direction already locked to vertical for this gesture — a
+        // vertical drag never pages and never moves the image, so there is
+        // nothing further to do until the finger lifts.
+        return;
       }
 
-      if (drag.mode === "swipe") {
-        const atFirstImage = index === 0;
-        const atLastImage = index === images.length - 1;
-        let pageDeltaX = rawDeltaX;
-
-        if ((atFirstImage && pageDeltaX > 0) || (atLastImage && pageDeltaX < 0)) {
-          pageDeltaX = applyRubberBandResistance(pageDeltaX, window.innerWidth);
+      if (drag.mode === "none") {
+        if (Math.hypot(rawDeltaX, rawDeltaY) <= GESTURE_LOCK_THRESHOLD_PX) {
+          return;
         }
 
-        setDragOffset({ x: pageDeltaX, y: rawDeltaY * 0.4 });
+        // Decide once, from whichever axis dominates at the exact moment
+        // the lock threshold is crossed, and hold that decision for the
+        // rest of the gesture — this is what stops small accidental
+        // vertical noise during an otherwise-horizontal drag from ever
+        // being able to move the image, and equally stops a genuinely
+        // vertical drag from suddenly starting to page mid-gesture.
+        drag.mode = Math.abs(rawDeltaX) >= Math.abs(rawDeltaY) ? "swipe" : "vertical";
+
+        if (drag.mode === "vertical") {
+          return;
+        }
       }
+
+      const atFirstImage = index === 0;
+      const atLastImage = index === images.length - 1;
+      let pageDeltaX = rawDeltaX;
+
+      if ((atFirstImage && pageDeltaX > 0) || (atLastImage && pageDeltaX < 0)) {
+        pageDeltaX = applyRubberBandResistance(pageDeltaX, window.innerWidth);
+      }
+
+      setDragOffset({ x: pageDeltaX });
     },
     [scale, index, images.length],
   );
@@ -215,24 +248,21 @@ export default function DmImageLightbox({
       return;
     }
 
-    if (drag.mode === "pan") {
+    if (drag.mode === "pan" || drag.mode === "vertical") {
       return;
     }
 
     if (drag.mode === "swipe") {
       const deltaX = drag.lastX - drag.startX;
-      const deltaY = drag.lastY - drag.startY;
 
-      if (deltaY > SWIPE_DISMISS_THRESHOLD_PX && Math.abs(deltaX) < 60) {
-        requestClose();
-      } else if (Math.abs(deltaX) > SWIPE_NAV_THRESHOLD_PX) {
+      if (Math.abs(deltaX) > SWIPE_NAV_THRESHOLD_PX) {
         goToIndex(deltaX < 0 ? index + 1 : index - 1);
       }
     }
 
-    setDragOffset({ x: 0, y: 0 });
+    setDragOffset({ x: 0 });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [index, requestClose]);
+  }, [index]);
 
   const hasPrevious = index > 0;
   const hasNext = index < images.length - 1;
@@ -299,7 +329,7 @@ export default function DmImageLightbox({
                   style={
                     isCurrent
                       ? {
-                          transform: `translate(${panOffset.x}px, ${panOffset.y + dragOffset.y}px) scale(${scale})`,
+                          transform: `translate(${panOffset.x}px, ${panOffset.y}px) scale(${scale})`,
                           transition: isDragging ? "none" : "transform 200ms ease-out",
                         }
                       : undefined
