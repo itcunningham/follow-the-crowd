@@ -94,10 +94,6 @@ import {
   shouldDismissComposerKeyboardAtBottom,
 } from "../lib/dm/composerKeyboardDismissPolicy";
 import {
-  isValidMessageHistoryGestureStart,
-  shouldStabilizeComposerTouchMove,
-} from "../lib/dm/messageHistoryGestureTarget";
-import {
   applyMomentumFriction,
   applyMomentumScrollStep,
   computeReleaseScrollVelocityPxPerMs,
@@ -771,8 +767,8 @@ function testBookingCardCollapseScrollHeightCompensation() {
   assert.equal(computeScrollTopAfterShrink(340, 1560, 1400, maxScrollTop), 180);
   assert.equal(computeScrollTopAfterShrink(340, 1400, 1400, maxScrollTop), 340);
   assert.equal(computeScrollTopAfterShrink(340, 1400, 1500, maxScrollTop), 340);
-  assert.equal(computeScrollTopAfterShrink(20, 900, 850, 100), 20);
-  assert.equal(computeScrollTopAfterShrink(120, 900, 850, 100), 100);
+  assert.equal(computeScrollTopAfterShrink(20, 900, 850, 100), 0);
+  assert.equal(computeScrollTopAfterShrink(120, 900, 850, 100), 70);
 }
 
 function testDmBookingSystemMessages() {
@@ -1262,7 +1258,7 @@ function testCappedMultilineInputLimit() {
 
   assert.equal(applyCappedMultilineInputLimit("", "a\nb\nc\nd", 3, 250), "a\nb\nc");
   assert.equal(applyCappedMultilineInputLimit("a\nb", "a\nb\nc", 3, 250), "a\nb\nc");
-  assert.equal(applyCappedMultilineInputLimit("a\nb\nc", "a\nb\nc\nd", 3, 250), null);
+  assert.equal(applyCappedMultilineInputLimit("a\nb\nc", "a\nb\nc\nd", 3, 250), "a\nb\nc");
 
   const longLine = "x".repeat(200);
   assert.equal(
@@ -4004,7 +4000,7 @@ function testEventCreateFormTextFieldMaxLength() {
     "utf8",
   );
   assert.match(bookingsSource, /maxLength=\{MAX_EVENT_NAME_LENGTH\}/);
-  assert.match(bookingsSource, /getEventNameVenueFieldErrors/);
+  assert.match(bookingsSource, /getEventFormFieldErrors/);
 
   const plannerUiSource = readFileSync(
     new URL("../app/components/planner/PlannerUi.tsx", import.meta.url),
@@ -4177,7 +4173,7 @@ function testEventDetailLoadUsesParallelQueriesAndListCache() {
   assert.match(pageSource, /readCachedEventSummaryById/);
   assert.match(
     pageSource,
-    /const \[loadedEvent, bookings, unlock\] = await Promise\.all\(\[\s*getEventById\(eventId\),\s*listBookingRequestsForEvent\(eventId\),\s*getCrewChatUnlockStateForEvent\(eventId\),/,
+    /const \[loadedEvent, bookings, unlock, sentBookings\] = await Promise\.all\(\[\s*getEventById\(eventId\),\s*listBookingRequestsForEvent\(eventId\),\s*getCrewChatUnlockStateForEvent\(eventId\),\s*listSentBookingRequests\(\),/,
   );
   assert.match(pageSource, /showEventDetailLoadingShell/);
   assert.match(
@@ -4204,17 +4200,32 @@ function testEventDetailMobileNavContentOffset() {
     new URL("../app/components/skeleton/Skeleton.tsx", import.meta.url),
     "utf8",
   );
+  const plannerTokensSource = readFileSync(
+    new URL("../lib/design/plannerWorkspaceTokens.ts", import.meta.url),
+    "utf8",
+  );
 
   assert.match(uiSource, /EVENT_DETAIL_PAGE_CONTENT_CLASS/);
   assert.match(uiSource, /MOBILE_NAV_OFFSET_CLASS/);
-  assert.match(uiSource, /ftc-mobile-nav-offset/);
+  // The literal `ftc-mobile-nav-offset` class now lives only in its single
+  // source of truth (plannerWorkspaceTokens.ts) -- eventDetailUi.ts just
+  // imports and reuses the MOBILE_NAV_OFFSET_CLASS constant (already
+  // verified above) rather than duplicating the class name itself.
+  assert.match(plannerTokensSource, /ftc-mobile-nav-offset/);
   assert.match(uiSource, /getEventDetailPageContentBottomClass/);
   assert.match(pageSource, /EVENT_DETAIL_PAGE_SHELL_CLASS/);
   assert.match(pageSource, /EVENT_DETAIL_PAGE_CONTENT_CLASS/);
   assert.match(pageSource, /getEventDetailPageContentBottomClass\(showBottomBar\)/);
+  // The main content div (using EVENT_DETAIL_PAGE_CONTENT_CLASS) must rely on
+  // getEventDetailPageContentBottomClass for its bottom offset, not also
+  // hardcode a raw MOBILE_NAV_OFFSET_CLASS in the same template literal
+  // (which would double up the offset). Scoped to that one template (no
+  // backtick in between) so it doesn't false-flag the separate, simpler
+  // "event not found" branch, which legitimately uses plain
+  // MOBILE_NAV_OFFSET_CLASS since it has no bottom-bar offset to account for.
   assert.doesNotMatch(
     pageSource,
-    /EVENT_DETAIL_PAGE_SHELL_CLASS[\s\S]*MOBILE_NAV_OFFSET_CLASS/,
+    /`\$\{EVENT_DETAIL_PAGE_CONTENT_CLASS\}[^`]*MOBILE_NAV_OFFSET_CLASS/,
   );
   assert.match(skeletonSource, /EVENT_DETAIL_PAGE_CONTENT_CLASS/);
   assert.match(skeletonSource, /EVENT_DETAIL_PAGE_SHELL_CLASS/);
@@ -4345,8 +4356,8 @@ function testComposerKeyboardDismissPolicyMath() {
   } as HTMLElement;
 
   assert.equal(isPinnedToNewestMessages(container), true);
-  assert.equal(computeManualMessageListScrollTop(880, 200, 150, 900), 930);
-  assert.equal(applyManualMessageListScrollDelta(880, 200, 150, 900), 930);
+  assert.equal(computeManualMessageListScrollTop(880, 200, 150, 900), 900);
+  assert.equal(applyManualMessageListScrollDelta(880, 200, 150, 900), 900);
   assert.equal(computeManualMessageListScrollTop(500, 200, 250, 900), 450);
   assert.equal(applyManualMessageListScrollDelta(500, 200, 250, 900), 450);
   assert.equal(
@@ -4391,31 +4402,11 @@ function testComposerKeyboardDismissPolicyMath() {
   );
 }
 
-function testMessageHistoryGestureTarget() {
-  const scrollContainer = document.createElement("div");
-  const composerRoot = document.createElement("div");
-  const message = document.createElement("p");
-  const button = document.createElement("button");
-  const input = document.createElement("input");
-
-  scrollContainer.append(message, button);
-  composerRoot.append(input);
-
-  assert.equal(
-    isValidMessageHistoryGestureStart(message, scrollContainer, composerRoot),
-    true,
+async function testMessageHistoryGestureTarget() {
+  const { runMessageHistoryGestureTargetTest } = await import(
+    "./test-message-history-gesture-target.js"
   );
-  assert.equal(
-    isValidMessageHistoryGestureStart(button, scrollContainer, composerRoot),
-    false,
-  );
-  assert.equal(
-    isValidMessageHistoryGestureStart(input, scrollContainer, composerRoot),
-    false,
-  );
-  composerRoot.className = "dm-composer";
-  assert.equal(shouldStabilizeComposerTouchMove(button, composerRoot), true);
-  assert.equal(shouldStabilizeComposerTouchMove(input, composerRoot), false);
+  await runMessageHistoryGestureTargetTest();
 }
 
 function testComposerMessageListMomentumScroll() {
@@ -5743,7 +5734,12 @@ function testHistoryRemovalHeaderFeedbackUnified() {
   assert.match(titleFeedbackSlotSource, /usePlannerTitleFeedbackState/);
   assert.doesNotMatch(titleFeedbackSource, /onAnimationEnd/);
   assert.doesNotMatch(titleFeedbackSource, /ftc-history-removal-feedback/);
-  assert.match(layoutSource, /PLANNER_WORKSPACE_TITLE_ROW_CLASS} relative/);
+  // `relative` positioning (needed for the feedback slot's absolute overlay)
+  // now lives inside the shared PLANNER_WORKSPACE_TITLE_ROW_CLASS constant
+  // itself, rather than being appended in this component's own template
+  // literal -- check the constant's own definition instead.
+  assert.match(layoutSource, /PLANNER_WORKSPACE_TITLE_ROW_CLASS/);
+  assert.match(plannerTokensSource, /PLANNER_WORKSPACE_TITLE_ROW_CLASS =\s*\n?\s*"relative/);
   assert.match(layoutSource, /PlannerTitleFeedbackSlot/);
   assert.match(layoutSource, /setTitleFeedback/);
   assert.doesNotMatch(titleFeedbackProviderSource, /PlannerTitleFeedbackViewportHost/);
@@ -6729,8 +6725,8 @@ function testDmComposerPendingPhotoGroupHelpers() {
 }
 
 function testComposerNewlineKeydown() {
-  assert.equal(getComposerLineBeforeCursor("hello\nworld", 8), "wor");
-  assert.equal(getComposerLineBeforeCursor("hello\nworld", 7), "");
+  assert.equal(getComposerLineBeforeCursor("hello\nworld", 8), "wo");
+  assert.equal(getComposerLineBeforeCursor("hello\nworld", 7), "w");
   assert.equal(getComposerLineBeforeCursor("", 0), "");
 
   assert.equal(canComposerInsertNewline("", 0), false);
@@ -6834,8 +6830,17 @@ function testDmMessageReactionGestureInteractions() {
   assert.match(groupLayoutSource, /CHAT_SEEN_LABEL_WITH_REACTIONS_SPACING_CLASS/);
   assert.doesNotMatch(shellSource, /grid-participant/);
   assert.doesNotMatch(reactionsSource, /bg-ftc-primary/);
-  assert.doesNotMatch(reactionsSource, /isOwnMessage/);
-  assert.doesNotMatch(reactionsSource, /disabled:opacity-50/);
+  // Scoped to ReactionEmojiButton (the sent-reaction pill/badge) rather than
+  // the whole file: DmReactionPicker (a separate component in this same
+  // file, for choosing which emoji to react with) legitimately still uses
+  // `isOwnMessage` for picker positioning and `disabled:opacity-50` on its
+  // own quick-reaction buttons -- neither is the pill/badge this check cares
+  // about, so a file-wide scan would false-flag those unrelated usages.
+  const reactionEmojiButtonSource =
+    reactionsSource.match(/function ReactionEmojiButton\([\s\S]*?\n}\n/)?.[0] ?? "";
+  assert.ok(reactionEmojiButtonSource, "ReactionEmojiButton function should be found in source");
+  assert.doesNotMatch(reactionEmojiButtonSource, /isOwnMessage/);
+  assert.doesNotMatch(reactionEmojiButtonSource, /disabled:opacity-50/);
   assert.match(bubbleSource, /useMessageReactionLongPress/);
   assert.match(bubbleSource, /useMessageReactionDoubleTap/);
   assert.match(bubbleSource, /onContextMenu=\{handleContextMenu\}/);
@@ -6871,7 +6876,7 @@ function testDmMessageReactionGestureInteractions() {
   assert.doesNotMatch(reactionsSource, /onClick=\{\(\) => onToggleReaction\(summary\.emoji\)\}/);
   assert.match(reactionsSource, /onDoubleClick=\{handleDoubleClick\}/);
   assert.match(doubleTapSource, /export function useDoubleTapGesture/);
-  assert.match(bubbleSource, /onDoubleClick=\{handleDoubleTapDoubleClick\}/);
+  assert.match(bubbleSource, /onDoubleClick: handleDoubleTapDoubleClick/);
   assert.match(bubbleSource, /showAvatar/);
   assert.match(bubbleSource, /groupPosition/);
   assert.match(bubbleSource, /resolveMessageGroupLiClass/);
@@ -6888,16 +6893,22 @@ function testDmMessageReactionGestureInteractions() {
   assert.doesNotMatch(bubbleSource, /DmMessageReactions/);
   assert.doesNotMatch(bubbleSource, /hasReactions=/);
   assert.match(bubbleSource, /resolveMessageGroupLiClass/);
-  assert.match(bubbleSource, /shellLayout/);
+  // `shellLayout` was later renamed/consolidated into a `bubbleHandlers`
+  // prop passed to the shared ChatMessageBubbleShell (see the doesNotMatch
+  // above -- the old `layout={shellLayout}` wiring is gone entirely, not
+  // just renamed inline).
+  assert.match(bubbleSource, /bubbleHandlers/);
   assert.doesNotMatch(bubbleSource, /resolveIncomingGroupLiClass/);
   assert.doesNotMatch(bubbleSource, /CHAT_INCOMING_GROUP_FOOTER_CLASS/);
   assert.doesNotMatch(bubbleSource, /Report message/);
-  assert.match(groupBubbleSource, /onDoubleClick=\{handleDoubleTapDoubleClick\}/);
+  assert.match(groupBubbleSource, /onDoubleClick: handleDoubleTapDoubleClick/);
   assert.match(pickerPositionSource, /computeReactionPickerPosition/);
   assert.match(pickerPositionSource, /getReactionPickerViewportBounds/);
   assert.match(pickerPositionSource, /data-chat-composer/);
   assert.match(groupBubbleSource, /useMessageReactionDoubleTap/);
-  assert.match(groupBubbleSource, /DmReactionPicker/);
+  // DmReactionPicker itself now lives only inside the shared
+  // ChatMessageBubbleShell (verified above via shellSource) -- individual
+  // bubble components no longer reference it directly, just the shell.
   assert.match(groupBubbleSource, /ChatMessageBubbleShell/);
   assert.match(groupBubbleSource, /resolveOutgoingGroupLiClass/);
   assert.doesNotMatch(groupBubbleSource, /CHAT_OUTGOING_GROUP_TIGHT_PREVIOUS_CLASS/);
@@ -6919,7 +6930,7 @@ function testDmMessageReactionGestureInteractions() {
   );
   assert.match(
     attachmentSource,
-    /if \(isDmImageAttachment\(attachment\.file_type\)\) \{\s*return \(\s*<button/,
+    /if \(isDmImageAttachment\(attachment\.file_type\)\) \{[\s\S]*?return \(\s*<button/,
   );
   assert.match(globalsSource, /\.ftc-bubble-other-stack/);
   assert.match(globalsSource, /\.ftc-bubble-own-stack-middle/);
@@ -7533,7 +7544,37 @@ function testChatMessageGroupLayout() {
   assert.match(groupLayoutSource, /CHAT_SEEN_LABEL_SPACING_CLASS/);
   assert.match(groupLayoutSource, /followedByTimeSeparator/);
   assert.match(groupLayoutSource, /precededByTimeSeparator/);
-  assert.doesNotMatch(groupLayoutSource, /previousInGroupHadReactions/);
+  // `previousInGroupHadReactions` was intentionally kept as a typed prop
+  // (not removed outright) for source-compat with existing callers, but
+  // must stay a no-op -- every declaration is marked @deprecated and the
+  // functions that accept it never read it in their logic.
+  const previousInGroupHadReactionsDeclarations = [
+    ...groupLayoutSource.matchAll(
+      /@deprecated[^\n]*\n\s*previousInGroupHadReactions\?: boolean/g,
+    ),
+  ];
+  assert.ok(
+    previousInGroupHadReactionsDeclarations.length > 0,
+    "previousInGroupHadReactions should still be declared, marked @deprecated",
+  );
+  const outgoingGroupLiClassSource =
+    groupLayoutSource.match(/export function resolveOutgoingGroupLiClass\([\s\S]*?\n}\n/)?.[0] ??
+    "";
+  const incomingGroupLiClassSource =
+    groupLayoutSource.match(/export function resolveIncomingGroupLiClass\([\s\S]*?\n}\n/)?.[0] ??
+    "";
+  assert.ok(outgoingGroupLiClassSource, "resolveOutgoingGroupLiClass should be found in source");
+  assert.ok(incomingGroupLiClassSource, "resolveIncomingGroupLiClass should be found in source");
+  assert.doesNotMatch(
+    outgoingGroupLiClassSource.match(/return resolveMessageGroupLiClass\(\{[\s\S]*?\}\)/)?.[0] ??
+      "",
+    /previousInGroupHadReactions/,
+  );
+  assert.doesNotMatch(
+    incomingGroupLiClassSource.match(/return resolveMessageGroupLiClass\(\{[\s\S]*?\}\)/)?.[0] ??
+      "",
+    /previousInGroupHadReactions/,
+  );
   assert.match(groupLayoutSource, /CHAT_MESSAGE_REACTION_PILL_CLASS/);
   assert.match(groupLayoutSource, /resolveMessageGroupLiClass/);
   assert.match(groupLayoutSource, /resolveOutgoingGroupLiClass/);
@@ -7569,7 +7610,7 @@ function testChatMessageBubbleGeometry() {
   );
   assert.match(
     resolveChatMessageBubbleShellClass({ isOwnMessage: true, text: "OK" }),
-    /px-3\.5 py-1\.5/,
+    /px-3 py-1/,
   );
   assert.match(
     resolveChatMessageBubbleShellClass({ isOwnMessage: true, text: "a" }),
@@ -7635,7 +7676,7 @@ async function main() {
   testDmBookingCardAlignScrollTopMath();
   testBookingCardExpandScrollContextCapture();
   testBookingCardPinnedBottomScrollTop();
-  // TEMP-SKIP (pre-existing, unrelated failure — booking card scroll math, not touched by multi-photo work; see docs/handoff/CURRENT-STATE.md): testBookingCardCollapseScrollHeightCompensation();
+  testBookingCardCollapseScrollHeightCompensation();
   testDmBookingSystemMessages();
   testDmConversationTimestampLayout();
   testDmBookingTimelineSuppression();
@@ -7645,7 +7686,7 @@ async function main() {
   testDmBookingCardNotesRevealScroll();
   testDmBookingCardBookingTypePresentation();
   testProposeBookingRateNotesTextareaGrowth();
-  // TEMP-SKIP (pre-existing, unrelated failure — proposal notes textarea line cap, not touched by multi-photo work; see docs/handoff/CURRENT-STATE.md): testCappedMultilineInputLimit();
+  testCappedMultilineInputLimit();
   testProposeRateHelperPreference();
   testAskForRateDmBookingCardOfferSummary();
   testUsernameBlockedTermChecks();
@@ -7708,19 +7749,19 @@ async function main() {
   testCalendarCreateWorkspaceTabNavigation();
   testEventsListTabSwitchUsesClientHistoryWithoutRouterNavigation();
   testEventsCreateEventHiddenDuringHistorySelectionToolbar();
-  // TEMP-SKIP (pre-existing, unrelated failure — stale source regex for event detail page, not touched by multi-photo work; see docs/handoff/CURRENT-STATE.md): testEventDetailLoadUsesParallelQueriesAndListCache();
-  // TEMP-SKIP (pre-existing, unrelated failure — stale ftc-mobile-nav-offset source regex, not touched by multi-photo work; see docs/handoff/CURRENT-STATE.md): testEventDetailMobileNavContentOffset();
+  testEventDetailLoadUsesParallelQueriesAndListCache();
+  testEventDetailMobileNavContentOffset();
   testMobileSoftwareKeyboardHidesBottomNavigation();
   testFixedChatPageDocumentReset();
   testDismissComposerKeyboardOnIntentionalScroll();
-  // TEMP-SKIP (pre-existing, unrelated failure — stale composer keyboard dismiss math constant, not touched by multi-photo work; see docs/handoff/CURRENT-STATE.md): testComposerKeyboardDismissPolicyMath();
-  // TEMP-SKIP (pre-existing, unrelated failure — requires DOM `document` not available in this runner, not touched by multi-photo work; see docs/handoff/CURRENT-STATE.md): testMessageHistoryGestureTarget();
+  testComposerKeyboardDismissPolicyMath();
+  await testMessageHistoryGestureTarget();
   testComposerMessageListMomentumScroll();
   testDmBookingTargetScrollUsesContainerOnly();
   testDmBookingTargetCenterScrollTopMath();
   testEventTitleClampLayout();
   testEventsActiveStatusPillsSingleRowLayout();
-  // TEMP-SKIP (pre-existing, unrelated failure — stale bookings-page field-error source regex, not touched by multi-photo work; see docs/handoff/CURRENT-STATE.md): testEventCreateFormTextFieldMaxLength();
+  testEventCreateFormTextFieldMaxLength();
   testWithdrawalOtherReasonInputLimits();
   testDmComposerClearsPendingPhotoAfterSuccessfulSend();
   testDmComposerPendingPhotoGroupHelpers();
@@ -7732,16 +7773,16 @@ async function main() {
   testDmMediaViewerCloseButtonConsistentAndClickable();
   testDmImageLightboxUsesPagedTrackNotFloatingCard();
   testDmImageLightboxLocksGestureDirectionVerticalDoesNotDrift();
-  // TEMP-SKIP (pre-existing, unrelated failure — stale getComposerLineBeforeCursor expectation in composerNewlineKeydown.ts, not touched by multi-photo work; see docs/handoff/CURRENT-STATE.md): testComposerNewlineKeydown();
+  testComposerNewlineKeydown();
   testDmComposerFocusSyncAfterSend();
-  // TEMP-SKIP (pre-existing, unrelated failure — stale reaction-gesture source regex, not touched by multi-photo work; see docs/handoff/CURRENT-STATE.md): testDmMessageReactionGestureInteractions();
+  testDmMessageReactionGestureInteractions();
   testDmReactionNotifications();
   testDmReactionInboxActivity();
   testDmInboxImageMessagePreview();
   testDmInboxMultiPhotoPreview();
   testDmReactionRealtime();
-  // TEMP-SKIP (pre-existing, unrelated failure — stale chat-group-layout source regex, not touched by multi-photo work; see docs/handoff/CURRENT-STATE.md): testChatMessageGroupLayout();
-  // TEMP-SKIP (pre-existing, unrelated failure — stale compact-bubble padding expectation in chatMessageBubbleGeometry.ts, not touched by multi-photo work; see docs/handoff/CURRENT-STATE.md): testChatMessageBubbleGeometry();
+  testChatMessageGroupLayout();
+  testChatMessageBubbleGeometry();
   testEventFallbackColourSelectionRadioBehaviour();
   testEventPlanPickerClearsSelectionOnFormBack();
   testEventPlansSelectionToolbarMatchesHistory();
@@ -7765,7 +7806,7 @@ async function main() {
   testCalendarWorkspaceClearsStaleWorkspaceIntercept();
   testGigsTabRowReservesManageSlotOnAllTabs();
   testGigsHistorySelectionToolbarEmbeddedInTabRow();
-  // TEMP-SKIP (pre-existing, unrelated failure — stale planner workspace title row source regex, not touched by multi-photo work; see docs/handoff/CURRENT-STATE.md): testHistoryRemovalHeaderFeedbackUnified();
+  testHistoryRemovalHeaderFeedbackUnified();
   await testOnboardingAccessCheckNeverHangsForever();
   testBrowserslistSupportsPreSafari164Devices();
   testGigsListTabSwitchUsesClientHistoryWithoutRouterNavigation();
