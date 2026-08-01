@@ -155,7 +155,7 @@ export function DjInviteSelectionRow({
       >
         <InviteDjAvatar name={displayName} avatarUrl={dj.avatar_url} selected={selected} />
         <div className="min-w-0 flex-1 text-left">
-          <p className="text-sm font-bold leading-snug text-ftc-text">{displayName}</p>
+          <p className="truncate text-sm font-bold leading-snug text-ftc-text">{displayName}</p>
           {dj.genre?.trim() ? (
             <p
               className="mt-0.5 truncate text-xs leading-snug text-ftc-text-muted"

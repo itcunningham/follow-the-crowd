@@ -149,7 +149,6 @@ import {
 import {
   DM_GALLERY_OVERVIEW_MIN_IMAGES,
   DM_MAX_VISIBLE_GRID_IMAGES,
-  resolveImageGridCellClass,
   resolveVisibleGridImages,
 } from "../lib/dm/dmImageLayout";
 import { formatDmInboxMessagePreview, pickDmInboxPreviewMessage } from "../lib/dm/messagePreview";
@@ -250,7 +249,7 @@ import { clearEventsListTabCache } from "../lib/events/eventsListTabCache";
 import { buildPlannerCreateEventFromPlansHref, buildPlannerCreateEventHref } from "../lib/calendar";
 import { resolveGigsCalendarBookingNavigation, resolvePlannerCalendarItemEventId, resolvePlannerCalendarItemHref } from "../lib/bookings/gigsCalendarNavigation";
 import { hasUnsavedProfileEdits, createProfileEditBaseline } from "../lib/user/profileEditDirtyState";
-import { getUsernameFormatError, normalizeSoundCloudInput, resolveProfileIdentityPresentation, addEventBrandTag, parseStoredEventBrands, serializeEventBrands, MAX_PROMOTER_EVENT_BRANDS, MAX_EVENT_BRAND_NAME_LENGTH, PROFILE_GENRE_OPTIONS } from "../lib/user/profileFormUtils";
+import { getUsernameFormatError, normalizeSoundCloudInput, resolveProfileIdentityPresentation, addEventBrandTag, parseStoredEventBrands, serializeEventBrands, MAX_PROMOTER_EVENT_BRANDS, MAX_EVENT_BRAND_NAME_LENGTH, PROFILE_GENRE_OPTIONS, applyDisplayNameInputLimit, MAX_PROFILE_DISPLAY_NAME_LENGTH, applyBioInputLimit, MAX_PROFILE_BIO_LENGTH, MAX_PROFILE_BIO_LINES } from "../lib/user/profileFormUtils";
 import { mapEventInputToRow, type EventInput } from "../lib/events";
 import { markEventBrandColumnMissing, resetEventBrandColumnMissingFlag } from "../lib/events/eventQueryFields";
 import { PROPOSE_RATE_HELPER_MAX_OPENS } from "../lib/booking/proposeRateHelperPreference";
@@ -2638,6 +2637,241 @@ function testEventBrandsParsingAndSerialization() {
     parseStoredEventBrands(serializeEventBrands([tooLong, "Synergy"])),
     [tooLong, "Synergy"],
   );
+}
+
+/**
+ * Display Name: 30-character cap, enforced at typing time (not just on
+ * save) via the same shared `applyTextInputLimit` primitive every other
+ * capped profile field (bio, event brand names) already uses.
+ */
+function testDisplayNameInputLimit() {
+  assert.equal(MAX_PROFILE_DISPLAY_NAME_LENGTH, 30);
+
+  // Typing within the limit: unchanged.
+  assert.equal(applyDisplayNameInputLimit("", "Jane Doe"), "Jane Doe");
+
+  // Typing (or pasting) past the limit while previously within it: capped
+  // to exactly 30, not rejected outright -- matches applyBioInputLimit /
+  // applyEventBrandNameInputLimit's existing "truncate on grow" behaviour.
+  const thirtyOne = "a".repeat(31);
+  const capped = applyDisplayNameInputLimit("", thirtyOne);
+  assert.equal(capped, "a".repeat(30));
+  assert.equal(capped?.length, 30);
+
+  // A pre-existing value already over the limit (legacy data predating this
+  // cap) can still shrink...
+  const legacyOverLimit = "b".repeat(35);
+  assert.equal(
+    applyDisplayNameInputLimit(legacyOverLimit, legacyOverLimit.slice(0, 34)),
+    legacyOverLimit.slice(0, 34),
+  );
+  // ...but cannot grow further while still over the limit.
+  assert.equal(applyDisplayNameInputLimit(legacyOverLimit, legacyOverLimit + "c"), null);
+}
+
+/**
+ * Bio: unchanged 150-character limit, now ALSO capped by explicit newline
+ * count (`MAX_PROFILE_BIO_LINES`) so a handful of blank lines (1 char each)
+ * can't balloon the field before the fixed-height/scroll CSS gets a say.
+ * Root-cause regression coverage for "multiple consecutive empty lines
+ * should not create a giant bio field".
+ */
+function testBioInputLimit() {
+  assert.equal(MAX_PROFILE_BIO_LENGTH, 150);
+  assert.equal(MAX_PROFILE_BIO_LINES, 3);
+
+  // Plain single-line growth within the character limit: unchanged.
+  assert.equal(applyBioInputLimit("", "DJ based in Melbourne"), "DJ based in Melbourne");
+
+  // A normal multi-line bio at exactly the line cap is preserved in full.
+  const threeLineBio = "Line one\nLine two\nLine three";
+  assert.equal(countExplicitLines(threeLineBio), 3);
+  assert.equal(applyBioInputLimit("", threeLineBio), threeLineBio);
+
+  // Typing a 4th newline is truncated back to 3 explicit lines -- this is
+  // the exact "excessive blank lines" case: five consecutive blank lines
+  // must not sail through just because they're cheap on character count.
+  const fiveBlankLines = "\n\n\n\n";
+  assert.ok(fiveBlankLines.length <= MAX_PROFILE_BIO_LENGTH, "sanity: well under the char cap");
+  const limitedBlankLines = applyBioInputLimit("", fiveBlankLines);
+  assert.ok(limitedBlankLines !== null);
+  assert.ok(
+    countExplicitLines(limitedBlankLines!) <= MAX_PROFILE_BIO_LINES,
+    `expected at most ${MAX_PROFILE_BIO_LINES} lines, got ${countExplicitLines(limitedBlankLines!)}`,
+  );
+
+  // Enter is blocked once already at the line cap -- the textarea-level
+  // guard `shouldBlockMultilineEnter` used by EditProfileForm's bio keydown
+  // handler (mirrors the existing booking rate-notes field exactly).
+  assert.equal(shouldBlockMultilineEnter(threeLineBio, MAX_PROFILE_BIO_LINES), true);
+  assert.equal(shouldBlockMultilineEnter("Line one\nLine two", MAX_PROFILE_BIO_LINES), false);
+
+  // The 150-character cap itself is untouched -- a single unbroken long
+  // line (no newlines to trip the line cap) is still capped by length.
+  const longSingleLine = "x".repeat(160);
+  const cappedByLength = applyBioInputLimit("", longSingleLine);
+  assert.equal(cappedByLength?.length, MAX_PROFILE_BIO_LENGTH);
+}
+
+/**
+ * Root-cause regression test for "the Display Name and Bio fields need
+ * clearer limits/UX" -- verifies the actual wiring in EditProfileForm.tsx
+ * and ProfileFormField.tsx (not just the pure-function primitives above):
+ * the display name field enforces its cap via both the shared limiter AND
+ * a native `maxLength` backstop, the save path also caps it server-side
+ * (not just relying on the client), and the bio textarea uses the shared
+ * fixed-height/scroll CSS (capped visible rows, no continuous growth) with
+ * the same composition-safe IME handling the booking rate-notes field
+ * already established, rather than a bespoke reimplementation.
+ */
+function testProfileDisplayNameAndBioFieldUx() {
+  const formSource = readFileSync(
+    new URL("../app/components/profile/EditProfileForm.tsx", import.meta.url),
+    "utf8",
+  );
+  const fieldSource = readFileSync(
+    new URL("../app/components/profile/ProfileFormField.tsx", import.meta.url),
+    "utf8",
+  );
+  const currentUserSource = readFileSync(
+    new URL("../lib/user/currentUser.ts", import.meta.url),
+    "utf8",
+  );
+  const globalsSource = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
+
+  // Display name: typing-time cap (not just a save-time check), native
+  // maxLength backstop, and a visible character counter (same pattern as
+  // the existing bio/event-brand counters).
+  assert.match(formSource, /onChange=\{handleDisplayNameChange\}/);
+  assert.match(formSource, /applyDisplayNameInputLimit\(form\.display_name, nextDisplayName\)/);
+  assert.match(formSource, /maxLength=\{MAX_PROFILE_DISPLAY_NAME_LENGTH\}/);
+  assert.match(
+    formSource,
+    /\{form\.display_name\.length\}\/\{MAX_PROFILE_DISPLAY_NAME_LENGTH\}/,
+  );
+
+  // Submit-time validation covers length too, not just "required".
+  assert.match(
+    formSource,
+    /form\.display_name\.length > MAX_PROFILE_DISPLAY_NAME_LENGTH/,
+  );
+
+  // Server-side (save-path) enforcement: saveUserProfile itself caps the
+  // value it persists, independent of whatever the client already did --
+  // a defence-in-depth guarantee for any other future caller.
+  assert.match(
+    currentUserSource,
+    /display_name: input\.display_name\.trim\(\)\.slice\(0, MAX_PROFILE_DISPLAY_NAME_LENGTH\)/,
+  );
+
+  // Bio: reuses the shared fixed-height/internal-scroll textarea classes
+  // (same ones the booking rate-notes field uses) instead of a bespoke
+  // fixed-pixel-height class -- the textarea can no longer grow past 3
+  // visible rows, and overflow scrolls internally rather than expanding.
+  assert.match(
+    formSource,
+    /textareaClassName="ftc-fixed-scroll-textarea ftc-fixed-scroll-textarea-3"/,
+  );
+  assert.ok(
+    !formSource.includes("ftc-profile-bio-textarea"),
+    "bio textarea should use the shared fixed-scroll classes, not a bespoke one-off class",
+  );
+  assert.ok(
+    !globalsSource.includes(".ftc-profile-bio-textarea"),
+    "the now-unused bespoke bio textarea class should be removed, not left as dead CSS",
+  );
+
+  // Line-cap enforcement wired through: keydown blocks a 4th newline,
+  // composition-start/end handle IME safely (mirrors ProposeBookingRateSheet
+  // exactly, not a parallel reimplementation).
+  assert.match(formSource, /textareaOnKeyDown=\{handleBioKeyDown\}/);
+  assert.match(formSource, /shouldBlockMultilineEnter\(form\.bio, MAX_PROFILE_BIO_LINES\)/);
+  assert.match(formSource, /textareaOnCompositionStart=\{\(\) => \{/);
+  assert.match(formSource, /textareaOnCompositionEnd=\{handleBioCompositionEnd\}/);
+  assert.match(formSource, /isComposingBioRef/);
+
+  // ProfileFormField grew the same textarea prop surface BookingFormField
+  // already established (reused vocabulary, not a divergent one-off API).
+  assert.match(fieldSource, /textareaRows\s*=\s*4/);
+  assert.match(fieldSource, /textareaOnKeyDown\?:/);
+  assert.match(fieldSource, /textareaOnCompositionStart\?:/);
+  assert.match(fieldSource, /textareaOnCompositionEnd\?:/);
+  assert.match(fieldSource, /maxLength\?:\s*number/);
+
+  // The shared fixed-scroll CSS itself still guarantees a hard cap + internal
+  // scroll (not just `resize:none`, which alone wouldn't stop programmatic/
+  // content-driven growth).
+  const fixedScrollRule = globalsSource.match(/\.ftc-fixed-scroll-textarea \{[\s\S]*?\n\}/);
+  assert.ok(fixedScrollRule, ".ftc-fixed-scroll-textarea rule not found in globals.css");
+  assert.match(fixedScrollRule[0], /resize: none/);
+  assert.match(fixedScrollRule[0], /overflow-y: auto/);
+  const threeRowRule = globalsSource.match(/\.ftc-fixed-scroll-textarea-3 \{[\s\S]*?\n\}/);
+  assert.ok(threeRowRule, ".ftc-fixed-scroll-textarea-3 rule not found in globals.css");
+  assert.match(threeRowRule[0], /height: calc\(3lh/);
+  assert.match(threeRowRule[0], /max-height: calc\(3lh/);
+}
+
+/**
+ * Long display names (now capped at 30 characters going forward, but
+ * legacy profiles predating the cap could still exceed it) must not break
+ * layouts on the surfaces the task calls out by name: profile heading, DM
+ * inbox/chat header, event lineup cards, and discover/search cards.
+ */
+function testLongDisplayNameLayoutSafety() {
+  const profileHeroSource = readFileSync(
+    new URL("../app/components/profile/ProfileHero.tsx", import.meta.url),
+    "utf8",
+  );
+  const inboxRowSource = readFileSync(
+    new URL("../app/components/dm/MessagesInboxRow.tsx", import.meta.url),
+    "utf8",
+  );
+  const chatHeaderSource = readFileSync(
+    new URL("../app/components/dm/DmConversationHeader.tsx", import.meta.url),
+    "utf8",
+  );
+  const lineupCardSource = readFileSync(
+    new URL("../app/components/event-detail/EventLineupBookingCard.tsx", import.meta.url),
+    "utf8",
+  );
+  const djInviteRowSource = readFileSync(
+    new URL("../app/components/booking/SendBookingRequestsPanel.tsx", import.meta.url),
+    "utf8",
+  );
+  const discoverFeaturedSource = readFileSync(
+    new URL("../app/components/discover/DiscoverFeaturedProfileCard.tsx", import.meta.url),
+    "utf8",
+  );
+  const discoverListSource = readFileSync(
+    new URL("../app/components/discover/DiscoverProfileListRow.tsx", import.meta.url),
+    "utf8",
+  );
+
+  // Profile heading: wraps instead of truncating (it's the page's own H1,
+  // not a card in a list), but must never force horizontal overflow -- the
+  // unbroken-word-safe `overflow-wrap: anywhere` plus `break-words`.
+  assert.match(profileHeroSource, /break-words[\s\S]{0,80}\[overflow-wrap:anywhere\]/);
+
+  // DM inbox row and chat header: single-line truncate inside a min-w-0
+  // flex context (a chat list/header is exactly where a long name could
+  // previously push the timestamp/actions off-screen).
+  assert.match(inboxRowSource, /min-w-0 truncate/);
+  assert.match(chatHeaderSource, /truncate text-base font-semibold text-ftc-text/);
+
+  // Event lineup card: the DJ name link now truncates (previously had no
+  // overflow protection at all -- confirmed by reproducing the gap before
+  // fixing it).
+  assert.match(lineupCardSource, /min-w-0 truncate text-base font-bold leading-snug/);
+
+  // Shared DJ invite row (used by both Events and Event Plans DJ selection,
+  // per the earlier DjInviteSelectionRow consolidation) -- the name itself
+  // now truncates, not just its genre subtitle.
+  assert.match(djInviteRowSource, /<p className="truncate text-sm font-bold leading-snug text-ftc-text">\{displayName\}<\/p>/);
+
+  // Discover: the featured card's name heading now truncates (previously
+  // had no overflow protection); the list row was already safe.
+  assert.match(discoverFeaturedSource, /truncate text-lg font-bold leading-tight/);
+  assert.match(discoverListSource, /truncate text-base font-bold text-ftc-text/);
 }
 
 function testAddEventBrandTag() {
@@ -5989,22 +6223,6 @@ function testDmMultiPhotoSend() {
 }
 
 function testDmImageGridLayout() {
-  // 2 and 4 images: every cell is a plain equal square (2-col/1-row, 2-col/2-row).
-  assert.equal(resolveImageGridCellClass(2, 0), "aspect-square");
-  assert.equal(resolveImageGridCellClass(2, 1), "aspect-square");
-  assert.equal(resolveImageGridCellClass(4, 0), "aspect-square");
-  assert.equal(resolveImageGridCellClass(4, 3), "aspect-square");
-
-  // 3 images: standard large-top/two-bottom — only the first cell spans
-  // both columns; the other two stay equal squares.
-  assert.equal(resolveImageGridCellClass(3, 0), "col-span-2 aspect-[2/1]");
-  assert.equal(resolveImageGridCellClass(3, 1), "aspect-square");
-  assert.equal(resolveImageGridCellClass(3, 2), "aspect-square");
-
-  // 5+ images: same 2x2 shape as exactly 4 (visible tiles are capped to 4
-  // upstream by resolveVisibleGridImages) — never the 3-image special case.
-  assert.equal(resolveImageGridCellClass(7, 0), "aspect-square");
-
   // Visible-tile capping + hidden count for the "+N" overlay.
   assert.deepEqual(resolveVisibleGridImages([1, 2]), { visible: [1, 2], hiddenCount: 0 });
   assert.deepEqual(resolveVisibleGridImages([1, 2, 3, 4]), {
@@ -6020,6 +6238,84 @@ function testDmImageGridLayout() {
     hiddenCount: 3,
   });
   assert.equal(DM_MAX_VISIBLE_GRID_IMAGES, 4);
+}
+
+/**
+ * Regression coverage for the portrait-photo-cropped-in-DM bug: the
+ * multi-image grid used to force every tile into a fixed `aspect-square` (or
+ * `aspect-[2/1]` for the first tile of a 3-image message) box with
+ * `object-fit: cover`, which crops any photo whose real shape doesn't match
+ * that box — most visibly a portrait camera photo squeezed into a square or
+ * wide tile. Confirmed live against real uploaded 400x600 portrait images:
+ * they rendered as 142x142 cropped squares before this fix.
+ */
+function testDmImageGridNoCropping() {
+  const groupSource = readFileSync(
+    new URL("../app/components/dm/DmMessageAttachmentGroup.tsx", import.meta.url),
+    "utf8",
+  );
+  const layoutSource = readFileSync(
+    new URL("../lib/dm/dmImageLayout.ts", import.meta.url),
+    "utf8",
+  );
+
+  // No forced-crop box class and no object-fit: cover anywhere in the grid.
+  assert.doesNotMatch(groupSource, /aspect-square/);
+  assert.doesNotMatch(groupSource, /aspect-\[2\/1\]/);
+  assert.doesNotMatch(groupSource, /object-cover/);
+  assert.doesNotMatch(layoutSource, /resolveImageGridCellClass/);
+
+  // Each tile is capped by max-width/max-height only (never a fixed
+  // width+height pair, which is what makes the browser preserve the image's
+  // own intrinsic ratio instead of stretching or cropping it), and reuses
+  // the same known-aspect-ratio cache the single-image bubble already uses
+  // to avoid layout jump on a second render.
+  assert.match(groupSource, /DM_IMAGE_GRID_CELL_MAX_HEIGHT_CLASS/);
+  assert.match(groupSource, /DM_IMAGE_GRID_CELL_MAX_WIDTH_CLASS/);
+  assert.match(groupSource, /getKnownDmImageAspectRatio\(attachment\.id\)/);
+  assert.match(groupSource, /recordDmImageAspectRatio\(attachment\.id, image\.naturalWidth, image\.naturalHeight\)/);
+  assert.match(layoutSource, /max-w-\[calc\(50%-0\.125rem\)\]/);
+  assert.match(layoutSource, /max-h-40/);
+
+  // Tiles wrap in a flex layout (not a row-locking CSS grid, which would
+  // force mismatched-ratio neighbours to share a row height) and are never
+  // stretched to fill their box (no h-full/w-full on the image itself).
+  assert.match(groupSource, /flex flex-wrap items-start/);
+  assert.doesNotMatch(groupSource, /h-full w-full/);
+
+  // The known-aspect-ratio behavioural math itself: given real intrinsic
+  // dimensions and the shared max caps, the browser's own replaced-element
+  // sizing algorithm (max-width/max-height with auto width/height, no
+  // object-fit) always preserves the source ratio exactly, never crops,
+  // never stretches. Model that algorithm here for portrait, landscape,
+  // square, and extreme cases, mirroring what max-h-40 /
+  // max-w-[calc(50%-0.125rem)] resolve to against a 288px-wide grid.
+  const cellMaxWidthPx = 143; // ~calc(50% - 0.125rem) of the 18rem/288px grid
+  const cellMaxHeightPx = 160; // max-h-40
+
+  function fitWithinBox(naturalWidth: number, naturalHeight: number) {
+    const widthScale = cellMaxWidthPx / naturalWidth;
+    const heightScale = cellMaxHeightPx / naturalHeight;
+    const scale = Math.min(widthScale, heightScale, 1);
+    return { width: naturalWidth * scale, height: naturalHeight * scale };
+  }
+
+  function assertRatioPreserved(naturalWidth: number, naturalHeight: number) {
+    const { width, height } = fitWithinBox(naturalWidth, naturalHeight);
+    const naturalRatio = naturalWidth / naturalHeight;
+    const renderedRatio = width / height;
+    assert.ok(
+      Math.abs(naturalRatio - renderedRatio) < 0.001,
+      `expected ${naturalWidth}x${naturalHeight} to keep its ratio, got ${width}x${height}`,
+    );
+    assert.ok(width <= cellMaxWidthPx + 0.01 && height <= cellMaxHeightPx + 0.01);
+  }
+
+  assertRatioPreserved(400, 600); // portrait camera photo
+  assertRatioPreserved(600, 400); // landscape camera photo
+  assertRatioPreserved(500, 500); // square
+  assertRatioPreserved(200, 2000); // unusually tall
+  assertRatioPreserved(2000, 200); // unusually wide
 }
 
 function testDmImageGroupFullViewerAndOwnershipAlignment() {
@@ -7424,6 +7720,7 @@ async function main() {
   testDmComposerPendingPhotoGroupHelpers();
   testDmMultiPhotoSend();
   testDmImageGridLayout();
+  testDmImageGridNoCropping();
   testDmImageGroupFullViewerAndOwnershipAlignment();
   testDmImageGalleryOverviewForLargeGroups();
   testDmMediaViewerCloseButtonConsistentAndClickable();
@@ -7475,6 +7772,10 @@ async function main() {
   testWorkspaceActiveHrefIgnoresStaleOverrides();
   testProfileIdentityPresentationHierarchy();
   testEventBrandsParsingAndSerialization();
+  testDisplayNameInputLimit();
+  testBioInputLimit();
+  testProfileDisplayNameAndBioFieldUx();
+  testLongDisplayNameLayoutSafety();
   testAddEventBrandTag();
   testEventBrandChipOverflowSafe();
   testGenreSheetHeightDoesNotTrackFilteredContent();

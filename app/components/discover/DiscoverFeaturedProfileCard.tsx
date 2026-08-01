@@ -50,7 +50,7 @@ export default function DiscoverFeaturedProfileCard({
         </div>
 
         <div className="p-4">
-          <h3 className="text-lg font-bold leading-tight text-ftc-text">{displayName}</h3>
+          <h3 className="truncate text-lg font-bold leading-tight text-ftc-text">{displayName}</h3>
           <div className="mt-2 space-y-1.5">
             {locationLabel ? (
               <p className="flex items-center gap-2 text-sm text-ftc-text-secondary">

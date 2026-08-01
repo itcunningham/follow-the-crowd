@@ -1,5 +1,7 @@
 "use client";
 
+import type { CompositionEvent, KeyboardEvent } from "react";
+
 export default function ProfileFormField({
   label,
   value,
@@ -9,6 +11,11 @@ export default function ProfileFormField({
   required = false,
   multiline = false,
   textareaClassName,
+  textareaRows = 4,
+  textareaOnKeyDown,
+  textareaOnCompositionStart,
+  textareaOnCompositionEnd,
+  maxLength,
   error,
   suffix,
   footer,
@@ -21,6 +28,11 @@ export default function ProfileFormField({
   required?: boolean;
   multiline?: boolean;
   textareaClassName?: string;
+  textareaRows?: number;
+  textareaOnKeyDown?: (event: KeyboardEvent<HTMLTextAreaElement>) => void;
+  textareaOnCompositionStart?: () => void;
+  textareaOnCompositionEnd?: (event: CompositionEvent<HTMLTextAreaElement>) => void;
+  maxLength?: number;
   error?: string;
   suffix?: React.ReactNode;
   footer?: React.ReactNode;
@@ -36,8 +48,12 @@ export default function ProfileFormField({
           value={value}
           onChange={(event) => onChange(event.target.value)}
           onBlur={onBlur}
+          onKeyDown={textareaOnKeyDown}
+          onCompositionStart={textareaOnCompositionStart}
+          onCompositionEnd={textareaOnCompositionEnd}
           placeholder={placeholder}
-          rows={4}
+          rows={textareaRows}
+          maxLength={maxLength}
           className={`ftc-input px-3.5 py-2.5 ${textareaClassName ?? ""}`.trim()}
         />
       ) : (
@@ -48,6 +64,7 @@ export default function ProfileFormField({
           onBlur={onBlur}
           placeholder={placeholder}
           required={required}
+          maxLength={maxLength}
           className="ftc-input px-3.5 py-2.5"
         />
       )}

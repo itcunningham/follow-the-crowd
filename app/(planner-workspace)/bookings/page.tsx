@@ -2458,8 +2458,8 @@ function GigCardHeader({
 }) {
   const titleClass = muted ? "text-ftc-text-secondary" : "text-ftc-text";
   const plannerLabelClass = compactPlannerLabel
-    ? "mt-0.5 text-[11px] font-normal leading-snug text-ftc-text-muted sm:mt-1 sm:text-xs"
-    : "mt-2 text-[11px] font-normal leading-snug text-ftc-text-muted sm:mt-2 sm:text-xs";
+    ? "mt-0.5 truncate text-[11px] font-normal leading-snug text-ftc-text-muted sm:mt-1 sm:text-xs"
+    : "mt-2 truncate text-[11px] font-normal leading-snug text-ftc-text-muted sm:mt-2 sm:text-xs";
 
   return (
     <div className="min-w-0">

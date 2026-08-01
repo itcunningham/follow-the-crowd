@@ -1,3 +1,4 @@
+import { applyCappedMultilineInputLimit } from "@/lib/cappedMultilineInput";
 import { applyTextInputLimit } from "@/lib/textInputLimits";
 
 export const PROFILE_GENRE_OPTIONS = [
@@ -54,7 +55,12 @@ export const PROFILE_GENRE_OPTIONS = [
 ] as const;
 
 export const MAX_PROFILE_GENRE_TAGS = 8;
+export const MAX_PROFILE_DISPLAY_NAME_LENGTH = 30;
 export const MAX_PROFILE_BIO_LENGTH = 150;
+/** Visible-row cap for the bio textarea (`.ftc-fixed-scroll-textarea-3`) — also the explicit
+ * newline cap, so consecutive blank lines can't scroll the field into a wall of empty space
+ * either. Mirrors the same dual length+line cap already used for booking rate proposal notes. */
+export const MAX_PROFILE_BIO_LINES = 3;
 export const MAX_PROMOTER_EVENT_BRANDS = 10;
 export const MAX_EVENT_BRAND_NAME_LENGTH = 40;
 
@@ -170,8 +176,24 @@ export function addEventBrandTag(currentBrands: string[], rawName: string): AddE
   return { brands: [...currentBrands, normalized], error: null };
 }
 
+/**
+ * Caps the bio by BOTH character length (150, unchanged) and explicit
+ * newline count (`MAX_PROFILE_BIO_LINES`) — length alone doesn't stop a
+ * handful of consecutive blank lines from being "cheap" (1 character each)
+ * while still visually ballooning the field before the fixed-height/scroll
+ * CSS (`.ftc-fixed-scroll-textarea-3`) even gets a chance to kick in.
+ */
 export function applyBioInputLimit(currentBio: string, nextBio: string): string | null {
-  return applyTextInputLimit(currentBio, nextBio, MAX_PROFILE_BIO_LENGTH);
+  return applyCappedMultilineInputLimit(
+    currentBio,
+    nextBio,
+    MAX_PROFILE_BIO_LINES,
+    MAX_PROFILE_BIO_LENGTH,
+  );
+}
+
+export function applyDisplayNameInputLimit(current: string, next: string): string | null {
+  return applyTextInputLimit(current, next, MAX_PROFILE_DISPLAY_NAME_LENGTH);
 }
 
 export function normalizeUsername(raw: string): string {

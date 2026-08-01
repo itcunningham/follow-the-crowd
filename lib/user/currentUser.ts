@@ -2,7 +2,7 @@ import type { User } from "@supabase/supabase-js";
 import { getAuthRedirectUrl } from "@/lib/auth/appUrl";
 import { readSupabaseSessionUserIdSync } from "@/lib/auth/sessionUserId";
 import { cacheNavigationRole, clearCachedNavigation } from "@/lib/navigationRoleCache";
-import { normalizeUsername } from "@/lib/user/profileFormUtils";
+import { MAX_PROFILE_DISPLAY_NAME_LENGTH, normalizeUsername } from "@/lib/user/profileFormUtils";
 import { supabase } from "@/lib/supabaseClient";
 
 export const LOGIN_PATH = "/login";
@@ -566,7 +566,7 @@ export async function saveUserProfile(
 
   const updatePayload: Record<string, string> = {
     username: normalizeUsername(input.username),
-    display_name: input.display_name.trim(),
+    display_name: input.display_name.trim().slice(0, MAX_PROFILE_DISPLAY_NAME_LENGTH),
     bio: input.bio.trim(),
     genre: input.genre.trim(),
     location: input.location.trim(),

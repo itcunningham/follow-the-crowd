@@ -15,8 +15,11 @@ import {
   getUsernameFormatError,
   addEventBrandTag,
   applyBioInputLimit,
+  applyDisplayNameInputLimit,
   createProfileFormInputFromProfile,
   MAX_PROFILE_BIO_LENGTH,
+  MAX_PROFILE_BIO_LINES,
+  MAX_PROFILE_DISPLAY_NAME_LENGTH,
   MAX_PROFILE_GENRE_TAGS,
   normalizeInstagramInput,
   normalizeSoundCloudInput,
@@ -31,6 +34,7 @@ import {
   createProfileEditBaseline,
   hasUnsavedProfileEdits,
 } from "@/lib/user/profileEditDirtyState";
+import { shouldBlockMultilineEnter } from "@/lib/cappedMultilineInput";
 import ProfileFormField from "@/app/components/profile/ProfileFormField";
 import ProfileGenrePicker from "@/app/components/profile/ProfileGenrePicker";
 import ProfileEventBrandsField from "@/app/components/profile/ProfileEventBrandsField";
@@ -93,6 +97,7 @@ export default function EditProfileForm({
   const [usernameLiveTone, setUsernameLiveTone] = useState<"muted" | "success" | "error">("muted");
   const usernameCheckSeqRef = useRef(0);
   const usernameEditedRef = useRef(false);
+  const isComposingBioRef = useRef(false);
   const savedUsername = normalizeUsername(profile.username ?? "");
   const [roleChangeAcknowledged, setRoleChangeAcknowledged] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -342,7 +347,25 @@ export default function EditProfileForm({
     return null;
   }
 
+  function handleDisplayNameChange(nextDisplayName: string) {
+    const limited = applyDisplayNameInputLimit(form.display_name, nextDisplayName);
+
+    if (limited === null) {
+      return;
+    }
+
+    updateField("display_name", limited);
+  }
+
   function handleBioChange(nextBio: string) {
+    // Mid-composition (e.g. CJK IME), let the browser own the raw value —
+    // capping mid-keystroke by newline/length can corrupt an in-progress
+    // composition. The real limit is enforced on composition end below.
+    if (isComposingBioRef.current) {
+      updateField("bio", nextBio);
+      return;
+    }
+
     const limitedBio = applyBioInputLimit(form.bio, nextBio);
 
     if (limitedBio === null) {
@@ -350,6 +373,26 @@ export default function EditProfileForm({
     }
 
     updateField("bio", limitedBio);
+  }
+
+  function handleBioKeyDown(event: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (event.key !== "Enter" || event.nativeEvent.isComposing) {
+      return;
+    }
+
+    if (shouldBlockMultilineEnter(form.bio, MAX_PROFILE_BIO_LINES)) {
+      event.preventDefault();
+    }
+  }
+
+  function handleBioCompositionEnd(event: React.CompositionEvent<HTMLTextAreaElement>) {
+    isComposingBioRef.current = false;
+
+    const limitedBio = applyBioInputLimit(form.bio, event.currentTarget.value);
+
+    if (limitedBio !== null) {
+      updateField("bio", limitedBio);
+    }
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -361,6 +404,8 @@ export default function EditProfileForm({
 
     if (!form.display_name.trim()) {
       nextErrors.display_name = "Display name is required";
+    } else if (form.display_name.length > MAX_PROFILE_DISPLAY_NAME_LENGTH) {
+      nextErrors.display_name = `Display name must be ${MAX_PROFILE_DISPLAY_NAME_LENGTH} characters or fewer`;
     }
 
     const usernameError = await validateUsernameField(form.username);
@@ -553,8 +598,20 @@ export default function EditProfileForm({
         <ProfileFormField
           label="Display name"
           value={form.display_name}
-          onChange={(value) => updateField("display_name", value)}
+          onChange={handleDisplayNameChange}
           placeholder="Display name"
+          maxLength={MAX_PROFILE_DISPLAY_NAME_LENGTH}
+          footer={
+            <p
+              className={`text-xs ${
+                form.display_name.length > MAX_PROFILE_DISPLAY_NAME_LENGTH
+                  ? "text-red-400"
+                  : "text-ftc-text-muted"
+              }`}
+            >
+              {form.display_name.length}/{MAX_PROFILE_DISPLAY_NAME_LENGTH}
+            </p>
+          }
           error={fieldErrors.display_name}
         />
 
@@ -564,7 +621,14 @@ export default function EditProfileForm({
           onChange={handleBioChange}
           placeholder="Bio"
           multiline
-          textareaClassName="ftc-profile-bio-textarea"
+          textareaClassName="ftc-fixed-scroll-textarea ftc-fixed-scroll-textarea-3"
+          textareaRows={1}
+          textareaOnKeyDown={handleBioKeyDown}
+          textareaOnCompositionStart={() => {
+            isComposingBioRef.current = true;
+          }}
+          textareaOnCompositionEnd={handleBioCompositionEnd}
+          maxLength={MAX_PROFILE_BIO_LENGTH}
           footer={
             <p
               className={`text-xs ${

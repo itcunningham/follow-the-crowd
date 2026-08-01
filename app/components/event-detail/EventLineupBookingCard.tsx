@@ -136,7 +136,7 @@ export default function EventLineupBookingCard({
             <div className="min-w-0 flex-1">
               <Link
                 href={profileHref}
-                className="text-base font-bold leading-snug text-ftc-text transition hover:text-ftc-primary"
+                className="min-w-0 truncate text-base font-bold leading-snug text-ftc-text transition hover:text-ftc-primary"
               >
                 {displayName}
               </Link>
