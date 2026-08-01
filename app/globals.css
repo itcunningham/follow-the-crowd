@@ -350,12 +350,18 @@ html {
   max-height: calc(8lh + 1.25rem + 2px) !important;
 }
 
-/** Shared fixed-height textarea: equal height/min/max, internal scroll only. Compose with line-count modifier. */
+/** Shared fixed-height textarea: equal height/min/max, internal scroll only. Compose with line-count modifier.
+ * No `-webkit-overflow-scrolling: touch` here (deliberately): that property forces WebKit to promote
+ * the element onto its own compositing layer for hardware-accelerated momentum scrolling, and on older
+ * iOS Safari that layer's paint boundary clips the element's own border/outline at the top and bottom —
+ * most visible when focused, since the focus border is the bright primary colour rather than the muted
+ * default. Modern WebKit (iOS 13+) already applies native momentum scrolling to any `overflow: auto`
+ * region without this property, so omitting it has no functional effect on current devices and only
+ * removes a known clipping trigger on older ones. */
 .ftc-fixed-scroll-textarea {
   resize: none !important;
   overflow-x: hidden !important;
   overflow-y: auto !important;
-  -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
   line-height: 1.5 !important;
   box-sizing: border-box !important;

@@ -1333,6 +1333,17 @@ function testDmBookingCardNotesRevealScroll() {
   assert.equal(computeMinimumScrollToRevealBottom(container, 900), 508);
 }
 
+/**
+ * Root-cause regression test for the same rows/CSS mismatch confirmed and
+ * fixed on the profile bio field (commit 6de3208): the notes textarea had
+ * `textareaRows={1}` (a one-line HTML hint) while its CSS class forced a
+ * 3-line height with `!important` -- fixed by setting `textareaRows={3}`
+ * to match directly, dropping the now-unnecessary `-3` height-override
+ * class for this field only. The shared `.ftc-fixed-scroll-textarea-3`
+ * CSS rule itself is untouched -- `WithdrawalReasonDetailsField.tsx`
+ * still composes it with a matching `rows={3}`, so removing the rule
+ * would regress that field for no reason.
+ */
 function testProposeBookingRateNotesTextareaGrowth() {
   const sheetSource = readFileSync(
     new URL("../app/components/booking/ProposeBookingRateSheet.tsx", import.meta.url),
@@ -1344,12 +1355,25 @@ function testProposeBookingRateNotesTextareaGrowth() {
   );
 
   assert.match(sheetSource, /MAX_NOTE_LENGTH = 250/);
-  assert.match(sheetSource, /ftc-fixed-scroll-textarea ftc-fixed-scroll-textarea-3/);
+  assert.match(sheetSource, /textareaClassName="ftc-fixed-scroll-textarea"/);
+  assert.doesNotMatch(sheetSource, /ftc-fixed-scroll-textarea-3/);
+  assert.match(sheetSource, /textareaRows=\{3\}/);
+  // The shared `-3` class stays defined and correct for its remaining
+  // consumer (withdrawal reason field), just no longer applied here.
   assert.match(cssSource, /\.ftc-modal-textarea[\s\S]*height: calc\(3lh \+ 1rem \+ 2px\) !important/);
   assert.match(cssSource, /\.ftc-fixed-scroll-textarea-3[\s\S]*height: calc\(3lh \+ 1rem \+ 2px\) !important/);
   assert.match(cssSource, /\.ftc-fixed-scroll-textarea[\s\S]*overflow-y: auto !important/);
   assert.doesNotMatch(cssSource, /\.ftc-fixed-scroll-textarea-6/);
-  assert.match(sheetSource, /textareaRows=\{1\}/);
+  // Root-cause fix for the older-iPhone border/outline clipping (see
+  // ProfileBioText/EditProfileForm's identical shared base class): WebKit
+  // promotes `-webkit-overflow-scrolling: touch` elements onto their own
+  // compositing layer, whose paint boundary can clip the element's own
+  // border on older iOS Safari. Modern WebKit applies native momentum
+  // scrolling to any `overflow: auto` region without it, so it's safe to
+  // drop entirely rather than work around.
+  const baseTextareaRule = cssSource.match(/\.ftc-fixed-scroll-textarea \{[\s\S]*?\n\}/);
+  assert.ok(baseTextareaRule, ".ftc-fixed-scroll-textarea rule not found in globals.css");
+  assert.doesNotMatch(baseTextareaRule[0], /-webkit-overflow-scrolling/);
   assert.match(sheetSource, /applyCappedMultilineInputLimit/);
   assert.match(sheetSource, /shouldBlockMultilineEnter/);
   assert.match(sheetSource, /MAX_NOTE_LINES = 3/);
@@ -2932,19 +2956,16 @@ function testProfileBioTextRendering() {
   assert.doesNotMatch(baseRule[0], /word-break/);
   assert.doesNotMatch(baseRule[0], /appearance/);
 
-  // The shared 3-line class (still used by booking rate notes and the
-  // withdrawal reason field) is untouched -- this task is scoped to the
-  // bio field only, not a project-wide rows/lh audit.
+  // The shared 3-line class stays defined for its remaining correct
+  // consumer, the withdrawal reason field (rows={3}, already matched --
+  // see WithdrawalReasonDetailsField.tsx). The booking rate notes field
+  // no longer uses it (see testProposeBookingRateNotesTextareaGrowth):
+  // it had the exact same rows/CSS mismatch bio did and was fixed the
+  // same way in a follow-up pass, not left alone as this comment
+  // originally assumed.
   const threeLineRule = globalsSource.match(/\.ftc-fixed-scroll-textarea-3 \{[\s\S]*?\n\}/);
   assert.ok(threeLineRule, ".ftc-fixed-scroll-textarea-3 rule not found in globals.css");
   assert.match(threeLineRule[0], /3lh/);
-  assert.match(
-    readFileSync(
-      new URL("../app/components/booking/ProposeBookingRateSheet.tsx", import.meta.url),
-      "utf8",
-    ),
-    /textareaClassName="ftc-fixed-scroll-textarea ftc-fixed-scroll-textarea-3"/,
-  );
 
   // Trailing blank lines: investigated and confirmed already handled --
   // saveUserProfile() trims the bio before persisting (so nothing with

@@ -203,8 +203,8 @@ export default function ProposeBookingRateSheet({
             onChange={handleNoteChange}
             placeholder="Notes"
             multiline
-            textareaRows={1}
-            textareaClassName="ftc-fixed-scroll-textarea ftc-fixed-scroll-textarea-3"
+            textareaRows={3}
+            textareaClassName="ftc-fixed-scroll-textarea"
             textareaOnKeyDown={handleNoteKeyDown}
             textareaOnCompositionStart={() => {
               isComposingNoteRef.current = true;
