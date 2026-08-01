@@ -2824,6 +2824,52 @@ function testBioInputLimit() {
 }
 
 /**
+ * Root-cause regression test for "long words / multiple line breaks render
+ * differently in Edit Profile vs the public Profile page". The Edit Profile
+ * textarea already wraps unbroken long words natively (browsers force-wrap
+ * textarea content) plus `.ftc-fixed-scroll-textarea` hides horizontal
+ * overflow as a backstop -- but the public profile's `ProfileBioText` `<p>`
+ * only had `whitespace-pre-wrap` (preserves line breaks, wraps at normal
+ * word boundaries) with no `overflow-wrap` rule, so an unbroken long word
+ * (or a long URL) overflowed the card horizontally instead of wrapping --
+ * the exact same `[overflow-wrap:anywhere]` fix already applied to this
+ * file's own heading/username lines, just missing from the bio itself.
+ * Also removes the pre-existing "More/Less" expand toggle -- out of scope
+ * for beta per spec ("do not add a Show more feature"); the bio is always
+ * clamped to 4 lines with a CSS ellipsis, no interactive state.
+ */
+function testProfileBioTextRendering() {
+  const bioTextSource = readFileSync(
+    new URL("../app/components/profile/ProfileBioText.tsx", import.meta.url),
+    "utf8",
+  );
+
+  // Line breaks preserved; long unbroken words/URLs wrap instead of
+  // overflowing (matches ProfileHero's heading/username treatment exactly).
+  assert.match(bioTextSource, /whitespace-pre-wrap/);
+  assert.match(bioTextSource, /\[overflow-wrap:anywhere\]/);
+
+  // Clamped to 4 visible lines, unconditionally -- not toggled by any state.
+  assert.match(bioTextSource, /line-clamp-4/);
+
+  // No "Show more" feature: no expand/collapse state, no toggle button.
+  assert.doesNotMatch(bioTextSource, /useState/);
+  assert.doesNotMatch(bioTextSource, /useLayoutEffect/);
+  assert.doesNotMatch(bioTextSource, /expanded/i);
+  assert.doesNotMatch(bioTextSource, />\s*(More|Less)\s*</);
+
+  // The 150-character limit is a save-time/typing-time concern
+  // (applyBioInputLimit / MAX_PROFILE_BIO_LENGTH), never re-implemented here.
+  assert.doesNotMatch(bioTextSource, /MAX_PROFILE_BIO_LENGTH/);
+  assert.doesNotMatch(bioTextSource, /\.slice\(/);
+
+  // Sanity: the component still trims and hides entirely for a blank bio,
+  // exactly as before.
+  assert.match(bioTextSource, /bio\.trim\(\)/);
+  assert.match(bioTextSource, /if \(!text\) \{\s*return null;/);
+}
+
+/**
  * Root-cause regression test for "the Display Name and Bio fields need
  * clearer limits/UX" -- verifies the actual wiring in EditProfileForm.tsx
  * and ProfileFormField.tsx (not just the pure-function primitives above):
@@ -8269,6 +8315,7 @@ async function main() {
   testEventBrandsParsingAndSerialization();
   testDisplayNameInputLimit();
   testBioInputLimit();
+  testProfileBioTextRendering();
   testProfileDisplayNameAndBioFieldUx();
   testLongDisplayNameLayoutSafety();
   testAddEventBrandTag();
