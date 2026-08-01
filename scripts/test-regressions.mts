@@ -7955,6 +7955,10 @@ function testLoginScreenPolish() {
   assert.match(loginSource, /error\.code === "invalid_credentials"/);
   assert.match(loginSource, /"Incorrect email or password"/);
   assert.match(loginSource, /error\.code === "email_not_confirmed"/);
+
+  // Obsolete floating decorative tile stack (the old AI-themed mockup cards) must stay
+  // removed from the login screen -- background is just the dark bg plus the centered card.
+  assert.doesNotMatch(loginSource, /FtcBrandMotionLazy/);
 }
 
 async function main() {
