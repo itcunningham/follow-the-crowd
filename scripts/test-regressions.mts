@@ -7963,6 +7963,34 @@ function testLoginScreenPolish() {
   assert.doesNotMatch(loginSource, /FtcBrandMotionLazy/);
 }
 
+function testAppSplashScreenSlogan() {
+  const splashSource = readFileSync(
+    new URL("../app/components/brand/FtcAppSplashScreen.tsx", import.meta.url),
+    "utf8",
+  );
+
+  // Slogan renders once, between the app name and the loading dots, exactly as written
+  // (no quotation marks, no trailing full stop, no italics).
+  const nameIndex = splashSource.indexOf("Follow The Crowd");
+  const sloganIndex = splashSource.indexOf("For the culture, not the clout");
+  const dotsIndex = splashSource.indexOf("ftc-app-splash-dot");
+  assert.ok(nameIndex !== -1 && sloganIndex !== -1 && dotsIndex !== -1);
+  assert.ok(nameIndex < sloganIndex && sloganIndex < dotsIndex);
+  assert.equal(
+    splashSource.indexOf("For the culture, not the clout", sloganIndex + 1),
+    -1,
+  );
+  assert.doesNotMatch(splashSource, /["'“”]For the culture/);
+  assert.doesNotMatch(splashSource, /not the clout\./);
+  assert.doesNotMatch(splashSource, /italic/);
+
+  // Small, muted, centered styling -- smaller and lighter than the bold uppercase app name.
+  assert.match(
+    splashSource,
+    /className="mt-3 text-center text-xs font-light tracking-wide text-ftc-text-secondary"/,
+  );
+}
+
 async function main() {
   testPastEventDatesAreBlocked();
   testFutureEventDatesAreAllowed();
@@ -8151,6 +8179,7 @@ async function main() {
   testMapEventInputToRowEventBrandFallback();
   testQaEnvironmentResetScript();
   testLoginScreenPolish();
+  testAppSplashScreenSlogan();
   await testEventsHistorySelectAllButtonInteraction();
   await testEventsHistoryRemoveConfirmInteraction();
   await testDmChatReopenScroll();

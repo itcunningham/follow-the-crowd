@@ -23,6 +23,9 @@ export default function FtcAppSplashScreen({ exiting = false }: FtcAppSplashScre
       <p className="mt-5 text-center text-sm font-bold uppercase tracking-[0.18em] text-ftc-text">
         Follow The Crowd
       </p>
+      <p className="mt-3 text-center text-xs font-light tracking-wide text-ftc-text-secondary">
+        For the culture, not the clout
+      </p>
       <div
         aria-hidden="true"
         className="mt-8 flex items-center justify-center gap-1.5"
