@@ -35,6 +35,7 @@ import {
   hasUnsavedProfileEdits,
 } from "@/lib/user/profileEditDirtyState";
 import { shouldBlockMultilineEnter } from "@/lib/cappedMultilineInput";
+import { countUnicodeCharacters } from "@/lib/textInputLimits";
 import ProfileFormField from "@/app/components/profile/ProfileFormField";
 import ProfileGenrePicker from "@/app/components/profile/ProfileGenrePicker";
 import ProfileEventBrandsField from "@/app/components/profile/ProfileEventBrandsField";
@@ -414,7 +415,7 @@ export default function EditProfileForm({
       nextErrors.username = usernameError;
     }
 
-    if (form.bio.length > MAX_PROFILE_BIO_LENGTH) {
+    if (countUnicodeCharacters(form.bio) > MAX_PROFILE_BIO_LENGTH) {
       nextErrors.bio = "Bio must be 150 characters or fewer. Shorten your bio to save.";
     }
 
@@ -613,7 +614,14 @@ export default function EditProfileForm({
          * which clips the custom focus border on older iOS Safari. Moving the
          * border/radius to a non-scrolling wrapper removes the conflicting
          * combination entirely. Scoped to bio only -- ProfileFormField and
-         * every other textarea are untouched. */}
+         * every other textarea are untouched.
+         *
+         * No native `maxLength` here (matches BookingFormField's textarea,
+         * which never had one): the DOM's own maxlength enforcement counts
+         * raw UTF-16 units, so it would silently re-cap typing below 150 for
+         * any bio containing an emoji, exactly the bug this fix removes from
+         * the JS-side limit. `applyBioInputLimit`'s onChange enforcement is
+         * the sole source of truth, same as the booking-notes field. */}
         <label className="block">
           <span className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.14em] text-ftc-text-secondary">
             Bio
@@ -629,19 +637,18 @@ export default function EditProfileForm({
               onCompositionEnd={handleBioCompositionEnd}
               placeholder="Bio"
               rows={5}
-              maxLength={MAX_PROFILE_BIO_LENGTH}
               className="ftc-fixed-scroll-textarea w-full border-0 bg-transparent px-3.5 py-2.5 text-sm text-ftc-text outline-none placeholder:text-ftc-text-muted"
             />
           </div>
           <div className="mt-1">
             <p
               className={`text-xs ${
-                form.bio.length > MAX_PROFILE_BIO_LENGTH
+                countUnicodeCharacters(form.bio) > MAX_PROFILE_BIO_LENGTH
                   ? "text-red-400"
                   : "text-ftc-text-muted"
               }`}
             >
-              {form.bio.length}/{MAX_PROFILE_BIO_LENGTH}
+              {countUnicodeCharacters(form.bio)}/{MAX_PROFILE_BIO_LENGTH}
             </p>
           </div>
           {fieldErrors.bio ? <p className="mt-2 text-sm text-red-400">{fieldErrors.bio}</p> : null}

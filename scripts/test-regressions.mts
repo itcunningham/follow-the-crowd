@@ -11,7 +11,7 @@ import {
   getBookingPlanFormFieldErrors,
   getVisibleBookingPlanFormFieldErrors,
 } from "../lib/bookingPlans/bookingPlanFormFieldValidation";
-import { applyTextInputLimit } from "../lib/textInputLimits";
+import { applyTextInputLimit, countUnicodeCharacters } from "../lib/textInputLimits";
 import {
   countWithdrawalOtherReasonLines,
   MAX_WITHDRAWAL_OTHER_REASON_LINES,
@@ -3076,8 +3076,12 @@ function testProfileDisplayNameAndBioFieldUx() {
   );
 
   // Bio keeps its own visible "x/150" counter untouched -- the display-name
-  // counter removal is scoped to that one field only.
-  assert.match(formSource, /\{form\.bio\.length\}\/\{MAX_PROFILE_BIO_LENGTH\}/);
+  // counter removal is scoped to that one field only. Counted via
+  // countUnicodeCharacters (Unicode code points), not raw `.length`, since
+  // raw `.length` was the root cause of the "stops accepting input before
+  // 150" bug -- see testProfileBioAcceptsFullLengthWithEmoji.
+  assert.match(formSource, /\{countUnicodeCharacters\(form\.bio\)\}\/\{MAX_PROFILE_BIO_LENGTH\}/);
+  assert.doesNotMatch(formSource, /\{form\.bio\.length\}\/\{MAX_PROFILE_BIO_LENGTH\}/);
 
   // Server-side (save-path) enforcement: saveUserProfile itself caps the
   // value it persists, independent of whatever the client already did --
@@ -3139,6 +3143,82 @@ function testProfileDisplayNameAndBioFieldUx() {
   assert.ok(threeRowRule, ".ftc-fixed-scroll-textarea-3 rule not found in globals.css");
   assert.match(threeRowRule[0], /height: calc\(3lh/);
   assert.match(threeRowRule[0], /max-height: calc\(3lh/);
+}
+
+/**
+ * Root-cause regression test for "the Profile Bio field stops accepting
+ * input at 148/150": `string.length` counts UTF-16 code units, not
+ * characters as a user perceives them -- a single surrogate-pair emoji
+ * (e.g. "🎧".length === 2) silently consumed two of the 150-character
+ * budget. Both the typing-time limit (applyTextInputLimit /
+ * applyCappedMultilineInputLimit, shared by every capped text field in the
+ * app) and Bio's own displayed counter/submit validation now count Unicode
+ * code points (countUnicodeCharacters) instead. This is a strict relaxation
+ * for every other consumer of these shared primitives -- code-point count
+ * is never greater than raw `.length`, so no previously-passing scenario
+ * for display name, event brands, booking notes, or event notes can regress,
+ * it can only stop rejecting input early for content containing emoji.
+ */
+function testProfileBioAcceptsFullLengthWithEmoji() {
+  const textLimitsSource = readFileSync(
+    new URL("../lib/textInputLimits.ts", import.meta.url),
+    "utf8",
+  );
+  const multilineSource = readFileSync(
+    new URL("../lib/cappedMultilineInput.ts", import.meta.url),
+    "utf8",
+  );
+  const formSource = readFileSync(
+    new URL("../app/components/profile/EditProfileForm.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(textLimitsSource, /export function countUnicodeCharacters/);
+  assert.match(textLimitsSource, /Array\.from\(value\)\.length/);
+  assert.match(multilineSource, /countUnicodeCharacters/);
+
+  // A single emoji is 1 code point but 2 UTF-16 units -- the exact
+  // discrepancy that caused the bug.
+  assert.equal("🎧".length, 2);
+  assert.equal(Array.from("🎧").length, 1);
+
+  // A bio built almost entirely from headphone emoji, well past what raw
+  // `.length` would allow (2 units each -> 75 emoji = 150 raw units, but
+  // only 75 code points), must still be accepted up to the true 150-code-point
+  // cap -- this is the concrete scenario that used to stop input early.
+  const seventyFiveEmoji = "🎧".repeat(75);
+  assert.equal(seventyFiveEmoji.length, 150);
+  assert.equal(applyBioInputLimit("", seventyFiveEmoji), seventyFiveEmoji);
+  assert.equal(countUnicodeCharacters(seventyFiveEmoji), 75);
+
+  // One more emoji (76 code points, 152 raw units) must still be accepted --
+  // proof the cap is genuinely 150 code points, not silently still 150 raw
+  // units through some other path.
+  const seventySixEmoji = "🎧".repeat(76);
+  assert.equal(applyBioInputLimit(seventyFiveEmoji, seventySixEmoji), seventySixEmoji);
+
+  // A plain-text bio at exactly the 150-character cap (no emoji) must be
+  // completely unaffected -- code points equal raw length for ASCII, so
+  // behaviour here is byte-identical to before the fix.
+  const plain150 = "a".repeat(150);
+  assert.equal(applyBioInputLimit("", plain150), plain150);
+  assert.equal(applyBioInputLimit("", `${plain150}b`), plain150);
+
+  // No native `maxLength` on bio's textarea: the DOM's own maxlength
+  // enforcement counts raw UTF-16 units, so leaving it in place would
+  // silently reintroduce the exact bug this fix removes, regardless of what
+  // the JS-side limit now allows. Matches BookingFormField's textarea, which
+  // never had one either.
+  const bioFieldBlock = formSource.match(/<label className="block">[\s\S]*?<\/label>/);
+  assert.ok(bioFieldBlock, "Bio field block not found in EditProfileForm.tsx");
+  assert.doesNotMatch(bioFieldBlock[0], /maxLength=/);
+
+  // Submit-time validation and the displayed counter both use the same
+  // code-point count as the typing-time limit -- otherwise a bio that reads
+  // exactly "150/150" while typing could still fail to save (or vice versa).
+  assert.match(formSource, /countUnicodeCharacters\(form\.bio\) > MAX_PROFILE_BIO_LENGTH/);
+  assert.match(formSource, /\{countUnicodeCharacters\(form\.bio\)\}\/\{MAX_PROFILE_BIO_LENGTH\}/);
+  assert.doesNotMatch(formSource, /form\.bio\.length/);
 }
 
 /**
@@ -8491,6 +8571,7 @@ async function main() {
   testBioInputLimit();
   testProfileBioTextRendering();
   testProfileDisplayNameAndBioFieldUx();
+  testProfileBioAcceptsFullLengthWithEmoji();
   testLongDisplayNameLayoutSafety();
   testAddEventBrandTag();
   testEventBrandChipOverflowSafe();

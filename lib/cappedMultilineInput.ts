@@ -1,4 +1,4 @@
-import { applyTextInputLimit } from "@/lib/textInputLimits";
+import { applyTextInputLimit, countUnicodeCharacters } from "@/lib/textInputLimits";
 
 /** Counts explicit newline-separated rows (`value.split("\\n").length`). */
 export function countExplicitLines(value: string): number {
@@ -21,12 +21,17 @@ export function applyCappedMultilineInputLimit(
 ): string | null {
   const currentLines = countExplicitLines(currentValue);
   const nextLines = countExplicitLines(nextValue);
-  const currentOverLimit = currentLines > maxLines || currentValue.length > maxLength;
+  const currentOverLimit =
+    currentLines > maxLines || countUnicodeCharacters(currentValue) > maxLength;
 
   let limitedNext = nextValue;
 
   if (nextLines > maxLines) {
-    if (currentOverLimit && nextLines <= currentLines && nextValue.length <= currentValue.length) {
+    if (
+      currentOverLimit &&
+      nextLines <= currentLines &&
+      countUnicodeCharacters(nextValue) <= countUnicodeCharacters(currentValue)
+    ) {
       limitedNext = nextValue;
     } else if (currentOverLimit) {
       return null;
