@@ -22,6 +22,11 @@
 --                           all msgs in QA-only DMs, or messages authored by QA in mixed DMs
 --
 -- PRESERVES: non-QA transactional data, auth.users, avatars (profile-images), RLS.
+--
+-- "Data still present after a reset" is almost always fresh QA activity
+-- created SINCE the last run, not a failed delete — see the "QA data cleared
+-- this run" and "reset run history" verification blocks (public.qa_reset_log).
+--
 -- Runbook: docs/qa/FTC-BETA-ENVIRONMENT-RESET.md
 
 -- Safe to re-run in the same SQL Editor session (drops prior temp tables first).
@@ -35,6 +40,15 @@ drop table if exists _qa_booking_requests_touching;
 drop table if exists _qa_touch_conversations;
 drop table if exists _qa_only_conversations;
 drop table if exists _qa_messages;
+drop table if exists _qa_pre_delete_snapshot;
+
+-- Persistent (non-temp) audit log of reset runs — survives across SQL Editor
+-- sessions so "is this still-present data stale, or new since my last run?"
+-- can be answered from the verification output instead of guessed at.
+create table if not exists public.qa_reset_log (
+  id bigserial primary key,
+  run_at timestamptz not null default now()
+);
 
 -- ---------------------------------------------------------------------------
 -- QA profile definitions (single source)
@@ -167,11 +181,34 @@ or (
   and m.user_id in (select user_id from _qa_user_ids)
 );
 
+-- Snapshot of what's about to be deleted, taken BEFORE any delete runs. A
+-- wide age range here (e.g. spanning several days) means this is real
+-- accumulated QA testing activity since the last run, not evidence the
+-- previous run failed — see "reset run history" in the verification section.
+create temp table _qa_pre_delete_snapshot as
+select 'qa_messages' as scope, count(*) as row_count, min(m.created_at) as oldest, max(m.created_at) as newest
+from public.messages m
+where m.id in (select id from _qa_messages)
+union all
+select 'qa_booking_requests', count(*), min(br.created_at), max(br.created_at)
+from public.booking_requests br
+where br.id in (select id from _qa_booking_requests)
+union all
+select 'qa_only_conversations', count(*), min(c.created_at), max(c.created_at)
+from public.conversations c
+where c.id in (select conversation_id from _qa_only_conversations)
+union all
+select 'qa_events', count(*), min(e.created_at), max(e.created_at)
+from public.events e
+where e.id in (select id from _qa_events);
+
 -- ---------------------------------------------------------------------------
 -- 1. Scoped transactional cleanup (FK-safe order; skips when _qa_user_ids empty)
 -- ---------------------------------------------------------------------------
 
 begin;
+
+insert into public.qa_reset_log (run_at) values (now());
 
 delete from public.user_reports ur
 where ur.reporter_id in (select user_id from _qa_user_ids)
@@ -439,6 +476,21 @@ select 'qa_message_reads', count(*)
 from public.message_reads mr
 where mr.user_id in (select user_id from _qa_user_ids)
 order by scope;
+
+select '--- QA data cleared this run (age range; explains why data "was still there") ---' as section;
+
+select scope, row_count, oldest, newest
+from _qa_pre_delete_snapshot
+order by scope;
+
+select '--- reset run history (last 10; gap shows time since previous run) ---' as section;
+
+select
+  run_at,
+  run_at - lag(run_at) over (order by run_at) as gap_since_previous_run
+from public.qa_reset_log
+order by run_at desc
+limit 10;
 
 select '--- QA mixed bookings remaining (informational; 0 when QA tested QA-only) ---' as section;
 
