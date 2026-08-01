@@ -545,7 +545,7 @@ export default function EditProfileForm({
               {usernameLiveMessage}
             </p>
           ) : null}
-          {fieldErrors.username ? (
+          {fieldErrors.username && !(usernameLiveMessage && usernameLiveTone === "error") ? (
             <p className="mt-2 text-sm text-red-400">{fieldErrors.username}</p>
           ) : null}
         </div>

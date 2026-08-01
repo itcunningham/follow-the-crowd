@@ -1403,6 +1403,61 @@ function testUsernameBlockedTermChecks() {
   assert.equal(getUsernameFormatError("breakerbreaker"), null);
 }
 
+function testUsernameValidationErrorNotDuplicated() {
+  const source = readFileSync(
+    new URL("../app/components/profile/EditProfileForm.tsx", import.meta.url),
+    "utf8",
+  );
+
+  // The submit/server field error must not render when the live-validation
+  // block is already showing an error for the same field -- otherwise the
+  // same message renders twice underneath the username input.
+  assert.match(
+    source,
+    /\{fieldErrors\.username && !\(usernameLiveMessage && usernameLiveTone === "error"\) \? \(/,
+  );
+
+  // Mirrors the two conditionals in EditProfileForm's username JSX exactly,
+  // so a regression there (e.g. dropping the guard) is caught here too.
+  function renderedUsernameErrors(
+    liveMessage: string | null,
+    liveTone: "muted" | "success" | "error",
+    fieldError: string | undefined,
+  ): string[] {
+    const rendered: string[] = [];
+    if (liveMessage) rendered.push(liveMessage);
+    if (fieldError && !(liveMessage && liveTone === "error")) rendered.push(fieldError);
+    return rendered;
+  }
+
+  const invalidUsername = "a!b";
+  const formatError = getUsernameFormatError(invalidUsername);
+  assert.ok(formatError, "expected an invalid username to produce a format error");
+  assert.equal(formatError, "Use 3–30 lowercase letters, numbers, underscores, or dots");
+
+  // Typing an invalid username: live validation shows exactly one error.
+  assert.deepEqual(renderedUsernameErrors(formatError, "error", undefined), [formatError]);
+
+  // Tapping Save without correcting it: submit-time validation reuses the
+  // same slot instead of appending a second one.
+  assert.deepEqual(renderedUsernameErrors(formatError, "error", formatError), [formatError]);
+
+  // Repeated submits of the same invalid value must not duplicate it.
+  assert.deepEqual(renderedUsernameErrors(formatError, "error", formatError), [formatError]);
+
+  // Correcting the username clears the error.
+  const validUsername = "gooduser123";
+  assert.equal(getUsernameFormatError(validUsername), null);
+  assert.deepEqual(renderedUsernameErrors(null, "success", undefined), []);
+
+  // A genuinely different (e.g. server-side) username error, not mirrored by
+  // the live block, must still render.
+  assert.deepEqual(
+    renderedUsernameErrors(null, "muted", "That username is already taken"),
+    ["That username is already taken"],
+  );
+}
+
 function testAuthRedirectUrlUsesLoginPath() {
   const previousAppUrl = process.env.NEXT_PUBLIC_APP_URL;
 
@@ -7292,6 +7347,7 @@ async function main() {
   testProposeRateHelperPreference();
   testAskForRateDmBookingCardOfferSummary();
   testUsernameBlockedTermChecks();
+  testUsernameValidationErrorNotDuplicated();
   testAuthRedirectUrlUsesLoginPath();
   testProfileEditDirtyDetection();
   testSoundCloudInputNormalization();
