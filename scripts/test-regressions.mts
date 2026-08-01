@@ -6668,6 +6668,66 @@ function testDmImageLightboxLocksGestureDirectionVerticalDoesNotDrift() {
   assert.match(lightboxSource, /if \(Math\.abs\(deltaX\) > SWIPE_NAV_THRESHOLD_PX\) \{/);
 }
 
+/**
+ * Root-cause regression test for "the opened full-screen photo is cropped".
+ *
+ * Confirmed cause: the lightbox `<img>` capped itself with `max-h-[90vh]`
+ * (a static viewport-height unit). On mobile Safari/Chrome, `vh` resolves
+ * against the browser's large viewport even while the address bar/toolbar
+ * is on-screen, so the image could size itself taller than what's actually
+ * visible and get cut off behind browser chrome -- a real cropped-looking
+ * result even though `object-contain` itself was never wrong. Every other
+ * full-screen/near-full-screen mobile overlay in this codebase already uses
+ * `dvh` (the dynamic viewport unit) for exactly this reason (see
+ * `min-h-[100dvh]` page shells and `max-h-[90dvh]` sheets/modals throughout
+ * app/); this lightbox was the one exception still using plain `vh`.
+ *
+ * Fix: `max-h-[90vh]` -> `max-h-[90dvh]`. This test locks in both halves of
+ * that fix -- the corrected unit AND the underlying contain-style sizing
+ * approach (object-contain + independent max-width/max-height, never a
+ * forced/cropped aspect-ratio box) -- so a future edit can't silently
+ * reintroduce either the vh regression or an object-fit: cover-style crop.
+ */
+function testDmImageLightboxOpensFullyContainedNotCropped() {
+  const lightboxSource = readFileSync(
+    new URL("../app/components/dm/DmImageLightbox.tsx", import.meta.url),
+    "utf8",
+  );
+
+  // The full image must render at its own natural aspect ratio -- capped
+  // independently on each axis, never forced into a fixed/aspect-locked box.
+  assert.match(lightboxSource, /object-contain/);
+  assert.match(lightboxSource, /max-h-\[90dvh\]/);
+  assert.match(lightboxSource, /max-w-\[92vw\]/);
+
+  // The confirmed root cause must never come back: a plain (non-dynamic)
+  // vh unit on the image's own height cap.
+  assert.doesNotMatch(lightboxSource, /max-h-\[90vh\]/);
+
+  // Crop-style sizing must never appear anywhere in this component --
+  // neither on the photo itself nor reintroduced via a background-image
+  // trick, and no fixed/forced aspect-ratio box for the open image.
+  assert.doesNotMatch(lightboxSource, /object-cover/);
+  assert.doesNotMatch(lightboxSource, /background-size:\s*cover/);
+  assert.doesNotMatch(lightboxSource, /bg-cover/);
+  assert.doesNotMatch(lightboxSource, /aspect-square/);
+  assert.doesNotMatch(lightboxSource, /aspect-\[/);
+
+  // The image is centred both axes within its slide (contain, not
+  // top/left-anchored crop) -- same wrapper class already covered above,
+  // asserted again here scoped to this specific regression's intent.
+  assert.match(
+    lightboxSource,
+    /className="flex h-full shrink-0 items-center justify-center"/,
+  );
+
+  // Root container is a true full-viewport overlay (not a scrollable-page
+  // pattern that would need its own dvh) -- fixed + inset-0 tracks the
+  // visual viewport directly in modern browsers, same pattern already used
+  // by every other DM/profile media overlay in this codebase.
+  assert.match(lightboxSource, /className="fixed inset-0 z-50"/);
+}
+
 function testDmComposerPendingPhotoGroupHelpers() {
   const makeFile = (name: string, size = 100, lastModified = 1) =>
     new File([new Uint8Array(size)], name, { type: "image/jpeg", lastModified });
@@ -7773,6 +7833,7 @@ async function main() {
   testDmMediaViewerCloseButtonConsistentAndClickable();
   testDmImageLightboxUsesPagedTrackNotFloatingCard();
   testDmImageLightboxLocksGestureDirectionVerticalDoesNotDrift();
+  testDmImageLightboxOpensFullyContainedNotCropped();
   testComposerNewlineKeydown();
   testDmComposerFocusSyncAfterSend();
   testDmMessageReactionGestureInteractions();

@@ -325,7 +325,13 @@ export default function DmImageLightbox({
                   alt={image.name}
                   draggable={false}
                   onClick={(event) => event.stopPropagation()}
-                  className="pointer-events-auto max-h-[90vh] max-w-[92vw] select-none object-contain"
+                  // dvh (not vh) -- vh resolves against the browser's large
+                  // viewport even while the address bar/toolbar is showing,
+                  // so on mobile Safari/Chrome the image could size itself
+                  // taller than what's actually visible and get cut off
+                  // behind browser chrome. Matches the dvh convention already
+                  // used by every other full-screen mobile sheet/modal here.
+                  className="pointer-events-auto max-h-[90dvh] max-w-[92vw] select-none object-contain"
                   style={
                     isCurrent
                       ? {
