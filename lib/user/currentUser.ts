@@ -68,7 +68,7 @@ const PROFILE_LOCAL_CACHE_KEY = "ftc-user-profile-local";
 
 export function getDefaultRouteForRole(role: UserRole | null): string {
   if (role === "dj") {
-    return "/dm";
+    return "/bookings";
   }
 
   return "/events";
