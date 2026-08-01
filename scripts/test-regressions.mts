@@ -194,6 +194,10 @@ import {
   completeEventPlansCreateReturn,
 } from "../lib/bookings/planDeepLink";
 import { resolveHistoryBulkSelectAllToggle } from "../app/components/history/HistoryBulkManage";
+import {
+  ONBOARDING_ACCESS_CHECK_TIMEOUT_MS,
+  withOnboardingAccessCheckTimeout,
+} from "../app/components/OnboardingGuard";
 import { isPlannerEventVisibleOnCalendar, resolvePlannerHistoryHideEventIds } from "../lib/events";
 import {
   BOOKING_REQUEST_CANCELLED_SUCCESS_MESSAGE,
@@ -5051,6 +5055,44 @@ function testHistoryRemovalHeaderFeedbackUnified() {
   assert.doesNotMatch(onboardingGuardSource, /PlannerTitleFeedbackProvider/);
 }
 
+async function testOnboardingAccessCheckNeverHangsForever() {
+  // Root-cause regression test for "app never leaves the splash screen on a
+  // brand-new device": nothing in the Supabase client's fetch calls has a
+  // timeout, so a stalled network request (most likely on a device's very
+  // first, cold-DNS/cold-TLS connection to the Supabase domain) never
+  // rejects on its own -- it just never resolves, and OnboardingGuard's
+  // checkAccess() try/catch only handles rejections. withOnboardingAccessCheckTimeout
+  // is the safety net: it guarantees the awaited promise settles (by
+  // rejecting) even when the underlying work never does, so the existing
+  // catch block (redirect to login) can actually run.
+  const neverResolves = new Promise<void>(() => {});
+  await assert.rejects(
+    () => withOnboardingAccessCheckTimeout(neverResolves, 20),
+    /took too long/,
+  );
+
+  // A normal, successfully-resolving check is completely unaffected.
+  assert.equal(await withOnboardingAccessCheckTimeout(Promise.resolve("ok"), 20), "ok");
+
+  // A normal, promptly-rejecting check still rejects with its own error,
+  // not a timeout error -- the race doesn't mask real failures.
+  await assert.rejects(
+    () => withOnboardingAccessCheckTimeout(Promise.reject(new Error("boom")), 20),
+    /boom/,
+  );
+
+  assert.equal(ONBOARDING_ACCESS_CHECK_TIMEOUT_MS, 15_000);
+
+  const onboardingGuardSource = readFileSync(
+    new URL("../app/components/OnboardingGuard.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(
+    onboardingGuardSource,
+    /await withOnboardingAccessCheckTimeout\(\s*\(async \(\) => \{/,
+  );
+}
+
 function testGigsListTabSwitchUsesClientHistoryWithoutRouterNavigation() {
   const tabsSource = readFileSync(
     new URL("../app/components/bookings/DjGigsTabs.tsx", import.meta.url),
@@ -6527,6 +6569,7 @@ async function main() {
   testGigsTabRowReservesManageSlotOnAllTabs();
   testGigsHistorySelectionToolbarEmbeddedInTabRow();
   // TEMP-SKIP (pre-existing, unrelated failure — stale planner workspace title row source regex, not touched by multi-photo work; see docs/handoff/CURRENT-STATE.md): testHistoryRemovalHeaderFeedbackUnified();
+  await testOnboardingAccessCheckNeverHangsForever();
   testGigsListTabSwitchUsesClientHistoryWithoutRouterNavigation();
   testGigsWorkspaceChromeStateSyncAvoidsNoOpUpdates();
   testBookingsRouteMountsPersistentGigsSecondaryBand();

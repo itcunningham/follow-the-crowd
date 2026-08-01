@@ -28,6 +28,38 @@ const AUTH_PATHS = [LOGIN_PATH, SIGNUP_PATH];
 const SETUP_PATHS = ["/onboarding", PROFILE_SETUP_PATH];
 const HOME_PATH = "/";
 
+// Same timeout value and Promise.race pattern as withGroupChatsLoadTimeout
+// (app/dm/page.tsx). Nothing in the Supabase client's fetch calls has a
+// timeout of its own, and a stalled request (most likely on a device's very
+// first, cold-DNS/cold-TLS connection to the Supabase domain) never rejects
+// on its own — it just never resolves. Without this, checkAccess's own
+// try/catch (which only handles rejections) would never fire, `ready` would
+// stay false, and the splash screen below would spin forever.
+export const ONBOARDING_ACCESS_CHECK_TIMEOUT_MS = 15_000;
+
+/** Exported (only) so a regression test can verify the timeout actually rejects. */
+export async function withOnboardingAccessCheckTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs: number = ONBOARDING_ACCESS_CHECK_TIMEOUT_MS,
+): Promise<T> {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<T>((_, reject) => {
+        timeoutId = setTimeout(() => {
+          reject(new Error("Checking your session took too long."));
+        }, timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+  }
+}
+
 const cachedNavigationOnLoad = readCachedNavigation();
 if (cachedNavigationOnLoad.role) {
   if (cachedNavigationOnLoad.role === "dj" || cachedNavigationOnLoad.role === "both") {
@@ -134,89 +166,93 @@ export default function OnboardingGuard({ children }: { children: React.ReactNod
 
     async function checkAccess() {
       try {
-        const syncUserId = readSupabaseSessionUserIdSync();
-        const authPromise = getCurrentAuthUser();
-        const profilePromise = syncUserId ? getCurrentUserProfile() : Promise.resolve(null);
-        const authUser = await authPromise;
+        await withOnboardingAccessCheckTimeout(
+          (async () => {
+            const syncUserId = readSupabaseSessionUserIdSync();
+            const authPromise = getCurrentAuthUser();
+            const profilePromise = syncUserId ? getCurrentUserProfile() : Promise.resolve(null);
+            const authUser = await authPromise;
 
-        if (cancelled) {
-          return;
-        }
-
-        if (AUTH_PATHS.includes(pathname)) {
-          if (authUser) {
-            router.replace(await getPostAuthRedirectPath());
-            return;
-          }
-
-          sessionReadyRef.current = false;
-          setReady(true);
-          return;
-        }
-
-        if (!authUser) {
-          sessionReadyRef.current = false;
-          router.replace(LOGIN_PATH);
-          return;
-        }
-
-        let profile = await profilePromise;
-
-        if (!profile) {
-          await ensureAuthenticatedUserProfileRow();
-          profile = await getCurrentUserProfile({ force: true });
-        }
-
-        if (cancelled) {
-          return;
-        }
-
-        setLoadingProfile(profile);
-
-        if (profile?.role) {
-          cacheNavigationRole(profile.role, profile.user_id ?? null);
-        }
-
-        if (SETUP_PATHS.includes(pathname)) {
-          sessionReadyRef.current = true;
-          setReady(true);
-          return;
-        }
-
-        if (needsOnboarding(profile)) {
-          sessionReadyRef.current = false;
-          router.replace("/onboarding");
-          return;
-        }
-
-        if (needsProfileSetup(profile)) {
-          sessionReadyRef.current = false;
-          router.replace(PROFILE_SETUP_PATH);
-          return;
-        }
-
-        if (pathname === HOME_PATH && profile?.role) {
-          const defaultRoute = getDefaultRouteForRole(profile.role);
-
-          if (defaultRoute !== HOME_PATH) {
-            sessionReadyRef.current = false;
-            router.replace(defaultRoute);
-            return;
-          }
-        }
-
-        sessionReadyRef.current = true;
-        if (pathname === HOME_PATH) {
-          setHomeSplashExiting(true);
-          window.setTimeout(() => {
-            if (!cancelled) {
-              setReady(true);
+            if (cancelled) {
+              return;
             }
-          }, 280);
-          return;
-        }
 
-        setReady(true);
+            if (AUTH_PATHS.includes(pathname)) {
+              if (authUser) {
+                router.replace(await getPostAuthRedirectPath());
+                return;
+              }
+
+              sessionReadyRef.current = false;
+              setReady(true);
+              return;
+            }
+
+            if (!authUser) {
+              sessionReadyRef.current = false;
+              router.replace(LOGIN_PATH);
+              return;
+            }
+
+            let profile = await profilePromise;
+
+            if (!profile) {
+              await ensureAuthenticatedUserProfileRow();
+              profile = await getCurrentUserProfile({ force: true });
+            }
+
+            if (cancelled) {
+              return;
+            }
+
+            setLoadingProfile(profile);
+
+            if (profile?.role) {
+              cacheNavigationRole(profile.role, profile.user_id ?? null);
+            }
+
+            if (SETUP_PATHS.includes(pathname)) {
+              sessionReadyRef.current = true;
+              setReady(true);
+              return;
+            }
+
+            if (needsOnboarding(profile)) {
+              sessionReadyRef.current = false;
+              router.replace("/onboarding");
+              return;
+            }
+
+            if (needsProfileSetup(profile)) {
+              sessionReadyRef.current = false;
+              router.replace(PROFILE_SETUP_PATH);
+              return;
+            }
+
+            if (pathname === HOME_PATH && profile?.role) {
+              const defaultRoute = getDefaultRouteForRole(profile.role);
+
+              if (defaultRoute !== HOME_PATH) {
+                sessionReadyRef.current = false;
+                router.replace(defaultRoute);
+                return;
+              }
+            }
+
+            sessionReadyRef.current = true;
+            if (pathname === HOME_PATH) {
+              setHomeSplashExiting(true);
+              window.setTimeout(() => {
+                if (!cancelled) {
+                  setReady(true);
+                }
+              }, 280);
+              return;
+            }
+
+            setReady(true);
+          })(),
+        );
       } catch (error) {
         console.error("Onboarding check failed:", error);
 
