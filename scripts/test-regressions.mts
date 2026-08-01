@@ -7881,15 +7881,17 @@ function testChatMessageBubbleGeometry() {
 
 function testQaEnvironmentResetScript() {
   const sql = readFileSync(new URL("./resetQaEnvironment.sql", import.meta.url), "utf8");
-  assert.match(sql, /BEGIN QA ENVIRONMENT RESET/);
-  assert.match(sql, /END QA ENVIRONMENT RESET/);
+  assert.match(sql, /FTC QA Environment Reset/);
   assert.match(sql, /drop table if exists _qa_user_ids/);
   assert.match(sql, /create temp table _qa_user_ids/);
   assert.match(sql, /create temp table _qa_messages/);
   assert.match(sql, /m\.user_id in \(select user_id from _qa_user_ids\)/);
   assert.match(sql, /conversation_id in \(select conversation_id from _qa_only_conversations\)/);
   assert.match(sql, /set_config\('storage\.allow_delete_query', 'true', true\)/);
-  assert.match(sql, /qa_booking_requests_mixed_remaining/);
+  // Script must stay minimal for a single paste-and-run: no permanent
+  // logging tables and no diagnostic-only sections beyond short verification.
+  assert.doesNotMatch(sql, /create table if not exists public\.qa_reset_log/);
+  assert.doesNotMatch(sql, /_qa_pre_delete_snapshot/);
 
   const cli = readFileSync(new URL("./reset-qa-environment.mts", import.meta.url), "utf8");
   assert.match(cli, /resetQaEnvironment\.sql/);

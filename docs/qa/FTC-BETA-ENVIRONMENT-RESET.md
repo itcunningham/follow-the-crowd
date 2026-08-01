@@ -26,13 +26,11 @@ No edits required.
 
 ## Step 3 — Check the output
 
-- **QA data remaining** → all counts **0** (except `qa_booking_requests_mixed_remaining` — see below)
-- **QA data cleared this run** → row counts and age range of what was just deleted. A range spanning hours or days is normal — it's QA testing activity accumulated since your last run, not evidence anything survived.
-- **Reset run history** → your last 10 runs with the gap between each. If it's been a while since your last run, expect a wider "QA data cleared this run" range above.
-- **QA mixed bookings remaining** → **0** when QA only tested with other QA accounts; may be **> 0** if a QA account booked a real beta tester (those rows are preserved intentionally)
+- **QA chats/messages remaining** → all counts **0**
+- **QA bookings remaining** → all counts **0** — this only counts QA↔QA bookings; a booking between a QA account and a real beta tester is preserved intentionally and won't show here (see Edge cases below)
+- **QA events/plans remaining** → all counts **0**
+- **QA accounts still present** → your permanent accounts listed with profiles intact
 - **Non-QA data preserved** → informational counts (unchanged by this script)
-- **QA accounts** → your permanent accounts listed
-- **Missing accounts** → empty, or sign up in the app and re-run
 
 ## Step 4 — Sign in and test
 
@@ -83,28 +81,13 @@ Sign up QA accounts in the **app** (not via SQL). Use display names `FTC QA Plan
 
 ## "I ran the reset but chats/bookings are still there" (investigated 2026-08-01)
 
-This almost always means new QA activity was created **after** your last reset
-run, not that the reset failed. Confirmed by tracing real data end-to-end
-(detection, scoping, FK constraints, and live rows) with no defect found — the
-deletion logic already covers QA-only conversations and QA↔QA bookings
-correctly; a global check of the oldest surviving row lined up exactly with
-the timestamp of the previous successful run.
-
-The script now makes this self-diagnosing instead of something you have to
-take on faith:
-
-- `public.qa_reset_log` — a small permanent table (not a temp table, so it
-  survives across SQL Editor sessions) that records a timestamp every time
-  the script runs.
-- **"QA data cleared this run"** verification block — reports the row count
-  and age range (oldest/newest `created_at`) of everything the script is
-  about to delete, captured before the delete runs.
-- **"Reset run history"** verification block — your last 10 runs with the
-  time gap since the previous one.
-
-If you see a multi-day age range in "QA data cleared this run," that's normal
-QA testing accumulated since your last run — not a bug. Run the reset again
-whenever you want a clean slate; there's no need to run it after every test.
+This almost always means new QA activity was created **after** your last
+reset run, not that the reset failed. Confirmed by tracing real data
+end-to-end (detection, scoping, FK constraints, and live rows) with no
+defect found — the deletion logic already covers QA-only conversations and
+QA↔QA bookings correctly. If it still looks wrong after a fresh run, check
+whether the data involves a non-QA (real beta tester) account — those rows
+are preserved intentionally (see Edge cases above) — before assuming a bug.
 
 ## Storage cleanup requires a session setting (fixed 2026-08-01)
 

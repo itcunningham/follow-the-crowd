@@ -10,16 +10,13 @@ const REQUIRED_MARKERS = [
   "_qa_detected",
   "_qa_user_ids",
   "_qa_booking_requests",
-  "_qa_booking_requests_touching",
   "_qa_only_conversations",
   "delete from public.notifications",
   "delete from public.booking_requests",
   "delete from public.events",
   "insert into public.users",
-  "qa_booking_requests_mixed_remaining",
   "non_qa_events",
-  "BEGIN QA ENVIRONMENT RESET",
-  "END QA ENVIRONMENT RESET",
+  "FTC QA Environment Reset",
 ] as const;
 
 function readResetSql(): string {
@@ -58,7 +55,7 @@ function printRunbookSummary(): void {
   console.log("  • auth.users, profiles, avatars, settings, roles");
   console.log("  • Non-QA users and their transactional data");
   console.log("  • Mixed DMs — non-QA messages remain; QA messages removed");
-  console.log("  • QA↔non-QA bookings preserved (see qa_booking_requests_mixed_remaining in SQL output)");
+  console.log("  • QA↔non-QA bookings preserved (not counted as QA-scoped)");
   console.log("");
   console.log("After reset:");
   console.log("  • QA profiles re-seeded for Discover/profile browsing");
