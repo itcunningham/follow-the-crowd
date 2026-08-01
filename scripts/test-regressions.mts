@@ -2956,6 +2956,21 @@ function testProfileBioTextRendering() {
   assert.doesNotMatch(baseRule[0], /word-break/);
   assert.doesNotMatch(baseRule[0], /appearance/);
 
+  // Root-cause fix for the older-iPhone focus-outline clipping that survived
+  // both the rows fix and the -webkit-overflow-scrolling removal: iOS Safari's
+  // default native -webkit-appearance for textareas paints its own OS-level
+  // border/corner chrome, which can fail to scale to a custom-height textarea
+  // (e.g. this 5-row field) and clip the author's own border at the top/bottom
+  // on older WebKit. Reset on the shared `.ftc-input`/`.ftc-textarea`/
+  // `.ftc-field-trigger` rule -- not the fixed-scroll-textarea modifier -- so
+  // every text input, textarea, and field-trigger button gets it once.
+  const inputBaseRule = globalsSource.match(
+    /\.ftc-input,\s*\n\.ftc-textarea,\s*\n\.ftc-field-trigger \{[\s\S]*?\n\}/,
+  );
+  assert.ok(inputBaseRule, ".ftc-input/.ftc-textarea/.ftc-field-trigger rule not found");
+  assert.match(inputBaseRule[0], /appearance: none/);
+  assert.match(inputBaseRule[0], /-webkit-appearance: none/);
+
   // The shared 3-line class stays defined for its remaining correct
   // consumer, the withdrawal reason field (rows={3}, already matched --
   // see WithdrawalReasonDetailsField.tsx). The booking rate notes field

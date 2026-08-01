@@ -303,9 +303,20 @@ html {
 /* Inputs & text fields — flat focus, no glow                                  */
 /* -------------------------------------------------------------------------- */
 
+/* Reset native form-control chrome: iOS Safari's default -webkit-appearance for
+ * textareas paints its own OS-level border/corner chrome, which can conflict with
+ * a custom border/border-radius on older WebKit builds -- most visibly on a
+ * <textarea> whose custom height diverges from the native chrome's assumptions
+ * (e.g. our 5-row bio field), where the native chrome's fixed-height end caps
+ * fail to reach the full custom box, clipping the top/bottom edge of our own
+ * border. Tailwind's own preflight documents this exact class of bug for buttons
+ * ("Correct the inability to style the border radius in iOS Safari") but does not
+ * cover textareas/inputs, so it needs handling here. */
 .ftc-input,
 .ftc-textarea,
 .ftc-field-trigger {
+  appearance: none;
+  -webkit-appearance: none;
   border: 1px solid var(--ftc-color-border-subtle);
   background: var(--ftc-color-bg-input);
   color: var(--ftc-color-text-primary);
