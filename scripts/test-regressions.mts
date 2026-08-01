@@ -7358,6 +7358,18 @@ function testDmReactionInboxActivity() {
   );
 }
 
+function testDmInboxSearchEmptyStateCopy() {
+  const inboxPageSource = readFileSync(new URL("../app/dm/page.tsx", import.meta.url), "utf8");
+
+  // No trailing full stop on either equivalent empty-search message — matches
+  // the app-wide short-message convention (e.g. "No DJs match your search"
+  // in bookings/page.tsx).
+  assert.match(inboxPageSource, />\s*No conversations match your search\s*</);
+  assert.doesNotMatch(inboxPageSource, /No conversations match your search\./);
+  assert.match(inboxPageSource, />\s*No group chats match your search\s*</);
+  assert.doesNotMatch(inboxPageSource, /No group chats match your search\./);
+}
+
 type TestInboxMessage = {
   id: string;
   conversation_id: string;
@@ -8015,6 +8027,7 @@ async function main() {
   testDmMessageReactionGestureInteractions();
   testDmReactionNotifications();
   testDmReactionInboxActivity();
+  testDmInboxSearchEmptyStateCopy();
   testDmInboxImageMessagePreview();
   testDmInboxMultiPhotoPreview();
   testDmReactionRealtime();

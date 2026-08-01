@@ -79,6 +79,19 @@ Sign up QA accounts in the **app** (not via SQL). Use display names `FTC QA Plan
 
 ---
 
+## Storage cleanup requires a session setting (fixed 2026-08-01)
+
+Supabase blocks a raw SQL `DELETE` on `storage.objects` unless
+`storage.allow_delete_query` is set to `true` for the session. The script now
+sets this as a **local (transaction-scoped)** setting immediately before the
+two storage deletes, inside the same `begin; … commit;` block, so it only
+applies to those statements. Without it, the event-cover and DM-attachment
+storage deletes silently affected 0 rows — the DB rows were still cleared,
+but orphaned files remained in the buckets. No runbook steps changed; this
+only makes the storage cleanup in Step 2 actually take effect.
+
+---
+
 ## Why auth signup cannot be in the SQL script
 
 Supabase Auth owns passwords and email confirmation. SQL cannot create login credentials safely. **Unavoidable** — sign up in the app once; the reset script only clears QA data.

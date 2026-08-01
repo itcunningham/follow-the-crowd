@@ -252,7 +252,14 @@ commit;
 -- 2. QA storage cleanup (avatars preserved in profile-images)
 -- event-covers path: {owner_id}/{event_id}/…
 -- dm-attachments path: {conversation_id}/{user_id}/…
+-- Supabase blocks direct storage.objects DELETE unless allow_delete_query is
+-- set for the session — set it as a local (transaction-scoped) setting so it
+-- covers both deletes below without weakening delete protection elsewhere.
 -- ---------------------------------------------------------------------------
+
+begin;
+
+select set_config('storage.allow_delete_query', 'true', true);
 
 delete from storage.objects so
 where so.bucket_id = 'event-covers'
@@ -269,6 +276,8 @@ where so.bucket_id = 'dm-attachments'
       select conversation_id::text from _qa_only_conversations
     )
   );
+
+commit;
 
 -- ---------------------------------------------------------------------------
 -- 3. Clear stale profile text on QA accounts only

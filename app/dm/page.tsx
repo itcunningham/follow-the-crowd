@@ -1197,7 +1197,7 @@ function DmInboxPageContent() {
                   ) : null}
                   {filteredGroupChats.length === 0 ? (
                     <p className="py-8 text-center text-sm text-ftc-text-muted">
-                      No group chats match your search.
+                      No group chats match your search
                     </p>
                   ) : (
                     <ul className="flex flex-col gap-2 pt-3.5">
@@ -1246,7 +1246,7 @@ function DmInboxPageContent() {
                 <DirectMessagesEmptyState />
               ) : filteredDmRows.length === 0 ? (
                 <p className="py-8 text-center text-sm text-ftc-text-muted">
-                  No conversations match your search.
+                  No conversations match your search
                 </p>
               ) : (
                 <ul className="flex flex-col gap-2 pt-3.5">
