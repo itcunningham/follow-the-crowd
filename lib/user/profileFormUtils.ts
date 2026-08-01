@@ -62,16 +62,37 @@ export const MAX_EVENT_BRAND_NAME_LENGTH = 40;
  * text column rather than a schema change — see parseStoredEventBrands/serializeEventBrands. */
 const EVENT_BRAND_SEPARATOR = "|";
 
-function normalizeEventBrandName(raw: string): string {
-  return raw.replace(/\s+/g, " ").trim().slice(0, MAX_EVENT_BRAND_NAME_LENGTH);
+function collapseEventBrandWhitespace(raw: string): string {
+  return raw.replace(/\s+/g, " ").trim();
 }
 
-function dedupeEventBrandsCaseInsensitive(names: string[]): string[] {
+/**
+ * Enforces the 40-character limit — used only at the point a brand is
+ * actively added (`addEventBrandTag`). Parsing/serializing existing stored
+ * brands deliberately does NOT re-apply this (see
+ * `dedupeEventBrandsPreservingLength` below): a brand that predates this
+ * limit (or otherwise already exceeds it in storage) must not get silently
+ * shortened just because the profile was loaded or saved for an unrelated
+ * reason. Overlong values are instead handled safely at render time —
+ * `PROFILE_TAG_CHIP_BASE_CLASS` truncates with an ellipsis (see
+ * `ProfileTagChipList.tsx`).
+ */
+function normalizeNewEventBrandName(raw: string): string {
+  return collapseEventBrandWhitespace(raw).slice(0, MAX_EVENT_BRAND_NAME_LENGTH);
+}
+
+/**
+ * Trims/collapses whitespace and case-insensitively dedupes without
+ * enforcing the length cap, so reading or re-saving existing stored brands
+ * (e.g. via `parseStoredEventBrands`/`serializeEventBrands`) never
+ * truncates a pre-existing value the user didn't just edit.
+ */
+function dedupeEventBrandsPreservingLength(names: string[]): string[] {
   const seen = new Set<string>();
   const result: string[] = [];
 
   for (const raw of names) {
-    const normalized = normalizeEventBrandName(raw);
+    const normalized = collapseEventBrandWhitespace(raw);
 
     if (!normalized) {
       continue;
@@ -102,14 +123,14 @@ export function parseStoredEventBrands(brands: string | null | undefined): strin
     return [];
   }
 
-  return dedupeEventBrandsCaseInsensitive(brands.split(EVENT_BRAND_SEPARATOR)).slice(
+  return dedupeEventBrandsPreservingLength(brands.split(EVENT_BRAND_SEPARATOR)).slice(
     0,
     MAX_PROMOTER_EVENT_BRANDS,
   );
 }
 
 export function serializeEventBrands(brands: string[]): string {
-  return dedupeEventBrandsCaseInsensitive(brands)
+  return dedupeEventBrandsPreservingLength(brands)
     .slice(0, MAX_PROMOTER_EVENT_BRANDS)
     .join(EVENT_BRAND_SEPARATOR);
 }
@@ -125,7 +146,7 @@ export type AddEventBrandResult = {
 
 /** Blank entries are ignored (not an error) — matches "ignore blank entries" in the spec. */
 export function addEventBrandTag(currentBrands: string[], rawName: string): AddEventBrandResult {
-  const normalized = normalizeEventBrandName(rawName);
+  const normalized = normalizeNewEventBrandName(rawName);
 
   if (!normalized) {
     return { brands: currentBrands, error: null };

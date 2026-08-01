@@ -2563,10 +2563,25 @@ function testEventBrandsParsingAndSerialization() {
   assert.equal(parseStoredEventBrands(eleven.join("|")).length, MAX_PROMOTER_EVENT_BRANDS);
   assert.equal(serializeEventBrands(eleven).split("|").length, MAX_PROMOTER_EVENT_BRANDS);
 
-  // Max length per brand enforced.
+  // The 40-char limit is enforced only at the point a brand is actively
+  // added (see testAddEventBrandTag) -- parsing/serializing existing stored
+  // data must NOT retroactively truncate a value that already exceeds the
+  // limit (e.g. legacy data predating it), since a save triggered by an
+  // unrelated field would otherwise silently and irreversibly shorten it.
+  // Overlong values are instead handled safely at render time (chip
+  // max-width + ellipsis truncation) rather than by mutating the data.
   const tooLong = "A".repeat(MAX_EVENT_BRAND_NAME_LENGTH + 20);
-  assert.equal(parseStoredEventBrands(tooLong)[0].length, MAX_EVENT_BRAND_NAME_LENGTH);
-  assert.equal(serializeEventBrands([tooLong]).length, MAX_EVENT_BRAND_NAME_LENGTH);
+  assert.equal(parseStoredEventBrands(tooLong)[0].length, tooLong.length);
+  assert.equal(parseStoredEventBrands(tooLong)[0], tooLong);
+  assert.equal(serializeEventBrands([tooLong]).length, tooLong.length);
+  assert.equal(serializeEventBrands([tooLong]), tooLong);
+
+  // A round trip through parse -> serialize -> parse must not lose any of
+  // an overlong legacy value's characters.
+  assert.deepEqual(
+    parseStoredEventBrands(serializeEventBrands([tooLong, "Synergy"])),
+    [tooLong, "Synergy"],
+  );
 }
 
 function testAddEventBrandTag() {
@@ -2578,6 +2593,27 @@ function testAddEventBrandTag() {
     brands: ["Warehouse Sessions"],
     error: null,
   });
+
+  // Enforces the 40-character limit when a brand is actively added --
+  // exactly 40 chars is accepted unmodified; anything longer is truncated
+  // to exactly 40 (not rejected as an error -- matches the live-typing
+  // limiter in applyEventBrandNameInputLimit, which caps input the same way).
+  const exactlyMax = "B".repeat(MAX_EVENT_BRAND_NAME_LENGTH);
+  const overMax = "C".repeat(MAX_EVENT_BRAND_NAME_LENGTH + 25);
+  assert.deepEqual(addEventBrandTag([], exactlyMax), { brands: [exactlyMax], error: null });
+  assert.equal(exactlyMax.length, MAX_EVENT_BRAND_NAME_LENGTH);
+
+  const overMaxResult = addEventBrandTag([], overMax);
+  assert.equal(overMaxResult.error, null);
+  assert.equal(overMaxResult.brands.length, 1);
+  assert.equal(overMaxResult.brands[0].length, MAX_EVENT_BRAND_NAME_LENGTH);
+  assert.equal(overMaxResult.brands[0], overMax.slice(0, MAX_EVENT_BRAND_NAME_LENGTH));
+
+  // A single unbroken word (no spaces) is capped exactly the same way --
+  // this is the shape that, without a rendered-chip max-width, would
+  // overflow the container (no natural line-break point).
+  const unbrokenWord = "x".repeat(MAX_EVENT_BRAND_NAME_LENGTH + 10);
+  assert.equal(addEventBrandTag([], unbrokenWord).brands[0].length, MAX_EVENT_BRAND_NAME_LENGTH);
 
   // Prevents duplicates, case-insensitive.
   assert.deepEqual(addEventBrandTag(["Synergy"], "synergy"), {
@@ -2600,6 +2636,69 @@ function testAddEventBrandTag() {
     brands: ["Synergy", "Pulse"],
     error: null,
   });
+}
+
+/**
+ * Root-cause regression test for "Event Brand chips overflow horizontally
+ * on a long/unbroken brand name". The 40-char limit alone doesn't prevent
+ * overflow -- a 40-character string with no spaces has no natural
+ * line-break point, so without an explicit chip max-width the browser
+ * can't wrap it and the chip (and page) gets forced wider than the
+ * viewport instead. Every surface that renders a saved/selected brand as a
+ * chip must apply the same shared max-width + single-line-ellipsis
+ * treatment; a chip with a trailing remove button must truncate only the
+ * text, keeping the button fully visible and tappable.
+ */
+function testEventBrandChipOverflowSafe() {
+  const tagListSource = readFileSync(
+    new URL("../app/components/profile/ProfileTagChipList.tsx", import.meta.url),
+    "utf8",
+  );
+  const genrePickerSource = readFileSync(
+    new URL("../app/components/profile/ProfileGenrePicker.tsx", import.meta.url),
+    "utf8",
+  );
+  const brandsFieldSource = readFileSync(
+    new URL("../app/components/profile/ProfileEventBrandsField.tsx", import.meta.url),
+    "utf8",
+  );
+  const brandSelectSource = readFileSync(
+    new URL("../app/components/events/EventBrandSelectField.tsx", import.meta.url),
+    "utf8",
+  );
+
+  // Shared max-width token, defined once and reused everywhere -- not a
+  // per-surface, independently-drifting literal.
+  assert.match(tagListSource, /export const PROFILE_TAG_CHIP_MAX_WIDTH_CLASS = "max-w-\[12rem\]"/);
+
+  // Public/own profile display + Genre chips (same shared read-only list
+  // component, used for both tag types): chip itself carries the text, so
+  // the max-width/truncate treatment applies directly to it.
+  assert.match(
+    tagListSource,
+    /PROFILE_TAG_CHIP_BASE_CLASS\}\s*\$\{PROFILE_TAG_CHIP_MAX_WIDTH_CLASS\}\s*min-w-0 truncate/,
+  );
+
+  // Profile edit form -- Genre picker's selected-tag chips (no remove
+  // button, same plain-text shape as the read-only list).
+  assert.match(genrePickerSource, /PROFILE_TAG_CHIP_MAX_WIDTH_CLASS/);
+  assert.match(
+    genrePickerSource,
+    /PROFILE_TAG_CHIP_BASE_CLASS\}\s*\$\{PROFILE_TAG_CHIP_MAX_WIDTH_CLASS\}\s*min-w-0 truncate/,
+  );
+
+  // Profile edit form -- Event Brand chips have a trailing remove (x)
+  // button, so only an inner text span truncates; the outer chip carries
+  // the max-width and the button stays a separate `shrink-0` sibling (so
+  // it's never the thing that gets clipped/hidden).
+  assert.match(brandsFieldSource, /PROFILE_TAG_CHIP_MAX_WIDTH_CLASS/);
+  assert.match(brandsFieldSource, /<span className="min-w-0 truncate">\{brand\}<\/span>/);
+  assert.match(brandsFieldSource, /shrink-0 items-center justify-center rounded-full/);
+
+  // Event-creation brand selector -- single-select buttons, plain-text
+  // shape (no remove button), same treatment as the read-only chip list.
+  assert.match(brandSelectSource, /PROFILE_TAG_CHIP_MAX_WIDTH_CLASS/);
+  assert.match(brandSelectSource, /min-w-0 truncate rounded-full/);
 }
 
 function testMapEventInputToRowEventBrandFallback() {
@@ -6655,6 +6754,7 @@ async function main() {
   testProfileIdentityPresentationHierarchy();
   testEventBrandsParsingAndSerialization();
   testAddEventBrandTag();
+  testEventBrandChipOverflowSafe();
   testMapEventInputToRowEventBrandFallback();
   testQaEnvironmentResetScript();
   await testEventsHistorySelectAllButtonInteraction();

@@ -1,5 +1,7 @@
 "use client";
 
+import { PROFILE_TAG_CHIP_MAX_WIDTH_CLASS } from "@/app/components/profile/ProfileTagChipList";
+
 /**
  * Optional single-select brand chip row for event creation. Reuses the promoter's saved
  * Event Brands (profile) chip styling. Renders nothing when the promoter has no saved
@@ -34,7 +36,7 @@ export default function EventBrandSelectField({
               type="button"
               onClick={() => onSelectBrand(isSelected ? null : brand)}
               aria-pressed={isSelected}
-              className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${
+              className={`min-w-0 truncate rounded-full border px-3 py-1.5 text-xs font-medium transition ${PROFILE_TAG_CHIP_MAX_WIDTH_CLASS} ${
                 isSelected
                   ? "border-ftc-primary bg-ftc-bg-elevated text-ftc-text"
                   : "border-ftc-border-subtle bg-ftc-bg-elevated text-ftc-text-secondary hover:border-ftc-border-strong hover:text-ftc-text"
