@@ -7895,6 +7895,68 @@ function testQaEnvironmentResetScript() {
   assert.match(cli, /resetQaEnvironment\.sql/);
 }
 
+function testLoginScreenPolish() {
+  const loginSource = readFileSync(
+    new URL("../app/login/page.tsx", import.meta.url),
+    "utf8",
+  );
+  const layoutSource = readFileSync(new URL("../app/layout.tsx", import.meta.url), "utf8");
+
+  // Heading: "Welcome" (not "Welcome back"), supporting text unchanged. Recovery mode's
+  // own heading/copy is a separate flow and must stay untouched.
+  assert.match(loginSource, /\{recoveryMode \? "Set a new password" : "Welcome"\}/);
+  assert.doesNotMatch(loginSource, /Welcome back/);
+  assert.match(loginSource, /"Sign in to continue"/);
+
+  // Primary Log in button renders in title case (no forced text-transform: uppercase) --
+  // scoped to the login submit button specifically; the recovery ("Update password") button
+  // keeps its existing uppercase styling untouched, matching every other .ftc-btn-primary
+  // in the app (password reset flow must not change).
+  assert.doesNotMatch(
+    loginSource,
+    /className="w-full ftc-btn-primary px-4 py-3 text-sm uppercase tracking-wide[^"]*"\s*>\s*\{submitting \? "Logging in" : "Log in"\}/,
+  );
+  assert.match(
+    loginSource,
+    /className="w-full ftc-btn-primary px-4 py-3 text-sm tracking-wide[^"]*"\s*>\s*\{submitting \? "Logging in" : "Log in"\}/,
+  );
+  assert.match(
+    loginSource,
+    /className="w-full ftc-btn-primary px-4 py-3 text-sm uppercase tracking-wide[^"]*"\s*>\s*\{submitting \? "Saving" : "Update password"\}/,
+  );
+
+  // Browser/page title has no AI marketing wording -- single global metadata source for
+  // the whole app (no other route defines its own `metadata`), so this also covers the
+  // login page's own browser tab title.
+  assert.match(layoutSource, /title: "Follow The Crowd"/);
+  assert.doesNotMatch(layoutSource, /Plan Better Events with AI/);
+  assert.doesNotMatch(layoutSource, /AI-powered/);
+
+  // Email/password fields already had correct autocomplete/type/keyboard attributes --
+  // locked in here so they can't silently regress.
+  assert.match(loginSource, /type="email"[\s\S]{0,200}autoComplete="email"/);
+  assert.match(loginSource, /type="password"[\s\S]{0,200}autoComplete="current-password"/);
+
+  // Sign up link: only "Sign up" itself is a link, the surrounding sentence is plain text.
+  assert.match(loginSource, /Don&apos;t have an account\?\{" "\}/);
+  assert.match(loginSource, /<Link[\s\S]{0,80}href=\{SIGNUP_PATH\}[\s\S]{0,120}>\s*Sign up\s*<\/Link>/);
+
+  // Login submit is guarded against duplicate submission (e.g. re-triggering the form via
+  // Enter while a request is already in flight, which bypasses the disabled submit button).
+  assert.match(
+    loginSource,
+    /async function handleLoginSubmit[\s\S]{0,120}if \(submitting\) \{\s*return;\s*\}/,
+  );
+
+  // Auth errors are translated to plain-English copy instead of raw Supabase wording
+  // (e.g. "Invalid login credentials") for the two most common login failures, while still
+  // falling back to the underlying message for anything unmapped.
+  assert.match(loginSource, /import \{ isAuthApiError \} from "@supabase\/supabase-js"/);
+  assert.match(loginSource, /error\.code === "invalid_credentials"/);
+  assert.match(loginSource, /"Incorrect email or password"/);
+  assert.match(loginSource, /error\.code === "email_not_confirmed"/);
+}
+
 async function main() {
   testPastEventDatesAreBlocked();
   testFutureEventDatesAreAllowed();
@@ -8082,6 +8144,7 @@ async function main() {
   testEventBrandSafeSave();
   testMapEventInputToRowEventBrandFallback();
   testQaEnvironmentResetScript();
+  testLoginScreenPolish();
   await testEventsHistorySelectAllButtonInteraction();
   await testEventsHistoryRemoveConfirmInteraction();
   await testDmChatReopenScroll();

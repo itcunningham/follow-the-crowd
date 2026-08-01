@@ -14,9 +14,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Follow The Crowd — Plan Better Events with AI",
+  title: "Follow The Crowd",
   description:
-    "AI-powered event planning and crowd intelligence for promoters, DJs, venues, artists, festivals and organisers.",
+    "Event planning and crowd intelligence for promoters, DJs, venues, artists, festivals and organisers.",
 };
 
 export const viewport: Viewport = {

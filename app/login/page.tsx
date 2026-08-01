@@ -1,5 +1,6 @@
 "use client";
 
+import { isAuthApiError } from "@supabase/supabase-js";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -12,6 +13,20 @@ import {
   signInWithEmail,
   updateAuthPassword,
 } from "@/lib/user/currentUser";
+
+function getLoginErrorMessage(error: unknown): string {
+  if (isAuthApiError(error)) {
+    if (error.code === "invalid_credentials") {
+      return "Incorrect email or password";
+    }
+
+    if (error.code === "email_not_confirmed") {
+      return "Please confirm your email before logging in";
+    }
+  }
+
+  return error instanceof Error ? error.message : "Failed to log in";
+}
 
 export default function LoginPage() {
   const router = useRouter();
@@ -55,6 +70,11 @@ export default function LoginPage() {
 
   async function handleLoginSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+
+    if (submitting) {
+      return;
+    }
+
     setSubmitting(true);
     setError(null);
 
@@ -64,7 +84,7 @@ export default function LoginPage() {
       router.replace(redirectPath);
     } catch (signInError) {
       console.error("Login failed:", signInError);
-      setError(signInError instanceof Error ? signInError.message : "Failed to log in");
+      setError(getLoginErrorMessage(signInError));
       setSubmitting(false);
     }
   }
@@ -110,7 +130,7 @@ export default function LoginPage() {
           Follow The Crowd
         </p>
         <h1 className="mt-3 text-2xl font-bold text-ftc-text">
-          {recoveryMode ? "Set a new password" : "Welcome back"}
+          {recoveryMode ? "Set a new password" : "Welcome"}
         </h1>
         <p className="mt-2 text-sm text-ftc-text-secondary">
           {recoveryMode
@@ -200,7 +220,7 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={submitting}
-                className="w-full ftc-btn-primary px-4 py-3 text-sm uppercase tracking-wide disabled:cursor-not-allowed disabled:opacity-50"
+                className="w-full ftc-btn-primary px-4 py-3 text-sm tracking-wide disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {submitting ? "Logging in" : "Log in"}
               </button>
