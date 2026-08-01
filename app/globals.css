@@ -1543,30 +1543,6 @@ html {
 }
 
 /* -------------------------------------------------------------------------- */
-/* Bottom sheets                                                              */
-/* -------------------------------------------------------------------------- */
-
-@keyframes ftc-sheet-slide-up {
-  from {
-    transform: translateY(100%);
-  }
-
-  to {
-    transform: translateY(0);
-  }
-}
-
-.ftc-event-brands-sheet-panel {
-  animation: ftc-sheet-slide-up 220ms ease-out;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .ftc-event-brands-sheet-panel {
-    animation: none;
-  }
-}
-
-/* -------------------------------------------------------------------------- */
 /* Skeleton loaders                                                            */
 /* -------------------------------------------------------------------------- */
 

@@ -2646,9 +2646,17 @@ function testAddEventBrandTag() {
  * line-break point, so without an explicit chip max-width the browser
  * can't wrap it and the chip (and page) gets forced wider than the
  * viewport instead. Every surface that renders a saved/selected brand as a
- * chip must apply the same shared max-width + single-line-ellipsis
- * treatment; a chip with a trailing remove button must truncate only the
- * text, keeping the button fully visible and tappable.
+ * chip must apply the same shared max-width, and must let the browser
+ * actually shrink/wrap below the unbroken word's natural width; a chip with
+ * a trailing remove button must clip only the text, keeping the button
+ * fully visible and tappable.
+ *
+ * The two chip families intentionally differ in HOW they stay inside that
+ * cap, because they have different jobs: the read-only public-profile list
+ * wraps to a second line (see `testPublicProfileEventBrandsAdaptiveChips`)
+ * so a brand is readable without any interaction, while the *editable*
+ * surfaces stay strictly single-line-with-ellipsis so a row of chips with
+ * remove buttons keeps a predictable, uniform height while editing.
  */
 function testEventBrandChipOverflowSafe() {
   const tagListSource = readFileSync(
@@ -2673,11 +2681,11 @@ function testEventBrandChipOverflowSafe() {
   assert.match(tagListSource, /export const PROFILE_TAG_CHIP_MAX_WIDTH_CLASS = "max-w-\[12rem\]"/);
 
   // Public/own profile display + Genre chips (same shared read-only list
-  // component, used for both tag types): chip itself carries the text, so
-  // the max-width/truncate treatment applies directly to it.
+  // component, used for both tag types): the chip carries the max-width and
+  // an inner span carries the wrap/clamp treatment.
   assert.match(
     tagListSource,
-    /PROFILE_TAG_CHIP_BASE_CLASS\}\s*\$\{PROFILE_TAG_CHIP_MAX_WIDTH_CLASS\}\s*min-w-0 truncate/,
+    /PROFILE_TAG_CHIP_BASE_CLASS\}\s*\$\{PROFILE_TAG_CHIP_MAX_WIDTH_CLASS\}/,
   );
 
   // Profile edit form -- Genre picker's selected-tag chips (no remove
@@ -2700,10 +2708,6 @@ function testEventBrandChipOverflowSafe() {
   // shape (no remove button), same treatment as the read-only chip list.
   assert.match(brandSelectSource, /PROFILE_TAG_CHIP_MAX_WIDTH_CLASS/);
   assert.match(brandSelectSource, /min-w-0 truncate rounded-full/);
-
-  // Truncated chips must still expose the full name via a native tooltip --
-  // "clean" truncation, not just clipped text with no way to read it.
-  assert.match(tagListSource, /title=\{tag\}/);
 }
 
 /**
@@ -2791,25 +2795,29 @@ function testGenreSheetHeightDoesNotTrackFilteredContent() {
 }
 
 /**
- * The floating tap-to-reveal popover (previous iteration) had no touch
- * equivalent to the underlying problem it solved cleanly enough on mobile,
- * so it was replaced entirely with a native-feeling bottom sheet: tapping
- * ANY Event Brand chip on a public profile opens a sheet listing every
- * brand in full (no truncation), scrolled to and highlighting the one that
- * was tapped. This verifies (1) `ProfileTagChipList` is back to a plain,
- * non-interactive display with no popover machinery left in it at all --
- * Genre tags (its only remaining consumer) are unaffected by any of this --
- * and (2) the new `EventBrandsChips` component (the ONLY thing the public
- * profile's Event Brands section renders now) has the sheet's required
- * chrome, dismiss affordances, and accessibility hooks.
+ * The public profile's Event Brands went through two interactive
+ * iterations -- a tap-to-reveal popover, then a tap-to-open bottom sheet --
+ * both of which existed only to make a single-line-truncated chip readable.
+ * Both are now gone: the chips themselves wrap to a second line, so a brand
+ * is readable directly on the profile with no interaction at all. This
+ * verifies the simplification actually holds, in both directions.
+ *
+ * Why the wrap treatment is what it is:
+ *  - `line-clamp-2` caps a chip at two lines and adds an ellipsis ONLY when
+ *    the text genuinely overflows those two lines (that is native
+ *    `-webkit-line-clamp` behaviour), so short names stay one clean line and
+ *    nothing shows a needless ellipsis.
+ *  - `overflow-wrap: anywhere` -- NOT `break-word` -- is load-bearing.
+ *    Only `anywhere` also shrinks the element's min-content width, which is
+ *    what allows a single unbroken 40-character brand to wrap inside the
+ *    12rem cap. With `break-word` the min-content width stays the width of
+ *    the whole unbroken word, which is the exact mechanism that forced the
+ *    chip (and the page) wider than the viewport in the original overflow
+ *    bug this suite already guards against.
  */
-function testEventBrandsBottomSheet() {
+function testPublicProfileEventBrandsAdaptiveChips() {
   const tagListSource = readFileSync(
     new URL("../app/components/profile/ProfileTagChipList.tsx", import.meta.url),
-    "utf8",
-  );
-  const chipsSource = readFileSync(
-    new URL("../app/components/profile/EventBrandsChips.tsx", import.meta.url),
     "utf8",
   );
   const sectionsSource = readFileSync(
@@ -2818,94 +2826,67 @@ function testEventBrandsBottomSheet() {
   );
   const globalsSource = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
 
-  // Popover is gone -- ProfileTagChipList carries no client-side popover
-  // state, tooltip role, or edge-alignment machinery any more.
-  assert.ok(!tagListSource.includes('role="tooltip"'));
-  assert.ok(!tagListSource.includes("EDGE_ALIGN_THRESHOLD_PX"));
+  // The public profile's Event Brands render through the SAME shared
+  // read-only chip list as Genre tags again -- one implementation, not a
+  // parallel bespoke one.
+  assert.match(sectionsSource, /<ProfileTagChipList tags=\{brands\} \/>/);
+  assert.ok(!sectionsSource.includes("EventBrandsChips"));
+
+  // The dedicated sheet component is gone from the tree entirely.
+  assert.ok(
+    !existsSync(new URL("../app/components/profile/EventBrandsChips.tsx", import.meta.url)),
+    "EventBrandsChips.tsx should have been deleted with the bottom sheet",
+  );
+
+  // ...and so is the animation CSS that existed only for that sheet.
+  assert.ok(!globalsSource.includes("ftc-event-brands-sheet-panel"));
+  assert.ok(!globalsSource.includes("ftc-sheet-slide-up"));
+
+  // No interaction of any kind left on the read-only chip: no sheet, no
+  // popover, no tooltip, no client-side state. A profile is self-contained.
+  assert.ok(!tagListSource.includes('"use client"'));
   assert.ok(!tagListSource.includes("useState"));
   assert.ok(!tagListSource.includes("<button"));
+  assert.ok(!tagListSource.includes("onClick"));
+  assert.ok(!tagListSource.includes('role="dialog"'));
+  assert.ok(!tagListSource.includes('role="tooltip"'));
+  assert.ok(!tagListSource.includes("title="));
 
-  // Public profile's Event Brands section renders the new sheet-backed
-  // component exclusively -- not the plain shared list any more.
-  assert.match(sectionsSource, /<EventBrandsChips brands=\{brands\} \/>/);
-  assert.ok(!sectionsSource.includes("ProfileTagChipList"));
-
-  // Trigger chips still reuse the exact shared max-width/truncate treatment
-  // every other chip surface uses, so the card itself never resizes/jumps.
-  assert.match(chipsSource, /PROFILE_TAG_CHIP_MAX_WIDTH_CLASS/);
+  // Adaptive wrap treatment, defined once as a shared constant.
   assert.match(
-    chipsSource,
-    /PROFILE_TAG_CHIP_BASE_CLASS\}\s*\$\{PROFILE_TAG_CHIP_MAX_WIDTH_CLASS\}\s*min-w-0 truncate/,
+    tagListSource,
+    /export const PROFILE_TAG_CHIP_TEXT_CLASS = "line-clamp-2 \[overflow-wrap:anywhere\]"/,
+  );
+  assert.match(tagListSource, /<span className=\{PROFILE_TAG_CHIP_TEXT_CLASS\}>\{tag\}<\/span>/);
+
+  // `truncate` (which sets `white-space: nowrap`) anywhere on this chip
+  // would pin it back to a single line and defeat the wrap entirely.
+  assert.ok(
+    !tagListSource.includes("truncate"),
+    "the read-only chip must not be single-line-truncated any more",
   );
 
-  // Sheet chrome: modal dialog semantics, dimmed backdrop, bottom-anchored
-  // rounded-top panel matching every other FTC sheet's surface/border/radius.
-  assert.match(chipsSource, /role="dialog"/);
-  assert.match(chipsSource, /aria-modal="true"/);
-  assert.match(chipsSource, /items-end justify-center bg-black\/60/);
-  assert.match(chipsSource, /rounded-t-2xl border border-ftc-border-strong bg-ftc-bg-elevated/);
+  // The row still wraps with even spacing on both axes, and nothing pins a
+  // height -- so the card grows naturally as chips wrap onto more rows.
+  assert.match(tagListSource, /<div className="flex flex-wrap gap-2">/);
+  assert.doesNotMatch(tagListSource, /\bh-\[|\bmax-h-|\bmin-h-/);
 
-  // Title + live brand-count subtitle, singular/plural handled.
-  assert.match(chipsSource, />\s*Event Brands\s*</);
-  assert.match(chipsSource, /\{brands\.length\} brand\{brands\.length === 1 \? "" : "s"\}/);
-
-  // Every brand renders in full inside the scrollable list -- wrapping
-  // allowed, no truncate/ellipsis classes on the rows themselves.
-  assert.match(chipsSource, /<ul className="min-h-0 flex-1 overflow-y-auto/);
-  assert.match(chipsSource, /whitespace-normal break-words/);
-  assert.ok(!/<li[\s\S]{0,120}truncate/.test(chipsSource));
-
-  // Tapping a chip only ever calls `openSheetFor`, which sets the active
-  // brand and opens -- there is no separate "close then reopen" path, so
-  // switching brands while already open can't flicker the sheet shut.
-  assert.match(chipsSource, /onClick=\{\(\) => openSheetFor\(brand\)\}/);
-  assert.ok(!/setOpen\(false\)[\s\S]{0,80}setOpen\(true\)/.test(chipsSource));
-
-  // Tapped brand scrolls into view and gets a highlighted background.
-  assert.match(chipsSource, /scrollIntoView\(\{ block: "center", behavior: "smooth" \}\)/);
-  assert.match(chipsSource, /brand === activeBrand/);
-
-  // Dismiss: backdrop tap, Escape, and a swipe-down gesture scoped to the
-  // header/handle (never the scrollable list, so it can't fight scrolling).
-  assert.match(chipsSource, /onClick=\{closeSheet\}/);
-  assert.match(chipsSource, /event\.key === "Escape"/);
-  assert.match(chipsSource, /onTouchStart=\{handleHeaderTouchStart\}/);
-  assert.match(chipsSource, /onTouchMove=\{handleHeaderTouchMove\}/);
-  assert.match(chipsSource, /onTouchEnd=\{handleHeaderTouchEnd\}/);
-
-  // Body scroll locked while open -- the same shared hook every other FTC
-  // sheet (e.g. ProfileGenrePicker's "Add genres" sheet) already uses.
-  assert.match(chipsSource, /import \{ useBodyScrollLock \} from "@\/lib\/ui\/useBodyScrollLock"/);
-  assert.match(chipsSource, /useBodyScrollLock\(open\)/);
-
-  // Accessible labelling + a minimal focus trap that keeps Tab inside the
-  // sheet instead of escaping to the page behind it.
-  assert.match(chipsSource, /aria-labelledby="event-brands-sheet-title"/);
-  assert.match(chipsSource, /aria-describedby="event-brands-sheet-subtitle"/);
-  assert.match(chipsSource, /onKeyDown=\{handlePanelKeyDown\}/);
-  assert.match(chipsSource, /function handlePanelKeyDown/);
-
-  // Slide-up-from-bottom entrance animation, with the same
-  // prefers-reduced-motion override every other FTC entrance animation has.
-  assert.match(chipsSource, /className="ftc-event-brands-sheet-panel/);
-  const keyframeRule = globalsSource.match(/@keyframes ftc-sheet-slide-up \{[\s\S]*?\n\}/);
-  assert.ok(keyframeRule, "ftc-sheet-slide-up keyframes not found in globals.css");
-  assert.match(keyframeRule[0], /transform: translateY\(100%\)/);
-  assert.match(
-    globalsSource,
-    /@media \(prefers-reduced-motion: reduce\) \{\s*\.ftc-event-brands-sheet-panel \{\s*animation: none;/,
-  );
-
-  // Edit Profile is completely untouched -- it never imports the new
-  // component, and the editable brand field never imported the old
-  // component's default export either (only the shared className
-  // constants), so this change cannot affect editing behaviour.
-  const editBrandsFieldSource = readFileSync(
+  // The EDITABLE surfaces are deliberately NOT changed by this: a row of
+  // chips with remove buttons keeps a uniform single-line height while
+  // editing. Guarding both directions here means a future "make them
+  // consistent" refactor has to be a deliberate decision, not a silent one.
+  const brandsFieldSource = readFileSync(
     new URL("../app/components/profile/ProfileEventBrandsField.tsx", import.meta.url),
     "utf8",
   );
-  assert.ok(!editBrandsFieldSource.includes("EventBrandsChips"));
-  assert.ok(!/import ProfileTagChipList\b/.test(editBrandsFieldSource));
+  const genrePickerSource = readFileSync(
+    new URL("../app/components/profile/ProfileGenrePicker.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(brandsFieldSource, /<span className="min-w-0 truncate">\{brand\}<\/span>/);
+  assert.ok(!brandsFieldSource.includes("line-clamp-2"));
+  assert.match(genrePickerSource, /min-w-0 truncate/);
+  assert.ok(!genrePickerSource.includes("line-clamp-2"));
 }
 
 /**
@@ -7359,7 +7340,7 @@ async function main() {
   testAddEventBrandTag();
   testEventBrandChipOverflowSafe();
   testGenreSheetHeightDoesNotTrackFilteredContent();
-  testEventBrandsBottomSheet();
+  testPublicProfileEventBrandsAdaptiveChips();
   testProfileCacheInvalidatedAfterSave();
   testEventBrandEditFormHydration();
   testEventBrandSafeSave();
