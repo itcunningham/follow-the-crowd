@@ -6274,8 +6274,15 @@ function testDmImageGridNoCropping() {
   assert.match(groupSource, /DM_IMAGE_GRID_CELL_MAX_WIDTH_CLASS/);
   assert.match(groupSource, /getKnownDmImageAspectRatio\(attachment\.id\)/);
   assert.match(groupSource, /recordDmImageAspectRatio\(attachment\.id, image\.naturalWidth, image\.naturalHeight\)/);
-  assert.match(layoutSource, /max-w-\[calc\(50%-0\.125rem\)\]/);
+  assert.match(layoutSource, /max-w-36/);
   assert.match(layoutSource, /max-h-40/);
+  // A percentage max-width (e.g. calc(50%-...)) on a flex-wrap child fights
+  // the flex shrink pass and under-sizes every tile well below its actual
+  // cap — confirmed live (rendered 51x77 against a 142x160 cap). The cap
+  // must be a fixed pixel value, and the tile itself must opt out of
+  // flex-shrink so the fixed cap is never squeezed smaller than intended.
+  assert.doesNotMatch(layoutSource, /max-w-\[calc/);
+  assert.match(groupSource, /shrink-0/);
 
   // Tiles wrap in a flex layout (not a row-locking CSS grid, which would
   // force mismatched-ratio neighbours to share a row height) and are never
@@ -6288,9 +6295,8 @@ function testDmImageGridNoCropping() {
   // sizing algorithm (max-width/max-height with auto width/height, no
   // object-fit) always preserves the source ratio exactly, never crops,
   // never stretches. Model that algorithm here for portrait, landscape,
-  // square, and extreme cases, mirroring what max-h-40 /
-  // max-w-[calc(50%-0.125rem)] resolve to against a 288px-wide grid.
-  const cellMaxWidthPx = 143; // ~calc(50% - 0.125rem) of the 18rem/288px grid
+  // square, and extreme cases, mirroring what max-h-40 / max-w-36 resolve to.
+  const cellMaxWidthPx = 144; // max-w-36 = 9rem
   const cellMaxHeightPx = 160; // max-h-40
 
   function fitWithinBox(naturalWidth: number, naturalHeight: number) {

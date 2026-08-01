@@ -10,13 +10,13 @@ export const DM_IMAGE_BUBBLE_MAX_WIDTH_CLASS = "max-w-[min(100%,18rem)]";
 export const DM_IMAGE_BUBBLE_MAX_HEIGHT_CLASS = "max-h-72";
 
 /**
- * Explicit (not max-) width for the multi-image grid. Grid cells are fixed
- * aspect ratios rather than intrinsically-sized images, so — unlike the
- * single-image bubble — the container has no natural content width for the
- * browser to shrink-wrap around; without an explicit width it renders far
- * wider than intended and the surrounding flex alignment (which right/left
- * aligns by shrinking to the bubble's own width) can't hug the sender's
- * side. A fixed width matching the single-image cap fixes both.
+ * Explicit (not max-) width for the multi-image grid. Grid tiles wrap and
+ * intrinsically size to each photo's own aspect ratio, so — unlike the
+ * single-image bubble — the container has no single natural content width
+ * for the browser to shrink-wrap around; without an explicit width it
+ * renders far wider than intended and the surrounding flex alignment (which
+ * right/left aligns by shrinking to the bubble's own width) can't hug the
+ * sender's side. A fixed width matching the single-image cap fixes both.
  */
 export const DM_IMAGE_BUBBLE_GRID_WIDTH_CLASS = "w-[min(100%,18rem)]";
 
@@ -48,15 +48,14 @@ export function resolveVisibleGridImages<T>(
 }
 
 /**
- * Per-cell layout class for the 2-column image grid: 2 and 4+ images are
- * plain equal squares (2-col/1-row and 2-col/2-row respectively); exactly 3
- * images use the standard large-top/two-bottom pattern (first cell spans
- * both columns as a 2:1 rectangle, the other two remain equal squares below).
+ * Per-image caps for the multi-image grid (2+ attachments in one message).
+ * Each tile keeps its own source aspect ratio — no forced square/2:1 box and
+ * no `object-fit: cover` — so portrait, landscape, and square photos never
+ * get cropped; these just bound how large any one tile can get so a group of
+ * photos doesn't dominate the conversation. A fixed pixel width (not a
+ * percentage) roughly half the shared grid width, so two tiles sit side by
+ * side and wrap to new rows past that — a percentage max-width here would
+ * fight the flex-wrap container's own shrink pass and under-size every tile.
  */
-export function resolveImageGridCellClass(totalImageCount: number, index: number): string {
-  if (totalImageCount === 3 && index === 0) {
-    return "col-span-2 aspect-[2/1]";
-  }
-
-  return "aspect-square";
-}
+export const DM_IMAGE_GRID_CELL_MAX_WIDTH_CLASS = "max-w-36";
+export const DM_IMAGE_GRID_CELL_MAX_HEIGHT_CLASS = "max-h-40";

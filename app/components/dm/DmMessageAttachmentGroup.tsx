@@ -8,9 +8,14 @@ import { isDmImageAttachment, type DmMessageAttachment } from "@/lib/dmAttachmen
 import {
   DM_GALLERY_OVERVIEW_MIN_IMAGES,
   DM_IMAGE_BUBBLE_GRID_WIDTH_CLASS,
-  resolveImageGridCellClass,
+  DM_IMAGE_GRID_CELL_MAX_HEIGHT_CLASS,
+  DM_IMAGE_GRID_CELL_MAX_WIDTH_CLASS,
   resolveVisibleGridImages,
 } from "@/lib/dm/dmImageLayout";
+import {
+  getKnownDmImageAspectRatio,
+  recordDmImageAspectRatio,
+} from "@/lib/dm/dmImageAttachmentDimensions";
 
 /**
  * Which media overlay is currently open for this message's images, if any.
@@ -34,22 +39,22 @@ function handleImageContextMenu(
 
 function ImageGridCell({
   attachment,
-  className,
   overlayCount,
   onOpen,
   onContextMenu,
 }: {
   attachment: DmMessageAttachment;
-  className: string;
   overlayCount?: number;
   onOpen: () => void;
   onContextMenu?: (event: React.MouseEvent<HTMLElement>) => void;
 }) {
+  const knownAspectRatio = getKnownDmImageAspectRatio(attachment.id);
+
   return (
     <button
       type="button"
       aria-label="Open image"
-      className={`ftc-dm-message-image-open relative block w-full overflow-hidden ${className}`}
+      className="ftc-dm-message-image-open relative block shrink-0 overflow-hidden rounded-lg"
       onClick={onOpen}
       onContextMenu={(event) => handleImageContextMenu(event, onContextMenu)}
       onDragStart={(event) => event.preventDefault()}
@@ -59,8 +64,13 @@ function ImageGridCell({
         src={attachment.file_url}
         alt={attachment.file_name}
         draggable={false}
-        className="pointer-events-none h-full w-full object-cover"
+        className={`pointer-events-none ${DM_IMAGE_GRID_CELL_MAX_HEIGHT_CLASS} ${DM_IMAGE_GRID_CELL_MAX_WIDTH_CLASS}`}
+        style={knownAspectRatio ? { aspectRatio: knownAspectRatio } : undefined}
         loading="lazy"
+        onLoad={(event) => {
+          const image = event.currentTarget;
+          recordDmImageAspectRatio(attachment.id, image.naturalWidth, image.naturalHeight);
+        }}
       />
       {overlayCount ? (
         <span className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/60 text-xl font-semibold text-white">
@@ -74,16 +84,17 @@ function ImageGridCell({
 /**
  * Renders a message's attachments. A single attachment preserves the
  * existing `DmMessageAttachmentView` layout untouched. Two or more images
- * render as one balanced grid — equal 2-column for 2, large-top/two-bottom
- * for 3, 2x2 for 4, and a 2x2 grid with a "+N" overlay on the last cell for
- * 5+ — sharing the same max bubble width as single images, with a fixed
- * (not max-) width so the grid gets a real, predictable footprint the
- * surrounding message row can align to the sender's side. The whole grid is
- * one border/rounded-corner frame and behaves as a single message; tapping
- * any cell on a 2-4 image message opens the lightbox directly on that image
- * (including ones hidden behind the "+N" tile); tapping any cell on a 5+
- * image message opens the Instagram-style Gallery Overview first instead —
- * browsing a large group by jumping straight into one photo loses context.
+ * render as a wrapping tile group, each tile kept at its own source aspect
+ * ratio (no cropping) and capped to roughly half the shared bubble width so
+ * pairs sit side by side, sharing the same max bubble width as single
+ * images, with a fixed (not max-) width so the group gets a real,
+ * predictable footprint the surrounding message row can align to the
+ * sender's side. The whole group is one border/rounded-corner frame and
+ * behaves as a single message; tapping any tile on a 2-4 image message opens
+ * the lightbox directly on that image (including ones hidden behind the
+ * "+N" tile); tapping any tile on a 5+ image message opens the
+ * Instagram-style Gallery Overview first instead — browsing a large group by
+ * jumping straight into one photo loses context.
  */
 export default function DmMessageAttachmentGroup({
   attachments,
@@ -137,7 +148,7 @@ export default function DmMessageAttachmentGroup({
     <div className="space-y-2">
       {visibleImages.length > 0 ? (
         <div
-          className={`grid grid-cols-2 gap-0.5 overflow-hidden rounded-2xl border border-ftc-border bg-ftc-bg-elevated/40 ${DM_IMAGE_BUBBLE_GRID_WIDTH_CLASS}`}
+          className={`flex flex-wrap items-start gap-1 overflow-hidden rounded-2xl border border-ftc-border bg-ftc-bg-elevated/40 p-1 ${DM_IMAGE_BUBBLE_GRID_WIDTH_CLASS}`}
         >
           {visibleImages.map((attachment, index) => {
             const isOverlayTile = hiddenImageCount > 0 && index === visibleImages.length - 1;
@@ -146,7 +157,6 @@ export default function DmMessageAttachmentGroup({
               <ImageGridCell
                 key={attachment.id}
                 attachment={attachment}
-                className={resolveImageGridCellClass(imageAttachments.length, index)}
                 overlayCount={isOverlayTile ? hiddenImageCount : undefined}
                 onOpen={() => openFromGrid(isOverlayTile ? visibleImages.length : index)}
                 onContextMenu={onContextMenu}
