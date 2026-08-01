@@ -115,7 +115,7 @@ export default function DmComposer({
           {pendingPhotos.map((photo, index) => (
             <div
               key={photo.previewUrl}
-              className="dm-composer-pending-photo-selected relative h-[4.5rem] w-[4.5rem] shrink-0 overflow-hidden rounded-xl"
+              className="dm-composer-pending-photo-selected relative h-[3.75rem] w-[3.75rem] shrink-0 overflow-hidden rounded-xl"
               data-testid="dm-composer-pending-photo"
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -129,7 +129,7 @@ export default function DmComposer({
                 aria-label={`Remove selected photo ${index + 1}`}
                 disabled={busy}
                 onClick={() => onRemovePendingPhoto(index)}
-                className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-ftc-bg text-xs leading-none text-ftc-text shadow transition disabled:cursor-not-allowed disabled:opacity-40"
+                className="absolute right-0.5 top-0.5 flex h-[1.125rem] w-[1.125rem] items-center justify-center rounded-full bg-ftc-bg text-xs leading-none text-ftc-text shadow transition disabled:cursor-not-allowed disabled:opacity-40"
               >
                 ×
               </button>

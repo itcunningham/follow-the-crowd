@@ -5263,14 +5263,17 @@ function testDmComposerClearsPendingPhotoAfterSuccessfulSend() {
   assert.doesNotMatch(composerSource, /Clear all/);
   assert.match(composerSource, /onRemovePendingPhoto/);
   assert.match(composerSource, /pendingPhotos/);
-  // Every pending-photo thumbnail is the same fixed size (no per-item variation).
-  assert.match(composerSource, /h-\[4\.5rem\] w-\[4\.5rem\]/);
-  // Remove (×) button: same size/position/interaction, higher-contrast fill
-  // (fully opaque, not /90) and glyph (primary text token, not the dimmer
-  // secondary one) so it stays visible over dark images too.
+  // Every pending-photo thumbnail is the same fixed size (no per-item
+  // variation) — 3.75rem (60px), ~16.7% shorter than the previous 4.5rem
+  // (72px) pass, tucking the strip closer to iMessage/WhatsApp proportions.
+  assert.match(composerSource, /h-\[3\.75rem\] w-\[3\.75rem\]/);
+  assert.doesNotMatch(composerSource, /h-\[4\.5rem\] w-\[4\.5rem\]/);
+  // Remove (×) button: ~10% smaller (1.125rem/18px, was 1.25rem/20px) and
+  // tucked tighter into the corner (right-0.5/top-0.5, was right-1/top-1) to
+  // match the smaller thumbnail; fill/glyph contrast and interaction unchanged.
   assert.match(
     composerSource,
-    /absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-ftc-bg text-xs leading-none text-ftc-text shadow transition disabled:cursor-not-allowed disabled:opacity-40/,
+    /absolute right-0\.5 top-0\.5 flex h-\[1\.125rem\] w-\[1\.125rem\] items-center justify-center rounded-full bg-ftc-bg text-xs leading-none text-ftc-text shadow transition disabled:cursor-not-allowed disabled:opacity-40/,
   );
   assert.doesNotMatch(composerSource, /bg-ftc-bg\/90/);
   assert.match(composerSource, /disabled=\{busy \|\| !canSend\}/);
