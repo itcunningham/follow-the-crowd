@@ -9,6 +9,10 @@ const SWIPE_DISMISS_THRESHOLD_PX = 90;
 const SWIPE_NAV_THRESHOLD_PX = 50;
 const DOUBLE_TAP_ZOOM_SCALE = 2.5;
 const MAX_PINCH_ZOOM_SCALE = 4;
+const PAGE_TRACK_TRANSITION_MS = 300;
+const PAGE_TRACK_EASING = "cubic-bezier(0.22, 1, 0.36, 1)";
+/** Matches iOS `UIScrollView`'s own damping constant for edge rubber-banding. */
+const RUBBER_BAND_RESISTANCE = 0.55;
 
 type LightboxImage = {
   url: string;
@@ -22,11 +26,35 @@ function distanceBetweenTouches(touches: React.TouchList): number {
 }
 
 /**
+ * Diminishing resistance for a drag past the first/last image — asymptotically
+ * approaches one viewport width of visual travel no matter how far the finger
+ * moves, instead of a hard stop or unbounded 1:1 tracking.
+ */
+function applyRubberBandResistance(overflowPx: number, viewportWidthPx: number): number {
+  if (overflowPx === 0) {
+    return 0;
+  }
+
+  const sign = overflowPx < 0 ? -1 : 1;
+  const magnitude = Math.abs(overflowPx);
+
+  return (
+    (sign * (magnitude * viewportWidthPx * RUBBER_BAND_RESISTANCE)) /
+    (viewportWidthPx + RUBBER_BAND_RESISTANCE * magnitude)
+  );
+}
+
+/**
  * Full-group DM image viewer — opens on the tapped image, swipes through
  * every image in the message (including ones hidden behind a "+N" grid
  * tile), and supports pinch/double-tap zoom + swipe-down dismiss. Replaces
  * the old per-tile `window.open` for multi-image messages only; single-image
  * messages keep their existing new-tab behaviour untouched.
+ *
+ * Paging is a real horizontal track: every image is mounted once as an
+ * adjacent slide (never remounted while paging) and the whole track
+ * translates together, so the next page is already in position the instant
+ * a swipe starts — no floating card, no exposed backdrop, no crossfade swap.
  */
 export default function DmImageLightbox({
   images,
@@ -40,7 +68,11 @@ export default function DmImageLightbox({
   const [index, setIndex] = useState(initialIndex);
   const [visible, setVisible] = useState(false);
   const [scale, setScale] = useState(1);
-  const [translate, setTranslate] = useState({ x: 0, y: 0 });
+  // Pan offset for the current image while zoomed in (scale > 1) only.
+  const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
+  // Live, uncommitted drag while not zoomed: `x` moves the page track,
+  // `y` moves only the current slide's image for the dismiss gesture.
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
 
   const dragStateRef = useRef<{
     startX: number;
@@ -80,7 +112,7 @@ export default function DmImageLightbox({
 
   function resetZoom() {
     setScale(1);
-    setTranslate({ x: 0, y: 0 });
+    setPanOffset({ x: 0, y: 0 });
   }
 
   function goToIndex(nextIndex: number) {
@@ -113,7 +145,7 @@ export default function DmImageLightbox({
     const now = Date.now();
     if (now - lastTapRef.current < 280) {
       setScale((current) => (current > 1 ? 1 : DOUBLE_TAP_ZOOM_SCALE));
-      setTranslate({ x: 0, y: 0 });
+      setPanOffset({ x: 0, y: 0 });
       lastTapRef.current = 0;
     } else {
       lastTapRef.current = now;
@@ -131,6 +163,11 @@ export default function DmImageLightbox({
           Math.max(1, pinchStateRef.current.startScale * ratio),
         );
         setScale(nextScale);
+        // Pinching back down to 1 hands control back to page-swiping — clear
+        // any leftover pan so the image is centred again when it does.
+        if (nextScale <= 1) {
+          setPanOffset({ x: 0, y: 0 });
+        }
         return;
       }
 
@@ -140,26 +177,33 @@ export default function DmImageLightbox({
       }
 
       const touch = event.touches[0];
-      const deltaX = touch.clientX - drag.startX;
-      const deltaY = touch.clientY - drag.startY;
+      const rawDeltaX = touch.clientX - drag.startX;
+      const rawDeltaY = touch.clientY - drag.startY;
       drag.lastX = touch.clientX;
       drag.lastY = touch.clientY;
 
-      if (scale > 1) {
-        drag.mode = "pan";
-        setTranslate({ x: deltaX, y: deltaY });
+      if (drag.mode === "pan") {
+        setPanOffset({ x: rawDeltaX, y: rawDeltaY });
         return;
       }
 
-      if (drag.mode === "none" && Math.hypot(deltaX, deltaY) > 10) {
+      if (drag.mode === "none" && Math.hypot(rawDeltaX, rawDeltaY) > 10) {
         drag.mode = "swipe";
       }
 
       if (drag.mode === "swipe") {
-        setTranslate({ x: deltaX, y: Math.max(0, deltaY * 0.4) });
+        const atFirstImage = index === 0;
+        const atLastImage = index === images.length - 1;
+        let pageDeltaX = rawDeltaX;
+
+        if ((atFirstImage && pageDeltaX > 0) || (atLastImage && pageDeltaX < 0)) {
+          pageDeltaX = applyRubberBandResistance(pageDeltaX, window.innerWidth);
+        }
+
+        setDragOffset({ x: pageDeltaX, y: rawDeltaY * 0.4 });
       }
     },
-    [scale],
+    [scale, index, images.length],
   );
 
   const handleTouchEnd = useCallback(() => {
@@ -175,27 +219,26 @@ export default function DmImageLightbox({
       return;
     }
 
-    const deltaX = drag.lastX - drag.startX;
-    const deltaY = drag.lastY - drag.startY;
+    if (drag.mode === "swipe") {
+      const deltaX = drag.lastX - drag.startX;
+      const deltaY = drag.lastY - drag.startY;
 
-    if (drag.mode === "swipe" && deltaY > SWIPE_DISMISS_THRESHOLD_PX && Math.abs(deltaX) < 60) {
-      requestClose();
-      return;
+      if (deltaY > SWIPE_DISMISS_THRESHOLD_PX && Math.abs(deltaX) < 60) {
+        requestClose();
+      } else if (Math.abs(deltaX) > SWIPE_NAV_THRESHOLD_PX) {
+        goToIndex(deltaX < 0 ? index + 1 : index - 1);
+      }
     }
 
-    if (drag.mode === "swipe" && Math.abs(deltaX) > SWIPE_NAV_THRESHOLD_PX) {
-      goToIndex(deltaX < 0 ? index + 1 : index - 1);
-      return;
-    }
-
-    setTranslate({ x: 0, y: 0 });
+    setDragOffset({ x: 0, y: 0 });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [index]);
+  }, [index, requestClose]);
 
-  const currentImage = images[index];
   const hasPrevious = index > 0;
   const hasNext = index < images.length - 1;
-  const isPanned = scale > 1;
+  const isDragging = dragStateRef.current !== null || pinchStateRef.current !== null;
+  const slicePercent = 100 / images.length;
+  const trackTransform = `translate3d(calc(${-index * slicePercent}% + ${dragOffset.x}px), 0, 0)`;
 
   return (
     <div
@@ -219,27 +262,53 @@ export default function DmImageLightbox({
       </div>
 
       <div
-        className="absolute inset-0 flex items-center justify-center overflow-hidden [touch-action:none]"
+        className={`absolute inset-0 overflow-hidden [touch-action:none] transition-opacity duration-200 ease-out motion-reduce:transition-none ${
+          visible ? "opacity-100" : "opacity-0"
+        }`}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
         onTouchCancel={handleTouchEnd}
       >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          key={currentImage.url}
-          src={currentImage.url}
-          alt={currentImage.name}
-          draggable={false}
-          onClick={(event) => event.stopPropagation()}
-          className={`pointer-events-auto max-h-[90vh] max-w-[92vw] select-none object-contain transition-[opacity,transform] duration-200 ease-out motion-reduce:transition-none ${
-            visible ? "opacity-100" : "opacity-0"
-          }`}
+        <div
+          className="flex h-full"
           style={{
-            transform: `translate(${translate.x}px, ${translate.y}px) scale(${scale})`,
-            transition: isPanned || dragStateRef.current ? "none" : undefined,
+            width: `${images.length * 100}%`,
+            transform: trackTransform,
+            transition: isDragging
+              ? "none"
+              : `transform ${PAGE_TRACK_TRANSITION_MS}ms ${PAGE_TRACK_EASING}`,
           }}
-        />
+        >
+          {images.map((image, i) => {
+            const isCurrent = i === index;
+
+            return (
+              <div
+                key={image.url}
+                className="flex h-full shrink-0 items-center justify-center"
+                style={{ width: `${slicePercent}%` }}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={image.url}
+                  alt={image.name}
+                  draggable={false}
+                  onClick={(event) => event.stopPropagation()}
+                  className="pointer-events-auto max-h-[90vh] max-w-[92vw] select-none object-contain"
+                  style={
+                    isCurrent
+                      ? {
+                          transform: `translate(${panOffset.x}px, ${panOffset.y + dragOffset.y}px) scale(${scale})`,
+                          transition: isDragging ? "none" : "transform 200ms ease-out",
+                        }
+                      : undefined
+                  }
+                />
+              </div>
+            );
+          })}
+        </div>
       </div>
 
       {hasPrevious ? (

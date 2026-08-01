@@ -6165,6 +6165,94 @@ function testDmMediaViewerCloseButtonConsistentAndClickable() {
   assert.match(lightboxSource, /inset-x-0 top-0 z-10 flex items-center justify-between/);
 }
 
+/**
+ * Root-cause regression test for "swiping between images shows a floating
+ * card over empty black space instead of a native paged gallery".
+ *
+ * Structural cause: the old implementation mounted exactly ONE `<img>`,
+ * keyed by `currentImage.url`, and applied the live swipe delta directly to
+ * that single element's `transform`. There was no second image anywhere in
+ * the DOM to represent the adjacent page, so dragging the current image away
+ * exposed the plain black backdrop behind it; on release, changing `index`
+ * unmounted that `<img>` (different `key`) and mounted a brand new one,
+ * which cross-faded in from the CENTRE via `opacity` rather than sliding in
+ * from the edge — the "floating card sliding away, black gap, image
+ * fades/detaches in place" failure exactly as reported.
+ *
+ * Fix: every image is mounted once as a persistent slide inside a single
+ * flex "track"; the track (not an individual image) is what translates
+ * during paging, so the next slide is already sitting in the adjacent
+ * position before a swipe even starts, and paging between mounted images
+ * never remounts or reloads them.
+ */
+function testDmImageLightboxUsesPagedTrackNotFloatingCard() {
+  const lightboxSource = readFileSync(
+    new URL("../app/components/dm/DmImageLightbox.tsx", import.meta.url),
+    "utf8",
+  );
+
+  // The old floating-card shape must be gone: no single img keyed by the
+  // current image's own url, and no live drag delta applied directly to an
+  // <img>'s transform (that IS the single-transformed-element bug).
+  assert.doesNotMatch(lightboxSource, /key=\{currentImage\.url\}/);
+  assert.doesNotMatch(lightboxSource, /const currentImage = images\[index\]/);
+
+  // Every image renders as its own persistent slide (`images.map`, keyed by
+  // that image's own url) inside one flex track — not a single swapped
+  // element — so paging never unmounts/remounts/reloads an image.
+  assert.match(lightboxSource, /\{images\.map\(\(image, i\) => \{/);
+  assert.match(lightboxSource, /key=\{image\.url\}/);
+  assert.match(
+    lightboxSource,
+    /className="flex h-full shrink-0 items-center justify-center"/,
+  );
+
+  // The track spans every slide and is translated by index, so the next/
+  // previous image already occupies the adjacent page before any drag —
+  // this is the one line that actually fixes the reported bug.
+  assert.match(lightboxSource, /width: `\$\{images\.length \* 100\}%`/);
+  assert.match(
+    lightboxSource,
+    /translate3d\(calc\(\$\{-index \* slicePercent\}% \+ \$\{dragOffset\.x\}px\), 0, 0\)/,
+  );
+
+  // Pan/zoom (only ever applied to the current slide) and page-track drag
+  // (the whole track) are separate transforms — panning a zoomed image must
+  // never also drag the track, and vice versa.
+  assert.match(lightboxSource, /panOffset\.x/);
+  assert.match(lightboxSource, /setDragOffset\(\{ x: pageDeltaX, y: rawDeltaY \* 0\.4 \}\)/);
+  assert.match(lightboxSource, /if \(drag\.mode === "pan"\) \{\s*setPanOffset/);
+
+  // Requirement 4: swiping only pages when NOT zoomed — pan mode is chosen
+  // up front from the current scale, and zooming back to exactly 1 (e.g. by
+  // pinching back out, not just double-tap) clears any leftover pan so
+  // paging is genuinely restored, not just re-enabled with a stale offset.
+  assert.match(lightboxSource, /mode: scale > 1 \? "pan" : "none"/);
+  assert.match(lightboxSource, /if \(nextScale <= 1\) \{\s*setPanOffset\(\{ x: 0, y: 0 \}\);/);
+
+  // Requirement 5: rubber-band only at the true edges (first image can't
+  // drag further right, last image can't drag further left), never an
+  // unbounded/infinite scroll — resistance is applied via a bounded
+  // diminishing-returns formula, not a hard stop.
+  assert.match(lightboxSource, /function applyRubberBandResistance/);
+  assert.match(
+    lightboxSource,
+    /if \(\(atFirstImage && pageDeltaX > 0\) \|\| \(atLastImage && pageDeltaX < 0\)\) \{/,
+  );
+
+  // Requirement 6: no transition while a finger is actively down (1:1
+  // tracking, no lag/jank), but transition re-enabled on release so the
+  // track/image settle with a real animation instead of snapping instantly.
+  assert.match(lightboxSource, /const isDragging = dragStateRef\.current !== null/);
+  assert.match(lightboxSource, /transition: isDragging\s*\n\s*\? "none"/);
+
+  // goToIndex (used by prev/next buttons and arrow keys, unchanged
+  // call sites) still just updates index/resets zoom — it now benefits from
+  // the same track transition automatically, no separate animation path.
+  assert.match(lightboxSource, /function goToIndex\(nextIndex: number\) \{/);
+  assert.match(lightboxSource, /setIndex\(nextIndex\);\s*resetZoom\(\);/);
+}
+
 function testDmComposerPendingPhotoGroupHelpers() {
   const makeFile = (name: string, size = 100, lastModified = 1) =>
     new File([new Uint8Array(size)], name, { type: "image/jpeg", lastModified });
@@ -7221,6 +7309,7 @@ async function main() {
   testDmImageGroupFullViewerAndOwnershipAlignment();
   testDmImageGalleryOverviewForLargeGroups();
   testDmMediaViewerCloseButtonConsistentAndClickable();
+  testDmImageLightboxUsesPagedTrackNotFloatingCard();
   // TEMP-SKIP (pre-existing, unrelated failure — stale getComposerLineBeforeCursor expectation in composerNewlineKeydown.ts, not touched by multi-photo work; see docs/handoff/CURRENT-STATE.md): testComposerNewlineKeydown();
   testDmComposerFocusSyncAfterSend();
   // TEMP-SKIP (pre-existing, unrelated failure — stale reaction-gesture source regex, not touched by multi-photo work; see docs/handoff/CURRENT-STATE.md): testDmMessageReactionGestureInteractions();
