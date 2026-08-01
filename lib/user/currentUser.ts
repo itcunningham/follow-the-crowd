@@ -66,11 +66,13 @@ const PROFILE_FIELDS =
 
 const PROFILE_LOCAL_CACHE_KEY = "ftc-user-profile-local";
 
-export function getDefaultRouteForRole(role: UserRole | null): string {
-  if (role === "dj") {
-    return "/bookings";
-  }
-
+/**
+ * Single source of truth for the default landing destination after login,
+ * onboarding, and profile setup. Every role currently lands on the Events
+ * workspace — DJs reach Gigs/Calendar as deliberate sub-tabs from there
+ * (see lib/plannerEventsNav.ts), never as the initial destination.
+ */
+export function getDefaultRouteForRole(_role: UserRole | null): string {
   return "/events";
 }
 

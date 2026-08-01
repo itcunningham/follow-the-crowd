@@ -228,12 +228,3 @@ export function isPlannerEventsAreaPath(pathname: string): boolean {
     pathname.startsWith("/bookings/")
   );
 }
-
-export function isGigsAreaPath(pathname: string): boolean {
-  return (
-    pathname === "/bookings" ||
-    pathname.startsWith("/bookings/") ||
-    pathname === "/calendar" ||
-    pathname.startsWith("/calendar/")
-  );
-}

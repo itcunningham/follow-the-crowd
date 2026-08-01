@@ -26,12 +26,12 @@ function getProfileSetupBackHref(
   return getDefaultRouteForRole(role);
 }
 
-function getProfileSetupBackLabel(isEditing: boolean, role: UserRole | null): string {
+function getProfileSetupBackLabel(isEditing: boolean): string {
   if (isEditing) {
     return "Back to profile";
   }
 
-  return role === "dj" ? "Back to Gigs" : "Back to Events";
+  return "Back to Events";
 }
 
 export default function ProfileSetupPage() {
@@ -114,7 +114,7 @@ export default function ProfileSetupPage() {
   }
 
   const backHref = getProfileSetupBackHref(isEditing, userId, profile.role);
-  const backLabel = getProfileSetupBackLabel(isEditing, profile.role);
+  const backLabel = getProfileSetupBackLabel(isEditing);
 
   return (
     <div className="min-h-[100dvh] bg-ftc-bg px-4 pb-[max(2.5rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))] font-sans text-ftc-text sm:px-6 sm:py-10">

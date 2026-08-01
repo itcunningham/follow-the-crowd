@@ -8,7 +8,7 @@ import { useNavBadges } from "@/app/components/navigation/NavBadgeProvider";
 import type { NavBadgeCounts } from "@/lib/notifications";
 import { readSupabaseSessionUserIdSync } from "@/lib/auth/sessionUserId";
 import { isMessagesInboxPath } from "@/lib/groupChats";
-import { isGigsAreaPath, isPlannerEventsAreaPath } from "@/lib/plannerEventsNav";
+import { isPlannerEventsAreaPath } from "@/lib/plannerEventsNav";
 import {
   getCachedNavMessagesCount,
 } from "@/lib/navigationBadgeCache";
@@ -20,11 +20,7 @@ import {
 import {
   readCachedNavigation,
 } from "@/lib/navigationRoleCache";
-import {
-  PROFILE_SETUP_PATH,
-  SETTINGS_PATH,
-  type UserRole,
-} from "@/lib/user/currentUser";
+import { PROFILE_SETUP_PATH, SETTINGS_PATH } from "@/lib/user/currentUser";
 import { useGuardProfile } from "@/app/components/GuardProfileContext";
 import {
   subscribeMobileSoftwareKeyboard,
@@ -45,17 +41,17 @@ type NavItem = {
    * (isActive spans several distinct hrefs), not a single-destination link —
    * tapping one while already inside that workspace should do nothing rather
    * than reset back to `href`. Events (isPlannerEventsAreaPath: Events/Event
-   * Plans/Calendar/Gigs), Messages (isMessagesInboxPath: Inbox/DM/Group Chat/
-   * Event Chat), and Profile (own profile + Settings, and any nested
-   * sub-paths under either) qualify — `pathname !== href` doesn't mean "not
-   * here yet" for any of them. DJ Gigs is single-destination — isActive
-   * already implies pathname===href, so it's unaffected either way and
-   * doesn't need this flag.
+   * Plans/Calendar/Gigs — same item for every role; Gigs and Calendar are
+   * reached only via the in-workspace sub-nav, never a separate bottom-nav
+   * item), Messages (isMessagesInboxPath: Inbox/DM/Group Chat/Event Chat),
+   * and Profile (own profile + Settings, and any nested sub-paths under
+   * either) qualify — `pathname !== href` doesn't mean "not here yet" for
+   * any of them.
    */
   isWorkspaceSelector?: boolean;
 };
 
-function getNavItems(role: UserRole, currentUserId: string | null): NavItem[] {
+function getNavItems(currentUserId: string | null): NavItem[] {
   const events: NavItem = {
     href: "/events",
     label: "Events",
@@ -63,15 +59,6 @@ function getNavItems(role: UserRole, currentUserId: string | null): NavItem[] {
     isPrimary: true,
     isActive: (pathname) => isPlannerEventsAreaPath(pathname),
     isWorkspaceSelector: true,
-  };
-
-  const gigs: NavItem = {
-    href: "/bookings",
-    label: "Gigs",
-    icon: "gigs",
-    badgeKey: "bookings",
-    isPrimary: true,
-    isActive: (pathname) => isGigsAreaPath(pathname),
   };
 
   const messages: NavItem = {
@@ -98,10 +85,6 @@ function getNavItems(role: UserRole, currentUserId: string | null): NavItem[] {
         : pathname === PROFILE_SETUP_PATH,
     isWorkspaceSelector: true,
   };
-
-  if (role === "dj") {
-    return [gigs, messages, profile];
-  }
 
   return [events, messages, profile];
 }
@@ -368,10 +351,9 @@ export default function AppNavigation() {
   const currentUserId =
     guardProfile?.user_id ?? cachedNavigation.userId ?? readSupabaseSessionUserIdSync();
 
-  const effectiveRole = role ?? "both";
   const resolvedRole = role;
   const resolvedUserId = currentUserId;
-  const navItems = effectiveRole ? getNavItems(effectiveRole, resolvedUserId) : [];
+  const navItems = getNavItems(resolvedUserId);
   const badgeCacheVersion = useSyncExternalStore(
     subscribeNavigationBadgeListeners,
     getNavigationBadgeCacheVersion,

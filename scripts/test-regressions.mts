@@ -7991,7 +7991,7 @@ function testAppSplashScreenSlogan() {
   );
 }
 
-function testDjPostLoginLandsOnGigsNotMessages() {
+function testMainNavAlwaysTargetsEventsWorkspace() {
   const currentUserSource = readFileSync(
     new URL("../lib/user/currentUser.ts", import.meta.url),
     "utf8",
@@ -8008,44 +8008,64 @@ function testDjPostLoginLandsOnGigsNotMessages() {
     new URL("../app/components/AppNavigation.tsx", import.meta.url),
     "utf8",
   );
+  const plannerEventsNavSource = readFileSync(
+    new URL("../lib/plannerEventsNav.ts", import.meta.url),
+    "utf8",
+  );
 
   // getDefaultRouteForRole is the single shared "default workspace" resolver used by
   // post-login redirect (getPostAuthRedirectPath), onboarding completion, profile-setup
-  // completion, and several guard fallbacks. DJs' bottom-left nav tab (leftmost item in
-  // AppNavigation's getNavItems for role "dj") is Gigs (/bookings) -- the default route
-  // must match, or a DJ lands on Messages immediately after login and only reaches their
-  // actual primary workspace by tapping nav themselves (the reported bug).
+  // completion, and several guard fallbacks. A prior fix mistakenly special-cased DJs to
+  // "/bookings" (Gigs) -- that made DJs land on Gigs immediately after login, and made the
+  // bottom-left main nav open Gigs instead of Events from Messages/Profile. Every role must
+  // resolve to the same "/events" destination: there is exactly one return statement, no
+  // per-role branching.
   assert.match(
     currentUserSource,
-    /export function getDefaultRouteForRole\(role: UserRole \| null\): string \{\s*if \(role === "dj"\) \{\s*return "\/bookings";\s*\}\s*\s*return "\/events";\s*\}/,
+    /export function getDefaultRouteForRole\(_role: UserRole \| null\): string \{\s*return "\/events";\s*\}/,
   );
-  assert.doesNotMatch(
-    currentUserSource,
-    /export function getDefaultRouteForRole[\s\S]{0,80}"\/dm"/,
-  );
+  assert.doesNotMatch(currentUserSource, /getDefaultRouteForRole[\s\S]{0,120}"\/dm"/);
+  assert.doesNotMatch(currentUserSource, /getDefaultRouteForRole[\s\S]{0,120}"\/bookings"/);
 
   // getPostAuthRedirectPath (the actual post-login call site) still delegates to
-  // getDefaultRouteForRole rather than hardcoding a redirect -- the fix corrects the
-  // shared resolver's one wrong branch instead of special-casing the login flow.
+  // getDefaultRouteForRole rather than hardcoding a redirect.
   assert.match(
     currentUserSource,
     /export async function getPostAuthRedirectPath[\s\S]{0,400}return getDefaultRouteForRole\(profile\?\.role \?\? null\);/,
   );
 
-  // Promoter/"both" behaviour is untouched: both fall through the same unchanged
-  // `return "/events"` branch (there is no separate "both" branch to regress).
-  assert.match(currentUserSource, /return "\/events";/);
+  // AppNavigation gives every role the exact same bottom-left "Events" workspace-selector
+  // item -- there is no separate DJ-only "Gigs" nav item, and no role branching in
+  // getNavItems at all. isPlannerEventsAreaPath (Events/Event Plans/Calendar/Gigs) is the
+  // item's isActive check, so tapping it while on any of those sub-pages is a workspace
+  // no-op, but tapping it from Messages or Profile (neither of which satisfy
+  // isPlannerEventsAreaPath) always navigates to /events.
+  assert.match(appNavigationSource, /function getNavItems\(currentUserId: string \| null\)/);
+  assert.match(appNavigationSource, /return \[events, messages, profile\];/);
+  assert.doesNotMatch(appNavigationSource, /\bconst gigs: NavItem/);
+  assert.doesNotMatch(appNavigationSource, /isGigsAreaPath/);
+  assert.match(
+    appNavigationSource,
+    /href: "\/events"[\s\S]{0,120}isActive: \(pathname\) => isPlannerEventsAreaPath\(pathname\)[\s\S]{0,40}isWorkspaceSelector: true/,
+  );
 
-  // AppNavigation puts Gigs first (bottom-left) for DJs -- confirms /bookings is genuinely
-  // the DJ primary workspace this fix aligns the post-login default with.
-  assert.match(appNavigationSource, /return \[gigs, messages, profile\];/);
+  // Gigs remains reachable -- but only as a deliberately-tapped sub-tab inside the Events
+  // workspace, gated the same way it always was (dj/both), never as a bottom-nav item or a
+  // post-login destination.
+  assert.match(plannerEventsNavSource, /gigs: \{ href: "\/bookings", label: "Gigs" \}/);
+  assert.match(
+    plannerEventsNavSource,
+    /export function canViewGigsSubNav\(role: UserRole \| null\): boolean \{\s*return role === "dj" \|\| role === "both";\s*\}/,
+  );
 
-  // Back-navigation labels that describe this same default must stay in sync with the
-  // corrected href -- both previously said "Back to Messages" while (after this fix)
-  // pointing at Gigs, which would have been a stale, misleading label.
-  assert.match(profileNavigationSource, /role === "dj" \? "Back to Gigs" : "Back to Events"/);
+  // Back-navigation labels that mirror this same default must stay in sync with the
+  // corrected href -- both now unconditionally say "Back to Events" (no dead per-role
+  // branch producing a label that no longer matches where the href actually goes).
+  assert.match(profileNavigationSource, /const fallbackLabel = "Back to Events";/);
+  assert.doesNotMatch(profileNavigationSource, /Back to Gigs/);
   assert.doesNotMatch(profileNavigationSource, /Back to Messages/);
-  assert.match(profileSetupSource, /role === "dj" \? "Back to Gigs" : "Back to Events"/);
+  assert.match(profileSetupSource, /return "Back to Events";/);
+  assert.doesNotMatch(profileSetupSource, /Back to Gigs/);
   assert.doesNotMatch(profileSetupSource, /Back to Messages/);
 }
 
@@ -8238,7 +8258,7 @@ async function main() {
   testQaEnvironmentResetScript();
   testLoginScreenPolish();
   testAppSplashScreenSlogan();
-  testDjPostLoginLandsOnGigsNotMessages();
+  testMainNavAlwaysTargetsEventsWorkspace();
   await testEventsHistorySelectAllButtonInteraction();
   await testEventsHistoryRemoveConfirmInteraction();
   await testDmChatReopenScroll();
