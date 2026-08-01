@@ -2841,6 +2841,15 @@ function testBioInputLimit() {
  * a wrapper `transition-[height]`, `prefers-reduced-motion` respected) --
  * adapted here rather than duplicated blind, and self-contained in this
  * file since `BookingCardExpandableNotes.tsx` is an unrelated DM feature.
+ * Also covers the older-iPhone Edit Profile textarea clipping fix: iOS
+ * Safari below 16.4 (the project's own browserslist targets ios_saf >= 14)
+ * does not support the `lh` CSS unit used by `.ftc-fixed-scroll-textarea-5`,
+ * so the whole `calc(5lh + ...)` height declaration was dropped there,
+ * leaving the textarea at browser-default (much shorter) height and
+ * clipping the bio. Fixed with a plain-pixel fallback declared *before*
+ * the `lh`-based one in the same rule (standard CSS graceful-degradation:
+ * unsupported values are ignored, so old Safari keeps the fallback while
+ * `lh`-capable browsers apply the later, more precise value).
  */
 function testProfileBioTextRendering() {
   const bioTextSource = readFileSync(
@@ -2865,6 +2874,11 @@ function testProfileBioTextRendering() {
   assert.match(bioTextSource, /prefersReducedMotion/);
   assert.doesNotMatch(bioTextSource, />\s*(More|Less)\s*</);
 
+  // Toggle sits close to the bio (tight gap) and reads as secondary, not
+  // as bold/prominent as the bio text itself.
+  assert.match(bioTextSource, /mt-1 text-xs font-medium text-ftc-primary/);
+  assert.doesNotMatch(bioTextSource, /mt-2[^"]*font-semibold/);
+
   // The 150-character limit is a save-time/typing-time concern
   // (applyBioInputLimit / MAX_PROFILE_BIO_LENGTH), never re-implemented here.
   assert.doesNotMatch(bioTextSource, /MAX_PROFILE_BIO_LENGTH/);
@@ -2888,9 +2902,32 @@ function testProfileBioTextRendering() {
     /textareaClassName="ftc-fixed-scroll-textarea ftc-fixed-scroll-textarea-5"/,
   );
   assert.match(globalsSource, /\.ftc-fixed-scroll-textarea-5 \{[\s\S]*?5lh/);
+
+  // Older-Safari fallback: a plain-pixel height must appear BEFORE the
+  // `lh`-based one in the same rule, so `lh`-unsupporting browsers (iOS
+  // Safari < 16.4) keep a real height instead of dropping the declaration.
+  const fiveLineRule = globalsSource.match(/\.ftc-fixed-scroll-textarea-5 \{[\s\S]*?\n\}/);
+  assert.ok(fiveLineRule, ".ftc-fixed-scroll-textarea-5 rule not found in globals.css");
+  const fiveLineRuleBody = fiveLineRule[0];
+  const pxFallbackIndex = fiveLineRuleBody.indexOf("height: 138px");
+  const lhIndex = fiveLineRuleBody.indexOf("height: calc(5lh");
+  assert.ok(pxFallbackIndex >= 0, "expected a plain-pixel fallback height in .ftc-fixed-scroll-textarea-5");
+  assert.ok(lhIndex >= 0, "expected the lh-based height to remain in .ftc-fixed-scroll-textarea-5");
+  assert.ok(
+    pxFallbackIndex < lhIndex,
+    "the plain-pixel fallback must be declared before the lh-based height so the cascade order is correct",
+  );
+
   // The shared 3-line class (still used by booking rate notes and the
-  // withdrawal reason field) must stay exactly as it was.
-  assert.match(globalsSource, /\.ftc-fixed-scroll-textarea-3 \{[\s\S]*?3lh/);
+  // withdrawal reason field) must stay exactly as it was -- this task is
+  // scoped to the bio's own `-5` class only, not a project-wide lh audit.
+  const threeLineRule = globalsSource.match(/\.ftc-fixed-scroll-textarea-3 \{[\s\S]*?\n\}/);
+  assert.ok(threeLineRule, ".ftc-fixed-scroll-textarea-3 rule not found in globals.css");
+  assert.match(threeLineRule[0], /3lh/);
+  // Exactly one plain `height:` declaration (the original lh-based one,
+  // not `min-height`/`max-height`) -- no pixel-fallback line added here,
+  // unlike the bio's own `-5` class above.
+  assert.equal((threeLineRule[0].match(/^\s*height:/gm) ?? []).length, 1);
   assert.match(
     readFileSync(
       new URL("../app/components/booking/ProposeBookingRateSheet.tsx", import.meta.url),
@@ -2898,6 +2935,35 @@ function testProfileBioTextRendering() {
     ),
     /textareaClassName="ftc-fixed-scroll-textarea ftc-fixed-scroll-textarea-3"/,
   );
+
+  // Trailing blank lines: investigated and confirmed already handled --
+  // saveUserProfile() trims the bio before persisting (so nothing with
+  // trailing blank lines is ever written), and ProfileBioText trims again
+  // at render time as a second safety net. No new trimming logic needed;
+  // this just locks in that both trims stay in place.
+  const currentUserSource = readFileSync(
+    new URL("../lib/user/currentUser.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(currentUserSource, /bio: input\.bio\.trim\(\)/);
+  assert.equal("Hello\n\n\n".trim(), "Hello");
+  assert.equal("Hello\n\nWorld\n\n".trim(), "Hello\n\nWorld");
+
+  // Role consistency: the bio textarea (Edit Profile) and ProfileBioText
+  // (public profile) are rendered unconditionally, outside any
+  // role === "dj"/"promoter"/"both" branch -- one shared implementation
+  // for every role, not a per-role fork that could drift.
+  const bioFieldBlock = formSource.match(
+    /<ProfileFormField\s+label="Bio"[\s\S]*?\/>/,
+  );
+  assert.ok(bioFieldBlock, "Bio ProfileFormField block not found in EditProfileForm.tsx");
+  assert.doesNotMatch(bioFieldBlock[0], /role ===/);
+  const profileHeroSource = readFileSync(
+    new URL("../app/components/profile/ProfileHero.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(profileHeroSource, /bio\?\.trim\(\) \? <ProfileBioText bio=\{bio\} \/> : null/);
+  assert.doesNotMatch(profileHeroSource, /role ===/);
 }
 
 /**

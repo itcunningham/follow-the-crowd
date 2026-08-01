@@ -368,6 +368,17 @@ html {
 }
 
 .ftc-fixed-scroll-textarea-5 {
+  /* Plain-pixel fallback first: iOS Safari below 16.4 (project targets
+     ios_saf >= 14 per package.json's browserslist) does not understand the
+     `lh` unit and drops the whole declaration, leaving the textarea at its
+     browser-default height and clipping content. Browsers that support
+     `lh` apply the later, more precise declaration below as normal cascade
+     override; browsers that don't keep this fallback instead of falling
+     back further to an unstyled default. 138px matches calc(5lh + 1rem +
+     2px) at this field's actual font-size/line-height (measured live). */
+  height: 138px !important;
+  min-height: 138px !important;
+  max-height: 138px !important;
   height: calc(5lh + 1rem + 2px) !important;
   min-height: calc(5lh + 1rem + 2px) !important;
   max-height: calc(5lh + 1rem + 2px) !important;

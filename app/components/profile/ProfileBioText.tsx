@@ -132,7 +132,7 @@ export default function ProfileBioText({ bio }: { bio: string }) {
         <button
           type="button"
           onClick={handleToggle}
-          className="mt-2 text-xs font-semibold text-ftc-primary transition hover:text-ftc-primary-dim"
+          className="mt-1 text-xs font-medium text-ftc-primary transition hover:text-ftc-primary-dim"
         >
           {expanded ? "See less" : "See more"}
         </button>
