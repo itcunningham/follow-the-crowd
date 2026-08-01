@@ -3497,6 +3497,7 @@ function testCreateEventValidationScrollsAndFocusesFirstInvalidField() {
     new URL("../app/components/planner/PlannerUi.tsx", import.meta.url),
     "utf8",
   );
+  const globalsSource = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
 
   // Errors stay gated behind createSaveAttempted -- never live while typing.
   assert.match(
@@ -3531,14 +3532,48 @@ function testCreateEventValidationScrollsAndFocusesFirstInvalidField() {
   // mechanism drives both the visual red border and the focus target, so
   // they can never disagree about which field is "first invalid".
   assert.match(eventsPageSource, /const createFormRef = useRef<HTMLFormElement>\(null\);/);
-  assert.match(eventsPageSource, /<form ref={createFormRef} onSubmit={handleSaveEvent}/);
+  assert.match(eventsPageSource, /<form\s*\n\s*ref={createFormRef}\s*\n\s*onSubmit={handleSaveEvent}\s*\n\s*noValidate/);
+
+  // Root-cause fix for "Save scrolls to the wrong section (e.g. Invite DJs)
+  // instead of the first invalid field": PlannerFormField's Event
+  // name/Venue inputs carry a native HTML `required` attribute, and without
+  // `noValidate` the browser's own constraint validation intercepts the
+  // submit *before* handleSaveEvent ever runs, performing its own
+  // native scroll/focus to whichever control it finds invalid first
+  // (including invisible helper inputs like FtcDatePicker's zero-size
+  // required mirror) -- racing against and often winning over this effect.
+  // `noValidate` removes that competing native path entirely, leaving this
+  // effect as the single, deterministic source of scroll/focus behaviour.
+  assert.match(eventsPageSource, /noValidate\s*\n\s*className="space-y-4"/);
+
   const scrollEffectBlock = eventsPageSource.match(
     /useEffect\(\(\) => \{\s*if \(createSaveAttemptCount === 0\)[\s\S]*?\}, \[createSaveAttemptCount\]\);/,
   );
   assert.ok(scrollEffectBlock, "scroll-to-first-invalid-field effect not found");
   assert.match(scrollEffectBlock[0], /querySelector<HTMLElement>\(\s*'\[aria-invalid="true"\]'/);
-  assert.match(scrollEffectBlock[0], /scrollIntoView\(\{ behavior: "smooth", block: "center" \}\)/);
+
+  // Focus is called BEFORE scroll, not after: `focus({ preventScroll: true })`
+  // is not reliably honoured on older WebKit (it has historically scrolled
+  // on focus regardless of the option), so a focus-then-scroll order doesn't
+  // depend on that option working -- any native scroll focus triggers is
+  // synchronous and happens first, and the explicit scrollIntoView
+  // immediately after always overrides it as the final, deterministic
+  // scroll position. `block: "start"` (not "center") plus the shared
+  // `scroll-margin-top` on .ftc-input/.ftc-textarea/.ftc-field-trigger
+  // (globals.css) gives comfortable clearance under the sticky desktop nav
+  // bar without a second, manually-computed offset scroll call.
+  const focusIndex = scrollEffectBlock[0].indexOf("firstInvalid.focus(");
+  const scrollIndex = scrollEffectBlock[0].indexOf("firstInvalid.scrollIntoView(");
+  assert.ok(focusIndex !== -1 && scrollIndex !== -1, "focus/scroll calls not found");
+  assert.ok(focusIndex < scrollIndex, "focus must be called before scrollIntoView");
   assert.match(scrollEffectBlock[0], /\.focus\(\{ preventScroll: true \}\)/);
+  assert.match(scrollEffectBlock[0], /scrollIntoView\(\{ behavior: "smooth", block: "start" \}\)/);
+
+  const scrollMarginRule = globalsSource.match(
+    /\.ftc-input,\s*\n\.ftc-textarea,\s*\n\.ftc-field-trigger \{[\s\S]*?\n\}/,
+  );
+  assert.ok(scrollMarginRule, ".ftc-input/.ftc-textarea/.ftc-field-trigger rule not found");
+  assert.match(scrollMarginRule[0], /scroll-margin-top: 5rem/);
 
   // The Save button is never disabled by validation state -- only by
   // `saving` -- so every tap (not just the first) reaches handleSaveEvent

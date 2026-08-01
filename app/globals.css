@@ -323,6 +323,12 @@ html {
   outline: none;
   box-shadow: none;
   border-radius: var(--ftc-radius-lg);
+  /* Comfortable clearance for `scrollIntoView({ block: "start" })` (e.g.
+   * Create Event's scroll-to-first-invalid-field) so a field never lands
+   * flush against, or hidden behind, the sticky desktop nav bar
+   * (`.ftc-nav-bar`, h-12 = 48px). Harmless on mobile, which has no sticky
+   * header -- just extra breathing room above the field. */
+  scroll-margin-top: 5rem;
   transition:
     border-color 0.15s ease,
     background-color 0.15s ease,

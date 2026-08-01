@@ -661,6 +661,25 @@ function EventsPageClientView({
   // trigger buttons) already carries `aria-invalid` from the shared field
   // components, so a single scoped query finds the right element regardless
   // of field type, in the same top-to-bottom order they appear in the form.
+  //
+  // This is the ONLY scroll/focus path for a blocked save -- the form also
+  // carries `noValidate` (see the <form> below) specifically so the browser's
+  // own native constraint validation can never intercept the submit first.
+  // Without it, a native-required input (PlannerFormField's Event
+  // name/Venue) would fail the browser's constraint check before `onSubmit`
+  // ever runs, and the browser would perform its OWN scroll/focus to
+  // whichever invalid control it finds -- including invisible helper inputs
+  // like FtcDatePicker's zero-size required mirror input -- racing against,
+  // and often winning over, this effect. That native race, not a second
+  // `scrollIntoView` call in our own code, was the actual root cause of
+  // landing on an unrelated section like Invite DJs.
+  //
+  // Focus is called BEFORE scroll (not after) so this doesn't depend on
+  // `focus({ preventScroll: true })` being honoured -- older WebKit has
+  // historically ignored that option and scrolled on focus regardless. Any
+  // native scroll a focus call triggers happens synchronously and
+  // immediately, so the explicit scrollIntoView right after always
+  // overrides it and has the final, deterministic say on scroll position.
   useEffect(() => {
     if (createSaveAttemptCount === 0) {
       return;
@@ -674,8 +693,8 @@ function EventsPageClientView({
       return;
     }
 
-    firstInvalid.scrollIntoView({ behavior: "smooth", block: "center" });
     firstInvalid.focus({ preventScroll: true });
+    firstInvalid.scrollIntoView({ behavior: "smooth", block: "start" });
   }, [createSaveAttemptCount]);
   const showEventsListContent = !isCalendarCreateFlow && !createOpen;
 
@@ -1577,7 +1596,12 @@ function EventsPageClientView({
               ) : null}
 
               {createStep === "form" ? (
-                <form ref={createFormRef} onSubmit={handleSaveEvent} className="space-y-4">
+                <form
+                  ref={createFormRef}
+                  onSubmit={handleSaveEvent}
+                  noValidate
+                  className="space-y-4"
+                >
                   {!isCalendarCreateFlow ? (
                     <PlannerBackLink
                       onClick={() => {
