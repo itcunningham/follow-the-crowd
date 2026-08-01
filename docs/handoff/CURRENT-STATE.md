@@ -343,6 +343,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 | Event Brands (per-event `event_brand` column) | `scripts/setupEventBrands.sql` — optional, app degrades gracefully without it (see Core product entry above) |
 
 ## Recent commits (reference)
+- `32cb42a` — dropped trailing period from DM/Group search empty-state copy; fixed `scripts/resetQaEnvironment.sql`'s storage cleanup silently removing 0 rows (Supabase requires `set_config('storage.allow_delete_query', 'true', true)` for a session before a raw SQL `DELETE` on `storage.objects` takes effect) — the one real gap found in a full schema/table/bucket audit against the QA-reset coverage checklist
 - `71e9bac` — fixed duplicate username validation error in Edit Profile: the live/on-change validation effect and the submit-time pre-check (`validateUsernameField`) both wrote the same format-error message into independently-rendered state (`usernameLiveMessage` and `fieldErrors.username`); the `fieldErrors.username` block now only renders when the live block isn't already showing an equivalent error for the field
 
 - `d42e438` — fixed Event Brands silently dropped on reopening Edit Profile: `saveUserProfile()` never invalidated the cached profile (`lib/user/currentUser.ts`) after a successful write, so `getCurrentUserProfile()` kept serving the pre-save snapshot indefinitely; now calls `invalidateCurrentUserProfileCache()` on success, same pattern `saveUserRole()` already used. Also added a `title={tag}` tooltip to the read-only profile tag chip for cleaner truncation
