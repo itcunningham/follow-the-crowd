@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef } from "react";
+import { useCallback, useId, useRef } from "react";
 import Link from "next/link";
 import {
   FTC_EMPTY_STATE_PAGE_CLASS,
@@ -15,8 +15,12 @@ import {
 import { applyTextInputLimit } from "@/lib/textInputLimits";
 import { useBoundedAutoGrowTextarea } from "@/lib/useBoundedAutoGrowTextarea";
 
-export function PlannerFieldError({ message }: { message: string }) {
-  return <p className="mt-1 text-xs ftc-inline-error">{message}</p>;
+export function PlannerFieldError({ message, id }: { message: string; id?: string }) {
+  return (
+    <p id={id} className="mt-1 text-xs ftc-inline-error">
+      {message}
+    </p>
+  );
 }
 
 function PlannerMultilineField({
@@ -35,6 +39,7 @@ function PlannerMultilineField({
   error?: string | null;
 }) {
   const { textareaRef } = useBoundedAutoGrowTextarea({ value });
+  const errorId = useId();
 
   function handleChange(next: string) {
     if (maxLength !== undefined) {
@@ -71,6 +76,8 @@ function PlannerMultilineField({
         onKeyDown={handleKeyDown}
         placeholder={placeholder}
         rows={4}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={error ? errorId : undefined}
         className="ftc-input ftc-event-notes-textarea px-3.5 py-2.5"
       />
       {maxLength !== undefined ? (
@@ -82,7 +89,7 @@ function PlannerMultilineField({
           {value.length} / {maxLength}
         </p>
       ) : null}
-      {error ? <PlannerFieldError message={error} /> : null}
+      {error ? <PlannerFieldError message={error} id={errorId} /> : null}
     </label>
   );
 }
@@ -108,6 +115,8 @@ export function PlannerFormField({
   error?: string | null;
   onBlur?: () => void;
 }) {
+  const errorId = useId();
+
   if (multiline) {
     return (
       <PlannerMultilineField
@@ -147,9 +156,11 @@ export function PlannerFormField({
         required={required}
         maxLength={maxLength}
         onBlur={onBlur}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={error ? errorId : undefined}
         className="ftc-input px-3.5 py-2.5"
       />
-      {error ? <PlannerFieldError message={error} /> : null}
+      {error ? <PlannerFieldError message={error} id={errorId} /> : null}
     </label>
   );
 }

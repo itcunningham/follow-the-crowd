@@ -48,7 +48,6 @@ import EventCoverImageField, {
   type EventCoverImageFieldState,
 } from "@/app/components/events/EventCoverImageField";
 import EventFallbackColourField from "@/app/components/events/EventFallbackColourField";
-import EventBrandSelectField from "@/app/components/events/EventBrandSelectField";
 import { parseStoredEventBrands } from "@/lib/user/profileFormUtils";
 import SendBookingRequestsPanel, {
   DJ_INVITE_LIST_MAX_HEIGHT_CLASS,
@@ -495,10 +494,7 @@ function EventsPageClientView({
     // origin bootstrap can open the form immediately, before openCreateFlow ever
     // runs) — evaluates to null in that instant, same as having zero brands, so
     // this only ever fails to preselect, never selects the wrong thing.
-    eventBrand:
-      parseStoredEventBrands(guardProfile?.promoter_brand_name).length === 1
-        ? parseStoredEventBrands(guardProfile?.promoter_brand_name)[0]
-        : null,
+    eventBrand: parseStoredEventBrands(guardProfile?.promoter_brand_name)[0] ?? null,
   }));
   const promoterEventBrands = useMemo(
     () => parseStoredEventBrands(guardProfile?.promoter_brand_name),
@@ -508,7 +504,16 @@ function EventsPageClientView({
   // separate effect) — openCreateFlow/"From scratch"/handleSelectPlan all reset
   // `form` wholesale, and effects run in declaration order, so a later effect
   // resetting the form would silently clobber an earlier effect's eventBrand.
-  const defaultEventBrand = promoterEventBrands.length === 1 ? promoterEventBrands[0] : null;
+  //
+  // The Event Brand selector was removed from Create Event (beta UI
+  // simplification) -- there's no longer any UI for a promoter with multiple
+  // brands to choose among them, so the first saved brand is used as the
+  // profile default and submitted automatically. Single-brand promoters see
+  // byte-identical behaviour to before (that was already the only case this
+  // resolved to a non-null default). event_brand itself is still optional at
+  // the data layer (see lib/events.ts) -- promoters with zero brands still
+  // correctly submit no brand at all, unchanged.
+  const defaultEventBrand = promoterEventBrands[0] ?? null;
   const [coverField, setCoverField] = useState<EventCoverImageFieldState>(
     emptyEventCoverImageFieldState,
   );
@@ -525,6 +530,12 @@ function EventsPageClientView({
   );
   const [saving, setSaving] = useState(false);
   const [createSaveAttempted, setCreateSaveAttempted] = useState(false);
+  // Increments on every blocked save attempt (not just the first) so the
+  // scroll-to-first-invalid-field effect below re-fires each time the user
+  // taps Save while the form is still invalid, even if which field is first
+  // invalid hasn't changed since the last tap.
+  const [createSaveAttemptCount, setCreateSaveAttemptCount] = useState(0);
+  const createFormRef = useRef<HTMLFormElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const clearHistoryRemoveSuccessMessage = useCallback(() => {
@@ -635,7 +646,6 @@ function EventsPageClientView({
 
     return getEventFormFieldErrors(form);
   }, [createOpen, createStep, createSaveAttempted, form]);
-  const createFormHasFieldErrors = hasEventFormFieldErrors(createFormFieldErrors);
   const createFormNotesValidationError = useMemo(() => {
     if (!createOpen || createStep !== "form" || !createSaveAttempted) {
       return null;
@@ -643,8 +653,30 @@ function EventsPageClientView({
 
     return getEventNotesValidationError(form.notes);
   }, [createOpen, createStep, createSaveAttempted, form.notes]);
-  const createFormHasValidationErrors =
-    createFormHasFieldErrors || Boolean(createFormNotesValidationError);
+  // Fires once per blocked Save tap (see createSaveAttemptCount above), after
+  // the re-render that applies the fresh aria-invalid attributes below has
+  // committed -- so this always finds the *current* first invalid field, not
+  // a stale one from before the last edit. Every field this can land on
+  // (PlannerFormField's input/textarea, BookingDateField/BookingSetTimeRangeField's
+  // trigger buttons) already carries `aria-invalid` from the shared field
+  // components, so a single scoped query finds the right element regardless
+  // of field type, in the same top-to-bottom order they appear in the form.
+  useEffect(() => {
+    if (createSaveAttemptCount === 0) {
+      return;
+    }
+
+    const firstInvalid = createFormRef.current?.querySelector<HTMLElement>(
+      '[aria-invalid="true"]',
+    );
+
+    if (!firstInvalid) {
+      return;
+    }
+
+    firstInvalid.scrollIntoView({ behavior: "smooth", block: "center" });
+    firstInvalid.focus({ preventScroll: true });
+  }, [createSaveAttemptCount]);
   const showEventsListContent = !isCalendarCreateFlow && !createOpen;
 
   const createFlowPanelTitle = createStep === "pick-plan" ? "Event Plans" : "Create event";
@@ -942,6 +974,7 @@ function EventsPageClientView({
     setCreateOpen(true);
     setCreateStep(initialStep);
     setCreateSaveAttempted(false);
+    setCreateSaveAttemptCount(0);
     setCalendarOriginDateKey(originDateKey);
     setForm({
       ...emptyEventForm,
@@ -971,6 +1004,7 @@ function EventsPageClientView({
     setCreateOpen(false);
     setCreateStep("source");
     setCreateSaveAttempted(false);
+    setCreateSaveAttemptCount(0);
     setForm(emptyEventForm);
     setSelectedPlanId(null);
     setError(null);
@@ -1174,10 +1208,12 @@ function EventsPageClientView({
     const fieldErrors = getEventFormFieldErrors(form);
 
     if (hasEventFormFieldErrors(fieldErrors)) {
+      setCreateSaveAttemptCount((count) => count + 1);
       return;
     }
 
     if (getEventNotesValidationError(form.notes)) {
+      setCreateSaveAttemptCount((count) => count + 1);
       return;
     }
 
@@ -1541,7 +1577,7 @@ function EventsPageClientView({
               ) : null}
 
               {createStep === "form" ? (
-                <form onSubmit={handleSaveEvent} className="space-y-4">
+                <form ref={createFormRef} onSubmit={handleSaveEvent} className="space-y-4">
                   {!isCalendarCreateFlow ? (
                     <PlannerBackLink
                       onClick={() => {
@@ -1573,11 +1609,6 @@ function EventsPageClientView({
                     required
                     maxLength={MAX_EVENT_VENUE_LENGTH}
                     error={createFormFieldErrors.venue}
-                  />
-                  <EventBrandSelectField
-                    brands={promoterEventBrands}
-                    selectedBrand={form.eventBrand ?? null}
-                    onSelectBrand={(brand) => updateField("eventBrand", brand)}
                   />
                   <EventCoverImageField
                     eventName={form.name || "Event"}
@@ -1644,8 +1675,8 @@ function EventsPageClientView({
 
                   <button
                     type="submit"
-                    disabled={saving || (createSaveAttempted && createFormHasValidationErrors)}
-                    aria-disabled={saving || (createSaveAttempted && createFormHasValidationErrors)}
+                    disabled={saving}
+                    aria-disabled={saving}
                     className="ftc-btn-primary px-5 py-3 text-sm uppercase tracking-wide disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {saving ? "Saving" : "Save event"}

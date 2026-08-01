@@ -3370,10 +3370,6 @@ function testEventBrandChipOverflowSafe() {
     new URL("../app/components/profile/ProfileEventBrandsField.tsx", import.meta.url),
     "utf8",
   );
-  const brandSelectSource = readFileSync(
-    new URL("../app/components/events/EventBrandSelectField.tsx", import.meta.url),
-    "utf8",
-  );
 
   // Shared max-width token, defined once and reused everywhere -- not a
   // per-surface, independently-drifting literal.
@@ -3403,10 +3399,186 @@ function testEventBrandChipOverflowSafe() {
   assert.match(brandsFieldSource, /<span className="min-w-0 truncate">\{brand\}<\/span>/);
   assert.match(brandsFieldSource, /shrink-0 items-center justify-center rounded-full/);
 
-  // Event-creation brand selector -- single-select buttons, plain-text
-  // shape (no remove button), same treatment as the read-only chip list.
-  assert.match(brandSelectSource, /PROFILE_TAG_CHIP_MAX_WIDTH_CLASS/);
-  assert.match(brandSelectSource, /min-w-0 truncate rounded-full/);
+  // The event-creation brand selector (former third editable surface) was
+  // removed entirely in the beta Create Event simplification -- see
+  // testCreateEventBrandRemovedFromUi. Nothing left to assert here for it.
+}
+
+/**
+ * Beta Create Event simplification: the Event Brand selector is removed from
+ * the create-event UI entirely (single-select chip row promoters used to tap
+ * to choose among their saved brands), while event_brand is still submitted
+ * automatically using the promoter's own saved brand data, and Event Brands
+ * on the profile itself (the actual source of truth, editable via
+ * ProfileEventBrandsField) are completely untouched -- this is a UI
+ * simplification only, not a feature or data removal.
+ */
+function testCreateEventBrandRemovedFromUi() {
+  const eventsPageSource = readFileSync(
+    new URL("../app/(planner-workspace)/events/EventsPageClient.tsx", import.meta.url),
+    "utf8",
+  );
+
+  // The selector component itself is gone, not just unused -- dead code was
+  // deleted rather than left orphaned.
+  assert.ok(
+    !existsSync(new URL("../app/components/events/EventBrandSelectField.tsx", import.meta.url)),
+    "EventBrandSelectField.tsx should be deleted, not left as unused dead code",
+  );
+  assert.doesNotMatch(eventsPageSource, /EventBrandSelectField/);
+  assert.doesNotMatch(eventsPageSource, /Event brand/);
+
+  // event_brand is still submitted automatically: the promoter's first saved
+  // brand is used as the default -- previously this only auto-filled when a
+  // promoter had *exactly* one brand (ambiguous otherwise, since the removed
+  // selector let them pick among several); now that there is no selector to
+  // pick with, the first saved brand is used unconditionally, so promoters
+  // with 2+ brands still get event_brand submitted rather than silently
+  // losing it. Single-brand promoters see byte-identical behaviour to
+  // before -- that was already the only case with a non-null default.
+  assert.match(
+    eventsPageSource,
+    /const defaultEventBrand = promoterEventBrands\[0\] \?\? null;/,
+  );
+  assert.doesNotMatch(eventsPageSource, /promoterEventBrands\.length === 1/);
+
+  // The default is still wired into every place the create form resets/
+  // initialises (initial useState, openCreateFlow, handleSelectPlan, "From
+  // scratch") and still flows into createEvent(...form) unchanged -- only
+  // the UI for picking a *different* brand is gone, not the field itself or
+  // its submission.
+  assert.match(eventsPageSource, /eventBrand: defaultEventBrand/);
+  const createEventCallBlock = eventsPageSource.match(
+    /const created = await createEvent\(\{[\s\S]*?\}\);/,
+  );
+  assert.ok(createEventCallBlock, "createEvent(...) call not found");
+  assert.match(createEventCallBlock[0], /\.\.\.form/);
+
+  // event_brand remains optional at the data layer -- promoters with zero
+  // saved brands still correctly submit no brand, exactly as before.
+  const eventsLibSource = readFileSync(new URL("../lib/events.ts", import.meta.url), "utf8");
+  assert.match(eventsLibSource, /event_brand: string \| null/);
+  assert.match(eventsLibSource, /eventBrand && !isEventBrandColumnMissing\(\)/);
+
+  // Event Brands on the profile itself -- the actual saved data this task
+  // must not touch -- are completely untouched: still editable, still
+  // rendered on the public profile, nothing here was scoped for removal.
+  assert.ok(
+    existsSync(new URL("../app/components/profile/ProfileEventBrandsField.tsx", import.meta.url)),
+  );
+  const profileSectionsSource = readFileSync(
+    new URL("../app/components/profile/PromoterProfileSections.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(profileSectionsSource, /Event Brands|EventBrands/);
+}
+
+/**
+ * Create Event validation UX (beta polish): errors must never appear while
+ * the user is simply typing or before they attempt to save -- only a tapped
+ * Save Event evaluates and shows them, exactly matching the pre-existing
+ * `createSaveAttempted` gate this task builds on rather than replaces (see
+ * getEventFormFieldErrors/hasEventFormFieldErrors, already gated correctly
+ * before this task). What was missing and is added here: on a blocked save,
+ * the browser scrolls to and focuses the first invalid field, and every
+ * field the shared form components can render now actually shows the red
+ * border + aria-invalid the design system's existing CSS already supports
+ * (`.ftc-input[aria-invalid="true"]` in globals.css) -- PlannerFormField
+ * previously computed an `error` message but never set `aria-invalid`, so
+ * the shared red-border rule never actually triggered for Event
+ * name/Venue/Notes.
+ */
+function testCreateEventValidationScrollsAndFocusesFirstInvalidField() {
+  const eventsPageSource = readFileSync(
+    new URL("../app/(planner-workspace)/events/EventsPageClient.tsx", import.meta.url),
+    "utf8",
+  );
+  const plannerUiSource = readFileSync(
+    new URL("../app/components/planner/PlannerUi.tsx", import.meta.url),
+    "utf8",
+  );
+
+  // Errors stay gated behind createSaveAttempted -- never live while typing.
+  assert.match(
+    eventsPageSource,
+    /if \(!createOpen \|\| createStep !== "form" \|\| !createSaveAttempted\) \{\s*return \{\};/,
+  );
+
+  // A blocked save (either field errors or the notes validation error)
+  // increments an attempt counter every time, not just the first -- so
+  // repeated taps while still invalid each re-trigger scroll-to-first-invalid,
+  // not just the initial one.
+  const handleSaveEventBlock = eventsPageSource.match(
+    /async function handleSaveEvent\([\s\S]*?\n  \}/,
+  );
+  assert.ok(handleSaveEventBlock, "handleSaveEvent not found");
+  const setCreateSaveAttemptCountCalls =
+    handleSaveEventBlock[0].match(/setCreateSaveAttemptCount\(\(count\) => count \+ 1\)/g) ?? [];
+  assert.equal(
+    setCreateSaveAttemptCountCalls.length,
+    2,
+    "expected both the field-errors and notes-error blocked-save paths to increment the attempt counter",
+  );
+
+  // The counter resets whenever the create flow (re)opens fresh, so a stale
+  // count from a previous attempt can't fire the scroll/focus effect against
+  // a brand-new, untouched form.
+  assert.match(eventsPageSource, /setCreateSaveAttempted\(false\);\s*setCreateSaveAttemptCount\(0\);/);
+
+  // The scroll/focus effect: fires on attempt-count change (not on every
+  // keystroke), is a no-op on mount (count starts at 0), and queries for the
+  // same aria-invalid attribute the field components now set -- one
+  // mechanism drives both the visual red border and the focus target, so
+  // they can never disagree about which field is "first invalid".
+  assert.match(eventsPageSource, /const createFormRef = useRef<HTMLFormElement>\(null\);/);
+  assert.match(eventsPageSource, /<form ref={createFormRef} onSubmit={handleSaveEvent}/);
+  const scrollEffectBlock = eventsPageSource.match(
+    /useEffect\(\(\) => \{\s*if \(createSaveAttemptCount === 0\)[\s\S]*?\}, \[createSaveAttemptCount\]\);/,
+  );
+  assert.ok(scrollEffectBlock, "scroll-to-first-invalid-field effect not found");
+  assert.match(scrollEffectBlock[0], /querySelector<HTMLElement>\(\s*'\[aria-invalid="true"\]'/);
+  assert.match(scrollEffectBlock[0], /scrollIntoView\(\{ behavior: "smooth", block: "center" \}\)/);
+  assert.match(scrollEffectBlock[0], /\.focus\(\{ preventScroll: true \}\)/);
+
+  // The Save button is never disabled by validation state -- only by
+  // `saving` -- so every tap (not just the first) reaches handleSaveEvent
+  // and can re-run validation + scroll/focus against whatever the user just
+  // fixed. It stays the normal primary (blue) button; red is never applied
+  // to it -- only to individual invalid fields.
+  const saveButtonBlock = eventsPageSource.match(
+    /<button\s+type="submit"[\s\S]*?<\/button>/,
+  );
+  assert.ok(saveButtonBlock, "Save event button not found");
+  assert.match(saveButtonBlock[0], /disabled=\{saving\}/);
+  assert.doesNotMatch(saveButtonBlock[0], /createFormHasValidationErrors/);
+  assert.doesNotMatch(saveButtonBlock[0], /createFormHasFieldErrors/);
+  assert.match(saveButtonBlock[0], /className="ftc-btn-primary/);
+  assert.doesNotMatch(saveButtonBlock[0], /danger|red|ftc-btn-danger/i);
+
+  // PlannerFormField (Event name, Venue, Notes) and PlannerFieldError now
+  // wire aria-invalid/aria-describedby, reusing the design system's existing
+  // `.ftc-input[aria-invalid="true"]` red-border rule (globals.css) instead
+  // of introducing a parallel error-styling mechanism.
+  assert.match(plannerUiSource, /aria-invalid=\{error \? true : undefined\}/);
+  assert.match(plannerUiSource, /aria-describedby=\{error \? errorId : undefined\}/);
+  assert.match(
+    plannerUiSource,
+    /export function PlannerFieldError\(\{ message, id \}: \{ message: string; id\?: string \}\)/,
+  );
+
+  // BookingDateField/BookingSetTimeRangeField (Event date, Start/Finish time)
+  // already had aria-invalid wiring on their trigger buttons before this
+  // task -- confirming that pre-existing wiring instead of duplicating it.
+  const bookingDateTimeSource = readFileSync(
+    new URL("../app/components/BookingDateTimeFields.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(bookingDateTimeSource, /aria-invalid=\{error \? true : undefined\}/);
+  const datePickerSource = readFileSync(
+    new URL("../app/components/FtcDatePicker.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(datePickerSource, /aria-invalid=\{invalid \? true : undefined\}/);
 }
 
 /**
@@ -8575,6 +8747,8 @@ async function main() {
   testLongDisplayNameLayoutSafety();
   testAddEventBrandTag();
   testEventBrandChipOverflowSafe();
+  testCreateEventBrandRemovedFromUi();
+  testCreateEventValidationScrollsAndFocusesFirstInvalidField();
   testGenreSheetHeightDoesNotTrackFilteredContent();
   testPublicProfileEventBrandsAdaptiveChips();
   testProfileCacheInvalidatedAfterSave();
