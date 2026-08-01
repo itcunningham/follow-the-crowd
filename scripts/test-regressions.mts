@@ -2841,15 +2841,29 @@ function testBioInputLimit() {
  * a wrapper `transition-[height]`, `prefers-reduced-motion` respected) --
  * adapted here rather than duplicated blind, and self-contained in this
  * file since `BookingCardExpandableNotes.tsx` is an unrelated DM feature.
- * Also covers the older-iPhone Edit Profile textarea clipping fix: iOS
- * Safari below 16.4 (the project's own browserslist targets ios_saf >= 14)
- * does not support the `lh` CSS unit used by `.ftc-fixed-scroll-textarea-5`,
- * so the whole `calc(5lh + ...)` height declaration was dropped there,
- * leaving the textarea at browser-default (much shorter) height and
- * clipping the bio. Fixed with a plain-pixel fallback declared *before*
- * the `lh`-based one in the same rule (standard CSS graceful-degradation:
- * unsupported values are ignored, so old Safari keeps the fallback while
- * `lh`-capable browsers apply the later, more precise value).
+ * Also covers the older-iPhone Edit Profile textarea bug (single-line,
+ * non-wrapping rendering, not just a height/clipping issue). Confirmed
+ * root cause: the bio's `textareaRows` HTML attribute was hardcoded to
+ * `1` while `.ftc-fixed-scroll-textarea-5`'s CSS forcibly overrode the
+ * rendered height to 5 lines with `!important` -- a genuine mismatch
+ * between what the browser is told the textarea *is* (a 1-line field)
+ * and what CSS then *forces it to look like* (5 lines tall). Relying on
+ * `!important` CSS to fight a contradictory `rows` value is inherently
+ * fragile and version-sensitive (this is exactly the kind of mismatch
+ * that renders inconsistently across WebKit versions); the CSS-only
+ * height fix attempted first (a plain-pixel fallback for browsers
+ * without the `lh` unit) did not resolve it, because the bug was never
+ * about the `lh` unit specifically -- it was the `rows`/CSS disagreement
+ * itself. Fixed by setting `textareaRows={5}` so the native HTML
+ * attribute matches the intended size directly: `rows` is universally
+ * supported (no unit/version dependency at all) and, combined with
+ * `resize: none` + `overflow-y: auto` (both already on the shared
+ * `.ftc-fixed-scroll-textarea` base class), a `<textarea rows="5">`
+ * natively stays exactly 5 rows tall with internal scroll for overflow
+ * -- no CSS height override needed at all. The now-unnecessary
+ * `.ftc-fixed-scroll-textarea-5` class (and its `lh`-based override) was
+ * removed entirely rather than patched again, per explicit instruction
+ * not to keep blindly re-tuning the height.
  */
 function testProfileBioTextRendering() {
   const bioTextSource = readFileSync(
@@ -2889,45 +2903,41 @@ function testProfileBioTextRendering() {
   assert.match(bioTextSource, /bio\.trim\(\)/);
   assert.match(bioTextSource, /if \(!text\) \{\s*return null;/);
 
-  // Edit Profile bio textarea grew to ~5 visible lines via a dedicated
-  // modifier class, not by widening the shared `-3` class other fields
-  // (booking rate notes, withdrawal reason) also use.
+  // Edit Profile bio textarea: sized via the native `rows` HTML attribute
+  // (universally supported, no CSS unit/version dependency), not a
+  // dedicated CSS height-override class fighting a mismatched `rows`.
   const formSource = readFileSync(
     new URL("../app/components/profile/EditProfileForm.tsx", import.meta.url),
     "utf8",
   );
   const globalsSource = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
-  assert.match(
-    formSource,
-    /textareaClassName="ftc-fixed-scroll-textarea ftc-fixed-scroll-textarea-5"/,
-  );
-  assert.match(globalsSource, /\.ftc-fixed-scroll-textarea-5 \{[\s\S]*?5lh/);
+  const bioFieldBlock = formSource.match(/<ProfileFormField\s+label="Bio"[\s\S]*?\/>/);
+  assert.ok(bioFieldBlock, "Bio ProfileFormField block not found in EditProfileForm.tsx");
+  assert.match(bioFieldBlock[0], /textareaRows=\{5\}/);
+  assert.match(bioFieldBlock[0], /textareaClassName="ftc-fixed-scroll-textarea"/);
+  // The old, fragile `lh`-based height-override class must be gone --
+  // dead CSS, not left behind as an unused/misleading rule.
+  assert.doesNotMatch(bioFieldBlock[0], /ftc-fixed-scroll-textarea-5/);
+  assert.doesNotMatch(globalsSource, /\.ftc-fixed-scroll-textarea-5/);
 
-  // Older-Safari fallback: a plain-pixel height must appear BEFORE the
-  // `lh`-based one in the same rule, so `lh`-unsupporting browsers (iOS
-  // Safari < 16.4) keep a real height instead of dropping the declaration.
-  const fiveLineRule = globalsSource.match(/\.ftc-fixed-scroll-textarea-5 \{[\s\S]*?\n\}/);
-  assert.ok(fiveLineRule, ".ftc-fixed-scroll-textarea-5 rule not found in globals.css");
-  const fiveLineRuleBody = fiveLineRule[0];
-  const pxFallbackIndex = fiveLineRuleBody.indexOf("height: 138px");
-  const lhIndex = fiveLineRuleBody.indexOf("height: calc(5lh");
-  assert.ok(pxFallbackIndex >= 0, "expected a plain-pixel fallback height in .ftc-fixed-scroll-textarea-5");
-  assert.ok(lhIndex >= 0, "expected the lh-based height to remain in .ftc-fixed-scroll-textarea-5");
-  assert.ok(
-    pxFallbackIndex < lhIndex,
-    "the plain-pixel fallback must be declared before the lh-based height so the cascade order is correct",
-  );
+  // The shared base class (resize:none, overflow-y:auto for internal
+  // scroll, no `lh`/height override) still applies -- this is what makes
+  // `rows="5"` behave as "5 fixed visible rows, scroll for overflow"
+  // rather than an auto-growing or resizable field.
+  const baseRule = globalsSource.match(/\.ftc-fixed-scroll-textarea \{[\s\S]*?\n\}/);
+  assert.ok(baseRule, ".ftc-fixed-scroll-textarea rule not found in globals.css");
+  assert.match(baseRule[0], /resize: none/);
+  assert.match(baseRule[0], /overflow-y: auto/);
+  assert.doesNotMatch(baseRule[0], /white-space/);
+  assert.doesNotMatch(baseRule[0], /word-break/);
+  assert.doesNotMatch(baseRule[0], /appearance/);
 
   // The shared 3-line class (still used by booking rate notes and the
-  // withdrawal reason field) must stay exactly as it was -- this task is
-  // scoped to the bio's own `-5` class only, not a project-wide lh audit.
+  // withdrawal reason field) is untouched -- this task is scoped to the
+  // bio field only, not a project-wide rows/lh audit.
   const threeLineRule = globalsSource.match(/\.ftc-fixed-scroll-textarea-3 \{[\s\S]*?\n\}/);
   assert.ok(threeLineRule, ".ftc-fixed-scroll-textarea-3 rule not found in globals.css");
   assert.match(threeLineRule[0], /3lh/);
-  // Exactly one plain `height:` declaration (the original lh-based one,
-  // not `min-height`/`max-height`) -- no pixel-fallback line added here,
-  // unlike the bio's own `-5` class above.
-  assert.equal((threeLineRule[0].match(/^\s*height:/gm) ?? []).length, 1);
   assert.match(
     readFileSync(
       new URL("../app/components/booking/ProposeBookingRateSheet.tsx", import.meta.url),
@@ -2953,10 +2963,6 @@ function testProfileBioTextRendering() {
   // (public profile) are rendered unconditionally, outside any
   // role === "dj"/"promoter"/"both" branch -- one shared implementation
   // for every role, not a per-role fork that could drift.
-  const bioFieldBlock = formSource.match(
-    /<ProfileFormField\s+label="Bio"[\s\S]*?\/>/,
-  );
-  assert.ok(bioFieldBlock, "Bio ProfileFormField block not found in EditProfileForm.tsx");
   assert.doesNotMatch(bioFieldBlock[0], /role ===/);
   const profileHeroSource = readFileSync(
     new URL("../app/components/profile/ProfileHero.tsx", import.meta.url),
@@ -3025,12 +3031,11 @@ function testProfileDisplayNameAndBioFieldUx() {
   // (same one the booking rate-notes field uses) instead of a bespoke
   // fixed-pixel-height class -- the textarea can no longer grow past its
   // visible-row cap, and overflow scrolls internally rather than expanding.
-  // The bio uses its own 5-row modifier (`-5`), not the shared `-3` other
-  // fields (booking rate notes, withdrawal reason) still use unchanged.
-  assert.match(
-    formSource,
-    /textareaClassName="ftc-fixed-scroll-textarea ftc-fixed-scroll-textarea-5"/,
-  );
+  // Sized via the native `textareaRows={5}` HTML attribute rather than a
+  // CSS height-override modifier class (see testProfileBioTextRendering
+  // for the full root-cause explanation of why `rows` and not CSS `-N`).
+  assert.match(formSource, /textareaClassName="ftc-fixed-scroll-textarea"/);
+  assert.match(formSource, /textareaRows=\{5\}/);
   assert.ok(
     !formSource.includes("ftc-profile-bio-textarea"),
     "bio textarea should use the shared fixed-scroll classes, not a bespoke one-off class",
