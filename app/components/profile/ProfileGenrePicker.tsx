@@ -6,6 +6,7 @@ import {
   PROFILE_TAG_CHIP_BASE_CLASS,
   PROFILE_TAG_CHIP_MAX_WIDTH_CLASS,
 } from "@/app/components/profile/ProfileTagChipList";
+import { useBodyScrollLock } from "@/lib/ui/useBodyScrollLock";
 
 export default function ProfileGenrePicker({
   selectedTags,
@@ -19,6 +20,11 @@ export default function ProfileGenrePicker({
   const [sheetOpen, setSheetOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const atLimit = selectedTags.length >= MAX_PROFILE_GENRE_TAGS;
+
+  // Sheet is `position: fixed`, so without this the page behind it still
+  // scrolls — most noticeably on iOS, where opening the keyboard scrolls the
+  // background out from under the sheet.
+  useBodyScrollLock(sheetOpen);
 
   const filteredGenres = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
@@ -97,7 +103,7 @@ export default function ProfileGenrePicker({
             role="dialog"
             aria-modal="true"
             aria-labelledby="profile-genre-picker-title"
-            className="flex max-h-[88dvh] w-full max-w-md flex-col overflow-hidden rounded-t-2xl border border-ftc-border-strong bg-ftc-bg-elevated shadow-ftc-card"
+            className="ftc-filter-sheet-panel flex w-full max-w-md flex-col overflow-hidden rounded-t-2xl border border-ftc-border-strong bg-ftc-bg-elevated shadow-ftc-card"
             onClick={(event) => event.stopPropagation()}
           >
             <div className="border-b border-ftc-border-subtle px-4 pb-4 pt-4 sm:px-5">

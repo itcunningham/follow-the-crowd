@@ -250,7 +250,7 @@ import { clearEventsListTabCache } from "../lib/events/eventsListTabCache";
 import { buildPlannerCreateEventFromPlansHref, buildPlannerCreateEventHref } from "../lib/calendar";
 import { resolveGigsCalendarBookingNavigation, resolvePlannerCalendarItemEventId, resolvePlannerCalendarItemHref } from "../lib/bookings/gigsCalendarNavigation";
 import { hasUnsavedProfileEdits, createProfileEditBaseline } from "../lib/user/profileEditDirtyState";
-import { getUsernameFormatError, normalizeSoundCloudInput, resolveProfileIdentityPresentation, addEventBrandTag, parseStoredEventBrands, serializeEventBrands, MAX_PROMOTER_EVENT_BRANDS, MAX_EVENT_BRAND_NAME_LENGTH } from "../lib/user/profileFormUtils";
+import { getUsernameFormatError, normalizeSoundCloudInput, resolveProfileIdentityPresentation, addEventBrandTag, parseStoredEventBrands, serializeEventBrands, MAX_PROMOTER_EVENT_BRANDS, MAX_EVENT_BRAND_NAME_LENGTH, PROFILE_GENRE_OPTIONS } from "../lib/user/profileFormUtils";
 import { mapEventInputToRow, type EventInput } from "../lib/events";
 import { markEventBrandColumnMissing, resetEventBrandColumnMissingFlag } from "../lib/events/eventQueryFields";
 import { PROPOSE_RATE_HELPER_MAX_OPENS } from "../lib/booking/proposeRateHelperPreference";
@@ -2704,6 +2704,90 @@ function testEventBrandChipOverflowSafe() {
   // Truncated chips must still expose the full name via a native tooltip --
   // "clean" truncation, not just clipped text with no way to read it.
   assert.match(tagListSource, /title=\{tag\}/);
+}
+
+/**
+ * Root-cause regression test for "the Music genres sheet jumps vertically when
+ * the second search character changes the filtered results" (iPhone Safari).
+ *
+ * Structural cause: the sheet is bottom-anchored (`items-end`) and was sized
+ * with `max-h-[88dvh]` and NO definite height, so its height tracked its own
+ * content. While the filtered list overflowed the cap the sheet stayed pinned
+ * at the cap; the first keystroke that narrowed the list enough to fit under
+ * the cap made the sheet shrink to content instead -- and because it is
+ * anchored to the bottom, all of that shrinkage came off the TOP, dragging the
+ * header and search input down mid-typing. Measured live before the fix at
+ * 390x844: "d" (22 rows) kept the sheet clamped at 614px with the input at
+ * y=161, then "de" (2 rows) collapsed it to 322px and moved the input to
+ * y=453 -- a 292px jump on the second character.
+ */
+function testGenreSheetHeightDoesNotTrackFilteredContent() {
+  const genrePickerSource = readFileSync(
+    new URL("../app/components/profile/ProfileGenrePicker.tsx", import.meta.url),
+    "utf8",
+  );
+  const globalsSource = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
+
+  // The preconditions for the bug are still live: the genre list is long
+  // enough to overflow the sheet unfiltered, yet a 2-character query can
+  // collapse it to a handful of rows. If this ever stops being true the
+  // stable-height class below stops being load-bearing -- but while it IS
+  // true, removing it reintroduces the jump.
+  assert.ok(PROFILE_GENRE_OPTIONS.length >= 40);
+  const twoCharMatches = PROFILE_GENRE_OPTIONS.filter((genre) =>
+    genre.toLowerCase().includes("de"),
+  ).length;
+  assert.ok(
+    twoCharMatches <= 5,
+    `expected a 2-character query to collapse the list, got ${twoCharMatches} matches`,
+  );
+
+  // The sheet must NOT be sized by content any more: no bare `max-h-*dvh`
+  // (the exact shape that caused the jump), and it must carry the definite
+  // height class instead.
+  assert.doesNotMatch(genrePickerSource, /max-h-\[\d+dvh\]/);
+  assert.match(genrePickerSource, /className="ftc-filter-sheet-panel flex w-full max-w-md flex-col/);
+
+  // A definite height only helps if the list scrolls inside it rather than
+  // overflowing -- `min-h-0` is what lets a flex child shrink below its
+  // content and actually scroll, so it is part of the fix, not decoration.
+  assert.match(genrePickerSource, /<ul className="min-h-0 flex-1 overflow-y-auto overscroll-contain/);
+
+  // Done stays pinned outside the scrolling list, so it stays reachable at
+  // every result count.
+  assert.match(
+    genrePickerSource,
+    /<\/ul>[\s\S]*?border-t border-ftc-border-subtle[\s\S]*?Done\s*<\/button>/,
+  );
+
+  // Background must not scroll behind the sheet -- reuses the shared lock
+  // rather than a local overflow hack.
+  assert.match(genrePickerSource, /import \{ useBodyScrollLock \} from "@\/lib\/ui\/useBodyScrollLock"/);
+  assert.match(genrePickerSource, /useBodyScrollLock\(sheetOpen\)/);
+
+  // The height itself: a `vh` base (so iOS Safari < 15.4, which has no `dvh`
+  // and is inside the project's `ios_saf >= 14` browserslist range, still
+  // gets a stable sheet) upgraded to `dvh` behind `@supports`.
+  const panelRule = globalsSource.match(/\.ftc-filter-sheet-panel \{[^}]*\}/);
+  assert.ok(panelRule, ".ftc-filter-sheet-panel rule not found in globals.css");
+  assert.match(panelRule[0], /height: 88vh;/);
+
+  // The `dvh` upgrade MUST stay inside `@supports`. Written as a second plain
+  // `height` declaration instead, the CSS minifier collapses the duplicate
+  // and deletes the `vh` fallback outright (confirmed in the built chunk),
+  // which silently puts older iOS back into the content-height bug.
+  assert.match(
+    globalsSource,
+    /@supports \(height: 1dvh\) \{[\s\S]*?\.ftc-filter-sheet-panel \{\s*height: 88dvh;\s*\}[\s\S]*?\}/,
+  );
+  const dvhOutsideSupports = globalsSource
+    .replace(/@supports \(height: 1dvh\) \{[\s\S]*?\n\}/g, "")
+    .includes("88dvh");
+  assert.equal(
+    dvhOutsideSupports,
+    false,
+    "88dvh must only appear inside @supports so the vh fallback survives minification",
+  );
 }
 
 /**
@@ -7135,6 +7219,7 @@ async function main() {
   testEventBrandsParsingAndSerialization();
   testAddEventBrandTag();
   testEventBrandChipOverflowSafe();
+  testGenreSheetHeightDoesNotTrackFilteredContent();
   testProfileTagChipTapToReveal();
   testProfileCacheInvalidatedAfterSave();
   testEventBrandEditFormHydration();

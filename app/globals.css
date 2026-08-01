@@ -1188,6 +1188,40 @@ html {
   box-shadow: var(--ftc-shadow-lg);
 }
 
+/*
+ * Bottom sheet whose height must NOT track its own content.
+ *
+ * A bottom-anchored sheet (`items-end`) sized with `max-height` alone is
+ * content-height until it hits the cap. That is fine for static sheets, but a
+ * sheet containing a *filtered* list changes content height as the user types:
+ * the moment the filtered list gets short enough to fall under the cap, the
+ * sheet stops being clamped and shrinks to fit — and because it is anchored to
+ * the bottom, every pixel of that shrinkage comes off the TOP, dragging the
+ * header, search input and (visually) the whole sheet downward mid-keystroke.
+ * A definite height removes the content→height coupling entirely, so only the
+ * results list inside it changes while typing.
+ *
+ * `vh` is the base value so iOS Safari < 15.4 — which does not support `dvh`
+ * and would otherwise drop the declaration and fall straight back to content
+ * height — still gets a stable sheet (browserslist targets `ios_saf >= 14`).
+ * The `dvh` upgrade is behind `@supports` rather than a second plain `height`
+ * declaration on purpose: the CSS minifier collapses back-to-back duplicate
+ * declarations of the same property and silently deletes the `vh` fallback
+ * (verified in the built chunk), which would put older iOS straight back into
+ * the content-height bug. `@supports` survives minification because the two
+ * declarations sit under different conditions.
+ */
+.ftc-filter-sheet-panel {
+  height: 88vh;
+}
+
+@supports (height: 1dvh) {
+  /* Excludes dynamic browser chrome, so the sheet is never clipped. */
+  .ftc-filter-sheet-panel {
+    height: 88dvh;
+  }
+}
+
 /* -------------------------------------------------------------------------- */
 /* Messages                                                                    */
 /* -------------------------------------------------------------------------- */
