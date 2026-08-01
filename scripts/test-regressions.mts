@@ -2699,6 +2699,134 @@ function testEventBrandChipOverflowSafe() {
   // shape (no remove button), same treatment as the read-only chip list.
   assert.match(brandSelectSource, /PROFILE_TAG_CHIP_MAX_WIDTH_CLASS/);
   assert.match(brandSelectSource, /min-w-0 truncate rounded-full/);
+
+  // Truncated chips must still expose the full name via a native tooltip --
+  // "clean" truncation, not just clipped text with no way to read it.
+  assert.match(tagListSource, /title=\{tag\}/);
+}
+
+/**
+ * Root-cause regression test for "only the original/first Event Brand
+ * appears when reopening Edit Profile, even though all saved brands show
+ * correctly on the public profile". The public profile page fetches via
+ * getUserProfileById() (uncached), but the edit route hydrates from
+ * getCurrentUserProfile(), which is cache-first (see currentUser.ts). If
+ * saveUserProfile() never invalidates that cache after a successful write,
+ * every later getCurrentUserProfile() call -- including the one the edit
+ * page makes on reopen -- keeps serving the pre-save snapshot forever
+ * (until sign-out), silently dropping any brands added/removed since.
+ */
+function testProfileCacheInvalidatedAfterSave() {
+  const currentUserSource = readFileSync(
+    new URL("../lib/user/currentUser.ts", import.meta.url),
+    "utf8",
+  );
+
+  const saveUserProfileMatch = currentUserSource.match(
+    /export async function saveUserProfile\([\s\S]*?\n}\n/,
+  );
+  assert.ok(saveUserProfileMatch, "saveUserProfile function not found in currentUser.ts");
+
+  const saveUserProfileBody = saveUserProfileMatch[0];
+  assert.match(
+    saveUserProfileBody,
+    /invalidateCurrentUserProfileCache\(\)/,
+    "saveUserProfile must invalidate the cached profile after a successful write, or a later " +
+      "getCurrentUserProfile() call (e.g. reopening Edit Profile) will keep serving the stale " +
+      "pre-save snapshot indefinitely",
+  );
+}
+
+/**
+ * Full saved brand list must hydrate into the edit form's baseline state --
+ * in original order, with no silent truncation to a subset (e.g. just the
+ * first brand). This is the exact state EditProfileForm's brandTags/baseline
+ * are initialized from.
+ */
+function testEventBrandEditFormHydration() {
+  const tenBrands = [
+    "Synergy",
+    "Warehouse Sessions",
+    "Pulse",
+    "Nightfall",
+    "Aurora",
+    "Cascade",
+    "Momentum",
+    "Echo Chamber",
+    "Afterglow",
+    "Terminal",
+  ];
+
+  const baseline = createProfileEditBaseline({
+    promoter_brand_name: serializeEventBrands(tenBrands),
+  } as never);
+
+  assert.deepEqual(baseline.brandTags, tenBrands);
+  assert.equal(baseline.brandTags.length, MAX_PROMOTER_EVENT_BRANDS);
+
+  // Legacy users: only the old single un-delimited value exists -- must
+  // still hydrate as a one-item list, not be dropped or crash.
+  const legacyBaseline = createProfileEditBaseline({
+    promoter_brand_name: "Synergy",
+  } as never);
+  assert.deepEqual(legacyBaseline.brandTags, ["Synergy"]);
+
+  // No stored value at all.
+  const emptyBaseline = createProfileEditBaseline({ promoter_brand_name: null } as never);
+  assert.deepEqual(emptyBaseline.brandTags, []);
+
+  // Malformed/oversized legacy value (predates the 40-char cap) must still
+  // hydrate safely -- no crash, no silent data loss.
+  const oversizedLegacy = "Z".repeat(MAX_EVENT_BRAND_NAME_LENGTH + 100);
+  const oversizedBaseline = createProfileEditBaseline({
+    promoter_brand_name: oversizedLegacy,
+  } as never);
+  assert.deepEqual(oversizedBaseline.brandTags, [oversizedLegacy]);
+}
+
+/**
+ * Saving must never overwrite the stored array with an incomplete editor
+ * state: re-saving an unchanged brand list must round-trip losslessly, and
+ * removing one chip must affect only that one brand.
+ */
+function testEventBrandSafeSave() {
+  const tenBrands = Array.from({ length: MAX_PROMOTER_EVENT_BRANDS }, (_, i) => `Brand ${i}`);
+  const stored = serializeEventBrands(tenBrands);
+  const baseline = createProfileEditBaseline({ promoter_brand_name: stored } as never);
+
+  // Save without changing anything: the serialized payload must be
+  // byte-identical to what was already stored -- no brands dropped, added,
+  // reordered, or deduped away.
+  assert.equal(serializeEventBrands(baseline.brandTags), stored);
+  assert.equal(
+    hasUnsavedProfileEdits(baseline, {
+      ...baseline,
+      brandTags: [...baseline.brandTags],
+    }),
+    false,
+  );
+
+  // Removing one brand must remove only that one -- the rest survive in
+  // original order.
+  const afterRemoval = baseline.brandTags.filter((brand) => brand !== "Brand 3");
+  assert.deepEqual(
+    afterRemoval,
+    tenBrands.filter((brand) => brand !== "Brand 3"),
+  );
+  assert.equal(afterRemoval.length, tenBrands.length - 1);
+  assert.equal(
+    hasUnsavedProfileEdits(baseline, { ...baseline, brandTags: afterRemoval }),
+    true,
+  );
+
+  // The removal must not have touched any other brand.
+  for (const brand of tenBrands) {
+    if (brand === "Brand 3") {
+      assert.ok(!afterRemoval.includes(brand));
+    } else {
+      assert.ok(afterRemoval.includes(brand));
+    }
+  }
 }
 
 function testMapEventInputToRowEventBrandFallback() {
@@ -6809,6 +6937,9 @@ async function main() {
   testEventBrandsParsingAndSerialization();
   testAddEventBrandTag();
   testEventBrandChipOverflowSafe();
+  testProfileCacheInvalidatedAfterSave();
+  testEventBrandEditFormHydration();
+  testEventBrandSafeSave();
   testMapEventInputToRowEventBrandFallback();
   testQaEnvironmentResetScript();
   await testEventsHistorySelectAllButtonInteraction();

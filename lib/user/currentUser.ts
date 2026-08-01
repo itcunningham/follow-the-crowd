@@ -624,6 +624,8 @@ export async function saveUserProfile(
     });
     throw new Error("Failed to save your profile. Please try again.");
   }
+
+  invalidateCurrentUserProfileCache();
 }
 
 export type UserAvatarProfile = Pick<UserProfile, "user_id" | "display_name" | "avatar_url">;

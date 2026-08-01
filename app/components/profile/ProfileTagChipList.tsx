@@ -31,6 +31,7 @@ export default function ProfileTagChipList({ tags }: { tags: string[] }) {
       {tags.map((tag) => (
         <span
           key={tag}
+          title={tag}
           className={`${PROFILE_TAG_CHIP_BASE_CLASS} ${PROFILE_TAG_CHIP_MAX_WIDTH_CLASS} min-w-0 truncate px-3 py-1 text-ftc-text-secondary`}
         >
           {tag}
