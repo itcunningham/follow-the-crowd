@@ -1316,7 +1316,7 @@ html {
 }
 
 .dm-composer-pending-photo-selected {
-  box-shadow: 0 0 0 2px var(--ftc-color-primary);
+  box-shadow: 0 0 0 1px var(--ftc-color-primary-border);
 }
 
 .ftc-dm-message-image-open {

@@ -5265,6 +5265,14 @@ function testDmComposerClearsPendingPhotoAfterSuccessfulSend() {
   assert.match(composerSource, /pendingPhotos/);
   // Every pending-photo thumbnail is the same fixed size (no per-item variation).
   assert.match(composerSource, /h-\[4\.5rem\] w-\[4\.5rem\]/);
+  // Remove (×) button: same size/position/interaction, higher-contrast fill
+  // (fully opaque, not /90) and glyph (primary text token, not the dimmer
+  // secondary one) so it stays visible over dark images too.
+  assert.match(
+    composerSource,
+    /absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-ftc-bg text-xs leading-none text-ftc-text shadow transition disabled:cursor-not-allowed disabled:opacity-40/,
+  );
+  assert.doesNotMatch(composerSource, /bg-ftc-bg\/90/);
   assert.match(composerSource, /disabled=\{busy \|\| !canSend\}/);
   assert.doesNotMatch(composerSource, /text-xs font-bold">…/);
   assert.doesNotMatch(composerSource, /placeholder="Message"[\s\S]*disabled=\{busy\}/);
@@ -5297,6 +5305,13 @@ function testDmComposerClearsPendingPhotoAfterSuccessfulSend() {
   assert.match(pageSource, /onInputBlurWhileBusy=\{handleComposerInputBlurWhileBusy\}/);
 
   assert.match(globalsSource, /\.dm-composer-pending-photo-selected/);
+  // Selected-thumbnail ring: thinner (1px, not 2px) and the softer subtle
+  // primary-border token (not the solid, full-opacity primary colour) —
+  // reuses the same token already used elsewhere for low-emphasis borders.
+  assert.match(
+    globalsSource,
+    /\.dm-composer-pending-photo-selected \{\s*box-shadow: 0 0 0 1px var\(--ftc-color-primary-border\);\s*\}/,
+  );
   assert.match(globalsSource, /html\[data-mobile-keyboard-open\] \.dm-composer \.ftc-input:focus/);
   assert.match(bubbleSource, /const attachmentOnly = hasAttachments && !hasText;/);
   assert.match(bubbleSource, /const bubbleShellClass = resolveChatMessageBubbleShellClass\(/);

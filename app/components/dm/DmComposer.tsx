@@ -129,7 +129,7 @@ export default function DmComposer({
                 aria-label={`Remove selected photo ${index + 1}`}
                 disabled={busy}
                 onClick={() => onRemovePendingPhoto(index)}
-                className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-ftc-bg/90 text-xs leading-none text-ftc-text-secondary shadow transition hover:text-ftc-text disabled:cursor-not-allowed disabled:opacity-40"
+                className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-ftc-bg text-xs leading-none text-ftc-text shadow transition disabled:cursor-not-allowed disabled:opacity-40"
               >
                 ×
               </button>
