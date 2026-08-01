@@ -114,7 +114,6 @@ export function EventsListTabControls({
   const activeTabClass = eventsListTabPillClass(!createFlowChromeActive && !isHistoryTab);
   const historyTabClass = eventsListTabPillClass(!createFlowChromeActive && isHistoryTab);
   const activeLabel = resolveEventsListActiveTabLabelForWorkspaceChrome(isPlanner, {
-    loadingShell,
     guardRole: guardProfile?.role,
   });
 

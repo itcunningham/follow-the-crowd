@@ -183,7 +183,7 @@ import {
   getCachedGigsPendingCount,
   writeRuntimeGigsPendingCount,
 } from "../lib/navigationBadgeCache";
-import { resolveEventsHistoryTrashVisible, resolveEventsListTabRowChrome, resolveEventsListActiveTabLabel, resolveEventsListActiveTabLabelForWorkspaceChrome, EVENTS_LIST_ACTIVE_TAB_LABEL_PLANNER } from "../lib/events/eventsListNavigation";
+import { resolveEventsHistoryTrashVisible, resolveEventsListTabRowChrome, resolveEventsListActiveTabLabel, resolveEventsListActiveTabLabelForWorkspaceChrome, EVENTS_LIST_ACTIVE_TAB_LABEL_PLANNER, EVENTS_LIST_ACTIVE_TAB_LABEL_DJ } from "../lib/events/eventsListNavigation";
 import {
   appendPlanIdToCreateFlowReturnHref,
   buildEventPlansCreateFormHref,
@@ -5275,17 +5275,41 @@ function testEventsListTabControlsMatchLoadingShellAndLoadedPage() {
     appLoadingSource,
     /hasCachedEventsList[\s\S]*EventListSkeleton/,
   );
+  // The loading-shell skeleton's planner stat pills are wired to the same
+  // role-resolved `isPlanner` used for the tab label — never hardcoded true.
+  assert.match(
+    appLoadingSource,
+    /export function EventsPageLoadingShell[\s\S]*const isPlanner = canManageEvents\(resolvedRole\)[\s\S]*showPlannerStats=\{isPlanner\}/,
+  );
   assert.match(controlsSource, /FTC_EVENTS_LIST_TAB_PILL_ROW_CLASS/);
   assert.match(controlsSource, /eventsListTabPillClass/);
   assert.match(controlsSource, /resolveEventsListActiveTabLabelForWorkspaceChrome\(isPlanner/);
   assert.match(controlsSource, /loadingShell/);
+
+  // Regression guard: the loading shell must never force the planner label for a DJ.
+  // A DJ's own resolved role (isPlannerFromParent=false, no guardRole override) must
+  // show the DJ label whether or not the events list has finished loading — the label
+  // is driven purely by role, not by loading state.
+  const navigationSource = readFileSync(
+    new URL("../lib/events/eventsListNavigation.ts", import.meta.url),
+    "utf8",
+  );
+  assert.doesNotMatch(navigationSource, /options\?\.loadingShell/);
+  assert.doesNotMatch(controlsSource, /resolveEventsListActiveTabLabelForWorkspaceChrome\([^)]*loadingShell/);
   assert.equal(
-    resolveEventsListActiveTabLabelForWorkspaceChrome(false, { loadingShell: true }),
+    resolveEventsListActiveTabLabelForWorkspaceChrome(false, {}),
+    EVENTS_LIST_ACTIVE_TAB_LABEL_DJ,
+  );
+  assert.equal(
+    resolveEventsListActiveTabLabelForWorkspaceChrome(false, { guardRole: "dj" }),
+    EVENTS_LIST_ACTIVE_TAB_LABEL_DJ,
+  );
+  assert.equal(
+    resolveEventsListActiveTabLabelForWorkspaceChrome(true, {}),
     EVENTS_LIST_ACTIVE_TAB_LABEL_PLANNER,
   );
   assert.equal(
     resolveEventsListActiveTabLabelForWorkspaceChrome(false, {
-      loadingShell: false,
       guardRole: "both",
     }),
     "Active",

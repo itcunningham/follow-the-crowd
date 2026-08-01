@@ -32,15 +32,11 @@ export function resolveEventsListActiveTabLabel(isPlanner: boolean): string {
   return isPlanner ? EVENTS_LIST_ACTIVE_TAB_LABEL_PLANNER : EVENTS_LIST_ACTIVE_TAB_LABEL_DJ;
 }
 
-/** First-tab label — loading shell always shows planner label; loaded state uses guard + caches. */
+/** First-tab label — always role-aware, whether from the route loading shell or the loaded page. */
 export function resolveEventsListActiveTabLabelForWorkspaceChrome(
   isPlannerFromParent: boolean,
-  options?: { loadingShell?: boolean; guardRole?: UserRole | null },
+  options?: { guardRole?: UserRole | null },
 ): string {
-  if (options?.loadingShell) {
-    return EVENTS_LIST_ACTIVE_TAB_LABEL_PLANNER;
-  }
-
   return resolveEventsListActiveTabLabel(
     isPlannerFromParent ||
       canManageEvents(resolveEventsWorkspaceChromeRole(options?.guardRole)),
