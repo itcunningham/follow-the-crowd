@@ -2992,13 +2992,13 @@ function testProfileDisplayNameAndBioFieldUx() {
   );
   const globalsSource = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
 
-  // Display name: typing-time cap (not just a save-time check), native
-  // maxLength backstop, and a visible character counter (same pattern as
-  // the existing bio/event-brand counters).
+  // Display name: typing-time cap (not just a save-time check) and native
+  // maxLength backstop -- no visible character counter (removed by design;
+  // the limit is still enforced, just not displayed as "x/30").
   assert.match(formSource, /onChange=\{handleDisplayNameChange\}/);
   assert.match(formSource, /applyDisplayNameInputLimit\(form\.display_name, nextDisplayName\)/);
   assert.match(formSource, /maxLength=\{MAX_PROFILE_DISPLAY_NAME_LENGTH\}/);
-  assert.match(
+  assert.doesNotMatch(
     formSource,
     /\{form\.display_name\.length\}\/\{MAX_PROFILE_DISPLAY_NAME_LENGTH\}/,
   );
@@ -3008,6 +3008,10 @@ function testProfileDisplayNameAndBioFieldUx() {
     formSource,
     /form\.display_name\.length > MAX_PROFILE_DISPLAY_NAME_LENGTH/,
   );
+
+  // Bio keeps its own visible "x/150" counter untouched -- the display-name
+  // counter removal is scoped to that one field only.
+  assert.match(formSource, /\{form\.bio\.length\}\/\{MAX_PROFILE_BIO_LENGTH\}/);
 
   // Server-side (save-path) enforcement: saveUserProfile itself caps the
   // value it persists, independent of whatever the client already did --

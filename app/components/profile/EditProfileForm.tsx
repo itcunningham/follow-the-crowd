@@ -601,17 +601,6 @@ export default function EditProfileForm({
           onChange={handleDisplayNameChange}
           placeholder="Display name"
           maxLength={MAX_PROFILE_DISPLAY_NAME_LENGTH}
-          footer={
-            <p
-              className={`text-xs ${
-                form.display_name.length > MAX_PROFILE_DISPLAY_NAME_LENGTH
-                  ? "text-red-400"
-                  : "text-ftc-text-muted"
-              }`}
-            >
-              {form.display_name.length}/{MAX_PROFILE_DISPLAY_NAME_LENGTH}
-            </p>
-          }
           error={fieldErrors.display_name}
         />
 
