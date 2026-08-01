@@ -5888,7 +5888,7 @@ function testDmImageGalleryOverviewForLargeGroups() {
   // responsive no-horizontal-scroll grid, and no image reordering.
   assert.match(overviewSource, /fixed inset-0 z-50/);
   assert.match(overviewSource, /bg-black\/90/);
-  assert.match(overviewSource, /aria-label="Close gallery"/);
+  assert.match(overviewSource, /label="Close gallery"/);
   assert.match(overviewSource, /Photo/);
   assert.match(overviewSource, /grid-cols-3/);
   assert.doesNotMatch(overviewSource, /overflow-x-auto|overflow-x-scroll/);
@@ -5904,6 +5904,63 @@ function testDmImageGalleryOverviewForLargeGroups() {
     "utf8",
   );
   assert.match(lightboxSource, /useDmMediaViewerDismiss/);
+}
+
+function testDmMediaViewerCloseButtonConsistentAndClickable() {
+  const closeButtonSource = readFileSync(
+    new URL("../app/components/dm/DmMediaViewerCloseButton.tsx", import.meta.url),
+    "utf8",
+  );
+  const lightboxSource = readFileSync(
+    new URL("../app/components/dm/DmImageLightbox.tsx", import.meta.url),
+    "utf8",
+  );
+  const overviewSource = readFileSync(
+    new URL("../app/components/dm/DmImageGalleryOverview.tsx", import.meta.url),
+    "utf8",
+  );
+
+  // One shared close control, not two independently-drifting per-screen
+  // copies — both the lightbox and the overview render the same component.
+  assert.match(closeButtonSource, /export default function DmMediaViewerCloseButton/);
+  assert.match(lightboxSource, /import DmMediaViewerCloseButton/);
+  assert.match(lightboxSource, /<DmMediaViewerCloseButton onClose=\{requestClose\} label="Close photo viewer" \/>/);
+  assert.match(overviewSource, /import DmMediaViewerCloseButton/);
+  assert.match(overviewSource, /<DmMediaViewerCloseButton onClose=\{requestClose\} label="Close gallery" \/>/);
+
+  // Neither screen still has its own inline "×" button markup — they only
+  // render the shared component, so the two can't silently drift apart
+  // again (different size/spacing/icon on one screen but not the other).
+  assert.doesNotMatch(lightboxSource, /aria-label="Close photo viewer"/);
+  assert.doesNotMatch(overviewSource, /aria-label="Close gallery"/);
+
+  // 44x44 minimum hit area (h-11 w-11 = 2.75rem = 44px), applied once in
+  // the shared component so both screens get it identically.
+  assert.match(closeButtonSource, /h-11 w-11/);
+
+  // Both screens lay the close button out as the LAST child of a
+  // `justify-between` header row — i.e. top-right on both, not top-left on
+  // one and top-right on the other.
+  assert.match(
+    lightboxSource,
+    /justify-between p-4 text-white">\s*<span[^]*?<\/span>\s*<DmMediaViewerCloseButton/,
+  );
+  assert.match(
+    overviewSource,
+    /justify-between p-4 text-white">\s*<span[^]*?<\/span>\s*<DmMediaViewerCloseButton/,
+  );
+
+  // Root cause of the non-responsive lightbox "×": the header bar and the
+  // touch-handling image layer are both `absolute` siblings with no
+  // z-index, so whichever renders later in the DOM (the image layer, which
+  // covers the full screen including the header's own screen area) paints
+  // on top and swallows clicks meant for the header underneath it — the
+  // button was visually present but never actually the hit-tested element
+  // outside the exact bounds of the rendered <img>. Fix: the header now
+  // explicitly stacks above that layer instead of relying on incidental
+  // DOM order (a real, deterministic fix — not a bigger hit area or a
+  // duplicate handler elsewhere papering over the same broken stacking).
+  assert.match(lightboxSource, /inset-x-0 top-0 z-10 flex items-center justify-between/);
 }
 
 function testDmComposerPendingPhotoGroupHelpers() {
@@ -6961,6 +7018,7 @@ async function main() {
   testDmImageGridLayout();
   testDmImageGroupFullViewerAndOwnershipAlignment();
   testDmImageGalleryOverviewForLargeGroups();
+  testDmMediaViewerCloseButtonConsistentAndClickable();
   // TEMP-SKIP (pre-existing, unrelated failure — stale getComposerLineBeforeCursor expectation in composerNewlineKeydown.ts, not touched by multi-photo work; see docs/handoff/CURRENT-STATE.md): testComposerNewlineKeydown();
   testDmComposerFocusSyncAfterSend();
   // TEMP-SKIP (pre-existing, unrelated failure — stale reaction-gesture source regex, not touched by multi-photo work; see docs/handoff/CURRENT-STATE.md): testDmMessageReactionGestureInteractions();

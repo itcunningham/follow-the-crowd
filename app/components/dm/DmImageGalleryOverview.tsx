@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import DmMediaViewerCloseButton from "@/app/components/dm/DmMediaViewerCloseButton";
 import { useDmMediaViewerDismiss } from "@/lib/dm/useDmMediaViewerDismiss";
 
 const VIEWER_TRANSITION_MS = 220;
@@ -62,18 +63,10 @@ export default function DmImageGalleryOverview({
         }`}
       >
         <div className="flex shrink-0 items-center justify-between p-4 text-white">
-          <button
-            type="button"
-            aria-label="Close gallery"
-            onClick={requestClose}
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-black/40 text-lg"
-          >
-            ×
-          </button>
           <span className="text-sm font-medium">
             {images.length} {images.length === 1 ? "Photo" : "Photos"}
           </span>
-          <span className="h-9 w-9" aria-hidden="true" />
+          <DmMediaViewerCloseButton onClose={requestClose} label="Close gallery" />
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-1 pb-4">

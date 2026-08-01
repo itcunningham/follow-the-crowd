@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import DmMediaViewerCloseButton from "@/app/components/dm/DmMediaViewerCloseButton";
 import { useDmMediaViewerDismiss } from "@/lib/dm/useDmMediaViewerDismiss";
 
 const VIEWER_TRANSITION_MS = 220;
@@ -210,18 +211,11 @@ export default function DmImageLightbox({
         onClick={requestClose}
       />
 
-      <div className="pointer-events-none absolute inset-x-0 top-0 flex items-center justify-between p-4 text-white">
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-center justify-between p-4 text-white">
         <span className="text-sm font-medium tabular-nums">
           {index + 1} / {images.length}
         </span>
-        <button
-          type="button"
-          aria-label="Close photo viewer"
-          onClick={requestClose}
-          className="pointer-events-auto flex h-9 w-9 items-center justify-center rounded-full bg-black/40 text-lg"
-        >
-          ×
-        </button>
+        <DmMediaViewerCloseButton onClose={requestClose} label="Close photo viewer" />
       </div>
 
       <div
