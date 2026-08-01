@@ -2791,71 +2791,121 @@ function testGenreSheetHeightDoesNotTrackFilteredContent() {
 }
 
 /**
- * A native `title` tooltip only reveals a truncated chip's full text on
- * mouse hover -- it has no tap equivalent, so touch/mobile users could never
- * read a truncated Event Brand at all. This verifies the tap-to-reveal
- * popover that fixes that: the chip is a real `<button>` (so it's tappable
- * and keyboard-focusable, not just a styled `<span>`), the reveal is gated
- * on the chip's text actually being truncated (`scrollWidth > clientWidth`)
- * so short/untruncated chips are inert when tapped, the popover renders the
- * full untruncated tag text, and both an outside pointerdown and Escape
- * dismiss it -- matching the existing `CalendarMonthNav` popover-dismiss
- * pattern reused here. Also confirms the popover is anchored per-chip (a
- * `relative` wrapper around each individual chip) and edge-aware (does not
- * always centre, so it can't push the page into horizontal scroll when the
- * anchor chip is near a viewport edge) rather than a single shared/centred
- * overlay that could clip or misalign depending on which chip opened it.
+ * The floating tap-to-reveal popover (previous iteration) had no touch
+ * equivalent to the underlying problem it solved cleanly enough on mobile,
+ * so it was replaced entirely with a native-feeling bottom sheet: tapping
+ * ANY Event Brand chip on a public profile opens a sheet listing every
+ * brand in full (no truncation), scrolled to and highlighting the one that
+ * was tapped. This verifies (1) `ProfileTagChipList` is back to a plain,
+ * non-interactive display with no popover machinery left in it at all --
+ * Genre tags (its only remaining consumer) are unaffected by any of this --
+ * and (2) the new `EventBrandsChips` component (the ONLY thing the public
+ * profile's Event Brands section renders now) has the sheet's required
+ * chrome, dismiss affordances, and accessibility hooks.
  */
-function testProfileTagChipTapToReveal() {
+function testEventBrandsBottomSheet() {
   const tagListSource = readFileSync(
     new URL("../app/components/profile/ProfileTagChipList.tsx", import.meta.url),
     "utf8",
   );
+  const chipsSource = readFileSync(
+    new URL("../app/components/profile/EventBrandsChips.tsx", import.meta.url),
+    "utf8",
+  );
+  const sectionsSource = readFileSync(
+    new URL("../app/components/profile/PromoterProfileSections.tsx", import.meta.url),
+    "utf8",
+  );
+  const globalsSource = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
 
-  // Client component: uses hooks (useState/useRef/useEffect) directly.
-  assert.match(tagListSource, /^"use client";/m);
+  // Popover is gone -- ProfileTagChipList carries no client-side popover
+  // state, tooltip role, or edge-alignment machinery any more.
+  assert.ok(!tagListSource.includes('role="tooltip"'));
+  assert.ok(!tagListSource.includes("EDGE_ALIGN_THRESHOLD_PX"));
+  assert.ok(!tagListSource.includes("useState"));
+  assert.ok(!tagListSource.includes("<button"));
 
-  // The chip itself is a real button, not a plain span -- native tap/click
-  // and keyboard (Enter/Space) support come for free.
-  assert.match(tagListSource, /<button[\s\S]*?PROFILE_TAG_CHIP_BASE_CLASS/);
+  // Public profile's Event Brands section renders the new sheet-backed
+  // component exclusively -- not the plain shared list any more.
+  assert.match(sectionsSource, /<EventBrandsChips brands=\{brands\} \/>/);
+  assert.ok(!sectionsSource.includes("ProfileTagChipList"));
 
-  // Reveal is gated on actual truncation -- short chips do nothing on tap.
-  assert.match(tagListSource, /scrollWidth\s*<=\s*chipEl\.clientWidth/);
+  // Trigger chips still reuse the exact shared max-width/truncate treatment
+  // every other chip surface uses, so the card itself never resizes/jumps.
+  assert.match(chipsSource, /PROFILE_TAG_CHIP_MAX_WIDTH_CLASS/);
+  assert.match(
+    chipsSource,
+    /PROFILE_TAG_CHIP_BASE_CLASS\}\s*\$\{PROFILE_TAG_CHIP_MAX_WIDTH_CLASS\}\s*min-w-0 truncate/,
+  );
 
-  // Only one popover open at a time; re-tapping the same (truncated) chip
-  // toggles it closed rather than leaving it stuck open.
-  assert.match(tagListSource, /current\?\.tag === tag/);
+  // Sheet chrome: modal dialog semantics, dimmed backdrop, bottom-anchored
+  // rounded-top panel matching every other FTC sheet's surface/border/radius.
+  assert.match(chipsSource, /role="dialog"/);
+  assert.match(chipsSource, /aria-modal="true"/);
+  assert.match(chipsSource, /items-end justify-center bg-black\/60/);
+  assert.match(chipsSource, /rounded-t-2xl border border-ftc-border-strong bg-ftc-bg-elevated/);
 
-  // Each chip gets its own positioning anchor -- the popover for chip A
-  // can never appear anchored to chip B's position.
-  assert.match(tagListSource, /className="relative inline-block"/);
+  // Title + live brand-count subtitle, singular/plural handled.
+  assert.match(chipsSource, />\s*Event Brands\s*</);
+  assert.match(chipsSource, /\{brands\.length\} brand\{brands\.length === 1 \? "" : "s"\}/);
 
-  // Edge-aware alignment: doesn't blindly centre every popover, which would
-  // risk pushing a near-edge chip's popover off-screen.
-  assert.match(tagListSource, /EDGE_ALIGN_THRESHOLD_PX/);
-  assert.match(tagListSource, /type PopoverAlign = "left" \| "center" \| "right"/);
+  // Every brand renders in full inside the scrollable list -- wrapping
+  // allowed, no truncate/ellipsis classes on the rows themselves.
+  assert.match(chipsSource, /<ul className="min-h-0 flex-1 overflow-y-auto/);
+  assert.match(chipsSource, /whitespace-normal break-words/);
+  assert.ok(!/<li[\s\S]{0,120}truncate/.test(chipsSource));
 
-  // Popover shows the full, untruncated tag text.
-  assert.match(tagListSource, /role="tooltip"/);
+  // Tapping a chip only ever calls `openSheetFor`, which sets the active
+  // brand and opens -- there is no separate "close then reopen" path, so
+  // switching brands while already open can't flicker the sheet shut.
+  assert.match(chipsSource, /onClick=\{\(\) => openSheetFor\(brand\)\}/);
+  assert.ok(!/setOpen\(false\)[\s\S]{0,80}setOpen\(true\)/.test(chipsSource));
 
-  // Dismiss on outside tap and Escape -- same convention as the existing
-  // CalendarMonthNav month/year popover.
-  assert.match(tagListSource, /addEventListener\("mousedown", handlePointerDown\)/);
-  assert.match(tagListSource, /event\.key === "Escape"/);
+  // Tapped brand scrolls into view and gets a highlighted background.
+  assert.match(chipsSource, /scrollIntoView\(\{ block: "center", behavior: "smooth" \}\)/);
+  assert.match(chipsSource, /brand === activeBrand/);
 
-  // Reveal is scoped to this shared read-only chip list, so both Event
-  // Brands (PromoterProfileSections) and Genre tags (ProfileGenreTags) on
-  // the public profile get it automatically -- and the editable Edit
-  // Profile chips (ProfileEventBrandsField, ProfileGenrePicker) are
-  // untouched: they only import the shared className constants from this
-  // file, never the default-exported <ProfileTagChipList> component or its
-  // popover markup, so editing behaviour can't be affected by this change.
+  // Dismiss: backdrop tap, Escape, and a swipe-down gesture scoped to the
+  // header/handle (never the scrollable list, so it can't fight scrolling).
+  assert.match(chipsSource, /onClick=\{closeSheet\}/);
+  assert.match(chipsSource, /event\.key === "Escape"/);
+  assert.match(chipsSource, /onTouchStart=\{handleHeaderTouchStart\}/);
+  assert.match(chipsSource, /onTouchMove=\{handleHeaderTouchMove\}/);
+  assert.match(chipsSource, /onTouchEnd=\{handleHeaderTouchEnd\}/);
+
+  // Body scroll locked while open -- the same shared hook every other FTC
+  // sheet (e.g. ProfileGenrePicker's "Add genres" sheet) already uses.
+  assert.match(chipsSource, /import \{ useBodyScrollLock \} from "@\/lib\/ui\/useBodyScrollLock"/);
+  assert.match(chipsSource, /useBodyScrollLock\(open\)/);
+
+  // Accessible labelling + a minimal focus trap that keeps Tab inside the
+  // sheet instead of escaping to the page behind it.
+  assert.match(chipsSource, /aria-labelledby="event-brands-sheet-title"/);
+  assert.match(chipsSource, /aria-describedby="event-brands-sheet-subtitle"/);
+  assert.match(chipsSource, /onKeyDown=\{handlePanelKeyDown\}/);
+  assert.match(chipsSource, /function handlePanelKeyDown/);
+
+  // Slide-up-from-bottom entrance animation, with the same
+  // prefers-reduced-motion override every other FTC entrance animation has.
+  assert.match(chipsSource, /className="ftc-event-brands-sheet-panel/);
+  const keyframeRule = globalsSource.match(/@keyframes ftc-sheet-slide-up \{[\s\S]*?\n\}/);
+  assert.ok(keyframeRule, "ftc-sheet-slide-up keyframes not found in globals.css");
+  assert.match(keyframeRule[0], /transform: translateY\(100%\)/);
+  assert.match(
+    globalsSource,
+    /@media \(prefers-reduced-motion: reduce\) \{\s*\.ftc-event-brands-sheet-panel \{\s*animation: none;/,
+  );
+
+  // Edit Profile is completely untouched -- it never imports the new
+  // component, and the editable brand field never imported the old
+  // component's default export either (only the shared className
+  // constants), so this change cannot affect editing behaviour.
   const editBrandsFieldSource = readFileSync(
     new URL("../app/components/profile/ProfileEventBrandsField.tsx", import.meta.url),
     "utf8",
   );
+  assert.ok(!editBrandsFieldSource.includes("EventBrandsChips"));
   assert.ok(!/import ProfileTagChipList\b/.test(editBrandsFieldSource));
-  assert.ok(!editBrandsFieldSource.includes('role="tooltip"'));
 }
 
 /**
@@ -7220,7 +7270,7 @@ async function main() {
   testAddEventBrandTag();
   testEventBrandChipOverflowSafe();
   testGenreSheetHeightDoesNotTrackFilteredContent();
-  testProfileTagChipTapToReveal();
+  testEventBrandsBottomSheet();
   testProfileCacheInvalidatedAfterSave();
   testEventBrandEditFormHydration();
   testEventBrandSafeSave();

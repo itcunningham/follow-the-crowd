@@ -1,7 +1,7 @@
 "use client";
 
+import EventBrandsChips from "@/app/components/profile/EventBrandsChips";
 import ProfileSectionCard from "@/app/components/profile/ProfileSectionCard";
-import ProfileTagChipList from "@/app/components/profile/ProfileTagChipList";
 import type { UserProfile } from "@/lib/user/currentUser";
 import { parseStoredEventBrands } from "@/lib/user/profileFormUtils";
 
@@ -15,7 +15,7 @@ export default function PromoterProfileSections({ profile }: { profile: UserProf
   return (
     <div className="space-y-4">
       <ProfileSectionCard title="Event brands">
-        <ProfileTagChipList tags={brands} />
+        <EventBrandsChips brands={brands} />
       </ProfileSectionCard>
     </div>
   );
