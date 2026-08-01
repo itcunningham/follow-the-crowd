@@ -29,7 +29,7 @@ export default function ComposerMessageField({
         rows={1}
         disabled={disabled}
         {...textareaProps}
-        className="ftc-input w-full min-h-11 resize-none rounded-full px-4 py-2 leading-normal disabled:cursor-not-allowed"
+        className="ftc-input block w-full min-h-11 resize-none rounded-full px-4 py-2 leading-normal disabled:cursor-not-allowed"
       />
     </div>
   );

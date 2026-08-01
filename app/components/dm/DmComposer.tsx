@@ -105,7 +105,7 @@ export default function DmComposer({
     <div
       ref={composerRootRef}
       data-chat-composer
-      className="dm-composer shrink-0 border-t border-ftc-border-subtle bg-ftc-bg px-3 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-4"
+      className="dm-composer shrink-0 mt-1.5 border-t border-ftc-border-subtle bg-ftc-bg px-3 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-4"
     >
       {hasPendingPhotos ? (
         <div
@@ -143,6 +143,7 @@ export default function DmComposer({
           label="Add photo"
           disabled={busy || pendingPhotos.length >= DM_MAX_PHOTOS_PER_MESSAGE}
           onClick={() => photoInputRef.current?.click()}
+          className="mb-0.5"
         >
           <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" className="h-5 w-5">
             <rect x="4" y="6" width="16" height="14" rx="2" stroke="currentColor" strokeWidth="1.5" />
@@ -169,7 +170,7 @@ export default function DmComposer({
           disabled={busy || !canSend}
           aria-label="Send message"
           aria-busy={busy}
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-ftc-primary text-ftc-bg transition hover:bg-ftc-primary-dim disabled:cursor-not-allowed disabled:opacity-50 sm:h-10 sm:w-10"
+          className="flex h-9 w-9 shrink-0 mb-1 items-center justify-center rounded-full bg-ftc-primary text-ftc-bg transition hover:bg-ftc-primary-dim disabled:cursor-not-allowed disabled:opacity-50 sm:h-10 sm:w-10 sm:mb-0.5"
         >
           <SendIcon className="h-[1.125rem] w-[1.125rem] sm:h-5 sm:w-5" />
         </button>

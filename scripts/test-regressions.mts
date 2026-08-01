@@ -6270,6 +6270,66 @@ function testDmComposerClearsPendingPhotoAfterSuccessfulSend() {
   assert.match(helperSource, /removePendingComposerAttachmentAt/);
 }
 
+function testDmComposerRowAlignment() {
+  const composerSource = readFileSync(
+    new URL("../app/components/dm/DmComposer.tsx", import.meta.url),
+    "utf8",
+  );
+  const fieldSource = readFileSync(
+    new URL("../app/components/chat/ComposerMessageField.tsx", import.meta.url),
+    "utf8",
+  );
+
+  // The composer band (divider + row together) sits a few px lower than
+  // before -- the gap between the message list and the divider no longer
+  // reads as disproportionately tight. Within the requested ~4-8px range
+  // (mt-1.5 = 6px), applied to the whole bordered container so the divider
+  // (its own border-t) moves down together with the row inside it.
+  assert.match(composerSource, /className="dm-composer shrink-0 mt-1\.5 border-t/);
+
+  // Button sizes and tap targets are unchanged -- only their alignment moved.
+  assert.match(composerSource, /h-10 w-10 shrink-0/); // photo button, unchanged
+  assert.match(
+    composerSource,
+    /"flex h-9 w-9 shrink-0 mb-1 items-center justify-center rounded-full bg-ftc-primary text-ftc-bg transition hover:bg-ftc-primary-dim disabled:cursor-not-allowed disabled:opacity-50 sm:h-10 sm:w-10 sm:mb-0\.5"/,
+  );
+
+  // Photo button and send button each carry a small margin-bottom nudge so
+  // their centres line up with the text field's single-line height (min-h-11
+  // = 44px), while the row still bottom-anchors (items-end) as the textarea
+  // grows for multi-line messages -- not a blanket items-center switch, which
+  // would leave the buttons floating mid-height once the field grows tall.
+  assert.match(composerSource, /className="mb-0\.5"/); // photo button nudge
+  assert.match(composerSource, /items-end gap-2/);
+  assert.doesNotMatch(composerSource, /items-center gap-2/);
+
+  // Text field height is untouched.
+  assert.match(fieldSource, /min-h-11/);
+
+  // A <textarea> defaults to display: inline-block, which reserves a few
+  // extra px of inline-baseline "descender" space below it inside its block
+  // wrapper -- the wrapper (the actual flex/items-end sibling) ends up
+  // taller than the textarea itself, throwing off the centring math even
+  // with correct margin nudges on the buttons. `block` removes that
+  // reserved gap so the wrapper's box exactly matches the textarea's own
+  // 44px, shared by both DmComposer and GroupChatComposer (same component).
+  assert.match(fieldSource, /className="ftc-input block w-full min-h-11/);
+
+  // The centring math itself: with items-end (bottom-anchored) and a
+  // margin-bottom nudge of half the height difference against the 44px
+  // single-line text field, every element's vertical centre lands on the
+  // same line, at every breakpoint.
+  const fieldHeightPx = 44; // min-h-11
+  function assertCentred(buttonHeightPx: number, nudgePx: number) {
+    const gapAboveWhenFlush = fieldHeightPx - buttonHeightPx;
+    assert.equal(nudgePx * 2, gapAboveWhenFlush);
+  }
+
+  assertCentred(40, 2); // photo button, mb-0.5 = 2px, every breakpoint
+  assertCentred(36, 4); // send button mobile, mb-1 = 4px
+  assertCentred(40, 2); // send button sm+, sm:mb-0.5 = 2px
+}
+
 function testDmMultiPhotoSend() {
   const attachmentsSource = readFileSync(
     new URL("../lib/dmAttachments.ts", import.meta.url),
@@ -7939,6 +7999,7 @@ async function main() {
   testEventCreateFormTextFieldMaxLength();
   testWithdrawalOtherReasonInputLimits();
   testDmComposerClearsPendingPhotoAfterSuccessfulSend();
+  testDmComposerRowAlignment();
   testDmComposerPendingPhotoGroupHelpers();
   testDmMultiPhotoSend();
   testDmImageGridLayout();
