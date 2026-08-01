@@ -28,8 +28,16 @@ export type DmChatVisibleMessageKind = "timeline" | "chat" | "booking_card" | "h
 export type DmConversationTimestampLayout = {
   /** @deprecated Per-message inline timestamps removed — use showTimeSeparatorBefore. */
   showTimestamp: boolean;
-  /** Centred separator before this message when a new time cluster begins. */
+  /** Centred time-only separator before this message when a new time cluster begins on the same day. */
   showTimeSeparatorBefore: boolean;
+  /**
+   * Centred day separator (TODAY / YESTERDAY / date) before this message when it starts a
+   * new calendar day — including the first visible message in the loaded history. Takes
+   * precedence over showTimeSeparatorBefore (never show both for the same boundary).
+   */
+  showDaySeparatorBefore: boolean;
+  /** Label for the day separator; set only when showDaySeparatorBefore is true. */
+  daySeparatorLabel: string | undefined;
   compactBelow: boolean;
 };
 
@@ -61,6 +69,52 @@ function hasMeaningfulGapBetween(
   }
 
   return laterMs - earlierMs >= DM_CHAT_MEANINGFUL_TIME_GAP_MS;
+}
+
+function toValidDate(createdAt: string): Date | null {
+  const timestampMs = new Date(createdAt).getTime();
+
+  return Number.isNaN(timestampMs) ? null : new Date(timestampMs);
+}
+
+function isSameCalendarDay(a: Date, b: Date): boolean {
+  return (
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate()
+  );
+}
+
+const DM_DAY_SEPARATOR_WEEKDAY_FORMATTER = new Intl.DateTimeFormat("en-AU", {
+  weekday: "short",
+});
+const DM_DAY_SEPARATOR_MONTH_FORMATTER = new Intl.DateTimeFormat("en-AU", { month: "short" });
+
+/**
+ * Instagram-style day separator label: TODAY, YESTERDAY, "FRI 1 AUG" (same year), or
+ * "1 AUG 2026" (different year, no weekday).
+ */
+export function formatDmDaySeparatorLabel(date: Date, now: Date): string {
+  if (isSameCalendarDay(date, now)) {
+    return "TODAY";
+  }
+
+  const yesterday = new Date(now);
+  yesterday.setDate(yesterday.getDate() - 1);
+
+  if (isSameCalendarDay(date, yesterday)) {
+    return "YESTERDAY";
+  }
+
+  const day = date.getDate();
+  const month = DM_DAY_SEPARATOR_MONTH_FORMATTER.format(date).toUpperCase();
+
+  if (date.getFullYear() === now.getFullYear()) {
+    const weekday = DM_DAY_SEPARATOR_WEEKDAY_FORMATTER.format(date).toUpperCase();
+    return `${weekday} ${day} ${month}`;
+  }
+
+  return `${day} ${month} ${date.getFullYear()}`;
 }
 
 function resolveVisibleBookingFromMessage(
@@ -238,8 +292,11 @@ export function buildDmConversationTimestampLayout(
   options: {
     bookings: BookingRequest[];
     conversationId: string;
+    /** Reference "now" for TODAY/YESTERDAY day labels — injectable for deterministic tests. */
+    now?: Date;
   },
 ): Map<string, DmConversationTimestampLayout> {
+  const now = options.now ?? new Date();
   const layoutByMessageId = new Map<string, DmConversationTimestampLayout>();
   const visibleMessages: ClassifiedConversationMessage[] = messages
     .map((message, messageIndex) => ({
@@ -257,11 +314,29 @@ export function buildDmConversationTimestampLayout(
     const message = visibleMessages[index];
     const previous = visibleMessages[index - 1];
     const next = visibleMessages[index + 1];
-    const showTimeSeparatorBefore = Boolean(
-      previous && hasMeaningfulGapBetween(previous.created_at, message.created_at),
+    const messageDate = toValidDate(message.created_at);
+    const previousDate = previous ? toValidDate(previous.created_at) : null;
+    const nextDate = next ? toValidDate(next.created_at) : null;
+
+    // First visible message in the loaded history always gets a day marker
+    // (Instagram always shows a date header above the earliest loaded messages).
+    const showDaySeparatorBefore = Boolean(
+      messageDate && (!previous || !previousDate || !isSameCalendarDay(previousDate, messageDate)),
+    );
+    const daySeparatorLabel =
+      showDaySeparatorBefore && messageDate
+        ? formatDmDaySeparatorLabel(messageDate, now)
+        : undefined;
+    // A day separator already marks this boundary — never stack a redundant time separator on it.
+    const showTimeSeparatorBefore =
+      !showDaySeparatorBefore &&
+      Boolean(previous && hasMeaningfulGapBetween(previous.created_at, message.created_at));
+    const nextCrossesDay = Boolean(
+      next && messageDate && (!nextDate || !isSameCalendarDay(messageDate, nextDate)),
     );
     const compactBelow = Boolean(
       next &&
+        !nextCrossesDay &&
         !hasMeaningfulGapBetween(message.created_at, next.created_at) &&
         message.kind === "timeline" &&
         next.kind === "timeline",
@@ -270,6 +345,8 @@ export function buildDmConversationTimestampLayout(
     layoutByMessageId.set(message.id, {
       showTimestamp: false,
       showTimeSeparatorBefore,
+      showDaySeparatorBefore,
+      daySeparatorLabel,
       compactBelow,
     });
   }

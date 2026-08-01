@@ -103,6 +103,7 @@ import {
   buildDmConversationTimestampLayout,
   classifyDmConversationMessageKind,
   DM_CHAT_MEANINGFUL_TIME_GAP_MS,
+  formatDmDaySeparatorLabel,
   shouldSuppressDmBookingTimelineNotice,
 } from "../lib/dm/dmChatTimestampVisibility";
 import {
@@ -856,6 +857,27 @@ function testDmConversationTimestampLayout() {
   assert.match(bubbleSource, /resolveMessageGroupLiClass/);
   assert.doesNotMatch(bubbleSource, /showTimestamp\?: boolean/);
 
+  // Instagram-style day separator: same builder, new flag + label, and it must take
+  // precedence over a same-boundary time separator rather than stacking both.
+  assert.match(pageSource, /showDaySeparatorBefore/);
+  assert.match(pageSource, /daySeparatorLabel/);
+
+  // The root cause of "timestamp glued under the newest message": wrapWithTimeSeparator
+  // used to render the separator AFTER the message it belonged to instead of before it,
+  // so the last message in the conversation (if it started a new time cluster) ended up
+  // with a trailing, unattached-looking timestamp beneath it with nothing following. Lock
+  // in the fix structurally: within wrapWithTimeSeparator's own body, the separator JSX
+  // must appear before the wrapped {node}, not after.
+  const wrapWithTimeSeparatorSource = pageSource.slice(
+    pageSource.indexOf("function wrapWithTimeSeparator"),
+    pageSource.indexOf("function resolveFollowedByTimeSeparator"),
+  );
+  assert.ok(
+    wrapWithTimeSeparatorSource.indexOf("<DmChatTimeSeparator") <
+      wrapWithTimeSeparatorSource.indexOf("{node}"),
+    "the separator must render before {node}, not trailing after it",
+  );
+
   const baseTime = Date.parse("2026-07-27T12:00:00.000Z");
   const quickGapMs = 60_000;
   const longGapMs = DM_CHAT_MEANINGFUL_TIME_GAP_MS + 60_000;
@@ -923,6 +945,98 @@ function testDmConversationTimestampLayout() {
   assert.equal(gapLayout.get("timeline-gap-2")?.showTimestamp, false);
   assert.equal(gapLayout.get("timeline-gap-1")?.showTimeSeparatorBefore, false);
   assert.equal(gapLayout.get("timeline-gap-2")?.showTimeSeparatorBefore, true);
+}
+
+function testDmChatDaySeparators() {
+  // Local-time Date construction throughout (never UTC ISO strings) so this test is
+  // correct in any timezone: "now"/"midnight"/etc. are computed against the machine's
+  // own local calendar, matching how formatDmDaySeparatorLabel reads local date parts.
+  const now = new Date(2026, 7, 2, 10, 0, 0); // Sun 2 Aug 2026
+
+  // Day-label formatting: TODAY / YESTERDAY / weekday+day+month (same year) /
+  // day+month+year, no weekday (different year) -- matches Instagram's own convention.
+  assert.equal(formatDmDaySeparatorLabel(new Date(2026, 7, 2, 9, 0, 0), now), "TODAY");
+  assert.equal(formatDmDaySeparatorLabel(new Date(2026, 7, 1, 9, 0, 0), now), "YESTERDAY");
+  assert.equal(formatDmDaySeparatorLabel(new Date(2026, 0, 5, 9, 0, 0), now), "MON 5 JAN");
+  assert.equal(formatDmDaySeparatorLabel(new Date(2025, 2, 14, 9, 0, 0), now), "14 MAR 2025");
+
+  // Crossing midnight with only a few minutes' gap: the old gap-only logic (<5min)
+  // would show no separator at all here. A day boundary must still surface one,
+  // labelled by calendar day rather than the 5-minute gap threshold.
+  const justBeforeMidnight = new Date(2026, 7, 1, 23, 58, 0).getTime();
+  const shortGapAcrossMidnight = [
+    { id: "before-midnight", created_at: new Date(justBeforeMidnight).toISOString(), text: "Night owl" },
+    {
+      id: "after-midnight",
+      created_at: new Date(justBeforeMidnight + 4 * 60_000).toISOString(),
+      text: "Still here",
+    },
+  ];
+  const shortGapLayout = buildDmConversationTimestampLayout(shortGapAcrossMidnight, {
+    bookings: [],
+    conversationId: "conversation-1",
+    now,
+  });
+
+  assert.equal(shortGapLayout.get("after-midnight")?.showDaySeparatorBefore, true);
+  assert.equal(shortGapLayout.get("after-midnight")?.daySeparatorLabel, "TODAY");
+  assert.equal(shortGapLayout.get("after-midnight")?.showTimeSeparatorBefore, false);
+
+  // Crossing midnight with a gap that WOULD also trigger the ordinary time separator:
+  // the day separator must take precedence -- never stack both for the same boundary.
+  const longGapAcrossMidnight = [
+    { id: "yesterday-late", created_at: new Date(justBeforeMidnight).toISOString(), text: "Night owl" },
+    {
+      id: "today-early",
+      created_at: new Date(justBeforeMidnight + DM_CHAT_MEANINGFUL_TIME_GAP_MS + 60_000).toISOString(),
+      text: "Morning",
+    },
+  ];
+  const longGapLayout = buildDmConversationTimestampLayout(longGapAcrossMidnight, {
+    bookings: [],
+    conversationId: "conversation-1",
+    now,
+  });
+
+  assert.equal(longGapLayout.get("today-early")?.showDaySeparatorBefore, true);
+  assert.equal(longGapLayout.get("today-early")?.daySeparatorLabel, "TODAY");
+  assert.equal(longGapLayout.get("today-early")?.showTimeSeparatorBefore, false);
+
+  // Same-day messages with a meaningful gap keep the ordinary time separator, not a
+  // redundant day separator.
+  const sameDayBase = new Date(2026, 7, 2, 9, 0, 0).getTime();
+  const sameDayMessages = [
+    { id: "sd-1", created_at: new Date(sameDayBase).toISOString(), text: "Morning" },
+    {
+      id: "sd-2",
+      created_at: new Date(sameDayBase + DM_CHAT_MEANINGFUL_TIME_GAP_MS + 60_000).toISOString(),
+      text: "Later",
+    },
+  ];
+  const sameDayLayout = buildDmConversationTimestampLayout(sameDayMessages, {
+    bookings: [],
+    conversationId: "conversation-1",
+    now,
+  });
+
+  assert.equal(sameDayLayout.get("sd-2")?.showDaySeparatorBefore, false);
+  assert.equal(sameDayLayout.get("sd-2")?.showTimeSeparatorBefore, true);
+
+  // Opening an older conversation: the very first visible message in the loaded
+  // history always carries a day separator, even alone, so history never opens with
+  // undated messages sitting above the first "crossing".
+  const singleOlderMessage = [
+    { id: "only-one", created_at: new Date(2025, 2, 14, 9, 0, 0).toISOString(), text: "Old message" },
+  ];
+  const singleLayout = buildDmConversationTimestampLayout(singleOlderMessage, {
+    bookings: [],
+    conversationId: "conversation-1",
+    now,
+  });
+
+  assert.equal(singleLayout.get("only-one")?.showDaySeparatorBefore, true);
+  assert.equal(singleLayout.get("only-one")?.daySeparatorLabel, "14 MAR 2025");
+  assert.equal(singleLayout.get("only-one")?.showTimeSeparatorBefore, false);
 }
 
 function createRegressionBookingRequest(
@@ -7739,6 +7853,7 @@ async function main() {
   testBookingCardCollapseScrollHeightCompensation();
   testDmBookingSystemMessages();
   testDmConversationTimestampLayout();
+  testDmChatDaySeparators();
   testDmBookingTimelineSuppression();
   testChatAppendedMessageIds();
   testDmBookingCardProposedRateCopy();

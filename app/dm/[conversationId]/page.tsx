@@ -172,21 +172,30 @@ function formatMessageTime(timestamp: string) {
   });
 }
 
+/**
+ * Wraps a message with its centred separator, Instagram-style: the separator for a
+ * message belongs ABOVE it (marking the boundary since the previous message), not
+ * trailing below — otherwise the newest message in the conversation ends up with a
+ * separator glued underneath it, reading as if the timestamp belongs to that bubble.
+ * A day separator (TODAY/YESTERDAY/date) takes precedence over a same-day time
+ * separator at the same boundary — never stack both.
+ */
 function wrapWithTimeSeparator(
   messageId: string,
   createdAt: string,
   node: ReactNode,
   timestampLayout: DmConversationTimestampLayout | undefined,
 ) {
+  const separatorLabel = timestampLayout?.showDaySeparatorBefore
+    ? timestampLayout.daySeparatorLabel
+    : timestampLayout?.showTimeSeparatorBefore
+      ? formatMessageTime(createdAt)
+      : undefined;
+
   return (
     <Fragment key={messageId}>
+      {separatorLabel ? <DmChatTimeSeparator dateTime={createdAt} label={separatorLabel} /> : null}
       {node}
-      {timestampLayout?.showTimeSeparatorBefore ? (
-        <DmChatTimeSeparator
-          dateTime={createdAt}
-          label={formatMessageTime(createdAt)}
-        />
-      ) : null}
     </Fragment>
   );
 }
@@ -199,7 +208,9 @@ function resolveFollowedByTimeSeparator(
     return false;
   }
 
-  return timestampLayout.get(messageVisuallyBelowId)?.showTimeSeparatorBefore ?? false;
+  const nextLayout = timestampLayout.get(messageVisuallyBelowId);
+
+  return Boolean(nextLayout?.showTimeSeparatorBefore || nextLayout?.showDaySeparatorBefore);
 }
 
 function getConversationTitle(otherUserProfile: UserAvatarProfile) {
@@ -1918,8 +1929,10 @@ export default function DmChatPage() {
                   messageVisuallyBelow?.id,
                   conversationTimestampLayout,
                 );
-                const precededByTimeSeparator =
-                  messageTimestampLayout?.showTimeSeparatorBefore ?? false;
+                const precededByTimeSeparator = Boolean(
+                  messageTimestampLayout?.showTimeSeparatorBefore ||
+                    messageTimestampLayout?.showDaySeparatorBefore,
+                );
 
                 return wrapWithTimeSeparator(
                   message.id,
@@ -2036,8 +2049,10 @@ export default function DmChatPage() {
                   conversationTimestampLayout,
                 );
                 const bookingTimestampLayout = conversationTimestampLayout.get(message.id);
-                const precededByTimeSeparator =
-                  bookingTimestampLayout?.showTimeSeparatorBefore ?? false;
+                const precededByTimeSeparator = Boolean(
+                  bookingTimestampLayout?.showTimeSeparatorBefore ||
+                    bookingTimestampLayout?.showDaySeparatorBefore,
+                );
 
                 const bookingCard = (
                   <BookingRequestCard
