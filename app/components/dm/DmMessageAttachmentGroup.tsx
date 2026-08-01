@@ -3,12 +3,26 @@
 import { useState } from "react";
 import DmMessageAttachmentView from "@/app/components/dm/DmMessageAttachment";
 import DmImageLightbox from "@/app/components/dm/DmImageLightbox";
+import DmImageGalleryOverview from "@/app/components/dm/DmImageGalleryOverview";
 import { isDmImageAttachment, type DmMessageAttachment } from "@/lib/dmAttachments";
 import {
+  DM_GALLERY_OVERVIEW_MIN_IMAGES,
   DM_IMAGE_BUBBLE_GRID_WIDTH_CLASS,
   resolveImageGridCellClass,
   resolveVisibleGridImages,
 } from "@/lib/dm/dmImageLayout";
+
+/**
+ * Which media overlay is currently open for this message's images, if any.
+ * 1-4 images skip straight to "lightbox" on tap (existing behaviour); 5+
+ * images go through "overview" first (Instagram-style browse-then-pick) —
+ * see `openFromGrid` below. Closing the lightbox returns to "overview" only
+ * when an overview exists in this message's flow, never the other way.
+ */
+type DmImageGroupView =
+  | { mode: "closed" }
+  | { mode: "overview" }
+  | { mode: "lightbox"; index: number };
 
 function handleImageContextMenu(
   event: React.MouseEvent<HTMLElement>,
@@ -66,8 +80,10 @@ function ImageGridCell({
  * (not max-) width so the grid gets a real, predictable footprint the
  * surrounding message row can align to the sender's side. The whole grid is
  * one border/rounded-corner frame and behaves as a single message; tapping
- * any cell opens the full-group lightbox on that image (including images
- * hidden behind the "+N" tile), with every image in the message swipeable.
+ * any cell on a 2-4 image message opens the lightbox directly on that image
+ * (including ones hidden behind the "+N" tile); tapping any cell on a 5+
+ * image message opens the Instagram-style Gallery Overview first instead —
+ * browsing a large group by jumping straight into one photo loses context.
  */
 export default function DmMessageAttachmentGroup({
   attachments,
@@ -78,7 +94,7 @@ export default function DmMessageAttachmentGroup({
   isOwnMessage: boolean;
   onContextMenu?: (event: React.MouseEvent<HTMLElement>) => void;
 }) {
-  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const [view, setView] = useState<DmImageGroupView>({ mode: "closed" });
 
   if (attachments.length <= 1) {
     return (
@@ -103,6 +119,19 @@ export default function DmMessageAttachmentGroup({
   );
   const { visible: visibleImages, hiddenCount: hiddenImageCount } =
     resolveVisibleGridImages(imageAttachments);
+  const hasGalleryOverview = imageAttachments.length >= DM_GALLERY_OVERVIEW_MIN_IMAGES;
+  const lightboxImages = imageAttachments.map((attachment) => ({
+    url: attachment.file_url,
+    name: attachment.file_name,
+  }));
+
+  function openFromGrid(index: number) {
+    setView(hasGalleryOverview ? { mode: "overview" } : { mode: "lightbox", index });
+  }
+
+  function closeLightbox() {
+    setView(hasGalleryOverview ? { mode: "overview" } : { mode: "closed" });
+  }
 
   return (
     <div className="space-y-2">
@@ -119,7 +148,7 @@ export default function DmMessageAttachmentGroup({
                 attachment={attachment}
                 className={resolveImageGridCellClass(imageAttachments.length, index)}
                 overlayCount={isOverlayTile ? hiddenImageCount : undefined}
-                onOpen={() => setLightboxIndex(isOverlayTile ? visibleImages.length : index)}
+                onOpen={() => openFromGrid(isOverlayTile ? visibleImages.length : index)}
                 onContextMenu={onContextMenu}
               />
             );
@@ -134,15 +163,15 @@ export default function DmMessageAttachmentGroup({
           onContextMenu={onContextMenu}
         />
       ))}
-      {lightboxIndex !== null ? (
-        <DmImageLightbox
-          images={imageAttachments.map((attachment) => ({
-            url: attachment.file_url,
-            name: attachment.file_name,
-          }))}
-          initialIndex={lightboxIndex}
-          onClose={() => setLightboxIndex(null)}
+      {view.mode === "overview" ? (
+        <DmImageGalleryOverview
+          images={lightboxImages}
+          onSelect={(index) => setView({ mode: "lightbox", index })}
+          onClose={() => setView({ mode: "closed" })}
         />
+      ) : null}
+      {view.mode === "lightbox" ? (
+        <DmImageLightbox images={lightboxImages} initialIndex={view.index} onClose={closeLightbox} />
       ) : null}
     </div>
   );

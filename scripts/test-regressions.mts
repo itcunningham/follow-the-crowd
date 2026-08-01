@@ -147,6 +147,7 @@ import {
   removePendingComposerAttachmentAt,
 } from "../lib/dm/composerPendingAttachment";
 import {
+  DM_GALLERY_OVERVIEW_MIN_IMAGES,
   DM_MAX_VISIBLE_GRID_IMAGES,
   resolveImageGridCellClass,
   resolveVisibleGridImages,
@@ -5802,7 +5803,7 @@ function testDmImageGroupFullViewerAndOwnershipAlignment() {
   assert.match(groupSource, /DmImageLightbox/);
   assert.doesNotMatch(groupSource, /window\.open/);
   assert.match(groupSource, /imageAttachments\.map\(\(attachment\) => \(\{/);
-  assert.match(groupSource, /initialIndex=\{lightboxIndex\}/);
+  assert.match(groupSource, /initialIndex=\{view\.index\}/);
 
   // The "+N" overlay tile opens the first HIDDEN image (index ===
   // visibleImages.length), not the last visible tile it's drawn over.
@@ -5833,6 +5834,76 @@ function testDmImageGroupFullViewerAndOwnershipAlignment() {
   // entirely in the grid's own width, not in a new alignment wrapper.
   assert.match(bubbleSource, /DmMessageAttachmentGroup/);
   assert.match(bubbleSource, /resolveMessageGroupLiClass/);
+}
+
+function testDmImageGalleryOverviewForLargeGroups() {
+  const groupSource = readFileSync(
+    new URL("../app/components/dm/DmMessageAttachmentGroup.tsx", import.meta.url),
+    "utf8",
+  );
+  const overviewSource = readFileSync(
+    new URL("../app/components/dm/DmImageGalleryOverview.tsx", import.meta.url),
+    "utf8",
+  );
+
+  // Threshold: 5+ images (one more than the "+N" overlay's own
+  // DM_MAX_VISIBLE_GRID_IMAGES cap of 4) route through the overview; 1-4
+  // still skip straight to the lightbox, unchanged.
+  assert.equal(DM_GALLERY_OVERVIEW_MIN_IMAGES, DM_MAX_VISIBLE_GRID_IMAGES + 1);
+  assert.equal(DM_GALLERY_OVERVIEW_MIN_IMAGES, 5);
+
+  // The grid's tap handler branches on the same threshold: 5+ opens the
+  // overview (ignoring which tile was actually tapped — the overview shows
+  // every photo regardless), 1-4 opens the lightbox directly on that image.
+  assert.match(groupSource, /DmImageGalleryOverview/);
+  assert.match(
+    groupSource,
+    /hasGalleryOverview = imageAttachments\.length >= DM_GALLERY_OVERVIEW_MIN_IMAGES/,
+  );
+  assert.match(
+    groupSource,
+    /setView\(hasGalleryOverview \? \{ mode: "overview" \} : \{ mode: "lightbox", index \}\)/,
+  );
+
+  // Closing the lightbox returns to the overview when one exists in this
+  // message's flow (5+), and closes straight to the chat otherwise (1-4) —
+  // never the other way around.
+  assert.match(
+    groupSource,
+    /function closeLightbox\(\) \{\s*setView\(hasGalleryOverview \? \{ mode: "overview" \} : \{ mode: "closed" \}\);/,
+  );
+
+  // Closing the overview itself always returns to the chat.
+  assert.match(groupSource, /onClose=\{\(\) => setView\(\{ mode: "closed" \}\)\}/);
+
+  // Selecting a thumbnail in the overview opens the lightbox on that exact
+  // photo (upload order — the same imageAttachments array the grid uses,
+  // never re-sorted for the overview).
+  assert.match(groupSource, /onSelect=\{\(index\) => setView\(\{ mode: "lightbox", index \}\)\}/);
+  assert.match(overviewSource, /onSelect: \(index: number\) => void/);
+  assert.match(overviewSource, /onClick=\{\(\) => onSelect\(index\)\}/);
+
+  // Gallery Overview requirements: dark fullscreen overlay matching the
+  // lightbox's existing dim style, close control, a count label, a
+  // responsive no-horizontal-scroll grid, and no image reordering.
+  assert.match(overviewSource, /fixed inset-0 z-50/);
+  assert.match(overviewSource, /bg-black\/90/);
+  assert.match(overviewSource, /aria-label="Close gallery"/);
+  assert.match(overviewSource, /Photo/);
+  assert.match(overviewSource, /grid-cols-3/);
+  assert.doesNotMatch(overviewSource, /overflow-x-auto|overflow-x-scroll/);
+  assert.match(overviewSource, /aspect-square/);
+  assert.match(overviewSource, /rounded-md/);
+  assert.match(overviewSource, /object-cover/);
+
+  // Shared dismiss behaviour (Escape + body-scroll lock) is reused between
+  // the lightbox and the overview, not copy-pasted a third time.
+  assert.match(overviewSource, /useDmMediaViewerDismiss/);
+  const lightboxSource = readFileSync(
+    new URL("../app/components/dm/DmImageLightbox.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(lightboxSource, /useDmMediaViewerDismiss/);
 }
 
 function testDmComposerPendingPhotoGroupHelpers() {
@@ -6889,6 +6960,7 @@ async function main() {
   testDmMultiPhotoSend();
   testDmImageGridLayout();
   testDmImageGroupFullViewerAndOwnershipAlignment();
+  testDmImageGalleryOverviewForLargeGroups();
   // TEMP-SKIP (pre-existing, unrelated failure — stale getComposerLineBeforeCursor expectation in composerNewlineKeydown.ts, not touched by multi-photo work; see docs/handoff/CURRENT-STATE.md): testComposerNewlineKeydown();
   testDmComposerFocusSyncAfterSend();
   // TEMP-SKIP (pre-existing, unrelated failure — stale reaction-gesture source regex, not touched by multi-photo work; see docs/handoff/CURRENT-STATE.md): testDmMessageReactionGestureInteractions();

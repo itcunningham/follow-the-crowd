@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useDmMediaViewerDismiss } from "@/lib/dm/useDmMediaViewerDismiss";
 
 const VIEWER_TRANSITION_MS = 220;
 const SWIPE_DISMISS_THRESHOLD_PX = 90;
@@ -55,32 +56,26 @@ export default function DmImageLightbox({
     return () => cancelAnimationFrame(frame);
   }, []);
 
-  useEffect(() => {
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+  const requestClose = useCallback(() => {
+    setVisible(false);
+    window.setTimeout(onClose, VIEWER_TRANSITION_MS);
+  }, [onClose]);
 
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        requestClose();
-      } else if (event.key === "ArrowLeft") {
+  useDmMediaViewerDismiss(requestClose);
+
+  useEffect(() => {
+    function handleArrowKeyDown(event: KeyboardEvent) {
+      if (event.key === "ArrowLeft") {
         goToIndex(index - 1);
       } else if (event.key === "ArrowRight") {
         goToIndex(index + 1);
       }
     }
 
-    window.addEventListener("keydown", handleKeyDown);
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      window.removeEventListener("keydown", handleKeyDown);
-    };
+    window.addEventListener("keydown", handleArrowKeyDown);
+    return () => window.removeEventListener("keydown", handleArrowKeyDown);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [index]);
-
-  function requestClose() {
-    setVisible(false);
-    window.setTimeout(onClose, VIEWER_TRANSITION_MS);
-  }
 
   function resetZoom() {
     setScale(1);

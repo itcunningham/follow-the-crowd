@@ -24,6 +24,16 @@ export const DM_IMAGE_BUBBLE_GRID_WIDTH_CLASS = "w-[min(100%,18rem)]";
 export const DM_MAX_VISIBLE_GRID_IMAGES = 4;
 
 /**
+ * At this many images or more, tapping the chat-bubble grid opens the
+ * Instagram-style Gallery Overview first instead of jumping straight into
+ * the single-image lightbox — large groups need to be browsed before
+ * picking one, small groups (2-4) still go straight to the lightbox on the
+ * tapped image. Matches the existing "+N" overlay boundary (`+N` only
+ * appears once there are more images than `DM_MAX_VISIBLE_GRID_IMAGES`).
+ */
+export const DM_GALLERY_OVERVIEW_MIN_IMAGES = DM_MAX_VISIBLE_GRID_IMAGES + 1;
+
+/**
  * Splits a message's images into the tiles the grid actually renders and how
  * many were left out — the same balanced-grid pattern (cap visible tiles,
  * overlay the remainder count) used by major messaging apps for 5+ photos.
