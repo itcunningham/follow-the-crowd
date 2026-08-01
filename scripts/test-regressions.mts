@@ -2707,6 +2707,74 @@ function testEventBrandChipOverflowSafe() {
 }
 
 /**
+ * A native `title` tooltip only reveals a truncated chip's full text on
+ * mouse hover -- it has no tap equivalent, so touch/mobile users could never
+ * read a truncated Event Brand at all. This verifies the tap-to-reveal
+ * popover that fixes that: the chip is a real `<button>` (so it's tappable
+ * and keyboard-focusable, not just a styled `<span>`), the reveal is gated
+ * on the chip's text actually being truncated (`scrollWidth > clientWidth`)
+ * so short/untruncated chips are inert when tapped, the popover renders the
+ * full untruncated tag text, and both an outside pointerdown and Escape
+ * dismiss it -- matching the existing `CalendarMonthNav` popover-dismiss
+ * pattern reused here. Also confirms the popover is anchored per-chip (a
+ * `relative` wrapper around each individual chip) and edge-aware (does not
+ * always centre, so it can't push the page into horizontal scroll when the
+ * anchor chip is near a viewport edge) rather than a single shared/centred
+ * overlay that could clip or misalign depending on which chip opened it.
+ */
+function testProfileTagChipTapToReveal() {
+  const tagListSource = readFileSync(
+    new URL("../app/components/profile/ProfileTagChipList.tsx", import.meta.url),
+    "utf8",
+  );
+
+  // Client component: uses hooks (useState/useRef/useEffect) directly.
+  assert.match(tagListSource, /^"use client";/m);
+
+  // The chip itself is a real button, not a plain span -- native tap/click
+  // and keyboard (Enter/Space) support come for free.
+  assert.match(tagListSource, /<button[\s\S]*?PROFILE_TAG_CHIP_BASE_CLASS/);
+
+  // Reveal is gated on actual truncation -- short chips do nothing on tap.
+  assert.match(tagListSource, /scrollWidth\s*<=\s*chipEl\.clientWidth/);
+
+  // Only one popover open at a time; re-tapping the same (truncated) chip
+  // toggles it closed rather than leaving it stuck open.
+  assert.match(tagListSource, /current\?\.tag === tag/);
+
+  // Each chip gets its own positioning anchor -- the popover for chip A
+  // can never appear anchored to chip B's position.
+  assert.match(tagListSource, /className="relative inline-block"/);
+
+  // Edge-aware alignment: doesn't blindly centre every popover, which would
+  // risk pushing a near-edge chip's popover off-screen.
+  assert.match(tagListSource, /EDGE_ALIGN_THRESHOLD_PX/);
+  assert.match(tagListSource, /type PopoverAlign = "left" \| "center" \| "right"/);
+
+  // Popover shows the full, untruncated tag text.
+  assert.match(tagListSource, /role="tooltip"/);
+
+  // Dismiss on outside tap and Escape -- same convention as the existing
+  // CalendarMonthNav month/year popover.
+  assert.match(tagListSource, /addEventListener\("mousedown", handlePointerDown\)/);
+  assert.match(tagListSource, /event\.key === "Escape"/);
+
+  // Reveal is scoped to this shared read-only chip list, so both Event
+  // Brands (PromoterProfileSections) and Genre tags (ProfileGenreTags) on
+  // the public profile get it automatically -- and the editable Edit
+  // Profile chips (ProfileEventBrandsField, ProfileGenrePicker) are
+  // untouched: they only import the shared className constants from this
+  // file, never the default-exported <ProfileTagChipList> component or its
+  // popover markup, so editing behaviour can't be affected by this change.
+  const editBrandsFieldSource = readFileSync(
+    new URL("../app/components/profile/ProfileEventBrandsField.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.ok(!/import ProfileTagChipList\b/.test(editBrandsFieldSource));
+  assert.ok(!editBrandsFieldSource.includes('role="tooltip"'));
+}
+
+/**
  * Root-cause regression test for "only the original/first Event Brand
  * appears when reopening Edit Profile, even though all saved brands show
  * correctly on the public profile". The public profile page fetches via
@@ -7067,6 +7135,7 @@ async function main() {
   testEventBrandsParsingAndSerialization();
   testAddEventBrandTag();
   testEventBrandChipOverflowSafe();
+  testProfileTagChipTapToReveal();
   testProfileCacheInvalidatedAfterSave();
   testEventBrandEditFormHydration();
   testEventBrandSafeSave();
