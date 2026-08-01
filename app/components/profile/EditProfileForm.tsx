@@ -621,7 +621,7 @@ export default function EditProfileForm({
           onChange={handleBioChange}
           placeholder="Bio"
           multiline
-          textareaClassName="ftc-fixed-scroll-textarea ftc-fixed-scroll-textarea-3"
+          textareaClassName="ftc-fixed-scroll-textarea ftc-fixed-scroll-textarea-5"
           textareaRows={1}
           textareaOnKeyDown={handleBioKeyDown}
           textareaOnCompositionStart={() => {

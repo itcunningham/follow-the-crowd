@@ -367,6 +367,12 @@ html {
   max-height: calc(3lh + 1rem + 2px) !important;
 }
 
+.ftc-fixed-scroll-textarea-5 {
+  height: calc(5lh + 1rem + 2px) !important;
+  min-height: calc(5lh + 1rem + 2px) !important;
+  max-height: calc(5lh + 1rem + 2px) !important;
+}
+
 /** Default modal textarea — compose `.ftc-fixed-scroll-textarea.ftc-fixed-scroll-textarea-3` (or this alias). */
 .ftc-modal-textarea {
   resize: none !important;

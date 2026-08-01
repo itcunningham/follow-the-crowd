@@ -2834,9 +2834,13 @@ function testBioInputLimit() {
  * (or a long URL) overflowed the card horizontally instead of wrapping --
  * the exact same `[overflow-wrap:anywhere]` fix already applied to this
  * file's own heading/username lines, just missing from the bio itself.
- * Also removes the pre-existing "More/Less" expand toggle -- out of scope
- * for beta per spec ("do not add a Show more feature"); the bio is always
- * clamped to 4 lines with a CSS ellipsis, no interactive state.
+ * The "See more"/"See less" expand toggle is restored (per spec) using the
+ * same measured-height smooth-transition mechanism already proven in
+ * `BookingCardExpandableNotes.tsx` (collapsed/full height measured via
+ * `ResizeObserver` + a temporary `line-clamp-4` class toggle, animated via
+ * a wrapper `transition-[height]`, `prefers-reduced-motion` respected) --
+ * adapted here rather than duplicated blind, and self-contained in this
+ * file since `BookingCardExpandableNotes.tsx` is an unrelated DM feature.
  */
 function testProfileBioTextRendering() {
   const bioTextSource = readFileSync(
@@ -2849,13 +2853,16 @@ function testProfileBioTextRendering() {
   assert.match(bioTextSource, /whitespace-pre-wrap/);
   assert.match(bioTextSource, /\[overflow-wrap:anywhere\]/);
 
-  // Clamped to 4 visible lines, unconditionally -- not toggled by any state.
+  // Collapsed to 4 visible lines by default.
   assert.match(bioTextSource, /line-clamp-4/);
 
-  // No "Show more" feature: no expand/collapse state, no toggle button.
-  assert.doesNotMatch(bioTextSource, /useState/);
-  assert.doesNotMatch(bioTextSource, /useLayoutEffect/);
-  assert.doesNotMatch(bioTextSource, /expanded/i);
+  // "See more" / "See less" toggle restored, with a smooth (non-abrupt)
+  // height transition and reduced-motion support -- not an instant snap.
+  assert.match(bioTextSource, /"See more"/);
+  assert.match(bioTextSource, /"See less"/);
+  assert.match(bioTextSource, /transition-\[height\]/);
+  assert.match(bioTextSource, /motion-reduce:transition-none/);
+  assert.match(bioTextSource, /prefersReducedMotion/);
   assert.doesNotMatch(bioTextSource, />\s*(More|Less)\s*</);
 
   // The 150-character limit is a save-time/typing-time concern
@@ -2867,6 +2874,30 @@ function testProfileBioTextRendering() {
   // exactly as before.
   assert.match(bioTextSource, /bio\.trim\(\)/);
   assert.match(bioTextSource, /if \(!text\) \{\s*return null;/);
+
+  // Edit Profile bio textarea grew to ~5 visible lines via a dedicated
+  // modifier class, not by widening the shared `-3` class other fields
+  // (booking rate notes, withdrawal reason) also use.
+  const formSource = readFileSync(
+    new URL("../app/components/profile/EditProfileForm.tsx", import.meta.url),
+    "utf8",
+  );
+  const globalsSource = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
+  assert.match(
+    formSource,
+    /textareaClassName="ftc-fixed-scroll-textarea ftc-fixed-scroll-textarea-5"/,
+  );
+  assert.match(globalsSource, /\.ftc-fixed-scroll-textarea-5 \{[\s\S]*?5lh/);
+  // The shared 3-line class (still used by booking rate notes and the
+  // withdrawal reason field) must stay exactly as it was.
+  assert.match(globalsSource, /\.ftc-fixed-scroll-textarea-3 \{[\s\S]*?3lh/);
+  assert.match(
+    readFileSync(
+      new URL("../app/components/booking/ProposeBookingRateSheet.tsx", import.meta.url),
+      "utf8",
+    ),
+    /textareaClassName="ftc-fixed-scroll-textarea ftc-fixed-scroll-textarea-3"/,
+  );
 }
 
 /**
@@ -2920,13 +2951,15 @@ function testProfileDisplayNameAndBioFieldUx() {
     /display_name: input\.display_name\.trim\(\)\.slice\(0, MAX_PROFILE_DISPLAY_NAME_LENGTH\)/,
   );
 
-  // Bio: reuses the shared fixed-height/internal-scroll textarea classes
-  // (same ones the booking rate-notes field uses) instead of a bespoke
-  // fixed-pixel-height class -- the textarea can no longer grow past 3
-  // visible rows, and overflow scrolls internally rather than expanding.
+  // Bio: reuses the shared fixed-height/internal-scroll textarea base class
+  // (same one the booking rate-notes field uses) instead of a bespoke
+  // fixed-pixel-height class -- the textarea can no longer grow past its
+  // visible-row cap, and overflow scrolls internally rather than expanding.
+  // The bio uses its own 5-row modifier (`-5`), not the shared `-3` other
+  // fields (booking rate notes, withdrawal reason) still use unchanged.
   assert.match(
     formSource,
-    /textareaClassName="ftc-fixed-scroll-textarea ftc-fixed-scroll-textarea-3"/,
+    /textareaClassName="ftc-fixed-scroll-textarea ftc-fixed-scroll-textarea-5"/,
   );
   assert.ok(
     !formSource.includes("ftc-profile-bio-textarea"),
