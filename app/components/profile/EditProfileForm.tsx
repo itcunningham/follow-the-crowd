@@ -604,21 +604,36 @@ export default function EditProfileForm({
           error={fieldErrors.display_name}
         />
 
-        <ProfileFormField
-          label="Bio"
-          value={form.bio}
-          onChange={handleBioChange}
-          placeholder="Bio"
-          multiline
-          textareaClassName="ftc-fixed-scroll-textarea"
-          textareaRows={5}
-          textareaOnKeyDown={handleBioKeyDown}
-          textareaOnCompositionStart={() => {
-            isComposingBioRef.current = true;
-          }}
-          textareaOnCompositionEnd={handleBioCompositionEnd}
-          maxLength={MAX_PROFILE_BIO_LENGTH}
-          footer={
+        {/* Bio only: border/radius live on this `.ftc-input-shell` wrapper (the
+         * same shared shell pattern BookingRateField.tsx already uses) instead
+         * of on the textarea itself. Safari fails to clip an element's own
+         * scrolling content to that same element's border-radius when both are
+         * set on one box -- confirmed via live computed styles (the textarea
+         * had `overflow-y: auto` and `border-radius: 16px` on the same node) --
+         * which clips the custom focus border on older iOS Safari. Moving the
+         * border/radius to a non-scrolling wrapper removes the conflicting
+         * combination entirely. Scoped to bio only -- ProfileFormField and
+         * every other textarea are untouched. */}
+        <label className="block">
+          <span className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.14em] text-ftc-text-secondary">
+            Bio
+          </span>
+          <div className="ftc-input-shell rounded-[var(--ftc-radius-lg)]">
+            <textarea
+              value={form.bio}
+              onChange={(event) => handleBioChange(event.target.value)}
+              onKeyDown={handleBioKeyDown}
+              onCompositionStart={() => {
+                isComposingBioRef.current = true;
+              }}
+              onCompositionEnd={handleBioCompositionEnd}
+              placeholder="Bio"
+              rows={5}
+              maxLength={MAX_PROFILE_BIO_LENGTH}
+              className="ftc-fixed-scroll-textarea w-full border-0 bg-transparent px-3.5 py-2.5 text-sm text-ftc-text outline-none placeholder:text-ftc-text-muted"
+            />
+          </div>
+          <div className="mt-1">
             <p
               className={`text-xs ${
                 form.bio.length > MAX_PROFILE_BIO_LENGTH
@@ -628,9 +643,9 @@ export default function EditProfileForm({
             >
               {form.bio.length}/{MAX_PROFILE_BIO_LENGTH}
             </p>
-          }
-          error={fieldErrors.bio}
-        />
+          </div>
+          {fieldErrors.bio ? <p className="mt-2 text-sm text-red-400">{fieldErrors.bio}</p> : null}
+        </label>
 
         <div>
           <span className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.14em] text-ftc-text-secondary">

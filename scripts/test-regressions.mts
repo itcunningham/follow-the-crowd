@@ -2935,14 +2935,38 @@ function testProfileBioTextRendering() {
     "utf8",
   );
   const globalsSource = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
-  const bioFieldBlock = formSource.match(/<ProfileFormField\s+label="Bio"[\s\S]*?\/>/);
-  assert.ok(bioFieldBlock, "Bio ProfileFormField block not found in EditProfileForm.tsx");
-  assert.match(bioFieldBlock[0], /textareaRows=\{5\}/);
-  assert.match(bioFieldBlock[0], /textareaClassName="ftc-fixed-scroll-textarea"/);
+  // Bio is hand-rolled directly in EditProfileForm.tsx (not routed through
+  // ProfileFormField) specifically so its border/radius can live on a
+  // `.ftc-input-shell` wrapper instead of on the textarea itself -- see the
+  // appearance-reset root-cause block below for why. Scoped to bio only:
+  // ProfileFormField and every other textarea are untouched.
+  const bioFieldBlock = formSource.match(/<label className="block">[\s\S]*?<\/label>/);
+  assert.ok(bioFieldBlock, "Bio field block not found in EditProfileForm.tsx");
+  assert.doesNotMatch(formSource, /<ProfileFormField\s+label="Bio"/);
+  assert.match(bioFieldBlock[0], /rows=\{5\}/);
+  assert.match(bioFieldBlock[0], /className="ftc-fixed-scroll-textarea/);
   // The old, fragile `lh`-based height-override class must be gone --
   // dead CSS, not left behind as an unused/misleading rule.
   assert.doesNotMatch(bioFieldBlock[0], /ftc-fixed-scroll-textarea-5/);
   assert.doesNotMatch(globalsSource, /\.ftc-fixed-scroll-textarea-5/);
+
+  // Root-cause fix for the older-iPhone outline clipping that survived the
+  // rows fix, the -webkit-overflow-scrolling removal, and the appearance
+  // reset: live computed styles on the actual rendered textarea showed
+  // `overflow-y: auto` and `border-radius: 16px` on the *same* element --
+  // WebKit is documented to fail to clip an element's own scrolling content
+  // to that element's own border-radius, clipping the custom border at the
+  // vertical (scroll-axis) edges. Fix: border/radius moved onto a
+  // `.ftc-input-shell` wrapper (the same shared shell BookingRateField.tsx
+  // already uses) that has no `overflow` of its own, while the textarea
+  // keeps `overflow-y: auto` but is now borderless/radius-less --
+  // `border-radius` and `overflow: auto` no longer share an element.
+  assert.match(bioFieldBlock[0], /ftc-input-shell/);
+  assert.match(bioFieldBlock[0], /rounded-\[var\(--ftc-radius-lg\)\]/);
+  assert.match(bioFieldBlock[0], /border-0 bg-transparent/);
+  const shellRule = globalsSource.match(/\.ftc-input-shell \{[\s\S]*?\n\}/);
+  assert.ok(shellRule, ".ftc-input-shell rule not found in globals.css");
+  assert.doesNotMatch(shellRule[0], /overflow/);
 
   // The shared base class (resize:none, overflow-y:auto for internal
   // scroll, no `lh`/height override) still applies -- this is what makes
@@ -3067,11 +3091,16 @@ function testProfileDisplayNameAndBioFieldUx() {
   // (same one the booking rate-notes field uses) instead of a bespoke
   // fixed-pixel-height class -- the textarea can no longer grow past its
   // visible-row cap, and overflow scrolls internally rather than expanding.
-  // Sized via the native `textareaRows={5}` HTML attribute rather than a
-  // CSS height-override modifier class (see testProfileBioTextRendering
-  // for the full root-cause explanation of why `rows` and not CSS `-N`).
-  assert.match(formSource, /textareaClassName="ftc-fixed-scroll-textarea"/);
-  assert.match(formSource, /textareaRows=\{5\}/);
+  // Sized via the native `rows={5}` HTML attribute rather than a CSS
+  // height-override modifier class (see testProfileBioTextRendering for the
+  // full root-cause explanation of why `rows` and not CSS `-N`). Bio is
+  // hand-rolled (not routed through ProfileFormField, see
+  // testProfileBioTextRendering for why), so these are plain `rows`/
+  // `className`/`onKeyDown`/etc props on the raw `<textarea>`, not the
+  // `textareaRows`/`textareaClassName`/... prop names ProfileFormField
+  // itself still exposes for every other field.
+  assert.match(formSource, /className="ftc-fixed-scroll-textarea/);
+  assert.match(formSource, /rows=\{5\}/);
   assert.ok(
     !formSource.includes("ftc-profile-bio-textarea"),
     "bio textarea should use the shared fixed-scroll classes, not a bespoke one-off class",
@@ -3084,14 +3113,15 @@ function testProfileDisplayNameAndBioFieldUx() {
   // Line-cap enforcement wired through: keydown blocks a 4th newline,
   // composition-start/end handle IME safely (mirrors ProposeBookingRateSheet
   // exactly, not a parallel reimplementation).
-  assert.match(formSource, /textareaOnKeyDown=\{handleBioKeyDown\}/);
+  assert.match(formSource, /onKeyDown=\{handleBioKeyDown\}/);
   assert.match(formSource, /shouldBlockMultilineEnter\(form\.bio, MAX_PROFILE_BIO_LINES\)/);
-  assert.match(formSource, /textareaOnCompositionStart=\{\(\) => \{/);
-  assert.match(formSource, /textareaOnCompositionEnd=\{handleBioCompositionEnd\}/);
+  assert.match(formSource, /onCompositionStart=\{\(\) => \{/);
+  assert.match(formSource, /onCompositionEnd=\{handleBioCompositionEnd\}/);
   assert.match(formSource, /isComposingBioRef/);
 
-  // ProfileFormField grew the same textarea prop surface BookingFormField
-  // already established (reused vocabulary, not a divergent one-off API).
+  // ProfileFormField itself is untouched -- it still exposes the same
+  // textarea prop surface BookingFormField established, for every field
+  // that still goes through it (display name, and every non-bio field).
   assert.match(fieldSource, /textareaRows\s*=\s*4/);
   assert.match(fieldSource, /textareaOnKeyDown\?:/);
   assert.match(fieldSource, /textareaOnCompositionStart\?:/);
