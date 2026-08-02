@@ -9614,6 +9614,33 @@ function testIosOverscrollDoesNotClipFixedChrome() {
   assert.match(navSource, /ftc-mobile-nav-bar fixed inset-x-0 bottom-0/);
 }
 
+function testBookingsResultsAreaMatchesOneBookingCard() {
+  const source = readFileSync(
+    new URL("../app/events/[eventId]/page.tsx", import.meta.url),
+    "utf8",
+  );
+
+  // The empty state and the list share one wrapper, so a filter that matches
+  // nothing cannot move the section's bottom edge or the Cancel Event button.
+  assert.match(source, /className="mt-3 flex min-h-\[7\.5rem\] flex-col justify-center"/);
+  assert.match(source, /style=\{\s*lineupCardHeight \? \{ minHeight: `\$\{lineupCardHeight\}px` \} : undefined/);
+
+  // Sized from a real rendered card rather than a fixed value: the baseline is
+  // the same for pending/accepted/declined, but an optional genre line or
+  // cancellation detail makes a card taller, so no constant can match them all.
+  assert.match(source, /const \[lineupCardHeight, setLineupCardHeight\] = useState<number \| null>\(null\)/);
+  assert.match(source, /new ResizeObserver\(measure\)/);
+  assert.match(source, /observer\.disconnect\(\)/);
+
+  // Sub-pixel: a rounded value would leave the empty state up to 1px short.
+  assert.match(source, /node\.getBoundingClientRect\(\)\.height/);
+
+  // Only the first card is measured, and the list itself is unstyled so extra
+  // cards still grow the section naturally.
+  assert.match(source, /bookingIndex === 0 \? firstLineupCardRef : undefined/);
+  assert.match(source, /<ul className="space-y-2\.5">/);
+}
+
 async function main() {
   testPastEventDatesAreBlocked();
   testFutureEventDatesAreAllowed();
@@ -9817,6 +9844,7 @@ async function main() {
   testDjMainNavGigsCountBadge();
   testEventPlansSendPanelReusesSharedConfirmUi();
   testBookingRateModeDescriptionsAreUnified();
+  testBookingsResultsAreaMatchesOneBookingCard();
   testIosOverscrollDoesNotClipFixedChrome();
   testBookingStatusChangesReconcileEverywhere();
   testBookingAcceptedDmMessageIsScopedToTheBooking();

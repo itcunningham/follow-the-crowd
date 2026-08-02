@@ -393,6 +393,40 @@ function EventDetailPageView() {
     return base.filter((booking) => booking.status === lineupFilter);
   }, [activeLineup, isHistoryEventDetail, lineupFilter, visibleLineup]);
 
+  /**
+   * Height of a real rendered booking card, so the empty state can occupy
+   * exactly the same space when a filter matches nothing.
+   *
+   * Measured rather than hard-coded because a card is not one fixed size: the
+   * baseline is the same across pending/accepted/declined, but an optional
+   * genre line or cancellation detail makes it taller. A fixed value can only
+   * ever be right for one of those.
+   *
+   * When no card has rendered yet there is nothing to match, because that only
+   * happens when the event has no bookings at all -- every filter then shows
+   * the same empty state, so there is no height to jump between. The CSS
+   * fallback on the wrapper covers that case.
+   */
+  const [lineupCardHeight, setLineupCardHeight] = useState<number | null>(null);
+  const firstLineupCardRef = useRef<HTMLLIElement | null>(null);
+
+  useEffect(() => {
+    const node = firstLineupCardRef.current;
+
+    if (!node) {
+      return;
+    }
+
+    const measure = () => setLineupCardHeight(node.getBoundingClientRect().height);
+
+    measure();
+
+    const observer = new ResizeObserver(measure);
+    observer.observe(node);
+
+    return () => observer.disconnect();
+  }, [filteredLineup]);
+
   const editFormFieldErrors = useMemo(() => {
     if (!editForm || !editSaveAttempted) {
       return {};
@@ -1469,13 +1503,16 @@ function EventDetailPageView() {
                         />
                       </div>
 
-                      {/* Shared min-height ~= one populated booking card, so switching
-                          filters does not move the section's bottom edge (and with it the
-                          Cancel Event button). The empty panel is 86px on desktop against
-                          123px for a card with actions, and it also carried a different top
-                          margin, so both states now share one wrapper. Multiple cards grow
-                          past the minimum exactly as before. */}
-                      <div className="mt-3 flex min-h-[7.5rem] flex-col justify-center">
+                      {/* Both states share one wrapper so switching filters cannot move the
+                          section's bottom edge, and with it the Cancel Event button. The
+                          minimum is the measured height of a real booking card; the class is
+                          only the fallback for an event that has never had one. */}
+                      <div
+                        className="mt-3 flex min-h-[7.5rem] flex-col justify-center"
+                        style={
+                          lineupCardHeight ? { minHeight: `${lineupCardHeight}px` } : undefined
+                        }
+                      >
                         {filteredLineup.length === 0 ? (
                           <PlannerEmptyPanel
                             message={
@@ -1486,11 +1523,14 @@ function EventDetailPageView() {
                           />
                         ) : (
                           <ul className="space-y-2.5">
-                            {filteredLineup.map((booking) => {
+                            {filteredLineup.map((booking, bookingIndex) => {
                               const profile = profiles.get(booking.recipient_id);
 
                               return (
-                                <li key={booking.id}>
+                                <li
+                                  key={booking.id}
+                                  ref={bookingIndex === 0 ? firstLineupCardRef : undefined}
+                                >
                                   <EventLineupBookingCard
                                     booking={booking}
                                     profile={profile}
