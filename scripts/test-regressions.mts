@@ -8804,6 +8804,62 @@ function testRunSheetInitialLoadIsNotDirty() {
  * unbounded growth this cap exists to prevent (the same trap that produced the
  * profile bio bug).
  */
+/**
+ * Run Sheet Stage / Area: capped at 50 characters and 2 visible rows, scrolling
+ * inside the field beyond that, using the same pinned-line-height pattern the
+ * Notes field uses.
+ *
+ * This field carried `leading-normal` (1.5, a *multiplier*) while the <=639px
+ * zoom-prevention rule also sets `line-height: 1.5rem`. Measured before the
+ * pin, that resolved to 20px at desktop against 24px on mobile — the same
+ * divergence that let the Notes cap show the wrong number of rows on iOS
+ * Safari. The line-height is now pinned so the ceiling has one value to be
+ * built from.
+ */
+function testRunSheetStageAreaCapAndCounter() {
+  const sectionSource = readFileSync(
+    new URL("../app/components/EventRunSheetSection.tsx", import.meta.url),
+    "utf8",
+  );
+  const globalsSource = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
+
+  assert.match(sectionSource, /const RUN_SHEET_STAGE_AREA_MAX_ROWS = 2;/);
+  assert.match(sectionSource, /const RUN_SHEET_STAGE_AREA_MAX_LENGTH = 50;/);
+  assert.match(sectionSource, /maxRows=\{RUN_SHEET_STAGE_AREA_MAX_ROWS\}/);
+
+  // 50-character cap via the shared limiter, and the shared counter styling
+  // and placement the Notes field uses.
+  assert.match(
+    sectionSource,
+    /applyTextInputLimit\(\s*stageAreaValue,\s*value,\s*RUN_SHEET_STAGE_AREA_MAX_LENGTH,?\s*\)/,
+  );
+  assert.match(sectionSource, /\{stageAreaLength\} \/ \{RUN_SHEET_STAGE_AREA_MAX_LENGTH\}/);
+  assert.match(sectionSource, /countUnicodeCharacters\(stageAreaValue\)/);
+
+  // No competing line-height utility on the field.
+  assert.match(sectionSource, /stageAreaTextareaClassName = `\$\{runSheetTextareaBaseClassName\} ftc-run-sheet-stage-textarea/);
+  assert.doesNotMatch(sectionSource, /stageAreaTextareaClassName = [^\n]*leading-/);
+
+  const stageRule = globalsSource.match(/\.ftc-run-sheet-stage-textarea \{[\s\S]*?\n\}/);
+  assert.ok(stageRule, ".ftc-run-sheet-stage-textarea rule not found in globals.css");
+  assert.match(stageRule[0], /line-height: 1\.5rem !important/);
+  assert.match(stageRule[0], /max-height: calc\(2 \* 1\.5rem \+ 0\.75rem \+ 2px\) !important/);
+  assert.match(stageRule[0], /overflow-y: auto !important/);
+  assert.match(stageRule[0], /overscroll-behavior: contain/);
+  // `lh` needs Safari 16.4+; older iOS drops the declaration and the ceiling.
+  assert.doesNotMatch(stageRule[0], /lh\b/);
+  // font-size stays with the <=639px rule so iOS keeps not zooming on focus.
+  assert.doesNotMatch(stageRule[0], /font-size/);
+
+  // The single-line (expandWhenWrapped) branch adds the border back too --
+  // without it a one-line stage/area sits permanently scrolled ~2px now that
+  // the field has `overflow-y: auto`.
+  assert.match(
+    sectionSource,
+    /textarea\.style\.height = `\$\{singleLineHeightRef\.current \+ verticalBorder\}px`/,
+  );
+}
+
 function testRunSheetNotesCapAndCounter() {
   const sectionSource = readFileSync(
     new URL("../app/components/EventRunSheetSection.tsx", import.meta.url),
@@ -8824,10 +8880,10 @@ function testRunSheetNotesCapAndCounter() {
   // pixels short and clips its own last line under `overflow-y: auto`.
   assert.match(sectionSource, /Math\.min\(nextHeight \+ verticalBorder, maxHeight\)/);
 
-  // Notes is the only run sheet field that scrolls; stage_area keeps its
-  // original hidden overflow and unbounded growth.
+  // Overflow is owned per field, never by the shared base class: Notes and
+  // Stage / Area each carry their own capped, scrolling rule (see
+  // testRunSheetStageAreaCapAndCounter for the latter).
   assert.match(sectionSource, /notesTextareaClassName = `\$\{runSheetTextareaBaseClassName\} ftc-run-sheet-notes-textarea/);
-  assert.match(sectionSource, /stageAreaTextareaClassName = `\$\{runSheetTextareaBaseClassName\} overflow-y-hidden/);
   assert.doesNotMatch(sectionSource, /runSheetTextareaBaseClassName =\s*\n?\s*"[^"]*overflow-y-/);
 
   // `leading-relaxed` (a 1.625 *multiplier*) competed with the <=639px
@@ -9859,6 +9915,7 @@ async function main() {
   testEventNotesTextareaScrollsWhenContentExceedsCap();
   testRunSheetInitialLoadIsNotDirty();
   testRunSheetNotesCapAndCounter();
+  testRunSheetStageAreaCapAndCounter();
   testRunSheetDirtyStateAndSaveFeedback();
   testAppSplashScreenSlogan();
   testRoleAwareWorkspaceNavigation();

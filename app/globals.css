@@ -416,6 +416,29 @@ html {
   box-sizing: border-box !important;
 }
 
+/** Run Sheet Stage / Area — same pattern as the Notes field above, capped at 2
+ * visible rows instead of 6.
+ *
+ * `line-height` is pinned for the same reason: this field carried Tailwind's
+ * `leading-normal` (1.5, a *multiplier*, so 21px at the desktop 14px font and
+ * 24px at the <=639px rule's 16px font) while that same rule also sets
+ * `line-height: 1.5rem`. Whichever won, a ceiling derived from one value while
+ * rows rendered at the other would show the wrong number of rows — exactly the
+ * iOS Safari mismatch the Notes field hit. Pinning it leaves one known value
+ * for the cap to be built from.
+ *
+ * Plain `calc()` rather than `2lh` (needs Safari 16.4+, and the whole
+ * declaration is dropped on older iOS, taking the ceiling with it), and no
+ * `font-size` here so the <=639px rule keeps preventing iOS zoom-on-focus. */
+.ftc-run-sheet-stage-textarea {
+  line-height: 1.5rem !important;
+  max-height: calc(2 * 1.5rem + 0.75rem + 2px) !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain;
+  resize: none !important;
+  box-sizing: border-box !important;
+}
+
 /** Shared fixed-height textarea: equal height/min/max, internal scroll only. Compose with line-count modifier.
  * No `-webkit-overflow-scrolling: touch` here (deliberately): that property forces WebKit to promote
  * the element onto its own compositing layer for hardware-accelerated momentum scrolling, and on older

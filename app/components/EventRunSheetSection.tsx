@@ -61,6 +61,9 @@ const RUN_SHEET_SET_TIME_BUTTON_CLASS =
 const RUN_SHEET_NOTES_COLUMN_CLASS = "w-[28%] min-w-[10rem]";
 /** Visible rows the Notes field grows to before it stops and scrolls internally. */
 const RUN_SHEET_NOTES_MAX_ROWS = 6;
+/** Visible rows the Stage / Area field grows to before it stops and scrolls. */
+const RUN_SHEET_STAGE_AREA_MAX_ROWS = 2;
+const RUN_SHEET_STAGE_AREA_MAX_LENGTH = 50;
 
 function getFixedField(key: (typeof FIXED_FIELDS)[number]["key"]) {
   const field = FIXED_FIELDS.find((item) => item.key === key);
@@ -334,39 +337,37 @@ function RunSheetAutoGrowTextarea({
 
     textarea.style.height = "auto";
     const nextHeight = textarea.scrollHeight;
+    const measuredStyles = window.getComputedStyle(textarea);
+    // scrollHeight covers content + padding but not the border, while the
+    // height being set is a border-box height. Every branch below adds the
+    // border back, otherwise the content box lands a border short and, under
+    // `overflow-y: auto`, the field sits permanently scrolled a couple of
+    // pixels and clips its own last line.
+    const verticalBorder =
+      parseFloat(measuredStyles.borderTopWidth) + parseFloat(measuredStyles.borderBottomWidth);
 
     if (
       expandWhenWrapped &&
       singleLineHeightRef.current !== null &&
       nextHeight <= singleLineHeightRef.current + 1
     ) {
-      textarea.style.height = `${singleLineHeightRef.current}px`;
+      textarea.style.height = `${singleLineHeightRef.current + verticalBorder}px`;
       return;
     }
 
-    // Ceiling measured from the element's own computed metrics rather than a
-    // CSS `max-height: calc(Nlh ...)`: the `lh` unit needs Safari 16.4+, and on
-    // older iOS the whole declaration would be dropped, leaving the field free
-    // to grow without limit again — the exact bug this cap exists to stop.
-    // The border is included because `scrollHeight` covers content + padding
-    // only, while `box-sizing: border-box` makes the height we set include the
-    // border, so the clamped content box lands on exactly `maxRows` lines.
+    // Ceiling mirrors the field's own `max-height` (see the
+    // `.ftc-run-sheet-*-textarea` rules), computed from the same pinned
+    // line-height so the inline height and the CSS cap can't disagree. The CSS
+    // rule stays the authority — `max-height` constrains this inline height
+    // regardless — which is what makes the cap engine-independent.
     if (maxRows !== undefined) {
-      const styles = window.getComputedStyle(textarea);
-      const lineHeight = parseFloat(styles.lineHeight);
+      const lineHeight = parseFloat(measuredStyles.lineHeight);
 
       if (Number.isFinite(lineHeight)) {
         const verticalPadding =
-          parseFloat(styles.paddingTop) + parseFloat(styles.paddingBottom);
-        const verticalBorder =
-          parseFloat(styles.borderTopWidth) + parseFloat(styles.borderBottomWidth);
+          parseFloat(measuredStyles.paddingTop) + parseFloat(measuredStyles.paddingBottom);
         const maxHeight = lineHeight * maxRows + verticalPadding + verticalBorder;
 
-        // `nextHeight` is scrollHeight, which covers content + padding but not
-        // the border, while the height we set is a border-box height. Without
-        // adding the border back the content box ends up a border's worth too
-        // short, which under `overflow-y: auto` leaves every under-cap note
-        // permanently scrolled by a couple of pixels and clips its last line.
         textarea.style.height = `${Math.min(nextHeight + verticalBorder, maxHeight)}px`;
         return;
       }
@@ -524,14 +525,43 @@ function renderRunSheetFieldInput({
   }
 
   if (field.key === "stage_area") {
+    const stageAreaValue = row[field.key];
+    const stageAreaLength = countUnicodeCharacters(stageAreaValue);
+
     return (
-      <RunSheetAutoGrowTextarea
-        value={row[field.key]}
-        onChange={(value) => updateRow(row.id!, { [field.key]: value })}
-        className={stageAreaTextareaClassName}
-        minRows={1}
-        expandWhenWrapped
-      />
+      <div>
+        <RunSheetAutoGrowTextarea
+          value={stageAreaValue}
+          onChange={(value) => {
+            // Same helper the Notes field uses: it permits deletions when an
+            // existing value is already over the cap, so a longer legacy
+            // stage/area stays editable instead of being locked or silently
+            // truncated the moment the row loads.
+            const limited = applyTextInputLimit(
+              stageAreaValue,
+              value,
+              RUN_SHEET_STAGE_AREA_MAX_LENGTH,
+            );
+
+            if (limited === null) {
+              return;
+            }
+
+            updateRow(row.id!, { [field.key]: limited });
+          }}
+          className={stageAreaTextareaClassName}
+          minRows={1}
+          expandWhenWrapped
+          maxRows={RUN_SHEET_STAGE_AREA_MAX_ROWS}
+        />
+        <p
+          className={`ftc-form-notes-counter ${
+            stageAreaLength > RUN_SHEET_STAGE_AREA_MAX_LENGTH ? "is-over-limit" : ""
+          }`}
+        >
+          {stageAreaLength} / {RUN_SHEET_STAGE_AREA_MAX_LENGTH}
+        </p>
+      </div>
     );
   }
 
@@ -700,12 +730,16 @@ export default function EventRunSheetSection({
   const runSheetTextareaBaseClassName =
     "ftc-textarea w-full resize-none overflow-x-hidden rounded-lg px-2.5 py-1.5 text-sm break-words";
 
-  const stageAreaTextareaClassName = `${runSheetTextareaBaseClassName} overflow-y-hidden min-h-[2.25rem] leading-normal`;
-  // Notes is the only field that scrolls. `.ftc-run-sheet-notes-textarea` owns
-  // the pinned line-height, the 6-row ceiling, the internal scrolling and the
-  // scroll containment — deliberately not `leading-relaxed`, whose multiplier
-  // competed with the <=639px rule's `line-height: 1.5rem` and left the cap and
-  // the rendered rows disagreeing on iOS Safari.
+  // Same treatment as Notes below: `.ftc-run-sheet-stage-textarea` owns the
+  // pinned line-height, the 2-row ceiling, the internal scrolling and the
+  // scroll containment — deliberately not `leading-normal`, whose multiplier
+  // competed with the <=639px rule's `line-height: 1.5rem`.
+  const stageAreaTextareaClassName = `${runSheetTextareaBaseClassName} ftc-run-sheet-stage-textarea min-h-[2.25rem]`;
+  // `.ftc-run-sheet-notes-textarea` owns the pinned line-height, the 6-row
+  // ceiling, the internal scrolling and the scroll containment — deliberately
+  // not `leading-relaxed`, whose multiplier competed with the <=639px rule's
+  // `line-height: 1.5rem` and left the cap and the rendered rows disagreeing on
+  // iOS Safari.
   const notesTextareaClassName = `${runSheetTextareaBaseClassName} ftc-run-sheet-notes-textarea min-h-[3.25rem]`;
 
   const readOnlyTextClassName =
