@@ -24,7 +24,7 @@ export default function FtcAppSplashScreen({ exiting = false }: FtcAppSplashScre
         Follow The Crowd
       </p>
       <p className="mt-3 text-center text-xs font-light tracking-wide text-ftc-text-secondary">
-        For the culture.
+        For the culture
       </p>
       <div
         aria-hidden="true"
