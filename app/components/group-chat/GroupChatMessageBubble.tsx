@@ -1,9 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useRef } from "react";
+import { memo, useCallback, useEffect, useRef } from "react";
+import Link from "next/link";
 import ChatMessageBubbleShell from "@/app/components/chat/ChatMessageBubbleShell";
 import ChatProfileAvatarLink from "@/app/components/chat/ChatProfileAvatarLink";
 import IncomingChatMessageLayout from "@/app/components/chat/IncomingChatMessageLayout";
+import { buildProfileHref } from "@/lib/profileNavigation";
 import { getChatNewMessageHighlightClass } from "@/lib/chatNewMessageHighlight";
 import {
   resolveChatMessageBubbleShellClass,
@@ -31,7 +33,7 @@ function chainPointerHandler(
   };
 }
 
-export default function GroupChatMessageBubble({
+function GroupChatMessageBubble({
   messageId,
   text,
   createdAt,
@@ -55,6 +57,7 @@ export default function GroupChatMessageBubble({
   tightWithPrevious = false,
   showTimestamp = true,
   groupPosition = "standalone",
+  seenLabel = null,
 }: {
   messageId: string;
   text: string;
@@ -69,9 +72,10 @@ export default function GroupChatMessageBubble({
   showReactionPicker: boolean;
   reacting: boolean;
   scrollContainerRef?: React.RefObject<HTMLElement | null>;
-  onToggleReaction: (emoji: string) => void;
-  onOpenReactionPicker: () => void;
-  onCloseReactionPicker: () => void;
+  /** Stable across renders (messageId-first) so React.memo below is actually effective. */
+  onToggleReaction: (messageId: string, emoji: string) => void;
+  onOpenReactionPicker: (messageId: string) => void;
+  onCloseReactionPicker: (messageId: string) => void;
   formatTime: (timestamp: string) => string;
   isHighlighted?: boolean;
   showSenderName?: boolean;
@@ -79,9 +83,24 @@ export default function GroupChatMessageBubble({
   tightWithPrevious?: boolean;
   showTimestamp?: boolean;
   groupPosition?: ChatMessageGroupPosition;
+  /** "Seen by …" — the parent computes this for the single latest message only. */
+  seenLabel?: string | null;
 }) {
   const bubbleShellRef = useRef<HTMLDivElement>(null);
   const pickerAnchorRef = useRef<HTMLDivElement>(null);
+
+  const handleToggleReactionForMessage = useCallback(
+    (emoji: string) => onToggleReaction(messageId, emoji),
+    [messageId, onToggleReaction],
+  );
+  const handleOpenReactionPickerForMessage = useCallback(
+    () => onOpenReactionPicker(messageId),
+    [messageId, onOpenReactionPicker],
+  );
+  const handleCloseReactionPickerForMessage = useCallback(
+    () => onCloseReactionPicker(messageId),
+    [messageId, onCloseReactionPicker],
+  );
 
   const {
     handlePointerDown: handleLongPressPointerDown,
@@ -92,11 +111,11 @@ export default function GroupChatMessageBubble({
     consumeLongPressActivation,
     wasLongPressActivated,
     resetLongPressGesture,
-  } = useMessageReactionLongPress(onOpenReactionPicker);
+  } = useMessageReactionLongPress(handleOpenReactionPickerForMessage);
 
   const handleToggleHeart = useCallback(() => {
-    onToggleReaction(DM_DEFAULT_REACTION_EMOJI);
-  }, [onToggleReaction]);
+    handleToggleReactionForMessage(DM_DEFAULT_REACTION_EMOJI);
+  }, [handleToggleReactionForMessage]);
 
   const {
     handlePointerDown: handleDoubleTapPointerDown,
@@ -147,9 +166,9 @@ export default function GroupChatMessageBubble({
       reacting={reacting}
       showReactionPicker={showReactionPicker}
       scrollContainerRef={scrollContainerRef}
-      onToggleReaction={onToggleReaction}
-      onOpenReactionPicker={onOpenReactionPicker}
-      onCloseReactionPicker={onCloseReactionPicker}
+      onToggleReaction={handleToggleReactionForMessage}
+      onOpenReactionPicker={handleOpenReactionPickerForMessage}
+      onCloseReactionPicker={handleCloseReactionPickerForMessage}
       bubbleHandlers={{
         onPointerDown: chainPointerHandler(handleDoubleTapPointerDown, handleLongPressPointerDown),
         onPointerMove: chainPointerHandler(handleDoubleTapPointerMove, handleLongPressPointerMove),
@@ -190,9 +209,12 @@ export default function GroupChatMessageBubble({
           formattedTime={formatTime(createdAt)}
           leadingContent={
             showSenderName ? (
-              <p className="mb-1 px-1 text-[11px] font-semibold text-ftc-text-secondary">
+              <Link
+                href={buildProfileHref(senderUserId, { returnTo: profileReturnTo })}
+                className="mb-1 block w-fit px-1 text-[11px] font-semibold text-ftc-text-secondary transition hover:text-ftc-text"
+              >
                 {senderLabel}
-              </p>
+              </Link>
             ) : null
           }
           avatar={
@@ -205,6 +227,9 @@ export default function GroupChatMessageBubble({
           }
         >
           {bubbleBlock}
+          {seenLabel ? (
+            <p className="mt-0.5 px-1 text-[10px] text-ftc-text-muted">{seenLabel}</p>
+          ) : null}
         </IncomingChatMessageLayout>
       </li>
     );
@@ -229,8 +254,20 @@ export default function GroupChatMessageBubble({
           >
             {formatTime(createdAt)}
           </time>
+          {seenLabel ? (
+            <p className="px-1 text-right text-[10px] text-ftc-text-muted">{seenLabel}</p>
+          ) : null}
         </div>
       </div>
     </li>
   );
 }
+
+/**
+ * Hundreds of messages in a long-lived event chat means most bubbles never
+ * change between renders (a reaction toggle or the picker opening only
+ * touches one message) — memo, paired with the messageId-first callbacks
+ * above, means the rest skip re-rendering instead of all re-rendering because
+ * their parent did.
+ */
+export default memo(GroupChatMessageBubble);

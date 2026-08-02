@@ -6,8 +6,16 @@ import AppNavigation, { MOBILE_NAV_OFFSET_CLASS } from "@/app/components/AppNavi
 import ChatNewMessagesPill from "@/app/components/dm/ChatNewMessagesPill";
 import GroupChatComposer from "@/app/components/group-chat/GroupChatComposer";
 import GroupChatEmptyState from "@/app/components/group-chat/GroupChatEmptyState";
+import GroupChatEventContextCard from "@/app/components/group-chat/GroupChatEventContextCard";
+import CrewChatAnnouncementBand from "@/app/components/group-chat/CrewChatAnnouncementBand";
+import CrewMemberListSheet from "@/app/components/group-chat/CrewMemberListSheet";
 import GroupChatHeader from "@/app/components/group-chat/GroupChatHeader";
 import { resolveCrewChatCountdownLabel } from "@/lib/events/crewChatCountdown";
+import { buildCrewMemberList } from "@/lib/events/crewChatMembers";
+import {
+  loadEventChatLastReadByUser,
+  resolveCrewChatSeenLabel,
+} from "@/lib/events/crewChatReadReceipts";
 import type { EventStatus } from "@/lib/events";
 import GroupChatMessageBubble from "@/app/components/group-chat/GroupChatMessageBubble";
 import GroupChatSystemNotice from "@/app/components/group-chat/GroupChatSystemNotice";
@@ -48,7 +56,7 @@ import {
 } from "@/lib/groupChatSystemMessages";
 import { buildChatReturnTo } from "@/lib/profileNavigation";
 import { supabase } from "@/lib/supabaseClient";
-import { useChatScroll, tagChatMessageForScroll } from "@/lib/useChatScroll";
+import { getChatMaxScrollTop, useChatScroll, tagChatMessageForScroll } from "@/lib/useChatScroll";
 import {
   logChatHighlightRender,
 } from "@/lib/chatNewMessageHighlight";
@@ -68,6 +76,9 @@ function formatMessageTime(timestamp: string) {
 }
 
 const GROUP_CHAT_MESSAGES_TIMEOUT_MS = 15_000;
+
+/** Distance from the live edge (px) before the event-context card collapses. */
+const EVENT_CARD_COLLAPSE_THRESHOLD_PX = 24;
 
 async function withGroupChatMessagesTimeout<T>(promise: Promise<T>): Promise<T> {
   let timeoutId: ReturnType<typeof setTimeout> | undefined;
@@ -150,13 +161,19 @@ export default function EventCrewChatPage() {
     new Map(),
   );
   const [eventName, setEventName] = useState("Event");
+  const [eventVenue, setEventVenue] = useState<string | null>(null);
   const [eventDate, setEventDate] = useState<string | null>(null);
+  const [eventSetTime, setEventSetTime] = useState<string | null>(null);
   const [eventStatus, setEventStatus] = useState<EventStatus | null>(null);
+  const [ownerId, setOwnerId] = useState<string | null>(null);
   const [crewUnlock, setCrewUnlock] = useState<CrewChatUnlockState | null>(null);
   const [crewParticipantIds, setCrewParticipantIds] = useState<string[]>([]);
   const [crewParticipantProfiles, setCrewParticipantProfiles] = useState<
     Map<string, UserAvatarProfile>
   >(new Map());
+  const [lastReadAtByUserId, setLastReadAtByUserId] = useState<Map<string, string>>(new Map());
+  const [memberSheetOpen, setMemberSheetOpen] = useState(false);
+  const [eventCardCollapsed, setEventCardCollapsed] = useState(false);
   const [input, setInput] = useState("");
   const [accessLoading, setAccessLoading] = useState(true);
   const [messagesLoading, setMessagesLoading] = useState(true);
@@ -173,6 +190,10 @@ export default function EventCrewChatPage() {
   const countdownLabel = useMemo(
     () => resolveCrewChatCountdownLabel(eventDate, eventStatus),
     [eventDate, eventStatus],
+  );
+  const crewMembers = useMemo(
+    () => buildCrewMemberList(crewParticipantIds, crewParticipantProfiles, ownerId),
+    [crewParticipantIds, crewParticipantProfiles, ownerId],
   );
   const senderNameVisibility = useMemo(
     () => buildGroupChatSenderNameVisibility(messages, currentUserId),
@@ -199,6 +220,26 @@ export default function EventCrewChatPage() {
     crewParticipantIds.length > 0 ? crewParticipantIds.length : null,
     crewUnlock?.acceptedDjCount ?? 0,
   );
+  /**
+   * "Seen by …" for the single latest message only — see crewChatReadReceipts
+   * for why not per-message. Recomputes on every last-read refresh (initial
+   * load, realtime update, or a crew member's own read-through), not on every
+   * message, so it stays cheap regardless of conversation length.
+   */
+  const latestMessageSeenLabel = useMemo(() => {
+    if (!lastMessage) {
+      return null;
+    }
+
+    return resolveCrewChatSeenLabel({
+      messageCreatedAt: lastMessage.created_at,
+      messageSenderId: lastMessage.user_id,
+      participantIds: crewParticipantIds,
+      ownerId,
+      lastReadAtByUserId,
+      profiles: crewParticipantProfiles,
+    });
+  }, [lastMessage, crewParticipantIds, ownerId, lastReadAtByUserId, crewParticipantProfiles]);
   const {
     scrollRef,
     bottomRef,
@@ -216,6 +257,50 @@ export default function EventCrewChatPage() {
   });
   const { addHighlightedMessageId, isMessageHighlighted } = useChatNewMessageHighlight();
 
+  /**
+   * Collapses the event-context card once the user scrolls into the
+   * conversation, so long-lived history reads without a permanent info strip
+   * eating the top of the viewport; reappears back at the live edge. rAF-
+   * throttled scroll listener, one boolean of state — no ResizeObserver, no
+   * per-message cost, so it doesn't add to the per-render list work task 12
+   * is about.
+   */
+  useEffect(() => {
+    const scroller = scrollRef.current;
+
+    if (!scroller) {
+      return;
+    }
+
+    let ticking = false;
+
+    function evaluateCollapse() {
+      ticking = false;
+
+      if (!scroller) {
+        return;
+      }
+
+      const distanceFromBottom = getChatMaxScrollTop(scroller) - scroller.scrollTop;
+      setEventCardCollapsed(distanceFromBottom > EVENT_CARD_COLLAPSE_THRESHOLD_PX);
+    }
+
+    function handleScroll() {
+      if (ticking) {
+        return;
+      }
+
+      ticking = true;
+      requestAnimationFrame(evaluateCollapse);
+    }
+
+    scroller.addEventListener("scroll", handleScroll, { passive: true });
+
+    return () => {
+      scroller.removeEventListener("scroll", handleScroll);
+    };
+  }, [scrollRef]);
+
   const refreshEventArtwork = useCallback(async () => {
     if (!eventId) {
       return;
@@ -229,8 +314,11 @@ export default function EventCrewChatPage() {
       }
 
       setEventName(access.eventName ?? "Event");
+      setEventVenue(access.eventVenue ?? null);
       setEventDate(access.eventDate ?? null);
+      setEventSetTime(access.eventSetTime ?? null);
       setEventStatus(access.eventStatus ?? null);
+      setOwnerId(access.ownerId ?? null);
       setCrewUnlock(access.unlock);
     } catch (refreshError) {
       console.error("Failed to refresh group chat header:", refreshError);
@@ -253,6 +341,68 @@ export default function EventCrewChatPage() {
       console.error("Failed to load crew chat participants:", participantError);
     }
   }, []);
+
+  // Read receipts: message_reads already stores one (user, event) row with a
+  // last_read_at high-water mark — same table DM's "Seen" reads, generalised
+  // from one other participant to every crew member. Loaded once participants
+  // are known, then kept live below.
+  useEffect(() => {
+    if (!eventId || crewParticipantIds.length === 0) {
+      return;
+    }
+
+    let cancelled = false;
+
+    loadEventChatLastReadByUser(eventId, crewParticipantIds)
+      .then((lastReadByUserId) => {
+        if (!cancelled) {
+          setLastReadAtByUserId(lastReadByUserId);
+        }
+      })
+      .catch((loadError) => {
+        console.error("Failed to load crew chat read receipts:", loadError);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [eventId, crewParticipantIds]);
+
+  useEffect(() => {
+    if (!eventId || crewParticipantIds.length === 0) {
+      return;
+    }
+
+    function upsertLastReadAt(row: { user_id: string; last_read_at: string }) {
+      if (!crewParticipantIds.includes(row.user_id)) {
+        return;
+      }
+
+      setLastReadAtByUserId((prev) => {
+        const next = new Map(prev);
+        next.set(row.user_id, row.last_read_at);
+        return next;
+      });
+    }
+
+    const channel = supabase
+      .channel(`event-crew-chat-reads:${eventId}`)
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "message_reads", filter: `event_id=eq.${eventId}` },
+        (payload) => upsertLastReadAt(payload.new as { user_id: string; last_read_at: string }),
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "message_reads", filter: `event_id=eq.${eventId}` },
+        (payload) => upsertLastReadAt(payload.new as { user_id: string; last_read_at: string }),
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [eventId, crewParticipantIds]);
 
   const markGroupChatOpened = useCallback(
     (latestMessageCreatedAt: string | null) => {
@@ -357,6 +507,8 @@ export default function EventCrewChatPage() {
       setReactions([]);
       setReactionPickerMessageId(null);
       setSenderProfiles(new Map());
+      setLastReadAtByUserId(new Map());
+      setMemberSheetOpen(false);
       setMessagesError(null);
       setMessagesLoading(true);
 
@@ -388,8 +540,11 @@ export default function EventCrewChatPage() {
 
         setCanAccessChat(true);
         setEventName(access.eventName ?? "Event");
+        setEventVenue(access.eventVenue ?? null);
         setEventDate(access.eventDate ?? null);
+        setEventSetTime(access.eventSetTime ?? null);
         setEventStatus(access.eventStatus ?? null);
+        setOwnerId(access.ownerId ?? null);
         setCrewUnlock(access.unlock);
         void loadCrewParticipants(eventId);
       } catch (loadError) {
@@ -594,41 +749,53 @@ export default function EventCrewChatPage() {
     };
   }, [canAccessChat, eventId]);
 
-  async function handleToggleReaction(messageId: string, emoji: string) {
-    if (!currentUserId) {
-      return;
-    }
+  /** Stable (messageId-first) so it can be passed straight to memoised bubbles without a per-row closure. */
+  const handleToggleReaction = useCallback(
+    async (messageId: string, emoji: string) => {
+      if (!currentUserId) {
+        return;
+      }
 
-    let rollbackReactions: DmMessageReaction[] = [];
+      let rollbackReactions: DmMessageReaction[] = [];
 
-    setReactions((prev) => {
-      rollbackReactions = prev.filter((reaction) => reaction.message_id === messageId);
-      return applyOptimisticDmReactionToggle(prev, messageId, emoji, currentUserId);
-    });
-    setReactionPickerMessageId(null);
-    setReactingMessageId(messageId);
-    setError(null);
-
-    try {
-      const nextReaction = await toggleDmMessageReaction(messageId, emoji);
-
-      setReactions((prev) =>
-        upsertDmReactionInList(prev, nextReaction, messageId, currentUserId),
-      );
-    } catch (reactionError) {
-      console.error("Failed to toggle group chat reaction:", reactionError);
       setReactions((prev) => {
-        const withoutMessage = prev.filter((reaction) => reaction.message_id !== messageId);
-
-        return [...withoutMessage, ...rollbackReactions];
+        rollbackReactions = prev.filter((reaction) => reaction.message_id === messageId);
+        return applyOptimisticDmReactionToggle(prev, messageId, emoji, currentUserId);
       });
-      setError(
-        reactionError instanceof Error ? reactionError.message : "Failed to update reaction",
-      );
-    } finally {
-      setReactingMessageId(null);
-    }
-  }
+      setReactionPickerMessageId(null);
+      setReactingMessageId(messageId);
+      setError(null);
+
+      try {
+        const nextReaction = await toggleDmMessageReaction(messageId, emoji);
+
+        setReactions((prev) =>
+          upsertDmReactionInList(prev, nextReaction, messageId, currentUserId),
+        );
+      } catch (reactionError) {
+        console.error("Failed to toggle group chat reaction:", reactionError);
+        setReactions((prev) => {
+          const withoutMessage = prev.filter((reaction) => reaction.message_id !== messageId);
+
+          return [...withoutMessage, ...rollbackReactions];
+        });
+        setError(
+          reactionError instanceof Error ? reactionError.message : "Failed to update reaction",
+        );
+      } finally {
+        setReactingMessageId(null);
+      }
+    },
+    [currentUserId],
+  );
+
+  const handleOpenReactionPicker = useCallback((messageId: string) => {
+    setReactionPickerMessageId(messageId);
+  }, []);
+
+  const handleCloseReactionPicker = useCallback((messageId: string) => {
+    setReactionPickerMessageId((current) => (current === messageId ? null : current));
+  }, []);
 
   async function sendMessage() {
     const text = input.trim();
@@ -695,25 +862,45 @@ export default function EventCrewChatPage() {
               <GroupChatHeader
                 backHref={backHref}
                 backLabel={openedFromMessages ? "Back to messages" : "Back to event"}
-                eventId={eventId}
                 eventName={eventName}
                 memberCount={memberCount}
                 participantIds={crewParticipantIds}
                 participantProfiles={crewParticipantProfiles}
-                showEventDetailsLink={openedFromMessages}
+                onOpenMemberSheet={() => setMemberSheetOpen(true)}
               />
             )}
           </header>
 
           {/*
-            Chat sub-header: a fixed slot between the header and the scroller,
-            above the conversation and outside it, so it never scrolls away and
-            never re-layouts the message list.
+            Event-context card: venue/date/time + View Event, directly beneath
+            the header. Collapses once the user scrolls into the conversation
+            (see the scroll listener above) so long history reads without a
+            permanent info strip; reappears back at the live edge.
+          */}
+          {!accessLoading ? (
+            <GroupChatEventContextCard
+              eventId={eventId}
+              venue={eventVenue ?? ""}
+              eventDate={eventDate ?? ""}
+              setTime={eventSetTime ?? ""}
+              showViewEventAction={openedFromMessages}
+              collapsed={eventCardCollapsed}
+            />
+          ) : null}
 
-            It holds the event countdown today. A future pinned-message
-            component drops in here as a second child with no structural change
-            to the header, the scroller, or the list -- which is the whole point
-            of it being its own band rather than part of either neighbour.
+          {/*
+            Reserved for future announcements ("Run Sheet Updated", "Venue
+            Changed", …) — beneath the event card, renders nothing today. See
+            CrewChatAnnouncementBand for why this is a real, positioned
+            component rather than a placeholder box.
+          */}
+          <CrewChatAnnouncementBand />
+
+          {/*
+            Chat sub-header: a fixed slot between the header/card and the
+            scroller, above the conversation and outside it, so it never
+            scrolls away and never re-layouts the message list. Holds the event
+            countdown.
           */}
           {countdownLabel ? (
             <div
@@ -782,13 +969,9 @@ export default function EventCrewChatPage() {
                       showReactionPicker={reactionPickerMessageId === message.id}
                       reacting={reactingMessageId === message.id}
                       scrollContainerRef={scrollRef}
-                      onToggleReaction={(emoji) => void handleToggleReaction(message.id, emoji)}
-                      onOpenReactionPicker={() => setReactionPickerMessageId(message.id)}
-                      onCloseReactionPicker={() =>
-                        setReactionPickerMessageId((current) =>
-                          current === message.id ? null : current,
-                        )
-                      }
+                      onToggleReaction={handleToggleReaction}
+                      onOpenReactionPicker={handleOpenReactionPicker}
+                      onCloseReactionPicker={handleCloseReactionPicker}
                       formatTime={formatMessageTime}
                       isHighlighted={highlighted}
                       showSenderName={senderNameVisibility.get(message.id) ?? false}
@@ -796,6 +979,7 @@ export default function EventCrewChatPage() {
                       tightWithPrevious={messageGroupLayout?.tightWithPrevious ?? false}
                       showTimestamp={messageGroupLayout?.showAvatar ?? true}
                       groupPosition={messageGroupLayout?.position ?? "standalone"}
+                      seenLabel={message.id === lastMessage?.id ? latestMessageSeenLabel : null}
                     />
                   );
                 })}
@@ -825,6 +1009,13 @@ export default function EventCrewChatPage() {
           </div>
         </div>
       </div>
+
+      <CrewMemberListSheet
+        open={memberSheetOpen}
+        members={crewMembers}
+        profileReturnTo={chatReturnTo}
+        onClose={() => setMemberSheetOpen(false)}
+      />
     </OnboardingGuard>
   );
 }

@@ -176,6 +176,8 @@ import {
 } from "../lib/bookings/gigsTabCountDisplay";
 import { resolveWorkspaceGigsPendingDisplayCount, readWorkspaceGigsBadgeDisplayCountForSubNav, resolveStableGigsPendingCount } from "../lib/navigation/resolveWorkspaceGigsPendingDisplayCount";
 import { applyCancelledEventStatus } from "../lib/bookings/gigsListSnapshotPrefetch";
+import { buildCrewMemberList } from "../lib/events/crewChatMembers";
+import { resolveCrewChatSeenLabel } from "../lib/events/crewChatReadReceipts";
 import {
   computeRunSheetSetLabels,
   hasUnsavedRunSheetEdits,
@@ -10451,6 +10453,227 @@ function testBookingsResultsAreaMatchesOneBookingCard() {
   assert.match(source, /<ul className="space-y-2\.5">/);
 }
 
+/**
+ * Crew Chat "premium polish" pass: event-context card, member sheet, header
+ * hierarchy, tighter (crew-chat-only) spacing, tappable sender names, and
+ * read receipts derived from the existing message_reads high-water mark.
+ *
+ * Two things this specifically guards against regressing silently:
+ *  - The tighter message spacing is scoped to crew chat's own wrapper
+ *    functions (resolveIncomingGroupLiClass/resolveOutgoingGroupLiClass).
+ *    DM calls resolveMessageGroupLiClass directly and never passes `spacing`,
+ *    so its constants and default behaviour must be byte-for-byte unchanged.
+ *  - Venue/date are shown once each (event-context card only), not repeated
+ *    in the header, which now states only the event name and crew count.
+ */
+function testCrewChatPremiumPolish() {
+  // buildCrewMemberList: owner first, DJs in participant order, role derived
+  // (not stored) from ownerId comparison, missing profile falls back cleanly.
+  const profiles = new Map([
+    ["dj-1", { user_id: "dj-1", display_name: "Sarah", avatar_url: null }],
+    ["owner-1", { user_id: "owner-1", display_name: "Isaac", avatar_url: null }],
+    ["dj-3", { user_id: "dj-3", display_name: "Marlowe", avatar_url: null }],
+  ]);
+  const members = buildCrewMemberList(["dj-1", "owner-1", "dj-2"], profiles, "owner-1");
+  assert.deepEqual(
+    members.map((member) => member.userId),
+    ["owner-1", "dj-1", "dj-2"],
+    "owner sorts first regardless of participant order",
+  );
+  assert.equal(members[0].role, "promoter");
+  assert.equal(members[1].role, "dj");
+  assert.equal(members[2].displayName, "Member", "no profile falls back, not a raw id");
+  // Owner id absent from the participant list (edge case) must not inject a phantom row.
+  const noOwnerInList = buildCrewMemberList(["dj-1"], profiles, "owner-1");
+  assert.equal(noOwnerInList.length, 1);
+  assert.equal(noOwnerInList[0].userId, "dj-1");
+
+  // resolveCrewChatSeenLabel: sender excluded from their own "seen by"; the
+  // promoter is named by role, a lone DJ reader by name, several by count.
+  const seenBase = {
+    messageCreatedAt: "2026-01-01T10:00:00.000Z",
+    messageSenderId: "dj-1",
+    participantIds: ["owner-1", "dj-1", "dj-2", "dj-3"],
+    ownerId: "owner-1",
+    profiles,
+  };
+  assert.equal(
+    resolveCrewChatSeenLabel({ ...seenBase, lastReadAtByUserId: new Map() }),
+    null,
+    "nobody has read it yet",
+  );
+  assert.equal(
+    resolveCrewChatSeenLabel({
+      ...seenBase,
+      lastReadAtByUserId: new Map([["owner-1", "2026-01-01T10:05:00.000Z"]]),
+    }),
+    "Seen by Promoter",
+  );
+  assert.equal(
+    resolveCrewChatSeenLabel({
+      ...seenBase,
+      lastReadAtByUserId: new Map([["dj-3", "2026-01-01T10:05:00.000Z"]]),
+    }),
+    "Seen by Marlowe",
+  );
+  assert.equal(
+    resolveCrewChatSeenLabel({
+      ...seenBase,
+      lastReadAtByUserId: new Map([
+        ["owner-1", "2026-01-01T10:05:00.000Z"],
+        ["dj-2", "2026-01-01T10:05:00.000Z"],
+      ]),
+    }),
+    "Seen by 2 members",
+  );
+  assert.equal(
+    resolveCrewChatSeenLabel({
+      ...seenBase,
+      lastReadAtByUserId: new Map([["dj-1", "2026-01-01T10:05:00.000Z"]]),
+    }),
+    null,
+    "the sender's own read-through never counts as a reader of their own message",
+  );
+
+  const groupLayoutSource = readFileSync(
+    new URL("../lib/dm/chatMessageGroupLayout.ts", import.meta.url),
+    "utf8",
+  );
+  const headerSource = readFileSync(
+    new URL("../app/components/group-chat/GroupChatHeader.tsx", import.meta.url),
+    "utf8",
+  );
+  const eventCardSource = readFileSync(
+    new URL("../app/components/group-chat/GroupChatEventContextCard.tsx", import.meta.url),
+    "utf8",
+  );
+  const announcementBandSource = readFileSync(
+    new URL("../app/components/group-chat/CrewChatAnnouncementBand.tsx", import.meta.url),
+    "utf8",
+  );
+  const memberSheetSource = readFileSync(
+    new URL("../app/components/group-chat/CrewMemberListSheet.tsx", import.meta.url),
+    "utf8",
+  );
+  const emptyStateSource = readFileSync(
+    new URL("../app/components/group-chat/GroupChatEmptyState.tsx", import.meta.url),
+    "utf8",
+  );
+  const bubbleSource = readFileSync(
+    new URL("../app/components/group-chat/GroupChatMessageBubble.tsx", import.meta.url),
+    "utf8",
+  );
+  const eventCrewChatSource = readFileSync(
+    new URL("../lib/eventCrewChat.ts", import.meta.url),
+    "utf8",
+  );
+  const readReceiptsSource = readFileSync(
+    new URL("../lib/events/crewChatReadReceipts.ts", import.meta.url),
+    "utf8",
+  );
+  const chatPageSource = readFileSync(
+    new URL("../app/events/[eventId]/chat/page.tsx", import.meta.url),
+    "utf8",
+  );
+
+  // DM's rhythm is untouched -- same constant, same value, and its own direct
+  // calls to resolveMessageGroupLiClass never request the compact variant.
+  assert.match(groupLayoutSource, /CHAT_LIST_ITEM_WITHIN_GROUP_SPACING_CLASS = "mb-1\.5"/);
+  assert.match(groupLayoutSource, /GROUP_CHAT_LIST_ITEM_WITHIN_GROUP_SPACING_CLASS = "mb-1"/);
+  assert.match(
+    groupLayoutSource,
+    /GROUP_CHAT_LIST_ITEM_CLUSTER_END_SPACING_CLASS = "mb-2\.5"/,
+  );
+  assert.match(
+    groupLayoutSource,
+    /export function resolveOutgoingGroupLiClass\({[\s\S]{0,900}spacing: "compact"/,
+  );
+  assert.match(
+    groupLayoutSource,
+    /export function resolveIncomingGroupLiClass\({[\s\S]{0,900}spacing: "compact"/,
+  );
+  const dmBubbleSource = readFileSync(
+    new URL("../app/components/dm/DmTextMessageBubble.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.doesNotMatch(
+    dmBubbleSource,
+    /resolveMessageGroupLiClass\([\s\S]{0,200}spacing/,
+    "DM must never request the compact variant",
+  );
+
+  // Header states the event name and crew count only -- venue/date/View Event
+  // moved to the card, so nothing is shown twice on screen at once.
+  assert.doesNotMatch(headerSource, /Crew chat •/);
+  assert.doesNotMatch(headerSource, /showEventDetailsLink/);
+  assert.doesNotMatch(headerSource, /VIEW_EVENT_BUTTON_CLASS/);
+  assert.match(headerSource, /Crew Members/);
+  assert.match(headerSource, /onOpenMemberSheet/);
+
+  // Event-context card owns venue/date/time + the View Event action, and
+  // collapses via the shared AnimatedExpandPanel primitive (not bespoke
+  // height/opacity logic).
+  assert.match(eventCardSource, /AnimatedExpandPanel/);
+  assert.match(eventCardSource, /open=\{!collapsed\}/);
+  assert.match(eventCardSource, /FtcVenueIcon/);
+  assert.match(eventCardSource, /FtcCalendarIcon/);
+  assert.match(eventCardSource, /FtcClockIcon/);
+  assert.match(eventCardSource, /View Event/);
+  assert.doesNotMatch(eventCardSource, />\s*\{eventName\}/, "name is not repeated here -- header already shows it, permanently");
+
+  // Announcement slot is real and positioned, but renders nothing today.
+  assert.match(announcementBandSource, /return null/);
+  assert.match(chatPageSource, /<CrewChatAnnouncementBand \/>/);
+
+  // Member sheet reuses the shared modal primitive rather than duplicating
+  // its chrome, and both avatar and name are the same profile link.
+  assert.match(memberSheetSource, /BookingSheetDialog/);
+  assert.match(memberSheetSource, /buildProfileHref/);
+
+  assert.match(emptyStateSource, /Welcome to your Crew Chat/);
+  assert.match(
+    emptyStateSource,
+    /Coordinate set times, arrivals, equipment and event updates with your crew\./,
+  );
+
+  // Bubble: memoised, messageId-first callbacks (so memo is actually
+  // effective for hundreds of messages), sender name is a profile link.
+  assert.match(bubbleSource, /export default memo\(GroupChatMessageBubble\)/);
+  assert.match(bubbleSource, /onToggleReaction: \(messageId: string, emoji: string\) => void/);
+  assert.match(bubbleSource, /onOpenReactionPicker: \(messageId: string\) => void/);
+  assert.match(bubbleSource, /onCloseReactionPicker: \(messageId: string\) => void/);
+  assert.match(bubbleSource, /buildProfileHref\(senderUserId, \{ returnTo: profileReturnTo \}\)/);
+
+  // Page passes the stable handlers straight through -- no per-row closure
+  // recreating a new function for every message on every render.
+  assert.match(chatPageSource, /onToggleReaction=\{handleToggleReaction\}/);
+  assert.match(chatPageSource, /onOpenReactionPicker=\{handleOpenReactionPicker\}/);
+  assert.match(chatPageSource, /onCloseReactionPicker=\{handleCloseReactionPicker\}/);
+  assert.doesNotMatch(chatPageSource, /onToggleReaction=\{\(emoji\) => void handleToggleReaction/);
+
+  // Seen label is computed once for the latest message only, not per message.
+  assert.match(
+    chatPageSource,
+    /seenLabel=\{message\.id === lastMessage\?\.id \? latestMessageSeenLabel : null\}/,
+  );
+
+  // eventCrewChat access carries the two new fields on every return path
+  // (type declaration + denied/owner/accepted-DJ outcomes = 4 occurrences).
+  assert.equal((eventCrewChatSource.match(/ownerId:/g) ?? []).length, 4);
+  assert.equal((eventCrewChatSource.match(/eventSetTime:/g) ?? []).length, 4);
+
+  // Read receipts reuse the existing per-message comparison rather than
+  // reimplementing it, and read from message_reads -- no new table/column.
+  assert.match(readReceiptsSource, /isMessageSeenByReader/);
+  assert.match(readReceiptsSource, /from\("message_reads"\)/);
+  assert.doesNotMatch(readReceiptsSource, /\.from\("(?!message_reads)/);
+
+  // No virtualisation dependency was added for the "hundreds of messages"
+  // scalability item -- the fix here is cheaper re-renders, not a new library.
+  const packageJsonSource = readFileSync(new URL("../package.json", import.meta.url), "utf8");
+  assert.doesNotMatch(packageJsonSource, /react-window|react-virtual|virtuoso/i);
+}
+
 async function main() {
   testPastEventDatesAreBlocked();
   testFutureEventDatesAreAllowed();
@@ -10666,6 +10889,7 @@ async function main() {
   testBookingStatusChangesReconcileEverywhere();
   testBookingAcceptedDmMessageIsScopedToTheBooking();
   testTemporaryDebugInstrumentationIsFullyRemoved();
+  testCrewChatPremiumPolish();
   await testEventsHistorySelectAllButtonInteraction();
   await testEventsHistoryRemoveConfirmInteraction();
   await testDmChatReopenScroll();

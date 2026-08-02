@@ -24,10 +24,13 @@ export type EventCrewChatAccess = {
   canAccess: boolean;
   canStartCrewChat: boolean;
   isOwner: boolean;
+  /** Event owner id, so the crew member list can mark the one participant who is the planner. */
+  ownerId: string | null;
   unlock: CrewChatUnlockState;
   eventName: string | null;
   eventVenue: string | null;
   eventDate: string | null;
+  eventSetTime: string | null;
   eventStatus: EventStatus | null;
   coverImageUrl: string | null;
   fallbackColour: string | null;
@@ -75,10 +78,12 @@ function buildDeniedAccess(
     canAccess: false,
     canStartCrewChat: isOwner && unlock.canPlannerStart,
     isOwner,
+    ownerId: event?.owner_id ?? null,
     unlock,
     eventName: event?.name ?? null,
     eventVenue: event?.venue ?? null,
     eventDate: event?.event_date ?? null,
+    eventSetTime: event?.set_time ?? null,
     eventStatus: event?.status ?? null,
     coverImageUrl: pickPreferredEventCoverImageUrl(event?.cover_image_url),
     fallbackColour: event?.fallback_colour?.trim() || null,
@@ -117,10 +122,12 @@ export async function getEventCrewChatAccess(eventId: string): Promise<EventCrew
       canAccess: true,
       canStartCrewChat: false,
       isOwner: true,
+      ownerId: event.owner_id,
       unlock,
       eventName: event.name,
       eventVenue: event.venue,
       eventDate: event.event_date,
+      eventSetTime: event.set_time,
       eventStatus: event.status,
       coverImageUrl: pickPreferredEventCoverImageUrl(event.cover_image_url),
       fallbackColour: event.fallback_colour?.trim() || null,
@@ -148,10 +155,12 @@ export async function getEventCrewChatAccess(eventId: string): Promise<EventCrew
     canAccess: true,
     canStartCrewChat: false,
     isOwner: false,
+    ownerId: event.owner_id,
     unlock,
     eventName: event.name,
     eventVenue: event.venue,
     eventDate: event.event_date,
+    eventSetTime: event.set_time,
     eventStatus: event.status,
     coverImageUrl: pickPreferredEventCoverImageUrl(event.cover_image_url),
     fallbackColour: event.fallback_colour?.trim() || null,

@@ -53,3 +53,14 @@ export function FtcClockIcon() {
   );
 }
 
+export function FtcPeopleIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.75">
+      <circle cx="9" cy="8" r="3" />
+      <path d="M3.5 19c.7-3.3 3-5 5.5-5s4.8 1.7 5.5 5" strokeLinecap="round" />
+      <path d="M15.5 4.5a3 3 0 0 1 0 6" strokeLinecap="round" />
+      <path d="M16 14c2.2.3 3.9 1.9 4.5 5" strokeLinecap="round" />
+    </svg>
+  );
+}
+

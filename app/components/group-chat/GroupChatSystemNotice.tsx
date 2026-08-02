@@ -1,8 +1,9 @@
 "use client";
 
+import { memo } from "react";
 import { getChatNewMessageHighlightClass } from "@/lib/chatNewMessageHighlight";
 
-export default function GroupChatSystemNotice({
+function GroupChatSystemNotice({
   messageId,
   text,
   createdAt,
@@ -33,3 +34,6 @@ export default function GroupChatSystemNotice({
     </li>
   );
 }
+
+/** Hundreds of messages means most system notices never change between renders — memo skips them. */
+export default memo(GroupChatSystemNotice);

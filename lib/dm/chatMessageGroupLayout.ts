@@ -98,6 +98,15 @@ export const CHAT_INCOMING_GROUP_CLUSTER_END_CLASS = "mb-1.5";
 /** Consecutive bubbles from the same sender (small Instagram-style gap). */
 export const CHAT_LIST_ITEM_WITHIN_GROUP_SPACING_CLASS = "mb-1.5";
 
+/**
+ * Crew chat's own, slightly tighter rhythm — used only by
+ * resolveIncomingGroupLiClass/resolveOutgoingGroupLiClass (crew chat's sole
+ * callers). DM calls resolveMessageGroupLiClass directly and never passes
+ * `spacing`, so its values above are untouched.
+ */
+export const GROUP_CHAT_LIST_ITEM_WITHIN_GROUP_SPACING_CLASS = "mb-1";
+export const GROUP_CHAT_LIST_ITEM_CLUSTER_END_SPACING_CLASS = "mb-2.5";
+
 /** @deprecated Reaction space is reserved in-flow on the reacted message only — do not propagate list margins. */
 export const CHAT_LIST_ITEM_AFTER_REACTION_SPACING_CLASS = "mb-1.5";
 
@@ -281,29 +290,45 @@ export function isIncomingClusterEnd(
   return groupPosition === "last" || groupPosition === "standalone";
 }
 
+/** DM's own rhythm (default) vs crew chat's slightly tighter one — see the constants above. */
+export type ChatMessageSpacingVariant = "default" | "compact";
+
 function resolveMessageListItemSpacingClass({
   position,
   followedByTimeSeparator,
   precededByTimeSeparator,
+  spacing,
 }: {
   position: ChatMessageGroupPosition;
   followedByTimeSeparator: boolean;
   precededByTimeSeparator: boolean;
+  spacing: ChatMessageSpacingVariant;
 }): string {
+  const withinGroupClass =
+    spacing === "compact"
+      ? GROUP_CHAT_LIST_ITEM_WITHIN_GROUP_SPACING_CLASS
+      : CHAT_LIST_ITEM_WITHIN_GROUP_SPACING_CLASS;
+  const clusterEndClass =
+    spacing === "compact"
+      ? GROUP_CHAT_LIST_ITEM_CLUSTER_END_SPACING_CLASS
+      : CHAT_LIST_ITEM_CLUSTER_END_SPACING_CLASS;
+
   // flex-col-reverse: margin-bottom opens toward the visually older sibling above.
   // Any message directly above a centred timestamp must clear absolute reaction hang.
   if (followedByTimeSeparator) {
-    return CHAT_LIST_ITEM_CLUSTER_END_BEFORE_TIMESTAMP_SPACING_CLASS;
+    return spacing === "compact"
+      ? clusterEndClass
+      : CHAT_LIST_ITEM_CLUSTER_END_BEFORE_TIMESTAMP_SPACING_CLASS;
   }
 
   // Same-sender stack — uniform tight gap for every non-terminal group position.
   if (position === "first" || position === "middle") {
-    return CHAT_LIST_ITEM_WITHIN_GROUP_SPACING_CLASS;
+    return withinGroupClass;
   }
 
   // Newest in group — margin opens toward the next sender / timestamp below.
   if (position === "last") {
-    return CHAT_LIST_ITEM_CLUSTER_END_SPACING_CLASS;
+    return clusterEndClass;
   }
 
   // Standalone — cluster boundary toward a different sender above.
@@ -311,7 +336,7 @@ function resolveMessageListItemSpacingClass({
     return CHAT_LIST_ITEM_CLUSTER_START_AFTER_TIMESTAMP_SPACING_CLASS;
   }
 
-  return CHAT_LIST_ITEM_CLUSTER_END_SPACING_CLASS;
+  return clusterEndClass;
 }
 
 /** Shared list-item spacing for incoming and outgoing DM bubbles. */
@@ -321,6 +346,7 @@ export function resolveMessageGroupLiClass({
   isClusterEnd,
   followedByTimeSeparator = false,
   precededByTimeSeparator = false,
+  spacing = "default",
 }: {
   isOwnMessage: boolean;
   position: ChatMessageGroupPosition;
@@ -329,6 +355,8 @@ export function resolveMessageGroupLiClass({
   followedByTimeSeparator?: boolean;
   /** This message begins a time cluster — timestamp sits directly above. */
   precededByTimeSeparator?: boolean;
+  /** DM never passes this — its calls always get the "default" rhythm above. */
+  spacing?: ChatMessageSpacingVariant;
 }): string {
   return [
     "group/message flex",
@@ -337,6 +365,7 @@ export function resolveMessageGroupLiClass({
       position,
       followedByTimeSeparator,
       precededByTimeSeparator,
+      spacing,
     }),
   ]
     .filter(Boolean)
@@ -367,7 +396,10 @@ function hasMeaningfulTimeGapBetweenParticipants(
   return laterMs - earlierMs >= DM_CHAT_MEANINGFUL_TIME_GAP_MS;
 }
 
-/** Outgoing row — same flex-col-reverse grouping margins as incoming. */
+/**
+ * Outgoing row — same flex-col-reverse grouping margins as incoming.
+ * Crew chat's only caller, so it always requests the "compact" rhythm.
+ */
 export function resolveOutgoingGroupLiClass({
   position,
   isClusterEnd,
@@ -389,6 +421,7 @@ export function resolveOutgoingGroupLiClass({
     isClusterEnd,
     followedByTimeSeparator,
     precededByTimeSeparator,
+    spacing: "compact",
   });
 }
 
@@ -484,6 +517,7 @@ export function buildChatMessageGroupLayout(
   return layoutByMessageId;
 }
 
+/** Crew chat's only caller, so it always requests the "compact" rhythm. */
 export function resolveIncomingGroupLiClass({
   position,
   isClusterEnd,
@@ -506,5 +540,6 @@ export function resolveIncomingGroupLiClass({
     isClusterEnd,
     followedByTimeSeparator,
     precededByTimeSeparator,
+    spacing: "compact",
   });
 }
