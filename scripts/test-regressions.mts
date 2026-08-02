@@ -8718,6 +8718,42 @@ function testEventPlansSendPanelCopyMatchesSendBookingRequestsPanel() {
   assert.match(bookingsPageSource, /"No new DJs to confirm"/);
 }
 
+/**
+ * Rate-type picker copy (BookingRateModeField, the "Rate type" cards in the
+ * Booking Request modal). The option *names* ("Fixed offer"/"Ask for rate")
+ * stay as the card headings -- that terminology is reused across booking
+ * summaries, event lineup cards, and notification bodies, so the picker must
+ * keep matching it. Only the muted description line beneath each heading
+ * carries the explanatory copy, and it follows the simplified house style:
+ * no trailing full stop (the sentence-internal one stays, since each
+ * description is two sentences).
+ *
+ * Deliberately scoped to this component only: EventDjSendOfferControls.tsx's
+ * "?" help popover is a separate rate-mode explainer with its own longer
+ * copy, intentionally left unchanged here.
+ */
+function testBookingRateModeFieldDescriptions() {
+  const source = readFileSync(
+    new URL("../app/components/booking/BookingRateModeField.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(source, /title: "Fixed offer",\s*\n\s*description: "Set the amount\. The DJ can accept or decline",/);
+  assert.match(
+    source,
+    /title: "Ask for rate",\s*\n\s*description: "The DJ sends their price\. You decide whether to accept",/,
+  );
+
+  // Superseded wording is gone.
+  assert.doesNotMatch(source, /DJ can accept or decline your rate/);
+  assert.doesNotMatch(source, /DJ sends their price before accepting/);
+
+  // No trailing full stop on either description (house copy style).
+  for (const [, description] of source.matchAll(/description: "([^"]+)"/g)) {
+    assert.doesNotMatch(description, /\.$/);
+  }
+}
+
 async function main() {
   testPastEventDatesAreBlocked();
   testFutureEventDatesAreAllowed();
@@ -8914,6 +8950,7 @@ async function main() {
   testAppSplashScreenSlogan();
   testMainNavAlwaysTargetsEventsWorkspace();
   testEventPlansSendPanelCopyMatchesSendBookingRequestsPanel();
+  testBookingRateModeFieldDescriptions();
   await testEventsHistorySelectAllButtonInteraction();
   await testEventsHistoryRemoveConfirmInteraction();
   await testDmChatReopenScroll();
