@@ -392,35 +392,36 @@ function RunSheetCappedTextarea({
  * The read-only rendering of a Run Sheet cell, shown to accepted crew and to
  * the planner on a history event.
  *
- * Notes composes the same pinned-height pair as its editable textarea, so the
- * field is 4 rows in both states and scrolls internally past that. It carried
- * only a `min-height` before, which meant the editable path was capped while
- * the read-only path grew without limit — the same 500 characters rendered 4
- * rows to whoever could edit them and about 6 to everyone else, stretching the
- * card. The base class pins `line-height` to `1.5rem !important`, overriding
- * the `leading-relaxed` in `className`, which is what makes 4 rows land exactly
- * on the pinned height; the two classes only work as a pair.
+ * Composes the same pinned-height pair as the matching editable textarea —
+ * `ftc-run-sheet-textarea` plus its `-2`/`-4` row modifier — so the two look
+ * like the same field in two states rather than different components: same
+ * height, same internal scroll past the row cap, same line-height (the base
+ * class pins it to `1.5rem !important`, overriding the `leading-relaxed` in
+ * `className`).
  *
- * Stage / Area keeps its `min-height` only: it is capped at 50 characters, so
- * it cannot reach two rows in practice.
+ * Stage / Area used to carry only a `min-height`, on the reasoning that its
+ * 50-character cap keeps it under two *explicit* lines. That reasoning held
+ * for line count but not for wrapping: a single unbroken 40+ character run
+ * (a venue name with no spaces, in practice a pasted URL) still wraps across
+ * several *visual* lines, and without the pinned height and this class's
+ * `overflow-wrap`/`min-width` pair, that either grew the cell past two rows
+ * or — inside the flex/grid/table-cell layouts both card and table views use
+ * — overflowed the card horizontally instead of wrapping at all, because a
+ * long token's content-based minimum width can widen an auto-sized ancestor
+ * before wrapping ever gets a chance to apply. Both fields now share one
+ * fix.
  */
 function RunSheetReadOnlyText({
   value,
   className,
-  notes = false,
+  rows,
 }: {
   value: string;
   className: string;
-  notes?: boolean;
+  rows: number;
 }) {
   return (
-    <div
-      className={`${className} ${
-        notes
-          ? "ftc-run-sheet-textarea ftc-run-sheet-textarea-4"
-          : "min-h-[2.25rem]"
-      }`}
-    >
+    <div className={`${className} ftc-run-sheet-textarea ftc-run-sheet-textarea-${rows}`}>
       {value?.trim() ? value : "—"}
     </div>
   );
@@ -498,7 +499,9 @@ function renderRunSheetFieldInput({
       <RunSheetReadOnlyText
         value={row[field.key]}
         className={readOnlyTextClassName}
-        notes={field.key === "notes"}
+        rows={
+          field.key === "notes" ? RUN_SHEET_NOTES_VISIBLE_ROWS : RUN_SHEET_STAGE_AREA_VISIBLE_ROWS
+        }
       />
     );
   }

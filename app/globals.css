@@ -424,6 +424,21 @@ html {
   overscroll-behavior: contain;
   resize: none !important;
   box-sizing: border-box !important;
+  /* Same safe-wrap pair used by `.ftc-event-detail-notes-text` and friends: a
+   * long unbroken token (a URL, a run of the same character) must break inside
+   * this box, not force it wider. `min-width`/`max-width` stop the box itself
+   * from being pulled wide by a flex/grid/table-cell ancestor's automatic
+   * minimum size, which is content-based and ignores `overflow-wrap` unless
+   * the box also has non-visible overflow -- already true here, but redundant
+   * and explicit beats relying on that side effect. `word-break` is the
+   * pre-Safari-16 fallback for engines that don't yet honour
+   * `overflow-wrap: anywhere`. Applies equally to the `<textarea>` (harmless;
+   * its own `w-full` already gives it a definite width) and to the read-only
+   * `<div>` rendering, which has no such width of its own. */
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 /** Stage / Area — short stage names. */

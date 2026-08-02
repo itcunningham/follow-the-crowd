@@ -8878,18 +8878,31 @@ function testRunSheetTextareasArePinnedToTheirRowCounts() {
   assert.doesNotMatch(notesClass, /min-h-\[/);
   assert.doesNotMatch(notesClass, /leading-/);
 
-  // The READ-ONLY Notes cell is capped by the same pair. This is the half the
-  // earlier fixes all missed: every one of them changed the textarea, so the
-  // cap only ever existed for viewers who could edit. Accepted crew, and the
-  // planner on a history event, kept getting an uncapped div that grew to fit
-  // 500 characters -- roughly 6 rows on a phone -- and stretched the card.
+  // BOTH read-only cells are capped by the same pair as their editable
+  // counterpart, driven by a `rows` prop rather than a per-field boolean. This
+  // is the half the earlier fixes kept missing: every one of them changed the
+  // textarea, so a cap only ever existed for viewers who could edit. Accepted
+  // crew, and the planner on a history event, got an unpinned div for both
+  // fields -- Notes grew to fit 500 characters (~6 rows on a phone) and
+  // stretched the card; Stage / Area, despite its 50-character cap, could
+  // still overflow the card horizontally on a single long unbroken token,
+  // because a cap on explicit line count does nothing to stop wrapping.
   // Boundary is a `}` alone on a line: the destructured params and their type
   // both close with `}` in column 0 too, but each is followed by `: {` or `) {`.
   const readOnlyCell = section.match(/function RunSheetReadOnlyText\([\s\S]*?\n}\n/)?.[0] ?? "";
   assert.ok(readOnlyCell, "the read-only Run Sheet cell must exist");
-  assert.match(readOnlyCell, /ftc-run-sheet-textarea ftc-run-sheet-textarea-4/);
+  assert.match(readOnlyCell, /ftc-run-sheet-textarea ftc-run-sheet-textarea-\$\{rows\}/);
   // Its own min-height would be a second opinion about a pinned height.
   assert.doesNotMatch(readOnlyCell, /min-h-\[3\.25rem\]/);
+  assert.doesNotMatch(readOnlyCell, /min-h-\[2\.25rem\]/);
+
+  // The caller must actually pass the field's own row count -- a component
+  // that accepts `rows` but is only ever called with one hard-coded value
+  // would be no different from the boolean it replaced.
+  assert.match(
+    section,
+    /rows=\{\s*field\.key === "notes" \? RUN_SHEET_NOTES_VISIBLE_ROWS : RUN_SHEET_STAGE_AREA_VISIBLE_ROWS\s*\}/,
+  );
 
   // The auto-grow machinery is gone, not merely bypassed: no inline height, no
   // runtime line-height measurement, no silent path that skips the cap.
@@ -9014,6 +9027,40 @@ function testRunSheetFieldsEnforceHardLineLimits() {
       `${label}: legacy value can be reduced`,
     );
   }
+}
+
+/**
+ * A hard line cap and a character cap say nothing about a single long
+ * unbroken token -- a pasted URL, a run of the same character, a venue name
+ * with no spaces. That still needs to wrap inside the fixed-height box rather
+ * than either growing it or overflowing it horizontally, on both the editable
+ * textarea and the read-only div rendered for accepted crew.
+ *
+ * `.ftc-run-sheet-textarea` carries the fix, reusing the exact
+ * `min-width: 0; max-width: 100%; overflow-wrap: anywhere; word-break:
+ * break-word;` combination already used by `.ftc-event-detail-notes-text`
+ * and its siblings for the same problem elsewhere in the app, rather than a
+ * fifth copy of it. `overflow-wrap: anywhere` (not `break-word` alone, which
+ * `className` also carries via Tailwind's `break-words`) is load-bearing: a
+ * `break-word` value does not reduce an element's min-content contribution,
+ * so a flex/grid/table-cell ancestor sized by content can still be pulled
+ * wide by the unbroken token even though the text itself would wrap once
+ * space ran out. `anywhere` does reduce it, which is what stops the
+ * ancestor -- the `<label className="grid">` cell on mobile, the
+ * `table-fixed` column on desktop -- from being forced wider in the first
+ * place.
+ */
+function testRunSheetFieldsWrapLongUnbrokenTokens() {
+  const css = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
+  const base = css.match(/\.ftc-run-sheet-textarea \{[^}]*\}/)?.[0] ?? "";
+
+  assert.match(base, /min-width: 0;/);
+  assert.match(base, /max-width: 100%;/);
+  assert.match(base, /overflow-wrap: anywhere;/);
+  assert.match(base, /word-break: break-word;/);
+  // These are layout safety, not the row pin -- they must not fight it or
+  // require `!important` to win, since nothing else sets them on this class.
+  assert.doesNotMatch(base, /overflow-wrap: anywhere !important/);
 }
 
 function testRunSheetDirtyStateAndSaveFeedback() {
@@ -10017,6 +10064,7 @@ async function main() {
   testRunSheetInitialLoadIsNotDirty();
   testRunSheetTextareasArePinnedToTheirRowCounts();
   testRunSheetFieldsEnforceHardLineLimits();
+  testRunSheetFieldsWrapLongUnbrokenTokens();
   testRunSheetDirtyStateAndSaveFeedback();
   testAppSplashScreenSlogan();
   testRoleAwareWorkspaceNavigation();
