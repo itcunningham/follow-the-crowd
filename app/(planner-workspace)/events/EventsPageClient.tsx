@@ -1812,7 +1812,7 @@ function EventsPageClientView({
             count={historyBulkManage.confirmCount}
             loading={historyBulkManage.removing}
             title="Delete selected history?"
-            description="This will permanently remove the selected events from your history. This action cannot be undone."
+            description="The selected events will be permanently removed from your history. This can't be undone"
             cancelLabel="Cancel"
             confirmLabel="Delete"
             confirmLoadingLabel="Deleting"
