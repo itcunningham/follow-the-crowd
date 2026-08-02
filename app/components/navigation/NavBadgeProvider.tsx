@@ -10,6 +10,10 @@ import {
   type ReactNode,
 } from "react";
 import { useGuardProfile } from "@/app/components/GuardProfileContext";
+import {
+  notifyBookingRequestsChanged,
+  subscribeToBookingRequestChanges,
+} from "@/lib/bookings/bookingRequestsSync";
 import { loadNavigationBadgeData } from "@/lib/navigationBadges";
 import {
   ensureGigsPendingPrefetched,
@@ -336,6 +340,24 @@ export function NavBadgeProvider({ children }: { children: ReactNode }) {
       supabase.removeChannel(channel);
     };
   }, [userId, refreshBadgeCounts]);
+
+  /**
+   * App-wide `booking_requests` subscription.
+   *
+   * This provider is mounted for every signed-in user on every page, so one
+   * subscription here covers the planner's event views, the DJ's Gigs list and
+   * counts, the Calendar and any open DM — instead of each screen wiring its own
+   * (and the screens that never had one silently going stale). The handler only
+   * invalidates and lets each view refetch, so the database stays the source of
+   * truth for every account and device.
+   */
+  useEffect(() => {
+    if (!userId) {
+      return;
+    }
+
+    return subscribeToBookingRequestChanges(userId, notifyBookingRequestsChanged);
+  }, [userId]);
 
   return <NavBadgeContext.Provider value={state}>{children}</NavBadgeContext.Provider>;
 }

@@ -143,6 +143,19 @@ export function hasGigsTabBookingsCache(tab: DjGigsListTab): boolean {
   return sessionState != null && sessionState.tabBookings[tab] != null;
 }
 
+/**
+ * Drops the cached booking rows after a status change, so the instant-paint seed
+ * on the next Gigs mount can't briefly show a gig under its old tab.
+ *
+ * Deliberately keeps the sender-profile and event-artwork lookups: those are
+ * keyed by id and are not status-dependent, so clearing them would only cause
+ * avatars and cover art to refetch and flicker for no benefit. (The test helper
+ * below still clears everything, to keep tests fully isolated.)
+ */
+export function clearGigsListTabBookingsCache(): void {
+  sessionState = null;
+}
+
 export function clearGigsListTabBookingsCacheForTests(): void {
   sessionState = null;
   memorySenderProfiles = new Map();

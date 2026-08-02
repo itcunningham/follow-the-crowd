@@ -9,12 +9,14 @@ import {
   type GigsTabCountsSnapshot,
 } from "@/lib/bookings/gigsTabCountsCache";
 import {
+  clearGigsListTabBookingsCache,
   clearGigsListTabBookingsCacheForTests,
   mergeGigsEventArtwork,
   mergeGigsSenderProfiles,
   type GigsEventArtworkSnapshot,
   writeGigsListSessionState,
 } from "@/lib/bookings/gigsListTabBookingsCache";
+import { registerBookingRequestsChangeListener } from "@/lib/bookings/bookingRequestsSync";
 import { canViewGigsSubNav } from "@/lib/plannerEventsNav";
 import { getEventArtworkByIds } from "@/lib/events";
 import {
@@ -224,6 +226,30 @@ export function loadGigsListSnapshot(options?: { force?: boolean }): Promise<Gig
 export function readGigsListMemorySnapshot(): GigsListSnapshot | null {
   return memorySnapshot;
 }
+
+/**
+ * Drops the shared Gigs snapshot so the next read refetches from the database.
+ *
+ * `memorySnapshot` is module-scoped and survives client-side navigation, so
+ * without this a booking whose status changed keeps rendering under its old tab
+ * (and with its old counts) until a full page load clears the module. That is
+ * why accepting from the DM used to leave the gig sitting under Incoming: the
+ * mutation only fired the `ftc-notifications-updated` window event, which just
+ * refreshes views that happen to be *mounted* — the Gigs list is unmounted while
+ * the user is in the DM, so nothing invalidated this cache.
+ *
+ * Call this from `notifyBookingRequestsChanged` rather than directly, so local
+ * mutations and realtime events reconcile through one path.
+ */
+export function invalidateGigsListSnapshot(): void {
+  memorySnapshot = null;
+  inFlightSnapshot = null;
+  clearGigsListTabBookingsCache();
+}
+
+// Reconcile this cache from the one shared booking-change entry point, so both a
+// local mutation and a realtime event from another account drop it identically.
+registerBookingRequestsChangeListener(invalidateGigsListSnapshot);
 
 export function clearGigsListSnapshotPrefetchForTests(): void {
   memorySnapshot = null;

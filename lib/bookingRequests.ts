@@ -7,7 +7,8 @@ import {
   resolveEventEndDateTime,
   resolveEventStartDateTime,
 } from "@/lib/bookingDateTime";
-import { createNotification, getNotificationCreateErrorMessage, notifyNavigationBadgesRefresh } from "@/lib/notifications";
+import { createNotification, getNotificationCreateErrorMessage } from "@/lib/notifications";
+import { notifyBookingRequestsChanged } from "@/lib/bookings/bookingRequestsSync";
 import { formatRateDisplay, formatIntegerRateDisplay, normalizeStoredRate } from "@/lib/bookingRate";
 import {
   DM_BOOKING_CANCELLED_MESSAGE,
@@ -2736,6 +2737,7 @@ export async function cancelBookingRequest(
     console.error("[bookingRequests] Failed to insert booking-cancelled DM message:", cancelMessageError);
   }
 
+  notifyBookingRequestsChanged();
   return booking;
 }
 
@@ -3153,7 +3155,7 @@ export async function acceptProposedBookingRate(bookingId: string): Promise<Book
     }
   }
 
-  notifyNavigationBadgesRefresh();
+  notifyBookingRequestsChanged();
   return booking;
 }
 
@@ -3261,7 +3263,7 @@ export async function updateBookingRequestStatus(
       }
     }
 
-    notifyNavigationBadgesRefresh();
+    notifyBookingRequestsChanged();
     return booking;
   }
 
@@ -3273,7 +3275,7 @@ export async function updateBookingRequestStatus(
     "/bookings",
   );
 
-  notifyNavigationBadgesRefresh();
+  notifyBookingRequestsChanged();
   return booking;
 }
 

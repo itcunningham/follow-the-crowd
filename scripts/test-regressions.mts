@@ -9113,6 +9113,99 @@ function testBookingRateModeDescriptionsAreUnified() {
   assert.match(pillSource, /`Ask for rate · suggested \$\{formatRateDisplay\(offer\.fee\)\}`/);
 }
 
+/**
+ * Beta-blocking realtime regression: accepting a booking (from the DM, the only
+ * place the Accept action exists) left every other view stale until a hard
+ * refresh -- the planner, a "both" account, and the accepting DJ's own Gigs list.
+ *
+ * Two independent defects, both covered here:
+ *
+ * 1. CLIENT CACHE. The mutation only fired the `ftc-notifications-updated`
+ *    window event, which refreshes views that are *mounted*. The Gigs list is
+ *    unmounted while the user is in the DM, so nothing dropped the module-scoped
+ *    `memorySnapshot` in gigsListSnapshotPrefetch; the next mount re-read it
+ *    (`force: false`) and rendered the gig under its old tab with old counts.
+ *    Only a full page load cleared the module. Fixed by invalidating through one
+ *    shared entry point, `notifyBookingRequestsChanged`, which every booking
+ *    status mutation now calls.
+ *
+ * 2. DATABASE. booking_requests was never in the `supabase_realtime`
+ *    publication, so no booking event has ever been delivered to any client --
+ *    the pre-existing dm-bookings subscription included. Fixed by
+ *    scripts/setupBookingRequestsRealtime.sql, asserted below so the migration
+ *    cannot be dropped from the repo.
+ */
+function testBookingStatusChangesReconcileEverywhere() {
+  const syncSource = readFileSync(
+    new URL("../lib/bookings/bookingRequestsSync.ts", import.meta.url),
+    "utf8",
+  );
+  const bookingRequestsSource = readFileSync(
+    new URL("../lib/bookingRequests.ts", import.meta.url),
+    "utf8",
+  );
+  const prefetchSource = readFileSync(
+    new URL("../lib/bookings/gigsListSnapshotPrefetch.ts", import.meta.url),
+    "utf8",
+  );
+  const navBadgeSource = readFileSync(
+    new URL("../app/components/navigation/NavBadgeProvider.tsx", import.meta.url),
+    "utf8",
+  );
+  const realtimeSql = readFileSync(
+    new URL("../scripts/setupBookingRequestsRealtime.sql", import.meta.url),
+    "utf8",
+  );
+
+  // Every status mutation reconciles through the one shared entry point --
+  // accept, decline, rate-proposal accept, and cancel (which previously did not
+  // notify at all, so a cancellation went just as stale as an acceptance).
+  assert.doesNotMatch(bookingRequestsSource, /notifyNavigationBadgesRefresh\(\)/);
+  assert.ok(
+    (bookingRequestsSource.match(/notifyBookingRequestsChanged\(\)/g) ?? []).length >= 4,
+    "every booking status mutation should reconcile through notifyBookingRequestsChanged",
+  );
+
+  // The gigs snapshot cache registers itself as an invalidator rather than the
+  // notifier importing it (that import direction would close a cycle back
+  // through bookingRequests).
+  assert.match(prefetchSource, /registerBookingRequestsChangeListener\(invalidateGigsListSnapshot\)/);
+  assert.match(prefetchSource, /export function invalidateGigsListSnapshot/);
+  assert.match(prefetchSource, /memorySnapshot = null;[\s\S]{0,80}inFlightSnapshot = null;/);
+  assert.ok(
+    !syncSource
+      .split("\n")
+      .some((line) => line.startsWith("import") && line.includes("gigsListSnapshotPrefetch")),
+    "bookingRequestsSync must not import the gigs cache (that closes an import cycle)",
+  );
+
+  // Local mutations and remote events both land on the same function.
+  assert.match(syncSource, /export function notifyBookingRequestsChanged/);
+  assert.match(syncSource, /notifyNavigationBadgesRefresh\(\)/);
+
+  // Subscription covers BOTH sides of a booking: without the sender_id
+  // registration the planner never hears that their DJ accepted. Realtime
+  // filters match one column, so two registrations are required.
+  assert.match(syncSource, /filter: `recipient_id=eq\.\$\{userId\}`/);
+  assert.match(syncSource, /filter: `sender_id=eq\.\$\{userId\}`/);
+  assert.match(syncSource, /table: "booking_requests"/);
+  assert.match(syncSource, /event: "\*"/);
+
+  // Mounted app-wide (NavBadgeProvider renders for every signed-in user on every
+  // page) rather than per-screen, and wired to the shared notifier.
+  assert.match(navBadgeSource, /subscribeToBookingRequestChanges\(userId, notifyBookingRequestsChanged\)/);
+
+  // No banned workarounds: no polling, no forced reloads, no arbitrary timeouts.
+  for (const source of [syncSource, prefetchSource]) {
+    assert.doesNotMatch(source, /setInterval|router\.refresh|location\.reload/);
+  }
+
+  // The database half must ship with the client half, or the subscription is silent.
+  assert.match(realtimeSql, /alter publication supabase_realtime add table public\.booking_requests/);
+  assert.match(realtimeSql, /alter table public\.booking_requests replica identity full/);
+  assert.match(realtimeSql, /pg_publication_tables/);
+}
+
 async function main() {
   testPastEventDatesAreBlocked();
   testFutureEventDatesAreAllowed();
@@ -9313,6 +9406,7 @@ async function main() {
   testDjMainNavGigsCountBadge();
   testEventPlansSendPanelReusesSharedConfirmUi();
   testBookingRateModeDescriptionsAreUnified();
+  testBookingStatusChangesReconcileEverywhere();
   await testEventsHistorySelectAllButtonInteraction();
   await testEventsHistoryRemoveConfirmInteraction();
   await testDmChatReopenScroll();
