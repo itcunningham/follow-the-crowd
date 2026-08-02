@@ -7,6 +7,8 @@ import ChatNewMessagesPill from "@/app/components/dm/ChatNewMessagesPill";
 import GroupChatComposer from "@/app/components/group-chat/GroupChatComposer";
 import GroupChatEmptyState from "@/app/components/group-chat/GroupChatEmptyState";
 import GroupChatHeader from "@/app/components/group-chat/GroupChatHeader";
+import { resolveCrewChatCountdownLabel } from "@/lib/events/crewChatCountdown";
+import type { EventStatus } from "@/lib/events";
 import GroupChatMessageBubble from "@/app/components/group-chat/GroupChatMessageBubble";
 import GroupChatSystemNotice from "@/app/components/group-chat/GroupChatSystemNotice";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
@@ -42,6 +44,7 @@ import { markEventChatRead } from "@/lib/messageReads";
 import {
   formatGroupChatSystemNoticeText,
   isGroupChatSystemUpdateMessage,
+  isHiddenCrewRosterNotice,
 } from "@/lib/groupChatSystemMessages";
 import { buildChatReturnTo } from "@/lib/profileNavigation";
 import { supabase } from "@/lib/supabaseClient";
@@ -147,6 +150,8 @@ export default function EventCrewChatPage() {
     new Map(),
   );
   const [eventName, setEventName] = useState("Event");
+  const [eventDate, setEventDate] = useState<string | null>(null);
+  const [eventStatus, setEventStatus] = useState<EventStatus | null>(null);
   const [crewUnlock, setCrewUnlock] = useState<CrewChatUnlockState | null>(null);
   const [crewParticipantIds, setCrewParticipantIds] = useState<string[]>([]);
   const [crewParticipantProfiles, setCrewParticipantProfiles] = useState<
@@ -165,6 +170,10 @@ export default function EventCrewChatPage() {
   const loading = accessLoading || messagesLoading;
   const lastMessage = messages.length > 0 ? messages[messages.length - 1] : null;
   const reversedMessages = useMemo(() => [...messages].reverse(), [messages]);
+  const countdownLabel = useMemo(
+    () => resolveCrewChatCountdownLabel(eventDate, eventStatus),
+    [eventDate, eventStatus],
+  );
   const senderNameVisibility = useMemo(
     () => buildGroupChatSenderNameVisibility(messages, currentUserId),
     [messages, currentUserId],
@@ -220,6 +229,8 @@ export default function EventCrewChatPage() {
       }
 
       setEventName(access.eventName ?? "Event");
+      setEventDate(access.eventDate ?? null);
+      setEventStatus(access.eventStatus ?? null);
       setCrewUnlock(access.unlock);
     } catch (refreshError) {
       console.error("Failed to refresh group chat header:", refreshError);
@@ -309,7 +320,11 @@ export default function EventCrewChatPage() {
       const latestMessageCreatedAt =
         rows.length > 0 ? rows[rows.length - 1]?.created_at ?? null : null;
 
-      setMessages(rows.map((message) => tagChatMessageForScroll(message, userId)));
+      setMessages(
+        rows
+          .filter((message) => !isHiddenCrewRosterNotice(message.text))
+          .map((message) => tagChatMessageForScroll(message, userId)),
+      );
       setReactions(reactionsResult);
       markGroupChatOpened(latestMessageCreatedAt);
       void loadSenderProfiles(rows);
@@ -373,6 +388,8 @@ export default function EventCrewChatPage() {
 
         setCanAccessChat(true);
         setEventName(access.eventName ?? "Event");
+        setEventDate(access.eventDate ?? null);
+        setEventStatus(access.eventStatus ?? null);
         setCrewUnlock(access.unlock);
         void loadCrewParticipants(eventId);
       } catch (loadError) {
@@ -437,6 +454,10 @@ export default function EventCrewChatPage() {
         },
         async (payload) => {
           const newMessage = payload.new as EventCrewChatMessage;
+          if (isHiddenCrewRosterNotice(newMessage.text)) {
+            return;
+          }
+
           const taggedMessage = tagChatMessageForScroll(newMessage, currentUserId);
 
           captureScrollBeforeIncomingInsert(taggedMessage._clientScrollMeta.isFromCurrentUser);
@@ -683,6 +704,25 @@ export default function EventCrewChatPage() {
               />
             )}
           </header>
+
+          {/*
+            Chat sub-header: a fixed slot between the header and the scroller,
+            above the conversation and outside it, so it never scrolls away and
+            never re-layouts the message list.
+
+            It holds the event countdown today. A future pinned-message
+            component drops in here as a second child with no structural change
+            to the header, the scroller, or the list -- which is the whole point
+            of it being its own band rather than part of either neighbour.
+          */}
+          {countdownLabel ? (
+            <div
+              data-chat-subheader
+              className="shrink-0 border-b border-ftc-border-subtle bg-ftc-bg/95 px-3 py-1.5 backdrop-blur-md sm:px-4"
+            >
+              <p className="text-[11px] font-medium text-ftc-text-muted">{countdownLabel}</p>
+            </div>
+          ) : null}
 
           <div
             ref={scrollRef}

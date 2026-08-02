@@ -12,6 +12,38 @@ export function isGroupChatSystemUpdateMessage(text: string): boolean {
   );
 }
 
+/**
+ * Crew-roster notices that are no longer written and are hidden wherever they
+ * still exist: someone joining, accepting, or leaving.
+ *
+ * The emitters are gone, but rows written before that are ordinary `messages`
+ * rows and deleting them would be a data change. Hiding them at read time is
+ * what makes an existing chat open on its first human message rather than on a
+ * list of arrivals, and it costs nothing on a chat that never had them.
+ *
+ * Deliberately narrow: it matches only these three shapes, so the system-notice
+ * lane stays available for the kind of update everyone genuinely needs — a run
+ * sheet change, a new venue, a cancelled event.
+ */
+export function isHiddenCrewRosterNotice(text: string): boolean {
+  const trimmed = text.trim();
+
+  if (isGroupChatCrewOpenedNotice(trimmed)) {
+    return true;
+  }
+
+  if (!trimmed.startsWith(GROUP_CHAT_BOOKING_UPDATE_PREFIX)) {
+    return false;
+  }
+
+  const body = trimmed.slice(GROUP_CHAT_BOOKING_UPDATE_PREFIX.length).trim();
+
+  return (
+    /^.+ accepted and joined the event crew\.$/.test(body) ||
+    /^.+ is no longer scheduled for this event\./.test(body)
+  );
+}
+
 export function formatGroupChatSystemNoticeText(text: string): string {
   const trimmed = text.trim();
 
