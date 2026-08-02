@@ -8719,39 +8719,82 @@ function testEventPlansSendPanelCopyMatchesSendBookingRequestsPanel() {
 }
 
 /**
- * Rate-type picker copy (BookingRateModeField, the "Rate type" cards in the
- * Booking Request modal). The option *names* ("Fixed offer"/"Ask for rate")
- * stay as the card headings -- that terminology is reused across booking
- * summaries, event lineup cards, and notification bodies, so the picker must
- * keep matching it. Only the muted description line beneath each heading
- * carries the explanatory copy, and it follows the simplified house style:
- * no trailing full stop (the sentence-internal one stays, since each
- * description is two sentences).
+ * Rate-mode ("Fixed offer" / "Ask for rate") explanatory copy must read
+ * identically in BOTH production pickers -- they are separate components and
+ * have drifted before:
+ *   1. BookingRateModeField.tsx  -- the "Rate type" cards (Booking Request modal)
+ *   2. EventDjSendOfferControls.tsx -- the compact pills + "?" help panel used
+ *      by the Create Event and Event Plans DJ-invite rows
+ * Asserting one canonical string against both is the whole point of this test:
+ * updating only one file is exactly the failure mode that shipped stale copy to
+ * production before (see testEventPlansSendPanelCopyMatchesSendBookingRequestsPanel).
  *
- * Deliberately scoped to this component only: EventDjSendOfferControls.tsx's
- * "?" help popover is a separate rate-mode explainer with its own longer
- * copy, intentionally left unchanged here.
+ * Copy rules encoded here:
+ *  - The "Ask for rate" wording must hold whether or not the optional suggested
+ *    amount is filled in, so it must NOT mention keeping an "original offer"
+ *    (there may not be one).
+ *  - No trailing full stop (house style). The sentence-internal stop stays,
+ *    since each description is two sentences.
+ *  - The help panel sits directly beneath pills already labelled "Fixed offer" /
+ *    "Ask for rate", so it must not re-state that name; the bold label prefix is
+ *    omitted there. It stays available for other callers (crew chat), which is
+ *    asserted below so making `label` optional can't silently drop it.
  */
-function testBookingRateModeFieldDescriptions() {
-  const source = readFileSync(
+const RATE_MODE_FIXED_DESCRIPTION = "You set the amount. The DJ can accept or decline";
+const RATE_MODE_OPEN_DESCRIPTION =
+  "The DJ tells you what they'd charge. You can accept it or make your own offer";
+
+function testBookingRateModeDescriptionsAreUnified() {
+  const cardSource = readFileSync(
     new URL("../app/components/booking/BookingRateModeField.tsx", import.meta.url),
     "utf8",
   );
-
-  assert.match(source, /title: "Fixed offer",\s*\n\s*description: "Set the amount\. The DJ can accept or decline",/);
-  assert.match(
-    source,
-    /title: "Ask for rate",\s*\n\s*description: "The DJ sends their price\. You decide whether to accept",/,
+  const pillSource = readFileSync(
+    new URL("../app/components/booking/EventDjSendOfferControls.tsx", import.meta.url),
+    "utf8",
+  );
+  const helpPanelSource = readFileSync(
+    new URL("../app/components/booking/InlineOptionHelp.tsx", import.meta.url),
+    "utf8",
+  );
+  const eventDetailSource = readFileSync(
+    new URL("../app/events/[eventId]/page.tsx", import.meta.url),
+    "utf8",
   );
 
-  // Superseded wording is gone.
-  assert.doesNotMatch(source, /DJ can accept or decline your rate/);
-  assert.doesNotMatch(source, /DJ sends their price before accepting/);
+  // One canonical wording, byte-identical in both pickers.
+  assert.ok(cardSource.includes(`description: "${RATE_MODE_FIXED_DESCRIPTION}",`));
+  assert.ok(cardSource.includes(`description: "${RATE_MODE_OPEN_DESCRIPTION}",`));
+  assert.ok(pillSource.includes(`help: "${RATE_MODE_FIXED_DESCRIPTION}",`));
+  assert.ok(pillSource.includes(`help: "${RATE_MODE_OPEN_DESCRIPTION}",`));
 
-  // No trailing full stop on either description (house copy style).
-  for (const [, description] of source.matchAll(/description: "([^"]+)"/g)) {
-    assert.doesNotMatch(description, /\.$/);
+  // No trailing full stop on either description.
+  assert.doesNotMatch(RATE_MODE_FIXED_DESCRIPTION, /\.$/);
+  assert.doesNotMatch(RATE_MODE_OPEN_DESCRIPTION, /\.$/);
+
+  // Superseded wording gone from both pickers -- including the "original offer"
+  // phrasing that was wrong whenever no suggested amount had been entered.
+  for (const source of [cardSource, pillSource]) {
+    assert.doesNotMatch(source, /DJ can accept or decline your rate/);
+    assert.doesNotMatch(source, /DJ sends their price/);
+    assert.doesNotMatch(source, /exact amount/);
+    assert.doesNotMatch(source, /original offer/);
+    assert.doesNotMatch(source, /before accepting/);
   }
+
+  // Help panel under the pills omits the bold option-name prefix (no repetition
+  // of the pill directly above it).
+  assert.match(pillSource, /<InlineOptionHelpPanel help=\{activeHelp\.help\} \/>/);
+  assert.doesNotMatch(pillSource, /<InlineOptionHelpPanel[^/]*label=/);
+
+  // ...but the prefix is still supported and still used by crew chat, so making
+  // `label` optional didn't strip it from the other caller.
+  assert.match(helpPanelSource, /label\?: string;/);
+  assert.match(helpPanelSource, /\{label \? <span[^>]*>\{label\}\. <\/span> : null\}/);
+  assert.match(
+    eventDetailSource,
+    /<InlineOptionHelpPanel label=\{CREW_CHAT_HELP\.label\} help=\{CREW_CHAT_HELP\.help\} \/>/,
+  );
 }
 
 async function main() {
@@ -8950,7 +8993,7 @@ async function main() {
   testAppSplashScreenSlogan();
   testMainNavAlwaysTargetsEventsWorkspace();
   testEventPlansSendPanelCopyMatchesSendBookingRequestsPanel();
-  testBookingRateModeFieldDescriptions();
+  testBookingRateModeDescriptionsAreUnified();
   await testEventsHistorySelectAllButtonInteraction();
   await testEventsHistoryRemoveConfirmInteraction();
   await testDmChatReopenScroll();

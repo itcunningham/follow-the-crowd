@@ -27,12 +27,12 @@ const OFFER_TYPE_OPTIONS = [
   {
     value: "fixed" as const,
     label: "Fixed offer",
-    help: "You set the exact amount. The DJ can accept or decline.",
+    help: "You set the amount. The DJ can accept or decline",
   },
   {
     value: "open" as const,
     label: "Ask for rate",
-    help: "The DJ sends their price before accepting. You can approve it or keep your original offer.",
+    help: "The DJ tells you what they'd charge. You can accept it or make your own offer",
   },
 ];
 
@@ -112,7 +112,7 @@ export default function EventDjSendOfferControls({
       </div>
 
       {activeHelp ? (
-        <InlineOptionHelpPanel label={activeHelp.label} help={activeHelp.help} />
+        <InlineOptionHelpPanel help={activeHelp.help} />
       ) : null}
 
       <BookingRateField

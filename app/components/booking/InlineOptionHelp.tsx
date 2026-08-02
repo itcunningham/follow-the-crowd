@@ -32,12 +32,17 @@ export function InlineOptionHelpPanel({
   label,
   help,
 }: {
-  label: string;
+  /**
+   * Bold lead-in naming what the help is about. Omit when the panel sits
+   * directly beneath a control already showing that same name, so the copy
+   * doesn't immediately repeat the heading.
+   */
+  label?: string;
   help: string;
 }) {
   return (
     <p className="rounded-lg border border-ftc-border-subtle bg-ftc-bg-elevated px-3 py-2 text-xs leading-relaxed text-ftc-text-muted">
-      <span className="font-semibold text-ftc-text">{label}. </span>
+      {label ? <span className="font-semibold text-ftc-text">{label}. </span> : null}
       {help}
     </p>
   );
