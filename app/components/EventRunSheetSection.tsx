@@ -59,21 +59,12 @@ const RUN_SHEET_DJ_COLUMN_CLASS = "w-[18%] min-w-[10rem]";
 const RUN_SHEET_SET_TIME_BUTTON_CLASS =
   "ftc-field-trigger inline-flex w-full min-h-[2.25rem] items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium sm:min-h-[2rem] lg:max-w-[11rem]";
 const RUN_SHEET_NOTES_COLUMN_CLASS = "w-[28%] min-w-[10rem]";
-/** Visible rows the Notes field shows before it scrolls internally. The field is
- * pinned to this height by `.ftc-run-sheet-notes-textarea` and never grows into
- * it; this keeps the JS ceiling from contradicting the CSS pin. */
-const RUN_SHEET_NOTES_MAX_ROWS = 4;
-/** Visible rows the Stage / Area field grows to before it stops and scrolls. */
-const RUN_SHEET_STAGE_AREA_MAX_ROWS = 2;
+/** Visible rows each field is pinned to. Mirrors the `.ftc-run-sheet-textarea-N`
+ * modifier that owns the height; used for the `rows` attribute so the field is
+ * the right size before the stylesheet applies. */
+const RUN_SHEET_NOTES_VISIBLE_ROWS = 4;
+const RUN_SHEET_STAGE_AREA_VISIBLE_ROWS = 2;
 const RUN_SHEET_STAGE_AREA_MAX_LENGTH = 50;
-/**
- * Row height every capped Run Sheet textarea is sized in, declared rather than
- * measured. `leading-6` on the fields, the `.ftc-run-sheet-*-textarea` rules and
- * the <=639px zoom-prevention rule all resolve to this same 1.5rem, so the cap
- * never has to trust a computed value that might come back `normal` — which
- * would previously make the clamp below skip itself and let the field grow.
- */
-const RUN_SHEET_TEXTAREA_LINE_HEIGHT_PX = 24;
 
 function getFixedField(key: (typeof FIXED_FIELDS)[number]["key"]) {
   const field = FIXED_FIELDS.find((item) => item.key === key);
@@ -309,103 +300,59 @@ function RunSheetSetTimeField({
   );
 }
 
-function RunSheetAutoGrowTextarea({
+/**
+ * The Run Sheet's two capped text fields. Height is owned entirely by the
+ * `.ftc-run-sheet-textarea-*` rules, which pin height/min-height/max-height to
+ * one value — there is deliberately no JS sizing here.
+ *
+ * The auto-grow effect this replaces measured `line-height` at runtime to build
+ * a ceiling, and skipped the clamp when that measurement wasn't numeric. Above
+ * the 639px breakpoint, with no line-height source applying, it computed to
+ * `normal`, `parseFloat` returned NaN, the guard fell through and the field
+ * grew to fit its text. Pinning in CSS removes the negotiation rather than
+ * tuning it: nothing measures, so nothing can disagree.
+ *
+ * `rows` still matches the pinned row count so the field is the right size in
+ * the moment before the stylesheet applies.
+ */
+function RunSheetCappedTextarea({
   value,
   onChange,
   className,
-  minRows = 1,
-  placeholder,
-  expandWhenWrapped = false,
-  maxRows,
+  maxLength,
+  rows,
 }: {
   value: string;
   onChange: (value: string) => void;
   className: string;
-  minRows?: number;
-  placeholder?: string;
-  expandWhenWrapped?: boolean;
-  /** Caps the auto-grow at this many visible rows; the field scrolls after it. */
-  maxRows?: number;
+  maxLength: number;
+  rows: number;
 }) {
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const singleLineHeightRef = useRef<number | null>(null);
-
-  const adjustHeight = useCallback(() => {
-    const textarea = textareaRef.current;
-
-    if (!textarea) {
-      return;
-    }
-
-    if (expandWhenWrapped && singleLineHeightRef.current === null) {
-      const savedValue = textarea.value;
-      textarea.value = "";
-      textarea.style.height = "auto";
-      singleLineHeightRef.current = textarea.scrollHeight;
-      textarea.value = savedValue;
-    }
-
-    textarea.style.height = "auto";
-    const nextHeight = textarea.scrollHeight;
-    const measuredStyles = window.getComputedStyle(textarea);
-    // scrollHeight covers content + padding but not the border, while the
-    // height being set is a border-box height. Every branch below adds the
-    // border back, otherwise the content box lands a border short and, under
-    // `overflow-y: auto`, the field sits permanently scrolled a couple of
-    // pixels and clips its own last line.
-    const verticalBorder =
-      parseFloat(measuredStyles.borderTopWidth) + parseFloat(measuredStyles.borderBottomWidth);
-
-    if (
-      expandWhenWrapped &&
-      singleLineHeightRef.current !== null &&
-      nextHeight <= singleLineHeightRef.current + 1
-    ) {
-      textarea.style.height = `${singleLineHeightRef.current + verticalBorder}px`;
-      return;
-    }
-
-    // Ceiling mirrors the field's own `max-height` (see the
-    // `.ftc-run-sheet-*-textarea` rules) and is built from the declared row
-    // height, never from a measured one.
-    //
-    // This used to read `line-height` off the element and skip the clamp
-    // entirely when it wasn't numeric. That is exactly what happened: with the
-    // bespoke rule not applied and above the 639px breakpoint, nothing else set
-    // a line-height, so it computed to `normal`, `parseFloat` gave NaN, the
-    // guard fell through, and the field grew to fit all its text — five or six
-    // rows in the narrow Stage column. A cap that silently disables itself when
-    // a style is missing is the bug; using the declared constant means it
-    // always applies.
-    if (maxRows !== undefined) {
-      const verticalPadding =
-        parseFloat(measuredStyles.paddingTop) + parseFloat(measuredStyles.paddingBottom);
-      const maxHeight =
-        RUN_SHEET_TEXTAREA_LINE_HEIGHT_PX * maxRows + verticalPadding + verticalBorder;
-
-      textarea.style.height = `${Math.min(nextHeight + verticalBorder, maxHeight)}px`;
-      return;
-    }
-
-    textarea.style.height = `${nextHeight}px`;
-  }, [expandWhenWrapped, maxRows]);
-
-  useEffect(() => {
-    adjustHeight();
-  }, [value, adjustHeight, className]);
+  const length = countUnicodeCharacters(value);
 
   return (
-    <textarea
-      ref={textareaRef}
-      value={value}
-      rows={minRows}
-      placeholder={placeholder}
-      onChange={(event) => {
-        onChange(event.target.value);
-        requestAnimationFrame(adjustHeight);
-      }}
-      className={className}
-    />
+    <div>
+      <textarea
+        value={value}
+        rows={rows}
+        onChange={(event) => {
+          // Shared character-cap helper: it permits deletions when a stored
+          // value is already over the limit, so legacy content stays editable
+          // instead of being locked or silently truncated on load.
+          const limited = applyTextInputLimit(value, event.target.value, maxLength);
+
+          if (limited === null) {
+            return;
+          }
+
+          onChange(limited);
+        }}
+        className={className}
+      />
+      <p className={`ftc-form-notes-counter ${length > maxLength ? "is-over-limit" : ""}`}>
+        {length} / {maxLength}
+      </p>
+    </div>
   );
 }
 
@@ -503,79 +450,26 @@ function renderRunSheetFieldInput({
   }
 
   if (field.key === "notes") {
-    const noteValue = row[field.key];
-    const noteLength = countUnicodeCharacters(noteValue);
-
     return (
-      <div>
-        <RunSheetAutoGrowTextarea
-          value={noteValue}
-          onChange={(value) => {
-            // Same character-cap helper every other capped FTC field uses:
-            // it allows deletions when an existing note is already over the
-            // limit, so legacy notes stay editable rather than being locked
-            // or silently truncated on load.
-            const limited = applyTextInputLimit(noteValue, value, MAX_EVENT_NOTES_LENGTH);
-
-            if (limited === null) {
-              return;
-            }
-
-            updateRow(row.id!, { [field.key]: limited });
-          }}
-          className={notesTextareaClassName}
-          minRows={2}
-          maxRows={RUN_SHEET_NOTES_MAX_ROWS}
-        />
-        <p
-          className={`ftc-form-notes-counter ${
-            noteLength > MAX_EVENT_NOTES_LENGTH ? "is-over-limit" : ""
-          }`}
-        >
-          {noteLength} / {MAX_EVENT_NOTES_LENGTH}
-        </p>
-      </div>
+      <RunSheetCappedTextarea
+        value={row[field.key]}
+        onChange={(value) => updateRow(row.id!, { [field.key]: value })}
+        className={notesTextareaClassName}
+        maxLength={MAX_EVENT_NOTES_LENGTH}
+        rows={RUN_SHEET_NOTES_VISIBLE_ROWS}
+      />
     );
   }
 
   if (field.key === "stage_area") {
-    const stageAreaValue = row[field.key];
-    const stageAreaLength = countUnicodeCharacters(stageAreaValue);
-
     return (
-      <div>
-        <RunSheetAutoGrowTextarea
-          value={stageAreaValue}
-          onChange={(value) => {
-            // Same helper the Notes field uses: it permits deletions when an
-            // existing value is already over the cap, so a longer legacy
-            // stage/area stays editable instead of being locked or silently
-            // truncated the moment the row loads.
-            const limited = applyTextInputLimit(
-              stageAreaValue,
-              value,
-              RUN_SHEET_STAGE_AREA_MAX_LENGTH,
-            );
-
-            if (limited === null) {
-              return;
-            }
-
-            updateRow(row.id!, { [field.key]: limited });
-          }}
-          className={stageAreaTextareaClassName}
-          minRows={1}
-          expandWhenWrapped
-          maxRows={RUN_SHEET_STAGE_AREA_MAX_ROWS}
-        />
-        <p
-          className={`ftc-form-notes-counter ${
-            stageAreaLength > RUN_SHEET_STAGE_AREA_MAX_LENGTH ? "is-over-limit" : ""
-          }`}
-        >
-          {stageAreaLength} / {RUN_SHEET_STAGE_AREA_MAX_LENGTH}
-        </p>
-      </div>
+      <RunSheetCappedTextarea
+        value={row[field.key]}
+        onChange={(value) => updateRow(row.id!, { [field.key]: value })}
+        className={stageAreaTextareaClassName}
+        maxLength={RUN_SHEET_STAGE_AREA_MAX_LENGTH}
+        rows={RUN_SHEET_STAGE_AREA_VISIBLE_ROWS}
+      />
     );
   }
 
@@ -741,29 +635,16 @@ export default function EventRunSheetSection({
    */
   const showSaveButton = hasUnsavedChanges || saving;
 
+  // Both capped fields share one sizing architecture: the base class carries the
+  // pinned line-height, internal scrolling and scroll containment, and a
+  // `-N` modifier pins height/min-height/max-height to that row count. No
+  // `min-h-*` or `leading-*` utility here on purpose — each was a second opinion
+  // about a height that now has exactly one source.
   const runSheetTextareaBaseClassName =
-    "ftc-textarea w-full resize-none overflow-x-hidden rounded-lg px-2.5 py-1.5 text-sm break-words";
+    "ftc-textarea ftc-run-sheet-textarea w-full rounded-lg px-2.5 py-1.5 text-sm break-words";
 
-  // Same treatment as Notes below: `.ftc-run-sheet-stage-textarea` owns the
-  // pinned line-height, the 2-row ceiling, the internal scrolling and the
-  // scroll containment — deliberately not `leading-normal`, whose multiplier
-  // competed with the <=639px rule's `line-height: 1.5rem`.
-  // `leading-6` is a fixed 1.5rem, matching RUN_SHEET_TEXTAREA_LINE_HEIGHT_PX,
-  // the bespoke rule and the <=639px rule. It rides on the element's own class
-  // string so the row height cannot go missing along with the bespoke rule —
-  // and it is a length, not the multiplier `leading-normal` was, which is what
-  // made the row height differ between mobile and desktop in the first place.
-  const stageAreaTextareaClassName = `${runSheetTextareaBaseClassName} ftc-run-sheet-stage-textarea min-h-[2.25rem] leading-6`;
-  // `.ftc-run-sheet-notes-textarea` owns the pinned line-height, the fixed
-  // 4-row height, the internal scrolling and the scroll containment —
-  // deliberately not `leading-relaxed`, whose multiplier competed with the
-  // <=639px rule's `line-height: 1.5rem`.
-  //
-  // No `min-h-*` here on purpose. The field used to carry `min-h-[3.25rem]`,
-  // which is a second opinion about the height of a field that now has exactly
-  // one; the rule pins min/max/height together so a shared token cannot lift it
-  // off 4 rows.
-  const notesTextareaClassName = `${runSheetTextareaBaseClassName} ftc-run-sheet-notes-textarea`;
+  const stageAreaTextareaClassName = `${runSheetTextareaBaseClassName} ftc-run-sheet-textarea-2`;
+  const notesTextareaClassName = `${runSheetTextareaBaseClassName} ftc-run-sheet-textarea-4`;
 
   const readOnlyTextClassName =
     "rounded-lg border border-ftc-border bg-ftc-bg-elevated/30 px-2.5 py-1.5 text-sm leading-relaxed text-ftc-text whitespace-pre-wrap break-words";

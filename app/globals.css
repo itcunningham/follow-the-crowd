@@ -389,67 +389,55 @@ html {
   max-height: calc(8lh + 1.25rem + 2px) !important;
 }
 
-/** Run Sheet Notes — a fixed 4 visible rows that scrolls inside the field.
+/** Run Sheet text fields — one shared sizing architecture for Stage / Area and
+ * Notes. Compose the base with a row-count modifier.
  *
- * Height is pinned, not capped. Earlier attempts only set `max-height`, which
- * left `RunSheetAutoGrowTextarea` free to write an inline `height` up to that
- * ceiling; the field grew to whatever the ceiling allowed and the ceiling was
- * the thing being tuned. Setting all three of height/min/max to one value ends
- * the negotiation: there is nothing left to grow into, so the field cannot
- * auto-grow and the Run Sheet card cannot grow with it.
+ * Height is *pinned*, not capped: height, min-height and max-height are all the
+ * same value, so there is nothing left for anything else to negotiate with and
+ * the field cannot grow. Earlier attempts set only `max-height` and left the
+ * auto-grow effect free to write an inline `height` beneath it, which made the
+ * rendered row count depend on that JS agreeing with the CSS. It didn't, and
+ * the field grew. There is now no JS sizing at all.
  *
- * `!important` is doing real work here. The auto-grow effect writes
- * `style.height` directly on the element, and an author `!important`
- * declaration outranks an inline one — without it the inline height would win
- * and the pin would be advisory. It also means no shared class or min-height
- * token (the field previously also carried `min-h-[3.25rem]`) can lift the
- * field off 4 rows.
+ * `!important` is load-bearing on the pin: an author `!important` declaration
+ * outranks an inline `style.height`, and it also stops any `min-h-*` utility
+ * lifting the field off its row count.
  *
- * `line-height` is pinned for the same reason it always was: Tailwind's
- * `leading-relaxed` (1.625, a *multiplier*) and the <=639px iOS
- * zoom-prevention rule (`line-height: 1.5rem` alongside `font-size: 1rem`)
- * were competing, so the row advance could be 22.75px, 24px or 26px depending
- * on engine. One known value is what makes the arithmetic below exact.
+ * `line-height` is pinned to a length rather than inherited. Tailwind's
+ * `leading-*` multipliers and the <=639px iOS zoom-prevention rule
+ * (`line-height: 1.5rem` alongside `font-size: 1rem`) were competing, so the
+ * row advance could be 21px, 22.75px, 24px or 26px depending on which won and
+ * on the engine — and with no line-height source at all it computes to
+ * `normal`. One declared length is what makes the arithmetic below exact.
  *
- * The height is a plain `calc()` of that literal — 4 rows + `py-1.5` + the 1px
- * borders, border-box — rather than `4lh`: the `lh` unit needs Safari 16.4+,
- * and on older iOS the whole declaration would be dropped along with the pin.
+ * Heights are a plain `calc()` of that same literal (N rows + `py-1.5` + the
+ * 1px borders, border-box) rather than `Nlh`: the `lh` unit needs Safari 16.4+
+ * and older iOS drops the whole declaration, taking the pin with it.
  *
  * `font-size` is deliberately NOT set — the <=639px rule raises it to 1rem to
- * stop iOS zooming on focus, and overriding that would reintroduce the zoom.
- * With line-height fixed, 4 rows is 4 rows at either font size. */
-.ftc-run-sheet-notes-textarea {
+ * stop iOS zooming on focus. With line-height pinned, N rows is N rows at
+ * either font size. */
+.ftc-run-sheet-textarea {
   line-height: 1.5rem !important;
-  height: calc(4 * 1.5rem + 0.75rem + 2px) !important;
-  min-height: calc(4 * 1.5rem + 0.75rem + 2px) !important;
-  max-height: calc(4 * 1.5rem + 0.75rem + 2px) !important;
+  overflow-x: hidden !important;
   overflow-y: auto !important;
   overscroll-behavior: contain;
   resize: none !important;
   box-sizing: border-box !important;
 }
 
-/** Run Sheet Stage / Area — same pattern as the Notes field above, capped at 2
- * visible rows instead of 6.
- *
- * `line-height` is pinned for the same reason: this field carried Tailwind's
- * `leading-normal` (1.5, a *multiplier*, so 21px at the desktop 14px font and
- * 24px at the <=639px rule's 16px font) while that same rule also sets
- * `line-height: 1.5rem`. Whichever won, a ceiling derived from one value while
- * rows rendered at the other would show the wrong number of rows — exactly the
- * iOS Safari mismatch the Notes field hit. Pinning it leaves one known value
- * for the cap to be built from.
- *
- * Plain `calc()` rather than `2lh` (needs Safari 16.4+, and the whole
- * declaration is dropped on older iOS, taking the ceiling with it), and no
- * `font-size` here so the <=639px rule keeps preventing iOS zoom-on-focus. */
-.ftc-run-sheet-stage-textarea {
-  line-height: 1.5rem !important;
+/** Stage / Area — short stage names. */
+.ftc-run-sheet-textarea-2 {
+  height: calc(2 * 1.5rem + 0.75rem + 2px) !important;
+  min-height: calc(2 * 1.5rem + 0.75rem + 2px) !important;
   max-height: calc(2 * 1.5rem + 0.75rem + 2px) !important;
-  overflow-y: auto !important;
-  overscroll-behavior: contain;
-  resize: none !important;
-  box-sizing: border-box !important;
+}
+
+/** Notes. */
+.ftc-run-sheet-textarea-4 {
+  height: calc(4 * 1.5rem + 0.75rem + 2px) !important;
+  min-height: calc(4 * 1.5rem + 0.75rem + 2px) !important;
+  max-height: calc(4 * 1.5rem + 0.75rem + 2px) !important;
 }
 
 /** Shared fixed-height textarea: equal height/min/max, internal scroll only. Compose with line-count modifier.
