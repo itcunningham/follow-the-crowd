@@ -2912,9 +2912,12 @@ function testProfileBioTextRendering() {
   assert.match(bioTextSource, /prefersReducedMotion/);
   assert.doesNotMatch(bioTextSource, />\s*(More|Less)\s*</);
 
-  // Toggle sits close to the bio (tight gap) and reads as secondary, not
-  // as bold/prominent as the bio text itself.
-  assert.match(bioTextSource, /mt-1 text-xs font-medium text-ftc-primary/);
+  // Toggle sits close to the bio (tightened further to `mt-0.5`, reads as
+  // secondary via `font-normal` rather than `font-medium`) -- still `text-xs`
+  // (the app's established minimum for this exact toggle pattern, matching
+  // BookingCardExpandableNotes) so it stays legible and comfortably tappable.
+  assert.match(bioTextSource, /mt-0\.5 text-xs font-normal text-ftc-primary/);
+  assert.doesNotMatch(bioTextSource, /mt-1 text-xs font-medium/);
   assert.doesNotMatch(bioTextSource, /mt-2[^"]*font-semibold/);
 
   // The 150-character limit is a save-time/typing-time concern
