@@ -658,14 +658,17 @@ function RunSheetEntry({
  * them have anything filled in yet -- distinct from `rows.length === 0`
  * (no DJs on the sheet at all), which keeps its existing dashed empty state
  * below. Two copies because a promoter and a DJ need different next steps:
- * one can act on it, the other is just told to check back. The promoter's
- * "Run Sheet" title is intentionally not repeated here for the DJ copy --
- * the section already has that heading immediately above.
+ * one can act on it, the other is just told to check back.
  *
  * Deliberately no card, border or icon -- an onboarding invitation rather
  * than an error/placeholder state, carried by typography and spacing alone.
- * `max-w-sm mx-auto` keeps both lines a comfortably short reading measure on
- * wide desktop viewports rather than stretching edge to edge.
+ * Deliberately no heading of its own either, for either branch: the section
+ * title immediately above this already says "Run Sheet", so a second "Run
+ * Sheet"/"Create your Run Sheet" line here would repeat what the planner
+ * already knows rather than tell them what to do next -- the one sentence
+ * is the whole message. `max-w-sm mx-auto` keeps that sentence a comfortably
+ * short reading measure on wide desktop viewports rather than stretching
+ * edge to edge.
  */
 function RunSheetNotCompletedEmptyState({
   canEdit,
@@ -676,7 +679,7 @@ function RunSheetNotCompletedEmptyState({
 }) {
   if (!canEdit) {
     return (
-      <div className="mt-5 py-8 text-center">
+      <div className="mt-5 py-10 text-center">
         <p className="mx-auto max-w-sm text-sm text-ftc-text-secondary">
           The promoter hasn&apos;t published the Run Sheet yet. Check back later.
         </p>
@@ -685,13 +688,12 @@ function RunSheetNotCompletedEmptyState({
   }
 
   return (
-    <div className="mt-5 py-8 text-center">
-      <p className="text-lg font-bold text-ftc-text">Create your Run Sheet</p>
-      <p className="mx-auto mt-2 max-w-sm text-sm text-ftc-text-secondary">
-        Add set times, stages and notes for each DJ so everyone knows where they need to be.
+    <div className="mt-5 py-10 text-center">
+      <p className="mx-auto max-w-sm text-sm text-ftc-text-secondary">
+        Add set times, stages and notes for your DJs.
       </p>
       <button type="button" onClick={onEditClick} className={`${EVENT_DETAIL_BTN_PRIMARY} mt-5`}>
-        Create Run Sheet
+        Create
       </button>
     </div>
   );

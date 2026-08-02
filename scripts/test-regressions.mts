@@ -9640,13 +9640,15 @@ function testRunSheetProductionPolish() {
     emptyStateFn,
     /The promoter hasn&apos;t published the Run Sheet yet\. Check back later\./,
   );
-  // An onboarding invitation, not an error/placeholder state: "Create your
-  // Run Sheet" rather than "not completed", encouraging rather than
-  // deficiency-flagging copy, and a CTA that names the action that will
-  // actually happen (a Run Sheet does not exist yet -- this creates it).
-  assert.match(emptyStateFn, /Create your Run Sheet/);
+  // No heading of its own in either branch: the section title above already
+  // says "Run Sheet", so a second "Run Sheet"/"Create your Run Sheet" line
+  // here would repeat what the planner already knows. Just one supporting
+  // sentence, and a CTA that names the action ("Create", not "Create Run
+  // Sheet" -- the planner already knows which section they are in).
+  assert.doesNotMatch(emptyStateFn, /Create your Run Sheet/);
   assert.doesNotMatch(emptyStateFn, /Run Sheet not completed/);
-  assert.match(
+  assert.match(emptyStateFn, /Add set times, stages and notes for your DJs\./);
+  assert.doesNotMatch(
     emptyStateFn,
     /Add set times, stages and notes for each DJ so everyone knows where they need to be\./,
   );
@@ -9655,7 +9657,8 @@ function testRunSheetProductionPolish() {
     /Add each DJ&apos;s set time, stage and notes before the event\./,
   );
   assert.match(emptyStateFn, /onClick=\{onEditClick\}/);
-  assert.match(emptyStateFn, />\s*Create Run Sheet\s*</);
+  assert.match(emptyStateFn, />\s*Create\s*</);
+  assert.doesNotMatch(emptyStateFn, />\s*Create Run Sheet\s*</);
   assert.doesNotMatch(emptyStateFn, />\s*Edit Run Sheet\s*</);
 
   // No dashed card, no icon: typography and spacing carry the state, not a
@@ -9664,11 +9667,23 @@ function testRunSheetProductionPolish() {
   assert.doesNotMatch(emptyStateFn, /ftc-card-empty/);
   assert.doesNotMatch(emptyStateFn, /<svg/);
 
-  // The DJ branch does not repeat "Run Sheet" as its own heading -- the
-  // section title immediately above already says that.
+  // Neither branch repeats "Run Sheet" as its own heading -- the section
+  // title immediately above already says that. Checked per-branch (not just
+  // "the whole function contains no heading") so a future edit can't
+  // reintroduce one in just the planner half and slip past a whole-function
+  // check.
   const djBranch = emptyStateFn.match(/if \(!canEdit\) \{[\s\S]*?\n  \}/)?.[0] ?? "";
   assert.ok(djBranch, "the !canEdit branch must exist");
   assert.doesNotMatch(djBranch, />\s*Run Sheet\s*</);
+  // Everything after the !canEdit branch's own closing brace is the canEdit
+  // (planner) branch -- derived from djBranch's match boundary rather than a
+  // hardcoded offset, so this stays correct if the source is reformatted.
+  const plannerBranch = emptyStateFn.slice(
+    emptyStateFn.indexOf(djBranch) + djBranch.length,
+  );
+  assert.ok(plannerBranch.includes("Add set times"), "the canEdit branch must exist");
+  assert.doesNotMatch(plannerBranch, />\s*Run Sheet\s*</);
+  assert.doesNotMatch(plannerBranch, />\s*Create your Run Sheet\s*</);
 
   // Progress: derived from `rows` (live during editing), hidden exactly when
   // the dedicated all-incomplete empty state replaces the list so the same
