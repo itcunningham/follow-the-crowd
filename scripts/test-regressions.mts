@@ -8676,6 +8676,123 @@ function testLoginScreenPolish() {
  * `sort_order` is excluded on purpose: `reorderRunSheetRows` derives it from
  * array position, so including it would only restate the order.
  */
+/**
+ * Initial-load dirty state: opening an event that already has an accepted DJ on
+ * the run sheet, touching nothing, must NOT show the Save button.
+ *
+ * The invariant that guarantees this is in `syncAcceptedDjs`: every path that
+ * ends with the rows actually being in the database returns the *same* value
+ * for `rows` and `persistedRows`, so `hasUnsavedRunSheetEdits(savedRows, rows)`
+ * compares a value with itself and is necessarily false. The one path that
+ * deliberately returns different values is the `catch` -- the accepted-DJ
+ * auto-add failed to persist, so the rows really are local-only and must read
+ * as unsaved so the planner can save them by hand.
+ *
+ * These assertions pin both halves of that: the value-level dirty check for the
+ * row shapes each path produces, and the structural shape of the sync function
+ * itself, so a future refactor can't quietly start returning two separately
+ * built arrays (which would false-dirty on load even when they're equal today).
+ */
+function testRunSheetInitialLoadIsNotDirty() {
+  const persistedRow = (id: string, overrides: Partial<RunSheetRowInput> = {}): RunSheetRowInput => ({
+    id,
+    sort_order: 0,
+    artist_name: `DJ ${id}`,
+    start_time: "9:00 PM",
+    finish_time: "10:00 PM",
+    stage_area: "Main",
+    notes: "",
+    booking_request_id: `br-${id}`,
+    booking_recipient_id: `u-${id}`,
+    ...overrides,
+  });
+
+  // (1) Existing persisted run sheet, nothing edited. Both sides come from the
+  // same load, so the button stays hidden.
+  const loaded = reorderRunSheetRows([persistedRow("a")]);
+  assert.equal(
+    hasUnsavedRunSheetEdits(loaded, loaded),
+    false,
+    "a persisted accepted DJ must not read as unsaved on first load",
+  );
+
+  // (2) Accepted DJ auto-added AND successfully persisted during the initial
+  // sync: the DB round-trip result becomes both the displayed rows and the
+  // baseline, so it is still clean.
+  const persistedAfterAutoAdd = reorderRunSheetRows([persistedRow("a"), persistedRow("b")]);
+  assert.equal(
+    hasUnsavedRunSheetEdits(persistedAfterAutoAdd, persistedAfterAutoAdd),
+    false,
+    "an accepted DJ that auto-persisted during sync must not read as unsaved",
+  );
+
+  // (3) Auto-add failed to persist: the extra row exists only in the browser,
+  // so it must stay dirty and keep the Save button available.
+  const localOnly = reorderRunSheetRows([
+    persistedRow("a"),
+    { ...persistedRow("b"), id: undefined },
+  ]);
+  assert.equal(
+    hasUnsavedRunSheetEdits(loaded, localOnly),
+    true,
+    "a local-only accepted DJ after a failed auto-add must read as unsaved",
+  );
+
+  // (4) Normalisation must never manufacture a dirty state. Same content, but
+  // nullish where the other side has "" (the two row producers differ:
+  // mapRunSheetRowsFromDb passes the column through, createEmptyRunSheetRow
+  // always uses ""), plus a differing derived sort_order.
+  const nullish = [
+    {
+      ...persistedRow("a"),
+      notes: null as unknown as string,
+      stage_area: null as unknown as string,
+      start_time: undefined as unknown as string,
+      finish_time: undefined as unknown as string,
+      sort_order: 99,
+    },
+  ];
+  const emptyStrings = [
+    {
+      ...persistedRow("a"),
+      notes: "",
+      stage_area: "",
+      start_time: "",
+      finish_time: "",
+      sort_order: 0,
+    },
+  ];
+  assert.equal(
+    hasUnsavedRunSheetEdits(nullish, emptyStrings),
+    false,
+    "null/undefined vs empty string is a storage detail, not a planner edit",
+  );
+
+  // Real differences in those same fields must still register, so the
+  // coalescing above can't be masking genuine edits.
+  assert.equal(
+    hasUnsavedRunSheetEdits(emptyStrings, [{ ...emptyStrings[0], notes: "load in at 8" }]),
+    true,
+    "a real note is still an edit",
+  );
+
+  const sectionSource = readFileSync(
+    new URL("../app/components/EventRunSheetSection.tsx", import.meta.url),
+    "utf8",
+  );
+
+  // Structural half: the sync contract. Both success paths hand back one value
+  // used for both fields; only the catch builds them separately.
+  assert.match(sectionSource, /return \{ rows: unchanged, persistedRows: unchanged \}/);
+  assert.match(sectionSource, /return \{ rows: persisted, persistedRows: persisted \}/);
+  assert.match(sectionSource, /persistedRows: currentFiltered\(\)/);
+
+  // The baseline is seeded from the sync's persisted result, never from the
+  // displayed rows -- seeding it from `synced.rows` would make a failed
+  // auto-add look saved and silently drop the planner's only way to retry.
+  assert.match(sectionSource, /setRows\(synced\.rows\);\s*setSavedRows\(synced\.persistedRows\);/);
+}
+
 function testRunSheetDirtyStateAndSaveFeedback() {
   const row = (id: string, overrides: Partial<RunSheetRowInput> = {}): RunSheetRowInput => ({
     id,
@@ -9623,6 +9740,7 @@ async function main() {
   testQaEnvironmentResetScript();
   testLoginScreenPolish();
   testEventNotesTextareaScrollsWhenContentExceedsCap();
+  testRunSheetInitialLoadIsNotDirty();
   testRunSheetDirtyStateAndSaveFeedback();
   testAppSplashScreenSlogan();
   testRoleAwareWorkspaceNavigation();

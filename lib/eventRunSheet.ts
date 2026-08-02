@@ -475,11 +475,20 @@ function serializeRunSheetRows(rows: RunSheetRowInput[]): string {
       row.id ?? "",
       row.booking_request_id ?? "",
       row.booking_recipient_id ?? "",
-      row.artist_name,
-      row.stage_area,
-      row.start_time,
-      row.finish_time,
-      row.notes,
+      // Every field is null-coalesced, not just the ids. `RunSheetRowInput`
+      // types these as `string`, but rows reach this from two different
+      // producers -- `mapRunSheetRowsFromDb` (straight passthrough of whatever
+      // the column holds) and `createEmptyRunSheetRow` (always `""`) -- so a
+      // nullish value on one side and `""` on the other would serialize as
+      // `null` vs `""` and read as an edit the planner never made. Values are
+      // NOT trimmed here: trimming is a save-time transform
+      // (`buildRunSheetRowFields`), so treating " Main" as equal to "Main"
+      // would hide a genuine pending edit.
+      row.artist_name ?? "",
+      row.stage_area ?? "",
+      row.start_time ?? "",
+      row.finish_time ?? "",
+      row.notes ?? "",
     ]),
   );
 }
