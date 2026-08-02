@@ -53,6 +53,7 @@ import {
 import {
   syncReadInboxNotifications,
 } from "@/lib/inboxUnread";
+import { rtLog, rtLogChannelStatus } from "@/lib/diagnostics/realtimeDiagnostics";
 import {
   getUnreadConversationIds,
   getUnreadEventChatIds,
@@ -763,6 +764,12 @@ function DmInboxPageContent() {
         },
         (payload) => {
           const newMessage = payload.new as Message;
+          rtLog("payload", "dm-inbox:messages INSERT", {
+            id: newMessage?.id,
+            user_id: newMessage?.user_id,
+            text:
+              typeof newMessage?.text === "string" ? newMessage.text.slice(0, 60) : null,
+          });
           const groupTargetId = extractGroupChatTargetId(newMessage);
 
           if (groupTargetId) {
@@ -882,7 +889,9 @@ function DmInboxPageContent() {
           }
         },
       )
-      .subscribe();
+      .subscribe((status, error) => {
+        rtLogChannelStatus("dm-inbox:messages", status, error);
+      });
 
     return () => {
       supabase.removeChannel(channel);

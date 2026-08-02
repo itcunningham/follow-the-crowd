@@ -1,5 +1,10 @@
 import { supabase } from "@/lib/supabaseClient";
 import { notifyNavigationBadgesRefresh } from "@/lib/notifications";
+import {
+  rtLog,
+  rtLogBookingPayload,
+  rtLogChannelStatus,
+} from "@/lib/diagnostics/realtimeDiagnostics";
 
 /**
  * Single reconciliation point for `booking_requests` status changes.
@@ -39,7 +44,16 @@ export function registerBookingRequestsChangeListener(
  * the shared subscription below calls it for changes made by anyone else.
  */
 export function notifyBookingRequestsChanged(): void {
-  for (const listener of [...listeners]) {
+  const registered = [...listeners];
+
+  // DIAGNOSTIC: a zero count here means the reconciliation callback ran but had
+  // nothing registered to invalidate -- i.e. the cache module was never loaded
+  // in this route's bundle. That is invisible without this log.
+  rtLog("notify", "notifyBookingRequestsChanged", {
+    registeredListeners: registered.length,
+  });
+
+  for (const listener of registered) {
     try {
       listener();
     } catch (listenerError) {
@@ -47,6 +61,7 @@ export function notifyBookingRequestsChanged(): void {
     }
   }
 
+  rtLog("notify", "dispatching ftc-notifications-updated (this tab only)");
   notifyNavigationBadgesRefresh();
 }
 
@@ -77,8 +92,12 @@ export function subscribeToBookingRequestChanges(
   userId: string,
   onChange: () => void,
 ): () => void {
+  const channelName = `booking-requests:${userId}`;
+
+  rtLog("subscribe", `creating ${channelName}`, { userId });
+
   const channel = supabase
-    .channel(`booking-requests:${userId}`)
+    .channel(channelName)
     .on(
       "postgres_changes",
       {
@@ -87,7 +106,10 @@ export function subscribeToBookingRequestChanges(
         table: "booking_requests",
         filter: `recipient_id=eq.${userId}`,
       },
-      onChange,
+      (payload) => {
+        rtLogBookingPayload(`${channelName}[recipient_id]`, payload);
+        onChange();
+      },
     )
     .on(
       "postgres_changes",
@@ -97,11 +119,17 @@ export function subscribeToBookingRequestChanges(
         table: "booking_requests",
         filter: `sender_id=eq.${userId}`,
       },
-      onChange,
+      (payload) => {
+        rtLogBookingPayload(`${channelName}[sender_id]`, payload);
+        onChange();
+      },
     )
-    .subscribe();
+    .subscribe((status, error) => {
+      rtLogChannelStatus(channelName, status, error);
+    });
 
   return () => {
+    rtLog("subscribe", `removing ${channelName}`);
     supabase.removeChannel(channel);
   };
 }

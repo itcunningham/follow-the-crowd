@@ -17,6 +17,7 @@ import {
   writeGigsListSessionState,
 } from "@/lib/bookings/gigsListTabBookingsCache";
 import { registerBookingRequestsChangeListener } from "@/lib/bookings/bookingRequestsSync";
+import { rtLog } from "@/lib/diagnostics/realtimeDiagnostics";
 import { canViewGigsSubNav } from "@/lib/plannerEventsNav";
 import { getEventArtworkByIds } from "@/lib/events";
 import {
@@ -242,6 +243,13 @@ export function readGigsListMemorySnapshot(): GigsListSnapshot | null {
  * mutations and realtime events reconcile through one path.
  */
 export function invalidateGigsListSnapshot(): void {
+  // DIAGNOSTIC: proves whether the gigs cache actually got dropped, and whether
+  // there was a cached snapshot to drop at the time.
+  rtLog("cache", "invalidateGigsListSnapshot", {
+    hadMemorySnapshot: memorySnapshot != null,
+    hadInFlight: inFlightSnapshot != null,
+  });
+
   memorySnapshot = null;
   inFlightSnapshot = null;
   clearGigsListTabBookingsCache();
@@ -249,6 +257,7 @@ export function invalidateGigsListSnapshot(): void {
 
 // Reconcile this cache from the one shared booking-change entry point, so both a
 // local mutation and a realtime event from another account drop it identically.
+rtLog("cache", "gigsListSnapshotPrefetch module evaluated -> registering invalidator");
 registerBookingRequestsChangeListener(invalidateGigsListSnapshot);
 
 export function clearGigsListSnapshotPrefetchForTests(): void {
