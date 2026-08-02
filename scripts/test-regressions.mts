@@ -9289,6 +9289,39 @@ function testRealtimeInstrumentationIsFullyRemoved() {
   );
 }
 
+function testIosOverscrollDoesNotClipFixedChrome() {
+  const globalsSource = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
+  const navSource = readFileSync(
+    new URL("../app/components/AppNavigation.tsx", import.meta.url),
+    "utf8",
+  );
+
+  // The document must not rubber-band. The bottom nav is position:fixed, so it
+  // is anchored to the layout viewport; an iOS bounce moves the visual viewport
+  // past it and the bar stops tracking the screen edge, reading as clipped.
+  assert.match(globalsSource, /html \{[\s\S]*?overscroll-behavior-y: none;[\s\S]*?\n\}/);
+
+  // Suppressing the bounce must not turn the root into a second scroll
+  // container, which would double-scroll the whole app.
+  assert.doesNotMatch(globalsSource, /html \{[\s\S]*?overflow-y: (auto|scroll|hidden);[\s\S]*?\n\}/);
+
+  // The fixed mobile bar paints solid: a translucent background plus a backdrop
+  // blur has to resample the content behind it every frame of the bounce, which
+  // is what flashes through on older GPUs.
+  assert.match(
+    globalsSource,
+    /\.ftc-mobile-nav-bar \{\s*background: var\(--ftc-color-bg-base\);\s*backdrop-filter: none;\s*\}/,
+  );
+
+  // The desktop bar is sticky, never rubber-bands, and keeps its blur.
+  assert.match(globalsSource, /\.ftc-nav-bar \{[\s\S]*?backdrop-filter: blur\(16px\);[\s\S]*?\n\}/);
+
+  // Safe-area handling stays on the bar itself, so its background extends behind
+  // the home indicator instead of leaving a strip the bounce can expose.
+  assert.match(navSource, /pb-\[env\(safe-area-inset-bottom\)\]/);
+  assert.match(navSource, /ftc-mobile-nav-bar fixed inset-x-0 bottom-0/);
+}
+
 async function main() {
   testPastEventDatesAreBlocked();
   testFutureEventDatesAreAllowed();
@@ -9489,6 +9522,7 @@ async function main() {
   testDjMainNavGigsCountBadge();
   testEventPlansSendPanelReusesSharedConfirmUi();
   testBookingRateModeDescriptionsAreUnified();
+  testIosOverscrollDoesNotClipFixedChrome();
   testBookingStatusChangesReconcileEverywhere();
   testBookingAcceptedDmMessageIsScopedToTheBooking();
   testRealtimeInstrumentationIsFullyRemoved();

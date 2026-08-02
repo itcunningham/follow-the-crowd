@@ -86,6 +86,20 @@ body {
 
 html {
   overflow-x: clip;
+
+  /* Stop the iOS rubber-band bounce at the document level.
+   *
+   * The bottom nav is `position: fixed`, which anchors it to the *layout*
+   * viewport. During a bounce iOS moves the *visual* viewport past the layout
+   * viewport, so the bar stops tracking the physical screen edge and reads as
+   * clipped -- worst on Home-button devices, where `safe-area-inset-bottom` is
+   * 0 and the bar already sits flush against the edge with nothing to spare.
+   *
+   * This only suppresses overscroll *past the ends of the document*. Normal
+   * page scrolling is untouched, and inner scrollers keep their own native
+   * scrolling (several already set `overscroll-behavior: contain` to stop
+   * scroll chaining), so this adds no second scroll container. */
+  overscroll-behavior-y: none;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -1359,6 +1373,21 @@ html {
   border-color: var(--ftc-color-border-subtle);
   background: var(--ftc-color-bg-overlay);
   backdrop-filter: blur(16px);
+}
+
+/* The mobile bar is `position: fixed` over scrolling content, so it is the one
+ * nav that iOS re-rasterises during a bounce. A translucent background plus a
+ * backdrop blur has to resample the content behind it every frame, and on older
+ * GPUs (iPhone SE) that resample visibly lags the bounce -- the edges flash
+ * through mid-gesture, which reads as the bar being cut off. Painting it solid
+ * removes the per-frame resample entirely; at 0.96 alpha over the same base
+ * colour there is no perceptible difference when the page is at rest.
+ *
+ * The desktop bar keeps the blur: it is `sticky`, not `fixed`, and never
+ * rubber-bands. */
+.ftc-mobile-nav-bar {
+  background: var(--ftc-color-bg-base);
+  backdrop-filter: none;
 }
 
 @media (max-width: 767px) {
