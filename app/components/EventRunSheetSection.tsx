@@ -37,6 +37,7 @@ import {
   filterRunSheetRowsToAcceptedBookings,
   getRunSheetLoadErrorMessage,
   getRunSheetSaveErrorMessage,
+  hasUnsavedRunSheetEdits,
   loadEventRunSheet,
   logRunSheetSaveError,
   mapRunSheetRowsFromDb,
@@ -65,8 +66,13 @@ const RUN_SHEET_NOTES_VISIBLE_ROWS = 4;
 const RUN_SHEET_STAGE_AREA_VISIBLE_ROWS = 2;
 const RUN_SHEET_STAGE_AREA_MAX_LENGTH = 50;
 
+// `disabled:opacity-30` + flattening the border/background to their subtle
+// variants (rather than opacity alone on the strong-border/hover-ready
+// styling) so a row at either end of the sheet reads as clearly inert, not
+// merely a slightly faded version of a still-active control. Layout (size,
+// position) is unchanged -- only colour and opacity respond to `disabled`.
 const iconButtonBaseClassName =
-  "flex h-8 w-8 shrink-0 items-center justify-center rounded-md border transition disabled:cursor-not-allowed disabled:opacity-40";
+  "flex h-8 w-8 shrink-0 items-center justify-center rounded-md border transition disabled:cursor-not-allowed disabled:border-ftc-border-subtle disabled:bg-transparent disabled:text-ftc-text-muted disabled:opacity-30";
 
 function RowMoveButton({
   direction,
@@ -345,12 +351,14 @@ function RunSheetCappedTextarea({
   className,
   maxLength,
   rows,
+  placeholder,
 }: {
   value: string;
   onChange: (value: string) => void;
   className: string;
   maxLength: number;
   rows: number;
+  placeholder?: string;
 }) {
   const length = countUnicodeCharacters(value);
 
@@ -358,6 +366,7 @@ function RunSheetCappedTextarea({
     <div>
       <textarea
         value={value}
+        placeholder={placeholder}
         rows={rows}
         onKeyDown={(event) => {
           // `isComposing` guard: mid-composition Return commits an IME
@@ -605,6 +614,7 @@ function RunSheetEntry({
                   className={stageAreaTextareaClassName}
                   maxLength={RUN_SHEET_STAGE_AREA_MAX_LENGTH}
                   rows={RUN_SHEET_STAGE_AREA_VISIBLE_ROWS}
+                  placeholder="Enter stage"
                 />
               </label>
             ) : stagePreview ? (
@@ -641,6 +651,7 @@ function RunSheetEntry({
                   className={notesTextareaClassName}
                   maxLength={MAX_EVENT_NOTES_LENGTH}
                   rows={RUN_SHEET_NOTES_VISIBLE_ROWS}
+                  placeholder="Add notes"
                 />
               </label>
             ) : row.notes.trim() ? (
@@ -858,11 +869,7 @@ export default function EventRunSheetSection({
     [rows, lineup, profiles],
   );
 
-  /**
-   * Derived from `rows` (not `savedRows`), so the progress line and the
-   * completion badge update live as the planner fills fields in during
-   * editing, not just after a save.
-   */
+  /** Derived from `rows`, so it is exact the instant a field changes. */
   const completedRowCount = useMemo(
     () => rows.filter(isRunSheetRowComplete).length,
     [rows],
@@ -872,9 +879,11 @@ export default function EventRunSheetSection({
   // dedicated empty state below, distinct from partial completion (which
   // shows the normal list with individual rows muted; see RunSheetEntry).
   const allRowsIncomplete = rows.length > 0 && completedRowCount === 0;
-  // Hidden while the dedicated all-incomplete empty state is showing (view
-  // mode only) so the same fact isn't stated twice on screen.
-  const showRunSheetProgress = rows.length > 0 && (isEditing || !allRowsIncomplete);
+  // View mode only: "N of M completed" is a browsing aid, not something a
+  // planner mid-edit needs restated back to them while they are the one
+  // actively changing that number -- and it would otherwise sit directly
+  // above a "Save" button appearing for the same reason, doubling up.
+  const showRunSheetProgress = !isEditing && rows.length > 0 && !allRowsIncomplete;
   // The header cluster (Edit, or Cancel + Save) is suppressed for exactly the
   // same window the empty state above owns: while browsing an all-incomplete
   // sheet, "Create Run Sheet" is the only action on screen, not a duplicate of
@@ -882,6 +891,13 @@ export default function EventRunSheetSection({
   // complete, the cluster reappears as normal.
   const showRunSheetHeaderActions =
     canEdit && rows.length > 0 && (isEditing || !allRowsIncomplete);
+  // Whether Save has anything to persist. Save (and the "Unsaved changes"
+  // label beside it) mount only once this is true, so there is never a
+  // moment where Save is visible with nothing behind it to save.
+  const hasUnsavedChanges = useMemo(
+    () => hasUnsavedRunSheetEdits(savedRows, rows),
+    [savedRows, rows],
+  );
 
   async function handleSave() {
     setSaving(true);
@@ -934,9 +950,10 @@ export default function EventRunSheetSection({
         <div>
           <EventDetailSectionTitle>Run Sheet</EventDetailSectionTitle>
           {/* Lightweight and secondary to the title on purpose -- muted,
-              small text, no colour beyond the one completion emoji. Derived
-              from `rows`, so it tracks unsaved edits live rather than only
-              updating after a save. */}
+              small text, no colour beyond the one completion emoji. View mode
+              only (see `showRunSheetProgress`): while editing, this would sit
+              directly above a Save button appearing for the exact same
+              reason, restating the same fact twice. */}
           {showRunSheetProgress ? (
             <p className="mt-0.5 text-xs text-ftc-text-muted">
               {isFullyComplete
@@ -947,39 +964,36 @@ export default function EventRunSheetSection({
         </div>
 
         {/* Read-only by default -- editing is the deliberate result of tapping
-            Edit, not the sheet's permanent state. Editing swaps this single
-            Edit button for a Cancel + Save pair; there is no third, "clean"
-            state to reserve space for, so unlike the old always-mounted Save
-            button this cluster can just mount and unmount with `isEditing`.
-            Suppressed entirely while the "Create your Run Sheet" empty state
-            above is showing -- Create Run Sheet is the one obvious action,
-            not a duplicate of Edit. */}
+            Edit, not the sheet's permanent state. Suppressed entirely while
+            the "Create your Run Sheet" empty state above is showing -- Create
+            Run Sheet is the one obvious action, not a duplicate of Edit.
+
+            While editing, this matches the Edit Event header exactly:
+            `.ftc-form-cancel-link` in a stable top-right slot (Cancel "remains
+            static" -- it never animates, never disappears, the same small
+            uppercase text link `PlannerFormCard` uses). Save is a second,
+            independent row underneath that only exists in the DOM while there
+            is something to save (`hasUnsavedChanges`); it plays a one-shot
+            fade/slide-in animation on mount rather than transitioning a
+            persistent element, and vanishes immediately -- no exit animation
+            -- the moment saving succeeds or the edit is cancelled, since at
+            that instant there is genuinely nothing left to save. */}
         {showRunSheetHeaderActions ? (
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-col items-end gap-1.5">
             {isEditing ? (
-              <>
-                <button
-                  type="button"
-                  onClick={handleCancelEdit}
-                  disabled={saving}
-                  className={`${EVENT_DETAIL_BTN_SECONDARY} disabled:cursor-not-allowed disabled:opacity-50`}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={handleSave}
-                  disabled={saving}
-                  className={`${EVENT_DETAIL_BTN_PRIMARY} disabled:cursor-not-allowed disabled:opacity-50`}
-                >
-                  {saving ? "Saving" : "Save run sheet"}
-                </button>
-              </>
+              <button
+                type="button"
+                onClick={handleCancelEdit}
+                disabled={saving}
+                className="ftc-form-cancel-link disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Cancel
+              </button>
             ) : (
-              // Standard secondary button, the same style Cancel above and
-              // Message elsewhere in the app already use -- not a separate,
-              // visually-floating pill. No icon: the visible label is the
-              // whole affordance, matching the rest of the app's text buttons.
+              // Standard secondary button, the same style Message elsewhere
+              // in the app already uses -- not a separate, visually-floating
+              // pill. No icon: the visible label is the whole affordance,
+              // matching the rest of the app's text buttons.
               <button
                 type="button"
                 onClick={handleEnterEditMode}
@@ -989,6 +1003,24 @@ export default function EventRunSheetSection({
                 Edit
               </button>
             )}
+
+            {isEditing && hasUnsavedChanges ? (
+              <div className="ftc-run-sheet-save-reveal flex items-center gap-2">
+                {!saving ? (
+                  <span className="text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted">
+                    Unsaved changes
+                  </span>
+                ) : null}
+                <button
+                  type="button"
+                  onClick={handleSave}
+                  disabled={saving}
+                  className={`${EVENT_DETAIL_BTN_PRIMARY} disabled:cursor-not-allowed disabled:opacity-50`}
+                >
+                  {saving ? "Saving" : "Save run sheet"}
+                </button>
+              </div>
+            ) : null}
           </div>
         ) : null}
       </div>

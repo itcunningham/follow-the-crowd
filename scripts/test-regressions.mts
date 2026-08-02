@@ -9463,23 +9463,25 @@ function testRunSheetDirtyStateAndSaveFeedback() {
     "utf8",
   );
 
-  // The component itself no longer wires this dirty check to anything -- the
-  // Run Sheet moved from "Save is hidden until something changes" to an
-  // explicit Edit/Save workflow (see testRunSheetEditMode), where Save is
-  // simply whatever button is on screen while editing. `hasUnsavedRunSheetEdits`
-  // stays exported and tested here (and in testRunSheetInitialLoadIsNotDirty)
-  // as a general-purpose comparison util, not dead code -- just not currently
-  // called from this component.
-  assert.doesNotMatch(sectionSource, /hasUnsavedRunSheetEdits/);
+  // `hasUnsavedRunSheetEdits` was unwired from the component for a period (the
+  // Run Sheet briefly moved from "Save is hidden until something changes" to
+  // Save simply being whatever button was on screen while editing) -- see
+  // testRunSheetHeaderCancelAndSave for the pass that reintroduced dirty-gated
+  // Save. It stayed exported and tested here throughout (and in
+  // testRunSheetInitialLoadIsNotDirty) as a general-purpose comparison util
+  // regardless of whether this component happened to call it at the time.
+  assert.match(sectionSource, /hasUnsavedRunSheetEdits/);
+  // `showSaveButton` (the old invisible/aria-hidden/tabIndex mechanic this
+  // replaced) has not returned -- the current variable is `hasUnsavedChanges`,
+  // and Save mounts/unmounts rather than toggling visibility on a persistent
+  // element.
   assert.doesNotMatch(sectionSource, /showSaveButton/);
 
-  // The header cluster is rendered whenever saving is possible at all --
-  // `showRunSheetHeaderActions`, never the dirty state -- so the header keeps
-  // its height and nothing below it moves when Edit swaps for Cancel + Save.
-  // Gating the slot on the dirty state (as this once did) made the button
-  // wrap onto a second line of the `flex-wrap` header at 375px, growing the
-  // header and shifting the whole run sheet down. (`showRunSheetHeaderActions`
-  // itself is exercised in testRunSheetProductionPolish.)
+  // The header cluster CONTAINER is still rendered whenever saving is
+  // possible at all -- `showRunSheetHeaderActions`, unrelated to dirty state
+  // -- so the header keeps its height and nothing below it moves when Edit
+  // swaps for Cancel. Save specifically, inside that container, is now
+  // additionally gated on dirty state -- see testRunSheetHeaderCancelAndSave.
   assert.match(sectionSource, /\{showRunSheetHeaderActions \? \(/);
 
   // Baseline is rebased on save, which is also what a later Cancel would
@@ -9562,29 +9564,26 @@ function testRunSheetEditMode() {
   assert.doesNotMatch(catchAndFinally, /setExpandedRowId\(null\)/);
   assert.match(catchAndFinally, /finally \{\s*setSaving\(false\);\s*\}/);
 
-  // Header cluster: Edit when not editing, Cancel + Save when editing -- not
-  // a permanently-mounted Save button (that mechanism is gone; see
-  // testRunSheetDirtyStateAndSaveFeedback).
-  const headerCluster =
-    section.match(/\{showRunSheetHeaderActions \? \(([\s\S]*?)\) : null\}/)?.[1] ?? "";
-  assert.ok(headerCluster, "the header button cluster must exist");
-  assert.match(headerCluster, /\{isEditing \? \(/);
-  assert.match(headerCluster, /onClick=\{handleCancelEdit\}/);
-  assert.match(headerCluster, />\s*Cancel\s*</);
-  assert.match(headerCluster, /onClick=\{handleSave\}/);
-  assert.match(headerCluster, /\{saving \? "Saving" : "Save run sheet"\}/);
+  // Header cluster: Edit when not editing, Cancel always visible while
+  // editing, Save only while dirty -- see testRunSheetHeaderCancelAndSave for
+  // the full "Cancel in header, Save gated on dirty" behaviour this task
+  // introduced. Matched against `section` directly rather than an extracted
+  // substring: with Save now conditionally nested a level deeper than Cancel,
+  // a single non-greedy "up to the next `) : null}`" extraction would stop at
+  // the *innermost* one and truncate before reaching Save, so there is no
+  // substring boundary worth extracting here -- these handler names are each
+  // unique to one call site in the file regardless.
+  assert.match(section, /onClick=\{handleCancelEdit\}/);
+  assert.match(section, />\s*Cancel\s*</);
+  assert.match(section, /onClick=\{handleSave\}/);
+  assert.match(section, /\{saving \? "Saving" : "Save run sheet"\}/);
+  assert.match(section, /onClick=\{handleEnterEditMode\}/);
+  assert.doesNotMatch(section, /EventDetailEditButton/);
 
-  // Edit is now the standard secondary button (see
-  // testRunSheetProductionPolish for the "why", the emoji label and the
-  // reverted EventDetailEditButton generalisation), not the separate
-  // icon+pill control this used to reuse.
-  assert.match(headerCluster, /onClick=\{handleEnterEditMode\}/);
-  assert.doesNotMatch(headerCluster, /EventDetailEditButton/);
-
-  // Edit and Save/Cancel are disabled while a save is in flight, so a second
-  // tap can't fire a second request or cancel out from under it.
-  assert.match(headerCluster, /onClick=\{handleCancelEdit\}\s*\n\s*disabled=\{saving\}/);
-  assert.match(headerCluster, /onClick=\{handleSave\}\s*\n\s*disabled=\{saving\}/);
+  // Disabled while a save is in flight, so a second tap can't fire a second
+  // request or cancel out from under it.
+  assert.match(section, /onClick=\{handleCancelEdit\}\s*\n\s*disabled=\{saving\}/);
+  assert.match(section, /onClick=\{handleSave\}\s*\n\s*disabled=\{saving\}/);
 
   const eventDetailSourceForEditButton = readFileSync(
     new URL("../app/events/[eventId]/page.tsx", import.meta.url),
@@ -9694,9 +9693,12 @@ function testRunSheetProductionPolish() {
   );
   assert.match(section, /const isFullyComplete = rows\.length > 0 && completedRowCount === rows\.length;/);
   assert.match(section, /const allRowsIncomplete = rows\.length > 0 && completedRowCount === 0;/);
+  // Progress is view-mode only as of testRunSheetHeaderCancelAndSave -- it
+  // used to also show live during editing, deliberately reversed since it
+  // duplicated what Save/"Unsaved changes" already say once those exist.
   assert.match(
     section,
-    /const showRunSheetProgress = rows\.length > 0 && \(isEditing \|\| !allRowsIncomplete\);/,
+    /const showRunSheetProgress = !isEditing && rows\.length > 0 && !allRowsIncomplete;/,
   );
   assert.match(section, /🟢 Run Sheet Complete/);
   assert.match(section, /\$\{completedRowCount\} of \$\{rows\.length\} DJs completed/);
@@ -9704,10 +9706,12 @@ function testRunSheetProductionPolish() {
   // banner.
   assert.match(section, /<p className="mt-0\.5 text-xs text-ftc-text-muted">/);
 
-  // Edit moved onto the standard secondary button -- the same style Cancel
-  // and Message already use elsewhere -- rather than the separate icon+pill
-  // control it used to reuse. The generalisation that control gained for this
-  // (an optional ariaLabel) is reverted since nothing needs it any more.
+  // Edit moved onto the standard secondary button -- the same style Message
+  // uses elsewhere -- rather than the separate icon+pill control it used to
+  // reuse. The generalisation that control gained for this (an optional
+  // ariaLabel) is reverted since nothing needs it any more. (Cancel has since
+  // moved onto a different shared style of its own -- see
+  // testRunSheetHeaderCancelAndSave.)
   assert.doesNotMatch(section, /EventDetailEditButton/);
   // No pencil icon: the visible label is the whole affordance. aria-label
   // stays "Edit Run Sheet" (more descriptive than the bare visible "Edit")
@@ -9771,6 +9775,118 @@ function testRunSheetProductionPolish() {
     entryFn,
     /<span className="shrink-0 text-xs font-semibold tabular-nums text-ftc-text-muted">\s*\{orderLabel\}\s*<\/span>/,
   );
+}
+
+/**
+ * Cancel moves into the header (matching the Edit Event screen's
+ * `PlannerFormCard` pattern exactly: `.ftc-form-cancel-link`, a small
+ * uppercase text link, not a full button); Save is gated on dirty state and
+ * appears/disappears with the sheet's actual save-worthiness rather than
+ * unconditionally alongside Cancel; progress hides while editing since it
+ * would otherwise restate what the new Save/Unsaved-changes affordance
+ * already says. Reorder controls, placeholders and disabled styling round
+ * out the presentation-only requirements from this pass.
+ */
+function testRunSheetHeaderCancelAndSave() {
+  const section = readFileSync(
+    new URL("../app/components/EventRunSheetSection.tsx", import.meta.url),
+    "utf8",
+  );
+
+  // Cancel: the exact Edit Event header treatment, not a large standalone
+  // button. `.ftc-form-cancel-link` is `PlannerFormCard`'s own class (see
+  // globals.css) -- reused rather than reinvented, so "the exact same visual
+  // treatment" is literally the same CSS rule, not a lookalike copy of it.
+  assert.match(
+    section,
+    /className="ftc-form-cancel-link disabled:cursor-not-allowed disabled:opacity-50"/,
+  );
+  // The large Cancel button (EVENT_DETAIL_BTN_SECONDARY, alongside Save) is
+  // gone -- Cancel is not styled as an equal-weight button any more.
+  assert.doesNotMatch(
+    section,
+    /onClick=\{handleCancelEdit\}[\s\S]{0,80}className=\{`\$\{EVENT_DETAIL_BTN_SECONDARY\}/,
+  );
+
+  const globalsSource = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
+  assert.match(globalsSource, /\.ftc-form-cancel-link,\s*\n\.ftc-form-back-link \{/);
+
+  // Save is dirty-gated: `hasUnsavedRunSheetEdits` reintroduced specifically
+  // to drive this (it was removed from the component, but never from
+  // lib/eventRunSheet.ts, when the View/Edit/Save workflow first shipped --
+  // see testRunSheetDirtyStateAndSaveFeedback for why it stayed exported and
+  // tested even with no caller at the time).
+  assert.match(section, /import \{[\s\S]*?hasUnsavedRunSheetEdits,[\s\S]*?\} from "@\/lib\/eventRunSheet"/);
+  assert.match(
+    section,
+    /const hasUnsavedChanges = useMemo\(\s*\(\) => hasUnsavedRunSheetEdits\(savedRows, rows\),\s*\[savedRows, rows\],\s*\);/,
+  );
+  // Mounted only while dirty -- never rendered "but hidden" the way the
+  // pre-Edit-mode Save button once was (see testRunSheetDirtyStateAndSaveFeedback
+  // for that older, now-removed invisible/aria-hidden/tabIndex mechanic).
+  assert.match(section, /\{isEditing && hasUnsavedChanges \? \(/);
+  assert.doesNotMatch(section, /aria-hidden=\{showSaveButton/);
+  assert.doesNotMatch(section, /tabIndex=\{showSaveButton/);
+
+  // Reappearing plays a one-shot CSS animation (mount-triggered, not a
+  // transition -- there is no persistent element to transition between two
+  // states of); disappearing is a plain unmount, immediate, no exit
+  // animation, matching "Save disappears again immediately after a
+  // successful save" and "never shown unless dirty" literally.
+  assert.match(section, /className="ftc-run-sheet-save-reveal flex items-center gap-2"/);
+  assert.doesNotMatch(globalsSource, /ftc-run-sheet-save-reveal[\s\S]{0,120}transition:/);
+  const saveRevealRule =
+    globalsSource.match(/@keyframes ftc-run-sheet-save-reveal \{[\s\S]*?\n\}/)?.[0] ?? "";
+  assert.ok(saveRevealRule, "the Save reveal keyframe must exist");
+  assert.match(saveRevealRule, /opacity: 0;/);
+  assert.match(saveRevealRule, /transform: translateY\(4px\);/);
+  assert.match(saveRevealRule, /opacity: 1;/);
+  assert.match(saveRevealRule, /transform: translateY\(0\);/);
+  // Timing matches the app's dominant reveal convention rather than a new one.
+  assert.match(globalsSource, /\.ftc-run-sheet-save-reveal \{\s*animation: ftc-run-sheet-save-reveal 200ms ease-out;\s*\}/);
+  assert.match(
+    globalsSource,
+    /@media \(prefers-reduced-motion: reduce\) \{\s*\.ftc-run-sheet-save-reveal \{\s*animation: none;\s*\}\s*\}/,
+  );
+
+  // "Unsaved changes": extremely low visual weight -- the same tiny
+  // uppercase muted-label treatment already used throughout this file for
+  // field labels and set numbers, not a new, louder style. Hidden while a
+  // save is actually in flight (the button's own "Saving" label already
+  // covers that moment) and never rendered outside the dirty+editing state.
+  assert.match(
+    section,
+    /<span className="text-\[10px\] font-semibold uppercase tracking-wide text-ftc-text-muted">\s*Unsaved changes\s*<\/span>/,
+  );
+  assert.match(section, /\{!saving \? \(\s*<span className="text-\[10px\]/);
+
+  // Progress hides during editing -- see testRunSheetProductionPolish for the
+  // exact `showRunSheetProgress` formula this pass reversed.
+
+  // Placeholders guide an empty field rather than leaving it blank, using
+  // copy that clearly reads as an instruction, not saved content.
+  assert.match(section, /placeholder\?: string;/);
+  assert.match(section, /placeholder="Enter stage"/);
+  assert.match(section, /placeholder="Add notes"/);
+  assert.doesNotMatch(section, /placeholder="Main Stage"/);
+  assert.doesNotMatch(section, /placeholder="e\.g\./);
+
+  // Reorder controls: disabled state is visibly flatter (softer border,
+  // transparent background, muted text, lower opacity than before), not
+  // merely a slightly-faded copy of the active control, and the control
+  // itself -- size, position -- is unchanged; only colour/opacity respond to
+  // `disabled`.
+  const iconButtonClass =
+    section.match(/const iconButtonBaseClassName =\s*\n?\s*"([^"]*)"/)?.[1] ?? "";
+  assert.ok(iconButtonClass, "iconButtonBaseClassName must exist");
+  assert.match(iconButtonClass, /disabled:opacity-30/);
+  assert.doesNotMatch(iconButtonClass, /disabled:opacity-40/);
+  assert.match(iconButtonClass, /disabled:border-ftc-border-subtle/);
+  assert.match(iconButtonClass, /disabled:bg-transparent/);
+  assert.match(iconButtonClass, /disabled:text-ftc-text-muted/);
+  assert.match(iconButtonClass, /h-8 w-8/);
+  assert.match(section, /disabled=\{!canMoveUp\}/);
+  assert.match(section, /disabled=\{!canMoveDown\}/);
 }
 
 function testEventNotesTextareaScrollsWhenContentExceedsCap() {
@@ -10893,6 +11009,7 @@ async function main() {
   testRunSheetDirtyStateAndSaveFeedback();
   testRunSheetEditMode();
   testRunSheetProductionPolish();
+  testRunSheetHeaderCancelAndSave();
   testAppSplashScreenSlogan();
   testRoleAwareWorkspaceNavigation();
   testCancelledEventGigsAreSurfacedInGigs();

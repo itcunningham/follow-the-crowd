@@ -455,6 +455,38 @@ html {
   max-height: calc(4 * 1.5rem + 0.75rem + 2px) !important;
 }
 
+/**
+ * One-shot entrance for the Run Sheet's Save button + "Unsaved changes"
+ * label: they mount only while there is something to save, so a CSS
+ * `transition` (which needs two states of the same element) has nothing to
+ * toggle between -- an `animation` that plays once on mount is the right
+ * tool here. Timing matches the app's dominant reveal convention
+ * (`duration-200 ease-out`, e.g. `AnimatedExpandPanel`, `ProfilePhotoViewer`)
+ * rather than inventing a new one. Disappearing is deliberately instant (plain
+ * unmount, no exit animation) -- the moment a save succeeds or is cancelled
+ * there is genuinely nothing left to save, so nothing to animate away.
+ */
+@keyframes ftc-run-sheet-save-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.ftc-run-sheet-save-reveal {
+  animation: ftc-run-sheet-save-reveal 200ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ftc-run-sheet-save-reveal {
+    animation: none;
+  }
+}
+
 /** Shared fixed-height textarea: equal height/min/max, internal scroll only. Compose with line-count modifier.
  * No `-webkit-overflow-scrolling: touch` here (deliberately): that property forces WebKit to promote
  * the element onto its own compositing layer for hardware-accelerated momentum scrolling, and on older
