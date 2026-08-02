@@ -22,7 +22,21 @@ export type WorkspaceSubNavTab = {
   label: string;
 };
 
-/** Immutable canonical workspace row — fixed order, labels, and ids for every render. */
+/**
+ * Immutable canonical workspace row — fixed order, labels, and ids for every render.
+ *
+ * Order is deliberately role-independent: the visible tabs are a filter over this
+ * one array, so the surviving tabs keep their relative order no matter which role
+ * resolves (and while role is still unknown). Making the order itself role-aware
+ * would reintroduce the tab-reorder jump `mergeWorkspaceNavRole` exists to prevent.
+ *
+ * Gigs sits before Calendar so the work lists (Events, Event Plans, Gigs) group
+ * together ahead of the time view. That also makes Gigs the first tab a DJ sees —
+ * Events and Event Plans are planner-only — matching where DJs actually land
+ * (`getDefaultRouteForRole` sends them to /bookings). Planner-only accounts are
+ * unaffected: they have no Gigs tab, so they still read Events | Event Plans |
+ * Calendar.
+ */
 export const WORKSPACE_SUB_NAV_TABS: readonly WorkspaceSubNavTab[] = [
   { id: "events", href: EVENTS_AREA_SUB_NAV.events.href, label: EVENTS_AREA_SUB_NAV.events.label },
   {
@@ -30,12 +44,12 @@ export const WORKSPACE_SUB_NAV_TABS: readonly WorkspaceSubNavTab[] = [
     href: EVENTS_AREA_SUB_NAV.bookingPlans.href,
     label: EVENTS_AREA_SUB_NAV.bookingPlans.label,
   },
+  { id: "gigs", href: EVENTS_AREA_SUB_NAV.gigs.href, label: EVENTS_AREA_SUB_NAV.gigs.label },
   {
     id: "calendar",
     href: EVENTS_AREA_SUB_NAV.calendar.href,
     label: EVENTS_AREA_SUB_NAV.calendar.label,
   },
-  { id: "gigs", href: EVENTS_AREA_SUB_NAV.gigs.href, label: EVENTS_AREA_SUB_NAV.gigs.label },
 ];
 
 export function isWorkspaceSubNavTabVisible(
@@ -73,7 +87,7 @@ export const PLANNER_EVENTS_SUB_NAV: EventsAreaSubNavItem[] = [
  * Events is a planner surface: it lists events the account owns and manages.
  * A DJ-only account has no events of its own — everything it needs about an
  * event it is booked on (status, rate, details, DM) lives in Gigs, so the DJ
- * workspace is Calendar + Gigs. "Both" keeps Events, being a planner too.
+ * workspace is Gigs + Calendar. "Both" keeps Events, being a planner too.
  */
 export function canViewEventsSubNav(role: UserRole | null): boolean {
   return role !== "dj";
@@ -87,24 +101,31 @@ export function canViewBookingPlansSubNav(role: UserRole | null): boolean {
   return role === "promoter" || role === "both";
 }
 
+/**
+ * Role-aware tab list. Order is derived from WORKSPACE_SUB_NAV_TABS rather than
+ * rebuilt here, so there is exactly one place that defines workspace tab order
+ * and the two can never drift apart.
+ *
+ * Note this is stricter than `isWorkspaceSubNavTabVisible` for an unresolved
+ * (null) role: that helper shows every tab to avoid a first-paint flicker, while
+ * this returns only the tabs a roleless account is definitely entitled to.
+ */
 export function getEventsAreaSubNavItems(role: UserRole | null): EventsAreaSubNavItem[] {
-  const items: EventsAreaSubNavItem[] = [];
+  return WORKSPACE_SUB_NAV_TABS.filter((tab) => {
+    if (tab.id === "events") {
+      return canViewEventsSubNav(role);
+    }
 
-  if (canViewEventsSubNav(role)) {
-    items.push(EVENTS_AREA_SUB_NAV.events);
-  }
+    if (tab.id === "bookingPlans") {
+      return canViewBookingPlansSubNav(role);
+    }
 
-  if (canViewBookingPlansSubNav(role)) {
-    items.push(EVENTS_AREA_SUB_NAV.bookingPlans);
-  }
+    if (tab.id === "gigs") {
+      return canViewGigsSubNav(role);
+    }
 
-  items.push(EVENTS_AREA_SUB_NAV.calendar);
-
-  if (canViewGigsSubNav(role)) {
-    items.push(EVENTS_AREA_SUB_NAV.gigs);
-  }
-
-  return items;
+    return true;
+  }).map((tab) => ({ href: tab.href, label: tab.label }));
 }
 
 /** Prefer the role that preserves the fullest workspace tab set (avoids dj/null flicker dropping Event Plans). */

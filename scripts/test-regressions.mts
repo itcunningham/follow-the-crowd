@@ -2565,11 +2565,12 @@ function testWorkspaceSubNavLayoutIsStable() {
     /ftc-workspace-subnav-pill/,
   );
   assert.equal(getEventsAreaSubNavItems("promoter").map((item) => item.href).join(","), "/events,/booking-plans,/calendar");
-  // DJ-only workspace is Calendar + Gigs -- Events is a planner surface.
-  assert.equal(getEventsAreaSubNavItems("dj").map((item) => item.href).join(","), "/calendar,/bookings");
+  // DJ-only workspace is Gigs + Calendar -- Events is a planner surface, and Gigs
+  // leads because that is where DJs land (getDefaultRouteForRole -> /bookings).
+  assert.equal(getEventsAreaSubNavItems("dj").map((item) => item.href).join(","), "/bookings,/calendar");
   assert.equal(
     getEventsAreaSubNavItems("both").map((item) => item.href).join(","),
-    "/events,/booking-plans,/calendar,/bookings",
+    "/events,/booking-plans,/bookings,/calendar",
   );
   assert.equal(getEventsAreaSubNavItems(null).map((item) => item.href).join(","), "/events,/calendar");
 }
@@ -2631,25 +2632,33 @@ function testPlannerBookingCreateHidesGigsSubTabs() {
 function testWorkspaceNavRoleDoesNotDropEventPlansTab() {
   assert.equal(
     WORKSPACE_SUB_NAV_TABS.map((tab) => tab.label).join("|"),
-    "Events|Event Plans|Calendar|Gigs",
+    "Events|Event Plans|Gigs|Calendar",
   );
-  assert.equal(WORKSPACE_SUB_NAV_TABS.map((tab) => tab.id).join(","), "events,bookingPlans,calendar,gigs");
+  assert.equal(WORKSPACE_SUB_NAV_TABS.map((tab) => tab.id).join(","), "events,bookingPlans,gigs,calendar");
   assert.equal(
     WORKSPACE_SUB_NAV_TABS.filter((tab) => isWorkspaceSubNavTabVisible(tab.id, null))
       .map((tab) => tab.label)
       .join("|"),
-    "Events|Event Plans|Calendar|Gigs",
+    "Events|Event Plans|Gigs|Calendar",
   );
   assert.equal(WORKSPACE_SUB_NAV_TABS[1].label, "Event Plans");
-  assert.equal(WORKSPACE_SUB_NAV_TABS[2].label, "Calendar");
+  assert.equal(WORKSPACE_SUB_NAV_TABS[2].label, "Gigs");
   assert.equal(mergeWorkspaceNavRole("dj", "both"), "both");
   assert.equal(mergeWorkspaceNavRole("both", "dj"), "both");
   assert.equal(mergeWorkspaceNavRole("dj", null), "dj");
   assert.equal(resolveEventsWorkspaceChromeRole("dj", "promoter"), "promoter");
   assert.equal(
     getEventsAreaSubNavItems(mergeWorkspaceNavRole("dj", "both")).map((item) => item.label).join("|"),
-    "Events|Event Plans|Calendar|Gigs",
+    "Events|Event Plans|Gigs|Calendar",
   );
+
+  // Order has exactly one definition: the role-aware list is a filter over the
+  // canonical row, so the two can never disagree about ordering.
+  for (const role of ["promoter", "dj", "both", null] as const) {
+    const canonicalOrder = WORKSPACE_SUB_NAV_TABS.map((tab) => tab.href);
+    const roleOrder = getEventsAreaSubNavItems(role).map((item) => item.href);
+    assert.deepEqual(roleOrder, canonicalOrder.filter((href) => roleOrder.includes(href)));
+  }
 }
 
 function testWorkspaceActiveHrefIgnoresStaleOverrides() {
@@ -8721,14 +8730,15 @@ function testRoleAwareWorkspaceNavigation() {
     "utf8",
   );
 
-  // Events is a planner surface. A DJ-only workspace is Calendar + Gigs; "both"
-  // is a planner too and keeps everything. Role null (unresolved, e.g. a hard
-  // refresh before the profile lands) keeps showing Events rather than flashing
-  // it away.
-  assert.equal(getEventsAreaSubNavItems("dj").map((item) => item.href).join(","), "/calendar,/bookings");
+  // Events is a planner surface. A DJ-only workspace is Gigs + Calendar (Gigs
+  // first -- it is the DJ's primary surface and their post-login landing page);
+  // "both" is a planner too and keeps everything. Role null (unresolved, e.g. a
+  // hard refresh before the profile lands) keeps showing Events rather than
+  // flashing it away.
+  assert.equal(getEventsAreaSubNavItems("dj").map((item) => item.href).join(","), "/bookings,/calendar");
   assert.equal(
     getEventsAreaSubNavItems("both").map((item) => item.href).join(","),
-    "/events,/booking-plans,/calendar,/bookings",
+    "/events,/booking-plans,/bookings,/calendar",
   );
   assert.equal(
     getEventsAreaSubNavItems("promoter").map((item) => item.href).join(","),
