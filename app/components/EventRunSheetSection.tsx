@@ -2,10 +2,7 @@
 
 import Link from "next/link";
 import { CalendarMobileDashedEmptyState } from "@/app/components/calendar/calendarMobileUi";
-import {
-  EventDetailEditButton,
-  EventDetailSectionTitle,
-} from "@/app/components/event-detail/EventDetailLayout";
+import { EventDetailSectionTitle } from "@/app/components/event-detail/EventDetailLayout";
 import {
   EVENT_DETAIL_BTN_PRIMARY,
   EVENT_DETAIL_BTN_SECONDARY,
@@ -126,6 +123,26 @@ function formatRunSheetSetTimeDisplay(startTime: string, finishTime: string): st
   return start || finish;
 }
 
+/**
+ * A DJ's entry counts as "complete" once the essentials -- where and when --
+ * are filled in. Notes stay optional supplementary detail and don't count
+ * either way; a partial Set Time (only a start or only a finish) still
+ * counts, matching what `hasBookingFieldTriggerLabelValue` already treats as
+ * "has a value" rather than the empty placeholder.
+ */
+function isRunSheetRowComplete(row: RunSheetRowInput): boolean {
+  return Boolean(row.stage_area.trim()) && Boolean(row.start_time.trim() || row.finish_time.trim());
+}
+
+/**
+ * Running order, e.g. "#1". Factored out to this one call site so a future
+ * named-sets feature (Opening / Main Set / Closing) only has to change this
+ * function, not `RunSheetEntry` or its caller.
+ */
+function formatRunSheetOrderLabel(index: number): string {
+  return `#${index + 1}`;
+}
+
 function parseRunSheetTimeField(value: string): {
   clock: string;
   meridiem: Meridiem;
@@ -218,11 +235,16 @@ function RunSheetSetTimeField({
     // bordered box. Set Time is a short fixed-format string that never
     // wraps to more than one line, so unlike Stage / Area and Notes it
     // needs no truncate-and-expand treatment.
+    //
+    // Sized a step above Stage / Area and Notes (both `text-sm` at the
+    // muted `text-ftc-text-secondary`) so Set Time reads as the second tier
+    // under the DJ name -- what a DJ scans for first -- rather than tying
+    // visually with supporting detail.
     const readOnlyDisplay = formatRunSheetSetTimeDisplay(startTime, finishTime);
     const hasValue = Boolean(startTime.trim() || finishTime.trim());
 
     return (
-      <p className="text-sm font-medium tabular-nums text-ftc-text">
+      <p className="text-base font-semibold tabular-nums text-ftc-text">
         {hasValue ? readOnlyDisplay : "—"}
       </p>
     );
@@ -385,6 +407,11 @@ function RunSheetCappedTextarea({
  * Takes an already-resolved `dj` rather than `row`/`lineup`/`profiles`: the
  * caller resolves it once per row (also needed for the set-number grouping),
  * so this doesn't repeat that lookup.
+ *
+ * Explicitly `text-base font-bold` (was an unsized `font-medium`, inheriting
+ * whatever size happened to be ambient) so the name is unambiguously the
+ * largest, boldest thing in the card -- the top of the reading hierarchy the
+ * Set Time and Stage / Area / Notes tiers below are built to sit under.
  */
 function RunSheetDjIdentity({ dj }: { dj: RunSheetRowDjDisplay }) {
   if (!dj.displayName) {
@@ -402,7 +429,7 @@ function RunSheetDjIdentity({ dj }: { dj: RunSheetRowDjDisplay }) {
         />
         <Link
           href={`/profile/${dj.profileId}`}
-          className="min-w-0 truncate font-medium text-ftc-text transition hover:text-ftc-primary"
+          className="min-w-0 truncate text-base font-bold text-ftc-text transition hover:text-ftc-primary"
         >
           {dj.displayName}
         </Link>
@@ -413,7 +440,7 @@ function RunSheetDjIdentity({ dj }: { dj: RunSheetRowDjDisplay }) {
   return (
     <>
       <ProfileAvatar name={dj.displayName} avatarUrl={dj.avatarUrl} size="sm" />
-      <span className="min-w-0 truncate font-medium text-ftc-text">{dj.displayName}</span>
+      <span className="min-w-0 truncate text-base font-bold text-ftc-text">{dj.displayName}</span>
     </>
   );
 }
@@ -472,6 +499,7 @@ function RunSheetExpandChevron({ expanded }: { expanded: boolean }) {
 function RunSheetEntry({
   row,
   dj,
+  orderLabel,
   setLabel,
   canEdit,
   isExpanded,
@@ -486,6 +514,8 @@ function RunSheetEntry({
 }: {
   row: RunSheetRowInput;
   dj: RunSheetRowDjDisplay;
+  /** Running order, e.g. "#1" -- see `formatRunSheetOrderLabel`. */
+  orderLabel: string;
   setLabel: string | null;
   canEdit: boolean;
   isExpanded: boolean;
@@ -500,9 +530,16 @@ function RunSheetEntry({
 }) {
   const panelId = `run-sheet-panel-${row.id}`;
   const stagePreview = row.stage_area.trim();
+  // `canEdit` here is already the combined "editing this row right now" flag
+  // (permission AND edit mode -- see the call site), so `!canEdit` means this
+  // row is currently presented read-only, for whatever reason. Incomplete
+  // rows only get the muted treatment in that read-only presentation --
+  // muting a field the planner is actively filling in would read as broken,
+  // not helpful.
+  const isReadOnlyAndIncomplete = !canEdit && !isRunSheetRowComplete(row);
 
   return (
-    <div className="ftc-card p-3">
+    <div className={`ftc-card p-3 ${isReadOnlyAndIncomplete ? "opacity-75" : ""}`.trim()}>
       {setLabel ? (
         <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted">
           {setLabel}
@@ -511,6 +548,9 @@ function RunSheetEntry({
 
       <div className="flex items-center gap-2">
         <div className="flex min-w-0 flex-1 items-center gap-2">
+          <span className="shrink-0 text-xs font-semibold tabular-nums text-ftc-text-muted">
+            {orderLabel}
+          </span>
           <RunSheetDjIdentity dj={dj} />
         </div>
         {canEdit ? (
@@ -522,7 +562,11 @@ function RunSheetEntry({
       </div>
 
       {/* Always rendered, even with no Stage / Area value: this is the only
-          way to reach Set Time and Notes, not just a preview of content. */}
+          way to reach Set Time and Notes, not just a preview of content.
+          Falls back to "Run Sheet details pending" only when there is
+          genuinely nothing to preview -- a row with a stage but no time
+          (still "incomplete") keeps showing its real stage preview instead
+          of being overwritten by the generic helper text. */}
       <button
         type="button"
         onClick={onToggleExpanded}
@@ -531,7 +575,7 @@ function RunSheetEntry({
         className="mt-1 flex w-full items-center gap-2 rounded-md py-1 text-left"
       >
         <span className="min-w-0 flex-1 truncate text-xs text-ftc-text-muted">
-          {stagePreview}
+          {stagePreview || (isReadOnlyAndIncomplete ? "Run Sheet details pending" : "")}
         </span>
         <RunSheetExpandChevron expanded={isExpanded} />
       </button>
@@ -605,6 +649,45 @@ function RunSheetEntry({
           </div>
         </AnimatedExpandPanel>
       </div>
+    </div>
+  );
+}
+
+/**
+ * Replaces the row list entirely when there are DJs on the sheet but none of
+ * them have anything filled in yet -- distinct from `rows.length === 0`
+ * (no DJs on the sheet at all), which keeps its existing dashed empty state
+ * below. Two copies because a promoter and a DJ need different next steps:
+ * one can act on it, the other is just told to check back. The promoter's
+ * "Run Sheet" title is intentionally not repeated here for the DJ copy --
+ * the section already has that heading immediately above.
+ */
+function RunSheetNotCompletedEmptyState({
+  canEdit,
+  onEditClick,
+}: {
+  canEdit: boolean;
+  onEditClick: () => void;
+}) {
+  if (!canEdit) {
+    return (
+      <div className="ftc-card-empty mt-5 px-6 py-8 text-center">
+        <p className="text-sm text-ftc-text-secondary">
+          The promoter hasn&apos;t published the Run Sheet yet. Check back later.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="ftc-card-empty mt-5 px-6 py-8 text-center">
+      <p className="text-sm font-semibold text-ftc-text">Run Sheet not completed</p>
+      <p className="mt-1.5 text-sm text-ftc-text-secondary">
+        Add each DJ&apos;s set time, stage and notes before the event.
+      </p>
+      <button type="button" onClick={onEditClick} className={`${EVENT_DETAIL_BTN_PRIMARY} mt-4`}>
+        Edit Run Sheet
+      </button>
     </div>
   );
 }
@@ -768,6 +851,24 @@ export default function EventRunSheetSection({
     [rows, lineup, profiles],
   );
 
+  /**
+   * Derived from `rows` (not `savedRows`), so the progress line and the
+   * completion badge update live as the planner fills fields in during
+   * editing, not just after a save.
+   */
+  const completedRowCount = useMemo(
+    () => rows.filter(isRunSheetRowComplete).length,
+    [rows],
+  );
+  const isFullyComplete = rows.length > 0 && completedRowCount === rows.length;
+  // "No Run Sheet information entered for any DJ" -- the trigger for the
+  // dedicated empty state below, distinct from partial completion (which
+  // shows the normal list with individual rows muted; see RunSheetEntry).
+  const allRowsIncomplete = rows.length > 0 && completedRowCount === 0;
+  // Hidden while the dedicated all-incomplete empty state is showing (view
+  // mode only) so the same fact isn't stated twice on screen.
+  const showRunSheetProgress = rows.length > 0 && (isEditing || !allRowsIncomplete);
+
   async function handleSave() {
     setSaving(true);
     setError(null);
@@ -818,6 +919,17 @@ export default function EventRunSheetSection({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <EventDetailSectionTitle>Run Sheet</EventDetailSectionTitle>
+          {/* Lightweight and secondary to the title on purpose -- muted,
+              small text, no colour beyond the one completion emoji. Derived
+              from `rows`, so it tracks unsaved edits live rather than only
+              updating after a save. */}
+          {showRunSheetProgress ? (
+            <p className="mt-0.5 text-xs text-ftc-text-muted">
+              {isFullyComplete
+                ? "🟢 Run Sheet Complete"
+                : `${completedRowCount} of ${rows.length} DJs completed`}
+            </p>
+          ) : null}
         </div>
 
         {/* Read-only by default -- editing is the deliberate result of tapping
@@ -847,7 +959,17 @@ export default function EventRunSheetSection({
                 </button>
               </>
             ) : (
-              <EventDetailEditButton onClick={handleEnterEditMode} ariaLabel="Edit run sheet" />
+              // Standard secondary button, the same style Cancel above and
+              // Message elsewhere in the app already use -- not a separate,
+              // visually-floating pill.
+              <button
+                type="button"
+                onClick={handleEnterEditMode}
+                aria-label="Edit Run Sheet"
+                className={EVENT_DETAIL_BTN_SECONDARY}
+              >
+                ✏️ Edit
+              </button>
             )}
           </div>
         ) : null}
@@ -865,6 +987,11 @@ export default function EventRunSheetSection({
         <div className="mt-5">
           <CalendarMobileDashedEmptyState message={emptyStateMessage} />
         </div>
+      ) : !isEditing && allRowsIncomplete ? (
+        // Only in the read-only presentation: while editing, the planner
+        // needs the actual rows on screen to fill in, not a static message
+        // standing in for them.
+        <RunSheetNotCompletedEmptyState canEdit={canEdit} onEditClick={handleEnterEditMode} />
       ) : (
         // One accordion list for every viewport -- a table and a card list
         // were two implementations of the same information, and neither
@@ -881,6 +1008,7 @@ export default function EventRunSheetSection({
                 key={row.id}
                 row={row}
                 dj={dj}
+                orderLabel={formatRunSheetOrderLabel(index)}
                 setLabel={rowSetLabels.get(row.id!) ?? null}
                 canEdit={canEdit && isEditing}
                 isExpanded={isEditing || expandedRowId === row.id}

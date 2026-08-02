@@ -91,17 +91,11 @@ export function EventDetailOverlayButton({
   );
 }
 
-export function EventDetailEditButton({
-  onClick,
-  ariaLabel = "Edit event",
-}: {
-  onClick: () => void;
-  ariaLabel?: string;
-}) {
+export function EventDetailEditButton({ onClick }: { onClick: () => void }) {
   return (
     <button
       type="button"
-      aria-label={ariaLabel}
+      aria-label="Edit event"
       onClick={onClick}
       className="flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-xl border border-ftc-border-subtle bg-ftc-bg/80 px-2.5 text-ftc-text transition duration-150 ease-out hover:border-ftc-border-strong hover:bg-ftc-bg-elevated sm:px-3 motion-reduce:transition-none"
     >

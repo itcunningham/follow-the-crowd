@@ -9171,10 +9171,14 @@ function testRunSheetAccordionRestructure() {
   assert.doesNotMatch(section, /lg:block/);
 
   // The Stage / Area preview is unconditional in the collapsed header, and
-  // sits before the expand panel in source -- not gated on `isExpanded`.
+  // sits before the expand panel in source -- not gated on `isExpanded`. It
+  // now falls back to "Run Sheet details pending" (see
+  // testRunSheetProductionPolish) rather than rendering bare, but the
+  // fallback depends only on completeness/read-only state, never on
+  // `isExpanded`.
   const entryFn = section.match(/function RunSheetEntry\([\s\S]*?\n}\n/)?.[0] ?? "";
   assert.ok(entryFn, "RunSheetEntry must exist");
-  const previewIndex = entryFn.indexOf("{stagePreview}");
+  const previewIndex = entryFn.indexOf("stagePreview ||");
   const panelIndex = entryFn.indexOf("<AnimatedExpandPanel");
   assert.ok(previewIndex > -1 && panelIndex > -1 && previewIndex < panelIndex);
   assert.doesNotMatch(entryFn.slice(0, panelIndex), /isExpanded\s*\?[\s\S]*stagePreview/);
@@ -9226,8 +9230,11 @@ function testRunSheetAccordionRestructure() {
   assert.doesNotMatch(section, /"grid gap-3 pt-2"/);
 
   // Tightened spacing: the collapsed card and the list gap are both smaller
-  // than the pre-restructure values (`p-4` card, `space-y-3` list).
-  assert.match(section, /"ftc-card p-3"/);
+  // than the pre-restructure values (`p-4` card, `space-y-3` list). The card
+  // class is now a template literal (an incomplete row conditionally adds
+  // `opacity-75`; see testRunSheetProductionPolish), so match the base
+  // classes rather than a single literal string.
+  assert.match(section, /`ftc-card p-3 \$\{isReadOnlyAndIncomplete \? "opacity-75" : ""\}`/);
   assert.match(section, /"mt-5 space-y-2"/);
   assert.doesNotMatch(section, /"ftc-card p-4"/);
 
@@ -9309,7 +9316,7 @@ function testRunSheetChromeReduction() {
   assert.match(entryFn, /const stagePreview = row\.stage_area\.trim\(\);/);
   const headerButton = entryFn.match(/<button[\s\S]*?onToggleExpanded[\s\S]*?<\/button>/)?.[0] ?? "";
   assert.ok(headerButton, "the collapsed header toggle button must exist");
-  assert.match(headerButton, /\{stagePreview\}/);
+  assert.match(headerButton, /stagePreview \|\|/);
   assert.doesNotMatch(headerButton, /formatRunSheetSetTimeDisplay/);
   assert.doesNotMatch(headerButton, /row\.notes/);
 
@@ -9321,9 +9328,11 @@ function testRunSheetChromeReduction() {
   );
 
   // Set Time read-only is plain typography -- no bordered/background box.
+  // Sized up from `text-sm` (see testRunSheetProductionPolish's hierarchy
+  // check) but still no border/background.
   assert.match(
     section,
-    /<p className="text-sm font-medium tabular-nums text-ftc-text">\s*\{hasValue \? readOnlyDisplay : "—"\}\s*<\/p>/,
+    /<p className="text-base font-semibold tabular-nums text-ftc-text">\s*\{hasValue \? readOnlyDisplay : "—"\}\s*<\/p>/,
   );
   assert.doesNotMatch(section, /rounded-lg border border-ftc-border bg-ftc-bg-elevated\/30/);
 
@@ -9561,30 +9570,18 @@ function testRunSheetEditMode() {
   assert.match(headerCluster, />\s*Cancel\s*</);
   assert.match(headerCluster, /onClick=\{handleSave\}/);
   assert.match(headerCluster, /\{saving \? "Saving" : "Save run sheet"\}/);
-  assert.match(headerCluster, /<EventDetailEditButton onClick=\{handleEnterEditMode\}/);
+
+  // Edit is now the standard secondary button (see
+  // testRunSheetProductionPolish for the "why", the emoji label and the
+  // reverted EventDetailEditButton generalisation), not the separate
+  // icon+pill control this used to reuse.
+  assert.match(headerCluster, /onClick=\{handleEnterEditMode\}/);
+  assert.doesNotMatch(headerCluster, /EventDetailEditButton/);
 
   // Edit and Save/Cancel are disabled while a save is in flight, so a second
   // tap can't fire a second request or cancel out from under it.
   assert.match(headerCluster, /onClick=\{handleCancelEdit\}\s*\n\s*disabled=\{saving\}/);
   assert.match(headerCluster, /onClick=\{handleSave\}\s*\n\s*disabled=\{saving\}/);
-
-  // Reuses the same Edit affordance the event-level edit form already uses
-  // (icon + "Edit" pill), rather than a second implementation, with its own
-  // aria-label so it isn't announced as "Edit event".
-  assert.match(
-    section,
-    /import \{\s*EventDetailEditButton,\s*EventDetailSectionTitle,\s*\} from "@\/app\/components\/event-detail\/EventDetailLayout"/,
-  );
-  assert.match(headerCluster, /ariaLabel="Edit run sheet"/);
-
-  const layoutSource = readFileSync(
-    new URL("../app/components/event-detail/EventDetailLayout.tsx", import.meta.url),
-    "utf8",
-  );
-  // The generalisation is additive -- the existing "Edit event" caller passes
-  // no ariaLabel, so it keeps its original default and is unaffected.
-  assert.match(layoutSource, /ariaLabel = "Edit event"/);
-  assert.match(layoutSource, /aria-label=\{ariaLabel\}/);
 
   const eventDetailSourceForEditButton = readFileSync(
     new URL("../app/events/[eventId]/page.tsx", import.meta.url),
@@ -9593,6 +9590,137 @@ function testRunSheetEditMode() {
   assert.match(
     eventDetailSourceForEditButton,
     /<EventDetailEditHeaderSlot state=\{editHeaderState\} onEditClick=\{openEditForm\} \/>/,
+  );
+}
+
+/**
+ * The production-polish pass on top of testRunSheetEditMode: proper empty
+ * states for a sheet nobody has filled in, per-DJ completeness signalling,
+ * a lightweight progress line that becomes a completion badge, running-order
+ * numbering, a reading hierarchy inside expanded cards, and the Edit
+ * affordance moved onto the standard secondary button.
+ */
+function testRunSheetProductionPolish() {
+  const section = readFileSync(
+    new URL("../app/components/EventRunSheetSection.tsx", import.meta.url),
+    "utf8",
+  );
+
+  // Completeness is "has the essentials" -- stage AND a set time -- not
+  // "has everything including Notes", which stays optional supplementary
+  // detail and never gates completeness either way.
+  const completeFn =
+    section.match(/function isRunSheetRowComplete\(row: RunSheetRowInput\): boolean \{[\s\S]*?\n\}/)?.[0] ?? "";
+  assert.ok(completeFn, "isRunSheetRowComplete must exist");
+  assert.match(completeFn, /row\.stage_area\.trim\(\)/);
+  assert.match(completeFn, /row\.start_time\.trim\(\) \|\| row\.finish_time\.trim\(\)/);
+  assert.doesNotMatch(completeFn, /row\.notes/);
+
+  // Running order is one function so a future named-sets feature only has
+  // to change this, not RunSheetEntry or its caller.
+  assert.match(section, /function formatRunSheetOrderLabel\(index: number\): string \{\s*return `#\$\{index \+ 1\}`;\s*\}/);
+  assert.match(section, /orderLabel=\{formatRunSheetOrderLabel\(index\)\}/);
+
+  // Dedicated empty state for "DJs exist but nobody has anything filled in" --
+  // distinct from rows.length === 0 (no DJs at all), which keeps its existing
+  // dashed empty state untouched. Only shown in the read-only presentation:
+  // while editing, the planner needs the real rows on screen to fill in.
+  assert.match(section, /!isEditing && allRowsIncomplete \? \(/);
+  assert.match(section, /<RunSheetNotCompletedEmptyState canEdit=\{canEdit\} onEditClick=\{handleEnterEditMode\} \/>/);
+  assert.doesNotMatch(section, /rows\.length === 0 \? \(\s*<RunSheetNotCompletedEmptyState/);
+
+  const emptyStateFn =
+    section.match(/function RunSheetNotCompletedEmptyState\([\s\S]*?\n}\n/)?.[0] ?? "";
+  assert.ok(emptyStateFn, "RunSheetNotCompletedEmptyState must exist");
+  assert.match(emptyStateFn, /if \(!canEdit\) \{/);
+  assert.match(
+    emptyStateFn,
+    /The promoter hasn&apos;t published the Run Sheet yet\. Check back later\./,
+  );
+  assert.match(emptyStateFn, /Run Sheet not completed/);
+  assert.match(
+    emptyStateFn,
+    /Add each DJ&apos;s set time, stage and notes before the event\./,
+  );
+  assert.match(emptyStateFn, /onClick=\{onEditClick\}/);
+  assert.match(emptyStateFn, />\s*Edit Run Sheet\s*</);
+  // The DJ branch does not repeat "Run Sheet" as its own heading -- the
+  // section title immediately above already says that.
+  const djBranch = emptyStateFn.match(/if \(!canEdit\) \{[\s\S]*?\n  \}/)?.[0] ?? "";
+  assert.ok(djBranch, "the !canEdit branch must exist");
+  assert.doesNotMatch(djBranch, />\s*Run Sheet\s*</);
+
+  // Progress: derived from `rows` (live during editing), hidden exactly when
+  // the dedicated all-incomplete empty state replaces the list so the same
+  // fact isn't stated twice.
+  assert.match(
+    section,
+    /const completedRowCount = useMemo\(\s*\(\) => rows\.filter\(isRunSheetRowComplete\)\.length,\s*\[rows\],\s*\);/,
+  );
+  assert.match(section, /const isFullyComplete = rows\.length > 0 && completedRowCount === rows\.length;/);
+  assert.match(section, /const allRowsIncomplete = rows\.length > 0 && completedRowCount === 0;/);
+  assert.match(
+    section,
+    /const showRunSheetProgress = rows\.length > 0 && \(isEditing \|\| !allRowsIncomplete\);/,
+  );
+  assert.match(section, /🟢 Run Sheet Complete/);
+  assert.match(section, /\$\{completedRowCount\} of \$\{rows\.length\} DJs completed/);
+  // Not visually dominant: small, muted text under the title, not a colourful
+  // banner.
+  assert.match(section, /<p className="mt-0\.5 text-xs text-ftc-text-muted">/);
+
+  // Edit moved onto the standard secondary button -- the same style Cancel
+  // and Message already use elsewhere -- rather than the separate icon+pill
+  // control it used to reuse. The generalisation that control gained for this
+  // (an optional ariaLabel) is reverted since nothing needs it any more.
+  assert.doesNotMatch(section, /EventDetailEditButton/);
+  assert.match(
+    section,
+    /<button\s*\n\s*type="button"\s*\n\s*onClick=\{handleEnterEditMode\}\s*\n\s*aria-label="Edit Run Sheet"\s*\n\s*className=\{EVENT_DETAIL_BTN_SECONDARY\}\s*\n\s*>\s*\n\s*✏️ Edit/,
+  );
+
+  const layoutSource = readFileSync(
+    new URL("../app/components/event-detail/EventDetailLayout.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.doesNotMatch(layoutSource, /ariaLabel/);
+  assert.match(
+    layoutSource,
+    /export function EventDetailEditButton\(\{ onClick \}: \{ onClick: \(\) => void \}\)/,
+  );
+
+  // Incomplete-row styling: only in the read-only presentation (never while
+  // actively editing that same row), a muted card and a helper-text fallback
+  // that only appears when there is genuinely nothing else to preview.
+  const entryFn = section.match(/function RunSheetEntry\([\s\S]*?\n}\n/)?.[0] ?? "";
+  assert.ok(entryFn, "RunSheetEntry must exist");
+  assert.match(
+    entryFn,
+    /const isReadOnlyAndIncomplete = !canEdit && !isRunSheetRowComplete\(row\);/,
+  );
+  assert.match(entryFn, /isReadOnlyAndIncomplete \? "opacity-75" : ""/);
+  assert.match(
+    entryFn,
+    /stagePreview \|\| \(isReadOnlyAndIncomplete \? "Run Sheet details pending" : ""\)/,
+  );
+
+  // Hierarchy inside expanded cards: DJ name is the largest/boldest thing in
+  // the card, Set Time is sized up a tier below it, and Stage / Area / Notes
+  // (both routed through the same BookingCardExpandableNotes, untouched) stay
+  // the existing muted "supporting information" tier -- ranked below Set Time
+  // by weight/colour, and ordered Stage before Notes in the DOM to reflect
+  // "then... finally".
+  const djIdentityFn =
+    section.match(/function RunSheetDjIdentity\([\s\S]*?\n}\n/)?.[0] ?? "";
+  assert.ok(djIdentityFn, "RunSheetDjIdentity must exist");
+  assert.match(djIdentityFn, /min-w-0 truncate text-base font-bold text-ftc-text/);
+  assert.doesNotMatch(section, /font-medium text-ftc-text transition hover:text-ftc-primary/);
+
+  // Numbering badge sits inline with the identity row, small and muted so it
+  // never competes with the name for emphasis.
+  assert.match(
+    entryFn,
+    /<span className="shrink-0 text-xs font-semibold tabular-nums text-ftc-text-muted">\s*\{orderLabel\}\s*<\/span>/,
   );
 }
 
@@ -10494,6 +10622,7 @@ async function main() {
   testRunSheetFieldsWrapLongUnbrokenTokens();
   testRunSheetDirtyStateAndSaveFeedback();
   testRunSheetEditMode();
+  testRunSheetProductionPolish();
   testAppSplashScreenSlogan();
   testRoleAwareWorkspaceNavigation();
   testCancelledEventGigsAreSurfacedInGigs();
