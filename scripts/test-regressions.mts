@@ -8895,31 +8895,15 @@ function testRunSheetTextareasArePinnedToTheirRowCounts() {
   assert.doesNotMatch(notesClass, /min-h-\[/);
   assert.doesNotMatch(notesClass, /leading-/);
 
-  // The read-only Stage / Area cell is capped by the same pair as its
-  // editable counterpart. This is the half earlier fixes kept missing: every
-  // one of them changed the textarea, so a cap only ever existed for viewers
-  // who could edit -- accepted crew, and the planner on a history event, got
-  // an unpinned div that could overflow the card horizontally on a single
-  // long unbroken token, because a cap on explicit line count does nothing to
-  // stop wrapping.
-  // Boundary is a `}` alone on a line: the destructured params and their type
-  // both close with `}` in column 0 too, but each is followed by `: {` or `) {`.
-  const readOnlyCell = section.match(/function RunSheetReadOnlyText\([\s\S]*?\n}\n/)?.[0] ?? "";
-  assert.ok(readOnlyCell, "the read-only Run Sheet cell must exist");
-  assert.match(readOnlyCell, /ftc-run-sheet-textarea ftc-run-sheet-textarea-\$\{rows\}/);
-  // Its own min-height would be a second opinion about a pinned height.
-  assert.doesNotMatch(readOnlyCell, /min-h-\[3\.25rem\]/);
-  assert.doesNotMatch(readOnlyCell, /min-h-\[2\.25rem\]/);
-
-  // The Stage / Area caller passes its own row count directly. Notes'
-  // read-only path deliberately does NOT compose this component any more --
-  // see testRunSheetAccordionRestructure, which is where that half of the
-  // architecture (an unbounded show-more/less preview, not a pinned-height
-  // scroll box) is asserted.
-  assert.match(
-    section,
-    /<RunSheetReadOnlyText\s+value=\{row\.stage_area\}\s+className=\{readOnlyTextClassName\}\s+rows=\{RUN_SHEET_STAGE_AREA_VISIBLE_ROWS\}/,
-  );
+  // The pinned-height/scroll-box treatment now applies ONLY to the editable
+  // textareas asserted above. A later polish pass deliberately moved the
+  // read-only side of Stage / Area onto the same show-more/less, no-scroll
+  // component as Notes (see testRunSheetAccordionRestructure for that half);
+  // `RunSheetReadOnlyText`, the component that used to compose this pair for
+  // read-only Stage / Area, is gone rather than left unused, so it can't
+  // quietly come back into service.
+  assert.doesNotMatch(section, /function RunSheetReadOnlyText\(/);
+  assert.doesNotMatch(section, /RunSheetReadOnlyText/);
 
   // The auto-grow machinery is gone, not merely bypassed: no inline height, no
   // runtime line-height measurement, no silent path that skips the cap.
@@ -9149,9 +9133,11 @@ function testRunSheetSetLabelGrouping() {
  * - No "DJ" field label -- the avatar and name already say what it is.
  * - "Set N" only rendered when `setLabel` is non-null (asserted by logic in
  *   testRunSheetSetLabelGrouping above).
- * - A Stage • Time summary line, built by `formatRunSheetSummaryLine`, that
- *   renders unconditionally in the header -- NOT inside the
- *   `AnimatedExpandPanel` -- so it is visible collapsed and expanded alike.
+ * - Collapsed, the header shows only a one-line Stage / Area preview (no
+ *   Set Time, no Notes) alongside the avatar, name and chevron, unconditional
+ *   -- NOT inside the `AnimatedExpandPanel` -- so it is visible collapsed and
+ *   expanded alike. See testRunSheetChromeReduction for the follow-up polish
+ *   pass that dropped Set Time from this line entirely.
  * - Each entry is one `AnimatedExpandPanel` (the same primitive extracted
  *   from `BookingRequestCard` for its own card-level expand, reused here
  *   rather than a second smooth-collapse implementation), and the section
@@ -9184,17 +9170,14 @@ function testRunSheetAccordionRestructure() {
   assert.doesNotMatch(section, /lg:hidden/);
   assert.doesNotMatch(section, /lg:block/);
 
-  // The summary line is unconditional in the collapsed header, and sits
-  // before the expand panel in source -- not gated on `isExpanded`.
+  // The Stage / Area preview is unconditional in the collapsed header, and
+  // sits before the expand panel in source -- not gated on `isExpanded`.
   const entryFn = section.match(/function RunSheetEntry\([\s\S]*?\n}\n/)?.[0] ?? "";
   assert.ok(entryFn, "RunSheetEntry must exist");
-  const summaryIndex = entryFn.indexOf("formatRunSheetSummaryLine(row)");
+  const previewIndex = entryFn.indexOf("{stagePreview}");
   const panelIndex = entryFn.indexOf("<AnimatedExpandPanel");
-  assert.ok(summaryIndex > -1 && panelIndex > -1 && summaryIndex < panelIndex);
-  assert.doesNotMatch(
-    entryFn.slice(0, panelIndex),
-    /isExpanded\s*\?[\s\S]*formatRunSheetSummaryLine/,
-  );
+  assert.ok(previewIndex > -1 && panelIndex > -1 && previewIndex < panelIndex);
+  assert.doesNotMatch(entryFn.slice(0, panelIndex), /isExpanded\s*\?[\s\S]*stagePreview/);
 
   // Exactly one row open at a time: toggling the open row closes it,
   // toggling any other row replaces it -- not additive.
@@ -9266,11 +9249,115 @@ function testRunSheetAccordionRestructure() {
 }
 
 /**
+ * Second polish pass on the accordion above: strip remaining chrome so the
+ * read-only view reads as event information rather than an editable form,
+ * and compact the collapsed row further.
+ *
+ * - The "Read-only view for accepted crew" subtitle, and the `readOnlyHint`
+ *   prop that controlled it, are gone outright rather than defaulted to
+ *   empty -- it had exactly one caller and no purpose once the copy under
+ *   it is deleted, so keeping the prop around would just be a second way to
+ *   spell "do nothing" that a future edit could rediscover and populate.
+ * - The collapsed header preview is Stage / Area alone: Set Time moved to
+ *   be expanded-only content, on the reasoning that a DJ scanning a large
+ *   sheet is looking for their own name and where they're playing, not
+ *   comparing times across dozens of rows at a glance.
+ * - Stage / Area read-only reuses `BookingCardExpandableNotes` exactly like
+ *   Notes -- same show-more/less, same no-scrollbar guarantee, same
+ *   hide-when-empty -- rather than the pinned-height scroll box it used to
+ *   compose (`RunSheetReadOnlyText`, removed; see
+ *   testRunSheetTextareasArePinnedToTheirRowCounts). It asks for a 2-line
+ *   preview via the component's new `previewLines` prop instead of the
+ *   3-line default, added specifically for this: a template-literal class
+ *   name (`` `line-clamp-${previewLines}` ``) would not be visible to
+ *   Tailwind's static scan, so both `line-clamp-2` and `line-clamp-3` are
+ *   written as literal strings in a lookup rather than interpolated.
+ * - Set Time read-only drops its bordered/background box for plain
+ *   typography -- it's a single short fixed string that can't overflow two
+ *   lines, so unlike Stage / Area and Notes it needs no show-more pattern,
+ *   just less chrome. `readOnlyTextClassName`, the prop that supplied that
+ *   box (and, before this pass, was reused for Stage / Area and DJ identity
+ *   too), no longer has a consumer and is removed rather than left unused.
+ * - Information order when expanded stays Stage / Area, then Set Time, then
+ *   Notes -- the order a DJ actually consumes it in before playing.
+ */
+function testRunSheetChromeReduction() {
+  const section = readFileSync(
+    new URL("../app/components/EventRunSheetSection.tsx", import.meta.url),
+    "utf8",
+  );
+
+  // The subtitle and everything that controlled it are gone, not merely
+  // defaulted away.
+  assert.doesNotMatch(section, /Read-only view for accepted crew/);
+  assert.doesNotMatch(section, /readOnlyHint/);
+  assert.doesNotMatch(section, /EVENT_DETAIL_SECTION_SUBTITLE_CLASS/);
+
+  const pageSource = readFileSync(
+    new URL("../app/events/[eventId]/page.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.doesNotMatch(pageSource, /readOnlyHint/);
+
+  // The unused chrome class is gone, not just unreferenced.
+  assert.doesNotMatch(section, /readOnlyTextClassName/);
+
+  // Collapsed header preview is Stage / Area alone -- no Set Time, no Notes.
+  const entryFn = section.match(/function RunSheetEntry\([\s\S]*?\n}\n/)?.[0] ?? "";
+  assert.ok(entryFn, "RunSheetEntry must exist");
+  assert.match(entryFn, /const stagePreview = row\.stage_area\.trim\(\);/);
+  const headerButton = entryFn.match(/<button[\s\S]*?onToggleExpanded[\s\S]*?<\/button>/)?.[0] ?? "";
+  assert.ok(headerButton, "the collapsed header toggle button must exist");
+  assert.match(headerButton, /\{stagePreview\}/);
+  assert.doesNotMatch(headerButton, /formatRunSheetSetTimeDisplay/);
+  assert.doesNotMatch(headerButton, /row\.notes/);
+
+  // Stage / Area read-only: same pattern as Notes, 2-line preview, hidden
+  // when empty, no pinned-height scroll box.
+  assert.match(
+    section,
+    /stagePreview \? \(\s*<BookingCardExpandableNotes\s*\n\s*notes=\{row\.stage_area\}\s*\n\s*label="Stage \/ Area"\s*\n\s*detailsOpen=\{isExpanded\}\s*\n\s*previewLines=\{2\}\s*\n\s*\/>\s*\) : null/,
+  );
+
+  // Set Time read-only is plain typography -- no bordered/background box.
+  assert.match(
+    section,
+    /<p className="text-sm font-medium tabular-nums text-ftc-text">\s*\{hasValue \? readOnlyDisplay : "—"\}\s*<\/p>/,
+  );
+  assert.doesNotMatch(section, /rounded-lg border border-ftc-border bg-ftc-bg-elevated\/30/);
+
+  // Information order in the expanded panel: Stage / Area, then Set Time,
+  // then Notes.
+  const panelBody = entryFn.match(/<div className="space-y-3 pt-2">([\s\S]*?)<\/AnimatedExpandPanel>/)?.[1] ?? "";
+  const stageIndex = panelBody.indexOf("Stage / Area");
+  const setTimeIndex = panelBody.indexOf("RunSheetSetTimeField");
+  const notesIndex = panelBody.lastIndexOf("Notes");
+  assert.ok(
+    stageIndex > -1 && stageIndex < setTimeIndex && setTimeIndex < notesIndex,
+    "expanded panel must present Stage / Area, then Set Time, then Notes",
+  );
+
+  // BookingCardExpandableNotes' preview length is configurable without a
+  // template-literal class name, which Tailwind's static scan can't see.
+  const notesComponentSource = readFileSync(
+    new URL("../app/components/booking/BookingCardExpandableNotes.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(notesComponentSource, /previewLines\s*=\s*3/);
+  assert.match(
+    notesComponentSource,
+    /const lineClampClass = previewLines === 2 \? "line-clamp-2" : "line-clamp-3";/,
+  );
+}
+
+/**
  * A hard line cap and a character cap say nothing about a single long
  * unbroken token -- a pasted URL, a run of the same character, a venue name
  * with no spaces. That still needs to wrap inside the fixed-height box rather
- * than either growing it or overflowing it horizontally, on both the editable
- * textarea and the read-only div rendered for accepted crew.
+ * than either growing it or overflowing it horizontally, in the editable
+ * textarea (the only remaining consumer of this class -- the read-only path
+ * now goes through `BookingCardExpandableNotes`'s own wrap handling instead;
+ * see testRunSheetChromeReduction).
  *
  * `.ftc-run-sheet-textarea` carries the fix, reusing the exact
  * `min-width: 0; max-width: 100%; overflow-wrap: anywhere; word-break:
@@ -10302,6 +10389,7 @@ async function main() {
   testRunSheetFieldsEnforceHardLineLimits();
   testRunSheetSetLabelGrouping();
   testRunSheetAccordionRestructure();
+  testRunSheetChromeReduction();
   testRunSheetFieldsWrapLongUnbrokenTokens();
   testRunSheetDirtyStateAndSaveFeedback();
   testAppSplashScreenSlogan();

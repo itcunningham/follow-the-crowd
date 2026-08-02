@@ -1430,7 +1430,6 @@ function EventDetailPageView() {
                           lineup={lineup}
                           profiles={profiles}
                           onSaved={setHeaderFeedbackMessage}
-                          readOnlyHint={isHistoryEventDetail ? null : undefined}
                           emptyStateMessage={
                             isHistoryEventDetail
                               ? "No run sheet was saved for this event"

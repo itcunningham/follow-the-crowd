@@ -14,12 +14,19 @@ export default function BookingCardExpandableNotes({
   label = "Notes",
   detailsOpen = true,
   onNotesExpandedChange,
+  previewLines = 3,
 }: {
   notes: string;
   label?: string;
   detailsOpen?: boolean;
   onNotesExpandedChange?: (expanded: boolean) => void;
+  /** Collapsed line count. Written as a lookup rather than a template string
+   * (`` `line-clamp-${previewLines}` ``) so both literal class names stay
+   * visible to Tailwind's static build-time scan -- a runtime-interpolated
+   * class name isn't. */
+  previewLines?: 2 | 3;
 }) {
+  const lineClampClass = previewLines === 2 ? "line-clamp-2" : "line-clamp-3";
   const [expanded, setExpanded] = useState(false);
   const [showToggle, setShowToggle] = useState(false);
   const [noteHeights, setNoteHeights] = useState<{ collapsed: number; full: number } | null>(
@@ -57,18 +64,18 @@ export default function BookingCardExpandableNotes({
         setShowToggle(node.scrollHeight > node.clientHeight + 1);
       }
 
-      node.classList.remove("line-clamp-3");
+      node.classList.remove(lineClampClass);
       const fullHeight = node.scrollHeight;
 
       if (!isExpanded) {
-        node.classList.add("line-clamp-3");
+        node.classList.add(lineClampClass);
       }
 
       const collapsedHeight = isExpanded
         ? (() => {
-            node.classList.add("line-clamp-3");
+            node.classList.add(lineClampClass);
             const height = node.clientHeight;
-            node.classList.remove("line-clamp-3");
+            node.classList.remove(lineClampClass);
             return height;
           })()
         : node.clientHeight;
@@ -100,7 +107,7 @@ export default function BookingCardExpandableNotes({
       resizeObserver.disconnect();
       window.removeEventListener("resize", measureHeights);
     };
-  }, [trimmed, detailsOpen, expanded]);
+  }, [trimmed, detailsOpen, expanded, lineClampClass]);
 
   useLayoutEffect(() => {
     if (!detailsOpen || !noteHeights || expanded) {
@@ -163,7 +170,7 @@ export default function BookingCardExpandableNotes({
         <p
           ref={textRef}
           className={`mt-1 break-words text-sm leading-snug text-ftc-text-secondary ${
-            expanded ? "block overflow-visible" : "line-clamp-3"
+            expanded ? "block overflow-visible" : lineClampClass
           }`}
         >
           {trimmed}

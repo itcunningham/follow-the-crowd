@@ -7,7 +7,6 @@ import {
   EVENT_DETAIL_BTN_PRIMARY,
   EVENT_DETAIL_CARD_CLASS,
   EVENT_DETAIL_FEEDBACK_CLASS,
-  EVENT_DETAIL_SECTION_SUBTITLE_CLASS,
 } from "@/app/components/event-detail/eventDetailUi";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BookingDualTimeWheelPicker } from "@/app/components/BookingTimeWheelPicker";
@@ -65,9 +64,6 @@ const RUN_SHEET_SET_TIME_BUTTON_CLASS =
 const RUN_SHEET_NOTES_VISIBLE_ROWS = 4;
 const RUN_SHEET_STAGE_AREA_VISIBLE_ROWS = 2;
 const RUN_SHEET_STAGE_AREA_MAX_LENGTH = 50;
-/** Joins the compact "Stage • Time" summary line -- distinct from
- * `SET_TIME_RANGE_JOINER`, which joins a set's own start and finish time. */
-const RUN_SHEET_SUMMARY_JOINER = " • ";
 
 const iconButtonBaseClassName =
   "flex h-8 w-8 shrink-0 items-center justify-center rounded-md border transition disabled:cursor-not-allowed disabled:opacity-40";
@@ -127,19 +123,6 @@ function formatRunSheetSetTimeDisplay(startTime: string, finishTime: string): st
   return start || finish;
 }
 
-/** The always-visible "Main Stage • 9:00 PM – 10:00 PM" line, collapsed and
- * expanded alike. "—" for a missing side rather than
- * `BOOKING_TIME_PLACEHOLDER_LABEL` ("Select time"): that copy is an editing
- * call to action, wrong for a DJ who can't edit and odd in a glance summary
- * even for the planner who can. */
-function formatRunSheetSummaryLine(row: RunSheetRowInput): string {
-  const stage = row.stage_area.trim() || "—";
-  const time = formatRunSheetSetTimeDisplay(row.start_time, row.finish_time);
-  const timeDisplay = time === BOOKING_TIME_PLACEHOLDER_LABEL ? "—" : time;
-
-  return `${stage}${RUN_SHEET_SUMMARY_JOINER}${timeDisplay}`;
-}
-
 function parseRunSheetTimeField(value: string): {
   clock: string;
   meridiem: Meridiem;
@@ -173,13 +156,11 @@ function RunSheetSetTimeField({
   finishTime,
   onChange,
   canEdit,
-  readOnlyTextClassName,
 }: {
   startTime: string;
   finishTime: string;
   onChange: (start: string, finish: string) => void;
   canEdit: boolean;
-  readOnlyTextClassName: string;
 }) {
   const [pickerOpen, setPickerOpen] = useState(false);
   const userEditedRef = useRef(false);
@@ -230,15 +211,17 @@ function RunSheetSetTimeField({
   })();
 
   if (!canEdit) {
+    // Informational content, not a form control: plain typography, no
+    // bordered box. Set Time is a short fixed-format string that never
+    // wraps to more than one line, so unlike Stage / Area and Notes it
+    // needs no truncate-and-expand treatment.
     const readOnlyDisplay = formatRunSheetSetTimeDisplay(startTime, finishTime);
     const hasValue = Boolean(startTime.trim() || finishTime.trim());
 
     return (
-      <div
-        className={`${readOnlyTextClassName} min-h-[2.25rem] whitespace-pre-wrap break-words`}
-      >
+      <p className="text-sm font-medium tabular-nums text-ftc-text">
         {hasValue ? readOnlyDisplay : "—"}
-      </div>
+      </p>
     );
   }
 
@@ -391,45 +374,6 @@ function RunSheetCappedTextarea({
 }
 
 /**
- * The read-only rendering of a Run Sheet cell, shown to accepted crew and to
- * the planner on a history event.
- *
- * Composes the same pinned-height pair as the matching editable textarea —
- * `ftc-run-sheet-textarea` plus its `-2`/`-4` row modifier — so the two look
- * like the same field in two states rather than different components: same
- * height, same internal scroll past the row cap, same line-height (the base
- * class pins it to `1.5rem !important`, overriding the `leading-relaxed` in
- * `className`).
- *
- * Stage / Area used to carry only a `min-height`, on the reasoning that its
- * 50-character cap keeps it under two *explicit* lines. That reasoning held
- * for line count but not for wrapping: a single unbroken 40+ character run
- * (a venue name with no spaces, in practice a pasted URL) still wraps across
- * several *visual* lines, and without the pinned height and this class's
- * `overflow-wrap`/`min-width` pair, that either grew the cell past two rows
- * or — inside the flex/grid/table-cell layouts both card and table views use
- * — overflowed the card horizontally instead of wrapping at all, because a
- * long token's content-based minimum width can widen an auto-sized ancestor
- * before wrapping ever gets a chance to apply. Both fields now share one
- * fix.
- */
-function RunSheetReadOnlyText({
-  value,
-  className,
-  rows,
-}: {
-  value: string;
-  className: string;
-  rows: number;
-}) {
-  return (
-    <div className={`${className} ftc-run-sheet-textarea ftc-run-sheet-textarea-${rows}`}>
-      {value?.trim() ? value : "—"}
-    </div>
-  );
-}
-
-/**
  * Avatar + display name only -- no outer sizing wrapper, no label. The
  * accordion header supplies its own layout (it also needs to fit move
  * buttons and a set badge on the same row), and "DJ" as a field label above
@@ -494,23 +438,33 @@ function RunSheetExpandChevron({ expanded }: { expanded: boolean }) {
 
 /**
  * One Run Sheet entry, collapsed by default to an avatar, a name, a
- * Stage • Time summary and a chevron -- everything else lives behind the
- * chevron, animated open with `AnimatedExpandPanel`.
+ * one-line Stage / Area preview and a chevron -- everything else, including
+ * Set Time, lives behind the chevron, animated open with
+ * `AnimatedExpandPanel`. A DJ reads this before performing in the order the
+ * fields are laid out: where, when, then anything extra.
  *
  * The DJ name is its own `Link` to the profile (when assigned), so it can't
  * sit inside the toggle `<button>` -- a link nested in a button is invalid
  * HTML and produces ambiguous click/focus behaviour. Header row and toggle
  * button are siblings instead: the name has its own tap target, everything
- * to its right (summary line, chevron) toggles the panel.
+ * to its right (the preview, the chevron) toggles the panel.
  *
- * Notes only switches presentation when read-only. Editing keeps the pinned-
- * height, internally-scrolling textarea (`RunSheetCappedTextarea`) -- that
- * scroll is doing real work there, keeping the row cap enforceable while
- * typing. Read-only reuses `BookingCardExpandableNotes` (already the FTC
- * show-more/less pattern behind DM booking notes and the rate proposal
- * panel) instead of a second implementation: it already hides itself on
- * empty notes, measures real overflow before showing a toggle, and resets
- * to collapsed via `detailsOpen` when the row itself closes.
+ * Stage / Area and Notes only switch presentation when read-only. Editing
+ * keeps the pinned-height, internally-scrolling textarea
+ * (`RunSheetCappedTextarea`) for both -- that scroll is doing real work
+ * there, keeping the row cap enforceable while typing. Read-only for both
+ * reuses `BookingCardExpandableNotes` (already the FTC show-more/less
+ * pattern behind DM booking notes and the rate proposal panel) instead of a
+ * second implementation: it hides itself on empty content, measures real
+ * overflow before showing a toggle, resets to collapsed via `detailsOpen`
+ * when the row itself closes, and needs no internal scrollbar at any length.
+ * Stage / Area asks for a 2-line preview instead of the component's 3-line
+ * default -- it's a short field, so a taller preview would rarely need to
+ * collapse anything.
+ *
+ * Set Time is left out of this pattern: read-only, it's a single short fixed
+ * string that can't overflow two lines, so the reduced-chrome plain
+ * typography inside `RunSheetSetTimeField` is enough on its own.
  */
 function RunSheetEntry({
   row,
@@ -525,7 +479,6 @@ function RunSheetEntry({
   onMoveDown,
   stageAreaTextareaClassName,
   notesTextareaClassName,
-  readOnlyTextClassName,
   updateRow,
 }: {
   row: RunSheetRowInput;
@@ -540,10 +493,10 @@ function RunSheetEntry({
   onMoveDown: () => void;
   stageAreaTextareaClassName: string;
   notesTextareaClassName: string;
-  readOnlyTextClassName: string;
   updateRow: (rowId: string, patch: Partial<RunSheetRowInput>) => void;
 }) {
   const panelId = `run-sheet-panel-${row.id}`;
+  const stagePreview = row.stage_area.trim();
 
   return (
     <div className="ftc-card p-3">
@@ -565,6 +518,8 @@ function RunSheetEntry({
         ) : null}
       </div>
 
+      {/* Always rendered, even with no Stage / Area value: this is the only
+          way to reach Set Time and Notes, not just a preview of content. */}
       <button
         type="button"
         onClick={onToggleExpanded}
@@ -573,7 +528,7 @@ function RunSheetEntry({
         className="mt-1 flex w-full items-center gap-2 rounded-md py-1 text-left"
       >
         <span className="min-w-0 flex-1 truncate text-xs text-ftc-text-muted">
-          {formatRunSheetSummaryLine(row)}
+          {stagePreview}
         </span>
         <RunSheetExpandChevron expanded={isExpanded} />
       </button>
@@ -584,7 +539,7 @@ function RunSheetEntry({
               full-width block (each `<label>`, and BookingCardExpandableNotes'
               own root). A single-column grid gains nothing over that and
               costs something real -- an unconstrained grid item is sized by
-              its content's min-content width, so a single long unbroken Notes
+              its content's min-content width, so a single long unbroken
               string (no natural wrap point) can size this item far wider
               than the card and get silently clipped by the animated panel's
               `overflow-x-hidden` rather than actually wrapping. Plain block
@@ -592,11 +547,11 @@ function RunSheetEntry({
               its containing block, not its content, so it can't be pulled
               wide by anything inside it. */}
           <div className="space-y-3 pt-2">
-            <label className="block">
-              <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted">
-                Stage / Area
-              </span>
-              {canEdit ? (
+            {canEdit ? (
+              <label className="block">
+                <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted">
+                  Stage / Area
+                </span>
                 <RunSheetCappedTextarea
                   value={row.stage_area}
                   onChange={(value) => updateRow(row.id!, { stage_area: value })}
@@ -604,14 +559,15 @@ function RunSheetEntry({
                   maxLength={RUN_SHEET_STAGE_AREA_MAX_LENGTH}
                   rows={RUN_SHEET_STAGE_AREA_VISIBLE_ROWS}
                 />
-              ) : (
-                <RunSheetReadOnlyText
-                  value={row.stage_area}
-                  className={readOnlyTextClassName}
-                  rows={RUN_SHEET_STAGE_AREA_VISIBLE_ROWS}
-                />
-              )}
-            </label>
+              </label>
+            ) : stagePreview ? (
+              <BookingCardExpandableNotes
+                notes={row.stage_area}
+                label="Stage / Area"
+                detailsOpen={isExpanded}
+                previewLines={2}
+              />
+            ) : null}
 
             <label className="block">
               <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted">
@@ -624,7 +580,6 @@ function RunSheetEntry({
                   updateRow(row.id!, { start_time: start, finish_time: finish })
                 }
                 canEdit={canEdit}
-                readOnlyTextClassName={readOnlyTextClassName}
               />
             </label>
 
@@ -657,7 +612,6 @@ export default function EventRunSheetSection({
   lineup,
   profiles,
   onSaved,
-  readOnlyHint,
   emptyStateMessage = "Accepted DJs will appear here once they confirm their booking",
 }: {
   eventId: string;
@@ -665,7 +619,6 @@ export default function EventRunSheetSection({
   lineup: BookingRequest[];
   profiles: Map<string, BookingRecipientProfile>;
   onSaved?: (message: string) => void;
-  readOnlyHint?: string | null;
   emptyStateMessage?: string;
 }) {
   const [rows, setRows] = useState<RunSheetRowInput[]>([]);
@@ -838,19 +791,11 @@ export default function EventRunSheetSection({
   const stageAreaTextareaClassName = `${runSheetTextareaBaseClassName} ftc-run-sheet-textarea-2`;
   const notesTextareaClassName = `${runSheetTextareaBaseClassName} ftc-run-sheet-textarea-4`;
 
-  const readOnlyTextClassName =
-    "rounded-lg border border-ftc-border bg-ftc-bg-elevated/30 px-2.5 py-1.5 text-sm leading-relaxed text-ftc-text whitespace-pre-wrap break-words";
-
   return (
     <section className={EVENT_DETAIL_CARD_CLASS}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <EventDetailSectionTitle>Run Sheet</EventDetailSectionTitle>
-          {!canEdit && readOnlyHint !== null ? (
-            <p className={EVENT_DETAIL_SECTION_SUBTITLE_CLASS}>
-              {readOnlyHint ?? "Read-only view for accepted crew"}
-            </p>
-          ) : null}
         </div>
 
         {/* The slot is reserved for as long as saving is possible at all, so the
@@ -921,7 +866,6 @@ export default function EventRunSheetSection({
                 onMoveDown={() => handleMoveRow(row.id!, "down")}
                 stageAreaTextareaClassName={stageAreaTextareaClassName}
                 notesTextareaClassName={notesTextareaClassName}
-                readOnlyTextClassName={readOnlyTextClassName}
                 updateRow={updateRow}
               />
             );
