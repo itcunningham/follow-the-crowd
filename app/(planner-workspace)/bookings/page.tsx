@@ -177,6 +177,7 @@ import {
   formatGigsHistoryRemoveSuccessMessage,
   useInlineTabFeedbackDismiss,
 } from "@/lib/design/inlineTabFeedback";
+import { rtLog } from "@/lib/diagnostics/realtimeDiagnostics";
 
 const emptyForm: BookingRequestInput = {
   eventName: "",
@@ -901,6 +902,9 @@ function BookingsPageContent() {
           return;
         }
 
+        rtLog("refetch", "Gigs loadBookings -> loadGigsListSnapshot", {
+          force: options?.showLoading === false,
+        });
         const snapshot = await loadGigsListSnapshot({
           force: options?.showLoading === false,
         });
@@ -951,6 +955,10 @@ function BookingsPageContent() {
     void loadBookings();
 
     function refreshReceivedGigs() {
+      rtLog("refetch", "Gigs refreshReceivedGigs fired", {
+        canView: canViewGigsWorkspace(role),
+      });
+
       if (!canViewGigsWorkspace(role)) {
         return;
       }
