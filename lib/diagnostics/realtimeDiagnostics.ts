@@ -40,17 +40,56 @@ function stamp(): string {
   return new Date().toISOString().slice(11, 23);
 }
 
+/** Ring buffer so the on-screen panel can show/copy logs without a USB console. */
+const MAX_ENTRIES = 200;
+const subscribers = new Set<() => void>();
+
+/**
+ * Held as an immutable snapshot, replaced (never mutated) on every append.
+ * `useSyncExternalStore` bails out when getSnapshot returns a reference-equal
+ * value, so mutating one array in place would leave the panel permanently empty.
+ */
+let snapshot: readonly string[] = [];
+
+export function subscribeRealtimeDiagnostics(listener: () => void): () => void {
+  subscribers.add(listener);
+  return () => {
+    subscribers.delete(listener);
+  };
+}
+
+export function getRealtimeDiagnosticsSnapshot(): readonly string[] {
+  return snapshot;
+}
+
+export function clearRealtimeDiagnostics(): void {
+  snapshot = [];
+  subscribers.forEach((listener) => listener());
+}
+
+function record(line: string): void {
+  const next = [...snapshot, line];
+  snapshot = next.length > MAX_ENTRIES ? next.slice(next.length - MAX_ENTRIES) : next;
+  subscribers.forEach((listener) => listener());
+}
+
 export function rtLog(scope: string, event: string, detail?: unknown): void {
   if (!isRealtimeDiagnosticsEnabled()) {
     return;
   }
 
-  if (detail === undefined) {
-    console.log(`[ftc-rt ${stamp()}] ${scope} :: ${event}`);
-    return;
+  let line = `${stamp()} ${scope} :: ${event}`;
+
+  if (detail !== undefined) {
+    try {
+      line += ` ${JSON.stringify(detail)}`;
+    } catch {
+      line += " [unserialisable]";
+    }
   }
 
-  console.log(`[ftc-rt ${stamp()}] ${scope} :: ${event}`, detail);
+  record(line);
+  console.log(`[ftc-rt] ${line}`);
 }
 
 /** Channel lifecycle: SUBSCRIBED / CHANNEL_ERROR / TIMED_OUT / CLOSED. */

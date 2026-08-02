@@ -1,6 +1,7 @@
 import { readSupabaseSessionUserIdSync } from "@/lib/auth/sessionUserId";
 import type { EventWithLineupStats } from "@/lib/events";
 import { seedEventOwnerIdsFromEvents } from "@/lib/events/eventOwnerIdCache";
+import { registerBookingRequestsChangeListener } from "@/lib/bookings/bookingRequestsSync";
 
 const EVENTS_LIST_CACHE_KEY = "ftc-events-list-v1";
 const EVENTS_LIST_LOCAL_CACHE_KEY = "ftc-events-list-v1-local";
@@ -184,3 +185,33 @@ export function readCachedEventOwnerId(eventId: string): string | null | undefin
 
   return undefined;
 }
+
+/**
+ * Drops the cached events payload after a booking status change.
+ *
+ * `lineupStats` (Invited / Pending / Accepted / Declined) is computed at fetch
+ * time in lib/events.ts and stored inside this cached payload, so a booking
+ * moving pending -> accepted does not change anything here until the events list
+ * is refetched. Both the sessionStorage and localStorage copies are cleared, and
+ * both role variants, because the invalidation happens outside any component and
+ * does not know which role's list is cached.
+ *
+ * Registered with the shared booking-change registry below, so a local mutation
+ * and a realtime event from another account both drop it through one path.
+ */
+export function invalidateEventsListCache(): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    for (const isPlanner of [true, false]) {
+      window.sessionStorage.removeItem(getEventsCacheKey(isPlanner));
+      window.localStorage.removeItem(getEventsLocalCacheKey(isPlanner));
+    }
+  } catch (cacheError) {
+    console.error("[events] Failed to invalidate events cache:", cacheError);
+  }
+}
+
+registerBookingRequestsChangeListener(invalidateEventsListCache);

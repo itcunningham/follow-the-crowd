@@ -893,6 +893,37 @@ function EventsPageClientView({
     loadEvents();
   }, [resolvedRole, roleReady, loadEvents, isCalendarCreateFlow]);
 
+  /**
+   * Reconcile lineup counts when a booking status changes anywhere.
+   *
+   * `lineupStats` (Pending / Accepted / ...) is computed at fetch time and baked
+   * into the cached events payload, so this screen had no way to notice a DJ
+   * accepting: it had no booking-change listener and no realtime subscription,
+   * and stayed stale until a full reload refetched it.
+   *
+   * This is the same shared signal the Gigs list already uses -- fired by
+   * `notifyBookingRequestsChanged` for both the acting client's own mutation and
+   * for realtime events from another account. The registered cache invalidator
+   * runs before this event is dispatched, so `loadEvents` re-seeds from an empty
+   * cache and refetches rather than flashing stale counts.
+   */
+  useEffect(() => {
+    if (!roleReady || isCalendarCreateFlow || !canViewEventsSubNav(resolvedRole)) {
+      return;
+    }
+
+    function handleBookingsChanged() {
+      rtLog("refetch", "EventsPageClient booking-change signal -> loadEvents");
+      void loadEvents();
+    }
+
+    window.addEventListener("ftc-notifications-updated", handleBookingsChanged);
+
+    return () => {
+      window.removeEventListener("ftc-notifications-updated", handleBookingsChanged);
+    };
+  }, [resolvedRole, roleReady, loadEvents, isCalendarCreateFlow]);
+
   useEffect(() => {
     if (!roleReady || !isPlanner) {
       return;
