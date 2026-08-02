@@ -203,7 +203,9 @@ export function resolveBookingCancelledByLabel(
   }
 
   if (booking.cancelled_by === booking.sender_id) {
-    return "Planner";
+    // "Promoter" is the user-facing term everywhere; "Planner" only survives in
+    // internal names and in the legacy DM strings kept for matching old rows.
+    return "Promoter";
   }
 
   if (booking.cancelled_by === booking.recipient_id) {

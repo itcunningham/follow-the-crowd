@@ -43,7 +43,7 @@ import { isAllowedProfileImageType, uploadProfileImage } from "@/lib/user/upload
 
 const ROLE_OPTIONS: { value: UserRole; label: string }[] = [
   { value: "dj", label: "DJ / Artist" },
-  { value: "promoter", label: "Event Planner" },
+  { value: "promoter", label: "Promoter / Event Planner" },
   { value: "both", label: "Both" },
 ];
 

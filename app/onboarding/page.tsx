@@ -21,17 +21,17 @@ const ROLE_OPTIONS: {
   {
     role: "dj",
     title: "DJ / Artist",
-    description: "Get booked, chat with promoters and manage your gigs",
+    description: "Get booked, chat with promoters, and manage your gigs.",
   },
   {
     role: "promoter",
     title: "Promoter / Event Planner",
-    description: "Create events, book DJs and manage your team",
+    description: "Create events, book DJs, and manage your event team.",
   },
   {
     role: "both",
-    title: "DJ & Planner",
-    description: "Book DJs and manage your artist profile from one account",
+    title: "DJ & Promoter",
+    description: "Book DJs, get booked, and manage everything from one account.",
   },
 ];
 
@@ -105,7 +105,7 @@ export default function OnboardingPage() {
       <div className="mx-auto w-full max-w-2xl">
         <h1 className="text-3xl font-bold text-ftc-text sm:text-4xl">Choose your role</h1>
         <p className="mt-3 max-w-xl text-sm leading-relaxed text-ftc-text-secondary sm:text-base">
-          Select how you&apos;ll use Follow The Crowd
+          Select the account that best fits you.
         </p>
 
         {/* Grid rather than a plain stack so every card is the height of the
