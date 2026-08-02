@@ -23,10 +23,10 @@ function HistoryRemoveConfirmHarness({
     open: bulk.confirmOpen,
     count: bulk.confirmCount,
     loading: bulk.removing,
-    title: "Delete selected history?",
-    cancelLabel: "Cancel",
-    confirmLabel: "Delete",
-    confirmLoadingLabel: "Deleting",
+    title: "Remove from history?",
+    cancelLabel: "Keep items",
+    confirmLabel: "Remove from history",
+    confirmLoadingLabel: "Removing",
     onCancel: bulk.closeConfirm,
     onConfirm: () => {
       void bulk.confirmRemove(onRemove);

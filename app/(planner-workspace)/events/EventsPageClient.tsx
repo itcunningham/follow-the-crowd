@@ -1811,11 +1811,7 @@ function EventsPageClientView({
             open={historyBulkManage.confirmOpen}
             count={historyBulkManage.confirmCount}
             loading={historyBulkManage.removing}
-            title="Delete selected history?"
-            description="The selected events will be permanently removed from your history. This can't be undone"
-            cancelLabel="Cancel"
-            confirmLabel="Delete"
-            confirmLoadingLabel="Deleting"
+            description="This removes the selected events from your History view only. It does not delete the event, bookings, chats, or any records"
             errorMessage={error}
             onCancel={closeHistoryRemoveConfirm}
             onConfirm={confirmHistoryRemove}

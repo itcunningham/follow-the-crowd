@@ -656,7 +656,7 @@ export function HistoryRemoveConfirmDialog({
 }) {
   const resolvedDescription =
     description ??
-    `This removes ${count} selected item${count === 1 ? "" : "s"} from your History view only. It does not delete the event, booking, chat, or any records`;
+    "This removes the selected items from your History view only. It does not delete the event, booking, chat, or any records";
 
   const [mounted, setMounted] = useState(false);
 
