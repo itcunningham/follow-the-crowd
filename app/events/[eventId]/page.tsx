@@ -151,6 +151,10 @@ import {
   shouldResetMobileEventDetailScroll,
   useMobileEventDetailScrollReset,
 } from "@/lib/navigation/useCalendarOriginMobileScrollReset";
+// TEMPORARY: Run Sheet textarea diagnostics. Renders nothing unless the URL
+// carries `?ftcdebug=runsheet-textareas`. Remove this import, the component
+// file and the mount below once the iOS row-cap cause is identified.
+import RunSheetTextareaDebugPanel from "@/app/components/debug/RunSheetTextareaDebugPanel";
 import { scrollDocumentToTop } from "@/lib/navigation/scrollPageToTop";
 import { getEventNotesValidationError, MAX_EVENT_NOTES_LENGTH } from "@/lib/events/eventNotes";
 import { useEventEditHeaderState } from "@/lib/events/useEventEditHeaderVisibility";
@@ -200,6 +204,8 @@ export default function EventDetailPage() {
   return (
     <OnboardingGuard>
       <EventDetailPageView />
+      {/* TEMPORARY: see the component for why this exists and when to delete it. */}
+      <RunSheetTextareaDebugPanel />
     </OnboardingGuard>
   );
 }
