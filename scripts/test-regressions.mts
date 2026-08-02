@@ -8520,18 +8520,19 @@ function testAppSplashScreenSlogan() {
   );
 
   // Slogan renders once, between the app name and the loading dots, exactly as written
-  // (no quotation marks, no trailing full stop, no italics).
+  // (no quotation marks, no italics) -- "For the culture." with the trailing period,
+  // not the earlier "For the culture, not the clout" wording.
   const nameIndex = splashSource.indexOf("Follow The Crowd");
-  const sloganIndex = splashSource.indexOf("For the culture, not the clout");
+  const sloganIndex = splashSource.indexOf("For the culture.");
   const dotsIndex = splashSource.indexOf("ftc-app-splash-dot");
   assert.ok(nameIndex !== -1 && sloganIndex !== -1 && dotsIndex !== -1);
   assert.ok(nameIndex < sloganIndex && sloganIndex < dotsIndex);
   assert.equal(
-    splashSource.indexOf("For the culture, not the clout", sloganIndex + 1),
+    splashSource.indexOf("For the culture.", sloganIndex + 1),
     -1,
   );
+  assert.doesNotMatch(splashSource, /not the clout/);
   assert.doesNotMatch(splashSource, /["'“”]For the culture/);
-  assert.doesNotMatch(splashSource, /not the clout\./);
   assert.doesNotMatch(splashSource, /italic/);
 
   // Small, muted, centered styling -- smaller and lighter than the bold uppercase app name.
