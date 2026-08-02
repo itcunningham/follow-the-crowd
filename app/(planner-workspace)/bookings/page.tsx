@@ -2003,7 +2003,7 @@ function BookingsPageContent() {
                     aria-disabled={detailsContinueAttempted && detailsFormHasValidationErrors}
                     className="ftc-btn-primary px-5 py-3 text-sm uppercase tracking-wide disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    Continue to DJ selection
+                    Continue
                   </button>
                 </form>
                 )
