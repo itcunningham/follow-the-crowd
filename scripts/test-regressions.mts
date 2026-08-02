@@ -8878,6 +8878,19 @@ function testRunSheetTextareasArePinnedToTheirRowCounts() {
   assert.doesNotMatch(notesClass, /min-h-\[/);
   assert.doesNotMatch(notesClass, /leading-/);
 
+  // The READ-ONLY Notes cell is capped by the same pair. This is the half the
+  // earlier fixes all missed: every one of them changed the textarea, so the
+  // cap only ever existed for viewers who could edit. Accepted crew, and the
+  // planner on a history event, kept getting an uncapped div that grew to fit
+  // 500 characters -- roughly 6 rows on a phone -- and stretched the card.
+  // Boundary is a `}` alone on a line: the destructured params and their type
+  // both close with `}` in column 0 too, but each is followed by `: {` or `) {`.
+  const readOnlyCell = section.match(/function RunSheetReadOnlyText\([\s\S]*?\n}\n/)?.[0] ?? "";
+  assert.ok(readOnlyCell, "the read-only Run Sheet cell must exist");
+  assert.match(readOnlyCell, /ftc-run-sheet-textarea ftc-run-sheet-textarea-4/);
+  // Its own min-height would be a second opinion about a pinned height.
+  assert.doesNotMatch(readOnlyCell, /min-h-\[3\.25rem\]/);
+
   // The auto-grow machinery is gone, not merely bypassed: no inline height, no
   // runtime line-height measurement, no silent path that skips the cap.
   assert.doesNotMatch(section, /RunSheetAutoGrowTextarea/);
@@ -9611,9 +9624,12 @@ function testBookingAcceptedDmMessageIsScopedToTheBooking() {
   assert.match(bookingRequestsSource, /await insertBookingAcceptedDmMessageIfNeeded\(booking\);/);
 }
 
-function testRealtimeInstrumentationIsFullyRemoved() {
-  // The booking-acceptance investigation shipped temporary opt-in diagnostics
-  // and an on-screen debug panel. None of it may reach production.
+function testTemporaryDebugInstrumentationIsFullyRemoved() {
+  // Two investigations — booking-acceptance realtime, and the Run Sheet
+  // textarea row caps — each shipped temporary opt-in diagnostics behind a
+  // `?ftcdebug=` flag plus an on-screen panel. Neither may reach production,
+  // and the pattern is easy to leave behind because it is inert without its
+  // flag: nothing in normal use would reveal that it is still mounted.
   for (const relativePath of [
     "../lib/bookings/bookingRequestsSync.ts",
     "../lib/bookings/gigsListSnapshotPrefetch.ts",
@@ -9622,12 +9638,13 @@ function testRealtimeInstrumentationIsFullyRemoved() {
     "../app/components/navigation/NavBadgeProvider.tsx",
     "../app/(planner-workspace)/events/EventsPageClient.tsx",
     "../app/(planner-workspace)/bookings/page.tsx",
+    "../app/events/[eventId]/page.tsx",
   ]) {
     const source = readFileSync(new URL(relativePath, import.meta.url), "utf8");
     assert.doesNotMatch(
       source,
-      /rtLog|realtimeDiagnostics|RealtimeDebugPanel|ftcdebug|ftc-debug-realtime/,
-      `${relativePath} still references the temporary realtime instrumentation`,
+      /rtLog|realtimeDiagnostics|RealtimeDebugPanel|RunSheetTextareaDebugPanel|ftcdebug|ftc-debug-realtime/,
+      `${relativePath} still references temporary debug instrumentation`,
     );
   }
 
@@ -9635,9 +9652,11 @@ function testRealtimeInstrumentationIsFullyRemoved() {
     !existsSync(new URL("../lib/diagnostics/realtimeDiagnostics.ts", import.meta.url)),
     "the temporary realtime diagnostics module must be deleted",
   );
+  // The whole directory, not the two known filenames: both panels lived here,
+  // so anything left in it is the same mistake with a different name.
   assert.ok(
-    !existsSync(new URL("../app/components/debug/RealtimeDebugPanel.tsx", import.meta.url)),
-    "the temporary realtime debug panel must be deleted",
+    !existsSync(new URL("../app/components/debug", import.meta.url)),
+    "app/components/debug must not exist — temporary debug panels are not shipped",
   );
 }
 
@@ -9908,7 +9927,7 @@ async function main() {
   testIosOverscrollDoesNotClipFixedChrome();
   testBookingStatusChangesReconcileEverywhere();
   testBookingAcceptedDmMessageIsScopedToTheBooking();
-  testRealtimeInstrumentationIsFullyRemoved();
+  testTemporaryDebugInstrumentationIsFullyRemoved();
   await testEventsHistorySelectAllButtonInteraction();
   await testEventsHistoryRemoveConfirmInteraction();
   await testDmChatReopenScroll();

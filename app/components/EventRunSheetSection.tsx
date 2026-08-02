@@ -356,6 +356,22 @@ function RunSheetCappedTextarea({
   );
 }
 
+/**
+ * The read-only rendering of a Run Sheet cell, shown to accepted crew and to
+ * the planner on a history event.
+ *
+ * Notes composes the same pinned-height pair as its editable textarea, so the
+ * field is 4 rows in both states and scrolls internally past that. It carried
+ * only a `min-height` before, which meant the editable path was capped while
+ * the read-only path grew without limit — the same 500 characters rendered 4
+ * rows to whoever could edit them and about 6 to everyone else, stretching the
+ * card. The base class pins `line-height` to `1.5rem !important`, overriding
+ * the `leading-relaxed` in `className`, which is what makes 4 rows land exactly
+ * on the pinned height; the two classes only work as a pair.
+ *
+ * Stage / Area keeps its `min-height` only: it is capped at 50 characters, so
+ * it cannot reach two rows in practice.
+ */
 function RunSheetReadOnlyText({
   value,
   className,
@@ -366,7 +382,13 @@ function RunSheetReadOnlyText({
   notes?: boolean;
 }) {
   return (
-    <div className={`${className} ${notes ? "min-h-[3.25rem]" : "min-h-[2.25rem]"}`}>
+    <div
+      className={`${className} ${
+        notes
+          ? "ftc-run-sheet-textarea ftc-run-sheet-textarea-4"
+          : "min-h-[2.25rem]"
+      }`}
+    >
       {value?.trim() ? value : "—"}
     </div>
   );
