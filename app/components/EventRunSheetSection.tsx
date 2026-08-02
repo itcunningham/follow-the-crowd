@@ -59,6 +59,10 @@ import { countUnicodeCharacters } from "@/lib/textInputLimits";
 
 const RUN_SHEET_SET_TIME_BUTTON_CLASS =
   "ftc-field-trigger inline-flex w-full min-h-[2.25rem] items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium sm:min-h-[2rem] lg:max-w-[11rem]";
+/** Narrower than `EVENT_DETAIL_BTN_PRIMARY` (`px-3` instead of `px-4`) so Save
+ * reads as secondary to the "Run Sheet" title rather than competing with it. */
+const RUN_SHEET_SAVE_BUTTON_CLASS =
+  "ftc-btn-primary inline-flex min-h-10 items-center justify-center px-3 py-2 text-xs uppercase tracking-wide disabled:cursor-not-allowed disabled:opacity-50";
 /** Visible rows each field is pinned to. Mirrors the `.ftc-run-sheet-textarea-N`
  * modifier that owns the height; used for the `rows` attribute so the field is
  * the right size before the stylesheet applies. */
@@ -66,13 +70,17 @@ const RUN_SHEET_NOTES_VISIBLE_ROWS = 4;
 const RUN_SHEET_STAGE_AREA_VISIBLE_ROWS = 2;
 const RUN_SHEET_STAGE_AREA_MAX_LENGTH = 50;
 
-// `disabled:opacity-30` + flattening the border/background to their subtle
-// variants (rather than opacity alone on the strong-border/hover-ready
-// styling) so a row at either end of the sheet reads as clearly inert, not
-// merely a slightly faded version of a still-active control. Layout (size,
+// Idle state is intentionally light (subtle border/background opacity) so the
+// reorder controls don't compete with the DJ information they sit beside;
+// `hover` restores full-strength colour so the control still reads clearly
+// once someone's actually interacting with it. Disabled keeps the flattened
+// border/background/text (rather than opacity alone on the hover-ready
+// styling) so a row at either end still reads as clearly inert, not merely a
+// faded active control -- `disabled:opacity-30` on top of that flattening is
+// only slightly eased by the softer border beneath it. Layout (size,
 // position) is unchanged -- only colour and opacity respond to `disabled`.
 const iconButtonBaseClassName =
-  "flex h-8 w-8 shrink-0 items-center justify-center rounded-md border transition disabled:cursor-not-allowed disabled:border-ftc-border-subtle disabled:bg-transparent disabled:text-ftc-text-muted disabled:opacity-30";
+  "flex h-8 w-8 shrink-0 items-center justify-center rounded-md border transition disabled:cursor-not-allowed disabled:border-ftc-border-subtle/70 disabled:bg-transparent disabled:text-ftc-text-muted disabled:opacity-30";
 
 function RowMoveButton({
   direction,
@@ -92,7 +100,7 @@ function RowMoveButton({
       disabled={disabled}
       aria-label={label}
       title={label}
-      className={`${iconButtonBaseClassName} border-ftc-border-strong bg-ftc-bg-elevated/80 text-ftc-text-secondary hover:border-ftc-border-strong hover:bg-ftc-bg-elevated hover:text-ftc-text`}
+      className={`${iconButtonBaseClassName} border-ftc-border-strong/60 bg-ftc-bg-elevated/60 text-ftc-text-secondary hover:border-ftc-border-strong hover:bg-ftc-bg-elevated hover:text-ftc-text`}
     >
       <svg
         aria-hidden="true"
@@ -891,9 +899,10 @@ export default function EventRunSheetSection({
   // complete, the cluster reappears as normal.
   const showRunSheetHeaderActions =
     canEdit && rows.length > 0 && (isEditing || !allRowsIncomplete);
-  // Whether Save has anything to persist. Save (and the "Unsaved changes"
-  // label beside it) mount only once this is true, so there is never a
-  // moment where Save is visible with nothing behind it to save.
+  // Whether Save has anything to persist. Save itself is always mounted for
+  // the whole editing session (its row's height is reserved from the start),
+  // but only becomes visible -- via a CSS transition, not a mount/unmount --
+  // once this is true.
   const hasUnsavedChanges = useMemo(
     () => hasUnsavedRunSheetEdits(savedRows, rows),
     [savedRows, rows],
@@ -968,56 +977,61 @@ export default function EventRunSheetSection({
             the "Create your Run Sheet" empty state above is showing -- Create
             Run Sheet is the one obvious action, not a duplicate of Edit.
 
-            While editing, this matches the Edit Event header exactly:
-            `.ftc-form-cancel-link` in a stable top-right slot (Cancel "remains
-            static" -- it never animates, never disappears, the same small
-            uppercase text link `PlannerFormCard` uses). Save is a second,
-            independent row underneath that only exists in the DOM while there
-            is something to save (`hasUnsavedChanges`); it plays a one-shot
-            fade/slide-in animation on mount rather than transitioning a
-            persistent element, and vanishes immediately -- no exit animation
-            -- the moment saving succeeds or the edit is cancelled, since at
-            that instant there is genuinely nothing left to save. */}
+            Cancel/Edit sits in its own top row -- a stable top-right slot
+            matching the Edit Event header (`.ftc-form-cancel-link`, the same
+            small uppercase text link `PlannerFormCard` uses). Save lives in a
+            second row below, permanently mounted for the whole time the sheet
+            is being edited so its height is reserved from the moment editing
+            starts -- there is never a moment where Cancel's row grows or
+            shrinks depending on Save, so Cancel's own position can't move.
+            Save's visibility is a CSS transition (`.ftc-run-sheet-save-btn`)
+            gated on `hasUnsavedChanges`, not a mount/unmount -- it fades and
+            nudges into its reserved slot rather than appearing from nothing,
+            and the DJ cards below never shift. It sits slightly left of
+            Cancel's edge (`pr-3`) rather than sharing Cancel's exact
+            right-aligned column, so the two read as deliberately placed
+            rather than centred under one another. */}
         {showRunSheetHeaderActions ? (
-          <div className="flex flex-col items-end gap-1.5">
-            {isEditing ? (
-              <button
-                type="button"
-                onClick={handleCancelEdit}
-                disabled={saving}
-                className="ftc-form-cancel-link disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                Cancel
-              </button>
-            ) : (
-              // Standard secondary button, the same style Message elsewhere
-              // in the app already uses -- not a separate, visually-floating
-              // pill. No icon: the visible label is the whole affordance,
-              // matching the rest of the app's text buttons.
-              <button
-                type="button"
-                onClick={handleEnterEditMode}
-                aria-label="Edit Run Sheet"
-                className={EVENT_DETAIL_BTN_SECONDARY}
-              >
-                Edit
-              </button>
-            )}
+          <div className="flex flex-col items-end">
+            <div>
+              {isEditing ? (
+                <button
+                  type="button"
+                  onClick={handleCancelEdit}
+                  disabled={saving}
+                  className="ftc-form-cancel-link disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+              ) : (
+                // Standard secondary button, the same style Message elsewhere
+                // in the app already uses -- not a separate, visually-floating
+                // pill. No icon: the visible label is the whole affordance,
+                // matching the rest of the app's text buttons.
+                <button
+                  type="button"
+                  onClick={handleEnterEditMode}
+                  aria-label="Edit Run Sheet"
+                  className={EVENT_DETAIL_BTN_SECONDARY}
+                >
+                  Edit
+                </button>
+              )}
+            </div>
 
-            {isEditing && hasUnsavedChanges ? (
-              <div className="ftc-run-sheet-save-reveal flex items-center gap-2">
-                {!saving ? (
-                  <span className="text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted">
-                    Unsaved changes
-                  </span>
-                ) : null}
+            {isEditing ? (
+              <div className="mt-1.5 flex w-full justify-end pr-3">
                 <button
                   type="button"
                   onClick={handleSave}
                   disabled={saving}
-                  className={`${EVENT_DETAIL_BTN_PRIMARY} disabled:cursor-not-allowed disabled:opacity-50`}
+                  aria-hidden={!hasUnsavedChanges}
+                  tabIndex={hasUnsavedChanges ? 0 : -1}
+                  className={`${RUN_SHEET_SAVE_BUTTON_CLASS} ftc-run-sheet-save-btn ${
+                    hasUnsavedChanges ? "ftc-run-sheet-save-btn--visible" : ""
+                  }`}
                 >
-                  {saving ? "Saving" : "Save run sheet"}
+                  {saving ? "Saving" : "Save"}
                 </button>
               </div>
             ) : null}
