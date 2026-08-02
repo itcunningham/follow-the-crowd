@@ -76,7 +76,7 @@ export default function SignupPage() {
       const { session } = await signUpWithEmail(email, password);
 
       if (!session) {
-        setSuccessMessage("Account created. Check your email to confirm, then log in.");
+        setSuccessMessage("Account created. Confirm your email to continue");
         setSubmitting(false);
         return;
       }
