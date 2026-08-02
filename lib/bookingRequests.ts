@@ -36,9 +36,7 @@ import {
   FTC_STATUS_SUCCESS,
   FTC_STATUS_WARNING,
 } from "@/lib/ftcFlatStatus";
-import { getCurrentUserId, getUserAvatarProfilesByIds, type BookingRecipientProfile } from "@/lib/user/currentUser";
-import { countAcceptedCrewDjsForEvent } from "@/lib/events/crewChatUnlock";
-import { postBookingCancellationGroupChatUpdate } from "@/lib/events/bookingCancellation";
+import { getCurrentUserId, type BookingRecipientProfile } from "@/lib/user/currentUser";
 import { postBookingAcceptanceGroupChatUpdate } from "@/lib/events/bookingAcceptance";
 import { sanitizeWithdrawalOtherReason } from "@/lib/booking/withdrawalReasonDetails";
 
@@ -2760,21 +2758,6 @@ export async function cancelAcceptedBookingRequest(
 ): Promise<CancelAcceptedBookingRequestResult> {
   let warning: string | null = null;
 
-  if (booking.event_id && booking.status === "accepted") {
-    try {
-      const acceptedDjCount = await countAcceptedCrewDjsForEvent(booking.event_id);
-      await postBookingCancellationGroupChatUpdate(booking, djDisplayName, reason, {
-        remainingAcceptedDjCount: Math.max(acceptedDjCount - 1, 0),
-      });
-    } catch (groupChatError) {
-      console.error(
-        "[bookingRequests] Failed to post booking cancellation group chat update:",
-        groupChatError,
-      );
-      warning = `Booking was cancelled, but the group chat could not be updated. ${getBookingMutationErrorMessage(groupChatError)}`;
-    }
-  }
-
   const cancelledBooking = await cancelBookingRequest(booking.id, {
     reason,
     previousStatus: "accepted",
@@ -3150,10 +3133,7 @@ export async function acceptProposedBookingRate(bookingId: string): Promise<Book
 
   if (booking.event_id) {
     try {
-      const profiles = await getUserAvatarProfilesByIds([booking.recipient_id]);
-      const djName =
-        profiles.get(booking.recipient_id)?.display_name?.trim() || "Crew member";
-      await postBookingAcceptanceGroupChatUpdate(booking, djName);
+      await postBookingAcceptanceGroupChatUpdate(booking);
     } catch (groupChatError) {
       console.error(
         "[bookingRequests] Failed to post booking acceptance group chat update:",
@@ -3258,12 +3238,7 @@ export async function updateBookingRequestStatus(
 
     if (booking.event_id) {
       try {
-        const profiles = await getUserAvatarProfilesByIds([booking.recipient_id]);
-        const djName =
-          profiles.get(booking.recipient_id)?.display_name?.trim() || "Crew member";
-        await postBookingAcceptanceGroupChatUpdate(booking, djName, {
-          notifyParticipants: false,
-        });
+        await postBookingAcceptanceGroupChatUpdate(booking);
       } catch (groupChatError) {
         console.error(
           "[bookings] Failed to post booking acceptance group chat update:",
