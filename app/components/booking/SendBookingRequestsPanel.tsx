@@ -9,7 +9,10 @@ import EventDjSendOfferControls, {
 import { PlannerEmptyPanel, PlannerSectionLabel } from "@/app/components/planner/PlannerUi";
 import { EVENT_DETAIL_BTN_PRIMARY_WIDE } from "@/app/components/event-detail/eventDetailUi";
 import type { SendBookingRequestsDraft } from "@/app/components/booking/useSendBookingRequestsDraft";
-import type { EventBookingDuplicateStatus } from "@/lib/bookingRequests";
+import {
+  getEventBookingDuplicateLabel,
+  type EventBookingDuplicateStatus,
+} from "@/lib/bookingRequests";
 import type { DjPlannerAvailabilityHint } from "@/lib/djAvailability";
 
 /** Create-event invite DJ search (client-only). */
@@ -134,8 +137,21 @@ export function DjInviteSelectionRow({
   onOfferChange,
 }: DjInviteSelectionRowProps) {
   const displayName = dj.display_name?.trim() || "DJ";
+  /**
+   * The two badges read from different sources — this event's duplicate
+   * protection, and the DJ's accepted bookings across that whole date — which
+   * can describe the same single booking in the same words ("Already booked",
+   * both green). When the availability hint would only restate the duplicate
+   * badge, drop it; a count of two or more says something new and stays.
+   */
+  const availabilityRestatesDuplicate =
+    duplicateStatus !== undefined &&
+    availabilityHint !== undefined &&
+    getEventBookingDuplicateLabel(duplicateStatus) === availabilityHint.label;
   const showAvailabilityBadge =
-    availabilityHint !== undefined && availabilityHint.status !== "unknown";
+    availabilityHint !== undefined &&
+    availabilityHint.status !== "unknown" &&
+    !availabilityRestatesDuplicate;
 
   return (
     <li>

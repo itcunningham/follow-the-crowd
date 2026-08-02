@@ -176,6 +176,8 @@ import {
 } from "../lib/bookings/gigsTabCountDisplay";
 import { resolveWorkspaceGigsPendingDisplayCount, readWorkspaceGigsBadgeDisplayCountForSubNav, resolveStableGigsPendingCount } from "../lib/navigation/resolveWorkspaceGigsPendingDisplayCount";
 import { applyCancelledEventStatus } from "../lib/bookings/gigsListSnapshotPrefetch";
+import { formatDjBookedOnDateLabel } from "../lib/djAvailability";
+import { getEventBookingDuplicateLabel } from "../lib/bookingRequests";
 import {
   hasUnsavedRunSheetEdits,
   moveRunSheetRow,
@@ -8884,6 +8886,79 @@ function testRunSheetDirtyStateAndSaveFeedback() {
   );
 }
 
+
+/**
+ * The DJ picker shows one booking badge per DJ, never one per booking record.
+ *
+ * A DJ can hold accepted bookings from several planners on the same date. Two
+ * separate sources feed the card — this event's duplicate protection
+ * (buildEventBookingDuplicateMap, keyed by recipient) and the DJ's accepted
+ * bookings across the whole date (getPlannerDjAvailabilityHints, keyed by user)
+ * — and both render green with the identical words "Already booked" when they
+ * describe the same single booking. That collision is what put two matching
+ * badges on one card.
+ *
+ * The hint now carries a count and summarises it, and the row drops the
+ * availability badge when it would only restate the duplicate badge. Nothing
+ * about the other events or the planners behind them is exposed: the query
+ * selects recipient_id alone, and only a number reaches the label.
+ */
+function testDjPickerShowsOneBookingBadgePerDj() {
+  // Counted summary, not one badge per record.
+  assert.equal(formatDjBookedOnDateLabel(1), "Already booked");
+  assert.equal(formatDjBookedOnDateLabel(2), "2 bookings this day");
+  assert.equal(formatDjBookedOnDateLabel(3), "3 bookings this day");
+  assert.equal(formatDjBookedOnDateLabel(12), "12 bookings this day");
+  // A DJ with no bookings that day never reaches this label.
+  assert.equal(formatDjBookedOnDateLabel(0), "Already booked");
+
+  // The label carries a count and nothing else -- no event or planner names.
+  for (const count of [1, 2, 5]) {
+    const label = formatDjBookedOnDateLabel(count);
+    assert.doesNotMatch(label, /with|for|planner|event|@/i);
+  }
+
+  const availabilitySource = readFileSync(
+    new URL("../lib/djAvailability.ts", import.meta.url),
+    "utf8",
+  );
+  const rowSource = readFileSync(
+    new URL("../app/components/booking/SendBookingRequestsPanel.tsx", import.meta.url),
+    "utf8",
+  );
+
+  // Hints stay keyed by DJ, and the booking rows are counted rather than
+  // collapsed into a Set that throws the count away.
+  assert.match(availabilitySource, /bookingCountByUserId/);
+  assert.doesNotMatch(availabilitySource, /const bookedUserIds = new Set/);
+  assert.match(availabilitySource, /bookingCount: number/);
+
+  // The query still selects only recipient_id -- no event or planner columns.
+  assert.match(
+    availabilitySource,
+    /from\("booking_requests"\)\s*\.select\("recipient_id"\)/,
+  );
+
+  // One availability badge element, suppressed when it duplicates the other.
+  assert.equal((rowSource.match(/<DjBookingAvailabilityBadge/g) ?? []).length, 1);
+  assert.equal((rowSource.match(/<EventBookingDuplicateBadge/g) ?? []).length, 1);
+  assert.match(rowSource, /availabilityRestatesDuplicate/);
+  assert.match(
+    rowSource,
+    /getEventBookingDuplicateLabel\(duplicateStatus\) === availabilityHint\.label/,
+  );
+
+  // The collision the fix targets: this event's badge and a single-booking
+  // availability hint really do render the same words.
+  assert.equal(getEventBookingDuplicateLabel("already_booked"), formatDjBookedOnDateLabel(1));
+  // ...and stop colliding as soon as the DJ has more than one that day.
+  assert.notEqual(getEventBookingDuplicateLabel("already_booked"), formatDjBookedOnDateLabel(2));
+
+  // Duplicate protection for the current event is untouched.
+  assert.equal(getEventBookingDuplicateLabel("already_invited"), "Already invited");
+  assert.equal(getEventBookingDuplicateLabel("already_declined"), "Already declined");
+}
+
 function testEventNotesTextareaScrollsWhenContentExceedsCap() {
   const globalsSource = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
   const autoGrowSource = readFileSync(
@@ -9740,6 +9815,7 @@ async function main() {
   testQaEnvironmentResetScript();
   testLoginScreenPolish();
   testEventNotesTextareaScrollsWhenContentExceedsCap();
+  testDjPickerShowsOneBookingBadgePerDj();
   testRunSheetInitialLoadIsNotDirty();
   testRunSheetDirtyStateAndSaveFeedback();
   testAppSplashScreenSlogan();

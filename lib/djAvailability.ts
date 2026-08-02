@@ -38,6 +38,8 @@ export type DjPlannerAvailabilityStatus =
 export type DjPlannerAvailabilityHint = {
   status: DjPlannerAvailabilityStatus;
   label: string;
+  /** Accepted bookings this DJ already has on the event date, across all planners. */
+  bookingCount: number;
 };
 
 const STATUS_LABELS: Record<DjPlannerAvailabilityStatus, string> = {
@@ -576,27 +578,47 @@ export async function batchClearMyAvailabilityForDates(dates: string[]): Promise
   }
 }
 
+/**
+ * One badge per DJ, never one per booking record.
+ *
+ * A DJ can hold accepted bookings from several planners on the same date. The
+ * planner only needs to know how loaded that day already is, so the count is
+ * summarised into a single label — nothing about the other events or the
+ * planners behind them is exposed here or in the query that feeds it.
+ */
+export function formatDjBookedOnDateLabel(bookingCount: number): string {
+  if (bookingCount > 1) {
+    return `${bookingCount} bookings this day`;
+  }
+
+  return STATUS_LABELS.already_booked;
+}
+
 function buildPlannerAvailabilityHint(
   markedStatus: DjAvailabilityStatus | null,
-  alreadyBooked: boolean,
+  bookingCount: number,
 ): DjPlannerAvailabilityHint {
-  if (alreadyBooked) {
-    return { status: "already_booked", label: STATUS_LABELS.already_booked };
+  if (bookingCount > 0) {
+    return {
+      status: "already_booked",
+      label: formatDjBookedOnDateLabel(bookingCount),
+      bookingCount,
+    };
   }
 
   if (markedStatus === "unavailable") {
-    return { status: "unavailable", label: STATUS_LABELS.unavailable };
+    return { status: "unavailable", label: STATUS_LABELS.unavailable, bookingCount: 0 };
   }
 
   if (markedStatus === "tentative") {
-    return { status: "tentative", label: STATUS_LABELS.tentative };
+    return { status: "tentative", label: STATUS_LABELS.tentative, bookingCount: 0 };
   }
 
   if (markedStatus === "available") {
-    return { status: "available", label: STATUS_LABELS.available };
+    return { status: "available", label: STATUS_LABELS.available, bookingCount: 0 };
   }
 
-  return { status: "unknown", label: STATUS_LABELS.unknown };
+  return { status: "unknown", label: STATUS_LABELS.unknown, bookingCount: 0 };
 }
 
 export async function getPlannerDjAvailabilityHints(
@@ -613,7 +635,7 @@ export async function getPlannerDjAvailabilityHints(
 
   if (!normalizedDate) {
     for (const djUserId of djUserIds) {
-      hints.set(djUserId, buildPlannerAvailabilityHint(null, false));
+      hints.set(djUserId, buildPlannerAvailabilityHint(null, 0));
     }
 
     return hints;
@@ -650,16 +672,21 @@ export async function getPlannerDjAvailabilityHints(
     markedByUserId.set(row.user_id as string, row.status as DjAvailabilityStatus);
   }
 
-  const bookedUserIds = new Set(
-    (bookedRows ?? []).map((row) => row.recipient_id as string),
-  );
+  // Counted, not collapsed to a Set: several planners can each hold an accepted
+  // booking with this DJ on the same date, and the badge summarises how many.
+  const bookingCountByUserId = new Map<string, number>();
+
+  for (const row of bookedRows ?? []) {
+    const recipientId = row.recipient_id as string;
+    bookingCountByUserId.set(recipientId, (bookingCountByUserId.get(recipientId) ?? 0) + 1);
+  }
 
   for (const djUserId of uniqueDjUserIds) {
     hints.set(
       djUserId,
       buildPlannerAvailabilityHint(
         markedByUserId.get(djUserId) ?? null,
-        bookedUserIds.has(djUserId),
+        bookingCountByUserId.get(djUserId) ?? 0,
       ),
     );
   }
