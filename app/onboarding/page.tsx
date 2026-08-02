@@ -21,19 +21,17 @@ const ROLE_OPTIONS: {
   {
     role: "dj",
     title: "DJ / Artist",
-    description:
-      "Get booked, message promoters, manage your profile and event chats.",
+    description: "Get booked, chat with promoters and manage your gigs",
   },
   {
     role: "promoter",
     title: "Promoter / Event Planner",
-    description:
-      "Plan events with AI, send booking requests, manage group chats, and build better nights.",
+    description: "Create events, book DJs and manage your team",
   },
   {
     role: "both",
-    title: "Both",
-    description: "Create events and build your artist profile in one place.",
+    title: "DJ & Planner",
+    description: "Book DJs and manage your artist profile from one account",
   },
 ];
 
@@ -97,7 +95,7 @@ export default function OnboardingPage() {
   if (checkingExisting) {
     return (
       <div className="flex min-h-[100dvh] items-center justify-center bg-ftc-bg text-sm text-ftc-text-muted">
-        Loading...
+        Loading
       </div>
     );
   }
@@ -105,15 +103,15 @@ export default function OnboardingPage() {
   return (
     <div className="min-h-[100dvh] bg-ftc-bg px-4 pb-[max(2.5rem,env(safe-area-inset-bottom))] pt-[max(2.5rem,env(safe-area-inset-top))] font-sans text-ftc-text sm:px-6 sm:py-10">
       <div className="mx-auto w-full max-w-2xl">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-ftc-primary">
-          Welcome
-        </p>
-        <h1 className="mt-3 text-3xl font-bold text-ftc-text sm:text-4xl">Choose your role</h1>
+        <h1 className="text-3xl font-bold text-ftc-text sm:text-4xl">Choose your role</h1>
         <p className="mt-3 max-w-xl text-sm leading-relaxed text-ftc-text-secondary sm:text-base">
-          This helps tailor Follow The Crowd to how you work in the scene.
+          Select how you&apos;ll use Follow The Crowd
         </p>
 
-        <div className="mt-8 space-y-4">
+        {/* Grid rather than a plain stack so every card is the height of the
+            tallest one — the descriptions wrap to different line counts at
+            narrow widths, which previously left the three cards uneven. */}
+        <div className="mt-8 grid auto-rows-fr gap-4">
           {ROLE_OPTIONS.map((option) => {
             const isLoading = loadingRole === option.role;
 
@@ -123,15 +121,15 @@ export default function OnboardingPage() {
                 type="button"
                 disabled={loadingRole !== null}
                 onClick={() => handleSelectRole(option.role)}
-                className="w-full rounded-2xl border border-ftc-border bg-ftc-surface/80 px-5 py-5 text-left transition hover:border-ftc-border-strong hover:bg-ftc-bg-elevated focus-visible:border-ftc-border-strong focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+                className="w-full cursor-pointer rounded-2xl border border-ftc-border bg-ftc-surface/80 px-5 py-6 text-left transition hover:border-ftc-border-strong hover:bg-ftc-bg-elevated active:bg-ftc-surface-raised focus-visible:border-ftc-border-strong focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60"
               >
                 <p className="text-lg font-semibold text-ftc-text">{option.title}</p>
-                <p className="mt-2 text-sm leading-relaxed text-ftc-text-secondary">
+                <p className="mt-2.5 text-sm leading-relaxed text-ftc-text-secondary">
                   {option.description}
                 </p>
                 {isLoading ? (
                   <p className="mt-3 text-xs font-medium uppercase tracking-wide text-ftc-primary">
-                    Saving...
+                    Saving
                   </p>
                 ) : null}
               </button>
