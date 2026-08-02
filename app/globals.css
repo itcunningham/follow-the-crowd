@@ -456,34 +456,32 @@ html {
 }
 
 /**
- * One-shot entrance for the Run Sheet's Save button + "Unsaved changes"
- * label: they mount only while there is something to save, so a CSS
- * `transition` (which needs two states of the same element) has nothing to
- * toggle between -- an `animation` that plays once on mount is the right
- * tool here. Timing matches the app's dominant reveal convention
- * (`duration-200 ease-out`, e.g. `AnimatedExpandPanel`, `ProfilePhotoViewer`)
- * rather than inventing a new one. Disappearing is deliberately instant (plain
- * unmount, no exit animation) -- the moment a save succeeds or is cancelled
- * there is genuinely nothing left to save, so nothing to animate away.
+ * The Run Sheet's Save button is always mounted once editing starts, with its
+ * row height reserved from the moment Edit is pressed -- nothing below it (the
+ * DJ cards) can shift when it fades in or out. Visibility toggles via
+ * `opacity` + a small `translateY` on the one persistent element, which is a
+ * `transition`, not a mount-triggered `@keyframes` (the previous approach, back
+ * when Save only existed in the DOM while there was something to save).
+ * `pointer-events` follows the same toggle so the hidden button can't be
+ * clicked while invisible; `tabIndex` on the element (not CSS) handles keyboard
+ * reachability.
  */
-@keyframes ftc-run-sheet-save-reveal {
-  from {
-    opacity: 0;
-    transform: translateY(4px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+.ftc-run-sheet-save-btn {
+  opacity: 0;
+  transform: translateY(7px);
+  pointer-events: none;
+  transition: opacity 190ms ease-out, transform 190ms ease-out;
 }
 
-.ftc-run-sheet-save-reveal {
-  animation: ftc-run-sheet-save-reveal 200ms ease-out;
+.ftc-run-sheet-save-btn.ftc-run-sheet-save-btn--visible {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .ftc-run-sheet-save-reveal {
-    animation: none;
+  .ftc-run-sheet-save-btn {
+    transition: none;
   }
 }
 
@@ -642,13 +640,14 @@ html {
   }
 }
 
-/* DM composer — on mobile, cyan focus ring follows keyboard session, not stale :focus */
+/* Chat composers (DM, Crew Chat) — on mobile, cyan focus ring follows
+ * keyboard session, not stale :focus */
 @media (max-width: 767px) {
-  .dm-composer .ftc-input:focus {
+  .ftc-chat-composer .ftc-input:focus {
     border-color: var(--ftc-color-border-subtle);
   }
 
-  html[data-mobile-keyboard-open] .dm-composer .ftc-input:focus {
+  html[data-mobile-keyboard-open] .ftc-chat-composer .ftc-input:focus {
     border-color: var(--ftc-color-primary);
   }
 }

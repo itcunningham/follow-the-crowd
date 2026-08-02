@@ -106,6 +106,7 @@ import {
   formatDmDaySeparatorLabel,
   shouldSuppressDmBookingTimelineNotice,
 } from "../lib/dm/dmChatTimestampVisibility";
+import { buildGroupChatTimestampLayout } from "../lib/groupChatTimestampVisibility";
 import {
   buildChatMessageGroupLayout,
   CHAT_LIST_ITEM_CLUSTER_END_BEFORE_TIMESTAMP_SPACING_CLASS,
@@ -2019,6 +2020,10 @@ function testProfileChatBackNavigation() {
     new URL("../app/components/dm/DmConversationHeader.tsx", import.meta.url),
     "utf8",
   );
+  const chatBackButtonSource = readFileSync(
+    new URL("../app/components/chat/ChatBackButton.tsx", import.meta.url),
+    "utf8",
+  );
 
   assert.match(profilePageSource, /buildProfileDmThreadHref/);
   assert.match(profilePageSource, /readProfileEventDetailContext/);
@@ -2036,7 +2041,8 @@ function testProfileChatBackNavigation() {
   assert.match(dmPageSource, /useDmChatScrollRestoreOnProfileReturn/);
   assert.match(dmPageSource, /backReplace=\{backReplace\}/);
   assert.match(dmHeaderSource, /backReplace/);
-  assert.match(dmHeaderSource, /scroll=\{false\}/);
+  assert.match(dmHeaderSource, /<ChatBackButton href=\{backHref\} label=\{backLabel\} replace=\{backReplace\} \/>/);
+  assert.match(chatBackButtonSource, /scroll=\{false\}/);
   assert.doesNotMatch(dmHeaderSource, /ChatDetailsMenuButton/);
   assert.doesNotMatch(dmHeaderSource, /onOpenDetails/);
   assert.doesNotMatch(dmPageSource, /DmConversationDetailsPanel/);
@@ -6922,7 +6928,7 @@ function testDmComposerClearsPendingPhotoAfterSuccessfulSend() {
   assert.doesNotMatch(composerSource, /onPhotoSelected/);
   assert.doesNotMatch(composerSource, /leading-\[2\.75rem\]/);
   assert.doesNotMatch(composerSource, /min-w-\[5\.75rem\]/);
-  assert.match(composerSource, /className="dm-composer shrink-0/);
+  assert.match(composerSource, /className="ftc-chat-composer shrink-0/);
 
   // Multi-select photo picker: native `multiple` input, capped at
   // DM_MAX_PHOTOS_PER_MESSAGE, single selection still works (N === 1).
@@ -6946,7 +6952,10 @@ function testDmComposerClearsPendingPhotoAfterSuccessfulSend() {
     globalsSource,
     /\.dm-composer-pending-photo-selected \{\s*box-shadow: 0 0 0 1px var\(--ftc-color-primary-border\);\s*\}/,
   );
-  assert.match(globalsSource, /html\[data-mobile-keyboard-open\] \.dm-composer \.ftc-input:focus/);
+  assert.match(
+    globalsSource,
+    /html\[data-mobile-keyboard-open\] \.ftc-chat-composer \.ftc-input:focus/,
+  );
   assert.match(bubbleSource, /const attachmentOnly = hasAttachments && !hasText;/);
   assert.match(bubbleSource, /const bubbleShellClass = resolveChatMessageBubbleShellClass\(/);
   assert.doesNotMatch(attachmentSource, /dm-composer-pending-photo-selected/);
@@ -6985,16 +6994,20 @@ function testDmComposerRowAlignment() {
     new URL("../app/components/chat/ComposerMessageField.tsx", import.meta.url),
     "utf8",
   );
+  const iconButtonSource = readFileSync(
+    new URL("../app/components/chat/ComposerIconButton.tsx", import.meta.url),
+    "utf8",
+  );
 
   // The composer band (divider + row together) sits a few px lower than
   // before -- the gap between the message list and the divider no longer
   // reads as disproportionately tight. Within the requested ~4-8px range
   // (mt-1.5 = 6px), applied to the whole bordered container so the divider
   // (its own border-t) moves down together with the row inside it.
-  assert.match(composerSource, /className="dm-composer shrink-0 mt-1\.5 border-t/);
+  assert.match(composerSource, /className="ftc-chat-composer shrink-0 mt-1\.5 border-t/);
 
   // Button sizes and tap targets are unchanged -- only their alignment moved.
-  assert.match(composerSource, /h-10 w-10 shrink-0/); // photo button, unchanged
+  assert.match(iconButtonSource, /h-10 w-10 shrink-0/); // photo button, unchanged
   assert.match(
     composerSource,
     /"flex h-9 w-9 shrink-0 mb-1 items-center justify-center rounded-full bg-ftc-primary text-ftc-bg transition hover:bg-ftc-primary-dim disabled:cursor-not-allowed disabled:opacity-50 sm:h-10 sm:w-10 sm:mb-0\.5"/,
@@ -9576,7 +9589,7 @@ function testRunSheetEditMode() {
   assert.match(section, /onClick=\{handleCancelEdit\}/);
   assert.match(section, />\s*Cancel\s*</);
   assert.match(section, /onClick=\{handleSave\}/);
-  assert.match(section, /\{saving \? "Saving" : "Save run sheet"\}/);
+  assert.match(section, /\{saving \? "Saving" : "Save"\}/);
   assert.match(section, /onClick=\{handleEnterEditMode\}/);
   assert.doesNotMatch(section, /EventDetailEditButton/);
 
@@ -9821,44 +9834,8 @@ function testRunSheetHeaderCancelAndSave() {
     section,
     /const hasUnsavedChanges = useMemo\(\s*\(\) => hasUnsavedRunSheetEdits\(savedRows, rows\),\s*\[savedRows, rows\],\s*\);/,
   );
-  // Mounted only while dirty -- never rendered "but hidden" the way the
-  // pre-Edit-mode Save button once was (see testRunSheetDirtyStateAndSaveFeedback
-  // for that older, now-removed invisible/aria-hidden/tabIndex mechanic).
-  assert.match(section, /\{isEditing && hasUnsavedChanges \? \(/);
-  assert.doesNotMatch(section, /aria-hidden=\{showSaveButton/);
-  assert.doesNotMatch(section, /tabIndex=\{showSaveButton/);
-
-  // Reappearing plays a one-shot CSS animation (mount-triggered, not a
-  // transition -- there is no persistent element to transition between two
-  // states of); disappearing is a plain unmount, immediate, no exit
-  // animation, matching "Save disappears again immediately after a
-  // successful save" and "never shown unless dirty" literally.
-  assert.match(section, /className="ftc-run-sheet-save-reveal flex items-center gap-2"/);
-  assert.doesNotMatch(globalsSource, /ftc-run-sheet-save-reveal[\s\S]{0,120}transition:/);
-  const saveRevealRule =
-    globalsSource.match(/@keyframes ftc-run-sheet-save-reveal \{[\s\S]*?\n\}/)?.[0] ?? "";
-  assert.ok(saveRevealRule, "the Save reveal keyframe must exist");
-  assert.match(saveRevealRule, /opacity: 0;/);
-  assert.match(saveRevealRule, /transform: translateY\(4px\);/);
-  assert.match(saveRevealRule, /opacity: 1;/);
-  assert.match(saveRevealRule, /transform: translateY\(0\);/);
-  // Timing matches the app's dominant reveal convention rather than a new one.
-  assert.match(globalsSource, /\.ftc-run-sheet-save-reveal \{\s*animation: ftc-run-sheet-save-reveal 200ms ease-out;\s*\}/);
-  assert.match(
-    globalsSource,
-    /@media \(prefers-reduced-motion: reduce\) \{\s*\.ftc-run-sheet-save-reveal \{\s*animation: none;\s*\}\s*\}/,
-  );
-
-  // "Unsaved changes": extremely low visual weight -- the same tiny
-  // uppercase muted-label treatment already used throughout this file for
-  // field labels and set numbers, not a new, louder style. Hidden while a
-  // save is actually in flight (the button's own "Saving" label already
-  // covers that moment) and never rendered outside the dirty+editing state.
-  assert.match(
-    section,
-    /<span className="text-\[10px\] font-semibold uppercase tracking-wide text-ftc-text-muted">\s*Unsaved changes\s*<\/span>/,
-  );
-  assert.match(section, /\{!saving \? \(\s*<span className="text-\[10px\]/);
+  // Save's mount/visibility mechanic (always mounted while editing, dirty
+  // only toggles a CSS class) is covered by testRunSheetSaveButtonPolish.
 
   // Progress hides during editing -- see testRunSheetProductionPolish for the
   // exact `showRunSheetProgress` formula this pass reversed.
@@ -9887,6 +9864,88 @@ function testRunSheetHeaderCancelAndSave() {
   assert.match(iconButtonClass, /h-8 w-8/);
   assert.match(section, /disabled=\{!canMoveUp\}/);
   assert.match(section, /disabled=\{!canMoveDown\}/);
+}
+
+/**
+ * The polish pass on top of testRunSheetHeaderCancelAndSave: Save is now
+ * always mounted for the whole editing session (not only while dirty), its
+ * row reserves its own height from the moment Cancel appears, and its
+ * appear/disappear is a CSS `transition` on that one persistent element
+ * rather than a mount-triggered `@keyframes` -- so there is no instant where
+ * the DJ cards below can shift. The "Unsaved changes" label is gone (the
+ * button itself already communicates that edits exist), the button reads
+ * "Save" instead of "Save run sheet", and it sits narrower and left of
+ * Cancel's edge rather than sharing Cancel's exact right-aligned column.
+ */
+function testRunSheetSaveButtonPolish() {
+  const section = readFileSync(
+    new URL("../app/components/EventRunSheetSection.tsx", import.meta.url),
+    "utf8",
+  );
+  const globalsSource = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
+
+  // "Unsaved changes" label removed entirely -- the Save button appearing is
+  // the only signal now.
+  assert.doesNotMatch(section, /Unsaved changes/);
+
+  // Copy: "Save", not "Save run sheet" (checked again here, alongside the
+  // structural assertions it's bound up with).
+  assert.match(section, /\{saving \? "Saving" : "Save"\}/);
+  assert.doesNotMatch(section, /Save run sheet/);
+
+  // Always mounted for the whole editing session -- not conditioned on
+  // `hasUnsavedChanges` the way the previous mount-triggered approach was.
+  // Visibility is driven by toggling a class on the persistent button
+  // instead, so its row's height is reserved even with nothing to save yet.
+  assert.match(section, /\{isEditing \? \(\s*<div className="mt-1\.5 flex w-full justify-end pr-3">/);
+  assert.doesNotMatch(section, /\{isEditing && hasUnsavedChanges \? \(/);
+  assert.match(
+    section,
+    /className=\{`\$\{RUN_SHEET_SAVE_BUTTON_CLASS\} ftc-run-sheet-save-btn \$\{\s*hasUnsavedChanges \? "ftc-run-sheet-save-btn--visible" : ""\s*\}`\}/,
+  );
+
+  // Invisible while not dirty means genuinely unreachable, not just
+  // transparent -- both mouse (pointer-events, in CSS) and keyboard
+  // (tabIndex, here) are gated on the same `hasUnsavedChanges` flag.
+  assert.match(section, /aria-hidden=\{!hasUnsavedChanges\}/);
+  assert.match(section, /tabIndex=\{hasUnsavedChanges \? 0 : -1\}/);
+
+  // Narrower than the standard primary button (`px-3` vs. `px-4`) so it reads
+  // as secondary to the "Run Sheet" title rather than competing with it.
+  assert.match(section, /const RUN_SHEET_SAVE_BUTTON_CLASS =\s*\n\s*"ftc-btn-primary[^"]*\bpx-3\b[^"]*"/);
+
+  // Cancel keeps its own row, independent of Save's -- its position can't be
+  // affected by Save's visibility because Save no longer shares a single
+  // stacked column with it.
+  assert.match(section, /<div className="flex flex-col items-end">\s*<div>\s*\{isEditing \? \(/);
+
+  // The transition (not a keyframe animation) toggles opacity and a small
+  // upward nudge -- two states of the one persistent `.ftc-run-sheet-save-btn`
+  // element -- within the 180-200ms ease-out range the rest of the app's
+  // reveal animations use, and respects reduced motion.
+  const hiddenRule = globalsSource.match(/\.ftc-run-sheet-save-btn \{[\s\S]*?\n\}/)?.[0] ?? "";
+  assert.ok(hiddenRule, "the Save button's hidden-state rule must exist");
+  assert.match(hiddenRule, /opacity: 0;/);
+  assert.match(hiddenRule, /transform: translateY\(7px\);/);
+  assert.match(hiddenRule, /pointer-events: none;/);
+  assert.match(hiddenRule, /transition: opacity 190ms ease-out, transform 190ms ease-out;/);
+  assert.doesNotMatch(globalsSource, /@keyframes ftc-run-sheet-save-reveal/);
+
+  const visibleRule =
+    globalsSource.match(/\.ftc-run-sheet-save-btn\.ftc-run-sheet-save-btn--visible \{[\s\S]*?\n\}/)?.[0] ?? "";
+  assert.ok(visibleRule, "the Save button's visible-state rule must exist");
+  assert.match(visibleRule, /opacity: 1;/);
+  assert.match(visibleRule, /transform: translateY\(0\);/);
+  assert.match(visibleRule, /pointer-events: auto;/);
+
+  assert.match(
+    globalsSource,
+    /@media \(prefers-reduced-motion: reduce\) \{\s*\.ftc-run-sheet-save-btn \{\s*transition: none;\s*\}\s*\}/,
+  );
+
+  // No scale, no bounce -- opacity and a single-axis translate only.
+  assert.doesNotMatch(hiddenRule, /scale/);
+  assert.doesNotMatch(visibleRule, /scale/);
 }
 
 function testEventNotesTextareaScrollsWhenContentExceedsCap() {
@@ -10805,6 +10864,147 @@ function testCrewChatPremiumPolish() {
   assert.doesNotMatch(packageJsonSource, /react-window|react-virtual|virtuoso/i);
 }
 
+function testCrewChatTimestampSeparators() {
+  // buildGroupChatTimestampLayout: same clustering rhythm as DM's timestamp
+  // layout, but flat -- no booking-card/timeline classification, since crew
+  // chat messages are always plain chat or a system notice.
+  // Local-time Date construction throughout (never UTC ISO strings) so this
+  // test is correct in any timezone -- see testDmChatDaySeparators above.
+  const baseTime = new Date(2026, 7, 2, 10, 0, 0).getTime();
+  const quickGapMs = 60_000;
+  const longGapMs = DM_CHAT_MEANINGFUL_TIME_GAP_MS + 60_000;
+  const messages = [
+    { id: "msg-1", created_at: new Date(baseTime).toISOString() },
+    { id: "msg-2", created_at: new Date(baseTime + quickGapMs).toISOString() },
+    { id: "msg-3", created_at: new Date(baseTime + longGapMs).toISOString() },
+  ];
+  const layout = buildGroupChatTimestampLayout(messages, { now: new Date(baseTime + longGapMs) });
+
+  assert.equal(layout.get("msg-1")?.showDaySeparatorBefore, true, "first message always gets a day marker");
+  assert.equal(layout.get("msg-2")?.showDaySeparatorBefore, false);
+  assert.equal(layout.get("msg-2")?.showTimeSeparatorBefore, false, "gap too short for a time separator");
+  assert.equal(layout.get("msg-3")?.showDaySeparatorBefore, false);
+  assert.equal(layout.get("msg-3")?.showTimeSeparatorBefore, true, "gap crosses the meaningful-gap threshold");
+
+  const justBeforeMidnight = new Date(2026, 7, 1, 23, 58, 0).getTime();
+  const crossMidnight = [
+    { id: "before", created_at: new Date(justBeforeMidnight).toISOString() },
+    { id: "after", created_at: new Date(justBeforeMidnight + 4 * 60_000).toISOString() },
+  ];
+  const dayLayout = buildGroupChatTimestampLayout(crossMidnight, {
+    now: new Date(2026, 7, 2, 10, 0, 0),
+  });
+
+  assert.equal(dayLayout.get("after")?.showDaySeparatorBefore, true);
+  assert.equal(
+    dayLayout.get("after")?.showTimeSeparatorBefore,
+    false,
+    "day separator takes precedence -- never stack both for the same boundary",
+  );
+
+  // Page wiring: the reversed (newest-first) message list means the separator
+  // for a message must render AFTER it in the DOM, not before like DM's
+  // non-reversed list -- see wrapWithTrailingTimeSeparator in the page.
+  const chatPageSourceForSeparators = readFileSync(
+    new URL("../app/events/[eventId]/chat/page.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(chatPageSourceForSeparators, /function wrapWithTrailingTimeSeparator/);
+  assert.match(chatPageSourceForSeparators, /buildGroupChatTimestampLayout\(messages\)/);
+  assert.match(chatPageSourceForSeparators, /followedByTimeSeparator=\{followedByTimeSeparator\}/);
+  assert.match(chatPageSourceForSeparators, /precededByTimeSeparator=\{precededByTimeSeparator\}/);
+
+  const bubbleSourceForSeparators = readFileSync(
+    new URL("../app/components/group-chat/GroupChatMessageBubble.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(bubbleSourceForSeparators, /followedByTimeSeparator = false/);
+  assert.match(bubbleSourceForSeparators, /precededByTimeSeparator = false/);
+}
+
+function testCrewChatImageAttachmentsWiring() {
+  // Image sharing reuses the DM attachment pipeline (shared type, shared
+  // pending-photo staging, shared upload validation) rather than a second
+  // upload system -- see lib/groupChatAttachments.ts.
+  const chatPageSource = readFileSync(
+    new URL("../app/events/[eventId]/chat/page.tsx", import.meta.url),
+    "utf8",
+  );
+  const groupChatAttachmentsSource = readFileSync(
+    new URL("../lib/groupChatAttachments.ts", import.meta.url),
+    "utf8",
+  );
+  const composerSource = readFileSync(
+    new URL("../app/components/group-chat/GroupChatComposer.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(groupChatAttachmentsSource, /sendEventCrewChatMessageWithAttachments/);
+  assert.match(groupChatAttachmentsSource, /DM_ATTACHMENTS_BUCKET/);
+  assert.match(groupChatAttachmentsSource, /validateDmAttachmentFile/);
+
+  // Composer matches DM's exactly: same photo-picker button, same pending-photo
+  // strip, same "Message" placeholder (no ellipsis).
+  assert.match(composerSource, /placeholder="Message"/);
+  assert.doesNotMatch(composerSource, /placeholder="Message\.\.\."/);
+  assert.match(composerSource, /ComposerIconButton/);
+  assert.match(composerSource, /dm-composer-pending-photo-selected/);
+
+  // Page: staging state, optimistic send, and the message_attachments realtime
+  // subscription filtered on event_id (DM's equivalent filters on conversation_id).
+  assert.match(chatPageSource, /const \[attachments, setAttachments\] = useState<DmMessageAttachment\[\]>/);
+  assert.match(chatPageSource, /const \[pendingAttachments, setPendingAttachments\]/);
+  assert.match(chatPageSource, /async function sendCrewChatAttachments\(files: File\[\]\)/);
+  assert.match(chatPageSource, /sendEventCrewChatMessageWithAttachments\(\{/);
+  assert.match(chatPageSource, /table: "message_attachments",[\s\S]{0,80}filter: `event_id=eq\.\$\{eventId\}`/);
+  assert.match(chatPageSource, /pendingPhotos=\{pendingAttachments\}/);
+  assert.match(chatPageSource, /attachments=\{attachmentsByMessageId\.get\(message\.id\) \?\? \[\]\}/);
+
+  // Attachment loading fails soft (matches the reactions pattern already on
+  // this page) -- a missing migration must never take the whole chat down.
+  assert.match(
+    chatPageSource,
+    /listEventCrewChatAttachmentsForEvent\(eventId\)\.catch\(\(attachmentError\) => \{/,
+  );
+
+  // Bubble renders attachments via the same DmMessageAttachmentGroup DM uses --
+  // no second gallery/lightbox implementation for crew chat images.
+  const bubbleSource = readFileSync(
+    new URL("../app/components/group-chat/GroupChatMessageBubble.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(bubbleSource, /import DmMessageAttachmentGroup from/);
+  assert.doesNotMatch(bubbleSource, /class="[^"]*lightbox/i);
+}
+
+function testChatEmptyStateComponentized() {
+  // DM's empty state was inline JSX; both DM and crew chat now render the
+  // same shared ChatEmptyState component instead of two hand-rolled layouts.
+  const emptyStateComponentSource = readFileSync(
+    new URL("../app/components/chat/ChatEmptyState.tsx", import.meta.url),
+    "utf8",
+  );
+  const dmPageSource = readFileSync(
+    new URL("../app/dm/[conversationId]/page.tsx", import.meta.url),
+    "utf8",
+  );
+  const groupEmptyStateSource = readFileSync(
+    new URL("../app/components/group-chat/GroupChatEmptyState.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(emptyStateComponentSource, /export default function ChatEmptyState/);
+  assert.match(dmPageSource, /<ChatEmptyState/);
+  assert.match(dmPageSource, /title="No messages yet"/);
+  assert.match(groupEmptyStateSource, /import ChatEmptyState from "@\/app\/components\/chat\/ChatEmptyState"/);
+  assert.match(groupEmptyStateSource, /title="Welcome to your Crew Chat"/);
+  assert.doesNotMatch(
+    groupEmptyStateSource,
+    /flex flex-col items-center justify-center px-6/,
+    "layout markup lives in the shared component now, not duplicated here",
+  );
+}
+
 async function main() {
   testPastEventDatesAreBlocked();
   testFutureEventDatesAreAllowed();
@@ -11010,6 +11210,7 @@ async function main() {
   testRunSheetEditMode();
   testRunSheetProductionPolish();
   testRunSheetHeaderCancelAndSave();
+  testRunSheetSaveButtonPolish();
   testAppSplashScreenSlogan();
   testRoleAwareWorkspaceNavigation();
   testCancelledEventGigsAreSurfacedInGigs();
@@ -11022,6 +11223,9 @@ async function main() {
   testBookingAcceptedDmMessageIsScopedToTheBooking();
   testTemporaryDebugInstrumentationIsFullyRemoved();
   testCrewChatPremiumPolish();
+  testCrewChatTimestampSeparators();
+  testCrewChatImageAttachmentsWiring();
+  testChatEmptyStateComponentized();
   await testEventsHistorySelectAllButtonInteraction();
   await testEventsHistoryRemoveConfirmInteraction();
   await testDmChatReopenScroll();

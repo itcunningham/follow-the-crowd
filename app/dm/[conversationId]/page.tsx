@@ -18,6 +18,7 @@ import DmTextMessageBubble from "@/app/components/dm/DmTextMessageBubble";
 import DmBookingTimelineNotice from "@/app/components/dm/DmBookingTimelineNotice";
 import DmChatTimeSeparator from "@/app/components/dm/DmChatTimeSeparator";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
+import ChatEmptyState from "@/app/components/chat/ChatEmptyState";
 import ChatProfileAvatarLink from "@/app/components/chat/ChatProfileAvatarLink";
 import DmIncomingMessageLayout from "@/app/components/chat/DmIncomingMessageLayout";
 import { ChatMessagesSkeleton } from "@/app/components/skeleton/Skeleton";
@@ -1844,34 +1845,29 @@ export default function DmChatPage() {
         {loading ? (
           <ChatMessagesSkeleton />
         ) : messages.length === 0 ? (
-          <div
-            data-chat-content-root
-            className="flex flex-col items-center justify-center px-6 py-16 text-center"
-          >
-            {otherUserId ? (
-              <ChatProfileAvatarLink
-                userId={otherUserId}
-                name={otherUserLabel}
-                avatarUrl={otherUserProfile?.avatar_url}
-                size="md"
-                className="h-10 w-10 text-xs"
-                returnTo={chatReturnTo}
-              />
-            ) : (
-              <ProfileAvatar
-                name={otherUserLabel}
-                avatarUrl={otherUserProfile?.avatar_url}
-                size="md"
-                className="h-10 w-10 text-xs"
-              />
-            )}
-            <p className="mt-4 text-sm font-medium text-ftc-text-secondary">
-              No messages yet
-            </p>
-            <p className="mt-1 text-sm text-ftc-text-muted">
-              Say hi to start the conversation.
-            </p>
-          </div>
+          <ChatEmptyState
+            icon={
+              otherUserId ? (
+                <ChatProfileAvatarLink
+                  userId={otherUserId}
+                  name={otherUserLabel}
+                  avatarUrl={otherUserProfile?.avatar_url}
+                  size="md"
+                  className="h-10 w-10 text-xs"
+                  returnTo={chatReturnTo}
+                />
+              ) : (
+                <ProfileAvatar
+                  name={otherUserLabel}
+                  avatarUrl={otherUserProfile?.avatar_url}
+                  size="md"
+                  className="h-10 w-10 text-xs"
+                />
+              )
+            }
+            title="No messages yet"
+            subtitle="Say hi to start the conversation."
+          />
         ) : (
           <ul data-chat-content-root className={DM_CHAT_MESSAGE_LIST_CLASS}>
             {messages.map((message, index) => {

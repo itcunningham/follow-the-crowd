@@ -5,8 +5,10 @@ import Link from "next/link";
 import ChatMessageBubbleShell from "@/app/components/chat/ChatMessageBubbleShell";
 import ChatProfileAvatarLink from "@/app/components/chat/ChatProfileAvatarLink";
 import IncomingChatMessageLayout from "@/app/components/chat/IncomingChatMessageLayout";
+import DmMessageAttachmentGroup from "@/app/components/dm/DmMessageAttachmentGroup";
 import { buildProfileHref } from "@/lib/profileNavigation";
 import { getChatNewMessageHighlightClass } from "@/lib/chatNewMessageHighlight";
+import type { DmMessageAttachment } from "@/lib/dmAttachments";
 import {
   resolveChatMessageBubbleShellClass,
   resolveChatMessageBubbleTextClass,
@@ -58,6 +60,9 @@ function GroupChatMessageBubble({
   showTimestamp = true,
   groupPosition = "standalone",
   seenLabel = null,
+  attachments = [],
+  followedByTimeSeparator = false,
+  precededByTimeSeparator = false,
 }: {
   messageId: string;
   text: string;
@@ -85,6 +90,11 @@ function GroupChatMessageBubble({
   groupPosition?: ChatMessageGroupPosition;
   /** "Seen by …" — the parent computes this for the single latest message only. */
   seenLabel?: string | null;
+  attachments?: DmMessageAttachment[];
+  /** A centred day/time separator sits directly below this message. */
+  followedByTimeSeparator?: boolean;
+  /** A centred day/time separator sits directly above this message. */
+  precededByTimeSeparator?: boolean;
 }) {
   const bubbleShellRef = useRef<HTMLDivElement>(null);
   const pickerAnchorRef = useRef<HTMLDivElement>(null);
@@ -141,6 +151,11 @@ function GroupChatMessageBubble({
     resetDoubleTapGesture();
   }, [resetDoubleTapGesture, resetLongPressGesture, showReactionPicker]);
 
+  const trimmedText = text.trim();
+  const hasText = trimmedText.length > 0;
+  const hasAttachments = attachments.length > 0;
+  const attachmentOnly = hasAttachments && !hasText;
+
   const highlightClass = getChatNewMessageHighlightClass(isHighlighted);
   const rowMaxWidthClass = isOwnMessage
     ? "max-w-[85%] sm:max-w-[72%]"
@@ -148,11 +163,21 @@ function GroupChatMessageBubble({
 
   const bubbleShellClass = resolveChatMessageBubbleShellClass({
     isOwnMessage,
-    text,
+    text: trimmedText,
+    hasAttachments,
+    attachmentOnly,
     groupPosition,
   });
-  const bubbleTextClass = resolveChatMessageBubbleTextClass(text);
+  const bubbleTextClass = resolveChatMessageBubbleTextClass(trimmedText);
   const isClusterEnd = groupPosition === "last" || groupPosition === "standalone";
+
+  // Same guard as DmTextMessageBubble: an attachment-only message that lost
+  // its attachments (send failed after the optimistic insert, or the row was
+  // otherwise left with neither) has nothing to show, so it must render
+  // nothing rather than an empty bubble.
+  if (!hasText && !hasAttachments) {
+    return null;
+  }
 
   const bubbleBlock = (
     <ChatMessageBubbleShell
@@ -185,7 +210,16 @@ function GroupChatMessageBubble({
         },
       }}
     >
-      <p className={bubbleTextClass}>{text}</p>
+      {hasAttachments ? (
+        <div className={hasText ? "mb-2" : ""}>
+          <DmMessageAttachmentGroup
+            attachments={attachments}
+            isOwnMessage={isOwnMessage}
+            onContextMenu={handleContextMenu}
+          />
+        </div>
+      ) : null}
+      {hasText ? <p className={bubbleTextClass}>{trimmedText}</p> : null}
     </ChatMessageBubbleShell>
   );
 
@@ -199,6 +233,8 @@ function GroupChatMessageBubble({
           position: groupPosition,
           isClusterEnd,
           showTimestamp,
+          followedByTimeSeparator,
+          precededByTimeSeparator,
         })}
       >
         <IncomingChatMessageLayout
@@ -241,6 +277,8 @@ function GroupChatMessageBubble({
       className={resolveOutgoingGroupLiClass({
         position: groupPosition,
         isClusterEnd,
+        followedByTimeSeparator,
+        precededByTimeSeparator,
       })}
     >
       <div className={`flex ${rowMaxWidthClass} items-end gap-2 flex-row-reverse`}>

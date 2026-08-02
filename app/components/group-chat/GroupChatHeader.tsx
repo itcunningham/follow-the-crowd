@@ -1,38 +1,9 @@
 "use client";
 
-import Link from "next/link";
 import CrewChatAvatarStack from "@/app/components/group-chat/CrewChatAvatarStack";
+import ChatBackButton from "@/app/components/chat/ChatBackButton";
 import { FtcPeopleIcon } from "@/app/components/ftc/FtcCompactMeta";
 import type { UserAvatarProfile } from "@/lib/user/currentUser";
-
-function ChatBackButton({
-  href,
-  label,
-}: {
-  href: string;
-  label: string;
-}) {
-  return (
-    <Link
-      href={href}
-      aria-label={label}
-      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-ftc-border-subtle bg-ftc-surface text-ftc-text-secondary transition hover:border-ftc-border-strong hover:text-ftc-text"
-    >
-      <svg
-        aria-hidden="true"
-        viewBox="0 0 24 24"
-        className="h-5 w-5"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <path d="M15 18l-6-6 6-6" />
-      </svg>
-    </Link>
-  );
-}
 
 /**
  * Identity strip: event name (always pinned, never collapses) plus a single

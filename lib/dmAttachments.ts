@@ -71,10 +71,22 @@ export const DM_UNSUPPORTED_FILE_TYPE_MESSAGE =
 export const DM_MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 export const DM_MAX_FILE_BYTES = 25 * 1024 * 1024;
 
+/**
+ * One row in `message_attachments`. Despite the name (kept to avoid a
+ * rename ripple through every existing DM import), this now also covers
+ * Crew Chat attachments: exactly one of `conversation_id`/`event_id` is set
+ * per row (enforced by a DB check constraint,
+ * `message_attachments_scope_check`), never both, never neither. Every
+ * rendering component that consumes this type (`DmMessageAttachment.tsx`,
+ * `DmMessageAttachmentGroup.tsx`, the lightbox, the gallery overview) only
+ * ever reads the file/id fields, never `conversation_id` or `event_id`, so
+ * they're reused as-is for Crew Chat rather than forked.
+ */
 export type DmMessageAttachment = {
   id: string;
   message_id: string;
-  conversation_id: string;
+  conversation_id: string | null;
+  event_id: string | null;
   uploader_id: string;
   file_url: string;
   file_name: string;
@@ -84,7 +96,7 @@ export type DmMessageAttachment = {
 };
 
 const ATTACHMENT_SELECT =
-  "id, message_id, conversation_id, uploader_id, file_url, file_name, file_type, file_size, created_at";
+  "id, message_id, conversation_id, event_id, uploader_id, file_url, file_name, file_type, file_size, created_at";
 
 export function isDmImageAttachment(fileType: string): boolean {
   return fileType.startsWith("image/");

@@ -1,5 +1,7 @@
 "use client";
 
+import ChatEmptyState from "@/app/components/chat/ChatEmptyState";
+
 /**
  * Shown until the crew sends its first message, then never again.
  *
@@ -8,14 +10,10 @@
  */
 export default function GroupChatEmptyState() {
   return (
-    <div
-      data-chat-content-root
-      className="flex flex-col items-center justify-center px-6 py-8 text-center"
-    >
-      <p className="text-sm font-medium text-ftc-text">Welcome to your Crew Chat</p>
-      <p className="mt-3 max-w-[17rem] text-xs leading-relaxed text-ftc-text-muted">
-        Coordinate set times, arrivals, equipment and event updates with your crew.
-      </p>
-    </div>
+    <ChatEmptyState
+      title="Welcome to your Crew Chat"
+      subtitle="Coordinate set times, arrivals, equipment and event updates with your crew."
+      subtitleClassName="max-w-[17rem]"
+    />
   );
 }

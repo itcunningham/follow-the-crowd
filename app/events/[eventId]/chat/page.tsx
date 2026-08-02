@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation";
 import AppNavigation, { MOBILE_NAV_OFFSET_CLASS } from "@/app/components/AppNavigation";
 import ChatNewMessagesPill from "@/app/components/dm/ChatNewMessagesPill";
@@ -19,6 +19,7 @@ import {
 import type { EventStatus } from "@/lib/events";
 import GroupChatMessageBubble from "@/app/components/group-chat/GroupChatMessageBubble";
 import GroupChatSystemNotice from "@/app/components/group-chat/GroupChatSystemNotice";
+import DmChatTimeSeparator from "@/app/components/dm/DmChatTimeSeparator";
 import OnboardingGuard from "@/app/components/OnboardingGuard";
 import { ChatHeaderSkeleton, ChatMessagesSkeleton } from "@/app/components/skeleton/Skeleton";
 import {
@@ -30,6 +31,22 @@ import {
   sendEventCrewChatMessage,
   type EventCrewChatMessage,
 } from "@/lib/eventCrewChat";
+import {
+  listEventCrewChatAttachmentsForEvent,
+  sendEventCrewChatMessageWithAttachments,
+} from "@/lib/groupChatAttachments";
+import {
+  DM_MAX_PHOTOS_PER_MESSAGE,
+  groupDmAttachmentsByMessageId,
+  type DmMessageAttachment,
+} from "@/lib/dmAttachments";
+import {
+  mergePendingComposerAttachments,
+  removePendingComposerAttachmentAt,
+  revokeAllPendingComposerAttachments,
+  revokePendingComposerAttachment,
+  type PendingComposerAttachment,
+} from "@/lib/dm/composerPendingAttachment";
 import {
   applyOptimisticDmReactionToggle,
   groupDmReactionsByMessageId,
@@ -48,6 +65,10 @@ import {
   buildGroupChatSenderNameVisibility,
   resolveCrewChatMemberCount,
 } from "@/lib/groupChatMessageLayout";
+import {
+  buildGroupChatTimestampLayout,
+  type GroupChatTimestampLayout,
+} from "@/lib/groupChatTimestampVisibility";
 import { markEventChatRead } from "@/lib/messageReads";
 import {
   formatGroupChatSystemNoticeText,
@@ -73,6 +94,34 @@ function formatMessageTime(timestamp: string) {
     minute: "2-digit",
     hour12: true,
   });
+}
+
+/**
+ * Crew chat's message list is a reversed flex container (newest message
+ * first in the DOM, flex-col-reverse flips it back to oldest-on-top) so new
+ * messages append without disturbing scroll position — see useChatScroll.
+ * A day/time separator is attached to the message it precedes chronologically,
+ * so within this reversed DOM order it must render AFTER that message's own
+ * node (trailing), not before it like DM's non-reversed list.
+ */
+function wrapWithTrailingTimeSeparator(
+  messageId: string,
+  createdAt: string,
+  node: React.ReactNode,
+  timestampLayout: GroupChatTimestampLayout | undefined,
+) {
+  const separatorLabel = timestampLayout?.showDaySeparatorBefore
+    ? timestampLayout.daySeparatorLabel
+    : timestampLayout?.showTimeSeparatorBefore
+      ? formatMessageTime(createdAt)
+      : undefined;
+
+  return (
+    <Fragment key={messageId}>
+      {node}
+      {separatorLabel ? <DmChatTimeSeparator dateTime={createdAt} label={separatorLabel} /> : null}
+    </Fragment>
+  );
 }
 
 const GROUP_CHAT_MESSAGES_TIMEOUT_MS = 15_000;
@@ -154,6 +203,9 @@ export default function EventCrewChatPage() {
   };
 
   const [messages, setMessages] = useState<EventCrewChatMessageWithScrollMeta[]>([]);
+  const [attachments, setAttachments] = useState<DmMessageAttachment[]>([]);
+  const [pendingAttachments, setPendingAttachments] = useState<PendingComposerAttachment[]>([]);
+  const [uploading, setUploading] = useState(false);
   const [reactions, setReactions] = useState<DmMessageReaction[]>([]);
   const [reactingMessageId, setReactingMessageId] = useState<string | null>(null);
   const [reactionPickerMessageId, setReactionPickerMessageId] = useState<string | null>(null);
@@ -210,9 +262,17 @@ export default function EventCrewChatPage() {
 
     return buildChatMessageGroupLayout(chatMessages);
   }, [messages]);
+  const groupChatTimestampLayout = useMemo(
+    () => buildGroupChatTimestampLayout(messages),
+    [messages],
+  );
   const reactionsByMessageId = useMemo(
     () => groupDmReactionsByMessageId(reactions),
     [reactions],
+  );
+  const attachmentsByMessageId = useMemo(
+    () => groupDmAttachmentsByMessageId(attachments),
+    [attachments],
   );
   const messageIds = useMemo(() => messages.map((message) => message.id), [messages]);
   messageIdsRef.current = messageIds;
@@ -256,6 +316,56 @@ export default function EventCrewChatPage() {
     currentUserId,
   });
   const { addHighlightedMessageId, isMessageHighlighted } = useChatNewMessageHighlight();
+
+  // Pending-photo staging: identical shape to the DM composer's, reusing the
+  // same lib/dm/composerPendingAttachment helpers (they're already generic —
+  // local blob-preview state that never touches conversation vs. event id).
+  const clearPendingAttachments = useCallback(() => {
+    setPendingAttachments((current) => {
+      revokeAllPendingComposerAttachments(current);
+      return [];
+    });
+  }, []);
+
+  const stagePendingPhotos = useCallback((files: File[]) => {
+    setPendingAttachments((current) => {
+      const result = mergePendingComposerAttachments(current, files, DM_MAX_PHOTOS_PER_MESSAGE);
+
+      if (result.skippedLimitCount > 0) {
+        setError(
+          `You can only send up to ${DM_MAX_PHOTOS_PER_MESSAGE} photos at once. ` +
+            `${result.skippedLimitCount === 1 ? "1 photo was" : `${result.skippedLimitCount} photos were`} not added.`,
+        );
+      }
+
+      return result.attachments;
+    });
+  }, []);
+
+  const removePendingPhotoAt = useCallback((index: number) => {
+    setPendingAttachments((current) => {
+      const result = removePendingComposerAttachmentAt(current, index);
+      revokePendingComposerAttachment(result.removed);
+      return result.attachments;
+    });
+  }, []);
+
+  const pendingAttachmentsRef = useRef<PendingComposerAttachment[]>(pendingAttachments);
+
+  useEffect(() => {
+    pendingAttachmentsRef.current = pendingAttachments;
+  }, [pendingAttachments]);
+
+  useEffect(() => {
+    return () => {
+      revokeAllPendingComposerAttachments(pendingAttachmentsRef.current);
+    };
+  }, []);
+
+  useEffect(() => {
+    clearPendingAttachments();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [eventId]);
 
   /**
    * Collapses the event-context card once the user scrolls into the
@@ -455,11 +565,15 @@ export default function EventCrewChatPage() {
         setCurrentUserId(userId);
       }
 
-      const [rows, reactionsResult] = await Promise.all([
+      const [rows, reactionsResult, attachmentsResult] = await Promise.all([
         withGroupChatMessagesTimeout(listEventCrewChatMessages(eventId)),
         listMessageReactionsForEvent(eventId).catch((reactionError) => {
           console.error("Failed to load group chat reactions:", reactionError);
           return [] as DmMessageReaction[];
+        }),
+        listEventCrewChatAttachmentsForEvent(eventId).catch((attachmentError) => {
+          console.error("Failed to load group chat attachments:", attachmentError);
+          return [] as DmMessageAttachment[];
         }),
       ]);
 
@@ -476,6 +590,7 @@ export default function EventCrewChatPage() {
           .map((message) => tagChatMessageForScroll(message, userId)),
       );
       setReactions(reactionsResult);
+      setAttachments(attachmentsResult);
       markGroupChatOpened(latestMessageCreatedAt);
       void loadSenderProfiles(rows);
     } catch (loadError) {
@@ -505,6 +620,7 @@ export default function EventCrewChatPage() {
       setError(null);
       setMessages([]);
       setReactions([]);
+      setAttachments([]);
       setReactionPickerMessageId(null);
       setSenderProfiles(new Map());
       setLastReadAtByUserId(new Map());
@@ -667,6 +783,40 @@ export default function EventCrewChatPage() {
   }, [eventId, currentUserId, captureScrollBeforeIncomingInsert, addHighlightedMessageId]);
 
   useEffect(() => {
+    if (!eventId) {
+      return;
+    }
+
+    const channel = supabase
+      .channel(`event-crew-chat-attachments:${eventId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "message_attachments",
+          filter: `event_id=eq.${eventId}`,
+        },
+        (payload) => {
+          const nextAttachment = payload.new as DmMessageAttachment;
+
+          setAttachments((prev) => {
+            if (prev.some((attachment) => attachment.id === nextAttachment.id)) {
+              return prev;
+            }
+
+            return [...prev, nextAttachment];
+          });
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [eventId]);
+
+  useEffect(() => {
     setReactionPickerMessageId(null);
   }, [eventId]);
 
@@ -799,8 +949,14 @@ export default function EventCrewChatPage() {
 
   async function sendMessage() {
     const text = input.trim();
+    const filesToSend = pendingAttachments.map((pending) => pending.file);
 
-    if (!text || !eventId || sending) {
+    if ((!text && filesToSend.length === 0) || !eventId || sending || uploading) {
+      return;
+    }
+
+    if (filesToSend.length > 0) {
+      await sendCrewChatAttachments(filesToSend);
       return;
     }
 
@@ -819,6 +975,75 @@ export default function EventCrewChatPage() {
       );
     } finally {
       setSending(false);
+    }
+  }
+
+  async function sendCrewChatAttachments(files: File[]) {
+    if (!eventId || uploading || sending || files.length === 0) {
+      return;
+    }
+
+    setUploading(true);
+    setError(null);
+    markUserSentMessage();
+
+    try {
+      const caption = input.trim();
+      const { messageId, attachments: sentAttachments } =
+        await sendEventCrewChatMessageWithAttachments({
+          eventId,
+          eventName,
+          text: caption,
+          files,
+        });
+
+      const userId = currentUserId ?? (await getCurrentUserId());
+      const optimisticMessage = tagChatMessageForScroll(
+        {
+          id: messageId,
+          event_id: eventId,
+          user_id: userId,
+          text: caption,
+          created_at: new Date().toISOString(),
+        },
+        userId,
+      );
+
+      setMessages((prev) => {
+        if (prev.some((message) => message.id === messageId)) {
+          return prev;
+        }
+
+        return [...prev, optimisticMessage];
+      });
+
+      setAttachments((prev) => {
+        const existingIds = new Set(prev.map((item) => item.id));
+        const newAttachments = sentAttachments.filter((item) => !existingIds.has(item.id));
+
+        if (newAttachments.length === 0) {
+          return prev;
+        }
+
+        return [...prev, ...newAttachments];
+      });
+
+      setInput("");
+      // Selection only clears once the send fully succeeds, so a failed
+      // send (see catch below) leaves the same photos staged for retry.
+      clearPendingAttachments();
+      await markEventChatRead(eventId, { readThroughCreatedAt: optimisticMessage.created_at });
+    } catch (uploadError) {
+      console.error("Failed to send crew chat attachments:", uploadError);
+      setError(
+        uploadError instanceof Error
+          ? uploadError.message
+          : files.length > 1
+            ? "Failed to send photos. Tap send to try again."
+            : "Failed to send photo. Tap send to try again.",
+      );
+    } finally {
+      setUploading(false);
     }
   }
 
@@ -929,23 +1154,40 @@ export default function EventCrewChatPage() {
               <GroupChatEmptyState />
             ) : (
               <ul data-chat-content-root className={CHAT_MESSAGE_LIST_CLASS}>
-                {reversedMessages.map((message) => {
+                {reversedMessages.map((message, index) => {
                   const isOwnMessage =
                     currentUserId !== null && message.user_id === currentUserId;
                   const isSystemUpdate = isGroupChatSystemUpdateMessage(message.text);
                   const highlighted = isMessageHighlighted(message.id);
                   logChatHighlightRender(message.id, highlighted);
+                  const timestampLayout = groupChatTimestampLayout.get(message.id);
+                  // The chronologically-newer neighbor — one iteration back in this
+                  // reversed (newest-first) loop — sits visually below this message.
+                  const newerNeighbor = reversedMessages[index - 1];
+                  const newerNeighborLayout = newerNeighbor
+                    ? groupChatTimestampLayout.get(newerNeighbor.id)
+                    : undefined;
+                  const followedByTimeSeparator = Boolean(
+                    newerNeighborLayout?.showDaySeparatorBefore ||
+                      newerNeighborLayout?.showTimeSeparatorBefore,
+                  );
+                  const precededByTimeSeparator = Boolean(
+                    timestampLayout?.showDaySeparatorBefore ||
+                      timestampLayout?.showTimeSeparatorBefore,
+                  );
 
                   if (isSystemUpdate) {
-                    return (
+                    return wrapWithTrailingTimeSeparator(
+                      message.id,
+                      message.created_at,
                       <GroupChatSystemNotice
-                        key={message.id}
                         messageId={message.id}
                         text={formatGroupChatSystemNoticeText(message.text)}
                         createdAt={message.created_at}
                         formatTime={formatMessageTime}
                         isHighlighted={highlighted}
-                      />
+                      />,
+                      timestampLayout,
                     );
                   }
 
@@ -953,9 +1195,10 @@ export default function EventCrewChatPage() {
                   const senderLabel = getSenderLabel(profile, message.user_id);
                   const messageGroupLayout = chatMessageGroupLayout.get(message.id);
 
-                  return (
+                  return wrapWithTrailingTimeSeparator(
+                    message.id,
+                    message.created_at,
                     <GroupChatMessageBubble
-                      key={message.id}
                       messageId={message.id}
                       text={message.text}
                       createdAt={message.created_at}
@@ -980,7 +1223,11 @@ export default function EventCrewChatPage() {
                       showTimestamp={messageGroupLayout?.showAvatar ?? true}
                       groupPosition={messageGroupLayout?.position ?? "standalone"}
                       seenLabel={message.id === lastMessage?.id ? latestMessageSeenLabel : null}
-                    />
+                      attachments={attachmentsByMessageId.get(message.id) ?? []}
+                      followedByTimeSeparator={followedByTimeSeparator}
+                      precededByTimeSeparator={precededByTimeSeparator}
+                    />,
+                    timestampLayout,
                   );
                 })}
               </ul>
@@ -1005,6 +1252,11 @@ export default function EventCrewChatPage() {
               onChange={setInput}
               onSend={() => void sendMessage()}
               sending={sending}
+              pendingPhotos={pendingAttachments}
+              onStagePhotos={stagePendingPhotos}
+              onRemovePendingPhoto={removePendingPhotoAt}
+              onAttachmentError={(message) => setError(message)}
+              uploading={uploading}
             />
           </div>
         </div>

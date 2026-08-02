@@ -2,6 +2,7 @@
 
 import { useRef, type RefObject } from "react";
 import ChatSendIcon from "@/app/components/chat/ChatSendIcon";
+import ComposerIconButton from "@/app/components/chat/ComposerIconButton";
 import ComposerMessageField from "@/app/components/chat/ComposerMessageField";
 import {
   DM_MAX_PHOTOS_PER_MESSAGE,
@@ -11,33 +12,6 @@ import {
 import type { PendingComposerAttachment } from "@/lib/dm/composerPendingAttachment";
 import { handleComposerNewlineKeyDown } from "@/lib/dm/composerNewlineKeydown";
 import { useComposerTextareaAutogrow } from "@/lib/dm/useComposerTextareaAutogrow";
-
-function ComposerIconButton({
-  label,
-  disabled,
-  onClick,
-  children,
-  className = "",
-}: {
-  label: string;
-  disabled?: boolean;
-  onClick?: () => void;
-  children: React.ReactNode;
-  className?: string;
-}) {
-  return (
-    <button
-      type="button"
-      aria-label={label}
-      title={label}
-      disabled={disabled}
-      onClick={onClick}
-      className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-ftc-border-subtle bg-ftc-surface text-ftc-text-secondary transition hover:border-ftc-border-strong hover:text-ftc-text disabled:cursor-not-allowed disabled:opacity-40 ${className}`}
-    >
-      {children}
-    </button>
-  );
-}
 
 function SendIcon({ className = "h-5 w-5" }: { className?: string }) {
   return <ChatSendIcon className={className} />;
@@ -105,7 +79,7 @@ export default function DmComposer({
     <div
       ref={composerRootRef}
       data-chat-composer
-      className="dm-composer shrink-0 mt-1.5 border-t border-ftc-border-subtle bg-ftc-bg px-3 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-4"
+      className="ftc-chat-composer shrink-0 mt-1.5 border-t border-ftc-border-subtle bg-ftc-bg px-3 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-4"
     >
       {hasPendingPhotos ? (
         <div
