@@ -8838,7 +8838,13 @@ function testRunSheetStageAreaCapAndCounter() {
 
   // No competing line-height utility on the field.
   assert.match(sectionSource, /stageAreaTextareaClassName = `\$\{runSheetTextareaBaseClassName\} ftc-run-sheet-stage-textarea/);
-  assert.doesNotMatch(sectionSource, /stageAreaTextareaClassName = [^\n]*leading-/);
+  // A leading utility is allowed only if it is `leading-6` -- 1.5rem, the same
+  // value the rule pins. Anything else reintroduces the multiplier-vs-rem
+  // mismatch that let the rendered rows disagree with the cap on iOS Safari.
+  const stageClassLine = sectionSource.match(/stageAreaTextareaClassName = [^\n]*/)?.[0] ?? "";
+  for (const utility of stageClassLine.match(/leading-[\w.[\]-]+/g) ?? []) {
+    assert.equal(utility, "leading-6", `unexpected line-height utility: ${utility}`);
+  }
 
   const stageRule = globalsSource.match(/\.ftc-run-sheet-stage-textarea \{[\s\S]*?\n\}/);
   assert.ok(stageRule, ".ftc-run-sheet-stage-textarea rule not found in globals.css");
@@ -8868,11 +8874,19 @@ function testRunSheetNotesCapAndCounter() {
 
   const globalsSource = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
 
-  assert.match(sectionSource, /const RUN_SHEET_NOTES_MAX_ROWS = 6;/);
+  // Notes is pinned to 4 rows; see testRunSheetNotesIsPinnedToFourRows for the
+  // exact border-box arithmetic and the reason the pin needs `!important`.
+  assert.match(sectionSource, /const RUN_SHEET_NOTES_MAX_ROWS = 4;/);
   assert.match(sectionSource, /maxRows=\{RUN_SHEET_NOTES_MAX_ROWS\}/);
 
-  // Ceiling comes from computed metrics, never from a `lh`-based max-height.
-  assert.match(sectionSource, /lineHeight \* maxRows \+ verticalPadding \+ verticalBorder/);
+  // Ceiling is built from the declared row height, never from a computed
+  // line-height that can come back `normal`, and never from a `lh`-based
+  // max-height (the unit needs Safari 16.4+).
+  assert.match(
+    sectionSource,
+    /RUN_SHEET_TEXTAREA_LINE_HEIGHT_PX \* maxRows \+ verticalPadding \+ verticalBorder/,
+  );
+  assert.match(sectionSource, /const RUN_SHEET_TEXTAREA_LINE_HEIGHT_PX = 24;/);
   assert.doesNotMatch(sectionSource, /max-height: calc\(\d*lh/);
 
   // scrollHeight excludes the border while the height we set is border-box, so
@@ -8895,9 +8909,11 @@ function testRunSheetNotesCapAndCounter() {
 
   const notesRule = globalsSource.match(/\.ftc-run-sheet-notes-textarea \{[\s\S]*?\n\}/);
   assert.ok(notesRule, ".ftc-run-sheet-notes-textarea rule not found in globals.css");
-  // One pinned line-height, and a ceiling derived from that same literal.
+  // One pinned line-height, and a height derived from that same literal.
+  // See testRunSheetNotesIsPinnedToFourRows for why all three of
+  // height/min-height/max-height carry the value rather than max-height alone.
   assert.match(notesRule[0], /line-height: 1\.5rem !important/);
-  assert.match(notesRule[0], /max-height: calc\(6 \* 1\.5rem \+ 0\.75rem \+ 2px\) !important/);
+  assert.match(notesRule[0], /max-height: calc\(4 \* 1\.5rem \+ 0\.75rem \+ 2px\) !important/);
   assert.match(notesRule[0], /overflow-y: auto !important/);
   assert.match(notesRule[0], /overscroll-behavior: contain/);
   // `lh` needs Safari 16.4+; on older iOS the declaration would be dropped,
@@ -9719,6 +9735,69 @@ function testBookingsResultsAreaMatchesOneBookingCard() {
   assert.match(source, /<ul className="space-y-2\.5">/);
 }
 
+function testRunSheetNotesIsPinnedToFourRows() {
+  const css = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
+  const section = readFileSync(
+    new URL("../app/components/EventRunSheetSection.tsx", import.meta.url),
+    "utf8",
+  );
+
+  const notesRule = css.match(/\.ftc-run-sheet-notes-textarea \{[^}]*\}/)?.[0] ?? "";
+  assert.ok(notesRule, "the Notes field rule must exist");
+
+  // Exact border-box arithmetic: 4 rows x 1.5rem line-height + py-1.5 + 1px
+  // borders = 110px. Asserted as the literal calc so a future edit cannot
+  // quietly change the row count.
+  const fourRows = "calc(4 * 1.5rem + 0.75rem + 2px)";
+  assert.match(notesRule, /line-height: 1\.5rem !important/);
+  assert.ok(
+    notesRule.includes(`height: ${fourRows} !important`),
+    "Notes must set an explicit 4-row height, not only a ceiling",
+  );
+
+  // height AND min-height AND max-height must all be the same pinned value.
+  // Earlier attempts set only max-height, which left the auto-grow effect free
+  // to write an inline height anywhere below it -- the field then rendered
+  // whatever the ceiling allowed rather than a fixed 4 rows.
+  for (const property of ["height", "min-height", "max-height"]) {
+    assert.ok(
+      notesRule.includes(`${property}: ${fourRows} !important`),
+      `Notes must pin ${property} to the 4-row value`,
+    );
+  }
+
+  // `!important` is load-bearing: the auto-grow effect writes style.height on
+  // the element, and an author !important declaration outranks an inline one.
+  assert.equal(
+    (notesRule.match(/!important/g) ?? []).length >= 5,
+    true,
+    "the pin must outrank the inline height the auto-grow effect writes",
+  );
+
+  // No shared min-height token may ride along and lift the field off 4 rows.
+  const notesClass = section.match(/const notesTextareaClassName = `[^`]*`/)?.[0] ?? "";
+  assert.ok(notesClass.includes("ftc-run-sheet-notes-textarea"));
+  assert.doesNotMatch(
+    notesClass,
+    /min-h-\[/,
+    "the Notes class must not carry a min-h-* token competing with the pinned height",
+  );
+
+  assert.match(section, /const RUN_SHEET_NOTES_MAX_ROWS = 4/);
+  assert.match(notesRule, /overflow-y: auto !important/);
+  assert.match(notesRule, /box-sizing: border-box !important/);
+  assert.match(notesRule, /resize: none !important/);
+
+  // Stage / Area must stay exactly as it is: 2 rows, its own rule, untouched.
+  const stageRule = css.match(/\.ftc-run-sheet-stage-textarea \{[^}]*\}/)?.[0] ?? "";
+  assert.ok(stageRule.includes("max-height: calc(2 * 1.5rem + 0.75rem + 2px) !important"));
+  assert.match(section, /const RUN_SHEET_STAGE_AREA_MAX_ROWS = 2/);
+  assert.match(section, /const RUN_SHEET_STAGE_AREA_MAX_LENGTH = 50/);
+
+  // The 500-character cap and its counter are unchanged.
+  assert.match(section, /MAX_EVENT_NOTES_LENGTH/);
+}
+
 async function main() {
   testPastEventDatesAreBlocked();
   testFutureEventDatesAreAllowed();
@@ -9923,6 +10002,7 @@ async function main() {
   testDjMainNavGigsCountBadge();
   testEventPlansSendPanelReusesSharedConfirmUi();
   testBookingRateModeDescriptionsAreUnified();
+  testRunSheetNotesIsPinnedToFourRows();
   testBookingsResultsAreaMatchesOneBookingCard();
   testIosOverscrollDoesNotClipFixedChrome();
   testBookingStatusChangesReconcileEverywhere();

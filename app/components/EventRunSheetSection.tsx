@@ -59,11 +59,21 @@ const RUN_SHEET_DJ_COLUMN_CLASS = "w-[18%] min-w-[10rem]";
 const RUN_SHEET_SET_TIME_BUTTON_CLASS =
   "ftc-field-trigger inline-flex w-full min-h-[2.25rem] items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium sm:min-h-[2rem] lg:max-w-[11rem]";
 const RUN_SHEET_NOTES_COLUMN_CLASS = "w-[28%] min-w-[10rem]";
-/** Visible rows the Notes field grows to before it stops and scrolls internally. */
-const RUN_SHEET_NOTES_MAX_ROWS = 6;
+/** Visible rows the Notes field shows before it scrolls internally. The field is
+ * pinned to this height by `.ftc-run-sheet-notes-textarea` and never grows into
+ * it; this keeps the JS ceiling from contradicting the CSS pin. */
+const RUN_SHEET_NOTES_MAX_ROWS = 4;
 /** Visible rows the Stage / Area field grows to before it stops and scrolls. */
 const RUN_SHEET_STAGE_AREA_MAX_ROWS = 2;
 const RUN_SHEET_STAGE_AREA_MAX_LENGTH = 50;
+/**
+ * Row height every capped Run Sheet textarea is sized in, declared rather than
+ * measured. `leading-6` on the fields, the `.ftc-run-sheet-*-textarea` rules and
+ * the <=639px zoom-prevention rule all resolve to this same 1.5rem, so the cap
+ * never has to trust a computed value that might come back `normal` — which
+ * would previously make the clamp below skip itself and let the field grow.
+ */
+const RUN_SHEET_TEXTAREA_LINE_HEIGHT_PX = 24;
 
 function getFixedField(key: (typeof FIXED_FIELDS)[number]["key"]) {
   const field = FIXED_FIELDS.find((item) => item.key === key);
@@ -356,21 +366,25 @@ function RunSheetAutoGrowTextarea({
     }
 
     // Ceiling mirrors the field's own `max-height` (see the
-    // `.ftc-run-sheet-*-textarea` rules), computed from the same pinned
-    // line-height so the inline height and the CSS cap can't disagree. The CSS
-    // rule stays the authority — `max-height` constrains this inline height
-    // regardless — which is what makes the cap engine-independent.
+    // `.ftc-run-sheet-*-textarea` rules) and is built from the declared row
+    // height, never from a measured one.
+    //
+    // This used to read `line-height` off the element and skip the clamp
+    // entirely when it wasn't numeric. That is exactly what happened: with the
+    // bespoke rule not applied and above the 639px breakpoint, nothing else set
+    // a line-height, so it computed to `normal`, `parseFloat` gave NaN, the
+    // guard fell through, and the field grew to fit all its text — five or six
+    // rows in the narrow Stage column. A cap that silently disables itself when
+    // a style is missing is the bug; using the declared constant means it
+    // always applies.
     if (maxRows !== undefined) {
-      const lineHeight = parseFloat(measuredStyles.lineHeight);
+      const verticalPadding =
+        parseFloat(measuredStyles.paddingTop) + parseFloat(measuredStyles.paddingBottom);
+      const maxHeight =
+        RUN_SHEET_TEXTAREA_LINE_HEIGHT_PX * maxRows + verticalPadding + verticalBorder;
 
-      if (Number.isFinite(lineHeight)) {
-        const verticalPadding =
-          parseFloat(measuredStyles.paddingTop) + parseFloat(measuredStyles.paddingBottom);
-        const maxHeight = lineHeight * maxRows + verticalPadding + verticalBorder;
-
-        textarea.style.height = `${Math.min(nextHeight + verticalBorder, maxHeight)}px`;
-        return;
-      }
+      textarea.style.height = `${Math.min(nextHeight + verticalBorder, maxHeight)}px`;
+      return;
     }
 
     textarea.style.height = `${nextHeight}px`;
@@ -734,13 +748,22 @@ export default function EventRunSheetSection({
   // pinned line-height, the 2-row ceiling, the internal scrolling and the
   // scroll containment — deliberately not `leading-normal`, whose multiplier
   // competed with the <=639px rule's `line-height: 1.5rem`.
-  const stageAreaTextareaClassName = `${runSheetTextareaBaseClassName} ftc-run-sheet-stage-textarea min-h-[2.25rem]`;
-  // `.ftc-run-sheet-notes-textarea` owns the pinned line-height, the 6-row
-  // ceiling, the internal scrolling and the scroll containment — deliberately
-  // not `leading-relaxed`, whose multiplier competed with the <=639px rule's
-  // `line-height: 1.5rem` and left the cap and the rendered rows disagreeing on
-  // iOS Safari.
-  const notesTextareaClassName = `${runSheetTextareaBaseClassName} ftc-run-sheet-notes-textarea min-h-[3.25rem]`;
+  // `leading-6` is a fixed 1.5rem, matching RUN_SHEET_TEXTAREA_LINE_HEIGHT_PX,
+  // the bespoke rule and the <=639px rule. It rides on the element's own class
+  // string so the row height cannot go missing along with the bespoke rule —
+  // and it is a length, not the multiplier `leading-normal` was, which is what
+  // made the row height differ between mobile and desktop in the first place.
+  const stageAreaTextareaClassName = `${runSheetTextareaBaseClassName} ftc-run-sheet-stage-textarea min-h-[2.25rem] leading-6`;
+  // `.ftc-run-sheet-notes-textarea` owns the pinned line-height, the fixed
+  // 4-row height, the internal scrolling and the scroll containment —
+  // deliberately not `leading-relaxed`, whose multiplier competed with the
+  // <=639px rule's `line-height: 1.5rem`.
+  //
+  // No `min-h-*` here on purpose. The field used to carry `min-h-[3.25rem]`,
+  // which is a second opinion about the height of a field that now has exactly
+  // one; the rule pins min/max/height together so a shared token cannot lift it
+  // off 4 rows.
+  const notesTextareaClassName = `${runSheetTextareaBaseClassName} ftc-run-sheet-notes-textarea`;
 
   const readOnlyTextClassName =
     "rounded-lg border border-ftc-border bg-ftc-bg-elevated/30 px-2.5 py-1.5 text-sm leading-relaxed text-ftc-text whitespace-pre-wrap break-words";
