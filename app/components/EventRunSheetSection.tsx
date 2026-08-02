@@ -661,6 +661,11 @@ function RunSheetEntry({
  * one can act on it, the other is just told to check back. The promoter's
  * "Run Sheet" title is intentionally not repeated here for the DJ copy --
  * the section already has that heading immediately above.
+ *
+ * Deliberately no card, border or icon -- an onboarding invitation rather
+ * than an error/placeholder state, carried by typography and spacing alone.
+ * `max-w-sm mx-auto` keeps both lines a comfortably short reading measure on
+ * wide desktop viewports rather than stretching edge to edge.
  */
 function RunSheetNotCompletedEmptyState({
   canEdit,
@@ -671,8 +676,8 @@ function RunSheetNotCompletedEmptyState({
 }) {
   if (!canEdit) {
     return (
-      <div className="ftc-card-empty mt-5 px-6 py-8 text-center">
-        <p className="text-sm text-ftc-text-secondary">
+      <div className="mt-5 py-8 text-center">
+        <p className="mx-auto max-w-sm text-sm text-ftc-text-secondary">
           The promoter hasn&apos;t published the Run Sheet yet. Check back later.
         </p>
       </div>
@@ -680,13 +685,13 @@ function RunSheetNotCompletedEmptyState({
   }
 
   return (
-    <div className="ftc-card-empty mt-5 px-6 py-8 text-center">
-      <p className="text-sm font-semibold text-ftc-text">Run Sheet not completed</p>
-      <p className="mt-1.5 text-sm text-ftc-text-secondary">
-        Add each DJ&apos;s set time, stage and notes before the event.
+    <div className="mt-5 py-8 text-center">
+      <p className="text-lg font-bold text-ftc-text">Create your Run Sheet</p>
+      <p className="mx-auto mt-2 max-w-sm text-sm text-ftc-text-secondary">
+        Add set times, stages and notes for each DJ so everyone knows where they need to be.
       </p>
-      <button type="button" onClick={onEditClick} className={`${EVENT_DETAIL_BTN_PRIMARY} mt-4`}>
-        Edit Run Sheet
+      <button type="button" onClick={onEditClick} className={`${EVENT_DETAIL_BTN_PRIMARY} mt-5`}>
+        Create Run Sheet
       </button>
     </div>
   );
@@ -868,6 +873,13 @@ export default function EventRunSheetSection({
   // Hidden while the dedicated all-incomplete empty state is showing (view
   // mode only) so the same fact isn't stated twice on screen.
   const showRunSheetProgress = rows.length > 0 && (isEditing || !allRowsIncomplete);
+  // The header cluster (Edit, or Cancel + Save) is suppressed for exactly the
+  // same window the empty state above owns: while browsing an all-incomplete
+  // sheet, "Create Run Sheet" is the only action on screen, not a duplicate of
+  // the top-right Edit button. Once editing starts, or once any row is
+  // complete, the cluster reappears as normal.
+  const showRunSheetHeaderActions =
+    canEdit && rows.length > 0 && (isEditing || !allRowsIncomplete);
 
   async function handleSave() {
     setSaving(true);
@@ -936,8 +948,11 @@ export default function EventRunSheetSection({
             Edit, not the sheet's permanent state. Editing swaps this single
             Edit button for a Cancel + Save pair; there is no third, "clean"
             state to reserve space for, so unlike the old always-mounted Save
-            button this cluster can just mount and unmount with `isEditing`. */}
-        {canEdit && rows.length > 0 ? (
+            button this cluster can just mount and unmount with `isEditing`.
+            Suppressed entirely while the "Create your Run Sheet" empty state
+            above is showing -- Create Run Sheet is the one obvious action,
+            not a duplicate of Edit. */}
+        {showRunSheetHeaderActions ? (
           <div className="flex flex-wrap gap-2">
             {isEditing ? (
               <>
@@ -961,14 +976,15 @@ export default function EventRunSheetSection({
             ) : (
               // Standard secondary button, the same style Cancel above and
               // Message elsewhere in the app already use -- not a separate,
-              // visually-floating pill.
+              // visually-floating pill. No icon: the visible label is the
+              // whole affordance, matching the rest of the app's text buttons.
               <button
                 type="button"
                 onClick={handleEnterEditMode}
                 aria-label="Edit Run Sheet"
                 className={EVENT_DETAIL_BTN_SECONDARY}
               >
-                ✏️ Edit
+                Edit
               </button>
             )}
           </div>

@@ -9472,12 +9472,13 @@ function testRunSheetDirtyStateAndSaveFeedback() {
   assert.doesNotMatch(sectionSource, /showSaveButton/);
 
   // The header cluster is rendered whenever saving is possible at all --
-  // gated only on `canEdit && rows.length > 0`, never on the dirty state --
-  // so the header keeps its height and nothing below it moves when Edit
-  // swaps for Cancel + Save. Gating the slot on the dirty state (as this once
-  // did) made the button wrap onto a second line of the `flex-wrap` header at
-  // 375px, growing the header and shifting the whole run sheet down.
-  assert.match(sectionSource, /\{canEdit && rows\.length > 0 \? \(/);
+  // `showRunSheetHeaderActions`, never the dirty state -- so the header keeps
+  // its height and nothing below it moves when Edit swaps for Cancel + Save.
+  // Gating the slot on the dirty state (as this once did) made the button
+  // wrap onto a second line of the `flex-wrap` header at 375px, growing the
+  // header and shifting the whole run sheet down. (`showRunSheetHeaderActions`
+  // itself is exercised in testRunSheetProductionPolish.)
+  assert.match(sectionSource, /\{showRunSheetHeaderActions \? \(/);
 
   // Baseline is rebased on save, which is also what a later Cancel would
   // revert to.
@@ -9563,7 +9564,7 @@ function testRunSheetEditMode() {
   // a permanently-mounted Save button (that mechanism is gone; see
   // testRunSheetDirtyStateAndSaveFeedback).
   const headerCluster =
-    section.match(/\{canEdit && rows\.length > 0 \? \(([\s\S]*?)\) : null\}/)?.[1] ?? "";
+    section.match(/\{showRunSheetHeaderActions \? \(([\s\S]*?)\) : null\}/)?.[1] ?? "";
   assert.ok(headerCluster, "the header button cluster must exist");
   assert.match(headerCluster, /\{isEditing \? \(/);
   assert.match(headerCluster, /onClick=\{handleCancelEdit\}/);
@@ -9637,13 +9638,30 @@ function testRunSheetProductionPolish() {
     emptyStateFn,
     /The promoter hasn&apos;t published the Run Sheet yet\. Check back later\./,
   );
-  assert.match(emptyStateFn, /Run Sheet not completed/);
+  // An onboarding invitation, not an error/placeholder state: "Create your
+  // Run Sheet" rather than "not completed", encouraging rather than
+  // deficiency-flagging copy, and a CTA that names the action that will
+  // actually happen (a Run Sheet does not exist yet -- this creates it).
+  assert.match(emptyStateFn, /Create your Run Sheet/);
+  assert.doesNotMatch(emptyStateFn, /Run Sheet not completed/);
   assert.match(
+    emptyStateFn,
+    /Add set times, stages and notes for each DJ so everyone knows where they need to be\./,
+  );
+  assert.doesNotMatch(
     emptyStateFn,
     /Add each DJ&apos;s set time, stage and notes before the event\./,
   );
   assert.match(emptyStateFn, /onClick=\{onEditClick\}/);
-  assert.match(emptyStateFn, />\s*Edit Run Sheet\s*</);
+  assert.match(emptyStateFn, />\s*Create Run Sheet\s*</);
+  assert.doesNotMatch(emptyStateFn, />\s*Edit Run Sheet\s*</);
+
+  // No dashed card, no icon: typography and spacing carry the state, not a
+  // bordered box -- the thing that made it read as an unfinished placeholder
+  // rather than a deliberate first-run moment.
+  assert.doesNotMatch(emptyStateFn, /ftc-card-empty/);
+  assert.doesNotMatch(emptyStateFn, /<svg/);
+
   // The DJ branch does not repeat "Run Sheet" as its own heading -- the
   // section title immediately above already says that.
   const djBranch = emptyStateFn.match(/if \(!canEdit\) \{[\s\S]*?\n  \}/)?.[0] ?? "";
@@ -9674,9 +9692,23 @@ function testRunSheetProductionPolish() {
   // control it used to reuse. The generalisation that control gained for this
   // (an optional ariaLabel) is reverted since nothing needs it any more.
   assert.doesNotMatch(section, /EventDetailEditButton/);
+  // No pencil icon: the visible label is the whole affordance. aria-label
+  // stays "Edit Run Sheet" (more descriptive than the bare visible "Edit")
+  // even though the visible text is now just "Edit".
   assert.match(
     section,
-    /<button\s*\n\s*type="button"\s*\n\s*onClick=\{handleEnterEditMode\}\s*\n\s*aria-label="Edit Run Sheet"\s*\n\s*className=\{EVENT_DETAIL_BTN_SECONDARY\}\s*\n\s*>\s*\n\s*✏️ Edit/,
+    /<button\s*\n\s*type="button"\s*\n\s*onClick=\{handleEnterEditMode\}\s*\n\s*aria-label="Edit Run Sheet"\s*\n\s*className=\{EVENT_DETAIL_BTN_SECONDARY\}\s*\n\s*>\s*\n\s*Edit\s*\n\s*<\/button>/,
+  );
+  assert.doesNotMatch(section, /✏️/);
+
+  // The header cluster (Edit, or Cancel + Save) is suppressed for exactly the
+  // window the "Create your Run Sheet" empty state owns -- Create Run Sheet
+  // is the one obvious action on screen, not a duplicate of a top-right Edit
+  // button. It reappears the instant editing starts, or the instant any row
+  // is complete, so the progression from creation to editing is automatic.
+  assert.match(
+    section,
+    /const showRunSheetHeaderActions =\s*canEdit && rows\.length > 0 && \(isEditing \|\| !allRowsIncomplete\);/,
   );
 
   const layoutSource = readFileSync(
