@@ -105,7 +105,7 @@ export default function OnboardingPage() {
       <div className="mx-auto w-full max-w-2xl">
         <h1 className="text-3xl font-bold text-ftc-text sm:text-4xl">Choose your role</h1>
         <p className="mt-3 max-w-xl text-sm leading-relaxed text-ftc-text-secondary sm:text-base">
-          Select the account that best fits you.
+          Select the account that best fits you
         </p>
 
         {/* Grid rather than a plain stack so every card is the height of the
