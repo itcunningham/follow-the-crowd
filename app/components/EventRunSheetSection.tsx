@@ -46,6 +46,8 @@ import {
   type RunSheetRowInput,
 } from "@/lib/eventRunSheet";
 import type { BookingRecipientProfile } from "@/lib/user/currentUser";
+import { MAX_EVENT_NOTES_LENGTH } from "@/lib/events/eventNotes";
+import { applyTextInputLimit, countUnicodeCharacters } from "@/lib/textInputLimits";
 
 const FIXED_FIELDS = [
   { key: "stage_area" as const, label: "Stage / Area" },
@@ -57,6 +59,8 @@ const RUN_SHEET_DJ_COLUMN_CLASS = "w-[18%] min-w-[10rem]";
 const RUN_SHEET_SET_TIME_BUTTON_CLASS =
   "ftc-field-trigger inline-flex w-full min-h-[2.25rem] items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium sm:min-h-[2rem] lg:max-w-[11rem]";
 const RUN_SHEET_NOTES_COLUMN_CLASS = "w-[28%] min-w-[10rem]";
+/** Visible rows the Notes field grows to before it stops and scrolls internally. */
+const RUN_SHEET_NOTES_MAX_ROWS = 6;
 
 function getFixedField(key: (typeof FIXED_FIELDS)[number]["key"]) {
   const field = FIXED_FIELDS.find((item) => item.key === key);
@@ -299,6 +303,7 @@ function RunSheetAutoGrowTextarea({
   minRows = 1,
   placeholder,
   expandWhenWrapped = false,
+  maxRows,
 }: {
   value: string;
   onChange: (value: string) => void;
@@ -306,6 +311,8 @@ function RunSheetAutoGrowTextarea({
   minRows?: number;
   placeholder?: string;
   expandWhenWrapped?: boolean;
+  /** Caps the auto-grow at this many visible rows; the field scrolls after it. */
+  maxRows?: number;
 }) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const singleLineHeightRef = useRef<number | null>(null);
@@ -337,8 +344,36 @@ function RunSheetAutoGrowTextarea({
       return;
     }
 
+    // Ceiling measured from the element's own computed metrics rather than a
+    // CSS `max-height: calc(Nlh ...)`: the `lh` unit needs Safari 16.4+, and on
+    // older iOS the whole declaration would be dropped, leaving the field free
+    // to grow without limit again — the exact bug this cap exists to stop.
+    // The border is included because `scrollHeight` covers content + padding
+    // only, while `box-sizing: border-box` makes the height we set include the
+    // border, so the clamped content box lands on exactly `maxRows` lines.
+    if (maxRows !== undefined) {
+      const styles = window.getComputedStyle(textarea);
+      const lineHeight = parseFloat(styles.lineHeight);
+
+      if (Number.isFinite(lineHeight)) {
+        const verticalPadding =
+          parseFloat(styles.paddingTop) + parseFloat(styles.paddingBottom);
+        const verticalBorder =
+          parseFloat(styles.borderTopWidth) + parseFloat(styles.borderBottomWidth);
+        const maxHeight = lineHeight * maxRows + verticalPadding + verticalBorder;
+
+        // `nextHeight` is scrollHeight, which covers content + padding but not
+        // the border, while the height we set is a border-box height. Without
+        // adding the border back the content box ends up a border's worth too
+        // short, which under `overflow-y: auto` leaves every under-cap note
+        // permanently scrolled by a couple of pixels and clips its last line.
+        textarea.style.height = `${Math.min(nextHeight + verticalBorder, maxHeight)}px`;
+        return;
+      }
+    }
+
     textarea.style.height = `${nextHeight}px`;
-  }, [expandWhenWrapped]);
+  }, [expandWhenWrapped, maxRows]);
 
   useEffect(() => {
     adjustHeight();
@@ -453,13 +488,38 @@ function renderRunSheetFieldInput({
   }
 
   if (field.key === "notes") {
+    const noteValue = row[field.key];
+    const noteLength = countUnicodeCharacters(noteValue);
+
     return (
-      <RunSheetAutoGrowTextarea
-        value={row[field.key]}
-        onChange={(value) => updateRow(row.id!, { [field.key]: value })}
-        className={notesTextareaClassName}
-        minRows={2}
-      />
+      <div>
+        <RunSheetAutoGrowTextarea
+          value={noteValue}
+          onChange={(value) => {
+            // Same character-cap helper every other capped FTC field uses:
+            // it allows deletions when an existing note is already over the
+            // limit, so legacy notes stay editable rather than being locked
+            // or silently truncated on load.
+            const limited = applyTextInputLimit(noteValue, value, MAX_EVENT_NOTES_LENGTH);
+
+            if (limited === null) {
+              return;
+            }
+
+            updateRow(row.id!, { [field.key]: limited });
+          }}
+          className={notesTextareaClassName}
+          minRows={2}
+          maxRows={RUN_SHEET_NOTES_MAX_ROWS}
+        />
+        <p
+          className={`ftc-form-notes-counter ${
+            noteLength > MAX_EVENT_NOTES_LENGTH ? "is-over-limit" : ""
+          }`}
+        >
+          {noteLength} / {MAX_EVENT_NOTES_LENGTH}
+        </p>
+      </div>
     );
   }
 
@@ -638,10 +698,14 @@ export default function EventRunSheetSection({
   const showSaveButton = hasUnsavedChanges || saving;
 
   const runSheetTextareaBaseClassName =
-    "ftc-textarea w-full resize-none overflow-x-hidden overflow-y-hidden rounded-lg px-2.5 py-1.5 text-sm break-words";
+    "ftc-textarea w-full resize-none overflow-x-hidden rounded-lg px-2.5 py-1.5 text-sm break-words";
 
-  const stageAreaTextareaClassName = `${runSheetTextareaBaseClassName} min-h-[2.25rem] leading-normal`;
-  const notesTextareaClassName = `${runSheetTextareaBaseClassName} min-h-[3.25rem] leading-relaxed`;
+  const stageAreaTextareaClassName = `${runSheetTextareaBaseClassName} overflow-y-hidden min-h-[2.25rem] leading-normal`;
+  // Notes is the only field that scrolls: it stops growing at
+  // RUN_SHEET_NOTES_MAX_ROWS, so anything past that has to be reachable inside
+  // the field. `overscroll-contain` stops a touch scroll that hits either end
+  // from chaining to the page behind it.
+  const notesTextareaClassName = `${runSheetTextareaBaseClassName} overflow-y-auto overscroll-contain min-h-[3.25rem] leading-relaxed`;
 
   const readOnlyTextClassName =
     "rounded-lg border border-ftc-border bg-ftc-bg-elevated/30 px-2.5 py-1.5 text-sm leading-relaxed text-ftc-text whitespace-pre-wrap break-words";

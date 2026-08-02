@@ -8793,6 +8793,56 @@ function testRunSheetInitialLoadIsNotDirty() {
   assert.match(sectionSource, /setRows\(synced\.rows\);\s*setSavedRows\(synced\.persistedRows\);/);
 }
 
+/**
+ * Run Sheet Notes: capped at 500 characters and 6 visible rows, scrolling
+ * inside the field beyond that, so one set's notes can't stretch its card down
+ * the page.
+ *
+ * The 6-row ceiling is measured from the element's own computed line-height in
+ * JS rather than a CSS `max-height: calc(6lh ...)`: `lh` needs Safari 16.4+,
+ * and on older iOS the declaration is dropped entirely, which would restore the
+ * unbounded growth this cap exists to prevent (the same trap that produced the
+ * profile bio bug).
+ */
+function testRunSheetNotesCapAndCounter() {
+  const sectionSource = readFileSync(
+    new URL("../app/components/EventRunSheetSection.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(sectionSource, /const RUN_SHEET_NOTES_MAX_ROWS = 6;/);
+  assert.match(sectionSource, /maxRows=\{RUN_SHEET_NOTES_MAX_ROWS\}/);
+
+  // Ceiling comes from computed metrics, never from a `lh`-based max-height.
+  assert.match(sectionSource, /lineHeight \* maxRows \+ verticalPadding \+ verticalBorder/);
+  assert.doesNotMatch(sectionSource, /max-height: calc\(\d*lh/);
+
+  // scrollHeight excludes the border while the height we set is border-box, so
+  // the border has to be added back or every under-cap note sits a couple of
+  // pixels short and clips its own last line under `overflow-y: auto`.
+  assert.match(sectionSource, /Math\.min\(nextHeight \+ verticalBorder, maxHeight\)/);
+
+  // Notes is the only run sheet field that scrolls; stage_area keeps its
+  // original hidden overflow and unbounded growth.
+  assert.match(sectionSource, /notesTextareaClassName = `\$\{runSheetTextareaBaseClassName\} overflow-y-auto overscroll-contain/);
+  assert.match(sectionSource, /stageAreaTextareaClassName = `\$\{runSheetTextareaBaseClassName\} overflow-y-hidden/);
+  assert.doesNotMatch(sectionSource, /runSheetTextareaBaseClassName =\s*\n?\s*"[^"]*overflow-y-/);
+
+  // 500-character cap via the shared limiter, and the shared counter styling.
+  assert.match(sectionSource, /applyTextInputLimit\(noteValue, value, MAX_EVENT_NOTES_LENGTH\)/);
+  assert.match(sectionSource, /ftc-form-notes-counter/);
+  assert.match(sectionSource, /\{noteLength\} \/ \{MAX_EVENT_NOTES_LENGTH\}/);
+  // Counter counts the same units the cap enforces, so it can actually reach
+  // 500 / 500 on text containing emoji.
+  assert.match(sectionSource, /countUnicodeCharacters\(noteValue\)/);
+
+  const notesLibSource = readFileSync(
+    new URL("../lib/events/eventNotes.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(notesLibSource, /MAX_EVENT_NOTES_LENGTH = 500/);
+}
+
 function testRunSheetDirtyStateAndSaveFeedback() {
   const row = (id: string, overrides: Partial<RunSheetRowInput> = {}): RunSheetRowInput => ({
     id,
@@ -9759,6 +9809,7 @@ async function main() {
   testLoginScreenPolish();
   testEventNotesTextareaScrollsWhenContentExceedsCap();
   testRunSheetInitialLoadIsNotDirty();
+  testRunSheetNotesCapAndCounter();
   testRunSheetDirtyStateAndSaveFeedback();
   testAppSplashScreenSlogan();
   testRoleAwareWorkspaceNavigation();
