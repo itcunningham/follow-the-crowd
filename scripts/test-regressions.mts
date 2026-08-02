@@ -8860,10 +8860,28 @@ function testRunSheetDirtyStateAndSaveFeedback() {
 
   // Button is hidden, not disabled, when there is nothing to save. It stays up
   // while saving so the in-flight label remains visible.
-  assert.match(
+  //
+  // The *slot* is rendered whenever saving is possible at all -- gated only on
+  // `canEdit && rows.length > 0`, NOT on the dirty state -- so the header keeps
+  // its height and nothing below it moves when the button appears or goes away.
+  // Gating the slot on the dirty state (as this once did) made the button wrap
+  // onto a second line of the `flex-wrap` header at 375px, growing the header
+  // and shifting the whole run sheet down on the first keystroke.
+  assert.match(sectionSource, /\{canEdit && rows\.length > 0 \? \(/);
+  assert.doesNotMatch(
     sectionSource,
     /canEdit && rows\.length > 0 && \(hasUnsavedChanges \|\| saving\) \?/,
   );
+  assert.match(sectionSource, /const showSaveButton = hasUnsavedChanges \|\| saving;/);
+
+  // Visibility is what toggles, and it must be `visibility: hidden`, not
+  // opacity: opacity alone would leave an invisible button that is still
+  // focusable, announced and clickable.
+  assert.match(sectionSource, /showSaveButton \? "" : " invisible"/);
+  assert.doesNotMatch(sectionSource, /showSaveButton \?[^\n]*opacity-0/);
+  assert.match(sectionSource, /aria-hidden=\{showSaveButton \? undefined : true\}/);
+  assert.match(sectionSource, /tabIndex=\{showSaveButton \? undefined : -1\}/);
+
   assert.match(sectionSource, /hasUnsavedRunSheetEdits\(savedRows, rows\)/);
   // Baseline is rebased on save, which clears the dirty state.
   assert.match(sectionSource, /setSavedRows\(persistedRows\)/);

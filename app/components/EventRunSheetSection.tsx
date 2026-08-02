@@ -630,6 +630,12 @@ export default function EventRunSheetSection({
     () => hasUnsavedRunSheetEdits(savedRows, rows),
     [savedRows, rows],
   );
+  /**
+   * Whether the Save button is shown. Its slot in the header is reserved
+   * whenever the planner could ever save (see the header below), so flipping
+   * this only changes the button's visibility, never the layout.
+   */
+  const showSaveButton = hasUnsavedChanges || saving;
 
   const runSheetTextareaBaseClassName =
     "ftc-textarea w-full resize-none overflow-x-hidden overflow-y-hidden rounded-lg px-2.5 py-1.5 text-sm break-words";
@@ -652,15 +658,29 @@ export default function EventRunSheetSection({
           ) : null}
         </div>
 
-        {/* Only while there is something to save — saving keeps it up so the
-            in-flight label stays visible until the response lands. */}
-        {canEdit && rows.length > 0 && (hasUnsavedChanges || saving) ? (
+        {/* The slot is reserved for as long as saving is possible at all, so the
+            header keeps its height and nothing below it moves when the dirty
+            state flips. Only the button's visibility changes.
+
+            `invisible` (visibility: hidden) rather than opacity: it keeps the
+            reserved space but takes the button out of the tab order and the
+            accessibility tree, and stops it receiving pointer events — an
+            opacity-only hide would leave an invisible control that is still
+            focusable and clickable. tabIndex/aria-hidden restate that
+            explicitly. The label stays "Save run sheet" while hidden (saving is
+            false whenever the button is hidden), so the reserved width is the
+            visible button's width, not the narrower "Saving" width. */}
+        {canEdit && rows.length > 0 ? (
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
               onClick={handleSave}
               disabled={saving}
-              className={`${EVENT_DETAIL_BTN_PRIMARY} disabled:cursor-not-allowed disabled:opacity-50`}
+              aria-hidden={showSaveButton ? undefined : true}
+              tabIndex={showSaveButton ? undefined : -1}
+              className={`${EVENT_DETAIL_BTN_PRIMARY} disabled:cursor-not-allowed disabled:opacity-50${
+                showSaveButton ? "" : " invisible"
+              }`}
             >
               {saving ? "Saving" : "Save run sheet"}
             </button>
