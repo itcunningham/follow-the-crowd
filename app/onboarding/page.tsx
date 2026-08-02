@@ -21,17 +21,17 @@ const ROLE_OPTIONS: {
   {
     role: "dj",
     title: "DJ / Artist",
-    description: "Get booked, chat with promoters, and manage your gigs.",
+    description: "Get booked, chat with promoters, and manage your gigs",
   },
   {
     role: "promoter",
     title: "Promoter / Event Planner",
-    description: "Create events, book DJs, and manage your event team.",
+    description: "Create events, book DJs, and manage your event team",
   },
   {
     role: "both",
     title: "DJ & Promoter",
-    description: "Book DJs, get booked, and manage everything from one account.",
+    description: "Book DJs, get booked, and manage everything from one account",
   },
 ];
 
