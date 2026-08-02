@@ -2,9 +2,13 @@
 
 import Link from "next/link";
 import { CalendarMobileDashedEmptyState } from "@/app/components/calendar/calendarMobileUi";
-import { EventDetailSectionTitle } from "@/app/components/event-detail/EventDetailLayout";
+import {
+  EventDetailEditButton,
+  EventDetailSectionTitle,
+} from "@/app/components/event-detail/EventDetailLayout";
 import {
   EVENT_DETAIL_BTN_PRIMARY,
+  EVENT_DETAIL_BTN_SECONDARY,
   EVENT_DETAIL_CARD_CLASS,
   EVENT_DETAIL_FEEDBACK_CLASS,
 } from "@/app/components/event-detail/eventDetailUi";
@@ -36,7 +40,6 @@ import {
   filterRunSheetRowsToAcceptedBookings,
   getRunSheetLoadErrorMessage,
   getRunSheetSaveErrorMessage,
-  hasUnsavedRunSheetEdits,
   loadEventRunSheet,
   logRunSheetSaveError,
   mapRunSheetRowsFromDb,
@@ -622,7 +625,8 @@ export default function EventRunSheetSection({
   emptyStateMessage?: string;
 }) {
   const [rows, setRows] = useState<RunSheetRowInput[]>([]);
-  /** Last persisted rows — the baseline the Save button's dirty check compares against. */
+  /** Last persisted rows — what Cancel reverts to, and the auto-add sync's
+   * record of what is actually in the database (see `syncAcceptedDjs`). */
   const [savedRows, setSavedRows] = useState<RunSheetRowInput[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -724,13 +728,36 @@ export default function EventRunSheetSection({
     setRows((prev) => moveRunSheetRow(prev, rowId, direction));
   }
 
-  /** At most one entry open at a time; opening one closes whatever was open,
-   * and re-tapping the open entry closes it. Keyed by row id (stable across
-   * reordering), not array index. */
+  /** At most one entry open at a time when browsing; opening one closes
+   * whatever was open, and re-tapping the open entry closes it. Keyed by row
+   * id (stable across reordering), not array index. Overridden wholesale by
+   * `isEditing` below -- every card expands for editing regardless of this. */
   const [expandedRowId, setExpandedRowId] = useState<string | null>(null);
 
   function toggleRowExpanded(rowId: string) {
     setExpandedRowId((current) => (current === rowId ? null : rowId));
+  }
+
+  /**
+   * View-first, edit-on-demand: the sheet opens read-only, and editing is the
+   * explicit result of tapping Edit rather than the sheet's permanent state.
+   * `canEdit` (the prop) still gates whether editing is possible at all; this
+   * is which of the two presentations of that possibility is on screen.
+   */
+  const [isEditing, setIsEditing] = useState(false);
+
+  function handleEnterEditMode() {
+    setError(null);
+    setIsEditing(true);
+  }
+
+  /** Discards in-progress edits back to the last persisted state. Local state
+   * only -- nothing is sent to the server, so there is nothing to undo there. */
+  function handleCancelEdit() {
+    setRows(savedRows);
+    setError(null);
+    setIsEditing(false);
+    setExpandedRowId(null);
   }
 
   /** "SET 1" / "SET 2" only when the same DJ genuinely holds more than one
@@ -758,8 +785,14 @@ export default function EventRunSheetSection({
       );
 
       setRows(persistedRows);
-      // Clears the dirty state, which hides the Save button until the next edit.
       setSavedRows(persistedRows);
+      // View -> Edit -> Save -> View: a successful save returns to the
+      // read-only presentation, collapsed, exactly like opening the sheet
+      // fresh. Left out of `finally` deliberately -- a failed save keeps the
+      // planner in edit mode, with the error and their unsaved rows intact,
+      // so they can retry rather than losing the edit.
+      setIsEditing(false);
+      setExpandedRowId(null);
       onSaved?.("Run sheet saved");
     } catch (saveError) {
       logRunSheetSaveError(saveError);
@@ -768,17 +801,6 @@ export default function EventRunSheetSection({
       setSaving(false);
     }
   }
-
-  const hasUnsavedChanges = useMemo(
-    () => hasUnsavedRunSheetEdits(savedRows, rows),
-    [savedRows, rows],
-  );
-  /**
-   * Whether the Save button is shown. Its slot in the header is reserved
-   * whenever the planner could ever save (see the header below), so flipping
-   * this only changes the button's visibility, never the layout.
-   */
-  const showSaveButton = hasUnsavedChanges || saving;
 
   // Both capped fields share one sizing architecture: the base class carries the
   // pinned line-height, internal scrolling and scroll containment, and a
@@ -798,32 +820,35 @@ export default function EventRunSheetSection({
           <EventDetailSectionTitle>Run Sheet</EventDetailSectionTitle>
         </div>
 
-        {/* The slot is reserved for as long as saving is possible at all, so the
-            header keeps its height and nothing below it moves when the dirty
-            state flips. Only the button's visibility changes.
-
-            `invisible` (visibility: hidden) rather than opacity: it keeps the
-            reserved space but takes the button out of the tab order and the
-            accessibility tree, and stops it receiving pointer events — an
-            opacity-only hide would leave an invisible control that is still
-            focusable and clickable. tabIndex/aria-hidden restate that
-            explicitly. The label stays "Save run sheet" while hidden (saving is
-            false whenever the button is hidden), so the reserved width is the
-            visible button's width, not the narrower "Saving" width. */}
+        {/* Read-only by default -- editing is the deliberate result of tapping
+            Edit, not the sheet's permanent state. Editing swaps this single
+            Edit button for a Cancel + Save pair; there is no third, "clean"
+            state to reserve space for, so unlike the old always-mounted Save
+            button this cluster can just mount and unmount with `isEditing`. */}
         {canEdit && rows.length > 0 ? (
           <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={handleSave}
-              disabled={saving}
-              aria-hidden={showSaveButton ? undefined : true}
-              tabIndex={showSaveButton ? undefined : -1}
-              className={`${EVENT_DETAIL_BTN_PRIMARY} disabled:cursor-not-allowed disabled:opacity-50${
-                showSaveButton ? "" : " invisible"
-              }`}
-            >
-              {saving ? "Saving" : "Save run sheet"}
-            </button>
+            {isEditing ? (
+              <>
+                <button
+                  type="button"
+                  onClick={handleCancelEdit}
+                  disabled={saving}
+                  className={`${EVENT_DETAIL_BTN_SECONDARY} disabled:cursor-not-allowed disabled:opacity-50`}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSave}
+                  disabled={saving}
+                  className={`${EVENT_DETAIL_BTN_PRIMARY} disabled:cursor-not-allowed disabled:opacity-50`}
+                >
+                  {saving ? "Saving" : "Save run sheet"}
+                </button>
+              </>
+            ) : (
+              <EventDetailEditButton onClick={handleEnterEditMode} ariaLabel="Edit run sheet" />
+            )}
           </div>
         ) : null}
       </div>
@@ -857,8 +882,8 @@ export default function EventRunSheetSection({
                 row={row}
                 dj={dj}
                 setLabel={rowSetLabels.get(row.id!) ?? null}
-                canEdit={canEdit}
-                isExpanded={expandedRowId === row.id}
+                canEdit={canEdit && isEditing}
+                isExpanded={isEditing || expandedRowId === row.id}
                 onToggleExpanded={() => toggleRowExpanded(row.id!)}
                 canMoveUp={index > 0}
                 canMoveDown={index < rows.length - 1}

@@ -9179,14 +9179,15 @@ function testRunSheetAccordionRestructure() {
   assert.ok(previewIndex > -1 && panelIndex > -1 && previewIndex < panelIndex);
   assert.doesNotMatch(entryFn.slice(0, panelIndex), /isExpanded\s*\?[\s\S]*stagePreview/);
 
-  // Exactly one row open at a time: toggling the open row closes it,
-  // toggling any other row replaces it -- not additive.
+  // Exactly one row open at a time when browsing: toggling the open row
+  // closes it, toggling any other row replaces it -- not additive. Overridden
+  // wholesale during editing -- see testRunSheetEditMode.
   assert.match(section, /const \[expandedRowId, setExpandedRowId\] = useState<string \| null>\(null\)/);
   assert.match(
     section,
     /setExpandedRowId\(\(current\) => \(current === rowId \? null : rowId\)\)/,
   );
-  assert.match(section, /isExpanded=\{expandedRowId === row\.id\}/);
+  assert.match(section, /isExpanded=\{isEditing \|\| expandedRowId === row\.id\}/);
 
   // Editable Notes keeps its pinned-height, internally-scrolling textarea --
   // this task removes read-only scrolling, not editing's.
@@ -9451,32 +9452,26 @@ function testRunSheetDirtyStateAndSaveFeedback() {
     "utf8",
   );
 
-  // Button is hidden, not disabled, when there is nothing to save. It stays up
-  // while saving so the in-flight label remains visible.
-  //
-  // The *slot* is rendered whenever saving is possible at all -- gated only on
-  // `canEdit && rows.length > 0`, NOT on the dirty state -- so the header keeps
-  // its height and nothing below it moves when the button appears or goes away.
-  // Gating the slot on the dirty state (as this once did) made the button wrap
-  // onto a second line of the `flex-wrap` header at 375px, growing the header
-  // and shifting the whole run sheet down on the first keystroke.
+  // The component itself no longer wires this dirty check to anything -- the
+  // Run Sheet moved from "Save is hidden until something changes" to an
+  // explicit Edit/Save workflow (see testRunSheetEditMode), where Save is
+  // simply whatever button is on screen while editing. `hasUnsavedRunSheetEdits`
+  // stays exported and tested here (and in testRunSheetInitialLoadIsNotDirty)
+  // as a general-purpose comparison util, not dead code -- just not currently
+  // called from this component.
+  assert.doesNotMatch(sectionSource, /hasUnsavedRunSheetEdits/);
+  assert.doesNotMatch(sectionSource, /showSaveButton/);
+
+  // The header cluster is rendered whenever saving is possible at all --
+  // gated only on `canEdit && rows.length > 0`, never on the dirty state --
+  // so the header keeps its height and nothing below it moves when Edit
+  // swaps for Cancel + Save. Gating the slot on the dirty state (as this once
+  // did) made the button wrap onto a second line of the `flex-wrap` header at
+  // 375px, growing the header and shifting the whole run sheet down.
   assert.match(sectionSource, /\{canEdit && rows\.length > 0 \? \(/);
-  assert.doesNotMatch(
-    sectionSource,
-    /canEdit && rows\.length > 0 && \(hasUnsavedChanges \|\| saving\) \?/,
-  );
-  assert.match(sectionSource, /const showSaveButton = hasUnsavedChanges \|\| saving;/);
 
-  // Visibility is what toggles, and it must be `visibility: hidden`, not
-  // opacity: opacity alone would leave an invisible button that is still
-  // focusable, announced and clickable.
-  assert.match(sectionSource, /showSaveButton \? "" : " invisible"/);
-  assert.doesNotMatch(sectionSource, /showSaveButton \?[^\n]*opacity-0/);
-  assert.match(sectionSource, /aria-hidden=\{showSaveButton \? undefined : true\}/);
-  assert.match(sectionSource, /tabIndex=\{showSaveButton \? undefined : -1\}/);
-
-  assert.match(sectionSource, /hasUnsavedRunSheetEdits\(savedRows, rows\)/);
-  // Baseline is rebased on save, which clears the dirty state.
+  // Baseline is rebased on save, which is also what a later Cancel would
+  // revert to.
   assert.match(sectionSource, /setSavedRows\(persistedRows\)/);
 
   // No success message left inside the card; the shared top notification owns it.
@@ -9492,6 +9487,112 @@ function testRunSheetDirtyStateAndSaveFeedback() {
   assert.match(
     eventDetailSource,
     /useSyncPlannerTitleFeedback\(headerFeedbackMessage, headerFeedbackFading, true\)/,
+  );
+}
+
+/**
+ * View -> Edit -> Save -> View: the Run Sheet opens read-only, editing is the
+ * deliberate result of tapping Edit, and every editable affordance -- textarea
+ * borders, character counters, move-up/down, Stage / Area and Notes editing,
+ * Set Time editing -- is one prop (`canEdit && isEditing`) away from being on
+ * or off, because `RunSheetEntry` already branched on `canEdit` for all of
+ * them (see testRunSheetAccordionRestructure / testRunSheetChromeReduction).
+ * This test pins the state machine around that prop, not the branches
+ * themselves.
+ */
+function testRunSheetEditMode() {
+  const section = readFileSync(
+    new URL("../app/components/EventRunSheetSection.tsx", import.meta.url),
+    "utf8",
+  );
+
+  // Read-only by default: the row-level flags are permission AND edit-mode,
+  // never permission alone. A viewer without permission can never make
+  // `canEdit && isEditing` true regardless of local state, since the Edit
+  // button (the only way to set `isEditing`) is itself gated on `canEdit`.
+  assert.match(section, /const \[isEditing, setIsEditing\] = useState\(false\)/);
+  assert.match(section, /canEdit=\{canEdit && isEditing\}/);
+
+  // Editing force-expands every card -- no extra taps to reach a field --
+  // while view mode keeps the single-open accordion (see
+  // testRunSheetAccordionRestructure).
+  assert.match(section, /isExpanded=\{isEditing \|\| expandedRowId === row\.id\}/);
+
+  // Entering edit mode is the only thing `handleEnterEditMode` does, so
+  // tapping Edit can't have some other side effect on the sheet's data.
+  assert.match(
+    section,
+    /function handleEnterEditMode\(\) \{\s*setError\(null\);\s*setIsEditing\(true\);\s*\}/,
+  );
+
+  // Cancel is local-state only: it reverts to the last persisted rows rather
+  // than calling the save path, so it cannot touch the database.
+  const cancelFn = section.match(/function handleCancelEdit\(\) \{[\s\S]*?\n  \}/)?.[0] ?? "";
+  assert.ok(cancelFn, "handleCancelEdit must exist");
+  assert.match(cancelFn, /setRows\(savedRows\)/);
+  assert.match(cancelFn, /setIsEditing\(false\)/);
+  assert.match(cancelFn, /setExpandedRowId\(null\)/);
+  assert.doesNotMatch(cancelFn, /saveEventRunSheet/);
+
+  // A successful save returns to view mode, collapsed -- not just whichever
+  // row happened to be expanded before Save was pressed.
+  const saveFn = section.match(/async function handleSave\(\) \{[\s\S]*?\n  \}/)?.[0] ?? "";
+  assert.ok(saveFn, "handleSave must exist");
+  const trySection = saveFn.slice(saveFn.indexOf("try {"), saveFn.indexOf("} catch"));
+  assert.match(trySection, /setIsEditing\(false\)/);
+  assert.match(trySection, /setExpandedRowId\(null\)/);
+
+  // A failed save must NOT force the planner back to read-only -- they would
+  // lose sight of the error and their edited rows. The reset calls live only
+  // in the try block, not in `finally` alongside `setSaving(false)`.
+  const catchAndFinally = saveFn.slice(saveFn.indexOf("} catch"));
+  assert.doesNotMatch(catchAndFinally, /setIsEditing\(false\)/);
+  assert.doesNotMatch(catchAndFinally, /setExpandedRowId\(null\)/);
+  assert.match(catchAndFinally, /finally \{\s*setSaving\(false\);\s*\}/);
+
+  // Header cluster: Edit when not editing, Cancel + Save when editing -- not
+  // a permanently-mounted Save button (that mechanism is gone; see
+  // testRunSheetDirtyStateAndSaveFeedback).
+  const headerCluster =
+    section.match(/\{canEdit && rows\.length > 0 \? \(([\s\S]*?)\) : null\}/)?.[1] ?? "";
+  assert.ok(headerCluster, "the header button cluster must exist");
+  assert.match(headerCluster, /\{isEditing \? \(/);
+  assert.match(headerCluster, /onClick=\{handleCancelEdit\}/);
+  assert.match(headerCluster, />\s*Cancel\s*</);
+  assert.match(headerCluster, /onClick=\{handleSave\}/);
+  assert.match(headerCluster, /\{saving \? "Saving" : "Save run sheet"\}/);
+  assert.match(headerCluster, /<EventDetailEditButton onClick=\{handleEnterEditMode\}/);
+
+  // Edit and Save/Cancel are disabled while a save is in flight, so a second
+  // tap can't fire a second request or cancel out from under it.
+  assert.match(headerCluster, /onClick=\{handleCancelEdit\}\s*\n\s*disabled=\{saving\}/);
+  assert.match(headerCluster, /onClick=\{handleSave\}\s*\n\s*disabled=\{saving\}/);
+
+  // Reuses the same Edit affordance the event-level edit form already uses
+  // (icon + "Edit" pill), rather than a second implementation, with its own
+  // aria-label so it isn't announced as "Edit event".
+  assert.match(
+    section,
+    /import \{\s*EventDetailEditButton,\s*EventDetailSectionTitle,\s*\} from "@\/app\/components\/event-detail\/EventDetailLayout"/,
+  );
+  assert.match(headerCluster, /ariaLabel="Edit run sheet"/);
+
+  const layoutSource = readFileSync(
+    new URL("../app/components/event-detail/EventDetailLayout.tsx", import.meta.url),
+    "utf8",
+  );
+  // The generalisation is additive -- the existing "Edit event" caller passes
+  // no ariaLabel, so it keeps its original default and is unaffected.
+  assert.match(layoutSource, /ariaLabel = "Edit event"/);
+  assert.match(layoutSource, /aria-label=\{ariaLabel\}/);
+
+  const eventDetailSourceForEditButton = readFileSync(
+    new URL("../app/events/[eventId]/page.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(
+    eventDetailSourceForEditButton,
+    /<EventDetailEditHeaderSlot state=\{editHeaderState\} onEditClick=\{openEditForm\} \/>/,
   );
 }
 
@@ -10392,6 +10493,7 @@ async function main() {
   testRunSheetChromeReduction();
   testRunSheetFieldsWrapLongUnbrokenTokens();
   testRunSheetDirtyStateAndSaveFeedback();
+  testRunSheetEditMode();
   testAppSplashScreenSlogan();
   testRoleAwareWorkspaceNavigation();
   testCancelledEventGigsAreSurfacedInGigs();
