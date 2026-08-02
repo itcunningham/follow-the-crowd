@@ -8513,6 +8513,64 @@ function testLoginScreenPolish() {
   assert.doesNotMatch(loginSource, /FtcBrandMotionLazy/);
 }
 
+/**
+ * Root-cause regression test for "Event Plan Notes with a lot of text can't be
+ * scrolled — text near the bottom is clipped and unreachable" (iPhone Safari).
+ *
+ * The Notes textarea is height-capped at 8 rows (`max-height`) and auto-grows
+ * from 4 rows via `useBoundedAutoGrowTextarea`. It also had
+ * `overflow-y: hidden !important`, so everything past the cap was painted out
+ * of existence with no way to scroll to it. Worse, the hook re-applied
+ * `textarea.style.overflowY = "hidden"` inline on every value change and every
+ * resize, so the two enforced it independently.
+ *
+ * A capped-height textarea must scroll internally; `hidden` + `max-height` is
+ * always a content-loss bug, never a valid combination. This locks in that
+ * neither half can reintroduce it, and that touch scrolling at either end of
+ * the field doesn't chain to the page behind it.
+ */
+function testEventNotesTextareaScrollsWhenContentExceedsCap() {
+  const globalsSource = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
+  const autoGrowSource = readFileSync(
+    new URL("../lib/useBoundedAutoGrowTextarea.ts", import.meta.url),
+    "utf8",
+  );
+
+  const notesRule = globalsSource.match(/\.ftc-event-notes-textarea \{[\s\S]*?\n\}/);
+  assert.ok(notesRule, ".ftc-event-notes-textarea rule not found in globals.css");
+
+  // The cap is what makes internal scrolling mandatory -- keep them together so
+  // a future edit can't drop one and silently resurrect the clipping bug.
+  assert.match(notesRule[0], /max-height: calc\(8lh/);
+  assert.match(notesRule[0], /overflow-y: auto !important/);
+  assert.doesNotMatch(notesRule[0], /overflow-y: hidden/);
+
+  // Touch scroll reaching either end must not scroll the page behind the field.
+  assert.match(notesRule[0], /overscroll-behavior: contain/);
+
+  // The auto-grow hook sets height ONLY -- it must never set overflow again.
+  assert.doesNotMatch(autoGrowSource, /style\.overflowY/);
+  assert.match(autoGrowSource, /textarea\.style\.height = `\$\{nextHeight\}px`/);
+
+  // The shared multiline field still routes Notes through that class + hook
+  // (all four Notes surfaces -- Event Plan create/edit, Create Event, Edit
+  // Event -- render via this one component, so they're fixed together).
+  const plannerUiSource = readFileSync(
+    new URL("../app/components/planner/PlannerUi.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(plannerUiSource, /ftc-event-notes-textarea/);
+  assert.match(plannerUiSource, /useBoundedAutoGrowTextarea\(\{ value \}\)/);
+
+  // Character cap and counter are untouched by this fix.
+  const notesLibSource = readFileSync(
+    new URL("../lib/events/eventNotes.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(notesLibSource, /MAX_EVENT_NOTES_LENGTH = 500/);
+  assert.match(plannerUiSource, /ftc-form-notes-counter/);
+}
+
 function testAppSplashScreenSlogan() {
   const splashSource = readFileSync(
     new URL("../app/components/brand/FtcAppSplashScreen.tsx", import.meta.url),
@@ -8814,6 +8872,7 @@ async function main() {
   testMapEventInputToRowEventBrandFallback();
   testQaEnvironmentResetScript();
   testLoginScreenPolish();
+  testEventNotesTextareaScrollsWhenContentExceedsCap();
   testAppSplashScreenSlogan();
   testMainNavAlwaysTargetsEventsWorkspace();
   await testEventsHistorySelectAllButtonInteraction();

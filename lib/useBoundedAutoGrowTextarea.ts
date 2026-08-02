@@ -46,8 +46,12 @@ export function applyBoundedTextareaHeight(
   const lineCount = countEventNotesLines(value);
   const nextHeight = heightForLineCount(lineCount, minHeight, maxHeight);
 
+  // Height only. Deliberately does NOT touch `overflowY`: this used to force
+  // `hidden` on every value change and resize, which (together with the
+  // `max-height` cap) made any content past 8 rows clipped and unreachable —
+  // the user could not scroll to it. Overflow is owned entirely by
+  // `.ftc-event-notes-textarea` (`overflow-y: auto`), so the two can't disagree.
   textarea.style.height = `${nextHeight}px`;
-  textarea.style.overflowY = "hidden";
 }
 
 export function useBoundedAutoGrowTextarea({ value }: { value: string }) {

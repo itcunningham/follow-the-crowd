@@ -624,7 +624,7 @@ export default function BookingPlansPage() {
       >
           {!loadingAccess && formOpen ? (
             <PlannerFormCard
-              title={editingPlanId ? "Edit event plan" : "Create event plan"}
+              title={editingPlanId ? "Edit" : "Create event plan"}
               onCancel={closeForm}
               cancelDisabled={saving}
             >

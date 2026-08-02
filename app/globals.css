@@ -357,10 +357,18 @@ html {
   font-size: 0.875rem;
 }
 
+/** Auto-growing Notes textarea (4 rows min, 8 rows max — see useBoundedAutoGrowTextarea).
+ * `overflow-y` MUST be `auto`, not `hidden`: the element is height-capped by `max-height`,
+ * so with `hidden` any content taller than 8 rows was clipped AND unreachable — the user
+ * could not scroll to it, select it, or edit it. Content past the cap now scrolls inside
+ * the field, which is the whole point of having a max-height. `overscroll-behavior: contain`
+ * stops a touch scroll that reaches either end of the field from chaining to the page
+ * behind it (same treatment as `.ftc-fixed-scroll-textarea` below). */
 .ftc-event-notes-textarea {
   resize: none !important;
   overflow-x: hidden !important;
-  overflow-y: hidden !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain;
   line-height: 1.5 !important;
   box-sizing: border-box !important;
   min-height: calc(4lh + 1.25rem + 2px) !important;
