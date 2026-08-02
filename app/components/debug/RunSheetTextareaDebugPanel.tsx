@@ -1,6 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+
+import { FTC_APP_VERSION, getFtcBuildId } from "@/lib/ftcAppVersion";
 
 /**
  * TEMPORARY diagnostics for the Run Sheet textarea row caps.
@@ -11,10 +13,12 @@ import { useCallback, useEffect, useState } from "react";
  * rule, media-query rule, shared textarea minimum or `field-sizing` overriding
  * them. What is missing is what WebKit actually computes on the device.
  *
- * This reads those values on screen so they can be collected from the phone
- * without a Mac and a cable. It only ever reads — it never writes to the run
- * sheet fields or changes their behaviour — and it renders nothing at all
- * unless the URL carries `?ftcdebug=runsheet-textareas`.
+ * This reads those values on the phone so they can be collected without a Mac
+ * and a cable. One button takes the reading and puts it on the clipboard, so
+ * the whole test is: type into both fields, tap once, paste. It only ever
+ * reads — it never writes to the run sheet fields or changes their behaviour —
+ * and it renders nothing at all unless the URL carries
+ * `?ftcdebug=runsheet-textareas`.
  *
  * DELETE THIS FILE, and its single mount in app/events/[eventId]/page.tsx,
  * once the cause is identified.
@@ -23,15 +27,19 @@ import { useCallback, useEffect, useState } from "react";
 const DEBUG_FLAG_KEY = "ftcdebug";
 const DEBUG_FLAG_VALUE = "runsheet-textareas";
 
+/** How long the "Diagnostics copied" confirmation stays on screen. */
+const CONFIRMATION_MS = 4000;
+
+const BASE_SELECTOR = ".ftc-run-sheet-textarea";
+
 const FIELDS = [
-  { label: "Stage / Area", selector: "textarea.ftc-run-sheet-textarea-2", expectedRows: 2 },
-  { label: "Notes", selector: "textarea.ftc-run-sheet-textarea-4", expectedRows: 4 },
+  { label: "Stage / Area", modifier: ".ftc-run-sheet-textarea-2", expectedRows: 2 },
+  { label: "Notes", modifier: ".ftc-run-sheet-textarea-4", expectedRows: 4 },
 ] as const;
 
 type FieldReading = {
   label: string;
   selector: string;
-  expectedRows: number;
   found: number;
   values: Record<string, string>;
 };
@@ -39,21 +47,17 @@ type FieldReading = {
 type Reading = {
   takenAt: string;
   environment: Record<string, string>;
-  cssRulesSeenByTheDevice: Record<string, string>;
+  cssRules: Record<string, string>;
   fields: FieldReading[];
 };
 
 /**
  * Whether the device actually received the pinned rules. This separates "the
  * CSS never arrived" from "the CSS arrived and lost the cascade", which need
- * completely different fixes.
+ * completely different fixes and which static analysis cannot tell apart.
  */
 function readStyleSheetPresence(): Record<string, string> {
-  const wanted = [
-    ".ftc-run-sheet-textarea",
-    ".ftc-run-sheet-textarea-2",
-    ".ftc-run-sheet-textarea-4",
-  ];
+  const wanted = [BASE_SELECTOR, ...FIELDS.map((field) => field.modifier)];
   const found: Record<string, string> = {};
 
   for (const name of wanted) {
@@ -85,17 +89,26 @@ function readStyleSheetPresence(): Record<string, string> {
   return found;
 }
 
-function readField(field: (typeof FIELDS)[number]): FieldReading {
-  const nodes = Array.from(document.querySelectorAll<HTMLTextAreaElement>(field.selector));
+function readField(
+  field: (typeof FIELDS)[number],
+  cssRules: Record<string, string>,
+): FieldReading {
+  const selector = `textarea${field.modifier}`;
+  const nodes = Array.from(document.querySelectorAll<HTMLTextAreaElement>(selector));
   const node = nodes[0];
+
+  const cssPresence = {
+    [`css rule ${BASE_SELECTOR}`]: cssRules[BASE_SELECTOR] === "NOT FOUND" ? "MISSING" : "present",
+    [`css rule ${field.modifier}`]:
+      cssRules[field.modifier] === "NOT FOUND" ? "MISSING" : "present",
+  };
 
   if (!node) {
     return {
       label: field.label,
-      selector: field.selector,
-      expectedRows: field.expectedRows,
+      selector,
       found: 0,
-      values: { error: "no element matched this selector" },
+      values: { error: "no element matched this selector", ...cssPresence },
     };
   }
 
@@ -109,8 +122,7 @@ function readField(field: (typeof FIELDS)[number]): FieldReading {
 
   return {
     label: field.label,
-    selector: field.selector,
-    expectedRows: field.expectedRows,
+    selector,
     found: nodes.length,
     values: {
       className: node.className,
@@ -127,16 +139,20 @@ function readField(field: (typeof FIELDS)[number]): FieldReading {
       "box-sizing": style.boxSizing,
       "overflow-y": style.overflowY,
       "VISIBLE ROWS": `${visibleRows}  (want ${field.expectedRows})`,
+      ...cssPresence,
     },
   };
 }
 
 function takeReading(): Reading {
   const viewport = window.visualViewport;
+  const cssRules = readStyleSheetPresence();
 
   return {
     takenAt: new Date().toISOString(),
     environment: {
+      route: window.location.pathname,
+      build: `${FTC_APP_VERSION} · ${getFtcBuildId()}`,
       "root font-size": window.getComputedStyle(document.documentElement).fontSize,
       "innerWidth x innerHeight": `${window.innerWidth} x ${window.innerHeight}`,
       "visualViewport w x h": viewport ? `${viewport.width} x ${viewport.height}` : "unavailable",
@@ -144,8 +160,8 @@ function takeReading(): Reading {
       devicePixelRatio: String(window.devicePixelRatio),
       userAgent: navigator.userAgent,
     },
-    cssRulesSeenByTheDevice: readStyleSheetPresence(),
-    fields: FIELDS.map(readField),
+    cssRules,
+    fields: FIELDS.map((field) => readField(field, cssRules)),
   };
 }
 
@@ -157,16 +173,16 @@ function formatReading(reading: Reading): string {
     lines.push(`  ${key}: ${value}`);
   }
 
-  lines.push("", "[css rules the device actually has]");
-  for (const [key, value] of Object.entries(reading.cssRulesSeenByTheDevice)) {
-    lines.push(`  ${key}: ${value}`);
-  }
-
   for (const field of reading.fields) {
     lines.push("", `[${field.label}]  (matched ${field.found} element(s))`);
     for (const [key, value] of Object.entries(field.values)) {
       lines.push(`  ${key}: ${value}`);
     }
+  }
+
+  lines.push("", "[css rules the device actually has]");
+  for (const [key, value] of Object.entries(reading.cssRules)) {
+    lines.push(`  ${key}: ${value}`);
   }
 
   return lines.join("\n");
@@ -176,7 +192,9 @@ export default function RunSheetTextareaDebugPanel() {
   const [enabled, setEnabled] = useState(false);
   const [reading, setReading] = useState<Reading | null>(null);
   const [collapsed, setCollapsed] = useState(false);
-  const [copyState, setCopyState] = useState<string | null>(null);
+  const [status, setStatus] = useState<string | null>(null);
+  const [copyFailedText, setCopyFailedText] = useState<string | null>(null);
+  const confirmationTimer = useRef<number | undefined>(undefined);
 
   // Read from location rather than useSearchParams so this needs no Suspense
   // boundary and cannot affect rendering for anyone without the flag.
@@ -185,9 +203,37 @@ export default function RunSheetTextareaDebugPanel() {
     setEnabled(params.get(DEBUG_FLAG_KEY) === DEBUG_FLAG_VALUE);
   }, []);
 
-  const refresh = useCallback(() => {
-    setReading(takeReading());
-    setCopyState(null);
+  useEffect(() => {
+    return () => window.clearTimeout(confirmationTimer.current);
+  }, []);
+
+  const capture = useCallback(() => {
+    // Measure and format synchronously: Safari only honours a clipboard write
+    // inside the gesture's own task, so nothing may be awaited before it.
+    const next = takeReading();
+    const text = formatReading(next);
+
+    setReading(next);
+    window.clearTimeout(confirmationTimer.current);
+
+    const failed = () => {
+      setCopyFailedText(text);
+      // The message points at the fallback box, so make sure it is on screen.
+      setCollapsed(false);
+      // Left on screen, not auto-dismissed: it is an instruction, not a receipt.
+      setStatus("Copy blocked — select the text below and copy it manually");
+    };
+
+    if (!navigator.clipboard) {
+      failed();
+      return;
+    }
+
+    navigator.clipboard.writeText(text).then(() => {
+      setCopyFailedText(null);
+      setStatus("Diagnostics copied");
+      confirmationTimer.current = window.setTimeout(() => setStatus(null), CONFIRMATION_MS);
+    }, failed);
   }, []);
 
   useEffect(() => {
@@ -195,24 +241,14 @@ export default function RunSheetTextareaDebugPanel() {
       return;
     }
 
-    // Let the run sheet finish loading its rows before the first measurement.
-    const timer = window.setTimeout(refresh, 1200);
+    // Show something once the run sheet has loaded its rows. Measure only —
+    // the clipboard write belongs to the button's gesture, not to load.
+    const timer = window.setTimeout(() => setReading(takeReading()), 1200);
     return () => window.clearTimeout(timer);
-  }, [enabled, refresh]);
+  }, [enabled]);
 
   if (!enabled) {
     return null;
-  }
-
-  const text = reading ? formatReading(reading) : "";
-
-  async function copyAll() {
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopyState("Copied");
-    } catch {
-      setCopyState("Copy blocked — select the text below and copy manually");
-    }
   }
 
   return (
@@ -238,81 +274,103 @@ export default function RunSheetTextareaDebugPanel() {
         style={{
           display: "flex",
           alignItems: "center",
-          gap: 6,
+          gap: 8,
           padding: "8px 10px",
           borderBottom: collapsed ? "none" : "1px solid #1e293b",
-          flexWrap: "wrap",
         }}
       >
-        <strong style={{ color: "#4fd1ff", fontSize: 11 }}>Run Sheet textarea debug</strong>
-        <span style={{ marginLeft: "auto", display: "flex", gap: 6 }}>
-          <button type="button" onClick={refresh} style={buttonStyle}>
-            Refresh
-          </button>
-          <button type="button" onClick={() => void copyAll()} style={buttonStyle}>
-            Copy all
-          </button>
-          <button type="button" onClick={() => setCollapsed((v) => !v)} style={buttonStyle}>
-            {collapsed ? "Show" : "Hide"}
-          </button>
-        </span>
+        <button
+          type="button"
+          onClick={capture}
+          style={{
+            flex: 1,
+            background: "#4fd1ff",
+            color: "#05070b",
+            border: "none",
+            borderRadius: 8,
+            padding: "10px 12px",
+            fontSize: 13,
+            fontWeight: 700,
+          }}
+        >
+          Capture diagnostics
+        </button>
+        <button
+          type="button"
+          onClick={() => setCollapsed((value) => !value)}
+          style={{
+            background: "transparent",
+            color: "#8e9aaf",
+            border: "1px solid #1e293b",
+            borderRadius: 8,
+            padding: "10px 10px",
+            fontSize: 11,
+            fontWeight: 700,
+          }}
+        >
+          {collapsed ? "Show" : "Hide"}
+        </button>
       </div>
+
+      {status ? (
+        <p
+          style={{
+            margin: 0,
+            padding: "6px 10px",
+            color: copyFailedText ? "#fbbf24" : "#34d399",
+            fontWeight: 700,
+          }}
+          role="status"
+        >
+          {status}
+        </p>
+      ) : null}
 
       {collapsed ? null : (
         <div style={{ overflow: "auto", padding: "8px 10px" }}>
-          {copyState ? (
-            <p style={{ margin: "0 0 6px", color: "#34d399" }}>{copyState}</p>
+          {/* Shown only when the clipboard refused the write. */}
+          {copyFailedText ? (
+            <textarea
+              readOnly
+              value={copyFailedText}
+              onFocus={(event) => event.currentTarget.select()}
+              style={{
+                width: "100%",
+                height: 110,
+                marginBottom: 8,
+                background: "#0a0e14",
+                color: "#e6edf5",
+                border: "1px solid #fbbf24",
+                borderRadius: 6,
+                font: "10px/1.35 ui-monospace, monospace",
+                padding: 6,
+              }}
+            />
           ) : null}
-
-          {reading?.fields.map((field) => (
-            <div key={field.selector} style={{ marginBottom: 10 }}>
-              <div style={{ color: "#4fd1ff", fontWeight: 700 }}>
-                {field.label} — matched {field.found}
-              </div>
-              {Object.entries(field.values).map(([key, value]) => (
-                <div key={key} style={{ display: "flex", gap: 6, wordBreak: "break-all" }}>
-                  <span style={{ color: "#8e9aaf", flex: "0 0 40%" }}>{key}</span>
-                  <span style={{ flex: 1 }}>{value}</span>
-                </div>
-              ))}
-            </div>
-          ))}
 
           {reading ? (
             <>
-              <div style={{ color: "#4fd1ff", fontWeight: 700 }}>css rules on device</div>
-              {Object.entries(reading.cssRulesSeenByTheDevice).map(([key, value]) => (
-                <div key={key} style={{ wordBreak: "break-all", marginBottom: 4 }}>
-                  <span style={{ color: "#8e9aaf" }}>{key}: </span>
-                  {value}
+              {reading.fields.map((field) => (
+                <div key={field.selector} style={{ marginBottom: 10 }}>
+                  <div style={{ color: "#4fd1ff", fontWeight: 700 }}>
+                    {field.label} — matched {field.found}
+                  </div>
+                  {Object.entries(field.values).map(([key, value]) => (
+                    <div key={key} style={{ display: "flex", gap: 6, wordBreak: "break-all" }}>
+                      <span style={{ color: "#8e9aaf", flex: "0 0 40%" }}>{key}</span>
+                      <span style={{ flex: 1 }}>{value}</span>
+                    </div>
+                  ))}
                 </div>
               ))}
 
-              <div style={{ color: "#4fd1ff", fontWeight: 700, marginTop: 8 }}>environment</div>
+              <div style={{ color: "#4fd1ff", fontWeight: 700 }}>environment</div>
               {Object.entries(reading.environment).map(([key, value]) => (
                 <div key={key} style={{ wordBreak: "break-all" }}>
                   <span style={{ color: "#8e9aaf" }}>{key}: </span>
                   {value}
                 </div>
               ))}
-
-              {/* Always-available fallback if the clipboard API is blocked. */}
-              <textarea
-                readOnly
-                value={text}
-                onFocus={(event) => event.currentTarget.select()}
-                style={{
-                  width: "100%",
-                  height: 90,
-                  marginTop: 8,
-                  background: "#0a0e14",
-                  color: "#e6edf5",
-                  border: "1px solid #1e293b",
-                  borderRadius: 6,
-                  font: "10px/1.35 ui-monospace, monospace",
-                  padding: 6,
-                }}
-              />
             </>
           ) : (
             <p style={{ margin: 0, color: "#8e9aaf" }}>Measuring…</p>
@@ -322,13 +380,3 @@ export default function RunSheetTextareaDebugPanel() {
     </div>
   );
 }
-
-const buttonStyle: React.CSSProperties = {
-  background: "#4fd1ff",
-  color: "#05070b",
-  border: "none",
-  borderRadius: 6,
-  padding: "5px 9px",
-  fontSize: 11,
-  fontWeight: 700,
-};
