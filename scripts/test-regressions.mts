@@ -8888,34 +8888,36 @@ function testRunSheetDirtyStateAndSaveFeedback() {
 
 
 /**
- * The DJ picker shows one booking badge per DJ, never one per booking record.
+ * The DJ picker shows one booking-count badge per DJ, never one per record.
  *
  * A DJ can hold accepted bookings from several planners on the same date. Two
  * separate sources feed the card — this event's duplicate protection
  * (buildEventBookingDuplicateMap, keyed by recipient) and the DJ's accepted
  * bookings across the whole date (getPlannerDjAvailabilityHints, keyed by user)
- * — and both render green with the identical words "Already booked" when they
- * describe the same single booking. That collision is what put two matching
- * badges on one card.
+ * — and they used to render the identical words "Already booked", in the same
+ * green, when they described the same single booking.
  *
- * The hint now carries a count and summarises it, and the row drops the
- * availability badge when it would only restate the duplicate badge. Nothing
+ * The hint now carries a count and always states it. The row suppresses the
+ * count only when the duplicate badge already says the DJ is booked on THIS
+ * event and the count is 1, because that one booking is this event. Nothing
  * about the other events or the planners behind them is exposed: the query
- * selects recipient_id alone, and only a number reaches the label.
+ * selects recipient_id alone, filtered to the one calendar date, and only a
+ * number reaches the label.
  */
 function testDjPickerShowsOneBookingBadgePerDj() {
-  // Counted summary, not one badge per record.
-  assert.equal(formatDjBookedOnDateLabel(1), "Already booked");
-  assert.equal(formatDjBookedOnDateLabel(2), "2 bookings this day");
-  assert.equal(formatDjBookedOnDateLabel(3), "3 bookings this day");
-  assert.equal(formatDjBookedOnDateLabel(12), "12 bookings this day");
-  // A DJ with no bookings that day never reaches this label.
-  assert.equal(formatDjBookedOnDateLabel(0), "Already booked");
+  assert.equal(formatDjBookedOnDateLabel(1), "1 booking today");
+  assert.equal(formatDjBookedOnDateLabel(2), "2 bookings today");
+  assert.equal(formatDjBookedOnDateLabel(3), "3 bookings today");
+  assert.equal(formatDjBookedOnDateLabel(12), "12 bookings today");
 
-  // The label carries a count and nothing else -- no event or planner names.
+  // The label carries a count and nothing else -- no event or planner detail.
   for (const count of [1, 2, 5]) {
-    const label = formatDjBookedOnDateLabel(count);
-    assert.doesNotMatch(label, /with|for|planner|event|@/i);
+    assert.doesNotMatch(formatDjBookedOnDateLabel(count), /with|for|planner|event|@/i);
+  }
+
+  // It can no longer collide with the duplicate badge's wording.
+  for (const count of [1, 2, 3]) {
+    assert.notEqual(getEventBookingDuplicateLabel("already_booked"), formatDjBookedOnDateLabel(count));
   }
 
   const availabilitySource = readFileSync(
@@ -8927,34 +8929,27 @@ function testDjPickerShowsOneBookingBadgePerDj() {
     "utf8",
   );
 
-  // Hints stay keyed by DJ, and the booking rows are counted rather than
-  // collapsed into a Set that throws the count away.
+  // Hints stay keyed by DJ, and rows are counted rather than collapsed into a
+  // Set that throws the count away.
   assert.match(availabilitySource, /bookingCountByUserId/);
   assert.doesNotMatch(availabilitySource, /const bookedUserIds = new Set/);
   assert.match(availabilitySource, /bookingCount: number/);
 
-  // The query still selects only recipient_id -- no event or planner columns.
+  // Same calendar date only, and only recipient_id is selected.
   assert.match(
     availabilitySource,
-    /from\("booking_requests"\)\s*\.select\("recipient_id"\)/,
+    /from\("booking_requests"\)\s*\.select\("recipient_id"\)[\s\S]{0,120}\.eq\("event_date", normalizedDate\)/,
   );
 
-  // One availability badge element, suppressed when it duplicates the other.
+  // Exactly one element of each badge, and the count is suppressed only when it
+  // would restate an already-booked duplicate badge for this event.
   assert.equal((rowSource.match(/<DjBookingAvailabilityBadge/g) ?? []).length, 1);
   assert.equal((rowSource.match(/<EventBookingDuplicateBadge/g) ?? []).length, 1);
-  assert.match(rowSource, /availabilityRestatesDuplicate/);
-  assert.match(
-    rowSource,
-    /getEventBookingDuplicateLabel\(duplicateStatus\) === availabilityHint\.label/,
-  );
-
-  // The collision the fix targets: this event's badge and a single-booking
-  // availability hint really do render the same words.
-  assert.equal(getEventBookingDuplicateLabel("already_booked"), formatDjBookedOnDateLabel(1));
-  // ...and stop colliding as soon as the DJ has more than one that day.
-  assert.notEqual(getEventBookingDuplicateLabel("already_booked"), formatDjBookedOnDateLabel(2));
+  assert.match(rowSource, /countOnlyRestatesDuplicate/);
+  assert.match(rowSource, /duplicateStatus === "already_booked"[\s\S]{0,120}bookingCount <= 1/);
 
   // Duplicate protection for the current event is untouched.
+  assert.equal(getEventBookingDuplicateLabel("already_booked"), "Already booked");
   assert.equal(getEventBookingDuplicateLabel("already_invited"), "Already invited");
   assert.equal(getEventBookingDuplicateLabel("already_declined"), "Already declined");
 }

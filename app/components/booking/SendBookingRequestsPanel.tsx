@@ -9,10 +9,7 @@ import EventDjSendOfferControls, {
 import { PlannerEmptyPanel, PlannerSectionLabel } from "@/app/components/planner/PlannerUi";
 import { EVENT_DETAIL_BTN_PRIMARY_WIDE } from "@/app/components/event-detail/eventDetailUi";
 import type { SendBookingRequestsDraft } from "@/app/components/booking/useSendBookingRequestsDraft";
-import {
-  getEventBookingDuplicateLabel,
-  type EventBookingDuplicateStatus,
-} from "@/lib/bookingRequests";
+import type { EventBookingDuplicateStatus } from "@/lib/bookingRequests";
 import type { DjPlannerAvailabilityHint } from "@/lib/djAvailability";
 
 /** Create-event invite DJ search (client-only). */
@@ -138,20 +135,27 @@ export function DjInviteSelectionRow({
 }: DjInviteSelectionRowProps) {
   const displayName = dj.display_name?.trim() || "DJ";
   /**
-   * The two badges read from different sources — this event's duplicate
-   * protection, and the DJ's accepted bookings across that whole date — which
-   * can describe the same single booking in the same words ("Already booked",
-   * both green). When the availability hint would only restate the duplicate
-   * badge, drop it; a count of two or more says something new and stays.
+   * At most one booking-count badge, and never one that only restates the
+   * duplicate badge beside it.
+   *
+   * The two badges come from different sources: this event's duplicate
+   * protection, and the DJ's accepted bookings across that whole date. When the
+   * duplicate badge already says the DJ is booked on this event and the count
+   * is 1, that single booking *is* this event — the count adds nothing, so it
+   * is dropped and the duplicate badge is left to speak for itself, exactly as
+   * it does today. From two upwards the count describes commitments beyond this
+   * event, so it earns its place. `already_invited`/`already_declined` are
+   * pending or declined for this event and never counted as accepted bookings,
+   * so they never overlap and the count always shows alongside them.
    */
-  const availabilityRestatesDuplicate =
-    duplicateStatus !== undefined &&
+  const countOnlyRestatesDuplicate =
+    duplicateStatus === "already_booked" &&
     availabilityHint !== undefined &&
-    getEventBookingDuplicateLabel(duplicateStatus) === availabilityHint.label;
+    availabilityHint.bookingCount <= 1;
   const showAvailabilityBadge =
     availabilityHint !== undefined &&
     availabilityHint.status !== "unknown" &&
-    !availabilityRestatesDuplicate;
+    !countOnlyRestatesDuplicate;
 
   return (
     <li>

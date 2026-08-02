@@ -587,11 +587,7 @@ export async function batchClearMyAvailabilityForDates(dates: string[]): Promise
  * planners behind them is exposed here or in the query that feeds it.
  */
 export function formatDjBookedOnDateLabel(bookingCount: number): string {
-  if (bookingCount > 1) {
-    return `${bookingCount} bookings this day`;
-  }
-
-  return STATUS_LABELS.already_booked;
+  return `${bookingCount} booking${bookingCount === 1 ? "" : "s"} today`;
 }
 
 function buildPlannerAvailabilityHint(
