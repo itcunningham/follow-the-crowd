@@ -101,13 +101,11 @@ function getPlanLoadErrorMessage(error: unknown): string {
 
 function EventPlanDeleteConfirmDialog({
   open,
-  count,
   loading,
   onCancel,
   onConfirm,
 }: {
   open: boolean;
-  count: number;
   loading: boolean;
   onCancel: () => void;
   onConfirm: () => void;
@@ -135,8 +133,6 @@ function EventPlanDeleteConfirmDialog({
     return null;
   }
 
-  const title = count === 1 ? "Delete Event Plan?" : "Delete Event Plans?";
-
   return createPortal(
     <div
       className="fixed inset-0 z-[60] flex items-end justify-center bg-black p-0 sm:items-center sm:p-4"
@@ -155,14 +151,14 @@ function EventPlanDeleteConfirmDialog({
       >
         <div className="border-b border-ftc-border-subtle px-5 py-4">
           <h2 id="event-plan-delete-title" className="text-base font-semibold text-ftc-text">
-            {title}
+            Delete Event Plan?
           </h2>
           <p className="mt-2 text-sm leading-relaxed text-ftc-text-secondary">
-            These event plans will be permanently deleted
+            This will permanently delete the selected event plan(s).
           </p>
           <p className="mt-2 text-sm leading-relaxed text-ftc-text-secondary">
-            Existing events, bookings, booking requests and messages created from these plans will
-            NOT be affected
+            Existing events, bookings, booking requests, chats, and messages created from these
+            plans will not be affected.
           </p>
         </div>
 
@@ -712,7 +708,6 @@ export default function BookingPlansPage() {
 
         <EventPlanDeleteConfirmDialog
           open={planBulkManage.confirmOpen}
-          count={planBulkManage.confirmCount}
           loading={planBulkManage.removing}
           onCancel={planBulkManage.closeConfirm}
           onConfirm={() => {
