@@ -334,12 +334,47 @@ export async function saveEventRunSheet(
   return loadEventRunSheet(eventId);
 }
 
+/**
+ * Every failure in the accepted-DJ auto-add lands in one place: the `catch` in
+ * `EventRunSheetSection`'s `syncAcceptedDjs`, which keeps the rows local-only
+ * so the planner can still save them by hand. That is the correct behaviour,
+ * but it also means a genuine persistence failure is indistinguishable from
+ * every other one — the planner just sees "Save run sheet" on an untouched
+ * sheet, and the log carries a bare Supabase error with no indication of which
+ * step produced it.
+ *
+ * This tags the failing step onto the error before it propagates. Control flow
+ * is unchanged: the same errors still throw, at the same points, and the same
+ * catch still handles them — the message just now says which of the five
+ * fallible steps failed, so a single reload identifies the root cause instead
+ * of requiring another round of guessing.
+ */
+function tagRunSheetAutoAddFailure(step: string, error: unknown): Error {
+  const detail = getRunSheetErrorMessage(error, "unknown error");
+  const code =
+    error && typeof error === "object" && "code" in error
+      ? ` [code ${String((error as { code?: unknown }).code)}]`
+      : "";
+
+  return Object.assign(
+    new Error(`Run sheet accepted-DJ auto-add failed at "${step}"${code}: ${detail}`),
+    { cause: error },
+  );
+}
+
 export async function ensureRunSheetRowsForAcceptedBookings(
   eventId: string,
   lineup: BookingRequest[],
   profiles: Map<string, BookingRecipientProfile>,
 ): Promise<EventRunSheetData> {
-  const existing = await loadEventRunSheet(eventId);
+  let existing: EventRunSheetData;
+
+  try {
+    existing = await loadEventRunSheet(eventId);
+  } catch (error) {
+    throw tagRunSheetAutoAddFailure("load existing rows", error);
+  }
+
   const existingInputs = mapRunSheetRowsFromDb(existing.rows);
   const { rows: mergedRows, addedCount } = mergeAcceptedDjsIntoRunSheetRows(
     existingInputs,
@@ -351,19 +386,43 @@ export async function ensureRunSheetRowsForAcceptedBookings(
     return existing;
   }
 
-  const ownerId = await getCurrentUserId();
+  let ownerId: string;
+
+  try {
+    ownerId = await getCurrentUserId();
+  } catch (error) {
+    throw tagRunSheetAutoAddFailure("resolve current user id", error);
+  }
+
   const newRows = mergedRows.filter((row) => !isPersistedRunSheetRowId(row.id));
 
   for (const row of newRows) {
     if (!row.booking_request_id || !row.booking_recipient_id) {
+      // Nothing to key the row off, so it can never be matched or de-duped
+      // later. Skipping silently would persist nothing and report nothing,
+      // which reads downstream as an unexplained permanently-unsaved row.
+      console.warn(
+        "Run sheet accepted-DJ auto-add skipped a row with no booking linkage; it cannot be auto-persisted:",
+        {
+          artist_name: row.artist_name,
+          booking_request_id: row.booking_request_id ?? null,
+          booking_recipient_id: row.booking_recipient_id ?? null,
+        },
+      );
       continue;
     }
 
-    const alreadyExists = await runSheetRowExistsForBooking(
-      eventId,
-      row.booking_request_id,
-      row.booking_recipient_id,
-    );
+    let alreadyExists: boolean;
+
+    try {
+      alreadyExists = await runSheetRowExistsForBooking(
+        eventId,
+        row.booking_request_id,
+        row.booking_recipient_id,
+      );
+    } catch (error) {
+      throw tagRunSheetAutoAddFailure("check for an existing row", error);
+    }
 
     if (alreadyExists) {
       continue;
@@ -384,11 +443,15 @@ export async function ensureRunSheetRowsForAcceptedBookings(
         continue;
       }
 
-      throw error;
+      throw tagRunSheetAutoAddFailure("insert the row", error);
     }
   }
 
-  return loadEventRunSheet(eventId);
+  try {
+    return await loadEventRunSheet(eventId);
+  } catch (error) {
+    throw tagRunSheetAutoAddFailure("reload rows after insert", error);
+  }
 }
 
 function getRunSheetErrorMessage(error: unknown, fallback: string): string {
