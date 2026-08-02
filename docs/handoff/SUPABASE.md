@@ -20,6 +20,7 @@ Legacy one-off scripts remain in `scripts/` for bootstrapping and fixes. New fea
 | Event group chat | `scripts/setupEventCrewChat.sql` |
 | Group chat reactions RLS | `scripts/setupEventCrewChatReactions.sql` (after DM reactions + crew chat) |
 | Message reads / unread | `scripts/setupMessageReads.sql` |
+| **booking_requests Realtime** | **⚠️ Isaac must run `scripts/setupBookingRequestsRealtime.sql`.** `booking_requests` is NOT in the `supabase_realtime` publication, so no booking status event has ever reached any client — planner/Both/other-device views only update on refresh. The migration also sets `replica identity full`, required so `recipient_id`/`sender_id` (unchanged on a status UPDATE) are present for Realtime filter matching. Verification query at the end must return `passed = true` for both rows. |
 | **DM reactions Realtime** | **⚠️ Isaac must run `supabase/migrations/20250729100000_message_reactions_realtime.sql`.** Verified 2026-07-29: `message_reactions` is missing from the `supabase_realtime` publication, so recipients get no reaction events until refresh. Verification query at the end of the migration must return `passed = true` for both rows. |
 | Duplicate booking protection | `scripts/fixEventBookingDuplicateProtection.sql` |
 | Production RLS | `scripts/setupProductionRls.sql` |
