@@ -172,7 +172,7 @@ const STATUS_FILTERS: { value: ActiveBookingStatusFilter; label: string }[] = [
 
 const CREW_CHAT_HELP = {
   label: "Group chat",
-  help: "Starts automatically when 2 DJs accept, You can also start it manually after the first DJ accepts",
+  help: "Starts automatically when 2 DJs accept. You can also start it manually after the first DJ accepts",
 };
 
 const HEADER_GROUP_CHAT_CHIP_CLASS =
