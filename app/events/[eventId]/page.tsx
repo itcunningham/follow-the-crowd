@@ -1469,55 +1469,62 @@ function EventDetailPageView() {
                         />
                       </div>
 
-                      {filteredLineup.length === 0 ? (
-                        <PlannerEmptyPanel
-                          className="mt-5"
-                          message={
-                            isHistoryEventDetail
-                              ? "No bookings for this event"
-                              : "No DJs invited yet, send booking requests to build your lineup"
-                          }
-                        />
-                      ) : (
-                        <ul className="mt-3 space-y-2.5">
-                          {filteredLineup.map((booking) => {
-                            const profile = profiles.get(booking.recipient_id);
+                      {/* Shared min-height ~= one populated booking card, so switching
+                          filters does not move the section's bottom edge (and with it the
+                          Cancel Event button). The empty panel is 86px on desktop against
+                          123px for a card with actions, and it also carried a different top
+                          margin, so both states now share one wrapper. Multiple cards grow
+                          past the minimum exactly as before. */}
+                      <div className="mt-3 flex min-h-[7.5rem] flex-col justify-center">
+                        {filteredLineup.length === 0 ? (
+                          <PlannerEmptyPanel
+                            message={
+                              isHistoryEventDetail
+                                ? "No bookings for this event"
+                                : "No DJs invited yet, send booking requests to build your lineup"
+                            }
+                          />
+                        ) : (
+                          <ul className="space-y-2.5">
+                            {filteredLineup.map((booking) => {
+                              const profile = profiles.get(booking.recipient_id);
 
-                            return (
-                              <li key={booking.id}>
-                                <EventLineupBookingCard
-                                  booking={booking}
-                                  profile={profile}
-                                  currentUserId={currentUserId}
-                                  eventDetailId={eventId}
-                                  eventDetailFromTab={searchParams.get("fromTab")}
-                                  dmOriginConversationId={dmOriginConversationId}
-                                  calendarOrigin={calendarOrigin}
-                                  readOnly={isHistoryEventDetail}
-                                  cancelledByLabel={resolveBookingCancelledByLabel(booking, profiles)}
-                                  cancellationReasonLabel={resolveBookingCancellationReasonLabel(booking)}
-                                  canHideFromLineup={
-                                    !isHistoryEventDetail &&
-                                    isOwner &&
-                                    isPlanner &&
-                                    booking.status === "declined" &&
-                                    !booking.lineup_hidden_at
-                                  }
-                                  hiding={hidingBookingId === booking.id}
-                                  hideDisabled={Boolean(hidingBookingId) && hidingBookingId !== booking.id}
-                                  cancelling={cancellingBookingId === booking.id}
-                                  proposalLoading={proposalLoadingId === booking.id}
-                                  onHideFromLineup={() => handleHideFromLineup(booking.id)}
-                                  onCancelBooking={() => handleCancelBooking(booking.id)}
-                                  onCancelAccepted={(reason) => handleCancelAcceptedBooking(booking, reason)}
-                                  onAcceptProposal={() => handleAcceptProposedRate(booking)}
-                                  onKeepOriginalOffer={() => handleKeepOriginalOffer(booking)}
-                                />
-                              </li>
-                            );
-                          })}
-                        </ul>
-                      )}
+                              return (
+                                <li key={booking.id}>
+                                  <EventLineupBookingCard
+                                    booking={booking}
+                                    profile={profile}
+                                    currentUserId={currentUserId}
+                                    eventDetailId={eventId}
+                                    eventDetailFromTab={searchParams.get("fromTab")}
+                                    dmOriginConversationId={dmOriginConversationId}
+                                    calendarOrigin={calendarOrigin}
+                                    readOnly={isHistoryEventDetail}
+                                    cancelledByLabel={resolveBookingCancelledByLabel(booking, profiles)}
+                                    cancellationReasonLabel={resolveBookingCancellationReasonLabel(booking)}
+                                    canHideFromLineup={
+                                      !isHistoryEventDetail &&
+                                      isOwner &&
+                                      isPlanner &&
+                                      booking.status === "declined" &&
+                                      !booking.lineup_hidden_at
+                                    }
+                                    hiding={hidingBookingId === booking.id}
+                                    hideDisabled={Boolean(hidingBookingId) && hidingBookingId !== booking.id}
+                                    cancelling={cancellingBookingId === booking.id}
+                                    proposalLoading={proposalLoadingId === booking.id}
+                                    onHideFromLineup={() => handleHideFromLineup(booking.id)}
+                                    onCancelBooking={() => handleCancelBooking(booking.id)}
+                                    onCancelAccepted={(reason) => handleCancelAcceptedBooking(booking, reason)}
+                                    onAcceptProposal={() => handleAcceptProposedRate(booking)}
+                                    onKeepOriginalOffer={() => handleKeepOriginalOffer(booking)}
+                                  />
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        )}
+                      </div>
                     </section>
                   ) : null}
                 </>
