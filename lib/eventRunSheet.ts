@@ -461,6 +461,37 @@ export function reorderRunSheetRows(rows: RunSheetRowInput[]): RunSheetRowInput[
   return rows.map((row, index) => ({ ...row, sort_order: index }));
 }
 
+/**
+ * Signature of everything a planner can change: which DJs are on the sheet, the
+ * order they run in (array position, which `reorderRunSheetRows` keeps in step
+ * with `sort_order`), and each row's editable fields.
+ *
+ * `sort_order` itself is left out deliberately — it is derived from position, so
+ * including it would only ever restate what the array order already says.
+ */
+function serializeRunSheetRows(rows: RunSheetRowInput[]): string {
+  return JSON.stringify(
+    rows.map((row) => [
+      row.id ?? "",
+      row.booking_request_id ?? "",
+      row.booking_recipient_id ?? "",
+      row.artist_name,
+      row.stage_area,
+      row.start_time,
+      row.finish_time,
+      row.notes,
+    ]),
+  );
+}
+
+/** True when the run sheet on screen differs from the one last persisted. */
+export function hasUnsavedRunSheetEdits(
+  savedRows: RunSheetRowInput[],
+  currentRows: RunSheetRowInput[],
+): boolean {
+  return serializeRunSheetRows(savedRows) !== serializeRunSheetRows(currentRows);
+}
+
 export function moveRunSheetRow(
   rows: RunSheetRowInput[],
   rowId: string,

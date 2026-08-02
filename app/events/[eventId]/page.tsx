@@ -1395,7 +1395,7 @@ function EventDetailPageView() {
                           canEdit={canEditRunSheet}
                           lineup={lineup}
                           profiles={profiles}
-                          onSaved={(message) => setSuccessMessage(message)}
+                          onSaved={setHeaderFeedbackMessage}
                           readOnlyHint={isHistoryEventDetail ? null : undefined}
                           emptyStateMessage={
                             isHistoryEventDetail

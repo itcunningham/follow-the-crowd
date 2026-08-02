@@ -9,7 +9,7 @@ import {
   EVENT_DETAIL_FEEDBACK_CLASS,
   EVENT_DETAIL_SECTION_SUBTITLE_CLASS,
 } from "@/app/components/event-detail/eventDetailUi";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BookingDualTimeWheelPicker } from "@/app/components/BookingTimeWheelPicker";
 import ProfileAvatar from "@/app/components/ProfileAvatar";
 import ChatProfileAvatarLink from "@/app/components/chat/ChatProfileAvatarLink";
@@ -34,6 +34,7 @@ import {
   filterRunSheetRowsToAcceptedBookings,
   getRunSheetLoadErrorMessage,
   getRunSheetSaveErrorMessage,
+  hasUnsavedRunSheetEdits,
   loadEventRunSheet,
   logRunSheetSaveError,
   mapRunSheetRowsFromDb,
@@ -495,51 +496,69 @@ export default function EventRunSheetSection({
   emptyStateMessage?: string;
 }) {
   const [rows, setRows] = useState<RunSheetRowInput[]>([]);
+  /** Last persisted rows — the baseline the Save button's dirty check compares against. */
+  const [savedRows, setSavedRows] = useState<RunSheetRowInput[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const syncInFlightRef = useRef(false);
 
+  /**
+   * Returns the rows to display plus the rows actually in the database. They
+   * differ in exactly one case: the accepted-DJ auto-add failed to persist, so
+   * the new rows are local-only and must read as unsaved.
+   */
   const syncAcceptedDjs = useCallback(
-    async (currentRows: RunSheetRowInput[]) => {
+    async (
+      currentRows: RunSheetRowInput[],
+    ): Promise<{ rows: RunSheetRowInput[]; persistedRows: RunSheetRowInput[] }> => {
+      const currentFiltered = () =>
+        filterRunSheetRowsToAcceptedBookings(currentRows, lineup, profiles);
+
       if (syncInFlightRef.current) {
-        return filterRunSheetRowsToAcceptedBookings(currentRows, lineup, profiles);
+        const unchanged = currentFiltered();
+        return { rows: unchanged, persistedRows: unchanged };
       }
 
       const { addedCount } = mergeAcceptedDjsIntoRunSheetRows(currentRows, lineup, profiles);
 
       if (addedCount === 0) {
-        return filterRunSheetRowsToAcceptedBookings(currentRows, lineup, profiles);
+        const unchanged = currentFiltered();
+        return { rows: unchanged, persistedRows: unchanged };
       }
 
       if (!canEdit) {
-        return filterRunSheetRowsToAcceptedBookings(
+        const merged = filterRunSheetRowsToAcceptedBookings(
           mergeAcceptedDjsIntoRunSheetRows(currentRows, lineup, profiles).rows,
           lineup,
           profiles,
         );
+        return { rows: merged, persistedRows: merged };
       }
 
       syncInFlightRef.current = true;
 
       try {
         const saved = await ensureRunSheetRowsForAcceptedBookings(eventId, lineup, profiles);
-        return filterRunSheetRowsToAcceptedBookings(
+        const persisted = filterRunSheetRowsToAcceptedBookings(
           reorderRunSheetRows(mapRunSheetRowsFromDb(saved.rows)),
           lineup,
           profiles,
         );
+        return { rows: persisted, persistedRows: persisted };
       } catch (autoSaveError) {
         console.error(
           "Accepted DJ auto-add save failed; rows stay local until Save changes:",
           autoSaveError,
         );
-        return filterRunSheetRowsToAcceptedBookings(
-          mergeAcceptedDjsIntoRunSheetRows(currentRows, lineup, profiles).rows,
-          lineup,
-          profiles,
-        );
+        return {
+          rows: filterRunSheetRowsToAcceptedBookings(
+            mergeAcceptedDjsIntoRunSheetRows(currentRows, lineup, profiles).rows,
+            lineup,
+            profiles,
+          ),
+          persistedRows: currentFiltered(),
+        };
       } finally {
         syncInFlightRef.current = false;
       }
@@ -554,11 +573,13 @@ export default function EventRunSheetSection({
     try {
       const data = await loadEventRunSheet(eventId);
       const loadedRows = reorderRunSheetRows(mapRunSheetRowsFromDb(data.rows));
-      const mergedRows = await syncAcceptedDjs(loadedRows);
-      setRows(mergedRows);
+      const synced = await syncAcceptedDjs(loadedRows);
+      setRows(synced.rows);
+      setSavedRows(synced.persistedRows);
     } catch (loadError) {
       console.error("Failed to load run sheet:", loadError);
       setRows([]);
+      setSavedRows([]);
       setError(getRunSheetLoadErrorMessage(loadError));
     } finally {
       setLoading(false);
@@ -580,7 +601,6 @@ export default function EventRunSheetSection({
   async function handleSave() {
     setSaving(true);
     setError(null);
-    setSuccessMessage(null);
 
     try {
       const saved = await saveEventRunSheet(eventId, {
@@ -588,17 +608,16 @@ export default function EventRunSheetSection({
         deletedRowIds: [],
       });
 
-      setRows(
-        filterRunSheetRowsToAcceptedBookings(
-          reorderRunSheetRows(mapRunSheetRowsFromDb(saved.rows)),
-          lineup,
-          profiles,
-        ),
+      const persistedRows = filterRunSheetRowsToAcceptedBookings(
+        reorderRunSheetRows(mapRunSheetRowsFromDb(saved.rows)),
+        lineup,
+        profiles,
       );
 
-      const message = "Run sheet saved";
-      setSuccessMessage(message);
-      onSaved?.(message);
+      setRows(persistedRows);
+      // Clears the dirty state, which hides the Save button until the next edit.
+      setSavedRows(persistedRows);
+      onSaved?.("Run sheet saved");
     } catch (saveError) {
       logRunSheetSaveError(saveError);
       setError(getRunSheetSaveErrorMessage(saveError));
@@ -606,6 +625,11 @@ export default function EventRunSheetSection({
       setSaving(false);
     }
   }
+
+  const hasUnsavedChanges = useMemo(
+    () => hasUnsavedRunSheetEdits(savedRows, rows),
+    [savedRows, rows],
+  );
 
   const runSheetTextareaBaseClassName =
     "ftc-textarea w-full resize-none overflow-x-hidden overflow-y-hidden rounded-lg px-2.5 py-1.5 text-sm break-words";
@@ -628,7 +652,9 @@ export default function EventRunSheetSection({
           ) : null}
         </div>
 
-        {canEdit && rows.length > 0 ? (
+        {/* Only while there is something to save — saving keeps it up so the
+            in-flight label stays visible until the response lands. */}
+        {canEdit && rows.length > 0 && (hasUnsavedChanges || saving) ? (
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
@@ -641,12 +667,6 @@ export default function EventRunSheetSection({
           </div>
         ) : null}
       </div>
-
-      {successMessage ? (
-        <p className={`mt-4 ${EVENT_DETAIL_FEEDBACK_CLASS} mb-0 text-ftc-text-secondary`}>
-          {successMessage}
-        </p>
-      ) : null}
 
       {error ? (
         <p className={`mt-4 ${EVENT_DETAIL_FEEDBACK_CLASS} mb-0 text-[var(--ftc-color-danger)]`}>
