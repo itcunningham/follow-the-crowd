@@ -35,6 +35,8 @@ import {
 import {
   DJ_INVITE_LIST_MAX_HEIGHT_CLASS,
   DjInviteSelectionRow,
+  resolveSendButtonLabel,
+  SendBookingRequestsSummary,
 } from "@/app/components/booking/SendBookingRequestsPanel";
 import EventDjSendOfferControls, {
   createDefaultDjSendOffer,
@@ -133,6 +135,7 @@ import {
   type UserProfile,
   type UserRole,
 } from "@/lib/user/currentUser";
+import { filterBookableDjsBySearchQuery } from "@/lib/user/filterBookableDjs";
 import { readSupabaseSessionUserIdSync } from "@/lib/auth/sessionUserId";
 import { markNotificationsReadByType } from "@/lib/notifications";
 import { readCachedNavRole } from "@/lib/navigationRoleCache";
@@ -488,26 +491,10 @@ function BookingsPageContent() {
     [sentBookings],
   );
 
-  const filteredDjs = useMemo(() => {
-    const query = searchQuery.trim().toLowerCase();
-
-    if (!query) {
-      return djs;
-    }
-
-    return djs.filter((dj) => {
-      const haystack = [
-        dj.display_name ?? "",
-        dj.genre ?? "",
-        dj.location ?? "",
-        dj.user_id,
-      ]
-        .join(" ")
-        .toLowerCase();
-
-      return haystack.includes(query);
-    });
-  }, [djs, searchQuery]);
+  const filteredDjs = useMemo(
+    () => filterBookableDjsBySearchQuery(djs, searchQuery),
+    [djs, searchQuery],
+  );
 
   const eventBookingDuplicates = useMemo(
     () => (form.eventId ? buildEventBookingDuplicateMap(eventBookings) : new Map()),
@@ -2050,7 +2037,9 @@ function BookingsPageContent() {
                   ) : filteredDjs.length === 0 ? (
                     <p className="text-sm text-ftc-text-muted">No DJs match your search</p>
                   ) : (
-                    <ul className={`${DJ_INVITE_LIST_MAX_HEIGHT_CLASS} space-y-2.5 overflow-y-auto pr-1`}>
+                    <ul
+                      className={`${DJ_INVITE_LIST_MAX_HEIGHT_CLASS} space-y-2.5 overflow-y-auto overscroll-contain pr-1 [-webkit-overflow-scrolling:touch] touch-pan-y`}
+                    >
                       {filteredDjs.map((dj) => {
                         const selected = selectedDjIds.includes(dj.user_id);
                         const availabilityHint = djAvailabilityHints.get(dj.user_id);
@@ -2083,33 +2072,10 @@ function BookingsPageContent() {
                     </p>
                   ) : null}
 
-                  {sendOfferSummary.length > 0 ? (
-                    <div className="rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated p-4">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-ftc-text-muted">
-                        Summary
-                      </p>
-                      <ul className="mt-3 space-y-2">
-                        {sendOfferSummary.map((item) => (
-                          <li
-                            key={item.djId}
-                            className="flex items-start justify-between gap-3 text-sm"
-                          >
-                            <span className="min-w-0 truncate font-medium text-ftc-text">
-                              {item.name}
-                            </span>
-                            <span className="shrink-0 text-right text-ftc-text-secondary">
-                              {item.summary}
-                            </span>
-                          </li>
-                        ))}
-                      </ul>
-                      {hasInvalidFixedOffers ? (
-                        <p className="mt-3 text-xs text-[var(--ftc-color-warning)]">
-                          Enter a whole-dollar amount for each fixed offer before sending
-                        </p>
-                      ) : null}
-                    </div>
-                  ) : null}
+                  <SendBookingRequestsSummary
+                    items={sendOfferSummary}
+                    hasInvalidFixedOffers={hasInvalidFixedOffers}
+                  />
 
                   <div className="flex flex-col gap-3 sm:flex-row">
                     <button
@@ -2131,11 +2097,11 @@ function BookingsPageContent() {
                       }
                       className="flex-1 ftc-btn-primary w-full px-4 py-3 text-sm uppercase tracking-wide disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                      {sending
-                        ? "Confirming"
-                        : allSelectedAreDuplicates
-                          ? "No new DJs to confirm"
-                          : "Send Requests"}
+                      {resolveSendButtonLabel({
+                        selectedCount: selectedDjIds.length,
+                        sendableCount: sendableSelectedDjIds.length,
+                        sending,
+                      })}
                     </button>
                   </div>
                 </div>

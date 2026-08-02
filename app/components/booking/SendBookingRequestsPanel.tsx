@@ -185,14 +185,71 @@ export function DjInviteSelectionRow({
   );
 }
 
-function resolveSendButtonLabel(
-  draft: SendBookingRequestsDraft,
-  sending: boolean,
-  sendButtonLabelMode: "send" | "confirm",
-): string {
-  const selectedCount = draft.selectedDjIds.length;
-  const sendableCount = draft.sendableSelectedDjIds.length;
-  const isConfirmMode = sendButtonLabelMode === "confirm";
+export type SendBookingRequestsSummaryItem = {
+  djId: string;
+  name: string;
+  summary: string;
+};
+
+/**
+ * "Summary" card listing each sendable DJ and their rate summary, plus the invalid-fixed-offer
+ * warning. Shared by every surface that renders the invite-DJs workflow (this panel, and Event
+ * Plans' Use Plan step in `bookings/page.tsx`) so copy and styling can't drift apart again -
+ * they did once, and a copy fix landed here while the other implementation kept the old wording.
+ */
+export function SendBookingRequestsSummary({
+  items,
+  hasInvalidFixedOffers,
+}: {
+  items: readonly SendBookingRequestsSummaryItem[];
+  hasInvalidFixedOffers: boolean;
+}) {
+  if (items.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="rounded-xl bg-ftc-bg-elevated/70 p-3.5">
+      <p className="text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted">
+        Summary
+      </p>
+      <ul className="mt-2.5 space-y-2">
+        {items.map((item) => (
+          <li
+            key={item.djId}
+            className="flex items-start justify-between gap-3 text-sm leading-snug"
+          >
+            <span className="min-w-0 truncate font-medium text-ftc-text">{item.name}</span>
+            <span className="shrink-0 text-right text-ftc-text-secondary">{item.summary}</span>
+          </li>
+        ))}
+      </ul>
+      {hasInvalidFixedOffers ? (
+        <p className="mt-2.5 text-xs leading-relaxed text-[var(--ftc-color-warning)]">
+          Enter a whole-dollar amount for each fixed offer before sending
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * Send/confirm button label for the invite-DJs workflow. Takes plain counts rather than a
+ * `SendBookingRequestsDraft` so surfaces holding their own local selection state (Event Plans'
+ * Use Plan step) share this one state machine instead of re-deriving it.
+ */
+export function resolveSendButtonLabel({
+  selectedCount,
+  sendableCount,
+  sending,
+  mode = "confirm",
+}: {
+  selectedCount: number;
+  sendableCount: number;
+  sending: boolean;
+  mode?: "send" | "confirm";
+}): string {
+  const isConfirmMode = mode === "confirm";
 
   if (sending) {
     return isConfirmMode ? "Confirming" : "Sending";
@@ -225,7 +282,12 @@ export default function SendBookingRequestsPanel({
   sendButtonLabelMode = "confirm",
 }: SendBookingRequestsPanelProps) {
   const sendableCount = draft.sendableSelectedDjIds.length;
-  const sendButtonLabel = resolveSendButtonLabel(draft, sending, sendButtonLabelMode);
+  const sendButtonLabel = resolveSendButtonLabel({
+    selectedCount: draft.selectedDjIds.length,
+    sendableCount,
+    sending,
+    mode: sendButtonLabelMode,
+  });
 
   return (
     <div className={embedded ? "space-y-4 border-t border-ftc-border-subtle pt-4" : "space-y-4"}>
@@ -286,31 +348,11 @@ export default function SendBookingRequestsPanel({
         </p>
       ) : null}
 
-      {draft.sendOfferSummary.length > 0 ? (
-        <div className="rounded-xl bg-ftc-bg-elevated/70 p-3.5">
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted">
-            Summary
-          </p>
-          <ul className="mt-2.5 space-y-2">
-            {draft.sendOfferSummary.map((item) => (
-              <li
-                key={item.djId}
-                className="flex items-start justify-between gap-3 text-sm leading-snug"
-              >
-                <span className="min-w-0 truncate font-medium text-ftc-text">{item.name}</span>
-                <span className="shrink-0 text-right text-ftc-text-secondary">
-                  {item.summary}
-                </span>
-              </li>
-            ))}
-          </ul>
-          {draft.hasInvalidFixedOffers ? (
-            <p className="mt-2.5 text-xs leading-relaxed text-[var(--ftc-color-warning)]">
-              Enter a whole-dollar amount for each fixed offer before sending
-            </p>
-          ) : null}
-        </div>
-      ) : null}
+      <SendBookingRequestsSummary
+        items={draft.sendOfferSummary}
+        hasInvalidFixedOffers={draft.hasInvalidFixedOffers}
+      />
+
 
       {showSendButton ? (
         <button

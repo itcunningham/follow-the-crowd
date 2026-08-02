@@ -8681,41 +8681,64 @@ function testMainNavAlwaysTargetsEventsWorkspace() {
 }
 
 /**
- * Locks in the same "Send Requests"/"Summary" copy fix already applied to
- * SendBookingRequestsPanel.tsx (commit bf0dd9e) for the *separate*, hardcoded
- * implementation of the identical confirmation UI in the Event Plans "Use
- * Plan" flow (bookings/page.tsx). That earlier fix only updated the shared
- * component; this page never reused it and had its own independent
- * "Send summary" heading and dynamic "Confirm N DJs" button text, which is
- * exactly why the live production app (Event Plans, not Create Event) still
- * showed the old copy after bf0dd9e/252e94e shipped -- confirmed by fetching
- * the deployed JS chunks from follow-the-crowd.vercel.app directly: the
- * SendBookingRequestsPanel copy was already correct in production, but
- * "Send summary" and a literal "Confirm ${n} DJ" template were still present
- * because bookings/page.tsx's build was never touched. Two independent
- * implementations of the same UI is a pre-existing design-system gap (noted
- * for a future shared-component consolidation), not something this fix
- * refactors -- only the copy in the actual duplicated component is corrected
- * here, matching the original task's scope exactly.
+ * The Event Plans "Use Plan" flow (bookings/page.tsx) must not carry its own
+ * copy of the send-booking-requests confirm UI.
+ *
+ * History: commit bf0dd9e changed the confirm-step copy ("Send summary" ->
+ * "Summary", dynamic "Confirm N DJs" -> fixed "Send Requests") in the shared
+ * SendBookingRequestsPanel.tsx only. bookings/page.tsx had an independent,
+ * hand-written implementation of the identical UI that the fix never touched,
+ * so the live Event Plans screen still showed the old copy and the fix looked
+ * like it had failed to deploy (it hadn't -- it shipped to the other
+ * component). 464cd37 patched the same two strings into the duplicate.
+ *
+ * Patching strings in two places is what this test used to lock in, and that
+ * only ever guarded against the second copy going stale, never against the
+ * duplication itself. The Summary card and the button-label state machine are
+ * now a shared component + helper, so the assertion is that bookings/page.tsx
+ * *delegates* rather than that its own literals happen to match: the copy
+ * lives in exactly one file, and re-forking it fails here.
  */
-function testEventPlansSendPanelCopyMatchesSendBookingRequestsPanel() {
+function testEventPlansSendPanelReusesSharedConfirmUi() {
   const bookingsPageSource = readFileSync(
     new URL("../app/(planner-workspace)/bookings/page.tsx", import.meta.url),
     "utf8",
   );
-
-  assert.doesNotMatch(bookingsPageSource, /Send summary/);
-  assert.match(bookingsPageSource, /\s+Summary\s*\n\s*<\/p>/);
-
-  assert.doesNotMatch(bookingsPageSource, /Confirm \$\{sendableSelectedDjIds\.length\}/);
-  assert.match(
-    bookingsPageSource,
-    /: allSelectedAreDuplicates\s*\n\s*\? "No new DJs to confirm"\s*\n\s*: "Send Requests"/,
+  const panelSource = readFileSync(
+    new URL("../app/components/booking/SendBookingRequestsPanel.tsx", import.meta.url),
+    "utf8",
   );
 
-  // Unrelated states in the same button (loading, all-duplicates) are untouched.
-  assert.match(bookingsPageSource, /\? "Confirming"/);
-  assert.match(bookingsPageSource, /"No new DJs to confirm"/);
+  // The shared component/helper owns every string in this UI.
+  assert.match(panelSource, /export function SendBookingRequestsSummary\(/);
+  assert.match(panelSource, /export function resolveSendButtonLabel\(/);
+  assert.doesNotMatch(panelSource, /Send summary/);
+  assert.match(panelSource, /\s+Summary\s*\n\s*<\/p>/);
+  assert.match(panelSource, /return "Send Requests";/);
+  assert.match(panelSource, /return "No DJs selected";/);
+  assert.match(panelSource, /"No new DJs to confirm" : "No new DJs to send"/);
+  assert.match(panelSource, /\? "Confirming" : "Sending"/);
+
+  // Event Plans imports and renders it instead of re-implementing it.
+  assert.match(
+    bookingsPageSource,
+    /import \{[^}]*\bresolveSendButtonLabel\b[^}]*\bSendBookingRequestsSummary\b[^}]*\} from "@\/app\/components\/booking\/SendBookingRequestsPanel";/,
+  );
+  assert.match(bookingsPageSource, /<SendBookingRequestsSummary\s/);
+  assert.match(bookingsPageSource, /\{resolveSendButtonLabel\(\{/);
+
+  // No second copy of any of it left behind on the page.
+  assert.doesNotMatch(bookingsPageSource, /Send summary/);
+  assert.doesNotMatch(bookingsPageSource, /\s+Summary\s*\n\s*<\/p>/);
+  assert.doesNotMatch(bookingsPageSource, /"Send Requests"/);
+  assert.doesNotMatch(bookingsPageSource, /"No new DJs to confirm"/);
+  assert.doesNotMatch(bookingsPageSource, /"Confirming"/);
+  assert.doesNotMatch(bookingsPageSource, /Confirm \$\{sendableSelectedDjIds\.length\}/);
+
+  // Same class of gap, found while consolidating: the touch-scroll containment
+  // the panel's DJ list carries (so the list doesn't trap touch-scroll on
+  // phones) had never been applied to this page's own list markup.
+  assert.match(bookingsPageSource, /overflow-y-auto overscroll-contain[^"`]*touch-pan-y/);
 }
 
 /**
@@ -8992,7 +9015,7 @@ async function main() {
   testEventNotesTextareaScrollsWhenContentExceedsCap();
   testAppSplashScreenSlogan();
   testMainNavAlwaysTargetsEventsWorkspace();
-  testEventPlansSendPanelCopyMatchesSendBookingRequestsPanel();
+  testEventPlansSendPanelReusesSharedConfirmUi();
   testBookingRateModeDescriptionsAreUnified();
   await testEventsHistorySelectAllButtonInteraction();
   await testEventsHistoryRemoveConfirmInteraction();

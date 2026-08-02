@@ -45,6 +45,17 @@ Follow the **Design System Decision** process in `FTC_WORKFLOW.md` §6 before in
 | **Future components that should adopt it** | Any new modal multiline field |
 | **Older patterns that may eventually be deprecated** | `.ftc-fixed-scroll-textarea-6` (removed); one-off per-modal textarea height CSS; `.ftc-profile-bio-textarea` for modal contexts |
 
+### Send-booking-requests confirm UI (invite-DJs standard)
+
+| Field | Detail |
+|-------|--------|
+| **Purpose** | One implementation of the invite-DJs confirm step's "Summary" card (per-DJ rate list + invalid-fixed-offer warning) and its send-button label state machine, so copy and styling can't drift between the surfaces that render this workflow |
+| **Where it should be used** | Every surface with the invite-DJs workflow — `SendBookingRequestsSummary` and `resolveSendButtonLabel`, both exported from `app/components/booking/SendBookingRequestsPanel.tsx` |
+| **Where it should NOT be used** | Non-booking summary/confirm surfaces — this card's copy and label states are specific to sending booking requests |
+| **Existing components using it** | `SendBookingRequestsPanel` (→ `EventsPageClient`, `SendBookingRequestsModal`, `events/[eventId]`); `app/(planner-workspace)/bookings/page.tsx` (Event Plans "Use Plan" step) |
+| **Future components that should adopt it** | Any new surface rendering the invite-DJs workflow. `bookings/page.tsx` should eventually adopt `useSendBookingRequestsDraft` + `SendBookingRequestsPanel` wholesale (it still hand-rolls the selection state, search field and empty state) — see `CURRENT-STATE.md` |
+| **Older patterns that may eventually be deprecated** | Hand-written copies of the Summary card or the send-button ternary. `bookings/page.tsx`'s remaining local `selectedDjIds`/`djOffers`/`sendOfferSummary` state duplicates `useSendBookingRequestsDraft` |
+
 ---
 
 ## Colour tokens
