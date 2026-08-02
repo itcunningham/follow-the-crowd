@@ -79,9 +79,12 @@ async function loadGigsSenderProfiles(
   }
 }
 
-async function loadGigsEventArtwork(
-  received: BookingRequest[],
-): Promise<Map<string, GigsEventArtworkSnapshot>> {
+type GigsEventLookup = {
+  artworkById: Map<string, GigsEventArtworkSnapshot>;
+  cancelledEventIds: ReadonlySet<string>;
+};
+
+async function loadGigsEventLookup(received: BookingRequest[]): Promise<GigsEventLookup> {
   const eventIds = [
     ...new Set(
       received
@@ -91,38 +94,78 @@ async function loadGigsEventArtwork(
   ];
 
   if (eventIds.length === 0) {
-    return mergeGigsEventArtwork(new Map());
+    return { artworkById: mergeGigsEventArtwork(new Map()), cancelledEventIds: new Set() };
   }
 
   try {
     const freshArtwork = await getEventArtworkByIds(eventIds);
     const mapped = new Map<string, GigsEventArtworkSnapshot>();
+    const cancelledEventIds = new Set<string>();
 
     for (const [eventId, artwork] of freshArtwork) {
       mapped.set(eventId, {
         coverImageUrl: artwork.coverImageUrl,
         fallbackColour: artwork.fallbackColour,
       });
+
+      if (artwork.status === "cancelled") {
+        cancelledEventIds.add(eventId);
+      }
     }
 
-    return mergeGigsEventArtwork(mapped);
+    return { artworkById: mergeGigsEventArtwork(mapped), cancelledEventIds };
   } catch (error) {
-    console.error("[gigs-list] Failed to load gig event artwork:", error);
-    return mergeGigsEventArtwork(new Map());
+    console.error("[gigs-list] Failed to load gig event details:", error);
+    return { artworkById: mergeGigsEventArtwork(new Map()), cancelledEventIds: new Set() };
   }
+}
+
+/**
+ * Surfaces planner-cancelled events on accepted gigs.
+ *
+ * `cancel_event` only cancels *pending* booking_requests, so a DJ's accepted
+ * booking keeps `status = 'accepted'` after the planner cancels the event. The
+ * gigs list reads booking_requests alone and would otherwise keep showing that
+ * gig under Confirmed as though it were still going ahead — the DJ Events tab
+ * used to be the one place this was visible, via the event's own status.
+ *
+ * The event rows are already being fetched here for cover artwork, so this
+ * costs no extra request: an accepted booking on a cancelled event is presented
+ * as cancelled, which routes it to History with the cancelled badge and drops
+ * it from the Confirmed count, through the existing filters. Pending bookings
+ * are left alone — the database already cancels those.
+ */
+export function applyCancelledEventStatus(
+  received: BookingRequest[],
+  cancelledEventIds: ReadonlySet<string>,
+): BookingRequest[] {
+  if (cancelledEventIds.size === 0) {
+    return received;
+  }
+
+  return received.map((booking) =>
+    booking.status === "accepted" && booking.event_id && cancelledEventIds.has(booking.event_id)
+      ? { ...booking, status: "cancelled" as const }
+      : booking,
+  );
 }
 
 async function fetchGigsListSnapshot(): Promise<GigsListSnapshot> {
   const receivedPromise = listReceivedBookingRequests();
   const hiddenIdsPromise = listBookingRequestHistoryHideIds();
   const received = await receivedPromise;
-  const [hiddenIds, senderProfiles, eventArtworkById] = await Promise.all([
+  const [hiddenIds, senderProfiles, eventLookup] = await Promise.all([
     hiddenIdsPromise,
     loadGigsSenderProfiles(received),
-    loadGigsEventArtwork(received),
+    loadGigsEventLookup(received),
   ]);
 
-  const snapshot = buildSnapshot(received, hiddenIds, senderProfiles, eventArtworkById);
+  const snapshot = buildSnapshot(
+    applyCancelledEventStatus(received, eventLookup.cancelledEventIds),
+    hiddenIds,
+    senderProfiles,
+    eventLookup.artworkById,
+  );
   memorySnapshot = snapshot;
   writeGigsTabCountsCache(snapshot.counts);
   return snapshot;

@@ -140,8 +140,10 @@ import { resolveEventsWorkspaceChromeRole } from "@/lib/events/eventsWorkspaceCh
 import {
   canManageEvents,
   getCurrentUserProfile,
+  getDefaultRouteForRole,
   type UserRole,
 } from "@/lib/user/currentUser";
+import { canViewEventsSubNav } from "@/lib/plannerEventsNav";
 import { readCachedNavRole } from "@/lib/navigationRoleCache";
 import { prepareEventsListEventNavigation } from "@/lib/navigation/prepareMobileDocumentScrollReset";
 import { syncPlannerEventsHiddenFromHistoryClientCaches } from "@/lib/events/plannerEventLifecycleClientSync";
@@ -866,13 +868,27 @@ function EventsPageClientView({
     }
   }, [isCalendarCreateFlow, isPlanner, roleReady]);
 
+  /**
+   * DJ-only accounts have no Events tab, so /events is not a destination for
+   * them — send them to their own workspace entry point instead of rendering a
+   * list with no matching sub-nav tab. Reached only by stale links, history
+   * entries, or a bookmarked URL; "both" is a planner and stays.
+   */
   useEffect(() => {
-    if (!roleReady || isCalendarCreateFlow) {
+    if (!roleReady || canViewEventsSubNav(resolvedRole)) {
+      return;
+    }
+
+    router.replace(getDefaultRouteForRole(resolvedRole));
+  }, [resolvedRole, roleReady, router]);
+
+  useEffect(() => {
+    if (!roleReady || isCalendarCreateFlow || !canViewEventsSubNav(resolvedRole)) {
       return;
     }
 
     loadEvents();
-  }, [roleReady, loadEvents, isCalendarCreateFlow]);
+  }, [resolvedRole, roleReady, loadEvents, isCalendarCreateFlow]);
 
   useEffect(() => {
     if (!roleReady || !isPlanner) {

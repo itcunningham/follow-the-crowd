@@ -8,7 +8,13 @@ import { useNavBadges } from "@/app/components/navigation/NavBadgeProvider";
 import type { NavBadgeCounts } from "@/lib/notifications";
 import { readSupabaseSessionUserIdSync } from "@/lib/auth/sessionUserId";
 import { isMessagesInboxPath } from "@/lib/groupChats";
-import { isPlannerEventsAreaPath } from "@/lib/plannerEventsNav";
+import { canViewEventsSubNav, isPlannerEventsAreaPath } from "@/lib/plannerEventsNav";
+import {
+  formatGigsTabCountAriaCount,
+  formatGigsTabCountDisplay,
+  shouldRenderGigsTabCount,
+} from "@/lib/bookings/gigsTabCountDisplay";
+import { useWorkspaceGigsPendingCount } from "@/lib/navigation/useWorkspaceGigsPendingCount";
 import {
   getCachedNavMessagesCount,
 } from "@/lib/navigationBadgeCache";
@@ -20,7 +26,7 @@ import {
 import {
   readCachedNavigation,
 } from "@/lib/navigationRoleCache";
-import { PROFILE_SETUP_PATH, SETTINGS_PATH } from "@/lib/user/currentUser";
+import { PROFILE_SETUP_PATH, SETTINGS_PATH, type UserRole } from "@/lib/user/currentUser";
 import { useGuardProfile } from "@/app/components/GuardProfileContext";
 import {
   subscribeMobileSoftwareKeyboard,
@@ -49,17 +55,36 @@ type NavItem = {
    * any of them.
    */
   isWorkspaceSelector?: boolean;
+  /** Pending-incoming-gigs count badge (DJ workspace tab only). */
+  showGigsPendingCount?: boolean;
 };
 
-function getNavItems(currentUserId: string | null): NavItem[] {
-  const events: NavItem = {
-    href: "/events",
-    label: "Events",
-    icon: "events",
-    isPrimary: true,
-    isActive: (pathname) => isPlannerEventsAreaPath(pathname),
-    isWorkspaceSelector: true,
-  };
+function getNavItems(currentUserId: string | null, role: UserRole | null): NavItem[] {
+  /**
+   * One workspace-selector item per role, differing only in label and landing
+   * href. DJ-only accounts have no Events tab, so their workspace entry point
+   * is Gigs; every other role keeps Events. `isActive` stays the whole-area
+   * check for both, so the item highlights across Calendar/Gigs/Event Plans and
+   * no-ops when tapped from inside the workspace.
+   */
+  const workspace: NavItem = canViewEventsSubNav(role)
+    ? {
+        href: "/events",
+        label: "Events",
+        icon: "events",
+        isPrimary: true,
+        isActive: (pathname) => isPlannerEventsAreaPath(pathname),
+        isWorkspaceSelector: true,
+      }
+    : {
+        href: "/bookings",
+        label: "Gigs",
+        icon: "gigs",
+        isPrimary: true,
+        isActive: (pathname) => isPlannerEventsAreaPath(pathname),
+        isWorkspaceSelector: true,
+        showGigsPendingCount: true,
+      };
 
   const messages: NavItem = {
     href: "/dm",
@@ -86,7 +111,7 @@ function getNavItems(currentUserId: string | null): NavItem[] {
     isWorkspaceSelector: true,
   };
 
-  return [events, messages, profile];
+  return [workspace, messages, profile];
 }
 
 export { MOBILE_NAV_OFFSET_CLASS } from "@/lib/design/plannerWorkspaceTokens";
@@ -228,6 +253,39 @@ function MobileNavBadge({ count, reserveSpace }: { count: number; reserveSpace?:
   );
 }
 
+/**
+ * Pending-incoming-gigs count on the DJ workspace nav tab. Same numbers and
+ * 99+ cap as the workspace sub-nav Gigs pill and the Gigs Incoming tab (shared
+ * gigsTabCountDisplay formatter). Absolutely positioned like the other nav
+ * badges, so the count appearing, changing width, or clearing never reflows the
+ * tab row; `tabular-nums` keeps 1-, 2- and 3-glyph values the same width.
+ */
+function GigsNavCountBadge({
+  count,
+  variant,
+}: {
+  count: number;
+  variant: "desktop" | "mobile";
+}) {
+  if (!shouldRenderGigsTabCount(count)) {
+    return null;
+  }
+
+  const positionClass =
+    variant === "desktop"
+      ? "right-0 top-0 translate-x-1/3 text-[10px]"
+      : "-right-2 -top-1.5 text-[9px]";
+
+  return (
+    <span
+      aria-label={`${formatGigsTabCountAriaCount(count)} incoming gig${count === 1 ? "" : "s"}`}
+      className={`pointer-events-none absolute ${positionClass} z-10 flex h-4 min-w-4 items-center justify-center rounded-full bg-ftc-primary px-1 font-bold leading-none tabular-nums text-ftc-bg`}
+    >
+      {formatGigsTabCountDisplay(count)}
+    </span>
+  );
+}
+
 function getBadgeCount(item: NavItem, badgeCounts: NavBadgeCounts): number {
   if (!item.badgeKey) {
     return 0;
@@ -244,6 +302,7 @@ function MobileNavTab({
   isWorkspaceSelector,
   badgeCount,
   showBadgeSlot,
+  gigsPendingCount,
 }: {
   href: string;
   label: string;
@@ -252,6 +311,7 @@ function MobileNavTab({
   isWorkspaceSelector: boolean;
   badgeCount: number;
   showBadgeSlot: boolean;
+  gigsPendingCount: number | null;
 }) {
   const router = useRouter();
   const activatedThisGestureRef = useRef(false);
@@ -336,7 +396,11 @@ function MobileNavTab({
     >
       <span className="relative inline-flex items-center justify-center">
         <NavTabIcon icon={icon} active={isActive} />
-        <MobileNavBadge count={badgeCount} reserveSpace={showBadgeSlot} />
+        {gigsPendingCount === null ? (
+          <MobileNavBadge count={badgeCount} reserveSpace={showBadgeSlot} />
+        ) : (
+          <GigsNavCountBadge count={gigsPendingCount} variant="mobile" />
+        )}
       </span>
     </Link>
   );
@@ -353,7 +417,8 @@ export default function AppNavigation() {
 
   const resolvedRole = role;
   const resolvedUserId = currentUserId;
-  const navItems = getNavItems(resolvedUserId);
+  const navItems = getNavItems(resolvedUserId, resolvedRole);
+  const gigsPendingCount = useWorkspaceGigsPendingCount(resolvedUserId, resolvedRole);
   const badgeCacheVersion = useSyncExternalStore(
     subscribeNavigationBadgeListeners,
     getNavigationBadgeCacheVersion,
@@ -434,7 +499,11 @@ export default function AppNavigation() {
                   }}
                 >
                   {item.label}
-                  <NavBadge count={badgeCount} reserveSpace={showBadgeSlot} />
+                  {item.showGigsPendingCount ? (
+                    <GigsNavCountBadge count={gigsPendingCount} variant="desktop" />
+                  ) : (
+                    <NavBadge count={badgeCount} reserveSpace={showBadgeSlot} />
+                  )}
                 </Link>
               );
             })}
@@ -468,6 +537,7 @@ export default function AppNavigation() {
                 isWorkspaceSelector={Boolean(item.isWorkspaceSelector)}
                 badgeCount={badgeCount}
                 showBadgeSlot={showBadgeSlot}
+                gigsPendingCount={item.showGigsPendingCount ? gigsPendingCount : null}
               />
             );
           })}

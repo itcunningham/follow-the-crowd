@@ -68,12 +68,15 @@ const PROFILE_LOCAL_CACHE_KEY = "ftc-user-profile-local";
 
 /**
  * Single source of truth for the default landing destination after login,
- * onboarding, and profile setup. Every role currently lands on the Events
- * workspace — DJs reach Gigs/Calendar as deliberate sub-tabs from there
- * (see lib/plannerEventsNav.ts), never as the initial destination.
+ * onboarding, and profile setup.
+ *
+ * DJ-only accounts have no Events tab — their workspace is Calendar + Gigs
+ * (see canViewEventsSubNav in lib/plannerEventsNav.ts) — so Gigs is both their
+ * workspace entry point and their landing destination. Planner and "both"
+ * accounts still land on Events.
  */
-export function getDefaultRouteForRole(_role: UserRole | null): string {
-  return "/events";
+export function getDefaultRouteForRole(role: UserRole | null): string {
+  return role === "dj" ? "/bookings" : "/events";
 }
 
 export function getDiscoverRetiredRedirectPath(role: UserRole | null): string {

@@ -73,6 +73,8 @@ import { formatRateDisplay } from "@/lib/bookingRate";
 import UnavailableDjBookingConfirmModal from "@/app/components/UnavailableDjBookingConfirmModal";
 import BookingStatusBadge from "@/app/components/booking/BookingStatusBadge";
 import SendBookingRequestsModal from "@/app/components/booking/SendBookingRequestsModal";
+import { canViewEventsSubNav } from "@/lib/plannerEventsNav";
+import { readCachedNavRole } from "@/lib/navigationRoleCache";
 import { useSendBookingRequestsDraft } from "@/app/components/booking/useSendBookingRequestsDraft";
 import { sendBookingRequestsForRecipients } from "@/lib/bookings/sendBookingRequestsFlow";
 import {
@@ -212,9 +214,15 @@ function EventDetailPageView() {
     () => (hasValidEventId ? readCachedEventSummaryById(eventId) : null),
     [eventId, hasValidEventId],
   );
+  const guardProfile = useGuardProfile();
+  const [role, setRole] = useState<UserRole | null>(null);
+  const isDjWorkspace = !canViewEventsSubNav(
+    guardProfile?.role ?? role ?? readCachedNavRole(),
+  );
   const eventsBackHref = useMemo(
     () =>
       resolveEventDetailBackHref(searchParams.get("fromTab"), {
+        isDjWorkspace,
         from: searchParams.get("from"),
         tab: searchParams.get("tab"),
         calendarDate: searchParams.get("calendarDate"),
@@ -227,7 +235,7 @@ function EventDetailPageView() {
         profileUserId: searchParams.get("profileUserId"),
         restoreScroll: searchParams.get(DM_CHAT_SCROLL_RESTORE_PARAM),
       }),
-    [searchParams],
+    [isDjWorkspace, searchParams],
   );
   const calendarOrigin = useMemo(
     () =>
@@ -246,8 +254,6 @@ function EventDetailPageView() {
     router.push(eventsBackHref);
   }
 
-  const guardProfile = useGuardProfile();
-  const [role, setRole] = useState<UserRole | null>(null);
   const eventRef = useRef<Event | null>(cachedEventSummary);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [loadingEvent, setLoadingEvent] = useState(() => !cachedEventSummary);

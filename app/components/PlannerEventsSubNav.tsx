@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import PlannerWorkspaceSubNavLink from "@/app/components/planner/PlannerWorkspaceSubNavLink";
 import { useGuardProfile } from "@/app/components/GuardProfileContext";
@@ -9,8 +9,7 @@ import {
   ensureGigsPendingPrefetched,
 } from "@/lib/navigationBadgePrefetch";
 import { ensureGigsListSnapshotPrefetched } from "@/lib/bookings/gigsListSnapshotPrefetch";
-import { subscribeWorkspaceGigsSubNavBadgeDisplay, readLocalGigsPendingCount, readWorkspaceGigsSubNavDisplayLatch } from "@/lib/navigationBadgeCache";
-import { readWorkspaceGigsBadgeDisplayCountForSubNav } from "@/lib/navigation/resolveWorkspaceGigsPendingDisplayCount";
+import { useWorkspaceGigsPendingCount } from "@/lib/navigation/useWorkspaceGigsPendingCount";
 import {
   canViewGigsSubNav,
   canViewBookingPlansSubNav,
@@ -25,36 +24,6 @@ import { ensureDjGigsCalendarPrefetched } from "@/lib/djGigsCalendarPrefetch";
 import { ensurePlannerCalendarItemsPrefetched } from "@/lib/plannerCalendarPrefetch";
 import { readCachedNavigation, readCachedNavRole } from "@/lib/navigationRoleCache";
 import { getCurrentUserProfile, type UserRole } from "@/lib/user/currentUser";
-
-function useStableWorkspaceGigsSubNavCount(
-  badgeUserId: string | null | undefined,
-  badgeRole: UserRole | null | undefined,
-): number {
-  const readDisplayCount = () =>
-    readWorkspaceGigsBadgeDisplayCountForSubNav(badgeUserId, badgeRole);
-  const rawCount = useSyncExternalStore(
-    subscribeWorkspaceGigsSubNavBadgeDisplay,
-    readDisplayCount,
-    readDisplayCount,
-  );
-  const latchedCount = readWorkspaceGigsSubNavDisplayLatch(badgeUserId, badgeRole) ?? 0;
-  const stableCountRef = useRef(
-    Math.max(latchedCount, rawCount, readDisplayCount()),
-  );
-
-  const localCount = readLocalGigsPendingCount(badgeUserId, badgeRole);
-  if (localCount === 0) {
-    stableCountRef.current = 0;
-    return 0;
-  }
-
-  const nextCount = Math.max(stableCountRef.current, latchedCount, rawCount);
-  if (nextCount > 0) {
-    stableCountRef.current = nextCount;
-  }
-
-  return stableCountRef.current;
-}
 
 export default function PlannerEventsSubNav({
   initialRole = null,
@@ -113,7 +82,7 @@ export default function PlannerEventsSubNav({
   const resolvedUserId = guardProfile?.user_id ?? cachedNavigation.userId;
   const badgeRole = roleForTabVisibility ?? lastKnownRoleRef.current ?? readCachedNavRole();
   const badgeUserId = resolvedUserId ?? cachedNavigation.userId;
-  const displayGigsPendingCount = useStableWorkspaceGigsSubNavCount(badgeUserId, badgeRole);
+  const displayGigsPendingCount = useWorkspaceGigsPendingCount(badgeUserId, badgeRole);
 
   useEffect(() => {
     WORKSPACE_SUB_NAV_TABS.forEach((tab) => {

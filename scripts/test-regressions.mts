@@ -175,6 +175,7 @@ import {
   shouldRenderGigsTabCount,
 } from "../lib/bookings/gigsTabCountDisplay";
 import { resolveWorkspaceGigsPendingDisplayCount, readWorkspaceGigsBadgeDisplayCountForSubNav } from "../lib/navigation/resolveWorkspaceGigsPendingDisplayCount";
+import { applyCancelledEventStatus } from "../lib/bookings/gigsListSnapshotPrefetch";
 import {
   applyPersistedGigsPendingCount,
   clearNavigationBadgeCache,
@@ -2518,15 +2519,22 @@ function testWorkspaceSubNavLayoutIsStable() {
   assert.match(subNavSource, /key=\{tab\.id\}/);
   assert.match(subNavSource, /isWorkspaceSubNavTabVisible/);
   assert.match(subNavSource, /WorkspaceGigsPendingBadge/);
-  assert.match(subNavSource, /readWorkspaceGigsBadgeDisplayCountForSubNav/);
-  assert.match(subNavSource, /subscribeWorkspaceGigsSubNavBadgeDisplay/);
-  assert.match(subNavSource, /useStableWorkspaceGigsSubNavCount/);
+  // The count stabilisation moved into a shared hook when the DJ main-nav Gigs
+  // tab began showing the same number; the sub-nav consumes it rather than
+  // keeping its own copy.
+  const gigsCountHookSource = readFileSync(
+    new URL("../lib/navigation/useWorkspaceGigsPendingCount.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(subNavSource, /useWorkspaceGigsPendingCount/);
+  assert.match(gigsCountHookSource, /readWorkspaceGigsBadgeDisplayCountForSubNav/);
+  assert.match(gigsCountHookSource, /subscribeWorkspaceGigsSubNavBadgeDisplay/);
   const badgeCacheSource = readFileSync(
     new URL("../lib/navigationBadgeCache.ts", import.meta.url),
     "utf8",
   );
   assert.match(badgeCacheSource, /ftc-workspace-gigs-subnav-latch/);
-  assert.match(subNavSource, /useSyncExternalStore/);
+  assert.match(gigsCountHookSource, /useSyncExternalStore/);
   assert.match(subNavSource, /badgeRole/);
   assert.doesNotMatch(subNavSource, /reserveSpace/);
   assert.doesNotMatch(subNavSource, /opacity-0[\s\S]*99\+/);
@@ -2557,7 +2565,8 @@ function testWorkspaceSubNavLayoutIsStable() {
     /ftc-workspace-subnav-pill/,
   );
   assert.equal(getEventsAreaSubNavItems("promoter").map((item) => item.href).join(","), "/events,/booking-plans,/calendar");
-  assert.equal(getEventsAreaSubNavItems("dj").map((item) => item.href).join(","), "/events,/calendar,/bookings");
+  // DJ-only workspace is Calendar + Gigs -- Events is a planner surface.
+  assert.equal(getEventsAreaSubNavItems("dj").map((item) => item.href).join(","), "/calendar,/bookings");
   assert.equal(
     getEventsAreaSubNavItems("both").map((item) => item.href).join(","),
     "/events,/booking-plans,/calendar,/bookings",
@@ -4167,7 +4176,9 @@ function testGigsIncomingEventArtwork() {
   );
 
   assert.match(prefetchSource, /getEventArtworkByIds/);
-  assert.match(prefetchSource, /loadGigsEventArtwork/);
+  // Renamed from loadGigsEventArtwork when it also began reading event status
+  // for cancelled-gig detection; it still owns the artwork fetch.
+  assert.match(prefetchSource, /loadGigsEventLookup/);
   assert.match(prefetchSource, /mergeGigsEventArtwork/);
   assert.match(cacheSource, /mergeGigsEventArtwork/);
   assert.match(pageSource, /setEventArtworkById\(snapshot\.eventArtworkById\)/);
@@ -8602,7 +8613,7 @@ function testAppSplashScreenSlogan() {
   );
 }
 
-function testMainNavAlwaysTargetsEventsWorkspace() {
+function testRoleAwareWorkspaceNavigation() {
   const currentUserSource = readFileSync(
     new URL("../lib/user/currentUser.ts", import.meta.url),
     "utf8",
@@ -8623,61 +8634,211 @@ function testMainNavAlwaysTargetsEventsWorkspace() {
     new URL("../lib/plannerEventsNav.ts", import.meta.url),
     "utf8",
   );
-
-  // getDefaultRouteForRole is the single shared "default workspace" resolver used by
-  // post-login redirect (getPostAuthRedirectPath), onboarding completion, profile-setup
-  // completion, and several guard fallbacks. A prior fix mistakenly special-cased DJs to
-  // "/bookings" (Gigs) -- that made DJs land on Gigs immediately after login, and made the
-  // bottom-left main nav open Gigs instead of Events from Messages/Profile. Every role must
-  // resolve to the same "/events" destination: there is exactly one return statement, no
-  // per-role branching.
-  assert.match(
-    currentUserSource,
-    /export function getDefaultRouteForRole\(_role: UserRole \| null\): string \{\s*return "\/events";\s*\}/,
-  );
-  assert.doesNotMatch(currentUserSource, /getDefaultRouteForRole[\s\S]{0,120}"\/dm"/);
-  assert.doesNotMatch(currentUserSource, /getDefaultRouteForRole[\s\S]{0,120}"\/bookings"/);
-
-  // getPostAuthRedirectPath (the actual post-login call site) still delegates to
-  // getDefaultRouteForRole rather than hardcoding a redirect.
-  assert.match(
-    currentUserSource,
-    /export async function getPostAuthRedirectPath[\s\S]{0,400}return getDefaultRouteForRole\(profile\?\.role \?\? null\);/,
+  const eventsPageSource = readFileSync(
+    new URL("../app/(planner-workspace)/events/EventsPageClient.tsx", import.meta.url),
+    "utf8",
   );
 
-  // AppNavigation gives every role the exact same bottom-left "Events" workspace-selector
-  // item -- there is no separate DJ-only "Gigs" nav item, and no role branching in
-  // getNavItems at all. isPlannerEventsAreaPath (Events/Event Plans/Calendar/Gigs) is the
-  // item's isActive check, so tapping it while on any of those sub-pages is a workspace
-  // no-op, but tapping it from Messages or Profile (neither of which satisfy
-  // isPlannerEventsAreaPath) always navigates to /events.
-  assert.match(appNavigationSource, /function getNavItems\(currentUserId: string \| null\)/);
-  assert.match(appNavigationSource, /return \[events, messages, profile\];/);
-  assert.doesNotMatch(appNavigationSource, /\bconst gigs: NavItem/);
-  assert.doesNotMatch(appNavigationSource, /isGigsAreaPath/);
+  // Events is a planner surface. A DJ-only workspace is Calendar + Gigs; "both"
+  // is a planner too and keeps everything. Role null (unresolved, e.g. a hard
+  // refresh before the profile lands) keeps showing Events rather than flashing
+  // it away.
+  assert.equal(getEventsAreaSubNavItems("dj").map((item) => item.href).join(","), "/calendar,/bookings");
+  assert.equal(
+    getEventsAreaSubNavItems("both").map((item) => item.href).join(","),
+    "/events,/booking-plans,/calendar,/bookings",
+  );
+  assert.equal(
+    getEventsAreaSubNavItems("promoter").map((item) => item.href).join(","),
+    "/events,/booking-plans,/calendar",
+  );
   assert.match(
-    appNavigationSource,
-    /href: "\/events"[\s\S]{0,120}isActive: \(pathname\) => isPlannerEventsAreaPath\(pathname\)[\s\S]{0,40}isWorkspaceSelector: true/,
+    plannerEventsNavSource,
+    /export function canViewEventsSubNav\(role: UserRole \| null\): boolean \{\s*return role !== "dj";\s*\}/,
   );
 
-  // Gigs remains reachable -- but only as a deliberately-tapped sub-tab inside the Events
-  // workspace, gated the same way it always was (dj/both), never as a bottom-nav item or a
-  // post-login destination.
+  // Gigs gating is unchanged.
   assert.match(plannerEventsNavSource, /gigs: \{ href: "\/bookings", label: "Gigs" \}/);
   assert.match(
     plannerEventsNavSource,
     /export function canViewGigsSubNav\(role: UserRole \| null\): boolean \{\s*return role === "dj" \|\| role === "both";\s*\}/,
   );
 
-  // Back-navigation labels that mirror this same default must stay in sync with the
-  // corrected href -- both now unconditionally say "Back to Events" (no dead per-role
-  // branch producing a label that no longer matches where the href actually goes).
-  assert.match(profileNavigationSource, /const fallbackLabel = "Back to Events";/);
-  assert.doesNotMatch(profileNavigationSource, /Back to Gigs/);
+  // The shared default-workspace resolver (post-login, onboarding, profile
+  // setup, guard fallbacks) sends DJs to Gigs -- their workspace entry point --
+  // and everyone else to Events. It must never resolve to Messages again.
+  assert.match(
+    currentUserSource,
+    /export function getDefaultRouteForRole\(role: UserRole \| null\): string \{\s*return role === "dj" \? "\/bookings" : "\/events";\s*\}/,
+  );
+  assert.doesNotMatch(currentUserSource, /getDefaultRouteForRole[\s\S]{0,160}"\/dm"/);
+  assert.match(
+    currentUserSource,
+    /export async function getPostAuthRedirectPath[\s\S]{0,400}return getDefaultRouteForRole\(profile\?\.role \?\? null\);/,
+  );
+
+  // One workspace-selector nav item, role-selected. Both variants use the
+  // whole-area isActive check, so the tab highlights across the workspace and
+  // no-ops when tapped from inside it; tapping from Messages/Profile navigates.
+  assert.match(
+    appNavigationSource,
+    /function getNavItems\(currentUserId: string \| null, role: UserRole \| null\)/,
+  );
+  assert.match(appNavigationSource, /return \[workspace, messages, profile\];/);
+  assert.match(appNavigationSource, /const workspace: NavItem = canViewEventsSubNav\(role\)/);
+  assert.match(
+    appNavigationSource,
+    /href: "\/events"[\s\S]{0,140}isActive: \(pathname\) => isPlannerEventsAreaPath\(pathname\)[\s\S]{0,60}isWorkspaceSelector: true/,
+  );
+  assert.match(
+    appNavigationSource,
+    /href: "\/bookings"[\s\S]{0,140}isActive: \(pathname\) => isPlannerEventsAreaPath\(pathname\)[\s\S]{0,60}isWorkspaceSelector: true/,
+  );
+  assert.doesNotMatch(appNavigationSource, /isGigsAreaPath/);
+
+  // /events is not a DJ destination any more, so a stale link or history entry
+  // lands them in their own workspace instead of an orphaned list.
+  assert.match(eventsPageSource, /if \(!roleReady \|\| canViewEventsSubNav\(resolvedRole\)\) \{\s*return;\s*\}/);
+  assert.match(eventsPageSource, /router\.replace\(getDefaultRouteForRole\(resolvedRole\)\)/);
+
+  // Back-navigation labels track where the href actually goes.
+  assert.match(
+    profileNavigationSource,
+    /const fallbackLabel = role === "dj" \? "Back to Gigs" : "Back to Events";/,
+  );
+  assert.match(profileSetupSource, /return role === "dj" \? "Back to Gigs" : "Back to Events";/);
   assert.doesNotMatch(profileNavigationSource, /Back to Messages/);
-  assert.match(profileSetupSource, /return "Back to Events";/);
-  assert.doesNotMatch(profileSetupSource, /Back to Gigs/);
   assert.doesNotMatch(profileSetupSource, /Back to Messages/);
+}
+
+/**
+ * Removing the DJ Events tab must not take a cancelled gig with it.
+ *
+ * `cancel_event` (scripts/updateEventCancellationCancelsBookings.sql) only
+ * cancels *pending* booking_requests, so after a planner cancels an event the
+ * DJ's accepted booking still reads `status = 'accepted'`. The gigs list reads
+ * booking_requests alone, so it used to keep that gig under Confirmed as though
+ * it were still going ahead -- the DJ Events tab, which reads the event's own
+ * status, was the only place the cancellation showed up in a list.
+ *
+ * The gigs snapshot now presents accepted bookings on cancelled events as
+ * cancelled, which routes them to History and out of the Confirmed count
+ * through the existing filters. Pending bookings are left alone: the database
+ * already cancels those, and re-deriving them here would change what Incoming
+ * means.
+ */
+function testCancelledEventGigsAreSurfacedInGigs() {
+  const base: BookingRequest = {
+    id: "booking-1",
+    created_at: "2026-07-06T10:00:00.000Z",
+    sender_id: "planner-1",
+    recipient_id: "dj-1",
+    conversation_id: "conversation-1",
+    event_id: "event-1",
+    event_name: "Summer party",
+    venue: "Venue",
+    event_date: "Saturday, 12 July 2099",
+    set_time: "9:00 PM",
+    fee: "500",
+    notes: "",
+    status: "accepted",
+    archived_at: null,
+    lineup_hidden_at: null,
+    cancelled_at: null,
+    cancelled_by: null,
+    cancellation_reason: null,
+    rate_mode: "fixed",
+    proposed_rate: null,
+    proposed_rate_note: null,
+    proposed_rate_at: null,
+    proposed_rate_status: null,
+  };
+  const otherEvent: BookingRequest = { ...base, id: "booking-2", event_id: "event-2" };
+  const pendingOnCancelled: BookingRequest = {
+    ...base,
+    id: "booking-3",
+    status: "pending",
+  };
+
+  const received = [base, otherEvent, pendingOnCancelled];
+  const cancelled = new Set(["event-1"]);
+  const applied = applyCancelledEventStatus(received, cancelled);
+
+  // Accepted booking on the cancelled event is presented as cancelled; the
+  // accepted booking on a live event and the pending one are untouched.
+  assert.equal(applied[0].status, "cancelled");
+  assert.equal(applied[1].status, "accepted");
+  assert.equal(applied[2].status, "pending");
+
+  // No cancelled events means the original array is handed straight back.
+  assert.equal(applyCancelledEventStatus(received, new Set()), received);
+
+  // It lands where a DJ can still reach it: History, not Confirmed.
+  const counts = countDjGigsByTab(applied);
+  assert.equal(counts.accepted, 1);
+  assert.equal(counts.history, 1);
+  assert.equal(counts.pending, 1);
+  assert.equal(
+    filterDjGigsByTab(applied, "history").map((booking) => booking.id).join(","),
+    "booking-1",
+  );
+  assert.equal(
+    filterDjGigsByTab(applied, "accepted").map((booking) => booking.id).join(","),
+    "booking-2",
+  );
+
+  // The event rows are already fetched for cover artwork, so this costs no
+  // extra request -- the status simply stops being discarded.
+  const prefetchSource = readFileSync(
+    new URL("../lib/bookings/gigsListSnapshotPrefetch.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(prefetchSource, /artwork\.status === "cancelled"/);
+  assert.match(prefetchSource, /applyCancelledEventStatus\(received, eventLookup\.cancelledEventIds\)/);
+  assert.equal((prefetchSource.match(/getEventArtworkByIds\(/g) ?? []).length, 1);
+}
+
+/**
+ * The DJ main-nav Gigs tab shows the pending-incoming count.
+ *
+ * It must be the same number as the Gigs Incoming tab and the workspace sub-nav
+ * pill -- all three read countDjGigsByTab(...).pending through the shared
+ * stabilised hook and the shared gigsTabCountDisplay formatter, so 0 hides the
+ * badge, 1-99 shows the value, and anything above 99 shows "99+".
+ */
+function testDjMainNavGigsCountBadge() {
+  const appNavigationSource = readFileSync(
+    new URL("../app/components/AppNavigation.tsx", import.meta.url),
+    "utf8",
+  );
+
+  // Shared formatter, not a second copy of the capping rules.
+  assert.match(appNavigationSource, /formatGigsTabCountDisplay/);
+  assert.match(appNavigationSource, /formatGigsTabCountAriaCount/);
+  assert.match(appNavigationSource, /shouldRenderGigsTabCount/);
+  assert.equal(formatGigsTabCountDisplay(0), null);
+  assert.equal(formatGigsTabCountDisplay(1), "1");
+  assert.equal(formatGigsTabCountDisplay(2), "2");
+  assert.equal(formatGigsTabCountDisplay(99), "99");
+  assert.equal(formatGigsTabCountDisplay(100), "99+");
+  assert.equal(formatGigsTabCountAriaCount(100), "more than 99");
+
+  // Same stabilised source as the workspace sub-nav pill.
+  assert.match(appNavigationSource, /useWorkspaceGigsPendingCount/);
+
+  // Only the DJ workspace tab carries it.
+  assert.match(appNavigationSource, /showGigsPendingCount: true/);
+  assert.equal((appNavigationSource.match(/showGigsPendingCount: true/g) ?? []).length, 1);
+
+  // Absolutely positioned, so appearing/changing width/clearing never reflows
+  // the tab row, and tabular-nums keeps digits the same width.
+  const badgeSource = appNavigationSource.slice(
+    appNavigationSource.indexOf("function GigsNavCountBadge"),
+    appNavigationSource.indexOf("function getBadgeCount"),
+  );
+  assert.match(badgeSource, /pointer-events-none absolute/);
+  assert.match(badgeSource, /tabular-nums/);
+  assert.match(badgeSource, /aria-label=\{`\$\{formatGigsTabCountAriaCount\(count\)\} incoming gig/);
 }
 
 /**
@@ -9028,7 +9189,9 @@ async function main() {
   testLoginScreenPolish();
   testEventNotesTextareaScrollsWhenContentExceedsCap();
   testAppSplashScreenSlogan();
-  testMainNavAlwaysTargetsEventsWorkspace();
+  testRoleAwareWorkspaceNavigation();
+  testCancelledEventGigsAreSurfacedInGigs();
+  testDjMainNavGigsCountBadge();
   testEventPlansSendPanelReusesSharedConfirmUi();
   testBookingRateModeDescriptionsAreUnified();
   await testEventsHistorySelectAllButtonInteraction();

@@ -46,6 +46,10 @@ export function isWorkspaceSubNavTabVisible(
     return true;
   }
 
+  if (tabId === "events") {
+    return canViewEventsSubNav(role);
+  }
+
   if (tabId === "bookingPlans") {
     return canViewBookingPlansSubNav(role);
   }
@@ -65,6 +69,16 @@ export const PLANNER_EVENTS_SUB_NAV: EventsAreaSubNavItem[] = [
   EVENTS_AREA_SUB_NAV.gigs,
 ];
 
+/**
+ * Events is a planner surface: it lists events the account owns and manages.
+ * A DJ-only account has no events of its own — everything it needs about an
+ * event it is booked on (status, rate, details, DM) lives in Gigs, so the DJ
+ * workspace is Calendar + Gigs. "Both" keeps Events, being a planner too.
+ */
+export function canViewEventsSubNav(role: UserRole | null): boolean {
+  return role !== "dj";
+}
+
 export function canViewGigsSubNav(role: UserRole | null): boolean {
   return role === "dj" || role === "both";
 }
@@ -74,7 +88,11 @@ export function canViewBookingPlansSubNav(role: UserRole | null): boolean {
 }
 
 export function getEventsAreaSubNavItems(role: UserRole | null): EventsAreaSubNavItem[] {
-  const items: EventsAreaSubNavItem[] = [EVENTS_AREA_SUB_NAV.events];
+  const items: EventsAreaSubNavItem[] = [];
+
+  if (canViewEventsSubNav(role)) {
+    items.push(EVENTS_AREA_SUB_NAV.events);
+  }
 
   if (canViewBookingPlansSubNav(role)) {
     items.push(EVENTS_AREA_SUB_NAV.bookingPlans);

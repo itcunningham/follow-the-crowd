@@ -231,6 +231,12 @@ export function resolveEventDetailBackHref(
     dmReturnFrom?: string | null;
     profileUserId?: string | null;
     restoreScroll?: string | null;
+    /**
+     * DJ-only accounts have no Events tab, so the no-origin fallback (a
+     * notification or DM deep link carrying no `from`/`fromTab`) must land on
+     * Gigs rather than a screen their workspace no longer has.
+     */
+    isDjWorkspace?: boolean;
   },
 ): string {
   const dmConversationId = resolveDmEventDetailConversationId(options);
@@ -279,7 +285,7 @@ export function resolveEventDetailBackHref(
     }
   }
 
-  if (options?.from === "bookings") {
+  if (options?.from === "bookings" || options?.isDjWorkspace) {
     return buildGigsListHref(parseDjGigsListTab(options.tab ?? fromTab));
   }
 
