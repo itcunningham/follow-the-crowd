@@ -177,6 +177,12 @@ import {
 import { resolveWorkspaceGigsPendingDisplayCount, readWorkspaceGigsBadgeDisplayCountForSubNav, resolveStableGigsPendingCount } from "../lib/navigation/resolveWorkspaceGigsPendingDisplayCount";
 import { applyCancelledEventStatus } from "../lib/bookings/gigsListSnapshotPrefetch";
 import {
+  hasUnsavedRunSheetEdits,
+  moveRunSheetRow,
+  reorderRunSheetRows,
+  type RunSheetRowInput,
+} from "../lib/eventRunSheet";
+import {
   applyPersistedGigsPendingCount,
   clearNavigationBadgeCache,
   clearWorkspaceGigsDisplaySession,
@@ -8657,6 +8663,107 @@ function testLoginScreenPolish() {
  * neither half can reintroduce it, and that touch scrolling at either end of
  * the field doesn't chain to the page behind it.
  */
+/**
+ * Run Sheet save UX: the Save button appears only when there is something to
+ * save, and the confirmation is the shared top notification rather than a
+ * message parked inside the card.
+ *
+ * The dirty check is a signature of everything a planner can change — which
+ * DJs are on the sheet, the order they run in, and each row's editable fields.
+ * `sort_order` is excluded on purpose: `reorderRunSheetRows` derives it from
+ * array position, so including it would only restate the order.
+ */
+function testRunSheetDirtyStateAndSaveFeedback() {
+  const row = (id: string, overrides: Partial<RunSheetRowInput> = {}): RunSheetRowInput => ({
+    id,
+    sort_order: 0,
+    artist_name: `DJ ${id}`,
+    start_time: "9:00 PM",
+    finish_time: "10:00 PM",
+    stage_area: "Main",
+    notes: "",
+    booking_request_id: `br-${id}`,
+    booking_recipient_id: `u-${id}`,
+    ...overrides,
+  });
+
+  const saved = reorderRunSheetRows([row("a"), row("b")]);
+
+  assert.equal(hasUnsavedRunSheetEdits(saved, saved), false);
+  assert.equal(hasUnsavedRunSheetEdits(saved, [...saved]), false, "a fresh array of the same rows is clean");
+
+  for (const patch of [
+    { stage_area: "Terrace" },
+    { notes: "b2b set" },
+    { start_time: "10:00 PM" },
+    { finish_time: "11:30 PM" },
+    { artist_name: "Renamed" },
+  ]) {
+    const next = saved.map((current, index) => (index === 0 ? { ...current, ...patch } : current));
+    assert.equal(
+      hasUnsavedRunSheetEdits(saved, next),
+      true,
+      `editing ${Object.keys(patch)[0]} must show the Save button`,
+    );
+  }
+
+  assert.equal(hasUnsavedRunSheetEdits(saved, moveRunSheetRow(saved, "b", "up")), true, "reorder is a change");
+  assert.equal(
+    hasUnsavedRunSheetEdits(saved, reorderRunSheetRows([...saved, row("c")])),
+    true,
+    "DJ added is a change",
+  );
+  assert.equal(
+    hasUnsavedRunSheetEdits(saved, reorderRunSheetRows([saved[0]])),
+    true,
+    "DJ removed is a change",
+  );
+  assert.equal(
+    hasUnsavedRunSheetEdits(saved, saved.map((current) => ({ ...current, sort_order: current.sort_order + 10 }))),
+    false,
+    "sort_order is derived from position, not an edit of its own",
+  );
+
+  // Saving rebases the baseline, which is what hides the button again.
+  const edited = saved.map((current, index) => (index === 0 ? { ...current, notes: "x" } : current));
+  assert.equal(hasUnsavedRunSheetEdits(saved, edited), true);
+  assert.equal(hasUnsavedRunSheetEdits(edited, edited), false);
+
+  const sectionSource = readFileSync(
+    new URL("../app/components/EventRunSheetSection.tsx", import.meta.url),
+    "utf8",
+  );
+  const eventDetailSource = readFileSync(
+    new URL("../app/events/[eventId]/page.tsx", import.meta.url),
+    "utf8",
+  );
+
+  // Button is hidden, not disabled, when there is nothing to save. It stays up
+  // while saving so the in-flight label remains visible.
+  assert.match(
+    sectionSource,
+    /canEdit && rows\.length > 0 && \(hasUnsavedChanges \|\| saving\) \?/,
+  );
+  assert.match(sectionSource, /hasUnsavedRunSheetEdits\(savedRows, rows\)/);
+  // Baseline is rebased on save, which clears the dirty state.
+  assert.match(sectionSource, /setSavedRows\(persistedRows\)/);
+
+  // No success message left inside the card; the shared top notification owns it.
+  assert.doesNotMatch(sectionSource, /setSuccessMessage/);
+  assert.doesNotMatch(sectionSource, /successMessage \?/);
+  assert.match(sectionSource, /onSaved\?\.\("Run sheet saved"\)/);
+  assert.match(eventDetailSource, /onSaved=\{setHeaderFeedbackMessage\}/);
+
+  // setHeaderFeedbackMessage is the same channel "Event updated" uses, so it
+  // inherits that styling, animation and timed fade.
+  assert.match(eventDetailSource, /setHeaderFeedbackMessage\([\s\S]{0,240}EVENT_UPDATED_SUCCESS_MESSAGE/);
+  assert.match(eventDetailSource, /useInlineTabFeedbackDismiss\(\s*headerFeedbackMessage/);
+  assert.match(
+    eventDetailSource,
+    /useSyncPlannerTitleFeedback\(headerFeedbackMessage, headerFeedbackFading, true\)/,
+  );
+}
+
 function testEventNotesTextareaScrollsWhenContentExceedsCap() {
   const globalsSource = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
   const autoGrowSource = readFileSync(
@@ -9400,6 +9507,7 @@ async function main() {
   testQaEnvironmentResetScript();
   testLoginScreenPolish();
   testEventNotesTextareaScrollsWhenContentExceedsCap();
+  testRunSheetDirtyStateAndSaveFeedback();
   testAppSplashScreenSlogan();
   testRoleAwareWorkspaceNavigation();
   testCancelledEventGigsAreSurfacedInGigs();
