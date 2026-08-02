@@ -8680,6 +8680,44 @@ function testMainNavAlwaysTargetsEventsWorkspace() {
   assert.doesNotMatch(profileSetupSource, /Back to Messages/);
 }
 
+/**
+ * Locks in the same "Send Requests"/"Summary" copy fix already applied to
+ * SendBookingRequestsPanel.tsx (commit bf0dd9e) for the *separate*, hardcoded
+ * implementation of the identical confirmation UI in the Event Plans "Use
+ * Plan" flow (bookings/page.tsx). That earlier fix only updated the shared
+ * component; this page never reused it and had its own independent
+ * "Send summary" heading and dynamic "Confirm N DJs" button text, which is
+ * exactly why the live production app (Event Plans, not Create Event) still
+ * showed the old copy after bf0dd9e/252e94e shipped -- confirmed by fetching
+ * the deployed JS chunks from follow-the-crowd.vercel.app directly: the
+ * SendBookingRequestsPanel copy was already correct in production, but
+ * "Send summary" and a literal "Confirm ${n} DJ" template were still present
+ * because bookings/page.tsx's build was never touched. Two independent
+ * implementations of the same UI is a pre-existing design-system gap (noted
+ * for a future shared-component consolidation), not something this fix
+ * refactors -- only the copy in the actual duplicated component is corrected
+ * here, matching the original task's scope exactly.
+ */
+function testEventPlansSendPanelCopyMatchesSendBookingRequestsPanel() {
+  const bookingsPageSource = readFileSync(
+    new URL("../app/(planner-workspace)/bookings/page.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.doesNotMatch(bookingsPageSource, /Send summary/);
+  assert.match(bookingsPageSource, /\s+Summary\s*\n\s*<\/p>/);
+
+  assert.doesNotMatch(bookingsPageSource, /Confirm \$\{sendableSelectedDjIds\.length\}/);
+  assert.match(
+    bookingsPageSource,
+    /: allSelectedAreDuplicates\s*\n\s*\? "No new DJs to confirm"\s*\n\s*: "Send Requests"/,
+  );
+
+  // Unrelated states in the same button (loading, all-duplicates) are untouched.
+  assert.match(bookingsPageSource, /\? "Confirming"/);
+  assert.match(bookingsPageSource, /"No new DJs to confirm"/);
+}
+
 async function main() {
   testPastEventDatesAreBlocked();
   testFutureEventDatesAreAllowed();
@@ -8875,6 +8913,7 @@ async function main() {
   testEventNotesTextareaScrollsWhenContentExceedsCap();
   testAppSplashScreenSlogan();
   testMainNavAlwaysTargetsEventsWorkspace();
+  testEventPlansSendPanelCopyMatchesSendBookingRequestsPanel();
   await testEventsHistorySelectAllButtonInteraction();
   await testEventsHistoryRemoveConfirmInteraction();
   await testDmChatReopenScroll();

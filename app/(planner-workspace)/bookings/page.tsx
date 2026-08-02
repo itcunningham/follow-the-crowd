@@ -2086,7 +2086,7 @@ function BookingsPageContent() {
                   {sendOfferSummary.length > 0 ? (
                     <div className="rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated p-4">
                       <p className="text-xs font-semibold uppercase tracking-wide text-ftc-text-muted">
-                        Send summary
+                        Summary
                       </p>
                       <ul className="mt-3 space-y-2">
                         {sendOfferSummary.map((item) => (
@@ -2135,7 +2135,7 @@ function BookingsPageContent() {
                         ? "Confirming"
                         : allSelectedAreDuplicates
                           ? "No new DJs to confirm"
-                          : `Confirm ${sendableSelectedDjIds.length} DJ${sendableSelectedDjIds.length === 1 ? "" : "s"}`}
+                          : "Send Requests"}
                     </button>
                   </div>
                 </div>
