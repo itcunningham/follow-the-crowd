@@ -46,28 +46,12 @@ import { rateDigitsToInteger } from "@/lib/bookingRate";
 import { formatBookingCardEventDate } from "@/lib/bookingDateTime";
 import { buildEventDetailFromDmHref } from "@/lib/events/eventsListNavigation";
 import type { DmThreadEntryContext } from "@/lib/dm/threadNavigation";
-import { DM_BOOKING_CARD_REQUEST_ID_ATTR } from "@/lib/dm/dmBookingCardExpandScroll";
+import {
+  DM_BOOKING_CARD_EXPAND_PANEL_ATTR,
+  DM_BOOKING_CARD_REQUEST_ID_ATTR,
+} from "@/lib/dm/dmBookingCardExpandScroll";
 import type { BookingRecipientProfile } from "@/lib/user/currentUser";
-
-function BookingCardAnimatedExpand({
-  open,
-  children,
-}: {
-  open: boolean;
-  children: ReactNode;
-}) {
-  return (
-    <div
-      data-dm-booking-card-expand-panel
-      className={`grid min-h-0 transition-[grid-template-rows,opacity] duration-200 ease-out motion-reduce:transition-none ${
-        open ? "opacity-100" : "opacity-0"
-      }`}
-      style={{ gridTemplateRows: open ? "1fr" : "0fr" }}
-    >
-      <div className={open ? "min-h-0 overflow-x-hidden" : "min-h-0 overflow-hidden"}>{children}</div>
-    </div>
-  );
-}
+import AnimatedExpandPanel from "@/app/components/AnimatedExpandPanel";
 
 export default function BookingRequestCard({
   booking,
@@ -541,9 +525,9 @@ export default function BookingRequestCard({
             </>
           )}
 
-          <BookingCardAnimatedExpand open={expanded}>
+          <AnimatedExpandPanel open={expanded} dataAttribute={DM_BOOKING_CARD_EXPAND_PANEL_ATTR}>
             <div className={expanded ? "mt-3" : ""}>{renderExpandedBody()}</div>
-          </BookingCardAnimatedExpand>
+          </AnimatedExpandPanel>
         </div>
 
         <ProposeBookingRateSheet

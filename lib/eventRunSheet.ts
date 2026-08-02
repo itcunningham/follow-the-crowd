@@ -257,6 +257,54 @@ export function mergeAcceptedDjsIntoRunSheetRows(
   };
 }
 
+/**
+ * "Set 1" / "Set 2" labels for a DJ that holds more than one Run Sheet entry.
+ * A DJ with exactly one entry gets `null`: the label exists only to
+ * disambiguate which of a DJ's several entries this is, so it must not
+ * appear when there is nothing to disambiguate.
+ *
+ * Grouped the same way `mergeAcceptedDjsIntoRunSheetRows` matches a row to a
+ * booking: by resolved profile id first, falling back to the typed artist
+ * name for legacy/unassigned rows -- two rows for the same person should
+ * group even if one was added before the other had a linked booking.
+ * Numbering follows the rows' own array order (the run sheet's actual
+ * running order), not proximity, so a DJ's sets stay correctly numbered even
+ * if another DJ's entry sits between them.
+ */
+export function computeRunSheetSetLabels(
+  rows: RunSheetRowInput[],
+  lineup: BookingRequest[],
+  profiles: Map<string, BookingRecipientProfile>,
+): Map<string, string | null> {
+  const keyOf = (row: RunSheetRowInput) => {
+    const dj = resolveRunSheetRowDjDisplay(row, lineup, profiles);
+    return dj.profileId ?? (dj.displayName.trim().toLowerCase() || `row:${row.id}`);
+  };
+
+  const totalByKey = new Map<string, number>();
+  for (const row of rows) {
+    const key = keyOf(row);
+    totalByKey.set(key, (totalByKey.get(key) ?? 0) + 1);
+  }
+
+  const seenByKey = new Map<string, number>();
+  const labels = new Map<string, string | null>();
+  for (const row of rows) {
+    const key = keyOf(row);
+
+    if ((totalByKey.get(key) ?? 1) <= 1) {
+      labels.set(row.id!, null);
+      continue;
+    }
+
+    const setNumber = (seenByKey.get(key) ?? 0) + 1;
+    seenByKey.set(key, setNumber);
+    labels.set(row.id!, `Set ${setNumber}`);
+  }
+
+  return labels;
+}
+
 export async function loadEventRunSheet(eventId: string): Promise<EventRunSheetData> {
   const { data, error } = await supabase
     .from("event_run_sheet_rows")

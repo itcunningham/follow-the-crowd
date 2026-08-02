@@ -177,6 +177,7 @@ import {
 import { resolveWorkspaceGigsPendingDisplayCount, readWorkspaceGigsBadgeDisplayCountForSubNav, resolveStableGigsPendingCount } from "../lib/navigation/resolveWorkspaceGigsPendingDisplayCount";
 import { applyCancelledEventStatus } from "../lib/bookings/gigsListSnapshotPrefetch";
 import {
+  computeRunSheetSetLabels,
   hasUnsavedRunSheetEdits,
   moveRunSheetRow,
   reorderRunSheetRows,
@@ -4864,10 +4865,26 @@ function testWithdrawalOtherReasonInputLimits() {
     readFileSync(new URL("../app/components/booking/DmBookingCardLayout.tsx", import.meta.url), "utf8"),
     /min-w-0 w-full max-w-full overflow-hidden/,
   );
-  assert.match(
-    readFileSync(new URL("../app/components/BookingRequestCard.tsx", import.meta.url), "utf8"),
-    /overflow-x-hidden/,
-  );
+  {
+    const bookingRequestCardSource = readFileSync(
+      new URL("../app/components/BookingRequestCard.tsx", import.meta.url),
+      "utf8",
+    );
+    // The card-expand panel's `overflow-x-hidden` (what stops the panel's
+    // grid track being forced wide by long unbroken content while it's
+    // animating open) now lives in the shared `AnimatedExpandPanel`, reused
+    // by the Run Sheet's per-row accordion -- so this checks that it's wired
+    // in here, not that the string is typed out again in this file.
+    assert.match(bookingRequestCardSource, /AnimatedExpandPanel/);
+    assert.doesNotMatch(bookingRequestCardSource, /overflow-x-hidden/);
+    assert.match(
+      readFileSync(
+        new URL("../app/components/AnimatedExpandPanel.tsx", import.meta.url),
+        "utf8",
+      ),
+      /overflow-x-hidden/,
+    );
+  }
   assert.match(
     readFileSync(new URL("../app/globals.css", import.meta.url), "utf8"),
     /\.ftc-dm-booking-cancellation-reason-text[\s\S]*line-clamp: 3/,
@@ -8878,15 +8895,13 @@ function testRunSheetTextareasArePinnedToTheirRowCounts() {
   assert.doesNotMatch(notesClass, /min-h-\[/);
   assert.doesNotMatch(notesClass, /leading-/);
 
-  // BOTH read-only cells are capped by the same pair as their editable
-  // counterpart, driven by a `rows` prop rather than a per-field boolean. This
-  // is the half the earlier fixes kept missing: every one of them changed the
-  // textarea, so a cap only ever existed for viewers who could edit. Accepted
-  // crew, and the planner on a history event, got an unpinned div for both
-  // fields -- Notes grew to fit 500 characters (~6 rows on a phone) and
-  // stretched the card; Stage / Area, despite its 50-character cap, could
-  // still overflow the card horizontally on a single long unbroken token,
-  // because a cap on explicit line count does nothing to stop wrapping.
+  // The read-only Stage / Area cell is capped by the same pair as its
+  // editable counterpart. This is the half earlier fixes kept missing: every
+  // one of them changed the textarea, so a cap only ever existed for viewers
+  // who could edit -- accepted crew, and the planner on a history event, got
+  // an unpinned div that could overflow the card horizontally on a single
+  // long unbroken token, because a cap on explicit line count does nothing to
+  // stop wrapping.
   // Boundary is a `}` alone on a line: the destructured params and their type
   // both close with `}` in column 0 too, but each is followed by `: {` or `) {`.
   const readOnlyCell = section.match(/function RunSheetReadOnlyText\([\s\S]*?\n}\n/)?.[0] ?? "";
@@ -8896,12 +8911,14 @@ function testRunSheetTextareasArePinnedToTheirRowCounts() {
   assert.doesNotMatch(readOnlyCell, /min-h-\[3\.25rem\]/);
   assert.doesNotMatch(readOnlyCell, /min-h-\[2\.25rem\]/);
 
-  // The caller must actually pass the field's own row count -- a component
-  // that accepts `rows` but is only ever called with one hard-coded value
-  // would be no different from the boolean it replaced.
+  // The Stage / Area caller passes its own row count directly. Notes'
+  // read-only path deliberately does NOT compose this component any more --
+  // see testRunSheetAccordionRestructure, which is where that half of the
+  // architecture (an unbounded show-more/less preview, not a pinned-height
+  // scroll box) is asserted.
   assert.match(
     section,
-    /rows=\{\s*field\.key === "notes" \? RUN_SHEET_NOTES_VISIBLE_ROWS : RUN_SHEET_STAGE_AREA_VISIBLE_ROWS\s*\}/,
+    /<RunSheetReadOnlyText\s+value=\{row\.stage_area\}\s+className=\{readOnlyTextClassName\}\s+rows=\{RUN_SHEET_STAGE_AREA_VISIBLE_ROWS\}/,
   );
 
   // The auto-grow machinery is gone, not merely bypassed: no inline height, no
@@ -9030,6 +9047,225 @@ function testRunSheetFieldsEnforceHardLineLimits() {
 }
 
 /**
+ * `computeRunSheetSetLabels` is the grouping/numbering behind the "SET 1" /
+ * "SET 2" badges: null for a DJ with one entry (nothing to disambiguate),
+ * "Set N" in the sheet's own running order for a DJ with several, grouped
+ * by resolved profile id and falling back to the typed artist name (case-
+ * insensitively) for legacy/unassigned rows -- the same identity rule
+ * `mergeAcceptedDjsIntoRunSheetRows` already uses to avoid double-adding a
+ * DJ, so a row that looks like a duplicate to one is treated as a duplicate
+ * by the other.
+ */
+function testRunSheetSetLabelGrouping() {
+  const row = (
+    id: string,
+    overrides: Partial<RunSheetRowInput> = {},
+  ): RunSheetRowInput => ({
+    id,
+    sort_order: 0,
+    artist_name: "",
+    start_time: "",
+    finish_time: "",
+    stage_area: "",
+    notes: "",
+    ...overrides,
+  });
+
+  // A single set gets no label at all -- the label exists only to
+  // disambiguate, and one entry needs no disambiguating.
+  const single = [row("a", { booking_recipient_id: "u-1" })];
+  assert.deepEqual(
+    [...computeRunSheetSetLabels(single, [], new Map()).values()],
+    [null],
+  );
+
+  // Two different DJs, one entry each: both null, not "Set 1" twice.
+  const twoDjsOneEach = [
+    row("a", { booking_recipient_id: "u-1" }),
+    row("b", { booking_recipient_id: "u-2" }),
+  ];
+  const twoDjsLabels = computeRunSheetSetLabels(twoDjsOneEach, [], new Map());
+  assert.equal(twoDjsLabels.get("a"), null);
+  assert.equal(twoDjsLabels.get("b"), null);
+
+  // The same DJ (by profile id) three times, numbered in array order.
+  const sameDjThrice = [
+    row("a", { booking_recipient_id: "u-1" }),
+    row("b", { booking_recipient_id: "u-1" }),
+    row("c", { booking_recipient_id: "u-1" }),
+  ];
+  const thriceLabels = computeRunSheetSetLabels(sameDjThrice, [], new Map());
+  assert.equal(thriceLabels.get("a"), "Set 1");
+  assert.equal(thriceLabels.get("b"), "Set 2");
+  assert.equal(thriceLabels.get("c"), "Set 3");
+
+  // Another DJ interleaved between the repeated one's sets must not disturb
+  // their numbering, and must itself stay unlabelled.
+  const interleaved = [
+    row("a", { booking_recipient_id: "u-1" }),
+    row("x", { booking_recipient_id: "u-9" }),
+    row("b", { booking_recipient_id: "u-1" }),
+  ];
+  const interleavedLabels = computeRunSheetSetLabels(interleaved, [], new Map());
+  assert.equal(interleavedLabels.get("a"), "Set 1");
+  assert.equal(interleavedLabels.get("x"), null);
+  assert.equal(interleavedLabels.get("b"), "Set 2");
+
+  // Legacy rows with no linked booking group by artist name, case-
+  // insensitively -- the same fallback `runSheetRowMatchesAcceptedBooking`
+  // uses, so a row this treats as "the same DJ" is one the merge logic
+  // would also recognise as already present.
+  const legacySameName = [
+    row("a", { artist_name: "Nova" }),
+    row("b", { artist_name: "NOVA" }),
+  ];
+  const legacyLabels = computeRunSheetSetLabels(legacySameName, [], new Map());
+  assert.equal(legacyLabels.get("a"), "Set 1");
+  assert.equal(legacyLabels.get("b"), "Set 2");
+
+  // Two legacy rows with DIFFERENT names must not be grouped together.
+  const legacyDifferentNames = [
+    row("a", { artist_name: "Nova" }),
+    row("b", { artist_name: "Solstice" }),
+  ];
+  const legacyDifferentLabels = computeRunSheetSetLabels(legacyDifferentNames, [], new Map());
+  assert.equal(legacyDifferentLabels.get("a"), null);
+  assert.equal(legacyDifferentLabels.get("b"), null);
+
+  // A fully empty row (no booking, no artist name -- an as-yet-unassigned
+  // slot) groups with other equally-empty rows via the row-id fallback key,
+  // which is unique per row, so empty rows never label each other.
+  const twoEmpty = [row("a"), row("b")];
+  const emptyLabels = computeRunSheetSetLabels(twoEmpty, [], new Map());
+  assert.equal(emptyLabels.get("a"), null);
+  assert.equal(emptyLabels.get("b"), null);
+}
+
+/**
+ * The polish pass that turned the Run Sheet's always-expanded table (desktop)
+ * and card list (mobile) into one accordion list, used identically at every
+ * viewport:
+ *
+ * - No "DJ" field label -- the avatar and name already say what it is.
+ * - "Set N" only rendered when `setLabel` is non-null (asserted by logic in
+ *   testRunSheetSetLabelGrouping above).
+ * - A Stage • Time summary line, built by `formatRunSheetSummaryLine`, that
+ *   renders unconditionally in the header -- NOT inside the
+ *   `AnimatedExpandPanel` -- so it is visible collapsed and expanded alike.
+ * - Each entry is one `AnimatedExpandPanel` (the same primitive extracted
+ *   from `BookingRequestCard` for its own card-level expand, reused here
+ *   rather than a second smooth-collapse implementation), and the section
+ *   holds exactly one `expandedRowId`, so opening one entry collapses
+ *   whatever else was open.
+ * - Read-only Notes hides completely when empty and shows a real show-
+ *   more/less control when it doesn't, by reusing `BookingCardExpandableNotes`
+ *   -- the same component already behind DM booking notes and the rate
+ *   proposal panel -- rather than a second implementation of that pattern.
+ *   Editing keeps the original pinned-height, internally-scrolling textarea:
+ *   requirement 6 asks to remove scrolling from the read-only view
+ *   specifically, not from editing, where the scroll is load-bearing for the
+ *   row cap.
+ * - The desktop `<table>` and the separate `lg:hidden` mobile card block are
+ *   both gone; there is exactly one render path.
+ */
+function testRunSheetAccordionRestructure() {
+  const section = readFileSync(
+    new URL("../app/components/EventRunSheetSection.tsx", import.meta.url),
+    "utf8",
+  );
+
+  // No standalone "DJ" field label. (`RunSheetRowDjDisplay`/`dj.displayName`
+  // etc. are excluded by requiring the label to be alone between tags.)
+  assert.doesNotMatch(section, />\s*DJ\s*</);
+
+  // One list, not a desktop table plus a separate mobile block.
+  assert.doesNotMatch(section, /<table/);
+  assert.doesNotMatch(section, /table-fixed/);
+  assert.doesNotMatch(section, /lg:hidden/);
+  assert.doesNotMatch(section, /lg:block/);
+
+  // The summary line is unconditional in the collapsed header, and sits
+  // before the expand panel in source -- not gated on `isExpanded`.
+  const entryFn = section.match(/function RunSheetEntry\([\s\S]*?\n}\n/)?.[0] ?? "";
+  assert.ok(entryFn, "RunSheetEntry must exist");
+  const summaryIndex = entryFn.indexOf("formatRunSheetSummaryLine(row)");
+  const panelIndex = entryFn.indexOf("<AnimatedExpandPanel");
+  assert.ok(summaryIndex > -1 && panelIndex > -1 && summaryIndex < panelIndex);
+  assert.doesNotMatch(
+    entryFn.slice(0, panelIndex),
+    /isExpanded\s*\?[\s\S]*formatRunSheetSummaryLine/,
+  );
+
+  // Exactly one row open at a time: toggling the open row closes it,
+  // toggling any other row replaces it -- not additive.
+  assert.match(section, /const \[expandedRowId, setExpandedRowId\] = useState<string \| null>\(null\)/);
+  assert.match(
+    section,
+    /setExpandedRowId\(\(current\) => \(current === rowId \? null : rowId\)\)/,
+  );
+  assert.match(section, /isExpanded=\{expandedRowId === row\.id\}/);
+
+  // Editable Notes keeps its pinned-height, internally-scrolling textarea --
+  // this task removes read-only scrolling, not editing's.
+  assert.match(
+    section,
+    /\{canEdit \? \(\s*<label className="block">[\s\S]{0,220}Notes[\s\S]{0,220}<RunSheetCappedTextarea/,
+  );
+
+  // Read-only Notes: hidden entirely when empty, otherwise the shared
+  // show-more/less component, reset by the row's own expanded state.
+  assert.match(
+    section,
+    /: row\.notes\.trim\(\) \? \(\s*<BookingCardExpandableNotes notes=\{row\.notes\} label="Notes" detailsOpen=\{isExpanded\} \/>\s*\) : null/,
+  );
+  assert.match(section, /import BookingCardExpandableNotes from "@\/app\/components\/booking\/BookingCardExpandableNotes"/);
+
+  // The animated panel is the shared primitive, not a local reimplementation.
+  assert.match(section, /import AnimatedExpandPanel from "@\/app\/components\/AnimatedExpandPanel"/);
+  assert.match(section, /<AnimatedExpandPanel open=\{isExpanded\}>/);
+
+  // The expanded panel's field list is plain block flow (`space-y-3`), not a
+  // CSS grid. Caught live, not by a regex: with `grid`, `BookingCardExpandable
+  // Notes`'s root becomes an unconstrained grid item, sized by its content's
+  // min-content width -- and a Notes value with no natural wrap point (one
+  // long unbroken run) has no upper bound on that width. Measured directly:
+  // the notes `<p>` rendered 3086px wide in a 317px panel, silently CLIPPED
+  // by the panel's own `overflow-x-hidden` rather than wrapping, and because
+  // an unwrapped single line never exceeds its own line-clamp, the "Show
+  // more" control never appeared either -- content past the visible edge was
+  // simply gone, not truncated-with-an-escape-hatch. A block box's width
+  // comes from its containing block, not its content, so it cannot be pulled
+  // wide by anything inside it -- which is also why `BookingRequestCard`'s
+  // own existing use of the same `BookingCardExpandableNotes` component,
+  // inside a plain block wrapper rather than a grid, was never at risk.
+  assert.match(section, /"space-y-3 pt-2"/);
+  assert.doesNotMatch(section, /"grid gap-3 pt-2"/);
+
+  // Tightened spacing: the collapsed card and the list gap are both smaller
+  // than the pre-restructure values (`p-4` card, `space-y-3` list).
+  assert.match(section, /"ftc-card p-3"/);
+  assert.match(section, /"mt-5 space-y-2"/);
+  assert.doesNotMatch(section, /"ftc-card p-4"/);
+
+  // The chevron rotates with expanded state and is marked decorative.
+  assert.match(section, /function RunSheetExpandChevron/);
+  assert.match(section, /expanded \? "rotate-180" : ""/);
+  assert.match(section, /aria-hidden="true"/);
+
+  const animatedExpandPanelSource = readFileSync(
+    new URL("../app/components/AnimatedExpandPanel.tsx", import.meta.url),
+    "utf8",
+  );
+  // Reused by BookingRequestCard too -- not duplicated for the Run Sheet.
+  assert.match(animatedExpandPanelSource, /export default function AnimatedExpandPanel/);
+  const bookingRequestCardSource = readFileSync(
+    new URL("../app/components/BookingRequestCard.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(bookingRequestCardSource, /<AnimatedExpandPanel open=\{expanded\}/);
+}
+
+/**
  * A hard line cap and a character cap say nothing about a single long
  * unbroken token -- a pasted URL, a run of the same character, a venue name
  * with no spaces. That still needs to wrap inside the fixed-height box rather
@@ -9046,8 +9282,8 @@ function testRunSheetFieldsEnforceHardLineLimits() {
  * so a flex/grid/table-cell ancestor sized by content can still be pulled
  * wide by the unbroken token even though the text itself would wrap once
  * space ran out. `anywhere` does reduce it, which is what stops the
- * ancestor -- the `<label className="grid">` cell on mobile, the
- * `table-fixed` column on desktop -- from being forced wider in the first
+ * ancestor -- the summary line's `flex-1` cell, a `grid` field wrapper in the
+ * expanded panel -- from being forced wider in the first
  * place.
  */
 function testRunSheetFieldsWrapLongUnbrokenTokens() {
@@ -10064,6 +10300,8 @@ async function main() {
   testRunSheetInitialLoadIsNotDirty();
   testRunSheetTextareasArePinnedToTheirRowCounts();
   testRunSheetFieldsEnforceHardLineLimits();
+  testRunSheetSetLabelGrouping();
+  testRunSheetAccordionRestructure();
   testRunSheetFieldsWrapLongUnbrokenTokens();
   testRunSheetDirtyStateAndSaveFeedback();
   testAppSplashScreenSlogan();

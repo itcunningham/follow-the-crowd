@@ -13,6 +13,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BookingDualTimeWheelPicker } from "@/app/components/BookingTimeWheelPicker";
 import ProfileAvatar from "@/app/components/ProfileAvatar";
 import ChatProfileAvatarLink from "@/app/components/chat/ChatProfileAvatarLink";
+import AnimatedExpandPanel from "@/app/components/AnimatedExpandPanel";
+import BookingCardExpandableNotes from "@/app/components/booking/BookingCardExpandableNotes";
 import type { BookingRequest } from "@/lib/bookingRequests";
 import {
   clockPartsToWheelTime,
@@ -30,6 +32,7 @@ import {
   type WheelTimeValue,
 } from "@/lib/bookingDateTime";
 import {
+  computeRunSheetSetLabels,
   ensureRunSheetRowsForAcceptedBookings,
   filterRunSheetRowsToAcceptedBookings,
   getRunSheetLoadErrorMessage,
@@ -43,6 +46,7 @@ import {
   reorderRunSheetRows,
   resolveRunSheetRowDjDisplay,
   saveEventRunSheet,
+  type RunSheetRowDjDisplay,
   type RunSheetRowInput,
 } from "@/lib/eventRunSheet";
 import type { BookingRecipientProfile } from "@/lib/user/currentUser";
@@ -53,32 +57,17 @@ import {
 } from "@/lib/cappedMultilineInput";
 import { countUnicodeCharacters } from "@/lib/textInputLimits";
 
-const FIXED_FIELDS = [
-  { key: "stage_area" as const, label: "Stage / Area" },
-  { key: "notes" as const, label: "Notes" },
-];
-
-const RUN_SHEET_STAGE_COLUMN_CLASS = "w-[16%] min-w-[8rem]";
-const RUN_SHEET_DJ_COLUMN_CLASS = "w-[18%] min-w-[10rem]";
 const RUN_SHEET_SET_TIME_BUTTON_CLASS =
   "ftc-field-trigger inline-flex w-full min-h-[2.25rem] items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium sm:min-h-[2rem] lg:max-w-[11rem]";
-const RUN_SHEET_NOTES_COLUMN_CLASS = "w-[28%] min-w-[10rem]";
 /** Visible rows each field is pinned to. Mirrors the `.ftc-run-sheet-textarea-N`
  * modifier that owns the height; used for the `rows` attribute so the field is
  * the right size before the stylesheet applies. */
 const RUN_SHEET_NOTES_VISIBLE_ROWS = 4;
 const RUN_SHEET_STAGE_AREA_VISIBLE_ROWS = 2;
 const RUN_SHEET_STAGE_AREA_MAX_LENGTH = 50;
-
-function getFixedField(key: (typeof FIXED_FIELDS)[number]["key"]) {
-  const field = FIXED_FIELDS.find((item) => item.key === key);
-
-  if (!field) {
-    throw new Error(`Unknown run sheet field: ${key}`);
-  }
-
-  return field;
-}
+/** Joins the compact "Stage • Time" summary line -- distinct from
+ * `SET_TIME_RANGE_JOINER`, which joins a set's own start and finish time. */
+const RUN_SHEET_SUMMARY_JOINER = " • ";
 
 const iconButtonBaseClassName =
   "flex h-8 w-8 shrink-0 items-center justify-center rounded-md border transition disabled:cursor-not-allowed disabled:opacity-40";
@@ -136,6 +125,19 @@ function formatRunSheetSetTimeDisplay(startTime: string, finishTime: string): st
   }
 
   return start || finish;
+}
+
+/** The always-visible "Main Stage • 9:00 PM – 10:00 PM" line, collapsed and
+ * expanded alike. "—" for a missing side rather than
+ * `BOOKING_TIME_PLACEHOLDER_LABEL` ("Select time"): that copy is an editing
+ * call to action, wrong for a DJ who can't edit and odd in a glance summary
+ * even for the planner who can. */
+function formatRunSheetSummaryLine(row: RunSheetRowInput): string {
+  const stage = row.stage_area.trim() || "—";
+  const time = formatRunSheetSetTimeDisplay(row.start_time, row.finish_time);
+  const timeDisplay = time === BOOKING_TIME_PLACEHOLDER_LABEL ? "—" : time;
+
+  return `${stage}${RUN_SHEET_SUMMARY_JOINER}${timeDisplay}`;
 }
 
 function parseRunSheetTimeField(value: string): {
@@ -427,37 +429,24 @@ function RunSheetReadOnlyText({
   );
 }
 
-function RunSheetDjIdentity({
-  row,
-  lineup,
-  profiles,
-  readOnlyTextClassName,
-}: {
-  row: RunSheetRowInput;
-  lineup: BookingRequest[];
-  profiles: Map<string, BookingRecipientProfile>;
-  readOnlyTextClassName: string;
-}) {
-  const dj = resolveRunSheetRowDjDisplay(row, lineup, profiles);
-
+/**
+ * Avatar + display name only -- no outer sizing wrapper, no label. The
+ * accordion header supplies its own layout (it also needs to fit move
+ * buttons and a set badge on the same row), and "DJ" as a field label above
+ * this was redundant: the avatar and name already say what it is.
+ *
+ * Takes an already-resolved `dj` rather than `row`/`lineup`/`profiles`: the
+ * caller resolves it once per row (also needed for the set-number grouping),
+ * so this doesn't repeat that lookup.
+ */
+function RunSheetDjIdentity({ dj }: { dj: RunSheetRowDjDisplay }) {
   if (!dj.displayName) {
-    return (
-      <div className={`${readOnlyTextClassName} flex min-h-[2.25rem] items-center text-ftc-text-muted`}>
-        —
-      </div>
-    );
+    return <span className="text-ftc-text-muted">—</span>;
   }
-
-  const identity = (
-    <>
-      <ProfileAvatar name={dj.displayName} avatarUrl={dj.avatarUrl} size="sm" />
-      <span className="min-w-0 truncate font-medium text-ftc-text">{dj.displayName}</span>
-    </>
-  );
 
   if (dj.profileId) {
     return (
-      <div className="flex min-h-[2.25rem] items-center gap-2 px-1 py-0.5">
+      <>
         <ChatProfileAvatarLink
           userId={dj.profileId}
           name={dj.displayName}
@@ -470,67 +459,196 @@ function RunSheetDjIdentity({
         >
           {dj.displayName}
         </Link>
-      </div>
+      </>
     );
   }
 
-  return <div className="flex min-h-[2.25rem] items-center gap-2 px-1 py-0.5">{identity}</div>;
+  return (
+    <>
+      <ProfileAvatar name={dj.displayName} avatarUrl={dj.avatarUrl} size="sm" />
+      <span className="min-w-0 truncate font-medium text-ftc-text">{dj.displayName}</span>
+    </>
+  );
 }
 
-function renderRunSheetFieldInput({
-  field,
+function RunSheetExpandChevron({ expanded }: { expanded: boolean }) {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 20 20"
+      fill="none"
+      className={`h-4 w-4 shrink-0 text-ftc-text-muted transition-transform duration-200 ${
+        expanded ? "rotate-180" : ""
+      }`}
+    >
+      <path
+        d="M5 7.5 10 12.5 15 7.5"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+/**
+ * One Run Sheet entry, collapsed by default to an avatar, a name, a
+ * Stage • Time summary and a chevron -- everything else lives behind the
+ * chevron, animated open with `AnimatedExpandPanel`.
+ *
+ * The DJ name is its own `Link` to the profile (when assigned), so it can't
+ * sit inside the toggle `<button>` -- a link nested in a button is invalid
+ * HTML and produces ambiguous click/focus behaviour. Header row and toggle
+ * button are siblings instead: the name has its own tap target, everything
+ * to its right (summary line, chevron) toggles the panel.
+ *
+ * Notes only switches presentation when read-only. Editing keeps the pinned-
+ * height, internally-scrolling textarea (`RunSheetCappedTextarea`) -- that
+ * scroll is doing real work there, keeping the row cap enforceable while
+ * typing. Read-only reuses `BookingCardExpandableNotes` (already the FTC
+ * show-more/less pattern behind DM booking notes and the rate proposal
+ * panel) instead of a second implementation: it already hides itself on
+ * empty notes, measures real overflow before showing a toggle, and resets
+ * to collapsed via `detailsOpen` when the row itself closes.
+ */
+function RunSheetEntry({
   row,
+  dj,
+  setLabel,
   canEdit,
+  isExpanded,
+  onToggleExpanded,
+  canMoveUp,
+  canMoveDown,
+  onMoveUp,
+  onMoveDown,
   stageAreaTextareaClassName,
   notesTextareaClassName,
   readOnlyTextClassName,
   updateRow,
 }: {
-  field: (typeof FIXED_FIELDS)[number];
   row: RunSheetRowInput;
+  dj: RunSheetRowDjDisplay;
+  setLabel: string | null;
   canEdit: boolean;
+  isExpanded: boolean;
+  onToggleExpanded: () => void;
+  canMoveUp: boolean;
+  canMoveDown: boolean;
+  onMoveUp: () => void;
+  onMoveDown: () => void;
   stageAreaTextareaClassName: string;
   notesTextareaClassName: string;
   readOnlyTextClassName: string;
   updateRow: (rowId: string, patch: Partial<RunSheetRowInput>) => void;
 }) {
-  if (!canEdit) {
-    return (
-      <RunSheetReadOnlyText
-        value={row[field.key]}
-        className={readOnlyTextClassName}
-        rows={
-          field.key === "notes" ? RUN_SHEET_NOTES_VISIBLE_ROWS : RUN_SHEET_STAGE_AREA_VISIBLE_ROWS
-        }
-      />
-    );
-  }
+  const panelId = `run-sheet-panel-${row.id}`;
 
-  if (field.key === "notes") {
-    return (
-      <RunSheetCappedTextarea
-        value={row[field.key]}
-        onChange={(value) => updateRow(row.id!, { [field.key]: value })}
-        className={notesTextareaClassName}
-        maxLength={MAX_EVENT_NOTES_LENGTH}
-        rows={RUN_SHEET_NOTES_VISIBLE_ROWS}
-      />
-    );
-  }
+  return (
+    <div className="ftc-card p-3">
+      {setLabel ? (
+        <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted">
+          {setLabel}
+        </p>
+      ) : null}
 
-  if (field.key === "stage_area") {
-    return (
-      <RunSheetCappedTextarea
-        value={row[field.key]}
-        onChange={(value) => updateRow(row.id!, { [field.key]: value })}
-        className={stageAreaTextareaClassName}
-        maxLength={RUN_SHEET_STAGE_AREA_MAX_LENGTH}
-        rows={RUN_SHEET_STAGE_AREA_VISIBLE_ROWS}
-      />
-    );
-  }
+      <div className="flex items-center gap-2">
+        <div className="flex min-w-0 flex-1 items-center gap-2">
+          <RunSheetDjIdentity dj={dj} />
+        </div>
+        {canEdit ? (
+          <div className="flex shrink-0 items-center gap-1">
+            <RowMoveButton direction="up" onClick={onMoveUp} disabled={!canMoveUp} />
+            <RowMoveButton direction="down" onClick={onMoveDown} disabled={!canMoveDown} />
+          </div>
+        ) : null}
+      </div>
 
-  return null;
+      <button
+        type="button"
+        onClick={onToggleExpanded}
+        aria-expanded={isExpanded}
+        aria-controls={panelId}
+        className="mt-1 flex w-full items-center gap-2 rounded-md py-1 text-left"
+      >
+        <span className="min-w-0 flex-1 truncate text-xs text-ftc-text-muted">
+          {formatRunSheetSummaryLine(row)}
+        </span>
+        <RunSheetExpandChevron expanded={isExpanded} />
+      </button>
+
+      <div id={panelId}>
+        <AnimatedExpandPanel open={isExpanded}>
+          {/* Plain block stack, not a grid: every child here is already a
+              full-width block (each `<label>`, and BookingCardExpandableNotes'
+              own root). A single-column grid gains nothing over that and
+              costs something real -- an unconstrained grid item is sized by
+              its content's min-content width, so a single long unbroken Notes
+              string (no natural wrap point) can size this item far wider
+              than the card and get silently clipped by the animated panel's
+              `overflow-x-hidden` rather than actually wrapping. Plain block
+              flow doesn't have that failure mode: a block's width comes from
+              its containing block, not its content, so it can't be pulled
+              wide by anything inside it. */}
+          <div className="space-y-3 pt-2">
+            <label className="block">
+              <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted">
+                Stage / Area
+              </span>
+              {canEdit ? (
+                <RunSheetCappedTextarea
+                  value={row.stage_area}
+                  onChange={(value) => updateRow(row.id!, { stage_area: value })}
+                  className={stageAreaTextareaClassName}
+                  maxLength={RUN_SHEET_STAGE_AREA_MAX_LENGTH}
+                  rows={RUN_SHEET_STAGE_AREA_VISIBLE_ROWS}
+                />
+              ) : (
+                <RunSheetReadOnlyText
+                  value={row.stage_area}
+                  className={readOnlyTextClassName}
+                  rows={RUN_SHEET_STAGE_AREA_VISIBLE_ROWS}
+                />
+              )}
+            </label>
+
+            <label className="block">
+              <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted">
+                Set Time
+              </span>
+              <RunSheetSetTimeField
+                startTime={row.start_time}
+                finishTime={row.finish_time}
+                onChange={(start, finish) =>
+                  updateRow(row.id!, { start_time: start, finish_time: finish })
+                }
+                canEdit={canEdit}
+                readOnlyTextClassName={readOnlyTextClassName}
+              />
+            </label>
+
+            {canEdit ? (
+              <label className="block">
+                <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted">
+                  Notes
+                </span>
+                <RunSheetCappedTextarea
+                  value={row.notes}
+                  onChange={(value) => updateRow(row.id!, { notes: value })}
+                  className={notesTextareaClassName}
+                  maxLength={MAX_EVENT_NOTES_LENGTH}
+                  rows={RUN_SHEET_NOTES_VISIBLE_ROWS}
+                />
+              </label>
+            ) : row.notes.trim() ? (
+              <BookingCardExpandableNotes notes={row.notes} label="Notes" detailsOpen={isExpanded} />
+            ) : null}
+          </div>
+        </AnimatedExpandPanel>
+      </div>
+    </div>
+  );
 }
 
 export default function EventRunSheetSection({
@@ -653,6 +771,23 @@ export default function EventRunSheetSection({
     setRows((prev) => moveRunSheetRow(prev, rowId, direction));
   }
 
+  /** At most one entry open at a time; opening one closes whatever was open,
+   * and re-tapping the open entry closes it. Keyed by row id (stable across
+   * reordering), not array index. */
+  const [expandedRowId, setExpandedRowId] = useState<string | null>(null);
+
+  function toggleRowExpanded(rowId: string) {
+    setExpandedRowId((current) => (current === rowId ? null : rowId));
+  }
+
+  /** "SET 1" / "SET 2" only when the same DJ genuinely holds more than one
+   * entry on this sheet; see `computeRunSheetSetLabels` for how DJs are
+   * grouped and why. */
+  const rowSetLabels = useMemo(
+    () => computeRunSheetSetLabels(rows, lineup, profiles),
+    [rows, lineup, profiles],
+  );
+
   async function handleSave() {
     setSaving(true);
     setError(null);
@@ -761,190 +896,37 @@ export default function EventRunSheetSection({
           <CalendarMobileDashedEmptyState message={emptyStateMessage} />
         </div>
       ) : (
-        <>
-          <div className="mt-6 hidden overflow-x-auto lg:block">
-            <table className="min-w-full table-fixed border-separate border-spacing-0">
-              <thead>
-                <tr>
-                  <th
-                    className={`${RUN_SHEET_DJ_COLUMN_CLASS} border-b border-ftc-border px-2 py-2 text-left text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted`}
-                  >
-                    DJ
-                  </th>
-                  <th
-                    className={`${RUN_SHEET_STAGE_COLUMN_CLASS} border-b border-ftc-border px-2 py-2 text-left text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted`}
-                  >
-                    {getFixedField("stage_area").label}
-                  </th>
-                  <th className="w-[11rem] border-b border-ftc-border px-2 py-2 text-left text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted">
-                    Set Time
-                  </th>
-                  <th
-                    className={`${RUN_SHEET_NOTES_COLUMN_CLASS} border-b border-ftc-border px-2 py-2 text-left text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted`}
-                  >
-                    {getFixedField("notes").label}
-                  </th>
-                  {canEdit ? (
-                    <th className="w-[1%] whitespace-nowrap border-b border-ftc-border px-2 py-2 text-left text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted">
-                      <span className="sr-only">Row actions</span>
-                    </th>
-                  ) : null}
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((row, rowIndex) => (
-                  <tr key={row.id} className="align-top">
-                    <td className={`${RUN_SHEET_DJ_COLUMN_CLASS} border-b border-ftc-border/70 px-2 py-2 align-top`}>
-                      <RunSheetDjIdentity
-                        row={row}
-                        lineup={lineup}
-                        profiles={profiles}
-                        readOnlyTextClassName={readOnlyTextClassName}
-                      />
-                    </td>
-                    <td className={`${RUN_SHEET_STAGE_COLUMN_CLASS} border-b border-ftc-border/70 px-2 py-2 align-top`}>
-                      {renderRunSheetFieldInput({
-                        field: getFixedField("stage_area"),
-                        row,
-                        canEdit,
-                        stageAreaTextareaClassName,
-                        notesTextareaClassName,
-                        readOnlyTextClassName,
-                        updateRow,
-                      })}
-                    </td>
-                    <td className="whitespace-nowrap border-b border-ftc-border/70 px-2 py-2 align-top">
-                      <RunSheetSetTimeField
-                        startTime={row.start_time}
-                        finishTime={row.finish_time}
-                        onChange={(start, finish) =>
-                          updateRow(row.id!, { start_time: start, finish_time: finish })
-                        }
-                        canEdit={canEdit}
-                        readOnlyTextClassName={readOnlyTextClassName}
-                      />
-                    </td>
-                    <td className={`${RUN_SHEET_NOTES_COLUMN_CLASS} border-b border-ftc-border/70 px-2 py-2 align-top`}>
-                      {renderRunSheetFieldInput({
-                        field: getFixedField("notes"),
-                        row,
-                        canEdit,
-                        stageAreaTextareaClassName,
-                        notesTextareaClassName,
-                        readOnlyTextClassName,
-                        updateRow,
-                      })}
-                    </td>
-                    {canEdit ? (
-                      <td className="w-[1%] whitespace-nowrap border-b border-ftc-border/70 px-2 py-2 align-top">
-                        <div className="flex items-center gap-1">
-                          <RowMoveButton
-                            direction="up"
-                            onClick={() => handleMoveRow(row.id!, "up")}
-                            disabled={rowIndex === 0}
-                          />
-                          <RowMoveButton
-                            direction="down"
-                            onClick={() => handleMoveRow(row.id!, "down")}
-                            disabled={rowIndex === rows.length - 1}
-                          />
-                        </div>
-                      </td>
-                    ) : null}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+        // One accordion list for every viewport -- a table and a card list
+        // were two implementations of the same information, and neither
+        // needed to be denser than this: collapsed, each entry is two short
+        // lines regardless of screen width, which is what actually lets more
+        // of them fit on screen at once. Same component, same behaviour,
+        // desktop and phone alike -- nothing here is viewport-conditional.
+        <div className="mt-5 space-y-2">
+          {rows.map((row, index) => {
+            const dj = resolveRunSheetRowDjDisplay(row, lineup, profiles);
 
-          <div className="mt-6 space-y-3 lg:hidden">
-            {rows.map((row, index) => (
-              <div
+            return (
+              <RunSheetEntry
                 key={row.id}
-                className="ftc-card p-4"
-              >
-                <div className="mb-3 flex items-center justify-between gap-2">
-                  <p className="text-[11px] font-semibold uppercase tracking-wide text-ftc-text-muted">
-                    Set {index + 1}
-                  </p>
-                  {canEdit ? (
-                    <div className="flex items-center gap-1">
-                      <RowMoveButton
-                        direction="up"
-                        onClick={() => handleMoveRow(row.id!, "up")}
-                        disabled={index === 0}
-                      />
-                      <RowMoveButton
-                        direction="down"
-                        onClick={() => handleMoveRow(row.id!, "down")}
-                        disabled={index === rows.length - 1}
-                      />
-                    </div>
-                  ) : null}
-                </div>
-
-                <div className="grid gap-3">
-                  <label className="block">
-                    <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted">
-                      DJ
-                    </span>
-                    <RunSheetDjIdentity
-                      row={row}
-                      lineup={lineup}
-                      profiles={profiles}
-                      readOnlyTextClassName={readOnlyTextClassName}
-                    />
-                  </label>
-
-                  <label className="block">
-                    <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted">
-                      {getFixedField("stage_area").label}
-                    </span>
-                    {renderRunSheetFieldInput({
-                      field: getFixedField("stage_area"),
-                      row,
-                      canEdit,
-                      stageAreaTextareaClassName,
-                      notesTextareaClassName,
-                      readOnlyTextClassName,
-                      updateRow,
-                    })}
-                  </label>
-
-                  <label className="block">
-                    <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted">
-                      Set Time
-                    </span>
-                    <RunSheetSetTimeField
-                      startTime={row.start_time}
-                      finishTime={row.finish_time}
-                      onChange={(start, finish) =>
-                        updateRow(row.id!, { start_time: start, finish_time: finish })
-                      }
-                      canEdit={canEdit}
-                      readOnlyTextClassName={readOnlyTextClassName}
-                    />
-                  </label>
-
-                  <label className="block">
-                    <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted">
-                      {getFixedField("notes").label}
-                    </span>
-                    {renderRunSheetFieldInput({
-                      field: getFixedField("notes"),
-                      row,
-                      canEdit,
-                      stageAreaTextareaClassName,
-                      notesTextareaClassName,
-                      readOnlyTextClassName,
-                      updateRow,
-                    })}
-                  </label>
-                </div>
-              </div>
-            ))}
-          </div>
-        </>
+                row={row}
+                dj={dj}
+                setLabel={rowSetLabels.get(row.id!) ?? null}
+                canEdit={canEdit}
+                isExpanded={expandedRowId === row.id}
+                onToggleExpanded={() => toggleRowExpanded(row.id!)}
+                canMoveUp={index > 0}
+                canMoveDown={index < rows.length - 1}
+                onMoveUp={() => handleMoveRow(row.id!, "up")}
+                onMoveDown={() => handleMoveRow(row.id!, "down")}
+                stageAreaTextareaClassName={stageAreaTextareaClassName}
+                notesTextareaClassName={notesTextareaClassName}
+                readOnlyTextClassName={readOnlyTextClassName}
+                updateRow={updateRow}
+              />
+            );
+          })}
+        </div>
       )}
     </section>
   );
