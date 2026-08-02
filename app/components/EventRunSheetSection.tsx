@@ -701,11 +701,12 @@ export default function EventRunSheetSection({
     "ftc-textarea w-full resize-none overflow-x-hidden rounded-lg px-2.5 py-1.5 text-sm break-words";
 
   const stageAreaTextareaClassName = `${runSheetTextareaBaseClassName} overflow-y-hidden min-h-[2.25rem] leading-normal`;
-  // Notes is the only field that scrolls: it stops growing at
-  // RUN_SHEET_NOTES_MAX_ROWS, so anything past that has to be reachable inside
-  // the field. `overscroll-contain` stops a touch scroll that hits either end
-  // from chaining to the page behind it.
-  const notesTextareaClassName = `${runSheetTextareaBaseClassName} overflow-y-auto overscroll-contain min-h-[3.25rem] leading-relaxed`;
+  // Notes is the only field that scrolls. `.ftc-run-sheet-notes-textarea` owns
+  // the pinned line-height, the 6-row ceiling, the internal scrolling and the
+  // scroll containment — deliberately not `leading-relaxed`, whose multiplier
+  // competed with the <=639px rule's `line-height: 1.5rem` and left the cap and
+  // the rendered rows disagreeing on iOS Safari.
+  const notesTextareaClassName = `${runSheetTextareaBaseClassName} ftc-run-sheet-notes-textarea min-h-[3.25rem]`;
 
   const readOnlyTextClassName =
     "rounded-lg border border-ftc-border bg-ftc-bg-elevated/30 px-2.5 py-1.5 text-sm leading-relaxed text-ftc-text whitespace-pre-wrap break-words";

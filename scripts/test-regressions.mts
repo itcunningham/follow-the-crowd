@@ -8810,6 +8810,8 @@ function testRunSheetNotesCapAndCounter() {
     "utf8",
   );
 
+  const globalsSource = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
+
   assert.match(sectionSource, /const RUN_SHEET_NOTES_MAX_ROWS = 6;/);
   assert.match(sectionSource, /maxRows=\{RUN_SHEET_NOTES_MAX_ROWS\}/);
 
@@ -8824,9 +8826,29 @@ function testRunSheetNotesCapAndCounter() {
 
   // Notes is the only run sheet field that scrolls; stage_area keeps its
   // original hidden overflow and unbounded growth.
-  assert.match(sectionSource, /notesTextareaClassName = `\$\{runSheetTextareaBaseClassName\} overflow-y-auto overscroll-contain/);
+  assert.match(sectionSource, /notesTextareaClassName = `\$\{runSheetTextareaBaseClassName\} ftc-run-sheet-notes-textarea/);
   assert.match(sectionSource, /stageAreaTextareaClassName = `\$\{runSheetTextareaBaseClassName\} overflow-y-hidden/);
   assert.doesNotMatch(sectionSource, /runSheetTextareaBaseClassName =\s*\n?\s*"[^"]*overflow-y-/);
+
+  // `leading-relaxed` (a 1.625 *multiplier*) competed with the <=639px
+  // zoom-prevention rule's `line-height: 1.5rem`, so the row advance resolved
+  // to 22.75px or 24px depending on which won -- a ceiling computed from one
+  // while rows rendered at the other showed ~6.3 rows on iOS Safari. The field
+  // must not reintroduce a competing line-height utility.
+  assert.doesNotMatch(sectionSource, /notesTextareaClassName = [^\n]*leading-/);
+
+  const notesRule = globalsSource.match(/\.ftc-run-sheet-notes-textarea \{[\s\S]*?\n\}/);
+  assert.ok(notesRule, ".ftc-run-sheet-notes-textarea rule not found in globals.css");
+  // One pinned line-height, and a ceiling derived from that same literal.
+  assert.match(notesRule[0], /line-height: 1\.5rem !important/);
+  assert.match(notesRule[0], /max-height: calc\(6 \* 1\.5rem \+ 0\.75rem \+ 2px\) !important/);
+  assert.match(notesRule[0], /overflow-y: auto !important/);
+  assert.match(notesRule[0], /overscroll-behavior: contain/);
+  // `lh` needs Safari 16.4+; on older iOS the declaration would be dropped,
+  // taking the ceiling with it.
+  assert.doesNotMatch(notesRule[0], /lh\b/);
+  // font-size is left to the <=639px rule so iOS keeps not zooming on focus.
+  assert.doesNotMatch(notesRule[0], /font-size/);
 
   // 500-character cap via the shared limiter, and the shared counter styling.
   assert.match(sectionSource, /applyTextInputLimit\(noteValue, value, MAX_EVENT_NOTES_LENGTH\)/);
