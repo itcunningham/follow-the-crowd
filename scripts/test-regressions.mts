@@ -2546,6 +2546,32 @@ function testWorkspaceSubNavLayoutIsStable() {
   assert.match(workspaceGigsBadgeSource, /shouldRenderGigsTabCount/);
   assert.match(workspaceGigsBadgeSource, /return null;/);
   assert.doesNotMatch(workspaceGigsBadgeSource, /display \?\? ""/);
+
+  const badgeSlotSource = readFileSync(
+    new URL("../lib/design/workspaceSubNavBadge.ts", import.meta.url),
+    "utf8",
+  );
+
+  // Selected-Gigs indicator dot: 0.75rem box (25% down from the original 1rem, which
+  // out-shouted the tab label). Font and padding scale with the box so a single digit
+  // still fits inside min-w and the dot stays circular rather than becoming an oval,
+  // and "99+" is never clipped. Centring comes from the flex classes only -- no
+  // absolute offsets -- so it holds for any label length or localisation, and the
+  // 12px box stays well under the pill's 1.625rem min-height so pill geometry is
+  // untouched.
+  assert.match(badgeSlotSource, /\bh-3\b/);
+  assert.match(badgeSlotSource, /\bmin-w-3\b/);
+  assert.match(badgeSlotSource, /text-\[9px\]/);
+  assert.match(badgeSlotSource, /items-center/);
+  assert.match(badgeSlotSource, /justify-center/);
+  assert.match(badgeSlotSource, /rounded-full/);
+  assert.match(badgeSlotSource, /leading-none/);
+  assert.match(badgeSlotSource, /tabular-nums/);
+  // Must not regrow to the old size, and must not be positioned by hand.
+  assert.doesNotMatch(badgeSlotSource, /\bh-4\b/);
+  assert.doesNotMatch(badgeSlotSource, /\bmin-w-4\b/);
+  assert.doesNotMatch(badgeSlotSource, /text-\[10px\]/);
+  assert.doesNotMatch(badgeSlotSource, /absolute|translate-|top-|left-|right-|bottom-/);
   assert.doesNotMatch(subNavSource, /from "@\/lib\/design\/ftcDesignSystem"/);
   const designSystemSource = readFileSync(
     new URL("../lib/design/ftcDesignSystem.ts", import.meta.url),
