@@ -6,14 +6,18 @@ import {
   readWorkspaceGigsSubNavDisplayLatch,
   subscribeWorkspaceGigsSubNavBadgeDisplay,
 } from "@/lib/navigationBadgeCache";
-import { readWorkspaceGigsBadgeDisplayCountForSubNav } from "@/lib/navigation/resolveWorkspaceGigsPendingDisplayCount";
+import {
+  readWorkspaceGigsBadgeDisplayCountForSubNav,
+  resolveStableGigsPendingCount,
+} from "@/lib/navigation/resolveWorkspaceGigsPendingDisplayCount";
 import type { UserRole } from "@/lib/user/currentUser";
 
 /**
- * Pending-incoming-gigs count for navigation badges, stabilised against the
- * zero frames that route transitions and cache warm-up produce: the count only
- * drops to 0 once the local snapshot genuinely says 0, so the badge never
- * blinks off and back on while navigating.
+ * Pending-incoming-gigs count for navigation badges. A known count is used
+ * as-is, so accepting or declining a request moves the badge immediately in
+ * either direction; the hold in resolveStableGigsPendingCount applies only
+ * while the count is unknown, so route transitions and cache warm-up can't
+ * blink the badge off.
  *
  * Shared by the workspace sub-nav Gigs pill and the DJ main-nav Gigs tab so
  * both always show the same number as the Gigs Incoming tab, which reads the
@@ -33,16 +37,14 @@ export function useWorkspaceGigsPendingCount(
   const latchedCount = readWorkspaceGigsSubNavDisplayLatch(badgeUserId, badgeRole) ?? 0;
   const stableCountRef = useRef(Math.max(latchedCount, rawCount, readDisplayCount()));
 
-  const localCount = readLocalGigsPendingCount(badgeUserId, badgeRole);
-  if (localCount === 0) {
-    stableCountRef.current = 0;
-    return 0;
-  }
+  const count = resolveStableGigsPendingCount({
+    localCount: readLocalGigsPendingCount(badgeUserId, badgeRole),
+    latchedCount,
+    rawCount,
+    previousCount: stableCountRef.current,
+  });
 
-  const nextCount = Math.max(stableCountRef.current, latchedCount, rawCount);
-  if (nextCount > 0) {
-    stableCountRef.current = nextCount;
-  }
+  stableCountRef.current = count;
 
-  return stableCountRef.current;
+  return count;
 }

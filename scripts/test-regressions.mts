@@ -174,7 +174,7 @@ import {
   GIGS_TAB_COUNT_MAX_DISPLAY,
   shouldRenderGigsTabCount,
 } from "../lib/bookings/gigsTabCountDisplay";
-import { resolveWorkspaceGigsPendingDisplayCount, readWorkspaceGigsBadgeDisplayCountForSubNav } from "../lib/navigation/resolveWorkspaceGigsPendingDisplayCount";
+import { resolveWorkspaceGigsPendingDisplayCount, readWorkspaceGigsBadgeDisplayCountForSubNav, resolveStableGigsPendingCount } from "../lib/navigation/resolveWorkspaceGigsPendingDisplayCount";
 import { applyCancelledEventStatus } from "../lib/bookings/gigsListSnapshotPrefetch";
 import {
   applyPersistedGigsPendingCount,
@@ -4387,6 +4387,88 @@ function testWorkspaceGigsSubNavCountSurvivesStaleRuntimeZero() {
     2,
     "sub-nav must not flash zero when runtime is stale during tab navigation",
   );
+}
+
+/**
+ * The nav Gigs count must follow Incoming down as well as up.
+ *
+ * The anti-flicker latch used to short-circuit on any latched value above zero,
+ * so a genuine decrease to a non-zero count was ignored: three incoming, accept
+ * one, and the badge kept reading 3 until the count hit 0. A known local count
+ * is the freshest value there is (only applyPersistedGigsPendingCount writes
+ * it, and every refresh — including the one fired on accept/decline/cancel —
+ * goes through it), so it now wins outright. The latch still covers the case it
+ * was written for, asserted by
+ * testWorkspaceGigsSubNavCountSurvivesStaleRuntimeZero above: an unknown count
+ * with a stale runtime zero must not blink the badge off.
+ */
+function testWorkspaceGigsCountFollowsIncomingDownwards() {
+  // Three incoming, then one is accepted. The previous render held 3 and the
+  // latch still reads 3, but the count is known to be 2 -- the badge must
+  // follow it down rather than pin to the high-water mark.
+  assert.equal(
+    resolveStableGigsPendingCount({
+      localCount: 2,
+      latchedCount: 3,
+      rawCount: 3,
+      previousCount: 3,
+    }),
+    2,
+    "accepting one of three incoming requests must drop the badge to 2",
+  );
+
+  // Still clears completely, and still rises.
+  assert.equal(
+    resolveStableGigsPendingCount({
+      localCount: 0,
+      latchedCount: 3,
+      rawCount: 3,
+      previousCount: 3,
+    }),
+    0,
+  );
+  assert.equal(
+    resolveStableGigsPendingCount({
+      localCount: 120,
+      latchedCount: 0,
+      rawCount: 0,
+      previousCount: 0,
+    }),
+    120,
+  );
+  assert.equal(formatGigsTabCountDisplay(120), "99+");
+
+  // Unknown count mid-navigation: hold the last value rather than blink off.
+  assert.equal(
+    resolveStableGigsPendingCount({
+      localCount: null,
+      latchedCount: 0,
+      rawCount: 0,
+      previousCount: 4,
+    }),
+    4,
+    "a transient zero with no known count must not clear the badge",
+  );
+  assert.equal(
+    resolveStableGigsPendingCount({
+      localCount: null,
+      latchedCount: 7,
+      rawCount: 0,
+      previousCount: 0,
+    }),
+    7,
+  );
+
+  // End-to-end through the real cache: the persisted count is what shows.
+  clearNavigationBadgeCache();
+  clearWorkspaceGigsDisplaySession();
+  clearWorkspaceGigsSubNavDisplayLatch();
+  applyPersistedGigsPendingCount("user-a", "dj", 3);
+  assert.equal(readWorkspaceGigsBadgeDisplayCountForSubNav("user-a", "dj"), 3);
+  applyPersistedGigsPendingCount("user-a", "dj", 2);
+  assert.equal(readWorkspaceGigsBadgeDisplayCountForSubNav("user-a", "dj"), 2);
+  applyPersistedGigsPendingCount("user-a", "dj", 0);
+  assert.equal(readWorkspaceGigsBadgeDisplayCountForSubNav("user-a", "dj"), 0);
 }
 
 function testGigsTabCountDisplayCap() {
@@ -9078,6 +9160,7 @@ async function main() {
   testGigsFilterTabCountsPersistDuringLoading();
   testWorkspaceGigsPendingDisplayCountPreservesLastKnown();
   testWorkspaceGigsSubNavCountSurvivesStaleRuntimeZero();
+  testWorkspaceGigsCountFollowsIncomingDownwards();
   testGigsTabCountDisplayCap();
   testEventsHistoryBulkSelectAllTogglesSelection();
   testResolvePlannerHistoryHideEventIds();

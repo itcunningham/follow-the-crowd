@@ -118,6 +118,35 @@ function finalizeWorkspaceGigsBadgeDisplayCount(
   return computed;
 }
 
+/**
+ * Per-render hold applied on top of the resolved count.
+ *
+ * A non-null `localCount` is the freshest value there is — only
+ * applyPersistedGigsPendingCount writes it, and every badge refresh goes
+ * through that, including the one notifyNavigationBadgesRefresh fires when a
+ * request is accepted, declined or cancelled — so it is used as-is and the
+ * badge follows Incoming in both directions.
+ *
+ * The high-water hold is for the opposite case: no local count yet (first
+ * visit, cleared storage, mid-transition before seeding) while the provider
+ * momentarily reports 0. Holding the last value seen there is what stops the
+ * badge blinking off mid-navigation. It used to apply to *known* counts too,
+ * which pinned the badge to its high-water mark: three incoming, accept one,
+ * and it kept reading 3 until the count reached 0.
+ */
+export function resolveStableGigsPendingCount(input: {
+  localCount: number | null;
+  latchedCount: number;
+  rawCount: number;
+  previousCount: number;
+}): number {
+  if (input.localCount != null) {
+    return input.localCount;
+  }
+
+  return Math.max(input.previousCount, input.latchedCount, input.rawCount);
+}
+
 /** Snapshot for workspace sub-nav — reads runtime/cache directly (avoids React context zero frames). */
 export function readWorkspaceGigsBadgeDisplayCountForSubNav(
   userId: string | null | undefined,
