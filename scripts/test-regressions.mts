@@ -8758,10 +8758,12 @@ function testEventPlansSendPanelReusesSharedConfirmUi() {
  *    (there may not be one).
  *  - No trailing full stop (house style). The sentence-internal stop stays,
  *    since each description is two sentences.
- *  - The help panel sits directly beneath pills already labelled "Fixed offer" /
- *    "Ask for rate", so it must not re-state that name; the bold label prefix is
- *    omitted there. It stays available for other callers (crew chat), which is
- *    asserted below so making `label` optional can't silently drop it.
+ *  - The help panel names the mode it explains, as a small heading on its own
+ *    line above the body. It has been all three ways: a run-in "Fixed offer.
+ *    You set..." lead (read as one sentence), omitted entirely on the grounds
+ *    that the pill above already says it (left the panel unidentifiable once
+ *    open), and now a heading. `label` stays optional and crew chat still
+ *    passes its own, asserted below so neither caller can silently lose it.
  */
 const RATE_MODE_FIXED_DESCRIPTION = "You set the amount. The DJ can accept or decline";
 const RATE_MODE_OPEN_DESCRIPTION =
@@ -8805,19 +8807,31 @@ function testBookingRateModeDescriptionsAreUnified() {
     assert.doesNotMatch(source, /before accepting/);
   }
 
-  // Help panel under the pills omits the bold option-name prefix (no repetition
-  // of the pill directly above it).
-  assert.match(pillSource, /<InlineOptionHelpPanel help=\{activeHelp\.help\} \/>/);
-  assert.doesNotMatch(pillSource, /<InlineOptionHelpPanel[^/]*label=/);
+  // The help panel names the mode it is explaining, as a small heading on its
+  // own line above the body -- not the run-in "Fixed offer. You set..." lead,
+  // which read as one undifferentiated sentence, and not omitted entirely,
+  // which left the panel with nothing identifying which mode it described.
+  assert.match(
+    pillSource,
+    /<InlineOptionHelpPanel label=\{activeHelp\.label\} help=\{activeHelp\.help\} \/>/,
+  );
+  assert.match(
+    helpPanelSource,
+    /\{label \? <p className="font-semibold text-ftc-text">\{label\}<\/p> : null\}\s*\n\s*<p className=\{label \? "mt-0\.5" : undefined\}>\{help\}<\/p>/,
+  );
+  assert.doesNotMatch(helpPanelSource, /\{label\}\. </);
 
-  // ...but the prefix is still supported and still used by crew chat, so making
-  // `label` optional didn't strip it from the other caller.
+  // `label` stays optional, and crew chat still passes its own.
   assert.match(helpPanelSource, /label\?: string;/);
-  assert.match(helpPanelSource, /\{label \? <span[^>]*>\{label\}\. <\/span> : null\}/);
   assert.match(
     eventDetailSource,
     /<InlineOptionHelpPanel label=\{CREW_CHAT_HELP\.label\} help=\{CREW_CHAT_HELP\.help\} \/>/,
   );
+
+  // The heading is not repeated anywhere else: the pills already carry the mode
+  // names, and the summary card keeps its own concise wording.
+  assert.match(pillSource, /`Fixed offer · \$\{formatRateDisplay\(offer\.fee\)\}`/);
+  assert.match(pillSource, /`Ask for rate · suggested \$\{formatRateDisplay\(offer\.fee\)\}`/);
 }
 
 async function main() {

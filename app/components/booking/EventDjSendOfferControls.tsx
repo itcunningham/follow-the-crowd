@@ -112,7 +112,7 @@ export default function EventDjSendOfferControls({
       </div>
 
       {activeHelp ? (
-        <InlineOptionHelpPanel help={activeHelp.help} />
+        <InlineOptionHelpPanel label={activeHelp.label} help={activeHelp.help} />
       ) : null}
 
       <BookingRateField

@@ -33,17 +33,17 @@ export function InlineOptionHelpPanel({
   help,
 }: {
   /**
-   * Bold lead-in naming what the help is about. Omit when the panel sits
-   * directly beneath a control already showing that same name, so the copy
-   * doesn't immediately repeat the heading.
+   * Small heading naming what the help is about, rendered on its own line above
+   * the body so the subject is identifiable at a glance. Optional: omit when the
+   * panel has no name to carry.
    */
   label?: string;
   help: string;
 }) {
   return (
-    <p className="rounded-lg border border-ftc-border-subtle bg-ftc-bg-elevated px-3 py-2 text-xs leading-relaxed text-ftc-text-muted">
-      {label ? <span className="font-semibold text-ftc-text">{label}. </span> : null}
-      {help}
-    </p>
+    <div className="rounded-lg border border-ftc-border-subtle bg-ftc-bg-elevated px-3 py-2 text-xs leading-relaxed text-ftc-text-muted">
+      {label ? <p className="font-semibold text-ftc-text">{label}</p> : null}
+      <p className={label ? "mt-0.5" : undefined}>{help}</p>
+    </div>
   );
 }
