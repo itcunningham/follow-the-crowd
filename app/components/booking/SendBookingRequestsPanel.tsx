@@ -207,7 +207,7 @@ function resolveSendButtonLabel(
   }
 
   if (isConfirmMode) {
-    return `Confirm ${sendableCount} DJ${sendableCount === 1 ? "" : "s"}`;
+    return "Send Requests";
   }
 
   return sendableCount === 1 ? "Send invitation" : `Send ${sendableCount} invitations`;
@@ -289,7 +289,7 @@ export default function SendBookingRequestsPanel({
       {draft.sendOfferSummary.length > 0 ? (
         <div className="rounded-xl bg-ftc-bg-elevated/70 p-3.5">
           <p className="text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted">
-            Send summary
+            Summary
           </p>
           <ul className="mt-2.5 space-y-2">
             {draft.sendOfferSummary.map((item) => (
