@@ -8901,7 +8901,6 @@ function testRunSheetTextareasArePinnedToTheirRowCounts() {
 
   // One shared field component owns the cap and the counter for both fields.
   assert.match(section, /function RunSheetCappedTextarea\(/);
-  assert.match(section, /applyTextInputLimit\(value, event\.target\.value, maxLength\)/);
   assert.match(section, /countUnicodeCharacters\(value\)/);
   assert.match(section, /ftc-form-notes-counter/);
 
@@ -8914,6 +8913,107 @@ function testRunSheetTextareasArePinnedToTheirRowCounts() {
 
   const notesLib = readFileSync(new URL("../lib/events/eventNotes.ts", import.meta.url), "utf8");
   assert.match(notesLib, /MAX_EVENT_NOTES_LENGTH = 500/);
+}
+
+/**
+ * Hard line caps: Stage / Area holds 2 explicit lines, Notes holds 4 — the same
+ * counts those fields display, so neither can hide a line the user has to
+ * scroll to find. Internal scrolling still exists for wrapped long lines.
+ *
+ * Both entry routes are covered because both exist. Return has to be stopped
+ * before it inserts (truncating afterwards would leave the caret on a line that
+ * then vanishes); everything that replaces the value wholesale — paste,
+ * drag-and-drop, dictation, autofill — is truncated in `onChange`. A cap on one
+ * route only is not a cap.
+ *
+ * This reuses `applyCappedMultilineInputLimit`/`shouldBlockMultilineEnter`,
+ * already behind the booking rate note and the profile bio, rather than a
+ * fourth copy of split/slice/join.
+ */
+function testRunSheetFieldsEnforceHardLineLimits() {
+  const section = readFileSync(
+    new URL("../app/components/EventRunSheetSection.tsx", import.meta.url),
+    "utf8",
+  );
+
+  // Wired to the shared helper, not a local reimplementation.
+  assert.match(section, /from "@\/lib\/cappedMultilineInput"/);
+  assert.match(section, /shouldBlockMultilineEnter\(value, rows\)/);
+  assert.match(
+    section,
+    /applyCappedMultilineInputLimit\(\s*value,\s*event\.target\.value,\s*rows,\s*maxLength,?\s*\)/,
+  );
+  assert.doesNotMatch(section, /split\("\\n"\)/);
+
+  // The Return guard must sit behind the IME check: mid-composition Return
+  // commits a candidate rather than inserting a newline.
+  assert.match(
+    section,
+    /event\.key !== "Enter" \|\| event\.nativeEvent\.isComposing/,
+  );
+
+  // `rows` is both the displayed row count and the line cap, so the two cannot
+  // drift apart; the row counts themselves are asserted above.
+  assert.match(section, /rows=\{RUN_SHEET_NOTES_VISIBLE_ROWS\}/);
+  assert.match(section, /rows=\{RUN_SHEET_STAGE_AREA_VISIBLE_ROWS\}/);
+
+  const stage = { maxLines: 2, maxLength: 50 };
+  const notes = { maxLines: 4, maxLength: 500 };
+
+  for (const [label, caps] of [
+    ["Stage / Area", stage],
+    ["Notes", notes],
+  ] as const) {
+    const { maxLines, maxLength } = caps;
+
+    // Return does nothing once the field already holds its maximum lines.
+    const atCap = Array.from({ length: maxLines }, (_, index) => `line ${index}`).join("\n");
+    assert.equal(shouldBlockMultilineEnter(atCap, maxLines), true, `${label}: Enter at cap`);
+    assert.equal(
+      shouldBlockMultilineEnter(atCap.split("\n").slice(0, -1).join("\n"), maxLines),
+      false,
+      `${label}: Enter below cap`,
+    );
+
+    // A paste of far more lines keeps the first `maxLines`, rather than being
+    // rejected outright — silently dropping the whole paste reads as a bug.
+    const pasted = Array.from({ length: maxLines * 3 }, (_, index) => `l${index}`).join("\n");
+    const limited = applyCappedMultilineInputLimit("", pasted, maxLines, maxLength);
+    assert.equal(countExplicitLines(limited ?? ""), maxLines, `${label}: pasted line count`);
+    assert.equal(
+      limited,
+      pasted.split("\n").slice(0, maxLines).join("\n"),
+      `${label}: pasted content is the FIRST lines`,
+    );
+
+    // The character cap still applies, and applies after truncation: lines are
+    // dropped first so the budget is spent on text the user keeps.
+    const overLong = "x".repeat(maxLength + 20);
+    assert.equal(
+      countUnicodeCharacters(applyCappedMultilineInputLimit("", overLong, maxLines, maxLength) ?? ""),
+      maxLength,
+      `${label}: character cap`,
+    );
+    const longLines = Array.from({ length: maxLines + 2 }, () => "y".repeat(maxLength)).join("\n");
+    const both = applyCappedMultilineInputLimit("", longLines, maxLines, maxLength) ?? "";
+    assert.equal(countUnicodeCharacters(both), maxLength, `${label}: both caps`);
+    assert.ok(both.startsWith("y"), `${label}: kept the first line, not a later one`);
+
+    // Content saved before the cap existed is not rewritten on load or on the
+    // first keystroke; it can only be reduced.
+    const legacy = Array.from({ length: maxLines + 2 }, (_, index) => `old ${index}`).join("\n");
+    assert.equal(
+      applyCappedMultilineInputLimit(legacy, `${legacy}\nmore`, maxLines, maxLength),
+      null,
+      `${label}: legacy value cannot grow`,
+    );
+    const reduced = legacy.split("\n").slice(0, -1).join("\n");
+    assert.equal(
+      applyCappedMultilineInputLimit(legacy, reduced, maxLines, maxLength),
+      reduced,
+      `${label}: legacy value can be reduced`,
+    );
+  }
 }
 
 function testRunSheetDirtyStateAndSaveFeedback() {
@@ -9916,6 +10016,7 @@ async function main() {
   testEventNotesTextareaScrollsWhenContentExceedsCap();
   testRunSheetInitialLoadIsNotDirty();
   testRunSheetTextareasArePinnedToTheirRowCounts();
+  testRunSheetFieldsEnforceHardLineLimits();
   testRunSheetDirtyStateAndSaveFeedback();
   testAppSplashScreenSlogan();
   testRoleAwareWorkspaceNavigation();

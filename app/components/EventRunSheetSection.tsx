@@ -47,7 +47,11 @@ import {
 } from "@/lib/eventRunSheet";
 import type { BookingRecipientProfile } from "@/lib/user/currentUser";
 import { MAX_EVENT_NOTES_LENGTH } from "@/lib/events/eventNotes";
-import { applyTextInputLimit, countUnicodeCharacters } from "@/lib/textInputLimits";
+import {
+  applyCappedMultilineInputLimit,
+  shouldBlockMultilineEnter,
+} from "@/lib/cappedMultilineInput";
+import { countUnicodeCharacters } from "@/lib/textInputLimits";
 
 const FIXED_FIELDS = [
   { key: "stage_area" as const, label: "Stage / Area" },
@@ -313,7 +317,17 @@ function RunSheetSetTimeField({
  * tuning it: nothing measures, so nothing can disagree.
  *
  * `rows` still matches the pinned row count so the field is the right size in
- * the moment before the stylesheet applies.
+ * the moment before the stylesheet applies. It doubles as the line cap: a field
+ * cannot hold more explicit lines than it can show, so the internal scroll is
+ * left to handle wrapping alone rather than hidden lines the user must scroll
+ * to find.
+ *
+ * The cap is enforced in two places because there are two ways to add a line.
+ * `onChange` covers anything that replaces the value — paste, drag-and-drop,
+ * autofill, dictation — and truncates to the first `rows` lines. `onKeyDown`
+ * covers the Return key, which has to be stopped before it inserts: letting it
+ * through and truncating afterwards would move the caret to a line that then
+ * disappears.
  */
 function RunSheetCappedTextarea({
   value,
@@ -335,11 +349,29 @@ function RunSheetCappedTextarea({
       <textarea
         value={value}
         rows={rows}
+        onKeyDown={(event) => {
+          // `isComposing` guard: mid-composition Return commits an IME
+          // candidate rather than inserting a newline, and swallowing it would
+          // break entry of Japanese, Chinese and Korean text.
+          if (event.key !== "Enter" || event.nativeEvent.isComposing) {
+            return;
+          }
+
+          if (shouldBlockMultilineEnter(value, rows)) {
+            event.preventDefault();
+          }
+        }}
         onChange={(event) => {
-          // Shared character-cap helper: it permits deletions when a stored
-          // value is already over the limit, so legacy content stays editable
-          // instead of being locked or silently truncated on load.
-          const limited = applyTextInputLimit(value, event.target.value, maxLength);
+          // Shared line + character cap, the same one behind the booking rate
+          // note and the profile bio: it permits deletions when a stored value
+          // is already over either limit, so content saved before the cap
+          // existed stays editable instead of being silently rewritten.
+          const limited = applyCappedMultilineInputLimit(
+            value,
+            event.target.value,
+            rows,
+            maxLength,
+          );
 
           if (limited === null) {
             return;
