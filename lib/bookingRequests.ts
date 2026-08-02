@@ -12,7 +12,7 @@ import { notifyBookingRequestsChanged } from "@/lib/bookings/bookingRequestsSync
 import { formatRateDisplay, formatIntegerRateDisplay, normalizeStoredRate } from "@/lib/bookingRate";
 import {
   DM_BOOKING_CANCELLED_MESSAGE,
-  DM_BOOKING_CONFIRMED_MESSAGE,
+  formatBookingConfirmedDmMessage,
   DM_BOOKING_ORIGINAL_OFFER_KEPT_MESSAGE,
   DM_BOOKING_PROPOSED_RATE_ACCEPTED_MESSAGE,
   DM_BOOKING_RATE_DECLINED_MESSAGE,
@@ -1281,7 +1281,14 @@ async function insertRateProposedDmMessageIfNeeded(
 async function insertBookingAcceptedDmMessageIfNeeded(
   booking: BookingRequest,
 ): Promise<{ inserted: boolean; messageText: string }> {
-  const messageText = DM_BOOKING_CONFIRMED_MESSAGE;
+  // Per-event text: the bare "Booking confirmed" constant is identical for every
+  // booking, so deduping on it allowed only ONE confirmation per conversation --
+  // every later acceptance between the same planner and DJ inserted nothing, and
+  // with no message row there was no realtime event, no unread state, no inbox
+  // preview change and no notification (that call is gated on `inserted`).
+  // Including the event name makes each acceptance its own row, so the guard
+  // below identifies the booking rather than the whole conversation.
+  const messageText = formatBookingConfirmedDmMessage(booking.event_name);
   const legacyMessageText = formatBookingAcceptedDmMessage(booking.event_name);
   const activityText = formatBookingAcceptanceActivityMessage(booking.event_name);
 
@@ -3228,23 +3235,25 @@ export async function updateBookingRequestStatus(
   }
 
   if (status === "accepted") {
-    const dmResult = await insertBookingAcceptedDmMessageIfNeeded(booking);
+    await insertBookingAcceptedDmMessageIfNeeded(booking);
 
-    if (dmResult.inserted && booking.conversation_id) {
-      try {
-        await createNotification(
-          booking.sender_id,
-          "message",
-          "New message",
-          dmResult.messageText,
-          `/dm/${booking.conversation_id}`,
-        );
-      } catch (notificationError) {
-        console.error(
-          "[bookings] message notification failed after booking acceptance:",
-          notificationError,
-        );
-      }
+    // Mirrors the decline path below: acceptance is a booking outcome, so the
+    // planner gets a `booking_update` rather than a generic "New message". It is
+    // no longer gated on the DM insert -- that gate meant a skipped or failed
+    // system message silently swallowed the planner's only notification.
+    try {
+      await createNotification(
+        booking.sender_id,
+        "booking_update",
+        "Booking accepted",
+        `${booking.event_name} · ${formatStatusLabel(status)}`,
+        booking.conversation_id ? `/dm/${booking.conversation_id}` : "/bookings",
+      );
+    } catch (notificationError) {
+      console.error(
+        "[bookings] booking-accepted notification failed:",
+        notificationError,
+      );
     }
 
     if (booking.event_id) {

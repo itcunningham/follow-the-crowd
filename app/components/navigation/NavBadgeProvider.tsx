@@ -14,7 +14,6 @@ import {
   notifyBookingRequestsChanged,
   subscribeToBookingRequestChanges,
 } from "@/lib/bookings/bookingRequestsSync";
-import { rtLogChannelStatus } from "@/lib/diagnostics/realtimeDiagnostics";
 import { loadNavigationBadgeData } from "@/lib/navigationBadges";
 import {
   ensureGigsPendingPrefetched,
@@ -332,13 +331,10 @@ export function NavBadgeProvider({ children }: { children: ReactNode }) {
           filter: `user_id=eq.${userId}`,
         },
         () => {
-          rtLogChannelStatus(`nav-notifications:${userId}`, "PAYLOAD RECEIVED");
           void refreshBadgeCounts({ force: true });
         },
       )
-      .subscribe((status, error) => {
-        rtLogChannelStatus(`nav-notifications:${userId}`, status, error);
-      });
+      .subscribe();
 
     return () => {
       supabase.removeChannel(channel);

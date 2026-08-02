@@ -5,7 +5,6 @@ import { usePathname, useRouter } from "next/navigation";
 import FtcAppSplashScreen from "@/app/components/brand/FtcAppSplashScreen";
 import { GuardProfileProvider } from "@/app/components/GuardProfileContext";
 import { NavBadgeProvider } from "@/app/components/navigation/NavBadgeProvider";
-import RealtimeDebugPanel from "@/app/components/debug/RealtimeDebugPanel";
 import { AppLoadingShell } from "@/app/components/skeleton/Skeleton";
 import { ensureGigsPendingPrefetched, ensureNavMessagesPrefetched, ensureNavigationBadgesPrefetched } from "@/lib/navigationBadgePrefetch";
 import { cacheNavigationRole, readCachedNavigation } from "@/lib/navigationRoleCache";
@@ -287,7 +286,6 @@ export default function OnboardingGuard({ children }: { children: React.ReactNod
             currentUserId={loadingProfile?.user_id ?? cached.userId}
             search={typeof window !== "undefined" ? window.location.search : ""}
           />
-          <RealtimeDebugPanel />
         </NavBadgeProvider>
       </GuardProfileProvider>
     );
@@ -299,7 +297,6 @@ export default function OnboardingGuard({ children }: { children: React.ReactNod
         <div className={pathname === HOME_PATH ? "ftc-app-content-enter" : undefined}>
           {children}
         </div>
-        <RealtimeDebugPanel />
       </NavBadgeProvider>
     </GuardProfileProvider>
   );

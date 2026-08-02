@@ -803,7 +803,10 @@ function testDmBookingSystemMessages() {
   assert.match(bookingRequestsSource, /DM_BOOKING_ORIGINAL_OFFER_KEPT_MESSAGE/);
   assert.match(bookingRequestsSource, /DM_BOOKING_RATE_DECLINED_MESSAGE/);
   assert.match(bookingRequestsSource, /DM_BOOKING_PROPOSED_RATE_ACCEPTED_MESSAGE/);
-  assert.match(bookingRequestsSource, /DM_BOOKING_CONFIRMED_MESSAGE/);
+  // Acceptance inserts the per-event form of the confirmed message; see
+  // testBookingAcceptedDmMessageIsScopedToTheBooking for why the bare constant
+  // could not be used here.
+  assert.match(bookingRequestsSource, /formatBookingConfirmedDmMessage/);
   assert.match(bookingRequestsSource, /DM_BOOKING_CANCELLED_MESSAGE/);
 
   assert.equal(formatRateProposedDmSystemMessage(111), "Rate proposed: $111");
@@ -9206,6 +9209,86 @@ function testBookingStatusChangesReconcileEverywhere() {
   assert.match(realtimeSql, /pg_publication_tables/);
 }
 
+function testBookingAcceptedDmMessageIsScopedToTheBooking() {
+  const bookingRequestsSource = readFileSync(
+    new URL("../lib/bookingRequests.ts", import.meta.url),
+    "utf8",
+  );
+  const systemMessagesSource = readFileSync(
+    new URL("../lib/dm/dmBookingSystemMessages.ts", import.meta.url),
+    "utf8",
+  );
+
+  // The acceptance system message carries the event name. The bare
+  // "Booking confirmed" constant is identical for every booking, so a
+  // conversation-scoped dedupe on it allowed exactly ONE acceptance message per
+  // DM: every later acceptance between the same planner and DJ inserted nothing,
+  // and with no message row there was no realtime event, no unread state, no
+  // inbox preview change and no notification.
+  assert.match(
+    bookingRequestsSource,
+    /const messageText = formatBookingConfirmedDmMessage\(booking\.event_name\)/,
+  );
+  assert.match(systemMessagesSource, /export function formatBookingConfirmedDmMessage/);
+  assert.match(systemMessagesSource, /export function parseBookingConfirmedDmEventName/);
+
+  // Dedupe now matches that per-event text, so it identifies the booking rather
+  // than the whole conversation.
+  assert.match(
+    bookingRequestsSource,
+    /\.in\("text", \[messageText, activityText, legacyMessageText\]\)/,
+  );
+
+  // The per-event form is still recognised as a booking system message, and
+  // still displays as the concise canonical copy.
+  assert.match(
+    systemMessagesSource,
+    /parseBookingConfirmedDmEventName\(trimmed\) !== null/,
+  );
+
+  // The planner's acceptance notification is a booking outcome, and is no longer
+  // gated on the DM insert -- that gate meant a skipped system message silently
+  // swallowed the only notification the planner would have received.
+  assert.match(bookingRequestsSource, /"booking_update",\s*\n\s*"Booking accepted"/);
+  // (Other DM flows still gate their "New message" notification on the insert;
+  // only the acceptance branch must not, so this checks that branch specifically.)
+  assert.doesNotMatch(
+    bookingRequestsSource,
+    /const dmResult = await insertBookingAcceptedDmMessageIfNeeded/,
+  );
+  assert.match(bookingRequestsSource, /await insertBookingAcceptedDmMessageIfNeeded\(booking\);/);
+}
+
+function testRealtimeInstrumentationIsFullyRemoved() {
+  // The booking-acceptance investigation shipped temporary opt-in diagnostics
+  // and an on-screen debug panel. None of it may reach production.
+  for (const relativePath of [
+    "../lib/bookings/bookingRequestsSync.ts",
+    "../lib/bookings/gigsListSnapshotPrefetch.ts",
+    "../app/dm/page.tsx",
+    "../app/components/OnboardingGuard.tsx",
+    "../app/components/navigation/NavBadgeProvider.tsx",
+    "../app/(planner-workspace)/events/EventsPageClient.tsx",
+    "../app/(planner-workspace)/bookings/page.tsx",
+  ]) {
+    const source = readFileSync(new URL(relativePath, import.meta.url), "utf8");
+    assert.doesNotMatch(
+      source,
+      /rtLog|realtimeDiagnostics|RealtimeDebugPanel|ftcdebug|ftc-debug-realtime/,
+      `${relativePath} still references the temporary realtime instrumentation`,
+    );
+  }
+
+  assert.ok(
+    !existsSync(new URL("../lib/diagnostics/realtimeDiagnostics.ts", import.meta.url)),
+    "the temporary realtime diagnostics module must be deleted",
+  );
+  assert.ok(
+    !existsSync(new URL("../app/components/debug/RealtimeDebugPanel.tsx", import.meta.url)),
+    "the temporary realtime debug panel must be deleted",
+  );
+}
+
 async function main() {
   testPastEventDatesAreBlocked();
   testFutureEventDatesAreAllowed();
@@ -9407,6 +9490,8 @@ async function main() {
   testEventPlansSendPanelReusesSharedConfirmUi();
   testBookingRateModeDescriptionsAreUnified();
   testBookingStatusChangesReconcileEverywhere();
+  testBookingAcceptedDmMessageIsScopedToTheBooking();
+  testRealtimeInstrumentationIsFullyRemoved();
   await testEventsHistorySelectAllButtonInteraction();
   await testEventsHistoryRemoveConfirmInteraction();
   await testDmChatReopenScroll();

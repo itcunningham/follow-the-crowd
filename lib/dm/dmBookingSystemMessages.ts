@@ -12,6 +12,33 @@ export const DM_BOOKING_CONFIRMED_MESSAGE = "Booking confirmed";
 
 export const DM_BOOKING_CANCELLED_MESSAGE = "Booking cancelled";
 
+/**
+ * Per-event confirmed message, e.g. "Booking confirmed · Warehouse Set".
+ *
+ * The bare `DM_BOOKING_CONFIRMED_MESSAGE` constant is identical for every
+ * booking, so the acceptance insert could only ever dedupe one confirmation per
+ * conversation -- every later acceptance between the same planner and DJ was
+ * silently skipped, which suppressed the DM preview, the unread state and the
+ * notification along with it. Carrying the event name makes each acceptance a
+ * distinct row, so dedupe identifies the booking rather than the conversation.
+ */
+export function formatBookingConfirmedDmMessage(eventName: string): string {
+  const trimmed = eventName.trim();
+
+  return trimmed ? `${DM_BOOKING_CONFIRMED_MESSAGE} · ${trimmed}` : DM_BOOKING_CONFIRMED_MESSAGE;
+}
+
+export function parseBookingConfirmedDmEventName(text: string): string | null {
+  const trimmed = text.trim();
+  const prefix = `${DM_BOOKING_CONFIRMED_MESSAGE} · `;
+
+  if (!trimmed.startsWith(prefix)) {
+    return null;
+  }
+
+  return trimmed.slice(prefix.length).trim() || null;
+}
+
 export const DM_BOOKING_REQUEST_DECLINED_MESSAGE = "Booking request declined";
 
 /** Prior concise system-message copy (still stored in some threads). */
@@ -102,6 +129,7 @@ function isCanonicalDmBookingSystemMessage(text: string): boolean {
     trimmed === DM_BOOKING_PROPOSED_RATE_ACCEPTED_MESSAGE ||
     trimmed === VERBOSE_PROPOSED_RATE_ACCEPTED_MESSAGE ||
     trimmed === DM_BOOKING_CONFIRMED_MESSAGE ||
+    parseBookingConfirmedDmEventName(trimmed) !== null ||
     trimmed === VERBOSE_CONFIRMED_MESSAGE ||
     trimmed === DM_BOOKING_CANCELLED_MESSAGE ||
     trimmed === VERBOSE_CANCELLED_MESSAGE ||
@@ -198,8 +226,12 @@ export function formatDmBookingSystemMessageDisplay(text: string): string {
     return DM_BOOKING_PROPOSED_RATE_ACCEPTED_MESSAGE;
   }
 
+  // Display stays on the concise canonical copy, including for the per-event
+  // form: the event name exists on the stored row purely so each acceptance is a
+  // distinct message and dedupe can identify the booking.
   if (
     trimmed === DM_BOOKING_CONFIRMED_MESSAGE ||
+    parseBookingConfirmedDmEventName(trimmed) !== null ||
     trimmed === VERBOSE_CONFIRMED_MESSAGE ||
     isLegacyBookingAcceptedDmMessage(trimmed) ||
     parseLegacyBookingActivityAcceptedEventName(trimmed)

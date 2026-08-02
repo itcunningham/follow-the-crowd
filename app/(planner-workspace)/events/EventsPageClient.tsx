@@ -150,7 +150,6 @@ import { syncPlannerEventsHiddenFromHistoryClientCaches } from "@/lib/events/pla
 import { readEventsListCache, seedEventsListStateFromCache, writeEventsListCache } from "@/lib/events/eventsListCache";
 import { writeBookingPlansListCache, readBookingPlansListCache } from "@/lib/bookingPlans/bookingPlansListCache";
 import { seedEventOwnerId, seedEventOwnerIdsFromEvents } from "@/lib/events/eventOwnerIdCache";
-import { rtLog } from "@/lib/diagnostics/realtimeDiagnostics";
 
 const emptyEventForm: EventInput = {
   name: "",
@@ -817,9 +816,7 @@ function EventsPageClientView({
     setError(null);
 
     try {
-      rtLog("refetch", "EventsPageClient loadEvents START", { isPlanner });
       const rows = isPlanner ? await listOwnedEvents() : await listDjInvitedEvents();
-      rtLog("refetch", "EventsPageClient loadEvents DONE", { rows: rows.length });
       const withStats = await attachLineupStats(rows);
       setEvents(withStats);
       writeEventsListCache(isPlanner, withStats);
@@ -913,7 +910,6 @@ function EventsPageClientView({
     }
 
     function handleBookingsChanged() {
-      rtLog("refetch", "EventsPageClient booking-change signal -> loadEvents");
       void loadEvents();
     }
 
