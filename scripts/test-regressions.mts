@@ -10276,31 +10276,21 @@ function testRunSheetHeaderAlignmentAndDensity() {
 
   const hiddenRule = globalsSource.match(/\.ftc-run-sheet-save-btn \{[\s\S]*?\n\}/)?.[0] ?? "";
   assert.ok(hiddenRule, "the Save button's hidden-state rule must exist");
-  // Zero horizontal footprint while hidden.
-  assert.match(hiddenRule, /max-width: 0;/);
-  assert.match(hiddenRule, /padding-left: 0;/);
-  assert.match(hiddenRule, /padding-right: 0;/);
-  // Margin side is owned by testRunSheetCancelIsTheFixedAnchor; what matters
-  // here is only that the collapse zeroes it.
-  assert.match(hiddenRule, /margin-(left|right): 0;/);
-  assert.match(hiddenRule, /overflow: hidden;/);
-  // Height is NOT collapsed -- the row must stay reserved.
+  // This pass collapsed Save's box to remove its footprint. That mechanic was
+  // later deleted outright: Cancel is anchored by being the last child of a
+  // right-aligned row, so Save never needed to collapse, and the animated
+  // sizing only made the layout depend on engine-specific flex behaviour.
+  // testRunSheetCancelIsTheFixedAnchor owns the replacement. What survives
+  // here is the rule that never changed -- Save must not collapse VERTICALLY,
+  // or the DJ cards below would shift when it appears.
   assert.doesNotMatch(hiddenRule, /min-height/);
   assert.doesNotMatch(hiddenRule, /height: 0/);
   assert.doesNotMatch(hiddenRule, /display: none/);
-  // The collapse is animated, not a snap.
-  assert.match(hiddenRule, /transition:[\s\S]*max-width 190ms ease-out/);
-  assert.match(hiddenRule, /transition:[\s\S]*margin-(left|right) 190ms ease-out/);
 
   const visibleRule =
     globalsSource.match(/\.ftc-run-sheet-save-btn\.ftc-run-sheet-save-btn--visible \{[\s\S]*?\n\}/)?.[0] ??
     "";
   assert.ok(visibleRule, "the Save button's visible-state rule must exist");
-  // Restored geometry, and the gap to Cancel rides on Save itself.
-  assert.match(visibleRule, /max-width: 8rem;/);
-  assert.match(visibleRule, /margin-(left|right): 0\.75rem;/);
-  assert.match(visibleRule, /padding-left: 0\.75rem;/);
-  assert.match(visibleRule, /padding-right: 0\.75rem;/);
 
   // Source order was later reversed so Cancel owns the right edge instead --
   // see testRunSheetCancelIsTheFixedAnchor, which owns that now.
@@ -10396,83 +10386,87 @@ function testRunSheetCancelIsTheFixedAnchor() {
   assert.match(editButton, anchorClass);
   assert.match(cancelButton, anchorClass);
 
-  // Save is NOT shown before a change exists: it is collapsed to zero
-  // horizontal footprint and is unreachable by pointer or keyboard.
+  // Save is NOT shown before a change exists: invisible, unclickable, and
+  // out of both the tab order and the accessibility tree.
   const hiddenRule = globalsSource.match(/\.ftc-run-sheet-save-btn \{[\s\S]*?\n\}/)?.[0] ?? "";
-  assert.ok(hiddenRule, "the Save hidden-state rule must exist");
-  assert.match(hiddenRule, /max-width: 0;/);
-  // `min-width: 0` is load-bearing, not decorative: a flex item's automatic
-  // minimum size is its content width and min-width beats max-width, so
-  // without this the button refuses to shrink past "SAVE" and keeps pushing
-  // Cancel left. `overflow: hidden` also zeroes the automatic minimum per
-  // spec, but relying on that alone leaves the layout dependent on one
-  // engine's handling of a subtle interaction -- which is exactly the class
-  // of difference that shows up on iOS Safari but not in Chromium.
-  assert.match(hiddenRule, /min-width: 0;/);
-  assert.match(hiddenRule, /margin-right: 0;/);
-  assert.match(hiddenRule, /padding-left: 0;/);
-  assert.match(hiddenRule, /padding-right: 0;/);
+  const visibleRule =
+    globalsSource.match(/\.ftc-run-sheet-save-btn\.ftc-run-sheet-save-btn--visible \{[\s\S]*?\n\}/)?.[0] ??
+    "";
+  assert.ok(hiddenRule && visibleRule, "both Save state rules must exist");
+  assert.match(hiddenRule, /opacity: 0;/);
   assert.match(hiddenRule, /pointer-events: none;/);
+  assert.match(visibleRule, /opacity: 1;/);
+  assert.match(visibleRule, /pointer-events: auto;/);
   assert.match(section, /aria-hidden=\{!hasUnsavedChanges\}/);
   assert.match(section, /tabIndex=\{hasUnsavedChanges \? 0 : -1\}/);
 
-  // --- Cancel's horizontal position is invariant between clean and dirty ---
+  // --- Cancel's horizontal position cannot depend on Save, by construction --
   //
-  // This suite has no layout engine (its DOM helpers are hand-stubbed rects),
-  // so this cannot be asserted by measuring pixels. It is asserted as the
-  // layout contract that *derives* the measurement instead, which is the
-  // stronger check anyway: it holds at every intermediate width during the
-  // reveal transition, not just at the two endpoints a snapshot would catch.
+  // Two independent guarantees, both asserted rather than measured (this
+  // suite has no layout engine -- its DOM helpers are hand-stubbed rects):
   //
-  // In a `justify-content: flex-end` row, the last item's right margin edge
-  // coincides with the container's content-box right edge for ANY set of item
-  // widths. So Cancel's x is a function of the container alone -- Save's width
-  // cannot enter into it -- provided all three of these hold:
+  // 1. Cancel is the LAST child of a `justify-content: flex-end` row. The
+  //    last item's right margin edge coincides with the container's
+  //    content-box right edge for ANY set of item widths, so Cancel's x is a
+  //    function of the container alone. Asserted above via source order.
   //
-  //   (a) Cancel is the LAST child                      -> asserted above
-  //   (b) Cancel contributes no trailing horizontal box  -> below
-  //   (c) the collapsed Save adds no width when clean    -> computed below
+  // 2. Save's BOX IS IDENTICAL in both states. Earlier revisions animated
+  //    `max-width`/`min-width`/`padding` to collapse Save. That was never
+  //    necessary given (1), and it made the layout depend on engine-specific
+  //    flex sizing -- a flex item's automatic minimum size, and whether
+  //    `overflow` zeroes it -- which is exactly the sort of thing that can
+  //    differ on WebKit. Now nothing about the geometry changes at all, so
+  //    there is no sizing behaviour left for an engine to disagree about.
   //
-  // Live-measured against this exact contract: Cancel's right edge is 359px
-  // at 390px wide and 935.5px at 1280px, identical in view / clean / dirty,
-  // with Save 0px wide when clean and 61.2px + a 12px gap when dirty.
+  // Live-measured: Cancel's right edge is 359px at 390px and 935.5px at
+  // 1280px, identical across view / clean / dirty.
 
-  // (b) Nothing sits between Cancel and the container's right edge.
+  // (1) Nothing sits between Cancel and the container's right edge.
   assert.doesNotMatch(cancelButton, /className="[^"]*\b-?m[rx]-/);
   assert.doesNotMatch(editButton, /className="[^"]*\b-?m[rx]-/);
 
-  // (c) Sum every horizontal box contribution of the collapsed Save from the
-  // real CSS and require it to be exactly zero. `.ftc-btn-primary` is folded
-  // in because a border added there later would silently reintroduce width
-  // even though the collapse rule itself looks untouched.
-  const primaryRule = globalsSource.match(/\.ftc-btn-primary \{[\s\S]*?\n\}/)?.[0] ?? "";
-  assert.ok(primaryRule, ".ftc-btn-primary must exist");
-  const declared = (rule: string, prop: string): string | null =>
-    rule.match(new RegExp(`(?:^|[;{]\\s*)${prop}:\\s*([^;]+);`, "m"))?.[1]?.trim() ?? null;
-  const lengthPx = (value: string | null): number => {
-    if (value === null) return 0;
-    const v = value.trim();
-    if (v === "none" || v === "0" || v === "auto") return 0;
-    const m = v.match(/^(-?[\d.]+)(px|rem)$/);
-    assert.ok(m, `collapsed Save has a non-zero-able length: "${v}"`);
-    return parseFloat(m![1]) * (m![2] === "rem" ? 16 : 1);
-  };
-  const collapsedWidthPx =
-    lengthPx(declared(hiddenRule, "max-width")) +
-    lengthPx(declared(hiddenRule, "padding-left")) +
-    lengthPx(declared(hiddenRule, "padding-right")) +
-    lengthPx(declared(hiddenRule, "margin-left")) +
-    lengthPx(declared(hiddenRule, "margin-right")) +
-    // border shorthand on the shared primary class ("none" -> 0)
-    lengthPx(declared(primaryRule, "border") === "none" ? "0" : declared(primaryRule, "border"));
+  // (2) Only compositor properties may differ between the two states, and
+  // only those may be transitioned. Anything that affects layout appearing
+  // here would reintroduce the possibility of Cancel moving.
+  const COMPOSITOR_ONLY = new Set(["opacity", "transform", "pointer-events", "visibility"]);
+  const declaredProps = (rule: string): string[] =>
+    [...rule.matchAll(/(?:^|[;{])\s*([a-z-]+)\s*:/gm)].map((m) => m[1]);
+  for (const prop of [...declaredProps(hiddenRule), ...declaredProps(visibleRule)]) {
+    if (prop === "transition" || prop === "margin-right") continue; // constant gap, never animated
+    assert.ok(
+      COMPOSITOR_ONLY.has(prop),
+      `Save's state rules may only declare compositor properties; found layout-affecting "${prop}"`,
+    );
+  }
+  // The constant gap must be declared identically in both states (or only
+  // once), never toggled -- a changing margin is a layout change.
+  const marginIn = (rule: string) => rule.match(/margin-right:\s*([^;]+);/)?.[1]?.trim() ?? null;
   assert.equal(
-    collapsedWidthPx,
-    0,
-    "collapsed Save must occupy exactly 0 horizontal px, or it will displace Cancel",
+    marginIn(visibleRule),
+    null,
+    "the gap to Cancel must not change between states -- declare it once on the base rule",
   );
+  assert.equal(marginIn(hiddenRule), "0.75rem");
 
-  // And the Save class string itself must not reintroduce width via a margin
-  // utility, which would sit outside the CSS rule computed above.
+  // The transition must animate ONLY compositor properties. This is the
+  // property that makes the reveal engine-independent: opacity and transform
+  // never trigger layout, so no reflow can occur mid-animation.
+  const transition = hiddenRule.match(/transition:\s*([\s\S]*?);/)?.[1] ?? "";
+  assert.ok(transition, "the reveal must still be a transition");
+  for (const part of transition.split(",")) {
+    const prop = part.trim().split(/\s+/)[0];
+    assert.ok(
+      COMPOSITOR_ONLY.has(prop),
+      `only compositor properties may be transitioned; found "${prop}"`,
+    );
+  }
+  assert.match(transition, /opacity 190ms ease-out/);
+  assert.match(transition, /transform 190ms ease-out/);
+  // The old collapse mechanic must not come back.
+  assert.doesNotMatch(hiddenRule, /max-width|min-width|padding|overflow|width:/);
+  assert.doesNotMatch(visibleRule, /max-width|min-width|padding|overflow|width:/);
+
+  // Save's class string must not reintroduce geometry via a margin utility.
   const saveClassConst =
     section.match(/const RUN_SHEET_SAVE_BUTTON_CLASS =\s*\n\s*"([^"]+)"/)?.[1] ?? "";
   assert.ok(saveClassConst, "RUN_SHEET_SAVE_BUTTON_CLASS must exist");
@@ -10511,16 +10505,11 @@ function testRunSheetCancelIsTheFixedAnchor() {
   // their left-to-right visual order; while clean, Save is skipped entirely.
   assert.ok(saveIndex < cancelIndex, "tab order must follow visual left-to-right order");
 
-  // The gap now sits on Save's RIGHT (Save is left of Cancel), and collapses
-  // with the button rather than surviving as a phantom offset.
-  const visibleRule =
-    globalsSource.match(/\.ftc-run-sheet-save-btn\.ftc-run-sheet-save-btn--visible \{[\s\S]*?\n\}/)?.[0] ??
-    "";
-  assert.ok(visibleRule, "the Save visible-state rule must exist");
-  assert.match(visibleRule, /margin-right: 0\.75rem;/);
-  assert.doesNotMatch(visibleRule, /margin-left/);
+  // The 12px gap sits on Save's RIGHT (Save is left of Cancel) and is a
+  // constant -- asserted in the horizontal block above, which also proves it
+  // is never animated.
   assert.doesNotMatch(hiddenRule, /margin-left/);
-  assert.match(hiddenRule, /transition:[\s\S]*margin-right 190ms ease-out/);
+  assert.doesNotMatch(visibleRule, /margin-left/);
 
   // Row height still reserved -- Save must never collapse vertically, or the
   // DJ cards below would shift when it appears.

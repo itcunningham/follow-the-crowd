@@ -479,69 +479,45 @@ html {
 }
 
 /**
- * The Run Sheet's Save button is always mounted once editing starts, with its
- * row height reserved from the moment Edit is pressed -- nothing below it (the
- * DJ cards) can shift when it fades in or out. Visibility toggles via
- * `opacity` + a small `translateY` on the one persistent element, which is a
- * `transition`, not a mount-triggered `@keyframes` (the previous approach, back
- * when Save only existed in the DOM while there was something to save).
- * `pointer-events` follows the same toggle so the hidden button can't be
- * clicked while invisible; `tabIndex` on the element (not CSS) handles keyboard
- * reachability.
+ * The Run Sheet's Save button, revealed when there are unsaved edits.
  *
- * Hidden means zero *horizontal* footprint, not merely transparent: an
- * invisible-but-space-occupying Save would still displace Cancel from the
- * right-aligned slot Edit occupies in view mode, so the top-right control
- * would appear to jump sideways the moment Edit was pressed. Collapsing
- * `max-width`/padding to 0 puts Cancel exactly where Edit was. `min-height`
- * (from `.ftc-btn-primary`) is deliberately NOT collapsed, so the row keeps
- * reserving its full height and the DJ cards below still never move.
+ * Cancel's position is guaranteed by LAYOUT, not by this rule. Save sits
+ * before Cancel in source (see `EventRunSheetSection`), so Cancel is the last
+ * child of a `justify-end` row: the last item's right margin edge coincides
+ * with the container's content-box right edge for ANY set of item widths, so
+ * Cancel's x cannot depend on Save at all. The row grows leftward.
  *
- * Save sits BEFORE Cancel in source (see `EventRunSheetSection`), so Cancel
- * is the last child of a `justify-end` row and owns the right edge outright:
- * Save expanding out of zero width grows the row leftward and cannot push
- * Cancel anywhere. That is what makes Cancel's position identical whether or
- * not there are unsaved changes.
+ * Because of that, Save does NOT need to collapse, and deliberately does not.
+ * Earlier revisions animated `max-width`/`min-width`/`padding` to zero to
+ * remove its footprint. That was unnecessary -- an invisible Save occupying
+ * its normal box does not move Cancel, since Cancel is anchored to the
+ * container edge rather than packed against Save -- and it made the layout
+ * depend on engine-specific flex sizing (a flex item's automatic minimum size,
+ * and whether `overflow` zeroes it). Sizing is now completely static while
+ * editing: nothing about the box changes between the clean and dirty states.
  *
- * The gap therefore rides on Save's own `margin-right` (Save is on Cancel's
- * left), rather than a flex `gap` on the container -- a container gap would
- * survive the collapse and leave a phantom 12px offset that shifted Cancel.
- * Tailwind utilities live in a cascade layer and this file is unlayered, so
- * these declarations win over `px-3` without needing `!important`.
+ * Only `opacity` and `transform` animate. Both are compositor-only properties
+ * that never trigger layout, so no engine -- WebKit included -- can produce a
+ * reflow from this reveal. `pointer-events` keeps the invisible button
+ * unclickable; `tabIndex`/`aria-hidden` on the element handle keyboard and
+ * assistive-tech reachability.
+ *
+ * `margin-right` is a constant 12px gap to Cancel, never animated. It rides on
+ * Save rather than a container `gap` so the spacing belongs to the element it
+ * separates.
  */
 .ftc-run-sheet-save-btn {
   opacity: 0;
   transform: translateY(7px);
   pointer-events: none;
-  max-width: 0;
-  /* A flex item's automatic minimum size (`min-width: auto`) is its content
-     width, and min-width beats max-width -- so without this the button would
-     refuse to shrink past "SAVE" and would keep displacing Cancel. Setting it
-     to 0 explicitly is what actually guarantees the collapse. `overflow:
-     hidden` below also zeroes the automatic minimum per the flexbox spec, but
-     relying on that alone leaves the layout depending on one engine's
-     implementation of a subtle interaction; this states the intent outright
-     and behaves identically everywhere. */
-  min-width: 0;
-  margin-right: 0;
-  padding-left: 0;
-  padding-right: 0;
-  overflow: hidden;
-  transition: opacity 190ms ease-out, transform 190ms ease-out,
-    max-width 190ms ease-out, margin-right 190ms ease-out, padding 190ms ease-out;
+  margin-right: 0.75rem;
+  transition: opacity 190ms ease-out, transform 190ms ease-out;
 }
 
 .ftc-run-sheet-save-btn.ftc-run-sheet-save-btn--visible {
   opacity: 1;
   transform: translateY(0);
   pointer-events: auto;
-  /* Comfortably above the natural width of the longest label ("Saving"), so
-     `overflow: hidden` never clips it -- max-width caps width, it doesn't set
-     it, so the button still sizes to its content. */
-  max-width: 8rem;
-  margin-right: 0.75rem;
-  padding-left: 0.75rem;
-  padding-right: 0.75rem;
 }
 
 @media (prefers-reduced-motion: reduce) {
