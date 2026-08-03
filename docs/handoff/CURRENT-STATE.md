@@ -3,7 +3,7 @@
 
 Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 
-**Product vision handoff captured (`docs/handoff/PRODUCT-VISION.md`, 2026-08-03):** Isaac’s complete project handover is now the authoritative product philosophy in handoff — FTC is an event operating system (not ticketing), DM is the messaging reference for Crew Chat, prefer less UI, and do not build social-network extras unless asked. Wired into `README.md`, `START-HERE-CURSOR.md`, `START-HERE-GPT.md`, and `CLAUDE-CODE-BUILDER-HANDOVER.md`. Docs only; no app code.
+**Product vision handoff captured (`docs/handoff/PRODUCT-VISION.md`, 2026-08-03):** Isaac’s complete project handover is the authoritative product philosophy — event OS (not ticketing), DM as messaging reference, less UI, no social-network extras unless asked. **Long-term roadmap expanded to Phases 1–12** (notifications/calendar → payments/contracts → ticketing → crew/ops → venues/agencies → event/offline/emergency modes → AI → community → marketplace → finance → enterprise), with north star: first booking to final payout without leaving FTC. Wired into session startup docs. Docs only; no app code.
 
 **RELEASED — Agent Room is on `main` as `667471a` (2026-08-03).** `agent/agent-room` was integrated by the Release Agent with **`git merge --no-ff`** (not a fast-forward: `main` had moved to `a46b3e6`), carrying all eight commits — `ecab298`, `679e736`, `f49c1a7`, `bce57de`, `db67eda`, `adba7d8`, `7b9ea05` and `6667272`. Nothing was force-pushed, stashed, reset or cleaned. **The four Agent Room entries below still say "NOT merged" — that is now stale. They are left in place rather than rewritten, per `MULTI-AGENT-WORKFLOW.md` §5; this entry is the correction.**
 

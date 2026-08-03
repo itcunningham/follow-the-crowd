@@ -12,7 +12,7 @@ Paste this whole file into a **new ChatGPT chat**, then add your task at the bot
 - Core flow: Create Event → Invite DJs → Accept Booking → DM → Crew Chat → Run Sheet → Event → Post-event.
 - Promoters create events, save event plans, use a calendar, send booking request DMs, manage lineups/run sheets, and run event crew group chats.
 - DJs discover profiles, receive booking requests, propose/accept rates, manage availability, and chat in DMs + crew chats.
-- Full product philosophy: `docs/handoff/PRODUCT-VISION.md` (less UI, reuse DM for Crew Chat, no social-network features unless asked).
+- Full product philosophy + Phases 1–12 roadmap: `docs/handoff/PRODUCT-VISION.md` (less UI, reuse DM for Crew Chat, no social-network features unless asked; north star = whole event inside FTC).
 
 **Local repo path:** `/Users/isaaccunningham/Projects/FTC`  
 **GitHub:** `itcunningham/follow-the-crowd`  
