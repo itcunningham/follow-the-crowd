@@ -507,6 +507,27 @@ html {
  * separates.
  */
 .ftc-run-sheet-save-btn {
+  /* `visibility` -- NOT `opacity` -- is what actually makes Save unpaintable,
+     and it is deliberately absent from the `transition` list below so it
+     flips instantly and can never be caught mid-value.
+
+     This exists because Save is INSERTED into the DOM at the moment editing
+     begins, already carrying a transition on `opacity`. WebKit runs
+     transitions on newly-inserted elements starting from the property's
+     initial value -- for opacity that is 1 -- so the button faded 1 -> 0 over
+     190ms on entering edit mode: a visible flash of a Save button for data
+     the planner had not touched. Blink suppresses transitions on an element's
+     first style resolution, which is why this only ever reproduced on the
+     iPhone. It was latent until the collapse mechanic (`max-width: 0;
+     overflow: hidden`) was removed, because until then the phantom fade had
+     zero width to paint.
+
+     A hidden element cannot be painted at any opacity, so this closes the
+     hole structurally rather than by timing the reveal. Hiding is therefore
+     instant while revealing still animates -- the correct asymmetry, since
+     the requirement is that Save is never visible without genuine unsaved
+     edits. */
+  visibility: hidden;
   opacity: 0;
   transform: translateY(7px);
   pointer-events: none;
@@ -515,6 +536,7 @@ html {
 }
 
 .ftc-run-sheet-save-btn.ftc-run-sheet-save-btn--visible {
+  visibility: visible;
   opacity: 1;
   transform: translateY(0);
   pointer-events: auto;

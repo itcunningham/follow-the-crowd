@@ -10389,10 +10389,17 @@ function testRunSheetCancelIsTheFixedAnchor() {
 
   // Save is NOT shown before a change exists: invisible, unclickable, and
   // out of both the tab order and the accessibility tree.
-  const hiddenRule = globalsSource.match(/\.ftc-run-sheet-save-btn \{[\s\S]*?\n\}/)?.[0] ?? "";
-  const visibleRule =
+  // Comments are stripped before any property scanning below: this rule
+  // documents the properties it deliberately does NOT use, and a naive scan
+  // would read those mentions as declarations.
+  const stripCssComments = (rule: string) => rule.replace(/\/\*[\s\S]*?\*\//g, "");
+  const hiddenRule = stripCssComments(
+    globalsSource.match(/\.ftc-run-sheet-save-btn \{[\s\S]*?\n\}/)?.[0] ?? "",
+  );
+  const visibleRule = stripCssComments(
     globalsSource.match(/\.ftc-run-sheet-save-btn\.ftc-run-sheet-save-btn--visible \{[\s\S]*?\n\}/)?.[0] ??
-    "";
+      "",
+  );
   assert.ok(hiddenRule && visibleRule, "both Save state rules must exist");
   assert.match(hiddenRule, /opacity: 0;/);
   assert.match(hiddenRule, /pointer-events: none;/);
@@ -10530,6 +10537,92 @@ function testRunSheetCancelIsTheFixedAnchor() {
   assert.match(section, /onClick=\{handleSave\}\s*\n\s*disabled=\{saving\}/);
   assert.match(section, /onClick=\{handleCancelEdit\}\s*\n\s*disabled=\{saving\}/);
   assert.match(section, /\{saving \? "Saving" : "Save"\}/);
+}
+
+/**
+ * Save must never be *painted* on entering edit mode, and must track genuine
+ * dirty state exactly.
+ *
+ * The bug this pins: Save is inserted into the DOM the moment editing begins,
+ * already carrying a transition on `opacity`. WebKit runs transitions on a
+ * newly-inserted element starting from the property's initial value -- for
+ * opacity that is 1 -- so Save faded 1 -> 0 over 190ms on entering edit mode,
+ * flashing a Save button for data the planner had not touched. Blink
+ * suppresses transitions on first style resolution, so it only ever
+ * reproduced on the phone. It was latent until the `max-width: 0; overflow:
+ * hidden` collapse was removed, because until then the phantom fade had zero
+ * width to paint.
+ *
+ * The structural close is `visibility`: a hidden element cannot be painted at
+ * any opacity, and because `visibility` is deliberately NOT in the transition
+ * list it flips instantly and can never be caught at an intermediate value.
+ * No timing, no debounce, no delayed opacity.
+ */
+function testRunSheetSaveNeverFlashesOnEnteringEditMode() {
+  const globalsSource = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
+  const hiddenRule = globalsSource.match(/\.ftc-run-sheet-save-btn \{[\s\S]*?\n\}/)?.[0] ?? "";
+  const visibleRule =
+    globalsSource.match(/\.ftc-run-sheet-save-btn\.ftc-run-sheet-save-btn--visible \{[\s\S]*?\n\}/)?.[0] ??
+    "";
+  assert.ok(hiddenRule && visibleRule, "both Save state rules must exist");
+
+  // `visibility` is the hard gate in both directions.
+  assert.match(hiddenRule, /visibility: hidden;/);
+  assert.match(visibleRule, /visibility: visible;/);
+
+  // ...and it must NOT be transitioned, or it could be caught mid-flip and
+  // reintroduce exactly the paint this test exists to prevent.
+  const transition = hiddenRule.match(/transition:\s*([\s\S]*?);/)?.[1] ?? "";
+  assert.ok(transition, "the reveal must still animate");
+  assert.doesNotMatch(transition, /visibility/);
+
+  // Opacity alone is not sufficient and must not be relied on as the gate.
+  assert.match(hiddenRule, /opacity: 0;/);
+
+  // --- dirty state tracks only genuine edits -----------------------------
+  const row = (overrides: Partial<RunSheetRowInput> = {}): RunSheetRowInput => ({
+    id: "a",
+    sort_order: 0,
+    artist_name: "DJ A",
+    start_time: "9:00 PM",
+    finish_time: "10:00 PM",
+    stage_area: "Main",
+    notes: "",
+    booking_request_id: "br-a",
+    booking_recipient_id: "u-a",
+    ...overrides,
+  });
+
+  // Entering edit mode: the baseline and the editable rows are the same
+  // value, so there is no transient window in which Save could be dirty.
+  const baseline = reorderRunSheetRows([row(), row({ id: "b", artist_name: "DJ B" })]);
+  assert.equal(hasUnsavedRunSheetEdits(baseline, baseline), false, "entering edit mode is clean");
+
+  // One character typed into notes -> dirty; removing it -> clean again.
+  const typed = baseline.map((r, i) => (i === 0 ? { ...r, notes: "x" } : r));
+  assert.equal(hasUnsavedRunSheetEdits(baseline, typed), true, "typing a character is dirty");
+  const untyped = typed.map((r, i) => (i === 0 ? { ...r, notes: "" } : r));
+  assert.equal(hasUnsavedRunSheetEdits(baseline, untyped), false, "removing it is clean again");
+
+  // Set Time changed -> dirty; restored -> clean.
+  const retimed = baseline.map((r, i) => (i === 0 ? { ...r, start_time: "11:00 PM" } : r));
+  assert.equal(hasUnsavedRunSheetEdits(baseline, retimed), true, "changing Set Time is dirty");
+  const restored = retimed.map((r, i) => (i === 0 ? { ...r, start_time: "9:00 PM" } : r));
+  assert.equal(hasUnsavedRunSheetEdits(baseline, restored), false, "restoring the time is clean");
+
+  // Stage / Area changed -> dirty; reverted -> clean.
+  const restaged = baseline.map((r, i) => (i === 0 ? { ...r, stage_area: "Terrace" } : r));
+  assert.equal(hasUnsavedRunSheetEdits(baseline, restaged), true, "changing Stage / Area is dirty");
+
+  // Reordering alone -> dirty (order is carried by array position, so this is
+  // the one edit with no field-level difference), and reordering back -> clean.
+  const moved = moveRunSheetRow(baseline, "a", "down");
+  assert.equal(hasUnsavedRunSheetEdits(baseline, moved), true, "reordering DJs is dirty");
+  assert.equal(
+    hasUnsavedRunSheetEdits(baseline, moveRunSheetRow(moved, "a", "up")),
+    false,
+    "reordering back to the original order is clean again",
+  );
 }
 
 function testEventNotesTextareaScrollsWhenContentExceedsCap() {
@@ -12725,6 +12818,7 @@ async function main() {
   testRunSheetDensityAndSummaryPolish();
   testRunSheetHeaderAlignmentAndDensity();
   testRunSheetCancelIsTheFixedAnchor();
+  testRunSheetSaveNeverFlashesOnEnteringEditMode();
   testAppSplashScreenSlogan();
   testRoleAwareWorkspaceNavigation();
   testCancelledEventGigsAreSurfacedInGigs();
