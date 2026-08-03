@@ -243,8 +243,15 @@ export default function EventCrewChatPage() {
    * itself as you read takes control away from the reader, and with an
    * explicit toggle on screen the automatic version was redundant as well as
    * unstable near its own threshold.
+   *
+   * Starts collapsed so the conversation — the reason anyone opens this
+   * screen — gets the viewport, with venue/date/time one tap away. Kept as
+   * plain local state rather than persisted: it resets to collapsed on every
+   * entry, which is both simpler and the behaviour we want (see the
+   * `eventId` reset in loadAccess for the case where this component instance
+   * is reused across two different events without unmounting).
    */
-  const [eventCardCollapsed, setEventCardCollapsed] = useState(false);
+  const [eventCardCollapsed, setEventCardCollapsed] = useState(true);
   const eventCardScrollCompensationRef = useRef<{
     observer: ResizeObserver;
     timeoutId: number;
@@ -675,6 +682,10 @@ export default function EventCrewChatPage() {
       setSenderProfiles(new Map());
       setLastReadAtByUserId(new Map());
       setMemberSheetOpen(false);
+      // Opening a different event's chat is a fresh entry: its details start
+      // collapsed like any other, even when React reuses this component
+      // instance across the two routes rather than remounting it.
+      setEventCardCollapsed(true);
       setMessagesError(null);
       setMessagesLoading(true);
 

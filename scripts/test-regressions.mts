@@ -11016,15 +11016,32 @@ function testCrewChatEventCardToggleScrollCompensation() {
     "compensation must run before the collapsed state changes",
   );
 
+  // Opens collapsed: the conversation is why anyone opens this screen, so it
+  // gets the viewport and the details sit one tap away.
+  assert.match(
+    chatPageSource,
+    /const \[eventCardCollapsed, setEventCardCollapsed\] = useState\(true\);/,
+    "event details must start collapsed",
+  );
+
   // The card is owned solely by the Details/Hide toggle. A scroll-driven
   // version existed and was removed: it re-opened and re-closed the card as
   // the reader crossed its threshold, which felt unstable and took control
-  // away from the user. setEventCardCollapsed must therefore appear exactly
-  // twice -- the useState declaration and the toggle's own onClick.
+  // away from the user. Exactly three references are legitimate -- the
+  // useState declaration, the toggle's own onClick, and the per-event reset
+  // in loadAccess. A fourth means something new is driving the card.
   assert.equal(
     (chatPageSource.match(/setEventCardCollapsed/g) ?? []).length,
-    2,
-    "only the Details/Hide toggle may change the event card's state",
+    3,
+    "only the Details/Hide toggle and the per-event reset may change the card's state",
+  );
+
+  // Entering a chat is always a fresh start, including when React reuses this
+  // component instance across two different events rather than remounting.
+  assert.match(
+    chatPageSource,
+    /setMemberSheetOpen\(false\);[\s\S]{0,320}setEventCardCollapsed\(true\);/,
+    "switching events must reset the card to collapsed",
   );
   assert.doesNotMatch(
     chatPageSource,
