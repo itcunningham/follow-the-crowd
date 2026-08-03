@@ -24,10 +24,10 @@ function GroupChatSystemNotice({
         >
           {text}
         </p>
-        <time
-          dateTime={createdAt}
-          className="mt-1 block text-[10px] text-ftc-text-muted"
-        >
+        {/* Hidden, matching DM and every other crew-chat row: the centred
+            day/time separators are the only visible times in either
+            conversation type. Kept in the DOM for machine readability. */}
+        <time dateTime={createdAt} hidden>
           {formatTime(createdAt)}
         </time>
       </div>

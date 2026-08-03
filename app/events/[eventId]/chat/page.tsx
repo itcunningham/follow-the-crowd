@@ -292,10 +292,6 @@ export default function EventCrewChatPage() {
 
     return buildChatMessageGroupLayout(chatMessages);
   }, [messages]);
-  const groupChatTimestampLayout = useMemo(
-    () => buildGroupChatTimestampLayout(messages),
-    [messages],
-  );
   const reactionsByMessageId = useMemo(
     () => groupDmReactionsByMessageId(reactions),
     [reactions],
@@ -303,6 +299,21 @@ export default function EventCrewChatPage() {
   const attachmentsByMessageId = useMemo(
     () => groupDmAttachmentsByMessageId(attachments),
     [attachments],
+  );
+  // Attachments are part of the visibility decision (an image row has no
+  // text), so this has to be built after `attachmentsByMessageId` — a row
+  // that paints nothing must not claim a separator slot.
+  const groupChatTimestampLayout = useMemo(
+    () =>
+      buildGroupChatTimestampLayout(
+        messages.map((message) => ({
+          id: message.id,
+          created_at: message.created_at,
+          text: message.text,
+          hasAttachments: (attachmentsByMessageId.get(message.id)?.length ?? 0) > 0,
+        })),
+      ),
+    [messages, attachmentsByMessageId],
   );
   const messageIds = useMemo(() => messages.map((message) => message.id), [messages]);
   messageIdsRef.current = messageIds;
@@ -1313,7 +1324,6 @@ export default function EventCrewChatPage() {
                       showSenderName={senderNameVisibility.get(message.id) ?? false}
                       showAvatar={messageGroupLayout?.showAvatar ?? true}
                       tightWithPrevious={messageGroupLayout?.tightWithPrevious ?? false}
-                      showTimestamp={messageGroupLayout?.showAvatar ?? true}
                       groupPosition={messageGroupLayout?.position ?? "standalone"}
                       seenLabel={message.id === lastMessage?.id ? latestMessageSeenLabel : null}
                       attachments={attachmentsByMessageId.get(message.id) ?? []}

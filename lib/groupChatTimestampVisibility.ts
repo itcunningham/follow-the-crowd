@@ -2,6 +2,52 @@ import {
   DM_CHAT_MEANINGFUL_TIME_GAP_MS,
   formatDmDaySeparatorLabel,
 } from "@/lib/dm/dmChatTimestampVisibility";
+import {
+  isGroupChatSystemUpdateMessage,
+  isHiddenCrewRosterNotice,
+} from "@/lib/groupChatSystemMessages";
+
+/** Enough of a crew-chat row to decide whether it paints anything. */
+export type GroupChatTimestampMessage = {
+  id: string;
+  created_at: string;
+  text: string;
+  /** Image/file rows carry no text — they are still visible messages. */
+  hasAttachments?: boolean;
+};
+
+/**
+ * Whether a row actually paints something.
+ *
+ * A separator must only ever mark a boundary between two *visible* message
+ * groups. Clustering over rows that render nothing is what produced runs of
+ * centred timestamps with no message between them, so this mirrors DM, whose
+ * builder classifies and drops `hidden` rows before clustering.
+ *
+ * The three invisible cases, all of which really occur:
+ *  - legacy crew-roster notices, hidden at read time (see groupChatSystemMessages);
+ *  - a row with neither text nor attachments, which GroupChatMessageBubble
+ *    early-returns `null` for (a failed upload, or an image row observed
+ *    before its attachment rows arrive).
+ * Everything else — chat text, images, event-update cards, system notices —
+ * paints, so it clusters.
+ */
+export function isVisibleGroupChatMessage(message: {
+  text: string;
+  hasAttachments?: boolean;
+}): boolean {
+  const trimmed = message.text.trim();
+
+  if (isHiddenCrewRosterNotice(trimmed)) {
+    return false;
+  }
+
+  if (isGroupChatSystemUpdateMessage(trimmed)) {
+    return true;
+  }
+
+  return trimmed.length > 0 || Boolean(message.hasAttachments);
+}
 
 export type GroupChatTimestampLayout = {
   /** Centred time-only separator before this message when a new time cluster begins on the same day. */
@@ -55,13 +101,17 @@ function isSameCalendarDay(a: Date, b: Date): boolean {
 }
 
 /**
- * Crew chat's own day/time separator clustering — same rhythm as DM
- * (see dmChatTimestampVisibility.ts) but without booking-card/timeline
- * classification, since crew chat messages are always either plain chat or
- * a system notice, both of which sit in a single flat timeline.
+ * Crew chat's day/time separator clustering — the same rhythm and the same
+ * shape as DM (see `buildDmConversationTimestampLayout`): classify first,
+ * drop what never paints, then cluster over what is left. Crew chat needs no
+ * booking-card/timeline classification, so its visibility rule is simpler,
+ * but the "cluster only over visible rows" guarantee is identical.
+ *
+ * Rows that paint nothing get no entry in the returned map at all, so their
+ * caller renders no separator for them.
  */
 export function buildGroupChatTimestampLayout(
-  messages: readonly { id: string; created_at: string }[],
+  messages: readonly GroupChatTimestampMessage[],
   options?: {
     /** Reference "now" for TODAY/YESTERDAY day labels — injectable for deterministic tests. */
     now?: Date;
@@ -69,10 +119,11 @@ export function buildGroupChatTimestampLayout(
 ): Map<string, GroupChatTimestampLayout> {
   const now = options?.now ?? new Date();
   const layoutByMessageId = new Map<string, GroupChatTimestampLayout>();
+  const visibleMessages = messages.filter(isVisibleGroupChatMessage);
 
-  for (let index = 0; index < messages.length; index += 1) {
-    const message = messages[index];
-    const previous = messages[index - 1];
+  for (let index = 0; index < visibleMessages.length; index += 1) {
+    const message = visibleMessages[index];
+    const previous = visibleMessages[index - 1];
     const messageDate = toValidDate(message.created_at);
     const previousDate = previous ? toValidDate(previous.created_at) : null;
 

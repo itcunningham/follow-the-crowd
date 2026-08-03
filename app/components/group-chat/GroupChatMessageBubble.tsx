@@ -61,7 +61,6 @@ function GroupChatMessageBubble({
   showSenderName = false,
   showAvatar = true,
   tightWithPrevious = false,
-  showTimestamp = true,
   groupPosition = "standalone",
   seenLabel = null,
   attachments = [],
@@ -90,7 +89,6 @@ function GroupChatMessageBubble({
   showSenderName?: boolean;
   showAvatar?: boolean;
   tightWithPrevious?: boolean;
-  showTimestamp?: boolean;
   groupPosition?: ChatMessageGroupPosition;
   /** "Seen by …" — the parent computes this for the single latest message only. */
   seenLabel?: string | null;
@@ -256,8 +254,8 @@ function GroupChatMessageBubble({
 
   // App-generated notice: always left-aligned, with no avatar and no sender
   // name, because attributing it to the planner who saved the edit is exactly
-  // what made it read as a typed message. Timestamp keeps the same formatter
-  // and the same `showTimestamp` gating as every other row.
+  // what made it read as a typed message. Its timestamp is hidden like every
+  // other row's — only the centred separators are visible.
   if (systemAuthored) {
     return (
       <li
@@ -266,16 +264,11 @@ function GroupChatMessageBubble({
       >
         <div className={`flex ${rowMaxWidthClass} min-w-0 flex-col items-start`}>
           {bubbleBlock}
-          {/* Same formatter, size and muted token as every other row — only
-              the gap above changes, so the timestamp sits in the timeline
-              gutter beside the card rather than reading as the card's own
-              footer. No new timestamp style is introduced. */}
-          <time
-            dateTime={createdAt}
-            className={`mt-1 block px-1 text-[10px] text-ftc-text-muted ${
-              showTimestamp ? "" : "sr-only"
-            }`}
-          >
+          {/* Hidden, not styled — identical to DmTextMessageBubble. The only
+              visible times in either conversation type are the centred
+              day/time separators; the element stays in the DOM so each row
+              still carries a machine-readable timestamp. */}
+          <time dateTime={createdAt} hidden>
             {formatTime(createdAt)}
           </time>
           {seenLabel ? (
@@ -345,12 +338,7 @@ function GroupChatMessageBubble({
       <div className={`flex ${rowMaxWidthClass} items-end gap-2 flex-row-reverse`}>
         <div className="flex min-w-0 flex-col items-end">
           {bubbleBlock}
-          <time
-            dateTime={createdAt}
-            className={`mt-0.5 block px-1 text-[10px] text-ftc-text-muted text-right ${
-              showTimestamp ? "" : "sr-only"
-            }`}
-          >
+          <time dateTime={createdAt} hidden>
             {formatTime(createdAt)}
           </time>
           {seenLabel ? (

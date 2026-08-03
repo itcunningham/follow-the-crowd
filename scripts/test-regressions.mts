@@ -109,7 +109,10 @@ import {
   formatDmDaySeparatorLabel,
   shouldSuppressDmBookingTimelineNotice,
 } from "../lib/dm/dmChatTimestampVisibility";
-import { buildGroupChatTimestampLayout } from "../lib/groupChatTimestampVisibility";
+import {
+  buildGroupChatTimestampLayout,
+  isVisibleGroupChatMessage,
+} from "../lib/groupChatTimestampVisibility";
 import {
   buildChatMessageGroupLayout,
   CHAT_LIST_ITEM_CLUSTER_END_BEFORE_TIMESTAMP_SPACING_CLASS,
@@ -11237,9 +11240,9 @@ function testCrewChatTimestampSeparators() {
   const quickGapMs = 60_000;
   const longGapMs = DM_CHAT_MEANINGFUL_TIME_GAP_MS + 60_000;
   const messages = [
-    { id: "msg-1", created_at: new Date(baseTime).toISOString() },
-    { id: "msg-2", created_at: new Date(baseTime + quickGapMs).toISOString() },
-    { id: "msg-3", created_at: new Date(baseTime + longGapMs).toISOString() },
+    { id: "msg-1", created_at: new Date(baseTime).toISOString(), text: "hey" },
+    { id: "msg-2", created_at: new Date(baseTime + quickGapMs).toISOString(), text: "again" },
+    { id: "msg-3", created_at: new Date(baseTime + longGapMs).toISOString(), text: "later" },
   ];
   const layout = buildGroupChatTimestampLayout(messages, { now: new Date(baseTime + longGapMs) });
 
@@ -11251,8 +11254,12 @@ function testCrewChatTimestampSeparators() {
 
   const justBeforeMidnight = new Date(2026, 7, 1, 23, 58, 0).getTime();
   const crossMidnight = [
-    { id: "before", created_at: new Date(justBeforeMidnight).toISOString() },
-    { id: "after", created_at: new Date(justBeforeMidnight + 4 * 60_000).toISOString() },
+    { id: "before", created_at: new Date(justBeforeMidnight).toISOString(), text: "late" },
+    {
+      id: "after",
+      created_at: new Date(justBeforeMidnight + 4 * 60_000).toISOString(),
+      text: "early",
+    },
   ];
   const dayLayout = buildGroupChatTimestampLayout(crossMidnight, {
     now: new Date(2026, 7, 2, 10, 0, 0),
@@ -11273,9 +11280,105 @@ function testCrewChatTimestampSeparators() {
     "utf8",
   );
   assert.match(chatPageSourceForSeparators, /function wrapWithTrailingTimeSeparator/);
-  assert.match(chatPageSourceForSeparators, /buildGroupChatTimestampLayout\(messages\)/);
   assert.match(chatPageSourceForSeparators, /followedByTimeSeparator=\{followedByTimeSeparator\}/);
   assert.match(chatPageSourceForSeparators, /precededByTimeSeparator=\{precededByTimeSeparator\}/);
+
+  /* ---- separators mark boundaries between VISIBLE groups only ---- */
+
+  // A row that paints nothing must not claim a separator slot. Clustering
+  // over invisible rows is what produced runs of centred timestamps with no
+  // message between them (the reported 10:33 / 10:55 / 11:17 stack).
+  const invisibleRun = [
+    { id: "seen-1", created_at: new Date(baseTime).toISOString(), text: "morning" },
+    // Neither text nor attachments -> GroupChatMessageBubble returns null.
+    { id: "ghost-1", created_at: new Date(baseTime + longGapMs).toISOString(), text: "   " },
+    { id: "ghost-2", created_at: new Date(baseTime + 2 * longGapMs).toISOString(), text: "" },
+    // A legacy crew-roster notice, hidden at read time.
+    {
+      id: "ghost-3",
+      created_at: new Date(baseTime + 3 * longGapMs).toISOString(),
+      text: "Nadia joined the event crew. Crew chat is now open.",
+    },
+    { id: "seen-2", created_at: new Date(baseTime + 4 * longGapMs).toISOString(), text: "evening" },
+  ];
+  const invisibleLayout = buildGroupChatTimestampLayout(invisibleRun, {
+    now: new Date(baseTime + 4 * longGapMs),
+  });
+
+  for (const ghostId of ["ghost-1", "ghost-2", "ghost-3"]) {
+    assert.equal(
+      invisibleLayout.has(ghostId),
+      false,
+      `${ghostId} paints nothing, so it must not get a separator`,
+    );
+  }
+  // Exactly one separator survives, between the two rows that actually paint.
+  assert.equal(invisibleLayout.get("seen-2")?.showTimeSeparatorBefore, true);
+  assert.equal(
+    [...invisibleLayout.values()].filter(
+      (entry) => entry.showTimeSeparatorBefore || entry.showDaySeparatorBefore,
+    ).length,
+    2,
+    "one day marker on the first visible row + one time separator between the two visible rows",
+  );
+
+  // Image rows carry no text but are visible, so they still cluster.
+  const imageRun = [
+    { id: "img-1", created_at: new Date(baseTime).toISOString(), text: "", hasAttachments: true },
+    {
+      id: "img-2",
+      created_at: new Date(baseTime + longGapMs).toISOString(),
+      text: "",
+      hasAttachments: true,
+    },
+  ];
+  const imageLayout = buildGroupChatTimestampLayout(imageRun, {
+    now: new Date(baseTime + longGapMs),
+  });
+  assert.equal(imageLayout.get("img-1")?.showDaySeparatorBefore, true);
+  assert.equal(
+    imageLayout.get("img-2")?.showTimeSeparatorBefore,
+    true,
+    "an image-only row is a visible message and still separates groups",
+  );
+
+  // Event-update cards and system notices are visible too.
+  assert.equal(isVisibleGroupChatMessage({ text: "Event details updated:\n• Venue: A → B" }), true);
+  assert.equal(isVisibleGroupChatMessage({ text: "Booking update: run sheet changed" }), true);
+  assert.equal(isVisibleGroupChatMessage({ text: "" }), false);
+  assert.equal(isVisibleGroupChatMessage({ text: "", hasAttachments: true }), true);
+
+  // Page must feed visibility (text + attachments) into the builder, not the
+  // raw message list -- otherwise the filter above can never apply.
+  assert.match(chatPageSourceForSeparators, /buildGroupChatTimestampLayout\(\s*\n?\s*messages\.map/);
+  assert.match(chatPageSourceForSeparators, /hasAttachments: \(attachmentsByMessageId\.get/);
+
+  /* ---- no per-message timestamps anywhere: exact DM parity ---- */
+
+  // DM renders every per-message <time> hidden/sr-only and shows time only in
+  // the centred separators. Crew chat must not diverge, in any of its rows.
+  for (const relativePath of [
+    "../app/components/group-chat/GroupChatMessageBubble.tsx",
+    "../app/components/group-chat/GroupChatSystemNotice.tsx",
+    "../app/components/chat/IncomingChatMessageLayout.tsx",
+  ]) {
+    const source = readFileSync(new URL(relativePath, import.meta.url), "utf8");
+    // Requires at least one attribute, matching the convention in
+    // testIncomingChatMessagesHaveNoAvatarTimestamp, so prose mentions of
+    // `<time>` in doc comments aren't mistaken for rendered elements.
+    const timeTags = source.match(/<time\s[^>]*>/g) ?? [];
+
+    assert.ok(timeTags.length > 0, `${relativePath} should still emit a machine-readable <time>`);
+    for (const tag of timeTags) {
+      assert.match(
+        tag,
+        /\bhidden\b|sr-only/,
+        `${relativePath} must not render a visible per-message timestamp`,
+      );
+    }
+  }
+
+  assert.doesNotMatch(chatPageSourceForSeparators, /showTimestamp/);
 
   const bubbleSourceForSeparators = readFileSync(
     new URL("../app/components/group-chat/GroupChatMessageBubble.tsx", import.meta.url),
@@ -11283,6 +11386,10 @@ function testCrewChatTimestampSeparators() {
   );
   assert.match(bubbleSourceForSeparators, /followedByTimeSeparator = false/);
   assert.match(bubbleSourceForSeparators, /precededByTimeSeparator = false/);
+
+  // The prop that used to gate per-message timestamps is gone, exactly as DM
+  // has none (see the showTimestamp assertions in the DM timestamp tests).
+  assert.doesNotMatch(bubbleSourceForSeparators, /showTimestamp/);
 }
 
 function testCrewChatEventCardToggleScrollCompensation() {
@@ -11573,11 +11680,12 @@ function testEventUpdateMessagePresentation() {
     "the softened border must not fall back to the full-strength token",
   );
 
-  // Timestamp keeps FTC's shared muted 10px treatment -- only the gap above it
-  // changed, so no competing timestamp style is introduced.
+  // Superseded by the DM-parity timestamp pass: the card's timestamp is now
+  // hidden like every other crew-chat row, so the only visible times are the
+  // centred separators. See testCrewChatTimestampSeparators.
   assert.match(
     bubbleSource,
-    /if \(systemAuthored\) \{[\s\S]{0,1400}mt-1 block px-1 text-\[10px\] text-ftc-text-muted/,
+    /if \(systemAuthored\) \{[\s\S]{0,1400}<time dateTime=\{createdAt\} hidden>/,
   );
 
   // Reactions, highlight and the seen label all still route through the
@@ -11647,7 +11755,9 @@ function testIncomingChatMessagesHaveNoAvatarTimestamp() {
 
   // The grouping system this replaces must still be wired up.
   assert.match(chatPageSource, /DmChatTimeSeparator/);
-  assert.match(chatPageSource, /buildGroupChatTimestampLayout\(messages\)/);
+  // Call shape now maps visibility (text + attachments) in — see
+  // testCrewChatTimestampSeparators for why.
+  assert.match(chatPageSource, /buildGroupChatTimestampLayout\(/);
   assert.match(chatPageSource, /showSenderName=\{senderNameVisibility\.get\(message\.id\) \?\? false\}/);
 }
 
