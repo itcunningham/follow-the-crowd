@@ -12892,10 +12892,13 @@ function testChatMediaLoadsWithoutARefresh() {
     assert.match(source, /width=\{reserved\.width\}/);
     assert.match(source, /height=\{reserved\.height\}/);
 
-    // `h-auto` lets the real intrinsic ratio take over once decoded, so the
-    // square placeholder never distorts a landscape photo. `w-auto` must NOT
-    // come back: it cancels the width attribute, which reinstates the 0px box
-    // and therefore the original bug (this was caught in live measurement).
+    // `h-auto` lets the real intrinsic ratio take over once decoded. `w-auto`
+    // must NOT come back, and this was re-confirmed against a genuinely
+    // slow-loading image rather than taken on trust: while the bytes were still
+    // in flight the `w-auto` variant measured 0x0 while the current one held
+    // 288x288. A zero-area lazy image is never fetched, so it never decodes,
+    // so it never gets a size. Portrait distortion is fixed by the reserved
+    // box below instead, which keeps the width definite.
     assert.match(source, /pointer-events-none h-auto /);
     assert.doesNotMatch(
       source,
@@ -12906,14 +12909,46 @@ function testChatMediaLoadsWithoutARefresh() {
 
   // Reserved size falls back to a square, and uses a learned ratio when there
   // is one. Driving the real helper, not matching source text.
-  const unknown = getDmImageReservedSize("never-seen", 288);
+  const unknown = getDmImageReservedSize("never-seen", 288, 288);
   assert.deepEqual(unknown, { width: 288, height: 288 });
 
+  // LANDSCAPE: the height cap never binds, so the full width is used. This is
+  // the case d0f32b1 checked, and it is unchanged.
   recordDmImageAspectRatio("landscape", 640, 360);
-  assert.deepEqual(getDmImageReservedSize("landscape", 288), { width: 288, height: 162 });
+  assert.deepEqual(getDmImageReservedSize("landscape", 288, 288), { width: 288, height: 162 });
+
+  // PORTRAIT: the case d0f32b1 never considered, and the reported bug. At the
+  // full 288 width a 3:4 photo computes height 384; `max-height: 288` clamps
+  // the height but CANNOT shrink a definite width, so it rendered 288x288 --
+  // measured in-browser. Capping the WIDTH by the height limit means the clamp
+  // never binds, so the ratio survives.
+  recordDmImageAspectRatio("portrait", 3024, 4032);
+  const portrait = getDmImageReservedSize("portrait", 288, 288);
+  assert.deepEqual(portrait, { width: 216, height: 288 });
+  assert.ok(portrait.height <= 288, "the reserved box must never exceed the height cap");
+  assert.equal(
+    +(portrait.width / portrait.height).toFixed(3),
+    0.75,
+    "portrait aspect ratio must survive the reserved box",
+  );
+
+  // Both stay inside BOTH caps, which is what makes max-height inert.
+  for (const [id, w, h] of [["tall", 1000, 4000], ["wide", 4000, 1000]] as const) {
+    recordDmImageAspectRatio(id, w, h);
+    const box = getDmImageReservedSize(id, 288, 288);
+    assert.ok(box.width <= 288 && box.height <= 288, `${id} must fit both caps`);
+    assert.ok(Math.abs(box.width / box.height - w / h) < 0.02, `${id} must keep its ratio`);
+  }
+
+  // Grid cells use their own caps (max-w-36 = 144, max-h-40 = 160).
+  const gridPortrait = getDmImageReservedSize("portrait", 144, 160);
+  assert.ok(gridPortrait.width <= 144 && gridPortrait.height <= 160);
+  assert.ok(Math.abs(gridPortrait.width / gridPortrait.height - 0.75) < 0.02);
+
   // Never zero, whatever the ratio -- zero is the bug.
   recordDmImageAspectRatio("panorama", 10000, 1);
-  assert.ok(getDmImageReservedSize("panorama", 288).height >= 1);
+  assert.ok(getDmImageReservedSize("panorama", 288, 288).height >= 1);
+  assert.ok(getDmImageReservedSize("panorama", 288, 288).width >= 1);
 
   /* ---- avatars: served at the size they are painted ---- */
 

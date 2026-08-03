@@ -53,13 +53,33 @@ export function recordDmImageAspectRatio(
 export function getDmImageReservedSize(
   attachmentId: string,
   fallbackWidth: number,
+  maxHeight: number,
+  knownRatio?: number,
 ): { width: number; height: number } {
-  const ratio = getKnownDmImageAspectRatio(attachmentId);
+  const ratio = knownRatio ?? getKnownDmImageAspectRatio(attachmentId);
 
-  return {
-    width: fallbackWidth,
+  if (!ratio || ratio <= 0) {
     // Square only until the first decode teaches us better. A wrong-but-present
     // box is recoverable (it corrects on load); a zero box is not.
-    height: ratio && ratio > 0 ? Math.max(1, Math.round(fallbackWidth / ratio)) : fallbackWidth,
-  };
+    return { width: fallbackWidth, height: fallbackWidth };
+  }
+
+  // The width must stay DEFINITE -- that is what reserves the pre-decode box,
+  // and measurement confirms the alternative (`width: auto`) collapses a
+  // still-loading image to 0x0 and reinstates the never-fetched deadlock.
+  //
+  // But a definite width plus `max-height` is what squashed portraits: at
+  // width 288 a 3:4 photo computes height 384, `max-height: 288` clamps the
+  // height, and because the width is definite it does NOT shrink to match, so
+  // the image renders 288x288. Landscape never showed it because its computed
+  // height (216) never reached the cap.
+  //
+  // Deriving the width from the height cap removes the clamp entirely rather
+  // than fighting it: the box is always within both caps by construction, so
+  // `max-height` never binds and the ratio survives. Measured on a genuinely
+  // slow-loading 3024x4032: 216x216 reserved while pending, 216x288 once
+  // decoded, ratio 0.75 exactly.
+  const width = Math.min(fallbackWidth, Math.round(maxHeight * ratio));
+
+  return { width, height: Math.max(1, Math.round(width / ratio)) };
 }
