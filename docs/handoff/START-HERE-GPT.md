@@ -6,10 +6,13 @@ Paste this whole file into a **new ChatGPT chat**, then add your task at the bot
 
 ## What this is
 
-**Follow The Crowd (FTC)** — a mobile-first Next.js + Supabase app for **promoters/planners** and **DJs**.
+**Follow The Crowd (FTC)** — a premium, mobile-first event operating system for **promoters/planners** and **DJs** (not a ticketing platform).
 
+- Goal: run an event before, during, and after — reduce friction between promoters and crew.
+- Core flow: Create Event → Invite DJs → Accept Booking → DM → Crew Chat → Run Sheet → Event → Post-event.
 - Promoters create events, save event plans, use a calendar, send booking request DMs, manage lineups/run sheets, and run event crew group chats.
 - DJs discover profiles, receive booking requests, propose/accept rates, manage availability, and chat in DMs + crew chats.
+- Full product philosophy + Phases 1–12 + Melbourne→Australia→world GTM + revenue model: `docs/handoff/PRODUCT-VISION.md`. Instagram = discovery; FTC = work. North star = whole event inside FTC.
 
 **Local repo path:** `/Users/isaaccunningham/Projects/FTC`  
 **GitHub:** `itcunningham/follow-the-crowd`  

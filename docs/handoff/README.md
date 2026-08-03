@@ -18,6 +18,7 @@ Read everything in docs/handoff/ and follow it. Then: [your task]
 
 | File | Purpose |
 |------|---------|
+| `PRODUCT-VISION.md` | **Authoritative product philosophy — OS for events, UI rules, roadmap, what not to build** |
 | `CLAUDE-CODE-BUILDER-HANDOVER.md` | **Claude Code Builder start — team, Isaac prefs, ChatGPT, FTC, ship rules** |
 | `CLAUDE-IMPLEMENTATION-HANDOVER.md` | Deep technical architecture / debt / DM patterns for Claude |
 | `START-HERE-CURSOR.md` | Paste into new Cursor chat |
