@@ -467,7 +467,10 @@ function RunSheetExpandChevron({ expanded }: { expanded: boolean }) {
       aria-hidden="true"
       viewBox="0 0 20 20"
       fill="none"
-      className={`h-4 w-4 shrink-0 text-ftc-text-muted transition-transform duration-200 ${
+      // `mr-1.5` insets the chevron 6px from the card's content edge so it
+      // sits inside the card's rhythm rather than flush against it. Margin on
+      // the icon, not padding on the button, so the tap target is untouched.
+      className={`mr-1.5 h-4 w-4 shrink-0 text-ftc-text-muted transition-transform duration-200 ${
         expanded ? "rotate-180" : ""
       }`}
     >
@@ -603,10 +606,12 @@ function RunSheetEntry({
 
       {/* Always rendered, even with nothing to summarise: this is the only
           way to reach Set Time and Notes, not just a preview of content.
-          Falls back to "Run Sheet details pending" only when there is
-          genuinely nothing to preview -- a row with a stage but no time
-          (still "incomplete") keeps showing its real summary instead of
-          being overwritten by the generic helper text.
+          Falls back to "Stage / Area not set" only when there is genuinely
+          nothing to preview -- a row with a stage but no time (still
+          "incomplete") keeps showing its real summary instead of being
+          overwritten by the empty-state text. The copy names the missing
+          field rather than describing the row as unfinished, so the planner
+          can see what to fill in without expanding.
 
           The summary is collapsed-only. Expanded, both halves of it are
           already on screen directly below under their own "Stage / Area" and
@@ -628,7 +633,7 @@ function RunSheetEntry({
           {!isExpanded && collapsedSummary
             ? collapsedSummary
             : isReadOnlyAndIncomplete
-              ? "Run Sheet details pending"
+              ? "Stage / Area not set"
               : ""}
         </span>
         <RunSheetExpandChevron expanded={isExpanded} />
@@ -659,7 +664,7 @@ function RunSheetEntry({
                   className={stageAreaTextareaClassName}
                   maxLength={RUN_SHEET_STAGE_AREA_MAX_LENGTH}
                   rows={RUN_SHEET_STAGE_AREA_VISIBLE_ROWS}
-                  placeholder="Enter stage"
+                  placeholder="Stage / Area"
                 />
               </label>
             ) : stagePreview ? (
@@ -696,7 +701,7 @@ function RunSheetEntry({
                   className={notesTextareaClassName}
                   maxLength={MAX_EVENT_NOTES_LENGTH}
                   rows={RUN_SHEET_NOTES_VISIBLE_ROWS}
-                  placeholder="Add notes"
+                  placeholder="Notes"
                 />
               </label>
             ) : row.notes.trim() ? (
@@ -995,16 +1000,24 @@ export default function EventRunSheetSection({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <EventDetailSectionTitle>Run Sheet</EventDetailSectionTitle>
-          {/* Lightweight and secondary to the title on purpose -- muted,
-              small text, no colour coding. View mode only (see
-              `showRunSheetProgress`): while editing, this would sit directly
-              above a Save button appearing for the exact same reason,
-              restating the same fact twice. */}
+          {/* Lightweight and secondary to the title on purpose -- small text.
+              View mode only (see `showRunSheetProgress`): while editing, this
+              would sit directly above a Save button appearing for the exact
+              same reason, restating the same fact twice.
+
+              One sentence shape at every stage ("N of X DJs completed") so the
+              line reads as a counter the planner can track rather than
+              switching to different wording at the finish. Completion is
+              carried by colour alone -- the existing `--ftc-color-success`
+              token, applied the same way this file already applies
+              `--ftc-color-danger` to the error line. */}
           {showRunSheetProgress ? (
-            <p className="mt-0.5 text-xs font-semibold text-ftc-text-secondary">
-              {isFullyComplete
-                ? "Run Sheet Complete"
-                : `${completedRowCount} of ${rows.length} DJs completed`}
+            <p
+              className={`mt-0.5 text-xs font-semibold ${
+                isFullyComplete ? "text-[var(--ftc-color-success)]" : "text-ftc-text-secondary"
+              }`}
+            >
+              {`${completedRowCount} of ${rows.length} DJs completed`}
             </p>
           ) : null}
         </div>

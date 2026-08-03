@@ -9250,7 +9250,7 @@ function testRunSheetAccordionRestructure() {
   // The collapsed header no longer previews Stage / Area on its own -- that
   // bare preview duplicated the value one tap away in the expanded panel
   // (see testRunSheetVisualHierarchyPolish). It now carries a combined
-  // collapsed-only summary plus the "Run Sheet details pending" fallback for
+  // collapsed-only summary plus the "Stage / Area not set" fallback for
   // a read-only, incomplete row (see testRunSheetDensityAndSummaryPolish).
   // What this test still pins is placement: both live in the header, before
   // the expand panel in source, never inside it.
@@ -9260,7 +9260,7 @@ function testRunSheetAccordionRestructure() {
   const panelIndex = entryFn.indexOf("<AnimatedExpandPanel");
   // Searched by regex, not a single-line `indexOf`: the surrounding ternary
   // is multi-line and its exact wrapping is a formatting detail.
-  const fallbackIndex = entryFn.search(/"Run Sheet details pending"/);
+  const fallbackIndex = entryFn.search(/"Stage \/ Area not set"/);
   const summaryIndex = entryFn.search(/collapsedSummary\s*$/m);
   assert.ok(fallbackIndex > -1 && panelIndex > -1 && fallbackIndex < panelIndex);
   assert.ok(summaryIndex > -1 && summaryIndex < panelIndex);
@@ -9792,15 +9792,16 @@ function testRunSheetProductionPolish() {
     section,
     /const showRunSheetProgress = !isEditing && rows\.length > 0 && !allRowsIncomplete;/,
   );
-  // "Run Sheet Complete" copy stands alone -- the leading emoji dot was
-  // removed by testRunSheetVisualHierarchyPolish.
-  assert.match(section, /"Run Sheet Complete"/);
+  // One sentence shape at every stage -- the "Run Sheet Complete" variant
+  // was dropped so the line always reads as a counter (see
+  // testRunSheetProgressAndEmptyStateCopy).
+  assert.doesNotMatch(section, /"Run Sheet Complete"/);
   assert.match(section, /\$\{completedRowCount\} of \$\{rows\.length\} DJs completed/);
   // Not visually dominant: still small text under the title, not a colourful
   // banner. Colour/weight were lifted one step (muted -> secondary, normal ->
   // semibold) by testRunSheetDensityAndSummaryPolish, which owns those now;
   // the size cap is what this pass still guarantees.
-  assert.match(section, /<p className="mt-0\.5 text-xs [^"]*">\s*\n\s*\{isFullyComplete/);
+  assert.match(section, /mt-0\.5 text-xs font-semibold \$\{/);
 
   // Edit moved off the separate icon+pill control it used to reuse, onto the
   // standard secondary button at the time -- since replaced by the
@@ -9852,7 +9853,7 @@ function testRunSheetProductionPolish() {
   // pinning one line's exact wrapping.
   assert.match(
     entryFn,
-    /isReadOnlyAndIncomplete\s*\n?\s*\? "Run Sheet details pending"\s*\n?\s*: ""/,
+    /isReadOnlyAndIncomplete\s*\n?\s*\? "Stage \/ Area not set"\s*\n?\s*: ""/,
   );
 
   // Hierarchy inside expanded cards: DJ name is the largest/boldest thing in
@@ -9928,8 +9929,12 @@ function testRunSheetHeaderCancelAndSave() {
   // Placeholders guide an empty field rather than leaving it blank, using
   // copy that clearly reads as an instruction, not saved content.
   assert.match(section, /placeholder\?: string;/);
-  assert.match(section, /placeholder="Enter stage"/);
-  assert.match(section, /placeholder="Add notes"/);
+  // Placeholders are the field name, not an instruction (they sit under a
+  // label that already says the same thing, so a verb added nothing).
+  assert.match(section, /placeholder="Stage \/ Area"/);
+  assert.match(section, /placeholder="Notes"/);
+  assert.doesNotMatch(section, /placeholder="Enter stage"/);
+  assert.doesNotMatch(section, /placeholder="Add notes"/);
   assert.doesNotMatch(section, /placeholder="Main Stage"/);
   assert.doesNotMatch(section, /placeholder="e\.g\./);
 
@@ -10047,13 +10052,13 @@ function testRunSheetSaveButtonPolish() {
  *   the surrounding layout changes.
  * - The collapsed-header Stage / Area preview (`stagePreview ||`) is gone --
  *   it duplicated the same value one tap away in the expanded panel under
- *   the "Stage / Area" label. The "Run Sheet details pending" fallback for a
+ *   the "Stage / Area" label. The "Stage / Area not set" fallback for a
  *   read-only incomplete row is untouched.
  * - Read-only Set Time drops a tier in size/weight/colour (`text-base
  *   font-semibold text-ftc-text` -> `text-sm font-medium
  *   text-ftc-text-secondary`) so it no longer outweighs the DJ name above
  *   it, while staying comfortably readable (`tabular-nums` kept).
- * - The green-dot emoji is gone from "Run Sheet Complete"; the text alone
+ * - The green-dot emoji is gone from the completion line; the text alone
  *   still communicates completion, styled identically to the "N of M DJs
  *   completed" sibling state (no colour coding added).
  * - Edit drops the bordered `EVENT_DETAIL_BTN_SECONDARY` pill for the same
@@ -10120,7 +10125,8 @@ function testRunSheetVisualHierarchyPolish() {
 
   // No emoji-style completion dot.
   assert.doesNotMatch(section, /🟢/);
-  assert.match(section, /isFullyComplete\s*\n\s*\? "Run Sheet Complete"/);
+  // Copy standardised to the counter form; completion is colour-only now.
+  assert.match(section, /isFullyComplete \? "text-\[var\(--ftc-color-success\)\]"/);
 }
 
 /**
@@ -10166,7 +10172,7 @@ function testRunSheetDensityAndSummaryPolish() {
   // Completion/progress line: more prominent, still small, still no emoji.
   assert.match(
     section,
-    /<p className="mt-0\.5 text-xs font-semibold text-ftc-text-secondary">/,
+    /mt-0\.5 text-xs font-semibold \$\{/,
   );
   assert.doesNotMatch(section, /🟢/);
 
@@ -10215,9 +10221,18 @@ function testRunSheetDensityAndSummaryPolish() {
   assert.ok(headerButton, "the collapsed header toggle button must exist");
   assert.match(headerButton, /!isExpanded && collapsedSummary/);
   // Falls back to the pending helper text, and carries no labels or Notes.
-  assert.match(headerButton, /isReadOnlyAndIncomplete\s*\n?\s*\? "Run Sheet details pending"/);
+  assert.match(headerButton, /isReadOnlyAndIncomplete\s*\n?\s*\? "Stage \/ Area not set"/);
   assert.doesNotMatch(headerButton, /row\.notes/);
-  assert.doesNotMatch(headerButton, /STAGE \/ AREA|SET TIME|Stage \/ Area|Set Time/);
+  // No field LABELS in the collapsed header -- the summary is bare values.
+  // Matched against the uppercase label style only: the empty-state copy
+  // ("Stage / Area not set") legitimately names the field as prose, which
+  // is not the same thing as labelling a value.
+  assert.doesNotMatch(headerButton, /STAGE \/ AREA|SET TIME/);
+  // ...and the summary value itself carries no label text either.
+  assert.doesNotMatch(
+    entryFn.match(/const collapsedSummary = \[[\s\S]*?\.join\([^)]*\);/)?.[0] ?? "",
+    /Stage \/ Area|Set Time/,
+  );
   // One line, truncated rather than wrapped.
   assert.match(headerButton, /truncate/);
 
@@ -10623,6 +10638,82 @@ function testRunSheetSaveNeverFlashesOnEnteringEditMode() {
     false,
     "reordering back to the original order is clean again",
   );
+}
+
+/**
+ * Copy and alignment polish. Presentation only -- no behaviour, gating or
+ * layout-anchor change.
+ *
+ * - Placeholders are the field name ("Stage / Area", "Notes"), not an
+ *   instruction. Each sits directly under a label saying the same thing, so
+ *   the verb ("Enter…", "Add…") added nothing and read as a prompt rather
+ *   than as absent content.
+ * - The progress line keeps ONE sentence shape at every stage, "N of X DJs
+ *   completed", instead of switching to "Run Sheet Complete" at the end. A
+ *   counter the planner can track beats a phrase that changes form exactly
+ *   when the number stops moving. Completion is carried by colour alone,
+ *   reusing the existing `--ftc-color-success` token the same way this file
+ *   already applies `--ftc-color-danger` to the error line -- no new token,
+ *   no emoji (the dot removed earlier stays gone).
+ * - The collapsed empty state says what is actually missing ("Stage / Area
+ *   not set") rather than the vague "Run Sheet details pending". It stays on
+ *   the existing muted tone -- deliberately NOT lifted to
+ *   `text-ftc-text-secondary`, which is lighter and would make an absence
+ *   louder than the real values on the same line.
+ * - The chevron is inset 6px via `mr-1.5` on the icon. Margin on the icon and
+ *   not padding on the button, so the full-width tap target is untouched.
+ */
+function testRunSheetProgressAndEmptyStateCopy() {
+  const section = readFileSync(
+    new URL("../app/components/EventRunSheetSection.tsx", import.meta.url),
+    "utf8",
+  );
+
+  // Placeholders name the field; the instruction forms are gone.
+  assert.match(section, /placeholder="Stage \/ Area"/);
+  assert.match(section, /placeholder="Notes"/);
+  assert.doesNotMatch(section, /placeholder="Enter stage"|placeholder="Add notes"/);
+
+  // Progress: one shape always, and no branch on the COPY.
+  assert.match(section, /\{`\$\{completedRowCount\} of \$\{rows\.length\} DJs completed`\}/);
+  assert.doesNotMatch(section, /"Run Sheet Complete"/);
+  assert.doesNotMatch(section, /🟢/);
+
+  // Completion is signalled by colour only, using the existing success token.
+  assert.match(
+    section,
+    /isFullyComplete \? "text-\[var\(--ftc-color-success\)\]" : "text-ftc-text-secondary"/,
+  );
+  const globalsSource = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
+  assert.match(globalsSource, /--ftc-color-success:/, "the success token must already exist");
+
+  // Empty state names the missing field, on the existing muted tone.
+  const entryFn = section.match(/function RunSheetEntry\([\s\S]*?\n}\n/)?.[0] ?? "";
+  assert.ok(entryFn, "RunSheetEntry must exist");
+  assert.match(entryFn, /"Stage \/ Area not set"/);
+  assert.doesNotMatch(section, /Run Sheet details pending/);
+  const summarySpan =
+    entryFn.match(/<span className="([^"]*)">\s*\n\s*\{!isExpanded && collapsedSummary/)?.[1] ?? "";
+  assert.ok(summarySpan, "the summary span must exist");
+  assert.match(summarySpan, /text-ftc-text-muted/);
+
+  // View mode must not surface input placeholder copy as content.
+  const panel = entryFn.match(/<AnimatedExpandPanel[\s\S]*?<\/AnimatedExpandPanel>/)?.[0] ?? "";
+  assert.ok(panel, "the expand panel must exist");
+  assert.doesNotMatch(panel, /: null\s*\}\s*placeholder/);
+
+  // Chevron inset rides on the icon, so the button's tap area is unchanged.
+  const chevron = section.match(/function RunSheetExpandChevron\([\s\S]*?\n}\n/)?.[0] ?? "";
+  assert.ok(chevron, "RunSheetExpandChevron must exist");
+  // Matched against the className itself, not the function body: the body's
+  // comment explains the inset and would satisfy a loose search even if the
+  // class were removed.
+  const chevronClass = chevron.match(/className=\{`([^`]*)`/)?.[1] ?? "";
+  assert.ok(chevronClass, "the chevron className must exist");
+  assert.match(chevronClass, /\bmr-1\.5\b/);
+  const toggle = entryFn.match(/<button[\s\S]*?onToggleExpanded[\s\S]*?<\/button>/)?.[0] ?? "";
+  assert.match(toggle, /className="mt-0\.5 flex w-full items-center gap-2 rounded-md py-1 text-left"/);
+  assert.doesNotMatch(toggle, /\bpr-\d/);
 }
 
 function testEventNotesTextareaScrollsWhenContentExceedsCap() {
@@ -12867,6 +12958,7 @@ async function main() {
   testRunSheetHeaderAlignmentAndDensity();
   testRunSheetCancelIsTheFixedAnchor();
   testRunSheetSaveNeverFlashesOnEnteringEditMode();
+  testRunSheetProgressAndEmptyStateCopy();
   testAppSplashScreenSlogan();
   testRoleAwareWorkspaceNavigation();
   testCancelledEventGigsAreSurfacedInGigs();
