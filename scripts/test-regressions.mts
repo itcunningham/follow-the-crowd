@@ -10987,6 +10987,27 @@ function testCrewChatEventCardToggleScrollCompensation() {
     "compensation must run before the collapsed state changes",
   );
 
+  // The card is owned solely by the Details/Hide toggle. A scroll-driven
+  // version existed and was removed: it re-opened and re-closed the card as
+  // the reader crossed its threshold, which felt unstable and took control
+  // away from the user. setEventCardCollapsed must therefore appear exactly
+  // twice -- the useState declaration and the toggle's own onClick.
+  assert.equal(
+    (chatPageSource.match(/setEventCardCollapsed/g) ?? []).length,
+    2,
+    "only the Details/Hide toggle may change the event card's state",
+  );
+  assert.doesNotMatch(
+    chatPageSource,
+    /EVENT_CARD_COLLAPSE_THRESHOLD_PX/,
+    "the scroll-distance collapse threshold must stay removed",
+  );
+  assert.doesNotMatch(
+    chatPageSource,
+    /addEventListener\("scroll"/,
+    "no scroll listener may drive event-card state on this page",
+  );
+
   // Already-at-the-bottom is owned by useChatScroll's own re-pin; writing
   // scrollTop from both places would fight.
   assert.match(

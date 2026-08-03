@@ -132,9 +132,6 @@ function wrapWithTrailingTimeSeparator(
 
 const GROUP_CHAT_MESSAGES_TIMEOUT_MS = 15_000;
 
-/** Distance from the live edge (px) before the event-context card collapses. */
-const EVENT_CARD_COLLAPSE_THRESHOLD_PX = 24;
-
 /**
  * How long to keep compensating the scroller for the event card's height
  * change. The card animates via AnimatedExpandPanel's `duration-200`
@@ -240,18 +237,14 @@ export default function EventCrewChatPage() {
   >(new Map());
   const [lastReadAtByUserId, setLastReadAtByUserId] = useState<Map<string, string>>(new Map());
   const [memberSheetOpen, setMemberSheetOpen] = useState(false);
-  const [eventCardCollapsed, setEventCardCollapsed] = useState(false);
   /**
-   * A manual toggle click changes the event card's height, which — when the
-   * user is already pinned to the live edge — makes the browser clamp the
-   * scroller's own scrollTop to fit the new (smaller or larger) scrollable
-   * area. That clamp fires real `scroll` events, so without this the
-   * scroll-triggered effect below immediately re-decides collapsed state and
-   * fights the tap that was just made. Suppressing it for one animation's
-   * worth of time after a manual toggle doesn't change how genuine scrolling
-   * behaves at any other time.
+   * Event-card visibility is owned solely by the Details/Hide toggle below.
+   * Scrolling deliberately never changes it: a chat surface that rearranges
+   * itself as you read takes control away from the reader, and with an
+   * explicit toggle on screen the automatic version was redundant as well as
+   * unstable near its own threshold.
    */
-  const eventCardManualToggleSuppressUntilRef = useRef(0);
+  const [eventCardCollapsed, setEventCardCollapsed] = useState(false);
   const eventCardScrollCompensationRef = useRef<{
     observer: ResizeObserver;
     timeoutId: number;
@@ -467,50 +460,6 @@ export default function EventCrewChatPage() {
     clearPendingAttachments();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [eventId]);
-
-  /**
-   * Collapses the event-context card once the user scrolls into the
-   * conversation, so long-lived history reads without a permanent info strip
-   * eating the top of the viewport; reappears back at the live edge. rAF-
-   * throttled scroll listener, one boolean of state — no ResizeObserver, no
-   * per-message cost, so it doesn't add to the per-render list work task 12
-   * is about.
-   */
-  useEffect(() => {
-    const scroller = scrollRef.current;
-
-    if (!scroller) {
-      return;
-    }
-
-    let ticking = false;
-
-    function evaluateCollapse() {
-      ticking = false;
-
-      if (!scroller || Date.now() < eventCardManualToggleSuppressUntilRef.current) {
-        return;
-      }
-
-      const distanceFromBottom = getChatMaxScrollTop(scroller) - scroller.scrollTop;
-      setEventCardCollapsed(distanceFromBottom > EVENT_CARD_COLLAPSE_THRESHOLD_PX);
-    }
-
-    function handleScroll() {
-      if (ticking) {
-        return;
-      }
-
-      ticking = true;
-      requestAnimationFrame(evaluateCollapse);
-    }
-
-    scroller.addEventListener("scroll", handleScroll, { passive: true });
-
-    return () => {
-      scroller.removeEventListener("scroll", handleScroll);
-    };
-  }, [scrollRef]);
 
   const refreshEventArtwork = useCallback(async () => {
     if (!eventId) {
@@ -1201,10 +1150,8 @@ export default function EventCrewChatPage() {
             Chat sub-header: a fixed slot between the header and the event
             card, above the conversation and outside it, so it never scrolls
             away and never re-layouts the message list. Holds the event
-            countdown plus a manual show/hide toggle for the card directly
-            beneath it -- the card already collapses/expands on scroll (see
-            the scroll listener above); this is just a second, explicit way
-            to reach the same state, reusing it rather than adding a duplicate.
+            countdown plus the Details/Hide toggle for the card directly
+            beneath it -- the only thing that changes the card's state.
           */}
           {countdownLabel ? (
             <div
@@ -1216,7 +1163,6 @@ export default function EventCrewChatPage() {
                 <button
                   type="button"
                   onClick={() => {
-                    eventCardManualToggleSuppressUntilRef.current = Date.now() + 400;
                     // Must run before the state change, so the pre-toggle
                     // distance from the live edge is measured against the
                     // card's current height.
@@ -1250,9 +1196,8 @@ export default function EventCrewChatPage() {
 
           {/*
             Event-context card: venue/date/time + View Event, directly beneath
-            the countdown/toggle row above. Collapses once the user scrolls
-            into the conversation (see the scroll listener above), or via the
-            toggle; reappears back at the live edge either way.
+            the countdown/toggle row above. Shown until the reader hides it,
+            and only the toggle changes that -- scrolling never does.
           */}
           {!accessLoading ? (
             <GroupChatEventContextCard
