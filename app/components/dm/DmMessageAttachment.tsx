@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import {
   formatDmAttachmentSize,
   isDmImageAttachment,
@@ -51,10 +52,27 @@ export default function DmMessageAttachmentView({
   isOwnMessage: boolean;
   onContextMenu?: (event: React.MouseEvent<HTMLElement>) => void;
 }) {
+  // Keyed to the attachment: this component is re-rendered in place with a
+  // different attachment, so instance state alone would let one image inherit
+  // another's learned ratio. React's documented reset-during-render pattern.
+  const [ratioState, setRatioState] = useState(() => ({
+    id: attachment.id,
+    ratio: getKnownDmImageAspectRatio(attachment.id),
+  }));
+
+  if (ratioState.id !== attachment.id) {
+    setRatioState({ id: attachment.id, ratio: getKnownDmImageAspectRatio(attachment.id) });
+  }
+
+  const aspectRatio =
+    ratioState.id === attachment.id
+      ? ratioState.ratio
+      : getKnownDmImageAspectRatio(attachment.id);
+
   if (isDmImageAttachment(attachment.file_type)) {
-    const knownAspectRatio = getKnownDmImageAspectRatio(attachment.id);
-    // 18rem = 288px, matching DM_IMAGE_BUBBLE_MAX_WIDTH_CLASS.
-    const reserved = getDmImageReservedSize(attachment.id, 288);
+    const knownAspectRatio = aspectRatio;
+    // 18rem = 288px (DM_IMAGE_BUBBLE_MAX_WIDTH_CLASS); max-h-72 = 288px.
+    const reserved = getDmImageReservedSize(attachment.id, 288, 288, knownAspectRatio);
 
     return (
       <button
@@ -80,6 +98,13 @@ export default function DmMessageAttachmentView({
           onLoad={(event) => {
             const image = event.currentTarget;
             recordDmImageAspectRatio(attachment.id, image.naturalWidth, image.naturalHeight);
+
+            if (image.naturalWidth > 0 && image.naturalHeight > 0) {
+              setRatioState({
+                id: attachment.id,
+                ratio: image.naturalWidth / image.naturalHeight,
+              });
+            }
           }}
         />
       </button>

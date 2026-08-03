@@ -49,11 +49,28 @@ function ImageGridCell({
   onOpen: () => void;
   onContextMenu?: (event: React.MouseEvent<HTMLElement>) => void;
 }) {
-  const knownAspectRatio = getKnownDmImageAspectRatio(attachment.id);
-  // max-w-36 = 144px. Reserved only until this image decodes for the first
-  // time; see getDmImageReservedSize for why a zero-area lazy image never
-  // loads at all.
-  const reserved = getDmImageReservedSize(attachment.id, 144);
+  // Same reasoning as DmMessageAttachment: state so the first decode re-renders
+  // with the ratio-correct box.
+  // Keyed to the attachment: this component is re-rendered in place with a
+  // different attachment, so instance state alone would let one image inherit
+  // another's learned ratio. React's documented reset-during-render pattern.
+  const [ratioState, setRatioState] = useState(() => ({
+    id: attachment.id,
+    ratio: getKnownDmImageAspectRatio(attachment.id),
+  }));
+
+  if (ratioState.id !== attachment.id) {
+    setRatioState({ id: attachment.id, ratio: getKnownDmImageAspectRatio(attachment.id) });
+  }
+
+  const aspectRatio =
+    ratioState.id === attachment.id
+      ? ratioState.ratio
+      : getKnownDmImageAspectRatio(attachment.id);
+  const knownAspectRatio = aspectRatio;
+  // max-w-36 = 144px, max-h-40 = 160px. Reserved only until this image decodes;
+  // see getDmImageReservedSize for why a zero-area lazy image never loads.
+  const reserved = getDmImageReservedSize(attachment.id, 144, 160, knownAspectRatio);
 
   return (
     <button
@@ -77,6 +94,13 @@ function ImageGridCell({
         onLoad={(event) => {
           const image = event.currentTarget;
           recordDmImageAspectRatio(attachment.id, image.naturalWidth, image.naturalHeight);
+
+          if (image.naturalWidth > 0 && image.naturalHeight > 0) {
+            setRatioState({
+              id: attachment.id,
+              ratio: image.naturalWidth / image.naturalHeight,
+            });
+          }
         }}
       />
       {overlayCount ? (
