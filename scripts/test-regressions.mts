@@ -179,6 +179,7 @@ import {
   resolveChatMessageBubbleTextClass,
 } from "../lib/dm/chatMessageBubbleGeometry";
 import { buildCrewChatMessageGroups } from "../lib/groupChatMessageLayout";
+import { buildEventChatReadMap, isChatUnread } from "../lib/messageReads";
 import {
   DM_BOOKING_CONFIRMED_MESSAGE,
   DM_BOOKING_ORIGINAL_OFFER_KEPT_MESSAGE,
@@ -13109,6 +13110,130 @@ function testCrewChatAttachmentRealtimeAndStateReconciliation() {
   assert.doesNotMatch(chatPageSource, /setInterval|location\.reload|router\.refresh/);
 }
 
+/**
+ * Crew Chat activity produced no unread indication anywhere outside the inbox.
+ *
+ * The unread LIBRARY was already generalised over both chat types --
+ * `getUnreadEventChatIds`, `buildEventChatReadMap`, `markEventChatRead` -- and
+ * `getNavBadgeCounts` already sums `inboxUnread.total` (dm + group). The
+ * divergence was in what tells each surface to recompute:
+ *
+ *   * the inbox subscribes to `messages` (dm-inbox:messages) and updates;
+ *   * NavBadgeProvider subscribed only to `notifications`, so the app-wide
+ *     badge moved only when a notification row happened to be written.
+ *
+ * Two subsystems, one of which Crew Chat does not reliably produce rows in. The
+ * badge now subscribes to the same table its count is derived from.
+ *
+ * This suite had NO coverage of event-chat unread at all before this test.
+ */
+function testCrewChatUnreadUsesTheSharedUnreadSystem() {
+  const navBadgeSource = readFileSync(
+    new URL("../app/components/navigation/NavBadgeProvider.tsx", import.meta.url),
+    "utf8",
+  );
+  const notificationsSource = readFileSync(
+    new URL("../lib/notifications.ts", import.meta.url),
+    "utf8",
+  );
+  const inboxUnreadSource = readFileSync(
+    new URL("../lib/inboxUnread.ts", import.meta.url),
+    "utf8",
+  );
+
+  // -- The badge listens to the table its own count is computed from ---------
+  assert.match(navBadgeSource, /\.channel\(`nav-messages:\$\{userId\}`\)/);
+  assert.match(
+    navBadgeSource,
+    /table: "messages",[\s\S]{0,900}?refreshBadgeCounts\(\{ force: true \}\)/,
+    "the nav badge must refresh from a messages INSERT, not only from notifications",
+  );
+  // Own messages are skipped through the shared predicate rather than a
+  // re-implemented comparison, so the badge and isChatUnread cannot disagree.
+  assert.match(navBadgeSource, /isOwnChatMessage\(/);
+  assert.match(navBadgeSource, /from "@\/lib\/messageReads"/);
+  // The notifications channel stays -- this adds a trigger, it does not replace
+  // one, and bookings still depend on it.
+  assert.match(navBadgeSource, /\.channel\(`nav-notifications:\$\{userId\}`\)/);
+  // No second notification system, no polling, no timers.
+  assert.doesNotMatch(navBadgeSource, /setInterval|setTimeout|location\.reload|router\.refresh/);
+
+  // The badge count itself must keep counting BOTH chat types.
+  assert.match(notificationsSource, /messages: inboxUnread\.total/);
+  assert.match(inboxUnreadSource, /getUnreadEventChatIds\(/);
+  assert.match(inboxUnreadSource, /total: dmUnread\.size \+ groupUnread\.size/);
+
+  // -- Real unread semantics for event chats --------------------------------
+  // Drives the shared predicate and read-map builder rather than asserting on
+  // source text, so this covers the behaviour the badge and the inbox card both
+  // read from.
+  const me = "isaac";
+  const them = "dj-nina";
+  const readRows = [
+    { conversation_id: null, event_id: "event-a", last_read_at: "2026-08-03T10:00:00.000Z" },
+    { conversation_id: "conv-1", event_id: null, last_read_at: "2026-08-03T10:00:00.000Z" },
+  ];
+  const eventReadMap = buildEventChatReadMap(readRows);
+
+  // The event row is picked up and the DM row is not mixed into it.
+  assert.equal(eventReadMap.get("event-a"), "2026-08-03T10:00:00.000Z");
+  assert.equal(eventReadMap.has("conv-1"), false);
+
+  // A crew message from someone else, newer than last_read_at, is unread.
+  assert.equal(
+    isChatUnread(
+      { user_id: them, created_at: "2026-08-03T10:05:00.000Z" },
+      me,
+      eventReadMap.get("event-a"),
+    ),
+    true,
+  );
+
+  // Your own crew message never marks the thread unread.
+  assert.equal(
+    isChatUnread(
+      { user_id: me, created_at: "2026-08-03T10:05:00.000Z" },
+      me,
+      eventReadMap.get("event-a"),
+    ),
+    false,
+  );
+
+  // Older than last_read_at is read -- opening the chat clears it.
+  assert.equal(
+    isChatUnread(
+      { user_id: them, created_at: "2026-08-03T09:55:00.000Z" },
+      me,
+      eventReadMap.get("event-a"),
+    ),
+    false,
+  );
+
+  // A crew chat never opened has no read row at all, so it starts unread.
+  assert.equal(
+    isChatUnread({ user_id: them, created_at: "2026-08-03T10:05:00.000Z" }, me, undefined),
+    true,
+  );
+
+  // Clearing one thread must not clear another: event-b has no read row, so it
+  // stays unread while event-a is read through the same map.
+  assert.equal(eventReadMap.has("event-b"), false);
+  assert.equal(
+    isChatUnread(
+      { user_id: them, created_at: "2026-08-03T10:05:00.000Z" },
+      me,
+      eventReadMap.get("event-b"),
+    ),
+    true,
+  );
+
+  // -- The inbox card and Groups count read the same set --------------------
+  const inboxPageSource = readFileSync(new URL("../app/dm/page.tsx", import.meta.url), "utf8");
+  assert.match(inboxPageSource, /isUnread=\{unreadEventChatIds\.has\(chat\.eventId\)\}/);
+  assert.match(inboxPageSource, /const groupUnreadCount = unreadEventChatIds\.size/);
+  assert.match(inboxPageSource, /groupUnreadCount=\{groupUnreadCount\}/);
+}
+
 async function main() {
   testPastEventDatesAreBlocked();
   testFutureEventDatesAreAllowed();
@@ -13354,6 +13479,7 @@ async function main() {
   await testDmMessageOrderDeterminism();
   await testDmBookingReturnScroll();
   testCrewChatAttachmentRealtimeAndStateReconciliation();
+  testCrewChatUnreadUsesTheSharedUnreadSystem();
   console.log("All regression checks passed.");
 }
 

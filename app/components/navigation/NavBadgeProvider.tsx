@@ -14,6 +14,7 @@ import {
   notifyBookingRequestsChanged,
   subscribeToBookingRequestChanges,
 } from "@/lib/bookings/bookingRequestsSync";
+import { isOwnChatMessage } from "@/lib/messageReads";
 import { loadNavigationBadgeData } from "@/lib/navigationBadges";
 import {
   ensureGigsPendingPrefetched,
@@ -331,6 +332,58 @@ export function NavBadgeProvider({ children }: { children: ReactNode }) {
           filter: `user_id=eq.${userId}`,
         },
         () => {
+          void refreshBadgeCounts({ force: true });
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [userId, refreshBadgeCounts]);
+
+  /**
+   * App-wide `messages` subscription.
+   *
+   * The Messages badge is derived from the unread system —
+   * `getNavBadgeCounts` -> `getInboxUnreadCounts` -> `getUnreadConversationIds`
+   * / `getUnreadEventChatIds` — which reads `messages` and `message_reads`.
+   * Until this existed, the badge's only remote trigger was the `notifications`
+   * channel above, so a new message moved the badge only if a notification row
+   * happened to be written for it. That is a different subsystem with its own
+   * failure modes, and it is where DM and Crew Chat diverged: the inbox has had
+   * its own `messages` subscription all along (`dm-inbox:messages`) and updates
+   * correctly, while anywhere else in the app the badge waited on a
+   * notification that Crew Chat does not reliably produce.
+   *
+   * Subscribing the badge to the same table its count is computed from removes
+   * that indirection, so unread state has one source of truth rather than two.
+   * RLS scopes the stream to rows this user is allowed to read — the same
+   * property the inbox's own unfiltered subscription already relies on. The
+   * handler only invalidates; the database stays the source of truth.
+   */
+  useEffect(() => {
+    if (!userId) {
+      return;
+    }
+
+    const channel = supabase
+      .channel(`nav-messages:${userId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "messages",
+        },
+        (payload) => {
+          // Your own message never makes a thread unread (`isChatUnread` short-
+          // circuits on it), so refreshing for one is a guaranteed no-op round
+          // trip. Reusing that helper keeps the two agreeing by construction.
+          if (isOwnChatMessage((payload.new as { user_id?: string | null }).user_id, userId)) {
+            return;
+          }
+
           void refreshBadgeCounts({ force: true });
         },
       )
