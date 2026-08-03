@@ -14,6 +14,7 @@ import type { DmMessageAttachment } from "@/lib/dmAttachments";
 import {
   resolveChatMessageBubbleShellClass,
   resolveChatMessageBubbleTextClass,
+  resolveChatSystemCardShellClass,
 } from "@/lib/dm/chatMessageBubbleGeometry";
 import {
   resolveIncomingGroupLiClass,
@@ -167,23 +168,30 @@ function GroupChatMessageBubble({
     : parseEventGroupChatUpdateMessage(trimmedText);
   const isEventUpdate = eventUpdateChanges !== null;
 
+  // An event update is authored by the app, not by whoever saved the edit, so
+  // it must not adopt sender styling. Treating it as "not own" everywhere it
+  // matters is what keeps it left-aligned, un-avatared, and off the primary
+  // fill for the planner who triggered it as well as for the crew.
+  const systemAuthored = isEventUpdate;
+
   const highlightClass = getChatNewMessageHighlightClass(isHighlighted);
-  const rowMaxWidthClass = isEventUpdate
-    ? // Narrower than a normal message so a routine update reads as an aside
-      // rather than the loudest thing on screen.
-      "max-w-[76%] sm:max-w-[62%]"
+  const rowMaxWidthClass = systemAuthored
+    ? // Narrower than a normal message so a routine update supports the
+      // conversation rather than competing with it.
+      "max-w-[72%] sm:max-w-[56%]"
     : isOwnMessage
       ? "max-w-[85%] sm:max-w-[72%]"
       : "max-w-[88%] sm:max-w-[78%]";
 
-  const bubbleShellClass = resolveChatMessageBubbleShellClass({
-    isOwnMessage,
-    text: trimmedText,
-    hasAttachments,
-    attachmentOnly,
-    groupPosition,
-    denseBody: isEventUpdate,
-  });
+  const bubbleShellClass = systemAuthored
+    ? resolveChatSystemCardShellClass()
+    : resolveChatMessageBubbleShellClass({
+        isOwnMessage,
+        text: trimmedText,
+        hasAttachments,
+        attachmentOnly,
+        groupPosition,
+      });
   const bubbleTextClass = resolveChatMessageBubbleTextClass(trimmedText);
   const isClusterEnd = groupPosition === "last" || groupPosition === "standalone";
 
@@ -201,7 +209,9 @@ function GroupChatMessageBubble({
       pickerAnchorRef={pickerAnchorRef}
       bubbleShellClassName={bubbleShellClass}
       highlightClassName={highlightClass}
-      isOwnMessage={isOwnMessage}
+      // Anchors the reaction pill and picker to the left edge, matching where
+      // the card actually sits.
+      isOwnMessage={systemAuthored ? false : isOwnMessage}
       reactions={reactions}
       currentUserId={currentUserId}
       reacting={reacting}
@@ -242,6 +252,39 @@ function GroupChatMessageBubble({
       ) : null}
     </ChatMessageBubbleShell>
   );
+
+  // App-generated notice: always left-aligned, with no avatar and no sender
+  // name, because attributing it to the planner who saved the edit is exactly
+  // what made it read as a typed message. Timestamp keeps the same formatter
+  // and the same `showTimestamp` gating as every other row.
+  if (systemAuthored) {
+    return (
+      <li
+        data-chat-message-id={messageId}
+        className={resolveIncomingGroupLiClass({
+          position: "standalone",
+          isClusterEnd: true,
+          followedByTimeSeparator,
+          precededByTimeSeparator,
+        })}
+      >
+        <div className={`flex ${rowMaxWidthClass} min-w-0 flex-col items-start`}>
+          {bubbleBlock}
+          <time
+            dateTime={createdAt}
+            className={`mt-0.5 block px-1 text-[10px] text-ftc-text-muted ${
+              showTimestamp ? "" : "sr-only"
+            }`}
+          >
+            {formatTime(createdAt)}
+          </time>
+          {seenLabel ? (
+            <p className="px-1 text-[10px] text-ftc-text-muted">{seenLabel}</p>
+          ) : null}
+        </div>
+      </li>
+    );
+  }
 
   if (!isOwnMessage) {
     const isClusterEnd = showAvatar;

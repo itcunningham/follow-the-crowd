@@ -11215,37 +11215,72 @@ function testEventUpdateMessagePresentation() {
     "utf8",
   );
 
-  // Heading is semibold, not oversized, and reads "Event updated".
+  // Heading reads "Event updated" as a small uppercase accent label, not a
+  // message-sized heading.
   assert.match(noticeSource, /EVENT_GROUP_CHAT_UPDATE_HEADING/);
-  assert.match(noticeSource, /text-\[13px\] font-semibold/);
+  assert.match(noticeSource, /text-\[10px\] font-semibold uppercase[^"]*text-ftc-primary/);
   assert.doesNotMatch(noticeSource, /font-bold|text-base|text-lg/);
 
-  // Field rows sit below normal chat body size (15px) but stay readable.
-  assert.match(noticeSource, /text-\[12px\]/);
+  // The new value is the point of the message: old value takes the muted
+  // token, new value keeps full-strength text plus a medium weight.
+  assert.match(noticeSource, /text-ftc-text-muted">\{change\.from\}/);
+  assert.match(noticeSource, /font-medium text-ftc-text">\{change\.to\}/);
 
-  // De-emphasis is opacity-based: the same markup renders on a primary-colour
-  // bubble (planner) and a surface bubble (crew), so a fixed muted token would
-  // lose contrast on the blue.
-  assert.match(noticeSource, /className="[^"]*opacity-\d0/);
-  // Scoped to real className attributes so the rationale in this file's own
-  // doc comment isn't mistaken for a usage.
+  // Colour tokens are correct here (unlike the previous shared-background
+  // treatment) because the card owns a single known background.
   assert.doesNotMatch(
     noticeSource,
-    /className="[^"]*text-ftc-text-muted/,
-    "muted token would lose contrast on the primary-coloured bubble",
+    /className="[^"]*opacity-\d0/,
+    "the card has a fixed background, so opacity hacks are no longer needed",
   );
 
-  // Bubble is denser and narrower than a normal message.
-  assert.match(bubbleSource, /denseBody: isEventUpdate/);
-  assert.match(bubbleSource, /max-w-\[76%\] sm:max-w-\[62%\]/);
-  assert.match(geometrySource, /denseBody\s*\n?\s*\?\s*"px-3 py-2"/);
+  // THE core requirement: an app-generated notice must not wear sender
+  // styling. No primary fill, no speech-bubble tail, always left-aligned,
+  // no avatar and no sender name -- for the planner who triggered it too.
+  assert.match(geometrySource, /export function resolveChatSystemCardShellClass/);
+  assert.match(geometrySource, /resolveChatSystemCardShellClass[\s\S]{0,400}rounded-xl/);
+  assert.match(
+    geometrySource,
+    /resolveChatSystemCardShellClass[\s\S]{0,400}bg-\[var\(--ftc-color-bg-surface-raised\)\]/,
+  );
+  assert.doesNotMatch(
+    geometrySource.slice(geometrySource.indexOf("export function resolveChatSystemCardShellClass")),
+    /ftc-bubble-own|shadow-/,
+    "the system card must not reuse the outgoing bubble fill or add shadows",
+  );
 
-  // DM's bubble geometry is untouched: it never opts into denseBody.
+  assert.match(bubbleSource, /const systemAuthored = isEventUpdate;/);
+  assert.match(bubbleSource, /systemAuthored\s*\n?\s*\?\s*resolveChatSystemCardShellClass\(\)/);
+  assert.match(
+    bubbleSource,
+    /isOwnMessage=\{systemAuthored \? false : isOwnMessage\}/,
+    "reaction pill and picker must anchor left, where the card actually sits",
+  );
+  assert.match(
+    bubbleSource,
+    /if \(systemAuthored\) \{[\s\S]{0,1200}items-start/,
+    "system notices render in their own left-aligned branch",
+  );
+  // That branch must precede the own/incoming split, or a planner's own
+  // update would still take the right-aligned outgoing path.
+  assert.ok(
+    bubbleSource.indexOf("if (systemAuthored) {") < bubbleSource.indexOf("if (!isOwnMessage) {"),
+    "the system-authored branch must come before the own/incoming split",
+  );
+
+  // Narrower than a normal message so it supports rather than dominates.
+  assert.match(bubbleSource, /max-w-\[72%\] sm:max-w-\[56%\]/);
+
+  // Reactions, highlight and the seen label all still route through the
+  // shared shell -- restyling must not quietly drop message capabilities.
+  assert.match(bubbleSource, /if \(systemAuthored\) \{[\s\S]{0,1200}\{bubbleBlock\}/);
+
+  // DM is untouched: it has no system-card concept at all.
   const dmBubbleSource = readFileSync(
     new URL("../app/components/dm/DmTextMessageBubble.tsx", import.meta.url),
     "utf8",
   );
-  assert.doesNotMatch(dmBubbleSource, /denseBody/);
+  assert.doesNotMatch(dmBubbleSource, /resolveChatSystemCardShellClass|systemAuthored/);
 }
 
 function testIncomingChatMessagesHaveNoAvatarTimestamp() {

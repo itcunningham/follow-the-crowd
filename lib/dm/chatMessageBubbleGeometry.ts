@@ -47,19 +47,12 @@ export function resolveChatMessageBubbleShellClass({
   hasAttachments = false,
   attachmentOnly = false,
   groupPosition = "standalone",
-  denseBody = false,
 }: {
   isOwnMessage: boolean;
   text: string;
   hasAttachments?: boolean;
   attachmentOnly?: boolean;
   groupPosition?: ChatMessageGroupPosition;
-  /**
-   * Structured, multi-row bodies (the crew chat event-update field list) that
-   * supply their own internal spacing, so the bubble's prose padding would
-   * read as slack. DM never sets this — its output is unchanged.
-   */
-  denseBody?: boolean;
 }): string {
   const interaction = "[touch-action:pan-y]";
 
@@ -72,15 +65,33 @@ export function resolveChatMessageBubbleShellClass({
   const veryShort = isVeryShortChatBubbleText(text);
   const padding = hasAttachments
     ? "p-1"
-    : denseBody
-      ? "px-3 py-2"
-      : veryShort
-        ? "min-w-[2.75rem] px-3 py-1"
-        : compact
-          ? "min-w-[2.75rem] px-3.5 py-1.5"
-          : "px-4 py-2.5";
+    : veryShort
+      ? "min-w-[2.75rem] px-3 py-1"
+      : compact
+        ? "min-w-[2.75rem] px-3.5 py-1.5"
+        : "px-4 py-2.5";
 
   return `overflow-hidden ${interaction} w-fit max-w-full select-none sm:select-text ${base} ${padding}`;
+}
+
+/**
+ * Shell for an app-generated notification (crew chat event updates) — a card,
+ * deliberately not a speech bubble.
+ *
+ * Uniform `rounded-xl` with no tail corner is what separates it from the
+ * conversation: every user message has an asymmetric corner pointing at its
+ * sender, so dropping that reads as "nobody said this". The dark slate
+ * surface plus a low-alpha cyan hairline are existing palette tokens, so it
+ * stays inside FTC's language without introducing a colour — and it never
+ * uses the primary fill, which is what made these look like outgoing
+ * messages in the first place. No shadow, one hairline border.
+ */
+export function resolveChatSystemCardShellClass(): string {
+  return [
+    "overflow-hidden [touch-action:pan-y] w-fit max-w-full select-none sm:select-text",
+    "rounded-xl border border-[var(--ftc-color-primary-border)]",
+    "bg-[var(--ftc-color-bg-surface-raised)] px-3 py-2.5",
+  ].join(" ");
 }
 
 export function resolveChatMessageBubbleTextClass(_text: string): string {
