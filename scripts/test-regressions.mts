@@ -11990,16 +11990,22 @@ function testEventUpdateMessagePresentation() {
   assert.doesNotMatch(systemLi, /\bjustify-center\b|\bmx-auto\b|\bitems-center\b/);
 
   // Reads as a timeline event: 4-8px more air than a normal crew message on
-  // BOTH sides. flex-col-reverse, so `mb` is the gap above and `mt` below.
-  const extraAbove = spacingPx(systemLi, "mb") - normalCrewGap;
-  const extraBelow = spacingPx(systemLi, "mt");
-  assert.ok(
-    extraAbove >= 4 && extraAbove <= 8,
-    `system card needs 4-8px more space above a normal message, got ${extraAbove}px`,
-  );
+  // BOTH sides.
+  //
+  // DIRECTION: `column-reverse` reverses the order items are laid out in, not
+  // which physical edge a margin sits on, so `mb` is the gap BELOW a row and
+  // `mt` the gap above -- measured in-browser, and the opposite of what this
+  // file and the constants used to claim. Flex margins do not collapse, so the
+  // gap above a card is its own `mt` PLUS the preceding cluster end's `mb`.
+  const extraBelow = spacingPx(systemLi, "mb") - normalCrewGap;
+  const extraAbove = spacingPx(systemLi, "mt");
   assert.ok(
     extraBelow >= 4 && extraBelow <= 8,
     `system card needs 4-8px more space below a normal message, got ${extraBelow}px`,
+  );
+  assert.ok(
+    extraAbove >= 4 && extraAbove <= 8,
+    `system card needs 4-8px more space above a normal message, got ${extraAbove}px`,
   );
 
   // Exactly one margin utility per axis. Two (e.g. from appending to
@@ -12008,14 +12014,26 @@ function testEventUpdateMessagePresentation() {
   assert.equal((systemLi.match(/\bmb-/g) ?? []).length, 1, "one margin-bottom utility only");
   assert.equal((systemLi.match(/\bmt-/g) ?? []).length, 1, "one margin-top utility only");
 
-  // A day/time separator directly above already supplies the break, so the
-  // top gap tightens there while the extra space below is kept.
+  // A day/time separator directly above already supplies the break, so the TOP
+  // gap tightens there while the extra space BELOW is kept. Both halves matter:
+  // the axes were swapped here for a while, which crushed the gap below a card
+  // to 2px -- tighter than the 4px between two messages from one sender, so the
+  // card glued itself to the group underneath instead of separating it.
   const afterSeparator = resolveSystemCardGroupLiClass({ precededByTimeSeparator: true });
   assert.ok(
-    spacingPx(afterSeparator, "mb") < spacingPx(systemLi, "mb"),
+    spacingPx(afterSeparator, "mt") < spacingPx(systemLi, "mt"),
     "top gap must tighten when a time separator sits directly above",
   );
-  assert.equal(spacingPx(afterSeparator, "mt"), extraBelow);
+  assert.equal(
+    spacingPx(afterSeparator, "mb"),
+    spacingPx(systemLi, "mb"),
+    "the gap BELOW a system card must not shrink just because a separator sits above it",
+  );
+  assert.ok(
+    spacingPx(afterSeparator, "mb") >
+      spacingPx(GROUP_CHAT_LIST_ITEM_WITHIN_GROUP_SPACING_CLASS, "mb"),
+    "a system card must never sit tighter to the group below it than two messages from one sender",
+  );
 
   // The row must use the dedicated resolver, not the incoming one.
   assert.match(
@@ -12491,6 +12509,36 @@ function testCrewChatMessageGrouping() {
   assert.match(systemNoticeSource, /flex justify-center/);
   assert.match(resolveSystemCardGroupLiClass({}), /justify-start/);
   assert.match(chatPageSource, /precededByTimeSeparator=\{precededByTimeSeparator\}/);
+
+  /* ---- sender name reads as attribution, not as a heading ---- */
+
+  // Instagram/WhatsApp put the name under the message; Discord puts it over it.
+  // At `font-semibold` the label won the row before the bubble it belongs to.
+  const senderNameSource = readFileSync(
+    new URL("../app/components/group-chat/GroupChatMessageBubble.tsx", import.meta.url),
+    "utf8",
+  );
+  const senderNameClass = senderNameSource.match(
+    /className="(mb-1 block w-fit px-1[^"]*)"/,
+  )?.[1];
+
+  assert.ok(senderNameClass, "sender name label class not found");
+  assert.match(senderNameClass, /\bfont-medium\b/);
+  assert.doesNotMatch(
+    senderNameClass,
+    /\bfont-(semibold|bold)\b/,
+    "the sender name must not compete with the message it labels",
+  );
+  // Smaller than the 15px bubble text and than its own previous 11px, but still
+  // the shared secondary token rather than a fainter one -- measured at 6.81:1
+  // against the chat background, above the 4.5:1 needed for body text.
+  assert.match(senderNameClass, /text-\[10px\]/);
+  assert.match(senderNameClass, /text-ftc-text-secondary/);
+  // Still a profile link with a visible hover affordance.
+  assert.match(senderNameClass, /transition/);
+  assert.match(senderNameClass, /hover:text-ftc-text\b/);
+  // Rendered only at a run start -- the gate that stops it repeating per row.
+  assert.match(senderNameSource, /showSenderName \? \(/);
 }
 
 /**

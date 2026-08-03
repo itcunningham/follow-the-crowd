@@ -105,11 +105,17 @@ export const GROUP_CHAT_LIST_ITEM_CLUSTER_END_SPACING_CLASS = "mb-2.5";
  * event rather than a turn in the conversation, so it gets a little more air
  * on BOTH sides than a normal message does.
  *
- * flex-col-reverse, so the axes are inverted relative to intuition:
- * `mb` opens the gap visually ABOVE, `mt` the gap visually BELOW. A normal
- * crew-chat cluster end is `mb-2.5` (10px) above and nothing below, so this is
- * +6px above (16px) and +6px below (6px) — enough to read as separated without
- * punching a hole in the conversation.
+ * DIRECTION — measured in the browser, because the comment here used to claim
+ * the opposite and the card's spacing was built on that claim. `column-reverse`
+ * reverses the ORDER items are laid out in, not which physical edge a margin
+ * sits on: `margin-bottom` is still physically below the row, and the row
+ * physically below is the chronologically NEWER one. So `mb` opens the gap
+ * visually BELOW and `mt` the gap visually ABOVE. Flex margins also do not
+ * collapse, so adjacent rows' margins add.
+ *
+ * Net effect here, verified live: 16px below (`mb-4`), and 16px above — 6px of
+ * `mt-1.5` plus the 10px `mb-2.5` the preceding cluster end already contributes.
+ * Symmetric, and enough to read as separated without punching a hole.
  */
 export const GROUP_CHAT_SYSTEM_CARD_SPACING_CLASS = "mb-4 mt-1.5";
 
@@ -118,8 +124,16 @@ export const GROUP_CHAT_SYSTEM_CARD_SPACING_CLASS = "mb-4 mt-1.5";
  * separator already supplies the break, so the top gap stays tight (matching
  * CHAT_LIST_ITEM_CLUSTER_START_AFTER_TIMESTAMP_SPACING_CLASS) while the extra
  * space below is kept.
+ *
+ * The axes here were the wrong way round until the direction above was actually
+ * measured: `mb-0.5 mt-1.5` put the tight 2px BELOW the card and the loose 6px
+ * above, so a card following a separator glued itself to the message group
+ * underneath — 2px, tighter than the 4px between two messages from one sender,
+ * i.e. the opposite of the separation this constant exists to provide. Swapping
+ * them delivers the documented intent: 4px above (2px `mt-0.5` plus the
+ * separator's own 2px) and the full 16px below.
  */
-export const GROUP_CHAT_SYSTEM_CARD_AFTER_TIMESTAMP_SPACING_CLASS = "mb-0.5 mt-1.5";
+export const GROUP_CHAT_SYSTEM_CARD_AFTER_TIMESTAMP_SPACING_CLASS = "mb-4 mt-0.5";
 
 /** @deprecated Reaction space is reserved in-flow on the reacted message only — do not propagate list margins. */
 export const CHAT_LIST_ITEM_AFTER_REACTION_SPACING_CLASS = "mb-1.5";
@@ -327,7 +341,9 @@ function resolveMessageListItemSpacingClass({
       ? GROUP_CHAT_LIST_ITEM_CLUSTER_END_SPACING_CLASS
       : CHAT_LIST_ITEM_CLUSTER_END_SPACING_CLASS;
 
-  // flex-col-reverse: margin-bottom opens toward the visually older sibling above.
+  // flex-col-reverse: margin-bottom opens toward the visually NEWER sibling
+  // below (see the direction note on GROUP_CHAT_SYSTEM_CARD_SPACING_CLASS —
+  // column-reverse reverses layout order, not which edge a margin sits on).
   // Any message directly above a centred timestamp must clear absolute reaction hang.
   if (followedByTimeSeparator) {
     return spacing === "compact"

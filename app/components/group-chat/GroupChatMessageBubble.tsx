@@ -301,7 +301,14 @@ function GroupChatMessageBubble({
             showSenderName ? (
               <Link
                 href={buildProfileHref(senderUserId, { returnTo: profileReturnTo })}
-                className="mb-1 block w-fit px-1 text-[11px] font-semibold text-ftc-text-secondary transition hover:text-ftc-text"
+                // Instagram/WhatsApp weight, not Discord's: the name is an
+                // attribution label, so it sits under the message text rather
+                // than above it. `font-semibold` at 11px read as a heading and
+                // pulled the eye before the bubble it belongs to. Colour is
+                // unchanged — already the shared secondary token — and the
+                // hover-to-primary affordance stays, so it is still legibly a
+                // link to the sender's profile.
+                className="mb-1 block w-fit px-1 text-[10px] font-medium text-ftc-text-secondary transition hover:text-ftc-text"
               >
                 {senderLabel}
               </Link>
