@@ -226,6 +226,17 @@ export default function EventCrewChatPage() {
   const [lastReadAtByUserId, setLastReadAtByUserId] = useState<Map<string, string>>(new Map());
   const [memberSheetOpen, setMemberSheetOpen] = useState(false);
   const [eventCardCollapsed, setEventCardCollapsed] = useState(false);
+  /**
+   * A manual toggle click changes the event card's height, which — when the
+   * user is already pinned to the live edge — makes the browser clamp the
+   * scroller's own scrollTop to fit the new (smaller or larger) scrollable
+   * area. That clamp fires real `scroll` events, so without this the
+   * scroll-triggered effect below immediately re-decides collapsed state and
+   * fights the tap that was just made. Suppressing it for one animation's
+   * worth of time after a manual toggle doesn't change how genuine scrolling
+   * behaves at any other time.
+   */
+  const eventCardManualToggleSuppressUntilRef = useRef(0);
   const [input, setInput] = useState("");
   const [accessLoading, setAccessLoading] = useState(true);
   const [messagesLoading, setMessagesLoading] = useState(true);
@@ -387,7 +398,7 @@ export default function EventCrewChatPage() {
     function evaluateCollapse() {
       ticking = false;
 
-      if (!scroller) {
+      if (!scroller || Date.now() < eventCardManualToggleSuppressUntilRef.current) {
         return;
       }
 
@@ -1097,10 +1108,57 @@ export default function EventCrewChatPage() {
           </header>
 
           {/*
+            Chat sub-header: a fixed slot between the header and the event
+            card, above the conversation and outside it, so it never scrolls
+            away and never re-layouts the message list. Holds the event
+            countdown plus a manual show/hide toggle for the card directly
+            beneath it -- the card already collapses/expands on scroll (see
+            the scroll listener above); this is just a second, explicit way
+            to reach the same state, reusing it rather than adding a duplicate.
+          */}
+          {countdownLabel ? (
+            <div
+              data-chat-subheader
+              className="shrink-0 border-b border-ftc-border-subtle bg-ftc-bg/95 px-3 py-1.5 backdrop-blur-md sm:px-4"
+            >
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-[11px] font-medium text-ftc-text-muted">{countdownLabel}</p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    eventCardManualToggleSuppressUntilRef.current = Date.now() + 400;
+                    setEventCardCollapsed((current) => !current);
+                  }}
+                  aria-expanded={!eventCardCollapsed}
+                  className="flex shrink-0 items-center gap-0.5 text-[11px] font-medium text-ftc-text-muted transition hover:text-ftc-text-secondary"
+                >
+                  {eventCardCollapsed ? "Details" : "Hide"}
+                  <svg
+                    aria-hidden="true"
+                    viewBox="0 0 20 20"
+                    fill="none"
+                    className={`h-3.5 w-3.5 shrink-0 transition-transform duration-200 ${
+                      eventCardCollapsed ? "" : "rotate-180"
+                    }`}
+                  >
+                    <path
+                      d="M5 7.5 10 12.5 15 7.5"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          ) : null}
+
+          {/*
             Event-context card: venue/date/time + View Event, directly beneath
-            the header. Collapses once the user scrolls into the conversation
-            (see the scroll listener above) so long history reads without a
-            permanent info strip; reappears back at the live edge.
+            the countdown/toggle row above. Collapses once the user scrolls
+            into the conversation (see the scroll listener above), or via the
+            toggle; reappears back at the live edge either way.
           */}
           {!accessLoading ? (
             <GroupChatEventContextCard
@@ -1120,21 +1178,6 @@ export default function EventCrewChatPage() {
             component rather than a placeholder box.
           */}
           <CrewChatAnnouncementBand />
-
-          {/*
-            Chat sub-header: a fixed slot between the header/card and the
-            scroller, above the conversation and outside it, so it never
-            scrolls away and never re-layouts the message list. Holds the event
-            countdown.
-          */}
-          {countdownLabel ? (
-            <div
-              data-chat-subheader
-              className="shrink-0 border-b border-ftc-border-subtle bg-ftc-bg/95 px-3 py-1.5 backdrop-blur-md sm:px-4"
-            >
-              <p className="text-[11px] font-medium text-ftc-text-muted">{countdownLabel}</p>
-            </div>
-          ) : null}
 
           <div
             ref={scrollRef}

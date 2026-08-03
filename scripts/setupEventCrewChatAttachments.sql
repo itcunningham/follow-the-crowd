@@ -86,7 +86,10 @@ create policy "message_attachments_insert_uploader"
           select 1
           from public.messages m
           where m.id = message_id
-            and m.event_id = message_attachments.event_id
+            -- messages.event_id may be text or uuid depending on environment
+            -- (see setupEventCrewChat.sql's conditional text->uuid migration);
+            -- cast both sides to text rather than assume either type.
+            and m.event_id::text = message_attachments.event_id::text
             and m.user_id = public.auth_user_id()
         )
       )
