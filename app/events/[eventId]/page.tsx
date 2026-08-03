@@ -139,6 +139,11 @@ import {
 import { readCachedEventSummaryById } from "@/lib/events/eventDetailCache";
 import {
   resolveEventDetailBackHref,
+} from "@/lib/events/eventsListNavigation";
+import {
+  consumeCrewChatEventDetailOrigin,
+} from "@/lib/events/eventDetailCrewChatReturn";
+import {
   resolveEventDetailDmOriginConversationId,
 } from "@/lib/events/eventsListNavigation";
 import { DM_CHAT_SCROLL_RESTORE_PARAM } from "@/lib/dm/dmChatScrollRestoration";
@@ -252,6 +257,28 @@ function EventDetailPageView() {
   );
 
   function goBackToEvents() {
+    // Crew Chat is the one origin that pops rather than pushes. `router.push`
+    // appends a second copy of the conversation, so the entry immediately
+    // behind it is still Event Details -- Back from the returned chat reopened
+    // it, then Back again reached Events. Popping the real entry removes Event
+    // Details from history instead of burying it, and restores the exact URL
+    // the reader left, query string included. That is what brings back the
+    // event card's View Event control: it renders on `?from=dm`, which a
+    // rebuilt bare href drops but a genuine history pop preserves.
+    if (searchParams.get("from") === "crew-chat" && consumeCrewChatEventDetailOrigin(eventId)) {
+      router.back();
+      return;
+    }
+
+    // Marked-origin check failed: a shared link, a cold load or a refresh, where
+    // there is no crew chat entry behind this one and `back()` would leave the
+    // app. Replace rather than push so the fallback cannot itself leave an
+    // Event Details entry behind the conversation.
+    if (searchParams.get("from") === "crew-chat") {
+      router.replace(eventsBackHref);
+      return;
+    }
+
     router.push(eventsBackHref);
   }
 

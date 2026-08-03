@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import AnimatedExpandPanel from "@/app/components/AnimatedExpandPanel";
+import { markCrewChatEventDetailOrigin } from "@/lib/events/eventDetailCrewChatReturn";
 import { FtcClockIcon, FtcVenueIcon, FtcCalendarIcon } from "@/app/components/ftc/FtcCompactMeta";
 import { formatGroupChatEventDate } from "@/lib/groupChats";
 
@@ -54,7 +55,11 @@ export default function GroupChatEventContextCard({
           </ul>
 
           {showViewEventAction ? (
-            <Link href={`/events/${eventId}?from=crew-chat`} className={VIEW_EVENT_BUTTON_CLASS}>
+            <Link
+              href={`/events/${eventId}?from=crew-chat`}
+              className={VIEW_EVENT_BUTTON_CLASS}
+              onClick={() => markCrewChatEventDetailOrigin(eventId)}
+            >
               View Event
               <svg
                 aria-hidden="true"
