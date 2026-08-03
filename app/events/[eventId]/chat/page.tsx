@@ -144,6 +144,14 @@ const GROUP_CHAT_MESSAGES_TIMEOUT_MS = 15_000;
  * grid-template-rows transition, so its height arrives gradually rather than
  * in one step; the small tail past 200ms covers the final settling frame.
  */
+/**
+ * How recently a scroll event must have fired for the list to count as still
+ * moving. Momentum emits scroll events continuously while coasting, so a window
+ * this short reliably separates "still gliding" from "settled", without
+ * lingering after the scroll has stopped.
+ */
+const ACTIVE_SCROLL_GRACE_MS = 150;
+
 const EVENT_CARD_EXPAND_ANIMATION_MS = 200;
 const EVENT_CARD_SCROLL_COMPENSATION_MS = EVENT_CARD_EXPAND_ANIMATION_MS + 120;
 
@@ -258,6 +266,9 @@ export default function EventCrewChatPage() {
    * is reused across two different events without unmounting).
    */
   const [eventCardCollapsed, setEventCardCollapsed] = useState(true);
+  // Ref, not state: this is stamped on every scroll frame and must never
+  // re-render the message list.
+  const lastScrollActivityAtRef = useRef(0);
   const eventCardScrollCompensationRef = useRef<{
     observer: ResizeObserver;
     timeoutId: number;
@@ -434,6 +445,23 @@ export default function EventCrewChatPage() {
     const scroller = scrollRef.current;
 
     if (!scroller || typeof ResizeObserver === "undefined") {
+      return;
+    }
+
+    // Skip compensation entirely while the list is still moving.
+    //
+    // The compensation below works by assigning `scroller.scrollTop` on every
+    // resize frame for the length of the card animation. Assigning scrollTop is
+    // what cancels an in-flight touch or momentum scroll -- the browser treats
+    // it as an authoritative jump and drops the inertia -- so tapping
+    // Details/Hide mid-glide stopped the list dead.
+    //
+    // Nothing is lost by skipping it: the compensation exists to stop a
+    // stationary reader's view sliding when the card above changes height, and
+    // a reader who is mid-scroll is already moving that view themselves. Their
+    // gesture surviving matters more than an exact offset. Once the scroll
+    // settles the next toggle compensates normally.
+    if (Date.now() - lastScrollActivityAtRef.current < ACTIVE_SCROLL_GRACE_MS) {
       return;
     }
 
@@ -1353,6 +1381,9 @@ export default function EventCrewChatPage() {
           <div
             ref={scrollRef}
             className={CHAT_MESSAGE_SCROLLER_CLASS}
+            onScroll={() => {
+              lastScrollActivityAtRef.current = Date.now();
+            }}
           >
             {accessLoading || messagesLoading ? (
               <ChatMessagesSkeleton />

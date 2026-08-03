@@ -11922,6 +11922,32 @@ function testCrewChatEventCardToggleScrollCompensation() {
   );
 
   assert.equal(beforeExpand, 1000);
+
+  // Tapping Details/Hide mid-scroll used to stop the list dead: the
+  // compensation assigns scroller.scrollTop on every resize frame, and assigning
+  // scrollTop cancels an in-flight touch or momentum scroll. It is now skipped
+  // while the list is still moving -- the reader is already moving the view
+  // themselves, so their gesture surviving matters more than an exact offset.
+  const toggleScrollPageSource = readFileSync(
+    new URL("../app/events/[eventId]/chat/page.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(toggleScrollPageSource, /const ACTIVE_SCROLL_GRACE_MS = \d+;/);
+  // Stamped from the scroller's own scroll event, into a ref -- state here would
+  // re-render the whole message list on every scroll frame.
+  assert.match(toggleScrollPageSource, /const lastScrollActivityAtRef = useRef\(0\);/);
+  assert.match(
+    toggleScrollPageSource,
+    /onScroll=\{\(\) => \{\s*\n\s*lastScrollActivityAtRef\.current = Date\.now\(\);/,
+  );
+  // The guard must sit BEFORE the ResizeObserver that writes scrollTop, or it
+  // guards nothing.
+  const guardAt = toggleScrollPageSource.indexOf("Date.now() - lastScrollActivityAtRef.current < ACTIVE_SCROLL_GRACE_MS");
+  const writeAt = toggleScrollPageSource.indexOf("scroller.scrollTop = resolveScrollTopPreservingDistanceFromBottom");
+  assert.ok(guardAt > 0 && writeAt > guardAt, "the active-scroll guard must precede the scrollTop write");
+  // The near-bottom early return stays: flex-col-reverse already pins the live
+  // edge, so compensating there would fight the browser.
+  assert.match(toggleScrollPageSource, /distanceFromBottom <= CHAT_NEAR_BOTTOM_THRESHOLD_PX/);
   assert.equal(
     afterExpand - beforeExpand,
     57,
