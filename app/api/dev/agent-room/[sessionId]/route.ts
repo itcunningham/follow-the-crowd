@@ -67,7 +67,24 @@ export async function PATCH(
 
   if (approval === "auto" || approval === "manual") {
     session.handoffApproval = approval;
+    // Changing the mode never carries a stale approval across with it, so
+    // switching into manual always starts by asking.
+    session.handoffApprovedAt = null;
     session.updatedAt = new Date().toISOString();
+    await saveSession(session);
+
+    return NextResponse.json(buildSessionView(session));
+  }
+
+  // Isaac approving the next handoff in manual mode. Recorded on the session so
+  // the execution endpoints can enforce it, and spent by the turn it allows.
+  if (
+    typeof body.value === "object" &&
+    body.value !== null &&
+    (body.value as Record<string, unknown>).approveNextHandoff === true
+  ) {
+    session.handoffApprovedAt = new Date().toISOString();
+    session.updatedAt = session.handoffApprovedAt;
     await saveSession(session);
 
     return NextResponse.json(buildSessionView(session));

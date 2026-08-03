@@ -167,7 +167,13 @@ export default function DecisionLog() {
 
       if (response.ok && generationRef.current === generation) {
         const data = (await response.json()) as { records: DecisionLogRecord[] };
-        setRecords(data.records);
+
+        // Re-checked after the await: parsing the body is itself a suspension
+        // point, so a newer search can start and finish while this one decodes.
+        // Without this second check the older response still writes.
+        if (generationRef.current === generation) {
+          setRecords(data.records);
+        }
       }
     } finally {
       if (generationRef.current === generation) {

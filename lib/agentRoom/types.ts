@@ -125,6 +125,14 @@ export type AgentRoomSession = {
    */
   handoffApproval: "auto" | "manual";
 
+  /**
+   * Manual mode only: set when Isaac approves the next handoff, and cleared the
+   * moment it is spent, so one approval buys exactly one agent turn. `advance`
+   * is refused while this is null. A session file written before this field
+   * existed parses as `undefined`, which is falsy — so the guard fails closed.
+   */
+  handoffApprovedAt: string | null;
+
   transcript: AgentRoomTurn[];
 
   /** Timestamp of the last provider call, for the per-session rate limit. */

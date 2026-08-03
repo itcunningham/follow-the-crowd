@@ -14,7 +14,11 @@
  */
 
 import { NextResponse } from "next/server";
-import { agentRoomDisabledResponse, notFound } from "@/lib/agentRoom/apiGuard";
+import {
+  AGENT_ROOM_MANUAL_APPROVAL_REQUIRED,
+  agentRoomDisabledResponse,
+  notFound,
+} from "@/lib/agentRoom/apiGuard";
 import { finalizeSession } from "@/lib/agentRoom/finalize";
 import {
   executeAgentTurn,
@@ -92,6 +96,14 @@ export async function POST(
         break;
       }
 
+      // Manual mode: one recorded approval buys one hop. Checked inside the
+      // loop against the session just re-read from disk, so a run cannot keep
+      // going on an approval it already spent.
+      if (session.handoffApproval === "manual" && !session.handoffApprovedAt) {
+        notice = AGENT_ROOM_MANUAL_APPROVAL_REQUIRED;
+        break;
+      }
+
       const route = routeNext(sessionState(session));
 
       if (!route.role) {
@@ -118,6 +130,9 @@ export async function POST(
       }
 
       recordAgentTurn(session, result.turn, "advance", check.nextStage, route.role);
+      // Spend the approval. In manual mode the next iteration therefore stops
+      // and asks again; in auto mode this is already null and stays null.
+      session.handoffApprovedAt = null;
       await saveSession(session);
       hops += 1;
 

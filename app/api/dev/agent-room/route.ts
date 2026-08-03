@@ -94,6 +94,7 @@ export async function POST(request: Request) {
     lastReleaseVerdict: null,
     hasSummary: false,
     handoffApproval: "auto",
+    handoffApprovedAt: null,
     transcript: [
       {
         id: newSessionId(),

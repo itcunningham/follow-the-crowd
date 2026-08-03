@@ -15093,6 +15093,123 @@ async function testAgentRoomWritesSummariesAndDecisionRecords() {
   );
 }
 
+/**
+ * The three conditions the QA review made merging contingent on.
+ *
+ * (1) Manual handoff approval is enforced on the server, not by the client
+ *     choosing to ask. (2) The Decision Log search re-checks its generation
+ *     after the response body is parsed, because parsing is itself a
+ *     suspension point. (3) The approval-mode toggle carries its selected
+ *     state in something other than colour.
+ */
+async function testAgentRoomManualApprovalIsEnforcedServerSide() {
+  const { manualApprovalResponse } = await import("../lib/agentRoom/apiGuard");
+
+  /* (1a) The guard itself, driven rather than pattern-matched. */
+  assert.equal(
+    manualApprovalResponse("auto", null),
+    null,
+    "automatic mode must be completely unaffected — this is the behaviour that already shipped",
+  );
+  assert.equal(
+    manualApprovalResponse("auto", "2026-08-03T00:00:00.000Z"),
+    null,
+    "a stale approval must not change automatic mode either",
+  );
+  assert.equal(
+    manualApprovalResponse("manual", "2026-08-03T00:00:00.000Z"),
+    null,
+    "manual mode with a recorded approval must be allowed to proceed",
+  );
+
+  const refused = manualApprovalResponse("manual", null);
+  assert.notEqual(refused, null, "manual mode without an approval must be refused");
+  assert.equal(refused?.status, 409, "the refusal must be a conflict, not a silent no-op");
+
+  /* (1b) Both execution endpoints enforce it, and neither does so in a comment. */
+  const actionRoute = agentRoomCode("app/api/dev/agent-room/[sessionId]/action/route.ts");
+  const runRoute = agentRoomCode("app/api/dev/agent-room/[sessionId]/run/route.ts");
+
+  assert.match(
+    actionRoute,
+    /manualApprovalResponse\(\s*session\.handoffApproval,\s*session\.handoffApprovedAt,?\s*\)/,
+    "the single-step endpoint must consult the manual-approval guard",
+  );
+  assert.match(
+    runRoute,
+    /session\.handoffApproval === "manual" && !session\.handoffApprovedAt/,
+    "the run-to-decision loop must refuse to hop without a recorded approval",
+  );
+
+  /* (1c) One approval buys exactly one turn: both endpoints spend it. */
+  for (const [label, source] of [
+    ["action", actionRoute],
+    ["run", runRoute],
+  ] as const) {
+    assert.match(
+      source,
+      /handoffApprovedAt = null/,
+      `the ${label} endpoint must spend the approval so it cannot authorise a second turn`,
+    );
+  }
+
+  /* (1d) The approval has to be recorded somewhere before it can be enforced. */
+  const sessionRoute = agentRoomCode("app/api/dev/agent-room/[sessionId]/route.ts");
+  assert.match(
+    sessionRoute,
+    /approveNextHandoff === true/,
+    "there must be a way to record an approval",
+  );
+  assert.match(
+    sessionRoute,
+    /session\.handoffApprovedAt = new Date\(\)\.toISOString\(\)/,
+    "recording an approval must persist it on the session",
+  );
+  assert.match(
+    agentRoomCode("app/api/dev/agent-room/route.ts"),
+    /handoffApprovedAt: null/,
+    "a new session must start with no approval banked",
+  );
+
+  /* (2) The Decision Log guard must be checked again after the body is read. */
+  const decisionLogPanel = agentRoomCode("app/dev/agent-room/DecisionLog.tsx");
+  const generationChecks = decisionLogPanel.match(
+    /generationRef\.current === generation/g,
+  );
+  assert.ok(
+    (generationChecks?.length ?? 0) >= 2,
+    "the generation must be checked again after await response.json(), not only before it",
+  );
+  assert.match(
+    decisionLogPanel,
+    /await response\.json\(\)[\s\S]{0,200}?generationRef\.current === generation[\s\S]{0,80}?setRecords\(/,
+    "setRecords must sit behind a generation check that runs after the body is parsed",
+  );
+
+  /* (3) Selected mode must survive both a screen reader and a greyscale print. */
+  const client = agentRoomCode("app/dev/agent-room/AgentRoomClient.tsx");
+  assert.match(
+    client,
+    /aria-pressed=\{selected\}/,
+    "the approval-mode toggle must expose its selected state to assistive tech",
+  );
+  assert.match(
+    client,
+    /selected \? "ftc-btn-primary" : "ftc-btn-secondary"/,
+    "the selected mode must differ by more than colour — reuse the existing FTC pill pair",
+  );
+  assert.match(
+    client,
+    /\{selected \? "✓ " : ""\}/,
+    "the selected mode must also be marked non-visually-redundantly",
+  );
+  assert.doesNotMatch(
+    client,
+    /color:\s*\n?\s*session\.handoffApproval === mode/,
+    "the colour-only selected state must not come back",
+  );
+}
+
 async function main() {
   testPastEventDatesAreBlocked();
   testFutureEventDatesAreAllowed();
@@ -15353,6 +15470,7 @@ async function main() {
   await testAgentRoomHandlesProviderFailureAndTimeouts();
   await testAgentRoomTimelineRecordsEveryTurn();
   await testAgentRoomWritesSummariesAndDecisionRecords();
+  await testAgentRoomManualApprovalIsEnforcedServerSide();
   console.log("All regression checks passed.");
 }
 

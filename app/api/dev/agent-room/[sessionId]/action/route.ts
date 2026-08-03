@@ -14,6 +14,7 @@ import {
   agentRoomDisabledResponse,
   badRequest,
   clampField,
+  manualApprovalResponse,
   notFound,
   readField,
   readJsonBody,
@@ -131,6 +132,19 @@ export async function POST(
   /* Agent turns — locked, rate limited, one at a time                       */
   /* ---------------------------------------------------------------------- */
 
+  // Manual mode gates the agent turns only. The summary describes a finished
+  // session rather than continuing it, so it is not a handoff to approve.
+  if (action === "advance") {
+    const needsApproval = manualApprovalResponse(
+      session.handoffApproval,
+      session.handoffApprovedAt,
+    );
+
+    if (needsApproval) {
+      return needsApproval;
+    }
+  }
+
   const waitMs = millisecondsUntilNextCallAllowed(session.lastCallAt);
 
   if (waitMs > 0) {
@@ -221,6 +235,9 @@ export async function POST(
     }
 
     recordAgentTurn(current, result.turn, action, recheck.nextStage, route.role);
+    // The approval is spent by the turn it authorised, so the next handoff in
+    // manual mode needs its own.
+    current.handoffApprovedAt = null;
     await saveSession(current);
 
     return NextResponse.json(buildSessionView(current));

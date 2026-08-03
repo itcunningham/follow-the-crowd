@@ -23,6 +23,31 @@ export function badRequest(message: string): NextResponse {
   return NextResponse.json({ error: message }, { status: 400 });
 }
 
+/**
+ * The manual-mode gate, enforced server-side so it cannot be skipped by a
+ * client that simply does not ask. In "manual" the agents may not run until
+ * Isaac has recorded an approval for the next handoff; that approval is spent
+ * by the turn it authorises, so each turn needs its own.
+ *
+ * Returns null in "auto", which leaves automatic mode exactly as it was.
+ */
+export const AGENT_ROOM_MANUAL_APPROVAL_REQUIRED =
+  "Manual handoff approval is on. Review the next handoff and approve it before the agents continue.";
+
+export function manualApprovalResponse(
+  mode: "auto" | "manual",
+  approvedAt: string | null,
+): NextResponse | null {
+  if (mode !== "manual" || approvedAt) {
+    return null;
+  }
+
+  return NextResponse.json(
+    { error: AGENT_ROOM_MANUAL_APPROVAL_REQUIRED },
+    { status: 409 },
+  );
+}
+
 export function notFound(message = "Session not found."): NextResponse {
   return NextResponse.json({ error: message }, { status: 404 });
 }

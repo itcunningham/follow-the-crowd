@@ -176,6 +176,31 @@ export default function AgentRoomClient() {
     }
   }
 
+  /**
+   * Manual mode: record the approval, then run the turn it authorises. The
+   * server refuses `advance` until that approval exists, so this pair is the
+   * whole of "review each handoff" rather than a client-side courtesy.
+   */
+  async function approveAndAdvance() {
+    if (!session) {
+      return;
+    }
+
+    const approved = await call(
+      `${API}/${session.id}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ approveNextHandoff: true }),
+      },
+      null,
+    );
+
+    if (approved) {
+      await runAction("advance");
+    }
+  }
+
   async function runToDecision() {
     if (!session) {
       return;
@@ -669,7 +694,9 @@ export default function AgentRoomClient() {
                     <button
                       type="button"
                       disabled={!canAdvance || busy}
-                      onClick={() => void runAction("advance")}
+                      onClick={() =>
+                        manualMode ? setShowPayload(true) : void runAction("advance")
+                      }
                       className="ftc-btn-secondary px-4"
                     >
                       Run one step
@@ -716,24 +743,34 @@ export default function AgentRoomClient() {
                     </button>
                   ) : null}
 
-                  <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-ftc-text-muted">
-                    <span>Handoffs:</span>
-                    {(["auto", "manual"] as const).map((mode) => (
-                      <button
-                        key={mode}
-                        type="button"
-                        onClick={() => void setApprovalMode(mode)}
-                        className="underline"
-                        style={{
-                          color:
-                            session.handoffApproval === mode
-                              ? "var(--ftc-color-primary)"
-                              : undefined,
-                        }}
-                      >
-                        {mode === "auto" ? "run automatically" : "review each one"}
-                      </button>
-                    ))}
+                  <div
+                    role="group"
+                    aria-label="Handoff approval"
+                    className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-ftc-text-muted"
+                  >
+                    <span id="ftc-handoff-mode-label">Handoffs:</span>
+                    {(["auto", "manual"] as const).map((mode) => {
+                      const selected = session.handoffApproval === mode;
+
+                      return (
+                        <button
+                          key={mode}
+                          type="button"
+                          // The selected mode is carried by the button's own
+                          // pressed state, a filled background and a tick — not
+                          // by colour, which a colour-blind reader cannot use
+                          // and a screen reader cannot see at all.
+                          aria-pressed={selected}
+                          onClick={() => void setApprovalMode(mode)}
+                          className={`${
+                            selected ? "ftc-btn-primary" : "ftc-btn-secondary"
+                          } px-3 py-1 text-[11px]`}
+                        >
+                          {selected ? "✓ " : ""}
+                          {mode === "auto" ? "run automatically" : "review each one"}
+                        </button>
+                      );
+                    })}
                   </div>
 
                   {view?.actions.some((entry) => !entry.allowed && entry.reason) ? (
@@ -791,10 +828,10 @@ export default function AgentRoomClient() {
                       <button
                         type="button"
                         disabled={busy}
-                        onClick={() => void runAction("advance")}
+                        onClick={() => void approveAndAdvance()}
                         className="ftc-btn-primary px-4"
                       >
-                        Send to {route.handoff.provider}
+                        Approve and send to {route.handoff.provider}
                       </button>
                       <button
                         type="button"
