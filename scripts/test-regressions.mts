@@ -13577,6 +13577,59 @@ function testEventDetailReturnsToCrewChat() {
   assert.match(detailSource, /crewChatEventId: eventId,/);
 }
 
+/**
+ * dc8eb61 returned to the right conversation but with `router.push`, which
+ * APPENDS a second copy of it: the entry immediately behind the returned chat
+ * was still Event Details, so Back reopened it and Back again reached Events --
+ * Crew Chat -> Event Details -> Crew Chat -> Event Details -> Events.
+ *
+ * It also rebuilt a bare crew chat href, dropping the `?from=dm` the card's
+ * View Event control renders on (`showViewEventAction={openedFromMessages}`),
+ * so the button vanished after returning. One cause, two symptoms: popping the
+ * real entry restores the exact URL including its query, which fixes both.
+ */
+function testEventDetailPopsCrewChatHistoryEntry() {
+  const detailSource = readFileSync(
+    new URL("../app/events/[eventId]/page.tsx", import.meta.url),
+    "utf8",
+  );
+  const cardSource = readFileSync(
+    new URL("../app/components/group-chat/GroupChatEventContextCard.tsx", import.meta.url),
+    "utf8",
+  );
+  const chatSource = readFileSync(
+    new URL("../app/events/[eventId]/chat/page.tsx", import.meta.url),
+    "utf8",
+  );
+
+  // 1 + 2. A marked crew-chat origin pops; it must NOT push another copy.
+  assert.match(
+    detailSource,
+    /from"\) === "crew-chat" && consumeCrewChatEventDetailOrigin\(eventId\)\) \{\s*\n\s*router\.back\(\);/,
+  );
+  // 4. Cold/direct/shared loads have no entry behind them: replace, never back()
+  // (which would leave the app) and never push (which buries Event Details).
+  assert.match(
+    detailSource,
+    /from"\) === "crew-chat"\) \{\s*\n\s*router\.replace\(eventsBackHref\);/,
+  );
+  // 5. Every other origin still pushes exactly as before.
+  assert.match(detailSource, /\n    router\.push\(eventsBackHref\);\n  \}/);
+
+  // The pop is only authorised by an in-app tap, so a shared link cannot make
+  // Back leave the app.
+  assert.match(cardSource, /onClick=\{\(\) => markCrewChatEventDetailOrigin\(eventId\)\}/);
+
+  // 3. The card's controls are gated on `from=dm`, which only a real history
+  // pop restores -- this is why the fix must not rebuild a bare href.
+  assert.match(chatSource, /const openedFromMessages = searchParams\.get\("from"\) === "dm";/);
+  assert.match(chatSource, /showViewEventAction=\{openedFromMessages\}/);
+  assert.match(cardSource, /collapsed\b/);
+
+  // No timers, reloads or hard-refresh workarounds in the back path.
+  assert.doesNotMatch(detailSource, /setTimeout\([^)]*goBackToEvents|location\.reload/);
+}
+
 async function main() {
   testPastEventDatesAreBlocked();
   testFutureEventDatesAreAllowed();
@@ -13807,6 +13860,7 @@ async function main() {
   testCrewChatTimestampSeparators();
   testCrewChatEventCardToggleScrollCompensation();
   testEventDetailReturnsToCrewChat();
+  testEventDetailPopsCrewChatHistoryEntry();
   testIncomingChatMessagesHaveNoAvatarTimestamp();
   testEventUpdateMessagePresentation();
   testCrewChatImageAttachmentsWiring();
