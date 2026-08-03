@@ -651,13 +651,32 @@ export default function EventCrewChatPage() {
     const senderIds = [...new Set(rows.map((message) => message.user_id))];
 
     if (senderIds.length === 0) {
-      setSenderProfiles(new Map());
       return;
     }
 
     try {
       const profiles = await getUserAvatarProfilesByIds(senderIds);
-      setSenderProfiles(profiles);
+      // Merge, never replace. This runs fire-and-forget (`void
+      // loadSenderProfiles(rows)`) while the realtime message handler below
+      // concurrently adds profiles to the same map, so a replace lets a load
+      // that started earlier but resolved later drop every profile added since
+      // — the sender of a message that arrived mid-load loses their avatar
+      // until the next full reload. Merging makes the two writers
+      // order-independent, so no generation guard is needed.
+      //
+      // The empty-`rows` case above returns without clearing for the same
+      // reason: entering a different event already resets this map in
+      // `loadAccess`, and a stale entry is unreachable anyway because lookups
+      // are keyed by the `user_id` of a message that is actually rendered.
+      setSenderProfiles((prev) => {
+        const next = new Map(prev);
+
+        for (const [userId, profile] of profiles) {
+          next.set(userId, profile);
+        }
+
+        return next;
+      });
     } catch (profileError) {
       console.error("Failed to load group chat sender profiles:", profileError);
     }
@@ -856,11 +875,35 @@ export default function EventCrewChatPage() {
           captureScrollBeforeIncomingInsert(taggedMessage._clientScrollMeta.isFromCurrentUser);
 
           setMessages((prev) => {
-            if (prev.some((message) => message.id === newMessage.id)) {
+            const existingIndex = prev.findIndex((message) => message.id === newMessage.id);
+
+            if (existingIndex === -1) {
+              return [...prev, taggedMessage];
+            }
+
+            // Already present as the optimistic row this client inserted after
+            // its own attachment send. That row carries a CLIENT-clock
+            // `created_at` (`new Date().toISOString()` in
+            // `sendCrewChatAttachments`); this payload carries the
+            // authoritative server value. Sender grouping and the day/time
+            // separators are both derived from `created_at` (see
+            // `breaksSenderGroup`), so leaving the client value in place lets a
+            // skewed device clock render different sender names, avatars and
+            // separators than the same conversation shows after a reload.
+            // Adopting the server row is what makes live state and
+            // database-derived state agree.
+            //
+            // Identical timestamps skip the write so an unrelated re-render is
+            // never forced, and the row is replaced in place rather than
+            // appended, so this can never introduce a duplicate.
+            if (prev[existingIndex].created_at === newMessage.created_at) {
               return prev;
             }
 
-            return [...prev, taggedMessage];
+            const next = [...prev];
+            next[existingIndex] = taggedMessage;
+
+            return next;
           });
 
           addHighlightedMessageId(

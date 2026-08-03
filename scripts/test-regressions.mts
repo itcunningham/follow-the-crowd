@@ -8381,8 +8381,12 @@ function testDmInboxImageMessagePreview() {
   assert.match(inboxPageSource, /resolveDmInboxAttachmentPreview/);
   assert.match(inboxPageSource, /message_attachments/);
   // The image-received-live path must resolve via a direct, bounded lookup
-  // rather than relying on message_attachments realtime (not in the
-  // Supabase Realtime publication) or open-ended polling.
+  // rather than open-ended polling. This was originally written because
+  // message_attachments was not in the Supabase Realtime publication;
+  // scripts/setupCrewChatAttachmentsRealtime.sql has since published it, but the
+  // inbox keeps the bounded lookup deliberately -- it needs a preview label for
+  // conversations it is not subscribed to, which an attachment event for one
+  // open conversation would not supply. Behaviour here is unchanged.
   assert.doesNotMatch(inboxPageSource, /setInterval/);
   assert.match(inboxPageSource, /messageAttachmentTypesRef/);
 }
@@ -12944,6 +12948,167 @@ function testChatMediaLoadsWithoutARefresh() {
   );
 }
 
+/**
+ * Crew Chat photos never reached the other participants live, and the cause was
+ * not in the client at all.
+ *
+ * 1. DATABASE. message_attachments was never in the `supabase_realtime`
+ *    publication. setupDmAttachmentsAndReactions.sql created the table and
+ *    published message_reactions in the same file but not message_attachments,
+ *    so BOTH attachment subscriptions (dm-attachments:<conversationId> and
+ *    event-crew-chat-attachments:<eventId>) subscribed, reported SUBSCRIBED and
+ *    then received nothing, forever. Postgres emits no replication events for
+ *    an unpublished table. An image-only message carries empty `messages.text`,
+ *    so with no attachment row the bubble renders nothing at all rather than an
+ *    empty bubble -- which is why the message looked absent rather than broken,
+ *    and why a hard refresh "fixed" it (the reload path is a plain select).
+ *    Fixed by scripts/setupCrewChatAttachmentsRealtime.sql, asserted below so
+ *    the migration cannot be dropped from the repo.
+ *
+ * 2. CLIENT, two state defects found while tracing the above. Neither caused
+ *    the missing image; both made live state disagree with the state a reload
+ *    produces, which is the same class of bug.
+ */
+function testCrewChatAttachmentRealtimeAndStateReconciliation() {
+  const realtimeSql = readFileSync(
+    new URL("../scripts/setupCrewChatAttachmentsRealtime.sql", import.meta.url),
+    "utf8",
+  );
+  const chatPageSource = readFileSync(
+    new URL("../app/events/[eventId]/chat/page.tsx", import.meta.url),
+    "utf8",
+  );
+  const dmPageSource = readFileSync(
+    new URL("../app/dm/[conversationId]/page.tsx", import.meta.url),
+    "utf8",
+  );
+
+  // -- The database half -----------------------------------------------------
+  // Scan EXECUTABLE sql only. This file explains at length why it does not set
+  // REPLICA IDENTITY FULL, so a raw-text scan reads that prose as a statement --
+  // the same comment-vs-code trap that previously made a CSS property scanner
+  // pass on a deleted declaration.
+  const executableSql = realtimeSql
+    .split("\n")
+    .map((line) => line.replace(/--.*$/, ""))
+    .join("\n");
+
+  assert.match(
+    executableSql,
+    /alter publication supabase_realtime add table public\.message_attachments/,
+  );
+  // Guarded, so re-running is a no-op rather than an error.
+  assert.match(executableSql, /pg_publication_tables/);
+  assert.match(executableSql, /if not exists \(/);
+
+  // REPLICA IDENTITY is deliberately left alone here, unlike booking_requests.
+  // That is only sound while every message_attachments subscription is
+  // INSERT-only: an INSERT payload always carries the complete new row, so the
+  // conversation_id / event_id filters match on the default replica identity,
+  // whereas an UPDATE would drop unchanged filter columns without FULL. These
+  // two assertions are what tie that reasoning to the code -- if anyone adds an
+  // UPDATE or DELETE subscription later, this test fails and the SQL has to be
+  // revisited rather than silently becoming insufficient.
+  assert.doesNotMatch(executableSql, /replica identity full/);
+  // The reasoning must stay written down, since the assertion above is only
+  // safe while someone can see why it is safe.
+  assert.match(realtimeSql, /REPLICA IDENTITY IS DELIBERATELY NOT CHANGED/);
+  for (const source of [chatPageSource, dmPageSource]) {
+    const attachmentSubscription = source.match(
+      /event: "(\w+)",\s*\n\s*schema: "public",\s*\n\s*table: "message_attachments"/,
+    );
+    assert.ok(
+      attachmentSubscription,
+      "each chat page must still declare a message_attachments subscription",
+    );
+    assert.equal(
+      attachmentSubscription?.[1],
+      "INSERT",
+      "message_attachments subscriptions must stay INSERT-only, or the migration needs REPLICA IDENTITY FULL",
+    );
+  }
+
+  // -- Why an unreconciled timestamp is not cosmetic -------------------------
+  // The optimistic row written after an attachment send carried a CLIENT-clock
+  // `created_at`. Grouping is derived from `created_at`, so a skewed device
+  // clock renders a different conversation than a reload does. Driving the real
+  // helper rather than asserting on source: a 6-minute skew crosses the shared
+  // 5-minute gap threshold and visibly changes sender name and avatar placement.
+  const serverTimeline = [
+    { id: "m1", user_id: "dj", text: "on my way", created_at: "2026-08-03T10:00:00.000Z" },
+    { id: "m2", user_id: "dj", text: "", created_at: "2026-08-03T10:00:30.000Z" },
+  ];
+  const skewedTimeline = [
+    serverTimeline[0],
+    { ...serverTimeline[1], created_at: "2026-08-03T10:06:30.000Z" },
+  ];
+
+  const serverGroups = buildCrewChatMessageGroups(serverTimeline, "isaac");
+  const skewedGroups = buildCrewChatMessageGroups(skewedTimeline, "isaac");
+
+  // Server truth: one run of two, so the name shows once at the top and the
+  // avatar once at the bottom.
+  assert.equal(serverGroups.get("m1")?.showSenderName, true);
+  assert.equal(serverGroups.get("m2")?.showSenderName, false);
+  assert.equal(serverGroups.get("m1")?.showAvatar, false);
+  assert.equal(serverGroups.get("m2")?.showAvatar, true);
+
+  // Same two messages, client clock 6 minutes fast: the run splits, so the name
+  // repeats and an extra avatar appears. That difference is exactly what a user
+  // sees vanish on refresh, and it is why the payload must be adopted.
+  assert.equal(skewedGroups.get("m2")?.showSenderName, true);
+  assert.equal(skewedGroups.get("m1")?.showAvatar, true);
+  assert.notEqual(
+    serverGroups.get("m2")?.showSenderName,
+    skewedGroups.get("m2")?.showSenderName,
+    "a client-clock timestamp must be able to change grouping, or this fix is pointless",
+  );
+
+  // -- Defect 1: the realtime payload must reconcile, not be dropped ---------
+  // The old guard returned `prev` for any known id, so the authoritative
+  // server timestamp was discarded and the client value survived for the life
+  // of the session.
+  assert.match(
+    chatPageSource,
+    /const existingIndex = prev\.findIndex\(\(message\) => message\.id === newMessage\.id\)/,
+  );
+  assert.match(chatPageSource, /next\[existingIndex\] = taggedMessage/);
+  // Replaced in place, never appended, so reconciliation cannot duplicate a row.
+  assert.doesNotMatch(
+    chatPageSource,
+    /if \(prev\.some\(\(message\) => message\.id === newMessage\.id\)\) \{\s*\n\s*return prev;/,
+    "the id-dedup guard must reconcile the row rather than drop the payload",
+  );
+  // Unchanged timestamps still short-circuit, so this costs no extra renders.
+  assert.match(
+    chatPageSource,
+    /prev\[existingIndex\]\.created_at === newMessage\.created_at/,
+  );
+
+  // -- Defect 2: sender profiles merge, never replace ------------------------
+  // `loadSenderProfiles` runs fire-and-forget while the realtime handler adds
+  // profiles to the same map. A wholesale replace let an earlier load that
+  // resolved later drop every profile added in between -- the sender of a
+  // message that arrived mid-load lost their avatar until the next reload.
+  assert.match(
+    chatPageSource,
+    /setSenderProfiles\(\(prev\) => \{\s*\n\s*const next = new Map\(prev\);/,
+  );
+  assert.doesNotMatch(
+    chatPageSource,
+    /setSenderProfiles\(profiles\);/,
+    "a wholesale replace reintroduces the stale-load clobber",
+  );
+  // The empty-rows branch must not clear either -- same clobber, same cause.
+  assert.doesNotMatch(
+    chatPageSource,
+    /if \(senderIds\.length === 0\) \{\s*\n\s*setSenderProfiles\(new Map\(\)\);/,
+  );
+
+  // -- No banned workarounds -------------------------------------------------
+  assert.doesNotMatch(chatPageSource, /setInterval|location\.reload|router\.refresh/);
+}
+
 async function main() {
   testPastEventDatesAreBlocked();
   testFutureEventDatesAreAllowed();
@@ -13188,6 +13353,7 @@ async function main() {
   await testDmImageAttachmentDimensions();
   await testDmMessageOrderDeterminism();
   await testDmBookingReturnScroll();
+  testCrewChatAttachmentRealtimeAndStateReconciliation();
   console.log("All regression checks passed.");
 }
 
