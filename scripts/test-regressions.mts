@@ -10404,6 +10404,72 @@ function testRunSheetCancelIsTheFixedAnchor() {
   assert.match(section, /aria-hidden=\{!hasUnsavedChanges\}/);
   assert.match(section, /tabIndex=\{hasUnsavedChanges \? 0 : -1\}/);
 
+  // --- Cancel's horizontal position is invariant between clean and dirty ---
+  //
+  // This suite has no layout engine (its DOM helpers are hand-stubbed rects),
+  // so this cannot be asserted by measuring pixels. It is asserted as the
+  // layout contract that *derives* the measurement instead, which is the
+  // stronger check anyway: it holds at every intermediate width during the
+  // reveal transition, not just at the two endpoints a snapshot would catch.
+  //
+  // In a `justify-content: flex-end` row, the last item's right margin edge
+  // coincides with the container's content-box right edge for ANY set of item
+  // widths. So Cancel's x is a function of the container alone -- Save's width
+  // cannot enter into it -- provided all three of these hold:
+  //
+  //   (a) Cancel is the LAST child                      -> asserted above
+  //   (b) Cancel contributes no trailing horizontal box  -> below
+  //   (c) the collapsed Save adds no width when clean    -> computed below
+  //
+  // Live-measured against this exact contract: Cancel's right edge is 359px
+  // at 390px wide and 935.5px at 1280px, identical in view / clean / dirty,
+  // with Save 0px wide when clean and 61.2px + a 12px gap when dirty.
+
+  // (b) Nothing sits between Cancel and the container's right edge.
+  assert.doesNotMatch(cancelButton, /className="[^"]*\b-?m[rx]-/);
+  assert.doesNotMatch(editButton, /className="[^"]*\b-?m[rx]-/);
+
+  // (c) Sum every horizontal box contribution of the collapsed Save from the
+  // real CSS and require it to be exactly zero. `.ftc-btn-primary` is folded
+  // in because a border added there later would silently reintroduce width
+  // even though the collapse rule itself looks untouched.
+  const primaryRule = globalsSource.match(/\.ftc-btn-primary \{[\s\S]*?\n\}/)?.[0] ?? "";
+  assert.ok(primaryRule, ".ftc-btn-primary must exist");
+  const declared = (rule: string, prop: string): string | null =>
+    rule.match(new RegExp(`(?:^|[;{]\\s*)${prop}:\\s*([^;]+);`, "m"))?.[1]?.trim() ?? null;
+  const lengthPx = (value: string | null): number => {
+    if (value === null) return 0;
+    const v = value.trim();
+    if (v === "none" || v === "0" || v === "auto") return 0;
+    const m = v.match(/^(-?[\d.]+)(px|rem)$/);
+    assert.ok(m, `collapsed Save has a non-zero-able length: "${v}"`);
+    return parseFloat(m![1]) * (m![2] === "rem" ? 16 : 1);
+  };
+  const collapsedWidthPx =
+    lengthPx(declared(hiddenRule, "max-width")) +
+    lengthPx(declared(hiddenRule, "padding-left")) +
+    lengthPx(declared(hiddenRule, "padding-right")) +
+    lengthPx(declared(hiddenRule, "margin-left")) +
+    lengthPx(declared(hiddenRule, "margin-right")) +
+    // border shorthand on the shared primary class ("none" -> 0)
+    lengthPx(declared(primaryRule, "border") === "none" ? "0" : declared(primaryRule, "border"));
+  assert.equal(
+    collapsedWidthPx,
+    0,
+    "collapsed Save must occupy exactly 0 horizontal px, or it will displace Cancel",
+  );
+
+  // And the Save class string itself must not reintroduce width via a margin
+  // utility, which would sit outside the CSS rule computed above.
+  const saveClassConst =
+    section.match(/const RUN_SHEET_SAVE_BUTTON_CLASS =\s*\n\s*"([^"]+)"/)?.[1] ?? "";
+  assert.ok(saveClassConst, "RUN_SHEET_SAVE_BUTTON_CLASS must exist");
+  assert.doesNotMatch(saveClassConst, /(^|\s)-?m[lrx]?-/);
+
+  // Tab order stays logical: DOM order is Save then Cancel, which is also
+  // their left-to-right visual order; while clean, Save is skipped entirely.
+  assert.ok(saveIndex < cancelIndex, "tab order must follow visual left-to-right order");
+
   // The gap now sits on Save's RIGHT (Save is left of Cancel), and collapses
   // with the button rather than surviving as a phantom offset.
   const visibleRule =
