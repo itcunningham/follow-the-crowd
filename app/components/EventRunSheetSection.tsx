@@ -5,7 +5,6 @@ import { CalendarMobileDashedEmptyState } from "@/app/components/calendar/calend
 import { EventDetailSectionTitle } from "@/app/components/event-detail/EventDetailLayout";
 import {
   EVENT_DETAIL_BTN_PRIMARY,
-  EVENT_DETAIL_BTN_SECONDARY,
   EVENT_DETAIL_CARD_CLASS,
   EVENT_DETAIL_FEEDBACK_CLASS,
 } from "@/app/components/event-detail/eventDetailUi";
@@ -59,8 +58,8 @@ import { countUnicodeCharacters } from "@/lib/textInputLimits";
 
 const RUN_SHEET_SET_TIME_BUTTON_CLASS =
   "ftc-field-trigger inline-flex w-full min-h-[2.25rem] items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium sm:min-h-[2rem] lg:max-w-[11rem]";
-/** Narrower than `EVENT_DETAIL_BTN_PRIMARY` (`px-3` instead of `px-4`) so Save
- * reads as secondary to the "Run Sheet" title rather than competing with it. */
+/** Narrower than `EVENT_DETAIL_BTN_PRIMARY` (`px-3` instead of `px-4`) to sit
+ * comfortably alongside Cancel in the same row without dominating it. */
 const RUN_SHEET_SAVE_BUTTON_CLASS =
   "ftc-btn-primary inline-flex min-h-10 items-center justify-center px-3 py-2 text-xs uppercase tracking-wide disabled:cursor-not-allowed disabled:opacity-50";
 /** Visible rows each field is pinned to. Mirrors the `.ftc-run-sheet-textarea-N`
@@ -250,15 +249,14 @@ function RunSheetSetTimeField({
     // wraps to more than one line, so unlike Stage / Area and Notes it
     // needs no truncate-and-expand treatment.
     //
-    // Sized a step above Stage / Area and Notes (both `text-sm` at the
-    // muted `text-ftc-text-secondary`) so Set Time reads as the second tier
-    // under the DJ name -- what a DJ scans for first -- rather than tying
-    // visually with supporting detail.
+    // Muted body copy rather than bright/bold: Set Time still sits above
+    // Stage / Area and Notes in the reading order, but shouldn't outweigh
+    // the DJ name above it.
     const readOnlyDisplay = formatRunSheetSetTimeDisplay(startTime, finishTime);
     const hasValue = Boolean(startTime.trim() || finishTime.trim());
 
     return (
-      <p className="text-base font-semibold tabular-nums text-ftc-text">
+      <p className="text-sm font-medium tabular-nums text-ftc-text-secondary">
         {hasValue ? readOnlyDisplay : "—"}
       </p>
     );
@@ -592,7 +590,7 @@ function RunSheetEntry({
         className="mt-1 flex w-full items-center gap-2 rounded-md py-1 text-left"
       >
         <span className="min-w-0 flex-1 truncate text-xs text-ftc-text-muted">
-          {stagePreview || (isReadOnlyAndIncomplete ? "Run Sheet details pending" : "")}
+          {isReadOnlyAndIncomplete ? "Run Sheet details pending" : ""}
         </span>
         <RunSheetExpandChevron expanded={isExpanded} />
       </button>
@@ -959,14 +957,14 @@ export default function EventRunSheetSection({
         <div>
           <EventDetailSectionTitle>Run Sheet</EventDetailSectionTitle>
           {/* Lightweight and secondary to the title on purpose -- muted,
-              small text, no colour beyond the one completion emoji. View mode
-              only (see `showRunSheetProgress`): while editing, this would sit
-              directly above a Save button appearing for the exact same
-              reason, restating the same fact twice. */}
+              small text, no colour coding. View mode only (see
+              `showRunSheetProgress`): while editing, this would sit directly
+              above a Save button appearing for the exact same reason,
+              restating the same fact twice. */}
           {showRunSheetProgress ? (
             <p className="mt-0.5 text-xs text-ftc-text-muted">
               {isFullyComplete
-                ? "🟢 Run Sheet Complete"
+                ? "Run Sheet Complete"
                 : `${completedRowCount} of ${rows.length} DJs completed`}
             </p>
           ) : null}
@@ -977,24 +975,19 @@ export default function EventRunSheetSection({
             the "Create your Run Sheet" empty state above is showing -- Create
             Run Sheet is the one obvious action, not a duplicate of Edit.
 
-            Cancel/Edit sits in its own top row -- a stable top-right slot
-            matching the Edit Event header (`.ftc-form-cancel-link`, the same
-            small uppercase text link `PlannerFormCard` uses). Save lives in a
-            second row below, permanently mounted for the whole time the sheet
-            is being edited so its height is reserved from the moment editing
-            starts -- there is never a moment where Cancel's row grows or
-            shrinks depending on Save, so Cancel's own position can't move.
-            Save's visibility is a CSS transition (`.ftc-run-sheet-save-btn`)
-            gated on `hasUnsavedChanges`, not a mount/unmount -- it fades and
-            nudges into its reserved slot rather than appearing from nothing,
-            and the DJ cards below never shift. It sits slightly left of
-            Cancel's edge (`pr-3`) rather than sharing Cancel's exact
-            right-aligned column, so the two read as deliberately placed
-            rather than centred under one another. */}
+            Edit and Cancel share one top-right slot and the same lightweight
+            text-link treatment (`.ftc-form-cancel-link`) so neither competes
+            with the "Run Sheet" title. While editing, Cancel and Save sit
+            together in a single row -- paired as one action, not a lone
+            floating button -- with Save as the visually primary one. Save's
+            visibility is a CSS transition (`.ftc-run-sheet-save-btn`) gated
+            on `hasUnsavedChanges`, not a mount/unmount -- it fades and nudges
+            into place rather than appearing from nothing, and Cancel doesn't
+            shift when it does. */}
         {showRunSheetHeaderActions ? (
-          <div className="flex flex-col items-end">
-            <div>
-              {isEditing ? (
+          <div className="flex items-center gap-3">
+            {isEditing ? (
+              <>
                 <button
                   type="button"
                   onClick={handleCancelEdit}
@@ -1003,24 +996,6 @@ export default function EventRunSheetSection({
                 >
                   Cancel
                 </button>
-              ) : (
-                // Standard secondary button, the same style Message elsewhere
-                // in the app already uses -- not a separate, visually-floating
-                // pill. No icon: the visible label is the whole affordance,
-                // matching the rest of the app's text buttons.
-                <button
-                  type="button"
-                  onClick={handleEnterEditMode}
-                  aria-label="Edit Run Sheet"
-                  className={EVENT_DETAIL_BTN_SECONDARY}
-                >
-                  Edit
-                </button>
-              )}
-            </div>
-
-            {isEditing ? (
-              <div className="mt-1.5 flex w-full justify-end pr-3">
                 <button
                   type="button"
                   onClick={handleSave}
@@ -1033,8 +1008,17 @@ export default function EventRunSheetSection({
                 >
                   {saving ? "Saving" : "Save"}
                 </button>
-              </div>
-            ) : null}
+              </>
+            ) : (
+              <button
+                type="button"
+                onClick={handleEnterEditMode}
+                aria-label="Edit Run Sheet"
+                className="ftc-form-cancel-link disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Edit
+              </button>
+            )}
           </div>
         ) : null}
       </div>

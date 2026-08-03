@@ -9188,18 +9188,18 @@ function testRunSheetAccordionRestructure() {
   assert.doesNotMatch(section, /lg:hidden/);
   assert.doesNotMatch(section, /lg:block/);
 
-  // The Stage / Area preview is unconditional in the collapsed header, and
-  // sits before the expand panel in source -- not gated on `isExpanded`. It
-  // now falls back to "Run Sheet details pending" (see
-  // testRunSheetProductionPolish) rather than rendering bare, but the
-  // fallback depends only on completeness/read-only state, never on
-  // `isExpanded`.
+  // The collapsed header no longer previews Stage / Area at all -- it
+  // duplicated the same value shown one tap away in the expanded panel (see
+  // testRunSheetVisualHierarchyPolish for the pass that removed it). All it
+  // still carries is the "Run Sheet details pending" fallback for a
+  // read-only, incomplete row, and that fallback sits before the expand
+  // panel in source -- not gated on `isExpanded`.
   const entryFn = section.match(/function RunSheetEntry\([\s\S]*?\n}\n/)?.[0] ?? "";
   assert.ok(entryFn, "RunSheetEntry must exist");
-  const previewIndex = entryFn.indexOf("stagePreview ||");
+  assert.doesNotMatch(entryFn, /stagePreview \|\|/);
   const panelIndex = entryFn.indexOf("<AnimatedExpandPanel");
-  assert.ok(previewIndex > -1 && panelIndex > -1 && previewIndex < panelIndex);
-  assert.doesNotMatch(entryFn.slice(0, panelIndex), /isExpanded\s*\?[\s\S]*stagePreview/);
+  const fallbackIndex = entryFn.indexOf('isReadOnlyAndIncomplete ? "Run Sheet details pending" : ""');
+  assert.ok(fallbackIndex > -1 && panelIndex > -1 && fallbackIndex < panelIndex);
 
   // Exactly one row open at a time when browsing: toggling the open row
   // closes it, toggling any other row replaces it -- not additive. Overridden
@@ -9328,13 +9328,14 @@ function testRunSheetChromeReduction() {
   // The unused chrome class is gone, not just unreferenced.
   assert.doesNotMatch(section, /readOnlyTextClassName/);
 
-  // Collapsed header preview is Stage / Area alone -- no Set Time, no Notes.
+  // Collapsed header preview carries no Stage / Area, Set Time, or Notes --
+  // the Stage / Area preview was later removed too (duplicated the expanded
+  // panel; see testRunSheetVisualHierarchyPolish).
   const entryFn = section.match(/function RunSheetEntry\([\s\S]*?\n}\n/)?.[0] ?? "";
   assert.ok(entryFn, "RunSheetEntry must exist");
   assert.match(entryFn, /const stagePreview = row\.stage_area\.trim\(\);/);
   const headerButton = entryFn.match(/<button[\s\S]*?onToggleExpanded[\s\S]*?<\/button>/)?.[0] ?? "";
   assert.ok(headerButton, "the collapsed header toggle button must exist");
-  assert.match(headerButton, /stagePreview \|\|/);
   assert.doesNotMatch(headerButton, /formatRunSheetSetTimeDisplay/);
   assert.doesNotMatch(headerButton, /row\.notes/);
 
@@ -9346,12 +9347,9 @@ function testRunSheetChromeReduction() {
   );
 
   // Set Time read-only is plain typography -- no bordered/background box.
-  // Sized up from `text-sm` (see testRunSheetProductionPolish's hierarchy
-  // check) but still no border/background.
-  assert.match(
-    section,
-    /<p className="text-base font-semibold tabular-nums text-ftc-text">\s*\{hasValue \? readOnlyDisplay : "—"\}\s*<\/p>/,
-  );
+  // Exact size/weight/colour were dialled back a tier by
+  // testRunSheetVisualHierarchyPolish; still no border/background.
+  assert.match(section, /\{hasValue \? readOnlyDisplay : "—"\}/);
   assert.doesNotMatch(section, /rounded-lg border border-ftc-border bg-ftc-bg-elevated\/30/);
 
   // Information order in the expanded panel: Stage / Area, then Set Time,
@@ -9716,25 +9714,24 @@ function testRunSheetProductionPolish() {
     section,
     /const showRunSheetProgress = !isEditing && rows\.length > 0 && !allRowsIncomplete;/,
   );
-  assert.match(section, /🟢 Run Sheet Complete/);
+  // "Run Sheet Complete" copy stands alone -- the leading emoji dot was
+  // removed by testRunSheetVisualHierarchyPolish.
+  assert.match(section, /"Run Sheet Complete"/);
   assert.match(section, /\$\{completedRowCount\} of \$\{rows\.length\} DJs completed/);
   // Not visually dominant: small, muted text under the title, not a colourful
   // banner.
   assert.match(section, /<p className="mt-0\.5 text-xs text-ftc-text-muted">/);
 
-  // Edit moved onto the standard secondary button -- the same style Message
-  // uses elsewhere -- rather than the separate icon+pill control it used to
-  // reuse. The generalisation that control gained for this (an optional
-  // ariaLabel) is reverted since nothing needs it any more. (Cancel has since
-  // moved onto a different shared style of its own -- see
-  // testRunSheetHeaderCancelAndSave.)
+  // Edit moved off the separate icon+pill control it used to reuse, onto the
+  // standard secondary button at the time -- since replaced by the
+  // lightweight text-link treatment from testRunSheetVisualHierarchyPolish.
   assert.doesNotMatch(section, /EventDetailEditButton/);
   // No pencil icon: the visible label is the whole affordance. aria-label
   // stays "Edit Run Sheet" (more descriptive than the bare visible "Edit")
   // even though the visible text is now just "Edit".
   assert.match(
     section,
-    /<button\s*\n\s*type="button"\s*\n\s*onClick=\{handleEnterEditMode\}\s*\n\s*aria-label="Edit Run Sheet"\s*\n\s*className=\{EVENT_DETAIL_BTN_SECONDARY\}\s*\n\s*>\s*\n\s*Edit\s*\n\s*<\/button>/,
+    /<button\s*\n\s*type="button"\s*\n\s*onClick=\{handleEnterEditMode\}\s*\n\s*aria-label="Edit Run Sheet"\s*\n/,
   );
   assert.doesNotMatch(section, /✏️/);
 
@@ -9768,9 +9765,12 @@ function testRunSheetProductionPolish() {
     /const isReadOnlyAndIncomplete = !canEdit && !isRunSheetRowComplete\(row\);/,
   );
   assert.match(entryFn, /isReadOnlyAndIncomplete \? "opacity-75" : ""/);
+  // The fallback text itself is asserted by testRunSheetAccordionRestructure;
+  // it no longer sits alongside a `stagePreview ||` (see
+  // testRunSheetVisualHierarchyPolish).
   assert.match(
     entryFn,
-    /stagePreview \|\| \(isReadOnlyAndIncomplete \? "Run Sheet details pending" : ""\)/,
+    /isReadOnlyAndIncomplete \? "Run Sheet details pending" : ""/,
   );
 
   // Hierarchy inside expanded cards: DJ name is the largest/boldest thing in
@@ -9899,8 +9899,9 @@ function testRunSheetSaveButtonPolish() {
   // Always mounted for the whole editing session -- not conditioned on
   // `hasUnsavedChanges` the way the previous mount-triggered approach was.
   // Visibility is driven by toggling a class on the persistent button
-  // instead, so its row's height is reserved even with nothing to save yet.
-  assert.match(section, /\{isEditing \? \(\s*<div className="mt-1\.5 flex w-full justify-end pr-3">/);
+  // instead. It was moved into the same row as Cancel by
+  // testRunSheetVisualHierarchyPolish; the layout assertion for that lives
+  // there.
   assert.doesNotMatch(section, /\{isEditing && hasUnsavedChanges \? \(/);
   assert.match(
     section,
@@ -9913,14 +9914,11 @@ function testRunSheetSaveButtonPolish() {
   assert.match(section, /aria-hidden=\{!hasUnsavedChanges\}/);
   assert.match(section, /tabIndex=\{hasUnsavedChanges \? 0 : -1\}/);
 
-  // Narrower than the standard primary button (`px-3` vs. `px-4`) so it reads
-  // as secondary to the "Run Sheet" title rather than competing with it.
+  // Narrower than the standard primary button (`px-3` vs. `px-4`).
   assert.match(section, /const RUN_SHEET_SAVE_BUTTON_CLASS =\s*\n\s*"ftc-btn-primary[^"]*\bpx-3\b[^"]*"/);
 
-  // Cancel keeps its own row, independent of Save's -- its position can't be
-  // affected by Save's visibility because Save no longer shares a single
-  // stacked column with it.
-  assert.match(section, /<div className="flex flex-col items-end">\s*<div>\s*\{isEditing \? \(/);
+  // Cancel's own row/column layout was superseded by
+  // testRunSheetVisualHierarchyPolish, which pairs it with Save in one row.
 
   // The transition (not a keyframe animation) toggles opacity and a small
   // upward nudge -- two states of the one persistent `.ftc-run-sheet-save-btn`
@@ -9949,6 +9947,83 @@ function testRunSheetSaveButtonPolish() {
   // No scale, no bounce -- opacity and a single-axis translate only.
   assert.doesNotMatch(hiddenRule, /scale/);
   assert.doesNotMatch(visibleRule, /scale/);
+}
+
+/**
+ * Presentation-only polish pass on top of testRunSheetSaveButtonPolish: fixes
+ * five specific hierarchy/redundancy complaints without touching any
+ * behaviour, handler, or state.
+ *
+ * - Save and Cancel move into one row together (Save primary, Cancel
+ *   secondary) instead of Save floating alone in its own row below Cancel --
+ *   the "lone floating Save button" the pass exists to remove. Save keeps
+ *   its existing dirty-gated CSS-transition visibility
+ *   (`.ftc-run-sheet-save-btn`/`--visible`, `aria-hidden`/`tabIndex`); only
+ *   the surrounding layout changes.
+ * - The collapsed-header Stage / Area preview (`stagePreview ||`) is gone --
+ *   it duplicated the same value one tap away in the expanded panel under
+ *   the "Stage / Area" label. The "Run Sheet details pending" fallback for a
+ *   read-only incomplete row is untouched.
+ * - Read-only Set Time drops a tier in size/weight/colour (`text-base
+ *   font-semibold text-ftc-text` -> `text-sm font-medium
+ *   text-ftc-text-secondary`) so it no longer outweighs the DJ name above
+ *   it, while staying comfortably readable (`tabular-nums` kept).
+ * - The green-dot emoji is gone from "Run Sheet Complete"; the text alone
+ *   still communicates completion, styled identically to the "N of M DJs
+ *   completed" sibling state (no colour coding added).
+ * - Edit drops the bordered `EVENT_DETAIL_BTN_SECONDARY` pill for the same
+ *   lightweight `.ftc-form-cancel-link` text-link Cancel already uses --
+ *   still easily tappable, no longer competing with the "Run Sheet" title.
+ *   `EVENT_DETAIL_BTN_SECONDARY` is no longer imported by this component.
+ */
+function testRunSheetVisualHierarchyPolish() {
+  const section = readFileSync(
+    new URL("../app/components/EventRunSheetSection.tsx", import.meta.url),
+    "utf8",
+  );
+
+  // Save and Cancel share one row -- not Cancel in its own row with Save
+  // stacked below it.
+  const headerActions =
+    section.match(/\{showRunSheetHeaderActions \? \(([\s\S]*?)\) : null\}\n\s*<\/div>/)?.[1] ?? "";
+  assert.ok(headerActions, "the Run Sheet header actions cluster must exist");
+  assert.match(headerActions, /<div className="flex items-center gap-3">/);
+  assert.doesNotMatch(headerActions, /flex-col items-end/);
+  assert.doesNotMatch(headerActions, /justify-end pr-3/);
+
+  // Cancel then Save, both inside the same editing branch, no wrapping div
+  // between them.
+  const cancelIndex = headerActions.indexOf("onClick={handleCancelEdit}");
+  const saveIndex = headerActions.indexOf("onClick={handleSave}");
+  assert.ok(cancelIndex > -1 && saveIndex > -1 && cancelIndex < saveIndex);
+
+  // Edit reuses the exact same lightweight text-link class as Cancel, not
+  // the bordered secondary-button pill.
+  assert.doesNotMatch(section, /EVENT_DETAIL_BTN_SECONDARY/);
+  const editButton =
+    headerActions.match(/onClick=\{handleEnterEditMode\}[\s\S]*?<\/button>/)?.[0] ?? "";
+  assert.ok(editButton, "the Edit button must exist");
+  assert.match(editButton, /className="ftc-form-cancel-link disabled:cursor-not-allowed disabled:opacity-50"/);
+
+  // Save's dirty-gated visibility mechanic is unchanged -- only the layout
+  // around it moved (covered above and by testRunSheetSaveButtonPolish).
+  assert.match(section, /aria-hidden=\{!hasUnsavedChanges\}/);
+  assert.match(section, /tabIndex=\{hasUnsavedChanges \? 0 : -1\}/);
+
+  // No collapsed-header Stage / Area duplicate.
+  const entryFn = section.match(/function RunSheetEntry\([\s\S]*?\n}\n/)?.[0] ?? "";
+  assert.ok(entryFn, "RunSheetEntry must exist");
+  assert.doesNotMatch(entryFn, /stagePreview \|\|/);
+
+  // Set Time read-only: a tier lighter than the DJ name, still readable.
+  assert.match(
+    section,
+    /<p className="text-sm font-medium tabular-nums text-ftc-text-secondary">\s*\{hasValue \? readOnlyDisplay : "—"\}\s*<\/p>/,
+  );
+
+  // No emoji-style completion dot.
+  assert.doesNotMatch(section, /🟢/);
+  assert.match(section, /isFullyComplete\s*\n\s*\? "Run Sheet Complete"/);
 }
 
 function testEventNotesTextareaScrollsWhenContentExceedsCap() {
@@ -11520,6 +11595,7 @@ async function main() {
   testRunSheetProductionPolish();
   testRunSheetHeaderCancelAndSave();
   testRunSheetSaveButtonPolish();
+  testRunSheetVisualHierarchyPolish();
   testAppSplashScreenSlogan();
   testRoleAwareWorkspaceNavigation();
   testCancelledEventGigsAreSurfacedInGigs();
