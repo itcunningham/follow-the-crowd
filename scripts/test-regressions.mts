@@ -9190,18 +9190,23 @@ function testRunSheetAccordionRestructure() {
   assert.doesNotMatch(section, /lg:hidden/);
   assert.doesNotMatch(section, /lg:block/);
 
-  // The collapsed header no longer previews Stage / Area at all -- it
-  // duplicated the same value shown one tap away in the expanded panel (see
-  // testRunSheetVisualHierarchyPolish for the pass that removed it). All it
-  // still carries is the "Run Sheet details pending" fallback for a
-  // read-only, incomplete row, and that fallback sits before the expand
-  // panel in source -- not gated on `isExpanded`.
+  // The collapsed header no longer previews Stage / Area on its own -- that
+  // bare preview duplicated the value one tap away in the expanded panel
+  // (see testRunSheetVisualHierarchyPolish). It now carries a combined
+  // collapsed-only summary plus the "Run Sheet details pending" fallback for
+  // a read-only, incomplete row (see testRunSheetDensityAndSummaryPolish).
+  // What this test still pins is placement: both live in the header, before
+  // the expand panel in source, never inside it.
   const entryFn = section.match(/function RunSheetEntry\([\s\S]*?\n}\n/)?.[0] ?? "";
   assert.ok(entryFn, "RunSheetEntry must exist");
   assert.doesNotMatch(entryFn, /stagePreview \|\|/);
   const panelIndex = entryFn.indexOf("<AnimatedExpandPanel");
-  const fallbackIndex = entryFn.indexOf('isReadOnlyAndIncomplete ? "Run Sheet details pending" : ""');
+  // Searched by regex, not a single-line `indexOf`: the surrounding ternary
+  // is multi-line and its exact wrapping is a formatting detail.
+  const fallbackIndex = entryFn.search(/"Run Sheet details pending"/);
+  const summaryIndex = entryFn.search(/collapsedSummary\s*$/m);
   assert.ok(fallbackIndex > -1 && panelIndex > -1 && fallbackIndex < panelIndex);
+  assert.ok(summaryIndex > -1 && summaryIndex < panelIndex);
 
   // Exactly one row open at a time when browsing: toggling the open row
   // closes it, toggling any other row replaces it -- not additive. Overridden
@@ -9246,8 +9251,12 @@ function testRunSheetAccordionRestructure() {
   // wide by anything inside it -- which is also why `BookingRequestCard`'s
   // own existing use of the same `BookingCardExpandableNotes` component,
   // inside a plain block wrapper rather than a grid, was never at risk.
-  assert.match(section, /"space-y-3 pt-2"/);
+  // Spacing tightened to `space-y-2.5` by testRunSheetDensityAndSummaryPolish;
+  // what matters here is that it stays a `space-y-*` block stack and never
+  // becomes a grid, for the clipping reason above.
+  assert.match(section, /"space-y-2\.5 pt-2"/);
   assert.doesNotMatch(section, /"grid gap-3 pt-2"/);
+  assert.doesNotMatch(section, /"grid gap-2\.5 pt-2"/);
 
   // Tightened spacing: the collapsed card and the list gap are both smaller
   // than the pre-restructure values (`p-4` card, `space-y-3` list). The card
@@ -9330,15 +9339,19 @@ function testRunSheetChromeReduction() {
   // The unused chrome class is gone, not just unreferenced.
   assert.doesNotMatch(section, /readOnlyTextClassName/);
 
-  // Collapsed header preview carries no Stage / Area, Set Time, or Notes --
-  // the Stage / Area preview was later removed too (duplicated the expanded
-  // panel; see testRunSheetVisualHierarchyPolish).
+  // This pass moved Set Time out of the collapsed header and left Stage /
+  // Area alone there. Both halves were later reworked again: the bare Stage /
+  // Area preview went away (it duplicated the expanded panel), and Set Time
+  // came *back* deliberately, as one half of the combined
+  // "Front room · 9:00 PM – 1:00 AM" summary line -- see
+  // testRunSheetDensityAndSummaryPolish, which owns that behaviour now. What
+  // survives from this pass is the narrower rule that still holds: Notes is
+  // never surfaced in the collapsed header, only where and when.
   const entryFn = section.match(/function RunSheetEntry\([\s\S]*?\n}\n/)?.[0] ?? "";
   assert.ok(entryFn, "RunSheetEntry must exist");
   assert.match(entryFn, /const stagePreview = row\.stage_area\.trim\(\);/);
   const headerButton = entryFn.match(/<button[\s\S]*?onToggleExpanded[\s\S]*?<\/button>/)?.[0] ?? "";
   assert.ok(headerButton, "the collapsed header toggle button must exist");
-  assert.doesNotMatch(headerButton, /formatRunSheetSetTimeDisplay/);
   assert.doesNotMatch(headerButton, /row\.notes/);
 
   // Stage / Area read-only: same pattern as Notes, 2-line preview, hidden
@@ -9356,7 +9369,7 @@ function testRunSheetChromeReduction() {
 
   // Information order in the expanded panel: Stage / Area, then Set Time,
   // then Notes.
-  const panelBody = entryFn.match(/<div className="space-y-3 pt-2">([\s\S]*?)<\/AnimatedExpandPanel>/)?.[1] ?? "";
+  const panelBody = entryFn.match(/<div className="space-y-2\.5 pt-2">([\s\S]*?)<\/AnimatedExpandPanel>/)?.[1] ?? "";
   const stageIndex = panelBody.indexOf("Stage / Area");
   const setTimeIndex = panelBody.indexOf("RunSheetSetTimeField");
   const notesIndex = panelBody.lastIndexOf("Notes");
@@ -9720,9 +9733,11 @@ function testRunSheetProductionPolish() {
   // removed by testRunSheetVisualHierarchyPolish.
   assert.match(section, /"Run Sheet Complete"/);
   assert.match(section, /\$\{completedRowCount\} of \$\{rows\.length\} DJs completed/);
-  // Not visually dominant: small, muted text under the title, not a colourful
-  // banner.
-  assert.match(section, /<p className="mt-0\.5 text-xs text-ftc-text-muted">/);
+  // Not visually dominant: still small text under the title, not a colourful
+  // banner. Colour/weight were lifted one step (muted -> secondary, normal ->
+  // semibold) by testRunSheetDensityAndSummaryPolish, which owns those now;
+  // the size cap is what this pass still guarantees.
+  assert.match(section, /<p className="mt-0\.5 text-xs [^"]*">\s*\n\s*\{isFullyComplete/);
 
   // Edit moved off the separate icon+pill control it used to reuse, onto the
   // standard secondary button at the time -- since replaced by the
@@ -9767,12 +9782,14 @@ function testRunSheetProductionPolish() {
     /const isReadOnlyAndIncomplete = !canEdit && !isRunSheetRowComplete\(row\);/,
   );
   assert.match(entryFn, /isReadOnlyAndIncomplete \? "opacity-75" : ""/);
-  // The fallback text itself is asserted by testRunSheetAccordionRestructure;
-  // it no longer sits alongside a `stagePreview ||` (see
-  // testRunSheetVisualHierarchyPolish).
+  // The fallback text's placement is asserted by
+  // testRunSheetAccordionRestructure; it no longer sits alongside a
+  // `stagePreview ||` (see testRunSheetVisualHierarchyPolish), and its
+  // ternary is now multi-line, so match across whitespace rather than
+  // pinning one line's exact wrapping.
   assert.match(
     entryFn,
-    /isReadOnlyAndIncomplete \? "Run Sheet details pending" : ""/,
+    /isReadOnlyAndIncomplete\s*\n?\s*\? "Run Sheet details pending"\s*\n?\s*: ""/,
   );
 
   // Hierarchy inside expanded cards: DJ name is the largest/boldest thing in
@@ -10012,20 +10029,131 @@ function testRunSheetVisualHierarchyPolish() {
   assert.match(section, /aria-hidden=\{!hasUnsavedChanges\}/);
   assert.match(section, /tabIndex=\{hasUnsavedChanges \? 0 : -1\}/);
 
-  // No collapsed-header Stage / Area duplicate.
+  // No bare collapsed-header Stage / Area duplicate. (A combined
+  // stage-and-time summary line was later added in its place, shown only
+  // while collapsed so it still never coexists with the labelled values --
+  // see testRunSheetDensityAndSummaryPolish.)
   const entryFn = section.match(/function RunSheetEntry\([\s\S]*?\n}\n/)?.[0] ?? "";
   assert.ok(entryFn, "RunSheetEntry must exist");
   assert.doesNotMatch(entryFn, /stagePreview \|\|/);
 
   // Set Time read-only: a tier lighter than the DJ name, still readable.
-  assert.match(
+  // The exact weight was nudged back up one step (medium -> semibold) by
+  // testRunSheetDensityAndSummaryPolish, which owns that value now; what
+  // this pass still guarantees is that it is not the original oversized
+  // bright treatment.
+  assert.doesNotMatch(
     section,
-    /<p className="text-sm font-medium tabular-nums text-ftc-text-secondary">\s*\{hasValue \? readOnlyDisplay : "—"\}\s*<\/p>/,
+    /<p className="text-base font-semibold tabular-nums text-ftc-text">/,
   );
 
   // No emoji-style completion dot.
   assert.doesNotMatch(section, /🟢/);
   assert.match(section, /isFullyComplete\s*\n\s*\? "Run Sheet Complete"/);
+}
+
+/**
+ * Final presentation pass on top of testRunSheetVisualHierarchyPolish. That
+ * pass over-corrected in two places (the completion line and Set Time both
+ * ended up too faint); this one re-balances them, tightens the expanded
+ * card, and gives the collapsed card back a useful one-line summary --
+ * without reintroducing any duplication or touching behaviour.
+ *
+ * - "Run Sheet Complete" / "N of M DJs completed" lifts from
+ *   `text-ftc-text-muted` at normal weight to `text-ftc-text-secondary
+ *   font-semibold`, staying `text-xs` so it remains clearly subordinate to
+ *   the "Run Sheet" title. Still no emoji, still no colour coding.
+ * - Read-only Set Time goes `font-medium` -> `font-semibold`, keeping
+ *   `text-sm` and `text-ftc-text-secondary`. Ranking by weight alone is what
+ *   produces the intended DJ name > Set Time > Stage / Area > labels ladder:
+ *   Stage / Area and Notes both render at `text-sm` normal weight via
+ *   `BookingCardExpandableNotes`, so a heavier weight at the same size lifts
+ *   Set Time one tier without going back to the oversized bright treatment.
+ * - The expanded panel tightens `space-y-3` (12px) -> `space-y-2.5` (10px),
+ *   a ~17% reduction, inside the requested 15-20% band. It stays a
+ *   `space-y-*` block stack rather than becoming a grid -- see
+ *   testRunSheetAccordionRestructure for the clipping bug a grid reintroduces.
+ * - The collapsed card regains a single summary line under the DJ name:
+ *   "Front room · 9:00 PM – 1:00 AM", either half alone if that's all there
+ *   is. Joined with ` · `, the separator already used for compact metadata
+ *   elsewhere in the app (BookingRequestCard, DmBookingUpdateRow,
+ *   EventDjSendOfferControls), rather than adding a second bullet glyph.
+ *   It carries no labels, and it is rendered only while collapsed -- expanded,
+ *   both values are already on screen under their own labels, which is
+ *   exactly the duplication the previous pass removed. Editing force-expands
+ *   every row, so it is absent there too with no separate check.
+ *   `formatRunSheetSetTimeDisplay` is reused for the time half but gated on a
+ *   time actually existing, since it returns the "TBC" placeholder for an
+ *   empty pair -- that would read as real content in a summary line.
+ */
+function testRunSheetDensityAndSummaryPolish() {
+  const section = readFileSync(
+    new URL("../app/components/EventRunSheetSection.tsx", import.meta.url),
+    "utf8",
+  );
+
+  // Completion/progress line: more prominent, still small, still no emoji.
+  assert.match(
+    section,
+    /<p className="mt-0\.5 text-xs font-semibold text-ftc-text-secondary">/,
+  );
+  assert.doesNotMatch(section, /🟢/);
+
+  // Set Time: one weight step up, same size and colour -- and explicitly not
+  // back to the original oversized bright treatment.
+  assert.match(
+    section,
+    /<p className="text-sm font-semibold tabular-nums text-ftc-text-secondary">\s*\{hasValue \? readOnlyDisplay : "—"\}\s*<\/p>/,
+  );
+  assert.doesNotMatch(section, /text-base font-semibold tabular-nums text-ftc-text/);
+
+  // Set Time must outrank Stage / Area, which renders at normal weight via
+  // BookingCardExpandableNotes -- assert that component really is the
+  // lighter tier, so this ladder can't silently invert if it restyles.
+  const notesComponentSource = readFileSync(
+    new URL("../app/components/booking/BookingCardExpandableNotes.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(notesComponentSource, /text-sm leading-snug text-ftc-text-secondary/);
+  assert.doesNotMatch(notesComponentSource, /font-semibold text-ftc-text-secondary/);
+
+  // Expanded panel density: ~17% tighter, still a block stack not a grid.
+  assert.match(section, /<div className="space-y-2\.5 pt-2">/);
+  assert.doesNotMatch(section, /<div className="space-y-3 pt-2">/);
+
+  const entryFn = section.match(/function RunSheetEntry\([\s\S]*?\n}\n/)?.[0] ?? "";
+  assert.ok(entryFn, "RunSheetEntry must exist");
+
+  // Collapsed summary: built from stage + set time, joined with the app's
+  // existing ` · ` metadata separator, with the time half gated on a real
+  // value so the "TBC" placeholder never leaks in.
+  assert.match(entryFn, /const hasSetTime = Boolean\(row\.start_time\.trim\(\) \|\| row\.finish_time\.trim\(\)\);/);
+  assert.match(
+    entryFn,
+    /const collapsedSummary = \[\s*stagePreview,\s*hasSetTime \? formatRunSheetSetTimeDisplay\(row\.start_time, row\.finish_time\) : "",\s*\]\s*\.filter\(Boolean\)\s*\.join\(" · "\);/,
+  );
+  // The app's separator, not a second bullet glyph.
+  assert.doesNotMatch(entryFn, /join\(" • "\)/);
+
+  // Rendered only while collapsed, so it never coexists with the labelled
+  // Stage / Area and Set Time in the expanded panel.
+  const headerButton = entryFn.match(/<button[\s\S]*?onToggleExpanded[\s\S]*?<\/button>/)?.[0] ?? "";
+  assert.ok(headerButton, "the collapsed header toggle button must exist");
+  assert.match(headerButton, /!isExpanded && collapsedSummary/);
+  // Falls back to the pending helper text, and carries no labels or Notes.
+  assert.match(headerButton, /isReadOnlyAndIncomplete\s*\n?\s*\? "Run Sheet details pending"/);
+  assert.doesNotMatch(headerButton, /row\.notes/);
+  assert.doesNotMatch(headerButton, /STAGE \/ AREA|SET TIME|Stage \/ Area|Set Time/);
+  // One line, truncated rather than wrapped.
+  assert.match(headerButton, /truncate/);
+
+  // Behaviour untouched: the toggle is still the same handler and a11y
+  // wiring, and editing still force-expands every row (which is what keeps
+  // the summary out of edit mode without a separate check).
+  assert.match(headerButton, /onClick=\{onToggleExpanded\}/);
+  assert.match(headerButton, /aria-expanded=\{isExpanded\}/);
+  assert.match(headerButton, /aria-controls=\{panelId\}/);
+  assert.match(section, /isExpanded=\{isEditing \|\| expandedRowId === row\.id\}/);
 }
 
 function testEventNotesTextareaScrollsWhenContentExceedsCap() {
@@ -11699,6 +11827,7 @@ async function main() {
   testRunSheetHeaderCancelAndSave();
   testRunSheetSaveButtonPolish();
   testRunSheetVisualHierarchyPolish();
+  testRunSheetDensityAndSummaryPolish();
   testAppSplashScreenSlogan();
   testRoleAwareWorkspaceNavigation();
   testCancelledEventGigsAreSurfacedInGigs();

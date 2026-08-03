@@ -249,14 +249,15 @@ function RunSheetSetTimeField({
     // wraps to more than one line, so unlike Stage / Area and Notes it
     // needs no truncate-and-expand treatment.
     //
-    // Muted body copy rather than bright/bold: Set Time still sits above
-    // Stage / Area and Notes in the reading order, but shouldn't outweigh
-    // the DJ name above it.
+    // Ranked by weight alone, not size or colour: `font-semibold` at the
+    // same `text-sm`/`text-ftc-text-secondary` as Stage / Area and Notes
+    // (both normal weight) puts Set Time one tier above them, while staying
+    // well below the DJ name's `text-base font-bold text-ftc-text`.
     const readOnlyDisplay = formatRunSheetSetTimeDisplay(startTime, finishTime);
     const hasValue = Boolean(startTime.trim() || finishTime.trim());
 
     return (
-      <p className="text-sm font-medium tabular-nums text-ftc-text-secondary">
+      <p className="text-sm font-semibold tabular-nums text-ftc-text-secondary">
         {hasValue ? readOnlyDisplay : "—"}
       </p>
     );
@@ -545,6 +546,25 @@ function RunSheetEntry({
 }) {
   const panelId = `run-sheet-panel-${row.id}`;
   const stagePreview = row.stage_area.trim();
+  /**
+   * One-line "where and when" for the collapsed card, e.g.
+   * "Front room · 9:00 PM – 1:00 AM" -- whichever halves exist. Joined with
+   * ` · `, the separator this app already uses for compact metadata lines
+   * (`BookingRequestCard`, `DmBookingUpdateRow`, `EventDjSendOfferControls`),
+   * rather than introducing a second bullet glyph for the same job.
+   *
+   * `formatRunSheetSetTimeDisplay` is reused for the time half, but only once
+   * a time actually exists: it returns the "TBC" placeholder for an empty
+   * pair, which would read as real content here rather than as the absence
+   * of a value.
+   */
+  const hasSetTime = Boolean(row.start_time.trim() || row.finish_time.trim());
+  const collapsedSummary = [
+    stagePreview,
+    hasSetTime ? formatRunSheetSetTimeDisplay(row.start_time, row.finish_time) : "",
+  ]
+    .filter(Boolean)
+    .join(" · ");
   // `canEdit` here is already the combined "editing this row right now" flag
   // (permission AND edit mode -- see the call site), so `!canEdit` means this
   // row is currently presented read-only, for whatever reason. Incomplete
@@ -576,12 +596,20 @@ function RunSheetEntry({
         ) : null}
       </div>
 
-      {/* Always rendered, even with no Stage / Area value: this is the only
+      {/* Always rendered, even with nothing to summarise: this is the only
           way to reach Set Time and Notes, not just a preview of content.
           Falls back to "Run Sheet details pending" only when there is
           genuinely nothing to preview -- a row with a stage but no time
-          (still "incomplete") keeps showing its real stage preview instead
-          of being overwritten by the generic helper text. */}
+          (still "incomplete") keeps showing its real summary instead of
+          being overwritten by the generic helper text.
+
+          The summary is collapsed-only. Expanded, both halves of it are
+          already on screen directly below under their own "Stage / Area" and
+          "Set Time" labels, and repeating them in the header is the exact
+          duplication the previous pass removed. `truncate` keeps it to one
+          line however long the stage name is. Editing force-expands every
+          row, so the summary is automatically absent there too -- no
+          separate `isEditing` check needed. */}
       <button
         type="button"
         onClick={onToggleExpanded}
@@ -590,7 +618,11 @@ function RunSheetEntry({
         className="mt-1 flex w-full items-center gap-2 rounded-md py-1 text-left"
       >
         <span className="min-w-0 flex-1 truncate text-xs text-ftc-text-muted">
-          {isReadOnlyAndIncomplete ? "Run Sheet details pending" : ""}
+          {!isExpanded && collapsedSummary
+            ? collapsedSummary
+            : isReadOnlyAndIncomplete
+              ? "Run Sheet details pending"
+              : ""}
         </span>
         <RunSheetExpandChevron expanded={isExpanded} />
       </button>
@@ -608,7 +640,7 @@ function RunSheetEntry({
               flow doesn't have that failure mode: a block's width comes from
               its containing block, not its content, so it can't be pulled
               wide by anything inside it. */}
-          <div className="space-y-3 pt-2">
+          <div className="space-y-2.5 pt-2">
             {canEdit ? (
               <label className="block">
                 <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted">
@@ -962,7 +994,7 @@ export default function EventRunSheetSection({
               above a Save button appearing for the exact same reason,
               restating the same fact twice. */}
           {showRunSheetProgress ? (
-            <p className="mt-0.5 text-xs text-ftc-text-muted">
+            <p className="mt-0.5 text-xs font-semibold text-ftc-text-secondary">
               {isFullyComplete
                 ? "Run Sheet Complete"
                 : `${completedRowCount} of ${rows.length} DJs completed`}
