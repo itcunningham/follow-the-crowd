@@ -10072,9 +10072,10 @@ function testRunSheetVisualHierarchyPolish() {
     section.match(/\{showRunSheetHeaderActions \? \(([\s\S]*?)\) : null\}\n\s*<\/div>/)?.[1] ?? "";
   assert.ok(headerActions, "the Run Sheet header actions cluster must exist");
   // The container lost its `gap-3` in testRunSheetHeaderAlignmentAndDensity
-  // (the gap moved onto Save so it collapses with the button); what this pass
-  // still owns is that Cancel and Save share one flex row.
-  assert.match(headerActions, /<div className="flex items-center justify-end">/);
+  // (the gap moved onto Save so it collapses with the button) and later gained
+  // `min-h-10` for vertical anchoring (testRunSheetCancelIsTheFixedAnchor).
+  // What this pass still owns is that Cancel and Save share one flex row.
+  assert.match(headerActions, /<div className="flex[^"]*items-center justify-end">/);
   assert.doesNotMatch(headerActions, /flex-col items-end/);
   assert.doesNotMatch(headerActions, /justify-end pr-3/);
 
@@ -10268,8 +10269,10 @@ function testRunSheetHeaderAlignmentAndDensity() {
 
   // --- Alignment ---------------------------------------------------------
   // No container gap: it would survive the collapse as a phantom offset.
-  assert.match(section, /<div className="flex items-center justify-end">/);
-  assert.doesNotMatch(section, /<div className="flex items-center gap-3">/);
+  // (The row also carries `min-h-10` as of testRunSheetCancelIsTheFixedAnchor,
+  // which owns that; matched loosely here so it isn't pinned twice.)
+  assert.match(section, /<div className="flex[^"]*items-center justify-end">/);
+  assert.doesNotMatch(section, /<div className="flex[^"]*items-center gap-3">/);
 
   const hiddenRule = globalsSource.match(/\.ftc-run-sheet-save-btn \{[\s\S]*?\n\}/)?.[0] ?? "";
   assert.ok(hiddenRule, "the Save button's hidden-state rule must exist");
@@ -10377,9 +10380,10 @@ function testRunSheetCancelIsTheFixedAnchor() {
   );
 
   // Right-aligned row with no container gap (a gap would survive Save's
-  // collapse and displace Cancel).
-  assert.match(section, /<div className="flex items-center justify-end">/);
-  assert.doesNotMatch(headerActions, /className="flex items-center gap-\d/);
+  // collapse and displace Cancel). `min-h-10` is the vertical half of the
+  // anchor -- see the vertical-invariance block further down.
+  assert.match(section, /<div className="flex min-h-10 items-center justify-end">/);
+  assert.doesNotMatch(headerActions, /className="flex[^"]*items-center gap-\d/);
 
   // Edit and Cancel share the same anchor by sharing the same class, so
   // neither can drift from the other's position.
@@ -10465,6 +10469,35 @@ function testRunSheetCancelIsTheFixedAnchor() {
     section.match(/const RUN_SHEET_SAVE_BUTTON_CLASS =\s*\n\s*"([^"]+)"/)?.[1] ?? "";
   assert.ok(saveClassConst, "RUN_SHEET_SAVE_BUTTON_CLASS must exist");
   assert.doesNotMatch(saveClassConst, /(^|\s)-?m[lrx]?-/);
+
+  // --- Cancel's VERTICAL position is invariant too ---------------------
+  //
+  // Fixing the right edge is only half of "same position". Save carries
+  // `min-h-10` (40px); the actions row had no height of its own, so in view
+  // mode it was only as tall as the Edit text link (18px) and snapped to 40px
+  // the instant editing began. With `items-center` on the row, that snap
+  // re-centred the control and dropped it 11px -- measured: Edit centre 86px,
+  // Cancel centre 97px. The control the user had just pressed jumped
+  // downwards, which is what stopped the header feeling settled.
+  //
+  // Giving the row the SAME `min-h-10` as Save makes its height constant in
+  // every state, so the centre line never moves. Re-measured after the fix:
+  // centres 97 / 97 / 97 at 390px and 99 / 99 / 99 at 1280px, row height a
+  // constant 40px throughout.
+  const rowClass =
+    headerActions.match(/<div className="(flex[^"]*justify-end)">/)?.[1] ?? "";
+  assert.ok(rowClass, "the actions row must exist");
+  const saveMinH = saveClassConst.match(/\bmin-h-(\d+)\b/)?.[1];
+  const rowMinH = rowClass.match(/\bmin-h-(\d+)\b/)?.[1];
+  assert.ok(saveMinH, "Save must declare a min-height (it reserves the row)");
+  assert.equal(
+    rowMinH,
+    saveMinH,
+    "the actions row must reserve the same min-height as Save, or entering edit mode moves the anchor vertically",
+  );
+  // Centring is what turns any height change into a vertical jump, so the
+  // row must stay centred AND height-stable together.
+  assert.match(rowClass, /\bitems-center\b/);
 
   // Tab order stays logical: DOM order is Save then Cancel, which is also
   // their left-to-right visual order; while clean, Save is skipped entirely.

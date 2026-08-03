@@ -1032,7 +1032,14 @@ export default function EventRunSheetSection({
             Save and Cancel is Save's own `margin-right` instead -- see
             `.ftc-run-sheet-save-btn` in globals.css. */}
         {showRunSheetHeaderActions ? (
-          <div className="flex items-center justify-end">
+          // `min-h-10` matches Save's own height, so this row is 40px tall in
+          // every state -- including view mode, where only the Edit text link
+          // is present. Without it the row is just 18px in view mode and
+          // Save's `min-h-10` snaps it to 40px on entering edit, which
+          // `items-center` then turns into an 11px downward jump of the very
+          // control the user just pressed. Fixing the anchor horizontally is
+          // only half of "same position"; this is the vertical half.
+          <div className="flex min-h-10 items-center justify-end">
             {isEditing ? (
               <>
                 {/* Save first in source, Cancel last: Cancel is the final
