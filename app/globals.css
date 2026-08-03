@@ -82,6 +82,15 @@ body {
   color: var(--foreground);
   font-family: var(--font-sans), system-ui, sans-serif;
   overflow-x: clip;
+
+  /* Mirrors `html`'s overscroll-behavior below. Safari's longhand support for
+   * `overscroll-behavior-x`/`-y` has lagged the combined shorthand across iOS
+   * versions, and `<body>` was left at its default (`auto`) even though
+   * `<html>` is `document.scrollingElement` here -- this restores the same
+   * html/body symmetry `overflow-x: clip` above already has, so the bounce
+   * suppression doesn't depend on which element (or which longhand) a given
+   * Safari version actually honours. */
+  overscroll-behavior: none;
 }
 
 html {
@@ -93,13 +102,21 @@ html {
    * when something actually overflows -- and nothing on any FTC page does
    * (verified: `document.documentElement.scrollWidth` matches
    * `window.innerWidth` exactly on every route). But iOS Safari's elastic
-   * bounce at the edges of the *visual* viewport is a separate mechanism from
-   * CSS overflow -- it runs whenever `overscroll-behavior` allows it,
-   * regardless of whether the document has anything to scroll into. Left
-   * unset on the X axis, a horizontal swipe still bounces the whole page and
-   * exposes whatever sits behind it (browser chrome, the next/previous route
-   * in the tab's back-forward cache) -- the "adjacent screens" effect users
-   * see, on a page that is never actually wider than the viewport.
+   * bounce at the edges of the *visual* viewport -- and its edge-swipe
+   * back/forward navigation gesture, which is the same underlying mechanism
+   * -- is separate from CSS overflow: it runs whenever `overscroll-behavior`
+   * allows it, regardless of whether the document has anything to scroll
+   * into. Left unset (or only partially set), a horizontal swipe still
+   * bounces the whole page or triggers the OS-level swipe-to-navigate
+   * preview, exposing whatever sits behind it (browser chrome, the
+   * next/previous route in the tab's back-forward cache) -- the "adjacent
+   * screens" effect users see, on a page that is never actually wider than
+   * the viewport.
+   *
+   * The shorthand, not the per-axis longhands: `overscroll-behavior-x`/`-y`
+   * have had less consistent Safari support across iOS versions than the
+   * combined `overscroll-behavior` shorthand, which sets both axes at once
+   * and is the form Safari has supported the longest.
    *
    * The Y axis needed this for a second reason too: the bottom nav is
    * `position: fixed`, which anchors it to the *layout* viewport. During a
@@ -112,8 +129,7 @@ html {
    * page scrolling is untouched, and inner scrollers keep their own native
    * scrolling (several already set `overscroll-behavior: contain` to stop
    * scroll chaining), so this adds no second scroll container. */
-  overscroll-behavior-x: none;
-  overscroll-behavior-y: none;
+  overscroll-behavior: none;
 }
 
 /* -------------------------------------------------------------------------- */

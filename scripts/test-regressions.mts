@@ -10594,7 +10594,9 @@ function testIosOverscrollDoesNotClipFixedChrome() {
   // The document must not rubber-band. The bottom nav is position:fixed, so it
   // is anchored to the layout viewport; an iOS bounce moves the visual viewport
   // past it and the bar stops tracking the screen edge, reading as clipped.
-  assert.match(globalsSource, /html \{[\s\S]*?overscroll-behavior-y: none;[\s\S]*?\n\}/);
+  // The shorthand (not the `-y` longhand) is what's actually declared -- see
+  // testHorizontalOverscrollDoesNotPanRevealAdjacentContent for why.
+  assert.match(globalsSource, /html \{[\s\S]*?overscroll-behavior: none;[\s\S]*?\n\}/);
 
   // Suppressing the bounce must not turn the root into a second scroll
   // container, which would double-scroll the whole app.
@@ -10618,16 +10620,22 @@ function testIosOverscrollDoesNotClipFixedChrome() {
 }
 
 /**
- * `overscroll-behavior-x: none` is the horizontal sibling of the
- * `overscroll-behavior-y: none` fix in testIosOverscrollDoesNotClipFixedChrome
- * above -- iOS Safari's rubber-band bounce is governed by overscroll-behavior,
+ * iOS Safari's rubber-band bounce (and the edge-swipe back/forward navigation
+ * preview, the same underlying mechanism) is governed by overscroll-behavior,
  * not by overflow, so `overflow-x: clip` alone (already present, and already
  * confirmed by manual sweep to have nothing to clip on any route -- every page
  * has `document.documentElement.scrollWidth === window.innerWidth`) does not
  * stop a horizontal swipe from bouncing the whole page and exposing whatever
  * sits behind it. This must not regress into the band-aid the task explicitly
- * ruled out (`overflow-x: hidden` bolted on top) -- the fix is the missing
- * overscroll-behavior axis, not a second overflow rule.
+ * ruled out (`overflow-x: hidden` bolted on top) -- the fix is
+ * overscroll-behavior, not a second overflow rule.
+ *
+ * A first pass added only the `overscroll-behavior-x: none` longhand, only on
+ * `<html>`, and that was not sufficient on the reporter's device -- Safari's
+ * longhand support for `overscroll-behavior-x`/`-y` has lagged the combined
+ * shorthand across iOS versions. This pass uses the `overscroll-behavior: none`
+ * shorthand (which sets both axes) on *both* `<html>` and `<body>`, mirroring
+ * the symmetry `overflow-x: clip` already has between the two.
  */
 function testHorizontalOverscrollDoesNotPanRevealAdjacentContent() {
   const globalsSource = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
@@ -10635,14 +10643,17 @@ function testHorizontalOverscrollDoesNotPanRevealAdjacentContent() {
   const htmlRule = globalsSource.match(/html \{[\s\S]*?\n\}/)?.[0] ?? "";
   assert.ok(htmlRule, "the html {} rule must exist");
   assert.match(htmlRule, /overflow-x: clip;/);
-  assert.match(htmlRule, /overscroll-behavior-x: none;/);
-  assert.match(htmlRule, /overscroll-behavior-y: none;/);
+  assert.match(htmlRule, /overscroll-behavior: none;/);
+  // The shorthand, not the per-axis longhands -- see the doc comment above.
+  assert.doesNotMatch(htmlRule, /overscroll-behavior-x:/);
+  assert.doesNotMatch(htmlRule, /overscroll-behavior-y:/);
   // Not the band-aid the task explicitly ruled out.
   assert.doesNotMatch(htmlRule, /overflow-x: hidden/);
 
   const bodyRule = globalsSource.match(/body \{[\s\S]*?\n\}/)?.[0] ?? "";
   assert.ok(bodyRule, "the body {} rule must exist");
   assert.match(bodyRule, /overflow-x: clip;/);
+  assert.match(bodyRule, /overscroll-behavior: none;/);
   assert.doesNotMatch(bodyRule, /overflow-x: hidden/);
 }
 
