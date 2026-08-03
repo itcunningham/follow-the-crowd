@@ -23,6 +23,7 @@ import {
   writeGroupChatsInboxCache,
   type GroupChatListItem,
 } from "@/lib/groupChats";
+import { traceId, unreadTrace, unreadTraceOnChange } from "@/lib/diagnostics/unreadTrace";
 import {
   applyDmInboxRealtimeMessage,
   applyDmInboxRealtimeReaction,
@@ -638,6 +639,19 @@ function DmInboxPageContent() {
         ),
       ]);
 
+      unreadTrace("3-db-recompute-finished", {
+        generation,
+        currentGeneration: unreadRefreshGenerationRef.current,
+        discardedAsStale: generation !== unreadRefreshGenerationRef.current,
+        eventUnreadFromDb: [...eventUnread],
+        eventUnreadNormalised: [...toNormalizedInboxIdSet(eventUnread)],
+        groupRowsConsidered: groupChats.map((chat) => ({
+          ...traceId("events_table_id", chat.eventId),
+          latestActivityAt: chat.latestActivityAt,
+          ...traceId("latestMessageUserId", chat.latestMessageUserId),
+        })),
+      });
+
       if (generation !== unreadRefreshGenerationRef.current) {
         return;
       }
@@ -801,6 +815,16 @@ function DmInboxPageContent() {
           const groupTargetId = extractGroupChatTargetId(newMessage);
 
           if (groupTargetId) {
+            unreadTrace("1-realtime-message-received", {
+              ...traceId("messages_event_id", newMessage.event_id),
+              ...traceId("extracted_groupTargetId", groupTargetId),
+              ...traceId("value_added_to_unread_set", normalizeInboxId(groupTargetId)),
+              ...traceId("message_user_id", newMessage.user_id),
+              ...traceId("current_user_id", currentUserId),
+              isOwnMessage: isOwnChatMessage(newMessage.user_id, currentUserId),
+              willAddUnread: Boolean(currentUserId) && !isOwnChatMessage(newMessage.user_id, currentUserId),
+            });
+
             let matchedGroupChat = false;
             let nextGroupChats: GroupChatListItem[] | null = null;
 
@@ -1242,6 +1266,19 @@ function DmInboxPageContent() {
                             chat.latestMessageUserId === currentUserId &&
                             Boolean(chat.latestPreview?.trim()) &&
                             !isGroupChatSystemUpdateMessage(chat.latestPreview ?? ""),
+                        });
+
+                        const rowIsUnread = hasUnreadInboxId(unreadEventChatIds, chat.eventId);
+
+                        unreadTraceOnChange("4-row-render", chat.eventId, {
+                          ...traceId("events_table_id", chat.eventId),
+                          unreadSetContents: [...unreadEventChatIds],
+                          unreadSetContentsJson: [...unreadEventChatIds].map((id) =>
+                            JSON.stringify(id),
+                          ),
+                          exactMatchWouldSay: unreadEventChatIds.has(chat.eventId),
+                          helperSays: rowIsUnread,
+                          finalIsUnreadProp: rowIsUnread,
                         });
 
                         return (
