@@ -308,7 +308,15 @@ function GroupChatMessageBubble({
                 // unchanged — already the shared secondary token — and the
                 // hover-to-primary affordance stays, so it is still legibly a
                 // link to the sender's profile.
-                className="mb-1 block w-fit px-1 text-[10px] font-medium text-ftc-text-secondary transition hover:text-ftc-text"
+                //
+                // No horizontal padding: the link's BOX already shared the
+                // bubble's left edge (measured 64px === 64px), but `px-1` set
+                // the first glyph 4px inside it, so the name read as indented
+                // against every bubble under it. Removing it is what makes the
+                // name's text and the bubble's left border share one line.
+                // Size stays 10px — a 9px name is not "clearly readable" — so
+                // the weight carries the reduction instead: 500 → 400.
+                className="mb-1 block w-fit text-[10px] font-normal text-ftc-text-secondary transition hover:text-ftc-text"
               >
                 {senderLabel}
               </Link>

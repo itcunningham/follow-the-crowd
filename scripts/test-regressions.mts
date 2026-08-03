@@ -121,6 +121,7 @@ import {
   CHAT_LIST_ITEM_WITHIN_GROUP_SPACING_CLASS,
   GROUP_CHAT_LIST_ITEM_CLUSTER_END_SPACING_CLASS,
   GROUP_CHAT_LIST_ITEM_WITHIN_GROUP_SPACING_CLASS,
+  GROUP_CHAT_SYSTEM_CARD_AFTER_TIMESTAMP_SPACING_CLASS,
   resolveMessageGroupLiClass,
   resolveSystemCardGroupLiClass,
 } from "../lib/dm/chatMessageGroupLayout";
@@ -12090,9 +12091,12 @@ function testEventUpdateMessagePresentation() {
   // gap above a card is its own `mt` PLUS the preceding cluster end's `mb`.
   const extraBelow = spacingPx(systemLi, "mb") - normalCrewGap;
   const extraAbove = spacingPx(systemLi, "mt");
+  // Below carries the weight: a card closes what came before it, and the next
+  // sender group starts fresh underneath, so that is the gap doing the
+  // separating. Widened from +6px to +14px in the Instagram-rhythm pass.
   assert.ok(
-    extraBelow >= 4 && extraBelow <= 8,
-    `system card needs 4-8px more space below a normal message, got ${extraBelow}px`,
+    extraBelow >= 12 && extraBelow <= 18,
+    `system card needs 12-18px more space below a normal message, got ${extraBelow}px`,
   );
   assert.ok(
     extraAbove >= 4 && extraAbove <= 8,
@@ -12609,16 +12613,22 @@ function testCrewChatMessageGrouping() {
     new URL("../app/components/group-chat/GroupChatMessageBubble.tsx", import.meta.url),
     "utf8",
   );
-  const senderNameClass = senderNameSource.match(
-    /className="(mb-1 block w-fit px-1[^"]*)"/,
-  )?.[1];
+  const senderNameClass = senderNameSource.match(/className="(mb-1 block w-fit[^"]*)"/)?.[1];
 
   assert.ok(senderNameClass, "sender name label class not found");
-  assert.match(senderNameClass, /\bfont-medium\b/);
+  assert.match(senderNameClass, /\bfont-normal\b/);
   assert.doesNotMatch(
     senderNameClass,
-    /\bfont-(semibold|bold)\b/,
+    /\bfont-(medium|semibold|bold)\b/,
     "the sender name must not compete with the message it labels",
+  );
+  // No horizontal padding. The link's BOX already shared the bubble's left edge
+  // (measured 64px === 64px at 390px), but any `px-*` sets the first GLYPH
+  // inside it, which is what made the name read as indented against the bubble.
+  assert.doesNotMatch(
+    senderNameClass,
+    /\b(px|pl|ps)-/,
+    "horizontal padding pushes the name's text off the bubble's left edge",
   );
   // Smaller than the 15px bubble text and than its own previous 11px, but still
   // the shared secondary token rather than a fainter one -- measured at 6.81:1
@@ -12630,6 +12640,54 @@ function testCrewChatMessageGrouping() {
   assert.match(senderNameClass, /hover:text-ftc-text\b/);
   // Rendered only at a run start -- the gate that stops it repeating per row.
   assert.match(senderNameSource, /showSenderName \? \(/);
+
+  /* ---- one vertical rhythm under a centred timestamp, whatever follows ---- */
+
+  // A separator must sit the same distance above the row it introduces whether
+  // that row is a message, a media message or an app-authored card. The gap is
+  // the separator's own margin plus the following row's `mt`, so every row type
+  // has to declare a zero top margin there -- a normal message never declares
+  // one at all, and the system rows used to declare `mt-0.5`, which put the
+  // timestamp 4px above a card but 2px above a bubble.
+  assert.doesNotMatch(
+    CHAT_LIST_ITEM_CLUSTER_START_AFTER_TIMESTAMP_SPACING_CLASS,
+    /\bmt-/,
+    "normal rows must contribute no top gap under a separator",
+  );
+  // `mt-0` exactly -- NOT `\bmt-0\b`, which also matches inside `mt-0.5`
+  // because `.` counts as a word boundary. Mutation-testing caught that.
+  assert.match(
+    GROUP_CHAT_SYSTEM_CARD_AFTER_TIMESTAMP_SPACING_CLASS,
+    /(?:^|\s)mt-0(?=\s|$)/,
+    "system rows must contribute the same (zero) top gap under a separator",
+  );
+
+  /* ---- no app-authored row is wider than a message ---- */
+
+  // A system notice capped at 92% could run wider than every bubble in the
+  // conversation (own 85%/72%, incoming 88%/78%), so the one row nobody wrote
+  // was also the widest. The Event Updated card was already the narrower of the
+  // two and is deliberately left alone: 72%/56%.
+  const noticeSource = readFileSync(
+    new URL("../app/components/group-chat/GroupChatSystemNotice.tsx", import.meta.url),
+    "utf8",
+  );
+  const pct = (source: string, pattern: RegExp) => Number(source.match(pattern)?.[1] ?? "NaN");
+  // Anchored on the rendered className, not the first `max-w-` in the file --
+  // the doc comment above it quotes the old 92% cap and would match otherwise.
+  const noticeCap = pct(noticeSource, /className="inline-flex max-w-\[(\d+)%\]/);
+  const noticeCapWide = pct(noticeSource, /className="inline-flex [^"]*sm:max-w-\[(\d+)%\]/);
+  const ownBubbleCap = pct(senderNameSource, /"max-w-\[(\d+)%\] sm:max-w-\[\d+%\]"\n\s+: "max-w/);
+
+  assert.ok(
+    noticeCap <= 85 && noticeCapWide <= 72,
+    `system notice must not exceed a normal bubble's cap, got ${noticeCap}%/${noticeCapWide}%`,
+  );
+  assert.ok(Number.isFinite(ownBubbleCap), "own-bubble cap not found");
+  assert.ok(
+    noticeCap <= ownBubbleCap,
+    `system notice cap ${noticeCap}% must not exceed the own-message cap ${ownBubbleCap}%`,
+  );
 }
 
 /**

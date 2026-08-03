@@ -42,7 +42,13 @@ function GroupChatSystemNotice({
           : GROUP_CHAT_SYSTEM_CARD_SPACING_CLASS
       }`}
     >
-      <div className="inline-flex max-w-[92%] flex-col items-center">
+      {/* Capped to a normal chat bubble's width. `max-w-[92%]` let a long
+          notice run WIDER than any message in the conversation (own bubbles cap
+          at 85%/72%, incoming at 88%/78%), so the one row nobody wrote was also
+          the widest thing on screen. The Event Updated card needed no such cap:
+          measured 263.5px against a 311.1px widest bubble at 390px, and
+          306.7px against 450px at 1280px — already the narrower of the two. */}
+      <div className="inline-flex max-w-[85%] flex-col items-center sm:max-w-[72%]">
         <p
           className={`inline-block w-fit max-w-full rounded-full border border-ftc-border bg-ftc-bg-elevated/50 px-3 py-1.5 text-center text-xs text-ftc-text-muted ${getChatNewMessageHighlightClass(isHighlighted)}`}
         >

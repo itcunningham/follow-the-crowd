@@ -113,11 +113,13 @@ export const GROUP_CHAT_LIST_ITEM_CLUSTER_END_SPACING_CLASS = "mb-2.5";
  * visually BELOW and `mt` the gap visually ABOVE. Flex margins also do not
  * collapse, so adjacent rows' margins add.
  *
- * Net effect here, verified live: 16px below (`mb-4`), and 16px above — 6px of
+ * Net effect here, verified live: 24px below (`mb-6`), and 16px above — 6px of
  * `mt-1.5` plus the 10px `mb-2.5` the preceding cluster end already contributes.
- * Symmetric, and enough to read as separated without punching a hole.
+ * The extra weight sits BELOW on purpose: a card closes whatever came before it
+ * and the next sender group starts fresh underneath, so the larger gap is the
+ * one that separates it from that new group.
  */
-export const GROUP_CHAT_SYSTEM_CARD_SPACING_CLASS = "mb-4 mt-1.5";
+export const GROUP_CHAT_SYSTEM_CARD_SPACING_CLASS = "mb-6 mt-1.5";
 
 /**
  * Same card, but with a centred day/time separator directly above it. The
@@ -130,10 +132,15 @@ export const GROUP_CHAT_SYSTEM_CARD_SPACING_CLASS = "mb-4 mt-1.5";
  * above, so a card following a separator glued itself to the message group
  * underneath — 2px, tighter than the 4px between two messages from one sender,
  * i.e. the opposite of the separation this constant exists to provide. Swapping
- * them delivers the documented intent: 4px above (2px `mt-0.5` plus the
- * separator's own 2px) and the full 16px below.
+ * them delivers the documented intent: a tight top and the full gap below.
+ *
+ * `mt-0` rather than a small value, so the gap under a centred separator is the
+ * separator's own 2px and NOTHING else — byte-identical to what a normal
+ * message gets there (CHAT_LIST_ITEM_CLUSTER_START_AFTER_TIMESTAMP_SPACING_CLASS
+ * declares no `mt` at all). Measured before: 2px to a bubble but 4px to a card,
+ * so a timestamp sat visibly lower over an event card than over a message.
  */
-export const GROUP_CHAT_SYSTEM_CARD_AFTER_TIMESTAMP_SPACING_CLASS = "mb-4 mt-0.5";
+export const GROUP_CHAT_SYSTEM_CARD_AFTER_TIMESTAMP_SPACING_CLASS = "mb-6 mt-0";
 
 /** @deprecated Reaction space is reserved in-flow on the reacted message only — do not propagate list margins. */
 export const CHAT_LIST_ITEM_AFTER_REACTION_SPACING_CLASS = "mb-1.5";
