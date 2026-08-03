@@ -180,6 +180,7 @@ import {
 } from "../lib/dm/chatMessageBubbleGeometry";
 import { buildCrewChatMessageGroups } from "../lib/groupChatMessageLayout";
 import { buildEventChatReadMap, isChatUnread } from "../lib/messageReads";
+import { applyInboxGroupMessage, type GroupChatListItem } from "../lib/groupChats";
 import {
   DM_BOOKING_CONFIRMED_MESSAGE,
   DM_BOOKING_ORIGINAL_OFFER_KEPT_MESSAGE,
@@ -13234,6 +13235,160 @@ function testCrewChatUnreadUsesTheSharedUnreadSystem() {
   assert.match(inboxPageSource, /groupUnreadCount=\{groupUnreadCount\}/);
 }
 
+/**
+ * The Groups row's timestamp updated live but its unread styling did not, and
+ * only a reload brought the highlight back.
+ *
+ * Not a data bug: `applyInboxGroupMessage` produces the right row and
+ * `isChatUnread` returns true for it (asserted below with the real helpers).
+ * The unread Sets were being overwritten. `refreshUnreadState` runs
+ * fire-and-forget from an effect keyed on currentUserId/dmInboxRows/groupChats,
+ * so several runs overlap; each closes over the rows as they were when it
+ * started and finishes by REPLACING both Sets. A run started before an incoming
+ * message but resolving after it wrote back a pre-message snapshot, and nothing
+ * recomputed afterwards.
+ *
+ * The preview was never affected because `setGroupChats` is a functional update
+ * that function never writes to — which is precisely why the timestamp moved
+ * live while the highlight did not.
+ */
+async function testGroupInboxUnreadSurvivesOverlappingRefreshes() {
+  const inboxPageSource = readFileSync(new URL("../app/dm/page.tsx", import.meta.url), "utf8");
+
+  // -- The guard exists and is checked before the write ----------------------
+  assert.match(inboxPageSource, /const generation = \+\+unreadRefreshGenerationRef\.current;/);
+  assert.match(
+    inboxPageSource,
+    /if \(generation !== unreadRefreshGenerationRef\.current\) \{\s*\n\s*return;\s*\n\s*\}\s*\n\s*\n\s*setUnreadConversationIds\(conversationUnread\);\s*\n\s*setUnreadEventChatIds\(eventUnread\);/,
+    "the staleness check must gate BOTH unread writes, not sit after them",
+  );
+  // Sign-out must not be repopulated by a run still in flight.
+  assert.match(
+    inboxPageSource,
+    /unreadRefreshGenerationRef\.current \+= 1;\s*\n\s*setUnreadConversationIds\(new Set\(\)\);/,
+  );
+  // The realtime handler must still switch the highlight on immediately -- the
+  // guard protects that add, it does not replace it.
+  assert.match(
+    inboxPageSource,
+    /setUnreadEventChatIds\(\(previous\) => \{\s*\n\s*const next = new Set\(previous\);\s*\n\s*next\.add\(groupTargetId\);/,
+  );
+  // No polling, timers, forced refreshes or notification-based unread logic.
+  assert.doesNotMatch(inboxPageSource, /setInterval|location\.reload|router\.refresh/);
+
+  // -- The race itself, driven through the real helpers ----------------------
+  const me = "isaac";
+  const them = "dj-nina";
+  const eventId = "11111111-2222-3333-4444-555555555555";
+  const readRows = [
+    { conversation_id: null, event_id: eventId, last_read_at: "2026-08-03T10:00:00.000Z" },
+  ];
+
+  const baseRow: GroupChatListItem = {
+    eventId,
+    eventName: "Test 3",
+    venue: "Club 53",
+    eventDate: "2026-08-10",
+    coverImageUrl: null,
+    fallbackColour: null,
+    href: `/events/${eventId}/chat`,
+    latestPreview: "see you there",
+    latestMessageAt: "2026-08-03T10:00:00.000Z",
+    latestMessageUserId: me,
+    latestActivityAt: "2026-08-03T10:00:00.000Z",
+  };
+
+  // The real body of refreshUnreadState's event half.
+  function computeUnread(rows: GroupChatListItem[]): Set<string> {
+    const latest = new Map<string, { user_id: string; created_at: string }>();
+
+    for (const chat of rows) {
+      if (chat.latestActivityAt && chat.latestMessageUserId) {
+        latest.set(chat.eventId, {
+          user_id: chat.latestMessageUserId,
+          created_at: chat.latestActivityAt,
+        });
+      }
+    }
+
+    const readMap = buildEventChatReadMap(readRows);
+    const unread = new Set<string>();
+
+    for (const chat of rows) {
+      if (isChatUnread(latest.get(chat.eventId), me, readMap.get(chat.eventId))) {
+        unread.add(chat.eventId);
+      }
+    }
+
+    return unread;
+  }
+
+  const incoming = {
+    id: "msg-new",
+    // Image-only: empty text, the case that renders nothing without its
+    // attachment row, so the highlight is the only cue it arrived.
+    text: "",
+    created_at: "2026-08-03T10:05:00.000Z",
+    user_id: them,
+    event_id: eventId,
+  };
+
+  // The data layer is not at fault: the applied row IS unread.
+  const applied = applyInboxGroupMessage([baseRow], eventId, incoming);
+  assert.equal(applied.matched, true);
+  assert.equal(applied.rows[0].latestActivityAt, "2026-08-03T10:05:00.000Z");
+  assert.equal(applied.rows[0].latestMessageUserId, them);
+  assert.equal(computeUnread(applied.rows).has(eventId), true);
+
+  const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+  async function runCycle(guarded: boolean): Promise<Set<string>> {
+    let generationRef = 0;
+    let rows: GroupChatListItem[] = [baseRow];
+    let unread = new Set<string>();
+
+    async function refresh(rowsAtCallTime: GroupChatListItem[], latencyMs: number) {
+      const generation = ++generationRef;
+      await sleep(latencyMs);
+
+      if (guarded && generation !== generationRef) {
+        return;
+      }
+
+      unread = computeUnread(rowsAtCallTime);
+    }
+
+    // Started by an earlier dmInboxRows change, closed over pre-message rows,
+    // slow round trip.
+    const stale = refresh(rows, 60);
+    await sleep(5);
+
+    // Realtime crew message: preview updates and the highlight switches on.
+    rows = [...applyInboxGroupMessage(rows, eventId, incoming).rows];
+    unread = new Set(unread).add(eventId);
+    assert.equal(unread.has(eventId), true, "handler must switch the highlight on");
+
+    // The effect re-runs with the new rows; warm connection, resolves first.
+    const fresh = refresh(rows, 10);
+    await Promise.all([stale, fresh]);
+
+    return unread;
+  }
+
+  // Unguarded, the stale run wins on resolution order and wipes the highlight.
+  assert.equal(
+    (await runCycle(false)).has(eventId),
+    false,
+    "this is the bug: without the guard the stale refresh must clobber the add",
+  );
+
+  // Guarded, the stale result is discarded and the highlight survives -- which
+  // is also what drives the Groups tab count, since it is unreadEventChatIds.size.
+  const guardedResult = await runCycle(true);
+  assert.equal(guardedResult.has(eventId), true);
+  assert.equal(guardedResult.size, 1);
+}
+
 async function main() {
   testPastEventDatesAreBlocked();
   testFutureEventDatesAreAllowed();
@@ -13480,6 +13635,7 @@ async function main() {
   await testDmBookingReturnScroll();
   testCrewChatAttachmentRealtimeAndStateReconciliation();
   testCrewChatUnreadUsesTheSharedUnreadSystem();
+  await testGroupInboxUnreadSurvivesOverlappingRefreshes();
   console.log("All regression checks passed.");
 }
 

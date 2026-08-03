@@ -317,6 +317,9 @@ function DmInboxPageContent() {
   const [activeTab, setActiveTab] = useState<InboxTab>(() =>
     parseInboxTab(searchParams.get("tab")),
   );
+  // Same generation pattern as groupChatsLoadGenerationRef below. See
+  // refreshUnreadState for why the unread refresh specifically needs one.
+  const unreadRefreshGenerationRef = useRef(0);
   const groupChatsLoadGenerationRef = useRef(0);
   const groupChatsLoadInFlightRef = useRef<Promise<void> | null>(null);
   const groupChatsHasDataRef = useRef(false);
@@ -564,13 +567,39 @@ function DmInboxPageContent() {
     setLoading(false);
   }, [dmInboxRows.length]);
 
+  /**
+   * Recomputes both unread sets from the database.
+   *
+   * The generation guard is load-bearing, not defensive. This runs
+   * fire-and-forget from an effect keyed on `currentUserId` / `dmInboxRows` /
+   * `groupChats`, so several runs are routinely in flight at once — every DM
+   * realtime message, reaction update and attachment-preview patch starts
+   * another one. Each run closes over the rows as they were when it started and
+   * finishes by REPLACING both Sets wholesale.
+   *
+   * Without the guard, a run that started before an incoming message but
+   * resolved after it overwrites the newer state with a snapshot that predates
+   * the message, and nothing re-triggers a recompute afterwards — so the unread
+   * highlight the realtime handler had just switched on disappeared and only a
+   * reload brought it back. The preview never showed the same symptom because
+   * `setGroupChats` is a functional update this function never writes to; only
+   * the unread Sets were being clobbered, which is exactly why the row's
+   * timestamp updated live while its unread styling did not.
+   *
+   * Discarding a stale result is safe: a newer run is by definition already in
+   * flight with fresher rows, and it is the one that will write.
+   */
   const refreshUnreadState = useCallback(async () => {
     if (!currentUserId) {
+      // Bump too, so a run still in flight from the signed-in session cannot
+      // repopulate unread state after sign-out.
+      unreadRefreshGenerationRef.current += 1;
       setUnreadConversationIds(new Set());
       setUnreadEventChatIds(new Set());
       return;
     }
 
+    const generation = ++unreadRefreshGenerationRef.current;
     const latestConversationMessages = new Map<string, LatestChatMessage>();
 
     for (const row of dmInboxRows) {
@@ -606,6 +635,10 @@ function DmInboxPageContent() {
           currentUserId,
         ),
       ]);
+
+      if (generation !== unreadRefreshGenerationRef.current) {
+        return;
+      }
 
       setUnreadConversationIds(conversationUnread);
       setUnreadEventChatIds(eventUnread);
