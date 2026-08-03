@@ -13,6 +13,20 @@
 /** Hard cap on model-to-model review rounds. One round = OpenAI review (+ optional Claude reply). */
 export const AGENT_ROOM_MAX_REVIEW_ROUNDS = 2;
 
+/**
+ * How many times the Builder may be sent back to revise its plan. QA and the
+ * Release Agent can each bounce work back; without a cap those two could pass
+ * a plan between them indefinitely.
+ */
+export const AGENT_ROOM_MAX_BUILDER_PASSES = 2;
+
+/**
+ * Ceiling on automatic agent turns in one session, across every role. This is
+ * the backstop that makes "let the agents sort it out" safe: whatever the
+ * agents decide between themselves, the conversation cannot outrun this.
+ */
+export const AGENT_ROOM_MAX_AUTO_HOPS = 12;
+
 const DEFAULT_ANTHROPIC_MODEL = "claude-opus-5";
 
 /**

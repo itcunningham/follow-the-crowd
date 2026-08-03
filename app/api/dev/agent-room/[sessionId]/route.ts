@@ -55,16 +55,28 @@ export async function PATCH(
     return notFound();
   }
 
-  if (session.stage !== "awaiting_investigation") {
-    return badRequest(
-      "The brief can only be edited before Claude investigates. Request more evidence first.",
-    );
-  }
-
   const body = await readJsonBody(request);
 
   if (!body.ok) {
     return body.response;
+  }
+
+  // The handoff-approval mode is a preference, not content, so it can be
+  // changed at any point — including mid-run, to slow the agents down.
+  const approval = readField(body.value, "handoffApproval");
+
+  if (approval === "auto" || approval === "manual") {
+    session.handoffApproval = approval;
+    session.updatedAt = new Date().toISOString();
+    await saveSession(session);
+
+    return NextResponse.json(buildSessionView(session));
+  }
+
+  if (session.stage !== "awaiting_investigation") {
+    return badRequest(
+      "The brief can only be edited before the agents start. Request more evidence first.",
+    );
   }
 
   const fields: Array<[keyof typeof session & string, number]> = [

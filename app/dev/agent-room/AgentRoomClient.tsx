@@ -3,249 +3,63 @@
 /**
  * FTC Agent Room — the supervisor's panel.
  *
- * Isaac watches every message and controls every step. No provider request
- * leaves this page without him first seeing the exact payload and confirming
- * it, and the red STOP button is available on any live session.
+ * The agents hand work to each other. Isaac's job here is to start a run and
+ * then answer the questions that are genuinely his: a product decision, a real
+ * choice between implementations, the release call, or a blocker.
+ *
+ * The red STOP button is available on any live session, and the exact payload
+ * of the next agent turn is always inspectable — it just no longer blocks the
+ * workflow unless Isaac switches handoffs to "review each one".
  *
  * Layout is single-column at 390px and two-column from `lg`; every control and
  * every panel is present at both widths.
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { ESCALATION_LABELS } from "@/lib/agentRoom/roles";
 import { sessionToMarkdown } from "@/lib/agentRoom/transcript";
-import type {
-  AgentRoomSessionSummary,
-  AgentRoomTurn,
-} from "@/lib/agentRoom/types";
-import type {
-  AgentRoomActionView,
-  AgentRoomConfigView,
-  AgentRoomSessionView,
-} from "@/lib/agentRoom/view";
+import type { AgentRoomSessionSummary } from "@/lib/agentRoom/types";
+import type { AgentRoomConfigView, AgentRoomSessionView } from "@/lib/agentRoom/view";
 import {
   AGENT_ROOM_ACTION_LABELS,
   AGENT_ROOM_STAGE_LABELS,
   type AgentRoomAction,
 } from "@/lib/agentRoom/workflow";
+import DecisionLog from "./DecisionLog";
+import Timeline from "./Timeline";
+import { Badge, Card, formatUsd, inputClass, monoInputClass } from "./ui";
 
 const API = "/api/dev/agent-room";
 
-type ApiPayload = AgentRoomSessionView & { error?: string; notice?: string };
+type ApiPayload = AgentRoomSessionView & {
+  error?: string;
+  notice?: string;
+  hops?: number;
+};
 
-/* -------------------------------------------------------------------------- */
-/* Small presentational pieces                                                */
-/* -------------------------------------------------------------------------- */
-
-function Card({
-  title,
-  children,
-  tone = "default",
-}: {
-  title: string;
-  children: React.ReactNode;
-  tone?: "default" | "claude" | "openai" | "isaac";
-}) {
-  const accent =
-    tone === "claude"
-      ? "var(--ftc-color-primary)"
-      : tone === "openai"
-        ? "var(--ftc-color-success)"
-        : tone === "isaac"
-          ? "var(--ftc-color-warning)"
-          : "var(--ftc-color-border-strong)";
-
-  return (
-    <section
-      className="rounded-ftc-lg border bg-ftc-surface p-4"
-      style={{ borderColor: "var(--ftc-color-border-subtle)", borderLeft: `3px solid ${accent}` }}
-    >
-      <h2 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-ftc-text-section-label">
-        {title}
-      </h2>
-      {children}
-    </section>
-  );
-}
-
-function Bullets({ label, items }: { label: string; items: string[] }) {
-  return (
-    <div className="mb-3">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-ftc-text-muted">
-        {label}
-      </p>
-      {items.length === 0 ? (
-        <p className="text-sm text-ftc-text-muted">None</p>
-      ) : (
-        <ul className="mt-1 list-disc space-y-1 pl-5 text-sm text-ftc-text">
-          {items.map((item, index) => (
-            <li key={`${label}-${index}`} className="break-words">
-              {item}
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
-  );
-}
-
-function Field({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="mb-3">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-ftc-text-muted">
-        {label}
-      </p>
-      <p className="mt-1 whitespace-pre-wrap break-words text-sm text-ftc-text">{value}</p>
-    </div>
-  );
-}
-
-function Badge({ text, tone }: { text: string; tone: "good" | "warn" | "bad" | "neutral" }) {
-  const colour =
-    tone === "good"
-      ? "var(--ftc-color-success)"
-      : tone === "warn"
-        ? "var(--ftc-color-warning)"
-        : tone === "bad"
-          ? "var(--ftc-color-danger)"
-          : "var(--ftc-color-text-secondary)";
-
-  return (
-    <span
-      className="inline-flex items-center rounded-ftc-sm px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.06em]"
-      style={{ color: colour, border: `1px solid ${colour}` }}
-    >
-      {text}
-    </span>
-  );
-}
-
-function formatUsd(value: number | null): string {
-  return value === null ? "cost estimate unavailable" : `~$${value.toFixed(4)}`;
-}
-
-function TurnView({ turn }: { turn: AgentRoomTurn }) {
-  const tone =
-    turn.actor === "claude" ? "claude" : turn.actor === "openai" ? "openai" : "isaac";
-  const actor = turn.actor === "isaac" ? "Isaac" : turn.actor === "claude" ? "Claude" : "OpenAI";
-
-  return (
-    <Card title={`${actor} — ${turn.title}`} tone={tone}>
-      <p className="mb-3 text-[11px] text-ftc-text-muted">
-        {new Date(turn.at).toLocaleString()}
-        {turn.usage
-          ? ` · ${turn.usage.model} · ${turn.usage.inputTokens} in / ${turn.usage.outputTokens} out · ${formatUsd(
-              turn.usage.estimatedUsd,
-            )} · ${(turn.usage.durationMs / 1000).toFixed(1)}s`
-          : ""}
-      </p>
-
-      {turn.body ? (
-        <p
-          className="mb-3 whitespace-pre-wrap break-words text-sm"
-          style={{
-            color:
-              turn.kind === "error" ? "var(--ftc-color-danger)" : "var(--ftc-color-text-primary)",
-          }}
-        >
-          {turn.body}
-        </p>
-      ) : null}
-
-      {turn.investigation ? (
-        <>
-          <Field label="Summary" value={turn.investigation.summary} />
-          <Bullets label="Confirmed facts" items={turn.investigation.confirmedFacts} />
-          <Bullets label="Unproven assumptions" items={turn.investigation.unprovenAssumptions} />
-          <Bullets
-            label="Evidence"
-            items={turn.investigation.evidence.map(
-              (item) => `${item.file} — ${item.lineOrSymbol}: ${item.explanation}`,
-            )}
-          />
-          <Field label="Proposed smallest fix" value={turn.investigation.proposedFix} />
-          <div className="flex flex-wrap gap-2">
-            <Badge
-              text={`Risk ${turn.investigation.risk}`}
-              tone={turn.investigation.risk === "high" ? "bad" : turn.investigation.risk === "medium" ? "warn" : "good"}
-            />
-            <Badge
-              text={`Confidence ${turn.investigation.confidence}`}
-              tone={
-                turn.investigation.confidence === "high"
-                  ? "good"
-                  : turn.investigation.confidence === "medium"
-                    ? "warn"
-                    : "bad"
-              }
-            />
-          </div>
-        </>
-      ) : null}
-
-      {turn.review ? (
-        <>
-          <div className="mb-3">
-            <Badge
-              text={turn.review.verdict}
-              tone={
-                turn.review.verdict === "AGREE"
-                  ? "good"
-                  : turn.review.verdict === "CHALLENGE"
-                    ? "warn"
-                    : "bad"
-              }
-            />
-          </div>
-          <Field label="Summary" value={turn.review.summary} />
-          <Bullets label="Supported claims" items={turn.review.supportedClaims} />
-          <Bullets label="Unsupported claims" items={turn.review.unsupportedClaims} />
-          <Bullets label="Contradictions" items={turn.review.contradictions} />
-          <Bullets label="Evidence required" items={turn.review.requiredEvidence} />
-          <Field label="Recommendation" value={turn.review.recommendation} />
-        </>
-      ) : null}
-
-      {turn.rebuttal ? (
-        <>
-          <Bullets label="Accepted challenges" items={turn.rebuttal.acceptedChallenges} />
-          <Bullets label="Rejected challenges" items={turn.rebuttal.rejectedChallenges} />
-          <Bullets
-            label="New evidence"
-            items={turn.rebuttal.newEvidence.map(
-              (item) => `${item.file} — ${item.lineOrSymbol}: ${item.explanation}`,
-            )}
-          />
-          <Field label="Revised diagnosis" value={turn.rebuttal.revisedDiagnosis} />
-          <Field label="Revised fix" value={turn.rebuttal.revisedFix} />
-          <Field label="Remaining uncertainty" value={turn.rebuttal.remainingUncertainty} />
-        </>
-      ) : null}
-    </Card>
-  );
-}
-
-/* -------------------------------------------------------------------------- */
-/* Main panel                                                                 */
-/* -------------------------------------------------------------------------- */
+type EvidenceKind = "note" | "file" | "diff" | "search";
 
 export default function AgentRoomClient() {
+  const [tab, setTab] = useState<"room" | "log">("room");
   const [sessions, setSessions] = useState<AgentRoomSessionSummary[]>([]);
   const [config, setConfig] = useState<AgentRoomConfigView | null>(null);
   const [view, setView] = useState<AgentRoomSessionView | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [runningAction, setRunningAction] = useState<AgentRoomAction | null>(null);
+  const [runningLabel, setRunningLabel] = useState<string | null>(null);
   const [elapsedMs, setElapsedMs] = useState(0);
-  const [pendingHandoff, setPendingHandoff] = useState<AgentRoomActionView | null>(null);
+  const [showPayload, setShowPayload] = useState(false);
+
   const [decisionNote, setDecisionNote] = useState("");
+  const [escalationAnswer, setEscalationAnswer] = useState("");
 
   const [newTitle, setNewTitle] = useState("");
   const [newDescription, setNewDescription] = useState("");
   const [newBranch, setNewBranch] = useState("");
   const [newContext, setNewContext] = useState("");
 
-  const [evidenceKind, setEvidenceKind] = useState<"note" | "file" | "diff" | "search">("note");
+  const [evidenceKind, setEvidenceKind] = useState<EvidenceKind>("note");
   const [evidenceLabel, setEvidenceLabel] = useState("");
   const [evidenceText, setEvidenceText] = useState("");
   const [evidencePath, setEvidencePath] = useState("");
@@ -277,7 +91,7 @@ export default function AgentRoomClient() {
   }, [refreshSessions]);
 
   useEffect(() => {
-    if (runningAction === null) {
+    if (runningLabel === null) {
       setElapsedMs(0);
       return;
     }
@@ -288,23 +102,14 @@ export default function AgentRoomClient() {
     }, 100);
 
     return () => window.clearInterval(timer);
-  }, [runningAction]);
-
-  const applyPayload = useCallback((payload: ApiPayload) => {
-    setView({ session: payload.session, actions: payload.actions, config: payload.config });
-    setNotice(payload.notice ?? null);
-  }, []);
+  }, [runningLabel]);
 
   const call = useCallback(
-    async (
-      path: string,
-      init: RequestInit | undefined,
-      action: AgentRoomAction | null,
-    ): Promise<boolean> => {
+    async (path: string, init: RequestInit | undefined, label: string | null) => {
       setBusy(true);
       setError(null);
       setNotice(null);
-      setRunningAction(action);
+      setRunningLabel(label);
 
       try {
         const response = await fetch(path, { cache: "no-store", ...init });
@@ -312,7 +117,13 @@ export default function AgentRoomClient() {
         const data = text ? (JSON.parse(text) as ApiPayload) : null;
 
         if (data?.session) {
-          applyPayload(data);
+          setView({
+            session: data.session,
+            actions: data.actions,
+            route: data.route,
+            config: data.config,
+          });
+          setNotice(data.notice ?? null);
         }
 
         if (!response.ok) {
@@ -327,18 +138,52 @@ export default function AgentRoomClient() {
         return false;
       } finally {
         setBusy(false);
-        setRunningAction(null);
+        setRunningLabel(null);
       }
     },
-    [applyPayload, refreshSessions],
+    [refreshSessions],
   );
 
-  const openSession = useCallback(
-    async (id: string) => {
-      await call(`${API}/${id}`, undefined, null);
-    },
-    [call],
+  const session = view?.session ?? null;
+  const route = view?.route ?? null;
+  const escalation = session?.escalation?.required ? session.escalation : null;
+
+  const actionAllowed = useCallback(
+    (action: AgentRoomAction) =>
+      view?.actions.find((entry) => entry.action === action)?.allowed ?? false,
+    [view],
   );
+
+  async function runAction(action: AgentRoomAction, note?: string) {
+    if (!session) {
+      return;
+    }
+
+    const ok = await call(
+      `${API}/${session.id}/action`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action, note: note ?? decisionNote }),
+      },
+      action === "advance" ? (route?.roleLabel ?? "agent") : null,
+    );
+
+    if (ok) {
+      setDecisionNote("");
+      setEscalationAnswer("");
+      setShowPayload(false);
+    }
+  }
+
+  async function runToDecision() {
+    if (!session) {
+      return;
+    }
+
+    await call(`${API}/${session.id}/run`, { method: "POST" }, "the agents");
+    setShowPayload(false);
+  }
 
   async function createSession() {
     const ok = await call(
@@ -365,7 +210,7 @@ export default function AgentRoomClient() {
   }
 
   async function addEvidence() {
-    if (!view) {
+    if (!session) {
       return;
     }
 
@@ -385,7 +230,7 @@ export default function AgentRoomClient() {
     }
 
     const ok = await call(
-      `${API}/${view.session.id}/evidence`,
+      `${API}/${session.id}/evidence`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -401,61 +246,40 @@ export default function AgentRoomClient() {
     }
   }
 
-  async function runAction(action: AgentRoomAction) {
-    if (!view) {
+  async function setApprovalMode(mode: "auto" | "manual") {
+    if (!session) {
       return;
     }
-
-    setPendingHandoff(null);
 
     await call(
-      `${API}/${view.session.id}/action`,
+      `${API}/${session.id}`,
       {
-        method: "POST",
+        method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action, note: decisionNote }),
+        body: JSON.stringify({ handoffApproval: mode }),
       },
-      action,
+      null,
     );
-
-    setDecisionNote("");
-  }
-
-  function onActionClick(entry: AgentRoomActionView) {
-    if (entry.handoff) {
-      // Approval checkpoint: nothing is sent until Isaac sees the payload.
-      setPendingHandoff(entry);
-      return;
-    }
-
-    void runAction(entry.action);
   }
 
   async function copyTranscript() {
-    if (!view) {
+    if (!session) {
       return;
     }
 
     try {
-      await navigator.clipboard.writeText(sessionToMarkdown(view.session));
+      await navigator.clipboard.writeText(sessionToMarkdown(session));
       setNotice("Full transcript copied to the clipboard.");
     } catch {
       setError("The browser refused clipboard access. Use Export Markdown instead.");
     }
   }
 
-  async function removeSession(id: string) {
-    await call(`${API}/${id}`, { method: "DELETE" }, null);
-    setView((current) => (current?.session.id === id ? null : current));
-    await refreshSessions();
-  }
-
-  const session = view?.session ?? null;
-  const stopAction = view?.actions.find((entry) => entry.action === "stop") ?? null;
+  const manualMode = session?.handoffApproval === "manual";
+  const canAdvance = actionAllowed("advance");
 
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 py-6 pb-24">
-      {/* Unmissable internal label, per the brief. */}
       <header
         className="rounded-ftc-lg border px-4 py-3"
         style={{
@@ -470,18 +294,31 @@ export default function AgentRoomClient() {
           Internal — FTC Agent Room
         </p>
         <p className="mt-1 text-xs text-ftc-text-secondary">
-          Developer tool. Read-only against the repository: it cannot edit, commit, push,
-          deploy or run SQL. Nothing is implemented until you approve it.
+          The agents investigate, review, plan and assess. They cannot edit, commit, push,
+          deploy or run SQL — implementation happens in a worktree, by you.
         </p>
         {config ? (
           <p className="mt-2 text-[11px] text-ftc-text-muted">
             Claude: <span className="text-ftc-text-secondary">{config.anthropicModel}</span>
-            {config.anthropicKeyPresent ? "" : " (no ANTHROPIC_API_KEY)"} · OpenAI:{" "}
+            {config.anthropicKeyPresent ? "" : " (no key)"} · OpenAI:{" "}
             <span className="text-ftc-text-secondary">{config.openaiModel}</span>
-            {config.openaiKeyPresent ? "" : " (no OPENAI_API_KEY)"} · max{" "}
-            {config.maxReviewRounds} review rounds
+            {config.openaiKeyPresent ? "" : " (no key)"} · {config.maxReviewRounds} review
+            rounds · {config.maxAutoHops} automatic turns
           </p>
         ) : null}
+
+        <div className="mt-3 flex gap-2">
+          {(["room", "log"] as const).map((entry) => (
+            <button
+              key={entry}
+              type="button"
+              onClick={() => setTab(entry)}
+              className={tab === entry ? "ftc-btn-primary px-4" : "ftc-btn-secondary px-4"}
+            >
+              {entry === "room" ? "Room" : "Decision log"}
+            </button>
+          ))}
+        </div>
       </header>
 
       {error ? (
@@ -496,388 +333,488 @@ export default function AgentRoomClient() {
       {notice ? (
         <p
           className="rounded-ftc-md border px-4 py-3 text-sm"
-          style={{ borderColor: "var(--ftc-color-primary-border)", color: "var(--ftc-color-primary)" }}
+          style={{
+            borderColor: "var(--ftc-color-primary-border)",
+            color: "var(--ftc-color-primary)",
+          }}
         >
           {notice}
         </p>
       ) : null}
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[320px_minmax(0,1fr)]">
-        {/* ------------------------------------------------------------- */}
-        {/* Left rail: sessions + brief + evidence                        */}
-        {/* ------------------------------------------------------------- */}
-        <div className="flex flex-col gap-4">
-          <Card title="Recent sessions">
-            {sessions.length === 0 ? (
-              <p className="text-sm text-ftc-text-muted">No sessions yet.</p>
-            ) : (
-              <ul className="flex flex-col gap-2">
-                {sessions.map((entry) => (
-                  <li key={entry.id} className="flex items-start gap-2">
-                    <button
-                      type="button"
-                      onClick={() => void openSession(entry.id)}
-                      className="min-w-0 flex-1 rounded-ftc-sm px-2 py-1.5 text-left text-sm text-ftc-text hover:bg-ftc-bg-elevated"
-                    >
-                      <span className="block truncate">{entry.title}</span>
-                      <span className="block text-[11px] text-ftc-text-muted">
-                        {AGENT_ROOM_STAGE_LABELS[entry.stage]}
-                      </span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => void removeSession(entry.id)}
-                      className="ftc-btn-ghost shrink-0 px-2 py-1 text-[11px]"
-                      aria-label={`Delete session ${entry.title}`}
-                    >
-                      Delete
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Card>
+      {tab === "log" ? (
+        <DecisionLog />
+      ) : (
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[320px_minmax(0,1fr)]">
+          {/* ----------------------------------------------------------- */}
+          {/* Left rail                                                    */}
+          {/* ----------------------------------------------------------- */}
+          <div className="flex flex-col gap-4">
+            <Card title="Sessions">
+              {sessions.length === 0 ? (
+                <p className="text-sm text-ftc-text-muted">No sessions yet.</p>
+              ) : (
+                <ul className="flex flex-col gap-2">
+                  {sessions.map((entry) => (
+                    <li key={entry.id} className="flex items-start gap-2">
+                      <button
+                        type="button"
+                        onClick={() => void call(`${API}/${entry.id}`, undefined, null)}
+                        className="min-w-0 flex-1 rounded-ftc-sm px-2 py-1.5 text-left text-sm text-ftc-text hover:bg-ftc-bg-elevated"
+                      >
+                        <span className="block truncate">{entry.title}</span>
+                        <span className="block text-[11px] text-ftc-text-muted">
+                          {AGENT_ROOM_STAGE_LABELS[entry.stage]}
+                        </span>
+                      </button>
+                      {entry.needsIsaac ? <Badge text="You" tone="warn" /> : null}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          void call(`${API}/${entry.id}`, { method: "DELETE" }, null).then(
+                            () => {
+                              setView((current) =>
+                                current?.session.id === entry.id ? null : current,
+                              );
+                            },
+                          );
+                        }}
+                        className="shrink-0 text-[11px] text-ftc-text-muted underline"
+                        aria-label={`Delete session ${entry.title}`}
+                      >
+                        Delete
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </Card>
 
-          <Card title="New task">
-            <div className="flex flex-col gap-2">
-              <input
-                value={newTitle}
-                onChange={(event) => setNewTitle(event.target.value)}
-                placeholder="Bug / task title"
-                className="rounded-ftc-sm border border-ftc-border bg-ftc-surface-raised px-3 py-2 text-sm text-ftc-text"
-              />
-              <textarea
-                value={newDescription}
-                onChange={(event) => setNewDescription(event.target.value)}
-                placeholder="Bug description"
-                rows={5}
-                className="rounded-ftc-sm border border-ftc-border bg-ftc-surface-raised px-3 py-2 text-sm text-ftc-text"
-              />
-              <input
-                value={newBranch}
-                onChange={(event) => setNewBranch(event.target.value)}
-                placeholder="Relevant branch / worktree"
-                className="rounded-ftc-sm border border-ftc-border bg-ftc-surface-raised px-3 py-2 text-sm text-ftc-text"
-              />
-              <textarea
-                value={newContext}
-                onChange={(event) => setNewContext(event.target.value)}
-                placeholder="Screenshots / context notes (describe them — no images are generated or uploaded)"
-                rows={3}
-                className="rounded-ftc-sm border border-ftc-border bg-ftc-surface-raised px-3 py-2 text-sm text-ftc-text"
-              />
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => void createSession()}
-                className="ftc-btn-primary px-4"
-              >
-                Create session
-              </button>
-            </div>
-          </Card>
-
-          {session ? (
-            <Card title={`Evidence (${session.evidence.length})`}>
-              <div className="mb-3 flex flex-col gap-2">
-                <select
-                  value={evidenceKind}
-                  onChange={(event) =>
-                    setEvidenceKind(event.target.value as typeof evidenceKind)
-                  }
-                  className="rounded-ftc-sm border border-ftc-border bg-ftc-surface-raised px-3 py-2 text-sm text-ftc-text"
-                >
-                  <option value="note">Pasted note / build output</option>
-                  <option value="file">Source file excerpt</option>
-                  <option value="diff">git diff</option>
-                  <option value="search">Repository search</option>
-                </select>
-
-                {evidenceKind === "note" ? (
-                  <>
-                    <input
-                      value={evidenceLabel}
-                      onChange={(event) => setEvidenceLabel(event.target.value)}
-                      placeholder="Label, e.g. npm run build output"
-                      className="rounded-ftc-sm border border-ftc-border bg-ftc-surface-raised px-3 py-2 text-sm text-ftc-text"
-                    />
-                    <textarea
-                      value={evidenceText}
-                      onChange={(event) => setEvidenceText(event.target.value)}
-                      placeholder="Paste the evidence"
-                      rows={5}
-                      className="rounded-ftc-sm border border-ftc-border bg-ftc-surface-raised px-3 py-2 font-mono text-xs text-ftc-text"
-                    />
-                  </>
-                ) : null}
-
-                {evidenceKind === "file" || evidenceKind === "diff" ? (
-                  <input
-                    value={evidencePath}
-                    onChange={(event) => setEvidencePath(event.target.value)}
-                    placeholder={
-                      evidenceKind === "file"
-                        ? "lib/dm/chatMessageGroupLayout.ts"
-                        : "Optional path to scope the diff"
-                    }
-                    className="rounded-ftc-sm border border-ftc-border bg-ftc-surface-raised px-3 py-2 font-mono text-xs text-ftc-text"
-                  />
-                ) : null}
-
-                {evidenceKind === "file" ? (
-                  <div className="flex gap-2">
-                    <input
-                      value={evidenceStart}
-                      onChange={(event) => setEvidenceStart(event.target.value)}
-                      placeholder="From line"
-                      inputMode="numeric"
-                      className="min-w-0 flex-1 rounded-ftc-sm border border-ftc-border bg-ftc-surface-raised px-3 py-2 text-sm text-ftc-text"
-                    />
-                    <input
-                      value={evidenceEnd}
-                      onChange={(event) => setEvidenceEnd(event.target.value)}
-                      placeholder="To line"
-                      inputMode="numeric"
-                      className="min-w-0 flex-1 rounded-ftc-sm border border-ftc-border bg-ftc-surface-raised px-3 py-2 text-sm text-ftc-text"
-                    />
-                  </div>
-                ) : null}
-
-                {evidenceKind === "search" ? (
-                  <input
-                    value={evidenceQuery}
-                    onChange={(event) => setEvidenceQuery(event.target.value)}
-                    placeholder="Exact text to search for"
-                    className="rounded-ftc-sm border border-ftc-border bg-ftc-surface-raised px-3 py-2 font-mono text-xs text-ftc-text"
-                  />
-                ) : null}
-
+            <Card title="New task">
+              <div className="flex flex-col gap-2">
+                <input
+                  value={newTitle}
+                  onChange={(event) => setNewTitle(event.target.value)}
+                  placeholder="Bug / task title"
+                  className={inputClass}
+                />
+                <textarea
+                  value={newDescription}
+                  onChange={(event) => setNewDescription(event.target.value)}
+                  placeholder="Bug description"
+                  rows={5}
+                  className={inputClass}
+                />
+                <input
+                  value={newBranch}
+                  onChange={(event) => setNewBranch(event.target.value)}
+                  placeholder="Relevant branch / worktree"
+                  className={inputClass}
+                />
+                <textarea
+                  value={newContext}
+                  onChange={(event) => setNewContext(event.target.value)}
+                  placeholder="Screenshots / context notes (describe them — no images are uploaded)"
+                  rows={3}
+                  className={inputClass}
+                />
                 <button
                   type="button"
                   disabled={busy}
-                  onClick={() => void addEvidence()}
-                  className="ftc-btn-secondary px-4"
+                  onClick={() => void createSession()}
+                  className="ftc-btn-primary px-4"
                 >
-                  Attach evidence
+                  Create session
                 </button>
               </div>
+            </Card>
 
-              <ul className="flex flex-col gap-2">
-                {session.evidence.map((item) => (
-                  <li
-                    key={item.id}
-                    className="rounded-ftc-sm border border-ftc-border-subtle p-2 text-xs"
+            {session ? (
+              <Card title={`Evidence (${session.evidence.length})`}>
+                <div className="mb-3 flex flex-col gap-2">
+                  <select
+                    value={evidenceKind}
+                    onChange={(event) => setEvidenceKind(event.target.value as EvidenceKind)}
+                    className={inputClass}
                   >
-                    <div className="flex items-start justify-between gap-2">
-                      <span className="min-w-0 break-words text-ftc-text-secondary">
-                        <span className="uppercase tracking-[0.06em] text-ftc-text-muted">
-                          {item.kind}
-                        </span>{" "}
-                        {item.label}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          void call(
-                            `${API}/${session.id}/evidence?evidenceId=${item.id}`,
-                            { method: "DELETE" },
-                            null,
-                          )
-                        }
-                        className="shrink-0 text-[11px] text-ftc-text-muted underline"
-                      >
-                        Remove
-                      </button>
+                    <option value="note">Pasted note / build output</option>
+                    <option value="file">Source file excerpt</option>
+                    <option value="diff">git diff</option>
+                    <option value="search">Repository search</option>
+                  </select>
+
+                  {evidenceKind === "note" ? (
+                    <>
+                      <input
+                        value={evidenceLabel}
+                        onChange={(event) => setEvidenceLabel(event.target.value)}
+                        placeholder="Label, e.g. npm run build output"
+                        className={inputClass}
+                      />
+                      <textarea
+                        value={evidenceText}
+                        onChange={(event) => setEvidenceText(event.target.value)}
+                        placeholder="Paste the evidence"
+                        rows={5}
+                        className={monoInputClass}
+                      />
+                    </>
+                  ) : null}
+
+                  {evidenceKind === "file" || evidenceKind === "diff" ? (
+                    <input
+                      value={evidencePath}
+                      onChange={(event) => setEvidencePath(event.target.value)}
+                      placeholder={
+                        evidenceKind === "file"
+                          ? "lib/dm/chatMessageGroupLayout.ts"
+                          : "Optional path to scope the diff"
+                      }
+                      className={monoInputClass}
+                    />
+                  ) : null}
+
+                  {evidenceKind === "file" ? (
+                    <div className="flex gap-2">
+                      <input
+                        value={evidenceStart}
+                        onChange={(event) => setEvidenceStart(event.target.value)}
+                        placeholder="From line"
+                        inputMode="numeric"
+                        className={inputClass}
+                      />
+                      <input
+                        value={evidenceEnd}
+                        onChange={(event) => setEvidenceEnd(event.target.value)}
+                        placeholder="To line"
+                        inputMode="numeric"
+                        className={inputClass}
+                      />
                     </div>
-                    {item.redactedRules.length ? (
-                      <p className="mt-1" style={{ color: "var(--ftc-color-warning)" }}>
-                        Redacted before storage: {item.redactedRules.join(", ")}
-                      </p>
-                    ) : null}
-                    <pre className="mt-1 max-h-32 overflow-auto whitespace-pre-wrap break-words font-mono text-[11px] text-ftc-text-muted">
-                      {item.content.slice(0, 2000)}
-                    </pre>
-                  </li>
-                ))}
-              </ul>
-            </Card>
-          ) : null}
-        </div>
+                  ) : null}
 
-        {/* ------------------------------------------------------------- */}
-        {/* Right: stage, controls, transcript                            */}
-        {/* ------------------------------------------------------------- */}
-        <div className="flex min-w-0 flex-col gap-4">
-          {!session ? (
-            <Card title="No session open">
-              <p className="text-sm text-ftc-text-secondary">
-                Create a task, or open a recent session.
-              </p>
-            </Card>
-          ) : (
-            <>
-              <Card title="Workflow stage">
-                <p className="text-base font-semibold text-ftc-text">{session.title}</p>
-                <p className="mt-1 text-sm text-ftc-text-secondary">
-                  {AGENT_ROOM_STAGE_LABELS[session.stage]}
-                </p>
-                <p className="mt-2 text-[11px] text-ftc-text-muted">
-                  Review rounds used {session.reviewRounds} of{" "}
-                  {view?.config.maxReviewRounds ?? 2} · {session.totals.inputTokens} input /{" "}
-                  {session.totals.outputTokens} output tokens ·{" "}
-                  {formatUsd(session.totals.estimatedUsd)}
-                  {session.branch ? ` · ${session.branch}` : ""}
-                </p>
+                  {evidenceKind === "search" ? (
+                    <input
+                      value={evidenceQuery}
+                      onChange={(event) => setEvidenceQuery(event.target.value)}
+                      placeholder="Exact text to search for"
+                      className={monoInputClass}
+                    />
+                  ) : null}
 
-                {runningAction ? (
-                  <p className="mt-3 text-sm" style={{ color: "var(--ftc-color-primary)" }}>
-                    Running{" "}
-                    {view?.actions.find((entry) => entry.action === runningAction)?.handoff
-                      ?.provider ?? "workflow"}{" "}
-                    — {(elapsedMs / 1000).toFixed(1)}s elapsed
-                  </p>
-                ) : null}
-
-                <div className="mt-3 flex flex-wrap gap-2">
                   <button
                     type="button"
-                    onClick={() => void copyTranscript()}
-                    className="ftc-btn-secondary px-3"
+                    disabled={busy}
+                    onClick={() => void addEvidence()}
+                    className="ftc-btn-secondary px-4"
                   >
-                    Copy full transcript
+                    Attach evidence
                   </button>
-                  <a
-                    href={`${API}/${session.id}/export?format=markdown`}
-                    className="ftc-btn-secondary inline-flex px-3"
-                  >
-                    Export Markdown
-                  </a>
-                  <a
-                    href={`${API}/${session.id}/export?format=json`}
-                    className="ftc-btn-secondary inline-flex px-3"
-                  >
-                    Export JSON
-                  </a>
-                </div>
-              </Card>
-
-              <Card title="Supervisor controls" tone="isaac">
-                <textarea
-                  value={decisionNote}
-                  onChange={(event) => setDecisionNote(event.target.value)}
-                  placeholder="Optional note recorded with your next decision (e.g. what evidence you want)"
-                  rows={2}
-                  className="mb-3 w-full rounded-ftc-sm border border-ftc-border bg-ftc-surface-raised px-3 py-2 text-sm text-ftc-text"
-                />
-
-                <div className="flex flex-wrap gap-2">
-                  {view?.actions
-                    .filter((entry) => entry.action !== "stop")
-                    .map((entry) => (
-                      <button
-                        key={entry.action}
-                        type="button"
-                        disabled={!entry.allowed || busy}
-                        title={entry.reason ?? undefined}
-                        onClick={() => onActionClick(entry)}
-                        className={
-                          entry.action === "approve_implementation"
-                            ? "ftc-btn-primary px-4"
-                            : "ftc-btn-secondary px-4"
-                        }
-                      >
-                        {AGENT_ROOM_ACTION_LABELS[entry.action]}
-                      </button>
-                    ))}
                 </div>
 
-                {stopAction?.allowed ? (
-                  <button
-                    type="button"
-                    onClick={() => void runAction("stop")}
-                    className="mt-3 w-full rounded-ftc-xl px-4 py-3 text-sm font-bold uppercase tracking-[0.08em]"
-                    style={{
-                      background: "var(--ftc-color-danger)",
-                      color: "var(--ftc-color-text-inverse)",
-                    }}
-                  >
-                    Stop workflow
-                  </button>
-                ) : null}
-
-                <ul className="mt-3 space-y-1">
-                  {view?.actions
-                    .filter((entry) => !entry.allowed && entry.reason)
-                    .map((entry) => (
-                      <li key={entry.action} className="text-[11px] text-ftc-text-muted">
-                        {AGENT_ROOM_ACTION_LABELS[entry.action]}: {entry.reason}
-                      </li>
-                    ))}
+                <ul className="flex flex-col gap-2">
+                  {session.evidence.map((item) => (
+                    <li
+                      key={item.id}
+                      className="rounded-ftc-sm border border-ftc-border-subtle p-2 text-xs"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <span className="min-w-0 break-words text-ftc-text-secondary">
+                          <span className="uppercase tracking-[0.06em] text-ftc-text-muted">
+                            {item.kind}
+                          </span>{" "}
+                          {item.label}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            void call(
+                              `${API}/${session.id}/evidence?evidenceId=${item.id}`,
+                              { method: "DELETE" },
+                              null,
+                            )
+                          }
+                          className="shrink-0 text-[11px] text-ftc-text-muted underline"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                      {item.redactedRules.length ? (
+                        <p className="mt-1" style={{ color: "var(--ftc-color-warning)" }}>
+                          Redacted before storage: {item.redactedRules.join(", ")}
+                        </p>
+                      ) : null}
+                    </li>
+                  ))}
                 </ul>
               </Card>
+            ) : null}
+          </div>
 
-              {pendingHandoff?.handoff ? (
-                <Card title="Approve this handoff before it is sent">
-                  <p className="text-sm text-ftc-text">
-                    {AGENT_ROOM_ACTION_LABELS[pendingHandoff.action]} — sending{" "}
-                    {pendingHandoff.handoff.totalChars.toLocaleString()} characters to{" "}
-                    {pendingHandoff.handoff.provider} ({pendingHandoff.handoff.model}).
+          {/* ----------------------------------------------------------- */}
+          {/* Right: status, escalation, controls, timeline                */}
+          {/* ----------------------------------------------------------- */}
+          <div className="flex min-w-0 flex-col gap-4">
+            {!session ? (
+              <Card title="No session open">
+                <p className="text-sm text-ftc-text-secondary">
+                  Create a task, or open a session. The agents will take it from there and
+                  only come back to you when a decision is genuinely yours.
+                </p>
+              </Card>
+            ) : (
+              <>
+                <Card title="Status">
+                  <p className="text-base font-semibold text-ftc-text">{session.title}</p>
+                  <p className="mt-1 text-sm text-ftc-text-secondary">
+                    {AGENT_ROOM_STAGE_LABELS[session.stage]}
                   </p>
-                  <p className="mt-1 text-xs text-ftc-text-secondary">
-                    Only the task, the evidence attached to this session, and the previous reports
-                    are included. No environment file, credential, cookie or automatic
-                    repository scan is sent.
+
+                  <p className="mt-2 text-sm" style={{ color: "var(--ftc-color-primary)" }}>
+                    {route?.roleLabel ? `Next: ${route.roleLabel}` : "Next: you"} —{" "}
+                    <span className="text-ftc-text-secondary">{route?.reason}</span>
                   </p>
-                  {pendingHandoff.handoff.redactedRules.length ? (
-                    <p className="mt-1 text-xs" style={{ color: "var(--ftc-color-warning)" }}>
-                      Secrets were redacted from this payload:{" "}
-                      {pendingHandoff.handoff.redactedRules.join(", ")}
+
+                  <p className="mt-2 text-[11px] text-ftc-text-muted">
+                    {session.reviewRounds}/{view?.config.maxReviewRounds} review rounds ·{" "}
+                    {session.builderPasses}/{view?.config.maxBuilderPasses} builder passes ·{" "}
+                    {session.autoHops}/{view?.config.maxAutoHops} agent turns ·{" "}
+                    {session.totals.inputTokens} in / {session.totals.outputTokens} out ·{" "}
+                    {formatUsd(session.totals.estimatedUsd)}
+                    {session.branch ? ` · ${session.branch}` : ""}
+                  </p>
+
+                  {runningLabel ? (
+                    <p className="mt-3 text-sm" style={{ color: "var(--ftc-color-primary)" }}>
+                      Running {runningLabel} — {(elapsedMs / 1000).toFixed(1)}s elapsed
                     </p>
                   ) : null}
-                  {pendingHandoff.handoff.truncated ? (
-                    <p className="mt-1 text-xs" style={{ color: "var(--ftc-color-warning)" }}>
-                      The payload hit the size limit and was truncated.
-                    </p>
-                  ) : null}
-
-                  <details className="mt-3">
-                    <summary className="cursor-pointer text-xs text-ftc-text-secondary">
-                      Show the exact payload
-                    </summary>
-                    <pre className="mt-2 max-h-80 overflow-auto whitespace-pre-wrap break-words rounded-ftc-sm border border-ftc-border-subtle p-2 font-mono text-[11px] text-ftc-text-muted">
-                      {`SYSTEM\n${pendingHandoff.handoff.system}\n\nUSER\n${pendingHandoff.handoff.user}`}
-                    </pre>
-                  </details>
 
                   <div className="mt-3 flex flex-wrap gap-2">
                     <button
                       type="button"
-                      disabled={busy}
-                      onClick={() => void runAction(pendingHandoff.action)}
+                      onClick={() => void copyTranscript()}
+                      className="ftc-btn-secondary px-3"
+                    >
+                      Copy transcript
+                    </button>
+                    <a
+                      href={`${API}/${session.id}/export?format=markdown`}
+                      className="ftc-btn-secondary inline-flex px-3"
+                    >
+                      Export Markdown
+                    </a>
+                    <a
+                      href={`${API}/${session.id}/export?format=json`}
+                      className="ftc-btn-secondary inline-flex px-3"
+                    >
+                      Export JSON
+                    </a>
+                  </div>
+                </Card>
+
+                {escalation ? (
+                  <Card
+                    title={`The agents need you — ${ESCALATION_LABELS[escalation.type]}`}
+                    tone="isaac"
+                  >
+                    <p className="text-sm text-ftc-text">{escalation.question}</p>
+
+                    {escalation.options.length ? (
+                      <div className="mt-3 flex flex-col gap-2">
+                        {escalation.options.map((option, index) => (
+                          <button
+                            key={`${option}-${index}`}
+                            type="button"
+                            disabled={busy}
+                            onClick={() => void runAction("resolve_escalation", option)}
+                            className="ftc-btn-secondary px-4 text-left"
+                          >
+                            {option}
+                          </button>
+                        ))}
+                      </div>
+                    ) : null}
+
+                    <textarea
+                      value={escalationAnswer}
+                      onChange={(event) => setEscalationAnswer(event.target.value)}
+                      placeholder="Or write your own answer — the agents carry on with it"
+                      rows={2}
+                      className={`${inputClass} mt-3`}
+                    />
+                    <button
+                      type="button"
+                      disabled={busy || !escalationAnswer.trim()}
+                      onClick={() => void runAction("resolve_escalation", escalationAnswer)}
+                      className="ftc-btn-primary mt-2 px-4"
+                    >
+                      Send answer and continue
+                    </button>
+                  </Card>
+                ) : null}
+
+                <Card title="Controls" tone="isaac">
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      disabled={!canAdvance || busy}
+                      onClick={() =>
+                        manualMode ? setShowPayload(true) : void runToDecision()
+                      }
                       className="ftc-btn-primary px-4"
                     >
-                      Send to {pendingHandoff.handoff.provider}
+                      {manualMode ? "Review next handoff" : "Run to next decision"}
                     </button>
                     <button
                       type="button"
-                      onClick={() => setPendingHandoff(null)}
+                      disabled={!canAdvance || busy}
+                      onClick={() => void runAction("advance")}
                       className="ftc-btn-secondary px-4"
                     >
-                      Cancel
+                      Run one step
                     </button>
+                    {(
+                      [
+                        "approve_implementation",
+                        "request_more_evidence",
+                        "reject_diagnosis",
+                        "generate_summary",
+                      ] as const
+                    ).map((action) => (
+                      <button
+                        key={action}
+                        type="button"
+                        disabled={!actionAllowed(action) || busy}
+                        onClick={() => void runAction(action)}
+                        className="ftc-btn-secondary px-4"
+                      >
+                        {AGENT_ROOM_ACTION_LABELS[action]}
+                      </button>
+                    ))}
                   </div>
-                </Card>
-              ) : null}
 
-              <div className="flex flex-col gap-4">
-                {session.transcript.map((turn) => (
-                  <TurnView key={turn.id} turn={turn} />
-                ))}
-              </div>
-            </>
-          )}
+                  <textarea
+                    value={decisionNote}
+                    onChange={(event) => setDecisionNote(event.target.value)}
+                    placeholder="Optional note recorded with your next decision"
+                    rows={2}
+                    className={`${inputClass} mt-3`}
+                  />
+
+                  {actionAllowed("stop") ? (
+                    <button
+                      type="button"
+                      onClick={() => void runAction("stop")}
+                      className="mt-3 w-full rounded-ftc-xl px-4 py-3 text-sm font-bold uppercase tracking-[0.08em]"
+                      style={{
+                        background: "var(--ftc-color-danger)",
+                        color: "var(--ftc-color-text-inverse)",
+                      }}
+                    >
+                      Stop workflow
+                    </button>
+                  ) : null}
+
+                  <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-ftc-text-muted">
+                    <span>Handoffs:</span>
+                    {(["auto", "manual"] as const).map((mode) => (
+                      <button
+                        key={mode}
+                        type="button"
+                        onClick={() => void setApprovalMode(mode)}
+                        className="underline"
+                        style={{
+                          color:
+                            session.handoffApproval === mode
+                              ? "var(--ftc-color-primary)"
+                              : undefined,
+                        }}
+                      >
+                        {mode === "auto" ? "run automatically" : "review each one"}
+                      </button>
+                    ))}
+                  </div>
+
+                  {view?.actions.some((entry) => !entry.allowed && entry.reason) ? (
+                    <details className="mt-2">
+                      <summary className="cursor-pointer text-[11px] text-ftc-text-muted">
+                        Why some controls are unavailable
+                      </summary>
+                      <ul className="mt-1 space-y-1">
+                        {view.actions
+                          .filter((entry) => !entry.allowed && entry.reason)
+                          .map((entry) => (
+                            <li key={entry.action} className="text-[11px] text-ftc-text-muted">
+                              {AGENT_ROOM_ACTION_LABELS[entry.action]}: {entry.reason}
+                            </li>
+                          ))}
+                      </ul>
+                    </details>
+                  ) : null}
+                </Card>
+
+                {showPayload && route?.handoff ? (
+                  <Card title="Next handoff — approve before it is sent">
+                    <p className="text-sm text-ftc-text">
+                      {route.handoff.roleLabel} —{" "}
+                      {route.handoff.totalChars.toLocaleString()} characters to{" "}
+                      {route.handoff.provider} ({route.handoff.model}).
+                    </p>
+                    <p className="mt-1 text-xs text-ftc-text-secondary">
+                      Only the task, the evidence attached to this session, the previous
+                      reports and your earlier answers are included. No environment file,
+                      credential, cookie or automatic repository scan is sent.
+                    </p>
+                    {route.handoff.redactedRules.length ? (
+                      <p className="mt-1 text-xs" style={{ color: "var(--ftc-color-warning)" }}>
+                        Secrets redacted from this payload:{" "}
+                        {route.handoff.redactedRules.join(", ")}
+                      </p>
+                    ) : null}
+                    {route.handoff.truncated ? (
+                      <p className="mt-1 text-xs" style={{ color: "var(--ftc-color-warning)" }}>
+                        The payload hit the size limit and was truncated.
+                      </p>
+                    ) : null}
+
+                    <details className="mt-3">
+                      <summary className="cursor-pointer text-xs text-ftc-text-secondary">
+                        Show the exact payload
+                      </summary>
+                      <pre className="mt-2 max-h-80 overflow-auto whitespace-pre-wrap break-words rounded-ftc-sm border border-ftc-border-subtle p-2 font-mono text-[11px] text-ftc-text-muted">
+                        {`SYSTEM\n${route.handoff.system}\n\nUSER\n${route.handoff.user}`}
+                      </pre>
+                    </details>
+
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => void runAction("advance")}
+                        className="ftc-btn-primary px-4"
+                      >
+                        Send to {route.handoff.provider}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setShowPayload(false)}
+                        className="ftc-btn-secondary px-4"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </Card>
+                ) : null}
+
+                <Card title="Timeline">
+                  <Timeline turns={session.transcript} />
+                </Card>
+              </>
+            )}
+          </div>
         </div>
-      </div>
+      )}
     </main>
   );
 }

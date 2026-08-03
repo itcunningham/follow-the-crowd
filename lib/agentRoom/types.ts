@@ -6,7 +6,19 @@
  */
 
 import type { AgentRoomAction, AgentRoomStage } from "./workflow";
-import type { ClaudeInvestigation, ClaudeRebuttal, OpenAiReview } from "./schemas";
+import type { AgentRole, Escalation } from "./roles";
+import type {
+  BuilderPlan,
+  ClaudeInvestigation,
+  ClaudeRebuttal,
+  OpenAiReview,
+  OpenAiVerdict,
+  QaPlan,
+  QaVerdict,
+  ReleaseAssessment,
+  ReleaseVerdict,
+  SessionSummary,
+} from "./schemas";
 
 export type AgentRoomProvider = "anthropic" | "openai";
 
@@ -38,24 +50,51 @@ export type AgentRoomTurnKind =
   | "investigation"
   | "review"
   | "rebuttal"
+  | "build_plan"
+  | "qa_plan"
+  | "release_review"
+  | "summary"
+  | "escalation"
+  | "escalation_answer"
+  | "handoff"
   | "decision"
   | "error";
 
+/**
+ * One row in the timeline. Everything the room does — an agent speaking, a
+ * status change, a handoff, Isaac deciding — is a turn, so the thread reads
+ * chronologically with no side channel.
+ */
 export type AgentRoomTurn = {
   id: string;
   at: string;
-  actor: "isaac" | "claude" | "openai";
+  actor: "isaac" | "claude" | "openai" | "system";
+  /** Null for Isaac and for pure status rows. */
+  role: AgentRole | null;
   kind: AgentRoomTurnKind;
   action: AgentRoomAction | null;
   title: string;
-  /** Plain-text body for decisions, errors and the opening task. */
+  /** Plain-text body for decisions, handoffs, errors and the opening task. */
   body: string | null;
+
   investigation: ClaudeInvestigation | null;
   review: OpenAiReview | null;
   rebuttal: ClaudeRebuttal | null;
+  builderPlan: BuilderPlan | null;
+  qaPlan: QaPlan | null;
+  releaseAssessment: ReleaseAssessment | null;
+  summary: SessionSummary | null;
+  escalation: Escalation | null;
+
+  /** Status transition recorded on the turn that caused it. */
+  stageFrom: AgentRoomStage | null;
+  stageTo: AgentRoomStage | null;
+
   usage: AgentRoomUsage | null;
   /** Redaction rules that fired on the prompt for this turn. */
   redactedRules: string[];
+  /** Size of the payload that produced this turn, for the audit trail. */
+  promptChars: number | null;
 };
 
 export type AgentRoomSession = {
@@ -72,6 +111,19 @@ export type AgentRoomSession = {
   stage: AgentRoomStage;
   reviewRounds: number;
   rebuttalUsedForCurrentRound: boolean;
+  builderPasses: number;
+  autoHops: number;
+  escalation: Escalation | null;
+  lastReviewVerdict: OpenAiVerdict | null;
+  lastQaVerdict: QaVerdict | null;
+  lastReleaseVerdict: ReleaseVerdict | null;
+  hasSummary: boolean;
+
+  /**
+   * "auto" runs the agents straight through and only stops for an escalation
+   * or a decision. "manual" restores the per-handoff approval prompt.
+   */
+  handoffApproval: "auto" | "manual";
 
   transcript: AgentRoomTurn[];
 
@@ -92,6 +144,7 @@ export type AgentRoomSessionSummary = {
   stage: AgentRoomStage;
   createdAt: string;
   updatedAt: string;
+  needsIsaac: boolean;
 };
 
 export function toSessionSummary(
@@ -103,5 +156,42 @@ export function toSessionSummary(
     stage: session.stage,
     createdAt: session.createdAt,
     updatedAt: session.updatedAt,
+    needsIsaac: session.escalation?.required === true,
   };
 }
+
+/* -------------------------------------------------------------------------- */
+/* Decision Log                                                               */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * The durable record of a completed investigation. Written automatically from
+ * the session summary; the two fields Agent Room genuinely cannot know —
+ * which commits carried the fix, and what happened at release — are left for
+ * Isaac to fill in rather than invented.
+ */
+export type DecisionLogRecord = {
+  id: string;
+  sessionId: string;
+  timestamp: string;
+  issueTitle: string;
+  participatingAgents: AgentRole[];
+  rootCause: string;
+  evidenceSummary: string;
+  finalDecision: string;
+  /** Isaac-supplied. Agent Room has no git access and does not guess. */
+  implementationCommits: string[];
+  verificationPerformed: string;
+  /** Isaac-supplied. */
+  releaseOutcome: string;
+  followUpItems: string[];
+  /** Denormalised for search without loading every session. */
+  branch: string;
+  stage: AgentRoomStage;
+};
+
+export type DecisionLogPatch = {
+  implementationCommits?: string[];
+  releaseOutcome?: string;
+  followUpItems?: string[];
+};
