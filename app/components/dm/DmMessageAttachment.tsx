@@ -6,6 +6,7 @@ import {
   type DmMessageAttachment,
 } from "@/lib/dmAttachments";
 import {
+  getDmImageReservedSize,
   getKnownDmImageAspectRatio,
   recordDmImageAspectRatio,
 } from "@/lib/dm/dmImageAttachmentDimensions";
@@ -52,6 +53,8 @@ export default function DmMessageAttachmentView({
 }) {
   if (isDmImageAttachment(attachment.file_type)) {
     const knownAspectRatio = getKnownDmImageAspectRatio(attachment.id);
+    // 18rem = 288px, matching DM_IMAGE_BUBBLE_MAX_WIDTH_CLASS.
+    const reserved = getDmImageReservedSize(attachment.id, 288);
 
     return (
       <button
@@ -69,7 +72,9 @@ export default function DmMessageAttachmentView({
           src={attachment.file_url}
           alt={attachment.file_name}
           draggable={false}
-          className={`pointer-events-none ${DM_IMAGE_BUBBLE_MAX_HEIGHT_CLASS} ${DM_IMAGE_BUBBLE_MAX_WIDTH_CLASS}`}
+          width={reserved.width}
+          height={reserved.height}
+          className={`pointer-events-none h-auto ${DM_IMAGE_BUBBLE_MAX_HEIGHT_CLASS} ${DM_IMAGE_BUBBLE_MAX_WIDTH_CLASS}`}
           style={knownAspectRatio ? { aspectRatio: knownAspectRatio } : undefined}
           loading="lazy"
           onLoad={(event) => {

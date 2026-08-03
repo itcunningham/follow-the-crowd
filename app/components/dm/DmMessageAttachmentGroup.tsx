@@ -13,6 +13,7 @@ import {
   resolveVisibleGridImages,
 } from "@/lib/dm/dmImageLayout";
 import {
+  getDmImageReservedSize,
   getKnownDmImageAspectRatio,
   recordDmImageAspectRatio,
 } from "@/lib/dm/dmImageAttachmentDimensions";
@@ -49,6 +50,10 @@ function ImageGridCell({
   onContextMenu?: (event: React.MouseEvent<HTMLElement>) => void;
 }) {
   const knownAspectRatio = getKnownDmImageAspectRatio(attachment.id);
+  // max-w-36 = 144px. Reserved only until this image decodes for the first
+  // time; see getDmImageReservedSize for why a zero-area lazy image never
+  // loads at all.
+  const reserved = getDmImageReservedSize(attachment.id, 144);
 
   return (
     <button
@@ -64,7 +69,9 @@ function ImageGridCell({
         src={attachment.file_url}
         alt={attachment.file_name}
         draggable={false}
-        className={`pointer-events-none ${DM_IMAGE_GRID_CELL_MAX_HEIGHT_CLASS} ${DM_IMAGE_GRID_CELL_MAX_WIDTH_CLASS}`}
+        width={reserved.width}
+        height={reserved.height}
+        className={`pointer-events-none h-auto ${DM_IMAGE_GRID_CELL_MAX_HEIGHT_CLASS} ${DM_IMAGE_GRID_CELL_MAX_WIDTH_CLASS}`}
         style={knownAspectRatio ? { aspectRatio: knownAspectRatio } : undefined}
         loading="lazy"
         onLoad={(event) => {

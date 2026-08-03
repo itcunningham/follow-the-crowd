@@ -114,6 +114,14 @@ import {
   isVisibleGroupChatMessage,
 } from "../lib/groupChatTimestampVisibility";
 import {
+  getDmImageReservedSize,
+  recordDmImageAspectRatio,
+} from "../lib/dm/dmImageAttachmentDimensions";
+import {
+  AVATAR_RENDER_WIDTHS,
+  resolveAvatarImageUrl,
+} from "../lib/user/avatarImageUrl";
+import {
   buildChatMessageGroupLayout,
   CHAT_LIST_ITEM_CLUSTER_END_BEFORE_TIMESTAMP_SPACING_CLASS,
   CHAT_LIST_ITEM_CLUSTER_START_AFTER_TIMESTAMP_SPACING_CLASS,
@@ -12857,6 +12865,85 @@ function testChatEmptyStateComponentized() {
   );
 }
 
+/**
+ * Chat media must reserve a box before it decodes, and avatars must be fetched
+ * at the size they are drawn at.
+ */
+function testChatMediaLoadsWithoutARefresh() {
+  /* ---- attachments: never a zero-area lazy image ---- */
+
+  for (const relativePath of [
+    "../app/components/dm/DmMessageAttachmentGroup.tsx",
+    "../app/components/dm/DmMessageAttachment.tsx",
+  ]) {
+    const source = readFileSync(new URL(relativePath, import.meta.url), "utf8");
+
+    // The reserved box is what stops the deadlock: an undecoded image has no
+    // intrinsic size, every ancestor is `w-fit`/`max-w-full`, so the row
+    // collapses (measured: 2px tall) and a zero-area lazy image is never
+    // fetched -- so it never decodes, so it never gets a size.
+    assert.match(source, /getDmImageReservedSize\(/, `${relativePath} must reserve a box`);
+    assert.match(source, /width=\{reserved\.width\}/);
+    assert.match(source, /height=\{reserved\.height\}/);
+
+    // `h-auto` lets the real intrinsic ratio take over once decoded, so the
+    // square placeholder never distorts a landscape photo. `w-auto` must NOT
+    // come back: it cancels the width attribute, which reinstates the 0px box
+    // and therefore the original bug (this was caught in live measurement).
+    assert.match(source, /pointer-events-none h-auto /);
+    assert.doesNotMatch(
+      source,
+      /\bw-auto\b/,
+      "w-auto cancels the reserved width and reintroduces the zero-area deadlock",
+    );
+  }
+
+  // Reserved size falls back to a square, and uses a learned ratio when there
+  // is one. Driving the real helper, not matching source text.
+  const unknown = getDmImageReservedSize("never-seen", 288);
+  assert.deepEqual(unknown, { width: 288, height: 288 });
+
+  recordDmImageAspectRatio("landscape", 640, 360);
+  assert.deepEqual(getDmImageReservedSize("landscape", 288), { width: 288, height: 162 });
+  // Never zero, whatever the ratio -- zero is the bug.
+  recordDmImageAspectRatio("panorama", 10000, 1);
+  assert.ok(getDmImageReservedSize("panorama", 288).height >= 1);
+
+  /* ---- avatars: served at the size they are painted ---- */
+
+  const publicUrl =
+    "https://x.supabase.co/storage/v1/object/public/profile-images/u/profile-image-1.jpg";
+  const rendered = resolveAvatarImageUrl(publicUrl, "sm");
+
+  assert.ok(rendered);
+  assert.match(rendered, /\/storage\/v1\/render\/image\/public\//);
+  assert.match(rendered, /width=64&height=64/);
+  // `cover` must match the `object-cover` the avatar is painted with.
+  assert.match(rendered, /resize=cover/);
+
+  // Anything that is not a public storage object is returned untouched -- an
+  // external OAuth avatar must never be rewritten into a broken URL.
+  assert.equal(resolveAvatarImageUrl("https://lh3.googleusercontent.com/a/x", "sm"),
+    "https://lh3.googleusercontent.com/a/x");
+  assert.equal(resolveAvatarImageUrl(null, "md"), null);
+  assert.equal(resolveAvatarImageUrl("   ", "md"), null);
+
+  // Every rendered size is at least the CSS box it fills (2x for retina).
+  assert.ok(AVATAR_RENDER_WIDTHS.sm >= 32 * 2);
+  assert.ok(AVATAR_RENDER_WIDTHS.xl >= 112 * 2);
+
+  const avatarSource = readFileSync(
+    new URL("../app/components/ProfileAvatar.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(avatarSource, /resolveAvatarImageUrl\(avatarUrl, size\)/);
+  assert.doesNotMatch(
+    avatarSource,
+    /src=\{avatarUrl\}/,
+    "the avatar must render the sized URL, not the original upload",
+  );
+}
+
 async function main() {
   testPastEventDatesAreBlocked();
   testFutureEventDatesAreAllowed();
@@ -13091,6 +13178,7 @@ async function main() {
   testCrewChatImageAttachmentsWiring();
   testCrewChatComposerKeepsFocusAfterSend();
   testCrewChatMessageGrouping();
+  testChatMediaLoadsWithoutARefresh();
   testChatBubbleCannotCollapseToOneCharacterColumn();
   testChatEmptyStateComponentized();
   await testEventsHistorySelectAllButtonInteraction();
