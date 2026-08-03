@@ -47,12 +47,19 @@ export function resolveChatMessageBubbleShellClass({
   hasAttachments = false,
   attachmentOnly = false,
   groupPosition = "standalone",
+  denseBody = false,
 }: {
   isOwnMessage: boolean;
   text: string;
   hasAttachments?: boolean;
   attachmentOnly?: boolean;
   groupPosition?: ChatMessageGroupPosition;
+  /**
+   * Structured, multi-row bodies (the crew chat event-update field list) that
+   * supply their own internal spacing, so the bubble's prose padding would
+   * read as slack. DM never sets this — its output is unchanged.
+   */
+  denseBody?: boolean;
 }): string {
   const interaction = "[touch-action:pan-y]";
 
@@ -65,11 +72,13 @@ export function resolveChatMessageBubbleShellClass({
   const veryShort = isVeryShortChatBubbleText(text);
   const padding = hasAttachments
     ? "p-1"
-    : veryShort
-      ? "min-w-[2.75rem] px-3 py-1"
-      : compact
-        ? "min-w-[2.75rem] px-3.5 py-1.5"
-        : "px-4 py-2.5";
+    : denseBody
+      ? "px-3 py-2"
+      : veryShort
+        ? "min-w-[2.75rem] px-3 py-1"
+        : compact
+          ? "min-w-[2.75rem] px-3.5 py-1.5"
+          : "px-4 py-2.5";
 
   return `overflow-hidden ${interaction} w-fit max-w-full select-none sm:select-text ${base} ${padding}`;
 }

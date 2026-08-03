@@ -3,6 +3,7 @@ import { formatDisplayEventDate } from "@/lib/bookingDateTime";
 import { sendEventCrewChatMessage } from "@/lib/eventCrewChat";
 import type { Event, EventInput } from "@/lib/events";
 import { shouldConfirmEventEditSave } from "@/lib/events/eventEditConfirmation";
+import { EVENT_GROUP_CHAT_UPDATE_PREFIX } from "@/lib/events/eventGroupChatUpdateMessage";
 import type { BookingRequest } from "@/lib/bookingRequests";
 
 export type BookingImpactingEventFieldChange = {
@@ -86,7 +87,7 @@ export function formatEventGroupChatUpdateMessage(
     (change) => `• ${change.label}: ${change.from} → ${change.to}`,
   );
 
-  return `Event details updated:\n${lines.join("\n")}`;
+  return `${EVENT_GROUP_CHAT_UPDATE_PREFIX}\n${lines.join("\n")}`;
 }
 
 export function shouldPostEventGroupChatUpdate(

@@ -6,6 +6,8 @@ import ChatMessageBubbleShell from "@/app/components/chat/ChatMessageBubbleShell
 import ChatProfileAvatarLink from "@/app/components/chat/ChatProfileAvatarLink";
 import IncomingChatMessageLayout from "@/app/components/chat/IncomingChatMessageLayout";
 import DmMessageAttachmentGroup from "@/app/components/dm/DmMessageAttachmentGroup";
+import EventUpdateMessageContent from "@/app/components/group-chat/EventUpdateMessageContent";
+import { parseEventGroupChatUpdateMessage } from "@/lib/events/eventGroupChatUpdateMessage";
 import { buildProfileHref } from "@/lib/profileNavigation";
 import { getChatNewMessageHighlightClass } from "@/lib/chatNewMessageHighlight";
 import type { DmMessageAttachment } from "@/lib/dmAttachments";
@@ -156,10 +158,23 @@ function GroupChatMessageBubble({
   const hasAttachments = attachments.length > 0;
   const attachmentOnly = hasAttachments && !hasText;
 
+  // Event updates render as a compact field list rather than a wall of prose.
+  // Parsed from the stored text at read time, so historical messages get the
+  // same treatment and nothing about how updates are written changes. An
+  // unparseable one returns null and falls through to the plain-text bubble.
+  const eventUpdateChanges = hasAttachments
+    ? null
+    : parseEventGroupChatUpdateMessage(trimmedText);
+  const isEventUpdate = eventUpdateChanges !== null;
+
   const highlightClass = getChatNewMessageHighlightClass(isHighlighted);
-  const rowMaxWidthClass = isOwnMessage
-    ? "max-w-[85%] sm:max-w-[72%]"
-    : "max-w-[88%] sm:max-w-[78%]";
+  const rowMaxWidthClass = isEventUpdate
+    ? // Narrower than a normal message so a routine update reads as an aside
+      // rather than the loudest thing on screen.
+      "max-w-[76%] sm:max-w-[62%]"
+    : isOwnMessage
+      ? "max-w-[85%] sm:max-w-[72%]"
+      : "max-w-[88%] sm:max-w-[78%]";
 
   const bubbleShellClass = resolveChatMessageBubbleShellClass({
     isOwnMessage,
@@ -167,6 +182,7 @@ function GroupChatMessageBubble({
     hasAttachments,
     attachmentOnly,
     groupPosition,
+    denseBody: isEventUpdate,
   });
   const bubbleTextClass = resolveChatMessageBubbleTextClass(trimmedText);
   const isClusterEnd = groupPosition === "last" || groupPosition === "standalone";
@@ -219,7 +235,11 @@ function GroupChatMessageBubble({
           />
         </div>
       ) : null}
-      {hasText ? <p className={bubbleTextClass}>{trimmedText}</p> : null}
+      {eventUpdateChanges ? (
+        <EventUpdateMessageContent changes={eventUpdateChanges} />
+      ) : hasText ? (
+        <p className={bubbleTextClass}>{trimmedText}</p>
+      ) : null}
     </ChatMessageBubbleShell>
   );
 

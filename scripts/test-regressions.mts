@@ -74,6 +74,8 @@ import {
   resolveBookingDateKey,
   sortDjGigsCalendarAgendaBookings,
 } from "../lib/bookingRequests";
+import { formatEventGroupChatUpdateMessage } from "../lib/events/eventGroupChatUpdate";
+import { parseEventGroupChatUpdateMessage } from "../lib/events/eventGroupChatUpdateMessage";
 import {
   getAppendedMessageIds,
   resolveScrollTopPreservingDistanceFromBottom,
@@ -11079,6 +11081,97 @@ function testCrewChatEventCardToggleScrollCompensation() {
   assert.match(chatPageSource, /observer\.disconnect\(\)/, "observer must be torn down");
 }
 
+function testEventUpdateMessagePresentation() {
+  // Round-trip: the stored format and the render-time parser must not drift.
+  // This is the real guarantee that presentation can be changed without
+  // touching generation -- if the writer's shape ever changes, this fails.
+  const stored = formatEventGroupChatUpdateMessage([
+    { label: "Event name", from: "Test 1", to: "Test 2" },
+    { label: "Venue", from: "Old Venue", to: "New Venue" },
+    // Values legitimately contain colons and en dashes.
+    { label: "Set time", from: "10:51 PM – 11:46 PM", to: "9:51 PM – 11:46 PM" },
+  ]);
+
+  assert.match(
+    stored,
+    /^Event details updated:/,
+    "the stored message text must not change -- notifications and history read it",
+  );
+
+  assert.deepEqual(parseEventGroupChatUpdateMessage(stored), [
+    // "Event name" displays as "Name": the heading already says "Event".
+    { label: "Name", from: "Test 1", to: "Test 2" },
+    { label: "Venue", from: "Old Venue", to: "New Venue" },
+    { label: "Set time", from: "10:51 PM – 11:46 PM", to: "9:51 PM – 11:46 PM" },
+  ]);
+
+  // Only changed fields are ever present, because the parser reports exactly
+  // the rows the generator wrote.
+  assert.deepEqual(
+    parseEventGroupChatUpdateMessage(
+      formatEventGroupChatUpdateMessage([{ label: "Venue", from: "A", to: "B" }]),
+    ),
+    [{ label: "Venue", from: "A", to: "B" }],
+  );
+
+  // Anything unrecognised falls back to the plain-text bubble rather than
+  // rendering an empty card.
+  for (const notAnUpdate of [
+    "Just a normal message",
+    "Event details updated:",
+    "Event details updated:\n• no arrow here",
+    "Booking update: someone joined the crew",
+    "",
+  ]) {
+    assert.equal(parseEventGroupChatUpdateMessage(notAnUpdate), null);
+  }
+
+  const noticeSource = readFileSync(
+    new URL("../app/components/group-chat/EventUpdateMessageContent.tsx", import.meta.url),
+    "utf8",
+  );
+  const bubbleSource = readFileSync(
+    new URL("../app/components/group-chat/GroupChatMessageBubble.tsx", import.meta.url),
+    "utf8",
+  );
+  const geometrySource = readFileSync(
+    new URL("../lib/dm/chatMessageBubbleGeometry.ts", import.meta.url),
+    "utf8",
+  );
+
+  // Heading is semibold, not oversized, and reads "Event updated".
+  assert.match(noticeSource, /EVENT_GROUP_CHAT_UPDATE_HEADING/);
+  assert.match(noticeSource, /text-\[13px\] font-semibold/);
+  assert.doesNotMatch(noticeSource, /font-bold|text-base|text-lg/);
+
+  // Field rows sit below normal chat body size (15px) but stay readable.
+  assert.match(noticeSource, /text-\[12px\]/);
+
+  // De-emphasis is opacity-based: the same markup renders on a primary-colour
+  // bubble (planner) and a surface bubble (crew), so a fixed muted token would
+  // lose contrast on the blue.
+  assert.match(noticeSource, /className="[^"]*opacity-\d0/);
+  // Scoped to real className attributes so the rationale in this file's own
+  // doc comment isn't mistaken for a usage.
+  assert.doesNotMatch(
+    noticeSource,
+    /className="[^"]*text-ftc-text-muted/,
+    "muted token would lose contrast on the primary-coloured bubble",
+  );
+
+  // Bubble is denser and narrower than a normal message.
+  assert.match(bubbleSource, /denseBody: isEventUpdate/);
+  assert.match(bubbleSource, /max-w-\[76%\] sm:max-w-\[62%\]/);
+  assert.match(geometrySource, /denseBody\s*\n?\s*\?\s*"px-3 py-2"/);
+
+  // DM's bubble geometry is untouched: it never opts into denseBody.
+  const dmBubbleSource = readFileSync(
+    new URL("../app/components/dm/DmTextMessageBubble.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.doesNotMatch(dmBubbleSource, /denseBody/);
+}
+
 function testIncomingChatMessagesHaveNoAvatarTimestamp() {
   const incomingLayoutSource = readFileSync(
     new URL("../app/components/chat/IncomingChatMessageLayout.tsx", import.meta.url),
@@ -11443,6 +11536,7 @@ async function main() {
   testCrewChatTimestampSeparators();
   testCrewChatEventCardToggleScrollCompensation();
   testIncomingChatMessagesHaveNoAvatarTimestamp();
+  testEventUpdateMessagePresentation();
   testCrewChatImageAttachmentsWiring();
   testChatEmptyStateComponentized();
   await testEventsHistorySelectAllButtonInteraction();
