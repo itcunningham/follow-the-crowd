@@ -85,11 +85,18 @@ export function resolveChatMessageBubbleShellClass({
  * stays inside FTC's language without introducing a colour — and it never
  * uses the primary fill, which is what made these look like outgoing
  * messages in the first place. No shadow, one hairline border.
+ *
+ * Border alpha is deliberately below the shared `--ftc-color-primary-border`
+ * token (0.28): at full token strength the outline competed with the blue
+ * heading and read as a status/warning frame rather than a quiet notice.
+ * `border-ftc-primary/20` keeps the same hue from the registered theme colour
+ * — no duplicated literal — while letting the heading stay the one strong
+ * blue in the card.
  */
 export function resolveChatSystemCardShellClass(): string {
   return [
     "overflow-hidden [touch-action:pan-y] w-fit max-w-full select-none sm:select-text",
-    "rounded-xl border border-[var(--ftc-color-primary-border)]",
+    "rounded-xl border border-ftc-primary/20",
     "bg-[var(--ftc-color-bg-surface-raised)] px-3 py-2.5",
   ].join(" ");
 }

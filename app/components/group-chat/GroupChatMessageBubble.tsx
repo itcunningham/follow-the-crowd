@@ -19,6 +19,7 @@ import {
 import {
   resolveIncomingGroupLiClass,
   resolveOutgoingGroupLiClass,
+  resolveSystemCardGroupLiClass,
   type ChatMessageGroupPosition,
 } from "@/lib/dm/chatMessageGroupLayout";
 import {
@@ -261,18 +262,17 @@ function GroupChatMessageBubble({
     return (
       <li
         data-chat-message-id={messageId}
-        className={resolveIncomingGroupLiClass({
-          position: "standalone",
-          isClusterEnd: true,
-          followedByTimeSeparator,
-          precededByTimeSeparator,
-        })}
+        className={resolveSystemCardGroupLiClass({ precededByTimeSeparator })}
       >
         <div className={`flex ${rowMaxWidthClass} min-w-0 flex-col items-start`}>
           {bubbleBlock}
+          {/* Same formatter, size and muted token as every other row — only
+              the gap above changes, so the timestamp sits in the timeline
+              gutter beside the card rather than reading as the card's own
+              footer. No new timestamp style is introduced. */}
           <time
             dateTime={createdAt}
-            className={`mt-0.5 block px-1 text-[10px] text-ftc-text-muted ${
+            className={`mt-1 block px-1 text-[10px] text-ftc-text-muted ${
               showTimestamp ? "" : "sr-only"
             }`}
           >

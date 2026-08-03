@@ -116,7 +116,9 @@ import {
   CHAT_LIST_ITEM_CLUSTER_START_AFTER_TIMESTAMP_SPACING_CLASS,
   CHAT_LIST_ITEM_CLUSTER_END_SPACING_CLASS,
   CHAT_LIST_ITEM_WITHIN_GROUP_SPACING_CLASS,
+  GROUP_CHAT_LIST_ITEM_CLUSTER_END_SPACING_CLASS,
   resolveMessageGroupLiClass,
+  resolveSystemCardGroupLiClass,
 } from "../lib/dm/chatMessageGroupLayout";
 import { buildDmReactionNotificationBody } from "../lib/dm/dmReactionNotifications";
 import {
@@ -11270,6 +11272,71 @@ function testEventUpdateMessagePresentation() {
 
   // Narrower than a normal message so it supports rather than dominates.
   assert.match(bubbleSource, /max-w-\[72%\] sm:max-w-\[56%\]/);
+
+  /* ---- polish pass: separation, border weight, timestamp ---- */
+
+  // Tailwind spacing unit is 0.25rem = 4px.
+  const spacingPx = (cls: string, axis: "mb" | "mt"): number => {
+    const found = cls.match(new RegExp(`\\b${axis}-(\\d+(?:\\.\\d+)?)\\b`));
+    return found ? Number(found[1]) * 4 : 0;
+  };
+
+  const systemLi = resolveSystemCardGroupLiClass();
+  const normalCrewGap = spacingPx(GROUP_CHAT_LIST_ITEM_CLUSTER_END_SPACING_CLASS, "mb");
+
+  // LEFT-ALIGNED is a hard requirement, not an incidental: never centred.
+  assert.match(systemLi, /\bjustify-start\b/);
+  assert.doesNotMatch(systemLi, /\bjustify-center\b|\bmx-auto\b|\bitems-center\b/);
+
+  // Reads as a timeline event: 4-8px more air than a normal crew message on
+  // BOTH sides. flex-col-reverse, so `mb` is the gap above and `mt` below.
+  const extraAbove = spacingPx(systemLi, "mb") - normalCrewGap;
+  const extraBelow = spacingPx(systemLi, "mt");
+  assert.ok(
+    extraAbove >= 4 && extraAbove <= 8,
+    `system card needs 4-8px more space above a normal message, got ${extraAbove}px`,
+  );
+  assert.ok(
+    extraBelow >= 4 && extraBelow <= 8,
+    `system card needs 4-8px more space below a normal message, got ${extraBelow}px`,
+  );
+
+  // Exactly one margin utility per axis. Two (e.g. from appending to
+  // resolveIncomingGroupLiClass, which already emits mb-2.5) would resolve by
+  // stylesheet order rather than class order -- a silent coin flip.
+  assert.equal((systemLi.match(/\bmb-/g) ?? []).length, 1, "one margin-bottom utility only");
+  assert.equal((systemLi.match(/\bmt-/g) ?? []).length, 1, "one margin-top utility only");
+
+  // A day/time separator directly above already supplies the break, so the
+  // top gap tightens there while the extra space below is kept.
+  const afterSeparator = resolveSystemCardGroupLiClass({ precededByTimeSeparator: true });
+  assert.ok(
+    spacingPx(afterSeparator, "mb") < spacingPx(systemLi, "mb"),
+    "top gap must tighten when a time separator sits directly above",
+  );
+  assert.equal(spacingPx(afterSeparator, "mt"), extraBelow);
+
+  // The row must use the dedicated resolver, not the incoming one.
+  assert.match(
+    bubbleSource,
+    /if \(systemAuthored\) \{[\s\S]{0,400}resolveSystemCardGroupLiClass\(\{ precededByTimeSeparator \}\)/,
+  );
+
+  // Softer than the full-strength shared token (0.28 alpha), which read as a
+  // status/warning frame and competed with the blue heading.
+  assert.match(geometrySource, /resolveChatSystemCardShellClass[\s\S]{0,400}border-ftc-primary\/20/);
+  assert.doesNotMatch(
+    geometrySource.slice(geometrySource.indexOf("export function resolveChatSystemCardShellClass")),
+    /border-\[var\(--ftc-color-primary-border\)\]/,
+    "the softened border must not fall back to the full-strength token",
+  );
+
+  // Timestamp keeps FTC's shared muted 10px treatment -- only the gap above it
+  // changed, so no competing timestamp style is introduced.
+  assert.match(
+    bubbleSource,
+    /if \(systemAuthored\) \{[\s\S]{0,1400}mt-1 block px-1 text-\[10px\] text-ftc-text-muted/,
+  );
 
   // Reactions, highlight and the seen label all still route through the
   // shared shell -- restyling must not quietly drop message capabilities.

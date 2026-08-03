@@ -100,6 +100,27 @@ export const CHAT_LIST_ITEM_WITHIN_GROUP_SPACING_CLASS = "mb-1.5";
 export const GROUP_CHAT_LIST_ITEM_WITHIN_GROUP_SPACING_CLASS = "mb-1";
 export const GROUP_CHAT_LIST_ITEM_CLUSTER_END_SPACING_CLASS = "mb-2.5";
 
+/**
+ * App-generated system card (crew chat event updates) — reads as a timeline
+ * event rather than a turn in the conversation, so it gets a little more air
+ * on BOTH sides than a normal message does.
+ *
+ * flex-col-reverse, so the axes are inverted relative to intuition:
+ * `mb` opens the gap visually ABOVE, `mt` the gap visually BELOW. A normal
+ * crew-chat cluster end is `mb-2.5` (10px) above and nothing below, so this is
+ * +6px above (16px) and +6px below (6px) — enough to read as separated without
+ * punching a hole in the conversation.
+ */
+export const GROUP_CHAT_SYSTEM_CARD_SPACING_CLASS = "mb-4 mt-1.5";
+
+/**
+ * Same card, but with a centred day/time separator directly above it. The
+ * separator already supplies the break, so the top gap stays tight (matching
+ * CHAT_LIST_ITEM_CLUSTER_START_AFTER_TIMESTAMP_SPACING_CLASS) while the extra
+ * space below is kept.
+ */
+export const GROUP_CHAT_SYSTEM_CARD_AFTER_TIMESTAMP_SPACING_CLASS = "mb-0.5 mt-1.5";
+
 /** @deprecated Reaction space is reserved in-flow on the reacted message only — do not propagate list margins. */
 export const CHAT_LIST_ITEM_AFTER_REACTION_SPACING_CLASS = "mb-1.5";
 
@@ -508,6 +529,32 @@ export function buildChatMessageGroupLayout(
   }
 
   return layoutByMessageId;
+}
+
+/**
+ * List-item class for an app-generated system card row.
+ *
+ * Deliberately NOT `resolveIncomingGroupLiClass(...) + extra margins`: that
+ * resolver already emits `mb-2.5`, and two margin utilities on one element
+ * resolve by stylesheet order, not by class-attribute order, so appending
+ * `mb-4` would be a coin flip. Composing the row here instead keeps exactly
+ * one margin utility per axis.
+ *
+ * `justify-start` is load-bearing: these cards are left-aligned on purpose,
+ * for the planner who triggered the update as well as for the crew.
+ */
+export function resolveSystemCardGroupLiClass({
+  precededByTimeSeparator = false,
+}: {
+  /** A centred day/time separator sits directly above this card. */
+  precededByTimeSeparator?: boolean;
+} = {}): string {
+  return [
+    "group/message flex justify-start",
+    precededByTimeSeparator
+      ? GROUP_CHAT_SYSTEM_CARD_AFTER_TIMESTAMP_SPACING_CLASS
+      : GROUP_CHAT_SYSTEM_CARD_SPACING_CLASS,
+  ].join(" ");
 }
 
 /** Crew chat's only caller, so it always requests the "compact" rhythm. */
