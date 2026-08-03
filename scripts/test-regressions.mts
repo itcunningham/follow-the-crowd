@@ -165,7 +165,9 @@ import {
 import {
   isCompactChatBubbleText,
   resolveChatMessageBubbleShellClass,
+  resolveChatMessageBubbleTextClass,
 } from "../lib/dm/chatMessageBubbleGeometry";
+import { buildCrewChatMessageGroups } from "../lib/groupChatMessageLayout";
 import {
   DM_BOOKING_CONFIRMED_MESSAGE,
   DM_BOOKING_ORIGINAL_OFFER_KEPT_MESSAGE,
@@ -11809,7 +11811,9 @@ function testIncomingChatMessagesHaveNoAvatarTimestamp() {
   // Call shape now maps visibility (text + attachments) in — see
   // testCrewChatTimestampSeparators for why.
   assert.match(chatPageSource, /buildGroupChatTimestampLayout\(/);
-  assert.match(chatPageSource, /showSenderName=\{senderNameVisibility\.get\(message\.id\) \?\? false\}/);
+  // Name/avatar/spacing all come from the one shared grouping calculation now
+  // — see testCrewChatMessageGrouping.
+  assert.match(chatPageSource, /showSenderName=\{messageGroup\?\.showSenderName \?\? false\}/);
 }
 
 function testCrewChatImageAttachmentsWiring() {
@@ -11982,6 +11986,259 @@ function testCrewChatComposerKeepsFocusAfterSend() {
   assert.doesNotMatch(dmComposerSource, /<ComposerMessageField[\s\S]{0,300}disabled=/);
   assert.match(dmPageSourceForFocus, /FIXED_CHAT_PAGE_SHELL_CLASS/);
   assert.match(dmPageSourceForFocus, /useFixedChatPageDocumentReset\(/);
+}
+
+/**
+ * One grouping calculation drives sender name, avatar and spacing in crew
+ * chat. This replaced two independent passes that provably disagreed:
+ *  - the layout pass received a list with system rows filtered out, so two
+ *    messages either side of an event update became adjacent and grouped
+ *    together (losing the avatar), while the name pass broke on them;
+ *  - only the layout pass knew about time gaps, so after a centred timestamp
+ *    separator the avatar broke but the sender name did not reappear.
+ */
+function testCrewChatMessageGrouping() {
+  const baseTime = new Date(2026, 7, 3, 12, 0, 0).getTime();
+  const at = (offsetMs: number) => new Date(baseTime + offsetMs).toISOString();
+  const ME = "me";
+  const OTHER = "dj-1";
+  const OTHER_2 = "dj-2";
+
+  // Isaac x3, DJ x2, Isaac x1 — the exact shape from the brief.
+  const runs = buildCrewChatMessageGroups(
+    [
+      { id: "a1", user_id: OTHER, created_at: at(0), text: "one" },
+      { id: "a2", user_id: OTHER, created_at: at(1000), text: "two" },
+      { id: "a3", user_id: OTHER, created_at: at(2000), text: "three" },
+      { id: "b1", user_id: OTHER_2, created_at: at(3000), text: "hey" },
+      { id: "b2", user_id: OTHER_2, created_at: at(4000), text: "again" },
+      { id: "c1", user_id: OTHER, created_at: at(5000), text: "back" },
+    ],
+    ME,
+  );
+
+  // Sender name ONLY on the first message of each run.
+  assert.deepEqual(
+    ["a1", "a2", "a3", "b1", "b2", "c1"].map((id) => runs.get(id)?.showSenderName),
+    [true, false, false, true, false, true],
+  );
+  // Avatar ONLY on the last message of each run.
+  assert.deepEqual(
+    ["a1", "a2", "a3", "b1", "b2", "c1"].map((id) => runs.get(id)?.showAvatar),
+    [false, false, true, false, true, true],
+  );
+  // Spacing positions agree with the same boundaries.
+  assert.deepEqual(
+    ["a1", "a2", "a3", "b1", "b2", "c1"].map((id) => runs.get(id)?.position),
+    ["first", "middle", "last", "first", "last", "standalone"],
+  );
+  // Tight spacing only inside a run.
+  assert.deepEqual(
+    ["a1", "a2", "a3"].map((id) => runs.get(id)?.tightWithPrevious),
+    [false, true, true],
+  );
+
+  // Outgoing follows the same rhythm but never shows own name or avatar.
+  const own = buildCrewChatMessageGroups(
+    [
+      { id: "m1", user_id: ME, created_at: at(0), text: "mine one" },
+      { id: "m2", user_id: ME, created_at: at(1000), text: "mine two" },
+    ],
+    ME,
+  );
+  assert.deepEqual(["m1", "m2"].map((id) => own.get(id)?.showSenderName), [false, false]);
+  assert.deepEqual(["m1", "m2"].map((id) => own.get(id)?.showAvatar), [false, false]);
+  // ...but the grouping rhythm itself is unchanged.
+  assert.deepEqual(["m1", "m2"].map((id) => own.get(id)?.position), ["first", "last"]);
+
+  /* ---- every break reason, each checked on its own ---- */
+
+  // A meaningful time gap (the same threshold the centred separator uses).
+  const gapped = buildCrewChatMessageGroups(
+    [
+      { id: "g1", user_id: OTHER, created_at: at(0), text: "before" },
+      {
+        id: "g2",
+        user_id: OTHER,
+        created_at: at(DM_CHAT_MEANINGFUL_TIME_GAP_MS + 1000),
+        text: "after",
+      },
+    ],
+    ME,
+  );
+  assert.equal(gapped.get("g2")?.showSenderName, true, "name must reappear after a time break");
+  assert.equal(gapped.get("g1")?.showAvatar, true, "avatar must close the run at a time break");
+
+  // A new calendar day, even when the clock gap is small (23:59 -> 00:01).
+  const acrossMidnight = buildCrewChatMessageGroups(
+    [
+      { id: "d1", user_id: OTHER, created_at: new Date(2026, 7, 3, 23, 59, 0).toISOString(), text: "late" },
+      { id: "d2", user_id: OTHER, created_at: new Date(2026, 7, 4, 0, 1, 0).toISOString(), text: "early" },
+    ],
+    ME,
+  );
+  assert.equal(acrossMidnight.get("d2")?.showSenderName, true, "a day separator must break the run");
+  assert.equal(acrossMidnight.get("d1")?.showAvatar, true);
+
+  // A system / rich row between two messages from the SAME sender. This is the
+  // case the old split calculation got wrong.
+  const interrupted = buildCrewChatMessageGroups(
+    [
+      { id: "s1", user_id: OTHER, created_at: at(0), text: "before the update" },
+      {
+        id: "sys",
+        user_id: OTHER,
+        created_at: at(1000),
+        text: "Event details updated:\n• Venue: A → B",
+      },
+      { id: "s2", user_id: OTHER, created_at: at(2000), text: "after the update" },
+    ],
+    ME,
+  );
+  assert.equal(interrupted.get("s1")?.showAvatar, true, "run must close before a system card");
+  assert.equal(interrupted.get("s2")?.showSenderName, true, "run must restart after a system card");
+  // The system card itself is app-authored: never a human name or avatar.
+  assert.equal(interrupted.get("sys")?.showSenderName, false);
+  assert.equal(interrupted.get("sys")?.showAvatar, false);
+  assert.equal(interrupted.get("sys")?.position, "standalone");
+
+  // A booking-update system notice breaks a run the same way.
+  const bookingNotice = buildCrewChatMessageGroups(
+    [
+      { id: "n1", user_id: OTHER, created_at: at(0), text: "one" },
+      { id: "n2", user_id: OTHER, created_at: at(1000), text: "Booking update: run sheet changed" },
+      { id: "n3", user_id: OTHER, created_at: at(2000), text: "two" },
+    ],
+    ME,
+  );
+  assert.equal(bookingNotice.get("n2")?.showSenderName, false);
+  assert.equal(bookingNotice.get("n3")?.showSenderName, true);
+
+  // Name and avatar can never disagree with spacing: whenever a name shows the
+  // run started, and whenever an avatar shows the run ended.
+  for (const map of [runs, gapped, acrossMidnight, interrupted, bookingNotice]) {
+    for (const entry of map.values()) {
+      if (entry.showSenderName) {
+        assert.equal(entry.startsSenderGroup, true, "name may only render at a run start");
+      }
+      if (entry.showAvatar) {
+        assert.equal(entry.endsSenderGroup, true, "avatar may only render at a run end");
+      }
+      assert.equal(entry.tightWithPrevious, !entry.startsSenderGroup);
+    }
+  }
+
+  /* ---- page + component wiring: one source, no second calculation ---- */
+
+  const chatPageSource = readFileSync(
+    new URL("../app/events/[eventId]/chat/page.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(chatPageSource, /buildCrewChatMessageGroups\(messages, currentUserId\)/);
+  assert.doesNotMatch(
+    chatPageSource,
+    /buildGroupChatSenderNameVisibility|buildChatMessageGroupLayout/,
+    "crew chat must derive name, avatar and spacing from ONE calculation",
+  );
+  // System rows must reach the helper — filtering them out is what broke runs.
+  assert.doesNotMatch(
+    chatPageSource,
+    /filter\(\(message\) => !isGroupChatSystemUpdateMessage\(message\.text\)\)/,
+  );
+  for (const prop of [
+    /showSenderName=\{messageGroup\?\.showSenderName \?\? false\}/,
+    /showAvatar=\{messageGroup\?\.showAvatar \?\? true\}/,
+    /tightWithPrevious=\{messageGroup\?\.tightWithPrevious \?\? false\}/,
+    /groupPosition=\{messageGroup\?\.position \?\? "standalone"\}/,
+  ]) {
+    assert.match(chatPageSource, prop);
+  }
+}
+
+/**
+ * A long/multiline bubble must never collapse into a one-character-wide
+ * column. Its text sets `overflow-wrap: break-word`, so its min-content width
+ * is a single character, and the bubble is `w-fit max-w-full` whose percentage
+ * max-width resolves against an ancestor carrying `min-w-0` — which explicitly
+ * permits shrinking below min-content. Measured in-browser: 251.6px -> 32px
+ * under that pressure. Every branch now carries a floor.
+ */
+function testChatBubbleCannotCollapseToOneCharacterColumn() {
+  const geometrySource = readFileSync(
+    new URL("../lib/dm/chatMessageBubbleGeometry.ts", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(geometrySource, /CHAT_BUBBLE_MIN_WIDTH_LONG_CLASS = "min-w-\[8rem\]"/);
+  assert.match(geometrySource, /CHAT_BUBBLE_MIN_WIDTH_SHORT_CLASS = "min-w-\[2\.75rem\]"/);
+
+  // The long branch is the one that regressed — it must not go back to bare padding.
+  const longBranch = resolveChatMessageBubbleShellClass({
+    isOwnMessage: true,
+    text: "Can everyone confirm their arrival time for the load in please, thanks",
+  });
+  assert.match(longBranch, /min-w-\[8rem\]/, "long/multiline bubbles need a width floor");
+  assert.match(longBranch, /px-4 py-2\.5/, "padding must be unchanged");
+  assert.match(longBranch, /max-w-full/, "the existing maximum width is preserved");
+
+  // A multiline message takes the same long branch.
+  assert.match(
+    resolveChatMessageBubbleShellClass({ isOwnMessage: false, text: "line one\nline two" }),
+    /min-w-\[8rem\]/,
+  );
+
+  // Long unbroken strings wrap rather than overflow.
+  assert.match(
+    resolveChatMessageBubbleTextClass("x".repeat(80)),
+    /break-words/,
+    "long unbroken text must wrap, not overflow",
+  );
+
+  // Short messages stay compact — the fix must not widen ordinary chat.
+  const shortBranch = resolveChatMessageBubbleShellClass({ isOwnMessage: true, text: "ok" });
+  assert.match(shortBranch, /min-w-\[2\.75rem\]/);
+  assert.doesNotMatch(shortBranch, /min-w-\[8rem\]/, "short pills must not inherit the long floor");
+  const compactBranch = resolveChatMessageBubbleShellClass({
+    isOwnMessage: false,
+    text: "see you there",
+  });
+  assert.match(compactBranch, /min-w-\[2\.75rem\]/);
+  assert.doesNotMatch(compactBranch, /min-w-\[8rem\]/);
+
+  // Attachment-only bubbles are sized by the image itself — no text floor.
+  assert.doesNotMatch(
+    resolveChatMessageBubbleShellClass({
+      isOwnMessage: true,
+      text: "",
+      hasAttachments: true,
+      attachmentOnly: true,
+    }),
+    /min-w-/,
+  );
+
+  /* ---- reactions stay attached to their own bubble ---- */
+
+  const shellSource = readFileSync(
+    new URL("../app/components/chat/ChatMessageBubbleShell.tsx", import.meta.url),
+    "utf8",
+  );
+  // The reaction slot lives inside the per-message bubble frame and is
+  // absolutely positioned, so grouping cannot lift it onto the whole run and
+  // it cannot push neighbouring grouped messages around.
+  assert.match(shellSource, /CHAT_MESSAGE_BUBBLE_FRAME_CLASS/);
+  assert.match(shellSource, /resolveMessageReactionSlotClass\(isOwnMessage\)/);
+  const frameBlock = shellSource.slice(
+    shellSource.indexOf("CHAT_MESSAGE_BUBBLE_FRAME_CLASS"),
+    shellSource.indexOf("<DmReactionPicker"),
+  );
+  assert.match(frameBlock, /bubbleShellRef/, "the bubble and its reaction slot share one frame");
+  assert.match(frameBlock, /resolveMessageReactionSlotClass/);
+
+  const groupLayoutSource = readFileSync(
+    new URL("../lib/dm/chatMessageGroupLayout.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(groupLayoutSource, /CHAT_MESSAGE_REACTION_SLOT_BASE_CLASS[\s\S]{0,120}absolute/);
 }
 
 function testChatEmptyStateComponentized() {
@@ -12241,6 +12498,8 @@ async function main() {
   testEventUpdateMessagePresentation();
   testCrewChatImageAttachmentsWiring();
   testCrewChatComposerKeepsFocusAfterSend();
+  testCrewChatMessageGrouping();
+  testChatBubbleCannotCollapseToOneCharacterColumn();
   testChatEmptyStateComponentized();
   await testEventsHistorySelectAllButtonInteraction();
   await testEventsHistoryRemoveConfirmInteraction();

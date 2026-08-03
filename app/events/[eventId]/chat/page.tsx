@@ -56,7 +56,6 @@ import {
   type DmMessageReaction,
 } from "@/lib/dmReactions";
 import {
-  buildChatMessageGroupLayout,
   CHAT_MESSAGE_LIST_CLASS,
   CHAT_MESSAGE_SCROLLER_CLASS,
 } from "@/lib/dm/chatMessageGroupLayout";
@@ -69,7 +68,7 @@ import {
 } from "@/lib/dm/restoreComposerInputFocus";
 import type { CrewChatUnlockState } from "@/lib/events/crewChatUnlock";
 import {
-  buildGroupChatSenderNameVisibility,
+  buildCrewChatMessageGroups,
   resolveCrewChatMemberCount,
 } from "@/lib/groupChatMessageLayout";
 import {
@@ -288,21 +287,20 @@ export default function EventCrewChatPage() {
     () => buildCrewMemberList(crewParticipantIds, crewParticipantProfiles, ownerId),
     [crewParticipantIds, crewParticipantProfiles, ownerId],
   );
-  const senderNameVisibility = useMemo(
-    () => buildGroupChatSenderNameVisibility(messages, currentUserId),
+  /**
+   * One grouping calculation for name, avatar and spacing — see
+   * buildCrewChatMessageGroups. This replaced two independent passes that
+   * disagreed: system rows were filtered out of the layout pass (so messages
+   * either side of an event update grouped together and lost their avatar)
+   * while the name pass broke on them, and only the layout pass knew about
+   * time gaps (so after a centred timestamp the avatar broke but the name
+   * did not reappear). System rows are deliberately passed through now — the
+   * shared helper needs to see them in order to break runs on them.
+   */
+  const crewChatMessageGroups = useMemo(
+    () => buildCrewChatMessageGroups(messages, currentUserId),
     [messages, currentUserId],
   );
-  const chatMessageGroupLayout = useMemo(() => {
-    const chatMessages = messages
-      .filter((message) => !isGroupChatSystemUpdateMessage(message.text))
-      .map((message) => ({
-        id: message.id,
-        user_id: message.user_id,
-        created_at: message.created_at,
-      }));
-
-    return buildChatMessageGroupLayout(chatMessages);
-  }, [messages]);
   const reactionsByMessageId = useMemo(
     () => groupDmReactionsByMessageId(reactions),
     [reactions],
@@ -1366,7 +1364,7 @@ export default function EventCrewChatPage() {
 
                   const profile = senderProfiles.get(message.user_id);
                   const senderLabel = getSenderLabel(profile, message.user_id);
-                  const messageGroupLayout = chatMessageGroupLayout.get(message.id);
+                  const messageGroup = crewChatMessageGroups.get(message.id);
 
                   return wrapWithTrailingTimeSeparator(
                     message.id,
@@ -1390,10 +1388,10 @@ export default function EventCrewChatPage() {
                       onCloseReactionPicker={handleCloseReactionPicker}
                       formatTime={formatMessageTime}
                       isHighlighted={highlighted}
-                      showSenderName={senderNameVisibility.get(message.id) ?? false}
-                      showAvatar={messageGroupLayout?.showAvatar ?? true}
-                      tightWithPrevious={messageGroupLayout?.tightWithPrevious ?? false}
-                      groupPosition={messageGroupLayout?.position ?? "standalone"}
+                      showSenderName={messageGroup?.showSenderName ?? false}
+                      showAvatar={messageGroup?.showAvatar ?? true}
+                      tightWithPrevious={messageGroup?.tightWithPrevious ?? false}
+                      groupPosition={messageGroup?.position ?? "standalone"}
                       seenLabel={message.id === lastMessage?.id ? latestMessageSeenLabel : null}
                       attachments={attachmentsByMessageId.get(message.id) ?? []}
                       followedByTimeSeparator={followedByTimeSeparator}

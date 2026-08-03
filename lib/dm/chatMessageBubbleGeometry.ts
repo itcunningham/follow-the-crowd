@@ -3,6 +3,18 @@ import type { ChatMessageGroupPosition } from "./chatMessageGroupLayout";
 /** Single-line messages at or below this length render as compact pills. */
 export const CHAT_BUBBLE_COMPACT_MAX_LENGTH = 42;
 
+/** Floor for short/compact pills — keeps a one- or two-character bubble tappable. */
+export const CHAT_BUBBLE_MIN_WIDTH_SHORT_CLASS = "min-w-[2.75rem]";
+
+/**
+ * Floor for long/multiline bubbles. Their text sets `overflow-wrap: break-word`,
+ * so min-content is one character wide and the bubble can otherwise collapse
+ * into a vertical column of single letters. 8rem guarantees several words per
+ * line while staying well under the natural width at every supported viewport,
+ * so normal messages are unaffected.
+ */
+export const CHAT_BUBBLE_MIN_WIDTH_LONG_CLASS = "min-w-[8rem]";
+
 /** Very short single-character or two-character bubbles. */
 export const CHAT_BUBBLE_VERY_SHORT_MAX_LENGTH = 2;
 
@@ -63,13 +75,24 @@ export function resolveChatMessageBubbleShellClass({
   const base = resolveGroupedBubbleShellBaseClass(isOwnMessage, groupPosition);
   const compact = isCompactChatBubbleText(text);
   const veryShort = isVeryShortChatBubbleText(text);
+  // Every branch carries a min-width floor. The long/multiline branch used to
+  // be the only one without one, and it is the only branch whose text sets
+  // `overflow-wrap: break-word` — meaning its min-content width is a SINGLE
+  // CHARACTER. The bubble is `w-fit max-w-full`, and that `max-width: 100%`
+  // resolves against an ancestor column carrying `min-w-0`, which explicitly
+  // permits shrinking below min-content. Whenever that column resolved narrow,
+  // the bubble followed it down to ~32px and the message rendered one
+  // character per line. Measured: 251.6px -> 32px under that pressure, and the
+  // floor holds it at 128px. `LONG` sits far below the natural width at every
+  // supported viewport (85% of 296px = 251.6px at 320px wide), so this changes
+  // nothing in normal rendering — it is purely a lower bound.
   const padding = hasAttachments
     ? "p-1"
     : veryShort
-      ? "min-w-[2.75rem] px-3 py-1"
+      ? `${CHAT_BUBBLE_MIN_WIDTH_SHORT_CLASS} px-3 py-1`
       : compact
-        ? "min-w-[2.75rem] px-3.5 py-1.5"
-        : "px-4 py-2.5";
+        ? `${CHAT_BUBBLE_MIN_WIDTH_SHORT_CLASS} px-3.5 py-1.5`
+        : `${CHAT_BUBBLE_MIN_WIDTH_LONG_CLASS} px-4 py-2.5`;
 
   return `overflow-hidden ${interaction} w-fit max-w-full select-none sm:select-text ${base} ${padding}`;
 }
