@@ -83,52 +83,45 @@ body {
   font-family: var(--font-sans), system-ui, sans-serif;
   overflow-x: clip;
 
-  /* Mirrors `html`'s overscroll-behavior below. Safari's longhand support for
-   * `overscroll-behavior-x`/`-y` has lagged the combined shorthand across iOS
-   * versions, and `<body>` was left at its default (`auto`) even though
-   * `<html>` is `document.scrollingElement` here -- this restores the same
-   * html/body symmetry `overflow-x: clip` above already has, so the bounce
-   * suppression doesn't depend on which element (or which longhand) a given
-   * Safari version actually honours. */
+  /* Mirrors `html`'s overscroll-behavior below, so the bounce suppression
+   * doesn't depend on which element a given engine treats as the scrolling
+   * element. Read the `html` rule for what this does and does NOT do. */
   overscroll-behavior: none;
 }
 
 html {
   overflow-x: clip;
 
-  /* Stop the iOS rubber-band bounce at the document level, on both axes.
+  /* Stop the iOS rubber-band overscroll bounce at the document level.
    *
-   * `overflow-x: clip` above only stops the page from becoming scrollable
-   * when something actually overflows -- and nothing on any FTC page does
-   * (verified: `document.documentElement.scrollWidth` matches
-   * `window.innerWidth` exactly on every route). But iOS Safari's elastic
-   * bounce at the edges of the *visual* viewport -- and its edge-swipe
-   * back/forward navigation gesture, which is the same underlying mechanism
-   * -- is separate from CSS overflow: it runs whenever `overscroll-behavior`
-   * allows it, regardless of whether the document has anything to scroll
-   * into. Left unset (or only partially set), a horizontal swipe still
-   * bounces the whole page or triggers the OS-level swipe-to-navigate
-   * preview, exposing whatever sits behind it (browser chrome, the
-   * next/previous route in the tab's back-forward cache) -- the "adjacent
-   * screens" effect users see, on a page that is never actually wider than
-   * the viewport.
+   * WHY: the bottom nav is `position: fixed`, so it is anchored to the
+   * *layout* viewport. During a bounce iOS moves the *visual* viewport past
+   * the layout viewport, so the bar stops tracking the physical screen edge
+   * and reads as clipped -- worst on Home-button devices, where
+   * `safe-area-inset-bottom` is 0 and the bar already sits flush against the
+   * edge with nothing to spare. That is the entire justification for this
+   * declaration; see testIosOverscrollDoesNotClipFixedChrome.
    *
-   * The shorthand, not the per-axis longhands: `overscroll-behavior-x`/`-y`
-   * have had less consistent Safari support across iOS versions than the
-   * combined `overscroll-behavior` shorthand, which sets both axes at once
-   * and is the form Safari has supported the longest.
-   *
-   * The Y axis needed this for a second reason too: the bottom nav is
-   * `position: fixed`, which anchors it to the *layout* viewport. During a
-   * bounce iOS moves the *visual* viewport past the layout viewport, so the
-   * bar stops tracking the physical screen edge and reads as clipped --
-   * worst on Home-button devices, where `safe-area-inset-bottom` is 0 and the
-   * bar already sits flush against the edge with nothing to spare.
+   * WHAT THIS DOES NOT DO -- documented because it was twice mistaken for a
+   * fix for something else: `overscroll-behavior` does **not** disable
+   * Safari's edge-swipe back/forward *navigation* gesture. That gesture is a
+   * separate mechanism, and no CSS property controls it. The CSS Working
+   * Group has "should overscroll-behavior affect swipe navigation?" open as
+   * an unresolved question (w3c/csswg-drafts#7878), which records that "as of
+   * now, none of browsers respect overscroll-behavior for swipe navigation".
+   * So if the app appears to pan sideways revealing the previous screen on
+   * iOS, that is Safari compositing the previous history entry's snapshot
+   * during its native back gesture -- proven not to be FTC's DOM (see the
+   * 2026-08-03 handoff entry: no route tree is ever mounted twice and
+   * `scrollWidth` never exceeds `innerWidth` at any sampled frame). Do not
+   * add more overscroll/overflow rules trying to suppress it; they cannot.
    *
    * This only suppresses overscroll *past the ends of the document*. Normal
    * page scrolling is untouched, and inner scrollers keep their own native
    * scrolling (several already set `overscroll-behavior: contain` to stop
-   * scroll chaining), so this adds no second scroll container. */
+   * scroll chaining), so this adds no second scroll container. The X axis
+   * comes along with the shorthand and is harmless -- it stops horizontal
+   * scroll *chaining* out of inner scrollers like the Calendar day strip. */
   overscroll-behavior: none;
 }
 

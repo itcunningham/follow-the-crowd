@@ -10672,7 +10672,7 @@ function testIosOverscrollDoesNotClipFixedChrome() {
   // is anchored to the layout viewport; an iOS bounce moves the visual viewport
   // past it and the bar stops tracking the screen edge, reading as clipped.
   // The shorthand (not the `-y` longhand) is what's actually declared -- see
-  // testHorizontalOverscrollDoesNotPanRevealAdjacentContent for why.
+  // testRootOverscrollContainmentIsDeclaredOnHtmlAndBody for why.
   assert.match(globalsSource, /html \{[\s\S]*?overscroll-behavior: none;[\s\S]*?\n\}/);
 
   // Suppressing the bounce must not turn the root into a second scroll
@@ -10697,24 +10697,25 @@ function testIosOverscrollDoesNotClipFixedChrome() {
 }
 
 /**
- * iOS Safari's rubber-band bounce (and the edge-swipe back/forward navigation
- * preview, the same underlying mechanism) is governed by overscroll-behavior,
- * not by overflow, so `overflow-x: clip` alone (already present, and already
- * confirmed by manual sweep to have nothing to clip on any route -- every page
- * has `document.documentElement.scrollWidth === window.innerWidth`) does not
- * stop a horizontal swipe from bouncing the whole page and exposing whatever
- * sits behind it. This must not regress into the band-aid the task explicitly
- * ruled out (`overflow-x: hidden` bolted on top) -- the fix is
- * overscroll-behavior, not a second overflow rule.
+ * Root-level overscroll containment is declared as the `overscroll-behavior`
+ * shorthand on BOTH `html` and `body`, and the page is never wider than the
+ * viewport (`overflow-x: clip`, never the `overflow-x: hidden` band-aid).
  *
- * A first pass added only the `overscroll-behavior-x: none` longhand, only on
- * `<html>`, and that was not sufficient on the reporter's device -- Safari's
- * longhand support for `overscroll-behavior-x`/`-y` has lagged the combined
- * shorthand across iOS versions. This pass uses the `overscroll-behavior: none`
- * shorthand (which sets both axes) on *both* `<html>` and `<body>`, mirroring
- * the symmetry `overflow-x: clip` already has between the two.
+ * IMPORTANT -- what this does NOT claim. Two earlier passes added
+ * `overscroll-behavior-x` here believing it would stop iOS Safari's
+ * edge-swipe back gesture from sliding the previous screen into view. It does
+ * not, and no CSS can: the CSSWG has that open as an unresolved question
+ * (w3c/csswg-drafts#7878), which records that "as of now, none of browsers
+ * respect overscroll-behavior for swipe navigation". A later investigation
+ * proved the duplicated screens are never in FTC's DOM at all -- rAF plus
+ * MutationObserver sampling across forward and back navigations found at most
+ * ONE mobile nav mounted and `scrollWidth` never above `innerWidth` -- so the
+ * side-by-side effect is Safari compositing a history snapshot, outside the
+ * document. The declaration below is kept purely for the bounce/scroll-chaining
+ * reasons in testIosOverscrollDoesNotClipFixedChrome and globals.css. Do not
+ * re-file the swipe gesture as a CSS bug.
  */
-function testHorizontalOverscrollDoesNotPanRevealAdjacentContent() {
+function testRootOverscrollContainmentIsDeclaredOnHtmlAndBody() {
   const globalsSource = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
 
   const htmlRule = globalsSource.match(/html \{[\s\S]*?\n\}/)?.[0] ?? "";
@@ -11604,7 +11605,7 @@ async function main() {
   testBookingRateModeDescriptionsAreUnified();
   testBookingsResultsAreaMatchesOneBookingCard();
   testIosOverscrollDoesNotClipFixedChrome();
-  testHorizontalOverscrollDoesNotPanRevealAdjacentContent();
+  testRootOverscrollContainmentIsDeclaredOnHtmlAndBody();
   testBookingStatusChangesReconcileEverywhere();
   testBookingAcceptedDmMessageIsScopedToTheBooking();
   testTemporaryDebugInstrumentationIsFullyRemoved();
