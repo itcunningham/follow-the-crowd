@@ -40,6 +40,9 @@ yarn-error.log*
 !.env.qa.local.example
 .qa-setup-status
 
+# agent worktrees (see docs/handoff/MULTI-AGENT-WORKFLOW.md)
+/.claude/worktrees/
+
 # vercel
 .vercel
 

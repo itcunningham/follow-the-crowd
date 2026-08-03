@@ -23,6 +23,7 @@ Read everything in docs/handoff/ and follow it. Then: [your task]
 | `START-HERE-CURSOR.md` | Paste into new Cursor chat |
 | `START-HERE-GPT.md` | Paste into new ChatGPT chat |
 | `HOW-WE-WORK.md` | Who does what (you / Cursor / GPT) |
+| `MULTI-AGENT-WORKFLOW.md` | **Authoritative — worktrees, branch ownership, collision rules, release checklist. Read before running parallel agents** |
 | `USER-PREFERENCES.md` | How Isaac wants work done |
 | `PROJECT.md` | Stack, folders, conventions |
 | `docs/design/FTC_DESIGN_SYSTEM.md` | Spacing, typography, shared UI rules |

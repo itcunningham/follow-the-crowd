@@ -2,6 +2,13 @@
 
 Working agreement for agents and humans building Follow The Crowd (FTC).
 
+> **Running more than one agent at once?** Read
+> [`docs/handoff/MULTI-AGENT-WORKFLOW.md`](docs/handoff/MULTI-AGENT-WORKFLOW.md)
+> **first** — it is authoritative for worktrees, branch ownership, collision
+> rules and release. Never implement in the primary working tree while another
+> agent is active; every implementation agent gets its own worktree via
+> `scripts/ftc-worktree.sh new <task-name>`.
+
 ---
 
 ## 1. Roles
