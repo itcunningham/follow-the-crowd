@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, type RefObject } from "react";
 import ChatSendIcon from "@/app/components/chat/ChatSendIcon";
 import ComposerIconButton from "@/app/components/chat/ComposerIconButton";
 import ComposerMessageField from "@/app/components/chat/ComposerMessageField";
@@ -18,6 +18,9 @@ export default function GroupChatComposer({
   onChange,
   onSend,
   sending,
+  inputRef,
+  composerRootRef,
+  onInputBlurWhileBusy,
   pendingPhotos,
   onStagePhotos,
   onRemovePendingPhoto,
@@ -28,17 +31,32 @@ export default function GroupChatComposer({
   onChange: (value: string) => void;
   onSend: () => void;
   sending: boolean;
+  inputRef?: RefObject<HTMLTextAreaElement | null>;
+  composerRootRef?: RefObject<HTMLDivElement | null>;
+  onInputBlurWhileBusy?: () => void;
   pendingPhotos: PendingComposerAttachment[];
   onStagePhotos: (files: File[]) => void;
   onRemovePendingPhoto: (index: number) => void;
   onAttachmentError?: (message: string) => void;
   uploading: boolean;
 }) {
-  const { textareaRef } = useComposerTextareaAutogrow(value);
+  const { textareaRef } = useComposerTextareaAutogrow(value, inputRef);
   const photoInputRef = useRef<HTMLInputElement>(null);
   const busy = sending || uploading;
   const hasPendingPhotos = pendingPhotos.length > 0;
   const canSend = Boolean(value.trim()) || hasPendingPhotos;
+
+  /**
+   * A blur that lands mid-send is the user deliberately dismissing the
+   * keyboard (tapping the list, scrolling away, hitting Done) — the page
+   * uses it to cancel the pending post-send refocus, so an intentional
+   * dismissal is never undone. Identical to DmComposer.
+   */
+  function handleInputBlur() {
+    if (busy) {
+      onInputBlurWhileBusy?.();
+    }
+  }
 
   function handlePhotosSelected(files: File[]) {
     const validFiles: File[] = [];
@@ -61,6 +79,7 @@ export default function GroupChatComposer({
 
   return (
     <div
+      ref={composerRootRef}
       data-chat-composer
       className="ftc-chat-composer shrink-0 mt-1.5 border-t border-ftc-border-subtle bg-ftc-bg px-3 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-4"
     >
@@ -109,13 +128,21 @@ export default function GroupChatComposer({
           </svg>
         </ComposerIconButton>
 
+        {/* Deliberately NOT `disabled={busy}` — matching DmComposer. A
+            disabled form control cannot hold focus, so the browser blurs it
+            synchronously the moment `sending` flips true, which closed the
+            iOS keyboard on every send. The duplicate-send guard lives in the
+            page's `sending || uploading` early-return and the Send button's
+            own disabled state, so nothing is lost by keeping the field
+            enabled — and typing the next message while the previous one is
+            still in flight is what mature messaging apps do. */}
         <ComposerMessageField
           textareaRef={textareaRef}
           value={value}
           onChange={(event) => onChange(event.target.value)}
           onKeyDown={handleComposerNewlineKeyDown}
+          onBlur={handleInputBlur}
           placeholder="Message"
-          disabled={busy}
         />
         <button
           type="button"

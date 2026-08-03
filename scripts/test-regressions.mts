@@ -11867,6 +11867,90 @@ function testCrewChatImageAttachmentsWiring() {
   assert.doesNotMatch(bubbleSource, /class="[^"]*lightbox/i);
 }
 
+/**
+ * Crew chat keeps the composer focused (and the iOS keyboard open) across a
+ * send, reusing DM's proven mechanism rather than a second implementation.
+ *
+ * Root cause this pins: the textarea used to carry `disabled={busy}`. A
+ * disabled form control cannot hold focus, so the browser blurred it
+ * synchronously the moment `sending` flipped true and iOS closed the
+ * keyboard. DM never disabled its textarea — only its Send button — which is
+ * why DM never had the bug. Duplicate sends are prevented by the page's
+ * `sending || uploading` early-return plus the Send button's own disabled
+ * state, so keeping the field enabled costs nothing.
+ */
+function testCrewChatComposerKeepsFocusAfterSend() {
+  const composerSource = readFileSync(
+    new URL("../app/components/group-chat/GroupChatComposer.tsx", import.meta.url),
+    "utf8",
+  );
+  const chatPageSource = readFileSync(
+    new URL("../app/events/[eventId]/chat/page.tsx", import.meta.url),
+    "utf8",
+  );
+
+  // THE regression: the textarea must never be disabled while busy.
+  assert.doesNotMatch(
+    composerSource,
+    /placeholder="Message"[\s\S]{0,200}disabled=\{busy\}/,
+    "a disabled textarea cannot hold focus — this is what closed the iOS keyboard",
+  );
+  assert.doesNotMatch(
+    composerSource,
+    /<ComposerMessageField[\s\S]{0,300}disabled=/,
+    "ComposerMessageField must not receive any disabled prop in crew chat",
+  );
+  // The Send button still is disabled while busy — that is the duplicate-send guard.
+  assert.match(composerSource, /disabled=\{busy \|\| !canSend\}/);
+
+  // Same ref/blur plumbing DM uses.
+  assert.match(composerSource, /inputRef/);
+  assert.match(composerSource, /composerRootRef/);
+  assert.match(composerSource, /onInputBlurWhileBusy/);
+  assert.match(composerSource, /useComposerTextareaAutogrow\(value, inputRef\)/);
+  // Send button keeps focus through the tap instead of stealing it.
+  assert.match(composerSource, /onPointerDown/);
+
+  // Page wiring: capture intent before the await, restore on both outcomes.
+  assert.match(chatPageSource, /composerInputRef/);
+  assert.match(chatPageSource, /keepComposerFocusedAfterSendRef/);
+  assert.match(chatPageSource, /shouldKeepComposerFocusedAfterSend/);
+  assert.match(chatPageSource, /restoreComposerInputFocusElement/);
+  assert.match(chatPageSource, /captureComposerFocusIntentForSend/);
+  assert.match(chatPageSource, /onInputBlurWhileBusy=\{handleComposerInputBlurWhileBusy\}/);
+
+  // Intentional dismissal wins: a blur while busy drops the refocus intent,
+  // and the shared scroll-dismiss hook owns the drag-to-dismiss gesture.
+  assert.match(
+    chatPageSource,
+    /handleComposerInputBlurWhileBusy = useCallback\(\(\) => \{\s*keepComposerFocusedAfterSendRef\.current = false;/,
+  );
+  assert.match(
+    chatPageSource,
+    /useDismissComposerKeyboardOnIntentionalScroll\(scrollRef, composerInputRef, composerRootRef\)/,
+  );
+
+  // Draft survives a failed send: input is cleared only after the awaited
+  // send resolves, and focus is restored on both paths via `finally`.
+  const textSend = chatPageSource.match(/async function sendMessage\(\)[\s\S]*?\n  \}/)?.[0] ?? "";
+  assert.ok(textSend, "sendMessage must exist");
+  assert.ok(
+    textSend.indexOf("await sendEventCrewChatMessage(") < textSend.indexOf('setInput("")'),
+    "the draft must only be cleared after a confirmed successful send",
+  );
+  assert.match(textSend, /finally \{[\s\S]*restoreComposerInputFocus\(\);/);
+  // Duplicate-send guard intact.
+  assert.match(textSend, /\|\| !eventId \|\| sending \|\| uploading\) \{\s*return;/);
+
+  // DM is untouched — it must still own the same mechanism independently.
+  const dmComposerSource = readFileSync(
+    new URL("../app/components/dm/DmComposer.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(dmComposerSource, /onInputBlurWhileBusy/);
+  assert.doesNotMatch(dmComposerSource, /<ComposerMessageField[\s\S]{0,300}disabled=/);
+}
+
 function testChatEmptyStateComponentized() {
   // DM's empty state was inline JSX; both DM and crew chat now render the
   // same shared ChatEmptyState component instead of two hand-rolled layouts.
@@ -12123,6 +12207,7 @@ async function main() {
   testIncomingChatMessagesHaveNoAvatarTimestamp();
   testEventUpdateMessagePresentation();
   testCrewChatImageAttachmentsWiring();
+  testCrewChatComposerKeepsFocusAfterSend();
   testChatEmptyStateComponentized();
   await testEventsHistorySelectAllButtonInteraction();
   await testEventsHistoryRemoveConfirmInteraction();

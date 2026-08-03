@@ -60,6 +60,11 @@ import {
   CHAT_MESSAGE_LIST_CLASS,
   CHAT_MESSAGE_SCROLLER_CLASS,
 } from "@/lib/dm/chatMessageGroupLayout";
+import { useDismissComposerKeyboardOnIntentionalScroll } from "@/lib/dm/dismissComposerKeyboardOnIntentionalScroll";
+import {
+  restoreComposerInputFocus as restoreComposerInputFocusElement,
+  shouldKeepComposerFocusedAfterSend,
+} from "@/lib/dm/restoreComposerInputFocus";
 import type { CrewChatUnlockState } from "@/lib/events/crewChatUnlock";
 import {
   buildGroupChatSenderNameVisibility,
@@ -261,6 +266,10 @@ export default function EventCrewChatPage() {
   const [messagesLoading, setMessagesLoading] = useState(true);
   const [messagesError, setMessagesError] = useState<string | null>(null);
   const [canAccessChat, setCanAccessChat] = useState(false);
+  const composerInputRef = useRef<HTMLTextAreaElement>(null);
+  const composerRootRef = useRef<HTMLDivElement>(null);
+  /** Whether the completing send should restore composer focus — see captureComposerFocusIntentForSend. */
+  const keepComposerFocusedAfterSendRef = useRef(false);
   const [sending, setSending] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -356,7 +365,36 @@ export default function EventCrewChatPage() {
     lastMessageIsFromCurrentUser: lastMessage?._clientScrollMeta?.isFromCurrentUser ?? null,
     currentUserId,
   });
+  // Same intentional-dismissal handling as DM: a deliberate downward drag on
+  // the message list at the live edge dismisses the keyboard, and this hook
+  // owns that gesture. Post-send refocus never fights it, because a blur
+  // while busy clears the refocus intent (see handleComposerInputBlurWhileBusy).
+  useDismissComposerKeyboardOnIntentionalScroll(scrollRef, composerInputRef, composerRootRef);
   const { addHighlightedMessageId, isMessageHighlighted } = useChatNewMessageHighlight();
+
+  const captureComposerFocusIntentForSend = useCallback(() => {
+    keepComposerFocusedAfterSendRef.current = shouldKeepComposerFocusedAfterSend(
+      composerInputRef.current,
+    );
+  }, []);
+
+  const restoreComposerInputFocus = useCallback(() => {
+    if (!keepComposerFocusedAfterSendRef.current) {
+      return;
+    }
+
+    keepComposerFocusedAfterSendRef.current = false;
+    restoreComposerInputFocusElement(composerInputRef.current);
+  }, []);
+
+  /**
+   * The user blurred the composer while a send was still running — i.e. they
+   * intentionally dismissed the keyboard. Drop the refocus intent so the
+   * completing send does not pull the keyboard back up.
+   */
+  const handleComposerInputBlurWhileBusy = useCallback(() => {
+    keepComposerFocusedAfterSendRef.current = false;
+  }, []);
 
   /**
    * Keeps the conversation visually still while the event card above it
@@ -1028,16 +1066,22 @@ export default function EventCrewChatPage() {
     }
 
     if (filesToSend.length > 0) {
+      captureComposerFocusIntentForSend();
       await sendCrewChatAttachments(filesToSend);
       return;
     }
 
+    // Captured before any await, while the composer is still the active
+    // element and the keyboard is still up — afterwards there is nothing
+    // left to read the intent from.
+    captureComposerFocusIntentForSend();
     setSending(true);
     setError(null);
     markUserSentMessage();
 
     try {
       await sendEventCrewChatMessage(eventId, text, eventName);
+      // Only on a confirmed success — a throw above leaves the draft intact.
       setInput("");
       await markEventChatRead(eventId);
     } catch (sendError) {
@@ -1047,6 +1091,9 @@ export default function EventCrewChatPage() {
       );
     } finally {
       setSending(false);
+      // Both paths: on failure the draft is still there and still typeable,
+      // so focus belongs back in the composer just as much as on success.
+      restoreComposerInputFocus();
     }
   }
 
@@ -1116,6 +1163,7 @@ export default function EventCrewChatPage() {
       );
     } finally {
       setUploading(false);
+      restoreComposerInputFocus();
     }
   }
 
@@ -1355,6 +1403,9 @@ export default function EventCrewChatPage() {
               onChange={setInput}
               onSend={() => void sendMessage()}
               sending={sending}
+              inputRef={composerInputRef}
+              composerRootRef={composerRootRef}
+              onInputBlurWhileBusy={handleComposerInputBlurWhileBusy}
               pendingPhotos={pendingAttachments}
               onStagePhotos={stagePendingPhotos}
               onRemovePendingPhoto={removePendingPhotoAt}
