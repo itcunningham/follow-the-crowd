@@ -11942,13 +11942,46 @@ function testCrewChatComposerKeepsFocusAfterSend() {
   // Duplicate-send guard intact.
   assert.match(textSend, /\|\| !eventId \|\| sending \|\| uploading\) \{\s*return;/);
 
-  // DM is untouched — it must still own the same mechanism independently.
+  /* ---- viewport half of the keyboard fix: full DM shell parity ---- */
+
+  // `fixed inset-0` pins the shell to the LAYOUT viewport, which iOS does not
+  // shrink when the software keyboard opens — the composer ends up under the
+  // keyboard and WebKit scrolls the document to chase the focused input, then
+  // dismisses the keyboard when the list re-renders and auto-scrolls on send.
+  // The shared `h-[100dvh]` shell tracks the dynamic viewport instead. Removing
+  // the disabled textarea (above) was necessary but not sufficient on its own.
+  assert.match(chatPageSource, /FIXED_CHAT_PAGE_SHELL_CLASS/);
+  assert.doesNotMatch(
+    chatPageSource,
+    /className="fixed inset-0 flex flex-col overflow-hidden/,
+    "the crew chat shell must not pin itself to the layout viewport",
+  );
+
+  // Second half: the document must be locked flat while this fixed surface is
+  // mounted, so there is nothing for WebKit to scroll in the first place.
+  assert.match(chatPageSource, /useFixedChatPageDocumentReset\(/);
+
+  // Both halves come from the same modules DM uses — not a crew-chat fork.
+  const shellSource = readFileSync(
+    new URL("../lib/navigation/prepareFixedChatPageMount.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(shellSource, /h-\[100dvh\] max-h-\[100dvh\]/);
+  assert.match(shellSource, /html\.style\.overflow = "hidden"/);
+
+  // DM is untouched — it must still own the same mechanisms independently.
   const dmComposerSource = readFileSync(
     new URL("../app/components/dm/DmComposer.tsx", import.meta.url),
     "utf8",
   );
+  const dmPageSourceForFocus = readFileSync(
+    new URL("../app/dm/[conversationId]/page.tsx", import.meta.url),
+    "utf8",
+  );
   assert.match(dmComposerSource, /onInputBlurWhileBusy/);
   assert.doesNotMatch(dmComposerSource, /<ComposerMessageField[\s\S]{0,300}disabled=/);
+  assert.match(dmPageSourceForFocus, /FIXED_CHAT_PAGE_SHELL_CLASS/);
+  assert.match(dmPageSourceForFocus, /useFixedChatPageDocumentReset\(/);
 }
 
 function testChatEmptyStateComponentized() {

@@ -61,6 +61,8 @@ import {
   CHAT_MESSAGE_SCROLLER_CLASS,
 } from "@/lib/dm/chatMessageGroupLayout";
 import { useDismissComposerKeyboardOnIntentionalScroll } from "@/lib/dm/dismissComposerKeyboardOnIntentionalScroll";
+import { FIXED_CHAT_PAGE_SHELL_CLASS } from "@/lib/navigation/prepareFixedChatPageMount";
+import { useFixedChatPageDocumentReset } from "@/lib/navigation/useFixedChatPageDocumentReset";
 import {
   restoreComposerInputFocus as restoreComposerInputFocusElement,
   shouldKeepComposerFocusedAfterSend,
@@ -365,6 +367,18 @@ export default function EventCrewChatPage() {
     lastMessageIsFromCurrentUser: lastMessage?._clientScrollMeta?.isFromCurrentUser ?? null,
     currentUserId,
   });
+  /**
+   * The other half of the keyboard fix, and the same call DM makes.
+   *
+   * Locks the document flat (html/body `overflow: hidden`, scrolled to top,
+   * `scrollRestoration = "manual"`) for as long as this fixed chat surface is
+   * mounted. Without it the document stays genuinely scrollable behind the
+   * fixed shell, so when iOS offsets the page to reveal the focused composer
+   * and the list then re-renders and auto-scrolls on send, WebKit resolves
+   * the conflict by dismissing the keyboard. With the document flat there is
+   * nothing for it to scroll, so the keyboard survives the send.
+   */
+  useFixedChatPageDocumentReset(`${pathname}?${searchParams.toString()}`);
   // Same intentional-dismissal handling as DM: a deliberate downward drag on
   // the message list at the live edge dismisses the keyboard, and this hook
   // owns that gesture. Post-send refocus never fights it, because a blur
@@ -1191,7 +1205,14 @@ export default function EventCrewChatPage() {
 
   return (
     <OnboardingGuard>
-      <div className="fixed inset-0 flex flex-col overflow-hidden bg-ftc-bg font-sans text-ftc-text">
+      {/* Same shell DM uses. `fixed inset-0` (what this was) pins the shell to
+          the *layout* viewport, which iOS does NOT shrink when the software
+          keyboard opens — so the composer ended up underneath the keyboard and
+          WebKit had to scroll the document to chase the focused input. The
+          `h-[100dvh]` shell tracks the dynamic viewport instead, so the
+          composer stays above the keyboard and no document scrolling is
+          needed. See useFixedChatPageDocumentReset below for the other half. */}
+      <div className={FIXED_CHAT_PAGE_SHELL_CLASS}>
         <AppNavigation />
 
         <div
