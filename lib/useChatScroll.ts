@@ -31,6 +31,27 @@ export function shouldKeepChatPinnedAfterLayoutChange(
   return wasPinnedToBottom && !autoScrollSuppressed;
 }
 
+/**
+ * scrollTop that keeps the reader visually still when a layout change resizes
+ * the scroll container itself (rather than its content) — e.g. a panel above
+ * the chat expanding, which shrinks the scroller's clientHeight and pushes its
+ * top edge down, sliding the conversation with it.
+ *
+ * Holding distance-from-the-live-edge constant is exactly the compensation:
+ * clientHeight shrinking by H raises maxScrollTop by H, so the returned
+ * scrollTop moves by the same H and the two cancel out. Deriving it from the
+ * live scrollHeight/clientHeight (rather than adding a measured H) keeps it
+ * correct even when content height changes in the same frame.
+ */
+export function resolveScrollTopPreservingDistanceFromBottom(
+  container: { scrollHeight: number; clientHeight: number },
+  distanceFromBottom: number,
+): number {
+  const maxScrollTop = Math.max(0, container.scrollHeight - container.clientHeight);
+
+  return Math.max(0, maxScrollTop - distanceFromBottom);
+}
+
 export function tagChatMessageForScroll<T extends { user_id: string }>(
   message: T,
   currentUserId: string | null,

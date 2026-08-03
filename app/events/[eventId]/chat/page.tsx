@@ -77,7 +77,13 @@ import {
 } from "@/lib/groupChatSystemMessages";
 import { buildChatReturnTo } from "@/lib/profileNavigation";
 import { supabase } from "@/lib/supabaseClient";
-import { getChatMaxScrollTop, useChatScroll, tagChatMessageForScroll } from "@/lib/useChatScroll";
+import {
+  CHAT_NEAR_BOTTOM_THRESHOLD_PX,
+  getChatMaxScrollTop,
+  resolveScrollTopPreservingDistanceFromBottom,
+  useChatScroll,
+  tagChatMessageForScroll,
+} from "@/lib/useChatScroll";
 import {
   logChatHighlightRender,
 } from "@/lib/chatNewMessageHighlight";
@@ -128,6 +134,15 @@ const GROUP_CHAT_MESSAGES_TIMEOUT_MS = 15_000;
 
 /** Distance from the live edge (px) before the event-context card collapses. */
 const EVENT_CARD_COLLAPSE_THRESHOLD_PX = 24;
+
+/**
+ * How long to keep compensating the scroller for the event card's height
+ * change. The card animates via AnimatedExpandPanel's `duration-200`
+ * grid-template-rows transition, so its height arrives gradually rather than
+ * in one step; the small tail past 200ms covers the final settling frame.
+ */
+const EVENT_CARD_EXPAND_ANIMATION_MS = 200;
+const EVENT_CARD_SCROLL_COMPENSATION_MS = EVENT_CARD_EXPAND_ANIMATION_MS + 120;
 
 async function withGroupChatMessagesTimeout<T>(promise: Promise<T>): Promise<T> {
   let timeoutId: ReturnType<typeof setTimeout> | undefined;
@@ -237,6 +252,10 @@ export default function EventCrewChatPage() {
    * behaves at any other time.
    */
   const eventCardManualToggleSuppressUntilRef = useRef(0);
+  const eventCardScrollCompensationRef = useRef<{
+    observer: ResizeObserver;
+    timeoutId: number;
+  } | null>(null);
   const [input, setInput] = useState("");
   const [accessLoading, setAccessLoading] = useState(true);
   const [messagesLoading, setMessagesLoading] = useState(true);
@@ -327,6 +346,77 @@ export default function EventCrewChatPage() {
     currentUserId,
   });
   const { addHighlightedMessageId, isMessageHighlighted } = useChatNewMessageHighlight();
+
+  /**
+   * Keeps the conversation visually still while the event card above it
+   * expands or collapses.
+   *
+   * The scroller is `flex-1` in a fixed-height column, so the card's height
+   * change is absorbed entirely by the scroller: growing the card by H shrinks
+   * the scroller's clientHeight by H and pushes its top edge down by H, while
+   * scrollHeight (the messages themselves) is untouched. With scrollTop left
+   * alone the whole conversation therefore slides down by H — the jump this
+   * compensates for.
+   *
+   * Holding `scrollHeight - clientHeight - scrollTop` (distance from the live
+   * edge) constant is exactly that correction — scrollTop moves by +H on
+   * expand, -H on collapse — and stays correct even if scrollHeight also
+   * changes, which a raw "add H" would not. The card animates over 200ms
+   * rather than resizing in one step, so a ResizeObserver applies the
+   * correction on every frame the height actually changes instead of once.
+   *
+   * Deliberately skipped when already at the live edge: useChatScroll's own
+   * ResizeObserver re-pins to the bottom there, which is the same visual
+   * result, so this must not also write scrollTop and fight it.
+   */
+  const preserveScrollAcrossEventCardToggle = useCallback(() => {
+    const scroller = scrollRef.current;
+
+    if (!scroller || typeof ResizeObserver === "undefined") {
+      return;
+    }
+
+    const distanceFromBottom = getChatMaxScrollTop(scroller) - scroller.scrollTop;
+
+    if (distanceFromBottom <= CHAT_NEAR_BOTTOM_THRESHOLD_PX) {
+      return;
+    }
+
+    const previous = eventCardScrollCompensationRef.current;
+
+    if (previous) {
+      previous.observer.disconnect();
+      window.clearTimeout(previous.timeoutId);
+    }
+
+    const observer = new ResizeObserver(() => {
+      scroller.scrollTop = resolveScrollTopPreservingDistanceFromBottom(
+        scroller,
+        distanceFromBottom,
+      );
+    });
+
+    observer.observe(scroller);
+
+    const timeoutId = window.setTimeout(() => {
+      observer.disconnect();
+      eventCardScrollCompensationRef.current = null;
+    }, EVENT_CARD_SCROLL_COMPENSATION_MS);
+
+    eventCardScrollCompensationRef.current = { observer, timeoutId };
+  }, [scrollRef]);
+
+  useEffect(() => {
+    return () => {
+      const pending = eventCardScrollCompensationRef.current;
+
+      if (pending) {
+        pending.observer.disconnect();
+        window.clearTimeout(pending.timeoutId);
+        eventCardScrollCompensationRef.current = null;
+      }
+    };
+  }, []);
 
   // Pending-photo staging: identical shape to the DM composer's, reusing the
   // same lib/dm/composerPendingAttachment helpers (they're already generic —
@@ -1127,6 +1217,10 @@ export default function EventCrewChatPage() {
                   type="button"
                   onClick={() => {
                     eventCardManualToggleSuppressUntilRef.current = Date.now() + 400;
+                    // Must run before the state change, so the pre-toggle
+                    // distance from the live edge is measured against the
+                    // card's current height.
+                    preserveScrollAcrossEventCardToggle();
                     setEventCardCollapsed((current) => !current);
                   }}
                   aria-expanded={!eventCardCollapsed}

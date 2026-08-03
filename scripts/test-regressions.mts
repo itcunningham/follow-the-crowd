@@ -76,6 +76,7 @@ import {
 } from "../lib/bookingRequests";
 import {
   getAppendedMessageIds,
+  resolveScrollTopPreservingDistanceFromBottom,
   shouldKeepChatPinnedAfterLayoutChange,
 } from "../lib/useChatScroll";
 import {
@@ -10922,6 +10923,84 @@ function testCrewChatTimestampSeparators() {
   assert.match(bubbleSourceForSeparators, /precededByTimeSeparator = false/);
 }
 
+function testCrewChatEventCardToggleScrollCompensation() {
+  // The scroller is flex-1 in a fixed-height column, so expanding the event
+  // card above it shrinks clientHeight rather than changing scrollHeight.
+  // Holding distance-from-the-live-edge constant must move scrollTop by
+  // exactly the height the card gained, cancelling the visual slide.
+  const scrollHeight = 2000;
+  const distanceFromBottom = 400;
+
+  const beforeExpand = resolveScrollTopPreservingDistanceFromBottom(
+    { scrollHeight, clientHeight: 600 },
+    distanceFromBottom,
+  );
+  // Card grew by 57px -> scroller lost 57px of clientHeight.
+  const afterExpand = resolveScrollTopPreservingDistanceFromBottom(
+    { scrollHeight, clientHeight: 543 },
+    distanceFromBottom,
+  );
+
+  assert.equal(beforeExpand, 1000);
+  assert.equal(
+    afterExpand - beforeExpand,
+    57,
+    "scrollTop must move by exactly the height the card added",
+  );
+
+  // Collapsing is the same arithmetic in reverse -- back to the original.
+  assert.equal(
+    resolveScrollTopPreservingDistanceFromBottom(
+      { scrollHeight, clientHeight: 600 },
+      distanceFromBottom,
+    ),
+    beforeExpand,
+  );
+
+  // Pinned at the live edge (distance 0) stays pinned rather than drifting.
+  assert.equal(
+    resolveScrollTopPreservingDistanceFromBottom({ scrollHeight, clientHeight: 543 }, 0),
+    scrollHeight - 543,
+  );
+
+  // Never returns a negative scrollTop when the content is shorter than the
+  // viewport, or when the captured distance exceeds what is now scrollable.
+  assert.equal(
+    resolveScrollTopPreservingDistanceFromBottom({ scrollHeight: 300, clientHeight: 600 }, 0),
+    0,
+  );
+  assert.equal(
+    resolveScrollTopPreservingDistanceFromBottom({ scrollHeight: 800, clientHeight: 600 }, 9999),
+    0,
+  );
+
+  const chatPageSource = readFileSync(
+    new URL("../app/events/[eventId]/chat/page.tsx", import.meta.url),
+    "utf8",
+  );
+
+  // Compensation must be captured BEFORE the state flips, or it measures the
+  // card's post-toggle height and corrects by the wrong amount.
+  assert.match(
+    chatPageSource,
+    /preserveScrollAcrossEventCardToggle\(\);\s*\n\s*setEventCardCollapsed\(/,
+    "compensation must run before the collapsed state changes",
+  );
+
+  // Already-at-the-bottom is owned by useChatScroll's own re-pin; writing
+  // scrollTop from both places would fight.
+  assert.match(
+    chatPageSource,
+    /distanceFromBottom <= CHAT_NEAR_BOTTOM_THRESHOLD_PX[\s\S]{0,40}return;/,
+    "must defer to useChatScroll's re-pin when already at the live edge",
+  );
+
+  // A ResizeObserver (not a one-shot correction) is required because the card
+  // animates its height over 200ms rather than resizing in a single step.
+  assert.match(chatPageSource, /new ResizeObserver\(\(\) => \{[\s\S]{0,200}resolveScrollTopPreservingDistanceFromBottom/);
+  assert.match(chatPageSource, /observer\.disconnect\(\)/, "observer must be torn down");
+}
+
 function testCrewChatImageAttachmentsWiring() {
   // Image sharing reuses the DM attachment pipeline (shared type, shared
   // pending-photo staging, shared upload validation) rather than a second
@@ -11224,6 +11303,7 @@ async function main() {
   testTemporaryDebugInstrumentationIsFullyRemoved();
   testCrewChatPremiumPolish();
   testCrewChatTimestampSeparators();
+  testCrewChatEventCardToggleScrollCompensation();
   testCrewChatImageAttachmentsWiring();
   testChatEmptyStateComponentized();
   await testEventsHistorySelectAllButtonInteraction();
