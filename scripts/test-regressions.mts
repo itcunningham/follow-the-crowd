@@ -15137,7 +15137,7 @@ async function testAgentRoomManualApprovalIsEnforcedServerSide() {
   );
   assert.match(
     runRoute,
-    /session\.handoffApproval === "manual" && !session\.handoffApprovedAt/,
+    /if \(!manualApprovalSatisfied\(session\.handoffApproval, session\.handoffApprovedAt\)\)/,
     "the run-to-decision loop must refuse to hop without a recorded approval",
   );
 
@@ -15207,6 +15207,327 @@ async function testAgentRoomManualApprovalIsEnforcedServerSide() {
     client,
     /color:\s*\n?\s*session\.handoffApproval === mode/,
     "the colour-only selected state must not come back",
+  );
+}
+
+
+/**
+ * The three Agent Room QA re-review follow-ups.
+ *
+ * (1) In manual mode every provider call needs an approval, summaries
+ *     included — QA proved a summary could reach a provider unapproved.
+ * (2) Switching mode must not leave a usable stale approval behind.
+ * (3) The approval must be re-checked against the session loaded *under* the
+ *     lock, so a narrow race cannot spend one approval twice.
+ */
+async function testAgentRoomManualApprovalCoversEverySummaryPath() {
+  const { manualApprovalSatisfied } = await import("../lib/agentRoom/apiGuard");
+  const { finalizeSession } = await import("../lib/agentRoom/finalize");
+  const { listDecisionRecords, deleteDecisionRecord } = await import(
+    "../lib/agentRoom/decisionLog"
+  );
+  const { deleteSession, loadSession, saveSession } = await import(
+    "../lib/agentRoom/sessionStore"
+  );
+  const { checkAction } = await import("../lib/agentRoom/workflow");
+
+  /* ---------------------------------------------------------------------- */
+  /* The rule itself                                                        */
+  /* ---------------------------------------------------------------------- */
+
+  assert.equal(manualApprovalSatisfied("auto", null), true, "auto never needs an approval");
+  assert.equal(
+    manualApprovalSatisfied("auto", "2026-08-03T00:00:00.000Z"),
+    true,
+    "auto is unaffected by a banked approval",
+  );
+  assert.equal(
+    manualApprovalSatisfied("manual", "2026-08-03T00:00:00.000Z"),
+    true,
+    "manual with an approval may proceed",
+  );
+  assert.equal(
+    manualApprovalSatisfied("manual", null),
+    false,
+    "manual without an approval may not",
+  );
+  // A session written before the field existed parses as undefined. The guard
+  // must fail closed on it rather than treating "no field" as "approved".
+  assert.equal(
+    manualApprovalSatisfied("manual", undefined),
+    false,
+    "a session file predating the field must fail closed",
+  );
+
+  /* ---------------------------------------------------------------------- */
+  /* (1) Every summary path is gated                                        */
+  /* ---------------------------------------------------------------------- */
+
+  const finalizeSource = agentRoomCode("lib/agentRoom/finalize.ts");
+
+  assert.match(
+    finalizeSource,
+    /manualApprovalSatisfied\(\s*session\.handoffApproval,\s*session\.handoffApprovedAt,?\s*\)/,
+    "finalizeSession must consult the shared approval rule before summarising",
+  );
+  assert.match(
+    finalizeSource,
+    /if \(!session\.hasSummary && mayCallProvider\)/,
+    "the summary provider call must sit behind that check",
+  );
+
+  const actionRoute = agentRoomCode("app/api/dev/agent-room/[sessionId]/action/route.ts");
+
+  // The hole QA found: the guard used to apply only to `advance`, which let
+  // generate_summary through. It must now cover every model action.
+  assert.doesNotMatch(
+    actionRoute,
+    /if \(action === "advance"\) \{\s*const needsApproval/,
+    "the approval guard must not be narrowed back to `advance` only",
+  );
+  assert.match(
+    actionRoute,
+    /const needsApproval = manualApprovalResponse\(/,
+    "the single-step endpoint must gate every model action, summaries included",
+  );
+
+  // One approval, one successful call: the summary path spends it too.
+  assert.match(
+    actionRoute,
+    /current\.hasSummary = true;\s*(?:\/\/[^\n]*\n\s*)*current\.handoffApprovedAt = null;/,
+    "a successful summary must spend the approval that allowed it",
+  );
+  assert.match(
+    finalizeSource,
+    /session\.hasSummary = true;\s*session\.handoffApprovedAt = null;/,
+    "the automatic summary must spend its approval too",
+  );
+
+  /* ---------------------------------------------------------------------- */
+  /* (1) …and behaviourally, not only in the source                         */
+  /* ---------------------------------------------------------------------- */
+
+  const sessionId = "9a7f3c21-4b5d-4e6f-8a90-1b2c3d4e5f60";
+  const decisionIdsBefore = new Set((await listDecisionRecords()).map((r) => r.id));
+
+  const makeStopped = (
+    handoffApproval: "auto" | "manual",
+    handoffApprovedAt: string | null,
+  ) =>
+    makeAgentRoomSession({
+      id: sessionId,
+      stage: "stopped",
+      handoffApproval,
+      handoffApprovedAt,
+      transcript: [
+        makeAgentRoomTurn({ id: "t1", actor: "isaac", kind: "task", title: "Task submitted" }),
+      ],
+    }) as never;
+
+  await withAgentRoomEnv(
+    {
+      FTC_AGENT_ROOM_ENABLED: "true",
+      VERCEL: undefined,
+      // No key: the summariser fails before any network call, which is exactly
+      // the "failed summary" case we need, and keeps the suite offline.
+      ANTHROPIC_API_KEY: undefined,
+    },
+    async () => {
+      /* Manual, no approval: no provider call at all. */
+      const gated = makeStopped("manual", null) as unknown as {
+        transcript: unknown[];
+        hasSummary: boolean;
+        handoffApprovedAt: string | null;
+      };
+
+      await finalizeSession(gated as never);
+
+      assert.equal(
+        gated.transcript.length,
+        1,
+        "manual mode without an approval must not call the provider at all — not even to record a failure",
+      );
+      assert.equal(gated.hasSummary, false, "and must not claim to have a summary");
+
+      /* …but the Decision Log record is still written: STOP stays terminal. */
+      const afterGated = await listDecisionRecords();
+      assert.ok(
+        afterGated.some((record) => record.sessionId === sessionId),
+        "the Decision Log record must still be written — it needs no provider",
+      );
+
+      /* Manual, approved: the call is attempted. It fails (no key), and a
+         failed call must not consume the approval. */
+      const approvedAt = "2026-08-03T00:00:00.000Z";
+      const attempted = makeStopped("manual", approvedAt) as unknown as {
+        transcript: unknown[];
+        hasSummary: boolean;
+        handoffApprovedAt: string | null;
+      };
+
+      await finalizeSession(attempted as never);
+
+      assert.equal(
+        attempted.transcript.length,
+        2,
+        "an approved summary must actually reach the provider path",
+      );
+      assert.equal(
+        attempted.handoffApprovedAt,
+        approvedAt,
+        "a failed summary must not consume the approval",
+      );
+      assert.equal(attempted.hasSummary, false, "a failed summary is not a summary");
+
+      /* Auto: unchanged — the call is attempted with no approval anywhere. */
+      const automatic = makeStopped("auto", null) as unknown as { transcript: unknown[] };
+
+      await finalizeSession(automatic as never);
+
+      assert.equal(
+        automatic.transcript.length,
+        2,
+        "automatic mode must be completely unchanged by the manual gate",
+      );
+
+      /* ------------------------------------------------------------------ */
+      /* (2) Manual → approve → Auto → Manual leaves nothing usable          */
+      /* ------------------------------------------------------------------ */
+
+      const { PATCH } = await import("../app/api/dev/agent-room/[sessionId]/route");
+
+      const patch = async (body: Record<string, unknown>) => {
+        const response = await PATCH(
+          new Request(`http://localhost/api/dev/agent-room/${sessionId}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+          }),
+          { params: Promise.resolve({ sessionId }) },
+        );
+
+        assert.equal(response.status, 200, `PATCH ${JSON.stringify(body)} should succeed`);
+        return loadSession(sessionId);
+      };
+
+      await saveSession(makeStopped("manual", null));
+
+      const approved = await patch({ approveNextHandoff: true });
+      assert.ok(approved?.handoffApprovedAt, "the approval must actually be recorded first");
+      assert.equal(
+        manualApprovalSatisfied("manual", approved?.handoffApprovedAt ?? null),
+        true,
+        "…otherwise the rest of this test would pass vacuously",
+      );
+
+      const switchedToAuto = await patch({ handoffApproval: "auto" });
+      assert.equal(
+        switchedToAuto?.handoffApprovedAt,
+        null,
+        "switching to automatic must clear the banked approval",
+      );
+
+      const backToManual = await patch({ handoffApproval: "manual" });
+      assert.equal(
+        backToManual?.handoffApprovedAt,
+        null,
+        "switching back to manual must not resurrect it",
+      );
+      assert.equal(
+        manualApprovalSatisfied("manual", backToManual?.handoffApprovedAt ?? null),
+        false,
+        "Manual → approve → Auto → Manual must leave no usable approval",
+      );
+
+      await deleteSession(sessionId);
+    },
+  );
+
+  /* Clean up the Decision Log records this test created. */
+  for (const record of await listDecisionRecords()) {
+    if (!decisionIdsBefore.has(record.id)) {
+      await deleteDecisionRecord(record.id);
+    }
+  }
+
+  /* ---------------------------------------------------------------------- */
+  /* (3) The approval is re-checked under the lock                          */
+  /* ---------------------------------------------------------------------- */
+
+  const lockIndex = actionRoute.indexOf("acquireSessionLock(sessionId)");
+  const afterLock = actionRoute.slice(lockIndex);
+
+  assert.ok(lockIndex > 0, "the single-step endpoint must take a lock");
+  assert.match(
+    afterLock,
+    /const locked = await loadSession\(sessionId\);/,
+    "the session must be re-read after the lock is acquired",
+  );
+  assert.match(
+    afterLock,
+    /manualApprovalResponse\(\s*locked\.handoffApproval,\s*locked\.handoffApprovedAt,?\s*\)/,
+    "and the approval re-checked against that freshly loaded session",
+  );
+  assert.ok(
+    afterLock.indexOf("locked.handoffApprovedAt") < afterLock.indexOf("executeAgentTurn("),
+    "the re-check must run before the provider is called, not after",
+  );
+  // The turn must act on the session the approval was checked against.
+  assert.doesNotMatch(
+    afterLock,
+    /executeAgentTurn\(session,/,
+    "the provider call must use the locked session, not the pre-lock read",
+  );
+
+  // The run loop already re-reads inside the lock; prove that ordering holds.
+  const runRoute = agentRoomCode("app/api/dev/agent-room/[sessionId]/run/route.ts");
+  const runLoop = runRoute.slice(runRoute.indexOf("while (hops <"));
+
+  assert.ok(
+    runLoop.indexOf("const current = await loadSession(sessionId)") <
+      runLoop.indexOf("manualApprovalSatisfied(") &&
+      runLoop.indexOf("manualApprovalSatisfied(") < runLoop.indexOf("executeAgentTurn("),
+    "the run loop must re-read, then check the approval, then call the provider",
+  );
+
+  /* ---------------------------------------------------------------------- */
+  /* STOP is never blocked by any of this                                   */
+  /* ---------------------------------------------------------------------- */
+
+  for (const stage of [
+    "awaiting_investigation",
+    "investigation_ready",
+    "review_ready",
+    "build_plan_ready",
+    "qa_plan_ready",
+    "release_review_ready",
+    "awaiting_isaac",
+  ]) {
+    const state = {
+      stage,
+      reviewRounds: 1,
+      rebuttalUsedForCurrentRound: false,
+      builderPasses: 1,
+      autoHops: 3,
+      escalation: null,
+      lastReviewVerdict: "AGREE",
+      lastQaVerdict: null,
+      lastReleaseVerdict: null,
+      hasSummary: false,
+    };
+
+    const check = checkAction(state as never, "stop" as never);
+
+    assert.ok(check.allowed, `stop must stay available from ${stage} regardless of approval`);
+    assert.equal((check as { nextStage: string }).nextStage, "stopped");
+  }
+
+  // STOP is a local decision, so it never passes through the approval guard.
+  const stopBranch = actionRoute.slice(0, actionRoute.indexOf("const needsApproval"));
+  assert.match(
+    stopBranch,
+    /if \(!isModelAction\(action\)\) \{/,
+    "local decisions must return before the approval gate — STOP is never blocked by it",
   );
 }
 
@@ -15471,6 +15792,7 @@ async function main() {
   await testAgentRoomTimelineRecordsEveryTurn();
   await testAgentRoomWritesSummariesAndDecisionRecords();
   await testAgentRoomManualApprovalIsEnforcedServerSide();
+  await testAgentRoomManualApprovalCoversEverySummaryPath();
   console.log("All regression checks passed.");
 }
 

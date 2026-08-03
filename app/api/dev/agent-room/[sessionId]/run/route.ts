@@ -17,6 +17,7 @@ import { NextResponse } from "next/server";
 import {
   AGENT_ROOM_MANUAL_APPROVAL_REQUIRED,
   agentRoomDisabledResponse,
+  manualApprovalSatisfied,
   notFound,
 } from "@/lib/agentRoom/apiGuard";
 import { finalizeSession } from "@/lib/agentRoom/finalize";
@@ -98,8 +99,10 @@ export async function POST(
 
       // Manual mode: one recorded approval buys one hop. Checked inside the
       // loop against the session just re-read from disk, so a run cannot keep
-      // going on an approval it already spent.
-      if (session.handoffApproval === "manual" && !session.handoffApprovedAt) {
+      // going on an approval it already spent. Uses the shared predicate rather
+      // than its own copy of the rule, so the rule cannot drift between the two
+      // execution endpoints.
+      if (!manualApprovalSatisfied(session.handoffApproval, session.handoffApprovedAt)) {
         notice = AGENT_ROOM_MANUAL_APPROVAL_REQUIRED;
         break;
       }

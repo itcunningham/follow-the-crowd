@@ -132,17 +132,17 @@ export async function POST(
   /* Agent turns — locked, rate limited, one at a time                       */
   /* ---------------------------------------------------------------------- */
 
-  // Manual mode gates the agent turns only. The summary describes a finished
-  // session rather than continuing it, so it is not a handoff to approve.
-  if (action === "advance") {
-    const needsApproval = manualApprovalResponse(
-      session.handoffApproval,
-      session.handoffApprovedAt,
-    );
+  // Manual mode gates every provider call, summaries included — this branch is
+  // only reached by model actions, so the check needs no condition of its own.
+  // It is re-checked under the lock below; this early return just avoids taking
+  // the lock and the rate limit for a request that cannot proceed.
+  const needsApproval = manualApprovalResponse(
+    session.handoffApproval,
+    session.handoffApprovedAt,
+  );
 
-    if (needsApproval) {
-      return needsApproval;
-    }
+  if (needsApproval) {
+    return needsApproval;
   }
 
   const waitMs = millisecondsUntilNextCallAllowed(session.lastCallAt);
@@ -162,8 +162,27 @@ export async function POST(
   }
 
   try {
+    // The approval above was read before the lock existed, so a concurrent
+    // request could have spent that same approval in the gap. Re-read under the
+    // lock and check the freshly loaded session, and act on *that* one — an
+    // approval must be validated against the state the call actually uses.
+    const locked = await loadSession(sessionId);
+
+    if (!locked) {
+      return notFound();
+    }
+
+    const spentApproval = manualApprovalResponse(
+      locked.handoffApproval,
+      locked.handoffApprovedAt,
+    );
+
+    if (spentApproval) {
+      return spentApproval;
+    }
+
     if (action === "generate_summary") {
-      const result = await executeAgentTurn(session, "summarizer", false, action);
+      const result = await executeAgentTurn(locked, "summarizer", false, action);
       const current = await loadSession(sessionId);
 
       if (!current) {
@@ -185,19 +204,22 @@ export async function POST(
       appendTurn(current, result.turn);
       current.lastCallAt = result.turn.at;
       current.hasSummary = true;
+      // A summary is a provider call, so it spends the approval that allowed
+      // it — one approval, one successful call.
+      current.handoffApprovedAt = null;
       await saveSession(current);
 
       return NextResponse.json(buildSessionView(current));
     }
 
-    const route = routeNext(sessionState(session));
+    const route = routeNext(sessionState(locked));
 
     if (!route.role) {
       return NextResponse.json({ error: route.reason }, { status: 409 });
     }
 
-    const isRebuttal = route.role === "investigator" && session.stage === "review_ready";
-    const result = await executeAgentTurn(session, route.role, isRebuttal, action);
+    const isRebuttal = route.role === "investigator" && locked.stage === "review_ready";
+    const result = await executeAgentTurn(locked, route.role, isRebuttal, action);
 
     // Isaac may have decided something while this was in flight. Re-read from
     // disk: a terminal or moved-on session wins and the reply is discarded.

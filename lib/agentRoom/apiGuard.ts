@@ -25,20 +25,28 @@ export function badRequest(message: string): NextResponse {
 
 /**
  * The manual-mode gate, enforced server-side so it cannot be skipped by a
- * client that simply does not ask. In "manual" the agents may not run until
- * Isaac has recorded an approval for the next handoff; that approval is spent
- * by the turn it authorises, so each turn needs its own.
+ * client that simply does not ask. In "manual" **no provider call may run**
+ * until Isaac has recorded an approval — agent turns and session summaries
+ * alike. That approval is spent by the successful call it authorises, so each
+ * call needs its own and a failed call leaves it unspent.
  *
- * Returns null in "auto", which leaves automatic mode exactly as it was.
+ * Returns true in "auto", which leaves automatic mode exactly as it was.
  */
 export const AGENT_ROOM_MANUAL_APPROVAL_REQUIRED =
   "Manual handoff approval is on. Review the next handoff and approve it before the agents continue.";
+
+export function manualApprovalSatisfied(
+  mode: "auto" | "manual",
+  approvedAt: string | null | undefined,
+): boolean {
+  return mode !== "manual" || Boolean(approvedAt);
+}
 
 export function manualApprovalResponse(
   mode: "auto" | "manual",
   approvedAt: string | null,
 ): NextResponse | null {
-  if (mode !== "manual" || approvedAt) {
+  if (manualApprovalSatisfied(mode, approvedAt)) {
     return null;
   }
 

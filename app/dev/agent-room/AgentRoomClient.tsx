@@ -177,11 +177,14 @@ export default function AgentRoomClient() {
   }
 
   /**
-   * Manual mode: record the approval, then run the turn it authorises. The
-   * server refuses `advance` until that approval exists, so this pair is the
-   * whole of "review each handoff" rather than a client-side courtesy.
+   * Manual mode: record the approval, then run the call it authorises. The
+   * server refuses every provider call until that approval exists, so this pair
+   * is the whole of "review each handoff" rather than a client-side courtesy.
+   *
+   * Used for the agent turn behind the payload preview, and for the summary —
+   * which is also a provider call, and so also needs an approval in manual mode.
    */
-  async function approveAndAdvance() {
+  async function approveAndRun(action: AgentRoomAction) {
     if (!session) {
       return;
     }
@@ -197,7 +200,7 @@ export default function AgentRoomClient() {
     );
 
     if (approved) {
-      await runAction("advance");
+      await runAction(action);
     }
   }
 
@@ -713,7 +716,14 @@ export default function AgentRoomClient() {
                         key={action}
                         type="button"
                         disabled={!actionAllowed(action) || busy}
-                        onClick={() => void runAction(action)}
+                        onClick={() =>
+                          // The summary is a provider call, so in manual mode
+                          // clicking it records the approval it needs. Every
+                          // other action here is a local decision.
+                          manualMode && action === "generate_summary"
+                            ? void approveAndRun(action)
+                            : void runAction(action)
+                        }
                         className="ftc-btn-secondary px-4"
                       >
                         {AGENT_ROOM_ACTION_LABELS[action]}
@@ -828,7 +838,7 @@ export default function AgentRoomClient() {
                       <button
                         type="button"
                         disabled={busy}
-                        onClick={() => void approveAndAdvance()}
+                        onClick={() => void approveAndRun("advance")}
                         className="ftc-btn-primary px-4"
                       >
                         Approve and send to {route.handoff.provider}
