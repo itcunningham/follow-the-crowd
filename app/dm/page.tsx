@@ -677,6 +677,15 @@ function DmInboxPageContent() {
   }, [refreshUnreadState]);
 
   useEffect(() => {
+    unreadTrace("2-unread-set-committed", {
+      eventSetContents: [...unreadEventChatIds],
+      eventSetContentsJson: [...unreadEventChatIds].map((id) => JSON.stringify(id)),
+      groupUnreadCount: unreadEventChatIds.size,
+      conversationSetSize: unreadConversationIds.size,
+    });
+  }, [unreadEventChatIds, unreadConversationIds]);
+
+  useEffect(() => {
     function handleReadsUpdated() {
       void refreshUnreadState();
     }
