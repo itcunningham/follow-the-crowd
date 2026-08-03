@@ -14563,6 +14563,21 @@ async function testAgentRoomExposesNoRepositoryMutation() {
     "version one may only read",
   );
 
+  // Every Agent Room module must be readable text. A stray NUL byte makes git
+  // treat the file as binary, which silently blinds `git diff` and code review —
+  // one reached the Decision Log's search separator and survived to release
+  // pre-flight because it changed no behaviour.
+  for (const entry of readdirSync(new URL("../lib/agentRoom", import.meta.url))) {
+    if (!entry.endsWith(".ts")) {
+      continue;
+    }
+
+    assert.ok(
+      !agentRoomSource(`lib/agentRoom/${entry}`).includes("\u0000"),
+      `lib/agentRoom/${entry} must contain no NUL bytes — git would treat it as binary`,
+    );
+  }
+
   const executable = agentRoomCode("lib/agentRoom/repoAccess.ts");
 
   for (const forbidden of [
