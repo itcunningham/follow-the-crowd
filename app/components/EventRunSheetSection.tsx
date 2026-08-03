@@ -574,7 +574,12 @@ function RunSheetEntry({
   const isReadOnlyAndIncomplete = !canEdit && !isRunSheetRowComplete(row);
 
   return (
-    <div className={`ftc-card p-3 ${isReadOnlyAndIncomplete ? "opacity-75" : ""}`.trim()}>
+    // Vertical padding is tighter than horizontal (`pt-2.5 pb-2` vs `px-3`),
+    // and bottom tighter than top: the DJ header needs breathing room above
+    // it, the last field does not need as much below it.
+    <div
+      className={`ftc-card px-3 pt-2.5 pb-2 ${isReadOnlyAndIncomplete ? "opacity-75" : ""}`.trim()}
+    >
       {setLabel ? (
         <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted">
           {setLabel}
@@ -615,7 +620,9 @@ function RunSheetEntry({
         onClick={onToggleExpanded}
         aria-expanded={isExpanded}
         aria-controls={panelId}
-        className="mt-1 flex w-full items-center gap-2 rounded-md py-1 text-left"
+        // `py-1` is the tap target's own padding and is deliberately left
+        // alone; only the margin above it tightens.
+        className="mt-0.5 flex w-full items-center gap-2 rounded-md py-1 text-left"
       >
         <span className="min-w-0 flex-1 truncate text-xs text-ftc-text-muted">
           {!isExpanded && collapsedSummary
@@ -640,7 +647,7 @@ function RunSheetEntry({
               flow doesn't have that failure mode: a block's width comes from
               its containing block, not its content, so it can't be pulled
               wide by anything inside it. */}
-          <div className="space-y-2.5 pt-2">
+          <div className="space-y-1.5 pt-0.5">
             {canEdit ? (
               <label className="block">
                 <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted">
@@ -665,7 +672,7 @@ function RunSheetEntry({
             ) : null}
 
             <label className="block">
-              <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted">
+              <span className="mb-0.5 block text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted">
                 Set Time
               </span>
               <RunSheetSetTimeField
@@ -1013,11 +1020,15 @@ export default function EventRunSheetSection({
             together in a single row -- paired as one action, not a lone
             floating button -- with Save as the visually primary one. Save's
             visibility is a CSS transition (`.ftc-run-sheet-save-btn`) gated
-            on `hasUnsavedChanges`, not a mount/unmount -- it fades and nudges
-            into place rather than appearing from nothing, and Cancel doesn't
-            shift when it does. */}
+            on `hasUnsavedChanges`, not a mount/unmount.
+
+            No `gap` here on purpose: hidden Save collapses to zero width so
+            that Cancel lands exactly where Edit sits, and a container gap
+            would survive that collapse as a phantom offset. The gap to Cancel
+            is Save's own `margin-left` instead -- see `.ftc-run-sheet-save-btn`
+            in globals.css. */}
         {showRunSheetHeaderActions ? (
-          <div className="flex items-center gap-3">
+          <div className="flex items-center justify-end">
             {isEditing ? (
               <>
                 <button

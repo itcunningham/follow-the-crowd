@@ -488,18 +488,45 @@ html {
  * `pointer-events` follows the same toggle so the hidden button can't be
  * clicked while invisible; `tabIndex` on the element (not CSS) handles keyboard
  * reachability.
+ *
+ * Hidden means zero *horizontal* footprint, not merely transparent: an
+ * invisible-but-space-occupying Save pushed Cancel ~73px left of the
+ * right-aligned slot Edit occupies in view mode, so the top-right control
+ * appeared to jump sideways the moment Edit was pressed. Collapsing
+ * `max-width`/padding to 0 puts Cancel exactly where Edit was. `min-height`
+ * (from `.ftc-btn-primary`) is deliberately NOT collapsed, so the row keeps
+ * reserving its full height and the DJ cards below still never move.
+ *
+ * The gap to Cancel rides on Save's own `margin-left` rather than a flex
+ * `gap` on the container, because a container gap would survive the collapse
+ * and leave a phantom 12px offset. Tailwind utilities live in a cascade layer
+ * and this file is unlayered, so these declarations win over `px-3` without
+ * needing `!important`.
  */
 .ftc-run-sheet-save-btn {
   opacity: 0;
   transform: translateY(7px);
   pointer-events: none;
-  transition: opacity 190ms ease-out, transform 190ms ease-out;
+  max-width: 0;
+  margin-left: 0;
+  padding-left: 0;
+  padding-right: 0;
+  overflow: hidden;
+  transition: opacity 190ms ease-out, transform 190ms ease-out,
+    max-width 190ms ease-out, margin-left 190ms ease-out, padding 190ms ease-out;
 }
 
 .ftc-run-sheet-save-btn.ftc-run-sheet-save-btn--visible {
   opacity: 1;
   transform: translateY(0);
   pointer-events: auto;
+  /* Comfortably above the natural width of the longest label ("Saving"), so
+     `overflow: hidden` never clips it -- max-width caps width, it doesn't set
+     it, so the button still sizes to its content. */
+  max-width: 8rem;
+  margin-left: 0.75rem;
+  padding-left: 0.75rem;
+  padding-right: 0.75rem;
 }
 
 @media (prefers-reduced-motion: reduce) {

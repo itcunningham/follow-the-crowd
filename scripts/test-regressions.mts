@@ -9251,19 +9251,25 @@ function testRunSheetAccordionRestructure() {
   // wide by anything inside it -- which is also why `BookingRequestCard`'s
   // own existing use of the same `BookingCardExpandableNotes` component,
   // inside a plain block wrapper rather than a grid, was never at risk.
-  // Spacing tightened to `space-y-2.5` by testRunSheetDensityAndSummaryPolish;
-  // what matters here is that it stays a `space-y-*` block stack and never
-  // becomes a grid, for the clipping reason above.
-  assert.match(section, /"space-y-2\.5 pt-2"/);
-  assert.doesNotMatch(section, /"grid gap-3 pt-2"/);
-  assert.doesNotMatch(section, /"grid gap-2\.5 pt-2"/);
+  // Exact spacing is owned by testRunSheetHeaderAlignmentAndDensity; what
+  // matters here is only that it stays a `space-y-*` block stack and never
+  // becomes a grid, for the clipping reason above. Matched generically so a
+  // future density tweak doesn't have to touch this test at all.
+  assert.match(section, /className="space-y-[\d.]+ pt-[\d.]+"/);
+  assert.doesNotMatch(section, /className="grid gap-[\d.]+ pt-[\d.]+"/);
 
   // Tightened spacing: the collapsed card and the list gap are both smaller
   // than the pre-restructure values (`p-4` card, `space-y-3` list). The card
   // class is now a template literal (an incomplete row conditionally adds
   // `opacity-75`; see testRunSheetProductionPolish), so match the base
   // classes rather than a single literal string.
-  assert.match(section, /`ftc-card p-3 \$\{isReadOnlyAndIncomplete \? "opacity-75" : ""\}`/);
+  // Card padding is now per-axis (`px-3 pt-2.5 pb-2`, see
+  // testRunSheetHeaderAlignmentAndDensity) rather than a uniform `p-3`; the
+  // enduring rule is that it is tighter than the pre-restructure `p-4`.
+  assert.match(
+    section,
+    /`ftc-card px-3 pt-[\d.]+ pb-[\d.]+ \$\{isReadOnlyAndIncomplete \? "opacity-75" : ""\}`/,
+  );
   assert.match(section, /"mt-5 space-y-2"/);
   assert.doesNotMatch(section, /"ftc-card p-4"/);
 
@@ -9369,7 +9375,7 @@ function testRunSheetChromeReduction() {
 
   // Information order in the expanded panel: Stage / Area, then Set Time,
   // then Notes.
-  const panelBody = entryFn.match(/<div className="space-y-2\.5 pt-2">([\s\S]*?)<\/AnimatedExpandPanel>/)?.[1] ?? "";
+  const panelBody = entryFn.match(/<div className="space-y-[\d.]+ pt-[\d.]+">([\s\S]*?)<\/AnimatedExpandPanel>/)?.[1] ?? "";
   const stageIndex = panelBody.indexOf("Stage / Area");
   const setTimeIndex = panelBody.indexOf("RunSheetSetTimeField");
   const notesIndex = panelBody.lastIndexOf("Notes");
@@ -9948,7 +9954,10 @@ function testRunSheetSaveButtonPolish() {
   assert.match(hiddenRule, /opacity: 0;/);
   assert.match(hiddenRule, /transform: translateY\(7px\);/);
   assert.match(hiddenRule, /pointer-events: none;/);
-  assert.match(hiddenRule, /transition: opacity 190ms ease-out, transform 190ms ease-out;/);
+  // The transition now also carries the collapse geometry (see
+  // testRunSheetHeaderAlignmentAndDensity); opacity and transform are still
+  // the two that own the fade-and-nudge, at the same 190ms ease-out.
+  assert.match(hiddenRule, /transition: opacity 190ms ease-out, transform 190ms ease-out/);
   assert.doesNotMatch(globalsSource, /@keyframes ftc-run-sheet-save-reveal/);
 
   const visibleRule =
@@ -10006,7 +10015,10 @@ function testRunSheetVisualHierarchyPolish() {
   const headerActions =
     section.match(/\{showRunSheetHeaderActions \? \(([\s\S]*?)\) : null\}\n\s*<\/div>/)?.[1] ?? "";
   assert.ok(headerActions, "the Run Sheet header actions cluster must exist");
-  assert.match(headerActions, /<div className="flex items-center gap-3">/);
+  // The container lost its `gap-3` in testRunSheetHeaderAlignmentAndDensity
+  // (the gap moved onto Save so it collapses with the button); what this pass
+  // still owns is that Cancel and Save share one flex row.
+  assert.match(headerActions, /<div className="flex items-center justify-end">/);
   assert.doesNotMatch(headerActions, /flex-col items-end/);
   assert.doesNotMatch(headerActions, /justify-end pr-3/);
 
@@ -10118,8 +10130,11 @@ function testRunSheetDensityAndSummaryPolish() {
   assert.doesNotMatch(notesComponentSource, /font-semibold text-ftc-text-secondary/);
 
   // Expanded panel density: ~17% tighter, still a block stack not a grid.
-  assert.match(section, /<div className="space-y-2\.5 pt-2">/);
+  // Tightened again by testRunSheetHeaderAlignmentAndDensity, which owns the
+  // exact values now; what this pass still guarantees is that it never goes
+  // back to the looser pre-density spacing.
   assert.doesNotMatch(section, /<div className="space-y-3 pt-2">/);
+  assert.doesNotMatch(section, /<div className="space-y-2\.5 pt-2">/);
 
   const entryFn = section.match(/function RunSheetEntry\([\s\S]*?\n}\n/)?.[0] ?? "";
   assert.ok(entryFn, "RunSheetEntry must exist");
@@ -10154,6 +10169,105 @@ function testRunSheetDensityAndSummaryPolish() {
   assert.match(headerButton, /aria-expanded=\{isExpanded\}/);
   assert.match(headerButton, /aria-controls=\{panelId\}/);
   assert.match(section, /isExpanded=\{isEditing \|\| expandedRowId === row\.id\}/);
+}
+
+/**
+ * Header-action alignment + expanded-card density. Presentation only: no
+ * handler, state, validation, reorder, expand/collapse or save-logic change.
+ *
+ * ALIGNMENT. The top-right control previously jumped sideways the moment Edit
+ * was pressed. Save is permanently mounted while editing (so the row's height
+ * is reserved and the DJ cards below never shift), but it was still occupying
+ * its full width while invisible, which pushed Cancel ~73px left of the slot
+ * Edit occupies -- 61px of button plus the container's own 12px `gap-3`.
+ * Fixed entirely in CSS, without touching the mount/`aria-hidden`/`tabIndex`
+ * mechanic: the hidden button collapses `max-width` and horizontal padding to
+ * 0, and the 12px separation moved from a container `gap` onto Save's own
+ * `margin-left` so it collapses with the button instead of surviving as a
+ * phantom offset. Measured live at 390px and 1280px: Edit and Cancel share an
+ * identical right edge, and with unsaved changes Save owns that edge with
+ * Cancel 12px to its left.
+ *
+ * `min-height` is deliberately NOT collapsed -- that is what keeps the row
+ * reserved at 40px in both edit states.
+ *
+ * DENSITY. ~10% shorter expanded card (measured 233.5px -> 209.5px at 390px)
+ * from whitespace only. Touch targets, inputs and textarea heights are all
+ * untouched: the toggle keeps its `py-1`, and only the margin above it
+ * tightens. Card padding became per-axis so the bottom can be tighter than
+ * the top, since the DJ header needs breathing room above it and the last
+ * field does not need as much below it.
+ */
+function testRunSheetHeaderAlignmentAndDensity() {
+  const section = readFileSync(
+    new URL("../app/components/EventRunSheetSection.tsx", import.meta.url),
+    "utf8",
+  );
+  const globalsSource = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
+
+  // --- Alignment ---------------------------------------------------------
+  // No container gap: it would survive the collapse as a phantom offset.
+  assert.match(section, /<div className="flex items-center justify-end">/);
+  assert.doesNotMatch(section, /<div className="flex items-center gap-3">/);
+
+  const hiddenRule = globalsSource.match(/\.ftc-run-sheet-save-btn \{[\s\S]*?\n\}/)?.[0] ?? "";
+  assert.ok(hiddenRule, "the Save button's hidden-state rule must exist");
+  // Zero horizontal footprint while hidden.
+  assert.match(hiddenRule, /max-width: 0;/);
+  assert.match(hiddenRule, /padding-left: 0;/);
+  assert.match(hiddenRule, /padding-right: 0;/);
+  assert.match(hiddenRule, /margin-left: 0;/);
+  assert.match(hiddenRule, /overflow: hidden;/);
+  // Height is NOT collapsed -- the row must stay reserved.
+  assert.doesNotMatch(hiddenRule, /min-height/);
+  assert.doesNotMatch(hiddenRule, /height: 0/);
+  assert.doesNotMatch(hiddenRule, /display: none/);
+  // The collapse is animated, not a snap.
+  assert.match(hiddenRule, /transition:[\s\S]*max-width 190ms ease-out/);
+  assert.match(hiddenRule, /transition:[\s\S]*margin-left 190ms ease-out/);
+
+  const visibleRule =
+    globalsSource.match(/\.ftc-run-sheet-save-btn\.ftc-run-sheet-save-btn--visible \{[\s\S]*?\n\}/)?.[0] ??
+    "";
+  assert.ok(visibleRule, "the Save button's visible-state rule must exist");
+  // Restored geometry, and the gap to Cancel rides on Save itself.
+  assert.match(visibleRule, /max-width: 8rem;/);
+  assert.match(visibleRule, /margin-left: 0\.75rem;/);
+  assert.match(visibleRule, /padding-left: 0\.75rem;/);
+  assert.match(visibleRule, /padding-right: 0\.75rem;/);
+
+  // Cancel before Save in source, so Save owns the right edge.
+  const headerActions =
+    section.match(/\{showRunSheetHeaderActions \? \(([\s\S]*?)\) : null\}/)?.[1] ?? "";
+  assert.ok(headerActions, "the header actions cluster must exist");
+  assert.ok(
+    headerActions.indexOf("onClick={handleCancelEdit}") <
+      headerActions.indexOf("onClick={handleSave}"),
+    "Cancel must precede Save so Save sits furthest right",
+  );
+
+  // The mount/a11y mechanic is untouched by the alignment fix.
+  assert.match(section, /aria-hidden=\{!hasUnsavedChanges\}/);
+  assert.match(section, /tabIndex=\{hasUnsavedChanges \? 0 : -1\}/);
+  assert.doesNotMatch(section, /\{isEditing && hasUnsavedChanges \? \(/);
+
+  // --- Density -----------------------------------------------------------
+  // Per-axis card padding, bottom tighter than top.
+  assert.match(section, /`ftc-card px-3 pt-2\.5 pb-2 \$\{isReadOnlyAndIncomplete/);
+  // Panel stack tightened, still a block stack (never a grid -- see
+  // testRunSheetAccordionRestructure for the clipping bug that causes).
+  assert.match(section, /<div className="space-y-1\.5 pt-0\.5">/);
+  // Margin above the toggle tightened, but its `py-1` tap padding is intact.
+  assert.match(section, /className="mt-0\.5 flex w-full items-center gap-2 rounded-md py-1 text-left"/);
+
+  // Nothing that would shrink a touch target, an input, or a textarea.
+  assert.match(section, /const RUN_SHEET_NOTES_VISIBLE_ROWS = 4;/);
+  assert.match(section, /const RUN_SHEET_STAGE_AREA_VISIBLE_ROWS = 2;/);
+  assert.match(section, /min-h-\[2\.25rem\]/);
+  const runSheetTextareaRules = globalsSource.match(/\.ftc-run-sheet-textarea-[24] \{[\s\S]*?\n\}/g) ?? [];
+  assert.equal(runSheetTextareaRules.length, 2, "both pinned textarea heights must still exist");
+  assert.match(runSheetTextareaRules.join("\n"), /2 \* 1\.5rem/);
+  assert.match(runSheetTextareaRules.join("\n"), /4 \* 1\.5rem/);
 }
 
 function testEventNotesTextareaScrollsWhenContentExceedsCap() {
@@ -11828,6 +11942,7 @@ async function main() {
   testRunSheetSaveButtonPolish();
   testRunSheetVisualHierarchyPolish();
   testRunSheetDensityAndSummaryPolish();
+  testRunSheetHeaderAlignmentAndDensity();
   testAppSplashScreenSlogan();
   testRoleAwareWorkspaceNavigation();
   testCancelledEventGigsAreSurfacedInGigs();
