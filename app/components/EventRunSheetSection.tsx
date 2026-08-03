@@ -1022,23 +1022,26 @@ export default function EventRunSheetSection({
             visibility is a CSS transition (`.ftc-run-sheet-save-btn`) gated
             on `hasUnsavedChanges`, not a mount/unmount.
 
-            No `gap` here on purpose: hidden Save collapses to zero width so
-            that Cancel lands exactly where Edit sits, and a container gap
-            would survive that collapse as a phantom offset. The gap to Cancel
-            is Save's own `margin-left` instead -- see `.ftc-run-sheet-save-btn`
-            in globals.css. */}
+            Cancel is the anchor: it is the last child of this `justify-end`
+            row, so it owns the right edge and sits at exactly the same x as
+            Edit does in view mode -- before and after Save appears. Save is
+            revealed to its left, expanding out of zero width.
+
+            No `gap` here on purpose: a container gap would survive Save's
+            collapse as a phantom offset and shift Cancel. The 12px between
+            Save and Cancel is Save's own `margin-right` instead -- see
+            `.ftc-run-sheet-save-btn` in globals.css. */}
         {showRunSheetHeaderActions ? (
           <div className="flex items-center justify-end">
             {isEditing ? (
               <>
-                <button
-                  type="button"
-                  onClick={handleCancelEdit}
-                  disabled={saving}
-                  className="ftc-form-cancel-link disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  Cancel
-                </button>
+                {/* Save first in source, Cancel last: Cancel is the final
+                    child of a `justify-end` row, so it owns the right edge
+                    and cannot be displaced. Save expands leftward out of
+                    zero width, which is what keeps Cancel pinned to the very
+                    same x as Edit whether or not there are unsaved changes.
+                    DOM order also matches visual order here, so tab order
+                    reads left-to-right. */}
                 <button
                   type="button"
                   onClick={handleSave}
@@ -1050,6 +1053,14 @@ export default function EventRunSheetSection({
                   }`}
                 >
                   {saving ? "Saving" : "Save"}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCancelEdit}
+                  disabled={saving}
+                  className="ftc-form-cancel-link disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Cancel
                 </button>
               </>
             ) : (

@@ -10078,11 +10078,12 @@ function testRunSheetVisualHierarchyPolish() {
   assert.doesNotMatch(headerActions, /flex-col items-end/);
   assert.doesNotMatch(headerActions, /justify-end pr-3/);
 
-  // Cancel then Save, both inside the same editing branch, no wrapping div
-  // between them.
+  // Both live in the same editing branch with no wrapping div between them.
+  // Their order was later reversed so Cancel owns the right edge -- see
+  // testRunSheetCancelIsTheFixedAnchor, which owns ordering now.
   const cancelIndex = headerActions.indexOf("onClick={handleCancelEdit}");
   const saveIndex = headerActions.indexOf("onClick={handleSave}");
-  assert.ok(cancelIndex > -1 && saveIndex > -1 && cancelIndex < saveIndex);
+  assert.ok(cancelIndex > -1 && saveIndex > -1);
 
   // Edit reuses the exact same lightweight text-link class as Cancel, not
   // the bordered secondary-button pill.
@@ -10239,10 +10240,14 @@ function testRunSheetDensityAndSummaryPolish() {
  * Fixed entirely in CSS, without touching the mount/`aria-hidden`/`tabIndex`
  * mechanic: the hidden button collapses `max-width` and horizontal padding to
  * 0, and the 12px separation moved from a container `gap` onto Save's own
- * `margin-left` so it collapses with the button instead of surviving as a
- * phantom offset. Measured live at 390px and 1280px: Edit and Cancel share an
- * identical right edge, and with unsaved changes Save owns that edge with
- * Cancel 12px to its left.
+ * margin so it collapses with the button instead of surviving as a phantom
+ * offset. Measured live at 390px and 1280px: Edit and Cancel share an
+ * identical right edge.
+ *
+ * A follow-up pass (testRunSheetCancelIsTheFixedAnchor) reversed Save and
+ * Cancel so Cancel owns the right edge in every state; the margin moved from
+ * `margin-left` to `margin-right` with it. That test owns ordering and the
+ * margin side now.
  *
  * `min-height` is deliberately NOT collapsed -- that is what keeps the row
  * reserved at 40px in both edit states.
@@ -10272,7 +10277,9 @@ function testRunSheetHeaderAlignmentAndDensity() {
   assert.match(hiddenRule, /max-width: 0;/);
   assert.match(hiddenRule, /padding-left: 0;/);
   assert.match(hiddenRule, /padding-right: 0;/);
-  assert.match(hiddenRule, /margin-left: 0;/);
+  // Margin side is owned by testRunSheetCancelIsTheFixedAnchor; what matters
+  // here is only that the collapse zeroes it.
+  assert.match(hiddenRule, /margin-(left|right): 0;/);
   assert.match(hiddenRule, /overflow: hidden;/);
   // Height is NOT collapsed -- the row must stay reserved.
   assert.doesNotMatch(hiddenRule, /min-height/);
@@ -10280,7 +10287,7 @@ function testRunSheetHeaderAlignmentAndDensity() {
   assert.doesNotMatch(hiddenRule, /display: none/);
   // The collapse is animated, not a snap.
   assert.match(hiddenRule, /transition:[\s\S]*max-width 190ms ease-out/);
-  assert.match(hiddenRule, /transition:[\s\S]*margin-left 190ms ease-out/);
+  assert.match(hiddenRule, /transition:[\s\S]*margin-(left|right) 190ms ease-out/);
 
   const visibleRule =
     globalsSource.match(/\.ftc-run-sheet-save-btn\.ftc-run-sheet-save-btn--visible \{[\s\S]*?\n\}/)?.[0] ??
@@ -10288,19 +10295,15 @@ function testRunSheetHeaderAlignmentAndDensity() {
   assert.ok(visibleRule, "the Save button's visible-state rule must exist");
   // Restored geometry, and the gap to Cancel rides on Save itself.
   assert.match(visibleRule, /max-width: 8rem;/);
-  assert.match(visibleRule, /margin-left: 0\.75rem;/);
+  assert.match(visibleRule, /margin-(left|right): 0\.75rem;/);
   assert.match(visibleRule, /padding-left: 0\.75rem;/);
   assert.match(visibleRule, /padding-right: 0\.75rem;/);
 
-  // Cancel before Save in source, so Save owns the right edge.
+  // Source order was later reversed so Cancel owns the right edge instead --
+  // see testRunSheetCancelIsTheFixedAnchor, which owns that now.
   const headerActions =
     section.match(/\{showRunSheetHeaderActions \? \(([\s\S]*?)\) : null\}/)?.[1] ?? "";
   assert.ok(headerActions, "the header actions cluster must exist");
-  assert.ok(
-    headerActions.indexOf("onClick={handleCancelEdit}") <
-      headerActions.indexOf("onClick={handleSave}"),
-    "Cancel must precede Save so Save sits furthest right",
-  );
 
   // The mount/a11y mechanic is untouched by the alignment fix.
   assert.match(section, /aria-hidden=\{!hasUnsavedChanges\}/);
@@ -10324,6 +10327,112 @@ function testRunSheetHeaderAlignmentAndDensity() {
   assert.equal(runSheetTextareaRules.length, 2, "both pinned textarea heights must still exist");
   assert.match(runSheetTextareaRules.join("\n"), /2 \* 1\.5rem/);
   assert.match(runSheetTextareaRules.join("\n"), /4 \* 1\.5rem/);
+}
+
+/**
+ * Cancel is the fixed anchor of the Run Sheet header. Layout only -- no
+ * handler, dirty-detection, validation or save-logic change.
+ *
+ * The previous pass stopped Cancel jumping when *entering* edit mode, but
+ * Cancel still moved when Save appeared: Save was last in source, so in a
+ * `justify-end` row Save owned the right edge and expanding it pushed Cancel
+ * ~73px left. Reversing the two fixes that at the layout level rather than
+ * with any offset arithmetic -- Cancel is now the final child, so it owns the
+ * right edge outright and Save expands leftward out of zero width into the
+ * space beside it.
+ *
+ * Required end state, all three sharing one right edge:
+ *   view                -> EDIT
+ *   editing, clean      -> CANCEL          (same x as EDIT, Save collapsed)
+ *   editing, dirty      -> SAVE  CANCEL    (Cancel unmoved, Save to its left)
+ *
+ * The 12px separation moved from Save's `margin-left` to its `margin-right`
+ * along with the reversal, since Save now sits on Cancel's left. It still
+ * rides on the button (not a container `gap`) so it collapses with it; a
+ * container gap would survive the collapse and shift Cancel.
+ *
+ * Everything that makes the reveal work is untouched: Save stays permanently
+ * mounted while editing so the row's height stays reserved (`min-height` is
+ * never collapsed), visibility is still the dirty-gated CSS transition, and
+ * `aria-hidden`/`tabIndex` still make the collapsed button unreachable.
+ */
+function testRunSheetCancelIsTheFixedAnchor() {
+  const section = readFileSync(
+    new URL("../app/components/EventRunSheetSection.tsx", import.meta.url),
+    "utf8",
+  );
+  const globalsSource = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
+
+  const headerActions =
+    section.match(/\{showRunSheetHeaderActions \? \(([\s\S]*?)\) : null\}/)?.[1] ?? "";
+  assert.ok(headerActions, "the header actions cluster must exist");
+
+  // Save BEFORE Cancel: Cancel is the last child, so it owns the right edge.
+  const saveIndex = headerActions.indexOf("onClick={handleSave}");
+  const cancelIndex = headerActions.indexOf("onClick={handleCancelEdit}");
+  assert.ok(saveIndex > -1 && cancelIndex > -1, "both actions must render");
+  assert.ok(
+    saveIndex < cancelIndex,
+    "Save must precede Cancel so Cancel is the last child and owns the right edge",
+  );
+
+  // Right-aligned row with no container gap (a gap would survive Save's
+  // collapse and displace Cancel).
+  assert.match(section, /<div className="flex items-center justify-end">/);
+  assert.doesNotMatch(headerActions, /className="flex items-center gap-\d/);
+
+  // Edit and Cancel share the same anchor by sharing the same class, so
+  // neither can drift from the other's position.
+  const editButton =
+    headerActions.match(/onClick=\{handleEnterEditMode\}[\s\S]*?<\/button>/)?.[0] ?? "";
+  const cancelButton =
+    headerActions.match(/onClick=\{handleCancelEdit\}[\s\S]*?<\/button>/)?.[0] ?? "";
+  assert.ok(editButton && cancelButton, "Edit and Cancel must both render");
+  const anchorClass = /className="ftc-form-cancel-link disabled:cursor-not-allowed disabled:opacity-50"/;
+  assert.match(editButton, anchorClass);
+  assert.match(cancelButton, anchorClass);
+
+  // Save is NOT shown before a change exists: it is collapsed to zero
+  // horizontal footprint and is unreachable by pointer or keyboard.
+  const hiddenRule = globalsSource.match(/\.ftc-run-sheet-save-btn \{[\s\S]*?\n\}/)?.[0] ?? "";
+  assert.ok(hiddenRule, "the Save hidden-state rule must exist");
+  assert.match(hiddenRule, /max-width: 0;/);
+  assert.match(hiddenRule, /margin-right: 0;/);
+  assert.match(hiddenRule, /padding-left: 0;/);
+  assert.match(hiddenRule, /padding-right: 0;/);
+  assert.match(hiddenRule, /pointer-events: none;/);
+  assert.match(section, /aria-hidden=\{!hasUnsavedChanges\}/);
+  assert.match(section, /tabIndex=\{hasUnsavedChanges \? 0 : -1\}/);
+
+  // The gap now sits on Save's RIGHT (Save is left of Cancel), and collapses
+  // with the button rather than surviving as a phantom offset.
+  const visibleRule =
+    globalsSource.match(/\.ftc-run-sheet-save-btn\.ftc-run-sheet-save-btn--visible \{[\s\S]*?\n\}/)?.[0] ??
+    "";
+  assert.ok(visibleRule, "the Save visible-state rule must exist");
+  assert.match(visibleRule, /margin-right: 0\.75rem;/);
+  assert.doesNotMatch(visibleRule, /margin-left/);
+  assert.doesNotMatch(hiddenRule, /margin-left/);
+  assert.match(hiddenRule, /transition:[\s\S]*margin-right 190ms ease-out/);
+
+  // Row height still reserved -- Save must never collapse vertically, or the
+  // DJ cards below would shift when it appears.
+  assert.doesNotMatch(hiddenRule, /min-height/);
+  assert.doesNotMatch(hiddenRule, /height: 0/);
+  assert.doesNotMatch(hiddenRule, /display: none/);
+  assert.match(section, /const RUN_SHEET_SAVE_BUTTON_CLASS =\s*\n\s*"ftc-btn-primary[^"]*min-h-10/);
+
+  // Save is still mounted for the whole editing session, gated only by the
+  // dirty class -- dirty detection itself is untouched.
+  assert.doesNotMatch(section, /\{isEditing && hasUnsavedChanges \? \(/);
+  assert.match(
+    section,
+    /const hasUnsavedChanges = useMemo\(\s*\(\) => hasUnsavedRunSheetEdits\(savedRows, rows\),\s*\[savedRows, rows\],\s*\);/,
+  );
+  // Handlers unchanged.
+  assert.match(section, /onClick=\{handleSave\}\s*\n\s*disabled=\{saving\}/);
+  assert.match(section, /onClick=\{handleCancelEdit\}\s*\n\s*disabled=\{saving\}/);
+  assert.match(section, /\{saving \? "Saving" : "Save"\}/);
 }
 
 function testEventNotesTextareaScrollsWhenContentExceedsCap() {
@@ -12479,6 +12588,7 @@ async function main() {
   testRunSheetVisualHierarchyPolish();
   testRunSheetDensityAndSummaryPolish();
   testRunSheetHeaderAlignmentAndDensity();
+  testRunSheetCancelIsTheFixedAnchor();
   testAppSplashScreenSlogan();
   testRoleAwareWorkspaceNavigation();
   testCancelledEventGigsAreSurfacedInGigs();

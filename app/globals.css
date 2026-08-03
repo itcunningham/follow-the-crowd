@@ -490,30 +490,36 @@ html {
  * reachability.
  *
  * Hidden means zero *horizontal* footprint, not merely transparent: an
- * invisible-but-space-occupying Save pushed Cancel ~73px left of the
+ * invisible-but-space-occupying Save would still displace Cancel from the
  * right-aligned slot Edit occupies in view mode, so the top-right control
- * appeared to jump sideways the moment Edit was pressed. Collapsing
+ * would appear to jump sideways the moment Edit was pressed. Collapsing
  * `max-width`/padding to 0 puts Cancel exactly where Edit was. `min-height`
  * (from `.ftc-btn-primary`) is deliberately NOT collapsed, so the row keeps
  * reserving its full height and the DJ cards below still never move.
  *
- * The gap to Cancel rides on Save's own `margin-left` rather than a flex
- * `gap` on the container, because a container gap would survive the collapse
- * and leave a phantom 12px offset. Tailwind utilities live in a cascade layer
- * and this file is unlayered, so these declarations win over `px-3` without
- * needing `!important`.
+ * Save sits BEFORE Cancel in source (see `EventRunSheetSection`), so Cancel
+ * is the last child of a `justify-end` row and owns the right edge outright:
+ * Save expanding out of zero width grows the row leftward and cannot push
+ * Cancel anywhere. That is what makes Cancel's position identical whether or
+ * not there are unsaved changes.
+ *
+ * The gap therefore rides on Save's own `margin-right` (Save is on Cancel's
+ * left), rather than a flex `gap` on the container -- a container gap would
+ * survive the collapse and leave a phantom 12px offset that shifted Cancel.
+ * Tailwind utilities live in a cascade layer and this file is unlayered, so
+ * these declarations win over `px-3` without needing `!important`.
  */
 .ftc-run-sheet-save-btn {
   opacity: 0;
   transform: translateY(7px);
   pointer-events: none;
   max-width: 0;
-  margin-left: 0;
+  margin-right: 0;
   padding-left: 0;
   padding-right: 0;
   overflow: hidden;
   transition: opacity 190ms ease-out, transform 190ms ease-out,
-    max-width 190ms ease-out, margin-left 190ms ease-out, padding 190ms ease-out;
+    max-width 190ms ease-out, margin-right 190ms ease-out, padding 190ms ease-out;
 }
 
 .ftc-run-sheet-save-btn.ftc-run-sheet-save-btn--visible {
@@ -524,7 +530,7 @@ html {
      `overflow: hidden` never clips it -- max-width caps width, it doesn't set
      it, so the button still sizes to its content. */
   max-width: 8rem;
-  margin-left: 0.75rem;
+  margin-right: 0.75rem;
   padding-left: 0.75rem;
   padding-right: 0.75rem;
 }
