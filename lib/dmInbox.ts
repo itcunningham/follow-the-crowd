@@ -27,53 +27,6 @@ export function normalizeInboxId(value: string | null | undefined) {
   return value?.trim().toLowerCase() ?? "";
 }
 
-/**
- * The unread Sets hold NORMALISED ids, and these two are the only way in and
- * out of them.
- *
- * The inbox learns the same thread's id from two different columns:
- * `events.id` / `conversations.id` when a row is loaded, and
- * `messages.event_id` / `messages.conversation_id` when a realtime message
- * arrives (`messages.event_id` is text rather than uuid in some environments —
- * see setupEventCrewChat.sql's conditional migration). Everything that compares
- * those two already normalises both sides: `applyInboxGroupMessage` matches a
- * row that way, and `removeUnreadEventChatId` deletes that way.
- *
- * Unread membership did not. A realtime message added the id exactly as the
- * message row carried it, while the row rendered
- * `unreadEventChatIds.has(chat.eventId)` — an exact-match lookup against the
- * events-table form. Any difference between the two, in case or surrounding
- * whitespace, and the add silently missed: the preview updated (normalised
- * comparison) while the highlight never appeared (exact one). A reload hid it,
- * because a reload rebuilds the Set from the events-table form the lookup uses.
- *
- * Normalising on the way in keeps `.size` honest for the Groups tab count — two
- * spellings of one thread must never count twice — and normalising the query
- * makes the lookup independent of which column the id came from.
- */
-export function toNormalizedInboxIdSet(ids: Iterable<string>): Set<string> {
-  const normalized = new Set<string>();
-
-  for (const id of ids) {
-    const key = normalizeInboxId(id);
-
-    if (key) {
-      normalized.add(key);
-    }
-  }
-
-  return normalized;
-}
-
-export function hasUnreadInboxId(
-  unreadIds: ReadonlySet<string>,
-  id: string | null | undefined,
-): boolean {
-  const key = normalizeInboxId(id);
-
-  return key ? unreadIds.has(key) : false;
-}
-
 export function getInboxActivityTimestamp(
   latestActivityAt: string | null | undefined,
   fallbackDate: string | null | undefined,
