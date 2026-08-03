@@ -87,18 +87,32 @@ body {
 html {
   overflow-x: clip;
 
-  /* Stop the iOS rubber-band bounce at the document level.
+  /* Stop the iOS rubber-band bounce at the document level, on both axes.
    *
-   * The bottom nav is `position: fixed`, which anchors it to the *layout*
-   * viewport. During a bounce iOS moves the *visual* viewport past the layout
-   * viewport, so the bar stops tracking the physical screen edge and reads as
-   * clipped -- worst on Home-button devices, where `safe-area-inset-bottom` is
-   * 0 and the bar already sits flush against the edge with nothing to spare.
+   * `overflow-x: clip` above only stops the page from becoming scrollable
+   * when something actually overflows -- and nothing on any FTC page does
+   * (verified: `document.documentElement.scrollWidth` matches
+   * `window.innerWidth` exactly on every route). But iOS Safari's elastic
+   * bounce at the edges of the *visual* viewport is a separate mechanism from
+   * CSS overflow -- it runs whenever `overscroll-behavior` allows it,
+   * regardless of whether the document has anything to scroll into. Left
+   * unset on the X axis, a horizontal swipe still bounces the whole page and
+   * exposes whatever sits behind it (browser chrome, the next/previous route
+   * in the tab's back-forward cache) -- the "adjacent screens" effect users
+   * see, on a page that is never actually wider than the viewport.
+   *
+   * The Y axis needed this for a second reason too: the bottom nav is
+   * `position: fixed`, which anchors it to the *layout* viewport. During a
+   * bounce iOS moves the *visual* viewport past the layout viewport, so the
+   * bar stops tracking the physical screen edge and reads as clipped --
+   * worst on Home-button devices, where `safe-area-inset-bottom` is 0 and the
+   * bar already sits flush against the edge with nothing to spare.
    *
    * This only suppresses overscroll *past the ends of the document*. Normal
    * page scrolling is untouched, and inner scrollers keep their own native
    * scrolling (several already set `overscroll-behavior: contain` to stop
    * scroll chaining), so this adds no second scroll container. */
+  overscroll-behavior-x: none;
   overscroll-behavior-y: none;
 }
 

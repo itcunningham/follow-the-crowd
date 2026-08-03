@@ -10617,6 +10617,35 @@ function testIosOverscrollDoesNotClipFixedChrome() {
   assert.match(navSource, /ftc-mobile-nav-bar fixed inset-x-0 bottom-0/);
 }
 
+/**
+ * `overscroll-behavior-x: none` is the horizontal sibling of the
+ * `overscroll-behavior-y: none` fix in testIosOverscrollDoesNotClipFixedChrome
+ * above -- iOS Safari's rubber-band bounce is governed by overscroll-behavior,
+ * not by overflow, so `overflow-x: clip` alone (already present, and already
+ * confirmed by manual sweep to have nothing to clip on any route -- every page
+ * has `document.documentElement.scrollWidth === window.innerWidth`) does not
+ * stop a horizontal swipe from bouncing the whole page and exposing whatever
+ * sits behind it. This must not regress into the band-aid the task explicitly
+ * ruled out (`overflow-x: hidden` bolted on top) -- the fix is the missing
+ * overscroll-behavior axis, not a second overflow rule.
+ */
+function testHorizontalOverscrollDoesNotPanRevealAdjacentContent() {
+  const globalsSource = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
+
+  const htmlRule = globalsSource.match(/html \{[\s\S]*?\n\}/)?.[0] ?? "";
+  assert.ok(htmlRule, "the html {} rule must exist");
+  assert.match(htmlRule, /overflow-x: clip;/);
+  assert.match(htmlRule, /overscroll-behavior-x: none;/);
+  assert.match(htmlRule, /overscroll-behavior-y: none;/);
+  // Not the band-aid the task explicitly ruled out.
+  assert.doesNotMatch(htmlRule, /overflow-x: hidden/);
+
+  const bodyRule = globalsSource.match(/body \{[\s\S]*?\n\}/)?.[0] ?? "";
+  assert.ok(bodyRule, "the body {} rule must exist");
+  assert.match(bodyRule, /overflow-x: clip;/);
+  assert.doesNotMatch(bodyRule, /overflow-x: hidden/);
+}
+
 function testBookingsResultsAreaMatchesOneBookingCard() {
   const source = readFileSync(
     new URL("../app/events/[eventId]/page.tsx", import.meta.url),
@@ -11319,6 +11348,7 @@ async function main() {
   testBookingRateModeDescriptionsAreUnified();
   testBookingsResultsAreaMatchesOneBookingCard();
   testIosOverscrollDoesNotClipFixedChrome();
+  testHorizontalOverscrollDoesNotPanRevealAdjacentContent();
   testBookingStatusChangesReconcileEverywhere();
   testBookingAcceptedDmMessageIsScopedToTheBooking();
   testTemporaryDebugInstrumentationIsFullyRemoved();
