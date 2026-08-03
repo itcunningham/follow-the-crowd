@@ -2,6 +2,10 @@
 
 import { memo } from "react";
 import { getChatNewMessageHighlightClass } from "@/lib/chatNewMessageHighlight";
+import {
+  GROUP_CHAT_SYSTEM_CARD_AFTER_TIMESTAMP_SPACING_CLASS,
+  GROUP_CHAT_SYSTEM_CARD_SPACING_CLASS,
+} from "@/lib/dm/chatMessageGroupLayout";
 
 function GroupChatSystemNotice({
   messageId,
@@ -9,15 +13,35 @@ function GroupChatSystemNotice({
   createdAt,
   formatTime,
   isHighlighted = false,
+  precededByTimeSeparator = false,
 }: {
   messageId: string;
   text: string;
   createdAt: string;
   formatTime: (timestamp: string) => string;
   isHighlighted?: boolean;
+  /** A centred day/time separator already sits directly above this row. */
+  precededByTimeSeparator?: boolean;
 }) {
+  // Same group-separating spacing the Event Updated card already uses. These
+  // notices are timeline rows too — "X joined the crew", booking changes — and
+  // at the old `py-0.5` (2px) they sat as tight against the surrounding
+  // messages as two messages from one sender do, so they read as part of
+  // whichever run they landed in. The shared token keeps every app-authored
+  // row separating message groups by the same amount. Alignment is unchanged:
+  // this row stays centred, the Event Updated card stays left-aligned.
+  //
+  // The same exception applies too: a centred separator directly above is
+  // already a break, so stacking the full gap on top of it would leave a hole.
   return (
-    <li data-chat-message-id={messageId} className="flex justify-center py-0.5">
+    <li
+      data-chat-message-id={messageId}
+      className={`flex justify-center ${
+        precededByTimeSeparator
+          ? GROUP_CHAT_SYSTEM_CARD_AFTER_TIMESTAMP_SPACING_CLASS
+          : GROUP_CHAT_SYSTEM_CARD_SPACING_CLASS
+      }`}
+    >
       <div className="inline-flex max-w-[92%] flex-col items-center">
         <p
           className={`inline-block w-fit max-w-full rounded-full border border-ftc-border bg-ftc-bg-elevated/50 px-3 py-1.5 text-center text-xs text-ftc-text-muted ${getChatNewMessageHighlightClass(isHighlighted)}`}

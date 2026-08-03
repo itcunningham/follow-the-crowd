@@ -120,6 +120,7 @@ import {
   CHAT_LIST_ITEM_CLUSTER_END_SPACING_CLASS,
   CHAT_LIST_ITEM_WITHIN_GROUP_SPACING_CLASS,
   GROUP_CHAT_LIST_ITEM_CLUSTER_END_SPACING_CLASS,
+  GROUP_CHAT_LIST_ITEM_WITHIN_GROUP_SPACING_CLASS,
   resolveMessageGroupLiClass,
   resolveSystemCardGroupLiClass,
 } from "../lib/dm/chatMessageGroupLayout";
@@ -12358,6 +12359,45 @@ function testCrewChatMessageGrouping() {
   ]) {
     assert.match(chatPageSource, prop);
   }
+
+  /* ---- spacing: the three tiers stay ordered, and both app-authored rows
+         separate groups by the same amount ---- */
+
+  // Tailwind spacing steps are 0.25rem, so the numeric suffix orders directly.
+  const marginBottomSteps = (className: string) =>
+    Number.parseFloat(className.match(/(?:^|\s)mb-([\d.]+)/)?.[1] ?? "NaN");
+
+  const withinGroup = marginBottomSteps(GROUP_CHAT_LIST_ITEM_WITHIN_GROUP_SPACING_CLASS);
+  const senderChange = marginBottomSteps(GROUP_CHAT_LIST_ITEM_CLUSTER_END_SPACING_CLASS);
+  const systemCard = marginBottomSteps(resolveSystemCardGroupLiClass());
+
+  // Instagram's rhythm: consecutive messages read as one block, a sender change
+  // is a visible seam, and an app-authored timeline row is a bigger one.
+  assert.ok(
+    withinGroup < senderChange && senderChange < systemCard,
+    `spacing must widen from within-group (${withinGroup}) to sender change (${senderChange}) to system card (${systemCard})`,
+  );
+
+  // Booking notices are timeline rows exactly like Event Updated cards, so they
+  // take the SAME shared token. They used to carry a hardcoded `py-0.5` (2px),
+  // which is tighter than two messages from one sender — so a notice read as
+  // part of whichever run it landed in instead of separating two of them.
+  const systemNoticeSource = readFileSync(
+    new URL("../app/components/group-chat/GroupChatSystemNotice.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(systemNoticeSource, /GROUP_CHAT_SYSTEM_CARD_SPACING_CLASS/);
+  assert.match(systemNoticeSource, /GROUP_CHAT_SYSTEM_CARD_AFTER_TIMESTAMP_SPACING_CLASS/);
+  assert.doesNotMatch(
+    systemNoticeSource,
+    /className="flex justify-center py-0\.5"/,
+    "system notices must use the shared timeline-row spacing, not their own literal",
+  );
+  // Still centred; the Event Updated card is still left-aligned. Spacing was
+  // the only thing this pass changed.
+  assert.match(systemNoticeSource, /flex justify-center/);
+  assert.match(resolveSystemCardGroupLiClass({}), /justify-start/);
+  assert.match(chatPageSource, /precededByTimeSeparator=\{precededByTimeSeparator\}/);
 }
 
 /**

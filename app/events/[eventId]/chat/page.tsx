@@ -1357,6 +1357,7 @@ export default function EventCrewChatPage() {
                         createdAt={message.created_at}
                         formatTime={formatMessageTime}
                         isHighlighted={highlighted}
+                        precededByTimeSeparator={precededByTimeSeparator}
                       />,
                       timestampLayout,
                     );
