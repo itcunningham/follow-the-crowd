@@ -24,7 +24,6 @@ import {
   type GroupChatListItem,
 } from "@/lib/groupChats";
 import { traceId, unreadTrace, unreadTraceOnChange } from "@/lib/diagnostics/unreadTrace";
-import UnreadTraceCopyButton from "@/lib/diagnostics/UnreadTraceCopyButton";
 import {
   applyDmInboxRealtimeMessage,
   applyDmInboxRealtimeReaction,
@@ -1317,8 +1316,6 @@ function DmInboxPageContent() {
               )}
             </section>
           ) : null}
-
-        <UnreadTraceCopyButton />
 
         {activeTab === "dm" ? (
           <section aria-label="Messages">
