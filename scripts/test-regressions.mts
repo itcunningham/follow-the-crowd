@@ -13389,6 +13389,936 @@ async function testGroupInboxUnreadSurvivesOverlappingRefreshes() {
   assert.equal(guardedResult.size, 1);
 }
 
+/* -------------------------------------------------------------------------- */
+/* FTC Agent Room (internal developer tool, /dev/agent-room)                    */
+/*                                                                              */
+/* Imports are dynamic and local to each test so this block stays append-only    */
+/* against the shared import list at the top of the file.                        */
+/* -------------------------------------------------------------------------- */
+
+function agentRoomSource(relativePath: string): string {
+  return readFileSync(new URL(`../${relativePath}`, import.meta.url), "utf8");
+}
+
+/** Runs `body` with the given env vars applied, then restores the originals. */
+async function withAgentRoomEnv(
+  overrides: Record<string, string | undefined>,
+  body: () => Promise<void> | void,
+): Promise<void> {
+  const previous = new Map<string, string | undefined>();
+
+  for (const [key, value] of Object.entries(overrides)) {
+    previous.set(key, process.env[key]);
+
+    if (value === undefined) {
+      delete process.env[key];
+    } else {
+      process.env[key] = value;
+    }
+  }
+
+  try {
+    await body();
+  } finally {
+    for (const [key, value] of previous) {
+      if (value === undefined) {
+        delete process.env[key];
+      } else {
+        process.env[key] = value;
+      }
+    }
+  }
+}
+
+function makeAgentRoomSession(overrides: Record<string, unknown> = {}) {
+  const now = "2026-08-03T00:00:00.000Z";
+
+  return {
+    id: "11111111-2222-4333-8444-555555555555",
+    createdAt: now,
+    updatedAt: now,
+    title: "Crew Chat images never arrive live",
+    description: "A photo sent in Crew Chat never appears for the other participant.",
+    branch: "agent/crew-chat-media-loading",
+    contextNotes: "",
+    evidence: [],
+    stage: "awaiting_investigation",
+    reviewRounds: 0,
+    rebuttalUsedForCurrentRound: false,
+    transcript: [],
+    lastCallAt: null,
+    totals: { inputTokens: 0, outputTokens: 0, estimatedUsd: 0 },
+    ...overrides,
+  };
+}
+
+const AGENT_ROOM_VALID_INVESTIGATION = {
+  summary: "message_attachments is not in the Realtime publication.",
+  confirmedFacts: ["The subscription reports SUBSCRIBED and then receives nothing."],
+  unprovenAssumptions: ["That no other table is also unpublished."],
+  evidence: [
+    {
+      file: "scripts/setupDmAttachmentsAndReactions.sql",
+      lineOrSymbol: "alter publication",
+      explanation: "Publishes message_reactions but never message_attachments.",
+    },
+  ],
+  proposedFix: "One guarded alter publication statement.",
+  risk: "low",
+  confidence: "high",
+};
+
+const AGENT_ROOM_VALID_REVIEW = {
+  verdict: "CHALLENGE",
+  summary: "The cause is plausible but the client path was not ruled out.",
+  supportedClaims: ["The publication does not list message_attachments."],
+  unsupportedClaims: ["That this is the only cause."],
+  contradictions: [],
+  requiredEvidence: ["The output of the publication verification query."],
+  recommendation: "Ask for the verification query result before approving.",
+};
+
+const AGENT_ROOM_VALID_REBUTTAL = {
+  acceptedChallenges: ["The client path was not fully ruled out."],
+  rejectedChallenges: ["The publication gap is proved by the file itself."],
+  newEvidence: [],
+  revisedDiagnosis: "Unchanged.",
+  revisedFix: "Unchanged.",
+  remainingUncertainty: "End-to-end confirmation needs two accounts.",
+};
+
+/**
+ * Requirement: the Agent Room is disabled by default and 404s when off.
+ *
+ * The gate is checked as an exact `"true"` string in one place, so a stray
+ * `TRUE`, `1`, or trailing space cannot open an internal tool, and the whole
+ * thing is refused on Vercel regardless.
+ */
+async function testAgentRoomIsDisabledByDefault() {
+  const { isAgentRoomEnabled } = await import("../lib/agentRoom/config");
+
+  await withAgentRoomEnv({ VERCEL: undefined, FTC_AGENT_ROOM_ENABLED: undefined }, () => {
+    assert.equal(isAgentRoomEnabled(), false, "unset must mean disabled");
+  });
+
+  for (const value of ["", "false", "1", "TRUE", "True", "true ", " true", "yes"]) {
+    await withAgentRoomEnv({ VERCEL: undefined, FTC_AGENT_ROOM_ENABLED: value }, () => {
+      assert.equal(
+        isAgentRoomEnabled(),
+        false,
+        `FTC_AGENT_ROOM_ENABLED=${JSON.stringify(value)} must not enable the Agent Room`,
+      );
+    });
+  }
+
+  await withAgentRoomEnv({ VERCEL: undefined, FTC_AGENT_ROOM_ENABLED: "true" }, () => {
+    assert.equal(isAgentRoomEnabled(), true, "an explicit true must enable it");
+  });
+
+  // Production hosting can never expose it, even with the flag set.
+  await withAgentRoomEnv({ VERCEL: "1", FTC_AGENT_ROOM_ENABLED: "true" }, () => {
+    assert.equal(isAgentRoomEnabled(), false, "Vercel must refuse the Agent Room outright");
+  });
+
+  const guardSource = agentRoomSource("lib/agentRoom/apiGuard.ts");
+  assert.match(
+    guardSource,
+    /new NextResponse\(null, \{ status: 404 \}\)/,
+    "a disabled Agent Room must answer with a bare 404, not an explanatory error",
+  );
+
+  const pageSource = agentRoomSource("app/dev/agent-room/page.tsx");
+  assert.match(pageSource, /if \(!isAgentRoomEnabled\(\)\) \{\s*notFound\(\);/, "the page must 404 when disabled");
+
+  // Every route file must call the guard first, or the gate has a hole.
+  const routeFiles = [
+    "app/api/dev/agent-room/route.ts",
+    "app/api/dev/agent-room/[sessionId]/route.ts",
+    "app/api/dev/agent-room/[sessionId]/action/route.ts",
+    "app/api/dev/agent-room/[sessionId]/evidence/route.ts",
+    "app/api/dev/agent-room/[sessionId]/export/route.ts",
+  ];
+
+  for (const file of routeFiles) {
+    const source = agentRoomSource(file);
+    const handlers = source.match(/export async function (GET|POST|PATCH|DELETE|PUT)\(/g) ?? [];
+
+    assert.ok(handlers.length > 0, `${file} should export at least one handler`);
+    assert.equal(
+      (source.match(/agentRoomDisabledResponse\(\)/g) ?? []).length,
+      handlers.length,
+      `${file} must call agentRoomDisabledResponse() in every exported handler`,
+    );
+  }
+}
+
+/**
+ * Requirement: neither API key may ever reach the browser.
+ *
+ * Checked two ways — the view the client actually receives is serialised and
+ * searched for the key material, and the client component is scanned so it can
+ * never start reading `process.env` itself.
+ */
+async function testAgentRoomNeverLeaksApiKeysToTheClient() {
+  const { buildConfigView, buildSessionView } = await import("../lib/agentRoom/view");
+  const { clampField: clampFieldForTest } = await import("../lib/agentRoom/apiGuard");
+
+  // Assembled at runtime — see the note in testAgentRoomRedactsSecretsBeforeSending.
+  const fakeAnthropicKey = ["sk", "ant", "api03", "AGENTROOMTESTKEYVALUE0000000000"].join("-");
+  const fakeOpenAiKey = ["sk", "proj", "AGENTROOMTESTKEYVALUE0000000000"].join("-");
+
+  await withAgentRoomEnv(
+    {
+      ANTHROPIC_API_KEY: fakeAnthropicKey,
+      OPENAI_API_KEY: fakeOpenAiKey,
+      FTC_AGENT_ROOM_ENABLED: "true",
+      VERCEL: undefined,
+    },
+    () => {
+      const config = buildConfigView();
+
+      assert.equal(config.anthropicKeyPresent, true);
+      assert.equal(config.openaiKeyPresent, true);
+
+      const serialisedConfig = JSON.stringify(config);
+      assert.ok(
+        !serialisedConfig.includes(fakeAnthropicKey) && !serialisedConfig.includes(fakeOpenAiKey),
+        "the config sent to the browser must never contain a key value",
+      );
+
+      // A key pasted into the brief must be redacted at ingest, so the raw
+      // value never reaches the session file or the payload preview.
+      const pasted = `The failing request used ANTHROPIC_API_KEY=${fakeAnthropicKey} and ${fakeOpenAiKey}`;
+      const stored = clampFieldForTest(pasted, 8_000);
+
+      assert.equal(stored.ok, true);
+      assert.ok(
+        !(stored as { value: string }).value.includes(fakeAnthropicKey) &&
+          !(stored as { value: string }).value.includes(fakeOpenAiKey),
+        "supervisor-supplied text must be redacted before it is stored",
+      );
+
+      const session = makeAgentRoomSession({
+        description: (stored as { value: string }).value,
+      });
+
+      const serialisedView = JSON.stringify(buildSessionView(session as never));
+
+      assert.ok(
+        !serialisedView.includes(fakeAnthropicKey) && !serialisedView.includes(fakeOpenAiKey),
+        "an outbound payload preview must never contain key material",
+      );
+      assert.ok(
+        serialisedView.includes("[REDACTED]"),
+        "the leaked key should be visibly redacted rather than silently dropped",
+      );
+    },
+  );
+
+  const clientSource = agentRoomSource("app/dev/agent-room/AgentRoomClient.tsx");
+
+  assert.match(clientSource, /^"use client";/, "the panel is a client component");
+  assert.ok(
+    !/process\.env/.test(clientSource),
+    "the client panel must not read process.env at all",
+  );
+  // The variable *names* legitimately appear in "(no ANTHROPIC_API_KEY)" copy;
+  // what must never appear is a read of one, or anything key-shaped.
+  for (const name of ["ANTHROPIC_API_KEY", "OPENAI_API_KEY"]) {
+    assert.ok(
+      !new RegExp(`(process\\.env|env)\\s*[.\\[][^\\n]*${name}`).test(clientSource),
+      `the client panel must never read ${name}`,
+    );
+  }
+  assert.ok(
+    !/\bsk-[A-Za-z0-9_-]{8,}/.test(clientSource),
+    "no key-shaped literal may appear in the client bundle source",
+  );
+
+  // Keys are read in exactly one module, server-side.
+  const configSource = agentRoomSource("lib/agentRoom/config.ts");
+  assert.match(configSource, /getAnthropicApiKey/);
+  assert.match(configSource, /getOpenAiApiKey/);
+
+  const viewSource = agentRoomSource("lib/agentRoom/view.ts");
+  assert.match(
+    viewSource,
+    /anthropicKeyPresent: getAnthropicApiKey\(\) !== null/,
+    "the client may learn whether a key exists, never what it is",
+  );
+}
+
+/**
+ * Requirement: no more than two model-to-model review rounds, and no endless
+ * autonomous conversation.
+ */
+async function testAgentRoomEnforcesTheReviewRoundLimit() {
+  const { AGENT_ROOM_MAX_REVIEW_ROUNDS } = await import("../lib/agentRoom/config");
+  const { applyAction, checkAction } = await import("../lib/agentRoom/workflow");
+
+  assert.equal(AGENT_ROOM_MAX_REVIEW_ROUNDS, 2, "the brief fixes the cap at two rounds");
+
+  let state = {
+    stage: "awaiting_investigation" as const,
+    reviewRounds: 0,
+    rebuttalUsedForCurrentRound: false,
+  } as {
+    stage: string;
+    reviewRounds: number;
+    rebuttalUsedForCurrentRound: boolean;
+  };
+
+  const advance = (action: string) => {
+    const check = checkAction(state as never, action as never);
+    assert.ok(check.allowed, `${action} should be allowed from ${state.stage}`);
+    state = applyAction(state as never, action as never, (check as { nextStage: string }).nextStage as never) as never;
+  };
+
+  advance("start_investigation");
+
+  for (let round = 1; round <= AGENT_ROOM_MAX_REVIEW_ROUNDS; round += 1) {
+    advance("send_to_openai");
+    assert.equal(state.reviewRounds, round, "each review must consume exactly one round");
+
+    // Claude answers once per review, and only once.
+    advance("send_review_to_claude");
+
+    const second = checkAction(state as never, "send_review_to_claude" as never);
+    assert.equal(second.allowed, false, "Claude may respond to a review only once");
+  }
+
+  const overLimit = checkAction(state as never, "send_to_openai" as never);
+  assert.equal(overLimit.allowed, false, "a third review round must be refused");
+  assert.match(
+    (overLimit as { reason: string }).reason,
+    /review-round limit/i,
+    "the refusal must say why in plain English",
+  );
+
+  // Requesting more evidence restarts the investigation but must NOT reset the
+  // cap — otherwise the two-round limit is trivially bypassable.
+  const evidenceCheck = checkAction(state as never, "request_more_evidence" as never);
+  assert.ok(evidenceCheck.allowed);
+  const afterEvidence = applyAction(
+    state as never,
+    "request_more_evidence" as never,
+    (evidenceCheck as { nextStage: string }).nextStage as never,
+  ) as unknown as { reviewRounds: number };
+
+  assert.equal(
+    afterEvidence.reviewRounds,
+    AGENT_ROOM_MAX_REVIEW_ROUNDS,
+    "requesting more evidence must not reset the review-round count",
+  );
+  assert.equal(
+    checkAction(afterEvidence as never, "send_to_openai" as never).allowed,
+    false,
+    "the cap must still hold after a re-investigation",
+  );
+}
+
+/**
+ * Requirement: nothing is implemented until Isaac clicks Approve, and every
+ * model handoff has an approval checkpoint in front of it.
+ */
+async function testAgentRoomRequiresIsaacApprovalBeforeEveryHandoff() {
+  const { buildSessionView } = await import("../lib/agentRoom/view");
+  const { isModelAction } = await import("../lib/agentRoom/workflow");
+
+  const session = makeAgentRoomSession();
+  const view = buildSessionView(session as never);
+
+  for (const entry of view.actions) {
+    if (!entry.allowed) {
+      assert.equal(entry.handoff, null, "a blocked action must not carry a payload");
+      continue;
+    }
+
+    if (isModelAction(entry.action)) {
+      assert.ok(entry.handoff, `${entry.action} must expose the payload for approval`);
+      assert.ok(
+        (entry.handoff?.system.length ?? 0) > 0 && (entry.handoff?.user.length ?? 0) > 0,
+        "the approval panel must show both halves of what will be sent",
+      );
+      assert.ok(
+        (entry.handoff?.totalChars ?? 0) > 0,
+        "the approval panel must state the size of the request",
+      );
+    } else {
+      assert.equal(
+        entry.handoff,
+        null,
+        `${entry.action} is a local decision and must trigger no provider request`,
+      );
+    }
+  }
+
+  // Approving implementation is a recorded decision, never an execution.
+  const actionRouteSource = agentRoomSource("app/api/dev/agent-room/[sessionId]/action/route.ts");
+  assert.match(
+    actionRouteSource,
+    /if \(!isModelAction\(action\)\) \{[\s\S]*?return NextResponse\.json\(buildSessionView\(session\)\);/,
+    "local decisions must return without touching a provider",
+  );
+
+  const clientSource = agentRoomSource("app/dev/agent-room/AgentRoomClient.tsx");
+  assert.match(
+    clientSource,
+    /function onActionClick\([\s\S]*?if \(entry\.handoff\) \{[\s\S]*?setPendingHandoff\(entry\);[\s\S]*?return;/,
+    "clicking a model action must open the approval checkpoint, not send the request",
+  );
+  assert.match(
+    clientSource,
+    /Approve this handoff before it is sent/,
+    "the approval checkpoint must be labelled",
+  );
+  assert.match(
+    clientSource,
+    /Internal — FTC Agent Room/,
+    "the tool must be clearly labelled as internal",
+  );
+  assert.match(clientSource, /Stop workflow/, "the red STOP control must exist");
+  assert.match(clientSource, /Copy full transcript/, "the copy-transcript control must exist");
+  assert.match(clientSource, /elapsedMs/, "elapsed time must be shown while a provider runs");
+}
+
+/**
+ * Requirement: the STOP state is honoured, including for a request that is
+ * already in flight.
+ */
+async function testAgentRoomStopStateIsAbsolute() {
+  const { applyAction, checkAction, isTerminalStage } = await import("../lib/agentRoom/workflow");
+
+  const liveStages = [
+    "awaiting_investigation",
+    "investigation_ready",
+    "review_ready",
+    "rebuttal_ready",
+  ];
+
+  for (const stage of liveStages) {
+    const state = { stage, reviewRounds: 1, rebuttalUsedForCurrentRound: true };
+    const check = checkAction(state as never, "stop" as never);
+
+    assert.ok(check.allowed, `stop must be available from ${stage}`);
+    assert.equal((check as { nextStage: string }).nextStage, "stopped");
+  }
+
+  const stopped = applyAction(
+    { stage: "review_ready", reviewRounds: 1, rebuttalUsedForCurrentRound: false } as never,
+    "stop" as never,
+    "stopped" as never,
+  ) as unknown as { stage: string };
+
+  assert.equal(stopped.stage, "stopped");
+  assert.ok(isTerminalStage("stopped" as never));
+
+  for (const action of [
+    "start_investigation",
+    "send_to_openai",
+    "send_review_to_claude",
+    "approve_implementation",
+    "request_more_evidence",
+    "reject_diagnosis",
+    "stop",
+  ]) {
+    assert.equal(
+      checkAction(stopped as never, action as never).allowed,
+      false,
+      `${action} must be refused once the workflow is stopped`,
+    );
+  }
+
+  for (const terminal of ["approved", "rejected", "stopped"]) {
+    assert.ok(isTerminalStage(terminal as never), `${terminal} must be terminal`);
+  }
+
+  // A reply that lands after STOP must be discarded, not applied.
+  const actionRouteSource = agentRoomSource("app/api/dev/agent-room/[sessionId]/action/route.ts");
+  const afterCall = actionRouteSource.slice(actionRouteSource.indexOf("await runHandoff(handoff)"));
+
+  assert.ok(
+    afterCall.indexOf("isTerminalStage(current.stage)") <
+      afterCall.indexOf("Object.assign(current, applyAction"),
+    "the stopped check must run before any state is applied",
+  );
+  assert.match(
+    afterCall,
+    /const current = await loadSession\(sessionId\)/,
+    "the session must be re-read from disk after the provider call",
+  );
+}
+
+/**
+ * Requirement: invalid model responses are handled safely and never advance
+ * the workflow.
+ */
+async function testAgentRoomRejectsMalformedProviderResponses() {
+  const {
+    parseJsonSafely,
+    validateClaudeInvestigation,
+    validateClaudeRebuttal,
+    validateOpenAiReview,
+  } = await import("../lib/agentRoom/schemas");
+
+  for (const malformed of ["", "   ", "not json", "{", "{\"a\":", "<html>503</html>"]) {
+    const parsed = parseJsonSafely(malformed);
+    assert.equal(parsed.ok, false, `${JSON.stringify(malformed)} must not parse`);
+  }
+
+  assert.equal(validateClaudeInvestigation(AGENT_ROOM_VALID_INVESTIGATION).ok, true);
+  assert.equal(validateOpenAiReview(AGENT_ROOM_VALID_REVIEW).ok, true);
+  assert.equal(validateClaudeRebuttal(AGENT_ROOM_VALID_REBUTTAL).ok, true);
+
+  const badInvestigations = [
+    null,
+    "a string",
+    [],
+    { ...AGENT_ROOM_VALID_INVESTIGATION, summary: undefined },
+    { ...AGENT_ROOM_VALID_INVESTIGATION, confirmedFacts: "not an array" },
+    { ...AGENT_ROOM_VALID_INVESTIGATION, confirmedFacts: [1, 2] },
+    { ...AGENT_ROOM_VALID_INVESTIGATION, evidence: [{ file: "a.ts" }] },
+    { ...AGENT_ROOM_VALID_INVESTIGATION, risk: "catastrophic" },
+    { ...AGENT_ROOM_VALID_INVESTIGATION, confidence: 3 },
+  ];
+
+  for (const candidate of badInvestigations) {
+    const result = validateClaudeInvestigation(candidate);
+    assert.equal(
+      result.ok,
+      false,
+      `malformed investigation should be rejected: ${JSON.stringify(candidate)}`,
+    );
+    assert.ok(
+      (result as { error: string }).error.length > 0,
+      "a rejection must carry a plain-English reason",
+    );
+  }
+
+  // The one verdict rule: exactly AGREE, CHALLENGE or REJECT.
+  for (const verdict of ["MAYBE", "agree", "AGREE!", "", null, 1, ["AGREE"]]) {
+    assert.equal(
+      validateOpenAiReview({ ...AGENT_ROOM_VALID_REVIEW, verdict }).ok,
+      false,
+      `verdict ${JSON.stringify(verdict)} must be rejected`,
+    );
+  }
+
+  for (const verdict of ["AGREE", "CHALLENGE", "REJECT"]) {
+    assert.equal(
+      validateOpenAiReview({ ...AGENT_ROOM_VALID_REVIEW, verdict }).ok,
+      true,
+      `${verdict} is a valid verdict`,
+    );
+  }
+
+  assert.equal(
+    validateClaudeRebuttal({ ...AGENT_ROOM_VALID_REBUTTAL, newEvidence: [{ file: 1 }] }).ok,
+    false,
+  );
+
+  // A malformed reply is recorded but must not move the workflow on.
+  const actionRouteSource = agentRoomSource("app/api/dev/agent-room/[sessionId]/action/route.ts");
+  const malformedBranch = actionRouteSource.slice(
+    actionRouteSource.indexOf("if (!validated.ok)"),
+    actionRouteSource.indexOf("const turn = emptyTurn(\n      handoff.provider === \"anthropic\" ? \"claude\" : \"openai\",\n      action === \"start_investigation\""),
+  );
+
+  assert.ok(malformedBranch.length > 0, "the malformed-response branch must exist");
+  assert.ok(
+    !malformedBranch.includes("applyAction"),
+    "a malformed response must never advance the workflow stage",
+  );
+  assert.match(
+    malformedBranch,
+    /status: 502/,
+    "a malformed response should surface as a provider-side failure",
+  );
+}
+
+/**
+ * Requirement: secrets are redacted before any provider request.
+ */
+async function testAgentRoomRedactsSecretsBeforeSending() {
+  const { REDACTED, redactSecrets } = await import("../lib/agentRoom/redaction");
+  const { buildHandoff } = await import("../lib/agentRoom/prompts");
+
+  // Fixtures are assembled at runtime rather than written as literals. They are
+  // fabricated either way, but a token-shaped literal in a committed file trips
+  // GitHub push protection (it did, on the Slack one) and any future scanner
+  // pointed at this repository. `join` keeps the assertion identical while
+  // leaving nothing token-shaped on disk.
+  const fixture = (...parts: string[]) => parts.join("-");
+  const underscored = (...parts: string[]) => parts.join("_");
+
+  const secrets: Array<[string, string]> = [
+    ["anthropic key", fixture("sk", "ant", "api03", "Z".repeat(32))],
+    ["anthropic oauth token", fixture("sk", "ant", "oat01", "Y".repeat(24))],
+    ["openai key", fixture("sk", "proj", "X".repeat(28))],
+    ["github token", underscored("ghp", "ABCDEFGHIJKLMNOPQRSTUVWXYZ012345")],
+    ["github fine-grained token", underscored("github", "pat", "11ABCDEFG0abcdefghijklmnop")],
+    ["slack token", fixture("xoxb", "123456789012", "abcdefghijklmnop")],
+    ["aws key id", `AKIA${"IOSFODNN7EXAMPLE"}`],
+    ["google api key", `AIza${"SyA1234567890abcdefghijklmnopqrstuvw"}`],
+    [
+      "supabase service-role jwt",
+      [
+        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9",
+        "eyJyb2xlIjoic2VydmljZV9yb2xlIn0",
+        "abcdefghijklmnop",
+      ].join("."),
+    ],
+    ["supabase secret key", underscored("sb", "secret", "abcdefghijklmnopqrst")],
+  ];
+
+  for (const [label, secret] of secrets) {
+    const { text, redactedRules } = redactSecrets(`the value is ${secret} okay`);
+
+    assert.ok(!text.includes(secret), `${label} must be redacted`);
+    assert.ok(text.includes(REDACTED), `${label} must leave a visible marker`);
+    assert.ok(redactedRules.length > 0, `${label} must report which rule fired`);
+  }
+
+  // A pasted .env is the case that matters most.
+  const envDump = [
+    "NEXT_PUBLIC_SUPABASE_URL=https://example.supabase.co",
+    "SUPABASE_SERVICE_ROLE_KEY=super-secret-service-role-value",
+    `OPENAI_API_KEY=${["sk", "proj", "NEVERSENDTHIS0000000000000000"].join("-")}`,
+    "DB_PASSWORD=hunter2",
+    "SESSION_SECRET: 'another-secret'",
+  ].join("\n");
+
+  const redactedEnv = redactSecrets(envDump).text;
+
+  for (const leaked of [
+    "super-secret-service-role-value",
+    ["sk", "proj", "NEVERSENDTHIS0000000000000000"].join("-"),
+    "hunter2",
+    "another-secret",
+  ]) {
+    assert.ok(!redactedEnv.includes(leaked), `${leaked} must not survive redaction`);
+  }
+
+  // The non-secret URL is deliberately kept: redaction removes credentials,
+  // not the context that makes a report readable.
+  assert.ok(
+    redactedEnv.includes("https://example.supabase.co"),
+    "redaction must not blank out ordinary configuration",
+  );
+
+  for (const header of [
+    `Authorization: Bearer ${["eyJhbGciOiJIUzI1NiJ9", "payload", "signature"].join(".")}`,
+    "Cookie: sb-access-token=abc123; other=def",
+    "postgres://appuser:sup3rs3cret@db.example.com:5432/ftc",
+  ]) {
+    const redacted = redactSecrets(header).text;
+    assert.ok(redacted.includes(REDACTED), `${header} must be redacted`);
+    assert.ok(!redacted.includes("sup3rs3cret"), "connection-string passwords must go");
+    assert.ok(!redacted.includes("abc123"), "cookie values must go");
+  }
+
+  assert.ok(
+    redactSecrets("-----BEGIN RSA PRIVATE KEY-----\nMIIabc\n-----END RSA PRIVATE KEY-----")
+      .text.includes(REDACTED),
+    "PEM blocks must be redacted",
+  );
+
+  // Redaction is applied to the assembled payload, not merely offered.
+  const leakedOpenAiKey = ["sk", "proj", "LEAKEDVALUE00000000000000"].join("-");
+  const leakedAnthropicKey = ["sk", "ant", "api03", "LEAKEDVALUE0000000000000000"].join("-");
+
+  const leakySession = makeAgentRoomSession({
+    description: `It failed with OPENAI_API_KEY=${leakedOpenAiKey}`,
+    evidence: [
+      {
+        id: "e1",
+        kind: "note",
+        label: "log",
+        content: `Authorization: Bearer ${leakedAnthropicKey}`,
+        createdAt: "2026-08-03T00:00:00.000Z",
+        redactedRules: [],
+      },
+    ],
+  });
+
+  const handoff = buildHandoff(leakySession as never, "start_investigation" as never);
+
+  assert.ok(handoff, "an investigation handoff should be buildable");
+  assert.ok(
+    !handoff!.user.includes(leakedOpenAiKey) && !handoff!.user.includes(leakedAnthropicKey),
+    "the outbound payload must never contain key material",
+  );
+  assert.ok(
+    handoff!.redactedRules.length > 0,
+    "the payload must report that redaction fired so Isaac sees it before approving",
+  );
+}
+
+/**
+ * Requirement: version one exposes no repository mutation, and only reads what
+ * Isaac explicitly asks for.
+ */
+async function testAgentRoomExposesNoRepositoryMutation() {
+  const { AGENT_ROOM_REPO_CAPABILITIES, validateRepoRelativePath } = await import(
+    "../lib/agentRoom/repoAccess"
+  );
+
+  assert.deepEqual(
+    [...AGENT_ROOM_REPO_CAPABILITIES].sort(),
+    ["read_file_excerpt", "read_git_diff", "search_repo"],
+    "version one may only read",
+  );
+
+  const repoSource = agentRoomSource("lib/agentRoom/repoAccess.ts");
+  const executable = repoSource
+    .split("\n")
+    .filter((line) => !line.trim().startsWith("*") && !line.trim().startsWith("//") && !line.trim().startsWith("/*"))
+    .join("\n");
+
+  // Nothing that writes, and no shell.
+  for (const forbidden of [
+    "writeFile",
+    "appendFile",
+    "unlink",
+    "rmdir",
+    "mkdir",
+    "rename",
+    "chmod",
+    "createWriteStream",
+    "shell:",
+    "execSync",
+    "spawnSync",
+    "exec(",
+  ]) {
+    assert.ok(
+      !executable.includes(forbidden),
+      `repoAccess must not reference ${forbidden} — version one is read-only`,
+    );
+  }
+
+  for (const gitVerb of [
+    '"add"',
+    '"commit"',
+    '"push"',
+    '"merge"',
+    '"checkout"',
+    '"switch"',
+    '"reset"',
+    '"clean"',
+    '"stash"',
+    '"rebase"',
+    '"cherry-pick"',
+    '"apply"',
+    '"restore"',
+    '"branch"',
+    '"tag"',
+  ]) {
+    assert.ok(
+      !executable.includes(gitVerb),
+      `repoAccess must never invoke git ${gitVerb} — version one cannot mutate the repository`,
+    );
+  }
+
+  assert.match(
+    repoSource,
+    /execFileAsync\("git", args/,
+    "git must be invoked with a fixed argument vector, never through a shell",
+  );
+
+  // No provider is given a tool it could act with.
+  for (const file of ["lib/agentRoom/prompts.ts", "lib/agentRoom/providers.ts"]) {
+    const source = agentRoomSource(file);
+    assert.ok(
+      !/\btools\s*:/.test(source),
+      `${file} must not hand any tool to a model — the models can only reply with text`,
+    );
+  }
+
+  // Path validation: env files, dot-files, traversal and binaries are refused.
+  const refused = [
+    ".env",
+    ".env.local",
+    "app/.env",
+    "lib/.env.production",
+    "env.ts",
+    "config/env.json",
+    "../outside.ts",
+    "../../etc/passwd",
+    "/etc/passwd",
+    ".git/config",
+    ".claude/settings.json",
+    // Caught only by the blanket dot-file rule — not by the deny-list or the
+    // env-name check — so removing that rule fails here and nowhere else.
+    ".hidden/config.json",
+    ".vscode/settings.json",
+    "docs/.private-notes.md",
+    "node_modules/next/package.json",
+    ".next/build-manifest.json",
+    "certs/server.pem",
+    "keys/id_rsa.key",
+    "public/logo.png",
+    "",
+    "   ",
+  ];
+
+  for (const candidate of refused) {
+    const result = validateRepoRelativePath(candidate);
+    assert.equal(result.ok, false, `${JSON.stringify(candidate)} must be refused`);
+  }
+
+  for (const candidate of [
+    "lib/agentRoom/workflow.ts",
+    "app/globals.css",
+    "docs/handoff/CURRENT-STATE.md",
+    "./scripts/test-regressions.mts",
+  ]) {
+    const result = validateRepoRelativePath(candidate);
+    assert.equal(result.ok, true, `${candidate} should be readable`);
+  }
+
+  // The evidence endpoint is the only repository reader, and it is Isaac-driven.
+  const evidenceSource = agentRoomSource("app/api/dev/agent-room/[sessionId]/evidence/route.ts");
+  assert.match(evidenceSource, /readRepoFileExcerpt|readGitDiff|searchRepo/);
+
+  const promptsSource = agentRoomSource("lib/agentRoom/prompts.ts");
+  assert.ok(
+    !/readFile|readdir|repoAccess/.test(promptsSource),
+    "prompt assembly must never read the repository — only Isaac's attached evidence goes out",
+  );
+}
+
+/**
+ * Requirement: provider failures and timeouts are handled, reported in plain
+ * English, and never leak credentials or raw request headers into a log.
+ */
+async function testAgentRoomHandlesProviderFailureAndTimeouts() {
+  const { AGENT_ROOM_LIMITS } = await import("../lib/agentRoom/config");
+
+  assert.ok(
+    Number.isFinite(AGENT_ROOM_LIMITS.requestTimeoutMs) &&
+      AGENT_ROOM_LIMITS.requestTimeoutMs > 0,
+    "a provider request timeout must be configured",
+  );
+  assert.ok(
+    AGENT_ROOM_LIMITS.maxRequestBytes > 0 && AGENT_ROOM_LIMITS.maxPromptChars > 0,
+    "request-size limits must be configured",
+  );
+
+  const providersSource = agentRoomSource("lib/agentRoom/providers.ts");
+
+  assert.equal(
+    (providersSource.match(/timeout: AGENT_ROOM_LIMITS\.requestTimeoutMs/g) ?? []).length,
+    2,
+    "both provider clients must carry the configured timeout",
+  );
+  assert.equal(
+    (providersSource.match(/maxRetries: 1/g) ?? []).length,
+    2,
+    "both provider clients must bound their retries",
+  );
+
+  for (const branch of ["status === 401", "status === 404", "status === 429", "status >= 500"]) {
+    assert.ok(
+      providersSource.includes(branch),
+      `provider failures must be explained for ${branch}`,
+    );
+  }
+
+  assert.match(providersSource, /APIConnectionTimeoutError/, "timeouts must be handled by name");
+  assert.match(providersSource, /APIConnectionError/, "connection failures must be handled");
+  assert.match(
+    providersSource,
+    /redactSecrets\(error\.message\)/,
+    "provider error text must be redacted before it is shown or stored",
+  );
+
+  // Nothing about the request is logged — no console at all in the provider layer.
+  assert.ok(
+    !/console\.(log|info|warn|error|debug)/.test(providersSource),
+    "the provider layer must not log; headers and keys can never reach a log line",
+  );
+
+  // Chain-of-thought is never requested and never stored.
+  assert.ok(
+    !/display:\s*"summarized"/.test(providersSource),
+    "summarised reasoning must not be requested",
+  );
+  assert.match(
+    providersSource,
+    /\.filter\(\(block\): block is Anthropic\.TextBlock => block\.type === "text"\)/,
+    "only text blocks may be kept — the filter must narrow to TextBlock and nothing else",
+  );
+
+  // Comments here explain *why* reasoning is dropped, so strip them before
+  // asserting that no code path names a thinking or reasoning block.
+  const providersCode = providersSource
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/^\s*\/\/.*$/gm, "");
+
+  for (const forbidden of ["thinking", "reasoning", "redacted_thinking"]) {
+    assert.ok(
+      !providersCode.includes(forbidden),
+      `the provider layer must not reference ${forbidden} — hidden reasoning is never requested or kept`,
+    );
+  }
+
+  const typesSource = agentRoomSource("lib/agentRoom/types.ts");
+  assert.ok(
+    !/thinking|reasoning/i.test(typesSource.replace(/^\s*\*.*$/gm, "")),
+    "the stored session shape must have no field for hidden reasoning",
+  );
+
+  // A provider failure records the error and leaves the stage untouched.
+  const actionRouteSource = agentRoomSource("app/api/dev/agent-room/[sessionId]/action/route.ts");
+  const failureBranch = actionRouteSource.slice(
+    actionRouteSource.indexOf("if (!result.ok)"),
+    actionRouteSource.indexOf("const parsed = parseJsonSafely"),
+  );
+
+  assert.ok(failureBranch.length > 0, "the provider-failure branch must exist");
+  assert.ok(
+    !failureBranch.includes("applyAction"),
+    "a provider failure must never advance the workflow stage",
+  );
+  assert.match(failureBranch, /"Provider error"/);
+
+  // The per-session lock and rate limit are what stop a double-click becoming
+  // two concurrent provider calls.
+  const { millisecondsUntilNextCallAllowed } = await import("../lib/agentRoom/sessionStore");
+
+  assert.equal(millisecondsUntilNextCallAllowed(null), 0, "a first call is never delayed");
+  assert.equal(
+    millisecondsUntilNextCallAllowed("not a date"),
+    0,
+    "an unreadable timestamp must not wedge the session",
+  );
+
+  const now = Date.now();
+  assert.ok(
+    millisecondsUntilNextCallAllowed(new Date(now).toISOString(), now) > 0,
+    "back-to-back provider calls must be rate limited",
+  );
+  assert.equal(
+    millisecondsUntilNextCallAllowed(
+      new Date(now - AGENT_ROOM_LIMITS.minCallIntervalMs - 1).toISOString(),
+      now,
+    ),
+    0,
+    "the rate limit must clear once the interval has passed",
+  );
+
+  assert.match(
+    actionRouteSource,
+    /if \(!acquireSessionLock\(sessionId\)\)/,
+    "a provider call must take the per-session execution lock",
+  );
+  assert.match(
+    actionRouteSource,
+    /finally \{\s*releaseSessionLock\(sessionId\);/,
+    "the lock must be released even when the provider throws",
+  );
+}
+
 async function main() {
   testPastEventDatesAreBlocked();
   testFutureEventDatesAreAllowed();
@@ -13636,6 +14566,15 @@ async function main() {
   testCrewChatAttachmentRealtimeAndStateReconciliation();
   testCrewChatUnreadUsesTheSharedUnreadSystem();
   await testGroupInboxUnreadSurvivesOverlappingRefreshes();
+  await testAgentRoomIsDisabledByDefault();
+  await testAgentRoomNeverLeaksApiKeysToTheClient();
+  await testAgentRoomEnforcesTheReviewRoundLimit();
+  await testAgentRoomRequiresIsaacApprovalBeforeEveryHandoff();
+  await testAgentRoomStopStateIsAbsolute();
+  await testAgentRoomRejectsMalformedProviderResponses();
+  await testAgentRoomRedactsSecretsBeforeSending();
+  await testAgentRoomExposesNoRepositoryMutation();
+  await testAgentRoomHandlesProviderFailureAndTimeouts();
   console.log("All regression checks passed.");
 }
 
