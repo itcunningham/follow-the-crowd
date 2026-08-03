@@ -514,6 +514,15 @@ html {
   transform: translateY(7px);
   pointer-events: none;
   max-width: 0;
+  /* A flex item's automatic minimum size (`min-width: auto`) is its content
+     width, and min-width beats max-width -- so without this the button would
+     refuse to shrink past "SAVE" and would keep displacing Cancel. Setting it
+     to 0 explicitly is what actually guarantees the collapse. `overflow:
+     hidden` below also zeroes the automatic minimum per the flexbox spec, but
+     relying on that alone leaves the layout depending on one engine's
+     implementation of a subtle interaction; this states the intent outright
+     and behaves identically everywhere. */
+  min-width: 0;
   margin-right: 0;
   padding-left: 0;
   padding-right: 0;

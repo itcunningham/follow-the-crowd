@@ -10401,6 +10401,14 @@ function testRunSheetCancelIsTheFixedAnchor() {
   const hiddenRule = globalsSource.match(/\.ftc-run-sheet-save-btn \{[\s\S]*?\n\}/)?.[0] ?? "";
   assert.ok(hiddenRule, "the Save hidden-state rule must exist");
   assert.match(hiddenRule, /max-width: 0;/);
+  // `min-width: 0` is load-bearing, not decorative: a flex item's automatic
+  // minimum size is its content width and min-width beats max-width, so
+  // without this the button refuses to shrink past "SAVE" and keeps pushing
+  // Cancel left. `overflow: hidden` also zeroes the automatic minimum per
+  // spec, but relying on that alone leaves the layout dependent on one
+  // engine's handling of a subtle interaction -- which is exactly the class
+  // of difference that shows up on iOS Safari but not in Chromium.
+  assert.match(hiddenRule, /min-width: 0;/);
   assert.match(hiddenRule, /margin-right: 0;/);
   assert.match(hiddenRule, /padding-left: 0;/);
   assert.match(hiddenRule, /padding-right: 0;/);
