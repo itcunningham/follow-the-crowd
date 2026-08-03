@@ -13472,11 +13472,7 @@ function testUnreadMembershipIsIdFormAgnostic() {
   // No raw membership test against either state Set may come back. (The local
   // shadow inside the reaction-removal handler is a different Set, built from
   // and queried with the same raw ids, so it is deliberately not matched here.)
-  // TEMPORARY: the broader `unreadEventChatIds.has(` bar is relaxed while
-  // lib/diagnostics/unreadTrace.ts is mounted -- the tracer calls it on purpose,
-  // to record what the old exact-match lookup WOULD have said next to what the
-  // helper says. Reverting the instrumentation commit restores this line.
-  // The narrower prop-level bar below still guards the actual defect.
+  assert.doesNotMatch(inboxPageSource, /unreadEventChatIds\.has\(/);
   assert.doesNotMatch(inboxPageSource, /isUnread=\{unread\w*\.has\(/);
 }
 
