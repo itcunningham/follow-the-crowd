@@ -344,6 +344,47 @@ function DmInboxPageContent() {
     dmInboxRowsRef.current = dmInboxRows;
   }, [dmInboxRows]);
 
+  /**
+   * Resolve the signed-in user once, on mount, independent of which tab is
+   * showing.
+   *
+   * `currentUserId` is page-wide identity: the Groups realtime handler will not
+   * mark a crew chat unread without it, and `refreshUnreadState` CLEARS both
+   * unread Sets when it is null. But its only other assignment lives inside
+   * `loadConversations`, which is called from exactly one effect, guarded by
+   * `if (activeTab !== "dm") return`.
+   *
+   * So on any mount where the DM tab is never active — landing straight on
+   * `/dm?tab=group`, which `getEventCrewChatLink(..., { tab: "group" })` links
+   * to directly — identity was never resolved, and Crew Chat unread could not
+   * render at all. The preview, timestamp and ordering updated anyway because
+   * that half of the realtime handler runs before the `if (currentUserId)`
+   * gate and does not depend on it. That is exactly the reported asymmetry:
+   * the row moves and re-sorts, the highlight never appears.
+   *
+   * Identity does not belong to either tab, so it is resolved here rather than
+   * as a side effect of loading one tab's data. `loadConversations` still sets
+   * the same value; React bails out on the identical string, so the DM path is
+   * unchanged.
+   */
+  useEffect(() => {
+    let cancelled = false;
+
+    getCurrentUserId()
+      .then((userId) => {
+        if (!cancelled) {
+          setCurrentUserId(userId);
+        }
+      })
+      .catch((identityError) => {
+        console.error("Failed to resolve the current user for the inbox:", identityError);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const loadGroupChats = useCallback(async (options?: { forceLoading?: boolean; soft?: boolean }) => {
     if (
       options?.soft &&

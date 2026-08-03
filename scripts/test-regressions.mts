@@ -13476,6 +13476,70 @@ function testUnreadMembershipIsIdFormAgnostic() {
   assert.doesNotMatch(inboxPageSource, /isUnread=\{unread\w*\.has\(/);
 }
 
+/**
+ * Crew Chat unread could not render at all on any mount where the DM tab was
+ * never active, while the preview, timestamp and ordering updated normally.
+ *
+ * `currentUserId` is page-wide identity. Two things depend on it:
+ *   - the Groups realtime handler only marks a crew chat unread `if (currentUserId)`
+ *   - `refreshUnreadState` CLEARS both unread Sets when it is null
+ *
+ * Its only assignment used to live inside `loadConversations`, which is called
+ * from exactly one effect guarded by `if (activeTab !== "dm") return`. Landing
+ * straight on `/dm?tab=group` — which getEventCrewChatLink(..., {tab:"group"})
+ * links to directly — therefore never resolved identity, so the add was skipped
+ * AND the database recompute wiped the Sets.
+ *
+ * The preview half of the same realtime handler runs BEFORE that gate and does
+ * not depend on identity, which is why the row still moved and re-sorted while
+ * the highlight never appeared. That asymmetry is the signature of this bug.
+ */
+function testInboxIdentityIsResolvedIndependentlyOfTheActiveTab() {
+  const inboxPageSource = readFileSync(new URL("../app/dm/page.tsx", import.meta.url), "utf8");
+
+  // Identity is resolved on mount, unconditionally -- not as a side effect of
+  // loading one tab's data.
+  assert.match(
+    inboxPageSource,
+    /useEffect\(\(\) => \{\s*\n\s*let cancelled = false;\s*\n\s*getCurrentUserId\(\)[\s\S]{0,400}?setCurrentUserId\(userId\);/,
+    "the inbox must resolve currentUserId in its own mount effect",
+  );
+
+  // That effect must have NO dependencies -- an activeTab dep would reintroduce
+  // the same gating by another route.
+  const mountEffect = inboxPageSource.slice(inboxPageSource.indexOf("let cancelled = false;"));
+  assert.match(
+    mountEffect.slice(0, 700),
+    /\}, \[\]\);/,
+    "identity resolution must not depend on the active tab",
+  );
+
+  // The bug, stated so it cannot come back: identity must not be reachable
+  // ONLY through the DM-gated loader.
+  const assignments = inboxPageSource.match(/setCurrentUserId\(/g) ?? [];
+  assert.ok(
+    assignments.length >= 2,
+    "setCurrentUserId must not live solely inside loadConversations",
+  );
+  // loadConversations is still the DM tab's loader and is still tab-gated --
+  // that part is correct and must not be "fixed" by loading DMs on every tab.
+  assert.match(inboxPageSource, /if \(activeTab !== "dm"\) \{\s*\n\s*return;\s*\n\s*\}\s*\n\s*\n\s*loadConversations\(\)/);
+
+  // The two consumers still depend on identity -- the fix is that identity now
+  // always exists, not that these gates were removed.
+  assert.match(inboxPageSource, /if \(!currentUserId\) \{[\s\S]{0,400}?setUnreadEventChatIds\(new Set\(\)\);/);
+  assert.match(inboxPageSource, /if \(currentUserId\) \{[\s\S]{0,300}?setUnreadEventChatIds\(/);
+
+  // And the preview half stays ungated, which is what kept the row updating
+  // while the highlight did not -- pinned so the asymmetry is documented.
+  const groupBranch = inboxPageSource.slice(
+    inboxPageSource.indexOf("if (groupTargetId) {"),
+    inboxPageSource.indexOf("if (currentUserId) {", inboxPageSource.indexOf("if (groupTargetId) {")),
+  );
+  assert.match(groupBranch, /applyInboxGroupMessage\(previous, groupTargetId/);
+  assert.doesNotMatch(groupBranch, /currentUserId/);
+}
+
 async function main() {
   testPastEventDatesAreBlocked();
   testFutureEventDatesAreAllowed();
@@ -13724,6 +13788,7 @@ async function main() {
   testCrewChatUnreadUsesTheSharedUnreadSystem();
   await testGroupInboxUnreadSurvivesOverlappingRefreshes();
   testUnreadMembershipIsIdFormAgnostic();
+  testInboxIdentityIsResolvedIndependentlyOfTheActiveTab();
   console.log("All regression checks passed.");
 }
 
