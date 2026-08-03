@@ -4135,6 +4135,57 @@ function testIncomingGigsCardDesignSystem() {
   assert.match(skeletonSource, /ReceivedBookingCardSkeleton[\s\S]*h-16 w-16/);
 }
 
+function testBookingCardGroupChatIsANavigationRow() {
+  const bookingCardSource = readFileSync(
+    new URL("../app/components/BookingRequestCard.tsx", import.meta.url),
+    "utf8",
+  );
+
+  const groupChatBlock = bookingCardSource.slice(
+    bookingCardSource.indexOf("groupChatAccess.kind !== \"hidden\""),
+    bookingCardSource.indexOf("{bookingLoading ?"),
+  );
+
+  assert.ok(groupChatBlock.length > 0, "expected to find the group chat section");
+
+  // Group chat is navigation, not a third CTA: View event stays the primary
+  // action and Cancel stays destructive, so this must reuse the shared
+  // tappable nav row (icon + title + chevron) rather than a primary button.
+  assert.match(
+    bookingCardSource,
+    /import \{ EventDetailSecondaryAction \} from "@\/app\/components\/event-detail\/EventDetailBottomBar"/,
+  );
+  assert.match(
+    groupChatBlock,
+    /<EventDetailSecondaryAction href=\{groupChatAccess\.href\}>\s*Open group chat/,
+  );
+  assert.doesNotMatch(
+    groupChatBlock,
+    /ftc-btn-primary/,
+    "group chat must not compete with View event as a primary button",
+  );
+
+  // The bordered box that wrapped this section is gone -- the booking card is
+  // already a card, so boxing a section inside it was pure nesting.
+  assert.doesNotMatch(
+    groupChatBlock,
+    /rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated p-3/,
+    "the nested bordered container must stay removed",
+  );
+
+  // Label matches the card's own muted section-label convention (used by the
+  // two "Booking request" labels in this same file), not the cyan planner one.
+  assert.match(
+    groupChatBlock,
+    /text-\[10px\] font-semibold uppercase tracking-wide text-ftc-text-muted">\s*Group chat/,
+  );
+  assert.doesNotMatch(groupChatBlock, /ftc-planner-section-label/);
+
+  // Behaviour preserved: same access states, same locked copy, same href.
+  assert.match(groupChatBlock, /groupChatAccess\.kind === "open"/);
+  assert.match(groupChatBlock, /Group chat unlocks after you accept\./);
+}
+
 function testCancelledBookingCardHidesViewEvent() {
   const bookingCardSource = readFileSync(
     new URL("../app/components/BookingRequestCard.tsx", import.meta.url),
@@ -11917,6 +11968,7 @@ async function main() {
   testGigsFilterTabsPolish();
   testGigsHistoryCardNavigation();
   testIncomingGigsCardDesignSystem();
+  testBookingCardGroupChatIsANavigationRow();
   testCancelledBookingCardHidesViewEvent();
   testGigsTabBookingsCacheForTabSwitching();
   testGigsPlannerNamesLoadWithBookingCards();

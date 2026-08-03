@@ -12,6 +12,7 @@ import ProposeBookingRateSheet from "@/app/components/booking/ProposeBookingRate
 import BookingStatusBadge from "@/app/components/booking/BookingStatusBadge";
 import CancelAcceptedBookingButton from "@/app/components/booking/CancelAcceptedBookingButton";
 import CancelBookingRequestButton from "@/app/components/CancelBookingRequestButton";
+import { EventDetailSecondaryAction } from "@/app/components/event-detail/EventDetailBottomBar";
 import {
   DM_BOOKING_CARD_ACTIONS_CLASS,
   DM_BOOKING_CARD_PAIRED_ACTIONS_ROW_CLASS,
@@ -333,28 +334,35 @@ export default function BookingRequestCard({
           )
         ) : null}
 
-        {booking.event_id && !showAsCancelled ? (
-          <>
-            {groupChatAccess && groupChatAccess.kind !== "hidden" ? (
-              <div className="mt-4 rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated p-3">
-                <p className="text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted">
-                  Event group chat
-                </p>
-                {groupChatAccess.kind === "open" ? (
-                  <Link
-                    href={groupChatAccess.href}
-                    className="mt-2 inline-flex ftc-btn-primary px-3 py-1.5 text-xs uppercase tracking-wide"
-                  >
-                    Open group chat
-                  </Link>
-                ) : (
-                  <p className="mt-2 text-xs text-ftc-text-muted">
-                    Group chat unlocks after you accept.
-                  </p>
-                )}
+        {/*
+          Group chat is a place to go, not a third call to action: View event
+          stays the primary CTA and Cancel stays the destructive one, so this
+          reuses the same tappable nav row the event detail screens use
+          (icon + title + chevron) rather than a second primary button. The
+          bordered box that used to wrap it is gone — the booking card is
+          already a card, so boxing a section inside it was a level of nesting
+          that bought nothing.
+        */}
+        {booking.event_id &&
+        !showAsCancelled &&
+        groupChatAccess &&
+        groupChatAccess.kind !== "hidden" ? (
+          <div className="mt-4">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted">
+              Group chat
+            </p>
+            {groupChatAccess.kind === "open" ? (
+              <div className="mt-2">
+                <EventDetailSecondaryAction href={groupChatAccess.href}>
+                  Open group chat
+                </EventDetailSecondaryAction>
               </div>
-            ) : null}
-          </>
+            ) : (
+              <p className="mt-2 text-xs text-ftc-text-muted">
+                Group chat unlocks after you accept.
+              </p>
+            )}
+          </div>
         ) : null}
 
         {bookingLoading ? (
