@@ -180,6 +180,7 @@ import {
 } from "../lib/dm/chatMessageBubbleGeometry";
 import { buildCrewChatMessageGroups } from "../lib/groupChatMessageLayout";
 import { buildEventChatReadMap, isChatUnread } from "../lib/messageReads";
+import { getEventCrewChatLink } from "../lib/eventCrewChat";
 import { applyInboxGroupMessage, type GroupChatListItem } from "../lib/groupChats";
 import {
   DM_BOOKING_CONFIRMED_MESSAGE,
@@ -13514,6 +13515,68 @@ function testInboxIdentityIsResolvedIndependentlyOfTheActiveTab() {
   assert.doesNotMatch(groupBranch, /currentUserId/);
 }
 
+/**
+ * Crew Chat -> View Event -> Back returned to the Events list instead of the
+ * conversation. Event Details resolves its back href from named origin params
+ * (`from`, `fromTab`, `conversationId`, calendar keys...); Crew Chat's View
+ * Event link declared none, so the resolver fell through to its Events-list
+ * default. Crew Chat is now one more named origin.
+ */
+function testEventDetailReturnsToCrewChat() {
+  const crewEventId = "11111111-2222-3333-4444-555555555555";
+
+  // From Crew Chat: back to that same conversation.
+  assert.equal(
+    resolveEventDetailBackHref(null, { from: "crew-chat", crewChatEventId: crewEventId }),
+    getEventCrewChatLink(crewEventId),
+  );
+  // The origin wins over whichever Events tab was last used -- arriving from a
+  // crew chat says nothing about that.
+  assert.equal(
+    resolveEventDetailBackHref("upcoming", { from: "crew-chat", crewChatEventId: crewEventId }),
+    getEventCrewChatLink(crewEventId),
+  );
+
+  // SAFE FALLBACK: the origin claims crew-chat but the route supplied no event
+  // id, so it must fall through to the normal resolution rather than build a
+  // broken href.
+  const noId = resolveEventDetailBackHref("upcoming", { from: "crew-chat", crewChatEventId: null });
+  assert.ok(noId.startsWith("/"), "fallback must stay an in-app path");
+  assert.doesNotMatch(noId, /\/chat$/);
+
+  // Unrelated origins are untouched.
+  assert.match(resolveEventDetailBackHref(null, {}), /^\//);
+  assert.equal(
+    resolveEventDetailBackHref(null, { from: "crew-chat", crewChatEventId: "   " }),
+    resolveEventDetailBackHref(null, {}),
+    "a blank id must behave exactly like no origin at all",
+  );
+
+  // NO OPEN REDIRECT: the destination is rebuilt from the path's own event id,
+  // never from a caller-supplied URL. An attacker-controlled value can only
+  // ever produce an in-app /events/<value>/chat path.
+  const hostile = resolveEventDetailBackHref(null, {
+    from: "crew-chat",
+    crewChatEventId: "https://evil.example.com",
+  });
+  assert.ok(hostile.startsWith("/events/"), "must stay an in-app path");
+  assert.doesNotMatch(hostile, /^https?:|^\/\//);
+
+  // The Crew Chat link declares the origin, or the resolver never sees it.
+  const cardSource = readFileSync(
+    new URL("../app/components/group-chat/GroupChatEventContextCard.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(cardSource, /href=\{`\/events\/\$\{eventId\}\?from=crew-chat`\}/);
+
+  // And the detail page feeds its own route id through.
+  const detailSource = readFileSync(
+    new URL("../app/events/[eventId]/page.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(detailSource, /crewChatEventId: eventId,/);
+}
+
 async function main() {
   testPastEventDatesAreBlocked();
   testFutureEventDatesAreAllowed();
@@ -13743,6 +13806,7 @@ async function main() {
   testCrewChatPremiumPolish();
   testCrewChatTimestampSeparators();
   testCrewChatEventCardToggleScrollCompensation();
+  testEventDetailReturnsToCrewChat();
   testIncomingChatMessagesHaveNoAvatarTimestamp();
   testEventUpdateMessagePresentation();
   testCrewChatImageAttachmentsWiring();

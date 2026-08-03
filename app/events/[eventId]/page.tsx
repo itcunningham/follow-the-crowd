@@ -234,8 +234,9 @@ function EventDetailPageView() {
         dmReturnFrom: searchParams.get("dmReturnFrom"),
         profileUserId: searchParams.get("profileUserId"),
         restoreScroll: searchParams.get(DM_CHAT_SCROLL_RESTORE_PARAM),
+        crewChatEventId: eventId,
       }),
-    [isDjWorkspace, searchParams],
+    [eventId, isDjWorkspace, searchParams],
   );
   const calendarOrigin = useMemo(
     () =>
