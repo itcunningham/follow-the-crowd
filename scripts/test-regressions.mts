@@ -138,6 +138,8 @@ import { buildDmReactionNotificationBody } from "../lib/dm/dmReactionNotificatio
 import {
   applyDmInboxRealtimeReaction,
   applyDmInboxRealtimeReactionRemoval,
+  hasUnreadInboxId,
+  toNormalizedInboxIdSet,
   type DmInboxRow,
 } from "../lib/dmInbox";
 import {
@@ -13230,7 +13232,10 @@ function testCrewChatUnreadUsesTheSharedUnreadSystem() {
 
   // -- The inbox card and Groups count read the same set --------------------
   const inboxPageSource = readFileSync(new URL("../app/dm/page.tsx", import.meta.url), "utf8");
-  assert.match(inboxPageSource, /isUnread=\{unreadEventChatIds\.has\(chat\.eventId\)\}/);
+  assert.match(
+    inboxPageSource,
+    /isUnread=\{hasUnreadInboxId\(unreadEventChatIds, chat\.eventId\)\}/,
+  );
   assert.match(inboxPageSource, /const groupUnreadCount = unreadEventChatIds\.size/);
   assert.match(inboxPageSource, /groupUnreadCount=\{groupUnreadCount\}/);
 }
@@ -13259,7 +13264,7 @@ async function testGroupInboxUnreadSurvivesOverlappingRefreshes() {
   assert.match(inboxPageSource, /const generation = \+\+unreadRefreshGenerationRef\.current;/);
   assert.match(
     inboxPageSource,
-    /if \(generation !== unreadRefreshGenerationRef\.current\) \{\s*\n\s*return;\s*\n\s*\}\s*\n\s*\n\s*setUnreadConversationIds\(conversationUnread\);\s*\n\s*setUnreadEventChatIds\(eventUnread\);/,
+    /if \(generation !== unreadRefreshGenerationRef\.current\) \{\s*\n\s*return;\s*\n\s*\}\s*\n\s*\n\s*setUnreadConversationIds\(toNormalizedInboxIdSet\(conversationUnread\)\);\s*\n\s*setUnreadEventChatIds\(toNormalizedInboxIdSet\(eventUnread\)\);/,
     "the staleness check must gate BOTH unread writes, not sit after them",
   );
   // Sign-out must not be repopulated by a run still in flight.
@@ -13271,7 +13276,7 @@ async function testGroupInboxUnreadSurvivesOverlappingRefreshes() {
   // guard protects that add, it does not replace it.
   assert.match(
     inboxPageSource,
-    /setUnreadEventChatIds\(\(previous\) => \{\s*\n\s*const next = new Set\(previous\);\s*\n\s*next\.add\(groupTargetId\);/,
+    /setUnreadEventChatIds\(\(previous\) => \{\s*\n\s*const next = new Set\(previous\);\s*\n\s*next\.add\(normalizeInboxId\(groupTargetId\)\);/,
   );
   // No polling, timers, forced refreshes or notification-based unread logic.
   assert.doesNotMatch(inboxPageSource, /setInterval|location\.reload|router\.refresh/);
@@ -13387,6 +13392,88 @@ async function testGroupInboxUnreadSurvivesOverlappingRefreshes() {
   const guardedResult = await runCycle(true);
   assert.equal(guardedResult.has(eventId), true);
   assert.equal(guardedResult.size, 1);
+}
+
+/**
+ * The unread highlight never appeared live, but appeared instantly after a
+ * reload -- while the preview text, timestamp and ordering all updated live.
+ *
+ * That split is the whole diagnosis. The inbox learns a thread's id from two
+ * different columns: `events.id` when a row is loaded, and `messages.event_id`
+ * when a realtime message arrives (text rather than uuid in some environments,
+ * per setupEventCrewChat.sql's conditional migration). Every comparison that
+ * already worked normalised BOTH sides -- applyInboxGroupMessage to match the
+ * row, removeUnreadEventChatId to delete. Unread membership did not: the add
+ * stored the message-row form and the render did
+ * `unreadEventChatIds.has(chat.eventId)`, an exact match against the
+ * events-table form. Different spelling, silent miss, no highlight -- and a
+ * reload hid it because a reload rebuilds the Set from the events-table form.
+ *
+ * The Sets now hold normalised ids, written and read through one pair of
+ * boundary helpers.
+ */
+function testUnreadMembershipIsIdFormAgnostic() {
+  const inboxPageSource = readFileSync(new URL("../app/dm/page.tsx", import.meta.url), "utf8");
+
+  // The two id spellings of one thread, exactly as the two columns can carry it.
+  const fromEventsTable = "11111111-2222-3333-4444-555555555555";
+  const fromMessageRow = " 11111111-2222-3333-4444-555555555555 ".toUpperCase();
+
+  // This is the bug, stated as an assertion: the old exact-match lookup misses.
+  const rawSet = new Set([fromMessageRow]);
+  assert.equal(
+    rawSet.has(fromEventsTable),
+    false,
+    "exact-match membership must miss across id forms -- otherwise this fix is pointless",
+  );
+
+  // The boundary helpers make membership independent of which column it came from.
+  const normalized = toNormalizedInboxIdSet([fromMessageRow]);
+  assert.equal(hasUnreadInboxId(normalized, fromEventsTable), true);
+  assert.equal(hasUnreadInboxId(normalized, fromMessageRow), true);
+  assert.equal(hasUnreadInboxId(normalized, "some-other-event"), false);
+
+  // .size drives the Groups tab count, so two spellings must never count twice.
+  assert.equal(toNormalizedInboxIdSet([fromMessageRow, fromEventsTable]).size, 1);
+
+  // Empty / missing ids never become phantom unread members.
+  assert.equal(toNormalizedInboxIdSet(["", "   "]).size, 0);
+  assert.equal(hasUnreadInboxId(normalized, null), false);
+  assert.equal(hasUnreadInboxId(normalized, undefined), false);
+  assert.equal(hasUnreadInboxId(normalized, "  "), false);
+
+  // -- Every boundary in the page uses them ---------------------------------
+  // Reads.
+  assert.match(
+    inboxPageSource,
+    /isUnread=\{hasUnreadInboxId\(unreadEventChatIds, chat\.eventId\)\}/,
+  );
+  assert.match(
+    inboxPageSource,
+    /isUnread=\{hasUnreadInboxId\(unreadConversationIds, row\.conversationId\)\}/,
+  );
+  // Writes: the database recompute and every realtime add/delete.
+  assert.match(
+    inboxPageSource,
+    /setUnreadConversationIds\(toNormalizedInboxIdSet\(conversationUnread\)\);\s*\n\s*setUnreadEventChatIds\(toNormalizedInboxIdSet\(eventUnread\)\);/,
+  );
+  for (const written of [
+    "next.add(normalizeInboxId(groupTargetId));",
+    "next.add(normalizeInboxId(targetId));",
+    "next.delete(normalizeInboxId(targetId));",
+    "next.add(normalizeInboxId(messageContext.conversationId));",
+  ]) {
+    assert.ok(
+      inboxPageSource.includes(written),
+      `unread writes must normalise: ${written}`,
+    );
+  }
+
+  // No raw membership test against either state Set may come back. (The local
+  // shadow inside the reaction-removal handler is a different Set, built from
+  // and queried with the same raw ids, so it is deliberately not matched here.)
+  assert.doesNotMatch(inboxPageSource, /unreadEventChatIds\.has\(/);
+  assert.doesNotMatch(inboxPageSource, /isUnread=\{unread\w*\.has\(/);
 }
 
 async function main() {
@@ -13636,6 +13723,7 @@ async function main() {
   testCrewChatAttachmentRealtimeAndStateReconciliation();
   testCrewChatUnreadUsesTheSharedUnreadSystem();
   await testGroupInboxUnreadSurvivesOverlappingRefreshes();
+  testUnreadMembershipIsIdFormAgnostic();
   console.log("All regression checks passed.");
 }
 

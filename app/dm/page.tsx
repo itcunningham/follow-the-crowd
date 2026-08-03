@@ -30,8 +30,10 @@ import {
   buildDmInboxRows,
   detectInboxRealtimeMessageType,
   logInboxRenderOrder,
+  hasUnreadInboxId,
   mergeDmInboxReactionActivities,
   normalizeInboxId,
+  toNormalizedInboxIdSet,
   type DmInboxRow,
 } from "@/lib/dmInbox";
 import { formatGroupChatInboxPreview, isGroupChatSystemUpdateMessage } from "@/lib/groupChatSystemMessages";
@@ -640,8 +642,8 @@ function DmInboxPageContent() {
         return;
       }
 
-      setUnreadConversationIds(conversationUnread);
-      setUnreadEventChatIds(eventUnread);
+      setUnreadConversationIds(toNormalizedInboxIdSet(conversationUnread));
+      setUnreadEventChatIds(toNormalizedInboxIdSet(eventUnread));
 
       void syncReadInboxNotifications(currentUserId, {
         conversationIds: dmInboxRows.map((row) => row.conversationId),
@@ -847,7 +849,7 @@ function DmInboxPageContent() {
               } else {
                 setUnreadEventChatIds((previous) => {
                   const next = new Set(previous);
-                  next.add(groupTargetId);
+                  next.add(normalizeInboxId(groupTargetId));
                   return next;
                 });
               }
@@ -892,13 +894,13 @@ function DmInboxPageContent() {
           if (currentUserId && newMessage.user_id !== currentUserId) {
             setUnreadConversationIds((previous) => {
               const next = new Set(previous);
-              next.add(targetId);
+              next.add(normalizeInboxId(targetId));
               return next;
             });
           } else if (currentUserId && newMessage.user_id === currentUserId) {
             setUnreadConversationIds((previous) => {
               const next = new Set(previous);
-              next.delete(targetId);
+              next.delete(normalizeInboxId(targetId));
               return next;
             });
           }
@@ -980,7 +982,7 @@ function DmInboxPageContent() {
       ) {
         setUnreadConversationIds((previous) => {
           const next = new Set(previous);
-          next.add(messageContext.conversationId);
+          next.add(normalizeInboxId(messageContext.conversationId));
           return next;
         });
       }
@@ -1052,7 +1054,7 @@ function DmInboxPageContent() {
         if (!fallback.latestActivityAt || !fallback.latestMessageUserId) {
           setUnreadConversationIds((previous) => {
             const next = new Set(previous);
-            next.delete(conversationId);
+            next.delete(normalizeInboxId(conversationId));
             return next;
           });
           return;
@@ -1076,9 +1078,9 @@ function DmInboxPageContent() {
           const next = new Set(previous);
 
           if (unreadConversationIds.has(conversationId)) {
-            next.add(conversationId);
+            next.add(normalizeInboxId(conversationId));
           } else {
-            next.delete(conversationId);
+            next.delete(normalizeInboxId(conversationId));
           }
 
           return next;
@@ -1254,7 +1256,7 @@ function DmInboxPageContent() {
                                   ? undefined
                                   : formatGroupChatEventDate(chat.eventDate)
                               }
-                              isUnread={unreadEventChatIds.has(chat.eventId)}
+                              isUnread={hasUnreadInboxId(unreadEventChatIds, chat.eventId)}
                               href={chat.href}
                               coverImageUrl={chat.coverImageUrl}
                               fallbackColour={chat.fallbackColour}
@@ -1303,7 +1305,7 @@ function DmInboxPageContent() {
                           preview={preview}
                           timestamp={timestamp}
                           avatarUrl={otherProfile?.avatar_url}
-                          isUnread={unreadConversationIds.has(row.conversationId)}
+                          isUnread={hasUnreadInboxId(unreadConversationIds, row.conversationId)}
                           onClick={() => openConversation(row.conversationId)}
                         />
                       </li>
