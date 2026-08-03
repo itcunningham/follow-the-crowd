@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import ProfileAvatar from "@/app/components/ProfileAvatar";
 import {
+  COMBINED_ROLE_LABEL,
   getCurrentUserId,
   isUsernameAvailable,
   saveUserProfile,
@@ -44,7 +45,7 @@ import { isAllowedProfileImageType, uploadProfileImage } from "@/lib/user/upload
 const ROLE_OPTIONS: { value: UserRole; label: string }[] = [
   { value: "dj", label: "DJ / Artist" },
   { value: "promoter", label: "Promoter / Event Planner" },
-  { value: "both", label: "Both" },
+  { value: "both", label: COMBINED_ROLE_LABEL },
 ];
 
 function roleNarrowsFromBoth(previousRole: UserRole | null, nextRole: UserRole): boolean {
@@ -683,8 +684,8 @@ export default function EditProfileForm({
           {needsRoleChangeAck ? (
             <div className="mt-3 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-100">
               <p>
-                Changing from Both to a single role hides the other role&apos;s profile sections,
-                but your saved details stay on your account
+                Changing from {COMBINED_ROLE_LABEL} to a single role hides the other role&apos;s
+                profile sections, but your saved details stay on your account
               </p>
               <label className="mt-3 flex items-start gap-2">
                 <input

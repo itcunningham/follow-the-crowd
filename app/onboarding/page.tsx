@@ -6,6 +6,7 @@ import {
   getCurrentAuthUser,
   getCurrentUserProfile,
   getDefaultRouteForRole,
+  COMBINED_ROLE_LABEL,
   LOGIN_PATH,
   needsProfileSetup,
   PROFILE_SETUP_PATH,
@@ -30,7 +31,7 @@ const ROLE_OPTIONS: {
   },
   {
     role: "both",
-    title: "DJ & Promoter",
+    title: COMBINED_ROLE_LABEL,
     description: "Book DJs, get booked, and manage everything from one account",
   },
 ];

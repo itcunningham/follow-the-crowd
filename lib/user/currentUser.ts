@@ -762,6 +762,17 @@ export async function listDiscoverUsers(currentRole: UserRole): Promise<UserProf
   });
 }
 
+/**
+ * User-facing label for the combined account role.
+ *
+ * The stored value stays `"both"` — this is display copy only, so existing
+ * accounts, the DB enum and every role check are untouched. Exported because
+ * onboarding, Edit Profile and every badge/chip must render the *same* words;
+ * they previously drifted ("DJ & Promoter" in onboarding vs "Both" in Edit
+ * Profile), and a shared constant is what stops that recurring.
+ */
+export const COMBINED_ROLE_LABEL = "DJ & Promoter";
+
 export function getRoleLabel(role: UserRole | null): string {
   if (role === "dj") {
     return "DJ / Artist";
@@ -772,7 +783,7 @@ export function getRoleLabel(role: UserRole | null): string {
   }
 
   if (role === "both") {
-    return "Both";
+    return COMBINED_ROLE_LABEL;
   }
 
   return "Member";

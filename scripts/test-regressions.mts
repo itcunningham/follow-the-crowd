@@ -125,6 +125,7 @@ import {
   resolveMessageGroupLiClass,
   resolveSystemCardGroupLiClass,
 } from "../lib/dm/chatMessageGroupLayout";
+import { COMBINED_ROLE_LABEL, getRoleLabel } from "../lib/user/currentUser";
 import { buildDmReactionNotificationBody } from "../lib/dm/dmReactionNotifications";
 import {
   applyDmInboxRealtimeReaction,
@@ -4188,6 +4189,58 @@ function testBookingCardGroupChatIsANavigationRow() {
   // Behaviour preserved: same access states, same locked copy, same href.
   assert.match(groupChatBlock, /groupChatAccess\.kind === "open"/);
   assert.match(groupChatBlock, /Group chat unlocks after you accept\./);
+}
+
+function testCombinedRoleLabelIsConsistentEverywhere() {
+  // Onboarding said "DJ & Promoter" while Edit Profile said "Both" for the
+  // same account role. One exported constant is what makes drift impossible
+  // rather than merely fixed-for-now.
+  assert.equal(COMBINED_ROLE_LABEL, "DJ & Promoter");
+  assert.equal(getRoleLabel("both"), COMBINED_ROLE_LABEL);
+
+  // Display copy only -- the stored value, the enum and every role check are
+  // untouched, so existing accounts keep working.
+  const currentUserSource = readFileSync(
+    new URL("../lib/user/currentUser.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(currentUserSource, /export type UserRole = "dj" \| "promoter" \| "both";/);
+  assert.match(currentUserSource, /value === "dj" \|\| value === "promoter" \|\| value === "both"/);
+
+  // The two role pickers render the constant rather than their own literal.
+  const onboardingSource = readFileSync(
+    new URL("../app/onboarding/page.tsx", import.meta.url),
+    "utf8",
+  );
+  const editProfileSource = readFileSync(
+    new URL("../app/components/profile/EditProfileForm.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(onboardingSource, /role: "both",\s*\n\s*title: COMBINED_ROLE_LABEL,/);
+  assert.match(editProfileSource, /\{ value: "both", label: COMBINED_ROLE_LABEL \}/);
+  // The role-narrowing warning names the role the same way the picker does.
+  assert.match(editProfileSource, /Changing from \{COMBINED_ROLE_LABEL\} to a single role/);
+
+  // Both pickers keep the other two labels verbatim.
+  for (const source of [onboardingSource, editProfileSource]) {
+    assert.match(source, /"DJ \/ Artist"/);
+    assert.match(source, /"Promoter \/ Event Planner"/);
+  }
+
+  // No user-facing "Both" role label may come back anywhere.
+  for (const relativePath of [
+    "../app/onboarding/page.tsx",
+    "../app/components/profile/EditProfileForm.tsx",
+    "../lib/user/currentUser.ts",
+  ]) {
+    const source = readFileSync(new URL(relativePath, import.meta.url), "utf8");
+    assert.doesNotMatch(
+      source,
+      /label: "Both"|title: "Both"|return "Both"|>Both</,
+      `${relativePath} must not render "Both" as a role label`,
+    );
+  }
 }
 
 function testCancelledBookingCardHidesViewEvent() {
@@ -12878,6 +12931,7 @@ async function main() {
   testGigsHistoryCardNavigation();
   testIncomingGigsCardDesignSystem();
   testBookingCardGroupChatIsANavigationRow();
+  testCombinedRoleLabelIsConsistentEverywhere();
   testCancelledBookingCardHidesViewEvent();
   testGigsTabBookingsCacheForTabSwitching();
   testGigsPlannerNamesLoadWithBookingCards();
