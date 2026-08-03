@@ -6,16 +6,24 @@ import {
   CHAT_INCOMING_AVATAR_SLOT_CLASS,
   CHAT_INCOMING_BUBBLE_CELL_CLASS,
   CHAT_INCOMING_ROW_GRID_CLASS,
-  CHAT_INCOMING_ROW_GRID_CLUSTER_END_CLASS,
-  CHAT_INCOMING_TIMESTAMP_CELL_CLASS,
   isIncomingClusterEnd,
   type ChatMessageGroupPosition,
 } from "@/lib/dm/chatMessageGroupLayout";
 
+/**
+ * Incoming layout for group chats — reserved avatar column plus an optional
+ * per-message sender label.
+ *
+ * Carries no visible timestamp: day separators and the grouped time
+ * separators between clusters already say when a message was sent, so a
+ * per-message time under every avatar repeated it and cluttered the column.
+ * The `<time>` is kept in the DOM (hidden) so each row still carries its own
+ * machine-readable timestamp — same shape as DmIncomingMessageLayout, which
+ * dropped its visible timestamp for the same reason.
+ */
 export default function IncomingChatMessageLayout({
   className = "",
   groupPosition,
-  showTimestamp,
   avatar,
   createdAt,
   formattedTime,
@@ -24,7 +32,6 @@ export default function IncomingChatMessageLayout({
 }: {
   className?: string;
   groupPosition: ChatMessageGroupPosition;
-  showTimestamp: boolean;
   avatar: ReactNode;
   createdAt: string;
   formattedTime: string;
@@ -35,9 +42,7 @@ export default function IncomingChatMessageLayout({
 
   if (isClusterEnd) {
     return (
-      <div
-        className={`${CHAT_INCOMING_ROW_GRID_CLASS} ${CHAT_INCOMING_ROW_GRID_CLUSTER_END_CLASS} ${className}`.trim()}
-      >
+      <div className={`${CHAT_INCOMING_ROW_GRID_CLASS} ${className}`.trim()}>
         <div className={CHAT_INCOMING_AVATAR_CELL_CLASS}>{avatar}</div>
 
         <div className={CHAT_INCOMING_BUBBLE_CELL_CLASS}>
@@ -45,10 +50,7 @@ export default function IncomingChatMessageLayout({
           {children}
         </div>
 
-        <time
-          dateTime={createdAt}
-          className={`${CHAT_INCOMING_TIMESTAMP_CELL_CLASS} ${showTimestamp ? "" : "sr-only"}`}
-        >
+        <time dateTime={createdAt} hidden>
           {formattedTime}
         </time>
       </div>

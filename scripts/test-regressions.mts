@@ -11068,6 +11068,65 @@ function testCrewChatEventCardToggleScrollCompensation() {
   assert.match(chatPageSource, /observer\.disconnect\(\)/, "observer must be torn down");
 }
 
+function testIncomingChatMessagesHaveNoAvatarTimestamp() {
+  const incomingLayoutSource = readFileSync(
+    new URL("../app/components/chat/IncomingChatMessageLayout.tsx", import.meta.url),
+    "utf8",
+  );
+  const dmIncomingLayoutSource = readFileSync(
+    new URL("../app/components/chat/DmIncomingMessageLayout.tsx", import.meta.url),
+    "utf8",
+  );
+  const groupLayoutSource = readFileSync(
+    new URL("../lib/dm/chatMessageGroupLayout.ts", import.meta.url),
+    "utf8",
+  );
+  const chatPageSource = readFileSync(
+    new URL("../app/events/[eventId]/chat/page.tsx", import.meta.url),
+    "utf8",
+  );
+
+  // Day separators and the grouped time separators between clusters already
+  // say when a message was sent, so the per-message time under every incoming
+  // avatar was duplicate information. Both incoming layouts now keep the
+  // <time> in the DOM purely as machine-readable markup.
+  for (const [name, source] of [
+    ["IncomingChatMessageLayout", incomingLayoutSource],
+    ["DmIncomingMessageLayout", dmIncomingLayoutSource],
+  ] as const) {
+    // Requires at least one attribute, so prose mentions of `<time>` in doc
+    // comments aren't mistaken for rendered elements.
+    const timeTags = source.match(/<time\s[^>]*>/g) ?? [];
+
+    assert.ok(timeTags.length > 0, `${name} should still emit a machine-readable <time>`);
+    for (const tag of timeTags) {
+      assert.match(tag, /\bhidden\b/, `${name} must not render a visible avatar timestamp`);
+    }
+  }
+
+  // The grid row and cell that existed only to position that timestamp are
+  // gone, so the row no longer reserves space (or a gap) for it.
+  assert.doesNotMatch(incomingLayoutSource, /CHAT_INCOMING_TIMESTAMP_CELL_CLASS/);
+  assert.doesNotMatch(incomingLayoutSource, /CHAT_INCOMING_ROW_GRID_CLUSTER_END_CLASS/);
+  assert.doesNotMatch(incomingLayoutSource, /showTimestamp/);
+  assert.doesNotMatch(
+    groupLayoutSource,
+    /CHAT_INCOMING_TIMESTAMP_CELL_CLASS|CHAT_INCOMING_ROW_GRID_CLUSTER_END_CLASS/,
+    "the timestamp cell/row constants must not be reintroduced",
+  );
+
+  // Everything the timestamp sat beside is untouched: avatar cell, the
+  // sender-name slot, and the bubble column.
+  assert.match(incomingLayoutSource, /CHAT_INCOMING_AVATAR_CELL_CLASS/);
+  assert.match(incomingLayoutSource, /CHAT_INCOMING_BUBBLE_CELL_CLASS/);
+  assert.match(incomingLayoutSource, /\{leadingContent\}/);
+
+  // The grouping system this replaces must still be wired up.
+  assert.match(chatPageSource, /DmChatTimeSeparator/);
+  assert.match(chatPageSource, /buildGroupChatTimestampLayout\(messages\)/);
+  assert.match(chatPageSource, /showSenderName=\{senderNameVisibility\.get\(message\.id\) \?\? false\}/);
+}
+
 function testCrewChatImageAttachmentsWiring() {
   // Image sharing reuses the DM attachment pipeline (shared type, shared
   // pending-photo staging, shared upload validation) rather than a second
@@ -11372,6 +11431,7 @@ async function main() {
   testCrewChatPremiumPolish();
   testCrewChatTimestampSeparators();
   testCrewChatEventCardToggleScrollCompensation();
+  testIncomingChatMessagesHaveNoAvatarTimestamp();
   testCrewChatImageAttachmentsWiring();
   testChatEmptyStateComponentized();
   await testEventsHistorySelectAllButtonInteraction();

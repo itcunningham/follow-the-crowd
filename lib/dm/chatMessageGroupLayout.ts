@@ -54,13 +54,6 @@ export const CHAT_INCOMING_REACTIONS_INLINE_CLASS = "min-w-0";
 /** @deprecated Reactions anchor to the bubble via absolute positioning. */
 export const CHAT_INCOMING_REACTIONS_CELL_CLASS = "col-start-2 row-start-2 min-w-0 -mt-0.5";
 
-/** Timestamp sits under the avatar, never wraps. */
-export const CHAT_INCOMING_TIMESTAMP_CELL_CLASS =
-  "col-start-1 row-start-2 justify-self-center whitespace-nowrap text-[10px] leading-none text-ftc-text-muted";
-
-/** @deprecated Group chat still uses legacy outgoing tight class. */
-export const CHAT_INCOMING_ROW_GRID_CLUSTER_END_CLASS = "grid-rows-[auto_auto] gap-y-0.5";
-
 /** @deprecated Group chat still uses legacy outgoing tight class. */
 export const CHAT_INCOMING_BUBBLE_STACK_CLASS = "gap-0.5";
 
@@ -528,7 +521,6 @@ export function resolveIncomingGroupLiClass({
   isClusterEnd: boolean;
   followedByTimeSeparator?: boolean;
   precededByTimeSeparator?: boolean;
-  showTimestamp?: boolean;
   /** @deprecated Reactions no longer affect grouping margins. */
   hasReactions?: boolean;
   /** @deprecated Reaction space is reserved in-flow on the reacted message only. */

@@ -232,7 +232,6 @@ function GroupChatMessageBubble({
         className={resolveIncomingGroupLiClass({
           position: groupPosition,
           isClusterEnd,
-          showTimestamp,
           followedByTimeSeparator,
           precededByTimeSeparator,
         })}
@@ -240,7 +239,6 @@ function GroupChatMessageBubble({
         <IncomingChatMessageLayout
           className={rowMaxWidthClass}
           groupPosition={groupPosition}
-          showTimestamp={showTimestamp}
           createdAt={createdAt}
           formattedTime={formatTime(createdAt)}
           leadingContent={
