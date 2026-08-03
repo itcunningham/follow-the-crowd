@@ -54,7 +54,7 @@ export default function GroupChatEventContextCard({
           </ul>
 
           {showViewEventAction ? (
-            <Link href={`/events/${eventId}`} className={VIEW_EVENT_BUTTON_CLASS}>
+            <Link href={`/events/${eventId}?from=crew-chat`} className={VIEW_EVENT_BUTTON_CLASS}>
               View Event
               <svg
                 aria-hidden="true"

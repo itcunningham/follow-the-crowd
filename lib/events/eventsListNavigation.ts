@@ -1,3 +1,4 @@
+import { getEventCrewChatLink } from "@/lib/eventCrewChat";
 import { readPendingBookingPlanId } from "@/lib/bookings/planDeepLink";
 import { buildGigsListHref, parseDjGigsListTab } from "@/lib/bookings/gigsListNavigation";
 import { readEventsListTabFromLocationSearch } from "@/lib/events/eventsListTabCache";
@@ -237,8 +238,27 @@ export function resolveEventDetailBackHref(
      * Gigs rather than a screen their workspace no longer has.
      */
     isDjWorkspace?: boolean;
+    /**
+     * The event whose detail page is being viewed, supplied by the route
+     * itself. Only used for the `crew-chat` origin, and deliberately NOT read
+     * from a query parameter: the return href is rebuilt from the id already in
+     * the path, so no caller-supplied URL is ever followed and this origin
+     * cannot become an open redirect.
+     */
+    crewChatEventId?: string | null;
   },
 ): string {
+  // Crew Chat is checked first and independently of `fromTab`: arriving from a
+  // crew chat says nothing about which Events tab the reader last used, and the
+  // conversation they came from is the only correct destination.
+  if (options?.from === "crew-chat") {
+    const crewChatEventId = options.crewChatEventId?.trim();
+
+    if (crewChatEventId) {
+      return getEventCrewChatLink(crewChatEventId);
+    }
+  }
+
   const dmConversationId = resolveDmEventDetailConversationId(options);
 
   if (dmConversationId) {
