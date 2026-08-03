@@ -15,6 +15,7 @@
     "qa:e2e:prod": "tsx scripts/qa-preflight.mts --require-credentials && playwright test --config=playwright.config.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.115.0",
     "@react-google-maps/api": "^2.20.8",
     "@supabase/supabase-js": "^2.110.0",
     "dotenv": "^17.4.2",

@@ -1,0 +1,222 @@
+/**
+ * FTC Agent Room — the Decision Log.
+ *
+ * One durable record per completed investigation, written automatically from
+ * the session summary so nobody has to remember to write it up. Stored as
+ * gitignored JSON alongside the sessions; no Supabase table.
+ *
+ * Two fields are deliberately left blank for Isaac: which commits carried the
+ * fix, and what happened at release. Agent Room has no git access and does not
+ * deploy, so inventing either would be the tool lying in its own audit trail.
+ */
+
+import { randomUUID } from "node:crypto";
+import { mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
+import path from "node:path";
+import type { AgentRole } from "./roles";
+import type {
+  AgentRoomSession,
+  DecisionLogPatch,
+  DecisionLogRecord,
+} from "./types";
+
+const DECISIONS_DIRNAME = path.join(".agent-room", "decisions");
+
+function decisionsDir(): string {
+  return path.join(process.cwd(), DECISIONS_DIRNAME);
+}
+
+const RECORD_ID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+
+export function isValidDecisionId(value: string): boolean {
+  return RECORD_ID_PATTERN.test(value);
+}
+
+function recordPath(id: string): string {
+  if (!isValidDecisionId(id)) {
+    throw new Error("Invalid decision id.");
+  }
+
+  return path.join(decisionsDir(), `${id}.json`);
+}
+
+/** Every role that actually spoke in the session, in the order they first did. */
+export function participatingAgents(session: AgentRoomSession): AgentRole[] {
+  const seen: AgentRole[] = [];
+
+  for (const turn of session.transcript) {
+    if (turn.role && !seen.includes(turn.role)) {
+      seen.push(turn.role);
+    }
+  }
+
+  return seen;
+}
+
+function verificationFromSession(session: AgentRoomSession): string {
+  const qa = [...session.transcript].reverse().find((turn) => turn.qaPlan)?.qaPlan;
+
+  if (!qa) {
+    return "No verification plan was produced.";
+  }
+
+  const cases = qa.testCases.length;
+  const parity = qa.parityChecks.length;
+
+  return `QA verdict ${qa.verdict}: ${cases} test case${cases === 1 ? "" : "s"}, ${parity} phone/desktop parity check${parity === 1 ? "" : "s"}. ${qa.summary}`;
+}
+
+function finalDecisionFromSession(session: AgentRoomSession): string {
+  const decision = [...session.transcript]
+    .reverse()
+    .find((turn) => turn.kind === "decision");
+
+  const summary = [...session.transcript].reverse().find((turn) => turn.summary)?.summary;
+
+  if (decision) {
+    return decision.body
+      ? `${decision.title} — ${decision.body}`
+      : decision.title;
+  }
+
+  return summary?.finalRecommendation ?? "No decision was recorded.";
+}
+
+/**
+ * Builds the record for a session. Pure, so the shape can be asserted in tests
+ * without touching the filesystem.
+ */
+export function buildDecisionRecord(session: AgentRoomSession): DecisionLogRecord {
+  const summary = [...session.transcript].reverse().find((turn) => turn.summary)?.summary;
+
+  return {
+    id: randomUUID(),
+    sessionId: session.id,
+    timestamp: new Date().toISOString(),
+    issueTitle: session.title,
+    participatingAgents: participatingAgents(session),
+    rootCause: summary?.rootCause ?? "Not established.",
+    evidenceSummary: summary?.evidenceSummary ?? "No evidence summary was produced.",
+    finalDecision: finalDecisionFromSession(session),
+    implementationCommits: [],
+    verificationPerformed: verificationFromSession(session),
+    releaseOutcome: "",
+    followUpItems: summary?.followUpItems ?? [],
+    branch: session.branch,
+    stage: session.stage,
+  };
+}
+
+export async function saveDecisionRecord(record: DecisionLogRecord): Promise<void> {
+  await mkdir(decisionsDir(), { recursive: true });
+  await writeFile(recordPath(record.id), `${JSON.stringify(record, null, 2)}\n`, "utf8");
+}
+
+export async function loadDecisionRecord(
+  id: string,
+): Promise<DecisionLogRecord | null> {
+  if (!isValidDecisionId(id)) {
+    return null;
+  }
+
+  try {
+    const parsed: unknown = JSON.parse(await readFile(recordPath(id), "utf8"));
+
+    if (typeof parsed !== "object" || parsed === null) {
+      return null;
+    }
+
+    return parsed as DecisionLogRecord;
+  } catch {
+    return null;
+  }
+}
+
+export async function listDecisionRecords(): Promise<DecisionLogRecord[]> {
+  let entries: string[];
+
+  try {
+    entries = await readdir(decisionsDir());
+  } catch {
+    return [];
+  }
+
+  const records: DecisionLogRecord[] = [];
+
+  for (const entry of entries) {
+    if (!entry.endsWith(".json")) {
+      continue;
+    }
+
+    const record = await loadDecisionRecord(entry.slice(0, -".json".length));
+
+    if (record) {
+      records.push(record);
+    }
+  }
+
+  return records.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+}
+
+export async function deleteDecisionRecord(id: string): Promise<boolean> {
+  const existing = await loadDecisionRecord(id);
+
+  if (!existing) {
+    return false;
+  }
+
+  await rm(recordPath(id), { force: true });
+  return true;
+}
+
+/**
+ * Case-insensitive substring search across every field a person would actually
+ * search by. Deliberately not a regex: the query comes from a text box, and a
+ * pathological pattern should not be able to hang the dev server.
+ */
+export function searchDecisionRecords(
+  records: readonly DecisionLogRecord[],
+  query: string,
+): DecisionLogRecord[] {
+  const needle = query.trim().toLowerCase();
+
+  if (!needle) {
+    return [...records];
+  }
+
+  return records.filter((record) =>
+    searchableText(record).includes(needle),
+  );
+}
+
+export function searchableText(record: DecisionLogRecord): string {
+  return [
+    record.issueTitle,
+    record.rootCause,
+    record.evidenceSummary,
+    record.finalDecision,
+    record.verificationPerformed,
+    record.releaseOutcome,
+    record.branch,
+    record.stage,
+    record.participatingAgents.join(" "),
+    record.implementationCommits.join(" "),
+    record.followUpItems.join(" "),
+  ]
+    .join("   ")
+    .toLowerCase();
+}
+
+/** Applies Isaac's edits to the two fields the agents cannot know. */
+export function applyDecisionPatch(
+  record: DecisionLogRecord,
+  patch: DecisionLogPatch,
+): DecisionLogRecord {
+  return {
+    ...record,
+    implementationCommits: patch.implementationCommits ?? record.implementationCommits,
+    releaseOutcome: patch.releaseOutcome ?? record.releaseOutcome,
+    followUpItems: patch.followUpItems ?? record.followUpItems,
+  };
+}

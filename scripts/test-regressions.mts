@@ -13630,6 +13630,2163 @@ function testEventDetailPopsCrewChatHistoryEntry() {
   assert.doesNotMatch(detailSource, /setTimeout\([^)]*goBackToEvents|location\.reload/);
 }
 
+/* -------------------------------------------------------------------------- */
+/* FTC Agent Room (internal developer tool, /dev/agent-room)                    */
+/*                                                                              */
+/* Imports are dynamic and local to each test so this block stays append-only    */
+/* against the shared import list at the top of the file.                        */
+/* -------------------------------------------------------------------------- */
+
+function agentRoomSource(relativePath: string): string {
+  return readFileSync(new URL(`../${relativePath}`, import.meta.url), "utf8");
+}
+
+/** Strips comments so an assertion cannot be satisfied by prose. */
+function agentRoomCode(relativePath: string): string {
+  return agentRoomSource(relativePath)
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/^\s*\/\/.*$/gm, "");
+}
+
+/** Runs `body` with the given env vars applied, then restores the originals. */
+async function withAgentRoomEnv(
+  overrides: Record<string, string | undefined>,
+  body: () => Promise<void> | void,
+): Promise<void> {
+  const previous = new Map<string, string | undefined>();
+
+  for (const [key, value] of Object.entries(overrides)) {
+    previous.set(key, process.env[key]);
+
+    if (value === undefined) {
+      delete process.env[key];
+    } else {
+      process.env[key] = value;
+    }
+  }
+
+  try {
+    await body();
+  } finally {
+    for (const [key, value] of previous) {
+      if (value === undefined) {
+        delete process.env[key];
+      } else {
+        process.env[key] = value;
+      }
+    }
+  }
+}
+
+const AGENT_ROOM_NO_ESCALATION = {
+  required: false,
+  type: "none",
+  question: "",
+  options: [],
+};
+
+function makeAgentRoomSession(overrides: Record<string, unknown> = {}) {
+  const now = "2026-08-03T00:00:00.000Z";
+
+  return {
+    id: "11111111-2222-4333-8444-555555555555",
+    createdAt: now,
+    updatedAt: now,
+    title: "Crew Chat images never arrive live",
+    description: "A photo sent in Crew Chat never appears for the other participant.",
+    branch: "agent/crew-chat-media-loading",
+    contextNotes: "",
+    evidence: [],
+    stage: "awaiting_investigation",
+    reviewRounds: 0,
+    rebuttalUsedForCurrentRound: false,
+    builderPasses: 0,
+    autoHops: 0,
+    escalation: null,
+    lastReviewVerdict: null,
+    lastQaVerdict: null,
+    lastReleaseVerdict: null,
+    hasSummary: false,
+    handoffApproval: "auto",
+    transcript: [],
+    lastCallAt: null,
+    totals: { inputTokens: 0, outputTokens: 0, estimatedUsd: 0 },
+    ...overrides,
+  };
+}
+
+function makeAgentRoomTurn(overrides: Record<string, unknown> = {}) {
+  return {
+    id: "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+    at: "2026-08-03T00:00:00.000Z",
+    actor: "claude",
+    role: null,
+    kind: "investigation",
+    action: null,
+    title: "Diagnosis",
+    body: null,
+    investigation: null,
+    review: null,
+    rebuttal: null,
+    builderPlan: null,
+    qaPlan: null,
+    releaseAssessment: null,
+    summary: null,
+    escalation: null,
+    stageFrom: null,
+    stageTo: null,
+    usage: null,
+    redactedRules: [],
+    promptChars: null,
+    ...overrides,
+  };
+}
+
+const AGENT_ROOM_VALID_INVESTIGATION = {
+  summary: "message_attachments is not in the Realtime publication.",
+  confirmedFacts: ["The subscription reports SUBSCRIBED and then receives nothing."],
+  unprovenAssumptions: ["That no other table is also unpublished."],
+  evidence: [
+    {
+      file: "scripts/setupDmAttachmentsAndReactions.sql",
+      lineOrSymbol: "alter publication",
+      explanation: "Publishes message_reactions but never message_attachments.",
+    },
+  ],
+  proposedFix: "One guarded alter publication statement.",
+  risk: "low",
+  confidence: "high",
+  escalation: AGENT_ROOM_NO_ESCALATION,
+};
+
+const AGENT_ROOM_VALID_REVIEW = {
+  verdict: "CHALLENGE",
+  summary: "The cause is plausible but the client path was not ruled out.",
+  supportedClaims: ["The publication does not list message_attachments."],
+  unsupportedClaims: ["That this is the only cause."],
+  contradictions: [],
+  requiredEvidence: ["The output of the publication verification query."],
+  recommendation: "Ask for the verification query result before approving.",
+  escalation: AGENT_ROOM_NO_ESCALATION,
+};
+
+const AGENT_ROOM_VALID_REBUTTAL = {
+  acceptedChallenges: ["The client path was not fully ruled out."],
+  rejectedChallenges: ["The publication gap is proved by the file itself."],
+  newEvidence: [],
+  revisedDiagnosis: "Unchanged.",
+  revisedFix: "Unchanged.",
+  remainingUncertainty: "End-to-end confirmation needs two accounts.",
+  escalation: AGENT_ROOM_NO_ESCALATION,
+};
+
+const AGENT_ROOM_VALID_BUILDER_PLAN = {
+  summary: "Publish message_attachments and reconcile the optimistic row.",
+  approach: "One guarded alter publication, mirroring the booking_requests precedent.",
+  reuseNotes: ["Reuses the existing setupBookingRequestsRealtime.sql pattern."],
+  filesToChange: [
+    {
+      file: "scripts/setupCrewChatAttachmentsRealtime.sql",
+      change: "New guarded alter publication with a verification query.",
+      reason: "The table is not in the Realtime publication.",
+    },
+  ],
+  steps: ["Write the SQL file.", "Have Isaac run it in the Supabase SQL editor."],
+  testStrategy: "Send a photo from a second account and confirm it arrives without a refresh.",
+  rollbackPlan: "Drop the table from the publication again.",
+  risk: "low",
+  escalation: AGENT_ROOM_NO_ESCALATION,
+};
+
+const AGENT_ROOM_VALID_QA_PLAN = {
+  verdict: "READY",
+  summary: "The plan is verifiable with two accounts.",
+  testCases: [
+    {
+      id: "QA-1",
+      area: "Crew Chat",
+      steps: "Send a photo from account A.",
+      expected: "It appears for account B with no refresh.",
+    },
+  ],
+  parityChecks: ["390px: image renders inline", "1280px: image renders inline"],
+  regressionRisks: ["DM shares the same components."],
+  gaps: [],
+  escalation: AGENT_ROOM_NO_ESCALATION,
+};
+
+const AGENT_ROOM_VALID_RELEASE = {
+  verdict: "READY",
+  summary: "Safe to ship once the SQL has been applied.",
+  preflight: ["Confirm main is what Production builds, not the branch."],
+  blockers: [],
+  deploymentNotes: "The SQL must be run before the client change matters.",
+  rollbackPlan: "Revert the merge and drop the publication entry.",
+  escalation: AGENT_ROOM_NO_ESCALATION,
+};
+
+const AGENT_ROOM_VALID_SUMMARY = {
+  executiveSummary: "Photos never arrived live because the table was not published.",
+  technicalSummary: "message_attachments was missing from the Realtime publication.",
+  risks: ["The SQL must be run by hand."],
+  outstandingTasks: ["Run the SQL in Supabase."],
+  finalRecommendation: "Apply the migration and verify with two accounts.",
+  rootCause: "message_attachments is not in the Supabase Realtime publication.",
+  evidenceSummary: "setupDmAttachmentsAndReactions.sql publishes only message_reactions.",
+  followUpItems: ["Audit every other table the client subscribes to."],
+};
+
+/**
+ * Requirement: the Agent Room is disabled by default and 404s when off.
+ *
+ * The gate is checked as an exact `"true"` string in one place, so a stray
+ * `TRUE`, `1`, or trailing space cannot open an internal tool, and the whole
+ * thing is refused on Vercel regardless.
+ */
+async function testAgentRoomIsDisabledByDefault() {
+  const { isAgentRoomEnabled } = await import("../lib/agentRoom/config");
+
+  await withAgentRoomEnv({ VERCEL: undefined, FTC_AGENT_ROOM_ENABLED: undefined }, () => {
+    assert.equal(isAgentRoomEnabled(), false, "unset must mean disabled");
+  });
+
+  for (const value of ["", "false", "1", "TRUE", "True", "true ", " true", "yes"]) {
+    await withAgentRoomEnv({ VERCEL: undefined, FTC_AGENT_ROOM_ENABLED: value }, () => {
+      assert.equal(
+        isAgentRoomEnabled(),
+        false,
+        `FTC_AGENT_ROOM_ENABLED=${JSON.stringify(value)} must not enable the Agent Room`,
+      );
+    });
+  }
+
+  await withAgentRoomEnv({ VERCEL: undefined, FTC_AGENT_ROOM_ENABLED: "true" }, () => {
+    assert.equal(isAgentRoomEnabled(), true, "an explicit true must enable it");
+  });
+
+  await withAgentRoomEnv({ VERCEL: "1", FTC_AGENT_ROOM_ENABLED: "true" }, () => {
+    assert.equal(isAgentRoomEnabled(), false, "Vercel must refuse the Agent Room outright");
+  });
+
+  const guardSource = agentRoomSource("lib/agentRoom/apiGuard.ts");
+  assert.match(
+    guardSource,
+    /new NextResponse\(null, \{ status: 404 \}\)/,
+    "a disabled Agent Room must answer with a bare 404, not an explanatory error",
+  );
+
+  const pageSource = agentRoomSource("app/dev/agent-room/page.tsx");
+  assert.match(
+    pageSource,
+    /if \(!isAgentRoomEnabled\(\)\) \{\s*notFound\(\);/,
+    "the page must 404 when disabled",
+  );
+
+  // Every route file must call the guard in every handler, or the gate has a
+  // hole. This list grows as the API grows, which is the point.
+  const routeFiles = [
+    "app/api/dev/agent-room/route.ts",
+    "app/api/dev/agent-room/[sessionId]/route.ts",
+    "app/api/dev/agent-room/[sessionId]/action/route.ts",
+    "app/api/dev/agent-room/[sessionId]/run/route.ts",
+    "app/api/dev/agent-room/[sessionId]/evidence/route.ts",
+    "app/api/dev/agent-room/[sessionId]/export/route.ts",
+    "app/api/dev/agent-room/decisions/route.ts",
+    "app/api/dev/agent-room/decisions/[decisionId]/route.ts",
+  ];
+
+  for (const file of routeFiles) {
+    const source = agentRoomSource(file);
+    const handlers = source.match(/export async function (GET|POST|PATCH|DELETE|PUT)\(/g) ?? [];
+
+    assert.ok(handlers.length > 0, `${file} should export at least one handler`);
+    assert.equal(
+      (source.match(/agentRoomDisabledResponse\(\)/g) ?? []).length,
+      handlers.length,
+      `${file} must call agentRoomDisabledResponse() in every exported handler`,
+    );
+  }
+}
+
+/**
+ * Requirement: neither API key may ever reach the browser.
+ */
+async function testAgentRoomNeverLeaksApiKeysToTheClient() {
+  const { buildConfigView, buildSessionView } = await import("../lib/agentRoom/view");
+  const { clampField: clampFieldForTest } = await import("../lib/agentRoom/apiGuard");
+
+  const fakeAnthropicKey = ["sk", "ant", "api03", "AGENTROOMTESTKEYVALUE0000000000"].join("-");
+  const fakeOpenAiKey = ["sk", "proj", "AGENTROOMTESTKEYVALUE0000000000"].join("-");
+
+  await withAgentRoomEnv(
+    {
+      ANTHROPIC_API_KEY: fakeAnthropicKey,
+      OPENAI_API_KEY: fakeOpenAiKey,
+      FTC_AGENT_ROOM_ENABLED: "true",
+      VERCEL: undefined,
+    },
+    () => {
+      const config = buildConfigView();
+
+      assert.equal(config.anthropicKeyPresent, true);
+      assert.equal(config.openaiKeyPresent, true);
+
+      const serialisedConfig = JSON.stringify(config);
+      assert.ok(
+        !serialisedConfig.includes(fakeAnthropicKey) && !serialisedConfig.includes(fakeOpenAiKey),
+        "the config sent to the browser must never contain a key value",
+      );
+
+      const pasted = `The failing request used ANTHROPIC_API_KEY=${fakeAnthropicKey} and ${fakeOpenAiKey}`;
+      const stored = clampFieldForTest(pasted, 8_000);
+
+      assert.equal(stored.ok, true);
+      assert.ok(
+        !(stored as { value: string }).value.includes(fakeAnthropicKey) &&
+          !(stored as { value: string }).value.includes(fakeOpenAiKey),
+        "supervisor-supplied text must be redacted before it is stored",
+      );
+
+      const session = makeAgentRoomSession({ description: (stored as { value: string }).value });
+      const serialisedView = JSON.stringify(buildSessionView(session as never));
+
+      assert.ok(
+        !serialisedView.includes(fakeAnthropicKey) && !serialisedView.includes(fakeOpenAiKey),
+        "an outbound payload preview must never contain key material",
+      );
+      assert.ok(
+        serialisedView.includes("[REDACTED]"),
+        "the leaked key should be visibly redacted rather than silently dropped",
+      );
+    },
+  );
+
+  // Every client component, not just the shell.
+  for (const file of [
+    "app/dev/agent-room/AgentRoomClient.tsx",
+    "app/dev/agent-room/Timeline.tsx",
+    "app/dev/agent-room/DecisionLog.tsx",
+    "app/dev/agent-room/ui.tsx",
+  ]) {
+    const clientSource = agentRoomSource(file);
+
+    assert.match(clientSource, /^"use client";/, `${file} is a client component`);
+    assert.ok(
+      !/process\.env/.test(clientSource),
+      `${file} must not read process.env at all`,
+    );
+
+    for (const name of ["ANTHROPIC_API_KEY", "OPENAI_API_KEY"]) {
+      assert.ok(
+        !new RegExp(`(process\\.env|env)\\s*[.\\[][^\\n]*${name}`).test(clientSource),
+        `${file} must never read ${name}`,
+      );
+    }
+
+    assert.ok(
+      !/\bsk-[A-Za-z0-9_-]{8,}/.test(clientSource),
+      `no key-shaped literal may appear in ${file}`,
+    );
+  }
+
+  const viewSource = agentRoomSource("lib/agentRoom/view.ts");
+  assert.match(
+    viewSource,
+    /anthropicKeyPresent: getAnthropicApiKey\(\) !== null/,
+    "the client may learn whether a key exists, never what it is",
+  );
+}
+
+/**
+ * Requirement: the agents route work to each other, and Isaac is interrupted
+ * only for a product decision, a real implementation choice, a release
+ * decision, or an unrecoverable blocker.
+ */
+async function testAgentRoomRoutesBetweenAgentsWithoutIsaac() {
+  const { applyAction, checkAction, routeNext, stageAfterRole } = await import(
+    "../lib/agentRoom/workflow"
+  );
+
+  type State = Record<string, unknown>;
+
+  // Walks the chain the way the run endpoint does, recording who spoke.
+  function walk(
+    verdicts: { review?: string; qa?: string; release?: string },
+    maxSteps = 20,
+  ): { spoke: string[]; final: State } {
+    let state: State = {
+      stage: "awaiting_investigation",
+      reviewRounds: 0,
+      rebuttalUsedForCurrentRound: false,
+      builderPasses: 0,
+      autoHops: 0,
+      escalation: null,
+      lastReviewVerdict: null,
+      lastQaVerdict: null,
+      lastReleaseVerdict: null,
+      hasSummary: false,
+    };
+
+    const spoke: string[] = [];
+
+    for (let step = 0; step < maxSteps; step += 1) {
+      const route = routeNext(state as never);
+
+      if (!route.role) {
+        break;
+      }
+
+      const check = checkAction(state as never, "advance" as never);
+      assert.ok(check.allowed, `advance should be allowed while ${route.role} is next`);
+
+      spoke.push(route.role);
+
+      const nextStage = stageAfterRole(route.role, state.stage as never);
+      state = applyAction(state as never, "advance" as never, nextStage, route.role) as never;
+
+      if (route.role === "reviewer" && verdicts.review) {
+        state.lastReviewVerdict = verdicts.review;
+      }
+      if (route.role === "qa" && verdicts.qa) {
+        state.lastQaVerdict = verdicts.qa;
+      }
+      if (route.role === "release" && verdicts.release) {
+        state.lastReleaseVerdict = verdicts.release;
+      }
+    }
+
+    return { spoke, final: state };
+  }
+
+  // Happy path: the reviewer agrees, QA is satisfied, release says READY.
+  // Isaac is never consulted until the release gate.
+  const clean = walk({ review: "AGREE", qa: "READY", release: "READY" });
+
+  assert.deepEqual(
+    clean.spoke,
+    ["investigator", "reviewer", "builder", "qa", "release"],
+    "the agents must hand work along the whole chain with no human step",
+  );
+  assert.equal(
+    routeNext(clean.final as never).role,
+    null,
+    "the chain must end at Isaac, not run on",
+  );
+  assert.match(
+    routeNext(clean.final as never).reason,
+    /your decision/i,
+    "and it must say the release decision is Isaac's",
+  );
+
+  // The reviewer pushing back is resolved between the agents: the Investigator
+  // answers, the reviewer looks again, and only then does the Builder start.
+  const challenged = walk({ review: "CHALLENGE", qa: "READY", release: "READY" });
+
+  assert.deepEqual(
+    challenged.spoke.slice(0, 4),
+    ["investigator", "reviewer", "investigator", "reviewer"],
+    "a challenge must be answered agent-to-agent, without asking Isaac",
+  );
+  assert.ok(
+    challenged.spoke.includes("builder") && challenged.spoke.includes("release"),
+    "and the chain must still reach release review",
+  );
+
+  // QA sending work back reaches the Builder again, not Isaac.
+  const needsWork = walk({ review: "AGREE", qa: "NEEDS_WORK", release: "READY" });
+  const firstQa = needsWork.spoke.indexOf("qa");
+
+  assert.equal(
+    needsWork.spoke[firstQa + 1],
+    "builder",
+    "NEEDS_WORK must route back to the Builder rather than interrupting Isaac",
+  );
+
+  // A release verdict of SEND_BACK_TO_BUILDER does the same.
+  const sentBack = walk({ review: "AGREE", qa: "READY", release: "SEND_BACK_TO_BUILDER" });
+  const firstRelease = sentBack.spoke.indexOf("release");
+
+  assert.equal(
+    sentBack.spoke[firstRelease + 1],
+    "builder",
+    "SEND_BACK_TO_BUILDER must route back to the Builder",
+  );
+
+  // A blocker QA cannot resolve is one of the four things that does stop.
+  const blocked = walk({ review: "AGREE", qa: "BLOCKED" });
+
+  assert.equal(
+    routeNext(blocked.final as never).role,
+    null,
+    "a QA blocker must stop the chain",
+  );
+  assert.match(routeNext(blocked.final as never).reason, /needs you/i);
+}
+
+/**
+ * Requirement: an escalation is the only thing that interrupts Isaac, and only
+ * the four sanctioned kinds count.
+ */
+async function testAgentRoomEscalatesOnlyForTheFourReasons() {
+  const { ESCALATION_TYPES, isEscalationType } = await import("../lib/agentRoom/roles");
+  const { validateClaudeInvestigation } = await import("../lib/agentRoom/schemas");
+  const { checkAction, routeNext } = await import("../lib/agentRoom/workflow");
+
+  assert.deepEqual(
+    [...ESCALATION_TYPES].sort(),
+    ["blocker", "implementation_choice", "none", "product_decision", "release_decision"],
+    "the escalation vocabulary is fixed by the brief",
+  );
+
+  for (const bogus of ["urgent", "question", "", "PRODUCT_DECISION", null, 1]) {
+    assert.equal(isEscalationType(bogus), false, `${JSON.stringify(bogus)} is not an escalation type`);
+  }
+
+  // A real escalation survives validation intact.
+  const real = validateClaudeInvestigation({
+    ...AGENT_ROOM_VALID_INVESTIGATION,
+    escalation: {
+      required: true,
+      type: "implementation_choice",
+      question: "Publish the table, or move attachments onto the message row?",
+      options: ["Publish the table", "Move attachments onto the message row"],
+    },
+  });
+
+  assert.equal(real.ok, true);
+  assert.equal((real as { value: { escalation: { required: boolean } } }).value.escalation.required, true);
+
+  // An agent that demands attention without saying why must not be able to
+  // halt the room: an incoherent escalation is downgraded, not trusted.
+  const incoherent = [
+    { required: true, type: "none", question: "Something is wrong", options: [] },
+    { required: true, type: "blocker", question: "   ", options: [] },
+    { required: true, type: "product_decision", question: "", options: ["a", "b"] },
+  ];
+
+  for (const escalation of incoherent) {
+    const result = validateClaudeInvestigation({
+      ...AGENT_ROOM_VALID_INVESTIGATION,
+      escalation,
+    });
+
+    assert.equal(result.ok, true, "an incoherent escalation must not fail the whole reply");
+    assert.equal(
+      (result as { value: { escalation: { required: boolean } } }).value.escalation.required,
+      false,
+      `an escalation with no stated question must not stop the workflow: ${JSON.stringify(escalation)}`,
+    );
+  }
+
+  // A malformed escalation block is still a malformed reply.
+  for (const escalation of [null, "none", { required: "yes", type: "blocker", question: "q", options: [] }, { required: true }]) {
+    assert.equal(
+      validateClaudeInvestigation({ ...AGENT_ROOM_VALID_INVESTIGATION, escalation }).ok,
+      false,
+      `a structurally broken escalation must be rejected: ${JSON.stringify(escalation)}`,
+    );
+  }
+
+  // With an escalation open, the agents stop and `advance` is refused.
+  const escalated = {
+    stage: "build_plan_ready",
+    reviewRounds: 1,
+    rebuttalUsedForCurrentRound: false,
+    builderPasses: 1,
+    autoHops: 3,
+    escalation: {
+      required: true,
+      type: "product_decision",
+      question: "Should DMs behave the same way?",
+      options: ["Yes", "No"],
+    },
+    lastReviewVerdict: "AGREE",
+    lastQaVerdict: null,
+    lastReleaseVerdict: null,
+    hasSummary: false,
+  };
+
+  assert.equal(routeNext(escalated as never).role, null, "an open escalation stops the room");
+  assert.equal(checkAction(escalated as never, "advance" as never).allowed, false);
+  assert.match(
+    (checkAction(escalated as never, "advance" as never) as { reason: string }).reason,
+    /answer the open escalation/i,
+  );
+  assert.equal(
+    checkAction(escalated as never, "resolve_escalation" as never).allowed,
+    true,
+    "answering it must be available",
+  );
+
+  // Answering clears it and hands the work straight back to the agents.
+  const { applyAction } = await import("../lib/agentRoom/workflow");
+  const resolved = applyAction(
+    escalated as never,
+    "resolve_escalation" as never,
+    "build_plan_ready" as never,
+  ) as unknown as { escalation: unknown; autoHops: number };
+
+  assert.equal(resolved.escalation, null, "the answer clears the escalation");
+  assert.equal(
+    resolved.autoHops,
+    escalated.autoHops,
+    "answering a question must not buy the agents extra turns",
+  );
+  assert.equal(
+    routeNext(resolved as never).role,
+    "qa",
+    "and the chain resumes at the next agent, not with Isaac",
+  );
+}
+
+/**
+ * Requirement: the autonomous conversation always terminates. Three budgets,
+ * none of which can be reset by carrying on.
+ */
+async function testAgentRoomBudgetsAlwaysTerminate() {
+  const {
+    AGENT_ROOM_MAX_AUTO_HOPS,
+    AGENT_ROOM_MAX_BUILDER_PASSES,
+    AGENT_ROOM_MAX_REVIEW_ROUNDS,
+  } = await import("../lib/agentRoom/config");
+  const { applyAction, checkAction, routeNext, stageAfterRole } = await import(
+    "../lib/agentRoom/workflow"
+  );
+
+  assert.equal(AGENT_ROOM_MAX_REVIEW_ROUNDS, 2, "the brief fixes the review cap at two rounds");
+  assert.ok(AGENT_ROOM_MAX_BUILDER_PASSES >= 1 && AGENT_ROOM_MAX_BUILDER_PASSES <= 5);
+  assert.ok(AGENT_ROOM_MAX_AUTO_HOPS >= 1 && AGENT_ROOM_MAX_AUTO_HOPS <= 50);
+
+  // The pathological case: every reviewer challenges, every QA sends work back,
+  // every release review bounces it. The chain must still stop.
+  let state: Record<string, unknown> = {
+    stage: "awaiting_investigation",
+    reviewRounds: 0,
+    rebuttalUsedForCurrentRound: false,
+    builderPasses: 0,
+    autoHops: 0,
+    escalation: null,
+    lastReviewVerdict: null,
+    lastQaVerdict: null,
+    lastReleaseVerdict: null,
+    hasSummary: false,
+  };
+
+  let hops = 0;
+
+  while (hops < 500) {
+    const route = routeNext(state as never);
+
+    if (!route.role) {
+      break;
+    }
+
+    const nextStage = stageAfterRole(route.role, state.stage as never);
+    state = applyAction(state as never, "advance" as never, nextStage, route.role) as never;
+
+    if (route.role === "reviewer") state.lastReviewVerdict = "REJECT";
+    if (route.role === "qa") state.lastQaVerdict = "NEEDS_WORK";
+    if (route.role === "release") state.lastReleaseVerdict = "SEND_BACK_TO_BUILDER";
+
+    hops += 1;
+  }
+
+  assert.ok(hops < 500, "an adversarial conversation must terminate");
+  assert.ok(
+    (state.autoHops as number) <= AGENT_ROOM_MAX_AUTO_HOPS,
+    `the auto-hop budget of ${AGENT_ROOM_MAX_AUTO_HOPS} must hold`,
+  );
+  assert.ok(
+    (state.reviewRounds as number) <= AGENT_ROOM_MAX_REVIEW_ROUNDS,
+    "the review-round cap must hold",
+  );
+  assert.equal(routeNext(state as never).role, null, "and the room must end waiting on Isaac");
+
+  // Requesting more evidence restarts the investigation but resets no budget.
+  const evidenceCheck = checkAction(state as never, "request_more_evidence" as never);
+  assert.ok(evidenceCheck.allowed);
+
+  const afterEvidence = applyAction(
+    state as never,
+    "request_more_evidence" as never,
+    (evidenceCheck as { nextStage: string }).nextStage as never,
+  ) as unknown as { reviewRounds: number; autoHops: number; builderPasses: number };
+
+  assert.equal(
+    afterEvidence.reviewRounds,
+    state.reviewRounds,
+    "requesting more evidence must not reset the review-round count",
+  );
+  assert.equal(
+    afterEvidence.autoHops,
+    state.autoHops,
+    "requesting more evidence must not reset the auto-hop budget",
+  );
+  assert.equal(
+    afterEvidence.builderPasses,
+    state.builderPasses,
+    "requesting more evidence must not reset the builder-pass budget",
+  );
+
+  // Requesting evidence *should* let the agents work again — Isaac has supplied
+  // something new. What must hold is that the global auto-hop ceiling still
+  // bounds the whole session, so repeatedly asking for evidence cannot buy
+  // unlimited agent turns.
+  let resumed: Record<string, unknown> = afterEvidence as never;
+  let extraHops = 0;
+
+  while (extraHops < 500) {
+    const route = routeNext(resumed as never);
+
+    if (!route.role) {
+      break;
+    }
+
+    const nextStage = stageAfterRole(route.role, resumed.stage as never);
+    resumed = applyAction(resumed as never, "advance" as never, nextStage, route.role) as never;
+
+    if (route.role === "reviewer") resumed.lastReviewVerdict = "REJECT";
+    if (route.role === "qa") resumed.lastQaVerdict = "NEEDS_WORK";
+    if (route.role === "release") resumed.lastReleaseVerdict = "SEND_BACK_TO_BUILDER";
+
+    extraHops += 1;
+  }
+
+  assert.ok(extraHops < 500, "a resumed adversarial conversation must still terminate");
+  assert.ok(
+    (resumed.autoHops as number) <= AGENT_ROOM_MAX_AUTO_HOPS,
+    "the auto-hop ceiling must bound the session across restarts, not just one run",
+  );
+  assert.equal(
+    routeNext(resumed as never).role,
+    null,
+    "and the room must end waiting on Isaac again",
+  );
+
+  // The run endpoint carries its own independent ceiling.
+  const runSource = agentRoomCode("app/api/dev/agent-room/[sessionId]/run/route.ts");
+  assert.match(
+    runSource,
+    /while \(hops < MAX_HOPS_PER_REQUEST\)/,
+    "the run loop must be bounded independently of the workflow's own budget",
+  );
+  assert.match(
+    runSource,
+    /const current = await loadSession\(sessionId\)/,
+    "and must re-read the session each hop so STOP always wins",
+  );
+}
+
+/**
+ * Requirement: nothing is implemented without Isaac, and the payload of every
+ * agent turn stays inspectable even though it no longer blocks.
+ */
+async function testAgentRoomKeepsIsaacInControlOfImplementation() {
+  const { buildSessionView } = await import("../lib/agentRoom/view");
+
+  const session = makeAgentRoomSession();
+  const view = buildSessionView(session as never);
+
+  assert.ok(view.route.handoff, "the next agent turn must expose its payload");
+  assert.ok(
+    (view.route.handoff?.system.length ?? 0) > 0 && (view.route.handoff?.user.length ?? 0) > 0,
+    "both halves of what will be sent must be visible",
+  );
+  assert.ok(
+    (view.route.handoff?.totalChars ?? 0) > 0,
+    "the size of the request must be stated",
+  );
+  assert.equal(session.handoffApproval, "auto", "new sessions run the agents automatically");
+
+  // Approving implementation is a recorded decision, never an execution.
+  const actionRouteSource = agentRoomCode(
+    "app/api/dev/agent-room/[sessionId]/action/route.ts",
+  );
+  assert.match(
+    actionRouteSource,
+    /if \(!isModelAction\(action\)\) \{[\s\S]*?return NextResponse\.json\(buildSessionView\(session\)\);/,
+    "local decisions must return without touching a provider",
+  );
+
+  const clientSource = agentRoomSource("app/dev/agent-room/AgentRoomClient.tsx");
+  assert.match(
+    clientSource,
+    /manualMode \? setShowPayload\(true\) : void runToDecision\(\)/,
+    "'review each handoff' must still gate the send",
+  );
+  assert.match(clientSource, /Internal — FTC Agent Room/, "the tool must be labelled internal");
+  assert.match(clientSource, /Stop workflow/, "the red STOP control must exist");
+  assert.match(clientSource, /Copy transcript/, "the copy-transcript control must exist");
+  assert.match(clientSource, /elapsedMs/, "elapsed time must be shown while an agent runs");
+  assert.match(clientSource, /Run to next decision/, "the one-click run must exist");
+}
+
+/**
+ * Requirement: the STOP state is honoured, including for a turn already in
+ * flight.
+ */
+async function testAgentRoomStopStateIsAbsolute() {
+  const { applyAction, checkAction, isTerminalStage, routeNext } = await import(
+    "../lib/agentRoom/workflow"
+  );
+
+  const liveStages = [
+    "awaiting_investigation",
+    "investigation_ready",
+    "review_ready",
+    "rebuttal_ready",
+    "build_plan_ready",
+    "qa_plan_ready",
+    "release_review_ready",
+    "awaiting_isaac",
+  ];
+
+  for (const stage of liveStages) {
+    const state = {
+      stage,
+      reviewRounds: 1,
+      rebuttalUsedForCurrentRound: true,
+      builderPasses: 1,
+      autoHops: 4,
+      escalation: null,
+      lastReviewVerdict: "AGREE",
+      lastQaVerdict: null,
+      lastReleaseVerdict: null,
+      hasSummary: false,
+    };
+
+    const check = checkAction(state as never, "stop" as never);
+
+    assert.ok(check.allowed, `stop must be available from ${stage}`);
+    assert.equal((check as { nextStage: string }).nextStage, "stopped");
+  }
+
+  const stopped = applyAction(
+    {
+      stage: "qa_plan_ready",
+      reviewRounds: 1,
+      rebuttalUsedForCurrentRound: false,
+      builderPasses: 1,
+      autoHops: 4,
+      escalation: null,
+      lastReviewVerdict: "AGREE",
+      lastQaVerdict: "READY",
+      lastReleaseVerdict: null,
+      hasSummary: true,
+    } as never,
+    "stop" as never,
+    "stopped" as never,
+  ) as unknown as { stage: string };
+
+  assert.equal(stopped.stage, "stopped");
+  assert.ok(isTerminalStage("stopped" as never));
+  assert.equal(routeNext(stopped as never).role, null, "no agent runs after a stop");
+
+  for (const action of [
+    "advance",
+    "resolve_escalation",
+    "approve_implementation",
+    "request_more_evidence",
+    "reject_diagnosis",
+    "stop",
+    "generate_summary",
+  ]) {
+    assert.equal(
+      checkAction(stopped as never, action as never).allowed,
+      false,
+      `${action} must be refused once the workflow is stopped`,
+    );
+  }
+
+  for (const terminal of ["approved", "rejected", "stopped"]) {
+    assert.ok(isTerminalStage(terminal as never), `${terminal} must be terminal`);
+  }
+
+  // The summary is the one thing still writable after the end — it describes
+  // what happened rather than changing it.
+  const stoppedNoSummary = { ...stopped, hasSummary: false };
+  assert.equal(
+    checkAction(stoppedNoSummary as never, "generate_summary" as never).allowed,
+    true,
+    "a finished session may still have its summary written",
+  );
+
+  // A reply that lands after STOP must be discarded, not applied.
+  for (const file of [
+    "app/api/dev/agent-room/[sessionId]/action/route.ts",
+    "app/api/dev/agent-room/[sessionId]/run/route.ts",
+  ]) {
+    const source = agentRoomCode(file);
+    assert.match(
+      source,
+      /isTerminalStage\(/,
+      `${file} must check for a stopped session after the provider call`,
+    );
+    assert.match(
+      source,
+      /await loadSession\(sessionId\)/,
+      `${file} must re-read the session from disk`,
+    );
+  }
+
+  const actionSource = agentRoomCode("app/api/dev/agent-room/[sessionId]/action/route.ts");
+  const afterCall = actionSource.slice(actionSource.indexOf("await executeAgentTurn"));
+
+  assert.ok(
+    afterCall.indexOf("isTerminalStage(current.stage)") < afterCall.indexOf("recordAgentTurn("),
+    "the stopped check must run before any state is applied",
+  );
+}
+
+/**
+ * Requirement: invalid model responses are handled safely and never advance
+ * the workflow — now across six agent schemas, not three.
+ */
+async function testAgentRoomRejectsMalformedProviderResponses() {
+  const {
+    parseJsonSafely,
+    validateBuilderPlan,
+    validateClaudeInvestigation,
+    validateClaudeRebuttal,
+    validateOpenAiReview,
+    validateQaPlan,
+    validateReleaseAssessment,
+    validateSessionSummary,
+  } = await import("../lib/agentRoom/schemas");
+
+  for (const malformed of ["", "   ", "not json", "{", '{"a":', "<html>503</html>"]) {
+    assert.equal(parseJsonSafely(malformed).ok, false, `${JSON.stringify(malformed)} must not parse`);
+  }
+
+  // Every schema accepts its own valid fixture.
+  const valid: Array<[string, (value: unknown) => { ok: boolean }, unknown]> = [
+    ["investigation", validateClaudeInvestigation, AGENT_ROOM_VALID_INVESTIGATION],
+    ["review", validateOpenAiReview, AGENT_ROOM_VALID_REVIEW],
+    ["rebuttal", validateClaudeRebuttal, AGENT_ROOM_VALID_REBUTTAL],
+    ["builder plan", validateBuilderPlan, AGENT_ROOM_VALID_BUILDER_PLAN],
+    ["qa plan", validateQaPlan, AGENT_ROOM_VALID_QA_PLAN],
+    ["release assessment", validateReleaseAssessment, AGENT_ROOM_VALID_RELEASE],
+    ["session summary", validateSessionSummary, AGENT_ROOM_VALID_SUMMARY],
+  ];
+
+  for (const [label, validate, fixture] of valid) {
+    assert.equal(validate(fixture).ok, true, `the ${label} fixture should be valid`);
+  }
+
+  // And rejects the same classes of breakage in each.
+  for (const [label, validate, fixture] of valid) {
+    for (const broken of [null, "a string", [], 42, {}]) {
+      assert.equal(
+        validate(broken).ok,
+        false,
+        `${label}: ${JSON.stringify(broken)} must be rejected`,
+      );
+    }
+
+    const record = fixture as Record<string, unknown>;
+
+    for (const key of Object.keys(record)) {
+      const withoutField = { ...record };
+      delete withoutField[key];
+
+      assert.equal(
+        validate(withoutField).ok,
+        false,
+        `${label}: dropping \`${key}\` must be rejected`,
+      );
+    }
+  }
+
+  // The one-verdict rules.
+  for (const verdict of ["MAYBE", "agree", "AGREE!", "", null, 1, ["AGREE"]]) {
+    assert.equal(
+      validateOpenAiReview({ ...AGENT_ROOM_VALID_REVIEW, verdict }).ok,
+      false,
+      `review verdict ${JSON.stringify(verdict)} must be rejected`,
+    );
+  }
+
+  for (const verdict of ["AGREE", "CHALLENGE", "REJECT"]) {
+    assert.equal(validateOpenAiReview({ ...AGENT_ROOM_VALID_REVIEW, verdict }).ok, true);
+  }
+
+  for (const verdict of ["READY", "NEEDS_WORK", "BLOCKED"]) {
+    assert.equal(validateQaPlan({ ...AGENT_ROOM_VALID_QA_PLAN, verdict }).ok, true);
+  }
+
+  for (const verdict of ["ready", "PASS", "OK", ""]) {
+    assert.equal(validateQaPlan({ ...AGENT_ROOM_VALID_QA_PLAN, verdict }).ok, false);
+  }
+
+  for (const verdict of ["READY", "HOLD", "SEND_BACK_TO_BUILDER"]) {
+    assert.equal(validateReleaseAssessment({ ...AGENT_ROOM_VALID_RELEASE, verdict }).ok, true);
+  }
+
+  for (const verdict of ["SHIP", "send_back_to_builder", "GO"]) {
+    assert.equal(validateReleaseAssessment({ ...AGENT_ROOM_VALID_RELEASE, verdict }).ok, false);
+  }
+
+  // Nested object arrays are checked field by field, not just shape.
+  assert.equal(
+    validateBuilderPlan({
+      ...AGENT_ROOM_VALID_BUILDER_PLAN,
+      filesToChange: [{ file: "a.ts", change: "x" }],
+    }).ok,
+    false,
+    "a file-change entry missing `reason` must be rejected",
+  );
+  assert.equal(
+    validateQaPlan({
+      ...AGENT_ROOM_VALID_QA_PLAN,
+      testCases: [{ id: "QA-1", area: "Chat", steps: 1, expected: "y" }],
+    }).ok,
+    false,
+    "a test case with a non-string field must be rejected",
+  );
+
+  // A malformed reply is recorded but must never move the workflow on.
+  for (const file of [
+    "app/api/dev/agent-room/[sessionId]/action/route.ts",
+    "app/api/dev/agent-room/[sessionId]/run/route.ts",
+  ]) {
+    const source = agentRoomCode(file);
+    const failureBranch = source.slice(
+      source.indexOf("if (!result.ok)"),
+      source.indexOf("recordAgentTurn("),
+    );
+
+    assert.ok(failureBranch.length > 0, `${file} must have a failure branch`);
+    assert.ok(
+      failureBranch.includes("recordFailedTurn"),
+      `${file} must record the failure`,
+    );
+    assert.ok(
+      !failureBranch.includes("applyAction") && !failureBranch.includes("recordAgentTurn"),
+      `${file}: a failed or malformed reply must never advance the workflow stage`,
+    );
+  }
+
+  const runnerSource = agentRoomCode("lib/agentRoom/runner.ts");
+  assert.match(
+    runnerSource,
+    /turn\.stageFrom = session\.stage;\s*turn\.stageTo = session\.stage;/,
+    "a failed turn must leave the stage exactly where it was",
+  );
+}
+
+/**
+ * Requirement: secrets are redacted before any provider request.
+ */
+async function testAgentRoomRedactsSecretsBeforeSending() {
+  const { REDACTED, redactSecrets } = await import("../lib/agentRoom/redaction");
+  const { buildHandoff } = await import("../lib/agentRoom/prompts");
+
+  // Fixtures are assembled at runtime rather than written as literals. They are
+  // fabricated either way, but a token-shaped literal in a committed file trips
+  // GitHub push protection (it did, on the Slack one) and any future scanner
+  // pointed at this repository.
+  const fixture = (...parts: string[]) => parts.join("-");
+  const underscored = (...parts: string[]) => parts.join("_");
+
+  const secrets: Array<[string, string]> = [
+    ["anthropic key", fixture("sk", "ant", "api03", "Z".repeat(32))],
+    ["anthropic oauth token", fixture("sk", "ant", "oat01", "Y".repeat(24))],
+    ["openai key", fixture("sk", "proj", "X".repeat(28))],
+    ["github token", underscored("ghp", "ABCDEFGHIJKLMNOPQRSTUVWXYZ012345")],
+    ["github fine-grained token", underscored("github", "pat", "11ABCDEFG0abcdefghijklmnop")],
+    ["slack token", fixture("xoxb", "123456789012", "abcdefghijklmnop")],
+    ["aws key id", `AKIA${"IOSFODNN7EXAMPLE"}`],
+    ["google api key", `AIza${"SyA1234567890abcdefghijklmnopqrstuvw"}`],
+    [
+      "supabase service-role jwt",
+      [
+        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9",
+        "eyJyb2xlIjoic2VydmljZV9yb2xlIn0",
+        "abcdefghijklmnop",
+      ].join("."),
+    ],
+    ["supabase secret key", underscored("sb", "secret", "abcdefghijklmnopqrst")],
+  ];
+
+  for (const [label, secret] of secrets) {
+    const { text, redactedRules } = redactSecrets(`the value is ${secret} okay`);
+
+    assert.ok(!text.includes(secret), `${label} must be redacted`);
+    assert.ok(text.includes(REDACTED), `${label} must leave a visible marker`);
+    assert.ok(redactedRules.length > 0, `${label} must report which rule fired`);
+  }
+
+  const envDump = [
+    "NEXT_PUBLIC_SUPABASE_URL=https://example.supabase.co",
+    "SUPABASE_SERVICE_ROLE_KEY=super-secret-service-role-value",
+    `OPENAI_API_KEY=${["sk", "proj", "NEVERSENDTHIS0000000000000000"].join("-")}`,
+    "DB_PASSWORD=hunter2",
+    "SESSION_SECRET: 'another-secret'",
+  ].join("\n");
+
+  const redactedEnv = redactSecrets(envDump).text;
+
+  for (const leaked of [
+    "super-secret-service-role-value",
+    ["sk", "proj", "NEVERSENDTHIS0000000000000000"].join("-"),
+    "hunter2",
+    "another-secret",
+  ]) {
+    assert.ok(!redactedEnv.includes(leaked), `${leaked} must not survive redaction`);
+  }
+
+  assert.ok(
+    redactedEnv.includes("https://example.supabase.co"),
+    "redaction must not blank out ordinary configuration",
+  );
+
+  for (const header of [
+    `Authorization: Bearer ${["eyJhbGciOiJIUzI1NiJ9", "payload", "signature"].join(".")}`,
+    "Cookie: sb-access-token=abc123; other=def",
+    "postgres://appuser:sup3rs3cret@db.example.com:5432/ftc",
+  ]) {
+    const redacted = redactSecrets(header).text;
+    assert.ok(redacted.includes(REDACTED), `${header} must be redacted`);
+    assert.ok(!redacted.includes("sup3rs3cret"), "connection-string passwords must go");
+    assert.ok(!redacted.includes("abc123"), "cookie values must go");
+  }
+
+  assert.ok(
+    redactSecrets("-----BEGIN RSA PRIVATE KEY-----\nMIIabc\n-----END RSA PRIVATE KEY-----")
+      .text.includes(REDACTED),
+    "PEM blocks must be redacted",
+  );
+
+  // Redaction is applied to every role's assembled payload, not just the first.
+  const leakedOpenAiKey = ["sk", "proj", "LEAKEDVALUE00000000000000"].join("-");
+  const leakedAnthropicKey = ["sk", "ant", "api03", "LEAKEDVALUE0000000000000000"].join("-");
+
+  const leakySession = makeAgentRoomSession({
+    description: `It failed with OPENAI_API_KEY=${leakedOpenAiKey}`,
+    evidence: [
+      {
+        id: "e1",
+        kind: "note",
+        label: "log",
+        content: `Authorization: Bearer ${leakedAnthropicKey}`,
+        createdAt: "2026-08-03T00:00:00.000Z",
+        redactedRules: [],
+      },
+    ],
+  });
+
+  for (const role of ["investigator", "reviewer", "builder", "qa", "release", "summarizer"]) {
+    const handoff = buildHandoff(leakySession as never, role as never);
+
+    assert.ok(
+      !handoff.user.includes(leakedOpenAiKey) && !handoff.user.includes(leakedAnthropicKey),
+      `the ${role} payload must never contain key material`,
+    );
+    assert.ok(
+      handoff.redactedRules.length > 0,
+      `the ${role} payload must report that redaction fired`,
+    );
+  }
+}
+
+/**
+ * Requirement: version one exposes no repository mutation, and the new agent
+ * roles add no execution capability of any kind.
+ */
+async function testAgentRoomExposesNoRepositoryMutation() {
+  const { AGENT_ROOM_REPO_CAPABILITIES, validateRepoRelativePath } = await import(
+    "../lib/agentRoom/repoAccess"
+  );
+
+  assert.deepEqual(
+    [...AGENT_ROOM_REPO_CAPABILITIES].sort(),
+    ["read_file_excerpt", "read_git_diff", "search_repo"],
+    "version one may only read",
+  );
+
+  // Every Agent Room module must be readable text. A stray NUL byte makes git
+  // treat the file as binary, which silently blinds `git diff` and code review —
+  // one reached the Decision Log's search separator and survived to release
+  // pre-flight because it changed no behaviour.
+  for (const entry of readdirSync(new URL("../lib/agentRoom", import.meta.url))) {
+    if (!entry.endsWith(".ts")) {
+      continue;
+    }
+
+    assert.ok(
+      !agentRoomSource(`lib/agentRoom/${entry}`).includes("\u0000"),
+      `lib/agentRoom/${entry} must contain no NUL bytes — git would treat it as binary`,
+    );
+  }
+
+  const executable = agentRoomCode("lib/agentRoom/repoAccess.ts");
+
+  for (const forbidden of [
+    "writeFile",
+    "appendFile",
+    "unlink",
+    "rmdir",
+    "mkdir",
+    "rename",
+    "chmod",
+    "createWriteStream",
+    "shell:",
+    "execSync",
+    "spawnSync",
+    "exec(",
+  ]) {
+    assert.ok(
+      !executable.includes(forbidden),
+      `repoAccess must not reference ${forbidden} — version one is read-only`,
+    );
+  }
+
+  for (const gitVerb of [
+    '"add"',
+    '"commit"',
+    '"push"',
+    '"merge"',
+    '"checkout"',
+    '"switch"',
+    '"reset"',
+    '"clean"',
+    '"stash"',
+    '"rebase"',
+    '"cherry-pick"',
+    '"apply"',
+    '"restore"',
+    '"branch"',
+    '"tag"',
+  ]) {
+    assert.ok(
+      !executable.includes(gitVerb),
+      `repoAccess must never invoke git ${gitVerb} — version one cannot mutate the repository`,
+    );
+  }
+
+  assert.match(
+    agentRoomSource("lib/agentRoom/repoAccess.ts"),
+    /execFileAsync\("git", args/,
+    "git must be invoked with a fixed argument vector, never through a shell",
+  );
+
+  // The Builder, QA and Release roles must not have introduced execution.
+  // No module outside repoAccess may reach for a process, a shell, or git.
+  const agentRoomModules = readdirSync(new URL("../lib/agentRoom", import.meta.url))
+    .filter((entry) => entry.endsWith(".ts"))
+    .filter((entry) => entry !== "repoAccess.ts");
+
+  for (const entry of agentRoomModules) {
+    const source = agentRoomCode(`lib/agentRoom/${entry}`);
+
+    for (const forbidden of [
+      "child_process",
+      "execFile",
+      "spawn",
+      "exec(",
+      "eval(",
+      "new Function",
+    ]) {
+      assert.ok(
+        !source.includes(forbidden),
+        `lib/agentRoom/${entry} must not reference ${forbidden} — no agent may execute anything`,
+      );
+    }
+  }
+
+  // No provider is given a tool it could act with, in any role.
+  for (const file of ["lib/agentRoom/prompts.ts", "lib/agentRoom/providers.ts"]) {
+    const source = agentRoomSource(file);
+    assert.ok(
+      !/\btools\s*:/.test(source),
+      `${file} must not hand any tool to a model — the models can only reply with text`,
+    );
+  }
+
+  // Every role's system prompt states the boundary in its own words.
+  const promptsSource = agentRoomSource("lib/agentRoom/prompts.ts");
+  assert.match(
+    promptsSource,
+    /edit, stage, commit, push, merge, deploy, run SQL, or run shell commands/,
+    "the shared ground rules must state the boundary to every agent",
+  );
+  assert.match(
+    promptsSource,
+    /you do not write the code/i,
+    "the Builder role must be told it plans rather than builds",
+  );
+
+  assert.ok(
+    !/readFile|readdir|repoAccess/.test(promptsSource),
+    "prompt assembly must never read the repository — only Isaac's attached evidence goes out",
+  );
+
+  // Path validation: env files, dot-files, traversal and binaries are refused.
+  const refused = [
+    ".env",
+    ".env.local",
+    "app/.env",
+    "lib/.env.production",
+    "env.ts",
+    "config/env.json",
+    "../outside.ts",
+    "../../etc/passwd",
+    "/etc/passwd",
+    ".git/config",
+    ".claude/settings.json",
+    ".hidden/config.json",
+    ".vscode/settings.json",
+    "docs/.private-notes.md",
+    "node_modules/next/package.json",
+    ".next/build-manifest.json",
+    "certs/server.pem",
+    "keys/id_rsa.key",
+    "public/logo.png",
+    "",
+    "   ",
+  ];
+
+  for (const candidate of refused) {
+    assert.equal(
+      validateRepoRelativePath(candidate).ok,
+      false,
+      `${JSON.stringify(candidate)} must be refused`,
+    );
+  }
+
+  for (const candidate of [
+    "lib/agentRoom/workflow.ts",
+    "app/globals.css",
+    "docs/handoff/CURRENT-STATE.md",
+    "./scripts/test-regressions.mts",
+  ]) {
+    assert.equal(
+      validateRepoRelativePath(candidate).ok,
+      true,
+      `${candidate} should be readable`,
+    );
+  }
+}
+
+/**
+ * Requirement: provider failures and timeouts are handled, reported in plain
+ * English, and never leak credentials or raw request headers into a log.
+ */
+async function testAgentRoomHandlesProviderFailureAndTimeouts() {
+  const { AGENT_ROOM_LIMITS } = await import("../lib/agentRoom/config");
+
+  assert.ok(
+    Number.isFinite(AGENT_ROOM_LIMITS.requestTimeoutMs) && AGENT_ROOM_LIMITS.requestTimeoutMs > 0,
+    "a provider request timeout must be configured",
+  );
+  assert.ok(
+    AGENT_ROOM_LIMITS.maxRequestBytes > 0 && AGENT_ROOM_LIMITS.maxPromptChars > 0,
+    "request-size limits must be configured",
+  );
+
+  const providersSource = agentRoomSource("lib/agentRoom/providers.ts");
+
+  assert.equal(
+    (providersSource.match(/timeout: AGENT_ROOM_LIMITS\.requestTimeoutMs/g) ?? []).length,
+    2,
+    "both provider clients must carry the configured timeout",
+  );
+  assert.equal(
+    (providersSource.match(/maxRetries: 1/g) ?? []).length,
+    2,
+    "both provider clients must bound their retries",
+  );
+
+  for (const branch of ["status === 401", "status === 404", "status === 429", "status >= 500"]) {
+    assert.ok(providersSource.includes(branch), `provider failures must be explained for ${branch}`);
+  }
+
+  assert.match(providersSource, /APIConnectionTimeoutError/, "timeouts must be handled by name");
+  assert.match(providersSource, /APIConnectionError/, "connection failures must be handled");
+  assert.match(
+    providersSource,
+    /redactSecrets\(error\.message\)/,
+    "provider error text must be redacted before it is shown or stored",
+  );
+
+  assert.ok(
+    !/console\.(log|info|warn|error|debug)/.test(providersSource),
+    "the provider layer must not log; headers and keys can never reach a log line",
+  );
+
+  // Chain-of-thought is never requested and never stored.
+  assert.ok(
+    !/display:\s*"summarized"/.test(providersSource),
+    "summarised reasoning must not be requested",
+  );
+  assert.match(
+    providersSource,
+    /\.filter\(\(block\): block is Anthropic\.TextBlock => block\.type === "text"\)/,
+    "only text blocks may be kept — the filter must narrow to TextBlock and nothing else",
+  );
+
+  const providersCode = agentRoomCode("lib/agentRoom/providers.ts");
+
+  for (const forbidden of ["thinking", "reasoning", "redacted_thinking"]) {
+    assert.ok(
+      !providersCode.includes(forbidden),
+      `the provider layer must not reference ${forbidden} — hidden reasoning is never requested or kept`,
+    );
+  }
+
+  const typesSource = agentRoomCode("lib/agentRoom/types.ts");
+  assert.ok(
+    !/thinking|reasoning/i.test(typesSource),
+    "the stored session shape must have no field for hidden reasoning",
+  );
+
+  // The per-session lock and rate limit are what stop a double-click becoming
+  // two concurrent agent turns.
+  const { millisecondsUntilNextCallAllowed } = await import("../lib/agentRoom/sessionStore");
+
+  assert.equal(millisecondsUntilNextCallAllowed(null), 0, "a first call is never delayed");
+  assert.equal(
+    millisecondsUntilNextCallAllowed("not a date"),
+    0,
+    "an unreadable timestamp must not wedge the session",
+  );
+
+  const now = Date.now();
+  assert.ok(
+    millisecondsUntilNextCallAllowed(new Date(now).toISOString(), now) > 0,
+    "back-to-back agent turns must be rate limited",
+  );
+  assert.equal(
+    millisecondsUntilNextCallAllowed(
+      new Date(now - AGENT_ROOM_LIMITS.minCallIntervalMs - 1).toISOString(),
+      now,
+    ),
+    0,
+    "the rate limit must clear once the interval has passed",
+  );
+
+  for (const file of [
+    "app/api/dev/agent-room/[sessionId]/action/route.ts",
+    "app/api/dev/agent-room/[sessionId]/run/route.ts",
+  ]) {
+    const source = agentRoomSource(file);
+
+    assert.match(
+      source,
+      /if \(!acquireSessionLock\(sessionId\)\)/,
+      `${file} must take the per-session execution lock`,
+    );
+    assert.match(
+      source,
+      /finally \{\s*releaseSessionLock\(sessionId\);/,
+      `${file} must release the lock even when the provider throws`,
+    );
+  }
+}
+
+/**
+ * Requirement: the timeline shows who spoke, what was decided, status changes
+ * and timestamps.
+ */
+async function testAgentRoomTimelineRecordsEveryTurn() {
+  const { AGENT_ROLE_LABELS, ALL_AGENT_ROLES, providerForRole } = await import(
+    "../lib/agentRoom/roles"
+  );
+
+  // The Reviewer must never be the model that wrote what it is reviewing, and
+  // QA must never be the model that wrote the plan it is testing.
+  assert.notEqual(
+    providerForRole("investigator"),
+    providerForRole("reviewer"),
+    "the reviewer must run on a different provider from the investigator",
+  );
+  assert.notEqual(
+    providerForRole("builder"),
+    providerForRole("qa"),
+    "QA must run on a different provider from the builder",
+  );
+
+  for (const role of ALL_AGENT_ROLES) {
+    assert.ok(AGENT_ROLE_LABELS[role], `${role} needs a display label`);
+  }
+
+  const runnerSource = agentRoomCode("lib/agentRoom/runner.ts");
+
+  assert.match(
+    runnerSource,
+    /turn\.stageFrom = session\.stage;\s*turn\.stageTo = nextStage;/,
+    "every recorded agent turn must carry its status transition",
+  );
+  assert.match(
+    runnerSource,
+    /session\.lastReviewVerdict = turn\.review\.verdict/,
+    "the reviewer's verdict must be recorded for the router",
+  );
+  assert.match(
+    runnerSource,
+    /session\.lastQaVerdict = turn\.qaPlan\.verdict/,
+    "QA's verdict must be recorded for the router",
+  );
+  assert.match(
+    runnerSource,
+    /session\.lastReleaseVerdict = turn\.releaseAssessment\.verdict/,
+    "the release verdict must be recorded for the router",
+  );
+  assert.match(
+    runnerSource,
+    /if \(turn\.escalation\?\.required\) \{\s*session\.escalation = turn\.escalation;/,
+    "an escalation raised by an agent must be surfaced on the session",
+  );
+
+  const timelineSource = agentRoomSource("app/dev/agent-room/Timeline.tsx");
+
+  assert.match(timelineSource, /toLocaleTimeString/, "each row must show its timestamp");
+  assert.match(timelineSource, /AGENT_ROLE_LABELS/, "each row must name the agent that spoke");
+  assert.match(
+    timelineSource,
+    /AGENT_ROOM_STAGE_LABELS\[turn\.stageFrom!\]/,
+    "each row must show the status change it caused",
+  );
+  assert.match(timelineSource, /ESCALATION_LABELS/, "escalations must be visible in the thread");
+}
+
+/**
+ * Requirement: every completed session produces a summary and a searchable
+ * Decision Log record, automatically.
+ */
+async function testAgentRoomWritesSummariesAndDecisionRecords() {
+  const {
+    buildDecisionRecord,
+    participatingAgents,
+    searchDecisionRecords,
+    searchableText,
+  } = await import("../lib/agentRoom/decisionLog");
+  const { sessionToMarkdown } = await import("../lib/agentRoom/transcript");
+
+  const session = makeAgentRoomSession({
+    stage: "approved",
+    hasSummary: true,
+    transcript: [
+      makeAgentRoomTurn({
+        id: "t1",
+        role: "investigator",
+        kind: "investigation",
+        investigation: AGENT_ROOM_VALID_INVESTIGATION,
+      }),
+      makeAgentRoomTurn({
+        id: "t2",
+        actor: "openai",
+        role: "reviewer",
+        kind: "review",
+        title: "Independent review",
+        review: AGENT_ROOM_VALID_REVIEW,
+      }),
+      makeAgentRoomTurn({
+        id: "t3",
+        role: "builder",
+        kind: "build_plan",
+        title: "Implementation plan",
+        builderPlan: AGENT_ROOM_VALID_BUILDER_PLAN,
+      }),
+      makeAgentRoomTurn({
+        id: "t4",
+        actor: "openai",
+        role: "qa",
+        kind: "qa_plan",
+        title: "Verification plan",
+        qaPlan: AGENT_ROOM_VALID_QA_PLAN,
+      }),
+      makeAgentRoomTurn({
+        id: "t5",
+        role: "release",
+        kind: "release_review",
+        title: "Release readiness",
+        releaseAssessment: AGENT_ROOM_VALID_RELEASE,
+      }),
+      makeAgentRoomTurn({
+        id: "t6",
+        actor: "isaac",
+        role: null,
+        kind: "decision",
+        title: "Approve implementation",
+        body: "Go ahead.",
+      }),
+      makeAgentRoomTurn({
+        id: "t7",
+        role: "summarizer",
+        kind: "summary",
+        title: "Session summary",
+        summary: AGENT_ROOM_VALID_SUMMARY,
+      }),
+    ],
+  });
+
+  assert.deepEqual(
+    participatingAgents(session as never),
+    ["investigator", "reviewer", "builder", "qa", "release", "summarizer"],
+    "the record must list every agent that actually spoke, in order",
+  );
+
+  const record = buildDecisionRecord(session as never);
+
+  // Every field the brief asks for.
+  for (const field of [
+    "timestamp",
+    "issueTitle",
+    "participatingAgents",
+    "rootCause",
+    "evidenceSummary",
+    "finalDecision",
+    "implementationCommits",
+    "verificationPerformed",
+    "releaseOutcome",
+    "followUpItems",
+  ]) {
+    assert.ok(field in record, `the decision record must carry \`${field}\``);
+  }
+
+  assert.equal(record.issueTitle, session.title);
+  assert.equal(record.rootCause, AGENT_ROOM_VALID_SUMMARY.rootCause);
+  assert.equal(record.evidenceSummary, AGENT_ROOM_VALID_SUMMARY.evidenceSummary);
+  assert.deepEqual(record.followUpItems, AGENT_ROOM_VALID_SUMMARY.followUpItems);
+  assert.match(record.finalDecision, /Approve implementation/);
+  assert.match(record.verificationPerformed, /READY/);
+  assert.match(record.verificationPerformed, /1 test case/);
+  assert.match(record.verificationPerformed, /2 phone\/desktop parity checks/);
+
+  // The two things Agent Room cannot know are left empty rather than invented.
+  assert.deepEqual(
+    record.implementationCommits,
+    [],
+    "commits must be left for Isaac — Agent Room has no git access",
+  );
+  assert.equal(
+    record.releaseOutcome,
+    "",
+    "the release outcome must be left for Isaac — Agent Room does not deploy",
+  );
+
+  // A session that never got a summary still produces a record that says so.
+  const bare = buildDecisionRecord(makeAgentRoomSession({ stage: "stopped" }) as never);
+  assert.equal(bare.rootCause, "Not established.");
+  assert.match(bare.verificationPerformed, /No verification plan/);
+
+  // Search covers the fields a person would actually search by.
+  const records = [record, bare];
+
+  assert.equal(searchDecisionRecords(records, "").length, 2, "an empty query returns everything");
+  assert.equal(
+    searchDecisionRecords(records, "realtime publication").length,
+    1,
+    "searching the root cause must find the record",
+  );
+  assert.equal(
+    searchDecisionRecords(records, "CREW CHAT").length,
+    2,
+    "search must be case-insensitive and cover the title",
+  );
+  assert.equal(
+    searchDecisionRecords(records, "crew-chat-media-loading").length,
+    2,
+    "search must cover the branch",
+  );
+  assert.equal(
+    searchDecisionRecords(records, "builder").length,
+    1,
+    "search must cover the participating agents",
+  );
+  assert.equal(searchDecisionRecords(records, "zzzz-no-such-thing").length, 0);
+  assert.ok(searchableText(record).includes("crew chat"), "searchable text is lower-cased");
+
+  // The summary is exported by the existing export system.
+  const markdown = sessionToMarkdown(session as never);
+
+  assert.match(markdown, /## Session summary/);
+  assert.match(markdown, /### Executive summary/);
+  assert.match(markdown, /### Technical summary/);
+  assert.match(markdown, /\*\*Final recommendation:\*\*/);
+  assert.match(markdown, /Outstanding tasks/);
+  assert.match(markdown, /Risks/);
+  assert.match(markdown, /## Timeline/);
+  assert.ok(
+    markdown.indexOf("## Session summary") < markdown.indexOf("## Timeline"),
+    "the conclusion belongs above the thread",
+  );
+
+  // Finishing a session writes both, without anyone asking.
+  const finalizeSource = agentRoomCode("lib/agentRoom/finalize.ts");
+  assert.match(finalizeSource, /executeAgentTurn\(session, "summarizer"/);
+  assert.match(finalizeSource, /saveDecisionRecord\(buildDecisionRecord\(session\)\)/);
+
+  const actionSource = agentRoomCode("app/api/dev/agent-room/[sessionId]/action/route.ts");
+  assert.match(
+    actionSource,
+    /if \(isTerminalStage\(session\.stage\)\) \{\s*await finalizeSession\(session\);/,
+    "a decision that ends the session must trigger the summary and the record",
+  );
+
+  // The Decision Log has no create endpoint: records come from real sessions.
+  const decisionsRoute = agentRoomSource("app/api/dev/agent-room/decisions/route.ts");
+  assert.ok(
+    !/export async function POST/.test(decisionsRoute),
+    "there must be no way to hand-write a decision record",
+  );
+
+  // The search box debounces, so two requests can be in flight at once. Without
+  // a generation guard the slower, older one wins and the list shows answers to
+  // a query the box no longer contains — measured live before this was added.
+  const decisionLogPanel = agentRoomCode("app/dev/agent-room/DecisionLog.tsx");
+
+  assert.match(
+    decisionLogPanel,
+    /const generation = generationRef\.current \+ 1;\s*generationRef\.current = generation;/,
+    "the debounced search must take a generation on every request",
+  );
+  assert.match(
+    decisionLogPanel,
+    /if \(response\.ok && generationRef\.current === generation\)/,
+    "a stale search response must not be allowed to overwrite a newer one",
+  );
+}
+
+/**
+ * The three conditions the QA review made merging contingent on.
+ *
+ * (1) Manual handoff approval is enforced on the server, not by the client
+ *     choosing to ask. (2) The Decision Log search re-checks its generation
+ *     after the response body is parsed, because parsing is itself a
+ *     suspension point. (3) The approval-mode toggle carries its selected
+ *     state in something other than colour.
+ */
+async function testAgentRoomManualApprovalIsEnforcedServerSide() {
+  const { manualApprovalResponse } = await import("../lib/agentRoom/apiGuard");
+
+  /* (1a) The guard itself, driven rather than pattern-matched. */
+  assert.equal(
+    manualApprovalResponse("auto", null),
+    null,
+    "automatic mode must be completely unaffected — this is the behaviour that already shipped",
+  );
+  assert.equal(
+    manualApprovalResponse("auto", "2026-08-03T00:00:00.000Z"),
+    null,
+    "a stale approval must not change automatic mode either",
+  );
+  assert.equal(
+    manualApprovalResponse("manual", "2026-08-03T00:00:00.000Z"),
+    null,
+    "manual mode with a recorded approval must be allowed to proceed",
+  );
+
+  const refused = manualApprovalResponse("manual", null);
+  assert.notEqual(refused, null, "manual mode without an approval must be refused");
+  assert.equal(refused?.status, 409, "the refusal must be a conflict, not a silent no-op");
+
+  /* (1b) Both execution endpoints enforce it, and neither does so in a comment. */
+  const actionRoute = agentRoomCode("app/api/dev/agent-room/[sessionId]/action/route.ts");
+  const runRoute = agentRoomCode("app/api/dev/agent-room/[sessionId]/run/route.ts");
+
+  assert.match(
+    actionRoute,
+    /manualApprovalResponse\(\s*session\.handoffApproval,\s*session\.handoffApprovedAt,?\s*\)/,
+    "the single-step endpoint must consult the manual-approval guard",
+  );
+  assert.match(
+    runRoute,
+    /if \(!manualApprovalSatisfied\(session\.handoffApproval, session\.handoffApprovedAt\)\)/,
+    "the run-to-decision loop must refuse to hop without a recorded approval",
+  );
+
+  /* (1c) One approval buys exactly one turn: both endpoints spend it. */
+  for (const [label, source] of [
+    ["action", actionRoute],
+    ["run", runRoute],
+  ] as const) {
+    assert.match(
+      source,
+      /handoffApprovedAt = null/,
+      `the ${label} endpoint must spend the approval so it cannot authorise a second turn`,
+    );
+  }
+
+  /* (1d) The approval has to be recorded somewhere before it can be enforced. */
+  const sessionRoute = agentRoomCode("app/api/dev/agent-room/[sessionId]/route.ts");
+  assert.match(
+    sessionRoute,
+    /approveNextHandoff === true/,
+    "there must be a way to record an approval",
+  );
+  assert.match(
+    sessionRoute,
+    /session\.handoffApprovedAt = new Date\(\)\.toISOString\(\)/,
+    "recording an approval must persist it on the session",
+  );
+  assert.match(
+    agentRoomCode("app/api/dev/agent-room/route.ts"),
+    /handoffApprovedAt: null/,
+    "a new session must start with no approval banked",
+  );
+
+  /* (2) The Decision Log guard must be checked again after the body is read. */
+  const decisionLogPanel = agentRoomCode("app/dev/agent-room/DecisionLog.tsx");
+  const generationChecks = decisionLogPanel.match(
+    /generationRef\.current === generation/g,
+  );
+  assert.ok(
+    (generationChecks?.length ?? 0) >= 2,
+    "the generation must be checked again after await response.json(), not only before it",
+  );
+  assert.match(
+    decisionLogPanel,
+    /await response\.json\(\)[\s\S]{0,200}?generationRef\.current === generation[\s\S]{0,80}?setRecords\(/,
+    "setRecords must sit behind a generation check that runs after the body is parsed",
+  );
+
+  /* (3) Selected mode must survive both a screen reader and a greyscale print. */
+  const client = agentRoomCode("app/dev/agent-room/AgentRoomClient.tsx");
+  assert.match(
+    client,
+    /aria-pressed=\{selected\}/,
+    "the approval-mode toggle must expose its selected state to assistive tech",
+  );
+  assert.match(
+    client,
+    /selected \? "ftc-btn-primary" : "ftc-btn-secondary"/,
+    "the selected mode must differ by more than colour — reuse the existing FTC pill pair",
+  );
+  assert.match(
+    client,
+    /\{selected \? "✓ " : ""\}/,
+    "the selected mode must also be marked non-visually-redundantly",
+  );
+  assert.doesNotMatch(
+    client,
+    /color:\s*\n?\s*session\.handoffApproval === mode/,
+    "the colour-only selected state must not come back",
+  );
+}
+
+
+/**
+ * The three Agent Room QA re-review follow-ups.
+ *
+ * (1) In manual mode every provider call needs an approval, summaries
+ *     included — QA proved a summary could reach a provider unapproved.
+ * (2) Switching mode must not leave a usable stale approval behind.
+ * (3) The approval must be re-checked against the session loaded *under* the
+ *     lock, so a narrow race cannot spend one approval twice.
+ */
+async function testAgentRoomManualApprovalCoversEverySummaryPath() {
+  const { manualApprovalSatisfied } = await import("../lib/agentRoom/apiGuard");
+  const { finalizeSession } = await import("../lib/agentRoom/finalize");
+  const { listDecisionRecords, deleteDecisionRecord } = await import(
+    "../lib/agentRoom/decisionLog"
+  );
+  const { deleteSession, loadSession, saveSession } = await import(
+    "../lib/agentRoom/sessionStore"
+  );
+  const { checkAction } = await import("../lib/agentRoom/workflow");
+
+  /* ---------------------------------------------------------------------- */
+  /* The rule itself                                                        */
+  /* ---------------------------------------------------------------------- */
+
+  assert.equal(manualApprovalSatisfied("auto", null), true, "auto never needs an approval");
+  assert.equal(
+    manualApprovalSatisfied("auto", "2026-08-03T00:00:00.000Z"),
+    true,
+    "auto is unaffected by a banked approval",
+  );
+  assert.equal(
+    manualApprovalSatisfied("manual", "2026-08-03T00:00:00.000Z"),
+    true,
+    "manual with an approval may proceed",
+  );
+  assert.equal(
+    manualApprovalSatisfied("manual", null),
+    false,
+    "manual without an approval may not",
+  );
+  // A session written before the field existed parses as undefined. The guard
+  // must fail closed on it rather than treating "no field" as "approved".
+  assert.equal(
+    manualApprovalSatisfied("manual", undefined),
+    false,
+    "a session file predating the field must fail closed",
+  );
+
+  /* ---------------------------------------------------------------------- */
+  /* (1) Every summary path is gated                                        */
+  /* ---------------------------------------------------------------------- */
+
+  const finalizeSource = agentRoomCode("lib/agentRoom/finalize.ts");
+
+  assert.match(
+    finalizeSource,
+    /manualApprovalSatisfied\(\s*session\.handoffApproval,\s*session\.handoffApprovedAt,?\s*\)/,
+    "finalizeSession must consult the shared approval rule before summarising",
+  );
+  assert.match(
+    finalizeSource,
+    /if \(!session\.hasSummary && mayCallProvider\)/,
+    "the summary provider call must sit behind that check",
+  );
+
+  const actionRoute = agentRoomCode("app/api/dev/agent-room/[sessionId]/action/route.ts");
+
+  // The hole QA found: the guard used to apply only to `advance`, which let
+  // generate_summary through. It must now cover every model action.
+  assert.doesNotMatch(
+    actionRoute,
+    /if \(action === "advance"\) \{\s*const needsApproval/,
+    "the approval guard must not be narrowed back to `advance` only",
+  );
+  assert.match(
+    actionRoute,
+    /const needsApproval = manualApprovalResponse\(/,
+    "the single-step endpoint must gate every model action, summaries included",
+  );
+
+  // One approval, one successful call: the summary path spends it too.
+  assert.match(
+    actionRoute,
+    /current\.hasSummary = true;\s*(?:\/\/[^\n]*\n\s*)*current\.handoffApprovedAt = null;/,
+    "a successful summary must spend the approval that allowed it",
+  );
+  assert.match(
+    finalizeSource,
+    /session\.hasSummary = true;\s*session\.handoffApprovedAt = null;/,
+    "the automatic summary must spend its approval too",
+  );
+
+  /* ---------------------------------------------------------------------- */
+  /* (1) …and behaviourally, not only in the source                         */
+  /* ---------------------------------------------------------------------- */
+
+  const sessionId = "9a7f3c21-4b5d-4e6f-8a90-1b2c3d4e5f60";
+  const decisionIdsBefore = new Set((await listDecisionRecords()).map((r) => r.id));
+
+  const makeStopped = (
+    handoffApproval: "auto" | "manual",
+    handoffApprovedAt: string | null,
+  ) =>
+    makeAgentRoomSession({
+      id: sessionId,
+      stage: "stopped",
+      handoffApproval,
+      handoffApprovedAt,
+      transcript: [
+        makeAgentRoomTurn({ id: "t1", actor: "isaac", kind: "task", title: "Task submitted" }),
+      ],
+    }) as never;
+
+  await withAgentRoomEnv(
+    {
+      FTC_AGENT_ROOM_ENABLED: "true",
+      VERCEL: undefined,
+      // No key: the summariser fails before any network call, which is exactly
+      // the "failed summary" case we need, and keeps the suite offline.
+      ANTHROPIC_API_KEY: undefined,
+    },
+    async () => {
+      /* Manual, no approval: no provider call at all. */
+      const gated = makeStopped("manual", null) as unknown as {
+        transcript: unknown[];
+        hasSummary: boolean;
+        handoffApprovedAt: string | null;
+      };
+
+      await finalizeSession(gated as never);
+
+      assert.equal(
+        gated.transcript.length,
+        1,
+        "manual mode without an approval must not call the provider at all — not even to record a failure",
+      );
+      assert.equal(gated.hasSummary, false, "and must not claim to have a summary");
+
+      /* …but the Decision Log record is still written: STOP stays terminal. */
+      const afterGated = await listDecisionRecords();
+      assert.ok(
+        afterGated.some((record) => record.sessionId === sessionId),
+        "the Decision Log record must still be written — it needs no provider",
+      );
+
+      /* Manual, approved: the call is attempted. It fails (no key), and a
+         failed call must not consume the approval. */
+      const approvedAt = "2026-08-03T00:00:00.000Z";
+      const attempted = makeStopped("manual", approvedAt) as unknown as {
+        transcript: unknown[];
+        hasSummary: boolean;
+        handoffApprovedAt: string | null;
+      };
+
+      await finalizeSession(attempted as never);
+
+      assert.equal(
+        attempted.transcript.length,
+        2,
+        "an approved summary must actually reach the provider path",
+      );
+      assert.equal(
+        attempted.handoffApprovedAt,
+        approvedAt,
+        "a failed summary must not consume the approval",
+      );
+      assert.equal(attempted.hasSummary, false, "a failed summary is not a summary");
+
+      /* Auto: unchanged — the call is attempted with no approval anywhere. */
+      const automatic = makeStopped("auto", null) as unknown as { transcript: unknown[] };
+
+      await finalizeSession(automatic as never);
+
+      assert.equal(
+        automatic.transcript.length,
+        2,
+        "automatic mode must be completely unchanged by the manual gate",
+      );
+
+      /* ------------------------------------------------------------------ */
+      /* (2) Manual → approve → Auto → Manual leaves nothing usable          */
+      /* ------------------------------------------------------------------ */
+
+      const { PATCH } = await import("../app/api/dev/agent-room/[sessionId]/route");
+
+      const patch = async (body: Record<string, unknown>) => {
+        const response = await PATCH(
+          new Request(`http://localhost/api/dev/agent-room/${sessionId}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+          }),
+          { params: Promise.resolve({ sessionId }) },
+        );
+
+        assert.equal(response.status, 200, `PATCH ${JSON.stringify(body)} should succeed`);
+        return loadSession(sessionId);
+      };
+
+      await saveSession(makeStopped("manual", null));
+
+      const approved = await patch({ approveNextHandoff: true });
+      assert.ok(approved?.handoffApprovedAt, "the approval must actually be recorded first");
+      assert.equal(
+        manualApprovalSatisfied("manual", approved?.handoffApprovedAt ?? null),
+        true,
+        "…otherwise the rest of this test would pass vacuously",
+      );
+
+      const switchedToAuto = await patch({ handoffApproval: "auto" });
+      assert.equal(
+        switchedToAuto?.handoffApprovedAt,
+        null,
+        "switching to automatic must clear the banked approval",
+      );
+
+      const backToManual = await patch({ handoffApproval: "manual" });
+      assert.equal(
+        backToManual?.handoffApprovedAt,
+        null,
+        "switching back to manual must not resurrect it",
+      );
+      assert.equal(
+        manualApprovalSatisfied("manual", backToManual?.handoffApprovedAt ?? null),
+        false,
+        "Manual → approve → Auto → Manual must leave no usable approval",
+      );
+
+      await deleteSession(sessionId);
+    },
+  );
+
+  /* Clean up the Decision Log records this test created. */
+  for (const record of await listDecisionRecords()) {
+    if (!decisionIdsBefore.has(record.id)) {
+      await deleteDecisionRecord(record.id);
+    }
+  }
+
+  /* ---------------------------------------------------------------------- */
+  /* (3) The approval is re-checked under the lock                          */
+  /* ---------------------------------------------------------------------- */
+
+  const lockIndex = actionRoute.indexOf("acquireSessionLock(sessionId)");
+  const afterLock = actionRoute.slice(lockIndex);
+
+  assert.ok(lockIndex > 0, "the single-step endpoint must take a lock");
+  assert.match(
+    afterLock,
+    /const locked = await loadSession\(sessionId\);/,
+    "the session must be re-read after the lock is acquired",
+  );
+  assert.match(
+    afterLock,
+    /manualApprovalResponse\(\s*locked\.handoffApproval,\s*locked\.handoffApprovedAt,?\s*\)/,
+    "and the approval re-checked against that freshly loaded session",
+  );
+  assert.ok(
+    afterLock.indexOf("locked.handoffApprovedAt") < afterLock.indexOf("executeAgentTurn("),
+    "the re-check must run before the provider is called, not after",
+  );
+  // The turn must act on the session the approval was checked against.
+  assert.doesNotMatch(
+    afterLock,
+    /executeAgentTurn\(session,/,
+    "the provider call must use the locked session, not the pre-lock read",
+  );
+
+  // The run loop already re-reads inside the lock; prove that ordering holds.
+  const runRoute = agentRoomCode("app/api/dev/agent-room/[sessionId]/run/route.ts");
+  const runLoop = runRoute.slice(runRoute.indexOf("while (hops <"));
+
+  assert.ok(
+    runLoop.indexOf("const current = await loadSession(sessionId)") <
+      runLoop.indexOf("manualApprovalSatisfied(") &&
+      runLoop.indexOf("manualApprovalSatisfied(") < runLoop.indexOf("executeAgentTurn("),
+    "the run loop must re-read, then check the approval, then call the provider",
+  );
+
+  /* ---------------------------------------------------------------------- */
+  /* STOP is never blocked by any of this                                   */
+  /* ---------------------------------------------------------------------- */
+
+  for (const stage of [
+    "awaiting_investigation",
+    "investigation_ready",
+    "review_ready",
+    "build_plan_ready",
+    "qa_plan_ready",
+    "release_review_ready",
+    "awaiting_isaac",
+  ]) {
+    const state = {
+      stage,
+      reviewRounds: 1,
+      rebuttalUsedForCurrentRound: false,
+      builderPasses: 1,
+      autoHops: 3,
+      escalation: null,
+      lastReviewVerdict: "AGREE",
+      lastQaVerdict: null,
+      lastReleaseVerdict: null,
+      hasSummary: false,
+    };
+
+    const check = checkAction(state as never, "stop" as never);
+
+    assert.ok(check.allowed, `stop must stay available from ${stage} regardless of approval`);
+    assert.equal((check as { nextStage: string }).nextStage, "stopped");
+  }
+
+  // STOP is a local decision, so it never passes through the approval guard.
+  const stopBranch = actionRoute.slice(0, actionRoute.indexOf("const needsApproval"));
+  assert.match(
+    stopBranch,
+    /if \(!isModelAction\(action\)\) \{/,
+    "local decisions must return before the approval gate — STOP is never blocked by it",
+  );
+}
+
 async function main() {
   testPastEventDatesAreBlocked();
   testFutureEventDatesAreAllowed();
@@ -13880,6 +16037,21 @@ async function main() {
   testCrewChatUnreadUsesTheSharedUnreadSystem();
   await testGroupInboxUnreadSurvivesOverlappingRefreshes();
   testInboxIdentityIsResolvedIndependentlyOfTheActiveTab();
+  await testAgentRoomIsDisabledByDefault();
+  await testAgentRoomNeverLeaksApiKeysToTheClient();
+  await testAgentRoomRoutesBetweenAgentsWithoutIsaac();
+  await testAgentRoomEscalatesOnlyForTheFourReasons();
+  await testAgentRoomBudgetsAlwaysTerminate();
+  await testAgentRoomKeepsIsaacInControlOfImplementation();
+  await testAgentRoomStopStateIsAbsolute();
+  await testAgentRoomRejectsMalformedProviderResponses();
+  await testAgentRoomRedactsSecretsBeforeSending();
+  await testAgentRoomExposesNoRepositoryMutation();
+  await testAgentRoomHandlesProviderFailureAndTimeouts();
+  await testAgentRoomTimelineRecordsEveryTurn();
+  await testAgentRoomWritesSummariesAndDecisionRecords();
+  await testAgentRoomManualApprovalIsEnforcedServerSide();
+  await testAgentRoomManualApprovalCoversEverySummaryPath();
   console.log("All regression checks passed.");
 }
 

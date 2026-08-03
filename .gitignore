@@ -43,6 +43,9 @@ yarn-error.log*
 # agent worktrees (see docs/handoff/MULTI-AGENT-WORKFLOW.md)
 /.claude/worktrees/
 
+# FTC Agent Room — local-only session transcripts (internal dev tool)
+/.agent-room/
+
 # vercel
 .vercel
 
