@@ -68,6 +68,20 @@ export function traceId(label: string, value: unknown): Record<string, unknown> 
   };
 }
 
+/** True only while the ?ftcunread=1 flag is active for this tab. */
+export function isUnreadTraceEnabled(): boolean {
+  return isEnabled();
+}
+
+/** The captured entries, for the one-tap copy control. */
+export function readUnreadTrace(): Record<string, unknown>[] {
+  if (typeof window === "undefined") {
+    return [];
+  }
+
+  return (window as TraceWindow).__ftcUnreadTrace ?? [];
+}
+
 export function unreadTrace(step: string, detail: Record<string, unknown>): void {
   if (!isEnabled()) {
     return;
