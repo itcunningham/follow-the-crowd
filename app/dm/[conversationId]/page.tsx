@@ -1398,6 +1398,9 @@ export default function DmChatPage() {
     }
 
     captureComposerFocusIntentForSend();
+    // Clear immediately so the draft does not linger while the insert is
+    // in flight. Restore the same text if the send fails.
+    setInput("");
     setSending(true);
     setError(null);
     markUserSentMessage();
@@ -1411,6 +1414,7 @@ export default function DmChatPage() {
     });
 
     if (insertError) {
+      setInput(text);
       setError(insertError.message);
       setSending(false);
       restoreComposerInputFocus();
@@ -1434,7 +1438,6 @@ export default function DmChatPage() {
       }
     }
 
-    setInput("");
     setSending(false);
     restoreComposerInputFocus();
     void markConversationRead(conversationId, {
@@ -1455,12 +1458,13 @@ export default function DmChatPage() {
     }
 
     captureComposerFocusIntentForSend();
+    const caption = input.trim();
+    setInput("");
     setUploading(true);
     setError(null);
     markUserSentMessage();
 
     try {
-      const caption = input.trim();
       const { messageId, attachments: sentAttachments } = await sendDmMessageWithAttachments({
         conversationId,
         text: caption,
@@ -1498,7 +1502,6 @@ export default function DmChatPage() {
         return [...prev, ...newAttachments];
       });
 
-      setInput("");
       // Selection only clears once the send fully succeeds, so a failed
       // send (see catch below) leaves the same photos staged for retry.
       clearPendingAttachments();
@@ -1525,6 +1528,7 @@ export default function DmChatPage() {
       });
     } catch (uploadError) {
       console.error("Failed to send attachments:", uploadError);
+      setInput(caption);
       setError(
         uploadError instanceof Error
           ? uploadError.message

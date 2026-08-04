@@ -1245,24 +1245,24 @@ export default function EventCrewChatPage() {
     // element and the keyboard is still up — afterwards there is nothing
     // left to read the intent from.
     captureComposerFocusIntentForSend();
+    // Clear immediately so the draft does not linger while the request is
+    // in flight. Restore the same text if the send fails.
+    setInput("");
     setSending(true);
     setError(null);
     markUserSentMessage();
 
     try {
       await sendEventCrewChatMessage(eventId, text, eventName);
-      // Only on a confirmed success — a throw above leaves the draft intact.
-      setInput("");
       await markEventChatRead(eventId);
     } catch (sendError) {
       console.error("Failed to send crew chat message:", sendError);
+      setInput(text);
       setError(
         sendError instanceof Error ? sendError.message : "Failed to send message",
       );
     } finally {
       setSending(false);
-      // Both paths: on failure the draft is still there and still typeable,
-      // so focus belongs back in the composer just as much as on success.
       restoreComposerInputFocus();
     }
   }
@@ -1272,12 +1272,13 @@ export default function EventCrewChatPage() {
       return;
     }
 
+    const caption = input.trim();
+    setInput("");
     setUploading(true);
     setError(null);
     markUserSentMessage();
 
     try {
-      const caption = input.trim();
       const { messageId, attachments: sentAttachments } =
         await sendEventCrewChatMessageWithAttachments({
           eventId,
@@ -1317,13 +1318,13 @@ export default function EventCrewChatPage() {
         return [...prev, ...newAttachments];
       });
 
-      setInput("");
       // Selection only clears once the send fully succeeds, so a failed
       // send (see catch below) leaves the same photos staged for retry.
       clearPendingAttachments();
       await markEventChatRead(eventId, { readThroughCreatedAt: optimisticMessage.created_at });
     } catch (uploadError) {
       console.error("Failed to send crew chat attachments:", uploadError);
+      setInput(caption);
       setError(
         uploadError instanceof Error
           ? uploadError.message

@@ -12610,13 +12610,18 @@ function testCrewChatComposerKeepsFocusAfterSend() {
     /useDismissComposerKeyboardOnIntentionalScroll\(scrollRef, composerInputRef, composerRootRef\)/,
   );
 
-  // Draft survives a failed send: input is cleared only after the awaited
-  // send resolves, and focus is restored on both paths via `finally`.
+  // Draft clears immediately on send (optimistic). On failure the same text
+  // is restored so the user can retry without retyping.
   const textSend = chatPageSource.match(/async function sendMessage\(\)[\s\S]*?\n  \}/)?.[0] ?? "";
   assert.ok(textSend, "sendMessage must exist");
   assert.ok(
-    textSend.indexOf("await sendEventCrewChatMessage(") < textSend.indexOf('setInput("")'),
-    "the draft must only be cleared after a confirmed successful send",
+    textSend.indexOf('setInput("")') < textSend.indexOf("await sendEventCrewChatMessage("),
+    "the draft must clear before the send await so it does not linger in the box",
+  );
+  assert.match(
+    textSend,
+    /catch \(sendError\) \{[\s\S]*setInput\(text\)/,
+    "a failed send must restore the draft",
   );
   assert.match(textSend, /finally \{[\s\S]*restoreComposerInputFocus\(\);/);
   // Duplicate-send guard intact.
