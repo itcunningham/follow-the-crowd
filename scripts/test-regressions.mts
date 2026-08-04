@@ -5703,6 +5703,16 @@ function testEventsCreateEventHiddenDuringHistorySelectionToolbar() {
   assert.match(source, /buildPlannerCalendarCreateHref/);
   assert.match(source, /EVENTS_HEADER_CREATE_EVENT_PLACEHOLDER/);
   assert.match(source, /actions=\{workspaceHeaderActions\}/);
+  // createOpen must use the invisible placeholder — `undefined` falls back to the
+  // workspace default Create event link and the button stays visible over the form.
+  assert.match(
+    source,
+    /hideEventsHeaderCreateForCalendarFlow \|\| createOpen \|\| historyTabRowSelectionMode/,
+  );
+  assert.doesNotMatch(
+    source,
+    /: !createOpen\s*\?\s*historyTabRowSelectionMode/,
+  );
 }
 
 function testEventPlansSelectionToolbarMatchesHistory() {

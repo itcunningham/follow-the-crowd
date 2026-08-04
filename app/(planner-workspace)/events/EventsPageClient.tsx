@@ -1508,19 +1508,15 @@ function EventsPageClientView({
 
   const workspaceHeaderActions: ReactNode | undefined = !isPlanner
     ? undefined
-    : hideEventsHeaderCreateForCalendarFlow
+    : hideEventsHeaderCreateForCalendarFlow || createOpen || historyTabRowSelectionMode
       ? EVENTS_HEADER_CREATE_EVENT_PLACEHOLDER
-          : !createOpen
-        ? historyTabRowSelectionMode
-          ? EVENTS_HEADER_CREATE_EVENT_PLACEHOLDER
-          : (
-              <EventsWorkspaceCreateEventAction
-                onClick={() => {
-                  void openCreateFlow();
-                }}
-              />
-            )
-        : undefined;
+      : (
+          <EventsWorkspaceCreateEventAction
+            onClick={() => {
+              void openCreateFlow();
+            }}
+          />
+        );
 
   return (
       <PlannerWorkspacePage
