@@ -7,7 +7,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 
 **Communication preference locked (2026-08-04):** brutal honesty, no ego — never agree by default; push better options when Isaac's idea is weaker. Strict critic mode + hostile counterarguments when useful. `USER-PREFERENCES.md` + `.cursor/rules/brutal-honesty.mdc`.
 
-**Event Details is not the Events bottom tab (`5a5f965` / `aaa2690` on `main`, 2026-08-04):** View Event from Crew Chat lit the Events icon and the tap felt dead. Round 1 (pop-to-root when nested) was on Production but still failed device QA. Round 2: `isPlannerEventsAreaPath` excludes standalone `/events/[id]`; from `?from=crew-chat`, Messages stays selected so Events is clearly tappable into the list.
+**Event Details is not the Events bottom tab (`5a5f965` + build fix on `main`, 2026-08-04):** View Event from Crew Chat lit the Events icon and the tap felt dead. Round 1 (pop-to-root when nested) was on Production but still failed device QA. Round 2: `isPlannerEventsAreaPath` excludes standalone `/events/[id]` so Events stays tappable. A `useSearchParams` Messages-highlight tweak broke Production builds (`/discover` Suspense); removed — exclusion alone is enough.
 
 **Events bottom-nav pop-to-root from event detail (`de21efc` on `main`, 2026-08-04):** Workspace selectors only no-op on the landing `href`. Nested Calendar/Gigs/DM still pop to root. Superseded for Event Details highlight by the entry above — detail is no longer treated as Events-active.
 
