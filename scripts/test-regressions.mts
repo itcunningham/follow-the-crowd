@@ -13984,7 +13984,8 @@ function testEventDetailReturnsToCrewChat() {
     /showCrewChatHeaderAction = showStartCrewChatAction \|\| showEventGroupChatAction;/,
   );
 
-  // Start group chat keeps full action copy — no max-width truncate chip with ? inside.
+  // Start group chat keeps full action copy; ? help lives inside the same chip
+  // (no max-width truncate — that was what produced START GROUP CH…).
   assert.match(detailSource, /HEADER_GROUP_CHAT_LABEL_CLASS/);
   assert.match(detailSource, /whitespace-nowrap/);
   assert.match(
@@ -13993,6 +13994,11 @@ function testEventDetailReturnsToCrewChat() {
   );
   assert.doesNotMatch(detailSource, /max-w-\[10\.5rem\]/);
   assert.doesNotMatch(detailSource, /max-w-\[8\.5rem\]/);
+  // Help is inside the chip wrapper, not a sibling outside it.
+  assert.match(
+    detailSource,
+    /HEADER_GROUP_CHAT_CHIP_CLASS\}`>\s*\{showStartCrewChatAction[\s\S]*?showCrewChatHelpUi \? \(\s*<InlineOptionHelpButton/,
+  );
 }
 
 function testEventDetailEditDiscardOnBackOnly() {
