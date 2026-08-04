@@ -11534,6 +11534,46 @@ function testBookingsResultsAreaMatchesOneBookingCard() {
  *  - Venue/date are shown once each (event-context card only), not repeated
  *    in the header, which now states only the event name and crew count.
  */
+function testCrewChatMemberSheetReopenOnProfileReturn() {
+  const chatPageSource = readFileSync(
+    new URL("../app/events/[eventId]/chat/page.tsx", import.meta.url),
+    "utf8",
+  );
+
+  // The chat page builds a profileReturnTo that includes the memberSheetOpen marker.
+  assert.match(
+    chatPageSource,
+    /const profileReturnTo = useMemo\(\(\) => \{[\s\S]*?params\.set\("memberSheetOpen", "true"\)/,
+    "chat page builds profileReturnTo with memberSheetOpen=true parameter",
+  );
+
+  // The memberSheetOpen state initializes based on the query parameter.
+  assert.match(
+    chatPageSource,
+    /const shouldReopenMemberSheet = searchParams\.get\("memberSheetOpen"\) === "true"/,
+    "chat page checks for memberSheetOpen query parameter",
+  );
+  assert.match(
+    chatPageSource,
+    /const \[memberSheetOpen, setMemberSheetOpen\] = useState\(shouldReopenMemberSheet\)/,
+    "memberSheetOpen state initializes from the parameter",
+  );
+
+  // The parameter is cleaned up from the URL after use.
+  assert.match(
+    chatPageSource,
+    /useEffect\(\(\) => \{\s*if \(shouldReopenMemberSheet\) \{[\s\S]*?newParams\.delete\("memberSheetOpen"\)/,
+    "chat page cleans up memberSheetOpen parameter from URL",
+  );
+
+  // The profileReturnTo is passed to CrewMemberListSheet, not the plain chatReturnTo.
+  assert.match(
+    chatPageSource,
+    /<CrewMemberListSheet[\s\S]*?profileReturnTo=\{profileReturnTo\}/,
+    "CrewMemberListSheet receives the modified profileReturnTo with the marker",
+  );
+}
+
 function testCrewChatPremiumPolish() {
   // buildCrewMemberList: owner first, DJs in participant order, role derived
   // (not stored) from ownerId comparison, missing profile falls back cleanly.
@@ -16018,6 +16058,7 @@ async function main() {
   testCrewChatEventCardToggleScrollCompensation();
   testEventDetailReturnsToCrewChat();
   testEventDetailPopsCrewChatHistoryEntry();
+  testCrewChatMemberSheetReopenOnProfileReturn();
   testIncomingChatMessagesHaveNoAvatarTimestamp();
   testEventUpdateMessagePresentation();
   testCrewChatImageAttachmentsWiring();

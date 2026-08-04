@@ -215,6 +215,12 @@ export default function EventCrewChatPage() {
     () => buildChatReturnTo(pathname, searchParams.toString()),
     [pathname, searchParams],
   );
+  const profileReturnTo = useMemo(() => {
+    // Add memberSheetOpen=true to the return URL so the crew sheet reopens when the user returns from a profile
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("memberSheetOpen", "true");
+    return buildChatReturnTo(pathname, params.toString());
+  }, [pathname, searchParams]);
   const openedFromMessages = searchParams.get("from") === "dm";
   const backHref = getEventCrewChatBackHref(
     eventId,
@@ -250,7 +256,8 @@ export default function EventCrewChatPage() {
     Map<string, UserAvatarProfile>
   >(new Map());
   const [lastReadAtByUserId, setLastReadAtByUserId] = useState<Map<string, string>>(new Map());
-  const [memberSheetOpen, setMemberSheetOpen] = useState(false);
+  const shouldReopenMemberSheet = searchParams.get("memberSheetOpen") === "true";
+  const [memberSheetOpen, setMemberSheetOpen] = useState(shouldReopenMemberSheet);
   /**
    * Event-card visibility is owned solely by the Details/Hide toggle below.
    * Scrolling deliberately never changes it: a chat surface that rearranges
@@ -388,6 +395,17 @@ export default function EventCrewChatPage() {
    * nothing for it to scroll, so the keyboard survives the send.
    */
   useFixedChatPageDocumentReset(`${pathname}?${searchParams.toString()}`);
+
+  // Clean up memberSheetOpen param from URL after initializing the sheet state
+  useEffect(() => {
+    if (shouldReopenMemberSheet) {
+      const newParams = new URLSearchParams(searchParams.toString());
+      newParams.delete("memberSheetOpen");
+      const newSearch = newParams.toString();
+      const newUrl = newSearch ? `${pathname}?${newSearch}` : pathname;
+      router.replace(newUrl, { scroll: false });
+    }
+  }, []); // Only run once on mount
   // Same intentional-dismissal handling as DM: a deliberate downward drag on
   // the message list at the live edge dismisses the keyboard, and this hook
   // owns that gesture. Post-send refocus never fights it, because a blur
@@ -1513,7 +1531,7 @@ export default function EventCrewChatPage() {
       <CrewMemberListSheet
         open={memberSheetOpen}
         members={crewMembers}
-        profileReturnTo={chatReturnTo}
+        profileReturnTo={profileReturnTo}
         onClose={() => setMemberSheetOpen(false)}
       />
     </OnboardingGuard>
