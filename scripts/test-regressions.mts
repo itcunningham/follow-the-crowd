@@ -13864,6 +13864,10 @@ function testEventDetailEditDiscardOnBackOnly() {
     new URL("../app/components/profile/EditProfileDiscardDialog.tsx", import.meta.url),
     "utf8",
   );
+  const runSheetSource = readFileSync(
+    new URL("../app/components/EventRunSheetSection.tsx", import.meta.url),
+    "utf8",
+  );
 
   assert.match(dialogSource, /Discard unsaved changes\?/);
   assert.match(dialogSource, /Keep editing/);
@@ -13874,6 +13878,20 @@ function testEventDetailEditDiscardOnBackOnly() {
   assert.match(detailSource, /isEventDetailEditDirty\(event, editForm, editCoverField\)/);
   assert.match(detailSource, /setEditDiscardDialogOpen\(true\)/);
   assert.match(detailSource, /UnsavedChangesDiscardDialog/);
+  // Dirty Run Sheet edit: same shared discard sheet on Event Details Back.
+  assert.match(detailSource, /runSheetUnsavedEditing/);
+  assert.match(detailSource, /setRunSheetDiscardDialogOpen\(true\)/);
+  assert.match(detailSource, /discard-run-sheet-edits-title/);
+  assert.match(detailSource, /runSheetDiscardEditsRef\.current\?\.\(\)/);
+  assert.match(runSheetSource, /onUnsavedEditingChange/);
+  assert.match(runSheetSource, /discardEditsRef/);
+  assert.match(runSheetSource, /unsavedWhileEditing = isEditing && hasUnsavedChanges/);
+  assert.match(runSheetSource, /discardEditsRef\.current = handleCancelEdit/);
+  assert.match(runSheetSource, /onUnsavedEditingChange\?\.\(false\)/);
+  // Run Sheet Cancel stays immediate discard — no sheet on that path.
+  assert.match(runSheetSource, /function handleCancelEdit\(\) \{/);
+  assert.match(runSheetSource, /onClick=\{handleCancelEdit\}/);
+  assert.doesNotMatch(runSheetSource, /setRunSheetDiscardDialogOpen/);
   // Cancel closes edit immediately — no discard sheet on that path.
   assert.match(
     detailSource,

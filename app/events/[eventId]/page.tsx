@@ -306,6 +306,12 @@ function EventDetailPageView() {
       closeEventEditForm();
     }
 
+    // Dirty Run Sheet edit: same discard sheet. Run Sheet Cancel stays immediate.
+    if (runSheetUnsavedEditing) {
+      setRunSheetDiscardDialogOpen(true);
+      return;
+    }
+
     goBackToEvents();
   }
 
@@ -352,6 +358,15 @@ function EventDetailPageView() {
   const [editOpen, setEditOpen] = useState(false);
   const [editForm, setEditForm] = useState<EventInput | null>(null);
   const [editDiscardDialogOpen, setEditDiscardDialogOpen] = useState(false);
+  const [runSheetUnsavedEditing, setRunSheetUnsavedEditing] = useState(false);
+  const [runSheetDiscardDialogOpen, setRunSheetDiscardDialogOpen] = useState(false);
+  const runSheetDiscardEditsRef = useRef<(() => void) | null>(null);
+  const handleRunSheetUnsavedEditingChange = useCallback((unsaved: boolean) => {
+    setRunSheetUnsavedEditing(unsaved);
+    if (!unsaved) {
+      setRunSheetDiscardDialogOpen(false);
+    }
+  }, []);
   const [editCoverField, setEditCoverField] = useState<EventCoverImageFieldState>(
     emptyEventCoverImageFieldState,
   );
@@ -1504,6 +1519,8 @@ function EventDetailPageView() {
                           lineup={lineup}
                           profiles={profiles}
                           onSaved={setHeaderFeedbackMessage}
+                          onUnsavedEditingChange={handleRunSheetUnsavedEditingChange}
+                          discardEditsRef={runSheetDiscardEditsRef}
                           emptyStateMessage={
                             isHistoryEventDetail
                               ? "No run sheet was saved for this event"
@@ -1707,6 +1724,18 @@ function EventDetailPageView() {
         onKeepEditing={() => setEditDiscardDialogOpen(false)}
         onDiscard={() => {
           closeEventEditForm();
+          goBackToEvents();
+        }}
+      />
+
+      <UnsavedChangesDiscardDialog
+        open={runSheetDiscardDialogOpen}
+        titleId="discard-run-sheet-edits-title"
+        onKeepEditing={() => setRunSheetDiscardDialogOpen(false)}
+        onDiscard={() => {
+          runSheetDiscardEditsRef.current?.();
+          setRunSheetUnsavedEditing(false);
+          setRunSheetDiscardDialogOpen(false);
           goBackToEvents();
         }}
       />

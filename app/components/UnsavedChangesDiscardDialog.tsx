@@ -1,6 +1,6 @@
 "use client";
 
-/** Shared discard sheet for dirty edit surfaces (profile, event detail, …). */
+/** Shared discard sheet for dirty edit surfaces (profile, event detail, run sheet, …). */
 export default function UnsavedChangesDiscardDialog({
   open,
   onKeepEditing,

@@ -8,7 +8,7 @@ import {
   EVENT_DETAIL_CARD_CLASS,
   EVENT_DETAIL_FEEDBACK_CLASS,
 } from "@/app/components/event-detail/eventDetailUi";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type MutableRefObject } from "react";
 import { BookingDualTimeWheelPicker } from "@/app/components/BookingTimeWheelPicker";
 import ProfileAvatar from "@/app/components/ProfileAvatar";
 import ChatProfileAvatarLink from "@/app/components/chat/ChatProfileAvatarLink";
@@ -766,6 +766,8 @@ export default function EventRunSheetSection({
   lineup,
   profiles,
   onSaved,
+  onUnsavedEditingChange,
+  discardEditsRef,
   emptyStateMessage = "Accepted DJs will appear here once they confirm their booking",
 }: {
   eventId: string;
@@ -773,6 +775,10 @@ export default function EventRunSheetSection({
   lineup: BookingRequest[];
   profiles: Map<string, BookingRecipientProfile>;
   onSaved?: (message: string) => void;
+  /** True while editing with unsaved row changes — Event Details Back uses this. */
+  onUnsavedEditingChange?: (unsaved: boolean) => void;
+  /** Parent discard sheet calls this to revert + exit edit (same as Cancel). */
+  discardEditsRef?: MutableRefObject<(() => void) | null>;
   emptyStateMessage?: string;
 }) {
   const [rows, setRows] = useState<RunSheetRowInput[]>([]);
@@ -949,6 +955,25 @@ export default function EventRunSheetSection({
     () => hasUnsavedRunSheetEdits(savedRows, rows),
     [savedRows, rows],
   );
+  const unsavedWhileEditing = isEditing && hasUnsavedChanges;
+
+  useEffect(() => {
+    onUnsavedEditingChange?.(unsavedWhileEditing);
+    return () => {
+      onUnsavedEditingChange?.(false);
+    };
+  }, [onUnsavedEditingChange, unsavedWhileEditing]);
+
+  useEffect(() => {
+    if (!discardEditsRef) {
+      return;
+    }
+
+    discardEditsRef.current = handleCancelEdit;
+    return () => {
+      discardEditsRef.current = null;
+    };
+  });
 
   async function handleSave() {
     setSaving(true);
