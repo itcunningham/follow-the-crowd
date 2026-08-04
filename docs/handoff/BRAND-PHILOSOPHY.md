@@ -22,6 +22,14 @@ FTC exists to remove that friction.
 
 ---
 
+## Who we start with
+
+We start with **independent promoters and their crews** — then widen.
+
+The long-term crowd includes venues, agencies, production, and the wider live-events industry. Day one is Melbourne promoters running real nights with less chaos.
+
+---
+
 ## The Common Enemy
 
 The enemy is **friction**.
@@ -33,7 +41,7 @@ Not other apps.
 The enemy is everything that gets in the way of creating great events:
 
 - Scattered communication
-- Endless DMs
+- Endless chats across Instagram, WhatsApp, Messenger, and email (not messaging itself — FTC DMs and Crew Chat fight this)
 - Last-minute chaos
 - Missed opportunities
 - Administrative overload
@@ -68,6 +76,10 @@ Before proposing any feature, ask:
 - Does this save meaningful time?
 - Does this improve collaboration?
 - Does this make creating events easier?
+
+Then the proof question:
+
+- Would a Melbourne promoter use this on a real Saturday night?
 
 If the answer is no, don’t build it.
 
