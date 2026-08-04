@@ -7,7 +7,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 
 **Communication preference locked (2026-08-04):** brutal honesty, no ego — never agree by default; push better options when Isaac's idea is weaker. Strict critic mode + hostile counterarguments when useful. `USER-PREFERENCES.md` + `.cursor/rules/brutal-honesty.mdc`.
 
-**Paired Cancel sits left (on `main`, 2026-08-04):** side-by-side booking actions put Cancel/Withdraw left, primary (Message / View event) right — right-thumb hits the common action; destructive is slightly harder. Event Details lineup + DM pending paired row. Decline|Accept already matched. Stacked accepted DM actions unchanged.
+**Paired Cancel sits left (`6de1995` on `main`, 2026-08-04):** side-by-side booking actions put Cancel/Withdraw left, primary (Message / View event) right — right-thumb hits the common action; destructive is slightly harder. Event Details lineup + DM pending paired row. Decline|Accept already matched. Stacked accepted DM actions unchanged.
 
 **Event Details Bookings cards tidied (`bc8c313` on `main`, 2026-08-04):** dropped genre line (profile only). Message/Cancel shrunk to `min-h-7` / 11px — Message no longer uses `ftc-btn-secondary` (globals forced 2.5rem). Slightly tighter card padding. Bookings section left open (not collapsible).
 
@@ -881,7 +881,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 | Crew Chat image sharing (`message_attachments.event_id`) | `scripts/setupEventCrewChatAttachments.sql` — **applied 2026-08-03** (required a type-cast fix after the first run, see Group chat entry above) |
 
 ## Recent commits (reference)
-- (pending) — fix(booking): Cancel left of primary in paired action rows
+- `6de1995` — fix(booking): Cancel left of primary in paired action rows
 - `bc8c313` — polish(events): denser Bookings cards (no genres, smaller actions)
 - `b10b0d5` — fix(run-sheet): allow multiple DJ rows expanded at once
 - `fee7929` — fix(events): list card total pill says All
