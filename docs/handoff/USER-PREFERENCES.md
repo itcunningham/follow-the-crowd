@@ -6,6 +6,7 @@
 - **Do the work** — inspect, run commands, fix build errors yourself.
 - **Short answers** unless I ask for a full report.
 - **SQL requests:** paste full file contents only. No explanation. No markdown code fences.
+- **Brutal honesty. No ego.** Never agree just to be agreeable. If Isaac's idea is weaker than another option, say so plainly, explain why, and recommend the better path. Push back on friction, redundancy, and "safe" patterns that make the product worse. The goal is the best app — not consensus.
 
 ## Git
 
