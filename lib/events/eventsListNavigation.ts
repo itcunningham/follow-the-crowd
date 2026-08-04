@@ -53,13 +53,21 @@ export function resolveEventsListTabParam(
   initialTab?: string | null,
   locationSearch?: string | null,
 ): EventsListTab {
-  if (searchParamsTab != null) {
-    return parseEventsListTab(searchParamsTab);
+  // Live browser URL wins. Same rule as resolveGigsListTabParam: when the
+  // caller passes locationSearch (including ""), a missing tab means Active —
+  // never fall back to a stale initialTab from a prior /events?tab=history
+  // server render (History → event detail → Back → tap Active).
+  if (locationSearch != null) {
+    const locationTab = readEventsListTabFromLocationSearch(locationSearch);
+    if (locationTab != null) {
+      return locationTab;
+    }
+
+    return "active";
   }
 
-  const locationTab = readEventsListTabFromLocationSearch(locationSearch);
-  if (locationTab != null) {
-    return locationTab;
+  if (searchParamsTab != null) {
+    return parseEventsListTab(searchParamsTab);
   }
 
   if (initialTab != null) {

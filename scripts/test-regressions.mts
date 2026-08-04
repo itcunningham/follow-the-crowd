@@ -5611,11 +5611,17 @@ function testEventsCreateFlowTabPillNavigation() {
 }
 
 function testEventsListTabParamRestoresHistoryWithoutActiveDefault() {
-  assert.equal(resolveEventsListTabParam(null, "history", ""), "history");
-  assert.equal(resolveEventsListTabParam(null, "history", "?"), "history");
+  // Live URL with ?tab=history must win. Empty live URL is Active — do not
+  // keep a stale initialTab=history (that broke Active after History→detail→Back).
+  assert.equal(resolveEventsListTabParam(null, "history", "?tab=history"), "history");
+  assert.equal(resolveEventsListTabParam(null, "history", ""), "active");
+  assert.equal(resolveEventsListTabParam(null, "history", "?"), "active");
   assert.equal(resolveEventsListTabParam(null, null, "?tab=history"), "history");
   assert.equal(resolveEventsListTabParam(null, null, ""), "active");
   assert.equal(resolveEventsListTabParam(null, null, "?"), "active");
+  // SSR / no live URL: initialTab still applies.
+  assert.equal(resolveEventsListTabParam(null, "history", null), "history");
+  assert.equal(resolveEventsListTabParam("history", null, null), "history");
   assert.equal(
     resolveEventDetailBackHref("history"),
     "/events?tab=history",

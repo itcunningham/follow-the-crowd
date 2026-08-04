@@ -7,6 +7,8 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 
 **Communication preference locked (2026-08-04):** brutal honesty, no ego — never agree by default; push better options when Isaac's idea is weaker. Strict critic mode + hostile counterarguments when useful. `USER-PREFERENCES.md` + `.cursor/rules/brutal-honesty.mdc`.
 
+**Events Active stuck after History → detail → Back (`cursor/events-active-tab-after-history-back-5874`, 2026-08-04):** tapping Active did nothing. Cause: after Back to `/events?tab=history`, `initialTab` stayed `"history"`; Active’s `pushState` to `/events` cleared the URL tab, then `resolveEventsListTabParam` fell back to that stale `initialTab`. Aligned with Gigs: when a live `locationSearch` is passed and has no `tab`, resolve Active — never inherit stale initialTab.
+
 **Event Details bottom-nav highlight by origin (`9e443f0` on `main`, 2026-08-04):** Active/History → detail keeps Events lit (and tappable into the list via pop-to-root). Crew-chat View Event keeps Messages lit and Events off. Earlier round that blanked Events on every detail was too broad.
 
 **Event Details is not the Events bottom tab (`5a5f965` + build fix on `main`, 2026-08-04):** [superseded for Active/History by the entry above] View Event from Crew Chat lit the Events icon and the tap felt dead. Round 1 (pop-to-root when nested) was on Production but still failed device QA. Round 2 blanked Events on all detail — wrong for list→detail. Crew-chat case kept via Messages override.
