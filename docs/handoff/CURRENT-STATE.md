@@ -3,6 +3,8 @@
 
 Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 
+**Crew sheet returns faster (`cursor/crew-sheet-instant-return-5874`, 2026-08-04):** session-cache the crew roster (`lib/events/crewMemberListCache.ts`) so Back from a profile paints the Crew sheet immediately from cache while chat access/messages refetch. Live members replace cache when ready.
+
 **Crew sheet Back fix round 2 (`cursor/crew-sheet-loadaccess-fix-5874`, 2026-08-04):** URL sync alone was not enough — `loadAccess` called `setMemberSheetOpen(false)` on every remount, so returning from a profile opened the sheet then immediately closed it. Removed that force-close; sheet state now stays synced from `memberSheetOpen` in the URL.
 
 **Crew sheet reopen actually fixed (`cursor/crew-sheet-reopen-fix-5874`, 2026-08-04):** the first `ac4df6a` approach set `memberSheetOpen=true` on profile return then **stripped it on mount**, which remounted/reset the sheet closed — and iOS Back could skip the param entirely. Fix: keep the param in the URL for as long as the sheet is open (write on open, clear on close); init state from the URL; do not mount-strip. Profile → Back and history.back() both restore the Crew list.

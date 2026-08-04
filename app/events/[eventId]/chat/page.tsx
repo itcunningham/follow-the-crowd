@@ -13,6 +13,10 @@ import GroupChatHeader from "@/app/components/group-chat/GroupChatHeader";
 import { resolveCrewChatCountdownLabel } from "@/lib/events/crewChatCountdown";
 import { buildCrewMemberList } from "@/lib/events/crewChatMembers";
 import {
+  readCachedCrewMembers,
+  writeCachedCrewMembers,
+} from "@/lib/events/crewMemberListCache";
+import {
   loadEventChatLastReadByUser,
   resolveCrewChatSeenLabel,
 } from "@/lib/events/crewChatReadReceipts";
@@ -349,6 +353,34 @@ export default function EventCrewChatPage() {
     () => buildCrewMemberList(crewParticipantIds, crewParticipantProfiles, ownerId),
     [crewParticipantIds, crewParticipantProfiles, ownerId],
   );
+  const [cachedCrewMembers, setCachedCrewMembers] = useState(() =>
+    memberSheetOpenFromUrl ? (readCachedCrewMembers(eventId) ?? []) : [],
+  );
+
+  // Keep a session cache so Back from a profile can paint the Crew sheet
+  // immediately while access/messages refetch underneath.
+  useEffect(() => {
+    if (crewMembers.length === 0) {
+      return;
+    }
+    writeCachedCrewMembers(eventId, crewMembers);
+    setCachedCrewMembers(crewMembers);
+  }, [crewMembers, eventId]);
+
+  useEffect(() => {
+    if (!memberSheetOpen) {
+      return;
+    }
+    if (crewMembers.length > 0) {
+      return;
+    }
+    const cached = readCachedCrewMembers(eventId);
+    if (cached && cached.length > 0) {
+      setCachedCrewMembers(cached);
+    }
+  }, [crewMembers.length, eventId, memberSheetOpen]);
+
+  const sheetMembers = crewMembers.length > 0 ? crewMembers : cachedCrewMembers;
   /**
    * One grouping calculation for name, avatar and spacing — see
    * buildCrewChatMessageGroups. This replaced two independent passes that
@@ -1567,7 +1599,7 @@ export default function EventCrewChatPage() {
 
       <CrewMemberListSheet
         open={memberSheetOpen}
-        members={crewMembers}
+        members={sheetMembers}
         profileReturnTo={profileReturnTo}
         onClose={closeMemberSheet}
       />

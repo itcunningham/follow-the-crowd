@@ -11618,6 +11618,36 @@ function testCrewChatMemberSheetReopenOnProfileReturn() {
     /useEffect\(\(\) => \{\s*setMemberSheetOpen\(memberSheetOpenFromUrl\);\s*\}, \[memberSheetOpenFromUrl\]\)/,
     "sheet open state stays synced from the URL after navigation",
   );
+
+  // Instant sheet paint on return: session cache + sheetMembers fallback.
+  assert.match(
+    chatPageSource,
+    /readCachedCrewMembers|writeCachedCrewMembers/,
+    "crew chat uses the crew member session cache for instant sheet return",
+  );
+  assert.match(
+    chatPageSource,
+    /const sheetMembers = crewMembers\.length > 0 \? crewMembers : cachedCrewMembers/,
+    "Crew sheet prefers live members, falls back to cached roster",
+  );
+  assert.match(
+    chatPageSource,
+    /members=\{sheetMembers\}/,
+    "CrewMemberListSheet renders sheetMembers (cached on return)",
+  );
+
+  const cacheSource = readFileSync(
+    new URL("../lib/events/crewMemberListCache.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(cacheSource, /ftc-crew-members-v1:/);
+  assert.match(cacheSource, /export function readCachedCrewMembers/);
+  assert.match(cacheSource, /export function writeCachedCrewMembers/);
+  assert.match(
+    cacheSource,
+    /Private mode \/ quota/,
+    "cache write failures are swallowed so live fetch still works",
+  );
 }
 
 function testCrewChatPremiumPolish() {
