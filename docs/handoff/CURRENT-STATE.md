@@ -7,7 +7,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 
 **Communication preference locked (2026-08-04):** brutal honesty, no ego — never agree by default; push better options when Isaac's idea is weaker. Strict critic mode + hostile counterarguments when useful. `USER-PREFERENCES.md` + `.cursor/rules/brutal-honesty.mdc`.
 
-**Event Details Bookings: filters own the counts (on `main`, 2026-08-04):** removed Invited/Pending/Accepted/Declined chip row above the pills — same numbers twice. Filter labels now carry counts (`All 2`, `Accepted 2`, …). Planner accepted-card trigger shortened to **Cancel** (confirm dialog still says Cancel booking).
+**Event Details Bookings: filters own the counts (`4213985` on `main`, 2026-08-04):** removed Invited/Pending/Accepted/Declined chip row above the pills — same numbers twice. Filter labels now carry counts (`All 2`, `Accepted 2`, …). Planner accepted-card trigger shortened to **Cancel** (confirm dialog still says Cancel booking).
 
 **Event edit discard on Back only (`bfb057a` on `main`, 2026-08-04):** dirty Edit Event + **Back** shows the same unsaved-changes sheet as profile; **Cancel** still discards immediately (no extra tap). Shared `UnsavedChangesDiscardDialog`. Subtitle dropped (`e86f5ce`) — title alone is enough.
 
