@@ -641,58 +641,26 @@ export function moveRunSheetRow(
 }
 
 /**
- * Fingerprint of one booking's rows on the sheet: absolute order index plus
- * the editable assignment fields. Used to decide which DJs get a DM after Save
- * — not for the dirty-check (that stays on `hasUnsavedRunSheetEdits`).
+ * Absolute indices of a booking's rows — order-only reshuffles change this
+ * without touching stage/time/notes.
  */
-function runSheetBookingNotifyFingerprint(
+function runSheetBookingOrderFingerprint(
   rows: RunSheetRowInput[],
   bookingRequestId: string,
 ): string {
   return rows
-    .map((row, index) => {
-      if ((row.booking_request_id ?? "").trim() !== bookingRequestId) {
-        return null;
-      }
-
-      return [
-        index,
-        row.stage_area ?? "",
-        row.start_time ?? "",
-        row.finish_time ?? "",
-        row.notes ?? "",
-      ].join("\u0001");
-    })
+    .map((row, index) =>
+      (row.booking_request_id ?? "").trim() === bookingRequestId ? String(index) : null,
+    )
     .filter((part): part is string => part !== null)
-    .join("\n");
+    .join(",");
 }
 
-/** Booking request ids whose run-sheet assignment changed between two snapshots. */
-export function collectChangedRunSheetBookingIds(
-  savedRows: RunSheetRowInput[],
-  currentRows: RunSheetRowInput[],
-): string[] {
-  const ids = new Set<string>();
-
-  for (const row of [...savedRows, ...currentRows]) {
-    const id = row.booking_request_id?.trim();
-    if (id) {
-      ids.add(id);
-    }
-  }
-
-  const changed: string[] = [];
-
-  for (const id of ids) {
-    if (
-      runSheetBookingNotifyFingerprint(savedRows, id) !==
-      runSheetBookingNotifyFingerprint(currentRows, id)
-    ) {
-      changed.push(id);
-    }
-  }
-
-  return changed;
+function rowsForBookingRequest(
+  rows: RunSheetRowInput[],
+  bookingRequestId: string,
+): RunSheetRowInput[] {
+  return rows.filter((row) => (row.booking_request_id ?? "").trim() === bookingRequestId);
 }
 
 function formatRunSheetSetTimeForDm(startTime: string, finishTime: string): string {
@@ -710,17 +678,163 @@ function formatRunSheetSetTimeForDm(startTime: string, finishTime: string): stri
   return start || finish;
 }
 
-/** Compact "where · when" for one DJ's current rows (multi-set joined with " / "). */
-export function formatRunSheetAssignmentSummaryForDm(rows: RunSheetRowInput[]): string {
-  const parts = rows
-    .map((row) => {
-      const stage = row.stage_area.trim();
-      const time = formatRunSheetSetTimeForDm(row.start_time, row.finish_time);
-      return [stage, time].filter(Boolean).join(" · ");
-    })
-    .filter(Boolean);
+/**
+ * Pair saved↔current rows for one booking (by row id, then leftover index) so
+ * a multi-set DJ's Set 1 doesn't get compared to Set 2 after a reorder.
+ */
+function pairRunSheetRowsForBooking(
+  savedRows: RunSheetRowInput[],
+  currentRows: RunSheetRowInput[],
+): Array<{ saved: RunSheetRowInput | null; current: RunSheetRowInput | null }> {
+  const pairs: Array<{ saved: RunSheetRowInput | null; current: RunSheetRowInput | null }> = [];
+  const unmatchedCurrent = [...currentRows];
 
-  return parts.join(" / ");
+  for (const saved of savedRows) {
+    const savedId = saved.id?.trim();
+    const matchIndex = savedId
+      ? unmatchedCurrent.findIndex((row) => row.id?.trim() === savedId)
+      : -1;
+
+    if (matchIndex >= 0) {
+      pairs.push({ saved, current: unmatchedCurrent[matchIndex] });
+      unmatchedCurrent.splice(matchIndex, 1);
+    } else {
+      pairs.push({ saved, current: null });
+    }
+  }
+
+  for (const current of unmatchedCurrent) {
+    pairs.push({ saved: null, current });
+  }
+
+  return pairs;
+}
+
+export type RunSheetBookingChange = {
+  bookingRequestId: string;
+  /** Human-readable "what changed", e.g. "Stage: Back, Notes updated". */
+  changeSummary: string;
+};
+
+/**
+ * Describes one booking's run-sheet diff for the DM notice.
+ * Returns null when nothing meaningful changed.
+ */
+export function describeRunSheetBookingChange(
+  savedRows: RunSheetRowInput[],
+  currentRows: RunSheetRowInput[],
+  bookingRequestId: string,
+): string | null {
+  const savedForBooking = rowsForBookingRequest(savedRows, bookingRequestId);
+  const currentForBooking = rowsForBookingRequest(currentRows, bookingRequestId);
+
+  if (savedForBooking.length === 0 && currentForBooking.length === 0) {
+    return null;
+  }
+
+  const pairs = pairRunSheetRowsForBooking(savedForBooking, currentForBooking);
+  let stageChanged = false;
+  let timeChanged = false;
+  let notesChanged = false;
+
+  for (const { saved, current } of pairs) {
+    if (!saved || !current) {
+      stageChanged = true;
+      timeChanged = true;
+      notesChanged = true;
+      continue;
+    }
+
+    if ((saved.stage_area ?? "") !== (current.stage_area ?? "")) {
+      stageChanged = true;
+    }
+
+    if (
+      (saved.start_time ?? "") !== (current.start_time ?? "") ||
+      (saved.finish_time ?? "") !== (current.finish_time ?? "")
+    ) {
+      timeChanged = true;
+    }
+
+    if ((saved.notes ?? "") !== (current.notes ?? "")) {
+      notesChanged = true;
+    }
+  }
+
+  const orderChanged =
+    runSheetBookingOrderFingerprint(savedRows, bookingRequestId) !==
+    runSheetBookingOrderFingerprint(currentRows, bookingRequestId);
+
+  const parts: string[] = [];
+
+  if (stageChanged) {
+    const stages = currentForBooking.map((row) => row.stage_area.trim()).filter(Boolean);
+    parts.push(stages.length > 0 ? `Stage: ${stages.join(" / ")}` : "Stage updated");
+  }
+
+  if (timeChanged) {
+    const times = currentForBooking
+      .map((row) => formatRunSheetSetTimeForDm(row.start_time, row.finish_time))
+      .filter(Boolean);
+    parts.push(times.length > 0 ? `Set time: ${times.join(" / ")}` : "Set time updated");
+  }
+
+  if (notesChanged) {
+    parts.push("Notes updated");
+  }
+
+  // Order alone must still produce a notice; when content also changed, the
+  // field lines above are enough — don't add a redundant "Order updated".
+  if (parts.length === 0 && orderChanged) {
+    parts.push("Order updated");
+  }
+
+  if (parts.length === 0) {
+    return null;
+  }
+
+  return parts.join(", ");
+}
+
+/** Booking request ids + change copy for DJs who need a DM after Save. */
+export function collectRunSheetBookingChanges(
+  savedRows: RunSheetRowInput[],
+  currentRows: RunSheetRowInput[],
+): RunSheetBookingChange[] {
+  const ids = new Set<string>();
+
+  for (const row of [...savedRows, ...currentRows]) {
+    const id = row.booking_request_id?.trim();
+    if (id) {
+      ids.add(id);
+    }
+  }
+
+  const changes: RunSheetBookingChange[] = [];
+
+  for (const bookingRequestId of ids) {
+    const changeSummary = describeRunSheetBookingChange(
+      savedRows,
+      currentRows,
+      bookingRequestId,
+    );
+
+    if (changeSummary) {
+      changes.push({ bookingRequestId, changeSummary });
+    }
+  }
+
+  return changes;
+}
+
+/** @deprecated Prefer `collectRunSheetBookingChanges` — kept for call-site clarity in tests. */
+export function collectChangedRunSheetBookingIds(
+  savedRows: RunSheetRowInput[],
+  currentRows: RunSheetRowInput[],
+): string[] {
+  return collectRunSheetBookingChanges(savedRows, currentRows).map(
+    (change) => change.bookingRequestId,
+  );
 }
 
 /**
@@ -732,12 +846,11 @@ export function formatRunSheetAssignmentSummaryForDm(rows: RunSheetRowInput[]): 
  */
 export async function notifyRunSheetUpdatesForChangedBookings(options: {
   lineup: BookingRequest[];
-  changedBookingIds: string[];
-  currentRows: RunSheetRowInput[];
+  changes: RunSheetBookingChange[];
 }): Promise<void> {
-  const { lineup, changedBookingIds, currentRows } = options;
+  const { lineup, changes } = options;
 
-  if (changedBookingIds.length === 0) {
+  if (changes.length === 0) {
     return;
   }
 
@@ -750,18 +863,17 @@ export async function notifyRunSheetUpdatesForChangedBookings(options: {
     return;
   }
 
-  for (const bookingId of changedBookingIds) {
-    const booking = lineup.find((item) => item.id === bookingId);
+  for (const change of changes) {
+    const booking = lineup.find((item) => item.id === change.bookingRequestId);
 
     if (!booking?.conversation_id || booking.status !== "accepted") {
       continue;
     }
 
-    const assignmentRows = currentRows.filter(
-      (row) => (row.booking_request_id ?? "").trim() === bookingId,
+    const messageText = formatRunSheetUpdatedDmMessage(
+      booking.event_name,
+      change.changeSummary,
     );
-    const summary = formatRunSheetAssignmentSummaryForDm(assignmentRows);
-    const messageText = formatRunSheetUpdatedDmMessage(booking.event_name, summary);
 
     try {
       const { error: insertError } = await supabase.from("messages").insert({

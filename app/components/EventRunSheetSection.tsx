@@ -31,7 +31,7 @@ import {
   type WheelTimeValue,
 } from "@/lib/bookingDateTime";
 import {
-  collectChangedRunSheetBookingIds,
+  collectRunSheetBookingChanges,
   computeRunSheetSetLabels,
   ensureRunSheetRowsForAcceptedBookings,
   filterRunSheetRowsToAcceptedBookings,
@@ -990,7 +990,7 @@ export default function EventRunSheetSection({
     setError(null);
 
     const nextRows = reorderRunSheetRows(rows);
-    const changedBookingIds = collectChangedRunSheetBookingIds(savedRows, nextRows);
+    const runSheetChanges = collectRunSheetBookingChanges(savedRows, nextRows);
 
     try {
       const saved = await saveEventRunSheet(eventId, {
@@ -1019,8 +1019,7 @@ export default function EventRunSheetSection({
       // never crew chat. Failures are logged inside the helper.
       await notifyRunSheetUpdatesForChangedBookings({
         lineup,
-        changedBookingIds,
-        currentRows: persistedRows,
+        changes: runSheetChanges,
       });
     } catch (saveError) {
       logRunSheetSaveError(saveError);

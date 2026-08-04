@@ -208,8 +208,9 @@ import { buildCrewMemberList } from "../lib/events/crewChatMembers";
 import { resolveCrewChatSeenLabel } from "../lib/events/crewChatReadReceipts";
 import {
   collectChangedRunSheetBookingIds,
+  collectRunSheetBookingChanges,
   computeRunSheetSetLabels,
-  formatRunSheetAssignmentSummaryForDm,
+  describeRunSheetBookingChange,
   hasUnsavedRunSheetEdits,
   moveRunSheetRow,
   reorderRunSheetRows,
@@ -887,11 +888,11 @@ function testDmBookingSystemMessages() {
 
   const runSheetNotice = formatRunSheetUpdatedDmMessage(
     "Warehouse Set",
-    "Back · 9:00 PM – 1:00 AM",
+    "Stage: Back, Notes updated",
   );
   assert.equal(
     runSheetNotice,
-    `${DM_RUN_SHEET_UPDATED_PREFIX} · Warehouse Set · Back · 9:00 PM – 1:00 AM`,
+    `${DM_RUN_SHEET_UPDATED_PREFIX} · Warehouse Set · Stage: Back, Notes updated`,
   );
   assert.equal(isRunSheetUpdatedDmMessage(runSheetNotice), true);
   assert.equal(isDmBookingSystemMessage(runSheetNotice), true);
@@ -9999,6 +10000,22 @@ function testRunSheetDmNotifyOnSave() {
     ["booking-a"],
     "stage change → that booking only",
   );
+  assert.equal(
+    describeRunSheetBookingChange([base()], [base({ stage_area: "Back" })], "booking-a"),
+    "Stage: Back",
+  );
+  assert.equal(
+    describeRunSheetBookingChange([base()], [base({ notes: "USB" })], "booking-a"),
+    "Notes updated",
+  );
+  assert.equal(
+    describeRunSheetBookingChange(
+      [base()],
+      [base({ start_time: "10:00 PM", finish_time: "2:00 AM" })],
+      "booking-a",
+    ),
+    "Set time: 10:00 PM – 2:00 AM",
+  );
 
   const other = base({
     id: "row-2",
@@ -10013,15 +10030,28 @@ function testRunSheetDmNotifyOnSave() {
     "unchanged sibling DJ is not notified",
   );
 
-  // Reorder alone is a change for both bookings whose absolute index moved.
+  // Reorder alone → Order updated for both whose absolute index moved.
   assert.deepEqual(
     collectChangedRunSheetBookingIds([base(), other], [other, base()]).sort(),
     ["booking-a", "booking-b"],
   );
-
   assert.equal(
-    formatRunSheetAssignmentSummaryForDm([base({ stage_area: "Back" })]),
-    "Back · 9:00 PM – 1:00 AM",
+    describeRunSheetBookingChange([base(), other], [other, base()], "booking-a"),
+    "Order updated",
+  );
+  assert.equal(
+    describeRunSheetBookingChange(
+      [base(), other],
+      [other, base({ stage_area: "Back" })],
+      "booking-a",
+    ),
+    "Stage: Back",
+    "content change wins over a redundant Order updated",
+  );
+
+  assert.deepEqual(
+    collectRunSheetBookingChanges([base()], [base({ stage_area: "Back", notes: "x" })]),
+    [{ bookingRequestId: "booking-a", changeSummary: "Stage: Back, Notes updated" }],
   );
 
   const runSheetLib = readFileSync(
@@ -10033,6 +10063,8 @@ function testRunSheetDmNotifyOnSave() {
   assert.doesNotMatch(runSheetLib, /postEventGroupChatUpdate/);
   assert.doesNotMatch(runSheetLib, /sendEventCrewChatMessage/);
   assert.match(runSheetLib, /booking\.status !== "accepted"/);
+  assert.match(runSheetLib, /Notes updated/);
+  assert.match(runSheetLib, /Order updated/);
 }
 
 function testRunSheetEditMode() {
@@ -10077,8 +10109,9 @@ function testRunSheetEditMode() {
   assert.match(trySection, /setIsEditing\(false\)/);
   assert.match(trySection, /setExpandedRowIds\(new Set\(\)\)/);
   // Diff before save; soft DM notify after persist — only changed DJs, never crew chat.
-  assert.match(saveFn, /collectChangedRunSheetBookingIds\(savedRows, nextRows\)/);
+  assert.match(saveFn, /collectRunSheetBookingChanges\(savedRows, nextRows\)/);
   assert.match(trySection, /notifyRunSheetUpdatesForChangedBookings/);
+  assert.match(trySection, /changes: runSheetChanges/);
   assert.doesNotMatch(saveFn, /postEventGroupChatUpdate/);
   assert.doesNotMatch(saveFn, /sendEventCrewChatMessage/);
 

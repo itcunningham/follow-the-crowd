@@ -16,26 +16,26 @@ export const DM_RUN_SHEET_UPDATED_PREFIX = "Run sheet updated";
 
 /**
  * Per-save run sheet notice, e.g.
- * "Run sheet updated · Warehouse Set · Back · 9:00 PM – 1:00 AM".
+ * "Run sheet updated · Warehouse Set · Stage: Back, Notes updated".
  *
- * Event name keeps each event distinct in a shared planner↔DJ thread (same
- * lesson as `formatBookingConfirmedDmMessage`). The assignment summary is the
- * DJ's current stage/time after save — useful in the timeline, not stripped.
+ * Event name keeps each event distinct in a shared planner↔DJ thread.
+ * The trailing segment describes *what* changed (not only the resulting
+ * assignment), so notes-only or order-only saves stay readable.
  */
 export function formatRunSheetUpdatedDmMessage(
   eventName: string,
-  assignmentSummary?: string | null,
+  changeSummary?: string | null,
 ): string {
   const parts = [DM_RUN_SHEET_UPDATED_PREFIX];
   const trimmedEvent = eventName.trim();
-  const trimmedSummary = assignmentSummary?.trim() ?? "";
+  const trimmedChange = changeSummary?.trim() ?? "";
 
   if (trimmedEvent) {
     parts.push(trimmedEvent);
   }
 
-  if (trimmedSummary) {
-    parts.push(trimmedSummary);
+  if (trimmedChange) {
+    parts.push(trimmedChange);
   }
 
   return parts.join(" · ");
@@ -287,7 +287,7 @@ export function formatDmBookingSystemMessageDisplay(text: string): string {
     return DM_BOOKING_CANCELLED_MESSAGE;
   }
 
-  // Keep stage/time summary — that's the useful part of the notice.
+  // Keep the change summary — that's the useful part of the notice.
   if (isRunSheetUpdatedDmMessage(trimmed)) {
     return trimmed;
   }
