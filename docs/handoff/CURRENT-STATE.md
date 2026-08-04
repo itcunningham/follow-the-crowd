@@ -9,7 +9,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 
 **Send invitations looked dead (`c593618` on `main`, 2026-08-04):** Send bookings failures/`setError` wrote to Event Details *behind* the sheet, so tap felt like a no-op. Errors now render inside the sheet (`role="alert"`). Sheet `z-[60]` above mobile nav (`z-50`); unavailable confirm `z-[70]`. Failure copy surfaces the provider/message when present.
 
-**Send bookings notes: 50 chars + clean placeholder (`cursor/send-notes-50-placeholder-5874`, 2026-08-04):** per-DJ Notes under rate capped at 50; placeholder is just “Notes” (dropped the Main Room example).
+**Send bookings notes: 50 chars + clean placeholder (`f704319` on `main`, 2026-08-04):** per-DJ Notes under rate capped at 50; placeholder is just “Notes” (dropped the Main Room example).
 
 **Send bookings per-DJ notes under rate (`617b1d7` on `main`, 2026-08-04):** Notes moved from a shared field below Summary into each selected DJ’s offer block (under the $ field). Empty falls back to event notes. Event Plans Use Plan send path wired the same way. Cap/placeholder updated in entry above.
 
