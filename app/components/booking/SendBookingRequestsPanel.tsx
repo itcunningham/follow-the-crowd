@@ -6,10 +6,15 @@ import EventBookingDuplicateBadge from "@/app/components/EventBookingDuplicateBa
 import EventDjSendOfferControls, {
   type DjSendOffer,
 } from "@/app/components/booking/EventDjSendOfferControls";
-import { PlannerEmptyPanel, PlannerSectionLabel } from "@/app/components/planner/PlannerUi";
+import {
+  PlannerEmptyPanel,
+  PlannerFormField,
+  PlannerSectionLabel,
+} from "@/app/components/planner/PlannerUi";
 import { EVENT_DETAIL_BTN_PRIMARY_WIDE } from "@/app/components/event-detail/eventDetailUi";
 import type { SendBookingRequestsDraft } from "@/app/components/booking/useSendBookingRequestsDraft";
 import type { EventBookingDuplicateStatus } from "@/lib/bookingRequests";
+import { MAX_SEND_BOOKING_NOTES_LENGTH } from "@/lib/bookings/sendBookingRequestsFlow";
 import type { DjPlannerAvailabilityHint } from "@/lib/djAvailability";
 
 /** Create-event invite DJ search (client-only). */
@@ -355,6 +360,16 @@ export default function SendBookingRequestsPanel({
         items={draft.sendOfferSummary}
         hasInvalidFixedOffers={draft.hasInvalidFixedOffers}
       />
+
+      {draft.sendableSelectedDjIds.length > 0 ? (
+        <PlannerFormField
+          label="Notes"
+          value={draft.inviteNotes}
+          onChange={draft.setInviteNotes}
+          placeholder="e.g. Main Room · 11–12 · House"
+          maxLength={MAX_SEND_BOOKING_NOTES_LENGTH}
+        />
+      ) : null}
 
       {trimmedError ? (
         <p

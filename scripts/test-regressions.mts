@@ -1860,6 +1860,47 @@ function testSendBookingsModalLocksBackgroundInteraction() {
   assert.doesNotMatch(eventDetailSource, /sendDiscardConfirmOpen/);
 }
 
+function testSendBookingInviteNotesEightyCharCap() {
+  const flowSource = readFileSync(
+    new URL("../lib/bookings/sendBookingRequestsFlow.ts", import.meta.url),
+    "utf8",
+  );
+  const draftSource = readFileSync(
+    new URL("../app/components/booking/useSendBookingRequestsDraft.ts", import.meta.url),
+    "utf8",
+  );
+  const panelSource = readFileSync(
+    new URL("../app/components/booking/SendBookingRequestsPanel.tsx", import.meta.url),
+    "utf8",
+  );
+  const eventDetailSource = readFileSync(
+    new URL("../app/events/[eventId]/page.tsx", import.meta.url),
+    "utf8",
+  );
+  const eventsPageSource = readFileSync(
+    new URL("../app/(planner-workspace)/events/EventsPageClient.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(flowSource, /export const MAX_SEND_BOOKING_NOTES_LENGTH = 80/);
+  assert.match(flowSource, /export function resolveSendBookingNotes\(/);
+  assert.match(flowSource, /inviteNotes\?: string/);
+  assert.match(flowSource, /notes: resolveSendBookingNotes\(inviteNotes, bookingInput\.notes\)/);
+
+  assert.match(draftSource, /const \[inviteNotes, setInviteNotes\] = useState\(""\)/);
+  assert.match(draftSource, /inviteNotes,/);
+  assert.match(draftSource, /setInviteNotes,/);
+
+  assert.match(panelSource, /MAX_SEND_BOOKING_NOTES_LENGTH/);
+  assert.match(panelSource, /label="Notes"/);
+  assert.match(panelSource, /placeholder="e\.g\. Main Room · 11–12 · House"/);
+  assert.match(panelSource, /maxLength=\{MAX_SEND_BOOKING_NOTES_LENGTH\}/);
+  assert.match(panelSource, /value=\{draft\.inviteNotes\}/);
+
+  assert.match(eventDetailSource, /inviteNotes: inviteDraft\.inviteNotes/);
+  assert.match(eventsPageSource, /inviteNotes: activeInviteDraft\.inviteNotes/);
+}
+
 function testModalScrollContainmentBlocksBoundaryOverscroll() {
   const scrollable = {
     scrollTop: 0,
@@ -16293,6 +16334,7 @@ async function main() {
   testActiveEventLineupStatsMatchVisibleLineupRules();
   testPlannerCancelledBookingExcludedFromActiveEventLineup();
   testSendBookingsModalLocksBackgroundInteraction();
+  testSendBookingInviteNotesEightyCharCap();
   testModalScrollContainmentBlocksBoundaryOverscroll();
   testEventLineupBookingCardProfileNavigationAndActions();
   testDmThreadEventDetailBackHref();

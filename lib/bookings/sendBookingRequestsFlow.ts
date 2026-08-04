@@ -11,6 +11,22 @@ import {
 } from "@/lib/bookingRequests";
 import type { UserProfile } from "@/lib/user/currentUser";
 
+/** Shared invite note on Send bookings — one slot line, not an event brief. */
+export const MAX_SEND_BOOKING_NOTES_LENGTH = 80;
+
+export function resolveSendBookingNotes(
+  inviteNotes: string,
+  fallbackNotes: string,
+): string {
+  const trimmedInvite = inviteNotes.trim();
+
+  if (trimmedInvite) {
+    return trimmedInvite.slice(0, MAX_SEND_BOOKING_NOTES_LENGTH);
+  }
+
+  return fallbackNotes.trim();
+}
+
 export function getSendBookingValidationError(
   recipientIds: string[],
   djOffers: Record<string, DjSendOffer>,
@@ -35,10 +51,17 @@ export async function sendBookingRequestsForRecipients(options: {
   bookingInput: BookingRequestInput;
   existingBookings?: BookingRequest[];
   djOffers: Record<string, DjSendOffer>;
+  inviteNotes?: string;
 }) {
-  const { recipientIds, bookingInput, existingBookings, djOffers } = options;
+  const { recipientIds, bookingInput, existingBookings, djOffers, inviteNotes = "" } =
+    options;
 
-  return sendBookingRequestsToDjs(recipientIds, bookingInput, {
+  const resolvedInput: BookingRequestInput = {
+    ...bookingInput,
+    notes: resolveSendBookingNotes(inviteNotes, bookingInput.notes),
+  };
+
+  return sendBookingRequestsToDjs(recipientIds, resolvedInput, {
     existingEventBookings: existingBookings,
     perRecipient: (recipientId) => {
       const offer = djOffers[recipientId] ?? DEFAULT_DJ_SEND_OFFER;
