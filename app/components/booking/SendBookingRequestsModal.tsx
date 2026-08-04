@@ -17,6 +17,7 @@ type SendBookingRequestsModalProps = {
   sending?: boolean;
   disabled?: boolean;
   introText?: string;
+  errorMessage?: string | null;
   showSendButton?: boolean;
   onSend?: () => void;
   confirmDiscardOnClose?: boolean;
@@ -26,6 +27,9 @@ type SendBookingRequestsModalProps = {
   formCardClassName?: string;
   formTitleClassName?: string;
 };
+
+/** Above mobile bottom nav (`MOBILE_NAV_Z_CLASS` = z-50). */
+export const SEND_BOOKINGS_MODAL_Z_CLASS = "z-[60]";
 
 const DEFAULT_DIALOG_CLASS =
   "relative z-10 max-h-[90dvh] w-full max-w-2xl overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch] touch-pan-y rounded-t-2xl border border-ftc-border-subtle bg-ftc-bg pb-[max(1rem,env(safe-area-inset-bottom))] sm:rounded-2xl sm:pb-0 focus:outline-none";
@@ -37,6 +41,7 @@ export default function SendBookingRequestsModal({
   sending = false,
   disabled = false,
   introText,
+  errorMessage = null,
   showSendButton = false,
   onSend,
   confirmDiscardOnClose = true,
@@ -113,7 +118,9 @@ export default function SendBookingRequestsModal({
 
   return (
     <>
-      <div className="fixed inset-0 z-50 flex items-end justify-center p-0 pointer-events-none sm:items-center sm:p-4">
+      <div
+        className={`fixed inset-0 ${SEND_BOOKINGS_MODAL_Z_CLASS} flex items-end justify-center p-0 pointer-events-none sm:items-center sm:p-4`}
+      >
         <div
           aria-hidden="true"
           className="pointer-events-auto absolute inset-0 touch-none bg-black/70"
@@ -141,6 +148,7 @@ export default function SendBookingRequestsModal({
               showSendButton={showSendButton}
               onSend={onSend}
               introText={introText}
+              errorMessage={errorMessage}
               sendButtonLabelMode={sendButtonLabelMode}
             />
           </PlannerFormCard>
@@ -152,7 +160,7 @@ export default function SendBookingRequestsModal({
         title="Discard booking draft?"
         titleId="discard-send-bookings-title"
         description="Your selected DJs and entered booking details will be lost"
-        overlayClassName="z-[60]"
+        overlayClassName="z-[70]"
         onBackdropClick={() => setDiscardConfirmOpen(false)}
         footer={
           <>

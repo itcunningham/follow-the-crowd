@@ -1832,11 +1832,24 @@ function testSendBookingsModalLocksBackgroundInteraction() {
     new URL("../app/events/[eventId]/page.tsx", import.meta.url),
     "utf8",
   );
+  const unavailableModalSource = readFileSync(
+    new URL("../app/components/UnavailableDjBookingConfirmModal.tsx", import.meta.url),
+    "utf8",
+  );
 
   assert.match(modalSource, /useBodyScrollLock\(open\)/);
   assert.match(modalSource, /useModalTouchScrollContainment\(open, dialogRef\)/);
   assert.doesNotMatch(modalSource, /onClick=\{requestClose\}/);
   assert.match(modalSource, /touch-none bg-black\/70/);
+  // Send sheet must sit above mobile bottom nav (z-50).
+  assert.match(modalSource, /SEND_BOOKINGS_MODAL_Z_CLASS = "z-\[60\]"/);
+  assert.match(modalSource, /\$\{SEND_BOOKINGS_MODAL_Z_CLASS\}/);
+  // Failures must surface inside the sheet — page-behind setError looked like a dead button.
+  assert.match(modalSource, /errorMessage=\{errorMessage\}/);
+  assert.match(panelSource, /role="alert"/);
+  assert.match(panelSource, /trimmedError/);
+  assert.match(eventDetailSource, /errorMessage=\{error\}/);
+  assert.match(unavailableModalSource, /overlayClassName = "z-\[70\]"/);
   assert.match(scrollLockSource, /body\.style\.position = "fixed"/);
   assert.match(scrollLockSource, /html\.style\.overflow = "hidden"/);
   assert.match(scrollLockSource, /window\.scrollTo\(0, scrollY\)/);

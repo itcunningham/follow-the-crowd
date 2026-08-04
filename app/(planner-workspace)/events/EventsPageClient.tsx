@@ -1786,6 +1786,7 @@ function EventsPageClientView({
             disabled={saving}
             showSendButton
             onSend={queueInviteDraft}
+            errorMessage={error}
             confirmDiscardOnClose={false}
             sendButtonLabelMode="confirm"
             introText="Event details will be prefilled from this event, each DJ receives a private booking request DM"

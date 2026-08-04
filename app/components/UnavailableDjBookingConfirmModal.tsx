@@ -11,6 +11,7 @@ export default function UnavailableDjBookingConfirmModal({
   loading = false,
   eventDate,
   unavailableDjs,
+  overlayClassName = "z-[70]",
   onBack,
   onConfirm,
 }: {
@@ -18,6 +19,8 @@ export default function UnavailableDjBookingConfirmModal({
   loading?: boolean;
   eventDate: string;
   unavailableDjs: ReadonlyArray<{ userId: string; displayName: string }>;
+  /** Defaults above Send bookings modal (`z-[60]`). */
+  overlayClassName?: string;
   onBack: () => void;
   onConfirm: () => void | Promise<void>;
 }) {
@@ -35,6 +38,7 @@ export default function UnavailableDjBookingConfirmModal({
       title={isSingle ? "DJ marked unavailable" : "DJs marked unavailable"}
       titleId="unavailable-dj-booking-title"
       loading={loading}
+      overlayClassName={overlayClassName}
       onBackdropClick={onBack}
       footer={
         <>

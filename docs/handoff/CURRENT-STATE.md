@@ -7,6 +7,8 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 
 **Communication preference locked (2026-08-04):** brutal honesty, no ego — never agree by default; push better options when Isaac's idea is weaker. Strict critic mode + hostile counterarguments when useful. `USER-PREFERENCES.md` + `.cursor/rules/brutal-honesty.mdc`.
 
+**Send invitations looked dead (`cursor/send-invites-modal-feedback-5874`, 2026-08-04):** Send bookings failures/`setError` wrote to Event Details *behind* the sheet, so tap felt like a no-op. Errors now render inside the sheet (`role="alert"`). Sheet `z-[60]` above mobile nav (`z-50`); unavailable confirm `z-[70]`. Failure copy surfaces the provider/message when present.
+
 **Events list card hides zero status pills (`ec4cc8d` on `main`, 2026-08-04):** All always shows; Pending / Accepted / Declined only when count &gt; 0. Less noise on Active/History cards.
 
 **Events list card total pill says All (`fee7929` on `main`, 2026-08-04):** was "Invited" but the value is `lineupStats.total` — same as Event Details Bookings **All**. Copy-only.

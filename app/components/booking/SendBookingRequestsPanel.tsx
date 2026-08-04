@@ -30,6 +30,7 @@ type SendBookingRequestsPanelProps = {
   showSendButton?: boolean;
   onSend?: () => void;
   introText?: string;
+  errorMessage?: string | null;
   embedded?: boolean;
   listMaxHeightClass?: string;
   sendButtonLabelMode?: "send" | "confirm";
@@ -277,6 +278,7 @@ export default function SendBookingRequestsPanel({
   showSendButton = false,
   onSend,
   introText,
+  errorMessage = null,
   embedded = false,
   listMaxHeightClass = "max-h-80",
   sendButtonLabelMode = "confirm",
@@ -288,6 +290,7 @@ export default function SendBookingRequestsPanel({
     sending,
     mode: sendButtonLabelMode,
   });
+  const trimmedError = errorMessage?.trim() || null;
 
   return (
     <div className={embedded ? "space-y-4 border-t border-ftc-border-subtle pt-4" : "space-y-4"}>
@@ -353,6 +356,14 @@ export default function SendBookingRequestsPanel({
         hasInvalidFixedOffers={draft.hasInvalidFixedOffers}
       />
 
+      {trimmedError ? (
+        <p
+          role="alert"
+          className="rounded-xl border border-[var(--ftc-color-danger)]/40 bg-[var(--ftc-color-danger)]/10 px-3.5 py-3 text-sm leading-relaxed text-[var(--ftc-color-danger)]"
+        >
+          {trimmedError}
+        </p>
+      ) : null}
 
       {showSendButton ? (
         <button
