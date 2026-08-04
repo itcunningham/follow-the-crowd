@@ -7,7 +7,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 
 **Communication preference locked (2026-08-04):** brutal honesty, no ego — never agree by default; push better options when Isaac's idea is weaker. Strict critic mode + hostile counterarguments when useful. `USER-PREFERENCES.md` + `.cursor/rules/brutal-honesty.mdc`.
 
-**Events list card total pill says All (`cursor/events-list-all-pill-5874`, 2026-08-04):** was "Invited" but the value is `lineupStats.total` — same as Event Details Bookings **All**. Copy-only.
+**Events list card total pill says All (`fee7929` on `main`, 2026-08-04):** was "Invited" but the value is `lineupStats.total` — same as Event Details Bookings **All**. Copy-only.
 
 **Run Sheet dirty Back uses discard sheet (`39d2069` on `main`, 2026-08-04):** unsaved Run Sheet edits + Event Details Back → shared `UnsavedChangesDiscardDialog` (same as Edit Event). Run Sheet **Cancel** still discards immediately. Safari toolbar Back not guaranteed on mobile web.
 
@@ -853,6 +853,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 | Crew Chat image sharing (`message_attachments.event_id`) | `scripts/setupEventCrewChatAttachments.sql` — **applied 2026-08-03** (required a type-cast fix after the first run, see Group chat entry above) |
 
 ## Recent commits (reference)
+- `fee7929` — fix(events): list card total pill says All
 - `39d2069` — fix(run-sheet): warn on Back with unsaved edits
 - `f2e6597` — fix(events): Active tab works after History detail Back
 - `9e443f0` — fix(nav): keep Events lit on list-opened event detail
