@@ -215,8 +215,14 @@ export default function EventCrewChatPage() {
     () => buildChatReturnTo(pathname, searchParams.toString()),
     [pathname, searchParams],
   );
+  /**
+   * Profile links from the Crew sheet must return to a chat URL that still
+   * says the sheet is open. Keeping `memberSheetOpen` in the address bar while
+   * the sheet is open also makes iOS/Safari history.back() restore the sheet
+   * (the previous broken approach stripped the param on mount, so Back landed
+   * on a bare thread).
+   */
   const profileReturnTo = useMemo(() => {
-    // Add memberSheetOpen=true to the return URL so the crew sheet reopens when the user returns from a profile
     const params = new URLSearchParams(searchParams.toString());
     params.set("memberSheetOpen", "true");
     return buildChatReturnTo(pathname, params.toString());
@@ -256,8 +262,39 @@ export default function EventCrewChatPage() {
     Map<string, UserAvatarProfile>
   >(new Map());
   const [lastReadAtByUserId, setLastReadAtByUserId] = useState<Map<string, string>>(new Map());
-  const shouldReopenMemberSheet = searchParams.get("memberSheetOpen") === "true";
-  const [memberSheetOpen, setMemberSheetOpen] = useState(shouldReopenMemberSheet);
+  const memberSheetOpenFromUrl = searchParams.get("memberSheetOpen") === "true";
+  const [memberSheetOpen, setMemberSheetOpen] = useState(memberSheetOpenFromUrl);
+
+  const syncMemberSheetOpenInUrl = useCallback(
+    (open: boolean) => {
+      const params = new URLSearchParams(searchParams.toString());
+      if (open) {
+        params.set("memberSheetOpen", "true");
+      } else {
+        params.delete("memberSheetOpen");
+      }
+      const nextSearch = params.toString();
+      const nextUrl = nextSearch ? `${pathname}?${nextSearch}` : pathname;
+      const currentUrl = searchParams.toString()
+        ? `${pathname}?${searchParams.toString()}`
+        : pathname;
+      if (nextUrl === currentUrl) {
+        return;
+      }
+      router.replace(nextUrl, { scroll: false });
+    },
+    [pathname, router, searchParams],
+  );
+
+  const openMemberSheet = useCallback(() => {
+    setMemberSheetOpen(true);
+    syncMemberSheetOpenInUrl(true);
+  }, [syncMemberSheetOpenInUrl]);
+
+  const closeMemberSheet = useCallback(() => {
+    setMemberSheetOpen(false);
+    syncMemberSheetOpenInUrl(false);
+  }, [syncMemberSheetOpenInUrl]);
   /**
    * Event-card visibility is owned solely by the Details/Hide toggle below.
    * Scrolling deliberately never changes it: a chat surface that rearranges
@@ -396,16 +433,6 @@ export default function EventCrewChatPage() {
    */
   useFixedChatPageDocumentReset(`${pathname}?${searchParams.toString()}`);
 
-  // Clean up memberSheetOpen param from URL after initializing the sheet state
-  useEffect(() => {
-    if (shouldReopenMemberSheet) {
-      const newParams = new URLSearchParams(searchParams.toString());
-      newParams.delete("memberSheetOpen");
-      const newSearch = newParams.toString();
-      const newUrl = newSearch ? `${pathname}?${newSearch}` : pathname;
-      router.replace(newUrl, { scroll: false });
-    }
-  }, []); // Only run once on mount
   // Same intentional-dismissal handling as DM: a deliberate downward drag on
   // the message list at the live edge dismisses the keyboard, and this hook
   // owns that gesture. Post-send refocus never fights it, because a blur
@@ -1319,7 +1346,7 @@ export default function EventCrewChatPage() {
                 memberCount={memberCount}
                 participantIds={crewParticipantIds}
                 participantProfiles={crewParticipantProfiles}
-                onOpenMemberSheet={() => setMemberSheetOpen(true)}
+                onOpenMemberSheet={openMemberSheet}
               />
             )}
           </header>
@@ -1532,7 +1559,7 @@ export default function EventCrewChatPage() {
         open={memberSheetOpen}
         members={crewMembers}
         profileReturnTo={profileReturnTo}
-        onClose={() => setMemberSheetOpen(false)}
+        onClose={closeMemberSheet}
       />
     </OnboardingGuard>
   );

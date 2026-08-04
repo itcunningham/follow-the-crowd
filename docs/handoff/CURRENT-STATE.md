@@ -3,6 +3,8 @@
 
 Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 
+**Crew sheet reopen actually fixed (`cursor/crew-sheet-reopen-fix-5874`, 2026-08-04):** the first `ac4df6a` approach set `memberSheetOpen=true` on profile return then **stripped it on mount**, which remounted/reset the sheet closed — and iOS Back could skip the param entirely. Fix: keep the param in the URL for as long as the sheet is open (write on open, clear on close); init state from the URL; do not mount-strip. Profile → Back and history.back() both restore the Crew list.
+
 **Crew sheet stays open after profile Back (`ac4df6a`, 2026-08-04):** opening a member profile from the Crew members sheet and hitting Back restores the sheet over the same crew chat (not a bare thread). Fast-forwarded to `main` for Production QA — branch-only deploys stay “No target” Previews. Regression coverage added in `test-regressions.mts`.
 
 **Crew role emojis removed from Crew members sheet (`c91095b`, 2026-08-04):** `CrewMemberRoleBadge` in `CrewMemberListSheet.tsx` now shows text roles only (`PROMOTER` / `DJ`) — crown/headphones emojis removed per Isaac. Fast-forwarded to `main` so Production (not branch “No target” Preview) serves it. One-line UI change.

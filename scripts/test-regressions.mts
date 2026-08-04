@@ -11540,37 +11540,70 @@ function testCrewChatMemberSheetReopenOnProfileReturn() {
     "utf8",
   );
 
-  // The chat page builds a profileReturnTo that includes the memberSheetOpen marker.
+  // Profile return URL always carries the sheet-open marker.
   assert.match(
     chatPageSource,
     /const profileReturnTo = useMemo\(\(\) => \{[\s\S]*?params\.set\("memberSheetOpen", "true"\)/,
     "chat page builds profileReturnTo with memberSheetOpen=true parameter",
   );
 
-  // The memberSheetOpen state initializes based on the query parameter.
+  // Sheet open state initializes from the URL (survives profile → Back).
   assert.match(
     chatPageSource,
-    /const shouldReopenMemberSheet = searchParams\.get\("memberSheetOpen"\) === "true"/,
-    "chat page checks for memberSheetOpen query parameter",
+    /const memberSheetOpenFromUrl = searchParams\.get\("memberSheetOpen"\) === "true"/,
+    "chat page reads memberSheetOpen from the URL",
   );
   assert.match(
     chatPageSource,
-    /const \[memberSheetOpen, setMemberSheetOpen\] = useState\(shouldReopenMemberSheet\)/,
-    "memberSheetOpen state initializes from the parameter",
-  );
-
-  // The parameter is cleaned up from the URL after use.
-  assert.match(
-    chatPageSource,
-    /useEffect\(\(\) => \{\s*if \(shouldReopenMemberSheet\) \{[\s\S]*?newParams\.delete\("memberSheetOpen"\)/,
-    "chat page cleans up memberSheetOpen parameter from URL",
+    /const \[memberSheetOpen, setMemberSheetOpen\] = useState\(memberSheetOpenFromUrl\)/,
+    "memberSheetOpen state initializes from the URL",
   );
 
-  // The profileReturnTo is passed to CrewMemberListSheet, not the plain chatReturnTo.
+  // Opening the sheet must write the param into the URL so history.back() and
+  // in-app Back both restore it. Closing must clear it.
+  assert.match(
+    chatPageSource,
+    /function syncMemberSheetOpenInUrl|const syncMemberSheetOpenInUrl = useCallback/,
+    "chat page syncs memberSheetOpen into the URL",
+  );
+  assert.match(
+    chatPageSource,
+    /const openMemberSheet = useCallback\(\(\) => \{[\s\S]*?setMemberSheetOpen\(true\)[\s\S]*?syncMemberSheetOpenInUrl\(true\)/,
+    "opening the crew sheet writes memberSheetOpen=true into the URL",
+  );
+  assert.match(
+    chatPageSource,
+    /const closeMemberSheet = useCallback\(\(\) => \{[\s\S]*?setMemberSheetOpen\(false\)[\s\S]*?syncMemberSheetOpenInUrl\(false\)/,
+    "closing the crew sheet removes memberSheetOpen from the URL",
+  );
+
+  // The failed first attempt stripped the param on mount via useEffect — that
+  // remounts/resets state to closed. Guard against bringing it back.
+  assert.doesNotMatch(
+    chatPageSource,
+    /Clean up memberSheetOpen param from URL after initializing/,
+    "must not strip memberSheetOpen on mount (that closed the sheet on return)",
+  );
+  assert.doesNotMatch(
+    chatPageSource,
+    /useEffect\(\(\) => \{\s*if \(shouldReopenMemberSheet\)/,
+    "must not use the shouldReopenMemberSheet mount cleanup effect",
+  );
+
   assert.match(
     chatPageSource,
     /<CrewMemberListSheet[\s\S]*?profileReturnTo=\{profileReturnTo\}/,
-    "CrewMemberListSheet receives the modified profileReturnTo with the marker",
+    "CrewMemberListSheet receives profileReturnTo with the marker",
+  );
+  assert.match(
+    chatPageSource,
+    /onOpenMemberSheet=\{openMemberSheet\}/,
+    "header opens the sheet through openMemberSheet (URL sync)",
+  );
+  assert.match(
+    chatPageSource,
+    /onClose=\{closeMemberSheet\}/,
+    "sheet closes through closeMemberSheet (URL sync)",
   );
 }
 
