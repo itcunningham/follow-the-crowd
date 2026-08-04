@@ -7,6 +7,8 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 
 **Communication preference locked (2026-08-04):** brutal honesty, no ego — never agree by default; push better options when Isaac's idea is weaker. Strict critic mode + hostile counterarguments when useful. `USER-PREFERENCES.md` + `.cursor/rules/brutal-honesty.mdc`.
 
+**Run Sheet Save DMs the affected DJ (`8137134` on `main`, 2026-08-04):** after Save, each accepted DJ whose stage / set time / notes / order changed gets a booking-DM system line (`Run sheet updated · {event} · {stage · time}`) + `message` notification. Soft-fail; no crew chat. Unchanged sibling DJs are not notified.
+
 **Details placeholder + hide Group chat while editing (`b72b352` on `main`, 2026-08-04):** cancel-booking Other field placeholder is **Details** (was “Add a short reason”). Header Group chat / Start group chat hidden while `editOpen` — Edit owns the header; help panel closes too.
 
 **Paired Cancel sits left (`6de1995` on `main`, 2026-08-04):** side-by-side booking actions put Cancel/Withdraw left, primary (Message / View event) right — right-thumb hits the common action; destructive is slightly harder. Event Details lineup + DM pending paired row. Decline|Accept already matched. Stacked accepted DM actions unchanged.
@@ -883,6 +885,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 | Crew Chat image sharing (`message_attachments.event_id`) | `scripts/setupEventCrewChatAttachments.sql` — **applied 2026-08-03** (required a type-cast fix after the first run, see Group chat entry above) |
 
 ## Recent commits (reference)
+- `8137134` — feat(run-sheet): DM affected DJs when assignment changes on Save
 - `b72b352` — fix(events): Details placeholder; hide Group chat while editing
 - `6de1995` — fix(booking): Cancel left of primary in paired action rows
 - `bc8c313` — polish(events): denser Bookings cards (no genres, smaller actions)
