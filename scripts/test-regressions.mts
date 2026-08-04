@@ -186,9 +186,12 @@ import {
   DM_BOOKING_CONFIRMED_MESSAGE,
   DM_BOOKING_ORIGINAL_OFFER_KEPT_MESSAGE,
   DM_BOOKING_RATE_DECLINED_MESSAGE,
+  DM_RUN_SHEET_UPDATED_PREFIX,
   formatDmBookingSystemMessageDisplay,
   formatRateProposedDmSystemMessage,
+  formatRunSheetUpdatedDmMessage,
   isDmBookingSystemMessage,
+  isRunSheetUpdatedDmMessage,
   LEGACY_RATE_PROPOSED_DM_PREFIX,
   LEGACY_RATE_PROPOSAL_DECLINED_DM_MESSAGE,
 } from "../lib/dm/dmBookingSystemMessages";
@@ -204,7 +207,9 @@ import { applyCancelledEventStatus } from "../lib/bookings/gigsListSnapshotPrefe
 import { buildCrewMemberList } from "../lib/events/crewChatMembers";
 import { resolveCrewChatSeenLabel } from "../lib/events/crewChatReadReceipts";
 import {
+  collectChangedRunSheetBookingIds,
   computeRunSheetSetLabels,
+  formatRunSheetAssignmentSummaryForDm,
   hasUnsavedRunSheetEdits,
   moveRunSheetRow,
   reorderRunSheetRows,
@@ -879,6 +884,18 @@ function testDmBookingSystemMessages() {
     DM_BOOKING_RATE_DECLINED_MESSAGE,
   );
   assert.equal(isDmBookingSystemMessage("BOOKING ACTIVITY · event-cancelled · Party"), false);
+
+  const runSheetNotice = formatRunSheetUpdatedDmMessage(
+    "Warehouse Set",
+    "Back · 9:00 PM – 1:00 AM",
+  );
+  assert.equal(
+    runSheetNotice,
+    `${DM_RUN_SHEET_UPDATED_PREFIX} · Warehouse Set · Back · 9:00 PM – 1:00 AM`,
+  );
+  assert.equal(isRunSheetUpdatedDmMessage(runSheetNotice), true);
+  assert.equal(isDmBookingSystemMessage(runSheetNotice), true);
+  assert.equal(formatDmBookingSystemMessageDisplay(runSheetNotice), runSheetNotice);
 }
 
 function testDmConversationTimestampLayout() {
@@ -9959,6 +9976,65 @@ function testRunSheetDirtyStateAndSaveFeedback() {
  * This test pins the state machine around that prop, not the branches
  * themselves.
  */
+function testRunSheetDmNotifyOnSave() {
+  const base = (overrides: Partial<RunSheetRowInput> = {}): RunSheetRowInput => ({
+    id: "row-1",
+    sort_order: 0,
+    artist_name: "DJ A",
+    start_time: "9:00 PM",
+    finish_time: "1:00 AM",
+    stage_area: "Front",
+    notes: "",
+    booking_request_id: "booking-a",
+    ...overrides,
+  });
+
+  assert.deepEqual(
+    collectChangedRunSheetBookingIds([base()], [base()]),
+    [],
+    "identical rows → no notify",
+  );
+  assert.deepEqual(
+    collectChangedRunSheetBookingIds([base()], [base({ stage_area: "Back" })]),
+    ["booking-a"],
+    "stage change → that booking only",
+  );
+
+  const other = base({
+    id: "row-2",
+    sort_order: 1,
+    artist_name: "DJ B",
+    booking_request_id: "booking-b",
+    stage_area: "Main",
+  });
+  assert.deepEqual(
+    collectChangedRunSheetBookingIds([base(), other], [base({ notes: "Bring USB" }), other]),
+    ["booking-a"],
+    "unchanged sibling DJ is not notified",
+  );
+
+  // Reorder alone is a change for both bookings whose absolute index moved.
+  assert.deepEqual(
+    collectChangedRunSheetBookingIds([base(), other], [other, base()]).sort(),
+    ["booking-a", "booking-b"],
+  );
+
+  assert.equal(
+    formatRunSheetAssignmentSummaryForDm([base({ stage_area: "Back" })]),
+    "Back · 9:00 PM – 1:00 AM",
+  );
+
+  const runSheetLib = readFileSync(
+    new URL("../lib/eventRunSheet.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(runSheetLib, /type: "message"/);
+  assert.match(runSheetLib, /booking\.recipient_id/);
+  assert.doesNotMatch(runSheetLib, /postEventGroupChatUpdate/);
+  assert.doesNotMatch(runSheetLib, /sendEventCrewChatMessage/);
+  assert.match(runSheetLib, /booking\.status !== "accepted"/);
+}
+
 function testRunSheetEditMode() {
   const section = readFileSync(
     new URL("../app/components/EventRunSheetSection.tsx", import.meta.url),
@@ -10000,6 +10076,11 @@ function testRunSheetEditMode() {
   const trySection = saveFn.slice(saveFn.indexOf("try {"), saveFn.indexOf("} catch"));
   assert.match(trySection, /setIsEditing\(false\)/);
   assert.match(trySection, /setExpandedRowIds\(new Set\(\)\)/);
+  // Diff before save; soft DM notify after persist — only changed DJs, never crew chat.
+  assert.match(saveFn, /collectChangedRunSheetBookingIds\(savedRows, nextRows\)/);
+  assert.match(trySection, /notifyRunSheetUpdatesForChangedBookings/);
+  assert.doesNotMatch(saveFn, /postEventGroupChatUpdate/);
+  assert.doesNotMatch(saveFn, /sendEventCrewChatMessage/);
 
   // A failed save must NOT force the planner back to read-only -- they would
   // lose sight of the error and their edited rows. The reset calls live only
@@ -16580,6 +16661,7 @@ async function main() {
   testRunSheetChromeReduction();
   testRunSheetFieldsWrapLongUnbrokenTokens();
   testRunSheetDirtyStateAndSaveFeedback();
+  testRunSheetDmNotifyOnSave();
   testRunSheetEditMode();
   testRunSheetProductionPolish();
   testRunSheetHeaderCancelAndSave();

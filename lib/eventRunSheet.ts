@@ -1,4 +1,10 @@
 import type { BookingRequest } from "@/lib/bookingRequests";
+import { SET_TIME_RANGE_JOINER } from "@/lib/bookingDateTime";
+import { formatRunSheetUpdatedDmMessage } from "@/lib/dm/dmBookingSystemMessages";
+import {
+  createNotification,
+  getNotificationCreateErrorMessage,
+} from "@/lib/notifications";
 import { supabase } from "@/lib/supabaseClient";
 import type { BookingRecipientProfile } from "@/lib/user/currentUser";
 import { getCurrentUserId } from "@/lib/user/currentUser";
@@ -632,4 +638,159 @@ export function moveRunSheetRow(
   const next = [...rows];
   [next[index], next[targetIndex]] = [next[targetIndex], next[index]];
   return reorderRunSheetRows(next);
+}
+
+/**
+ * Fingerprint of one booking's rows on the sheet: absolute order index plus
+ * the editable assignment fields. Used to decide which DJs get a DM after Save
+ * — not for the dirty-check (that stays on `hasUnsavedRunSheetEdits`).
+ */
+function runSheetBookingNotifyFingerprint(
+  rows: RunSheetRowInput[],
+  bookingRequestId: string,
+): string {
+  return rows
+    .map((row, index) => {
+      if ((row.booking_request_id ?? "").trim() !== bookingRequestId) {
+        return null;
+      }
+
+      return [
+        index,
+        row.stage_area ?? "",
+        row.start_time ?? "",
+        row.finish_time ?? "",
+        row.notes ?? "",
+      ].join("\u0001");
+    })
+    .filter((part): part is string => part !== null)
+    .join("\n");
+}
+
+/** Booking request ids whose run-sheet assignment changed between two snapshots. */
+export function collectChangedRunSheetBookingIds(
+  savedRows: RunSheetRowInput[],
+  currentRows: RunSheetRowInput[],
+): string[] {
+  const ids = new Set<string>();
+
+  for (const row of [...savedRows, ...currentRows]) {
+    const id = row.booking_request_id?.trim();
+    if (id) {
+      ids.add(id);
+    }
+  }
+
+  const changed: string[] = [];
+
+  for (const id of ids) {
+    if (
+      runSheetBookingNotifyFingerprint(savedRows, id) !==
+      runSheetBookingNotifyFingerprint(currentRows, id)
+    ) {
+      changed.push(id);
+    }
+  }
+
+  return changed;
+}
+
+function formatRunSheetSetTimeForDm(startTime: string, finishTime: string): string {
+  const start = startTime.trim();
+  const finish = finishTime.trim();
+
+  if (!start && !finish) {
+    return "";
+  }
+
+  if (start && finish) {
+    return `${start}${SET_TIME_RANGE_JOINER}${finish}`;
+  }
+
+  return start || finish;
+}
+
+/** Compact "where · when" for one DJ's current rows (multi-set joined with " / "). */
+export function formatRunSheetAssignmentSummaryForDm(rows: RunSheetRowInput[]): string {
+  const parts = rows
+    .map((row) => {
+      const stage = row.stage_area.trim();
+      const time = formatRunSheetSetTimeForDm(row.start_time, row.finish_time);
+      return [stage, time].filter(Boolean).join(" · ");
+    })
+    .filter(Boolean);
+
+  return parts.join(" / ");
+}
+
+/**
+ * After a successful Save: DM + in-app notification to each DJ whose row
+ * changed. Soft-fail — never throws; Save already succeeded.
+ *
+ * Channel is the booking DM (not crew chat). Notification type is `message`
+ * so `create_notification` allows planner → DJ without a booking_update gate.
+ */
+export async function notifyRunSheetUpdatesForChangedBookings(options: {
+  lineup: BookingRequest[];
+  changedBookingIds: string[];
+  currentRows: RunSheetRowInput[];
+}): Promise<void> {
+  const { lineup, changedBookingIds, currentRows } = options;
+
+  if (changedBookingIds.length === 0) {
+    return;
+  }
+
+  let authorId: string;
+
+  try {
+    authorId = await getCurrentUserId();
+  } catch (authorError) {
+    console.warn("[run-sheet] Could not resolve author for DM notify:", authorError);
+    return;
+  }
+
+  for (const bookingId of changedBookingIds) {
+    const booking = lineup.find((item) => item.id === bookingId);
+
+    if (!booking?.conversation_id || booking.status !== "accepted") {
+      continue;
+    }
+
+    const assignmentRows = currentRows.filter(
+      (row) => (row.booking_request_id ?? "").trim() === bookingId,
+    );
+    const summary = formatRunSheetAssignmentSummaryForDm(assignmentRows);
+    const messageText = formatRunSheetUpdatedDmMessage(booking.event_name, summary);
+
+    try {
+      const { error: insertError } = await supabase.from("messages").insert({
+        conversation_id: booking.conversation_id,
+        user_id: authorId,
+        text: messageText,
+      });
+
+      if (insertError) {
+        console.warn("[run-sheet] Failed to insert run-sheet DM:", insertError);
+        continue;
+      }
+
+      try {
+        await createNotification(
+          booking.recipient_id,
+          "message",
+          "New message",
+          messageText,
+          `/dm/${booking.conversation_id}`,
+        );
+      } catch (notificationError) {
+        console.warn(
+          "[run-sheet] Run-sheet DM inserted but notification failed:",
+          getNotificationCreateErrorMessage(notificationError),
+        );
+      }
+    } catch (notifyError) {
+      console.warn("[run-sheet] Run-sheet DJ notify failed:", notifyError);
+    }
+  }
 }

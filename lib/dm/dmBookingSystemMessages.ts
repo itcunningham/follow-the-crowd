@@ -12,6 +12,39 @@ export const DM_BOOKING_CONFIRMED_MESSAGE = "Booking confirmed";
 
 export const DM_BOOKING_CANCELLED_MESSAGE = "Booking cancelled";
 
+export const DM_RUN_SHEET_UPDATED_PREFIX = "Run sheet updated";
+
+/**
+ * Per-save run sheet notice, e.g.
+ * "Run sheet updated · Warehouse Set · Back · 9:00 PM – 1:00 AM".
+ *
+ * Event name keeps each event distinct in a shared planner↔DJ thread (same
+ * lesson as `formatBookingConfirmedDmMessage`). The assignment summary is the
+ * DJ's current stage/time after save — useful in the timeline, not stripped.
+ */
+export function formatRunSheetUpdatedDmMessage(
+  eventName: string,
+  assignmentSummary?: string | null,
+): string {
+  const parts = [DM_RUN_SHEET_UPDATED_PREFIX];
+  const trimmedEvent = eventName.trim();
+  const trimmedSummary = assignmentSummary?.trim() ?? "";
+
+  if (trimmedEvent) {
+    parts.push(trimmedEvent);
+  }
+
+  if (trimmedSummary) {
+    parts.push(trimmedSummary);
+  }
+
+  return parts.join(" · ");
+}
+
+export function isRunSheetUpdatedDmMessage(text: string): boolean {
+  return text.trim().startsWith(`${DM_RUN_SHEET_UPDATED_PREFIX}`);
+}
+
 /**
  * Per-event confirmed message, e.g. "Booking confirmed · Warehouse Set".
  *
@@ -133,7 +166,8 @@ function isCanonicalDmBookingSystemMessage(text: string): boolean {
     trimmed === VERBOSE_CONFIRMED_MESSAGE ||
     trimmed === DM_BOOKING_CANCELLED_MESSAGE ||
     trimmed === VERBOSE_CANCELLED_MESSAGE ||
-    trimmed === DM_BOOKING_REQUEST_DECLINED_MESSAGE
+    trimmed === DM_BOOKING_REQUEST_DECLINED_MESSAGE ||
+    isRunSheetUpdatedDmMessage(trimmed)
   );
 }
 
@@ -251,6 +285,11 @@ export function formatDmBookingSystemMessageDisplay(text: string): string {
     parseLegacyBookingActivityCancelledBookingId(trimmed)
   ) {
     return DM_BOOKING_CANCELLED_MESSAGE;
+  }
+
+  // Keep stage/time summary — that's the useful part of the notice.
+  if (isRunSheetUpdatedDmMessage(trimmed)) {
+    return trimmed;
   }
 
   return trimmed;

@@ -31,6 +31,7 @@ import {
   type WheelTimeValue,
 } from "@/lib/bookingDateTime";
 import {
+  collectChangedRunSheetBookingIds,
   computeRunSheetSetLabels,
   ensureRunSheetRowsForAcceptedBookings,
   filterRunSheetRowsToAcceptedBookings,
@@ -42,6 +43,7 @@ import {
   mapRunSheetRowsFromDb,
   mergeAcceptedDjsIntoRunSheetRows,
   moveRunSheetRow,
+  notifyRunSheetUpdatesForChangedBookings,
   reorderRunSheetRows,
   resolveRunSheetRowDjDisplay,
   saveEventRunSheet,
@@ -987,9 +989,12 @@ export default function EventRunSheetSection({
     setSaving(true);
     setError(null);
 
+    const nextRows = reorderRunSheetRows(rows);
+    const changedBookingIds = collectChangedRunSheetBookingIds(savedRows, nextRows);
+
     try {
       const saved = await saveEventRunSheet(eventId, {
-        rows: reorderRunSheetRows(rows),
+        rows: nextRows,
         deletedRowIds: [],
       });
 
@@ -1009,6 +1014,14 @@ export default function EventRunSheetSection({
       setIsEditing(false);
       setExpandedRowIds(new Set());
       onSaved?.("Run sheet saved");
+
+      // Soft: Save already succeeded. DM only the DJs whose rows changed —
+      // never crew chat. Failures are logged inside the helper.
+      await notifyRunSheetUpdatesForChangedBookings({
+        lineup,
+        changedBookingIds,
+        currentRows: persistedRows,
+      });
     } catch (saveError) {
       logRunSheetSaveError(saveError);
       setError(getRunSheetSaveErrorMessage(saveError));
