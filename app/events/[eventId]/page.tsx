@@ -1107,6 +1107,8 @@ function EventDetailPageView() {
       viewerBooking?.conversation_id &&
       viewerBooking.conversation_id === dmOriginConversationId,
   );
+  /** Opened via Crew Chat "View Event" — Back returns to that chat; Group chat chip is redundant. */
+  const openedFromCrewChat = searchParams.get("from") === "crew-chat";
 
   const crewChatActions = useMemo(
     () =>
@@ -1127,7 +1129,8 @@ function EventDetailPageView() {
   } = crewChatActions;
   const showStartCrewChatAction =
     showStartCrewChatActionRaw && !isHistoryEventDetail;
-  const showCrewChatHeaderAction = showStartCrewChatAction || showEventGroupChatAction;
+  const showEventGroupChatHeaderLink = showEventGroupChatAction && !openedFromCrewChat;
+  const showCrewChatHeaderAction = showStartCrewChatAction || showEventGroupChatHeaderLink;
 
   useEffect(() => {
     if (!showStartCrewChatAction) {

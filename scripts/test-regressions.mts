@@ -13750,6 +13750,22 @@ function testEventDetailReturnsToCrewChat() {
     "utf8",
   );
   assert.match(detailSource, /crewChatEventId: eventId,/);
+
+  // View Event → Event Details: Back returns to crew chat, so the header
+  // "Group chat" chip is redundant and must stay hidden on that path.
+  assert.match(detailSource, /const openedFromCrewChat = searchParams\.get\("from"\) === "crew-chat"/);
+  assert.match(
+    detailSource,
+    /showEventGroupChatHeaderLink = showEventGroupChatAction && !openedFromCrewChat/,
+  );
+  assert.match(
+    detailSource,
+    /showCrewChatHeaderAction = showStartCrewChatAction \|\| showEventGroupChatHeaderLink/,
+  );
+  assert.doesNotMatch(
+    detailSource,
+    /showCrewChatHeaderAction = showStartCrewChatAction \|\| showEventGroupChatAction;/,
+  );
 }
 
 /**
