@@ -3,6 +3,8 @@
 
 Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 
+**Crew sheet stays open after profile Back (`ac4df6a`, 2026-08-04):** opening a member profile from the Crew members sheet and hitting Back restores the sheet over the same crew chat (not a bare thread). Fast-forwarded to `main` for Production QA — branch-only deploys stay “No target” Previews. Regression coverage added in `test-regressions.mts`.
+
 **Crew role emojis removed from Crew members sheet (`c91095b`, 2026-08-04):** `CrewMemberRoleBadge` in `CrewMemberListSheet.tsx` now shows text roles only (`PROMOTER` / `DJ`) — crown/headphones emojis removed per Isaac. Fast-forwarded to `main` so Production (not branch “No target” Preview) serves it. One-line UI change.
 
 **Complete product handover + Cursor takes product partner role (`docs/handoff/PRODUCT-HANDOVER.md`, 2026-08-04):** Day-one handover from former ChatGPT context — vision, workflow-first philosophy, honest private-beta stage, beta readiness order, Melbourne 5–10 promoter target, success/retention metrics, pricing bands, growth loop, moat, strategic phases 1–7, permanent product rules, known traps. **`HOW-WE-WORK.md` updated:** Cursor is Product Owner assistant / UX reviewer / planning partner / agent coordinator; ChatGPT deprecated for live FTC product work. Wired into README + START-HERE-CURSOR. Docs only; no app code.
