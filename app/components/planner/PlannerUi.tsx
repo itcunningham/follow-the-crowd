@@ -322,7 +322,7 @@ function PlannerFilterPillButton({
       onPointerUp={handlePointerUp}
       onPointerCancel={handlePointerCancel}
       onClick={handleClick}
-      className={`touch-manipulation ftc-filter-pill ${isActive ? "ftc-filter-pill-active" : ""}`}
+      className={`touch-manipulation shrink-0 ftc-filter-pill ${isActive ? "ftc-filter-pill-active" : ""}`}
     >
       <span className="pointer-events-none">{label}</span>
     </button>
@@ -333,13 +333,21 @@ export function PlannerFilterPills<T extends string>({
   options,
   value,
   onChange,
+  layout = "wrap",
 }: {
   options: readonly { value: T; label: string }[];
   value: T;
   onChange: (value: T) => void;
+  /** `scroll` keeps one row on narrow screens (event bookings). Default wraps. */
+  layout?: "wrap" | "scroll";
 }) {
+  const rowClass =
+    layout === "scroll"
+      ? "flex flex-nowrap items-center gap-2 overflow-x-auto overscroll-x-contain [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      : FTC_PILL_ROW_GAP_CLASS;
+
   return (
-    <div className={`${FTC_PILL_ROW_GAP_CLASS}`}>
+    <div className={rowClass}>
       {options.map((option) => {
         const isActive = value === option.value;
 

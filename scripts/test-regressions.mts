@@ -5112,17 +5112,36 @@ function testEventDetailBookingsFilterOwnsCounts() {
   );
 
   // Counts live on the filter pills — no duplicate Invited/Pending/Accepted/Declined chip row.
+  // Zero counts stay off the label so "Pending 0" / "Declined 0" don't force a wrap on 390px.
   assert.match(detailSource, /bookingStatusFilters/);
   assert.match(detailSource, /label: `All \$\{lineupStats\.total\}`/);
-  assert.match(detailSource, /label: `Pending \$\{lineupStats\.pending\}`/);
-  assert.match(detailSource, /label: `Accepted \$\{lineupStats\.accepted\}`/);
-  assert.match(detailSource, /label: `Declined \$\{lineupStats\.declined\}`/);
+  assert.match(
+    detailSource,
+    /lineupStats\.pending > 0 \? `Pending \$\{lineupStats\.pending\}` : "Pending"/,
+  );
+  assert.match(
+    detailSource,
+    /lineupStats\.accepted > 0 \? `Accepted \$\{lineupStats\.accepted\}` : "Accepted"/,
+  );
+  assert.match(
+    detailSource,
+    /lineupStats\.declined > 0 \? `Declined \$\{lineupStats\.declined\}` : "Declined"/,
+  );
+  assert.match(detailSource, /layout="scroll"/);
   assert.doesNotMatch(
     detailSource,
     /PlannerStatChip label="Invited"/,
     "event detail bookings must not repeat counts as chips above the filters",
   );
   assert.doesNotMatch(detailSource, /PlannerStatChip/);
+
+  const pillsSource = readFileSync(
+    new URL("../app/components/planner/PlannerUi.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(pillsSource, /layout = "wrap"/);
+  assert.match(pillsSource, /layout\?: "wrap" \| "scroll"/);
+  assert.match(pillsSource, /flex-nowrap items-center gap-2 overflow-x-auto/);
 }
 
 function testEventPlanPickerClearsSelectionOnFormBack() {

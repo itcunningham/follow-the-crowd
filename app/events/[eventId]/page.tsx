@@ -437,9 +437,18 @@ function EventDetailPageView() {
     () =>
       [
         { value: "all" as const, label: `All ${lineupStats.total}` },
-        { value: "pending" as const, label: `Pending ${lineupStats.pending}` },
-        { value: "accepted" as const, label: `Accepted ${lineupStats.accepted}` },
-        { value: "declined" as const, label: `Declined ${lineupStats.declined}` },
+        {
+          value: "pending" as const,
+          label: lineupStats.pending > 0 ? `Pending ${lineupStats.pending}` : "Pending",
+        },
+        {
+          value: "accepted" as const,
+          label: lineupStats.accepted > 0 ? `Accepted ${lineupStats.accepted}` : "Accepted",
+        },
+        {
+          value: "declined" as const,
+          label: lineupStats.declined > 0 ? `Declined ${lineupStats.declined}` : "Declined",
+        },
       ] satisfies { value: ActiveBookingStatusFilter; label: string }[],
     [lineupStats],
   );
@@ -1554,6 +1563,7 @@ function EventDetailPageView() {
                           options={bookingStatusFilters}
                           value={lineupFilter}
                           onChange={setLineupFilter}
+                          layout="scroll"
                         />
                       </div>
 
