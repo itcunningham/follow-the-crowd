@@ -5,6 +5,8 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 
 **Standing deploy preference locked (2026-08-04):** small approved bug fixes / polish ship to **`main` (Production)**, not Preview-only. Branch deploys show **"No target"** and are useless for device QA on `follow-the-crowd.vercel.app`. Saved in `USER-PREFERENCES.md`, `HOW-WE-WORK.md`, and `.cursor/rules/ship-small-fixes-to-main.mdc`.
 
+**Communication preference locked (2026-08-04):** brutal honesty, no ego — never agree by default; push better options when Isaac's idea is weaker. `USER-PREFERENCES.md` + `.cursor/rules/brutal-honesty.mdc`.
+
 **Event Details hides Group chat when opened from Crew Chat View Event (`47c0bdf` on `main`, 2026-08-04):** Back already returns to the conversation; the header Group chat chip was redundant on `?from=crew-chat`. Still shows when the event is opened from Events/Calendar/etc.
 
 **Event Details edit submit says Save (`a0a1cdc` on `main`, 2026-08-04):** edit form CTA was "Save event" / "Saving event"; shortened to **Save** / **Saving** — you're already editing the event.
