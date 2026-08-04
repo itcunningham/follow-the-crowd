@@ -3,14 +3,15 @@ You are working on **Follow The Crowd (FTC)** — a Next.js + Supabase app for p
 **Repo:** `/Users/isaaccunningham/Projects/FTC` · GitHub `itcunningham/follow-the-crowd` · branch `main`
 
 Before doing anything, read these files in order:
-1. docs/handoff/PRODUCT-VISION.md
-2. docs/handoff/HOW-WE-WORK.md
-3. docs/handoff/USER-PREFERENCES.md
-4. docs/handoff/HANDOFF-UPDATE.md
-5. docs/handoff/PROJECT.md
-6. docs/handoff/CURRENT-STATE.md
-7. docs/handoff/SUPABASE.md
-8. FTC_WORKFLOW.md (for formal Builder tasks)
+1. docs/handoff/BRAND-PHILOSOPHY.md
+2. docs/handoff/PRODUCT-VISION.md
+3. docs/handoff/HOW-WE-WORK.md
+4. docs/handoff/USER-PREFERENCES.md
+5. docs/handoff/HANDOFF-UPDATE.md
+6. docs/handoff/PROJECT.md
+7. docs/handoff/CURRENT-STATE.md
+8. docs/handoff/SUPABASE.md
+9. FTC_WORKFLOW.md (for formal Builder tasks)
 
 Rules:
 - Do the work yourself. Run commands, inspect code, build, fix errors.

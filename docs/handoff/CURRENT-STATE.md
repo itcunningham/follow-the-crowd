@@ -3,6 +3,8 @@
 
 Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 
+**Brand & product philosophy locked (`docs/handoff/BRAND-PHILOSOPHY.md`, 2026-08-04):** Isaac’s mission doc is now the source of truth for product/UX/brand/feature decisions — remove friction so culture thrives; enemy is friction not competitors; feature gate (friction / culture / time / collaboration / easier events); purpose is to help more great events exist. **For the Culture.** Read before `PRODUCT-VISION.md`. Docs only; no app code.
+
 **Product vision handoff captured (`docs/handoff/PRODUCT-VISION.md`, 2026-08-03):** Isaac’s complete project handover is the authoritative product philosophy — event OS (not ticketing-first), DM as messaging reference, less UI, no social-network extras unless asked. **Product Phases 1–12** plus **GTM** (Melbourne → Australia cities → worldwide), **revenue model** (promoter/venue/festival subs first; ticketing/payments/AI later), and illustrative sub ARR table. North star: Instagram = discovery, FTC = where the work happens; first booking → final payout without leaving FTC. Wired into session startup docs. Docs only; no app code.
 
 **RELEASED — Agent Room is on `main` as `667471a` (2026-08-03).** `agent/agent-room` was integrated by the Release Agent with **`git merge --no-ff`** (not a fast-forward: `main` had moved to `a46b3e6`), carrying all eight commits — `ecab298`, `679e736`, `f49c1a7`, `bce57de`, `db67eda`, `adba7d8`, `7b9ea05` and `6667272`. Nothing was force-pushed, stashed, reset or cleaned. **The four Agent Room entries below still say "NOT merged" — that is now stale. They are left in place rather than rewritten, per `MULTI-AGENT-WORKFLOW.md` §5; this entry is the correction.**
