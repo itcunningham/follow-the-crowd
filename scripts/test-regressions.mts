@@ -2063,9 +2063,15 @@ function testProfileChatBackNavigation() {
   assert.match(profilePageSource, /resolveProfileEventDetailBackNavigation/);
   assert.match(profilePageSource, /resolveProfileChatBackNavigation/);
   assert.match(profilePageSource, /isProfileOpenedFromDmConversation/);
+  assert.match(profilePageSource, /isProfileOpenedFromCrewChat/);
   assert.match(profilePageSource, /showMessageAction/);
   assert.match(profilePageSource, /return "Opening"/);
   assert.match(profilePageSource, /openedFromEventDetail && showDjSections/);
+  assert.match(
+    profilePageSource,
+    /openedFromCrewChat[\s\S]*?return "Message"/,
+    "crew-chat profile CTA is Message only — not Message / Book DJ",
+  );
   assert.doesNotMatch(profilePageSource, /Opening\.\.\./);
   assert.match(profileHeaderSource, /replace/);
   assert.match(profileHeaderSource, /scroll=\{false\}/);
