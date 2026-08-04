@@ -5,7 +5,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 
 **Standing deploy preference locked (2026-08-04):** small approved bug fixes / polish ship to **`main` (Production)**, not Preview-only. Branch deploys show **"No target"** and are useless for device QA on `follow-the-crowd.vercel.app`. Saved in `USER-PREFERENCES.md`, `HOW-WE-WORK.md`, and `.cursor/rules/ship-small-fixes-to-main.mdc`.
 
-**Composer clears on tap Send (on `main`, 2026-08-04):** draft was only cleared after the network send resolved, so text sat in the box while the bubble already appeared. Now clears immediately (Crew Chat + DM); restores the same text if send fails.
+**Composer clears on tap Send (`fece8d6` on `main`, 2026-08-04):** draft was only cleared after the network send resolved, so text sat in the box while the bubble already appeared. Now clears immediately (Crew Chat + DM); restores the same text if send fails.
 
 **Composer "Message" after-send collapse — round 2 (`4127373` on `main`, 2026-08-04):** first min-width pass did not hold on iOS (still clipped to **M** with keyboard open). Real fix: composer action row is **CSS grid** (`auto 1fr auto`) instead of flex, and the empty label is an **overlay** (`composer-empty-label`) — native `placeholder` left blank because WebKit truncates it after clear while focused. Shared by DM + Crew Chat.
 
