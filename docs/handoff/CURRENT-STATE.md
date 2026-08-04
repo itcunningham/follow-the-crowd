@@ -7,6 +7,8 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 
 **Communication preference locked (2026-08-04):** brutal honesty, no ego — never agree by default; push better options when Isaac's idea is weaker. `USER-PREFERENCES.md` + `.cursor/rules/brutal-honesty.mdc`.
 
+**Event edit discard on Back only (`bfb057a` on `main`, 2026-08-04):** dirty Edit Event + **Back** shows the same unsaved-changes sheet as profile; **Cancel** still discards immediately (no extra tap). Shared `UnsavedChangesDiscardDialog`.
+
 **Event Details hides Group chat when opened from Crew Chat View Event (`47c0bdf` on `main`, 2026-08-04):** Back already returns to the conversation; the header Group chat chip was redundant on `?from=crew-chat`. Still shows when the event is opened from Events/Calendar/etc.
 
 **Event Details edit submit says Save (`a0a1cdc` on `main`, 2026-08-04):** edit form CTA was "Save event" / "Saving event"; shortened to **Save** / **Saving** — you're already editing the event.
