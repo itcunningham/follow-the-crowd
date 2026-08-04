@@ -2,8 +2,12 @@
 
 import type { RefObject, TextareaHTMLAttributes } from "react";
 
-/** Minimum width so "Message" placeholder never truncates while focused or empty. */
-export const COMPOSER_MESSAGE_FIELD_MIN_WIDTH_CLASS = "min-w-[6.5rem]";
+/**
+ * Floor so the empty "Message" placeholder never clips to "Mes".
+ * Sized for 16px mobile type + px-4 padding inside the pill.
+ * Do NOT pair with min-w-0 on this same node — that cancels the floor.
+ */
+export const COMPOSER_MESSAGE_FIELD_MIN_WIDTH_CLASS = "min-w-[7rem]";
 
 type ComposerMessageFieldProps = Omit<
   TextareaHTMLAttributes<HTMLTextAreaElement>,
@@ -15,7 +19,8 @@ type ComposerMessageFieldProps = Omit<
 
 /**
  * Shared composer textarea — wrapper reserves min width; field is always full width
- * of its flex slot so placeholder never clips to "Mes" when the row compresses.
+ * of its flex slot so placeholder never clips to "Mes" when the row compresses
+ * (common on iOS after send clears the value while the keyboard stays open).
  */
 export default function ComposerMessageField({
   textareaRef,
@@ -23,7 +28,7 @@ export default function ComposerMessageField({
   ...textareaProps
 }: ComposerMessageFieldProps) {
   return (
-    <div className={`${COMPOSER_MESSAGE_FIELD_MIN_WIDTH_CLASS} min-w-0 flex-1`}>
+    <div className={`${COMPOSER_MESSAGE_FIELD_MIN_WIDTH_CLASS} flex-1`}>
       <textarea
         ref={textareaRef}
         rows={1}

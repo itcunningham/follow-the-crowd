@@ -7186,6 +7186,24 @@ function testDmComposerRowAlignment() {
   // Text field height is untouched.
   assert.match(fieldSource, /min-h-11/);
 
+  // Placeholder "Message" must keep a real min-width after send clears the
+  // value. A prior bug paired min-w-[6.5rem] with min-w-0 on the same node;
+  // Tailwind resolved the conflict to min-w-0 and iOS clipped to "Mes".
+  assert.match(fieldSource, /COMPOSER_MESSAGE_FIELD_MIN_WIDTH_CLASS = "min-w-\[7rem\]"/);
+  assert.match(fieldSource, /\$\{COMPOSER_MESSAGE_FIELD_MIN_WIDTH_CLASS\} flex-1/);
+  assert.doesNotMatch(
+    fieldSource,
+    /COMPOSER_MESSAGE_FIELD_MIN_WIDTH_CLASS\} min-w-0/,
+    "composer field wrapper must not cancel its min-width with min-w-0",
+  );
+  assert.doesNotMatch(
+    fieldSource,
+    /className=\{`\$\{COMPOSER_MESSAGE_FIELD_MIN_WIDTH_CLASS\} min-w-0/,
+  );
+  const globalsSource = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
+  assert.match(globalsSource, /\.ftc-chat-composer \.ftc-input \{[\s\S]*?min-width:\s*7rem/);
+  assert.match(globalsSource, /\.ftc-chat-composer \.ftc-input \{[\s\S]*?field-sizing:\s*fixed/);
+
   // A <textarea> defaults to display: inline-block, which reserves a few
   // extra px of inline-baseline "descender" space below it inside its block
   // wrapper -- the wrapper (the actual flex/items-end sibling) ends up

@@ -715,6 +715,15 @@ html {
   }
 }
 
+/* Empty composer after send: iOS Safari can shrink a flex textarea so the
+ * "Message" placeholder clips to "Mes". Floor width on the field itself
+ * (Tailwind min-w on the wrapper alone was cancelled by a conflicting min-w-0).
+ * field-sizing: fixed blocks content-based intrinsic shrink where supported. */
+.ftc-chat-composer .ftc-input {
+  min-width: 7rem;
+  field-sizing: fixed;
+}
+
 .ftc-input.ftc-input-error,
 .ftc-textarea.ftc-input-error,
 .ftc-input[aria-invalid="true"],
