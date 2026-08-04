@@ -9,7 +9,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 
 **Event Details is not the Events bottom tab (`5a5f965` + build fix on `main`, 2026-08-04):** View Event from Crew Chat lit the Events icon and the tap felt dead. Round 1 (pop-to-root when nested) was on Production but still failed device QA. Round 2: `isPlannerEventsAreaPath` excludes standalone `/events/[id]` so Events stays tappable. A `useSearchParams` Messages-highlight tweak broke Production builds (`/discover` Suspense); removed — exclusion alone is enough.
 
-**Crew Chat View Event keeps Messages tab selected (`cursor/crew-chat-messages-tab-active-5874`, 2026-08-04):** On Event Details with `?from=crew-chat`, Messages stays highlighted (Events stays off). Reads `window.location.search` after mount — not `useSearchParams` — so `/discover` static build stays green.
+**Crew Chat View Event keeps Messages tab selected (`0d59978` on `main`, 2026-08-04):** On Event Details with `?from=crew-chat`, Messages stays highlighted (Events stays off). Reads `window.location.search` after mount — not `useSearchParams` — so `/discover` static build stays green.
 
 **Events bottom-nav pop-to-root from event detail (`de21efc` on `main`, 2026-08-04):** Workspace selectors only no-op on the landing `href`. Nested Calendar/Gigs/DM still pop to root. Superseded for Event Details highlight by the entry above — detail is no longer treated as Events-active.
 
@@ -845,6 +845,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 | Crew Chat image sharing (`message_attachments.event_id`) | `scripts/setupEventCrewChatAttachments.sql` — **applied 2026-08-03** (required a type-cast fix after the first run, see Group chat entry above) |
 
 ## Recent commits (reference)
+- `0d59978` — fix(nav): keep Messages selected on crew-chat View Event
 - `5a5f965` — fix(nav): Event Details is not the Events tab (exclude detail from Events active; crew-chat keeps Messages selected)
 - `de21efc` — fix(nav): Events tab opens list from event detail (workspace selectors only no-op on landing href; nested paths pop-to-root)
 - `52fac6a` — fix composer placeholder clipping to "Mes" after send (remove min-w-0 vs min-w conflict; CSS floor on chat composer inputs)
