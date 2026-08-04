@@ -7,7 +7,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 
 **Communication preference locked (2026-08-04):** brutal honesty, no ego — never agree by default; push better options when Isaac's idea is weaker. Strict critic mode + hostile counterarguments when useful. `USER-PREFERENCES.md` + `.cursor/rules/brutal-honesty.mdc`.
 
-**Events list card hides zero status pills (`cursor/events-list-hide-zero-pills-5874`, 2026-08-04):** All always shows; Pending / Accepted / Declined only when count &gt; 0. Less noise on Active/History cards.
+**Events list card hides zero status pills (`ec4cc8d` on `main`, 2026-08-04):** All always shows; Pending / Accepted / Declined only when count &gt; 0. Less noise on Active/History cards.
 
 **Events list card total pill says All (`fee7929` on `main`, 2026-08-04):** was "Invited" but the value is `lineupStats.total` — same as Event Details Bookings **All**. Copy-only.
 
