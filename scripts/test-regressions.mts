@@ -11329,7 +11329,8 @@ function testRoleAwareWorkspaceNavigation() {
   // (including Event Details from Active/History). Nested paths still
   // navigate to the landing href (pop-to-root). Only the landing href itself
   // no-ops on re-tap. Crew-chat View Event overrides in AppNavigation: Messages
-  // stays selected, Events does not.
+  // stays selected, Events does not. Profile from Event Details (Run Sheet /
+  // Bookings) keeps Events selected via ?from=event-detail.
   assert.equal(isStandaloneEventDetailPath("/events/abc"), true);
   assert.equal(isStandaloneEventDetailPath("/events/abc/chat"), false);
   assert.equal(isStandaloneEventDetailPath("/events"), false);
@@ -11345,7 +11346,15 @@ function testRoleAwareWorkspaceNavigation() {
     appNavigationSource,
     /eventDetailFromCrewChat[\s\S]{0,200}from"\) === "crew-chat"/,
   );
+  assert.match(
+    appNavigationSource,
+    /profileFromEventDetail[\s\S]{0,220}from"\) === "event-detail"/,
+  );
   assert.match(appNavigationSource, /function resolveNavItemActive\(item: NavItem\): boolean/);
+  assert.match(
+    appNavigationSource,
+    /if \(profileFromEventDetail\) \{\s*if \(item\.icon === "events" \|\| item\.icon === "gigs"\) \{\s*return true;/,
+  );
   assert.match(
     appNavigationSource,
     /if \(item\.icon === "events" \|\| item\.icon === "gigs"\) \{\s*return false;\s*\}/,

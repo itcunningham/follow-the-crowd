@@ -431,18 +431,21 @@ export default function AppNavigation() {
   // do not light Events (that path is a chat peek, not the Events workspace).
   // Active/History → detail still lights Events via isPlannerEventsAreaPath;
   // pop-to-root (pathname !== /events) keeps the tab tappable into the list.
-  // Read search from window (not useSearchParams) so static pages like
-  // /discover keep building without a Suspense boundary on every nav mount.
+  // Profile opened from Event Details (Run Sheet / Bookings): keep Events lit —
+  // same workspace continuity; bare /profile/:id would light nothing useful.
+  // Read search from window (not the Next search-params hook) so static pages
+  // like /discover keep building without a Suspense boundary on every nav mount.
   const [eventDetailFromCrewChat, setEventDetailFromCrewChat] = useState(false);
+  const [profileFromEventDetail, setProfileFromEventDetail] = useState(false);
 
   useEffect(() => {
-    if (!isStandaloneEventDetailPath(pathname)) {
-      setEventDetailFromCrewChat(false);
-      return;
-    }
+    const params = new URLSearchParams(window.location.search);
 
     setEventDetailFromCrewChat(
-      new URLSearchParams(window.location.search).get("from") === "crew-chat",
+      isStandaloneEventDetailPath(pathname) && params.get("from") === "crew-chat",
+    );
+    setProfileFromEventDetail(
+      pathname.startsWith("/profile/") && params.get("from") === "event-detail",
     );
   }, [pathname]);
 
@@ -453,6 +456,16 @@ export default function AppNavigation() {
       }
 
       if (item.icon === "events" || item.icon === "gigs") {
+        return false;
+      }
+    }
+
+    if (profileFromEventDetail) {
+      if (item.icon === "events" || item.icon === "gigs") {
+        return true;
+      }
+
+      if (item.icon === "messages" || item.icon === "profile") {
         return false;
       }
     }
