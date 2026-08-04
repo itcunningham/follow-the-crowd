@@ -15,7 +15,7 @@ export default function WithdrawalReasonDetailsField({
   value,
   onChange,
   disabled = false,
-  placeholder = "Add a short reason",
+  placeholder = "Details",
 }: {
   value: string;
   onChange: (value: string) => void;

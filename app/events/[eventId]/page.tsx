@@ -1201,13 +1201,15 @@ function EventDetailPageView() {
   const showStartCrewChatAction =
     showStartCrewChatActionRaw && !isHistoryEventDetail;
   const showEventGroupChatHeaderLink = showEventGroupChatAction && !openedFromCrewChat;
-  const showCrewChatHeaderAction = showStartCrewChatAction || showEventGroupChatHeaderLink;
+  // Edit event owns the header (Cancel); Group chat is leave-the-form navigation.
+  const showCrewChatHeaderAction =
+    !editOpen && (showStartCrewChatAction || showEventGroupChatHeaderLink);
 
   useEffect(() => {
-    if (!showStartCrewChatAction) {
+    if (!showStartCrewChatAction || editOpen) {
       setCrewChatHelpOpen(false);
     }
-  }, [showStartCrewChatAction]);
+  }, [editOpen, showStartCrewChatAction]);
 
   const showStickyActions = !editOpen && !sendOpen;
   const showReadOnlyEventDetails = !editOpen;

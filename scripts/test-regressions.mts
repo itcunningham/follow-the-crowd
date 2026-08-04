@@ -5108,6 +5108,8 @@ function testWithdrawalOtherReasonInputLimits() {
   );
   assert.match(fieldSource, /sanitizeWithdrawalOtherReasonValue/);
   assert.match(fieldSource, /onChange=\{handleChange\}/);
+  assert.match(fieldSource, /placeholder = "Details"/);
+  assert.doesNotMatch(fieldSource, /Add a short reason/);
   assert.doesNotMatch(fieldSource, /onBeforeInput/);
   assert.doesNotMatch(fieldSource, /onPaste/);
   assert.doesNotMatch(fieldSource, /onKeyDown/);
@@ -14033,11 +14035,15 @@ function testEventDetailReturnsToCrewChat() {
   );
   assert.match(
     detailSource,
-    /showCrewChatHeaderAction = showStartCrewChatAction \|\| showEventGroupChatHeaderLink/,
+    /showCrewChatHeaderAction =\s*!editOpen && \(showStartCrewChatAction \|\| showEventGroupChatHeaderLink\)/,
   );
   assert.doesNotMatch(
     detailSource,
     /showCrewChatHeaderAction = showStartCrewChatAction \|\| showEventGroupChatAction;/,
+  );
+  assert.doesNotMatch(
+    detailSource,
+    /showCrewChatHeaderAction = showStartCrewChatAction \|\| showEventGroupChatHeaderLink;/,
   );
 
   // Start group chat keeps full action copy; ? help lives inside the same chip
