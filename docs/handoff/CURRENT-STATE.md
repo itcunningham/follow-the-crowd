@@ -7,6 +7,8 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 
 **Communication preference locked (2026-08-04):** brutal honesty, no ego — never agree by default; push better options when Isaac's idea is weaker. Strict critic mode + hostile counterarguments when useful. `USER-PREFERENCES.md` + `.cursor/rules/brutal-honesty.mdc`.
 
+**Events bottom-nav pop-to-root from event detail (`de21efc` on `main`, 2026-08-04):** View Event from Crew Chat lands on Event Details with the Events tab highlighted but previously dead — workspace selectors no-oped whenever `isActive`. Now they only no-op on the landing `href` (`/events`, `/dm`, profile); nested paths (event detail, Calendar, DM thread, Settings) navigate to that root. Same rule on mobile bottom nav and desktop top nav.
+
 **Event Details Bookings: filters own the counts (`4213985` on `main`, 2026-08-04):** removed Invited/Pending/Accepted/Declined chip row above the pills — same numbers twice. Filter labels now carry counts (`All 2`, `Accepted 2`, …). Planner accepted-card trigger shortened to **Cancel** (confirm dialog still says Cancel booking). Follow-up: zero counts omitted from labels + `layout="scroll"` so Declined doesn’t wrap alone onto a second row.
 
 **Event edit discard on Back only (`bfb057a` on `main`, 2026-08-04):** dirty Edit Event + **Back** shows the same unsaved-changes sheet as profile; **Cancel** still discards immediately (no extra tap). Shared `UnsavedChangesDiscardDialog`. Subtitle dropped (`e86f5ce`) — title alone is enough.
@@ -839,6 +841,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 | Crew Chat image sharing (`message_attachments.event_id`) | `scripts/setupEventCrewChatAttachments.sql` — **applied 2026-08-03** (required a type-cast fix after the first run, see Group chat entry above) |
 
 ## Recent commits (reference)
+- `de21efc` — fix(nav): Events tab opens list from event detail (workspace selectors only no-op on landing href; nested paths pop-to-root)
 - `52fac6a` — fix composer placeholder clipping to "Mes" after send (remove min-w-0 vs min-w conflict; CSS floor on chat composer inputs)
 - `dbe540d` — Run Sheet: header actions hold one right-aligned slot in every state (hidden Save collapses `max-width`/padding to 0 and carries its own `margin-left`, so Cancel lands exactly where Edit sits; `min-height` deliberately not collapsed, so the row stays reserved and the DJ cards never shift), plus a 10.3% shorter expanded card from whitespace only. Merged to `main` as the Production deployment
 - `e399d57` — Run Sheet: completion line and Set Time re-balanced after the previous pass over-muted both; expanded panel tightened; collapsed cards regained a one-line "Front room · 9:00 PM – 1:00 AM" summary, rendered only while collapsed so it never duplicates the labelled values
