@@ -2017,6 +2017,19 @@ function testProfileChatBackNavigation() {
     `/dm/conversation-1?from=profile&profileUserId=${userId}&profileFrom=event-detail&eventId=${eventId}&calendarDate=2026-07-14&calendarView=event&calendarMonth=2026-07-01`,
   );
   assert.equal(
+    buildProfileDmThreadHref("conversation-1", userId, null, crewChatReturnTo),
+    `/dm/conversation-1?from=profile&profileUserId=${userId}&profileFrom=chat&profileReturnTo=${encodeURIComponent(crewChatReturnTo)}`,
+  );
+  assert.equal(
+    resolveDmThreadBackHref({
+      from: "profile",
+      profileUserId: userId,
+      profileFrom: "chat",
+      profileReturnTo: crewChatReturnTo,
+    }),
+    buildProfileHref(userId, { returnTo: crewChatReturnTo }),
+  );
+  assert.equal(
     resolveDmThreadBackHref({
       from: "profile",
       profileUserId: userId,

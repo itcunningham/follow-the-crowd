@@ -90,6 +90,7 @@ export function buildProfileDmThreadHref(
   conversationId: string,
   profileUserId: string,
   eventDetailContext?: EventDetailProfileReturnContext | null,
+  chatReturnTo?: string | null,
 ): string {
   const params = new URLSearchParams({
     from: "profile",
@@ -108,6 +109,18 @@ export function buildProfileDmThreadHref(
       params.set("calendarDate", eventDetailContext.calendarOrigin.calendarDate);
       params.set("calendarView", eventDetailContext.calendarOrigin.calendarView);
       params.set("calendarMonth", eventDetailContext.calendarOrigin.calendarMonth);
+    }
+  } else {
+    // Preserve crew-chat / DM returnTo so Profile ← DM keeps Back + Message CTA context.
+    const trimmedReturnTo = chatReturnTo?.trim();
+    if (
+      trimmedReturnTo &&
+      trimmedReturnTo.startsWith("/") &&
+      !trimmedReturnTo.startsWith("//") &&
+      !trimmedReturnTo.startsWith("/profile/")
+    ) {
+      params.set("profileFrom", "chat");
+      params.set("profileReturnTo", trimmedReturnTo);
     }
   }
 

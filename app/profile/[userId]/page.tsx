@@ -115,7 +115,16 @@ function UserProfilePageView({ userId }: { userId: string }) {
       const authUserId = await getCurrentUserId();
       const conversationId = await startDm(authUserId, profile.user_id);
       const eventDetailContext = readProfileEventDetailContext((key) => searchParams.get(key));
-      router.push(buildProfileDmThreadHref(conversationId, profile.user_id, eventDetailContext));
+      const chatReturnTo =
+        searchParams.get("from")?.trim() === "chat" ? searchParams.get("returnTo") : null;
+      router.push(
+        buildProfileDmThreadHref(
+          conversationId,
+          profile.user_id,
+          eventDetailContext,
+          chatReturnTo,
+        ),
+      );
     } catch (messageError) {
       console.error("startDm failed from profile page:", messageError);
       setError(messageError instanceof Error ? messageError.message : "Failed to start message");

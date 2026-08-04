@@ -3,6 +3,8 @@
 
 Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 
+**Crew → profile → DM → Back keeps crew context (`cursor/crew-profile-dm-return-chain-5874`, 2026-08-04):** Messaging from a crew-chat profile now carries `profileFrom=chat` + `profileReturnTo` into the DM thread, so Back restores the profile with Back-to-crew-chat and **Message** (not Book). Bare `/profile/id` no longer drops the chain.
+
 **Crew-chat profile CTA drops Book (`cursor/crew-profile-message-cta-5874`, 2026-08-04):** opening a DJ from the Crew sheet no longer shows “Message / Book DJ” — they are already on the event. Label is **Message** only (`isProfileOpenedFromCrewChat`). Discover/other entry points still show Book where appropriate.
 
 **Crew sheet returns faster (`cursor/crew-sheet-instant-return-5874`, 2026-08-04):** session-cache the crew roster (`lib/events/crewMemberListCache.ts`) so Back from a profile paints the Crew sheet immediately from cache while chat access/messages refetch. Live members replace cache when ready.

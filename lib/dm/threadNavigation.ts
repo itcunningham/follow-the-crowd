@@ -11,7 +11,7 @@ import {
 } from "@/lib/calendar";
 import { DM_BOOKING_FOCUS_SCROLL_ONLY } from "@/lib/dm/chatBookingTarget";
 import { DM_CHAT_SCROLL_RESTORE_PARAM } from "@/lib/dm/dmChatScrollRestoration";
-import { buildEventDetailProfileHref } from "@/lib/profileNavigation";
+import { buildEventDetailProfileHref, buildProfileHref } from "@/lib/profileNavigation";
 import { looksLikeUserId } from "@/lib/user/displayName";
 
 export type DmThreadEntryContext = {
@@ -186,6 +186,7 @@ export type DmThreadBackContext = {
   tab?: string | null;
   profileUserId?: string | null;
   profileFrom?: string | null;
+  profileReturnTo?: string | null;
   fromTab?: string | null;
   eventId?: string | null;
   calendarDate?: string | null;
@@ -293,6 +294,19 @@ export function resolveDmThreadBackHref(context: DmThreadBackContext): string {
           fromTab: context.fromTab,
           calendarOrigin,
         });
+      }
+    }
+
+    if (context.profileFrom?.trim() === "chat") {
+      const returnTo = context.profileReturnTo?.trim();
+
+      if (
+        returnTo &&
+        returnTo.startsWith("/") &&
+        !returnTo.startsWith("//") &&
+        !returnTo.startsWith("/profile/")
+      ) {
+        return buildProfileHref(profileUserId, { returnTo });
       }
     }
 
