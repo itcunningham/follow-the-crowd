@@ -14217,6 +14217,10 @@ function testEventDetailEditDiscardOnBackOnly() {
   assert.match(runSheetSource, /unsavedWhileEditing = isEditing && hasUnsavedChanges/);
   assert.match(runSheetSource, /discardEditsRef\.current = handleCancelEdit/);
   assert.match(runSheetSource, /onUnsavedEditingChange\?\.\(false\)/);
+  // Run Sheet profile taps must carry event-detail return context (Back + Message CTA).
+  assert.match(runSheetSource, /buildEventDetailProfileHref/);
+  assert.match(detailSource, /EventRunSheetSection[\s\S]*?fromTab=\{searchParams\.get\("fromTab"\)\}/);
+  assert.match(detailSource, /EventRunSheetSection[\s\S]*?calendarOrigin=\{calendarOrigin\}/);
   // Run Sheet Cancel stays immediate discard — no sheet on that path.
   assert.match(runSheetSource, /function handleCancelEdit\(\) \{/);
   assert.match(runSheetSource, /onClick=\{handleCancelEdit\}/);
