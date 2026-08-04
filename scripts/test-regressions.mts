@@ -250,6 +250,7 @@ import {
 } from "../app/components/bookings/GigsWorkspaceChrome";
 import { computeCrewChatEventActions } from "../lib/events/crewChatEventActions";
 import type { CrewChatUnlockState } from "../lib/events/crewChatUnlock";
+import { isEventDetailEditDirty } from "../lib/events/eventEditDirty";
 import { resolveEventLinkedBookingDisplay } from "../lib/events/eventBookingDisplay";
 import { getAuthRedirectUrl } from "../lib/auth/appUrl";
 import {
@@ -13768,6 +13769,89 @@ function testEventDetailReturnsToCrewChat() {
   );
 }
 
+function testEventDetailEditDiscardOnBackOnly() {
+  const detailSource = readFileSync(
+    new URL("../app/events/[eventId]/page.tsx", import.meta.url),
+    "utf8",
+  );
+  const dialogSource = readFileSync(
+    new URL("../app/components/UnsavedChangesDiscardDialog.tsx", import.meta.url),
+    "utf8",
+  );
+  const profileDialogSource = readFileSync(
+    new URL("../app/components/profile/EditProfileDiscardDialog.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(dialogSource, /Discard unsaved changes\?/);
+  assert.match(dialogSource, /Keep editing/);
+  assert.match(dialogSource, /Discard changes/);
+  assert.match(profileDialogSource, /UnsavedChangesDiscardDialog/);
+
+  assert.match(detailSource, /handleEventDetailBack/);
+  assert.match(detailSource, /isEventDetailEditDirty\(event, editForm, editCoverField\)/);
+  assert.match(detailSource, /setEditDiscardDialogOpen\(true\)/);
+  assert.match(detailSource, /UnsavedChangesDiscardDialog/);
+  // Cancel closes edit immediately — no discard sheet on that path.
+  assert.match(
+    detailSource,
+    /onCancel=\{\(\) => \{\s*if \(savingEdit\) return;\s*closeEventEditForm\(\);/,
+  );
+  assert.doesNotMatch(
+    detailSource,
+    /onCancel=\{\(\) => \{[\s\S]*setEditDiscardDialogOpen\(true\)/,
+  );
+
+  const baseEvent = {
+    id: "e1",
+    name: "Night",
+    venue: "Club",
+    event_date: "2026-08-05",
+    set_time: "9:00 PM – 11:00 PM",
+    rate: "",
+    notes: "Hi",
+    booking_plan_id: null,
+    fallback_colour: null,
+    cover_image_url: null,
+    owner_id: "u1",
+    created_at: "",
+    updated_at: "",
+    cancelled_at: null,
+    crew_chat_started_at: null,
+  } as const;
+
+  const baseForm = {
+    name: "Night",
+    venue: "Club",
+    eventDate: "2026-08-05",
+    setTime: "9:00 PM – 11:00 PM",
+    rate: "",
+    notes: "Hi",
+    bookingPlanId: null,
+    fallbackColour: null,
+  };
+
+  assert.equal(
+    isEventDetailEditDirty(baseEvent as never, baseForm, { file: null, removeExisting: false }),
+    false,
+  );
+  assert.equal(
+    isEventDetailEditDirty(
+      baseEvent as never,
+      { ...baseForm, name: "Night 2" },
+      { file: null, removeExisting: false },
+    ),
+    true,
+  );
+  assert.equal(
+    isEventDetailEditDirty(baseEvent as never, baseForm, {
+      file: new File([], "x.png"),
+      removeExisting: false,
+    }),
+    true,
+  );
+}
+
 /**
  * dc8eb61 returned to the right conversation but with `router.push`, which
  * APPENDS a second copy of it: the entry immediately behind the returned chat
@@ -16208,6 +16292,7 @@ async function main() {
   testCrewChatTimestampSeparators();
   testCrewChatEventCardToggleScrollCompensation();
   testEventDetailReturnsToCrewChat();
+  testEventDetailEditDiscardOnBackOnly();
   testEventDetailPopsCrewChatHistoryEntry();
   testCrewChatMemberSheetReopenOnProfileReturn();
   testIncomingChatMessagesHaveNoAvatarTimestamp();

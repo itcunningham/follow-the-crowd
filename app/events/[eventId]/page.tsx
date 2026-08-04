@@ -131,6 +131,8 @@ import {
   syncPlannerEventDeletedFromClientCaches,
 } from "@/lib/events/plannerEventLifecycleClientSync";
 import { shouldConfirmEventEditSave } from "@/lib/events/eventEditConfirmation";
+import { isEventDetailEditDirty } from "@/lib/events/eventEditDirty";
+import UnsavedChangesDiscardDialog from "@/app/components/UnsavedChangesDiscardDialog";
 import {
   getBookingImpactingEventFieldChanges,
   postEventGroupChatUpdate,
@@ -282,6 +284,39 @@ function EventDetailPageView() {
     router.push(eventsBackHref);
   }
 
+  function closeEventEditForm() {
+    setEditOpen(false);
+    setEditForm(null);
+    setEditSaveAttempted(false);
+    resetEditCoverState();
+    setEditFormError(null);
+    setEditDiscardDialogOpen(false);
+  }
+
+  function handleEventDetailBack() {
+    if (savingEdit) {
+      return;
+    }
+
+    // Back while editing with dirty changes: confirm (matches profile).
+    // Cancel closes edit immediately with no sheet — Cancel already means discard.
+    if (
+      editOpen &&
+      editForm &&
+      event &&
+      isEventDetailEditDirty(event, editForm, editCoverField)
+    ) {
+      setEditDiscardDialogOpen(true);
+      return;
+    }
+
+    if (editOpen) {
+      closeEventEditForm();
+    }
+
+    goBackToEvents();
+  }
+
   const eventRef = useRef<Event | null>(cachedEventSummary);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [loadingEvent, setLoadingEvent] = useState(() => !cachedEventSummary);
@@ -324,6 +359,7 @@ function EventDetailPageView() {
 
   const [editOpen, setEditOpen] = useState(false);
   const [editForm, setEditForm] = useState<EventInput | null>(null);
+  const [editDiscardDialogOpen, setEditDiscardDialogOpen] = useState(false);
   const [editCoverField, setEditCoverField] = useState<EventCoverImageFieldState>(
     emptyEventCoverImageFieldState,
   );
@@ -1200,7 +1236,7 @@ function EventDetailPageView() {
         >
           <div className={PLANNER_EVENT_DETAIL_HEADER_CONTROLS_ROW_CLASS}>
             <div className="shrink-0">
-              <EventDetailOverlayButton onClick={goBackToEvents} label="Back to events">
+              <EventDetailOverlayButton onClick={handleEventDetailBack} label="Back to events">
                 <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.75">
                   <path d="M15 6l-6 6 6 6" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
@@ -1333,11 +1369,7 @@ function EventDetailPageView() {
               titleClassName="text-base font-bold text-ftc-text"
               onCancel={() => {
                 if (savingEdit) return;
-                setEditOpen(false);
-                setEditForm(null);
-                setEditSaveAttempted(false);
-                resetEditCoverState();
-                setEditFormError(null);
+                closeEventEditForm();
               }}
               cancelDisabled={savingEdit}
             >
@@ -1664,6 +1696,16 @@ function EventDetailPageView() {
         }}
         onConfirm={() => {
           void performSaveEdit(readPendingCoverSave());
+        }}
+      />
+
+      <UnsavedChangesDiscardDialog
+        open={editDiscardDialogOpen}
+        titleId="discard-event-edits-title"
+        onKeepEditing={() => setEditDiscardDialogOpen(false)}
+        onDiscard={() => {
+          closeEventEditForm();
+          goBackToEvents();
         }}
       />
     </>
