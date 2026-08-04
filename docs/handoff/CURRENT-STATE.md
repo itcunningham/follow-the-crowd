@@ -3,7 +3,7 @@
 
 Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 
-**Composer "Message" placeholder no longer clips to "Mes" after send (`cursor/composer-message-placeholder-5874`, 2026-08-04):** Shared `ComposerMessageField` had `min-w-[6.5rem]` and `min-w-0` on the same wrapper — Tailwind resolved the conflict to `min-w-0`, so after send cleared the draft iOS Safari shrunk the empty flex textarea and clipped the placeholder to **Mes**. Fix: drop the conflicting `min-w-0`, bump the floor to `min-w-[7rem]`, and add a CSS `min-width: 7rem` + `field-sizing: fixed` on `.ftc-chat-composer .ftc-input` (DM + Crew Chat). Regression pins the no-`min-w-0` rule in `testDmComposerRowAlignment`.
+**Composer "Message" placeholder no longer clips to "Mes" after send (`52fac6a`, 2026-08-04):** Shared `ComposerMessageField` had `min-w-[6.5rem]` and `min-w-0` on the same wrapper — Tailwind resolved the conflict to `min-w-0`, so after send cleared the draft iOS Safari shrunk the empty flex textarea and clipped the placeholder to **Mes**. Fix: drop the conflicting `min-w-0`, bump the floor to `min-w-[7rem]`, and add a CSS `min-width: 7rem` + `field-sizing: fixed` on `.ftc-chat-composer .ftc-input` (DM + Crew Chat). Regression pins the no-`min-w-0` rule in `testDmComposerRowAlignment`.
 
 **Crew → profile → DM → Back keeps crew context (`cursor/crew-profile-dm-return-chain-5874`, 2026-08-04):** Messaging from a crew-chat profile now carries `profileFrom=chat` + `profileReturnTo` into the DM thread, so Back restores the profile with Back-to-crew-chat and **Message** (not Book). Bare `/profile/id` no longer drops the chain.
 
@@ -823,7 +823,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 | Crew Chat image sharing (`message_attachments.event_id`) | `scripts/setupEventCrewChatAttachments.sql` — **applied 2026-08-03** (required a type-cast fix after the first run, see Group chat entry above) |
 
 ## Recent commits (reference)
-- `cursor/composer-message-placeholder-5874` — fix composer placeholder clipping to "Mes" after send (remove min-w-0 vs min-w conflict; CSS floor on chat composer inputs)
+- `52fac6a` — fix composer placeholder clipping to "Mes" after send (remove min-w-0 vs min-w conflict; CSS floor on chat composer inputs)
 - `dbe540d` — Run Sheet: header actions hold one right-aligned slot in every state (hidden Save collapses `max-width`/padding to 0 and carries its own `margin-left`, so Cancel lands exactly where Edit sits; `min-height` deliberately not collapsed, so the row stays reserved and the DJ cards never shift), plus a 10.3% shorter expanded card from whitespace only. Merged to `main` as the Production deployment
 - `e399d57` — Run Sheet: completion line and Set Time re-balanced after the previous pass over-muted both; expanded panel tightened; collapsed cards regained a one-line "Front room · 9:00 PM – 1:00 AM" summary, rendered only while collapsed so it never duplicates the labelled values
 - `3e1cc4e` — Crew Chat: manual "Details/Hide" toggle to reopen the collapsed event card without scrolling to the live edge (reuses existing `eventCardCollapsed` state, no duplicate card); fixes a scroll-clamp bug where a manual collapse at the bottom immediately snapped back open; also carries the attachments migration's type-cast fix, applied to Supabase this session
