@@ -21,7 +21,7 @@ function CrewMemberRoleBadge({ role }: { role: CrewMember["role"] }) {
           : "bg-ftc-bg-elevated text-ftc-text-secondary"
       }`}
     >
-      {isPromoter ? "👑" : "🎧"} {CREW_ROLE_LABEL[role]}
+      {CREW_ROLE_LABEL[role]}
     </span>
   );
 }
