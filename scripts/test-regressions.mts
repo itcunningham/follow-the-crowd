@@ -13983,6 +13983,16 @@ function testEventDetailReturnsToCrewChat() {
     detailSource,
     /showCrewChatHeaderAction = showStartCrewChatAction \|\| showEventGroupChatAction;/,
   );
+
+  // Start group chat keeps full action copy — no max-width truncate chip with ? inside.
+  assert.match(detailSource, /HEADER_GROUP_CHAT_LABEL_CLASS/);
+  assert.match(detailSource, /whitespace-nowrap/);
+  assert.match(
+    detailSource,
+    /startingCrewChat \? "Starting" : "Start group chat"/,
+  );
+  assert.doesNotMatch(detailSource, /max-w-\[10\.5rem\]/);
+  assert.doesNotMatch(detailSource, /max-w-\[8\.5rem\]/);
 }
 
 function testEventDetailEditDiscardOnBackOnly() {

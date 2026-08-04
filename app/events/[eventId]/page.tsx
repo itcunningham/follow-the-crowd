@@ -175,10 +175,13 @@ const CREW_CHAT_HELP = {
 };
 
 const HEADER_GROUP_CHAT_CHIP_CLASS =
-  "flex min-w-0 shrink items-center rounded-xl border border-ftc-border-subtle bg-ftc-bg/80 py-1 backdrop-blur-sm transition hover:border-ftc-border-strong hover:bg-ftc-bg-elevated focus-within:border-[var(--ftc-color-primary-border)] focus-within:bg-ftc-bg-elevated";
+  "flex shrink-0 items-center rounded-xl border border-ftc-border-subtle bg-ftc-bg/80 px-2 py-1 backdrop-blur-sm transition hover:border-ftc-border-strong hover:bg-ftc-bg-elevated focus-within:border-[var(--ftc-color-primary-border)] focus-within:bg-ftc-bg-elevated";
 
 const HEADER_GROUP_CHAT_ACTION_CLASS =
-  "flex min-h-8 min-w-0 flex-1 items-center gap-1 rounded-lg px-1 py-0.5 transition hover:text-ftc-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ftc-primary/35 active:bg-ftc-surface-raised/70 disabled:cursor-not-allowed disabled:opacity-50";
+  "flex min-h-8 items-center gap-1 rounded-lg px-0.5 py-0.5 transition hover:text-ftc-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ftc-primary/35 active:bg-ftc-surface-raised/70 disabled:cursor-not-allowed disabled:opacity-50";
+
+const HEADER_GROUP_CHAT_LABEL_CLASS =
+  "whitespace-nowrap text-[10px] font-semibold uppercase tracking-wide text-ftc-text sm:text-xs";
 
 function EventHeaderChatIcon() {
   return (
@@ -1281,40 +1284,34 @@ function EventDetailPageView() {
 
             <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
               {showCrewChatHeaderAction ? (
-                <div
-                  className={`group ${HEADER_GROUP_CHAT_CHIP_CLASS} ${
-                    showCrewChatHelpUi
-                      ? "max-w-[10.5rem] gap-1 px-1 sm:max-w-none"
-                      : "max-w-[8.5rem] px-2 sm:max-w-none"
-                  }`}
-                >
-                  {showStartCrewChatAction ? (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        void handleStartCrewChat();
-                      }}
-                      disabled={startingCrewChat}
-                      aria-label="Start group chat"
-                      className={HEADER_GROUP_CHAT_ACTION_CLASS}
-                    >
-                      <EventHeaderChatIcon />
-                      <span className="min-w-0 truncate text-[10px] font-semibold uppercase tracking-wide text-ftc-text sm:text-xs">
-                        {startingCrewChat ? "Starting" : "Start group chat"}
-                      </span>
-                    </button>
-                  ) : (
-                    <Link
-                      href={getEventCrewChatLink(event.id)}
-                      aria-label="Group chat"
-                      className={HEADER_GROUP_CHAT_ACTION_CLASS}
-                    >
-                      <EventHeaderChatIcon />
-                      <span className="min-w-0 truncate text-[10px] font-semibold uppercase tracking-wide text-ftc-text sm:text-xs">
-                        Group chat
-                      </span>
-                    </Link>
-                  )}
+                <>
+                  <div className={`group ${HEADER_GROUP_CHAT_CHIP_CLASS}`}>
+                    {showStartCrewChatAction ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          void handleStartCrewChat();
+                        }}
+                        disabled={startingCrewChat}
+                        aria-label="Start group chat"
+                        className={HEADER_GROUP_CHAT_ACTION_CLASS}
+                      >
+                        <EventHeaderChatIcon />
+                        <span className={HEADER_GROUP_CHAT_LABEL_CLASS}>
+                          {startingCrewChat ? "Starting" : "Start group chat"}
+                        </span>
+                      </button>
+                    ) : (
+                      <Link
+                        href={getEventCrewChatLink(event.id)}
+                        aria-label="Group chat"
+                        className={HEADER_GROUP_CHAT_ACTION_CLASS}
+                      >
+                        <EventHeaderChatIcon />
+                        <span className={HEADER_GROUP_CHAT_LABEL_CLASS}>Group chat</span>
+                      </Link>
+                    )}
+                  </div>
                   {showCrewChatHelpUi ? (
                     <InlineOptionHelpButton
                       label={crewChatHelpActionLabel}
@@ -1325,7 +1322,7 @@ function EventDetailPageView() {
                       disabled={startingCrewChat}
                     />
                   ) : null}
-                </div>
+                </>
               ) : null}
               <EventDetailEditHeaderSlot state={editHeaderState} onEditClick={openEditForm} />
             </div>
