@@ -7,7 +7,9 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 
 **Communication preference locked (2026-08-04):** brutal honesty, no ego — never agree by default; push better options when Isaac's idea is weaker. Strict critic mode + hostile counterarguments when useful. `USER-PREFERENCES.md` + `.cursor/rules/brutal-honesty.mdc`.
 
-**Events bottom-nav pop-to-root from event detail (`de21efc` on `main`, 2026-08-04):** View Event from Crew Chat lands on Event Details with the Events tab highlighted but previously dead — workspace selectors no-oped whenever `isActive`. Now they only no-op on the landing `href` (`/events`, `/dm`, profile); nested paths (event detail, Calendar, DM thread, Settings) navigate to that root. Same rule on mobile bottom nav and desktop top nav.
+**Event Details is not the Events bottom tab (`cursor/event-detail-events-tab-active-5874`, 2026-08-04):** View Event from Crew Chat lit the Events icon and the tap felt dead. Round 1 (pop-to-root when nested) was on Production but still failed device QA. Round 2: `isPlannerEventsAreaPath` excludes standalone `/events/[id]`; from `?from=crew-chat`, Messages stays selected so Events is clearly tappable into the list.
+
+**Events bottom-nav pop-to-root from event detail (`de21efc` on `main`, 2026-08-04):** Workspace selectors only no-op on the landing `href`. Nested Calendar/Gigs/DM still pop to root. Superseded for Event Details highlight by the entry above — detail is no longer treated as Events-active.
 
 **Event Details Bookings: filters own the counts (`4213985` on `main`, 2026-08-04):** removed Invited/Pending/Accepted/Declined chip row above the pills — same numbers twice. Filter labels now carry counts (`All 2`, `Accepted 2`, …). Planner accepted-card trigger shortened to **Cancel** (confirm dialog still says Cancel booking). Follow-up: zero counts omitted from labels + `layout="scroll"` so Declined doesn’t wrap alone onto a second row.
 
