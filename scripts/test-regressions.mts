@@ -2085,6 +2085,12 @@ function testProfileChatBackNavigation() {
     /openedFromCrewChat[\s\S]*?return "Message"/,
     "crew-chat profile CTA is Message only — not Message / Book DJ",
   );
+  assert.match(
+    profilePageSource,
+    /buildProfileDmThreadHref\(\s*conversationId,\s*profile\.user_id,\s*eventDetailContext,\s*chatReturnTo/,
+    "Message from a chat-origin profile preserves returnTo into the DM thread",
+  );
+  assert.match(dmPageSource, /profileReturnTo: searchParams\.get\("profileReturnTo"\)/);
   assert.doesNotMatch(profilePageSource, /Opening\.\.\./);
   assert.match(profileHeaderSource, /replace/);
   assert.match(profileHeaderSource, /scroll=\{false\}/);
