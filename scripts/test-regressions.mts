@@ -11022,16 +11022,16 @@ function testRoleAwareWorkspaceNavigation() {
   );
 
   // One workspace-selector nav item, role-selected. Both variants use the
-  // whole-area isActive check so the tab highlights across the workspace;
-  // nested paths (Calendar, DM) still navigate to the landing href
-  // (pop-to-root). Only the landing href itself no-ops on re-tap.
-  // Event Details is NOT the Events tab — isPlannerEventsAreaPath excludes it
-  // so the bottom-left icon stays tappable after View Event from crew chat.
+  // whole-area isActive check so the tab highlights across the workspace
+  // (including Event Details from Active/History). Nested paths still
+  // navigate to the landing href (pop-to-root). Only the landing href itself
+  // no-ops on re-tap. Crew-chat View Event overrides in AppNavigation: Messages
+  // stays selected, Events does not.
   assert.equal(isStandaloneEventDetailPath("/events/abc"), true);
   assert.equal(isStandaloneEventDetailPath("/events/abc/chat"), false);
   assert.equal(isStandaloneEventDetailPath("/events"), false);
   assert.equal(isPlannerEventsAreaPath("/events"), true);
-  assert.equal(isPlannerEventsAreaPath("/events/abc"), false);
+  assert.equal(isPlannerEventsAreaPath("/events/abc"), true);
   assert.equal(isPlannerEventsAreaPath("/events/abc/chat"), false);
   assert.equal(isPlannerEventsAreaPath("/calendar"), true);
   assert.match(
@@ -11043,6 +11043,10 @@ function testRoleAwareWorkspaceNavigation() {
     /eventDetailFromCrewChat[\s\S]{0,200}from"\) === "crew-chat"/,
   );
   assert.match(appNavigationSource, /function resolveNavItemActive\(item: NavItem\): boolean/);
+  assert.match(
+    appNavigationSource,
+    /if \(item\.icon === "events" \|\| item\.icon === "gigs"\) \{\s*return false;\s*\}/,
+  );
   assert.doesNotMatch(appNavigationSource, /useSearchParams/);
   assert.match(
     appNavigationSource,

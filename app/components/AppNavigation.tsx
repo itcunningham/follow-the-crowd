@@ -427,7 +427,10 @@ export default function AppNavigation() {
     getNavigationBadgeCacheVersion,
     () => 0,
   );
-  // View Event from crew chat: keep Messages selected on Event Details.
+  // View Event from crew chat: keep Messages selected on Event Details, and
+  // do not light Events (that path is a chat peek, not the Events workspace).
+  // Active/History → detail still lights Events via isPlannerEventsAreaPath;
+  // pop-to-root (pathname !== /events) keeps the tab tappable into the list.
   // Read search from window (not useSearchParams) so static pages like
   // /discover keep building without a Suspense boundary on every nav mount.
   const [eventDetailFromCrewChat, setEventDetailFromCrewChat] = useState(false);
@@ -444,8 +447,14 @@ export default function AppNavigation() {
   }, [pathname]);
 
   function resolveNavItemActive(item: NavItem): boolean {
-    if (item.icon === "messages" && eventDetailFromCrewChat) {
-      return true;
+    if (eventDetailFromCrewChat) {
+      if (item.icon === "messages") {
+        return true;
+      }
+
+      if (item.icon === "events" || item.icon === "gigs") {
+        return false;
+      }
     }
 
     return item.isActive(pathname);

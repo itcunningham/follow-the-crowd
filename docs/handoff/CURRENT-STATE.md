@@ -7,7 +7,9 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 
 **Communication preference locked (2026-08-04):** brutal honesty, no ego — never agree by default; push better options when Isaac's idea is weaker. Strict critic mode + hostile counterarguments when useful. `USER-PREFERENCES.md` + `.cursor/rules/brutal-honesty.mdc`.
 
-**Event Details is not the Events bottom tab (`5a5f965` + build fix on `main`, 2026-08-04):** View Event from Crew Chat lit the Events icon and the tap felt dead. Round 1 (pop-to-root when nested) was on Production but still failed device QA. Round 2: `isPlannerEventsAreaPath` excludes standalone `/events/[id]` so Events stays tappable. A `useSearchParams` Messages-highlight tweak broke Production builds (`/discover` Suspense); removed — exclusion alone is enough.
+**Event Details bottom-nav highlight by origin (`cursor/events-tab-detail-from-list-5874`, 2026-08-04):** Active/History → detail keeps Events lit (and tappable into the list via pop-to-root). Crew-chat View Event keeps Messages lit and Events off. Earlier round that blanked Events on every detail was too broad.
+
+**Event Details is not the Events bottom tab (`5a5f965` + build fix on `main`, 2026-08-04):** [superseded for Active/History by the entry above] View Event from Crew Chat lit the Events icon and the tap felt dead. Round 1 (pop-to-root when nested) was on Production but still failed device QA. Round 2 blanked Events on all detail — wrong for list→detail. Crew-chat case kept via Messages override.
 
 **Crew Chat View Event keeps Messages tab selected (`0d59978` on `main`, 2026-08-04):** On Event Details with `?from=crew-chat`, Messages stays highlighted (Events stays off). Reads `window.location.search` after mount — not `useSearchParams` — so `/discover` static build stays green.
 
