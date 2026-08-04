@@ -7,6 +7,8 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 
 **Communication preference locked (2026-08-04):** brutal honesty, no ego — never agree by default; push better options when Isaac's idea is weaker. Strict critic mode + hostile counterarguments when useful. `USER-PREFERENCES.md` + `.cursor/rules/brutal-honesty.mdc`.
 
+**Run Sheet allows multiple DJ rows open at once (on `main`, 2026-08-04):** view mode no longer accordion-closes siblings. `expandedRowIds: Set<string>` — tap adds/removes that row only. Edit mode still force-expands every row; Cancel/Save still clear the Set. Regressions updated (`testRunSheetAccordionRestructure` / `testRunSheetEditMode` / density). Supersedes older “single-open `expandedRowId`” notes below.
+
 **Send invitations looked dead (`c593618` on `main`, 2026-08-04):** Send bookings failures/`setError` wrote to Event Details *behind* the sheet, so tap felt like a no-op. Errors now render inside the sheet (`role="alert"`). Sheet `z-[60]` above mobile nav (`z-50`); unavailable confirm `z-[70]`. Failure copy surfaces the provider/message when present.
 
 **Group chat help copy matches when Start appears (`30cbf57` on `main`, 2026-08-04):** title **Start group chat**; body “Start now with 1 accepted DJ or wait. It opens automatically when a 2nd DJ accepts” — help only shows after 1 accept, so the old “after the first DJ accepts” line was redundant.
@@ -875,6 +877,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 | Crew Chat image sharing (`message_attachments.event_id`) | `scripts/setupEventCrewChatAttachments.sql` — **applied 2026-08-03** (required a type-cast fix after the first run, see Group chat entry above) |
 
 ## Recent commits (reference)
+- (pending) — fix(run-sheet): allow multiple DJ rows expanded at once
 - `fee7929` — fix(events): list card total pill says All
 - `39d2069` — fix(run-sheet): warn on Back with unsaved edits
 - `f2e6597` — fix(events): Active tab works after History detail Back
