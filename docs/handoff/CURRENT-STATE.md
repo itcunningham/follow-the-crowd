@@ -3,7 +3,7 @@
 
 Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 
-**Brand & product philosophy locked (`docs/handoff/BRAND-PHILOSOPHY.md`, 2026-08-04):** Isaac’s mission doc is the source of truth — remove friction so culture thrives; enemy is fragmented workflows (not Instagram/WhatsApp/sheets themselves); grounded in promoter interviews (chasing confirmations, scattered tools, status chaos); beta core loop = create → book → rates → confirm → run sheet → one chat; start with independent promoters/crews; Melbourne Saturday-night proof question. **For the Culture.** Read before `PRODUCT-VISION.md`. Docs only; no app code.
+**Brand & product philosophy locked (`docs/handoff/BRAND-PHILOSOPHY.md`, 2026-08-04):** Mission + interview-grounded evidence from planners and club runners — Sheets/IG/group chats today; pain is confirmation chasing, updates, coordination (not “kill spreadsheets”); beta loop = create → book → rates → confirm → run sheet → crew chat; ticket/social demand is real but not beta-core. **For the Culture.** Read before `PRODUCT-VISION.md`. Docs only; no app code.
 
 **Product vision handoff captured (`docs/handoff/PRODUCT-VISION.md`, 2026-08-03):** Isaac’s complete project handover is the authoritative product philosophy — event OS (not ticketing-first), DM as messaging reference, less UI, no social-network extras unless asked. **Product Phases 1–12** plus **GTM** (Melbourne → Australia cities → worldwide), **revenue model** (promoter/venue/festival subs first; ticketing/payments/AI later), and illustrative sub ARR table. North star: Instagram = discovery, FTC = where the work happens; first booking → final payout without leaving FTC. Wired into session startup docs. Docs only; no app code.
 

@@ -34,18 +34,54 @@ Independent DJs often book via **Instagram DMs**. Larger artists tend toward **e
 
 ## Market evidence (interviews)
 
-The philosophy did not come from branding first. It came from listening.
+The philosophy did not come from branding first. It came from listening — including one-off event planners and regular club/event runners.
 
-Promoters described a **fragmented workflow**, constantly switching between Instagram DMs, email, Google Sheets, calendars, Notes, and sometimes WhatsApp. The problem is not any one tool — it is that nothing is connected.
+### What they actually do today
 
-The deeper pain is not “spreadsheets are bad.” It is:
+- **Google Sheets / Docs** as the ops brain: lineup, set times, confirmed or not, fees; sometimes basic accounting on another tab
+- **Instagram** to reach indie DJs (easiest path); **email / agents** for bigger names (more complicated)
+- **Google Drive** for DJ press kits
+- **A group chat for every night** — updates go there; some runners want **separate chats** (promoters vs owners/managers/door)
+- When details change: message people individually or in chat, move fast, stay apologetic
+- Venue contact is often the slowest external dependency — many lock venue/availability early
 
-- Chasing confirmations
-- Keeping everyone updated
-- Coordinating multiple people
-- Remembering who confirmed, who’s pending, and what still needs doing
+### What hurts (the real pain)
 
-Those are symptoms of friction. Naming the enemy **friction** is just giving that interview pain a clear name.
+Not “spreadsheets are evil.” Sheets are familiar. The pain is:
+
+- Fragmented workflow across IG, email, sheets, drive, ads, chats
+- Chasing confirmations and knowing who’s pending / confirmed / declined
+- Keeping everyone updated when set times, fees, lineup, or venue info change
+- Coordinating many people who can each drop the ball (DJs, venue, door)
+- Behind-the-scenes money work (fees, accounting) — “least fun, gotta be done”
+- For bigger acts: agents, contracts, payment terms
+
+### What they also care about (not beta-core)
+
+- Ticket sales / early purchase anxiety
+- Instagram/Facebook ads and social busywork
+- Getting patrons through the door
+- Promoter incentives ($/ticket vs comps)
+- Building a brand and a reliable local/resident team
+
+Those matter commercially. They are **demand and marketing** problems. Do not confuse them with the **ops friction** FTC is solving first. Instagram can stay discovery and ads; FTC owns booking → confirm → run sheet → crew communication.
+
+### How this maps to FTC today
+
+Interview workflow → product:
+
+| They do now | FTC equivalent |
+|-------------|----------------|
+| Sheet: DJs + confirmed + fee + set times | Bookings + rates + Run Sheet |
+| IG DM / email to book | Booking requests + DM |
+| Event group chat | Crew Chat |
+| “Tell everyone the change” | One crew thread + event context |
+| Press kits in Drive | Later (profile / EPK) — not beta-critical |
+| Accounting software later | Later (Phase 3+) — not beta-critical |
+
+Beta stays one connected loop. Only add features after users **repeatedly** ask for the same thing.
+
+Naming the enemy **friction** is just giving that interview pain a clear name.
 
 ---
 
