@@ -6,21 +6,25 @@ import {
   InlineOptionHelpButton,
   InlineOptionHelpPanel,
 } from "@/app/components/booking/InlineOptionHelp";
+import { PlannerFormField } from "@/app/components/planner/PlannerUi";
 import { formatRateDisplay, normalizeStoredRate } from "@/lib/bookingRate";
+import { MAX_SEND_BOOKING_NOTES_LENGTH } from "@/lib/bookings/sendBookingRequestsFlow";
 import type { BookingRateMode } from "@/lib/bookingRequests";
 
 export type DjSendOffer = {
   rateMode: BookingRateMode;
   fee: string;
+  notes: string;
 };
 
 export const DEFAULT_DJ_SEND_OFFER: DjSendOffer = {
   rateMode: "fixed",
   fee: "",
+  notes: "",
 };
 
 export function createDefaultDjSendOffer(): DjSendOffer {
-  return { rateMode: "fixed", fee: "" };
+  return { rateMode: "fixed", fee: "", notes: "" };
 }
 
 const OFFER_TYPE_OPTIONS = [
@@ -120,6 +124,14 @@ export default function EventDjSendOfferControls({
         value={offer.fee}
         onChange={(fee) => onChange({ ...offer, fee })}
         required={offer.rateMode === "fixed"}
+      />
+
+      <PlannerFormField
+        label="Notes"
+        value={offer.notes}
+        onChange={(notes) => onChange({ ...offer, notes })}
+        placeholder="e.g. Main Room · 11–12 · House"
+        maxLength={MAX_SEND_BOOKING_NOTES_LENGTH}
       />
     </div>
   );

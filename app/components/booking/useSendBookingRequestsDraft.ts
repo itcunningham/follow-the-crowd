@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  createDefaultDjSendOffer,
   DEFAULT_DJ_SEND_OFFER,
   formatDjSendOfferSummary,
   type DjSendOffer,
@@ -39,7 +40,6 @@ export function useSendBookingRequestsDraft({
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedDjIds, setSelectedDjIds] = useState<string[]>([]);
   const [djOffers, setDjOffers] = useState<Record<string, DjSendOffer>>({});
-  const [inviteNotes, setInviteNotes] = useState("");
   const [djAvailabilityHints, setDjAvailabilityHints] = useState<
     Map<string, DjPlannerAvailabilityHint>
   >(new Map());
@@ -145,18 +145,18 @@ export function useSendBookingRequestsDraft({
       return true;
     }
 
-    if (inviteNotes.trim()) {
-      return true;
-    }
-
     return Object.values(djOffers).some((offer) => {
       if (offer.rateMode !== DEFAULT_DJ_SEND_OFFER.rateMode) {
         return true;
       }
 
+      if (offer.notes?.trim()) {
+        return true;
+      }
+
       return Boolean(normalizeStoredRate(offer.fee));
     });
-  }, [djOffers, inviteNotes, selectedDjIds]);
+  }, [djOffers, selectedDjIds]);
 
   function toggleDjSelection(userId: string) {
     if (eventId && eventBookingDuplicates.has(userId)) {
@@ -175,10 +175,7 @@ export function useSendBookingRequestsDraft({
 
       setDjOffers((offers) => ({
         ...offers,
-        [userId]: offers[userId] ?? {
-          rateMode: "fixed",
-          fee: "",
-        },
+        [userId]: offers[userId] ?? createDefaultDjSendOffer(),
       }));
 
       return [...prev, userId];
@@ -204,7 +201,6 @@ export function useSendBookingRequestsDraft({
   function resetDraft() {
     setSelectedDjIds([]);
     setDjOffers({});
-    setInviteNotes("");
     setSearchQuery("");
   }
 
@@ -212,7 +208,6 @@ export function useSendBookingRequestsDraft({
     return {
       selectedDjIds,
       djOffers,
-      inviteNotes,
       searchQuery,
     };
   }
@@ -220,12 +215,10 @@ export function useSendBookingRequestsDraft({
   function restoreDraft(snapshot: {
     selectedDjIds: string[];
     djOffers: Record<string, DjSendOffer>;
-    inviteNotes?: string;
     searchQuery: string;
   }) {
     setSelectedDjIds(snapshot.selectedDjIds);
     setDjOffers(snapshot.djOffers);
-    setInviteNotes(snapshot.inviteNotes ?? "");
     setSearchQuery(snapshot.searchQuery);
   }
 
@@ -237,8 +230,6 @@ export function useSendBookingRequestsDraft({
     selectedDjIds,
     setSelectedDjIds,
     djOffers,
-    inviteNotes,
-    setInviteNotes,
     djAvailabilityHints,
     filteredDjs,
     eventBookingDuplicates,

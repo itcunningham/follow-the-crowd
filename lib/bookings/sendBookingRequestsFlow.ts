@@ -11,7 +11,7 @@ import {
 } from "@/lib/bookingRequests";
 import type { UserProfile } from "@/lib/user/currentUser";
 
-/** Shared invite note on Send bookings — one slot line, not an event brief. */
+/** Per-DJ invite note on Send bookings — one slot line, not an event brief. */
 export const MAX_SEND_BOOKING_NOTES_LENGTH = 80;
 
 export function resolveSendBookingNotes(
@@ -51,17 +51,10 @@ export async function sendBookingRequestsForRecipients(options: {
   bookingInput: BookingRequestInput;
   existingBookings?: BookingRequest[];
   djOffers: Record<string, DjSendOffer>;
-  inviteNotes?: string;
 }) {
-  const { recipientIds, bookingInput, existingBookings, djOffers, inviteNotes = "" } =
-    options;
+  const { recipientIds, bookingInput, existingBookings, djOffers } = options;
 
-  const resolvedInput: BookingRequestInput = {
-    ...bookingInput,
-    notes: resolveSendBookingNotes(inviteNotes, bookingInput.notes),
-  };
-
-  return sendBookingRequestsToDjs(recipientIds, resolvedInput, {
+  return sendBookingRequestsToDjs(recipientIds, bookingInput, {
     existingEventBookings: existingBookings,
     perRecipient: (recipientId) => {
       const offer = djOffers[recipientId] ?? DEFAULT_DJ_SEND_OFFER;
@@ -69,6 +62,7 @@ export async function sendBookingRequestsForRecipients(options: {
       return {
         rateMode: offer.rateMode,
         fee: normalizeStoredRate(offer.fee),
+        notes: resolveSendBookingNotes(offer.notes ?? "", bookingInput.notes),
       };
     },
   });

@@ -955,7 +955,6 @@ function EventDetailPageView() {
           bookingInput: eventToRequestInput(event),
           existingBookings: lineup,
           djOffers: inviteDraft.djOffers,
-          inviteNotes: inviteDraft.inviteNotes,
         });
       const skippedCount = totalSkippedDuplicates + skippedDuplicateRecipientIds.length;
 

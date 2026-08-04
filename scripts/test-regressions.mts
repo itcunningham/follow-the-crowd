@@ -1865,6 +1865,10 @@ function testSendBookingInviteNotesEightyCharCap() {
     new URL("../lib/bookings/sendBookingRequestsFlow.ts", import.meta.url),
     "utf8",
   );
+  const offerControlsSource = readFileSync(
+    new URL("../app/components/booking/EventDjSendOfferControls.tsx", import.meta.url),
+    "utf8",
+  );
   const draftSource = readFileSync(
     new URL("../app/components/booking/useSendBookingRequestsDraft.ts", import.meta.url),
     "utf8",
@@ -1873,32 +1877,39 @@ function testSendBookingInviteNotesEightyCharCap() {
     new URL("../app/components/booking/SendBookingRequestsPanel.tsx", import.meta.url),
     "utf8",
   );
-  const eventDetailSource = readFileSync(
-    new URL("../app/events/[eventId]/page.tsx", import.meta.url),
-    "utf8",
-  );
-  const eventsPageSource = readFileSync(
-    new URL("../app/(planner-workspace)/events/EventsPageClient.tsx", import.meta.url),
+  const bookingsPageSource = readFileSync(
+    new URL("../app/(planner-workspace)/bookings/page.tsx", import.meta.url),
     "utf8",
   );
 
   assert.match(flowSource, /export const MAX_SEND_BOOKING_NOTES_LENGTH = 80/);
   assert.match(flowSource, /export function resolveSendBookingNotes\(/);
-  assert.match(flowSource, /inviteNotes\?: string/);
-  assert.match(flowSource, /notes: resolveSendBookingNotes\(inviteNotes, bookingInput\.notes\)/);
+  // Per-DJ notes travel with the offer — not a shared inviteNotes field.
+  assert.match(
+    flowSource,
+    /notes: resolveSendBookingNotes\(offer\.notes \?\? "", bookingInput\.notes\)/,
+  );
+  assert.doesNotMatch(flowSource, /inviteNotes\?: string/);
 
-  assert.match(draftSource, /const \[inviteNotes, setInviteNotes\] = useState\(""\)/);
-  assert.match(draftSource, /inviteNotes,/);
-  assert.match(draftSource, /setInviteNotes,/);
+  assert.match(offerControlsSource, /notes: string/);
+  assert.match(offerControlsSource, /notes: ""/);
+  assert.match(offerControlsSource, /label="Notes"/);
+  assert.match(offerControlsSource, /placeholder="e\.g\. Main Room · 11–12 · House"/);
+  assert.match(offerControlsSource, /maxLength=\{MAX_SEND_BOOKING_NOTES_LENGTH\}/);
+  // Notes sit under the dollar/rate field.
+  assert.ok(
+    offerControlsSource.indexOf("<BookingRateField") <
+      offerControlsSource.indexOf('label="Notes"'),
+  );
 
-  assert.match(panelSource, /MAX_SEND_BOOKING_NOTES_LENGTH/);
-  assert.match(panelSource, /label="Notes"/);
-  assert.match(panelSource, /placeholder="e\.g\. Main Room · 11–12 · House"/);
-  assert.match(panelSource, /maxLength=\{MAX_SEND_BOOKING_NOTES_LENGTH\}/);
-  assert.match(panelSource, /value=\{draft\.inviteNotes\}/);
+  assert.doesNotMatch(draftSource, /inviteNotes/);
+  assert.doesNotMatch(panelSource, /draft\.inviteNotes/);
+  assert.doesNotMatch(panelSource, /label="Notes"/);
 
-  assert.match(eventDetailSource, /inviteNotes: inviteDraft\.inviteNotes/);
-  assert.match(eventsPageSource, /inviteNotes: activeInviteDraft\.inviteNotes/);
+  assert.match(
+    bookingsPageSource,
+    /notes: resolveSendBookingNotes\(offer\.notes \?\? "", form\.notes\)/,
+  );
 }
 
 function testModalScrollContainmentBlocksBoundaryOverscroll() {

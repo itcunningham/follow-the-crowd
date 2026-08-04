@@ -9,7 +9,9 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 
 **Send invitations looked dead (`c593618` on `main`, 2026-08-04):** Send bookings failures/`setError` wrote to Event Details *behind* the sheet, so tap felt like a no-op. Errors now render inside the sheet (`role="alert"`). Sheet `z-[60]` above mobile nav (`z-50`); unavailable confirm `z-[70]`. Failure copy surfaces the provider/message when present.
 
-**Send bookings shared notes (80 chars) (`dcb3990` on `main`, 2026-08-04):** optional Notes on the Send sheet for slot/room context (e.g. Main Room · 11–12). Caps at 80; overrides event notes on that send when filled; otherwise keeps event notes. Same draft used by Event Details send + post-create invites.
+**Send bookings per-DJ notes under rate (`cursor/per-dj-send-notes-5874`, 2026-08-04):** Notes moved from a shared field below Summary into each selected DJ’s offer block (under the $ field). Still 80 chars; label Notes; empty falls back to event notes. Event Plans Use Plan send path wired the same way.
+
+**Send bookings shared notes (80 chars) (`dcb3990` on `main`, 2026-08-04):** [superseded by per-DJ notes above] optional Notes on the Send sheet for slot/room context.
 
 **Create Event Plan header button hides in create/edit (`9a1ba54` on `main`, 2026-08-04):** same bug as Events — `actions={undefined}` while the form was open fell back to the workspace default Create event plan link. Invisible placeholder while form open (create or edit) or in selection mode; Cancel restores the button.
 

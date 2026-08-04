@@ -4,17 +4,13 @@ import ProfileAvatar from "@/app/components/ProfileAvatar";
 import DjBookingAvailabilityBadge from "@/app/components/DjBookingAvailabilityBadge";
 import EventBookingDuplicateBadge from "@/app/components/EventBookingDuplicateBadge";
 import EventDjSendOfferControls, {
+  createDefaultDjSendOffer,
   type DjSendOffer,
 } from "@/app/components/booking/EventDjSendOfferControls";
-import {
-  PlannerEmptyPanel,
-  PlannerFormField,
-  PlannerSectionLabel,
-} from "@/app/components/planner/PlannerUi";
+import { PlannerEmptyPanel, PlannerSectionLabel } from "@/app/components/planner/PlannerUi";
 import { EVENT_DETAIL_BTN_PRIMARY_WIDE } from "@/app/components/event-detail/eventDetailUi";
 import type { SendBookingRequestsDraft } from "@/app/components/booking/useSendBookingRequestsDraft";
 import type { EventBookingDuplicateStatus } from "@/lib/bookingRequests";
-import { MAX_SEND_BOOKING_NOTES_LENGTH } from "@/lib/bookings/sendBookingRequestsFlow";
 import type { DjPlannerAvailabilityHint } from "@/lib/djAvailability";
 
 /** Create-event invite DJ search (client-only). */
@@ -327,10 +323,7 @@ export default function SendBookingRequestsPanel({
             const selected = draft.selectedDjIds.includes(dj.user_id);
             const availabilityHint = draft.djAvailabilityHints.get(dj.user_id);
             const duplicateStatus = draft.eventBookingDuplicates.get(dj.user_id);
-            const offer = draft.djOffers[dj.user_id] ?? {
-              rateMode: "fixed" as const,
-              fee: "",
-            };
+            const offer = draft.djOffers[dj.user_id] ?? createDefaultDjSendOffer();
 
             return (
               <DjInviteSelectionRow
@@ -360,16 +353,6 @@ export default function SendBookingRequestsPanel({
         items={draft.sendOfferSummary}
         hasInvalidFixedOffers={draft.hasInvalidFixedOffers}
       />
-
-      {draft.sendableSelectedDjIds.length > 0 ? (
-        <PlannerFormField
-          label="Notes"
-          value={draft.inviteNotes}
-          onChange={draft.setInviteNotes}
-          placeholder="e.g. Main Room · 11–12 · House"
-          maxLength={MAX_SEND_BOOKING_NOTES_LENGTH}
-        />
-      ) : null}
 
       {trimmedError ? (
         <p

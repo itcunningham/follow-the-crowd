@@ -44,6 +44,7 @@ import EventDjSendOfferControls, {
   formatDjSendOfferSummary,
   type DjSendOffer,
 } from "@/app/components/booking/EventDjSendOfferControls";
+import { resolveSendBookingNotes } from "@/lib/bookings/sendBookingRequestsFlow";
 import { PlannerEmptyState, PlannerFormField } from "@/app/components/planner/PlannerUi";
 import {
   attachLineupStats,
@@ -1582,6 +1583,7 @@ function BookingsPageContent() {
               return {
                 rateMode: offer.rateMode,
                 fee: normalizeStoredRate(offer.fee),
+                notes: resolveSendBookingNotes(offer.notes ?? "", form.notes),
               };
             },
           },

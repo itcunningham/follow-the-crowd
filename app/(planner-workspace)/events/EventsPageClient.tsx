@@ -1219,7 +1219,6 @@ function EventsPageClientView({
       recipientIds,
       bookingInput: eventFormToRequestInput(form, createdEvent.id),
       djOffers: activeInviteDraft.djOffers,
-      inviteNotes: activeInviteDraft.inviteNotes,
     });
 
     let inviteNotice: string | null = null;
