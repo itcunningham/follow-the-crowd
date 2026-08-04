@@ -64,7 +64,7 @@ checks as (
       then 'insert still granted' else 'no insert grant' end
 
   union all select 9, 'create_notification RPC callable by authenticated', 'callable',
-    case when has_function_privilege('authenticated', 'public.create_notification(text, text, text, text, text)', 'EXECUTE')
+    case when has_function_privilege('authenticated', 'public.create_notification(text, text, text, text, text, uuid)', 'EXECUTE')
       then 'callable' else 'not callable' end
 
   union all select 10, 'booking_requests participant-only select', 'participant policy',

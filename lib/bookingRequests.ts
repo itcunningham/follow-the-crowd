@@ -2156,13 +2156,23 @@ export async function sendBookingRequestToDj(
     throw messageError;
   }
 
-  await createNotification(
-    recipientId,
-    "booking_request",
-    "New booking request",
-    `${input.eventName.trim()} at ${input.venue.trim()}`,
-    `/dm/${conversationId}`,
-  );
+  try {
+    await createNotification(
+      recipientId,
+      "booking_request",
+      "New booking request",
+      `${input.eventName.trim()} at ${input.venue.trim()}`,
+      `/dm/${conversationId}`,
+    );
+  } catch (notificationError) {
+    // Booking + DM already exist. Don't fail the invite over a notification glitch
+    // (historically: create_notification 5-arg/6-arg overload ambiguity).
+    console.error(
+      "[bookings] Booking request created but notification failed:",
+      recipientId,
+      notificationError,
+    );
+  }
 
   return { conversationId, booking };
 }

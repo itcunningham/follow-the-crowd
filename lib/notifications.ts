@@ -98,9 +98,9 @@ export async function createNotification(
     p_title: title,
     p_body: body,
     p_link: link,
-    // Only sent for reaction notifications, so callers that predate the
-    // reaction_id parameter keep resolving the original function signature.
-    ...(reactionId ? { p_reaction_id: reactionId } : {}),
+    // Always send p_reaction_id (null for non-reactions). Omitting it makes
+    // Postgres fail when both the legacy 5-arg and 6-arg overloads exist.
+    p_reaction_id: reactionId ?? null,
   });
 
   if (error) {
@@ -130,6 +130,10 @@ export async function createNotification(
 
 export function getNotificationCreateErrorMessage(error: unknown): string {
   if (error instanceof NotificationCreateError) {
+    if (error.message.includes("Could not choose the best candidate function")) {
+      return "Notification setup needs an update. Run scripts/fixCreateNotification.sql in the Supabase SQL Editor, then try again.";
+    }
+
     if (error.message.includes("Not allowed to create booking_update notification")) {
       return "The planner could not be notified about this booking update. Run scripts/fixCreateNotification.sql in the Supabase SQL Editor, then try again.";
     }
@@ -143,6 +147,10 @@ export function getNotificationCreateErrorMessage(error: unknown): string {
 
   if (error && typeof error === "object") {
     const supabaseError = error as { message?: string };
+
+    if (supabaseError.message?.includes("Could not choose the best candidate function")) {
+      return "Notification setup needs an update. Run scripts/fixCreateNotification.sql in the Supabase SQL Editor, then try again.";
+    }
 
     if (supabaseError.message?.includes("Not allowed to create booking_update notification")) {
       return "The planner could not be notified about this booking update. Run scripts/fixCreateNotification.sql in the Supabase SQL Editor, then try again.";

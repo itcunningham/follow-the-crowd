@@ -1,18 +1,33 @@
 -- Run this entire block in the Supabase SQL Editor.
--- Replaces public.create_notification with the latest secure version covering:
---   message (DM + event crew chat)
---   booking_request (planner → DJ after send)
---   booking_update (accept/decline, cancel/withdraw, rate propose/accept/decline)
--- Idempotent: retries within 10 minutes return the existing unread row.
+-- Canonical public.create_notification (6-arg, optional p_reaction_id).
+--
+-- Why this exists: older scripts created a 5-arg overload. The reaction lifecycle
+-- migration added a 6-arg version. If both remain, PostgREST calls without an
+-- explicit p_reaction_id fail with "Could not choose the best candidate function"
+-- and booking invites / crew-chat notifications break.
+--
+-- Idempotent: drops both signatures, recreates only the 6-arg function.
 -- Requires: public.auth_user_id(), public.is_conversation_participant(),
---           public.is_event_crew_participant(), public.booking_requests, public.notifications
+--           public.is_event_crew_participant(), public.booking_requests,
+--           public.notifications (with reaction_id column).
+
+alter table public.notifications
+  add column if not exists reaction_id uuid;
+
+create index if not exists notifications_reaction_id_idx
+  on public.notifications (reaction_id)
+  where reaction_id is not null;
+
+drop function if exists public.create_notification(text, text, text, text, text);
+drop function if exists public.create_notification(text, text, text, text, text, uuid);
 
 create or replace function public.create_notification(
   p_user_id text,
   p_type text,
   p_title text,
   p_body text default null,
-  p_link text default null
+  p_link text default null,
+  p_reaction_id uuid default null
 )
 returns uuid
 language plpgsql
@@ -117,6 +132,25 @@ begin
     end if;
   end if;
 
+  if p_reaction_id is not null then
+    update public.notifications
+       set title = p_title,
+           body = p_body
+     where reaction_id = p_reaction_id
+       and user_id = p_user_id
+    returning id into v_notification_id;
+
+    if v_notification_id is not null then
+      return v_notification_id;
+    end if;
+
+    insert into public.notifications (user_id, type, title, body, link, read, reaction_id)
+    values (p_user_id, p_type, p_title, p_body, p_link, false, p_reaction_id)
+    returning id into v_notification_id;
+
+    return v_notification_id;
+  end if;
+
   select n.id
     into v_notification_id
   from public.notifications n
@@ -141,7 +175,7 @@ begin
 end;
 $$;
 
-revoke all on function public.create_notification(text, text, text, text, text) from public;
-grant execute on function public.create_notification(text, text, text, text, text) to authenticated;
+revoke all on function public.create_notification(text, text, text, text, text, uuid) from public;
+grant execute on function public.create_notification(text, text, text, text, text, uuid) to authenticated;
 
 notify pgrst, 'reload schema';

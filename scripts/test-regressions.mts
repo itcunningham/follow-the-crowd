@@ -8195,6 +8195,44 @@ function testDmReactionNotifications() {
   assert.match(migrationSource, /create or replace function public\.revoke_reaction_notification/);
   // An emoji change must not reset `read`, so unread is not re-triggered.
   assert.doesNotMatch(migrationSource, /set title = p_title,\s*body = p_body,\s*read = false/);
+
+  // Always pass p_reaction_id (null ok) so PostgREST picks the 6-arg overload when both exist.
+  const notificationsSource = readFileSync(
+    new URL("../lib/notifications.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(notificationsSource, /p_reaction_id: reactionId \?\? null/);
+  assert.doesNotMatch(
+    notificationsSource,
+    /\.\.\.\(reactionId \? \{ p_reaction_id: reactionId \} : \{\}\)/,
+  );
+
+  const fixNotificationSql = readFileSync(
+    new URL("../scripts/fixCreateNotification.sql", import.meta.url),
+    "utf8",
+  );
+  assert.match(
+    fixNotificationSql,
+    /drop function if exists public\.create_notification\(text, text, text, text, text\);/,
+  );
+  assert.match(
+    fixNotificationSql,
+    /drop function if exists public\.create_notification\(text, text, text, text, text, uuid\);/,
+  );
+  assert.match(fixNotificationSql, /p_reaction_id uuid default null/);
+  assert.doesNotMatch(
+    fixNotificationSql,
+    /grant execute on function public\.create_notification\(text, text, text, text, text\) to authenticated;/,
+  );
+
+  const bookingRequestsSource = readFileSync(
+    new URL("../lib/bookingRequests.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(
+    bookingRequestsSource,
+    /Booking request created but notification failed/,
+  );
 }
 
 function testDmReactionInboxActivity() {
