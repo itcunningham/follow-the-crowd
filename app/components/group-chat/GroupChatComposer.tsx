@@ -3,7 +3,9 @@
 import { useRef, type RefObject } from "react";
 import ChatSendIcon from "@/app/components/chat/ChatSendIcon";
 import ComposerIconButton from "@/app/components/chat/ComposerIconButton";
-import ComposerMessageField from "@/app/components/chat/ComposerMessageField";
+import ComposerMessageField, {
+  COMPOSER_ACTION_ROW_CLASS,
+} from "@/app/components/chat/ComposerMessageField";
 import {
   DM_MAX_PHOTOS_PER_MESSAGE,
   DM_PHOTO_INPUT_ACCEPT,
@@ -114,7 +116,7 @@ export default function GroupChatComposer({
         </div>
       ) : null}
 
-      <div className="flex min-w-0 items-end gap-2">
+      <div className={COMPOSER_ACTION_ROW_CLASS}>
         <ComposerIconButton
           label="Add photo"
           disabled={busy || pendingPhotos.length >= DM_MAX_PHOTOS_PER_MESSAGE}

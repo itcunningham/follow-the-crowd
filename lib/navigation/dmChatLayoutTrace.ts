@@ -47,7 +47,7 @@ function readComposerLayoutMetrics(): Pick<
   }
 
   const composerInput = document.querySelector<HTMLTextAreaElement>(
-    'textarea[placeholder="Message"]',
+    'textarea[data-testid="composer-message-input"], textarea[aria-label="Message"]',
   );
   const composerRoot =
     composerInput?.closest("div.shrink-0.border-t") ?? composerInput?.parentElement ?? null;

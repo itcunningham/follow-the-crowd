@@ -40,7 +40,7 @@ export async function openGigDmForEvent(page: Page, eventName: string): Promise<
 }
 
 export async function sendDmMessage(page: Page, text: string): Promise<void> {
-  const composer = page.getByPlaceholder("Message");
+  const composer = page.getByRole("textbox", { name: "Message" });
   await expect(composer).toBeVisible({ timeout: 15_000 });
   await composer.click();
   await composer.fill(text);

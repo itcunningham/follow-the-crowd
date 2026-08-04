@@ -7180,29 +7180,31 @@ function testDmComposerRowAlignment() {
   // grows for multi-line messages -- not a blanket items-center switch, which
   // would leave the buttons floating mid-height once the field grows tall.
   assert.match(composerSource, /className="mb-0\.5"/); // photo button nudge
+  assert.match(composerSource, /COMPOSER_ACTION_ROW_CLASS/);
   assert.match(composerSource, /items-end gap-2/);
   assert.doesNotMatch(composerSource, /items-center gap-2/);
 
   // Text field height is untouched.
   assert.match(fieldSource, /min-h-11/);
 
-  // Placeholder "Message" must keep a real min-width after send clears the
-  // value. A prior bug paired min-w-[6.5rem] with min-w-0 on the same node;
-  // Tailwind resolved the conflict to min-w-0 and iOS clipped to "Mes".
-  assert.match(fieldSource, /COMPOSER_MESSAGE_FIELD_MIN_WIDTH_CLASS = "min-w-\[7rem\]"/);
-  assert.match(fieldSource, /\$\{COMPOSER_MESSAGE_FIELD_MIN_WIDTH_CLASS\} flex-1/);
-  assert.doesNotMatch(
+  // After-send "Message" → "M"/"Mes" on iOS: do NOT rely on native placeholder
+  // or flex min-width. Grid middle track + overlay empty label.
+  assert.match(
     fieldSource,
-    /COMPOSER_MESSAGE_FIELD_MIN_WIDTH_CLASS\} min-w-0/,
-    "composer field wrapper must not cancel its min-width with min-w-0",
+    /COMPOSER_ACTION_ROW_CLASS =\s*"grid min-w-0 grid-cols-\[auto_minmax\(0,1fr\)_auto\] items-end gap-2"/,
   );
-  assert.doesNotMatch(
-    fieldSource,
-    /className=\{`\$\{COMPOSER_MESSAGE_FIELD_MIN_WIDTH_CLASS\} min-w-0/,
-  );
+  assert.match(fieldSource, /data-testid="composer-empty-label"/);
+  assert.match(fieldSource, /placeholder=""/);
+  assert.match(fieldSource, /aria-label=\{placeholder\}/);
+  assert.doesNotMatch(fieldSource, /field-sizing/);
+  assert.doesNotMatch(fieldSource, /COMPOSER_MESSAGE_FIELD_MIN_WIDTH_CLASS/);
   const globalsSource = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
-  assert.match(globalsSource, /\.ftc-chat-composer \.ftc-input \{[\s\S]*?min-width:\s*7rem/);
-  assert.match(globalsSource, /\.ftc-chat-composer \.ftc-input \{[\s\S]*?field-sizing:\s*fixed/);
+  assert.match(globalsSource, /\.ftc-chat-composer-field \{/);
+  assert.doesNotMatch(globalsSource, /field-sizing:\s*fixed/);
+  assert.doesNotMatch(
+    globalsSource,
+    /\.ftc-chat-composer \.ftc-input \{[\s\S]*?min-width:\s*7rem/,
+  );
 
   // A <textarea> defaults to display: inline-block, which reserves a few
   // extra px of inline-baseline "descender" space below it inside its block
@@ -7211,7 +7213,7 @@ function testDmComposerRowAlignment() {
   // with correct margin nudges on the buttons. `block` removes that
   // reserved gap so the wrapper's box exactly matches the textarea's own
   // 44px, shared by both DmComposer and GroupChatComposer (same component).
-  assert.match(fieldSource, /className="ftc-input block w-full min-h-11/);
+  assert.match(fieldSource, /className="ftc-input relative z-0 block w-full min-h-11/);
 
   // The centring math itself: with items-end (bottom-anchored) and a
   // margin-bottom nudge of half the height difference against the 44px
