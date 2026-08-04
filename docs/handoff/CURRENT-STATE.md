@@ -7,6 +7,8 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 
 **Communication preference locked (2026-08-04):** brutal honesty, no ego — never agree by default; push better options when Isaac's idea is weaker. Strict critic mode + hostile counterarguments when useful. `USER-PREFERENCES.md` + `.cursor/rules/brutal-honesty.mdc`.
 
+**Events tab stays lit on event-detail profiles (`4f0cf57` on `main`, 2026-08-04):** profile opened from Run Sheet / Bookings (`?from=event-detail`) keeps the bottom-nav Events/Gigs workspace tab highlighted — was blank because `/profile/:id` is outside `isPlannerEventsAreaPath`.
+
 **Run Sheet profile links keep event context (`0e0c649` on `main`, 2026-08-04):** avatar/name now use `buildEventDetailProfileHref` (same as Bookings). Fixes missing Back and `Message / Book DJ` — event-detail origin already shows **Message** only + **Back to event**.
 
 **Run sheet DM copy names what changed (`fb2fbeb` on `main`, 2026-08-04):** notice is now `Run sheet updated · {event} · Stage: …, Set time: …, Notes updated` (order-only → `Order updated`). Replaces the old stage/time dump that looked identical when only notes or order moved.
@@ -889,6 +891,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 | Crew Chat image sharing (`message_attachments.event_id`) | `scripts/setupEventCrewChatAttachments.sql` — **applied 2026-08-03** (required a type-cast fix after the first run, see Group chat entry above) |
 
 ## Recent commits (reference)
+- `4f0cf57` — fix(nav): keep Events lit on profiles opened from event detail
 - `0e0c649` — fix(run-sheet): profile links keep event Back + Message CTA
 - `fb2fbeb` — fix(run-sheet): DM copy says what changed
 - `8137134` — feat(run-sheet): DM affected DJs when assignment changes on Save
