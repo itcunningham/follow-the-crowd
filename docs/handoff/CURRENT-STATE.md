@@ -9,7 +9,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 
 **Send invitations looked dead (`c593618` on `main`, 2026-08-04):** Send bookings failures/`setError` wrote to Event Details *behind* the sheet, so tap felt like a no-op. Errors now render inside the sheet (`role="alert"`). Sheet `z-[60]` above mobile nav (`z-50`); unavailable confirm `z-[70]`. Failure copy surfaces the provider/message when present.
 
-**Start group chat header no longer truncates (`cursor/group-chat-header-label-5874`, 2026-08-04):** kept full “Start group chat” copy; moved ? help outside the chip and dropped the max-width truncate that produced “START GROUP CH…”.
+**Start group chat header no longer truncates (`726c3d6` on `main`, 2026-08-04):** kept full “Start group chat” copy; moved ? help outside the chip and dropped the max-width truncate that produced “START GROUP CH…”.
 
 **Send bookings notes: 50 chars + clean placeholder (`f704319` on `main`, 2026-08-04):** per-DJ Notes under rate capped at 50; placeholder is just “Notes” (dropped the Main Room example).
 
