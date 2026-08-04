@@ -7,7 +7,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 
 **Communication preference locked (2026-08-04):** brutal honesty, no ego — never agree by default; push better options when Isaac's idea is weaker. Strict critic mode + hostile counterarguments when useful. `USER-PREFERENCES.md` + `.cursor/rules/brutal-honesty.mdc`.
 
-**Event Details is not the Events bottom tab (`cursor/event-detail-events-tab-active-5874`, 2026-08-04):** View Event from Crew Chat lit the Events icon and the tap felt dead. Round 1 (pop-to-root when nested) was on Production but still failed device QA. Round 2: `isPlannerEventsAreaPath` excludes standalone `/events/[id]`; from `?from=crew-chat`, Messages stays selected so Events is clearly tappable into the list.
+**Event Details is not the Events bottom tab (`5a5f965` / `aaa2690` on `main`, 2026-08-04):** View Event from Crew Chat lit the Events icon and the tap felt dead. Round 1 (pop-to-root when nested) was on Production but still failed device QA. Round 2: `isPlannerEventsAreaPath` excludes standalone `/events/[id]`; from `?from=crew-chat`, Messages stays selected so Events is clearly tappable into the list.
 
 **Events bottom-nav pop-to-root from event detail (`de21efc` on `main`, 2026-08-04):** Workspace selectors only no-op on the landing `href`. Nested Calendar/Gigs/DM still pop to root. Superseded for Event Details highlight by the entry above — detail is no longer treated as Events-active.
 
@@ -843,6 +843,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 | Crew Chat image sharing (`message_attachments.event_id`) | `scripts/setupEventCrewChatAttachments.sql` — **applied 2026-08-03** (required a type-cast fix after the first run, see Group chat entry above) |
 
 ## Recent commits (reference)
+- `5a5f965` — fix(nav): Event Details is not the Events tab (exclude detail from Events active; crew-chat keeps Messages selected)
 - `de21efc` — fix(nav): Events tab opens list from event detail (workspace selectors only no-op on landing href; nested paths pop-to-root)
 - `52fac6a` — fix composer placeholder clipping to "Mes" after send (remove min-w-0 vs min-w conflict; CSS floor on chat composer inputs)
 - `dbe540d` — Run Sheet: header actions hold one right-aligned slot in every state (hidden Save collapses `max-width`/padding to 0 and carries its own `margin-left`, so Cancel lands exactly where Edit sits; `min-height` deliberately not collapsed, so the row stays reserved and the DJ cards never shift), plus a 10.3% shorter expanded card from whitespace only. Merged to `main` as the Production deployment
