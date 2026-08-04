@@ -178,22 +178,6 @@ export default function EventLineupBookingCard({
 
       {showOpenDm || (showCancelRequest && !pendingProposal) || showCancelAccepted ? (
         <div className={EVENT_DETAIL_LINEUP_ACTIONS_ROW}>
-          {showOpenDm ? (
-            <Link
-              href={
-                eventDetailId
-                  ? buildEventDetailDmThreadHref(
-                      booking.conversation_id!,
-                      eventDetailId,
-                      calendarOrigin,
-                    )
-                  : `/dm/${booking.conversation_id}`
-              }
-              className={`${EVENT_DETAIL_LINEUP_BTN_SECONDARY} ${actionButtonClass}`}
-            >
-              Message
-            </Link>
-          ) : null}
           {showCancelRequest && !pendingProposal ? (
             <CancelBookingRequestButton
               compact
@@ -211,6 +195,22 @@ export default function EventLineupBookingCard({
               onConfirm={onCancelAccepted}
               className={actionButtonClass}
             />
+          ) : null}
+          {showOpenDm ? (
+            <Link
+              href={
+                eventDetailId
+                  ? buildEventDetailDmThreadHref(
+                      booking.conversation_id!,
+                      eventDetailId,
+                      calendarOrigin,
+                    )
+                  : `/dm/${booking.conversation_id}`
+              }
+              className={`${EVENT_DETAIL_LINEUP_BTN_SECONDARY} ${actionButtonClass}`}
+            >
+              Message
+            </Link>
           ) : null}
         </div>
       ) : null}

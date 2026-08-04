@@ -307,9 +307,6 @@ export default function BookingRequestCard({
             </div>
           ) : showPendingEventPairedActions ? (
             <div className={DM_BOOKING_CARD_PAIRED_ACTIONS_ROW_CLASS}>
-              <Link href={eventHref} className={DM_BOOKING_CARD_PAIRED_VIEW_EVENT_CLASS}>
-                View event
-              </Link>
               <CancelBookingRequestButton
                 compact
                 label="Cancel"
@@ -317,6 +314,9 @@ export default function BookingRequestCard({
                 onConfirm={onCancel}
                 className={DM_BOOKING_CARD_PAIRED_CANCEL_CLASS}
               />
+              <Link href={eventHref} className={DM_BOOKING_CARD_PAIRED_VIEW_EVENT_CLASS}>
+                View event
+              </Link>
             </div>
           ) : (
             <div className={DM_BOOKING_CARD_ACTIONS_CLASS}>

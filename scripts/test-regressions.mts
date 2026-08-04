@@ -671,6 +671,16 @@ function testDmBookingCardPendingEventPairedActions() {
   assert.match(layoutSource, /DM_BOOKING_CARD_PAIRED_BUTTON_BASE_CLASS/);
   assert.match(layoutSource, /whitespace-nowrap/);
   assert.match(layoutSource, /min-h-9 min-w-0 flex-1/);
+  // Paired row: Cancel left (rare), View event right (primary / right-thumb).
+  const pairedRow =
+    cardSource.match(
+      /showPendingEventPairedActions \? \([\s\S]*?DM_BOOKING_CARD_PAIRED_ACTIONS_ROW_CLASS[\s\S]*?<\/div>\s*\) :/,
+    )?.[0] ?? "";
+  assert.ok(pairedRow, "pending paired actions row must exist");
+  assert.ok(
+    pairedRow.indexOf("CancelBookingRequestButton") < pairedRow.indexOf("View event"),
+    "Cancel must render left of View event in the paired row",
+  );
 }
 
 function testDmBookingCardExpandCollapseScrollAnchor() {
@@ -1967,6 +1977,18 @@ function testEventLineupBookingCardProfileNavigationAndActions() {
     /EVENT_DETAIL_LINEUP_BTN_SECONDARY\s*=\s*"[^"]*ftc-btn-secondary/,
   );
   assert.match(uiSource, /EVENT_DETAIL_LINEUP_ACTION_BTN =\s*\n?\s*"!min-h-7 min-w-0 flex-1 !px-2 !py-0\.5 !text-\[11px\]"/);
+
+  // Paired actions: Cancel left, Message right (primary / right-thumb).
+  const lineupActions =
+    cardSource.match(
+      /EVENT_DETAIL_LINEUP_ACTIONS_ROW[\s\S]*?showCancelRequest && pendingProposal/,
+    )?.[0] ?? "";
+  assert.ok(lineupActions, "lineup actions block must exist");
+  assert.ok(
+    lineupActions.indexOf("CancelBookingRequestButton") < lineupActions.indexOf(">Message<") ||
+      lineupActions.indexOf("CancelAcceptedBookingButton") < lineupActions.indexOf(">Message<"),
+    "Cancel must render left of Message in the lineup actions row",
+  );
 }
 
 function testDmThreadEventDetailBackHref() {
