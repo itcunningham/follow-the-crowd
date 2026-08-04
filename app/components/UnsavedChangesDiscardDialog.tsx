@@ -31,9 +31,6 @@ export default function UnsavedChangesDiscardDialog({
         <h2 id={titleId} className="text-base font-semibold text-ftc-text">
           Discard unsaved changes?
         </h2>
-        <p className="mt-2 text-sm leading-relaxed text-ftc-text-secondary">
-          Your changes will not be saved
-        </p>
 
         <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-end">
           <button
