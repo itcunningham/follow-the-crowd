@@ -357,7 +357,7 @@ function EventsListCardContent({
             }
           >
             <PlannerStatChip
-              label="Invited"
+              label="All"
               value={event.lineupStats.total}
               variant={statusPillsSingleRow ? "compactActiveRow" : "compact"}
             />

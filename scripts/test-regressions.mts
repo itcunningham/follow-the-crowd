@@ -5522,6 +5522,9 @@ function testEventsActiveStatusPillsSingleRowLayout() {
   assert.match(source, /statusPillsSingleRow=\{eventListCardStatusPillsSingleRow\}/);
   assert.match(source, /eventListCardDimCancelledAppearance = !isHistoryTab/);
   assert.match(source, /dimCancelledAppearance=\{eventListCardDimCancelledAppearance\}/);
+  // Total count is "All" (same meaning as Event Details Bookings filter) — not "Invited".
+  assert.match(source, /PlannerStatChip[\s\S]{0,80}label="All"/);
+  assert.doesNotMatch(source, /PlannerStatChip[\s\S]{0,80}label="Invited"/);
 }
 
 function testEventsCreateFlowTabPillNavigation() {

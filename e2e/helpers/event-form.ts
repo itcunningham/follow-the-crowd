@@ -123,7 +123,7 @@ export async function saveEventOnce(page: Page): Promise<void> {
 async function waitForEventsListReady(page: Page): Promise<void> {
   await expect(async () => {
     const text = await page.locator("body").innerText();
-    expect(text.includes("Create event") || /QA-BETA-|Invited:|Upcoming/.test(text)).toBeTruthy();
+    expect(text.includes("Create event") || /QA-BETA-|All:|Upcoming/.test(text)).toBeTruthy();
     expect(text).not.toMatch(/Failed to create event/i);
   }).toPass({ timeout: 20_000 });
 }

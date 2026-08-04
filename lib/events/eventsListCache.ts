@@ -189,7 +189,7 @@ export function readCachedEventOwnerId(eventId: string): string | null | undefin
 /**
  * Drops the cached events payload after a booking status change.
  *
- * `lineupStats` (Invited / Pending / Accepted / Declined) is computed at fetch
+ * `lineupStats` (All / Pending / Accepted / Declined) is computed at fetch
  * time in lib/events.ts and stored inside this cached payload, so a booking
  * moving pending -> accepted does not change anything here until the events list
  * is refetched. Both the sessionStorage and localStorage copies are cleared, and
