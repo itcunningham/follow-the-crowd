@@ -5730,6 +5730,10 @@ function testEventPlansSelectionToolbarMatchesHistory() {
   assert.match(source, /toggleSelectAllForIds/);
   assert.match(source, /planBulkManage\.selectionMode/);
   assert.match(source, /pointer-events-none invisible \$\{EVENT_PLANS_CREATE_BUTTON_CLASS\}/);
+  // formOpen must use the invisible placeholder — `undefined` falls back to the
+  // workspace default Create event plan link and the button stays visible over the form.
+  assert.match(source, /formOpen \|\| planBulkManage\.selectionMode/);
+  assert.doesNotMatch(source, /eventPlansHeaderActions =\s*!formOpen \?/);
   assert.doesNotMatch(source, /removeLabel="Delete selected"/);
   assert.doesNotMatch(source, /selectAllLabel="Select all"/i);
 }

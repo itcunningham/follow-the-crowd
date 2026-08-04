@@ -9,6 +9,8 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 
 **Send invitations looked dead (`c593618` on `main`, 2026-08-04):** Send bookings failures/`setError` wrote to Event Details *behind* the sheet, so tap felt like a no-op. Errors now render inside the sheet (`role="alert"`). Sheet `z-[60]` above mobile nav (`z-50`); unavailable confirm `z-[70]`. Failure copy surfaces the provider/message when present.
 
+**Create Event Plan header button hides in create/edit (`cursor/hide-create-event-plan-in-flow-5874`, 2026-08-04):** same bug as Events — `actions={undefined}` while the form was open fell back to the workspace default Create event plan link. Invisible placeholder while form open (create or edit) or in selection mode; Cancel restores the button.
+
 **Create Event header button hides in create flow (`507e4f7` on `main`, 2026-08-04):** opening Create event left the header CTA visible because `actions={undefined}` fell back to the workspace default Create link. Uses the same invisible placeholder as History selection / Calendar create; Cancel restores the real button.
 
 **`create_notification` overload broke Send invitations (`96e6f4f` on `main`, 2026-08-04):** red sheet error was Postgres “Could not choose the best candidate function” between 5-arg and 6-arg `create_notification`. App now always sends `p_reaction_id` (null for non-reactions); booking invite treats notification failure as soft after booking+DM exist. **Isaac: run `scripts/fixCreateNotification.sql`** to drop the stale 5-arg overload (also restores crew-chat notification delivery).
