@@ -7,6 +7,7 @@
 
 **This is the single start file for Claude Code.** Read it fully before coding. Then deepen with the linked docs — do not invent process or architecture.
 
+**Brand / mission:** `docs/handoff/BRAND-PHILOSOPHY.md`  
 **Product philosophy:** `docs/handoff/PRODUCT-VISION.md`  
 **Companion deep-dive (technical):** `docs/handoff/CLAUDE-IMPLEMENTATION-HANDOVER.md`  
 **Live product truth:** `docs/handoff/CURRENT-STATE.md`  

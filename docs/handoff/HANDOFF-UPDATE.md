@@ -20,6 +20,7 @@ Read this after `HOW-WE-WORK.md`. Cursor rule: `.cursor/rules/handoff-update-on-
 | **`START-HERE-GPT.md`** | Product/roles/routes/copy conventions changed; major features shipped; ChatGPT needs fresh context |
 | **`START-HERE-CURSOR.md`** | Cursor startup rules or read order changed |
 | **`PRODUCT-VISION.md`** | Product philosophy, roadmap priorities, or "do not build" list changed |
+| **`BRAND-PHILOSOPHY.md`** | Mission, brand voice, feature gate, or “For the Culture” framing changed |
 | **`PROJECT.md`** | New key folders, lib files, or routes |
 | **`HOW-WE-WORK.md`** | Roles, flow, or who-does-what changed |
 | **`USER-PREFERENCES.md`** | Isaac's working style preferences changed |

@@ -3,8 +3,9 @@
 ### Last Updated: August 2026
 
 **Audience:** every Builder, Reviewer, QA agent, and ChatGPT planning session.  
-**Status:** authoritative product philosophy. Prefer this over inventing goals.  
-**Live build truth:** still `CURRENT-STATE.md`. This file is *why* and *how we choose*, not *what shipped*.
+**Status:** authoritative product roadmap, GTM, and engineering/UI standards.  
+**Brand / mission source of truth:** `BRAND-PHILOSOPHY.md` — use that first for product, UX, branding, marketing, and feature decisions.  
+**Live build truth:** still `CURRENT-STATE.md`. This file is *what to build toward* and *how we ship*, not brand copy.
 
 ---
 
@@ -16,7 +17,7 @@ The objective is NOT to become another ticketing platform.
 
 The objective is to become the operating system that runs an event before, during and after it.
 
-Every feature should reduce friction between promoters and their crew.
+Every feature should reduce friction between promoters and their crew. (Full mission: `BRAND-PHILOSOPHY.md`.)
 
 The design philosophy is:
 
