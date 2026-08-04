@@ -15,6 +15,8 @@ import ChatProfileAvatarLink from "@/app/components/chat/ChatProfileAvatarLink";
 import AnimatedExpandPanel from "@/app/components/AnimatedExpandPanel";
 import BookingCardExpandableNotes from "@/app/components/booking/BookingCardExpandableNotes";
 import type { BookingRequest } from "@/lib/bookingRequests";
+import type { CalendarOriginState } from "@/lib/bookings/gigsCalendarNavigation";
+import { buildEventDetailProfileHref } from "@/lib/profileNavigation";
 import {
   clockPartsToWheelTime,
   combineClockAndMeridiem,
@@ -431,12 +433,18 @@ function RunSheetCappedTextarea({
  * largest, boldest thing in the card -- the top of the reading hierarchy the
  * Set Time and Stage / Area / Notes tiers below are built to sit under.
  */
-function RunSheetDjIdentity({ dj }: { dj: RunSheetRowDjDisplay }) {
+function RunSheetDjIdentity({
+  dj,
+  profileHref,
+}: {
+  dj: RunSheetRowDjDisplay;
+  profileHref: string | null;
+}) {
   if (!dj.displayName) {
     return <span className="text-ftc-text-muted">—</span>;
   }
 
-  if (dj.profileId) {
+  if (dj.profileId && profileHref) {
     return (
       <>
         <ChatProfileAvatarLink
@@ -444,9 +452,10 @@ function RunSheetDjIdentity({ dj }: { dj: RunSheetRowDjDisplay }) {
           name={dj.displayName}
           avatarUrl={dj.avatarUrl}
           size="sm"
+          href={profileHref}
         />
         <Link
-          href={`/profile/${dj.profileId}`}
+          href={profileHref}
           className="min-w-0 truncate text-base font-bold text-ftc-text transition hover:text-ftc-primary"
         >
           {dj.displayName}
@@ -532,6 +541,7 @@ function RunSheetEntry({
   stageAreaTextareaClassName,
   notesTextareaClassName,
   updateRow,
+  profileHref,
 }: {
   row: RunSheetRowInput;
   dj: RunSheetRowDjDisplay;
@@ -548,6 +558,8 @@ function RunSheetEntry({
   stageAreaTextareaClassName: string;
   notesTextareaClassName: string;
   updateRow: (rowId: string, patch: Partial<RunSheetRowInput>) => void;
+  /** Event-detail profile href so Back + Message CTA keep event context. */
+  profileHref: string | null;
 }) {
   const panelId = `run-sheet-panel-${row.id}`;
   const stagePreview = row.stage_area.trim();
@@ -596,7 +608,7 @@ function RunSheetEntry({
           <span className="shrink-0 text-xs font-semibold tabular-nums text-ftc-text-muted">
             {orderLabel}
           </span>
-          <RunSheetDjIdentity dj={dj} />
+          <RunSheetDjIdentity dj={dj} profileHref={profileHref} />
         </div>
         {canEdit ? (
           <div className="flex shrink-0 items-center gap-1">
@@ -771,6 +783,8 @@ export default function EventRunSheetSection({
   onUnsavedEditingChange,
   discardEditsRef,
   emptyStateMessage = "Accepted DJs will appear here once they confirm their booking",
+  fromTab = null,
+  calendarOrigin = null,
 }: {
   eventId: string;
   canEdit: boolean;
@@ -782,6 +796,8 @@ export default function EventRunSheetSection({
   /** Parent discard sheet calls this to revert + exit edit (same as Cancel). */
   discardEditsRef?: MutableRefObject<(() => void) | null>;
   emptyStateMessage?: string;
+  fromTab?: string | null;
+  calendarOrigin?: CalendarOriginState | null;
 }) {
   const [rows, setRows] = useState<RunSheetRowInput[]>([]);
   /** Last persisted rows — what Cancel reverts to, and the auto-add sync's
@@ -1169,6 +1185,13 @@ export default function EventRunSheetSection({
         <div className="mt-5 space-y-2">
           {rows.map((row, index) => {
             const dj = resolveRunSheetRowDjDisplay(row, lineup, profiles);
+            const profileHref = dj.profileId
+              ? buildEventDetailProfileHref(dj.profileId, {
+                  eventId,
+                  fromTab,
+                  calendarOrigin,
+                })
+              : null;
 
             return (
               <RunSheetEntry
@@ -1187,6 +1210,7 @@ export default function EventRunSheetSection({
                 stageAreaTextareaClassName={stageAreaTextareaClassName}
                 notesTextareaClassName={notesTextareaClassName}
                 updateRow={updateRow}
+                profileHref={profileHref}
               />
             );
           })}

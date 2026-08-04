@@ -1524,6 +1524,8 @@ function EventDetailPageView() {
                           onSaved={setHeaderFeedbackMessage}
                           onUnsavedEditingChange={handleRunSheetUnsavedEditingChange}
                           discardEditsRef={runSheetDiscardEditsRef}
+                          fromTab={searchParams.get("fromTab")}
+                          calendarOrigin={calendarOrigin}
                           emptyStateMessage={
                             isHistoryEventDetail
                               ? "No run sheet was saved for this event"

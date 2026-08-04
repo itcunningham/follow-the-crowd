@@ -10333,6 +10333,9 @@ function testRunSheetProductionPolish() {
     section.match(/function RunSheetDjIdentity\([\s\S]*?\n}\n/)?.[0] ?? "";
   assert.ok(djIdentityFn, "RunSheetDjIdentity must exist");
   assert.match(djIdentityFn, /min-w-0 truncate text-base font-bold text-ftc-text/);
+  assert.match(djIdentityFn, /href=\{profileHref\}/);
+  assert.doesNotMatch(djIdentityFn, /href=\{`\/profile\/\$\{dj\.profileId\}`\}/);
+  assert.match(section, /buildEventDetailProfileHref/);
   assert.doesNotMatch(section, /font-medium text-ftc-text transition hover:text-ftc-primary/);
 
   // Numbering badge sits inline with the identity row, small and muted so it
