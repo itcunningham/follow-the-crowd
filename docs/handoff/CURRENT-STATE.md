@@ -3,6 +3,8 @@
 
 Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 
+**Crew-chat profile CTA drops Book (`cursor/crew-profile-message-cta-5874`, 2026-08-04):** opening a DJ from the Crew sheet no longer shows “Message / Book DJ” — they are already on the event. Label is **Message** only (`isProfileOpenedFromCrewChat`). Discover/other entry points still show Book where appropriate.
+
 **Crew sheet returns faster (`cursor/crew-sheet-instant-return-5874`, 2026-08-04):** session-cache the crew roster (`lib/events/crewMemberListCache.ts`) so Back from a profile paints the Crew sheet immediately from cache while chat access/messages refetch. Live members replace cache when ready.
 
 **Crew sheet Back fix round 2 (`cursor/crew-sheet-loadaccess-fix-5874`, 2026-08-04):** URL sync alone was not enough — `loadAccess` called `setMemberSheetOpen(false)` on every remount, so returning from a profile opened the sheet then immediately closed it. Removed that force-close; sheet state now stays synced from `memberSheetOpen` in the URL.

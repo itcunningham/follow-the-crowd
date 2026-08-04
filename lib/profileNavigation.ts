@@ -216,6 +216,7 @@ export function resolveProfileChatBackNavigation(
 }
 
 const DM_CONVERSATION_RETURN_TO_PATTERN = /^\/dm\/([^/?#]+)/;
+const CREW_CHAT_RETURN_TO_PATTERN = /^\/events\/[^/]+\/chat(?:\?|$)/;
 
 export function readDmConversationIdFromReturnTo(
   returnTo: string | null | undefined,
@@ -240,4 +241,21 @@ export function isProfileOpenedFromDmConversation(
   }
 
   return readDmConversationIdFromReturnTo(returnTo) !== null;
+}
+
+/** Profile opened from an event crew chat — already booked into that night. */
+export function isProfileOpenedFromCrewChat(
+  from: string | null | undefined,
+  returnTo: string | null | undefined,
+): boolean {
+  if (from?.trim() !== "chat") {
+    return false;
+  }
+
+  const trimmed = returnTo?.trim();
+  if (!trimmed || !trimmed.startsWith("/") || trimmed.startsWith("//")) {
+    return false;
+  }
+
+  return CREW_CHAT_RETURN_TO_PATTERN.test(trimmed);
 }

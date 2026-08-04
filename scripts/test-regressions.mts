@@ -262,6 +262,7 @@ import {
   buildEventDetailProfileHref,
   buildProfileDmThreadHref,
   buildProfileHref,
+  isProfileOpenedFromCrewChat,
   isProfileOpenedFromDmConversation,
   readDmConversationIdFromReturnTo,
   resolveProfileChatBackNavigation,
@@ -1969,6 +1970,14 @@ function testProfileChatBackNavigation() {
     false,
   );
   assert.equal(isProfileOpenedFromDmConversation("discover", returnTo), false);
+
+  const crewChatReturnTo = `/events/${eventId}/chat?from=dm&memberSheetOpen=true`;
+  assert.equal(isProfileOpenedFromCrewChat("chat", crewChatReturnTo), true);
+  assert.equal(isProfileOpenedFromCrewChat("chat", `/events/${eventId}/chat`), true);
+  assert.equal(isProfileOpenedFromCrewChat("chat", returnTo), false);
+  assert.equal(isProfileOpenedFromCrewChat("event-detail", crewChatReturnTo), false);
+  assert.equal(isProfileOpenedFromCrewChat("chat", "https://evil.example/events/x/chat"), false);
+
   const calendarOrigin = {
     calendarDate: "2026-07-14",
     calendarView: "event" as const,

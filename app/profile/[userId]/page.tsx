@@ -25,6 +25,7 @@ import {
 } from "@/lib/navigationRoleCache";
 import {
   buildProfileDmThreadHref,
+  isProfileOpenedFromCrewChat,
   isProfileOpenedFromDmConversation,
   readProfileEventDetailContext,
   resolveProfileChatBackNavigation,
@@ -149,12 +150,25 @@ function UserProfilePageView({ userId }: { userId: string }) {
       ),
     [searchParams],
   );
+  const openedFromCrewChat = useMemo(
+    () =>
+      isProfileOpenedFromCrewChat(
+        searchParams.get("from"),
+        searchParams.get("returnTo"),
+      ),
+    [searchParams],
+  );
   const showMessageAction = !isOwnProfile && profile && !openedFromDmConversation;
   const showDjSections = profile?.role === "dj" || profile?.role === "both";
   const showPromoterSections = profile?.role === "promoter" || profile?.role === "both";
   function getMessageButtonLabel(): string {
     if (messaging) {
       return "Opening";
+    }
+
+    // Already on this event's crew — don't offer "Book".
+    if (openedFromCrewChat) {
+      return "Message";
     }
 
     if (openedFromEventDetail && showDjSections) {
