@@ -7,6 +7,8 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 
 **Communication preference locked (2026-08-04):** brutal honesty, no ego — never agree by default; push better options when Isaac's idea is weaker. Strict critic mode + hostile counterarguments when useful. `USER-PREFERENCES.md` + `.cursor/rules/brutal-honesty.mdc`.
 
+**Event Details Bookings cards tidied (on `main`, 2026-08-04):** dropped genre line (profile only). Message/Cancel shrunk to `min-h-7` / 11px — Message no longer uses `ftc-btn-secondary` (globals forced 2.5rem). Slightly tighter card padding. Bookings section left open (not collapsible).
+
 **Run Sheet allows multiple DJ rows open at once (`b10b0d5` on `main`, 2026-08-04):** view mode no longer accordion-closes siblings. `expandedRowIds: Set<string>` — tap adds/removes that row only. Edit mode still force-expands every row; Cancel/Save still clear the Set. Regressions updated (`testRunSheetAccordionRestructure` / `testRunSheetEditMode` / density). Supersedes older “single-open `expandedRowId`” notes below.
 
 **Send invitations looked dead (`c593618` on `main`, 2026-08-04):** Send bookings failures/`setError` wrote to Event Details *behind* the sheet, so tap felt like a no-op. Errors now render inside the sheet (`role="alert"`). Sheet `z-[60]` above mobile nav (`z-50`); unavailable confirm `z-[70]`. Failure copy surfaces the provider/message when present.
@@ -877,6 +879,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 | Crew Chat image sharing (`message_attachments.event_id`) | `scripts/setupEventCrewChatAttachments.sql` — **applied 2026-08-03** (required a type-cast fix after the first run, see Group chat entry above) |
 
 ## Recent commits (reference)
+- (pending) — polish(events): denser Bookings cards (no genres, smaller actions)
 - `b10b0d5` — fix(run-sheet): allow multiple DJ rows expanded at once
 - `fee7929` — fix(events): list card total pill says All
 - `39d2069` — fix(run-sheet): warn on Back with unsaved edits
