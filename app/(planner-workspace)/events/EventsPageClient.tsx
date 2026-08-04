@@ -361,21 +361,27 @@ function EventsListCardContent({
               value={event.lineupStats.total}
               variant={statusPillsSingleRow ? "compactActiveRow" : "compact"}
             />
-            <PlannerStatChip
-              label="Pending"
-              value={event.lineupStats.pending}
-              variant={statusPillsSingleRow ? "compactActiveRow" : "compact"}
-            />
-            <PlannerStatChip
-              label="Accepted"
-              value={event.lineupStats.accepted}
-              variant={statusPillsSingleRow ? "compactActiveRow" : "compact"}
-            />
-            <PlannerStatChip
-              label="Declined"
-              value={event.lineupStats.declined}
-              variant={statusPillsSingleRow ? "compactActiveRow" : "compact"}
-            />
+            {event.lineupStats.pending > 0 ? (
+              <PlannerStatChip
+                label="Pending"
+                value={event.lineupStats.pending}
+                variant={statusPillsSingleRow ? "compactActiveRow" : "compact"}
+              />
+            ) : null}
+            {event.lineupStats.accepted > 0 ? (
+              <PlannerStatChip
+                label="Accepted"
+                value={event.lineupStats.accepted}
+                variant={statusPillsSingleRow ? "compactActiveRow" : "compact"}
+              />
+            ) : null}
+            {event.lineupStats.declined > 0 ? (
+              <PlannerStatChip
+                label="Declined"
+                value={event.lineupStats.declined}
+                variant={statusPillsSingleRow ? "compactActiveRow" : "compact"}
+              />
+            ) : null}
           </div>
         ) : null}
       </div>

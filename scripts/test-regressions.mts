@@ -5525,6 +5525,19 @@ function testEventsActiveStatusPillsSingleRowLayout() {
   // Total count is "All" (same meaning as Event Details Bookings filter) — not "Invited".
   assert.match(source, /PlannerStatChip[\s\S]{0,80}label="All"/);
   assert.doesNotMatch(source, /PlannerStatChip[\s\S]{0,80}label="Invited"/);
+  // Status pills omit zero counts (All always shows).
+  assert.match(
+    source,
+    /event\.lineupStats\.pending > 0 \? \(\s*<PlannerStatChip[\s\S]{0,120}label="Pending"/,
+  );
+  assert.match(
+    source,
+    /event\.lineupStats\.accepted > 0 \? \(\s*<PlannerStatChip[\s\S]{0,120}label="Accepted"/,
+  );
+  assert.match(
+    source,
+    /event\.lineupStats\.declined > 0 \? \(\s*<PlannerStatChip[\s\S]{0,120}label="Declined"/,
+  );
 }
 
 function testEventsCreateFlowTabPillNavigation() {
