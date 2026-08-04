@@ -11605,6 +11605,19 @@ function testCrewChatMemberSheetReopenOnProfileReturn() {
     /onClose=\{closeMemberSheet\}/,
     "sheet closes through closeMemberSheet (URL sync)",
   );
+
+  // loadAccess must not force-close the sheet on every mount — that undid the
+  // URL reopen marker as soon as the page finished loading after Back.
+  assert.doesNotMatch(
+    chatPageSource,
+    /setLastReadAtByUserId\(new Map\(\)\);\s*setMemberSheetOpen\(false\)/,
+    "loadAccess must not force-close the crew sheet on every load",
+  );
+  assert.match(
+    chatPageSource,
+    /useEffect\(\(\) => \{\s*setMemberSheetOpen\(memberSheetOpenFromUrl\);\s*\}, \[memberSheetOpenFromUrl\]\)/,
+    "sheet open state stays synced from the URL after navigation",
+  );
 }
 
 function testCrewChatPremiumPolish() {

@@ -265,6 +265,13 @@ export default function EventCrewChatPage() {
   const memberSheetOpenFromUrl = searchParams.get("memberSheetOpen") === "true";
   const [memberSheetOpen, setMemberSheetOpen] = useState(memberSheetOpenFromUrl);
 
+  // Keep React state aligned with the URL. Returning from a profile (Link or
+  // history.back) remounts this page with memberSheetOpen=true; loadAccess used
+  // to call setMemberSheetOpen(false) on every load and immediately closed it.
+  useEffect(() => {
+    setMemberSheetOpen(memberSheetOpenFromUrl);
+  }, [memberSheetOpenFromUrl]);
+
   const syncMemberSheetOpenInUrl = useCallback(
     (open: boolean) => {
       const params = new URLSearchParams(searchParams.toString());
@@ -834,7 +841,10 @@ export default function EventCrewChatPage() {
       setReactionPickerMessageId(null);
       setSenderProfiles(new Map());
       setLastReadAtByUserId(new Map());
-      setMemberSheetOpen(false);
+      // Do NOT force-close the crew sheet here. Returning from a member profile
+      // remounts this page and re-runs loadAccess; wiping sheet state made Back
+      // land on a bare thread even when memberSheetOpen=true was in the URL.
+      // Sheet open/close is owned by the URL sync helpers above.
       // Opening a different event's chat is a fresh entry: its details start
       // collapsed like any other, even when React reuses this component
       // instance across the two routes rather than remounting it.
