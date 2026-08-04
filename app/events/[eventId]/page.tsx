@@ -491,8 +491,8 @@ function EventDetailPageView() {
    * exactly the same space when a filter matches nothing.
    *
    * Measured rather than hard-coded because a card is not one fixed size: the
-   * baseline is the same across pending/accepted/declined, but an optional
-   * genre line or cancellation detail makes it taller. A fixed value can only
+   * baseline is the same across pending/accepted/declined, but cancellation
+   * detail or a pending rate proposal makes it taller. A fixed value can only
    * ever be right for one of those.
    *
    * When no card has rendered yet there is nothing to match, because that only

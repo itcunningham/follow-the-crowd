@@ -84,7 +84,6 @@ export default function EventLineupBookingCard({
   onKeepOriginalOffer: () => void | Promise<void>;
 }) {
   const displayName = profile?.display_name?.trim() || "DJ";
-  const genre = profile?.genre?.trim();
   const djUserId = booking.recipient_id;
   const acceptedCancellationRole = getAcceptedBookingCancellationRole(booking, currentUserId);
   const rateLine = getLineupRateLine(booking);
@@ -110,7 +109,7 @@ export default function EventLineupBookingCard({
 
   return (
     <div
-      className={`ftc-lineup-booking-card relative p-3 transition duration-150 ease-out motion-reduce:transition-none ${
+      className={`ftc-lineup-booking-card relative p-2.5 transition duration-150 ease-out motion-reduce:transition-none ${
         canHideFromLineup ? "pr-11 sm:pr-12" : ""
       }`}
     >
@@ -123,7 +122,7 @@ export default function EventLineupBookingCard({
         />
       ) : null}
 
-      <div className="flex min-w-0 items-start gap-3">
+      <div className="flex min-w-0 items-start gap-2.5">
         <ChatProfileAvatarLink
           userId={djUserId}
           name={displayName}
@@ -140,9 +139,6 @@ export default function EventLineupBookingCard({
               >
                 {displayName}
               </Link>
-              {genre ? (
-                <p className="mt-0.5 truncate text-xs text-ftc-text-muted">{genre}</p>
-              ) : null}
             </div>
             <div className="flex shrink-0 flex-col items-end gap-1">
               <BookingStatusBadge status={booking.status} variant="compact" />
@@ -156,7 +152,7 @@ export default function EventLineupBookingCard({
             </div>
           </div>
 
-          <p className="mt-1.5 text-xs leading-snug text-ftc-text-muted">{rateLine}</p>
+          <p className="mt-1 text-xs leading-snug text-ftc-text-muted">{rateLine}</p>
 
           {cancelledByLabel || cancellationReasonLabel ? (
             <EventDetailBookingCancellationDetails

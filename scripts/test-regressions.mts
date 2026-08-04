@@ -1953,6 +1953,20 @@ function testEventLineupBookingCardProfileNavigationAndActions() {
   assert.match(cardSource, /Ask for rate/);
   assert.match(cardSource, /Fixed offer • \$\{amount\}/);
   assert.doesNotMatch(cardSource, /flex-col gap-2 sm:flex-row/);
+  // Bookings manage invites — genres stay on the profile, not the lineup card.
+  assert.doesNotMatch(cardSource, /profile\?\.genre/);
+  assert.doesNotMatch(cardSource, /\{genre\}/);
+
+  const uiSource = readFileSync(
+    new URL("../app/components/event-detail/eventDetailUi.ts", import.meta.url),
+    "utf8",
+  );
+  // Message must not use `ftc-btn-secondary` — globals force min-height 2.5rem.
+  assert.doesNotMatch(
+    uiSource,
+    /EVENT_DETAIL_LINEUP_BTN_SECONDARY\s*=\s*"[^"]*ftc-btn-secondary/,
+  );
+  assert.match(uiSource, /EVENT_DETAIL_LINEUP_ACTION_BTN =\s*\n?\s*"!min-h-7 min-w-0 flex-1 !px-2 !py-0\.5 !text-\[11px\]"/);
 }
 
 function testDmThreadEventDetailBackHref() {
@@ -11792,8 +11806,8 @@ function testBookingsResultsAreaMatchesOneBookingCard() {
   assert.match(source, /style=\{\s*lineupCardHeight \? \{ minHeight: `\$\{lineupCardHeight\}px` \} : undefined/);
 
   // Sized from a real rendered card rather than a fixed value: the baseline is
-  // the same for pending/accepted/declined, but an optional genre line or
-  // cancellation detail makes a card taller, so no constant can match them all.
+  // the same for pending/accepted/declined, but cancellation detail or a
+  // pending rate proposal makes a card taller, so no constant can match them all.
   assert.match(source, /const \[lineupCardHeight, setLineupCardHeight\] = useState<number \| null>\(null\)/);
   assert.match(source, /new ResizeObserver\(measure\)/);
   assert.match(source, /observer\.disconnect\(\)/);
