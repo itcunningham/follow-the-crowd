@@ -2,13 +2,17 @@
 
 import "@/lib/navigationBadgePrefetch";
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useRef, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useNavBadges } from "@/app/components/navigation/NavBadgeProvider";
 import type { NavBadgeCounts } from "@/lib/notifications";
 import { readSupabaseSessionUserIdSync } from "@/lib/auth/sessionUserId";
 import { isMessagesInboxPath } from "@/lib/groupChats";
-import { canViewEventsSubNav, isPlannerEventsAreaPath } from "@/lib/plannerEventsNav";
+import {
+  canViewEventsSubNav,
+  isPlannerEventsAreaPath,
+  isStandaloneEventDetailPath,
+} from "@/lib/plannerEventsNav";
 import {
   formatGigsTabCountAriaCount,
   formatGigsTabCountDisplay,
@@ -423,6 +427,29 @@ export default function AppNavigation() {
     getNavigationBadgeCacheVersion,
     () => 0,
   );
+  // View Event from crew chat: keep Messages selected on Event Details.
+  // Read search from window (not useSearchParams) so static pages like
+  // /discover keep building without a Suspense boundary on every nav mount.
+  const [eventDetailFromCrewChat, setEventDetailFromCrewChat] = useState(false);
+
+  useEffect(() => {
+    if (!isStandaloneEventDetailPath(pathname)) {
+      setEventDetailFromCrewChat(false);
+      return;
+    }
+
+    setEventDetailFromCrewChat(
+      new URLSearchParams(window.location.search).get("from") === "crew-chat",
+    );
+  }, [pathname]);
+
+  function resolveNavItemActive(item: NavItem): boolean {
+    if (item.icon === "messages" && eventDetailFromCrewChat) {
+      return true;
+    }
+
+    return item.isActive(pathname);
+  }
 
   useEffect(() => {
     if (!resolvedRole) {
@@ -476,7 +503,7 @@ export default function AppNavigation() {
         <div className="mx-auto flex h-12 max-w-2xl items-center justify-between gap-1 px-4 sm:px-6 md:max-w-5xl">
           <div className="flex min-w-0 items-center gap-2 sm:gap-3">
             {navItems.map((item) => {
-              const isActive = item.isActive(pathname);
+              const isActive = resolveNavItemActive(item);
               const badgeCount =
                 item.badgeKey === "messages"
                   ? displayMessagesCount
@@ -516,7 +543,7 @@ export default function AppNavigation() {
       >
         <div className="mx-auto flex max-w-2xl items-stretch px-0.5 pb-[env(safe-area-inset-bottom)]">
           {navItems.map((item) => {
-            const isActive = item.isActive(pathname);
+            const isActive = resolveNavItemActive(item);
             const badgeCount =
               item.badgeKey === "messages"
                 ? displayMessagesCount

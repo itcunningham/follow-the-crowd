@@ -9,6 +9,8 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 
 **Event Details is not the Events bottom tab (`5a5f965` + build fix on `main`, 2026-08-04):** View Event from Crew Chat lit the Events icon and the tap felt dead. Round 1 (pop-to-root when nested) was on Production but still failed device QA. Round 2: `isPlannerEventsAreaPath` excludes standalone `/events/[id]` so Events stays tappable. A `useSearchParams` Messages-highlight tweak broke Production builds (`/discover` Suspense); removed — exclusion alone is enough.
 
+**Crew Chat View Event keeps Messages tab selected (`cursor/crew-chat-messages-tab-active-5874`, 2026-08-04):** On Event Details with `?from=crew-chat`, Messages stays highlighted (Events stays off). Reads `window.location.search` after mount — not `useSearchParams` — so `/discover` static build stays green.
+
 **Events bottom-nav pop-to-root from event detail (`de21efc` on `main`, 2026-08-04):** Workspace selectors only no-op on the landing `href`. Nested Calendar/Gigs/DM still pop to root. Superseded for Event Details highlight by the entry above — detail is no longer treated as Events-active.
 
 **Event Details Bookings: filters own the counts (`4213985` on `main`, 2026-08-04):** removed Invited/Pending/Accepted/Declined chip row above the pills — same numbers twice. Filter labels now carry counts (`All 2`, `Accepted 2`, …). Planner accepted-card trigger shortened to **Cancel** (confirm dialog still says Cancel booking). Follow-up: zero counts omitted from labels + `layout="scroll"` so Declined doesn’t wrap alone onto a second row.

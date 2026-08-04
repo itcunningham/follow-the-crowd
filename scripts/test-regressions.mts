@@ -11038,6 +11038,11 @@ function testRoleAwareWorkspaceNavigation() {
     plannerEventsNavSource,
     /export function isStandaloneEventDetailPath\(pathname: string\): boolean/,
   );
+  assert.match(
+    appNavigationSource,
+    /eventDetailFromCrewChat[\s\S]{0,200}from"\) === "crew-chat"/,
+  );
+  assert.match(appNavigationSource, /function resolveNavItemActive\(item: NavItem\): boolean/);
   assert.doesNotMatch(appNavigationSource, /useSearchParams/);
   assert.match(
     appNavigationSource,
