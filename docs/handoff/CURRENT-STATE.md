@@ -3,7 +3,7 @@
 
 Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 
-**Composer "Message" placeholder no longer clips to "Mes" after send (`52fac6a`, 2026-08-04):** Shared `ComposerMessageField` had `min-w-[6.5rem]` and `min-w-0` on the same wrapper — Tailwind resolved the conflict to `min-w-0`, so after send cleared the draft iOS Safari shrunk the empty flex textarea and clipped the placeholder to **Mes**. Fix: drop the conflicting `min-w-0`, bump the floor to `min-w-[7rem]`, and add a CSS `min-width: 7rem` + `field-sizing: fixed` on `.ftc-chat-composer .ftc-input` (DM + Crew Chat). Regression pins the no-`min-w-0` rule in `testDmComposerRowAlignment`.
+**Composer "Message" placeholder no longer clips to "Mes" after send (`52fac6a` / `df78192` on `main`, 2026-08-04):** Shared `ComposerMessageField` had `min-w-[6.5rem]` and `min-w-0` on the same wrapper — Tailwind resolved the conflict to `min-w-0`, so after send cleared the draft iOS Safari shrunk the empty flex textarea and clipped the placeholder to **Mes**. Fix: drop the conflicting `min-w-0`, bump the floor to `min-w-[7rem]`, and add a CSS `min-width: 7rem` + `field-sizing: fixed` on `.ftc-chat-composer .ftc-input` (DM + Crew Chat). Regression pins the no-`min-w-0` rule in `testDmComposerRowAlignment`. Fast-forwarded to `main` for Production QA (branch was “No target” Preview only).
 
 **Crew → profile → DM → Back keeps crew context (`cursor/crew-profile-dm-return-chain-5874`, 2026-08-04):** Messaging from a crew-chat profile now carries `profileFrom=chat` + `profileReturnTo` into the DM thread, so Back restores the profile with Back-to-crew-chat and **Message** (not Book). Bare `/profile/id` no longer drops the chain.
 
