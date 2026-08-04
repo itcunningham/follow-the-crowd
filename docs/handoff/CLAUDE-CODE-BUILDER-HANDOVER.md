@@ -8,10 +8,12 @@
 **This is the single start file for Claude Code.** Read it fully before coding. Then deepen with the linked docs — do not invent process or architecture.
 
 **Brand / mission:** `docs/handoff/BRAND-PHILOSOPHY.md`  
+**Day-one handover:** `docs/handoff/PRODUCT-HANDOVER.md`  
 **Product philosophy:** `docs/handoff/PRODUCT-VISION.md`  
 **Companion deep-dive (technical):** `docs/handoff/CLAUDE-IMPLEMENTATION-HANDOVER.md`  
 **Live product truth:** `docs/handoff/CURRENT-STATE.md`  
-**Agent rules:** `AGENTS.md` (root `CLAUDE.md` only points at that)
+**Agent rules:** `AGENTS.md` (root `CLAUDE.md` only points at that)  
+**Roles:** `docs/handoff/HOW-WE-WORK.md` — Cursor is now the product/UX/coordinator partner (ChatGPT deprecated for live FTC work).
 
 ---
 

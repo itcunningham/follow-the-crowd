@@ -5,6 +5,7 @@
 **Audience:** every Builder, Reviewer, QA agent, and ChatGPT planning session.  
 **Status:** authoritative product roadmap, GTM, and engineering/UI standards.  
 **Brand / mission source of truth:** `BRAND-PHILOSOPHY.md` — use that first for product, UX, branding, marketing, and feature decisions.  
+**Day-one product/strategy handover:** `PRODUCT-HANDOVER.md` — stage, beta, metrics, roles, strategic layers.  
 **Live build truth:** still `CURRENT-STATE.md`. This file is *what to build toward* and *how we ship*, not brand copy.
 
 ---

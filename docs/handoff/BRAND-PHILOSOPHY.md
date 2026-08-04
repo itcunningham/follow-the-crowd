@@ -1,14 +1,20 @@
 # FTC Brand & Product Philosophy
 
 **Status:** source of truth for product, UX, branding, marketing, and feature decisions.  
-**Audience:** every Builder, Reviewer, QA agent, and ChatGPT planning session.  
-**Related:** roadmap / GTM / revenue → `PRODUCT-VISION.md` · visual tokens → `docs/design/FTC_DESIGN_SYSTEM.md` · what shipped → `CURRENT-STATE.md`
+**Audience:** every Builder, Reviewer, QA agent, and product partner.  
+**Related:** day-one handover → `PRODUCT-HANDOVER.md` · roadmap / GTM / revenue → `PRODUCT-VISION.md` · visual tokens → `docs/design/FTC_DESIGN_SYSTEM.md` · what shipped → `CURRENT-STATE.md`
 
 When making product, UX, branding, marketing, or feature decisions, always use this philosophy as the source of truth.
 
 ---
 
-## Mission
+## Mission & operating principle
+
+FTC is built around:
+
+> **Workflow first. Community second. Content third.**
+
+Almost every startup does the reverse (followers, likes, feeds, content). FTC starts with work people already need every weekend. If people depend on FTC to run events, the network forms afterwards.
 
 FTC exists to remove everything that prevents culture from thriving.
 
@@ -19,6 +25,8 @@ Too much of their time is wasted by fragmented communication, unnecessary admin,
 FTC exists to remove that friction.
 
 **For the Culture.**
+
+Day-one product handover (stage, beta, metrics, roles): `PRODUCT-HANDOVER.md`.
 
 ---
 

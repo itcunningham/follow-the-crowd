@@ -1,31 +1,32 @@
 # Session handoff
 
-Use this folder when starting a **new Cursor chat** or **new ChatGPT chat** so you do not re-explain the project.
+Use this folder when starting a **new Cursor chat** so you do not re-explain the project.
 
 ## Fastest start
 
-**Claude Code (Builder while Cursor usage is limited):** open the FTC repo and say:
+**Cursor (product + Builder):** 
+
+Read docs/handoff/PRODUCT-HANDOVER.md and docs/handoff/BRAND-PHILOSOPHY.md, then docs/handoff/CURRENT-STATE.md. Follow HOW-WE-WORK.md. My task: [your task]
+
+**Claude Code Builder:** open the FTC repo and say:
 
 Read docs/handoff/CLAUDE-CODE-BUILDER-HANDOVER.md fully, then docs/handoff/CURRENT-STATE.md. Follow FTC_WORKFLOW.md. My task: [your task]
 
-**Cursor:** open a new chat and say:
-
-Read everything in docs/handoff/ and follow it. Then: [your task]
-
-**ChatGPT:** paste the contents of `START-HERE-GPT.md`, then add your task.
+**Legacy:** `START-HERE-GPT.md` exists for old ChatGPT pastes — ChatGPT is **no longer** the live product partner. Prefer Cursor + this folder.
 
 ## Files
 
 | File | Purpose |
 |------|---------|
+| `PRODUCT-HANDOVER.md` | **Day-one complete product/strategy handover — stage, beta, metrics, roles, roadmap layers** |
 | `BRAND-PHILOSOPHY.md` | **Source of truth — mission, enemy (friction), feature gate, brand voice. For the Culture.** |
-| `PRODUCT-VISION.md` | Product roadmap, GTM, revenue, UI/engineering standards, what not to build |
-| `CLAUDE-CODE-BUILDER-HANDOVER.md` | **Claude Code Builder start — team, Isaac prefs, ChatGPT, FTC, ship rules** |
+| `PRODUCT-VISION.md` | Product roadmap depth, GTM, revenue, UI/engineering standards, what not to build |
+| `CLAUDE-CODE-BUILDER-HANDOVER.md` | Claude Code Builder start — team, Isaac prefs, FTC, ship rules |
 | `CLAUDE-IMPLEMENTATION-HANDOVER.md` | Deep technical architecture / debt / DM patterns for Claude |
 | `START-HERE-CURSOR.md` | Paste into new Cursor chat |
-| `START-HERE-GPT.md` | Paste into new ChatGPT chat |
-| `HOW-WE-WORK.md` | Who does what (you / Cursor / GPT) |
-| `MULTI-AGENT-WORKFLOW.md` | **Authoritative — worktrees, branch ownership, collision rules, release checklist. Read before running parallel agents** |
+| `START-HERE-GPT.md` | Legacy ChatGPT paste — superseded by Cursor product role |
+| `HOW-WE-WORK.md` | Who does what (Isaac / Cursor / Builder / QA / Release) |
+| `MULTI-AGENT-WORKFLOW.md` | **Authoritative — worktrees, branch ownership, collision rules, release checklist** |
 | `USER-PREFERENCES.md` | How Isaac wants work done |
 | `PROJECT.md` | Stack, folders, conventions |
 | `docs/design/FTC_DESIGN_SYSTEM.md` | Spacing, typography, shared UI rules |
