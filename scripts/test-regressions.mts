@@ -299,7 +299,7 @@ import {
   PLANNER_WORKSPACE_SECONDARY_BAND_CLASS,
   PLANNER_WORKSPACE_SECONDARY_CONTROLS_CLASS,
 } from "../lib/design/plannerWorkspaceTokens";
-import { getEventsAreaSubNavItems, resolveActiveWorkspaceHref, buildWorkspaceSubNavDestinationHref, EVENTS_AREA_SUB_NAV, isCalendarWorkspacePath, mergeWorkspaceNavRole, WORKSPACE_SUB_NAV_TABS, isWorkspaceSubNavTabVisible } from "../lib/plannerEventsNav";
+import { getEventsAreaSubNavItems, resolveActiveWorkspaceHref, buildWorkspaceSubNavDestinationHref, EVENTS_AREA_SUB_NAV, isCalendarWorkspacePath, isPlannerEventsAreaPath, isStandaloneEventDetailPath, mergeWorkspaceNavRole, WORKSPACE_SUB_NAV_TABS, isWorkspaceSubNavTabVisible } from "../lib/plannerEventsNav";
 import { resolveEventsWorkspaceChromeRole } from "../lib/events/eventsWorkspaceChromeRole";
 import {
   EVENT_PLAN_USE_BUTTON_CLASS,
@@ -11023,8 +11023,29 @@ function testRoleAwareWorkspaceNavigation() {
 
   // One workspace-selector nav item, role-selected. Both variants use the
   // whole-area isActive check so the tab highlights across the workspace;
-  // nested paths (event detail, Calendar, DM) still navigate to the landing
-  // href (pop-to-root). Only the landing href itself no-ops on re-tap.
+  // nested paths (Calendar, DM) still navigate to the landing href
+  // (pop-to-root). Only the landing href itself no-ops on re-tap.
+  // Event Details is NOT the Events tab — isPlannerEventsAreaPath excludes it
+  // so the bottom-left icon stays tappable after View Event from crew chat.
+  assert.equal(isStandaloneEventDetailPath("/events/abc"), true);
+  assert.equal(isStandaloneEventDetailPath("/events/abc/chat"), false);
+  assert.equal(isStandaloneEventDetailPath("/events"), false);
+  assert.equal(isPlannerEventsAreaPath("/events"), true);
+  assert.equal(isPlannerEventsAreaPath("/events/abc"), false);
+  assert.equal(isPlannerEventsAreaPath("/events/abc/chat"), false);
+  assert.equal(isPlannerEventsAreaPath("/calendar"), true);
+  assert.match(
+    plannerEventsNavSource,
+    /export function isStandaloneEventDetailPath\(pathname: string\): boolean/,
+  );
+  assert.match(
+    appNavigationSource,
+    /eventDetailFromCrewChat[\s\S]{0,120}from"\) === "crew-chat"/,
+  );
+  assert.match(
+    appNavigationSource,
+    /function resolveNavItemActive\(item: NavItem\): boolean/,
+  );
   assert.match(
     appNavigationSource,
     /function getNavItems\(currentUserId: string \| null, role: UserRole \| null\)/,
@@ -11048,6 +11069,7 @@ function testRoleAwareWorkspaceNavigation() {
     /if \(item\.isWorkspaceSelector && isActive && pathname === item\.href\) \{\s*event\.preventDefault\(\);\s*\}/,
   );
   assert.doesNotMatch(appNavigationSource, /isGigsAreaPath/);
+
 
   // /events is not a DJ destination any more, so a stale link or history entry
   // lands them in their own workspace instead of an orphaned list.

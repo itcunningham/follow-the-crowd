@@ -251,8 +251,27 @@ export function resolvePlannerWorkspaceTitle(options: {
   return getPlannerWorkspaceTitle(href);
 }
 
+/**
+ * Single-event details (`/events/:id`), not the Events list, create redirect,
+ * crew chat, or any deeper nested event route.
+ *
+ * Bottom nav must not treat this as the Events tab: highlighting it makes the
+ * workspace-selector control look selected while you're on a one-off detail
+ * screen (especially after View Event from crew chat), and the tab then feels
+ * dead. Sub-nav pages (list / plans / calendar / gigs) still count as the
+ * workspace via `isPlannerEventsAreaPath`.
+ */
+export function isStandaloneEventDetailPath(pathname: string): boolean {
+  return /^\/events\/[^/]+\/?$/.test(pathname);
+}
+
 export function isPlannerEventsAreaPath(pathname: string): boolean {
   if (isEventCrewChatPath(pathname)) {
+    return false;
+  }
+
+  // Event Details is its own screen, not the Events workspace tab.
+  if (isStandaloneEventDetailPath(pathname)) {
     return false;
   }
 
