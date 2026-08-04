@@ -56,7 +56,7 @@ export default function CancelAcceptedBookingButton({
 
   const reasonOptions =
     role === "planner" ? PLANNER_CANCELLATION_REASONS : DJ_WITHDRAWAL_REASONS;
-  const triggerLabel = role === "planner" ? "Cancel booking" : "Withdraw from event";
+  const triggerLabel = role === "planner" ? "Cancel" : "Withdraw from event";
   const title = role === "planner" ? "Cancel booking?" : "Withdraw from event?";
   const description =
     role === "planner"

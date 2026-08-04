@@ -41,7 +41,6 @@ import {
   PlannerFilterPills,
   PlannerFormCard,
   PlannerFormField,
-  PlannerStatChip,
 } from "@/app/components/planner/PlannerUi";
 import { useSyncPlannerTitleFeedback } from "@/app/components/planner/PlannerTitleFeedbackProvider";
 import { PlannerTitleFeedbackSlot } from "@/app/components/planner/PlannerTitleFeedbackSlot";
@@ -169,13 +168,6 @@ import {
   type BookingRecipientProfile,
   type UserRole,
 } from "@/lib/user/currentUser";
-
-const STATUS_FILTERS: { value: ActiveBookingStatusFilter; label: string }[] = [
-  { value: "all", label: "All" },
-  { value: "pending", label: "Pending" },
-  { value: "accepted", label: "Accepted" },
-  { value: "declined", label: "Declined" },
-];
 
 const CREW_CHAT_HELP = {
   label: "Group chat",
@@ -441,6 +433,16 @@ function EventDetailPageView() {
   const visibleLineup = useMemo(() => filterVisibleEventLineupBookings(lineup), [lineup]);
   const activeLineup = useMemo(() => filterActiveBookings(visibleLineup), [visibleLineup]);
   const lineupStats = useMemo(() => getActiveEventLineupStats(lineup), [lineup]);
+  const bookingStatusFilters = useMemo(
+    () =>
+      [
+        { value: "all" as const, label: `All ${lineupStats.total}` },
+        { value: "pending" as const, label: `Pending ${lineupStats.pending}` },
+        { value: "accepted" as const, label: `Accepted ${lineupStats.accepted}` },
+        { value: "declined" as const, label: `Declined ${lineupStats.declined}` },
+      ] satisfies { value: ActiveBookingStatusFilter; label: string }[],
+    [lineupStats],
+  );
 
   const filteredLineup = useMemo(() => {
     const base =
@@ -1545,21 +1547,11 @@ function EventDetailPageView() {
 
                   {isOwner ? (
                     <section className={`${EVENT_DETAIL_SECTION_SPACING} ${EVENT_DETAIL_CARD_CLASS}`}>
-                      <div className="flex flex-wrap items-start justify-between gap-3">
-                        <div>
-                          <EventDetailSectionTitle>Bookings</EventDetailSectionTitle>
-                          <div className="mt-2.5 flex flex-wrap gap-1.5">
-                            <PlannerStatChip label="Invited" value={lineupStats.total} variant="compact" />
-                            <PlannerStatChip label="Pending" value={lineupStats.pending} variant="compact" />
-                            <PlannerStatChip label="Accepted" value={lineupStats.accepted} variant="compact" />
-                            <PlannerStatChip label="Declined" value={lineupStats.declined} variant="compact" />
-                          </div>
-                        </div>
-                      </div>
+                      <EventDetailSectionTitle>Bookings</EventDetailSectionTitle>
 
                       <div className="mt-3">
                         <PlannerFilterPills
-                          options={STATUS_FILTERS}
+                          options={bookingStatusFilters}
                           value={lineupFilter}
                           onChange={setLineupFilter}
                         />

@@ -5,7 +5,9 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 
 **Standing deploy preference locked (2026-08-04):** small approved bug fixes / polish ship to **`main` (Production)**, not Preview-only. Branch deploys show **"No target"** and are useless for device QA on `follow-the-crowd.vercel.app`. Saved in `USER-PREFERENCES.md`, `HOW-WE-WORK.md`, and `.cursor/rules/ship-small-fixes-to-main.mdc`.
 
-**Communication preference locked (2026-08-04):** brutal honesty, no ego — never agree by default; push better options when Isaac's idea is weaker. `USER-PREFERENCES.md` + `.cursor/rules/brutal-honesty.mdc`.
+**Communication preference locked (2026-08-04):** brutal honesty, no ego — never agree by default; push better options when Isaac's idea is weaker. Strict critic mode + hostile counterarguments when useful. `USER-PREFERENCES.md` + `.cursor/rules/brutal-honesty.mdc`.
+
+**Event Details Bookings: filters own the counts (on `main`, 2026-08-04):** removed Invited/Pending/Accepted/Declined chip row above the pills — same numbers twice. Filter labels now carry counts (`All 2`, `Accepted 2`, …). Planner accepted-card trigger shortened to **Cancel** (confirm dialog still says Cancel booking).
 
 **Event edit discard on Back only (`bfb057a` on `main`, 2026-08-04):** dirty Edit Event + **Back** shows the same unsaved-changes sheet as profile; **Cancel** still discards immediately (no extra tap). Shared `UnsavedChangesDiscardDialog`. Subtitle dropped (`e86f5ce`) — title alone is enough.
 

@@ -5093,12 +5093,36 @@ function testWithdrawalOtherReasonInputLimits() {
     "utf8",
   );
   assert.match(cancelButtonSource, /sanitizeWithdrawalOtherReason\(otherReason\)/);
+  // Card trigger stays short; confirm dialog keeps the full "Cancel booking" label.
+  assert.match(cancelButtonSource, /role === "planner" \? "Cancel" : "Withdraw from event"/);
+  assert.match(cancelButtonSource, /role === "planner" \? "Cancel booking\?" : "Withdraw from event\?"/);
+  assert.match(cancelButtonSource, /role === "planner" \? "Cancel booking" : "Withdraw"/);
 
   const bookingRequestsSource = readFileSync(
     new URL("../lib/bookingRequests.ts", import.meta.url),
     "utf8",
   );
   assert.match(bookingRequestsSource, /sanitizeWithdrawalOtherReason\(trimmedReason\)/);
+}
+
+function testEventDetailBookingsFilterOwnsCounts() {
+  const detailSource = readFileSync(
+    new URL("../app/events/[eventId]/page.tsx", import.meta.url),
+    "utf8",
+  );
+
+  // Counts live on the filter pills — no duplicate Invited/Pending/Accepted/Declined chip row.
+  assert.match(detailSource, /bookingStatusFilters/);
+  assert.match(detailSource, /label: `All \$\{lineupStats\.total\}`/);
+  assert.match(detailSource, /label: `Pending \$\{lineupStats\.pending\}`/);
+  assert.match(detailSource, /label: `Accepted \$\{lineupStats\.accepted\}`/);
+  assert.match(detailSource, /label: `Declined \$\{lineupStats\.declined\}`/);
+  assert.doesNotMatch(
+    detailSource,
+    /PlannerStatChip label="Invited"/,
+    "event detail bookings must not repeat counts as chips above the filters",
+  );
+  assert.doesNotMatch(detailSource, /PlannerStatChip/);
 }
 
 function testEventPlanPickerClearsSelectionOnFormBack() {
@@ -16205,6 +16229,7 @@ async function main() {
   testChatMessageBubbleGeometry();
   testEventFallbackColourSelectionRadioBehaviour();
   testEventPlanPickerClearsSelectionOnFormBack();
+  testEventDetailBookingsFilterOwnsCounts();
   testEventPlansSelectionToolbarMatchesHistory();
   testEventPlansSelectionToolbarRowMatchesEventsHistory();
   testEventPlansListLoadUsesCacheAndPrefetch();
