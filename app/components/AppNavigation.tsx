@@ -44,15 +44,11 @@ type NavItem = {
   isActive: (pathname: string) => boolean;
   /**
    * Workspace-selector tabs are entry points into a multi-page workspace
-   * (isActive spans several distinct hrefs), not a single-destination link —
-   * tapping one while already inside that workspace should do nothing rather
-   * than reset back to `href`. Events (isPlannerEventsAreaPath: Events/Event
-   * Plans/Calendar/Gigs — same item for every role; Gigs and Calendar are
-   * reached only via the in-workspace sub-nav, never a separate bottom-nav
-   * item), Messages (isMessagesInboxPath: Inbox/DM/Group Chat/Event Chat),
-   * and Profile (own profile + Settings, and any nested sub-paths under
-   * either) qualify — `pathname !== href` doesn't mean "not here yet" for
-   * any of them.
+   * (isActive spans several distinct hrefs). Tapping one while already on
+   * its landing `href` is a no-op; tapping from a nested path in that
+   * workspace (event detail, Calendar, DM, Settings, etc.) navigates to
+   * `href` — Instagram-style pop-to-root. Events (isPlannerEventsAreaPath),
+   * Messages (isMessagesInboxPath), and Profile qualify.
    */
   isWorkspaceSelector?: boolean;
   /** Pending-incoming-gigs count badge (DJ workspace tab only). */
@@ -64,8 +60,8 @@ function getNavItems(currentUserId: string | null, role: UserRole | null): NavIt
    * One workspace-selector item per role, differing only in label and landing
    * href. DJ-only accounts have no Events tab, so their workspace entry point
    * is Gigs; every other role keeps Events. `isActive` stays the whole-area
-   * check for both, so the item highlights across Calendar/Gigs/Event Plans and
-   * no-ops when tapped from inside the workspace.
+   * check for both, so the item highlights across Calendar/Gigs/Event Plans.
+   * Nested paths still navigate to `href` on tap; only the landing href no-ops.
    */
   const workspace: NavItem = canViewEventsSubNav(role)
     ? {
@@ -314,6 +310,7 @@ function MobileNavTab({
   gigsPendingCount: number | null;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
   const activatedThisGestureRef = useRef(false);
   const activeGestureRef = useRef<{
     pointerId: number;
@@ -321,12 +318,14 @@ function MobileNavTab({
   } | null>(null);
 
   const navigate = useCallback(() => {
-    if (isWorkspaceSelector && isActive) {
+    // Pop-to-root only when already on the landing href; nested workspace
+    // paths (e.g. /events/[id] after View Event from crew chat) must navigate.
+    if (isWorkspaceSelector && isActive && pathname === href) {
       return;
     }
 
     router.push(href, { scroll: false });
-  }, [href, isActive, isWorkspaceSelector, router]);
+  }, [href, isActive, isWorkspaceSelector, pathname, router]);
 
   const handlePointerDown = useCallback((event: React.PointerEvent<HTMLAnchorElement>) => {
     if (!event.isPrimary) {
@@ -493,7 +492,7 @@ export default function AppNavigation() {
                   href={item.href}
                   className={navLinkClassName(isActive, "desktop")}
                   onClick={(event) => {
-                    if (item.isWorkspaceSelector && isActive) {
+                    if (item.isWorkspaceSelector && isActive && pathname === item.href) {
                       event.preventDefault();
                     }
                   }}

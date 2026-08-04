@@ -11022,8 +11022,9 @@ function testRoleAwareWorkspaceNavigation() {
   );
 
   // One workspace-selector nav item, role-selected. Both variants use the
-  // whole-area isActive check, so the tab highlights across the workspace and
-  // no-ops when tapped from inside it; tapping from Messages/Profile navigates.
+  // whole-area isActive check so the tab highlights across the workspace;
+  // nested paths (event detail, Calendar, DM) still navigate to the landing
+  // href (pop-to-root). Only the landing href itself no-ops on re-tap.
   assert.match(
     appNavigationSource,
     /function getNavItems\(currentUserId: string \| null, role: UserRole \| null\)/,
@@ -11037,6 +11038,14 @@ function testRoleAwareWorkspaceNavigation() {
   assert.match(
     appNavigationSource,
     /href: "\/bookings"[\s\S]{0,140}isActive: \(pathname\) => isPlannerEventsAreaPath\(pathname\)[\s\S]{0,60}isWorkspaceSelector: true/,
+  );
+  assert.match(
+    appNavigationSource,
+    /if \(isWorkspaceSelector && isActive && pathname === href\) \{\s*return;\s*\}/,
+  );
+  assert.match(
+    appNavigationSource,
+    /if \(item\.isWorkspaceSelector && isActive && pathname === item\.href\) \{\s*event\.preventDefault\(\);\s*\}/,
   );
   assert.doesNotMatch(appNavigationSource, /isGigsAreaPath/);
 
