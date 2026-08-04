@@ -4,29 +4,37 @@
 
 | Who | Job |
 |-----|-----|
-| **Isaac** | Product owner. Runs SQL in Supabase. Manual testing. Says what to build. |
-| **Cursor Agent** | Implements in repo. Runs terminal/build. Creates SQL files. Commits when asked. |
-| **ChatGPT** | Planning, specs, QA lists, prompts for Cursor, SQL sanity-check. No direct repo access. |
+| **Isaac** | Founder / product owner. Final UX and release decisions. Runs SQL in Supabase. Real-device QA. Talks to users. |
+| **Cursor Agent** | **Product Owner assistant, UX reviewer, technical planning partner, and agent coordinator** (took over the former ChatGPT product role). Also implements in-repo when acting as Builder: terminal/build, SQL files, commits when asked. Decides what to build vs wait, challenges feature creep, assigns Builder/QA/Release work, verifies diagnoses before trusting them. |
+| **Claude / Builder agents** | Inspect repo, implement, test, commit/push feature branches (often via worktrees). |
+| **QA Reviewer** | Independent break-testing. Does not implement fixes. |
+| **Release Agent** | Integrates approved branches to `main`, proves Production. |
+| **ChatGPT** | **Deprecated for FTC product work.** Historical specs may exist; do not treat ChatGPT as the live product partner. Use Cursor + `docs/handoff/`. |
+
+Day-one handover: `PRODUCT-HANDOVER.md`. Brand: `BRAND-PHILOSOPHY.md`.
 
 ## Typical flow
 
-1. Idea or bug → ChatGPT optional (shape the task)
-2. Paste task into **Cursor** (use `START-HERE-CURSOR.md` in new chats)
-3. Cursor codes + `npm run build`
-4. If the task adds a file under `supabase/migrations/`, Isaac pastes that migration into the **Supabase SQL Editor** and runs it once **before** deploying the app
-5. Isaac tests in browser
-6. Cursor commits/pushes when asked
-7. **Cursor updates `docs/handoff/`** (see `HANDOFF-UPDATE.md`) before closing the task
+1. Idea or bug → shape with **Cursor** (product/UX/priority)
+2. Cursor (or Isaac) assigns Builder task; use `START-HERE-CURSOR.md` in new Builder chats
+3. Builder codes in a worktree + `npm run build` / regressions
+4. QA Reviewer when the task warrants it
+5. If `supabase/migrations/` added: Isaac runs SQL in Supabase **before** relying on it in prod
+6. Isaac tests on device when needed
+7. Release Agent merges/pushes `main` and verifies Production
+8. **Update `docs/handoff/`** per `HANDOFF-UPDATE.md` before closing the task
 
-## What Cursor should never assume
+## What agents should never assume
 
 - SQL has **not** been run unless Isaac says so
-- Do not push unless asked
+- Do not push `main` unless Release / Isaac asks
 - Do not add features beyond the task
 - Do not write long reports unless asked
+- A Preview deploy is **not** Production
+- “Cool” ≠ retention — beta usage beats new vision
 
 ## New chat recovery
 
-Always point Cursor at `docs/handoff/` first.
+Always point agents at `docs/handoff/` first (`PRODUCT-HANDOVER.md` + `BRAND-PHILOSOPHY.md` + `CURRENT-STATE.md`).
 
-After shipping something (any completed task), update handoff per `HANDOFF-UPDATE.md` — not only `CURRENT-STATE.md` when scope warrants it.
+After shipping, update handoff per `HANDOFF-UPDATE.md`.
