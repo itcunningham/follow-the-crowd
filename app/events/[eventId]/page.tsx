@@ -170,8 +170,8 @@ import {
 } from "@/lib/user/currentUser";
 
 const CREW_CHAT_HELP = {
-  label: "Group chat",
-  help: "Starts automatically when 2 DJs accept. You can also start it manually after the first DJ accepts",
+  label: "Start group chat",
+  help: "Start now with 1 accepted DJ or wait. It opens automatically when a 2nd DJ accepts",
 };
 
 const HEADER_GROUP_CHAT_CHIP_CLASS =

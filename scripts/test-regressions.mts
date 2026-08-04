@@ -11505,6 +11505,18 @@ function testBookingRateModeDescriptionsAreUnified() {
     eventDetailSource,
     /<InlineOptionHelpPanel label=\{CREW_CHAT_HELP\.label\} help=\{CREW_CHAT_HELP\.help\} \/>/,
   );
+  assert.match(
+    eventDetailSource,
+    /label: "Start group chat"/,
+  );
+  assert.match(
+    eventDetailSource,
+    /help: "Start now with 1 accepted DJ or wait\. It opens automatically when a 2nd DJ accepts"/,
+  );
+  assert.doesNotMatch(
+    eventDetailSource,
+    /Starts automatically when 2 DJs accept/,
+  );
 
   // The heading is not repeated anywhere else: the pills already carry the mode
   // names, and the summary card keeps its own concise wording.

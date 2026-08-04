@@ -9,6 +9,8 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 
 **Send invitations looked dead (`c593618` on `main`, 2026-08-04):** Send bookings failures/`setError` wrote to Event Details *behind* the sheet, so tap felt like a no-op. Errors now render inside the sheet (`role="alert"`). Sheet `z-[60]` above mobile nav (`z-50`); unavailable confirm `z-[70]`. Failure copy surfaces the provider/message when present.
 
+**Group chat help copy matches when Start appears (`cursor/group-chat-help-copy-5874`, 2026-08-04):** title **Start group chat**; body “Start now with 1 accepted DJ or wait. It opens automatically when a 2nd DJ accepts” — help only shows after 1 accept, so the old “after the first DJ accepts” line was redundant.
+
 **Start group chat chip includes help again (`84752ef` on `main`, 2026-08-04):** ? back inside the Start group chat chip (that’s what it’s for). Still no max-width truncate — full “Start group chat” label.
 
 **Start group chat header no longer truncates (`726c3d6` on `main`, 2026-08-04):** dropped the max-width truncate that produced “START GROUP CH…”. Help placement refined in entry above.
