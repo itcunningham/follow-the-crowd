@@ -1984,9 +1984,14 @@ function testEventLineupBookingCardProfileNavigationAndActions() {
       /EVENT_DETAIL_LINEUP_ACTIONS_ROW[\s\S]*?showCancelRequest && pendingProposal/,
     )?.[0] ?? "";
   assert.ok(lineupActions, "lineup actions block must exist");
+  const cancelIdx = Math.min(
+    ...["CancelBookingRequestButton", "CancelAcceptedBookingButton"]
+      .map((token) => lineupActions.indexOf(token))
+      .filter((index) => index >= 0),
+  );
+  const messageIdx = lineupActions.search(/>\s*Message\s*</);
   assert.ok(
-    lineupActions.indexOf("CancelBookingRequestButton") < lineupActions.indexOf(">Message<") ||
-      lineupActions.indexOf("CancelAcceptedBookingButton") < lineupActions.indexOf(">Message<"),
+    cancelIdx >= 0 && messageIdx >= 0 && cancelIdx < messageIdx,
     "Cancel must render left of Message in the lineup actions row",
   );
 }
