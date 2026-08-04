@@ -11,8 +11,8 @@ import {
 } from "@/lib/bookingRequests";
 import type { UserProfile } from "@/lib/user/currentUser";
 
-/** Per-DJ invite note on Send bookings — one slot line, not an event brief. */
-export const MAX_SEND_BOOKING_NOTES_LENGTH = 80;
+/** Per-DJ invite note on Send bookings — one short slot line. */
+export const MAX_SEND_BOOKING_NOTES_LENGTH = 50;
 
 export function resolveSendBookingNotes(
   inviteNotes: string,

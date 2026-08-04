@@ -1882,7 +1882,7 @@ function testSendBookingInviteNotesEightyCharCap() {
     "utf8",
   );
 
-  assert.match(flowSource, /export const MAX_SEND_BOOKING_NOTES_LENGTH = 80/);
+  assert.match(flowSource, /export const MAX_SEND_BOOKING_NOTES_LENGTH = 50/);
   assert.match(flowSource, /export function resolveSendBookingNotes\(/);
   // Per-DJ notes travel with the offer — not a shared inviteNotes field.
   assert.match(
@@ -1894,7 +1894,8 @@ function testSendBookingInviteNotesEightyCharCap() {
   assert.match(offerControlsSource, /notes: string/);
   assert.match(offerControlsSource, /notes: ""/);
   assert.match(offerControlsSource, /label="Notes"/);
-  assert.match(offerControlsSource, /placeholder="e\.g\. Main Room · 11–12 · House"/);
+  assert.match(offerControlsSource, /placeholder="Notes"/);
+  assert.doesNotMatch(offerControlsSource, /Main Room/);
   assert.match(offerControlsSource, /maxLength=\{MAX_SEND_BOOKING_NOTES_LENGTH\}/);
   // Notes sit under the dollar/rate field.
   assert.ok(

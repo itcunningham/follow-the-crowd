@@ -130,7 +130,7 @@ export default function EventDjSendOfferControls({
         label="Notes"
         value={offer.notes}
         onChange={(notes) => onChange({ ...offer, notes })}
-        placeholder="e.g. Main Room · 11–12 · House"
+        placeholder="Notes"
         maxLength={MAX_SEND_BOOKING_NOTES_LENGTH}
       />
     </div>
