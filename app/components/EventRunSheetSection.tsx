@@ -885,14 +885,22 @@ export default function EventRunSheetSection({
     setRows((prev) => moveRunSheetRow(prev, rowId, direction));
   }
 
-  /** At most one entry open at a time when browsing; opening one closes
-   * whatever was open, and re-tapping the open entry closes it. Keyed by row
-   * id (stable across reordering), not array index. Overridden wholesale by
-   * `isEditing` below -- every card expands for editing regardless of this. */
-  const [expandedRowId, setExpandedRowId] = useState<string | null>(null);
+  /** Multiple entries can stay open while browsing; re-tapping an open entry
+   * closes only that one. Keyed by row id (stable across reordering), not
+   * array index. Overridden wholesale by `isEditing` below -- every card
+   * expands for editing regardless of this. */
+  const [expandedRowIds, setExpandedRowIds] = useState<Set<string>>(() => new Set());
 
   function toggleRowExpanded(rowId: string) {
-    setExpandedRowId((current) => (current === rowId ? null : rowId));
+    setExpandedRowIds((current) => {
+      const next = new Set(current);
+      if (next.has(rowId)) {
+        next.delete(rowId);
+      } else {
+        next.add(rowId);
+      }
+      return next;
+    });
   }
 
   /**
@@ -914,7 +922,7 @@ export default function EventRunSheetSection({
     setRows(savedRows);
     setError(null);
     setIsEditing(false);
-    setExpandedRowId(null);
+    setExpandedRowIds(new Set());
   }
 
   /** "SET 1" / "SET 2" only when the same DJ genuinely holds more than one
@@ -999,7 +1007,7 @@ export default function EventRunSheetSection({
       // planner in edit mode, with the error and their unsaved rows intact,
       // so they can retry rather than losing the edit.
       setIsEditing(false);
-      setExpandedRowId(null);
+      setExpandedRowIds(new Set());
       onSaved?.("Run sheet saved");
     } catch (saveError) {
       logRunSheetSaveError(saveError);
@@ -1158,7 +1166,7 @@ export default function EventRunSheetSection({
                 orderLabel={formatRunSheetOrderLabel(index)}
                 setLabel={rowSetLabels.get(row.id!) ?? null}
                 canEdit={canEdit && isEditing}
-                isExpanded={isEditing || expandedRowId === row.id}
+                isExpanded={isEditing || expandedRowIds.has(row.id!)}
                 onToggleExpanded={() => toggleRowExpanded(row.id!)}
                 canMoveUp={index > 0}
                 canMoveDown={index < rows.length - 1}

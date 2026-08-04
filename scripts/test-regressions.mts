@@ -9525,8 +9525,8 @@ function testRunSheetSetLabelGrouping() {
  * - Each entry is one `AnimatedExpandPanel` (the same primitive extracted
  *   from `BookingRequestCard` for its own card-level expand, reused here
  *   rather than a second smooth-collapse implementation), and the section
- *   holds exactly one `expandedRowId`, so opening one entry collapses
- *   whatever else was open.
+ *   holds an `expandedRowIds` Set, so multiple entries can stay open at
+ *   once while browsing; re-tapping an open entry closes only that one.
  * - Read-only Notes hides completely when empty and shows a real show-
  *   more/less control when it doesn't, by reusing `BookingCardExpandableNotes`
  *   -- the same component already behind DM booking notes and the rate
@@ -9572,15 +9572,18 @@ function testRunSheetAccordionRestructure() {
   assert.ok(fallbackIndex > -1 && panelIndex > -1 && fallbackIndex < panelIndex);
   assert.ok(summaryIndex > -1 && summaryIndex < panelIndex);
 
-  // Exactly one row open at a time when browsing: toggling the open row
-  // closes it, toggling any other row replaces it -- not additive. Overridden
-  // wholesale during editing -- see testRunSheetEditMode.
-  assert.match(section, /const \[expandedRowId, setExpandedRowId\] = useState<string \| null>\(null\)/);
+  // Multiple rows can stay open while browsing: toggling adds/removes from
+  // a Set rather than replacing a single id. Overridden wholesale during
+  // editing -- see testRunSheetEditMode.
   assert.match(
     section,
-    /setExpandedRowId\(\(current\) => \(current === rowId \? null : rowId\)\)/,
+    /const \[expandedRowIds, setExpandedRowIds\] = useState<Set<string>>\(\(\) => new Set\(\)\)/,
   );
-  assert.match(section, /isExpanded=\{isEditing \|\| expandedRowId === row\.id\}/);
+  assert.match(section, /function toggleRowExpanded\(rowId: string\)/);
+  assert.match(section, /next\.has\(rowId\)/);
+  assert.match(section, /next\.delete\(rowId\)/);
+  assert.match(section, /next\.add\(rowId\)/);
+  assert.match(section, /isExpanded=\{isEditing \|\| expandedRowIds\.has\(row\.id!\)\}/);
 
   // Editable Notes keeps its pinned-height, internally-scrolling textarea --
   // this task removes read-only scrolling, not editing's.
@@ -9927,9 +9930,9 @@ function testRunSheetEditMode() {
   assert.match(section, /canEdit=\{canEdit && isEditing\}/);
 
   // Editing force-expands every card -- no extra taps to reach a field --
-  // while view mode keeps the single-open accordion (see
+  // while view mode keeps the multi-open Set (see
   // testRunSheetAccordionRestructure).
-  assert.match(section, /isExpanded=\{isEditing \|\| expandedRowId === row\.id\}/);
+  assert.match(section, /isExpanded=\{isEditing \|\| expandedRowIds\.has\(row\.id!\)\}/);
 
   // Entering edit mode is the only thing `handleEnterEditMode` does, so
   // tapping Edit can't have some other side effect on the sheet's data.
@@ -9944,23 +9947,23 @@ function testRunSheetEditMode() {
   assert.ok(cancelFn, "handleCancelEdit must exist");
   assert.match(cancelFn, /setRows\(savedRows\)/);
   assert.match(cancelFn, /setIsEditing\(false\)/);
-  assert.match(cancelFn, /setExpandedRowId\(null\)/);
+  assert.match(cancelFn, /setExpandedRowIds\(new Set\(\)\)/);
   assert.doesNotMatch(cancelFn, /saveEventRunSheet/);
 
   // A successful save returns to view mode, collapsed -- not just whichever
-  // row happened to be expanded before Save was pressed.
+  // rows happened to be expanded before Save was pressed.
   const saveFn = section.match(/async function handleSave\(\) \{[\s\S]*?\n  \}/)?.[0] ?? "";
   assert.ok(saveFn, "handleSave must exist");
   const trySection = saveFn.slice(saveFn.indexOf("try {"), saveFn.indexOf("} catch"));
   assert.match(trySection, /setIsEditing\(false\)/);
-  assert.match(trySection, /setExpandedRowId\(null\)/);
+  assert.match(trySection, /setExpandedRowIds\(new Set\(\)\)/);
 
   // A failed save must NOT force the planner back to read-only -- they would
   // lose sight of the error and their edited rows. The reset calls live only
   // in the try block, not in `finally` alongside `setSaving(false)`.
   const catchAndFinally = saveFn.slice(saveFn.indexOf("} catch"));
   assert.doesNotMatch(catchAndFinally, /setIsEditing\(false\)/);
-  assert.doesNotMatch(catchAndFinally, /setExpandedRowId\(null\)/);
+  assert.doesNotMatch(catchAndFinally, /setExpandedRowIds\(new Set\(\)\)/);
   assert.match(catchAndFinally, /finally \{\s*setSaving\(false\);\s*\}/);
 
   // Header cluster: Edit when not editing, Cancel always visible while
@@ -10549,7 +10552,7 @@ function testRunSheetDensityAndSummaryPolish() {
   assert.match(headerButton, /onClick=\{onToggleExpanded\}/);
   assert.match(headerButton, /aria-expanded=\{isExpanded\}/);
   assert.match(headerButton, /aria-controls=\{panelId\}/);
-  assert.match(section, /isExpanded=\{isEditing \|\| expandedRowId === row\.id\}/);
+  assert.match(section, /isExpanded=\{isEditing \|\| expandedRowIds\.has\(row\.id!\)\}/);
 }
 
 /**
