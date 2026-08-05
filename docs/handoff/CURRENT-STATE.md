@@ -7,6 +7,8 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 
 **Communication preference locked (2026-08-04):** brutal honesty, no ego — never agree by default; push better options when Isaac's idea is weaker. Strict critic mode + hostile counterarguments when useful. `USER-PREFERENCES.md` + `.cursor/rules/brutal-honesty.mdc`.
 
+**Calendar → Group chat → Back → Back returns to Calendar (this ship):** Event Details "Group chat" now marks a one-shot history pop and carries `eventReturn` (calendar/history/DM query). Crew Chat Back pops to the exact Event Details URL instead of bare `/events/:id`, so the next Back resolves to Calendar — not Events Active.
+
 **Promoter interview raw notes saved (`PROMOTER-INTERVIEWS.md`, 2026-08-05):** Sheets/IG/group-chat themes + Jaydn / Matthew / Docs+Drive / brand-booking replies. Beta call: **no new features from these alone** — coach the built loop (book → confirm → run sheet → crew/DM). Tickets/ads/accounting/agents explicitly not beta-core.
 
 **Avatar empty circles on hard refresh (`6abf745` on `main`, 2026-08-05):** broken / non-http `avatar_url` values painted a permanent empty circle (img present, no initials). `ProfileAvatar` now tries sized Supabase transform → original object URL → initials. Junk values (`"null"`, relative paths) never become `<img src>`. Transform URL query building uses `URLSearchParams` so cache-busters cannot produce a double-`?`.
@@ -895,6 +897,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 | Crew Chat image sharing (`message_attachments.event_id`) | `scripts/setupEventCrewChatAttachments.sql` — **applied 2026-08-03** (required a type-cast fix after the first run, see Group chat entry above) |
 
 ## Recent commits (reference)
+- `PENDING` — fix(nav): crew chat Back keeps calendar event-detail origin
 - `6abf745` — fix(avatars): fall back when profile image URL fails
 - `4f0cf57` — fix(nav): keep Events lit on profiles opened from event detail
 - `0e0c649` — fix(run-sheet): profile links keep event Back + Message CTA
