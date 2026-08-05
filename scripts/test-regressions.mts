@@ -119,7 +119,9 @@ import {
 } from "../lib/dm/dmImageAttachmentDimensions";
 import {
   AVATAR_RENDER_WIDTHS,
+  coerceAvatarSourceUrl,
   resolveAvatarImageUrl,
+  resolveAvatarObjectUrl,
 } from "../lib/user/avatarImageUrl";
 import {
   buildChatMessageGroupLayout,
@@ -13561,9 +13563,17 @@ function testChatMediaLoadsWithoutARefresh() {
 
   assert.ok(rendered);
   assert.match(rendered, /\/storage\/v1\/render\/image\/public\//);
-  assert.match(rendered, /width=64&height=64/);
+  assert.match(rendered, /width=64/);
+  assert.match(rendered, /height=64/);
   // `cover` must match the `object-cover` the avatar is painted with.
   assert.match(rendered, /resize=cover/);
+
+  // Existing query params must not produce `?v=1?width=…` (broken double-`?`).
+  const withCacheBust = resolveAvatarImageUrl(`${publicUrl}?v=1`, "sm");
+  assert.ok(withCacheBust);
+  assert.equal(withCacheBust.includes("?"), true);
+  assert.equal(withCacheBust.includes("?v=1?"), false);
+  assert.match(withCacheBust!, /[?&]width=64/);
 
   // Anything that is not a public storage object is returned untouched -- an
   // external OAuth avatar must never be rewritten into a broken URL.
@@ -13571,6 +13581,17 @@ function testChatMediaLoadsWithoutARefresh() {
     "https://lh3.googleusercontent.com/a/x");
   assert.equal(resolveAvatarImageUrl(null, "md"), null);
   assert.equal(resolveAvatarImageUrl("   ", "md"), null);
+
+  // Junk / non-URL values must not become `<img src>` — that paints an empty
+  // circle forever (hard refresh does not help) instead of initials.
+  assert.equal(coerceAvatarSourceUrl("null"), null);
+  assert.equal(coerceAvatarSourceUrl("undefined"), null);
+  assert.equal(coerceAvatarSourceUrl("profile-images/u/a.jpg"), null);
+  assert.equal(resolveAvatarImageUrl("null", "sm"), null);
+
+  assert.equal(resolveAvatarObjectUrl(rendered), publicUrl);
+  assert.equal(resolveAvatarObjectUrl(publicUrl), publicUrl);
+  assert.equal(resolveAvatarObjectUrl("https://lh3.googleusercontent.com/a/x"), null);
 
   // Every rendered size is at least the CSS box it fills (2x for retina).
   assert.ok(AVATAR_RENDER_WIDTHS.sm >= 32 * 2);
@@ -13581,6 +13602,8 @@ function testChatMediaLoadsWithoutARefresh() {
     "utf8",
   );
   assert.match(avatarSource, /resolveAvatarImageUrl\(avatarUrl, size\)/);
+  assert.match(avatarSource, /onError/);
+  assert.match(avatarSource, /resolveAvatarObjectUrl/);
   assert.doesNotMatch(
     avatarSource,
     /src=\{avatarUrl\}/,

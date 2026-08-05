@@ -1,5 +1,13 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import { looksLikeUserId, resolveUserDisplayName } from "@/lib/user/displayName";
-import { AVATAR_RENDER_WIDTHS, resolveAvatarImageUrl } from "@/lib/user/avatarImageUrl";
+import {
+  AVATAR_RENDER_WIDTHS,
+  coerceAvatarSourceUrl,
+  resolveAvatarImageUrl,
+  resolveAvatarObjectUrl,
+} from "@/lib/user/avatarImageUrl";
 
 export const PROFILE_AVATAR_INTERACTIVE_CLASS = "ftc-profile-avatar-interactive shrink-0 rounded-full transition";
 
@@ -39,13 +47,32 @@ export default function ProfileAvatar({
   const initials = getInitials(name);
   const baseClasses = `ftc-avatar flex shrink-0 items-center justify-center overflow-hidden rounded-full font-bold uppercase tracking-wide ${sizeClasses[size]} ${className}`;
 
-  const renderedUrl = resolveAvatarImageUrl(avatarUrl, size);
+  const sourceUrl = coerceAvatarSourceUrl(avatarUrl);
+  const transformedUrl = resolveAvatarImageUrl(avatarUrl, size);
+  const objectUrl = resolveAvatarObjectUrl(avatarUrl) ?? sourceUrl;
 
-  if (renderedUrl) {
+  // 0 = try transform (or external URL), 1 = try original object, 2 = initials.
+  const [loadAttempt, setLoadAttempt] = useState(0);
+
+  useEffect(() => {
+    setLoadAttempt(0);
+  }, [sourceUrl, size]);
+
+  const imgSrc =
+    loadAttempt === 0
+      ? transformedUrl
+      : loadAttempt === 1
+        ? objectUrl && objectUrl !== transformedUrl
+          ? objectUrl
+          : null
+        : null;
+
+  if (imgSrc) {
     return (
       <div className={baseClasses}>
         <img
-          src={renderedUrl}
+          key={imgSrc}
+          src={imgSrc}
           alt={`${safeName} profile`}
           // Explicit box: the container already constrains it, but a decoded
           // size means the browser never has to guess, and the attributes give
@@ -53,6 +80,10 @@ export default function ProfileAvatar({
           width={AVATAR_RENDER_WIDTHS[size]}
           height={AVATAR_RENDER_WIDTHS[size]}
           className="h-full w-full object-cover"
+          referrerPolicy="no-referrer"
+          onError={() => {
+            setLoadAttempt((current) => Math.min(current + 1, 2));
+          }}
         />
       </div>
     );

@@ -17,6 +17,10 @@
  * Deliberately conservative: anything that is not a public Supabase Storage
  * object URL is returned untouched, so an external or already-transformed URL
  * can never be mangled into a broken one.
+ *
+ * When the transform URL fails (deleted object, transform blip), ProfileAvatar
+ * falls back to the original object URL, then to initials — empty circles with
+ * a broken `<img>` and no initials are worse than a letter mark.
  */
 
 const PUBLIC_OBJECT_MARKER = "/storage/v1/object/public/";
@@ -32,19 +36,77 @@ export const AVATAR_RENDER_WIDTHS = {
 
 export type AvatarRenderSize = keyof typeof AVATAR_RENDER_WIDTHS;
 
+function isHttpUrl(value: string): boolean {
+  return /^https?:\/\//i.test(value);
+}
+
+/**
+ * Absolute http(s) avatar URL, or null when the stored value cannot be an
+ * `<img src>`. Non-URLs (paths, `"null"`, junk) used to paint an empty circle
+ * forever because ProfileAvatar preferred a broken img over initials.
+ */
+export function coerceAvatarSourceUrl(
+  avatarUrl: string | null | undefined,
+): string | null {
+  const trimmed = avatarUrl?.trim();
+
+  if (!trimmed || !isHttpUrl(trimmed)) {
+    return null;
+  }
+
+  return trimmed;
+}
+
+/** Original public object URL when `avatarUrl` is a sized render URL. */
+export function resolveAvatarObjectUrl(
+  avatarUrl: string | null | undefined,
+): string | null {
+  const trimmed = coerceAvatarSourceUrl(avatarUrl);
+
+  if (!trimmed) {
+    return null;
+  }
+
+  if (!trimmed.includes(RENDER_IMAGE_PATH)) {
+    return trimmed.includes(PUBLIC_OBJECT_MARKER) ? trimmed : null;
+  }
+
+  try {
+    const url = new URL(trimmed);
+    url.pathname = url.pathname.replace(RENDER_IMAGE_PATH, PUBLIC_OBJECT_MARKER);
+    url.search = "";
+    return url.toString();
+  } catch {
+    return trimmed.split("?")[0]?.replace(RENDER_IMAGE_PATH, PUBLIC_OBJECT_MARKER) ?? null;
+  }
+}
+
 export function resolveAvatarImageUrl(
   avatarUrl: string | null | undefined,
   size: AvatarRenderSize,
 ): string | null {
-  const trimmed = avatarUrl?.trim();
+  const trimmed = coerceAvatarSourceUrl(avatarUrl);
 
-  if (!trimmed || !trimmed.includes(PUBLIC_OBJECT_MARKER)) {
-    return trimmed || null;
+  if (!trimmed) {
+    return null;
+  }
+
+  if (!trimmed.includes(PUBLIC_OBJECT_MARKER)) {
+    return trimmed;
   }
 
   const width = AVATAR_RENDER_WIDTHS[size];
 
-  // `resize=cover` matches the `object-cover` the avatar is painted with, so
-  // the crop the server does and the crop the browser would have done agree.
-  return `${trimmed.replace(PUBLIC_OBJECT_MARKER, RENDER_IMAGE_PATH)}?width=${width}&height=${width}&resize=cover&quality=80`;
+  try {
+    const url = new URL(trimmed.replace(PUBLIC_OBJECT_MARKER, RENDER_IMAGE_PATH));
+    url.searchParams.set("width", String(width));
+    url.searchParams.set("height", String(width));
+    // `cover` matches the `object-cover` the avatar is painted with, so the
+    // crop the server does and the crop the browser would have done agree.
+    url.searchParams.set("resize", "cover");
+    url.searchParams.set("quality", "80");
+    return url.toString();
+  } catch {
+    return `${trimmed.replace(PUBLIC_OBJECT_MARKER, RENDER_IMAGE_PATH)}?width=${width}&height=${width}&resize=cover&quality=80`;
+  }
 }

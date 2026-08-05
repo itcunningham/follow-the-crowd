@@ -1,4 +1,4 @@
-# Current state (last updated: 2026-08-04)
+# Current state (last updated: 2026-08-05)
 
 
 Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
@@ -6,6 +6,8 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 **Standing deploy preference locked (2026-08-04):** small approved bug fixes / polish ship to **`main` (Production)**, not Preview-only. Branch deploys show **"No target"** and are useless for device QA on `follow-the-crowd.vercel.app`. Saved in `USER-PREFERENCES.md`, `HOW-WE-WORK.md`, and `.cursor/rules/ship-small-fixes-to-main.mdc`.
 
 **Communication preference locked (2026-08-04):** brutal honesty, no ego — never agree by default; push better options when Isaac's idea is weaker. Strict critic mode + hostile counterarguments when useful. `USER-PREFERENCES.md` + `.cursor/rules/brutal-honesty.mdc`.
+
+**Avatar empty circles on hard refresh (this branch → ship to `main`):** broken / non-http `avatar_url` values painted a permanent empty circle (img present, no initials). `ProfileAvatar` now tries sized Supabase transform → original object URL → initials. Junk values (`"null"`, relative paths) never become `<img src>`. Transform URL query building uses `URLSearchParams` so cache-busters cannot produce a double-`?`.
 
 **Events tab stays lit on event-detail profiles (`4f0cf57` on `main`, 2026-08-04):** profile opened from Run Sheet / Bookings (`?from=event-detail`) keeps the bottom-nav Events/Gigs workspace tab highlighted — was blank because `/profile/:id` is outside `isPlannerEventsAreaPath`.
 
