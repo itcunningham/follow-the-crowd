@@ -11,7 +11,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 
 **Run Sheet DJ empty copy (`91f0d89` on `main`, 2026-08-05):** "Check back later" — trailing period dropped (matches short UI copy style). Wording kept.
 
-**Your booking line drops "Set time" label (this ship):** DJ event-detail card shows `4:00 PM – 12:00 AM · $100` — that value is the event window, not a Run Sheet set. Label removed.
+**Your booking line drops "Set time" label ( on , 2026-08-05):** DJ event-detail card shows `4:00 PM – 12:00 AM · $100` — that value is the event window, not a Run Sheet set. Label removed.
 
 **Promoter interview raw notes saved (`PROMOTER-INTERVIEWS.md`, 2026-08-05):** Sheets/IG/group-chat themes + Jaydn / Matthew / Docs+Drive / brand-booking replies. Beta call: **no new features from these alone** — coach the built loop (book → confirm → run sheet → crew/DM). Tickets/ads/accounting/agents explicitly not beta-core.
 
@@ -901,6 +901,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 | Crew Chat image sharing (`message_attachments.event_id`) | `scripts/setupEventCrewChatAttachments.sql` — **applied 2026-08-03** (required a type-cast fix after the first run, see Group chat entry above) |
 
 ## Recent commits (reference)
+-  — fix(copy): drop Set time label on Your booking card
 - `91f0d89` — fix(copy): drop trailing period on Run Sheet DJ empty state
 - `e6ce040` — fix(nav): crew chat Back keeps calendar event-detail origin
 - `6abf745` — fix(avatars): fall back when profile image URL fails
