@@ -7,6 +7,8 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 
 **Communication preference locked (2026-08-04):** brutal honesty, no ego — never agree by default; push better options when Isaac's idea is weaker. Strict critic mode + hostile counterarguments when useful. `USER-PREFERENCES.md` + `.cursor/rules/brutal-honesty.mdc`.
 
+**Promoter interview raw notes saved (`PROMOTER-INTERVIEWS.md`, 2026-08-05):** Sheets/IG/group-chat themes + Jaydn / Matthew / Docs+Drive / brand-booking replies. Beta call: **no new features from these alone** — coach the built loop (book → confirm → run sheet → crew/DM). Tickets/ads/accounting/agents explicitly not beta-core.
+
 **Avatar empty circles on hard refresh (`6abf745` on `main`, 2026-08-05):** broken / non-http `avatar_url` values painted a permanent empty circle (img present, no initials). `ProfileAvatar` now tries sized Supabase transform → original object URL → initials. Junk values (`"null"`, relative paths) never become `<img src>`. Transform URL query building uses `URLSearchParams` so cache-busters cannot produce a double-`?`.
 
 **Events tab stays lit on event-detail profiles (`4f0cf57` on `main`, 2026-08-04):** profile opened from Run Sheet / Bookings (`?from=event-detail`) keeps the bottom-nav Events/Gigs workspace tab highlighted — was blank because `/profile/:id` is outside `isPlannerEventsAreaPath`.

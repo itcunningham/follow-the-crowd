@@ -44,6 +44,8 @@ Independent DJs often book via **Instagram DMs**. Larger artists tend toward **e
 
 The philosophy did not come from branding first. It came from listening — including one-off event planners and regular club/event runners.
 
+**Raw notes:** `docs/handoff/PROMOTER-INTERVIEWS.md` (2026-08-05 capture). This section stays the distilled product read; that file keeps the verbatim themes so chats don’t lose them.
+
 ### What they actually do today
 
 - **Google Sheets / Docs** as the ops brain: lineup, set times, confirmed or not, fees; sometimes basic accounting on another tab

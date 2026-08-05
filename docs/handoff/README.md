@@ -20,6 +20,7 @@ Read docs/handoff/CLAUDE-CODE-BUILDER-HANDOVER.md fully, then docs/handoff/CURRE
 |------|---------|
 | `PRODUCT-HANDOVER.md` | **Day-one complete product/strategy handover — stage, beta, metrics, roles, roadmap layers** |
 | `BRAND-PHILOSOPHY.md` | **Source of truth — mission, enemy (friction), feature gate, brand voice. For the Culture.** |
+| `PROMOTER-INTERVIEWS.md` | **Raw promoter/planner interview notes** — themes + quotes; not a feature backlog |
 | `PRODUCT-VISION.md` | Product roadmap depth, GTM, revenue, UI/engineering standards, what not to build |
 | `CLAUDE-CODE-BUILDER-HANDOVER.md` | Claude Code Builder start — team, Isaac prefs, FTC, ship rules |
 | `CLAUDE-IMPLEMENTATION-HANDOVER.md` | Deep technical architecture / debt / DM patterns for Claude |
