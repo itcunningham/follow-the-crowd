@@ -7072,6 +7072,12 @@ function testHistoryRemovalHeaderFeedbackUnified() {
     eventDetailSource,
     /setSuccessMessage\(buildBookingSendResultMessage/,
   );
+  assert.match(
+    eventDetailSource,
+    /"You withdrew from this event"[\s\S]{0,120}setHeaderFeedbackMessage/,
+  );
+  assert.doesNotMatch(eventDetailSource, /setSuccessMessage\(/);
+  assert.doesNotMatch(eventDetailSource, /successMessage \?/);
   assert.doesNotMatch(eventDetailSource, /setSuccessMessage\("Booking request cancelled\.\."\)/);
   assert.match(feedbackMessageSource, /EVENTS_LIST_TAB_FEEDBACK_CLASS/);
   assert.match(feedbackMessageSource, /opacity-0/);

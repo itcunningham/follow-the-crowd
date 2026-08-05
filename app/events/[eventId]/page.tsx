@@ -341,7 +341,6 @@ function EventDetailPageView() {
   const [profiles, setProfiles] = useState<Map<string, BookingRecipientProfile>>(new Map());
   const [lineupFilter, setLineupFilter] = useState<ActiveBookingStatusFilter>("all");
   const [error, setError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [headerFeedbackMessage, setHeaderFeedbackMessage] = useState<string | null>(null);
   const clearHeaderFeedbackMessage = useCallback(() => {
     setHeaderFeedbackMessage(null);
@@ -895,7 +894,6 @@ function EventDetailPageView() {
     setSendOpen(true);
     inviteDraft.resetDraft();
     setError(null);
-    setSuccessMessage(null);
     setHeaderFeedbackMessage(null);
   }
 
@@ -1039,7 +1037,7 @@ function EventDetailPageView() {
         booking.sender_id === currentUserId
           ? "Booking cancelled"
           : "You withdrew from this event";
-      setSuccessMessage(warning ? `${baseMessage}. ${warning}` : baseMessage);
+      setHeaderFeedbackMessage(warning ? `${baseMessage}. ${warning}` : baseMessage);
     } catch (cancelError) {
       console.error("Failed to cancel accepted booking:", cancelError);
       setError(getBookingMutationErrorMessage(cancelError));
@@ -1055,7 +1053,7 @@ function EventDetailPageView() {
     try {
       await hideDeclinedBookingFromLineup(bookingId);
       await reloadEventLineup();
-      setSuccessMessage("Declined booking hidden from lineup");
+      setHeaderFeedbackMessage("Declined booking hidden from lineup");
     } catch (hideError) {
       console.error("Failed to hide declined booking from lineup:", hideError);
       setError(getBookingMutationErrorMessage(hideError));
@@ -1071,7 +1069,7 @@ function EventDetailPageView() {
     try {
       await acceptProposedBookingRate(booking.id);
       await reloadEventLineup();
-      setSuccessMessage("Proposed rate accepted");
+      setHeaderFeedbackMessage("Proposed rate accepted");
     } catch (acceptError) {
       console.error("Failed to accept proposed rate:", acceptError);
       setError(getBookingMutationErrorMessage(acceptError));
@@ -1087,7 +1085,7 @@ function EventDetailPageView() {
     try {
       await declineProposedBookingRate(booking.id);
       await reloadEventLineup();
-      setSuccessMessage(
+      setHeaderFeedbackMessage(
         booking.rate_mode === "open" ? "Rate declined" : "Original offer kept",
       );
     } catch (declineError) {
@@ -1385,12 +1383,6 @@ function EventDetailPageView() {
               {searchParams.get("coverUpload") === "failed" ? (
                 <p className={`${EVENT_DETAIL_FEEDBACK_CLASS} text-ftc-text-secondary`}>
                   Event saved, but the flyer could not be uploaded. Open Edit event to try again.
-                </p>
-              ) : null}
-
-              {successMessage ? (
-                <p className={`${EVENT_DETAIL_FEEDBACK_CLASS} text-ftc-text-secondary`}>
-                  {successMessage}
                 </p>
               ) : null}
 
