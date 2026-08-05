@@ -7,6 +7,8 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 
 **Communication preference locked (2026-08-04):** brutal honesty, no ego — never agree by default; push better options when Isaac's idea is weaker. Strict critic mode + hostile counterarguments when useful. `USER-PREFERENCES.md` + `.cursor/rules/brutal-honesty.mdc`.
 
+**Event cancel refreshes DJ open DM (`675d2fe` on `main`, 2026-08-05):** `cancel_event` leaves accepted bookings as `accepted`; the DM card only shows cancelled via event artwork, and the activity notice is hidden in the timeline — so an open DJ DM stayed live until hard refresh. Now reloads bookings+artwork on the cancel activity INSERT and `ftc-notifications-updated`; NavBadgeProvider fans event-cancel DMs into `notifyBookingRequestsChanged`; `cancelEvent` notifies after side effects.
+
 **DJ accept syncs Event Details + Messages badge (`a6b3c5f` on `main`, 2026-08-05):** three gaps stacked. (1) Event Details never listened for `ftc-notifications-updated`, so Bookings stayed PENDING until hard refresh. (2) Accept DM dedupe blocked on legacy/event-name matches — insert skipped, inbox kept the planner’s invite as latest (rewritten “Booking accepted · …”), so unread/badge stayed 0. Confirmation text is now per-**booking id**; dedupe only on that exact row. (3) NavBadgeProvider fans acceptance DM INSERTs into `notifyBookingRequestsChanged` so lineup refreshes even if `booking_requests` isn’t in Realtime yet. **Still run `scripts/setupBookingRequestsRealtime.sql` if not applied** (status-only paths / open DM booking cards).
 
 **Withdraw feedback uses header toast (`da181f3` on `main`, 2026-08-05):** "You withdrew from this event" (and other booking success lines) now go through `setHeaderFeedbackMessage` — same slot above the flyer as Event updated, with fade/clear. Removed the old below-hero `successMessage` block.
@@ -916,6 +918,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 | **booking_requests Realtime** | **⚠️ `scripts/setupBookingRequestsRealtime.sql`** — still required for status-only fan-out / open-DM booking cards. Accept path also updates via messages INSERT (`a6b3c5f`), but run this if not already applied. |
 
 ## Recent commits (reference)
+- `675d2fe` — fix(dm): refresh open DM when planner cancels the event
 - `a6b3c5f` — fix(bookings): sync Event Details + Messages unread on DJ accept
 - `da181f3` — fix(events): show withdraw feedback in header toast above flyer
 - `e8297d4` — fix(copy): DJ withdraw CTA says Withdraw booking
