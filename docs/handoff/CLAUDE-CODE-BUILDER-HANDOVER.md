@@ -230,7 +230,7 @@ ChatGPT (plan) → Claude Code Builder (repo) → Isaac (SQL + device QA) → Ve
 5. **Do not duplicate** booking or chat logic — extend shared modules/components.
 6. **Do not add polling / arbitrary timer loops** for realtime gaps unless matching an existing bounded one-shot pattern.
 7. **Chat scroll:** prefer container `scrollTop` math; avoid `scrollIntoView` on return paths (breaks iOS fixed chat shell).
-8. **Do not change Supabase SQL** unless the task explicitly requests SQL. Creating a migration file ≠ applying it.
+8. **Do not change Supabase SQL** unless the task explicitly requests SQL. Creating a migration file ≠ applying it. Manual SQL scripts (e.g. `scripts/fixCreateNotification.sql`) require Isaac to run them in the Supabase SQL Editor — never assume they're applied.
 9. **Secrets:** never put real keys in handoff docs (`SECRETS.md` is pointers only).
 10. **End formal tasks** with FTC_WORKFLOW fields: Task / Files / Not changed / Risks / Next / Handoff updated (+ Design System Review for meaningful UI).
 
@@ -287,8 +287,8 @@ npm run lint                  # if relevant
 
 ### Outstanding / in-flight (verify with `git status` + Isaac)
 
-- **DM inbox scroll restore bug:** opening from Messages can restore stale sessionStorage scroll instead of latest. Partial helpers may exist in `lib/dm/dmChatScrollRestoration.ts` — finish or revert; don’t leave half-wired.
-- **Regression TEMP-SKIPs:** ~12 tests commented out in `scripts/test-regressions.mts`; suite green ≠ full coverage.
+- **DM inbox scroll restore bug:** opening from Messages can restore stale sessionStorage scroll instead of latest. Helpers exist in `lib/dm/dmChatScrollRestoration.ts` and are active (imported by `threadNavigation.ts` + `useDmChatScrollRestoreOnProfileReturn.ts`).
+- **Notification function overload fix pending:** `scripts/fixCreateNotification.sql` exists but has not been run in production yet. Isaac must paste it into the Supabase SQL Editor to fix crew-chat + booking notification delivery (blocks on `create_notification` ambiguity). Check CURRENT-STATE.md line 70.
 - Dirty tree may include unrelated QA reset / `.cursor` files — don’t commit them into an unrelated task.
 
 ### Doc trust ranking
