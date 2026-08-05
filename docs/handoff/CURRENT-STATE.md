@@ -7,7 +7,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 
 **Communication preference locked (2026-08-04):** brutal honesty, no ego — never agree by default; push better options when Isaac's idea is weaker. Strict critic mode + hostile counterarguments when useful. `USER-PREFERENCES.md` + `.cursor/rules/brutal-honesty.mdc`.
 
-**DJ Your booking: Message [planner] + Withdraw below card (`065fbce` on `main`, 2026-08-05):** Your booking card keeps status/fee + **Message {planner name}** (truncated; fallback `Message`). Withdraw from event moves under a bottom border — same danger-zone pattern as planner Cancel Event. Planner profile is loaded with lineup profiles so the name is available. Gigs list still says Open DM.
+**DJ Your booking: Message [planner] + Withdraw below card (`065fbce` on `main`, 2026-08-05; name truncate `pending`):** Your booking card keeps status/fee + **Message {planner name}** (fallback `Message`). Planner name in the CTA hard-caps at 14 characters with an ellipsis so long QA/display names don't billboard the button. Withdraw from event sits under a bottom border — same danger-zone pattern as planner Cancel Event. Gigs list still says Open DM.
 
 **Confirmed Gigs → Open DM → Back → Back stays on Confirmed (`279d94b` on `main`, 2026-08-05):** Open DM from Event Details was rebuilding bare `/events/:id`, dropping `from=bookings&tab=accepted`, so the next Back defaulted to Incoming. DM URLs now carry `eventReturn` (same query key as Group chat); Back restores the full Event Details query. DM Back from Event Details uses `replace` so history stays clean.
 
@@ -905,7 +905,6 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 | Crew Chat image sharing (`message_attachments.event_id`) | `scripts/setupEventCrewChatAttachments.sql` — **applied 2026-08-03** (required a type-cast fix after the first run, see Group chat entry above) |
 
 ## Recent commits (reference)
-- `5ab359d` — fix(events): hard-cap planner name on DJ Message CTA
 - `065fbce` — fix(events): DJ Message planner name; Withdraw below booking card
 - `279d94b` — fix(nav): preserve Gigs Confirmed tab through Event Details Open DM
 - `a92f4c3` — fix(copy): drop Set time label on Your booking card
