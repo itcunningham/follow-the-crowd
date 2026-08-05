@@ -99,6 +99,7 @@ import {
   hideDeclinedBookingFromLineup,
   listBookingRequestsForEvent,
   listSentBookingRequests,
+  updateBookingRequestStatus,
   type ActiveBookingStatusFilter,
   type BookingRequest,
   type BookingRequestStatus,
@@ -398,6 +399,7 @@ function EventDetailPageView() {
   const [cancellingBookingId, setCancellingBookingId] = useState<string | null>(null);
   const [proposalLoadingId, setProposalLoadingId] = useState<string | null>(null);
   const [hidingBookingId, setHidingBookingId] = useState<string | null>(null);
+  const [respondingToPendingBookingId, setRespondingToPendingBookingId] = useState<string | null>(null);
   const [deletingEvent, setDeletingEvent] = useState(false);
   const [cancellingEvent, setCancellingEvent] = useState(false);
   const [startingCrewChat, setStartingCrewChat] = useState(false);
@@ -1147,6 +1149,23 @@ function EventDetailPageView() {
     }
   }
 
+  async function handleRespondToPendingBooking(booking: BookingRequest, status: "accepted" | "declined") {
+    setRespondingToPendingBookingId(booking.id);
+    setError(null);
+
+    try {
+      await updateBookingRequestStatus(booking.id, status);
+      await reloadEventLineup();
+      const message = status === "accepted" ? "Booking accepted" : "Booking declined";
+      setHeaderFeedbackMessage(message);
+    } catch (respondError) {
+      console.error("Failed to respond to pending booking:", respondError);
+      setError(getBookingMutationErrorMessage(respondError));
+    } finally {
+      setRespondingToPendingBookingId(null);
+    }
+  }
+
   async function handleDeleteEvent() {
     if (!event) {
       return;
@@ -1615,25 +1634,41 @@ function EventDetailPageView() {
                   {!isOwner && viewerBooking ? (
                     <section className={`${EVENT_DETAIL_SECTION_SPACING} ${EVENT_DETAIL_CARD_CLASS}`}>
                       <EventDetailSectionTitle>Your booking</EventDetailSectionTitle>
-                      <div className="mt-3 flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="mt-3 flex min-w-0 flex-col gap-3">
                         <div className="min-w-0 flex-1">
                           <BookingStatusBadge status={viewerBooking.status} variant="compact" />
-                          <p className="mt-2 text-sm text-ftc-text-secondary">
-                            {viewerBooking.set_time || "TBC"}
-                            {viewerBooking.fee ? ` · ${formatRateDisplay(viewerBooking.fee)}` : ""}
-                          </p>
                           {viewerBooking.status === "cancelled" ? (
-                            <EventDetailBookingCancellationDetails
-                              cancelledByLabel={resolveBookingCancelledByLabel(viewerBooking, profiles)}
-                              cancellationReasonLabel={resolveBookingCancellationReasonLabel(viewerBooking)}
-                            />
+                            <div className="mt-2">
+                              <EventDetailBookingCancellationDetails
+                                cancelledByLabel={resolveBookingCancelledByLabel(viewerBooking, profiles)}
+                                cancellationReasonLabel={resolveBookingCancellationReasonLabel(viewerBooking)}
+                              />
+                            </div>
                           ) : null}
                         </div>
-                        {viewerBooking.conversation_id && !hideOpenBookingConversation ? (
-                          <div className="flex w-full min-w-0 shrink-0 sm:w-auto sm:max-w-[14rem] sm:items-end">
+                        {viewerBooking.status === "pending" ? (
+                          <div className="flex gap-2 sm:justify-end">
+                            <button
+                              onClick={() => handleRespondToPendingBooking(viewerBooking, "declined")}
+                              disabled={respondingToPendingBookingId === viewerBooking.id}
+                              className={`${EVENT_DETAIL_BTN_DESTRUCTIVE} flex-1 sm:flex-initial`}
+                            >
+                              {respondingToPendingBookingId === viewerBooking.id ? "..." : "Decline"}
+                            </button>
+                            <button
+                              onClick={() => handleRespondToPendingBooking(viewerBooking, "accepted")}
+                              disabled={respondingToPendingBookingId === viewerBooking.id}
+                              className={`${EVENT_DETAIL_BTN_PRIMARY_WIDE} flex-1 sm:flex-initial`}
+                            >
+                              {respondingToPendingBookingId === viewerBooking.id ? "..." : "Accept"}
+                            </button>
+                          </div>
+                        ) : null}
+                        {viewerBooking.conversation_id && !hideOpenBookingConversation && viewerBooking.status !== "pending" ? (
+                          <div className="flex w-full min-w-0 shrink-0 sm:justify-end">
                             <Link
                               href={buildEventDetailLineupDmHref(viewerBooking.conversation_id)}
-                              className={`${EVENT_DETAIL_BTN_SECONDARY} w-full min-w-0 sm:min-w-[7.5rem]`}
+                              className={`${EVENT_DETAIL_BTN_SECONDARY} w-full sm:w-auto sm:min-w-[7.5rem]`}
                             >
                               <span className="block truncate">{djBookingMessageLabel}</span>
                             </Link>
