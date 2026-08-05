@@ -630,7 +630,7 @@ export async function getPlannerDjAvailabilityHints(
         .eq("date", normalizedDate),
       supabase
         .from("booking_requests")
-        .select("recipient_id")
+        .select("recipient_id, event_id")
         .in("recipient_id", uniqueDjUserIds)
         .eq("event_date", normalizedDate)
         .eq("status", "accepted"),
@@ -650,8 +650,34 @@ export async function getPlannerDjAvailabilityHints(
     markedByUserId.set(row.user_id as string, row.status as DjAvailabilityStatus);
   }
 
+  // Filter out bookings for cancelled events
+  const eventIdSet = new Set<string>();
+  for (const row of bookedRows ?? []) {
+    const eventId = row.event_id;
+    if (eventId) {
+      eventIdSet.add(eventId);
+    }
+  }
+
+  let activeEventIds = new Set<string>();
+  if (eventIdSet.size > 0) {
+    const { data: eventRows, error: eventError } = await supabase
+      .from("events")
+      .select("id")
+      .in("id", Array.from(eventIdSet))
+      .neq("status", "cancelled");
+
+    if (eventError) {
+      throw eventError;
+    }
+
+    activeEventIds = new Set((eventRows ?? []).map((row) => row.id as string));
+  }
+
   const bookedUserIds = new Set(
-    (bookedRows ?? []).map((row) => row.recipient_id as string),
+    (bookedRows ?? [])
+      .filter((row) => activeEventIds.has(row.event_id as string))
+      .map((row) => row.recipient_id as string),
   );
 
   for (const djUserId of uniqueDjUserIds) {
