@@ -2,6 +2,8 @@
 
 Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 
+**DJ Your booking: accept/decline inline, pending badge top-right (`95a26984` on `main`, 2026-08-05):** Pending bookings now show Accept/Decline buttons directly on the Your booking card instead of requiring DM interaction. Pending status badge moved to top-right of card header (cleaner layout). Decline button uses destructive red styling; Accept uses primary blue. Fee remains visible. Non-pending bookings show Message button or cancellation details depending on status.
+
 **Pending DJs now see Run Sheet data (`7109f2d5` on `main`, 2026-08-05):** Run Sheet was blocked for pending DJs due to double RLS filtering on `lineup`. (1) `booking_requests` RLS only returns bookings where current user is sender or recipient, so pending DJ's `lineup` only contains their own booking. (2) Component filtered rows through this limited lineup, removing accepted DJs' rows. Fix: (a) Updated `can_view_event_run_sheet()` RLS to allow pending/accepted bookings to read rows. (b) Removed lineup filtering when viewing read-only (!canEdit) — return all loaded rows as-is. Planners still get filtered rows (accepted DJs only). Real-time subscription already working.
 
 **Status labels simplified (`2af240e` on `main`, 2026-08-05):** Send bookings sheet now shows concise status pills: "Booked" (green), "Pending" (yellow), "Declined" (gray). Removed "Already" prefix and changed "Already invited" to "Pending" for consistency with booking status terminology throughout the app.
