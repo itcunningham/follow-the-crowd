@@ -3,7 +3,9 @@
 
 Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 
-**DJ already-booked shows for cancelled events (`b45bdc1` on `claude/new-session-xj7b0u`, pending ship):** `getPlannerDjAvailabilityHints` was marking DJs as "already booked" if they had an accepted booking for a cancelled event on the same date. The planner cancels event → accepted bookings stay `status = "accepted"` but event gets `status = "cancelled"`. When planning a new event, the query found those stale bookings and blocked the DJ. Fix: query events table and filter out bookings where `status = "cancelled"` before marking DJ unavailable.
+**Decline button red, DJ calendar hides cancelled events (`348741c` on `main`, 2026-08-05):** (1) Decline button now uses danger color (red) like Cancel — matches the importance of rejecting a booking offer to both parties. (2) DJ calendar was showing cancelled events. Now filters bookings where `event.status = 'cancelled'` before displaying.
+
+**DJ already-booked shows for cancelled events (`9bcc42c` on `main`, 2026-08-05):** `getPlannerDjAvailabilityHints` was marking DJs as "already booked" if they had an accepted booking for a cancelled event on the same date. The planner cancels event → accepted bookings stay `status = "accepted"` but event gets `status = "cancelled"`. When planning a new event, the query found those stale bookings and blocked the DJ. Fix: query events table and filter out bookings where `status = "cancelled"` before marking DJ unavailable.
 
 **Standing deploy preference locked (2026-08-04):** small approved bug fixes / polish ship to **`main` (Production)**, not Preview-only. Branch deploys show **"No target"** and are useless for device QA on `follow-the-crowd.vercel.app`. Saved in `USER-PREFERENCES.md`, `HOW-WE-WORK.md`, and `.cursor/rules/ship-small-fixes-to-main.mdc`.
 
