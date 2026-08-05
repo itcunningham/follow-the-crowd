@@ -3,6 +3,8 @@
 
 Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 
+**Accept/Decline buttons styled consistently (`0646edbd` on `claude/new-session-xj7b0u`, pending ship):** Accept/decline buttons across Event Details "Your booking" card and DM booking cards now use matching solid styling. Accept = solid primary background with black text, rounded-xl. Decline = red destructive outline with matching dimensions, no uppercase text or hover effects. Updated `EVENT_DETAIL_BTN_DESTRUCTIVE` in `eventDetailUi.ts` and DM booking card button classes in `BookingRequestCard.tsx`.
+
 **DJ already-booked shows for cancelled events (`b45bdc1` on `claude/new-session-xj7b0u`, pending ship):** `getPlannerDjAvailabilityHints` was marking DJs as "already booked" if they had an accepted booking for a cancelled event on the same date. The planner cancels event → accepted bookings stay `status = "accepted"` but event gets `status = "cancelled"`. When planning a new event, the query found those stale bookings and blocked the DJ. Fix: query events table and filter out bookings where `status = "cancelled"` before marking DJ unavailable.
 
 **Standing deploy preference locked (2026-08-04):** small approved bug fixes / polish ship to **`main` (Production)**, not Preview-only. Branch deploys show **"No target"** and are useless for device QA on `follow-the-crowd.vercel.app`. Saved in `USER-PREFERENCES.md`, `HOW-WE-WORK.md`, and `.cursor/rules/ship-small-fixes-to-main.mdc`.
