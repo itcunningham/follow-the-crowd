@@ -442,8 +442,15 @@ function EventDetailPageView() {
           booking.recipient_id === currentUserId && booking.status === "accepted",
       ),
   );
+  const hasPendingBooking = Boolean(
+    currentUserId &&
+      lineup.some(
+        (booking) =>
+          booking.recipient_id === currentUserId && booking.status === "pending",
+      ),
+  );
   const canOpenCrewChat = isOwner || hasAcceptedBooking;
-  const canViewRunSheet = canOpenCrewChat;
+  const canViewRunSheet = canOpenCrewChat || hasPendingBooking;
   const canEditRunSheet = isOwner && isPlanner && !isHistoryEventDetail;
   const eventIsCancelled = event ? isEventCancelled(event) : false;
   const hasLinkedBookings = lineup.length > 0;
@@ -1615,6 +1622,35 @@ function EventDetailPageView() {
                           </div>
                         ) : null}
                       </div>
+                    </section>
+                  ) : null}
+
+                  {!isOwner && (hasPendingBooking || hasAcceptedBooking) && lineup.length > 1 ? (
+                    <section className={`${EVENT_DETAIL_SECTION_SPACING} ${EVENT_DETAIL_CARD_CLASS}`}>
+                      <EventDetailSectionTitle>Lineup</EventDetailSectionTitle>
+                      <ul className="mt-3 space-y-2.5">
+                        {lineup.map((booking) => {
+                          const profile = profiles.get(booking.recipient_id);
+                          return (
+                            <li key={booking.id}>
+                              <EventLineupBookingCard
+                                booking={booking}
+                                profile={profile}
+                                currentUserId={currentUserId}
+                                eventDetailId={eventId}
+                                readOnly
+                                cancelledByLabel={resolveBookingCancelledByLabel(booking, profiles)}
+                                cancellationReasonLabel={resolveBookingCancellationReasonLabel(booking)}
+                                canHideFromLineup={false}
+                                hiding={false}
+                                hideDisabled={true}
+                                cancelling={false}
+                                proposalLoading={false}
+                              />
+                            </li>
+                          );
+                        })}
+                      </ul>
                     </section>
                   ) : null}
 
