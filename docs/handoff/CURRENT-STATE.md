@@ -7,6 +7,8 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 
 **Communication preference locked (2026-08-04):** brutal honesty, no ego — never agree by default; push better options when Isaac's idea is weaker. Strict critic mode + hostile counterarguments when useful. `USER-PREFERENCES.md` + `.cursor/rules/brutal-honesty.mdc`.
 
+**Confirmed Gigs → Open DM → Back → Back stays on Confirmed (`279d94b` on `main`, 2026-08-05):** Open DM from Event Details was rebuilding bare `/events/:id`, dropping `from=bookings&tab=accepted`, so the next Back defaulted to Incoming. DM URLs now carry `eventReturn` (same query key as Group chat); Back restores the full Event Details query. DM Back from Event Details uses `replace` so history stays clean.
+
 **Calendar → Group chat → Back → Back returns to Calendar (`e6ce040` on `main`, 2026-08-05):** Event Details "Group chat" now marks a one-shot history pop and carries `eventReturn` (calendar/history/DM query). Crew Chat Back pops to the exact Event Details URL instead of bare `/events/:id`, so the next Back resolves to Calendar — not Events Active.
 
 **Run Sheet DJ empty copy (`91f0d89` on `main`, 2026-08-05):** "Check back later" — trailing period dropped (matches short UI copy style). Wording kept.
@@ -901,6 +903,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 | Crew Chat image sharing (`message_attachments.event_id`) | `scripts/setupEventCrewChatAttachments.sql` — **applied 2026-08-03** (required a type-cast fix after the first run, see Group chat entry above) |
 
 ## Recent commits (reference)
+- `279d94b` — fix(nav): preserve Gigs Confirmed tab through Event Details Open DM
 - `a92f4c3` — fix(copy): drop Set time label on Your booking card
 - `91f0d89` — fix(copy): drop trailing period on Run Sheet DJ empty state
 - `e6ce040` — fix(nav): crew chat Back keeps calendar event-detail origin
