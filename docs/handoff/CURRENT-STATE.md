@@ -7,7 +7,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 
 **Communication preference locked (2026-08-04):** brutal honesty, no ego — never agree by default; push better options when Isaac's idea is weaker. Strict critic mode + hostile counterarguments when useful. `USER-PREFERENCES.md` + `.cursor/rules/brutal-honesty.mdc`.
 
-**Avatar empty circles on hard refresh (this branch → ship to `main`):** broken / non-http `avatar_url` values painted a permanent empty circle (img present, no initials). `ProfileAvatar` now tries sized Supabase transform → original object URL → initials. Junk values (`"null"`, relative paths) never become `<img src>`. Transform URL query building uses `URLSearchParams` so cache-busters cannot produce a double-`?`.
+**Avatar empty circles on hard refresh (`6abf745` on `main`, 2026-08-05):** broken / non-http `avatar_url` values painted a permanent empty circle (img present, no initials). `ProfileAvatar` now tries sized Supabase transform → original object URL → initials. Junk values (`"null"`, relative paths) never become `<img src>`. Transform URL query building uses `URLSearchParams` so cache-busters cannot produce a double-`?`.
 
 **Events tab stays lit on event-detail profiles (`4f0cf57` on `main`, 2026-08-04):** profile opened from Run Sheet / Bookings (`?from=event-detail`) keeps the bottom-nav Events/Gigs workspace tab highlighted — was blank because `/profile/:id` is outside `isPlannerEventsAreaPath`.
 
@@ -893,6 +893,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 | Crew Chat image sharing (`message_attachments.event_id`) | `scripts/setupEventCrewChatAttachments.sql` — **applied 2026-08-03** (required a type-cast fix after the first run, see Group chat entry above) |
 
 ## Recent commits (reference)
+- `6abf745` — fix(avatars): fall back when profile image URL fails
 - `4f0cf57` — fix(nav): keep Events lit on profiles opened from event detail
 - `0e0c649` — fix(run-sheet): profile links keep event Back + Message CTA
 - `fb2fbeb` — fix(run-sheet): DM copy says what changed
