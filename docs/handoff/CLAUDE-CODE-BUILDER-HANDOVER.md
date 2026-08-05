@@ -136,6 +136,13 @@ When he needs to run SQL in Supabase: paste **full file contents only**.
 3. Push
 4. Return commit hash
 
+### Standing: Always merge bug fixes to `main` after shipping
+After every completed bug-fix or polish task:
+1. Merge branch → `main` (fast-forward)
+2. Push to main
+3. Report in summary with production commit hash
+Do not wait for approval; branch deployments show “No target” and are useless. Ship to production directly.
+
 ### Handoff after every completed task
 Update `docs/handoff/` per `HANDOFF-UPDATE.md` (minimum `CURRENT-STATE.md`: date, bullets, recent commits).  
 End summary with **Handoff updated:** file list.  
