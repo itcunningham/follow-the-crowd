@@ -1646,6 +1646,11 @@ function EventDetailPageView() {
                                 hideDisabled={true}
                                 cancelling={false}
                                 proposalLoading={false}
+                                onHideFromLineup={() => {}}
+                                onCancelBooking={() => {}}
+                                onCancelAccepted={() => {}}
+                                onAcceptProposal={() => {}}
+                                onKeepOriginalOffer={() => {}}
                               />
                             </li>
                           );
