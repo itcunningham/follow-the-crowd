@@ -1547,7 +1547,7 @@ function EventDetailPageView() {
                         <div className="min-w-0 flex-1">
                           <BookingStatusBadge status={viewerBooking.status} variant="compact" />
                           <p className="mt-2 text-sm text-ftc-text-secondary">
-                            Set time {viewerBooking.set_time || "TBC"}
+                            {viewerBooking.set_time || "TBC"}
                             {viewerBooking.fee ? ` · ${formatRateDisplay(viewerBooking.fee)}` : ""}
                           </p>
                           {viewerBooking.status === "cancelled" ? (

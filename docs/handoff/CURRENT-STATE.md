@@ -11,6 +11,8 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 
 **Run Sheet DJ empty copy (`91f0d89` on `main`, 2026-08-05):** "Check back later" — trailing period dropped (matches short UI copy style). Wording kept.
 
+**Your booking line drops "Set time" label (this ship):** DJ event-detail card shows `4:00 PM – 12:00 AM · $100` — that value is the event window, not a Run Sheet set. Label removed.
+
 **Promoter interview raw notes saved (`PROMOTER-INTERVIEWS.md`, 2026-08-05):** Sheets/IG/group-chat themes + Jaydn / Matthew / Docs+Drive / brand-booking replies. Beta call: **no new features from these alone** — coach the built loop (book → confirm → run sheet → crew/DM). Tickets/ads/accounting/agents explicitly not beta-core.
 
 **Avatar empty circles on hard refresh (`6abf745` on `main`, 2026-08-05):** broken / non-http `avatar_url` values painted a permanent empty circle (img present, no initials). `ProfileAvatar` now tries sized Supabase transform → original object URL → initials. Junk values (`"null"`, relative paths) never become `<img src>`. Transform URL query building uses `URLSearchParams` so cache-busters cannot produce a double-`?`.
