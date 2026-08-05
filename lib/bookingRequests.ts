@@ -2344,8 +2344,32 @@ export function getBookingRequestHref(booking: BookingRequest): string {
 export async function listMyActiveReceivedBookings(): Promise<BookingRequest[]> {
   const bookings = await listReceivedBookingRequests();
 
-  return bookings.filter(
+  const activeBookings = bookings.filter(
     (booking) => booking.status === "pending" || booking.status === "accepted",
+  );
+
+  // Filter out bookings for cancelled events
+  const eventIds = new Set(
+    activeBookings
+      .map(b => b.event_id)
+      .filter((id): id is string => id !== null)
+  );
+
+  let cancelledEventIds = new Set<string>();
+  if (eventIds.size > 0) {
+    const { data: events } = await supabase
+      .from("events")
+      .select("id")
+      .in("id", Array.from(eventIds))
+      .eq("status", "cancelled");
+
+    if (events) {
+      cancelledEventIds = new Set(events.map(e => e.id as string));
+    }
+  }
+
+  return activeBookings.filter(
+    (booking) => !booking.event_id || !cancelledEventIds.has(booking.event_id)
   );
 }
 
