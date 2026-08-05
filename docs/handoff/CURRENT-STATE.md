@@ -905,6 +905,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 | Crew Chat image sharing (`message_attachments.event_id`) | `scripts/setupEventCrewChatAttachments.sql` — **applied 2026-08-03** (required a type-cast fix after the first run, see Group chat entry above) |
 
 ## Recent commits (reference)
+- `065fbce` — fix(events): DJ Message planner name; Withdraw below booking card
 - `279d94b` — fix(nav): preserve Gigs Confirmed tab through Event Details Open DM
 - `a92f4c3` — fix(copy): drop Set time label on Your booking card
 - `91f0d89` — fix(copy): drop trailing period on Run Sheet DJ empty state
