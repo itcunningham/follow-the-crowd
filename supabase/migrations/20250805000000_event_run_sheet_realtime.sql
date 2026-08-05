@@ -1,7 +1,7 @@
--- Enable Supabase Realtime for event_run_sheet (DJ view auto-updates).
+-- Enable Supabase Realtime for event_run_sheet_rows (DJ view auto-updates).
 -- Idempotent: safe to re-run in Supabase SQL Editor.
 
-alter table public.event_run_sheet replica identity full;
+alter table public.event_run_sheet_rows replica identity full;
 
 do $$
 begin
@@ -13,4 +13,4 @@ begin
 end
 $$;
 
-alter publication supabase_realtime add table public.event_run_sheet;
+alter publication supabase_realtime add table public.event_run_sheet_rows;

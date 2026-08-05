@@ -904,7 +904,7 @@ export default function EventRunSheetSection({
         {
           event: "*",
           schema: "public",
-          table: "event_run_sheet",
+          table: "event_run_sheet_rows",
           filter: `event_id=eq.${eventId}`,
         },
         () => {
