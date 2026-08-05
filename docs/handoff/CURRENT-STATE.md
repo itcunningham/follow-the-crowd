@@ -7,7 +7,7 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 
 **Communication preference locked (2026-08-04):** brutal honesty, no ego — never agree by default; push better options when Isaac's idea is weaker. Strict critic mode + hostile counterarguments when useful. `USER-PREFERENCES.md` + `.cursor/rules/brutal-honesty.mdc`.
 
-**Run Sheet planner empty copy (`pending` on `main`, 2026-08-05):** "Add set times, stages and notes for your DJs" — trailing period dropped (matches short UI copy style).
+**Run Sheet planner empty copy (`a93ac28` on `main`, 2026-08-05):** "Add set times, stages and notes for your DJs" — trailing period dropped (matches short UI copy style).
 
 **DJ Your booking: Message [planner] + Withdraw below card (`065fbce` on `main`, 2026-08-05; name truncate `5ab359d`):** Your booking card keeps status/fee + **Message {planner name}** (fallback `Message`). Planner name in the CTA hard-caps at 14 characters with an ellipsis so long QA/display names don't billboard the button. Withdraw from event sits under a bottom border — same danger-zone pattern as planner Cancel Event. Gigs list still says Open DM.
 
