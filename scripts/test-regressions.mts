@@ -2130,6 +2130,11 @@ function testDjYourBookingMessageLabelAndWithdrawPlacement() {
   assert.equal(formatDjBookingMessageLabel("  Jaydn  "), "Message Jaydn");
   assert.equal(formatDjBookingMessageLabel(""), "Message");
   assert.equal(formatDjBookingMessageLabel(null), "Message");
+  assert.equal(
+    formatDjBookingMessageLabel("FTC QABOT HDJJDJDJDJDJRJJT"),
+    "Message FTC QABOT HDJ…",
+  );
+  assert.equal(formatDjBookingMessageLabel("Matthew Jones"), "Message Matthew Jones");
   assert.deepEqual(
     collectEventDetailProfileIds(["dj-1", "dj-1"], "planner-1"),
     ["dj-1", "planner-1"],
