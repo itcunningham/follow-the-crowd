@@ -3,9 +3,10 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { looksLikeUserId } from "@/lib/user/displayName";
+import { looksLikeUserId, resolveUserDisplayName } from "@/lib/user/displayName";
 import { parseCalendarOriginFromEventDetail, resolveSentBookingsLinkedToPlannerEvent } from "@/lib/calendar";
 import { buildEventDetailDmThreadHref } from "@/lib/dm/threadNavigation";
+import { collectEventDetailProfileIds, formatDjBookingMessageLabel } from "@/lib/events/eventDetailDjBookingUi";
 import AppNavigation, { MOBILE_NAV_OFFSET_CLASS } from "@/app/components/AppNavigation";
 import EventDeleteCancelButton from "@/app/components/EventDeleteCancelButton";
 import EventRunSheetSection from "@/app/components/EventRunSheetSection";
@@ -591,9 +592,10 @@ function EventDetailPageView() {
       setCrewChatUnlock(unlock);
 
       const recipientIds = bookings.map((booking) => booking.recipient_id);
+      const profileIds = collectEventDetailProfileIds(recipientIds, loadedEvent.owner_id);
 
-      if (recipientIds.length > 0) {
-        const profileMap = await getBookingRecipientProfilesByIds(recipientIds);
+      if (profileIds.length > 0) {
+        const profileMap = await getBookingRecipientProfilesByIds(profileIds);
         setProfiles(profileMap);
       } else {
         setProfiles(new Map());
@@ -634,9 +636,13 @@ function EventDetailPageView() {
       setLineup(bookings);
 
       const recipientIds = bookings.map((booking) => booking.recipient_id);
+      const profileIds = collectEventDetailProfileIds(
+        recipientIds,
+        loadedEvent?.owner_id ?? eventRef.current?.owner_id,
+      );
 
-      if (recipientIds.length > 0) {
-        const profileMap = await getBookingRecipientProfilesByIds(recipientIds);
+      if (profileIds.length > 0) {
+        const profileMap = await getBookingRecipientProfilesByIds(profileIds);
         setProfiles(profileMap);
       } else {
         setProfiles(new Map());
@@ -1174,6 +1180,21 @@ function EventDetailPageView() {
         : null,
     [visibleLineup, currentUserId],
   );
+  const plannerDisplayName = useMemo(() => {
+    const ownerId = event?.owner_id?.trim();
+
+    if (!ownerId) {
+      return null;
+    }
+
+    return resolveUserDisplayName(profiles.get(ownerId), { fallback: "" }) || null;
+  }, [event?.owner_id, profiles]);
+  const djBookingMessageLabel = formatDjBookingMessageLabel(plannerDisplayName);
+  const showDjWithdrawAction =
+    !isOwner &&
+    !isHistoryEventDetail &&
+    viewerBooking != null &&
+    getAcceptedBookingCancellationRole(viewerBooking, currentUserId) === "dj";
   const dmOriginConversationId = resolveEventDetailDmOriginConversationId({
     from: searchParams.get("from"),
     conversationId: searchParams.get("conversationId"),
@@ -1562,25 +1583,16 @@ function EventDetailPageView() {
                             />
                           ) : null}
                         </div>
-                        <div className="flex w-full shrink-0 flex-col items-stretch gap-2 sm:w-auto sm:items-end">
-                          {!isHistoryEventDetail &&
-                          getAcceptedBookingCancellationRole(viewerBooking, currentUserId) === "dj" ? (
-                            <CancelAcceptedBookingButton
-                              role="dj"
-                              loading={cancellingBookingId === viewerBooking.id}
-                              onConfirm={(reason) => handleCancelAcceptedBooking(viewerBooking, reason)}
-                              className={`${EVENT_DETAIL_BTN_DESTRUCTIVE} w-full sm:w-auto sm:min-w-[7.5rem]`}
-                            />
-                          ) : null}
-                          {viewerBooking.conversation_id && !hideOpenBookingConversation ? (
+                        {viewerBooking.conversation_id && !hideOpenBookingConversation ? (
+                          <div className="flex w-full min-w-0 shrink-0 sm:w-auto sm:max-w-[14rem] sm:items-end">
                             <Link
                               href={buildEventDetailLineupDmHref(viewerBooking.conversation_id)}
-                              className={`${EVENT_DETAIL_BTN_SECONDARY} w-full sm:w-auto sm:min-w-[7.5rem]`}
+                              className={`${EVENT_DETAIL_BTN_SECONDARY} w-full min-w-0 sm:min-w-[7.5rem]`}
                             >
-                              Open DM
+                              <span className="block truncate">{djBookingMessageLabel}</span>
                             </Link>
-                          ) : null}
-                        </div>
+                          </div>
+                        ) : null}
                       </div>
                     </section>
                   ) : null}
@@ -1676,6 +1688,17 @@ function EventDetailPageView() {
                   />
                 </div>
               ) : null}
+
+              {showDjWithdrawAction && viewerBooking ? (
+                <div className="mt-8 border-t border-ftc-border-subtle pt-6">
+                  <CancelAcceptedBookingButton
+                    role="dj"
+                    loading={cancellingBookingId === viewerBooking.id}
+                    onConfirm={(reason) => handleCancelAcceptedBooking(viewerBooking, reason)}
+                    className={`${EVENT_DETAIL_BTN_DESTRUCTIVE} w-full`}
+                  />
+                </div>
+              ) : null}
             </>
           ) : null}
         </div>
@@ -1686,7 +1709,7 @@ function EventDetailPageView() {
               icon="chat"
               href={buildEventDetailLineupDmHref(viewerBooking.conversation_id)}
             >
-              Open booking conversation
+              {djBookingMessageLabel}
             </EventDetailPrimaryAction>
           </EventDetailBottomBar>
         ) : null}

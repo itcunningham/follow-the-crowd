@@ -184,6 +184,10 @@ import { buildCrewChatMessageGroups } from "../lib/groupChatMessageLayout";
 import { buildEventChatReadMap, isChatUnread } from "../lib/messageReads";
 import { getEventCrewChatLink, getEventCrewChatBackHref, buildEventDetailHrefFromCrewChatReturn } from "../lib/eventCrewChat";
 import { CREW_CHAT_EVENT_DETAIL_RETURN_PARAM } from "../lib/events/eventDetailCrewChatReturn";
+import {
+  collectEventDetailProfileIds,
+  formatDjBookingMessageLabel,
+} from "../lib/events/eventDetailDjBookingUi";
 import { applyInboxGroupMessage, type GroupChatListItem } from "../lib/groupChats";
 import {
   DM_BOOKING_CONFIRMED_MESSAGE,
@@ -2115,6 +2119,49 @@ function testDmThreadEventDetailBackHref() {
   );
   assert.match(dmSource, /eventReturn: searchParams\.get\(CREW_CHAT_EVENT_DETAIL_RETURN_PARAM\)/);
   assert.match(dmSource, /from"\) === "event-detail"/);
+}
+
+/**
+ * DJ Your booking: Message [planner] stays in the card; Withdraw sits below in
+ * the same danger zone pattern as planner Cancel Event — not stacked in the box.
+ */
+function testDjYourBookingMessageLabelAndWithdrawPlacement() {
+  assert.equal(formatDjBookingMessageLabel("Sarah"), "Message Sarah");
+  assert.equal(formatDjBookingMessageLabel("  Jaydn  "), "Message Jaydn");
+  assert.equal(formatDjBookingMessageLabel(""), "Message");
+  assert.equal(formatDjBookingMessageLabel(null), "Message");
+  assert.deepEqual(
+    collectEventDetailProfileIds(["dj-1", "dj-1"], "planner-1"),
+    ["dj-1", "planner-1"],
+  );
+  assert.deepEqual(collectEventDetailProfileIds([], "planner-1"), ["planner-1"]);
+  assert.deepEqual(collectEventDetailProfileIds(["dj-1"], null), ["dj-1"]);
+
+  const detailSource = readFileSync(
+    new URL("../app/events/[eventId]/page.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(detailSource, /formatDjBookingMessageLabel/);
+  assert.match(detailSource, /djBookingMessageLabel/);
+  assert.match(detailSource, /showDjWithdrawAction/);
+  assert.match(
+    detailSource,
+    /showDjWithdrawAction && viewerBooking[\s\S]*?CancelAcceptedBookingButton[\s\S]*?role="dj"/,
+  );
+  assert.match(
+    detailSource,
+    /border-t border-ftc-border-subtle pt-6[\s\S]*?CancelAcceptedBookingButton[\s\S]*?role="dj"/,
+  );
+
+  const yourBookingBlock =
+    detailSource.match(
+      /EventDetailSectionTitle>Your booking<\/EventDetailSectionTitle>[\s\S]*?<\/section>/,
+    )?.[0] ?? "";
+  assert.ok(yourBookingBlock, "Your booking section must exist");
+  assert.match(yourBookingBlock, /djBookingMessageLabel/);
+  assert.doesNotMatch(yourBookingBlock, /CancelAcceptedBookingButton/);
+  assert.doesNotMatch(yourBookingBlock, /Open DM/);
+  assert.doesNotMatch(yourBookingBlock, /Withdraw from event/);
 }
 
 function testProfileChatBackNavigation() {
@@ -16698,6 +16745,7 @@ async function main() {
   testModalScrollContainmentBlocksBoundaryOverscroll();
   testEventLineupBookingCardProfileNavigationAndActions();
   testDmThreadEventDetailBackHref();
+  testDjYourBookingMessageLabelAndWithdrawPlacement();
   testProfileChatBackNavigation();
   testGigsIncomingDmEventDetailReturnChain();
   testGigsCalendarBookingNavigation();
