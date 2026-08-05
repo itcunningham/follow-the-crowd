@@ -12,10 +12,10 @@ export const BOOKING_PROPOSAL_CARD_SHELL_CLASS =
 const PROPOSAL_ACTIONS_ROW_CLASS = "mt-3 flex gap-2";
 
 const PROPOSAL_PRIMARY_ACTION_CLASS =
-  "ftc-btn-primary inline-flex min-h-8 min-w-0 flex-1 items-center justify-center px-3 py-2.5 text-xs uppercase tracking-wide disabled:cursor-not-allowed disabled:opacity-50";
+  "inline-flex min-h-10 min-w-0 flex-1 items-center justify-center rounded-md bg-ftc-primary px-3 py-2 text-xs font-medium text-ftc-text-on-primary transition disabled:cursor-not-allowed disabled:opacity-50";
 
 const PROPOSAL_SECONDARY_ACTION_CLASS =
-  "inline-flex min-h-8 min-w-0 flex-1 items-center justify-center rounded-xl border border-ftc-border-subtle bg-ftc-surface px-2 py-1 text-xs font-semibold uppercase tracking-wide text-ftc-text-secondary transition hover:border-ftc-border-strong disabled:cursor-not-allowed disabled:opacity-50";
+  "inline-flex min-h-10 min-w-0 flex-1 items-center justify-center rounded-md border border-ftc-destructive bg-ftc-destructive/10 px-3 py-2 text-xs font-medium text-ftc-destructive transition disabled:cursor-not-allowed disabled:opacity-50";
 
 export function BookingProposalCardShell({ children }: { children: ReactNode }) {
   return <div className={BOOKING_PROPOSAL_CARD_SHELL_CLASS}>{children}</div>;
