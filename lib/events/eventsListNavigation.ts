@@ -240,6 +240,12 @@ export function resolveEventDetailBackHref(
     dmReturnFrom?: string | null;
     profileUserId?: string | null;
     restoreScroll?: string | null;
+    eventReturn?: string | null;
+    /**
+     * Route event id — used when rebuilding a DM opened from Event Details
+     * (`dmReturnFrom=event-detail`) so Back keeps from=event-detail + eventReturn.
+     */
+    eventId?: string | null;
     /**
      * DJ-only accounts have no Events tab, so the no-origin fallback (a
      * notification or DM deep link carrying no `from`/`fromTab`) must land on
@@ -281,6 +287,8 @@ export function resolveEventDetailBackHref(
         profileUserId: options?.profileUserId,
         bookingRequestId: options?.bookingRequestId,
         restoreScroll: options?.restoreScroll,
+        eventId: options?.eventId ?? options?.crewChatEventId,
+        eventReturn: options?.eventReturn,
       }),
     );
   }

@@ -64,7 +64,8 @@ import {
 } from "@/app/components/layout/AppPageLayout";
 import ProfilePageHeader from "@/app/components/profile/ProfilePageHeader";
 import { isPlannerBookingsCreateChromeActive } from "@/lib/bookings/planDeepLink";
-import { isCalendarOriginCreateParam, resolveCalendarCreateInitialStep, resolveEventDetailBackHref, resolveEventsListCreateFlowChromeActive, resolveEventsListTabParam } from "@/lib/events/eventsListNavigation";
+import { resolveEventDetailBackHref, resolveEventsListCreateFlowChromeActive, resolveEventsListTabParam, isCalendarOriginCreateParam, resolveCalendarCreateInitialStep } from "@/lib/events/eventsListNavigation";
+import { CREW_CHAT_EVENT_DETAIL_RETURN_PARAM } from "@/lib/events/eventDetailCrewChatReturn";
 import { useEventEditHeaderState } from "@/lib/events/useEventEditHeaderVisibility";
 import type { EventEditHeaderState } from "@/lib/events/useEventEditHeaderVisibility";
 import { canManageEvents, type UserRole } from "@/lib/user/currentUser";
@@ -1527,6 +1528,9 @@ export function AppLoadingShell({
       fromDmConversation: searchParams.get("fromDmConversation"),
       dmReturnFrom: searchParams.get("dmReturnFrom"),
       profileUserId: searchParams.get("profileUserId"),
+      eventReturn: searchParams.get(CREW_CHAT_EVENT_DETAIL_RETURN_PARAM),
+      eventId,
+      crewChatEventId: eventId,
     });
 
     if (eventId) {

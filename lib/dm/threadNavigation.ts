@@ -25,6 +25,8 @@ export type DmThreadEntryContext = {
   calendarView?: string | null;
   calendarMonth?: string | null;
   profileUserId?: string | null;
+  eventId?: string | null;
+  eventReturn?: string | null;
 };
 
 const DM_THREAD_ENTRY_FROM_VALUES = new Set([
@@ -32,6 +34,7 @@ const DM_THREAD_ENTRY_FROM_VALUES = new Set([
   "calendar",
   "events",
   "profile",
+  "event-detail",
 ]);
 
 export function parseDmThreadEntryContext(
@@ -50,6 +53,8 @@ export function parseDmThreadEntryContext(
     calendarView: getParam("calendarView"),
     calendarMonth: getParam("calendarMonth"),
     profileUserId: getParam("profileUserId"),
+    eventId: getParam("eventId"),
+    eventReturn: getParam(CREW_CHAT_EVENT_DETAIL_RETURN_PARAM),
   };
 }
 
@@ -100,6 +105,16 @@ export function appendDmReturnContextToEventDetailParams(
     if (profileUserId) {
       params.set("profileUserId", profileUserId);
     }
+
+    return;
+  }
+
+  if (entryFrom === "event-detail") {
+    const eventReturn = entryContext?.eventReturn?.trim();
+
+    if (eventReturn) {
+      params.set(CREW_CHAT_EVENT_DETAIL_RETURN_PARAM, eventReturn);
+    }
   }
 }
 
@@ -113,6 +128,9 @@ export function resolveDmThreadHrefOptionsFromEventDetailReturn(options: {
   bookingRequestId?: string | null;
   /** Set when the originating "View event" link was built from a DM conversation — see buildEventDetailFromDmHref. */
   restoreScroll?: string | null;
+  /** Route event id — used when dmReturnFrom=event-detail to rebuild the DM URL. */
+  eventId?: string | null;
+  eventReturn?: string | null;
 }): {
   from?: string;
   tab?: string;
@@ -123,6 +141,8 @@ export function resolveDmThreadHrefOptionsFromEventDetailReturn(options: {
   bookingRequestId?: string;
   bookingFocus?: typeof DM_BOOKING_FOCUS_SCROLL_ONLY;
   restoreScroll?: string;
+  eventId?: string;
+  eventReturn?: string;
 } {
   const dmReturnFrom = options.dmReturnFrom?.trim();
   const bookingRequestId = options.bookingRequestId?.trim();
@@ -146,6 +166,8 @@ export function resolveDmThreadHrefOptionsFromEventDetailReturn(options: {
     bookingRequestId?: string;
     bookingFocus?: typeof DM_BOOKING_FOCUS_SCROLL_ONLY;
     restoreScroll?: string;
+    eventId?: string;
+    eventReturn?: string;
   } = {
     from: dmReturnFrom,
     bookingRequestId: bookingRequestId || undefined,
@@ -179,6 +201,20 @@ export function resolveDmThreadHrefOptionsFromEventDetailReturn(options: {
 
     if (profileUserId) {
       hrefOptions.profileUserId = profileUserId;
+    }
+  }
+
+  if (dmReturnFrom === "event-detail") {
+    const eventId = options.eventId?.trim();
+
+    if (eventId && looksLikeUserId(eventId)) {
+      hrefOptions.eventId = eventId;
+    }
+
+    const eventReturn = options.eventReturn?.trim();
+
+    if (eventReturn) {
+      hrefOptions.eventReturn = eventReturn;
     }
   }
 

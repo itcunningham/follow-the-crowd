@@ -2363,6 +2363,8 @@ function testGigsIncomingDmEventDetailReturnChain() {
     calendarView: null,
     calendarMonth: null,
     profileUserId: null,
+    eventId: null,
+    eventReturn: null,
   });
 
   const eventHref = buildEventDetailFromDmHref(
@@ -2412,6 +2414,70 @@ function testGigsIncomingDmEventDetailReturnChain() {
   );
   assert.doesNotMatch(messagesEventHref, /dmReturnFrom=/);
   assert.equal(resolveDmThreadBackHref({}), "/dm");
+
+  // Confirmed Gigs → Event Details → Message → View event → Back → Back
+  // must restore Event Details with bookings origin, not dump on Messages.
+  const gigsConfirmedReturn = "from=bookings&tab=accepted";
+  const eventDetailDmHref = buildEventDetailDmThreadHref(
+    conversationId,
+    eventId,
+    null,
+    gigsConfirmedReturn,
+  );
+  const eventDetailDmParams = new URLSearchParams(eventDetailDmHref.split("?")[1] ?? "");
+  const eventDetailEntry = parseDmThreadEntryContext((key) => eventDetailDmParams.get(key));
+  assert.deepEqual(eventDetailEntry, {
+    from: "event-detail",
+    tab: null,
+    calendarDate: null,
+    calendarView: null,
+    calendarMonth: null,
+    profileUserId: null,
+    eventId,
+    eventReturn: gigsConfirmedReturn,
+  });
+
+  const viewEventFromEventDetailDm = buildEventDetailFromDmHref(
+    eventId,
+    conversationId,
+    bookingRequestId,
+    eventDetailEntry,
+  );
+  assert.match(viewEventFromEventDetailDm, /dmReturnFrom=event-detail/);
+  assert.match(
+    viewEventFromEventDetailDm,
+    new RegExp(`${CREW_CHAT_EVENT_DETAIL_RETURN_PARAM}=`),
+  );
+
+  const viewEventParams = new URLSearchParams(viewEventFromEventDetailDm.split("?")[1] ?? "");
+  const backToDm = resolveEventDetailBackHref(null, {
+    from: viewEventParams.get("from"),
+    conversationId: viewEventParams.get("conversationId"),
+    bookingRequestId: viewEventParams.get("bookingRequestId"),
+    dmReturnFrom: viewEventParams.get("dmReturnFrom"),
+    eventReturn: viewEventParams.get(CREW_CHAT_EVENT_DETAIL_RETURN_PARAM),
+    eventId,
+    restoreScroll: viewEventParams.get("restoreScroll"),
+  });
+  const backToDmParams = new URLSearchParams(backToDm.split("?")[1] ?? "");
+  assert.equal(backToDmParams.get("from"), "event-detail");
+  assert.equal(backToDmParams.get("eventId"), eventId);
+  assert.equal(backToDmParams.get(CREW_CHAT_EVENT_DETAIL_RETURN_PARAM), gigsConfirmedReturn);
+
+  const backToEvent = resolveDmThreadBackHref({
+    from: backToDmParams.get("from"),
+    eventId: backToDmParams.get("eventId"),
+    eventReturn: backToDmParams.get(CREW_CHAT_EVENT_DETAIL_RETURN_PARAM),
+  });
+  assert.equal(backToEvent, `/events/${eventId}?${gigsConfirmedReturn}`);
+  assert.equal(
+    resolveEventDetailBackHref(null, {
+      from: "bookings",
+      tab: "accepted",
+      isDjWorkspace: true,
+    }),
+    "/bookings?tab=accepted",
+  );
 
   const dmPageSource = readFileSync(
     new URL("../app/dm/[conversationId]/page.tsx", import.meta.url),

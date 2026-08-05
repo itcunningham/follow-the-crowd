@@ -150,6 +150,7 @@ import {
   resolveEventDetailDmOriginConversationId,
 } from "@/lib/events/eventsListNavigation";
 import { DM_CHAT_SCROLL_RESTORE_PARAM } from "@/lib/dm/dmChatScrollRestoration";
+import { CREW_CHAT_EVENT_DETAIL_RETURN_PARAM } from "@/lib/events/eventDetailCrewChatReturn";
 import {
   BOOKING_REQUEST_CANCELLED_SUCCESS_MESSAGE,
   useInlineTabFeedbackDismiss,
@@ -238,6 +239,8 @@ function EventDetailPageView() {
         dmReturnFrom: searchParams.get("dmReturnFrom"),
         profileUserId: searchParams.get("profileUserId"),
         restoreScroll: searchParams.get(DM_CHAT_SCROLL_RESTORE_PARAM),
+        eventReturn: searchParams.get(CREW_CHAT_EVENT_DETAIL_RETURN_PARAM),
+        eventId,
         crewChatEventId: eventId,
       }),
     [eventId, isDjWorkspace, searchParams],
