@@ -897,7 +897,7 @@ export default function EventRunSheetSection({
   }, [loadRunSheet]);
 
   useEffect(() => {
-    const subscription = supabase
+    const channel = supabase
       .channel(`run-sheet:${eventId}`)
       .on(
         "postgres_changes",
@@ -914,7 +914,7 @@ export default function EventRunSheetSection({
       .subscribe();
 
     return () => {
-      void supabase.removeChannel(subscription);
+      void supabase.removeChannel(channel);
     };
   }, [eventId, loadRunSheet]);
 
