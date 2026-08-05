@@ -681,6 +681,32 @@ function EventDetailPageView() {
     loadEventData();
   }, [loadEventData]);
 
+  /**
+   * Reconcile Bookings / Run Sheet when a DJ accepts (or any booking changes)
+   * on another device.
+   *
+   * Events list already listens for `ftc-notifications-updated` (fired by
+   * `notifyBookingRequestsChanged`). Event Details only reloaded after local
+   * mutations via `reloadEventLineup`, so a remote accept left cards on
+   * PENDING until a hard refresh. Same shared signal — database stays source
+   * of truth.
+   */
+  useEffect(() => {
+    if (!hasValidEventId) {
+      return;
+    }
+
+    function handleBookingsChanged() {
+      void reloadEventLineup();
+    }
+
+    window.addEventListener("ftc-notifications-updated", handleBookingsChanged);
+
+    return () => {
+      window.removeEventListener("ftc-notifications-updated", handleBookingsChanged);
+    };
+  }, [hasValidEventId, reloadEventLineup]);
+
   function resetEditCoverState() {
     setEditCoverField(emptyEventCoverImageFieldState);
     pendingCoverSaveRef.current = emptyEventCoverImageFieldState;

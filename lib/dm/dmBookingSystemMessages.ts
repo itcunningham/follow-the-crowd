@@ -45,20 +45,32 @@ export function isRunSheetUpdatedDmMessage(text: string): boolean {
   return text.trim().startsWith(`${DM_RUN_SHEET_UPDATED_PREFIX}`);
 }
 
+const BOOKING_CONFIRMED_ID_SUFFIX =
+  /^(.*) · ([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i;
+
 /**
- * Per-event confirmed message, e.g. "Booking confirmed · Warehouse Set".
+ * Per-booking confirmed message, e.g.
+ * "Booking confirmed · Warehouse Set · <booking-id>".
  *
  * The bare `DM_BOOKING_CONFIRMED_MESSAGE` constant is identical for every
- * booking, so the acceptance insert could only ever dedupe one confirmation per
- * conversation -- every later acceptance between the same planner and DJ was
- * silently skipped, which suppressed the DM preview, the unread state and the
- * notification along with it. Carrying the event name makes each acceptance a
- * distinct row, so dedupe identifies the booking rather than the conversation.
+ * booking, so a conversation-scoped dedupe on it allowed only ONE confirmation
+ * per DM. Event name alone is still too coarse: a second invite to the same
+ * named event (or a legacy "Booking accepted · <event>" row) made the insert
+ * skip, so the planner kept the invite message as latest preview — authored by
+ * themselves, never unread, no Messages badge. The booking id makes each
+ * acceptance its own row. Display still strips down to "Booking confirmed".
  */
-export function formatBookingConfirmedDmMessage(eventName: string): string {
+export function formatBookingConfirmedDmMessage(
+  eventName: string,
+  bookingId?: string | null,
+): string {
   const trimmed = eventName.trim();
+  const base = trimmed
+    ? `${DM_BOOKING_CONFIRMED_MESSAGE} · ${trimmed}`
+    : DM_BOOKING_CONFIRMED_MESSAGE;
+  const id = bookingId?.trim();
 
-  return trimmed ? `${DM_BOOKING_CONFIRMED_MESSAGE} · ${trimmed}` : DM_BOOKING_CONFIRMED_MESSAGE;
+  return id ? `${base} · ${id}` : base;
 }
 
 export function parseBookingConfirmedDmEventName(text: string): string | null {
@@ -69,7 +81,19 @@ export function parseBookingConfirmedDmEventName(text: string): string | null {
     return null;
   }
 
-  return trimmed.slice(prefix.length).trim() || null;
+  const rest = trimmed.slice(prefix.length).trim();
+
+  if (!rest) {
+    return null;
+  }
+
+  const withBookingId = rest.match(BOOKING_CONFIRMED_ID_SUFFIX);
+
+  if (withBookingId) {
+    return withBookingId[1]?.trim() || null;
+  }
+
+  return rest;
 }
 
 export const DM_BOOKING_REQUEST_DECLINED_MESSAGE = "Booking request declined";
@@ -135,6 +159,23 @@ export function isLegacyBookingCancelledDmMessage(text: string): boolean {
 
 export function isLegacyBookingAcceptedDmMessage(text: string): boolean {
   return text.trim().startsWith(LEGACY_BOOKING_ACCEPTED_DM_PREFIX);
+}
+
+/** True when this DM text is a booking-acceptance system notice. */
+export function isBookingAcceptanceDmSystemMessage(text: string): boolean {
+  const trimmed = text.trim();
+
+  if (!trimmed) {
+    return false;
+  }
+
+  return (
+    trimmed === DM_BOOKING_CONFIRMED_MESSAGE ||
+    trimmed === VERBOSE_CONFIRMED_MESSAGE ||
+    parseBookingConfirmedDmEventName(trimmed) !== null ||
+    isLegacyBookingAcceptedDmMessage(trimmed) ||
+    Boolean(trimmed.match(/^BOOKING ACTIVITY · accepted · (.+)$/i))
+  );
 }
 
 export function isLegacyBookingActivityDmMessage(text: string): boolean {

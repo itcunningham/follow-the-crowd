@@ -1281,16 +1281,12 @@ async function insertRateProposedDmMessageIfNeeded(
 async function insertBookingAcceptedDmMessageIfNeeded(
   booking: BookingRequest,
 ): Promise<{ inserted: boolean; messageText: string }> {
-  // Per-event text: the bare "Booking confirmed" constant is identical for every
-  // booking, so deduping on it allowed only ONE confirmation per conversation --
-  // every later acceptance between the same planner and DJ inserted nothing, and
-  // with no message row there was no realtime event, no unread state, no inbox
-  // preview change and no notification (that call is gated on `inserted`).
-  // Including the event name makes each acceptance its own row, so the guard
-  // below identifies the booking rather than the whole conversation.
-  const messageText = formatBookingConfirmedDmMessage(booking.event_name);
-  const legacyMessageText = formatBookingAcceptedDmMessage(booking.event_name);
-  const activityText = formatBookingAcceptanceActivityMessage(booking.event_name);
+  // Per-booking text: event name alone still collided (same-named re-invite, or
+  // a legacy "Booking accepted · <event>" row in the thread), so the insert
+  // skipped, the invite stayed latest, and the planner never got unread/badge.
+  // Booking id makes each acceptance distinct. Dedupe only on this exact text —
+  // legacy/activity strings must not block a new confirmation row.
+  const messageText = formatBookingConfirmedDmMessage(booking.event_name, booking.id);
 
   if (!booking.conversation_id) {
     return { inserted: false, messageText };
@@ -1300,7 +1296,7 @@ async function insertBookingAcceptedDmMessageIfNeeded(
     .from("messages")
     .select("id")
     .eq("conversation_id", booking.conversation_id)
-    .in("text", [messageText, activityText, legacyMessageText])
+    .eq("text", messageText)
     .limit(1);
 
   if (existingError) {

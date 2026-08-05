@@ -14,6 +14,7 @@ import {
   notifyBookingRequestsChanged,
   subscribeToBookingRequestChanges,
 } from "@/lib/bookings/bookingRequestsSync";
+import { isBookingAcceptanceDmSystemMessage } from "@/lib/dm/dmBookingSystemMessages";
 import { isOwnChatMessage } from "@/lib/messageReads";
 import { loadNavigationBadgeData } from "@/lib/navigationBadges";
 import {
@@ -377,14 +378,27 @@ export function NavBadgeProvider({ children }: { children: ReactNode }) {
           table: "messages",
         },
         (payload) => {
+          const row = payload.new as {
+            user_id?: string | null;
+            text?: string | null;
+          };
+
           // Your own message never makes a thread unread (`isChatUnread` short-
           // circuits on it), so refreshing for one is a guaranteed no-op round
           // trip. Reusing that helper keeps the two agreeing by construction.
-          if (isOwnChatMessage((payload.new as { user_id?: string | null }).user_id, userId)) {
+          if (isOwnChatMessage(row.user_id, userId)) {
             return;
           }
 
           void refreshBadgeCounts({ force: true });
+
+          // Booking acceptance writes a DM from the DJ. `messages` is already
+          // in Realtime; `booking_requests` may not be yet. Fan the acceptance
+          // notice into the shared booking reconciler so Event Details / Events
+          // list / Gigs caches refresh without waiting on that publication.
+          if (typeof row.text === "string" && isBookingAcceptanceDmSystemMessage(row.text)) {
+            notifyBookingRequestsChanged();
+          }
         },
       )
       .subscribe();

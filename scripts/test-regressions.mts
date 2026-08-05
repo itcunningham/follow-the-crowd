@@ -194,13 +194,16 @@ import {
   DM_BOOKING_ORIGINAL_OFFER_KEPT_MESSAGE,
   DM_BOOKING_RATE_DECLINED_MESSAGE,
   DM_RUN_SHEET_UPDATED_PREFIX,
+  formatBookingConfirmedDmMessage,
   formatDmBookingSystemMessageDisplay,
   formatRateProposedDmSystemMessage,
   formatRunSheetUpdatedDmMessage,
+  isBookingAcceptanceDmSystemMessage,
   isDmBookingSystemMessage,
   isRunSheetUpdatedDmMessage,
   LEGACY_RATE_PROPOSED_DM_PREFIX,
   LEGACY_RATE_PROPOSAL_DECLINED_DM_MESSAGE,
+  parseBookingConfirmedDmEventName,
 } from "../lib/dm/dmBookingSystemMessages";
 import { parseDjGigsListTab, resolveGigsListTabParam, resolveGigsListTabForBookingsPage, buildGigsWorkspaceIncomingHref, buildGigsConversationHref } from "../lib/bookings/gigsListNavigation";
 import {
@@ -862,9 +865,9 @@ function testDmBookingSystemMessages() {
   assert.match(bookingRequestsSource, /DM_BOOKING_ORIGINAL_OFFER_KEPT_MESSAGE/);
   assert.match(bookingRequestsSource, /DM_BOOKING_RATE_DECLINED_MESSAGE/);
   assert.match(bookingRequestsSource, /DM_BOOKING_PROPOSED_RATE_ACCEPTED_MESSAGE/);
-  // Acceptance inserts the per-event form of the confirmed message; see
+  // Acceptance inserts the per-booking form of the confirmed message; see
   // testBookingAcceptedDmMessageIsScopedToTheBooking for why the bare constant
-  // could not be used here.
+  // (and event-name-only form) could not be used here.
   assert.match(bookingRequestsSource, /formatBookingConfirmedDmMessage/);
   assert.match(bookingRequestsSource, /DM_BOOKING_CANCELLED_MESSAGE/);
 
@@ -11980,28 +11983,73 @@ function testBookingAcceptedDmMessageIsScopedToTheBooking() {
     new URL("../lib/dm/dmBookingSystemMessages.ts", import.meta.url),
     "utf8",
   );
+  const eventDetailSource = readFileSync(
+    new URL("../app/events/[eventId]/page.tsx", import.meta.url),
+    "utf8",
+  );
+  const navBadgeSource = readFileSync(
+    new URL("../app/components/navigation/NavBadgeProvider.tsx", import.meta.url),
+    "utf8",
+  );
 
-  // The acceptance system message carries the event name. The bare
-  // "Booking confirmed" constant is identical for every booking, so a
-  // conversation-scoped dedupe on it allowed exactly ONE acceptance message per
-  // DM: every later acceptance between the same planner and DJ inserted nothing,
-  // and with no message row there was no realtime event, no unread state, no
-  // inbox preview change and no notification.
+  // Acceptance message carries event name AND booking id. Event name alone still
+  // collided (same-named re-invite / legacy "Booking accepted · <event>" row),
+  // so the insert skipped, the planner's invite stayed latest, and unread/badge
+  // never appeared — the invite is authored by the planner.
   assert.match(
     bookingRequestsSource,
-    /const messageText = formatBookingConfirmedDmMessage\(booking\.event_name\)/,
+    /const messageText = formatBookingConfirmedDmMessage\(booking\.event_name, booking\.id\)/,
   );
   assert.match(systemMessagesSource, /export function formatBookingConfirmedDmMessage/);
   assert.match(systemMessagesSource, /export function parseBookingConfirmedDmEventName/);
+  assert.match(systemMessagesSource, /export function isBookingAcceptanceDmSystemMessage/);
 
-  // Dedupe now matches that per-event text, so it identifies the booking rather
-  // than the whole conversation.
-  assert.match(
+  // Dedupe only on the exact per-booking text — legacy/activity strings must not
+  // block a new confirmation row for a later booking of the same event name.
+  assert.match(bookingRequestsSource, /\.eq\("text", messageText\)/);
+  assert.doesNotMatch(
     bookingRequestsSource,
     /\.in\("text", \[messageText, activityText, legacyMessageText\]\)/,
   );
 
-  // The per-event form is still recognised as a booking system message, and
+  assert.equal(
+    formatBookingConfirmedDmMessage(
+      "Club 53",
+      "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+    ),
+    "Booking confirmed · Club 53 · aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+  );
+  assert.equal(
+    parseBookingConfirmedDmEventName(
+      "Booking confirmed · Club 53 · aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+    ),
+    "Club 53",
+  );
+  assert.equal(parseBookingConfirmedDmEventName("Booking confirmed · Club 53"), "Club 53");
+  assert.equal(
+    formatDmBookingSystemMessageDisplay(
+      "Booking confirmed · Club 53 · aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+    ),
+    DM_BOOKING_CONFIRMED_MESSAGE,
+  );
+  assert.equal(
+    isBookingAcceptanceDmSystemMessage(
+      "Booking confirmed · Club 53 · aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+    ),
+    true,
+  );
+
+  // Event Details must reload lineup on the shared booking-change signal —
+  // without this, PENDING sticks until hard refresh even when Realtime fires.
+  assert.match(eventDetailSource, /ftc-notifications-updated/);
+  assert.match(eventDetailSource, /reloadEventLineup/);
+
+  // Acceptance DM INSERT fans into notifyBookingRequestsChanged so Event Details
+  // updates even when booking_requests is not yet in the Realtime publication.
+  assert.match(navBadgeSource, /isBookingAcceptanceDmSystemMessage/);
+  assert.match(navBadgeSource, /notifyBookingRequestsChanged\(\)/);
+
+  // The per-booking form is still recognised as a booking system message, and
   // still displays as the concise canonical copy.
   assert.match(
     systemMessagesSource,
@@ -12012,8 +12060,6 @@ function testBookingAcceptedDmMessageIsScopedToTheBooking() {
   // gated on the DM insert -- that gate meant a skipped system message silently
   // swallowed the only notification the planner would have received.
   assert.match(bookingRequestsSource, /"booking_update",\s*\n\s*"Booking accepted"/);
-  // (Other DM flows still gate their "New message" notification on the insert;
-  // only the acceptance branch must not, so this checks that branch specifically.)
   assert.doesNotMatch(
     bookingRequestsSource,
     /const dmResult = await insertBookingAcceptedDmMessageIfNeeded/,
