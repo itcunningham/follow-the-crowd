@@ -822,24 +822,21 @@ export default function EventRunSheetSection({
         filterRunSheetRowsToAcceptedBookings(currentRows, lineup, profiles);
 
       if (syncInFlightRef.current) {
-        const unchanged = currentFiltered();
-        return { rows: unchanged, persistedRows: unchanged };
+        return !canEdit
+          ? { rows: currentRows, persistedRows: currentRows }
+          : { rows: currentFiltered(), persistedRows: currentFiltered() };
       }
 
       const { addedCount } = mergeAcceptedDjsIntoRunSheetRows(currentRows, lineup, profiles);
 
       if (addedCount === 0) {
-        const unchanged = currentFiltered();
-        return { rows: unchanged, persistedRows: unchanged };
+        return !canEdit
+          ? { rows: currentRows, persistedRows: currentRows }
+          : { rows: currentFiltered(), persistedRows: currentFiltered() };
       }
 
       if (!canEdit) {
-        const merged = filterRunSheetRowsToAcceptedBookings(
-          mergeAcceptedDjsIntoRunSheetRows(currentRows, lineup, profiles).rows,
-          lineup,
-          profiles,
-        );
-        return { rows: merged, persistedRows: merged };
+        return { rows: currentRows, persistedRows: currentRows };
       }
 
       syncInFlightRef.current = true;
