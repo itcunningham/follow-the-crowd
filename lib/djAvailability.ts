@@ -41,7 +41,7 @@ export type DjPlannerAvailabilityHint = {
 };
 
 const STATUS_LABELS: Record<DjPlannerAvailabilityStatus, string> = {
-  already_booked: "Already booked",
+  already_booked: "Booked",
   available: "Available",
   unavailable: "Unavailable",
   tentative: "Maybe",

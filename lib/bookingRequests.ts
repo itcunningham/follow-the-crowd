@@ -2538,11 +2538,11 @@ export const ALL_SELECTED_DJS_ALREADY_HAVE_EVENT_REQUEST_MESSAGE =
 export function getEventBookingDuplicateLabel(status: EventBookingDuplicateStatus): string {
   switch (status) {
     case "already_invited":
-      return "Already invited";
+      return "Pending";
     case "already_booked":
-      return "Already booked";
+      return "Booked";
     case "already_declined":
-      return "Already declined";
+      return "Declined";
   }
 }
 
