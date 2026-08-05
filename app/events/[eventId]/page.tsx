@@ -123,6 +123,7 @@ import {
 } from "@/lib/events/crewChatUnlock";
 import { computeCrewChatEventActions } from "@/lib/events/crewChatEventActions";
 import { getEventCrewChatLink } from "@/lib/eventCrewChat";
+import { loadEventRunSheet } from "@/lib/eventRunSheet";
 import { getEventCoverUploadErrorMessage, normalizeEventCoverImageUrl } from "@/lib/events/eventCoverImage";
 import { consumeEventCreateInviteMessage } from "@/lib/events/eventCreateInviteMessages";
 import {
@@ -601,7 +602,24 @@ function EventDetailPageView() {
       setCrewChatUnlock(unlock);
 
       const recipientIds = bookings.map((booking) => booking.recipient_id);
-      const profileIds = collectEventDetailProfileIds(recipientIds, loadedEvent.owner_id);
+      let profileIds = collectEventDetailProfileIds(recipientIds, loadedEvent.owner_id);
+
+      try {
+        const runSheet = await loadEventRunSheet(eventId);
+        const runSheetRecipientIds = runSheet.rows
+          .map((row) => {
+            if (row.custom_data && typeof row.custom_data === "object") {
+              const recipientId = (row.custom_data as { booking_recipient_id?: unknown })
+                .booking_recipient_id;
+              return typeof recipientId === "string" ? recipientId : null;
+            }
+            return null;
+          })
+          .filter((id): id is string => id !== null);
+
+        profileIds = [...new Set([...profileIds, ...runSheetRecipientIds])];
+      } catch {
+      }
 
       if (profileIds.length > 0) {
         const profileMap = await getBookingRecipientProfilesByIds(profileIds);
