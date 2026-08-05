@@ -911,6 +911,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 | Crew Chat image sharing (`message_attachments.event_id`) | `scripts/setupEventCrewChatAttachments.sql` — **applied 2026-08-03** (required a type-cast fix after the first run, see Group chat entry above) |
 
 ## Recent commits (reference)
+- `da181f3` — fix(events): show withdraw feedback in header toast above flyer
 - `e8297d4` — fix(copy): DJ withdraw CTA says Withdraw booking
 - `0ec11d4` — fix(nav): keep Event Details origin through DM View event Back
 - `a93ac28` — fix(copy): drop trailing period on Run Sheet planner empty state
