@@ -7,13 +7,13 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 
 **Communication preference locked (2026-08-04):** brutal honesty, no ego — never agree by default; push better options when Isaac's idea is weaker. Strict critic mode + hostile counterarguments when useful. `USER-PREFERENCES.md` + `.cursor/rules/brutal-honesty.mdc`.
 
-**DJ withdraw CTA says Withdraw booking (`e8297d4` on `main`, 2026-08-05):** button + confirm title — was "Withdraw from event". Matches what actually ends (the booking); dialog body unchanged. **View event** kept (not shortened to View).
+**DJ withdraw CTA says Withdraw booking (`pending` on `main`, 2026-08-05):** button + confirm title — was "Withdraw from event". Matches what actually ends (the booking); dialog body unchanged. **View event** kept (not shortened to View).
 
 **Confirmed → Message → View event → Back ×2 stays on Event Details (`0ec11d4` on `main`, 2026-08-05):** View event from a DM opened via Event Details dropped `from=event-detail`/`eventReturn` (entry context only knew bookings/calendar/profile). Second Back fell through to Messages. `event-detail` is now a valid DM entry context; View event carries `dmReturnFrom=event-detail` + `eventReturn`, and Back rebuilds the DM with that origin so the next Back restores Event Details (then Confirmed).
 
 **Run Sheet planner empty copy (`a93ac28` on `main`, 2026-08-05):** "Add set times, stages and notes for your DJs" — trailing period dropped (matches short UI copy style).
 
-**DJ Your booking: Message [planner] + Withdraw below card (`065fbce` on `main`, 2026-08-05; name truncate `5ab359d`):** Your booking card keeps status/fee + **Message {planner name}** (fallback `Message`). Planner name in the CTA hard-caps at 14 characters with an ellipsis so long QA/display names don't billboard the button. Withdraw from event sits under a bottom border — same danger-zone pattern as planner Cancel Event. Gigs list still says Open DM.
+**DJ Your booking: Message [planner] + Withdraw below card (`065fbce` on `main`, 2026-08-05; name truncate `5ab359d`):** Your booking card keeps status/fee + **Message {planner name}** (fallback `Message`). Planner name in the CTA hard-caps at 14 characters with an ellipsis so long QA/display names don't billboard the button. Withdraw sits under a bottom border — same danger-zone pattern as planner Cancel Event. Gigs list still says Open DM.
 
 **Confirmed Gigs → Open DM → Back → Back stays on Confirmed (`279d94b` on `main`, 2026-08-05):** Open DM from Event Details was rebuilding bare `/events/:id`, dropping `from=bookings&tab=accepted`, so the next Back defaulted to Incoming. DM URLs now carry `eventReturn` (same query key as Group chat); Back restores the full Event Details query. DM Back from Event Details uses `replace` so history stays clean.
 
@@ -911,7 +911,6 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 | Crew Chat image sharing (`message_attachments.event_id`) | `scripts/setupEventCrewChatAttachments.sql` — **applied 2026-08-03** (required a type-cast fix after the first run, see Group chat entry above) |
 
 ## Recent commits (reference)
-- `e8297d4` — fix(copy): DJ withdraw CTA says Withdraw booking
 - `0ec11d4` — fix(nav): keep Event Details origin through DM View event Back
 - `a93ac28` — fix(copy): drop trailing period on Run Sheet planner empty state
 - `5ab359d` — fix(events): hard-cap planner name on DJ Message CTA
