@@ -765,7 +765,7 @@ function RunSheetNotCompletedEmptyState({
   return (
     <div className="mt-5 py-10 text-center">
       <p className="mx-auto max-w-sm text-sm text-ftc-text-secondary">
-        Add set times, stages and notes for your DJs.
+        Add set times, stages and notes for your DJs
       </p>
       <button type="button" onClick={onEditClick} className={`${EVENT_DETAIL_BTN_PRIMARY} mt-5`}>
         Create

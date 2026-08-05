@@ -10313,7 +10313,8 @@ function testRunSheetProductionPolish() {
   // Sheet" -- the planner already knows which section they are in).
   assert.doesNotMatch(emptyStateFn, /Create your Run Sheet/);
   assert.doesNotMatch(emptyStateFn, /Run Sheet not completed/);
-  assert.match(emptyStateFn, /Add set times, stages and notes for your DJs\./);
+  assert.match(emptyStateFn, /Add set times, stages and notes for your DJs/);
+  assert.doesNotMatch(emptyStateFn, /Add set times, stages and notes for your DJs\./);
   assert.doesNotMatch(
     emptyStateFn,
     /Add set times, stages and notes for each DJ so everyone knows where they need to be\./,
