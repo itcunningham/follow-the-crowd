@@ -21,8 +21,35 @@ const CREW_CHAT_FROM_EVENT_DETAIL_KEY = "ftc-event-detail-crew-chat-open";
  * Query key carrying Event Details' search string on the crew-chat URL when
  * the one-shot pop marker is missing (refresh / shared link). Must not reuse
  * `from` — that already means "opened from Messages" on crew chat.
+ * Same key is reused on Event Details → Open DM so Back restores Gigs/Calendar
+ * origin query (a bare `/events/:id` drop sent the next Back to Incoming).
  */
 export const CREW_CHAT_EVENT_DETAIL_RETURN_PARAM = "eventReturn";
+
+/**
+ * Rebuild `/events/:id` with the Event Details query that opened a nested
+ * screen (crew chat / DM). Only query-string material is accepted — never a
+ * path or absolute URL.
+ */
+export function buildEventDetailHrefFromReturnQuery(
+  eventId: string,
+  eventDetailReturn: string | null | undefined,
+): string {
+  const base = `/events/${eventId}`;
+  const trimmed = eventDetailReturn?.trim();
+
+  if (!trimmed) {
+    return base;
+  }
+
+  try {
+    const params = new URLSearchParams(trimmed);
+    const query = params.toString();
+    return query ? `${base}?${query}` : base;
+  } catch {
+    return base;
+  }
+}
 
 function writeEventScopedMarker(storageKey: string, eventId: string): void {
   if (typeof window === "undefined" || !eventId.trim()) {

@@ -1973,6 +1973,7 @@ function testEventLineupBookingCardProfileNavigationAndActions() {
   assert.match(cardSource, /EVENT_DETAIL_LINEUP_BTN_SECONDARY/);
   assert.match(cardSource, /shouldHideEventDetailLineupMessageButton/);
   assert.match(cardSource, /dmOriginConversationId/);
+  assert.match(cardSource, /eventDetailReturn/);
   assert.match(cardSource, />\s*Message\s*</);
   assert.match(cardSource, /label="Cancel"/);
   assert.match(cardSource, /showCancelRequest && !pendingProposal/);
@@ -2025,6 +2026,7 @@ function testDmThreadEventDetailBackHref() {
     calendarView: "event" as const,
     calendarMonth: "2026-07-01",
   };
+  const gigsConfirmedReturn = "from=bookings&tab=accepted";
 
   assert.equal(
     resolveDmThreadBackHref({ from: "event-detail", eventId }),
@@ -2039,6 +2041,36 @@ function testDmThreadEventDetailBackHref() {
       calendarMonth: calendarOrigin.calendarMonth,
     }),
     `/events/${eventId}?from=calendar&calendarDate=2026-07-14&calendarView=event&calendarMonth=2026-07-01`,
+  );
+  assert.equal(
+    resolveDmThreadBackHref({
+      from: "event-detail",
+      eventId,
+      eventReturn: gigsConfirmedReturn,
+    }),
+    `/events/${eventId}?${gigsConfirmedReturn}`,
+    "Open DM Back must restore Gigs Confirmed origin on Event Details",
+  );
+  // eventReturn wins over fragment calendar params when both are present.
+  assert.equal(
+    resolveDmThreadBackHref({
+      from: "event-detail",
+      eventId,
+      eventReturn: gigsConfirmedReturn,
+      calendarDate: calendarOrigin.calendarDate,
+      calendarView: calendarOrigin.calendarView,
+      calendarMonth: calendarOrigin.calendarMonth,
+    }),
+    `/events/${eventId}?${gigsConfirmedReturn}`,
+  );
+  assert.equal(
+    resolveEventDetailBackHref(null, {
+      from: "bookings",
+      tab: "accepted",
+      isDjWorkspace: true,
+    }),
+    "/bookings?tab=accepted",
+    "second Back from restored Event Details must land on Confirmed Gigs",
   );
   assert.equal(resolveDmThreadBackHref({ from: "event-detail", eventId: "not-a-uuid" }), "/events");
   assert.equal(resolveDmThreadBackHref({ from: "bookings" }), "/bookings");
@@ -2055,6 +2087,10 @@ function testDmThreadEventDetailBackHref() {
     `/dm/${conversationId}?from=event-detail&eventId=${eventId}&calendarDate=2026-07-14&calendarView=event&calendarMonth=2026-07-01`,
   );
   assert.equal(
+    buildEventDetailDmThreadHref(conversationId, eventId, null, gigsConfirmedReturn),
+    `/dm/${conversationId}?from=event-detail&eventId=${eventId}&${CREW_CHAT_EVENT_DETAIL_RETURN_PARAM}=${encodeURIComponent(gigsConfirmedReturn)}`,
+  );
+  assert.equal(
     buildDmThreadHref(conversationId, { from: "dm" }),
     `/dm/${conversationId}?from=dm`,
   );
@@ -2062,6 +2098,23 @@ function testDmThreadEventDetailBackHref() {
     buildDmThreadHref(conversationId, { from: "event-detail", eventId: "bad-id" }),
     `/dm/${conversationId}?from=event-detail`,
   );
+
+  const detailSource = readFileSync(
+    new URL("../app/events/[eventId]/page.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(
+    detailSource,
+    /buildEventDetailDmThreadHref\(\s*conversationId,\s*eventId,\s*calendarOrigin,\s*searchParams\.toString\(\)/,
+  );
+  assert.match(detailSource, /eventDetailReturn=\{searchParams\.toString\(\)/);
+
+  const dmSource = readFileSync(
+    new URL("../app/dm/[conversationId]/page.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(dmSource, /eventReturn: searchParams\.get\(CREW_CHAT_EVENT_DETAIL_RETURN_PARAM\)/);
+  assert.match(dmSource, /from"\) === "event-detail"/);
 }
 
 function testProfileChatBackNavigation() {

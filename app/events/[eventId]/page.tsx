@@ -250,8 +250,13 @@ function EventDetailPageView() {
   );
   const buildEventDetailLineupDmHref = useCallback(
     (conversationId: string) =>
-      buildEventDetailDmThreadHref(conversationId, eventId, calendarOrigin),
-    [calendarOrigin, eventId],
+      buildEventDetailDmThreadHref(
+        conversationId,
+        eventId,
+        calendarOrigin,
+        searchParams.toString() || null,
+      ),
+    [calendarOrigin, eventId, searchParams],
   );
 
   function goBackToEvents() {
@@ -1627,6 +1632,7 @@ function EventDetailPageView() {
                                     currentUserId={currentUserId}
                                     eventDetailId={eventId}
                                     eventDetailFromTab={searchParams.get("fromTab")}
+                                    eventDetailReturn={searchParams.toString() || null}
                                     dmOriginConversationId={dmOriginConversationId}
                                     calendarOrigin={calendarOrigin}
                                     readOnly={isHistoryEventDetail}

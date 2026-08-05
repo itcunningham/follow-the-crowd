@@ -11,6 +11,10 @@ import {
 } from "@/lib/calendar";
 import { DM_BOOKING_FOCUS_SCROLL_ONLY } from "@/lib/dm/chatBookingTarget";
 import { DM_CHAT_SCROLL_RESTORE_PARAM } from "@/lib/dm/dmChatScrollRestoration";
+import {
+  CREW_CHAT_EVENT_DETAIL_RETURN_PARAM,
+  buildEventDetailHrefFromReturnQuery,
+} from "@/lib/events/eventDetailCrewChatReturn";
 import { buildEventDetailProfileHref, buildProfileHref } from "@/lib/profileNavigation";
 import { looksLikeUserId } from "@/lib/user/displayName";
 
@@ -192,6 +196,11 @@ export type DmThreadBackContext = {
   calendarDate?: string | null;
   calendarView?: string | null;
   calendarMonth?: string | null;
+  /**
+   * Full Event Details query string carried through Open DM so Back restores
+   * Gigs/Calendar/history origin (same role as crew-chat `eventReturn`).
+   */
+  eventReturn?: string | null;
 };
 
 function resolveValidatedEventDetailBackHref(eventId: string | null | undefined): string | null {
@@ -240,6 +249,15 @@ export function resolveDmThreadBackHref(context: DmThreadBackContext): string {
 
     if (!eventHref) {
       return "/events";
+    }
+
+    const eventId = context.eventId?.trim();
+    const eventReturn = context.eventReturn?.trim();
+
+    // Prefer the full Event Details query (e.g. from=bookings&tab=confirmed).
+    // A bare `/events/:id` drop made the next Back land on Incoming Gigs.
+    if (eventId && eventReturn) {
+      return buildEventDetailHrefFromReturnQuery(eventId, eventReturn);
     }
 
     const calendarOrigin = parseCalendarOriginReturnParams(
@@ -334,6 +352,8 @@ export function buildDmThreadHref(
     calendarMonth?: string;
     /** Set when a precise scroll-position restore should be attempted on mount — see resolveDmThreadHrefOptionsFromEventDetailReturn. */
     restoreScroll?: string;
+    /** Event Details search string to restore on Back — see CREW_CHAT_EVENT_DETAIL_RETURN_PARAM. */
+    eventReturn?: string;
   },
 ): string {
   const params = new URLSearchParams();
@@ -378,6 +398,12 @@ export function buildDmThreadHref(
     params.set("calendarMonth", options.calendarMonth.trim());
   }
 
+  const eventReturn = options?.eventReturn?.trim();
+
+  if (eventReturn) {
+    params.set(CREW_CHAT_EVENT_DETAIL_RETURN_PARAM, eventReturn);
+  }
+
   const query = params.toString();
 
   return query ? `/dm/${conversationId}?${query}` : `/dm/${conversationId}`;
@@ -387,6 +413,7 @@ export function buildEventDetailDmThreadHref(
   conversationId: string,
   eventId: string,
   calendarOrigin?: CalendarOriginState | null,
+  eventDetailReturn?: string | null,
 ): string {
   return buildDmThreadHref(conversationId, {
     from: "event-detail",
@@ -394,5 +421,6 @@ export function buildEventDetailDmThreadHref(
     calendarDate: calendarOrigin?.calendarDate,
     calendarView: calendarOrigin?.calendarView,
     calendarMonth: calendarOrigin?.calendarMonth,
+    eventReturn: eventDetailReturn?.trim() || undefined,
   });
 }

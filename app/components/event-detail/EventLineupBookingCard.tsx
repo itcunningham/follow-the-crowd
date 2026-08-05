@@ -46,6 +46,7 @@ export default function EventLineupBookingCard({
   currentUserId,
   eventDetailId,
   eventDetailFromTab = null,
+  eventDetailReturn = null,
   dmOriginConversationId = null,
   calendarOrigin = null,
   readOnly = false,
@@ -67,6 +68,7 @@ export default function EventLineupBookingCard({
   currentUserId: string | null;
   eventDetailId?: string | null;
   eventDetailFromTab?: string | null;
+  eventDetailReturn?: string | null;
   dmOriginConversationId?: string | null;
   calendarOrigin?: CalendarOriginState | null;
   readOnly?: boolean;
@@ -204,6 +206,7 @@ export default function EventLineupBookingCard({
                       booking.conversation_id!,
                       eventDetailId,
                       calendarOrigin,
+                      eventDetailReturn,
                     )
                   : `/dm/${booking.conversation_id}`
               }

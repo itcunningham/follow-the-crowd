@@ -11,7 +11,10 @@ import {
   getCurrentUserId,
   getCurrentUserProfile,
 } from "@/lib/user/currentUser";
-import { CREW_CHAT_EVENT_DETAIL_RETURN_PARAM } from "@/lib/events/eventDetailCrewChatReturn";
+import {
+  CREW_CHAT_EVENT_DETAIL_RETURN_PARAM,
+  buildEventDetailHrefFromReturnQuery,
+} from "@/lib/events/eventDetailCrewChatReturn";
 
 export type EventCrewChatMessage = {
   id: string;
@@ -64,28 +67,11 @@ export function getEventCrewChatLink(
   return query ? `${base}?${query}` : base;
 }
 
-/**
- * Rebuild `/events/:id` with the Event Details query that opened this chat.
- * Only query-string material is accepted — never a path or absolute URL.
- */
 export function buildEventDetailHrefFromCrewChatReturn(
   eventId: string,
   eventDetailReturn: string | null | undefined,
 ): string {
-  const base = `/events/${eventId}`;
-  const trimmed = eventDetailReturn?.trim();
-
-  if (!trimmed) {
-    return base;
-  }
-
-  try {
-    const params = new URLSearchParams(trimmed);
-    const query = params.toString();
-    return query ? `${base}?${query}` : base;
-  } catch {
-    return base;
-  }
+  return buildEventDetailHrefFromReturnQuery(eventId, eventDetailReturn);
 }
 
 export function getEventCrewChatBackHref(
@@ -98,7 +84,7 @@ export function getEventCrewChatBackHref(
     return tab === "group" ? "/dm?tab=group" : "/dm";
   }
 
-  return buildEventDetailHrefFromCrewChatReturn(eventId, eventDetailReturn);
+  return buildEventDetailHrefFromReturnQuery(eventId, eventDetailReturn);
 }
 
 function buildDeniedAccess(

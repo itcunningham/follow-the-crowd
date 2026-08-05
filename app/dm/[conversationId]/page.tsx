@@ -66,6 +66,7 @@ import {
   resolveMessageGroupLiClass,
 } from "@/lib/dm/chatMessageGroupLayout";
 import { parseDmThreadEntryContext, resolveDmThreadBackHref } from "@/lib/dm/threadNavigation";
+import { CREW_CHAT_EVENT_DETAIL_RETURN_PARAM } from "@/lib/events/eventDetailCrewChatReturn";
 import { useFixedChatPageDocumentReset } from "@/lib/navigation/useFixedChatPageDocumentReset";
 import { FIXED_CHAT_PAGE_SHELL_CLASS } from "@/lib/navigation/prepareFixedChatPageMount";
 import { traceDmChatLayout } from "@/lib/navigation/dmChatLayoutTrace";
@@ -264,8 +265,11 @@ export default function DmChatPage() {
     calendarDate: searchParams.get("calendarDate"),
     calendarView: searchParams.get("calendarView"),
     calendarMonth: searchParams.get("calendarMonth"),
+    eventReturn: searchParams.get(CREW_CHAT_EVENT_DETAIL_RETURN_PARAM),
   });
-  const backReplace = searchParams.get("from") === "profile";
+  const backReplace =
+    searchParams.get("from") === "profile" ||
+    searchParams.get("from") === "event-detail";
   const dmThreadEntryContext = useMemo(
     () => parseDmThreadEntryContext((key) => searchParams.get(key)),
     [searchParams],
