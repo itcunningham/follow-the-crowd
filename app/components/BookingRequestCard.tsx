@@ -377,7 +377,7 @@ export default function BookingRequestCard({
                   type="button"
                   onClick={onAccept}
                   disabled={actionDisabled}
-                  className="ftc-btn-primary w-full px-3 py-2.5 text-xs uppercase tracking-wide disabled:cursor-not-allowed disabled:opacity-50"
+                  className="inline-flex min-h-10 w-full items-center justify-center rounded-xl bg-ftc-primary px-3 py-2 text-xs font-medium text-ftc-text transition disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   Accept offer
                 </button>
@@ -395,7 +395,7 @@ export default function BookingRequestCard({
                   type="button"
                   onClick={onDecline}
                   disabled={actionDisabled}
-                  className="w-full rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated px-3 py-2.5 text-xs font-semibold uppercase tracking-wide text-ftc-text-secondary transition hover:border-red-500/35 hover:text-red-300 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="inline-flex min-h-10 w-full items-center justify-center rounded-xl border border-ftc-destructive bg-ftc-destructive/10 px-3 py-2 text-xs font-medium text-ftc-destructive transition disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   Decline
                 </button>
@@ -406,7 +406,7 @@ export default function BookingRequestCard({
                   type="button"
                   onClick={onDecline}
                   disabled={actionDisabled}
-                  className="flex-[0.92] rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated px-3 py-2.5 text-xs font-semibold uppercase tracking-wide text-ftc-text-secondary transition hover:border-red-500/35 hover:text-red-300 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="inline-flex min-h-10 flex-[0.92] items-center justify-center rounded-xl border border-ftc-destructive bg-ftc-destructive/10 px-3 py-2 text-xs font-medium text-ftc-destructive transition disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   Decline
                 </button>
@@ -414,7 +414,7 @@ export default function BookingRequestCard({
                   type="button"
                   onClick={onAccept}
                   disabled={actionDisabled}
-                  className="ftc-btn-primary flex-[1.08] px-3 py-2.5 text-xs uppercase tracking-wide disabled:cursor-not-allowed disabled:opacity-50"
+                  className="inline-flex min-h-10 flex-[1.08] items-center justify-center rounded-xl bg-ftc-primary px-3 py-2 text-xs font-medium text-ftc-text transition disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   Accept
                 </button>
@@ -433,7 +433,7 @@ export default function BookingRequestCard({
               type="button"
               onClick={onDecline}
               disabled={actionDisabled}
-              className="w-full rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated px-3 py-2.5 text-xs font-semibold uppercase tracking-wide text-ftc-text-secondary transition hover:border-red-500/35 hover:text-red-300 disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex min-h-10 w-full items-center justify-center rounded-xl border border-ftc-destructive bg-ftc-destructive/10 px-3 py-2 text-xs font-medium text-ftc-destructive transition disabled:cursor-not-allowed disabled:opacity-50"
             >
               Decline
             </button>
