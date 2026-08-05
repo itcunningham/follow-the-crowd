@@ -640,9 +640,7 @@ function RunSheetEntry({
         onClick={onToggleExpanded}
         aria-expanded={isExpanded}
         aria-controls={panelId}
-        // `py-1` is the tap target's own padding and is deliberately left
-        // alone; only the margin above it tightens.
-        className="mt-0.5 flex w-full items-center gap-2 rounded-md py-1 text-left"
+        className="mt-0 flex w-full items-center gap-2 rounded-md py-1 text-left"
       >
         <span className="min-w-0 flex-1 truncate text-xs text-ftc-text-muted">
           {!isExpanded && collapsedSummary
@@ -981,11 +979,10 @@ export default function EventRunSheetSection({
   // dedicated empty state below, distinct from partial completion (which
   // shows the normal list with individual rows muted; see RunSheetEntry).
   const allRowsIncomplete = rows.length > 0 && completedRowCount === 0;
-  // View mode only: "N of M completed" is a browsing aid, not something a
-  // planner mid-edit needs restated back to them while they are the one
-  // actively changing that number -- and it would otherwise sit directly
-  // above a "Save" button appearing for the same reason, doubling up.
-  const showRunSheetProgress = !isEditing && rows.length > 0 && !allRowsIncomplete;
+  // View mode only, planner only: "N of M completed" is a planner browsing aid.
+  // Not shown to DJs (canEdit === planner). Hidden while editing or when no rows.
+  const showRunSheetProgress =
+    canEdit && !isEditing && rows.length > 0 && !allRowsIncomplete;
   // The header cluster (Edit, or Cancel + Save) is suppressed for exactly the
   // same window the empty state above owns: while browsing an all-incomplete
   // sheet, "Create Run Sheet" is the only action on screen, not a duplicate of
