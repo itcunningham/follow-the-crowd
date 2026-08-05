@@ -16,7 +16,7 @@
 - Commit only when I ask (or task explicitly says commit and push).
 - Use clear commit messages I provide or sensible one-line messages.
 - Do not force push main.
-- **Ship small approved fixes to `main` for Production.** Branch Previews show **"No target"** and are useless for device QA on `follow-the-crowd.vercel.app`. Do not leave a finished bugfix / polish PR sitting only on a Preview branch — merge (or fast-forward) to `main` so Vercel Production picks it up. Large/risky work can still use a PR first; once Isaac says ship / merge / "to main", land it on `main` the same turn.
+- **Auto-merge finished work to `main`.** When a task is done and code is working: merge to main and deploy. Do not wait for approval or ask permission — branch previews show "No target" and are useless for testing on production. Merge immediately after confirming the fix works. Small approved fixes / polish work goes to main right away. Large/risky work can use a PR first, but once done, merge to main the same turn.
 
 ## Code
 
