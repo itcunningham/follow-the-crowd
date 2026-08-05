@@ -395,7 +395,7 @@ export default function BookingRequestCard({
                   type="button"
                   onClick={onDecline}
                   disabled={actionDisabled}
-                  className="w-full rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated px-3 py-2.5 text-xs font-semibold uppercase tracking-wide text-ftc-text-secondary transition hover:border-red-500/35 hover:text-red-300 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="w-full rounded-xl border border-[var(--ftc-color-danger)] bg-ftc-bg-elevated px-3 py-2.5 text-xs font-semibold uppercase tracking-wide text-[var(--ftc-color-danger)] transition hover:bg-[var(--ftc-color-danger)] hover:text-ftc-bg disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   Decline
                 </button>
@@ -406,7 +406,7 @@ export default function BookingRequestCard({
                   type="button"
                   onClick={onDecline}
                   disabled={actionDisabled}
-                  className="flex-[0.92] rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated px-3 py-2.5 text-xs font-semibold uppercase tracking-wide text-ftc-text-secondary transition hover:border-red-500/35 hover:text-red-300 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="flex-[0.92] rounded-xl border border-[var(--ftc-color-danger)] bg-ftc-bg-elevated px-3 py-2.5 text-xs font-semibold uppercase tracking-wide text-[var(--ftc-color-danger)] transition hover:bg-[var(--ftc-color-danger)] hover:text-ftc-bg disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   Decline
                 </button>
@@ -433,7 +433,7 @@ export default function BookingRequestCard({
               type="button"
               onClick={onDecline}
               disabled={actionDisabled}
-              className="w-full rounded-xl border border-ftc-border-subtle bg-ftc-bg-elevated px-3 py-2.5 text-xs font-semibold uppercase tracking-wide text-ftc-text-secondary transition hover:border-red-500/35 hover:text-red-300 disabled:cursor-not-allowed disabled:opacity-50"
+              className="w-full rounded-xl border border-[var(--ftc-color-danger)] bg-ftc-bg-elevated px-3 py-2.5 text-xs font-semibold uppercase tracking-wide text-[var(--ftc-color-danger)] transition hover:bg-[var(--ftc-color-danger)] hover:text-ftc-bg disabled:cursor-not-allowed disabled:opacity-50"
             >
               Decline
             </button>

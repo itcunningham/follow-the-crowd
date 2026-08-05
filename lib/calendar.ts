@@ -39,6 +39,7 @@ import {
   FTC_STATUS_SUCCESS,
 } from "@/lib/ftcFlatStatus";
 import type { UserRole } from "@/lib/user/currentUser";
+import { supabase } from "@/lib/supabaseClient";
 
 export type CalendarItemType = "event" | "sent_booking" | "received_booking";
 
@@ -526,8 +527,32 @@ export async function loadCalendarItems(role: UserRole | null): Promise<Calendar
   if (role === "dj" || role === "both") {
     const receivedBookings = await listReceivedBookingRequests();
 
+    // Get cancelled event IDs to filter them out
+    const eventIds = new Set(
+      receivedBookings
+        .map(b => b.event_id)
+        .filter((id): id is string => id !== null)
+    );
+
+    let cancelledEventIds = new Set<string>();
+    if (eventIds.size > 0) {
+      const { data: events } = await supabase
+        .from("events")
+        .select("id")
+        .in("id", Array.from(eventIds))
+        .eq("status", "cancelled");
+
+      if (events) {
+        cancelledEventIds = new Set(events.map(e => e.id as string));
+      }
+    }
+
     for (const booking of receivedBookings) {
       if (booking.status === "cancelled") {
+        continue;
+      }
+
+      if (booking.event_id && cancelledEventIds.has(booking.event_id)) {
         continue;
       }
 
