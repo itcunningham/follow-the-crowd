@@ -3,6 +3,8 @@
 
 Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 
+**Status labels simplified (`2af240e` on `main`, 2026-08-05):** Send bookings sheet now shows concise status pills: "Booked" (green), "Pending" (yellow), "Declined" (gray). Removed "Already" prefix and changed "Already invited" to "Pending" for consistency with booking status terminology throughout the app.
+
 **Decline button red, DJ calendar hides cancelled events (`4ec0037` on `main`, 2026-08-05):** (1) Decline button now uses danger color (red) like Cancel — matches the importance of rejecting a booking offer to both parties. (2) DJ calendar (gigs view) was showing cancelled events — two layers of filtering added. `loadCalendarItems()` filters for generic calendar; `listMyActiveReceivedBookings()` filters for DJ gigs calendar specifically. Both now query events table and exclude bookings where `event.status = 'cancelled'`.
 
 **DJ already-booked shows for cancelled events (`9bcc42c` on `main`, 2026-08-05):** `getPlannerDjAvailabilityHints` was marking DJs as "already booked" if they had an accepted booking for a cancelled event on the same date. The planner cancels event → accepted bookings stay `status = "accepted"` but event gets `status = "cancelled"`. When planning a new event, the query found those stale bookings and blocked the DJ. Fix: query events table and filter out bookings where `status = "cancelled"` before marking DJ unavailable.
