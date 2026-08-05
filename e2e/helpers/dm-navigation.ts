@@ -32,7 +32,7 @@ export async function openGigDmForEvent(page: Page, eventName: string): Promise<
   }).toPass({ timeout: 30_000 });
 
   const gigCard = page.locator("li").filter({ hasText: eventName }).first();
-  const openDm = gigCard.getByRole("link", { name: /^Open DM$/i });
+  const openDm = gigCard.getByRole("link", { name: /^Message$/i });
   await expect(openDm).toBeVisible();
   await openDm.click();
   await expect(page).toHaveURL(/\/dm\/[^/?#]+/, { timeout: 15_000 });
