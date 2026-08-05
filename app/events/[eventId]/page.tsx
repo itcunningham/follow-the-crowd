@@ -1671,7 +1671,7 @@ function EventDetailPageView() {
                               <button
                                 onClick={() => handleRespondToPendingBooking(viewerBooking, "accepted")}
                                 disabled={respondingToPendingBookingId === viewerBooking.id}
-                                className={`${EVENT_DETAIL_BTN_PRIMARY_WIDE} text-xs`}
+                                className="inline-flex min-h-10 items-center justify-center rounded-md bg-ftc-primary px-3 py-2 text-xs font-medium text-ftc-text-on-primary transition disabled:cursor-not-allowed disabled:opacity-50"
                               >
                                 {respondingToPendingBookingId === viewerBooking.id ? "..." : "Accept"}
                               </button>
