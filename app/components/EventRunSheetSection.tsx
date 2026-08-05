@@ -9,7 +9,7 @@ import {
   EVENT_DETAIL_FEEDBACK_CLASS,
 } from "@/app/components/event-detail/eventDetailUi";
 import { useCallback, useEffect, useMemo, useRef, useState, type MutableRefObject } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { supabase } from "@/lib/supabaseClient";
 import { BookingDualTimeWheelPicker } from "@/app/components/BookingTimeWheelPicker";
 import ProfileAvatar from "@/app/components/ProfileAvatar";
 import ChatProfileAvatarLink from "@/app/components/chat/ChatProfileAvatarLink";
@@ -897,7 +897,6 @@ export default function EventRunSheetSection({
   }, [loadRunSheet]);
 
   useEffect(() => {
-    const supabase = createClient();
     const subscription = supabase
       .channel(`run-sheet:${eventId}`)
       .on(
