@@ -756,7 +756,7 @@ function RunSheetNotCompletedEmptyState({
     return (
       <div className="mt-5 py-10 text-center">
         <p className="mx-auto max-w-sm text-sm text-ftc-text-secondary">
-          The promoter hasn&apos;t published the Run Sheet yet. Check back later.
+          The promoter hasn&apos;t published the Run Sheet yet. Check back later
         </p>
       </div>
     );

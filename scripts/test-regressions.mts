@@ -10199,7 +10199,7 @@ function testRunSheetProductionPolish() {
   assert.match(emptyStateFn, /if \(!canEdit\) \{/);
   assert.match(
     emptyStateFn,
-    /The promoter hasn&apos;t published the Run Sheet yet\. Check back later\./,
+    /The promoter hasn&apos;t published the Run Sheet yet\. Check back later/,
   );
   // No heading of its own in either branch: the section title above already
   // says "Run Sheet", so a second "Run Sheet"/"Create your Run Sheet" line
