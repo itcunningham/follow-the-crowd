@@ -7,6 +7,8 @@ Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 
 **Communication preference locked (2026-08-04):** brutal honesty, no ego — never agree by default; push better options when Isaac's idea is weaker. Strict critic mode + hostile counterarguments when useful. `USER-PREFERENCES.md` + `.cursor/rules/brutal-honesty.mdc`.
 
+**DJ withdraw CTA says Withdraw booking (`pending` on `main`, 2026-08-05):** button + confirm title — was "Withdraw from event". Matches what actually ends (the booking); dialog body unchanged. **View event** kept (not shortened to View).
+
 **Confirmed → Message → View event → Back ×2 stays on Event Details (`0ec11d4` on `main`, 2026-08-05):** View event from a DM opened via Event Details dropped `from=event-detail`/`eventReturn` (entry context only knew bookings/calendar/profile). Second Back fell through to Messages. `event-detail` is now a valid DM entry context; View event carries `dmReturnFrom=event-detail` + `eventReturn`, and Back rebuilds the DM with that origin so the next Back restores Event Details (then Confirmed).
 
 **Run Sheet planner empty copy (`a93ac28` on `main`, 2026-08-05):** "Add set times, stages and notes for your DJs" — trailing period dropped (matches short UI copy style).

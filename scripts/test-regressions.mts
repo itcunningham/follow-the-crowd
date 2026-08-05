@@ -2167,6 +2167,7 @@ function testDjYourBookingMessageLabelAndWithdrawPlacement() {
   assert.doesNotMatch(yourBookingBlock, /CancelAcceptedBookingButton/);
   assert.doesNotMatch(yourBookingBlock, /Open DM/);
   assert.doesNotMatch(yourBookingBlock, /Withdraw from event/);
+  assert.doesNotMatch(yourBookingBlock, /Withdraw booking/);
 }
 
 function testProfileChatBackNavigation() {
@@ -5395,8 +5396,8 @@ function testWithdrawalOtherReasonInputLimits() {
   );
   assert.match(cancelButtonSource, /sanitizeWithdrawalOtherReason\(otherReason\)/);
   // Card trigger stays short; confirm dialog keeps the full "Cancel booking" label.
-  assert.match(cancelButtonSource, /role === "planner" \? "Cancel" : "Withdraw from event"/);
-  assert.match(cancelButtonSource, /role === "planner" \? "Cancel booking\?" : "Withdraw from event\?"/);
+  assert.match(cancelButtonSource, /role === "planner" \? "Cancel" : "Withdraw booking"/);
+  assert.match(cancelButtonSource, /role === "planner" \? "Cancel booking\?" : "Withdraw booking\?"/);
   assert.match(cancelButtonSource, /role === "planner" \? "Cancel booking" : "Withdraw"/);
 
   const bookingRequestsSource = readFileSync(
