@@ -18,6 +18,10 @@
 - Do not force push main.
 - **Auto-merge finished work to `main`.** When a task is done and code is working: merge to main and deploy. Do not wait for approval or ask permission — branch previews show "No target" and are useless for testing on production. Merge immediately after confirming the fix works. Small approved fixes / polish work goes to main right away. Large/risky work can use a PR first, but once done, merge to main the same turn.
 
+## Debugging
+
+- **After 2 failed fix attempts:** stop guessing and investigate. Gather diagnostics first: browser console errors, network requests (Fetch/XHR tab), database queries, data flow logs. Do not guess a third time.
+
 ## Code
 
 - Small, focused diffs. Match existing patterns.
