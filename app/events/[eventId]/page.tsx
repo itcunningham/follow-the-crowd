@@ -1635,44 +1635,49 @@ function EventDetailPageView() {
                     <section className={`${EVENT_DETAIL_SECTION_SPACING} ${EVENT_DETAIL_CARD_CLASS}`}>
                       <EventDetailSectionTitle>Your booking</EventDetailSectionTitle>
                       <div className="mt-3 flex min-w-0 flex-col gap-3">
-                        <div className="min-w-0 flex-1">
-                          <BookingStatusBadge status={viewerBooking.status} variant="compact" />
-                          {viewerBooking.status === "cancelled" ? (
-                            <div className="mt-2">
-                              <EventDetailBookingCancellationDetails
-                                cancelledByLabel={resolveBookingCancelledByLabel(viewerBooking, profiles)}
-                                cancellationReasonLabel={resolveBookingCancellationReasonLabel(viewerBooking)}
-                              />
+                        <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                          <div className="min-w-0 flex-1">
+                            <BookingStatusBadge status={viewerBooking.status} variant="compact" />
+                            {viewerBooking.fee && viewerBooking.status !== "cancelled" ? (
+                              <p className="mt-2 text-sm text-ftc-text-secondary">
+                                {formatRateDisplay(viewerBooking.fee)}
+                              </p>
+                            ) : null}
+                            {viewerBooking.status === "cancelled" ? (
+                              <div className="mt-2">
+                                <EventDetailBookingCancellationDetails
+                                  cancelledByLabel={resolveBookingCancelledByLabel(viewerBooking, profiles)}
+                                  cancellationReasonLabel={resolveBookingCancellationReasonLabel(viewerBooking)}
+                                />
+                              </div>
+                            ) : null}
+                          </div>
+                          {viewerBooking.status === "pending" ? (
+                            <div className="flex gap-2 sm:gap-1.5 sm:ml-3">
+                              <button
+                                onClick={() => handleRespondToPendingBooking(viewerBooking, "declined")}
+                                disabled={respondingToPendingBookingId === viewerBooking.id}
+                                className="inline-flex min-h-9 items-center justify-center rounded-full border border-ftc-destructive bg-ftc-destructive/10 px-3 py-1 text-xs font-medium text-ftc-destructive transition disabled:cursor-not-allowed disabled:opacity-50"
+                              >
+                                {respondingToPendingBookingId === viewerBooking.id ? "..." : "Decline"}
+                              </button>
+                              <button
+                                onClick={() => handleRespondToPendingBooking(viewerBooking, "accepted")}
+                                disabled={respondingToPendingBookingId === viewerBooking.id}
+                                className="inline-flex min-h-9 items-center justify-center rounded-full bg-ftc-primary px-3 py-1 text-xs font-medium text-ftc-text-on-primary transition disabled:cursor-not-allowed disabled:opacity-50"
+                              >
+                                {respondingToPendingBookingId === viewerBooking.id ? "..." : "Accept"}
+                              </button>
                             </div>
                           ) : null}
                         </div>
-                        {viewerBooking.status === "pending" ? (
-                          <div className="flex gap-2 sm:justify-end">
-                            <button
-                              onClick={() => handleRespondToPendingBooking(viewerBooking, "declined")}
-                              disabled={respondingToPendingBookingId === viewerBooking.id}
-                              className={`${EVENT_DETAIL_BTN_DESTRUCTIVE} flex-1 sm:flex-initial`}
-                            >
-                              {respondingToPendingBookingId === viewerBooking.id ? "..." : "Decline"}
-                            </button>
-                            <button
-                              onClick={() => handleRespondToPendingBooking(viewerBooking, "accepted")}
-                              disabled={respondingToPendingBookingId === viewerBooking.id}
-                              className={`${EVENT_DETAIL_BTN_PRIMARY_WIDE} flex-1 sm:flex-initial`}
-                            >
-                              {respondingToPendingBookingId === viewerBooking.id ? "..." : "Accept"}
-                            </button>
-                          </div>
-                        ) : null}
                         {viewerBooking.conversation_id && !hideOpenBookingConversation && viewerBooking.status !== "pending" ? (
-                          <div className="flex w-full min-w-0 shrink-0 sm:justify-end">
-                            <Link
-                              href={buildEventDetailLineupDmHref(viewerBooking.conversation_id)}
-                              className={`${EVENT_DETAIL_BTN_SECONDARY} w-full sm:w-auto sm:min-w-[7.5rem]`}
-                            >
-                              <span className="block truncate">{djBookingMessageLabel}</span>
-                            </Link>
-                          </div>
+                          <Link
+                            href={buildEventDetailLineupDmHref(viewerBooking.conversation_id)}
+                            className={`${EVENT_DETAIL_BTN_SECONDARY} w-full sm:w-auto sm:min-w-[7.5rem]`}
+                          >
+                            <span className="block truncate">{djBookingMessageLabel}</span>
+                          </Link>
                         ) : null}
                       </div>
                     </section>
