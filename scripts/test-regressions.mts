@@ -199,6 +199,7 @@ import {
   formatRateProposedDmSystemMessage,
   formatRunSheetUpdatedDmMessage,
   isBookingAcceptanceDmSystemMessage,
+  isEventCancellationDmActivityMessage,
   isDmBookingSystemMessage,
   isRunSheetUpdatedDmMessage,
   LEGACY_RATE_PROPOSED_DM_PREFIX,
@@ -895,6 +896,8 @@ function testDmBookingSystemMessages() {
     DM_BOOKING_RATE_DECLINED_MESSAGE,
   );
   assert.equal(isDmBookingSystemMessage("BOOKING ACTIVITY · event-cancelled · Party"), false);
+  assert.equal(isEventCancellationDmActivityMessage("BOOKING ACTIVITY · event-cancelled · Party"), true);
+  assert.equal(isEventCancellationDmActivityMessage("Booking confirmed · Party"), false);
 
   const runSheetNotice = formatRunSheetUpdatedDmMessage(
     "Warehouse Set",
@@ -12044,9 +12047,11 @@ function testBookingAcceptedDmMessageIsScopedToTheBooking() {
   assert.match(eventDetailSource, /ftc-notifications-updated/);
   assert.match(eventDetailSource, /reloadEventLineup/);
 
-  // Acceptance DM INSERT fans into notifyBookingRequestsChanged so Event Details
-  // updates even when booking_requests is not yet in the Realtime publication.
+  // Acceptance / event-cancel DM INSERTs fan into notifyBookingRequestsChanged so
+  // Event Details / open DMs update even when booking_requests is not yet in the
+  // Realtime publication (and event cancel never UPDATEs accepted booking rows).
   assert.match(navBadgeSource, /isBookingAcceptanceDmSystemMessage/);
+  assert.match(navBadgeSource, /isEventCancellationDmActivityMessage/);
   assert.match(navBadgeSource, /notifyBookingRequestsChanged\(\)/);
 
   // The per-booking form is still recognised as a booking system message, and
@@ -12065,6 +12070,40 @@ function testBookingAcceptedDmMessageIsScopedToTheBooking() {
     /const dmResult = await insertBookingAcceptedDmMessageIfNeeded/,
   );
   assert.match(bookingRequestsSource, /await insertBookingAcceptedDmMessageIfNeeded\(booking\);/);
+}
+
+function testEventCancellationRefreshesOpenDmBookingCard() {
+  const dmPageSource = readFileSync(
+    new URL("../app/dm/[conversationId]/page.tsx", import.meta.url),
+    "utf8",
+  );
+  const eventsSource = readFileSync(new URL("../lib/events.ts", import.meta.url), "utf8");
+  const systemMessagesSource = readFileSync(
+    new URL("../lib/dm/dmBookingSystemMessages.ts", import.meta.url),
+    "utf8",
+  );
+  const navBadgeSource = readFileSync(
+    new URL("../app/components/navigation/NavBadgeProvider.tsx", import.meta.url),
+    "utf8",
+  );
+
+  // cancel_event leaves accepted booking_requests as accepted. The open DM card
+  // shows cancelled only via event artwork — so cancel must fan out and the DM
+  // must reload bookings+artwork without a hard refresh.
+  assert.match(eventsSource, /notifyBookingRequestsChanged\(\)/);
+  assert.match(
+    eventsSource,
+    /await notifyCancelledBookingsFromEventCancellation\([\s\S]*?notifyBookingRequestsChanged\(\)/,
+  );
+
+  assert.match(dmPageSource, /ftc-notifications-updated/);
+  assert.match(
+    dmPageSource,
+    /parseEventCancellationActivityEventName\(newMessage\.text\)[\s\S]*?reloadConversationBookings\(\)/,
+  );
+
+  assert.match(systemMessagesSource, /export function isEventCancellationDmActivityMessage/);
+  assert.match(navBadgeSource, /isEventCancellationDmActivityMessage/);
 }
 
 function testTemporaryDebugInstrumentationIsFullyRemoved() {
@@ -17045,6 +17084,7 @@ async function main() {
   testRootOverscrollContainmentIsDeclaredOnHtmlAndBody();
   testBookingStatusChangesReconcileEverywhere();
   testBookingAcceptedDmMessageIsScopedToTheBooking();
+  testEventCancellationRefreshesOpenDmBookingCard();
   testTemporaryDebugInstrumentationIsFullyRemoved();
   testCrewChatPremiumPolish();
   testCrewChatTimestampSeparators();

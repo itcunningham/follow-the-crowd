@@ -15,6 +15,7 @@ import {
   type BookingRequest,
   type BookingRequestInput,
 } from "@/lib/bookingRequests";
+import { notifyBookingRequestsChanged } from "@/lib/bookings/bookingRequestsSync";
 import { normalizeStoredRate } from "@/lib/bookingRate";
 import { createNotification } from "@/lib/notifications";
 import { supabase } from "@/lib/supabaseClient";
@@ -845,6 +846,11 @@ export async function cancelEvent(eventId: string): Promise<CancelEventResult> {
   }
 
   await notifyCancelledBookingsFromEventCancellation(result.cancelledBookings);
+
+  // Pending rows may have been cancelled by the RPC; accepted rows keep
+  // status=accepted and only flip in the UI via refreshed event artwork.
+  // Either way, every mounted booking view needs to reconcile now.
+  notifyBookingRequestsChanged();
 
   return result;
 }

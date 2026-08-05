@@ -1024,7 +1024,7 @@ export default function DmChatPage() {
     }
   }, []);
 
-  async function reloadConversationBookings() {
+  const reloadConversationBookings = useCallback(async () => {
     if (!conversationId) {
       return;
     }
@@ -1047,7 +1047,30 @@ export default function DmChatPage() {
     } catch (bookingError) {
       console.error("Failed to load booking requests:", bookingError);
     }
-  }
+  }, [conversationId, messages, syncEventArtwork, syncEventAcceptedBookings]);
+
+  /**
+   * Event cancel (and other remote booking outcomes) must refresh this thread's
+   * bookings + event artwork. Accepted bookings are NOT status-updated by
+   * `cancel_event` — the card only shows cancelled once artwork.status flips.
+   * The activity DM is hidden in the timeline, so without this reload the open
+   * DM stays "accepted" until hard refresh.
+   */
+  useEffect(() => {
+    if (!conversationId) {
+      return;
+    }
+
+    function handleBookingsChanged() {
+      void reloadConversationBookings();
+    }
+
+    window.addEventListener("ftc-notifications-updated", handleBookingsChanged);
+
+    return () => {
+      window.removeEventListener("ftc-notifications-updated", handleBookingsChanged);
+    };
+  }, [conversationId, reloadConversationBookings]);
 
   useEffect(() => {
     if (!conversationId) {
@@ -1174,7 +1197,7 @@ export default function DmChatPage() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [conversationId]);
+  }, [conversationId, reloadConversationBookings]);
 
   useEffect(() => {
     if (loading || !conversationId) {
@@ -1361,6 +1384,14 @@ export default function DmChatPage() {
             taggedMessage._clientScrollMeta.isFromCurrentUser,
           );
 
+          // Event-cancel activity rows are hidden in the timeline; the booking
+          // card reads cancelled from event artwork. Refresh bookings+artwork
+          // here so an open DM flips without waiting on booking_requests
+          // Realtime (accepted rows are not updated by cancel_event at all).
+          if (parseEventCancellationActivityEventName(newMessage.text)) {
+            void reloadConversationBookings();
+          }
+
           void markConversationRead(conversationId, {
             readThroughCreatedAt: newMessage.created_at,
           });
@@ -1378,6 +1409,7 @@ export default function DmChatPage() {
     captureScrollBeforeIncomingInsert,
     addHighlightedMessageId,
     refreshParticipantReadState,
+    reloadConversationBookings,
   ]);
 
   async function sendMessage() {

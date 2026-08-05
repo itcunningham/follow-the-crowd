@@ -14,7 +14,7 @@ import {
   notifyBookingRequestsChanged,
   subscribeToBookingRequestChanges,
 } from "@/lib/bookings/bookingRequestsSync";
-import { isBookingAcceptanceDmSystemMessage } from "@/lib/dm/dmBookingSystemMessages";
+import { isBookingAcceptanceDmSystemMessage, isEventCancellationDmActivityMessage } from "@/lib/dm/dmBookingSystemMessages";
 import { isOwnChatMessage } from "@/lib/messageReads";
 import { loadNavigationBadgeData } from "@/lib/navigationBadges";
 import {
@@ -392,11 +392,17 @@ export function NavBadgeProvider({ children }: { children: ReactNode }) {
 
           void refreshBadgeCounts({ force: true });
 
-          // Booking acceptance writes a DM from the DJ. `messages` is already
-          // in Realtime; `booking_requests` may not be yet. Fan the acceptance
-          // notice into the shared booking reconciler so Event Details / Events
-          // list / Gigs caches refresh without waiting on that publication.
-          if (typeof row.text === "string" && isBookingAcceptanceDmSystemMessage(row.text)) {
+          // Booking outcome system DMs land on `messages` (already in Realtime).
+          // `booking_requests` / `events` may not be published yet, and event
+          // cancel does not UPDATE accepted booking rows at all — the open DM
+          // card reads cancelled state from event artwork. Fan these notices
+          // into the shared booking reconciler so DM / Gigs / Event Details
+          // refetch without waiting on those publications.
+          if (
+            typeof row.text === "string" &&
+            (isBookingAcceptanceDmSystemMessage(row.text) ||
+              isEventCancellationDmActivityMessage(row.text))
+          ) {
             notifyBookingRequestsChanged();
           }
         },

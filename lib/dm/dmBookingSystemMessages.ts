@@ -272,6 +272,11 @@ function parseLegacyEventCancellationActivityEventName(text: string): string | n
   return match?.[1]?.trim() || null;
 }
 
+/** Whole-event cancel activity notice (hidden in the DM timeline; drives card state). */
+export function isEventCancellationDmActivityMessage(text: string): boolean {
+  return parseLegacyEventCancellationActivityEventName(text) !== null;
+}
+
 /** User-facing copy for booking timeline system messages in DM. */
 export function formatDmBookingSystemMessageDisplay(text: string): string {
   const trimmed = text.trim();
