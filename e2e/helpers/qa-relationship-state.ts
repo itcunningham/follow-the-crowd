@@ -53,7 +53,7 @@ async function openDmThreadViaGigsPlannerFallback(page: Page, expectedDisplayNam
   const cardCount = await gigCards.count();
   for (let index = 0; index < cardCount; index += 1) {
     const card = gigCards.nth(index);
-    const openDm = card.getByRole("link", { name: /^Open DM$/i });
+    const openDm = card.getByRole("link", { name: /^Message$/i });
     if (!(await openDm.isVisible().catch(() => false))) {
       continue;
     }

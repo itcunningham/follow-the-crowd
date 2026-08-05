@@ -2571,7 +2571,7 @@ function ReceivedBookingCard({
           event.stopPropagation();
         }}
       >
-        Open DM
+        Message
       </Link>
     );
   }
@@ -2679,7 +2679,7 @@ function BookingHistoryCard({
           event.stopPropagation();
         }}
       >
-        Open DM
+        Message
       </Link>
     );
   }
@@ -2855,7 +2855,7 @@ function BookingCampaignCard({
                   href={buildGigsConversationHref(request.conversation_id, request.id)}
                   className="ftc-btn-primary px-3 py-1.5 text-xs uppercase tracking-wide"
                 >
-                  Open DM
+                  Message
                 </Link>
               </div>
             </li>

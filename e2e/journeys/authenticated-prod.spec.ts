@@ -248,7 +248,7 @@ test.describe("Targeted navigation", () => {
     }
 
     await roles.dj.goto("/bookings", { waitUntil: "domcontentloaded" });
-    const openDm = roles.dj.getByRole("link", { name: "Open DM" }).first();
+    const openDm = roles.dj.getByRole("link", { name: "Message" }).first();
     await expect(openDm).toBeVisible();
     await openDm.click();
     await expect(roles.dj).toHaveURL(/\/dm\//);
