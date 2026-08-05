@@ -1,5 +1,6 @@
 "use client";
 
+import type { MouseEvent } from "react";
 import CrewChatAvatarStack from "@/app/components/group-chat/CrewChatAvatarStack";
 import ChatBackButton from "@/app/components/chat/ChatBackButton";
 import { FtcPeopleIcon } from "@/app/components/ftc/FtcCompactMeta";
@@ -15,6 +16,8 @@ import type { UserAvatarProfile } from "@/lib/user/currentUser";
 export default function GroupChatHeader({
   backHref,
   backLabel,
+  backReplace = false,
+  onBackClick,
   eventName,
   memberCount,
   participantIds,
@@ -23,6 +26,8 @@ export default function GroupChatHeader({
 }: {
   backHref: string;
   backLabel: string;
+  backReplace?: boolean;
+  onBackClick?: (event: MouseEvent<HTMLAnchorElement>) => void;
   eventName: string;
   memberCount: number;
   participantIds: string[];
@@ -34,7 +39,12 @@ export default function GroupChatHeader({
   return (
     <div className="flex items-start gap-2">
       <div className="pt-0.5">
-        <ChatBackButton href={backHref} label={backLabel} />
+        <ChatBackButton
+          href={backHref}
+          label={backLabel}
+          replace={backReplace}
+          onClick={onBackClick}
+        />
       </div>
 
       <div className="min-w-0 flex-1 overflow-visible">

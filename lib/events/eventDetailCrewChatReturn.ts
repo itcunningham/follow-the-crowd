@@ -1,48 +1,73 @@
 /**
- * One-shot marker recording that Event Details was opened by tapping View Event
- * inside a crew chat, so its Back control can POP that history entry instead of
- * pushing another copy of the conversation.
+ * One-shot markers for Event Details ↔ Crew Chat history pops.
  *
- * Why a marker rather than trusting `?from=crew-chat` alone: the query
- * parameter survives a shared link, a cold load and a refresh, none of which
- * leave a crew chat entry behind Event Details. Calling `router.back()` in
- * those cases would leave the app entirely. The marker is written only by an
- * in-app tap, so it is a true statement about this tab's history.
- *
- * sessionStorage, not module scope, so it survives the full page load Event
- * Details performs; scoped to the event id so a marker from one conversation
- * can never authorise popping out of another.
+ * sessionStorage, not module scope, so markers survive full page loads;
+ * scoped to the event id so a marker from one conversation can never
+ * authorise popping out of another.
  */
-const STORAGE_KEY = "ftc-crew-chat-event-detail-origin";
 
-export function markCrewChatEventDetailOrigin(eventId: string): void {
+/** Event Details opened via Crew Chat "View Event" — Back should pop. */
+const VIEW_EVENT_FROM_CREW_CHAT_KEY = "ftc-crew-chat-event-detail-origin";
+
+/**
+ * Crew Chat opened via Event Details "Group chat" — Back should pop to the
+ * exact Event Details URL (calendar / history / DM origin query intact).
+ * A bare `/events/:id` fallback was dropping `from=calendar` and sending the
+ * next Back to Events Active.
+ */
+const CREW_CHAT_FROM_EVENT_DETAIL_KEY = "ftc-event-detail-crew-chat-open";
+
+/**
+ * Query key carrying Event Details' search string on the crew-chat URL when
+ * the one-shot pop marker is missing (refresh / shared link). Must not reuse
+ * `from` — that already means "opened from Messages" on crew chat.
+ */
+export const CREW_CHAT_EVENT_DETAIL_RETURN_PARAM = "eventReturn";
+
+function writeEventScopedMarker(storageKey: string, eventId: string): void {
   if (typeof window === "undefined" || !eventId.trim()) {
     return;
   }
 
   try {
-    window.sessionStorage.setItem(STORAGE_KEY, eventId.trim());
+    window.sessionStorage.setItem(storageKey, eventId.trim());
   } catch {
-    // Private mode / storage disabled: the caller falls back to replace().
+    // Private mode / storage disabled: callers fall back to href navigation.
   }
 }
 
-/** True exactly once per mark, and only for the event that was marked. */
-export function consumeCrewChatEventDetailOrigin(eventId: string): boolean {
+function consumeEventScopedMarker(storageKey: string, eventId: string): boolean {
   if (typeof window === "undefined" || !eventId.trim()) {
     return false;
   }
 
   try {
-    const stored = window.sessionStorage.getItem(STORAGE_KEY);
+    const stored = window.sessionStorage.getItem(storageKey);
 
     if (stored !== eventId.trim()) {
       return false;
     }
 
-    window.sessionStorage.removeItem(STORAGE_KEY);
+    window.sessionStorage.removeItem(storageKey);
     return true;
   } catch {
     return false;
   }
+}
+
+export function markCrewChatEventDetailOrigin(eventId: string): void {
+  writeEventScopedMarker(VIEW_EVENT_FROM_CREW_CHAT_KEY, eventId);
+}
+
+/** True exactly once per mark, and only for the event that was marked. */
+export function consumeCrewChatEventDetailOrigin(eventId: string): boolean {
+  return consumeEventScopedMarker(VIEW_EVENT_FROM_CREW_CHAT_KEY, eventId);
+}
+
+export function markCrewChatOpenedFromEventDetail(eventId: string): void {
+  writeEventScopedMarker(CREW_CHAT_FROM_EVENT_DETAIL_KEY, eventId);
+}
+
+export function consumeCrewChatOpenedFromEventDetail(eventId: string): boolean {
+  return consumeEventScopedMarker(CREW_CHAT_FROM_EVENT_DETAIL_KEY, eventId);
 }

@@ -143,6 +143,7 @@ import {
 } from "@/lib/events/eventsListNavigation";
 import {
   consumeCrewChatEventDetailOrigin,
+  markCrewChatOpenedFromEventDetail,
 } from "@/lib/events/eventDetailCrewChatReturn";
 import {
   resolveEventDetailDmOriginConversationId,
@@ -1304,9 +1305,12 @@ function EventDetailPageView() {
                     </button>
                   ) : (
                     <Link
-                      href={getEventCrewChatLink(event.id)}
+                      href={getEventCrewChatLink(event.id, {
+                        eventDetailReturn: searchParams.toString() || null,
+                      })}
                       aria-label="Group chat"
                       className={HEADER_GROUP_CHAT_ACTION_CLASS}
+                      onClick={() => markCrewChatOpenedFromEventDetail(event.id)}
                     >
                       <EventHeaderChatIcon />
                       <span className={HEADER_GROUP_CHAT_LABEL_CLASS}>Group chat</span>

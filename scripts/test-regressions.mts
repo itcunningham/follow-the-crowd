@@ -182,7 +182,8 @@ import {
 } from "../lib/dm/chatMessageBubbleGeometry";
 import { buildCrewChatMessageGroups } from "../lib/groupChatMessageLayout";
 import { buildEventChatReadMap, isChatUnread } from "../lib/messageReads";
-import { getEventCrewChatLink } from "../lib/eventCrewChat";
+import { getEventCrewChatLink, getEventCrewChatBackHref, buildEventDetailHrefFromCrewChatReturn } from "../lib/eventCrewChat";
+import { CREW_CHAT_EVENT_DETAIL_RETURN_PARAM } from "../lib/events/eventDetailCrewChatReturn";
 import { applyInboxGroupMessage, type GroupChatListItem } from "../lib/groupChats";
 import {
   DM_BOOKING_CONFIRMED_MESSAGE,
@@ -14212,6 +14213,69 @@ function testEventDetailReturnsToCrewChat() {
   );
 }
 
+/**
+ * Calendar → Event Details → Group chat → Back → Back must land on Calendar,
+ * not Events Active. The crew-chat "Back to event" href used to be bare
+ * `/events/:id`, which dropped `from=calendar` and made the next Back resolve
+ * to the Events list default.
+ */
+function testCrewChatBackPreservesEventDetailOrigin() {
+  const eventId = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee";
+  const calendarReturn =
+    "from=calendar&calendarDate=2026-08-05&calendarView=event&calendarMonth=2026-08-01";
+
+  assert.equal(
+    getEventCrewChatBackHref(eventId, null, null),
+    `/events/${eventId}`,
+    "no return context still lands on bare event detail",
+  );
+  assert.equal(
+    getEventCrewChatBackHref(eventId, "dm", "group"),
+    "/dm?tab=group",
+  );
+  assert.equal(
+    getEventCrewChatBackHref(eventId, null, null, calendarReturn),
+    `/events/${eventId}?${calendarReturn}`,
+  );
+  assert.equal(
+    buildEventDetailHrefFromCrewChatReturn(eventId, calendarReturn),
+    `/events/${eventId}?${calendarReturn}`,
+  );
+
+  const hostile = buildEventDetailHrefFromCrewChatReturn(eventId, "https://evil.example.com");
+  assert.ok(hostile.startsWith(`/events/${eventId}`), "must stay an in-app path");
+  assert.doesNotMatch(hostile, /^https?:|^\/\//);
+
+  const chatHref = getEventCrewChatLink(eventId, { eventDetailReturn: calendarReturn });
+  assert.match(chatHref, new RegExp(`^/events/${eventId}/chat\\?`));
+  assert.match(chatHref, new RegExp(`${CREW_CHAT_EVENT_DETAIL_RETURN_PARAM}=`));
+  assert.doesNotMatch(
+    getEventCrewChatLink(eventId, {
+      from: "dm",
+      tab: "group",
+      eventDetailReturn: calendarReturn,
+    }),
+    new RegExp(CREW_CHAT_EVENT_DETAIL_RETURN_PARAM),
+    "Messages-origin chat must not carry eventReturn (from=dm owns Back)",
+  );
+
+  const detailSource = readFileSync(
+    new URL("../app/events/[eventId]/page.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(detailSource, /markCrewChatOpenedFromEventDetail\(event\.id\)/);
+  assert.match(detailSource, /eventDetailReturn: searchParams\.toString\(\)/);
+
+  const chatSource = readFileSync(
+    new URL("../app/events/[eventId]/chat/page.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(chatSource, /consumeCrewChatOpenedFromEventDetail\(eventId\)/);
+  assert.match(chatSource, /router\.back\(\)/);
+  assert.match(chatSource, /CREW_CHAT_EVENT_DETAIL_RETURN_PARAM/);
+  assert.match(chatSource, /backReplace=\{backReplace\}/);
+}
+
 function testEventDetailEditDiscardOnBackOnly() {
   const detailSource = readFileSync(
     new URL("../app/events/[eventId]/page.tsx", import.meta.url),
@@ -16760,6 +16824,7 @@ async function main() {
   testCrewChatTimestampSeparators();
   testCrewChatEventCardToggleScrollCompensation();
   testEventDetailReturnsToCrewChat();
+  testCrewChatBackPreservesEventDetailOrigin();
   testEventDetailEditDiscardOnBackOnly();
   testEventDetailPopsCrewChatHistoryEntry();
   testCrewChatMemberSheetReopenOnProfileReturn();

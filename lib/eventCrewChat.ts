@@ -11,6 +11,7 @@ import {
   getCurrentUserId,
   getCurrentUserProfile,
 } from "@/lib/user/currentUser";
+import { CREW_CHAT_EVENT_DETAIL_RETURN_PARAM } from "@/lib/events/eventDetailCrewChatReturn";
 
 export type EventCrewChatMessage = {
   id: string;
@@ -40,7 +41,7 @@ const EVENT_CREW_MESSAGE_FIELDS = "id, event_id, user_id, text, created_at";
 
 export function getEventCrewChatLink(
   eventId: string,
-  options?: { from?: string; tab?: string },
+  options?: { from?: string; tab?: string; eventDetailReturn?: string | null },
 ): string {
   const base = `/events/${eventId}/chat`;
   const params = new URLSearchParams();
@@ -53,20 +54,51 @@ export function getEventCrewChatLink(
     params.set("tab", options.tab);
   }
 
+  const eventDetailReturn = options?.eventDetailReturn?.trim();
+
+  if (eventDetailReturn && options?.from !== "dm") {
+    params.set(CREW_CHAT_EVENT_DETAIL_RETURN_PARAM, eventDetailReturn);
+  }
+
   const query = params.toString();
   return query ? `${base}?${query}` : base;
+}
+
+/**
+ * Rebuild `/events/:id` with the Event Details query that opened this chat.
+ * Only query-string material is accepted — never a path or absolute URL.
+ */
+export function buildEventDetailHrefFromCrewChatReturn(
+  eventId: string,
+  eventDetailReturn: string | null | undefined,
+): string {
+  const base = `/events/${eventId}`;
+  const trimmed = eventDetailReturn?.trim();
+
+  if (!trimmed) {
+    return base;
+  }
+
+  try {
+    const params = new URLSearchParams(trimmed);
+    const query = params.toString();
+    return query ? `${base}?${query}` : base;
+  } catch {
+    return base;
+  }
 }
 
 export function getEventCrewChatBackHref(
   eventId: string,
   from: string | null | undefined,
   tab?: string | null,
+  eventDetailReturn?: string | null,
 ): string {
   if (from === "dm") {
     return tab === "group" ? "/dm?tab=group" : "/dm";
   }
 
-  return `/events/${eventId}`;
+  return buildEventDetailHrefFromCrewChatReturn(eventId, eventDetailReturn);
 }
 
 function buildDeniedAccess(

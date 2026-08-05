@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
 import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation";
 import AppNavigation, { MOBILE_NAV_OFFSET_CLASS } from "@/app/components/AppNavigation";
 import ChatNewMessagesPill from "@/app/components/dm/ChatNewMessagesPill";
@@ -35,6 +35,10 @@ import {
   sendEventCrewChatMessage,
   type EventCrewChatMessage,
 } from "@/lib/eventCrewChat";
+import {
+  CREW_CHAT_EVENT_DETAIL_RETURN_PARAM,
+  consumeCrewChatOpenedFromEventDetail,
+} from "@/lib/events/eventDetailCrewChatReturn";
 import {
   listEventCrewChatAttachmentsForEvent,
   sendEventCrewChatMessageWithAttachments,
@@ -232,11 +236,25 @@ export default function EventCrewChatPage() {
     return buildChatReturnTo(pathname, params.toString());
   }, [pathname, searchParams]);
   const openedFromMessages = searchParams.get("from") === "dm";
+  const eventDetailReturn = searchParams.get(CREW_CHAT_EVENT_DETAIL_RETURN_PARAM);
   const backHref = getEventCrewChatBackHref(
     eventId,
     searchParams.get("from"),
     searchParams.get("tab"),
+    eventDetailReturn,
   );
+  const backReplace = !openedFromMessages && Boolean(eventDetailReturn?.trim());
+
+  function handleCrewChatBackClick(event: MouseEvent<HTMLAnchorElement>) {
+    if (openedFromMessages) {
+      return;
+    }
+
+    if (consumeCrewChatOpenedFromEventDetail(eventId)) {
+      event.preventDefault();
+      router.back();
+    }
+  }
 
   type EventCrewChatMessageWithScrollMeta = EventCrewChatMessage & {
     _clientScrollMeta?: {
@@ -1349,7 +1367,22 @@ export default function EventCrewChatPage() {
             <p className="text-sm text-red-400">{error}</p>
             <button
               type="button"
-              onClick={() => router.push(backHref)}
+              onClick={() => {
+                if (
+                  !openedFromMessages &&
+                  consumeCrewChatOpenedFromEventDetail(eventId)
+                ) {
+                  router.back();
+                  return;
+                }
+
+                if (backReplace) {
+                  router.replace(backHref);
+                  return;
+                }
+
+                router.push(backHref);
+              }}
               className="mt-4 text-sm font-semibold text-ftc-primary"
             >
               {openedFromMessages ? "Back to messages" : "Back to event"}
@@ -1385,6 +1418,8 @@ export default function EventCrewChatPage() {
               <GroupChatHeader
                 backHref={backHref}
                 backLabel={openedFromMessages ? "Back to messages" : "Back to event"}
+                backReplace={backReplace}
+                onBackClick={handleCrewChatBackClick}
                 eventName={eventName}
                 memberCount={memberCount}
                 participantIds={crewParticipantIds}
