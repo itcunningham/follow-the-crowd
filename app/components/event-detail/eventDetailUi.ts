@@ -37,7 +37,7 @@ export const EVENT_DETAIL_BTN_SECONDARY =
   "ftc-btn-secondary inline-flex min-h-10 items-center justify-center px-3 py-2 text-xs uppercase tracking-wide";
 
 export const EVENT_DETAIL_BTN_DESTRUCTIVE =
-  "inline-flex min-h-10 items-center justify-center rounded-xl border border-ftc-destructive bg-ftc-destructive/10 px-3 py-2 text-xs font-medium text-ftc-destructive transition disabled:cursor-not-allowed disabled:opacity-50";
+  "inline-flex min-h-10 items-center justify-center rounded-xl border border-[var(--ftc-color-danger)] bg-ftc-surface px-3 py-2 text-xs font-semibold uppercase tracking-wide text-[var(--ftc-color-danger)] transition hover:border-0 hover:bg-[var(--ftc-color-danger)] hover:text-ftc-bg disabled:cursor-not-allowed disabled:opacity-50";
 
 export const EVENT_DETAIL_LINEUP_ACTIONS_ROW = "mt-2 flex gap-1.5";
 

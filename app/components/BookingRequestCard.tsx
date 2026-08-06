@@ -14,7 +14,9 @@ import CancelAcceptedBookingButton from "@/app/components/booking/CancelAccepted
 import CancelBookingRequestButton from "@/app/components/CancelBookingRequestButton";
 import { EventDetailSecondaryAction } from "@/app/components/event-detail/EventDetailBottomBar";
 import {
+  DM_BOOKING_CARD_ACCEPT_BUTTON_CLASS,
   DM_BOOKING_CARD_ACTIONS_CLASS,
+  DM_BOOKING_CARD_DECLINE_BUTTON_CLASS,
   DM_BOOKING_CARD_PAIRED_ACTIONS_ROW_CLASS,
   DM_BOOKING_CARD_PAIRED_CANCEL_CLASS,
   DM_BOOKING_CARD_PAIRED_VIEW_EVENT_CLASS,
@@ -377,7 +379,7 @@ export default function BookingRequestCard({
                   type="button"
                   onClick={onAccept}
                   disabled={actionDisabled}
-                  className="inline-flex min-h-10 w-full items-center justify-center rounded-xl bg-ftc-primary px-3 py-2 text-xs font-medium text-black transition disabled:cursor-not-allowed disabled:opacity-50"
+                  className={`${DM_BOOKING_CARD_ACCEPT_BUTTON_CLASS} w-full`}
                 >
                   Accept offer
                 </button>
@@ -395,7 +397,7 @@ export default function BookingRequestCard({
                   type="button"
                   onClick={onDecline}
                   disabled={actionDisabled}
-                  className="inline-flex min-h-10 w-full items-center justify-center rounded-xl bg-ftc-destructive px-3 py-2 text-xs font-medium text-white transition disabled:cursor-not-allowed disabled:opacity-50"
+                  className={`${DM_BOOKING_CARD_DECLINE_BUTTON_CLASS} w-full`}
                 >
                   Decline
                 </button>
@@ -406,7 +408,7 @@ export default function BookingRequestCard({
                   type="button"
                   onClick={onDecline}
                   disabled={actionDisabled}
-                  className="inline-flex min-h-10 flex-[0.92] items-center justify-center rounded-xl border border-ftc-destructive bg-ftc-destructive/10 px-3 py-2 text-xs font-medium text-ftc-destructive transition disabled:cursor-not-allowed disabled:opacity-50"
+                  className={`${DM_BOOKING_CARD_DECLINE_BUTTON_CLASS} flex-[0.92]`}
                 >
                   Decline
                 </button>
@@ -414,7 +416,7 @@ export default function BookingRequestCard({
                   type="button"
                   onClick={onAccept}
                   disabled={actionDisabled}
-                  className="inline-flex min-h-10 flex-[1.08] items-center justify-center rounded-xl bg-ftc-primary px-3 py-2 text-xs font-medium text-black transition disabled:cursor-not-allowed disabled:opacity-50"
+                  className={`${DM_BOOKING_CARD_ACCEPT_BUTTON_CLASS} flex-[1.08]`}
                 >
                   Accept
                 </button>
@@ -433,7 +435,7 @@ export default function BookingRequestCard({
               type="button"
               onClick={onDecline}
               disabled={actionDisabled}
-              className="inline-flex min-h-10 w-full items-center justify-center rounded-xl border border-ftc-destructive bg-ftc-destructive/10 px-3 py-2 text-xs font-medium text-ftc-destructive transition disabled:cursor-not-allowed disabled:opacity-50"
+              className={`${DM_BOOKING_CARD_DECLINE_BUTTON_CLASS} w-full`}
             >
               Decline
             </button>

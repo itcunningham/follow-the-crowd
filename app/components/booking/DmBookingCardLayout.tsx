@@ -20,6 +20,17 @@ export const DM_BOOKING_CARD_PAIRED_VIEW_EVENT_CLASS =
 
 export const DM_BOOKING_CARD_PAIRED_CANCEL_CLASS = "min-w-0 flex-1";
 
+/**
+ * DJ Decline — outlined danger (Cancel-family), not solid fill.
+ * Solid red made "Decline" unreadable / wrong vs the established DM look.
+ */
+export const DM_BOOKING_CARD_DECLINE_BUTTON_CLASS =
+  "inline-flex min-h-10 items-center justify-center rounded-xl border border-[var(--ftc-color-danger)] bg-ftc-surface px-3 py-2.5 text-xs font-semibold uppercase tracking-wide text-[var(--ftc-color-danger)] transition hover:border-0 hover:bg-[var(--ftc-color-danger)] hover:text-ftc-bg disabled:cursor-not-allowed disabled:opacity-50";
+
+/** DJ Accept — shared primary CTA (uppercase). */
+export const DM_BOOKING_CARD_ACCEPT_BUTTON_CLASS =
+  "ftc-btn-primary px-3 py-2.5 text-xs uppercase tracking-wide disabled:cursor-not-allowed disabled:opacity-50";
+
 export const DM_BOOKING_CARD_STATUS_MESSAGE_CLASS =
   "min-w-0 max-w-full break-words text-xs leading-snug text-ftc-text-secondary/70 [overflow-wrap:anywhere]";
 

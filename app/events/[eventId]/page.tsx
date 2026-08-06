@@ -1664,14 +1664,14 @@ function EventDetailPageView() {
                               <button
                                 onClick={() => handleRespondToPendingBooking(viewerBooking, "declined")}
                                 disabled={respondingToPendingBookingId === viewerBooking.id}
-                                className="inline-flex min-h-10 flex-[0.92] items-center justify-center rounded-xl bg-ftc-destructive px-3 py-2 text-xs font-medium text-white transition disabled:cursor-not-allowed disabled:opacity-50"
+                                className={`${EVENT_DETAIL_BTN_DESTRUCTIVE} flex-[0.92]`}
                               >
                                 {respondingToPendingBookingId === viewerBooking.id ? "..." : "Decline"}
                               </button>
                               <button
                                 onClick={() => handleRespondToPendingBooking(viewerBooking, "accepted")}
                                 disabled={respondingToPendingBookingId === viewerBooking.id}
-                                className="inline-flex min-h-10 flex-[1.08] items-center justify-center rounded-xl bg-ftc-primary px-3 py-2 text-xs font-medium text-black transition disabled:cursor-not-allowed disabled:opacity-50"
+                                className={`${EVENT_DETAIL_BTN_PRIMARY_WIDE} flex-[1.08] !w-auto px-3`}
                               >
                                 {respondingToPendingBookingId === viewerBooking.id ? "..." : "Accept"}
                               </button>
