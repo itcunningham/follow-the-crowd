@@ -871,7 +871,10 @@ export default function EventRunSheetSection({
   );
 
   const loadRunSheet = useCallback(async () => {
-    setLoading(true);
+    // Don't show loading state immediately after save — we already have the data
+    if (!justSavedRef.current) {
+      setLoading(true);
+    }
     setError(null);
 
     try {
