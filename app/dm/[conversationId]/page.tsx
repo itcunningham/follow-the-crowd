@@ -605,17 +605,30 @@ export default function DmChatPage() {
   }, [attachmentsByMessageId, canShowReadReceipts, currentUserId, messages]);
   const shouldShowSeenOnMessage = useMemo(() => {
     return (messageId: string, messageCreatedAt: string) => {
-      if (
-        !canShowReadReceipts ||
-        messageId !== latestOwnMessageIdForReceipt ||
-        !otherUserLastReadAt ||
-        !otherUserId ||
-        otherUserId === currentUserId
-      ) {
+      if (!canShowReadReceipts || messageId !== latestOwnMessageIdForReceipt) {
         return false;
       }
 
-      return isMessageSeenByReader(messageCreatedAt, otherUserLastReadAt);
+      if (!otherUserLastReadAt || !otherUserId || otherUserId === currentUserId) {
+        console.log("[seen-debug]", {
+          messageId,
+          hasOtherUserLastReadAt: !!otherUserLastReadAt,
+          hasOtherUserId: !!otherUserId,
+          otherUserIdEqualsCurrentUserId: otherUserId === currentUserId,
+          otherUserId,
+          currentUserId,
+        });
+        return false;
+      }
+
+      const seen = isMessageSeenByReader(messageCreatedAt, otherUserLastReadAt);
+      console.log("[seen-debug] message seen check", {
+        messageId,
+        messageCreatedAt,
+        otherUserLastReadAt,
+        seen,
+      });
+      return seen;
     };
   }, [canShowReadReceipts, latestOwnMessageIdForReceipt, otherUserLastReadAt, otherUserId, currentUserId]);
   const refreshParticipantReadState = useCallback(async () => {
@@ -626,6 +639,11 @@ export default function DmChatPage() {
 
     try {
       const lastReadAt = await loadDmParticipantLastReadAt(conversationId, otherUserId);
+      console.log("[read-state-debug]", {
+        conversationId,
+        otherUserId,
+        loadedLastReadAt: lastReadAt,
+      });
       setOtherUserLastReadAt(lastReadAt);
     } catch (readStateError) {
       console.error("Failed to load participant read state:", readStateError);
