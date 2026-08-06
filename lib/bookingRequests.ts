@@ -10,6 +10,7 @@ import {
 import { createNotification, getNotificationCreateErrorMessage } from "@/lib/notifications";
 import { notifyBookingRequestsChanged } from "@/lib/bookings/bookingRequestsSync";
 import { formatRateDisplay, formatIntegerRateDisplay, normalizeStoredRate } from "@/lib/bookingRate";
+import { resolveUserDisplayName } from "@/lib/user/displayName";
 import {
   DM_BOOKING_CANCELLED_MESSAGE,
   formatBookingConfirmedDmMessage,
@@ -207,10 +208,10 @@ export function resolveBookingCancelledByLabel(
   }
 
   if (booking.cancelled_by === booking.recipient_id) {
-    return profiles.get(booking.recipient_id)?.display_name?.trim() || "DJ";
+    return resolveUserDisplayName(profiles.get(booking.recipient_id), { fallback: "DJ" });
   }
 
-  return profiles.get(booking.cancelled_by)?.display_name?.trim() || "Member";
+  return resolveUserDisplayName(profiles.get(booking.cancelled_by), { fallback: "Member" });
 }
 
 export function canCancelBookingRequest(

@@ -637,7 +637,7 @@ export type UserAvatarProfile = Pick<UserProfile, "user_id" | "display_name" | "
 
 export type BookingRecipientProfile = Pick<
   UserProfile,
-  "user_id" | "display_name" | "avatar_url" | "genre" | "role"
+  "user_id" | "display_name" | "avatar_url" | "genre" | "role" | "username"
 >;
 
 export async function getUserAvatarProfilesByIds(
@@ -674,7 +674,7 @@ export async function getBookingRecipientProfilesByIds(
 
   const { data, error } = await supabase
     .from("users")
-    .select("user_id, display_name, avatar_url, genre, role")
+    .select("user_id, display_name, avatar_url, genre, role, username")
     .in("user_id", uniqueUserIds);
 
   if (error) {

@@ -501,24 +501,50 @@ export default function DmChatPage() {
     () => new Map(bookings.map((booking) => [booking.id, booking])),
     [bookings],
   );
-  const bookingProfiles = useMemo(() => {
-    if (!otherUserId || !otherUserProfile) {
-      return new Map<string, BookingRecipientProfile>();
+  const [bookingProfiles, setBookingProfiles] = useState<
+    Map<string, BookingRecipientProfile>
+  >(() => new Map());
+
+  useEffect(() => {
+    const profileIds = new Set<string>();
+
+    for (const booking of bookings) {
+      if (booking.recipient_id) {
+        profileIds.add(booking.recipient_id);
+      }
+      if (booking.sender_id) {
+        profileIds.add(booking.sender_id);
+      }
+      if (booking.cancelled_by?.trim()) {
+        profileIds.add(booking.cancelled_by.trim());
+      }
     }
 
-    return new Map<string, BookingRecipientProfile>([
-      [
-        otherUserId,
-        {
-          user_id: otherUserId,
-          display_name: otherUserProfile.display_name,
-          avatar_url: otherUserProfile.avatar_url,
-          genre: null,
-          role: "dj",
-        },
-      ],
-    ]);
-  }, [otherUserId, otherUserProfile]);
+    if (profileIds.size === 0) {
+      setBookingProfiles(new Map());
+      return;
+    }
+
+    let cancelled = false;
+
+    void getBookingRecipientProfilesByIds([...profileIds])
+      .then((profiles) => {
+        if (!cancelled) {
+          setBookingProfiles(profiles);
+        }
+      })
+      .catch((profileError) => {
+        console.error("Failed to load booking profiles:", profileError);
+        if (!cancelled) {
+          setBookingProfiles(new Map());
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [bookings]);
+
   const blockBannerMessage = useMemo(
     () => getDmBlockBannerMessage(blockStatus, otherUserLabel),
     [blockStatus, otherUserLabel],
