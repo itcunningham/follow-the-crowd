@@ -60,6 +60,7 @@
   --color-ftc-border-strong: var(--ftc-color-border-strong);
   --color-ftc-primary: var(--ftc-color-primary);
   --color-ftc-primary-dim: var(--ftc-color-primary-dim);
+  --color-ftc-destructive: var(--ftc-color-danger);
   --color-ftc-text: var(--ftc-color-text-primary);
   --color-ftc-text-secondary: var(--ftc-color-text-secondary);
   --color-ftc-text-muted: var(--ftc-color-text-muted);
