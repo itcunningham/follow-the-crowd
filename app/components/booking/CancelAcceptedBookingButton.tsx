@@ -103,7 +103,7 @@ export default function CancelAcceptedBookingButton({
         onClick={() => setOpen(true)}
         className={`${compact ? COMPACT_TRIGGER_CLASS : DEFAULT_TRIGGER_CLASS} ${className}`}
       >
-        {loading ? `${confirmLabel}...` : triggerLabel}
+        {triggerLabel}
       </button>
 
       <BookingSheetDialog
