@@ -300,6 +300,11 @@ export default function BookingRequestCard({
               >
                 View event
               </Link>
+              {groupChatAccess?.kind === "open" ? (
+                <EventDetailSecondaryAction href={groupChatAccess.href}>
+                  Crew chat
+                </EventDetailSecondaryAction>
+              ) : null}
               {showAcceptedCancel ? (
                 <CancelAcceptedBookingButton
                   role={acceptedCancellationRole}
@@ -339,28 +344,25 @@ export default function BookingRequestCard({
         ) : null}
 
         {/*
-          Group chat is a place to go, not a third call to action: View event
-          stays the primary CTA and Cancel stays the destructive one, so this
-          reuses the same tappable nav row the event detail screens use
-          (icon + title + chevron) rather than a second primary button. The
-          bordered box that used to wrap it is gone — the booking card is
-          already a card, so boxing a section inside it was a level of nesting
-          that bought nothing.
+          Crew chat is a place to go, not a third primary CTA. On accepted
+          cards the open row sits between View event and Withdraw. Elsewhere
+          (planner pending, locked DJ) it stays a nav row / muted line below.
         */}
         {booking.event_id &&
         !showAsCancelled &&
         groupChatAccess &&
-        groupChatAccess.kind !== "hidden" ? (
+        groupChatAccess.kind !== "hidden" &&
+        !(isAccepted && eventHref && groupChatAccess.kind === "open") ? (
           <div className="mt-4">
             {groupChatAccess.kind === "open" ? (
               <div>
                 <EventDetailSecondaryAction href={groupChatAccess.href}>
-                  Group chat
+                  Crew chat
                 </EventDetailSecondaryAction>
               </div>
             ) : (
               <p className="mt-2 text-xs text-ftc-text-muted">
-                Group chat unlocks after you accept.
+                Crew chat unlocks after you accept.
               </p>
             )}
           </div>
