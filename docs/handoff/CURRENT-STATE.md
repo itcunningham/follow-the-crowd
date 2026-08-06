@@ -3,6 +3,8 @@
 
 Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 
+**DM peer notify hardened (`ec781b25` on `main`, 2026-08-06):** Claude’s Seen pass (`3f4e9c8c`) gated `otherUserId` on `members.length === 2`, so `createNotification` was skipped after send (message insert still succeeded — soft silent). `48e07a7d` restored the find, but send still trusted React state only. Now `resolveDmOtherUserId` / `notifyDmPeerOfMessage` re-resolve the peer at send time for text + attachments. Seen stays disabled (`ad488ebf`).
+
 **Run sheet update card styling and centering (`c3d9b64` on `main`, 2026-08-06):** Refined runsheet update system messages in crew chat. Increased max-width to 90% (85% mobile) for better centering, added subtle top/bottom borders for visual separation, changed heading to font-medium, increased spacing (my-3→my-4, space-y-1.5), and bumped item text to text-sm with leading-snug for readability. Card now looks balanced and easy on the eyes — good enough for beta.
 
 **Run sheet crew-chat notify build fix (`def3897` on `main`, 2026-08-06):** Claude’s `05b3b05` broke Production (`eventData.name` does not exist in `EventRunSheetSection`). Pass `eventName={event.name}` from Event Details into the section and into `notifyCrewChatOfRunSheetUpdate`.
@@ -932,6 +934,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 | **booking_requests Realtime** | **⚠️ `scripts/setupBookingRequestsRealtime.sql`** — still required for status-only fan-out / open-DM booking cards. Accept path also updates via messages INSERT (`a6b3c5f`), but run this if not already applied. |
 
 ## Recent commits (reference)
+- `ec781b25` — fix(dm): always resolve peer before message notification
 - `def3897` — fix(run-sheet): pass eventName into crew chat notify
 - `7f8a0bd` — fix(copy): restore View event label on DM and crew chat
 - `9f7678b` — fix(booking): replace Decline undo toast with two-tap CONFIRM
