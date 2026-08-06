@@ -3,6 +3,8 @@
 
 Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 
+**Crew chat auto-load on unlock (`cecc61c8` on `main`, 2026-08-06):** DJ account no longer needs hard refresh to see crew chat when planner starts it. Refactored `loadAccess` as `useCallback` and added realtime subscription to events table. When planner starts crew chat, UPDATE event on events table triggers subscription; DJ's page calls `loadAccess()` again, detects `crew_chat_started_at` is now set, unlocks access and loads messages automatically.
+
 **"Group chat" → "Crew chat" UI terminology (`36eea5a9` on `main`, 2026-08-06):** Unified terminology across Event Details pages and chat headers. Changed "Start group chat" → "Start crew chat", "GROUP CHAT" button → "CREW CHAT", error messages, and redirect messages to use crew instead of group. Matches Messages tab which already used "Crew Chats". Deployed to Production.
 
 **DM peer notify hardened (`ec781b25` on `main`, 2026-08-06):** Claude’s Seen pass (`3f4e9c8c`) gated `otherUserId` on `members.length === 2`, so `createNotification` was skipped after send (message insert still succeeded — soft silent). `48e07a7d` restored the find, but send still trusted React state only. Now `resolveDmOtherUserId` / `notifyDmPeerOfMessage` re-resolve the peer at send time for text + attachments. Seen stays disabled (`ad488ebf`).
