@@ -4,6 +4,9 @@
 Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 
 **DM Decline|Accept restored to outlined + primary (`d7f8dd5` on `main`, 2026-08-06):** supersedes the solid-fill / visibility pass (`0646edb`→`d86401a`). Decline is Cancel-family outlined red + uppercase again; Accept is `ftc-btn-primary` uppercase. Event Details pending pair uses the same tokens.
+
+**Incoming Gigs card opens Event Details (`cursor/gigs-card-opens-event-5874` → `main`):** whole card is the Event Details link when `event_id` exists (Confirmed already did). Message stays a nested link with `stopPropagation`. Chevron shows whenever the card is navigable.
+
 **DJ already-booked shows for cancelled events (`b45bdc1` on `claude/new-session-xj7b0u`, pending ship):** `getPlannerDjAvailabilityHints` was marking DJs as "already booked" if they had an accepted booking for a cancelled event on the same date. The planner cancels event → accepted bookings stay `status = "accepted"` but event gets `status = "cancelled"`. When planning a new event, the query found those stale bookings and blocked the DJ. Fix: query events table and filter out bookings where `status = "cancelled"` before marking DJ unavailable.
 
 **Standing deploy preference locked (2026-08-06):** **Always push finished work to Vercel Production via `main`.** Do not leave completed fixes on Preview-only branches ("No target"). Same-turn merge/FF to `main` after build green. Saved in `USER-PREFERENCES.md`, `HOW-WE-WORK.md`, and `.cursor/rules/ship-small-fixes-to-main.mdc`.
@@ -921,6 +924,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 | **booking_requests Realtime** | **⚠️ `scripts/setupBookingRequestsRealtime.sql`** — still required for status-only fan-out / open-DM booking cards. Accept path also updates via messages INSERT (`a6b3c5f`), but run this if not already applied. |
 
 ## Recent commits (reference)
+-  — fix(gigs): Incoming card opens Event Details on tap
 - `d7f8dd5` — fix(ui): restore outlined Decline + solid Accept on DM booking cards
 - `675d2fe` — fix(dm): refresh open DM when planner cancels the event
 - `a6b3c5f` — fix(bookings): sync Event Details + Messages unread on DJ accept
