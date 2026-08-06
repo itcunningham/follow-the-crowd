@@ -2461,6 +2461,7 @@ export function getBookingGroupChatAccess(
     eventCancelled?: boolean;
     crewChatUnlocked?: boolean;
     dmConversationId?: string | null;
+    dmThreadEntryContext?: any | null;
   },
 ): BookingGroupChatAccess | null {
   if (!booking.event_id || !currentUserId) {
@@ -2484,8 +2485,43 @@ export function getBookingGroupChatAccess(
   }
 
   let href = `/events/${booking.event_id}/chat`;
+  const params = new URLSearchParams();
   if (options?.dmConversationId) {
-    href += `?from=dm&dmConversation=${options.dmConversationId}`;
+    params.set("from", "dm");
+    params.set("dmConversation", options.dmConversationId);
+  }
+
+  if (options?.dmThreadEntryContext) {
+    const context = options.dmThreadEntryContext;
+    if (context.from) {
+      params.set("dmThreadFrom", context.from);
+    }
+    if (context.tab) {
+      params.set("dmThreadTab", context.tab);
+    }
+    if (context.eventId) {
+      params.set("dmThreadEventId", context.eventId);
+    }
+    if (context.eventReturn) {
+      params.set("dmThreadEventReturn", context.eventReturn);
+    }
+    if (context.calendarDate) {
+      params.set("dmThreadCalendarDate", context.calendarDate);
+    }
+    if (context.calendarView) {
+      params.set("dmThreadCalendarView", context.calendarView);
+    }
+    if (context.calendarMonth) {
+      params.set("dmThreadCalendarMonth", context.calendarMonth);
+    }
+    if (context.profileUserId) {
+      params.set("dmThreadProfileUserId", context.profileUserId);
+    }
+  }
+
+  const query = params.toString();
+  if (query) {
+    href += `?${query}`;
   }
   const isPlanner = booking.sender_id === currentUserId;
   const isDj = booking.recipient_id === currentUserId;

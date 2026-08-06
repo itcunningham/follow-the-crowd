@@ -238,12 +238,23 @@ export default function EventCrewChatPage() {
   const openedFromMessages = searchParams.get("from") === "dm";
   const dmConversationId = searchParams.get("dmConversation");
   const eventDetailReturn = searchParams.get(CREW_CHAT_EVENT_DETAIL_RETURN_PARAM);
+  const dmThreadContext = {
+    from: searchParams.get("dmThreadFrom"),
+    tab: searchParams.get("dmThreadTab"),
+    eventId: searchParams.get("dmThreadEventId"),
+    eventReturn: searchParams.get("dmThreadEventReturn"),
+    calendarDate: searchParams.get("dmThreadCalendarDate"),
+    calendarView: searchParams.get("dmThreadCalendarView"),
+    calendarMonth: searchParams.get("dmThreadCalendarMonth"),
+    profileUserId: searchParams.get("dmThreadProfileUserId"),
+  };
   const backHref = getEventCrewChatBackHref(
     eventId,
     searchParams.get("from"),
     searchParams.get("tab"),
     eventDetailReturn,
     dmConversationId,
+    dmThreadContext,
   );
   const backReplace = !openedFromMessages && Boolean(eventDetailReturn?.trim());
 

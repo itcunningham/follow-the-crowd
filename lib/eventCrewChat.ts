@@ -80,10 +80,42 @@ export function getEventCrewChatBackHref(
   tab?: string | null,
   eventDetailReturn?: string | null,
   dmConversationId?: string | null,
+  dmThreadContext?: any | null,
 ): string {
   if (from === "dm") {
     if (dmConversationId) {
-      return tab === "group" ? `/dm/${dmConversationId}?tab=group` : `/dm/${dmConversationId}`;
+      const params = new URLSearchParams();
+
+      if (dmThreadContext) {
+        if (dmThreadContext.from) {
+          params.set("from", dmThreadContext.from);
+        }
+        if (dmThreadContext.tab) {
+          params.set("tab", dmThreadContext.tab);
+        }
+        if (dmThreadContext.eventId) {
+          params.set("eventId", dmThreadContext.eventId);
+        }
+        if (dmThreadContext.eventReturn) {
+          params.set("eventReturn", dmThreadContext.eventReturn);
+        }
+        if (dmThreadContext.calendarDate) {
+          params.set("calendarDate", dmThreadContext.calendarDate);
+        }
+        if (dmThreadContext.calendarView) {
+          params.set("calendarView", dmThreadContext.calendarView);
+        }
+        if (dmThreadContext.calendarMonth) {
+          params.set("calendarMonth", dmThreadContext.calendarMonth);
+        }
+        if (dmThreadContext.profileUserId) {
+          params.set("profileUserId", dmThreadContext.profileUserId);
+        }
+      }
+
+      const query = params.toString();
+      const base = `/dm/${dmConversationId}`;
+      return query ? `${base}?${query}` : base;
     }
     return tab === "group" ? "/dm?tab=group" : "/dm";
   }
