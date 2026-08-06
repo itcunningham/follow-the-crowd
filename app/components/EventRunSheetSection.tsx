@@ -906,7 +906,9 @@ export default function EventRunSheetSection({
           filter: `event_id=eq.${eventId}`,
         },
         () => {
-          void loadRunSheet();
+          if (!justSavedRef.current) {
+            void loadRunSheet();
+          }
         },
       )
       .subscribe();
@@ -949,6 +951,7 @@ export default function EventRunSheetSection({
    * is which of the two presentations of that possibility is on screen.
    */
   const [isEditing, setIsEditing] = useState(false);
+  const justSavedRef = useRef(false);
 
   function handleEnterEditMode() {
     setError(null);
@@ -1050,6 +1053,13 @@ export default function EventRunSheetSection({
       setIsEditing(false);
       setExpandedRowIds(new Set());
       onSaved?.("Run sheet saved");
+
+      // Flag prevents realtime subscription from reloading immediately after
+      // our local save (we already have the fresh data). Clear after short delay.
+      justSavedRef.current = true;
+      setTimeout(() => {
+        justSavedRef.current = false;
+      }, 500);
 
       // Soft: Save already succeeded. Post to crew chat and DM the DJs whose
       // rows changed. Failures are logged inside the helpers.
