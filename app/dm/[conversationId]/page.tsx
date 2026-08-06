@@ -605,7 +605,11 @@ export default function DmChatPage() {
   }, [attachmentsByMessageId, canShowReadReceipts, currentUserId, messages]);
   const shouldShowSeenOnMessage = useMemo(() => {
     return (messageId: string, messageCreatedAt: string) => {
-      if (!canShowReadReceipts || messageId !== latestOwnMessageIdForReceipt) {
+      if (
+        !canShowReadReceipts ||
+        messageId !== latestOwnMessageIdForReceipt ||
+        !otherUserLastReadAt
+      ) {
         return false;
       }
 
