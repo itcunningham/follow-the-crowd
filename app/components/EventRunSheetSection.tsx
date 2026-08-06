@@ -47,7 +47,6 @@ import {
   mergeAcceptedDjsIntoRunSheetRows,
   moveRunSheetRow,
   notifyCrewChatOfRunSheetUpdate,
-  notifyRunSheetUpdatesForChangedBookings,
   reorderRunSheetRows,
   resolveRunSheetRowDjDisplay,
   saveEventRunSheet,
@@ -1061,18 +1060,14 @@ export default function EventRunSheetSection({
         setExpandedRowIds(new Set());
       }, 1500);
 
-      // Soft: Save already succeeded. Post to crew chat and DM the DJs whose
-      // rows changed. Failures are logged inside the helpers.
+      // Soft: Save already succeeded. Post to crew chat.
+      // Failures are logged inside the helper.
       await notifyCrewChatOfRunSheetUpdate({
         eventId,
         eventName,
         changes: runSheetChanges,
         lineup,
         profiles,
-      });
-      await notifyRunSheetUpdatesForChangedBookings({
-        lineup,
-        changes: runSheetChanges,
       });
     } catch (saveError) {
       logRunSheetSaveError(saveError);
