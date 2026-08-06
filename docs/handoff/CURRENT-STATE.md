@@ -3,7 +3,7 @@
 
 Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 
-**Crew chat auto-load on unlock (`cecc61c8` on `main`, 2026-08-06):** DJ account no longer needs hard refresh to see crew chat when planner starts it. Refactored `loadAccess` as `useCallback` and added realtime subscription to events table. When planner starts crew chat, UPDATE event on events table triggers subscription; DJ's page calls `loadAccess()` again, detects `crew_chat_started_at` is now set, unlocks access and loads messages automatically.
+**Crew chat start reaches DJ inbox live (`624fed1d` on `main`, 2026-08-06):** Start only wrote `events.crew_chat_started_at` — no message, no notification — so Messages → Crew Chats never refetched until hard refresh. Claude’s `cecc61c8` only subscribed the open `/events/[id]/chat` page (and `events` may not be in Realtime). Fix: `notifyCrewChatStarted` after manual Start and first auto-start; NavBadge fans recipient `notifications` INSERTs into `ftc-notifications-updated`; `/dm` reloads group chats (not soft-throttled) on that signal / crew-chat notification links. Stripped Claude debug `console.log`s on the chat page.
 
 **"Group chat" → "Crew chat" UI terminology (`36eea5a9` on `main`, 2026-08-06):** Unified terminology across Event Details pages and chat headers. Changed "Start group chat" → "Start crew chat", "GROUP CHAT" button → "CREW CHAT", error messages, and redirect messages to use crew instead of group. Matches Messages tab which already used "Crew Chats". Deployed to Production.
 
