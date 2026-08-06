@@ -124,6 +124,12 @@ export function resolveChatSystemCardShellClass(): string {
   ].join(" ");
 }
 
-export function resolveChatMessageBubbleTextClass(_text: string): string {
-  return "text-[15px] leading-normal whitespace-pre-wrap break-words";
+export function resolveChatMessageBubbleTextClass(
+  _text: string,
+  options?: { isOwnMessage?: boolean },
+): string {
+  // Own bubbles: dark text on cyan reads optically thinner than light-on-dark
+  // received text at the same weight (irradiation). Slight bump matches feel.
+  const weight = options?.isOwnMessage ? "font-medium" : "font-normal";
+  return `text-[15px] ${weight} leading-normal whitespace-pre-wrap break-words`;
 }

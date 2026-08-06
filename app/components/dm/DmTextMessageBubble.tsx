@@ -152,7 +152,9 @@ export default function DmTextMessageBubble({
     attachmentOnly,
     groupPosition,
   });
-  const bubbleTextClass = resolveChatMessageBubbleTextClass(displayText);
+  const bubbleTextClass = resolveChatMessageBubbleTextClass(displayText, {
+    isOwnMessage,
+  });
   const isClusterEnd = showAvatar;
   const hasReactions = reactions.length > 0;
   const seenLabelSpacingClass = resolveSeenLabelSpacingClass(hasReactions);

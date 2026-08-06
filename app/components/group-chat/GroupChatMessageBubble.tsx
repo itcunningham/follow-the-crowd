@@ -198,7 +198,9 @@ function GroupChatMessageBubble({
         attachmentOnly,
         groupPosition,
       });
-  const bubbleTextClass = resolveChatMessageBubbleTextClass(trimmedText);
+  const bubbleTextClass = resolveChatMessageBubbleTextClass(trimmedText, {
+    isOwnMessage,
+  });
   const isClusterEnd = groupPosition === "last" || groupPosition === "standalone";
 
   // Same guard as DmTextMessageBubble: an attachment-only message that lost

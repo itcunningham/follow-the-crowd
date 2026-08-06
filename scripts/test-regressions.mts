@@ -13670,6 +13670,15 @@ function testChatBubbleCannotCollapseToOneCharacterColumn() {
     /break-words/,
     "long unbroken text must wrap, not overflow",
   );
+  assert.match(
+    resolveChatMessageBubbleTextClass("Ho", { isOwnMessage: true }),
+    /font-medium/,
+    "own (dark-on-cyan) text bumps weight to match received optically",
+  );
+  assert.match(
+    resolveChatMessageBubbleTextClass("Ho", { isOwnMessage: false }),
+    /font-normal/,
+  );
 
   // Short messages stay compact — the fix must not widen ordinary chat.
   const shortBranch = resolveChatMessageBubbleShellClass({ isOwnMessage: true, text: "ok" });
