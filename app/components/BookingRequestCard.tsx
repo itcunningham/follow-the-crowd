@@ -298,7 +298,7 @@ export default function BookingRequestCard({
                 href={eventHref}
                 className="ftc-btn-primary flex w-full items-center justify-center px-3 py-2.5 text-xs uppercase tracking-wide"
               >
-                View
+                View event
               </Link>
               {showAcceptedCancel ? (
                 <CancelAcceptedBookingButton
@@ -319,13 +319,13 @@ export default function BookingRequestCard({
                 className={DM_BOOKING_CARD_PAIRED_CANCEL_CLASS}
               />
               <Link href={eventHref} className={DM_BOOKING_CARD_PAIRED_VIEW_EVENT_CLASS}>
-                View
+                View event
               </Link>
             </div>
           ) : (
             <div className={DM_BOOKING_CARD_ACTIONS_CLASS}>
               <Link href={eventHref} className={DM_BOOKING_CARD_SECONDARY_BUTTON_CLASS}>
-                View
+                View event
               </Link>
               {canReviewProposal && showPendingCancel ? (
                 <CancelBookingRequestButton
