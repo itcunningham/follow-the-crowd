@@ -1045,13 +1045,8 @@ export default function EventRunSheetSection({
 
       setRows(persistedRows);
       setSavedRows(persistedRows);
-      // View -> Edit -> Save -> View: a successful save returns to the
-      // read-only presentation, collapsed, exactly like opening the sheet
-      // fresh. Left out of `finally` deliberately -- a failed save keeps the
-      // planner in edit mode, with the error and their unsaved rows intact,
-      // so they can retry rather than losing the edit.
-      setIsEditing(false);
-      setExpandedRowIds(new Set());
+      // Show save confirmation with expanded form still visible (no collapse
+      // flicker). After 1.5s, return to view mode.
       onSaved?.("Run sheet saved");
 
       // Flag prevents realtime subscription from reloading immediately after
@@ -1059,7 +1054,9 @@ export default function EventRunSheetSection({
       justSavedRef.current = true;
       setTimeout(() => {
         justSavedRef.current = false;
-      }, 500);
+        setIsEditing(false);
+        setExpandedRowIds(new Set());
+      }, 1500);
 
       // Soft: Save already succeeded. Post to crew chat and DM the DJs whose
       // rows changed. Failures are logged inside the helpers.
