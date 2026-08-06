@@ -377,7 +377,7 @@ export default function BookingRequestCard({
                   type="button"
                   onClick={onAccept}
                   disabled={actionDisabled}
-                  className="inline-flex min-h-10 w-full items-center justify-center rounded-xl bg-ftc-primary px-3 py-2 text-xs font-medium text-ftc-text transition disabled:cursor-not-allowed disabled:opacity-50"
+                  className="inline-flex min-h-10 w-full items-center justify-center rounded-xl bg-ftc-primary px-3 py-2 text-xs font-medium text-black transition disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   Accept offer
                 </button>
@@ -414,7 +414,7 @@ export default function BookingRequestCard({
                   type="button"
                   onClick={onAccept}
                   disabled={actionDisabled}
-                  className="inline-flex min-h-10 flex-[1.08] items-center justify-center rounded-xl bg-ftc-primary px-3 py-2 text-xs font-medium text-ftc-text transition disabled:cursor-not-allowed disabled:opacity-50"
+                  className="inline-flex min-h-10 flex-[1.08] items-center justify-center rounded-xl bg-ftc-primary px-3 py-2 text-xs font-medium text-black transition disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   Accept
                 </button>
