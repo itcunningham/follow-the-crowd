@@ -608,7 +608,7 @@ export default function DmChatPage() {
     // sender had viewed the message. The root cause is unclear (possibly an
     // issue with how otherUserLastReadAt is being populated or compared), but
     // disabling it entirely is safer for beta than showing incorrect state.
-    return () => false;
+    return (_messageId: string, _messageCreatedAt: string) => false;
   }, []);
   const refreshParticipantReadState = useCallback(async () => {
     if (!conversationId || !otherUserId) {
