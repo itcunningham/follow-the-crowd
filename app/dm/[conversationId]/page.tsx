@@ -112,7 +112,8 @@ import {
   notifyDmReactionRecipient,
   revokeDmReactionNotification,
 } from "@/lib/dm/dmReactionNotifications";
-import { createNotification, markNotificationsReadForLink } from "@/lib/notifications";
+import { resolveDmOtherUserId, notifyDmPeerOfMessage } from "@/lib/dm/resolveDmOtherUserId";
+import { markNotificationsReadForLink } from "@/lib/notifications";
 import { getEventArtworkByIds, isEventCancelled, type EventArtworkSnapshot } from "@/lib/events";
 import { getCrewChatUnlockStateByEventIds } from "@/lib/events/crewChatUnlock";
 import { resolveEventLinkedBookingDisplay } from "@/lib/events/eventBookingDisplay";
@@ -823,21 +824,15 @@ export default function DmChatPage() {
 
       setCurrentUserId(currentUserIdValue);
 
-      const { data, error: membersError } = await supabase
-        .from("conversation_members")
-        .select("user_id")
-        .eq("conversation_id", conversationId);
+      const nextOtherUserId = await resolveDmOtherUserId(
+        conversationId,
+        currentUserIdValue,
+      );
 
-      if (membersError) {
-        console.error("conversation_members query failed:", membersError.message);
+      if (cancelled) {
         return;
       }
 
-      const otherMember = (data ?? []).find(
-        (member) => member.user_id !== currentUserIdValue,
-      );
-
-      const nextOtherUserId = otherMember?.user_id ?? null;
       setOtherUserId(nextOtherUserId);
 
       if (!nextOtherUserId) {
@@ -1455,21 +1450,14 @@ export default function DmChatPage() {
       return;
     }
 
-    if (otherUserId) {
-      try {
-        await createNotification(
-          otherUserId,
-          "message",
-          "New message",
-          text,
-          `/dm/${conversationId}`,
-        );
-      } catch (notificationError) {
-        console.error(
-          "[dm] Message sent but notification failed:",
-          notificationError,
-        );
-      }
+    const recipientId = await notifyDmPeerOfMessage({
+      conversationId,
+      senderUserId: userId,
+      otherUserId,
+      body: text,
+    });
+    if (recipientId && recipientId !== otherUserId) {
+      setOtherUserId(recipientId);
     }
 
     setSending(false);
@@ -1540,21 +1528,14 @@ export default function DmChatPage() {
       // send (see catch below) leaves the same photos staged for retry.
       clearPendingAttachments();
 
-      if (otherUserId) {
-        try {
-          await createNotification(
-            otherUserId,
-            "message",
-            "New message",
-            caption || getDmAttachmentNotificationBody(sentAttachments[0], sentAttachments.length),
-            `/dm/${conversationId}`,
-          );
-        } catch (notificationError) {
-          console.error(
-            "[dm] Attachment sent but notification failed:",
-            notificationError,
-          );
-        }
+      const recipientId = await notifyDmPeerOfMessage({
+        conversationId,
+        senderUserId: userId,
+        otherUserId,
+        body: caption || getDmAttachmentNotificationBody(sentAttachments[0], sentAttachments.length),
+      });
+      if (recipientId && recipientId !== otherUserId) {
+        setOtherUserId(recipientId);
       }
 
       void markConversationRead(conversationId, {
