@@ -3,6 +3,8 @@
 
 Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 
+**"Group chat" → "Crew chat" UI terminology (`36eea5a9` on `main`, 2026-08-06):** Unified terminology across Event Details pages and chat headers. Changed "Start group chat" → "Start crew chat", "GROUP CHAT" button → "CREW CHAT", error messages, and redirect messages to use crew instead of group. Matches Messages tab which already used "Crew Chats". Deployed to Production.
+
 **DM peer notify hardened (`ec781b25` on `main`, 2026-08-06):** Claude’s Seen pass (`3f4e9c8c`) gated `otherUserId` on `members.length === 2`, so `createNotification` was skipped after send (message insert still succeeded — soft silent). `48e07a7d` restored the find, but send still trusted React state only. Now `resolveDmOtherUserId` / `notifyDmPeerOfMessage` re-resolve the peer at send time for text + attachments. Seen stays disabled (`ad488ebf`).
 
 **Run sheet update card styling and centering (`c3d9b64` on `main`, 2026-08-06):** Refined runsheet update system messages in crew chat. Increased max-width to 90% (85% mobile) for better centering, added subtle top/bottom borders for visual separation, changed heading to font-medium, increased spacing (my-3→my-4, space-y-1.5), and bumped item text to text-sm with leading-snug for readability. Card now looks balanced and easy on the eyes — good enough for beta.
