@@ -3,6 +3,8 @@
 
 Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 
+**DM booking details: drop Booking type label; Cancelled by uses DJ name (`3676a4ce` on `main`, 2026-08-06):** Expanded details no longer show a **Booking type** eyebrow above Fixed/$amount. **Cancelled by** resolves the DJ via `resolveUserDisplayName` (display name → username) and DM cards load profiles for all booking parties (not only the other chat member), so it no longer falls back to the bare role **DJ** when the name is available.
+
 **DM accepted card: Crew chat above Withdraw (`6f9c7945` on `main`, 2026-08-06):** DM booking card label **Group chat → Crew chat**; accepted action order is **View event → Crew chat → Withdraw** (destructive last). Locked pending copy also says Crew chat.
 
 **Crew chat start reaches DJ inbox live (`624fed1d` on `main`, 2026-08-06):** Start only wrote `events.crew_chat_started_at` — no message, no notification — so Messages → Crew Chats never refetched until hard refresh. Claude’s `cecc61c8` only subscribed the open `/events/[id]/chat` page (and `events` may not be in Realtime). Fix: `notifyCrewChatStarted` after manual Start and first auto-start; NavBadge fans recipient `notifications` INSERTs into `ftc-notifications-updated`; `/dm` reloads group chats (not soft-throttled) on that signal / crew-chat notification links. Stripped Claude debug `console.log`s on the chat page.
