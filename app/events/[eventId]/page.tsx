@@ -1664,7 +1664,7 @@ function EventDetailPageView() {
                               <button
                                 onClick={() => handleRespondToPendingBooking(viewerBooking, "declined")}
                                 disabled={respondingToPendingBookingId === viewerBooking.id}
-                                className="inline-flex min-h-10 flex-[0.92] items-center justify-center rounded-xl border border-ftc-destructive bg-ftc-destructive/10 px-3 py-2 text-xs font-medium text-ftc-destructive transition disabled:cursor-not-allowed disabled:opacity-50"
+                                className="inline-flex min-h-10 flex-[0.92] items-center justify-center rounded-xl bg-ftc-destructive px-3 py-2 text-xs font-medium text-white transition disabled:cursor-not-allowed disabled:opacity-50"
                               >
                                 {respondingToPendingBookingId === viewerBooking.id ? "..." : "Decline"}
                               </button>

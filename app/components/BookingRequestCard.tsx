@@ -395,7 +395,7 @@ export default function BookingRequestCard({
                   type="button"
                   onClick={onDecline}
                   disabled={actionDisabled}
-                  className="inline-flex min-h-10 w-full items-center justify-center rounded-xl border border-ftc-destructive bg-ftc-destructive/10 px-3 py-2 text-xs font-medium text-ftc-destructive transition disabled:cursor-not-allowed disabled:opacity-50"
+                  className="inline-flex min-h-10 w-full items-center justify-center rounded-xl bg-ftc-destructive px-3 py-2 text-xs font-medium text-white transition disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   Decline
                 </button>
