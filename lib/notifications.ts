@@ -311,15 +311,23 @@ export async function markNotificationsReadForLink(
   userId: string,
   link: string,
 ): Promise<void> {
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("notifications")
     .update({ read: true })
     .eq("user_id", userId)
     .eq("link", link)
-    .eq("read", false);
+    .eq("read", false)
+    .select("id");
 
   if (error) {
     console.error("Failed to mark notifications read for link:", error);
+    return;
+  }
+
+  // Inbox unread sync marks already-read DM links every refresh. Notifying on
+  // zero-row updates re-fired ftc-notifications-updated → /dm hard-reloaded
+  // Crew Chats → unread sync again (skeleton ↔ empty flicker).
+  if ((data?.length ?? 0) === 0) {
     return;
   }
 

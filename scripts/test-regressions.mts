@@ -14611,6 +14611,50 @@ function testCrewChatBackPreservesEventDetailOrigin() {
   );
 }
 
+/**
+ * Crew Chats tab was flickering skeleton ↔ empty (~0.5s). Cause: unread sync
+ * called markNotificationsReadForLink on already-read DMs → always fired
+ * ftc-notifications-updated → /dm hard-reloaded group chats (empty treated as
+ * still-loading) → new [] → unread sync again.
+ */
+function testCrewChatsInboxDoesNotFlickerOnBadgeBus() {
+  const notificationsSource = readFileSync(
+    new URL("../lib/notifications.ts", import.meta.url),
+    "utf8",
+  );
+  const markReadFn = notificationsSource.slice(
+    notificationsSource.indexOf("export async function markNotificationsReadForLink"),
+    notificationsSource.indexOf("export async function markNotificationsReadByType"),
+  );
+
+  assert.match(markReadFn, /\.select\("id"\)/);
+  assert.match(markReadFn, /data\?\.length/);
+  assert.match(
+    markReadFn,
+    /if \(\(data\?\.length \?\? 0\) === 0\) \{\s*return;/,
+  );
+
+  const dmPageSource = readFileSync(
+    new URL("../app/dm/page.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(dmPageSource, /groupChatsSettledRef/);
+  assert.match(
+    dmPageSource,
+    /previous\.length === 0 && loaded\.length === 0/,
+  );
+  assert.match(dmPageSource, /softReloadGroupChatsFromBadgeBus/);
+  assert.match(
+    dmPageSource,
+    /addEventListener\("ftc-notifications-updated", softReloadGroupChatsFromBadgeBus\)/,
+  );
+  assert.match(dmPageSource, /reloadGroupChatsForCrewUnlock/);
+  assert.doesNotMatch(
+    dmPageSource,
+    /addEventListener\("ftc-notifications-updated", reloadGroupChatsFromRemote\)/,
+  );
+}
+
 function testEventDetailEditDiscardOnBackOnly() {
   const detailSource = readFileSync(
     new URL("../app/events/[eventId]/page.tsx", import.meta.url),
@@ -17162,6 +17206,7 @@ async function main() {
   testCrewChatEventCardToggleScrollCompensation();
   testEventDetailReturnsToCrewChat();
   testCrewChatBackPreservesEventDetailOrigin();
+  testCrewChatsInboxDoesNotFlickerOnBadgeBus();
   testEventDetailEditDiscardOnBackOnly();
   testEventDetailPopsCrewChatHistoryEntry();
   testCrewChatMemberSheetReopenOnProfileReturn();
