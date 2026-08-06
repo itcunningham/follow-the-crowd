@@ -3,6 +3,8 @@
 
 Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 
+**Full Claude handover doc (`docs/handoff/CLAUDE-FULL-HANDOVER.md`, 2026-08-06):** single paste/start file for Claude — product, brand, Isaac prefs (brutal honesty + always ship `main`), stack, routes, traps, ship checklist. Prefer over older `CLAUDE-CODE-BUILDER-HANDOVER.md` for day-one.
+
 **Crew Chats inbox flicker fixed (on `main`, 2026-08-06):** Messages → Crew Chats oscillated skeleton ↔ empty ~0.5s. Unread sync called `markNotificationsReadForLink` on already-read DMs; that always fired `ftc-notifications-updated`, and `/dm` hard-reloaded group chats treating empty as still-loading. Fix: notify only when rows actually updated; settle empty first load (no skeleton on refetch); badge bus soft-reloads; crew unlock INSERTs still hard-reload.
 
 **Profile→Message→Crew→Back keeps chat context (`f3ceb893` on `main`, 2026-08-06):** Crew chat Back rebuilt the DM as `from=profile` but dropped `profileFrom` / `profileReturnTo`, so the next Back landed on a bare profile (no Back button, CTA became **Message / Book DJ**). Those fields now ride DM→crew (`dmThreadProfileFrom` / `dmThreadProfileReturnTo`) and restore on crew→DM; same for View event via `parseDmThreadEntryContext`.
