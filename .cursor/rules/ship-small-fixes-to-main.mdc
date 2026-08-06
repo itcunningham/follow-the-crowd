@@ -1,17 +1,18 @@
 ---
-description: Small fixes ship to main (Production), not Preview-only
+description: Always land finished work on main so Vercel Production deploys
 alwaysApply: true
 ---
 
-# Ship small fixes to Production (`main`)
+# Always ship to Vercel Production (`main`)
 
-Isaac QAs on **Production** (`follow-the-crowd.vercel.app`). Vercel **branch Previews show "No target"** and are not useful for device checks.
+Isaac QAs on **Production** (`follow-the-crowd.vercel.app`). Vercel **branch Previews show "No target"** and are useless for device checks.
 
-When a small bugfix or polish is finished and ready to ship (or Isaac says merge / to main / make it live):
+**Standing rule (locked 2026-08-06):** when a task is finished and the build is green, land it on **`main` in the same turn** so Production deploys. Do not leave completed work only on a `cursor/*` / feature Preview branch. Do not wait for a separate "push to Vercel" ask.
 
-1. Land it on **`main`** (merge or fast-forward) in the same turn — do not leave it only on a `cursor/*` Preview branch.
-2. Confirm Production will pick up the commit; mention that in the summary.
+1. Commit and push the working branch.
+2. Fast-forward or merge into **`main`** and push `origin/main`.
+3. Mention in the summary that Production will pick it up (commit hash).
 
-Large or risky work may open a PR first; once approved, still merge to `main` promptly.
+Large or risky work may open a PR first; once done, still merge to `main` the same turn unless Isaac said Preview-only.
 
 Do not force-push `main`. Authoritative preference: `docs/handoff/USER-PREFERENCES.md` (Git) and `HOW-WE-WORK.md`.

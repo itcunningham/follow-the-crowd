@@ -16,8 +16,9 @@
 - Commit only when I ask (or task explicitly says commit and push).
 - Use clear commit messages I provide or sensible one-line messages.
 - Do not force push main.
-- **Auto-merge finished work to `main`.** When a task is done and code is working: merge to main and deploy. Do not wait for approval or ask permission — branch previews show "No target" and are useless for testing on production. Merge immediately after confirming the fix works. Small approved fixes / polish work goes to main right away. Large/risky work can use a PR first, but once done, merge to main the same turn.
-- **Always merge feature branches to main for Vercel deploy.** When working on branches (e.g., `claude/new-session-*`), merge them to main so changes are viewable on Vercel. Do this automatically, not waiting for approval.
+- **Always push finished work to Vercel Production via `main`.** Do not leave completed fixes on a feature/Preview branch. Branch Previews show **"No target"** and are useless for device QA on `follow-the-crowd.vercel.app`. When the task is done and the build is green: commit → push branch → fast-forward / merge to **`main`** in the **same turn** so Production deploys. Do not wait for a separate "ship it" unless Isaac said the work is Preview-only or large/risky and needs review first.
+- **Auto-merge finished work to `main`.** When a task is done and code is working: merge to main and deploy. Do not wait for approval or ask permission. Small fixes / polish go to main right away. Large/risky work can use a PR first, but once done, merge to main the same turn.
+- **Always merge feature branches to main for Vercel deploy.** When working on branches (e.g., `claude/new-session-*`, `cursor/*`), merge them to main so changes are viewable on Vercel Production. Do this automatically.
 
 ## Debugging
 
