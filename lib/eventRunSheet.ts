@@ -867,10 +867,11 @@ export async function notifyCrewChatOfRunSheetUpdate(options: {
         // Split comma-separated changes and format each on its own line
         const individualChanges = change.changeSummary
           .split(", ")
+          .filter((item) => !item.toLowerCase().includes("notes"))
           .map((item) => {
             // Remove "updated" suffix if present
             const cleaned = item.replace(/\s+updated$/, "");
-            return `  - ${cleaned}`;
+            return `  ${cleaned}`;
           })
           .join("\n");
 
