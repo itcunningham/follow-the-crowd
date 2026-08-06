@@ -886,6 +886,7 @@ export default function EventCrewChatPage() {
       return;
     }
 
+    console.log("[crew-chat] loadAccess called for event:", eventId);
     setAccessLoading(true);
     setCanAccessChat(false);
     setError(null);
@@ -905,6 +906,12 @@ export default function EventCrewChatPage() {
         getEventCrewChatAccess(eventId),
       ]);
 
+      console.log("[crew-chat] access check result:", {
+        canAccess: access.canAccess,
+        isUnlocked: access.unlock.isUnlocked,
+        eventStatus: access.eventStatus,
+      });
+
       setCurrentUserId(userId);
 
       if (!access.canAccess) {
@@ -917,6 +924,7 @@ export default function EventCrewChatPage() {
         } else {
           setError("Crew chat is not available yet. The planner will start it when ready.");
         }
+        console.log("[crew-chat] access denied for reason above");
         setMessagesLoading(false);
         setAccessLoading(false);
         return;
@@ -976,9 +984,11 @@ export default function EventCrewChatPage() {
 
   useEffect(() => {
     if (!eventId || canAccessChat) {
+      console.log("[crew-chat] unlock subscription skipped:", { eventId, canAccessChat });
       return;
     }
 
+    console.log("[crew-chat] setting up unlock subscription for event:", eventId);
     const channel = supabase
       .channel(`event-crew-chat-unlock:${eventId}`)
       .on(
@@ -990,12 +1000,16 @@ export default function EventCrewChatPage() {
           filter: `id=eq.${eventId}`,
         },
         () => {
+          console.log("[crew-chat] event update detected, reloading access");
           void loadAccess();
         },
       )
-      .subscribe();
+      .subscribe(() => {
+        console.log("[crew-chat] unlock subscription established");
+      });
 
     return () => {
+      console.log("[crew-chat] removing unlock subscription");
       supabase.removeChannel(channel);
     };
   }, [eventId, canAccessChat, loadAccess]);
