@@ -60,7 +60,7 @@ export default function GroupChatEventContextCard({
               className={VIEW_EVENT_BUTTON_CLASS}
               onClick={() => markCrewChatEventDetailOrigin(eventId)}
             >
-              View Event
+              View
               <svg
                 aria-hidden="true"
                 viewBox="0 0 24 24"

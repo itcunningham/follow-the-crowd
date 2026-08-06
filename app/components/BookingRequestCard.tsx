@@ -298,7 +298,7 @@ export default function BookingRequestCard({
                 href={eventHref}
                 className="ftc-btn-primary flex w-full items-center justify-center px-3 py-2.5 text-xs uppercase tracking-wide"
               >
-                View event
+                View
               </Link>
               {showAcceptedCancel ? (
                 <CancelAcceptedBookingButton
@@ -319,13 +319,13 @@ export default function BookingRequestCard({
                 className={DM_BOOKING_CARD_PAIRED_CANCEL_CLASS}
               />
               <Link href={eventHref} className={DM_BOOKING_CARD_PAIRED_VIEW_EVENT_CLASS}>
-                View event
+                View
               </Link>
             </div>
           ) : (
             <div className={DM_BOOKING_CARD_ACTIONS_CLASS}>
               <Link href={eventHref} className={DM_BOOKING_CARD_SECONDARY_BUTTON_CLASS}>
-                View event
+                View
               </Link>
               {canReviewProposal && showPendingCancel ? (
                 <CancelBookingRequestButton
@@ -352,13 +352,10 @@ export default function BookingRequestCard({
         groupChatAccess &&
         groupChatAccess.kind !== "hidden" ? (
           <div className="mt-4">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted">
-              Group chat
-            </p>
             {groupChatAccess.kind === "open" ? (
-              <div className="mt-2">
+              <div>
                 <EventDetailSecondaryAction href={groupChatAccess.href}>
-                  Open group chat
+                  Group chat
                 </EventDetailSecondaryAction>
               </div>
             ) : (
