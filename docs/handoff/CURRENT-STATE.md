@@ -3,6 +3,8 @@
 
 Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 
+**Run sheet crew-chat notify build fix (`def3897` on `main`, 2026-08-06):** Claude’s `05b3b05` broke Production (`eventData.name` does not exist in `EventRunSheetSection`). Pass `eventName={event.name}` from Event Details into the section and into `notifyCrewChatOfRunSheetUpdate`.
+
 **DM View event label restored (`7f8a0bd` on `main`, 2026-08-06):** Claude’s `756f5ff` shortened **View event → View** (and crew-chat context **View Event → View**), which left a full-width primary looking empty. Restored **View event** / **View Event**. Kept **Group chat** nav-row label (not “Open group chat”); heading stays removed. Do not shrink View horizontally — fill the label instead.
 
 **Decline is two-tap CONFIRM (`9f7678b` on `main`, 2026-08-06):** removes the 5s undo toast (`b698b87`). First tap arms Decline → **CONFIRM** + solid red; second tap declines. Disarms on outside tap, Accept, navigate away, or ~3s. Shared `DeclineConfirmButton` in DM `BookingRequestCard` (paired, open-offer stack, pending-proposal) and Event Details Your booking. Idle style stays Cancel-family outlined red (`d7f8dd5`).
