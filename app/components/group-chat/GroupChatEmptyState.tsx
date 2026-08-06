@@ -12,7 +12,7 @@ export default function GroupChatEmptyState() {
   return (
     <ChatEmptyState
       title="Welcome to your Crew Chat"
-      subtitle="Coordinate set times, arrivals, equipment and event updates with your crew."
+      subtitle="Coordinate set times, arrivals, equipment and event updates with your crew"
       subtitleClassName="max-w-[17rem]"
     />
   );

@@ -10,7 +10,7 @@ export type CrewMember = {
 };
 
 export const CREW_ROLE_LABEL: Record<CrewMemberRole, string> = {
-  promoter: "Promoter",
+  promoter: "Planner",
   dj: "DJ",
 };
 
