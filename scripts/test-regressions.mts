@@ -4669,13 +4669,18 @@ function testIncomingGigsCardDetailsNavigation() {
     pageSource.indexOf("function BookingHistoryCard"),
   );
 
+  // Incoming + Confirmed: whole card is the Event Details link when event_id
+  // exists. Message stays a nested link with stopPropagation so it does not
+  // steal the card navigation.
   assert.doesNotMatch(
     receivedCardSource,
     /if \(eventHref\) \{[\s\S]*absolute inset-0 z-0[\s\S]*pointer-events-none/,
   );
-  assert.match(receivedCardSource, /showChevron = isConfirmed && Boolean\(eventHref\)/);
-  assert.match(receivedCardSource, /if \(isConfirmed && eventHref\)/);
+  assert.match(receivedCardSource, /showChevron = Boolean\(eventHref\)/);
+  assert.match(receivedCardSource, /if \(eventHref\) \{/);
+  assert.doesNotMatch(receivedCardSource, /if \(isConfirmed && eventHref\)/);
   assert.match(receivedCardSource, /event\.stopPropagation\(\)/);
+  assert.match(receivedCardSource, /buildGigsEventDetailHref\(booking\.event_id, gigsTab\)/);
 }
 
 function testGigsIncomingEventArtwork() {
