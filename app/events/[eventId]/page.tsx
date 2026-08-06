@@ -1615,6 +1615,7 @@ function EventDetailPageView() {
                       <div className={showRunSheetSendBookingsAction ? "mt-4" : "mt-8"}>
                         <EventRunSheetSection
                           eventId={event.id}
+                          eventName={event.name}
                           canEdit={canEditRunSheet}
                           lineup={lineup}
                           profiles={profiles}

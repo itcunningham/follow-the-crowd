@@ -776,6 +776,7 @@ function RunSheetNotCompletedEmptyState({
 
 export default function EventRunSheetSection({
   eventId,
+  eventName,
   canEdit,
   lineup,
   profiles,
@@ -787,6 +788,7 @@ export default function EventRunSheetSection({
   calendarOrigin = null,
 }: {
   eventId: string;
+  eventName: string;
   canEdit: boolean;
   lineup: BookingRequest[];
   profiles: Map<string, BookingRecipientProfile>;
@@ -1053,7 +1055,7 @@ export default function EventRunSheetSection({
       // rows changed. Failures are logged inside the helpers.
       await notifyCrewChatOfRunSheetUpdate({
         eventId,
-        eventName: eventData.name,
+        eventName,
         changes: runSheetChanges,
       });
       await notifyRunSheetUpdatesForChangedBookings({
