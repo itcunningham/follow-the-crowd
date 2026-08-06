@@ -833,12 +833,9 @@ export default function DmChatPage() {
         return;
       }
 
-      // Only set otherUserId if we have exactly 2 members and one is the current user
-      // This prevents accidentally using the wrong ID if the query has issues
-      const members = data ?? [];
-      const otherMember = members.length === 2
-        ? members.find((member) => member.user_id !== currentUserIdValue)
-        : null;
+      const otherMember = (data ?? []).find(
+        (member) => member.user_id !== currentUserIdValue,
+      );
 
       const nextOtherUserId = otherMember?.user_id ?? null;
       setOtherUserId(nextOtherUserId);
