@@ -930,6 +930,7 @@ export default function EventCrewChatPage() {
         return;
       }
 
+      console.log("[crew-chat] access granted, loading messages");
       setCanAccessChat(true);
       setEventName(access.eventName ?? "Event");
       setEventVenue(access.eventVenue ?? null);
@@ -962,9 +963,11 @@ export default function EventCrewChatPage() {
 
   useEffect(() => {
     if (!canAccessChat || accessLoading) {
+      console.log("[crew-chat] skipping loadMessages:", { canAccessChat, accessLoading });
       return;
     }
 
+    console.log("[crew-chat] loadMessages effect triggered");
     void loadMessages();
   }, [accessLoading, canAccessChat, loadMessages]);
 
