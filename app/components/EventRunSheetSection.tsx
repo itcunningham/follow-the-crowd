@@ -1057,6 +1057,8 @@ export default function EventRunSheetSection({
         eventId,
         eventName,
         changes: runSheetChanges,
+        lineup,
+        profiles,
       });
       await notifyRunSheetUpdatesForChangedBookings({
         lineup,

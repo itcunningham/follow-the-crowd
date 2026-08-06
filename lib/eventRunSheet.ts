@@ -846,22 +846,29 @@ export async function notifyCrewChatOfRunSheetUpdate(options: {
   eventId: string;
   eventName: string;
   changes: RunSheetBookingChange[];
+  lineup?: BookingRequest[];
+  profiles?: Map<string, BookingRecipientProfile>;
 }): Promise<void> {
-  const { eventId, eventName, changes } = options;
+  const { eventId, eventName, changes, lineup = [], profiles = new Map() } = options;
 
   if (changes.length === 0) {
     return;
   }
 
   try {
-    const senderProfile = await getCurrentUserProfile();
-    const senderName = senderProfile?.display_name?.trim() || "Planner";
-
     const changesList = changes
-      .map((change) => `• ${change.changeSummary}`)
+      .map((change) => {
+        const booking = lineup.find((b) => b.id === change.bookingRequestId);
+        if (!booking) return `• ${change.changeSummary}`;
+
+        const profile = profiles.get(booking.recipient_id);
+        const djName = profile?.display_name?.trim() || "DJ";
+
+        return `• ${djName}: ${change.changeSummary}`;
+      })
       .join("\n");
 
-    const messageText = `${senderName} updated the run sheet:\n${changesList}`;
+    const messageText = `Run sheet updated:\n${changesList}`;
 
     await sendEventCrewChatMessage(eventId, messageText, eventName, {
       notifyParticipants: true,
