@@ -928,6 +928,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 | **booking_requests Realtime** | **⚠️ `scripts/setupBookingRequestsRealtime.sql`** — still required for status-only fan-out / open-DM booking cards. Accept path also updates via messages INSERT (`a6b3c5f`), but run this if not already applied. |
 
 ## Recent commits (reference)
+- `def3897` — fix(run-sheet): pass eventName into crew chat notify
 - `7f8a0bd` — fix(copy): restore View event label on DM and crew chat
 - `9f7678b` — fix(booking): replace Decline undo toast with two-tap CONFIRM
 - `791f59a` — fix(gigs): Incoming card opens Event Details on tap
