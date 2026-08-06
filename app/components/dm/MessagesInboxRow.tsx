@@ -217,11 +217,7 @@ export function MessagesGroupInboxRow({
         <div className="mt-1 flex min-w-0 items-center gap-2">
           {preview ? (
             <p className={INBOX_PREVIEW_TEXT_CLASS(isUnread)}>{preview}</p>
-          ) : (
-            <span className="min-w-0 flex-1 truncate text-[10px] font-semibold uppercase leading-5 tracking-wide text-ftc-primary">
-              Group chat
-            </span>
-          )}
+          ) : null}
           <InboxUnreadIndicator isUnread={isUnread} />
         </div>
       </div>
