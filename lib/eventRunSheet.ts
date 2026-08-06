@@ -875,7 +875,7 @@ export async function notifyCrewChatOfRunSheetUpdate(options: {
           })
           .join("\n");
 
-        return `**${djName}**\n${individualChanges}`;
+        return `${djName}\n${individualChanges}`;
       })
       .join("\n");
 
