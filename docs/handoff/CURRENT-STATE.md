@@ -3,6 +3,8 @@
 
 Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 
+**Profile→Message→Crew→Back keeps chat context (on `main`, 2026-08-06):** Crew chat Back rebuilt the DM as `from=profile` but dropped `profileFrom` / `profileReturnTo`, so the next Back landed on a bare profile (no Back button, CTA became **Message / Book DJ**). Those fields now ride DM→crew (`dmThreadProfileFrom` / `dmThreadProfileReturnTo`) and restore on crew→DM; same for View event via `parseDmThreadEntryContext`.
+
 **Own chat bubbles font-medium (`9fbf54b5` on `main`, 2026-08-06):** sent (dark-on-cyan) text bumped to font-medium so it optically matches received light-on-dark. Same helper for DM + crew chat.
 
 **DM booking details: drop Booking type label; Cancelled by uses DJ name (`3676a4ce` on `main`, 2026-08-06):** Expanded details no longer show a **Booking type** eyebrow above Fixed/$amount. **Cancelled by** resolves the DJ via `resolveUserDisplayName` (display name → username) and DM cards load profiles for all booking parties (not only the other chat member), so it no longer falls back to the bare role **DJ** when the name is available.
