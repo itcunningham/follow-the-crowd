@@ -7,7 +7,8 @@ import {
 } from "@/lib/notifications";
 import { supabase } from "@/lib/supabaseClient";
 import type { BookingRecipientProfile } from "@/lib/user/currentUser";
-import { getCurrentUserId } from "@/lib/user/currentUser";
+import { getCurrentUserId, getCurrentUserProfile } from "@/lib/user/currentUser";
+import { sendEventCrewChatMessage } from "@/lib/eventCrewChat";
 
 export type RunSheetRow = {
   id: string;
@@ -835,6 +836,39 @@ export function collectChangedRunSheetBookingIds(
   return collectRunSheetBookingChanges(savedRows, currentRows).map(
     (change) => change.bookingRequestId,
   );
+}
+
+/**
+ * After a successful Save: post a system message to crew chat about the runsheet update.
+ * Soft-fail — never throws; Save already succeeded.
+ */
+export async function notifyCrewChatOfRunSheetUpdate(options: {
+  eventId: string;
+  eventName: string;
+  changes: RunSheetBookingChange[];
+}): Promise<void> {
+  const { eventId, eventName, changes } = options;
+
+  if (changes.length === 0) {
+    return;
+  }
+
+  try {
+    const senderProfile = await getCurrentUserProfile();
+    const senderName = senderProfile?.display_name?.trim() || "Planner";
+
+    const changesList = changes
+      .map((change) => `• ${change.changeSummary}`)
+      .join("\n");
+
+    const messageText = `${senderName} updated the run sheet:\n${changesList}`;
+
+    await sendEventCrewChatMessage(eventId, messageText, eventName, {
+      notifyParticipants: true,
+    });
+  } catch (notifyError) {
+    console.warn("[run-sheet] Crew chat notification failed:", notifyError);
+  }
 }
 
 /**
