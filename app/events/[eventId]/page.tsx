@@ -400,6 +400,8 @@ function EventDetailPageView() {
   const [proposalLoadingId, setProposalLoadingId] = useState<string | null>(null);
   const [hidingBookingId, setHidingBookingId] = useState<string | null>(null);
   const [respondingToPendingBookingId, setRespondingToPendingBookingId] = useState<string | null>(null);
+  const [declineToastVisible, setDeclineToastVisible] = useState(false);
+  const [declinePendingBooking, setDeclinePendingBooking] = useState<BookingRequest | null>(null);
   const [deletingEvent, setDeletingEvent] = useState(false);
   const [cancellingEvent, setCancellingEvent] = useState(false);
   const [startingCrewChat, setStartingCrewChat] = useState(false);
@@ -1149,7 +1151,37 @@ function EventDetailPageView() {
     }
   }
 
+  useEffect(() => {
+    if (!declinePendingBooking) return;
+
+    const timeout = setTimeout(async () => {
+      setRespondingToPendingBookingId(declinePendingBooking.id);
+      setError(null);
+
+      try {
+        await updateBookingRequestStatus(declinePendingBooking.id, "declined");
+        await reloadEventLineup();
+        setHeaderFeedbackMessage("Booking declined");
+      } catch (respondError) {
+        console.error("Failed to respond to pending booking:", respondError);
+        setError(getBookingMutationErrorMessage(respondError));
+      } finally {
+        setRespondingToPendingBookingId(null);
+        setDeclineToastVisible(false);
+        setDeclinePendingBooking(null);
+      }
+    }, 5000);
+
+    return () => clearTimeout(timeout);
+  }, [declinePendingBooking]);
+
   async function handleRespondToPendingBooking(booking: BookingRequest, status: "accepted" | "declined") {
+    if (status === "declined") {
+      setDeclineToastVisible(true);
+      setDeclinePendingBooking(booking);
+      return;
+    }
+
     setRespondingToPendingBookingId(booking.id);
     setError(null);
 
@@ -1164,6 +1196,11 @@ function EventDetailPageView() {
     } finally {
       setRespondingToPendingBookingId(null);
     }
+  }
+
+  function handleUndoDecline() {
+    setDeclineToastVisible(false);
+    setDeclinePendingBooking(null);
   }
 
   async function handleDeleteEvent() {
@@ -1906,6 +1943,20 @@ function EventDetailPageView() {
           goBackToEvents();
         }}
       />
+
+      {declineToastVisible && (
+        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 animate-in fade-in slide-in-from-bottom-4 duration-200">
+          <div className="flex items-center gap-3 rounded-xl bg-ftc-bg-surface-raised px-4 py-3 shadow-lg border border-ftc-border-subtle">
+            <span className="text-xs font-medium text-ftc-text">Booking declined</span>
+            <button
+              onClick={handleUndoDecline}
+              className="text-xs font-semibold text-ftc-primary hover:text-ftc-primary-dim transition"
+            >
+              Undo
+            </button>
+          </div>
+        </div>
+      )}
     </>
   );
 }
