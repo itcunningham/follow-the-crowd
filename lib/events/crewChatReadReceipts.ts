@@ -60,11 +60,14 @@ export function resolveCrewChatSeenLabel(options: {
   lastReadAtByUserId: ReadonlyMap<string, string>;
   profiles: ReadonlyMap<string, UserAvatarProfile>;
 }): string | null {
-  const readerIds = options.participantIds.filter(
-    (userId) =>
-      userId !== options.messageSenderId &&
-      isMessageSeenByReader(options.messageCreatedAt, options.lastReadAtByUserId.get(userId)),
-  );
+  // Filter to: (1) exclude sender, (2) only include those who have actually read
+  // Double-check that sender is excluded since they should never count as a reader
+  const readerIds = options.participantIds.filter((userId) => {
+    if (userId === options.messageSenderId) {
+      return false;
+    }
+    return isMessageSeenByReader(options.messageCreatedAt, options.lastReadAtByUserId.get(userId));
+  });
 
   if (readerIds.length === 0) {
     return null;
