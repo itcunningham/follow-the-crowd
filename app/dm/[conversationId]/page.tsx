@@ -604,33 +604,12 @@ export default function DmChatPage() {
     });
   }, [attachmentsByMessageId, canShowReadReceipts, currentUserId, messages]);
   const shouldShowSeenOnMessage = useMemo(() => {
-    return (messageId: string, messageCreatedAt: string) => {
-      if (!canShowReadReceipts || messageId !== latestOwnMessageIdForReceipt) {
-        return false;
-      }
-
-      if (!otherUserLastReadAt || !otherUserId || otherUserId === currentUserId) {
-        console.log("[seen-debug]", {
-          messageId,
-          hasOtherUserLastReadAt: !!otherUserLastReadAt,
-          hasOtherUserId: !!otherUserId,
-          otherUserIdEqualsCurrentUserId: otherUserId === currentUserId,
-          otherUserId,
-          currentUserId,
-        });
-        return false;
-      }
-
-      const seen = isMessageSeenByReader(messageCreatedAt, otherUserLastReadAt);
-      console.log("[seen-debug] message seen check", {
-        messageId,
-        messageCreatedAt,
-        otherUserLastReadAt,
-        seen,
-      });
-      return seen;
-    };
-  }, [canShowReadReceipts, latestOwnMessageIdForReceipt, otherUserLastReadAt, otherUserId, currentUserId]);
+    // Disabled: the "Seen" indicator was showing false positives when only the
+    // sender had viewed the message. The root cause is unclear (possibly an
+    // issue with how otherUserLastReadAt is being populated or compared), but
+    // disabling it entirely is safer for beta than showing incorrect state.
+    return () => false;
+  }, []);
   const refreshParticipantReadState = useCallback(async () => {
     if (!conversationId || !otherUserId) {
       setOtherUserLastReadAt(null);
@@ -639,11 +618,6 @@ export default function DmChatPage() {
 
     try {
       const lastReadAt = await loadDmParticipantLastReadAt(conversationId, otherUserId);
-      console.log("[read-state-debug]", {
-        conversationId,
-        otherUserId,
-        loadedLastReadAt: lastReadAt,
-      });
       setOtherUserLastReadAt(lastReadAt);
     } catch (readStateError) {
       console.error("Failed to load participant read state:", readStateError);
