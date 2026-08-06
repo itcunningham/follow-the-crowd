@@ -881,91 +881,76 @@ export default function EventCrewChatPage() {
     }
   }, [canAccessChat, currentUserId, eventId, loadSenderProfiles, markGroupChatOpened]);
 
+  const loadAccess = useCallback(async () => {
+    if (!eventId) {
+      return;
+    }
+
+    setAccessLoading(true);
+    setCanAccessChat(false);
+    setError(null);
+    setMessages([]);
+    setReactions([]);
+    setAttachments([]);
+    setReactionPickerMessageId(null);
+    setSenderProfiles(new Map());
+    setLastReadAtByUserId(new Map());
+    setEventCardCollapsed(true);
+    setMessagesError(null);
+    setMessagesLoading(true);
+
+    try {
+      const [userId, access] = await Promise.all([
+        getCurrentUserId(),
+        getEventCrewChatAccess(eventId),
+      ]);
+
+      setCurrentUserId(userId);
+
+      if (!access.canAccess) {
+        if (access.eventStatus === "cancelled") {
+          setError("This event was cancelled. Crew chat is no longer available.");
+        } else if (access.unlock.acceptedDjCount === 0) {
+          setError("Crew chat is not available because no DJs are confirmed for this event");
+        } else if (access.canStartCrewChat) {
+          setError("Start crew chat from the event page when you are ready to coordinate");
+        } else {
+          setError("Crew chat is not available yet. The planner will start it when ready.");
+        }
+        setMessagesLoading(false);
+        setAccessLoading(false);
+        return;
+      }
+
+      setCanAccessChat(true);
+      setEventName(access.eventName ?? "Event");
+      setEventVenue(access.eventVenue ?? null);
+      setEventDate(access.eventDate ?? null);
+      setEventSetTime(access.eventSetTime ?? null);
+      setEventStatus(access.eventStatus ?? null);
+      setOwnerId(access.ownerId ?? null);
+      setCrewUnlock(access.unlock);
+      void loadCrewParticipants(eventId);
+      setAccessLoading(false);
+    } catch (loadError) {
+      console.error("Failed to load event crew chat access:", loadError);
+      setError(getEventCrewChatLoadErrorMessage(loadError));
+      setMessagesLoading(false);
+      setAccessLoading(false);
+    }
+  }, [eventId, loadCrewParticipants]);
+
   useEffect(() => {
     if (!eventId) {
       return;
     }
 
-    let cancelled = false;
-
-    async function loadAccess() {
-      setAccessLoading(true);
-      setCanAccessChat(false);
-      setError(null);
-      setMessages([]);
-      setReactions([]);
-      setAttachments([]);
-      setReactionPickerMessageId(null);
-      setSenderProfiles(new Map());
-      setLastReadAtByUserId(new Map());
-      // Do NOT force-close the crew sheet here. Returning from a member profile
-      // remounts this page and re-runs loadAccess; wiping sheet state made Back
-      // land on a bare thread even when memberSheetOpen=true was in the URL.
-      // Sheet open/close is owned by the URL sync helpers above.
-      // Opening a different event's chat is a fresh entry: its details start
-      // collapsed like any other, even when React reuses this component
-      // instance across the two routes rather than remounting it.
-      setEventCardCollapsed(true);
-      setMessagesError(null);
-      setMessagesLoading(true);
-
-      try {
-        const [userId, access] = await Promise.all([
-          getCurrentUserId(),
-          getEventCrewChatAccess(eventId),
-        ]);
-
-        if (cancelled) {
-          return;
-        }
-
-        setCurrentUserId(userId);
-
-        if (!access.canAccess) {
-          if (access.eventStatus === "cancelled") {
-            setError("This event was cancelled. Crew chat is no longer available.");
-          } else if (access.unlock.acceptedDjCount === 0) {
-            setError("Crew chat is not available because no DJs are confirmed for this event");
-          } else if (access.canStartCrewChat) {
-            setError("Start crew chat from the event page when you are ready to coordinate");
-          } else {
-            setError("Crew chat is not available yet. The planner will start it when ready.");
-          }
-          setMessagesLoading(false);
-          return;
-        }
-
-        setCanAccessChat(true);
-        setEventName(access.eventName ?? "Event");
-        setEventVenue(access.eventVenue ?? null);
-        setEventDate(access.eventDate ?? null);
-        setEventSetTime(access.eventSetTime ?? null);
-        setEventStatus(access.eventStatus ?? null);
-        setOwnerId(access.ownerId ?? null);
-        setCrewUnlock(access.unlock);
-        void loadCrewParticipants(eventId);
-      } catch (loadError) {
-        if (cancelled) {
-          return;
-        }
-
-        console.error("Failed to load event crew chat access:", loadError);
-        setError(getEventCrewChatLoadErrorMessage(loadError));
-        setMessagesLoading(false);
-      } finally {
-        if (!cancelled) {
-          setAccessLoading(false);
-        }
-      }
-    }
-
     void loadAccess();
 
     return () => {
-      cancelled = true;
       messagesLoadGenerationRef.current += 1;
     };
-  }, [eventId, loadCrewParticipants]);
+  }, [eventId, loadAccess]);
 
   useEffect(() => {
     if (!canAccessChat || accessLoading) {
@@ -988,6 +973,32 @@ export default function EventCrewChatPage() {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, [refreshEventArtwork]);
+
+  useEffect(() => {
+    if (!eventId || canAccessChat) {
+      return;
+    }
+
+    const channel = supabase
+      .channel(`event-crew-chat-unlock:${eventId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "events",
+          filter: `id=eq.${eventId}`,
+        },
+        () => {
+          void loadAccess();
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [eventId, canAccessChat, loadAccess]);
 
   useEffect(() => {
     if (!eventId) {
