@@ -3,6 +3,8 @@
 
 Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 
+**Run sheet update card styling and centering (`c3d9b64` on `main`, 2026-08-06):** Refined runsheet update system messages in crew chat. Increased max-width to 90% (85% mobile) for better centering, added subtle top/bottom borders for visual separation, changed heading to font-medium, increased spacing (my-3→my-4, space-y-1.5), and bumped item text to text-sm with leading-snug for readability. Card now looks balanced and easy on the eyes — good enough for beta.
+
 **Run sheet crew-chat notify build fix (`def3897` on `main`, 2026-08-06):** Claude’s `05b3b05` broke Production (`eventData.name` does not exist in `EventRunSheetSection`). Pass `eventName={event.name}` from Event Details into the section and into `notifyCrewChatOfRunSheetUpdate`.
 
 **DM View event label restored (`7f8a0bd` on `main`, 2026-08-06):** Claude’s `756f5ff` shortened **View event → View** (and crew-chat context **View Event → View**), which left a full-width primary looking empty. Restored **View event** / **View Event**. Kept **Group chat** nav-row label (not “Open group chat”); heading stays removed. Do not shrink View horizontally — fill the label instead.

@@ -25,6 +25,11 @@
 - **After 2 failed fix attempts:** stop guessing and investigate. Gather diagnostics first: browser console errors, network requests (Fetch/XHR tab), database queries, data flow logs. Do not guess a third time.
 - **Do detective work yourself.** Do not ask Isaac for diagnostics/screenshots. Read the code, trace the flow, find the issue. He wants to minimize effort — investigation is yours to do.
 
+## Shipping & Perfection
+
+- **Ship for beta, iterate later.** Good enough is better than perfect. Don't over-polish or endlessly tweak — get it working and deployed, then refine based on real usage.
+- **Bias toward launching.** If it works and looks reasonable, ship it. Perfectionism is the enemy of progress.
+
 ## Code
 
 - Small, focused diffs. Match existing patterns.
