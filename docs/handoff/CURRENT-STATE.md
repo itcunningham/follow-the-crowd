@@ -3,6 +3,8 @@
 
 Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 
+**Own chat bubbles font-medium (`9fbf54b5` on `main`, 2026-08-06):** sent (dark-on-cyan) text bumped to font-medium so it optically matches received light-on-dark. Same helper for DM + crew chat.
+
 **DM booking details: drop Booking type label; Cancelled by uses DJ name (`3676a4ce` on `main`, 2026-08-06):** Expanded details no longer show a **Booking type** eyebrow above Fixed/$amount. **Cancelled by** resolves the DJ via `resolveUserDisplayName` (display name → username) and DM cards load profiles for all booking parties (not only the other chat member), so it no longer falls back to the bare role **DJ** when the name is available.
 
 **DM accepted card: Crew chat above Withdraw (`6f9c7945` on `main`, 2026-08-06):** DM booking card label **Group chat → Crew chat**; accepted action order is **View event → Crew chat → Withdraw** (destructive last). Locked pending copy also says Crew chat.
@@ -942,6 +944,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 | **booking_requests Realtime** | **⚠️ `scripts/setupBookingRequestsRealtime.sql`** — still required for status-only fan-out / open-DM booking cards. Accept path also updates via messages INSERT (`a6b3c5f`), but run this if not already applied. |
 
 ## Recent commits (reference)
+- `9fbf54b5` — fix(chat): bump own bubble text to font-medium
 - `3676a4ce` — fix(dm): drop Booking type label; Cancelled by shows DJ name
 - `6f9c7945` — fix(dm): Crew chat label; Withdraw below nav on accepted cards
 - `624fed1d` — fix(crew-chat): fan out Start so DJ inbox updates live
