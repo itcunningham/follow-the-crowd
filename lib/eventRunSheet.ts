@@ -7,8 +7,12 @@ import {
 } from "@/lib/notifications";
 import { supabase } from "@/lib/supabaseClient";
 import type { BookingRecipientProfile } from "@/lib/user/currentUser";
-import { getCurrentUserId, getCurrentUserProfile } from "@/lib/user/currentUser";
+import { getCurrentUserId } from "@/lib/user/currentUser";
 import { sendEventCrewChatMessage } from "@/lib/eventCrewChat";
+import {
+  formatRunSheetUpdateMessage,
+  type RunSheetUpdateChange,
+} from "@/lib/events/runSheetUpdateMessage";
 
 export type RunSheetRow = {
   id: string;
@@ -856,30 +860,35 @@ export async function notifyCrewChatOfRunSheetUpdate(options: {
   }
 
   try {
-    const changesList = changes
+    const formattedChanges: RunSheetUpdateChange[] = changes
       .map((change) => {
         const booking = lineup.find((b) => b.id === change.bookingRequestId);
-        if (!booking) return `• ${change.changeSummary}`;
+        if (!booking) return null;
 
         const profile = profiles.get(booking.recipient_id);
         const djName = profile?.display_name?.trim() || "DJ";
 
-        // Split comma-separated changes and format each on its own line
+        // Split comma-separated changes and format each
         const individualChanges = change.changeSummary
           .split(", ")
           .filter((item) => !item.toLowerCase().includes("notes"))
           .map((item) => {
             // Remove "updated" suffix if present
-            const cleaned = item.replace(/\s+updated$/, "");
-            return `  ${cleaned}`;
-          })
-          .join("\n");
+            return item.replace(/\s+updated$/, "");
+          });
 
-        return `${djName}\n${individualChanges}`;
+        return {
+          djName,
+          changes: individualChanges,
+        };
       })
-      .join("\n");
+      .filter((item): item is RunSheetUpdateChange => item !== null);
 
-    const messageText = `Run sheet updated\n${changesList}`;
+    if (formattedChanges.length === 0) {
+      return;
+    }
+
+    const messageText = formatRunSheetUpdateMessage(formattedChanges);
 
     await sendEventCrewChatMessage(eventId, messageText, eventName, {
       notifyParticipants: true,
