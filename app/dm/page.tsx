@@ -737,6 +737,48 @@ function DmInboxPageContent() {
   }, [loadGroupChats]);
 
   useEffect(() => {
+    if (!currentUserId) {
+      return;
+    }
+
+    function reloadGroupChatsFromRemote() {
+      // Not soft: unlock can appear while the soft 30s throttle would no-op.
+      void loadGroupChats();
+    }
+
+    window.addEventListener("ftc-notifications-updated", reloadGroupChatsFromRemote);
+
+    const channel = supabase
+      .channel(`dm-inbox:crew-chat-unlock:${currentUserId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "notifications",
+          filter: `user_id=eq.${currentUserId}`,
+        },
+        (payload) => {
+          const link =
+            payload.new && typeof payload.new === "object" && "link" in payload.new
+              ? String((payload.new as { link?: string | null }).link ?? "")
+              : "";
+
+          // Crew chat start (and crew messages) use /events/{id}/chat links.
+          if (/^\/events\/[0-9a-fA-F-]{36}\/chat/.test(link)) {
+            reloadGroupChatsFromRemote();
+          }
+        },
+      )
+      .subscribe();
+
+    return () => {
+      window.removeEventListener("ftc-notifications-updated", reloadGroupChatsFromRemote);
+      supabase.removeChannel(channel);
+    };
+  }, [currentUserId, loadGroupChats]);
+
+  useEffect(() => {
     if (activeTab !== "group") {
       return;
     }

@@ -37,6 +37,7 @@ import {
 import { readCachedNavigation } from "@/lib/navigationRoleCache";
 import { canViewGigsSubNav } from "@/lib/plannerEventsNav";
 import type { NavBadgeCounts } from "@/lib/notifications";
+import { notifyNavigationBadgesRefresh } from "@/lib/notifications";
 import { supabase } from "@/lib/supabaseClient";
 import type { UserRole } from "@/lib/user/currentUser";
 
@@ -333,7 +334,10 @@ export function NavBadgeProvider({ children }: { children: ReactNode }) {
           filter: `user_id=eq.${userId}`,
         },
         () => {
-          void refreshBadgeCounts({ force: true });
+          // Fan out to mounted views (Crew Chats inbox, Event Details unlock,
+          // Gigs, etc.). createNotification only dispatches on the sender's
+          // tab — recipients need the same signal when the row lands.
+          notifyNavigationBadgesRefresh();
         },
       )
       .subscribe();

@@ -125,7 +125,7 @@ import {
   type CrewChatUnlockState,
 } from "@/lib/events/crewChatUnlock";
 import { computeCrewChatEventActions } from "@/lib/events/crewChatEventActions";
-import { getEventCrewChatLink } from "@/lib/eventCrewChat";
+import { getEventCrewChatLink, notifyCrewChatStarted } from "@/lib/eventCrewChat";
 import { loadEventRunSheet } from "@/lib/eventRunSheet";
 import { getEventCoverUploadErrorMessage, normalizeEventCoverImageUrl } from "@/lib/events/eventCoverImage";
 import { consumeEventCreateInviteMessage } from "@/lib/events/eventCreateInviteMessages";
@@ -1234,10 +1234,18 @@ function EventDetailPageView() {
     setError(null);
 
     try {
+      const wasStarted = Boolean(event.crew_chat_started_at?.trim());
       const updatedEvent = await startEventCrewChat(event.id);
       setEvent(updatedEvent);
       const unlock = await getCrewChatUnlockStateForEvent(event.id);
       setCrewChatUnlock(unlock);
+
+      if (!wasStarted && updatedEvent.crew_chat_started_at) {
+        await notifyCrewChatStarted({
+          eventId: event.id,
+          eventName: updatedEvent.name || event.name,
+        });
+      }
     } catch (startError) {
       console.error("Failed to start crew chat:", startError);
       setError(getEventsLoadErrorMessage(startError));
