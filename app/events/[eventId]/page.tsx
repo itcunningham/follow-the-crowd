@@ -871,7 +871,7 @@ function EventDetailPageView() {
         try {
           await postEventGroupChatUpdate(savedEvent.id, savedEvent.name, groupChatFieldChanges);
         } catch (groupChatError) {
-          console.error("Failed to post event group chat update:", groupChatError);
+          console.error("Failed to post event crew chat update:", groupChatError);
           scrollToTopAfterSuccessfulSaveRef.current = true;
           setEvent(savedEvent);
           setEditOpen(false);
@@ -879,7 +879,7 @@ function EventDetailPageView() {
           resetEditCoverState();
           setEditConfirmOpen(false);
           setHeaderFeedbackMessage("Event updated. Remember to let affected DJs know.");
-          setError("Event saved, but the group chat update could not be posted");
+          setError("Event saved, but the crew chat update could not be posted");
           return;
         }
       }
@@ -892,7 +892,7 @@ function EventDetailPageView() {
       setEditConfirmOpen(false);
       setHeaderFeedbackMessage(
         shouldNotifyGroupChat && groupChatFieldChanges.length > 0
-          ? "Event updated. A summary was posted in the group chat."
+          ? "Event updated. A summary was posted in the crew chat."
           : EVENT_UPDATED_SUCCESS_MESSAGE,
       );
     } catch (saveError) {
@@ -1415,12 +1415,12 @@ function EventDetailPageView() {
                       href={getEventCrewChatLink(event.id, {
                         eventDetailReturn: searchParams.toString() || null,
                       })}
-                      aria-label="Group chat"
+                      aria-label="Crew chat"
                       className={HEADER_GROUP_CHAT_ACTION_CLASS}
                       onClick={() => markCrewChatOpenedFromEventDetail(event.id)}
                     >
                       <EventHeaderChatIcon />
-                      <span className={HEADER_GROUP_CHAT_LABEL_CLASS}>Group chat</span>
+                      <span className={HEADER_GROUP_CHAT_LABEL_CLASS}>Crew chat</span>
                     </Link>
                   )}
                   {showCrewChatHelpUi ? (
