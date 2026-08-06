@@ -875,11 +875,11 @@ export async function notifyCrewChatOfRunSheetUpdate(options: {
           })
           .join("\n");
 
-        return `• ${djName}\n${individualChanges}`;
+        return `**${djName}**\n${individualChanges}`;
       })
       .join("\n");
 
-    const messageText = `Run sheet updated:\n${changesList}`;
+    const messageText = `Run sheet updated\n${changesList}`;
 
     await sendEventCrewChatMessage(eventId, messageText, eventName, {
       notifyParticipants: true,
