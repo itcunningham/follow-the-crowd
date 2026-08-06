@@ -16,7 +16,7 @@ export default function LegacyEventChatRedirectPage() {
 
   return (
     <div className="flex min-h-[100dvh] items-center justify-center bg-ftc-bg text-sm text-ftc-text-muted">
-      Redirecting to group chat...
+      Redirecting to crew chat...
     </div>
   );
 }

@@ -173,7 +173,7 @@ import {
 } from "@/lib/user/currentUser";
 
 const CREW_CHAT_HELP = {
-  label: "Start group chat",
+  label: "Start crew chat",
   help: "Start now with 1 accepted DJ or wait. It opens automatically when a 2nd DJ accepts",
 };
 
@@ -1348,12 +1348,12 @@ function EventDetailPageView() {
                         void handleStartCrewChat();
                       }}
                       disabled={startingCrewChat}
-                      aria-label="Start group chat"
+                      aria-label="Start crew chat"
                       className={HEADER_GROUP_CHAT_ACTION_CLASS}
                     >
                       <EventHeaderChatIcon />
                       <span className={HEADER_GROUP_CHAT_LABEL_CLASS}>
-                        {startingCrewChat ? "Starting" : "Start group chat"}
+                        {startingCrewChat ? "Starting" : "Start crew chat"}
                       </span>
                     </button>
                   ) : (

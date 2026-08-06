@@ -916,13 +916,13 @@ export default function EventCrewChatPage() {
 
         if (!access.canAccess) {
           if (access.eventStatus === "cancelled") {
-            setError("This event was cancelled. Group chat is no longer available.");
+            setError("This event was cancelled. Crew chat is no longer available.");
           } else if (access.unlock.acceptedDjCount === 0) {
-            setError("Group chat is not available because no DJs are confirmed for this event");
+            setError("Crew chat is not available because no DJs are confirmed for this event");
           } else if (access.canStartCrewChat) {
-            setError("Start group chat from the event page when you are ready to coordinate");
+            setError("Start crew chat from the event page when you are ready to coordinate");
           } else {
-            setError("Group chat is not available yet. The planner will start it when ready.");
+            setError("Crew chat is not available yet. The planner will start it when ready.");
           }
           setMessagesLoading(false);
           return;
