@@ -17,6 +17,7 @@
 - Use clear commit messages I provide or sensible one-line messages.
 - Do not force push main.
 - **Auto-merge finished work to `main`.** When a task is done and code is working: merge to main and deploy. Do not wait for approval or ask permission — branch previews show "No target" and are useless for testing on production. Merge immediately after confirming the fix works. Small approved fixes / polish work goes to main right away. Large/risky work can use a PR first, but once done, merge to main the same turn.
+- **Always merge feature branches to main for Vercel deploy.** When working on branches (e.g., `claude/new-session-*`), merge them to main so changes are viewable on Vercel. Do this automatically, not waiting for approval.
 
 ## Debugging
 
