@@ -3,6 +3,8 @@
 
 Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 
+**DM View event label restored (`7f8a0bd` on `main`, 2026-08-06):** Claude’s `756f5ff` shortened **View event → View** (and crew-chat context **View Event → View**), which left a full-width primary looking empty. Restored **View event** / **View Event**. Kept **Group chat** nav-row label (not “Open group chat”); heading stays removed. Do not shrink View horizontally — fill the label instead.
+
 **Decline is two-tap CONFIRM (`9f7678b` on `main`, 2026-08-06):** removes the 5s undo toast (`b698b87`). First tap arms Decline → **CONFIRM** + solid red; second tap declines. Disarms on outside tap, Accept, navigate away, or ~3s. Shared `DeclineConfirmButton` in DM `BookingRequestCard` (paired, open-offer stack, pending-proposal) and Event Details Your booking. Idle style stays Cancel-family outlined red (`d7f8dd5`).
 
 **DM Decline|Accept restored to outlined + primary (`d7f8dd5` on `main`, 2026-08-06):** supersedes the solid-fill / visibility pass (`0646edb`→`d86401a`). Decline is Cancel-family outlined red + uppercase again; Accept is `ftc-btn-primary` uppercase. Event Details pending pair uses the same tokens.
@@ -926,6 +928,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 | **booking_requests Realtime** | **⚠️ `scripts/setupBookingRequestsRealtime.sql`** — still required for status-only fan-out / open-DM booking cards. Accept path also updates via messages INSERT (`a6b3c5f`), but run this if not already applied. |
 
 ## Recent commits (reference)
+- `7f8a0bd` — fix(copy): restore View event label on DM and crew chat
 - `9f7678b` — fix(booking): replace Decline undo toast with two-tap CONFIRM
 - `791f59a` — fix(gigs): Incoming card opens Event Details on tap
 - `d7f8dd5` — fix(ui): restore outlined Decline + solid Accept on DM booking cards
