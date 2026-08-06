@@ -1658,20 +1658,20 @@ function EventDetailPageView() {
                             </div>
                           ) : null}
                         </div>
-                        <div className="flex shrink-0 gap-2">
+                        <div className="flex gap-2">
                           {viewerBooking.status === "pending" ? (
                             <>
                               <button
                                 onClick={() => handleRespondToPendingBooking(viewerBooking, "declined")}
                                 disabled={respondingToPendingBookingId === viewerBooking.id}
-                                className="inline-flex min-h-10 items-center justify-center rounded-xl border border-ftc-destructive bg-ftc-destructive/10 px-3 py-2 text-xs font-medium text-ftc-destructive transition disabled:cursor-not-allowed disabled:opacity-50"
+                                className="inline-flex min-h-10 flex-[0.92] items-center justify-center rounded-xl border border-ftc-destructive bg-ftc-destructive/10 px-3 py-2 text-xs font-medium text-ftc-destructive transition disabled:cursor-not-allowed disabled:opacity-50"
                               >
                                 {respondingToPendingBookingId === viewerBooking.id ? "..." : "Decline"}
                               </button>
                               <button
                                 onClick={() => handleRespondToPendingBooking(viewerBooking, "accepted")}
                                 disabled={respondingToPendingBookingId === viewerBooking.id}
-                                className="inline-flex min-h-10 items-center justify-center rounded-xl bg-ftc-primary px-3 py-2 text-xs font-medium text-black transition disabled:cursor-not-allowed disabled:opacity-50"
+                                className="inline-flex min-h-10 flex-[1.08] items-center justify-center rounded-xl bg-ftc-primary px-3 py-2 text-xs font-medium text-black transition disabled:cursor-not-allowed disabled:opacity-50"
                               >
                                 {respondingToPendingBookingId === viewerBooking.id ? "..." : "Accept"}
                               </button>
