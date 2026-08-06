@@ -877,7 +877,7 @@ function DmInboxPageContent() {
             }
 
             if (!matchedGroupChat) {
-              void loadGroupChats();
+              void loadGroupChats({ soft: true });
             }
 
             if (currentUserId) {
