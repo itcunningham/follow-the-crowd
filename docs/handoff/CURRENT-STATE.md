@@ -3,6 +3,8 @@
 
 Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 
+**DM accepted card: Crew chat above Withdraw (`6f9c7945` on `main`, 2026-08-06):** DM booking card label **Group chat → Crew chat**; accepted action order is **View event → Crew chat → Withdraw** (destructive last). Locked pending copy also says Crew chat.
+
 **Crew chat start reaches DJ inbox live (`624fed1d` on `main`, 2026-08-06):** Start only wrote `events.crew_chat_started_at` — no message, no notification — so Messages → Crew Chats never refetched until hard refresh. Claude’s `cecc61c8` only subscribed the open `/events/[id]/chat` page (and `events` may not be in Realtime). Fix: `notifyCrewChatStarted` after manual Start and first auto-start; NavBadge fans recipient `notifications` INSERTs into `ftc-notifications-updated`; `/dm` reloads group chats (not soft-throttled) on that signal / crew-chat notification links. Stripped Claude debug `console.log`s on the chat page.
 
 **"Group chat" → "Crew chat" UI terminology (`36eea5a9` on `main`, 2026-08-06):** Unified terminology across Event Details pages and chat headers. Changed "Start group chat" → "Start crew chat", "GROUP CHAT" button → "CREW CHAT", error messages, and redirect messages to use crew instead of group. Matches Messages tab which already used "Crew Chats". Deployed to Production.
@@ -938,6 +940,7 @@ See `SUPABASE.md` and `supabase/README.md`. Apply `supabase/migrations/` before 
 | **booking_requests Realtime** | **⚠️ `scripts/setupBookingRequestsRealtime.sql`** — still required for status-only fan-out / open-DM booking cards. Accept path also updates via messages INSERT (`a6b3c5f`), but run this if not already applied. |
 
 ## Recent commits (reference)
+- `6f9c7945` — fix(dm): Crew chat label; Withdraw below nav on accepted cards
 - `624fed1d` — fix(crew-chat): fan out Start so DJ inbox updates live
 - `ec781b25` — fix(dm): always resolve peer before message notification
 - `def3897` — fix(run-sheet): pass eventName into crew chat notify
