@@ -890,6 +890,7 @@ export default function EventRunSheetSection({
       setError(getRunSheetLoadErrorMessage(loadError));
     } finally {
       setLoading(false);
+      justSavedRef.current = false;
     }
   }, [eventId, syncAcceptedDjs]);
 
@@ -1052,11 +1053,10 @@ export default function EventRunSheetSection({
       // flicker). After 1.5s, return to view mode.
       onSaved?.("Run sheet saved");
 
-      // Flag prevents realtime subscription from reloading immediately after
-      // our local save (we already have the fresh data). Clear after short delay.
+      // Flag prevents realtime subscription from reloading (and showing loading
+      // state) immediately after our local save. Cleared when next load completes.
       justSavedRef.current = true;
       setTimeout(() => {
-        justSavedRef.current = false;
         setIsEditing(false);
         setExpandedRowIds(new Set());
       }, 1500);
