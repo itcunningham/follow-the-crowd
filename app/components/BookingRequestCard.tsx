@@ -131,6 +131,7 @@ export default function BookingRequestCard({
     eventHasAcceptedBooking,
     eventCancelled,
     crewChatUnlocked,
+    dmConversationId,
   });
   const showPendingCancel =
     canCancelBookingRequest(booking, currentUserId) && onCancel && !isEventCancelledBooking;
