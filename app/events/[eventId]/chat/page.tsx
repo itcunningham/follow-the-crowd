@@ -236,12 +236,14 @@ export default function EventCrewChatPage() {
     return buildChatReturnTo(pathname, params.toString());
   }, [pathname, searchParams]);
   const openedFromMessages = searchParams.get("from") === "dm";
+  const dmConversationId = searchParams.get("dmConversation");
   const eventDetailReturn = searchParams.get(CREW_CHAT_EVENT_DETAIL_RETURN_PARAM);
   const backHref = getEventCrewChatBackHref(
     eventId,
     searchParams.get("from"),
     searchParams.get("tab"),
     eventDetailReturn,
+    dmConversationId,
   );
   const backReplace = !openedFromMessages && Boolean(eventDetailReturn?.trim());
 

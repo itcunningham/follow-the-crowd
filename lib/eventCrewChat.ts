@@ -79,8 +79,12 @@ export function getEventCrewChatBackHref(
   from: string | null | undefined,
   tab?: string | null,
   eventDetailReturn?: string | null,
+  dmConversationId?: string | null,
 ): string {
   if (from === "dm") {
+    if (dmConversationId) {
+      return tab === "group" ? `/dm/${dmConversationId}?tab=group` : `/dm/${dmConversationId}`;
+    }
     return tab === "group" ? "/dm?tab=group" : "/dm";
   }
 

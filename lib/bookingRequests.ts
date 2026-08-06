@@ -2460,6 +2460,7 @@ export function getBookingGroupChatAccess(
     eventHasAcceptedBooking?: boolean;
     eventCancelled?: boolean;
     crewChatUnlocked?: boolean;
+    dmConversationId?: string | null;
   },
 ): BookingGroupChatAccess | null {
   if (!booking.event_id || !currentUserId) {
@@ -2482,7 +2483,10 @@ export function getBookingGroupChatAccess(
     return { kind: "hidden" };
   }
 
-  const href = `/events/${booking.event_id}/chat`;
+  let href = `/events/${booking.event_id}/chat`;
+  if (options?.dmConversationId) {
+    href += `?from=dm&dmConversation=${options.dmConversationId}`;
+  }
   const isPlanner = booking.sender_id === currentUserId;
   const isDj = booking.recipient_id === currentUserId;
 

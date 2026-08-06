@@ -127,6 +127,7 @@ export default function BookingRequestCard({
     eventHasAcceptedBooking,
     eventCancelled,
     crewChatUnlocked,
+    dmConversationId,
   });
   const showPendingCancel =
     canCancelBookingRequest(booking, currentUserId) && onCancel && !isEventCancelledBooking;
@@ -348,18 +349,15 @@ export default function BookingRequestCard({
         groupChatAccess &&
         groupChatAccess.kind !== "hidden" ? (
           <div className="mt-4">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-ftc-text-muted">
-              Group chat
-            </p>
             {groupChatAccess.kind === "open" ? (
-              <div className="mt-2">
+              <div>
                 <EventDetailSecondaryAction href={groupChatAccess.href}>
-                  Open group chat
+                  Crew chat
                 </EventDetailSecondaryAction>
               </div>
             ) : (
               <p className="mt-2 text-xs text-ftc-text-muted">
-                Group chat unlocks after you accept.
+                Crew chat unlocks after you accept.
               </p>
             )}
           </div>
