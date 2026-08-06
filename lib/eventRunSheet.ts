@@ -864,7 +864,17 @@ export async function notifyCrewChatOfRunSheetUpdate(options: {
         const profile = profiles.get(booking.recipient_id);
         const djName = profile?.display_name?.trim() || "DJ";
 
-        return `• ${djName}: ${change.changeSummary}`;
+        // Split comma-separated changes and format each on its own line
+        const individualChanges = change.changeSummary
+          .split(", ")
+          .map((item) => {
+            // Remove "updated" suffix if present
+            const cleaned = item.replace(/\s+updated$/, "");
+            return `  - ${cleaned}`;
+          })
+          .join("\n");
+
+        return `• ${djName}\n${individualChanges}`;
       })
       .join("\n");
 
