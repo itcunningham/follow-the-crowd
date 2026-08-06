@@ -608,14 +608,16 @@ export default function DmChatPage() {
       if (
         !canShowReadReceipts ||
         messageId !== latestOwnMessageIdForReceipt ||
-        !otherUserLastReadAt
+        !otherUserLastReadAt ||
+        !otherUserId ||
+        otherUserId === currentUserId
       ) {
         return false;
       }
 
       return isMessageSeenByReader(messageCreatedAt, otherUserLastReadAt);
     };
-  }, [canShowReadReceipts, latestOwnMessageIdForReceipt, otherUserLastReadAt]);
+  }, [canShowReadReceipts, latestOwnMessageIdForReceipt, otherUserLastReadAt, otherUserId, currentUserId]);
   const refreshParticipantReadState = useCallback(async () => {
     if (!conversationId || !otherUserId) {
       setOtherUserLastReadAt(null);
@@ -839,9 +841,12 @@ export default function DmChatPage() {
         return;
       }
 
-      const otherMember = (data ?? []).find(
-        (member) => member.user_id !== currentUserIdValue,
-      );
+      // Only set otherUserId if we have exactly 2 members and one is the current user
+      // This prevents accidentally using the wrong ID if the query has issues
+      const members = data ?? [];
+      const otherMember = members.length === 2
+        ? members.find((member) => member.user_id !== currentUserIdValue)
+        : null;
 
       const nextOtherUserId = otherMember?.user_id ?? null;
       setOtherUserId(nextOtherUserId);
