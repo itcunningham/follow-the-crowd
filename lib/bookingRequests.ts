@@ -2542,6 +2542,15 @@ export function getBookingGroupChatAccess(
     if (context.profileUserId) {
       params.set("dmThreadProfileUserId", context.profileUserId);
     }
+    if (context.profileFrom) {
+      params.set("dmThreadProfileFrom", context.profileFrom);
+    }
+    if (context.profileReturnTo) {
+      params.set("dmThreadProfileReturnTo", context.profileReturnTo);
+    }
+    if (context.fromTab) {
+      params.set("dmThreadFromTab", context.fromTab);
+    }
   }
 
   const query = params.toString();

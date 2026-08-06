@@ -80,7 +80,19 @@ export function getEventCrewChatBackHref(
   tab?: string | null,
   eventDetailReturn?: string | null,
   dmConversationId?: string | null,
-  dmThreadContext?: any | null,
+  dmThreadContext?: {
+    from?: string | null;
+    tab?: string | null;
+    eventId?: string | null;
+    eventReturn?: string | null;
+    calendarDate?: string | null;
+    calendarView?: string | null;
+    calendarMonth?: string | null;
+    profileUserId?: string | null;
+    profileFrom?: string | null;
+    profileReturnTo?: string | null;
+    fromTab?: string | null;
+  } | null,
 ): string {
   if (from === "dm") {
     if (dmConversationId) {
@@ -110,6 +122,15 @@ export function getEventCrewChatBackHref(
         }
         if (dmThreadContext.profileUserId) {
           params.set("profileUserId", dmThreadContext.profileUserId);
+        }
+        if (dmThreadContext.profileFrom) {
+          params.set("profileFrom", dmThreadContext.profileFrom);
+        }
+        if (dmThreadContext.profileReturnTo) {
+          params.set("profileReturnTo", dmThreadContext.profileReturnTo);
+        }
+        if (dmThreadContext.fromTab) {
+          params.set("fromTab", dmThreadContext.fromTab);
         }
       }
 

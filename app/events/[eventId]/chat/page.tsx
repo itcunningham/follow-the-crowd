@@ -247,6 +247,9 @@ export default function EventCrewChatPage() {
     calendarView: searchParams.get("dmThreadCalendarView"),
     calendarMonth: searchParams.get("dmThreadCalendarMonth"),
     profileUserId: searchParams.get("dmThreadProfileUserId"),
+    profileFrom: searchParams.get("dmThreadProfileFrom"),
+    profileReturnTo: searchParams.get("dmThreadProfileReturnTo"),
+    fromTab: searchParams.get("dmThreadFromTab"),
   };
   const backHref = getEventCrewChatBackHref(
     eventId,
