@@ -262,7 +262,7 @@ function GroupChatMessageBubble({
     </ChatMessageBubbleShell>
   );
 
-  // App-generated notice: always left-aligned, with no avatar and no sender
+  // App-generated notice: always centered, with no avatar and no sender
   // name, because attributing it to the planner who saved the edit is exactly
   // what made it read as a typed message. Its timestamp is hidden like every
   // other row's — only the centred separators are visible.
@@ -270,9 +270,9 @@ function GroupChatMessageBubble({
     return (
       <li
         data-chat-message-id={messageId}
-        className={resolveSystemCardGroupLiClass({ precededByTimeSeparator })}
+        className={`${resolveSystemCardGroupLiClass({ precededByTimeSeparator })} flex justify-center`}
       >
-        <div className={`flex ${rowMaxWidthClass} min-w-0 flex-col items-start`}>
+        <div className={`flex ${rowMaxWidthClass} min-w-0 flex-col items-center`}>
           {bubbleBlock}
           {/* Hidden, not styled — identical to DmTextMessageBubble. The only
               visible times in either conversation type are the centred

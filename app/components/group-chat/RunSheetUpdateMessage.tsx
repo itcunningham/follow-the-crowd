@@ -10,18 +10,18 @@ export function RunSheetUpdateMessage({ text }: { text: string }) {
   }
 
   return (
-    <div className="mx-4 my-3 rounded-2xl bg-ftc-bg-elevated px-4 py-3">
-      <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-ftc-text-muted">
+    <div className="mx-4 my-3 rounded-2xl bg-ftc-bg-elevated px-5 py-4">
+      <p className="mb-4 text-sm font-semibold uppercase tracking-wide text-ftc-text-muted">
         Run sheet updated
       </p>
 
-      <div className="space-y-3">
+      <div className="space-y-4">
         {changes.map((change, djIndex) => (
           <div key={djIndex}>
             <p className="text-sm font-semibold text-ftc-primary">{change.djName}</p>
-            <ul className="mt-1.5 space-y-1">
+            <ul className="mt-2 space-y-1.5">
               {change.changes.map((item, changeIndex) => (
-                <li key={changeIndex} className="text-xs text-ftc-text-secondary">
+                <li key={changeIndex} className="text-sm leading-snug text-ftc-text-secondary">
                   {item}
                 </li>
               ))}
