@@ -183,9 +183,8 @@ function GroupChatMessageBubble({
 
   const highlightClass = getChatNewMessageHighlightClass(isHighlighted);
   const rowMaxWidthClass = systemAuthored
-    ? // Narrower than a normal message so a routine update supports the
-      // conversation rather than competing with it.
-      "max-w-[72%] sm:max-w-[56%]"
+    ? // Wider for system messages to center better in the chat
+      "max-w-[90%] sm:max-w-[85%]"
     : isOwnMessage
       ? "max-w-[85%] sm:max-w-[72%]"
       : "max-w-[88%] sm:max-w-[78%]";

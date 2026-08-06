@@ -10,8 +10,8 @@ export function RunSheetUpdateMessage({ text }: { text: string }) {
   }
 
   return (
-    <div className="mx-4 my-3 rounded-2xl bg-ftc-bg-elevated px-5 py-4">
-      <p className="mb-4 text-sm font-semibold uppercase tracking-wide text-ftc-text-muted">
+    <div className="mx-4 my-4 rounded-2xl bg-ftc-bg-elevated px-5 py-4 border-t border-b border-ftc-border">
+      <p className="mb-4 text-sm font-medium uppercase tracking-wide text-ftc-text-muted">
         Run sheet updated
       </p>
 
