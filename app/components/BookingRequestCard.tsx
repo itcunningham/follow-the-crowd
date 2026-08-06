@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import BookingCardCompactSummary, {
   getBookingCardCompactRateLine,
@@ -8,6 +8,7 @@ import BookingCardCompactSummary, {
 import BookingRateProposalPanel, {
   BookingRateProposalNotice,
 } from "@/app/components/booking/BookingRateProposalPanel";
+import DeclineConfirmButton from "@/app/components/booking/DeclineConfirmButton";
 import ProposeBookingRateSheet from "@/app/components/booking/ProposeBookingRateSheet";
 import BookingStatusBadge from "@/app/components/booking/BookingStatusBadge";
 import CancelAcceptedBookingButton from "@/app/components/booking/CancelAcceptedBookingButton";
@@ -16,6 +17,7 @@ import { EventDetailSecondaryAction } from "@/app/components/event-detail/EventD
 import {
   DM_BOOKING_CARD_ACCEPT_BUTTON_CLASS,
   DM_BOOKING_CARD_ACTIONS_CLASS,
+  DM_BOOKING_CARD_DECLINE_ARMED_BUTTON_CLASS,
   DM_BOOKING_CARD_DECLINE_BUTTON_CLASS,
   DM_BOOKING_CARD_PAIRED_ACTIONS_ROW_CLASS,
   DM_BOOKING_CARD_PAIRED_CANCEL_CLASS,
@@ -120,8 +122,6 @@ export default function BookingRequestCard({
   anchorRef?: (element: HTMLElement | null) => void;
 }) {
   const [proposeSheetOpen, setProposeSheetOpen] = useState(false);
-  const [declineToastVisible, setDeclineToastVisible] = useState(false);
-  const [declinePending, setDeclinePending] = useState(false);
   const isEventCancelledBooking = isBookingAffectedByCancelledEvent(booking, eventCancelled);
   const showAsCancelled = booking.status === "cancelled" || isEventCancelledBooking;
   const eventCancelledLabel = isEventCancelledBooking
@@ -174,28 +174,6 @@ export default function BookingRequestCard({
 
     await onProposeRate(rateDigitsToInteger(rateDigits), note);
     setProposeSheetOpen(false);
-  }
-
-  useEffect(() => {
-    if (!declinePending) return;
-
-    const timeout = setTimeout(() => {
-      onDecline();
-      setDeclineToastVisible(false);
-      setDeclinePending(false);
-    }, 5000);
-
-    return () => clearTimeout(timeout);
-  }, [declinePending, onDecline]);
-
-  function handleDeclineWithUndo() {
-    setDeclineToastVisible(true);
-    setDeclinePending(true);
-  }
-
-  function handleUndoDecline() {
-    setDeclineToastVisible(false);
-    setDeclinePending(false);
   }
 
   function handleCollapse() {
@@ -417,25 +395,23 @@ export default function BookingRequestCard({
                     Propose rate
                   </button>
                 ) : null}
-                <button
-                  type="button"
-                  onClick={handleDeclineWithUndo}
+                <DeclineConfirmButton
+                  onConfirm={onDecline}
                   disabled={actionDisabled}
-                  className={`${DM_BOOKING_CARD_DECLINE_BUTTON_CLASS} w-full`}
-                >
-                  Decline
-                </button>
+                  idleClassName={DM_BOOKING_CARD_DECLINE_BUTTON_CLASS}
+                  armedClassName={DM_BOOKING_CARD_DECLINE_ARMED_BUTTON_CLASS}
+                  className="w-full"
+                />
               </>
             ) : (
               <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={handleDeclineWithUndo}
+                <DeclineConfirmButton
+                  onConfirm={onDecline}
                   disabled={actionDisabled}
-                  className={`${DM_BOOKING_CARD_DECLINE_BUTTON_CLASS} flex-[0.92]`}
-                >
-                  Decline
-                </button>
+                  idleClassName={DM_BOOKING_CARD_DECLINE_BUTTON_CLASS}
+                  armedClassName={DM_BOOKING_CARD_DECLINE_ARMED_BUTTON_CLASS}
+                  className="flex-[0.92]"
+                />
                 <button
                   type="button"
                   onClick={onAccept}
@@ -455,14 +431,13 @@ export default function BookingRequestCard({
         pendingProposal &&
         booking.recipient_id === currentUserId ? (
           <div className={DM_BOOKING_CARD_ACTIONS_CLASS}>
-            <button
-              type="button"
-              onClick={onDecline}
+            <DeclineConfirmButton
+              onConfirm={onDecline}
               disabled={actionDisabled}
-              className={`${DM_BOOKING_CARD_DECLINE_BUTTON_CLASS} w-full`}
-            >
-              Decline
-            </button>
+              idleClassName={DM_BOOKING_CARD_DECLINE_BUTTON_CLASS}
+              armedClassName={DM_BOOKING_CARD_DECLINE_ARMED_BUTTON_CLASS}
+              className="w-full"
+            />
           </div>
         ) : null}
 
@@ -601,20 +576,6 @@ export default function BookingRequestCard({
         }}
         onSubmit={handleProposeRate}
       />
-
-      {declineToastVisible && (
-        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 animate-in fade-in slide-in-from-bottom-4 duration-200">
-          <div className="flex items-center gap-3 rounded-xl bg-ftc-bg-surface-raised px-4 py-3 shadow-lg border border-ftc-border-subtle">
-            <span className="text-xs font-medium text-ftc-text">Booking declined</span>
-            <button
-              onClick={handleUndoDecline}
-              className="text-xs font-semibold text-ftc-primary hover:text-ftc-primary-dim transition"
-            >
-              Undo
-            </button>
-          </div>
-        </div>
-      )}
     </>
   );
 }

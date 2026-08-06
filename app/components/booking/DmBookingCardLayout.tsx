@@ -27,6 +27,10 @@ export const DM_BOOKING_CARD_PAIRED_CANCEL_CLASS = "min-w-0 flex-1";
 export const DM_BOOKING_CARD_DECLINE_BUTTON_CLASS =
   "inline-flex min-h-10 items-center justify-center rounded-xl border border-[var(--ftc-color-danger)] bg-ftc-surface px-3 py-2.5 text-xs font-semibold uppercase tracking-wide text-[var(--ftc-color-danger)] transition hover:border-0 hover:bg-[var(--ftc-color-danger)] hover:text-ftc-bg disabled:cursor-not-allowed disabled:opacity-50";
 
+/** Armed Decline (CONFIRM) — solid danger fill. */
+export const DM_BOOKING_CARD_DECLINE_ARMED_BUTTON_CLASS =
+  "inline-flex min-h-10 items-center justify-center rounded-xl border-0 bg-[var(--ftc-color-danger)] px-3 py-2.5 text-xs font-semibold uppercase tracking-wide text-ftc-bg transition disabled:cursor-not-allowed disabled:opacity-50";
+
 /** DJ Accept — shared primary CTA (uppercase). */
 export const DM_BOOKING_CARD_ACCEPT_BUTTON_CLASS =
   "ftc-btn-primary px-3 py-2.5 text-xs uppercase tracking-wide disabled:cursor-not-allowed disabled:opacity-50";

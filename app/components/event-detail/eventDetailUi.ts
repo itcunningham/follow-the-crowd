@@ -39,6 +39,10 @@ export const EVENT_DETAIL_BTN_SECONDARY =
 export const EVENT_DETAIL_BTN_DESTRUCTIVE =
   "inline-flex min-h-10 items-center justify-center rounded-xl border border-[var(--ftc-color-danger)] bg-ftc-surface px-3 py-2 text-xs font-semibold uppercase tracking-wide text-[var(--ftc-color-danger)] transition hover:border-0 hover:bg-[var(--ftc-color-danger)] hover:text-ftc-bg disabled:cursor-not-allowed disabled:opacity-50";
 
+/** Armed Decline (CONFIRM) on Event Details — solid danger fill. */
+export const EVENT_DETAIL_BTN_DESTRUCTIVE_ARMED =
+  "inline-flex min-h-10 items-center justify-center rounded-xl border-0 bg-[var(--ftc-color-danger)] px-3 py-2 text-xs font-semibold uppercase tracking-wide text-ftc-bg transition disabled:cursor-not-allowed disabled:opacity-50";
+
 export const EVENT_DETAIL_LINEUP_ACTIONS_ROW = "mt-2 flex gap-1.5";
 
 /** Shared size for Message / Cancel — `!` beats `.ftc-btn-secondary` and DM compact `min-h-9`. */
