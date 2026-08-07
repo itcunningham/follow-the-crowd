@@ -1222,9 +1222,10 @@ function EventDetailPageView() {
         cancelResult.event,
       );
       // Broadcast event cancellation to all connected DJs
-      await supabase.channel("event-cancellations").send("broadcast", {
+      await supabase.channel("event-cancellations").send({
+        type: "broadcast",
         event: "event_cancelled",
-        eventId: event.id,
+        payload: { eventId: event.id },
       });
       router.replace("/");
     } catch (cancelError) {
