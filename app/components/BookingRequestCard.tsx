@@ -209,7 +209,7 @@ export default function BookingRequestCard({
   function renderStatusBadge() {
     const displayStatus: BookingRequestStatus = showAsCancelled ? "cancelled" : booking.status;
 
-    return <BookingStatusBadge status={displayStatus} isDmContext={!!dmConversationId} />;
+    return <BookingStatusBadge status={displayStatus} />;
   }
 
   function renderExpandedHeader(statusBadge: ReactNode) {
