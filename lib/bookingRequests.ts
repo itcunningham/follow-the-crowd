@@ -235,7 +235,7 @@ export function getBookingStatusBadgeClass(status: BookingRequestStatus): string
   }
 
   if (status === "cancelled") {
-    return FTC_STATUS_MUTED;
+    return FTC_STATUS_DANGER;
   }
 
   return FTC_STATUS_WARNING;
