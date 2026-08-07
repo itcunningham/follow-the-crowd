@@ -1096,37 +1096,38 @@ export async function insertEventCancellationActivityMessagesIfNeeded(options: {
       .like("text", `${BOOKING_ACTIVITY_DM_PREFIX} event-cancelled ·%`)
       .limit(1);
 
+    let messageWasInserted = false;
+
     if (windowError) {
       console.error(
         "[bookings] ❌ Failed to check event-cancellation activity duplicate window:",
         windowError,
       );
     } else if (windowRows?.[0]) {
-      console.log("[bookings] ❌ Skipping: recent event-cancellation message exists");
-      continue;
+      console.log("[bookings] ⚠️  Recent event-cancellation message exists - skipping insertion but marking unread");
+    } else {
+      console.log("[bookings] ✓ No existing message, inserting now...");
+      console.log("[bookings] Insert payload:", {
+        conversation_id: booking.conversation_id,
+        user_id: options.plannerUserId,
+        text: messageText,
+      });
+
+      const { error: insertError } = await supabase.from("messages").insert({
+        conversation_id: booking.conversation_id,
+        user_id: options.plannerUserId,
+        text: messageText,
+      });
+
+      if (insertError) {
+        console.error("[bookings] ❌ Failed to insert event-cancellation activity DM message:", insertError);
+      } else {
+        console.log("[bookings] ✅ Inserted event cancellation message for conversation:", booking.conversation_id);
+        messageWasInserted = true;
+      }
     }
 
-    console.log("[bookings] ✓ No existing message, inserting now...");
-    console.log("[bookings] Insert payload:", {
-      conversation_id: booking.conversation_id,
-      user_id: options.plannerUserId,
-      text: messageText,
-    });
-
-    const { error: insertError } = await supabase.from("messages").insert({
-      conversation_id: booking.conversation_id,
-      user_id: options.plannerUserId,
-      text: messageText,
-    });
-
-    if (insertError) {
-      console.error("[bookings] ❌ Failed to insert event-cancellation activity DM message:", insertError);
-      continue;
-    }
-
-    console.log("[bookings] ✅ Inserted event cancellation message for conversation:", booking.conversation_id);
-
-    // Mark conversation as unread for the DJ recipient
+    // Always mark conversation as unread for the DJ recipient (even if message already existed)
     console.log("[bookings] Marking conversation as unread for recipient...");
     if (booking.recipient_id && booking.conversation_id) {
       try {
