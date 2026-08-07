@@ -69,7 +69,7 @@ export default function DmBookingUpdateRow({
     >
       <DmBookingCardCollapsedHeader
         title={title}
-        badge={<BookingStatusBadge status={displayStatus} />}
+        badge={<BookingStatusBadge status={displayStatus} isDmContext />}
       />
 
       <DmBookingCardCollapsedDetails
