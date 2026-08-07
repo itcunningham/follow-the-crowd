@@ -12149,6 +12149,25 @@ function testEventCancellationRefreshesOpenDmBookingCard() {
     bookingRequestsSource,
     /like\("text", `\$\{BOOKING_ACTIVITY_DM_PREFIX\} event-cancelled ·%`\)/,
   );
+
+  // Crew-chat "was cancelled" INSERT after mark_conversation_unread recreates
+  // the Crew Chats badge (delete/clear reads → new other-user crew message).
+  const eventDetailsSource = readFileSync(
+    new URL("../app/events/[eventId]/page.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.doesNotMatch(
+    eventDetailsSource,
+    /text:\s*`\$\{event\.name \|\| "Event"\} was cancelled`/,
+  );
+
+  const rpcSource = readFileSync(
+    new URL("../scripts/setupMessageReadsRpc.sql", import.meta.url),
+    "utf8",
+  );
+  assert.match(rpcSource, /ON CONFLICT \(user_id, event_id\) WHERE event_id IS NOT NULL/);
+  assert.match(rpcSource, /DO UPDATE SET last_read_at = now\(\)/);
+  assert.doesNotMatch(rpcSource, /DELETE FROM public\.message_reads/);
 }
 
 function testTemporaryDebugInstrumentationIsFullyRemoved() {

@@ -1,12 +1,12 @@
 # Current state (last updated: 2026-08-07)
 
-## Event cancel → DJ DM badge (root cause #2 fixed — still needs SQL)
+## Event cancel badges: DM yes, Crew Chats no
 
-**Real bug (not just RLS):** On a reused planner↔DJ thread, cancel insert used a broad “any `event-cancelled` already exists” skip. After Event A cancel + Event B accept, cancelling B skipped the new activity row → latest message stayed the **DJ’s accept** → `isChatUnread` always false (own message), **even if** `mark_conversation_unread` RPC set epoch `last_read_at`.
+**DM unread works** (unique per-event cancel activity + RPC). **Crew Chats tab still showed 1** because:
+1. Event Details inserted a crew-chat `"… was cancelled"` message *after* the RPC cleared/deleted the DJ’s event `message_reads` → new other-user crew message = unread again.
+2. Deleting the event read row made `isChatUnread` treat missing `last_read_at` as unread while the cancelled event was still in the list (30s soft-reload skip).
 
-**Fix:** Cancel activity text is unique per `event_id` (`event-cancelled:<uuid> · Name`); removed the broad window skip. Exact-dupe still skips re-insert but still calls the RPC.
-
-**Still required once:** run `scripts/setupMessageReadsRpc.sql` in Supabase (RLS bypass). Without it, console shows RPC failure; with it + this fix, DM unread should light.
+**Fix:** stop crew cancel INSERT; RPC now **marks event crew chat read** (`last_read_at = now()`); Messages inbox always refetches group chats on badge bus + prunes cancelled event on broadcast. **Re-run** `scripts/setupMessageReadsRpc.sql`.
 
 ---
 

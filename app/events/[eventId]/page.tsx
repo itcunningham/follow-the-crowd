@@ -1223,17 +1223,10 @@ function EventDetailPageView() {
         cancelResult.event,
       );
 
-      // Create system message about cancellation so DJs see it in their messages
-      try {
-        const userId = await getCurrentUserId();
-        await supabase.from("messages").insert({
-          event_id: event.id,
-          user_id: userId,
-          text: `${event.name || "Event"} was cancelled`,
-        });
-      } catch (messageError) {
-        console.error("[eventCancel] Failed to create cancellation message:", messageError);
-      }
+      // Do NOT insert a crew-chat "was cancelled" message here. That thread is
+      // removed from Crew Chats once the event is cancelled; a late INSERT after
+      // mark_conversation_unread clears event reads recreates the Crew Chats
+      // badge. DJ cancel signal lives on the DM activity row + notifications.
 
       // Broadcast event cancellation to all connected DJs
       await supabase.channel("event-cancellations").send({

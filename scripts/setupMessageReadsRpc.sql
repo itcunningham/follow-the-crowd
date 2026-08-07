@@ -16,12 +16,14 @@ AS $$
 DECLARE
   v_epoch_timestamp timestamptz := '1970-01-01T00:00:00Z'::timestamptz;
 BEGIN
-  -- Delete any existing message_reads row for this user + event
-  -- (to remove Crew Chat badge when event is cancelled)
+  -- Mark the event crew chat as read (do NOT delete the row).
+  -- Deleting last_read_at makes isChatUnread treat the crew chat as unread
+  -- while the cancelled event is still briefly in the DJ's Crew Chats list.
   IF p_event_id IS NOT NULL THEN
-    DELETE FROM public.message_reads
-    WHERE user_id = p_user_id
-      AND event_id = p_event_id;
+    INSERT INTO public.message_reads (user_id, conversation_id, event_id, last_read_at)
+    VALUES (p_user_id, NULL, p_event_id, now())
+    ON CONFLICT (user_id, event_id) WHERE event_id IS NOT NULL
+    DO UPDATE SET last_read_at = now();
   END IF;
 
   -- Insert or update message_reads row for conversation.
