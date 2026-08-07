@@ -1066,26 +1066,6 @@ export async function insertEventCancellationActivityMessagesIfNeeded(options: {
 
     if (insertError) {
       console.error("[bookings] Failed to insert event-cancellation activity DM message:", insertError);
-      continue;
-    }
-
-    // Notify the DJ about the event cancellation
-    if (booking.recipient_id) {
-      try {
-        await createNotification(
-          booking.recipient_id,
-          "message",
-          `${options.eventName} cancelled`,
-          messageText,
-          `/dm/${booking.conversation_id}`,
-        );
-      } catch (notificationError) {
-        console.error(
-          "[bookings] Failed to notify DJ of event cancellation:",
-          booking.recipient_id,
-          notificationError,
-        );
-      }
     }
   }
 }
