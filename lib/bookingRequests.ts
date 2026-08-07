@@ -1069,21 +1069,9 @@ export async function insertEventCancellationActivityMessagesIfNeeded(options: {
       continue;
     }
 
-    // Mark conversation as unread and notify the DJ
+    // Notify the DJ about the event cancellation
     if (booking.recipient_id) {
       try {
-        const now = new Date().toISOString();
-        await supabase
-          .from("message_reads")
-          .upsert(
-            {
-              user_id: booking.recipient_id,
-              conversation_id: booking.conversation_id,
-              last_read_at: now,
-            },
-            { onConflict: "user_id,conversation_id" },
-          );
-
         await createNotification(
           booking.recipient_id,
           "message",
