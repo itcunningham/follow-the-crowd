@@ -1136,6 +1136,32 @@ export async function insertEventCancellationActivityMessagesIfNeeded(options: {
           event_id: booking.event_id,
         });
 
+        // Check if row exists before deletion for this specific user
+        const { data: existingRows, error: existingError } = await supabase
+          .from("message_reads")
+          .select("id")
+          .eq("user_id", booking.recipient_id)
+          .eq("event_id", booking.event_id);
+
+        console.log("[bookings] Message_reads rows (this user + event) before deletion:", {
+          count: existingRows?.length ?? 0,
+          exists: (existingRows?.length ?? 0) > 0,
+        });
+
+        // Also check if ANY message_reads rows exist for this event (across all users)
+        const { data: eventRows, error: eventError } = await supabase
+          .from("message_reads")
+          .select("user_id")
+          .eq("event_id", booking.event_id)
+          .limit(10);
+
+        if (!eventError) {
+          console.log("[bookings] All message_reads rows for this event:", {
+            count: eventRows?.length ?? 0,
+            user_ids: eventRows?.map(r => r.user_id) ?? [],
+          });
+        }
+
         const { error: deleteError } = await supabase
           .from("message_reads")
           .delete()
