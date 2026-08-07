@@ -1086,13 +1086,49 @@ export async function insertEventCancellationActivityMessagesIfNeeded(options: {
     console.log("[bookings] Inserted event cancellation message for conversation:", booking.conversation_id);
 
     // Mark conversation as unread for the DJ recipient
+    // Strategy: Upsert message_reads with last_read_at BEFORE the new message
+    // so it appears unread. Don't delete - always create a read state record.
     if (booking.recipient_id) {
       try {
-        const { error: deleteError } = await supabase.from("message_reads").delete().eq("user_id", booking.recipient_id).eq("conversation_id", booking.conversation_id);
-        if (deleteError) {
-          console.error("[bookings] Failed to delete message_reads:", deleteError);
-        } else {
-          console.log("[bookings] Marked conversation unread for DJ:", booking.recipient_id, booking.conversation_id);
+        // Get the latest message timestamp to ensure we set read_at before it
+        const { data: messageData, error: messageError } = await supabase
+          .from("messages")
+          .select("created_at")
+          .eq("conversation_id", booking.conversation_id)
+          .eq("text", messageText)
+          .eq("user_id", options.plannerUserId)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .single();
+
+        if (messageError) {
+          console.error("[bookings] Failed to fetch inserted message timestamp:", messageError);
+        } else if (messageData?.created_at) {
+          // Set last_read_at to 1 second before the message so it shows as unread
+          const messageTime = new Date(messageData.created_at).getTime();
+          const readTimestamp = new Date(messageTime - 1000).toISOString();
+
+          console.log("[bookings] Upserting message_reads: user_id=", booking.recipient_id,
+            'conversation_id=', booking.conversation_id,
+            'read_at=', readTimestamp);
+
+          const { error: upsertError } = await supabase
+            .from("message_reads")
+            .upsert(
+              {
+                user_id: booking.recipient_id,
+                conversation_id: booking.conversation_id,
+                event_id: null,
+                last_read_at: readTimestamp,
+              },
+              { onConflict: "user_id,conversation_id" }
+            );
+
+          if (upsertError) {
+            console.error("[bookings] Failed to upsert message_reads:", upsertError);
+          } else {
+            console.log("[bookings] Marked conversation unread for DJ:", booking.recipient_id, booking.conversation_id);
+          }
         }
       } catch (error) {
         console.error("[bookings] Failed to mark conversation unread for DJ:", error);
