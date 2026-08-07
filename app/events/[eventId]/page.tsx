@@ -1220,7 +1220,7 @@ function EventDetailPageView() {
         relatedBookingIds,
         cancelResult.event,
       );
-      router.replace(isDjWorkspace ? "/" : "/events");
+      router.replace("/");
     } catch (cancelError) {
       console.error("Failed to cancel event:", cancelError);
       setError(getEventsLoadErrorMessage(cancelError));
