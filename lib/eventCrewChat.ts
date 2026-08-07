@@ -299,8 +299,9 @@ export async function notifyCrewChatStarted(options: {
   }
 
   const senderName = senderProfile?.display_name?.trim() || "Planner";
+  const now = new Date().toISOString();
 
-  // Insert system message for crew start and notify participants
+  // Insert system message for crew start
   const insertPromise = supabase.from("messages").insert({
     event_id: eventId,
     user_id: senderId,
@@ -308,6 +309,17 @@ export async function notifyCrewChatStarted(options: {
   }).catch((error) => {
     console.error("[eventCrewChat] Failed to insert crew started system message:", error);
   });
+
+  // Mark crew chat as read for the planner (they don't need to see it as unread)
+  const markReadPromise = supabase
+    .from("message_reads")
+    .upsert(
+      { user_id: senderId, event_id: eventId, last_read_at: now },
+      { onConflict: "user_id,event_id" },
+    )
+    .catch((error) => {
+      console.error("[eventCrewChat] Failed to mark crew chat read for planner:", error);
+    });
 
   const notifyPromises = participants
     .filter((participantId) => participantId !== senderId)
@@ -329,7 +341,7 @@ export async function notifyCrewChatStarted(options: {
       }
     });
 
-  await Promise.all([insertPromise, ...notifyPromises]);
+  await Promise.all([insertPromise, markReadPromise, ...notifyPromises]);
 }
 
 export async function sendEventCrewChatMessage(
