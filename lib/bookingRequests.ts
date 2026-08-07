@@ -1131,74 +1131,33 @@ export async function insertEventCancellationActivityMessagesIfNeeded(options: {
     console.log("[bookings] Marking conversation as unread for recipient...");
     if (booking.recipient_id && booking.conversation_id) {
       try {
-        // Delete any stale event_id row to prevent the badge from appearing on Crew Chats
-        console.log("[bookings] Deleting stale event_id message_reads for:", {
+        console.log("[bookings] Calling mark_conversation_unread RPC for:", {
           user_id: booking.recipient_id,
+          conversation_id: booking.conversation_id,
           event_id: booking.event_id,
         });
 
-        // Check if row exists before deletion for this specific user
-        const { data: existingRows, error: existingError } = await supabase
-          .from("message_reads")
-          .select("id")
-          .eq("user_id", booking.recipient_id)
-          .eq("event_id", booking.event_id);
+        // Call RPC function to mark conversation as unread (bypasses RLS)
+        const { data: rpcResult, error: rpcError } = await supabase.rpc(
+          "mark_conversation_unread",
+          {
+            p_user_id: booking.recipient_id,
+            p_conversation_id: booking.conversation_id,
+            p_event_id: booking.event_id,
+          }
+        );
 
-        console.log("[bookings] Message_reads rows (this user + event) before deletion:", {
-          count: existingRows?.length ?? 0,
-          exists: (existingRows?.length ?? 0) > 0,
-        });
-
-        // Also check if ANY message_reads rows exist for this event (across all users)
-        const { data: eventRows, error: eventError } = await supabase
-          .from("message_reads")
-          .select("user_id")
-          .eq("event_id", booking.event_id)
-          .limit(10);
-
-        if (!eventError) {
-          console.log("[bookings] All message_reads rows for this event:", {
-            count: eventRows?.length ?? 0,
-            user_ids: eventRows?.map(r => r.user_id) ?? [],
-          });
-        }
-
-        const { error: deleteError } = await supabase
-          .from("message_reads")
-          .delete()
-          .eq("user_id", booking.recipient_id)
-          .eq("event_id", booking.event_id);
-
-        if (deleteError) {
-          console.error("[bookings] ❌ Failed to delete stale event_id message_reads:", deleteError);
-        } else {
-          console.log("[bookings] ✓ Deleted stale event_id rows");
-        }
-
-        // Set last_read_at to epoch (very old) so any message is newer and marked unread
-        const epochTimestamp = new Date(0).toISOString();
-
-        console.log("[bookings] Inserting/updating conversation to mark unread with last_read_at:", epochTimestamp);
-
-        // Try simple upsert without onConflict to avoid partial index issues
-        const { error: upsertError } = await supabase
-          .from("message_reads")
-          .upsert({
+        if (rpcError) {
+          console.error("[bookings] ❌ Failed to mark conversation unread via RPC:", {
+            error: rpcError,
             user_id: booking.recipient_id,
             conversation_id: booking.conversation_id,
-            event_id: null,
-            last_read_at: epochTimestamp,
-          });
-
-        if (upsertError) {
-          console.error("[bookings] ❌ Failed to upsert conversation message_reads:", {
-            error: upsertError,
-            user_id: booking.recipient_id,
-            conversation_id: booking.conversation_id,
-            last_read_at: epochTimestamp,
           });
         } else {
-          console.log("[bookings] ✅ Marked conversation unread for DJ:", booking.recipient_id);
+          console.log("[bookings] ✅ Marked conversation unread for DJ via RPC:", {
+            result: rpcResult,
+            recipient_id: booking.recipient_id,
+          });
         }
       } catch (error) {
         console.error("[bookings] ❌ Exception during mark unread:", error);
