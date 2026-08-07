@@ -97,9 +97,9 @@ function removeUnreadEventChatId(previous: Set<string>, eventId: string): Set<st
 function GroupChatsEmptyState() {
   return (
     <div className="flex flex-col items-center justify-center px-6 py-16 text-center sm:py-24">
-      <h2 className="mt-5 text-lg font-semibold text-ftc-text">No group chats</h2>
+      <h2 className="mt-5 text-lg font-semibold text-ftc-text">No crew chats</h2>
       <p className="mt-2 max-w-sm text-sm leading-relaxed text-ftc-text-muted">
-        Event group chats will appear here
+        Event crew chats will appear here
       </p>
     </div>
   );
@@ -1349,7 +1349,7 @@ function DmInboxPageContent() {
                   ) : null}
                   {filteredGroupChats.length === 0 ? (
                     <p className="py-8 text-center text-sm text-ftc-text-muted">
-                      No group chats match your search
+                      No crew chats match your search
                     </p>
                   ) : (
                     <ul className="flex flex-col gap-2 pt-3.5">
