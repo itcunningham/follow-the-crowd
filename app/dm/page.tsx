@@ -386,13 +386,11 @@ function DmInboxPageContent() {
   }, []);
 
   const loadGroupChats = useCallback(async (options?: { forceLoading?: boolean; soft?: boolean }) => {
-    console.log("[dm] loadGroupChats called with options:", options);
     if (
       options?.soft &&
       groupChatsHasDataRef.current &&
       Date.now() - groupChatsLastFetchedAtRef.current < GROUP_CHATS_REFRESH_INTERVAL_MS
     ) {
-      console.log("[dm] loadGroupChats soft throttled");
       return;
     }
 
@@ -441,8 +439,6 @@ function DmInboxPageContent() {
               ? loaded
               : mergeLoadedGroupChatsWithLiveActivity(previous, loaded);
 
-          console.log("[dm] Group chats loaded. Previous:", previous.length, "Loaded:", loaded.length, "Next:", next.length);
-          console.log("[dm] Loaded event IDs:", loaded.map((c) => c.eventId));
           writeGroupChatsInboxCache(next);
           return next;
         });
@@ -800,25 +796,6 @@ function DmInboxPageContent() {
           }
         },
       )
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "events",
-        },
-        (payload) => {
-          console.log("[dm] Events UPDATE received:", payload);
-          // Check if this event was cancelled.
-          const status = payload.new && typeof payload.new === "object" ? String((payload.new as { status?: string }).status ?? "") : "";
-          console.log("[dm] Event status:", status);
-          if (status === "cancelled") {
-            console.log("[dm] Event cancelled, reloading crew chats");
-            // Hard reload to remove cancelled event's crew chat from DJ's inbox.
-            void loadGroupChats({ forceLoading: true });
-          }
-        },
-      )
       .subscribe();
 
     return () => {
@@ -838,7 +815,8 @@ function DmInboxPageContent() {
   useEffect(() => {
     function handleVisibilityChange() {
       if (document.visibilityState === "visible" && activeTab === "group") {
-        void loadGroupChats({ soft: true });
+        // Hard reload on visibility change to catch event cancellations and other changes
+        void loadGroupChats({ forceLoading: false });
       }
     }
 
