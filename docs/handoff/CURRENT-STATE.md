@@ -3,7 +3,9 @@
 
 Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
 
-**Crew chat start: notify + unread highlight (`on main`, 2026-08-07):** When crew chat unlocks (manual Start or auto-start), insert system notice **Crew chat started**, notify other crew members with that copy, and mark the starter’s chat read. DJs see notification + unread row on Messages → Crew Chats until they open it. Hardened Claude’s partial ship (broken `.catch` insert, “{name} started the crew” wrongly attributed auto-start to the accepting DJ).
+**Hide “Crew chat started” pill in thread (on `main`, 2026-08-07):** Notice stays in `messages` for unread + inbox preview, but is filtered out of the open crew chat (same hide path as legacy roster lines) so the thread shows the welcome empty state instead of a redundant pill.
+
+**Crew chat start: notify + unread highlight (`d31500ff` on `main`, 2026-08-07):** When crew chat unlocks (manual Start or auto-start), insert system notice **Crew chat started**, notify other crew members with that copy, and mark the starter’s chat read. DJs see notification + unread row on Messages → Crew Chats until they open it. Hardened Claude’s partial ship (broken `.catch` insert, “{name} started the crew” wrongly attributed auto-start to the accepting DJ).
 
 **Full Claude handover doc (`docs/handoff/CLAUDE-FULL-HANDOVER.md`, 2026-08-06):** single paste/start file for Claude — product, brand, Isaac prefs (brutal honesty + always ship `main`), stack, routes, traps, ship checklist. Prefer over older `CLAUDE-CODE-BUILDER-HANDOVER.md` for day-one.
 
