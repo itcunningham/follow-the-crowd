@@ -865,8 +865,9 @@ export async function cancelEvent(eventId: string): Promise<CancelEventResult> {
 
   const result = parseCancelEventRpcResult(data);
 
+  let eventBookings: BookingRequest[] = [];
   try {
-    const eventBookings = await listBookingRequestsForEvent(eventId);
+    eventBookings = await listBookingRequestsForEvent(eventId);
     await insertEventCancellationActivityMessagesIfNeeded({
       eventName: result.event.name,
       plannerUserId: result.event.owner_id,
@@ -876,7 +877,13 @@ export async function cancelEvent(eventId: string): Promise<CancelEventResult> {
     console.error("[events] Failed to insert event-cancellation activity DM messages:", activityError);
   }
 
-  await notifyCancelledBookingsFromEventCancellation(result.cancelledBookings);
+  // Notify all affected bookings (not just pending ones)
+  // result.cancelledBookings only contains pending bookings cancelled by the RPC,
+  // but accepted bookings are also affected by the event cancellation
+  const affectedBookings = eventBookings.filter(
+    (b) => b.status === "accepted" || b.status === "pending" || b.status === "cancelled"
+  );
+  await notifyCancelledBookingsFromEventCancellation(affectedBookings);
 
   // Pending rows may have been cancelled by the RPC; accepted rows keep
   // status=accepted and only flip in the UI via refreshed event artwork.
