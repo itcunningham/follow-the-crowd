@@ -1,7 +1,34 @@
 # Current state (last updated: 2026-08-07)
 
+## 🔴 BLOCKED: Event cancellation DM badge not appearing (claude/new-session-cpb8vu, main)
 
-Update this file after every completed ship (see `HANDOFF-UPDATE.md`).
+**Problem:** When a planner cancels an event, DJs should see unread DM badge in Messages tab. Currently: Crew Chat badge appears (wrong), DM badge doesn't appear (missing).
+
+**Root cause identified:** RLS (Row Level Security) policy on `message_reads` table blocks updates. The planner can't update the DJ's `message_reads` row due to `user_id = auth.uid()` constraint.
+
+**Code deployed (on main):**
+- `lib/bookingRequests.ts` - Modified `insertEventCancellationActivityMessagesIfNeeded()` to:
+  1. Always run unread marking (even if message insertion skipped due to duplicates)
+  2. Call new RPC function `mark_conversation_unread()` instead of direct Supabase query
+- `scripts/setupMessageReadsRpc.sql` - New RPC function (SECURITY DEFINER) that:
+  1. Deletes message_reads rows with event_id (removes Crew Chat badge)
+  2. Inserts/updates conversation row with epoch timestamp (marks DM as unread)
+  
+**What's NOT deployed yet:**
+- The SQL migration hasn't been run in Supabase. User needs to:
+  1. Go to Supabase SQL Editor
+  2. Copy/paste contents of `scripts/setupMessageReadsRpc.sql`
+  3. Execute it to create the `mark_conversation_unread()` function
+
+**Testing shows:**
+- Diagnostic logging runs correctly
+- Message insertion works (skips on duplicates but still marks unread)
+- RPC function call still hits 403 Forbidden = function doesn't exist yet
+- Need to deploy SQL to Supabase to proceed
+
+**Next step for Cursor:** Deploy the SQL migration, test with fresh event, verify DM badge appears and Crew Chat badge doesn't.
+
+---
 
 **Event cancellation notification badge routing fixed (`ff84ddb7` on `claude/new-session-cpb8vu`, 2026-08-07):** Root cause identified and fixed. When an event is cancelled, stale `event_id`-based message_reads rows remained from prior group chat state, causing the unread badge to appear on Crew Chats instead of Messages. The badge was counting two separate unread rows — the old event chat row plus the new DM conversation row. Fix: delete any stale `event_id` message_reads row before upserting the conversation row, ensuring only the DM shows the notification badge.
 
