@@ -1,14 +1,12 @@
 # Current state (last updated: 2026-08-07)
 
-## 🔴 BLOCKED on Isaac SQL: Event cancel → DJ DM badge (`mark_conversation_unread`)
+## Event cancel → DJ DM badge (root cause #2 fixed — still needs SQL)
 
-**Problem:** Planner cancels event → DJ should get Messages (DM) unread badge. Without SQL, RPC 404/403 and no badge.
+**Real bug (not just RLS):** On a reused planner↔DJ thread, cancel insert used a broad “any `event-cancelled` already exists” skip. After Event A cancel + Event B accept, cancelling B skipped the new activity row → latest message stayed the **DJ’s accept** → `isChatUnread` always false (own message), **even if** `mark_conversation_unread` RPC set epoch `last_read_at`.
 
-**Root cause:** RLS on `message_reads` (`user_id = auth.uid()`) blocks planner from updating DJ’s row.
+**Fix:** Cancel activity text is unique per `event_id` (`event-cancelled:<uuid> · Name`); removed the broad window skip. Exact-dupe still skips re-insert but still calls the RPC.
 
-**App code on `main`:** `insertEventCancellationActivityMessagesIfNeeded` always calls RPC `mark_conversation_unread` (even when cancel message already exists). Script: `scripts/setupMessageReadsRpc.sql` — `SECURITY DEFINER`, deletes stale `event_id` reads (no Crew Chats badge), upserts DM row with epoch `last_read_at`. Upsert uses `ON CONFLICT … WHERE conversation_id IS NOT NULL` to match the partial unique index.
-
-**Isaac must run:** full contents of `scripts/setupMessageReadsRpc.sql` in Supabase SQL Editor (once). Then cancel a fresh booked event → console `✅ Marked conversation unread for DJ via RPC` → DM unread yes, Crew Chats badge no.
+**Still required once:** run `scripts/setupMessageReadsRpc.sql` in Supabase (RLS bypass). Without it, console shows RPC failure; with it + this fix, DM unread should light.
 
 ---
 

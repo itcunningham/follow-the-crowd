@@ -977,17 +977,38 @@ function formatBookingCancellationActivityMessage(booking: BookingRequest): stri
   return `${BOOKING_ACTIVITY_DM_PREFIX} cancelled:${booking.id}`;
 }
 
-export function formatEventCancellationActivityMessage(eventName: string): string {
+/**
+ * Whole-event cancel activity row. Includes event id so a later cancel on the
+ * same planner↔DJ thread is not treated as a duplicate of an older cancel
+ * (which left the DJ's accept as "latest" → never unread / no Messages badge).
+ */
+export function formatEventCancellationActivityMessage(
+  eventName: string,
+  eventId?: string | null,
+): string {
   const trimmedEventName = eventName.trim() || "Event";
+  const trimmedEventId = eventId?.trim();
+
+  if (trimmedEventId) {
+    return `${BOOKING_ACTIVITY_DM_PREFIX} event-cancelled:${trimmedEventId} · ${trimmedEventName}`;
+  }
 
   return `${BOOKING_ACTIVITY_DM_PREFIX} event-cancelled · ${trimmedEventName}`;
 }
 
 export function parseEventCancellationActivityEventName(text: string): string | null {
   const trimmed = text.trim();
-  const match = trimmed.match(/^BOOKING ACTIVITY · event-cancelled · (.+)$/i);
+  const withEventId = trimmed.match(
+    /^BOOKING ACTIVITY · event-cancelled:[0-9a-f-]+ · (.+)$/i,
+  );
 
-  return match?.[1]?.trim() || null;
+  if (withEventId?.[1]?.trim()) {
+    return withEventId[1].trim();
+  }
+
+  const legacy = trimmed.match(/^BOOKING ACTIVITY · event-cancelled · (.+)$/i);
+
+  return legacy?.[1]?.trim() || null;
 }
 
 export function formatEventCancelledInboxPreview(eventName?: string | null): string {
@@ -1017,7 +1038,6 @@ export async function insertEventCancellationActivityMessagesIfNeeded(options: {
     return;
   }
 
-  const messageText = formatEventCancellationActivityMessage(options.eventName);
   const seenConversationIds = new Set<string>();
 
   for (const booking of options.bookings) {
@@ -1067,6 +1087,14 @@ export async function insertEventCancellationActivityMessagesIfNeeded(options: {
     seenConversationIds.add(booking.conversation_id);
     console.log("[bookings] ✓ conversation marked as processed");
 
+    // Per-event text — never skip insert because an older cancel for a
+    // different event already exists on this thread (that left the DJ's accept
+    // as latest → isChatUnread always false for own messages).
+    const messageText = formatEventCancellationActivityMessage(
+      options.eventName,
+      booking.event_id,
+    );
+
     console.log("[bookings] Checking for existing exact duplicate message...");
     const { data: existingRows, error: existingError } = await supabase
       .from("messages")
@@ -1086,48 +1114,29 @@ export async function insertEventCancellationActivityMessagesIfNeeded(options: {
         "[bookings] ⚠️  Exact cancellation message already exists - skipping insertion but marking unread",
       );
     } else {
-      console.log("[bookings] Checking for recent event-cancellation messages in window...");
-      const { data: windowRows, error: windowError } = await supabase
-        .from("messages")
-        .select("id")
-        .eq("conversation_id", booking.conversation_id)
-        .like("text", `${BOOKING_ACTIVITY_DM_PREFIX} event-cancelled ·%`)
-        .limit(1);
+      console.log("[bookings] ✓ No existing message, inserting now...");
+      console.log("[bookings] Insert payload:", {
+        conversation_id: booking.conversation_id,
+        user_id: options.plannerUserId,
+        text: messageText,
+      });
 
-      if (windowError) {
+      const { error: insertError } = await supabase.from("messages").insert({
+        conversation_id: booking.conversation_id,
+        user_id: options.plannerUserId,
+        text: messageText,
+      });
+
+      if (insertError) {
         console.error(
-          "[bookings] ❌ Failed to check event-cancellation activity duplicate window:",
-          windowError,
-        );
-      } else if (windowRows?.[0]) {
-        console.log(
-          "[bookings] ⚠️  Recent event-cancellation message exists - skipping insertion but marking unread",
+          "[bookings] ❌ Failed to insert event-cancellation activity DM message:",
+          insertError,
         );
       } else {
-        console.log("[bookings] ✓ No existing message, inserting now...");
-        console.log("[bookings] Insert payload:", {
-          conversation_id: booking.conversation_id,
-          user_id: options.plannerUserId,
-          text: messageText,
-        });
-
-        const { error: insertError } = await supabase.from("messages").insert({
-          conversation_id: booking.conversation_id,
-          user_id: options.plannerUserId,
-          text: messageText,
-        });
-
-        if (insertError) {
-          console.error(
-            "[bookings] ❌ Failed to insert event-cancellation activity DM message:",
-            insertError,
-          );
-        } else {
-          console.log(
-            "[bookings] ✅ Inserted event cancellation message for conversation:",
-            booking.conversation_id,
-          );
-        }
+        console.log(
+          "[bookings] ✅ Inserted event cancellation message for conversation:",
+          booking.conversation_id,
+        );
       }
     }
 
@@ -1151,9 +1160,18 @@ export async function insertEventCancellationActivityMessagesIfNeeded(options: {
           }
         );
 
-        if (rpcError) {
+        const rpcRow = Array.isArray(rpcResult) ? rpcResult[0] : rpcResult;
+        const rpcFailed =
+          Boolean(rpcError) ||
+          (rpcRow &&
+            typeof rpcRow === "object" &&
+            "success" in rpcRow &&
+            (rpcRow as { success?: boolean }).success === false);
+
+        if (rpcFailed) {
           console.error("[bookings] ❌ Failed to mark conversation unread via RPC:", {
             error: rpcError,
+            result: rpcResult,
             user_id: booking.recipient_id,
             conversation_id: booking.conversation_id,
           });

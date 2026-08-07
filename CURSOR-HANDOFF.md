@@ -1,34 +1,26 @@
 # Cursor Handoff: Event Cancellation DM Badge
 
-**Status:** Blocked — Isaac must run `scripts/setupMessageReadsRpc.sql` once in Supabase SQL Editor  
-**Branch:** main (app code ready)
+**Status:** App fix shipped — Isaac still needs `scripts/setupMessageReadsRpc.sql` once if not already applied  
+**Branch:** main
 
-## Problem
+## Why “SQL didn’t fix it”
 
-Planner cancels event → DJ should get **Messages (DM) unread badge**, not Crew Chats. Without the badge, DJs miss cancellations.
+Two bugs stacked:
 
-## Why it broke
+1. **RLS** — planner cannot update DJ’s `message_reads` → need `mark_conversation_unread` RPC (`SECURITY DEFINER`).
+2. **Duplicate window (the one that survived SQL)** — insert skipped if *any* prior `event-cancelled` existed on the thread. After cancel Event A → book/accept Event B → cancel B, the new cancel row never landed. Latest message stayed the **DJ’s accept** → `isChatUnread` returns false for own messages **even with epoch `last_read_at`**. Badge impossible.
 
-`message_reads` RLS: `user_id = auth.uid()`. Planner cannot upsert the DJ’s row → 403.
+## Fix (app)
 
-## Fix
+- Cancel activity text unique per event: `BOOKING ACTIVITY · event-cancelled:<eventId> · <name>`
+- Removed broad window skip; exact-dupe only
+- RPC result `success: false` logged as failure (not false ✅)
 
-1. **App (shipped):** `insertEventCancellationActivityMessagesIfNeeded` inserts cancel activity DM (when needed) and **always** calls RPC `mark_conversation_unread`.
-2. **SQL (not deployed):** `scripts/setupMessageReadsRpc.sql` — `SECURITY DEFINER` function that:
-   - deletes stale `event_id` message_reads (clears Crew Chat badge)
-   - upserts conversation row with epoch `last_read_at` (DM unread)
-   - uses `ON CONFLICT (user_id, conversation_id) WHERE conversation_id IS NOT NULL` (matches partial unique index)
+## Isaac
 
-## Isaac: run SQL
+1. If not already: paste `scripts/setupMessageReadsRpc.sql` in Supabase SQL Editor → Run  
+2. **New** event (or same planner↔DJ thread after a prior cancel is fine now) → book → cancel  
+3. DJ Messages: unread highlight + preview `Event cancelled · …`  
+4. Console: `✅ Marked conversation unread for DJ via RPC` (not ❌)
 
-Supabase → SQL Editor → paste **entire** `scripts/setupMessageReadsRpc.sql` → Execute.
-
-## Then test
-
-1. New event → book as DJ → cancel as planner  
-2. Console: `✅ Marked conversation unread for DJ via RPC`  
-3. UI: DM unread in Messages; **no** Crew Chats badge  
-
-If RPC errors → SQL not applied (or PostgREST needs schema reload — re-run script / `notify pgrst, 'reload schema'`).
-
-Full context: `docs/handoff/CURRENT-STATE.md` (blocked section at top).
+See `docs/handoff/CURRENT-STATE.md`.

@@ -7,7 +7,7 @@ import {
 } from "@/lib/bookingDateTime";
 import type { BookingPlan } from "@/lib/bookingPlans";
 import {
-  formatEventCancellationActivityMessage,
+  formatEventCancelledInboxPreview,
   getActiveEventLineupStats,
   insertEventCancellationActivityMessagesIfNeeded,
   listBookingRequestsForEvent,
@@ -826,13 +826,13 @@ async function notifyCancelledBookingsFromEventCancellation(
       }
 
       try {
-        const eventCancellationMessage = formatEventCancellationActivityMessage(booking.event_name);
-        console.log("[events] Creating message notification with text:", eventCancellationMessage);
+        const eventCancellationPreview = formatEventCancelledInboxPreview(booking.event_name);
+        console.log("[events] Creating message notification with text:", eventCancellationPreview);
         await createNotification(
           booking.recipient_id,
           "message",
           "New message",
-          eventCancellationMessage,
+          eventCancellationPreview,
           `/dm/${booking.conversation_id}`,
         );
         console.log("[events] message notification created");

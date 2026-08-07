@@ -907,6 +907,12 @@ function testDmBookingSystemMessages() {
   );
   assert.equal(isDmBookingSystemMessage("BOOKING ACTIVITY · event-cancelled · Party"), false);
   assert.equal(isEventCancellationDmActivityMessage("BOOKING ACTIVITY · event-cancelled · Party"), true);
+  assert.equal(
+    isEventCancellationDmActivityMessage(
+      "BOOKING ACTIVITY · event-cancelled:aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee · Party",
+    ),
+    true,
+  );
   assert.equal(isEventCancellationDmActivityMessage("Booking confirmed · Party"), false);
 
   const runSheetNotice = formatRunSheetUpdatedDmMessage(
@@ -12126,6 +12132,23 @@ function testEventCancellationRefreshesOpenDmBookingCard() {
 
   assert.match(systemMessagesSource, /export function isEventCancellationDmActivityMessage/);
   assert.match(navBadgeSource, /isEventCancellationDmActivityMessage/);
+
+  // Same planner↔DJ thread can cancel Event A then book/cancel Event B.
+  // A broad "any event-cancelled already exists" skip left the DJ's accept as
+  // latest → isChatUnread always false (own message). Cancel activity must be
+  // unique per event_id and must not use that window skip.
+  const bookingRequestsSource = readFileSync(
+    new URL("../lib/bookingRequests.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(
+    bookingRequestsSource,
+    /event-cancelled:\$\{trimmedEventId\} · \$\{trimmedEventName\}/,
+  );
+  assert.doesNotMatch(
+    bookingRequestsSource,
+    /like\("text", `\$\{BOOKING_ACTIVITY_DM_PREFIX\} event-cancelled ·%`\)/,
+  );
 }
 
 function testTemporaryDebugInstrumentationIsFullyRemoved() {
