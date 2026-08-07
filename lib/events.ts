@@ -792,13 +792,23 @@ function parseCancelEventRpcResult(data: unknown): CancelEventResult {
 async function notifyCancelledBookingsFromEventCancellation(
   cancelledBookings: BookingRequest[],
 ): Promise<void> {
+  console.log("[events] Notifying DJ of event cancellation for", cancelledBookings.length, "bookings");
+
   await Promise.all(
     cancelledBookings.map(async (booking) => {
+      console.log("[events] Processing cancelled booking notification:", {
+        id: booking.id,
+        recipient_id: booking.recipient_id,
+        conversation_id: booking.conversation_id,
+      });
+
       if (!booking.recipient_id || !booking.conversation_id) {
+        console.log("[events] Skipping: missing recipient_id or conversation_id");
         return;
       }
 
       try {
+        console.log("[events] Creating booking_update notification");
         await createNotification(
           booking.recipient_id,
           "booking_update",
@@ -806,6 +816,7 @@ async function notifyCancelledBookingsFromEventCancellation(
           `${booking.event_name} at ${booking.venue}`,
           `/dm/${booking.conversation_id}`,
         );
+        console.log("[events] booking_update notification created");
       } catch (notificationError) {
         console.error(
           "[events] Failed to notify DJ of event cancellation:",
@@ -816,6 +827,7 @@ async function notifyCancelledBookingsFromEventCancellation(
 
       try {
         const eventCancellationMessage = formatEventCancellationActivityMessage(booking.event_name);
+        console.log("[events] Creating message notification with text:", eventCancellationMessage);
         await createNotification(
           booking.recipient_id,
           "message",
@@ -823,6 +835,7 @@ async function notifyCancelledBookingsFromEventCancellation(
           eventCancellationMessage,
           `/dm/${booking.conversation_id}`,
         );
+        console.log("[events] message notification created");
       } catch (messageNotificationError) {
         console.error(
           "[events] Failed to send message notification for event cancellation:",

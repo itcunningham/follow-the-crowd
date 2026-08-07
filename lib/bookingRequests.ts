@@ -1012,12 +1012,24 @@ export async function insertEventCancellationActivityMessagesIfNeeded(options: {
   const messageText = formatEventCancellationActivityMessage(options.eventName);
   const seenConversationIds = new Set<string>();
 
+  console.log("[bookings] Event cancellation: processing", options.bookings.length, "bookings");
+
   for (const booking of options.bookings) {
+    console.log("[bookings] Checking booking:", {
+      id: booking.id,
+      conversation_id: booking.conversation_id,
+      recipient_id: booking.recipient_id,
+      event_id: booking.event_id,
+      isAffected: isBookingAffectedByWholeEventCancellation(booking),
+    });
+
     if (!booking.conversation_id || !isBookingAffectedByWholeEventCancellation(booking)) {
+      console.log("[bookings] Skipping: no conversation_id or not affected");
       continue;
     }
 
     if (seenConversationIds.has(booking.conversation_id)) {
+      console.log("[bookings] Skipping: conversation already processed");
       continue;
     }
 
@@ -1039,6 +1051,7 @@ export async function insertEventCancellationActivityMessagesIfNeeded(options: {
     }
 
     if (existingRows?.[0]) {
+      console.log("[bookings] Skipping: message already exists");
       continue;
     }
 
@@ -1055,6 +1068,7 @@ export async function insertEventCancellationActivityMessagesIfNeeded(options: {
         windowError,
       );
     } else if (windowRows?.[0]) {
+      console.log("[bookings] Skipping: recent event-cancellation message exists");
       continue;
     }
 
@@ -1069,10 +1083,17 @@ export async function insertEventCancellationActivityMessagesIfNeeded(options: {
       continue;
     }
 
+    console.log("[bookings] Inserted event cancellation message for conversation:", booking.conversation_id);
+
     // Mark conversation as unread for the DJ recipient
     if (booking.recipient_id) {
       try {
-        await supabase.from("message_reads").delete().eq("user_id", booking.recipient_id).eq("conversation_id", booking.conversation_id);
+        const { error: deleteError } = await supabase.from("message_reads").delete().eq("user_id", booking.recipient_id).eq("conversation_id", booking.conversation_id);
+        if (deleteError) {
+          console.error("[bookings] Failed to delete message_reads:", deleteError);
+        } else {
+          console.log("[bookings] Marked conversation unread for DJ:", booking.recipient_id, booking.conversation_id);
+        }
       } catch (error) {
         console.error("[bookings] Failed to mark conversation unread for DJ:", error);
       }
