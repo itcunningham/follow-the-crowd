@@ -1165,7 +1165,11 @@ export async function insertEventCancellationActivityMessagesIfNeeded(options: {
           );
 
         if (upsertError) {
-          console.error("[bookings] ❌ Failed to upsert conversation message_reads:", upsertError);
+          console.error("[bookings] ❌ Failed to upsert conversation message_reads:", {
+            error: upsertError,
+            user_id: booking.recipient_id,
+            conversation_id: booking.conversation_id,
+          });
         } else {
           console.log("[bookings] ✅ Marked conversation unread for DJ:", booking.recipient_id);
         }
