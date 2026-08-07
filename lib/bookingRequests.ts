@@ -1103,41 +1103,21 @@ export async function insertEventCancellationActivityMessagesIfNeeded(options: {
 
     console.log("[bookings] Inserted event cancellation message for conversation:", booking.conversation_id);
 
-    // Mark conversation as unread for the DJ recipient
+    // Mark conversation as unread for the DJ recipient via RPC
     if (booking.recipient_id && booking.conversation_id) {
       try {
-        const nowMs = Date.now();
-        const pastTimestamp = new Date(nowMs - 1000).toISOString();
+        const { error: rpcError } = await supabase.rpc(
+          "mark_conversation_unread_for_cancellation",
+          {
+            p_user_id: booking.recipient_id,
+            p_conversation_id: booking.conversation_id,
+          }
+        );
 
-        // First, delete any event_id row for this user+event to clean up stale state
-        await supabase
-          .from("message_reads")
-          .delete()
-          .eq("user_id", booking.recipient_id)
-          .eq("event_id", booking.event_id)
-          .eq("conversation_id", null);
-
-        // Then delete any existing conversation_id row so we can insert a fresh one
-        await supabase
-          .from("message_reads")
-          .delete()
-          .eq("user_id", booking.recipient_id)
-          .eq("conversation_id", booking.conversation_id);
-
-        // Insert a new message_reads row with timestamp before the message
-        const { error: insertError } = await supabase
-          .from("message_reads")
-          .insert({
-            user_id: booking.recipient_id,
-            conversation_id: booking.conversation_id,
-            event_id: null,
-            last_read_at: pastTimestamp,
-          });
-
-        if (insertError) {
-          console.error("[bookings] Failed to insert message_reads:", insertError);
+        if (rpcError) {
+          console.error("[bookings] Failed to mark conversation unread via RPC:", rpcError);
         } else {
-          console.log("[bookings] Marked conversation unread for DJ:", booking.recipient_id, booking.conversation_id);
+          console.log("[bookings] Marked conversation unread via RPC for DJ:", booking.recipient_id, booking.conversation_id);
         }
       } catch (error) {
         console.error("[bookings] Exception marking conversation unread:", error);
